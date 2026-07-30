@@ -127,6 +127,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     return commandJsonError('Failed to validate current action', 500, diagnostics, 'COMMAND_STATE_FAILED');
   }
   if (!before) return commandJsonError('Project not found', 404, diagnostics, 'NOT_FOUND');
+  if (before.workModel !== 'legacy') {
+    return commandJsonError(
+      'This project uses the V2 work-item commands',
+      409,
+      diagnostics,
+      'LEGACY_COMMAND_DISABLED',
+    );
+  }
   if (before.operations.selectionConflict
       && command !== 'complete'
       && !(auth.session.role === 'admin' && command === 'resolve_conflict')) {

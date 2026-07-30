@@ -84,9 +84,32 @@
   border-top: var(--ui-border-width) solid var(--ui-border);
 }
 
+.policyNotice {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--ui-text-danger);
+  font-size: var(--ui-font-size-small);
+  font-weight: 650;
+}
+
 .history {
   border-top: var(--ui-border-width) solid var(--ui-border);
   padding-top: var(--ui-space-3);
+}
+
+.history > summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--ui-control-md);
+  color: var(--ui-text-strong);
+  cursor: pointer;
+  font-size: var(--ui-font-size-small);
+  font-weight: 700;
+}
+
+.history > section {
+  display: grid;
+  gap: var(--ui-space-3);
 }
 
 .historyHeader {

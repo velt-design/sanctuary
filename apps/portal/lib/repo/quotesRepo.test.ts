@@ -3,12 +3,30 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createContact } from '@/lib/repo/contactsRepo';
 import { createEstimate } from '@/lib/repo/estimatesRepo';
-import { createProject } from '@/lib/repo/projectsRepo';
 import { createQuoteFromEstimate, duplicateQuoteAsRevision, markQuoteSent, suggestNextQuoteNumber, updateQuote } from '@/lib/repo/quotesRepo';
+import { apiJson } from '@/lib/repo/apiClient';
+import type { ProjectCreateRequest, ProjectCreateResponse } from '@/lib/projects/createProjectContract';
+import { newId } from '@/lib/utils/id';
+
+async function createProjectFixture(contactId: string): Promise<ProjectCreateResponse['project']> {
+  const request: ProjectCreateRequest = {
+    projectId: newId('proj'),
+    projectName: 'Test Project',
+    quoteRef: '',
+    region: '',
+    siteAddress: '',
+    contact: { kind: 'existing', contactId },
+  };
+  const response = await apiJson<ProjectCreateResponse>('/api/staff/v1/projects', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+  return response.project;
+}
 
 async function seedProjectWithEstimate(opts?: { totalEx?: number; totalInc?: number; status?: 'draft' | 'archived' }) {
   const contact = await createContact({ displayName: 'Test Contact', email: 'test@example.com', phone: '021' });
-  const project = await createProject({ contactId: contact.id, projectName: 'Test Project' });
+  const project = await createProjectFixture(contact.id);
   const totalEx = opts?.totalEx ?? 100;
   const totalInc = opts?.totalInc ?? 115;
 
@@ -312,16 +330,43 @@ describe('quotesRepo', () => {
       if (pathname === '/api/staff/v1/projects' && method === 'POST') {
         const body = await jsonBody();
         const now = new Date().toISOString();
-        const next = {
+        const project = {
+          id: body.projectId ?? body.id,
           version: 1,
           createdAt: body.createdAt ?? now,
           updatedAt: body.updatedAt ?? now,
-          ...body,
           projectName: body.projectName ?? body.name,
-          activity: Array.isArray(body.activity) ? body.activity : [],
+          contactId: body.contact?.contactId ?? body.contactId,
+          status: body.status ?? 'NEW',
+          quoteRef: body.quoteRef ?? '',
+          region: body.region ?? '',
+          siteAddress: body.siteAddress ?? '',
+          activity: [],
         };
-        db.projects.set(next.id, next);
-        return json({ project: next });
+        db.projects.set(project.id.slice('proj_'.length), {
+          id: project.id.slice('proj_'.length),
+          contact_id: project.contactId.slice('ct_'.length),
+          name: project.projectName,
+          quote_ref: project.quoteRef || null,
+          region: project.region || null,
+          site_address: project.siteAddress || null,
+          pipeline_stage: project.status,
+          follow_up_date: null,
+          notes: '',
+          created_at: project.createdAt,
+          updated_at: project.updatedAt,
+        });
+        return json({
+          project,
+          contact: db.contacts.get(project.contactId.slice('ct_'.length)),
+          receipt: {
+            state: 'server_confirmed',
+            confirmedAt: now,
+            replayed: false,
+            createdContact: false,
+            setupAutomation: 'confirmed',
+          },
+        });
       }
       {
         const m = /^\/api\/staff\/v1\/projects\/([^/]+)$/.exec(pathname);

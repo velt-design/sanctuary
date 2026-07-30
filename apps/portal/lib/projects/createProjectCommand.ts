@@ -1,7 +1,6 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { automationRunner } from '@/lib/automation/AutomationRunner';
 import { mapContactRecord } from '@/lib/contacts/contactRecord';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
@@ -74,7 +73,14 @@ function isMissingFunction(error: unknown): boolean {
   const candidate = error as PostgrestErrorLike;
   return candidate.code === 'PGRST202'
     || candidate.code === '42883'
-    || /staff_find_contact_duplicates_v1|schema cache|function .* does not exist/i.test(candidate.message ?? '');
+    || /staff_find_contact_duplicates_v1|project_create_v2|schema cache|function .* does not exist/i.test(candidate.message ?? '');
+}
+
+function isProjectCreateConflict(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as PostgrestErrorLike;
+  return candidate.code === '40001'
+    && /PROJECT_CREATION_COMMAND_CONFLICT/i.test(candidate.message ?? '');
 }
 
 function sameText(left: unknown, right: string): boolean {
@@ -191,47 +197,47 @@ export async function createProjectCommand(
 ): Promise<ProjectCreateResponse> {
   const projectUuid = uuidFromAppId(request.projectId, 'proj');
   const resolvedContact = await resolveContact(client, request);
-  const now = new Date().toISOString();
-  const payload = {
-    id: projectUuid,
-    contact_id: resolvedContact.contactUuid,
-    name: request.projectName,
-    quote_ref: request.quoteRef || null,
-    region: request.region || null,
-    site_address: request.siteAddress || null,
-    pipeline_stage: 'NEW',
-    notes: '',
-    created_at: now,
-    updated_at: now,
-  };
 
-  let projectRow: Record<string, unknown>;
-  let replayed = false;
-  const inserted = await client.from('projects').insert(payload).select('*').single();
-  if (!inserted.error && inserted.data) {
-    projectRow = inserted.data as Record<string, unknown>;
-  } else {
-    const existing = await client.from('projects').select('*').eq('id', projectUuid).maybeSingle();
-    if (existing.error) {
-      throw new ProjectCreateRecoveryError();
+  const result = await client.rpc('project_create_v2', {
+    p_project_id: projectUuid,
+    p_contact_id: resolvedContact.contactUuid,
+    p_name: request.projectName,
+    p_quote_ref: request.quoteRef || null,
+    p_region: request.region || null,
+    p_site_address: request.siteAddress || null,
+  });
+
+  if (result.error) {
+    if (resolvedContact.created) {
+      await compensateContactCreate(resolvedContact.contactUuid);
     }
-    if (!existing.data) {
-      if (resolvedContact.created) {
-        await compensateContactCreate(resolvedContact.contactUuid);
-      }
-      throw inserted.error ?? new Error('Project creation could not be confirmed.');
-    }
-    if (!projectMatches(existing.data as Record<string, unknown>, request, resolvedContact.contactUuid)) {
-      if (resolvedContact.created) {
-        await compensateContactCreate(resolvedContact.contactUuid);
-      }
-      throw new ProjectCreateCommandConflictError();
-    }
-    projectRow = existing.data as Record<string, unknown>;
-    replayed = true;
+    if (isMissingFunction(result.error)) throw new ProjectCreateSchemaError();
+    if (isProjectCreateConflict(result.error)) throw new ProjectCreateCommandConflictError();
+    throw result.error;
   }
 
-  const response = (setupAutomation: ProjectCreateResponse['receipt']['setupAutomation']): ProjectCreateResponse => ({
+  const rawResult = Array.isArray(result.data) ? result.data[0] : result.data;
+  const rpcResult = rawResult && typeof rawResult === 'object' && !Array.isArray(rawResult)
+    ? rawResult as Record<string, unknown>
+    : null;
+  const projectRow = rpcResult?.project && typeof rpcResult.project === 'object' && !Array.isArray(rpcResult.project)
+    ? rpcResult.project as Record<string, unknown>
+    : null;
+  const replayed = rpcResult?.replayed;
+  if (!projectRow || typeof replayed !== 'boolean') {
+    if (resolvedContact.created) {
+      await compensateContactCreate(resolvedContact.contactUuid);
+    }
+    throw new ProjectCreateRecoveryError();
+  }
+  if (!projectMatches(projectRow, request, resolvedContact.contactUuid)) {
+    if (resolvedContact.created) {
+      await compensateContactCreate(resolvedContact.contactUuid);
+    }
+    throw new ProjectCreateCommandConflictError();
+  }
+
+  return {
     project: mapProjectRecord(projectRow),
     contact: resolvedContact.contact,
     receipt: {
@@ -239,22 +245,7 @@ export async function createProjectCommand(
       confirmedAt: new Date().toISOString(),
       replayed,
       createdContact: resolvedContact.created,
-      setupAutomation,
+      setupAutomation: replayed ? 'not_rechecked' : 'confirmed',
     },
-  });
-
-  if (!replayed) {
-    try {
-      await automationRunner.runEvent({
-        type: 'ui.action.project_created',
-        projectId: projectUuid,
-        stage: 'NEW',
-        payload: { source: 'portal' },
-      });
-    } catch (error) {
-      throw new ProjectCreateAutomationAttentionError(response('needs_attention'), error);
-    }
-  }
-
-  return response(replayed ? 'not_rechecked' : 'confirmed');
+  };
 }

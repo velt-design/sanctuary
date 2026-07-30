@@ -1,8 +1,7 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PortalIndexLink from './PortalIndexLink';
-import { qk } from '@/lib/queries/keys';
-import { CONTACTS_INDEX_QUERY_SCOPE } from '@/lib/queries/contactsIndex';
+import { contactsIndexQueryOptions } from '@/lib/queries/contactsIndex';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 
 const routerPrefetch = vi.fn();
@@ -40,7 +39,7 @@ describe('PortalIndexLink Contacts navigation', () => {
     act(() => rendered.container.querySelector('a')?.dispatchEvent(new Event(eventName, { bubbles: true, cancelable: true })));
     expect(routerPrefetch).toHaveBeenCalledWith('/staff/contacts');
     expect(prefetchQuery).toHaveBeenCalledWith(expect.objectContaining({
-      queryKey: qk.contacts.index(CONTACTS_INDEX_QUERY_SCOPE),
+      queryKey: contactsIndexQueryOptions().queryKey,
     }));
     rendered.unmount();
   });

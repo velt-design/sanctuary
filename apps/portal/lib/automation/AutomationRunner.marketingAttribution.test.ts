@@ -14,6 +14,10 @@ vi.mock('@/lib/emails/transactional', () => ({
   sendProjectScheduledEmail: vi.fn(),
 }));
 
+vi.mock('@/lib/projects/workItems/modelBoundary', () => ({
+  isProjectWorkModelV2: vi.fn().mockResolvedValue(false),
+}));
+
 describe('AutomationRunner marketing attribution events', () => {
   beforeEach(() => {
     vi.resetModules();

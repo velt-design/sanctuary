@@ -102,7 +102,25 @@ Use `docs/supabase-schema-map.md` to confirm table/RPC ownership, write paths, a
 
 Commercial workflow trust requires `20260728_000001_commercial_workflow_trust.sql` followed by `20260728000002_commercial_quote_stale_conflict.sql`. Validate both with `npm run test:commercial:db` before a shared-environment apply. The correction keeps stale quote revisions as an application conflict rather than PostgreSQL SQLSTATE `40001`, which infrastructure may retry.
 
-If a linked environment has a sparse or historically divergent migration ledger, do not use a blanket `db push` or repair unrelated versions. Positively classify the target, inspect prerequisites and collision counts, run the exact forward file in a rollback transaction, apply only that reviewed file, record only its version, and verify the resulting schema/function body. Production remains a separate reviewed deployment.
+If a linked environment has a sparse or historically divergent migration ledger, do not use a blanket `db push` or repair unrelated versions. Positively classify the target, inspect prerequisites and collision counts, run the exact forward file in a rollback transaction, apply only that reviewed file, and verify the resulting schema/function body. Record the version only when it is unambiguous. Supabase CLI treats the digits before the first underscore as the version, so date-only siblings such as `20260729_000001` through `_000004` collide as remote version `20260729`; do not use `db push`, `migration up`, or `migration repair 20260729` for that group. Preserve exact-file hashes and deployment evidence separately until the naming/ledger convention is repaired. Production remains a separate reviewed deployment.
+
+Project Work V2 has a read-only staging readiness preflight:
+
+```powershell
+$env:PORTAL_PROJECT_WORK_V2_READINESS_TARGET='staging'
+$env:PORTAL_PROJECT_WORK_V2_STAGING_PROJECT_REF='<exact-20-character-staging-ref>'
+# Optional extra guard when the production ref is available:
+$env:PORTAL_PRODUCTION_SUPABASE_PROJECT_REF='<exact-20-character-production-ref>'
+npm run portal:project-work-v2-readiness
+```
+
+The command requires the declared staging ref to exactly match the configured
+`NEXT_PUBLIC_SUPABASE_URL`, rejects production/local/unknown targets before any
+network request, uses only `NEXT_PUBLIC_SUPABASE_ANON_KEY`, requests no table
+rows, and checks that the read-only queue/classifier RPCs deny anonymous
+execution. It reports `000002`, `000003`, or `000004` separately when that
+contract is absent. It does not apply migrations, create records, authenticate
+staff, or exercise any lifecycle/customer side effect.
 
 Marketing enquiry intake requires both `20260723_000001_marketing_enquiry_intake_security.sql` and the forward compatibility migration `20260724043000_marketing_enquiry_budget_columns.sql`. The latter adds nullable pricing snapshot columns to installations whose existing `enquiry_requests` table predates those fields.
 

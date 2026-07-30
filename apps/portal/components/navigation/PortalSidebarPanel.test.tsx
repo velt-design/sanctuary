@@ -139,6 +139,18 @@ describe('PortalSidebarPanel', () => {
     rendered.unmount();
   });
 
+  it('keeps the Work Queue active throughout its admin review route', () => {
+    mockPathname = '/staff/projects/work-queue/legacy-review';
+    mockRole = 'admin';
+    const rendered = renderSidebar();
+
+    const link = linkByText(rendered.container, 'Work Queue');
+    expect(link.getAttribute('href')).toBe('/staff/projects/work-queue');
+    expect(link.getAttribute('aria-current')).toBe('page');
+
+    rendered.unmount();
+  });
+
   it('keeps each parent icon, label, and expanded submenu in one flow group', () => {
     mockPathname = '/staff/projects/design-packages';
     const rendered = renderSidebar();
@@ -205,6 +217,18 @@ describe('PortalSidebarPanel', () => {
 
     expect(panelLayer(rendered.container).getAttribute('aria-hidden')).toBe('false');
     expect(linkByText(rendered.container, 'Drafting Queue')).toBeInstanceOf(HTMLAnchorElement);
+
+    rendered.unmount();
+  });
+
+  it('keeps Site Visits out of Schedule navigation', () => {
+    mockPathname = '/staff/schedule';
+    mockSearchParams = new URLSearchParams('view=board');
+    const rendered = renderSidebar();
+
+    expect(linkByText(rendered.container, 'Board')).toBeInstanceOf(HTMLAnchorElement);
+    expect(linkByText(rendered.container, 'Gantt')).toBeInstanceOf(HTMLAnchorElement);
+    expect(queryLinkByText(rendered.container, 'Site visits')).toBeNull();
 
     rendered.unmount();
   });

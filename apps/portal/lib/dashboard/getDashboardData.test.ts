@@ -4,6 +4,7 @@ const getDashboardSnapshotCached = vi.fn();
 const listRecentProjectNoteActivity = vi.fn();
 const listVisibleDashboardTasks = vi.fn();
 const listDashboardRecentEstimates = vi.fn();
+const getProjectWorkQueue = vi.fn();
 
 vi.mock('./getDashboardSnapshotCached', () => ({
   getDashboardSnapshotCached: (...args: unknown[]) => getDashboardSnapshotCached(...args),
@@ -21,6 +22,10 @@ vi.mock('./operationalLists', () => ({
   listDashboardRecentEstimates: (...args: unknown[]) => listDashboardRecentEstimates(...args),
 }));
 
+vi.mock('@/lib/projects/workItems/repository', () => ({
+  getProjectWorkQueue: (...args: unknown[]) => getProjectWorkQueue(...args),
+}));
+
 vi.mock('@/lib/supabaseClient', () => ({
   supabaseServiceRole: { from: vi.fn() },
 }));
@@ -32,6 +37,7 @@ describe('getDashboardData', () => {
     listRecentProjectNoteActivity.mockReset();
     listVisibleDashboardTasks.mockReset();
     listDashboardRecentEstimates.mockReset();
+    getProjectWorkQueue.mockReset();
 
     getDashboardSnapshotCached.mockResolvedValue({
       updated_at: '2026-05-30T00:00:00.000Z',
@@ -74,6 +80,10 @@ describe('getDashboardData', () => {
         href: '/staff/projects/proj_1?tab=estimates&estimateId=est_1',
       },
     ]);
+    getProjectWorkQueue.mockResolvedValue({
+      entries: [{ projectId: 'proj_1', projectName: 'Project One' }],
+      generatedAt: '2026-05-30T00:00:00.000Z',
+    });
   });
 
   it('maps snapshot data with recent activity and personal tasks', async () => {
@@ -100,5 +110,54 @@ describe('getDashboardData', () => {
 
     expect(listVisibleDashboardTasks).not.toHaveBeenCalled();
     expect(data.personalTasks).toEqual([]);
+  });
+
+  it('loads the compact V2 Work Queue through the request-bound staff client', async () => {
+    const { getDashboardData } = await import('./getDashboardData');
+    const staffClient = { rpc: vi.fn() } as never;
+
+    const data = await getDashboardData({
+      queueMode: 'today',
+      userId: 'user_1',
+      supabase: staffClient,
+    });
+
+    expect(getProjectWorkQueue).toHaveBeenCalledWith(staffClient, { limit: 5 });
+    expect(data.projectWorkQueue).toEqual([
+      { projectId: 'proj_1', projectName: 'Project One' },
+    ]);
+    expect(data.projectWorkQueueAvailable).toBe(true);
+  });
+
+  it('keeps the rest of the Dashboard usable when the V2 queue read fails', async () => {
+    getProjectWorkQueue.mockRejectedValueOnce(new Error('queue unavailable'));
+    const { getDashboardData } = await import('./getDashboardData');
+
+    const data = await getDashboardData({
+      queueMode: 'today',
+      supabase: { rpc: vi.fn() } as never,
+    });
+
+    expect(data.projectWorkQueue).toEqual([]);
+    expect(data.projectWorkQueueAvailable).toBe(false);
+    expect(data.pipelineCounts.NEW).toBe(2);
+  });
+
+  it('does not expose Site Visits as a Dashboard attention link', async () => {
+    getDashboardSnapshotCached.mockResolvedValue({
+      updated_at: '2026-05-30T00:00:00.000Z',
+      kpis: {},
+      attention_counts: { site_visits_to_book: 12 },
+      pipeline_counts: {},
+      work_queue: [],
+      schedule: { starting_soon: [], crew_next_available: [] },
+      site_visits: { unscheduled_count: 12, today: [], next7: [] },
+    });
+    const { getDashboardData } = await import('./getDashboardData');
+
+    const data = await getDashboardData({ queueMode: 'today' });
+
+    expect(data.attention.map((item) => item.key)).not.toContain('site_visits_to_book');
+    expect(data.attention.map((item) => item.href)).not.toContain('/staff/schedule?view=site-visits');
   });
 });

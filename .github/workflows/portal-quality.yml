@@ -95,6 +95,9 @@ jobs:
       - name: Portal Vitest suite
         run: npm run test:portal
 
+      - name: Portal Project Work V2 contract gate
+        run: npm run test:portal:project-work
+
       - name: Portal production build
         run: npm run build:portal
 

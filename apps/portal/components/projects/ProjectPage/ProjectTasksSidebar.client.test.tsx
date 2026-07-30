@@ -35,6 +35,10 @@ vi.mock('@/components/ui/toast/ToastProvider', () => ({
   }),
 }));
 
+vi.mock('@/components/auth/PortalAuthProvider', () => ({
+  usePortalSession: () => ({ role: 'admin' }),
+}));
+
 vi.mock('@/lib/localFirst/portalEntities', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/localFirst/portalEntities')>();
   return {

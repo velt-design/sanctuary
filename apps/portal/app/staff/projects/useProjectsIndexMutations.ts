@@ -1,9 +1,13 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
+import {
+  projectCommandIntent,
+  StableCommandAttempt,
+} from '@/lib/projects/workItems/stableCommandAttempt';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import {
   correctProjectIndexStage,
@@ -30,6 +34,7 @@ export function useProjectsIndexMutations(host: string) {
   const [pendingCells, setPendingCells] = useState<ReadonlySet<string>>(() => new Set());
   const [pendingStages, setPendingStages] = useState<ReadonlySet<string>>(() => new Set());
   const [pendingArchives, setPendingArchives] = useState<ReadonlySet<string>>(() => new Set());
+  const archiveAttempts = useRef(new StableCommandAttempt()).current;
 
   const saveInlineEdit = useCallback(
     async (args: {
@@ -71,18 +76,33 @@ export function useProjectsIndexMutations(host: string) {
   );
 
   const setArchived = useCallback(
-    async (project: Project, isArchived: boolean) => {
+    async (project: Project, isArchived: boolean, reason: string) => {
       setPendingArchives((current) => withPendingKey(current, project.id, true));
+      const intent = projectCommandIntent('PROJECT_ARCHIVE', {
+        projectId: project.id,
+        isArchived,
+        reason,
+      });
       try {
-        await setProjectIndexArchived({ queryClient, host, project, isArchived });
+        await setProjectIndexArchived({
+          queryClient,
+          host,
+          project,
+          isArchived,
+          reason,
+          commandId: archiveAttempts.commandIdFor(intent),
+        });
+        archiveAttempts.committed(intent);
         toast.success(isArchived ? 'Project archived.' : 'Project restored.');
+        return true;
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to update archive state');
+        return false;
       } finally {
         setPendingArchives((current) => withPendingKey(current, project.id, false));
       }
     },
-    [host, queryClient, toast],
+    [archiveAttempts, host, queryClient, toast],
   );
 
   return useMemo(

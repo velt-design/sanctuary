@@ -9,6 +9,7 @@ Use the smallest test that covers the risk. Run broader suites when touching sha
 - Use `## Background-Job And Worker Tests` for JOB-01/JOB-02/JOB-03 provider-package, worker, migration, security, webhook, fault-injection, and isolated PGMQ database checks.
 - Use `## Portal Browser Tests` and `## Drawing Fixture Route` for Playwright/auth/drawing smoke expectations.
 - Use `## Schedule QA Gate` for Schedule V2 readiness and focused schedule checks.
+- Use `## Project Work Items V2 Gate` for the new-project work model, mixed-mode boundary, and rollout checks.
 - Use `## CI` to confirm which workflows enforce or report each gate.
 
 ## Canonical Command Source
@@ -476,6 +477,7 @@ npm run test:portal:browser:auth
 npm run test:portal:browser
 npm run test:portal:browser:headed
 npm run test:portal:smoke
+npm run test:portal:command-centre:read-only-auth
 npm run test:portal:performance
 npm run test:portal:search-performance
 npm run test:portal:performance:capture
@@ -488,7 +490,9 @@ npm run test:portal:performance:fixture
 
 `playwright/portal.costing-control-smoke.spec.ts` is an opt-in, read-only admin smoke for the Pricebook costing-control entrypoint. Set `PORTAL_TEST_ROLE=admin`, authenticate with an admin test account, and run it with the `portal-chromium` project. It proves `/pricebook` redirects without a browser runtime error, the version/status UI loads, and the configuration-history and estimate-preview APIs return `private, no-store`. It never creates, saves, publishes, or rolls back a costing version.
 
-`npm run test:portal:browser` includes the gated, customer-data-free Project Command Centre fixture at `/qa/project-command-centre-fixture`. Its matrix preserves the nine commercial/source scenarios and adds primary, empty, conflict, critical, and undated action states at 1600, 1366, 1024, 768, and 390 px with horizontal-overflow assertions. The fixture renders the production design/commercial and primary-action cards and requires `ENABLE_PORTAL_QA_FIXTURES=1`; the standard fixture harness supplies that flag.
+`npm run test:portal:browser` includes the gated, customer-data-free Project Command Centre fixture at `/qa/project-command-centre-fixture?scenario=...&work=...&state=...`. The fixture composes the production `ProjectOverviewLayout`, `ProjectOrientationBand`, `ProjectWorkSection`, `ProjectCurrentDesignCommercialCard`, and `ProjectRecentNotesEvents` owners with synthetic data; it does not mount `OverviewTab` or perform authenticated data reads. Its fixture catalogue supplies V2 and legacy models, first-email/follow-up/close-review work, normal through blocked due states, no owner/action, Waiting/Closed/Archived/correction review, filtered read-only legacy stage rows, `Legacy work needs review` for a prohibited server-selected legacy action, strict commercial-source cases, and pending/summary/refreshing/stale/mismatch/error/retry/access-ending states.
+
+The current fixture Playwright spec directly asserts all ten commercial scenarios, all seventeen Project Work scenarios, all eleven read states, filtered read-only legacy rows, the prohibited legacy fallback, one semantic email-command request, and the project shell. Its V2 shell variant sends a deterministic command-centre response through the production query and `OverviewTab`, rather than reconstructing that integration in fixture code. It checks one representative blocked-work composition at 1440x1000, 1280x800, 1024x900, 768x1024, and 390x844 with attached rendered evidence; a 640 CSS-pixel 200%-zoom simulation; no document horizontal overflow, nested vertical scroll owner, or cropped control; semantic headings/regions; actual mobile Tab order; visible focus; reduced motion across descendants; prohibited lifecycle-control absence; and 44px coarse-pointer controls. Access-ending fixture states remove the complete protected Overview, while page-level component coverage proves 401/403/404 cache clearing and unavailable presentation. Catalogue entries and acceptance properties not named by those assertions remain required verification rather than completed evidence. The route requires `ENABLE_PORTAL_QA_FIXTURES=1`; the standard fixture harness supplies that flag.
 
 The current portal UI system has a data-free visual mirror at `/qa/ui-foundation-fixture`, gated by the same `ENABLE_PORTAL_QA_FIXTURES=1` flag. Use it for desktop, tablet, and mobile screenshots when staff credentials are unavailable. `/staff/ui-foundation` remains the protected shared-component catalogue and stays in authenticated agent-access smoke. Both routes provide regression evidence; neither is a target mockup that authorizes restyling production routes.
 
@@ -496,7 +500,9 @@ The same fixture flag exposes `/qa/commercial-workflow-fixture` for quote-delive
 
 `playwright/portal.ui-foundation.spec.ts` is a regression gate for the current `/staff/ui-foundation`, `/staff/projects`, and one discovered Project Detail route. It runs 1440x1000, 1280x800, 1024x900, 768x1024, and 390x844 plus 720x500 with a 200% zoom simulation. It combines semantic and interaction assertions with document-overflow, major-section-overlap, cropped-control, keyboard/focus-return, reduced-motion, and contrast checks; screenshots remain supplementary evidence rather than the only assertion.
 
-`npm run test:portal:command-centre:auth` additionally requires `PORTAL_COMMAND_CENTRE_MUTATION_PROJECT_ID` and `PORTAL_COMMAND_CENTRE_CONFLICT_PROJECT_ID`. The mutation project must be a dedicated active `new`-through-`sent` test project with no other qualifying dated action or conflict. The conflict project must be dedicated, start with a real explicit-selection conflict, and be used with an admin test account. The suite fails rather than skipping when either project is missing, so a green result is Stage 2 completion evidence rather than a partial smoke.
+`npm run test:portal:command-centre:read-only-auth` is the Overview V2 authenticated read-only gate. It runs `portal:project-work-v2-readiness` and the normal credential preflight, requires the staging target/ref declarations documented under `Project Work Items V2 Gate`, and rejects production-like or ambiguous browser hosts. The spec discovers an RLS-visible project, opens its integrated Overview, checks the orientation, exactly one Project Work region, current-design/commercial source, bounded recent content, absence of the retired duplicate regions, and absence of visible Call or Site Visit links/buttons. Before navigation it suppresses only the same-origin identifier-free Web Vitals transport so QA does not write operational telemetry; a route guard then aborts and records every other request outside `GET`, `HEAD`, or `OPTIONS`, and the test fails if any such request was attempted. It does not currently assert `private, no-store` response headers, responsive layouts, or recovery interactions; those remain in the broader acceptance matrix or the separate historical command-centre gate. It must not send email, complete work, change project/contact data, accept or decline a quote, create an invoice or token, record payment, or use a production/shared-data target. On 2026-07-30 the exact command passed its readiness and credential preflights, authenticated setup, and integrated Overview smoke against the positively identified CLI-linked staging project; no business mutation request was attempted. A separate manual authenticated inspection also passed at 390x844 with no mutation control exercised and no shared project/customer data changed.
+
+`npm run test:portal:command-centre:auth` additionally requires `PORTAL_COMMAND_CENTRE_MUTATION_PROJECT_ID` and `PORTAL_COMMAND_CENTRE_CONFLICT_PROJECT_ID`. The mutation project must be a dedicated active `new`-through-`sent` test project with no other qualifying dated action or conflict. The conflict project must be dedicated, start with a real explicit-selection conflict, and be used with an admin test account. The suite fails rather than skipping when either project is missing, so a green result is Stage 2 completion evidence rather than a partial smoke. It remains separate from the Overview V2 read-only gate and must never run against shared customer data.
 
 `npm run test:portal:command-centre:auth` is the blocking authenticated Project Command Centre gate. It discovers an RLS-visible real project, opens its integrated Overview, requires the command-centre response to be `private, no-store`, verifies normalized nested quote/estimate/price fields plus the single-owner/action/audit contract, and requires the production owner/action UI. The mutation journey requires an admin test account because project-owner changes are admin-only. Missing staff credentials, project data, or the Stage 2 database migrations fails the gate rather than skipping it.
 
@@ -547,7 +553,9 @@ The 2026-07-22 isolated project-tab pass measured the integrated UI before chang
 
 `npm run test:portal:performance:fixture` runs credential-free interaction gates. The workbench journey measures object selection and Plan-to-3D feedback against `/qa/design-workbench-fixture`. The project-mutation route mounts the production Projects-index controller, Project/Contact Detail local-first controllers, and manual project-task toggle at `/qa/projects-index-mutation-fixture`. It intercepts sample requests and proves visible update/Done/checkbox feedback completes within 100 ms while deliberately 750 ms persistence responses continue in the background. Mutation feedback is timestamped inside Chromium by observing the real visible DOM state; Playwright command/IPC latency is not counted as product feedback. Paired rejection checks prove index rollback/error visibility, both detail editors' confirmed-value rollback with retained reviewable drafts, and task-specific rollback plus Retry. The route binds only a synthetic fixture owner, clears its local-first state, and uses no durable/customer record IDs. The gates produce separate schema-v2 artifacts at `artifacts/portal-workbench-performance.json` and `artifacts/portal-project-mutation-performance.json`.
 
-After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Projects Index, Contacts Index, Project Detail, Calculator, and Design Workbench. The analyser reads both Next's loadable manifests and Turbopack's emitted lazy-loader groups so an empty route loadable manifest cannot silently report zero deferred code. Turbopack may repeat route/layout CSS in a dynamic entry; CSS explicitly listed in the route manifest's `entryCSSFiles` is already loaded and is de-duplicated from lazy totals while the established initial-JavaScript baseline remains unchanged. Projects Index was measured at 687.3/197.8 KiB raw/gzip initial and 2,651.9/606.2 KiB lazy. Contacts Index was measured from the Slice 3 fresh build at 559.8/159.6 KiB initial and 120.6/19.2 KiB lazy; each limit is its fresh measurement plus 5%, rounded up to KiB. Shared shell gzip grew by about 0.7 KiB from Slice 2, within the 5 KiB allowance. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
+After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Projects Index, Contacts Index, Project Detail, Calculator, and Design Workbench. The analyser reads both Next's loadable manifests and Turbopack's emitted lazy-loader groups so an empty route loadable manifest cannot silently report zero deferred code. When Next records a stale missing JavaScript hash, the analyser accepts only one unambiguous emitted loader group with the exact same module id; missing CSS, no match, an ambiguous match, or an exact-module missing artifact still fails closed. Unrelated global loaders are filtered by module id before their artifacts are read. Turbopack may repeat route/layout CSS in a dynamic entry; CSS explicitly listed in the route manifest's `entryCSSFiles` is already loaded and is de-duplicated from lazy totals while the established initial-JavaScript baseline remains unchanged. Projects Index was measured at 687.3/197.8 KiB raw/gzip initial and 2,651.9/606.2 KiB lazy. Contacts Index was measured from the Slice 3 fresh build at 559.8/159.6 KiB initial and 120.6/19.2 KiB lazy; each limit is its fresh measurement plus 5%, rounded up to KiB. Shared shell gzip grew by about 0.7 KiB from Slice 2, within the 5 KiB allowance. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
+
+On 2026-07-30, a clean current build and an isolated clean `060bea19` build with the same analyser both exceeded only the Contacts and Calculator initial ceilings; Project Detail remained within its unchanged allowance. Do not treat those aggregate baseline failures as authority to raise unrelated budgets from an Overview change.
 
 Project Detail measures about 658.1/189.5 KiB raw/gzip initial plus 1,762.9/370.9 KiB lazy (about 2,421.0/560.4 KiB combined). Its fresh-build-plus-5% limits remain below the preserved 3,014,656 raw / 757,760 gzip route cap. The activity-key Overview is the default workflow and joins Calculator, Commercial, and conditional Job Packs as truthful local lazy boundaries; the project frame and tabs stay initial. Project details and stage correction live in Overview at every width, while the retired Details rail/tab and Emails UI have no runtime boundary. The Calculator drawing surface no longer pulls Three/React Three Fiber into Project Detail: the 3D viewport loads only from exact `3D Review` intent and is accounted for by the Design Workbench route gate. That route measures about 1,583.2/385.9 KiB initial plus 942.8/247.1 KiB lazy; its split limits redistribute, but do not increase, the previous 2,681,856 raw / 671,744 gzip all-initial allowance.
 
@@ -625,6 +633,76 @@ $env:PORTAL_BASE_URL='http://127.0.0.1:3021'; npm run test:portal:browser; Remov
 Remove-Item Env:\ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES; Remove-Item Env:\ENABLE_PORTAL_QA_FIXTURES; Remove-Item Env:\PORTAL_PLAYWRIGHT_DIST_DIR
 ```
 
+## Project Work Items V2 Gate
+
+Before authenticated staging QA, run the anonymous read-only readiness
+preflight against an exact, positively declared staging project:
+
+```powershell
+$env:PORTAL_PROJECT_WORK_V2_READINESS_TARGET='staging'
+$env:PORTAL_PROJECT_WORK_V2_STAGING_PROJECT_REF='<exact-20-character-staging-ref>'
+npm run portal:project-work-v2-readiness
+```
+
+The preflight performs no writes and uses no service-role key. It distinguishes
+missing foundation (`000002`), missing project relationships/schema-cache
+repair (`000003`), and missing Work Queue/review RPCs (`000004`), and fails if
+any checked contract unexpectedly permits anonymous access. Production,
+local, ambiguous, or ref/URL-mismatched targets are rejected before a request.
+This proves only deployment/read-boundary readiness; it does not replace the
+authenticated integrity smoke or authorise migration application.
+
+Run the executable migration contract:
+
+```bash
+npm run test:portal:project-work
+```
+
+This is the named non-network Project Work gate. It covers the V2 domain,
+new-project boundary, staff/admin routes, Work Queue/Overview/Dashboard
+presenters, static source boundaries, all executable migration contracts, and
+the readiness checker's unit tests. It does not execute
+`portal:project-work-v2-readiness` or contact Supabase.
+
+The foundation test applies `20260729_000002_project_work_items_v2.sql` in PGlite, exercises calendar/cadence/state/queue/privilege contracts, and replays the migration. The schema-cache repair test proves canonical named cascade relationships, replacement of conflicting constraints, safe replay, and missing-prerequisite refusal. The focused forward test applies `20260729_000004_project_work_queue_and_legacy_triage.sql` after the foundation and covers the richer queue, admin-only append-only confirmation correction, exact-signal/version review resolution, read-only Contacted classification, deterministic related-evidence fingerprints, guarded one-project migration, replay, stale project/evidence rejection before V2 writes, internal-helper grants, and no automatic cadence seed. A local pass is not evidence that staging or production has been migrated.
+
+Run the focused Schedule, Running Jobs, and quote handoffs:
+
+```bash
+npx vitest run apps/portal/lib/scheduling/scheduleV2Server.test.ts apps/portal/lib/runningJobs/facts.test.ts apps/portal/lib/runningJobs/writeOps.test.ts apps/portal/lib/quotes/serverEmail.cadence.test.ts apps/portal/lib/projects/workItems/quoteCadenceReconciliation.test.ts
+```
+
+Run the Overview, snapshot, projection, V2/legacy command-controller, shared visibility-policy/cache, component, command-route, and queue boundary:
+
+```bash
+npx vitest run apps/portal/components/projects/ProjectPage/tabs/overview apps/portal/lib/queries/projectWorkCache.test.ts apps/portal/lib/projects/getProjectPageSnapshot.test.ts apps/portal/lib/projects/commandCentre/getProjectCommandCentre.test.ts apps/portal/lib/projects/commandCentre/getProjectCommandExceptions.test.ts apps/portal/lib/projects/workItems/teamQueue.test.ts apps/portal/components/projects/workQueue/workQueuePresentation.test.ts apps/portal/app/api/staff/v1/projects/[projectId]/work-items/commands/route.test.ts apps/portal/app/api/staff/v1/projects/[projectId]/state/commands/route.test.ts apps/portal/app/api/staff/v1/projects/[projectId]/confirmations/commands/route.test.ts apps/portal/app/api/staff/v1/work-items/queue/route.test.ts apps/portal/app/api/admin/project-work
+```
+
+For environment QA, deploy the migration and app in one short controlled window on a positively identified non-production environment. Pause or constrain new project/enquiry creation and quote lifecycle mutations during that window: app-first creation fails closed, while migration-first marketing intake can activate V2 before the new adapters are live. Resume only after the integrity smoke passes. Use disposable records and mocked or provider-disabled side effects; never send customer email, accept quotes, record payment, or mutate production/shared records. Verify:
+
+- a new staff project and a new enquiry-linked project initialize V2; an existing project remains legacy;
+- first email is due at +2 Auckland open hours with SLA +4, missing email blocks/unblocks, and one follow-up plus one manual close review are created only from confirmations;
+- no call, Site Visit booking, automatic email, automatic close, or stage change occurs;
+- Site Visits stays hidden/manual and no queue row links to it;
+- Waiting/Closed/archive queue and compatibility behavior, stale versions, idempotent replay, access denial, and retry are truthful;
+- the full Work Queue and Dashboard preview show the same one-row-per-project ordering and canonical specialist precedence, while My Tasks remains separate;
+- queue commands prevent duplicate submit, preserve stable ambiguous-retry identity, and claim success only after durable confirmation;
+- confirmation correction is admin-only, requires a reason, retains the original event, and opens a visible review signal without reversing later facts; resolution requires the exact signal ID/version and leaves newer signals open;
+- the Contacted classifier is admin-only/read-only, returns no linked customer contact fields, and returns a stable opaque fingerprint for unchanged project and related evidence;
+- reviewed Contacted migration accepts one unchanged project/evidence fingerprint and explicit disposition at a time, rejects stale/already-migrated input before V2 writes, and creates no first-email/follow-up cadence;
+- a deliberately lost manual-create response reuses the same command ID and cannot create a duplicate item;
+- close/outcome review resolves atomically for Close, Waiting, or Keep active with replacement work, and a customer reply remains recordable;
+- unassigned cadence work visibly falls back to the Project Owner, and a recorded Site Visit confirmation remains visibly ticked after refresh;
+- non-admin staff cannot archive/restore either model, and a committed V2 archive with a failed follow-up read returns success plus `refreshRequired` rather than a false failure;
+- durable quote finalisation/outcomes reconcile once, and a forced reconciliation failure is visible to operations rather than silently losing cadence;
+- Schedule readiness filters only unscheduled V2 candidates while scheduled rows remain visible;
+- Running Jobs V2 facts use its versioned owner and job completion uses Schedule actual finish; and
+- calendar coverage fails visibly when a deadline crosses an unverified year.
+
+Before enabling existing projects, run the classifier read-only and review recommendations manually. Test the migration command only with a disposable or explicitly approved non-production project, one project at a time. No production/shared Contacted backlog row is changed by this gate.
+
+The UI gate for this slice covers the full Work Queue, Dashboard preview, and admin legacy review at 1440, 1024, 768, and 390 CSS pixels plus 200% zoom. Assert group/heading semantics, keyboard order, visible focus, 44px coarse-pointer targets, no document overflow, loading/background refresh/error/retry/access-ending states, stale conflict recovery, and that no browser test sends email or commits a legacy migration.
+
 ## Schedule QA Gate
 
 Before shipping schedule changes:
@@ -632,7 +710,7 @@ Before shipping schedule changes:
 1. Confirm migrations are applied through current Schedule V2 command/repair migrations.
 2. Confirm `GET /api/staff/v1/schedule/readiness` returns `200`.
 3. Run relevant schedule unit and route tests.
-4. Manually check Board, Gantt, and Site Visits if UI behavior changed.
+4. Manually check Board and Gantt if UI behavior changed; check Site Visits only through direct compatibility access or an approved reactivation.
 
 For an explicitly approved change to the current Schedule presentation, run the authenticated non-mutating matrix after storage state exists:
 
@@ -640,7 +718,7 @@ For an explicitly approved change to the current Schedule presentation, run the 
 npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal-chromium --no-deps
 ```
 
-It covers Board at 1440/1280/1024/768/390, Gantt, Site Visits, Schedule and Site Visit dialogs, project Tasks, 720x500 at 200% zoom, document overflow, mobile targets, focus return, reduced motion, and browser/runtime evidence. It opens forms and dialogs but does not save, drag, delete, unschedule, or toggle a task.
+It covers Board at 1440/1280/1024/768/390, Gantt, the retained direct Site Visits compatibility route, Schedule and Site Visit dialogs, project Tasks, 720x500 at 200% zoom, document overflow, mobile targets, focus return, reduced motion, and browser/runtime evidence. It opens forms and dialogs but does not save, drag, delete, unschedule, or toggle a task.
 
 Minimum targeted schedule tests:
 

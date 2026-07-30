@@ -1,0 +1,12 @@
+.page {
+  display: grid;
+  align-content: start;
+  gap: var(--ui-density-section-gap);
+  min-width: 0;
+}
+
+.refreshing {
+  justify-self: end;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+}

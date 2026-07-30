@@ -1,61 +1,147 @@
-import { act } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderIntoDocument } from '../../../../../../test/reactHarness';
-import { ApiError } from '@/lib/repo/apiClient';
+import { act } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { renderIntoDocument } from "../../../../../../test/reactHarness";
+import { ApiError } from "@/lib/repo/apiClient";
 
 const useQueryMock = vi.fn();
+const invalidateQueriesMock = vi.fn();
 
-vi.mock('@tanstack/react-query', () => ({
+vi.mock("@tanstack/react-query", () => ({
   queryOptions: (options: unknown) => options,
   useQuery: (...args: unknown[]) => useQueryMock(...args),
+  useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
 }));
 
-vi.mock('../ProjectTasksSidebar.client', () => ({
-  default: ({ projectId }: { projectId: string }) => (
-    <section data-testid="mock-tasks-panel" data-project-id={projectId}>Tasks</section>
+vi.mock("./overview/ProjectOrientationBand", () => ({
+  default: ({
+    operationalState,
+    freshness,
+  }: {
+    operationalState?: string;
+    freshness?: { label: string };
+  }) => (
+    <section
+      data-testid="mock-orientation"
+      data-project-orientation="true"
+      data-operational-state={operationalState}
+      data-freshness={freshness?.label}
+    >
+      Project orientation
+    </section>
   ),
 }));
 
-vi.mock('./_components/ProjectNotesPanel.client', () => ({
-  default: ({ projectId }: { projectId: string }) => (
-    <section data-testid="mock-notes-panel" data-project-id={projectId}>Project notes</section>
-  ),
-}));
-
-vi.mock('./overview/ProjectCurrentDesignCommercialCard', () => ({
+vi.mock("./overview/ProjectCurrentDesignCommercialCard", () => ({
   default: ({ data }: { data: { source: string } }) => (
-    <section data-testid="mock-current-design" data-source={data.source}>Current design</section>
+    <section
+      data-testid="mock-current-design"
+      data-command-centre-source={data.source}
+    >
+      Current design
+    </section>
   ),
 }));
 
-vi.mock('./overview/ProjectPrimaryActionCard', () => ({
-  default: () => <section data-testid="mock-primary-action">Primary action</section>,
-}));
-
-vi.mock('./overview/ProjectStatusDetailsCard', () => ({
-  default: ({ project }: { project: { contactName?: string } }) => (
-    <section data-testid="mock-status-details">{project.contactName}</section>
+vi.mock("./overview/ProjectWorkSection", () => ({
+  default: (props: {
+    workModel: string;
+    projectWork?: { generatedAt: string };
+    stale: boolean;
+  }) => (
+    <section
+      data-testid="mock-project-work"
+      data-project-work-section="true"
+      data-project-work-model={props.workModel}
+      data-generated-at={props.projectWork?.generatedAt}
+      data-stale={String(props.stale)}
+    >
+      Project Work
+    </section>
   ),
 }));
 
-import OverviewTab from './OverviewTab';
+vi.mock("./overview/ProjectRecentNotesEvents", () => ({
+  default: ({ projectId }: { projectId: string }) => (
+    <section
+      data-testid="mock-recent"
+      data-project-id={projectId}
+      data-recent-notes-events="true"
+    >
+      Recent notes and events
+    </section>
+  ),
+}));
+
+import OverviewTab from "./OverviewTab";
+
+const legacyOperations = {
+  owner: {
+    owner: null,
+    required: false,
+    missing: false,
+    version: null,
+    permissions: { canManage: false },
+  },
+  primaryAction: null,
+  candidates: [],
+  candidateCount: 0,
+  candidateRevision: "revision",
+  manualSelectionBaselineHash: "baseline",
+  selectionConflict: null,
+  permissions: {
+    canCreate: false,
+    canSelect: false,
+    canComplete: false,
+    canReschedule: false,
+    canReassign: false,
+    canSetCritical: false,
+    canResolveConflict: false,
+  },
+  audit: [],
+  exceptions: {
+    missingOwner: false,
+    noPrimaryAction: true,
+    selectionConflict: false,
+  },
+};
 
 const snapshot = {
+  workModel: "legacy",
   project: {
-    id: 'proj_1',
-    name: 'Test project',
-    stage: 'lead',
-    contactName: 'Aroha Smith',
-    contactEmail: 'aroha@example.test',
-    siteAddress: '1 Test Lane',
-    quoteRef: 'Q-0100',
+    id: "proj_1",
+    name: "Test project",
+    stage: "new",
+    contactName: "Aroha Smith",
+    contactEmail: "aroha@example.test",
+    siteAddress: "1 Test Lane",
+    quoteRef: "Q-0100",
   },
-  pipeline: { stage: 'lead' },
-  tasks: { stage: 'lead', items: [] },
+  pipeline: { stage: "new" },
+  tasks: { stage: "new", items: [] },
   activity: [],
   emails: [],
   notes: [],
 } as any;
+
+const v2Projection = {
+  projectId: "proj_1",
+  modelVersion: 2,
+  operationalState: "ACTIVE",
+  effectiveState: "ACTIVE",
+  waitingUntil: null,
+  waitingReason: null,
+  closedOutcome: null,
+  stateRowVersion: 1,
+  primaryAction: {
+    kind: "needsTriage",
+    title: "Needs triage",
+    reason: "No current work",
+  },
+  openItems: [],
+  blockedItems: [],
+  confirmedFacts: [],
+  generatedAt: "2026-07-29T01:00:00.000Z",
+};
 
 function queryState(overrides: Record<string, unknown> = {}) {
   return {
@@ -69,111 +155,345 @@ function queryState(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe('OverviewTab', () => {
-  beforeEach(async () => {
-    document.body.innerHTML = '';
-    useQueryMock.mockReset();
+async function settleLazyComponents() {
+  await act(async () => {
     await Promise.all([
-      import('./overview/ProjectCurrentDesignCommercialCard'),
-      import('./overview/ProjectPrimaryActionCard'),
-      import('./overview/ProjectStatusDetailsCard'),
+      import("./overview/ProjectCurrentDesignCommercialCard"),
+      import("./overview/ProjectOrientationBand"),
+      import("./overview/ProjectRecentNotesEvents"),
+      import("./overview/ProjectWorkSection"),
     ]);
+    await Promise.resolve();
+  });
+}
+
+describe("OverviewTab", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    useQueryMock.mockReset();
+    invalidateQueriesMock.mockReset().mockResolvedValue(undefined);
   });
 
   afterEach(() => {
-    document.body.innerHTML = '';
+    document.body.innerHTML = "";
   });
 
-  it('renders status/details, commercial, primary action, activity, and tasks after fresh reads', async () => {
-    useQueryMock.mockReturnValue(queryState({
-      data: { currentDesign: { source: 'estimate' } },
-    }));
-    const rendered = renderIntoDocument(
-      <OverviewTab snapshot={snapshot} snapshotContentReady snapshotState="fresh" host="host" />,
+  it("composes one legacy Project Work surface with orientation, commercial facts and recent history", async () => {
+    useQueryMock.mockReturnValue(
+      queryState({
+        data: {
+          workModel: "legacy",
+          currentDesign: { source: "estimate" },
+          operations: legacyOperations,
+          generatedAt: "2026-07-30T00:00:00.000Z",
+        },
+      }),
     );
-    await act(async () => { await Promise.resolve(); });
-    expect(rendered.container.querySelector('[data-testid="mock-current-design"]')?.getAttribute('data-source')).toBe('estimate');
-    expect(rendered.container.querySelector('[data-testid="mock-status-details"]')?.textContent).toContain('Aroha Smith');
-    expect(rendered.container.querySelector('[data-testid="mock-primary-action"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-stage3-workstreams-slot]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="mock-notes-panel"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="mock-tasks-panel"]')).not.toBeNull();
+    const rendered = renderIntoDocument(
+      <OverviewTab
+        snapshot={snapshot}
+        snapshotContentReady
+        snapshotState="fresh"
+        host="host"
+      />,
+    );
+    await settleLazyComponents();
+
+    expect(
+      rendered.container.querySelector('[data-project-overview-layout="true"]'),
+    ).not.toBeNull();
+    expect(
+      rendered.container
+        .querySelector('[data-testid="mock-orientation"]')
+        ?.getAttribute("data-freshness"),
+    ).toBe("Current");
+    expect(
+      rendered.container
+        .querySelector('[data-testid="mock-current-design"]')
+        ?.getAttribute("data-command-centre-source"),
+    ).toBe("estimate");
+    expect(
+      rendered.container.querySelectorAll('[data-project-work-section="true"]'),
+    ).toHaveLength(1);
+    expect(
+      rendered.container
+        .querySelector('[data-testid="mock-project-work"]')
+        ?.getAttribute("data-project-work-model"),
+    ).toBe("legacy");
+    expect(
+      rendered.container.querySelector('[data-testid="mock-recent"]'),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector("[data-stage3-workstreams-slot]"),
+    ).toBeNull();
+    expect(rendered.container.textContent).not.toContain("Tasks");
     rendered.unmount();
   });
 
-  it('keeps pending commercial and snapshot-owned context truthful', () => {
+  it("uses one command-centre V2 projection for both the primary and secondary work presentation", async () => {
+    const v2Snapshot = {
+      ...snapshot,
+      workModel: "v2",
+      projectWork: {
+        ...v2Projection,
+        generatedAt: "2026-07-29T00:00:00.000Z",
+      },
+    };
+    useQueryMock.mockReturnValue(
+      queryState({
+        data: {
+          workModel: "v2",
+          currentDesign: { source: "draft_quote" },
+          projectWork: v2Projection,
+          owner: {},
+          generatedAt: "2026-07-29T01:00:00.000Z",
+        },
+      }),
+    );
+
+    const rendered = renderIntoDocument(
+      <OverviewTab
+        snapshot={v2Snapshot as any}
+        snapshotContentReady
+        snapshotState="fresh"
+        host="host"
+      />,
+    );
+    await settleLazyComponents();
+
+    const work = rendered.container.querySelector(
+      '[data-testid="mock-project-work"]',
+    );
+    expect(
+      rendered.container.querySelectorAll('[data-project-work-section="true"]'),
+    ).toHaveLength(1);
+    expect(work?.getAttribute("data-generated-at")).toBe(
+      "2026-07-29T01:00:00.000Z",
+    );
+    expect(work?.getAttribute("data-stale")).toBe("false");
+    expect(
+      rendered.container
+        .querySelector('[data-testid="mock-orientation"]')
+        ?.getAttribute("data-operational-state"),
+    ).toBe("ACTIVE");
+    rendered.unmount();
+  });
+
+  it("keeps pending and summary states truthful without inventing work or commercial facts", async () => {
     useQueryMock.mockReturnValue(queryState({ isPending: true }));
     const rendered = renderIntoDocument(
-      <OverviewTab snapshot={snapshot} snapshotContentReady={false} snapshotState="summary" host="host" />,
+      <OverviewTab
+        snapshot={snapshot}
+        snapshotContentReady={false}
+        snapshotState="summary"
+        host="host"
+      />,
     );
-    expect(rendered.container.querySelector('[data-command-centre-state="pending"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Updating activity and tasks in the background');
-    expect(rendered.container.textContent).not.toContain('No current design');
-    expect(rendered.container.querySelector('[data-testid="mock-notes-panel"]')).toBeNull();
+    await settleLazyComponents();
+
+    expect(
+      rendered.container.querySelector('[data-command-centre-state="pending"]'),
+    ).not.toBeNull();
+    expect(rendered.container.textContent).not.toContain(
+      "Loading the complete project",
+    );
+    expect(
+      rendered.container.querySelector('[data-project-work-model="pending"]'),
+    ).not.toBeNull();
+    expect(rendered.container.textContent).toContain("Updating recent history");
+    expect(rendered.container.textContent).not.toContain("No current design");
+    expect(
+      rendered.container.querySelector('[data-testid="mock-recent"]'),
+    ).toBeNull();
     rendered.unmount();
   });
 
-  it('retains cached commercial data and exposes Retry after a refresh failure', async () => {
+  it("retains cached facts and pauses Project Work after a refresh failure", async () => {
     const refetch = vi.fn();
-    useQueryMock.mockReturnValue(queryState({
-      data: { currentDesign: { source: 'sent_quote' } },
-      error: new Error('offline'),
-      isError: true,
-      refetch,
-    }));
-    const rendered = renderIntoDocument(
-      <OverviewTab snapshot={snapshot} snapshotContentReady snapshotState="fresh" host="host" />,
+    useQueryMock.mockReturnValue(
+      queryState({
+        data: {
+          workModel: "legacy",
+          currentDesign: { source: "sent_quote" },
+          operations: legacyOperations,
+          generatedAt: "2026-07-30T00:00:00.000Z",
+        },
+        error: new Error("offline"),
+        isError: true,
+        refetch,
+      }),
     );
-    await act(async () => { await Promise.resolve(); });
-    expect(rendered.container.querySelector('[data-command-centre-state="stale"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="mock-current-design"]')).not.toBeNull();
+    const rendered = renderIntoDocument(
+      <OverviewTab
+        snapshot={snapshot}
+        snapshotContentReady
+        snapshotState="fresh"
+        host="host"
+      />,
+    );
+    await settleLazyComponents();
+
+    expect(
+      rendered.container.querySelector('[data-command-centre-state="stale"]'),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector('[data-testid="mock-current-design"]'),
+    ).not.toBeNull();
+    expect(
+      rendered.container
+        .querySelector('[data-testid="mock-project-work"]')
+        ?.getAttribute("data-stale"),
+    ).toBe("true");
+    expect(
+      rendered.container
+        .querySelector('[data-testid="mock-orientation"]')
+        ?.getAttribute("data-freshness"),
+    ).toBe("Saved view");
     act(() => {
-      (Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Retry'))?.click();
+      Array.from(rendered.container.querySelectorAll("button"))
+        .find((button) => button.textContent === "Retry")
+        ?.click();
     });
     expect(refetch).toHaveBeenCalledOnce();
     rendered.unmount();
   });
 
-  it('keeps cached commercial data visible during a background refresh', async () => {
-    useQueryMock.mockReturnValue(queryState({
-      data: { currentDesign: { source: 'draft_quote' } },
-      isFetching: true,
-    }));
-    const rendered = renderIntoDocument(
-      <OverviewTab snapshot={snapshot} snapshotContentReady snapshotState="fresh" host="host" />,
+  it("keeps cached facts visible but makes Project Work read-only during refresh", async () => {
+    useQueryMock.mockReturnValue(
+      queryState({
+        data: {
+          workModel: "v2",
+          currentDesign: { source: "draft_quote" },
+          projectWork: v2Projection,
+          owner: {},
+          generatedAt: "2026-07-30T00:00:00.000Z",
+        },
+        isFetching: true,
+      }),
     );
-    await act(async () => { await Promise.resolve(); });
-    expect(rendered.container.querySelector('[data-command-centre-state="refreshing"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="mock-current-design"]')).not.toBeNull();
+    const rendered = renderIntoDocument(
+      <OverviewTab
+        snapshot={
+          { ...snapshot, workModel: "v2", projectWork: v2Projection } as any
+        }
+        snapshotContentReady
+        snapshotState="fresh"
+        host="host"
+      />,
+    );
+    await settleLazyComponents();
+
+    expect(
+      rendered.container.querySelector(
+        '[data-command-centre-state="refreshing"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector('[data-testid="mock-current-design"]'),
+    ).not.toBeNull();
+    expect(
+      rendered.container
+        .querySelector('[data-testid="mock-project-work"]')
+        ?.getAttribute("data-stale"),
+    ).toBe("true");
+    expect(
+      rendered.container
+        .querySelector('[data-testid="mock-orientation"]')
+        ?.getAttribute("data-freshness"),
+    ).toBe("Refreshing");
     rendered.unmount();
   });
 
-  it('shows a retryable failure without inventing an empty state on the initial read', () => {
-    const refetch = vi.fn();
-    useQueryMock.mockReturnValue(queryState({
-      error: new Error('offline'),
-      isError: true,
-      refetch,
-    }));
-    const rendered = renderIntoDocument(
-      <OverviewTab snapshot={snapshot} snapshotContentReady snapshotState="fresh" host="host" />,
+  it("shows one read-only work region when snapshot and command-centre models disagree", async () => {
+    useQueryMock.mockReturnValue(
+      queryState({
+        data: {
+          workModel: "v2",
+          currentDesign: { source: "draft_quote" },
+          projectWork: v2Projection,
+          owner: {},
+          generatedAt: "2026-07-30T00:00:00.000Z",
+        },
+      }),
     );
-    expect(rendered.container.querySelector('[data-command-centre-state="failed"]')).not.toBeNull();
-    expect(rendered.container.textContent).not.toContain('No current design');
+    const rendered = renderIntoDocument(
+      <OverviewTab
+        snapshot={snapshot}
+        snapshotContentReady
+        snapshotState="fresh"
+        host="host"
+      />,
+    );
+    await settleLazyComponents();
+
+    expect(
+      rendered.container.querySelector(
+        '[data-command-centre-state="model-mismatch"]',
+      ),
+    ).not.toBeNull();
+    expect(rendered.container.textContent).toContain("Project Work is paused");
+    expect(
+      rendered.container.querySelectorAll('[data-project-work-section="true"]'),
+    ).toHaveLength(1);
+    expect(
+      rendered.container.querySelector('[data-project-work-model="mismatch"]'),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector('[data-testid="mock-project-work"]'),
+    ).toBeNull();
+    rendered.unmount();
+  });
+
+  it("shows retryable initial failures without empty-state fallbacks", async () => {
+    const refetch = vi.fn();
+    useQueryMock.mockReturnValue(
+      queryState({
+        error: new Error("offline"),
+        isError: true,
+        refetch,
+      }),
+    );
+    const rendered = renderIntoDocument(
+      <OverviewTab
+        snapshot={snapshot}
+        snapshotContentReady
+        snapshotState="fresh"
+        host="host"
+      />,
+    );
+    await settleLazyComponents();
+
+    expect(
+      rendered.container.querySelector('[data-command-centre-state="failed"]'),
+    ).not.toBeNull();
+    expect(rendered.container.textContent).toContain(
+      "Could not load Project Work",
+    );
+    expect(rendered.container.textContent).toContain(
+      "No commercial fallback has been selected",
+    );
+    expect(rendered.container.textContent).not.toContain("No current design");
     act(() => {
-      (rendered.container.querySelector('button') as HTMLButtonElement).click();
+      (rendered.container.querySelector("button") as HTMLButtonElement).click();
     });
     expect(refetch).toHaveBeenCalledOnce();
     rendered.unmount();
   });
 
-  it('reports access-ending errors to the page boundary and never renders cached state', () => {
+  it("reports access-ending errors and never renders cached command-centre facts", async () => {
     const onAccessEnding = vi.fn();
-    useQueryMock.mockReturnValue(queryState({
-      data: { currentDesign: { source: 'accepted_quote' } },
-      error: new ApiError('Forbidden', { status: 403, body: null }),
-      isError: true,
-    }));
+    useQueryMock.mockReturnValue(
+      queryState({
+        data: {
+          workModel: "legacy",
+          currentDesign: { source: "accepted_quote" },
+          operations: legacyOperations,
+          generatedAt: "2026-07-30T00:00:00.000Z",
+        },
+        error: new ApiError("Forbidden", { status: 403, body: null }),
+        isError: true,
+      }),
+    );
     const rendered = renderIntoDocument(
       <OverviewTab
         snapshot={snapshot}
@@ -183,9 +503,53 @@ describe('OverviewTab', () => {
         onAccessEnding={onAccessEnding}
       />,
     );
+    await settleLazyComponents();
+
     expect(onAccessEnding).toHaveBeenCalledWith(403);
-    expect(rendered.container.querySelector('[data-command-centre-state="unavailable"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="mock-current-design"]')).toBeNull();
+    expect(
+      rendered.container.querySelector(
+        '[data-command-centre-state="unavailable"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector('[data-testid="mock-current-design"]'),
+    ).toBeNull();
+    expect(rendered.container.textContent).toContain(
+      "Project access unavailable",
+    );
+    rendered.unmount();
+  });
+
+  it("pauses Project Work when only a summary snapshot is available", async () => {
+    useQueryMock.mockReturnValue(
+      queryState({
+        data: {
+          workModel: "legacy",
+          currentDesign: { source: "estimate" },
+          operations: legacyOperations,
+          generatedAt: "2026-07-30T00:00:00.000Z",
+        },
+      }),
+    );
+    const rendered = renderIntoDocument(
+      <OverviewTab
+        snapshot={snapshot}
+        snapshotContentReady={false}
+        snapshotState="summary"
+        host="host"
+      />,
+    );
+    await settleLazyComponents();
+
+    expect(
+      rendered.container
+        .querySelector('[data-testid="mock-project-work"]')
+        ?.getAttribute("data-stale"),
+    ).toBe("true");
+    expect(rendered.container.textContent).toContain("Updating recent history");
+    expect(rendered.container.textContent).not.toContain(
+      "Project Work controls and recent history remain paused",
+    );
     rendered.unmount();
   });
 });

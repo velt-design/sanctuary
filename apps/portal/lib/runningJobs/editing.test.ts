@@ -49,6 +49,7 @@ function makeRow(overrides: Partial<RunningJobRow> = {}): RunningJobRow {
       roofing_text: 'Acrylic',
     },
     state: {
+      workModelVersion: null,
       projectCreatedAt: '2026-01-15T00:00:00Z',
       hasSiteVisit: false,
       hasSchedule: false,
@@ -77,7 +78,12 @@ function makeRow(overrides: Partial<RunningJobRow> = {}): RunningJobRow {
         updatedAt: null,
       },
       meta: {
+        rowVersion: 0,
         lightsStatus: null,
+        materialsOrderedAt: null,
+        materialsOrderedBy: null,
+        roofingOrderedAt: null,
+        roofingOrderedBy: null,
         updatedAt: null,
       },
     },
@@ -125,5 +131,28 @@ describe('applyOptimisticRunningJobCellValue', () => {
 
     expect(groups[0]?.year).toBe(2027);
     expect(groups[0]?.rows[0]?.sortDate).toBe('2027-01-10');
+  });
+
+  it('does not clear Schedule completion when a V2 materials fact is cleared', () => {
+    const initial = makeRow();
+    const base = makeRow({
+      state: {
+        ...initial.state,
+        workModelVersion: 2,
+        tasks: {
+          materialsOrdered: true,
+          roofingOrdered: false,
+          jobComplete: true,
+        },
+      },
+    });
+
+    const changed = applyOptimisticRunningJobCellValue(base, 'materials_ordered', false, LOOKUPS);
+
+    expect(changed.state.tasks).toEqual({
+      materialsOrdered: false,
+      roofingOrdered: false,
+      jobComplete: true,
+    });
   });
 });

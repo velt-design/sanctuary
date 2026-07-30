@@ -57,7 +57,11 @@ describe('GET /api/dashboard', () => {
     const mod = await import('./route');
     const res = await mod.GET(new Request('http://localhost/api/dashboard?queue=next7'));
 
-    expect(getDashboardData).toHaveBeenCalledWith({ queueMode: 'next7', userId: 'user_1' });
+    expect(getDashboardData).toHaveBeenCalledWith({
+      queueMode: 'next7',
+      userId: 'user_1',
+      supabase: {},
+    });
     expect(res.status).toBe(200);
     expect(res.headers.get('cache-control')).toBe('private, no-store');
     await expect(res.json()).resolves.toEqual(

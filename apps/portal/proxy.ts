@@ -20,6 +20,7 @@ const PROJECT_PAGE_SHELL_FIXTURE_PATH = '/qa/project-page-shell-fixture';
 const UI_FOUNDATION_FIXTURE_PATH = '/qa/ui-foundation-fixture';
 const EMAIL_PREVIEW_WORKBENCH_FIXTURE_PATH =
   '/qa/email-preview-workbench-fixture';
+const PROJECT_WORK_QUEUE_FIXTURE_PATH = '/qa/project-work-queue-fixture';
 
 type CookieToSet = {
   name: string;
@@ -58,7 +59,8 @@ function isPortalQaFixtureInternalPath(path: string): boolean {
     path === COMMERCIAL_WORKFLOW_FIXTURE_PATH ||
     path === PROJECT_PAGE_SHELL_FIXTURE_PATH ||
     path === UI_FOUNDATION_FIXTURE_PATH ||
-    path === EMAIL_PREVIEW_WORKBENCH_FIXTURE_PATH
+    path === EMAIL_PREVIEW_WORKBENCH_FIXTURE_PATH ||
+    path === PROJECT_WORK_QUEUE_FIXTURE_PATH
   );
 }
 

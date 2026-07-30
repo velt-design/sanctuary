@@ -1,11 +1,16 @@
 'use client';
 
+import { useRef } from 'react';
 import {
   setProjectCommandOwner,
   type ProjectCommandMutationResponse,
 } from '@/lib/projects/commandCentre/client';
 import { PROJECT_OWNER_OPTIONS } from '@/lib/projects/commandCentre/projectOwners';
 import type { ProjectCommandOwnerSummary, ProjectOwnerKey } from '@/lib/projects/commandCentre/types';
+import {
+  projectCommandIntent,
+  StableCommandAttempt,
+} from '@/lib/projects/workItems/stableCommandAttempt';
 import { Select } from '@/components/ui/foundation';
 import styles from './ProjectPrimaryActionCard.module.css';
 
@@ -20,11 +25,16 @@ export default function ProjectOwnerControls({
   disabled: boolean;
   runMutation: (operation: () => Promise<ProjectCommandMutationResponse>) => Promise<boolean>;
 }) {
-  const assign = (ownerKey: ProjectOwnerKey | null) => runMutation(() => setProjectCommandOwner(projectId, {
-    ownerKey,
-    expectedVersion: owner.version,
-    commandId: crypto.randomUUID(),
-  }));
+  const commandAttempts = useRef(new StableCommandAttempt()).current;
+  const assign = async (ownerKey: ProjectOwnerKey | null) => {
+    const payload = { ownerKey, expectedVersion: owner.version };
+    const intent = projectCommandIntent('SET_PROJECT_OWNER', payload);
+    const saved = await runMutation(() => setProjectCommandOwner(projectId, {
+      ...payload,
+      commandId: commandAttempts.commandIdFor(intent),
+    }));
+    if (saved) commandAttempts.committed(intent);
+  };
 
   return <div className={styles.ownerControl} data-project-owner-controls="true">
     {owner.permissions.canManage ? <Select

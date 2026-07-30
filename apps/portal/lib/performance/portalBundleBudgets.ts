@@ -24,6 +24,7 @@ export type PortalBundleRouteConfig = {
 type PortalBundleFileMetric = { file: string; rawBytes: number; gzipBytes: number };
 type PortalLazyChunkMetric = {
   id: string;
+  moduleId?: string;
   files: PortalBundleFileMetric[];
   rawBytes: number;
   gzipBytes: number;
@@ -221,11 +222,77 @@ function initialCssFiles(manifest: ClientReferenceManifest): string[] {
   );
 }
 
-function lazyEntries(nextDir: string, manifest: ReactLoadableManifest): PortalLazyChunkMetric[] {
+function staticChunkJavaScriptFiles(nextDir: string): string[] {
+  const chunksDir = path.join(nextDir, 'static/chunks');
+  if (!fs.existsSync(chunksDir)) return [];
+
+  const directories = [chunksDir];
+  const files: string[] = [];
+  while (directories.length > 0) {
+    const directory = directories.pop();
+    if (!directory) continue;
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) directories.push(absolute);
+      else if (entry.isFile() && entry.name.endsWith('.js')) {
+        files.push(path.relative(nextDir, absolute).split(path.sep).join('/'));
+      }
+    }
+  }
+  return files.sort();
+}
+
+function missingLoadableJavaScriptModuleIds(
+  nextDir: string,
+  manifest: ReactLoadableManifest,
+): ReadonlySet<string> {
+  const moduleIds = new Set<string>();
+  for (const [key, entry] of Object.entries(manifest)) {
+    if (
+      (entry.files ?? []).some((file) => {
+      const normalized = normalizeChunkPath(file);
+      return normalized.endsWith('.js') && !fs.existsSync(path.join(nextDir, normalized));
+      })
+    ) {
+      moduleIds.add(String(entry.id ?? key));
+    }
+  }
+  return moduleIds;
+}
+
+function lazyEntries(
+  nextDir: string,
+  manifest: ReactLoadableManifest,
+  turbopackEntries: PortalLazyChunkMetric[],
+): PortalLazyChunkMetric[] {
   return Object.entries(manifest)
     .map(([key, entry]) => {
-      const files = uniqueMetrics(nextDir, entry.files ?? []);
-      return { id: String(entry.id ?? key), files, rawBytes: sumRaw(files), gzipBytes: sumGzip(files) };
+      const id = String(entry.id ?? key);
+      const manifestFiles = Array.from(new Set((entry.files ?? []).map(normalizeChunkPath))).sort();
+      const missingFiles = manifestFiles.filter((file) => !fs.existsSync(path.join(nextDir, file)));
+      let resolvedFiles = manifestFiles;
+
+      if (missingFiles.length > 0) {
+        const missingNonJavaScriptFile = missingFiles.find((file) => !file.endsWith('.js'));
+        const matchingTurbopackEntries = uniqueLazyEntries(
+          turbopackEntries.filter((candidate) => candidate.moduleId === id),
+        );
+        if (missingNonJavaScriptFile || matchingTurbopackEntries.length !== 1) {
+          throw new PortalBundleBudgetError(missingArtifact(path.join(nextDir, missingFiles[0])));
+        }
+
+        // Next can leave a stale JavaScript hash in the route's loadable
+        // manifest while the emitted Turbopack loader points the same module
+        // id at the real chunk group. Reconcile only that proven one-to-one
+        // match so missing or ambiguous artifacts still fail closed.
+        resolvedFiles = [
+          ...manifestFiles.filter((file) => fs.existsSync(path.join(nextDir, file))),
+          ...matchingTurbopackEntries[0].files.map((file) => file.file),
+        ];
+      }
+
+      const files = uniqueMetrics(nextDir, resolvedFiles);
+      return { id, files, rawBytes: sumRaw(files), gzipBytes: sumGzip(files) };
     })
     .filter((entry) => entry.files.length > 0)
     .sort((a, b) => b.rawBytes - a.rawBytes);
@@ -233,23 +300,29 @@ function lazyEntries(nextDir: string, manifest: ReactLoadableManifest): PortalLa
 
 function turbopackLazyEntries(
   nextDir: string,
-  initial: PortalBundleFileMetric[],
+  sourceFiles: Iterable<string>,
+  moduleIds?: ReadonlySet<string>,
 ): PortalLazyChunkMetric[] {
   const entries: PortalLazyChunkMetric[] = [];
   const loaderPattern = /Promise\.all\(\[((?:["']static\/chunks\/[^"']+["']\s*,?\s*)+)\]\.map\([^)]*=>[^)]*\.l\([^)]*\)\)\)/g;
+  const loaderTargetPattern = /^\.then\(\(\)=>[A-Za-z_$][\w$]*\((["']?)([^)"']+)\1\)\)/;
   const filePattern = /["'](static\/chunks\/[^"']+\.(?:js|css))["']/g;
 
-  for (const initialFile of initial) {
-    if (!initialFile.file.endsWith('.js')) continue;
-    const source = readRequiredFile(path.join(nextDir, initialFile.file));
+  for (const sourceFile of new Set(sourceFiles)) {
+    if (!sourceFile.endsWith('.js')) continue;
+    const source = readRequiredFile(path.join(nextDir, sourceFile));
     let loaderMatch: RegExpExecArray | null;
     let loaderIndex = 0;
     while ((loaderMatch = loaderPattern.exec(source)) !== null) {
+      const loaderTarget = source.slice(loaderPattern.lastIndex).match(loaderTargetPattern);
+      const moduleId = loaderTarget?.[2];
+      if (moduleIds && (!moduleId || !moduleIds.has(moduleId))) continue;
       const referencedFiles = Array.from(loaderMatch[1].matchAll(filePattern), (match) => match[1]);
       const files = uniqueMetrics(nextDir, referencedFiles);
       if (!files.length) continue;
       entries.push({
-        id: `turbopack:${initialFile.file}:${loaderIndex}`,
+        id: `turbopack:${sourceFile}:${loaderIndex}`,
+        moduleId,
         files,
         rawBytes: sumRaw(files),
         gzipBytes: sumGzip(files),
@@ -325,10 +398,23 @@ export function analyzePortalBundleRoute(options: {
     ...initial.map((file) => file.file),
     ...initialCssFiles(clientManifest),
   ]);
+  const loadableManifest = readLoadableManifest(nextDir, config);
+  const emittedTurbopackEntries = turbopackLazyEntries(nextDir, initial.map((file) => file.file));
+  const missingLoadableModuleIds = missingLoadableJavaScriptModuleIds(nextDir, loadableManifest);
+  const reconciliationEntries = missingLoadableModuleIds.size > 0
+    ? [
+        ...emittedTurbopackEntries,
+        ...turbopackLazyEntries(
+          nextDir,
+          staticChunkJavaScriptFiles(nextDir),
+          missingLoadableModuleIds,
+        ),
+      ]
+    : emittedTurbopackEntries;
   const entries = uniqueLazyEntries(excludeInitialChunks(
     [
-      ...lazyEntries(nextDir, readLoadableManifest(nextDir, config)),
-      ...turbopackLazyEntries(nextDir, initial),
+      ...lazyEntries(nextDir, loadableManifest, reconciliationEntries),
+      ...emittedTurbopackEntries,
     ],
     initiallyLoaded,
   ));

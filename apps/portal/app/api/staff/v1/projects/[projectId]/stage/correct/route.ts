@@ -1,5 +1,6 @@
 import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
 import { PIPELINE_STAGES, STAGE_TASKS, type PipelineStageKey, type TaskKey } from '@/lib/projects/pipelineDefinition';
+import { isProjectWorkModelV2 } from '@/lib/projects/workItems/modelBoundary';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -70,6 +71,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const fromIndex = STAGE_ORDER.indexOf(fromStage);
   const toIndex = STAGE_ORDER.indexOf(toStage);
   const rollback = fromIndex !== -1 && toIndex !== -1 && toIndex < fromIndex;
+  const workModelV2 = await isProjectWorkModelV2(supabase, projectUuid);
 
   const updatePayload: Record<string, unknown> = { pipeline_stage: toStage };
   if (toStage === 'SITE_VISIT') {
@@ -89,7 +91,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   }
 
   let resetManualTaskCount = 0;
-  if (rollback) {
+  if (rollback && !workModelV2) {
     const targetStage = stageKeyFromUpper(toStage);
     if (!targetStage) return jsonError('Invalid rollback target stage', 400);
     const manualTaskKeys = manualTaskKeysFromStage(targetStage);

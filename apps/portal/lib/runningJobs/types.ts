@@ -106,6 +106,7 @@ export type RunningJobRow = {
     roofing_text: string | null;
   };
   state: {
+    workModelVersion: 2 | null;
     projectCreatedAt: string | null;
     hasSiteVisit: boolean;
     hasSchedule: boolean;
@@ -134,7 +135,12 @@ export type RunningJobRow = {
       updatedAt: string | null;
     };
     meta: {
+      rowVersion: number;
       lightsStatus: RunningJobStatusValue | null;
+      materialsOrderedAt: string | null;
+      materialsOrderedBy: string | null;
+      roofingOrderedAt: string | null;
+      roofingOrderedBy: string | null;
       updatedAt: string | null;
     };
   };

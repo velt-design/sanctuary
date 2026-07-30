@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const from = vi.fn();
+const getProjectWorkModelV2Ids = vi.fn();
 
 vi.mock('server-only', () => ({}));
 
@@ -10,10 +11,15 @@ vi.mock('@/lib/supabaseClient', () => ({
   },
 }));
 
+vi.mock('@/lib/projects/workItems/modelBoundary', () => ({
+  getProjectWorkModelV2Ids,
+}));
+
 describe('scheduleV2Server lightweight schedule rows', () => {
   beforeEach(() => {
     vi.resetModules();
     from.mockReset();
+    getProjectWorkModelV2Ids.mockReset().mockResolvedValue(new Set());
   });
 
   it('builds unscheduled jobs from lightweight estimate rows without outputs', async () => {
@@ -284,6 +290,27 @@ describe('scheduleV2Server lightweight schedule rows', () => {
     ]);
   });
 
+  it('requires Active state only for V2 scheduling-ready projects', async () => {
+    const { isSchedulingReadyOperationalProject } = await import('./scheduleV2Server');
+
+    expect(isSchedulingReadyOperationalProject({
+      modelVersion: null,
+      operationalState: null,
+    })).toBe(true);
+    expect(isSchedulingReadyOperationalProject({
+      modelVersion: 2,
+      operationalState: 'ACTIVE',
+    })).toBe(true);
+    expect(isSchedulingReadyOperationalProject({
+      modelVersion: 2,
+      operationalState: 'WAITING',
+    })).toBe(false);
+    expect(isSchedulingReadyOperationalProject({
+      modelVersion: 2,
+      operationalState: 'CLOSED',
+    })).toBe(false);
+  });
+
   it('selects estimate summary fields without full outputs for schedule board loading', async () => {
     const projectSelect = vi.fn().mockResolvedValue({
       data: [{ id: 'project-1', name: 'Pergola A', pipeline_stage: 'DEPOSIT', follow_up_date: null }],
@@ -403,6 +430,78 @@ describe('scheduleV2Server lightweight schedule rows', () => {
       estimateCount: 2,
       archivedProjectFilterRetried: false,
     });
+  });
+
+  it('filters V2 Waiting projects from the ready pool while retaining scheduled rows', async () => {
+    getProjectWorkModelV2Ids.mockResolvedValueOnce(new Set(['active-v2', 'waiting-v2']));
+    const scheduledProjectIn = vi.fn().mockResolvedValue({
+      data: [{ id: 'scheduled-project', name: 'Scheduled', pipeline_stage: 'DEPOSIT', follow_up_date: null }],
+      error: null,
+    });
+    const readyProjectIs = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'active-v2',
+          name: 'Active V2',
+          pipeline_stage: 'DEPOSIT',
+          follow_up_date: null,
+        },
+        {
+          id: 'waiting-v2',
+          name: 'Waiting V2',
+          pipeline_stage: 'DEPOSIT',
+          follow_up_date: null,
+        },
+        {
+          id: 'legacy-ready',
+          name: 'Legacy',
+          pipeline_stage: 'DEPOSIT',
+          follow_up_date: null,
+        },
+      ],
+      error: null,
+    });
+    const readyProjectEq = vi.fn().mockReturnValue({ is: readyProjectIs });
+    const projectSelect = vi.fn()
+      .mockReturnValueOnce({ in: scheduledProjectIn })
+      .mockReturnValueOnce({ eq: readyProjectEq });
+    const estimateIn = vi.fn().mockResolvedValue({ data: [], error: null });
+    const estimateSelect = vi.fn().mockReturnValue({ in: estimateIn });
+    const operationalStateIn = vi.fn().mockResolvedValue({
+      data: [
+        { project_id: 'active-v2', state: 'ACTIVE' },
+        { project_id: 'waiting-v2', state: 'WAITING' },
+      ],
+      error: null,
+    });
+    const operationalStateSelect = vi.fn().mockReturnValue({ in: operationalStateIn });
+
+    from.mockImplementation((table: string) => {
+      if (table === 'projects') return { select: projectSelect };
+      if (table === 'estimates') return { select: estimateSelect };
+      if (table === 'project_operational_states') return { select: operationalStateSelect };
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    const { listBoardProjectsAndEstimates } = await import('./scheduleV2Server');
+    const result = await listBoardProjectsAndEstimates({
+      scheduledProjectIds: ['scheduled-project'],
+    });
+
+    expect(result.projects.map((project) => project.id)).toEqual([
+      'scheduled-project',
+      'active-v2',
+      'legacy-ready',
+    ]);
+    expect(projectSelect).toHaveBeenCalledWith('id, name, pipeline_stage, follow_up_date');
+    expect(operationalStateSelect).toHaveBeenCalledWith('project_id,state');
+    expect(operationalStateIn).toHaveBeenCalledWith('project_id', ['active-v2', 'waiting-v2']);
+    expect(result.diagnostics.readyProjectRowCount).toBe(2);
+    expect(estimateIn).toHaveBeenCalledWith('project_id', [
+      'active-v2',
+      'legacy-ready',
+      'scheduled-project',
+    ]);
   });
 
   it('retries the board ready-project query without archived_at when the schema is older', async () => {

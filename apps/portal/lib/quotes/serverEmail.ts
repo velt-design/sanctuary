@@ -14,6 +14,7 @@ import {
   type CommercialEmailIntent,
 } from '@/lib/commercial/emailIntent';
 import { generateAcceptToken } from '@/lib/quotes/acceptToken';
+import { reconcileQuoteDeliveryCadence } from '@/lib/projects/workItems/quoteCadenceReconciliation';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
 import type {
@@ -564,6 +565,21 @@ async function recordQuoteDeliveryFailure(params: {
   });
 }
 
+async function reconcileFinalisedQuoteDelivery(params: {
+  mode: QuoteEmailMode;
+  projectUuid: string;
+  quoteVersionUuid: string;
+  deliveryIntentId: string;
+}): Promise<void> {
+  await reconcileQuoteDeliveryCadence({
+    serviceClient: supabaseServiceRole,
+    projectId: params.projectUuid,
+    quoteVersionId: params.quoteVersionUuid,
+    deliveryIntentId: params.deliveryIntentId,
+    event: params.mode === 'send' ? 'QUOTE_SENT' : 'QUOTE_RESENT',
+  });
+}
+
 async function executeQuoteEmail(
   quoteVersionId: string,
   mode: QuoteEmailMode,
@@ -618,7 +634,15 @@ async function executeQuoteEmail(
   if (intent.kind !== (mode === 'send' ? 'quote_send' : 'quote_resend')) {
     throw new Error('Delivery intent does not match this action');
   }
-  if (intent.status === 'finalised') return detail;
+  if (intent.status === 'finalised') {
+    await reconcileFinalisedQuoteDelivery({
+      mode,
+      projectUuid,
+      quoteVersionUuid,
+      deliveryIntentId: intent.id,
+    });
+    return detail;
+  }
   const frozen = parseFrozenQuoteEmail(intent);
   if (intent.status === 'needs_attention') {
     await recordQuoteDeliveryFailure({
@@ -764,6 +788,12 @@ async function executeQuoteEmail(
     },
   });
   await markCommercialEmailFinalised(intent.id);
+  await reconcileFinalisedQuoteDelivery({
+    mode,
+    projectUuid,
+    quoteVersionUuid,
+    deliveryIntentId: intent.id,
+  });
 
   let updated = await getQuoteVersionDetail(quoteVersionId);
   if (!updated) throw new Error('Failed to load quote');

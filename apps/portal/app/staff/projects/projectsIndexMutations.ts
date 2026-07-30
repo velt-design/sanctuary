@@ -221,8 +221,10 @@ export async function setProjectIndexArchived(args: {
   host: string;
   project: Project;
   isArchived: boolean;
+  reason: string;
+  commandId: string;
 }): Promise<void> {
-  const { queryClient, host, project, isArchived } = args;
+  const { queryClient, host, project, isArchived, reason, commandId } = args;
   const previousArchived = Boolean(project.isArchived);
   patchArchiveState(queryClient, host, project, isArchived);
 
@@ -230,6 +232,8 @@ export async function setProjectIndexArchived(args: {
     await apiJson(`/api/projects/${encodeURIComponent(project.id)}/details`, {
       method: 'PATCH',
       body: JSON.stringify({
+        commandId,
+        reason,
         project: { archivedAt: isArchived ? new Date().toISOString() : null },
       }),
     });

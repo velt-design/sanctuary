@@ -206,7 +206,7 @@ export function applyOptimisticRunningJobCellValue(
     case 'materials_ordered':
       next.cells.materials_ordered = Boolean(value);
       next.state.tasks.materialsOrdered = Boolean(value);
-      if (!value) next.state.tasks.jobComplete = false;
+      if (!value && row.state.workModelVersion !== 2) next.state.tasks.jobComplete = false;
       break;
     case 'estimated_start_date':
       next.cells.estimated_start_date = typeof value === 'string' ? value : null;

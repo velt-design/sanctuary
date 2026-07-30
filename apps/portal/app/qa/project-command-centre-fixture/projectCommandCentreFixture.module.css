@@ -46,21 +46,8 @@
   text-transform: capitalize;
 }
 
-.header nav a[aria-current='page'] {
+.header nav a[aria-current="page"] {
   border-color: rgba(var(--portal-accent-rgb), 0.7);
   background: rgba(var(--portal-accent-rgb), 0.1);
   color: rgb(var(--portal-accent-rgb));
-}
-
-.commandGrid {
-  display: grid;
-  align-items: start;
-  gap: 1rem;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-}
-
-@media (max-width: 900px) {
-  .commandGrid {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }

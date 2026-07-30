@@ -1,6 +1,7 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { getTaskDefinition } from '@/lib/projects/pipelineDefinition';
+import { isProjectWorkModelV2 } from '@/lib/projects/workItems/modelBoundary';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -16,6 +17,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
     projectUuid = uuidFromAppId(projectId, 'proj');
   } catch {
     return jsonError('Invalid projectId', 400);
+  }
+  if (await isProjectWorkModelV2(supabase, projectUuid)) {
+    return jsonError('This project uses V2 work items', 409, undefined, {
+      code: 'LEGACY_TASK_WRITER_DISABLED',
+    });
   }
 
   const res = await supabase.from('project_task_checks').select('task_key').eq('project_id', projectUuid);
@@ -42,6 +48,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     projectUuid = uuidFromAppId(projectId, 'proj');
   } catch {
     return jsonError('Invalid projectId', 400);
+  }
+  if (await isProjectWorkModelV2(supabase, projectUuid)) {
+    return jsonError('This project uses V2 work items', 409, undefined, {
+      code: 'LEGACY_TASK_WRITER_DISABLED',
+    });
   }
 
   const parsed = await parseJsonBody(req);

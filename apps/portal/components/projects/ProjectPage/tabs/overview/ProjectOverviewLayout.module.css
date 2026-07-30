@@ -1,0 +1,74 @@
+.layout {
+  display: grid;
+  grid-template-areas:
+    "orientation orientation"
+    "exception exception"
+    "project-work commercial"
+    "recent admin";
+  grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
+  gap: var(--ui-grid-gutter);
+  min-width: 0;
+}
+
+.layout > * {
+  min-width: 0;
+}
+
+.orientation {
+  grid-area: orientation;
+}
+
+.exception {
+  grid-area: exception;
+}
+
+.projectWork {
+  grid-area: project-work;
+}
+
+.commercial {
+  grid-area: commercial;
+}
+
+.recent {
+  grid-area: recent;
+}
+
+.admin {
+  grid-area: admin;
+}
+
+.layout:not([data-has-admin]) .recent {
+  grid-column: 1 / -1;
+}
+
+.layout:not([data-has-recent]) .admin {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .layout {
+    grid-template-areas:
+      "exception"
+      "project-work"
+      "commercial"
+      "orientation"
+      "recent"
+      "admin";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .layout:not([data-has-admin]) .recent {
+    grid-column: auto;
+  }
+
+  .layout:not([data-has-recent]) .admin {
+    grid-column: auto;
+  }
+}

@@ -66,7 +66,13 @@
     ".next-staging-commercial/types/**/*.ts",
     ".next-staging-commercial/dev/types/**/*.ts",
     ".next/playwright-schedule-review/types/**/*.ts",
-    ".next/playwright-schedule-review/dev/types/**/*.ts"
+    ".next/playwright-schedule-review/dev/types/**/*.ts",
+    ".next/playwright-overview-v2-readonly-auth/types/**/*.ts",
+    ".next/playwright-overview-v2-readonly-auth/dev/types/**/*.ts",
+    ".next/playwright-overview-v2-coverage/types/**/*.ts",
+    ".next/playwright-overview-v2-coverage/dev/types/**/*.ts",
+    ".next/playwright-overview-v2-browser/types/**/*.ts",
+    ".next/playwright-overview-v2-browser/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

@@ -65,6 +65,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Textarea,
 } from '@/components/ui/foundation';
 
 type EditingState = { id: string; field: ProjectIndexEditableField; value: string } | null;
@@ -110,6 +111,8 @@ export default function ProjectsIndexClient({
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
   const [isDeleteBusy, setIsDeleteBusy] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<Project | null>(null);
+  const [archiveReason, setArchiveReason] = useState('');
   const { visibleInfo, onRowEnter: handleRowMouseEnter, onRowLeave: handleRowMouseLeave } = useProjectRowTooltip();
   const [editing, setEditing] = useState<EditingState>(null);
   const [statusConfirm, setStatusConfirm] = useState<StatusConfirmState>(null);
@@ -294,8 +297,9 @@ export default function ProjectsIndexClient({
   );
 
   const toggleArchive = (project: Project) => {
-    if (projectMutations.isArchivePending(project.id)) return;
-    void projectMutations.setArchived(project, !project.isArchived);
+    if (!isAdmin || projectMutations.isArchivePending(project.id)) return;
+    setArchiveTarget(project);
+    setArchiveReason('');
   };
 
   const requiredDeleteText = deleteTarget ? requiredDeleteConfirmation(deleteTarget.id, deleteTarget.status ?? 'NEW') : '';
@@ -534,6 +538,7 @@ export default function ProjectsIndexClient({
                               >
                                 Open
                               </ButtonLink>
+                              {isAdmin ? (<>
                               <Button
                                 type="button"
                                 variant="quiet"
@@ -553,7 +558,6 @@ export default function ProjectsIndexClient({
                                     ? 'Unarchive'
                                     : 'Archive'}
                               </Button>
-                              {isAdmin ? (
                                 <Button
                                   type="button"
                                   variant="destructive"
@@ -568,7 +572,7 @@ export default function ProjectsIndexClient({
                                 >
                                   Delete
                                 </Button>
-                              ) : null}
+                              </>) : null}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -710,6 +714,69 @@ export default function ProjectsIndexClient({
             value={statusReason}
             onChange={(event) => setStatusReason(event.target.value)}
           />
+          </div>
+        </PipelineModal>
+      ) : null}
+
+      {archiveTarget ? (
+        <PipelineModal
+          open
+          onOpenChange={(open) => {
+            if (!open && !projectMutations.isArchivePending(archiveTarget.id)) {
+              setArchiveTarget(null);
+              setArchiveReason('');
+            }
+          }}
+          title={archiveTarget.isArchived ? 'Restore project' : 'Archive project'}
+          description={archiveTarget.isArchived
+            ? 'Restore this project to the active project lists.'
+            : 'Remove this project from operational lists without changing its pipeline stage.'}
+          actions={(
+            <>
+              <Button
+                type="button"
+                fullWidth
+                loading={projectMutations.isArchivePending(archiveTarget.id)}
+                disabled={!archiveReason.trim()}
+                onClick={() => {
+                  const target = archiveTarget;
+                  void projectMutations
+                    .setArchived(target, !target.isArchived, archiveReason.trim())
+                    .then((saved) => {
+                      if (!saved) return;
+                      setArchiveTarget(null);
+                      setArchiveReason('');
+                    });
+                }}
+              >
+                {archiveTarget.isArchived ? 'Restore project' : 'Archive project'}
+              </Button>
+              <Button
+                type="button"
+                variant="tertiary"
+                fullWidth
+                disabled={projectMutations.isArchivePending(archiveTarget.id)}
+                onClick={() => {
+                  setArchiveTarget(null);
+                  setArchiveReason('');
+                }}
+              >
+                Cancel
+              </Button>
+            </>
+          )}
+        >
+          <div className={styles.modalContent}>
+            <AlertBanner tone="info" title="Housekeeping only">
+              Archiving does not mark the project lost, complete, or paid.
+            </AlertBanner>
+            <Textarea
+              id="index-archive-reason"
+              label="Reason"
+              value={archiveReason}
+              maxLength={500}
+              onChange={(event) => setArchiveReason(event.target.value)}
+            />
           </div>
         </PipelineModal>
       ) : null}

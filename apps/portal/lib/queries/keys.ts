@@ -9,6 +9,7 @@ export const qk = {
     directory: (host: string) => ['staff', host, 'directory'] as const,
   },
   dashboard: {
+    dataPrefix: () => ['dashboard', 'data'] as const,
     data: (queueMode: QueueMode) => ['dashboard', 'data', queueMode] as const,
   },
   contacts: {
@@ -34,6 +35,11 @@ export const qk = {
     commandCentre: (host: string, id: string) => ['projects', host, 'commandCentre', id] as const,
     byContact: (host: string, contactId: string) => ['projects', host, 'byContact', contactId] as const,
     tooltipSummary: (host: string, id: string) => ['projects', host, 'tooltipSummary', id] as const,
+  },
+  projectWork: {
+    queue: (host: string) => ['projectWork', host, 'queue'] as const,
+    legacyContactedReview: (host: string, scope: string) =>
+      ['projectWork', host, 'legacyContactedReview', scope] as const,
   },
   estimates: {
     byProject: (host: string, projectId: string) => ['estimates', host, 'byProject', projectId] as const,

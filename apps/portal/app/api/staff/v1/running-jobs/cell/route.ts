@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { normalizeRunningJobCellInput } from '@/lib/runningJobs/editing';
 import { isMissingSchemaError, loadRunningJobRow } from '@/lib/runningJobs/server';
-import { applyRunningJobCellMutation, RouteInvocationError } from '@/lib/runningJobs/writeOps';
+import {
+  applyRunningJobCellMutation,
+  RouteInvocationError,
+  RunningJobFactConflictError,
+} from '@/lib/runningJobs/writeOps';
 import type { RunningJobCellMutationRequest } from '@/lib/runningJobs/types';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
@@ -44,6 +48,7 @@ export async function POST(req: Request) {
     const response = await applyRunningJobCellMutation({
       projectId,
       projectUuid,
+      actorUserId: session.user.id,
       currentRow,
       key: key as any,
       value: normalized.value,
@@ -53,6 +58,10 @@ export async function POST(req: Request) {
 
     return jsonOk(response);
   } catch (error) {
+    if (error instanceof RunningJobFactConflictError) {
+      const currentRow = await loadRunningJobRow(projectUuid).catch(() => null);
+      return NextResponse.json({ error: 'Row conflict', currentRow }, { status: 409 });
+    }
     if (error instanceof RouteInvocationError) {
       return NextResponse.json(error.body ?? { error: error.message }, { status: error.status });
     }

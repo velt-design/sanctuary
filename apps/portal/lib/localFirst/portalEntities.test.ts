@@ -143,6 +143,7 @@ function makeProjectSnapshot(projectId = 'proj_1', contactId = 'ct_1'): ProjectP
   return {
     generatedAt: '2026-03-19T12:00:00.000Z',
     snapshot: {
+      workModel: 'legacy',
       project: {
         id: projectId,
         name: 'Project One',

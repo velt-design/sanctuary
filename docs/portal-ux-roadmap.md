@@ -2,7 +2,7 @@
 
 Status: Active evolving roadmap.
 
-Last updated: 2026-07-29.
+Last updated: 2026-07-30.
 
 Purpose: keep the highest-leverage usability work visible as the portal matures from a capable internal tool into a fast, trusted operating system for staff. This doc is intentionally product-facing: it tracks workflow clarity, visual hierarchy, user confidence, and the next UX passes worth doing.
 
@@ -39,9 +39,11 @@ The main UX standard:
    - Goal: make the project page the clearest operational hub.
    - Improve current status, next action, latest note/activity, current design/quote state, and obvious primary actions.
    - Stage 1 complete: the activity-key default is now labelled Overview; a strict server-owned card shows exact current design, quote/estimate version, stored customer price, delivery, costing freshness, source failures, and newer-estimate context. Customer context, notes, tasks, and specialist workflows remain available.
-   - Stage 2 repository implementation is complete but remains Yellow: the project header shows one canonical Project Owner from the approved Jordan/JP/Joe/Bruce roster; Overview derives one primary action from project tasks, follow-up tasks, or controlled manual actions; conflicts, critical reasons, compact audit history, and dashboard project exceptions are surfaced. Executable smoke for both Stage 2 migrations and authenticated real-project Playwright remain the completion gates.
+   - The historical Stage 2 legacy-project implementation is complete but remains Yellow: the project header shows one canonical Project Owner from the approved Jordan/JP/Joe/Bruce roster; legacy Overview derives one primary action from project tasks, follow-up tasks, or controlled manual actions; conflicts, critical reasons, compact audit history, and dashboard project exceptions are surfaced. Its separate executable migration and authenticated real-project gates remain.
    - Project shell Slices 1-2 are present in the current repository: the page is full width with project facts and stage in Overview; the authoritative Calculator replaces the legacy Designs/configurator surface; Quotes and Invoices share Commercial; the Emails UI is retired while delivery/audit data and side effects remain unchanged. Staff-facing tabs are Overview, Calculator, Commercial, and conditional Job Packs; compatibility keys remain `activity`, `estimates`, `quotes`, `invoices`, and `job-packs`.
-   - Stage 3 lead-to-quote workstreams are the next implementation stage after Stage 2 environment verification. V1 remains bounded at quote outcome.
+   - The Project Work V2 new-project foundation, Work Queue, Dashboard preview, guarded legacy review, and authenticated staging command smoke are complete in the repository; production remains unchanged.
+   - Implemented slice: the approved Overview V2 composition in `project-command-centre-architecture.md`. Five required top-level owners compose orientation, one mixed-model Project Work region, current design/commercial, and bounded recent notes/events; extracted subordinate owners separate V2 controls, V2/legacy command orchestration, legacy conflict/history, shared visibility policy, and cache patching/invalidation. Legacy stage rows are filtered read-only; Call and Site Visit work is hidden; prohibited server-selected legacy work is labelled `Legacy work needs review` without browser replacement selection.
+   - Focused/component, production-owner fixture, responsive/accessibility, unchanged Project Detail budget, build/static, manual authenticated inspection, and automated authenticated read-only staging evidence passed on 2026-07-30. Completion is withheld only because the aggregate Contacts/Calculator bundle budgets already fail at `060bea19`.
 
 3. **Activity System V2**
    - Goal: turn activity into a useful cross-workflow timeline, not just a note list.
@@ -50,8 +52,8 @@ The main UX standard:
 
 4. **Tasks And Follow-Ups**
    - Goal: make personal and project-linked execution visible.
-   - Build on dashboard personal tasks with project-linked tasks, due dates, mine/team views, and overdue/stale surfacing.
-   - Keep task interactions lightweight; avoid turning v1 personal reminders into a complex project-management module too early.
+   - Keep personal Dashboard reminders separate from the server-owned Project Work model.
+   - Project obligations use the full Work Queue and one Project Work region in Overview. Do not rebuild a generic task manager, copy specialist actions, or add a second project task surface.
 
 5. **Quote And Estimate State Clarity**
    - Goal: make commercial state obvious and safe.
@@ -89,20 +91,21 @@ The main UX standard:
 
 11. **Workflow-Based QA**
     - Goal: judge usability by complete staff journeys, not only by pages.
-    - Track core workflows: new lead to site visit, site visit to quote, quote to invoice, accepted quote to scheduled job, design package to running job.
+    - Track core workflows: new lead to personal email, email follow-up to quote, quote to invoice, accepted quote to scheduled job, and design package to running job. Site Visits remains outside normal workflow QA until reactivation is approved.
     - Score each workflow by clicks, confusion points, failure recovery, and confidence that saved data is current.
 
 ## Current Sequence
 
 1. Project Pages Speed revalidation and measured bottleneck fixes against the current checked-in portal UI.
 2. Current project-tab intent, useful-shell, and bundle-boundary performance.
-3. Project Command Centre authenticated completion gate.
-4. Project Command Centre Stage 3 lead-to-quote workstreams.
-5. Activity category expansion and timeline clarity.
-6. Dashboard/project task evolution.
-7. Quote/estimate state summary standardisation.
-8. Schedule priority-view simplification.
-9. Workbench state and diagnostics simplification.
+3. Restore the baseline Contacts/Calculator aggregate bundle gate in a separately approved owner scope without raising ceilings casually.
+4. Resolve the pre-existing Contacts/Calculator aggregate bundle-budget failures in their separately approved owner scope; do not raise their ceilings from the Overview slice.
+5. Bounded full-journey summary contracts for deposit, Schedule/Running Jobs readiness, and meaningful activity where evidence exists.
+6. Activity category expansion and timeline clarity.
+7. Dashboard/Project Work evolution without merging personal reminders.
+8. Quote/estimate state summary standardisation.
+9. Remaining Schedule priority-view simplification for unassigned work.
+10. Workbench state and diagnostics simplification.
 
 ## Update Notes
 

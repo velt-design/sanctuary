@@ -17,6 +17,7 @@ export const NAV_ITEMS = [
     Icon: Hammer,
     adminOnly: false,
     children: [
+      { key: 'work-queue', label: 'Work Queue', href: '/staff/projects/work-queue' },
       { key: 'new-project', label: 'New Project', href: '/staff/projects/new' },
       { key: 'design-list', label: 'Drafting Queue', href: '/staff/projects/design-packages' },
       { key: 'running-jobs', label: 'Running Jobs', href: '/staff/projects/running-jobs' },
@@ -41,7 +42,6 @@ export const NAV_ITEMS = [
     children: [
       { key: 'schedule-board', label: 'Board', href: '/staff/schedule?view=board' },
       { key: 'schedule-gantt', label: 'Gantt', href: '/staff/schedule?view=gantt' },
-      { key: 'schedule-site-visits', label: 'Site visits', href: '/staff/schedule?view=site-visits' },
     ],
   },
   { key: 'imports', label: 'Imports', href: '/imports', Icon: ArrowDownToLine, adminOnly: false },

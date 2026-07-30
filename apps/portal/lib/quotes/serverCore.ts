@@ -5,6 +5,7 @@ import { insertCommercialAuditEvent } from '../commercial/audit';
 import { loadQuoteDeliveryReadiness } from '../commercial/quoteDeliveryReadiness';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { recordMarketingConversionEvent } from '@/lib/marketingAttribution/server';
+import { reconcileQuoteOutcomeCadence } from '@/lib/projects/workItems/quoteCadenceReconciliation';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import type { Estimate } from '@/lib/types/estimate';
 import type { QuoteAcceptResult, QuoteLineItem, QuoteSendLog, QuoteStatus, QuoteVersion, QuoteVersionDetail } from './types';
@@ -889,6 +890,13 @@ export async function reviseQuoteVersion(
 
   const projectUuid = String(projectRes.data.project_id ?? '');
   if (projectUuid) {
+    await reconcileQuoteOutcomeCadence({
+      serviceClient: supabaseServiceRole,
+      projectId: projectUuid,
+      quoteVersionId: quoteVersionUuid,
+      supersedingQuoteVersionId: newQuoteVersionUuid,
+      outcome: 'SUPERSEDED',
+    });
     await insertAuditEvent({
       projectId: projectUuid,
       type: 'quote.revised',
@@ -1268,15 +1276,24 @@ export async function markQuoteDeclined(quoteVersionId: string, actor: string | 
   }
   if (!versionRes.data) throw new Error('Quote not found');
   const currentStatus = String(versionRes.data.status ?? '').toUpperCase();
-  if (currentStatus !== 'SENT' && currentStatus !== 'ACCEPTED') throw new Error('Only sent or accepted quotes can be declined');
+  const alreadyDeclined = currentStatus === 'DECLINED';
+  if (
+    currentStatus !== 'SENT' &&
+    currentStatus !== 'ACCEPTED' &&
+    !alreadyDeclined
+  ) {
+    throw new Error('Only sent or accepted quotes can be declined');
+  }
 
-  const updateRes = await supabaseServiceRole
-    .from('quote_versions')
-    .update({ status: 'DECLINED' } as any)
-    .eq('id', quoteVersionUuid);
-  if (updateRes.error) {
-    if (missingTableError(updateRes.error)) throw schemaMissingError();
-    throw new Error(errorMessage(updateRes.error, 'Failed to update quote'));
+  if (!alreadyDeclined) {
+    const updateRes = await supabaseServiceRole
+      .from('quote_versions')
+      .update({ status: 'DECLINED' } as any)
+      .eq('id', quoteVersionUuid);
+    if (updateRes.error) {
+      if (missingTableError(updateRes.error)) throw schemaMissingError();
+      throw new Error(errorMessage(updateRes.error, 'Failed to update quote'));
+    }
   }
 
   const quoteRes = await supabaseServiceRole.from('quotes').select('project_id').eq('id', versionRes.data.quote_id).single();
@@ -1286,9 +1303,17 @@ export async function markQuoteDeclined(quoteVersionId: string, actor: string | 
   }
   const projectUuid = String(quoteRes.data?.project_id ?? '');
   if (projectUuid) {
-    await insertAuditEvent({ projectId: projectUuid, type: 'quote.declined', payload: { quoteVersionId: quoteVersionUuid } });
+    await reconcileQuoteOutcomeCadence({
+      serviceClient: supabaseServiceRole,
+      projectId: projectUuid,
+      quoteVersionId: quoteVersionUuid,
+      outcome: 'DECLINED',
+    });
+    if (!alreadyDeclined) {
+      await insertAuditEvent({ projectId: projectUuid, type: 'quote.declined', payload: { quoteVersionId: quoteVersionUuid } });
+    }
   }
-  if (currentStatus === 'ACCEPTED') {
+  if (currentStatus === 'ACCEPTED' || alreadyDeclined) {
     await voidOpenDepositInvoiceForQuote({
       quoteUuid: String(versionRes.data.quote_id ?? ''),
       actor,

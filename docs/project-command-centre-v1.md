@@ -1,7 +1,8 @@
 # Project Operational Command Centre V1
 
-Status: Authoritative product contract  
-Programme stage: Stage 2 repository implementation complete; environment gates pending; Stage 3 not started
+Status: Historical V1 product baseline. Non-conflicting design/commercial truth rules remain active.
+Current implementation authority: `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)`
+Programme stage: Approved Overview V2 redesign is next
 V1 lifecycle scope: Lead received through quote outcome  
 Staff-facing default tab: `Overview`  
 Related documents:
@@ -9,6 +10,8 @@ Related documents:
 - `project-command-centre-vision.md`
 - `project-command-centre-roadmap.md`
 - `project-command-centre-architecture.md` after Stage 0
+
+The approved 2026-07-30 handover supersedes this V1 document where it refers to calls, Site Visit work/tasks/navigation, separate legacy action/task systems, four always-visible workstream cards, structured call/SMS logging, or a lead-to-quote-only Overview composition. Do not implement those superseded rules. Strict current-design, quote-source, price, historical-record, permission, access-ending, and failure-state rules continue unless the handover says otherwise.
 
 ## Index
 
