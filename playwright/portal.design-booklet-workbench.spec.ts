@@ -63,7 +63,7 @@ test.describe("design booklet workbench fixture", () => {
     ).toHaveCount(0);
     await expect(
       page.getByRole("heading", {
-        name: "Build the booklet around the design.",
+        name: "Shape the customer document.",
       }),
     ).toBeVisible();
     await expect(page.getByLabel("Roof form")).toHaveValue("pitched");
@@ -177,6 +177,7 @@ test.describe("design booklet workbench fixture", () => {
       await page.goto(FIXTURE_PATH);
 
       const bookletPage = page.locator('[data-page-kind="cover"]');
+      await expect(bookletPage).toBeVisible();
       const bounds = await bookletPage.boundingBox();
       expect(bounds).not.toBeNull();
       expect(bounds?.x ?? -1).toBeGreaterThanOrEqual(0);
@@ -258,7 +259,7 @@ test.describe("design booklet workbench fixture", () => {
       name: "Booklet pages",
     });
     await pageRail
-      .getByRole("button", { name: "04 Drawings 1", exact: true })
+      .locator('[data-booklet-page-select="drawing-page-1"]')
       .click();
 
     const drawingPage = page.locator('[data-page-kind="drawings"]');
@@ -270,7 +271,7 @@ test.describe("design booklet workbench fixture", () => {
     );
 
     await pageRail
-      .getByRole("button", { name: "05 Review", exact: true })
+      .locator('[data-booklet-page-select="review"]')
       .click();
     const reviewPage = page.locator('[data-page-kind="review"]');
     await expect(reviewPage).toBeVisible();
