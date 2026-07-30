@@ -16,7 +16,6 @@ type TableName =
 type DbState = Record<TableName, Row[]>;
 
 const h = vi.hoisted(() => ({
-  recordMarketingConversionEvent: vi.fn(),
   acceptQuoteAndEnsureDepositInvoice: vi.fn(),
   reconcileQuoteOutcomeCadence: vi.fn(),
   voidOpenDepositInvoiceForQuote: vi.fn(),
@@ -28,10 +27,6 @@ const h = vi.hoisted(() => ({
 
 vi.mock('@/lib/supabaseClient', () => ({
   supabaseServiceRole: h.supabaseServiceRole,
-}));
-
-vi.mock('@/lib/marketingAttribution/server', () => ({
-  recordMarketingConversionEvent: h.recordMarketingConversionEvent,
 }));
 
 vi.mock('@/lib/projects/workItems/quoteCadenceReconciliation', () => ({
@@ -197,7 +192,6 @@ function resetDb(seed: Partial<DbState> = {}, queuedIds: Partial<Record<TableNam
         return { data: null, error: null };
       },
     );
-  h.recordMarketingConversionEvent.mockReset();
   h.acceptQuoteAndEnsureDepositInvoice.mockReset();
   h.voidOpenDepositInvoiceForQuote.mockReset();
   h.reconcileQuoteOutcomeCadence.mockReset().mockResolvedValue({
@@ -674,7 +668,7 @@ describe('quote pricing source preservation in domain helpers', () => {
     );
   });
 
-  it('records a marketing conversion event when a sent quote is accepted', async () => {
+  it('delegates sent quote acceptance to the shared commercial owner', async () => {
     resetDb({
       estimates: [
         makeEstimate({
@@ -705,17 +699,10 @@ describe('quote pricing source preservation in domain helpers', () => {
     const { markQuoteAccepted } = await import('./serverCore');
     await markQuoteAccepted(appId('qv', ids.quoteVersionSent), 'ops@example.com');
 
-    expect(h.recordMarketingConversionEvent).toHaveBeenCalledWith({
-      type: 'marketing.quote_accepted',
-      projectId: ids.project,
-      primaryId: ids.quoteVersionSent,
-      payload: {
-        quoteVersionId: ids.quoteVersionSent,
-        quoteId: ids.quote,
-        valueIncGstCents: 14375,
-      },
+    expect(h.acceptQuoteAndEnsureDepositInvoice).toHaveBeenCalledWith({
+      quoteVersionUuid: ids.quoteVersionSent,
+      actor: 'ops@example.com',
     });
-    expect(JSON.stringify(h.recordMarketingConversionEvent.mock.calls)).not.toContain('Taylor Client');
   });
 
   it('keeps a durable decline successful when cadence reconciliation needs repair', async () => {

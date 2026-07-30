@@ -251,6 +251,11 @@ describe('POST /api/enquiry attribution', () => {
             clickIds: { gclid: 'g-123', gbraid: 'gb-456', wbraid: 'wb-789' },
             landingPage: 'https://www.sanctuarypergolas.co.nz/contact?gclid=g-123',
             referrer: 'https://www.google.com/',
+            consent: {
+              analytics: false,
+              marketing: true,
+              capturedAt: '2026-07-30T00:00:00.000Z',
+            },
           },
           honeypot: '',
         }),
@@ -266,7 +271,7 @@ describe('POST /api/enquiry attribution', () => {
     });
     expect(db.enquiry_requests[0]?.raw_payload.attribution).toMatchObject({
       clickIds: { gclid: 'g-123', gbraid: 'gb-456', wbraid: 'wb-789' },
-      landingPage: 'https://www.sanctuarypergolas.co.nz/contact?gclid=g-123',
+      landingPage: 'https://www.sanctuarypergolas.co.nz/contact',
     });
     expect(db.enquiry_requests[0]?.raw_payload.enquiryContext).toEqual({
       enquiry_type: 'residential',

@@ -10,7 +10,6 @@ import {
   EMAIL_PROJECT_COMPLETED_V1,
   EMAIL_PROJECT_SCHEDULED_V1,
 } from '@/lib/emails/transactionalTemplates';
-import { recordMarketingConversionEvent } from '@/lib/marketingAttribution/server';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { isUuid } from '@/lib/supabase/mappers';
 import type { ProjectStatus } from '@/lib/types/project';
@@ -76,22 +75,6 @@ type BookSiteVisitPayload = {
   salespersonId?: string | null;
   notes?: string | null;
 };
-
-async function recordConfirmedSiteVisitConversion(
-  projectId: string,
-  payload: BookSiteVisitPayload | null,
-): Promise<void> {
-  if (payload?.status !== 'CONFIRMED') return;
-  await recordMarketingConversionEvent({
-    type: 'marketing.site_visit_booked',
-    projectId,
-    payload: {
-      status: 'CONFIRMED',
-      scheduledStart: payload.scheduledStart ?? null,
-      scheduledEnd: payload.scheduledEnd ?? null,
-    },
-  });
-}
 
 type GenerateCostPlanPayload = {
   tier?: 'TIER_1' | 'TIER_2' | 'TIER_3' | 'TIER_4';
@@ -590,18 +573,6 @@ class AutomationRunner {
         case 'ui.action.project_created':
           await this.onProjectCreated(projectId, (payload ?? {}) as ProjectCreatedPayload, false);
           return;
-        case 'ui.action.book_site_visit':
-          await recordConfirmedSiteVisitConversion(
-            projectId,
-            payload as BookSiteVisitPayload | null,
-          );
-          return;
-        case 'ui.action.mark_deposit_received':
-          await recordMarketingConversionEvent({
-            type: 'marketing.deposit_received',
-            projectId,
-          });
-          return;
         default:
           return;
       }
@@ -619,10 +590,6 @@ class AutomationRunner {
         return;
       case 'ui.action.book_site_visit':
         await this.onBookSiteVisit(projectId, (payload ?? {}) as BookSiteVisitPayload);
-        await recordConfirmedSiteVisitConversion(
-          projectId,
-          payload as BookSiteVisitPayload | null,
-        );
         return;
       case 'ui.action.complete_site_visit':
         await this.onCompleteSiteVisit(projectId);
@@ -638,10 +605,6 @@ class AutomationRunner {
         return;
       case 'ui.action.mark_deposit_received':
         await this.onDepositReceived(projectId);
-        await recordMarketingConversionEvent({
-          type: 'marketing.deposit_received',
-          projectId,
-        });
         return;
       case 'ui.action.confirm_schedule':
         await this.onConfirmSchedule(projectId);

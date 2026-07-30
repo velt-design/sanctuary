@@ -10,12 +10,12 @@ describe('marketing browser attribution', () => {
     vi.unstubAllGlobals();
   });
 
-  it('captures UTM values and Google click identifiers from the landing URL', () => {
+  it('captures campaign values while stripping query and hash data from stored URLs', () => {
     expect(
       getMarketingAttributionFromLocation({
         search: '?utm_source=google&utm_medium=cpc&utm_campaign=winter&gclid=g-123&gbraid=gb-456&wbraid=wb-789&name=Jamie',
-        href: 'https://www.sanctuarypergolas.co.nz/contact?utm_source=google&gclid=g-123',
-        referrer: 'https://www.google.com/',
+        href: 'https://www.sanctuarypergolas.co.nz/contact?utm_source=google&gclid=g-123#form',
+        referrer: 'https://www.google.com/search?q=pergolas#results',
       }),
     ).toEqual({
       utm: {
@@ -28,8 +28,8 @@ describe('marketing browser attribution', () => {
         gbraid: 'gb-456',
         wbraid: 'wb-789',
       },
-      landingPage: 'https://www.sanctuarypergolas.co.nz/contact?utm_source=google&gclid=g-123',
-      referrer: 'https://www.google.com/',
+      landingPage: 'https://www.sanctuarypergolas.co.nz/contact',
+      referrer: 'https://www.google.com/search',
     });
   });
 
@@ -41,7 +41,7 @@ describe('marketing browser attribution', () => {
     expect(getGaClientIdFromCookie('_ga_KGLF83X6JW=GS2.1.s123$o1')).toBeNull();
   });
 
-  it('captures consented analytics identity and suppresses advertising identifiers without marketing consent', () => {
+  it('captures consented analytics identity and suppresses all marketing attribution without marketing consent', () => {
     vi.stubGlobal('window', {
       location: {
         search: '?utm_source=google&gclid=g-123',
@@ -59,7 +59,7 @@ describe('marketing browser attribution', () => {
     });
 
     expect(result).toMatchObject({
-      utm: { utm_source: 'google' },
+      utm: {},
       clickIds: {},
       analyticsClientId: '1022420085.1772518636',
       consent: {
@@ -67,18 +67,20 @@ describe('marketing browser attribution', () => {
         marketing: false,
       },
     });
+    expect(result).not.toHaveProperty('landingPage');
+    expect(result).not.toHaveProperty('referrer');
     expect(result.consent?.capturedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
   it('does not read the GA cookie until analytics consent is explicitly granted', () => {
     vi.stubGlobal('window', {
       location: {
-        search: '?gclid=g-123',
-        href: 'https://www.sanctuarypergolas.co.nz/contact?gclid=g-123',
+        search: '?utm_source=google&gclid=g-123',
+        href: 'https://www.sanctuarypergolas.co.nz/contact?gclid=g-123#form',
       },
     });
     vi.stubGlobal('document', {
-      referrer: '',
+      referrer: 'https://www.google.com/search?q=pergolas',
       cookie: '_ga=GA1.1.1022420085.1772518636',
     });
 
@@ -88,7 +90,10 @@ describe('marketing browser attribution', () => {
         hasStoredChoice: true,
       }),
     ).toMatchObject({
+      utm: { utm_source: 'google' },
       clickIds: { gclid: 'g-123' },
+      landingPage: 'https://www.sanctuarypergolas.co.nz/contact',
+      referrer: 'https://www.google.com/search',
       consent: { analytics: false, marketing: true },
     });
     expect(
@@ -117,9 +122,15 @@ describe('marketing browser attribution', () => {
         hasStoredChoice: false,
       }),
     ).toMatchObject({
-      utm: { utm_source: 'google' },
+      utm: {},
       clickIds: {},
       consent: { analytics: false, marketing: false },
     });
+    expect(
+      getBrowserMarketingAttribution({
+        consent: { analytics: true, marketing: true },
+        hasStoredChoice: false,
+      }),
+    ).not.toHaveProperty('landingPage');
   });
 });

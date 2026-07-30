@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   deliverAcceptedDepositInvoiceById: vi.fn(),
   reconcileQuoteOutcomeCadence: vi.fn(),
   insertCommercialAuditEvent: vi.fn(),
+  recordMarketingConversionEvent: vi.fn(),
   rpc: vi.fn(),
   invoiceSingle: vi.fn(),
   taskDelete: vi.fn(),
@@ -24,6 +25,25 @@ vi.mock('../projects/workItems/quoteCadenceReconciliation', () => ({
   reconcileQuoteOutcomeCadence: mocks.reconcileQuoteOutcomeCadence,
 }));
 
+vi.mock('../marketingAttribution/server', () => ({
+  recordMarketingConversionEvent: mocks.recordMarketingConversionEvent,
+  normalizeMarketingConversionOccurredAt: (value: unknown) => {
+    if (typeof value !== 'string') return null;
+    const parsed = new Date(value);
+    return Number.isFinite(parsed.valueOf()) ? parsed.toISOString() : null;
+  },
+  recentMarketingConversionOccurrence: (value: unknown) => {
+    if (typeof value !== 'string') return null;
+    const parsed = new Date(value);
+    const age = Date.now() - parsed.valueOf();
+    return Number.isFinite(parsed.valueOf())
+      && age >= -5 * 60 * 1000
+      && age <= 72 * 60 * 60 * 1000
+      ? parsed.toISOString()
+      : null;
+  },
+}));
+
 vi.mock('../supabaseClient', () => ({
   supabaseServiceRole: mocks.supabaseServiceRole,
 }));
@@ -37,6 +57,7 @@ import { acceptQuoteAndEnsureDepositInvoice } from './acceptQuote';
 const PROJECT_UUID = '11111111-1111-4111-8111-111111111111';
 const QUOTE_VERSION_UUID = '22222222-2222-4222-8222-222222222222';
 const INVOICE_UUID = '33333333-3333-4333-8333-333333333333';
+const INVOICE_CREATED_AT = '2026-07-30T01:00:00.000Z';
 
 function acceptanceRow(alreadyAccepted = false) {
   return [{
@@ -49,6 +70,8 @@ function acceptanceRow(alreadyAccepted = false) {
 
 describe('accepted quote project-work reconciliation', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime('2026-07-30T02:00:00.000Z');
     vi.clearAllMocks();
     mocks.supabaseServiceRole.rpc.mockImplementation(mocks.rpc);
     mocks.rpc.mockResolvedValue({
@@ -60,6 +83,9 @@ describe('accepted quote project-work reconciliation', () => {
         id: INVOICE_UUID,
         invoice_ref: 'INV-1001',
         project_id: PROJECT_UUID,
+        quote_id: '44444444-4444-4444-8444-444444444444',
+        quote_total_inc_gst_cents: 120000,
+        created_at: INVOICE_CREATED_AT,
       },
       error: null,
     });
@@ -92,6 +118,10 @@ describe('accepted quote project-work reconciliation', () => {
     });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('reconciles an authoritative acceptance and skips legacy task cleanup for V2', async () => {
     const result = await acceptQuoteAndEnsureDepositInvoice({
       quoteVersionUuid: QUOTE_VERSION_UUID,
@@ -107,6 +137,20 @@ describe('accepted quote project-work reconciliation', () => {
     });
     expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.reconcileQuoteOutcomeCadence.mock.invocationCallOrder[0],
+    );
+    expect(mocks.recordMarketingConversionEvent).toHaveBeenCalledWith({
+      type: 'marketing.quote_accepted',
+      projectId: PROJECT_UUID,
+      primaryId: QUOTE_VERSION_UUID,
+      occurredAt: INVOICE_CREATED_AT,
+      payload: {
+        quoteVersionId: QUOTE_VERSION_UUID,
+        quoteId: '44444444-4444-4444-8444-444444444444',
+        valueIncGstCents: 120000,
+      },
+    });
+    expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.recordMarketingConversionEvent.mock.invocationCallOrder[0],
     );
     expect(mocks.taskDelete).not.toHaveBeenCalled();
   });
@@ -151,7 +195,7 @@ describe('accepted quote project-work reconciliation', () => {
     expect(mocks.taskDelete).not.toHaveBeenCalled();
   });
 
-  it('retries reconciliation on an authoritative acceptance replay', async () => {
+  it('repairs reconciliation and the idempotent conversion on an authoritative acceptance replay', async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: acceptanceRow(true),
       error: null,
@@ -165,5 +209,43 @@ describe('accepted quote project-work reconciliation', () => {
     expect(result.alreadyAccepted).toBe(true);
     expect(mocks.reconcileQuoteOutcomeCadence).toHaveBeenCalledOnce();
     expect(mocks.insertCommercialAuditEvent).not.toHaveBeenCalled();
+    expect(mocks.recordMarketingConversionEvent).toHaveBeenCalledWith({
+      type: 'marketing.quote_accepted',
+      projectId: PROJECT_UUID,
+      primaryId: QUOTE_VERSION_UUID,
+      occurredAt: INVOICE_CREATED_AT,
+      payload: {
+        quoteVersionId: QUOTE_VERSION_UUID,
+        quoteId: '44444444-4444-4444-8444-444444444444',
+        valueIncGstCents: 120000,
+      },
+    });
+  });
+
+  it('does not create a fresh conversion when an old acceptance is replayed', async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: acceptanceRow(true),
+      error: null,
+    });
+    mocks.invoiceSingle.mockResolvedValueOnce({
+      data: {
+        id: INVOICE_UUID,
+        invoice_ref: 'INV-1001',
+        project_id: PROJECT_UUID,
+        quote_id: '44444444-4444-4444-8444-444444444444',
+        quote_total_inc_gst_cents: 120000,
+        created_at: '2026-07-26T01:00:00.000Z',
+      },
+      error: null,
+    });
+
+    const result = await acceptQuoteAndEnsureDepositInvoice({
+      quoteVersionUuid: QUOTE_VERSION_UUID,
+      actor: 'staff@example.test',
+    });
+
+    expect(result.alreadyAccepted).toBe(true);
+    expect(mocks.reconcileQuoteOutcomeCadence).toHaveBeenCalledOnce();
+    expect(mocks.recordMarketingConversionEvent).not.toHaveBeenCalled();
   });
 });

@@ -22,6 +22,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-07-30 | Contacts/Calculator Bundle Owners | Promoted | Prefer a small shared portal interaction owner over a heavy primitive package when the complete consumer set needs only bounded menu/popover behavior. A narrow package-owned material loader may serve takeoff defaults while the unchanged full costing config remains authoritative for commercial calculation. Prove route graphs, behavior parity, and every unchanged bundle ceiling together. |
+| 2026-07-30 | Marketing Measurement CSP        | Promoted | Treat live GTM container diagnostics and the deployed CSP header as a tracking release gate. Permit only reported vendor origins in both enforced and report-only directives, retain consent gating, and guard required measurement resources with a source contract test. |
+| 2026-07-30 | Marketing Lifecycle Delivery     | Promoted | Emit conversions from the shared authoritative business owner used by every public/staff path; independently re-enforce consent on the server; claim only immediately dispatchable rows below their attempt ceiling; and describe generic GA4 Measurement Protocol delivery as at-least-once because provider acceptance can precede the local completion checkpoint. |
 | 2026-07-30 | Overview V2 Bundle Exception     | Promoted | A scope-specific handoff exception may accept unrelated route-budget failures only when the same analyser reproduces them at the approved baseline and the changed route remains within its unchanged allowance. Keep every ceiling and aggregate failure visible; route optimization remains separate debt, not proof that the gate is green. |
 | 2026-07-30 | Project Overview V2 Handover     | Promoted | Redesign Overview inside the current portal visual system, with one server-backed Project Work surface, email-only communication, and Site Visits hidden/manual. Preserve mixed legacy/V2 behavior and strict design/commercial precedence; add full-journey facts only through bounded specialist-owned server projections. |
 | 2026-07-30 | Supabase Migration Versions      | Promoted | Supabase CLI reads only the digits before the first underscore as a migration version. Date-only sibling files collide in the remote ledger, so never blanket-push, migrate-up, or repair the shared version. Positively identify the target, rollback-rehearse and apply exact reviewed files, preserve hashes/evidence, and repair naming/ledger compatibility separately. |
@@ -3199,6 +3201,56 @@ Why it mattered: Shared Foundation adoption made the repeated CSS large enough t
 Current guardrail: De-duplicate manifest-declared entry CSS from dynamic-entry totals, keep the established initial-JavaScript metric unchanged, and retain a fixture where the lazy manifest repeats entry CSS. Never raise a route ceiling to compensate for double-counted assets.
 Promoted to: `docs/testing-and-qa.md`
 Related docs/tests: `apps/portal/lib/performance/portalBundleBudgets.ts`; `apps/portal/lib/performance/portalBundleBudgets.test.ts`; `npm run portal:bundle-budget`
+
+### 2026-07-30 - Marketing Lifecycle Delivery - Shared Owners, Consent, And At-Least-Once Semantics
+
+Date: 2026-07-30
+Area: Marketing lifecycle event ownership, attribution consent, and GA4 delivery
+Status: Promoted
+Decision or mistake: Quote acceptance tracking was attached to the staff wrapper
+instead of the shared acceptance owner used by the public customer path.
+Browser filtering also left landing query parameters available and the server
+accepted campaign/click fields without independently enforcing marketing
+consent. The sender claimed a batch before sequential network calls and could
+reclaim rows whose attempt ceiling had already been reached.
+Why it mattered: The real customer conversion could be absent while an
+internal path appeared covered, denied attribution could persist, and expired
+leases or exhausted rows could create duplicate sends or invalid retry state.
+Even with those defects fixed, GA4 may accept a generic event before the local
+completion checkpoint fails, and Measurement Protocol provides no generic
+non-purchase deduplication contract.
+Current guardrail: Emit a lifecycle event only after its shared authoritative
+business command succeeds and cover every caller of that owner. For a
+state-transition conversion, require an affected-row compare-and-swap and a
+dedicated database-owned occurrence timestamp that mutable `updated_at` values
+cannot refresh. Do not backfill legacy terminal rows from mutable evidence;
+fail closed when the immutable occurrence is absent. Bound idempotent replay
+repair to the downstream delivery window so an old outcome cannot look new.
+Re-apply analytics and marketing consent categories on the server; strip
+landing and referrer query/fragment data. Claim one row immediately before dispatch,
+terminally fail exhausted eligible rows, and never describe the outbox as
+exactly-once. Keep stable delivery identity for reconciliation and document the
+residual at-least-once duplicate window.
+Promoted to: `docs/security-privacy-quality.md`;
+`docs/automation-email-audit.md`; `docs/supabase-schema-map.md`
+Related docs/tests:
+`apps/portal/lib/commercial/acceptQuote.test.ts`;
+`apps/portal/app/api/staff/v1/projects/[projectId]/action/site-visit/confirm/route.test.ts`;
+`apps/marketing/lib/attribution.test.ts`;
+`apps/portal/lib/marketingAttribution/server.test.ts`;
+`apps/marketing/lib/marketingConversionDelivery.test.ts`;
+`apps/marketing/lib/marketingConversionDeliveryMigration.contract.test.ts`
+
+### 2026-07-30 - Marketing Measurement CSP - Treat Container Diagnostics As A Release Gate
+
+Date: 2026-07-30
+Area: Marketing CSP and GTM/GA4 delivery
+Status: Promoted
+Decision or mistake: The Google runtime and restored GTM container were present, but the enforced marketing CSP omitted two resources reported by container diagnostics: `connect-src https://ad.doubleclick.net` and `img-src https://www.googletagmanager.com`.
+Why it mattered: A tag can be correctly configured and published while browser policy silently blocks part of its measurement path, leaving GTM marked urgent and conversions incomplete.
+Current guardrail: Before a tracking release, inspect the live container diagnostics and the deployed CSP header. Add only the reported vendor origins to both enforced and report-only directives, retain consent gating, and keep a source contract test so a later header cleanup cannot remove them unnoticed.
+Promoted to: `docs/security-privacy-quality.md`
+Related docs/tests: `apps/marketing/next.config.ts`; `apps/marketing/components/trackingConsent.test.ts`
 
 ### 2026-07-22 - Dashboard Operational Semantics - Name The Exact Source
 

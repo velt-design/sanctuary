@@ -2,6 +2,102 @@
 -- Browser enquiry conversion stays in GTM; downstream portal conversions enter
 -- this outbox so retries never depend on a staff browser or request lifetime.
 
+begin;
+
+-- Mutable row updated_at values cannot prove when a lifecycle transition
+-- happened. Capture the first transition time inside PostgreSQL and never
+-- backfill existing terminal rows: a legacy NULL must fail closed on replay.
+alter table public.projects
+  add column if not exists deposit_received_at timestamptz null;
+
+alter table public.site_visit_events
+  add column if not exists confirmed_at timestamptz null;
+
+comment on column public.projects.deposit_received_at is
+  'Database-owned first occurrence time for a deposit-stage transition with a paid date.';
+comment on column public.site_visit_events.confirmed_at is
+  'Database-owned first occurrence time for a confirmed site visit.';
+
+create or replace function public.capture_project_deposit_received_at()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, pg_temp
+as $$
+begin
+  if tg_op = 'INSERT' then
+    new.deposit_received_at := case
+      when upper(btrim(coalesce(new.pipeline_stage::text, ''))) = 'DEPOSIT'
+        and new.deposit_paid_date is not null
+      then clock_timestamp()
+      else null
+    end;
+    return new;
+  end if;
+
+  if old.deposit_received_at is not null then
+    new.deposit_received_at := old.deposit_received_at;
+  elsif upper(btrim(coalesce(old.pipeline_stage::text, ''))) <> 'DEPOSIT'
+    and upper(btrim(coalesce(new.pipeline_stage::text, ''))) = 'DEPOSIT'
+    and new.deposit_paid_date is not null
+  then
+    new.deposit_received_at := clock_timestamp();
+  else
+    new.deposit_received_at := null;
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.capture_project_deposit_received_at()
+  from public, anon, authenticated, service_role;
+
+drop trigger if exists projects_capture_deposit_received_at
+  on public.projects;
+create trigger projects_capture_deposit_received_at
+before insert or update on public.projects
+for each row
+execute function public.capture_project_deposit_received_at();
+
+create or replace function public.capture_site_visit_confirmed_at()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, pg_temp
+as $$
+begin
+  if tg_op = 'INSERT' then
+    new.confirmed_at := case
+      when upper(btrim(coalesce(new.status::text, ''))) = 'CONFIRMED'
+      then clock_timestamp()
+      else null
+    end;
+    return new;
+  end if;
+
+  if old.confirmed_at is not null then
+    new.confirmed_at := old.confirmed_at;
+  elsif upper(btrim(coalesce(old.status::text, ''))) <> 'CONFIRMED'
+    and upper(btrim(coalesce(new.status::text, ''))) = 'CONFIRMED'
+  then
+    new.confirmed_at := clock_timestamp();
+  else
+    new.confirmed_at := null;
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.capture_site_visit_confirmed_at()
+  from public, anon, authenticated, service_role;
+
+drop trigger if exists site_visit_events_capture_confirmed_at
+  on public.site_visit_events;
+create trigger site_visit_events_capture_confirmed_at
+before insert or update on public.site_visit_events
+for each row
+execute function public.capture_site_visit_confirmed_at();
+
 create table public.marketing_conversion_deliveries (
   id uuid primary key default gen_random_uuid(),
   audit_event_id uuid not null references public.audit_events(id) on delete cascade,
@@ -106,17 +202,35 @@ security definer
 set search_path = pg_catalog, pg_temp
 as $$
 begin
+  update public.marketing_conversion_deliveries delivery
+  set status = 'FAILED',
+      lease_token = null,
+      lease_expires_at = null,
+      last_error_code = 'MAX_ATTEMPTS_EXHAUSTED',
+      updated_at = now()
+  where delivery.attempt_count >= delivery.max_attempts
+    and (
+      delivery.status in ('PENDING', 'RETRY')
+      or (
+        delivery.status = 'PROCESSING'
+        and delivery.lease_expires_at <= now()
+      )
+    );
+
   return query
   with candidates as (
     select delivery.id
     from public.marketing_conversion_deliveries delivery
-    where (
-      delivery.status in ('PENDING', 'RETRY')
-      and delivery.next_attempt_at <= now()
-    ) or (
-      delivery.status = 'PROCESSING'
-      and delivery.lease_expires_at <= now()
-    )
+    where delivery.attempt_count < delivery.max_attempts
+      and (
+        (
+          delivery.status in ('PENDING', 'RETRY')
+          and delivery.next_attempt_at <= now()
+        ) or (
+          delivery.status = 'PROCESSING'
+          and delivery.lease_expires_at <= now()
+        )
+      )
     order by delivery.next_attempt_at, delivery.created_at
     for update skip locked
     limit least(greatest(coalesce(p_limit, 20), 1), 100)
@@ -226,3 +340,5 @@ grant execute on function public.marketing_conversion_delivery_complete(
 ) to service_role;
 
 notify pgrst, 'reload schema';
+
+commit;

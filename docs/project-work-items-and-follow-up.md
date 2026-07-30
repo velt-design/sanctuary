@@ -389,10 +389,11 @@ A correction appends a retraction event with a required reason. It does not over
 
 The Site Visits operational page is not currently used.
 
-Until a later approved reactivation:
+Until a broader reactivation:
 
-- hide Site Visits from normal navigation and discovery surfaces;
+- hide Site Visits from global navigation and generic discovery surfaces;
 - do not link project work items to the Site Visits page;
+- allow only the active V2 Site Visit-stage control to deep-link staff to the retained direct booking/confirmation workflow;
 - stop generating `BOOK_SITE_VISIT` and `ATTEND_SITE_VISIT` task candidates;
 - retain existing route/data code as dormant unless a later retirement review proves deletion safe; and
 - if staff need the fact, use one bounded manual `site_visit_completed` confirmation.

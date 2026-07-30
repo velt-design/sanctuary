@@ -221,10 +221,22 @@ async function ensureCrewExists(crewId: string) {
   if (!crewRes.data) throw new Error('Crew not found.');
 }
 
-async function maybeAdvanceToDeposit(projectId: string, beforeRow: RunningJobRow, value: NormalizedRunningJobCellValue) {
+async function persistDepositPaidDate(
+  projectId: string,
+  projectUuid: string,
+  beforeRow: RunningJobRow,
+  value: NormalizedRunningJobCellValue,
+) {
   if (beforeRow.stage === 'SENT' && typeof value === 'string' && value) {
-    await callRoute(markDepositReceivedActionRoute, undefined, { params: Promise.resolve({ projectId }) });
+    await callRoute(
+      markDepositReceivedActionRoute,
+      { paidDate: value },
+      { params: Promise.resolve({ projectId }) },
+    );
+    return;
   }
+
+  await updateProjectField(projectUuid, { deposit_paid_date: value });
 }
 
 async function maybeAdvanceToPaid(projectId: string, beforeRow: RunningJobRow, value: NormalizedRunningJobCellValue) {
@@ -321,8 +333,12 @@ export async function applyRunningJobCellMutation(input: {
       await updateSiteVisitRep(input.projectUuid, typeof input.value === 'string' ? input.value : null);
       break;
     case 'deposit_paid_date':
-      await updateProjectField(input.projectUuid, { deposit_paid_date: input.value });
-      await maybeAdvanceToDeposit(input.projectId, input.currentRow, input.value);
+      await persistDepositPaidDate(
+        input.projectId,
+        input.projectUuid,
+        input.currentRow,
+        input.value,
+      );
       break;
     case 'materials_ordered':
       if (usesV2Facts) {

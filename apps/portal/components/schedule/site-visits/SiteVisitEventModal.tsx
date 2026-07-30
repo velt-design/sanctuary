@@ -85,6 +85,7 @@ export default function SiteVisitEventModal({
   focusLinked,
   onClose,
   onSave,
+  onConfirm,
   onUnschedule,
 }: {
   open: boolean;
@@ -97,7 +98,11 @@ export default function SiteVisitEventModal({
   initialLinkValue?: string;
   focusLinked?: boolean;
   onClose: () => void;
-  onSave: (values: SiteVisitEventFormValues) => Promise<void> | void;
+  onSave: (
+    values: SiteVisitEventFormValues,
+    options?: { keepOpen?: boolean },
+  ) => Promise<void> | void;
+  onConfirm?: () => Promise<void> | void;
   onUnschedule?: () => Promise<void> | void;
 }) {
   const linkedSelectRef = useRef<HTMLSelectElement | null>(null);
@@ -141,6 +146,14 @@ export default function SiteVisitEventModal({
   const isLocalItem = Boolean(item?.id && item.id.startsWith('local:'));
   const isLinkedLocked = Boolean(isEditMode);
   const canUnschedule = Boolean(onUnschedule && isEditMode && item && !isLocalItem && item.scheduledStart);
+  const canConfirm = Boolean(
+    onConfirm
+      && isEditMode
+      && item
+      && !isLocalItem
+      && item.status === 'TENTATIVE'
+      && item.scheduledStart,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -257,6 +270,9 @@ export default function SiteVisitEventModal({
         phone: form.phone.trim(),
         notes: form.notes.trim(),
       });
+    } catch {
+      // The parent owns user-facing API error reporting and leaves this modal
+      // open so the current values can be corrected or retried.
     } finally {
       setSaving(false);
     }
@@ -268,6 +284,39 @@ export default function SiteVisitEventModal({
     try {
       await onUnschedule();
       onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!onConfirm || saving) return;
+    const nextErrors = validate();
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
+      return;
+    }
+    setErrors({});
+    setSaving(true);
+    try {
+      // Persist the exact values visible in the editable modal before the
+      // authoritative confirmation is recorded and tracked.
+      await onSave({
+        linkMode: linkedValue === LINK_NONE ? 'none' : 'unscheduled',
+        linkedUnscheduledId: linkedValue && linkedValue !== LINK_NONE ? linkedValue : null,
+        salespersonId: form.salespersonId.trim(),
+        date: form.date.trim(),
+        startTime: form.startTime.trim(),
+        endTime: form.endTime.trim(),
+        address: form.address.trim(),
+        phone: form.phone.trim(),
+        notes: form.notes.trim(),
+      }, { keepOpen: true });
+      await onConfirm();
+      onClose();
+    } catch {
+      // The parent owns user-facing API error reporting. Keep the editable
+      // modal open and do not confirm when its save failed.
     } finally {
       setSaving(false);
     }
@@ -286,6 +335,11 @@ export default function SiteVisitEventModal({
     >
       <div className={styles.eventModalHeader}>
         <div className={styles.eventModalActions}>
+          {canConfirm ? (
+            <button type="button" className={styles.buttonPrimary} onClick={handleConfirm} disabled={saving}>
+              {saving ? 'Confirming...' : 'Confirm booking'}
+            </button>
+          ) : null}
           {canUnschedule ? (
             <button type="button" className={styles.buttonDanger} onClick={() => setConfirmUnschedule(true)} disabled={saving || confirmUnschedule}>
               Unschedule

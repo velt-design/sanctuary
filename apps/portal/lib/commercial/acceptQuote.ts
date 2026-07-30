@@ -1,6 +1,11 @@
 import 'server-only';
 
 import { deliverAcceptedDepositInvoiceById } from '../invoices/server';
+import {
+  normalizeMarketingConversionOccurredAt,
+  recentMarketingConversionOccurrence,
+  recordMarketingConversionEvent,
+} from '../marketingAttribution/server';
 import { reconcileQuoteOutcomeCadence } from '../projects/workItems/quoteCadenceReconciliation';
 import { supabaseServiceRole } from '../supabaseClient';
 import { insertCommercialAuditEvent } from './audit';
@@ -82,7 +87,9 @@ export async function acceptQuoteAndEnsureDepositInvoice(params: {
 
   const invoiceLookup = await supabaseServiceRole
     .from('deposit_invoices')
-    .select('id, invoice_ref, project_id')
+    .select(
+      'id, invoice_ref, project_id, quote_id, quote_total_inc_gst_cents, created_at',
+    )
     .eq('id', invoiceId)
     .single();
   if (invoiceLookup.error || !invoiceLookup.data) {
@@ -93,13 +100,47 @@ export async function acceptQuoteAndEnsureDepositInvoice(params: {
     );
   }
 
-  const projectUuid = String(
-    (invoiceLookup.data as any).project_id ?? '',
+  const invoice = invoiceLookup.data as Record<string, unknown>;
+  const projectUuid = String(invoice.project_id ?? '');
+  const quoteUuid =
+    typeof invoice.quote_id === 'string' && invoice.quote_id
+      ? invoice.quote_id
+      : null;
+  const quoteTotalIncGstCents =
+    Number(invoice.quote_total_inc_gst_cents) || 0;
+  const quoteVersionUuid =
+    typeof row?.quote_version_id === 'string' && row.quote_version_id
+      ? row.quote_version_id
+      : params.quoteVersionUuid;
+  const alreadyAccepted = Boolean(row?.already_accepted);
+  const acceptanceOccurredAt = normalizeMarketingConversionOccurredAt(
+    invoice.created_at,
   );
+
+  // A recent authoritative replay can repair a crash between the acceptance
+  // transaction and this idempotent side effect. Preserve the business time so
+  // an old accepted quote can never reappear as a new GA4 conversion.
+  if (
+    !alreadyAccepted
+    || recentMarketingConversionOccurrence(acceptanceOccurredAt)
+  ) {
+    await recordMarketingConversionEvent({
+      type: 'marketing.quote_accepted',
+      projectId: projectUuid,
+      primaryId: quoteVersionUuid,
+      occurredAt: acceptanceOccurredAt,
+      payload: {
+        quoteVersionId: quoteVersionUuid,
+        ...(quoteUuid ? { quoteId: quoteUuid } : {}),
+        valueIncGstCents: quoteTotalIncGstCents,
+      },
+    });
+  }
+
   const reconciliation = await reconcileQuoteOutcomeCadence({
     serviceClient: supabaseServiceRole,
     projectId: projectUuid,
-    quoteVersionId: params.quoteVersionUuid,
+    quoteVersionId: quoteVersionUuid,
     outcome: 'ACCEPTED',
   });
   if (reconciliation.workModel === 'legacy') {
@@ -110,12 +151,12 @@ export async function acceptQuoteAndEnsureDepositInvoice(params: {
       .eq('task_key', 'invoice_paid');
   }
 
-  if (!row?.already_accepted) {
+  if (!alreadyAccepted) {
     await insertCommercialAuditEvent({
       projectId: projectUuid,
       type: 'quote.accepted',
-      idempotencyKey: `quote.accepted:${params.quoteVersionUuid}`,
-      payload: { quoteVersionId: params.quoteVersionUuid },
+      idempotencyKey: `quote.accepted:${quoteVersionUuid}`,
+      payload: { quoteVersionId: quoteVersionUuid },
     });
   }
 
@@ -141,14 +182,11 @@ export async function acceptQuoteAndEnsureDepositInvoice(params: {
   }
 
   return {
-    quoteVersionUuid:
-      typeof row?.quote_version_id === 'string'
-        ? row.quote_version_id
-        : params.quoteVersionUuid,
-    alreadyAccepted: Boolean(row?.already_accepted),
+    quoteVersionUuid,
+    alreadyAccepted,
     invoice: {
       id: invoiceId,
-      invoiceRef: String((invoiceLookup.data as any).invoice_ref ?? ''),
+      invoiceRef: String(invoice.invoice_ref ?? ''),
       created: Boolean(row?.invoice_created),
       sent,
       sendError,

@@ -27,7 +27,7 @@ When an older command-centre document conflicts with this section, use this sect
 | Older direction | Approved current direction |
 | --- | --- |
 | Call actions, call tasks, or calling as a fallback | Sanctuary lead and quote communication is email-only. Do not render or create a Call action. |
-| Site Visit tasks, workstream actions, or normal navigation | Site Visits remains hidden and manual. It is not a project-work source, destination, or stage side effect. |
+| Site Visit tasks, workstream actions, or global navigation | Site Visits remains hidden and manual. It is not a project-work source, destination, or stage side effect; an active V2 project in the Site Visit stage has one bounded deep link from its controls to the retained booking/confirmation workflow. |
 | Separate command card, task list, follow-up list, and manual-action surface | Every project has exactly one Project Work region. V2 uses one `ProjectWorkProjection`; legacy compatibility content may survive only as internal children of that same region. |
 | Legacy `tasks`, `followup_tasks`, and `project_manual_actions` as the long-term selector | They are legacy-only compatibility sources. Do not expand them or copy them into V2. |
 | Four always-visible lead-to-quote workstream cards | Use one compact journey/readiness region only when bounded server-owned evidence exists. Do not create another editable status system. |
@@ -65,7 +65,7 @@ The current server payload does not yet provide complete, bounded summaries for 
 
 - Communication is email-only. The existing autoresponder is automatic; the first personal email, one follow-up, and close review are manual. The approved quote follow-up is also manual.
 - Do not add an inbox integration, automatic personal send, automatic closure, or call fallback.
-- If the Site Visit completion fact is needed, record only the existing bounded manual `SITE_VISIT_COMPLETED` confirmation. It creates no task, stage change, or Schedule side effect.
+- If the Site Visit completion fact is needed, record only the existing bounded manual `SITE_VISIT_COMPLETED` confirmation. It creates no task, stage change, or Schedule side effect. This fact remains separate from the stage-gated deep link that opens the retained booking/confirmation workflow.
 - V2 shows one primary action derived on the server. It includes the server-provided reason or ranking basis, effective owner, and due state when relevant. Specialist and recovery candidates also show their provided prerequisite/context, expected result, and owning destination. Work-item presentation must not invent fields that its server contract does not supply.
 - Blocked work is an exception, not an enabled primary action.
 - Other open V2 work may appear inside the same Project Work region. It must not become a second Tasks card.
@@ -135,7 +135,7 @@ A conditional region is omitted when it is irrelevant. When it is relevant but t
 - Job Packs remains conditional.
 - Schedule Board/Gantt owns install planning and actual timing.
 - Running Jobs owns its current operational fields.
-- Site Visits is never a normal Overview link.
+- Site Visits has no general Overview or navigation link. The sole exception is the active V2 Site Visit-stage control that opens the retained direct booking/confirmation workflow.
 
 #### Remove From The Overview Composition
 
@@ -144,7 +144,7 @@ A conditional region is omitted when it is irrelevant. When it is relevant but t
 - Duplicate Project Owner management.
 - Repeated project title or stage content that adds no new meaning.
 - Call actions or categories.
-- Site Visit links/tasks.
+- Site Visit tasks or links outside the one stage-gated booking/confirmation control.
 - Generic green health claims.
 - Multiple equal-weight warning cards.
 - Full quote, invoice, estimate, Schedule, Running Jobs, Workbench, or Job Pack detail.
@@ -313,7 +313,7 @@ This slice does not require a database migration and must not add one merely for
 - No marketing UI imports.
 - No automatic customer email or external side effect.
 - No call workflow.
-- No Site Visit navigation, task, or scheduling integration.
+- No Site Visit task, global navigation, or automatic scheduling integration; retain only the stage-gated direct booking/confirmation link.
 - No Contacted bulk migration.
 - No automatic stage movement, closure, archive, payment, quote acceptance, or Schedule command.
 - No new manually editable health, progress, workstream, readiness, or commercial status.
@@ -336,7 +336,7 @@ Product acceptance:
 
 1. An unfamiliar project can be oriented within seconds: project/customer/site, stage, operational state/freshness, owner, one next action and reason, blocker, exact current design/commercial source, and specialist destination.
 2. Every project has exactly one Project Work region and no separate Tasks card. V2 has no duplicate action controls; legacy compatibility children remain within that one region.
-3. No Call or Site Visit action, task, category, or normal navigation link appears. A prohibited server-selected legacy action shows `Legacy work needs review`, and browser code does not choose a replacement.
+3. No Call action or Site Visit task/category/global-navigation link appears. The only Site Visit destination is the active V2 Site Visit-stage booking/confirmation control. A prohibited server-selected legacy action shows `Legacy work needs review`, and browser code does not choose a replacement.
 4. Pipeline stage is not presented as readiness, percentage complete, or proof of a downstream artifact.
 5. Missing evidence never appears ready, sent, paid, scheduled, or complete.
 6. Design and commercial precedence remains byte-for-byte equivalent at the owning resolver boundary.
@@ -670,7 +670,7 @@ Overview V2 component boundaries:
 - `overview/ProjectStatusDetailsCard.tsx`: compatibility adapter that renders `ProjectOrientationBand` in compatibility mode for `ProjectDetailsMutationFixtureClient` and focused local-first tests. `OverviewTab` does not mount it.
 - `overview/ProjectWorkSection.tsx`: the single Project Work region and high-level mixed-model/state presentation. It renders the V2 primary/state view directly and nests the legacy command shell plus read-only stage rows for legacy projects.
 - `overview/ProjectWorkList.tsx`: secondary V2 open/blocked rows and filtered read-only legacy stage rows inside that region.
-- `overview/ProjectWorkControls.tsx`: V2 mutation-control presentation for manual work, operational-state changes, confirmation correction, and the existing manual hidden Site Visit completion fact. It exposes no Site Visit task, normal navigation, or Schedule integration and renders no controls for Archived projects.
+- `overview/ProjectWorkControls.tsx`: V2 mutation-control presentation for manual work, operational-state changes, confirmation correction, and the existing manual Site Visit completion fact. It exposes no Site Visit task, global navigation, or automatic Schedule integration; its sole destination is the active V2 Site Visit-stage booking/confirmation deep link, and it renders no controls for Archived projects.
 - `overview/useProjectWorkCommandController.ts`: V2 browser command, stable retry identity, duplicate suppression, committed/unknown feedback, input state, V2 projection cache patching, and shared invalidation orchestration.
 - `overview/useLegacyProjectWorkCommandController.ts`: legacy stable command identity, duplicate suppression, committed-response validation, feedback, permitted-candidate/conflict state, complete command-centre cache patching, and shared invalidation orchestration.
 - `overview/LegacyProjectWorkConflict.tsx`: legacy conflict and exact `Legacy work needs review` presentation. It delegates commands to the legacy controller and never selects a replacement for prohibited work.

@@ -4,7 +4,11 @@ import { useMemo, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import sharedStyles from './schedule.module.css';
 import siteVisitsStyles from './scheduleSiteVisits.module.css';
-import type { SiteVisitCalendarItem, SiteVisitsSnapshotV1 } from '@/lib/types/siteVisits';
+import type {
+  SiteVisitCalendarItem,
+  SiteVisitProjectFocus,
+  SiteVisitsSnapshotV1,
+} from '@/lib/types/siteVisits';
 import UnscheduledSiteVisitCard from './UnscheduledSiteVisitCard';
 import { apiJson } from '@/lib/repo/apiClient';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
@@ -30,6 +34,7 @@ import { ApiError } from '@/lib/repo/apiClient';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/lib/queries/keys';
+import { useSiteVisitProjectDeepLink } from './useSiteVisitProjectDeepLink';
 
 const styles = { ...sharedStyles, ...siteVisitsStyles };
 
@@ -268,6 +273,8 @@ export default function SiteVisitsView() {
 
   const salesOwnerIdRaw = useMemo(() => (searchParams.get('salesOwnerId') || '').trim() || null, [searchParams]);
   const highlightId = useMemo(() => (searchParams.get('highlightSiteVisitId') || '').trim() || null, [searchParams]);
+  const projectTargetId = useMemo(() => (searchParams.get('project') || '').trim() || null, [searchParams]);
+  const searchParamsString = useMemo(() => searchParams.toString(), [searchParams]);
 
   const [query, setQuery] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
@@ -309,7 +316,10 @@ export default function SiteVisitsView() {
   const salesOwnerId = useMemo(() => (salesOwnerIdRaw && laneIds.includes(salesOwnerIdRaw) ? salesOwnerIdRaw : null), [laneIds, salesOwnerIdRaw]);
   const defaultSalespersonId = useMemo(() => salesOwnerId ?? laneIds[0] ?? '', [laneIds, salesOwnerId]);
 
-  const rangeKey = useMemo(() => `${days[0]}:${days[6]}:${salesOwnerId ?? 'all'}`, [days, salesOwnerId]);
+  const rangeKey = useMemo(
+    () => `${days[0]}:${days[6]}:${salesOwnerId ?? 'all'}:${projectTargetId ?? 'none'}`,
+    [days, projectTargetId, salesOwnerId],
+  );
   const snapshotKey = useMemo(() => qk.siteVisits.snapshot(hostKey, rangeKey), [hostKey, rangeKey]);
 
   const fetchSnapshot = async (): Promise<SiteVisitsSnapshotV1> => {
@@ -320,8 +330,15 @@ export default function SiteVisitsView() {
     qs.set('from', from);
     qs.set('to', to);
     if (salesOwnerId) qs.set('salesOwnerId', salesOwnerId);
+    if (projectTargetId) qs.set('project', projectTargetId);
 
-    const res = await apiJson<{ unscheduled: SiteVisitCalendarItem[]; events: SiteVisitCalendarItem[]; salesPeople: any[]; generatedAt: string }>(
+    const res = await apiJson<{
+      unscheduled: SiteVisitCalendarItem[];
+      events: SiteVisitCalendarItem[];
+      salesPeople: any[];
+      generatedAt: string;
+      projectFocus: SiteVisitProjectFocus | null;
+    }>(
       `/api/staff/v1/site-visits?${qs.toString()}`,
     );
     return {
@@ -333,6 +350,7 @@ export default function SiteVisitsView() {
       unscheduled: res.unscheduled,
       events: res.events,
       salesPeople: res.salesPeople,
+      projectFocus: res.projectFocus,
     };
   };
 
@@ -366,6 +384,18 @@ export default function SiteVisitsView() {
   const data = snapshot;
   const unscheduled = data?.unscheduled ?? [];
   const events = data?.events ?? [];
+  const projectFocusWeek = useMemo(() => {
+    const focus = data?.projectFocus;
+    if (focus?.kind !== 'scheduled') return null;
+    const focusDay = toLocalDayKey(focus.item.scheduledStart);
+    return focusDay ? startOfWeekMonday(focusDay) : null;
+  }, [data?.projectFocus]);
+  const modalUnscheduled = useMemo(() => {
+    const focus = data?.projectFocus;
+    if (focus?.kind !== 'create') return unscheduled;
+    if (unscheduled.some((item) => item.id === focus.item.id)) return unscheduled;
+    return [...unscheduled, focus.item];
+  }, [data?.projectFocus, unscheduled]);
   const eventsWithLocal = useMemo(() => [...events, ...localEvents], [events, localEvents]);
 
   const orphanEventCandidates = useMemo(() => events.filter((ev) => !(ev.project.name || '').trim()), [events]);
@@ -512,6 +542,22 @@ export default function SiteVisitsView() {
     setModal({ kind: 'create', preset: params?.preset, initialLinkValue: params?.initialLinkValue, focusLinked: params?.focusLinked });
   };
 
+  useSiteVisitProjectDeepLink({
+    projectTargetId,
+    focus: snapshot?.projectFocus ?? null,
+    focusWeek: projectFocusWeek,
+    viewWeek,
+    highlightId,
+    salesOwnerId,
+    searchParamsString,
+    replace: router.replace,
+    onOpenScheduled: (item) => openEditModal(item),
+    onOpenCreate: (item) => openCreateModal({
+      initialLinkValue: item.id,
+      focusLinked: true,
+    }),
+  });
+
   const closeModal = () => setModal({ kind: 'closed' });
 
   const openSlotPopover = (params: { day: string; laneId: string; slotIdx: number; rect: DOMRect }) => {
@@ -519,7 +565,10 @@ export default function SiteVisitsView() {
     setSlotPopover({ day: params.day, laneId: params.laneId, slotIdx: params.slotIdx, anchorRect: params.rect });
   };
 
-  const handleModalSave = async (values: SiteVisitEventFormValues) => {
+  const handleModalSave = async (
+    values: SiteVisitEventFormValues,
+    options?: { keepOpen?: boolean },
+  ) => {
     try {
       setActionError(null);
       const salespersonId = values.salespersonId.trim();
@@ -556,7 +605,7 @@ export default function SiteVisitsView() {
           }
           const base = snapshot;
           if (!base) return;
-          const fromUnscheduled = (base.unscheduled ?? []).find((u) => u.id === values.linkedUnscheduledId) ?? null;
+          const fromUnscheduled = modalUnscheduled.find((u) => u.id === values.linkedUnscheduledId) ?? null;
           if (!fromUnscheduled) {
             toast.error('Selected visit is no longer available.');
             return;
@@ -709,7 +758,14 @@ export default function SiteVisitsView() {
 
       await apiJson(`/api/staff/v1/projects/${encodeURIComponent(item.projectId)}/action/site-visit/reschedule`, {
         method: 'POST',
-        body: JSON.stringify({ siteVisitEventId: item.id, start: startIso, end: endIso, notifyCustomer: false, salespersonId }),
+        body: JSON.stringify({
+          siteVisitEventId: item.id,
+          start: startIso,
+          end: endIso,
+          notifyCustomer: false,
+          salespersonId,
+          notes: values.notes.trim(),
+        }),
       });
 
       applyOptimisticReschedule(base, {
@@ -717,18 +773,22 @@ export default function SiteVisitsView() {
         scheduledStart: startIso,
         scheduledEnd: endIso,
         salespersonId,
+        notes: values.notes.trim() || null,
         updatedAt: new Date().toISOString(),
       });
 
       toast.success('Booking updated.');
-      closeModal();
-      await fetchFresh();
+      if (!options?.keepOpen) {
+        closeModal();
+        await fetchFresh();
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save site visit.';
       const extra =
         err instanceof ApiError && err.body && typeof err.body === 'object' && 'error' in (err.body as any) ? String((err.body as any).error) : '';
       setActionError(extra && extra !== msg ? `${msg}\n${extra}` : msg);
       toast.error(msg);
+      throw err;
     }
   };
 
@@ -802,6 +862,43 @@ export default function SiteVisitsView() {
       await fetchFresh();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to unschedule site visit.';
+      const extra =
+        err instanceof ApiError && err.body && typeof err.body === 'object' && 'error' in (err.body as any) ? String((err.body as any).error) : '';
+      setActionError(extra && extra !== msg ? `${msg}\n${extra}` : msg);
+      toast.error(msg);
+      throw err;
+    }
+  };
+
+  const confirmSiteVisit = async (item: SiteVisitCalendarItem) => {
+    try {
+      setActionError(null);
+
+      await apiJson(`/api/staff/v1/projects/${encodeURIComponent(item.projectId)}/action/site-visit/confirm`, {
+        method: 'POST',
+        body: JSON.stringify({ siteVisitEventId: item.id }),
+      });
+
+      const base = snapshot;
+      if (base) {
+        setAndCacheSnapshot({
+          ...base,
+          events: (base.events ?? []).map((event) => (
+            event.id === item.id
+              ? {
+                  ...event,
+                  status: 'CONFIRMED',
+                  updatedAt: new Date().toISOString(),
+                }
+              : event
+          )),
+        });
+      }
+
+      toast.success('Booking confirmed.');
+      await fetchFresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to confirm site visit.';
       const extra =
         err instanceof ApiError && err.body && typeof err.body === 'object' && 'error' in (err.body as any) ? String((err.body as any).error) : '';
       setActionError(extra && extra !== msg ? `${msg}\n${extra}` : msg);
@@ -1095,7 +1192,7 @@ export default function SiteVisitsView() {
         open={modal.kind !== 'closed'}
         mode={modal.kind === 'edit' ? 'edit' : 'create'}
         item={modal.kind === 'edit' ? modal.item : null}
-        unscheduled={unscheduled}
+        unscheduled={modalUnscheduled}
         preset={modal.kind === 'closed' ? undefined : modal.preset}
         salesPeople={salesPeople}
         defaultSalespersonId={defaultSalespersonId}
@@ -1103,6 +1200,15 @@ export default function SiteVisitsView() {
         focusLinked={modal.kind === 'create' ? modal.focusLinked : undefined}
         onClose={closeModal}
         onSave={handleModalSave}
+        onConfirm={
+          modal.kind === 'edit'
+            && modal.item
+            && !isLocalItem(modal.item)
+            && modal.item.status === 'TENTATIVE'
+            && modal.item.scheduledStart
+            ? () => confirmSiteVisit(modal.item)
+            : undefined
+        }
         onUnschedule={
           modal.kind === 'edit' && modal.item && !isLocalItem(modal.item) && modal.item.scheduledStart
             ? () => unscheduleSiteVisit(modal.item)

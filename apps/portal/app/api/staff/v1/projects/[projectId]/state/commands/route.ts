@@ -1,6 +1,9 @@
 import { createRouteDiagnostics, logPortalServerError } from '@/lib/api/routeDiagnostics';
 import { parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
-import { recordMarketingConversionEvent } from '@/lib/marketingAttribution/server';
+import {
+  recentMarketingConversionOccurrence,
+  recordMarketingConversionEvent,
+} from '@/lib/marketingAttribution/server';
 import { runProjectOperationalStateCommand } from '@/lib/projects/workItems/commands';
 import { getAuthoritativeProjectWorkProjection } from '@/lib/projects/workItems/getAuthoritativeProjectWorkProjection';
 import {
@@ -31,6 +34,22 @@ function instant(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const parsed = new Date(value);
   return Number.isFinite(parsed.valueOf()) ? parsed.toISOString() : null;
+}
+
+async function loadStateEventOccurrence(
+  supabase: Parameters<typeof runProjectOperationalStateCommand>[0],
+  projectId: string,
+  commandId: string,
+): Promise<string | null> {
+  const result = await supabase
+    .from('project_state_events')
+    .select('occurred_at')
+    .eq('project_id', projectId)
+    .eq('command_id', commandId)
+    .eq('event_sequence', 0)
+    .maybeSingle();
+  if (result.error || !result.data) return null;
+  return instant(result.data.occurred_at);
 }
 
 export async function POST(
@@ -108,11 +127,22 @@ export async function POST(
       && typeof payload.outcome === 'string'
       && LOST_OUTCOMES.has(payload.outcome)
     ) {
-      await recordMarketingConversionEvent({
-        type: 'marketing.project_lost',
-        projectId: projectUuid,
-        payload: { outcome: payload.outcome },
-      });
+      const occurredAt = await loadStateEventOccurrence(
+        auth.supabase,
+        projectUuid,
+        commandId,
+      );
+      if (
+        !result.replayed
+        || recentMarketingConversionOccurrence(occurredAt)
+      ) {
+        await recordMarketingConversionEvent({
+          type: 'marketing.project_lost',
+          projectId: projectUuid,
+          occurredAt,
+          payload: { outcome: payload.outcome },
+        });
+      }
     }
     try {
       const projectWork = await getAuthoritativeProjectWorkProjection(projectId, auth.supabase);

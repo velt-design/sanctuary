@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   markScheduleDone: vi.fn(),
   markScheduleInProgress: vi.fn(),
   markCompleted: vi.fn(),
+  markDeposit: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -40,7 +41,7 @@ vi.mock('@/app/api/staff/v1/projects/[projectId]/action/confirm_schedule/route',
 }));
 
 vi.mock('@/app/api/staff/v1/projects/[projectId]/action/mark_deposit_received/route', () => ({
-  POST: vi.fn(),
+  POST: (...args: unknown[]) => mocks.markDeposit(...args),
 }));
 
 vi.mock('@/app/api/staff/v1/projects/[projectId]/action/mark_paid/route', () => ({
@@ -146,11 +147,13 @@ describe('applyRunningJobCellMutation work-model ownership', () => {
     mocks.markScheduleDone.mockReset();
     mocks.markScheduleInProgress.mockReset();
     mocks.markCompleted.mockReset();
+    mocks.markDeposit.mockReset();
     mocks.loadRunningJobRow.mockImplementation(async () => makeRow(2));
     mocks.rpc.mockResolvedValue({ data: { row_version: 5 }, error: null });
     mocks.markScheduleDone.mockResolvedValue(Response.json({ ok: true }));
     mocks.markScheduleInProgress.mockResolvedValue(Response.json({ ok: true }));
     mocks.markCompleted.mockResolvedValue(Response.json({ ok: true }));
+    mocks.markDeposit.mockResolvedValue(Response.json({ ok: true }));
   });
 
   it('writes V2 material state through the Running Jobs fact RPC', async () => {
@@ -218,5 +221,29 @@ describe('applyRunningJobCellMutation work-model ownership', () => {
     expect(mocks.markScheduleDone).toHaveBeenCalledTimes(1);
     expect(mocks.from).not.toHaveBeenCalledWith('project_task_checks');
     expect(mocks.markCompleted).not.toHaveBeenCalled();
+  });
+
+  it('lets the deposit action atomically own the paid date and SENT transition', async () => {
+    const { applyRunningJobCellMutation } = await import('./writeOps');
+    const row = makeRow(2);
+    row.stage = 'SENT';
+
+    await applyRunningJobCellMutation({
+      projectId: row.projectId,
+      projectUuid: '11111111-1111-4111-8111-111111111111',
+      actorUserId: '22222222-2222-4222-8222-222222222222',
+      currentRow: row,
+      key: 'deposit_paid_date',
+      value: '2026-07-30',
+    });
+
+    expect(mocks.markDeposit).toHaveBeenCalledTimes(1);
+    const [request, context] = mocks.markDeposit.mock.calls[0] as [
+      Request,
+      { params: Promise<{ projectId: string }> },
+    ];
+    expect(await request.json()).toEqual({ paidDate: '2026-07-30' });
+    await expect(context.params).resolves.toEqual({ projectId: row.projectId });
+    expect(mocks.from).not.toHaveBeenCalledWith('projects');
   });
 });

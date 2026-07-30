@@ -187,13 +187,17 @@ function renderSection(props: ProjectWorkSectionProps) {
   return rendered;
 }
 
-function renderV2(projectWork: ProjectWorkProjection, stale = false) {
+function renderV2(
+  projectWork: ProjectWorkProjection,
+  stale = false,
+  pipelineStage: ProjectPageSnapshot["project"]["stage"] = "quoting",
+) {
   return renderSection({
     workModel: "v2",
     projectId: PROJECT_ID,
     host: "fixture",
     projectWork,
-    pipelineStage: "quoting",
+    pipelineStage,
     stale,
     onRefresh: vi.fn(),
     initialStaff: staff,
@@ -395,6 +399,25 @@ describe("ProjectWorkSection", () => {
         (button) => button.disabled,
       ),
     ).toBe(true);
+  });
+
+  it("links an active V2 site-visit project to the bounded booking workflow", () => {
+    const rendered = renderV2(projection(), false, "site_visit");
+    const manage = Array.from(
+      rendered.container.querySelectorAll("button"),
+    ).find((button) => button.textContent === "Manage project work")!;
+
+    act(() => manage.click());
+
+    const bookingLink = Array.from(
+      rendered.container.querySelectorAll<HTMLAnchorElement>("a"),
+    ).find((link) => link.textContent === "Book or confirm site visit");
+    expect(bookingLink?.getAttribute("href")).toBe(
+      `/staff/schedule?view=site-visits&project=${PROJECT_ID}`,
+    );
+    expect(rendered.container.textContent).toContain(
+      "Completion remains a separate manual fact.",
+    );
   });
 
   it.each([

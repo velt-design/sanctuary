@@ -1,6 +1,7 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { isMissingColumnError, loadProjectAndContact, missingColumnFromError, parseIso, salespersonSchemaMismatchMessage } from '@/lib/api/siteVisitsServer';
+import { recordPersistedConfirmedSiteVisitConversion } from '@/lib/marketingAttribution/siteVisitConversion';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
@@ -21,11 +22,32 @@ function isOnConflictConstraintMissing(error: unknown): boolean {
   return code === '42P10' || (msg.includes('on conflict') && msg.includes('no unique'));
 }
 
+type SiteVisitWriteResult = {
+  id: string | null;
+  status: string | null;
+  confirmedAt: string | null;
+  error: any | null;
+};
+
+function persistedWriteResult(value: unknown): SiteVisitWriteResult {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  const row = candidate && typeof candidate === 'object'
+    ? candidate as Record<string, unknown>
+    : {};
+  return {
+    id: typeof row.id === 'string' ? row.id : null,
+    status: typeof row.status === 'string' ? row.status.toUpperCase() : null,
+    confirmedAt:
+      typeof row.confirmed_at === 'string' ? row.confirmed_at : null,
+    error: null,
+  };
+}
+
 async function manualUpsertByProjectId(
   supabase: SupabaseClient,
   projectUuid: string,
   payloadIn: Record<string, any>,
-): Promise<{ id: string | null; error: any | null }> {
+): Promise<SiteVisitWriteResult> {
   const payload = { ...payloadIn };
   const patch: any = { ...payload };
   delete patch.project_id;
@@ -36,11 +58,11 @@ async function manualUpsertByProjectId(
       .from('site_visit_events')
       .update(patch as any)
       .eq('project_id', projectUuid)
-      .select('id');
+      .select('id, status, confirmed_at');
 
     if (!updateRes.error) {
       const rows = Array.isArray(updateRes.data) ? updateRes.data : [];
-      if (rows.length) return { id: typeof (rows[0] as any)?.id === 'string' ? (rows[0] as any).id : null, error: null };
+      if (rows.length) return persistedWriteResult(rows);
       break;
     }
 
@@ -58,14 +80,18 @@ async function manualUpsertByProjectId(
       continue;
     }
 
-    return { id: null, error: updateRes.error };
+    return { id: null, status: null, confirmedAt: null, error: updateRes.error };
   }
 
   // No rows to update, fall back to insert.
   const insertPayload: any = { project_id: projectUuid, ...patch };
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const insertRes = await supabase.from('site_visit_events').insert(insertPayload as any).select('id').single();
-    if (!insertRes.error) return { id: typeof (insertRes.data as any)?.id === 'string' ? (insertRes.data as any).id : null, error: null };
+    const insertRes = await supabase
+      .from('site_visit_events')
+      .insert(insertPayload as any)
+      .select('id, status, confirmed_at')
+      .single();
+    if (!insertRes.error) return persistedWriteResult(insertRes.data);
 
     if (isMissingColumnError(insertRes.error)) {
       const missing = missingColumnFromError(insertRes.error);
@@ -81,27 +107,32 @@ async function manualUpsertByProjectId(
       continue;
     }
 
-    return { id: null, error: insertRes.error };
+    return { id: null, status: null, confirmedAt: null, error: insertRes.error };
   }
 
-  return { id: null, error: { message: 'Insert failed after retries', code: 'CLIENT_RETRY' } };
+  return {
+    id: null,
+    status: null,
+    confirmedAt: null,
+    error: { message: 'Insert failed after retries', code: 'CLIENT_RETRY' },
+  };
 }
 
 async function upsertSiteVisitEventByProjectWithRetry(
   supabase: SupabaseClient,
   projectUuid: string,
   payloadIn: Record<string, any>,
-): Promise<{ id: string | null; error: any | null }> {
+): Promise<SiteVisitWriteResult> {
   const payload = { ...payloadIn };
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const res = await supabase
       .from('site_visit_events')
       .upsert(payload as any, { onConflict: 'project_id' })
-      .select('id')
+      .select('id, status, confirmed_at')
       .single();
 
-    if (!res.error) return { id: typeof (res.data as any)?.id === 'string' ? (res.data as any).id : null, error: null };
+    if (!res.error) return persistedWriteResult(res.data);
 
     if (isOnConflictConstraintMissing(res.error)) {
       return manualUpsertByProjectId(supabase, projectUuid, payload);
@@ -122,10 +153,15 @@ async function upsertSiteVisitEventByProjectWithRetry(
       continue;
     }
 
-    return { id: null, error: res.error };
+    return { id: null, status: null, confirmedAt: null, error: res.error };
   }
 
-  return { id: null, error: { message: 'Upsert failed after retries', code: 'CLIENT_RETRY' } };
+  return {
+    id: null,
+    status: null,
+    confirmedAt: null,
+    error: { message: 'Upsert failed after retries', code: 'CLIENT_RETRY' },
+  };
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
@@ -184,7 +220,41 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     return jsonOk({ ok: true, siteVisitEventId: upsertRes.id ? appIdFromUuid('sv', upsertRes.id) : null });
   }
 
-  // Confirmed bookings trigger automation side effects.
+  const persisted = await upsertSiteVisitEventByProjectWithRetry(
+    supabase,
+    projectUuid,
+    {
+      project_id: projectUuid,
+      status: 'CONFIRMED',
+      scheduled_start: start,
+      scheduled_end: end,
+      assigned_sales_owner_id: salespersonId,
+      assigned_sales_owner: salespersonId,
+      ...(notes ? { notes } : null),
+    },
+  );
+  if (persisted.error) {
+    const schemaMsg = salespersonSchemaMismatchMessage(persisted.error);
+    if (schemaMsg) return jsonError(schemaMsg, 500);
+    const msg = typeof persisted.error?.message === 'string'
+      ? persisted.error.message
+      : 'Failed to confirm site visit';
+    return jsonError(msg, 500);
+  }
+  if (persisted.status !== 'CONFIRMED') {
+    return jsonError('Site visit confirmation could not be verified', 500);
+  }
+
+  await recordPersistedConfirmedSiteVisitConversion({
+    projectId: projectUuid,
+    status: persisted.status,
+    confirmedAt: persisted.confirmedAt,
+    scheduledStart: start,
+    scheduledEnd: end,
+  });
+
+  // Legacy automation still owns its task/email side effects, but it no longer
+  // owns lifecycle analytics.
   await automationRunner.runEvent({
     type: 'ui.action.book_site_visit',
     projectId: projectUuid,
@@ -192,19 +262,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     primaryId: `confirmed:${start}`,
     payload: { status: 'CONFIRMED', scheduledStart: start, scheduledEnd: end, salespersonId, notes: notes || null },
   });
-
-  // Ensure assigned salesperson + notes are persisted even if the automation schema is behind.
-  await upsertSiteVisitEventByProjectWithRetry(supabase, projectUuid, {
-    project_id: projectUuid,
-    status: 'CONFIRMED',
-    scheduled_start: start,
-    scheduled_end: end,
-    assigned_sales_owner_id: salespersonId,
-    assigned_sales_owner: salespersonId,
-    ...(notes ? { notes } : null),
-    customer_notified: true,
-    last_notified_at: new Date().toISOString(),
-  }).then(() => null);
 
   const info = await loadProjectAndContact(projectUuid);
   return jsonOk({ ok: true, projectName: info.projectName || null });

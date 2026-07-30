@@ -1,6 +1,7 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { isMissingColumnError, missingColumnFromError, parseIso } from '@/lib/api/siteVisitsServer';
+import { recordPersistedConfirmedSiteVisitConversion } from '@/lib/marketingAttribution/siteVisitConversion';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
@@ -12,10 +13,9 @@ async function loadEventRow(
   eventUuid: string | null,
 ): Promise<{ data: any | null; error: any | null }> {
   const selects = [
-    'id, status, scheduled_start, scheduled_end, assigned_sales_owner_id, notes, updated_at',
-    'id, status, scheduled_start, scheduled_end, notes, updated_at',
-    'id, status, scheduled_start, scheduled_end, updated_at',
-    'id, status, scheduled_start, scheduled_end',
+    'id, status, scheduled_start, scheduled_end, assigned_sales_owner_id, notes, confirmed_at, updated_at',
+    'id, status, scheduled_start, scheduled_end, notes, confirmed_at, updated_at',
+    'id, status, scheduled_start, scheduled_end, confirmed_at, updated_at',
   ] as const;
 
   let lastErr: any | null = null;
@@ -42,23 +42,54 @@ async function loadEventRow(
   return { data: null, error: lastErr };
 }
 
-async function safeUpdate(supabase: SupabaseClient, projectUuid: string, eventUuid: string, patchIn: Record<string, any>): Promise<void> {
-  const patch = { ...patchIn };
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    const res = await supabase.from('site_visit_events').update(patch as any).eq('project_id', projectUuid).eq('id', eventUuid);
-    if (!res.error) return;
-    if (isMissingColumnError(res.error)) {
-      const missing = missingColumnFromError(res.error);
-      if (missing && missing in patch) {
-        delete patch[missing];
-        continue;
-      }
-      delete patch.customer_notified;
-      delete patch.last_notified_at;
-      continue;
-    }
-    return;
+async function confirmTentativeEvent(
+  supabase: SupabaseClient,
+  projectUuid: string,
+  eventUuid: string,
+): Promise<
+  | { ok: true; status: string; confirmedAt: string | null }
+  | { ok: false; status: 409 | 500; message: string }
+> {
+  const res = await supabase
+    .from('site_visit_events')
+    .update({ status: 'CONFIRMED' } as any)
+    .eq('project_id', projectUuid)
+    .eq('id', eventUuid)
+    .eq('status', 'TENTATIVE')
+    .select('id, status, confirmed_at')
+    .maybeSingle();
+
+  if (res.error) {
+    return {
+      ok: false,
+      status: 500,
+      message: res.error.message ?? 'Failed to persist site visit confirmation',
+    };
   }
+  if (!res.data) {
+    return {
+      ok: false,
+      status: 409,
+      message: 'Site visit changed before it could be confirmed. Refresh and try again.',
+    };
+  }
+
+  const persistedStatus = String((res.data as any).status ?? '').toUpperCase();
+  if (persistedStatus !== 'CONFIRMED') {
+    return {
+      ok: false,
+      status: 500,
+      message: 'Site visit confirmation could not be verified',
+    };
+  }
+  return {
+    ok: true,
+    status: persistedStatus,
+    confirmedAt:
+      typeof (res.data as any).confirmed_at === 'string'
+        ? (res.data as any).confirmed_at
+        : null,
+  };
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
@@ -91,30 +122,81 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const rowRes = await loadEventRow(supabase, projectUuid, eventUuid);
   if (rowRes.error || !rowRes.data) return jsonError('Site visit not found', 404);
 
+  const status = String((rowRes.data as any).status ?? '').toUpperCase();
+  if (status !== 'TENTATIVE' && status !== 'CONFIRMED') {
+    return jsonError('Only a tentative site visit can be confirmed', 409);
+  }
+
   const start = parseIso((rowRes.data as any).scheduled_start);
   const end = parseIso((rowRes.data as any).scheduled_end);
   if (!start) return jsonError('Cannot confirm: scheduled_start is missing', 409);
 
-  await automationRunner.runEvent({
-    type: 'ui.action.book_site_visit',
+  const eventId = String((rowRes.data as any).id ?? '');
+  const payload = {
+    status: 'CONFIRMED' as const,
+    scheduledStart: start,
+    scheduledEnd: end,
+    salespersonId: typeof (rowRes.data as any).assigned_sales_owner_id === 'string' ? (rowRes.data as any).assigned_sales_owner_id : null,
+    notes: typeof (rowRes.data as any).notes === 'string' ? (rowRes.data as any).notes : null,
+  };
+
+  let persistedStatus = status;
+  let confirmedAt: string | null;
+  if (status === 'TENTATIVE') {
+    const persisted = await confirmTentativeEvent(supabase, projectUuid, eventId);
+    if (!persisted.ok) return jsonError(persisted.message, persisted.status);
+    persistedStatus = persisted.status;
+    confirmedAt = persisted.confirmedAt;
+  } else {
+    confirmedAt =
+      typeof (rowRes.data as any).confirmed_at === 'string'
+        ? (rowRes.data as any).confirmed_at
+        : null;
+  }
+
+  const conversionRecorded = await recordPersistedConfirmedSiteVisitConversion({
     projectId: projectUuid,
-    stage: 'SITE_VISIT',
-    // Use the event id to avoid idempotency collisions with prior tentative saves.
-    primaryId: `confirm:${String((rowRes.data as any).id ?? '')}`,
-    payload: {
-      status: 'CONFIRMED',
+    status: persistedStatus,
+    confirmedAt,
+    scheduledStart: start,
+    scheduledEnd: end,
+  });
+  if (status === 'TENTATIVE' && !conversionRecorded) {
+    return jsonError(
+      'Site visit was confirmed, but its immutable confirmation time is unavailable',
+      500,
+    );
+  }
+  if (!conversionRecorded) {
+    return jsonOk({
+      ok: true,
+      alreadyConfirmed: true,
+      trackingReplayed: false,
       scheduledStart: start,
       scheduledEnd: end,
-      salespersonId: typeof (rowRes.data as any).assigned_sales_owner_id === 'string' ? (rowRes.data as any).assigned_sales_owner_id : null,
-      notes: typeof (rowRes.data as any).notes === 'string' ? (rowRes.data as any).notes : null,
-    },
-  });
+    });
+  }
 
-  await safeUpdate(supabase, projectUuid, String((rowRes.data as any).id ?? ''), {
-    status: 'CONFIRMED',
-    customer_notified: true,
-    last_notified_at: new Date().toISOString(),
-  });
+  try {
+    await automationRunner.runEvent({
+      type: 'ui.action.book_site_visit',
+      projectId: projectUuid,
+      stage: 'SITE_VISIT',
+      // Use the event id to avoid idempotency collisions with prior tentative saves.
+      primaryId: `confirm:${eventId}`,
+      payload,
+    });
+  } catch (error) {
+    // Confirmation is already authoritative and the idempotent conversion
+    // owner above has run. Keep the separate automation failure visible.
+    console.error('[site_visit_confirm] automation follow-up failed', error);
+  }
 
-  return jsonOk({ ok: true, scheduledStart: start, scheduledEnd: end });
+  return jsonOk({
+    ok: true,
+    alreadyConfirmed: status === 'CONFIRMED',
+    trackingReplayed: status === 'CONFIRMED' && conversionRecorded,
+    scheduledStart: start,
+    scheduledEnd: end,
+  });
 }
