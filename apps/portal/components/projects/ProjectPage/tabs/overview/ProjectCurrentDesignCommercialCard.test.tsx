@@ -42,6 +42,11 @@ describe('ProjectCurrentDesignCommercialCard', () => {
     expect(rendered.container.textContent).toContain('Quote-ready estimate total');
     expect(rendered.container.textContent).toContain('Current costing');
     expect(rendered.container.querySelectorAll('button')).toHaveLength(0);
+    expect(
+      rendered.container
+        .querySelector('a[href="/staff/design-booklets"]')
+        ?.textContent,
+    ).toBe('Open booklet workbench');
     rendered.unmount();
   });
 
