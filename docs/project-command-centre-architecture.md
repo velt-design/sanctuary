@@ -1,6 +1,6 @@
 # Project Operational Command Centre Architecture
 
-Status: Current architecture. The Overview V2 composition and portfolio-wide Project Work rollout are deployed to production. Staging is isolated on its own Supabase project and passed authenticated read-only verification. Production database/application postflight is complete; the protected authenticated GET-only production browser proof remains the final release check. The earlier narrow Contacts/Calculator bundle exception remains historical and did not raise either ceiling.
+Status: Current architecture. The Overview V2 composition and portfolio-wide Project Work rollout are deployed to production. Staging is isolated on its own Supabase project and passed authenticated read-only verification. Production database/application postflight and the authenticated GET-only production browser proof are complete. The earlier narrow Contacts/Calculator bundle exception remains historical and did not raise either ceiling.
 
 Approved handover baseline: `060bea19` on 2026-07-30.
 
@@ -713,11 +713,12 @@ Fixture route: `/qa/project-command-centre-fixture?scenario=...&work=...&state=.
 
 The broader acceptance matrix in section 14 remains required where the current browser specs do not yet assert a catalogued state or accessibility property. On 2026-07-30, the owned Overview V2 evidence passed:
 
-- `npm run test:portal:project-work`: 54 files and 297 tests.
-- `npm run test:portal:projects`: 98 files and 516 tests.
+- `npm run test:portal:project-work`: 55 files and 321 tests.
+- `npm run test:portal:projects`: 100 files and 520 tests.
 - Focused Overview/header/cache coverage passed; the final bundle-analyser regression pass adds 9 passing tests.
 - `npm run test:portal:browser`: 70 checks passed, with the existing Workbench Plan Editor check skipped by design.
 - `npm run test:portal:command-centre:read-only-auth`: the staging-readiness and credential preflights, authenticated setup, and integrated Overview smoke passed against the positively identified CLI-linked staging project. Identifier-free Web Vitals transport was suppressed and every other non-read request remained fail-closed; no business mutation was attempted.
+- `npm run test:portal:project-work:production-read-only-auth`: authenticated Projects/Dashboard, one real Overview, and the 779-entry paginated Work Queue passed against the exact production portal origin and Supabase ref. The guard blocked every non-read application request; a short-lived labelled QA login was hard-deleted immediately afterward and left no portal-access residue.
 - Full typecheck, lint, production portal build, docs impact/guard, architecture changed, changed-file, dead-code, and diff checks.
 - The unchanged Project Detail budget passed at the implementation checkpoint at 642.4 KiB raw / 184.9 KiB gzip initial, 978.5 KiB raw / 219.9 KiB gzip lazy total, and 858.6 KiB raw / 186.4 KiB gzip largest lazy entry. A fresh isolated build after the later intentional merge still passed at 642.6 KiB raw / 184.9 KiB gzip initial with the same lazy totals.
 - Historical pre-rollout evidence also included a 390x844 authenticated read-only inspection on one RLS-visible project. The portfolio follow-on requires fresh post-migration evidence and does not reuse that legacy-boundary result as rollout proof.

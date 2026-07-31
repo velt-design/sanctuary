@@ -11,6 +11,7 @@ import {
   suppressProjectWorkWebVitalsTelemetry,
   type BlockedProjectWorkMutation,
 } from "./support/projectWorkReadOnlyAuth";
+import { WORK_QUEUE_PAGE_SIZE } from "../apps/portal/components/projects/workQueue/workQueuePagination";
 
 interface WorkQueueResponse {
   entries: unknown[];
@@ -77,8 +78,20 @@ test("authenticated Work Queue is ready through its read-only route", async ({
           await expect(queueRows).toHaveCount(0);
           await expect(validEmptyState).toBeVisible();
         } else {
-          await expect(queueRows).toHaveCount(payload.entries.length);
+          await expect(queueRows).toHaveCount(
+            Math.min(payload.entries.length, WORK_QUEUE_PAGE_SIZE),
+          );
           await expect(validEmptyState).toHaveCount(0);
+
+          if (payload.entries.length > WORK_QUEUE_PAGE_SIZE) {
+            await page.getByRole("button", { name: "Next page" }).click();
+            await expect(queueRows).toHaveCount(
+              Math.min(
+                payload.entries.length - WORK_QUEUE_PAGE_SIZE,
+                WORK_QUEUE_PAGE_SIZE,
+              ),
+            );
+          }
         }
       },
     );

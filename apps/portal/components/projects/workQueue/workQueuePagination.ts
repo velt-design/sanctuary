@@ -1,4 +1,4 @@
-const WORK_QUEUE_PAGE_SIZE = 100;
+export const WORK_QUEUE_PAGE_SIZE = 100;
 
 export function workQueueTotalPages(
   entryCount: number,
