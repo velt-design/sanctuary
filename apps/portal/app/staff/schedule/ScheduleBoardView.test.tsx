@@ -525,7 +525,7 @@ describe('ScheduleBoardView', () => {
       dndMocks.latestContextProps.onDragStart({ active: { id: 'job_alpha' } });
       dndMocks.latestContextProps.onDragOver(shownTarget);
     });
-    expect(rendered.container.textContent).toContain('Drop at the end of Crew Alpha.');
+    expect(rendered.container.textContent).toContain('Drop at the end of Crew Alpha · position 1.');
 
     act(() => {
       dndMocks.latestContextProps.onDragEnd({

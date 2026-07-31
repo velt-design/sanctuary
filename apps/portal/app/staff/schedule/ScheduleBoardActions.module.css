@@ -8,11 +8,16 @@
   justify-content: center;
   width: 38px;
   height: 32px;
-  border: var(--ui-border-width) solid var(--ui-surface-inverse);
+  border: var(--ui-border-width) solid var(--ui-border-strong);
   border-radius: var(--ui-radius-control);
-  background: var(--ui-surface-inverse);
-  color: var(--ui-text-inverse);
+  background: var(--ui-surface-primary);
+  color: var(--ui-text-strong);
   cursor: pointer;
+}
+
+.trigger:hover:not(:disabled) {
+  border-color: var(--ui-action);
+  background: color-mix(in srgb, var(--ui-action) 6%, var(--ui-surface-primary));
 }
 
 .trigger:disabled {

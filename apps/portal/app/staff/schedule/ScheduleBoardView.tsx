@@ -232,12 +232,12 @@ function describeDropTarget(input: {
   if (target.kind === 'unscheduled') return 'Return this job to Unscheduled.';
   const crewName = input.installers.find((installer) => installer.id === target.laneId)?.name ?? 'crew';
   if (target.placement === 'end' || !target.overId || target.overId.startsWith('lane:')) {
-    return `Drop at the end of ${crewName}.`;
+    return `Drop at the end of ${crewName} · position ${target.insertionIndex + 1}.`;
   }
   const targetItem = input.scheduleItemById.get(target.overId) ?? null;
   const targetJob = targetItem ? input.jobsById.get(targetItem.id) ?? null : null;
   const targetName = targetJob?.projectName ?? (targetItem?.itemType === 'downtime' ? 'downtime' : 'the next job');
-  return `Drop in ${crewName}, before ${targetName}.`;
+  return `Drop in ${crewName} · position ${target.insertionIndex + 1}, before ${targetName}.`;
 }
 
 export default function ScheduleBoardView({
@@ -547,7 +547,7 @@ export default function ScheduleBoardView({
               const issueCount = ids.reduce((count, id) => count + (issueLevelByScheduleId.has(id) ? 1 : 0), 0);
 
               const cards: ReactNode[] = [];
-              for (const id of ids) {
+              for (const [itemIndex, id] of ids.entries()) {
                 const showInsertBefore = Boolean(laneDropTarget && laneDropTarget.overId === id && activeDragId !== id && activeDragId);
                 const job = schedulable.jobsById.get(id) ?? null;
                 const dates = barsByScheduleId.get(id);
@@ -570,6 +570,7 @@ export default function ScheduleBoardView({
                       issueLevel={issueLevel}
                       interactionDisabled={interaction.disabled}
                       interactionDisabledReason={interaction.reason}
+                      sequencePosition={itemIndex + 1}
                       onMount={(node) => boardCardRefs.current.set(id, node)}
                     />,
                   );
@@ -614,6 +615,7 @@ export default function ScheduleBoardView({
                     interactionDisabled={interaction.disabled}
                     interactionDisabledReason={interaction.reason}
                     changeFeedback={changeFeedback?.projectId === scheduleItem.projectId ? changeFeedback : null}
+                    sequencePosition={itemIndex + 1}
                     onMount={(node) => boardCardRefs.current.set(id, node)}
                   />,
                 );
@@ -651,7 +653,11 @@ export default function ScheduleBoardView({
                       }}
                     >
                       {ids.length ? (
-                        <div className={styles.cardList} data-drop-end={insertionAtEnd ? 'true' : undefined}>
+                        <div
+                          className={styles.cardList}
+                          data-drop-end={insertionAtEnd ? 'true' : undefined}
+                          data-drop-end-position={insertionAtEnd ? ids.length + 1 : undefined}
+                        >
                           {cards}
                         </div>
                       ) : (

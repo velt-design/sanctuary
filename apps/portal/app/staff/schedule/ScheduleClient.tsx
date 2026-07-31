@@ -67,6 +67,7 @@ import {
 import { buildScheduleBoardModelV2 } from './ScheduleBoardModelV2';
 import { buildScheduleJobPresentationIndex } from './ScheduleJobPresentation';
 import { logScheduleDebug } from './scheduleDebug';
+import { resolveScheduleBoardOrderChange } from './scheduleBoardOrder';
 import {
   isValidScheduleMutationEnvelope,
   parseScheduleConfirmationEnvelope,
@@ -3183,8 +3184,15 @@ export default function ScheduleClient({
       if (!isScheduled) {
         const job = schedulable.jobsById.get(activeId);
         if (!job) return;
-        const existing = laneItems.get(destInstallerId) ?? [];
-        const destIndex = Math.max(0, Math.min(dropTarget.insertionIndex, existing.length));
+        const existing = (laneItems.get(destInstallerId) ?? []).map((item) => item.id);
+        const orderChange = resolveScheduleBoardOrderChange({
+          activeId,
+          sourceIds: [],
+          destinationIds: existing,
+          requestedIndex: dropTarget.insertionIndex,
+          sameLane: false,
+        });
+        const destIndex = orderChange.insertionIndex;
         let projectUuid: string;
         let crewUuid: string;
         try {
@@ -3259,15 +3267,17 @@ export default function ScheduleClient({
       const destList = (laneItems.get(destInstallerId) ?? []).map((i) => i.id);
 
       if (sourceInstallerId === destInstallerId && resolvedOverId === activeId) return;
+      const orderChange = resolveScheduleBoardOrderChange({
+        activeId,
+        sourceIds: sourceList,
+        destinationIds: destList,
+        requestedIndex: dropTarget.insertionIndex,
+        sameLane: sourceInstallerId === destInstallerId,
+      });
+      if (!orderChange.changed) return;
 
-      const destIndex = Math.max(0, Math.min(dropTarget.insertionIndex, sourceInstallerId === destInstallerId ? Math.max(0, destList.length - 1) : destList.length));
-      if (sourceInstallerId === destInstallerId && sourceList.indexOf(activeId) === destIndex) return;
-
-      const nextSource = sourceList.filter((id) => id !== activeId);
-      const nextDest = sourceInstallerId === destInstallerId ? nextSource.slice() : destList.slice();
-      const insertAt = destIndex;
-
-      nextDest.splice(Math.max(0, insertAt), 0, activeId);
+      const nextDest = orderChange.destinationIds;
+      const insertAt = orderChange.insertionIndex;
 
       if (sourceInstallerId === destInstallerId) {
         let crewUuid: string;

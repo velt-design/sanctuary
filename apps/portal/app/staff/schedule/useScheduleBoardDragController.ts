@@ -135,6 +135,7 @@ export function useScheduleBoardDragController(input: {
   const renderedTargetRef = useRef<{ target: BoardDropTarget; debug: ScheduleBoardDropDebug } | null>(null);
   const activeDragIdRef = useRef<string | null>(null);
   const remeasureFrameRef = useRef<number | null>(null);
+  const latestMoveEventRef = useRef<DragMoveEvent | null>(null);
   const lastDropTargetSignatureRef = useRef<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [boardDropTarget, setBoardDropTarget] = useState<BoardDropTarget | null>(null);
@@ -214,6 +215,7 @@ export function useScheduleBoardDragController(input: {
     if (remeasureFrameRef.current !== null) window.cancelAnimationFrame(remeasureFrameRef.current);
     remeasureFrameRef.current = null;
     activeDragIdRef.current = null;
+    latestMoveEventRef.current = null;
     dragGeometryRef.current = null;
     renderedTargetRef.current = null;
     lastDropTargetSignatureRef.current = null;
@@ -233,6 +235,7 @@ export function useScheduleBoardDragController(input: {
     if (input.interactionDisabled) return;
     const activeId = String(event.active.id);
     activeDragIdRef.current = activeId;
+    latestMoveEventRef.current = null;
     dragGeometryRef.current = measureGeometry();
     renderedTargetRef.current = null;
     lastDropTargetSignatureRef.current = null;
@@ -240,18 +243,20 @@ export function useScheduleBoardDragController(input: {
     setBoardDropTarget(null);
   }, [input.interactionDisabled, measureGeometry]);
 
-  const scheduleRemeasure = useCallback((event: DragMoveEvent) => {
+  const scheduleRemeasure = useCallback(() => {
     if (remeasureFrameRef.current !== null) window.cancelAnimationFrame(remeasureFrameRef.current);
     remeasureFrameRef.current = window.requestAnimationFrame(() => {
       remeasureFrameRef.current = null;
-      if (!activeDragIdRef.current) return;
-      const { target, debug } = resolveDrop(event, true);
+      const latestEvent = latestMoveEventRef.current;
+      if (!activeDragIdRef.current || !latestEvent) return;
+      const { target, debug } = resolveDrop(latestEvent, true);
       applyDropTarget(target, debug, 'move');
     });
   }, [applyDropTarget, resolveDrop]);
 
   const handleDragMove = useCallback((event: DragMoveEvent) => {
     if (!activeDragIdRef.current) return;
+    latestMoveEventRef.current = event;
     const { target, debug } = resolveDrop(event);
     applyDropTarget(target, debug, 'move');
     const point = dragPointerFromEvent(event);
@@ -295,7 +300,7 @@ export function useScheduleBoardDragController(input: {
 
     if (scrolled) {
       dragGeometryRef.current = null;
-      scheduleRemeasure(event);
+      scheduleRemeasure();
     }
   }, [applyDropTarget, resolveDrop, scheduleRemeasure]);
 
@@ -305,7 +310,12 @@ export function useScheduleBoardDragController(input: {
       return;
     }
     const activeId = String(event.active.id);
-    const rendered = renderedTargetRef.current ?? resolveDrop(event, true);
+    if (remeasureFrameRef.current !== null) window.cancelAnimationFrame(remeasureFrameRef.current);
+    remeasureFrameRef.current = null;
+    // Release is authoritative: resolve once against current card/lane geometry
+    // so a delayed scroll remeasure can never commit an older visual target.
+    const finalTarget = resolveDrop(event, true);
+    const rendered = finalTarget.target.valid ? finalTarget : renderedTargetRef.current ?? finalTarget;
     const drop = toBoardDrop(rendered.target, rendered.debug);
     logScheduleDebug('board.drop.end', { ...rendered.debug, valid: Boolean(drop) });
     clearDragState();

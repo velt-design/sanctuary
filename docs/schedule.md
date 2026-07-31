@@ -134,7 +134,7 @@ When touching fallback:
 
 Board, Gantt, and the legacy fallback render inside the full-width compact foundation canvas and shared searchable staff header without moving read or mutation ownership. Schedule view controls and page actions remain schedule-owned; global Projects/Contacts discovery remains separate from those controls. V2 load failures, scheduling issues, and action failures use shared accessible feedback. The dormant Site Visit surface retains its existing stale/error and dialog behavior for direct compatibility access. Schedule action dialogs use the shared focus trap and return focus to their trigger; active V2 locked-job unscheduling and downtime deletion use the extracted confirmation owner.
 
-On larger screens, Board crew lanes use a responsive wrapping grid instead of a horizontally scrolling strip. Up to four lanes share a row, so eight crews fit as two rows when the available Board width permits; narrower desktop containers reduce the column count and keep vertical scrolling inside the lane grid or lane body. The Unscheduled queue is narrower, and neither its cards nor crew cards create horizontal scroll. Wrapped-row drag movement retains semantic crew targets and auto-scrolls the owning grid toward offscreen rows.
+On larger screens, Board crew lanes use a responsive wrapping grid instead of a horizontally scrolling strip. Up to three readable lanes share a row; narrower desktop containers reduce to two or one, while the lane grid owns vertical movement between crew rows. A normal lane is tall enough to show a typical two-job sequence without an immediate nested scroll trap, while large crews retain a bounded lane-body scroll. The Unscheduled queue is narrower, and neither its cards nor crew cards create horizontal scroll. Wrapped-row drag movement retains semantic crew targets and auto-scrolls the owning grid toward offscreen rows.
 
 The crew filter is one browser-saved presentation preference shared by Board
 and Gantt. Staff can hide individual crews, hide empty crews, or restore
@@ -153,8 +153,12 @@ Board job cards keep project-open, move, and actions as separate sibling
 controls. Pointer and keyboard drag activation belongs only to the labelled
 Move control; the card container is not a nested interactive surface. Board
 drag targeting is pointer-owned, keeps the source card anchored, renders one
-overlay and a non-layout-shifting insertion cue, and commits the last visible
-semantic destination. Same-position/unscheduled drops, hidden crews, and
+overlay and a non-layout-shifting insertion cue, and names the exact one-based
+queue position. Release remeasures current geometry and commits that valid
+destination, falling back to the last visible valid cue only when end-event
+collision data disappears. The zero-based Schedule V2 command position is
+derived by the pure `scheduleBoardOrder.ts` owner after removing the moving
+card from its source lane. Same-position/unscheduled drops, hidden crews, and
 cross-crew downtime moves are rejected before a command. While any Schedule
 write or authoritative reconciliation is active, Board move and action
 controls are unavailable before activation. The affected project card names
@@ -181,6 +185,7 @@ Customer, and Exceptions. Redundant +1/+2 duration commands live inside Set
 duration rather than expanding the job-level panel. `ScheduleBoardCards.tsx`
 owns card composition; `ScheduleBoardActions.tsx` owns the grouped action
 presenter;
+`scheduleBoardOrder.ts` owns exact beginning/middle/end and cross-crew order;
 `ScheduleCrewFilter.tsx` and `useScheduleCrewVisibility.ts` own the shared
 view-only crew preference.
 
@@ -286,13 +291,14 @@ npx playwright test playwright/portal.schedule-board-confidence-fixture.spec.ts 
 npx playwright test playwright/portal.schedule-board-confidence-fixture.spec.ts --project=portal-chromium --workers=1
 ```
 
-The focused Schedule gate currently passes 52 files and 393 tests, including
+The focused Schedule gate currently passes 53 files and 406 tests, including
 atomic Gantt adjustment, confirmed-preview continuity, stale-response
 rejection, strict affected-job confirmation/cancellation,
 cross-instance mutation ownership, malformed-response rejection, optimistic
 rollback/reconciliation, cache authority, nine-crew Board rendering,
 crew-filter persistence/fail-open recovery, hidden-lane exclusion,
-pointer-owned drop geometry, stable visible-target commit, proportional
+pointer-owned drop geometry, fresh release remeasurement, exhaustive insertion
+positions and cross-crew ordering, proportional
 auto-scroll, blocked uncommittable gestures, grouped actions, card-level
 transaction outcomes, Board control semantics, shared job
 identity/search presentation, server-authoritative Gantt timing review,
@@ -318,11 +324,13 @@ presenters with long customer/site identity, nine crews, conflicts, 12
 unscheduled jobs, and an optional 108-bar large schedule. Every command
 callback is inert. Use `?view=board|gantt&scale=standard|large` for deterministic
 responsive and performance evidence without creating or mutating shared
-Schedule records. Board additionally accepts
+Schedule records. Board drops update fixture-only in-memory arrays so the
+rendered committed position can be asserted without any API/RPC call. Board additionally accepts
 `&state=checking|reviewing|saving|reconciling|saved|restored|verified` to render
 transaction feedback without a command. Run
 `playwright/portal.schedule-board-confidence-fixture.spec.ts` with the
-`portal-fixture` project for the six-width/200%-zoom, held-pointer drag,
+`portal-fixture` project for the six-width/200%-zoom, beginning/middle/end and
+cross-crew order, held-pointer drag,
 grouped-action, focus-return, no-write, and state matrix.
 Use `portal-chromium` after the normal staff-auth setup to prove the same inert
 matrix in an authenticated browser context; use `portal-fixture` for the

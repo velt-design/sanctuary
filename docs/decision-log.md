@@ -4431,16 +4431,22 @@ the last cue, fail only after release, or appear to spring back without saying
 whether the server saved it. That makes everyday planning feel non-authoritative
 even when the V2 command contract is correct.
 Current guardrail: Derive pointer targets from activation coordinates plus drag
-delta, keep source geometry stable, render non-layout-shifting cues, and commit
-the last visible semantic target. Reject no-op/restricted destinations and
+delta, keep source geometry stable, render non-layout-shifting cues with the
+exact queue position, and remeasure current geometry on release. Commit that
+valid result, falling back to the last visible valid target only if final
+collision data disappears. Resolve the zero-based command position in one pure
+post-removal order owner shared by optimistic production handling and the
+in-memory QA fixture. Reject no-op/restricted destinations and
 disable move/action controls before an uncommittable gesture. Present the
 existing preview/save/rollback/reconciliation lifecycle on the affected card;
 never infer persistence in the drag owner. Group job commands by intent and
-keep duration shortcuts inside the duration dialog. Prove gestures and all
-transaction states against the inert fixture, never shared data.
+keep duration shortcuts inside the duration dialog. Prove every insertion
+position, representative rendered beginning/middle/end and cross-crew moves,
+and all transaction states against the in-memory fixture, never shared data.
 Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`;
 `docs/portal-production-readiness.md`
 Related docs/tests: `apps/portal/app/staff/schedule/useScheduleBoardDragController.ts`;
 `apps/portal/app/staff/schedule/useScheduleBoardChangeFeedback.ts`;
+`apps/portal/app/staff/schedule/scheduleBoardOrder.ts`;
 `apps/portal/app/staff/schedule/ScheduleBoardActions.tsx`;
 `playwright/portal.schedule-board-confidence-fixture.spec.ts`

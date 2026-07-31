@@ -9,6 +9,10 @@ import type {
   ScheduleBoardChangePhase,
 } from '@/app/staff/schedule/useScheduleBoardChangeFeedback';
 import { addDaysYmd } from '@/lib/scheduling/date';
+import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
+import type { ScheduleItem } from '@/lib/types/scheduling';
+import type { ScheduleBoardDrop } from '@/app/staff/schedule/ScheduleBoardView';
+import { resolveScheduleBoardOrderChange } from '@/app/staff/schedule/scheduleBoardOrder';
 import { boardModelForFixture, createScheduleOpsFixture } from './fixtures';
 import styles from './scheduleOpsFixture.module.css';
 
@@ -28,13 +32,21 @@ export default function ScheduleOpsFixtureClient({
   const [unscheduledCollapsed, setUnscheduledCollapsed] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [laneItems, setLaneItems] = useState(() => new Map(
+    Array.from(fixture.laneItems, ([crewId, items]) => [crewId, items.map((item) => ({ ...item }))]),
+  ));
+  const [scheduleItemById, setScheduleItemById] = useState(() => new Map(
+    Array.from(fixture.scheduleItemById, ([id, item]) => [id, { ...item }]),
+  ));
+  const [unscheduledJobs, setUnscheduledJobs] = useState(() => fixture.unscheduledJobs.slice());
+  const [dragFeedback, setDragFeedback] = useState<ScheduleBoardChangeFeedback | null>(null);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
   const visibleUnscheduled = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return fixture.unscheduledJobs;
-    return fixture.unscheduledJobs.filter((job) => (job.searchText ?? '').includes(normalized));
-  }, [fixture.unscheduledJobs, query]);
+    if (!normalized) return unscheduledJobs;
+    return unscheduledJobs.filter((job) => (job.searchText ?? '').includes(normalized));
+  }, [query, unscheduledJobs]);
   const noMutation = () => undefined;
   const fixtureActions = (): ScheduleBoardMenuAction[] => [
     { label: 'Set duration…', group: 'timing', onClick: noMutation },
@@ -46,7 +58,7 @@ export default function ScheduleOpsFixtureClient({
     { label: 'Edit downtime…', group: 'timing', onClick: noMutation },
     { label: 'Delete downtime', group: 'exceptions', tone: 'danger', onClick: noMutation },
   ];
-  const feedbackProjectId = Array.from(fixture.scheduleItemById.values()).find(
+  const feedbackProjectId = Array.from(scheduleItemById.values()).find(
     (item) => item.itemType !== 'downtime',
   )?.projectId ?? null;
   const changeFeedback: ScheduleBoardChangeFeedback | null = initialState && feedbackProjectId
@@ -57,12 +69,81 @@ export default function ScheduleOpsFixtureClient({
         destination: fixture.installers[1]?.name ?? fixture.installers[0]?.name ?? 'Fixture crew',
         phase: initialState,
       }
-    : null;
+    : dragFeedback;
   const interactionDisabled = Boolean(initialState && ['checking', 'reviewing', 'saving', 'reconciling'].includes(initialState));
 
   if (!hydrated) {
     return <div className={styles.loading} role="status">Loading synthetic Schedule fixture…</div>;
   }
+
+  const handleFixtureDrop = (activeId: string, drop: ScheduleBoardDrop) => {
+    if (drop.kind === 'unscheduled') return;
+    const destinationCrewId = drop.laneId;
+    const activeItem = scheduleItemById.get(activeId) ?? null;
+    const sourceCrewId = activeItem?.installerId ?? null;
+    const sourceIds = sourceCrewId ? (laneItems.get(sourceCrewId) ?? []).map((item) => item.id) : [];
+    const destinationIds = (laneItems.get(destinationCrewId) ?? []).map((item) => item.id);
+    const order = resolveScheduleBoardOrderChange({
+      activeId,
+      sourceIds,
+      destinationIds,
+      requestedIndex: drop.insertionIndex,
+      sameLane: sourceCrewId === destinationCrewId,
+    });
+    if (!order.changed) return;
+
+    const job = fixture.jobsById.get(activeId) ?? null;
+    const nextItem: ScheduleItem | null = activeItem
+      ? { ...activeItem, installerId: destinationCrewId }
+      : job
+        ? {
+            id: job.id,
+            projectId: job.projectId,
+            estimateId: job.estimateId,
+            installerId: destinationCrewId,
+            sortIndex: order.insertionIndex,
+            scheduleStatus: 'TENTATIVE',
+            locked: false,
+            itemType: 'job',
+            forecastStart: fixture.today,
+            forecastEndExclusive: addDaysYmd(fixture.today, Math.max(1, Math.ceil(job.durationHours / WORK_HOURS_PER_DAY))),
+            forecastDurationDays: Math.max(1, Math.ceil(job.durationHours / WORK_HOURS_PER_DAY)),
+            durationHoursOverride: job.durationHours,
+            mode: 'floating',
+            jobStatus: 'not_started',
+            updatedAt: new Date().toISOString(),
+          }
+        : null;
+    if (!nextItem || !job) return;
+
+    const nextItemById = new Map(scheduleItemById);
+    nextItemById.set(activeId, nextItem);
+    const nextLanes = new Map(laneItems);
+    if (sourceCrewId && sourceCrewId !== destinationCrewId) {
+      nextLanes.set(sourceCrewId, order.sourceIds.map((id, index) => {
+        const updated = { ...nextItemById.get(id)!, sortIndex: index };
+        nextItemById.set(id, updated);
+        return updated;
+      }));
+    }
+    nextLanes.set(destinationCrewId, order.destinationIds.map((id, index) => {
+      const item = id === activeId ? nextItem : nextItemById.get(id)!;
+      const updated = { ...item, installerId: destinationCrewId, sortIndex: index };
+      nextItemById.set(id, updated);
+      return updated;
+    }));
+    setLaneItems(nextLanes);
+    setScheduleItemById(nextItemById);
+    setUnscheduledJobs((jobs) => jobs.filter((candidate) => candidate.id !== activeId));
+    const crewName = fixture.installers.find((crew) => crew.id === destinationCrewId)?.name ?? 'Fixture crew';
+    setDragFeedback({
+      id: Date.now(),
+      projectId: job.projectId,
+      action: activeItem ? (sourceCrewId === destinationCrewId ? 'Reorder' : 'Move') : 'Schedule',
+      destination: `${crewName} · position ${order.insertionIndex + 1}`,
+      phase: 'verified',
+    });
+  };
 
   return (
     <div className={styles.fixture} data-schedule-ops-view={view} data-schedule-ops-scale={scale}>
@@ -99,9 +180,9 @@ export default function ScheduleOpsFixtureClient({
           installers={fixture.installers}
           schedulable={boardModel.schedulable}
           unscheduledJobs={visibleUnscheduled}
-          unscheduledJobsAll={fixture.unscheduledJobs}
-          laneItems={fixture.laneItems}
-          scheduleItemById={fixture.scheduleItemById}
+          unscheduledJobsAll={unscheduledJobs}
+          laneItems={laneItems}
+          scheduleItemById={scheduleItemById}
           barsByScheduleId={fixture.barsByScheduleId}
           issueLevelByScheduleId={new Map(
             fixture.scheduleIssues.flatMap((issue) =>
@@ -115,7 +196,7 @@ export default function ScheduleOpsFixtureClient({
           onQueryChange={setQuery}
           onToggleUnscheduledCollapsed={() => setUnscheduledCollapsed((value) => !value)}
           onShowCompletedChange={setShowCompleted}
-          onDrop={noMutation}
+          onDrop={handleFixtureDrop}
           interaction={{
             disabled: interactionDisabled,
             reason: interactionDisabled ? 'Synthetic schedule change in progress.' : undefined,
@@ -129,8 +210,8 @@ export default function ScheduleOpsFixtureClient({
           today={fixture.today}
           scheduleMode="v2"
           installers={fixture.installers}
-          laneItems={fixture.laneItems}
-          visibleScheduleItems={Array.from(fixture.scheduleItemById.values())}
+          laneItems={laneItems}
+          visibleScheduleItems={Array.from(scheduleItemById.values())}
           projectsById={fixture.projectsById}
           estimatesById={new Map()}
           scheduleBars={fixture.scheduleBars}

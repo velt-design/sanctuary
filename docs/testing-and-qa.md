@@ -789,8 +789,10 @@ shared data, enable `ENABLE_PORTAL_QA_FIXTURES=1` and open
 `/qa/schedule-ops-fixture?view=board|gantt&scale=standard|large`. The fixture
 uses the production Board/Gantt presenters with nine crews, long
 customer/site identity, conflicts, 12 unscheduled jobs, and 108 bars at large
-scale. Its mutation callbacks are inert; **Preview change review** opens the
-current-to-proposed Gantt confirmation contract without a Schedule command.
+scale. Board drop callbacks update fixture-only in-memory arrays so rendered
+order can be asserted; no API/RPC command is available. **Preview change
+review** opens the current-to-proposed Gantt confirmation contract without a
+Schedule command.
 Verify 1600x1000, 1440x900, 1280x800, 1024x900, 768x1024, 390x844, and a
 half-sized CSS viewport equivalent to 200% zoom. Assert zero document-level
 horizontal overflow while preserving the specialist Board/Gantt scroll owner.
@@ -810,8 +812,8 @@ The Board fixture accepts
 `&state=checking|reviewing|saving|reconciling|saved|restored|verified`. The gate
 covers 1600/1440/1280/1024/768/390, 200% zoom, grouped job actions and focus
 return, a held pointer drag whose source stays anchored, the visible semantic
-destination, disabled gestures during uncommitted work, and absence of staff
-API writes.
+destination, exact beginning/middle/end insertion and cross-crew order,
+disabled gestures during uncommitted work, and absence of staff API writes.
 
 Minimum targeted schedule tests:
 

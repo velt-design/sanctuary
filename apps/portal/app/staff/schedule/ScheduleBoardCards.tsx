@@ -84,6 +84,7 @@ function JobCardShell({
   style,
   dropTarget,
   changeFeedback,
+  sequencePosition,
 }: {
   dragId?: string;
   title: string;
@@ -110,6 +111,7 @@ function JobCardShell({
   style?: CSSProperties;
   dropTarget?: boolean;
   changeFeedback?: ScheduleBoardChangeFeedback | null;
+  sequencePosition?: number;
 }) {
   const identity = (
     <>
@@ -144,6 +146,11 @@ function JobCardShell({
     >
       <div className={styles.jobTopRow}>
         <div className={styles.jobMain}>
+          {sequencePosition ? (
+            <span className={styles.sequencePosition} data-schedule-position={sequencePosition}>
+              Position {sequencePosition}
+            </span>
+          ) : null}
           {onOpen ? (
             <button
               type="button"
@@ -272,6 +279,7 @@ export function ScheduledJobCard({
   interactionDisabled = false,
   interactionDisabledReason,
   changeFeedback,
+  sequencePosition,
 }: {
   id: string;
   job: SchedulableJob | null;
@@ -286,6 +294,7 @@ export function ScheduledJobCard({
   interactionDisabled?: boolean;
   interactionDisabledReason?: string;
   changeFeedback?: ScheduleBoardChangeFeedback | null;
+  sequencePosition?: number;
 }) {
   const router = useRouter();
   const locked = isLockedScheduleStatus(scheduleStatus);
@@ -327,6 +336,7 @@ export function ScheduledJobCard({
         />
       }
       changeFeedback={changeFeedback}
+      sequencePosition={sequencePosition}
       cardRef={(node) => {
         setNodeRef(node as any);
         onMount?.(node);
@@ -348,6 +358,7 @@ export function DowntimeCard({
   onMount,
   interactionDisabled = false,
   interactionDisabledReason,
+  sequencePosition,
 }: {
   id: string;
   item: ScheduleItem;
@@ -358,6 +369,7 @@ export function DowntimeCard({
   onMount?: (node: HTMLElement | null) => void;
   interactionDisabled?: boolean;
   interactionDisabledReason?: string;
+  sequencePosition?: number;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useSortable({ id, disabled: interactionDisabled });
   const style = {
@@ -403,6 +415,7 @@ export function DowntimeCard({
       dragHandleRef={setActivatorNodeRef}
       style={style}
       dropTarget={dropTarget}
+      sequencePosition={sequencePosition}
     />
   );
 }

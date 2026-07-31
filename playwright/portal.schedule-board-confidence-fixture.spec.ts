@@ -10,6 +10,43 @@ async function expectNoDocumentOverflow(page: Page) {
   expect(width.scroll).toBeLessThanOrEqual(width.client + 1);
 }
 
+async function cardOrder(page: Page, crewId: string): Promise<string[]> {
+  return page.locator(`[data-board-lane-id="${crewId}"] [data-schedule-card-id]`).evaluateAll((cards) =>
+    cards.map((card) => card.getAttribute('data-schedule-card-id') ?? ''),
+  );
+}
+
+async function dragCardToIndex(page: Page, activeId: string, crewId: string, insertionIndex: number) {
+  const source = page.locator(`[data-schedule-card-id="${activeId}"]`);
+  const handle = source.getByRole('button', { name: /^Move / });
+  const laneBody = page.locator(`[data-board-lane-body="${crewId}"]`);
+  await expect(handle).toBeVisible();
+  await laneBody.evaluate((lane) => { lane.scrollTop = lane.scrollHeight; });
+  const destinationCards = laneBody.locator('[data-schedule-card-id]');
+  const handleBox = await handle.boundingBox();
+  const laneBox = await laneBody.boundingBox();
+  expect(handleBox && laneBox).toBeTruthy();
+  if (!handleBox || !laneBox) return;
+
+  let targetY = laneBox.y + laneBox.height / 2;
+  const destinationCount = await destinationCards.count();
+  if (insertionIndex < destinationCount) {
+    const targetBox = await destinationCards.nth(insertionIndex).boundingBox();
+    expect(targetBox).toBeTruthy();
+    if (targetBox) targetY = targetBox.y + Math.min(8, targetBox.height / 4);
+  } else {
+    targetY = laneBox.y + laneBox.height - 12;
+  }
+
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handleBox.x + handleBox.width / 2 + 12, handleBox.y + handleBox.height / 2, { steps: 3 });
+  await page.mouse.move(laneBox.x + laneBox.width / 2, targetY, { steps: 12 });
+  await expect(page.locator('[data-board-drag-overlay="true"]')).toContainText(`position ${insertionIndex + 1}`);
+  await page.mouse.up();
+  await expect(page.locator('[data-board-drag-overlay="true"]')).toHaveCount(0);
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test('keeps Board confidence controls operational across realistic widths without server writes', async ({ page }) => {
@@ -81,6 +118,45 @@ test('shows a stable pointer destination while the source card stays anchored', 
   expect(during?.y).toBeCloseTo(before.y, 0);
   await page.mouse.up();
   await expect(overlay).toHaveCount(0);
+});
+
+test('commits the exact indicated beginning, middle, end, and cross-crew order in memory only', async ({ page }) => {
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/staff/') && request.method() !== 'GET') writes.push(request.url());
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  await page.goto(FIXTURE_PATH);
+  await dragCardToIndex(page, 'fixture-schedule-10', 'fixture-crew-2', 0);
+  expect(await cardOrder(page, 'fixture-crew-2')).toEqual(['fixture-schedule-10', 'fixture-schedule-1']);
+
+  await page.goto(FIXTURE_PATH);
+  await dragCardToIndex(page, 'fixture-unscheduled-18', 'fixture-crew-2', 1);
+  expect(await cardOrder(page, 'fixture-crew-2')).toEqual([
+    'fixture-schedule-1',
+    'fixture-unscheduled-18',
+    'fixture-schedule-10',
+  ]);
+
+  await page.goto(FIXTURE_PATH);
+  await dragCardToIndex(page, 'fixture-unscheduled-18', 'fixture-crew-2', 2);
+  expect(await cardOrder(page, 'fixture-crew-2')).toEqual([
+    'fixture-schedule-1',
+    'fixture-schedule-10',
+    'fixture-unscheduled-18',
+  ]);
+  await expect(page.locator('[data-schedule-card-id="fixture-unscheduled-18"] [data-schedule-position="3"]')).toBeVisible();
+
+  await page.goto(FIXTURE_PATH);
+  await dragCardToIndex(page, 'fixture-schedule-1', 'fixture-crew-3', 2);
+  expect(await cardOrder(page, 'fixture-crew-2')).toEqual(['fixture-schedule-10']);
+  expect(await cardOrder(page, 'fixture-crew-3')).toEqual([
+    'fixture-schedule-2',
+    'fixture-schedule-11',
+    'fixture-schedule-1',
+  ]);
+  expect(writes).toEqual([]);
 });
 
 for (const state of ['checking', 'reviewing', 'saving', 'reconciling', 'saved', 'restored', 'verified'] as const) {

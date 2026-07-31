@@ -118,6 +118,7 @@
   min-width: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .unscheduledBody[data-over='true'],
@@ -176,14 +177,20 @@
 }
 
 .cardList[data-drop-end='true']::after {
-  content: '';
+  content: 'Drop here · position ' attr(data-drop-end-position);
   position: absolute;
-  right: 4px;
-  bottom: -6px;
-  left: 4px;
-  height: 3px;
+  right: 0;
+  bottom: -38px;
+  left: 0;
+  min-height: 30px;
+  display: grid;
+  place-items: center;
+  border: var(--ui-border-width-emphasis) dashed var(--ui-action);
   border-radius: var(--ui-radius-control);
-  background: var(--ui-action);
+  background: color-mix(in srgb, var(--ui-action) 8%, var(--ui-surface-primary));
+  color: var(--ui-text-strong);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .jobCard {
@@ -192,9 +199,9 @@
   border: var(--ui-border-width) solid var(--ui-border);
   border-radius: var(--ui-radius-panel);
   background: var(--ui-surface-elevated);
-  padding: 8px;
+  padding: 10px;
   box-shadow: none;
-  transition: opacity 0.15s ease, border-color 0.15s ease;
+  transition: opacity 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .jobCard:hover {
@@ -208,14 +215,22 @@
 }
 
 .jobCard[data-drop-target='true']::before {
-  content: '';
+  content: 'Insert here';
   position: absolute;
-  top: -7px;
-  right: 4px;
-  left: 4px;
-  height: 3px;
+  top: -15px;
+  right: 8px;
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
   border-radius: var(--ui-radius-control);
   background: var(--ui-action);
+  color: var(--ui-text-inverse);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  z-index: 2;
 }
 
 .jobCard[data-issue-level='warning'] {
@@ -243,6 +258,17 @@
 .jobMain {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.sequencePosition {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ui-text-subtle);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .jobIdentity,
@@ -315,13 +341,15 @@
 
 .jobTitle {
   display: block;
-  font-weight: 500;
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  white-space: nowrap;
+  font-weight: 750;
+  font-size: 14px;
+  line-height: 1.25;
+  letter-spacing: 0.005em;
+  text-transform: none;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .jobIdentityDetail,
@@ -439,7 +467,8 @@
   gap: 7px;
   margin-top: 7px;
   font-size: 12px;
-  color: var(--ui-text-muted);
+  color: var(--ui-text-strong);
+  font-weight: 650;
 }
 
 .timingDivider {
@@ -462,9 +491,8 @@
   margin-top: 5px;
   color: var(--ui-text-muted);
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 650;
+  letter-spacing: 0.01em;
 }
 
 .cardChangeFeedback {
@@ -480,6 +508,7 @@
   color: var(--ui-text-strong);
   font-size: 11px;
   font-weight: 800;
+  border-radius: var(--ui-radius-control);
 }
 
 .cardChangeFeedback[data-state='saved'],
@@ -496,7 +525,8 @@
 .cardChangeDestination {
   min-width: 0;
   overflow: hidden;
-  color: var(--ui-text-muted);
+  color: var(--ui-text-strong);
+  font-weight: 650;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -524,18 +554,18 @@
 }
 
 .lanes {
-  --board-column-count: 4;
+  --board-column-count: 3;
   padding: 14px;
   flex: 1;
   min-height: 0;
   display: grid;
   grid-template-columns: repeat(var(--board-column-count), minmax(0, 1fr));
-  grid-auto-rows: minmax(220px, 1fr);
-  gap: 12px;
+  grid-auto-rows: 430px;
+  gap: 14px;
   overflow-x: hidden;
   overflow-y: auto;
   align-items: stretch;
-  align-content: stretch;
+  align-content: start;
 }
 
 .lanes[data-visible-crew-count='0'],
@@ -565,7 +595,7 @@
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  height: 100%;
+  height: 430px;
 }
 
 .lane[data-over='true'] {
@@ -574,7 +604,7 @@
 }
 
 .laneHeader {
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-bottom: var(--ui-border-width) solid var(--ui-border);
   display: flex;
   align-items: center;
@@ -597,7 +627,11 @@
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  font-weight: 500;
+  font-weight: 800;
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .smallMeta {
@@ -736,9 +770,9 @@
   box-shadow: none;
 }
 
-@container schedule-board-main (max-width: 820px) {
+@container schedule-board-main (max-width: 900px) {
   .lanes[data-visible-crew-count] {
-    --board-column-count: 3;
+    --board-column-count: 2;
   }
 
   .lanes[data-visible-crew-count='0'],
@@ -748,17 +782,6 @@
 
   .lanes[data-visible-crew-count='2'] {
     --board-column-count: 2;
-  }
-}
-
-@container schedule-board-main (max-width: 620px) {
-  .lanes[data-visible-crew-count] {
-    --board-column-count: 2;
-  }
-
-  .lanes[data-visible-crew-count='0'],
-  .lanes[data-visible-crew-count='1'] {
-    --board-column-count: 1;
   }
 }
 
@@ -808,6 +831,7 @@
 
   .lane {
     scroll-snap-align: start;
+    height: 100%;
   }
 
   .allCrewsHidden {
@@ -826,6 +850,12 @@
 
   .boardLegend > span {
     display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jobCard {
+    transition: none;
   }
 }
 
