@@ -10,38 +10,30 @@ const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 const EXPLICIT_NON_PRODUCTION_HOST =
   /(^|[.-])(?:dev|development|preview|qa|stage|staging|test)(?:[.-]|$)/;
 const PORTAL_WEB_VITALS_PATH = "/api/staff/v1/performance/web-vitals";
+const PRODUCTION_PORTAL_HOST = "portal.sanctuarypergolas.co.nz";
+const PRODUCTION_SUPABASE_PROJECT_REF = "iytanftukulcnavossmd";
 
 export interface BlockedProjectWorkMutation {
   method: string;
   url: string;
 }
 
-export function requireProjectWorkReadOnlyTarget(testInfo: TestInfo) {
+interface ProjectWorkReadOnlyTargetInput {
+  baseUrl: string;
+  env: NodeJS.ProcessEnv;
+}
+
+export function validateProjectWorkReadOnlyTarget({
+  baseUrl: rawBaseUrl,
+  env,
+}: ProjectWorkReadOnlyTargetInput) {
   const readinessTarget =
-    process.env.PORTAL_PROJECT_WORK_V2_READINESS_TARGET?.trim().toLowerCase();
-  if (readinessTarget !== "staging") {
-    throw new Error(
-      "Read-only Project Work smoke requires PORTAL_PROJECT_WORK_V2_READINESS_TARGET=staging.",
-    );
-  }
-
+    env.PORTAL_PROJECT_WORK_V2_READINESS_TARGET?.trim().toLowerCase();
   const stagingProjectRef =
-    process.env.PORTAL_PROJECT_WORK_V2_STAGING_PROJECT_REF?.trim().toLowerCase();
-  if (!stagingProjectRef || !/^[a-z0-9]{20}$/.test(stagingProjectRef)) {
-    throw new Error(
-      "Read-only Project Work smoke requires a valid PORTAL_PROJECT_WORK_V2_STAGING_PROJECT_REF.",
-    );
-  }
-
+    env.PORTAL_PROJECT_WORK_V2_STAGING_PROJECT_REF?.trim().toLowerCase();
   const productionProjectRef =
-    process.env.PORTAL_PRODUCTION_SUPABASE_PROJECT_REF?.trim().toLowerCase();
-  if (productionProjectRef && productionProjectRef === stagingProjectRef) {
-    throw new Error(
-      "Read-only Project Work smoke refuses a staging Supabase ref that matches the declared production ref.",
-    );
-  }
+    env.PORTAL_PRODUCTION_SUPABASE_PROJECT_REF?.trim().toLowerCase();
 
-  const rawBaseUrl = String(testInfo.project.use.baseURL ?? "").trim();
   if (!rawBaseUrl) {
     throw new Error(
       "Read-only Project Work smoke requires an explicit Playwright baseURL.",
@@ -61,6 +53,48 @@ export function requireProjectWorkReadOnlyTarget(testInfo: TestInfo) {
   }
 
   const hostname = baseUrl.hostname.toLowerCase();
+  if (readinessTarget === "production") {
+    if (productionProjectRef !== PRODUCTION_SUPABASE_PROJECT_REF) {
+      throw new Error(
+        "Production read-only Project Work smoke requires the exact approved production Supabase project ref.",
+      );
+    }
+    if (stagingProjectRef && stagingProjectRef === productionProjectRef) {
+      throw new Error(
+        "Production read-only Project Work smoke refuses a staging Supabase ref that matches production.",
+      );
+    }
+    if (
+      baseUrl.protocol !== "https:" ||
+      hostname !== PRODUCTION_PORTAL_HOST ||
+      baseUrl.port ||
+      baseUrl.pathname !== "/" ||
+      baseUrl.search ||
+      baseUrl.hash
+    ) {
+      throw new Error(
+        `Production read-only Project Work smoke requires https://${PRODUCTION_PORTAL_HOST}.`,
+      );
+    }
+    return "production";
+  }
+
+  if (readinessTarget !== "staging") {
+    throw new Error(
+      "Read-only Project Work smoke requires PORTAL_PROJECT_WORK_V2_READINESS_TARGET=staging or the guarded production target.",
+    );
+  }
+  if (!stagingProjectRef || !/^[a-z0-9]{20}$/.test(stagingProjectRef)) {
+    throw new Error(
+      "Read-only Project Work smoke requires a valid PORTAL_PROJECT_WORK_V2_STAGING_PROJECT_REF.",
+    );
+  }
+  if (productionProjectRef && productionProjectRef === stagingProjectRef) {
+    throw new Error(
+      "Read-only Project Work smoke refuses a staging Supabase ref that matches the declared production ref.",
+    );
+  }
+
   const isLoopback = LOOPBACK_HOSTS.has(hostname);
   const isExplicitNonProductionRemote =
     EXPLICIT_NON_PRODUCTION_HOST.test(hostname);
@@ -69,6 +103,15 @@ export function requireProjectWorkReadOnlyTarget(testInfo: TestInfo) {
       `Read-only Project Work smoke refuses ambiguous or production-like host ${hostname}. Use loopback or an explicitly named dev/staging/preview/qa/test host.`,
     );
   }
+  return "staging";
+}
+
+export function requireProjectWorkReadOnlyTarget(testInfo: TestInfo) {
+  const rawBaseUrl = String(testInfo.project.use.baseURL ?? "").trim();
+  return validateProjectWorkReadOnlyTarget({
+    baseUrl: rawBaseUrl,
+    env: process.env,
+  });
 }
 
 function redactRequestUrl(request: Request) {

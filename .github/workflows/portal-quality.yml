@@ -92,6 +92,14 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Production Project Work authenticated read-only smoke
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        env:
+          PORTAL_BASE_URL: https://portal.sanctuarypergolas.co.nz
+          PORTAL_PROJECT_WORK_V2_READINESS_TARGET: production
+          PORTAL_PRODUCTION_SUPABASE_PROJECT_REF: iytanftukulcnavossmd
+        run: npm run test:portal:project-work:production-read-only-auth
+
       - name: Portal Vitest suite
         run: npm run test:portal
 
