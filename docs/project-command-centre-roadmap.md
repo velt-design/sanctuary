@@ -1,11 +1,11 @@
 # Project Operational Command Centre Roadmap
 
 Status: Active programme tracker
-Current stage: Overview V2 composition deployed; portfolio-wide Project Work adoption and legacy-task retirement implemented but pending production rollout
+Current stage: Overview V2 composition and portfolio-wide Project Work adoption are deployed and production-verified through postflight `6832a9dd`
 Product definition: Complete
-Implementation: Historical Stages 1 and 2 plus the production Project Work foundation are present. The current slice adds the replay-safe all-project rollout, five journey phases, authoritative Active/Waiting/Closed/Archived portfolio views, one paged Work Queue, one Overview work surface, and complete legacy project-task UI/read/write retirement. It preserves the portal system and existing semantic V2 commands.
-Next action: Apply the rollout migration first, release its application consumers, then complete catalog/schema-cache, repository-gate, and authenticated read-only Projects/Dashboard/Work Queue/Overview verification without shared-data mutation.
-Next implementation stage: After rollout proof only. Deposit, Schedule/Running Jobs readiness, normalized activity, and complete exception summaries still require separately reviewed bounded server projections.
+Implementation: Historical Stages 1 and 2, the production Project Work foundation, the replay-safe all-project rollout, five journey phases, authoritative Active/Waiting/Closed/Archived portfolio views, one paged Work Queue, one Overview work surface, and complete legacy project-task UI/read/write retirement are present. The current hierarchy refinement keeps server-ranked reasons explicit, commercial presentation read-only, recovery singular, and the 768px recomposition intentional.
+Next action: Preserve the verified command-centre boundaries and assess any later lifecycle expansion as a separate product slice.
+Next implementation stage: Deposit, Schedule/Running Jobs readiness, normalized activity, and complete exception summaries still require separately reviewed bounded server projections.
 
 ## Index
 
@@ -46,7 +46,7 @@ When documents conflict:
 
 ## Stage sequence
 
-Stages 0-6 below record the historical V1 programme. **Overview V2 composition is deployed; portfolio adoption is the active rollout.** The five journey phases group existing stages for presentation and filtering only. Any future readiness or full-lifecycle summary remains deferred and must use bounded server-owned evidence under a separate reviewed contract.
+Stages 0-6 below record the historical V1 programme. **Overview V2 composition and portfolio adoption are deployed and production-verified.** The five journey phases group existing stages for presentation and filtering only. Any future readiness or full-lifecycle summary remains deferred and must use bounded server-owned evidence under a separate reviewed contract.
 
 ### Product definition
 

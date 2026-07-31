@@ -260,11 +260,11 @@ Keep:
 
 - `ProjectSnapshotPageClient.tsx`: summary/full/unavailable page state.
 - `ProjectPageFrame.tsx`, `ProjectHeader.tsx`, and tab owners: two-row shell and navigation, sticky above mobile and in normal flow on mobile.
-- `OverviewTab.tsx`: command-centre query, snapshot/command state coordination, access-ending reporting, and composition only.
+- `OverviewTab.tsx`: command-centre query, snapshot/command state coordination, access-ending reporting, and composition only. One failed command-centre read owns one recovery action for the unavailable Project Work and commercial regions.
 - `ProjectOrientationBand.tsx` plus `useProjectDetailsDraft`: active Overview details, stage-correction presentation, local-first save, and retry ownership.
 - `ProjectStatusDetailsCard.tsx`: compatibility wrapper around `ProjectOrientationBand` for the existing detail-mutation fixture and focused local-first tests; it is not an Overview V2 composition owner.
 - `ProjectHeader.tsx` plus `ProjectHeaderOwnerControl.tsx`: the single header Project Owner summary and management entry point.
-- `ProjectCurrentDesignCommercialCard.tsx`: strict read-only design/commercial presentation.
+- `ProjectCurrentDesignCommercialCard.tsx`: strict read-only design/commercial presentation. It does not infer lifecycle permission or expose deposit/payment mutation controls.
 - `lib/projects/commandCentre/**`: command-centre selection/read contract.
 - `lib/projects/workItems/**`: V2 state, work, ranking, commands, confirmation, queue, portfolio completeness, and model-integrity boundaries.
 - `projectWorkCache.ts`: the only Project Work cache patch/invalidation module. `patchProjectCommandCentreCache` is the sole complete command-centre response patch owner; `patchProjectWorkProjectionCaches` owns V2 projection fan-out to command-centre, snapshot, and summary caches; `invalidateProjectWorkReads` owns project, Work Queue, and Dashboard invalidation.
@@ -673,7 +673,7 @@ Every response, including errors, is `private, no-store`. Mutations require UUID
 
 Overview V2 component boundaries:
 
-- `OverviewTab.tsx`: query/state orchestration, access-ending reporting, and composition handoff only.
+- `OverviewTab.tsx`: query/state orchestration, access-ending reporting, and composition handoff only. One failed command-centre read owns one recovery action for the unavailable Project Work and commercial regions.
 - `overview/ProjectOverviewLayout.tsx`: route-owned responsive composition for orientation, Project Work, current design/commercial, and bounded recent notes/events.
 - `overview/ProjectOrientationBand.tsx`: active Overview owner for journey, detailed stage, customer, site, region, reference, operational state, freshness, local-first details editing/retry, and stage correction without repeating the project title or owner management.
 - `overview/ProjectStatusDetailsCard.tsx`: compatibility adapter that renders `ProjectOrientationBand` in compatibility mode for `ProjectDetailsMutationFixtureClient` and focused local-first tests. `OverviewTab` does not mount it.
@@ -682,7 +682,7 @@ Overview V2 component boundaries:
 - `overview/ProjectWorkControls.tsx`: V2 mutation-control presentation for manual work, operational-state changes, confirmation correction, and the existing manual Site Visit completion fact. It exposes no Site Visit task, global navigation, or automatic Schedule integration; its sole destination is the active V2 Site Visit-stage booking/confirmation deep link, and it renders no controls for Archived projects.
 - `overview/useProjectWorkCommandController.ts`: V2 browser command, stable retry identity, duplicate suppression, committed/unknown feedback, input state, V2 projection cache patching, and shared invalidation orchestration.
 - `overview/projectWorkVisibilityPolicy.ts`: the shared fail-closed Call/Site Visit identity filter for V2 primary candidates/items/manual titles and bounded recent events. Contextual state-review reasons are not treated as action identity.
-- `overview/ProjectCurrentDesignCommercialCard.tsx`: read-only selected design/commercial presentation.
+- `overview/ProjectCurrentDesignCommercialCard.tsx`: read-only selected design/commercial presentation. It does not infer lifecycle permission or expose deposit/payment mutation controls.
 - `overview/ProjectRecentNotesEvents.tsx`: bounded recent-notes/events composition, including suppression of legacy Call and Site Visit event content. It delegates note authoring to `ProjectNotesPanel.client.tsx`.
 - The old legacy command/action/history/task-sidebar owners and the duplicate V2 command/sidebar owners are retired after zero-consumer proof.
 - `ProjectHeader.tsx` plus `ProjectHeaderOwnerControl.tsx`: project identity, the single Project Owner summary/management modal, project actions, and horizontally scrollable tab navigation. Accepted owner commands patch through `patchProjectCommandCentreCache`, never a header-local cache writer.
@@ -690,6 +690,8 @@ Overview V2 component boundaries:
 - Dashboard Project portfolio: five journey-phase counts, authoritative Active/Waiting/Closed/Archived counts, and a compact preview of the same V2 Work Queue used by the full route. Personal reminders remain independent.
 
 The `activity` module loader now resolves to `OverviewTab`; the old Activity component, three-query snapshot bar, fallback resolver, and summarizer are removed after consumer search proved no remaining code consumer.
+
+The current Project Work presentation consumes a required server-owned ranking reason for ordinary work items. It uses categorical due badges (`Critical`, `Overdue`, `Due today`, or `Upcoming`) while leaving the exact timestamp to the Due field, omits active-state counts already visible elsewhere, and does not render an empty secondary-work slot. Waiting/Closed/Archived details appear only when they add state-specific truth. The command grid becomes one column at and below 768 CSS pixels so tablet and 200%-zoom reading order matches mobile priority.
 
 ## 18. Test and fixture strategy
 
@@ -703,9 +705,9 @@ Implemented focused coverage for the Overview V2 slice includes:
 - Page-level protected cache clearing tests.
 - Current design/commercial, journey/orientation, layout, recent notes/events, Project Work section/list/controls, V2 command-controller, rollout failure, visibility-policy, portfolio-index/state-count, and shared-cache tests.
 - Environment-gated, customer-data-free fixture route that composes the real production `OverviewTab` path and its extracted `ProjectOverviewLayout`, `ProjectOrientationBand`, `ProjectWorkSection`, `ProjectCurrentDesignCommercialCard`, and `ProjectRecentNotesEvents` owners with synthetic server responses.
-- Fixture data for the approved V2 work/read-state catalogue, including fresh stage review, Waiting/Closed/Archived, stale/mismatch/access-ending, rollout-unavailable, and strict commercial-source cases.
-- Current fixture Playwright assertions cover the strict commercial catalogue, V2 Project Work/read states, prohibited Call/Site Visit identities, responsive composition, accessibility, and the project shell. No legacy task/action row is rendered or selected.
-- Responsive assertions and attached rendered evidence at 1440x1000, 1280x800, 1024x900, 768x1024, and 390x844 for one representative blocked-work composition; a 640 CSS-pixel 200%-zoom simulation; no document horizontal overflow, nested vertical scroll owner, or cropped control; semantic headings/regions; actual mobile Tab order; visible focus; reduced motion across descendants; prohibited lifecycle-control absence; and 44px coarse-pointer controls.
+- Fixture data for the approved V2 work/read-state catalogue, including long project/customer/site/action content, fresh stage review, Waiting/Closed/Archived, stale/mismatch/access-ending, rollout-unavailable, and strict commercial-source cases.
+- Current fixture Playwright assertions cover the strict read-only commercial catalogue, V2 Project Work/read states, one recovery action per failed read, prohibited Call/Site Visit identities, responsive composition, accessibility, and the project shell. No legacy task/action row is rendered or selected.
+- Responsive assertions and attached rendered evidence at 1440x1000, 1280x800, 1024x900, 768x1024, and 390x844; a 640 CSS-pixel 200%-zoom simulation; long-content resilience at all five standard widths; one-column recomposition at 768px and below; no document horizontal overflow, nested vertical scroll owner, or cropped control; semantic headings/regions; actual mobile Tab order; visible focus; reduced motion across descendants; prohibited lifecycle-control absence; and 44px coarse-pointer controls.
 - `npm run test:portal:command-centre:read-only-auth` as the authenticated read-only portfolio/Overview smoke. It runs the portfolio-readiness and credential preflights, rejects production-like or ambiguous hosts, proves the fresh Projects Journey/Stage/State columns and Dashboard journey/state/Work Queue presentation, discovers one RLS-visible project, opens the integrated Overview, checks the extracted regions and absence of duplicate/prohibited controls, suppresses only the identifier-free Web Vitals transport before navigation, and aborts plus reports every other non-`GET`/`HEAD`/`OPTIONS` request.
 - `npm run test:portal:project-work:production-read-only-auth` as the protected, manually dispatched `main` production smoke. It accepts only the exact production portal origin and Supabase ref, reuses the same browser contracts, suppresses Web Vitals, and aborts plus reports every other non-read request.
 
@@ -748,7 +750,7 @@ Stage 1 verification completed on 2026-07-20:
 - Stage 4: communications and timeline. Not started.
 - Stage 5: exceptions and approvals. Not started.
 - Stage 6: final responsive QA, pilot, and rollout. Not started.
-- Current slice: the original Overview composition is deployed. The portfolio-wide V2 conversion, legacy application retirement, journey/state presentation, and full-queue follow-on are implemented in the current change set but remain release-pending until the exact migration-first deployment and post-deploy authenticated GET-only checks pass.
+- Current slice: the original Overview composition and portfolio-wide V2 conversion are deployed and verified through production postflight `6832a9dd`. The current hierarchy refinement keeps Project Work ranking reasons server-owned, commercial presentation read-only, recovery singular, and tablet/mobile composition explicit without expanding domain truth.
 - Next-slice boundary: no deposit, Schedule/Running Jobs readiness, normalized meaningful activity, complete exception aggregation, or other lifecycle expansion is approved until a bounded specialist-owned server projection is separately reviewed.
 
 ## 20. Technical risks

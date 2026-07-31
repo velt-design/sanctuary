@@ -79,7 +79,7 @@ describe("ProjectOverviewLayout", () => {
       configurable: true,
       value: () => ({
         matches: mobile,
-        media: "(max-width: 767px)",
+        media: "(max-width: 768px)",
         onchange: null,
         addEventListener: (_type: string, listener: () => void) => {
           listeners.add(listener);

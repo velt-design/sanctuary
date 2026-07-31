@@ -432,6 +432,11 @@ describe("OverviewTab", () => {
     expect(
       rendered.container.querySelector('[data-testid="mock-project-work"]'),
     ).toBeNull();
+    expect(
+      Array.from(rendered.container.querySelectorAll("button")).filter(
+        (button) => button.textContent === "Retry",
+      ),
+    ).toHaveLength(1);
     rendered.unmount();
   });
 
@@ -458,12 +463,17 @@ describe("OverviewTab", () => {
       rendered.container.querySelector('[data-command-centre-state="failed"]'),
     ).not.toBeNull();
     expect(rendered.container.textContent).toContain(
-      "Could not load Project Work",
+      "Could not load the Project Overview",
     );
     expect(rendered.container.textContent).toContain(
-      "No commercial fallback has been selected",
+      "No next action or commercial position is available",
     );
     expect(rendered.container.textContent).not.toContain("No current design");
+    expect(
+      Array.from(rendered.container.querySelectorAll("button")).filter(
+        (button) => button.textContent === "Retry",
+      ),
+    ).toHaveLength(1);
     act(() => {
       (rendered.container.querySelector("button") as HTMLButtonElement).click();
     });

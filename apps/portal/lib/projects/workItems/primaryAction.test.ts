@@ -93,7 +93,11 @@ describe('project work ranking', () => {
         href: '/commercial',
       },
       now,
-    }).kind).toBe('workItem');
+    })).toMatchObject({
+      kind: 'workItem',
+      dueState: 'overdue',
+      reason: 'This work is overdue.',
+    });
 
     expect(resolveProjectWorkPrimaryAction({
       workItems: [item('future', '2026-07-20T05:00:00.000Z')],
@@ -108,5 +112,22 @@ describe('project work ranking', () => {
       },
       now,
     }).kind).toBe('specialist');
+  });
+
+  it('supplies the server-owned reason for each work-item ranking basis', () => {
+    expect(resolveProjectWorkPrimaryAction({
+      workItems: [item('critical', '2026-07-20T05:00:00.000Z', { priority: 'CRITICAL' })],
+      now,
+    })).toMatchObject({
+      reason: 'Critical work is ranked ahead of other current work.',
+    });
+    expect(resolveProjectWorkPrimaryAction({
+      workItems: [item('today', '2026-07-10T05:00:00.000Z')],
+      now,
+    })).toMatchObject({ reason: 'This work is due today.' });
+    expect(resolveProjectWorkPrimaryAction({
+      workItems: [item('future', '2026-07-20T05:00:00.000Z')],
+      now,
+    })).toMatchObject({ reason: 'This is the earliest due current work.' });
   });
 });

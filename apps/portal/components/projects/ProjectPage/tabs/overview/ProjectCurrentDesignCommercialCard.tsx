@@ -12,7 +12,6 @@ import {
   MetricGrid,
   type BadgeTone,
 } from '@/components/ui/foundation';
-import DepositReceivedAction from './DepositReceivedAction.client';
 import styles from './ProjectCurrentDesignCommercialCard.module.css';
 
 const MONEY = new Intl.NumberFormat('en-NZ', {
@@ -73,21 +72,10 @@ function badgeTone(tone: ProjectCommandCentreCurrentDesign['statusTone']): Badge
 export default function ProjectCurrentDesignCommercialCard({
   data,
   projectId,
-  canRecordDeposit = false,
-  onDepositRecorded,
 }: {
   data: ProjectCommandCentreCurrentDesign;
   projectId?: string;
-  canRecordDeposit?: boolean;
-  onDepositRecorded?: () => Promise<void> | void;
 }) {
-  const showDepositAction = Boolean(
-    canRecordDeposit
-      && data.quote?.deliveryState === 'accepted'
-      && projectId
-      && onDepositRecorded
-  );
-
   return (
     <Card
       className={styles.card}
@@ -178,12 +166,6 @@ export default function ProjectCurrentDesignCommercialCard({
         </div>
 
         <div className={styles.links}>
-          {showDepositAction ? (
-            <DepositReceivedAction
-              projectId={projectId!}
-              onRecorded={onDepositRecorded!}
-            />
-          ) : null}
           {data.links.quote ? <ButtonLink variant="secondary" size="small" href={data.links.quote}>View current quote</ButtonLink> : null}
           {data.links.estimate ? <ButtonLink variant="secondary" size="small" href={data.links.estimate}>View source design</ButtonLink> : null}
           <ButtonLink

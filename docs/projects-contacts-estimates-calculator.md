@@ -208,12 +208,12 @@ Do not bypass these rules with ad hoc estimate table writes. Use the estimate ro
 - `ProjectOverviewLayout` owns the responsive route composition.
 - `ProjectOrientationBand` owns the active Overview customer/site/reference, operational state, freshness, local-first details editing/retry, and stage-correction presentation without repeating header identity, stage value, or owner controls.
 - `ProjectStatusDetailsCard` is a compatibility wrapper around `ProjectOrientationBand` for the detail-mutation fixture and focused local-first tests; it is not mounted by Overview V2.
-- `ProjectWorkSection` owns the single actionable V2 Project Work surface. `OverviewTab` owns the non-actionable rollout-incomplete state when a project is unexpectedly unmarked.
-- `ProjectWorkList` owns secondary V2 open and blocked rows inside that surface.
+- `ProjectWorkSection` owns the single actionable V2 Project Work surface. Ordinary work-item reasons are required server projection fields; the browser may format their categorical due state but does not explain or rank the work. `OverviewTab` owns the non-actionable rollout-incomplete state when a project is unexpectedly unmarked.
+- `ProjectWorkList` owns secondary V2 open and blocked rows inside that surface and renders nothing when no secondary work exists.
 - `ProjectWorkControls` owns V2 manual-work, operational-state, confirmation-correction, and the manual Site Visit fact. Its only Site Visit navigation is the stage-gated direct booking/confirmation link; it does not add a Site Visit task, global navigation, or automatic Schedule/stage integration.
 - `useProjectWorkCommandController` owns V2 browser command, stable retry identity, duplicate suppression, feedback, V2 projection patching, and shared invalidation without deriving ranking or lifecycle truth.
 - `projectWorkVisibilityPolicy` is the shared fail-closed Call/Site Visit and stale legacy-identity filter for V2 work plus bounded recent events.
-- `ProjectCurrentDesignCommercialCard` reads one normalized, server-owned current-design response.
+- `ProjectCurrentDesignCommercialCard` reads one normalized, server-owned current-design response and remains read-only. Deposit/payment mutation stays with its specialist owner and is not inferred from project stage in Overview.
 - `ProjectCurrentDesignCommercialCard` also exposes `Open booklet workbench` beside the source-design controls. It passes only the existing app project ID in the route query; the specialist booklet route owns its one active draft, private images, autosave, PDF download, and return link without adding Project Work, costing, quote, or design-workbench coupling.
 - `ProjectRecentNotesEvents` owns the bounded `Recent notes and events` composition and delegates note authoring to `ProjectNotesPanel`.
 - `ProjectHeaderOwnerControl` owns the header's single Project Owner summary and management modal.
@@ -221,6 +221,8 @@ Do not bypass these rules with ad hoc estimate table writes. Use the estimate ro
 - `ProjectStageControl` uses the existing authoritative stage-correction mutation, requires explicit Apply, and requires `RESET` for rollback.
 
 The project header is fixed and sticky above the mobile breakpoint: project name with its current-stage badge, global search, single owner, and project/workbench/admin actions are on its top row; Overview, Calculator, Commercial, and conditional Job Packs are on its horizontally scrollable bottom row. Mobile retains the same two-row information architecture in normal flow, with each row owning its horizontal containment. The project ID and old nine-stage pipeline visual are absent from this header. The old pipeline, rail sizing, panel drag/drop, collapsible header, Designs/Emails surfaces, layout-local-storage behavior, duplicate V2 sidebar, separate Tasks card, and empty workstreams slot are not part of the Overview V2 composition. The separate object-first Design Workbench route remains available from the header. Overview may render during the project `summary` state because its command-centre read is independent; snapshot-owned recent notes/events remain explicitly updating until the complete snapshot is ready.
+
+At and below 768 CSS pixels, Overview uses the mobile-priority single-column order: Project Work, current design/commercial, orientation, then recent notes/events. One failed command-centre read owns one Retry control for unavailable Project Work and commercial content; Orientation remains available from the protected project snapshot when possible.
 
 ### Overview and current-design precedence
 

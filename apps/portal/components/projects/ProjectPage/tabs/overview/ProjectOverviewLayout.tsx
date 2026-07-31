@@ -3,7 +3,7 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import styles from "./ProjectOverviewLayout.module.css";
 
-const MOBILE_OVERVIEW_QUERY = "(max-width: 767px)";
+const MOBILE_OVERVIEW_QUERY = "(max-width: 768px)";
 
 function subscribeToMobileOverview(callback: () => void) {
   if (typeof window === "undefined" || !window.matchMedia)

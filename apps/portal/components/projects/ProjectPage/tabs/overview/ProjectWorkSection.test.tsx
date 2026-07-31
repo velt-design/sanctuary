@@ -87,7 +87,12 @@ function projection(
     waitingReason: null,
     closedOutcome: null,
     stateRowVersion: 1,
-    primaryAction: { kind: "workItem", item: primary, dueState: "today" },
+    primaryAction: {
+      kind: "workItem",
+      item: primary,
+      dueState: "today",
+      reason: "This work is due today.",
+    },
     openItems: [primary],
     blockedItems: [],
     confirmedFacts: [],
@@ -169,7 +174,12 @@ describe("ProjectWorkSection", () => {
       priorityReason: "Engineering is required before pricing.",
     });
     const projectWork = projection({
-      primaryAction: { kind: "workItem", item: primary, dueState: "today" },
+      primaryAction: {
+        kind: "workItem",
+        item: primary,
+        dueState: "today",
+        reason: "This work is due today.",
+      },
       openItems: [primary, other],
       blockedItems: [blocked],
     });
@@ -184,6 +194,7 @@ describe("ProjectWorkSection", () => {
       'section[data-tone="inverse"]',
     )!;
     expect(primaryPanel.textContent).toContain(primary.title);
+    expect(primaryPanel.textContent).toContain("This work is due today.");
     expect(primaryPanel.textContent).not.toContain(
       "work selected by the server",
     );
@@ -216,6 +227,38 @@ describe("ProjectWorkSection", () => {
     );
   });
 
+  it("omits repeated state, counts, and the secondary-work slot when the primary action is the only work", () => {
+    const rendered = renderV2(projection());
+
+    expect(rendered.container.textContent).toContain("This work is due today.");
+    expect(rendered.container.textContent).not.toContain("Operational state");
+    expect(rendered.container.textContent).not.toContain("Current work");
+    expect(rendered.container.textContent).not.toContain("No other open work");
+    expect(
+      rendered.container.querySelector('[data-project-work-list="v2"]'),
+    ).toBeNull();
+  });
+
+  it("uses a concise badge for future work and leaves the exact date to the due field", () => {
+    const primary = workItem({ dueAt: "2026-08-08T05:00:00.000Z" });
+    const rendered = renderV2(
+      projection({
+        primaryAction: {
+          kind: "workItem",
+          item: primary,
+          dueState: "future",
+          reason: "This is the earliest due current work.",
+        },
+        openItems: [primary],
+      }),
+    );
+
+    expect(rendered.container.textContent).toContain("Upcoming");
+    expect(rendered.container.textContent?.match(/8 Aug 2026/g)).toHaveLength(
+      1,
+    );
+  });
+
   it("renders a server-selected blocked item as an exception without an enabled primary action", () => {
     const blocked = workItem({
       status: "BLOCKED",
@@ -225,7 +268,12 @@ describe("ProjectWorkSection", () => {
     });
     const rendered = renderV2(
       projection({
-        primaryAction: { kind: "workItem", item: blocked, dueState: "critical" },
+        primaryAction: {
+          kind: "workItem",
+          item: blocked,
+          dueState: "critical",
+          reason: "Critical work is ranked ahead of other current work.",
+        },
         openItems: [],
         blockedItems: [blocked],
       }),
@@ -301,6 +349,7 @@ describe("ProjectWorkSection", () => {
           kind: "workItem",
           item: prohibitedPrimary,
           dueState: "today",
+          reason: "This work is due today.",
         },
         openItems: [prohibitedPrimary, prohibitedSecondary, allowedSecondary],
       }),
@@ -383,7 +432,7 @@ describe("ProjectWorkSection", () => {
       detailLabel: "Waiting until",
       detailValue: "5 Aug 2026",
       waitingReason: "Customer requested more time.",
-      notice: "Ordinary project work is paused",
+      omittedNotice: "Ordinary project work is paused",
       canChangeState: true,
     },
     {
@@ -415,7 +464,7 @@ describe("ProjectWorkSection", () => {
       detailLabel: "Outcome",
       detailValue: "lost no response",
       waitingReason: null,
-      notice: "Closed project work is paused",
+      omittedNotice: "Closed project work is paused",
       canChangeState: true,
     },
     {
@@ -444,10 +493,10 @@ describe("ProjectWorkSection", () => {
           }),
         ],
       }),
-      detailLabel: "Operational state",
-      detailValue: "Archived",
+      detailLabel: null,
+      detailValue: null,
       waitingReason: null,
-      notice: "Archived project work is read-only",
+      omittedNotice: "Archived project work is read-only",
       canChangeState: false,
     },
   ])(
@@ -457,20 +506,24 @@ describe("ProjectWorkSection", () => {
       detailLabel,
       detailValue,
       waitingReason,
-      notice,
+      omittedNotice,
       canChangeState,
     }) => {
       const rendered = renderV2(projectWork);
       const stateGrid = rendered.container.querySelector(
-        'dl[aria-label="Project work state"]',
-      )!;
+        'dl[aria-label="Project work state details"]',
+      );
 
-      expect(valueFor(stateGrid, detailLabel)).toContain(detailValue);
-      if (waitingReason) {
+      if (detailLabel && detailValue) {
+        expect(stateGrid).not.toBeNull();
+        expect(valueFor(stateGrid!, detailLabel)).toContain(detailValue);
+      } else {
+        expect(stateGrid).toBeNull();
+      }
+      if (waitingReason && stateGrid) {
         expect(valueFor(stateGrid, "Waiting reason")).toBe(waitingReason);
       }
-      expect(valueFor(stateGrid, "Current work")).toBeNull();
-      expect(rendered.container.textContent).toContain(notice);
+      expect(rendered.container.textContent).not.toContain(omittedNotice);
       expect(rendered.container.textContent).not.toContain(
         "Hidden ordinary work",
       );
@@ -504,5 +557,4 @@ describe("ProjectWorkSection", () => {
       }
     },
   );
-
 });

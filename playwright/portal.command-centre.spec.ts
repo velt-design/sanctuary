@@ -76,8 +76,8 @@ async function expectNoCroppedOverviewControls(page: Page) {
             control.scrollWidth > control.clientWidth + 1 ||
             Boolean(
               regionBounds &&
-                (bounds.left < regionBounds.left - 1 ||
-                  bounds.right > regionBounds.right + 1),
+              (bounds.left < regionBounds.left - 1 ||
+                bounds.right > regionBounds.right + 1),
             ));
         return clipped
           ? [
@@ -174,6 +174,10 @@ const WORK_SCENARIO_EXPECTATIONS = {
     model: "v2",
     text: ["Prepare the revised design brief", "Jordan", "3 Aug 2026"],
   },
+  "v2-long-content": {
+    model: "v2",
+    text: ["Confirm the revised multi-zone outdoor living design"],
+  },
   "v2-blocked": {
     model: "v2",
     text: [
@@ -188,11 +192,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-no-action": {
     model: "v2",
-    text: [
-      "No current project work",
-      "The server has no current next action",
-      "No other open work",
-    ],
+    text: ["No current project work", "The server has no current next action"],
   },
   "v2-correction-review": {
     model: "v2",
@@ -207,7 +207,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-closed": {
     model: "v2",
-    text: ["Closed", "Project closed", "lost timing deferred"],
+    text: ["Project closed", "lost timing deferred"],
   },
   "v2-archived": {
     model: "v2",
@@ -315,22 +315,17 @@ const READ_STATE_EXPECTATIONS = {
     layoutState: "failed",
     workModel: "failed",
     text: [
-      "Could not load Project Work",
-      "Could not load current design and commercial state",
-      "No commercial fallback has been selected",
+      "Could not load the Project Overview",
+      "No next action or commercial position is available",
     ],
     emailControl: "absent",
   },
   retry: {
     layoutState: "retry",
     workModel: "failed",
-    text: [
-      "Could not load Project Work",
-      "Could not load current design and commercial state",
-      "Retry",
-    ],
+    text: ["Could not load the Project Overview", "Retry"],
     emailControl: "absent",
-    retryCount: 2,
+    retryCount: 1,
   },
   "access-401": {
     layoutState: "unavailable",
@@ -466,7 +461,7 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
           region.getAttribute("data-project-overview-region"),
         ),
       );
-    if (width <= 767) {
+    if (width <= 768) {
       expect(regionOrder).toEqual([
         "project-work",
         "commercial",
@@ -487,6 +482,27 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
       body: await layout.screenshot({ animations: "disabled" }),
       contentType: "image/png",
     });
+  });
+}
+
+for (const [width, height] of OVERVIEW_VIEWPORTS) {
+  test(`contains long Overview content at ${width}x${height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto(fixtureUrl({ work: "v2-long-content" }));
+    const layout = page.locator('[data-project-overview-layout="true"]');
+    await expect(layout).toContainText(
+      "Alexandra Montgomery and Christopher Williamson",
+    );
+    await expect(layout).toContainText(
+      "Apartment 14, 1847 Great North Road, Point Chevalier, Auckland",
+    );
+    await expect(layout).toContainText(
+      "Confirm the revised multi-zone outdoor living design, final customer selections, and installation constraints",
+    );
+    await expectNoDocumentOverflow(page);
+    await expectNoCroppedOverviewControls(page);
   });
 }
 
@@ -637,7 +653,9 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
             ? Number.parseFloat(value) / 1000
             : Number.parseFloat(value),
         );
-      return durations.some((duration) => Number.isFinite(duration) && duration > 0.01)
+      return durations.some(
+        (duration) => Number.isFinite(duration) && duration > 0.01,
+      )
         ? [
             element.getAttribute("aria-label") ||
               element.textContent?.trim().slice(0, 80) ||
@@ -758,7 +776,9 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
     );
     await expect(fixture).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Aroha Smith - Takapuna" }),
+      page.getByRole("heading", {
+        name: "Alexandra Montgomery and Christopher Williamson - North Harbour outdoor living project",
+      }),
     ).toBeVisible();
     const commandRow = page.locator('[data-project-header-row="command"]');
     const tabRow = page.locator('[data-project-header-row="tabs"]');
@@ -891,10 +911,11 @@ test("routes deterministic V2 command data through the real project shell and Ov
   await page.goto(
     `${PROJECT_SHELL_FIXTURE_PATH}?tab=activity&model=v2&campaign=winter`,
   );
-  const fixture = page.locator(
-    '[data-portal-qa-fixture="project-page-shell"]',
+  const fixture = page.locator('[data-portal-qa-fixture="project-page-shell"]');
+  await expect(fixture).toHaveAttribute(
+    "data-project-work-fixture-model",
+    "v2",
   );
-  await expect(fixture).toHaveAttribute("data-project-work-fixture-model", "v2");
   await expect(page.locator('[data-project-overview="true"]')).toBeVisible();
   const layout = page.locator('[data-project-overview-layout="true"]');
   await expect(layout).toHaveAttribute("data-command-centre-state", "ready");

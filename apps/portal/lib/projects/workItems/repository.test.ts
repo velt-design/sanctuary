@@ -123,6 +123,7 @@ describe("project work projection", () => {
     expect(projection?.primaryAction).toMatchObject({
       kind: "workItem",
       dueState: "overdue",
+      reason: "This work is overdue.",
       item: {
         projectId: `proj_${PROJECT_ID}`,
         title: "Follow up by email",

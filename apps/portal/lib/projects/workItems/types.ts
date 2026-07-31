@@ -114,6 +114,7 @@ export type ProjectWorkPrimaryCandidate =
       kind: 'workItem';
       item: ProjectWorkItem;
       dueState: 'critical' | 'overdue' | 'today' | 'future';
+      reason: string;
     }
   | {
       kind: 'specialist';

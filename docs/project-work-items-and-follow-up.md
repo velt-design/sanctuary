@@ -1,6 +1,6 @@
 # Project Work Items And Lead Follow-Up
 
-Status: Approved product contract. The Project Work foundation migrations are deployed. Portfolio rollout migration `20260731000002_project_work_portfolio_rollout.sql` and its application consumers are implemented in the current change set but are not production-applied until deployment gates and authenticated read-only verification pass.
+Status: Approved product contract. The Project Work foundation and portfolio rollout migration `20260731000002_project_work_portfolio_rollout.sql` are deployed. Application consumers and authenticated read-only production verification are complete through postflight `6832a9dd`.
 
 Purpose: define the project-work model, email-only lead cadence, pipeline disposition rules, and legacy-task retirement boundary, and record the controlled rollout state.
 
@@ -468,14 +468,13 @@ The V2 marker is the one-way boundary. The portfolio migration fails if it canno
 
 Do not introduce a permanent bidirectional dual-write layer.
 
-## 17. Remaining Rollout Order
+## 17. Verified Rollout Record
 
-1. Apply `20260731000002_project_work_portfolio_rollout.sql` before releasing consumers that require `staff_projects_index_v2` and `staff_project_state_counts_v1`.
-2. Verify migration identity, project-independent cohort closure, one-event-per-pre-rollout-project audit/partial-repair behavior, empty-cohort replay, deferred direct-insert initialization, terminal legacy-review and prohibited-work enforcement, existing admin hard-delete cascades, catalog grants, all-project marker/state completeness, state counts, queue cardinality below the 5,000-row safety ceiling, and schema-cache visibility.
-3. Deploy the application, then run `npm run test:portal:command-centre:read-only-auth` for authenticated read-only Projects, Dashboard, and real Overview coverage, followed by `npm run test:portal:work-queue:read-only-auth` for the full Work Queue. Abort any QA request other than `GET`/`HEAD`/`OPTIONS`.
-4. Do not manufacture or mutate shared production customer, project, quote, invoice, task, Schedule, Running Jobs, or payment records for verification.
-5. Extend verified Auckland calendar coverage before any deadline can cross beyond 2027.
-6. Treat readiness, specialist summaries, normalized activity, and further lifecycle automation as separate contracts.
+1. `20260731000002_project_work_portfolio_rollout.sql` was applied before consumers requiring `staff_projects_index_v2` and `staff_project_state_counts_v1` were released.
+2. Production postflight `6832a9dd` closed migration identity, catalogue/schema-cache, portfolio completeness, state-count, queue, Command Centre, Overview, and authenticated GET-only verification.
+3. Shared-data verification remained read-only; it did not manufacture or mutate customer, project, quote, invoice, task, Schedule, Running Jobs, or payment records.
+4. Extend verified Auckland calendar coverage before any deadline can cross beyond 2027.
+5. Treat readiness, specialist summaries, normalized activity, and further lifecycle automation as separate contracts.
 
 ## 18. Deferred Decisions
 

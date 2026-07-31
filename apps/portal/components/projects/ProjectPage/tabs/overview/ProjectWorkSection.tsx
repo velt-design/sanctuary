@@ -22,7 +22,6 @@ import {
   formatProjectWorkDue,
   isDecisionReviewWorkItem,
   projectWorkAssigneeLabel,
-  projectWorkStateLabel,
 } from "./projectWorkPresentation";
 import {
   useProjectWorkCommandController,
@@ -55,10 +54,7 @@ function primaryPresentation(
   const { primary, primaryItem } = controller;
   const title =
     primary.kind === "workItem" ? primary.item.title : primary.title;
-  const reason =
-    primary.kind === "workItem"
-      ? null
-      : primary.reason;
+  const reason = primary.reason;
   const href =
     (primary.kind === "recovery" || primary.kind === "specialist") &&
     !/site[\s_-]*visits?/i.test(primary.href ?? "")
@@ -72,11 +68,11 @@ function primaryPresentation(
           ? "Overdue"
           : primary.dueState === "today"
             ? "Due today"
-            : formatProjectWorkDue(primary.item.dueAt)
+            : "Upcoming"
       : primary.kind === "needsTriage" || primary.kind === "stateReview"
         ? "Review"
         : primary.kind === "none"
-          ? "Status"
+          ? null
           : "Ready";
   const owner =
     primary.kind === "workItem"
@@ -92,14 +88,31 @@ function primaryPresentation(
         : "Not provided";
   const expectedResult =
     primary.kind === "specialist" ? primary.expectedResult : null;
+  const details =
+    primary.kind === "workItem"
+      ? [
+          { label: "Owner", value: owner },
+          { label: "Due", value: due },
+          {
+            label: "Source",
+            value: primary.item.responsibilityArea.toLowerCase(),
+          },
+        ]
+      : primary.kind === "specialist"
+        ? [
+            { label: "Owner", value: owner },
+            { label: "Source", value: "specialist" },
+          ]
+        : primary.kind === "stateReview"
+          ? [{ label: "Due", value: due }]
+          : [];
 
   return {
     title,
     reason,
     href,
     badge,
-    owner,
-    due,
+    details,
     expectedResult,
     tone:
       primary.kind === "workItem" && primary.dueState === "critical"
@@ -154,9 +167,6 @@ export default function ProjectWorkSection({
     active &&
     controller.primary.kind === "workItem" &&
     controller.primary.item.status === "BLOCKED";
-  const visibleOpenItems = controller.projection.openItems.filter(
-    (item) => !isProhibitedProjectWorkItem(item),
-  );
   const visibleBlockedItems = controller.projection.blockedItems.filter(
     (item) => !isProhibitedProjectWorkItem(item),
   );
@@ -166,18 +176,6 @@ export default function ProjectWorkSection({
       controller.primary.kind === "recovery" ||
       controller.primary.kind === "specialist");
   const stateItems = [
-    {
-      label: "Operational state",
-      value: projectWorkStateLabel(controller.projection.effectiveState),
-    },
-    ...(active
-      ? [
-          {
-            label: "Current work",
-            value: `${visibleOpenItems.length} open · ${visibleBlockedItems.length} blocked`,
-          },
-        ]
-      : []),
     ...(controller.projection.effectiveState === "WAITING"
       ? [
           {
@@ -204,26 +202,6 @@ export default function ProjectWorkSection({
         ]
       : []),
   ];
-  const nonActiveNotice =
-    controller.projection.effectiveState === "WAITING"
-      ? {
-          title: "Ordinary project work is paused",
-          detail:
-            "Only the server-provided waiting review and operational-state controls are available.",
-        }
-      : controller.projection.effectiveState === "CLOSED"
-        ? {
-            title: "Closed project work is paused",
-            detail:
-              "Reopen the project through its operational state before creating or acting on work.",
-          }
-        : controller.projection.effectiveState === "ARCHIVED"
-          ? {
-              title: "Archived project work is read-only",
-              detail:
-                "Archived projects expose no active Project Work or mutation controls.",
-            }
-          : null;
 
   return (
     <Card
@@ -234,24 +212,15 @@ export default function ProjectWorkSection({
       title="Project Work"
       eyebrow="Server-ranked next action"
       padding="compact"
-      action={
-        <Badge
-          tone={
-            controller.projection.effectiveState === "WAITING"
-              ? "warning"
-              : "neutral"
-          }
-        >
-          {projectWorkStateLabel(controller.projection.effectiveState)}
-        </Badge>
-      }
     >
       <div className={styles.stack}>
-        <KeyValueGrid
-          columns={stateItems.length > 2 ? 3 : 2}
-          ariaLabel="Project work state"
-          items={stateItems}
-        />
+        {stateItems.length ? (
+          <KeyValueGrid
+            columns={stateItems.length === 1 ? 1 : 2}
+            ariaLabel="Project work state details"
+            items={stateItems}
+          />
+        ) : null}
 
         {active && visibleBlockedItems.length && !blockedPrimary ? (
           <AlertBanner
@@ -274,7 +243,10 @@ export default function ProjectWorkSection({
             browser action is available.
           </AlertBanner>
         ) : blockedPrimary ? (
-          <AlertBanner tone="blocking" title="Blocked project work needs review">
+          <AlertBanner
+            tone="blocking"
+            title="Blocked project work needs review"
+          >
             The server selected blocked work as the primary action. It remains
             visible below as an exception, but no action is enabled until the
             server returns it to open work.
@@ -288,7 +260,11 @@ export default function ProjectWorkSection({
                 : "Project state"
             }
             tone={primary.tone}
-            status={<Badge tone={primary.statusTone}>{primary.badge}</Badge>}
+            status={
+              primary.badge ? (
+                <Badge tone={primary.statusTone}>{primary.badge}</Badge>
+              ) : undefined
+            }
             footer={
               <div className={styles.inlineActions}>
                 {active && primary.href ? (
@@ -354,19 +330,18 @@ export default function ProjectWorkSection({
             {primary.reason ? (
               <p className={styles.reason}>{primary.reason}</p>
             ) : null}
-            <KeyValueGrid
-              columns={3}
-              items={[
-                { label: "Owner", value: primary.owner },
-                { label: "Due", value: primary.due },
-                {
-                  label: "Source",
-                  value: primary.primaryItem
-                    ? primary.primaryItem.responsibilityArea.toLowerCase()
-                    : controller.primary.kind,
-                },
-              ]}
-            />
+            {primary.details.length ? (
+              <KeyValueGrid
+                columns={
+                  primary.details.length >= 3
+                    ? 3
+                    : primary.details.length === 2
+                      ? 2
+                      : 1
+                }
+                items={primary.details}
+              />
+            ) : null}
             {primary.expectedResult ? (
               <KeyValueGrid
                 columns={1}
@@ -396,10 +371,6 @@ export default function ProjectWorkSection({
 
         {active ? (
           <ProjectWorkList controller={controller} staff={staff} />
-        ) : nonActiveNotice ? (
-          <AlertBanner tone="info" title={nonActiveNotice.title}>
-            {nonActiveNotice.detail}
-          </AlertBanner>
         ) : null}
 
         <ProjectWorkControls

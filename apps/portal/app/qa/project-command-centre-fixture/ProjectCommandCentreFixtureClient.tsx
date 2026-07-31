@@ -181,74 +181,55 @@ export default function ProjectCommandCentreFixtureClient({
       </AlertBanner>
     ) : null;
 
-  const projectWork = viewState === "pending" ? (
-    <WorkState model="pending">
-      <Card padding="compact">
-        <LoadingSkeleton rows={5} label="Loading Project Work" />
-      </Card>
-    </WorkState>
-  ) : viewState === "failed" ? (
-    <WorkState model="failed">
-      <DataStatePanel
-        state="error"
-        title="Could not load Project Work"
-        description="No next action is available until the server view loads."
+  const projectWork =
+    viewState === "pending" ? (
+      <WorkState model="pending">
+        <Card padding="compact">
+          <LoadingSkeleton rows={5} label="Loading Project Work" />
+        </Card>
+      </WorkState>
+    ) : viewState === "failed" || viewState === "retry" ? (
+      <WorkState model="failed">
+        <DataStatePanel
+          state="error"
+          title="Could not load the Project Overview"
+          description="No next action or commercial position is available until the server view loads."
+          onRetry={viewState === "retry" ? () => undefined : undefined}
+        />
+      </WorkState>
+    ) : viewState === "model-mismatch" ? (
+      <WorkState model="mismatch">
+        <DataStatePanel
+          state="error"
+          title="Project work is updating"
+          description="No action is available until server reads agree."
+        />
+      </WorkState>
+    ) : (
+      <ProjectWorkSection
+        workModel="v2"
+        projectId={project.id}
+        host="fixture"
+        projectWork={work.projectWork}
+        pipelineStage={project.stage}
+        stale={stale}
+        onRefresh={() => undefined}
+        initialStaff={commandCentreFixtureStaff}
       />
-    </WorkState>
-  ) : viewState === "retry" ? (
-    <WorkState model="failed">
-      <DataStatePanel
-        state="error"
-        title="Could not load Project Work"
-        description="No next action is available until the server view loads."
-        onRetry={() => undefined}
-      />
-    </WorkState>
-  ) : viewState === "model-mismatch" ? (
-    <WorkState model="mismatch">
-      <DataStatePanel
-        state="error"
-        title="Project work is updating"
-        description="No action is available until server reads agree."
-      />
-    </WorkState>
-  ) : (
-    <ProjectWorkSection
-      workModel="v2"
-      projectId={project.id}
-      host="fixture"
-      projectWork={work.projectWork}
-      pipelineStage={project.stage}
-      stale={stale}
-      onRefresh={() => undefined}
-      initialStaff={commandCentreFixtureStaff}
-    />
-  );
+    );
 
-  const commercial = viewState === "pending" ? (
-    <Card padding="compact">
-      <LoadingSkeleton
-        rows={4}
-        columns={2}
-        label="Loading current design and commercial state"
-      />
-    </Card>
-  ) : viewState === "failed" ? (
-    <DataStatePanel
-      state="error"
-      title="Could not load current design and commercial state"
-      description="No commercial fallback has been selected."
-    />
-  ) : viewState === "retry" ? (
-    <DataStatePanel
-      state="error"
-      title="Could not load current design and commercial state"
-      description="No commercial fallback has been selected."
-      onRetry={() => undefined}
-    />
-  ) : (
-    <ProjectCurrentDesignCommercialCard data={currentDesign} />
-  );
+  const commercial =
+    viewState === "pending" ? (
+      <Card padding="compact">
+        <LoadingSkeleton
+          rows={4}
+          columns={2}
+          label="Loading current design and commercial state"
+        />
+      </Card>
+    ) : viewState === "failed" || viewState === "retry" ? null : (
+      <ProjectCurrentDesignCommercialCard data={currentDesign} />
+    );
 
   const recent =
     viewState === "summary" ? (

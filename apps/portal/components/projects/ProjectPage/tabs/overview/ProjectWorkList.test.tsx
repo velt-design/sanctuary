@@ -61,7 +61,12 @@ function projection({
     waitingReason: null,
     closedOutcome: null,
     stateRowVersion: 1,
-    primaryAction: { kind: "workItem", item: primary, dueState: "today" },
+    primaryAction: {
+      kind: "workItem",
+      item: primary,
+      dueState: "today",
+      reason: "This work is due today.",
+    },
     openItems,
     blockedItems,
     confirmedFacts: [],
@@ -105,6 +110,23 @@ function rowWith(container: HTMLElement, text: string): HTMLLIElement {
 describe("ProjectWorkList", () => {
   afterEach(() => {
     document.body.innerHTML = "";
+  });
+
+  it("renders nothing when the server selected the only current item", () => {
+    const primary = workItem();
+    const rendered = renderIntoDocument(
+      <ProjectWorkList
+        controller={controllerFor(
+          projection({ primary, openItems: [primary] }),
+        )}
+      />,
+    );
+
+    expect(rendered.container.textContent).toBe("");
+    expect(
+      rendered.container.querySelector('[data-project-work-list="v2"]'),
+    ).toBeNull();
+    rendered.unmount();
   });
 
   it("keeps the primary item out of the list and routes email/manual actions through the controller", async () => {
@@ -224,5 +246,4 @@ describe("ProjectWorkList", () => {
     expect(runItemAction).not.toHaveBeenCalled();
     rendered.unmount();
   });
-
 });

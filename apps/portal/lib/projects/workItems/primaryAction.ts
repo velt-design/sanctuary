@@ -1,8 +1,5 @@
 import { aucklandLocalDate } from './businessCalendar';
-import type {
-  ProjectWorkItem,
-  ProjectWorkPrimaryCandidate,
-} from './types';
+import type { ProjectWorkItem, ProjectWorkPrimaryCandidate } from './types';
 
 export type SpecialistActionCandidate = Extract<ProjectWorkPrimaryCandidate, { kind: 'specialist' }>;
 export type RecoveryActionCandidate = Extract<ProjectWorkPrimaryCandidate, { kind: 'recovery' }>;
@@ -23,6 +20,14 @@ function dueStateForWorkItem(
   return 'future';
 }
 
+function rankingReasonForWorkItem(item: ProjectWorkItem, now: Date): string {
+  const dueState = dueStateForWorkItem(item, now);
+  if (dueState === 'critical') return 'Critical work is ranked ahead of other current work.';
+  if (dueState === 'overdue') return 'This work is overdue.';
+  if (dueState === 'today') return 'This work is due today.';
+  return 'This is the earliest due current work.';
+}
+
 function urgencyRank(item: ProjectWorkItem, now: Date): number {
   const state = dueStateForWorkItem(item, now);
   if (state === 'critical') return 0;
@@ -31,10 +36,7 @@ function urgencyRank(item: ProjectWorkItem, now: Date): number {
   return 3;
 }
 
-export function rankActionableWorkItems(
-  items: ProjectWorkItem[],
-  now = new Date(),
-): ProjectWorkItem[] {
+export function rankActionableWorkItems(items: ProjectWorkItem[], now = new Date()): ProjectWorkItem[] {
   return items
     .filter((item) => item.status === 'OPEN')
     .slice()
@@ -66,6 +68,7 @@ export function resolveProjectWorkPrimaryAction(params: {
       kind: 'workItem',
       item: urgentWork,
       dueState: dueStateForWorkItem(urgentWork, now),
+      reason: rankingReasonForWorkItem(urgentWork, now),
     };
   }
   if (params.specialistAction) return params.specialistAction;
@@ -74,6 +77,7 @@ export function resolveProjectWorkPrimaryAction(params: {
       kind: 'workItem',
       item: work[0],
       dueState: dueStateForWorkItem(work[0], now),
+      reason: rankingReasonForWorkItem(work[0], now),
     };
   }
   return {
