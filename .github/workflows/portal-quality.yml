@@ -18,6 +18,8 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       PORTAL_TEST_EMAIL: ${{ secrets.PORTAL_TEST_EMAIL }}
       PORTAL_TEST_PASSWORD: ${{ secrets.PORTAL_TEST_PASSWORD }}
+      PORTAL_PRODUCTION_TEST_EMAIL: ${{ secrets.PORTAL_PRODUCTION_TEST_EMAIL }}
+      PORTAL_PRODUCTION_TEST_PASSWORD: ${{ secrets.PORTAL_PRODUCTION_TEST_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -93,12 +95,18 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Production Project Work authenticated read-only smoke
-        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && env.PORTAL_PRODUCTION_TEST_EMAIL != '' && env.PORTAL_PRODUCTION_TEST_PASSWORD != ''
         env:
           PORTAL_BASE_URL: https://portal.sanctuarypergolas.co.nz
           PORTAL_PROJECT_WORK_V2_READINESS_TARGET: production
           PORTAL_PRODUCTION_SUPABASE_PROJECT_REF: iytanftukulcnavossmd
+          PORTAL_TEST_EMAIL: ${{ env.PORTAL_PRODUCTION_TEST_EMAIL }}
+          PORTAL_TEST_PASSWORD: ${{ env.PORTAL_PRODUCTION_TEST_PASSWORD }}
         run: npm run test:portal:project-work:production-read-only-auth
+
+      - name: Production Project Work smoke credential notice
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (env.PORTAL_PRODUCTION_TEST_EMAIL == '' || env.PORTAL_PRODUCTION_TEST_PASSWORD == '')
+        run: echo "::notice::Production Project Work smoke skipped because protected production-only credentials are not provisioned."
 
       - name: Portal Vitest suite
         run: npm run test:portal
