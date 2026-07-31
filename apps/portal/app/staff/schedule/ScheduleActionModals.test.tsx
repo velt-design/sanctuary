@@ -109,6 +109,23 @@ describe('ScheduleActionModals', () => {
     rendered.unmount();
   });
 
+  it('keeps quick extensions inside the duration workflow', () => {
+    const props = buildProps(buildState({ durationEdit: { id: 'sch_1', durationDays: '2' } }));
+    const rendered = renderIntoDocument(<ScheduleActionModals {...props} />);
+    const addTwoDays = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent === '+2 days',
+    );
+
+    expect(addTwoDays).toBeTruthy();
+    act(() => addTwoDays?.click());
+    const update = vi.mocked(props.setDurationEdit).mock.calls[0]?.[0];
+    expect(typeof update).toBe('function');
+    if (typeof update === 'function') {
+      expect(update({ id: 'sch_1', durationDays: '2' })).toEqual({ id: 'sch_1', durationDays: '4' });
+    }
+    rendered.unmount();
+  });
+
   it('renders the finish-early prompt and forwards the pull-forward action', () => {
     const props = buildProps(
       buildState({

@@ -1602,6 +1602,12 @@ describe('ScheduleClient', () => {
       force: false,
       today: '2026-04-07',
     });
+    expect(dndMocks.latestBoardProps.changeFeedback).toMatchObject({
+      projectId: betaProjectId,
+      action: 'Schedule',
+      destination: 'Crew Alpha',
+      phase: 'saved',
+    });
 
     rendered.unmount();
   });
@@ -1718,6 +1724,10 @@ describe('ScheduleClient', () => {
 
     expect(document.body.textContent).toContain('Move other scheduled jobs?');
     expect(document.body.textContent).toContain('Alpha Deck');
+    expect(dndMocks.latestBoardProps.changeFeedback).toMatchObject({
+      projectId: betaProjectId,
+      phase: 'reviewing',
+    });
     expect(assignJob).toHaveBeenCalledTimes(1);
     expect(assignJob).toHaveBeenLastCalledWith(expect.objectContaining({ force: false }));
 
@@ -2330,6 +2340,10 @@ describe('ScheduleClient', () => {
     expect(assignJob).toHaveBeenCalledTimes(1);
     expect(scheduleSnapshotQueryFn).toHaveBeenCalledTimes(1);
     expect(rendered.container.textContent).toContain('Refreshing');
+    expect(dndMocks.latestBoardProps.changeFeedback).toMatchObject({
+      projectId: betaProjectId,
+      phase: 'reconciling',
+    });
 
     act(dropBetaIntoCrew);
     await act(async () => {
@@ -2402,6 +2416,11 @@ describe('ScheduleClient', () => {
       await Promise.resolve();
     });
     expect(assignJob).toHaveBeenCalledTimes(1);
+    expect(dndMocks.latestBoardProps.changeFeedback).toMatchObject({
+      projectId: betaProjectId,
+      phase: 'checking',
+    });
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ disabled: true });
     const boardKey = qk.schedule.board('example.supabase.co', '2026-04-07');
     expect(
       queryClient
@@ -2488,6 +2507,10 @@ describe('ScheduleClient', () => {
 
     const unscheduledAfter = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
     expect(unscheduledAfter?.textContent).toContain('Beta Deck');
+    expect(dndMocks.latestBoardProps.changeFeedback).toMatchObject({
+      projectId: betaProjectId,
+      phase: 'verified',
+    });
     expect(toastMocks.error).toHaveBeenCalledWith('Job is already scheduled in this crew. Refresh the board.');
 
     rendered.unmount();

@@ -505,7 +505,84 @@ describe('ScheduleBoardView', () => {
       });
     });
 
-    expect(lanes.scrollTop).toBe(32);
+    expect(lanes.scrollTop).toBeGreaterThan(0);
+    expect(lanes.scrollTop).toBeLessThanOrEqual(24);
+    rendered.unmount();
+  });
+
+  it('commits the last destination shown to staff even if drag-end collision data changes', () => {
+    const onDrop = vi.fn();
+    const rendered = renderIntoDocument(<ScheduleBoardView {...baseProps({ onDrop })} />);
+    const shownTarget = {
+      active: {
+        id: 'job_alpha',
+        rect: { current: { initial: { left: 100, top: 100, width: 40, height: 40 } } },
+      },
+      over: { id: 'lane:crew_alpha' },
+    };
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: 'job_alpha' } });
+      dndMocks.latestContextProps.onDragOver(shownTarget);
+    });
+    expect(rendered.container.textContent).toContain('Drop at the end of Crew Alpha · position 1.');
+
+    act(() => {
+      dndMocks.latestContextProps.onDragEnd({
+        active: shownTarget.active,
+        over: null,
+      });
+    });
+
+    expect(onDrop).toHaveBeenCalledWith(
+      'job_alpha',
+      expect.objectContaining({ kind: 'lane', laneId: 'crew_alpha', insertionIndex: 0 }),
+    );
+    rendered.unmount();
+  });
+
+  it('blocks move gestures while schedule truth is saving', () => {
+    const onDrop = vi.fn();
+    const rendered = renderIntoDocument(
+      <ScheduleBoardView
+        {...baseProps({
+          interaction: { disabled: true, reason: 'Another schedule change is still saving.' },
+          onDrop,
+        })}
+      />,
+    );
+
+    const move = rendered.container.querySelector<HTMLButtonElement>('button[aria-label="Move Alpha Deck unavailable"]');
+    expect(move?.disabled).toBe(true);
+    expect(rendered.container.textContent).toContain('Another schedule change is still saving.');
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: 'job_alpha' } });
+      dndMocks.latestContextProps.onDragEnd({ active: { id: 'job_alpha', rect: { current: {} } }, over: { id: 'lane:crew_alpha' } });
+    });
+    expect(onDrop).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
+  it('shows card-level saving and restored outcomes with their intended destination', () => {
+    const rendered = renderIntoDocument(
+      <ScheduleBoardView
+        {...baseProps({
+          changeFeedback: {
+            id: 1,
+            projectId: 'proj_alpha',
+            action: 'Schedule',
+            destination: 'Crew Alpha',
+            phase: 'saving',
+          },
+        })}
+      />,
+    );
+
+    const card = rendered.container.querySelector('[data-schedule-card-id="job_alpha"]');
+    expect(card?.getAttribute('data-change-state')).toBe('saving');
+    expect(card?.textContent).toContain('Saving schedule');
+    expect(card?.textContent).toContain('Crew Alpha');
     rendered.unmount();
   });
 

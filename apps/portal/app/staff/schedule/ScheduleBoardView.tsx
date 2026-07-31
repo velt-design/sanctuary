@@ -1,22 +1,16 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import {
   closestCenter,
   DndContext,
   type CollisionDetection,
-  type DragEndEvent,
-  type DragMoveEvent,
   DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
   pointerWithin,
   useDroppable,
-  useSensor,
-  useSensors,
 } from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { ScheduleProjectSummary } from '@/lib/queries/schedule';
 import { addDaysYmd } from '@/lib/scheduling/date';
 import { SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
@@ -33,44 +27,18 @@ import {
   UnscheduledJobCard,
 } from './ScheduleBoardCards';
 import ScheduleCrewFilter from './ScheduleCrewFilter';
-import { resolveBoardDropTarget, type BoardDragLane, type BoardDragPoint, type BoardDragRect, type BoardDropTarget } from './boardDrag';
-import { logScheduleDebug } from './scheduleDebug';
+import type { BoardDropTarget } from './boardDrag';
 import { useScheduleCrewVisibility } from './useScheduleCrewVisibility';
+import {
+  useScheduleBoardDragController,
+  type ScheduleBoardDrop,
+} from './useScheduleBoardDragController';
+import type { ScheduleBoardChangeFeedback } from './useScheduleBoardChangeFeedback';
 
 const styles = { ...sharedStyles, ...timelineStyles, ...boardStyles };
 
 export type { ScheduleBoardMenuAction } from './ScheduleBoardCards';
-
-export type ScheduleBoardDropDebug = {
-  activeId: string;
-  rawOverId: string | null;
-  sourceLaneId: string | null;
-  resolvedKind: BoardDropTarget['kind'];
-  resolvedLaneId: string | null;
-  insertionIndex: number | null;
-  placement: 'before' | 'after' | 'end' | null;
-  resolvedOverId: string | null;
-  point: BoardDragPoint | null;
-  activeRect: BoardDragRect | null;
-  targetLaneRect: BoardDragRect | null;
-  unscheduledRect: BoardDragRect | null;
-  laneItemCounts: Record<string, number>;
-};
-
-export type ScheduleBoardDrop =
-  | {
-      kind: 'lane';
-      laneId: string;
-      insertionIndex: number;
-      placement: 'before' | 'after' | 'end';
-      overId: string | null;
-      debug?: ScheduleBoardDropDebug;
-    }
-  | {
-      kind: 'unscheduled';
-      overId: 'unscheduled';
-      debug?: ScheduleBoardDropDebug;
-    };
+export type { ScheduleBoardDrop, ScheduleBoardDropDebug } from './useScheduleBoardDragController';
 
 export type ScheduleBoardViewProps = {
   today: string;
@@ -91,6 +59,11 @@ export type ScheduleBoardViewProps = {
   onToggleUnscheduledCollapsed: () => void;
   onShowCompletedChange: (value: boolean) => void;
   onDrop: (activeId: string, drop: ScheduleBoardDrop) => void;
+  interaction?: {
+    disabled: boolean;
+    reason?: string;
+  };
+  changeFeedback?: ScheduleBoardChangeFeedback | null;
   buildJobMenuActions: (args: {
     id: string;
     scheduleItem: ScheduleItem;
@@ -195,58 +168,6 @@ function formatCommitmentLabel(item: ScheduleItem): string | null {
   return `Starts ${formatShortDate(item.plannedStart)}`;
 }
 
-function rectFromElement(element: Element | null | undefined): BoardDragRect | null {
-  if (!element) return null;
-  const rect = element.getBoundingClientRect();
-  return {
-    left: rect.left,
-    top: rect.top,
-    width: rect.width,
-    height: rect.height,
-  };
-}
-
-function dragRectFromEvent(event: DragMoveEvent | DragEndEvent): BoardDragRect | null {
-  const rect = ((event.active.rect?.current as any)?.translated ?? (event.active.rect?.current as any)?.initial) as
-    | { left: number; top: number; width: number; height: number }
-    | undefined;
-  if (!rect) return null;
-  return {
-    left: rect.left,
-    top: rect.top,
-    width: rect.width,
-    height: rect.height,
-  };
-}
-
-function dragPointFromEvent(event: DragMoveEvent | DragEndEvent): BoardDragPoint | null {
-  const rect = dragRectFromEvent(event);
-  if (!rect) return null;
-  return {
-    x: rect.left + rect.width / 2,
-    y: rect.top + rect.height / 2,
-  };
-}
-
-function toBoardDrop(target: BoardDropTarget, debug?: ScheduleBoardDropDebug): ScheduleBoardDrop | null {
-  if (!target.valid) return null;
-  if (target.kind === 'unscheduled') return { kind: 'unscheduled', overId: target.overId, debug };
-  return {
-    kind: 'lane',
-    laneId: target.laneId,
-    insertionIndex: target.insertionIndex,
-    placement: target.placement,
-    overId: target.overId,
-    debug,
-  };
-}
-
-function boardDropSignature(target: BoardDropTarget): string {
-  if (!target.valid) return `none:${target.overId ?? ''}`;
-  if (target.kind === 'unscheduled') return 'unscheduled';
-  return `lane:${target.laneId}:${target.insertionIndex}:${target.placement}:${target.overId ?? ''}`;
-}
-
 function LaneDropZone({
   laneId,
   children,
@@ -294,6 +215,31 @@ function UnscheduledDropZone({
   );
 }
 
+function describeDropTarget(input: {
+  target: BoardDropTarget | null;
+  installers: Installer[];
+  scheduleItemById: Map<string, ScheduleItem>;
+  jobsById: ScheduleBoardModel['schedulable']['jobsById'];
+}): string {
+  const { target } = input;
+  if (!target) return 'Move over a crew lane or Unscheduled.';
+  if (!target.valid) {
+    if (target.reason === 'same-position') return 'Already in this position.';
+    if (target.reason === 'same-unscheduled') return 'Already unscheduled.';
+    if (target.reason === 'restricted') return 'Downtime stays with its current crew.';
+    return 'Not a valid destination.';
+  }
+  if (target.kind === 'unscheduled') return 'Return this job to Unscheduled.';
+  const crewName = input.installers.find((installer) => installer.id === target.laneId)?.name ?? 'crew';
+  if (target.placement === 'end' || !target.overId || target.overId.startsWith('lane:')) {
+    return `Drop at the end of ${crewName} · position ${target.insertionIndex + 1}.`;
+  }
+  const targetItem = input.scheduleItemById.get(target.overId) ?? null;
+  const targetJob = targetItem ? input.jobsById.get(targetItem.id) ?? null : null;
+  const targetName = targetJob?.projectName ?? (targetItem?.itemType === 'downtime' ? 'downtime' : 'the next job');
+  return `Drop in ${crewName} · position ${target.insertionIndex + 1}, before ${targetName}.`;
+}
+
 export default function ScheduleBoardView({
   today,
   scheduleMode,
@@ -313,18 +259,11 @@ export default function ScheduleBoardView({
   onToggleUnscheduledCollapsed,
   onShowCompletedChange,
   onDrop,
+  interaction = { disabled: false },
+  changeFeedback = null,
   buildJobMenuActions,
   buildDowntimeMenuActions,
 }: ScheduleBoardViewProps) {
-  const boardScrollRef = useRef<HTMLDivElement | null>(null);
-  const laneBodyRefs = useRef(new Map<string, HTMLDivElement | null>());
-  const boardCardRefs = useRef(new Map<string, HTMLElement | null>());
-  const unscheduledBodyRef = useRef<HTMLDivElement | null>(null);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
-  const [overLaneId, setOverLaneId] = useState<string | null>(null);
-  const [boardDropTarget, setBoardDropTarget] = useState<BoardDropTarget | null>(null);
-  const lastDropTargetSignatureRef = useRef<string | null>(null);
   const activeInstallers = useMemo(() => installers.filter((installer) => installer.active), [installers]);
   const activeInstallerIds = useMemo(() => activeInstallers.map((installer) => installer.id), [activeInstallers]);
   const { hiddenCrewIds, toggleCrew, hideCrews, showAllCrews } = useScheduleCrewVisibility(activeInstallerIds);
@@ -355,169 +294,55 @@ export default function ScheduleBoardView({
     [activeInstallers, laneItems],
   );
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  function buildBoardDragLanes(): BoardDragLane[] {
-    return visibleInstallers.map((installer) => {
-      const items = laneItems.get(installer.id) ?? [];
-      const itemRects: BoardDragLane['itemRects'] = {};
-      for (const item of items) {
-        itemRects[item.id] = rectFromElement(boardCardRefs.current.get(item.id));
-      }
-      return {
-        id: installer.id,
-        itemIds: items.map((item) => item.id),
-        rect: rectFromElement(laneBodyRefs.current.get(installer.id) ?? null),
-        itemRects,
-      };
-    });
-  }
-
-  function resolveBoardDrop(event: DragMoveEvent | DragEndEvent): { target: BoardDropTarget; debug: ScheduleBoardDropDebug } {
-    const activeId = String(event.active.id);
-    const eventOverId = event.over ? String(event.over.id) : null;
-    const activeItem = scheduleItemById.get(activeId) ?? null;
-    const sourceLaneId = activeItem?.installerId ?? null;
-    const lanes = buildBoardDragLanes();
-    const point = dragPointFromEvent(event);
-    const unscheduledRect = rectFromElement(unscheduledBodyRef.current);
-    const target = resolveBoardDropTarget({
-      activeId,
-      sourceLaneId,
-      overId: eventOverId,
-      point,
-      lanes,
-      unscheduledRect,
-    });
-    const resolvedLaneId = target.valid && target.kind === 'lane' ? target.laneId : null;
-    const targetLaneRect = resolvedLaneId ? (lanes.find((lane) => lane.id === resolvedLaneId)?.rect ?? null) : null;
-    const laneItemCounts = Object.fromEntries(lanes.map((lane) => [lane.id, lane.itemIds.length]));
-    return {
-      target,
-      debug: {
-        activeId,
-        rawOverId: eventOverId,
-        sourceLaneId,
-        resolvedKind: target.kind,
-        resolvedLaneId,
-        insertionIndex: target.valid && target.kind === 'lane' ? target.insertionIndex : null,
-        placement: target.valid && target.kind === 'lane' ? target.placement : null,
-        resolvedOverId: target.overId,
-        point,
-        activeRect: dragRectFromEvent(event),
-        targetLaneRect,
-        unscheduledRect,
-        laneItemCounts,
-      },
-    };
-  }
-
-  function applyBoardDropTarget(target: BoardDropTarget, debug: ScheduleBoardDropDebug, phase: 'over' | 'move'): void {
-    const signature = boardDropSignature(target);
-    if (lastDropTargetSignatureRef.current !== signature) {
-      lastDropTargetSignatureRef.current = signature;
-      logScheduleDebug('board.drop.target', { phase, ...debug });
-    }
-    setBoardDropTarget(target);
-    if (!target.valid) {
-      setOverId(null);
-      setOverLaneId(null);
-      return;
-    }
-    if (target.kind === 'unscheduled') {
-      setOverId('unscheduled');
-      setOverLaneId(null);
-      return;
-    }
-    setOverId(target.overId);
-    setOverLaneId(target.laneId);
-  }
-
-  function clearBoardDragState(): void {
-    setActiveDragId(null);
-    setOverId(null);
-    setOverLaneId(null);
-    setBoardDropTarget(null);
-    lastDropTargetSignatureRef.current = null;
-  }
-
-  function handleDragMove(event: DragMoveEvent) {
-    if (!activeDragId) return;
-
-    const { target, debug } = resolveBoardDrop(event);
-    applyBoardDropTarget(target, debug, 'move');
-
-    const point = dragPointFromEvent(event);
-    if (!point) return;
-
-    const edgePx = 80;
-    const stepPx = 32;
-
-    let boardScrolledVertically = false;
-    const board = boardScrollRef.current;
-    if (board) {
-      const br = board.getBoundingClientRect();
-      if (board.scrollWidth > board.clientWidth + 1) {
-        if (point.x < br.left + edgePx) board.scrollLeft -= stepPx;
-        else if (point.x > br.right - edgePx) board.scrollLeft += stepPx;
-      }
-      if (board.scrollHeight > board.clientHeight + 1) {
-        if (point.y < br.top + edgePx && board.scrollTop > 0) {
-          board.scrollTop -= stepPx;
-          boardScrolledVertically = true;
-        } else if (point.y > br.bottom - edgePx && board.scrollTop < board.scrollHeight - board.clientHeight) {
-          board.scrollTop += stepPx;
-          boardScrolledVertically = true;
-        }
-      }
-    }
-
-    const verticalTarget =
-      target.valid && target.kind === 'unscheduled'
-        ? unscheduledBodyRef.current
-        : target.valid && target.kind === 'lane'
-          ? laneBodyRefs.current.get(target.laneId) ?? null
-          : null;
-    if (verticalTarget && !boardScrolledVertically) {
-      const vr = verticalTarget.getBoundingClientRect();
-      if (point.y < vr.top + edgePx) verticalTarget.scrollTop -= stepPx;
-      else if (point.y > vr.bottom - edgePx) verticalTarget.scrollTop += stepPx;
-    }
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    const activeId = String(event.active.id);
-    const { target, debug } = resolveBoardDrop(event);
-    const drop = toBoardDrop(target, debug);
-    logScheduleDebug('board.drop.end', { ...debug, valid: Boolean(drop) });
-    clearBoardDragState();
-    if (!drop) return;
-    onDrop(activeId, drop);
-  }
-
+  const visibleInstallerIds = useMemo(() => visibleInstallers.map((installer) => installer.id), [visibleInstallers]);
+  const {
+    sensors,
+    activeDragId,
+    boardDropTarget,
+    boardScrollRef,
+    laneBodyRefs,
+    boardCardRefs,
+    unscheduledBodyRef,
+    handleDragStart,
+    handleDragOver,
+    handleDragMove,
+    handleDragEnd,
+    clearDragState,
+  } = useScheduleBoardDragController({
+    interactionDisabled: interaction.disabled,
+    visibleInstallerIds,
+    laneItems,
+    scheduleItemById,
+    onDrop,
+  });
+  const overLaneId = boardDropTarget?.valid && boardDropTarget.kind === 'lane' ? boardDropTarget.laneId : null;
   const overlayJob = activeDragId ? schedulable.jobsById.get(activeDragId) ?? null : null;
+  const overlayScheduleItem = activeDragId ? scheduleItemById.get(activeDragId) ?? null : null;
+  const overlayTitle = overlayJob?.projectName ?? (overlayScheduleItem?.itemType === 'downtime' ? 'Downtime' : 'Schedule item');
+  const overlayDescriptor = overlayJob?.descriptor ?? (overlayScheduleItem?.downtimeNote || 'Crew unavailable');
+  const dropDescription = activeDragId
+    ? describeDropTarget({
+        target: boardDropTarget,
+        installers,
+        scheduleItemById,
+        jobsById: schedulable.jobsById,
+      })
+    : '';
 
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={boardCollisionDetection}
       autoScroll={false}
-      onDragStart={(event) => {
-        setActiveDragId(String(event.active.id));
-        setBoardDropTarget(null);
-        lastDropTargetSignatureRef.current = null;
-      }}
-      onDragOver={(event) => {
-        const { target, debug } = resolveBoardDrop(event);
-        applyBoardDropTarget(target, debug, 'over');
-      }}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragMove={handleDragMove}
-      onDragCancel={clearBoardDragState}
+      onDragCancel={clearDragState}
       onDragEnd={handleDragEnd}
     >
+      <div className={styles.dragLiveRegion} role="status" aria-live="assertive">
+        {dropDescription}
+      </div>
       <div className={styles.panels}>
         <aside
           className={cx(styles.leftPanel, unscheduledCollapsed && styles.leftPanelCollapsed)}
@@ -555,7 +380,13 @@ export default function ScheduleBoardView({
             {unscheduledJobs.length ? (
               <div className={styles.cardList}>
                 {unscheduledJobs.map((job) => (
-                  <UnscheduledJobCard key={job.id} job={job} />
+                  <UnscheduledJobCard
+                    key={job.id}
+                    job={job}
+                    interactionDisabled={interaction.disabled}
+                    interactionDisabledReason={interaction.reason}
+                    changeFeedback={changeFeedback?.projectId === job.projectId ? changeFeedback : null}
+                  />
                 ))}
               </div>
             ) : (
@@ -630,6 +461,11 @@ export default function ScheduleBoardView({
         </aside>
 
         <section className={styles.mainPanel} aria-label="Installer lanes">
+          {interaction.disabled ? (
+            <div className={styles.boardInteractionNotice} role="status" aria-live="polite">
+              {interaction.reason ?? 'Schedule changes are temporarily paused.'}
+            </div>
+          ) : null}
           <div className={cx(styles.legendRow, styles.boardControls)} aria-label="Schedule controls">
             <div className={styles.boardLegend}>
               {scheduleMode === 'v2' ? (
@@ -711,10 +547,8 @@ export default function ScheduleBoardView({
               const issueCount = ids.reduce((count, id) => count + (issueLevelByScheduleId.has(id) ? 1 : 0), 0);
 
               const cards: ReactNode[] = [];
-              for (const id of ids) {
+              for (const [itemIndex, id] of ids.entries()) {
                 const showInsertBefore = Boolean(laneDropTarget && laneDropTarget.overId === id && activeDragId !== id && activeDragId);
-                if (showInsertBefore) cards.push(<div key={`insert-${id}`} className={styles.insertionMarker} aria-hidden="true" />);
-
                 const job = schedulable.jobsById.get(id) ?? null;
                 const dates = barsByScheduleId.get(id);
                 const dateLine = dates ? formatDateRange(dates.startDate, dates.endDate) : undefined;
@@ -731,9 +565,12 @@ export default function ScheduleBoardView({
                       id={id}
                       item={scheduleItem}
                       dateLine={dateLine}
-                      dropTarget={overId === id && activeDragId !== id}
+                      dropTarget={showInsertBefore}
                       menuActions={downtimeActions}
                       issueLevel={issueLevel}
+                      interactionDisabled={interaction.disabled}
+                      interactionDisabledReason={interaction.reason}
+                      sequencePosition={itemIndex + 1}
                       onMount={(node) => boardCardRefs.current.set(id, node)}
                     />,
                   );
@@ -770,17 +607,19 @@ export default function ScheduleBoardView({
                     job={job}
                     scheduleStatus={scheduleStatus}
                     dateLine={dateLine}
-                    dropTarget={overId === id && activeDragId !== id}
+                    dropTarget={showInsertBefore}
                     menuActions={menuActions}
                     issueLevel={issueLevel}
                     pinned={scheduleMode === 'v2' && scheduleItem.mode === 'pinned'}
                     extraBadges={extraBadges}
+                    interactionDisabled={interaction.disabled}
+                    interactionDisabledReason={interaction.reason}
+                    changeFeedback={changeFeedback?.projectId === scheduleItem.projectId ? changeFeedback : null}
+                    sequencePosition={itemIndex + 1}
                     onMount={(node) => boardCardRefs.current.set(id, node)}
                   />,
                 );
               }
-              if (insertionAtEnd) cards.push(<div key="insert-end" className={styles.insertionMarker} aria-hidden="true" />);
-
               return (
                 <section
                   key={installer.id}
@@ -814,7 +653,11 @@ export default function ScheduleBoardView({
                       }}
                     >
                       {ids.length ? (
-                        <div className={styles.cardList}>
+                        <div
+                          className={styles.cardList}
+                          data-drop-end={insertionAtEnd ? 'true' : undefined}
+                          data-drop-end-position={insertionAtEnd ? ids.length + 1 : undefined}
+                        >
                           {cards}
                         </div>
                       ) : (
@@ -835,15 +678,22 @@ export default function ScheduleBoardView({
         </section>
       </div>
 
-      <DragOverlay>
-        {overlayJob ? (
-          <div className={styles.dragOverlay}>
-            <div className={styles.jobTitle}>{overlayJob.projectName}</div>
-            <div className={styles.jobDescriptor}>{overlayJob.descriptor}</div>
-            <div className={styles.badgesRow}>
-              <span className={styles.statusPill}>{formatScheduleBoardStatusLabel(overlayJob.status)}</span>
-              <span className={styles.durationPill}>{overlayJob.durationLabel}</span>
-            </div>
+      <DragOverlay dropAnimation={null}>
+        {activeDragId ? (
+          <div
+            className={styles.dragOverlay}
+            data-board-drag-overlay="true"
+            data-valid={boardDropTarget?.valid ? 'true' : 'false'}
+          >
+            <div className={styles.jobTitle}>{overlayTitle}</div>
+            <div className={styles.jobDescriptor}>{overlayDescriptor}</div>
+            {overlayJob ? (
+              <div className={styles.badgesRow}>
+                <span className={styles.statusPill}>{formatScheduleBoardStatusLabel(overlayJob.status)}</span>
+                <span className={styles.durationPill}>{overlayJob.durationLabel}</span>
+              </div>
+            ) : null}
+            <div className={styles.dragDestination}>{dropDescription}</div>
           </div>
         ) : null}
       </DragOverlay>
