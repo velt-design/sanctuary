@@ -141,6 +141,7 @@ function configureQueries(input?: {
       data: {
         id: INVOICE_ID,
         quote_version_id: QUOTE_VERSION_ID,
+        quote_total_inc_gst_cents: 120000,
         created_at: '2026-07-29T12:00:00.000Z',
       },
       error: null,
@@ -267,6 +268,7 @@ describe('mark deposit received', () => {
         paidDate: '2026-07-30',
         depositInvoiceId: INVOICE_ID,
         quoteVersionId: QUOTE_VERSION_ID,
+        valueIncGstCents: 120000,
       },
     });
     expect(projectUpdate.update.mock.invocationCallOrder[0]).toBeLessThan(
