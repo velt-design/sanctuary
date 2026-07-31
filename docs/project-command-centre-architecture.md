@@ -1,6 +1,6 @@
 # Project Operational Command Centre Architecture
 
-Status: Current architecture. The Overview V2 composition is deployed. The portfolio-wide Project Work rollout and legacy-task retirement described below are implemented in the current change set but remain unapplied to production until the ordered migration and application release complete their gates. The earlier narrow Contacts/Calculator bundle exception remains historical and did not raise either ceiling.
+Status: Current architecture. The Overview V2 composition is deployed. The portfolio-wide Project Work rollout and legacy-task retirement described below are applied and authenticated-read-only verified in staging, but remain unapplied to production until the migration-first cutover and application release complete. The earlier narrow Contacts/Calculator bundle exception remains historical and did not raise either ceiling.
 
 Approved handover baseline: `060bea19` on 2026-07-30.
 
@@ -637,7 +637,7 @@ The historical Stage 1 composition required no migration. Project Work is owned 
 - `20260721_000001_project_command_single_owner.sql` replaces the initial three-role owner contract with one Project Owner from the approved Jordan/JP/Joe/Bruce roster, performs the deterministic legacy backfill, and replaces the owner command.
 - `20260731000002_project_work_portfolio_rollout.sql` processes every pre-rollout project exactly once from its current stored stage, including already-V2 rows. A private project-independent ledger closes the cohort even when it was empty or its project events are later removed by a valid hard delete, while one event per project retains detailed audit. It seeds fresh server-owned stage timing, closes Paid as Complete, keeps Archived out of current work, cancels prohibited and legacy-review work, makes retired reviews terminal, initializes later direct inserts through a deferred invariant, rejects future Call/Site Visit work at the database boundary, preserves the existing confirmed admin hard-delete cascade, retires legacy writers, exposes `staff_projects_index_v2` and `staff_project_state_counts_v1`, and lifts the queue safety cap to 5,000. The server queue pages hosted-safe ranges and fails closed at that ceiling without changing the response shape.
 
-The rollout remains repository-local until the ordered production migration, application release, schema-cache proof, and authenticated read-only checks pass. Do not infer deployment from file presence.
+The rollout migration is applied in positively identified staging and its Preview application is wired only to that staging Supabase project. Production remains unchanged until the ordered production migration, application release, and postflight proof complete. Do not infer production deployment from file presence or staging evidence.
 
 Legacy `projects.next_action*` and `follow_up_date` are a read-only Schedule compatibility projection. Server-owned V2 Project Work commands alone refresh them through the guarded projection owner. Project Details, Dashboard controls, retired project-task completion, and AutomationRunner do not own those fields.
 
