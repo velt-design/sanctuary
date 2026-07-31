@@ -5,6 +5,10 @@ export type SchedulableJob = {
   projectId: string;
   estimateId: string;
   projectName: string;
+  customerName?: string | null;
+  siteAddress?: string | null;
+  identityDetail?: string | null;
+  searchText?: string;
   descriptor: string;
   status: string;
   durationHours: number;

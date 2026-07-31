@@ -46,7 +46,8 @@ function isPortalQaFixtureRoutePath(
     pathname === '/qa/ui-foundation-fixture' ||
     pathname === '/qa/email-preview-workbench-fixture' ||
     pathname === '/qa/design-booklet-workbench-fixture' ||
-    pathname === '/qa/project-work-queue-fixture'
+    pathname === '/qa/project-work-queue-fixture' ||
+    pathname === '/qa/schedule-ops-fixture'
   );
 }
 

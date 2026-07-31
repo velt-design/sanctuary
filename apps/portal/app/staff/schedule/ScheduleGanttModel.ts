@@ -6,6 +6,7 @@ import { addDaysYmd, diffDaysYmd, isYmd } from '@/lib/scheduling/date';
 import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 import { SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
 import { axisSpanPx, axisXForDayIndex, buildGanttAxis, GANTT_WEEKEND_WEIGHT } from './ganttAxis';
+import { buildScheduleJobIdentity } from './ScheduleJobPresentation';
 
 export type GanttDensity = 'compact' | 'comfortable';
 export type GanttZoomWeeks = 4 | 8 | 12;
@@ -45,6 +46,9 @@ export type GanttRow =
       estimateId: string;
       crewName: string;
       projectName: string;
+      customerName: string | null;
+      siteAddress: string | null;
+      identityDetail: string | null;
       status: string;
       durationLabel: string;
       durationDays: number;
@@ -508,18 +512,31 @@ export function buildScheduleGanttModel({
     }
   }
 
-  const ganttJobsById = new Map<string, { projectName: string; durationLabel: string }>();
+  const ganttJobsById = new Map<string, {
+    projectName: string;
+    customerName: string | null;
+    siteAddress: string | null;
+    identityDetail: string | null;
+    durationLabel: string;
+  }>();
   for (const item of visibleScheduleItems) {
     if (item.itemType === 'downtime') {
       const durationHours =
         typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
           ? item.durationHoursOverride
           : WORK_HOURS_PER_DAY;
-      ganttJobsById.set(item.id, { projectName: item.downtimeReason ?? 'Downtime', durationLabel: formatDuration(durationHours) });
+      ganttJobsById.set(item.id, {
+        projectName: item.downtimeReason ?? 'Downtime',
+        customerName: null,
+        siteAddress: null,
+        identityDetail: null,
+        durationLabel: formatDuration(durationHours),
+      });
       continue;
     }
 
     const project = projectsById.get(item.projectId) ?? null;
+    const identity = buildScheduleJobIdentity(project);
     const estimate = estimatesById.get(item.estimateId) ?? null;
     let durationHours = WORK_HOURS_PER_DAY;
     if (typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0) {
@@ -530,7 +547,7 @@ export function buildScheduleGanttModel({
       durationHours = deriveDurationHoursFromEstimate(estimate).durationHours;
     }
     ganttJobsById.set(item.id, {
-      projectName: project?.projectName ?? project?.name ?? 'Untitled project',
+      ...identity,
       durationLabel: formatDuration(durationHours),
     });
   }
@@ -648,6 +665,7 @@ export function buildScheduleGanttModel({
       if (!bar) continue;
       const scheduleItem = scheduleItemById.get(item.id) ?? null;
       const isDowntime = scheduleItem?.itemType === 'downtime';
+      const jobPresentation = ganttJobsById.get(item.id);
       const attentionReasons = [...(attentionReasonsByScheduleId.get(item.id) ?? [])];
       const planned = plannedBarsById.get(item.id);
       const baseSpan = axisSpanPx(axis, bar.startDate, bar.endDate);
@@ -682,9 +700,12 @@ export function buildScheduleGanttModel({
         projectId: isDowntime ? '' : bar.projectId,
         estimateId: isDowntime ? '' : bar.estimateId,
         crewName: installer.name,
-        projectName: bar.projectName,
+        projectName: isDowntime ? jobPresentation?.projectName ?? bar.projectName : bar.projectName,
+        customerName: jobPresentation?.customerName ?? null,
+        siteAddress: jobPresentation?.siteAddress ?? null,
+        identityDetail: jobPresentation?.identityDetail ?? null,
         status: bar.status,
-        durationLabel: ganttJobsById.get(item.id)?.durationLabel ?? formatDuration(bar.durationHours),
+        durationLabel: jobPresentation?.durationLabel ?? formatDuration(bar.durationHours),
         durationDays: Math.max(1, workingDaysInclusive(displayStart, displayEnd)),
         startDate: displayStart,
         endDate: displayEnd,

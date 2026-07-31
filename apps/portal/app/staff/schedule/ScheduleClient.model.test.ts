@@ -80,6 +80,29 @@ describe('buildScheduleBoardModelV2', () => {
     expect(model.laneItems.get('crew_alpha')?.map((item) => item.id)).toEqual(['sch_sched_1']);
   });
 
+  it('finds unscheduled work by customer or site identity without changing Schedule truth', () => {
+    const identitySeed = [{
+      ...unscheduledJobsSeed[0],
+      customerName: 'Alex Customer',
+      siteAddress: '10 Harbour Road',
+      identityDetail: 'Alex Customer · 10 Harbour Road',
+      searchText: 'alpha deck alex customer 10 harbour road',
+    }];
+    const model = buildScheduleBoardModelV2({
+      installers,
+      orphanedScheduleItems: [],
+      projects: [],
+      projectsById: new Map(),
+      query: 'harbour road',
+      scheduleItems: [],
+      scheduleItemsRenderable: [],
+      unscheduledJobsSeed: identitySeed,
+      visibleScheduleItems: [],
+    });
+
+    expect(model.unscheduledJobs.map((job) => job.id)).toEqual(['job_alpha']);
+  });
+
   it('keeps empty installer lanes stable when there are no visible schedule items', () => {
     const model = buildScheduleBoardModelV2({
       installers,
@@ -106,6 +129,8 @@ describe('buildScheduleBoardModelV2', () => {
           id: 'proj_sched_1',
           projectName: 'Scheduled Pergola',
           name: 'Scheduled Pergola',
+          customerName: 'Alex Customer',
+          siteAddress: '10 Harbour Road',
           status: 'DEPOSIT',
           nextActionDate: '2026-04-12',
           followUpDate: '2026-04-12',
@@ -118,6 +143,8 @@ describe('buildScheduleBoardModelV2', () => {
             id: 'proj_sched_1',
             projectName: 'Scheduled Pergola',
             name: 'Scheduled Pergola',
+            customerName: 'Alex Customer',
+            siteAddress: '10 Harbour Road',
             status: 'DEPOSIT',
             nextActionDate: '2026-04-12',
             followUpDate: '2026-04-12',
@@ -135,6 +162,9 @@ describe('buildScheduleBoardModelV2', () => {
     expect(scheduledJob).toEqual(
       expect.objectContaining({
         projectName: 'Scheduled Pergola',
+        customerName: 'Alex Customer',
+        siteAddress: '10 Harbour Road',
+        identityDetail: 'Alex Customer · 10 Harbour Road',
         status: 'DEPOSIT',
         descriptor: 'Next: 2026-04-12',
       }),

@@ -260,6 +260,9 @@ export default function ScheduleGanttTimeline({
                       <span className={styles.ganttProjectMeta}>
                         {formatShortDate(row.startDate)} to {formatShortDate(row.endDate)} / {row.durationLabel}
                       </span>
+                      {row.identityDetail ? (
+                        <span className={styles.ganttProjectIdentity} title={row.identityDetail}>{row.identityDetail}</span>
+                      ) : null}
                     </span>
                   )}
                 </div>
@@ -315,6 +318,8 @@ export default function ScheduleGanttTimeline({
                   }}
                   title={[
                     row.projectName,
+                    row.customerName ? `Customer: ${row.customerName}` : null,
+                    row.siteAddress ? `Site: ${row.siteAddress}` : null,
                     `Crew: ${row.crewName}`,
                     row.isPinned ? 'Pinned' : null,
                     row.plannedCommitmentLabel ? `Planned: ${row.plannedCommitmentLabel}` : 'Planned: Draft',
@@ -339,7 +344,7 @@ export default function ScheduleGanttTimeline({
                   aria-label={
                     row.isDowntime
                       ? undefined
-                      : `${row.projectName}. Forecast ${formatShortDate(row.startDate)} to ${formatShortDate(row.endDate)}. ${row.durationLabel}.${row.attentionLabel ? ` Attention: ${row.attentionLabel}.` : ''} Press Enter for actions.`
+                      : `${row.projectName}.${row.customerName ? ` Customer ${row.customerName}.` : ''}${row.siteAddress ? ` Site ${row.siteAddress}.` : ''} Crew ${row.crewName}. Forecast ${formatShortDate(row.startDate)} to ${formatShortDate(row.endDate)}. ${row.durationLabel}.${row.attentionLabel ? ` Attention: ${row.attentionLabel}.` : ''} Press Enter for actions.`
                   }
                   onPointerDown={row.timingAdjustable ? (event) => onBeginGanttDrag(row, 'move', event) : undefined}
                   onClick={(event) => {

@@ -63,9 +63,9 @@ import {
   formatHours,
   makeJobId,
   mapV2UnscheduledJobs,
-  safeProjectName,
 } from './ScheduleBoardModelShared';
 import { buildScheduleBoardModelV2 } from './ScheduleBoardModelV2';
+import { buildScheduleJobPresentationIndex } from './ScheduleJobPresentation';
 import { logScheduleDebug } from './scheduleDebug';
 import {
   isValidScheduleMutationEnvelope,
@@ -812,6 +812,8 @@ export default function ScheduleClient({
         projectId: job.projectId,
         estimateId: job.estimateId,
         projectName: job.projectName,
+        customerName: job.customerName ?? null,
+        siteAddress: job.siteAddress ?? null,
         status: job.status,
         durationDays: Math.max(1, Math.ceil(job.durationHours / WORK_HOURS_PER_DAY)),
       })),
@@ -1221,6 +1223,11 @@ export default function ScheduleClient({
     startUiTransition(() => {
       setUnscheduledCollapsed((prev) => !prev);
     });
+  };
+
+  const handleOpenUnscheduledJobs = (control: HTMLButtonElement) => {
+    setUnscheduledCollapsed(false);
+    setScheduleView('board', control);
   };
 
   const prefetchScheduleView = useCallback(
@@ -1677,6 +1684,11 @@ export default function ScheduleClient({
     for (const installer of installers) map.set(installer.id, installer);
     return map;
   }, [installers]);
+
+  const jobPresentationByScheduleId = useMemo(
+    () => buildScheduleJobPresentationIndex({ scheduleItems, projectsById, installersById }),
+    [installersById, projectsById, scheduleItems],
+  );
 
   const boardModel = useMemo(() => {
     if (view !== 'board' || activeSnapshotKind !== 'board') return EMPTY_SCHEDULE_BOARD_MODEL;
@@ -4045,6 +4057,7 @@ export default function ScheduleClient({
                 holidays={ganttHolidays}
                 showCompleted={showCompleted}
                 onShowCompletedChange={handleShowCompletedChange}
+                onOpenUnscheduled={handleOpenUnscheduledJobs}
                 onOpenProject={handleGanttOpenProject}
                 onOpenProjectPack={handleGanttOpenProjectPack}
                 onOpenCommitmentEdit={openCommitmentEdit}
@@ -4085,12 +4098,7 @@ export default function ScheduleClient({
         <ScheduleActionModals
           state={actionModalState}
           scheduleMode={scheduleMode}
-          findScheduleItem={(id) => scheduleItemById.get(id) ?? null}
-          findProjectName={(scheduleItemId) => {
-            const scheduleItem = scheduleItemById.get(scheduleItemId) ?? null;
-            const project = scheduleItem?.projectId ? projectsById.get(scheduleItem.projectId) ?? null : null;
-            return scheduleItem?.itemType === 'job' ? safeProjectName(project) : 'Job';
-          }}
+          findJobPresentation={(scheduleItemId) => jobPresentationByScheduleId.get(scheduleItemId) ?? null}
           formatShortDate={formatShortDate}
           formatCommitImpactList={formatCommitImpactList}
           setQuickEdit={setQuickEdit}

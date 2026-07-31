@@ -167,6 +167,7 @@ function JobActionsMenu({
 function JobCardShell({
   dragId,
   title,
+  identityDetail,
   descriptor,
   statusLabel,
   durationLabel,
@@ -189,6 +190,7 @@ function JobCardShell({
 }: {
   dragId?: string;
   title: string;
+  identityDetail?: string | null;
   descriptor: string;
   statusLabel: string;
   durationLabel: string;
@@ -214,9 +216,16 @@ function JobCardShell({
       <span className={styles.jobTitle} title={title}>
         {title}
       </span>
-      <span className={styles.jobDescriptor} title={descriptor}>
-        {descriptor}
-      </span>
+      {identityDetail ? (
+        <span className={styles.jobIdentityDetail} title={identityDetail}>
+          {identityDetail}
+        </span>
+      ) : null}
+      {descriptor && descriptor !== identityDetail ? (
+        <span className={styles.jobDescriptor} title={descriptor}>
+          {descriptor}
+        </span>
+      ) : null}
     </>
   );
   const hasAttention = Boolean(extraBadges || warning || issueLevel);
@@ -310,6 +319,7 @@ export function UnscheduledJobCard({ job }: { job: SchedulableJob }) {
     <JobCardShell
       dragId={job.id}
       title={job.projectName}
+      identityDetail={job.identityDetail}
       descriptor={job.descriptor}
       statusLabel={formatScheduleBoardStatusLabel(job.status)}
       durationLabel={job.durationLabel}
@@ -365,6 +375,7 @@ export function ScheduledJobCard({
     <JobCardShell
       dragId={id}
       title={job?.projectName ?? 'Untitled project'}
+      identityDetail={job?.identityDetail}
       descriptor={job?.descriptor ?? '—'}
       statusLabel={formatScheduleBoardStatusLabel(job?.status ?? '')}
       durationLabel={job?.durationLabel ?? '—'}

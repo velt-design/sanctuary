@@ -8,6 +8,7 @@ import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/ca
 import type { Installer, ScheduleItem } from '@/lib/types/scheduling';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
 import { buildLaneItems, formatDuration, formatHours, makeJobId, titleCase } from './ScheduleBoardModelShared';
+import { buildScheduleJobIdentity } from './ScheduleJobPresentation';
 
 export function toScheduleProjectSummary(project: Project): ScheduleProjectSummary {
   const name = project.projectName ?? project.name ?? 'Untitled project';
@@ -22,6 +23,8 @@ export function toScheduleProjectSummary(project: Project): ScheduleProjectSumma
     id: project.id,
     projectName: name,
     name,
+    customerName: project.clientName?.trim() || null,
+    siteAddress: project.siteAddress?.trim() || project.address?.trim() || null,
     status: project.status ?? 'NEW',
     nextActionDate,
     followUpDate: nextActionDate,
@@ -157,7 +160,7 @@ export function buildScheduleBoardModelLegacy(input: {
     const durationHours = derived.durationHours;
     const warnings = derived.issues.map((issue) => issue.message);
 
-    const projectName = project.projectName ?? project.name ?? 'Untitled project';
+    const identity = buildScheduleJobIdentity(project);
     const status = normalizeProjectStatus(project.status).status;
     if (!isSchedulingReadyProjectStatus(status)) {
       debug.excluded.notReadyStage += 1;
@@ -172,10 +175,10 @@ export function buildScheduleBoardModelLegacy(input: {
 
     const id = makeJobId(project.id, latestEstimate.id);
     const job: SchedulableJob = {
+      ...identity,
       id,
       projectId: project.id,
       estimateId: latestEstimate.id,
-      projectName,
       descriptor: `${getJobDescriptorFromEstimate(latestEstimate)}${nextActionSuffix}`,
       status,
       durationHours,
@@ -216,7 +219,7 @@ export function buildScheduleBoardModelLegacy(input: {
     const project = input.projectsById.get(item.projectId) ?? null;
     const estimate = input.estimatesById.get(item.estimateId) ?? null;
 
-    const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
+    const identity = buildScheduleJobIdentity(project);
     const status = project ? normalizeProjectStatus(project.status).status : '—';
     const nextActionDate = project ? ((project as any).nextActionDate ?? (project as any).followUpDate ?? null) : null;
     const nextActionType = project ? ((project as any).nextActionType ?? null) : null;
@@ -238,10 +241,10 @@ export function buildScheduleBoardModelLegacy(input: {
     }
 
     jobsById.set(id, {
+      ...identity,
       id,
       projectId: item.projectId,
       estimateId: item.estimateId,
-      projectName,
       descriptor: `${estimate ? getJobDescriptorFromEstimate(estimate) : '—'}${nextActionSuffix}`,
       status,
       durationHours,
@@ -255,7 +258,7 @@ export function buildScheduleBoardModelLegacy(input: {
 
   const unscheduledJobsAll = unscheduledJobs;
   const q = input.query.trim().toLowerCase();
-  const filteredUnscheduledJobs = unscheduledJobsAll.filter((job) => (!q ? true : job.projectName.toLowerCase().includes(q)));
+  const filteredUnscheduledJobs = unscheduledJobsAll.filter((job) => (!q ? true : (job.searchText ?? job.projectName.toLowerCase()).includes(q)));
 
   return {
     schedulable: {

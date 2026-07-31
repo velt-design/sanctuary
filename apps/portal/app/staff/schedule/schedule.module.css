@@ -535,6 +535,66 @@
   margin-top: var(--ui-space-2);
 }
 
+.actionJobContext {
+  display: grid;
+  gap: var(--ui-space-3);
+  margin-top: var(--ui-space-3);
+  padding: var(--ui-space-3);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-left: var(--ui-status-edge) solid var(--ui-status-info-border);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-secondary);
+}
+
+.actionJobIdentity {
+  display: grid;
+  gap: var(--ui-space-1);
+  min-width: 0;
+}
+
+.actionJobIdentity > strong,
+.actionJobIdentity > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actionJobIdentity > strong {
+  color: var(--ui-text-strong);
+}
+
+.actionJobIdentity > span {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-label);
+}
+
+.actionTimingReview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-2);
+}
+
+.actionTimingReview > div {
+  display: grid;
+  gap: var(--ui-space-1);
+  min-width: 0;
+  padding-top: var(--ui-space-2);
+  border-top: var(--ui-border-width) solid var(--ui-border);
+}
+
+.actionTimingReview span {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 800;
+  letter-spacing: var(--ui-letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.actionTimingReview strong {
+  font-size: var(--ui-font-size-label);
+  line-height: 1.35;
+}
+
 .actionModalFields {
   display: grid;
   gap: var(--ui-space-3);
@@ -631,6 +691,10 @@
   }
 
   .actionModalTwoColumns {
+    grid-template-columns: 1fr;
+  }
+
+  .actionTimingReview {
     grid-template-columns: 1fr;
   }
 

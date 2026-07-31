@@ -61,10 +61,20 @@ export type ScheduleBoardResponse = {
   project_index?: Array<{
     id: string;
     name: string;
+    customer_name?: string | null;
+    site_address?: string | null;
     pipeline_stage: string | null;
     follow_up_date: string | null;
   }>;
-  unscheduled_jobs: Array<{ job_id: string; estimate_id: string; project_name: string; status: string; duration_days: number }>;
+  unscheduled_jobs: Array<{
+    job_id: string;
+    estimate_id: string;
+    project_name: string;
+    customer_name?: string | null;
+    site_address?: string | null;
+    status: string;
+    duration_days: number;
+  }>;
   conflicts: any[];
   scheduled_estimate_ids?: Record<string, string>;
   holidays?: Array<{ date: string; name?: string; scope: string; region?: string | null }>;
@@ -80,6 +90,8 @@ export type ScheduleGanttResponse = {
   project_index?: Array<{
     id: string;
     name: string;
+    customer_name?: string | null;
+    site_address?: string | null;
     pipeline_stage: string | null;
     follow_up_date: string | null;
   }>;

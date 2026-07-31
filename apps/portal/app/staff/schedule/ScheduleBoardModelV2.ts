@@ -4,6 +4,7 @@ import { nextActionTypeLabel, normalizeProjectStatus } from '@/lib/types/project
 import type { Installer, ScheduleItem } from '@/lib/types/scheduling';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
 import { buildLaneItems, formatDuration, formatHours, titleCase } from './ScheduleBoardModelShared';
+import { buildScheduleJobIdentity } from './ScheduleJobPresentation';
 
 export function buildScheduleBoardModelV2(input: {
   installers: Installer[];
@@ -52,7 +53,7 @@ export function buildScheduleBoardModelV2(input: {
     }
 
     const project = input.projectsById.get(item.projectId) ?? null;
-    const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
+    const identity = buildScheduleJobIdentity(project);
     const status = project ? normalizeProjectStatus(project.status).status : '—';
     const nextActionDate = project ? ((project as any).nextActionDate ?? (project as any).followUpDate ?? null) : null;
     const nextActionType = project ? ((project as any).nextActionType ?? null) : null;
@@ -74,10 +75,10 @@ export function buildScheduleBoardModelV2(input: {
     }
 
     jobsById.set(id, {
+      ...identity,
       id,
       projectId: item.projectId,
       estimateId: item.estimateId,
-      projectName,
       descriptor: nextActionLine,
       status,
       durationHours,
@@ -89,7 +90,7 @@ export function buildScheduleBoardModelV2(input: {
 
   const unscheduledJobsAll = unscheduledJobs;
   const q = input.query.trim().toLowerCase();
-  const filteredUnscheduledJobs = unscheduledJobsAll.filter((job) => (!q ? true : job.projectName.toLowerCase().includes(q)));
+  const filteredUnscheduledJobs = unscheduledJobsAll.filter((job) => (!q ? true : (job.searchText ?? job.projectName.toLowerCase()).includes(q)));
 
   return {
     schedulable: {

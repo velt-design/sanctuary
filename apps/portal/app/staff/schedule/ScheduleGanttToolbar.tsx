@@ -31,6 +31,7 @@ type ScheduleGanttToolbarProps = {
   onShowPlannedChange: (next: boolean) => void;
   onAttentionModeChange: (next: GanttAttentionMode) => void;
   onJumpToToday: () => void;
+  onOpenUnscheduled: (control: HTMLButtonElement) => void;
   onToggleCrew: (crewId: string) => void;
   onHideCrews: (crewIds: readonly string[]) => void;
   onShowAllCrews: () => void;
@@ -61,6 +62,7 @@ export default function ScheduleGanttToolbar({
   onShowPlannedChange,
   onAttentionModeChange,
   onJumpToToday,
+  onOpenUnscheduled,
   onToggleCrew,
   onHideCrews,
   onShowAllCrews,
@@ -135,6 +137,15 @@ export default function ScheduleGanttToolbar({
       </div>
 
       <div className={styles.ganttDisplayRow} role="group" aria-label="View options">
+        <button
+          type="button"
+          className={cx(styles.buttonSecondary, styles.ganttControlButton)}
+          disabled={controlsDisabled}
+          onClick={(event) => onOpenUnscheduled(event.currentTarget)}
+        >
+          View unscheduled jobs
+        </button>
+
         {scheduleMode === 'v2' ? (
           <button
             type="button"

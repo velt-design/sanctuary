@@ -164,6 +164,15 @@ commitment or attention states. `ScheduleBoardCards.tsx` owns this card/action
 presentation; `ScheduleCrewFilter.tsx` and `useScheduleCrewVisibility.ts` own
 the shared view-only crew preference.
 
+Project name is the primary job label. Customer display name and site address
+form one deduplicated secondary identity line on Board cards, Gantt rows,
+keyboard labels, quick actions, and Schedule action dialogs. Search includes
+all three fields. `ScheduleJobPresentation.ts` owns this presentation model;
+Board and Gantt must not independently reconstruct identity or current timing.
+The server read projection stays bounded to the projects already present in
+the active Board/Gantt dataset. It does not create browser-owned Schedule
+truth or broaden any write contract.
+
 Gantt separates planning controls (range, scale, today, All jobs/Needs
 attention, and crews) from secondary view options (planned dates, completed
 jobs, density, and legend). Its default visual scale is eight weeks, while the
@@ -180,6 +189,15 @@ owns pure timeline/row/attention modelling, `ScheduleGanttToolbar.tsx` owns the
 grouped controls, and `ScheduleGanttTimeline.tsx` owns timeline presentation.
 `ScheduleGanttView.tsx` remains the interaction coordinator for drag/resize,
 scroll anchoring, focus return, and client-owned command callbacks.
+
+Gantt exposes an explicit **View unscheduled jobs** route back to Board with
+the queue expanded. A pointer drag or resize ends in a local review dialog
+that names the project, customer/site, crew, current timing, and proposed
+timing before invoking the existing command callback. Apply still enters the
+unchanged server-owned affected-job preview, immediate re-preview, explicit
+confirmation, optimistic rollback, and reconciliation lifecycle. If the
+underlying item changes while the local review is open, Apply is disabled and
+staff must preview again.
 
 At narrow widths the Unscheduled queue stacks above one horizontally focused
 crew lane; collapsing it reclaims the queue body so the first crew lane can
@@ -201,6 +219,8 @@ Schedule is one of the heaviest portal surfaces. Watch:
 - Duplicate first-load requests.
 - Board payload size.
 - Gantt data path duplication.
+- Unbounded identity reads: Gantt identity lookup must remain constrained to
+  the scheduled project IDs in its requested range.
 - CSS coupling between views.
 - Drag/drop responsiveness.
 
@@ -229,7 +249,7 @@ npm run test:portal:performance
 
 ## Verification
 
-Current local gate signal from 2026-07-30:
+Current local gate signal from 2026-07-31:
 
 ```bash
 npm run test:portal:schedule
@@ -237,14 +257,15 @@ npm run schedule:bundle-budget
 npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal-chromium --no-deps
 ```
 
-The focused Schedule gate currently passes 47 files and 371 tests, including
+The focused Schedule gate currently passes 49 files and 379 tests, including
 atomic Gantt adjustment, confirmed-preview continuity, stale-response
 rejection, strict affected-job confirmation/cancellation,
 cross-instance mutation ownership, malformed-response rejection, optimistic
 rollback/reconciliation, cache authority, nine-crew Board rendering,
 crew-filter persistence/fail-open recovery, hidden-lane exclusion, wrapped-row
-drop geometry and auto-scroll, Board control semantics, and Gantt
-keyboard/responsive behavior. The authenticated non-mutating browser review
+drop geometry and auto-scroll, Board control semantics, shared job
+identity/search presentation, explicit Gantt timing review, bounded Gantt
+project loading, and Gantt keyboard/responsive behavior. The authenticated non-mutating browser review
 covers deterministic eight-crew desktop wrapping, Board internal overflow and
 filter persistence at
 1440/1280/1024/768/390, Gantt, Site Visits, action/create
@@ -252,6 +273,14 @@ dialogs, project Tasks, 200% zoom, touch targets, focus return, reduced motion,
 document overflow, and browser/runtime errors. Record fresh bundle figures
 from `npm run schedule:bundle-budget`; do not raise the existing ceilings to
 accommodate presentation work.
+
+The data-free `/qa/schedule-ops-fixture` route is gated by
+`ENABLE_PORTAL_QA_FIXTURES=1`. It renders the production Board/Gantt
+presenters with long customer/site identity, nine crews, conflicts, 12
+unscheduled jobs, and an optional 108-bar large schedule. Every command
+callback is inert. Use `?view=board|gantt&scale=standard|large` for deterministic
+responsive and performance evidence without creating or mutating shared
+Schedule records.
 
 Focused tests:
 
