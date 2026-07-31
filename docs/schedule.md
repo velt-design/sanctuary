@@ -151,7 +151,19 @@ Foundation layout.
 
 Board job cards keep project-open, move, and actions as separate sibling
 controls. Pointer and keyboard drag activation belongs only to the labelled
-Move control; the card container is not a nested interactive surface. Gantt
+Move control; the card container is not a nested interactive surface. Board
+drag targeting is pointer-owned, keeps the source card anchored, renders one
+overlay and a non-layout-shifting insertion cue, and commits the last visible
+semantic destination. Same-position/unscheduled drops, hidden crews, and
+cross-crew downtime moves are rejected before a command. While any Schedule
+write or authoritative reconciliation is active, Board move and action
+controls are unavailable before activation. The affected project card names
+checking, review, saving, reconciliation, saved, restored, or verified state
+and its intended destination; only a validated command response may show
+saved, while ambiguous outcomes remain reconciling until a fresh snapshot.
+`useScheduleBoardDragController.ts` owns gesture geometry and scroll behavior;
+`useScheduleBoardChangeFeedback.ts` presents the existing command lifecycle
+without creating Schedule truth. Gantt
 job bars are keyboard focusable and open the existing action dialog with
 Enter/Space. Dialog-level Enter/P shortcuts run only when the dialog itself is
 focused, so Enter on a quick-action button activates that button. Its
@@ -163,8 +175,12 @@ Schedule and pin state as quieter metadata, and reserve bordered badges for
 commitment or attention states. Routine metadata is visibly qualified as
 **Stage**, **Job**, and **Timing**, while the commitment badge is qualified as
 **Plan**, so pipeline, execution, pin, and commitment concepts do not collapse
-into an unexplained row of statuses. Every card action menu is named for its
-project. `ScheduleBoardCards.tsx` owns this card/action presentation;
+into an unexplained row of statuses. Every card action panel is named for its
+project and groups state-aware commands as Plan and timing, Job progress,
+Customer, and Exceptions. Redundant +1/+2 duration commands live inside Set
+duration rather than expanding the job-level panel. `ScheduleBoardCards.tsx`
+owns card composition; `ScheduleBoardActions.tsx` owns the grouped action
+presenter;
 `ScheduleCrewFilter.tsx` and `useScheduleCrewVisibility.ts` own the shared
 view-only crew preference.
 
@@ -266,20 +282,29 @@ Current local gate signal from 2026-07-31:
 ```bash
 npm run test:portal:schedule
 npm run schedule:bundle-budget
-npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal-chromium --no-deps
+npx playwright test playwright/portal.schedule-board-confidence-fixture.spec.ts --project=portal-fixture --workers=1
+npx playwright test playwright/portal.schedule-board-confidence-fixture.spec.ts --project=portal-chromium --workers=1
 ```
 
-The focused Schedule gate currently passes 49 files and 382 tests, including
+The focused Schedule gate currently passes 52 files and 393 tests, including
 atomic Gantt adjustment, confirmed-preview continuity, stale-response
 rejection, strict affected-job confirmation/cancellation,
 cross-instance mutation ownership, malformed-response rejection, optimistic
 rollback/reconciliation, cache authority, nine-crew Board rendering,
-crew-filter persistence/fail-open recovery, hidden-lane exclusion, wrapped-row
-drop geometry and auto-scroll, Board control semantics, shared job
+crew-filter persistence/fail-open recovery, hidden-lane exclusion,
+pointer-owned drop geometry, stable visible-target commit, proportional
+auto-scroll, blocked uncommittable gestures, grouped actions, card-level
+transaction outcomes, Board control semantics, shared job
 identity/search presentation, server-authoritative Gantt timing review,
 stale-impact disabling, bounded Gantt project loading, phone/zoom agenda mode,
-and Gantt keyboard/responsive behavior. The authenticated non-mutating browser review
-covers deterministic eight-crew desktop wrapping, Board internal overflow and
+and Gantt keyboard/responsive behavior. With current staff test credentials,
+also run the authenticated non-mutating browser review:
+
+```bash
+npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal-chromium --no-deps
+```
+
+That review covers deterministic eight-crew desktop wrapping, Board internal overflow and
 filter persistence at
 1440/1280/1024/768/390, Gantt, Site Visits, action/create
 dialogs, project Tasks, 200% zoom, touch targets, focus return, reduced motion,
@@ -293,7 +318,15 @@ presenters with long customer/site identity, nine crews, conflicts, 12
 unscheduled jobs, and an optional 108-bar large schedule. Every command
 callback is inert. Use `?view=board|gantt&scale=standard|large` for deterministic
 responsive and performance evidence without creating or mutating shared
-Schedule records.
+Schedule records. Board additionally accepts
+`&state=checking|reviewing|saving|reconciling|saved|restored|verified` to render
+transaction feedback without a command. Run
+`playwright/portal.schedule-board-confidence-fixture.spec.ts` with the
+`portal-fixture` project for the six-width/200%-zoom, held-pointer drag,
+grouped-action, focus-return, no-write, and state matrix.
+Use `portal-chromium` after the normal staff-auth setup to prove the same inert
+matrix in an authenticated browser context; use `portal-fixture` for the
+credential-free local gate. Neither variant may issue a staff write.
 
 Focused tests:
 

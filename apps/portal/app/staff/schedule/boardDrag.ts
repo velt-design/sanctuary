@@ -35,6 +35,7 @@ export type BoardDropTarget =
       valid: false;
       kind: 'none';
       overId: string | null;
+      reason?: 'outside' | 'same-position' | 'same-unscheduled' | 'restricted';
     };
 
 type ResolveBoardDropInput = {
@@ -44,6 +45,7 @@ type ResolveBoardDropInput = {
   point: BoardDragPoint | null;
   lanes: BoardDragLane[];
   unscheduledRect?: BoardDragRect | null;
+  allowedLaneIds?: ReadonlySet<string> | null;
 };
 
 function right(rect: BoardDragRect): number {
@@ -109,16 +111,25 @@ export function resolveBoardDropTarget(input: ResolveBoardDropInput): BoardDropT
   const overId = input.overId;
 
   if (input.point && input.unscheduledRect && containsPoint(input.unscheduledRect, input.point)) {
+    if (input.sourceLaneId === null) {
+      return { valid: false, kind: 'none', overId: 'unscheduled', reason: 'same-unscheduled' };
+    }
     return { valid: true, kind: 'unscheduled', overId: 'unscheduled' };
   }
   if (!input.point && overId === 'unscheduled') {
+    if (input.sourceLaneId === null) {
+      return { valid: false, kind: 'none', overId: 'unscheduled', reason: 'same-unscheduled' };
+    }
     return { valid: true, kind: 'unscheduled', overId: 'unscheduled' };
   }
 
   const pointLane = laneForPoint(input.lanes, input.point);
   const fallbackLane = laneForOverId(input.lanes, overId);
   const lane = pointLane ?? fallbackLane;
-  if (!lane) return { valid: false, kind: 'none', overId };
+  if (!lane) return { valid: false, kind: 'none', overId, reason: 'outside' };
+  if (input.allowedLaneIds && !input.allowedLaneIds.has(lane.id)) {
+    return { valid: false, kind: 'none', overId, reason: 'restricted' };
+  }
 
   const insertion = insertionForLane({
     activeId: input.activeId,
@@ -126,6 +137,18 @@ export function resolveBoardDropTarget(input: ResolveBoardDropInput): BoardDropT
     overId: pointLane ? null : overId,
     point: input.point,
   });
+
+  if (input.sourceLaneId === lane.id) {
+    const currentIndex = lane.itemIds.indexOf(input.activeId);
+    if (currentIndex >= 0 && insertion.insertionIndex === currentIndex) {
+      return {
+        valid: false,
+        kind: 'none',
+        overId: insertion.overId,
+        reason: 'same-position',
+      };
+    }
+  }
 
   return {
     valid: true,

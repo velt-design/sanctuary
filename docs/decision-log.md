@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-31 | Schedule Board Gestures          | Promoted | Commit the last visible pointer-owned semantic target, keep the source card anchored, block gestures before they start when Schedule cannot accept a command, and show checking/reviewing/saving/reconciling/confirmed-or-restored feedback on the affected card. Keep exact timing and affected-job consequences server-owned. |
 | 2026-07-31 | Schedule Authoritative Timing    | Promoted | A browser drag may request start and duration but must not claim an exact new finish: crew calendars, holidays, closures, affected jobs, preview/re-preview, and commit remain server-owned. At phone width use a read-only agenda from the same Gantt model and route changes to Board instead of compressing desktop manipulation. |
 | 2026-07-31 | Project Overview Hierarchy       | Promoted | Present one authority once: server projections explain and rank ordinary work, Overview commercial content remains read-only, one failed read owns one recovery action, expected-empty secondary work is omitted, and the command grid follows mobile-priority order at and below 768 CSS pixels. |
 | 2026-07-31 | Schedule Trusted Job Context     | Promoted | Project name remains the primary Schedule label; one presenter owns deduplicated customer/site identity, search text, crew and timing across Board, Gantt and dialogs. Keep Gantt project lookup bounded to scheduled IDs. A drag/resize must show authoritative current timing and the requested start/duration before server-owned affected-job preview/re-preview calculates exact consequences. |
@@ -4413,3 +4414,33 @@ Why it mattered: Repetition weakened the single next action, browser explanation
 Current guardrail: Require the server projection to supply an ordinary work-item ranking reason. Keep the badge categorical and the exact timestamp in one Due field. Omit expected-empty secondary work and active-state facts already owned by Orientation. Keep Overview commercial presentation read-only; lifecycle/payment commands stay with bounded specialist owners. One failed read owns one recovery action. Verify long content at all standard widths and use mobile-priority one-column order at and below 768 CSS pixels.
 Promoted to: `docs/project-command-centre-architecture.md`; `docs/projects-contacts-estimates-calculator.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/portal/lib/projects/workItems/primaryAction.ts`; `apps/portal/components/projects/ProjectPage/tabs/overview/ProjectWorkSection.tsx`; `apps/portal/components/projects/ProjectPage/tabs/OverviewTab.tsx`; `apps/portal/components/projects/ProjectPage/tabs/overview/ProjectCurrentDesignCommercialCard.tsx`; `playwright/portal.command-centre.spec.ts`
+
+### 2026-07-31 - Schedule Board Gestures - Commit What Staff Were Shown
+
+Date: 2026-07-31
+Area: Schedule Board drag/drop, command feedback, and job actions
+Status: Promoted
+Decision or mistake: Board targeting followed the dragged card centre, changed
+layout with an insertion element, recomputed the destination on release, and
+allowed a gesture to begin while another Schedule command could not commit.
+The affected card also did not own the difference between pending, saved,
+restored, and reconciled outcomes, while one flat menu exposed redundant
+duration commands.
+Why it mattered: A visually plausible drop could commit somewhere other than
+the last cue, fail only after release, or appear to spring back without saying
+whether the server saved it. That makes everyday planning feel non-authoritative
+even when the V2 command contract is correct.
+Current guardrail: Derive pointer targets from activation coordinates plus drag
+delta, keep source geometry stable, render non-layout-shifting cues, and commit
+the last visible semantic target. Reject no-op/restricted destinations and
+disable move/action controls before an uncommittable gesture. Present the
+existing preview/save/rollback/reconciliation lifecycle on the affected card;
+never infer persistence in the drag owner. Group job commands by intent and
+keep duration shortcuts inside the duration dialog. Prove gestures and all
+transaction states against the inert fixture, never shared data.
+Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`;
+`docs/portal-production-readiness.md`
+Related docs/tests: `apps/portal/app/staff/schedule/useScheduleBoardDragController.ts`;
+`apps/portal/app/staff/schedule/useScheduleBoardChangeFeedback.ts`;
+`apps/portal/app/staff/schedule/ScheduleBoardActions.tsx`;
+`playwright/portal.schedule-board-confidence-fixture.spec.ts`

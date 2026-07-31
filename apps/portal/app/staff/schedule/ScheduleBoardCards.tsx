@@ -1,23 +1,18 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 import { normalizeProjectStatus, projectStatusLabel } from '@/lib/types/project';
 import type { ScheduleItem, ScheduleItemStatus } from '@/lib/types/scheduling';
 import type { SchedulableJob } from './ScheduleClientModel';
+import { ScheduleBoardActions, type ScheduleBoardMenuAction } from './ScheduleBoardActions';
+import { scheduleBoardChangeLabel, type ScheduleBoardChangeFeedback } from './useScheduleBoardChangeFeedback';
 import styles from './scheduleBoard.module.css';
 
-export type ScheduleBoardMenuAction = {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  tone?: 'danger';
-};
+export type { ScheduleBoardMenuAction } from './ScheduleBoardActions';
 
 function cx(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
@@ -63,107 +58,6 @@ function titleCase(value: string): string {
     .join(' ');
 }
 
-function JobActionsMenu({
-  actions,
-  ariaLabel,
-}: {
-  actions: ScheduleBoardMenuAction[];
-  ariaLabel?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
-  const items = actions.filter((action) => action && typeof action.onClick === 'function');
-
-  useEffect(() => {
-    if (!open) return;
-
-    const onMouseDown = (event: MouseEvent) => {
-      const target = event.target as Node | null;
-      if (!target || !ref.current) return;
-      if (!ref.current.contains(target)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
-
-  if (!items.length) return null;
-
-  return (
-    <div
-      ref={ref}
-      className={styles.menuWrap}
-      data-no-dnd="true"
-      onPointerDown={(event) => event.stopPropagation()}
-      onMouseDown={(event) => event.stopPropagation()}
-      onClick={(event) => event.stopPropagation()}
-    >
-      <button
-        type="button"
-        className={styles.kebab}
-        data-no-dnd="true"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={ariaLabel ?? 'Job actions'}
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={(event) => {
-          event.stopPropagation();
-          setOpen((value) => !value);
-        }}
-        title={ariaLabel ?? 'Job actions'}
-      >
-        ⋯
-      </button>
-      {open ? (
-        <div
-          role="menu"
-          className={styles.menu}
-          data-no-dnd="true"
-          onPointerDown={(event) => event.stopPropagation()}
-          onMouseDown={(event) => event.stopPropagation()}
-          onClick={(event) => event.stopPropagation()}
-        >
-          {items.map((action, index) => (
-            <button
-              key={`${action.label}-${index}`}
-              type="button"
-              role="menuitem"
-              data-no-dnd="true"
-              className={cx(styles.menuItem, action.tone === 'danger' && styles.menuItemDanger)}
-              disabled={Boolean(action.disabled)}
-              onPointerDown={(event) => {
-                event.stopPropagation();
-              }}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (action.disabled) return;
-                setOpen(false);
-                window.setTimeout(() => action.onClick(), 0);
-              }}
-              onClick={(event) => {
-                event.stopPropagation();
-                if (action.disabled) return;
-                setOpen(false);
-                window.setTimeout(() => action.onClick(), 0);
-              }}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function JobCardShell({
   dragId,
   title,
@@ -181,12 +75,15 @@ function JobCardShell({
   issueLevel,
   dragProps,
   draggable,
+  moveDisabled,
+  moveDisabledReason,
   dragging,
   menu,
   cardRef,
   dragHandleRef,
   style,
   dropTarget,
+  changeFeedback,
 }: {
   dragId?: string;
   title: string;
@@ -204,12 +101,15 @@ function JobCardShell({
   issueLevel?: 'warning' | 'error';
   dragProps?: Record<string, unknown>;
   draggable?: boolean;
+  moveDisabled?: boolean;
+  moveDisabledReason?: string;
   dragging?: boolean;
   menu?: ReactNode;
   cardRef: (node: HTMLElement | null) => void;
   dragHandleRef?: (node: HTMLElement | null) => void;
   style?: CSSProperties;
   dropTarget?: boolean;
+  changeFeedback?: ScheduleBoardChangeFeedback | null;
 }) {
   const identity = (
     <>
@@ -240,6 +140,7 @@ function JobCardShell({
       data-draggable={draggable ? 'true' : undefined}
       data-dragging={dragging ? 'true' : undefined}
       data-issue-level={issueLevel ?? (warning ? 'warning' : undefined)}
+      data-change-state={changeFeedback?.phase}
     >
       <div className={styles.jobTopRow}>
         <div className={styles.jobMain}>
@@ -265,9 +166,10 @@ function JobCardShell({
               type="button"
               className={styles.dragHandle}
               data-dragging={dragging ? 'true' : undefined}
-              {...(dragProps as any)}
-              aria-label={`Move ${title}`}
-              title={`Move ${title}`}
+              {...(moveDisabled ? {} : (dragProps as any))}
+              disabled={moveDisabled}
+              aria-label={moveDisabled ? `Move ${title} unavailable` : `Move ${title}`}
+              title={moveDisabledReason ?? `Move ${title}`}
             >
               <span aria-hidden="true">Move</span>
             </button>
@@ -290,6 +192,13 @@ function JobCardShell({
         {pinned ? <span className={styles.cardMetaItem}>Timing: Pinned</span> : null}
       </div>
 
+      {changeFeedback ? (
+        <div className={styles.cardChangeFeedback} data-state={changeFeedback.phase} role="status" aria-live="polite">
+          <span>{scheduleBoardChangeLabel(changeFeedback)}</span>
+          <span className={styles.cardChangeDestination}>{changeFeedback.destination}</span>
+        </div>
+      ) : null}
+
       {hasAttention ? (
         <div className={styles.badgesRow}>
           {extraBadges}
@@ -304,15 +213,25 @@ function JobCardShell({
   );
 }
 
-export function UnscheduledJobCard({ job }: { job: SchedulableJob }) {
+export function UnscheduledJobCard({
+  job,
+  interactionDisabled = false,
+  interactionDisabledReason,
+  changeFeedback,
+}: {
+  job: SchedulableJob;
+  interactionDisabled?: boolean;
+  interactionDisabledReason?: string;
+  changeFeedback?: ScheduleBoardChangeFeedback | null;
+}) {
   const router = useRouter();
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
     id: job.id,
     data: { kind: 'job' },
+    disabled: interactionDisabled,
   });
   const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.55 : 1,
+    opacity: isDragging ? 0.35 : 1,
   } as CSSProperties;
 
   return (
@@ -328,7 +247,10 @@ export function UnscheduledJobCard({ job }: { job: SchedulableJob }) {
       warning={job.warnings.length > 0}
       dragProps={{ ...attributes, ...listeners }}
       draggable
+      moveDisabled={interactionDisabled}
+      moveDisabledReason={interactionDisabledReason}
       dragging={isDragging}
+      changeFeedback={changeFeedback}
       cardRef={(node) => setNodeRef(node as any)}
       dragHandleRef={setActivatorNodeRef}
       style={style}
@@ -347,6 +269,9 @@ export function ScheduledJobCard({
   extraBadges,
   issueLevel,
   onMount,
+  interactionDisabled = false,
+  interactionDisabledReason,
+  changeFeedback,
 }: {
   id: string;
   job: SchedulableJob | null;
@@ -358,17 +283,18 @@ export function ScheduledJobCard({
   extraBadges?: ReactNode;
   issueLevel?: 'warning' | 'error';
   onMount?: (node: HTMLElement | null) => void;
+  interactionDisabled?: boolean;
+  interactionDisabledReason?: string;
+  changeFeedback?: ScheduleBoardChangeFeedback | null;
 }) {
   const router = useRouter();
   const locked = isLockedScheduleStatus(scheduleStatus);
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useSortable({
     id,
-    disabled: locked,
+    disabled: locked || interactionDisabled,
   });
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.55 : 1,
+    opacity: isDragging ? 0.35 : 1,
   } as CSSProperties;
 
   return (
@@ -389,8 +315,18 @@ export function ScheduledJobCard({
       issueLevel={issueLevel}
       dragProps={locked ? {} : { ...attributes, ...listeners }}
       draggable={!locked}
+      moveDisabled={interactionDisabled}
+      moveDisabledReason={interactionDisabledReason}
       dragging={isDragging}
-      menu={<JobActionsMenu actions={menuActions} ariaLabel={`Job actions for ${job?.projectName ?? 'Untitled project'}`} />}
+      menu={
+        <ScheduleBoardActions
+          actions={menuActions}
+          projectName={job?.projectName ?? 'Untitled project'}
+          disabled={interactionDisabled}
+          disabledReason={interactionDisabledReason}
+        />
+      }
+      changeFeedback={changeFeedback}
       cardRef={(node) => {
         setNodeRef(node as any);
         onMount?.(node);
@@ -410,6 +346,8 @@ export function DowntimeCard({
   menuActions,
   issueLevel,
   onMount,
+  interactionDisabled = false,
+  interactionDisabledReason,
 }: {
   id: string;
   item: ScheduleItem;
@@ -418,12 +356,12 @@ export function DowntimeCard({
   menuActions: ScheduleBoardMenuAction[];
   issueLevel?: 'warning' | 'error';
   onMount?: (node: HTMLElement | null) => void;
+  interactionDisabled?: boolean;
+  interactionDisabledReason?: string;
 }) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useSortable({ id, disabled: interactionDisabled });
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.55 : 1,
+    opacity: isDragging ? 0.35 : 1,
   } as CSSProperties;
 
   const durationHours =
@@ -447,8 +385,17 @@ export function DowntimeCard({
       issueLevel={issueLevel}
       dragProps={{ ...attributes, ...listeners }}
       draggable
+      moveDisabled={interactionDisabled}
+      moveDisabledReason={interactionDisabledReason}
       dragging={isDragging}
-      menu={<JobActionsMenu actions={menuActions} ariaLabel="Downtime actions" />}
+      menu={
+        <ScheduleBoardActions
+          actions={menuActions}
+          projectName={reason}
+          disabled={interactionDisabled}
+          disabledReason={interactionDisabledReason}
+        />
+      }
       cardRef={(node) => {
         setNodeRef(node as any);
         onMount?.(node);

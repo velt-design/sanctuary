@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import ScheduleBoardView, { type ScheduleBoardMenuAction } from '@/app/staff/schedule/ScheduleBoardView';
 import ScheduleGanttView from '@/app/staff/schedule/ScheduleGanttView';
 import ScheduleGanttTimingReview from '@/app/staff/schedule/ScheduleGanttTimingReview';
+import type {
+  ScheduleBoardChangeFeedback,
+  ScheduleBoardChangePhase,
+} from '@/app/staff/schedule/useScheduleBoardChangeFeedback';
 import { addDaysYmd } from '@/lib/scheduling/date';
 import { boardModelForFixture, createScheduleOpsFixture } from './fixtures';
 import styles from './scheduleOpsFixture.module.css';
@@ -11,9 +15,11 @@ import styles from './scheduleOpsFixture.module.css';
 export default function ScheduleOpsFixtureClient({
   initialView,
   scale,
+  initialState,
 }: {
   initialView: 'board' | 'gantt';
   scale: 'standard' | 'large';
+  initialState: ScheduleBoardChangePhase | null;
 }) {
   const fixture = useMemo(() => createScheduleOpsFixture(scale), [scale]);
   const boardModel = useMemo(() => boardModelForFixture(fixture), [fixture]);
@@ -29,8 +35,30 @@ export default function ScheduleOpsFixtureClient({
     if (!normalized) return fixture.unscheduledJobs;
     return fixture.unscheduledJobs.filter((job) => (job.searchText ?? '').includes(normalized));
   }, [fixture.unscheduledJobs, query]);
-  const noActions = (): ScheduleBoardMenuAction[] => [];
   const noMutation = () => undefined;
+  const fixtureActions = (): ScheduleBoardMenuAction[] => [
+    { label: 'Set duration…', group: 'timing', onClick: noMutation },
+    { label: 'Mark in progress', group: 'progress', onClick: noMutation },
+    { label: 'Mark client contacted', group: 'client', onClick: noMutation },
+    { label: 'Unschedule', group: 'exceptions', tone: 'danger', onClick: noMutation },
+  ];
+  const fixtureDowntimeActions = (): ScheduleBoardMenuAction[] => [
+    { label: 'Edit downtime…', group: 'timing', onClick: noMutation },
+    { label: 'Delete downtime', group: 'exceptions', tone: 'danger', onClick: noMutation },
+  ];
+  const feedbackProjectId = Array.from(fixture.scheduleItemById.values()).find(
+    (item) => item.itemType !== 'downtime',
+  )?.projectId ?? null;
+  const changeFeedback: ScheduleBoardChangeFeedback | null = initialState && feedbackProjectId
+    ? {
+        id: 1,
+        projectId: feedbackProjectId,
+        action: 'Move',
+        destination: fixture.installers[1]?.name ?? fixture.installers[0]?.name ?? 'Fixture crew',
+        phase: initialState,
+      }
+    : null;
+  const interactionDisabled = Boolean(initialState && ['checking', 'reviewing', 'saving', 'reconciling'].includes(initialState));
 
   if (!hydrated) {
     return <div className={styles.loading} role="status">Loading synthetic Schedule fixture…</div>;
@@ -88,8 +116,13 @@ export default function ScheduleOpsFixtureClient({
           onToggleUnscheduledCollapsed={() => setUnscheduledCollapsed((value) => !value)}
           onShowCompletedChange={setShowCompleted}
           onDrop={noMutation}
-          buildJobMenuActions={noActions}
-          buildDowntimeMenuActions={noActions}
+          interaction={{
+            disabled: interactionDisabled,
+            reason: interactionDisabled ? 'Synthetic schedule change in progress.' : undefined,
+          }}
+          changeFeedback={changeFeedback}
+          buildJobMenuActions={fixtureActions}
+          buildDowntimeMenuActions={fixtureDowntimeActions}
         />
       ) : (
         <ScheduleGanttView

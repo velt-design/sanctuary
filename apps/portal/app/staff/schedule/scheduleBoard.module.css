@@ -169,26 +169,32 @@
 }
 
 .cardList {
+  position: relative;
   display: grid;
   gap: 10px;
   min-width: 0;
 }
 
-.insertionMarker {
-  height: 0;
-  border-top: 3px solid color-mix(in srgb, var(--ui-action) 65%, transparent);
-  border-radius: var(--ui-radius-panel);
-  margin: 6px 4px;
+.cardList[data-drop-end='true']::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  bottom: -6px;
+  left: 4px;
+  height: 3px;
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-action);
 }
 
 .jobCard {
+  position: relative;
   min-width: 0;
   border: var(--ui-border-width) solid var(--ui-border);
   border-radius: var(--ui-radius-panel);
   background: var(--ui-surface-elevated);
   padding: 8px;
   box-shadow: none;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
 }
 
 .jobCard:hover {
@@ -199,6 +205,17 @@
 .jobCard[data-drop-target='true'] {
   box-shadow: inset 0 0 0 var(--ui-border-width-emphasis) var(--ui-action);
   border-color: var(--ui-action);
+}
+
+.jobCard[data-drop-target='true']::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  right: 4px;
+  left: 4px;
+  height: 3px;
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-action);
 }
 
 .jobCard[data-issue-level='warning'] {
@@ -288,6 +305,12 @@
 
 .dragHandle[data-dragging='true'] {
   cursor: grabbing;
+}
+
+.dragHandle:disabled {
+  color: var(--ui-text-subtle);
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .jobTitle {
@@ -444,6 +467,41 @@
   text-transform: uppercase;
 }
 
+.cardChangeFeedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 7px;
+  padding: 6px 8px;
+  border: var(--ui-border-width) solid var(--ui-status-info-border);
+  border-left-width: var(--ui-status-edge);
+  background: var(--ui-status-info-bg);
+  color: var(--ui-text-strong);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cardChangeFeedback[data-state='saved'],
+.cardChangeFeedback[data-state='verified'] {
+  border-color: var(--ui-status-success-border);
+  background: var(--ui-status-success-bg);
+}
+
+.cardChangeFeedback[data-state='restored'] {
+  border-color: var(--ui-status-error-border);
+  background: var(--ui-status-error-bg);
+}
+
+.cardChangeDestination {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-text-muted);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .cardMetaItem + .cardMetaItem::before {
   content: '·';
   margin-right: 6px;
@@ -463,71 +521,6 @@
   z-index: 10;
   padding-bottom: 8px;
   border-bottom: var(--ui-border-width) solid var(--ui-border);
-}
-
-.menuWrap {
-  position: relative;
-}
-
-.kebab {
-  border: var(--ui-border-width) solid var(--ui-surface-inverse);
-  background: var(--ui-surface-inverse);
-  color: var(--ui-text-inverse);
-  border-radius: var(--ui-radius-control);
-  padding: 6px 10px;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.kebab:focus {
-  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
-  outline-offset: var(--ui-focus-ring-offset);
-  box-shadow: none;
-}
-
-.menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  width: 160px;
-  border-radius: var(--ui-radius-overlay);
-  border: var(--ui-border-width) solid var(--ui-border-strong);
-  background: var(--ui-surface-elevated);
-  box-shadow: none;
-  padding: 8px;
-  z-index: 5;
-}
-
-.menuItem {
-  width: 100%;
-  border: var(--ui-border-width) solid var(--ui-border);
-  background: var(--ui-surface-secondary);
-  color: var(--text);
-  border-radius: var(--ui-radius-control);
-  padding: 10px 12px;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.menuItem:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.menuItemDanger {
-  border-color: var(--ui-destructive);
-  background: transparent;
-  color: var(--ui-destructive);
-}
-
-.menuItem:focus {
-  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
-  outline-offset: var(--ui-focus-ring-offset);
-  box-shadow: none;
 }
 
 .lanes {
@@ -630,10 +623,47 @@
 }
 
 .dragOverlay {
+  width: min(300px, calc(100vw - 24px));
   border: var(--ui-border-width) solid var(--ui-border-strong);
   border-radius: var(--ui-radius-panel);
   background: var(--ui-surface-elevated);
   padding: 10px 12px;
+  pointer-events: none;
+}
+
+.dragOverlay[data-valid='false'] {
+  border-color: var(--ui-status-error-border);
+}
+
+.dragDestination {
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: var(--ui-border-width) solid var(--ui-border);
+  color: var(--ui-text-strong);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.boardInteractionNotice {
+  margin: 8px 12px 0;
+  padding: 8px 10px;
+  border: var(--ui-border-width) solid var(--ui-status-info-border);
+  border-left-width: var(--ui-status-edge);
+  background: var(--ui-status-info-bg);
+  color: var(--ui-text-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dragLiveRegion {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .emptyLane {
@@ -801,9 +831,7 @@
 
 @media (max-width: 760px), (pointer: coarse) {
   .panelCollapseButton,
-  .dragHandle,
-  .kebab,
-  .menuItem {
+  .dragHandle {
     min-width: 44px;
     min-height: 44px;
   }

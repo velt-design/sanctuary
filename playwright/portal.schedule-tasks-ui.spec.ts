@@ -105,8 +105,15 @@ test('Schedule foundation presentation is responsive and non-mutating', async ({
 
   const jobActions = page.getByRole('button', { name: /^Job actions for / }).first();
   await jobActions.click();
-  const firstJobAction = page.getByRole('menuitem').first();
-  await firstJobAction.click();
+  const actionsPanel = page.getByRole('dialog', { name: /^Job actions for / });
+  await expect(actionsPanel).toBeVisible();
+  await expect(actionsPanel.getByRole('heading', { name: /Plan and timing|Exceptions/ }).first()).toBeVisible();
+  await expect(actionsPanel.getByRole('button', { name: /Extend \+[12] day/ })).toHaveCount(0);
+  await expect(actionsPanel.getByRole('menuitem')).toHaveCount(0);
+  const firstSafeJobAction = actionsPanel.getByRole('button', {
+    name: /^(Lock schedule|Reschedule|Pin|Set duration|Add delay|Set days remaining)/,
+  }).first();
+  await firstSafeJobAction.click();
   const actionDialog = page.getByRole('dialog').last();
   await expect(actionDialog).toBeVisible();
   await expect(actionDialog).toHaveAttribute('data-modal-panel', 'true');

@@ -487,6 +487,22 @@ export default function ScheduleActionModals({
                   value={durationEdit.durationDays}
                   onChange={(e) => setDurationEdit((prev) => (prev ? { ...prev, durationDays: e.target.value } : prev))}
                 />
+                <div className={styles.durationPresets} aria-label="Quick duration adjustments">
+                  {[1, 2].map((days) => (
+                    <button
+                      key={days}
+                      type="button"
+                      className={styles.buttonSecondary}
+                      onClick={() => setDurationEdit((prev) => {
+                        if (!prev) return prev;
+                        const currentDays = parsePositiveInt(prev.durationDays) ?? 1;
+                        return { ...prev, durationDays: String(currentDays + days) };
+                      })}
+                    >
+                      +{days} day{days === 1 ? '' : 's'}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

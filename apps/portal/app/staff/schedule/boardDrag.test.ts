@@ -187,4 +187,39 @@ describe('resolveBoardDropTarget', () => {
       insertionIndex: 1,
     });
   });
+
+  it('blocks drops that would not change an unscheduled or scheduled position', () => {
+    expect(resolveBoardDropTarget({
+      activeId: 'job-a',
+      sourceLaneId: null,
+      overId: 'unscheduled',
+      point: { x: 20, y: 20 },
+      lanes: [],
+      unscheduledRect: rect(0, 0, 200, 200),
+    })).toMatchObject({ valid: false, reason: 'same-unscheduled' });
+
+    expect(resolveBoardDropTarget({
+      activeId: 'job-a',
+      sourceLaneId: 'crew-a',
+      overId: 'job-b',
+      point: { x: 120, y: 108 },
+      lanes: [lane('crew-a', ['job-a', 'job-b'])],
+    })).toMatchObject({ valid: false, reason: 'same-position' });
+  });
+
+  it('limits downtime to its owning crew before a gesture can commit', () => {
+    const target = resolveBoardDropTarget({
+      activeId: 'downtime-a',
+      sourceLaneId: 'crew-a',
+      overId: 'lane:crew-b',
+      point: { x: 420, y: 120 },
+      lanes: [
+        lane('crew-a', ['downtime-a']),
+        { ...lane('crew-b', [], 100), rect: rect(390, 80, 280, 200) },
+      ],
+      allowedLaneIds: new Set(['crew-a']),
+    });
+
+    expect(target).toMatchObject({ valid: false, reason: 'restricted' });
+  });
 });

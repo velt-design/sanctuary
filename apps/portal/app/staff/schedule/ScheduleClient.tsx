@@ -84,6 +84,10 @@ import { useScheduleConfirmation } from './useScheduleConfirmation';
 import { recentScheduleTelemetryEvents, sendScheduleTelemetry } from './scheduleTelemetryClient';
 import type { ScheduleClientTelemetryEvent } from '@/lib/scheduling/scheduleTelemetry';
 import { createScheduleSnapshotRequestTracker } from './scheduleSnapshotRequestTracker';
+import {
+  useScheduleBoardChangeFeedback,
+  type ScheduleBoardChangePhase,
+} from './useScheduleBoardChangeFeedback';
 
 const LazyScheduleBoardView = dynamic<ScheduleBoardViewProps>(
   () => import('./ScheduleBoardView'),
@@ -139,6 +143,7 @@ type ScheduleMutationOptions = {
   requireSourceSchedule?: boolean;
   expectedCrewId?: string;
   expectedSourceCrewId?: string;
+  onPhase?: (phase: 'checking' | 'reviewing' | 'saving' | 'reconciling' | 'cancelled') => void;
 };
 
 function formatSavedTime(value: string | null): string | null {
@@ -719,6 +724,7 @@ export default function ScheduleClient({
   const [recentTelemetryEvents, setRecentTelemetryEvents] = useState<ScheduleClientTelemetryEvent[]>(() => recentScheduleTelemetryEvents());
   const [syncing, setSyncing] = useState(false);
   const [scheduleTrust, setScheduleTrustState] = useState<ScheduleTrustState>(initialScheduleTrustRef.current);
+  const boardChangeFeedback = useScheduleBoardChangeFeedback(scheduleTrust.status);
   const deferredQuery = useDeferredValue(query);
   const devOnly = process.env.NODE_ENV !== 'production';
   const telemetryEmittedRef = useRef<Set<string>>(new Set());
@@ -1988,6 +1994,7 @@ export default function ScheduleClient({
         const preparedRollback = opts?.optimistic?.();
         if (typeof preparedRollback === 'function') rollbackOptimistic = preparedRollback;
 
+        opts?.onPhase?.('checking');
         let res = await run(false);
 
         if (res && typeof res === 'object' && Object.prototype.hasOwnProperty.call(res, 'requires_confirmation')) {
@@ -2003,6 +2010,7 @@ export default function ScheduleClient({
             throw new Error('The server returned an invalid schedule confirmation. Refreshing the saved schedule now.');
           }
           if (impacts.length) {
+            opts?.onPhase?.('reviewing');
             const count = impacts.length;
             const confirmed = await confirmScheduleAction({
               title: opts?.confirmationTitle ?? 'Move other scheduled jobs?',
@@ -2013,6 +2021,7 @@ export default function ScheduleClient({
               details: formatCommitImpactDetails(impacts),
             });
             if (!confirmed) {
+              opts?.onPhase?.('cancelled');
               sealV2SnapshotRequestEpochs();
               rollback();
               reconcileAfterFailure = true;
@@ -2025,6 +2034,7 @@ export default function ScheduleClient({
             }
           }
           const confirmedFingerprint = scheduleCommitImpactFingerprint(impacts);
+          opts?.onPhase?.('checking');
           const verification = await run(false);
           if (
             !verification ||
@@ -2044,6 +2054,7 @@ export default function ScheduleClient({
             if (!verifiedImpacts.length || scheduleCommitImpactFingerprint(verifiedImpacts) !== confirmedFingerprint) {
               throw new Error('The affected jobs changed before the schedule could be saved. Refresh and try again.');
             }
+            opts?.onPhase?.('saving');
             res = await run(true);
             if (
               res &&
@@ -2083,6 +2094,7 @@ export default function ScheduleClient({
         }
         const refreshRequired = !applied && opts?.refreshIfNoSchedule !== false;
         if (refreshRequired) {
+          opts?.onPhase?.('reconciling');
           v2SnapshotIgnoredDuringMutationRef.current = false;
           v2ReconciliationPendingRef.current = true;
           const reconciliation = refreshSchedule({
@@ -2109,6 +2121,7 @@ export default function ScheduleClient({
         reconcileAfterFailure =
           scheduleMutationNeedsReconciliation(err) ||
           opts?.refreshOnError === true;
+        if (reconcileAfterFailure) opts?.onPhase?.('reconciling');
         v2ReconciliationPendingRef.current = reconcileAfterFailure;
         rollback();
         opts?.onError?.(err);
@@ -2163,6 +2176,44 @@ export default function ScheduleClient({
       toast.error(opts?.formatErrorToast ? opts.formatErrorToast(err, fallback) : fallback);
       return false;
     }
+  }
+
+  async function runBoardChange(
+    change: { projectId: string; action: string; destination: string },
+    run: (force: boolean) => Promise<any>,
+    opts?: ScheduleMutationOptions,
+  ): Promise<boolean> {
+    const feedbackId = boardChangeFeedback.begin(change);
+    let lastPhase: Parameters<NonNullable<ScheduleMutationOptions['onPhase']>>[0] | null = null;
+    const succeeded = await runWithCommitConfirmation(run, {
+      ...opts,
+      onPhase: (phase) => {
+        lastPhase = phase;
+        if (phase === 'cancelled') {
+          boardChangeFeedback.setPhase(feedbackId, 'restored');
+        } else {
+          boardChangeFeedback.setPhase(feedbackId, phase as ScheduleBoardChangePhase);
+        }
+        opts?.onPhase?.(phase);
+      },
+      onSuccess: (response) => {
+        opts?.onSuccess?.(response);
+        boardChangeFeedback.setPhase(feedbackId, lastPhase === 'reconciling' ? 'reconciling' : 'saved');
+      },
+      onError: (error) => {
+        opts?.onError?.(error);
+        boardChangeFeedback.setPhase(
+          feedbackId,
+          scheduleMutationNeedsReconciliation(error) || opts?.refreshOnError === true
+            ? 'reconciling'
+            : 'restored',
+        );
+      },
+    });
+    if (!succeeded && lastPhase !== 'reconciling') {
+      boardChangeFeedback.setPhase(feedbackId, 'restored');
+    }
+    return succeeded;
   }
 
   function scheduleMutationErrorDebug(error: unknown): Record<string, unknown> {
@@ -2508,7 +2559,11 @@ export default function ScheduleClient({
         return false;
       }
       const expectedCrewId = safeUuidFromAppId('crew', item.installerId) ?? undefined;
-      return await runWithCommitConfirmation((force) => unassignJob({ job_id: projectUuid, force, today }), {
+      return await runBoardChange({
+        projectId: item.projectId,
+        action: 'Unschedule',
+        destination: 'Unscheduled',
+      }, (force) => unassignJob({ job_id: projectUuid, force, today }), {
         successToast: 'Job unscheduled.',
         errorToast: 'Failed to unschedule job.',
         targetJobIds: [projectUuid],
@@ -2955,10 +3010,12 @@ export default function ScheduleClient({
       return [
         {
           label: 'Edit downtime…',
+          group: 'timing',
           onClick: () => openEditDowntime(scheduleItem),
         },
         {
           label: 'Delete downtime',
+          group: 'exceptions',
           tone: 'danger',
           onClick: async () => {
             if (!scheduleItem.downtimeId) {
@@ -2988,6 +3045,7 @@ export default function ScheduleClient({
     return [
       {
         label: 'Remove downtime',
+        group: 'exceptions',
         tone: 'danger',
         onClick: () => void handleUnschedule(id),
       },
@@ -3013,20 +3071,12 @@ export default function ScheduleClient({
     const isPinned = scheduleItem.mode === 'pinned';
     const hasCommitment = hasPlannedCommitment(scheduleItem);
     const clientUpdateStatus = scheduleItem.clientUpdateStatus ?? 'none';
-    const baseDurationDays =
-      typeof scheduleItem.forecastDurationDays === 'number' && Number.isFinite(scheduleItem.forecastDurationDays) && scheduleItem.forecastDurationDays > 0
-        ? scheduleItem.forecastDurationDays
-        : typeof scheduleItem.durationHoursOverride === 'number' && Number.isFinite(scheduleItem.durationHoursOverride) && scheduleItem.durationHoursOverride > 0
-          ? Math.ceil(scheduleItem.durationHoursOverride / WORK_HOURS_PER_DAY)
-          : job && Number.isFinite(job.durationHours) && job.durationHours > 0
-            ? Math.ceil(job.durationHours / WORK_HOURS_PER_DAY)
-            : 1;
-
     if (scheduleMode === 'v2') {
       const v2Actions: ScheduleBoardMenuAction[] = [];
       if (!isDone) {
         v2Actions.push({
           label: hasCommitment ? 'Reschedule…' : 'Lock schedule…',
+          group: 'timing',
           onClick: () => openCommitmentEdit(id, hasCommitment ? 'reschedule' : 'lock'),
         });
       }
@@ -3034,19 +3084,15 @@ export default function ScheduleClient({
       if (clientUpdateStatus === 'needed') {
         v2Actions.push({
           label: 'Mark client contacted',
+          group: 'client',
           onClick: () => handleAckClientUpdate(scheduleItem),
-        });
-      } else if (clientUpdateStatus === 'acknowledged') {
-        v2Actions.push({
-          label: 'Client contacted',
-          disabled: true,
-          onClick: () => {},
         });
       }
 
       if (!isInProgress && !isDone) {
         v2Actions.push({
           label: isPinned ? 'Unpin' : 'Pin…',
+          group: 'timing',
           onClick: () => {
             if (isPinned) {
               const jobUuid = resolveProjectUuid(scheduleItem);
@@ -3062,44 +3108,21 @@ export default function ScheduleClient({
         });
         v2Actions.push({
           label: 'Set duration…',
+          group: 'timing',
           onClick: () => openDurationEdit(id),
-        });
-        v2Actions.push({
-          label: 'Extend +1 day',
-          onClick: () => {
-            const jobUuid = resolveProjectUuid(scheduleItem);
-            if (!jobUuid) return;
-            const nextDays = Math.max(1, Math.round(baseDurationDays + 1));
-            void queueSetDurationJob(
-              jobUuid,
-              nextDays,
-              { successToast: 'Duration extended.', errorToast: 'Failed to update duration.' },
-            );
-          },
-        });
-        v2Actions.push({
-          label: 'Extend +2 days',
-          onClick: () => {
-            const jobUuid = resolveProjectUuid(scheduleItem);
-            if (!jobUuid) return;
-            const nextDays = Math.max(1, Math.round(baseDurationDays + 2));
-            void queueSetDurationJob(
-              jobUuid,
-              nextDays,
-              { successToast: 'Duration extended.', errorToast: 'Failed to update duration.' },
-            );
-          },
         });
       }
 
       v2Actions.push({
         label: 'Add delay…',
+        group: 'exceptions',
         onClick: () => openCreateDowntimeAfter(scheduleItem),
       });
 
       if (!isInProgress && !isDone) {
         v2Actions.push({
           label: 'Mark in progress',
+          group: 'progress',
           onClick: () => {
             const jobUuid = resolveProjectUuid(scheduleItem);
             if (!jobUuid) return;
@@ -3114,6 +3137,7 @@ export default function ScheduleClient({
       if (isInProgress) {
         v2Actions.push({
           label: 'Set days remaining…',
+          group: 'progress',
           onClick: () => openDaysRemainingEdit(id),
         });
       }
@@ -3121,6 +3145,7 @@ export default function ScheduleClient({
       if (!isDone) {
         v2Actions.push({
           label: 'Mark done',
+          group: 'progress',
           onClick: () => {
             void handleMarkDoneV2(scheduleItem);
           },
@@ -3129,6 +3154,7 @@ export default function ScheduleClient({
 
       v2Actions.push({
         label: 'Unschedule',
+        group: 'exceptions',
         tone: 'danger',
         onClick: () => void handleUnschedule(id),
       });
@@ -3182,7 +3208,9 @@ export default function ScheduleClient({
         };
         logScheduleDebug('board.assign.attempt', assignDebug);
 
-        void runWithCommitConfirmation(
+        const destination = installers.find((installer) => installer.id === destInstallerId)?.name ?? 'crew schedule';
+        void runBoardChange(
+          { projectId: job.projectId, action: 'Schedule', destination },
           (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: destIndex, force, today }),
           {
             successToast: 'Job scheduled.',
@@ -3233,6 +3261,7 @@ export default function ScheduleClient({
       if (sourceInstallerId === destInstallerId && resolvedOverId === activeId) return;
 
       const destIndex = Math.max(0, Math.min(dropTarget.insertionIndex, sourceInstallerId === destInstallerId ? Math.max(0, destList.length - 1) : destList.length));
+      if (sourceInstallerId === destInstallerId && sourceList.indexOf(activeId) === destIndex) return;
 
       const nextSource = sourceList.filter((id) => id !== activeId);
       const nextDest = sourceInstallerId === destInstallerId ? nextSource.slice() : destList.slice();
@@ -3274,7 +3303,9 @@ export default function ScheduleClient({
         };
         logScheduleDebug('board.reorder.attempt', reorderDebug);
 
-        void runWithCommitConfirmation(
+        const destination = installers.find((installer) => installer.id === destInstallerId)?.name ?? 'crew schedule';
+        void runBoardChange(
+          { projectId: activeItem.projectId, action: 'Reorder', destination },
           (force) =>
             reorderScheduleItemsV2({
               crew_id: crewUuid,
@@ -3342,7 +3373,9 @@ export default function ScheduleClient({
         };
         logScheduleDebug('board.assign.attempt', moveDebug);
 
-        void runWithCommitConfirmation(
+        const destination = installers.find((installer) => installer.id === destInstallerId)?.name ?? 'crew schedule';
+        void runBoardChange(
+          { projectId: activeItem.projectId, action: 'Move', destination },
           (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: insertAt, force, today }),
           {
             successToast: 'Job moved.',
@@ -3849,6 +3882,21 @@ export default function ScheduleClient({
               ? `Saved ${savedTime}`
               : 'Saved';
 
+  const boardInteractionDisabled =
+    scheduleMode === 'v2' &&
+    (foreignPendingMutationCount > 0 ||
+      scheduleTrust.status === 'saving' ||
+      scheduleTrust.status === 'refreshing' ||
+      scheduleTrust.status === 'stale');
+  const boardInteractionDisabledReason =
+    foreignPendingMutationCount > 0 || scheduleTrust.status === 'saving'
+      ? 'Another schedule change is still saving.'
+      : scheduleTrust.status === 'stale'
+        ? 'Refresh the schedule before making another change.'
+        : scheduleTrust.status === 'refreshing'
+          ? 'Wait for the saved schedule to finish refreshing.'
+          : undefined;
+
   if (scheduleMode === 'legacy') {
     return (
       <LazyScheduleLegacyFallbackClient
@@ -4089,6 +4137,11 @@ export default function ScheduleClient({
             onToggleUnscheduledCollapsed={handleToggleUnscheduledCollapsed}
             onShowCompletedChange={handleShowCompletedChange}
             onDrop={handleBoardDrop}
+            interaction={{
+              disabled: boardInteractionDisabled,
+              reason: boardInteractionDisabledReason,
+            }}
+            changeFeedback={boardChangeFeedback.change}
             buildJobMenuActions={buildJobMenuActions}
             buildDowntimeMenuActions={buildDowntimeMenuActions}
           />
