@@ -753,8 +753,8 @@ export default function ScheduleBoardView({
                 const clientUpdateStatus = scheduleItem.clientUpdateStatus ?? 'none';
                 const extraBadges = (
                   <>
-                    {!hasPlannedCommitment(scheduleItem) ? <span className={styles.draftPill}>Draft</span> : null}
-                    {hasPlannedCommitment(scheduleItem) && commitmentLabel ? <span className={styles.commitmentPill}>{commitmentLabel}</span> : null}
+                    {!hasPlannedCommitment(scheduleItem) ? <span className={styles.draftPill}>Plan: Draft</span> : null}
+                    {hasPlannedCommitment(scheduleItem) && commitmentLabel ? <span className={styles.commitmentPill}>Plan: {commitmentLabel}</span> : null}
                     {commitmentType && driftDays !== null && driftDays > 0 && !driftExceeded ? (
                       <span className={styles.driftPill}>Drift +{driftDays}d</span>
                     ) : null}

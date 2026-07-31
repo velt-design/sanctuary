@@ -607,9 +607,11 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
     expect(props.onResizePin).not.toHaveBeenCalled();
     expect(document.body.textContent).toContain('Review timing change');
     expect(document.body.textContent).toContain('Current07 Apr to 08 Apr · 2d');
-    expect(document.body.textContent).toContain('Proposed09 Apr to 10 Apr · 2d');
+    expect(document.body.textContent).toContain('RequestedStart 09 Apr · 2d duration');
+    expect(document.body.textContent).not.toContain('Proposed09 Apr to 10 Apr');
+    expect(document.body.textContent).toContain('server will calculate the finish against the crew calendar, holidays and closures');
     const applyMove = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent === 'Apply change');
+      .find((button) => button.textContent === 'Check impact');
     act(() => applyMove?.click());
     expect(props.onMovePin).toHaveBeenCalledWith(scheduleItem.id, '2026-04-09', 2);
 
@@ -624,10 +626,98 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
 
     expect(props.onResizePin).not.toHaveBeenCalled();
     const applyResize = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent === 'Apply change');
+      .find((button) => button.textContent === 'Check impact');
     act(() => applyResize?.click());
     expect(props.onResizePin).toHaveBeenCalledWith(scheduleItem.id, '2026-04-07', 4);
     rendered.unmount();
+  });
+
+  it('disables impact checking when authoritative timing changes during an open review', async () => {
+    const props = ganttProps();
+    const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+    const bar = rendered.container.querySelector<HTMLElement>('[role="button"][aria-haspopup="dialog"]');
+
+    act(() => {
+      bar?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 100 }));
+    });
+    act(() => {
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 154, clientY: 100 }));
+      window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 154, clientY: 100 }));
+    });
+
+    const changedItem = { ...scheduleItem, updatedAt: '2026-04-01T01:00:00.000Z' };
+    rendered.rerender(
+      <ScheduleGanttView
+        {...props}
+        visibleScheduleItems={[changedItem]}
+        laneItems={new Map([[installer.id, [changedItem]]])}
+      />,
+    );
+    await flushEffects();
+
+    const checkImpact = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent === 'Check impact');
+    expect(checkImpact?.disabled).toBe(true);
+    expect(document.body.textContent).toContain('The schedule changed while this review was open');
+    act(() => checkImpact?.click());
+    expect(props.onMovePin).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
+  it('uses a read-only crew agenda instead of a compressed timeline at phone width', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get: () => 390 });
+    try {
+      const props = ganttProps();
+      const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+      await flushEffects();
+
+      expect(rendered.container.querySelector('[data-layout-mode="compact"]')).not.toBeNull();
+      expect(rendered.container.querySelector('[aria-label="Gantt timeline"]')).toBeNull();
+      expect(rendered.container.querySelector('[aria-label="Crew schedule agenda"]')).not.toBeNull();
+      expect(rendered.container.textContent).toContain('Read-only here');
+      expect(rendered.container.textContent).toContain('Forecast: 07 Apr to 08 Apr');
+      expect(rendered.container.textContent).toContain('Stage: Deposit');
+      expect(rendered.container.textContent).toContain('Plan: Draft');
+
+      const openProject = rendered.container.querySelector<HTMLButtonElement>('button[aria-label^="Open project Alpha Pergola."]');
+      expect(openProject?.getAttribute('aria-label')).toContain('Forecast 07 Apr to 08 Apr, 2d');
+      expect(openProject?.getAttribute('aria-label')).toContain('Stage Deposit. Plan Draft. Pinned');
+      act(() => openProject?.click());
+      expect(props.onOpenProject).toHaveBeenCalledWith(scheduleItem.projectId);
+
+      const boardButton = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button'))
+        .find((button) => button.textContent === 'Open Board and unscheduled work');
+      act(() => boardButton?.click());
+      expect(props.onOpenUnscheduled).toHaveBeenCalledWith(boardButton);
+      rendered.unmount();
+    } finally {
+      if (descriptor) Object.defineProperty(HTMLElement.prototype, 'clientWidth', descriptor);
+      else delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
+    }
+  });
+
+  it('uses the condensed agenda when zoom leaves too little operating height for the timeline', async () => {
+    const widthDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+    const heightDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight');
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get: () => 720 });
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, get: () => 300 });
+    try {
+      const rendered = renderIntoDocument(<ScheduleGanttView {...ganttProps()} />);
+      await flushEffects();
+
+      expect(rendered.container.querySelector('[data-layout-mode="compact-short"]')).not.toBeNull();
+      expect(rendered.container.querySelector('[aria-label="Gantt timeline"]')).toBeNull();
+      expect(rendered.container.querySelector('[aria-label="Crew schedule agenda"]')).not.toBeNull();
+      expect(rendered.container.textContent).toContain('Plan 06 Apr to 28 Jun');
+      expect(rendered.container.textContent).toContain('Open Board and unscheduled work');
+      rendered.unmount();
+    } finally {
+      if (widthDescriptor) Object.defineProperty(HTMLElement.prototype, 'clientWidth', widthDescriptor);
+      else delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
+      if (heightDescriptor) Object.defineProperty(HTMLElement.prototype, 'clientHeight', heightDescriptor);
+      else delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight;
+    }
   });
 
   it('offers a truthful route from Gantt to unscheduled Board work', () => {

@@ -117,7 +117,7 @@ function JobActionsMenu({
           event.stopPropagation();
           setOpen((value) => !value);
         }}
-        title="Job actions"
+        title={ariaLabel ?? 'Job actions'}
       >
         ⋯
       </button>
@@ -285,9 +285,9 @@ function JobCardShell({
       </div>
 
       <div className={styles.cardMetaRow}>
-        <span className={styles.cardMetaItem}>{statusLabel}</span>
-        {scheduleStatus ? <span className={styles.cardMetaItem}>{scheduleStatusLabel(scheduleStatus)}</span> : null}
-        {pinned ? <span className={styles.cardMetaItem}>Pinned</span> : null}
+        <span className={styles.cardMetaItem}>Stage: {statusLabel}</span>
+        {scheduleStatus ? <span className={styles.cardMetaItem}>Job: {scheduleStatusLabel(scheduleStatus)}</span> : null}
+        {pinned ? <span className={styles.cardMetaItem}>Timing: Pinned</span> : null}
       </div>
 
       {hasAttention ? (
@@ -390,7 +390,7 @@ export function ScheduledJobCard({
       dragProps={locked ? {} : { ...attributes, ...listeners }}
       draggable={!locked}
       dragging={isDragging}
-      menu={<JobActionsMenu actions={menuActions} />}
+      menu={<JobActionsMenu actions={menuActions} ariaLabel={`Job actions for ${job?.projectName ?? 'Untitled project'}`} />}
       cardRef={(node) => {
         setNodeRef(node as any);
         onMount?.(node);

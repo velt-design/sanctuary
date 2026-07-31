@@ -866,12 +866,21 @@ Schedule Gantt:
 
 - Confirm week headers are Monday-aligned.
 - Confirm weekend shading is Saturday/Sunday.
+- At 640 CSS pixels or narrower, and at 200% zoom when operating height becomes
+  constrained, confirm the read-only crew agenda replaces the timeline, retains
+  essential range/crew/attention context, and routes schedule changes to Board
+  without exposing drag or resize.
 - Open a focused bar with Enter/Space, close with Escape, and confirm focus
   returns.
 - Focus a non-first quick-action button and press Enter; confirm the button
   action runs instead of the dialog-level Open Project shortcut.
 - Resize a pinned bar and confirm one atomic `/job/adjust` request owns both
   date and duration (never a sequential duration then pin pair).
+- After move or resize, confirm the local review shows authoritative current
+  timing plus only the requested start/duration. It must not assert an exact
+  new finish before the server impact preview accounts for crew calendars,
+  holidays, and closures. Change the underlying item while review is open and
+  confirm **Check impact** disables.
 - Delay the post-accept range refresh and confirm the accepted bar never jumps
   back to its old dates. Fail that refresh safely and confirm the accepted
   direct-job preview remains visible with a refresh-needed state.

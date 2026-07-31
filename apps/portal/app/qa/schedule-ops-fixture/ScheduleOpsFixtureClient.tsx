@@ -131,9 +131,8 @@ export default function ScheduleOpsFixtureClient({
             currentStart: fixture.today,
             currentEnd: fixture.today,
             currentDurationDays: 1,
-            proposedStart: addDaysYmd(fixture.today, 3),
-            proposedEnd: addDaysYmd(fixture.today, 3),
-            proposedDurationDays: 1,
+            requestedStart: addDaysYmd(fixture.today, 3),
+            requestedDurationDays: 1,
           }}
           stale={false}
           onCancel={() => setReviewOpen(false)}

@@ -160,9 +160,13 @@ the user's reduced-motion preference.
 
 Board cards group forecast dates and duration first, show routine project,
 Schedule and pin state as quieter metadata, and reserve bordered badges for
-commitment or attention states. `ScheduleBoardCards.tsx` owns this card/action
-presentation; `ScheduleCrewFilter.tsx` and `useScheduleCrewVisibility.ts` own
-the shared view-only crew preference.
+commitment or attention states. Routine metadata is visibly qualified as
+**Stage**, **Job**, and **Timing**, while the commitment badge is qualified as
+**Plan**, so pipeline, execution, pin, and commitment concepts do not collapse
+into an unexplained row of statuses. Every card action menu is named for its
+project. `ScheduleBoardCards.tsx` owns this card/action presentation;
+`ScheduleCrewFilter.tsx` and `useScheduleCrewVisibility.ts` own the shared
+view-only crew preference.
 
 Project name is the primary job label. Customer display name and site address
 form one deduplicated secondary identity line on Board cards, Gantt rows,
@@ -192,21 +196,29 @@ scroll anchoring, focus return, and client-owned command callbacks.
 
 Gantt exposes an explicit **View unscheduled jobs** route back to Board with
 the queue expanded. A pointer drag or resize ends in a local review dialog
-that names the project, customer/site, crew, current timing, and proposed
-timing before invoking the existing command callback. Apply still enters the
-unchanged server-owned affected-job preview, immediate re-preview, explicit
-confirmation, optimistic rollback, and reconciliation lifecycle. If the
-underlying item changes while the local review is open, Apply is disabled and
-staff must preview again.
+that names the project, customer/site, crew, authoritative current timing, and
+the requested start and duration before invoking the existing command
+callback. The browser does not claim an exact proposed finish: crew calendars,
+holidays, closures, and affected-job dates remain server-calculated. **Check
+impact** enters the unchanged server-owned affected-job preview, immediate
+re-preview, explicit confirmation, optimistic rollback, and reconciliation
+lifecycle. If the underlying item changes while the local review is open,
+impact checking is disabled and staff must preview again.
 
 At narrow widths the Unscheduled queue stacks above one horizontally focused
 crew lane; collapsing it reclaims the queue body so the first crew lane can
-use the remaining height. Gantt preserves usable timeline width by adapting
-its crew-label column. The dormant Site Visits route retains its focused day
-calendar containment. Route-level document overflow is not allowed; the Board,
-Gantt, and calendar keep their specialist internal scroll owners. Presentation
-changes must not bypass Schedule V2 staff API/RPC commands, weaken optimistic
-rollback, or merge the explicit legacy fallback into the normal client.
+use the remaining height. At 640 CSS pixels or narrower, or when 200% zoom
+leaves too little operating height, Gantt becomes a read-only crew agenda built
+from the same Gantt model instead of compressing desktop timeline controls into
+the available space. It keeps the date range,
+crew filter, attention filter, completed-job choice, forecast/plan identity,
+and a clear route to Board for schedule changes; it does not expose drag or
+resize. Wider layouts retain the scroll-owned timeline and adaptable crew-label
+column. The dormant Site Visits route retains its focused day calendar
+containment. Route-level document overflow is not allowed; the Board, Gantt,
+and calendar keep their specialist internal scroll owners. Presentation changes
+must not bypass Schedule V2 staff API/RPC commands, weaken optimistic rollback,
+or merge the explicit legacy fallback into the normal client.
 
 These interaction/layout changes retain the current portal colours, fonts,
 cards, and crew-lane visual language.
@@ -257,15 +269,16 @@ npm run schedule:bundle-budget
 npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal-chromium --no-deps
 ```
 
-The focused Schedule gate currently passes 49 files and 379 tests, including
+The focused Schedule gate currently passes 49 files and 382 tests, including
 atomic Gantt adjustment, confirmed-preview continuity, stale-response
 rejection, strict affected-job confirmation/cancellation,
 cross-instance mutation ownership, malformed-response rejection, optimistic
 rollback/reconciliation, cache authority, nine-crew Board rendering,
 crew-filter persistence/fail-open recovery, hidden-lane exclusion, wrapped-row
 drop geometry and auto-scroll, Board control semantics, shared job
-identity/search presentation, explicit Gantt timing review, bounded Gantt
-project loading, and Gantt keyboard/responsive behavior. The authenticated non-mutating browser review
+identity/search presentation, server-authoritative Gantt timing review,
+stale-impact disabling, bounded Gantt project loading, phone/zoom agenda mode,
+and Gantt keyboard/responsive behavior. The authenticated non-mutating browser review
 covers deterministic eight-crew desktop wrapping, Board internal overflow and
 filter persistence at
 1440/1280/1024/768/390, Gantt, Site Visits, action/create

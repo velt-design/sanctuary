@@ -165,6 +165,285 @@
   background: var(--ui-surface-elevated);
 }
 
+.ganttCompact {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ganttCompactHeader,
+.ganttCompactControls,
+.ganttCompactList {
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-elevated);
+}
+
+.ganttCompactHeader {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.ganttCompactEyebrow,
+.ganttCompactRange,
+.ganttCompactNotice,
+.ganttCompactCrewEmpty,
+.ganttCompactEmpty p {
+  margin: 0;
+}
+
+.ganttCompactEyebrow {
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.ganttCompactTitle {
+  margin: 2px 0 3px;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.ganttCompactRange {
+  color: var(--ui-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ganttCompactNotice {
+  padding: 8px 10px;
+  border-left: var(--ui-status-edge) solid var(--ui-status-info-border);
+  background: var(--ui-status-info-bg);
+  color: var(--ui-text-strong);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ganttCompactControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 8px;
+}
+
+.ganttCompactControls .ganttAttentionToggle {
+  min-width: 0;
+}
+
+.ganttCompactControls .ganttSegmentButton {
+  min-height: 44px;
+  flex: 1 1 auto;
+}
+
+.ganttCompactCompleted {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ganttCompactCompleted input {
+  width: 18px;
+  height: 18px;
+}
+
+.ganttCompactBoardButton {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  white-space: normal;
+}
+
+.ganttCompactList {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--ui-surface-primary);
+}
+
+.ganttCompactCrew + .ganttCompactCrew {
+  border-top: var(--ui-border-width) solid var(--ui-border-strong);
+}
+
+.ganttCompactCrewHeader {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 0;
+  background: var(--ui-surface-secondary);
+  color: var(--ui-text-strong);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ganttCompactCrewHeader > span:last-child {
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  text-align: right;
+}
+
+.ganttCompactCrewHeader:focus-visible,
+.ganttCompactJobButton:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: calc(-1 * var(--ui-border-width-emphasis));
+}
+
+.ganttCompactCrewIdentity {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ganttCompactCrewIdentity strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ganttCompactCrewDot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+}
+
+.ganttCompactJobs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ganttCompactJob + .ganttCompactJob {
+  border-top: var(--ui-border-width) solid var(--ui-border);
+}
+
+.ganttCompactJob[data-attention='true'] {
+  border-left: var(--ui-status-edge) solid var(--ui-status-warning-border);
+}
+
+.ganttCompactJobButton,
+.ganttCompactJobBody {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+}
+
+.ganttCompactJobButton {
+  min-height: 72px;
+  grid-template-columns: minmax(0, 1fr) minmax(92px, 38%);
+  align-items: start;
+  gap: 10px;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ganttCompactJobBody {
+  min-width: 0;
+  padding: 10px;
+}
+
+.ganttCompactJobButton .ganttCompactJobBody {
+  padding: 0;
+}
+
+.ganttCompactJobBody strong,
+.ganttCompactJobBody span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ganttCompactJobBody strong {
+  font-size: 13px;
+}
+
+.ganttCompactJobBody span {
+  color: var(--ui-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.ganttCompactJobMeta {
+  min-width: 0;
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  color: var(--ui-text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.ganttCompactJobMeta > * {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.ganttCompactJobMeta strong {
+  color: var(--ui-status-warning-text, var(--ui-text-strong));
+}
+
+.ganttCompactCrewEmpty,
+.ganttCompactEmpty {
+  padding: 14px;
+  color: var(--ui-text-muted);
+  font-size: 12px;
+}
+
+.ganttCompactEmpty {
+  display: grid;
+  gap: 8px;
+  color: var(--ui-text);
+}
+
+.gantt[data-layout-mode='compact-short'] {
+  padding: 8px;
+}
+
+.gantt[data-layout-mode='compact-short'] .ganttCompact {
+  gap: 4px;
+}
+
+.gantt[data-layout-mode='compact-short'] .ganttCompactHeader {
+  padding: 6px 8px;
+}
+
+.gantt[data-layout-mode='compact-short'] .ganttCompactEyebrow,
+.gantt[data-layout-mode='compact-short'] .ganttCompactTitle,
+.gantt[data-layout-mode='compact-short'] .ganttCompactNotice,
+.gantt[data-layout-mode='compact-short'] .ganttCompactCompleted {
+  display: none;
+}
+
+.gantt[data-layout-mode='compact-short'] .ganttCompactControls {
+  padding: 4px;
+  gap: 4px;
+}
+
+.gantt[data-layout-mode='compact-short'] .ganttCompactBoardButton {
+  min-height: 44px;
+}
+
 .ganttPlanningRow,
 .ganttDisplayRow {
   min-width: 0;

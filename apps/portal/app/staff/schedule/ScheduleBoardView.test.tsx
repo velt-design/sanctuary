@@ -296,7 +296,10 @@ describe('ScheduleBoardView', () => {
     expect(card?.hasAttribute('role')).toBe(false);
     expect(card?.querySelector('button[aria-label="Open project Alpha Deck"]')).not.toBeNull();
     expect(card?.querySelector('button[aria-label="Move Alpha Deck"]')).not.toBeNull();
-    expect(card?.querySelector('button[aria-label="Job actions"]')).not.toBeNull();
+    expect(card?.querySelector('button[aria-label="Job actions for Alpha Deck"]')).not.toBeNull();
+    expect(card?.textContent).toContain('Stage: Deposit');
+    expect(card?.textContent).toContain('Job: Tentative');
+    expect(card?.textContent).toContain('Plan: Draft');
     expect(card?.querySelector('button button')).toBeNull();
 
     rendered.unmount();

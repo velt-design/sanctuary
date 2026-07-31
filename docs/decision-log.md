@@ -21,8 +21,9 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-31 | Schedule Authoritative Timing    | Promoted | A browser drag may request start and duration but must not claim an exact new finish: crew calendars, holidays, closures, affected jobs, preview/re-preview, and commit remain server-owned. At phone width use a read-only agenda from the same Gantt model and route changes to Board instead of compressing desktop manipulation. |
 | 2026-07-31 | Project Overview Hierarchy       | Promoted | Present one authority once: server projections explain and rank ordinary work, Overview commercial content remains read-only, one failed read owns one recovery action, expected-empty secondary work is omitted, and the command grid follows mobile-priority order at and below 768 CSS pixels. |
-| 2026-07-31 | Schedule Trusted Job Context     | Promoted | Project name remains the primary Schedule label; one presenter owns deduplicated customer/site identity, search text, crew and timing across Board, Gantt and dialogs. Keep Gantt project lookup bounded to scheduled IDs. A drag/resize must show current versus proposed timing before the existing affected-job preview/re-preview and server commit lifecycle begins. |
+| 2026-07-31 | Schedule Trusted Job Context     | Promoted | Project name remains the primary Schedule label; one presenter owns deduplicated customer/site identity, search text, crew and timing across Board, Gantt and dialogs. Keep Gantt project lookup bounded to scheduled IDs. A drag/resize must show authoritative current timing and the requested start/duration before server-owned affected-job preview/re-preview calculates exact consequences. |
 | 2026-07-31 | Regional Marketing Tracking      | Promoted | Start optional categories denied, then enable both automatically only for an exact Vercel `NZ` country result. Non-NZ, missing, invalid, or failed geography remains denied behind the existing banner. Preserve every saved explicit choice, label attribution as `regional_default` versus `user_choice`, and keep the public page static by resolving the coarse region asynchronously through a private/no-store first-party endpoint. |
 | 2026-07-31 | Project Work Rollout Durability  | Promoted | A one-time rollout sentinel must outlive the rows it governs, including an empty cohort. Terminal legacy sources must be enforced at the database command boundary, and governed/append-only child guards must distinguish a real parent cascade from direct deletion so the confirmed admin project-delete path remains valid without opening child-row mutation. |
 | 2026-07-31 | Project Work Portfolio Adoption  | Promoted | Technical readiness is not operational adoption. Convert every existing project to Project Work V2 in one migration-first rollout, anchor its initial obligation to one rollout timestamp as if the project just entered its current detailed stage, preserve stronger V2 state/work and specialist facts, show five journey phases plus server-owned Active/Waiting/Closed/Archived state, and leave retired legacy task/action rows read-only with no application readers or writers. |
@@ -4103,8 +4104,9 @@ Current guardrail: Keep project name primary and derive one deduplicated
 customer/site identity, search string, crew label, and current timing through
 `ScheduleJobPresentation.ts`. Project identity remains server-owned and must be
 selected only for the projects in the active Board/Gantt read model. Before a
-Gantt move/resize calls the existing command controller, show an explicit
-current-versus-proposed review and fail stale if the item changed. Preserve the
+Gantt move/resize calls the existing command controller, show authoritative
+current timing plus the requested start/duration and fail stale if the item
+changed. Do not derive an exact proposed finish in the browser. Preserve the
 subsequent affected-job preview, immediate re-preview, explicit confirmation,
 optimistic rollback, ambiguous-outcome reconciliation, and API/RPC ownership.
 Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`
@@ -4114,6 +4116,35 @@ Related docs/tests:
 `apps/portal/app/staff/schedule/ScheduleActionModals.test.tsx`;
 `apps/portal/lib/scheduling/scheduleV2Server.test.ts`;
 `apps/portal/app/qa/schedule-ops-fixture/fixtures.test.ts`;
+`npm run test:portal:schedule`
+
+### 2026-07-31 - Schedule Authoritative Timing - Request Locally, Calculate On The Server
+
+Date: 2026-07-31
+Area: Schedule Gantt timing review and small-screen operation
+Status: Promoted
+Decision or mistake: The local Gantt drag review derived and displayed an exact
+proposed finish with browser weekday arithmetic. The server forecast also owns
+crew calendars, regional holidays, closures, and affected-job sequencing, so
+the displayed finish could disagree with the next authoritative preview. The
+desktop Gantt controls were also compressed into phone height until the
+timeline had almost no useful operating space.
+Why it mattered: Staff could approve a date consequence the server had never
+calculated, then experience the committed result as a surprise. Phone users
+received a technically responsive canvas rather than a purposeful operational
+mode.
+Current guardrail: A drag/resize may collect requested start and duration, but
+the local review shows only those inputs alongside the authoritative current
+forecast. The server impact preview/re-preview owns the exact resulting finish
+and every affected job. At 640 CSS pixels or narrower, render a read-only crew
+agenda from the same Gantt model, retain essential view context, and route
+schedule changes to Board; do not create another read model or phone write path.
+Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`
+Related docs/tests:
+`apps/portal/app/staff/schedule/useScheduleGanttTimingReview.ts`;
+`apps/portal/app/staff/schedule/ScheduleGanttCompactView.tsx`;
+`apps/portal/app/staff/schedule/ScheduleGanttView.test.tsx`;
+`playwright/portal.schedule-tasks-ui.spec.ts`;
 `npm run test:portal:schedule`
 
 ### 2026-07-29 - Project Work V2 - Prove The Hosted API Cache

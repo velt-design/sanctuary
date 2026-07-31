@@ -59,7 +59,9 @@ async function openSchedule(page: Page, view: 'board' | 'gantt' | 'site-visits' 
   if (view === 'board') {
     await expect(page.getByRole('button', { name: /Collapse unscheduled panel|Expand unscheduled panel/ })).toBeVisible({ timeout: 60_000 });
   } else if (view === 'gantt') {
-    await expect(page.locator('[aria-label="Gantt timeline"]')).toBeVisible({ timeout: 60_000 });
+    const compact = await page.evaluate(() => window.innerWidth <= 640);
+    await expect(page.locator(compact ? '[aria-label="Crew schedule agenda"]' : '[aria-label="Gantt timeline"]'))
+      .toBeVisible({ timeout: 60_000 });
   } else {
     await expect(page.getByRole('region', { name: 'Site visits calendar' })).toBeVisible({ timeout: 60_000 });
   }
@@ -101,7 +103,7 @@ test('Schedule foundation presentation is responsive and non-mutating', async ({
     });
   }
 
-  const jobActions = page.getByRole('button', { name: 'Job actions', exact: true }).first();
+  const jobActions = page.getByRole('button', { name: /^Job actions for / }).first();
   await jobActions.click();
   const firstJobAction = page.getByRole('menuitem').first();
   await firstJobAction.click();
@@ -232,10 +234,12 @@ test('Schedule foundation presentation is responsive and non-mutating', async ({
 
   await page.setViewportSize({ width: 390, height: 844 });
   await openSchedule(page, 'gantt');
-  await expect(page.getByLabel('Timeline scale')).toHaveValue('8');
-  await expect(page.getByRole('group', { name: 'Timeline controls' })).toBeVisible();
+  await expect(page.locator('[aria-label="Gantt timeline"]')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Crew schedule agenda' })).toBeVisible();
+  await expect(page.getByText('Read-only here. Open Board to safely move, reorder or unschedule work.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Board and unscheduled work' })).toBeVisible();
   const mobileGanttTargets = await page
-    .getByRole('group', { name: 'Timeline controls' })
+    .getByLabel('Small-screen schedule controls')
     .locator('button:visible, summary:visible')
     .evaluateAll((elements) =>
       elements.map((element) => ({
@@ -244,6 +248,11 @@ test('Schedule foundation presentation is responsive and non-mutating', async ({
       })),
     );
   expect(mobileGanttTargets.filter((target) => target.label && target.height < 43)).toEqual([]);
+  const compactAgendaGeometry = await page.getByRole('region', { name: 'Crew schedule agenda' }).evaluate((agenda) => ({
+    clientHeight: agenda.clientHeight,
+    scrollHeight: agenda.scrollHeight,
+  }));
+  expect(compactAgendaGeometry.clientHeight).toBeGreaterThan(180);
   await expectNoDocumentOverflow(page);
   await capturePortalEvidenceScreenshot(page, {
     path: path.join(evidenceDir, 'schedule-gantt-390x844.png'),
