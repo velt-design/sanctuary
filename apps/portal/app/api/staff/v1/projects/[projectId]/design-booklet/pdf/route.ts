@@ -1,5 +1,8 @@
 import { jsonError, jsonOk, requireStaffContext } from "@/lib/api/staffApi";
-import { projectDesignBookletErrorResponse } from "@/lib/designBooklets/projectApi";
+import {
+  privateProjectDesignBookletResponse,
+  projectDesignBookletErrorResponse,
+} from "@/lib/designBooklets/projectApi";
 import { publishProjectDesignBookletPdf } from "@/lib/designBooklets/projectPdf";
 
 export const runtime = "nodejs";
@@ -11,18 +14,20 @@ export async function POST(
   context: { params: Promise<{ projectId: string }> },
 ): Promise<Response> {
   const auth = await requireStaffContext();
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) return privateProjectDesignBookletResponse(auth.response);
   const { projectId } = await context.params;
-  if (!projectId?.trim()) return jsonError("Invalid project ID.", 400);
+  if (!projectId?.trim()) {
+    return privateProjectDesignBookletResponse(
+      jsonError("Invalid project ID.", 400),
+    );
+  }
 
   try {
     const download = await publishProjectDesignBookletPdf(
       auth.supabase,
       projectId.trim(),
     );
-    const response = jsonOk({ download });
-    response.headers.set("Cache-Control", "private, no-store, max-age=0");
-    return response;
+    return privateProjectDesignBookletResponse(jsonOk({ download }));
   } catch (error) {
     return projectDesignBookletErrorResponse(
       error,

@@ -4,7 +4,10 @@ import {
   parseJsonBody,
   requireStaffContext,
 } from "@/lib/api/staffApi";
-import { projectDesignBookletErrorResponse } from "@/lib/designBooklets/projectApi";
+import {
+  privateProjectDesignBookletResponse,
+  projectDesignBookletErrorResponse,
+} from "@/lib/designBooklets/projectApi";
 import {
   loadProjectDesignBooklet,
   saveProjectDesignBooklet,
@@ -17,18 +20,20 @@ type Context = { params: Promise<{ projectId: string }> };
 
 export async function GET(_request: Request, context: Context): Promise<Response> {
   const auth = await requireStaffContext();
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) return privateProjectDesignBookletResponse(auth.response);
   const { projectId } = await context.params;
-  if (!projectId?.trim()) return jsonError("Invalid project ID.", 400);
+  if (!projectId?.trim()) {
+    return privateProjectDesignBookletResponse(
+      jsonError("Invalid project ID.", 400),
+    );
+  }
 
   try {
     const snapshot = await loadProjectDesignBooklet(
       auth.supabase,
       projectId.trim(),
     );
-    const response = jsonOk({ snapshot });
-    response.headers.set("Cache-Control", "private, no-store, max-age=0");
-    return response;
+    return privateProjectDesignBookletResponse(jsonOk({ snapshot }));
   } catch (error) {
     return projectDesignBookletErrorResponse(
       error,
@@ -39,11 +44,19 @@ export async function GET(_request: Request, context: Context): Promise<Response
 
 export async function PUT(request: Request, context: Context): Promise<Response> {
   const auth = await requireStaffContext();
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) return privateProjectDesignBookletResponse(auth.response);
   const { projectId } = await context.params;
-  if (!projectId?.trim()) return jsonError("Invalid project ID.", 400);
+  if (!projectId?.trim()) {
+    return privateProjectDesignBookletResponse(
+      jsonError("Invalid project ID.", 400),
+    );
+  }
   const parsed = await parseJsonBody(request);
-  if (!parsed.ok) return jsonError(parsed.error, 400);
+  if (!parsed.ok) {
+    return privateProjectDesignBookletResponse(
+      jsonError(parsed.error, 400),
+    );
+  }
 
   try {
     const saved = await saveProjectDesignBooklet(auth.supabase, {
@@ -52,9 +65,7 @@ export async function PUT(request: Request, context: Context): Promise<Response>
       expectedRevision: parsed.body?.expectedRevision,
       userId: auth.session.user.id,
     });
-    const response = jsonOk({ saved });
-    response.headers.set("Cache-Control", "private, no-store, max-age=0");
-    return response;
+    return privateProjectDesignBookletResponse(jsonOk({ saved }));
   } catch (error) {
     return projectDesignBookletErrorResponse(
       error,

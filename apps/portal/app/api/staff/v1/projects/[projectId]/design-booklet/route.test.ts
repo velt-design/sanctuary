@@ -22,6 +22,10 @@ vi.mock("@/lib/designBooklets/projectPersistence", () => ({
 }));
 
 vi.mock("@/lib/designBooklets/projectApi", () => ({
+  privateProjectDesignBookletResponse: (response: Response) => {
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    return response;
+  },
   projectDesignBookletErrorResponse: () =>
     Response.json({ error: "failed" }, { status: 500 }),
 }));
@@ -54,6 +58,7 @@ describe("project design booklet route", () => {
     });
     const response = await GET(new Request("http://portal.test"), context);
     expect(response.status).toBe(401);
+    expect(response.headers.get("cache-control")).toContain("no-store");
     expect(mocks.load).not.toHaveBeenCalled();
   });
 
