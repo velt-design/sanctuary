@@ -90,6 +90,9 @@ function baseProps(overrides: Partial<ScheduleBoardViewProps> = {}): ScheduleBoa
             projectId: 'proj_alpha',
             estimateId: 'est_alpha',
             projectName: 'Alpha Deck',
+            customerName: 'Alex Customer',
+            siteAddress: '10 Harbour Road',
+            identityDetail: 'Alex Customer · 10 Harbour Road',
             descriptor: '',
             status: 'DEPOSIT',
             durationHours: 16,
@@ -125,6 +128,9 @@ function baseProps(overrides: Partial<ScheduleBoardViewProps> = {}): ScheduleBoa
         projectId: 'proj_alpha',
         estimateId: 'est_alpha',
         projectName: 'Alpha Deck',
+        customerName: 'Alex Customer',
+        siteAddress: '10 Harbour Road',
+        identityDetail: 'Alex Customer · 10 Harbour Road',
         descriptor: '',
         status: 'DEPOSIT',
         durationHours: 16,
@@ -200,6 +206,7 @@ describe('ScheduleBoardView', () => {
 
     expect(rendered.container.textContent).toContain('Unscheduled');
     expect(rendered.container.textContent).toContain('Alpha Deck');
+    expect(rendered.container.textContent).toContain('Alex Customer · 10 Harbour Road');
     expect(dndMocks.latestContextProps).toBeTruthy();
 
     act(() => {

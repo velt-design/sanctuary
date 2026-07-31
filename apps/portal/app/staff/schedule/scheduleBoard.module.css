@@ -301,6 +301,7 @@
   text-overflow: ellipsis;
 }
 
+.jobIdentityDetail,
 .jobDescriptor {
   display: block;
   margin-top: 4px;
@@ -309,6 +310,10 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.jobIdentityDetail {
+  color: var(--ui-text);
 }
 
 .badgesRow {

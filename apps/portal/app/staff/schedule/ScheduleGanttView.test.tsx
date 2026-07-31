@@ -80,7 +80,19 @@ function ganttProps(): ScheduleGanttViewProps {
     installers: [installer],
     laneItems: new Map([[installer.id, [scheduleItem]]]),
     visibleScheduleItems: [scheduleItem],
-    projectsById: new Map(),
+    projectsById: new Map([[
+      scheduleItem.projectId,
+      {
+        id: scheduleItem.projectId,
+        projectName: 'Alpha Pergola',
+        name: 'Alpha Pergola',
+        customerName: 'Alex Customer',
+        siteAddress: '10 Harbour Road',
+        status: 'DEPOSIT',
+        nextActionDate: null,
+        followUpDate: null,
+      },
+    ]]),
     estimatesById: new Map(),
     scheduleBars: [
       {
@@ -99,6 +111,7 @@ function ganttProps(): ScheduleGanttViewProps {
     holidays: [],
     showCompleted: false,
     onShowCompletedChange: vi.fn(),
+    onOpenUnscheduled: vi.fn(),
     onOpenProject: vi.fn(),
     onOpenProjectPack: vi.fn(),
     onOpenCommitmentEdit: vi.fn(),
@@ -351,6 +364,9 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
     expect(bar).not.toBeNull();
     expect(bar?.tabIndex).toBe(0);
     expect(bar?.getAttribute('aria-label')).toContain('Alpha Pergola');
+    expect(bar?.getAttribute('aria-label')).toContain('Customer Alex Customer');
+    expect(bar?.getAttribute('aria-label')).toContain('Site 10 Harbour Road');
+    expect(bar?.getAttribute('aria-label')).toContain('Crew Crew Alpha');
 
     bar?.focus();
     if (bar) dispatchKeyboard(bar, 'Enter');
@@ -358,6 +374,8 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
     const dialog = rendered.container.querySelector<HTMLElement>('[role="dialog"][aria-label="Gantt quick actions"]');
     expect(dialog).not.toBeNull();
     expect(dialog?.textContent).toContain('Open project');
+    expect(dialog?.textContent).toContain('Alex Customer · 10 Harbour Road');
+    expect(dialog?.textContent).toContain('Crew: Crew Alpha');
     expect(dialog?.getAttribute('aria-modal')).toBe('true');
     expect(dialog?.getAttribute('data-modal-panel')).toBe('true');
 
@@ -569,7 +587,7 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
     rendered.unmount();
   });
 
-  it('preserves pointer move and resize callbacks across the extracted timeline boundary', () => {
+  it('reviews pointer move and resize timing before forwarding callbacks across the extracted timeline boundary', () => {
     const props = ganttProps();
     const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
     const itemRow = rendered.container.querySelector<HTMLElement>(
@@ -585,8 +603,15 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
       window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 154, clientY: 100 }));
     });
 
-    expect(props.onMovePin).toHaveBeenCalledWith(scheduleItem.id, '2026-04-09', 2);
+    expect(props.onMovePin).not.toHaveBeenCalled();
     expect(props.onResizePin).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('Review timing change');
+    expect(document.body.textContent).toContain('Current07 Apr to 08 Apr · 2d');
+    expect(document.body.textContent).toContain('Proposed09 Apr to 10 Apr · 2d');
+    const applyMove = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent === 'Apply change');
+    act(() => applyMove?.click());
+    expect(props.onMovePin).toHaveBeenCalledWith(scheduleItem.id, '2026-04-09', 2);
 
     const resizeHandle = itemRow?.querySelector<HTMLElement>('[data-gantt-resize-handle="true"]');
     act(() => {
@@ -597,7 +622,23 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
       window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 154, clientY: 100 }));
     });
 
+    expect(props.onResizePin).not.toHaveBeenCalled();
+    const applyResize = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent === 'Apply change');
+    act(() => applyResize?.click());
     expect(props.onResizePin).toHaveBeenCalledWith(scheduleItem.id, '2026-04-07', 4);
+    rendered.unmount();
+  });
+
+  it('offers a truthful route from Gantt to unscheduled Board work', () => {
+    const props = ganttProps();
+    const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+    const button = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button'))
+      .find((candidate) => candidate.textContent === 'View unscheduled jobs');
+
+    act(() => button?.click());
+
+    expect(props.onOpenUnscheduled).toHaveBeenCalledWith(button);
     rendered.unmount();
   });
 

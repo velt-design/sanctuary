@@ -9,7 +9,7 @@ import {
   computeRangeIntersection,
   formatCrewScheduleBlocks,
   isMissingSchemaError,
-  listProjectsAndEstimates,
+  listScheduledProjectsAndEstimates,
   loadScheduleContext,
   recomputeForCrew,
 } from '@/lib/scheduling/scheduleV2Server';
@@ -127,14 +127,16 @@ export async function loadScheduleGanttResponse(input: {
   let projectIndex: NonNullable<ScheduleGanttResponse['project_index']> = [];
   let scheduledEstimateIds: NonNullable<ScheduleGanttResponse['scheduled_estimate_ids']> = {};
   try {
-    const { projects, estimates } = await listProjectsAndEstimates();
     const scheduledProjectIds = new Set(ctx.jobs.map((job) => job.jobId));
+    const { projects, estimates } = await listScheduledProjectsAndEstimates(scheduledProjectIds);
     scheduledEstimateIds = computeScheduledEstimateIds(estimates, scheduledProjectIds);
     projectIndex = projects
       .filter((project) => scheduledProjectIds.has(project.id))
       .map((project) => ({
         id: project.id,
         name: project.name,
+        customer_name: project.customer_name,
+        site_address: project.site_address,
         pipeline_stage: project.pipeline_stage,
         follow_up_date: project.follow_up_date,
       }))

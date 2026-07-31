@@ -33,6 +33,8 @@ type SupabaseLikeError = { code?: unknown; message?: unknown };
 type ProjectRowLite = {
   id: string;
   name: string;
+  customer_name?: string | null;
+  site_address?: string | null;
   pipeline_stage: string | null;
   follow_up_date: string | null;
 };
@@ -57,6 +59,7 @@ type BoardProjectEstimateDiagnostics = {
 };
 
 const SCHEDULE_PROJECT_SELECT = 'id, name, pipeline_stage, follow_up_date';
+const SCHEDULE_PROJECT_IDENTITY_SELECT = `${SCHEDULE_PROJECT_SELECT}, site_address, contacts ( name )`;
 const SCHEDULE_ESTIMATE_SELECT = 'id, project_id, status, created_at, version, duration_days, crew_hours';
 
 type CrewRow = {
@@ -754,12 +757,17 @@ export async function listProjectsAndEstimates(): Promise<{ projects: ProjectRow
 }
 
 function mapProjectRows(rows: unknown): ProjectRowLite[] {
-  return (Array.isArray(rows) ? rows : []).map((row: any) => ({
-    id: String(row?.id ?? ''),
-    name: String(row?.name ?? ''),
-    pipeline_stage: typeof row?.pipeline_stage === 'string' ? row.pipeline_stage : null,
-    follow_up_date: typeof row?.follow_up_date === 'string' ? row.follow_up_date : null,
-  }));
+  return (Array.isArray(rows) ? rows : []).map((row: any) => {
+    const contact = Array.isArray(row?.contacts) ? row.contacts[0] : row?.contacts;
+    return {
+      id: String(row?.id ?? ''),
+      name: String(row?.name ?? ''),
+      ...(typeof contact?.name === 'string' && contact.name.trim() ? { customer_name: contact.name.trim() } : null),
+      ...(typeof row?.site_address === 'string' && row.site_address.trim() ? { site_address: row.site_address.trim() } : null),
+      pipeline_stage: typeof row?.pipeline_stage === 'string' ? row.pipeline_stage : null,
+      follow_up_date: typeof row?.follow_up_date === 'string' ? row.follow_up_date : null,
+    };
+  });
 }
 
 function mapEstimateRows(rows: unknown): EstimateRowLite[] {
@@ -815,7 +823,7 @@ async function filterSchedulingReadyOperationalProjects(rows: unknown): Promise<
 async function listSchedulingReadyProjects(diagnostics?: PortalServerLogContext | null): Promise<{ data: unknown[]; archivedProjectFilterRetried: boolean }> {
   const withArchiveFilter = await supabaseServiceRole
     .from('projects')
-    .select(SCHEDULE_PROJECT_SELECT)
+    .select(SCHEDULE_PROJECT_IDENTITY_SELECT)
     .eq('pipeline_stage', SCHEDULING_READY_PROJECT_STATUS)
     .is('archived_at', null);
 
@@ -840,7 +848,7 @@ async function listSchedulingReadyProjects(diagnostics?: PortalServerLogContext 
 
   const withoutArchiveFilter = await supabaseServiceRole
     .from('projects')
-    .select(SCHEDULE_PROJECT_SELECT)
+    .select(SCHEDULE_PROJECT_IDENTITY_SELECT)
     .eq('pipeline_stage', SCHEDULING_READY_PROJECT_STATUS);
   if (withoutArchiveFilter.error) throw withoutArchiveFilter.error;
 
@@ -857,7 +865,7 @@ export async function listBoardProjectsAndEstimates(input?: {
   const scheduledProjectIds = uniqueSortedIds(input?.scheduledProjectIds ?? []);
 
   const scheduledProjectsPromise = scheduledProjectIds.length
-    ? supabaseServiceRole.from('projects').select(SCHEDULE_PROJECT_SELECT).in('id', scheduledProjectIds)
+    ? supabaseServiceRole.from('projects').select(SCHEDULE_PROJECT_IDENTITY_SELECT).in('id', scheduledProjectIds)
     : Promise.resolve({ data: [], error: null });
   const readyProjectsPromise = listSchedulingReadyProjects(input?.diagnostics ?? null);
 
@@ -893,6 +901,25 @@ export async function listBoardProjectsAndEstimates(input?: {
   };
 }
 
+export async function listScheduledProjectsAndEstimates(
+  scheduledProjectIdsInput: Iterable<string>,
+): Promise<{ projects: ProjectRowLite[]; estimates: EstimateRowLite[] }> {
+  const scheduledProjectIds = uniqueSortedIds(scheduledProjectIdsInput);
+  if (!scheduledProjectIds.length) return { projects: [], estimates: [] };
+
+  const [projectsRes, estimatesRes] = await Promise.all([
+    supabaseServiceRole.from('projects').select(SCHEDULE_PROJECT_IDENTITY_SELECT).in('id', scheduledProjectIds),
+    supabaseServiceRole.from('estimates').select(SCHEDULE_ESTIMATE_SELECT).in('project_id', scheduledProjectIds),
+  ]);
+  if (projectsRes.error) throw projectsRes.error;
+  if (estimatesRes.error) throw estimatesRes.error;
+
+  return {
+    projects: mapProjectRows(projectsRes.data),
+    estimates: mapEstimateRows(estimatesRes.data),
+  };
+}
+
 export function buildUnscheduledJobs(input: {
   projects: ProjectRowLite[];
   estimates: EstimateRowLite[];
@@ -923,6 +950,8 @@ export function buildUnscheduledJobs(input: {
       job_id: project.id,
       estimate_id: latest.id,
       project_name: projectName,
+      customer_name: project.customer_name,
+      site_address: project.site_address,
       status: projectStatus,
       duration_days: durationDays,
     });

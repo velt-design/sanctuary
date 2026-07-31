@@ -355,6 +355,43 @@ describe('scheduleV2Server lightweight schedule rows', () => {
     ]);
   });
 
+  it('loads Gantt identity and estimates only for the scheduled project ids', async () => {
+    const projectIn = vi.fn().mockResolvedValue({
+      data: [{
+        id: 'scheduled-a',
+        name: 'Pergola A',
+        site_address: '10 Harbour Road',
+        contacts: [{ name: 'Alex Customer' }],
+        pipeline_stage: 'BUILD',
+        follow_up_date: null,
+      }],
+      error: null,
+    });
+    const projectSelect = vi.fn().mockReturnValue({ in: projectIn });
+    const estimateIn = vi.fn().mockResolvedValue({ data: [], error: null });
+    const estimateSelect = vi.fn().mockReturnValue({ in: estimateIn });
+    from.mockImplementation((table: string) => {
+      if (table === 'projects') return { select: projectSelect };
+      if (table === 'estimates') return { select: estimateSelect };
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    const { listScheduledProjectsAndEstimates } = await import('./scheduleV2Server');
+    const result = await listScheduledProjectsAndEstimates(['scheduled-b', 'scheduled-a', 'scheduled-a']);
+
+    expect(projectSelect).toHaveBeenCalledWith('id, name, pipeline_stage, follow_up_date, site_address, contacts ( name )');
+    expect(projectIn).toHaveBeenCalledWith('id', ['scheduled-a', 'scheduled-b']);
+    expect(estimateIn).toHaveBeenCalledWith('project_id', ['scheduled-a', 'scheduled-b']);
+    expect(result.projects).toEqual([{
+      id: 'scheduled-a',
+      name: 'Pergola A',
+      customer_name: 'Alex Customer',
+      site_address: '10 Harbour Road',
+      pipeline_stage: 'BUILD',
+      follow_up_date: null,
+    }]);
+  });
+
   it('loads board project and estimate rows with schedule-specific filters', async () => {
     const scheduledProjectIn = vi.fn().mockResolvedValue({
       data: [{ id: 'scheduled-project', name: 'Scheduled', pipeline_stage: 'BUILD', follow_up_date: '2026-04-09' }],
@@ -400,7 +437,7 @@ describe('scheduleV2Server lightweight schedule rows', () => {
     const { listBoardProjectsAndEstimates } = await import('./scheduleV2Server');
     const result = await listBoardProjectsAndEstimates({ scheduledProjectIds: new Set(['scheduled-project']) });
 
-    expect(projectSelect).toHaveBeenCalledWith('id, name, pipeline_stage, follow_up_date');
+    expect(projectSelect).toHaveBeenCalledWith('id, name, pipeline_stage, follow_up_date, site_address, contacts ( name )');
     expect(scheduledProjectIn).toHaveBeenCalledWith('id', ['scheduled-project']);
     expect(readyProjectEq).toHaveBeenCalledWith('pipeline_stage', 'DEPOSIT');
     expect(readyProjectIs).toHaveBeenCalledWith('archived_at', null);
@@ -493,7 +530,7 @@ describe('scheduleV2Server lightweight schedule rows', () => {
       'active-v2',
       'legacy-ready',
     ]);
-    expect(projectSelect).toHaveBeenCalledWith('id, name, pipeline_stage, follow_up_date');
+    expect(projectSelect).toHaveBeenCalledWith('id, name, pipeline_stage, follow_up_date, site_address, contacts ( name )');
     expect(operationalStateSelect).toHaveBeenCalledWith('project_id,state');
     expect(operationalStateIn).toHaveBeenCalledWith('project_id', ['active-v2', 'waiting-v2']);
     expect(result.diagnostics.readyProjectRowCount).toBe(2);

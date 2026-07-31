@@ -782,6 +782,17 @@ npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal
 
 It covers Board at 1440/1280/1024/768/390, Gantt, the retained direct Site Visits compatibility route, Schedule and Site Visit dialogs, 720x500 at 200% zoom, document overflow, mobile targets, focus return, reduced motion, and browser/runtime evidence. It opens forms and dialogs but does not save, drag, delete, or unschedule.
 
+For repeatable identity, overlap, backlog, and large-schedule evidence without
+shared data, enable `ENABLE_PORTAL_QA_FIXTURES=1` and open
+`/qa/schedule-ops-fixture?view=board|gantt&scale=standard|large`. The fixture
+uses the production Board/Gantt presenters with nine crews, long
+customer/site identity, conflicts, 12 unscheduled jobs, and 108 bars at large
+scale. Its mutation callbacks are inert; **Preview change review** opens the
+current-to-proposed Gantt confirmation contract without a Schedule command.
+Verify 1600x1000, 1440x900, 1280x800, 1024x900, 768x1024, 390x844, and a
+half-sized CSS viewport equivalent to 200% zoom. Assert zero document-level
+horizontal overflow while preserving the specialist Board/Gantt scroll owner.
+
 Minimum targeted schedule tests:
 
 ```bash

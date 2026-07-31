@@ -5,6 +5,7 @@ import { addDaysYmd, isYmd } from '@/lib/scheduling/date';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import type { Installer, ScheduleItem, SchedulingIssue } from '@/lib/types/scheduling';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
+import { buildScheduleJobIdentity } from './ScheduleJobPresentation';
 
 export const EMPTY_SCHEDULE_BOARD_MODEL: ScheduleBoardModel = {
   schedulable: {
@@ -44,7 +45,7 @@ export function makeJobId(projectId: string, estimateId: string): string {
   return `job_${projectId}_${estimateId}`;
 }
 
-export function safeProjectName(project: ScheduleProjectSummary | null | undefined): string {
+function safeProjectName(project: ScheduleProjectSummary | null | undefined): string {
   return project?.projectName ?? project?.name ?? 'Untitled project';
 }
 
@@ -124,10 +125,19 @@ export function mapV2UnscheduledJobs(list: ScheduleV2Snapshot['unscheduledJobs']
     const durationHours = Math.max(0.5, durationDays * WORK_HOURS_PER_DAY);
 
     out.push({
+      ...buildScheduleJobIdentity({
+        id: projectId,
+        projectName: job.projectName,
+        name: job.projectName,
+        customerName: job.customerName,
+        siteAddress: job.siteAddress,
+        status,
+        nextActionDate: null,
+        followUpDate: null,
+      }),
       id: makeJobId(projectId, estimateId),
       projectId,
       estimateId,
-      projectName: (typeof job?.projectName === 'string' ? job.projectName : '').trim() || 'Untitled project',
       descriptor: '',
       status,
       durationHours,

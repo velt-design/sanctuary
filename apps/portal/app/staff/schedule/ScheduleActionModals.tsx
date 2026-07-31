@@ -2,8 +2,8 @@
 
 import type { Dispatch, SetStateAction } from 'react';
 import Modal from '@/components/ui/modal/Modal';
-import type { ScheduleItem } from '@/lib/types/scheduling';
 import { addDaysYmd, isYmd as isYmdDate } from '@/lib/scheduling/date';
+import { formatScheduleJobTiming, type ScheduleJobPresentation } from './ScheduleJobPresentation';
 import styles from './schedule.module.css';
 
 function parsePositiveInt(value: string): number | null {
@@ -88,8 +88,7 @@ export type ScheduleModalState = {
 export type ScheduleActionModalsProps = {
   state: ScheduleModalState;
   scheduleMode: 'v2' | 'legacy';
-  findScheduleItem: (id: string) => ScheduleItem | null;
-  findProjectName: (scheduleItemId: string) => string;
+  findJobPresentation: (scheduleItemId: string) => ScheduleJobPresentation | null;
   formatShortDate: (ymd: string) => string;
   formatCommitImpactList: (impacts: any[]) => string;
   setQuickEdit: Dispatch<SetStateAction<QuickEditState>>;
@@ -109,11 +108,48 @@ export type ScheduleActionModalsProps = {
   onFinishEarlyPullForward: () => void;
 };
 
+function JobContextPanel({
+  presentation,
+  formatShortDate,
+  proposedTiming,
+}: {
+  presentation: ScheduleJobPresentation | null;
+  formatShortDate: (ymd: string) => string;
+  proposedTiming?: string | null;
+}) {
+  if (!presentation) return null;
+  return (
+    <section className={styles.actionJobContext} aria-label="Job and timing context">
+      <div className={styles.actionJobIdentity}>
+        <strong>{presentation.projectName}</strong>
+        {presentation.identityDetail ? <span>{presentation.identityDetail}</span> : null}
+        <span>Crew: {presentation.crewName}</span>
+      </div>
+      <div className={styles.actionTimingReview}>
+        <div>
+          <span>Current</span>
+          <strong>{formatScheduleJobTiming(presentation, formatShortDate)}</strong>
+        </div>
+        {proposedTiming ? (
+          <div>
+            <span>Proposed</span>
+            <strong>{proposedTiming}</strong>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function parsePositiveNumber(value: string): number | null {
+  const n = Number(value.trim());
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export default function ScheduleActionModals({
   state,
   scheduleMode,
-  findScheduleItem,
-  findProjectName,
+  findJobPresentation,
   formatShortDate,
   formatCommitImpactList,
   setQuickEdit,
@@ -150,6 +186,12 @@ export default function ScheduleActionModals({
                 Close
               </button>
             </div>
+
+            <JobContextPanel
+              presentation={findJobPresentation(quickEdit.id)}
+              formatShortDate={formatShortDate}
+              proposedTiming={`${isYmd(quickEdit.startDateOverride) ? `Starts ${formatShortDate(quickEdit.startDateOverride)}` : 'Start auto-calculated'} · ${parsePositiveNumber(quickEdit.durationDays) ?? '—'}d`}
+            />
 
             <p className={`${styles.hint} ${styles.actionModalIntro}`}>
               Overrides apply to this job only. Changing start/duration recalculates downstream jobs for the crew.
@@ -196,7 +238,7 @@ export default function ScheduleActionModals({
               </button>
               <button
                 type="button"
-                className={styles.button}
+                className={styles.buttonPrimary}
                 onClick={onSaveQuickEdit}
               >
                 Save
@@ -222,6 +264,16 @@ export default function ScheduleActionModals({
                 Close
               </button>
             </div>
+
+            <JobContextPanel
+              presentation={findJobPresentation(commitmentEdit.id)}
+              formatShortDate={formatShortDate}
+              proposedTiming={
+                commitmentEdit.commitmentType === 'week_of'
+                  ? `${isYmd(commitmentEdit.weekOfDate) ? `Week of ${formatShortDate(startOfWeekMonday(commitmentEdit.weekOfDate))}` : 'Week not set'} · ${parsePositiveInt(commitmentEdit.durationDays) ?? '—'}d`
+                  : `${isYmd(commitmentEdit.startDate) ? `Starts ${formatShortDate(commitmentEdit.startDate)}` : 'Start not set'} · ${parsePositiveInt(commitmentEdit.durationDays) ?? '—'}d`
+              }
+            />
 
             <div className={`${styles.actionModalFields} ${styles.actionModalFieldsWide}`}>
               <div>
@@ -384,7 +436,7 @@ export default function ScheduleActionModals({
               </button>
               <button
                 type="button"
-                className={styles.button}
+                className={styles.buttonPrimary}
                 disabled={(() => {
                   const validDuration = parsePositiveInt(commitmentEdit.durationDays) !== null;
                   const flexRaw = Number(commitmentEdit.flexDays.trim());
@@ -410,6 +462,12 @@ export default function ScheduleActionModals({
                 Close
               </button>
             </div>
+
+            <JobContextPanel
+              presentation={findJobPresentation(durationEdit.id)}
+              formatShortDate={formatShortDate}
+              proposedTiming={`Duration ${parsePositiveInt(durationEdit.durationDays) ?? '—'}d`}
+            />
 
             <p className={`${styles.hint} ${styles.actionModalIntro}`}>
               Duration is stored as whole working days.
@@ -438,7 +496,7 @@ export default function ScheduleActionModals({
               </button>
               <button
                 type="button"
-                className={styles.button}
+                className={styles.buttonPrimary}
                 onClick={onSaveDuration}
               >
                 Save
@@ -457,6 +515,12 @@ export default function ScheduleActionModals({
                 Close
               </button>
             </div>
+
+            <JobContextPanel
+              presentation={findJobPresentation(pinEdit.id)}
+              formatShortDate={formatShortDate}
+              proposedTiming={isYmd(pinEdit.requestedStart) ? `Starts ${formatShortDate(pinEdit.requestedStart)}` : 'Start not set'}
+            />
 
             <p className={`${styles.hint} ${styles.actionModalIntro}`}>
               Pinned starts snap forward to the next working day if needed.
@@ -482,7 +546,7 @@ export default function ScheduleActionModals({
               </button>
               <button
                 type="button"
-                className={styles.button}
+                className={styles.buttonPrimary}
                 onClick={onSavePin}
               >
                 Pin job
@@ -501,6 +565,12 @@ export default function ScheduleActionModals({
                 Close
               </button>
             </div>
+
+            <JobContextPanel
+              presentation={findJobPresentation(daysRemainingEdit.id)}
+              formatShortDate={formatShortDate}
+              proposedTiming={`${parsePositiveInt(daysRemainingEdit.daysRemaining) ?? '—'}d remaining`}
+            />
 
             <p className={`${styles.hint} ${styles.actionModalIntro}`}>
               Updates the forecast duration for this in-progress job.
@@ -529,7 +599,7 @@ export default function ScheduleActionModals({
               </button>
               <button
                 type="button"
-                className={styles.button}
+                className={styles.buttonPrimary}
                 onClick={onSaveDaysRemaining}
               >
                 Save
@@ -609,7 +679,7 @@ export default function ScheduleActionModals({
               </button>
               <button
                 type="button"
-                className={styles.button}
+                className={styles.buttonPrimary}
                 onClick={onSaveDowntime}
               >
                 Save
@@ -635,15 +705,14 @@ export default function ScheduleActionModals({
             </div>
 
             {(() => {
-              const scheduleItem = findScheduleItem(finishEarlyPrompt.scheduleItemId);
-              const jobName = scheduleItem ? findProjectName(finishEarlyPrompt.scheduleItemId) : 'Job';
+              const presentation = findJobPresentation(finishEarlyPrompt.scheduleItemId);
               const endInclusive = finishEarlyPrompt.forecastEndExclusive
                 ? endInclusiveFromExclusive(finishEarlyPrompt.forecastEndExclusive, finishEarlyPrompt.forecastEndExclusive)
                 : null;
               const forecastLabel = endInclusive ? formatShortDate(endInclusive) : '—';
               return (
                 <div className={styles.finishedJob}>
-                  <div className={styles.finishedJobName}>{jobName}</div>
+                  <JobContextPanel presentation={presentation} formatShortDate={formatShortDate} />
                   <p className={`${styles.hint} ${styles.actionModalHint}`}>
                     Finished on {formatShortDate(finishEarlyPrompt.actualFinish)} — {finishEarlyPrompt.freedDays} working day
                     {finishEarlyPrompt.freedDays === 1 ? '' : 's'} freed (forecast end {forecastLabel}).
@@ -676,7 +745,7 @@ export default function ScheduleActionModals({
               </button>
               <button
                 type="button"
-                className={styles.button}
+                className={styles.buttonPrimary}
                 onClick={onFinishEarlyPullForward}
               >
                 Pull forward

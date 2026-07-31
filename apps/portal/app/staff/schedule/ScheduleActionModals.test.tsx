@@ -20,8 +20,18 @@ function buildProps(state: ScheduleModalState): ScheduleActionModalsProps {
   return {
     state,
     scheduleMode: 'v2',
-    findScheduleItem: () => ({ id: 'sch_1' } as any),
-    findProjectName: () => 'Alpha Deck',
+    findJobPresentation: () => ({
+      scheduleItemId: 'sch_1',
+      projectName: 'Alpha Deck',
+      customerName: 'Alex Customer',
+      siteAddress: '10 Harbour Road',
+      identityDetail: 'Alex Customer · 10 Harbour Road',
+      searchText: 'alpha deck alex customer 10 harbour road',
+      crewName: 'Crew Alpha',
+      startDate: '2026-04-07',
+      endDate: '2026-04-08',
+      durationDays: 2,
+    }),
     formatShortDate: (value) => value,
     formatCommitImpactList: () => 'Crew Bravo pulls forward by 2 days',
     setQuickEdit: vi.fn(),
@@ -62,6 +72,9 @@ describe('ScheduleActionModals', () => {
     const saveButton = Array.from(document.body.querySelectorAll('button')).find((node) => node.textContent === 'Save') as HTMLButtonElement;
 
     expect(document.body.textContent).toContain('Quick edit');
+    expect(document.body.textContent).toContain('Alex Customer · 10 Harbour Road');
+    expect(document.body.textContent).toContain('Current2026-04-07 to 2026-04-08 · 2d');
+    expect(document.body.textContent).toContain('ProposedStarts 2026-04-07 · 2d');
 
     act(() => {
       saveButton.click();
@@ -114,6 +127,7 @@ describe('ScheduleActionModals', () => {
     const pullForwardButton = Array.from(document.body.querySelectorAll('button')).find((node) => node.textContent === 'Pull forward') as HTMLButtonElement;
 
     expect(document.body.textContent).toContain('Alpha Deck');
+    expect(document.body.textContent).toContain('Crew: Crew Alpha');
     expect(document.body.textContent).toContain('Crew Bravo pulls forward by 2 days');
 
     act(() => {

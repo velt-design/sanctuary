@@ -37,8 +37,9 @@ import type { ScheduleBoardDrop, ScheduleBoardMenuAction, ScheduleBoardViewProps
 import type { ScheduleGanttViewProps } from './ScheduleGanttView';
 import ScheduleViewTabs, { type ScheduleView } from './ScheduleViewTabs';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
-import { EMPTY_SCHEDULE_BOARD_MODEL, isCompletedScheduleItem, safeProjectName } from './ScheduleBoardModelShared';
+import { EMPTY_SCHEDULE_BOARD_MODEL, isCompletedScheduleItem } from './ScheduleBoardModelShared';
 import { buildScheduleBoardModelLegacy, toScheduleProjectSummary } from './ScheduleBoardModelLegacy';
+import { buildScheduleJobPresentationIndex } from './ScheduleJobPresentation';
 import { recentScheduleTelemetryEvents, sendScheduleTelemetry } from './scheduleTelemetryClient';
 import type { ScheduleClientTelemetryEvent } from '@/lib/scheduling/scheduleTelemetry';
 
@@ -385,6 +386,11 @@ export default function ScheduleLegacyFallbackClient({
     });
   };
 
+  const handleOpenUnscheduledJobs = (control: HTMLButtonElement) => {
+    setUnscheduledCollapsed(false);
+    setScheduleView('board', control);
+  };
+
   const scheduleTabs = <ScheduleViewTabs view={view} onChange={setScheduleView} />;
 
   type ScheduleSnapshotV1 = {
@@ -723,6 +729,11 @@ export default function ScheduleLegacyFallbackClient({
     for (const installer of installers) map.set(installer.id, installer);
     return map;
   }, [installers]);
+
+  const jobPresentationByScheduleId = useMemo(
+    () => buildScheduleJobPresentationIndex({ scheduleItems, projectsById, installersById }),
+    [installersById, projectsById, scheduleItems],
+  );
 
   const boardModel = useMemo(() => {
     if (view === 'site_visits') return EMPTY_SCHEDULE_BOARD_MODEL;
@@ -1497,6 +1508,7 @@ export default function ScheduleLegacyFallbackClient({
                 holidays={ganttHolidays}
                 showCompleted={showCompleted}
                 onShowCompletedChange={handleShowCompletedChange}
+                onOpenUnscheduled={handleOpenUnscheduledJobs}
                 onOpenProject={handleGanttOpenProject}
                 onOpenProjectPack={handleGanttOpenProjectPack}
                 onOpenCommitmentEdit={openCommitmentEdit}
@@ -1537,12 +1549,7 @@ export default function ScheduleLegacyFallbackClient({
         <ScheduleActionModals
           state={actionModalState}
           scheduleMode={scheduleMode}
-          findScheduleItem={(id) => scheduleItemById.get(id) ?? null}
-          findProjectName={(scheduleItemId) => {
-            const scheduleItem = scheduleItemById.get(scheduleItemId) ?? null;
-            const project = scheduleItem?.projectId ? projectsById.get(scheduleItem.projectId) ?? null : null;
-            return scheduleItem?.itemType === 'job' ? safeProjectName(project) : 'Job';
-          }}
+          findJobPresentation={(scheduleItemId) => jobPresentationByScheduleId.get(scheduleItemId) ?? null}
           formatShortDate={formatShortDate}
           formatCommitImpactList={formatCommitImpactList}
           setQuickEdit={setQuickEdit}

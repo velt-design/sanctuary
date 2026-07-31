@@ -208,6 +208,8 @@ export async function loadScheduleBoardResponse(options?: { today?: string; diag
       .map((project) => ({
         id: project.id,
         name: project.name,
+        customer_name: project.customer_name,
+        site_address: project.site_address,
         pipeline_stage: project.pipeline_stage,
         follow_up_date: project.follow_up_date,
       }))

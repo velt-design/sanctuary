@@ -43,6 +43,12 @@
   color: var(--ui-text-muted);
 }
 
+.ganttPopoverIdentity {
+  font-size: 12px;
+  color: var(--ui-text);
+  line-height: 1.35;
+}
+
 .ganttPopoverStatus {
   justify-self: start;
   display: inline-flex;
@@ -349,7 +355,7 @@
   display: grid;
   --ganttHeaderH: 74px;
   --ganttRowHGroup: 38px;
-  --ganttRowHItem: 42px;
+  --ganttRowHItem: 50px;
   --ganttBarH: 18px;
   --ganttLeftPadYGroup: 7px;
   --ganttLeftPadYItem: 5px;
@@ -357,7 +363,7 @@
 
 .ganttTable[data-density='compact'] {
   --ganttRowHGroup: 38px;
-  --ganttRowHItem: 42px;
+  --ganttRowHItem: 50px;
   --ganttBarH: 18px;
   --ganttLeftPadYGroup: 7px;
   --ganttLeftPadYItem: 5px;
@@ -365,7 +371,7 @@
 
 .ganttTable[data-density='comfortable'] {
   --ganttRowHGroup: 44px;
-  --ganttRowHItem: 48px;
+  --ganttRowHItem: 58px;
   --ganttBarH: 22px;
   --ganttLeftPadYGroup: 10px;
   --ganttLeftPadYItem: 6px;
@@ -662,6 +668,17 @@
   line-height: 1.15;
   text-overflow: ellipsis;
   text-transform: none;
+  white-space: nowrap;
+}
+
+.ganttProjectIdentity {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-text);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -1099,7 +1116,7 @@
   .ganttTable[data-density='compact'],
   .ganttTable[data-density='comfortable'] {
     --ganttRowHGroup: 48px;
-    --ganttRowHItem: 56px;
+    --ganttRowHItem: 64px;
     --ganttBarH: 40px;
     --ganttLeftPadYGroup: 2px;
     --ganttLeftPadYItem: 4px;

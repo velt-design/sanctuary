@@ -11,6 +11,8 @@ export type ScheduleProjectSummary = {
   id: string;
   projectName: string;
   name: string;
+  customerName?: string | null;
+  siteAddress?: string | null;
   status: string;
   nextActionDate: string | null;
   followUpDate: string | null;
@@ -20,6 +22,8 @@ type ScheduleV2UnscheduledJob = {
   projectId: string;
   estimateId: string;
   projectName: string;
+  customerName?: string | null;
+  siteAddress?: string | null;
   status: string;
   durationDays: number;
 };
@@ -69,6 +73,8 @@ export function mapScheduleBoardResponseToV2Snapshot(board: ScheduleBoardRespons
     id: appIdFromUuid('proj', typeof row?.id === 'string' ? row.id : ''),
     projectName: typeof row?.name === 'string' && row.name.trim() ? row.name.trim() : 'Untitled project',
     name: typeof row?.name === 'string' && row.name.trim() ? row.name.trim() : 'Untitled project',
+    ...(typeof row?.customer_name === 'string' && row.customer_name.trim() ? { customerName: row.customer_name.trim() } : null),
+    ...(typeof row?.site_address === 'string' && row.site_address.trim() ? { siteAddress: row.site_address.trim() } : null),
     status: typeof row?.pipeline_stage === 'string' && row.pipeline_stage.trim() ? row.pipeline_stage.trim() : 'NEW',
     nextActionDate: typeof row?.follow_up_date === 'string' ? row.follow_up_date : null,
     followUpDate: typeof row?.follow_up_date === 'string' ? row.follow_up_date : null,
@@ -157,6 +163,8 @@ export function mapScheduleBoardResponseToV2Snapshot(board: ScheduleBoardRespons
         projectId: appIdFromUuid('proj', projectUuid),
         estimateId: appIdFromUuid('est', estimateUuid),
         projectName: typeof job?.project_name === 'string' ? job.project_name : '',
+        ...(typeof job?.customer_name === 'string' && job.customer_name.trim() ? { customerName: job.customer_name.trim() } : null),
+        ...(typeof job?.site_address === 'string' && job.site_address.trim() ? { siteAddress: job.site_address.trim() } : null),
         status: typeof job?.status === 'string' ? job.status : 'NEW',
         durationDays: safeDurationDays(job?.duration_days),
       };
