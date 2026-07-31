@@ -10,11 +10,13 @@ const instrumentSans = localFont({
 
 type Props = {
   pdfEndpoint?: string;
+  projectId?: string;
   qaFixture?: boolean;
 };
 
 export default function DesignBookletWorkbenchPage({
   pdfEndpoint = '/api/staff/v1/design-booklets/pdf',
+  projectId,
   qaFixture = false,
 }: Props) {
   return (
@@ -22,6 +24,7 @@ export default function DesignBookletWorkbenchPage({
       <DesignBookletWorkbenchClient
         content={getDesignBookletContentCatalog()}
         pdfEndpoint={pdfEndpoint}
+        projectId={projectId}
         qaFixture={qaFixture}
       />
     </div>

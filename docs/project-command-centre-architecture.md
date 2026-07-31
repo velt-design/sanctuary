@@ -329,6 +329,7 @@ This slice does not require a database migration and must not add one merely for
 - Explicit Workbench build-on approval required: no.
 - Phase 2 costing-input dependency: none.
 - Consumer rule: Overview may display the current server-selected design summary and link to the separate Workbench route. It must not read, synthesize, reprice, or change Workbench geometry or Calculator inputs.
+- The `Open booklet workbench` specialist link may carry the existing app project ID to `/staff/design-booklets`. Overview does not read or mutate booklet state; the route-owned Design Booklet API, private Storage boundary, and `docs/design-booklets.md` own that separate customer-document draft and its return path.
 
 ### 14. Acceptance And Verification
 

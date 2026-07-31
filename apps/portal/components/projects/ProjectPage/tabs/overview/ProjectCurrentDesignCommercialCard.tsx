@@ -186,7 +186,17 @@ export default function ProjectCurrentDesignCommercialCard({
           ) : null}
           {data.links.quote ? <ButtonLink variant="secondary" size="small" href={data.links.quote}>View current quote</ButtonLink> : null}
           {data.links.estimate ? <ButtonLink variant="secondary" size="small" href={data.links.estimate}>View source design</ButtonLink> : null}
-          <ButtonLink variant="secondary" size="small" href="/staff/design-booklets">Open booklet workbench</ButtonLink>
+          <ButtonLink
+            variant="secondary"
+            size="small"
+            href={
+              projectId
+                ? `/staff/design-booklets?projectId=${encodeURIComponent(projectId)}`
+                : '/staff/design-booklets'
+            }
+          >
+            Open booklet workbench
+          </ButtonLink>
           {!data.links.quote ? <ButtonLink variant="tertiary" size="small" href={data.links.quotes}>View quotes</ButtonLink> : null}
           {!data.links.estimate ? <ButtonLink variant="tertiary" size="small" href={data.links.designs}>View designs</ButtonLink> : null}
         </div>

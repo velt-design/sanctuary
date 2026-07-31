@@ -91,6 +91,13 @@ describe('ProjectCurrentDesignCommercialCard', () => {
     expect(rendered.container.textContent).toContain('$2,000 inc GST');
     expect(rendered.container.textContent).toContain('no other estimate has been substituted');
     expect(rendered.container.textContent).toContain('Record deposit received');
+    expect(
+      rendered.container
+        .querySelector(
+          'a[href="/staff/design-booklets?projectId=proj_1"]',
+        )
+        ?.textContent,
+    ).toBe('Open booklet workbench');
     rendered.unmount();
   });
 

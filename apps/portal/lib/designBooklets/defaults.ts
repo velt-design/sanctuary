@@ -108,3 +108,13 @@ export function createToniDesignBookletDraft(): DesignBookletDraft {
     },
   };
 }
+
+export function createProjectDesignBookletDraft(
+  customerName?: string | null,
+): DesignBookletDraft {
+  const draft = createToniDesignBookletDraft();
+  const normalizedCustomerName = customerName?.trim();
+  return normalizedCustomerName
+    ? { ...draft, customerName: normalizedCustomerName.slice(0, 80) }
+    : draft;
+}

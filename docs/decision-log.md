@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-31 | Project Booklet Media Boundary   | Promoted | Do not send a booklet's complete image set or generated PDF through a Vercel Function payload. Resize images before direct signed upload to private project-scoped Storage, verify them before metadata commit, render from saved server-owned assets, and return a short-lived signed PDF URL. |
 | 2026-07-30 | Project Snapshot Cache Policy    | Promoted | The complete authenticated Project Detail snapshot is private staff data. Set `private, no-store` on every response path, including authentication, validation, not-found, and server failures, and verify the deployed header with an authenticated read rather than relying on framework defaults. |
 | 2026-07-30 | Contacts/Calculator Bundle Owners | Promoted | Prefer a small shared portal interaction owner over a heavy primitive package when the complete consumer set needs only bounded menu/popover behavior. A narrow package-owned material loader may serve takeoff defaults while the unchanged full costing config remains authoritative for commercial calculation. Prove route graphs, behavior parity, and every unchanged bundle ceiling together. |
 | 2026-07-30 | Marketing Measurement CSP        | Promoted | Treat live GTM container diagnostics and the deployed CSP header as a tracking release gate. Permit only reported vendor origins in both enforced and report-only directives, retain consent gating, and guard required measurement resources with a source contract test. |
@@ -3202,6 +3203,28 @@ Why it mattered: Shared Foundation adoption made the repeated CSS large enough t
 Current guardrail: De-duplicate manifest-declared entry CSS from dynamic-entry totals, keep the established initial-JavaScript metric unchanged, and retain a fixture where the lazy manifest repeats entry CSS. Never raise a route ceiling to compensate for double-counted assets.
 Promoted to: `docs/testing-and-qa.md`
 Related docs/tests: `apps/portal/lib/performance/portalBundleBudgets.ts`; `apps/portal/lib/performance/portalBundleBudgets.test.ts`; `npm run portal:bundle-budget`
+
+### 2026-07-31 - Project Booklet Media Boundary - Signed Private Storage
+
+Date: 2026-07-31
+Area: Project Design Booklet image persistence and PDF delivery
+Status: Promoted
+Decision or mistake: The first workbench posted every replacement image in one
+multipart PDF request and allowed 120 MB at the application layer, but
+production Vercel Functions reject request or response payloads above 4.5 MB
+before that validation can run.
+Why it mattered: Replacing all booklet images reliably produced a production
+413 while small/default booklets appeared healthy. Returning a larger generated
+PDF through the same function boundary carried the corresponding response risk.
+Current guardrail: Resize customer-document images in the browser, upload one
+file directly to a server-prepared signed private project path, verify and
+normalize the stored bytes before metadata commit, render PDFs from the saved
+server-owned draft/assets, and return only a short-lived signed PDF URL. An
+upload failure must remain visible and must never create metadata-only success.
+Promoted to: `docs/design-booklets.md`; `docs/supabase-schema-map.md`
+Related docs/tests: `apps/portal/lib/designBooklets/projectPersistence.ts`;
+`apps/portal/lib/designBooklets/projectClient.test.ts`;
+`test/project-design-booklets-migration.test.ts`
 
 ### 2026-07-30 - Marketing Lifecycle Delivery - Shared Owners, Consent, And At-Least-Once Semantics
 

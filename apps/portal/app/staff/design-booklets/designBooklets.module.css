@@ -117,7 +117,34 @@
   opacity: 0.65;
 }
 
-.siteHeader > .primaryButton {
+.headerActions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-self: end;
+  gap: 10px;
+}
+
+.returnLink {
+  max-width: 220px;
+  overflow: hidden;
+  color: var(--booklet-ink);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.returnLink:hover,
+.returnLink:focus-visible {
+  color: var(--booklet-olive);
+  outline: 2px solid var(--booklet-ink);
+  outline-offset: 3px;
+}
+
+.headerActions > .primaryButton {
   justify-self: end;
 }
 
@@ -127,6 +154,11 @@
   min-height: 0;
   grid-template-columns: clamp(320px, 26vw, 390px) minmax(0, 1fr);
   overflow: hidden;
+}
+
+.workbench[data-project-state="loading"] .workspace {
+  pointer-events: none;
+  opacity: 0.5;
 }
 
 .controlRail {
@@ -915,7 +947,16 @@
     display: none;
   }
 
-  .siteHeader > .primaryButton {
+  .headerActions {
+    gap: 7px;
+  }
+
+  .returnLink {
+    max-width: 112px;
+    font-size: 8px;
+  }
+
+  .headerActions > .primaryButton {
     min-height: 40px;
     padding: 0 13px;
     font-size: 9px;

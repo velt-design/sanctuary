@@ -159,6 +159,17 @@ signals. No pre-cutover project was migrated or backfilled, and the read-only
 production QA changed no customer, project, quote, invoice, schedule, task, or
 payment row.
 
+Project-linked Design Booklets entered the production schema on 2026-07-31
+through an exact-file apply of
+`20260731_000001_project_design_booklets.sql` to the same positively identified
+`SP-Staff-Portal-DB` project. Its SHA-256 was
+`3af810d27c9406f2ba125cb74c0af6c09386b0ce703ba5bd2539c431d646a14e`.
+The file passed a rollback rehearsal before apply. Postflight verified the two
+RLS-enabled tables, six policies, eight authenticated grants, zero anonymous
+grants, both timestamp triggers, the private Storage bucket contract, and zero
+new booklet, asset, or Storage object rows. The date-only migration ledger was
+left untouched, and no blanket migration command or repair was used.
+
 Marketing enquiry intake requires both `20260723_000001_marketing_enquiry_intake_security.sql` and the forward compatibility migration `20260724043000_marketing_enquiry_budget_columns.sql`. The latter adds nullable pricing snapshot columns to installations whose existing `enquiry_requests` table predates those fields.
 
 Schedule V2 currently depends on migrations through the Schedule V2 RPC command migrations and later repair migrations. After deploy, confirm:

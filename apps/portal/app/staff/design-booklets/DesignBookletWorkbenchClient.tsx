@@ -1,64 +1,38 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   DESIGN_BOOKLET_MATERIAL_IDS,
   DESIGN_BOOKLET_ROOF_FORM_IDS,
-  type DesignBookletAssetSource,
   type DesignBookletContentCatalog,
   type DesignBookletContentPage,
   type DesignBookletDraft,
   type DesignBookletImagePlacement,
 } from "@/lib/designBooklets/types";
+import { TONI_DESIGN_BOOKLET_ASSETS } from "@/lib/designBooklets/defaults";
 import {
-  TONI_DESIGN_BOOKLET_ASSETS,
-  createToniDesignBookletDraft,
-} from "@/lib/designBooklets/defaults";
-import {
-  allDesignBookletAssetSources,
   buildDesignBookletRenderModel,
   createDesignBookletDrawingPage,
   createDesignBookletImagePage,
-  DESIGN_BOOKLET_MAX_IMAGE_BYTES,
   DESIGN_BOOKLET_MAX_CONTENT_PAGES,
   moveDesignBookletContentPage,
   renderableDesignBookletAssetSources,
 } from "@/lib/designBooklets/pageModel";
+import { publishProjectDesignBookletPdfClient } from "@/lib/designBooklets/projectClient";
 import BookletPageComposer from "./BookletPageComposer";
-import DesignBookletPages, {
-  type DesignBookletPreviewAsset,
-} from "./DesignBookletPages";
+import DesignBookletPages from "./DesignBookletPages";
 import styles from "./designBooklets.module.css";
-
-type AssetMap = Record<string, DesignBookletPreviewAsset>;
+import {
+  previewAssetFromSource,
+  useProjectDesignBookletController,
+} from "./useProjectDesignBookletController";
 
 type Props = {
   content: DesignBookletContentCatalog;
   pdfEndpoint: string;
+  projectId?: string;
   qaFixture?: boolean;
 };
-
-function previewAssetFromSource(
-  source: DesignBookletAssetSource,
-): DesignBookletPreviewAsset {
-  const defaultAsset = TONI_DESIGN_BOOKLET_ASSETS[source.defaultAssetId];
-  return {
-    id: source.assetId,
-    src: defaultAsset.src,
-    alt: source.altText,
-    label: defaultAsset.label,
-    defaultAssetId: source.defaultAssetId,
-  };
-}
-
-function initialAssets(draft: DesignBookletDraft): AssetMap {
-  return Object.fromEntries(
-    allDesignBookletAssetSources(draft).map((source) => [
-      source.assetId,
-      previewAssetFromSource(source),
-    ]),
-  );
-}
 
 function filenameFromResponse(
   response: Response,
@@ -78,24 +52,28 @@ function filenameFromResponse(
 export default function DesignBookletWorkbenchClient({
   content,
   pdfEndpoint,
+  projectId,
   qaFixture = false,
 }: Props) {
-  const [draft, setDraft] = useState(createToniDesignBookletDraft);
-  const [assets, setAssets] = useState<AssetMap>(() =>
-    initialAssets(createToniDesignBookletDraft()),
-  );
+  const {
+    linkedProjectId,
+    draft,
+    setDraft,
+    assets,
+    setAssets,
+    project,
+    saveState,
+    persistenceError,
+    setPersistenceError,
+    revokeAssetUrl,
+    replaceAsset,
+    copyAsset,
+    flushSave,
+  } = useProjectDesignBookletController(projectId);
   const [selectedPageKey, setSelectedPageKey] = useState("cover");
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
-  const blobUrlsRef = useRef(new Set<string>());
-
-  useEffect(
-    () => () => {
-      for (const url of blobUrlsRef.current) URL.revokeObjectURL(url);
-    },
-    [],
-  );
 
   const pageModel = useMemo(
     () => buildDesignBookletRenderModel(draft),
@@ -113,41 +91,10 @@ export default function DesignBookletWorkbenchClient({
     return `${roofForm.shortName} / ${material.label}`;
   }, [content, draft.materialId, draft.roofFormId]);
 
-  function revokeAssetUrl(asset: DesignBookletPreviewAsset | undefined) {
-    if (!asset?.src.startsWith("blob:")) return;
-    URL.revokeObjectURL(asset.src);
-    blobUrlsRef.current.delete(asset.src);
-  }
-
   function updateAsset(assetId: string, file: File | undefined) {
-    if (!file) return;
-    if (!["image/png", "image/jpeg"].includes(file.type)) {
-      setDownloadError("Choose a PNG or JPEG image.");
-      return;
-    }
-    if (file.size > DESIGN_BOOKLET_MAX_IMAGE_BYTES) {
-      setDownloadError("Choose an image that is 15 MB or smaller.");
-      return;
-    }
     setDownloadError("");
-    const existing = assets[assetId];
-    if (!existing) return;
-    const src = URL.createObjectURL(file);
-    blobUrlsRef.current.add(src);
-    revokeAssetUrl(existing);
-    setAssets((current) => {
-      const currentAsset = current[assetId];
-      if (!currentAsset) return current;
-      return {
-        ...current,
-        [assetId]: {
-          ...currentAsset,
-          src,
-          file,
-          label: file.name,
-        },
-      };
-    });
+    setPersistenceError("");
+    void replaceAsset(assetId, file);
   }
 
   function addPage(kind: "image" | "drawings") {
@@ -267,37 +214,47 @@ export default function DesignBookletWorkbenchClient({
 
   function useAsCover(image: DesignBookletImagePlacement) {
     const coverAssetId = draft.cover.assetId;
-    const sourceAsset = assets[image.assetId];
-    if (!sourceAsset) return;
-    const coverSrc = sourceAsset.file
-      ? URL.createObjectURL(sourceAsset.file)
-      : sourceAsset.src;
-    if (sourceAsset.file) blobUrlsRef.current.add(coverSrc);
-    revokeAssetUrl(assets[coverAssetId]);
-    setAssets((current) => ({
-      ...current,
-      [coverAssetId]: {
-        ...sourceAsset,
-        id: coverAssetId,
-        src: coverSrc,
-      },
-    }));
-    setDraft((current) => ({
-      ...current,
-      cover: {
-        ...image,
-        assetId: coverAssetId,
-        altText: image.altText,
-      },
-    }));
+    const updateCoverDraft = () =>
+      setDraft((current) => ({
+        ...current,
+        cover: {
+          ...image,
+          assetId: coverAssetId,
+          altText: image.altText,
+        },
+      }));
+    const copied = copyAsset(image.assetId, coverAssetId);
+    if (linkedProjectId) {
+      void copied
+        .then(() => {
+          updateCoverDraft();
+          setStatusMessage("Cover image updated.");
+        })
+        .catch(() => undefined);
+    } else {
+      updateCoverDraft();
+      setStatusMessage("Cover image updated.");
+    }
     setSelectedPageKey("cover");
-    setStatusMessage("Cover image updated.");
   }
 
   async function downloadPdf() {
     setIsDownloading(true);
     setDownloadError("");
     try {
+      if (linkedProjectId) {
+        await flushSave();
+        const download =
+          await publishProjectDesignBookletPdfClient(linkedProjectId);
+        const link = document.createElement("a");
+        link.href = download.downloadUrl;
+        link.download = download.filename;
+        link.rel = "noopener";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        return;
+      }
       const formData = new FormData();
       formData.set("draft", JSON.stringify(draft));
       for (const source of renderableDesignBookletAssetSources(draft)) {
@@ -339,6 +296,7 @@ export default function DesignBookletWorkbenchClient({
     <main
       className={styles.workbench}
       data-design-booklet-workbench
+      data-project-state={linkedProjectId ? saveState : undefined}
       data-qa-fixture={qaFixture ? "true" : undefined}
     >
       <header className={styles.siteHeader}>
@@ -347,21 +305,53 @@ export default function DesignBookletWorkbenchClient({
           <span>DESIGN BOOKLETS</span>
         </a>
         <div className={styles.headerStatus}>
-          <span>Customer preview</span>
+          <span>
+            {linkedProjectId
+              ? saveState === "saved"
+                ? "Saved to project"
+                : saveState === "saving"
+                  ? "Saving changes"
+                  : saveState === "uploading"
+                    ? "Optimising image"
+                    : saveState === "loading"
+                      ? "Loading project"
+                      : saveState === "error"
+                        ? "Save needs attention"
+                        : "Project booklet"
+              : "Customer preview"}
+          </span>
           <strong>
             {selectedPage.label} /{" "}
             {String(selectedPage.pageNumber).padStart(2, "0")} of{" "}
             {String(pageModel.length).padStart(2, "0")}
           </strong>
         </div>
-        <button
-          type="button"
-          className={styles.primaryButton}
-          onClick={downloadPdf}
-          disabled={isDownloading}
-        >
-          {isDownloading ? "Building PDF..." : "Download PDF"}
-        </button>
+        <div className={styles.headerActions}>
+          {linkedProjectId ? (
+            <a
+              className={styles.returnLink}
+              href={
+                project?.returnHref ??
+                `/staff/projects/${encodeURIComponent(linkedProjectId)}`
+              }
+            >
+              Return to {project?.name ?? "project"}
+            </a>
+          ) : null}
+          <button
+            type="button"
+            className={styles.primaryButton}
+            onClick={downloadPdf}
+            disabled={
+              isDownloading ||
+              saveState === "loading" ||
+              saveState === "uploading" ||
+              (Boolean(linkedProjectId) && saveState === "error")
+            }
+          >
+            {isDownloading ? "Building PDF..." : "Download PDF"}
+          </button>
+        </div>
       </header>
 
       <div className={styles.workspace}>
@@ -485,8 +475,14 @@ export default function DesignBookletWorkbenchClient({
           </section>
 
           <footer className={styles.railFooter}>
-            <span>Preview and download only</span>
-            <p>Nothing is saved or sent.</p>
+            <span>
+              {linkedProjectId ? "Saved project booklet" : "Preview and download only"}
+            </span>
+            <p>
+              {linkedProjectId
+                ? "Choices and uploaded images stay with this project."
+                : "Nothing is saved or sent."}
+            </p>
           </footer>
         </aside>
 
@@ -542,9 +538,9 @@ export default function DesignBookletWorkbenchClient({
       <p className={styles.srStatus} aria-live="polite">
         {statusMessage}
       </p>
-      {downloadError ? (
+      {persistenceError || downloadError ? (
         <p className={styles.errorMessage} role="alert">
-          {downloadError}
+          {persistenceError || downloadError}
         </p>
       ) : null}
     </main>

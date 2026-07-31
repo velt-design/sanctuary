@@ -2,7 +2,7 @@
 
 Status: Active evolving tracker.
 
-Last updated: 2026-07-30.
+Last updated: 2026-07-31.
 
 Purpose: keep agents and maintainers aligned on the path to a first-class, production-grade internal portal. This doc is the dashboard for current readiness, blockers, priorities, parallel lanes, and next actions. Detailed behavior rules stay in the canonical docs linked below.
 
@@ -352,6 +352,10 @@ When updating this tracker:
 - Keep this file ASCII and link to repo-relative paths.
 
 ## Change Notes
+
+### 2026-07-31
+
+- Prepared the project-linked Design Booklet Workbench release: one autosaved draft per project, private direct image uploads, project restoration and return navigation, and saved-asset PDF publication through a short-lived signed URL. The exact `20260731_000001_project_design_booklets.sql` file passed a rollback rehearsal and was applied to positively identified production after confirming a completed physical backup. Postflight proved two RLS-enabled tables, six policies, eight authenticated grants, zero anonymous grants, both timestamp triggers, the private bucket contract, and zero booklet, asset, or Storage object rows. The exact SHA-256 was `3af810d27c9406f2ba125cb74c0af6c09386b0ce703ba5bd2539c431d646a14e`; the date-only ledger remained untouched and no blanket migration command or repair was used.
 
 ### 2026-07-30
 

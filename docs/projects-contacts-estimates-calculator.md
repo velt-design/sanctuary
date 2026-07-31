@@ -216,7 +216,7 @@ Do not bypass these rules with ad hoc estimate table writes. Use the estimate ro
 - `LegacyProjectWorkConflict` owns legacy conflict/fallback presentation; `LegacyProjectWorkHistory` owns the bounded audit preview and lazy full-history modal.
 - `projectWorkVisibilityPolicy` is the shared fail-closed Call/Site Visit identity filter for both models and bounded recent events.
 - `ProjectCurrentDesignCommercialCard` reads one normalized, server-owned current-design response.
-- `ProjectCurrentDesignCommercialCard` also exposes `Open booklet workbench` as a standalone navigation action beside the source-design controls. It does not pass project data to the booklet route or mutate the project.
+- `ProjectCurrentDesignCommercialCard` also exposes `Open booklet workbench` beside the source-design controls. It passes only the existing app project ID in the route query; the specialist booklet route owns its one active draft, private images, autosave, PDF download, and return link without adding Project Work, costing, quote, or design-workbench coupling.
 - `ProjectPrimaryActionCard` is only the legacy presentation shell nested by `ProjectWorkSection`; it delegates command/cache state, conflict, history, and forms to their extracted owners and is not a V2 or second outer Project Work surface.
 - `ProjectRecentNotesEvents` owns the bounded `Recent notes and events` composition and delegates note authoring to `ProjectNotesPanel`.
 - `ProjectHeaderOwnerControl` owns the header's single Project Owner summary and management modal.

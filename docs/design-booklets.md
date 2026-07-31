@@ -1,6 +1,6 @@
 # Design Booklets
 
-Status: Current session-only implementation.
+Status: Current project-linked implementation, with a session-only standalone fallback.
 
 Owner surface: authenticated standalone Portal route at `/staff/design-booklets`.
 
@@ -8,19 +8,21 @@ Owner surface: authenticated standalone Portal route at `/staff/design-booklets`
 
 The Design Booklet Workbench assembles a customer-facing landscape concept booklet from a fixed cover and review page plus a user-composed sequence of image and drawing pages. The bundled starting point uses Toni's plan and three renders.
 
-This surface is deliberately standalone:
+This surface remains a specialist standalone route:
 
 - it is protected by the existing staff route authentication;
 - it is not linked from portal navigation;
 - authenticated rendering omits the normal portal sidebar, rail, mobile header, and drawer;
 - its visual system is route-owned and follows the existing customer-document vocabulary rather than the operational portal UI;
-- it has no project-data, task, Drafting Queue, Design Workbench, costing, or quote integration.
+- it has no task, Drafting Queue, Design Workbench, costing, or quote integration.
 
-The Project Overview's `Open booklet workbench` action is navigation only. It
-opens this standalone route without passing a project identifier, pre-filling
-customer data, or mutating the project.
+The Project Overview's `Open booklet workbench` action passes the existing app
+project ID in `?projectId=`. The route loads one active booklet draft and its
+private images for that project, provides a clear return action to the same
+Project Detail route, and autosaves booklet choices after edits.
 
-The parent staff layout still mounts the portal's existing ambient `DbGate`, but the booklet route and its API make no database or workflow calls.
+Opening `/staff/design-booklets` without a project ID preserves the session-only
+Toni fixture behavior for safe standalone and QA use.
 
 ## Page Model
 
@@ -47,9 +49,28 @@ Toni's default booklet contains five pages:
 4. one-large drawing page using the plan;
 5. review page using render 3.
 
-## Session And Render Ownership
+## Project Persistence And Render Ownership
 
-All edits and replacement-image object URLs remain in browser memory. Reloading the route restores the Toni defaults. PDF generation posts the current schema-v2 draft and only its renderable custom files in one authenticated request, returns a private no-store download, and does not save the draft or files.
+Each project has at most one active row in `project_design_booklets`. A new
+project booklet starts from the five-page Toni structure and bundled default
+images, while the customer name is initialized from the linked contact (falling
+back to the project name). The draft retains the schema-v2 contract and uses an
+optimistic `revision` so a stale browser cannot silently overwrite a newer save.
+
+Replacement PNG/JPEG files are resized in the browser to a maximum 4096-pixel
+edge and encoded as JPEG before a direct signed upload to the private
+`design-booklet-assets` bucket. The staff API prepares the project-scoped
+upload, verifies and normalizes the stored bytes, and only then upserts
+`project_design_booklet_assets`. Upload failures remain visible and are never
+recorded as saved metadata.
+
+Project PDF generation loads the saved draft and private assets server-side.
+The generated PDF is written to the project's private `exports/latest.pdf`
+object and the route returns a ten-minute signed download URL. This avoids
+passing all full-resolution images through one function request and avoids
+returning potentially large PDF bytes through the function response. The
+session-only route retains the original authenticated multipart renderer for
+fixtures and isolated use.
 
 `buildDesignBookletRenderModel()` is the shared owner of page order, stable page keys, labels, numbering, and count for the browser preview and PDF. The drawing-layout definitions, image focal positions, title resolution, and fixed review copy are also shared.
 
@@ -57,7 +78,21 @@ All edits and replacement-image object URLs remain in browser memory. Reloading 
 
 On desktop, the route chrome presents the existing editors in a compact, independently scrolling control panel beside a wider preview workspace. The preview owns the remaining viewport and fits the complete A4 page without document or preview scrolling at common desktop sizes. At 960px and below, the preview moves above the controls and the page returns to a single-column flow. This shell is route-owned and does not alter the shared page renderer or PDF geometry.
 
-There is no persistence, shared-storage upload, email delivery, audit event, project association, or workflow automation.
+There is no email delivery, customer sending, audit event, task creation, or
+workflow automation.
+
+### Production status
+
+On 2026-07-31, exact migration
+`20260731_000001_project_design_booklets.sql` was applied to the positively
+identified `SP-Staff-Portal-DB` project after a successful rollback rehearsal
+and confirmation of a completed physical backup. The exact SHA-256 was
+`3af810d27c9406f2ba125cb74c0af6c09386b0ce703ba5bd2539c431d646a14e`.
+Postflight verified both RLS-enabled tables, six policies, eight authenticated
+table grants, zero anonymous grants, both timestamp triggers, and the private
+bucket contract. No booklet, asset, or Storage object row was created by the
+deployment. The date-only migration ledger was left untouched; no blanket
+push, migration-up, or repair command was used.
 
 ## Content Ownership
 
@@ -82,16 +117,36 @@ Do not turn the `timber` intake key into a customer-facing "timber roof" claim. 
 - `apps/portal/lib/designBooklets/request.ts`: multipart draft and image validation.
 - `apps/portal/lib/designBooklets/pdf.ts`: landscape PDF renderer over the shared page model.
 - `apps/portal/lib/designBooklets/marketingContent.ts`: narrow marketing-content adapter.
+- `apps/portal/lib/designBooklets/projectPersistence.ts`: auth-bound project draft, private asset, and signed PDF owner.
+- `apps/portal/lib/designBooklets/projectPdf.ts`: saved-asset PDF assembly and private signed export owner.
+- `apps/portal/lib/designBooklets/projectClient.ts`: browser-to-staff-API and signed-upload adapter.
+- `apps/portal/lib/designBooklets/imageCompression.ts`: bounded browser image resizing and JPEG compression.
 - `apps/portal/app/api/staff/v1/design-booklets/pdf/route.ts`: authenticated PDF download.
+- `apps/portal/app/api/staff/v1/projects/[projectId]/design-booklet/**`: project snapshot/save, signed asset upload/complete/copy, and signed PDF publication.
 - `apps/portal/public/images/design-booklets/toni/**`: bundled Toni plan and renders.
 - `apps/portal/app/qa/design-booklet-workbench-fixture/page.tsx`: credential-free QA mirror when `ENABLE_PORTAL_QA_FIXTURES=1`.
 - `apps/portal/app/api/qa/design-booklet-workbench/pdf/route.ts`: gated QA download using the production parser and renderer.
 
 The PDF is rendered server-side with `pdf-lib`, the Sanctuary customer-artifact palette, and the same local Instrument Sans display and Inter body assets used by the browser artifact. The workbench loads those fonts without changing the workspace package manifests.
 
-## Request And PDF Limits
+## Image And PDF Limits
 
-The client and server enforce the same 15 MB per-image limit. The server additionally:
+Vercel Functions currently enforce a 4.5 MB request and response payload ceiling,
+so project-linked media never crosses the function as a request body. The
+browser sends only small JSON to the staff API, uploads the compressed image
+directly to its signed private Storage destination, and receives only a signed
+URL for the generated PDF.
+
+The project and standalone paths retain a 15 MB source-image limit. The project
+path additionally:
+
+- resizes images to a maximum 4096-pixel edge and targets a 3 MB browser upload;
+- verifies and re-encodes stored images server-side with a 50-megapixel decode cap;
+- allows at most 48 custom image records per project;
+- keeps Storage private, project-folder scoped, and authenticated through short-lived signed URLs;
+- stores only one generated `latest.pdf` export per project.
+
+The standalone multipart server additionally:
 
 - rejects a declared multipart request above 128 MiB before parsing its body, leaving 8 MiB of headroom over the file-total allowance for the draft and multipart framing;
 - accepts PNG and JPEG only, decodes each upload, and verifies that its bytes match its declared media type;
@@ -102,14 +157,15 @@ The client and server enforce the same 15 MB per-image limit. The server additio
 - limits customer name to 80 characters, booklet title to 120, image descriptions to 240, and custom drawing titles to 80;
 - rejects invalid or duplicate identifiers, duplicate file fields, unreferenced uploads, unsupported schema values, and malformed page or drawing-slot data.
 
-Oversize requests return `413`; other invalid requests return `400`. Successful PDFs and error responses are private and no-store.
+Oversize requests return `413`; other invalid requests return `400`. API
+responses are private and no-store.
 
 ## Verification
 
 Focused checks:
 
 ```bash
-node node_modules/vitest/vitest.mjs run apps/marketing/lib/designBookletContent.test.ts apps/portal/lib/designBooklets apps/portal/app/staff/design-booklets apps/portal/app/api/staff/v1/design-booklets apps/portal/app/api/qa/design-booklet-workbench apps/portal/components/layout/PortalShell.test.tsx apps/portal/proxy.test.ts
+node node_modules/vitest/vitest.mjs run apps/marketing/lib/designBookletContent.test.ts apps/portal/lib/designBooklets apps/portal/app/staff/design-booklets apps/portal/app/api/staff/v1/design-booklets "apps/portal/app/api/staff/v1/projects/[projectId]/design-booklet" apps/portal/app/api/qa/design-booklet-workbench apps/portal/components/layout/PortalShell.test.tsx apps/portal/proxy.test.ts test/project-design-booklets-migration.test.ts
 node node_modules/@playwright/test/cli.js test playwright/portal.design-booklet-workbench.spec.ts --project=portal-fixture --workers=1
 ```
 
@@ -117,9 +173,8 @@ For deterministic PDF evidence, set `DESIGN_BOOKLET_OUTPUT_DIR=output/pdf` while
 
 ## Explicit Non-goals
 
-- project-record association or task creation;
+- task creation or project workflow automation;
 - Design Workbench or drawing geometry reuse;
-- draft persistence or a reusable template administration UI;
-- database migrations or shared storage;
+- a reusable template administration UI or multiple saved booklet versions;
 - sending, approval links, customer portal access, or automation;
 - quote, pricing, costing, timing, performance, or warranty content.

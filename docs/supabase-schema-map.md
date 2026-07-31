@@ -80,6 +80,36 @@ Migration source:
 - Current ordered history in `supabase/migrations/`, including `20260208_000001_project_task_checks.sql`, `20260210_000002_portal_auth.sql`, estimate cleanup migrations, security hardening, `20260510_000001_project_notes.sql` for the Activity tab notes table, forward backfills such as the project-note author display-name cleanup, `20260722_000001_portal_search_v1.sql` for the bounded search RPC plus initial trigram/join indexes, `20260722_000002_portal_search_bigram_indexes.sql` for the immutable normalized/bigram helpers, `20260722_000003_portal_search_materialized_columns.sql` for generated search columns plus their GIN indexes, `20260722_000004_portal_search_rls_initplan.sql` for statement-cached Projects/Contacts membership policy evaluation, and `20260729_000001_portal_operational_lists.sql` for the bounded Projects/Contacts index and duplicate-detection RPCs.
 - Older root files such as `supabase/contacts_projects.sql` and `supabase/portal_schema.sql` are baseline/setup references, not the preferred path for new changes.
 
+## Project Design Booklets
+
+Owner doc: `docs/design-booklets.md`.
+
+Tables and Storage:
+
+- `project_design_booklets`: one active schema-v2 draft per project, with an optimistic `revision`.
+- `project_design_booklet_assets`: private image metadata keyed by project and stable booklet `asset_key`.
+- private Storage bucket `design-booklet-assets`: project-folder image objects and one replaceable `exports/latest.pdf`.
+
+Primary write path:
+
+- `PUT /api/staff/v1/projects/[projectId]/design-booklet` validates and autosaves the draft through the request's auth-bound Supabase client.
+- The asset `sign`, `complete`, and `copy` routes under the same project boundary prepare a short-lived direct upload, verify/normalize stored bytes, and upsert metadata only after Storage succeeds.
+- `POST .../design-booklet/pdf` reads the saved draft/assets, generates the customer PDF, replaces the project's private latest export, and returns a short-lived signed download URL.
+
+Primary read path:
+
+- `GET /api/staff/v1/projects/[projectId]/design-booklet` returns the saved draft, fresh signed preview URLs, and project return identity. A missing row returns the Toni structure with project customer identity and revision zero; the first autosave creates the row.
+
+Access rule:
+
+- Both metadata tables grant authenticated CRUD but enforce `has_portal_access()` through RLS.
+- Storage is private. Authenticated Storage policies require portal access and a first path segment matching an accessible `projects.id`; browser access uses only API-prepared signed URLs.
+- Browser code never writes either table directly. Failed uploads remain visible and must not create metadata-only asset rows.
+
+Migration source:
+
+- `supabase/migrations/20260731_000001_project_design_booklets.sql`.
+
 ## Quotes, Invoices, Artifacts, And Job Packs
 
 Owner doc: `docs/quotes-invoices-job-packs.md`.
