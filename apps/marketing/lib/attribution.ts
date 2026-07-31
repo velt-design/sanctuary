@@ -1,3 +1,8 @@
+import type {
+  TrackingBasis,
+  TrackingRegionPolicy,
+} from './trackingRegion';
+
 const CLICK_ID_KEYS = ['gclid', 'gbraid', 'wbraid'] as const;
 const MAX_ATTRIBUTION_VALUE_LENGTH = 600;
 const GA_CLIENT_ID_PATTERN = /^\d{1,20}\.\d{1,20}$/;
@@ -6,6 +11,8 @@ type MarketingAttributionConsent = {
   analytics: boolean;
   marketing: boolean;
   capturedAt: string;
+  basis: TrackingBasis;
+  regionPolicy?: TrackingRegionPolicy;
 };
 
 type MarketingAttributionPayload = {
@@ -84,7 +91,8 @@ export function getGaClientIdFromCookie(cookieHeader: string): string | null {
 
 export function getBrowserMarketingAttribution(input: {
   consent: { analytics: boolean; marketing: boolean };
-  hasStoredChoice: boolean;
+  trackingBasis: TrackingBasis;
+  trackingRegionPolicy: TrackingRegionPolicy | null;
 }): MarketingAttributionPayload {
   if (typeof window === 'undefined') return { utm: {}, clickIds: {} };
   const base = getMarketingAttributionFromLocation({
@@ -93,10 +101,15 @@ export function getBrowserMarketingAttribution(input: {
     referrer: typeof document !== 'undefined' ? document.referrer : '',
   });
 
+  const hasTrackingDecision = input.trackingBasis !== 'none';
   const consent: MarketingAttributionConsent = {
-    analytics: input.hasStoredChoice && input.consent.analytics,
-    marketing: input.hasStoredChoice && input.consent.marketing,
+    analytics: hasTrackingDecision && input.consent.analytics,
+    marketing: hasTrackingDecision && input.consent.marketing,
     capturedAt: new Date().toISOString(),
+    basis: input.trackingBasis,
+    ...(input.trackingRegionPolicy
+      ? { regionPolicy: input.trackingRegionPolicy }
+      : null),
   };
   const analyticsClientId =
     consent.analytics && typeof document !== 'undefined'

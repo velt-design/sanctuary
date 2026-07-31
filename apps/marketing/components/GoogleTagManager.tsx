@@ -3,6 +3,7 @@
 import Script from 'next/script';
 import { useConsent } from '@/components/ConsentProvider';
 import { toGtagConsentMode, type ConsentPreferences } from '@/lib/consent';
+import type { TrackingBasis } from '@/lib/trackingRegion';
 
 const FALLBACK_GTM_CONTAINER_ID = 'GTM-W438QM7H';
 const GTM_CONTAINER_ID = process.env.NEXT_PUBLIC_GTM_CONTAINER_ID || FALLBACK_GTM_CONTAINER_ID;
@@ -14,17 +15,17 @@ function getContainerId(): string | null {
 
 export function shouldLoadGoogleTagManager(
   consent: Pick<ConsentPreferences, 'analytics' | 'marketing'>,
-  hasStoredChoice: boolean,
+  trackingBasis: TrackingBasis,
 ): boolean {
-  // GTM is a shared dispatcher. It may load after either relevant category is
-  // explicit, with the other category still denied in the consent-mode update.
-  return hasStoredChoice && (consent.analytics || consent.marketing);
+  // GTM may load after an explicit choice or the NZ regional default, with the
+  // exact category state queued before the container.
+  return trackingBasis !== 'none' && (consent.analytics || consent.marketing);
 }
 
 export default function GoogleTagManager() {
   const containerId = getContainerId();
-  const { consent, hasStoredChoice } = useConsent();
-  if (!containerId || !shouldLoadGoogleTagManager(consent, hasStoredChoice)) return null;
+  const { consent, trackingBasis } = useConsent();
+  if (!containerId || !shouldLoadGoogleTagManager(consent, trackingBasis)) return null;
 
   const consentMode = toGtagConsentMode(consent);
 

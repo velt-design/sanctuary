@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  createRegionalDefaultConsent,
   createStoredConsent,
   parseStoredConsent,
   toGtagConsentMode,
@@ -31,6 +32,14 @@ describe('consent helpers', () => {
       ad_storage: 'granted',
       ad_user_data: 'granted',
       ad_personalization: 'granted',
+    });
+  });
+
+  it('creates a granted but non-persisted NZ regional default', () => {
+    expect(createRegionalDefaultConsent()).toMatchObject({
+      analytics: true,
+      marketing: true,
+      version: 1,
     });
   });
 });

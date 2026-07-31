@@ -89,7 +89,7 @@ function trackLeadSubmitted(
   trackingConsent: {
     analytics: boolean;
     marketing: boolean;
-    hasStoredChoice: boolean;
+    hasTrackingDecision: boolean;
   },
 ): void {
   type TrackingWindow = typeof window & {
@@ -106,7 +106,7 @@ function trackLeadSubmitted(
   });
 
   try {
-    if (!trackingConsent.hasStoredChoice) return;
+    if (!trackingConsent.hasTrackingDecision) return;
     if (trackingConsent.analytics) {
       trackingWindow.gtag?.('event', 'contact_success', eventData);
     }
@@ -155,7 +155,12 @@ export default function AcrylicPergolaEnquiryForm({
   sourceContext = {},
   roofPreference = acrylicRoofPreference,
 }: AcrylicPergolaEnquiryFormProps = {}) {
-  const { consent, hasStoredChoice } = useConsent();
+  const {
+    consent,
+    hasTrackingDecision,
+    trackingBasis,
+    trackingRegionPolicy,
+  } = useConsent();
   const [isEnhanced, setIsEnhanced] = useState(false);
   const [enquiryType, setEnquiryType] = useState<EnquiryAudience | null>(initialEnquiryType ?? sourceContext.enquiryType ?? null);
   const [files, setFiles] = useState<File[]>([]);
@@ -251,7 +256,11 @@ export default function AcrylicPergolaEnquiryForm({
       const selectedAccessories = formData.getAll('accessories').map(String);
       const selectedRoofPreference = String(formData.get('roofPreference') ?? '');
       const selectedRoofOption = roofPreference.options.find((option) => option.value === selectedRoofPreference);
-      const attribution = getBrowserMarketingAttribution({ consent, hasStoredChoice });
+      const attribution = getBrowserMarketingAttribution({
+        consent,
+        trackingBasis,
+        trackingRegionPolicy,
+      });
       const addOns = {
         blinds: selectedAccessories.includes('Outdoor blinds'),
         lighting: selectedAccessories.includes('Lighting'),
@@ -315,7 +324,7 @@ export default function AcrylicPergolaEnquiryForm({
       trackLeadSubmitted(currentEnquiryContext, submissionId, window.location.pathname, {
         analytics: consent.analytics,
         marketing: consent.marketing,
-        hasStoredChoice,
+        hasTrackingDecision,
       });
     } catch (error) {
       setSubmitError(

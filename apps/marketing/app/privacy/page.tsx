@@ -34,7 +34,7 @@ export default function PrivacyPage(){
               <ul>
                 <li>Contact details you submit, such as your name, email, suburb and project notes.</li>
                 <li>Optional project details, including sizes, style preferences, roofing and add-ons.</li>
-                <li>Optional usage, performance and campaign-attribution data only after the relevant consent.</li>
+                <li>Usage, performance and campaign-attribution data under the regional tracking settings below.</li>
                 <li>Project files you choose to upload, such as photos, plans or sketches.</li>
               </ul>
             </section>
@@ -42,7 +42,8 @@ export default function PrivacyPage(){
             <section>
               <Heading as="h2" variant="card">Cookies and analytics</Heading>
               <Text>We use essential, analytics and marketing cookie categories. Essential cookies keep core functions working. Analytics helps us understand site use. Marketing supports campaign measurement and advertising attribution.</Text>
-              <Text>Google Analytics loads only with analytics consent. Meta and ArchiPro load only with marketing consent. Google Tag Manager loads only after you accept at least one relevant category and keeps declined categories disabled.</Text>
+              <Text>For visitors identified as being in New Zealand, analytics and marketing tracking are enabled by default without an initial banner. Visitors outside New Zealand, or when country cannot be determined, choose before optional tracking loads. A saved choice always takes priority.</Text>
+              <Text>We use only the IP-derived country code to select this experience, keep the coarse result for the browser session, and do not store precise location for this purpose.</Text>
               <button type="button" className={styles.manageButton} onClick={openBanner}>
                 Manage cookie preferences
               </button>

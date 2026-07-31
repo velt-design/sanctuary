@@ -20,28 +20,35 @@ persist, or use this controlled QA path as a routine production login flow.
 - `analytics`: measurement and site performance analysis.
 - `marketing`: advertising attribution and remarketing.
 
-Optional categories must not load before explicit consent.
+Optional categories load only when the applicable regional tracking decision
+allows them. The browser starts denied while the first-party
+`/api/tracking-region` boundary reads Vercel's country code. `NZ` enables
+analytics and marketing by regional default without an initial banner. Every
+other country, a missing/invalid header, or a failed lookup remains denied and
+opens the existing choice banner. A previously saved explicit choice always
+takes priority, including an opt-out by an NZ visitor.
 
-The initial browser state denies both optional categories. GA loads only after
-analytics consent; Meta and ArchiPro load only after marketing consent; GTM
-loads after either relevant category and receives a consent-mode update that
-keeps the other category denied. There is no
-GTM noscript iframe or other unconditional vendor request. Consent updates are
-queued before a newly permitted loader runs, and declining or not choosing
-causes no GA, GTM, Meta, or ArchiPro network request. The executable browser
-boundary is `playwright/marketing.consent.spec.ts`.
+The coarse `nz_automatic` or `consent_required` result is kept only in
+`sessionStorage`; precise location is neither requested nor stored for this
+decision. The region API is private/no-store and asynchronous, so public pages
+remain static and cacheable. GTM loads after either an explicit choice or the NZ
+regional default enables a relevant category and first receives the exact
+consent-mode state. Meta and ArchiPro still require marketing to be enabled;
+Web Vitals and GA events require analytics. There is no GTM noscript iframe or
+other unconditional vendor request. The executable browser boundary is
+`playwright/marketing.consent.spec.ts`.
 
 ## Tracking Register
 
 | Integration | Category | Load Path | Purpose | Owner |
 | --- | --- | --- | --- | --- |
-| Google Tag Manager | analytics / marketing | `apps/marketing/components/GoogleTagManager.tsx` | Container for Google Ads conversion tags, conversion linker, and future vendor tags; it loads only after at least one relevant optional category is explicitly granted and receives the exact category consent state first | Marketing and Engineering |
-| Google Analytics GA4 | analytics | GTM via `apps/marketing/components/GoogleTagManager.tsx`; Web Vitals originate in `apps/marketing/components/WebVitals.tsx`; consented downstream lifecycle events use `apps/marketing/app/api/marketing-conversions/deliver` | Page, Web Vitals, enquiry, qualified-lead, quote, won, and lost lifecycle measurement | Marketing and Engineering |
-| Google Ads attribution foundation | marketing | `apps/marketing/lib/attribution.ts`, `apps/marketing/app/api/enquiry/route.ts`, portal `audit_events` | Captures UTM plus consented `gclid`/`gbraid`/`wbraid`, with GA4 key events available for Ads import; a direct Ads offline upload remains a later integration | Marketing and Engineering |
+| Google Tag Manager | analytics / marketing | `apps/marketing/components/GoogleTagManager.tsx` | Container for Google Ads conversion tags, conversion linker, and future vendor tags; it loads after an explicit enabling choice or the NZ regional default and receives the exact category state first | Marketing and Engineering |
+| Google Analytics GA4 | analytics | GTM via `apps/marketing/components/GoogleTagManager.tsx`; Web Vitals originate in `apps/marketing/components/WebVitals.tsx`; enabled downstream lifecycle events use `apps/marketing/app/api/marketing-conversions/deliver` | Page, Web Vitals, enquiry, qualified-lead, quote, won, and lost lifecycle measurement | Marketing and Engineering |
+| Google Ads attribution foundation | marketing | `apps/marketing/lib/attribution.ts`, `apps/marketing/app/api/enquiry/route.ts`, portal `audit_events` | Captures UTM plus enabled `gclid`/`gbraid`/`wbraid` and records whether the basis was a user choice or NZ regional default; a direct Ads offline upload remains a later integration | Marketing and Engineering |
 | Meta Pixel browser | marketing | `apps/marketing/components/MetaPixel.tsx`, `apps/marketing/app/runtime-meta.js/route.ts` | Browser-side lead attribution | Marketing |
 | Meta Conversions API | marketing | `apps/marketing/app/api/contact/route.ts` | Legacy server-side lead conversion reporting; requires an explicit marketing-consent flag | Marketing and Engineering |
 | ArchiPro Pixel | marketing | `apps/marketing/components/ArchiproPixel.tsx`, `apps/marketing/app/runtime-archipro.js/route.ts` | Campaign performance tracking | Marketing |
-| Homepage design-conversation events | analytics | `apps/marketing/app/_home/HomepageDesignConversationTracker.tsx` | Measures the production `/` view, first-question start and answer, governed matched-project views, project opens, project-reference selection, capability/support navigation and general-enquiry exits after analytics consent | Marketing and Engineering |
+| Homepage design-conversation events | analytics | `apps/marketing/app/_home/HomepageDesignConversationTracker.tsx` | Measures the production `/` view, first-question start and answer, governed matched-project views, project opens, project-reference selection, capability/support navigation and general-enquiry exits while analytics is enabled | Marketing and Engineering |
 
 When adding or removing tracking, update this table and the privacy behavior.
 
@@ -51,8 +58,8 @@ closed non-personal project-intent values, canonical project slugs, the two
 governed matched-project slugs, step number and validated enquiry audience
 where known. They do not contain form values, photos, dimensions, contact
 details or other project/customer data. The route-local listener is inactive
-unless analytics consent is granted and does not backfill earlier interactions.
-Radio selection by Arrow, Home or End follows the same consent-gated activation
+unless analytics is enabled and does not backfill earlier interactions.
+Radio selection by Arrow, Home or End follows the same tracking-gated activation
 path as pointer selection, so keyboard engagement is neither dropped nor
 double-counted. The shared header exposes its validated route audience to the
 homepage listener; the canonical root therefore records `residential` on its
@@ -61,7 +68,7 @@ Homepage enquiry links may pass a validated `residential`, `commercial` or
 `professional` audience so the contact form opens on the promised pathway; no
 customer-entered data is placed in the URL.
 
-Enquiry conversion events retain their existing consent gates and event names. Where
+Enquiry conversion events retain their category gates and event names. Where
 available they also include validated `source_path`, `source_component`,
 `source_project`, and `source_product` values from the shared enquiry-context
 contract. These properties use known paths, component identifiers, and canonical
@@ -110,9 +117,9 @@ Authenticated portal Web Vitals are operational telemetry, not marketing analyti
 
 The event contract accepts only a closed route-template allowlist, metric value/rating, navigation type, device class, and an optional build ID. Raw URLs, query strings, record IDs, names, email addresses, user IDs, user-agent strings, and free-form text are not accepted or stored. Staff may insert through the authenticated route; only admins may read the grouped 7- or 30-day p75/p95 summary. Clients cannot update or delete metrics. A locked-down daily database job deletes rows older than 30 days.
 
-GTM owns GA4 and Google Ads browser tags; there is no separate coded browser GA4 loader. The marketing CSP must permit every resource surfaced by GTM container diagnostics in both its enforced and report-only policies; the current allowlist includes `https://www.googletagmanager.com` for tag images and `https://ad.doubleclick.net` for measurement connections. The public enquiry form pushes a non-PII `lead_submitted` dataLayer event after `/api/enquiry` succeeds; GTM maps it to GA4 `generate_lead` without relying on a thank-you page, and no vendor runtime can transmit it until its consent boundary opens.
+GTM owns GA4 and Google Ads browser tags; there is no separate coded browser GA4 loader. The marketing CSP must permit every resource surfaced by GTM container diagnostics in both its enforced and report-only policies; the current allowlist includes `https://www.googletagmanager.com` for tag images and `https://ad.doubleclick.net` for measurement connections. The public enquiry form pushes a non-PII `lead_submitted` dataLayer event after `/api/enquiry` succeeds; GTM maps it to GA4 `generate_lead` without relying on a thank-you page, and no vendor runtime can transmit it until the applicable category boundary opens.
 
-The same accepted enquiry stores the first-party GA client ID only when analytics consent is explicitly granted. Campaign fields, click identifiers, landing URL, and referrer require marketing consent; landing/referrer query strings and fragments are removed. The server re-applies those category gates rather than trusting browser filtering, while keeping the exact analytics/marketing consent snapshot used at submission. Portal lifecycle audit events are `marketing.site_visit_booked` for confirmed visits only, `marketing.quote_accepted`, `marketing.deposit_received`, and `marketing.project_lost` for the closed structured loss allowlist. The database trigger creates a durable GA4 outbox row; a five-minute cron claims it with a lease and maps those events to `qualify_lead`, `quote_accepted`, `close_convert_lead`, and `close_unconvert_lead`. GA4 key events are `generate_lead`, `qualify_lead`, `quote_accepted`, and `close_convert_lead`; `close_unconvert_lead` is deliberately diagnostic and must not become a bidding conversion. Delivery uses the original consenting visitor identity, never a staff browser identity, sends no project/contact IDs, email addresses, free text, or unapproved UTM fields, skips events without analytics consent or a valid client ID, and bounds retries to eight attempts and GA4's 72-hour backdating window. Claiming one row immediately before dispatch reduces lease overlap, but GA4 Measurement Protocol does not provide generic non-purchase event deduplication: if GA4 accepts a request and the completion checkpoint fails, a retry can duplicate that analytics event. The outbox is therefore at-least-once, not exactly-once, and its stable delivery identity remains available for reconciliation. GA4 Measurement Protocol secrets remain server-only. Direct Google Ads API upload or enhanced conversions remain a later integration once the required action IDs and credentials are available.
+The same accepted enquiry stores the first-party GA client ID only when analytics is enabled. Campaign fields, click identifiers, landing URL, and referrer require marketing to be enabled; landing/referrer query strings and fragments are removed. The server re-applies those category gates rather than trusting browser filtering, while keeping the exact analytics/marketing snapshot plus `user_choice` or `regional_default` basis used at submission. Portal lifecycle audit events are `marketing.site_visit_booked` for confirmed visits only, `marketing.quote_accepted`, `marketing.deposit_received`, and `marketing.project_lost` for the closed structured loss allowlist. The database trigger creates a durable GA4 outbox row; a five-minute cron claims it with a lease and maps those events to `qualify_lead`, `quote_accepted`, `close_convert_lead`, and `close_unconvert_lead`. GA4 key events are `generate_lead`, `qualify_lead`, `quote_accepted`, and `close_convert_lead`; `close_unconvert_lead` is deliberately diagnostic and must not become a bidding conversion. Delivery uses the originating visitor identity, never a staff browser identity, sends no project/contact IDs, email addresses, free text, or unapproved UTM fields, skips events without enabled analytics or a valid client ID, and bounds retries to eight attempts and GA4's 72-hour backdating window. Claiming one row immediately before dispatch reduces lease overlap, but GA4 Measurement Protocol does not provide generic non-purchase event deduplication: if GA4 accepts a request and the completion checkpoint fails, a retry can duplicate that analytics event. The outbox is therefore at-least-once, not exactly-once, and its stable delivery identity remains available for reconciliation. GA4 Measurement Protocol secrets remain server-only. Direct Google Ads API upload or enhanced conversions remain a later integration once the required action IDs and credentials are available.
 
 ## Durable Background-Job Boundary
 

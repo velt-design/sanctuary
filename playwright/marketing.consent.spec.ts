@@ -97,6 +97,17 @@ test('loads analytics and marketing vendors only after both categories are accep
   await expect.poll(() => requests.some((url) => url.includes('/runtime-archipro.js'))).toBe(true);
 });
 
+test('gives NZ visitors a bannerless automatic tracking experience', async ({ page }) => {
+  await page.setExtraHTTPHeaders({ 'x-vercel-ip-country': 'NZ' });
+  const requests = await recordOptionalRequests(page);
+  await page.goto('/');
+
+  await expect(page.getByRole('region', { name: 'Cookie preferences' })).toHaveCount(0);
+  await expect.poll(() => requests.some((url) => url.includes('googletagmanager.com/gtm.js'))).toBe(true);
+  await expect.poll(() => requests.some((url) => url.includes('/runtime-meta.js'))).toBe(true);
+  await expect.poll(() => requests.some((url) => url.includes('/runtime-archipro.js'))).toBe(true);
+});
+
 test('respects category-specific choices', async ({ page }) => {
   const requests = await recordOptionalRequests(page);
   await page.goto('/');

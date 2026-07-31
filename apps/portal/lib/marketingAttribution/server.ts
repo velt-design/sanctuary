@@ -14,6 +14,8 @@ type MarketingAttributionConsent = {
   analytics: boolean;
   marketing: boolean;
   capturedAt?: string;
+  basis?: 'none' | 'regional_default' | 'user_choice';
+  regionPolicy?: 'nz_automatic' | 'consent_required';
 };
 
 type MarketingAttributionSummary = {
@@ -37,6 +39,8 @@ type SupabaseLike = Pick<SupabaseClient, 'from'>;
 const CLICK_ID_KEYS = ['gclid', 'gbraid', 'wbraid'] as const;
 const MAX_STRING_LENGTH = 600;
 const GA_CLIENT_ID_PATTERN = /^\d{1,20}\.\d{1,20}$/;
+const TRACKING_BASES = new Set(['none', 'regional_default', 'user_choice']);
+const TRACKING_REGION_POLICIES = new Set(['nz_automatic', 'consent_required']);
 const CONVERSION_REPAIR_WINDOW_MS = 72 * 60 * 60 * 1000;
 const CLOCK_SKEW_TOLERANCE_MS = 5 * 60 * 1000;
 
@@ -95,10 +99,18 @@ function cleanConsent(value: unknown): MarketingAttributionConsent | null {
     return null;
   }
   const capturedAt = cleanString(value.capturedAt);
+  const basis = cleanString(value.basis);
+  const regionPolicy = cleanString(value.regionPolicy);
   return {
     analytics: value.analytics,
     marketing: value.marketing,
     ...(capturedAt ? { capturedAt } : null),
+    ...(basis && TRACKING_BASES.has(basis)
+      ? { basis: basis as MarketingAttributionConsent['basis'] }
+      : null),
+    ...(regionPolicy && TRACKING_REGION_POLICIES.has(regionPolicy)
+      ? { regionPolicy: regionPolicy as MarketingAttributionConsent['regionPolicy'] }
+      : null),
   };
 }
 

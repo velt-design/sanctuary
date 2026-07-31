@@ -82,6 +82,8 @@ describe('marketing attribution conversion helpers', () => {
             analytics: true,
             marketing: true,
             capturedAt: '2026-07-30T00:00:00.000Z',
+            basis: 'regional_default',
+            regionPolicy: 'nz_automatic',
           },
         },
         { utm: { utm_campaign: 'Fallback' }, page: '/contact', source: 'website' },
@@ -98,6 +100,8 @@ describe('marketing attribution conversion helpers', () => {
         analytics: true,
         marketing: true,
         capturedAt: '2026-07-30T00:00:00.000Z',
+        basis: 'regional_default',
+        regionPolicy: 'nz_automatic',
       },
     });
   });

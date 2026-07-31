@@ -25,6 +25,7 @@ export default defineConfig({
       { find: '@/lib/supabaseService', replacement: path.resolve(__dirname, 'apps/marketing/lib/supabaseService.ts') },
       { find: '@/lib/quotes/acceptToken', replacement: path.resolve(__dirname, 'apps/marketing/lib/quotes/acceptToken.ts') },
       { find: '@/lib/consent', replacement: path.resolve(__dirname, 'apps/marketing/lib/consent.ts') },
+      { find: '@/lib/trackingRegion', replacement: path.resolve(__dirname, 'apps/marketing/lib/trackingRegion.ts') },
       { find: '@/components/ConsentProvider', replacement: path.resolve(__dirname, 'apps/marketing/components/ConsentProvider.tsx') },
       { find: /^@\/lib\/email\/(.*)$/, replacement: path.resolve(__dirname, 'apps/marketing/lib/email') + '/$1' },
       { find: /^@\/emails\/(.*)$/, replacement: path.resolve(__dirname, 'apps/marketing/emails') + '/$1' },

@@ -55,7 +55,8 @@ describe('marketing browser attribution', () => {
 
     const result = getBrowserMarketingAttribution({
       consent: { analytics: true, marketing: false },
-      hasStoredChoice: true,
+      trackingBasis: 'user_choice',
+      trackingRegionPolicy: 'consent_required',
     });
 
     expect(result).toMatchObject({
@@ -65,6 +66,8 @@ describe('marketing browser attribution', () => {
       consent: {
         analytics: true,
         marketing: false,
+        basis: 'user_choice',
+        regionPolicy: 'consent_required',
       },
     });
     expect(result).not.toHaveProperty('landingPage');
@@ -87,19 +90,26 @@ describe('marketing browser attribution', () => {
     expect(
       getBrowserMarketingAttribution({
         consent: { analytics: false, marketing: true },
-        hasStoredChoice: true,
+        trackingBasis: 'user_choice',
+        trackingRegionPolicy: 'consent_required',
       }),
     ).toMatchObject({
       utm: { utm_source: 'google' },
       clickIds: { gclid: 'g-123' },
       landingPage: 'https://www.sanctuarypergolas.co.nz/contact',
       referrer: 'https://www.google.com/search',
-      consent: { analytics: false, marketing: true },
+      consent: {
+        analytics: false,
+        marketing: true,
+        basis: 'user_choice',
+        regionPolicy: 'consent_required',
+      },
     });
     expect(
       getBrowserMarketingAttribution({
         consent: { analytics: false, marketing: true },
-        hasStoredChoice: true,
+        trackingBasis: 'user_choice',
+        trackingRegionPolicy: 'consent_required',
       }),
     ).not.toHaveProperty('analyticsClientId');
   });
@@ -119,18 +129,56 @@ describe('marketing browser attribution', () => {
     expect(
       getBrowserMarketingAttribution({
         consent: { analytics: true, marketing: true },
-        hasStoredChoice: false,
+        trackingBasis: 'none',
+        trackingRegionPolicy: 'consent_required',
       }),
     ).toMatchObject({
       utm: {},
       clickIds: {},
-      consent: { analytics: false, marketing: false },
+      consent: {
+        analytics: false,
+        marketing: false,
+        basis: 'none',
+        regionPolicy: 'consent_required',
+      },
     });
     expect(
       getBrowserMarketingAttribution({
         consent: { analytics: true, marketing: true },
-        hasStoredChoice: false,
+        trackingBasis: 'none',
+        trackingRegionPolicy: 'consent_required',
       }),
     ).not.toHaveProperty('landingPage');
+  });
+
+  it('captures NZ regional-default attribution without labelling it as a user choice', () => {
+    vi.stubGlobal('window', {
+      location: {
+        search: '?utm_source=google&gclid=g-123',
+        href: 'https://www.sanctuarypergolas.co.nz/contact?utm_source=google&gclid=g-123',
+      },
+    });
+    vi.stubGlobal('document', {
+      referrer: '',
+      cookie: '_ga=GA1.1.1022420085.1772518636',
+    });
+
+    expect(
+      getBrowserMarketingAttribution({
+        consent: { analytics: true, marketing: true },
+        trackingBasis: 'regional_default',
+        trackingRegionPolicy: 'nz_automatic',
+      }),
+    ).toMatchObject({
+      utm: { utm_source: 'google' },
+      clickIds: { gclid: 'g-123' },
+      analyticsClientId: '1022420085.1772518636',
+      consent: {
+        analytics: true,
+        marketing: true,
+        basis: 'regional_default',
+        regionPolicy: 'nz_automatic',
+      },
+    });
   });
 });

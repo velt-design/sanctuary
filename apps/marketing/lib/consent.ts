@@ -47,6 +47,15 @@ export function createDefaultConsent(): ConsentPreferences {
   };
 }
 
+export function createRegionalDefaultConsent(): ConsentPreferences {
+  return {
+    analytics: true,
+    marketing: true,
+    updatedAt: new Date().toISOString(),
+    version: CONSENT_SCHEMA_VERSION,
+  };
+}
+
 export function createStoredConsent(update: ConsentUpdate): ConsentPreferences {
   return {
     analytics: Boolean(update.analytics),

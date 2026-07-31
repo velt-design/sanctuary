@@ -58,7 +58,12 @@ export default function ContactEnquiryForm({
   sourceProjectLabel,
   sourceProductLabel,
 }: ContactEnquiryFormProps) {
-  const { consent, hasStoredChoice } = useConsent();
+  const {
+    consent,
+    hasTrackingDecision,
+    trackingBasis,
+    trackingRegionPolicy,
+  } = useConsent();
   const [isEnhanced, setIsEnhanced] = useState(false);
   const [enquiryType, setEnquiryType] = useState<EnquiryAudience | null>(initialEnquiryType);
   const [files, setFiles] = useState<File[]>([]);
@@ -125,13 +130,13 @@ export default function ContactEnquiryForm({
     });
 
     try {
-      if (hasStoredChoice && consent.analytics && typeof trackingWindow.gtag === 'function') {
+      if (hasTrackingDecision && consent.analytics && typeof trackingWindow.gtag === 'function') {
         trackingWindow.gtag('event', `contact_${phase}`, base);
       }
-      if (phase === 'success' && hasStoredChoice && consent.marketing && typeof trackingWindow.fbq === 'function') {
+      if (phase === 'success' && hasTrackingDecision && consent.marketing && typeof trackingWindow.fbq === 'function') {
         trackingWindow.fbq('track', 'Lead', base, eventId ? { eventID: eventId } : undefined);
       }
-      if (phase === 'success' && hasStoredChoice && (consent.analytics || consent.marketing)) {
+      if (phase === 'success' && hasTrackingDecision && (consent.analytics || consent.marketing)) {
         trackingWindow.dataLayer = trackingWindow.dataLayer || [];
         trackingWindow.dataLayer.push({
           event: 'lead_submitted',
@@ -214,7 +219,11 @@ export default function ContactEnquiryForm({
 
     try {
       const attachmentUpload = await uploadEnquiryAttachments(files, submissionId);
-      const attribution = getBrowserMarketingAttribution({ consent, hasStoredChoice });
+      const attribution = getBrowserMarketingAttribution({
+        consent,
+        trackingBasis,
+        trackingRegionPolicy,
+      });
       const response = await fetch('/api/enquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
