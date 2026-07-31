@@ -108,9 +108,21 @@ describe('GA4 marketing conversion delivery', () => {
     });
     expect(prepareGa4MarketingEvent(claim({
       event_type: 'marketing.deposit_received',
+      payload: {
+        valueIncGstCents: 123456,
+        attribution: {
+          analyticsClientId: '1234567890.9876543210',
+          consent: { analytics: true, marketing: true },
+        },
+      },
     }), NOW)).toMatchObject({
       kind: 'send',
-      body: { events: [{ name: 'close_convert_lead' }] },
+      body: {
+        events: [{
+          name: 'close_convert_lead',
+          params: { value: 1234.56, currency: 'NZD' },
+        }],
+      },
     });
     expect(prepareGa4MarketingEvent(claim({
       event_type: 'marketing.project_lost',

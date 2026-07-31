@@ -58,7 +58,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
 
   const openInvoiceRes = await supabase
     .from('deposit_invoices')
-    .select('id, quote_version_id, created_at')
+    .select('id, quote_version_id, quote_total_inc_gst_cents, created_at')
     .eq('project_id', projectUuid)
     .eq('status', 'OPEN')
     .order('created_at', { ascending: false })
@@ -74,6 +74,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
       ? openInvoiceRes.data.quote_version_id
       : '';
   if (!quoteVersionId) return jsonError('Deposit invoice is not linked to a quote version', 409);
+  const quoteValueIncGstCents = Number(
+    openInvoiceRes.data.quote_total_inc_gst_cents,
+  );
 
   const quoteRes = await supabase
     .from('quote_versions')
@@ -150,6 +153,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
       paidDate,
       depositInvoiceId: String(openInvoiceRes.data.id ?? ''),
       quoteVersionId,
+      ...(Number.isSafeInteger(quoteValueIncGstCents)
+        && quoteValueIncGstCents > 0
+        ? { valueIncGstCents: quoteValueIncGstCents }
+        : {}),
     },
   });
 

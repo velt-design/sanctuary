@@ -154,9 +154,15 @@ export function prepareGa4MarketingEvent(
       }
       break;
     }
-    case 'marketing.deposit_received':
+    case 'marketing.deposit_received': {
       eventName = 'close_convert_lead';
+      const value = safeCurrencyValue(payload.valueIncGstCents);
+      if (value !== null) {
+        params.value = value;
+        params.currency = 'NZD';
+      }
       break;
+    }
     case 'marketing.project_lost': {
       eventName = 'close_unconvert_lead';
       const outcome = cleanString(payload.outcome, 64);
