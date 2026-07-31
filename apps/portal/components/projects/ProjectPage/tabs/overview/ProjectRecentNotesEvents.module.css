@@ -10,7 +10,7 @@
   align-content: start;
   gap: var(--ui-space-3);
   min-width: 0;
-  padding: var(--ui-space-4);
+  padding: var(--ui-space-3);
 }
 
 .events {

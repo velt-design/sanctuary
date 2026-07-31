@@ -181,7 +181,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   "v2-blocked": {
     model: "v2",
     text: [
-      "1 blocked project-work item",
+      "1 blocked",
       "Resolve missing site measurements",
       "Measurements have not been supplied",
     ],
@@ -267,7 +267,7 @@ const READ_STATE_EXPECTATIONS = {
     layoutState: "refreshing",
     workModel: "v2",
     text: [
-      "Refreshing the Overview",
+      "Refreshing",
       "Email the customer with the first enquiry response",
       "Work controls paused",
     ],
@@ -277,7 +277,7 @@ const READ_STATE_EXPECTATIONS = {
     layoutState: "stale",
     workModel: "v2",
     text: [
-      "Showing a saved Overview",
+      "Saved Overview",
       "Email the customer with the first enquiry response",
       "Work controls paused",
     ],
@@ -423,6 +423,7 @@ for (const state of COMMAND_CENTRE_VIEW_STATES) {
 }
 
 const OVERVIEW_VIEWPORTS = [
+  [1600, 1000],
   [1440, 1000],
   [1280, 800],
   [1024, 900],
@@ -448,7 +449,7 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
     await expect(
       layout.locator('[data-recent-notes-events="true"]'),
     ).toBeVisible();
-    await expect(layout).toContainText("1 blocked project-work item");
+    await expect(layout).toContainText("1 blocked");
     await expect(layout).toContainText("Sam Sales");
     await expect(layout).toContainText("Due");
     await expect(layout).toContainText("$1,234.56 inc GST");
@@ -520,6 +521,33 @@ test("reflows at the effective CSS viewport of 200% browser zoom", async ({
   await expect(
     layout.locator('[data-project-orientation="true"]'),
   ).toBeVisible();
+  await expectNoDocumentOverflow(page);
+});
+
+test("recomposes from available Overview width instead of viewport width", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.goto(fixtureUrl({ work: "v2-blocked" }));
+  const layout = page.locator('[data-project-overview-layout="true"]');
+  await expect(layout).toHaveAttribute("data-overview-composition", "wide");
+  await layout.evaluate((element) => {
+    (element as HTMLElement).style.width = "760px";
+  });
+  await expect(layout).toHaveAttribute("data-overview-composition", "stacked");
+  const regionOrder = await layout
+    .locator(":scope > [data-project-overview-region]")
+    .evaluateAll((regions) =>
+      regions.map((region) =>
+        region.getAttribute("data-project-overview-region"),
+      ),
+    );
+  expect(regionOrder).toEqual([
+    "orientation",
+    "project-work",
+    "commercial",
+    "recent",
+  ]);
   await expectNoDocumentOverflow(page);
 });
 
@@ -738,6 +766,7 @@ test("uses the existing semantic email command with one stable submit", async ({
 });
 
 const PROJECT_SHELL_VIEWPORTS = [
+  [1600, 1000],
   [1440, 1000],
   [1280, 800],
   [1024, 900],

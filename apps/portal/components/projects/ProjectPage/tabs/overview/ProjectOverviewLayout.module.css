@@ -5,7 +5,8 @@
     "exception exception"
     "project-work commercial"
     "recent admin";
-  grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
+  grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr);
+  align-items: start;
   gap: var(--ui-grid-gutter);
   min-width: 0;
 }
@@ -46,14 +47,41 @@
   grid-column: 1 / -1;
 }
 
-@media (max-width: 900px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
-  }
+.layout[data-command-centre-state="failed"] .projectWork {
+  grid-column: 1 / -1;
+}
+
+.layout[data-overview-composition="stacked"] {
+  grid-template-areas:
+    "orientation"
+    "exception"
+    "project-work"
+    "commercial"
+    "recent"
+    "admin";
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.layout[data-overview-composition="mobile"] {
+  grid-template-areas:
+    "exception"
+    "project-work"
+    "commercial"
+    "orientation"
+    "recent"
+    "admin";
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.layout[data-overview-composition="stacked"]:not([data-has-admin]) .recent,
+.layout[data-overview-composition="stacked"]:not([data-has-recent]) .admin,
+.layout[data-overview-composition="mobile"]:not([data-has-admin]) .recent,
+.layout[data-overview-composition="mobile"]:not([data-has-recent]) .admin {
+  grid-column: auto;
 }
 
 @media (max-width: 768px) {
-  .layout {
+  .layout:not([data-overview-composition="mobile"]) {
     grid-template-areas:
       "exception"
       "project-work"
@@ -62,13 +90,5 @@
       "recent"
       "admin";
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .layout:not([data-has-admin]) .recent {
-    grid-column: auto;
-  }
-
-  .layout:not([data-has-recent]) .admin {
-    grid-column: auto;
   }
 }

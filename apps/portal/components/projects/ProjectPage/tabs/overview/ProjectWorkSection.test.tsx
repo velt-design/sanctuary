@@ -219,9 +219,7 @@ describe("ProjectWorkSection", () => {
     expect(list.textContent).toContain("Sam Sales");
     expect(list.textContent).toContain(blocked.title);
     expect(list.textContent).not.toContain(primary.title);
-    expect(rendered.container.textContent).toContain(
-      "1 blocked project-work item",
-    );
+    expect(rendered.container.textContent).toContain("1 blocked");
     expect(rendered.container.textContent).toContain(
       "Waiting for structural drawings.",
     );

@@ -251,6 +251,7 @@ Use the current staff portal system from `ui-foundation.md`:
 - Four-pixel spacing foundation and current standard/compact density.
 - Foundation controls, alerts, data states, status badges, operational grids, and page-header owners where they fit.
 - Lucide outline icons, native semantics, visible focus, reduced motion, and 44px mobile/coarse-pointer targets.
+- Recompose from the Overview's available content width, not viewport width alone: the 60/40 command grid stacks when the Overview is 800 CSS pixels or narrower, keeps Orientation first on desktop/tablet, and uses the approved mobile-priority DOM order at 768 CSS pixels and below.
 
 The redesign should feel like one calm ruled operational sheet, not a collection of equal generic cards. Route-owned composition is expected. Do not change shared tokens or primitives unless a genuine second current consumer justifies it. Do not import the marketing UI system.
 

@@ -758,12 +758,14 @@ never create or alter customer, project, quote, invoice, schedule, task, or
 payment data during production/shared QA.
 
 The UI gate covers Projects state/stage filtering, the full paginated Work Queue,
-Dashboard preview, and the single Overview Project Work surface at 1440, 1024,
-768, and 390 CSS pixels plus 200% zoom. Assert Active/Waiting/Closed/Archived
-truth, group/heading semantics, keyboard order, visible focus, 44px coarse-pointer
-targets, no document overflow, loading/background refresh/error/retry/access-ending
-states, stale conflict recovery, no legacy task/review UI, and no Call or Site
-Visit action/navigation.
+Dashboard preview, and the single Overview Project Work surface at 1600, 1440,
+1280, 1024, 768, and 390 CSS pixels plus the 640 CSS-pixel equivalent of 200%
+zoom. It also constrains the Overview to 760 CSS pixels inside a wider viewport
+to prove container-aware tablet/compact-desktop recomposition. Assert
+Active/Waiting/Closed/Archived truth, group/heading semantics, keyboard order,
+visible focus, 44px coarse-pointer targets, no document overflow,
+loading/background refresh/error/retry/access-ending states, stale conflict
+recovery, no legacy task/review UI, and no Call or Site Visit action/navigation.
 
 ## Schedule QA Gate
 

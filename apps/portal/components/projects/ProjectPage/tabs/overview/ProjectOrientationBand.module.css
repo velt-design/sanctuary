@@ -4,11 +4,23 @@
 }
 
 .orientation {
+  container-type: inline-size;
   border: var(--ui-border-width) solid var(--ui-border);
   border-radius: var(--ui-radius-panel);
   background: var(--ui-surface-primary);
   color: var(--ui-text);
   font-family: var(--ui-font-body);
+}
+
+.orientationSummary {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 4fr);
+  min-width: 0;
+}
+
+.journey {
+  border-right: var(--ui-border-width) solid var(--ui-border) !important;
+  border-bottom: 0 !important;
 }
 
 .orientationHeader {
@@ -103,24 +115,29 @@
   padding: var(--ui-space-4);
 }
 
-@media (max-width: 1024px) {
-  .orientationFacts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@container (max-width: 560px) {
+  .orientationSummary {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .orientationFacts > div:nth-child(2) {
-    border-right: 0;
+  .journey {
+    border-right: 0 !important;
+    border-bottom: var(--ui-border-width) solid var(--ui-border) !important;
   }
 
-  .orientationFacts > div:nth-child(n + 3) {
-    border-top: var(--ui-border-width) solid var(--ui-border);
+  .journey > dl {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
-}
 
-@media (max-width: 767px) {
-  .orientationHeader {
-    align-items: stretch;
-    flex-direction: column;
+  .journey > dl > div,
+  .journey > dl > div:last-child {
+    border-top: 0 !important;
+    border-right: var(--ui-border-width) solid var(--ui-border) !important;
+    padding: var(--ui-space-2) var(--ui-space-3);
+  }
+
+  .journey > dl > div:last-child {
+    border-right: 0 !important;
   }
 
   .overviewActions,
@@ -129,17 +146,21 @@
   }
 
   .orientationFacts {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .orientationFacts > div,
-  .orientationFacts > div:nth-child(2) {
+  .orientationFacts > div {
     border-top: var(--ui-border-width) solid var(--ui-border);
-    border-right: 0;
+    border-right: var(--ui-border-width) solid var(--ui-border);
+    padding: var(--ui-space-2) var(--ui-space-3);
   }
 
-  .orientationFacts > div:first-child {
+  .orientationFacts > div:nth-child(-n + 2) {
     border-top: 0;
+  }
+
+  .orientationFacts > div:nth-child(2n) {
+    border-right: 0;
   }
 
   .detailsForm {
@@ -148,6 +169,13 @@
 
   .overviewActions button {
     min-height: 44px;
+  }
+}
+
+@container (max-width: 360px) {
+  .orientationHeader {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

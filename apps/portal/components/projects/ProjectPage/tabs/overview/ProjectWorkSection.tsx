@@ -167,9 +167,6 @@ export default function ProjectWorkSection({
     active &&
     controller.primary.kind === "workItem" &&
     controller.primary.item.status === "BLOCKED";
-  const visibleBlockedItems = controller.projection.blockedItems.filter(
-    (item) => !isProhibitedProjectWorkItem(item),
-  );
   const ordinaryPrimarySuppressed =
     !active &&
     (controller.primary.kind === "workItem" ||
@@ -222,16 +219,6 @@ export default function ProjectWorkSection({
           />
         ) : null}
 
-        {active && visibleBlockedItems.length && !blockedPrimary ? (
-          <AlertBanner
-            tone="blocking"
-            title={`${visibleBlockedItems.length} blocked project-work ${visibleBlockedItems.length === 1 ? "item" : "items"}`}
-          >
-            Blocked work stays visible below but cannot become an enabled
-            primary action.
-          </AlertBanner>
-        ) : null}
-
         {prohibitedPrimary ? (
           <AlertBanner tone="blocking" title="Legacy work needs review">
             A retired legacy, Call, or Site Visit action is server-selected. It
@@ -253,6 +240,7 @@ export default function ProjectWorkSection({
           </AlertBanner>
         ) : (
           <ActionPanel
+            className={styles.primaryAction}
             title={primary.title}
             eyebrow={
               controller.primary.kind === "workItem"
@@ -262,7 +250,12 @@ export default function ProjectWorkSection({
             tone={primary.tone}
             status={
               primary.badge ? (
-                <Badge tone={primary.statusTone}>{primary.badge}</Badge>
+                <Badge
+                  className={styles.primaryStatus}
+                  tone={primary.statusTone}
+                >
+                  {primary.badge}
+                </Badge>
               ) : undefined
             }
             footer={
@@ -332,6 +325,7 @@ export default function ProjectWorkSection({
             ) : null}
             {primary.details.length ? (
               <KeyValueGrid
+                className={styles.primaryFacts}
                 columns={
                   primary.details.length >= 3
                     ? 3
@@ -382,9 +376,9 @@ export default function ProjectWorkSection({
         />
 
         {controller.stale ? (
-          <AlertBanner tone="warning" title="Work controls paused">
-            Refresh the Overview before changing project work.
-          </AlertBanner>
+          <p className={styles.pausedNotice} role="status">
+            Work controls paused until the Overview refresh completes.
+          </p>
         ) : null}
         {controller.message ? (
           <AlertBanner tone="info" title="Project work updated">

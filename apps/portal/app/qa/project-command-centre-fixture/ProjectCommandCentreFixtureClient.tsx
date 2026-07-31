@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { ProjectCommandCentreCurrentDesign } from "@/lib/projects/commandCentre/types";
 import {
   AlertBanner,
+  Button,
   Card,
   DataStatePanel,
   LoadingSkeleton,
@@ -162,17 +163,13 @@ export default function ProjectCommandCentreFixtureClient({
     stage: work.stage,
   };
   const exception =
-    viewState === "refreshing" ? (
-      <AlertBanner tone="info" title="Refreshing the Overview">
-        Saved facts remain visible and Project Work controls are paused.
-      </AlertBanner>
-    ) : viewState === "stale" ? (
-      <AlertBanner tone="warning" title="Showing a saved Overview">
-        The latest refresh failed. Saved facts remain visible and read-only.
-      </AlertBanner>
-    ) : viewState === "model-mismatch" ? (
-      <AlertBanner tone="warning" title="Project work is updating">
-        Project Work is paused until the latest server reads agree.
+    viewState === "stale" ? (
+      <AlertBanner
+        tone="warning"
+        title="Saved Overview"
+        action={<Button variant="secondary">Retry</Button>}
+      >
+        Latest refresh failed. Facts remain visible; work controls are paused.
       </AlertBanner>
     ) : viewState === "summary" ? (
       <AlertBanner tone="info" title="Loading the complete project">

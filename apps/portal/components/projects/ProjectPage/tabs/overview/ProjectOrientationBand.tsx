@@ -280,11 +280,12 @@ export default function ProjectOrientationBand({
       {editState}
 
       {!isEditing ? (
-        <>
+        <div className={styles.orientationSummary}>
           <ProjectJourneyStatus
             stage={project.stage}
             operationalState={operationalState}
             presentation="embedded"
+            className={styles.journey}
           />
           <dl
             className={styles.orientationFacts}
@@ -330,7 +331,7 @@ export default function ProjectOrientationBand({
               </dd>
             </div>
           </dl>
-        </>
+        </div>
       ) : null}
     </section>
   );

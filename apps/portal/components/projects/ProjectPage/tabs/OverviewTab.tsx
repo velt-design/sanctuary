@@ -173,27 +173,17 @@ export default function OverviewTab({
     if (accessEndingStatus !== null) onAccessEnding?.(accessEndingStatus);
   }, [accessEndingStatus, onAccessEnding]);
 
-  const exception = workModelMismatch ? (
-    <AlertBanner tone="warning" title="Project work is updating">
-      Project Work is paused until the latest server reads agree.
-    </AlertBanner>
-  ) : commandQuery.data && commandQuery.isError ? (
+  const exception = commandQuery.data && commandQuery.isError ? (
     <AlertBanner
       tone="warning"
-      title="Showing a saved Overview"
+      title="Saved Overview"
       action={
         <Button variant="secondary" onClick={() => void commandQuery.refetch()}>
           Retry
         </Button>
       }
     >
-      The latest refresh failed. Saved Project Work and commercial facts remain
-      visible, with work controls paused.
-    </AlertBanner>
-  ) : commandQuery.data && commandQuery.isFetching ? (
-    <AlertBanner tone="info" title="Refreshing the Overview">
-      Saved server facts remain visible while the latest view loads. Project
-      Work controls are paused.
+      Latest refresh failed. Facts remain visible; work controls are paused.
     </AlertBanner>
   ) : null;
 

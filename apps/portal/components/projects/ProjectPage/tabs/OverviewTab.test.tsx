@@ -392,6 +392,9 @@ describe("OverviewTab", () => {
         .querySelector('[data-testid="mock-orientation"]')
         ?.getAttribute("data-freshness"),
     ).toBe("Refreshing");
+    expect(rendered.container.textContent).not.toContain(
+      "Refreshing the Overview",
+    );
     rendered.unmount();
   });
 
@@ -422,7 +425,9 @@ describe("OverviewTab", () => {
         '[data-command-centre-state="model-mismatch"]',
       ),
     ).not.toBeNull();
-    expect(rendered.container.textContent).toContain("Project Work is paused");
+    expect(rendered.container.textContent).toContain(
+      "No project-work action is available until the latest server reads agree",
+    );
     expect(
       rendered.container.querySelectorAll('[data-project-work-section="true"]'),
     ).toHaveLength(1);
