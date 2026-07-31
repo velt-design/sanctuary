@@ -7,7 +7,6 @@ const COMPATIBILITY_CLIENT_FILE = 'apps/portal/lib/supabaseClient.ts';
 const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/app/api/admin/access/route.ts',
   'apps/portal/lib/automation/AutomationRunner.ts',
-  'apps/portal/lib/automation/taskPersistence.ts',
   'apps/portal/lib/backgroundJobs/providerWebhookRepository.ts',
   'apps/portal/lib/commercial/acceptQuote.ts',
   'apps/portal/lib/commercial/audit.ts',

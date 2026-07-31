@@ -25,7 +25,7 @@ Running Jobs combines three source types:
 
 Keep these ownership boundaries explicit. Do not write estimate-derived fields from the spreadsheet.
 
-For V2 projects, materials- and roofing-ordered truth is stored as timestamp/actor fields on `project_running_job_meta`; install completion is derived only from Schedule V2 status plus actual finish. Existing unmarked projects continue to read the legacy `project_task_checks` facts.
+Materials- and roofing-ordered truth is stored as timestamp/actor fields on `project_running_job_meta`; install completion is derived only from Schedule V2 status plus actual finish. The portfolio rollout migration backfills existing materials/roofing facts into `project_running_job_meta`, and the legacy project-task fallback is retired.
 
 ## Columns
 
@@ -55,7 +55,7 @@ POST /api/staff/v1/running-jobs/cell
 
 Use the domain write helpers in `apps/portal/lib/runningJobs/writeOps.ts`. Schedule-owned writes should route through schedule-safe APIs/helpers rather than ad hoc table edits.
 
-V2 materials/roofing edits use the versioned Running Jobs RPC and audit trail. A V2 job-complete toggle invokes the Schedule owner and does not write a generic `job_complete` task or auto-advance the project pipeline. Legacy projects retain their existing task-check writes. The repository-local work-items migration includes a one-time facts backfill into Running Jobs metadata, but that migration has not been applied or deployed.
+Materials/roofing edits use the versioned Running Jobs RPC and audit trail for every live project. A job-complete toggle invokes the Schedule owner and does not write a generic `job_complete` task; Schedule remains the authoritative completion source. The portfolio rollout migration performs the one-time materials/roofing facts backfill into Running Jobs metadata.
 
 ## Legacy Import
 

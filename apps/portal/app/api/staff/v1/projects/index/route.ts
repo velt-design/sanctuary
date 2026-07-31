@@ -6,11 +6,12 @@ import {
 } from '@/lib/projects/serverProjectsIndex';
 import {
   isProjectsIndexArchiveFilter,
-  isProjectsIndexDueFilter,
+  isProjectsIndexJourneyFilter,
+  isProjectsIndexStateFilter,
+  isProjectsIndexStatusFilter,
   isProjectsIndexSort,
   parseProjectsIndexPageSize,
 } from '@/lib/projects/projectsIndexContract';
-import { normalizeProjectStatus } from '@/lib/types/project';
 
 export const runtime = 'nodejs';
 
@@ -25,26 +26,46 @@ export async function GET(req: Request) {
     return jsonError('archive must be active, archived, or all', 400, diagnostics);
   }
   const search = searchParams.get('q')?.trim() ?? '';
-  const rawStatus = searchParams.get('status')?.trim() ?? 'all';
-  const status = rawStatus.toLowerCase() === 'all' ? 'all' : normalizeProjectStatus(rawStatus).status;
-  const due = searchParams.get('due')?.trim().toLowerCase() || 'all';
-  const today = searchParams.get('today')?.trim() || new Date().toISOString().slice(0, 10);
+  const rawStatus = (
+    searchParams.get('stage')
+    ?? searchParams.get('status')
+    ?? 'all'
+  ).trim().toUpperCase();
+  const status = rawStatus === 'ALL' ? 'all' : rawStatus;
+  const rawJourney = (searchParams.get('journey')?.trim() || 'all').toUpperCase();
+  const journey = rawJourney === 'ALL' ? 'all' : rawJourney;
+  const explicitState = searchParams.has('state');
+  const rawState = (searchParams.get('state')?.trim() || 'all').toUpperCase();
+  const requestedState = rawState === 'ALL' ? 'all' : rawState;
+  const state = explicitState
+    ? requestedState
+    : rawArchive === 'archived'
+      ? 'ARCHIVED'
+      : 'all';
+  const archive = explicitState
+    ? state === 'all'
+      ? rawArchive
+      : state === 'ARCHIVED'
+      ? 'archived'
+      : 'active'
+    : rawArchive;
   const page = Number(searchParams.get('page') ?? 1);
   const pageSize = parseProjectsIndexPageSize(searchParams.get('pageSize')) ?? 50;
   const sort = searchParams.get('sort')?.trim() || 'newest';
   if (search.length > 80) return jsonError('q must be 80 characters or fewer', 400, diagnostics);
-  if (!isProjectsIndexDueFilter(due)) return jsonError('Invalid next-action filter', 400, diagnostics);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) return jsonError('today must be YYYY-MM-DD', 400, diagnostics);
+  if (!isProjectsIndexStatusFilter(status)) return jsonError('Invalid project stage', 400, diagnostics);
+  if (!isProjectsIndexJourneyFilter(journey)) return jsonError('Invalid project journey', 400, diagnostics);
+  if (!isProjectsIndexStateFilter(state)) return jsonError('Invalid project state', 400, diagnostics);
   if (!Number.isInteger(page) || page < 1) return jsonError('page must be a positive integer', 400, diagnostics);
   if (!isProjectsIndexSort(sort)) return jsonError('Invalid projects sort', 400, diagnostics);
 
   try {
     const params = {
-      archive: rawArchive,
+      archive,
       search,
       status,
-      due,
-      today,
+      journey,
+      state,
       page,
       pageSize,
       sort,
@@ -52,10 +73,10 @@ export async function GET(req: Request) {
     const { projects, contacts } = await loadProjectsIndexData(params, auth.supabase);
     const response = jsonOk(
       {
-        archive: rawArchive,
+        archive,
         projects,
         contacts,
-        query: { search, status, due, today, sort },
+        query: { search, status, journey, state, sort },
         generatedAt: new Date().toISOString(),
       },
       200,

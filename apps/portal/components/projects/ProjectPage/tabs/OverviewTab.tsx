@@ -283,16 +283,13 @@ export default function OverviewTab({
               onRefresh={() => void commandQuery.refetch()}
             />
           ) : (
-            <ProjectWorkSection
-              workModel="legacy"
-              projectId={snapshot.project.id}
-              host={host}
-              operations={commandQuery.data.operations}
-              tasks={snapshot.tasks}
-              pipelineStage={snapshot.project.stage}
-              stale={projectWorkControlsStale}
-              onRefresh={() => void commandQuery.refetch()}
-            />
+            <ProjectWorkState model="unavailable">
+              <DataStatePanel
+                state="unavailable"
+                title="Project Work is not ready"
+                description="No project-work action is available until the portfolio rollout is complete."
+              />
+            </ProjectWorkState>
           )}
         </Suspense>
       );

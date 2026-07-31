@@ -20,16 +20,12 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   };
 });
 
-vi.mock('@/components/auth/PortalAuthProvider', () => ({
-  usePortalSession: () => ({ role: 'admin' }),
-}));
-
 vi.mock('@/lib/supabase/browserClient', () => ({
   supabaseHostFromUrl: () => 'host',
   supabaseRuntimeUrl: () => 'https://host.supabase.co',
 }));
 
-vi.mock('@/components/projects/workQueue/ProjectWorkQueueList', () => ({
+vi.mock('@/components/projects/workQueue/PaginatedProjectWorkQueueList.client', () => ({
   default: ({
     entries,
     mutationsEnabled,
@@ -90,9 +86,8 @@ describe('WorkQueueClient', () => {
     ).not.toBeNull();
     expect(rendered.container.textContent).toContain('Work Queue not ready');
     expect(rendered.container.textContent).toContain(
-      'Existing projects and legacy tasks are unchanged.',
+      'No unconfirmed work is shown.',
     );
-    expect(rendered.container.textContent).not.toContain('Review old Contacted projects');
     expect(rendered.container.querySelector('[data-testid="queue-list"]')).toBeNull();
     const queueOptions = useQueryMock.mock.calls[0]?.[0] as {
       retry: (failureCount: number, error: unknown) => boolean;

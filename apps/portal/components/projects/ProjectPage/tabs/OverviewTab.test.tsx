@@ -46,14 +46,16 @@ vi.mock("./overview/ProjectWorkSection", () => ({
   default: (props: {
     workModel: string;
     projectWork?: { generatedAt: string };
-    stale: boolean;
+    stale?: boolean;
   }) => (
     <section
       data-testid="mock-project-work"
       data-project-work-section="true"
       data-project-work-model={props.workModel}
       data-generated-at={props.projectWork?.generatedAt}
-      data-stale={String(props.stale)}
+      data-stale={
+        props.stale === undefined ? "not-applicable" : String(props.stale)
+      }
     >
       Project Work
     </section>
@@ -74,39 +76,8 @@ vi.mock("./overview/ProjectRecentNotesEvents", () => ({
 
 import OverviewTab from "./OverviewTab";
 
-const legacyOperations = {
-  owner: {
-    owner: null,
-    required: false,
-    missing: false,
-    version: null,
-    permissions: { canManage: false },
-  },
-  primaryAction: null,
-  candidates: [],
-  candidateCount: 0,
-  candidateRevision: "revision",
-  manualSelectionBaselineHash: "baseline",
-  selectionConflict: null,
-  permissions: {
-    canCreate: false,
-    canSelect: false,
-    canComplete: false,
-    canReschedule: false,
-    canReassign: false,
-    canSetCritical: false,
-    canResolveConflict: false,
-  },
-  audit: [],
-  exceptions: {
-    missingOwner: false,
-    noPrimaryAction: true,
-    selectionConflict: false,
-  },
-};
-
 const snapshot = {
-  workModel: "legacy",
+  workModel: "v2",
   project: {
     id: "proj_1",
     name: "Test project",
@@ -117,10 +88,28 @@ const snapshot = {
     quoteRef: "Q-0100",
   },
   pipeline: { stage: "new" },
-  tasks: { stage: "new", items: [] },
   activity: [],
   emails: [],
   notes: [],
+  projectWork: {
+    projectId: "proj_1",
+    modelVersion: 2,
+    operationalState: "ACTIVE",
+    effectiveState: "ACTIVE",
+    waitingUntil: null,
+    waitingReason: null,
+    closedOutcome: null,
+    stateRowVersion: 1,
+    primaryAction: {
+      kind: "needsTriage",
+      title: "Needs triage",
+      reason: "No current work",
+    },
+    openItems: [],
+    blockedItems: [],
+    confirmedFacts: [],
+    generatedAt: "2026-07-29T01:00:00.000Z",
+  },
 } as any;
 
 const v2Projection = {
@@ -178,13 +167,14 @@ describe("OverviewTab", () => {
     document.body.innerHTML = "";
   });
 
-  it("composes one legacy Project Work surface with orientation, commercial facts and recent history", async () => {
+  it("composes one V2 Project Work surface with orientation, commercial facts and recent history", async () => {
     useQueryMock.mockReturnValue(
       queryState({
         data: {
-          workModel: "legacy",
+          workModel: "v2",
           currentDesign: { source: "estimate" },
-          operations: legacyOperations,
+          projectWork: v2Projection,
+          owner: {},
           generatedAt: "2026-07-30T00:00:00.000Z",
         },
       }),
@@ -219,7 +209,7 @@ describe("OverviewTab", () => {
       rendered.container
         .querySelector('[data-testid="mock-project-work"]')
         ?.getAttribute("data-project-work-model"),
-    ).toBe("legacy");
+    ).toBe("v2");
     expect(
       rendered.container.querySelector('[data-testid="mock-recent"]'),
     ).not.toBeNull();
@@ -313,9 +303,10 @@ describe("OverviewTab", () => {
     useQueryMock.mockReturnValue(
       queryState({
         data: {
-          workModel: "legacy",
+          workModel: "v2",
           currentDesign: { source: "sent_quote" },
-          operations: legacyOperations,
+          projectWork: v2Projection,
+          owner: {},
           generatedAt: "2026-07-30T00:00:00.000Z",
         },
         error: new Error("offline"),
@@ -408,9 +399,9 @@ describe("OverviewTab", () => {
     useQueryMock.mockReturnValue(
       queryState({
         data: {
-          workModel: "v2",
+          workModel: "legacy",
           currentDesign: { source: "draft_quote" },
-          projectWork: v2Projection,
+          legacyWork: { status: "retired" },
           owner: {},
           generatedAt: "2026-07-30T00:00:00.000Z",
         },
@@ -485,9 +476,10 @@ describe("OverviewTab", () => {
     useQueryMock.mockReturnValue(
       queryState({
         data: {
-          workModel: "legacy",
+          workModel: "v2",
           currentDesign: { source: "accepted_quote" },
-          operations: legacyOperations,
+          projectWork: v2Projection,
+          owner: {},
           generatedAt: "2026-07-30T00:00:00.000Z",
         },
         error: new ApiError("Forbidden", { status: 403, body: null }),
@@ -524,9 +516,10 @@ describe("OverviewTab", () => {
     useQueryMock.mockReturnValue(
       queryState({
         data: {
-          workModel: "legacy",
+          workModel: "v2",
           currentDesign: { source: "estimate" },
-          operations: legacyOperations,
+          projectWork: v2Projection,
+          owner: {},
           generatedAt: "2026-07-30T00:00:00.000Z",
         },
       }),

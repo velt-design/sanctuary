@@ -107,6 +107,28 @@ describe('evaluateProjectWorkV2Probe', () => {
       { code: 'PGRST202' },
       'PROJECT_WORK_V2_MISSING_000004',
     ],
+    [
+      {
+        id: 'portfolio-index',
+        label: 'staff_projects_index_v2',
+        migration: 'portfolio',
+        kind: 'rpc',
+      },
+      { status: 404, ok: false },
+      { code: 'PGRST202' },
+      'PROJECT_WORK_V2_MISSING_20260731000002',
+    ],
+    [
+      {
+        id: 'portfolio-ledger',
+        label: 'project_work_portfolio_rollouts',
+        migration: 'portfolio',
+        kind: 'table',
+      },
+      { status: 404, ok: false },
+      { code: 'PGRST205' },
+      'PROJECT_WORK_V2_MISSING_20260731000002',
+    ],
   ])('maps a missing contract to its exact migration', (probe, response, payload, expectedCode) => {
     expect(() => evaluateProjectWorkV2Probe(probe, response, payload)).toThrow(
       expect.objectContaining({ code: expectedCode }),
@@ -172,6 +194,8 @@ describe('checkProjectWorkV2Readiness', () => {
     expect(source).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(source).not.toMatch(/method:\s*['"](?:PUT|PATCH|DELETE)['"]/);
     expect(source).not.toContain('/migrate');
+    expect(source).not.toContain('project_work_classify_legacy_contacted_v1');
+    expect(source).not.toContain('project_work_migrate_legacy_contacted_v1');
   });
 
   it('runs only bounded read/schema probes with the anon key', async () => {
@@ -182,9 +206,9 @@ describe('checkProjectWorkV2Readiness', () => {
         readProjectWorkV2ReadinessConfig(validEnv),
         fetchMock,
       ),
-    ).resolves.toHaveLength(5);
+    ).resolves.toHaveLength(7);
 
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(7);
     for (const [url, init] of fetchMock.mock.calls) {
       expect(url).toMatch(/^https:\/\/abcdefghijklmnopqrst\.supabase\.co\/rest\/v1\//);
       expect(init.headers).toMatchObject({
@@ -195,15 +219,29 @@ describe('checkProjectWorkV2Readiness', () => {
     }
 
     const getCalls = fetchMock.mock.calls.filter(([, init]) => init.method === 'GET');
-    expect(getCalls).toHaveLength(3);
+    expect(getCalls).toHaveLength(4);
     expect(getCalls.every(([url]) => String(url).includes('limit=0'))).toBe(true);
 
     const postCalls = fetchMock.mock.calls.filter(([, init]) => init.method === 'POST');
-    expect(postCalls).toHaveLength(2);
+    expect(postCalls).toHaveLength(3);
     expect(postCalls.map(([url]) => String(url))).toEqual([
       expect.stringContaining('/rpc/project_work_queue_v3'),
-      expect.stringContaining('/rpc/project_work_classify_legacy_contacted_v1'),
+      expect.stringContaining('/rpc/staff_projects_index_v2'),
+      expect.stringContaining('/rpc/staff_project_state_counts_v1'),
     ]);
+    expect(JSON.parse(String(postCalls[1]?.[1].body))).toEqual({
+      p_archive: 'all',
+      p_search: '',
+      p_status: 'all',
+      p_due: 'all',
+      p_today: '2026-01-01',
+      p_page: 1,
+      p_page_size: 1,
+      p_sort: 'newest',
+      p_state: 'all',
+      p_stages: null,
+    });
+    expect(JSON.parse(String(postCalls[2]?.[1].body))).toEqual({});
   });
 
   it('stops at the first missing migration', async () => {
@@ -227,5 +265,36 @@ describe('checkProjectWorkV2Readiness', () => {
       code: 'PROJECT_WORK_V2_MISSING_000003',
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('fails if the portfolio index or state-count contract is absent', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(deniedResponse())
+      .mockResolvedValueOnce(deniedResponse())
+      .mockResolvedValueOnce(deniedResponse())
+      .mockResolvedValueOnce(deniedResponse())
+      .mockResolvedValueOnce(deniedResponse())
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ code: 'PGRST202', message: 'RPC missing' }), {
+          status: 404,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+
+    await expect(
+      checkProjectWorkV2Readiness(
+        readProjectWorkV2ReadinessConfig(validEnv),
+        fetchMock,
+      ),
+    ).rejects.toMatchObject({
+      code: 'PROJECT_WORK_V2_MISSING_20260731000002',
+      details: [
+        expect.stringContaining(
+          '20260731000002_project_work_portfolio_rollout.sql',
+        ),
+      ],
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(6);
   });
 });

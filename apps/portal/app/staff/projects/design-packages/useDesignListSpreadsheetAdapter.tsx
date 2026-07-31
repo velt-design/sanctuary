@@ -608,8 +608,6 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
         const projectId = confirmedModel.projectId;
         void queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, projectId) });
         void queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) });
-        void queryClient.invalidateQueries({ queryKey: qk.automation.designTicket(host, projectId) });
-        void queryClient.invalidateQueries({ queryKey: qk.automation.tasks(host, projectId) });
       },
     },
     onCellActivated: async ({ trigger, key, beginEdit, seed }) => {

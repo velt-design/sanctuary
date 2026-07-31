@@ -8,7 +8,7 @@ import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 import { deriveCrewShortCode, deriveRunningJobFields, getLatestRunningJobsEstimate, type RunningJobsEstimateLite } from './derive';
-import { legacyRunningJobTaskProjectIds, resolveRunningJobFactState } from './facts';
+import { resolveRunningJobFactState } from './facts';
 import { groupRunningJobRows } from './group';
 import { shouldIncludeRunningJob } from './inclusion';
 import {
@@ -53,11 +53,6 @@ type ScheduledJobRow = {
   actual_finish: string | null;
   status: string | null;
   updated_at: string | null;
-};
-
-type TaskRow = {
-  project_id: string;
-  task_key: string | null;
 };
 
 type MetaRow = {
@@ -139,19 +134,6 @@ function contactFromProject(project: ProjectRow): { id: string | null; name: str
     phone: raw && typeof (raw as any).phone === 'string' ? String((raw as any).phone).trim() : '',
     updatedAt: raw && typeof (raw as any).updated_at === 'string' ? String((raw as any).updated_at) : null,
   };
-}
-
-function taskSetByProject(taskRows: TaskRow[]): Map<string, Set<string>> {
-  const out = new Map<string, Set<string>>();
-  for (const row of taskRows) {
-    const projectId = typeof row.project_id === 'string' ? row.project_id : '';
-    const taskKey = typeof row.task_key === 'string' ? row.task_key.trim() : '';
-    if (!projectId || !taskKey) continue;
-    const bucket = out.get(projectId) ?? new Set<string>();
-    bucket.add(taskKey);
-    out.set(projectId, bucket);
-  }
-  return out;
 }
 
 function hashRowVersion(input: {
@@ -388,10 +370,6 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
   const supabase = await getSupabaseServerAuth();
   const { projects, crews } = await loadProjectsAndCrews(projectIdsFilter);
   const projectIds = projects.map((project) => project.id).filter(Boolean);
-  const legacyProjectIds = legacyRunningJobTaskProjectIds(
-    projects.map((project) => ({ id: project.id, modelVersion: project.work_model_version })),
-  );
-
   const salesPeople = SALES_PEOPLE.map((person) => ({
     id: person.id,
     name: person.name,
@@ -406,7 +384,7 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
     };
   }
 
-  const [siteVisitRows, scheduledJobRows, taskRows, metaRows, estimateRows, rawQuoteRows] = await Promise.all([
+  const [siteVisitRows, scheduledJobRows, metaRows, estimateRows, rawQuoteRows] = await Promise.all([
     fetchRowsByIdChunks<any>(projectIds, (chunkIds) =>
       supabase
         .from('site_visit_events')
@@ -432,9 +410,6 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
           ].join(','),
         )
         .in('job_id', chunkIds),
-    ),
-    fetchRowsByIdChunks<TaskRow>(legacyProjectIds, (chunkIds) =>
-      supabase.from('project_task_checks').select('project_id, task_key').in('project_id', chunkIds),
     ),
     fetchRowsByIdChunks<any>(projectIds, (chunkIds) =>
       supabase
@@ -503,8 +478,6 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
     });
   }
 
-  const tasksByProjectId = taskSetByProject(taskRows);
-
   const metaByProjectId = new Map<string, MetaRow>();
   for (const row of metaRows) {
     const projectId = typeof row?.project_id === 'string' ? row.project_id : '';
@@ -571,7 +544,6 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
     if (!shouldIncludeRunningJob(project.pipeline_stage, Boolean(scheduledJob))) continue;
 
     const contact = contactFromProject(project);
-    const taskKeys = tasksByProjectId.get(project.id) ?? new Set<string>();
     const meta = metaByProjectId.get(project.id) ?? null;
     const latestEstimate = getLatestRunningJobsEstimate(estimatesByProjectId.get(project.id) ?? []);
     const latestQuoteVersion = latestQuoteVersionByProjectId.get(project.id) ?? null;
@@ -589,8 +561,6 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
 
     const jobCompleted = Boolean(scheduledJob && (scheduledJob.status === 'done' || scheduledJob.actual_finish));
     const facts = resolveRunningJobFactState({
-      modelVersion: project.work_model_version,
-      legacyTaskKeys: taskKeys,
       materialsOrderedAt: meta?.materials_ordered_at ?? null,
       roofingOrderedAt: meta?.roofing_ordered_at ?? null,
       scheduleCompleted: jobCompleted,

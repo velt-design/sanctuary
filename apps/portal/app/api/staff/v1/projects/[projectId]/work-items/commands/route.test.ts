@@ -115,6 +115,29 @@ describe('POST /api/staff/v1/projects/[projectId]/work-items/commands', () => {
     expect(mocks.runProjectWorkItemCommand).not.toHaveBeenCalled();
   });
 
+  it.each([
+    'Call customer',
+    'Book site visit',
+  ])('rejects retired manual work identity: %s', async (title) => {
+    const response = await POST(
+      request({
+        command: 'CREATE',
+        commandId: COMMAND_ID,
+        title,
+        responsibilityArea: 'CUSTOMER',
+        dueAt: '2026-08-01T03:00:00.000Z',
+      }),
+      CONTEXT,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Call and Site Visit work cannot be created in Project Work',
+      code: 'INVALID_COMMAND',
+    });
+    expect(mocks.runProjectWorkItemCommand).not.toHaveBeenCalled();
+  });
+
   it('returns an idempotent replay with the refreshed projection', async () => {
     mocks.runProjectWorkItemCommand.mockResolvedValueOnce({
       replayed: true,

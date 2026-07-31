@@ -13,6 +13,18 @@ vi.mock('@/lib/projects/serverProjectsIndex', async (importOriginal) => {
   return { ...actual, loadProjectsIndexData };
 });
 
+const loaded = {
+  projects: {
+    rows: [{ id: 'proj_1' }],
+    totalCount: 1,
+    truncated: false,
+    page: 1,
+    pageSize: 50,
+    totalPages: 1,
+  },
+  contacts: { rows: [{ id: 'ct_1' }], totalCount: 1, truncated: false },
+};
+
 describe('GET /api/staff/v1/projects/index', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -23,78 +35,117 @@ describe('GET /api/staff/v1/projects/index', () => {
       session: { user: { id: 'user-1' }, role: 'staff' },
       supabase: { from: vi.fn() },
     });
-    loadProjectsIndexData.mockResolvedValue({
-      projects: {
-        rows: [{ id: 'proj_1' }],
-        totalCount: 1,
-        truncated: false,
-        page: 1,
-        pageSize: 50,
-        totalPages: 1,
-      },
-      contacts: { rows: [{ id: 'ct_1' }], totalCount: 1, truncated: false },
-    });
+    loadProjectsIndexData.mockResolvedValue(loaded);
   });
 
-  it.each(['active', 'archived', 'all'] as const)('loads the %s scope through the auth-bound client', async (archive) => {
+  it('defaults to every unarchived project state', async () => {
     const mod = await import('./route');
-    const res = await mod.GET(new Request(`http://localhost/api/staff/v1/projects/index?archive=${archive}&today=2026-04-03`, {
-      headers: { 'x-request-id': `req_${archive}` },
+    const res = await mod.GET(new Request('http://localhost/api/staff/v1/projects/index', {
+      headers: { 'x-request-id': 'req_default' },
     }));
 
     expect(res.status).toBe(200);
     expect(res.headers.get('cache-control')).toBe('private, no-store');
-    expect(res.headers.get('x-portal-request-id')).toBe(`req_${archive}`);
-    expect(loadProjectsIndexData).toHaveBeenCalledWith(
-      {
-        archive,
-        search: '',
-        status: 'all',
-        due: 'all',
-        today: '2026-04-03',
-        page: 1,
-        pageSize: 50,
-        sort: 'newest',
-      },
-      expect.anything(),
-    );
+    expect(res.headers.get('x-portal-request-id')).toBe('req_default');
+    expect(loadProjectsIndexData).toHaveBeenCalledWith({
+      archive: 'active',
+      search: '',
+      status: 'all',
+      journey: 'all',
+      state: 'all',
+      page: 1,
+      pageSize: 50,
+      sort: 'newest',
+    }, expect.anything());
     await expect(res.json()).resolves.toEqual({
-      archive,
-      projects: {
-        rows: [{ id: 'proj_1' }],
-        totalCount: 1,
-        truncated: false,
-        page: 1,
-        pageSize: 50,
-        totalPages: 1,
-      },
-      contacts: { rows: [{ id: 'ct_1' }], totalCount: 1, truncated: false },
+      archive: 'active',
+      ...loaded,
       query: {
         search: '',
         status: 'all',
-        due: 'all',
-        today: '2026-04-03',
+        journey: 'all',
+        state: 'all',
         sort: 'newest',
       },
       generatedAt: expect.any(String),
     });
   });
 
-  it('defaults a missing archive scope to active', async () => {
+  it('passes journey, detailed stage, and state to the server owner', async () => {
     const mod = await import('./route');
-    const res = await mod.GET(new Request('http://localhost/api/staff/v1/projects/index?today=2026-04-03'));
+    const res = await mod.GET(new Request(
+      'http://localhost/api/staff/v1/projects/index?journey=proposal&stage=sent&state=waiting&archive=archived&q=deck&page=2&pageSize=25&sort=name_asc',
+    ));
+
+    expect(res.status).toBe(200);
+    expect(loadProjectsIndexData).toHaveBeenCalledWith({
+      archive: 'active',
+      search: 'deck',
+      status: 'SENT',
+      journey: 'PROPOSAL',
+      state: 'WAITING',
+      page: 2,
+      pageSize: 25,
+      sort: 'name_asc',
+    }, expect.anything());
+  });
+
+  it('routes archived state through the archived storage scope', async () => {
+    const mod = await import('./route');
+    const res = await mod.GET(new Request(
+      'http://localhost/api/staff/v1/projects/index?state=archived',
+    ));
+
     expect(res.status).toBe(200);
     expect(loadProjectsIndexData).toHaveBeenCalledWith(
-      expect.objectContaining({ archive: 'active' }),
+      expect.objectContaining({ archive: 'archived', state: 'ARCHIVED' }),
       expect.anything(),
     );
   });
 
-  it('rejects invalid scopes before loading data', async () => {
+  it.each([
+    ['active', 'active', 'all'],
+    ['archived', 'archived', 'ARCHIVED'],
+    ['all', 'all', 'all'],
+  ] as const)('preserves the legacy archive=%s query', async (legacyArchive, archive, state) => {
     const mod = await import('./route');
-    const res = await mod.GET(new Request('http://localhost/api/staff/v1/projects/index?archive=private'));
+    const res = await mod.GET(new Request(
+      `http://localhost/api/staff/v1/projects/index?archive=${legacyArchive}`,
+    ));
+
+    expect(res.status).toBe(200);
+    expect(loadProjectsIndexData).toHaveBeenCalledWith(
+      expect.objectContaining({ archive, state }),
+      expect.anything(),
+    );
+  });
+
+  it('preserves archive=all when the current client also sends state=all', async () => {
+    const mod = await import('./route');
+    const res = await mod.GET(new Request(
+      'http://localhost/api/staff/v1/projects/index?archive=all&state=all',
+    ));
+
+    expect(res.status).toBe(200);
+    expect(loadProjectsIndexData).toHaveBeenCalledWith(
+      expect.objectContaining({ archive: 'all', state: 'all' }),
+      expect.anything(),
+    );
+  });
+
+  it.each([
+    ['archive=private', 'archive must be active, archived, or all'],
+    ['journey=quoting', 'Invalid project journey'],
+    ['stage=proposal', 'Invalid project stage'],
+    ['state=lost', 'Invalid project state'],
+  ])('rejects invalid filters before loading data: %s', async (query, message) => {
+    const mod = await import('./route');
+    const res = await mod.GET(new Request(
+      `http://localhost/api/staff/v1/projects/index?${query}`,
+    ));
+
     expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({ error: 'archive must be active, archived, or all' });
+    await expect(res.json()).resolves.toEqual({ error: message });
     expect(loadProjectsIndexData).not.toHaveBeenCalled();
   });
 

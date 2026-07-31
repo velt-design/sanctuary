@@ -133,49 +133,6 @@ function dueAtForTier(tier: DesignRequestPriorityTier): string | null {
   return null;
 }
 
-function designRequestTaskKey(projectUuid: string, requestVersion: number): string {
-  return `design_request:${projectUuid}:v${requestVersion}`;
-}
-
-async function syncDesignRequestTaskStatus(projectUuid: string, requestVersion: number, requestStatus: DesignRequestStatus) {
-  const supabase = await getSupabaseServerAuth();
-  const idempotencyKey = designRequestTaskKey(projectUuid, requestVersion);
-  const taskStatus = requestStatus === 'DONE' ? 'DONE' : requestStatus === 'CANCELLED' ? 'SKIPPED' : 'OPEN';
-  const taskRes = await supabase.rpc('project_command_sync_design_task', {
-    p_project_id: projectUuid,
-    p_operation: 'set_status',
-    p_idempotency_key: idempotencyKey,
-    p_title: null,
-    p_details: null,
-    p_due_at: null,
-    p_status: taskStatus,
-    p_meta: null,
-  });
-
-  if (taskRes.error) {
-    console.error('[design_packages] failed to sync companion task', taskRes.error);
-  }
-}
-
-async function syncDesignRequestTaskPriority(projectUuid: string, requestVersion: number, dueAt: string | null) {
-  const supabase = await getSupabaseServerAuth();
-  const idempotencyKey = designRequestTaskKey(projectUuid, requestVersion);
-  const taskRes = await supabase.rpc('project_command_sync_design_task', {
-    p_project_id: projectUuid,
-    p_operation: 'set_due',
-    p_idempotency_key: idempotencyKey,
-    p_title: null,
-    p_details: null,
-    p_due_at: dueAt,
-    p_status: null,
-    p_meta: null,
-  });
-
-  if (taskRes.error) {
-    console.error('[design_packages] failed to sync companion task priority', taskRes.error);
-  }
-}
-
 function centsToTier(totalIncGstCents: number | null): DesignRequestPriorityTier {
   if (typeof totalIncGstCents !== 'number' || !Number.isFinite(totalIncGstCents)) return 'UNPRICED';
   if (totalIncGstCents < 1_200_000) return 'TIER_4';
@@ -619,27 +576,6 @@ export async function createDesignRequest(params: {
   }
 
   const requestUuid = String(insertRes.data.id);
-  const taskKey = designRequestTaskKey(projectUuid, previewData.nextVersion);
-  const taskRes = await supabase.rpc('project_command_sync_design_task', {
-    p_project_id: projectUuid,
-    p_operation: 'upsert',
-    p_idempotency_key: taskKey,
-    p_title: `Create design package v${previewData.nextVersion}`,
-    p_details: trimString(params.requestNote) ?? null,
-    p_due_at: dueAt,
-    p_status: 'OPEN',
-    p_meta: {
-      source: 'design_packages',
-      requestId: requestUuid,
-      estimateId: estimateUuid,
-      requestVersion: previewData.nextVersion,
-      priorityTier: selectedTier,
-    },
-  });
-  if (taskRes.error) {
-    console.error('[design_packages] failed to create companion task', taskRes.error);
-  }
-
   return { requestId: appRequestId(requestUuid) };
 }
 
@@ -690,7 +626,6 @@ export async function markDesignRequestStarted(requestId: string): Promise<{ req
 
   const updateRes = await supabase.from('design_package_requests').update(patch as any).eq('id', requestUuid);
   if (updateRes.error) throw updateRes.error;
-  await syncDesignRequestTaskStatus(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), 'IN_PROGRESS');
 
   return { requestId: appRequestId(requestUuid) };
 }
@@ -712,7 +647,6 @@ export async function markDesignRequestDone(requestId: string): Promise<{ reques
 
   const updateRes = await supabase.from('design_package_requests').update(patch as any).eq('id', requestUuid);
   if (updateRes.error) throw updateRes.error;
-  await syncDesignRequestTaskStatus(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), 'DONE');
 
   return { requestId: appRequestId(requestUuid), projectUuid: current.project_id };
 }
@@ -744,7 +678,6 @@ export async function setDesignRequestStatus(
 
   const updateRes = await supabase.from('design_package_requests').update(patch as any).eq('id', requestUuid);
   if (updateRes.error) throw updateRes.error;
-  await syncDesignRequestTaskStatus(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), nextStatus);
   return { ok: true, requestId: appRequestId(requestUuid) };
 }
 
@@ -769,7 +702,6 @@ export async function setDesignRequestPriorityTier(
     .eq('id', requestUuid);
 
   if (updateRes.error) throw updateRes.error;
-  await syncDesignRequestTaskPriority(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), dueAt);
   return { ok: true, requestId: appRequestId(requestUuid) };
 }
 

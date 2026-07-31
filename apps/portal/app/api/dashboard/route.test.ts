@@ -24,9 +24,7 @@ describe('GET /api/dashboard', () => {
     });
     getDashboardData.mockResolvedValue({
       updatedAtIso: '2026-04-08T00:00:00.000Z',
-      kpis: { actionsDue: 1, newLeads: 2, quotesToSend: 3, installsThisWeek: 4 },
-      attention: [],
-      workQueue: [],
+      kpis: { newLeads: 2, quotesToSend: 3, installsThisWeek: 4 },
       schedule: { startingSoon: [], crewAvailability: [], hrefBoard: '/staff/schedule', hrefGantt: '/staff/schedule?view=gantt' },
       siteVisits: { unscheduledCount: 0, today: [], next7: [], hrefSiteVisits: '/staff/schedule?tab=site-visits' },
       pipelineCounts: {},
@@ -67,7 +65,7 @@ describe('GET /api/dashboard', () => {
     await expect(res.json()).resolves.toEqual(
       expect.objectContaining({
         updatedAtIso: '2026-04-08T00:00:00.000Z',
-        kpis: { actionsDue: 1, newLeads: 2, quotesToSend: 3, installsThisWeek: 4 },
+        kpis: { newLeads: 2, quotesToSend: 3, installsThisWeek: 4 },
       }),
     );
   });

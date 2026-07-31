@@ -57,13 +57,6 @@ export const qk = {
   invoices: {
     byProject: (host: string, projectId: string) => ['invoices', host, 'byProject', projectId] as const,
   },
-  automation: {
-    tasks: (host: string, projectId: string) => ['automation', host, 'tasks', projectId] as const,
-    designTicket: (host: string, projectId: string) => ['automation', host, 'designTicket', projectId] as const,
-    followups: (host: string, projectId: string) => ['automation', host, 'followups', projectId] as const,
-    outbox: (host: string, projectId: string) => ['automation', host, 'outbox', projectId] as const,
-    audit: (host: string, projectId: string, limit: number) => ['automation', host, 'audit', projectId, limit] as const,
-  },
   schedule: {
     snapshot: (host: string) => ['schedule', host, 'snapshot'] as const,
     board: (host: string, today: string) => ['schedule', host, 'board', today] as const,

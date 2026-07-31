@@ -10,7 +10,7 @@ import {
   Select,
   Textarea,
 } from '@/components/ui/foundation';
-import { correctProjectConfirmation } from '@/lib/projects/workItems/legacyTriage/client';
+import { correctProjectConfirmation } from '@/lib/projects/workItems/confirmationCorrections/client';
 import type { ProjectWorkConfirmationFact } from '@/lib/projects/workItems/types';
 import {
   projectCommandIntent,

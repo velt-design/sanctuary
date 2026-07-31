@@ -228,7 +228,7 @@ export async function correctProjectStage(
   projectId: string,
   status: ProjectStatus,
   opts?: { reason?: string | null; siteVisitPriorityTier?: 1 | 2 | null },
-): Promise<{ project: Project; rollback: boolean; resetManualTaskCount: number }> {
+): Promise<{ project: Project; rollback: boolean }> {
   const payload: Record<string, unknown> = {
     toStage: status,
     reason: typeof opts?.reason === 'string' ? opts.reason : null,
@@ -237,7 +237,7 @@ export async function correctProjectStage(
     payload.site_visit_priority_tier = opts.siteVisitPriorityTier;
   }
 
-  const res = await apiJson<{ project?: any; rollback?: boolean; resetManualTaskCount?: number }>(
+  const res = await apiJson<{ project?: any; rollback?: boolean }>(
     `/api/staff/v1/projects/${encodeURIComponent(projectId)}/stage/correct`,
     {
       method: 'POST',
@@ -251,7 +251,6 @@ export async function correctProjectStage(
   return {
     project,
     rollback: Boolean(res?.rollback),
-    resetManualTaskCount: Number(res?.resetManualTaskCount ?? 0),
   };
 }
 

@@ -8,7 +8,7 @@ import {
   Button,
   Textarea,
 } from '@/components/ui/foundation';
-import { reconcileProjectConfirmationCorrection } from '@/lib/projects/workItems/legacyTriage/client';
+import { reconcileProjectConfirmationCorrection } from '@/lib/projects/workItems/confirmationCorrections/client';
 import {
   projectCommandIntent,
   StableCommandAttempt,

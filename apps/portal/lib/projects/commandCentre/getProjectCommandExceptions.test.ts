@@ -56,11 +56,11 @@ describe('getProjectCommandExceptions', () => {
     expect(result.projects[0]).toMatchObject({
       projectId: `proj_${PROJECT_ID}`,
       stage: 'new',
-      reasons: expect.arrayContaining(['no_action', 'missing_owner']),
+      reasons: ['missing_owner'],
     });
   });
 
-  it('chunks related-table filters when the active project set is large', async () => {
+  it('chunks owner-assignment filters when the active project set is large', async () => {
     dependencies.getProjectWorkProjection.mockReset();
     dependencies.getProjectWorkModelV2Ids.mockReset().mockResolvedValue(new Set());
     const projectRows = Array.from({ length: 205 }, (_, index) => ({
@@ -83,7 +83,7 @@ describe('getProjectCommandExceptions', () => {
     );
 
     const filteredChunks = relatedQuery.in.mock.calls.map((call: unknown[]) => call[1] as string[]);
-    expect(filteredChunks).toHaveLength(18);
+    expect(filteredChunks).toHaveLength(3);
     expect(filteredChunks.every((chunk: string[]) => chunk.length > 0 && chunk.length <= 100)).toBe(true);
     expect(result.totalProjects).toBe(205);
   });
@@ -147,7 +147,7 @@ describe('getProjectCommandExceptions', () => {
     ]);
   });
 
-  it('filters V2 project ids out of legacy queries in a mixed cohort', async () => {
+  it('does not read legacy action tables for a mixed cohort', async () => {
     dependencies.getProjectWorkProjection.mockReset().mockResolvedValue({
       projectId: PROJECT_ID,
       modelVersion: 2,
@@ -191,6 +191,10 @@ describe('getProjectCommandExceptions', () => {
       new Date('2026-07-21T01:00:00.000Z'),
     );
 
+    expect(tableQueries.get('project_owner_assignments')?.in).toHaveBeenCalledWith(
+      'project_id',
+      [PROJECT_ID, LEGACY_PROJECT_ID],
+    );
     for (const table of [
       'tasks',
       'followup_tasks',
@@ -198,10 +202,7 @@ describe('getProjectCommandExceptions', () => {
       'project_action_controls',
       'project_primary_action_selections',
     ]) {
-      expect(tableQueries.get(table)?.in).toHaveBeenCalledWith(
-        'project_id',
-        [LEGACY_PROJECT_ID],
-      );
+      expect(tableQueries.has(table)).toBe(false);
     }
   });
 });

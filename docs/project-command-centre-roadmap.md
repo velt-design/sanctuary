@@ -1,11 +1,11 @@
 # Project Operational Command Centre Roadmap
 
 Status: Active programme tracker
-Current stage: Overview V2 complete and deployed; its narrow historical bundle-baseline exception is closed by later route optimization
+Current stage: Overview V2 composition deployed; portfolio-wide Project Work adoption and legacy-task retirement implemented but pending production rollout
 Product definition: Complete
-Implementation: Historical Stages 1 and 2 plus the production Project Work V2 foundation are present. Commit `20a8adee` contains the approved Overview composition through five required top-level owners plus extracted V2/legacy command, control, conflict/history, visibility-policy, and shared-cache owners; it renders one mixed-model Project Work surface with filtered read-only legacy rows in the current portal visual system. Focused, fixture, responsive/accessibility, build, static, unchanged Project Detail budget, manual authenticated inspection, and automated authenticated read-only staging evidence passed on 2026-07-30. Portal release merge `c9e73651`, the three exact Project Work production files, and snapshot-cache hotfix merge `809f2c5e` then passed controlled cutover and read-only production verification without migrating pre-cutover projects.
-Next action: Preserve Overview V2 as deployed, keep Contacts and Calculator ceilings unchanged, and retain the earlier handoff exception as historical truth; later isolated route-optimization evidence passes both ceilings.
-Next implementation stage: No automatic next Overview slice. Later deposit, Schedule/Running Jobs readiness, normalized activity, and complete exception summaries require separately reviewed bounded server projections.
+Implementation: Historical Stages 1 and 2 plus the production Project Work foundation are present. The current slice adds the replay-safe all-project rollout, five journey phases, authoritative Active/Waiting/Closed/Archived portfolio views, one paged Work Queue, one Overview work surface, and complete legacy project-task UI/read/write retirement. It preserves the portal system and existing semantic V2 commands.
+Next action: Apply the rollout migration first, release its application consumers, then complete catalog/schema-cache, repository-gate, and authenticated read-only Projects/Dashboard/Work Queue/Overview verification without shared-data mutation.
+Next implementation stage: After rollout proof only. Deposit, Schedule/Running Jobs readiness, normalized activity, and complete exception summaries still require separately reviewed bounded server projections.
 
 ## Index
 
@@ -46,7 +46,7 @@ When documents conflict:
 
 ## Stage sequence
 
-Stages 0-6 below record the historical V1 programme. **Overview V2 is complete in `20a8adee` and deployed through the controlled Project Work cutover**; it replaces the old instruction to begin Stage 3 by rendering four always-visible lead-to-quote workstream cards. Its handoff used a narrow historical Contacts/Calculator bundle exception that did not raise ceilings and was closed by later route optimization. Any future journey/readiness or full-lifecycle summary remains deferred and must use bounded server-owned evidence under a separate reviewed contract.
+Stages 0-6 below record the historical V1 programme. **Overview V2 composition is deployed; portfolio adoption is the active rollout.** The five journey phases group existing stages for presentation and filtering only. Any future readiness or full-lifecycle summary remains deferred and must use bounded server-owned evidence under a separate reviewed contract.
 
 ### Product definition
 

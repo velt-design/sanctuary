@@ -137,20 +137,12 @@ export async function acceptQuoteAndEnsureDepositInvoice(params: {
     });
   }
 
-  const reconciliation = await reconcileQuoteOutcomeCadence({
+  await reconcileQuoteOutcomeCadence({
     serviceClient: supabaseServiceRole,
     projectId: projectUuid,
     quoteVersionId: quoteVersionUuid,
     outcome: 'ACCEPTED',
   });
-  if (reconciliation.workModel === 'legacy') {
-    await supabaseServiceRole
-      .from('project_task_checks')
-      .delete()
-      .eq('project_id', projectUuid)
-      .eq('task_key', 'invoice_paid');
-  }
-
   if (!alreadyAccepted) {
     await insertCommercialAuditEvent({
       projectId: projectUuid,

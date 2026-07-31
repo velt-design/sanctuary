@@ -9,8 +9,8 @@ function arePortalQaFixturesEnabled(): boolean {
   return process.env.ENABLE_PORTAL_QA_FIXTURES?.trim() === '1';
 }
 
-const legacySnapshot: ProjectPageSnapshot = {
-  workModel: 'legacy',
+const v2Snapshot: ProjectPageSnapshot = {
+  workModel: 'v2',
   project: {
     id: 'proj_fixture_shell',
     name: 'Aroha Smith - Takapuna',
@@ -26,21 +26,9 @@ const legacySnapshot: ProjectPageSnapshot = {
     owner: { key: 'jordan', displayName: 'Jordan' },
   },
   pipeline: { stage: 'sent' },
-  tasks: { stage: 'sent', items: [] },
   activity: [],
   emails: [],
   notes: [],
-};
-
-const v2Snapshot: ProjectPageSnapshot = {
-  ...legacySnapshot,
-  workModel: 'v2',
-  project: {
-    ...legacySnapshot.project,
-    stage: 'new',
-  },
-  pipeline: { stage: 'new' },
-  tasks: { stage: 'new', items: [] },
 };
 
 export default async function ProjectPageShellFixture({
@@ -50,7 +38,7 @@ export default async function ProjectPageShellFixture({
 }) {
   if (!arePortalQaFixturesEnabled()) notFound();
   const params = await searchParams;
-  const snapshot = params.model === 'v2' ? v2Snapshot : legacySnapshot;
+  const snapshot = v2Snapshot;
   const tab = coerceProjectTab(params.tab, snapshot.project.hasJobPacks ?? false);
 
   return (

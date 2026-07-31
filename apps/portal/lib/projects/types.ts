@@ -1,18 +1,8 @@
-import type { PipelineStageKey, TaskKey, TaskKind } from '@/lib/projects/pipelineDefinition';
+import type { PipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import type { ProjectOwnerKey } from '@/lib/projects/commandCentre/types';
 import type { ProjectWorkProjection } from '@/lib/projects/workItems/types';
 
 export type ProjectStage = PipelineStageKey;
-
-export type ProjectTaskItem = {
-  key: TaskKey;
-  label: string;
-  kind: TaskKind;
-  isDone: boolean;
-  isManualDone?: boolean;
-  isLocked?: boolean;
-  cta?: { label: string; href: string };
-};
 
 export type ProjectEmailLog = {
   id: string;
@@ -80,10 +70,6 @@ export type ProjectPageSnapshot = {
   };
   pipeline: {
     stage: ProjectStage;
-  };
-  tasks: {
-    stage: ProjectStage;
-    items: ProjectTaskItem[];
   };
   // System-generated event feed (stage changes, emails sent, quote events). Distinct from
   // the user-authored Activity tab notes, which live in `notes`.

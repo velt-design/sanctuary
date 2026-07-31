@@ -3,13 +3,11 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
-import ProjectWorkQueueList from '@/components/projects/workQueue/ProjectWorkQueueList';
+import PaginatedProjectWorkQueueList from '@/components/projects/workQueue/PaginatedProjectWorkQueueList.client';
 import type { WorkQueueEntryView } from '@/components/projects/workQueue/workQueuePresentation';
-import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import {
   AlertBanner,
   AlertActionButton,
-  ButtonLink,
   DataStatePanel,
   LoadingSkeleton,
   PageLayout,
@@ -27,7 +25,6 @@ function isAccessEndingError(error: unknown): boolean {
 }
 
 export default function WorkQueueClient() {
-  const { role } = usePortalSession();
   const host = useMemo(
     () => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown',
     [],
@@ -80,11 +77,6 @@ export default function WorkQueueClient() {
         variant="index"
         description="One server-confirmed operational obligation per project."
         count={queue.data && !notReady ? `${entries.length} projects` : undefined}
-        right={role === 'admin' && queue.data && !notReady ? (
-          <ButtonLink variant="secondary" href="/staff/projects/work-queue/legacy-review">
-            Review old Contacted projects
-          </ButtonLink>
-        ) : undefined}
       />
 
       {state === 'cached' ? (
@@ -113,7 +105,7 @@ export default function WorkQueueClient() {
         <DataStatePanel
           state="unavailable"
           title="Work Queue not ready"
-          description="Project Work V2 is not available in this environment. Existing projects and legacy tasks are unchanged."
+          description="Project Work is not available in this environment. No unconfirmed work is shown."
           onRetry={() => void queue.refetch()}
         />
       ) : state === 'error' || state === 'unavailable' ? (
@@ -122,7 +114,7 @@ export default function WorkQueueClient() {
           onRetry={state === 'error' ? () => void queue.refetch() : undefined}
         />
       ) : (
-        <ProjectWorkQueueList
+        <PaginatedProjectWorkQueueList
           entries={entries}
           staff={staffQuery.data ?? []}
           host={host}

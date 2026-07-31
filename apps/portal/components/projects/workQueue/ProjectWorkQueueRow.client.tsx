@@ -15,7 +15,7 @@ import { useWorkQueueItemCommands } from './useWorkQueueItemCommands';
 import {
   canManageQueueWorkItem,
   effectiveAssigneeLabel,
-  isManualCompletable,
+  isGenericCompletable,
   queueDueLabel,
   queueEntryReason,
   queueEntryStage,
@@ -53,7 +53,7 @@ export default function ProjectWorkQueueRow({
   const commands = useWorkQueueItemCommands({ entry, host, mutationsEnabled });
   const sentCommand = sentConfirmationCommand(entry);
   const replyCommand = replyConfirmationCommand(entry);
-  const manualCompletable = isManualCompletable(entry);
+  const genericCompletable = isGenericCompletable(entry);
   const manageable = canManageQueueWorkItem(entry);
   const stage = normalizePipelineStageKey(queueEntryStage(entry));
   const owner = effectiveAssigneeLabel(entry, staff);
@@ -102,7 +102,7 @@ export default function ProjectWorkQueueRow({
             >
               Email sent
             </Button>
-          ) : manualCompletable ? (
+          ) : genericCompletable ? (
             <Button
               size="small"
               disabled={primaryBusy || !mutationsEnabled}

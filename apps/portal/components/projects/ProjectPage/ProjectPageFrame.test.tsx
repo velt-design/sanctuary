@@ -65,7 +65,6 @@ const snapshot = {
     owner: { key: "jordan", displayName: "Jordan" },
   },
   pipeline: { stage: "new" },
-  tasks: { stage: "new", items: [] },
   activity: [],
   emails: [],
   notes: [],

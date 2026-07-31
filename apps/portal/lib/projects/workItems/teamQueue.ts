@@ -6,7 +6,11 @@ import {
   commandCentreQuoteDeliveryState,
   normalizeCommandCentreCommercialCandidates,
 } from '@/lib/projects/commandCentre/commercialSelection';
-import { fetchRowsByIdChunks } from '@/lib/list/listLimits';
+import {
+  fetchAllPages,
+  fetchRowsByIdChunks,
+  MAX_LIST_FETCH_ROWS,
+} from '@/lib/list/listLimits';
 import { resolveCommandCentreSelection } from '@/lib/projects/commandCentre/resolve';
 import { appIdFromUuid, isRecord } from '@/lib/supabase/mappers';
 import {
@@ -15,6 +19,7 @@ import {
 } from './domainActionAdapters';
 import { resolveProjectWorkEffectiveAssignee } from './effectiveAssignee';
 import { listProjectWorkModelV2Ids } from './modelBoundary';
+import { isRetiredProjectWorkIdentity } from './prohibitedWork';
 import type {
   ProjectWorkItemPriority,
   ProjectWorkItemSourceType,
@@ -41,6 +46,7 @@ const QUEUE_GROUPS = new Set<ProjectWorkQueueGroup>([
 const SOURCE_TYPES = new Set<ProjectWorkItemSourceType>([
   'LEAD_CADENCE',
   'QUOTE_CADENCE',
+  'STAGE_REVIEW',
   'MANUAL',
   'LEGACY_REVIEW',
 ]);
@@ -118,6 +124,33 @@ function sourceType(value: unknown): ProjectWorkItemSourceType | null {
 
 function projectActivityHref(projectId: string): string {
   return `/staff/projects/${encodeURIComponent(projectId)}?tab=activity`;
+}
+
+function maskRetiredQueueEntry(
+  entry: ProjectWorkQueueEntry,
+): ProjectWorkQueueEntry {
+  if (!isRetiredProjectWorkIdentity(entry)) return entry;
+  return {
+    ...entry,
+    group: 'needsTriage',
+    actionKind: 'needsTriage',
+    title: 'Legacy work needs review',
+    reason:
+      'A retired project action is still selected by the server. Review Project Work before continuing.',
+    dueAt: null,
+    priority: null,
+    blockedReason: null,
+    workItemId: null,
+    workItemRowVersion: null,
+    stateRowVersion: null,
+    sourceType: null,
+    sourceKey: null,
+    subjectKind: null,
+    subjectId: null,
+    repairSignalId: null,
+    repairSignalRowVersion: null,
+    href: projectActivityHref(entry.projectId),
+  };
 }
 
 function durableHref(params: {
@@ -346,7 +379,11 @@ export function composeProjectWorkQueue(params: {
   limit: number;
 }): ProjectWorkQueueEntry[] {
   const byProject = new Map<string, ProjectWorkQueueEntry>();
-  for (const entry of params.durableEntries) {
+  for (const rawEntry of params.durableEntries) {
+    // The rollout cancels expected legacy rows. Mask any stale, manually
+    // prohibited, or partially rolled-out selection instead of exposing its
+    // identity or choosing a replacement in presentation code.
+    const entry = maskRetiredQueueEntry(rawEntry);
     const existing = byProject.get(entry.projectId);
     if (!existing || entryComparison(entry, existing) < 0) {
       byProject.set(entry.projectId, entry);
@@ -390,8 +427,69 @@ export function composeProjectWorkQueue(params: {
   }
 
   return [...byProject.values()]
+    .map(maskRetiredQueueEntry)
     .sort(entryComparison)
     .slice(0, params.limit);
+}
+
+async function loadDurableProjectWorkQueueRows(
+  supabase: SupabaseClient,
+  now: Date,
+): Promise<Row[]> {
+  let result;
+  try {
+    result = await fetchAllPages<Row>((from, to) => supabase
+      .rpc('project_work_queue_v3', {
+        p_now: now.toISOString(),
+        p_limit: MAX_LIST_FETCH_ROWS,
+      })
+      .range(from, to));
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    if (isRecord(error)) {
+      throw Object.assign(
+        new Error(text(error.message) ?? 'Failed to load project work queue'),
+        error,
+      );
+    }
+    throw new Error('Failed to load project work queue');
+  }
+
+  if (result.truncated) {
+    throw new Error(
+      `Project work queue exceeded the safe ${MAX_LIST_FETCH_ROWS}-row fetch limit`,
+    );
+  }
+  return result.rows;
+}
+
+async function assertProjectWorkPortfolioComplete(
+  supabase: SupabaseClient,
+): Promise<void> {
+  const result = await supabase.rpc('staff_project_state_counts_v1');
+  if (result.error) {
+    const message =
+      text(result.error.message) ?? 'Project Work portfolio state is unavailable';
+    const rolloutIncomplete =
+      /PROJECT_WORK_ROLLOUT_INCOMPLETE/i.test(message);
+    throw Object.assign(new Error(message), result.error, {
+      code: rolloutIncomplete
+        ? 'PROJECT_WORK_INVENTORY_INCOMPLETE'
+        : result.error.code,
+    });
+  }
+  const payload = isRecord(result.data) ? result.data : null;
+  const totalCount = payload?.totalCount;
+  if (
+    typeof totalCount !== 'number'
+    || !Number.isFinite(totalCount)
+    || totalCount < 0
+  ) {
+    throw Object.assign(
+      new Error('Project Work portfolio state count is malformed'),
+      { code: 'PROJECT_WORK_INVENTORY_INCOMPLETE' },
+    );
+  }
 }
 
 export async function getAuthoritativeProjectWorkQueue(
@@ -399,21 +497,16 @@ export async function getAuthoritativeProjectWorkQueue(
   options: { now?: Date; limit?: number } = {},
 ): Promise<{ entries: ProjectWorkQueueEntry[]; generatedAt: string }> {
   const now = options.now ?? new Date();
-  const limit = Math.min(500, Math.max(1, options.limit ?? 500));
-  const [durableResult, domainCandidates] = await Promise.all([
-    supabase.rpc('project_work_queue_v3', {
-      p_now: now.toISOString(),
-      p_limit: 500,
-    }),
+  const limit = Math.min(
+    MAX_LIST_FETCH_ROWS,
+    Math.max(1, options.limit ?? MAX_LIST_FETCH_ROWS),
+  );
+  const [durableRows, domainCandidates] = await Promise.all([
+    loadDurableProjectWorkQueueRows(supabase, now),
     loadActiveProjectDomainCandidates(supabase),
+    assertProjectWorkPortfolioComplete(supabase),
   ]);
-  if (durableResult.error) {
-    throw Object.assign(
-      new Error(durableResult.error.message ?? 'Failed to load project work queue'),
-      durableResult.error,
-    );
-  }
-  const durableEntries = rows(durableResult.data).map(mapDurableQueueRow);
+  const durableEntries = rows(durableRows).map(mapDurableQueueRow);
   return {
     entries: composeProjectWorkQueue({ durableEntries, domainCandidates, limit }),
     generatedAt: now.toISOString(),

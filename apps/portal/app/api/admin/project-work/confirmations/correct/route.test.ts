@@ -12,7 +12,7 @@ vi.mock('@/lib/api/adminApi', async () => {
   return { ...actual, requireAdminContext: mocks.requireAdminContext };
 });
 
-vi.mock('@/lib/projects/workItems/legacyTriage/commands', () => ({
+vi.mock('@/lib/projects/workItems/confirmationCorrections/commands', () => ({
   runConfirmationCorrection: mocks.runConfirmationCorrection,
 }));
 

@@ -1,0 +1,5 @@
+.ownerControl {
+  display: grid;
+  justify-self: start;
+  min-width: 0;
+}

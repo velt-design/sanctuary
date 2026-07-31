@@ -4,16 +4,16 @@ import { loadProjectsIndexData, ProjectsIndexSchemaError } from './serverProject
 const params = {
   archive: 'active',
   search: 'deck',
-  status: 'NEW',
-  due: 'all',
-  today: '2026-07-29',
+  status: 'SENT',
+  journey: 'PROPOSAL',
+  state: 'WAITING',
   page: 1,
   pageSize: 50,
   sort: 'newest',
 } as const;
 
 describe('loadProjectsIndexData', () => {
-  it('maps one bounded project page and only its linked contacts', async () => {
+  it('maps one bounded project page with server-owned state', async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: {
         rows: [{
@@ -22,9 +22,10 @@ describe('loadProjectsIndexData', () => {
           name: 'Deck Build',
           created_at: '2026-04-05T00:00:00.000Z',
           updated_at: '2026-04-06T00:00:00.000Z',
-          pipeline_stage: 'NEW',
+          pipeline_stage: 'SENT',
+          operational_state: 'WAITING',
+          effective_state: 'WAITING',
           archived_at: null,
-          follow_up_date: '2026-04-10',
           contact_name: 'Alex Contact',
           contact_email: 'alex@example.com',
           contact_phone: '021',
@@ -43,7 +44,9 @@ describe('loadProjectsIndexData', () => {
       rows: [expect.objectContaining({
         id: 'proj_11111111-1111-4111-8111-111111111111',
         projectName: 'Deck Build',
-        status: 'NEW',
+        status: 'SENT',
+        operationalState: 'WAITING',
+        effectiveState: 'WAITING',
       })],
       totalCount: 81,
       truncated: false,
@@ -55,20 +58,64 @@ describe('loadProjectsIndexData', () => {
       id: 'ct_22222222-2222-4222-8222-222222222222',
       displayName: 'Alex Contact',
     })]);
-    expect(rpc).toHaveBeenCalledWith('staff_projects_index_v1', {
+    expect(rpc).toHaveBeenCalledWith('staff_projects_index_v2', {
       p_archive: 'active',
       p_search: 'deck',
-      p_status: 'NEW',
+      p_status: 'SENT',
       p_due: 'all',
-      p_today: '2026-07-29',
+      p_today: expect.any(String),
       p_page: 1,
       p_page_size: 50,
       p_sort: 'newest',
+      p_state: 'WAITING',
+      p_stages: ['SENT'],
     });
   });
 
+  it('translates a journey filter into its canonical detailed stages', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { rows: [], totalCount: 0, page: 1, pageSize: 50 },
+      error: null,
+    });
+
+    await loadProjectsIndexData(
+      { ...params, status: 'all', state: 'all' },
+      { rpc } as any,
+    );
+
+    expect(rpc).toHaveBeenCalledWith(
+      'staff_projects_index_v2',
+      expect.objectContaining({
+        p_state: 'all',
+        p_stages: ['SITE_VISIT', 'QUOTING', 'SENT'],
+      }),
+    );
+  });
+
+  it('uses a no-match sentinel for incompatible journey and stage filters', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { rows: [], totalCount: 0, page: 1, pageSize: 50 },
+      error: null,
+    });
+
+    await loadProjectsIndexData(
+      { ...params, status: 'NEW' },
+      { rpc } as any,
+    );
+
+    expect(rpc).toHaveBeenCalledWith(
+      'staff_projects_index_v2',
+      expect.objectContaining({ p_stages: ['__NO_MATCH__'] }),
+    );
+  });
+
   it('reports a missing rollout function as an explicit schema gate', async () => {
-    const rpc = vi.fn().mockResolvedValue({ data: null, error: { code: '42883', message: 'function missing' } });
-    await expect(loadProjectsIndexData(params, { rpc } as any)).rejects.toBeInstanceOf(ProjectsIndexSchemaError);
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { code: '42883', message: 'function missing' },
+    });
+    await expect(
+      loadProjectsIndexData(params, { rpc } as any),
+    ).rejects.toBeInstanceOf(ProjectsIndexSchemaError);
   });
 });
