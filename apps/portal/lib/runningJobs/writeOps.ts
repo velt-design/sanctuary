@@ -98,31 +98,6 @@ async function upsertRunningJobMeta(projectUuid: string, patch: Record<string, u
   if (res.error) throw new Error(res.error.message ?? 'Failed to update running-job metadata.');
 }
 
-async function setTaskComplete(projectUuid: string, taskKey: string, completed: boolean) {
-  const supabase = await getSupabaseServerAuth();
-  if (completed) {
-    const res = await supabase.from('project_task_checks').upsert(
-      {
-        project_id: projectUuid,
-        task_key: taskKey,
-        completed_at: new Date().toISOString(),
-        completed_by: null,
-      },
-      { onConflict: 'project_id,task_key' },
-    );
-    if (res.error) throw new Error(res.error.message ?? 'Failed to update task state.');
-    return;
-  }
-
-  const delRes = await supabase.from('project_task_checks').delete().eq('project_id', projectUuid).eq('task_key', taskKey);
-  if (delRes.error) throw new Error(delRes.error.message ?? 'Failed to update task state.');
-
-  if (taskKey === 'order_materials') {
-    const dependentRes = await supabase.from('project_task_checks').delete().eq('project_id', projectUuid).eq('task_key', 'job_complete');
-    if (dependentRes.error) throw new Error(dependentRes.error.message ?? 'Failed to clear dependent task.');
-  }
-}
-
 function isRunningJobFactConflict(error: unknown): boolean {
   const raw = error as { code?: unknown; message?: unknown; details?: unknown };
   const text = [raw?.message, raw?.details]
@@ -314,7 +289,7 @@ export async function applyRunningJobCellMutation(input: {
   const editability = getRunningJobCellEditability(input.currentRow, input.key);
   if (!editability.editable) throw new Error(editability.reason ?? 'This cell is not editable.');
   if (!input.actorUserId) throw new Error('A staff actor is required.');
-  const usesV2Facts = input.currentRow.state.workModelVersion === 2;
+  const isV2WorkModel = input.currentRow.state.workModelVersion === 2;
 
   switch (input.key) {
     case 'client_name':
@@ -341,16 +316,12 @@ export async function applyRunningJobCellMutation(input: {
       );
       break;
     case 'materials_ordered':
-      if (usesV2Facts) {
-        await setRunningJobFact({
-          projectUuid: input.projectUuid,
-          fact: 'materials_ordered',
-          value: Boolean(input.value),
-          expectedRowVersion: input.currentRow.state.meta.rowVersion,
-        });
-      } else {
-        await setTaskComplete(input.projectUuid, 'order_materials', Boolean(input.value));
-      }
+      await setRunningJobFact({
+        projectUuid: input.projectUuid,
+        fact: 'materials_ordered',
+        value: Boolean(input.value),
+        expectedRowVersion: input.currentRow.state.meta.rowVersion,
+      });
       break;
     case 'final_payment_date':
       await updateProjectField(input.projectUuid, { final_payment_date: input.value });
@@ -360,16 +331,12 @@ export async function applyRunningJobCellMutation(input: {
       await upsertRunningJobMeta(input.projectUuid, { lights_status: input.value });
       break;
     case 'roofing_ordered':
-      if (usesV2Facts) {
-        await setRunningJobFact({
-          projectUuid: input.projectUuid,
-          fact: 'roofing_ordered',
-          value: Boolean(input.value),
-          expectedRowVersion: input.currentRow.state.meta.rowVersion,
-        });
-      } else {
-        await setTaskComplete(input.projectUuid, 'roofing_ordered', Boolean(input.value));
-      }
+      await setRunningJobFact({
+        projectUuid: input.projectUuid,
+        fact: 'roofing_ordered',
+        value: Boolean(input.value),
+        expectedRowVersion: input.currentRow.state.meta.rowVersion,
+      });
       break;
     case 'running_notes':
       await upsertRunningJobMeta(input.projectUuid, { notes: input.value });
@@ -398,12 +365,9 @@ export async function applyRunningJobCellMutation(input: {
         const scheduleRes = await runScheduleMutation(input.key, input.projectUuid, Boolean(input.value), input);
         if (scheduleRes?.requires_confirmation || scheduleRes?.requires_finish_early) return scheduleRes;
       }
-      if (!usesV2Facts) {
-        await setTaskComplete(input.projectUuid, 'job_complete', Boolean(input.value));
-        if (input.value) {
+        if (!isV2WorkModel && input.value) {
           await maybeAdvanceToCompleted(input.projectId, input.currentRow);
         }
-      }
       break;
     default: {
       const exhaustive: never = input.key;

@@ -1,7 +1,25 @@
 import { appIdFromUuid } from '@/lib/supabase/mappers';
-import type { Project } from '@/lib/types/project';
+import {
+  PROJECT_EFFECTIVE_STATES,
+  type Project,
+  type ProjectEffectiveState,
+} from '@/lib/types/project';
 import { normalizeProjectStatus } from '@/lib/types/project';
+import type { ProjectOperationalState } from '@/lib/projects/workItems/types';
 import { nowIso } from '@/lib/utils/time';
+
+function operationalState(value: unknown): ProjectOperationalState | undefined {
+  return value === 'ACTIVE' || value === 'WAITING' || value === 'CLOSED'
+    ? value
+    : undefined;
+}
+
+function effectiveState(value: unknown): ProjectEffectiveState | undefined {
+  return typeof value === 'string'
+    && PROJECT_EFFECTIVE_STATES.includes(value as ProjectEffectiveState)
+    ? value as ProjectEffectiveState
+    : undefined;
+}
 
 export function mapProjectRecord(row: Record<string, unknown>): Project {
   const createdAt = typeof row.created_at === 'string' ? row.created_at : nowIso();
@@ -24,6 +42,8 @@ export function mapProjectRecord(row: Record<string, unknown>): Project {
     siteAddress: siteAddress || undefined,
     address: siteAddress || undefined,
     status: normalized.status,
+    operationalState: operationalState(row.operational_state),
+    effectiveState: effectiveState(row.effective_state),
     isLost: normalized.isLost,
     isArchived: typeof row.archived_at === 'string' ? true : normalized.isArchived,
     legacyStatus: normalized.legacyStatus,

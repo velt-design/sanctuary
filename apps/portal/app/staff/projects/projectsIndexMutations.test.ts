@@ -24,6 +24,8 @@ const project: Project = {
   address: '1 Old Road',
   status: 'NEW',
   isArchived: false,
+  operationalState: 'ACTIVE',
+  effectiveState: 'ACTIVE',
   createdAt: '2026-07-19T00:00:00.000Z',
   updatedAt: '2026-07-19T00:00:00.000Z',
 };
@@ -42,7 +44,7 @@ function response(archive: ProjectsIndexResponse['archive'], rows: Project[]): P
     archive,
     projects: { rows, totalCount: rows.length, truncated: false, page: 1, pageSize: 50, totalPages: 1 },
     contacts: { rows: [contact], totalCount: 1, truncated: false },
-    query: { search: '', status: 'all', due: 'all', today: '2026-07-29', sort: 'newest' },
+    query: { search: '', status: 'all', journey: 'all', state: 'all', sort: 'newest' },
     generatedAt: '2026-07-19T00:00:00.000Z',
   };
 }
@@ -139,6 +141,40 @@ describe('projectsIndexMutations', () => {
     expect(client.getQueryData<Project[]>(qk.projects.list('host', 'active'))?.[0].status).toBe('NEW');
   });
 
+  it('leaves server-filtered index membership unchanged during a stage correction', async () => {
+    const client = seededClient();
+    const filteredKey = qk.projects.index(
+      PROJECTS_INDEX_QUERY_SCOPE,
+      'active',
+      { journey: 'ENQUIRY' },
+    );
+    client.setQueryData<ProjectsIndexResponse>(filteredKey, {
+      ...response('active', [project]),
+      query: {
+        search: '',
+        status: 'all',
+        journey: 'ENQUIRY',
+        state: 'all',
+        sort: 'newest',
+      },
+    });
+    const request = deferred<Awaited<ReturnType<typeof correctProjectStage>>>();
+    vi.mocked(correctProjectStage).mockReturnValue(request.promise);
+
+    const save = correctProjectIndexStage({
+      queryClient: client,
+      host: 'host',
+      project,
+      correction: { projectId: project.id, nextStage: 'sent', reason: null },
+    });
+
+    expect(
+      client.getQueryData<ProjectsIndexResponse>(filteredKey)?.projects.rows[0],
+    ).toMatchObject({ status: 'NEW' });
+    request.resolve({} as Awaited<ReturnType<typeof correctProjectStage>>);
+    await save;
+  });
+
   it('moves an archived row immediately and restores the same row after rejection', async () => {
     const client = seededClient();
     const request = deferred<unknown>();
@@ -156,12 +192,12 @@ describe('projectsIndexMutations', () => {
     expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'))?.projects.rows)
       .toEqual([]);
     expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'archived'))?.projects.rows[0])
-      .toMatchObject({ id: 'proj_1', isArchived: true });
+      .toMatchObject({ id: 'proj_1', isArchived: true, effectiveState: 'ARCHIVED' });
 
     request.reject(new Error('archive rejected'));
     await expect(save).rejects.toThrow('archive rejected');
     expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'))?.projects.rows[0])
-      .toMatchObject({ id: 'proj_1', isArchived: false });
+      .toMatchObject({ id: 'proj_1', isArchived: false, effectiveState: 'ACTIVE' });
     expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'archived'))?.projects.rows)
       .toEqual([]);
   });

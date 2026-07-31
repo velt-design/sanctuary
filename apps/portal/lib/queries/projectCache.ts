@@ -57,8 +57,18 @@ function canOptimisticallyEnterFirstProjectPage(current: ProjectsIndexResponse):
   return current.projects.page === 1
     && current.query.search === ''
     && current.query.status === 'all'
-    && current.query.due === 'all'
+    && current.query.journey === 'all'
+    && current.query.state === 'all'
     && current.query.sort === 'newest';
+}
+
+function canOptimisticallyPatchExistingProject(
+  current: ProjectsIndexResponse,
+): boolean {
+  return current.query.search === ''
+    && current.query.status === 'all'
+    && current.query.journey === 'all'
+    && current.query.state === 'all';
 }
 
 export function buildProjectSnapshotPlaceholder(
@@ -88,10 +98,6 @@ export function buildProjectSnapshotPlaceholder(
     },
     pipeline: {
       stage,
-    },
-    tasks: {
-      stage,
-      items: [],
     },
     activity: [],
     emails: [],
@@ -154,6 +160,7 @@ export function patchProjectListItem(
       { queryKey: qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive) },
       (current) => {
       if (!current) return current;
+      if (!canOptimisticallyPatchExistingProject(current)) return current;
       const existing = current.projects.rows.find((project) => project.id === projectId);
       if (!existing) return current;
       const nextProject = cloneProject(updater(existing));
@@ -201,6 +208,9 @@ export function upsertProjectListItem(
       if (!current) return current;
       const belongs = archive === 'all' || (archive === 'active' ? !project.isArchived : Boolean(project.isArchived));
       const existing = current.projects.rows.find((entry) => entry.id === project.id);
+      if (existing && !canOptimisticallyPatchExistingProject(current)) {
+        return current;
+      }
       if (!existing && (!belongs || !canOptimisticallyEnterFirstProjectPage(current))) return current;
       const next = withProjectMembership(current.projects.rows, project, belongs);
       const rows = next.rows.slice(0, current.projects.pageSize);

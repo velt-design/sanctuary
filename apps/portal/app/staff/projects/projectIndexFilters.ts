@@ -1,19 +1,61 @@
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
-import { portalTodayYmd } from '@/lib/format/portalDateTime';
-import { normalizeProjectStatus } from '@/lib/types/project';
+import {
+  PROJECT_JOURNEY_PHASES,
+  PROJECT_JOURNEY_PHASE_LABELS,
+  resolveProjectJourney,
+} from '@/lib/projects/projectJourney';
+import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
+import {
+  isProjectsIndexJourneyFilter,
+  isProjectsIndexStateFilter,
+  isProjectsIndexStatusFilter,
+  type ProjectsIndexArchiveFilter,
+  type ProjectsIndexJourneyFilter,
+  type ProjectsIndexStateFilter,
+} from '@/lib/projects/projectsIndexContract';
+import {
+  PROJECT_EFFECTIVE_STATES,
+  PROJECT_STATUS_ORDER,
+  projectStatusLabel,
+  type ProjectStatus,
+} from '@/lib/types/project';
 
-type DueFilter = 'all' | 'due' | 'overdue' | 'today';
-export type ArchiveFilter = 'active' | 'archived' | 'all';
+export type ArchiveFilter = ProjectsIndexArchiveFilter;
 
 export type ProjectsIndexFilters = {
   query: string;
-  statusFilter: Project['status'] | 'all';
-  dueFilter: DueFilter;
+  journeyFilter: ProjectsIndexJourneyFilter;
+  stageFilter: ProjectStatus | 'all';
+  stateFilter: ProjectsIndexStateFilter;
   archiveFilter: ArchiveFilter;
 };
 
 type SearchParamSource = URLSearchParams | Record<string, string | string[] | undefined>;
+
+export const PROJECT_JOURNEY_FILTER_OPTIONS = [
+  { value: 'all', label: 'All journeys' },
+  ...PROJECT_JOURNEY_PHASES.map((phase) => ({
+    value: phase,
+    label: PROJECT_JOURNEY_PHASE_LABELS[phase],
+  })),
+] as const;
+
+export const PROJECT_STAGE_FILTER_OPTIONS = [
+  { value: 'all', label: 'All stages' },
+  ...PROJECT_STATUS_ORDER.map((stage) => ({
+    value: stage,
+    label: projectStatusLabel(stage),
+  })),
+] as const;
+
+export const PROJECT_STATE_FILTER_OPTIONS = [
+  { value: 'all', label: 'All states' },
+  ...PROJECT_EFFECTIVE_STATES.map((state) => ({
+    value: state,
+    label: state.charAt(0) + state.slice(1).toLowerCase(),
+  })),
+] as const;
 
 function readFirst(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? '';
@@ -25,47 +67,51 @@ function readParam(source: SearchParamSource, key: string): string {
   return readFirst((source as Record<string, string | string[] | undefined>)[key]);
 }
 
-function toYmd(value: string | null | undefined): string | null {
-  const raw = (value ?? '').trim();
-  if (!raw) return null;
-  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
-  return match ? match[1] : null;
-}
-
-export function todayYmd(now: Date | string | number = new Date()): string {
-  return portalTodayYmd(now);
-}
-
 export function normalizePhone(value: string | null | undefined): string {
   return (value ?? '').replace(/\D+/g, '');
 }
 
 export function parseProjectsIndexFilters(searchParams: SearchParamSource): ProjectsIndexFilters {
-  const statusParam = readParam(searchParams, 'status').trim();
+  const stageParam = (
+    readParam(searchParams, 'stage')
+    || readParam(searchParams, 'status')
+  ).trim().toUpperCase();
+  const journeyParam = readParam(searchParams, 'journey').trim().toUpperCase();
+  const stateParam = readParam(searchParams, 'state').trim().toUpperCase();
   const query = readParam(searchParams, 'q').trim();
-  const dueParam = readParam(searchParams, 'due').trim().toLowerCase();
-  const dueFlag = readParam(searchParams, 'nextActionDue').trim().toLowerCase();
   const archiveParam = readParam(searchParams, 'archive').trim().toLowerCase();
 
-  const statusFilter =
-    !statusParam || statusParam.toLowerCase() === 'all'
-      ? 'all'
-      : (normalizeProjectStatus(statusParam).status ?? 'all');
+  const stageFilter = stageParam && stageParam !== 'ALL' && isProjectsIndexStatusFilter(stageParam)
+    ? stageParam
+    : 'all';
+  const journeyFilter = journeyParam && journeyParam !== 'ALL' && isProjectsIndexJourneyFilter(journeyParam)
+    ? journeyParam
+    : 'all';
+  const explicitState = Boolean(stateParam);
+  const requestedState = stateParam === 'ALL' ? 'all' : stateParam;
+  const stateFilter = explicitState && isProjectsIndexStateFilter(requestedState)
+    ? requestedState
+    : !explicitState && archiveParam === 'archived'
+      ? 'ARCHIVED'
+      : 'all';
 
-  let dueFilter: DueFilter = 'all';
-  if (dueParam === 'overdue' || dueParam === 'today') {
-    dueFilter = dueParam;
-  } else if (['1', 'true', 'yes', 'y'].includes(dueFlag) || dueParam === 'due') {
-    dueFilter = 'due';
-  }
-
-  const archiveFilter: ArchiveFilter =
-    archiveParam === 'archived' || archiveParam === 'all' ? archiveParam : 'active';
+  const archiveFilter: ArchiveFilter = explicitState
+    ? stateFilter === 'all'
+      ? archiveParam === 'archived' || archiveParam === 'all'
+        ? archiveParam
+        : 'active'
+      : stateFilter === 'ARCHIVED'
+      ? 'archived'
+      : 'active'
+    : archiveParam === 'archived' || archiveParam === 'all'
+      ? archiveParam
+      : 'active';
 
   return {
     query,
-    statusFilter,
-    dueFilter,
+    journeyFilter,
+    stageFilter,
+    stateFilter,
     archiveFilter,
   };
 }
@@ -80,7 +126,6 @@ export function filterProjectsForIndex(
   projects: Project[],
   contactsById: Map<string, Contact>,
   filters: ProjectsIndexFilters,
-  nowYmd: string,
 ): Project[] {
   const rawNeedle = filters.query.trim();
   const needle = rawNeedle.toLowerCase();
@@ -91,15 +136,15 @@ export function filterProjectsForIndex(
     if (filters.archiveFilter === 'active' && isArchived) return false;
     if (filters.archiveFilter === 'archived' && !isArchived) return false;
 
-    if (filters.statusFilter !== 'all' && (project.status ?? 'NEW') !== filters.statusFilter) return false;
+    if (filters.stageFilter !== 'all' && (project.status ?? 'NEW') !== filters.stageFilter) return false;
 
-    const nextAction = toYmd(project.nextActionDate ?? project.followUpDate);
-    if (filters.dueFilter !== 'all') {
-      if (!nextAction) return false;
-      if (filters.dueFilter === 'due' && nextAction > nowYmd) return false;
-      if (filters.dueFilter === 'overdue' && nextAction >= nowYmd) return false;
-      if (filters.dueFilter === 'today' && nextAction !== nowYmd) return false;
+    if (filters.journeyFilter !== 'all') {
+      const stage = normalizePipelineStageKey(project.status ?? 'NEW');
+      const journey = resolveProjectJourney(stage);
+      if (journey.phase !== filters.journeyFilter) return false;
     }
+
+    if (filters.stateFilter !== 'all' && project.effectiveState !== filters.stateFilter) return false;
 
     if (!needle) return true;
 

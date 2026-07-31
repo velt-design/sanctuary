@@ -2,14 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectWorkProjection } from '../workItems/types';
 
 const commandCentreDependencies = vi.hoisted(() => ({
-  getProjectCommandOperations: vi.fn(),
   getProjectWorkProjection: vi.fn(),
   getProjectWorkDomainActions: vi.fn(),
   isProjectWorkModelV2: vi.fn(),
-}));
-
-vi.mock('./getProjectCommandOperations', () => ({
-  getProjectCommandOperations: commandCentreDependencies.getProjectCommandOperations,
 }));
 
 vi.mock('@/lib/projects/workItems/repository', () => ({
@@ -33,8 +28,6 @@ const UUID = {
   quote: '44444444-4444-4444-8444-444444444444',
   quoteParent: '55555555-5555-4555-8555-555555555555',
 };
-
-const LEGACY_OPERATIONS = { owner: 'legacy-operation-owner' };
 
 const PROJECT_WORK = {
   projectId: UUID.project,
@@ -111,6 +104,7 @@ function projectRow(
   return {
     id: UUID.project,
     pipeline_stage: 'NEW',
+    ownerAssignment: [],
     estimates,
     quotes: quoteVersions.length ? [{ id: UUID.quoteParent, quote_ref: 'Q-0100', quoteVersions }] : [],
   };
@@ -142,9 +136,6 @@ const DETAIL = {
 
 describe('getProjectCommandCentre', () => {
   beforeEach(() => {
-    commandCentreDependencies.getProjectCommandOperations
-      .mockReset()
-      .mockResolvedValue(LEGACY_OPERATIONS);
     commandCentreDependencies.getProjectWorkProjection
       .mockReset()
       .mockResolvedValue(PROJECT_WORK);
@@ -162,15 +153,17 @@ describe('getProjectCommandCentre', () => {
     const result = await getProjectCommandCentre(`proj_${UUID.project}`, client);
     expect(result?.workModel).toBe('legacy');
     expect(result?.currentDesign).toMatchObject({ source: 'none', designState: 'none' });
-    expect(result).toHaveProperty('operations', LEGACY_OPERATIONS);
-    expect(result).not.toHaveProperty('projectWork');
-    expect(commandCentreDependencies.getProjectCommandOperations).toHaveBeenCalledWith({
-      projectUuid: UUID.project,
-      stage: 'new',
-      supabase: client,
-      viewerUserId: '',
-      isAdmin: false,
+    expect(result).toMatchObject({
+      legacyWork: { status: 'retired' },
+      owner: {
+        owner: null,
+        required: true,
+        missing: true,
+        permissions: { canManage: false },
+      },
     });
+    expect(result).not.toHaveProperty('operations');
+    expect(result).not.toHaveProperty('projectWork');
     expect(commandCentreDependencies.getProjectWorkProjection).not.toHaveBeenCalled();
     expect(client.from).not.toHaveBeenCalledWith('estimates');
     const projectSelect = client.from.mock.results[0].value.select.mock.calls[0][0] as string;
@@ -180,7 +173,7 @@ describe('getProjectCommandCentre', () => {
     expect(commandCentreDependencies.isProjectWorkModelV2).toHaveBeenCalledWith(client, UUID.project);
   });
 
-  it('uses project work as the sole V2 operation owner without loading legacy operations', async () => {
+  it('uses project work as the sole V2 operation owner', async () => {
     commandCentreDependencies.isProjectWorkModelV2.mockResolvedValueOnce(true);
     const client = createClient(
       projectRow([estimateRow()], [quoteRow()]),
@@ -215,7 +208,6 @@ describe('getProjectCommandCentre', () => {
       recoveryAction: null,
       specialistAction: null,
     }));
-    expect(commandCentreDependencies.getProjectCommandOperations).not.toHaveBeenCalled();
   });
 
   it('fails closed when a marked V2 project has no project-work projection', async () => {
@@ -226,7 +218,6 @@ describe('getProjectCommandCentre', () => {
     await expect(
       getProjectCommandCentre(`proj_${UUID.project}`, client),
     ).rejects.toThrow('V2 project work could not be loaded');
-    expect(commandCentreDependencies.getProjectCommandOperations).not.toHaveBeenCalled();
   });
 
   it('returns the quote-ready estimate price and ignores the ambiguous saved summary', async () => {

@@ -155,12 +155,11 @@ export default function ProjectCommandCentreFixtureClient({
       </div>
     );
   }
-  const orientationState =
-    work.workModel === "v2" ? work.projectWork.effectiveState : null;
+  const orientationState = work.projectWork.effectiveState;
   const project = {
     ...commandCentreOverviewFixtureProject,
     ...work.project,
-    stage: work.tasks.stage,
+    stage: work.stage,
   };
   const exception =
     viewState === "refreshing" ? (
@@ -213,24 +212,12 @@ export default function ProjectCommandCentreFixtureClient({
         description="No action is available until server reads agree."
       />
     </WorkState>
-  ) : work.workModel === "v2" ? (
+  ) : (
     <ProjectWorkSection
       workModel="v2"
       projectId={project.id}
       host="fixture"
       projectWork={work.projectWork}
-      pipelineStage={project.stage}
-      stale={stale}
-      onRefresh={() => undefined}
-      initialStaff={commandCentreFixtureStaff}
-    />
-  ) : (
-    <ProjectWorkSection
-      workModel="legacy"
-      projectId={project.id}
-      host="fixture"
-      operations={work.operations}
-      tasks={work.tasks}
       pipelineStage={project.stage}
       stale={stale}
       onRefresh={() => undefined}

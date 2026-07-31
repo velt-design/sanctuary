@@ -1,7 +1,7 @@
 "use client";
 
-import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type { ProjectCommandStaffSummary } from "@/lib/projects/commandCentre/types";
+import { isGenericCompletableWorkSource } from "@/lib/projects/workItems/workItemCapabilities";
 import {
   Badge,
   Button,
@@ -17,89 +17,15 @@ import {
   projectWorkAssigneeLabel,
   sentCommandForWorkItem,
 } from "./projectWorkPresentation";
-import {
-  isProhibitedLegacyTask,
-  isProhibitedProjectWorkItem,
-} from "./projectWorkVisibilityPolicy";
+import { isProhibitedProjectWorkItem } from "./projectWorkVisibilityPolicy";
 import styles from "./ProjectWorkSection.module.css";
 
-type V2ProjectWorkListProps = {
-  model: "v2";
+type ProjectWorkListProps = {
   controller: ProjectWorkCommandController;
   staff?: ProjectCommandStaffSummary[];
 };
 
-type LegacyProjectWorkListProps = {
-  model: "legacy";
-  tasks: ProjectPageSnapshot["tasks"];
-};
-
-type ProjectWorkListProps =
-  | V2ProjectWorkListProps
-  | LegacyProjectWorkListProps;
-
 export default function ProjectWorkList(props: ProjectWorkListProps) {
-  if (props.model === "legacy") {
-    const visibleItems = props.tasks.items.filter(
-      (item) => !isProhibitedLegacyTask(item, props.tasks.stage),
-    );
-    return (
-      <section
-        className={styles.workList}
-        aria-labelledby="legacy-project-work-list-title"
-        data-project-work-list="legacy"
-      >
-        <div className={styles.subsectionHeading}>
-          <div>
-            <h3 id="legacy-project-work-list-title">Legacy stage work</h3>
-            <p>Compatibility rows are read-only on the Overview.</p>
-          </div>
-          <Badge tone="neutral">Read-only</Badge>
-        </div>
-        {visibleItems.length ? (
-          <TaskList ariaLabel="Read-only legacy stage work">
-            {visibleItems.map((item) => (
-              <TaskRow
-                key={item.key}
-                checked={item.isDone}
-                showControl={false}
-                label={
-                  <span data-legacy-stage-row-readonly="true">
-                    {item.label}
-                  </span>
-                }
-                description={
-                  item.kind === "action"
-                    ? "Server-owned legacy action"
-                    : "Legacy stage check"
-                }
-                status={
-                  <Badge
-                    tone={
-                      item.isDone
-                        ? "success"
-                        : item.isLocked
-                          ? "neutral"
-                          : "warning"
-                    }
-                  >
-                    {item.isDone ? "Done" : item.isLocked ? "Locked" : "Open"}
-                  </Badge>
-                }
-              />
-            ))}
-          </TaskList>
-        ) : (
-          <EmptyState
-            compact
-            title="No visible legacy stage work"
-            description="Prohibited legacy work stays hidden and no replacement is selected in the browser."
-          />
-        )}
-      </section>
-    );
-  }
-
   const visibleBlockedPrimary =
     props.controller.primaryItem?.status === "BLOCKED" &&
     !isProhibitedProjectWorkItem(props.controller.primaryItem);
@@ -200,7 +126,7 @@ export default function ProjectWorkList(props: ProjectWorkListProps) {
                           Customer replied
                         </Button>
                       ) : null}
-                      {item.sourceType === "MANUAL" ? (
+                      {isGenericCompletableWorkSource(item.sourceType) ? (
                         <Button
                           size="small"
                           loading={itemPending}

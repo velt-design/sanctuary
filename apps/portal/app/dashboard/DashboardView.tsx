@@ -5,9 +5,8 @@ import RecentActivityCard from './_components/RecentActivityCard';
 import DashboardTasksCard from './_components/DashboardTasksCard.client';
 import dash from './dashboard.module.css';
 import DashboardHero from './_components/DashboardHero';
-import AttentionTodayCard from './_components/AttentionTodayCard';
 import RecentEstimatesCard from './_components/RecentEstimatesCard';
-import ProjectActionQueueCard from './_components/ProjectActionQueueCard';
+import ProjectWorkQueueCard from './_components/ProjectWorkQueueCard';
 
 export default function DashboardView({
   data,
@@ -41,15 +40,18 @@ export default function DashboardView({
         ) : null}
 
         <div className={dash.layout}>
-          <PipelineCountsCard counts={data.pipelineCounts} />
+          <PipelineCountsCard
+            counts={data.pipelineCounts}
+            stateCounts={data.projectStateCounts}
+            stateCountsAvailable={data.projectStateCountsAvailable !== false}
+          />
 
           <div className={dash.workspaceGrid}>
-            <AttentionTodayCard items={data.attention} />
-            <RecentActivityCard items={data.recentActivity} />
-            <ProjectActionQueueCard
+            <ProjectWorkQueueCard
               items={data.projectWorkQueue ?? []}
               available={data.projectWorkQueueAvailable !== false}
             />
+            <RecentActivityCard items={data.recentActivity} />
             <RecentEstimatesCard items={data.recentEstimates} />
             <DashboardTasksCard initialTasks={data.personalTasks} />
           </div>

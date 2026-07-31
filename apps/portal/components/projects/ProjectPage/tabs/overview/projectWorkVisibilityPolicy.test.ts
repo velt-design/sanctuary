@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ProjectWorkPrimaryCandidate } from "@/lib/projects/workItems/types";
 import {
   hasProhibitedProjectWorkText,
+  isProhibitedProjectWorkItem,
   isProhibitedProjectWorkPrimary,
 } from "./projectWorkVisibilityPolicy";
 
@@ -24,6 +25,17 @@ describe("projectWorkVisibilityPolicy", () => {
     };
 
     expect(isProhibitedProjectWorkPrimary(waitingReview)).toBe(false);
+  });
+
+  it("classifies a retired legacy-review source even when its title is neutral", () => {
+    expect(
+      isProhibitedProjectWorkItem({
+        title: "Review project",
+        sourceType: "LEGACY_REVIEW",
+        sourceKey: null,
+        seriesKey: null,
+      } as any),
+    ).toBe(true);
   });
 
   it.each<ProjectWorkPrimaryCandidate>([

@@ -1,23 +1,35 @@
 import type { CSSProperties } from 'react';
 import type { PipelineCounts } from '@/lib/dashboard/types';
+import type { ProjectOperationalStateCounts } from '@/lib/projects/workItems/stateCounts';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import dash from '../dashboard.module.css';
-import { statusHref } from '@/lib/dashboard/links';
-import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/projects/pipelineDefinition';
+import { journeyHref, projectStateHref } from '@/lib/dashboard/links';
+import { normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/projects/pipelineDefinition';
+import {
+  aggregateProjectStageCountsByJourney,
+  PROJECT_JOURNEY_PHASE_LABELS,
+  PROJECT_JOURNEY_PHASES,
+} from '@/lib/projects/projectJourney';
 import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 
-export default function PipelineCountsCard({ counts }: { counts: PipelineCounts }) {
+const OPERATIONAL_STATES = ['ACTIVE', 'WAITING', 'CLOSED', 'ARCHIVED'] as const;
+
+export default function PipelineCountsCard({
+  counts,
+  stateCounts,
+  stateCountsAvailable = true,
+}: {
+  counts: PipelineCounts;
+  stateCounts?: ProjectOperationalStateCounts;
+  stateCountsAvailable?: boolean;
+}) {
   const normalized = toCanonicalStageCounts(counts);
+  const journeyCounts = aggregateProjectStageCountsByJourney(normalized);
   const gridStyle = {
-    gridTemplateColumns: `repeat(${PIPELINE_STAGES.length}, minmax(0, 1fr))`,
+    gridTemplateColumns: `repeat(${PROJECT_JOURNEY_PHASES.length}, minmax(0, 1fr))`,
   } satisfies CSSProperties;
 
   if (process.env.NODE_ENV !== 'production') {
-    const keys = PIPELINE_STAGES.map((s) => s.key);
-    if (new Set(keys).size !== keys.length) {
-      console.warn('PIPELINE_STAGES contains duplicates', keys);
-    }
-
     const unknown = Object.keys(counts ?? {}).filter((key) => !normalizePipelineStageKey(key));
     if (unknown.length) {
       console.warn('Unknown pipeline stage keys:', unknown);
@@ -25,28 +37,44 @@ export default function PipelineCountsCard({ counts }: { counts: PipelineCounts 
   }
 
   return (
-    <section className={`${styles.section} ${dash.card} ${dash.pipelineCard}`} aria-label="Pipeline counts">
+    <section className={`${styles.section} ${dash.card} ${dash.pipelineCard}`} aria-label="Project portfolio">
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
-        <h2 className={styles.sectionTitle}>Pipeline</h2>
-        <span className={dash.sectionMeta}>Counts by stage</span>
+        <h2 className={styles.sectionTitle}>Project portfolio</h2>
+        <span className={dash.sectionMeta}>Journey and state</span>
       </div>
       <div className={`${styles.sectionBody} ${dash.cardBody} ${dash.cardBodyNoScroll}`}>
         <div className={dash.pipelineStrip}>
           <div className={dash.pipelineGrid} style={gridStyle}>
-            {PIPELINE_STAGES.map((stage) => {
-              const count = normalized[stage.key] ?? 0;
+            {PROJECT_JOURNEY_PHASES.map((phase) => {
+              const count = journeyCounts[phase];
               return (
                 <ProjectsIndexLink
-                  key={stage.key}
+                  key={phase}
                   className={`${dash.pipelineCell} ${count > 0 ? dash.pipelineCellActive : ''}`}
-                  href={statusHref(stage.key)}
+                  href={journeyHref(phase)}
                 >
-                  <span className={dash.pipelineLabel}>{stage.label}</span>
+                  <span className={dash.pipelineLabel}>{PROJECT_JOURNEY_PHASE_LABELS[phase]}</span>
                   <span className={`${dash.pipelineCount} ${count === 0 ? dash.pipelineCountMuted : ''}`}>{count}</span>
                 </ProjectsIndexLink>
               );
             })}
           </div>
+        </div>
+        <div
+          className={dash.projectStateGrid}
+          aria-label="Project operational states"
+          data-project-state-counts={stateCountsAvailable && stateCounts ? 'ready' : 'unavailable'}
+        >
+          {OPERATIONAL_STATES.map((state) => (
+            <ProjectsIndexLink
+              key={state}
+              className={dash.projectStateCell}
+              href={projectStateHref(state)}
+            >
+              <span>{state[0]}{state.slice(1).toLowerCase()}</span>
+              <strong>{stateCountsAvailable && stateCounts ? stateCounts[state] : '—'}</strong>
+            </ProjectsIndexLink>
+          ))}
         </div>
       </div>
     </section>

@@ -2,6 +2,11 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { mapContactRecord } from '@/lib/contacts/contactRecord';
+import { portalTodayYmd } from '@/lib/format/portalDateTime';
+import {
+  buildProjectJourneyStageSet,
+  type ProjectJourneyPhase,
+} from '@/lib/projects/projectJourney';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { mapProjectRecord } from './projectRecord';
 import type {
@@ -30,7 +35,7 @@ function isMissingFunction(error: unknown): boolean {
   const message = typeof candidate.message === 'string' ? candidate.message : '';
   return code === 'PGRST202'
     || code === '42883'
-    || /staff_projects_index_v1|schema cache|function .* does not exist/i.test(message);
+    || /staff_projects_index_v[12]|schema cache|function .* does not exist/i.test(message);
 }
 
 function readPayload(value: unknown): RpcPayload {
@@ -57,20 +62,36 @@ function contactFromProjectRow(row: Record<string, unknown>) {
   });
 }
 
+function stagesForProjectsIndex(params: ProjectsIndexParams): string[] | null {
+  if (params.journey === 'all') {
+    return params.status === 'all' ? null : [params.status];
+  }
+
+  const journeyStages = [...buildProjectJourneyStageSet([
+    params.journey as ProjectJourneyPhase,
+  ])].map((stage) => stage.toUpperCase());
+  if (params.status === 'all') return journeyStages;
+  return journeyStages.includes(params.status)
+    ? [params.status]
+    : ['__NO_MATCH__'];
+}
+
 export async function loadProjectsIndexData(
   params: ProjectsIndexParams,
   supabase?: SupabaseClient,
 ): Promise<Pick<ProjectsIndexResponse, 'projects' | 'contacts'>> {
   const client = supabase ?? (await getSupabaseServerAuth());
-  const result = await client.rpc('staff_projects_index_v1', {
+  const result = await client.rpc('staff_projects_index_v2', {
     p_archive: params.archive,
     p_search: params.search,
     p_status: params.status,
-    p_due: params.due,
-    p_today: params.today,
+    p_due: 'all',
+    p_today: portalTodayYmd(),
     p_page: params.page,
     p_page_size: params.pageSize,
     p_sort: params.sort,
+    p_state: params.state,
+    p_stages: stagesForProjectsIndex(params),
   });
   if (result.error) {
     if (isMissingFunction(result.error)) throw new ProjectsIndexSchemaError();

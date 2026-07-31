@@ -124,7 +124,7 @@ Before enabling or rolling back `workbench_solved`, run downstream immutability 
 - Public invoice pages require a valid invoice ID plus token and treat invalid, expired, or void invoices as unavailable.
 - Public invoice PDF and source quote PDF downloads are token-scoped and served with private/no-store cache headers.
 - The public invoice presentation is payment-led, route-owned, responsive, and separate from the quote presentation owner. It consumes the existing token-scoped model and authoritative payment lines without changing lookup or lifecycle behavior.
-- V2 invoice/payment state remains invoice-owned. Invoice helpers do not reset or mirror `invoice_paid` into legacy `project_task_checks`; legacy projects retain that compatibility behavior until reviewed migration.
+- Invoice/payment state remains invoice-owned. Invoice helpers no longer reset or mirror `invoice_paid` into legacy project-task storage for any project; invoice creation, delivery, payment, and public-token behavior are unchanged.
 
 Do not expose service-role access or raw token values to client components. Token comparisons must stay hash-based.
 

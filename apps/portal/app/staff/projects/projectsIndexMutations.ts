@@ -176,7 +176,6 @@ function patchStage(
       ...response.snapshot,
       project: { ...response.snapshot.project, stage },
       pipeline: { ...response.snapshot.pipeline, stage },
-      tasks: { ...response.snapshot.tasks, stage },
     },
   }));
 }
@@ -213,6 +212,11 @@ function patchArchiveState(
   upsertProjectListItem(queryClient, host, {
     ...current,
     isArchived,
+    ...(isArchived
+      ? { effectiveState: 'ARCHIVED' as const }
+      : current.operationalState
+        ? { effectiveState: current.operationalState }
+        : {}),
   });
 }
 

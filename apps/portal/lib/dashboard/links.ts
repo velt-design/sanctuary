@@ -1,6 +1,4 @@
-import type { ProjectStatus } from './types';
-
-export function projectsHref(params: Record<string, string | number | boolean | undefined>) {
+function projectsHref(params: Record<string, string | number | boolean | undefined>) {
   const sp = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
     if (v === undefined) return;
@@ -22,6 +20,10 @@ export function siteVisitsHref() {
   return '/staff/schedule?view=site-visits';
 }
 
-export function statusHref(status: ProjectStatus | string) {
-  return projectsHref({ status });
+export function journeyHref(journey: string) {
+  return projectsHref({ journey });
+}
+
+export function projectStateHref(state: string) {
+  return projectsHref({ state });
 }

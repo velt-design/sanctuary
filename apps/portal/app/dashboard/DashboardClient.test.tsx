@@ -27,9 +27,7 @@ vi.mock('./DashboardView', () => ({
 
 const data: DashboardData = {
   updatedAtIso: '2026-04-02T00:00:00.000Z',
-  kpis: { actionsDue: 4, newLeads: 2, quotesToSend: 1, installsThisWeek: 3 },
-  attention: [],
-  workQueue: [],
+  kpis: { newLeads: 2, quotesToSend: 1, installsThisWeek: 3 },
   schedule: {
     startingSoon: [],
     crewAvailability: [],

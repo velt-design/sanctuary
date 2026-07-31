@@ -9,7 +9,7 @@ The Drafting Queue is the portal replacement for the old operational design spre
 - Server/domain helpers: `apps/portal/lib/designPackages`.
 - Staff APIs: `apps/portal/app/api/staff/v1/design-packages`.
 - Schema migration: `supabase/migrations/20260317_000001_design_package_requests.sql`.
-- Companion task command: `project_command_sync_design_task` from `20260720_000008_project_command_centre_stage2.sql`.
+- Legacy generic project-task mirroring is retired; Design Package requests remain owned by the Design Package domain.
 - Schema ownership map: `docs/supabase-schema-map.md`.
 
 The route and internal module names still use `design-packages`, but the user-facing page name is Drafting Queue.
@@ -64,7 +64,7 @@ Request actions include start and mark done routes under:
 
 Keep writes scoped to request-owned fields. Quote and visit columns are read-only projections.
 
-Creating, starting, reprioritising, completing, or cancelling a request keeps its canonical `CREATE_DESIGN_PACKAGE` task aligned through the bounded staff RPC. Authenticated callers do not receive direct `tasks` table write permission; the Design Package server owner remains responsible for the companion task.
+Creating, starting, reprioritising, completing, or cancelling a request updates the canonical `design_package_requests` record through the Design Package server owner. These actions no longer create or mirror a generic legacy project task; Drafting Queue behavior and request ownership are otherwise unchanged.
 
 ## Spreadsheet Behavior
 

@@ -13,6 +13,8 @@ describe('projects index query', () => {
       ...base,
       search: 'deck',
       status: 'QUOTING' as const,
+      journey: 'PROPOSAL' as const,
+      state: 'WAITING' as const,
       page: 2,
       pageSize: 25 as const,
       sort: 'name_asc' as const,
@@ -21,8 +23,8 @@ describe('projects index query', () => {
     expect(options.queryKey).toEqual(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active', {
       search: 'deck',
       status: 'QUOTING',
-      due: 'all',
-      today: base.today,
+      journey: 'PROPOSAL',
+      state: 'WAITING',
       page: 2,
       pageSize: 25,
       sort: 'name_asc',
@@ -36,5 +38,21 @@ describe('projects index query', () => {
     expect(active).not.toEqual(archived);
     expect(active).not.toEqual(all);
     expect(archived).not.toEqual(all);
+  });
+
+  it('does not share journey or state filtered pages', () => {
+    const base = defaultProjectsIndexParams('active');
+    const proposal = projectsIndexQueryOptions('active', {
+      ...base,
+      journey: 'PROPOSAL',
+    }).queryKey;
+    const waiting = projectsIndexQueryOptions('active', {
+      ...base,
+      state: 'WAITING',
+    }).queryKey;
+
+    expect(proposal).not.toEqual(projectsIndexQueryOptions('active', base).queryKey);
+    expect(waiting).not.toEqual(projectsIndexQueryOptions('active', base).queryKey);
+    expect(proposal).not.toEqual(waiting);
   });
 });

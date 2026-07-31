@@ -35,7 +35,7 @@ Tables/RPCs:
 - `projects`
 - `estimates`
 - `estimate_cost_actuals`
-- `project_task_checks`
+- `project_task_checks` (retained read-only legacy evidence)
 - `project_notes`
 - `portal_users`
 - `has_portal_access()`
@@ -46,13 +46,15 @@ Tables/RPCs:
 - `staff_find_contact_duplicates_v1()`
 - `staff_contacts_index_v1()`
 - `staff_projects_index_v1()`
+- `staff_projects_index_v2()`
+- `staff_project_state_counts_v1()`
 
 Primary write path:
 
 - Contact/project create and update routes under `apps/portal/app/api/contacts`, `apps/portal/app/api/projects`, and `apps/portal/app/api/staff/v1/projects`.
 - Estimate create/update routes under `apps/portal/app/api/projects/[projectId]/estimates` and `apps/portal/app/api/estimates/[estimateId]`, usually reached through local-first mutation handlers.
 - Staff actual-cost calibration reads/writes use `/api/staff/v1/estimates/[estimateId]/actual-costs`, the request's auth-bound Supabase client, and `apps/portal/lib/estimateActuals/server.ts`. The comparison always reads the frozen estimate snapshot; it does not invoke a costing engine or reprice history.
-- Project task action routes and project snapshot action routes under `apps/portal/app/api/staff/v1/projects`.
+- Project lifecycle, Project Work, confirmation, and owner writes use the auth-bound staff routes and their named semantic commands under `apps/portal/app/api/staff/v1/projects`.
 - Project notes (Activity tab) writes through `apps/portal/app/api/staff/v1/projects/[projectId]/notes` and `[noteId]`, reached through `portal.project.note.{create,update,delete}` local-first handlers.
 - Portal user creation through auth/admin helpers and invite/admin tooling, not general staff UI table writes.
 - Estimate pricing source fields were added by ordered forward migration: `estimates.pricing_source`, `estimates.pricing_source_metadata`, and nullable `estimates.commercial_design_input`; estimate write routes remain the only normal staff path for populating them.
@@ -70,14 +72,14 @@ Access rule:
 - Browser code should use routes, query helpers, or local-first adapters for writes.
 - `portal_users` gates staff/admin access and must remain server/admin governed.
 - `portal_search_v1()` is executable only by `authenticated` and `service_role`, remains `SECURITY INVOKER`, reports `has_portal_access()` in-band, and relies on Projects/Contacts RLS. `portal_search_document()` and `portal_search_bigrams()` are immutable, data-free helpers with the same execute grants. Projects materializes `portal_search_document` and `portal_search_bigrams`; Contacts also materializes `portal_search_name_bigrams` for linked-project discovery. GIN indexes cover those generated columns so RLS planning does not fall back to rebuilding arrays per row. The Projects and Contacts `portal_access_all` policies retain the same authenticated `has_portal_access()` decision for every operation but wrap the stable helper in a scalar `SELECT` so PostgreSQL evaluates it once per statement. Browser code must continue to use the staff API rather than call these RPCs directly.
-- `staff_contacts_index_v1()` and `staff_projects_index_v1()` are `SECURITY INVOKER`, exact-count, stable-order read models with a maximum page size of 100. They use the existing materialized search documents and scalar portal-access check. `staff_find_contact_duplicates_v1()` returns at most ten exact normalized email/phone matches for server-owned project creation. All three are revoked from `public`/`anon`, granted to `authenticated`/`service_role`, and remain behind staff routes and existing RLS.
+- `staff_contacts_index_v1()` and the retained `staff_projects_index_v1()` compatibility reader are `SECURITY INVOKER`, exact-count, stable-order read models with a maximum page size of 100. The current project list uses `staff_projects_index_v2()`, which preserves the V1 archive/search/due/sort/page contract and adds raw `operational_state`, Archived-overriding `effective_state`, an `ACTIVE|WAITING|CLOSED|ARCHIVED` state filter, and multi-stage filtering. `staff_project_state_counts_v1()` returns whole-portfolio state counts. Both current project RPCs fail with `PROJECT_WORK_ROLLOUT_INCOMPLETE` if any project lacks its marker or state. `staff_find_contact_duplicates_v1()` returns at most ten exact normalized email/phone matches for server-owned project creation. These staff RPCs are revoked from `public`/`anon`, granted only to `authenticated`/`service_role`, and remain behind staff routes and existing RLS.
 - Estimate writes must preserve quote-backed edit locks such as `ESTIMATE_LOCKED`.
 - `estimate_cost_actuals` is one staff-owned downstream record per estimate. Authenticated table access is RLS-gated through `has_portal_access()`; insert/update must stamp `updated_by = auth.uid()`. The ordered owner migration is `supabase/migrations/20260722_000005_estimate_cost_actuals.sql`.
 - `project_notes` row-level security restricts inserts to the authenticated portal user (the row's `author_id` must equal `auth.uid()`); updates and deletes are restricted to the author or any admin (`is_portal_admin()`). Notes are soft-deleted (`deleted_at`); queries that surface notes to staff filter `deleted_at IS NULL`.
 
 Migration source:
 
-- Current ordered history in `supabase/migrations/`, including `20260208_000001_project_task_checks.sql`, `20260210_000002_portal_auth.sql`, estimate cleanup migrations, security hardening, `20260510_000001_project_notes.sql` for the Activity tab notes table, forward backfills such as the project-note author display-name cleanup, `20260722_000001_portal_search_v1.sql` for the bounded search RPC plus initial trigram/join indexes, `20260722_000002_portal_search_bigram_indexes.sql` for the immutable normalized/bigram helpers, `20260722_000003_portal_search_materialized_columns.sql` for generated search columns plus their GIN indexes, `20260722_000004_portal_search_rls_initplan.sql` for statement-cached Projects/Contacts membership policy evaluation, and `20260729_000001_portal_operational_lists.sql` for the bounded Projects/Contacts index and duplicate-detection RPCs.
+- Current ordered history in `supabase/migrations/`, including `20260208_000001_project_task_checks.sql`, `20260210_000002_portal_auth.sql`, estimate cleanup migrations, security hardening, `20260510_000001_project_notes.sql` for the Activity tab notes table, forward backfills such as the project-note author display-name cleanup, `20260722_000001_portal_search_v1.sql` for the bounded search RPC plus initial trigram/join indexes, `20260722_000002_portal_search_bigram_indexes.sql` for the immutable normalized/bigram helpers, `20260722_000003_portal_search_materialized_columns.sql` for generated search columns plus their GIN indexes, `20260722_000004_portal_search_rls_initplan.sql` for statement-cached Projects/Contacts membership policy evaluation, `20260729_000001_portal_operational_lists.sql` for the bounded Projects/Contacts index and duplicate-detection RPCs, and `20260731000002_project_work_portfolio_rollout.sql` for the strict portfolio project reader and state-count RPC.
 - Older root files such as `supabase/contacts_projects.sql` and `supabase/portal_schema.sql` are baseline/setup references, not the preferred path for new changes.
 
 ## Project Design Booklets
@@ -359,11 +361,11 @@ Tables/RPCs:
 
 - Marketing/enquiries: `enquiry_requests` (`submission_id` is the idempotency key), `marketing_public_rate_limits`, `marketing_enquiry_upload_sessions`, `marketing_conversion_deliveries`
 - Marketing conversion delivery RPCs: `marketing_conversion_delivery_claim()` and `marketing_conversion_delivery_complete()`
-- Email and automation: `email_templates`, `email_outbox`, `audit_events`, `tasks`, `design_package_tickets`, `followup_plans`, `followup_tasks`
-- Project command centre: `project_owner_assignments`, `project_manual_actions`, `project_action_controls`, `project_primary_action_selections`, `project_command_audit`, `project_action_versions` (`project_role_assignments` is retained read-only as legacy rollback evidence)
+- Email and automation: `email_templates`, `email_outbox`, `audit_events`, `design_package_tickets`; `tasks`, `followup_plans`, and `followup_tasks` remain read-only legacy evidence
+- Project command centre: `project_owner_assignments` and `project_command_audit`; `project_manual_actions`, `project_action_controls`, `project_primary_action_selections`, `project_action_versions`, and `project_role_assignments` remain read-only legacy evidence
 - Project Work V2: `project_work_model_versions`, `project_operational_states`, `project_state_events`, `project_work_items`, `project_work_item_events`, `project_confirmation_events`, `project_command_receipts`, `project_work_repair_signals`, and `business_calendar_year_coverage`
-- Project Work V2 RPCs: `project_create_v2()`, `project_work_item_command()`, `project_operational_state_command()`, `project_confirmation_command()`, `project_work_archive_command()`, `project_work_integrity_report_v2()`, `project_work_queue_v3()`, and server reconciliation/fact commands
-- Admin correction/review RPCs: `project_confirmation_retraction_command()`, exact-signal/version `project_confirmation_retraction_review_command()`, `project_work_classify_legacy_contacted_v1()`, and evidence-fingerprint-guarded `project_work_migrate_legacy_contacted_v1()`. `project_work_legacy_contacted_evidence_v1()` is an internal-only normalized evidence helper with no public, anonymous, authenticated, or service-role execute grant.
+- Project Work V2 RPCs: `project_create_v2()`, `project_work_item_command()`, `project_operational_state_command()`, `project_confirmation_command()`, `project_work_archive_command()`, `project_work_integrity_report_v2()`, `project_work_queue_v3()`, `staff_projects_index_v2()`, `staff_project_state_counts_v1()`, and server reconciliation/fact commands
+- Admin correction RPCs: `project_confirmation_retraction_command()` and exact-signal/version `project_confirmation_retraction_review_command()`. The former Contacted classifier, evidence helper, and one-project migration RPCs are retired and have no `public`, `anon`, `authenticated`, or `service_role` execution grant.
 - Site-visit automation support: `site_visit_events`
 - Dashboard/supporting RPC: `dashboard_snapshot_v1()`
 - Personal dashboard tasks: `portal_dashboard_tasks`
@@ -372,15 +374,14 @@ Primary write path:
 
 - Marketing enquiry APIs under `apps/marketing/app/api/contact` and `apps/marketing/app/api/enquiry`. Contact/project/enquiry intake goes through the service-only `marketing_enquiry_intake` RPC; durable public rate limits and upload session preparation/cleanup use the narrow `marketing_public_rate_limit_take` and `marketing_enquiry_*upload*` RPCs.
 - Eligible downstream marketing `audit_events` inserts enqueue one GA4 outbox row through the database trigger. The scheduled marketing delivery route claims and completes rows only through the leased service-role RPCs; it never writes the outbox table directly.
-- Portal automation runner under `apps/portal/lib/automation`.
+- Portal automation under `apps/portal/lib/automation` remains for owned audit, email, and specialist side effects; it is not a legacy project-task writer.
 - Project action routes that enqueue or preview email/outbox entries.
 - Dashboard snapshot is read-oriented and should not become a generic write boundary.
 - Personal dashboard task writes go through staff-only dashboard task APIs under `apps/portal/app/api/dashboard/tasks`.
-- Project owner/action writes go through `project_command_set_owner` and `project_command_action` from staff command routes. `project_command_action` refreshes legacy Schedule columns inside the same transaction through the non-callable `project_command_sync_projection` helper.
-- Design Package source-task writes use the bounded `project_command_sync_design_task` RPC; automation/follow-up persistence remains a server-only service-role flow. Source-table triggers keep the candidate revision and compatibility projection current.
+- Project owner writes go through `project_command_set_owner`. The legacy `project_command_action` and `project_command_sync_design_task` mutation paths are revoked by the portfolio rollout; specialist owners write their own current facts.
 - V2 work, operational state, bounded confirmation, archive, and Running Jobs fact changes go through their semantic RPC commands. Governed tables and append-only history reject direct writes; accepted commands refresh the one-way `projects.next_action*`/`follow_up_date` compatibility projection.
 - Confirmation correction is admin-only and appends a retraction, command receipt, and open review signal. Review resolution locks and updates only the supplied signal ID when its row version is unchanged. It does not update or delete the original confirmation.
-- Legacy Contacted migration is admin-only, optimistic, idempotent, and limited to one unmarked active Contacted project per command. The classifier supplies an opaque normalized evidence fingerprint; migration recomputes it after the project lock and rejects mismatch before any V2 write. It creates the reviewed V2 state and optional work item but never seeds the new-lead cadence, archives the project, or sends communication.
+- A server trigger owns real pipeline-stage entry. It cancels only the prior active `STAGE_REVIEW`, preserves manual/cadence/specialist/reviewed work, and creates at most one five-Auckland-business-day `STAGE_REVIEW` obligation for active non-`NEW`/non-`PAID` stages. Same-stage and case-only replays do nothing, and missing calendar coverage fails the transition atomically. `SITE_VISIT` creates only a proposal-review obligation; it never creates or links a Site Visit task.
 
 Primary read path:
 
@@ -389,8 +390,7 @@ Primary read path:
 - Portal project snapshot, dashboard task, and automation helpers under `apps/portal/lib/projects`, `apps/portal/lib/dashboard`, and `apps/portal/lib/automation`.
 - Dashboard cached snapshot helper under `apps/portal/lib/dashboard/getDashboardSnapshotCached.ts`.
 - Dashboard data helpers under `apps/portal/lib/dashboard` read recent project-note activity and user-owned dashboard tasks.
-- The full staff Work Queue and Dashboard preview call `project_work_queue_v3()` through the auth-bound server repository, read V2 marker inventory and operational state through direct bounded owners, and then compose canonical specialist candidates in `apps/portal/lib/projects/workItems/teamQueue.ts`. They do not depend on embedded PostgREST project relationships, and missing or truncated authoritative inventory fails the complete queue read.
-- The admin legacy-review surface calls the stable Contacted classifier through an auth-bound admin route. The database read model returns project identity, bounded evidence, and the opaque optimistic fingerprint, not linked customer contact fields.
+- The full staff Work Queue and Dashboard preview call `project_work_queue_v3()` through the auth-bound server repository and compose canonical specialist candidates in `apps/portal/lib/projects/workItems/teamQueue.ts`. The repository reads 1,000-row hosted-safe ranges, fails closed when the explicit 5,000-row SQL ceiling is reached, and separately calls `staff_project_state_counts_v1()` to prove whole-portfolio marker/state completeness before returning rows. Projects and Dashboard state counts use the same strict project/state RPCs, not browser-derived lifecycle truth.
 
 Access rule:
 
@@ -402,8 +402,8 @@ Access rule:
 - Automation may use service-role access only on the server and only for intentional bypasses documented by the owning workflow.
 - Audit/supporting tables should stay append-oriented where possible.
 - Personal dashboard tasks are owned by `owner_id = auth.uid()` and are independent from automation/project workflow `tasks`.
-- Command-centre tables plus canonical `tasks`/`followup_plans`/`followup_tasks` allow portal reads but no direct authenticated writes. The project-owner command is admin-only and accepts only Jordan, JP, Joe, or Bruce; other commands check portal access, active staff where relevant, source/project identity, optimistic versions, permissions, and command idempotency. The append-only command audit retains actor IDs where available.
-- V2 work tables expose only the RLS reads required by portal staff; writes are governed by semantic command functions. Staff queue reads require portal access. Confirmation retraction, Contacted classification, and reviewed Contacted migration also check `is_portal_admin()` inside the function even though execution is granted to `authenticated`.
+- Legacy command-centre/task/follow-up/check tables allow only the portal reads needed for historical evidence. Their DML grants, write triggers, old action/sync commands, and Contacted classifier/migration execution are retired. The project-owner command remains admin-only and accepts only Jordan, JP, Joe, or Bruce. The append-only command audit retains actor IDs where available.
+- V2 work tables expose only the RLS reads required by portal staff; writes are governed by semantic command functions. Database write guards reject prohibited Call/Site Visit work and reopening/retyping retired `LEGACY_REVIEW` rows even through direct RPC execution while allowing the rollout to cancel existing rows. Governed and append-only child guards distinguish a real quote/project cascade from a direct delete, preserving the existing confirmed admin project-delete route without opening child-row deletion. Staff queue reads require portal access, and confirmation correction remains admin-only.
 - Personal Dashboard reminders remain private user-owned scratch data and never enter `project_work_queue_v3()` or project primary-action precedence.
 
 Migration source:
@@ -418,6 +418,7 @@ Migration source:
 - `20260729_000002_project_work_items_v2.sql` adds the model marker, state/work/confirmation/receipt/event/repair/calendar truth, semantic commands, initial V2 queue, one-way compatibility, and new-project-only initialization.
 - `20260729_000003_project_work_items_v2_schema_cache.sql` canonicalizes the named `project_work_model_versions.project_id -> projects.id ON DELETE CASCADE` and `project_operational_states.project_id -> projects.id ON DELETE CASCADE` foreign keys, removing conflicting same-relationship constraints, then requests the PostgREST schema reload after commit.
 - `20260729_000004_project_work_queue_and_legacy_triage.sql` adds the richer queue, append-only confirmation correction, admin-only no-contact-field Contacted classifier, and guarded one-project reviewed migration, then requests its PostgREST schema reload after commit. It is forward-only and does not backfill or mutate the Contacted cohort when applied.
+- `20260731000002_project_work_portfolio_rollout.sql` supersedes the mixed-mode/legacy-review rollout. In one idempotent transaction it closes the cohort through the private project-independent `project_work_portfolio_rollouts` ledger, records one rollout event for every project present at the fixed timestamp including already-V2 projects, repairs partial marker/state rows, applies current-stage timing once, maps Archived and Paid projects without active work, and cancels active legacy-review or prohibited Call/Site Visit work with audit evidence. The independent ledger prevents later replay after an empty cohort or valid project deletion. A deferred constraint trigger initializes later projects inserted through retained import/bootstrap writers after the canonical create RPC has had first ownership. The migration preserves staff-entered states, non-prohibited work, confirmations, notes, commercial/project facts, and legacy rows; backfills Running Jobs facts from legacy checks before making legacy workflow tables read-only; makes retired review rows terminal, rejects future prohibited work at the database boundary, preserves the existing admin hard-delete cascade including repair signals, revokes retired legacy-review/action execution, adds the strict project/state read RPCs, and raises the queue cap to 5,000. This true 14-digit migration is applied in positively identified staging and remains unapplied to production pending the controlled migration-first cutover.
 - If a supporting table becomes part of a new first-class workflow, add an ordered migration and update this map plus the owning feature doc.
 
 ## Verification

@@ -12,6 +12,7 @@ import {
   PROJECT_WORK_RESPONSIBILITY_AREAS,
   type ProjectWorkResponsibilityArea,
 } from '@/lib/projects/workItems/types';
+import { hasProhibitedProjectWorkText } from '@/lib/projects/workItems/prohibitedWork';
 import { isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -71,6 +72,12 @@ function buildPayload(
     const dueAt = instant(body.dueAt);
     if (!title || !responsibilityArea || !dueAt) {
       return { ok: false, message: 'Title, responsibility area, and valid due time are required' };
+    }
+    if (hasProhibitedProjectWorkText(title)) {
+      return {
+        ok: false,
+        message: 'Call and Site Visit work cannot be created in Project Work',
+      };
     }
     const assigneeUserId = body.assigneeUserId == null
       ? null

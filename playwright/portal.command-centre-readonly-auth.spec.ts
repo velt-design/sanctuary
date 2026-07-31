@@ -15,6 +15,108 @@ import {
 
 test.use({ serviceWorkers: "block" });
 
+function expectPrivateNoStore(response: {
+  headers(): Record<string, string>;
+  status(): number;
+}) {
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("private");
+  expect(response.headers()["cache-control"]).toContain("no-store");
+}
+
+test("authenticated Projects and Dashboard expose portfolio journey and state without writes", async ({
+  page,
+}, testInfo) => {
+  requireProjectWorkReadOnlyTarget(testInfo);
+
+  const blockedMutations: BlockedProjectWorkMutation[] = [];
+  await suppressProjectWorkWebVitalsTelemetry(page);
+  await installProjectWorkReadOnlyRequestGuard(page, blockedMutations);
+
+  try {
+    await withPortalBrowserEvidence(
+      page,
+      testInfo,
+      { phase: "project-portfolio-readonly-auth" },
+      async () => {
+        const projectsResponsePromise = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === "GET"
+            && url.pathname === "/api/staff/v1/projects/index"
+          );
+        });
+
+        await openPortalPage(page, "/staff/projects", { heading: "Projects" });
+        const projectsResponse = await projectsResponsePromise;
+        expectPrivateNoStore(projectsResponse);
+        await expect(
+          page.locator('[data-projects-index-state="fresh"]'),
+        ).toBeVisible({ timeout: 60_000 });
+        await expectVisiblePortalProject(page);
+
+        const projectsTable = page.getByRole("table", { name: "Projects" });
+        await expect(projectsTable.getByRole("columnheader", {
+          name: "Journey",
+        })).toBeVisible();
+        await expect(projectsTable.getByRole("columnheader", {
+          name: "Stage",
+        })).toBeVisible();
+        await expect(projectsTable.getByRole("columnheader", {
+          name: "State",
+        })).toBeVisible();
+        const firstProjectRow = projectsTable.getByRole("row").nth(1);
+        await expect(firstProjectRow.locator('[data-column="Journey"]'))
+          .not.toHaveText("");
+        await expect(firstProjectRow.locator('[data-column="State"]'))
+          .toHaveText(/^(Active|Waiting|Closed|Archived)$/);
+
+        const dashboardResponsePromise = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === "GET"
+            && url.pathname === "/api/dashboard"
+          );
+        });
+        await openPortalPage(page, "/dashboard", { heading: "Dashboard" });
+        const dashboardResponse = await dashboardResponsePromise;
+        expectPrivateNoStore(dashboardResponse);
+        await expect(
+          page.locator('[data-dashboard-state="fresh"]'),
+        ).toBeVisible({ timeout: 60_000 });
+
+        const portfolio = page.getByRole("region", {
+          name: "Project portfolio",
+        });
+        await expect(portfolio).toBeVisible();
+        for (const phase of [
+          "Enquiry",
+          "Proposal",
+          "Confirmed",
+          "Delivery",
+          "Settled",
+        ]) {
+          await expect(portfolio.getByText(phase, { exact: true })).toBeVisible();
+        }
+        await expect(
+          portfolio.locator('[data-project-state-counts="ready"]'),
+        ).toBeVisible();
+        for (const state of ["Active", "Waiting", "Closed", "Archived"]) {
+          await expect(portfolio.getByText(state, { exact: true })).toBeVisible();
+        }
+        await expect(
+          page.getByRole("region", { name: "Work Queue" }),
+        ).toBeVisible();
+        await expect(
+          page.getByText(/Project actions (?:overdue|due today)/i),
+        ).toHaveCount(0);
+      },
+    );
+  } finally {
+    expectNoProjectWorkMutationRequests(blockedMutations);
+  }
+});
+
 test("authenticated Project Overview is one read-only command-centre surface", async ({
   page,
 }, testInfo) => {

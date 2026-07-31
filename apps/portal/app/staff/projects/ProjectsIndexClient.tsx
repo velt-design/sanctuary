@@ -31,22 +31,26 @@ import { useProjectInstantOpen } from './ProjectInstantOpen';
 import {
   buildContactsById,
   parseProjectsIndexFilters,
-  todayYmd,
+  PROJECT_JOURNEY_FILTER_OPTIONS,
+  PROJECT_STAGE_FILTER_OPTIONS,
+  PROJECT_STATE_FILTER_OPTIONS,
   type ArchiveFilter,
   type ProjectsIndexFilters,
 } from './projectIndexFilters';
 import { useProjectsIndexData } from './useProjectsIndexData';
 import { useProjectsIndexMutations } from './useProjectsIndexMutations';
+import ProjectIndexLifecycleCells from './ProjectIndexLifecycleCells';
 import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
 import type {
+  ProjectsIndexJourneyFilter,
   ProjectsIndexPageSize,
   ProjectsIndexSort,
+  ProjectsIndexStateFilter,
 } from '@/lib/projects/projectsIndexContract';
 import {
   AlertBanner,
-  Badge,
   Button,
   ButtonLink,
   Card,
@@ -56,9 +60,7 @@ import {
   LoadingSkeleton,
   PageLayout,
   Pagination,
-  ProjectStageBadge,
   SearchFilterBar,
-  Select,
   Table,
   TableBody,
   TableCell,
@@ -75,7 +77,6 @@ type StatusConfirmState = {
   next: PipelineStageKey;
   label: string;
 } | null;
-
 const EXTRA_DELETE_CONFIRM_STAGES = new Set<Project['status']>(['DEPOSIT', 'SCHEDULED', 'COMPLETED', 'PAID']);
 
 function requiredDeleteConfirmation(projectId: string, status: Project['status'] | null | undefined): string {
@@ -85,10 +86,8 @@ function requiredDeleteConfirmation(projectId: string, status: Project['status']
 
 export default function ProjectsIndexClient({
   initialFilters,
-  initialTodayYmd,
 }: {
   initialFilters?: ProjectsIndexFilters;
-  initialTodayYmd?: string;
 }) {
   const router = useRouter();
   const { finishInstantRoute } = usePortalRouteTransition();
@@ -98,10 +97,13 @@ export default function ProjectsIndexClient({
   const { role } = usePortalSession();
   const isAdmin = role === 'admin';
   const initialFiltersRef = useRef(initialFilters ?? parseProjectsIndexFilters(searchParams));
-  const currentTodayYmd = initialTodayYmd ?? todayYmd();
   const [query, setQuery] = useState(initialFiltersRef.current.query);
-  const [statusFilter, setStatusFilter] = useState<NonNullable<Project['status']> | 'all'>(initialFiltersRef.current.statusFilter ?? 'all');
-  const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>(initialFiltersRef.current.dueFilter);
+  const [journeyFilter, setJourneyFilter] =
+    useState<ProjectsIndexJourneyFilter>(initialFiltersRef.current.journeyFilter);
+  const [stageFilter, setStageFilter] =
+    useState<NonNullable<Project['status']> | 'all'>(initialFiltersRef.current.stageFilter);
+  const [stateFilter, setStateFilter] =
+    useState<ProjectsIndexStateFilter>(initialFiltersRef.current.stateFilter);
   const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>(initialFiltersRef.current.archiveFilter);
   const [sort, setSort] = useState<ProjectsIndexSort>('newest');
   const [page, setPage] = useState(1);
@@ -126,9 +128,9 @@ export default function ProjectsIndexClient({
   const projectsIndex = useProjectsIndexData({
     archive: archiveFilter,
     search: debouncedQuery,
-    status: statusFilter,
-    due: dueFilter,
-    today: currentTodayYmd,
+    status: stageFilter,
+    journey: journeyFilter,
+    state: stateFilter,
     page,
     pageSize,
     sort,
@@ -142,15 +144,16 @@ export default function ProjectsIndexClient({
 
   useEffect(() => {
     const nextFilters = parseProjectsIndexFilters(searchParams);
-    setStatusFilter(nextFilters.statusFilter ?? 'all');
+    setJourneyFilter(nextFilters.journeyFilter);
+    setStageFilter(nextFilters.stageFilter);
+    setStateFilter(nextFilters.stateFilter);
     setQuery(nextFilters.query);
-    setDueFilter(nextFilters.dueFilter);
     setArchiveFilter(nextFilters.archiveFilter);
   }, [searchParams]);
 
   useEffect(() => {
     setPage(1);
-  }, [archiveFilter, debouncedQuery, dueFilter, pageSize, sort, statusFilter]);
+  }, [archiveFilter, debouncedQuery, journeyFilter, pageSize, sort, stageFilter, stateFilter]);
 
   useEffect(() => {
     const totalPages = projectsIndex.data?.projects.totalPages;
@@ -349,13 +352,25 @@ export default function ProjectsIndexClient({
               searchId="projectSearch"
               queryPlaceholder="Name, client, phone or address…"
               filters={[
-                { id: 'projectStatusFilter', label: 'Status', value: statusFilter, onChange: (value) => setStatusFilter(value as NonNullable<Project['status']> | 'all'), options: [{ value: 'all', label: 'All statuses' }, ...PROJECT_STATUS_ORDER.map((status) => ({ value: status, label: projectStatusLabel(status) ?? status }))] },
-                { id: 'projectArchiveFilter', label: 'Archive', value: archiveFilter, onChange: (value) => setArchiveFilter(value as ArchiveFilter), options: [{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }, { value: 'all', label: 'All' }] },
-                { id: 'projectDueFilter', label: 'Next action', value: dueFilter, onChange: (value) => setDueFilter(value as typeof dueFilter), options: [{ value: 'all', label: 'Any date' }, { value: 'due', label: 'Due today or overdue' }, { value: 'overdue', label: 'Overdue' }, { value: 'today', label: 'Due today' }] },
-                { id: 'projectSort', label: 'Sort', value: sort, onChange: (value) => setSort(value as ProjectsIndexSort), options: [{ value: 'newest', label: 'Newest first' }, { value: 'oldest', label: 'Oldest first' }, { value: 'name_asc', label: 'Name A–Z' }, { value: 'name_desc', label: 'Name Z–A' }, { value: 'next_action_asc', label: 'Next action soonest' }, { value: 'next_action_desc', label: 'Next action latest' }] },
+                { id: 'projectJourneyFilter', label: 'Journey', value: journeyFilter, onChange: (value) => setJourneyFilter(value as ProjectsIndexJourneyFilter), options: [...PROJECT_JOURNEY_FILTER_OPTIONS] },
+                { id: 'projectStageFilter', label: 'Stage', value: stageFilter, onChange: (value) => setStageFilter(value as NonNullable<Project['status']> | 'all'), options: [...PROJECT_STAGE_FILTER_OPTIONS] },
+                { id: 'projectStateFilter', label: 'State', value: stateFilter, onChange: (value) => {
+                  const nextState = value as ProjectsIndexStateFilter;
+                  setStateFilter(nextState);
+                  setArchiveFilter(nextState === 'ARCHIVED' ? 'archived' : 'active');
+                }, options: [...PROJECT_STATE_FILTER_OPTIONS] },
+                { id: 'projectSort', label: 'Sort', value: sort, onChange: (value) => setSort(value as ProjectsIndexSort), options: [{ value: 'newest', label: 'Newest first' }, { value: 'oldest', label: 'Oldest first' }, { value: 'name_asc', label: 'Name A–Z' }, { value: 'name_desc', label: 'Name Z–A' }] },
                 { id: 'projectPageSize', label: 'Rows', value: String(pageSize), onChange: (value) => setPageSize(Number(value) as ProjectsIndexPageSize), options: [{ value: '25', label: '25 rows' }, { value: '50', label: '50 rows' }, { value: '100', label: '100 rows' }] },
               ]}
-              onClearAll={() => { setQuery(''); setStatusFilter('all'); setArchiveFilter('active'); setDueFilter('all'); setSort('newest'); setPage(1); }}
+              onClearAll={() => {
+                setQuery('');
+                setJourneyFilter('all');
+                setStageFilter('all');
+                setStateFilter('all');
+                setArchiveFilter('active');
+                setSort('newest');
+                setPage(1);
+              }}
             />
         </Card>
 
@@ -387,7 +402,9 @@ export default function ProjectsIndexClient({
                       <TableHead>Client</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Address</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Journey</TableHead>
+                      <TableHead>Stage</TableHead>
+                      <TableHead>State</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -487,36 +504,12 @@ export default function ProjectsIndexClient({
                             )}
                           </TableCell>
                           <TableCell data-column="Address">{renderEditable('address', addressValue, 'Add address', true)}</TableCell>
-                          <TableCell data-column="Status">
-                            <div className={styles.statusCell}>
-                            <ProjectStageBadge stage={normalizePipelineStageKey(p.status ?? 'NEW') ?? 'new'} compact />
-                            <Select
-                              fieldClassName={styles.inlineSelectField}
-                              className={styles.inlineSelect}
-                              aria-label={`Status for ${nameValue || 'project'}`}
-                              value={(p.status ?? 'NEW') as ProjectStatus}
-                              disabled={isStatusBusyRow}
-                              onClick={(e) => e.stopPropagation()}
-                              onKeyDown={(e) => e.stopPropagation()}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                handleStatusChange(p, e.target.value);
-                              }}
-                            >
-                              {PROJECT_STATUS_ORDER.map((status) => (
-                                <option key={status} value={status}>
-                                  {projectStatusLabel(status)}
-                                </option>
-                              ))}
-                            </Select>
-                            {p.isLost ? (
-                              <Badge tone="error">Lost</Badge>
-                            ) : null}
-                            {p.isArchived ? (
-                              <Badge tone="neutral">Archived</Badge>
-                            ) : null}
-                            </div>
-                          </TableCell>
+                          <ProjectIndexLifecycleCells
+                            project={p}
+                            projectName={nameValue}
+                            stageBusy={isStatusBusyRow}
+                            onStageChange={handleStatusChange}
+                          />
                           <TableCell data-column="Actions">
                             <div className={styles.rowActions}>
                               <ButtonLink
@@ -597,8 +590,30 @@ export default function ProjectsIndexClient({
               null
             ) : (
               <DataStatePanel
-                state={debouncedQuery || statusFilter !== 'all' || dueFilter !== 'all' ? 'filtered-empty' : 'empty'}
-                onClear={debouncedQuery || statusFilter !== 'all' || dueFilter !== 'all' ? () => { setQuery(''); setStatusFilter('all'); setArchiveFilter('active'); setDueFilter('all'); setSort('newest'); setPage(1); } : undefined}
+                state={
+                  debouncedQuery
+                  || journeyFilter !== 'all'
+                  || stageFilter !== 'all'
+                  || stateFilter !== 'all'
+                    ? 'filtered-empty'
+                    : 'empty'
+                }
+                onClear={
+                  debouncedQuery
+                  || journeyFilter !== 'all'
+                  || stageFilter !== 'all'
+                  || stateFilter !== 'all'
+                    ? () => {
+                        setQuery('');
+                        setJourneyFilter('all');
+                        setStageFilter('all');
+                        setStateFilter('all');
+                        setArchiveFilter('active');
+                        setSort('newest');
+                        setPage(1);
+                      }
+                    : undefined
+                }
               />
             )}
         </Card>
@@ -694,18 +709,13 @@ export default function ProjectsIndexClient({
           </AlertBanner>
 
           {isStatusRollback ? (
-            <>
-              <AlertBanner tone="warning" title="Rollback resets tasks">
-                Rollback: manual task checkmarks from this stage and later stages will be reset.
-              </AlertBanner>
-              <Input
-                id="index-stage-confirm-text"
-                label="Type RESET to confirm rollback"
-                value={statusConfirmText}
-                onChange={(event) => setStatusConfirmText(event.target.value)}
-                autoComplete="off"
-              />
-            </>
+            <Input
+              id="index-stage-confirm-text"
+              label="Type RESET to confirm rollback"
+              value={statusConfirmText}
+              onChange={(event) => setStatusConfirmText(event.target.value)}
+              autoComplete="off"
+            />
           ) : null}
 
           <Input

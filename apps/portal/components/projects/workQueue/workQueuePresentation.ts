@@ -1,6 +1,7 @@
 import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
 import type { ProjectCommandStaffSummary } from '@/lib/projects/commandCentre/types';
 import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
+import { isGenericCompletableWorkSource } from '@/lib/projects/workItems/workItemCapabilities';
 import {
   formatAucklandDateTimeLocal,
   parseAucklandDateTimeLocal,
@@ -110,16 +111,17 @@ export function replyConfirmationCommand(entry: WorkQueueEntryView): string | nu
   return null;
 }
 
-export function isManualCompletable(entry: WorkQueueEntryView): boolean {
+export function isGenericCompletable(entry: WorkQueueEntryView): boolean {
   return (
     entry.actionKind === 'workItem'
-    && (entry.sourceType === 'MANUAL' || entry.sourceType === 'LEGACY_REVIEW')
+    && isGenericCompletableWorkSource(entry.sourceType)
   );
 }
 
 export function canManageQueueWorkItem(entry: WorkQueueEntryView): boolean {
   return Boolean(
     entry.actionKind === 'workItem'
+    && entry.sourceType !== 'LEGACY_REVIEW'
     && entry.workItemId
     && entry.workItemRowVersion,
   );

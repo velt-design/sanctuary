@@ -26,10 +26,6 @@ vi.mock('./FixtureLocalFirstBoundary', () => ({
   default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
-vi.mock('./ProjectTaskMutationFixtureClient', () => ({
-  default: () => <div data-project-task-mutation-fixture="ready">Task mutation fixture</div>,
-}));
-
 describe('ProjectsIndexMutationFixturePage', () => {
   beforeEach(() => {
     delete process.env.ENABLE_PORTAL_QA_FIXTURES;
@@ -62,6 +58,5 @@ describe('ProjectsIndexMutationFixturePage', () => {
     expect(markup).toContain('data-project-mutation-fixture="ready"');
     expect(markup).toContain('data-project-details-mutation-fixture="ready"');
     expect(markup).toContain('data-contact-details-mutation-fixture="ready"');
-    expect(markup).toContain('data-project-task-mutation-fixture="ready"');
   });
 });

@@ -58,7 +58,7 @@ export default function ProjectStageControl({
     if (busy || targetStage === stage) return;
     setBusy(true);
     try {
-      const result = await correctProjectStage(
+      await correctProjectStage(
         projectId,
         stageKeyToStatus(targetStage),
         {
@@ -74,7 +74,6 @@ export default function ProjectStageControl({
             ...current.snapshot,
             project: { ...current.snapshot.project, stage: targetStage },
             pipeline: { stage: targetStage },
-            tasks: { ...current.snapshot.tasks, stage: targetStage },
           },
         };
       });
@@ -83,11 +82,7 @@ export default function ProjectStageControl({
         status: stageKeyToStatus(targetStage),
       }));
       void invalidateProjectReadCaches(queryClient, host, projectId);
-      toast.success(
-        result.rollback
-          ? `Stage corrected to ${targetLabel}. Reset ${result.resetManualTaskCount} manual checkmark(s).`
-          : `Stage corrected to ${targetLabel}.`,
-      );
+      toast.success(`Stage corrected to ${targetLabel}.`);
       setOpen(false);
       setConfirmText("");
       setReason("");

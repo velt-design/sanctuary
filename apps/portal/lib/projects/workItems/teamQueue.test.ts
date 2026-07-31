@@ -109,6 +109,34 @@ describe("composeProjectWorkQueue", () => {
     });
   });
 
+  it("does not expose retired legacy-review work", () => {
+    const result = composeProjectWorkQueue({
+      durableEntries: [
+        entry({
+          sourceType: "LEGACY_REVIEW",
+          sourceKey: `legacy-review:${PROJECT_UUID}`,
+          title: "Review legacy project action",
+        }),
+      ],
+      domainCandidates: [],
+      limit: 200,
+    });
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        projectId: PROJECT_ID,
+        group: "needsTriage",
+        actionKind: "needsTriage",
+        title: "Legacy work needs review",
+        sourceType: null,
+        sourceKey: null,
+        workItemId: null,
+        href: `/staff/projects/${PROJECT_ID}?tab=activity`,
+      }),
+    ]);
+    expect(result[0]?.reason).not.toMatch(/\b(?:call|site[\s_-]*visits?)\b/i);
+  });
+
   it("promotes recovery above durable work and links to the owning surface", () => {
     const result = composeProjectWorkQueue({
       durableEntries: [
@@ -228,6 +256,56 @@ function emptyProjectsQuery() {
   return builder;
 }
 
+function pagedRpc(params: {
+  data?: Record<string, unknown>[];
+  error?: Record<string, unknown> | null;
+  completenessError?: Record<string, unknown> | null;
+}) {
+  const data = params.data ?? [];
+  const error = params.error ?? null;
+  const completenessError = params.completenessError ?? null;
+  const range = vi.fn(async (from: number, to: number) => ({
+    data: error ? null : data.slice(from, to + 1),
+    error,
+  }));
+  const rpc = vi.fn((name: string) =>
+    name === "staff_project_state_counts_v1"
+      ? Promise.resolve({
+          data: completenessError ? null : { totalCount: data.length },
+          error: completenessError,
+        })
+      : { range },
+  );
+  return { rpc, range };
+}
+
+function durableRow(index: number): Record<string, unknown> {
+  const projectUuid = `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`;
+  return {
+    project_id: projectUuid,
+    project_name: `Mapped fixture ${index}`,
+    pipeline_stage: "CONTACTED",
+    queue_group: "today",
+    action_kind: "WORK_ITEM",
+    title: "Send first enquiry email",
+    reason: "This project work is due today.",
+    due_at: "2026-07-29T04:00:00.000Z",
+    priority: "NORMAL",
+    blocked_reason: null,
+    assignee_user_id: null,
+    project_owner_key: "jordan",
+    work_item_id: `22222222-2222-4222-8222-${String(index).padStart(12, "0")}`,
+    work_item_row_version: 4,
+    source_type: "LEAD_CADENCE",
+    source_key: `lead:first-email:${projectUuid}:v1`,
+    subject_kind: "PROJECT",
+    subject_id: projectUuid,
+    repair_signal_id: null,
+    repair_signal_row_version: null,
+    state_row_version: 3,
+  };
+}
+
 describe("getAuthoritativeProjectWorkQueue", () => {
   beforeEach(() => {
     modelBoundaryMocks.listProjectWorkModelV2Ids.mockReset();
@@ -235,7 +313,7 @@ describe("getAuthoritativeProjectWorkQueue", () => {
   });
 
   it("maps the richer V3 RPC contract and effective assignee metadata", async () => {
-    const rpc = vi.fn().mockResolvedValue({
+    const { rpc, range } = pagedRpc({
       data: [
         {
           project_id: PROJECT_UUID,
@@ -261,7 +339,6 @@ describe("getAuthoritativeProjectWorkQueue", () => {
           state_row_version: 3,
         },
       ],
-      error: null,
     });
     const projects = emptyProjectsQuery();
     const supabase = {
@@ -294,7 +371,81 @@ describe("getAuthoritativeProjectWorkQueue", () => {
     ]);
     expect(rpc).toHaveBeenCalledWith("project_work_queue_v3", {
       p_now: now.toISOString(),
-      p_limit: 500,
+      p_limit: 5000,
+    });
+    expect(range).toHaveBeenCalledWith(0, 999);
+  });
+
+  it("pages the RPC so hosted response limits cannot truncate the queue", async () => {
+    const { rpc, range } = pagedRpc({
+      data: Array.from({ length: 1001 }, (_, index) => durableRow(index + 1)),
+    });
+    const supabase = {
+      rpc,
+      from: vi.fn(() => emptyProjectsQuery()),
+    } as any;
+
+    const result = await getAuthoritativeProjectWorkQueue(supabase);
+
+    expect(result.entries).toHaveLength(1001);
+    expect(new Set(result.entries.map((row) => row.projectId))).toHaveLength(1001);
+    expect(rpc).toHaveBeenCalledTimes(3);
+    expect(range.mock.calls).toEqual([
+      [0, 999],
+      [1000, 1999],
+    ]);
+  });
+
+  it("fails closed when the bounded queue inventory reaches its safe ceiling", async () => {
+    const { rpc, range } = pagedRpc({
+      data: Array.from({ length: 5000 }, (_, index) => durableRow(index + 1)),
+    });
+    const supabase = {
+      rpc,
+      from: vi.fn(() => emptyProjectsQuery()),
+    } as any;
+
+    await expect(getAuthoritativeProjectWorkQueue(supabase)).rejects.toThrow(
+      /exceeded the safe 5000-row fetch limit/i,
+    );
+    expect(range).toHaveBeenCalledTimes(5);
+  });
+
+  it.each(["marker", "state"])(
+    "fails closed when portfolio %s completeness is missing",
+    async (missingKind) => {
+      const { rpc } = pagedRpc({
+        completenessError: {
+          code: "P0001",
+          message:
+            `PROJECT_WORK_ROLLOUT_INCOMPLETE: project ${missingKind} is missing`,
+        },
+      });
+      const supabase = {
+        rpc,
+        from: vi.fn(() => emptyProjectsQuery()),
+      } as any;
+
+      await expect(getAuthoritativeProjectWorkQueue(supabase)).rejects.toMatchObject({
+        code: "PROJECT_WORK_INVENTORY_INCOMPLETE",
+      });
+    },
+  );
+
+  it("fails closed when the portfolio completeness payload is malformed", async () => {
+    const { rpc: baseRpc } = pagedRpc({ data: [] });
+    const rpc = vi.fn((name: string) =>
+      name === "staff_project_state_counts_v1"
+        ? Promise.resolve({ data: {}, error: null })
+        : baseRpc(name),
+    );
+    const supabase = {
+      rpc,
+      from: vi.fn(() => emptyProjectsQuery()),
+    } as any;
+
+    await expect(getAuthoritativeProjectWorkQueue(supabase)).rejects.toMatchObject({
+      code: "PROJECT_WORK_INVENTORY_INCOMPLETE",
     });
   });
 
@@ -327,8 +478,9 @@ describe("getAuthoritativeProjectWorkQueue", () => {
       if (table === "projects") return { select: projectSelect };
       throw new Error(`Unexpected table ${table}`);
     });
+    const { rpc } = pagedRpc({ data: [] });
     const supabase = {
-      rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+      rpc,
       from,
     } as any;
 
@@ -346,29 +498,29 @@ describe("getAuthoritativeProjectWorkQueue", () => {
   });
 
   it("rejects an actionable row without command concurrency metadata", async () => {
+    const { rpc } = pagedRpc({
+      data: [
+        {
+          project_id: PROJECT_UUID,
+          project_name: "Invalid fixture",
+          pipeline_stage: "CONTACTED",
+          queue_group: "today",
+          action_kind: "WORK_ITEM",
+          title: "Send first enquiry email",
+          reason: "This project work is due today.",
+          due_at: "2026-07-29T04:00:00.000Z",
+          priority: "NORMAL",
+          blocked_reason: null,
+          assignee_user_id: null,
+          project_owner_key: null,
+          work_item_id: null,
+          work_item_row_version: null,
+          state_row_version: 1,
+        },
+      ],
+    });
     const supabase = {
-      rpc: vi.fn().mockResolvedValue({
-        data: [
-          {
-            project_id: PROJECT_UUID,
-            project_name: "Invalid fixture",
-            pipeline_stage: "CONTACTED",
-            queue_group: "today",
-            action_kind: "WORK_ITEM",
-            title: "Send first enquiry email",
-            reason: "This project work is due today.",
-            due_at: "2026-07-29T04:00:00.000Z",
-            priority: "NORMAL",
-            blocked_reason: null,
-            assignee_user_id: null,
-            project_owner_key: null,
-            work_item_id: null,
-            work_item_row_version: null,
-            state_row_version: 1,
-          },
-        ],
-        error: null,
-      }),
+      rpc,
       from: vi.fn(() => emptyProjectsQuery()),
     } as any;
 
@@ -382,8 +534,9 @@ describe("getAuthoritativeProjectWorkQueue", () => {
       code: "PGRST202",
       message: "function is not in the schema cache",
     };
+    const { rpc } = pagedRpc({ error });
     const supabase = {
-      rpc: vi.fn().mockResolvedValue({ data: null, error }),
+      rpc,
       from: vi.fn(() => emptyProjectsQuery()),
     } as any;
 

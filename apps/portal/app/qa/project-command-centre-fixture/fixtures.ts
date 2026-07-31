@@ -1,23 +1,12 @@
-import type {
-  ProjectCommandCentreCurrentDesign,
-  ProjectCommandCentreOperations,
-} from "@/lib/projects/commandCentre/types";
+import type { ProjectCommandCentreCurrentDesign } from "@/lib/projects/commandCentre/types";
 import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type {
   ProjectWorkItem,
   ProjectWorkProjection,
 } from "@/lib/projects/workItems/types";
 import { commandCentreFixtureStaff } from "./commandCentreFixtureStaff";
-import {
-  commandCentreActionFixtures,
-  legacyBaseOperationsFixture,
-  legacyUndatedActionFixture,
-} from "./legacyCommandCentreFixtures";
 
-export {
-  commandCentreFixtureStaff,
-  commandCentreActionFixtures,
-};
+export { commandCentreFixtureStaff };
 
 export const COMMAND_CENTRE_FIXTURE_SCENARIOS = [
   "new-lead",
@@ -50,9 +39,8 @@ export const COMMAND_CENTRE_WORK_SCENARIOS = [
   "v2-waiting",
   "v2-closed",
   "v2-archived",
+  "v2-stage-review",
   "v2-triage",
-  "legacy",
-  "legacy-prohibited",
 ] as const;
 export type CommandCentreWorkFixtureScenario =
   (typeof COMMAND_CENTRE_WORK_SCENARIOS)[number];
@@ -142,6 +130,19 @@ const V2_CLOSE_REVIEW_ITEM: ProjectWorkItem = {
   deadlinePolicy: "LEAD_CLOSE_REVIEW_V1",
 };
 
+const V2_STAGE_REVIEW_ITEM: ProjectWorkItem = {
+  ...V2_PRIMARY_ITEM,
+  id: "10000000-0000-4000-8000-000000000006",
+  title: "Review proposal outcome",
+  responsibilityArea: "COMMERCIAL",
+  dueAt: "2026-08-06T05:00:00.000Z",
+  slaBreachAt: null,
+  deadlinePolicy: "STAGE_REVIEW_V1",
+  sourceType: "STAGE_REVIEW",
+  sourceKey: "stage-review:proj_fixture:rollout:v1",
+  seriesKey: null,
+};
+
 const V2_BLOCKED_ITEM: ProjectWorkItem = {
   ...V2_SECONDARY_ITEM,
   id: "10000000-0000-4000-8000-000000000003",
@@ -172,17 +173,10 @@ const V2_BASE: ProjectWorkProjection = {
   generatedAt: "2026-07-30T00:00:00.000Z",
 };
 
-export type CommandCentreWorkFixture = (
-  | {
-      workModel: "v2";
-      projectWork: ProjectWorkProjection;
-    }
-  | {
-      workModel: "legacy";
-      operations: ProjectCommandCentreOperations;
-    }
-) & {
-  tasks: ProjectPageSnapshot["tasks"];
+export type CommandCentreWorkFixture = {
+  workModel: "v2";
+  projectWork: ProjectWorkProjection;
+  stage: ProjectPageSnapshot["project"]["stage"];
   project?: Partial<ProjectPageSnapshot["project"]>;
 };
 
@@ -193,7 +187,7 @@ export const commandCentreWorkFixtures: Record<
   "v2-primary": {
     workModel: "v2",
     projectWork: V2_BASE,
-    tasks: { stage: "new", items: [] },
+    stage: "new",
   },
   "v2-missing-email": {
     workModel: "v2",
@@ -209,7 +203,7 @@ export const commandCentreWorkFixtures: Record<
       },
       openItems: [V2_PRIMARY_ITEM],
     },
-    tasks: { stage: "new", items: [] },
+    stage: "new",
     project: { contactEmail: "" },
   },
   "v2-follow-up": {
@@ -223,7 +217,7 @@ export const commandCentreWorkFixtures: Record<
       },
       openItems: [V2_FOLLOW_UP_ITEM],
     },
-    tasks: { stage: "contacted", items: [] },
+    stage: "contacted",
   },
   "v2-close-review": {
     workModel: "v2",
@@ -236,7 +230,7 @@ export const commandCentreWorkFixtures: Record<
       },
       openItems: [V2_CLOSE_REVIEW_ITEM],
     },
-    tasks: { stage: "contacted", items: [] },
+    stage: "contacted",
   },
   "v2-critical": {
     workModel: "v2",
@@ -259,7 +253,7 @@ export const commandCentreWorkFixtures: Record<
         },
       ],
     },
-    tasks: { stage: "quoting", items: [] },
+    stage: "quoting",
   },
   "v2-overdue": {
     workModel: "v2",
@@ -272,7 +266,7 @@ export const commandCentreWorkFixtures: Record<
       },
       openItems: [V2_FOLLOW_UP_ITEM],
     },
-    tasks: { stage: "contacted", items: [] },
+    stage: "contacted",
   },
   "v2-future": {
     workModel: "v2",
@@ -285,7 +279,7 @@ export const commandCentreWorkFixtures: Record<
       },
       openItems: [V2_SECONDARY_ITEM],
     },
-    tasks: { stage: "quoting", items: [] },
+    stage: "quoting",
   },
   "v2-blocked": {
     workModel: "v2",
@@ -294,7 +288,7 @@ export const commandCentreWorkFixtures: Record<
       openItems: [V2_PRIMARY_ITEM],
       blockedItems: [V2_BLOCKED_ITEM],
     },
-    tasks: { stage: "new", items: [] },
+    stage: "new",
   },
   "v2-no-owner": {
     workModel: "v2",
@@ -315,7 +309,7 @@ export const commandCentreWorkFixtures: Record<
         },
       ],
     },
-    tasks: { stage: "quoting", items: [] },
+    stage: "quoting",
     project: { owner: undefined },
   },
   "v2-no-action": {
@@ -329,7 +323,7 @@ export const commandCentreWorkFixtures: Record<
       },
       openItems: [],
     },
-    tasks: { stage: "new", items: [] },
+    stage: "new",
   },
   "v2-correction-review": {
     workModel: "v2",
@@ -353,7 +347,7 @@ export const commandCentreWorkFixtures: Record<
         },
       ],
     },
-    tasks: { stage: "contacted", items: [] },
+    stage: "contacted",
   },
   "v2-waiting": {
     workModel: "v2",
@@ -372,7 +366,7 @@ export const commandCentreWorkFixtures: Record<
       },
       openItems: [],
     },
-    tasks: { stage: "new", items: [] },
+    stage: "new",
   },
   "v2-closed": {
     workModel: "v2",
@@ -388,7 +382,7 @@ export const commandCentreWorkFixtures: Record<
       },
       openItems: [],
     },
-    tasks: { stage: "new", items: [] },
+    stage: "new",
   },
   "v2-archived": {
     workModel: "v2",
@@ -404,7 +398,20 @@ export const commandCentreWorkFixtures: Record<
       },
       openItems: [],
     },
-    tasks: { stage: "paid", items: [] },
+    stage: "paid",
+  },
+  "v2-stage-review": {
+    workModel: "v2",
+    projectWork: {
+      ...V2_BASE,
+      primaryAction: {
+        kind: "workItem",
+        item: V2_STAGE_REVIEW_ITEM,
+        dueState: "future",
+      },
+      openItems: [V2_STAGE_REVIEW_ITEM],
+    },
+    stage: "sent",
   },
   "v2-triage": {
     workModel: "v2",
@@ -417,65 +424,7 @@ export const commandCentreWorkFixtures: Record<
       },
       openItems: [],
     },
-    tasks: { stage: "new", items: [] },
-  },
-  legacy: {
-    workModel: "legacy",
-    operations: legacyBaseOperationsFixture,
-    tasks: {
-      stage: "quoting",
-      items: [
-        {
-          key: "create_quote",
-          label: "Create quote",
-          kind: "manual",
-          isDone: false,
-        },
-        {
-          key: "call_again_later_sent",
-          label: "Call again later",
-          kind: "manual",
-          isDone: false,
-        },
-      ],
-    },
-  },
-  "legacy-prohibited": {
-    workModel: "legacy",
-    operations: {
-      ...legacyBaseOperationsFixture,
-      primaryAction: {
-        ...legacyUndatedActionFixture,
-        dueAt: "2026-07-31T05:00:00.000Z",
-        dueState: "tomorrow",
-        dueLabel: "Tomorrow",
-        requiresDueDate: false,
-        isExplicitlySelected: true,
-      },
-      candidates: [legacyUndatedActionFixture],
-      candidateCount: 1,
-    },
-    tasks: {
-      stage: "site_visit",
-      items: [
-        {
-          key: "book_site_visit",
-          label: "Book site visit",
-          kind: "action",
-          isDone: false,
-          cta: {
-            label: "Book",
-            href: "/staff/schedule?view=site-visits&project=proj_fixture",
-          },
-        },
-        {
-          key: "upload_photos_site_visit",
-          label: "Upload photos",
-          kind: "manual",
-          isDone: false,
-        },
-      ],
-    },
+    stage: "new",
   },
 };
 

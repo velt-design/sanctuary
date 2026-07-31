@@ -5,6 +5,7 @@ const listRecentProjectNoteActivity = vi.fn();
 const listVisibleDashboardTasks = vi.fn();
 const listDashboardRecentEstimates = vi.fn();
 const getProjectWorkQueue = vi.fn();
+const getProjectOperationalStateCounts = vi.fn();
 
 vi.mock('./getDashboardSnapshotCached', () => ({
   getDashboardSnapshotCached: (...args: unknown[]) => getDashboardSnapshotCached(...args),
@@ -26,6 +27,11 @@ vi.mock('@/lib/projects/workItems/repository', () => ({
   getProjectWorkQueue: (...args: unknown[]) => getProjectWorkQueue(...args),
 }));
 
+vi.mock('@/lib/projects/workItems/stateCounts', () => ({
+  getProjectOperationalStateCounts: (...args: unknown[]) =>
+    getProjectOperationalStateCounts(...args),
+}));
+
 vi.mock('@/lib/supabaseClient', () => ({
   supabaseServiceRole: { from: vi.fn() },
 }));
@@ -38,13 +44,17 @@ describe('getDashboardData', () => {
     listVisibleDashboardTasks.mockReset();
     listDashboardRecentEstimates.mockReset();
     getProjectWorkQueue.mockReset();
+    getProjectOperationalStateCounts.mockReset().mockResolvedValue({
+      ACTIVE: 1,
+      WAITING: 0,
+      CLOSED: 0,
+      ARCHIVED: 0,
+    });
 
     getDashboardSnapshotCached.mockResolvedValue({
       updated_at: '2026-05-30T00:00:00.000Z',
       kpis: { actions_due: 1, new_leads: 2, quotes_to_send: 3, installs_this_week: 4 },
-      attention_counts: {},
       pipeline_counts: { NEW: 2 },
-      work_queue: [],
       schedule: { starting_soon: [], crew_next_available: [] },
       site_visits: { unscheduled_count: 0, today: [], next7: [] },
     });
@@ -96,7 +106,7 @@ describe('getDashboardData', () => {
     expect(listRecentProjectNoteActivity).toHaveBeenCalledWith(expect.anything(), 8);
     expect(listDashboardRecentEstimates).toHaveBeenCalledTimes(1);
     expect(listVisibleDashboardTasks).toHaveBeenCalledWith(expect.anything(), 'user_1');
-    expect(data.kpis.actionsDue).toBe(1);
+    expect(data.kpis.newLeads).toBe(2);
     expect(data.pipelineCounts.NEW).toBe(2);
     expect(data.recentActivity).toHaveLength(1);
     expect(data.personalTasks).toHaveLength(1);
@@ -143,13 +153,11 @@ describe('getDashboardData', () => {
     expect(data.pipelineCounts.NEW).toBe(2);
   });
 
-  it('does not expose Site Visits as a Dashboard attention link', async () => {
+  it('does not expose Site Visits as Dashboard work', async () => {
     getDashboardSnapshotCached.mockResolvedValue({
       updated_at: '2026-05-30T00:00:00.000Z',
       kpis: {},
-      attention_counts: { site_visits_to_book: 12 },
       pipeline_counts: {},
-      work_queue: [],
       schedule: { starting_soon: [], crew_next_available: [] },
       site_visits: { unscheduled_count: 12, today: [], next7: [] },
     });
@@ -157,7 +165,6 @@ describe('getDashboardData', () => {
 
     const data = await getDashboardData({ queueMode: 'today' });
 
-    expect(data.attention.map((item) => item.key)).not.toContain('site_visits_to_book');
-    expect(data.attention.map((item) => item.href)).not.toContain('/staff/schedule?view=site-visits');
+    expect(data.projectWorkQueue).toEqual([]);
   });
 });
