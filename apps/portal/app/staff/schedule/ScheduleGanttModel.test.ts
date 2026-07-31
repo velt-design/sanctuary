@@ -163,10 +163,12 @@ describe('ScheduleGanttModel', () => {
       (row) => row.kind === 'item' && row.scheduleItemId === locked.id,
     );
 
-    expect(group).toMatchObject({ itemCount: 2, attentionCount: 1 });
+    expect(group).toMatchObject({ itemCount: 2, loadLabel: '2 jobs · 4d forecast', attentionCount: 1 });
     expect(combinedRow).toMatchObject({
       needsAttention: true,
       attentionReasons: ['schedule_issue', 'client_update', 'drift'],
+      attentionBadgeLabel: '3 issues',
+      attentionLabel: 'Schedule conflict; Client update needed; Forecast drift exceeds flex by 3 working days',
       timingAdjustable: true,
       issueLevel: 'error',
       conflictMessage: 'Pinned conflict',

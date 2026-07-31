@@ -7,6 +7,15 @@ import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from '@/lib/sched
 import { SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
 import { axisSpanPx, axisXForDayIndex, buildGanttAxis, GANTT_WEEKEND_WEIGHT } from './ganttAxis';
 import { buildScheduleJobIdentity } from './ScheduleJobPresentation';
+import {
+  buildScheduleAttentionPresentation,
+  formatScheduleCommitmentLabel,
+  formatScheduleCrewLoad,
+  resolveScheduleFlexDays,
+  scheduleForecastDays,
+} from './ScheduleOperationalPresentation';
+
+export { hasScheduleCommitment as hasPlannedCommitment } from './ScheduleOperationalPresentation';
 
 export type GanttDensity = 'compact' | 'comfortable';
 export type GanttZoomWeeks = 4 | 8 | 12;
@@ -33,6 +42,7 @@ export type GanttRow =
       label: string;
       color: string;
       itemCount: number;
+      loadLabel: string;
       attentionCount: number;
       collapsed: boolean;
       summarySpans: GanttSummarySpan[];
@@ -74,6 +84,7 @@ export type GanttRow =
       timingAdjustable: boolean;
       needsAttention: boolean;
       attentionReasons: GanttAttentionReason[];
+      attentionBadgeLabel: string | null;
       attentionLabel: string | null;
       conflictMessage: string | null;
     };
@@ -119,7 +130,7 @@ const GANTT_LABEL_NARROW_MIN_PX = 120;
 const GANTT_TIMELINE_MIN_VIEWPORT_PX = 160;
 export const GANTT_LABEL_RESIZER_WIDTH_PX = 16;
 export const GANTT_LABEL_KEYBOARD_STEP_PX = 10;
-export const GANTT_BAR_LABEL_MIN_PX = 120;
+export const GANTT_BAR_LABEL_MIN_PX = 78;
 const GANTT_DENSITY_STORAGE_KEY = 'sp.schedule.ganttDensity';
 const GANTT_LABEL_WIDTH_STORAGE_KEY = 'sp.schedule.ganttLabelWidth';
 
@@ -351,23 +362,6 @@ function formatDuration(hours: number): string {
   return `${days.toFixed(days % 1 === 0 ? 0 : 1)}d`;
 }
 
-export function hasPlannedCommitment(item: ScheduleItem): boolean {
-  return Boolean(item.plannedCommitmentType || item.plannedStart || item.plannedWeekStart);
-}
-
-function resolveCommitmentType(item: ScheduleItem): 'week_of' | 'fixed_date' | null {
-  if (item.plannedCommitmentType === 'week_of' || item.plannedCommitmentType === 'fixed_date') return item.plannedCommitmentType;
-  if (item.plannedStart) return 'fixed_date';
-  return null;
-}
-
-function resolvePlannedFlexDays(item: ScheduleItem): number | null {
-  if (typeof item.plannedFlexDays === 'number' && Number.isFinite(item.plannedFlexDays)) return Math.max(0, Math.trunc(item.plannedFlexDays));
-  const commitmentType = resolveCommitmentType(item);
-  if (!commitmentType) return null;
-  return commitmentType === 'week_of' ? 4 : 1;
-}
-
 function addAttentionReason(
   reasonsByScheduleId: Map<string, GanttAttentionReason[]>,
   scheduleItemId: string,
@@ -394,7 +388,7 @@ export function buildGanttAttentionReasons(
       typeof item.driftDays === 'number' && Number.isFinite(item.driftDays)
         ? Math.max(0, Math.trunc(item.driftDays))
         : null;
-    const flexDays = resolvePlannedFlexDays(item);
+    const flexDays = resolveScheduleFlexDays(item);
     if (driftDays !== null && flexDays !== null && driftDays > flexDays) {
       addAttentionReason(reasonsByScheduleId, item.id, 'drift');
     }
@@ -412,16 +406,6 @@ function formatGanttAttentionLabel(reasons: readonly GanttAttentionReason[]): st
       return 'Drift exceeds flex';
     })
     .join('; ');
-}
-
-function formatCommitmentLabel(item: ScheduleItem): string | null {
-  const commitmentType = resolveCommitmentType(item);
-  if (!commitmentType) return null;
-  if (commitmentType === 'week_of') {
-    const weekStart = item.plannedWeekStart ?? (item.plannedStart ? startOfWeekMonday(item.plannedStart) : null);
-    return weekStart ? `Week of ${formatShortDate(weekStart)}` : 'Week of -';
-  }
-  return item.plannedStart ? `Starts ${formatShortDate(item.plannedStart)}` : 'Starts -';
 }
 
 export function canAdjustGanttTiming(item: ScheduleItem | null): boolean {
@@ -653,6 +637,7 @@ export function buildScheduleGanttModel({
       label: installer.name,
       color: installer.color,
       itemCount: items.length,
+      loadLabel: formatScheduleCrewLoad(items.length, scheduleForecastDays(items)),
       attentionCount,
       collapsed,
       summarySpans,
@@ -667,6 +652,12 @@ export function buildScheduleGanttModel({
       const isDowntime = scheduleItem?.itemType === 'downtime';
       const jobPresentation = ganttJobsById.get(item.id);
       const attentionReasons = [...(attentionReasonsByScheduleId.get(item.id) ?? [])];
+      const attentionPresentation = scheduleItem
+        ? buildScheduleAttentionPresentation({
+            item: scheduleItem,
+            issueLevel: issueLevelByScheduleId.get(item.id),
+          })
+        : null;
       const planned = plannedBarsById.get(item.id);
       const baseSpan = axisSpanPx(axis, bar.startDate, bar.endDate);
       const baseBarLeftPx = baseSpan.leftPx;
@@ -721,8 +712,8 @@ export function buildScheduleGanttModel({
         plannedWidthPx: planned?.widthPx,
         plannedStart: planned?.startDate,
         plannedEnd: planned?.endDate,
-        plannedCommitmentLabel: scheduleItem ? formatCommitmentLabel(scheduleItem) : null,
-        plannedFlexDays: scheduleItem ? resolvePlannedFlexDays(scheduleItem) : null,
+        plannedCommitmentLabel: scheduleItem ? formatScheduleCommitmentLabel(scheduleItem, formatShortDate) : null,
+        plannedFlexDays: scheduleItem ? resolveScheduleFlexDays(scheduleItem) : null,
         plannedDurationDays:
           scheduleItem && typeof scheduleItem.plannedDurationDays === 'number' && Number.isFinite(scheduleItem.plannedDurationDays)
             ? Math.max(1, Math.trunc(scheduleItem.plannedDurationDays))
@@ -735,7 +726,8 @@ export function buildScheduleGanttModel({
         timingAdjustable: scheduleMode === 'v2' && canAdjustGanttTiming(scheduleItem),
         needsAttention: attentionReasons.length > 0,
         attentionReasons,
-        attentionLabel: formatGanttAttentionLabel(attentionReasons),
+        attentionBadgeLabel: attentionPresentation?.badgeLabel ?? null,
+        attentionLabel: attentionPresentation?.detailLabel ?? formatGanttAttentionLabel(attentionReasons),
         conflictMessage: issueLevelByScheduleId.get(item.id) === 'error'
           ? conflictMessageByScheduleId.get(item.id) ?? null
           : null,

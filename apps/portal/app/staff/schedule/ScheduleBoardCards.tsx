@@ -10,6 +10,7 @@ import type { ScheduleItem, ScheduleItemStatus } from '@/lib/types/scheduling';
 import type { SchedulableJob } from './ScheduleClientModel';
 import { ScheduleBoardActions, type ScheduleBoardMenuAction } from './ScheduleBoardActions';
 import { scheduleBoardChangeLabel, type ScheduleBoardChangeFeedback } from './useScheduleBoardChangeFeedback';
+import type { ScheduleAttentionPresentation } from './ScheduleOperationalPresentation';
 import styles from './scheduleBoard.module.css';
 
 export type { ScheduleBoardMenuAction } from './ScheduleBoardActions';
@@ -70,7 +71,10 @@ function JobCardShell({
   pinned,
   onOpen,
   dateLine,
-  extraBadges,
+  planLabel,
+  planCommitted,
+  attention,
+  clientContacted,
   warning,
   issueLevel,
   dragProps,
@@ -97,7 +101,10 @@ function JobCardShell({
   pinned?: boolean;
   onOpen?: () => void;
   dateLine?: string;
-  extraBadges?: ReactNode;
+  planLabel?: string;
+  planCommitted?: boolean;
+  attention?: ScheduleAttentionPresentation;
+  clientContacted?: boolean;
   warning?: boolean;
   issueLevel?: 'warning' | 'error';
   dragProps?: Record<string, unknown>;
@@ -130,7 +137,7 @@ function JobCardShell({
       ) : null}
     </>
   );
-  const hasAttention = Boolean(extraBadges || warning || issueLevel);
+  const hasAttention = Boolean(attention?.signals.length || clientContacted || (!attention && (warning || issueLevel)));
 
   return (
     <div
@@ -197,6 +204,11 @@ function JobCardShell({
         <span className={styles.cardMetaItem}>Stage: {statusLabel}</span>
         {scheduleStatus ? <span className={styles.cardMetaItem}>Job: {scheduleStatusLabel(scheduleStatus)}</span> : null}
         {pinned ? <span className={styles.cardMetaItem}>Timing: Pinned</span> : null}
+        {planLabel ? (
+          <span className={styles.planRow} data-committed={planCommitted ? 'true' : 'false'}>
+            Plan: {planLabel}
+          </span>
+        ) : null}
       </div>
 
       {changeFeedback ? (
@@ -208,10 +220,15 @@ function JobCardShell({
 
       {hasAttention ? (
         <div className={styles.badgesRow}>
-          {extraBadges}
-          {issueLevel === 'error' ? (
+          {attention?.signals.map((signal) => (
+            <span key={signal.key} className={styles.attentionBadge} data-tone={signal.tone} title={signal.detail}>
+              {signal.label}
+            </span>
+          ))}
+          {clientContacted ? <span className={styles.clientAckPill}>Client contacted</span> : null}
+          {!attention && issueLevel === 'error' ? (
             <span className={styles.warnBadge}>Conflict</span>
-          ) : warning || issueLevel === 'warning' ? (
+          ) : !attention && (warning || issueLevel === 'warning') ? (
             <span className={styles.warnBadge}>Warning</span>
           ) : null}
         </div>
@@ -273,7 +290,10 @@ export function ScheduledJobCard({
   dropTarget,
   menuActions,
   pinned,
-  extraBadges,
+  planLabel,
+  planCommitted,
+  attention,
+  clientContacted,
   issueLevel,
   onMount,
   interactionDisabled = false,
@@ -288,7 +308,10 @@ export function ScheduledJobCard({
   dropTarget?: boolean;
   menuActions: ScheduleBoardMenuAction[];
   pinned?: boolean;
-  extraBadges?: ReactNode;
+  planLabel?: string;
+  planCommitted?: boolean;
+  attention?: ScheduleAttentionPresentation;
+  clientContacted?: boolean;
   issueLevel?: 'warning' | 'error';
   onMount?: (node: HTMLElement | null) => void;
   interactionDisabled?: boolean;
@@ -317,7 +340,10 @@ export function ScheduledJobCard({
       durationTitle={job?.durationTitle ?? '—'}
       scheduleStatus={scheduleStatus}
       pinned={pinned}
-      extraBadges={extraBadges}
+      planLabel={planLabel}
+      planCommitted={planCommitted}
+      attention={attention}
+      clientContacted={clientContacted}
       onOpen={job ? () => router.push(`/staff/projects/${encodeURIComponent(job.projectId)}`) : undefined}
       dateLine={dateLine}
       warning={Boolean(job?.warnings?.length)}

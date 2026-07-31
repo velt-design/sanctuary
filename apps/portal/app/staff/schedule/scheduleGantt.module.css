@@ -216,11 +216,13 @@
 }
 
 .ganttCompactNotice {
-  padding: 8px 10px;
-  border-left: var(--ui-status-edge) solid var(--ui-status-info-border);
+  padding: 9px 10px;
+  border: var(--ui-border-width) solid var(--ui-status-info-border);
+  border-left-width: var(--ui-status-edge);
   background: var(--ui-status-info-bg);
   color: var(--ui-text-strong);
   font-size: 12px;
+  font-weight: 650;
   line-height: 1.4;
 }
 
@@ -294,6 +296,11 @@
   text-align: right;
 }
 
+.ganttCompactCrewSummary {
+  max-width: 48%;
+  line-height: 1.25;
+}
+
 .ganttCompactCrewHeader:focus-visible,
 .ganttCompactJobButton:focus-visible {
   position: relative;
@@ -345,10 +352,10 @@
 
 .ganttCompactJobButton {
   min-height: 72px;
-  grid-template-columns: minmax(0, 1fr) minmax(92px, 38%);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 10px;
-  padding: 10px;
+  gap: 8px;
+  padding: 11px 12px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -372,7 +379,8 @@
 }
 
 .ganttCompactJobBody strong {
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.25;
 }
 
 .ganttCompactJobBody span {
@@ -381,22 +389,55 @@
   line-height: 1.35;
 }
 
+.ganttCompactJobTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ganttCompactJobTitleRow > strong {
+  min-width: 0;
+}
+
+.ganttCompactAttention {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border: var(--ui-border-width) solid var(--ui-status-warning-border);
+  border-left-width: var(--ui-status-edge);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-status-warning-bg);
+  color: var(--ui-text-strong) !important;
+  font-size: 9px !important;
+  font-weight: 800;
+  line-height: 1 !important;
+}
+
+.ganttCompactTiming {
+  margin-top: 2px;
+  color: var(--ui-text-strong) !important;
+  font-weight: 750;
+}
+
 .ganttCompactJobMeta {
   min-width: 0;
-  display: grid;
-  justify-items: end;
-  gap: 3px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  padding-top: 7px;
+  border-top: var(--ui-border-width) solid var(--ui-border);
   color: var(--ui-text-muted);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.03em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .ganttCompactJobMeta > * {
   max-width: 100%;
   overflow-wrap: anywhere;
-  text-align: right;
+  text-align: left;
 }
 
 .ganttCompactJobMeta strong {
@@ -455,6 +496,7 @@
 
 .ganttPlanningRow {
   flex-wrap: wrap;
+  background: var(--ui-surface-elevated);
 }
 
 .ganttDisplayRow {
@@ -497,9 +539,8 @@
   margin-right: 2px;
   color: var(--ui-text-muted);
   font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: 750;
+  letter-spacing: 0.01em;
 }
 
 .ganttLabeledControl {
@@ -509,9 +550,8 @@
   min-width: 0;
   color: var(--ui-text-muted);
   font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-weight: 750;
+  letter-spacing: 0.01em;
 }
 
 .ganttLabeledControl select {
@@ -540,10 +580,10 @@
   color: var(--ui-text-strong);
   font: inherit;
   font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
+  font-weight: 800;
+  letter-spacing: 0.01em;
   line-height: 1;
-  text-transform: uppercase;
+  text-transform: none;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -633,26 +673,26 @@
   position: relative;
   display: grid;
   --ganttHeaderH: 74px;
-  --ganttRowHGroup: 38px;
+  --ganttRowHGroup: 44px;
   --ganttRowHItem: 50px;
   --ganttBarH: 18px;
-  --ganttLeftPadYGroup: 7px;
+  --ganttLeftPadYGroup: 5px;
   --ganttLeftPadYItem: 5px;
 }
 
 .ganttTable[data-density='compact'] {
-  --ganttRowHGroup: 38px;
+  --ganttRowHGroup: 44px;
   --ganttRowHItem: 50px;
   --ganttBarH: 18px;
-  --ganttLeftPadYGroup: 7px;
+  --ganttLeftPadYGroup: 5px;
   --ganttLeftPadYItem: 5px;
 }
 
 .ganttTable[data-density='comfortable'] {
-  --ganttRowHGroup: 44px;
+  --ganttRowHGroup: 48px;
   --ganttRowHItem: 58px;
   --ganttBarH: 22px;
-  --ganttLeftPadYGroup: 10px;
+  --ganttLeftPadYGroup: 6px;
   --ganttLeftPadYItem: 6px;
 }
 
@@ -765,8 +805,7 @@
   padding: 12px;
   font-size: 12px;
   font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   background: var(--ui-surface-secondary);
   box-shadow: none;
   border-right: var(--ui-border-width) solid var(--ui-border);
@@ -856,13 +895,29 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+}
+
+.ganttGroupIdentity {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: grid;
+  gap: 1px;
+}
+
+.ganttGroupLoad {
+  overflow: hidden;
+  color: var(--ui-text-muted);
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ganttProjectTextItem {
-  padding-left: 18px;
+  padding-left: 12px;
   cursor: pointer;
   font-weight: 800;
 }
@@ -881,18 +936,6 @@
   margin-right: -8px;
 }
 
-.ganttGroupCount {
-  flex: 0 0 auto;
-  padding: 2px 6px;
-  border-radius: var(--ui-radius-control);
-  border: var(--ui-border-width) solid var(--ui-border);
-  background: var(--ui-surface-secondary);
-  font-size: 10px;
-  font-weight: 800;
-  color: var(--ui-text-muted);
-  white-space: nowrap;
-}
-
 .ganttGroupAttention,
 .ganttItemAttention {
   flex: 0 0 auto;
@@ -905,20 +948,12 @@
   font-weight: 900;
   letter-spacing: 0.04em;
   line-height: 1;
-  text-transform: uppercase;
+  text-transform: none;
   white-space: nowrap;
 }
 
 .ganttGroupAttention {
   padding: 3px 6px;
-}
-
-.ganttGroupEmpty {
-  flex: 0 0 auto;
-  color: var(--ui-text-muted);
-  font-size: 10px;
-  font-weight: 700;
-  white-space: nowrap;
 }
 
 .ganttProjectDetails {
@@ -941,7 +976,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--ui-text-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.01em;
   line-height: 1.15;
@@ -1000,7 +1035,7 @@
   border: var(--ui-border-width) solid var(--ui-action);
   border-left-width: var(--ui-status-edge);
   background: var(--ui-surface-elevated);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
   color: var(--ui-text);
   white-space: nowrap;
@@ -1241,10 +1276,9 @@
 }
 
 .ganttBarText {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: 0.005em;
   white-space: nowrap;
   color: inherit;
 }
@@ -1399,11 +1433,6 @@
     --ganttBarH: 40px;
     --ganttLeftPadYGroup: 2px;
     --ganttLeftPadYItem: 4px;
-  }
-
-  .ganttGroupCount,
-  .ganttGroupEmpty {
-    display: none;
   }
 
   .ganttGroupLabel {

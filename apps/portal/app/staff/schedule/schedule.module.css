@@ -86,19 +86,56 @@
 
 .saveStatus {
   min-width: 82px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: var(--ui-border-width) solid var(--ui-status-success-border);
+  border-left-width: var(--ui-status-edge);
+  background: var(--ui-status-success-bg);
   color: var(--ui-text-muted);
   font-size: var(--ui-font-size-caption);
   font-weight: 700;
   line-height: var(--ui-line-height-compact);
-  text-align: right;
   white-space: nowrap;
 }
 
+.saveStatus::before {
+  content: '✓';
+  color: var(--ui-text-strong);
+  font-weight: 900;
+}
+
+.saveStatus[data-state='saving'],
+.saveStatus[data-state='refreshing'] {
+  border-color: var(--ui-status-info-border);
+  background: var(--ui-status-info-bg);
+}
+
+.saveStatus[data-state='saving']::before {
+  content: '…';
+}
+
+.saveStatus[data-state='refreshing']::before {
+  content: '↻';
+}
+
 .saveStatus[data-state='failed'] {
+  border-color: var(--ui-status-error-border);
+  background: var(--ui-status-error-bg);
   color: var(--ui-status-error-text);
 }
 
+.saveStatus[data-state='failed']::before,
+.saveStatus[data-state='stale']::before {
+  content: '!';
+}
+
 .saveStatus[data-state='stale'] {
+  border-color: var(--ui-status-warning-border);
+  background: var(--ui-status-warning-bg);
   color: var(--ui-status-warning-border);
 }
 

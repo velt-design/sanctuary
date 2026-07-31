@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-01 | Schedule Operational Presentation | Promoted | Keep Board and Gantt attention, commitment/flex wording, forecast workload, and persistence language under named shared presentation owners. Derive only scan aids from server forecast facts; never imply a browser-owned capacity limit. At phone/zoom widths use a single-column read-only Gantt agenda, while desktop keeps sticky crew identity and labels bars only when legible. |
 | 2026-07-31 | Schedule Board Gestures          | Promoted | Commit the last visible pointer-owned semantic target, keep the source card anchored, block gestures before they start when Schedule cannot accept a command, and show checking/reviewing/saving/reconciling/confirmed-or-restored feedback on the affected card. Keep exact timing and affected-job consequences server-owned. |
 | 2026-07-31 | Schedule Authoritative Timing    | Promoted | A browser drag may request start and duration but must not claim an exact new finish: crew calendars, holidays, closures, affected jobs, preview/re-preview, and commit remain server-owned. At phone width use a read-only agenda from the same Gantt model and route changes to Board instead of compressing desktop manipulation. |
 | 2026-07-31 | Project Overview Hierarchy       | Promoted | Present one authority once: server projections explain and rank ordinary work, Overview commercial content remains read-only, one failed read owns one recovery action, expected-empty secondary work is omitted, and the command grid follows mobile-priority order at and below 768 CSS pixels. |
@@ -4462,3 +4463,30 @@ Why it mattered: Staff could not reliably answer "who owns this, what happens ne
 Current guardrail: Keep journey, detailed stage, and operational state as separate facts. Filter Project Owner before server pagination, enrich only the current Projects page from the authoritative queue owner, and filter the already-ranked full queue without reranking it. Every stage correction opens an explicit review step that names Project Work recalculation and customer-communication non-effects. Use shared human labels for owner, timing, responsibility, and closed outcome across Dashboard, Projects, Queue, and Overview.
 Promoted to: `docs/project-command-centre-architecture.md`; `docs/project-work-items-and-follow-up.md`; `docs/projects-contacts-estimates-calculator.md`; `docs/staff-api-auth-contracts.md`; `docs/supabase-schema-map.md`
 Related docs/tests: `apps/portal/lib/projects/serverProjectsIndex.ts`; `apps/portal/components/projects/ProjectStageCorrectionDialog.tsx`; `apps/portal/components/projects/workQueue/workQueueFilters.ts`; `test/project-work-portfolio-rollout-migration.test.ts`
+
+### 2026-08-01 - Schedule Operational Presentation - One Scan Model Across Views
+
+Date: 2026-08-01
+Area: Schedule Board and Gantt operational presentation
+Status: Promoted
+Decision or mistake: Board lane attention counted only attached Schedule issues
+while Gantt also counted required client updates and drift beyond flex. Cards,
+crew rows and the phone agenda repeated qualified state in different visual
+orders, and Gantt hid useful bar labels at widths that could support them.
+Why it mattered: Staff could see different attention totals for the same
+server-owned schedule, compare crew load only indirectly, and work harder to
+distinguish routine state from a conflict or uncommitted plan.
+Current guardrail: Keep commitment/flex wording, factual attention signals and
+summed forecast-day scan aids in `ScheduleOperationalPresentation.ts`. Board
+and Gantt must count the same server facts, name every attention reason without
+colour alone, and never describe summed forecast days as a capacity limit.
+Desktop Gantt keeps sticky crew identity and labels bars when legible; phone
+and constrained 200%-zoom layouts use the same model in a single-column
+read-only agenda with a clear route to Board for changes. Persistence state
+remains a shared route-level status and never implies confirmation before the
+existing command/reconciliation lifecycle completes.
+Promoted to: `docs/schedule.md`
+Related docs/tests: `apps/portal/app/staff/schedule/ScheduleOperationalPresentation.ts`;
+`apps/portal/app/staff/schedule/ScheduleBoardCards.tsx`;
+`apps/portal/app/staff/schedule/ScheduleGanttModel.ts`;
+`playwright/portal.schedule-board-confidence-fixture.spec.ts`

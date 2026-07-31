@@ -235,16 +235,12 @@ export default function ScheduleGanttTimeline({
                         {row.collapsed ? '>' : 'v'}
                       </button>
                       <span className={styles.colorDot} style={{ background: row.color }} />
-                      <span className={styles.ganttProjectText}>{row.label}</span>
-                      {row.itemCount > 0 ? (
-                        <span className={styles.ganttGroupCount}>
-                          {row.itemCount} {row.itemCount === 1 ? 'item' : 'items'}
-                        </span>
-                      ) : null}
+                      <span className={styles.ganttGroupIdentity}>
+                        <span className={styles.ganttProjectText} title={row.label}>{row.label}</span>
+                        <span className={styles.ganttGroupLoad}>{row.loadLabel}</span>
+                      </span>
                       {row.attentionCount > 0 ? (
                         <span className={styles.ganttGroupAttention}>{row.attentionCount} attention</span>
-                      ) : row.itemCount === 0 ? (
-                        <span className={styles.ganttGroupEmpty}>No scheduled items</span>
                       ) : null}
                     </span>
                   ) : (
@@ -253,7 +249,7 @@ export default function ScheduleGanttTimeline({
                         <span className={styles.ganttProjectText} title={row.projectName}>{row.projectName}</span>
                         {row.needsAttention ? (
                           <span className={styles.ganttItemAttention} title={row.attentionLabel ?? undefined}>
-                            Attention
+                            {row.attentionBadgeLabel ?? 'Attention'}
                           </span>
                         ) : null}
                       </span>

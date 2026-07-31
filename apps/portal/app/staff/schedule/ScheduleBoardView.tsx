@@ -34,6 +34,12 @@ import {
   type ScheduleBoardDrop,
 } from './useScheduleBoardDragController';
 import type { ScheduleBoardChangeFeedback } from './useScheduleBoardChangeFeedback';
+import {
+  buildScheduleAttentionPresentation,
+  buildSchedulePlanPresentation,
+  formatScheduleCrewLoad,
+  scheduleForecastDays,
+} from './ScheduleOperationalPresentation';
 
 const styles = { ...sharedStyles, ...timelineStyles, ...boardStyles };
 
@@ -128,44 +134,6 @@ function deriveScheduleStatus(item: ScheduleItem, today: string): ScheduleItemSt
   if (started) return 'IN_PROGRESS';
   if (raw === 'CONFIRMED' || item.locked) return 'CONFIRMED';
   return 'TENTATIVE';
-}
-
-function hasPlannedCommitment(item: ScheduleItem): boolean {
-  return Boolean(item.plannedCommitmentType || item.plannedStart || item.plannedWeekStart);
-}
-
-function startOfWeekMonday(ymd: string): string {
-  const dt = parseYmd(ymd);
-  if (!dt) return ymd;
-  const daysSinceMonday = (dt.getUTCDay() + 6) % 7;
-  return addDaysYmd(ymd, -daysSinceMonday);
-}
-
-function resolveCommitmentType(item: ScheduleItem): 'week_of' | 'fixed_date' | null {
-  if (item.plannedCommitmentType === 'week_of' || item.plannedCommitmentType === 'fixed_date') return item.plannedCommitmentType;
-  if (item.plannedStart) return 'fixed_date';
-  return null;
-}
-
-function resolvePlannedFlexDays(item: ScheduleItem): number | null {
-  if (typeof item.plannedFlexDays === 'number' && Number.isFinite(item.plannedFlexDays)) {
-    return Math.max(0, Math.trunc(item.plannedFlexDays));
-  }
-  const commitmentType = resolveCommitmentType(item);
-  if (!commitmentType) return null;
-  return commitmentType === 'week_of' ? 4 : 1;
-}
-
-function formatCommitmentLabel(item: ScheduleItem): string | null {
-  const commitmentType = resolveCommitmentType(item);
-  if (!commitmentType) return null;
-  if (commitmentType === 'week_of') {
-    const weekStart = item.plannedWeekStart ?? (item.plannedStart ? startOfWeekMonday(item.plannedStart) : null);
-    if (!weekStart) return 'Week of —';
-    return `Week of ${formatShortDate(weekStart)}`;
-  }
-  if (!item.plannedStart) return 'Starts —';
-  return `Starts ${formatShortDate(item.plannedStart)}`;
 }
 
 function LaneDropZone({
@@ -544,7 +512,14 @@ export default function ScheduleBoardView({
               const nextAvailableCandidate = maxEnd ? nextWorkdayAfter(maxEnd) : null;
               const computedNextAvailable = nextAvailableCandidate && nextAvailableCandidate < today ? today : nextAvailableCandidate;
               const nextAvailable = scheduleMode === 'v2' ? nextAvailableByInstallerId.get(installer.id) ?? computedNextAvailable : computedNextAvailable;
-              const issueCount = ids.reduce((count, id) => count + (issueLevelByScheduleId.has(id) ? 1 : 0), 0);
+              const forecastDays = scheduleForecastDays(items);
+              const attentionCount = items.reduce(
+                (count, item) => count + (buildScheduleAttentionPresentation({
+                  item,
+                  issueLevel: issueLevelByScheduleId.get(item.id),
+                }).signals.length > 0 ? 1 : 0),
+                0,
+              );
 
               const cards: ReactNode[] = [];
               for (const [itemIndex, id] of ids.entries()) {
@@ -579,26 +554,9 @@ export default function ScheduleBoardView({
 
                 if (!scheduleItem) continue;
                 const menuActions = buildJobMenuActions({ id, scheduleItem, job, scheduleStatus });
-                const commitmentLabel = formatCommitmentLabel(scheduleItem);
-                const commitmentType = resolveCommitmentType(scheduleItem);
-                const flexDays = resolvePlannedFlexDays(scheduleItem);
-                const driftDays =
-                  typeof scheduleItem.driftDays === 'number' && Number.isFinite(scheduleItem.driftDays)
-                    ? Math.max(0, Math.trunc(scheduleItem.driftDays))
-                    : null;
-                const driftExceeded = driftDays !== null && flexDays !== null ? driftDays > flexDays : false;
+                const plan = buildSchedulePlanPresentation(scheduleItem, formatShortDate);
+                const attention = buildScheduleAttentionPresentation({ item: scheduleItem, issueLevel });
                 const clientUpdateStatus = scheduleItem.clientUpdateStatus ?? 'none';
-                const extraBadges = (
-                  <>
-                    {!hasPlannedCommitment(scheduleItem) ? <span className={styles.draftPill}>Plan: Draft</span> : null}
-                    {hasPlannedCommitment(scheduleItem) && commitmentLabel ? <span className={styles.commitmentPill}>Plan: {commitmentLabel}</span> : null}
-                    {commitmentType && driftDays !== null && driftDays > 0 && !driftExceeded ? (
-                      <span className={styles.driftPill}>Drift +{driftDays}d</span>
-                    ) : null}
-                    {clientUpdateStatus === 'needed' ? <span className={styles.clientUpdatePill}>Client update needed</span> : null}
-                    {clientUpdateStatus === 'acknowledged' ? <span className={styles.clientAckPill}>Client contacted</span> : null}
-                  </>
-                );
 
                 cards.push(
                   <ScheduledJobCard
@@ -611,7 +569,10 @@ export default function ScheduleBoardView({
                     menuActions={menuActions}
                     issueLevel={issueLevel}
                     pinned={scheduleMode === 'v2' && scheduleItem.mode === 'pinned'}
-                    extraBadges={extraBadges}
+                    planLabel={plan.committed ? plan.label : 'Draft'}
+                    planCommitted={plan.committed}
+                    attention={attention}
+                    clientContacted={clientUpdateStatus === 'acknowledged'}
                     interactionDisabled={interaction.disabled}
                     interactionDisabledReason={interaction.reason}
                     changeFeedback={changeFeedback?.projectId === scheduleItem.projectId ? changeFeedback : null}
@@ -638,10 +599,8 @@ export default function ScheduleBoardView({
                       {nextAvailable ? <div className={styles.smallMeta}>Next available: {formatShortDate(nextAvailable)}</div> : null}
                     </div>
                     <div className={styles.laneCounts}>
-                      <span className={styles.muted}>
-                        {ids.length} {ids.length === 1 ? 'item' : 'items'}
-                      </span>
-                      {issueCount > 0 ? <span className={styles.laneIssueCount}>{issueCount} attention</span> : null}
+                      <span className={styles.laneLoad}>{formatScheduleCrewLoad(ids.length, forecastDays)}</span>
+                      {attentionCount > 0 ? <span className={styles.laneIssueCount}>{attentionCount} need attention</span> : null}
                     </div>
                   </div>
                   <SortableContext items={ids} strategy={verticalListSortingStrategy}>

@@ -300,6 +300,7 @@ describe('ScheduleBoardView', () => {
     expect(card?.textContent).toContain('Stage: Deposit');
     expect(card?.textContent).toContain('Job: Tentative');
     expect(card?.textContent).toContain('Plan: Draft');
+    expect(rendered.container.textContent).toContain('1 job · 2d forecast');
     expect(card?.querySelector('button button')).toBeNull();
 
     rendered.unmount();

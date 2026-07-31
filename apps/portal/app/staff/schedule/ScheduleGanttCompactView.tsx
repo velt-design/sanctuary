@@ -161,7 +161,10 @@ export default function ScheduleGanttCompactView({
                 <span className={styles.ganttCompactCrewDot} style={{ background: group.color }} aria-hidden="true" />
                 <strong id={`compact-${group.id}`}>{group.label}</strong>
               </span>
-              <span>{group.itemCount} job{group.itemCount === 1 ? '' : 's'} · {group.attentionCount} need attention</span>
+              <span className={styles.ganttCompactCrewSummary}>
+                {group.loadLabel}
+                {group.attentionCount ? ` · ${group.attentionCount} need attention` : ''}
+              </span>
             </button>
             {!group.collapsed ? (
               items.length ? (
@@ -189,15 +192,23 @@ export default function ScheduleGanttCompactView({
                           onClick={() => onOpenProject(item.projectId)}
                         >
                           <span className={styles.ganttCompactJobBody}>
-                            <strong>{item.projectName}</strong>
+                            <span className={styles.ganttCompactJobTitleRow}>
+                              <strong>{item.projectName}</strong>
+                              {item.attentionBadgeLabel ? (
+                                <span className={styles.ganttCompactAttention} title={item.attentionLabel ?? undefined}>
+                                  {item.attentionBadgeLabel}
+                                </span>
+                              ) : null}
+                            </span>
                             {item.identityDetail ? <span>{item.identityDetail}</span> : null}
-                            <span>Forecast: {formatShortDate(item.startDate)} to {formatShortDate(item.endDate)} · {item.durationLabel}</span>
+                            <span className={styles.ganttCompactTiming}>
+                              Forecast: {formatShortDate(item.startDate)} to {formatShortDate(item.endDate)} · {item.durationLabel}
+                            </span>
                           </span>
                           <span className={styles.ganttCompactJobMeta}>
                             <span>Stage: {formatStatusLabel(item.status)}</span>
                             <span>Plan: {item.plannedCommitmentLabel ?? 'Draft'}</span>
                             {item.isPinned ? <span>Pinned</span> : null}
-                            {item.attentionLabel ? <strong>{item.attentionLabel}</strong> : null}
                           </span>
                         </button>
                       )}

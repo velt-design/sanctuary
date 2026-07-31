@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const FIXTURE_PATH = '/qa/schedule-ops-fixture?view=board&scale=standard';
+const GANTT_FIXTURE_PATH = '/qa/schedule-ops-fixture?view=gantt&scale=standard';
 
 async function expectNoDocumentOverflow(page: Page) {
   const width = await page.evaluate(() => ({
@@ -89,6 +90,61 @@ test('keeps Board confidence controls operational across realistic widths withou
   await page.goto(FIXTURE_PATH);
   await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
   await expectNoDocumentOverflow(page);
+  expect(staffWrites).toEqual([]);
+});
+
+test('keeps shared workload, attention, timing, and purposeful Gantt modes readable without server writes', async ({ page }) => {
+  const staffWrites: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/staff/') && request.method() !== 'GET') staffWrites.push(request.url());
+  });
+
+  for (const viewport of [
+    { width: 1600, height: 1000 },
+    { width: 1440, height: 900 },
+    { width: 1280, height: 800 },
+    { width: 1024, height: 900 },
+    { width: 768, height: 1024 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto(GANTT_FIXTURE_PATH);
+    await expect(page.locator('[aria-label="Gantt timeline"]')).toBeVisible();
+    await expect(page.locator('[data-gantt-crew-id="fixture-crew-1"]')).toContainText('2 jobs · 6d forecast');
+    await expect(page.locator('[data-gantt-schedule-item-id="fixture-schedule-0"]')).toContainText('3 issues');
+    await expectNoDocumentOverflow(page);
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(GANTT_FIXTURE_PATH);
+  await expect(page.locator('[data-gantt-schedule-item-id="fixture-schedule-9"] [role="button"]')).toContainText('Louvre 010');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(GANTT_FIXTURE_PATH);
+  await expect(page.locator('[aria-label="Gantt timeline"]')).toHaveCount(0);
+  await expect(page.locator('[aria-label="Crew schedule agenda"]')).toBeVisible();
+  await expect(page.getByText('Read-only here. Open Board to safely move, reorder or unschedule work.')).toBeVisible();
+  const compactJobLayout = await page.getByRole('button', { name: /^Open project / }).first().evaluate((button) => {
+    const [body, metadata] = Array.from(button.children);
+    const buttonRect = button.getBoundingClientRect();
+    const bodyRect = body?.getBoundingClientRect();
+    const metadataRect = metadata?.getBoundingClientRect();
+    return {
+      buttonWidth: buttonRect.width,
+      bodyWidth: bodyRect?.width ?? 0,
+      bodyBottom: bodyRect?.bottom ?? 0,
+      metadataTop: metadataRect?.top ?? 0,
+    };
+  });
+  expect(compactJobLayout.bodyWidth).toBeGreaterThan(compactJobLayout.buttonWidth * 0.8);
+  expect(compactJobLayout.metadataTop).toBeGreaterThanOrEqual(compactJobLayout.bodyBottom - 1);
+  await expectNoDocumentOverflow(page);
+
+  await page.setViewportSize({ width: 720, height: 500 });
+  await page.goto(GANTT_FIXTURE_PATH);
+  await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
+  await expect(page.locator('[aria-label="Crew schedule agenda"]')).toBeVisible();
+  await expectNoDocumentOverflow(page);
+  await page.evaluate(() => { document.documentElement.style.zoom = ''; });
   expect(staffWrites).toEqual([]);
 });
 

@@ -42,6 +42,12 @@ import { buildScheduleBoardModelLegacy, toScheduleProjectSummary } from './Sched
 import { buildScheduleJobPresentationIndex } from './ScheduleJobPresentation';
 import { recentScheduleTelemetryEvents, sendScheduleTelemetry } from './scheduleTelemetryClient';
 import type { ScheduleClientTelemetryEvent } from '@/lib/scheduling/scheduleTelemetry';
+import {
+  formatScheduleCommitmentLabel,
+  hasScheduleCommitment as hasPlannedCommitment,
+  resolveScheduleCommitmentType as resolveCommitmentType,
+  resolveScheduleFlexDays as resolvePlannedFlexDays,
+} from './ScheduleOperationalPresentation';
 
 const LazyScheduleBoardView = dynamic<ScheduleBoardViewProps>(
   () => import('./ScheduleBoardView'),
@@ -200,35 +206,8 @@ function addWorkingDaysInclusive(startYmd: string, durationDays: number): string
   return d;
 }
 
-function hasPlannedCommitment(item: ScheduleItem): boolean {
-  return Boolean(item.plannedCommitmentType || item.plannedStart || item.plannedWeekStart);
-}
-
-function resolveCommitmentType(item: ScheduleItem): 'week_of' | 'fixed_date' | null {
-  if (item.plannedCommitmentType === 'week_of' || item.plannedCommitmentType === 'fixed_date') return item.plannedCommitmentType;
-  if (item.plannedStart) return 'fixed_date';
-  return null;
-}
-
-function resolvePlannedFlexDays(item: ScheduleItem): number | null {
-  if (typeof item.plannedFlexDays === 'number' && Number.isFinite(item.plannedFlexDays)) {
-    return Math.max(0, Math.trunc(item.plannedFlexDays));
-  }
-  const commitmentType = resolveCommitmentType(item);
-  if (!commitmentType) return null;
-  return commitmentType === 'week_of' ? 4 : 1;
-}
-
 function formatCommitmentLabel(item: ScheduleItem): string | null {
-  const commitmentType = resolveCommitmentType(item);
-  if (!commitmentType) return null;
-  if (commitmentType === 'week_of') {
-    const weekStart = item.plannedWeekStart ?? (item.plannedStart ? startOfWeekMonday(item.plannedStart) : null);
-    if (!weekStart) return 'Week of —';
-    return `Week of ${formatShortDate(weekStart)}`;
-  }
-  if (!item.plannedStart) return 'Starts —';
-  return `Starts ${formatShortDate(item.plannedStart)}`;
+  return formatScheduleCommitmentLabel(item, formatShortDate);
 }
 
 function parsePositiveInt(value: string): number | null {

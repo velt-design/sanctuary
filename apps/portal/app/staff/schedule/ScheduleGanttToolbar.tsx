@@ -71,14 +71,12 @@ export default function ScheduleGanttToolbar({
     <div className={styles.ganttToolbar}>
       <div className={styles.ganttPlanningRow} role="group" aria-label="Timeline controls">
         <div className={styles.ganttMeta}>
-          <span className={styles.ganttMetaLabel}>Plan</span>
-          <strong>{rangeStartLabel}</strong>
-          <span aria-hidden="true">to</span>
-          <strong>{rangeEndLabel}</strong>
+          <span className={styles.ganttMetaLabel}>Planning window</span>
+          <strong>{rangeStartLabel} to {rangeEndLabel}</strong>
         </div>
 
         <label className={styles.ganttLabeledControl}>
-          <span>Scale</span>
+          <span>View</span>
           <select
             className={cx(styles.input, styles.ganttControlSelect)}
             value={zoomWeeks}

@@ -189,6 +189,16 @@ presenter;
 `ScheduleCrewFilter.tsx` and `useScheduleCrewVisibility.ts` own the shared
 view-only crew preference.
 
+`ScheduleOperationalPresentation.ts` owns shared commitment/flex wording,
+factual attention signals, and presentation-only crew workload summaries.
+Board and Gantt both count a job as needing attention when it has an attached
+warning/error, a required client update, or drift beyond stored flex. Crew
+headers show job count plus summed server-forecast days for comparison; this
+is a scan aid, not a browser-derived capacity limit or replacement for the
+server-owned next-available date. The route-level saved/saving/refreshing/
+failed/stale indicator remains visible across both views and uses text plus
+shape/border treatment rather than colour alone.
+
 Project name is the primary job label. Customer display name and site address
 form one deduplicated secondary identity line on Board cards, Gantt rows,
 keyboard labels, quick actions, and Schedule action dialogs. Search includes
@@ -208,8 +218,11 @@ drift beyond the stored flex allowance. It does not create a new priority or
 Schedule state.
 
 The current week wash and today marker provide the primary timeline anchors.
-Crew groups show scheduled-item and attention counts, while project rows keep
-their forecast dates and duration beside the project name. `ScheduleGanttModel.ts`
+Crew groups keep the full crew identity beside forecast workload and factual
+attention counts, while project rows keep their forecast dates and duration
+beside the project name. Bars show a project label whenever their rendered
+width can support legible text; short bars remain fully identified by the
+sticky project rail and keyboard label. `ScheduleGanttModel.ts`
 owns pure timeline/row/attention modelling, `ScheduleGanttToolbar.tsx` owns the
 grouped controls, and `ScheduleGanttTimeline.tsx` owns timeline presentation.
 `ScheduleGanttView.tsx` remains the interaction coordinator for drag/resize,
@@ -233,7 +246,8 @@ leaves too little operating height, Gantt becomes a read-only crew agenda built
 from the same Gantt model instead of compressing desktop timeline controls into
 the available space. It keeps the date range,
 crew filter, attention filter, completed-job choice, forecast/plan identity,
-and a clear route to Board for schedule changes; it does not expose drag or
+and a clear route to Board for schedule changes. Agenda jobs use a single
+reading column with timing before quieter stage/plan facts; they do not expose drag or
 resize. Wider layouts retain the scroll-owned timeline and adaptable crew-label
 column. The dormant Site Visits route retains its focused day calendar
 containment. Route-level document overflow is not allowed; the Board, Gantt,

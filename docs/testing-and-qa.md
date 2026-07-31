@@ -813,8 +813,9 @@ Verify 1600x1000, 1440x900, 1280x800, 1024x900, 768x1024, 390x844, and a
 half-sized CSS viewport equivalent to 200% zoom. Assert zero document-level
 horizontal overflow while preserving the specialist Board/Gantt scroll owner.
 
-For Board interaction-confidence changes, use the fixture-only gate so pointer
-gestures and save outcomes never touch shared records:
+For Board interaction-confidence or shared Board/Gantt presentation changes,
+use the fixture-only gate so pointer gestures, visual state and save outcomes
+never touch shared records:
 
 ```bash
 npx playwright test playwright/portal.schedule-board-confidence-fixture.spec.ts --project=portal-fixture --workers=1
@@ -822,14 +823,16 @@ npx playwright test playwright/portal.schedule-board-confidence-fixture.spec.ts 
 
 When valid disposable staff credentials are available, rerun the same file
 with `--project=portal-chromium` so authentication setup and the full inert
-Board matrix are proven together without changing Schedule data.
+operational matrix are proven together without changing Schedule data.
 
 The Board fixture accepts
 `&state=checking|reviewing|saving|reconciling|saved|restored|verified`. The gate
-covers 1600/1440/1280/1024/768/390, 200% zoom, grouped job actions and focus
-return, a held pointer drag whose source stays anchored, the visible semantic
-destination, exact beginning/middle/end insertion and cross-crew order,
-disabled gestures during uncommitted work, and absence of staff API writes.
+covers 1600/1440/1280/1024/768/390, 200% zoom, shared crew workload and
+attention wording, desktop Gantt bar labels, the read-only phone/zoom agenda,
+grouped job actions and focus return, a held pointer drag whose source stays
+anchored, the visible semantic destination, exact beginning/middle/end
+insertion and cross-crew order, disabled gestures during uncommitted work, and
+absence of staff API writes.
 
 Minimum targeted schedule tests:
 
