@@ -23,7 +23,9 @@ const toastSuccess = vi.fn();
 const toastInfo = vi.fn();
 const useQueryMock = vi.fn();
 const apiJsonMock = vi.fn();
-const mockSearchParams = new URLSearchParams('q=deck&status=sent&due=today');
+const mockSearchParams = new URLSearchParams(
+  'q=deck&journey=proposal&stage=sent&state=waiting',
+);
 
 function changeInputValue(target: HTMLInputElement, value: string) {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
@@ -101,7 +103,8 @@ const initialProjects: Project[] = [
     region: 'North',
     siteAddress: '12 Beach Road',
     status: 'SENT',
-    nextActionDate: '2026-04-03',
+    operationalState: 'WAITING',
+    effectiveState: 'WAITING',
   },
 ];
 
@@ -121,8 +124,8 @@ function matchingIndexData(options: { queryKey: readonly unknown[] }) {
   const params = options.queryKey[4] as {
     search: string;
     status: Project['status'] | 'all';
-    due: 'all' | 'due' | 'overdue' | 'today';
-    today: string;
+    journey: 'all' | 'ENQUIRY' | 'PROPOSAL' | 'CONFIRMED' | 'DELIVERY' | 'SETTLED';
+    state: 'all' | 'ACTIVE' | 'WAITING' | 'CLOSED' | 'ARCHIVED';
     page: number;
     pageSize: 25 | 50 | 100;
     sort: 'newest';
@@ -141,13 +144,21 @@ function matchingIndexData(options: { queryKey: readonly unknown[] }) {
     query: {
       search: params.search,
       status: params.status,
-      due: params.due,
-      today: params.today,
+      journey: params.journey,
+      state: params.state,
       sort: params.sort,
     },
     generatedAt: '2026-04-03T01:00:00.000Z',
   };
 }
+
+const ALL_FILTERS = {
+  query: '',
+  journeyFilter: 'all',
+  stageFilter: 'all',
+  stateFilter: 'all',
+  archiveFilter: 'active',
+} as const;
 
 describe('ProjectsIndexClient', () => {
   beforeEach(() => {
@@ -184,8 +195,13 @@ describe('ProjectsIndexClient', () => {
   it('renders fresh index data through the combined authenticated query', () => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialFilters={{ query: 'deck', statusFilter: 'SENT', dueFilter: 'today', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
+        initialFilters={{
+          query: 'deck',
+          journeyFilter: 'PROPOSAL',
+          stageFilter: 'SENT',
+          stateFilter: 'WAITING',
+          archiveFilter: 'active',
+        }}
       />,
     );
 
@@ -194,8 +210,8 @@ describe('ProjectsIndexClient', () => {
         queryKey: qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active', {
           search: 'deck',
           status: 'SENT',
-          due: 'today',
-          today: '2026-04-03',
+          journey: 'PROPOSAL',
+          state: 'WAITING',
           page: 1,
           pageSize: 50,
           sort: 'newest',
@@ -206,26 +222,61 @@ describe('ProjectsIndexClient', () => {
     expect(rendered.container.textContent).toContain('Deck Build');
     expect(rendered.container.textContent).toContain('021 123 4567');
     expect(rendered.container.textContent).toContain('12 Beach Road');
+    expect(rendered.container.textContent).toContain('Proposal');
+    expect(rendered.container.textContent).toContain('Waiting');
 
     const headers = Array.from(rendered.container.querySelectorAll('th')).map((th) => th.textContent ?? '');
-    expect(headers).toEqual(['Name', 'Client', 'Phone', 'Address', 'Status', 'Actions']);
+    expect(headers).toEqual([
+      'Name',
+      'Client',
+      'Phone',
+      'Address',
+      'Journey',
+      'Stage',
+      'State',
+      'Actions',
+    ]);
     expect(prefetchQuery).not.toHaveBeenCalled();
 
     rendered.unmount();
   });
 
-  it('exposes an Active/Archived/All archive filter', () => {
+  it('exposes journey, detailed stage, and state without an archive filter', () => {
     const rendered = renderIntoDocument(
-      <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
-      />,
+      <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
 
-    const select = rendered.container.querySelector('#projectArchiveFilter') as HTMLSelectElement | null;
-    expect(select).not.toBeNull();
-    const options = Array.from(select?.querySelectorAll('option') ?? []).map((opt) => opt.value);
-    expect(options).toEqual(['active', 'archived', 'all']);
+    const values = (id: string) => Array.from(
+      rendered.container.querySelectorAll<HTMLSelectElement>(`#${id} option`),
+    ).map((option) => option.value);
+    expect(values('projectJourneyFilter')).toEqual([
+      'all',
+      'ENQUIRY',
+      'PROPOSAL',
+      'CONFIRMED',
+      'DELIVERY',
+      'SETTLED',
+    ]);
+    expect(values('projectStageFilter')).toEqual([
+      'all',
+      'NEW',
+      'CONTACTED',
+      'SITE_VISIT',
+      'QUOTING',
+      'SENT',
+      'DEPOSIT',
+      'SCHEDULED',
+      'COMPLETED',
+      'PAID',
+    ]);
+    expect(values('projectStateFilter')).toEqual([
+      'all',
+      'ACTIVE',
+      'WAITING',
+      'CLOSED',
+      'ARCHIVED',
+    ]);
+    expect(rendered.container.querySelector('#projectArchiveFilter')).toBeNull();
 
     rendered.unmount();
   });
@@ -250,16 +301,13 @@ describe('ProjectsIndexClient', () => {
       };
     });
     const rendered = renderIntoDocument(
-      <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
-      />,
+      <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
-    const archive = rendered.container.querySelector('#projectArchiveFilter') as HTMLSelectElement;
+    const state = rendered.container.querySelector('#projectStateFilter') as HTMLSelectElement;
 
     act(() => {
-      archive.value = 'archived';
-      archive.dispatchEvent(new Event('change', { bubbles: true }));
+      state.value = 'ARCHIVED';
+      state.dispatchEvent(new Event('change', { bubbles: true }));
     });
 
     expect(rendered.container.textContent).not.toContain('Deck Build');
@@ -276,10 +324,7 @@ describe('ProjectsIndexClient', () => {
       refetch: vi.fn(),
     });
     const rendered = renderIntoDocument(
-      <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
-      />,
+      <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
 
     expect(rendered.container.querySelector('main')?.getAttribute('data-projects-index-state')).toBe('pending');
@@ -298,10 +343,7 @@ describe('ProjectsIndexClient', () => {
       refetch,
     }));
     const rendered = renderIntoDocument(
-      <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
-      />,
+      <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
 
     expect(rendered.container.querySelector('main')?.getAttribute('data-projects-index-state')).toBe('refresh-failed');
@@ -320,10 +362,7 @@ describe('ProjectsIndexClient', () => {
       refetch: vi.fn(),
     }));
     const rendered = renderIntoDocument(
-      <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
-      />,
+      <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
 
     expect(rendered.container.querySelector('main')?.getAttribute('data-projects-index-state')).toBe('unavailable');
@@ -339,10 +378,7 @@ describe('ProjectsIndexClient', () => {
     ['pointer down', 'pointerdown', 'a'],
   ])('preloads the project route and snapshot on %s intent', (_label, eventName, selector) => {
     const rendered = renderIntoDocument(
-      <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
-      />,
+      <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
     const target = selector === 'tr'
       ? rendered.container.querySelector('tbody tr')
@@ -366,10 +402,7 @@ describe('ProjectsIndexClient', () => {
     ['keyboard Space', () => new KeyboardEvent('keydown', { key: ' ', bubbles: true })],
   ])('navigates from %s after preparing the project', (_label, eventFactory) => {
     const rendered = renderIntoDocument(
-      <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
-      />,
+      <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
     const row = rendered.container.querySelector('tbody tr');
 
@@ -385,10 +418,7 @@ describe('ProjectsIndexClient', () => {
 
   it('prepares the project before the Open link handles navigation', () => {
     const rendered = renderIntoDocument(
-      <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
-      />,
+      <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
     const link = rendered.container.querySelector('a[href="/staff/projects/proj_1"]');
     link?.addEventListener('click', (event) => event.preventDefault());
@@ -411,10 +441,7 @@ describe('ProjectsIndexClient', () => {
       resolveRequest = resolve;
     }));
     const rendered = renderIntoDocument(
-      <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
-      />,
+      <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
     const nameButton = Array.from(rendered.container.querySelectorAll('tbody button')).find(
       (button) => button.textContent?.trim() === 'Deck Build',

@@ -3,6 +3,7 @@
 import { lazy, Suspense } from "react";
 import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type { ProjectWorkProjection } from "@/lib/projects/workItems/types";
+import ProjectJourneyStatus from "@/components/projects/ProjectJourneyStatus";
 import { useProjectDetailsDraft } from "../../useProjectDetailsDraft";
 import {
   AlertBanner,
@@ -11,8 +12,8 @@ import {
   Card,
   Input,
   KeyValueGrid,
-  type BadgeTone,
   useUnsavedChangesGuard,
+  type BadgeTone,
 } from "@/components/ui/foundation";
 import styles from "./ProjectOrientationBand.module.css";
 
@@ -31,22 +32,6 @@ export type ProjectOrientationBandProps = {
   operationalState?: ProjectWorkProjection["effectiveState"] | null;
   freshness?: ProjectOrientationFreshness | null;
 };
-
-const OPERATIONAL_STATE_LABELS: Record<
-  ProjectWorkProjection["effectiveState"],
-  string
-> = {
-  ACTIVE: "Active",
-  WAITING: "Waiting",
-  CLOSED: "Closed",
-  ARCHIVED: "Archived",
-};
-
-function operationalStateTone(
-  state: ProjectWorkProjection["effectiveState"],
-): BadgeTone {
-  return state === "WAITING" ? "warning" : "neutral";
-}
 
 export default function ProjectOrientationBand({
   project,
@@ -295,57 +280,57 @@ export default function ProjectOrientationBand({
       {editState}
 
       {!isEditing ? (
-        <dl
-          className={styles.orientationFacts}
-          aria-label="Project orientation details"
-        >
-          <div>
-            <dt>Customer</dt>
-            <dd>
-              <strong>{displayed.contactName || "Not provided"}</strong>
-              <span>{displayed.contactEmail || "Email not provided"}</span>
-            </dd>
-          </div>
-          <div>
-            <dt>Site</dt>
-            <dd>
-              <strong>{displayed.siteAddress || "Not provided"}</strong>
-              <span>
-                {displayed.region
-                  ? `Region: ${displayed.region}`
-                  : "Region not provided"}
-              </span>
-            </dd>
-          </div>
-          <div>
-            <dt>Reference</dt>
-            <dd>
-              <strong>{displayed.quoteRef || "Not allocated"}</strong>
-            </dd>
-          </div>
-          <div>
-            <dt>State & freshness</dt>
-            <dd>
-              <span className={styles.statusRow}>
-                {operationalState ? (
-                  <Badge tone={operationalStateTone(operationalState)}>
-                    {OPERATIONAL_STATE_LABELS[operationalState]}
-                  </Badge>
-                ) : (
-                  <span>Operational state unavailable</span>
-                )}
-                {freshness ? (
+        <>
+          <ProjectJourneyStatus
+            stage={project.stage}
+            operationalState={operationalState}
+            presentation="embedded"
+          />
+          <dl
+            className={styles.orientationFacts}
+            aria-label="Project orientation details"
+          >
+            <div>
+              <dt>Customer</dt>
+              <dd>
+                <strong>{displayed.contactName || "Not provided"}</strong>
+                <span>{displayed.contactEmail || "Email not provided"}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Site</dt>
+              <dd>
+                <strong>{displayed.siteAddress || "Not provided"}</strong>
+                <span>
+                  {displayed.region
+                    ? `Region: ${displayed.region}`
+                    : "Region not provided"}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt>Reference</dt>
+              <dd>
+                <strong>{displayed.quoteRef || "Not allocated"}</strong>
+              </dd>
+            </div>
+            <div>
+              <dt>Freshness</dt>
+              <dd>
+                <span className={styles.statusRow}>
+                  {freshness ? (
                   <Badge tone={freshness.tone ?? "neutral"}>
                     {freshness.label}
                   </Badge>
-                ) : (
-                  <span>Freshness unavailable</span>
-                )}
-              </span>
-              {freshness?.detail ? <span>{freshness.detail}</span> : null}
-            </dd>
-          </div>
-        </dl>
+                  ) : (
+                    <span>Freshness unavailable</span>
+                  )}
+                </span>
+                {freshness?.detail ? <span>{freshness.detail}</span> : null}
+              </dd>
+            </div>
+          </dl>
+        </>
       ) : null}
     </section>
   );

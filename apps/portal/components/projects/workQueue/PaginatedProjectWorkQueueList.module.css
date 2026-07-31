@@ -1,0 +1,8 @@
+.wrapper {
+  min-width: 0;
+}
+
+.pagination {
+  padding-top: var(--ui-space-4);
+  border-top: var(--ui-border-width) solid var(--ui-border);
+}

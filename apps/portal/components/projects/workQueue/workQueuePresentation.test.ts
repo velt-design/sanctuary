@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
 import {
   aucklandLocalDateTimeToIso,
-  isManualCompletable,
+  canManageQueueWorkItem,
+  isGenericCompletable,
   queueDueLabel,
   replyConfirmationCommand,
   sentConfirmationCommand,
@@ -74,14 +75,18 @@ describe('work queue presentation', () => {
     }))).toBeNull();
   });
 
-  it('allows generic completion only for staff-owned manual work', () => {
-    expect(isManualCompletable(entry({ sourceType: 'MANUAL' }))).toBe(true);
-    expect(isManualCompletable(entry({ sourceType: 'LEGACY_REVIEW' }))).toBe(true);
-    expect(isManualCompletable(entry({ sourceType: 'LEAD_CADENCE' }))).toBe(false);
-    expect(isManualCompletable(entry({
+  it('allows generic completion only for current manual and stage-review work', () => {
+    expect(isGenericCompletable(entry({ sourceType: 'MANUAL' }))).toBe(true);
+    expect(isGenericCompletable(entry({ sourceType: 'LEGACY_REVIEW' }))).toBe(false);
+    expect(isGenericCompletable(entry({ sourceType: 'STAGE_REVIEW' }))).toBe(true);
+    expect(isGenericCompletable(entry({ sourceType: 'LEAD_CADENCE' }))).toBe(false);
+    expect(isGenericCompletable(entry({
       actionKind: 'specialist',
       sourceType: null,
     }))).toBe(false);
+    expect(
+      canManageQueueWorkItem(entry({ sourceType: 'LEGACY_REVIEW' })),
+    ).toBe(false);
   });
 
   it('round-trips Auckland wall-clock values without using the browser timezone', () => {

@@ -5,13 +5,7 @@ import { logPortalServerError, type PortalServerLogContext } from '@/lib/api/rou
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { appIdFromUuid, isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
-import {
-  isManualTaskKey,
-  normalizePipelineStageKey,
-  resolveStageTasks,
-  type TaskContext,
-  type TaskKey,
-} from '@/lib/projects/pipelineDefinition';
+import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import type { ProjectActivityItem, ProjectEmailLog, ProjectNote, ProjectPageSnapshot } from '@/lib/projects/types';
 import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
 import { getAuthoritativeProjectWorkProjection } from '@/lib/projects/workItems/getAuthoritativeProjectWorkProjection';
@@ -21,11 +15,6 @@ const PROJECT_NOTES_SNAPSHOT_LIMIT = 50;
 
 const PROJECT_RELATED_SNAPSHOT_SELECT = `
   id,
-  siteVisits:site_visit_events(id,status,scheduled_start),
-  estimates(id),
-  scheduleItems:schedule_items(id,start_date),
-  quotes(id,acceptedVersions:quote_versions(id,status)),
-  openInvoices:deposit_invoices(id,status),
   emails:email_outbox(id,subject,to_email,status,sent_at,created_at,email_type),
   jobPacks:job_pack_generations(id),
   notes:project_notes(id,body,author_id,author_email,author_display_name,created_at,updated_at,deleted_at)
@@ -240,7 +229,6 @@ export async function getProjectPageSummary(
     workModel: workModelVersion === 2 ? 'v2' : 'legacy',
     project: { ...summary.project, ...(owner ? { owner } : null) },
     pipeline: { stage: summary.stage },
-    tasks: { stage: summary.stage, items: [] },
     activity: [],
     emails: [],
     notes: [],
@@ -272,15 +260,9 @@ export async function getProjectPageSnapshot(
       .from('projects')
       .select(PROJECT_RELATED_SNAPSHOT_SELECT)
       .eq('id', projectUuid)
-      .eq('quotes.acceptedVersions.status', 'ACCEPTED')
-      .eq('openInvoices.status', 'OPEN')
       .is('notes.deleted_at', null)
       .order('created_at', { referencedTable: 'emails', ascending: false })
       .order('created_at', { referencedTable: 'notes', ascending: false })
-      .limit(1, { referencedTable: 'siteVisits' })
-      .limit(1, { referencedTable: 'estimates' })
-      .limit(1, { referencedTable: 'scheduleItems' })
-      .limit(1, { referencedTable: 'openInvoices' })
       .limit(1, { referencedTable: 'jobPacks' })
       .limit(PROJECT_NOTES_SNAPSHOT_LIMIT, { referencedTable: 'notes' })
       .maybeSingle(),
@@ -303,7 +285,6 @@ export async function getProjectPageSnapshot(
   const workModelVersion = usesV2ProjectWork ? 2 : null;
   const stage = summary.stage;
   const projectIdOut = summary.project.id;
-  const nextActionDate = summary.nextActionDate;
 
   const currentUserId = authenticatedUserId === undefined
     ? (await client.auth.getUser())?.data?.user?.id ?? null
@@ -317,55 +298,7 @@ export async function getProjectPageSnapshot(
     .filter(Boolean) as ProjectActivityItem[];
   const activity = outboxActivity.sort((a, b) => String(b.at).localeCompare(String(a.at)));
 
-  const siteVisitRow = relationRows(relatedRow?.siteVisits)[0] ?? null;
-  const siteVisitStatus = typeof (siteVisitRow as any)?.status === 'string' ? String((siteVisitRow as any).status).toUpperCase() : '';
-  const hasBookedSiteVisit =
-    Boolean((siteVisitRow as any)?.scheduled_start) &&
-    ['TENTATIVE', 'CONFIRMED', 'COMPLETED', 'RESCHEDULED'].includes(siteVisitStatus);
-
-  const hasGeneratedCosting = relationRows(relatedRow?.estimates).length > 0;
-  const hasScheduledInstall = relationRows(relatedRow?.scheduleItems).length > 0;
-  const hasAcceptedQuote = relationRows(relatedRow?.quotes)
-    .some((quote) => relationRows(quote?.acceptedVersions).length > 0);
   const hasJobPacks = relationRows(relatedRow?.jobPacks).length > 0;
-  const hasOpenDepositInvoice = relationRows(relatedRow?.openInvoices).length > 0;
-
-  const manualCompleted = new Set<TaskKey>();
-  if (workModelVersion !== 2) {
-    const manualChecks = await client
-      .from('project_task_checks')
-      .select('task_key')
-      .eq('project_id', projectUuid);
-    if (manualChecks.error) {
-      logSnapshotError(
-        diagnostics,
-        'legacy project task checks query failed',
-        manualChecks.error,
-        'project_task_checks',
-      );
-      throw new Error('Failed to load complete project snapshot');
-    }
-    for (const row of relationRows(manualChecks.data)) {
-      const key = typeof (row as any)?.task_key === 'string' ? String((row as any).task_key) : '';
-      if (isManualTaskKey(key)) manualCompleted.add(key);
-    }
-  }
-
-  const taskContext: TaskContext = {
-    projectId: projectIdOut,
-    manualDone: manualCompleted,
-    hasBookedSiteVisit,
-    hasGeneratedCosting,
-    hasScheduledInstall,
-    hasAcceptedQuote,
-    hasOpenDepositInvoice,
-    nextActionDate,
-  };
-
-  const taskItems = workModelVersion === 2
-    ? []
-    : resolveStageTasks(stage, taskContext, manualCompleted);
-  const finalStage = stage;
   const projectWork = workModelVersion === 2
     ? await getAuthoritativeProjectWorkProjection(projectIdOut, client)
     : null;
@@ -386,11 +319,7 @@ export async function getProjectPageSnapshot(
       ...(hasJobPacks ? { hasJobPacks } : null),
     },
     pipeline: {
-      stage: finalStage,
-    },
-    tasks: {
-      stage: finalStage,
-      items: taskItems,
+      stage,
     },
     activity,
     emails,

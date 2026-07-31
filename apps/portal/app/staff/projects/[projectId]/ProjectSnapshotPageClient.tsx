@@ -146,7 +146,6 @@ export default function ProjectSnapshotPageClient({
           quoteRef: snapshot.project.quoteRef ?? null,
         },
         pipelineStage: snapshot.pipeline.stage,
-        taskCount: snapshot.tasks.items.length,
         activityCount: snapshot.activity.length,
         emailCount: snapshot.emails.length,
         noteCount: snapshot.notes.length,

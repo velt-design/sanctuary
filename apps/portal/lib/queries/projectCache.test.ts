@@ -40,7 +40,6 @@ describe('projectCache helpers', () => {
     expect(placeholder.snapshot.project.name).toBe('Beach House');
     expect(placeholder.snapshot.project.contactId).toBe('ct_1');
     expect(placeholder.snapshot.pipeline.stage).toBe('quoting');
-    expect(placeholder.snapshot.tasks.items).toEqual([]);
     expect(placeholder.generatedAt).toBe('2026-03-02T00:00:00.000Z');
   });
 
@@ -140,7 +139,7 @@ describe('projectCache helpers', () => {
       archive,
       projects: { rows: [project], totalCount: 1, truncated: false, page: 1, pageSize: 50, totalPages: 1 },
       contacts: { rows: [contact], totalCount: 1, truncated: false },
-      query: { search: '', status: 'all', due: 'all', today: '2026-07-29', sort: 'newest' },
+      query: { search: '', status: 'all', journey: 'all', state: 'all', sort: 'newest' },
       generatedAt: '2026-07-19T00:00:00.000Z',
     });
     client.setQueryData(qk.projects.list('host', 'active'), [project]);
@@ -183,7 +182,7 @@ describe('projectCache helpers', () => {
       archive,
       projects: { rows, totalCount, truncated: false, page: 1, pageSize: 50, totalPages: Math.max(1, Math.ceil(totalCount / 50)) },
       contacts: { rows: [], totalCount: 0, truncated: false },
-      query: { search: '', status: 'all', due: 'all', today: '2026-07-29', sort: 'newest' },
+      query: { search: '', status: 'all', journey: 'all', state: 'all', sort: 'newest' },
       generatedAt: '2026-07-19T00:00:00.000Z',
     });
 
@@ -207,5 +206,103 @@ describe('projectCache helpers', () => {
       .toMatchObject({ rows: [expect.objectContaining({ projectName: 'Still current', isArchived: false })], totalCount: 1 });
     expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'archived'))?.projects)
       .toMatchObject({ rows: [], totalCount: 0 });
+  });
+
+  it('does not optimistically insert unknown projects into journey or state filtered pages', () => {
+    const client = new QueryClient();
+    const base: ProjectsIndexResponse = {
+      archive: 'active',
+      projects: {
+        rows: [],
+        totalCount: 0,
+        truncated: false,
+        page: 1,
+        pageSize: 50,
+        totalPages: 1,
+      },
+      contacts: { rows: [], totalCount: 0, truncated: false },
+      query: {
+        search: '',
+        status: 'all',
+        journey: 'PROPOSAL',
+        state: 'all',
+        sort: 'newest',
+      },
+      generatedAt: '2026-07-31T00:00:00.000Z',
+    };
+    const journeyKey = qk.projects.index(
+      PROJECTS_INDEX_QUERY_SCOPE,
+      'active',
+      { journey: 'PROPOSAL' },
+    );
+    const stateKey = qk.projects.index(
+      PROJECTS_INDEX_QUERY_SCOPE,
+      'active',
+      { state: 'WAITING' },
+    );
+    client.setQueryData(journeyKey, base);
+    client.setQueryData(stateKey, {
+      ...base,
+      query: { ...base.query, journey: 'all', state: 'WAITING' },
+    });
+
+    upsertProjectListItem(client, 'host', {
+      id: 'proj_new',
+      projectName: 'New project',
+      createdAt: '2026-07-31T00:00:00.000Z',
+      status: 'SENT',
+      effectiveState: 'WAITING',
+    });
+
+    expect(
+      client.getQueryData<ProjectsIndexResponse>(journeyKey)?.projects.rows,
+    ).toEqual([]);
+    expect(
+      client.getQueryData<ProjectsIndexResponse>(stateKey)?.projects.rows,
+    ).toEqual([]);
+  });
+
+  it('does not patch existing rows inside server-filtered index pages', () => {
+    const client = new QueryClient();
+    const existing = {
+      id: 'proj_filtered',
+      projectName: 'Filtered project',
+      status: 'NEW',
+      isArchived: false,
+    } as any;
+    const filteredKey = qk.projects.index(
+      PROJECTS_INDEX_QUERY_SCOPE,
+      'active',
+      { journey: 'ENQUIRY' },
+    );
+    client.setQueryData<ProjectsIndexResponse>(filteredKey, {
+      archive: 'active',
+      projects: {
+        rows: [existing],
+        totalCount: 1,
+        truncated: false,
+        page: 1,
+        pageSize: 50,
+        totalPages: 1,
+      },
+      contacts: { rows: [], totalCount: 0, truncated: false },
+      query: {
+        search: '',
+        status: 'all',
+        journey: 'ENQUIRY',
+        state: 'all',
+        sort: 'newest',
+      },
+      generatedAt: '2026-07-31T00:00:00.000Z',
+    });
+
+    upsertProjectListItem(client, 'host', {
+      ...existing,
+      status: 'SENT',
+    });
+
+    expect(
+      client.getQueryData<ProjectsIndexResponse>(filteredKey)?.projects.rows[0],
+    ).toMatchObject({ status: 'NEW' });
   });
 });

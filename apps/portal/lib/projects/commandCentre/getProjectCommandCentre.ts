@@ -8,8 +8,7 @@ import { isProjectWorkModelV2 } from '@/lib/projects/workItems/modelBoundary';
 import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import type { Estimate } from '@/lib/types/estimate';
 import { resolveCommandCentreSelection } from './resolve';
-import { getProjectCommandOperations } from './getProjectCommandOperations';
-import { buildProjectOwnerSummary } from './actionResolver';
+import { buildProjectOwnerSummary } from './projectOwners';
 import {
   resolveCommandCentreCostingState,
   summarizeCommandCentreDesign,
@@ -236,6 +235,17 @@ export async function getProjectCommandCentre(
     generatedAt: new Date().toISOString(),
     currentDesign,
   };
+  const ownerRow = relationRows(projectRow.ownerAssignment)[0];
+  const owner = buildProjectOwnerSummary({
+    stage,
+    assignment: ownerRow && trimmedString(ownerRow.owner_key)
+      ? {
+          ownerKey: String(ownerRow.owner_key),
+          updatedAt: isoTimestamp(ownerRow.updated_at) ?? new Date(0).toISOString(),
+        }
+      : null,
+    isAdmin: viewer.isAdmin,
+  });
   if (usesV2ProjectWork) {
     const domainActions = await getProjectWorkDomainActions({
       supabase,
@@ -249,17 +259,6 @@ export async function getProjectCommandCentre(
       ...domainActions,
     });
     if (!projectWork) throw new Error('V2 project work could not be loaded');
-    const ownerRow = relationRows(projectRow.ownerAssignment)[0];
-    const owner = buildProjectOwnerSummary({
-      stage,
-      assignment: ownerRow && trimmedString(ownerRow.owner_key)
-        ? {
-            ownerKey: String(ownerRow.owner_key),
-            updatedAt: isoTimestamp(ownerRow.updated_at) ?? new Date(0).toISOString(),
-          }
-        : null,
-      isAdmin: viewer.isAdmin,
-    });
     return {
       ...common,
       workModel: 'v2',
@@ -268,16 +267,12 @@ export async function getProjectCommandCentre(
     };
   }
 
-  const operations = await getProjectCommandOperations({
-    projectUuid,
-    stage,
-    supabase,
-    viewerUserId: viewer.userId,
-    isAdmin: viewer.isAdmin,
-  });
   return {
     ...common,
     workModel: 'legacy',
-    operations,
+    legacyWork: {
+      status: 'retired',
+    },
+    owner,
   };
 }

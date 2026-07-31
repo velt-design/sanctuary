@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
-import { buildContactsById, filterProjectsForIndex, normalizePhone, parseProjectsIndexFilters, todayYmd } from './projectIndexFilters';
+import {
+  buildContactsById,
+  filterProjectsForIndex,
+  normalizePhone,
+  parseProjectsIndexFilters,
+} from './projectIndexFilters';
 
 const contacts: Contact[] = [
   {
@@ -24,7 +29,8 @@ const projects: Project[] = [
     region: 'North',
     quoteRef: 'QU-1',
     status: 'SENT',
-    nextActionDate: '2026-04-03',
+    operationalState: 'WAITING',
+    effectiveState: 'WAITING',
   },
   {
     id: 'proj_2',
@@ -33,54 +39,102 @@ const projects: Project[] = [
     projectName: 'Pergola',
     region: 'South',
     status: 'NEW',
-    nextActionDate: '2026-04-10',
+    operationalState: 'ACTIVE',
+    effectiveState: 'ACTIVE',
   },
 ];
 
+const allFilters = {
+  query: '',
+  journeyFilter: 'all',
+  stageFilter: 'all',
+  stateFilter: 'all',
+  archiveFilter: 'active',
+} as const;
+
 describe('projectIndexFilters', () => {
-  it('parses q, status, due, and nextActionDue search params', () => {
-    expect(parseProjectsIndexFilters(new URLSearchParams('q=deck&status=sent&due=today'))).toEqual({
-      query: 'deck',
-      statusFilter: 'SENT',
-      dueFilter: 'today',
-      archiveFilter: 'active',
-    });
-
-    expect(parseProjectsIndexFilters(new URLSearchParams('nextActionDue=1'))).toEqual({
-      query: '',
-      statusFilter: 'all',
-      dueFilter: 'due',
-      archiveFilter: 'active',
-    });
-  });
-
-  it('parses the archive filter', () => {
-    expect(parseProjectsIndexFilters(new URLSearchParams('archive=archived')).archiveFilter).toBe('archived');
-    expect(parseProjectsIndexFilters(new URLSearchParams('archive=all')).archiveFilter).toBe('all');
-    expect(parseProjectsIndexFilters(new URLSearchParams()).archiveFilter).toBe('active');
-    expect(parseProjectsIndexFilters(new URLSearchParams('archive=bogus')).archiveFilter).toBe('active');
-  });
-
-  it('filters projects using the same rules as the projects index', () => {
-    const contactsById = buildContactsById(contacts);
-
+  it('parses journey, detailed stage, and server-owned state filters', () => {
     expect(
-      filterProjectsForIndex(
-        projects,
-        contactsById,
-        {
-          query: 'alex',
-          statusFilter: 'SENT',
-          dueFilter: 'today',
-          archiveFilter: 'active',
-        },
-        '2026-04-03',
-      ).map((project) => project.id),
+      parseProjectsIndexFilters(
+        new URLSearchParams('q=deck&journey=proposal&stage=sent&state=waiting'),
+      ),
+    ).toEqual({
+      query: 'deck',
+      journeyFilter: 'PROPOSAL',
+      stageFilter: 'SENT',
+      stateFilter: 'WAITING',
+      archiveFilter: 'active',
+    });
+  });
+
+  it('keeps the legacy status and archive query aliases readable', () => {
+    expect(parseProjectsIndexFilters(new URLSearchParams('status=sent'))).toEqual({
+      ...allFilters,
+      stageFilter: 'SENT',
+    });
+    expect(parseProjectsIndexFilters(new URLSearchParams('archive=archived'))).toEqual({
+      ...allFilters,
+      stateFilter: 'ARCHIVED',
+      archiveFilter: 'archived',
+    });
+    expect(parseProjectsIndexFilters(new URLSearchParams('archive=all'))).toEqual({
+      ...allFilters,
+      archiveFilter: 'all',
+    });
+    expect(
+      parseProjectsIndexFilters(new URLSearchParams('archive=all&state=all')),
+    ).toEqual({
+      ...allFilters,
+      archiveFilter: 'all',
+    });
+  });
+
+  it('lets an explicit state own the hidden archive scope', () => {
+    expect(
+      parseProjectsIndexFilters(new URLSearchParams('state=active&archive=archived')),
+    ).toEqual({
+      ...allFilters,
+      stateFilter: 'ACTIVE',
+    });
+    expect(parseProjectsIndexFilters(new URLSearchParams('state=archived'))).toEqual({
+      ...allFilters,
+      stateFilter: 'ARCHIVED',
+      archiveFilter: 'archived',
+    });
+  });
+
+  it('filters by canonical journey, detailed stage, and effective state', () => {
+    expect(
+      filterProjectsForIndex(projects, buildContactsById(contacts), {
+        query: 'alex',
+        journeyFilter: 'PROPOSAL',
+        stageFilter: 'SENT',
+        stateFilter: 'WAITING',
+        archiveFilter: 'active',
+      }).map((project) => project.id),
     ).toEqual(['proj_1']);
   });
 
-  it('matches phone numbers via formatted and digits-only forms', () => {
-    const phoneContact = {
+  it('does not derive operational state from archive or stage in browser code', () => {
+    const project: Project = {
+      id: 'proj_archived',
+      createdAt: '2026-04-03T00:00:00.000Z',
+      projectName: 'Archived Job',
+      status: 'PAID',
+      isArchived: true,
+    };
+
+    expect(
+      filterProjectsForIndex([project], new Map(), {
+        ...allFilters,
+        stateFilter: 'ARCHIVED',
+        archiveFilter: 'archived',
+      }),
+    ).toEqual([]);
+  });
+
+  it('matches formatted and digits-only phone searches', () => {
+    const phoneContact: Contact = {
       id: 'ct_phone',
       displayName: 'Phone Person',
       email: '',
@@ -88,13 +142,12 @@ describe('projectIndexFilters', () => {
       createdAt: '2026-04-03T00:00:00.000Z',
       updatedAt: '2026-04-03T00:00:00.000Z',
     };
-    const phoneProject = {
+    const phoneProject: Project = {
       id: 'proj_phone',
       createdAt: '2026-04-03T00:00:00.000Z',
-      updatedAt: '2026-04-03T00:00:00.000Z',
       contactId: 'ct_phone',
       projectName: 'Phone Job',
-      status: 'NEW' as const,
+      status: 'NEW',
     };
     const contactsById = buildContactsById([phoneContact]);
 
@@ -102,77 +155,16 @@ describe('projectIndexFilters', () => {
       filterProjectsForIndex(
         [phoneProject],
         contactsById,
-        { query: '0211234567', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' },
-        '2026-04-03',
+        { ...allFilters, query: '0211234567' },
       ),
     ).toHaveLength(1);
-
     expect(
       filterProjectsForIndex(
         [phoneProject],
         contactsById,
-        { query: '021 123', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' },
-        '2026-04-03',
+        { ...allFilters, query: '021 123' },
       ),
     ).toHaveLength(1);
-  });
-
-  it('respects archive filter when projecting visible rows', () => {
-    const archived = {
-      id: 'proj_archived',
-      createdAt: '2026-04-03T00:00:00.000Z',
-      updatedAt: '2026-04-03T00:00:00.000Z',
-      projectName: 'Archived Job',
-      status: 'NEW' as const,
-      isArchived: true,
-    };
-    const active = {
-      id: 'proj_active',
-      createdAt: '2026-04-03T00:00:00.000Z',
-      updatedAt: '2026-04-03T00:00:00.000Z',
-      projectName: 'Active Job',
-      status: 'NEW' as const,
-      isArchived: false,
-    };
-    const contactsById = new Map();
-
-    expect(
-      filterProjectsForIndex(
-        [archived, active],
-        contactsById,
-        { query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' },
-        '2026-04-03',
-      ).map((p) => p.id),
-    ).toEqual(['proj_active']);
-
-    expect(
-      filterProjectsForIndex(
-        [archived, active],
-        contactsById,
-        { query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'archived' },
-        '2026-04-03',
-      ).map((p) => p.id),
-    ).toEqual(['proj_archived']);
-
-    expect(
-      filterProjectsForIndex(
-        [archived, active],
-        contactsById,
-        { query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'all' },
-        '2026-04-03',
-      )
-        .map((p) => p.id)
-        .sort(),
-    ).toEqual(['proj_active', 'proj_archived']);
-  });
-
-  it('normalizes phones to digits-only', () => {
     expect(normalizePhone('(021) 123 4567')).toBe('0211234567');
-    expect(normalizePhone(undefined)).toBe('');
-  });
-
-  it('computes today in the portal timezone instead of the server machine timezone', () => {
-    expect(todayYmd('2026-04-05T11:59:59.000Z')).toBe('2026-04-05');
-    expect(todayYmd('2026-04-05T12:00:00.000Z')).toBe('2026-04-06');
   });
 });

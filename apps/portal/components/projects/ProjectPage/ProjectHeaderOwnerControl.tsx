@@ -43,12 +43,7 @@ export default function ProjectHeaderOwnerControl({
     commandQuery.data?.workModel === expectedWorkModel
       ? commandQuery.data
       : null;
-  const owner =
-    coordinatedData?.workModel === "v2"
-      ? coordinatedData.owner
-      : coordinatedData?.workModel === "legacy"
-        ? coordinatedData.operations.owner
-        : null;
+  const owner = coordinatedData?.owner ?? null;
   const resolvedOwner = owner ? owner.owner : project.owner;
   const displayName = resolvedOwner?.displayName ?? "Unassigned";
   const ownerKey = resolvedOwner?.key ?? "unassigned";

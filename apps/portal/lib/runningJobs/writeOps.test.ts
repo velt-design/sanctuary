@@ -179,12 +179,7 @@ describe('applyRunningJobCellMutation work-model ownership', () => {
     expect(mocks.from).not.toHaveBeenCalledWith('project_task_checks');
   });
 
-  it('keeps legacy material state on project_task_checks', async () => {
-    const upsert = vi.fn().mockResolvedValue({ error: null });
-    mocks.from.mockImplementation((table: string) => {
-      if (table === 'project_task_checks') return { upsert };
-      throw new Error(`Unexpected table ${table}`);
-    });
+  it('writes unmarked-project material state through the same fact RPC', async () => {
     mocks.loadRunningJobRow.mockImplementation(async () => makeRow(null));
     const { applyRunningJobCellMutation } = await import('./writeOps');
     const row = makeRow(null);
@@ -198,11 +193,14 @@ describe('applyRunningJobCellMutation work-model ownership', () => {
       value: true,
     });
 
-    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({
-      project_id: '11111111-1111-4111-8111-111111111111',
-      task_key: 'order_materials',
-    }), { onConflict: 'project_id,task_key' });
-    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith('project_running_job_fact_command', expect.objectContaining({
+      p_project_id: '11111111-1111-4111-8111-111111111111',
+      p_fact: 'materials_ordered',
+      p_value: true,
+      p_expected_row_version: 0,
+      p_command_id: expect.any(String),
+    }));
+    expect(mocks.from).not.toHaveBeenCalledWith('project_task_checks');
   });
 
   it('uses Schedule alone when a V2 job is completed', async () => {
@@ -221,6 +219,25 @@ describe('applyRunningJobCellMutation work-model ownership', () => {
     expect(mocks.markScheduleDone).toHaveBeenCalledTimes(1);
     expect(mocks.from).not.toHaveBeenCalledWith('project_task_checks');
     expect(mocks.markCompleted).not.toHaveBeenCalled();
+  });
+
+  it('preserves the server-owned legacy completion lifecycle without task checks', async () => {
+    mocks.loadRunningJobRow.mockImplementation(async () => makeRow(null));
+    const { applyRunningJobCellMutation } = await import('./writeOps');
+    const row = makeRow(null);
+
+    await applyRunningJobCellMutation({
+      projectId: row.projectId,
+      projectUuid: '11111111-1111-4111-8111-111111111111',
+      actorUserId: '22222222-2222-4222-8222-222222222222',
+      currentRow: row,
+      key: 'job_completed',
+      value: true,
+    });
+
+    expect(mocks.markScheduleDone).toHaveBeenCalledTimes(1);
+    expect(mocks.markCompleted).toHaveBeenCalledTimes(1);
+    expect(mocks.from).not.toHaveBeenCalledWith('project_task_checks');
   });
 
   it('lets the deposit action atomically own the paid date and SENT transition', async () => {

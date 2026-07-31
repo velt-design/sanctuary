@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import type { EstimateDetail } from '../estimates/types';
-import type { ProjectPageSnapshotResponse, ProjectTaskItem } from '../projects/types';
+import type { ProjectPageSnapshotResponse } from '../projects/types';
 import { DEFAULT_QUOTE_TERMS } from '../quotes/defaults';
 import type { QuoteVersionDetail } from '../quotes/types';
 import type { Contact } from '../types/contact';
@@ -10,7 +10,6 @@ import { qk } from '../queries/keys';
 import {
   applyDraftPatchToQuoteDetail,
   buildNextEstimateVersionLabel,
-  patchProjectTasksSnapshot,
   replaceEstimateDetailCache,
   replaceQuoteDetailCache,
   upsertContactCaches,
@@ -160,18 +159,6 @@ function makeProjectSnapshot(projectId = 'proj_1', contactId = 'ct_1'): ProjectP
       pipeline: {
         stage: 'new',
       },
-      tasks: {
-        stage: 'new',
-        items: [
-          {
-            key: 'reminder',
-            label: 'Reminder',
-            kind: 'manual',
-            isDone: false,
-            isManualDone: false,
-          },
-        ],
-      },
       activity: [],
       emails: [],
       notes: [],
@@ -268,7 +255,7 @@ describe('portalEntities', () => {
     ]);
   });
 
-  it('patches project detail, contact, and task caches for autosave surfaces', () => {
+  it('patches project detail and contact caches for autosave surfaces', () => {
     const queryClient = createQueryClient();
     const hostKey = 'host';
     const projectId = 'proj_1';
@@ -329,17 +316,5 @@ describe('portalEntities', () => {
     expect(queryClient.getQueryData(qk.contacts.detail(hostKey, contactId))).toEqual(
       expect.objectContaining({ displayName: 'Jordan', email: 'jordan@example.com' }),
     );
-
-    const nextTasks: ProjectTaskItem[] = [
-      {
-        key: 'reminder',
-        label: 'Reminder',
-        kind: 'manual',
-        isDone: true,
-        isManualDone: true,
-      },
-    ];
-    patchProjectTasksSnapshot(queryClient, hostKey, projectId, nextTasks);
-    expect(queryClient.getQueryData<ProjectPageSnapshotResponse>(qk.projects.snapshot(hostKey, projectId))?.snapshot.tasks.items).toEqual(nextTasks);
   });
 });

@@ -1,41 +1,12 @@
-import type { ProjectStatus as CoreProjectStatus } from '@/lib/types/project';
 import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
+import type { ProjectOperationalStateCounts } from '@/lib/projects/workItems/stateCounts';
 
 export type QueueMode = 'today' | 'next7' | 'alldue';
 
-export type ProjectStatus = CoreProjectStatus;
-
-type DashboardAttentionKey =
-  | 'overdue'
-  | 'due_today'
-  | 'projects_in_quoting';
-
-type DashboardAttentionTone = 'urgent' | 'warning' | 'neutral';
-
 interface DashboardKpis {
-  actionsDue: number; // today + overdue
   newLeads: number; // status=NEW
   quotesToSend: number; // legacy snapshot key: projects in QUOTING, not quote readiness
   installsThisWeek: number; // retained API contract; intentionally not rendered on Dashboard
-}
-
-export interface DashboardAttentionItem {
-  key: DashboardAttentionKey;
-  label: string;
-  count: number;
-  href: string;
-  tone: DashboardAttentionTone;
-  helperText?: string;
-}
-
-export interface WorkQueueItem {
-  projectId: string;
-  projectName: string;
-  clientName?: string | null;
-  status: ProjectStatus | string;
-  nextActionLabel?: string | null;
-  nextActionDueDate?: string | null; // YYYY-MM-DD
-  lastActivityAt?: string | null; // ISO
 }
 
 export interface DashboardRecentEstimate {
@@ -111,10 +82,10 @@ export interface DashboardPersonalTask {
 export interface DashboardData {
   updatedAtIso: string;
   kpis: DashboardKpis;
-  attention: DashboardAttentionItem[];
-  workQueue: WorkQueueItem[];
   projectWorkQueue?: ProjectWorkQueueEntry[];
   projectWorkQueueAvailable?: boolean;
+  projectStateCounts?: ProjectOperationalStateCounts;
+  projectStateCountsAvailable?: boolean;
   schedule: ScheduleSnapshot;
   siteVisits: SiteVisitsSnapshot;
   pipelineCounts: PipelineCounts;

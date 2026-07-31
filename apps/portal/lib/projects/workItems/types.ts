@@ -42,6 +42,7 @@ export type ProjectWorkItemOrigin = (typeof PROJECT_WORK_ITEM_ORIGINS)[number];
 const PROJECT_WORK_ITEM_SOURCE_TYPES = [
   'LEAD_CADENCE',
   'QUOTE_CADENCE',
+  'STAGE_REVIEW',
   'MANUAL',
   'LEGACY_REVIEW',
 ] as const;

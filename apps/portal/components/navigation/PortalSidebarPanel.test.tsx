@@ -139,18 +139,6 @@ describe('PortalSidebarPanel', () => {
     rendered.unmount();
   });
 
-  it('keeps the Work Queue active throughout its admin review route', () => {
-    mockPathname = '/staff/projects/work-queue/legacy-review';
-    mockRole = 'admin';
-    const rendered = renderSidebar();
-
-    const link = linkByText(rendered.container, 'Work Queue');
-    expect(link.getAttribute('href')).toBe('/staff/projects/work-queue');
-    expect(link.getAttribute('aria-current')).toBe('page');
-
-    rendered.unmount();
-  });
-
   it('keeps each parent icon, label, and expanded submenu in one flow group', () => {
     mockPathname = '/staff/projects/design-packages';
     const rendered = renderSidebar();

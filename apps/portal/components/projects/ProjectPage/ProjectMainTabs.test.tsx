@@ -23,7 +23,6 @@ vi.mock('./projectTabModules', () => ({
 const snapshot = {
   project: { id: 'proj_1', name: 'Deck Build', stage: 'lead', hasJobPacks: true },
   pipeline: { stage: 'lead' },
-  tasks: { stage: 'lead', items: [] },
   activity: [],
   emails: [],
   notes: [],

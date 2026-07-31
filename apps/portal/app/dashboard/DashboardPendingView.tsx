@@ -26,7 +26,7 @@ export default function DashboardPendingView({
           <p className={dash.pendingDescription}>
             {failed
               ? 'The portal could not refresh this information. You can try again without leaving the page.'
-              : 'The latest pipeline, project actions, estimates, activity, and tasks will appear here shortly.'}
+              : 'The latest pipeline, Project Work, estimates, activity, and personal tasks will appear here shortly.'}
           </p>
           {failed && onRetry ? (
             <button type="button" className={stateStyles.secondaryAction} onClick={onRetry}>

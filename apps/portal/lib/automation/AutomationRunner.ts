@@ -11,13 +11,7 @@ import {
   EMAIL_PROJECT_SCHEDULED_V1,
 } from '@/lib/emails/transactionalTemplates';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
-import { isUuid } from '@/lib/supabase/mappers';
 import type { ProjectStatus } from '@/lib/types/project';
-import {
-  insertAutomationFollowupTask as insertFollowupTask,
-  nextPortalBusinessDueAt,
-  upsertAutomationTask as upsertTask,
-} from './taskPersistence';
 import { isProjectWorkModelV2 } from '@/lib/projects/workItems/modelBoundary';
 
 type PostgrestErrorLike = {
@@ -139,30 +133,6 @@ function makeIdempotencyKey(parts: Array<string | null | undefined>): string {
     .map((p) => (typeof p === 'string' ? p.trim() : ''))
     .filter(Boolean)
     .join(':');
-}
-
-function isBusinessDay(d: Date): boolean {
-  const day = d.getUTCDay();
-  return day !== 0 && day !== 6;
-}
-
-function addBusinessDays(from: Date, days: number): Date {
-  const dir = days >= 0 ? 1 : -1;
-  let remaining = Math.abs(days);
-  let cur = new Date(from.getTime());
-
-  while (remaining > 0) {
-    cur = new Date(cur.getTime() + dir * 24 * 60 * 60 * 1000);
-    if (isBusinessDay(cur)) remaining -= 1;
-  }
-
-  return cur;
-}
-
-function withUtcHour(d: Date, hour: number): Date {
-  const next = new Date(d.getTime());
-  next.setUTCHours(hour, 0, 0, 0);
-  return next;
 }
 
 function now(): Date {
@@ -375,46 +345,6 @@ async function loadScheduleWindow(projectId: string): Promise<{ startDate: strin
   };
 }
 
-async function ensureFollowupPlanActive(projectId: string, quoteUuid: string | null): Promise<{ id: string } | null> {
-  const insertRes = await supabaseServiceRole
-    .from('followup_plans')
-    .insert({
-      project_id: projectId,
-      quote_id: quoteUuid,
-      status: 'ACTIVE',
-    } as any)
-    .select('id')
-    .single();
-
-  if (!insertRes.error && insertRes.data) return insertRes.data as any;
-
-  if (isUniqueViolation(insertRes.error)) {
-    const existing = await supabaseServiceRole.from('followup_plans').select('id').eq('project_id', projectId).eq('status', 'ACTIVE').single();
-    if (existing.error || !existing.data) return null;
-    return existing.data as any;
-  }
-
-  throw insertRes.error;
-}
-
-async function cancelFollowupsForProject(projectId: string, reason: string): Promise<void> {
-  const nowIso = new Date().toISOString();
-
-  const planRes = await supabaseServiceRole
-    .from('followup_plans')
-    .update({ status: 'CANCELLED' } as any)
-    .eq('project_id', projectId)
-    .in('status', ['ACTIVE', 'PAUSED']);
-  if (planRes.error) throw planRes.error;
-
-  const tasksRes = await supabaseServiceRole
-    .from('followup_tasks')
-    .update({ status: 'SKIPPED', outcome_note: reason, completed_at: nowIso } as any)
-    .eq('project_id', projectId)
-    .eq('status', 'OPEN');
-  if (tasksRes.error) throw tasksRes.error;
-}
-
 async function upsertSiteVisitEvent(projectId: string, patch: Record<string, unknown>): Promise<void> {
   const payload: any = {
     project_id: projectId,
@@ -568,14 +498,14 @@ class AutomationRunner {
   private async handleEvent(type: string, projectId: string | null, payload: unknown): Promise<void> {
     if (!projectId) return;
 
-    if (await isProjectWorkModelV2(supabaseServiceRole, projectId)) {
-      switch (type) {
-        case 'ui.action.project_created':
-          await this.onProjectCreated(projectId, (payload ?? {}) as ProjectCreatedPayload, false);
-          return;
-        default:
-          return;
-      }
+    // The V2 marker retires legacy task orchestration; it does not retire the
+    // existing email and specialist side effects owned by explicit lifecycle
+    // commands. Only the old stage-driven Site Visit creation remains disabled.
+    if (
+      type === 'pipeline.stage_changed'
+      && await isProjectWorkModelV2(supabaseServiceRole, projectId)
+    ) {
+      return;
     }
 
     switch (type) {
@@ -596,9 +526,6 @@ class AutomationRunner {
         return;
       case 'ui.action.generate_cost_plan':
         await this.onGenerateCostPlan(projectId, (payload ?? {}) as GenerateCostPlanPayload);
-        return;
-      case 'ticket.design_package_marked_done':
-        await this.onDesignTicketMarkedDone(projectId);
         return;
       case 'ui.action.quote_mark_sent':
         await this.onQuoteMarkSent(projectId, payload as any);
@@ -626,7 +553,6 @@ class AutomationRunner {
   private async onProjectCreated(
     projectId: string,
     _payload: ProjectCreatedPayload,
-    createLegacyTask = true,
   ): Promise<void> {
     const project = await loadProject(projectId);
     if (!project) return;
@@ -634,19 +560,6 @@ class AutomationRunner {
     const contact = project.contact_id ? await loadContact(project.contact_id) : null;
     const contactName = contact?.name ?? '';
     const projectName = project.name ?? '';
-
-    if (createLegacyTask) {
-      const due = await nextPortalBusinessDueAt(1, now());
-      await upsertTask({
-        projectId,
-        type: 'REVIEW_NEW_LEAD',
-        title: 'Review new lead',
-        dueAt: due,
-        details: null,
-        meta: { source: 'automation' },
-        idempotencyKey: makeIdempotencyKey([projectId, 'task', 'REVIEW_NEW_LEAD']),
-      });
-    }
 
     if (contact?.email && contact.email.trim()) {
       const templateId = 'EMAIL_NEW_RANGE_AND_BROCHURES';
@@ -670,17 +583,6 @@ class AutomationRunner {
     const contact = project.contact_id ? await loadContact(project.contact_id) : null;
     if (!contact) return;
 
-    const nextActionAt = await nextPortalBusinessDueAt(2, now());
-    const plan = await ensureFollowupPlanActive(projectId, null);
-    if (!plan) return;
-    await insertFollowupTask({
-      planId: plan.id,
-      projectId,
-      type: 'FOLLOWUP_CALL',
-      dueAt: nextActionAt,
-      idempotencyKey: makeIdempotencyKey([projectId, 'followup', 'FOLLOWUP_CALL', 'mark_contacted']),
-    });
-
     if (contact.email && contact.email.trim()) {
       const templateId = 'EMAIL_CONTACTED_CONFIRM_RANGE';
       const template = await loadEmailTemplate(templateId);
@@ -699,17 +601,6 @@ class AutomationRunner {
 
   private async onCustomerAgreedSiteVisit(projectId: string): Promise<void> {
     await upsertSiteVisitEvent(projectId, { status: 'UNSCHEDULED' });
-
-    const due = new Date(now().getTime() + 48 * 60 * 60 * 1000).toISOString();
-    await upsertTask({
-      projectId,
-      type: 'BOOK_SITE_VISIT',
-      title: 'Book site visit',
-      dueAt: due,
-      details: null,
-      meta: { source: 'automation' },
-      idempotencyKey: makeIdempotencyKey([projectId, 'task', 'BOOK_SITE_VISIT']),
-    });
   }
 
   private async onBookSiteVisit(projectId: string, payload: BookSiteVisitPayload): Promise<void> {
@@ -726,16 +617,6 @@ class AutomationRunner {
       ...(typeof payload.salespersonId === 'string' ? { assigned_sales_owner_id: payload.salespersonId.trim() || null } : null),
       ...(typeof payload.notes === 'string' ? { notes: payload.notes.trim() || null } : null),
       ...(status === 'CONFIRMED' ? { customer_notified: true, last_notified_at: now().toISOString() } : null),
-    });
-
-    await upsertTask({
-      projectId,
-      type: 'ATTEND_SITE_VISIT',
-      title: 'Attend site visit',
-      dueAt: scheduledStart,
-      details: null,
-      meta: { source: 'automation' },
-      idempotencyKey: makeIdempotencyKey([projectId, 'task', 'ATTEND_SITE_VISIT']),
     });
 
     if (status === 'CONFIRMED') {
@@ -814,19 +695,6 @@ class AutomationRunner {
     void payload;
   }
 
-  private async onDesignTicketMarkedDone(projectId: string): Promise<void> {
-    const due = withUtcHour(addBusinessDays(now(), 1), 9).toISOString();
-    await upsertTask({
-      projectId,
-      type: 'FINALIZE_SEND_QUOTE',
-      title: 'Finalize + send quote',
-      dueAt: due,
-      details: null,
-      meta: { source: 'automation' },
-      idempotencyKey: makeIdempotencyKey([projectId, 'task', 'FINALIZE_SEND_QUOTE']),
-    });
-  }
-
   private async onQuoteMarkSent(projectId: string, payload: any): Promise<void> {
     const project = await loadProject(projectId);
     if (!project) return;
@@ -867,16 +735,6 @@ class AutomationRunner {
       });
     }
 
-    const due = withUtcHour(addBusinessDays(now(), 2), 9).toISOString();
-    await upsertTask({
-      projectId,
-      type: 'SCHEDULE_INSTALL_WINDOW',
-      title: 'Schedule install window',
-      dueAt: due,
-      details: null,
-      meta: { source: 'automation' },
-      idempotencyKey: makeIdempotencyKey([projectId, 'task', 'SCHEDULE_INSTALL_WINDOW']),
-    });
   }
 
   private async onConfirmSchedule(projectId: string): Promise<void> {
@@ -1007,15 +865,6 @@ class AutomationRunner {
 
     }
 
-    await upsertTask({
-      projectId,
-      type: 'UPLOAD_COMPLETION_PHOTOS',
-      title: 'Upload completion photos',
-      dueAt: null,
-      details: null,
-      meta: { source: 'automation' },
-      idempotencyKey: makeIdempotencyKey([projectId, 'task', 'UPLOAD_COMPLETION_PHOTOS']),
-    });
   }
 
   private async onMarkPaid(projectId: string): Promise<void> {
@@ -1040,42 +889,11 @@ class AutomationRunner {
 
   private async onStageChanged(projectId: string, payload: StageChangedPayload): Promise<void> {
     const toStage = normaliseStage(payload.toStage);
-    const quoteId = typeof payload.quoteId === 'string' ? payload.quoteId.trim() : '';
-    const quoteUuidRaw = quoteId ? (quoteId.includes('_') ? quoteId.split('_').at(-1) ?? '' : quoteId) : '';
-    const quoteUuid = quoteUuidRaw && isUuid(quoteUuidRaw) ? quoteUuidRaw : null;
-
     if (toStage === 'SITE_VISIT') {
       await ensureUnscheduledSiteVisit(projectId);
       return;
     }
 
-    if (toStage === 'SENT') {
-      const plan = await ensureFollowupPlanActive(projectId, quoteUuid);
-      if (!plan) return;
-
-      const offsets = [
-        { type: 'FOLLOWUP_CALL' as const, days: 2 },
-        { type: 'FOLLOWUP_EMAIL' as const, days: 5 },
-        { type: 'FOLLOWUP_CALL' as const, days: 9 },
-        { type: 'FOLLOWUP_CALL' as const, days: 14 },
-      ];
-
-      for (const o of offsets) {
-        const due = withUtcHour(addBusinessDays(now(), o.days), 9).toISOString();
-        await insertFollowupTask({
-          planId: plan.id,
-          projectId,
-          type: o.type,
-          dueAt: due,
-          idempotencyKey: makeIdempotencyKey([projectId, 'followup', quoteUuid ?? 'noquote', String(o.days), o.type]),
-        });
-      }
-      return;
-    }
-
-    if (toStage === 'DEPOSIT' || toStage === 'SCHEDULED' || toStage === 'COMPLETED' || toStage === 'PAID') {
-      await cancelFollowupsForProject(projectId, `Cancelled on stage change to ${toStage}`);
-    }
   }
 }
 

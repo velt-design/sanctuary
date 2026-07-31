@@ -8,9 +8,9 @@ import {
   createRouteDiagnostics,
   logPortalServerError,
 } from '@/lib/api/routeDiagnostics';
-import { runConfirmationCorrectionReview } from '@/lib/projects/workItems/legacyTriage/commands';
-import { legacyTriageDatabaseError } from '@/lib/projects/workItems/legacyTriage/errors';
-import { parseConfirmationCorrectionReviewBody } from '@/lib/projects/workItems/legacyTriage/validation';
+import { runConfirmationCorrectionReview } from '@/lib/projects/workItems/confirmationCorrections/commands';
+import { projectWorkCorrectionDatabaseError } from '@/lib/projects/workItems/confirmationCorrections/errors';
+import { parseConfirmationCorrectionReviewBody } from '@/lib/projects/workItems/confirmationCorrections/validation';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       result,
     }, 200, diagnostics);
   } catch (error) {
-    const mapped = legacyTriageDatabaseError(error);
+    const mapped = projectWorkCorrectionDatabaseError(error);
     if (mapped.status === 500) {
       logPortalServerError(diagnostics, {
         status: mapped.status,

@@ -60,12 +60,8 @@ export function useProjectsIndexMutations(host: string) {
     async (project: Project, correction: ProjectIndexStageCorrection, label: string) => {
       setPendingStages((current) => withPendingKey(current, project.id, true));
       try {
-        const result = await correctProjectIndexStage({ queryClient, host, project, correction });
-        toast.success(
-          result.rollback
-            ? `Stage corrected to ${label}. Reset ${result.resetManualTaskCount} manual checkmark(s).`
-            : `Stage corrected to ${label}.`,
-        );
+        await correctProjectIndexStage({ queryClient, host, project, correction });
+        toast.success(`Stage corrected to ${label}.`);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to update stage.');
       } finally {

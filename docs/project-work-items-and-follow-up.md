@@ -1,6 +1,6 @@
 # Project Work Items And Lead Follow-Up
 
-Status: Approved product contract with a production-deployed implementation. Foundation migration `20260729_000002` and the exact reviewed `20260729_000003`/`20260729_000004` files are applied in staging and production. The production-refusing staging readiness probe, rollback rehearsals, schema/body/permission verification, authenticated legacy reads, and disposable new-V2-project command smoke passed on 2026-07-30. The controlled production apply and authenticated read-only Work Queue, snapshot, and Command Centre verification also passed without migrating or backfilling a pre-cutover project. Portal release merge `c9e73651`, cutover record `c8471e92`, and snapshot-cache hotfix merge `809f2c5e` are deployed.
+Status: Approved product contract. The Project Work foundation migrations are deployed. Portfolio rollout migration `20260731000002_project_work_portfolio_rollout.sql` and its application consumers are implemented in the current change set but are not production-applied until deployment gates and authenticated read-only verification pass.
 
 Purpose: define the project-work model, email-only lead cadence, pipeline disposition rules, and legacy-task retirement boundary, and record the controlled rollout state.
 
@@ -8,7 +8,7 @@ This document is intentionally UI-agnostic. The Project Overview redesign is now
 
 ## Current Repository State
 
-The current worktree implements the V2 foundation for newly created projects only:
+The current change set completes the portfolio-wide V2 model:
 
 - a new staff-created project is created through `project_create_v2`;
 - browser project creation reaches that command only through the authenticated staff API; the former direct table-insert helper is retired;
@@ -16,27 +16,30 @@ The current worktree implements the V2 foundation for newly created projects onl
 - initialization records `Active` state and one first-email obligation, due after two Auckland open hours with a separate four-hour SLA;
 - a missing contact email blocks that first obligation until the email is supplied;
 - lead and quote cadences advance only from durable domain evidence or an explicit staff confirmation;
-- the Overview V2 composition consumes the existing server projection through one mixed-model Project Work region while preserving the current portal visual system;
-- V2 remains actionable through the existing versioned server commands when reads are fresh and matching, while legacy stage rows are filtered read-only compatibility;
-- Call and Site Visit work is absent from Overview; a prohibited server-selected legacy action is presented as `Legacy work needs review` without browser-side replacement selection;
-- the staff-wide Work Queue and Dashboard preview consume one server-composed current row per V2 project;
+- the Overview consumes one server projection through one Project Work region while preserving the current portal visual system;
+- every existing project receives a V2 marker/state at one fixed rollout timestamp and behaves as if it just entered its stored stage;
+- `New` uses the existing lead initializer; later non-terminal stages receive one five-business-day stage review when no stronger current work exists; `Paid` becomes `Closed - Complete`; Archived receives no active work;
+- a future stage change replaces only prior `STAGE_REVIEW` work and preserves cadence, commercial, design, confirmation, and specialist facts;
+- Call and Site Visit work is absent; a Site Visit-stage review is proposal progress, never a Site Visit task;
+- the staff-wide Work Queue and Dashboard preview consume one server-composed current row per project, and the full queue is paged without truncating the portfolio;
 - marker inventory, operational state, and project enrichment are direct bounded reads rather than fragile embedded PostgREST relationships; missing or truncated authoritative inventory fails closed;
 - Overview, snapshot, summary, Work Queue, and Dashboard cache changes run through `projectWorkCache.ts`: V2 projection fan-out has one helper, `patchProjectCommandCentreCache` is the sole complete command-centre response patch owner, and one invalidator refreshes every Project Work consumer after accepted commands;
 - cached or background-refresh-failed Project Work is visible but read-only, while an unavailable V2 contract fails closed as a named not-ready state;
 - normal work-item commands are available from the queue, while personal Dashboard reminders remain separate;
-- admins can retract an incorrect confirmation without deleting its history, classify the old Contacted cohort read-only without customer contact fields, and migrate one reviewed project at a time;
+- admins can retract an incorrect confirmation without deleting its history;
 - Site Visits is hidden from normal navigation and stays outside work items; an active V2 project in the Site Visit stage has one bounded deep link to the retained booking/confirmation workflow, while its optional completion fact remains separate and manual; and
-- Schedule, Running Jobs, quotes, and invoices retain their specialist source-of-truth boundaries.
+- Schedule, Running Jobs, quotes, and invoices retain their specialist source-of-truth boundaries; and
+- legacy task/follow-up/action rows remain only as guarded audit/rollback evidence, with product readers, writers, actions, routes, and navigation retired.
 
 Migration `20260729_000002_project_work_items_v2.sql` was applied in staging on 2026-07-29. The first rehearsal exposed a hosted PostgREST schema-cache miss for its new marker/state tables, so project-detail reads failed before legacy/V2 classification. All queue classifiers now use direct server-owned marker/state reads. On 2026-07-30 the exact reviewed `20260729_000003_project_work_items_v2_schema_cache.sql` and `20260729_000004_project_work_queue_and_legacy_triage.sql` files were each rehearsed in a rollback transaction and replay-applied to the positively identified staging project. Readiness passed before and after; catalog verification proved the two exact single cascade relationships, V3 queue and guarded classifier/migration bodies, authenticated-only execution, and denied anonymous execution. The authenticated GET-only staging smoke then returned `200` for Work Queue, a disposable synthetic legacy-project snapshot, and its Command Centre; the rendered states were fresh/ready, the legacy boundary was preserved, and every non-read browser request was blocked. The exact synthetic legacy project and contact were removed after that check.
 
-The final command smoke then created one clearly labelled synthetic V2 project through the authenticated staff API. It proved server-confirmed creation, the initial `OPEN` first-email item at row version 1, a real `BLOCK` command at row version 2, and an exact same-command replay that stayed at row version 2 without a duplicate event. Supported V2 archive cleanup removed the project from active work and cancelled the item at row version 3 while preserving append-only audit evidence. Authenticated work-item, Work Queue, Command Centre, snapshot, integrity, and rendered Overview checks passed; the Overview reported Archived with zero open or blocked work. The synthetic QA role was restored to `staff`. No confirmation was recorded, and no email/outbox, quote, invoice, legacy task, follow-up, Site Visit, Schedule, Running Jobs, repair, or legacy-residue row was created. The archived synthetic project and contact remain intentionally as staging audit evidence because V2 has no hard-delete command.
+The final command smoke then created one clearly labelled synthetic V2 project through the authenticated staff API. It proved server-confirmed creation, the initial `OPEN` first-email item at row version 1, a real `BLOCK` command at row version 2, and an exact same-command replay that stayed at row version 2 without a duplicate event. Supported V2 archive cleanup removed the project from active work and cancelled the item at row version 3 while preserving append-only audit evidence. Authenticated work-item, Work Queue, Command Centre, snapshot, integrity, and rendered Overview checks passed; the Overview reported Archived with zero open or blocked work. The synthetic QA role was restored to `staff`. No confirmation was recorded, and no email/outbox, quote, invoice, legacy task, follow-up, Site Visit, Schedule, Running Jobs, repair, or legacy-residue row was created. The archived synthetic project and contact remain intentionally as staging audit evidence because that V2 command smoke did not invoke the separate destructive admin project-delete route.
 
-Production release merge `c9e73651` was deployed before the three exact files were applied individually to positively identified Supabase project `iytanftukulcnavossmd`; cutover record `c8471e92` records the postflight, and snapshot-cache hotfix merge `809f2c5e` followed after read-only verification found the snapshot header defect. The colliding `20260729` remote-ledger state was left untouched. Postflight found all nine V2 tables with RLS, the authenticated-only queue function, the canonical cascade relationships, and zero model markers, operational states, work items, events, confirmations, receipts, or repair signals. The authenticated Work Queue was therefore ready but empty at the 2026-07-30 check. No pre-cutover project received a V2 marker or backfill; the production QA changed no customer, project, Contacted, communication, commercial, Schedule, task, or payment row.
+The earlier production cutover intentionally left pre-cutover projects unmarked, which is why Work Queue was ready but empty. The current rollout closes that adoption gap. Its forward migration uses one statement timestamp, deterministic source keys, project locks, a private project-independent cohort ledger, and one `PORTFOLIO_ROLLOUT_APPLIED` event per pre-rollout project. Every project present at that timestamp is processed once, including projects that already had a complete V2 marker/state pair, so its current saved stage receives fresh rollout timing without replaying on a later migration run. The ledger keeps replay closed even when the initial cohort was empty or its projects are later hard-deleted. Partial marker/state rows converge, active prohibited Call/Site Visit and `LEGACY_REVIEW` work is cancelled with audit evidence, and retired review work cannot be reopened or retyped through the generic command. A deferred project-insert invariant initializes projects created through retained import/bootstrap writers after their transaction's canonical initializer has had first ownership. The database rejects future prohibited work even when a caller bypasses the HTTP route, while cascade-aware guards preserve the existing admin hard-delete of a complete project graph. `staff_projects_index_v2`, `staff_project_state_counts_v1`, and the queue fail closed when any project is still missing its marker or state.
 
-The mixed-model boundary retains an explicit pre-rollout compatibility state for undeployed or partially rolled environments: when and only when PostgREST reports the V2 marker table itself as absent, it logs that condition and classifies projects as legacy. The Work Queue inventories V2 markers and operational states through their direct table owners rather than embedded `projects` relationships. Before its RPC/schema is available, queue and legacy-review pages show the specific not-ready state, do not retry automatically, and do not copy legacy tasks into the V2 queue. Authentication, network, permission, and unrelated schema failures still propagate, and V2-only RPCs remain unavailable. Production no longer depends on this bridge, and it does not replace schema-cache proof for any future environment.
+Migration must precede the application release. The old deployed application can read V2 projects; the new application requires the portfolio invariant and new index/count RPCs. Presence of the migration file does not mean production is upgraded.
 
-The business calendar has verified Auckland coverage for 2026 and 2027 only. Coverage must be extended before a V2 deadline can cross into 2028. The server Work Queue emits at most one current row per project and groups it as Overdue, Today, Next seven business days, Blocked, or Needs triage. Its composition prefers durable recovery and urgent work, then the canonical specialist candidate, future work, and triage; the Dashboard shows only a compact preview and links to the full queue. Confirmation correction is append-only and always opens an explicit review signal rather than reversing later lifecycle or commercial facts.
+The business calendar has verified Auckland coverage for 2026 and 2027 only. Coverage must be extended before a V2 deadline can cross into 2028. The server Work Queue emits at most one current row per project and groups it as Overdue, Today, Next seven business days, Blocked, or Needs triage. Its repository pages the hosted RPC result in 1,000-row ranges, fails closed at the explicit 5,000-row safety ceiling, and separately proves whole-portfolio marker/state completeness through the strict state-count RPC before returning rows. Its composition prefers durable recovery and urgent work, then the canonical specialist candidate, future work, and triage; the Dashboard shows only a compact preview and links to the full queue. Confirmation correction is append-only and always opens an explicit review signal rather than reversing later lifecycle or commercial facts.
 
 ## 1. Product Model
 
@@ -413,50 +416,24 @@ They are:
 
 If work needs to be accountable to the project team, staff must create a project work item.
 
-## 14. Contacted Backlog
+## 14. Existing-Portfolio Conversion
 
-The existing Contacted population must not receive new cadence tasks automatically.
+The 2026-07-29 Contacted counts were a read-only historical baseline, not lifecycle evidence. They did not prove that any customer was lost, and the rollout does not automatically close or archive them.
 
-### Read-only baseline on 2026-07-29
+All existing projects now cross the V2 boundary in one server-owned migration from their stored stage:
 
-The authenticated Projects list reported:
+- the rollout timestamp is treated as a fresh stage-entry timestamp;
+- Contacted receives `Review enquiry progress` due after five Auckland business days, not a resurrected call/email cadence;
+- other non-terminal stages receive the bounded review mapped in the rollout contract;
+- Paid alone receives the deterministic `Complete` closed outcome;
+- staff later use the normal Waiting/Closed/work commands to make real decisions; and
+- archived projects remain administrative history outside current work.
 
-- 623 active Contacted projects;
-- 57 with a legacy compatibility follow-up date due by today;
-- 56 of those overdue;
-- 1 due today; and
-- 36 separately archived Contacted projects.
-
-No names, contact details, or project records were captured or changed.
-
-`follow_up_date` is a compatibility projection, not proof of a genuine current human obligation. The current repository also lacks structured historical facts for manually sent email and customer replies. Therefore none of these counts safely proves `Lost - No response`, and the 623 projects cannot be automatically classified or closed.
-
-The admin-only read model classifies unmarked Contacted projects as:
-
-- active with a current action;
-- waiting with a future date;
-- needs triage;
-- candidate for `Lost - No response`; and
-- insufficient evidence requiring manual classification.
-
-It returns project identity, follow-up timing, bounded reason codes, boolean operational evidence, and an opaque server-generated evidence fingerprint. The fingerprint covers the normalized project eligibility fields and every related quote, invoice, design, schedule, Running Jobs, task, follow-up, and manual-action field used by classification. It does not return customer email, phone, address, attachments, or message content.
-
-Staff then make one explicit project decision at a time:
-
-- keep active and set one work item;
-- move to Waiting with a wake-up date;
-- close lost with a reason; or
-- keep active but mark it Needs triage.
-
-No existing project is automatically closed, archived, or migrated by the classification. Each migration requires a stable command ID, the reviewed project update timestamp and evidence fingerprint, a reason, and disposition-specific evidence. The command recomputes the fingerprint after taking the project command/row lock and rejects changed evidence before any V2 write. It creates no first-email or follow-up cadence automatically.
-
-The first review batch should be the 57 due projects. The remaining 566 stay out of the new work queue until evidence or a staff decision gives each project a real action, Waiting date, Closed outcome, or Needs triage state.
-
-The 36 already archived Contacted records are a separate administrative population. Their existence is not evidence that other old leads should be archived.
+The former Contacted classifier and one-at-a-time migration UI/API are retired. Their database functions have no normal authenticated execute grant. Legacy evidence is retained only for privileged audit/rollback work.
 
 ## 15. Replacement Boundary
 
-Legacy projects still spread project work across:
+Retired legacy evidence remains stored across:
 
 - code-defined stage tasks and `project_task_checks`;
 - automation `tasks`;
@@ -465,7 +442,7 @@ Legacy projects still spread project work across:
 - primary-selection/control/version tables; and
 - compatibility `projects.next_action*` and `follow_up_date` fields.
 
-V2 projects use:
+Every project uses:
 
 - `project_operational_states` for Active, Waiting, and Closed state;
 - one canonical `project_work_items` store for human obligations;
@@ -474,31 +451,31 @@ V2 projects use:
 - one server-derived primary work item; and
 - specialist-domain actions kept with their authoritative owners.
 
-The V2 marker is the one-way boundary: legacy writers are rejected for V2 projects, while unmarked projects retain legacy behavior. A one-way compatibility projection updates `projects.next_action*` and `follow_up_date` from the highest-ranked open V2 item for existing consumers; it never imports those fields back into V2 truth and does not project blocked items or specialist actions. Personal Dashboard reminders remain outside this replacement.
+The V2 marker is the one-way boundary. The portfolio migration fails if it cannot converge every project to one marker and operational-state row, and portfolio RPCs refuse an incomplete rollout. A one-way compatibility projection updates `projects.next_action*` and `follow_up_date` from the highest-ranked open V2 item for any remaining compatibility consumer; it never imports those fields back into V2 truth and does not project blocked or specialist actions. Personal Dashboard reminders remain outside this replacement.
 
 ## 16. Migration Principles
 
 1. Use forward migrations; do not edit applied migration history.
 2. Add the replacement tables, RLS, commands, idempotency, and audit before switching readers.
 3. Move automation and manual writers to the replacement service.
-4. Backfill only reviewed, open human obligations.
-5. Do not blindly migrate closed history, legacy stage checkboxes, site-visit automation, or mirrored domain tasks.
+4. Seed only the bounded obligation justified by current stage and authoritative specialist facts; do not copy legacy task rows into V2 work.
+5. Retain legacy history as read-only evidence; do not turn stage checkboxes, Site Visit automation, or mirrored domain tasks into current obligations.
 6. Move payment, Schedule, Design, Running Jobs, and other domain facts to their owning contracts.
 7. Retarget the temporary `projects.next_action*` and `follow_up_date` projection because existing project-list, dashboard, and Schedule consumers still depend on it.
 8. Switch Command Centre, exception, dashboard, and project readers.
 9. Revoke legacy writes and retain old rows read-only for a verification window.
-10. Retire old code and tables only after focused reconciliation proves the cutover.
+10. Retire old code after consumer proof; retain old tables until a later separately reviewed data-deletion decision.
 
 Do not introduce a permanent bidirectional dual-write layer.
 
 ## 17. Remaining Rollout Order
 
-1. Preserve the exact-file hashes, staging rollback rehearsals, production apply, catalog/body/permission postflight, authenticated read-only checks, and the untouched colliding migration-ledger evidence.
-2. Observe the first naturally created production V2 project and its server-owned first work item; do not manufacture shared production QA records.
-3. Extend verified Auckland calendar coverage before any deadline can cross beyond 2027.
-4. Keep the Contacted classifier read-only unless an administrator is reviewing one named project. Exercise confirmation correction or one-project migration only with separately approved disposable or real evidence.
-5. Review and migrate existing projects only one at a time with explicit approval and unchanged evidence; retire legacy readers/tables only in later explicit slices.
-6. Keep the deployed Overview V2 inside the approved handover and current portal visual system; treat further lifecycle or specialist-summary expansion as a separate contract.
+1. Apply `20260731000002_project_work_portfolio_rollout.sql` before releasing consumers that require `staff_projects_index_v2` and `staff_project_state_counts_v1`.
+2. Verify migration identity, project-independent cohort closure, one-event-per-pre-rollout-project audit/partial-repair behavior, empty-cohort replay, deferred direct-insert initialization, terminal legacy-review and prohibited-work enforcement, existing admin hard-delete cascades, catalog grants, all-project marker/state completeness, state counts, queue cardinality below the 5,000-row safety ceiling, and schema-cache visibility.
+3. Deploy the application, then run `npm run test:portal:command-centre:read-only-auth` for authenticated read-only Projects, Dashboard, and real Overview coverage, followed by `npm run test:portal:work-queue:read-only-auth` for the full Work Queue. Abort any QA request other than `GET`/`HEAD`/`OPTIONS`.
+4. Do not manufacture or mutate shared production customer, project, quote, invoice, task, Schedule, Running Jobs, or payment records for verification.
+5. Extend verified Auckland calendar coverage before any deadline can cross beyond 2027.
+6. Treat readiness, specialist summaries, normalized activity, and further lifecycle automation as separate contracts.
 
 ## 18. Deferred Decisions
 

@@ -3,12 +3,29 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ApiError } from '@/lib/repo/apiClient';
 import { projectsIndexQueryOptions } from '@/lib/queries/projectsIndex';
-import type { ProjectsIndexParams } from '@/lib/projects/projectsIndexContract';
+import type {
+  ProjectsIndexParams,
+  ProjectsIndexResponse,
+} from '@/lib/projects/projectsIndexContract';
 
 type ProjectsIndexReadState = 'pending' | 'cached' | 'fresh' | 'refresh-failed' | 'unavailable';
 
 function isAccessEndingError(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
+}
+
+export function projectsIndexResponseMatchesRequest(
+  response: ProjectsIndexResponse,
+  params: ProjectsIndexParams,
+): boolean {
+  return response.archive === params.archive
+    && response.query.search === params.search.trim()
+    && response.query.status === params.status
+    && response.query.journey === params.journey
+    && response.query.state === params.state
+    && response.query.sort === params.sort
+    && response.projects.page === params.page
+    && response.projects.pageSize === params.pageSize;
 }
 
 export function useProjectsIndexData(params: ProjectsIndexParams) {
@@ -21,15 +38,7 @@ export function useProjectsIndexData(params: ProjectsIndexParams) {
 
   const unavailable = isAccessEndingError(query.error);
   const responseMatchesRequest = Boolean(
-    query.data
-      && query.data.archive === params.archive
-      && query.data.query.search === params.search.trim()
-      && query.data.query.status === params.status
-      && query.data.query.due === params.due
-      && query.data.query.today === params.today
-      && query.data.query.sort === params.sort
-      && query.data.projects.page === params.page
-      && query.data.projects.pageSize === params.pageSize,
+    query.data && projectsIndexResponseMatchesRequest(query.data, params),
   );
   const knownData = unavailable || !responseMatchesRequest ? undefined : query.data;
 

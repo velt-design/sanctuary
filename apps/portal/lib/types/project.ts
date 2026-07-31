@@ -1,7 +1,16 @@
 import { PIPELINE_STAGES, normalizePipelineStageKey, type PipelineStageKey } from '@/lib/projects/pipelineDefinition';
+import type { ProjectOperationalState } from '@/lib/projects/workItems/types';
 import { warnOnce } from '@/lib/utils/warnOnce';
 
 export type ProjectStatus = Uppercase<PipelineStageKey>;
+export type ProjectEffectiveState = ProjectOperationalState | 'ARCHIVED';
+
+export const PROJECT_EFFECTIVE_STATES = [
+  'ACTIVE',
+  'WAITING',
+  'CLOSED',
+  'ARCHIVED',
+] as const satisfies readonly ProjectEffectiveState[];
 
 export const PROJECT_STATUS_ORDER: readonly ProjectStatus[] = PIPELINE_STAGES.map(
   (stage) => stage.key.toUpperCase() as ProjectStatus,
@@ -75,15 +84,6 @@ type ActivityEvent = {
 
 type NextActionType = 'call' | 'site_visit' | 'send_quote' | 'book_install' | 'invoice' | 'chase_payment';
 
-export const NEXT_ACTION_TYPE_ORDER: readonly NextActionType[] = [
-  'call',
-  'site_visit',
-  'send_quote',
-  'book_install',
-  'invoice',
-  'chase_payment',
-] as const;
-
 export function nextActionTypeLabel(type: NextActionType): string {
   switch (type) {
     case 'call':
@@ -118,6 +118,8 @@ export type Project = {
   siteAddress?: string;
   quoteRef?: string;
   status?: ProjectStatus;
+  operationalState?: ProjectOperationalState;
+  effectiveState?: ProjectEffectiveState;
   isLost?: boolean;
   isArchived?: boolean;
   legacyStatus?: string;

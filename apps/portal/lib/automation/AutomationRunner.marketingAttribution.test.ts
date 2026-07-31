@@ -55,7 +55,7 @@ describe('AutomationRunner lifecycle ownership', () => {
     expect(h.recordMarketingConversionEvent).not.toHaveBeenCalled();
   });
 
-  it('does not use generic V2 automation as a persistence or conversion owner', async () => {
+  it('preserves explicit V2 Site Visit automation without owning its conversion', async () => {
     h.isProjectWorkModelV2.mockResolvedValue(true);
     const { automationRunner } = await import('./AutomationRunner');
     (automationRunner as any).onBookSiteVisit = vi.fn();
@@ -65,11 +65,12 @@ describe('AutomationRunner lifecycle ownership', () => {
       scheduledStart: '2026-06-24T01:00:00.000Z',
     });
 
-    expect((automationRunner as any).onBookSiteVisit).not.toHaveBeenCalled();
+    expect((automationRunner as any).onBookSiteVisit).toHaveBeenCalledOnce();
     expect(h.recordMarketingConversionEvent).not.toHaveBeenCalled();
   });
 
-  it('runs legacy deposit automation without owning its conversion', async () => {
+  it('preserves deposit automation after portfolio rollout without owning its conversion', async () => {
+    h.isProjectWorkModelV2.mockResolvedValue(true);
     const { automationRunner } = await import('./AutomationRunner');
     (automationRunner as any).onDepositReceived = vi.fn();
 
@@ -77,5 +78,19 @@ describe('AutomationRunner lifecycle ownership', () => {
 
     expect((automationRunner as any).onDepositReceived).toHaveBeenCalledOnce();
     expect(h.recordMarketingConversionEvent).not.toHaveBeenCalled();
+  });
+
+  it('does not recreate Site Visit state from a V2 stage transition', async () => {
+    h.isProjectWorkModelV2.mockResolvedValue(true);
+    const { automationRunner } = await import('./AutomationRunner');
+    (automationRunner as any).onStageChanged = vi.fn();
+
+    await (automationRunner as any).handleEvent(
+      'pipeline.stage_changed',
+      'proj-1',
+      { toStage: 'SITE_VISIT' },
+    );
+
+    expect((automationRunner as any).onStageChanged).not.toHaveBeenCalled();
   });
 });

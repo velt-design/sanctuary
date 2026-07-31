@@ -8,9 +8,7 @@ const useQuery = vi.fn();
 const retry = vi.fn();
 const cached = {
   updatedAtIso: '2026-04-02T00:00:00.000Z',
-  kpis: { actionsDue: 1, newLeads: 2, quotesToSend: 3, installsThisWeek: 4 },
-  attention: [],
-  workQueue: [],
+  kpis: { newLeads: 2, quotesToSend: 3, installsThisWeek: 4 },
   schedule: { startingSoon: [], crewAvailability: [], hrefBoard: '/board', hrefGantt: '/gantt' },
   siteVisits: { unscheduledCount: 0, today: [], next7: [], hrefSiteVisits: '/visits' },
   pipelineCounts: {},

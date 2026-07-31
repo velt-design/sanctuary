@@ -11,6 +11,14 @@ export const PROJECT_WORK_V2_MIGRATIONS = Object.freeze({
   foundation: 'supabase/migrations/20260729_000002_project_work_items_v2.sql',
   schemaCache: 'supabase/migrations/20260729_000003_project_work_items_v2_schema_cache.sql',
   workQueue: 'supabase/migrations/20260729_000004_project_work_queue_and_legacy_triage.sql',
+  portfolio: 'supabase/migrations/20260731000002_project_work_portfolio_rollout.sql',
+});
+
+const MISSING_MIGRATION_CODES = Object.freeze({
+  foundation: 'PROJECT_WORK_V2_MISSING_000002',
+  schemaCache: 'PROJECT_WORK_V2_MISSING_000003',
+  workQueue: 'PROJECT_WORK_V2_MISSING_000004',
+  portfolio: 'PROJECT_WORK_V2_MISSING_20260731000002',
 });
 
 const PROBES = Object.freeze([
@@ -54,17 +62,40 @@ const PROBES = Object.freeze([
     },
   },
   {
-    id: 'legacy-classifier-rpc',
-    label: 'project_work_classify_legacy_contacted_v1',
-    migration: 'workQueue',
+    id: 'portfolio-rollout-ledger',
+    label: 'project_work_portfolio_rollouts',
+    migration: 'portfolio',
+    kind: 'table',
+    path:
+      '/rest/v1/project_work_portfolio_rollouts'
+      + '?select=rollout_key&limit=0',
+  },
+  {
+    id: 'projects-index-rpc',
+    label: 'staff_projects_index_v2',
+    migration: 'portfolio',
     kind: 'rpc',
-    path: '/rest/v1/rpc/project_work_classify_legacy_contacted_v1',
+    path: '/rest/v1/rpc/staff_projects_index_v2',
     body: {
-      p_as_of: '2026-01-01',
-      p_limit: 1,
-      p_cursor: null,
-      p_scope: 'due',
+      p_archive: 'all',
+      p_search: '',
+      p_status: 'all',
+      p_due: 'all',
+      p_today: '2026-01-01',
+      p_page: 1,
+      p_page_size: 1,
+      p_sort: 'newest',
+      p_state: 'all',
+      p_stages: null,
     },
+  },
+  {
+    id: 'project-state-counts-rpc',
+    label: 'staff_project_state_counts_v1',
+    migration: 'portfolio',
+    kind: 'rpc',
+    path: '/rest/v1/rpc/staff_project_state_counts_v1',
+    body: {},
   },
 ]);
 
@@ -222,9 +253,16 @@ async function readErrorPayload(response) {
 
 function missingMigrationError(probe, providerCode) {
   const migrationPath = PROJECT_WORK_V2_MIGRATIONS[probe.migration];
+  const errorCode = MISSING_MIGRATION_CODES[probe.migration];
+  if (!migrationPath || !errorCode) {
+    throw new ProjectWorkV2ReadinessError(
+      'PROJECT_WORK_V2_PROBE_FAILED',
+      `Readiness probe ${probe.label} has no migration owner.`,
+    );
+  }
   const suffix = providerCode ? ` Provider code: ${providerCode}.` : '';
   return new ProjectWorkV2ReadinessError(
-    `PROJECT_WORK_V2_MISSING_${probe.migration === 'foundation' ? '000002' : probe.migration === 'schemaCache' ? '000003' : '000004'}`,
+    errorCode,
     `${probe.label} is not available in the PostgREST schema.${suffix}`,
     [`Apply ${migrationPath} only through the reviewed staging migration process, then rerun this command.`],
   );
@@ -339,7 +377,8 @@ export async function main(env = process.env) {
     await checkProjectWorkV2Readiness(config);
     console.log(
       'project-work-v2-readiness: ok '
-      + '(000002 foundation, 000003 relationships/cache, and 000004 queue/review RPCs are present; '
+      + '(000002 foundation, 000003 relationships/cache, 000004 queue, and '
+      + '20260731000002 cohort ledger/index/state contracts are present; '
       + 'anonymous access remains denied)',
     );
     return 0;

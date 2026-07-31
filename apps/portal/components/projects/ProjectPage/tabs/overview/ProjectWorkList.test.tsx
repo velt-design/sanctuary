@@ -1,6 +1,5 @@
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type {
   ProjectWorkItem,
   ProjectWorkProjection,
@@ -121,10 +120,12 @@ describe("ProjectWorkList", () => {
       subjectId: WORK_PROJECT_ID,
       effectiveAssignee: { kind: "staff", userId: "staff-1" },
     });
-    const manual = workItem({
+    const stageReview = workItem({
       id: "33333333-3333-4333-8333-333333333333",
-      title: "Check revised measurements",
+      title: "Review proposal progress",
       dueAt: "2026-08-03T05:00:00.000Z",
+      sourceType: "STAGE_REVIEW",
+      sourceKey: "stage-review:sent:v1",
     });
     const blocked = workItem({
       id: "44444444-4444-4444-8444-444444444444",
@@ -135,13 +136,13 @@ describe("ProjectWorkList", () => {
     });
     const projectWork = projection({
       primary,
-      openItems: [primary, email, manual],
+      openItems: [primary, email, stageReview],
       blockedItems: [blocked],
     });
     const runItemAction = vi.fn().mockResolvedValue(true);
     const workController = controllerFor(projectWork, { runItemAction });
     const rendered = renderIntoDocument(
-      <ProjectWorkList model="v2" controller={workController} />,
+      <ProjectWorkList controller={workController} />,
     );
 
     expect(
@@ -161,9 +162,9 @@ describe("ProjectWorkList", () => {
       emailRow.querySelectorAll("button"),
     ).find((button) => button.textContent === "Customer replied")!;
 
-    const manualRow = rowWith(rendered.container, manual.title);
-    expect(manualRow.textContent).toContain("Jordan");
-    const complete = Array.from(manualRow.querySelectorAll("button")).find(
+    const stageReviewRow = rowWith(rendered.container, stageReview.title);
+    expect(stageReviewRow.textContent).toContain("Jordan");
+    const complete = Array.from(stageReviewRow.querySelectorAll("button")).find(
       (button) => button.textContent === "Complete",
     )!;
 
@@ -181,7 +182,7 @@ describe("ProjectWorkList", () => {
     });
     expect(runItemAction).toHaveBeenCalledWith(email, "sent");
     expect(runItemAction).toHaveBeenCalledWith(email, "reply");
-    expect(runItemAction).toHaveBeenCalledWith(manual, "complete");
+    expect(runItemAction).toHaveBeenCalledWith(stageReview, "complete");
     expect(
       rendered.container.querySelectorAll('input[type="checkbox"]'),
     ).toHaveLength(0);
@@ -209,7 +210,6 @@ describe("ProjectWorkList", () => {
     const runItemAction = vi.fn();
     const rendered = renderIntoDocument(
       <ProjectWorkList
-        model="v2"
         controller={controllerFor(projectWork, { stale: true, runItemAction })}
       />,
     );
@@ -225,94 +225,4 @@ describe("ProjectWorkList", () => {
     rendered.unmount();
   });
 
-  it("renders permitted legacy stage rows as read-only and removes Call and Site Visit work", () => {
-    const tasks: ProjectPageSnapshot["tasks"] = {
-      stage: "quoting",
-      items: [
-        {
-          key: "create_quote",
-          label: "Create quote",
-          kind: "manual",
-          isDone: false,
-        },
-        {
-          key: "call_enquiry",
-          label: "Call enquiry",
-          kind: "manual",
-          isDone: false,
-        },
-        {
-          key: "book_site_visit",
-          label: "Book site visit",
-          kind: "action",
-          isDone: false,
-          cta: {
-            label: "Book",
-            href: "/staff/schedule?view=site-visits",
-          },
-        },
-        {
-          key: "upload_photos_site_visit",
-          label: "Upload site visit photos",
-          kind: "manual",
-          isDone: false,
-        },
-      ],
-    };
-    const rendered = renderIntoDocument(
-      <ProjectWorkList model="legacy" tasks={tasks} />,
-    );
-
-    expect(rendered.container.textContent).toContain("Create quote");
-    expect(rendered.container.textContent).toContain(
-      "Compatibility rows are read-only",
-    );
-    expect(
-      rendered.container.querySelectorAll(
-        '[data-legacy-stage-row-readonly="true"]',
-      ),
-    ).toHaveLength(1);
-    expect(rendered.container.textContent).not.toMatch(/\bcall\b/i);
-    expect(rendered.container.textContent).not.toMatch(/\bsite visit\b/i);
-    expect(
-      rendered.container.querySelectorAll("input, button, a"),
-    ).toHaveLength(0);
-    rendered.unmount();
-  });
-
-  it("hides the entire legacy Site Visit stage without inventing replacement work", () => {
-    const tasks: ProjectPageSnapshot["tasks"] = {
-      stage: "site_visit",
-      items: [
-        {
-          key: "generate_costing",
-          label: "Generate costing",
-          kind: "action",
-          isDone: false,
-        },
-        {
-          key: "reminder",
-          label: "Reminder",
-          kind: "manual",
-          isDone: false,
-        },
-      ],
-    };
-    const rendered = renderIntoDocument(
-      <ProjectWorkList model="legacy" tasks={tasks} />,
-    );
-
-    expect(rendered.container.textContent).toContain(
-      "No visible legacy stage work",
-    );
-    expect(rendered.container.textContent).toContain(
-      "no replacement is selected in the browser",
-    );
-    expect(
-      rendered.container.querySelectorAll(
-        '[data-legacy-stage-row-readonly="true"]',
-      ),
-    ).toHaveLength(0);
-    rendered.unmount();
-  });
 });

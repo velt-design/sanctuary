@@ -15,7 +15,6 @@ const context = { params: Promise.resolve({ projectId }) };
 const summary = {
   project: { id: projectId, name: 'Alpha Project', stage: 'new' },
   pipeline: { stage: 'new' },
-  tasks: { stage: 'new', items: [] },
   activity: [],
   emails: [],
   notes: [],

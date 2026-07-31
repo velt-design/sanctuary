@@ -115,6 +115,13 @@ describe("ProjectOrientationBand", () => {
       '[data-project-orientation="true"]',
     );
     expect(orientation?.getAttribute("data-operational-state")).toBe("WAITING");
+    expect(
+      orientation
+        ?.querySelector("[data-project-journey-status]")
+        ?.getAttribute("data-project-journey-phase"),
+    ).toBe("ENQUIRY");
+    expect(orientation?.textContent).toContain("Journey");
+    expect(orientation?.textContent).toContain("New");
     expect(orientation?.textContent).toContain("Taylor");
     expect(orientation?.textContent).toContain("taylor@example.com");
     expect(orientation?.textContent).toContain("1 Example St");

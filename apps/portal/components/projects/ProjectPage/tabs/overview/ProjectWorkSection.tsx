@@ -2,12 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { fetchProjectStaffDirectory } from "@/lib/projects/commandCentre/client";
-import type {
-  ProjectCommandCentreOperations,
-  ProjectCommandStaffSummary,
-} from "@/lib/projects/commandCentre/types";
+import type { ProjectCommandStaffSummary } from "@/lib/projects/commandCentre/types";
 import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type { ProjectWorkProjection } from "@/lib/projects/workItems/types";
+import { isGenericCompletableWorkSource } from "@/lib/projects/workItems/workItemCapabilities";
 import { qk } from "@/lib/queries/keys";
 import {
   ActionPanel,
@@ -18,7 +16,6 @@ import {
   Card,
   KeyValueGrid,
 } from "@/components/ui/foundation";
-import ProjectPrimaryActionCard from "./ProjectPrimaryActionCard";
 import ProjectWorkControls from "./ProjectWorkControls";
 import ProjectWorkList from "./ProjectWorkList";
 import {
@@ -46,18 +43,10 @@ type SharedProps = {
   initialStaff?: ProjectCommandStaffSummary[];
 };
 
-type V2Props = SharedProps & {
+export type ProjectWorkSectionProps = SharedProps & {
   workModel: "v2";
   projectWork: ProjectWorkProjection;
 };
-
-type LegacyProps = SharedProps & {
-  workModel: "legacy";
-  operations: ProjectCommandCentreOperations;
-  tasks: ProjectPageSnapshot["tasks"];
-};
-
-export type ProjectWorkSectionProps = V2Props | LegacyProps;
 
 function primaryPresentation(
   controller: ProjectWorkCommandController,
@@ -68,7 +57,7 @@ function primaryPresentation(
     primary.kind === "workItem" ? primary.item.title : primary.title;
   const reason =
     primary.kind === "workItem"
-      ? `${primary.item.responsibilityArea.toLowerCase()} work selected by the server`
+      ? null
       : primary.reason;
   const href =
     (primary.kind === "recovery" || primary.kind === "specialist") &&
@@ -126,7 +115,7 @@ function primaryPresentation(
   };
 }
 
-function V2ProjectWorkSection({
+export default function ProjectWorkSection({
   projectId,
   host,
   projectWork,
@@ -134,7 +123,7 @@ function V2ProjectWorkSection({
   stale,
   onRefresh,
   initialStaff,
-}: V2Props) {
+}: ProjectWorkSectionProps) {
   const prohibitedServerPrimary = isProhibitedProjectWorkPrimary(
     projectWork.primaryAction,
   );
@@ -275,9 +264,9 @@ function V2ProjectWorkSection({
         ) : null}
 
         {prohibitedPrimary ? (
-          <AlertBanner tone="blocking" title="Project work needs review">
-            A prohibited Call or Site Visit action is server-selected. It stays
-            hidden and no browser replacement is chosen.
+          <AlertBanner tone="blocking" title="Legacy work needs review">
+            A retired legacy, Call, or Site Visit action is server-selected. It
+            stays hidden and no browser replacement is chosen.
           </AlertBanner>
         ) : ordinaryPrimarySuppressed ? (
           <AlertBanner tone="warning" title="Project work state needs review">
@@ -305,7 +294,11 @@ function V2ProjectWorkSection({
                 {active && primary.href ? (
                   <ButtonLink href={primary.href}>Open</ButtonLink>
                 ) : null}
-                {active && primary.primaryItem?.sourceType === "MANUAL" ? (
+                {active &&
+                primary.primaryItem &&
+                isGenericCompletableWorkSource(
+                  primary.primaryItem.sourceType,
+                ) ? (
                   <Button
                     loading={
                       controller.pendingItemId === primary.primaryItem.id
@@ -358,7 +351,9 @@ function V2ProjectWorkSection({
               </div>
             }
           >
-            <p className={styles.reason}>{primary.reason}</p>
+            {primary.reason ? (
+              <p className={styles.reason}>{primary.reason}</p>
+            ) : null}
             <KeyValueGrid
               columns={3}
               items={[
@@ -400,7 +395,7 @@ function V2ProjectWorkSection({
         )}
 
         {active ? (
-          <ProjectWorkList model="v2" controller={controller} staff={staff} />
+          <ProjectWorkList controller={controller} staff={staff} />
         ) : nonActiveNotice ? (
           <AlertBanner tone="info" title={nonActiveNotice.title}>
             {nonActiveNotice.detail}
@@ -432,24 +427,5 @@ function V2ProjectWorkSection({
         ) : null}
       </div>
     </Card>
-  );
-}
-
-export default function ProjectWorkSection(props: ProjectWorkSectionProps) {
-  if (props.workModel === "v2") {
-    return <V2ProjectWorkSection {...props} />;
-  }
-
-  return (
-    <ProjectPrimaryActionCard
-      projectId={props.projectId}
-      host={props.host}
-      operations={props.operations}
-      stale={props.stale}
-      onRefresh={props.onRefresh}
-      initialStaff={props.initialStaff}
-    >
-      <ProjectWorkList model="legacy" tasks={props.tasks} />
-    </ProjectPrimaryActionCard>
   );
 }
