@@ -8,6 +8,12 @@ Owner surface: authenticated standalone Portal route at `/staff/design-booklets`
 
 The Design Booklet Workbench assembles a customer-facing landscape concept booklet from a fixed cover and review page plus a user-composed sequence of image and drawing pages. The bundled starting point uses Toni's plan and three renders.
 
+Project-linked replacement images are stored in the private
+`design-booklet-assets` bucket and previewed through short-lived signed URLs.
+The portal production CSP must retain `https://*.supabase.co` in `img-src`;
+`connect-src` permission alone does not allow an `<img>` to display the saved
+asset after its local blob preview is replaced.
+
 This surface remains a specialist standalone route:
 
 - it is protected by the existing staff route authentication;

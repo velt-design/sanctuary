@@ -25,6 +25,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-07-30 | Project Snapshot Cache Policy    | Promoted | The complete authenticated Project Detail snapshot is private staff data. Set `private, no-store` on every response path, including authentication, validation, not-found, and server failures, and verify the deployed header with an authenticated read rather than relying on framework defaults. |
 | 2026-07-30 | Contacts/Calculator Bundle Owners | Promoted | Prefer a small shared portal interaction owner over a heavy primitive package when the complete consumer set needs only bounded menu/popover behavior. A narrow package-owned material loader may serve takeoff defaults while the unchanged full costing config remains authoritative for commercial calculation. Prove route graphs, behavior parity, and every unchanged bundle ceiling together. |
 | 2026-07-30 | Marketing Measurement CSP        | Promoted | Treat live GTM container diagnostics and the deployed CSP header as a tracking release gate. Permit only reported vendor origins in both enforced and report-only directives, retain consent gating, and guard required measurement resources with a source contract test. |
+| 2026-07-31 | Project Booklet Signed-Image CSP | Promoted | A successful storage upload does not prove the saved browser preview can render. Keep the private Supabase host in portal `img-src` and guard the production header contract; `connect-src` covers fetches, not `<img>` loads. |
 | 2026-07-30 | Marketing Lifecycle Delivery     | Promoted | Emit conversions from the shared authoritative business owner used by every public/staff path; independently re-enforce consent on the server; claim only immediately dispatchable rows below their attempt ceiling; and describe generic GA4 Measurement Protocol delivery as at-least-once because provider acceptance can precede the local completion checkpoint. |
 | 2026-07-30 | Overview V2 Bundle Exception     | Promoted | A scope-specific handoff exception may accept unrelated route-budget failures only when the same analyser reproduces them at the approved baseline and the changed route remains within its unchanged allowance. Keep every ceiling and the exception evidence visible; later route optimization must independently prove the aggregate gate green. |
 | 2026-07-30 | Project Overview V2 Handover     | Promoted | Redesign Overview inside the current portal visual system, with one server-backed Project Work surface and email-only communication. Site Visits stays outside work items and normal navigation; only the separately approved stage-gated direct workflow remains. Preserve mixed legacy/V2 behavior and strict design/commercial precedence; add full-journey facts only through bounded specialist-owned server projections. |
@@ -4250,3 +4251,25 @@ Why it mattered: A successful authenticated read could be retained or reused by 
 Current guardrail: `GET /api/projects/[projectId]/snapshot` must apply `Cache-Control: private, no-store` to success, authentication, validation, not-found, and server-failure responses. Cover those branches in the route test and verify the deployed header through an authenticated GET before production closure; do not infer safety from development behavior or framework defaults.
 Promoted to: `docs/staff-api-auth-contracts.md`; `docs/portal-production-readiness.md`
 Related docs/tests: `apps/portal/app/api/projects/[projectId]/snapshot/route.ts`; `apps/portal/app/api/projects/[projectId]/snapshot/route.test.ts`
+
+### 2026-07-31 - Project Booklet Signed-Image CSP - Verify The Browser Display Boundary
+
+Date: 2026-07-31
+Area: Project booklet private image previews and portal Content Security Policy
+Status: Promoted
+Decision or mistake: Project-linked replacement images uploaded, normalized,
+and persisted successfully, and their signed Storage URLs returned the expected
+image bytes. The production portal CSP nevertheless omitted the Supabase host
+from `img-src`, so the working local blob preview became a broken image when
+the upload completed and the client switched to the saved URL.
+Why it mattered: Storage health and a successful server-side URL fetch made the
+workflow appear durable while the customer-facing browser preview failed at
+the exact persistence handoff.
+Current guardrail: Keep private booklet images in the governed Storage bucket,
+retain `https://*.supabase.co` in the production portal `img-src` directive,
+and cover that header contract with a focused test. Do not treat
+`connect-src` permission or a successful upload as proof that an `<img>` can
+render the saved asset.
+Promoted to: `docs/design-booklets.md`
+Related docs/tests: `apps/portal/next.config.ts`;
+`apps/portal/next.config.test.ts`
