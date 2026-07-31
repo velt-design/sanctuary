@@ -1,9 +1,17 @@
 .root { display: grid; gap: var(--ui-space-3); container-type: inline-size; }
 .controls { display: grid; grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(140px, 1fr)); gap: var(--ui-space-3); align-items: end; }
+.filterControls { display: contents; }
+.filterToggle { display: none; }
 .searchInput { padding-left: var(--ui-space-3); }
 .active { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ui-space-2); min-height: 32px; }
 .active > svg { width: var(--ui-icon-compact); height: var(--ui-icon-compact); color: var(--ui-text-muted); }
 .active > button:not(:last-child) { min-height: 30px; display: inline-flex; align-items: center; gap: 6px; border: var(--ui-border-width) solid var(--ui-border); border-radius: var(--ui-radius-pill); background: var(--ui-surface-secondary); color: var(--ui-text-strong); padding: 4px 9px; font: 600 var(--ui-font-size-caption)/1 var(--ui-font-body); }
 .active > button svg { width: 13px; height: 13px; }
 @container (max-width: 760px) { .controls { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 560px) { .controls { grid-template-columns: 1fr; } .active > button:not(:last-child) { min-height: 44px; } }
+@media (max-width: 560px) {
+  .controls { grid-template-columns: 1fr; }
+  .active > button:not(:last-child) { min-height: 44px; }
+  .collapsible .filterToggle { display: inline-flex; justify-self: start; }
+  .collapsible .filterControls { display: none; }
+  .collapsible .filterControls[data-expanded='true'] { display: grid; gap: var(--ui-space-3); }
+}

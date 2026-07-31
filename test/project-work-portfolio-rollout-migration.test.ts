@@ -33,6 +33,13 @@ const portfolioMigration = readFileSync(
   ),
   "utf8",
 );
+const accountabilityReadMigration = readFileSync(
+  path.join(
+    process.cwd(),
+    "supabase/migrations/20260731000003_project_pipeline_accountability_reads.sql",
+  ),
+  "utf8",
+);
 const v2MigrationTestSource = readFileSync(
   path.join(process.cwd(), "test/project-work-items-v2-migration.test.ts"),
   "utf8",
@@ -375,6 +382,8 @@ describe("Project Work portfolio rollout migration", () => {
 
     await database.exec(portfolioMigration);
     await database.exec(portfolioMigration);
+    await database.exec(accountabilityReadMigration);
+    await database.exec(accountabilityReadMigration);
   }, 120_000);
 
   afterAll(async () => {
@@ -1262,6 +1271,58 @@ describe("Project Work portfolio rollout migration", () => {
     ]);
   });
 
+  it("filters Project Owner before pagination and returns accountable state context", async () => {
+    await database.exec("begin");
+    try {
+      await database.exec(`
+        insert into public.project_owner_assignments(project_id,owner_key)
+        values ('${PROJECTS.quoting}','jordan')
+        on conflict (project_id) do update set owner_key=excluded.owner_key;
+      `);
+      const owned = await database.query<{
+        result: {
+          totalCount: number;
+          rows: Array<{
+            id: string;
+            project_owner_key: string | null;
+            operational_state: string;
+            effective_state: string;
+            waiting_until: string | null;
+            waiting_reason: string | null;
+            closed_outcome: string | null;
+          }>;
+        };
+      }>(`
+        select public.staff_projects_index_v3(
+          'all','','all','all',current_date,1,10,'name_asc',
+          'all',null,'jordan'
+        ) as result
+      `);
+      expect(owned.rows[0]?.result.totalCount).toBe(1);
+      expect(owned.rows[0]?.result.rows).toEqual([
+        expect.objectContaining({
+          id: PROJECTS.quoting,
+          project_owner_key: 'jordan',
+          operational_state: 'ACTIVE',
+          effective_state: 'ACTIVE',
+          waiting_until: null,
+          waiting_reason: null,
+          closed_outcome: null,
+        }),
+      ]);
+
+      const unassigned = await database.query<{ result: { rows: Array<{ id: string }> } }>(`
+        select public.staff_projects_index_v3(
+          'all','','all','all',current_date,1,100,'name_asc',
+          'all',null,'unassigned'
+        ) as result
+      `);
+      expect(unassigned.rows[0]?.result.rows.some((row) => row.id === PROJECTS.quoting)).toBe(false);
+    } finally {
+      await database.exec("rollback");
+    }
+  });
+
   it("counts all effective states server-side and enforces intended grants", async () => {
     const counts = await database.query<{
       counts: Record<string, number>;
@@ -1292,6 +1353,7 @@ describe("Project Work portfolio rollout migration", () => {
         has_function_privilege('service_role',routine,'EXECUTE') as service
       from unnest(array[
         'public.staff_projects_index_v2(text,text,text,text,date,integer,integer,text,text,text[])',
+        'public.staff_projects_index_v3(text,text,text,text,date,integer,integer,text,text,text[],text)',
         'public.staff_project_state_counts_v1()',
         'public.project_work_apply_stage_entry_v1(uuid,text,text,timestamptz,uuid,text,text)'
       ]) routine
@@ -1314,6 +1376,13 @@ describe("Project Work portfolio rollout migration", () => {
       {
         routine:
           "public.staff_projects_index_v2(text,text,text,text,date,integer,integer,text,text,text[])",
+        authenticated: true,
+        anonymous: false,
+        service: true,
+      },
+      {
+        routine:
+          "public.staff_projects_index_v3(text,text,text,text,date,integer,integer,text,text,text[],text)",
         authenticated: true,
         anonymous: false,
         service: true,

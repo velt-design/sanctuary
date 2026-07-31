@@ -29,6 +29,34 @@ describe('production foundation patterns', () => {
     rendered.unmount();
   });
 
+  it('keeps narrow secondary filters behind an accessible disclosure when requested', () => {
+    const rendered = renderIntoDocument(
+      <SearchFilterBar
+        query=""
+        onQueryChange={vi.fn()}
+        searchId="queueSearch"
+        collapseFiltersOnNarrow
+        filters={[{
+          id: 'owner',
+          label: 'Owner',
+          value: 'all',
+          onChange: vi.fn(),
+          options: [{ value: 'all', label: 'All owners' }],
+        }]}
+        onClearAll={vi.fn()}
+      />,
+    );
+    const toggle = Array.from(rendered.container.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Filters') as HTMLButtonElement;
+    const controls = rendered.container.querySelector('#queueSearch-filters');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(controls?.getAttribute('data-expanded')).toBe('false');
+    act(() => toggle.click());
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(controls?.getAttribute('data-expanded')).toBe('true');
+    rendered.unmount();
+  });
+
   it('supports row selection, expansion, overflow actions, and bulk state', () => {
     const rendered = renderIntoDocument(<SelectionTable columns={['Project']} rows={[{ id: 'p1', label: 'Remuera', cells: ['Remuera'], expandedContent: 'Details', actions: [{ label: 'Archive' }] }]} />);
     const select = rendered.container.querySelector('input[aria-label="Select Remuera"]') as HTMLInputElement;

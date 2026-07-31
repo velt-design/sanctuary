@@ -321,6 +321,8 @@ The original composition slice required no migration. The approved portfolio fol
 
 The staff Projects index and Dashboard expose the five presentation phases (Enquiry, Proposal, Confirmed, Delivery, Settled) while retaining the nine detailed stages. They also expose the authoritative Active, Waiting, Closed, and Archived states. Journey grouping is presentation/filtering only; it does not derive readiness or lifecycle truth.
 
+The Projects index also exposes the same Project Owner and one page-scoped server-ranked action/reason/timing summary used by Project Work. Project Owner filtering happens in the bounded server reader before pagination. The full Work Queue retains authoritative ranking and adds client-side search plus effective-owner, detailed-stage, and due-state (`When`) filters before its existing bounded pagination. Dashboard's compact queue uses the same human owner, action, reason, and timing labels. Stage correction always uses an explicit review dialog and states that Project Work is recalculated; it is never presented as a silent or task-neutral edit.
+
 ### 12. Explicit Non-Goals
 
 - No portal-wide restyle or shared-token replacement.

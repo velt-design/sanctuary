@@ -67,13 +67,13 @@ describe('ProjectStageControl', () => {
 
   it('requires an explicit Apply and sends optional reason for a deposit transition', async () => {
     const rendered = renderIntoDocument(<ProjectStageControl projectId="proj_1" host="host" stage="sent" />);
-    click(rendered.container, 'Change stage');
+    click(rendered.container, 'Correct stage');
     changeControl(rendered.container.querySelector('#project-stage-target') as HTMLSelectElement, 'deposit');
     changeControl(rendered.container.querySelector('#project-stage-reason') as HTMLInputElement, 'Deposit received');
 
     expect(mocks.correctProjectStage).not.toHaveBeenCalled();
     await act(async () => {
-      click(rendered.container, 'Move to Deposit');
+      click(rendered.container, 'Correct to Deposit');
       await Promise.resolve();
     });
 
@@ -85,11 +85,11 @@ describe('ProjectStageControl', () => {
 
   it('keeps rollback Apply disabled until RESET is entered', () => {
     const rendered = renderIntoDocument(<ProjectStageControl projectId="proj_1" host="host" stage="deposit" />);
-    click(rendered.container, 'Change stage');
+    click(rendered.container, 'Correct stage');
     changeControl(rendered.container.querySelector('#project-stage-target') as HTMLSelectElement, 'quoting');
 
     const apply = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent?.trim() === 'Move to Quoting');
+      .find((button) => button.textContent?.trim() === 'Correct to Quoting');
     expect(apply?.disabled).toBe(true);
 
     changeControl(rendered.container.querySelector('#project-stage-reset') as HTMLInputElement, 'RESET');

@@ -7,6 +7,7 @@ import {
 import {
   isProjectsIndexArchiveFilter,
   isProjectsIndexJourneyFilter,
+  isProjectsIndexOwnerFilter,
   isProjectsIndexStateFilter,
   isProjectsIndexStatusFilter,
   isProjectsIndexSort,
@@ -52,10 +53,12 @@ export async function GET(req: Request) {
   const page = Number(searchParams.get('page') ?? 1);
   const pageSize = parseProjectsIndexPageSize(searchParams.get('pageSize')) ?? 50;
   const sort = searchParams.get('sort')?.trim() || 'newest';
+  const rawOwner = searchParams.get('owner')?.trim().toLowerCase() || 'all';
   if (search.length > 80) return jsonError('q must be 80 characters or fewer', 400, diagnostics);
   if (!isProjectsIndexStatusFilter(status)) return jsonError('Invalid project stage', 400, diagnostics);
   if (!isProjectsIndexJourneyFilter(journey)) return jsonError('Invalid project journey', 400, diagnostics);
   if (!isProjectsIndexStateFilter(state)) return jsonError('Invalid project state', 400, diagnostics);
+  if (!isProjectsIndexOwnerFilter(rawOwner)) return jsonError('Invalid project owner', 400, diagnostics);
   if (!Number.isInteger(page) || page < 1) return jsonError('page must be a positive integer', 400, diagnostics);
   if (!isProjectsIndexSort(sort)) return jsonError('Invalid projects sort', 400, diagnostics);
 
@@ -66,6 +69,7 @@ export async function GET(req: Request) {
       status,
       journey,
       state,
+      owner: rawOwner,
       page,
       pageSize,
       sort,
@@ -76,7 +80,7 @@ export async function GET(req: Request) {
         archive,
         projects,
         contacts,
-        query: { search, status, journey, state, sort },
+        query: { search, status, journey, state, owner: rawOwner, sort },
         generatedAt: new Date().toISOString(),
       },
       200,

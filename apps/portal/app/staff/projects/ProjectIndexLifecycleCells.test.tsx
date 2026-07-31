@@ -21,9 +21,8 @@ describe('ProjectIndexLifecycleCells', () => {
           <TableRow>
             <ProjectIndexLifecycleCells
               project={project}
-              projectName="Deck Build"
               stageBusy={false}
-              onStageChange={() => {}}
+              onCorrectStage={() => {}}
             />
           </TableRow>
         </TableBody>
@@ -32,40 +31,35 @@ describe('ProjectIndexLifecycleCells', () => {
 
     expect(rendered.container.querySelector('[data-column="Journey"]')?.textContent).toBe('Proposal');
     expect(rendered.container.querySelector('[data-column="State"]')?.textContent).toBe('Waiting');
-    expect(
-      (rendered.container.querySelector('select[aria-label="Stage for Deck Build"]') as HTMLSelectElement)
-        .value,
-    ).toBe('SENT');
+    expect(rendered.container.textContent).toContain('Sent');
+    expect(rendered.container.querySelector('button')?.textContent).toBe('Correct');
     rendered.unmount();
   });
 
   it('does not invent missing state and preserves the stage correction callback', () => {
-    const onStageChange = vi.fn();
+    const onCorrectStage = vi.fn();
     const rendered = renderIntoDocument(
       <Table>
         <TableBody>
           <TableRow>
             <ProjectIndexLifecycleCells
               project={{ ...project, operationalState: undefined, effectiveState: undefined }}
-              projectName="Deck Build"
               stageBusy={false}
-              onStageChange={onStageChange}
+              onCorrectStage={onCorrectStage}
             />
           </TableRow>
         </TableBody>
       </Table>,
     );
-    const select = rendered.container.querySelector('select') as HTMLSelectElement;
+    const button = rendered.container.querySelector('button') as HTMLButtonElement;
 
     act(() => {
-      select.value = 'DEPOSIT';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
+      button.click();
     });
 
     expect(rendered.container.querySelector('[data-column="State"]')?.textContent).toBe('Unavailable');
-    expect(onStageChange).toHaveBeenCalledWith(
+    expect(onCorrectStage).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'proj_1' }),
-      'DEPOSIT',
     );
     rendered.unmount();
   });

@@ -136,9 +136,9 @@ does not authorise a production migration or expose a credential.
 The command requires the declared staging ref to exactly match the configured
 `NEXT_PUBLIC_SUPABASE_URL`, rejects production/local/unknown targets before any
 network request, uses only `NEXT_PUBLIC_SUPABASE_ANON_KEY`, requests no table
-rows, and checks that the Work Queue plus portfolio index/state RPCs are present
+rows, and checks that the Work Queue plus current V3 portfolio index/state RPCs are present
 while anonymous access remains denied. It reports `000002`, `000003`, `000004`,
-or `20260731000002` separately when that prerequisite contract is absent. It
+`20260731000002`, or `20260731000003` separately when that prerequisite contract is absent. It
 does not apply migrations, create records, authenticate staff, or exercise any
 lifecycle/customer side effect.
 
@@ -160,16 +160,20 @@ signals. No pre-cutover project was migrated or backfilled, and the read-only
 production QA changed no customer, project, quote, invoice, schedule, task, or
 payment row.
 
-That production evidence covers only the `20260729_000002` through `_000004`
-foundation. It is not evidence that
-`20260731000002_project_work_portfolio_rollout.sql` has been applied. The
-portfolio rollout is currently a repository-local forward migration; no staging
-or production apply is claimed here. Its reviewed canonical-LF SHA-256 is
-`a9e91e48e0a894bbe9201cc39c7ba5e83c4d33b9d8912c0b6d369bf058755ef3`;
-recompute and investigate any mismatch before rehearsal or apply.
+The portfolio rollout `20260731000002_project_work_portfolio_rollout.sql` is now
+deployed across all 1,151 production projects and its application/postflight is
+complete through `6832a9dd`. The later
+`20260731000003_project_pipeline_accountability_reads.sql` is a separate
+read-only forward contract. Its exact SHA-256
+`4297d1acd87d9ec523b71d13e962379fe8a47f4c12393d9bb6ad028e75a00c0b`
+was rollback-rehearsed and applied only to positively identified staging.
+Anonymous readiness passed; an authenticated read-only check returned all 11
+projects with complete state context, all 11 from the unassigned-owner filter,
+and nine queue rows. Production is not upgraded by this evidence.
 
-Deploy the portfolio rollout migration-first because the matching application
-uses strict `staff_projects_index_v2()` and `staff_project_state_counts_v1()`
+For a new environment, deploy the portfolio rollout first and the Pipeline
+Accountability read migration second because the matching application
+uses strict `staff_projects_index_v3()` and `staff_project_state_counts_v1()`
 readers that reject an incomplete portfolio:
 
 1. Positively identify the target project and environment, confirm a completed
@@ -178,14 +182,15 @@ readers that reject an incomplete portfolio:
 2. Rehearse that exact file in a disposable non-production database or rollback
    transaction. Do not use blanket `db push`, `migration up`, or migration
    repair for the colliding date-only `20260729` family.
-3. Apply only `20260731000002_project_work_portfolio_rollout.sql`, then deploy
-   the matching application immediately in the same controlled window. The
+3. Apply only `20260731000002_project_work_portfolio_rollout.sql`, then
+   `20260731000003_project_pipeline_accountability_reads.sql`, then deploy the
+   matching application immediately in the same controlled window. The
    migration intentionally writes portfolio marker/state/work and Running Jobs
    fact rows; it does not send email, accept a quote, create an invoice, record
    payment, schedule work, or contact a customer.
 4. Keep postflight read-only. Confirm marker and state counts equal the project
    count with zero missing rows; inspect state/reason/work distributions; verify
-   `staff_projects_index_v2()`, `staff_project_state_counts_v1()`, and
+   `staff_projects_index_v3()`, `staff_project_state_counts_v1()`, and
    `project_work_queue_v3()` bodies, grants, RLS, anonymous denial, and queue
    results beyond 500 rows where the fixture permits. Confirm legacy rows still
    exist while their DML, trigger, action/sync, and Contacted review RPC paths

@@ -64,6 +64,11 @@ export default function ProjectWorkControls({
     (fact) => fact.type === "SITE_VISIT_COMPLETED",
   );
   const active = controller.projection.effectiveState === "ACTIVE";
+  const controlsLabel = active
+    ? "Manage project work"
+    : controller.projection.effectiveState === "WAITING"
+      ? "Resume or update waiting"
+      : "Reopen project";
 
   if (controller.projection.effectiveState === "ARCHIVED") return null;
 
@@ -78,7 +83,7 @@ export default function ProjectWorkControls({
       >
         {controller.controlsOpen
           ? "Close work controls"
-          : "Manage project work"}
+          : controlsLabel}
       </Button>
       {controller.controlsOpen ? (
         <div className={styles.controlStack}>

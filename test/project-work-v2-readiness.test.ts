@@ -110,13 +110,13 @@ describe('evaluateProjectWorkV2Probe', () => {
     [
       {
         id: 'portfolio-index',
-        label: 'staff_projects_index_v2',
-        migration: 'portfolio',
+        label: 'staff_projects_index_v3',
+        migration: 'pipelineAccountability',
         kind: 'rpc',
       },
       { status: 404, ok: false },
       { code: 'PGRST202' },
-      'PROJECT_WORK_V2_MISSING_20260731000002',
+      'PROJECT_WORK_V2_MISSING_20260731000003',
     ],
     [
       {
@@ -226,7 +226,7 @@ describe('checkProjectWorkV2Readiness', () => {
     expect(postCalls).toHaveLength(3);
     expect(postCalls.map(([url]) => String(url))).toEqual([
       expect.stringContaining('/rpc/project_work_queue_v3'),
-      expect.stringContaining('/rpc/staff_projects_index_v2'),
+      expect.stringContaining('/rpc/staff_projects_index_v3'),
       expect.stringContaining('/rpc/staff_project_state_counts_v1'),
     ]);
     expect(JSON.parse(String(postCalls[1]?.[1].body))).toEqual({
@@ -240,6 +240,7 @@ describe('checkProjectWorkV2Readiness', () => {
       p_sort: 'newest',
       p_state: 'all',
       p_stages: null,
+      p_owner: 'all',
     });
     expect(JSON.parse(String(postCalls[2]?.[1].body))).toEqual({});
   });
@@ -267,7 +268,7 @@ describe('checkProjectWorkV2Readiness', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it('fails if the portfolio index or state-count contract is absent', async () => {
+  it('fails if the current portfolio index contract is absent', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(deniedResponse())
@@ -288,10 +289,10 @@ describe('checkProjectWorkV2Readiness', () => {
         fetchMock,
       ),
     ).rejects.toMatchObject({
-      code: 'PROJECT_WORK_V2_MISSING_20260731000002',
+      code: 'PROJECT_WORK_V2_MISSING_20260731000003',
       details: [
         expect.stringContaining(
-          '20260731000002_project_work_portfolio_rollout.sql',
+          '20260731000003_project_pipeline_accountability_reads.sql',
         ),
       ],
     });

@@ -12,6 +12,7 @@ export const PROJECT_WORK_V2_MIGRATIONS = Object.freeze({
   schemaCache: 'supabase/migrations/20260729_000003_project_work_items_v2_schema_cache.sql',
   workQueue: 'supabase/migrations/20260729_000004_project_work_queue_and_legacy_triage.sql',
   portfolio: 'supabase/migrations/20260731000002_project_work_portfolio_rollout.sql',
+  pipelineAccountability: 'supabase/migrations/20260731000003_project_pipeline_accountability_reads.sql',
 });
 
 const MISSING_MIGRATION_CODES = Object.freeze({
@@ -19,6 +20,7 @@ const MISSING_MIGRATION_CODES = Object.freeze({
   schemaCache: 'PROJECT_WORK_V2_MISSING_000003',
   workQueue: 'PROJECT_WORK_V2_MISSING_000004',
   portfolio: 'PROJECT_WORK_V2_MISSING_20260731000002',
+  pipelineAccountability: 'PROJECT_WORK_V2_MISSING_20260731000003',
 });
 
 const PROBES = Object.freeze([
@@ -72,10 +74,10 @@ const PROBES = Object.freeze([
   },
   {
     id: 'projects-index-rpc',
-    label: 'staff_projects_index_v2',
-    migration: 'portfolio',
+    label: 'staff_projects_index_v3',
+    migration: 'pipelineAccountability',
     kind: 'rpc',
-    path: '/rest/v1/rpc/staff_projects_index_v2',
+    path: '/rest/v1/rpc/staff_projects_index_v3',
     body: {
       p_archive: 'all',
       p_search: '',
@@ -87,6 +89,7 @@ const PROBES = Object.freeze([
       p_sort: 'newest',
       p_state: 'all',
       p_stages: null,
+      p_owner: 'all',
     },
   },
   {
@@ -378,7 +381,8 @@ export async function main(env = process.env) {
     console.log(
       'project-work-v2-readiness: ok '
       + '(000002 foundation, 000003 relationships/cache, 000004 queue, and '
-      + '20260731000002 cohort ledger/index/state contracts are present; '
+      + '20260731000002 cohort ledger/state plus 20260731000003 pipeline '
+      + 'accountability contracts are present; '
       + 'anonymous access remains denied)',
     );
     return 0;

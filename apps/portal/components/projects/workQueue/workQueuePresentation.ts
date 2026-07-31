@@ -1,7 +1,10 @@
-import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
 import type { ProjectCommandStaffSummary } from '@/lib/projects/commandCentre/types';
 import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
 import { isGenericCompletableWorkSource } from '@/lib/projects/workItems/workItemCapabilities';
+import {
+  projectWorkDueLabel,
+  projectWorkEffectiveAssigneeLabel,
+} from '@/lib/projects/workItems/presentation';
 import {
   formatAucklandDateTimeLocal,
   parseAucklandDateTimeLocal,
@@ -47,49 +50,14 @@ export function queueDueLabel(
   entry: WorkQueueEntryView,
   now = new Date(),
 ): string {
-  if (entry.actionKind === 'specialist') return 'Ready now';
-  if (entry.group === 'blocked') return 'Blocked';
-  if (entry.actionKind === 'stateReview') return 'Wake-up due';
-  if (entry.group === 'needsTriage') return 'Decision needed';
-  if (!entry.dueAt) return 'No due time';
-  const due = new Date(entry.dueAt);
-  if (!Number.isFinite(due.valueOf())) return 'Due time unavailable';
-  const date = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Pacific/Auckland',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  const dueDate = date.format(due);
-  const today = date.format(now);
-  if (dueDate < today) {
-    return `Overdue - ${new Intl.DateTimeFormat('en-NZ', {
-      timeZone: 'Pacific/Auckland',
-      day: 'numeric',
-      month: 'short',
-    }).format(due)}`;
-  }
-  if (dueDate === today) return 'Due today';
-  return new Intl.DateTimeFormat('en-NZ', {
-    timeZone: 'Pacific/Auckland',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(due);
+  return projectWorkDueLabel(entry, now);
 }
 
 export function effectiveAssigneeLabel(
   entry: WorkQueueEntryView,
   staff: ProjectCommandStaffSummary[],
 ): string {
-  const assignee = entry.effectiveAssignee;
-  if (assignee.kind === 'staff') {
-    return staff.find((person) => person.userId === assignee.userId)?.displayName ?? 'Assigned staff';
-  }
-  if (assignee.kind === 'projectOwner') {
-    return projectOwnerOption(assignee.ownerKey)?.displayName ?? 'Project owner';
-  }
-  return 'Unassigned';
+  return projectWorkEffectiveAssigneeLabel(entry.effectiveAssignee, staff);
 }
 
 export function sentConfirmationCommand(entry: WorkQueueEntryView): string | null {

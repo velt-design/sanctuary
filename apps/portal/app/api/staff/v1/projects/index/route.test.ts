@@ -53,6 +53,7 @@ describe('GET /api/staff/v1/projects/index', () => {
       status: 'all',
       journey: 'all',
       state: 'all',
+      owner: 'all',
       page: 1,
       pageSize: 50,
       sort: 'newest',
@@ -65,6 +66,7 @@ describe('GET /api/staff/v1/projects/index', () => {
         status: 'all',
         journey: 'all',
         state: 'all',
+        owner: 'all',
         sort: 'newest',
       },
       generatedAt: expect.any(String),
@@ -84,6 +86,7 @@ describe('GET /api/staff/v1/projects/index', () => {
       status: 'SENT',
       journey: 'PROPOSAL',
       state: 'WAITING',
+      owner: 'all',
       page: 2,
       pageSize: 25,
       sort: 'name_asc',
@@ -138,6 +141,7 @@ describe('GET /api/staff/v1/projects/index', () => {
     ['journey=quoting', 'Invalid project journey'],
     ['stage=proposal', 'Invalid project stage'],
     ['state=lost', 'Invalid project state'],
+    ['owner=sales', 'Invalid project owner'],
   ])('rejects invalid filters before loading data: %s', async (query, message) => {
     const mod = await import('./route');
     const res = await mod.GET(new Request(

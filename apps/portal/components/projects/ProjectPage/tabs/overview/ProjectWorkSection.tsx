@@ -6,6 +6,10 @@ import type { ProjectCommandStaffSummary } from "@/lib/projects/commandCentre/ty
 import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type { ProjectWorkProjection } from "@/lib/projects/workItems/types";
 import { isGenericCompletableWorkSource } from "@/lib/projects/workItems/workItemCapabilities";
+import {
+  projectClosedOutcomeLabel,
+  projectWorkResponsibilityLabel,
+} from "@/lib/projects/workItems/presentation";
 import { qk } from "@/lib/queries/keys";
 import {
   ActionPanel,
@@ -94,14 +98,14 @@ function primaryPresentation(
           { label: "Owner", value: owner },
           { label: "Due", value: due },
           {
-            label: "Source",
-            value: primary.item.responsibilityArea.toLowerCase(),
+            label: "Responsibility",
+            value: projectWorkResponsibilityLabel(primary.item.responsibilityArea),
           },
         ]
       : primary.kind === "specialist"
         ? [
             { label: "Owner", value: owner },
-            { label: "Source", value: "specialist" },
+            { label: "When", value: "Ready now" },
           ]
         : primary.kind === "stateReview"
           ? [{ label: "Due", value: due }]
@@ -191,10 +195,7 @@ export default function ProjectWorkSection({
       ? [
           {
             label: "Outcome",
-            value:
-              controller.projection.closedOutcome
-                ?.replaceAll("_", " ")
-                .toLowerCase() ?? "Not provided",
+            value: projectClosedOutcomeLabel(controller.projection.closedOutcome),
           },
         ]
       : []),

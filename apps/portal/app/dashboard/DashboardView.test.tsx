@@ -111,6 +111,8 @@ describe('DashboardView', () => {
     expect(markup).toContain('Recent Estimates');
     expect(markup).toContain('Work Queue');
     expect(markup).toContain('Send first enquiry email');
+    expect(markup).toContain('Owner: Unassigned');
+    expect(markup).toContain('When:');
     expect(markup).toContain('Recent Activity');
     expect(markup).toContain('Beach House');
     expect(markup).toContain('Project note');

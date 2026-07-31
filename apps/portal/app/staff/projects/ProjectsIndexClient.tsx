@@ -2,8 +2,8 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import type { Project, ProjectStatus } from '@/lib/types/project';
-import { PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
+import type { Project } from '@/lib/types/project';
+import { projectStatusLabel } from '@/lib/types/project';
 import styles from './ProjectsIndexClient.module.css';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
@@ -16,11 +16,7 @@ import { PipelineModal } from '@/components/ui/PipelineModal';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { deleteProject } from '@/lib/repo/projectsRepo';
 import {
-  PIPELINE_STAGE_LABELS,
   normalizePipelineStageKey,
-  requiresStageConfirmation,
-  stageKeyToStatus,
-  type PipelineStageKey,
 } from '@/lib/projects/pipelineDefinition';
 import {
   invalidateProjectsIndexCaches,
@@ -40,15 +36,19 @@ import {
 import { useProjectsIndexData } from './useProjectsIndexData';
 import { useProjectsIndexMutations } from './useProjectsIndexMutations';
 import ProjectIndexLifecycleCells from './ProjectIndexLifecycleCells';
+import ProjectIndexAccountabilityCells from './ProjectIndexAccountabilityCells';
+import ProjectStageCorrectionDialog from '@/components/projects/ProjectStageCorrectionDialog';
 import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
 import type {
   ProjectsIndexJourneyFilter,
+  ProjectsIndexOwnerFilter,
   ProjectsIndexPageSize,
   ProjectsIndexSort,
   ProjectsIndexStateFilter,
 } from '@/lib/projects/projectsIndexContract';
+import { PROJECTS_INDEX_OWNER_OPTIONS } from '@/lib/projects/projectsIndexContract';
 import {
   AlertBanner,
   Button,
@@ -71,12 +71,6 @@ import {
 } from '@/components/ui/foundation';
 
 type EditingState = { id: string; field: ProjectIndexEditableField; value: string } | null;
-type StatusConfirmState = {
-  projectId: string;
-  current: PipelineStageKey;
-  next: PipelineStageKey;
-  label: string;
-} | null;
 const EXTRA_DELETE_CONFIRM_STAGES = new Set<Project['status']>(['DEPOSIT', 'SCHEDULED', 'COMPLETED', 'PAID']);
 
 function requiredDeleteConfirmation(projectId: string, status: Project['status'] | null | undefined): string {
@@ -104,6 +98,8 @@ export default function ProjectsIndexClient({
     useState<NonNullable<Project['status']> | 'all'>(initialFiltersRef.current.stageFilter);
   const [stateFilter, setStateFilter] =
     useState<ProjectsIndexStateFilter>(initialFiltersRef.current.stateFilter);
+  const [ownerFilter, setOwnerFilter] =
+    useState<ProjectsIndexOwnerFilter>(initialFiltersRef.current.ownerFilter);
   const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>(initialFiltersRef.current.archiveFilter);
   const [sort, setSort] = useState<ProjectsIndexSort>('newest');
   const [page, setPage] = useState(1);
@@ -117,9 +113,7 @@ export default function ProjectsIndexClient({
   const [archiveReason, setArchiveReason] = useState('');
   const { visibleInfo, onRowEnter: handleRowMouseEnter, onRowLeave: handleRowMouseLeave } = useProjectRowTooltip();
   const [editing, setEditing] = useState<EditingState>(null);
-  const [statusConfirm, setStatusConfirm] = useState<StatusConfirmState>(null);
-  const [statusConfirmText, setStatusConfirmText] = useState('');
-  const [statusReason, setStatusReason] = useState('');
+  const [stageCorrectionTarget, setStageCorrectionTarget] = useState<Project | null>(null);
 
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
@@ -131,6 +125,7 @@ export default function ProjectsIndexClient({
     status: stageFilter,
     journey: journeyFilter,
     state: stateFilter,
+    owner: ownerFilter,
     page,
     pageSize,
     sort,
@@ -147,13 +142,14 @@ export default function ProjectsIndexClient({
     setJourneyFilter(nextFilters.journeyFilter);
     setStageFilter(nextFilters.stageFilter);
     setStateFilter(nextFilters.stateFilter);
+    setOwnerFilter(nextFilters.ownerFilter);
     setQuery(nextFilters.query);
     setArchiveFilter(nextFilters.archiveFilter);
   }, [searchParams]);
 
   useEffect(() => {
     setPage(1);
-  }, [archiveFilter, debouncedQuery, journeyFilter, pageSize, sort, stageFilter, stateFilter]);
+  }, [archiveFilter, debouncedQuery, journeyFilter, ownerFilter, pageSize, sort, stageFilter, stateFilter]);
 
   useEffect(() => {
     const totalPages = projectsIndex.data?.projects.totalPages;
@@ -254,51 +250,6 @@ export default function ProjectsIndexClient({
     [cancelEdit, commitEdit],
   );
 
-  const applyStageCorrection = useCallback(
-    (projectId: string, nextStage: PipelineStageKey, label: string, reasonText: string | null) => {
-      const project = projects.find((entry) => entry.id === projectId);
-      if (!project) return;
-      void projectMutations.correctStage(project, { projectId, nextStage, reason: reasonText }, label);
-    },
-    [projectMutations, projects],
-  );
-
-  const handleStatusChange = useCallback(
-    (project: Project, rawNext: string) => {
-      const currentStage = normalizePipelineStageKey(project.status ?? 'NEW');
-      const nextStage = normalizePipelineStageKey(rawNext);
-      if (!currentStage || !nextStage || currentStage === nextStage) return;
-      const label = PIPELINE_STAGE_LABELS[nextStage] ?? rawNext;
-
-      if (!requiresStageConfirmation(currentStage, nextStage)) {
-        void applyStageCorrection(project.id, nextStage, label, null);
-        return;
-      }
-
-      setStatusConfirm({
-        projectId: project.id,
-        current: currentStage,
-        next: nextStage,
-        label,
-      });
-      setStatusConfirmText('');
-      setStatusReason('');
-    },
-    [applyStageCorrection],
-  );
-
-  const closeStatusConfirm = () => {
-    setStatusConfirm(null);
-    setStatusConfirmText('');
-    setStatusReason('');
-  };
-
-  const isStatusRollback = Boolean(
-    statusConfirm &&
-      PROJECT_STATUS_ORDER.indexOf(stageKeyToStatus(statusConfirm.next) as ProjectStatus) <
-        PROJECT_STATUS_ORDER.indexOf(stageKeyToStatus(statusConfirm.current) as ProjectStatus),
-  );
-
   const toggleArchive = (project: Project) => {
     if (!isAdmin || projectMutations.isArchivePending(project.id)) return;
     setArchiveTarget(project);
@@ -351,6 +302,7 @@ export default function ProjectsIndexClient({
               onQueryChange={setQuery}
               searchId="projectSearch"
               queryPlaceholder="Name, client, phone or address…"
+              collapseFiltersOnNarrow
               filters={[
                 { id: 'projectJourneyFilter', label: 'Journey', value: journeyFilter, onChange: (value) => setJourneyFilter(value as ProjectsIndexJourneyFilter), options: [...PROJECT_JOURNEY_FILTER_OPTIONS] },
                 { id: 'projectStageFilter', label: 'Stage', value: stageFilter, onChange: (value) => setStageFilter(value as NonNullable<Project['status']> | 'all'), options: [...PROJECT_STAGE_FILTER_OPTIONS] },
@@ -359,14 +311,16 @@ export default function ProjectsIndexClient({
                   setStateFilter(nextState);
                   setArchiveFilter(nextState === 'ARCHIVED' ? 'archived' : 'active');
                 }, options: [...PROJECT_STATE_FILTER_OPTIONS] },
+                { id: 'projectOwnerFilter', label: 'Owner', value: ownerFilter, onChange: (value) => setOwnerFilter(value as ProjectsIndexOwnerFilter), options: [...PROJECTS_INDEX_OWNER_OPTIONS] },
                 { id: 'projectSort', label: 'Sort', value: sort, onChange: (value) => setSort(value as ProjectsIndexSort), options: [{ value: 'newest', label: 'Newest first' }, { value: 'oldest', label: 'Oldest first' }, { value: 'name_asc', label: 'Name A–Z' }, { value: 'name_desc', label: 'Name Z–A' }] },
-                { id: 'projectPageSize', label: 'Rows', value: String(pageSize), onChange: (value) => setPageSize(Number(value) as ProjectsIndexPageSize), options: [{ value: '25', label: '25 rows' }, { value: '50', label: '50 rows' }, { value: '100', label: '100 rows' }] },
+                { id: 'projectPageSize', label: 'Rows', value: String(pageSize), onChange: (value) => setPageSize(Number(value) as ProjectsIndexPageSize), options: [{ value: '50', label: '50 rows' }, { value: '25', label: '25 rows' }, { value: '100', label: '100 rows' }] },
               ]}
               onClearAll={() => {
                 setQuery('');
                 setJourneyFilter('all');
                 setStageFilter('all');
                 setStateFilter('all');
+                setOwnerFilter('all');
                 setArchiveFilter('active');
                 setSort('newest');
                 setPage(1);
@@ -405,6 +359,8 @@ export default function ProjectsIndexClient({
                       <TableHead>Journey</TableHead>
                       <TableHead>Stage</TableHead>
                       <TableHead>State</TableHead>
+                      <TableHead>Owner</TableHead>
+                      <TableHead>Next attention</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -506,10 +462,10 @@ export default function ProjectsIndexClient({
                           <TableCell data-column="Address">{renderEditable('address', addressValue, 'Add address', true)}</TableCell>
                           <ProjectIndexLifecycleCells
                             project={p}
-                            projectName={nameValue}
                             stageBusy={isStatusBusyRow}
-                            onStageChange={handleStatusChange}
+                            onCorrectStage={setStageCorrectionTarget}
                           />
+                          <ProjectIndexAccountabilityCells project={p} />
                           <TableCell data-column="Actions">
                             <div className={styles.rowActions}>
                               <ButtonLink
@@ -595,6 +551,7 @@ export default function ProjectsIndexClient({
                   || journeyFilter !== 'all'
                   || stageFilter !== 'all'
                   || stateFilter !== 'all'
+                  || ownerFilter !== 'all'
                     ? 'filtered-empty'
                     : 'empty'
                 }
@@ -603,11 +560,13 @@ export default function ProjectsIndexClient({
                   || journeyFilter !== 'all'
                   || stageFilter !== 'all'
                   || stateFilter !== 'all'
+                  || ownerFilter !== 'all'
                     ? () => {
                         setQuery('');
                         setJourneyFilter('all');
                         setStageFilter('all');
                         setStateFilter('all');
+                        setOwnerFilter('all');
                         setArchiveFilter('active');
                         setSort('newest');
                         setPage(1);
@@ -663,69 +622,26 @@ export default function ProjectsIndexClient({
         }}
       />
 
-      {statusConfirm ? (
-        <PipelineModal
+      {stageCorrectionTarget ? (
+        <ProjectStageCorrectionDialog
           open
-          onOpenChange={(open) => {
-            if (!open) closeStatusConfirm();
-          }}
-          title="Correct stage"
-          description={`Correct from ${PIPELINE_STAGE_LABELS[statusConfirm.current]} to ${statusConfirm.label}.`}
-          actions={
-            <>
-              <Button
-                type="button"
-                fullWidth
-                disabled={isStatusRollback && statusConfirmText.trim().toUpperCase() !== 'RESET'}
-                onClick={() => {
-                  if (!statusConfirm) return;
-                  applyStageCorrection(
-                    statusConfirm.projectId,
-                    statusConfirm.next,
-                    statusConfirm.label,
-                    statusReason.trim() || null,
-                  );
-                  setStatusConfirm(null);
-                  setStatusConfirmText('');
-                  setStatusReason('');
-                }}
-              >
-                {`Move to ${statusConfirm.label}`}
-              </Button>
-              <Button
-                type="button"
-                variant="tertiary"
-                fullWidth
-                onClick={closeStatusConfirm}
-              >
-                Cancel
-              </Button>
-            </>
+          currentStage={
+            normalizePipelineStageKey(stageCorrectionTarget.status ?? 'NEW') ?? 'new'
           }
-        >
-          <div className={styles.modalContent}>
-          <AlertBanner tone="info" title="Silent correction">
-            This does not trigger automations or customer communications.
-          </AlertBanner>
-
-          {isStatusRollback ? (
-            <Input
-              id="index-stage-confirm-text"
-              label="Type RESET to confirm rollback"
-              value={statusConfirmText}
-              onChange={(event) => setStatusConfirmText(event.target.value)}
-              autoComplete="off"
-            />
-          ) : null}
-
-          <Input
-            id="index-stage-reason"
-            label="Reason (optional)"
-            value={statusReason}
-            onChange={(event) => setStatusReason(event.target.value)}
-          />
-          </div>
-        </PipelineModal>
+          busy={projectMutations.isStagePending(stageCorrectionTarget.id)}
+          onClose={() => setStageCorrectionTarget(null)}
+          onApply={async ({ nextStage, reason }) =>
+            projectMutations.correctStage(
+              stageCorrectionTarget,
+              {
+                projectId: stageCorrectionTarget.id,
+                nextStage,
+                reason,
+              },
+              projectStatusLabel(nextStage.toUpperCase() as NonNullable<Project['status']>),
+            )
+          }
+        />
       ) : null}
 
       {archiveTarget ? (

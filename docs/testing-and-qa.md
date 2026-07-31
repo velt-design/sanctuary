@@ -686,7 +686,8 @@ The named non-network gate covers the Project Work domain, creation boundary,
 staff/admin routes, Work Queue/Overview/Dashboard presenters, static source
 boundaries, foundation migration contracts, and readiness-checker unit tests.
 The focused PGlite test then applies the foundation, schema-cache repair, queue,
-and `20260731000002_project_work_portfolio_rollout.sql`. It proves an independent
+`20260731000002_project_work_portfolio_rollout.sql`, and the read-only
+`20260731000003_project_pipeline_accountability_reads.sql`. It proves an independent
 cohort ledger plus one event for every pre-rollout project including already-V2
 rows, empty-cohort replay closure, partial-row repair, fresh current-stage
 timing, fixed-time replay, deferred initialization for retained direct inserts,
@@ -766,6 +767,21 @@ Active/Waiting/Closed/Archived truth, group/heading semantics, keyboard order,
 visible focus, 44px coarse-pointer targets, no document overflow,
 loading/background refresh/error/retry/access-ending states, stale conflict
 recovery, no legacy task/review UI, and no Call or Site Visit action/navigation.
+
+The 2026-07-31 Pipeline Accountability checkpoint passed against an isolated
+optimized portal build wired to the positively identified staging project.
+Authenticated read-only rendering proved Projects owner filtering and
+owner/action/reason/When cells, Work Queue search plus owner/stage/When filters,
+Dashboard owner/action/reason/When parity, the explicit no-email stage-correction
+review, and Overview owner/When/expected-result presentation. Desktop and 390 x
+844 CSS-pixel reads had no document overflow. No shared project, customer,
+commercial, schedule, payment, task, or communication row was changed. A
+matching Vercel Preview build, authenticated protection-bypassed API GET smoke,
+and authenticated interactive smoke also pass. The interactive pass covered
+Projects owner filtering, Queue search and When filters, Dashboard parity,
+Overview accountability, and the correction review at desktop and 390 x 844.
+The temporary share link and dedicated QA auth sessions were revoked after the
+run, Preview protection was reverified, and production was not changed.
 
 ## Schedule QA Gate
 

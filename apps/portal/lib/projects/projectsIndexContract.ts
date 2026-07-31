@@ -10,6 +10,15 @@ import {
   PROJECT_JOURNEY_PHASES,
   type ProjectJourneyPhase,
 } from '@/lib/projects/projectJourney';
+import {
+  PROJECT_OWNER_OPTIONS,
+  isProjectOwnerKey,
+} from '@/lib/projects/commandCentre/projectOwners';
+import type { ProjectOwnerKey } from '@/lib/projects/commandCentre/types';
+import type {
+  ProjectWorkQueueActionKind,
+  ProjectWorkQueueGroup,
+} from '@/lib/projects/workItems/types';
 
 const PROJECTS_INDEX_ARCHIVE_FILTERS = ['active', 'archived', 'all'] as const;
 const PROJECTS_INDEX_SORTS = ['newest', 'oldest', 'name_asc', 'name_desc'] as const;
@@ -18,6 +27,7 @@ const PROJECTS_INDEX_PAGE_SIZES = [25, 50, 100] as const;
 export type ProjectsIndexArchiveFilter = (typeof PROJECTS_INDEX_ARCHIVE_FILTERS)[number];
 export type ProjectsIndexJourneyFilter = ProjectJourneyPhase | 'all';
 export type ProjectsIndexStateFilter = ProjectEffectiveState | 'all';
+export type ProjectsIndexOwnerFilter = ProjectOwnerKey | 'unassigned' | 'all';
 export type ProjectsIndexSort = (typeof PROJECTS_INDEX_SORTS)[number];
 export type ProjectsIndexPageSize = (typeof PROJECTS_INDEX_PAGE_SIZES)[number];
 
@@ -27,9 +37,23 @@ export type ProjectsIndexParams = {
   status: ProjectStatus | 'all';
   journey: ProjectsIndexJourneyFilter;
   state: ProjectsIndexStateFilter;
+  owner: ProjectsIndexOwnerFilter;
   page: number;
   pageSize: ProjectsIndexPageSize;
   sort: ProjectsIndexSort;
+};
+
+type ProjectsIndexActionSummary = {
+  title: string;
+  reason: string;
+  dueAt: string | null;
+  group: ProjectWorkQueueGroup;
+  actionKind: ProjectWorkQueueActionKind;
+  href: string;
+};
+
+export type ProjectsIndexProject = Project & {
+  nextAction?: ProjectsIndexActionSummary | null;
 };
 
 type ProjectsIndexPage<T> = {
@@ -43,7 +67,7 @@ type ProjectsIndexPage<T> = {
 
 export type ProjectsIndexResponse = {
   archive: ProjectsIndexArchiveFilter;
-  projects: ProjectsIndexPage<Project>;
+  projects: ProjectsIndexPage<ProjectsIndexProject>;
   contacts: {
     rows: Contact[];
     totalCount: number | null;
@@ -66,6 +90,19 @@ export function isProjectsIndexStateFilter(value: string): value is ProjectsInde
   return value === 'all'
     || PROJECT_EFFECTIVE_STATES.includes(value as ProjectEffectiveState);
 }
+
+export function isProjectsIndexOwnerFilter(value: string): value is ProjectsIndexOwnerFilter {
+  return value === 'all' || value === 'unassigned' || isProjectOwnerKey(value);
+}
+
+export const PROJECTS_INDEX_OWNER_OPTIONS = [
+  { value: 'all', label: 'All owners' },
+  { value: 'unassigned', label: 'Unassigned' },
+  ...PROJECT_OWNER_OPTIONS.map((owner) => ({
+    value: owner.key,
+    label: owner.displayName,
+  })),
+] as const;
 
 export function isProjectsIndexStatusFilter(value: string): value is ProjectStatus | 'all' {
   return value === 'all' || PROJECT_STATUS_ORDER.includes(value as ProjectStatus);

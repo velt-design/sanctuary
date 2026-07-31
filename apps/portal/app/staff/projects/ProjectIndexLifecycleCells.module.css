@@ -10,11 +10,3 @@
   font-size: var(--ui-font-size-small);
   font-weight: 650;
 }
-
-.inlineSelectField {
-  flex: 0 0 calc(var(--ui-space-10) * 4);
-}
-
-.inlineSelect {
-  width: 100%;
-}

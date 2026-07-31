@@ -432,6 +432,7 @@ describe("ProjectWorkSection", () => {
       waitingReason: "Customer requested more time.",
       omittedNotice: "Ordinary project work is paused",
       canChangeState: true,
+      controlLabel: "Resume or update waiting",
     },
     {
       state: "Closed",
@@ -460,10 +461,11 @@ describe("ProjectWorkSection", () => {
         ],
       }),
       detailLabel: "Outcome",
-      detailValue: "lost no response",
+      detailValue: "Lost - No response",
       waitingReason: null,
       omittedNotice: "Closed project work is paused",
       canChangeState: true,
+      controlLabel: "Reopen project",
     },
     {
       state: "Archived",
@@ -496,6 +498,7 @@ describe("ProjectWorkSection", () => {
       waitingReason: null,
       omittedNotice: "Archived project work is read-only",
       canChangeState: false,
+      controlLabel: null,
     },
   ])(
     "renders $state from the server projection without deriving a replacement state",
@@ -506,6 +509,7 @@ describe("ProjectWorkSection", () => {
       waitingReason,
       omittedNotice,
       canChangeState,
+      controlLabel,
     }) => {
       const rendered = renderV2(projectWork);
       const stateGrid = rendered.container.querySelector(
@@ -539,7 +543,7 @@ describe("ProjectWorkSection", () => {
 
       const manage = Array.from(
         rendered.container.querySelectorAll("button"),
-      ).find((button) => button.textContent === "Manage project work");
+      ).find((button) => button.textContent === controlLabel);
       if (canChangeState) {
         expect(manage).not.toBeUndefined();
         act(() => manage?.click());

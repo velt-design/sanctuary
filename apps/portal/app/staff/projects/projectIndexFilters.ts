@@ -8,10 +8,12 @@ import {
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import {
   isProjectsIndexJourneyFilter,
+  isProjectsIndexOwnerFilter,
   isProjectsIndexStateFilter,
   isProjectsIndexStatusFilter,
   type ProjectsIndexArchiveFilter,
   type ProjectsIndexJourneyFilter,
+  type ProjectsIndexOwnerFilter,
   type ProjectsIndexStateFilter,
 } from '@/lib/projects/projectsIndexContract';
 import {
@@ -28,6 +30,7 @@ export type ProjectsIndexFilters = {
   journeyFilter: ProjectsIndexJourneyFilter;
   stageFilter: ProjectStatus | 'all';
   stateFilter: ProjectsIndexStateFilter;
+  ownerFilter: ProjectsIndexOwnerFilter;
   archiveFilter: ArchiveFilter;
 };
 
@@ -79,6 +82,7 @@ export function parseProjectsIndexFilters(searchParams: SearchParamSource): Proj
   const journeyParam = readParam(searchParams, 'journey').trim().toUpperCase();
   const stateParam = readParam(searchParams, 'state').trim().toUpperCase();
   const query = readParam(searchParams, 'q').trim();
+  const ownerParam = readParam(searchParams, 'owner').trim().toLowerCase();
   const archiveParam = readParam(searchParams, 'archive').trim().toLowerCase();
 
   const stageFilter = stageParam && stageParam !== 'ALL' && isProjectsIndexStatusFilter(stageParam)
@@ -106,12 +110,16 @@ export function parseProjectsIndexFilters(searchParams: SearchParamSource): Proj
     : archiveParam === 'archived' || archiveParam === 'all'
       ? archiveParam
       : 'active';
+  const ownerFilter = isProjectsIndexOwnerFilter(ownerParam)
+    ? ownerParam
+    : 'all';
 
   return {
     query,
     journeyFilter,
     stageFilter,
     stateFilter,
+    ownerFilter,
     archiveFilter,
   };
 }
@@ -145,6 +153,11 @@ export function filterProjectsForIndex(
     }
 
     if (filters.stateFilter !== 'all' && project.effectiveState !== filters.stateFilter) return false;
+
+    if (
+      filters.ownerFilter !== 'all'
+      && (project.projectOwnerKey ?? 'unassigned') !== filters.ownerFilter
+    ) return false;
 
     if (!needle) return true;
 

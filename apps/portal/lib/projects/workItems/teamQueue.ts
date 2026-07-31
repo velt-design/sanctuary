@@ -12,13 +12,16 @@ import {
   MAX_LIST_FETCH_ROWS,
 } from '@/lib/list/listLimits';
 import { resolveCommandCentreSelection } from '@/lib/projects/commandCentre/resolve';
-import { appIdFromUuid, isRecord } from '@/lib/supabase/mappers';
+import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import {
   commercialProjectWorkActions,
   type ProjectWorkDomainActions,
 } from './domainActionAdapters';
 import { resolveProjectWorkEffectiveAssignee } from './effectiveAssignee';
-import { listProjectWorkModelV2Ids } from './modelBoundary';
+import {
+  getProjectWorkModelV2Ids,
+  listProjectWorkModelV2Ids,
+} from './modelBoundary';
 import { isRetiredProjectWorkIdentity } from './prohibitedWork';
 import type {
   ProjectWorkItemPriority,
@@ -286,8 +289,13 @@ function domainCandidateFromProjectRow(row: Row): ActiveProjectDomainCandidate |
 
 async function loadActiveProjectDomainCandidates(
   supabase: SupabaseClient,
+  projectUuids: readonly string[] | null = null,
 ): Promise<ActiveProjectDomainCandidate[]> {
-  const v2ProjectIds = [...await listProjectWorkModelV2Ids(supabase)].sort();
+  const v2ProjectIds = [
+    ...(projectUuids
+      ? await getProjectWorkModelV2Ids(supabase, projectUuids)
+      : await listProjectWorkModelV2Ids(supabase)),
+  ].sort();
   if (!v2ProjectIds.length) return [];
 
   const activeStateRows = await fetchRowsByIdChunks<Row>(
@@ -435,15 +443,20 @@ export function composeProjectWorkQueue(params: {
 async function loadDurableProjectWorkQueueRows(
   supabase: SupabaseClient,
   now: Date,
+  projectUuids: readonly string[] | null = null,
 ): Promise<Row[]> {
   let result;
   try {
-    result = await fetchAllPages<Row>((from, to) => supabase
-      .rpc('project_work_queue_v3', {
+    result = await fetchAllPages<Row>((from, to) => {
+      const query = supabase.rpc('project_work_queue_v3', {
         p_now: now.toISOString(),
         p_limit: MAX_LIST_FETCH_ROWS,
-      })
-      .range(from, to));
+      });
+      const scoped = projectUuids?.length
+        ? query.in('project_id', [...projectUuids])
+        : query;
+      return scoped.range(from, to);
+    });
   } catch (error) {
     if (error instanceof Error) throw error;
     if (isRecord(error)) {
@@ -494,16 +507,31 @@ async function assertProjectWorkPortfolioComplete(
 
 export async function getAuthoritativeProjectWorkQueue(
   supabase: SupabaseClient,
-  options: { now?: Date; limit?: number } = {},
+  options: {
+    now?: Date;
+    limit?: number;
+    projectIds?: readonly string[];
+  } = {},
 ): Promise<{ entries: ProjectWorkQueueEntry[]; generatedAt: string }> {
   const now = options.now ?? new Date();
+  const projectUuids = options.projectIds
+    ? Array.from(
+        new Set(
+          options.projectIds.map((projectId) => uuidFromAppId(projectId, 'proj')),
+        ),
+      ).sort()
+    : null;
+  if (projectUuids && projectUuids.length === 0) {
+    await assertProjectWorkPortfolioComplete(supabase);
+    return { entries: [], generatedAt: now.toISOString() };
+  }
   const limit = Math.min(
     MAX_LIST_FETCH_ROWS,
-    Math.max(1, options.limit ?? MAX_LIST_FETCH_ROWS),
+    Math.max(1, options.limit ?? projectUuids?.length ?? MAX_LIST_FETCH_ROWS),
   );
   const [durableRows, domainCandidates] = await Promise.all([
-    loadDurableProjectWorkQueueRows(supabase, now),
-    loadActiveProjectDomainCandidates(supabase),
+    loadDurableProjectWorkQueueRows(supabase, now, projectUuids),
+    loadActiveProjectDomainCandidates(supabase, projectUuids),
     assertProjectWorkPortfolioComplete(supabase),
   ]);
   const durableEntries = rows(durableRows).map(mapDurableQueueRow);

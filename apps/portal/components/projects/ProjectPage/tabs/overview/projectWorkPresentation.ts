@@ -1,9 +1,8 @@
-import { projectOwnerOption } from "@/lib/projects/commandCentre/projectOwners";
 import type { ProjectCommandStaffSummary } from "@/lib/projects/commandCentre/types";
 import type {
   ProjectWorkItem,
-  ProjectWorkProjection,
 } from "@/lib/projects/workItems/types";
+import { projectWorkEffectiveAssigneeLabel } from "@/lib/projects/workItems/presentation";
 
 const DUE_FORMAT = new Intl.DateTimeFormat("en-NZ", {
   dateStyle: "medium",
@@ -18,30 +17,11 @@ export function formatProjectWorkDue(value: string): string {
     : "Due time unavailable";
 }
 
-export function projectWorkStateLabel(
-  state: ProjectWorkProjection["effectiveState"],
-): string {
-  if (state === "ARCHIVED") return "Archived";
-  return state[0] + state.slice(1).toLowerCase();
-}
-
 export function projectWorkAssigneeLabel(
   item: ProjectWorkItem,
   staff: ProjectCommandStaffSummary[] = [],
 ): string {
-  const assignee = item.effectiveAssignee;
-  if (assignee.kind === "staff") {
-    return (
-      staff.find((person) => person.userId === assignee.userId)?.displayName ??
-      "Assigned staff (name unavailable)"
-    );
-  }
-  if (assignee.kind === "projectOwner") {
-    return (
-      projectOwnerOption(assignee.ownerKey)?.displayName ?? "Project owner"
-    );
-  }
-  return "Unassigned";
+  return projectWorkEffectiveAssigneeLabel(item.effectiveAssignee, staff);
 }
 
 export function sentCommandForWorkItem(item: ProjectWorkItem): string | null {

@@ -3,10 +3,12 @@ import type { ProjectWorkQueueEntry } from "./types";
 
 const modelBoundaryMocks = vi.hoisted(() => ({
   listProjectWorkModelV2Ids: vi.fn(),
+  getProjectWorkModelV2Ids: vi.fn(),
 }));
 
 vi.mock("./modelBoundary", () => ({
   listProjectWorkModelV2Ids: modelBoundaryMocks.listProjectWorkModelV2Ids,
+  getProjectWorkModelV2Ids: modelBoundaryMocks.getProjectWorkModelV2Ids,
 }));
 
 import {
@@ -268,15 +270,16 @@ function pagedRpc(params: {
     data: error ? null : data.slice(from, to + 1),
     error,
   }));
+  const inFilter = vi.fn(() => ({ range }));
   const rpc = vi.fn((name: string) =>
     name === "staff_project_state_counts_v1"
       ? Promise.resolve({
           data: completenessError ? null : { totalCount: data.length },
           error: completenessError,
         })
-      : { range },
+      : { range, in: inFilter },
   );
-  return { rpc, range };
+  return { rpc, range, inFilter };
 }
 
 function durableRow(index: number): Record<string, unknown> {
@@ -310,6 +313,25 @@ describe("getAuthoritativeProjectWorkQueue", () => {
   beforeEach(() => {
     modelBoundaryMocks.listProjectWorkModelV2Ids.mockReset();
     modelBoundaryMocks.listProjectWorkModelV2Ids.mockResolvedValue(new Set());
+    modelBoundaryMocks.getProjectWorkModelV2Ids.mockReset();
+    modelBoundaryMocks.getProjectWorkModelV2Ids.mockResolvedValue(new Set());
+  });
+
+  it("scopes durable and commercial reads to the requested project page", async () => {
+    const { rpc, inFilter } = pagedRpc({ data: [durableRow(1)] });
+    const supabase = { rpc, from: vi.fn() } as any;
+
+    const result = await getAuthoritativeProjectWorkQueue(supabase, {
+      projectIds: [PROJECT_ID],
+    });
+
+    expect(result.entries).toHaveLength(1);
+    expect(inFilter).toHaveBeenCalledWith("project_id", [PROJECT_UUID]);
+    expect(modelBoundaryMocks.getProjectWorkModelV2Ids).toHaveBeenCalledWith(
+      supabase,
+      [PROJECT_UUID],
+    );
+    expect(modelBoundaryMocks.listProjectWorkModelV2Ids).not.toHaveBeenCalled();
   });
 
   it("maps the richer V3 RPC contract and effective assignee metadata", async () => {

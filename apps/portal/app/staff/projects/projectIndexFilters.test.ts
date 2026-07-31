@@ -49,6 +49,7 @@ const allFilters = {
   journeyFilter: 'all',
   stageFilter: 'all',
   stateFilter: 'all',
+  ownerFilter: 'all',
   archiveFilter: 'active',
 } as const;
 
@@ -56,13 +57,14 @@ describe('projectIndexFilters', () => {
   it('parses journey, detailed stage, and server-owned state filters', () => {
     expect(
       parseProjectsIndexFilters(
-        new URLSearchParams('q=deck&journey=proposal&stage=sent&state=waiting'),
+        new URLSearchParams('q=deck&journey=proposal&stage=sent&state=waiting&owner=jordan'),
       ),
     ).toEqual({
       query: 'deck',
       journeyFilter: 'PROPOSAL',
       stageFilter: 'SENT',
       stateFilter: 'WAITING',
+      ownerFilter: 'jordan',
       archiveFilter: 'active',
     });
   });
@@ -110,6 +112,7 @@ describe('projectIndexFilters', () => {
         journeyFilter: 'PROPOSAL',
         stageFilter: 'SENT',
         stateFilter: 'WAITING',
+        ownerFilter: 'all',
         archiveFilter: 'active',
       }).map((project) => project.id),
     ).toEqual(['proj_1']);
