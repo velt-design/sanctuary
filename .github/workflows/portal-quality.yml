@@ -177,7 +177,7 @@ jobs:
         run: npm ci
 
       - name: Build portal for production timing
-        run: npm run build:portal
+        run: PORTAL_PLAYWRIGHT_DIST_DIR=.next/playwright-fixture npm run build:portal
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
