@@ -4,21 +4,25 @@ export const PROJECT_CARD_SIZE_OPTIONS = [
   {
     value: 'showcase',
     label: 'Showcase',
+    scale: '02',
     description: '2 columns',
   },
   {
     value: 'editorial',
     label: 'Editorial',
+    scale: '03',
     description: '3 columns',
   },
   {
     value: 'compact',
     label: 'Compact',
+    scale: '04',
     description: 'up to 4 columns',
   },
   {
     value: 'overview',
     label: 'Overview',
+    scale: '05',
     description: 'up to 5 columns',
   },
 ] as const;

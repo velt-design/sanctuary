@@ -63,12 +63,14 @@ export default function ProjectsExperience({
   return (
     <main
       className="projects-experience projects-experience--collection"
-      aria-label="Pergola projects and case studies"
+      aria-label="Built projects around NZ"
       data-marketing-foundation-page
       data-projects-experience
     >
       <h1 className="projects-experience__collection-title">
-        Pergola projects and case studies
+        <span data-projects-title-muted>Built </span>
+        <span className="projects-experience__collection-title-emphasis">projects</span>
+        <span data-projects-title-muted> around NZ</span>
       </h1>
       <div className="projects-experience__layout">
         <ProjectNavigator

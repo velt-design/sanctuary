@@ -23,6 +23,7 @@ type EditorialCardProps = Omit<ComponentPropsWithoutRef<typeof Link>, 'children'
   eyebrow?: string;
   title: string;
   copy?: string;
+  condensedMeta?: string;
   actionLabel: string;
   indexLabel?: string;
   media?: EditorialCardMedia;
@@ -34,6 +35,7 @@ export function EditorialCard({
   eyebrow,
   title,
   copy,
+  condensedMeta,
   actionLabel,
   indexLabel,
   media,
@@ -59,12 +61,26 @@ export function EditorialCard({
           className={styles.editorialCardMedia}
         />
       ) : null}
-      <div className={styles.editorialCardContent}>
+      <div className={styles.editorialCardContent} data-editorial-card-content>
         {indexLabel ? <span className={styles.editorialCardNumber}>{indexLabel}</span> : null}
-        {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-        <Heading as={headingLevel} variant="card">{title}</Heading>
-        {copy ? <Text size={variant === 'compact' ? 'small' : 'body'}>{copy}</Text> : null}
-        <span className={styles.editorialCardAction}>{actionLabel}</span>
+        {eyebrow ? <Eyebrow data-editorial-card-eyebrow>{eyebrow}</Eyebrow> : null}
+        <Heading as={headingLevel} variant="card" data-editorial-card-title>{title}</Heading>
+        {copy ? (
+          <Text data-editorial-card-copy size={variant === 'compact' ? 'small' : 'body'}>
+            {copy}
+          </Text>
+        ) : null}
+        {condensedMeta ? (
+          <span
+            className={styles.editorialCardCondensedMeta}
+            data-editorial-card-condensed-meta
+          >
+            {condensedMeta}
+          </span>
+        ) : null}
+        <span className={styles.editorialCardAction} data-editorial-card-action>
+          {actionLabel}
+        </span>
       </div>
     </Link>
   );

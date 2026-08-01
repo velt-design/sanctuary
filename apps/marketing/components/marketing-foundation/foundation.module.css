@@ -124,6 +124,7 @@
 .editorialCardNumber { margin-bottom: clamp(1rem, 3vw, 2.5rem); color: var(--color-text-subtle); font: 500 .72rem/1.4 var(--font-body); font-variant-numeric: tabular-nums; }
 .editorialCardAction { min-height: 44px; display: inline-flex; align-items: center; gap: .6rem; border-bottom: 1px solid currentColor; font: 600 .74rem/1.2 var(--font-body); letter-spacing: .09em; text-transform: uppercase; }
 .editorialCardAction::after { content: "\2192"; }
+.editorialCardCondensedMeta { display: none; }
 .editorialCardMedia > div { aspect-ratio: 16 / 10; }
 .editorialCardImageLed { grid-template-rows: auto 1fr; }
 .editorialCardCompact { min-height: 0; grid-template-columns: minmax(7rem, .42fr) minmax(0, 1fr); }

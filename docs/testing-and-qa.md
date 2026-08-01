@@ -252,8 +252,11 @@ minimum 44 pixel targets, responsive sizes, focal points, lazy loading,
 reserved image geometry, absence of hidden case-study markup or media requests,
 payload size, a one-column collection below 900px, a two-column grid from
 900px and a three-column default grid from 1200px, consistent 4:5 frames,
-the four-stop Card size control at useful desktop widths, its responsive
-four/five-column cap and local preference restoration, and the final enquiry
+the two-tone collection heading, unified project-index bar, four-stop View
+scale at useful desktop widths, its responsive four/five-column cap, keyboard
+operation and local preference restoration, scale-specific card content,
+two-line clamping, aligned Overview title blocks, complete accessible names,
+and the final enquiry
 section at every width. The detail lane verifies one visible
 H1 and logical heading order, early and final contact actions, loaded and
 intentionally framed hero media, mobile height budgets, native server-rendered

@@ -308,71 +308,87 @@ export default function ProjectNavigator({
       </div>
 
       {collectionMode ? (
-        <Disclosure
-          className="project-navigator__filter-disclosure"
-          bodyClassName="project-navigator__filter-body"
-          data-project-filter-disclosure
-          desktopMinWidth={900}
-          icon={(
-            <span className="project-navigator__filter-icon" aria-hidden="true">
-              +
-            </span>
-          )}
-          mode="desktop-expanded"
-          summary={(
-            <span className="project-navigator__filter-summary-copy">
-              <strong>Filter projects</strong>
-              <span>
-                {activeFilterCount
-                  ? `${activeFilterCount} ${activeFilterCount === 1 ? 'filter' : 'filters'} active`
-                  : 'Optional'}
+        <div className="project-navigator__index-bar" data-project-index-bar>
+          <Disclosure
+            className="project-navigator__filter-disclosure"
+            bodyClassName="project-navigator__filter-body"
+            data-project-filter-disclosure
+            desktopMinWidth={900}
+            icon={(
+              <span className="project-navigator__filter-icon" aria-hidden="true">
+                +
               </span>
-            </span>
-          )}
-          summaryClassName="project-navigator__filter-summary"
-          unstyled
-        >
+            )}
+            mode="desktop-expanded"
+            summary={(
+              <span className="project-navigator__filter-summary-copy">
+                <strong>Filter projects</strong>
+                <span>
+                  {activeFilterCount
+                    ? `${activeFilterCount} ${activeFilterCount === 1 ? 'filter' : 'filters'} active`
+                    : 'Optional'}
+                </span>
+              </span>
+            )}
+            summaryClassName="project-navigator__filter-summary"
+            unstyled
+          >
+            {filterControls}
+          </Disclosure>
+          <div className="project-navigator__collection-tools">
+            <p className="project-navigator__result-count" aria-live="polite" aria-atomic="true">
+              {filteredProjects.length === projects.length
+                ? `${projects.length} projects`
+                : `${filteredProjects.length} of ${projects.length} projects`}
+            </p>
+            {isCardSizeReady ? (
+              <div
+                className="project-card-size"
+                data-project-card-size-control
+                data-project-card-size-index={getProjectCardSizeIndex(cardSize)}
+              >
+                <div className="project-card-size__heading">
+                  <label htmlFor="project-card-size">View scale</label>
+                  <output htmlFor="project-card-size" aria-live="polite">
+                    {cardSizeOption.label} / {cardSizeOption.scale}
+                  </output>
+                </div>
+                <div className="project-card-size__control">
+                  <input
+                    id="project-card-size"
+                    type="range"
+                    min="0"
+                    max={PROJECT_CARD_SIZE_OPTIONS.length - 1}
+                    step="1"
+                    value={getProjectCardSizeIndex(cardSize)}
+                    aria-valuetext={`${cardSizeOption.label}, ${cardSizeOption.description}`}
+                    onChange={(event) => updateCardSize(
+                      getProjectCardSizeOption(Number(event.currentTarget.value)).value,
+                    )}
+                  />
+                  <div className="project-card-size__rail" aria-hidden="true">
+                    {PROJECT_CARD_SIZE_OPTIONS.map((option, index) => (
+                      <span
+                        key={option.value}
+                        className="project-card-size__stop"
+                        data-project-card-size-stop={index}
+                      >
+                        {option.scale}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <>
           {filterControls}
-        </Disclosure>
-      ) : filterControls}
-
-      {collectionMode ? (
-        <div className="project-navigator__collection-tools">
           <p className="project-navigator__result-count" aria-live="polite" aria-atomic="true">
             Showing {filteredProjects.length} of {projects.length} projects
           </p>
-          {isCardSizeReady ? (
-            <div className="project-card-size" data-project-card-size-control>
-              <div className="project-card-size__heading">
-                <label htmlFor="project-card-size">Card size</label>
-                <output htmlFor="project-card-size" aria-live="polite">
-                  {cardSizeOption.label}
-                </output>
-              </div>
-              <input
-                id="project-card-size"
-                type="range"
-                min="0"
-                max={PROJECT_CARD_SIZE_OPTIONS.length - 1}
-                step="1"
-                value={getProjectCardSizeIndex(cardSize)}
-                aria-valuetext={`${cardSizeOption.label}, ${cardSizeOption.description}`}
-                onChange={(event) => updateCardSize(
-                  getProjectCardSizeOption(Number(event.currentTarget.value)).value,
-                )}
-              />
-              <div className="project-card-size__stops" aria-hidden="true">
-                {PROJECT_CARD_SIZE_OPTIONS.map((option) => (
-                  <span key={option.value}>{option.label}</span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <p className="project-navigator__result-count" aria-live="polite" aria-atomic="true">
-          Showing {filteredProjects.length} of {projects.length} projects
-        </p>
+        </>
       )}
 
       <nav className="project-navigator__list-wrap" aria-label="Project case studies">
@@ -386,7 +402,9 @@ export default function ProjectNavigator({
                   {collectionMode ? (
                     <EditorialCard
                       actionLabel="View project"
+                      aria-label={`${project.title}. ${project.location}. ${project.type}. ${getProjectFormLabel(project)}. View project`}
                       className={`project-navigator__card${isActive ? ' is-active' : ''}`}
+                      condensedMeta={`${project.region} · ${project.type} · ${getProjectFormLabel(project)}`}
                       copy={`${project.type} / ${getProjectFormLabel(project)}`}
                       data-project-card={project.slug}
                       eyebrow={project.location}

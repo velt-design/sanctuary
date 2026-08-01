@@ -91,6 +91,7 @@ describe('marketing foundation responsive primitives', () => {
             eyebrow="Project"
             title={`${variant} card`}
             copy="One concise card description."
+            condensedMeta="Auckland · Residential · Gable"
             actionLabel="View project"
             media={{
               image: '/images/project-riverhead-gable-01.jpg',
@@ -105,6 +106,7 @@ describe('marketing foundation responsive primitives', () => {
     expect(document.querySelector('[data-card-grid="3"]')).not.toBeNull();
     expect(document.querySelectorAll('a[data-editorial-card]')).toHaveLength(3);
     expect(document.querySelectorAll('[data-editorial-card] a')).toHaveLength(0);
+    expect(document.querySelectorAll('[data-editorial-card-condensed-meta]')).toHaveLength(3);
     expect(
       [...document.querySelectorAll('[data-editorial-card]')].map((card) => (
         card.getAttribute('data-editorial-card')

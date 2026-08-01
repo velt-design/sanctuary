@@ -16,6 +16,12 @@ describe('project card size preferences', () => {
       'compact',
       'overview',
     ]);
+    expect(PROJECT_CARD_SIZE_OPTIONS.map((option) => option.scale)).toEqual([
+      '02',
+      '03',
+      '04',
+      '05',
+    ]);
     expect(DEFAULT_PROJECT_CARD_SIZE).toBe('editorial');
     expect(getProjectCardSizeIndex(DEFAULT_PROJECT_CARD_SIZE)).toBe(1);
   });

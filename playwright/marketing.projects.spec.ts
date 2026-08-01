@@ -136,7 +136,7 @@ test('projects index preserves a canonical collection route and legacy query sel
   await page.goto(`/projects?slug=${projects[3].slug}`);
 
   await expect(page.locator('h1:visible')).toHaveCount(1);
-  await expect(page.locator('h1:visible')).toHaveText('Pergola projects and case studies');
+  await expect(page.locator('h1:visible')).toHaveText('Built projects around NZ');
   await expect(page.locator('[data-project-case-study]')).toHaveCount(0);
   await expect(visibleProjectCards(page)).toHaveCount(projects.length);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
@@ -166,7 +166,7 @@ test('mobile project index is one image-led semantic card sequence at every targ
 
     const main = visibleProjectsMain(page);
     const cards = visibleProjectCards(page);
-    await expect(main.locator('h1:visible')).toHaveText('Pergola projects and case studies');
+    await expect(main.locator('h1:visible')).toHaveText('Built projects around NZ');
     await expect(main.locator('.project-case-study')).toHaveCount(0);
     await expect(main.locator('[data-project-case-study]')).toHaveCount(0);
     await expect(main.locator('.project-case-study__gallery')).toHaveCount(0);
@@ -225,6 +225,7 @@ test('mobile project index is one image-led semantic card sequence at every targ
     ).first();
     const mediaBox = await firstMedia.boundingBox();
     expect(mediaBox?.height ?? 0).toBeCloseTo((mediaBox?.width ?? 0) * 1.25, 0);
+    if (width >= 1200) expect(mediaBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(430);
     const firstImage = firstMedia.locator('img');
     await expect(firstImage).not.toHaveAttribute('loading', 'lazy');
     await expect(cards.nth(1).locator('img')).toHaveAttribute('loading', 'lazy');
@@ -343,7 +344,7 @@ test('project filters persist through refresh, filter history, project Back, and
   await page.waitForURL(/audience=residential&form=gable/);
   await expect(visibleProjectCards(page)).toHaveCount(4);
   await expect(main.locator('.project-navigator__result-count'))
-    .toHaveText('Showing 4 of 14 projects');
+    .toHaveText('4 of 14 projects');
 
   await page.reload();
   await expect(main.getByLabel('Filter by audience')).toHaveValue('residential');
@@ -381,7 +382,7 @@ test('empty project filters keep a clear all-project recovery', async ({ page })
   const main = visibleProjectsMain(page);
   await expect(visibleProjectCards(page)).toHaveCount(0);
   await expect(main.locator('.project-navigator__result-count'))
-    .toHaveText('Showing 0 of 14 projects');
+    .toHaveText('0 of 14 projects');
   await expect(main.locator('.project-navigator__empty'))
     .toContainText('No projects match both filters.');
   const viewAll = main.getByRole('button', { name: 'View all projects' });
@@ -877,9 +878,15 @@ test('project index becomes a capped responsive editorial grid with substantial 
 
     await expect(navigator).toBeVisible();
     await expect(navigator).toHaveCSS('position', 'static');
-    await expect(main.locator('h1:visible')).toHaveText(
-      'Pergola projects and case studies',
-    );
+    const collectionTitle = main.locator('h1:visible');
+    await expect(collectionTitle).toHaveText('Built projects around NZ');
+    await expect(collectionTitle.locator('[data-projects-title-muted]')).toHaveCount(2);
+    await expect(collectionTitle.locator('.projects-experience__collection-title-emphasis'))
+      .toHaveText('projects');
+    await expect(collectionTitle.locator('[data-projects-title-muted]').first())
+      .toHaveCSS('color', 'rgb(151, 154, 148)');
+    await expect(collectionTitle.locator('.projects-experience__collection-title-emphasis'))
+      .toHaveCSS('color', 'rgb(17, 18, 16)');
     await expect(main.locator('.project-case-study')).toHaveCount(0);
     await expect(main.locator('.project-navigator__trigger')).toHaveCount(0);
     await expect(cards).toHaveCount(projects.length);
@@ -958,7 +965,7 @@ test('project collection remains complete and useful without JavaScript', async 
     project.type === 'Residential' && project.roof === 'Gable'
   ));
 
-  await expect(main.locator('h1')).toHaveText('Pergola projects and case studies');
+  await expect(main.locator('h1')).toHaveText('Built projects around NZ');
   await expect(visibleProjectCards(page)).toHaveCount(residentialGables.length);
   await expect(main.locator('[data-project-case-study]')).toHaveCount(0);
   await expect(main.getByLabel('Filter by audience')).toHaveValue('residential');
@@ -983,7 +990,7 @@ test('project collection remains complete and useful without JavaScript', async 
   await context.close();
 });
 
-test('desktop card-size slider snaps, caps density, and restores local preference', async ({
+test('desktop view scale snaps, caps density, and restores local preference', async ({
   page,
 }) => {
   test.slow();
@@ -992,8 +999,14 @@ test('desktop card-size slider snaps, caps density, and restores local preferenc
   await page.goto('/projects', { waitUntil: 'domcontentloaded' });
   await dismissConsent(page);
   const main = visibleProjectsMain(page);
-  const slider = main.getByLabel('Card size');
+  const slider = main.getByLabel('View scale');
   const cards = visibleProjectCards(page);
+  const firstCard = cards.first();
+  const firstTitle = firstCard.locator('[data-editorial-card-title]');
+  const firstEyebrow = firstCard.locator('[data-editorial-card-eyebrow]');
+  const firstCopy = firstCard.locator('[data-editorial-card-copy]');
+  const firstCondensedMeta = firstCard.locator('[data-editorial-card-condensed-meta]');
+  const firstAction = firstCard.locator('[data-editorial-card-action]');
 
   await expect(slider).toBeHidden();
 
@@ -1001,6 +1014,19 @@ test('desktop card-size slider snaps, caps density, and restores local preferenc
   await expect(slider).toBeVisible();
   await expect(slider).toHaveValue('1');
   await expect(slider).toHaveAttribute('aria-valuetext', 'Editorial, 3 columns');
+  await expect(main.locator('[data-project-index-bar]')).toBeVisible();
+  await expect(main.locator('.project-navigator__result-count')).toHaveText('14 projects');
+  await expect(main.locator('.project-card-size__heading output')).toHaveText('Editorial / 03');
+  await expect(main.locator('.project-card-size__stop')).toHaveText(['02', '03', '04', '05']);
+  expect((await main.locator('.project-card-size__control').boundingBox())?.height ?? 0)
+    .toBeGreaterThanOrEqual(44);
+  await expect(firstCard).toHaveAccessibleName(
+    `${projects[0].title}. ${projects[0].location}. ${projects[0].type}. Gable. View project`,
+  );
+  await expect(firstEyebrow).toBeVisible();
+  await expect(firstCopy).toBeVisible();
+  await expect(firstCondensedMeta).toBeHidden();
+  await expect(firstAction).toContainText('View project');
 
   const expectColumns = async (columns: number) => {
     const geometry = await cards.evaluateAll((elements, columnCount) => elements
@@ -1013,27 +1039,64 @@ test('desktop card-size slider snaps, caps density, and restores local preferenc
   };
 
   await slider.focus();
+  await expect(slider).toBeFocused();
   await page.keyboard.press('End');
   await expect(slider).toHaveValue('3');
   await page.keyboard.press('Home');
   await expect(slider).toHaveValue('0');
   await expect(slider).toHaveAttribute('aria-valuetext', 'Showcase, 2 columns');
+  await expect(main.locator('.project-card-size__heading output')).toHaveText('Showcase / 02');
   await expectColumns(2);
+  await expect(firstEyebrow).toBeVisible();
+  await expect(firstCopy).toBeVisible();
+  await expect(firstCondensedMeta).toBeHidden();
+  await expect(firstAction).toContainText('View project');
 
   await slider.fill('2');
   await expect(slider).toHaveAttribute('aria-valuetext', 'Compact, up to 4 columns');
+  await expect(main.locator('.project-card-size__heading output')).toHaveText('Compact / 04');
   await expectColumns(4);
+  await expect(firstEyebrow).toBeHidden();
+  await expect(firstCopy).toBeHidden();
+  await expect(firstCondensedMeta).toBeVisible();
+  await expect(firstCondensedMeta).toHaveText(
+    `${projects[0].region} · ${projects[0].type} · Gable`,
+  );
+  await expect(firstCondensedMeta).toHaveCSS('white-space', 'nowrap');
+  await expect(firstTitle).toHaveCSS('-webkit-line-clamp', '2');
+  await expect(firstAction).toHaveCSS('font-size', '0px');
 
   await slider.fill('3');
   await expect(slider).toHaveAttribute('aria-valuetext', 'Overview, up to 5 columns');
+  await expect(main.locator('.project-card-size__heading output')).toHaveText('Overview / 05');
   await expectColumns(4);
+  await expect(firstTitle).toBeVisible();
+  await expect(firstTitle).toHaveCSS('-webkit-line-clamp', '2');
+  await expect(firstEyebrow).toBeHidden();
+  await expect(firstCopy).toBeHidden();
+  await expect(firstCondensedMeta).toBeHidden();
+  await expect(firstAction).toHaveCSS('font-size', '0px');
+  await expect(firstTitle).toHaveCSS('font-size', '17.2px');
+  await expect(firstCard.locator('[data-editorial-card-content]')).toHaveCSS('height', '64px');
+  const overviewArrowStyle = await firstAction.evaluate((element) => {
+    const style = window.getComputedStyle(element, '::after');
+    return { fontSize: style.fontSize, transform: style.transform };
+  });
+  expect(overviewArrowStyle.fontSize).toBe('12px');
+  expect(overviewArrowStyle.transform).not.toBe('none');
+  const overviewContentHeights = await cards.locator('[data-editorial-card-content]')
+    .evaluateAll((elements) => elements.slice(0, 5).map((element) => (
+      element.getBoundingClientRect().height
+    )));
+  expect(Math.max(...overviewContentHeights) - Math.min(...overviewContentHeights))
+    .toBeLessThanOrEqual(1);
   await expect(cards.first().locator('img')).toHaveAttribute(
     'sizes',
     '(max-width: 899px) calc(100vw - 2.5rem), (max-width: 1199px) calc((100vw - 6rem) / 2), (max-width: 1359px) min(30vw, 32rem), (max-width: 1599px) min(23vw, 24rem), min(18vw, 19rem)',
   );
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect(main.getByLabel('Card size')).toHaveValue('3');
+  await expect(main.getByLabel('View scale')).toHaveValue('3');
   await expectColumns(4);
 
   await page.setViewportSize({ width: 1600, height: 900 });
@@ -1041,8 +1104,12 @@ test('desktop card-size slider snaps, caps density, and restores local preferenc
   await expectNoPageOverflow(page);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(main.getByLabel('Card size')).toBeHidden();
+  await expect(main.getByLabel('View scale')).toBeHidden();
   await expectColumns(1);
+  await expect(firstEyebrow).toBeVisible();
+  await expect(firstCopy).toBeVisible();
+  await expect(firstCondensedMeta).toBeHidden();
+  await expect(firstAction).not.toHaveCSS('font-size', '0px');
 });
 
 test('mobile navigator is a focus-managed modal sheet with reversible scroll lock', async ({ page }) => {
