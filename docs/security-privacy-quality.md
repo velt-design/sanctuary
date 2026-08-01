@@ -49,11 +49,12 @@ other unconditional vendor request. The executable browser boundary is
 | Meta Conversions API | marketing | `apps/marketing/app/api/contact/route.ts` | Legacy server-side lead conversion reporting; requires an explicit marketing-consent flag | Marketing and Engineering |
 | ArchiPro Pixel | marketing | `apps/marketing/components/ArchiproPixel.tsx`, `apps/marketing/app/runtime-archipro.js/route.ts` | Campaign performance tracking | Marketing |
 | Homepage design-conversation events | analytics | `apps/marketing/app/_home/HomepageDesignConversationTracker.tsx` | Measures the production `/` view, first-question start and answer, governed matched-project views, project opens, project-reference selection, capability/support navigation and general-enquiry exits while analytics is enabled | Marketing and Engineering |
+| Guided-home experiment events | analytics | `apps/marketing/app/home-journey/JourneyTracker.tsx` | Measures the noindex `/home-journey` experiment view, closed answer and Back choices, and the single final enquiry exit while analytics is enabled | Marketing and Engineering |
 
 When adding or removing tracking, update this table and the privacy behavior.
 
 Homepage design-conversation events contain only the stable event name,
-`design_conversation_home_v2` variant, viewport category, link destination,
+`design_conversation_home_v3` variant, viewport category, link destination,
 closed non-personal project-intent values, canonical project slugs, the two
 governed matched-project slugs, step number and validated enquiry audience
 where known. They do not contain form values, photos, dimensions, contact
@@ -67,6 +68,13 @@ header enquiry without inferring any customer-entered data.
 Homepage enquiry links may pass a validated `residential`, `commercial` or
 `professional` audience so the contact form opens on the promised pathway; no
 customer-entered data is placed in the URL.
+
+The guided-home experiment uses the separate `guided_home_v1` variant and
+closed, allowlisted question, answer and result identifiers. Its listener can
+also record the numeric step and final link destination, but does not read or
+emit visitor-entered content, dimensions, contact details or image data. It is
+inactive until analytics consent is enabled and does not backfill choices made
+before consent.
 
 Enquiry conversion events retain their category gates and event names. Where
 available they also include validated `source_path`, `source_component`,

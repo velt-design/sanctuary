@@ -305,6 +305,30 @@ either case study, carry its canonical slug and validated audience into
 second or third question, scoring, free-text URL state or automated
 recommendation is present.
 
+That one-question limit remains the production `/` contract. The explicitly
+requested comparison route `/home-journey` is a separate, noindex guided-home
+experiment owned by `apps/marketing/app/home-journey/`; it is self-contained,
+canonicalises to `/`, stays out of the sitemap and does not change or duplicate
+the approved root implementation. It shows one question at a time and branches
+through two or three closed answers into eight deterministic directions:
+insulated or daylight-first simple home cover; acrylic, timber-lined or mixed
+material outdoor room; professional, hospitality or builder collaboration.
+Every direction is assembled from the shared project catalogue, exposes two
+static built references and fails closed if a governed record or image is
+missing. Project proof is deliberately not a second action: the completed path
+has one attributed enquiry action, plus low-emphasis Back and home utilities.
+
+The guided route uses the Foundation typography, colour, line, motion, focus
+and enquiry-context contracts but suppresses the global header and footer so
+their navigation and conversion actions do not compete with the active
+question. Its route-owned brand/progress bar is not a replacement global-header
+owner. The client controller owns only closed answer state and focus transfer;
+the server route resolves the governed model and noindex metadata. With
+JavaScript disabled, the interactive shell is replaced by a compact map of all
+eight directions and one direct enquiry link. `guided_home_v1` analytics record
+only the route view, closed question/answer/back values and final destination
+after analytics consent; pre-consent interactions are not backfilled.
+
 The root reuses the Foundation page/actions, shared project catalogue, live
 Google rating, header/footer, consent owner and enquiry-context builder. A
 narrow client island owns radio state, optional session restoration and
@@ -374,6 +398,7 @@ Root height and overflow normalisation must preserve the shared mobile-menu and 
 - `npx vitest run apps/marketing/components/marketing-foundation/Primitives.test.tsx`
 - `npx vitest run apps/marketing/components/marketing-foundation/Interactions.test.tsx`
 - `npx vitest run apps/marketing/components/Header.test.tsx apps/marketing/components/headerNavigation.test.ts`
+- `npx vitest run apps/marketing/app/home-journey/journey.test.ts apps/marketing/components/marketingRouteChrome.test.ts`
 - `npx tsc -p apps/marketing/tsconfig.json --noEmit --incremental false`
 - `npm run test:marketing:browser`
 - `npm run build:marketing`
