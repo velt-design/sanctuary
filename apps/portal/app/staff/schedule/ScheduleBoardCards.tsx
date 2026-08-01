@@ -305,6 +305,8 @@ export function ScheduledJobCard({
   onMount,
   interactionDisabled = false,
   interactionDisabledReason,
+  actionDisabled = false,
+  actionDisabledReason,
   mutationNotice,
   sequencePosition,
 }: {
@@ -323,6 +325,8 @@ export function ScheduledJobCard({
   onMount?: (node: HTMLElement | null) => void;
   interactionDisabled?: boolean;
   interactionDisabledReason?: string;
+  actionDisabled?: boolean;
+  actionDisabledReason?: string;
   mutationNotice?: ScheduleBoardMutationNotice | null;
   sequencePosition?: number;
 }) {
@@ -364,8 +368,8 @@ export function ScheduledJobCard({
         <ScheduleBoardActions
           actions={menuActions}
           projectName={job?.projectName ?? 'Untitled project'}
-          disabled={interactionDisabled}
-          disabledReason={interactionDisabledReason}
+          disabled={actionDisabled}
+          disabledReason={actionDisabledReason}
         />
       }
       mutationNotice={mutationNotice}
@@ -391,6 +395,8 @@ export function DowntimeCard({
   onMount,
   interactionDisabled = false,
   interactionDisabledReason,
+  actionDisabled = false,
+  actionDisabledReason,
   sequencePosition,
 }: {
   id: string;
@@ -402,6 +408,8 @@ export function DowntimeCard({
   onMount?: (node: HTMLElement | null) => void;
   interactionDisabled?: boolean;
   interactionDisabledReason?: string;
+  actionDisabled?: boolean;
+  actionDisabledReason?: string;
   sequencePosition?: number;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useSortable({ id, disabled: interactionDisabled });
@@ -437,8 +445,8 @@ export function DowntimeCard({
         <ScheduleBoardActions
           actions={menuActions}
           projectName={reason}
-          disabled={interactionDisabled}
-          disabledReason={interactionDisabledReason}
+          disabled={actionDisabled}
+          disabledReason={actionDisabledReason}
         />
       }
       cardRef={(node) => {

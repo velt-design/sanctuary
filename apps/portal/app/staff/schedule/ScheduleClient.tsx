@@ -91,6 +91,12 @@ import {
 } from './scheduleBoardPlacementIntent';
 import { useScheduleBoardMutationNotice } from './useScheduleBoardMutationNotice';
 import {
+  applyScheduleBoardPlacement,
+  createScheduleBoardCommandController,
+  replayScheduleBoardPlacements,
+  type ScheduleBoardPlacementOperation,
+} from './scheduleBoardCommandController';
+import {
   formatScheduleCommitmentLabel,
   hasScheduleCommitment as hasPlannedCommitment,
   resolveScheduleCommitmentType as resolveCommitmentType,
@@ -153,6 +159,7 @@ type ScheduleMutationOptions = {
   expectedCrewId?: string;
   expectedSourceCrewId?: string;
   boardPlacementIntent?: ScheduleBoardPlacementIntent;
+  boardCommandId?: number;
   onSettlement?: (settlement: ScheduleMutationSettlement) => void;
   onPhase?: (phase: 'checking' | 'reviewing' | 'saving' | 'reconciling' | 'cancelled') => void;
 };
@@ -167,7 +174,16 @@ type ScheduleBoardChange = {
   action: string;
   destination: string;
   placementIntent: ScheduleBoardPlacementIntent;
+  operation: ScheduleBoardPlacementOperation;
+  resourceLaneIds: string[];
   retry: () => void;
+};
+
+type ScheduleBoardCommandRecord = {
+  id: number;
+  change: ScheduleBoardChange;
+  run: (force: boolean) => Promise<any>;
+  opts?: ScheduleMutationOptions;
 };
 
 function formatSavedTime(value: string | null): string | null {
@@ -376,137 +392,6 @@ function durationDaysFromScheduleItem(item: ScheduleItem): number {
   return 1;
 }
 
-function renormalizeLane(items: ScheduleItem[], installerId: string): ScheduleItem[] {
-  const lane = items
-    .filter((i) => i.installerId === installerId)
-    .slice()
-    .sort((a, b) => a.sortIndex - b.sortIndex || a.updatedAt.localeCompare(b.updatedAt));
-
-  const laneIds = new Set(lane.map((i) => i.id));
-  const others = items.filter((i) => !laneIds.has(i.id));
-
-  const now = new Date().toISOString();
-  const normalizedLane = lane.map((it, idx) => (it.sortIndex === idx ? it : { ...it, sortIndex: idx, updatedAt: now }));
-
-  return [...others, ...normalizedLane];
-}
-
-function optimisticReorderCrew(items: ScheduleItem[], installerId: string, orderedIds: string[]): ScheduleItem[] {
-  const now = new Date().toISOString();
-
-  // keep only ids that exist in this lane
-  const laneSet = new Set(items.filter((i) => i.installerId === installerId).map((i) => i.id));
-  const nextLane = orderedIds.filter((id) => laneSet.has(id));
-
-  const nextItems = items.map((i) => {
-    if (i.installerId !== installerId) return i;
-    const pos = nextLane.indexOf(i.id);
-    if (pos < 0) return i;
-    return i.sortIndex === pos ? i : { ...i, sortIndex: pos, updatedAt: now };
-  });
-
-  return renormalizeLane(nextItems, installerId);
-}
-
-function optimisticMoveBetweenCrews(
-  items: ScheduleItem[],
-  activeId: string,
-  fromInstallerId: string,
-  toInstallerId: string,
-  insertAt: number,
-): ScheduleItem[] {
-  const now = new Date().toISOString();
-
-  const source = items
-    .filter((i) => i.installerId === fromInstallerId)
-    .slice()
-    .sort((a, b) => a.sortIndex - b.sortIndex);
-
-  const dest = items
-    .filter((i) => i.installerId === toInstallerId)
-    .slice()
-    .sort((a, b) => a.sortIndex - b.sortIndex);
-
-  const moving = items.find((i) => i.id === activeId);
-  if (!moving) return items;
-
-  const nextSourceIds = source.map((i) => i.id).filter((id) => id !== activeId);
-  const nextDestIds = dest.map((i) => i.id);
-  nextDestIds.splice(Math.max(0, Math.min(insertAt, nextDestIds.length)), 0, activeId);
-
-  const next = items.map((i) => {
-    if (i.id === activeId) {
-      return { ...i, installerId: toInstallerId, updatedAt: now };
-    }
-    return i;
-  });
-
-  // assign indices for affected lanes
-  const byId = new Map(next.map((i) => [i.id, i] as const));
-  for (let idx = 0; idx < nextSourceIds.length; idx += 1) {
-    const it = byId.get(nextSourceIds[idx]);
-    if (it && it.sortIndex !== idx) byId.set(it.id, { ...it, sortIndex: idx, updatedAt: now });
-  }
-  for (let idx = 0; idx < nextDestIds.length; idx += 1) {
-    const it = byId.get(nextDestIds[idx]);
-    if (!it) continue;
-    const installerId = it.id === activeId ? toInstallerId : it.installerId;
-    const updated = { ...it, installerId, sortIndex: idx, updatedAt: now };
-    byId.set(it.id, updated);
-  }
-
-  return Array.from(byId.values());
-}
-
-function optimisticAssignUnscheduled(
-  items: ScheduleItem[],
-  job: SchedulableJob,
-  installerId: string,
-  insertAt: number,
-): ScheduleItem[] {
-  const now = new Date().toISOString();
-  const tmpId = `tmp_${newId('sch')}`;
-
-  const lane = items
-    .filter((i) => i.installerId === installerId)
-    .slice()
-    .sort((a, b) => a.sortIndex - b.sortIndex);
-
-  const nextLaneIds = lane.map((i) => i.id);
-  nextLaneIds.splice(Math.max(0, Math.min(insertAt, nextLaneIds.length)), 0, tmpId);
-
-  const tmp: ScheduleItem = {
-    id: tmpId,
-    installerId,
-    projectId: job.projectId,
-    estimateId: job.estimateId,
-    sortIndex: insertAt,
-    scheduleStatus: 'TENTATIVE',
-    locked: false,
-    updatedAt: now,
-    itemType: 'job',
-    // keep date fields blank; board move is the priority
-    forecastStart: null,
-    forecastEndExclusive: null,
-    forecastDurationDays: Math.max(1, Math.round(job.durationHours / WORK_HOURS_PER_DAY)),
-    durationHoursOverride: job.durationHours,
-    mode: 'floating',
-    scheduledJobId: `tmp_job_${tmpId}`,
-  };
-
-  const next = [...items, tmp];
-
-  // renormalize that lane indices
-  const byId = new Map(next.map((i) => [i.id, i] as const));
-  for (let idx = 0; idx < nextLaneIds.length; idx += 1) {
-    const it = byId.get(nextLaneIds[idx]);
-    if (!it) continue;
-    byId.set(it.id, { ...it, sortIndex: idx, updatedAt: now });
-  }
-
-  return Array.from(byId.values());
-}
-
 function optimisticUnassign(
   items: ScheduleItem[],
   unscheduledSeed: SchedulableJob[],
@@ -588,6 +473,16 @@ export default function ScheduleClient({
   const hostKey = supabaseHost || 'unknown';
   const scheduleMutationScope = `${hostKey}:${today}`;
   const scheduleMutationOwnerRef = useRef(Symbol('schedule-client'));
+  const boardCommandControllerRef = useRef<ReturnType<typeof createScheduleBoardCommandController> | null>(null);
+  if (!boardCommandControllerRef.current) boardCommandControllerRef.current = createScheduleBoardCommandController();
+  const boardCommandController = boardCommandControllerRef.current;
+  const boardCommandSnapshot = useSyncExternalStore(
+    boardCommandController.subscribe,
+    boardCommandController.getSnapshot,
+    boardCommandController.getSnapshot,
+  );
+  const boardCommandSequenceRef = useRef(0);
+  const boardCommandRecordsRef = useRef<Map<number, ScheduleBoardCommandRecord>>(new Map());
   const handleBoardDropRef = useRef<(activeId: string, dropTarget: ScheduleBoardDrop) => void>(() => {});
   const handleUnscheduleRef = useRef<(id: string) => Promise<boolean>>(async () => false);
   const subscribeToScheduleMutationActivity = useCallback(
@@ -634,6 +529,7 @@ export default function ScheduleClient({
   const v2ObservedForeignMutationRef = useRef(false);
   const v2CommittedPreviewPendingRef = useRef(false);
   const v2BoardMutationErrorOwnedRef = useRef(false);
+  const v2BoardScopedRecoveryIdsRef = useRef<Set<number>>(new Set());
   const requestedScheduleViewRef = useRef<ScheduleView | null>(null);
   const refreshScheduleRef = useRef<() => void>(() => {});
   const v2LocallyWrittenSnapshotsRef = useRef<WeakSet<object>>(new WeakSet());
@@ -778,6 +674,8 @@ export default function ScheduleClient({
     state: V2LocalState;
     generatedAt: string;
   };
+
+  const boardConfirmedStateRef = useRef<V2LocalState | null>(null);
 
   function captureV2LocalCheckpoint(): V2LocalCheckpoint {
     return {
@@ -1039,9 +937,10 @@ export default function ScheduleClient({
     generatedAt: string,
     estimateByProjectId: Map<string, string>,
     estimateByScheduledJobId: Map<string, string>,
+    existingItems: ScheduleItem[] = scheduleItemsRef.current,
   ): { crewInstallerId: string; items: ScheduleItem[] } {
     const crewInstallerId = safeAppIdFromUuid('crew', crewSchedule.crew_id);
-    const existingLaneItems = scheduleItemsRef.current.filter((item) => item.installerId === crewInstallerId);
+    const existingLaneItems = existingItems.filter((item) => item.installerId === crewInstallerId);
     const existingLaneByScheduleItemId = new Map(existingLaneItems.map((item) => [item.id, item]));
 
     const items: ScheduleItem[] = [];
@@ -1114,36 +1013,39 @@ export default function ScheduleClient({
     return { crewInstallerId, items };
   }
 
-  function applyV2MutationResponse(response: ScheduleMutationResult): boolean {
+  function mergeV2MutationResponse(
+    response: ScheduleMutationResult,
+    baseState: V2LocalState,
+  ): { applied: boolean; state: V2LocalState } {
     const schedules: ScheduleCrewSchedule[] = [];
     if (response.schedule && typeof response.schedule.crew_id === 'string') schedules.push(response.schedule);
     if (response.source_schedule && typeof response.source_schedule.crew_id === 'string') schedules.push(response.source_schedule);
-    if (!schedules.length) return false;
+    if (!schedules.length) return { applied: false, state: baseState };
     if (v2StateKindRef.current === 'gantt') {
       queryClient.removeQueries({ queryKey: boardSnapshotKey, exact: true });
-      return false;
+      return { applied: false, state: baseState };
     }
 
     const estimateByProjectId = new Map<string, string>();
     const estimateByScheduledJobId = new Map<string, string>();
 
-    for (const item of scheduleItemsRef.current) {
+    for (const item of baseState.scheduleItems) {
       if (item.itemType === 'downtime') continue;
       if (item.projectId && item.estimateId && !estimateByProjectId.has(item.projectId)) estimateByProjectId.set(item.projectId, item.estimateId);
       if (item.scheduledJobId && item.estimateId && !estimateByScheduledJobId.has(item.scheduledJobId)) {
         estimateByScheduledJobId.set(item.scheduledJobId, item.estimateId);
       }
     }
-    for (const job of unscheduledJobsSeedRef.current) {
+    for (const job of baseState.unscheduledJobsSeed) {
       if (job.projectId && job.estimateId && !estimateByProjectId.has(job.projectId)) estimateByProjectId.set(job.projectId, job.estimateId);
     }
 
     const generatedAt = nextV2GeneratedAt();
-    let nextItems = scheduleItemsRef.current.slice();
-    let nextConflicts = scheduleConflictsRef.current.slice();
-    const nextAvailable = new Map(nextAvailRef.current);
+    let nextItems = baseState.scheduleItems.slice();
+    let nextConflicts = baseState.scheduleConflicts.slice();
+    const nextAvailable = new Map(baseState.nextAvailableByInstallerId);
     for (const schedule of schedules) {
-      const mapped = mapCrewScheduleToItems(schedule, generatedAt, estimateByProjectId, estimateByScheduledJobId);
+      const mapped = mapCrewScheduleToItems(schedule, generatedAt, estimateByProjectId, estimateByScheduledJobId, baseState.scheduleItems);
       nextItems = nextItems.filter((item) => item.installerId !== mapped.crewInstallerId);
       nextItems.push(...mapped.items);
       nextConflicts = nextConflicts.filter((conflict) => {
@@ -1167,21 +1069,157 @@ export default function ScheduleClient({
         a.sortIndex - b.sortIndex ||
         a.updatedAt.localeCompare(b.updatedAt),
     );
-    setV2LocalState(
-      {
+    return {
+      applied: true,
+      state: {
         scheduleItems: nextItems,
-        unscheduledJobsSeed: unscheduledJobsSeedRef.current,
+        unscheduledJobsSeed: baseState.unscheduledJobsSeed,
         scheduleConflicts: nextConflicts,
         nextAvailableByInstallerId: nextAvailable,
       },
-      generatedAt,
-    );
+    };
+  }
+
+  function applyV2MutationResponse(response: ScheduleMutationResult): boolean {
+    const merged = mergeV2MutationResponse(response, {
+      scheduleItems: scheduleItemsRef.current,
+      unscheduledJobsSeed: unscheduledJobsSeedRef.current,
+      scheduleConflicts: scheduleConflictsRef.current,
+      nextAvailableByInstallerId: nextAvailRef.current,
+    });
+    if (!merged.applied) return false;
+    setV2LocalState(merged.state, nextV2GeneratedAt());
     return true;
+  }
+
+  function currentV2LocalState(): V2LocalState {
+    return {
+      scheduleItems: scheduleItemsRef.current,
+      unscheduledJobsSeed: unscheduledJobsSeedRef.current,
+      scheduleConflicts: scheduleConflictsRef.current,
+      nextAvailableByInstallerId: nextAvailRef.current,
+    };
+  }
+
+  function pendingBoardOperations(excludeCommandId?: number): ScheduleBoardPlacementOperation[] {
+    return [...boardCommandRecordsRef.current.values()]
+      .filter((record) => record.id !== excludeCommandId)
+      .sort((a, b) => a.id - b.id)
+      .map((record) => record.change.operation);
+  }
+
+  function renderBoardIntentFromConfirmed(options?: { writeConfirmedCache?: boolean }): void {
+    const confirmed = boardConfirmedStateRef.current ?? currentV2LocalState();
+    boardConfirmedStateRef.current = confirmed;
+    if (options?.writeConfirmedCache) {
+      writeV2SnapshotToCache(confirmed, nextV2GeneratedAt());
+    }
+    const operations = pendingBoardOperations();
+    if (!operations.length) {
+      setV2LocalState(confirmed, nextV2GeneratedAt());
+      return;
+    }
+    const placed = replayScheduleBoardPlacements(
+      {
+        scheduleItems: confirmed.scheduleItems,
+        unscheduledJobsSeed: confirmed.unscheduledJobsSeed,
+      },
+      operations,
+    );
+    const recomputed = recomputeLocalForCrews(placed.scheduleItems);
+    setV2LocalState(
+      {
+        scheduleItems: recomputed.scheduleItems,
+        unscheduledJobsSeed: placed.unscheduledJobsSeed,
+        scheduleConflicts: recomputed.scheduleConflicts,
+        nextAvailableByInstallerId: recomputed.nextAvailableByInstallerId,
+      },
+      nextV2GeneratedAt(),
+      { writeCache: false },
+    );
+  }
+
+  function commitBoardCommandResponse(commandId: number, response: ScheduleMutationResult): boolean {
+    const record = boardCommandRecordsRef.current.get(commandId);
+    if (!record) return false;
+    const confirmed = boardConfirmedStateRef.current ?? currentV2LocalState();
+    const placed = applyScheduleBoardPlacement(
+      {
+        scheduleItems: confirmed.scheduleItems,
+        unscheduledJobsSeed: confirmed.unscheduledJobsSeed,
+      },
+      record.change.operation,
+    );
+    const placementState: V2LocalState = {
+      ...confirmed,
+      scheduleItems: placed.scheduleItems,
+      unscheduledJobsSeed: placed.unscheduledJobsSeed,
+    };
+    const merged = mergeV2MutationResponse(response, placementState);
+    boardConfirmedStateRef.current = merged.state;
+    boardCommandRecordsRef.current.delete(commandId);
+    renderBoardIntentFromConfirmed({ writeConfirmedCache: true });
+    return merged.applied;
+  }
+
+  function rejectBoardCommand(commandId: number): void {
+    boardCommandRecordsRef.current.delete(commandId);
+    renderBoardIntentFromConfirmed();
+  }
+
+  function mergeBoardSettlementSnapshot(commandId: number, snapshot: ScheduleV2Snapshot): void {
+    const record = boardCommandRecordsRef.current.get(commandId);
+    if (!record) return;
+    const confirmed = boardConfirmedStateRef.current ?? currentV2LocalState();
+    const affectedLanes = new Set(record.change.resourceLaneIds);
+    const snapshotUnscheduled = mapV2UnscheduledJobs(snapshot.unscheduledJobs);
+    const projectId = record.change.projectId;
+    const nextItems = [
+      ...confirmed.scheduleItems.filter((item) => !affectedLanes.has(item.installerId)),
+      ...snapshot.scheduleItems.filter((item) => affectedLanes.has(item.installerId)),
+    ];
+    const authoritativeUnscheduled = snapshotUnscheduled.find((job) => job.projectId === projectId) ?? null;
+    const nextUnscheduled = confirmed.unscheduledJobsSeed.filter((job) => job.projectId !== projectId);
+    if (authoritativeUnscheduled) nextUnscheduled.push(authoritativeUnscheduled);
+    const nextConflicts = [
+      ...confirmed.scheduleConflicts.filter((conflict) => {
+        const crewId = conflict && typeof conflict === 'object'
+          ? String((conflict as Record<string, unknown>).crew_id ?? '')
+          : '';
+        return !affectedLanes.has(crewId) && !affectedLanes.has(safeAppIdFromUuid('crew', crewId));
+      }),
+      ...(Array.isArray(snapshot.conflicts)
+        ? snapshot.conflicts.filter((conflict) => {
+            const crewId = conflict && typeof conflict === 'object'
+              ? String((conflict as Record<string, unknown>).crew_id ?? '')
+              : '';
+            return affectedLanes.has(crewId) || affectedLanes.has(safeAppIdFromUuid('crew', crewId));
+          })
+        : []),
+    ];
+    const nextAvailable = new Map(confirmed.nextAvailableByInstallerId);
+    for (const laneId of affectedLanes) {
+      const value = snapshot.nextAvailableByInstallerId?.[laneId];
+      if (value) nextAvailable.set(laneId, value);
+      else nextAvailable.delete(laneId);
+    }
+    boardConfirmedStateRef.current = {
+      scheduleItems: nextItems,
+      unscheduledJobsSeed: nextUnscheduled,
+      scheduleConflicts: nextConflicts,
+      nextAvailableByInstallerId: nextAvailable,
+    };
+    boardCommandRecordsRef.current.delete(commandId);
+    renderBoardIntentFromConfirmed({ writeConfirmedCache: true });
   }
 
   const setScheduleView = (next: ScheduleView, control: HTMLButtonElement) => {
     if (next === view) return;
-    if (v2PendingMutationsRef.current > 0 || anyScheduleMutationIsActive()) {
+    if (
+      v2PendingMutationsRef.current > 0 ||
+      boardCommandController.getSnapshot().pendingIds.length > 0 ||
+      anyScheduleMutationIsActive()
+    ) {
       toast.info('Finish or cancel the schedule change before switching views.');
       return;
     }
@@ -1420,6 +1458,14 @@ export default function ScheduleClient({
     unscheduledJobsSeedRef.current = nextUnscheduled;
     scheduleConflictsRef.current = nextConflicts;
     nextAvailRef.current = nextAvail;
+    if (boardCommandRecordsRef.current.size === 0) {
+      boardConfirmedStateRef.current = {
+        scheduleItems: nextItems,
+        unscheduledJobsSeed: nextUnscheduled,
+        scheduleConflicts: nextConflicts,
+        nextAvailableByInstallerId: nextAvail,
+      };
+    }
 
     setLoadError(null);
     setInstallers(snapshot.installers);
@@ -1610,7 +1656,11 @@ export default function ScheduleClient({
       return;
     }
 
-    if (view === 'board' && (v2PendingMutationsRef.current > 0 || v2BoardMutationErrorOwnedRef.current)) {
+    if (view === 'board' && (
+      v2PendingMutationsRef.current > 0 ||
+      v2BoardMutationErrorOwnedRef.current ||
+      v2BoardScopedRecoveryIdsRef.current.size > 0
+    )) {
       return;
     }
 
@@ -1976,6 +2026,35 @@ export default function ScheduleClient({
     }
   }
 
+  async function settleQueuedBoardCommandFromServer(
+    commandId: number,
+    intent: ScheduleBoardPlacementIntent,
+  ): Promise<'saved' | 'restored' | 'stale'> {
+    const fetchSnapshot = async (): Promise<ScheduleV2Snapshot> => {
+      await queryClient.cancelQueries({ queryKey: boardSnapshotKey, exact: true });
+      void queryClient.invalidateQueries({ queryKey: ['schedule', hostKey, 'gantt'], refetchType: 'none' });
+      return await queryClient.fetchQuery({
+        queryKey: boardSnapshotKey,
+        queryFn: loadTrackedBoardSnapshot,
+        staleTime: 0,
+      });
+    };
+
+    try {
+      let snapshot = await fetchSnapshot();
+      let matches = scheduleSnapshotMatchesBoardPlacement(snapshot, intent);
+      if (!matches) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, BOARD_RECONCILIATION_SETTLE_MS));
+        snapshot = await fetchSnapshot();
+        matches = scheduleSnapshotMatchesBoardPlacement(snapshot, intent);
+      }
+      mergeBoardSettlementSnapshot(commandId, snapshot);
+      return matches ? 'saved' : 'restored';
+    } catch {
+      return 'stale';
+    }
+  }
+
   useEffect(() => {
     const foreignMutationCount = Math.max(
       0,
@@ -2010,6 +2089,7 @@ export default function ScheduleClient({
     opts?: ScheduleMutationOptions,
   ): Promise<boolean> {
     if (scheduleMode === 'v2') {
+      const isBoardCommand = typeof opts?.boardCommandId === 'number';
       let rollbackOptimistic: (() => void) | undefined;
       let rolledBack = false;
       let reconcileAfterFailure = false;
@@ -2020,7 +2100,11 @@ export default function ScheduleClient({
         rollbackOptimistic?.();
       };
 
-      if (v2PendingMutationsRef.current > 0 || anyScheduleMutationIsActive()) {
+      if (!isBoardCommand && (
+        v2PendingMutationsRef.current > 0 ||
+        boardCommandController.getSnapshot().pendingIds.length > 0 ||
+        anyScheduleMutationIsActive()
+      )) {
         rollback();
         toast.info('Another schedule change is still saving. Try again in a moment.');
         return false;
@@ -2041,11 +2125,13 @@ export default function ScheduleClient({
         scheduleMutationScope,
         scheduleMutationOwnerRef.current,
       );
-      setSyncing(true);
-      updateScheduleTrust({
-        status: 'saving',
-        savedAt: trustBeforeMutation.savedAt,
-      });
+      if (!isBoardCommand) {
+        setSyncing(true);
+        updateScheduleTrust({
+          status: 'saving',
+          savedAt: trustBeforeMutation.savedAt,
+        });
+      }
       try {
         await Promise.all([
           queryClient.cancelQueries({ queryKey: boardSnapshotKey, exact: true }),
@@ -2085,12 +2171,14 @@ export default function ScheduleClient({
               opts?.onSettlement?.({ status: 'cancelled' });
               sealV2SnapshotRequestEpochs();
               rollback();
-              reconcileAfterFailure = true;
-              v2ReconciliationPendingRef.current = true;
-              updateScheduleTrust({
-                status: 'refreshing',
-                savedAt: trustBeforeMutation.savedAt,
-              });
+              if (!isBoardCommand) {
+                reconcileAfterFailure = true;
+                v2ReconciliationPendingRef.current = true;
+                updateScheduleTrust({
+                  status: 'refreshing',
+                  savedAt: trustBeforeMutation.savedAt,
+                });
+              }
               return false;
             }
           }
@@ -2139,18 +2227,24 @@ export default function ScheduleClient({
 
         sealV2SnapshotRequestEpochs();
         const shouldApplyResponseNow = v2PendingMutationsRef.current <= 1;
-        let applied = shouldApplyResponseNow ? applyV2MutationResponse(res as ScheduleMutationResult) : true;
+        let applied = isBoardCommand
+          ? commitBoardCommandResponse(opts.boardCommandId!, res as ScheduleMutationResult)
+          : shouldApplyResponseNow
+            ? applyV2MutationResponse(res as ScheduleMutationResult)
+            : true;
         if (!applied && opts?.allowMissingSchedule) {
-          const generatedAt = v2GeneratedAtRef.current || nextV2GeneratedAt();
-          writeV2SnapshotToCache(
-            {
-              scheduleItems: scheduleItemsRef.current,
-              unscheduledJobsSeed: unscheduledJobsSeedRef.current,
-              scheduleConflicts: scheduleConflictsRef.current,
-              nextAvailableByInstallerId: nextAvailRef.current,
-            },
-            generatedAt,
-          );
+          if (!isBoardCommand) {
+            const generatedAt = v2GeneratedAtRef.current || nextV2GeneratedAt();
+            writeV2SnapshotToCache(
+              {
+                scheduleItems: scheduleItemsRef.current,
+                unscheduledJobsSeed: unscheduledJobsSeedRef.current,
+                scheduleConflicts: scheduleConflictsRef.current,
+                nextAvailableByInstallerId: nextAvailRef.current,
+              },
+              generatedAt,
+            );
+          }
           applied = true;
         }
         const refreshRequired = !applied && opts?.refreshIfNoSchedule !== false;
@@ -2173,7 +2267,7 @@ export default function ScheduleClient({
         opts?.onSuccess?.(res);
         opts?.onSettlement?.({ status: 'saved' });
         if (opts?.successToast && !opts.boardPlacementIntent) toast.success(opts.successToast);
-        if (!refreshRequired) updateScheduleTrust({ status: 'saved', savedAt: nowIso() });
+        if (!refreshRequired && !isBoardCommand) updateScheduleTrust({ status: 'saved', savedAt: nowIso() });
         return true;
       } catch (err) {
         sealV2SnapshotRequestEpochs();
@@ -2184,8 +2278,37 @@ export default function ScheduleClient({
           scheduleMutationNeedsReconciliation(err) ||
           opts?.refreshOnError === true;
         if (reconcileAfterFailure) opts?.onPhase?.('reconciling');
-        v2ReconciliationPendingRef.current = reconcileAfterFailure;
+        if (!isBoardCommand) v2ReconciliationPendingRef.current = reconcileAfterFailure;
         opts?.onError?.(err);
+
+        if (reconcileAfterFailure && opts?.boardPlacementIntent && isBoardCommand) {
+          v2BoardScopedRecoveryIdsRef.current.add(opts.boardCommandId!);
+          const settlement = await settleQueuedBoardCommandFromServer(
+            opts.boardCommandId!,
+            opts.boardPlacementIntent,
+          );
+          reconciliationHandled = true;
+          if (settlement === 'saved') {
+            v2BoardScopedRecoveryIdsRef.current.delete(opts.boardCommandId!);
+            opts?.onSettlement?.({ status: 'saved' });
+            return true;
+          }
+          if (settlement === 'restored') {
+            v2BoardScopedRecoveryIdsRef.current.delete(opts.boardCommandId!);
+            opts?.onSettlement?.({
+              status: 'restored',
+              message: userMessage,
+              requestId: err instanceof ApiError ? err.requestId ?? null : null,
+            });
+            return false;
+          }
+          opts?.onSettlement?.({
+            status: 'stale',
+            message: 'The latest saved schedule could not be verified.',
+            requestId: err instanceof ApiError ? err.requestId ?? null : null,
+          });
+          return false;
+        }
 
         if (reconcileAfterFailure && opts?.boardPlacementIntent) {
           v2BoardMutationErrorOwnedRef.current = true;
@@ -2222,14 +2345,16 @@ export default function ScheduleClient({
 
         rollback();
         if (!opts?.boardPlacementIntent) toast.error(userMessage);
-        updateScheduleTrust({
-          status: reconcileAfterFailure ? 'refreshing' : 'failed',
-          savedAt: trustBeforeMutation.savedAt,
-          message: reconcileAfterFailure
-            ? 'The last change could not be confirmed. Refreshing from the server now.'
-            : 'The last change was not saved. The schedule has been restored to the last known saved version.',
-          requestId: err instanceof ApiError ? err.requestId ?? null : null,
-        });
+        if (!isBoardCommand) {
+          updateScheduleTrust({
+            status: reconcileAfterFailure ? 'refreshing' : 'failed',
+            savedAt: trustBeforeMutation.savedAt,
+            message: reconcileAfterFailure
+              ? 'The last change could not be confirmed. Refreshing from the server now.'
+              : 'The last change was not saved. The schedule has been restored to the last known saved version.',
+            requestId: err instanceof ApiError ? err.requestId ?? null : null,
+          });
+        }
         opts?.onSettlement?.({
           status: 'restored',
           message: userMessage,
@@ -2239,7 +2364,10 @@ export default function ScheduleClient({
       } finally {
         v2PendingMutationsRef.current = Math.max(0, v2PendingMutationsRef.current - 1);
         endSharedMutationActivity();
-        if (reconcileAfterFailure && !reconciliationHandled && v2PendingMutationsRef.current === 0) {
+        if (isBoardCommand && v2PendingMutationsRef.current === 0) {
+          v2SnapshotIgnoredDuringMutationRef.current = false;
+          setSyncing(false);
+        } else if (reconcileAfterFailure && !reconciliationHandled && v2PendingMutationsRef.current === 0) {
           v2SnapshotIgnoredDuringMutationRef.current = false;
           refreshSchedule();
         } else if (v2SnapshotIgnoredDuringMutationRef.current && v2PendingMutationsRef.current === 0) {
@@ -2284,50 +2412,99 @@ export default function ScheduleClient({
     run: (force: boolean) => Promise<any>,
     opts?: ScheduleMutationOptions,
   ): Promise<boolean> {
+    const commandId = boardCommandSequenceRef.current + 1;
+    boardCommandSequenceRef.current = commandId;
+    if (boardCommandRecordsRef.current.size === 0) {
+      boardConfirmedStateRef.current = currentV2LocalState();
+    }
+    boardCommandRecordsRef.current.set(commandId, { id: commandId, change, run, opts });
     boardMutationNotice.clear(change.projectId);
-    return await runWithCommitConfirmation(run, {
-      ...opts,
-      boardPlacementIntent: change.placementIntent,
-      onSuccess: (response) => {
-        v2BoardMutationErrorOwnedRef.current = false;
-        opts?.onSuccess?.(response);
-        boardMutationNotice.clear(change.projectId);
-      },
-      onError: (error) => {
-        opts?.onError?.(error);
-      },
-      onSettlement: (settlement) => {
-        opts?.onSettlement?.(settlement);
-        if (settlement.status === 'saved' || settlement.status === 'cancelled') {
-          boardMutationNotice.clear(change.projectId);
-          return;
-        }
-        if (settlement.status === 'stale') {
-          boardMutationNotice.show({
-            projectId: change.projectId,
-            tone: 'warning',
-            message: 'Couldn\'t verify this change. Refresh before moving another job.',
-            actionLabel: 'Refresh',
-            onAction: () => {
-              v2BoardMutationErrorOwnedRef.current = false;
-              boardMutationNotice.clear(change.projectId);
-              void refreshSchedule({ authoritative: true });
-            },
-          });
-          return;
-        }
-        boardMutationNotice.show({
-          projectId: change.projectId,
-          tone: 'error',
-          message: `${change.action} wasn\'t saved. Previous position restored.`,
-          actionLabel: 'Retry',
-          onAction: () => {
+    renderBoardIntentFromConfirmed();
+    boardCommandController.enqueue({
+      id: commandId,
+      resources: [
+        `project:${change.projectId}`,
+        ...change.resourceLaneIds.map((laneId) => `lane:${laneId}`),
+      ],
+      execute: async () => {
+        await runWithCommitConfirmation(run, {
+          ...opts,
+          optimistic: undefined,
+          boardCommandId: commandId,
+          boardPlacementIntent: change.placementIntent,
+          onSuccess: (response) => {
+            v2BoardMutationErrorOwnedRef.current = false;
+            opts?.onSuccess?.(response);
             boardMutationNotice.clear(change.projectId);
-            change.retry();
+          },
+          onError: (error) => {
+            opts?.onError?.(error);
+          },
+          onSettlement: (settlement) => {
+            opts?.onSettlement?.(settlement);
+            if (settlement.status === 'saved') {
+              boardMutationNotice.clear(change.projectId);
+              return;
+            }
+            if (settlement.status === 'cancelled') {
+              rejectBoardCommand(commandId);
+              boardMutationNotice.clear(change.projectId);
+              return;
+            }
+            if (settlement.status === 'stale') {
+              const showScopedRefresh = (message: string) => {
+                boardMutationNotice.show({
+                  projectId: change.projectId,
+                  tone: 'warning',
+                  message,
+                  actionLabel: 'Refresh',
+                  onAction: () => {
+                    boardMutationNotice.clear(change.projectId);
+                    void settleQueuedBoardCommandFromServer(commandId, change.placementIntent).then((result) => {
+                      if (result === 'stale') {
+                        showScopedRefresh('Still couldn\'t verify this change. Other crews remain available.');
+                        return;
+                      }
+                      v2BoardScopedRecoveryIdsRef.current.delete(commandId);
+                      boardCommandController.resolve(commandId);
+                      if (result === 'saved') {
+                        boardMutationNotice.clear(change.projectId);
+                        return;
+                      }
+                      boardMutationNotice.show({
+                        projectId: change.projectId,
+                        tone: 'error',
+                        message: `${change.action} wasn\'t saved. Previous position restored.`,
+                        actionLabel: 'Retry',
+                        onAction: () => {
+                          boardMutationNotice.clear(change.projectId);
+                          change.retry();
+                        },
+                      });
+                    });
+                  },
+                });
+              };
+              showScopedRefresh('Couldn\'t verify this change. Refresh this job before moving it again.');
+              return;
+            }
+            if (boardCommandRecordsRef.current.has(commandId)) rejectBoardCommand(commandId);
+            boardMutationNotice.show({
+              projectId: change.projectId,
+              tone: 'error',
+              message: `${change.action} wasn\'t saved. Previous position restored.`,
+              actionLabel: 'Retry',
+              onAction: () => {
+                boardMutationNotice.clear(change.projectId);
+                change.retry();
+              },
+            });
           },
         });
+        return boardCommandRecordsRef.current.has(commandId) ? 'blocked' : 'settled';
       },
     });
+    return true;
   }
 
   function scheduleMutationErrorDebug(error: unknown): Record<string, unknown> {
@@ -2673,6 +2850,13 @@ export default function ScheduleClient({
         return false;
       }
       const expectedCrewId = safeUuidFromAppId('crew', item.installerId) ?? undefined;
+      const unscheduledPlacement = optimisticUnassign(
+        scheduleItemsRef.current,
+        unscheduledJobsSeedRef.current,
+        id,
+        projectsById,
+      );
+      const unscheduledJob = unscheduledPlacement.unscheduledSeed.find((job) => job.projectId === item.projectId);
       return await runBoardChange({
         projectId: item.projectId,
         action: 'Unschedule',
@@ -2683,23 +2867,20 @@ export default function ScheduleClient({
           laneId: null,
           insertionIndex: null,
         },
+        operation: {
+          projectId: item.projectId,
+          scheduleItemId: item.id,
+          destinationLaneId: null,
+          insertionIndex: null,
+          unscheduledJob,
+        },
+        resourceLaneIds: [item.installerId],
         retry: () => {
           void handleUnscheduleRef.current(id);
         },
       }, (force) => unassignJob({ job_id: projectUuid, force, today }), {
         targetJobIds: [projectUuid],
         expectedCrewId,
-        optimistic: () => {
-          const checkpoint = captureV2LocalCheckpoint();
-          const optimistic = optimisticUnassign(
-            scheduleItemsRef.current,
-            unscheduledJobsSeedRef.current,
-            id,
-            projectsById,
-          );
-          applyV2OptimisticState(optimistic.items, optimistic.unscheduledSeed);
-          return () => restoreV2LocalCheckpoint(checkpoint);
-        },
       });
     }
 
@@ -3338,6 +3519,24 @@ export default function ScheduleClient({
         logScheduleDebug('board.assign.attempt', assignDebug);
 
         const destination = installers.find((installer) => installer.id === destInstallerId)?.name ?? 'crew schedule';
+        const optimisticItemId = `tmp_${newId('sch')}`;
+        const optimisticItem: ScheduleItem = {
+          id: optimisticItemId,
+          installerId: destInstallerId,
+          projectId: job.projectId,
+          estimateId: job.estimateId,
+          sortIndex: destIndex,
+          scheduleStatus: 'TENTATIVE',
+          locked: false,
+          updatedAt: nowIso(),
+          itemType: 'job',
+          forecastStart: null,
+          forecastEndExclusive: null,
+          forecastDurationDays: Math.max(1, Math.round(job.durationHours / WORK_HOURS_PER_DAY)),
+          durationHoursOverride: job.durationHours,
+          mode: 'floating',
+          scheduledJobId: `tmp_job_${optimisticItemId}`,
+        };
         void runBoardChange(
           {
             projectId: job.projectId,
@@ -3348,6 +3547,13 @@ export default function ScheduleClient({
               laneId: destInstallerId,
               insertionIndex: destIndex,
             },
+            operation: {
+              projectId: job.projectId,
+              destinationLaneId: destInstallerId,
+              insertionIndex: destIndex,
+              itemTemplate: optimisticItem,
+            },
+            resourceLaneIds: [destInstallerId],
             retry: () => handleBoardDropRef.current(activeId, dropTarget),
           },
           (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: destIndex, force, today }),
@@ -3355,20 +3561,6 @@ export default function ScheduleClient({
             formatErrorToast: formatAssignMutationErrorToast,
             targetJobIds: [projectUuid],
             expectedCrewId: crewUuid,
-            optimistic: () => {
-              const checkpoint = captureV2LocalCheckpoint();
-              const optimisticItems = optimisticAssignUnscheduled(
-                scheduleItemsRef.current,
-                job,
-                destInstallerId,
-                destIndex,
-              );
-              const optimisticUnscheduled = unscheduledJobsSeedRef.current.filter(
-                (unscheduled) => unscheduled.id !== activeId,
-              );
-              applyV2OptimisticState(optimisticItems, optimisticUnscheduled);
-              return () => restoreV2LocalCheckpoint(checkpoint);
-            },
             onSuccess: (response) => logScheduleDebug('board.assign.success', { ...assignDebug, response }),
             onError: (error) => logScheduleDebug('board.assign.failure', { ...assignDebug, error: scheduleMutationErrorDebug(error) }),
           },
@@ -3410,14 +3602,20 @@ export default function ScheduleClient({
 
       if (sourceInstallerId === destInstallerId) {
         let crewUuid: string;
-        let movedItemUuid: string;
         try {
           crewUuid = uuidFromAppId(destInstallerId, 'crew');
-          movedItemUuid = uuidFromAppId(activeId, 'sch');
         } catch {
-          toast.error('Failed to map crew or schedule item ID for reorder.');
+          toast.error('Failed to map crew ID for reorder.');
           return;
         }
+        const resolveMovedItemUuid = () => {
+          const currentItem = scheduleItemsRef.current.find(
+            (candidate) => candidate.id === activeId ||
+              (candidate.itemType === 'job' && candidate.projectId === activeItem.projectId),
+          );
+          if (!currentItem) throw new Error('The scheduled job is no longer available.');
+          return uuidFromAppId(currentItem.id, 'sch');
+        };
         const ordered = nextDest.map((id) => {
           try {
             return uuidFromAppId(id, 'sch');
@@ -3437,7 +3635,7 @@ export default function ScheduleClient({
           overId: resolvedOverId,
           orderedItemIds: nextDest,
           orderedScheduleItemUuids: ordered,
-          movedScheduleItemUuid: movedItemUuid,
+          movedScheduleItemUuid: activeId,
           drop: dropTarget.debug ?? null,
         };
         logScheduleDebug('board.reorder.attempt', reorderDebug);
@@ -3454,12 +3652,19 @@ export default function ScheduleClient({
               laneId: destInstallerId,
               insertionIndex: insertAt,
             },
+            operation: {
+              projectId: activeItem.projectId,
+              scheduleItemId: activeItem.id,
+              destinationLaneId: destInstallerId,
+              insertionIndex: insertAt,
+            },
+            resourceLaneIds: [destInstallerId],
             retry: () => handleBoardDropRef.current(activeId, dropTarget),
           },
           (force) =>
             reorderScheduleItemsV2({
               crew_id: crewUuid,
-              item_id: movedItemUuid,
+              item_id: resolveMovedItemUuid(),
               new_position: insertAt,
               force,
               today,
@@ -3474,16 +3679,6 @@ export default function ScheduleClient({
                   ]
                 : undefined,
             expectedCrewId: crewUuid,
-            optimistic: () => {
-              const checkpoint = captureV2LocalCheckpoint();
-              const optimisticItems = optimisticReorderCrew(
-                scheduleItemsRef.current,
-                destInstallerId,
-                nextDest,
-              );
-              applyV2OptimisticState(optimisticItems, unscheduledJobsSeedRef.current);
-              return () => restoreV2LocalCheckpoint(checkpoint);
-            },
             onSuccess: (response) => logScheduleDebug('board.reorder.success', { ...reorderDebug, response }),
             onError: (error) => logScheduleDebug('board.reorder.failure', { ...reorderDebug, error: scheduleMutationErrorDebug(error) }),
           },
@@ -3533,6 +3728,13 @@ export default function ScheduleClient({
               laneId: destInstallerId,
               insertionIndex: insertAt,
             },
+            operation: {
+              projectId: activeItem.projectId,
+              scheduleItemId: activeItem.id,
+              destinationLaneId: destInstallerId,
+              insertionIndex: insertAt,
+            },
+            resourceLaneIds: [sourceInstallerId, destInstallerId],
             retry: () => handleBoardDropRef.current(activeId, dropTarget),
           },
           (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: insertAt, force, today }),
@@ -3542,18 +3744,6 @@ export default function ScheduleClient({
             requireSourceSchedule: true,
             expectedCrewId: crewUuid,
             expectedSourceCrewId: sourceCrewUuid,
-            optimistic: () => {
-              const checkpoint = captureV2LocalCheckpoint();
-              const optimisticItems = optimisticMoveBetweenCrews(
-                scheduleItemsRef.current,
-                activeId,
-                sourceInstallerId,
-                destInstallerId,
-                insertAt,
-              );
-              applyV2OptimisticState(optimisticItems, unscheduledJobsSeedRef.current);
-              return () => restoreV2LocalCheckpoint(checkpoint);
-            },
             onSuccess: (response) => logScheduleDebug('board.assign.success', { ...moveDebug, response }),
             onError: (error) => logScheduleDebug('board.assign.failure', { ...moveDebug, error: scheduleMutationErrorDebug(error) }),
           },
@@ -4040,13 +4230,13 @@ export default function ScheduleClient({
               ? `Saved · ${savedTime}`
               : 'Saved';
 
-  const boardInteractionDisabled =
+  const boardMoveDisabled =
     scheduleMode === 'v2' &&
     (foreignPendingMutationCount > 0 ||
       scheduleTrust.status === 'saving' ||
       scheduleTrust.status === 'refreshing' ||
       scheduleTrust.status === 'stale');
-  const boardInteractionDisabledReason =
+  const boardMoveDisabledReason =
     foreignPendingMutationCount > 0 || scheduleTrust.status === 'saving'
       ? 'Another schedule change is still saving.'
       : scheduleTrust.status === 'stale'
@@ -4054,6 +4244,18 @@ export default function ScheduleClient({
         : scheduleTrust.status === 'refreshing'
           ? 'Wait for the saved schedule to finish refreshing.'
           : undefined;
+  const boardActionDisabled = boardMoveDisabled || boardCommandSnapshot.pendingIds.length > 0;
+  const boardActionDisabledReason = boardMoveDisabledReason ?? (
+    boardCommandSnapshot.pendingIds.length > 0
+      ? 'Placement changes are saving in the background.'
+      : undefined
+  );
+  const blockedBoardLaneIds = [...boardCommandSnapshot.blockedResources]
+    .filter((resource) => resource.startsWith('lane:'))
+    .map((resource) => resource.slice('lane:'.length));
+  const blockedBoardProjectIds = [...boardCommandSnapshot.blockedResources]
+    .filter((resource) => resource.startsWith('project:'))
+    .map((resource) => resource.slice('project:'.length));
 
   if (scheduleMode === 'legacy') {
     return (
@@ -4299,10 +4501,15 @@ export default function ScheduleClient({
             onShowCompletedChange={handleShowCompletedChange}
             onDrop={handleBoardDrop}
             interaction={{
-              disabled: boardInteractionDisabled,
-              reason: boardInteractionDisabledReason,
+              moveDisabled: boardMoveDisabled,
+              actionDisabled: boardActionDisabled,
+              moveDisabledReason: boardMoveDisabledReason,
+              actionDisabledReason: boardActionDisabledReason,
+              blockedLaneIds: blockedBoardLaneIds,
+              blockedProjectIds: blockedBoardProjectIds,
             }}
             mutationNotice={boardMutationNotice.notice}
+            mutationNotices={boardMutationNotice.notices}
             buildJobMenuActions={buildJobMenuActions}
             buildDowntimeMenuActions={buildDowntimeMenuActions}
           />

@@ -122,6 +122,8 @@ export function boardEdgeScrollDelta(position: number, start: number, end: numbe
 
 export function useScheduleBoardDragController(input: {
   interactionDisabled: boolean;
+  blockedDragIds?: ReadonlySet<string>;
+  blockedLaneIds?: ReadonlySet<string>;
   visibleInstallerIds: string[];
   laneItems: Map<string, ScheduleItem[]>;
   scheduleItemById: Map<string, ScheduleItem>;
@@ -178,7 +180,10 @@ export function useScheduleBoardDragController(input: {
       unscheduledRect: geometry.unscheduledRect,
       allowedLaneIds,
     });
-    const resolvedLaneId = target.valid && target.kind === 'lane' ? target.laneId : null;
+    const scopedTarget = target.valid && target.kind === 'lane' && input.blockedLaneIds?.has(target.laneId)
+      ? { valid: false, kind: 'none', overId: target.overId, reason: 'restricted' } as const
+      : target;
+    const resolvedLaneId = scopedTarget.valid && scopedTarget.kind === 'lane' ? scopedTarget.laneId : null;
     const targetLaneRect = resolvedLaneId
       ? geometry.lanes.find((lane) => lane.id === resolvedLaneId)?.rect ?? null
       : null;
@@ -186,20 +191,20 @@ export function useScheduleBoardDragController(input: {
       activeId,
       rawOverId: eventOverId,
       sourceLaneId,
-      resolvedKind: target.kind,
+      resolvedKind: scopedTarget.kind,
       resolvedLaneId,
-      insertionIndex: target.valid && target.kind === 'lane' ? target.insertionIndex : null,
-      placement: target.valid && target.kind === 'lane' ? target.placement : null,
-      resolvedOverId: target.overId,
+      insertionIndex: scopedTarget.valid && scopedTarget.kind === 'lane' ? scopedTarget.insertionIndex : null,
+      placement: scopedTarget.valid && scopedTarget.kind === 'lane' ? scopedTarget.placement : null,
+      resolvedOverId: scopedTarget.overId,
       point,
       activeRect: dragRectFromEvent(event),
       targetLaneRect,
       unscheduledRect: geometry.unscheduledRect,
       laneItemCounts: Object.fromEntries(geometry.lanes.map((lane) => [lane.id, lane.itemIds.length])),
-      reason: target.valid ? undefined : target.reason,
+      reason: scopedTarget.valid ? undefined : scopedTarget.reason,
     };
-    return { target, debug };
-  }, [input.scheduleItemById, measureGeometry]);
+    return { target: scopedTarget, debug };
+  }, [input.blockedLaneIds, input.scheduleItemById, measureGeometry]);
 
   const applyDropTarget = useCallback((target: BoardDropTarget, debug: ScheduleBoardDropDebug, phase: 'over' | 'move') => {
     renderedTargetRef.current = { target, debug };
@@ -234,6 +239,7 @@ export function useScheduleBoardDragController(input: {
   const handleDragStart = useCallback((event: DragStartEvent) => {
     if (input.interactionDisabled) return;
     const activeId = String(event.active.id);
+    if (input.blockedDragIds?.has(activeId)) return;
     activeDragIdRef.current = activeId;
     latestMoveEventRef.current = null;
     dragGeometryRef.current = measureGeometry();
@@ -241,7 +247,7 @@ export function useScheduleBoardDragController(input: {
     lastDropTargetSignatureRef.current = null;
     setActiveDragId(activeId);
     setBoardDropTarget(null);
-  }, [input.interactionDisabled, measureGeometry]);
+  }, [input.blockedDragIds, input.interactionDisabled, measureGeometry]);
 
   const scheduleRemeasure = useCallback(() => {
     if (remeasureFrameRef.current !== null) window.cancelAnimationFrame(remeasureFrameRef.current);

@@ -547,7 +547,12 @@ describe('ScheduleBoardView', () => {
     const rendered = renderIntoDocument(
       <ScheduleBoardView
         {...baseProps({
-          interaction: { disabled: true, reason: 'Another schedule change is still saving.' },
+          interaction: {
+            moveDisabled: true,
+            actionDisabled: true,
+            moveDisabledReason: 'Another schedule change is still saving.',
+            actionDisabledReason: 'Another schedule change is still saving.',
+          },
           onDrop,
         })}
       />,

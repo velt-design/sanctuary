@@ -47,15 +47,28 @@ affected job identities and dates are unchanged. Cancellation or a changed
 second preview restores the exact pre-change client state and refreshes the
 authoritative snapshot.
 
-Optimistic Board/Gantt changes use one owner-aware lifecycle:
+Gantt and non-placement Schedule changes use one owner-aware lifecycle. Mounted
+Board placement changes additionally use a resource-scoped optimistic command
+controller:
 
-- Keep at most one Schedule mutation in flight across mounted/remounted client
-  instances. A new instance remains read-only while another owner is saving.
+- Board assign, reorder, cross-crew move, and unschedule intent is applied
+  immediately. Commands for disjoint crews may persist concurrently; commands
+  sharing a project or source/destination crew queue in intent order.
+- Keep a confirmed local base separate from the visible optimistic layer. Merge
+  every validated response into that base, then replay all newer intent in
+  sequence so an older or out-of-order response cannot rewind a later drop.
+- A definitive Board rejection removes only that command and rebases later
+  intent over confirmed truth. A commit-ambiguous Board command retains its
+  placement through two bounded reads; an unverifiable result blocks only its
+  project and affected lane resources while unrelated crews remain movable.
+- A separately mounted/remounted Schedule client has no component-local intent
+  layer, so it remains read-only while another owner is saving and reconciles
+  after that owner settles.
 - Acquire that mutation owner and cancel active Board/Gantt reads before
-  applying optimism, so a rejected second action never flashes on screen.
-- Capture the complete affected local Schedule state before optimistic work.
-- Roll back that checkpoint on rejection, cancelled impact confirmation, or a
-  competing local action.
+  persistence starts. Board optimism is already visible before a queued command
+  starts; Gantt and non-placement commands retain their checkpoint lifecycle.
+- Capture the complete affected local Schedule state for commands outside the
+  Board placement controller and roll it back on rejection or cancellation.
 - Keep unconfirmed optimistic state component-local rather than publishing it
   into shared React Query caches.
 - Stamp Board and Gantt reads separately when they start. Within each view,
@@ -73,12 +86,13 @@ Optimistic Board/Gantt changes use one owner-aware lifecycle:
   command. Remove incompatible caches so they cannot cross views.
 - Block Board/Gantt view changes while a command or confirmation is pending.
 - Claim success only after the staff API explicitly returns `ok: true`.
-- Keep failed/stale state visible in the page until a successful save or an
-  explicit refresh reconciles the server snapshot.
+- Keep failed/stale state visible until a successful save or explicit refresh
+  reconciles the server snapshot. Board placement recovery is card/lane scoped;
+  Gantt and other Schedule recovery may remain page scoped.
 - Treat network failures, HTTP 408/5xx responses, and malformed success
-  responses as commit-ambiguous: roll back the optimistic copy and refresh the
-  authoritative server state rather than claiming that the command failed to
-  save. HTTP 501 is the narrow exception because these routes return it only
+  responses as commit-ambiguous. Board retains and verifies its latest visual
+  placement; other mutations refresh authoritative state rather than claiming
+  failure. HTTP 501 is the narrow exception because these routes return it only
   when the required Schedule schema/RPC is unavailable before a commit starts.
 
 Queue reorder requests use exactly one strict mode: a complete ordered UUID
@@ -159,9 +173,11 @@ destination, falling back to the last visible valid cue only when end-event
 collision data disappears. The zero-based Schedule V2 command position is
 derived by the pure `scheduleBoardOrder.ts` owner after removing the moving
 card from its source lane. Same-position/unscheduled drops, hidden crews, and
-cross-crew downtime moves are rejected before a command. While any Schedule
-write or authoritative reconciliation is active, Board move and action
-controls are unavailable before activation. Routine checking, saving,
+cross-crew downtime moves are rejected before a command. Mounted Board
+placement gestures remain available while earlier placements persist:
+disjoint crew resources run concurrently and overlapping lane/project work
+queues and rebases. Non-placement Board actions retain their existing guarded
+lifecycle while placement commands are pending. Routine checking, saving,
 refreshing, saved, and verified state is deliberately silent on Board: the
 optimistic card position is the interaction feedback. A definitive rejection
 restores the checkpoint once and adds one concise Retry notice to the affected
@@ -169,12 +185,14 @@ card. A commit-ambiguous response keeps the card in its intended position while
 two bounded authoritative reads absorb a late server commit; matching server
 truth stays silent, different server truth is applied once with Retry, and an
 unavailable verification read keeps the optimistic position with one Refresh
-notice. These rules do not create browser Schedule truth: only validated
+notice and disables only the affected project/lane placement resources. These
+rules do not create browser Schedule truth: only validated
 command responses and authoritative snapshots settle persistence.
 `useScheduleBoardDragController.ts` owns gesture geometry and scroll behavior;
 `scheduleBoardPlacementIntent.ts` matches an exact lane/position against a V2
-snapshot, and `useScheduleBoardMutationNotice.ts` owns only the exceptional
-inline notice. Gantt
+snapshot, `scheduleBoardCommandController.ts` owns resource scheduling and
+ordered placement replay, and `useScheduleBoardMutationNotice.ts` owns only
+exceptional per-project inline notices. Gantt
 job bars are keyboard focusable and open the existing action dialog with
 Enter/Space. Dialog-level Enter/P shortcuts run only when the dialog itself is
 focused, so Enter on a quick-action button activates that button. Its
@@ -305,7 +323,7 @@ npm run test:portal:performance
 
 ## Verification
 
-Current local gate signal from 2026-07-31:
+Current local gate signal from 2026-08-01:
 
 ```bash
 npm run test:portal:schedule
@@ -314,16 +332,17 @@ npx playwright test playwright/portal.schedule-board-confidence-fixture.spec.ts 
 npx playwright test playwright/portal.schedule-board-confidence-fixture.spec.ts --project=portal-chromium --workers=1
 ```
 
-The focused Schedule gate currently passes 54 files and 413 tests, including
+The focused Schedule gate currently passes 55 files and 420 tests, including
 atomic Gantt adjustment, confirmed-preview continuity, stale-response
 rejection, strict affected-job confirmation/cancellation,
 cross-instance mutation ownership, malformed-response rejection, optimistic
 rollback/reconciliation, cache authority, nine-crew Board rendering,
 crew-filter persistence/fail-open recovery, hidden-lane exclusion,
 pointer-owned drop geometry, fresh release remeasurement, exhaustive insertion
-positions and cross-crew ordering, proportional
+positions and cross-crew ordering, rapid same-lane queuing, disjoint-crew
+concurrency, out-of-order response replay, proportional
 auto-scroll, blocked uncommittable gestures, grouped actions, silent normal
-Board persistence, action-required inline recovery, exact snapshot placement
+Board persistence, resource-scoped action-required recovery, exact snapshot placement
 matching, Board control semantics, shared job
 identity/search presentation, server-authoritative Gantt timing review,
 stale-impact disabling, bounded Gantt project loading, phone/zoom agenda mode,
@@ -350,8 +369,9 @@ callback is inert. Use `?view=board|gantt&scale=standard|large` for deterministi
 responsive and performance evidence without creating or mutating shared
 Schedule records. Board drops update fixture-only in-memory arrays so the
 rendered committed position can be asserted without any API/RPC call. Board
-additionally accepts `&state=failed|stale` to render the exceptional Retry and
-Refresh notices without a command; normal drops stay silent. Run
+additionally accepts `&state=failed|stale|slow` to render exceptional Retry and
+Refresh notices or silent background persistence without a command; normal
+drops stay silent. Run
 `playwright/portal.schedule-board-confidence-fixture.spec.ts` with the
 `portal-fixture` project for the six-width/200%-zoom, beginning/middle/end and
 cross-crew order, held-pointer drag, grouped-action, focus-return, no-write,
@@ -375,6 +395,12 @@ Manual Board checks:
 - Reorder jobs within a crew.
 - Move a job between crews.
 - Unschedule a job.
+- Keep one same-lane save slow, make another reorder immediately, and confirm
+  the latest order never rewinds while the second command waits its turn.
+- Keep two disjoint crew saves slow, resolve them in reverse order, and confirm
+  both placements stay visible and persist independently.
+- Force one lane into unverifiable recovery and confirm only its project/lane
+  is blocked while a different crew still accepts placement changes.
 - Cancel an affected-job confirmation and confirm the optimistic change rolls
   back.
 - Force one safe failure and confirm the persistent failure state offers a

@@ -14,9 +14,9 @@ export default async function ScheduleOpsFixturePage({
   const params = await searchParams;
   const initialView = params.view === 'gantt' ? 'gantt' : 'board';
   const scale = params.scale === 'large' ? 'large' : 'standard';
-  const supportedStates = new Set(['failed', 'stale']);
+  const supportedStates = new Set(['failed', 'stale', 'slow']);
   const initialState = supportedStates.has(params.state ?? '')
-    ? params.state as 'failed' | 'stale'
+    ? params.state as 'failed' | 'stale' | 'slow'
     : null;
 
   return (
