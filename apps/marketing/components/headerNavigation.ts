@@ -45,6 +45,7 @@ const primaryNavigationItems: readonly PrimaryNavigationItem[] = [
 const heroOverlayPaths = new Set([
   '/',
   '/home-guided',
+  '/home-project-finder',
   '/pergola-guides',
   '/pergolas-auckland',
   '/custom-pergolas-auckland',

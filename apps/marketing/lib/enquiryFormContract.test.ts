@@ -120,5 +120,17 @@ describe('enquiry form contract', () => {
       heading: 'Residential project',
       audience: '',
     });
+
+    expect(getEnquiryContextDisplay({
+      enquiryType: 'residential',
+      sourceExperience: 'project-finder-home-v1',
+      projectDirection: 'outdoor-room',
+      projectPriorities: ['entertaining', 'daylight'],
+    })).toEqual({
+      isVisible: true,
+      heading: 'Starting brief: A complete outdoor room',
+      audience:
+        'Priorities: Plan for cooking or entertaining, Keep natural light · Residential enquiry',
+    });
   });
 });

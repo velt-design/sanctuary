@@ -34,6 +34,14 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
   const sourceProduct = products.find(
     (product) => product.slug === enquiryContext.sourceProduct,
   );
+  const formContextKey = [
+    initialEnquiryType ?? 'chooser',
+    enquiryContext.sourceProject,
+    enquiryContext.sourceProduct,
+    enquiryContext.sourceExperience,
+    enquiryContext.projectDirection,
+    enquiryContext.projectPriorities?.join(','),
+  ].filter(Boolean).join('-');
 
   return (
     <main className="contact-page" data-contact-page>
@@ -72,7 +80,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
       <section className="contact-workspace" aria-label="Project enquiry">
         <div className="contact-shell contact-workspace__layout">
           <ContactEnquiryForm
-            key={`${initialEnquiryType ?? 'chooser'}-${enquiryContext.sourceProject ?? ''}-${enquiryContext.sourceProduct ?? ''}`}
+            key={formContextKey}
             initialEnquiryType={initialEnquiryType}
             initialContext={enquiryContext}
             sourceProjectLabel={sourceProject?.title}

@@ -28,9 +28,9 @@ import { projects } from '../../../data/projects';
 import { products } from '../../../data/products';
 import {
   getEnquiryContextProperties,
-  parseEnquiryContext,
   type EnquiryAudience,
 } from '../../../lib/enquiryContext';
+import { parseSubmittedEnquiryContext } from '../../../lib/enquirySubmissionContext';
 import { getServiceSupabase } from '@/lib/supabaseService';
 import {
   isAllowedMarketingOrigin,
@@ -320,33 +320,8 @@ export async function POST(req: Request) {
   const rawEnquiryContext = isPlainObject(payload.enquiryContext)
     ? payload.enquiryContext
     : {};
-  const parsedEnquiryContext = parseEnquiryContext(
-    {
-      enquiry_type: typeof rawEnquiryContext.enquiry_type === 'string'
-        ? rawEnquiryContext.enquiry_type
-        : undefined,
-      source_path: typeof rawEnquiryContext.source_path === 'string'
-        ? rawEnquiryContext.source_path
-        : undefined,
-      source_component: typeof rawEnquiryContext.source_component === 'string'
-        ? rawEnquiryContext.source_component
-        : undefined,
-      source_project: typeof rawEnquiryContext.source_project === 'string'
-        ? rawEnquiryContext.source_project
-        : undefined,
-      source_product: typeof rawEnquiryContext.source_product === 'string'
-        ? rawEnquiryContext.source_product
-        : undefined,
-      source_experience: typeof rawEnquiryContext.source_experience === 'string'
-        ? rawEnquiryContext.source_experience
-        : undefined,
-      source_pathway: typeof rawEnquiryContext.source_pathway === 'string'
-        ? rawEnquiryContext.source_pathway
-        : undefined,
-      source_focus: typeof rawEnquiryContext.source_focus === 'string'
-        ? rawEnquiryContext.source_focus
-        : undefined,
-    },
+  const parsedEnquiryContext = parseSubmittedEnquiryContext(
+    rawEnquiryContext,
     {
       projectSlugs: projects.map((project) => project.slug),
       productSlugs: products.map((product) => product.slug),

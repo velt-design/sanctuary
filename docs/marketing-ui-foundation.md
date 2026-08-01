@@ -388,6 +388,29 @@ embedded destination form as `source_experience`, `source_pathway` and
 All three additions are allowlisted, lower-case, non-personal and kept only as a
 complete group. Arbitrary values and partial guided attribution are discarded.
 
+The protected project-led visual finder lives at `/home-project-finder` and is
+owned by `apps/marketing/app/_home-project-finder/` with a thin public route
+entrypoint. It is a noindex/nofollow, root-canonical prototype, stays out of the
+sitemap and does not change the live `/` renderer. The route reuses the shared
+Foundation header, footer, actions, live Google review data, project catalogue,
+project media, consent owner and enquiry-context builder. Its route-owned hero,
+three image-led directions, optional six-priority brief and two governed project
+references per direction fail closed when referenced project data or media is
+missing. The three direction IDs and six priority IDs are closed values; the URL
+stores only a valid `project` and up to three canonical `priorities`, supports
+Back, Forward and refresh, and never stores visitor-entered text or PII.
+
+The client finder uses one accessible radio group, native checkboxes, a three-item
+selection ceiling, visible focus and one polite live region. A no-JavaScript
+fallback exposes all three service pathways and a direct enquiry action. Valid
+finder continuation may add `source_experience: project-finder-home-v1`, a closed
+`project_direction` and up to three closed `project_priorities` to contact links.
+The contact page repeats this governed starting brief visibly; unknown values are
+discarded. `project_finder_home_v1` analytics remain inactive until analytics
+consent and carry only closed direction, priority, component, project and
+destination values. The authoritative product and acceptance contract is
+`sanctuary-project-led-visual-finder-homepage-prototype.md`.
+
 The root reuses the Foundation page/actions, shared project catalogue, live
 Google rating, header/footer, consent owner and enquiry-context builder. A
 narrow client island owns radio state, optional session restoration and
@@ -464,6 +487,7 @@ Root height and overflow normalisation must preserve the shared mobile-menu and 
 - `npm run build:marketing`
 - `npx playwright test playwright/marketing.foundation.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.home-guided.spec.ts --config=playwright.marketing.config.ts`
+- `npx playwright test playwright/marketing.home-project-finder.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.homepage.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.projects.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.products.spec.ts --config=playwright.marketing.config.ts`

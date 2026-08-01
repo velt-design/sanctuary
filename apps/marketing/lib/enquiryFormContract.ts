@@ -4,6 +4,10 @@ import {
   isValidEnquiryEmail,
 } from './enquiryContactValidation';
 import type { EnquiryAudience, EnquiryContext } from './enquiryContext';
+import {
+  projectDirectionLabels,
+  projectPriorityLabels,
+} from './projectFinderContract';
 
 export type EnquiryFormField = 'enquiryType' | 'suburb' | 'message' | 'name' | 'phone' | 'email' | 'files';
 
@@ -86,12 +90,32 @@ export function getEnquiryContextDisplay(
   const itemLabel = projectLabel ? `Project: ${projectLabel}` : productLabel ? `Pergola option: ${productLabel}` : null;
   const audienceLabel = getEnquiryAudienceLabel(context.enquiryType);
   const isItemContext = Boolean(itemLabel);
+  const directionLabel = context.projectDirection
+    ? projectDirectionLabels[context.projectDirection]
+    : null;
+  const priorityLabel = context.projectPriorities?.length
+    ? `Priorities: ${context.projectPriorities
+      .map((priority) => projectPriorityLabels[priority])
+      .join(', ')}`
+    : null;
+  const finderDetailLabel = [
+    isItemContext ? directionLabel : null,
+    priorityLabel,
+    audienceLabel ? `${audienceLabel} enquiry` : null,
+  ].filter(Boolean).join(' · ');
 
   return {
-    isVisible: Boolean(isItemContext || audienceLabel),
-    heading: itemLabel ?? (audienceLabel ? `${audienceLabel} project` : ''),
-    audience: isItemContext
-      ? (audienceLabel ? `${audienceLabel} enquiry` : 'Choose a project type')
-      : '',
+    isVisible: Boolean(isItemContext || directionLabel || audienceLabel),
+    heading: itemLabel
+      ?? (directionLabel
+        ? `Starting brief: ${directionLabel}`
+        : audienceLabel
+          ? `${audienceLabel} project`
+          : ''),
+    audience: directionLabel
+      ? finderDetailLabel
+      : isItemContext
+        ? (audienceLabel ? `${audienceLabel} enquiry` : 'Choose a project type')
+        : '',
   };
 }
