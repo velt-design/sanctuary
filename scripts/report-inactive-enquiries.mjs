@@ -36,6 +36,19 @@ function parseDays(argv) {
   return days;
 }
 
+function parseOutputPath(argv) {
+  const value = argv.find((arg) => arg.startsWith('--output-json='))?.slice('--output-json='.length).trim();
+  if (!value) return null;
+
+  const outputPath = path.resolve(value);
+  const workspacePath = path.resolve(ROOT).toLowerCase();
+  const outputPathLower = outputPath.toLowerCase();
+  if (outputPathLower === workspacePath || outputPathLower.startsWith(`${workspacePath}${path.sep}`)) {
+    throw new Error('--output-json must point outside the repository so customer evidence cannot be committed.');
+  }
+  return outputPath;
+}
+
 function formatRows(rows) {
   return rows.map((row) => ({
     projectId: row.project_id,
@@ -52,7 +65,9 @@ function formatRows(rows) {
 }
 
 async function main() {
-  const days = parseDays(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const days = parseDays(argv);
+  const outputPath = parseOutputPath(argv);
   const asOf = new Date().toISOString();
   const supabase = createClient(
     process.env.SUPABASE_URL?.trim() || requiredEnv('NEXT_PUBLIC_SUPABASE_URL'),
@@ -72,7 +87,15 @@ async function main() {
   const rows = formatRows(Array.isArray(data) ? data : []);
   console.log(`Inactive Enquiry dry run - ${rows.length} project(s), more than ${days} days as of ${asOf}`);
   console.log('This command is read-only. Future Waiting projects require explicit review before closure.');
-  if (process.argv.includes('--json')) {
+  if (outputPath) {
+    fs.writeFileSync(
+      outputPath,
+      `${JSON.stringify({ generatedAt: asOf, inactiveDays: days, candidateCount: rows.length, rows }, null, 2)}\n`,
+      { encoding: 'utf8', flag: 'wx' },
+    );
+    console.log(`Exact evidence written to ${outputPath}`);
+  }
+  if (argv.includes('--json')) {
     console.log(JSON.stringify(rows, null, 2));
   } else if (rows.length) {
     console.table(rows);

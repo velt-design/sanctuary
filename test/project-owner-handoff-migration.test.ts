@@ -21,9 +21,6 @@ $$;
 create function auth.role() returns text language sql stable as $$
   select nullif(current_setting('request.jwt.claim.role', true), '')
 $$;
--- PGlite does not bundle pgcrypto; this test-only shim lets the report execute.
-create function public.digest(value text, algorithm text) returns bytea
-language sql immutable as $$ select decode(md5(value || algorithm), 'hex') $$;
 create table public.portal_users (user_id uuid primary key, role text not null);
 create function public.has_portal_access() returns boolean
 language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
@@ -132,8 +129,7 @@ create table public.deposit_invoices (
 );
 create table public.site_visit_events (
   project_id uuid references public.projects(id), created_at timestamptz,
-  updated_at timestamptz, confirmed_at timestamptz,
-  last_notified_at timestamptz
+  updated_at timestamptz
 );
 create table public.scheduled_jobs (
   job_id uuid references public.projects(id), created_at timestamptz,

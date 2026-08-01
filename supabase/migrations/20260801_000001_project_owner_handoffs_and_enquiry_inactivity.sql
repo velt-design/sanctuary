@@ -467,12 +467,7 @@ begin
     join enquiry_projects project on project.id = invoice.project_id
     union all
     select visit.project_id,
-      greatest(
-        visit.created_at,
-        visit.updated_at,
-        visit.confirmed_at,
-        visit.last_notified_at
-      ),
+      greatest(visit.created_at, visit.updated_at),
       'site_visit'
     from public.site_visit_events visit
     join enquiry_projects project on project.id = visit.project_id
@@ -549,15 +544,11 @@ begin
     activity.source,
     floor(extract(epoch from (p_as_of - activity.occurred_at)) / 86400)::integer,
     project.state = 'WAITING' and project.waiting_until > p_as_of,
-    encode(
-      digest(
-        project.id::text || ':' ||
-        activity.occurred_at::text || ':' ||
-        p_as_of::text || ':' ||
-        p_inactive_days::text,
-        'sha256'
-      ),
-      'hex'
+    md5(
+      project.id::text || ':' ||
+      activity.occurred_at::text || ':' ||
+      p_as_of::text || ':' ||
+      p_inactive_days::text
     )
   from enquiry_projects project
   join latest_activity activity on activity.project_id = project.id
