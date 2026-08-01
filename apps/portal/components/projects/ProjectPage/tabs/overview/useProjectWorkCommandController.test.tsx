@@ -556,7 +556,6 @@ describe("useProjectWorkCommandController", () => {
       }),
       configure: (value: ProjectWorkCommandController) => {
         value.setStateChoice("CLOSED");
-        value.setStateReason("  Timing no longer works.  ");
         value.setClosedOutcome("LOST_TIMING_DEFERRED");
         value.setClosedNote("  Revisit next season.  ");
       },
@@ -565,7 +564,7 @@ describe("useProjectWorkCommandController", () => {
         expectedRowVersion: 5,
         outcome: "LOST_TIMING_DEFERRED",
         note: "Revisit next season.",
-        cancellationReason: "Timing no longer works.",
+        cancellationReason: undefined,
       },
     },
     {
@@ -613,6 +612,23 @@ describe("useProjectWorkCommandController", () => {
       expectCommittedProjection(queryClient, nextProjection);
     },
   );
+
+  it("still requires a reason when cancelling a project", async () => {
+    renderController();
+
+    act(() => {
+      controller().setStateChoice("CLOSED");
+      controller().setClosedOutcome("CANCELLED");
+    });
+    await act(async () => {
+      await expect(controller().updateState()).resolves.toBe(false);
+    });
+
+    expect(controller().error).toBe(
+      "Record why the current work is being ended.",
+    );
+    expect(mocks.runProjectStateCommand).not.toHaveBeenCalled();
+  });
 
   it("records only the hidden manual Site Visit completion fact", async () => {
     const nextProjection = projection(workItem(), {

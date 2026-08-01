@@ -141,7 +141,7 @@ describe('POST /api/staff/v1/projects/[projectId]/state/commands', () => {
         command: 'CLOSE',
         commandId: COMMAND_ID,
         expectedRowVersion: 1,
-        outcome: 'LOST_NO_RESPONSE',
+        outcome: 'CANCELLED',
       },
       'A reason is required to cancel remaining project work',
       'REASON_REQUIRED',
@@ -157,7 +157,7 @@ describe('POST /api/staff/v1/projects/[projectId]/state/commands', () => {
       'A valid close outcome is required',
       'INVALID_COMMAND',
     ],
-  ])('enforces waiting and close reasons: %s', async (body, error, code) => {
+  ])('enforces required non-Lost reasons: %s', async (body, error, code) => {
     const response = await POST(request(body), CONTEXT);
 
     expect(response.status).toBe(400);
@@ -211,12 +211,25 @@ describe('POST /api/staff/v1/projects/[projectId]/state/commands', () => {
         commandId: COMMAND_ID,
         expectedRowVersion: 1,
         outcome: 'LOST_BUDGET_PRICE',
-        cancellationReason: 'Customer declined the proposal',
       }),
       CONTEXT,
     );
 
     expect(response.status).toBe(200);
+    expect(mocks.runProjectOperationalStateCommand).toHaveBeenCalledWith(
+      SUPABASE,
+      {
+        projectId: PROJECT_UUID,
+        commandId: COMMAND_ID,
+        command: 'CLOSE',
+        payload: {
+          expectedRowVersion: 1,
+          outcome: 'LOST_BUDGET_PRICE',
+          note: null,
+          cancellationReason: 'Project closed as Lost - Budget or price.',
+        },
+      },
+    );
     expect(mocks.recordMarketingConversionEvent).toHaveBeenCalledWith({
       type: 'marketing.project_lost',
       projectId: PROJECT_UUID,

@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-01 | Project Lost Close Reasons       | Promoted | Treat the selected structured Lost outcome as the business reason. Do not force staff to repeat it in free text; allow an optional note, derive a neutral server cancellation explanation for remaining work, and retain explicit reasons for Waiting, Cancelled, and Complete. |
 | 2026-08-01 | Schedule Board Intent Queue      | Promoted | Keep confirmed Schedule state separate from visible Board intent. Run disjoint crew placements concurrently, serialize overlapping project/lane resources, and replay every newer operation after validated responses or scoped rollback so response order cannot rewind staff intent. Ambiguous recovery blocks only affected resources; cross-instance clients remain read-only because they do not own the optimistic layer. |
 | 2026-08-01 | Schedule Board Silent Persistence | Promoted | Treat the placed card as normal Board feedback. Keep routine checking/saving/saved/reconciliation UI invisible, hold optimistic placement through ambiguous outcomes, compare bounded authoritative snapshots before applying one correction, and show one affected-card Retry or Refresh notice only when staff action is required. Preserve server-owned V2 truth, preview/re-preview, confirmation, and cross-instance mutation exclusion. |
 | 2026-08-01 | Marketing Project Switching      | Promoted | Keep desktop canonical project-detail transitions inside one mounted route owner: preserve rail DOM/state/focus, decode the responsive hero before commit, retain an intersecting hero anchor or align it below the fixed header, and capture only marked project Back/Forward entries before the framework remounts the dynamic route. Keep mobile, direct, refresh, modified-click and no-JavaScript navigation canonical. |
@@ -4585,3 +4586,26 @@ Why it mattered: The visible project image, rail position, filters and keyboard 
 Current guardrail: At desktop widths, keep canonical project-detail selection in one mounted client owner. Preserve real anchors and enhance only an unmodified primary click. Load the governed record and decode the exact responsive hero candidate before committing selection, History API state, runtime metadata and structured data. Preserve the hero viewport anchor when it intersects; otherwise align the new hero beneath the fixed header. Strip framework-private markers before calling its patched History API. Capture only explicitly marked project-detail Back/Forward entries before framework traversal, then synchronize pathname consumers without replacing the subtree. Keep rail DOM, filter state, internal scroll and focus intact. Mobile, direct loads, refresh, modified clicks and no-JavaScript access continue through canonical route documents.
 Promoted to: `docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/marketing/app/projects/ProjectDetailExperience.tsx`; `apps/marketing/lib/projectDetailNavigation.ts`; `playwright/marketing.projects-switching.spec.ts`
+
+### 2026-08-01 - Project Lost Close Reasons - Structured Outcome Is Sufficient
+
+Date: 2026-08-01
+Area: Project operational state and remaining-work cancellation
+Status: Promoted
+Decision or mistake: Closing a project with a structured Lost outcome also
+required staff to enter a separate cancellation reason, even though both fields
+described the same business decision.
+Why it mattered: The duplicate mandatory input slowed a routine state change
+without adding reliable operational truth and made the close control feel more
+burdensome than the business rule.
+Current guardrail: Treat the selected structured Lost outcome as the business
+reason. Keep one optional additional note for useful context and derive a
+neutral outcome-specific cancellation explanation on the server for remaining
+open work. Continue requiring explicit reasons for Waiting, Cancelled, and
+Complete so this convenience does not weaken unrelated state safeguards.
+Promoted to: `docs/project-work-items-and-follow-up.md`;
+`docs/projects-contacts-estimates-calculator.md`
+Related docs/tests:
+`apps/portal/lib/projects/workItems/closePolicy.test.ts`;
+`apps/portal/app/api/staff/v1/projects/[projectId]/state/commands/route.test.ts`;
+`apps/portal/components/projects/ProjectPage/tabs/overview/useProjectWorkCommandController.test.tsx`

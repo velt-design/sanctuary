@@ -15,6 +15,7 @@ import {
   Textarea,
 } from "@/components/ui/foundation";
 import ConfirmationCorrectionControls from "@/components/projects/workQueue/ConfirmationCorrectionControls.client";
+import { isProjectLostClosedOutcome } from "@/lib/projects/workItems/closePolicy";
 import { isDecisionReviewWorkItem } from "./projectWorkPresentation";
 import type { ProjectWorkCommandController } from "./useProjectWorkCommandController";
 import styles from "./ProjectWorkSection.module.css";
@@ -58,6 +59,9 @@ export default function ProjectWorkControls({
   siteVisitActionProminent?: boolean;
   onRefresh: () => void;
 }) {
+  const lostCloseSelected =
+    controller.stateChoice === "CLOSED" &&
+    isProjectLostClosedOutcome(controller.closedOutcome);
   const reviewItem =
     controller.primaryItem && isDecisionReviewWorkItem(controller.primaryItem)
       ? controller.primaryItem
@@ -205,22 +209,24 @@ export default function ProjectWorkControls({
                   ))}
                 </Select>
               ) : null}
-              <Textarea
-                label={
-                  controller.stateChoice === "ACTIVE"
-                    ? "Reason (optional)"
-                    : "Reason"
-                }
-                value={controller.stateReason}
-                maxLength={500}
-                disabled={controller.pending || controller.stale}
-                onChange={(event) =>
-                  controller.setStateReason(event.target.value)
-                }
-              />
+              {!lostCloseSelected ? (
+                <Textarea
+                  label={
+                    controller.stateChoice === "ACTIVE"
+                      ? "Reason (optional)"
+                      : "Reason"
+                  }
+                  value={controller.stateReason}
+                  maxLength={500}
+                  disabled={controller.pending || controller.stale}
+                  onChange={(event) =>
+                    controller.setStateReason(event.target.value)
+                  }
+                />
+              ) : null}
               {controller.stateChoice === "CLOSED" ? (
                 <Textarea
-                  label="Outcome note (optional)"
+                  label="Additional note (optional)"
                   value={controller.closedNote}
                   maxLength={1000}
                   disabled={controller.pending || controller.stale}

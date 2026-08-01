@@ -434,6 +434,32 @@ describe("ProjectWorkSection", () => {
     );
   });
 
+  it("uses the selected Lost outcome without requiring duplicate reason text", () => {
+    const rendered = renderV2(projection(), false, "new");
+    const manage = Array.from(
+      rendered.container.querySelectorAll("button"),
+    ).find((button) => button.textContent === "Manage project work")!;
+    act(() => manage.click());
+
+    const stateSelect = Array.from(
+      rendered.container.querySelectorAll<HTMLSelectElement>("select"),
+    ).find((select) => select.labels?.[0]?.textContent === "State")!;
+    act(() => {
+      stateSelect.value = "CLOSED";
+      stateSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    expect(rendered.container.textContent).toContain("Lost — no response");
+    expect(rendered.container.textContent).toContain(
+      "Additional note (optional)",
+    );
+    expect(
+      Array.from(rendered.container.querySelectorAll("label")).some(
+        (label) => label.textContent === "Reason",
+      ),
+    ).toBe(false);
+  });
+
   it.each([
     {
       state: "Waiting",
