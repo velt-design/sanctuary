@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import type { Project } from '@/data/projects';
 import { buildEnquiryHref } from '@/lib/enquiryContext';
-import DesktopCollectionProjectDetail from './DesktopCollectionProjectDetail';
 import ProjectDetailContent from './ProjectDetailContent';
 import ProjectDetailExperience from './ProjectDetailExperience';
 import ProjectNavigator from './ProjectNavigator';
@@ -78,7 +77,6 @@ export default function ProjectsExperience({
           collectionMode
           initialSearchParams={initialSearchParams}
         />
-        <DesktopCollectionProjectDetail initialSlug={selectedProject.slug} />
       </div>
       <section
         className="projects-experience__collection-close"

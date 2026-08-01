@@ -250,7 +250,11 @@ and empty states, URL reset, refresh and Back, one semantic image-led card
 tree, canonical destinations, native disclosure semantics, visible focus,
 minimum 44 pixel targets, responsive sizes, focal points, lazy loading,
 reserved image geometry, absence of hidden case-study markup or media requests,
-payload size and desktop rail regression. The detail lane verifies one visible
+payload size, a one-column collection below 900px, a two-column grid from
+900px and a three-column default grid from 1200px, consistent 4:5 frames,
+the four-stop Card size control at useful desktop widths, its responsive
+four/five-column cap and local preference restoration, and the final enquiry
+section at every width. The detail lane verifies one visible
 H1 and logical heading order, early and final contact actions, loaded and
 intentionally framed hero media, mobile height budgets, native server-rendered
 disclosures, selector focus and scroll behavior, one native horizontal gallery

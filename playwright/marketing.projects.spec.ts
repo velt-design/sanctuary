@@ -137,15 +137,13 @@ test('projects index preserves a canonical collection route and legacy query sel
 
   await expect(page.locator('h1:visible')).toHaveCount(1);
   await expect(page.locator('h1:visible')).toHaveText('Pergola projects and case studies');
-  await expect(page.locator('[data-project-case-study]:visible')).toHaveAttribute(
-    'data-project-case-study',
-    projects[3].slug,
-  );
+  await expect(page.locator('[data-project-case-study]')).toHaveCount(0);
+  await expect(visibleProjectCards(page)).toHaveCount(projects.length);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     'href',
     `${publicOrigin}/projects`,
   );
-  await expect(page.locator('[data-project-collection-cta]')).toBeHidden();
+  await expect(page.locator('[data-project-collection-cta]')).toBeVisible();
 
   const schemas = await page.locator('script[type="application/ld+json"]').allTextContents();
   const parsedSchemas = schemas.flatMap((schema) => {
@@ -228,10 +226,11 @@ test('mobile project index is one image-led semantic card sequence at every targ
     const mediaBox = await firstMedia.boundingBox();
     expect(mediaBox?.height ?? 0).toBeCloseTo((mediaBox?.width ?? 0) * 1.25, 0);
     const firstImage = firstMedia.locator('img');
-    await expect(firstImage).toHaveAttribute('loading', 'lazy');
+    await expect(firstImage).not.toHaveAttribute('loading', 'lazy');
+    await expect(cards.nth(1).locator('img')).toHaveAttribute('loading', 'lazy');
     await expect(firstImage).toHaveAttribute(
       'sizes',
-      '(max-width: 899px) calc(100vw - 2.5rem), 1px',
+      '(max-width: 899px) calc(100vw - 2.5rem), (max-width: 1199px) calc((100vw - 6rem) / 2), min(30vw, 32rem)',
     );
     await expect(firstImage).toHaveCSS(
       'object-position',
@@ -854,38 +853,196 @@ test('desktop navigator filters projects, remains sticky, and supports list keyb
   }
 });
 
-test('desktop index retains the case-study rail without eagerly loading mobile card media', async ({
+test('project index becomes a capped responsive editorial grid with substantial imagery', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto('/projects', { waitUntil: 'networkidle' });
+  test.slow();
+
+  for (const { width, columns } of [
+    { width: 768, columns: 1 },
+    { width: 900, columns: 2 },
+    { width: 1024, columns: 2 },
+    { width: 1199, columns: 2 },
+    { width: 1200, columns: 3 },
+    { width: 1440, columns: 3 },
+    { width: 1920, columns: 3 },
+  ]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto('/projects', { waitUntil: 'domcontentloaded' });
+    await dismissConsent(page);
+    const main = visibleProjectsMain(page);
+    const navigator = main.locator('.project-navigator--collection');
+    const cards = visibleProjectCards(page);
+    const collectionCta = main.locator('[data-project-collection-cta]');
+
+    await expect(navigator).toBeVisible();
+    await expect(navigator).toHaveCSS('position', 'static');
+    await expect(main.locator('h1:visible')).toHaveText(
+      'Pergola projects and case studies',
+    );
+    await expect(main.locator('.project-case-study')).toHaveCount(0);
+    await expect(main.locator('.project-navigator__trigger')).toHaveCount(0);
+    await expect(cards).toHaveCount(projects.length);
+    await expect(collectionCta).toBeVisible();
+
+    const geometry = await cards.evaluateAll((elements) => elements
+      .slice(0, 4)
+      .map((element) => {
+        const bounds = element.getBoundingClientRect();
+        return { x: bounds.x, y: bounds.y, width: bounds.width };
+      }));
+    expect(geometry).toHaveLength(4);
+    const sameRow = (left: number, right: number) => Math.abs(left - right) <= 2;
+    if (columns === 1) {
+      expect(sameRow(geometry[0]!.y, geometry[1]!.y)).toBe(false);
+    } else if (columns === 2) {
+      expect(sameRow(geometry[0]!.y, geometry[1]!.y)).toBe(true);
+      expect(sameRow(geometry[0]!.y, geometry[2]!.y)).toBe(false);
+    } else {
+      expect(sameRow(geometry[0]!.y, geometry[1]!.y)).toBe(true);
+      expect(sameRow(geometry[0]!.y, geometry[2]!.y)).toBe(true);
+      expect(sameRow(geometry[0]!.y, geometry[3]!.y)).toBe(false);
+    }
+    if (width >= 900) expect(geometry[0]!.width).toBeGreaterThan(320);
+
+    const firstMedia = cards.first().locator('[data-responsive-media] > div');
+    const mediaBox = await firstMedia.boundingBox();
+    expect(mediaBox?.height ?? 0).toBeCloseTo((mediaBox?.width ?? 0) * 1.25, 0);
+    const firstImage = firstMedia.locator('img');
+    await expect(firstImage).not.toHaveAttribute('loading', 'lazy');
+    if (width >= 900) {
+      await expect(cards.nth(1).locator('img')).not.toHaveAttribute('loading', 'lazy');
+      await expect(cards.nth(2).locator('img')).toHaveAttribute('loading', 'lazy');
+    } else {
+      await expect(cards.nth(1).locator('img')).toHaveAttribute('loading', 'lazy');
+    }
+    await expect(firstImage).toHaveAttribute(
+      'sizes',
+      '(max-width: 899px) calc(100vw - 2.5rem), (max-width: 1199px) calc((100vw - 6rem) / 2), min(30vw, 32rem)',
+    );
+
+    if (width >= 900) {
+      await expect(main.locator('[data-project-filter-disclosure] summary')).toBeHidden();
+      await expect(main.getByLabel('Filter by audience')).toBeVisible();
+      await expect(main.getByLabel('Filter by roof form')).toBeVisible();
+    }
+
+    const lastCard = await cards.last().boundingBox();
+    const collectionCtaBox = await collectionCta.boundingBox();
+    expect(lastCard).not.toBeNull();
+    expect(collectionCtaBox).not.toBeNull();
+    expect(collectionCtaBox!.y).toBeGreaterThan(lastCard!.y + lastCard!.height);
+
+    await cards.first().focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(cards.nth(1)).toBeFocused();
+    await expectNoPageOverflow(page);
+    await expectNoNestedVerticalScroll(page);
+  }
+});
+
+test('project collection remains complete and useful without JavaScript', async ({
+  browser,
+}, testInfo) => {
+  const baseURL = String(testInfo.project.use.baseURL);
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    viewport: { width: 1440, height: 900 },
+  });
+  const page = await context.newPage();
+  await page.goto(`${baseURL}/projects?audience=residential&form=gable`, {
+    waitUntil: 'domcontentloaded',
+  });
+  const main = visibleProjectsMain(page);
+  const residentialGables = projects.filter((project) => (
+    project.type === 'Residential' && project.roof === 'Gable'
+  ));
+
+  await expect(main.locator('h1')).toHaveText('Pergola projects and case studies');
+  await expect(visibleProjectCards(page)).toHaveCount(residentialGables.length);
+  await expect(main.locator('[data-project-case-study]')).toHaveCount(0);
+  await expect(main.getByLabel('Filter by audience')).toHaveValue('residential');
+  await expect(main.getByLabel('Filter by roof form')).toHaveValue('gable');
+  await expect(visibleProjectCards(page).first()).toHaveAttribute(
+    'href',
+    `/projects/${residentialGables[0]!.slug}`,
+  );
+  await expect(visibleProjectCards(page).first().locator('img')).toBeVisible();
+  await expect(main.locator('[data-project-collection-cta]')).toBeVisible();
+  await expect(main.locator('[data-project-card-size-control]')).toHaveCount(0);
+
+  const noScriptCards = await visibleProjectCards(page).evaluateAll((elements) => elements
+    .slice(0, 4)
+    .map((element) => {
+      const bounds = element.getBoundingClientRect();
+      return { x: bounds.x, y: bounds.y };
+    }));
+  expect(noScriptCards[0]!.y).toBeCloseTo(noScriptCards[1]!.y, 0);
+  expect(noScriptCards[0]!.y).toBeCloseTo(noScriptCards[2]!.y, 0);
+  expect(noScriptCards[0]!.y).not.toBeCloseTo(noScriptCards[3]!.y, 0);
+  await context.close();
+});
+
+test('desktop card-size slider snaps, caps density, and restores local preference', async ({
+  page,
+}) => {
+  test.slow();
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/projects', { waitUntil: 'domcontentloaded' });
   await dismissConsent(page);
   const main = visibleProjectsMain(page);
-  const navigator = main.locator('.project-navigator--collection');
-  const cards = main.locator('[data-project-card]');
+  const slider = main.getByLabel('Card size');
+  const cards = visibleProjectCards(page);
 
-  await expect(navigator).toBeVisible();
-  await expect(navigator).toHaveCSS('position', 'sticky');
-  await expect(main.locator('.project-case-study')).toBeVisible();
-  await expect(main.locator('.project-navigator__trigger')).toHaveCount(0);
-  await expect(main.locator('[data-project-filter-disclosure] summary')).toBeHidden();
-  await expect(main.getByLabel('Filter by audience')).toBeVisible();
-  await expect(cards).toHaveCount(projects.length);
-  expect((await cards.first().boundingBox())?.height ?? 0).toBeLessThanOrEqual(90);
+  await expect(slider).toBeHidden();
 
-  const cardImages = cards.locator('img');
-  await expect(cardImages).toHaveCount(projects.length);
-  expect(await cardImages.evaluateAll((images) => images.every((image) => {
-    const cardImage = image as HTMLImageElement;
-    return cardImage.loading === 'lazy'
-      && cardImage.sizes === '(max-width: 899px) calc(100vw - 2.5rem), 1px'
-      && cardImage.naturalWidth <= 1;
-  }))).toBe(true);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(slider).toBeVisible();
+  await expect(slider).toHaveValue('1');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Editorial, 3 columns');
 
-  await cards.first().focus();
-  await page.keyboard.press('ArrowDown');
-  await expect(cards.nth(1)).toBeFocused();
+  const expectColumns = async (columns: number) => {
+    const geometry = await cards.evaluateAll((elements, columnCount) => elements
+      .slice(0, columnCount + 1)
+      .map((element) => element.getBoundingClientRect().y), columns);
+    geometry.slice(1, columns).forEach((y) => {
+      expect(y).toBeCloseTo(geometry[0]!, 0);
+    });
+    expect(geometry[columns]).not.toBeCloseTo(geometry[0]!, 0);
+  };
+
+  await slider.focus();
+  await page.keyboard.press('End');
+  await expect(slider).toHaveValue('3');
+  await page.keyboard.press('Home');
+  await expect(slider).toHaveValue('0');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Showcase, 2 columns');
+  await expectColumns(2);
+
+  await slider.fill('2');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Compact, up to 4 columns');
+  await expectColumns(4);
+
+  await slider.fill('3');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Overview, up to 5 columns');
+  await expectColumns(4);
+  await expect(cards.first().locator('img')).toHaveAttribute(
+    'sizes',
+    '(max-width: 899px) calc(100vw - 2.5rem), (max-width: 1199px) calc((100vw - 6rem) / 2), (max-width: 1359px) min(30vw, 32rem), (max-width: 1599px) min(23vw, 24rem), min(18vw, 19rem)',
+  );
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(main.getByLabel('Card size')).toHaveValue('3');
+  await expectColumns(4);
+
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await expectColumns(5);
   await expectNoPageOverflow(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(main.getByLabel('Card size')).toBeHidden();
+  await expectColumns(1);
 });
 
 test('mobile navigator is a focus-managed modal sheet with reversible scroll lock', async ({ page }) => {

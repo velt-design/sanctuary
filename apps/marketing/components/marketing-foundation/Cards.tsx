@@ -11,6 +11,7 @@ type EditorialCardMedia = {
   alt: string;
   ratio?: MediaRatio;
   mobileRatio?: MediaRatio;
+  priority?: boolean;
   sizes?: string;
   objectPosition?: string;
   mobileObjectPosition?: string;

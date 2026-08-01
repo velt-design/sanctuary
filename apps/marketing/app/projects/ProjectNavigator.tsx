@@ -28,6 +28,16 @@ import {
   type ProjectAudienceFilter,
   type ProjectFilters,
 } from './projectFilters';
+import {
+  DEFAULT_PROJECT_CARD_SIZE,
+  PROJECT_CARD_SIZE_OPTIONS,
+  PROJECT_CARD_SIZE_STORAGE_KEY,
+  getProjectCardImageSizes,
+  getProjectCardSizeIndex,
+  getProjectCardSizeOption,
+  parseProjectCardSize,
+  type ProjectCardSize,
+} from './projectCardSize';
 import type { ProjectCollectionItem } from './projectCollection';
 import { getProjectFormLabel } from './projectPresentation';
 
@@ -60,7 +70,9 @@ export default function ProjectNavigator({
   );
   const [detailFormFilter, setDetailFormFilter] = useState(ALL_PROJECT_FILTERS);
   const [isOpen, setIsOpen] = useState(false);
-  const [isCompact, setIsCompact] = useState(false);
+  const [isCompact, setIsCompact] = useState<boolean | null>(null);
+  const [cardSize, setCardSize] = useState<ProjectCardSize>(DEFAULT_PROJECT_CARD_SIZE);
+  const [isCardSizeReady, setIsCardSizeReady] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -87,6 +99,7 @@ export default function ProjectNavigator({
   );
   const activeFilterCount = Number(filters.audience !== ALL_PROJECT_FILTERS)
     + Number(filters.form !== ALL_PROJECT_FILTERS);
+  const cardSizeOption = getProjectCardSizeOption(getProjectCardSizeIndex(cardSize));
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 899px)');
@@ -99,6 +112,21 @@ export default function ProjectNavigator({
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
+
+  useEffect(() => {
+    if (!collectionMode) return;
+
+    try {
+      const storedCardSize = parseProjectCardSize(
+        window.localStorage.getItem(PROJECT_CARD_SIZE_STORAGE_KEY),
+      );
+      if (storedCardSize) setCardSize(storedCardSize);
+    } catch {
+      // Storage can be unavailable in privacy-restricted browsing contexts.
+    }
+
+    setIsCardSizeReady(true);
+  }, [collectionMode]);
 
   useEffect(() => {
     if (collectionMode || !isCompact || !isOpen) return;
@@ -166,6 +194,14 @@ export default function ProjectNavigator({
       });
     });
   };
+  const updateCardSize = (nextCardSize: ProjectCardSize) => {
+    setCardSize(nextCardSize);
+    try {
+      window.localStorage.setItem(PROJECT_CARD_SIZE_STORAGE_KEY, nextCardSize);
+    } catch {
+      // The selected size still applies for this visit when storage is unavailable.
+    }
+  };
 
   const handleListKeyDown = (event: KeyboardEvent<HTMLOListElement>) => {
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
@@ -193,7 +229,7 @@ export default function ProjectNavigator({
     links[nextIndex]?.focus();
   };
 
-  const isModal = isCompact && !collectionMode;
+  const isModal = isCompact === true && !collectionMode;
   const filterControls = (
     <div className="project-navigator__filters" role="group" aria-label="Filter projects">
       <label>
@@ -300,14 +336,49 @@ export default function ProjectNavigator({
         </Disclosure>
       ) : filterControls}
 
-      <p className="project-navigator__result-count" aria-live="polite" aria-atomic="true">
-        Showing {filteredProjects.length} of {projects.length} projects
-      </p>
+      {collectionMode ? (
+        <div className="project-navigator__collection-tools">
+          <p className="project-navigator__result-count" aria-live="polite" aria-atomic="true">
+            Showing {filteredProjects.length} of {projects.length} projects
+          </p>
+          {isCardSizeReady ? (
+            <div className="project-card-size" data-project-card-size-control>
+              <div className="project-card-size__heading">
+                <label htmlFor="project-card-size">Card size</label>
+                <output htmlFor="project-card-size" aria-live="polite">
+                  {cardSizeOption.label}
+                </output>
+              </div>
+              <input
+                id="project-card-size"
+                type="range"
+                min="0"
+                max={PROJECT_CARD_SIZE_OPTIONS.length - 1}
+                step="1"
+                value={getProjectCardSizeIndex(cardSize)}
+                aria-valuetext={`${cardSizeOption.label}, ${cardSizeOption.description}`}
+                onChange={(event) => updateCardSize(
+                  getProjectCardSizeOption(Number(event.currentTarget.value)).value,
+                )}
+              />
+              <div className="project-card-size__stops" aria-hidden="true">
+                {PROJECT_CARD_SIZE_OPTIONS.map((option) => (
+                  <span key={option.value}>{option.label}</span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <p className="project-navigator__result-count" aria-live="polite" aria-atomic="true">
+          Showing {filteredProjects.length} of {projects.length} projects
+        </p>
+      )}
 
       <nav className="project-navigator__list-wrap" aria-label="Project case studies">
         {filteredProjects.length ? (
           <ol className="project-navigator__list" onKeyDown={handleListKeyDown}>
-            {filteredProjects.map((project) => {
+            {filteredProjects.map((project, filteredIndex) => {
               const isActive = project.slug === activeProject.slug;
 
               return (
@@ -326,7 +397,9 @@ export default function ProjectNavigator({
                         alt: project.heroImage.alt,
                         ratio: 'landscape',
                         mobileRatio: 'portrait',
-                        sizes: '(max-width: 899px) calc(100vw - 2.5rem), 1px',
+                        priority: filteredIndex === 0
+                          || (isCompact === false && filteredIndex === 1),
+                        sizes: getProjectCardImageSizes(cardSize),
                         objectPosition: project.heroImage.objectPosition ?? 'center',
                         mobileObjectPosition: project.heroImage.objectPosition ?? 'center',
                       }}
@@ -404,6 +477,7 @@ export default function ProjectNavigator({
       aria-label={collectionMode ? 'Browse and filter projects' : 'Project navigator'}
       data-project-navigator
       data-project-collection={collectionMode ? 'true' : undefined}
+      data-project-card-size={collectionMode ? cardSize : undefined}
     >
       {!collectionMode ? (
         <button
