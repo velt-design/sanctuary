@@ -166,10 +166,13 @@ complete through `6832a9dd`. The later
 `20260731000003_project_pipeline_accountability_reads.sql` is a separate
 read-only forward contract. Its exact SHA-256
 `4297d1acd87d9ec523b71d13e962379fe8a47f4c12393d9bb6ad028e75a00c0b`
-was rollback-rehearsed and applied only to positively identified staging.
-Anonymous readiness passed; an authenticated read-only check returned all 11
-projects with complete state context, all 11 from the unassigned-owner filter,
-and nine queue rows. Production is not upgraded by this evidence.
+was rollback-rehearsed and applied to positively identified staging. On
+2026-08-01 the same hash was rollback-rehearsed and applied to positively
+identified production after a completed physical backup check; its unique
+ledger version is recorded. Anonymous execution is denied. The immediate
+authenticated GET-only production rerun restored Projects from `503` to `200`
+and passed Projects, Dashboard, Work Queue, and Overview without a business
+data write.
 
 For a new environment, deploy the portfolio rollout first and the Pipeline
 Accountability read migration second because the matching application
