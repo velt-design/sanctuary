@@ -8,6 +8,7 @@ import {
   runProjectWorkItemCommand,
   type ProjectWorkMutationResponse,
 } from "@/lib/projects/workItems/client";
+import { isProjectLostClosedOutcome } from "@/lib/projects/workItems/closePolicy";
 import type {
   ProjectClosedOutcome,
   ProjectOperationalState,
@@ -277,7 +278,10 @@ export function useProjectWorkCommandController({
           }),
       );
     }
-    if (!stateReason.trim()) {
+    const lostClose =
+      stateChoice === "CLOSED" &&
+      isProjectLostClosedOutcome(closedOutcome);
+    if (!stateReason.trim() && !lostClose) {
       setError("Record why the current work is being ended.");
       return false;
     }
@@ -306,7 +310,7 @@ export function useProjectWorkCommandController({
       command: "CLOSE",
       outcome: closedOutcome,
       note: closedNote.trim() || undefined,
-      cancellationReason: stateReason.trim(),
+      cancellationReason: stateReason.trim() || undefined,
     };
     return commitCommand(projectCommandIntent("CLOSE", payload), (commandId) =>
       runProjectStateCommand(projectId, {

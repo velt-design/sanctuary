@@ -5,6 +5,10 @@ import {
   recordMarketingConversionEvent,
 } from '@/lib/marketingAttribution/server';
 import { runProjectOperationalStateCommand } from '@/lib/projects/workItems/commands';
+import {
+  defaultLostCloseCancellationReason,
+  isProjectLostClosedOutcome,
+} from '@/lib/projects/workItems/closePolicy';
 import { getAuthoritativeProjectWorkProjection } from '@/lib/projects/workItems/getAuthoritativeProjectWorkProjection';
 import {
   privateNoStore,
@@ -94,7 +98,14 @@ export async function POST(
       note: boundedText(body.note, 1000),
     });
   }
-  const cancellationReason = boundedText(body.cancellationReason, 500);
+  let cancellationReason = boundedText(body.cancellationReason, 500);
+  if (
+    command === 'CLOSE'
+    && isProjectLostClosedOutcome(payload.outcome)
+    && !cancellationReason
+  ) {
+    cancellationReason = defaultLostCloseCancellationReason(payload.outcome);
+  }
   if ((command === 'WAIT' || command === 'CLOSE') && !cancellationReason) {
     return workJsonError(
       'A reason is required to cancel remaining project work',

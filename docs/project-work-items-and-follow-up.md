@@ -106,7 +106,7 @@ Supported outcomes should remain deliberately small:
 - `Cancelled`
 - `Complete`
 
-Closing is a deliberate staff action. The proposed lead cadence never closes a project automatically.
+Closing is a deliberate staff action. For a structured `Lost` outcome, the selected outcome is the business reason and no duplicate free-text reason is required; staff may add an optional note when useful. The server records a neutral outcome-derived cancellation explanation for any remaining open work. `Cancelled`, `Complete`, and `Waiting` retain their explicit reason requirements. The proposed lead cadence never closes a project automatically.
 
 A later customer response may reopen the project as Active. Reopening preserves the last pipeline stage it genuinely reached.
 

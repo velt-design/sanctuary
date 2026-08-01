@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-01 | Project Lost Close Reasons       | Promoted | Treat the selected structured Lost outcome as the business reason. Do not force staff to repeat it in free text; allow an optional note, derive a neutral server cancellation explanation for remaining work, and retain explicit reasons for Waiting, Cancelled, and Complete. |
 | 2026-07-31 | Regional Marketing Tracking      | Promoted | Start optional categories denied, then enable both automatically only for an exact Vercel `NZ` country result. Non-NZ, missing, invalid, or failed geography remains denied behind the existing banner. Preserve every saved explicit choice, label attribution as `regional_default` versus `user_choice`, and keep the public page static by resolving the coarse region asynchronously through a private/no-store first-party endpoint. |
 | 2026-07-31 | Project Work Rollout Durability  | Promoted | A one-time rollout sentinel must outlive the rows it governs, including an empty cohort. Terminal legacy sources must be enforced at the database command boundary, and governed/append-only child guards must distinguish a real parent cascade from direct deletion so the confirmed admin project-delete path remains valid without opening child-row mutation. |
 | 2026-07-31 | Project Work Portfolio Adoption  | Promoted | Technical readiness is not operational adoption. Convert every existing project to Project Work V2 in one migration-first rollout, anchor its initial obligation to one rollout timestamp as if the project just entered its current detailed stage, preserve stronger V2 state/work and specialist facts, show five journey phases plus server-owned Active/Waiting/Closed/Archived state, and leave retired legacy task/action rows read-only with no application readers or writers. |
@@ -4338,3 +4339,26 @@ Promoted to: `docs/security-privacy-quality.md`;
 Related docs/tests: `apps/marketing/app/api/tracking-region/route.ts`;
 `apps/marketing/components/ConsentProvider.tsx`;
 `playwright/marketing.consent.spec.ts`
+
+### 2026-08-01 - Project Lost Close Reasons - Structured Outcome Is Sufficient
+
+Date: 2026-08-01
+Area: Project operational state and remaining-work cancellation
+Status: Promoted
+Decision or mistake: Closing a project with a structured Lost outcome also
+required staff to enter a separate cancellation reason, even though both fields
+described the same business decision.
+Why it mattered: The duplicate mandatory input slowed a routine state change
+without adding reliable operational truth and made the close control feel more
+burdensome than the business rule.
+Current guardrail: Treat the selected structured Lost outcome as the business
+reason. Keep one optional additional note for useful context and derive a
+neutral outcome-specific cancellation explanation on the server for remaining
+open work. Continue requiring explicit reasons for Waiting, Cancelled, and
+Complete so this convenience does not weaken unrelated state safeguards.
+Promoted to: `docs/project-work-items-and-follow-up.md`;
+`docs/projects-contacts-estimates-calculator.md`
+Related docs/tests:
+`apps/portal/lib/projects/workItems/closePolicy.test.ts`;
+`apps/portal/app/api/staff/v1/projects/[projectId]/state/commands/route.test.ts`;
+`apps/portal/components/projects/ProjectPage/tabs/overview/useProjectWorkCommandController.test.tsx`
