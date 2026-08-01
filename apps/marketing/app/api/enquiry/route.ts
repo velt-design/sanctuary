@@ -337,6 +337,15 @@ export async function POST(req: Request) {
       source_product: typeof rawEnquiryContext.source_product === 'string'
         ? rawEnquiryContext.source_product
         : undefined,
+      source_experience: typeof rawEnquiryContext.source_experience === 'string'
+        ? rawEnquiryContext.source_experience
+        : undefined,
+      source_pathway: typeof rawEnquiryContext.source_pathway === 'string'
+        ? rawEnquiryContext.source_pathway
+        : undefined,
+      source_focus: typeof rawEnquiryContext.source_focus === 'string'
+        ? rawEnquiryContext.source_focus
+        : undefined,
     },
     {
       projectSlugs: projects.map((project) => project.slug),

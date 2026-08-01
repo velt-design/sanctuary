@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { faqItems } from '../apps/marketing/app/pergolas-auckland/content';
 
 const route = '/pergolas-auckland';
 const title = 'Pergolas Auckland | Design, Build & Installation';
@@ -68,7 +69,9 @@ for (const viewport of viewports) {
     await expect(main.locator('#acrylic-enquiry-roof')).toHaveValue('');
     await expect(page.getByRole('button', { name: 'Send project brief' })).toBeVisible();
     await expect(main.locator('.acrylic-project-card img')).toHaveCount(3);
-    await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(5);
+    await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(
+      faqItems.length,
+    );
     await expect(
       main.getByRole('navigation', { name: 'Pergola guide progression' }),
     ).toHaveCount(0);

@@ -305,6 +305,89 @@ either case study, carry its canonical slug and validated audience into
 second or third question, scoring, free-text URL state or automated
 recommendation is present.
 
+That one-question limit remains the production `/` contract. The explicitly
+requested comparison route `/home-journey` is a separate, noindex guided-home
+experiment owned by `apps/marketing/app/home-journey/`; it is self-contained,
+canonicalises to `/`, stays out of the sitemap and does not change or duplicate
+the approved root implementation. It shows one question at a time and branches
+through two or three closed answers into eight deterministic directions:
+insulated or daylight-first simple home cover; acrylic, timber-lined or mixed
+material outdoor room; professional, hospitality or builder collaboration.
+Every direction is assembled from the shared project catalogue, exposes two
+static built references and fails closed if a governed record or image is
+missing. Project proof is deliberately not a second action: the completed path
+has one attributed enquiry action, plus low-emphasis Back and home utilities.
+
+The guided route uses the Foundation typography, colour, line, motion, focus
+and enquiry-context contracts but suppresses the global header and footer so
+their navigation and conversion actions do not compete with the active
+question. Its route-owned brand/progress bar is not a replacement global-header
+owner. The client controller owns only closed answer state and focus transfer;
+the server route resolves the governed model and noindex metadata. With
+JavaScript disabled, the interactive shell is replaced by a compact map of all
+eight directions and one direct enquiry link. `guided_home_v1` analytics record
+only the route view, closed question/answer/back values and final destination
+after analytics consent; pre-consent interactions are not backfilled.
+
+The staged guided-design-conversation programme begins at `/home-guided`.
+Its PR 1 baseline reuses the current homepage renderer inside the standard
+shared marketing header and footer, canonicalises to `/`, remains noindex and
+absent from the sitemap, and deliberately disables the production homepage
+interaction tracker. The live `/` route entrypoint and its current behaviour
+remain unchanged.
+
+PR 2 replaces only the experimental renderer's conversation section. Static
+question and result copy lives in `guidedConversationContent.ts`; pure state,
+validation and URL resolution live in `guidedConversationModel.ts` beside it.
+Together they validate closed URL state for 27 three-answer combinations
+across homeowner, business and professional branches and resolve five stable
+result routes. The client
+owner renders completed summaries plus only the active question or result,
+uses native same-document history for Back, Forward and refresh, and removes
+incompatible downstream answers when a summary is changed. Type-led controls
+reuse the production radio keyboard pattern with fieldset, legend, roving tab
+stop, Arrow, Home and End behavior, visible focus and one polite live region.
+The no-JavaScript layer contains five concise route links and no project
+gallery. `guided_design_conversation_home_v1` events use the shared
+consent owner and carry only closed answer, result, focus and destination
+values. PR 2 does not personalise destination pages or add image-led decision
+media; those remain PR 3 and PR 4 work under
+`sanctuary-guided-design-conversation-homepage.md`.
+
+PR 3 replaces the experimental route's inherited homepage sections with a
+route-owned guided opening. Question 1 sits inside the governed Warkworth hero;
+homeowner and business Question 2 choices use image-led cards; all other
+questions remain type-led. `guidedConversationMedia.ts` resolves every hero,
+choice and result image, alt, crop and attribution from the shared project
+catalogue and fails closed when a referenced project or gallery entry is
+missing. Only the active question or result mounts its branch media. Completed
+results show one built reference and one destination action. The route keeps
+the shared header, footer and mobile navigation, suppresses only the desktop
+header CTA on canonical `/home-guided`, and replaces the old homepage proof,
+capability, process and enquiry-close sections with a non-clickable reassurance
+rail. The live `/` renderer remains unchanged. The PR 3 mobile and desktop
+captures received explicit product-owner approval on 2026-08-01.
+
+PR 4 continues the completed recommendation on the five existing indexed
+landing routes. `guidedJourneyContext.ts` accepts only the closed focus, use,
+constraint, sector/role or stage/need values owned by the guided contract and
+returns one server-rendered context model; invalid, incomplete and duplicate
+values render no contextual layer. `GuidedJourneyContext.tsx` appears directly
+after the destination hero, adds no H1, repeats the visitor's selected starting
+point, states the relevant qualification and links back to the exact completed
+`/home-guided` state. Base canonicals do not change and direct entries remain
+complete. The existing landing-page project blocks keep three governed projects
+while the valid context may move the most relevant one first. Residential-cover
+evidence uses Dairy Flat Estate, Mt Maunganui Box and St Heliers Townhouse;
+outdoor-room, bespoke, commercial and professional evidence remains sourced
+from their governed page configs and `projects.ts`.
+
+The shared enquiry-context owner carries valid guided continuation through the
+embedded destination form as `source_experience`, `source_pathway` and
+`source_focus`, alongside the existing audience, route and component fields.
+All three additions are allowlisted, lower-case, non-personal and kept only as a
+complete group. Arbitrary values and partial guided attribution are discarded.
+
 The root reuses the Foundation page/actions, shared project catalogue, live
 Google rating, header/footer, consent owner and enquiry-context builder. A
 narrow client island owns radio state, optional session restoration and
@@ -374,10 +457,13 @@ Root height and overflow normalisation must preserve the shared mobile-menu and 
 - `npx vitest run apps/marketing/components/marketing-foundation/Primitives.test.tsx`
 - `npx vitest run apps/marketing/components/marketing-foundation/Interactions.test.tsx`
 - `npx vitest run apps/marketing/components/Header.test.tsx apps/marketing/components/headerNavigation.test.ts`
+- `npx vitest run apps/marketing/app/home-journey/journey.test.ts apps/marketing/components/marketingRouteChrome.test.ts`
+- `npx vitest run apps/marketing/app/_home-guided/guidedConversationModel.test.ts apps/marketing/app/_home-guided/guidedConversationMedia.test.ts apps/marketing/app/_home-guided/GuidedConversation.test.tsx apps/marketing/app/home-guided/page.test.tsx`
 - `npx tsc -p apps/marketing/tsconfig.json --noEmit --incremental false`
 - `npm run test:marketing:browser`
 - `npm run build:marketing`
 - `npx playwright test playwright/marketing.foundation.spec.ts --config=playwright.marketing.config.ts`
+- `npx playwright test playwright/marketing.home-guided.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.homepage.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.projects.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.products.spec.ts --config=playwright.marketing.config.ts`

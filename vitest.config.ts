@@ -17,6 +17,8 @@ export default defineConfig({
       { find: '@/lib/enquiryStoredAttachments', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquiryStoredAttachments.ts') },
       { find: '@/lib/enquiryIntake', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquiryIntake.ts') },
       { find: '@/lib/enquiryContext', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquiryContext.ts') },
+      { find: '@/lib/guidedJourneyContract', replacement: path.resolve(__dirname, 'apps/marketing/lib/guidedJourneyContract.ts') },
+      { find: '@/lib/guidedJourneyContext', replacement: path.resolve(__dirname, 'apps/marketing/lib/guidedJourneyContext.ts') },
       { find: '@/lib/enquirySourceContext.server', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquirySourceContext.server.ts') },
       { find: '@/lib/marketingPublicRequest', replacement: path.resolve(__dirname, 'apps/marketing/lib/marketingPublicRequest.ts') },
       { find: '@/lib/marketingConversionDelivery', replacement: path.resolve(__dirname, 'apps/marketing/lib/marketingConversionDelivery.ts') },

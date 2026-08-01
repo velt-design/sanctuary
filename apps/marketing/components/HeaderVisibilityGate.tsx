@@ -2,31 +2,16 @@
 
 import { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
+import { shouldHideMarketingHeader } from './marketingRouteChrome';
 
 type HeaderVisibilityGateProps = {
   children: ReactNode;
 };
 
-function shouldHideHeader(pathname: string | null): boolean {
-  if (!pathname) return false;
-  return (
-    pathname === '/quote' ||
-    pathname.startsWith('/quote/') ||
-    pathname === '/invoice' ||
-    pathname.startsWith('/invoice/') ||
-    pathname === '/staff' ||
-    pathname.startsWith('/staff/') ||
-    pathname === '/admin' ||
-    pathname.startsWith('/admin/') ||
-    pathname === '/pricebook' ||
-    pathname.startsWith('/pricebook/')
-  );
-}
-
 export default function HeaderVisibilityGate({ children }: HeaderVisibilityGateProps) {
   const pathname = usePathname();
 
-  if (shouldHideHeader(pathname)) return null;
+  if (shouldHideMarketingHeader(pathname)) return null;
 
   return <>{children}</>;
 }

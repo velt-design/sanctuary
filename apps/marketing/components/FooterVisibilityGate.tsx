@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
+import { shouldHideMarketingFooter } from './marketingRouteChrome';
 
 type FooterVisibilityGateProps = {
   children: ReactNode;
@@ -10,19 +11,7 @@ type FooterVisibilityGateProps = {
 export default function FooterVisibilityGate({ children }: FooterVisibilityGateProps) {
   const pathname = usePathname();
 
-  if (
-    pathname === '/quote' ||
-    pathname.startsWith('/quote/') ||
-    pathname === '/invoice' ||
-    pathname.startsWith('/invoice/') ||
-    pathname === '/projects' ||
-    pathname === '/staff' ||
-    pathname.startsWith('/staff/') ||
-    pathname === '/admin' ||
-    pathname.startsWith('/admin/') ||
-    pathname === '/pricebook' ||
-    pathname.startsWith('/pricebook/')
-  ) {
+  if (shouldHideMarketingFooter(pathname)) {
     return null;
   }
 

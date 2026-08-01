@@ -160,6 +160,50 @@ The homepage lane identifies the current copy as
 matches and the closed-intent storage key remain unchanged; tests assert the
 v3 analytics property so results are not mixed with earlier copy variants.
 
+The staged guided-homepage programme has a separate focused lane:
+`npx playwright test playwright/marketing.home-guided.spec.ts --config=playwright.marketing.config.ts`.
+Its PR 1 baseline proves the preview is noindex, canonical to `/`, absent from
+the public sitemap, rendered inside the shared marketing shell and unable to
+emit production-home interaction events. PR 2 adds all 27 valid branches and
+five results, URL sanitisation, Back/Forward/refresh, earlier-answer clearing,
+destination links, 320px overflow and target checks, keyboard focus and live
+status, reduced motion, a five-link JavaScript-disabled fallback, consented and
+denied analytics, and duplicate-ID/page-error checks. The focused component
+and resolver lane is
+`npx vitest run apps/marketing/app/_home-guided/guidedConversationModel.test.ts apps/marketing/app/_home-guided/guidedConversationMedia.test.ts apps/marketing/app/_home-guided/GuidedConversation.test.tsx apps/marketing/app/home-guided/page.test.tsx`.
+PR 3 adds governed hero, choice and result media; active-branch-only image
+mounting; desktop CTA suppression limited to `/home-guided`; retained mobile
+navigation; one-H1 and in-viewport control bounds at 320, 360, 375, 390, 430,
+768, 1024 and 1440 pixels; hero priority, CLS, LCP and first-answer response
+budgets; and visual captures for the opening, homeowner
+image-led and type-led questions, recommendation, commercial path and
+professional path at 390 and 1440 pixels. Store review captures under
+`artifacts/guided-homepage-pr3/`. Product-owner approval of those captures is a
+hard gate before PR 4 destination context work. Approval was recorded on
+2026-08-01.
+
+PR 4 adds an exhaustive pure resolver matrix for all 27 destination contexts,
+safe rejection of invalid/incomplete/duplicate values, exact return-state
+restoration, governed project ordering and closed enquiry attribution. The
+focused browser lane visits all five destination families with representative
+valid context, requires the contextual layer to be the hero's next sibling,
+keeps one H1 and the base canonical, checks the first governed project and
+embedded form context, and covers invalid/direct visits plus destination
+refresh, Back, Forward and `Change answers`. The focused unit/API lane is:
+`npx vitest run apps/marketing/lib/guidedJourneyContext.test.ts apps/marketing/lib/enquiryContext.test.ts apps/marketing/components/seo-landing/seoLandingViewModel.test.ts apps/marketing/app/_home-guided/guidedConversationModel.test.ts apps/marketing/app/api/enquiry/route.test.ts`.
+Keep the production homepage lane green alongside both.
+
+The 2026-08-01 automated finishing pass recorded 408/408 marketing unit tests,
+23/23 guided-home browser tests, 27/27 production-homepage tests, 19/19
+residential/custom SEO-landing tests, 57/57 SEO-programme tests with one
+capture-only skip, and 9/9 mobile-content-density tests. Marketing typecheck,
+lint, the optimized production build, production-mode guided performance,
+architecture, dead-code and strict worktree-ownership checks were clean. The
+in-app Playwright review inspected representative continuation layouts at 390
+and 1440 pixels and found no console warnings or errors. These automated and
+agent-led checks do not fabricate participant evidence; any product research
+session in the specification remains a separate human usability activity.
+
 The internal `/__foundation/marketing` catalogue fails closed in production
 unless `ENABLE_MARKETING_FOUNDATION=true`. A full deployed browser sweep will
 therefore fail its 18 catalogue-only assertions by design. Report the public

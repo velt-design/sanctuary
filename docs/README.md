@@ -75,6 +75,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | `schedule.md` | Current | You are touching `/staff/schedule`, Schedule V2 APIs, Gantt, Board, Site Visits, or legacy fallback. |
 | `security-privacy-quality.md` | Current | You are touching tracking, consent, CSP, Lighthouse, audits, or quality gates. |
 | `marketing-ui-foundation.md` | Current marketing-only UI contract | You are changing the standalone internal marketing catalogue or an existing marketing consumer of its reusable primitives and patterns. It does not apply to the portal. |
+| `sanctuary-guided-design-conversation-homepage.md` | Active experimental-homepage specification | You are implementing or validating `/home-guided`, its five-result journey, or guided continuation on the five destination routes. |
 | `marketing-claims-register.md` | Current governance | You are writing or reviewing public marketing claims and need the approved, pending, or prohibited evidence boundary. |
 | `landing-pages/sanctuary-pergola-guide-ecosystem-roadmap.md` | Active implementation programme | You are changing the pergola-guide ecosystem's information architecture, implementation order, or goal status. |
 

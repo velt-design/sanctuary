@@ -4,6 +4,7 @@ import Link from 'next/link';
 import '@fontsource-variable/instrument-sans';
 import '@fontsource-variable/inter';
 import JsonLd from '@/components/JsonLd';
+import GuidedJourneyContext from '@/components/guided-journey/GuidedJourneyContext';
 import {
   Button,
   Container,
@@ -16,6 +17,11 @@ import {
 } from '@/components/marketing-foundation';
 import { projects } from '@/data/projects';
 import { pergolaGuideEditorialReview } from '@/data/pergolaGuides';
+import {
+  orderGuidedItemsBySlug,
+  resolveGuidedJourneyContext,
+  type GuidedJourneySearchParams,
+} from '@/lib/guidedJourneyContext';
 import { absoluteUrl } from '@/lib/seo';
 import AcrylicPergolaEnquiryForm from '../acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm';
 import MobileServiceDisclosure from './MobileServiceDisclosure';
@@ -63,12 +69,26 @@ export const metadata: Metadata = {
   },
 };
 
-const projectProof = residentialProjectProof.flatMap((proof) => {
+const baseProjectProof = residentialProjectProof.flatMap((proof) => {
   const project = projects.find((candidate) => candidate.slug === proof.slug);
   return project ? [{ ...proof, project }] : [];
 });
 
-export default function PergolasAucklandPage() {
+type PergolasAucklandPageProps = {
+  searchParams?: Promise<GuidedJourneySearchParams>;
+};
+
+export default async function PergolasAucklandPage({
+  searchParams,
+}: PergolasAucklandPageProps) {
+  const guidedContext = resolveGuidedJourneyContext(
+    'residential-cover',
+    searchParams ? await searchParams : {},
+  );
+  const projectProof = orderGuidedItemsBySlug(
+    baseProjectProof,
+    guidedContext?.preferredProjectSlugs,
+  );
   const breadcrumbSchema = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -175,6 +195,8 @@ export default function PergolasAucklandPage() {
           </ul>
         </Container>
       </section>
+
+      <GuidedJourneyContext context={guidedContext} />
 
       <Section
         id="design-brief"
@@ -442,7 +464,7 @@ export default function PergolasAucklandPage() {
         <Container width="wide">
           <AcrylicPergolaEnquiryForm
             initialEnquiryType="residential"
-            sourceContext={{
+            sourceContext={guidedContext?.enquiryContext ?? {
               enquiryType: 'residential',
               sourcePath: route,
               sourceComponent: 'embedded_form',

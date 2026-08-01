@@ -10,6 +10,8 @@ import type { SeoLandingBlock } from './types';
 import {
   buildGuideFirstLayer,
   orderSeoLandingBlocks,
+  prioritizeSeoLandingGuideFirstLayer,
+  prioritizeSeoLandingProjectEvidence,
 } from './seoLandingViewModel';
 
 const blocks = [
@@ -39,6 +41,36 @@ describe('orderSeoLandingBlocks', () => {
     expect(() => orderSeoLandingBlocks(blocks, blockOrder)).toThrow(
       'must reference every block exactly once',
     );
+  });
+});
+
+describe('guided project evidence', () => {
+  it('prioritizes matching governed projects without changing the authored set', () => {
+    const prioritized = prioritizeSeoLandingProjectEvidence(
+      outdoorRoomsConfig.blocks,
+      ['riverhead-gable-pavilion', 'warkworth-outdoor-room'],
+    );
+    const projects = prioritized.find(
+      ({ id }) => id === 'outdoor-room-projects',
+    );
+    expect(projects?.kind).toBe('projects');
+    if (projects?.kind !== 'projects') return;
+    expect(projects.items.map(({ slug }) => slug)).toEqual([
+      'riverhead-gable-pavilion',
+      'warkworth-outdoor-room',
+      'tindalls-bay-pavilion',
+    ]);
+    expect(outdoorRoomsConfig.blocks.find(
+      ({ id }) => id === 'outdoor-room-projects',
+    )).not.toBe(projects);
+  });
+
+  it('uses the first available preference for a guide first layer', () => {
+    expect(prioritizeSeoLandingGuideFirstLayer(
+      outdoorRoomsConfig.blocks,
+      outdoorRoomsConfig.guideFirstLayer,
+      ['unknown', 'riverhead-gable-pavilion'],
+    ).projectSlug).toBe('riverhead-gable-pavilion');
   });
 });
 
