@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { shouldPreserveProjectDetailScroll } from '@/lib/projectDetailNavigation';
 
 const SHOW_DELAY_MS = 150;
 const TRICKLE_INTERVAL_MS = 180;
@@ -146,6 +147,10 @@ export default function RouteProgress() {
       if (!(anchor instanceof HTMLAnchorElement)) return;
       if (anchor.target && anchor.target !== '_self') return;
       if (anchor.hasAttribute('download')) return;
+      if (
+        anchor.dataset.projectDetailSwitch === 'true'
+        && window.matchMedia('(min-width: 900px)').matches
+      ) return;
 
       const rawHref = anchor.getAttribute('href');
       if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('mailto:') || rawHref.startsWith('tel:')) return;
@@ -167,6 +172,14 @@ export default function RouteProgress() {
 
     const onPopState = () => {
       if (isIgnoredPath(window.location.pathname)) return;
+      if (
+        window.matchMedia('(min-width: 900px)').matches
+        && shouldPreserveProjectDetailScroll(
+          pathname,
+          window.location.pathname,
+          window.history.state,
+        )
+      ) return;
       startProgress();
     };
 
@@ -178,7 +191,7 @@ export default function RouteProgress() {
       window.removeEventListener('popstate', onPopState);
       clearAllTimers();
     };
-  }, [clearAllTimers, resetProgress, startProgress]);
+  }, [clearAllTimers, pathname, resetProgress, startProgress]);
 
   useEffect(() => {
     if (!mountedRef.current) {

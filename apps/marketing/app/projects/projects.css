@@ -245,6 +245,11 @@
   opacity: var(--motion-press-opacity);
 }
 
+.project-navigator__list a[data-project-switch-pending="true"] {
+  cursor: progress;
+  opacity: .62;
+}
+
 .project-navigator__list a.is-active {
   padding-left: .75rem;
   color: var(--color-text-primary);
@@ -992,6 +997,22 @@
     text-decoration: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 4px;
+  }
+}
+
+@media (min-width: 900px) {
+  /* Keep both scroll owners geometrically stable while project copy changes. */
+  .project-navigator__header h2 {
+    min-height: 2.1em;
+  }
+
+  .project-case-study__intro h1,
+  .project-case-study__intro h2 {
+    min-height: 1.88em;
+  }
+
+  .project-case-study__intro-copy > p {
+    min-height: 4.95em;
   }
 }
 

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { shouldPreserveProjectDetailScroll } from '@/lib/projectDetailNavigation';
 
 /**
  * Resets scroll position when the top-level route changes.
@@ -10,9 +11,21 @@ import { usePathname } from 'next/navigation';
  */
 export default function ScrollReset() {
   const pathname = usePathname();
+  const previousPathnameRef = useRef(pathname);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    const previousPathname = previousPathnameRef.current;
+    previousPathnameRef.current = pathname;
+    const preserveDesktopProjectPosition = window
+      .matchMedia('(min-width: 900px)').matches
+      && shouldPreserveProjectDetailScroll(
+        previousPathname,
+        pathname,
+        window.history.state,
+      );
+    if (preserveDesktopProjectPosition) return;
 
     const findHashTarget = () => {
       const rawId = window.location.hash.slice(1);

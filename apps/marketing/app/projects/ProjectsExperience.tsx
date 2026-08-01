@@ -3,6 +3,7 @@ import type { Project } from '@/data/projects';
 import { buildEnquiryHref } from '@/lib/enquiryContext';
 import DesktopCollectionProjectDetail from './DesktopCollectionProjectDetail';
 import ProjectDetailContent from './ProjectDetailContent';
+import ProjectDetailExperience from './ProjectDetailExperience';
 import ProjectNavigator from './ProjectNavigator';
 import { getProjectCollectionItems } from './projectCollection';
 import './projects.css';
@@ -48,55 +49,51 @@ export default function ProjectsExperience({
   const relatedProjects = (selectedProject.related ?? [])
     .map((slug) => projects.find((project) => project.slug === slug))
     .filter((project): project is Project => Boolean(project));
+
+  if (detailMode) {
+    return (
+      <ProjectDetailExperience
+        initialProject={selectedProject}
+        initialProjectIndex={selectedIndex}
+        initialRelatedProjects={relatedProjects}
+        projects={collectionProjects}
+      />
+    );
+  }
+
   return (
     <main
-      className={`projects-experience${detailMode ? '' : ' projects-experience--collection'}`}
-      aria-label={detailMode ? `${selectedProject.title} project case study` : 'Pergola projects and case studies'}
+      className="projects-experience projects-experience--collection"
+      aria-label="Pergola projects and case studies"
       data-marketing-foundation-page
       data-projects-experience
     >
-      {!detailMode ? (
-        <h1 className="projects-experience__collection-title">
-          Pergola projects and case studies
-        </h1>
-      ) : null}
+      <h1 className="projects-experience__collection-title">
+        Pergola projects and case studies
+      </h1>
       <div className="projects-experience__layout">
         <ProjectNavigator
           projects={collectionProjects}
           activeProject={collectionProjects[selectedIndex]!}
-          collectionMode={!detailMode}
+          collectionMode
           initialSearchParams={initialSearchParams}
         />
-        {detailMode ? (
-          <ProjectDetailContent
-            project={selectedProject}
-            projectIndex={selectedIndex}
-            projectCount={projects.length}
-            relatedProjects={relatedProjects}
-            showBreadcrumb
-            sourcePath={`/projects/${selectedProject.slug}`}
-            titleAs="h1"
-          />
-        ) : (
-          <DesktopCollectionProjectDetail initialSlug={selectedProject.slug} />
-        )}
+        <DesktopCollectionProjectDetail initialSlug={selectedProject.slug} />
       </div>
-      {!detailMode ? (
-        <section
-          className="projects-experience__collection-close"
-          aria-labelledby="projects-collection-enquiry-title"
-          data-project-collection-cta
-        >
-          <div>
-            <p>Next step</p>
-            <h2 id="projects-collection-enquiry-title">Have a project in mind?</h2>
-            <p>Share a few details, photos or rough dimensions. We can help shape the next step.</p>
-          </div>
-          <Link className="project-action project-action--primary" href={collectionEnquiryHref}>
-            Start your project
-          </Link>
-        </section>
-      ) : null}
+      <section
+        className="projects-experience__collection-close"
+        aria-labelledby="projects-collection-enquiry-title"
+        data-project-collection-cta
+      >
+        <div>
+          <p>Next step</p>
+          <h2 id="projects-collection-enquiry-title">Have a project in mind?</h2>
+          <p>Share a few details, photos or rough dimensions. We can help shape the next step.</p>
+        </div>
+        <Link className="project-action project-action--primary" href={collectionEnquiryHref}>
+          Start your project
+        </Link>
+      </section>
     </main>
   );
 }

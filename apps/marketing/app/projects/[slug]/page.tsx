@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import JsonLd from '@/components/JsonLd';
 import { projects } from '@/data/projects';
-import { absoluteUrl } from '@/lib/seo';
 import ProjectsExperience from '../ProjectsExperience';
+import { buildProjectPageMetadata } from '../projectSeo';
 
 type PageParams = { slug: string };
 
@@ -26,31 +25,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const title = `${project.title} Pergola Project | Sanctuary Pergolas`;
-  const route = `/projects/${project.slug}`;
-  const caseStudyHeroImage = project.caseStudyHeroImage ?? project.heroImage;
-
-  return {
-    title: { absolute: title },
-    description: project.blurb,
-    alternates: { canonical: route },
-    openGraph: {
-      type: 'website',
-      url: route,
-      title,
-      description: project.blurb,
-      images: [{
-        url: caseStudyHeroImage.src,
-        alt: caseStudyHeroImage.alt,
-      }],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description: project.blurb,
-      images: [caseStudyHeroImage.src],
-    },
-  };
+  return buildProjectPageMetadata(project);
 }
 
 export default async function ProjectDetailPage({ params }: PageProps) {
@@ -58,61 +33,11 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const project = projects.find((item) => item.slug === slug);
   if (!project) notFound();
 
-  const route = `/projects/${project.slug}`;
-  const caseStudyHeroImage = project.caseStudyHeroImage ?? project.heroImage;
-
   return (
-    <>
-      <JsonLd
-        data={[
-          {
-            '@context': 'https://schema.org',
-            '@type': 'WebPage',
-            name: `${project.title} project case study`,
-            description: project.blurb,
-            url: absoluteUrl(route),
-            primaryImageOfPage: absoluteUrl(caseStudyHeroImage.src),
-            isPartOf: {
-              '@type': 'CollectionPage',
-              name: 'Sanctuary Pergola Projects',
-              url: absoluteUrl('/projects'),
-            },
-            about: {
-              '@type': 'Place',
-              name: project.location,
-            },
-          },
-          {
-            '@context': 'https://schema.org',
-            '@type': 'BreadcrumbList',
-            itemListElement: [
-              {
-                '@type': 'ListItem',
-                position: 1,
-                name: 'Home',
-                item: absoluteUrl('/'),
-              },
-              {
-                '@type': 'ListItem',
-                position: 2,
-                name: 'Projects',
-                item: absoluteUrl('/projects'),
-              },
-              {
-                '@type': 'ListItem',
-                position: 3,
-                name: project.title,
-                item: absoluteUrl(route),
-              },
-            ],
-          },
-        ]}
-      />
-      <ProjectsExperience
-        projects={projects}
-        initialSlugFromUrl={project.slug}
-        detailMode
-      />
-    </>
+    <ProjectsExperience
+      projects={projects}
+      initialSlugFromUrl={project.slug}
+      detailMode
+    />
   );
 }

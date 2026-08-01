@@ -59,14 +59,17 @@ The public route template is a server-rendered, non-landmark wrapper. Its restra
 fragment target on cross-route and same-route navigation. It works with the
 responsive disclosure reveal contract so links to visible form sections and
 sections inside closed optional detail both land on the content promised by
-the source action.
+the source action. Its only desktop route exception is an explicitly marked
+canonical project-detail-to-project-detail history transition owned by the
+persistent project experience; unmarked routes, mobile project navigation and
+project-to-collection navigation keep the ordinary reset contract.
 
 Phase 3 PR 8 adds the shared public mobile-navigation contract:
 
 - `Header.tsx` remains the only global public-header owner.
-  `headerNavigation.ts` keeps the established desktop Home, Projects, Products
-  and Contact destinations. The compact mobile menu exposes only Projects,
-  `Pergola options`, Commercial and Professionals; the brand owns Home and the
+  `headerNavigation.ts` keeps the established four-item desktop Projects,
+  Products, Commercial and Professionals navigation. The compact mobile menu
+  exposes Projects, `Pergola options`, Commercial and Professionals; the brand owns Home and the
   route-aware `Start your project` action owns Contact.
 - The professional link targets the canonical
   `/architects-designers-builders` capability route. That route owns the
@@ -157,7 +160,7 @@ supporting-depth disclosure. Remaining authored paragraphs, project records
 and blocks stay in original order inside that disclosure, remain expanded
 without JavaScript and keep distinct headings across the SEO programme.
 
-The shared public header now uses the architectural editorial treatment across marketing routes: Instrument Sans branding, Inter navigation, square controls, a thin 1px rule, the olive `#4f5748` project action, and a 64px solid collapsed mobile state. Its desktop navigation is centred on the midpoint of the space between Projects and Products rather than on the unequal outer link widths. The mobile menu exposes Projects, Pergola options, Commercial and Professionals, followed by `Start your project`. It preserves source context, keeps body scroll locked, contains keyboard focus within the open navigation and trigger, closes with Escape or navigation, and returns focus to its trigger when the visitor dismisses it. The root skip link uses critical inline positioning to stay outside the initial layout even when the stylesheet is delayed or unavailable, while the shared focus rule still reveals it to keyboard users.
+The shared public header now uses the architectural editorial treatment across marketing routes: Instrument Sans branding, Inter navigation, square controls, a thin 1px rule, the olive `#4f5748` project action, and a 64px solid collapsed mobile state. Its four desktop destinations are split into two pairs so the midpoint between Products and Commercial sits on the viewport centreline rather than inheriting unequal outer-link widths. The mobile menu exposes Projects, Pergola options, Commercial and Professionals, followed by `Start your project`. It preserves source context, keeps body scroll locked, contains keyboard focus within the open navigation and trigger, closes with Escape or navigation, and returns focus to its trigger when the visitor dismisses it. The root skip link uses critical inline positioning to stay outside the initial layout even when the stylesheet is delayed or unavailable, while the shared focus rule still reveals it to keyboard users.
 
 The ten programme routes and `/pergola-guides` additionally use the approved hero-overlay state on desktop. At the top of those pages, the hero begins at the viewport edge beneath a transparent header with white navigation and a fine light rule, fills at least one viewport, and keeps the following section below the fold. After a deliberate scroll, the header returns to the solid canvas, dark text and blur treatment. At 900px and below the header stays solid and the hero begins below it. Keep transparent overlap limited to routes listed by the shared header; all other public routes use the same new header in its solid state.
 
@@ -201,6 +204,19 @@ not duplicate the full header navigation.
 The public homepage is an approved route-scoped foundation adoption described below. Its content, responsive presentation and shared header remain owned by the root homepage implementation rather than by the internal catalogue.
 
 `/projects` and every canonical `/projects/[slug]` case-study route are an approved route-scoped adoption. They use one governed project source and one responsive semantic tree per route. The collection keeps the established sticky project rail and selected case study on desktop; below 900px the same navigator list becomes a normal-flow one-column sequence of image-led cards. Mobile collection requests receive typed summaries only and do not mount the selected case-study component, hero, gallery or video. A desktop media boundary dynamically loads the governed full record and detail component at 900px and above, preserving the legacy `?slug=` selection without shipping that hidden tree to mobile. Detail routes retain the focus-managed mobile selector sheet as their only collection interaction. Canonical project links, metadata and structured data continue to point to the detail routes.
+
+At 900px and above, canonical detail routes keep one mounted
+`ProjectDetailExperience` while visitors move between project links. The rail
+DOM, filters, internal scroll and focus remain unchanged. The incoming full
+record is loaded only inside the desktop media contract and its responsive hero
+candidate must load and decode before URL, metadata, structured data and visible
+content commit. If the current hero intersects the viewport, its viewport
+anchor is retained; otherwise the incoming hero aligns immediately beneath the
+fixed header. Marked History API entries keep the same owner through Back and
+Forward without invoking global route progress or `ScrollReset`. Direct loads,
+refresh, canonical links, modified clicks and no-JavaScript access retain real
+`/projects/[slug]` documents, while below 900px normal Next route navigation and
+the established selector-sheet behavior remain unchanged.
 
 The projects surface owns its Foundation-derived tokens and square, rule-led editorial layout in `apps/marketing/app/projects/projects.css`. It preserves the existing header, footer, consent, contact destination, project URLs and project data owner. Facts omit unavailable values. The visible approved summary, Brief, first Response, roof approach, Gallery, Technical details and related work all come from the governed project record rather than route-local claims. Curated related work is the only end-of-story project navigation; the duplicate circular previous/next links are retired. Desktop case-study heroes use the taller editorial frame, while repeated portrait or gable media retain a governed focal position so the roof apex is not lost in wide crops.
 

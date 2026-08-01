@@ -239,9 +239,9 @@ The acrylic variant spec now owns a redirects-disabled assertion that
 self-canonical primary route; it is no longer a second page-content suite.
 
 Project-page changes should run
-`npx vitest run apps/marketing/app/projects/projectFilters.test.ts apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/data/projects.claims.test.ts`
+`npx vitest run apps/marketing/app/projects/projectFilters.test.ts apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/app/projects/projectSeo.test.ts apps/marketing/lib/projectDetailNavigation.test.ts apps/marketing/data/projects.claims.test.ts`
 and
-`npx playwright test playwright/marketing.projects.spec.ts playwright/marketing.projects-phase-two.spec.ts --config=playwright.marketing.config.ts`
+`npx playwright test playwright/marketing.projects.spec.ts playwright/marketing.projects-phase-two.spec.ts playwright/marketing.projects-switching.spec.ts --config=playwright.marketing.config.ts`
 before the full marketing browser lane. The project browser suite visits every
 canonical case study at 390 pixels and runs the collection plus four
 representative project states across 320, 360, 390 and 430 pixels. The
@@ -255,6 +255,8 @@ H1 and logical heading order, early and final contact actions, loaded and
 intentionally framed hero media, mobile height budgets, native server-rendered
 disclosures, selector focus and scroll behavior, one native horizontal gallery
 strip, top-aligned variable 4:3 and 3:4 image heights, native touch swipe,
+pixel-stable desktop rail and hero switching, decoded-image handoff,
+Back/Forward ownership, modified-click semantics and no-JavaScript documents,
 contextual Previous/Next controls, live position and edge state, retained
 control focus, Arrow/Home/End keyboard navigation, visible keyboard focus on
 the region, lazy image loading, metadata and schema,

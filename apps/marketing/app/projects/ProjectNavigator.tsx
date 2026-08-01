@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -35,6 +36,12 @@ type ProjectNavigatorProps = {
   activeProject: ProjectCollectionItem;
   collectionMode?: boolean;
   initialSearchParams?: string;
+  onProjectIntent?: (slug: string) => void;
+  onProjectSelect?: (
+    slug: string,
+    event: ReactMouseEvent<HTMLAnchorElement>,
+  ) => void;
+  pendingProjectSlug?: string | null;
 };
 
 export default function ProjectNavigator({
@@ -42,6 +49,9 @@ export default function ProjectNavigator({
   activeProject,
   collectionMode = false,
   initialSearchParams = '',
+  onProjectIntent,
+  onProjectSelect,
+  pendingProjectSlug = null,
 }: ProjectNavigatorProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -328,7 +338,19 @@ export default function ProjectNavigator({
                       href={`/projects/${project.slug}`}
                       className={isActive ? 'is-active' : undefined}
                       aria-current={isActive ? 'page' : undefined}
-                      onClick={closeNavigator}
+                      aria-busy={pendingProjectSlug === project.slug || undefined}
+                      data-project-switch-pending={
+                        pendingProjectSlug === project.slug ? 'true' : undefined
+                      }
+                      data-project-detail-switch={
+                        onProjectSelect ? 'true' : undefined
+                      }
+                      onFocus={() => onProjectIntent?.(project.slug)}
+                      onPointerEnter={() => onProjectIntent?.(project.slug)}
+                      onClick={(event) => {
+                        onProjectSelect?.(project.slug, event);
+                        if (!event.defaultPrevented) closeNavigator();
+                      }}
                     >
                       <span className="project-navigator__item-number">
                         {String(projects.findIndex(
