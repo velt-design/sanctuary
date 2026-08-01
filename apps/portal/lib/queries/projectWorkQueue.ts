@@ -3,7 +3,7 @@ import { apiJson } from '@/lib/repo/apiClient';
 import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
 import { qk } from './keys';
 
-type ProjectWorkQueueResponse = {
+export type ProjectWorkQueueResponse = {
   entries: ProjectWorkQueueEntry[];
   generatedAt: string;
 };

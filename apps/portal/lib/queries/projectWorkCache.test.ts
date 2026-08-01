@@ -79,6 +79,28 @@ describe("projectWorkCache", () => {
     );
   });
 
+  it("removes a newly Closed project from the Work Queue immediately", () => {
+    const client = new QueryClient();
+    client.setQueryData(qk.projectWork.queue("host"), {
+      generatedAt: "2026-07-29T00:00:00.000Z",
+      entries: [
+        { projectId: "proj_1", title: "Close me" },
+        { projectId: "proj_2", title: "Keep me" },
+      ],
+    });
+
+    patchProjectWorkProjectionCaches(client, "host", "proj_1", {
+      ...projectWork,
+      operationalState: "CLOSED",
+      effectiveState: "CLOSED",
+      closedOutcome: "LOST_NO_RESPONSE",
+    });
+
+    expect(
+      (client.getQueryData(qk.projectWork.queue("host")) as any).entries,
+    ).toEqual([{ projectId: "proj_2", title: "Keep me" }]);
+  });
+
   it("patches a complete server-returned command-centre response through the cache owner", () => {
     const client = new QueryClient();
     const commandCentre = {

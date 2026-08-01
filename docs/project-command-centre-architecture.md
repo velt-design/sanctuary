@@ -212,6 +212,10 @@ At 390px, project identity, stage, blocker, primary action, owner, due state, cu
 
 Stage correction remains a deliberate stage command. Work completion and confirmations do not silently change stage.
 
+Closing is also a deliberate lifecycle command, not a value inside a generic state form. Active and Waiting projects expose one visible **Close project** entry point. Its dedicated dialog requires an explicit Lost, Cancelled, or Complete path, states that stage is preserved and remaining work is cancelled, names the exact final action, and keeps Lost free text optional after a structured Lost outcome. Waiting and reopening remain separate controls. A committed close patches the Overview projection and removes the project from the cached Work Queue immediately before the shared authoritative invalidation runs.
+
+The admin-only stale-Enquiry review belongs to Work Queue, not Project Overview. It shows the exact read-only 30-day activity report, selects nothing by default, protects future Waiting rows, and requires a second exact-list confirmation. Its server command validates both the submitted report fingerprint and current evidence for every selected project before closing the whole list atomically as `Lost - No response`. A stale row rejects the complete batch; browser code cannot reconstruct or weaken that evidence.
+
 Status semantics:
 
 - orange: primary action, selected/current, or real attention;
@@ -270,6 +274,8 @@ Keep:
 - `lib/projects/commandCentre/**`: command-centre selection/read contract.
 - `lib/projects/workItems/**`: V2 state, work, ranking, commands, confirmation, queue, portfolio completeness, and model-integrity boundaries.
 - `projectWorkCache.ts`: the only Project Work cache patch/invalidation module. `patchProjectCommandCentreCache` is the sole complete command-centre response patch owner; `patchProjectWorkProjectionCaches` owns V2 projection fan-out to command-centre, snapshot, and summary caches; `invalidateProjectWorkReads` owns project, Work Queue, and Dashboard invalidation.
+- `ProjectCloseDialog.tsx`: explicit close-path selection, consequence presentation, and final action label. It does not own lifecycle validation or state truth.
+- `app/staff/projects/work-queue/InactiveEnquiryReview.client.tsx` plus `lib/projects/inactiveEnquiries/**`: admin review/selection presentation and its HTTP contract. The evidence calculation, revalidation, atomicity, and close command remain database-owned.
 
 Do not grow:
 

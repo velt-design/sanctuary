@@ -72,6 +72,30 @@ for (const viewport of viewports) {
     );
     await expect(fixture.getByText('Open workspace', { exact: true })).toHaveCount(0);
 
+    await page.getByRole('button', { name: 'Review exact list' }).click();
+    const staleDialog = page.getByRole('dialog', { name: 'Review stale enquiries' });
+    await expect(staleDialog).toBeVisible();
+    await expect(staleDialog.getByText('Kate - Titirangi')).toBeVisible();
+    await expect(staleDialog.getByText('Phillip Maddren - Whangarei')).toBeVisible();
+    await expect(staleDialog.getByText('Protected future follow-up')).toBeVisible();
+    const candidateChecks = staleDialog.getByRole('checkbox');
+    await expect(candidateChecks).toHaveCount(3);
+    await expect(candidateChecks.nth(0)).not.toBeChecked();
+    await expect(candidateChecks.nth(1)).not.toBeChecked();
+    await expect(candidateChecks.nth(2)).toBeDisabled();
+    await expect(
+      staleDialog.getByRole('button', { name: 'Review selected (0)' }),
+    ).toBeDisabled();
+    await staleDialog.getByText('Kate - Titirangi', { exact: true }).click();
+    await expect(candidateChecks.nth(0)).toBeChecked();
+    await staleDialog.getByRole('button', { name: 'Review selected (1)' }).click();
+    const confirmDialog = page.getByRole('dialog', { name: 'Confirm 1 stale enquiry' });
+    await expect(confirmDialog.getByText('Kate - Titirangi')).toBeVisible();
+    await expect(
+      confirmDialog.getByRole('button', { name: 'Close 1 as Lost - No response' }),
+    ).toBeVisible();
+    await confirmDialog.getByRole('button', { name: 'Cancel' }).click();
+
     if (viewport.label === 'mobile') {
       const blockedRow = fixture.locator('[data-queue-group="blocked"]');
       await blockedRow.getByText('Manage work').click();
@@ -86,6 +110,9 @@ for (const viewport of viewports) {
 test('preserves keyboard order and visible focus across project and action controls', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto(FIXTURE_PATH);
+
+  await page.keyboard.press('Tab');
+  await expectVisibleFocus(page.getByRole('button', { name: 'Review exact list' }));
 
   await page.keyboard.press('Tab');
   const firstProject = page.getByRole('link', {

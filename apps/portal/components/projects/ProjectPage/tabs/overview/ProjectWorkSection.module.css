@@ -90,7 +90,8 @@
 
 .inlineActions,
 .badges,
-.rowActions {
+.rowActions,
+.lifecycleActions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -127,8 +128,12 @@
   padding-top: var(--ui-space-3);
 }
 
-.controlsSection > button {
-  justify-self: start;
+.lifecycleActions {
+  justify-content: space-between;
+}
+
+.lifecycleActions > button:last-child {
+  margin-left: auto;
 }
 
 @container (min-width: 700px) {
@@ -279,14 +284,20 @@
   }
 
   .inlineActions,
-  .rowActions {
+  .rowActions,
+  .lifecycleActions {
     align-items: stretch;
     flex-direction: column;
   }
 
   .inlineActions > *,
-  .rowActions > * {
+  .rowActions > *,
+  .lifecycleActions > * {
     width: 100%;
+  }
+
+  .lifecycleActions > button:last-child {
+    margin-left: 0;
   }
 }
 

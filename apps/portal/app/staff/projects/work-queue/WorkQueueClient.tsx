@@ -19,12 +19,17 @@ import { qk } from '@/lib/queries/keys';
 import { projectWorkQueueQueryOptions } from '@/lib/queries/projectWorkQueue';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import styles from './workQueuePage.module.css';
+import InactiveEnquiryReview from './InactiveEnquiryReview.client';
 
 function isAccessEndingError(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
-export default function WorkQueueClient() {
+export default function WorkQueueClient({
+  canReviewInactiveEnquiries = false,
+}: {
+  canReviewInactiveEnquiries?: boolean;
+}) {
   const host = useMemo(
     () => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown',
     [],
@@ -78,6 +83,8 @@ export default function WorkQueueClient() {
         description="One server-confirmed operational obligation per project."
         count={queue.data && !notReady ? `${entries.length} projects` : undefined}
       />
+
+      {canReviewInactiveEnquiries ? <InactiveEnquiryReview host={host} /> : null}
 
       {state === 'cached' ? (
         <div className={styles.refreshing} role="status">Updating the queue...</div>

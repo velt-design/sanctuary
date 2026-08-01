@@ -1,0 +1,113 @@
+.card,
+.headingRow,
+.row,
+.rowMeta,
+.confirmation li {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-3);
+}
+
+.card {
+  justify-content: space-between;
+  padding: var(--ui-space-3) var(--ui-space-4);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-left: var(--ui-status-edge) solid var(--ui-status-warning-border);
+  background: var(--ui-surface-primary);
+}
+
+.cardCopy,
+.list,
+.confirmation,
+.confirmation ul {
+  display: grid;
+  gap: var(--ui-space-2);
+}
+
+.headingRow h2,
+.card p,
+.confirmation p,
+.empty,
+.confirmation ul {
+  margin: 0;
+}
+
+.headingRow h2 {
+  color: var(--ui-text-strong);
+  font-family: var(--ui-font-display);
+  font-size: var(--ui-font-size-card-heading);
+  text-transform: uppercase;
+}
+
+.card p,
+.confirmation p,
+.empty,
+.success {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.5;
+}
+
+.row {
+  min-width: 0;
+  justify-content: space-between;
+  padding: var(--ui-space-3);
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-primary);
+}
+
+.row[data-protected] {
+  background: var(--ui-surface-secondary);
+}
+
+.row > label {
+  min-width: 0;
+  flex: 1;
+}
+
+.rowMeta {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ui-space-1);
+}
+
+.confirmation ul {
+  padding: 0;
+  list-style: none;
+}
+
+.confirmation li {
+  justify-content: space-between;
+  min-height: 44px;
+  padding: var(--ui-space-2) 0;
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+}
+
+.confirmation li span {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+}
+
+.success {
+  border-left: var(--ui-status-edge) solid var(--ui-status-success-border);
+  padding-left: var(--ui-space-2);
+  color: var(--ui-text);
+}
+
+@media (max-width: 620px) {
+  .card,
+  .row,
+  .confirmation li {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .card > button {
+    width: 100%;
+  }
+
+  .rowMeta {
+    justify-content: flex-start;
+    padding-left: calc(var(--ui-control-md) + var(--ui-space-2));
+  }
+}

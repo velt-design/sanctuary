@@ -436,25 +436,28 @@ describe("ProjectWorkSection", () => {
 
   it("uses the selected Lost outcome without requiring duplicate reason text", () => {
     const rendered = renderV2(projection(), false, "new");
-    const manage = Array.from(
+    const close = Array.from(
       rendered.container.querySelectorAll("button"),
-    ).find((button) => button.textContent === "Manage project work")!;
-    act(() => manage.click());
+    ).find((button) => button.textContent === "Close project")!;
+    act(() => close.click());
 
-    const stateSelect = Array.from(
-      rendered.container.querySelectorAll<HTMLSelectElement>("select"),
-    ).find((select) => select.labels?.[0]?.textContent === "State")!;
+    const lost = Array.from(
+      document.body.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+    ).find((radio) => radio.value === "LOST")!;
+    act(() => lost.click());
+
+    const stateSelect = document.body.querySelector<HTMLSelectElement>(
+      "#project-lost-outcome",
+    )!;
     act(() => {
-      stateSelect.value = "CLOSED";
+      stateSelect.value = "LOST_NO_RESPONSE";
       stateSelect.dispatchEvent(new Event("change", { bubbles: true }));
     });
 
-    expect(rendered.container.textContent).toContain("Lost — no response");
-    expect(rendered.container.textContent).toContain(
-      "Additional note (optional)",
-    );
+    expect(document.body.textContent).toContain("Close as Lost - No response");
+    expect(document.body.textContent).toContain("Additional note (optional)");
     expect(
-      Array.from(rendered.container.querySelectorAll("label")).some(
+      Array.from(document.body.querySelectorAll("label")).some(
         (label) => label.textContent === "Reason",
       ),
     ).toBe(false);
@@ -495,7 +498,7 @@ describe("ProjectWorkSection", () => {
       waitingReason: "Customer requested more time.",
       omittedNotice: "Ordinary project work is paused",
       canChangeState: true,
-      controlLabel: "Resume or update waiting",
+      controlLabel: "Update waiting",
     },
     {
       state: "Closed",
@@ -609,13 +612,18 @@ describe("ProjectWorkSection", () => {
       ).find((button) => button.textContent === controlLabel);
       if (canChangeState) {
         expect(manage).not.toBeUndefined();
-        act(() => manage?.click());
-        expect(rendered.container.textContent).toContain(
+        expect(rendered.container.textContent).not.toContain(
           "Change operational state",
         );
         expect(rendered.container.textContent).not.toContain(
           "Create manual work",
         );
+        if (controlLabel === "Update waiting") {
+          act(() => manage?.click());
+          expect(rendered.container.textContent).toContain(
+            "Why is the project waiting?",
+          );
+        }
       } else {
         expect(manage).toBeUndefined();
         expect(rendered.container.querySelectorAll("button")).toHaveLength(0);

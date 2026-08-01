@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { ProjectCommandCentreResponse } from "@/lib/projects/commandCentre/types";
 import type { ProjectPageSnapshotResponse } from "@/lib/projects/types";
 import type { ProjectWorkProjection } from "@/lib/projects/workItems/types";
+import type { ProjectWorkQueueResponse } from "./projectWorkQueue";
 import { qk } from "./keys";
 
 function withProjectWork(
@@ -42,6 +43,23 @@ export function patchProjectWorkProjectionCaches(
     qk.projects.summary(host, projectId),
     (current) => withProjectWork(current, projectWork),
   );
+  if (
+    projectWork.effectiveState === "CLOSED" ||
+    projectWork.effectiveState === "ARCHIVED"
+  ) {
+    queryClient.setQueryData<ProjectWorkQueueResponse | undefined>(
+      qk.projectWork.queue(host),
+      (current) =>
+        current
+          ? {
+              ...current,
+              entries: current.entries.filter(
+                (entry) => entry.projectId !== projectId,
+              ),
+            }
+          : current,
+    );
+  }
 }
 
 /**

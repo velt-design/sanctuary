@@ -521,107 +521,104 @@ describe("useProjectWorkCommandController", () => {
     expect(controller().pendingItemId).toBeNull();
   });
 
-  it.each([
-    {
+  it("sets Waiting through its explicit lifecycle command", async () => {
+    const projectWork = projection(workItem(), { stateRowVersion: 3 });
+    const nextProjection = projection(workItem(), {
+      operationalState: "WAITING",
+      effectiveState: "WAITING",
+      waitingUntil: MANUAL_DUE_ISO,
+      waitingReason: "Awaiting customer timing.",
+      stateRowVersion: 4,
+    });
+    mocks.runProjectStateCommand.mockResolvedValueOnce(
+      committedResponse(nextProjection),
+    );
+    const { queryClient } = renderController({ projectWork });
+
+    act(() => {
+      controller().setWaitingUntil(MANUAL_DUE_LOCAL);
+      controller().setStateReason("  Awaiting customer timing.  ");
+    });
+    await act(async () => {
+      await expect(controller().waitProject()).resolves.toBe(true);
+    });
+
+    expect(mocks.runProjectStateCommand).toHaveBeenCalledWith(PROJECT_ID, {
+      commandId: expect.any(String),
       command: "WAIT",
-      projectWork: projection(workItem(), { stateRowVersion: 3 }),
-      nextProjection: projection(workItem(), {
-        operationalState: "WAITING",
-        effectiveState: "WAITING",
-        waitingUntil: MANUAL_DUE_ISO,
-        waitingReason: "Awaiting customer timing.",
-        stateRowVersion: 4,
-      }),
-      configure: (value: ProjectWorkCommandController) => {
-        value.setStateChoice("WAITING");
-        value.setWaitingUntil(MANUAL_DUE_LOCAL);
-        value.setStateReason("  Awaiting customer timing.  ");
-      },
-      expectedPayload: {
-        command: "WAIT",
-        expectedRowVersion: 3,
-        waitingUntil: MANUAL_DUE_ISO,
-        reason: "Awaiting customer timing.",
-        cancellationReason: "Awaiting customer timing.",
-      },
-    },
-    {
+      expectedRowVersion: 3,
+      waitingUntil: MANUAL_DUE_ISO,
+      reason: "Awaiting customer timing.",
+      cancellationReason: "Awaiting customer timing.",
+    });
+    expectCommittedProjection(queryClient, nextProjection);
+  });
+
+  it("closes Lost through a structured outcome with only an optional note", async () => {
+    const projectWork = projection(workItem(), { stateRowVersion: 5 });
+    const nextProjection = projection(workItem(), {
+      operationalState: "CLOSED",
+      effectiveState: "CLOSED",
+      closedOutcome: "LOST_TIMING_DEFERRED",
+      stateRowVersion: 6,
+    });
+    mocks.runProjectStateCommand.mockResolvedValueOnce(
+      committedResponse(nextProjection),
+    );
+    const { queryClient } = renderController({ projectWork });
+
+    await act(async () => {
+      await expect(
+        controller().closeProject({
+          outcome: "LOST_TIMING_DEFERRED",
+          note: "  Revisit next season.  ",
+        }),
+      ).resolves.toBe(true);
+    });
+
+    expect(mocks.runProjectStateCommand).toHaveBeenCalledWith(PROJECT_ID, {
+      commandId: expect.any(String),
       command: "CLOSE",
-      projectWork: projection(workItem(), { stateRowVersion: 5 }),
-      nextProjection: projection(workItem(), {
-        operationalState: "CLOSED",
-        effectiveState: "CLOSED",
-        closedOutcome: "LOST_TIMING_DEFERRED",
-        stateRowVersion: 6,
-      }),
-      configure: (value: ProjectWorkCommandController) => {
-        value.setStateChoice("CLOSED");
-        value.setClosedOutcome("LOST_TIMING_DEFERRED");
-        value.setClosedNote("  Revisit next season.  ");
-      },
-      expectedPayload: {
-        command: "CLOSE",
-        expectedRowVersion: 5,
-        outcome: "LOST_TIMING_DEFERRED",
-        note: "Revisit next season.",
-        cancellationReason: undefined,
-      },
-    },
-    {
+      expectedRowVersion: 5,
+      outcome: "LOST_TIMING_DEFERRED",
+      note: "Revisit next season.",
+      cancellationReason: undefined,
+    });
+    expectCommittedProjection(queryClient, nextProjection);
+  });
+
+  it("reopens a Closed project without routing through a generic state form", async () => {
+    const projectWork = projection(workItem(), {
+      operationalState: "CLOSED",
+      effectiveState: "CLOSED",
+      closedOutcome: "LOST_NO_RESPONSE",
+      stateRowVersion: 9,
+    });
+    const nextProjection = projection(workItem(), { stateRowVersion: 10 });
+    mocks.runProjectStateCommand.mockResolvedValueOnce(
+      committedResponse(nextProjection),
+    );
+    const { queryClient } = renderController({ projectWork });
+
+    await act(async () => {
+      await expect(controller().activateProject()).resolves.toBe(true);
+    });
+
+    expect(mocks.runProjectStateCommand).toHaveBeenCalledWith(PROJECT_ID, {
+      commandId: expect.any(String),
       command: "REOPEN",
-      projectWork: projection(workItem(), {
-        operationalState: "CLOSED",
-        effectiveState: "CLOSED",
-        closedOutcome: "LOST_NO_RESPONSE",
-        stateRowVersion: 9,
-      }),
-      nextProjection: projection(workItem(), {
-        stateRowVersion: 10,
-      }),
-      configure: (value: ProjectWorkCommandController) => {
-        value.setStateChoice("ACTIVE");
-        value.setStateReason("  Customer re-engaged by email.  ");
-      },
-      expectedPayload: {
-        command: "REOPEN",
-        expectedRowVersion: 9,
-        reason: "Customer re-engaged by email.",
-      },
-    },
-  ])(
-    "commits the semantic $command state transition",
-    async ({ projectWork, nextProjection, configure, expectedPayload }) => {
-      mocks.runProjectStateCommand.mockResolvedValueOnce(
-        committedResponse(nextProjection),
-      );
-      const { queryClient } = renderController({ projectWork });
-
-      act(() => {
-        configure(controller());
-      });
-      await act(async () => {
-        await expect(controller().updateState()).resolves.toBe(true);
-      });
-
-      expect(mocks.runProjectStateCommand).toHaveBeenCalledWith(PROJECT_ID, {
-        commandId: expect.any(String),
-        ...expectedPayload,
-      });
-      expect(mocks.runProjectWorkItemCommand).not.toHaveBeenCalled();
-      expect(mocks.runProjectConfirmationCommand).not.toHaveBeenCalled();
-      expectCommittedProjection(queryClient, nextProjection);
-    },
-  );
+      expectedRowVersion: 9,
+    });
+    expectCommittedProjection(queryClient, nextProjection);
+  });
 
   it("still requires a reason when cancelling a project", async () => {
     renderController();
 
-    act(() => {
-      controller().setStateChoice("CLOSED");
-      controller().setClosedOutcome("CANCELLED");
-    });
     await act(async () => {
-      await expect(controller().updateState()).resolves.toBe(false);
+      await expect(
+        controller().closeProject({ outcome: "CANCELLED" }),
+      ).resolves.toBe(false);
     });
 
     expect(controller().error).toBe(

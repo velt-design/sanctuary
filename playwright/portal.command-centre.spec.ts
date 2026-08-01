@@ -9,6 +9,7 @@ import {
   type CommandCentreViewFixtureState,
   type CommandCentreWorkFixtureScenario,
 } from "../apps/portal/app/qa/project-command-centre-fixture/fixtures";
+import { captureProjectCloseEvidence } from "./support/projectCloseEvidence";
 
 const FIXTURE_PATH = "/qa/project-command-centre-fixture";
 const PROJECT_SHELL_FIXTURE_PATH = "/qa/project-page-shell-fixture";
@@ -32,6 +33,7 @@ async function expectNoDocumentOverflow(page: Page) {
       document.querySelectorAll<HTMLElement>("body *"),
     )
       .filter((element) => {
+        if (element.closest('[role="dialog"]')) return false;
         const style = getComputedStyle(element);
         return (
           ["auto", "scroll"].includes(style.overflowY) &&
@@ -510,6 +512,14 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
       body: await layout.screenshot({ animations: "disabled" }),
       contentType: "image/png",
     });
+
+    await captureProjectCloseEvidence({
+      page,
+      layout,
+      width,
+      height,
+      testInfo,
+    });
   });
 }
 
@@ -548,6 +558,10 @@ test("reflows at the effective CSS viewport of 200% browser zoom", async ({
   await expect(
     layout.locator('[data-project-orientation="true"]'),
   ).toBeVisible();
+  await layout.getByRole("button", { name: "Close project" }).click();
+  const closeDialog = page.getByRole("dialog", { name: "Close project" });
+  await expect(closeDialog).toBeVisible();
+  await expect(closeDialog.getByText("What will happen")).toBeVisible();
   await expectNoDocumentOverflow(page);
 });
 

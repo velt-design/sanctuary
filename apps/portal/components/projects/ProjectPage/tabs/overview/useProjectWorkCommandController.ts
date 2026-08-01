@@ -8,10 +8,8 @@ import {
   runProjectWorkItemCommand,
   type ProjectWorkMutationResponse,
 } from "@/lib/projects/workItems/client";
-import { isProjectLostClosedOutcome } from "@/lib/projects/workItems/closePolicy";
 import type {
   ProjectClosedOutcome,
-  ProjectOperationalState,
   ProjectWorkItem,
   ProjectWorkProjection,
   ProjectWorkResponsibilityArea,
@@ -63,18 +61,11 @@ export function useProjectWorkCommandController({
     useState<ProjectWorkResponsibilityArea>("CUSTOMER");
   const [manualDueAt, setManualDueAt] = useState("");
   const [manualReason, setManualReason] = useState("");
-  const [stateChoice, setStateChoice] = useState<ProjectOperationalState>(
-    projectWork.operationalState,
-  );
   const [waitingUntil, setWaitingUntil] = useState("");
   const [stateReason, setStateReason] = useState("");
-  const [closedOutcome, setClosedOutcome] =
-    useState<ProjectClosedOutcome>("LOST_NO_RESPONSE");
-  const [closedNote, setClosedNote] = useState("");
 
   useEffect(() => {
     setProjection(projectWork);
-    setStateChoice(projectWork.operationalState);
   }, [projectWork]);
 
   const commit = useCallback(
@@ -255,62 +246,63 @@ export function useProjectWorkCommandController({
     projection.primaryAction,
   ]);
 
-  const updateState = useCallback(async (): Promise<boolean> => {
-    if (stateChoice === projection.operationalState) {
-      setError("Choose a different project state.");
-      return false;
-    }
+  const waitProject = useCallback(async (): Promise<boolean> => {
     const base = { expectedRowVersion: projection.stateRowVersion };
-    if (stateChoice === "ACTIVE") {
-      const command =
-        projection.operationalState === "CLOSED" ? "REOPEN" : "ACTIVATE";
-      const payload = {
-        ...base,
-        command,
-        reason: stateReason.trim() || undefined,
-      };
-      return commitCommand(
-        projectCommandIntent(command, payload),
-        (commandId) =>
-          runProjectStateCommand(projectId, {
-            commandId,
-            ...payload,
-          }),
-      );
-    }
-    const lostClose =
-      stateChoice === "CLOSED" &&
-      isProjectLostClosedOutcome(closedOutcome);
-    if (!stateReason.trim() && !lostClose) {
-      setError("Record why the current work is being ended.");
+    if (!stateReason.trim()) {
+      setError("Record why the project is waiting.");
       return false;
     }
-    if (stateChoice === "WAITING") {
-      const parsedWaitingUntil = parseAucklandDateTimeLocal(waitingUntil);
-      if (!parsedWaitingUntil) {
-        setError("Choose a valid wake-up time.");
-        return false;
-      }
-      const payload = {
-        ...base,
-        command: "WAIT",
-        waitingUntil: parsedWaitingUntil,
-        reason: stateReason.trim(),
-        cancellationReason: stateReason.trim(),
-      };
-      return commitCommand(projectCommandIntent("WAIT", payload), (commandId) =>
+    const parsedWaitingUntil = parseAucklandDateTimeLocal(waitingUntil);
+    if (!parsedWaitingUntil) {
+      setError("Choose a valid wake-up time.");
+      return false;
+    }
+    const payload = {
+      ...base,
+      command: "WAIT" as const,
+      waitingUntil: parsedWaitingUntil,
+      reason: stateReason.trim(),
+      cancellationReason: stateReason.trim(),
+    };
+    const saved = await commitCommand(
+      projectCommandIntent("WAIT", payload),
+      (commandId) =>
         runProjectStateCommand(projectId, {
           commandId,
           ...payload,
         }),
-      );
+    );
+    if (saved) {
+      setWaitingUntil("");
+      setStateReason("");
+    }
+    return saved;
+  }, [
+    commitCommand,
+    projectId,
+    projection.stateRowVersion,
+    stateReason,
+    waitingUntil,
+  ]);
+
+  const closeProject = useCallback(async (input: {
+    outcome: ProjectClosedOutcome;
+    note?: string;
+    cancellationReason?: string;
+  }): Promise<boolean> => {
+    if (
+      (input.outcome === "CANCELLED" || input.outcome === "COMPLETE") &&
+      !input.cancellationReason?.trim()
+    ) {
+      setError("Record why the current work is being ended.");
+      return false;
     }
     const payload = {
-      ...base,
-      command: "CLOSE",
-      outcome: closedOutcome,
-      note: closedNote.trim() || undefined,
-      cancellationReason: stateReason.trim() || undefined,
+      expectedRowVersion: projection.stateRowVersion,
+      command: "CLOSE" as const,
+      outcome: input.outcome,
+      note: input.note?.trim() || undefined,
+      cancellationReason: input.cancellationReason?.trim() || undefined,
     };
     return commitCommand(projectCommandIntent("CLOSE", payload), (commandId) =>
       runProjectStateCommand(projectId, {
@@ -319,15 +311,26 @@ export function useProjectWorkCommandController({
       }),
     );
   }, [
-    closedNote,
-    closedOutcome,
+    commitCommand,
+    projectId,
+    projection.stateRowVersion,
+  ]);
+
+  const activateProject = useCallback(async (): Promise<boolean> => {
+    const command =
+      projection.operationalState === "CLOSED" ? "REOPEN" : "ACTIVATE";
+    const payload = {
+      expectedRowVersion: projection.stateRowVersion,
+      command,
+    };
+    return commitCommand(projectCommandIntent(command, payload), (commandId) =>
+      runProjectStateCommand(projectId, { commandId, ...payload }),
+    );
+  }, [
     commitCommand,
     projectId,
     projection.operationalState,
     projection.stateRowVersion,
-    stateChoice,
-    stateReason,
-    waitingUntil,
   ]);
 
   const recordSiteVisitCompleted = useCallback(() => {
@@ -366,19 +369,15 @@ export function useProjectWorkCommandController({
     setManualDueAt,
     manualReason,
     setManualReason,
-    stateChoice,
-    setStateChoice,
     waitingUntil,
     setWaitingUntil,
     stateReason,
     setStateReason,
-    closedOutcome,
-    setClosedOutcome,
-    closedNote,
-    setClosedNote,
     runItemAction,
     createManualItem,
-    updateState,
+    waitProject,
+    closeProject,
+    activateProject,
     recordSiteVisitCompleted,
     primaryCanRecordReply: primaryItem ? isCadenceWorkItem(primaryItem) : false,
     primarySentCommand: primaryItem
