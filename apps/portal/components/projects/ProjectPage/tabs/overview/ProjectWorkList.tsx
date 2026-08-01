@@ -105,7 +105,7 @@ export default function ProjectWorkList(props: ProjectWorkListProps) {
                           void props.controller.runItemAction(item, "sent")
                         }
                       >
-                        Email sent
+                        Record email sent
                       </Button>
                     ) : null}
                     {cadence ? (
@@ -117,7 +117,7 @@ export default function ProjectWorkList(props: ProjectWorkListProps) {
                           void props.controller.runItemAction(item, "reply")
                         }
                       >
-                        Customer replied
+                        Record customer reply
                       </Button>
                     ) : null}
                     {isGenericCompletableWorkSource(item.sourceType) ? (
@@ -129,7 +129,7 @@ export default function ProjectWorkList(props: ProjectWorkListProps) {
                           void props.controller.runItemAction(item, "complete")
                         }
                       >
-                        Complete
+                        Mark complete
                       </Button>
                     ) : null}
                   </div>

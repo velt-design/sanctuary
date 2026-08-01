@@ -5,6 +5,7 @@ import { fetchProjectStaffDirectory } from "@/lib/projects/commandCentre/client"
 import type { ProjectCommandStaffSummary } from "@/lib/projects/commandCentre/types";
 import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type { ProjectWorkProjection } from "@/lib/projects/workItems/types";
+import { isApprovedSiteVisitSpecialistIdentity } from "@/lib/projects/workItems/prohibitedWork";
 import { isGenericCompletableWorkSource } from "@/lib/projects/workItems/workItemCapabilities";
 import {
   projectClosedOutcomeLabel,
@@ -60,9 +61,13 @@ function primaryPresentation(
     primary.kind === "workItem" ? primary.item.title : primary.title;
   const reason = primary.reason;
   const href =
-    (primary.kind === "recovery" || primary.kind === "specialist") &&
-    !/site[\s_-]*visits?/i.test(primary.href ?? "")
+    primary.kind === "recovery" || primary.kind === "specialist"
       ? primary.href
+      : null;
+  const actionLabel =
+    primary.kind === "recovery" || primary.kind === "specialist"
+      ? (primary.actionLabel ??
+        (primary.kind === "recovery" ? "Review recovery" : "Open workflow"))
       : null;
   const badge =
     primary.kind === "workItem"
@@ -98,8 +103,10 @@ function primaryPresentation(
           { label: "Owner", value: owner },
           { label: "Due", value: due },
           {
-            label: "Responsibility",
-            value: projectWorkResponsibilityLabel(primary.item.responsibilityArea),
+            label: "Area",
+            value: projectWorkResponsibilityLabel(
+              primary.item.responsibilityArea,
+            ),
           },
         ]
       : primary.kind === "specialist"
@@ -115,13 +122,14 @@ function primaryPresentation(
     title,
     reason,
     href,
+    actionLabel,
     badge,
     details,
     expectedResult,
     tone:
       primary.kind === "workItem" && primary.dueState === "critical"
         ? ("critical" as const)
-        : ("inverse" as const),
+        : ("default" as const),
     statusTone:
       badge === "Critical"
         ? ("error" as const)
@@ -166,6 +174,16 @@ export default function ProjectWorkSection({
   const staff = staffQuery.data ?? [];
   const primary = primaryPresentation(controller, staff);
   const active = controller.projection.effectiveState === "ACTIVE";
+  const siteVisitCompleted = controller.projection.confirmedFacts.some(
+    (fact) => fact.type === "SITE_VISIT_COMPLETED",
+  );
+  const siteVisitPrimary =
+    controller.primary.kind === "specialist" &&
+    isApprovedSiteVisitSpecialistIdentity({
+      actionKind: controller.primary.kind,
+      key: controller.primary.key,
+      href: controller.primary.href,
+    });
   const prohibitedPrimary = isProhibitedProjectWorkPrimary(controller.primary);
   const blockedPrimary =
     active &&
@@ -195,7 +213,9 @@ export default function ProjectWorkSection({
       ? [
           {
             label: "Outcome",
-            value: projectClosedOutcomeLabel(controller.projection.closedOutcome),
+            value: projectClosedOutcomeLabel(
+              controller.projection.closedOutcome,
+            ),
           },
         ]
       : []),
@@ -208,7 +228,7 @@ export default function ProjectWorkSection({
       data-project-work-model="v2"
       aria-label="Project Work"
       title="Project Work"
-      eyebrow="Server-ranked next action"
+      eyebrow="Next project action"
       padding="compact"
     >
       <div className={styles.stack}>
@@ -222,8 +242,9 @@ export default function ProjectWorkSection({
 
         {prohibitedPrimary ? (
           <AlertBanner tone="blocking" title="Legacy work needs review">
-            A retired legacy, Call, or Site Visit action is server-selected. It
-            stays hidden and no browser replacement is chosen.
+            A retired legacy, Call, or unapproved Site Visit action is
+            server-selected. It stays hidden and no browser replacement is
+            chosen.
           </AlertBanner>
         ) : ordinaryPrimarySuppressed ? (
           <AlertBanner tone="warning" title="Project work state needs review">
@@ -242,10 +263,13 @@ export default function ProjectWorkSection({
         ) : (
           <ActionPanel
             className={styles.primaryAction}
+            data-primary-project-work="true"
             title={primary.title}
             eyebrow={
-              controller.primary.kind === "workItem"
-                ? "Primary project work"
+              controller.primary.kind === "workItem" ||
+              controller.primary.kind === "specialist" ||
+              controller.primary.kind === "recovery"
+                ? "Do this next"
                 : "Project state"
             }
             tone={primary.tone}
@@ -260,69 +284,100 @@ export default function ProjectWorkSection({
               ) : undefined
             }
             footer={
-              <div className={styles.inlineActions}>
-                {active && primary.href ? (
-                  <ButtonLink href={primary.href}>Open</ButtonLink>
-                ) : null}
-                {active &&
-                primary.primaryItem &&
-                isGenericCompletableWorkSource(
-                  primary.primaryItem.sourceType,
-                ) ? (
-                  <Button
-                    loading={
-                      controller.pendingItemId === primary.primaryItem.id
-                    }
-                    disabled={controller.pending || controller.stale}
-                    onClick={() =>
-                      void controller.runItemAction(
-                        primary.primaryItem!,
-                        "complete",
-                      )
-                    }
-                  >
-                    Complete
-                  </Button>
-                ) : null}
-                {active &&
-                controller.primarySentCommand &&
-                primary.primaryItem ? (
-                  <Button
-                    loading={
-                      controller.pendingItemId === primary.primaryItem.id
-                    }
-                    disabled={controller.pending || controller.stale}
-                    onClick={() =>
-                      void controller.runItemAction(
-                        primary.primaryItem!,
-                        "sent",
-                      )
-                    }
-                  >
-                    Email sent
-                  </Button>
-                ) : null}
-                {active &&
-                controller.primaryCanRecordReply &&
-                primary.primaryItem ? (
-                  <Button
-                    variant="secondary"
-                    disabled={controller.pending || controller.stale}
-                    onClick={() =>
-                      void controller.runItemAction(
-                        primary.primaryItem!,
-                        "reply",
-                      )
-                    }
-                  >
-                    Customer replied
-                  </Button>
-                ) : null}
+              <div className={styles.commandArea}>
+                {controller.primarySentCommand ? (
+                  <p className={styles.commandHelp}>
+                    <strong>Send externally first.</strong> Then record the
+                    outcome.
+                  </p>
+                ) : (
+                  <span className={styles.commandLabel}>
+                    {primary.href
+                      ? "Continue in the owning workflow"
+                      : "Record the outcome"}
+                  </span>
+                )}
+                <div className={styles.inlineActions}>
+                  {active && primary.href ? (
+                    <ButtonLink href={primary.href} disabled={controller.stale}>
+                      {primary.actionLabel}
+                    </ButtonLink>
+                  ) : null}
+                  {active &&
+                  pipelineStage.trim().toLowerCase() === "site_visit" &&
+                  siteVisitPrimary &&
+                  !siteVisitCompleted ? (
+                    <Button
+                      variant="secondary"
+                      loading={controller.pending}
+                      disabled={controller.pending || controller.stale}
+                      onClick={() => void controller.recordSiteVisitCompleted()}
+                    >
+                      Record visit complete
+                    </Button>
+                  ) : null}
+                  {active &&
+                  primary.primaryItem &&
+                  isGenericCompletableWorkSource(
+                    primary.primaryItem.sourceType,
+                  ) ? (
+                    <Button
+                      loading={
+                        controller.pendingItemId === primary.primaryItem.id
+                      }
+                      disabled={controller.pending || controller.stale}
+                      onClick={() =>
+                        void controller.runItemAction(
+                          primary.primaryItem!,
+                          "complete",
+                        )
+                      }
+                    >
+                      Mark complete
+                    </Button>
+                  ) : null}
+                  {active &&
+                  controller.primarySentCommand &&
+                  primary.primaryItem ? (
+                    <Button
+                      loading={
+                        controller.pendingItemId === primary.primaryItem.id
+                      }
+                      disabled={controller.pending || controller.stale}
+                      onClick={() =>
+                        void controller.runItemAction(
+                          primary.primaryItem!,
+                          "sent",
+                        )
+                      }
+                    >
+                      Record email sent
+                    </Button>
+                  ) : null}
+                  {active &&
+                  controller.primaryCanRecordReply &&
+                  primary.primaryItem ? (
+                    <Button
+                      variant="tertiary"
+                      disabled={controller.pending || controller.stale}
+                      onClick={() =>
+                        void controller.runItemAction(
+                          primary.primaryItem!,
+                          "reply",
+                        )
+                      }
+                    >
+                      Record customer reply
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             }
           >
             {primary.reason ? (
-              <p className={styles.reason}>{primary.reason}</p>
+              <p className={styles.reason} data-primary-work-reason="true">
+                {primary.reason}
+              </p>
             ) : null}
             {primary.details.length ? (
               <KeyValueGrid
@@ -373,6 +428,7 @@ export default function ProjectWorkSection({
           projectId={projectId}
           host={host}
           pipelineStage={pipelineStage}
+          siteVisitActionProminent={siteVisitPrimary}
           onRefresh={onRefresh}
         />
 

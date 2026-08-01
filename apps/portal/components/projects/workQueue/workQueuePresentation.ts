@@ -1,14 +1,8 @@
 import type { ProjectCommandStaffSummary } from '@/lib/projects/commandCentre/types';
 import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
 import { isGenericCompletableWorkSource } from '@/lib/projects/workItems/workItemCapabilities';
-import {
-  projectWorkDueLabel,
-  projectWorkEffectiveAssigneeLabel,
-} from '@/lib/projects/workItems/presentation';
-import {
-  formatAucklandDateTimeLocal,
-  parseAucklandDateTimeLocal,
-} from '@/lib/time/aucklandDateTime';
+import { projectWorkDueLabel, projectWorkEffectiveAssigneeLabel } from '@/lib/projects/workItems/presentation';
+import { formatAucklandDateTimeLocal, parseAucklandDateTimeLocal } from '@/lib/time/aucklandDateTime';
 
 type WorkQueueGroup = ProjectWorkQueueEntry['group'];
 
@@ -24,8 +18,16 @@ export const WORK_QUEUE_GROUPS: ReadonlyArray<{
     label: 'Next 7 business days',
     description: 'Upcoming work that needs preparation.',
   },
-  { key: 'blocked', label: 'Blocked', description: 'Resolve the reason before work can continue.' },
-  { key: 'needsTriage', label: 'Needs triage', description: 'A staff decision is required.' },
+  {
+    key: 'blocked',
+    label: 'Blocked',
+    description: 'Resolve the reason before work can continue.',
+  },
+  {
+    key: 'needsTriage',
+    label: 'Needs triage',
+    description: 'A staff decision is required.',
+  },
 ];
 
 export type WorkQueueEntryView = ProjectWorkQueueEntry & {
@@ -38,25 +40,23 @@ export function queueEntryStage(entry: WorkQueueEntryView): string {
 
 export function queueEntryReason(entry: WorkQueueEntryView): string {
   return (
-    entry.reason?.trim()
-    || entry.blockedReason?.trim()
-    || (entry.actionKind === 'specialist'
+    entry.reason?.trim() ||
+    entry.blockedReason?.trim() ||
+    (entry.actionKind === 'specialist'
       ? 'This action is ready in its specialist workspace.'
       : 'This is the current server-confirmed project obligation.')
   );
 }
 
-export function queueDueLabel(
-  entry: WorkQueueEntryView,
-  now = new Date(),
-): string {
+export function queueProjectHref(entry: WorkQueueEntryView): string {
+  return `/staff/projects/${encodeURIComponent(entry.projectId)}?tab=activity`;
+}
+
+export function queueDueLabel(entry: WorkQueueEntryView, now = new Date()): string {
   return projectWorkDueLabel(entry, now);
 }
 
-export function effectiveAssigneeLabel(
-  entry: WorkQueueEntryView,
-  staff: ProjectCommandStaffSummary[],
-): string {
+export function effectiveAssigneeLabel(entry: WorkQueueEntryView, staff: ProjectCommandStaffSummary[]): string {
   return projectWorkEffectiveAssigneeLabel(entry.effectiveAssignee, staff);
 }
 
@@ -80,18 +80,15 @@ export function replyConfirmationCommand(entry: WorkQueueEntryView): string | nu
 }
 
 export function isGenericCompletable(entry: WorkQueueEntryView): boolean {
-  return (
-    entry.actionKind === 'workItem'
-    && isGenericCompletableWorkSource(entry.sourceType)
-  );
+  return entry.actionKind === 'workItem' && isGenericCompletableWorkSource(entry.sourceType);
 }
 
 export function canManageQueueWorkItem(entry: WorkQueueEntryView): boolean {
   return Boolean(
-    entry.actionKind === 'workItem'
-    && entry.sourceType !== 'LEGACY_REVIEW'
-    && entry.workItemId
-    && entry.workItemRowVersion,
+    entry.actionKind === 'workItem' &&
+    entry.sourceType !== 'LEGACY_REVIEW' &&
+    entry.workItemId &&
+    entry.workItemRowVersion,
   );
 }
 

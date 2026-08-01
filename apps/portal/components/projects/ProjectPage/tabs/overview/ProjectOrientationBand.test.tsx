@@ -121,7 +121,8 @@ describe("ProjectOrientationBand", () => {
         ?.getAttribute("data-project-journey-phase"),
     ).toBe("ENQUIRY");
     expect(orientation?.textContent).toContain("Journey");
-    expect(orientation?.textContent).toContain("New");
+    expect(orientation?.textContent).toContain("Enquiry");
+    expect(orientation?.textContent).not.toContain("Stage");
     expect(orientation?.textContent).toContain("Taylor");
     expect(orientation?.textContent).toContain("taylor@example.com");
     expect(orientation?.textContent).toContain("1 Example St");

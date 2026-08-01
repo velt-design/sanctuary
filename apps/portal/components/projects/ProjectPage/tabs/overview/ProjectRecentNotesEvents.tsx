@@ -34,8 +34,8 @@ export default function ProjectRecentNotesEvents({
 
   return (
     <Card
+      className={styles.card}
       title="Recent notes and events"
-      eyebrow="Bounded project history"
       padding="none"
       aria-label="Recent notes and events"
       data-recent-notes-events="true"

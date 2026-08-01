@@ -81,7 +81,7 @@ export default function ProjectOrientationBand({
       ) : (
         <Button
           size="small"
-          variant="secondary"
+          variant="tertiary"
           onClick={() => setIsEditing(true)}
         >
           Edit details
@@ -257,7 +257,7 @@ export default function ProjectOrientationBand({
       data-operational-state={operationalState ?? undefined}
     >
       <header className={styles.orientationHeader}>
-        <h2>Project orientation</h2>
+        <h2>Project context</h2>
         <div className={styles.overviewActions}>
           {detailsActions}
           <Suspense
@@ -286,19 +286,21 @@ export default function ProjectOrientationBand({
             operationalState={operationalState}
             presentation="embedded"
             className={styles.journey}
+            ariaLabel="Project journey and operational state"
+            showStage={false}
           />
           <dl
             className={styles.orientationFacts}
             aria-label="Project orientation details"
           >
-            <div>
+            <div data-context-priority="primary">
               <dt>Customer</dt>
               <dd>
                 <strong>{displayed.contactName || "Not provided"}</strong>
                 <span>{displayed.contactEmail || "Email not provided"}</span>
               </dd>
             </div>
-            <div>
+            <div data-context-priority="primary">
               <dt>Site</dt>
               <dd>
                 <strong>{displayed.siteAddress || "Not provided"}</strong>
@@ -309,20 +311,20 @@ export default function ProjectOrientationBand({
                 </span>
               </dd>
             </div>
-            <div>
+            <div data-context-priority="secondary">
               <dt>Reference</dt>
               <dd>
                 <strong>{displayed.quoteRef || "Not allocated"}</strong>
               </dd>
             </div>
-            <div>
+            <div data-context-priority="secondary">
               <dt>Freshness</dt>
               <dd>
                 <span className={styles.statusRow}>
                   {freshness ? (
-                  <Badge tone={freshness.tone ?? "neutral"}>
-                    {freshness.label}
-                  </Badge>
+                    <Badge tone={freshness.tone ?? "neutral"}>
+                      {freshness.label}
+                    </Badge>
                   ) : (
                     <span>Freshness unavailable</span>
                   )}

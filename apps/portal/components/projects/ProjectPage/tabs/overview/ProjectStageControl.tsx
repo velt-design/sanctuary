@@ -50,11 +50,9 @@ export default function ProjectStageControl({
     const targetLabel = PIPELINE_STAGE_LABELS[nextStage] ?? nextStage;
     setBusy(true);
     try {
-      await correctProjectStage(
-        projectId,
-        stageKeyToStatus(nextStage),
-        { reason },
-      );
+      await correctProjectStage(projectId, stageKeyToStatus(nextStage), {
+        reason,
+      });
       patchProjectSnapshot(queryClient, host, projectId, (current) => {
         if (!current) return current;
         return {
@@ -102,7 +100,7 @@ export default function ProjectStageControl({
         ) : null}
         <Button
           type="button"
-          variant="secondary"
+          variant={presentation === "action-only" ? "tertiary" : "secondary"}
           size="small"
           onClick={() => setOpen(true)}
         >

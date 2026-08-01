@@ -5,14 +5,13 @@ import {
   canManageQueueWorkItem,
   isGenericCompletable,
   queueDueLabel,
+  queueProjectHref,
   replyConfirmationCommand,
   sentConfirmationCommand,
   toLocalDateTimeValue,
 } from './workQueuePresentation';
 
-function entry(
-  overrides: Partial<ProjectWorkQueueEntry> = {},
-): ProjectWorkQueueEntry {
+function entry(overrides: Partial<ProjectWorkQueueEntry> = {}): ProjectWorkQueueEntry {
   return {
     projectId: 'proj_11111111-1111-4111-8111-111111111111',
     projectName: 'Test project',
@@ -40,39 +39,67 @@ function entry(
 describe('work queue presentation', () => {
   it('uses operational labels before attempting to format a date', () => {
     expect(queueDueLabel(entry({ group: 'blocked' }))).toBe('Blocked');
-    expect(queueDueLabel(entry({
-      group: 'needsTriage',
-      actionKind: 'stateReview',
-    }))).toBe('Wake-up due');
-    expect(queueDueLabel(entry({
-      group: 'needsTriage',
-      actionKind: 'needsTriage',
-      dueAt: null,
-    }))).toBe('Decision needed');
-    expect(queueDueLabel(entry({
-      group: 'today',
-      actionKind: 'specialist',
-      dueAt: null,
-    }))).toBe('Ready now');
+    expect(
+      queueDueLabel(
+        entry({
+          group: 'needsTriage',
+          actionKind: 'stateReview',
+        }),
+      ),
+    ).toBe('Wake-up due');
+    expect(
+      queueDueLabel(
+        entry({
+          group: 'needsTriage',
+          actionKind: 'needsTriage',
+          dueAt: null,
+        }),
+      ),
+    ).toBe('Decision needed');
+    expect(
+      queueDueLabel(
+        entry({
+          group: 'today',
+          actionKind: 'specialist',
+          dueAt: null,
+        }),
+      ),
+    ).toBe('Ready now');
   });
 
   it('maps only approved cadence work to semantic confirmation commands', () => {
     expect(sentConfirmationCommand(entry())).toBe('RECORD_FIRST_ENQUIRY_EMAIL_SENT');
-    expect(sentConfirmationCommand(entry({
-      sourceKey: 'lead:follow-up:project:v1',
-    }))).toBe('RECORD_ENQUIRY_FOLLOW_UP_EMAIL_SENT');
-    expect(sentConfirmationCommand(entry({
-      sourceType: 'QUOTE_CADENCE',
-      sourceKey: 'quote:follow-up:quote:v1',
-    }))).toBe('RECORD_QUOTE_FOLLOW_UP_EMAIL_SENT');
+    expect(
+      sentConfirmationCommand(
+        entry({
+          sourceKey: 'lead:follow-up:project:v1',
+        }),
+      ),
+    ).toBe('RECORD_ENQUIRY_FOLLOW_UP_EMAIL_SENT');
+    expect(
+      sentConfirmationCommand(
+        entry({
+          sourceType: 'QUOTE_CADENCE',
+          sourceKey: 'quote:follow-up:quote:v1',
+        }),
+      ),
+    ).toBe('RECORD_QUOTE_FOLLOW_UP_EMAIL_SENT');
     expect(replyConfirmationCommand(entry())).toBe('RECORD_ENQUIRY_CUSTOMER_REPLY');
-    expect(replyConfirmationCommand(entry({
-      sourceType: 'QUOTE_CADENCE',
-    }))).toBe('RECORD_QUOTE_CUSTOMER_REPLY');
-    expect(sentConfirmationCommand(entry({
-      sourceType: 'MANUAL',
-      sourceKey: null,
-    }))).toBeNull();
+    expect(
+      replyConfirmationCommand(
+        entry({
+          sourceType: 'QUOTE_CADENCE',
+        }),
+      ),
+    ).toBe('RECORD_QUOTE_CUSTOMER_REPLY');
+    expect(
+      sentConfirmationCommand(
+        entry({
+          sourceType: 'MANUAL',
+          sourceKey: null,
+        }),
+      ),
+    ).toBeNull();
   });
 
   it('allows generic completion only for current manual and stage-review work', () => {
@@ -80,13 +107,26 @@ describe('work queue presentation', () => {
     expect(isGenericCompletable(entry({ sourceType: 'LEGACY_REVIEW' }))).toBe(false);
     expect(isGenericCompletable(entry({ sourceType: 'STAGE_REVIEW' }))).toBe(true);
     expect(isGenericCompletable(entry({ sourceType: 'LEAD_CADENCE' }))).toBe(false);
-    expect(isGenericCompletable(entry({
-      actionKind: 'specialist',
-      sourceType: null,
-    }))).toBe(false);
     expect(
-      canManageQueueWorkItem(entry({ sourceType: 'LEGACY_REVIEW' })),
+      isGenericCompletable(
+        entry({
+          actionKind: 'specialist',
+          sourceType: null,
+        }),
+      ),
     ).toBe(false);
+    expect(canManageQueueWorkItem(entry({ sourceType: 'LEGACY_REVIEW' }))).toBe(false);
+  });
+
+  it('keeps project identity linked to Overview when the action owns another destination', () => {
+    expect(
+      queueProjectHref(
+        entry({
+          actionKind: 'specialist',
+          href: '/staff/schedule?view=site-visits&project=proj_11111111-1111-4111-8111-111111111111',
+        }),
+      ),
+    ).toBe('/staff/projects/proj_11111111-1111-4111-8111-111111111111?tab=activity');
   });
 
   it('round-trips Auckland wall-clock values without using the browser timezone', () => {

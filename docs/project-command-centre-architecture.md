@@ -27,7 +27,7 @@ When an older command-centre document conflicts with this section, use this sect
 | Older direction | Approved current direction |
 | --- | --- |
 | Call actions, call tasks, or calling as a fallback | Sanctuary lead and quote communication is email-only. Do not render or create a Call action. |
-| Site Visit tasks, workstream actions, or global navigation | Site Visits remains hidden and manual. It is not a project-work source, destination, or stage side effect; an active V2 project in the Site Visit stage has one bounded deep link from its controls to the retained booking/confirmation workflow. |
+| Site Visit tasks, workstream actions, or global navigation | Site Visits remains hidden from global navigation and outside the work-item table. The server may rank one bounded specialist action for `Contacted` or `Site Visit` and route it to the retained Schedule-owned booking/confirmation workflow; that action never changes stage or Schedule state by itself. |
 | Separate command card, task list, follow-up list, and manual-action surface | Every project has exactly one Project Work region backed by one `ProjectWorkProjection`. |
 | Legacy `tasks`, `followup_tasks`, `project_task_checks`, and `project_manual_actions` as the long-term selector | They are retired audit/rollback evidence. They have no normal UI, reader, writer, or selection role after the portfolio rollout. |
 | Four always-visible lead-to-quote workstream cards | Use one compact journey/readiness region only when bounded server-owned evidence exists. Do not create another editable status system. |
@@ -65,7 +65,8 @@ The current server payload does not yet provide complete, bounded summaries for 
 
 - Communication is email-only. The existing autoresponder is automatic; the first personal email, one follow-up, and close review are manual. The approved quote follow-up is also manual.
 - Do not add an inbox integration, automatic personal send, automatic closure, or call fallback.
-- If the Site Visit completion fact is needed, record only the existing bounded manual `SITE_VISIT_COMPLETED` confirmation. It creates no task, stage change, or Schedule side effect. This fact remains separate from the stage-gated deep link that opens the retained booking/confirmation workflow.
+- The shared server ranking is journey-aware: `New` keeps enquiry qualification/cadence work primary; `Contacted` ranks arranging a site visit; `Site Visit` ranks booking, confirmation, and completion until the durable `SITE_VISIT_COMPLETED` fact exists; and `Prepare the quote` is eligible only at `Quoting` with a valid current estimate. A reasoned stage correction directly to `Quoting` is the explicit no-visit decision.
+- If the Site Visit completion fact is needed, record only the existing bounded manual `SITE_VISIT_COMPLETED` confirmation. It creates no task, automatic stage change, or Schedule side effect. The specialist action and completion control remain separate commands within the one Project Work surface.
 - V2 shows one primary action derived on the server. It includes the server-provided reason or ranking basis, effective owner, and due state when relevant. Specialist and recovery candidates also show their provided prerequisite/context, expected result, and owning destination. Work-item presentation must not invent fields that its server contract does not supply.
 - Blocked work is an exception, not an enabled primary action.
 - Other open V2 work may appear inside the same Project Work region. It must not become a second Tasks card.
@@ -136,7 +137,7 @@ A conditional region is omitted when it is irrelevant. When it is relevant but t
 - Job Packs remains conditional.
 - Schedule Board/Gantt owns install planning and actual timing.
 - Running Jobs owns its current operational fields.
-- Site Visits has no general Overview or navigation link. The sole exception is the active V2 Site Visit-stage control that opens the retained direct booking/confirmation workflow.
+- Site Visits has no general Overview or global-navigation link. The shared server-owned specialist adapter may expose only the bounded `Contacted` and `Site Visit` journey actions, with explicit labels and the canonical retained booking/confirmation destination.
 
 #### Remove From The Overview Composition
 
@@ -145,7 +146,7 @@ A conditional region is omitted when it is irrelevant. When it is relevant but t
 - Duplicate Project Owner management.
 - Repeated project title or stage content that adds no new meaning.
 - Call actions or categories.
-- Site Visit tasks or links outside the one stage-gated booking/confirmation control.
+- Site Visit tasks or generic/discovered links outside the approved server-owned specialist action and its manual completion control.
 - Generic green health claims.
 - Multiple equal-weight warning cards.
 - Full quote, invoice, estimate, Schedule, Running Jobs, Workbench, or Job Pack detail.
@@ -314,7 +315,7 @@ The original composition slice required no migration. The approved portfolio fol
 `20260731000002_project_work_portfolio_rollout.sql` is the sole rollout owner. It uses one statement timestamp for every pre-rollout project and is safe to replay:
 
 - `New` uses the existing two-open-hour/four-open-hour lead initializer.
-- `Contacted`, `Site Visit`, `Quoting`, `Sent`, `Deposit`, `Scheduled`, and `Completed` receive one stage-appropriate progress review due after five Auckland business days when no stronger current work exists. A Site Visit-stage review is proposal progress, never a Site Visit task.
+- `Contacted`, `Site Visit`, `Quoting`, `Sent`, `Deposit`, `Scheduled`, and `Completed` receive one stage-appropriate progress review due after five Auckland business days when no stronger current work exists. The shared specialist ranking may supersede that review in presentation: Contacted and Site Visit route to the retained visit workflow, while quote creation is confined to Quoting with a valid estimate. No Site Visit task is created.
 - `Paid` becomes `Closed - Complete`.
 - Archived projects retain their stage, present as Archived, and receive no active work.
 - A later stage transition cancels/replaces only `STAGE_REVIEW` work and preserves all specialist and communication facts.
@@ -329,7 +330,7 @@ The Projects index also exposes the same Project Owner and one page-scoped serve
 - No marketing UI imports.
 - No automatic customer email or external side effect.
 - No call workflow.
-- No Site Visit task, global navigation, or automatic scheduling integration; retain only the stage-gated direct booking/confirmation link.
+- No Site Visit task, global navigation, or automatic scheduling integration; retain only the bounded server specialist link for `Contacted` and `Site Visit` plus the separate manual completion fact.
 - No browser-driven or evidence-classifier migration; the server migration converts the whole portfolio deterministically from stored stage.
 - No automatic stage movement, closure, archive, payment, quote acceptance, or Schedule command.
 - No new manually editable health, progress, workstream, readiness, or commercial status.
@@ -353,7 +354,7 @@ Product acceptance:
 
 1. An unfamiliar project can be oriented within seconds: project/customer/site, stage, operational state/freshness, owner, one next action and reason, blocker, exact current design/commercial source, and specialist destination.
 2. Every project has exactly one Project Work region and no separate Tasks card or legacy task presentation.
-3. No Call action or Site Visit task/category/global-navigation link appears. The only Site Visit destination is the active V2 Site Visit-stage booking/confirmation control.
+3. No Call action or Site Visit task/category/global-navigation link appears. The only Site Visit destination is the trusted server specialist candidate for `Contacted` or `Site Visit`, and its manual completion fact remains separate.
 4. Pipeline stage is not presented as readiness, percentage complete, or proof of a downstream artifact.
 5. Missing evidence never appears ready, sent, paid, scheduled, or complete.
 6. Design and commercial precedence remains byte-for-byte equivalent at the owning resolver boundary.
@@ -527,7 +528,7 @@ Placeholder task/note arrays never produce a false empty state.
 
 ## 7. Canonical ownership
 
-Stage 2 owns one project assignment in `project_owner_assignments`, keyed by project. The approved owner roster is Jordan, JP, Joe, and Bruce. A row stores only the stable business key; no row means unassigned. This project owner carries the project from `new` through `deposit` and remains visible afterward when assigned.
+Stage 2 owns one project assignment in `project_owner_assignments`, keyed by project. The approved owner roster is Ellen, Jordan, JP, Joe, Bruce, and Dave. A row stores only the stable business key; no row means unassigned. Ellen is the server-enforced owner for active `New` and `Contacted` projects. After a manual move into Proposal, an admin explicitly selects its Proposal owner; before the project leaves Proposal, that owner performs the manual handoff and assigns Dave for Confirmed and Delivery work. Pipeline-stage changes remain manual and no ownership rule advances a project.
 
 The forward migration prefers an existing active Sales assignment, then Design and Estimating, only when the legacy assignee name maps to the approved roster. Unknown identities remain unassigned. The legacy three-role table is retained read-only as rollback evidence and has no current writer or read-model consumer.
 
@@ -637,7 +638,7 @@ The server performs one auth-bound `projects` relation read for estimate metadat
 The historical Stage 1 composition required no migration. Project Work is owned by its ordered foundation migrations and the current rollout migration:
 
 - `20260720_000008_project_command_centre_stage2.sql` promotes task/follow-up setup into migration truth; adds the initial owner/action/control/selection/audit tables, updated timestamps, focused indexes, select-only portal RLS, transactional idempotent commands, active-user backfills, and compatibility projection columns. Source-table triggers maintain candidate versions and the Schedule projection; Design Package source-task changes use a bounded staff RPC after direct authenticated source writes are revoked.
-- `20260721_000001_project_command_single_owner.sql` replaces the initial three-role owner contract with one Project Owner from the approved Jordan/JP/Joe/Bruce roster, performs the deterministic legacy backfill, and replaces the owner command.
+- `20260721_000001_project_command_single_owner.sql` replaces the initial three-role owner contract with one Project Owner and performs the deterministic legacy backfill. `20260801_000001_project_owner_handoffs_and_enquiry_inactivity.sql` extends the roster with Ellen and Dave, assigns Ellen to active Enquiry projects at the server boundary, preserves manual Proposal/Delivery handoffs, and adds an admin/service read-only inactivity report without closing or advancing projects.
 - `20260731000002_project_work_portfolio_rollout.sql` processes every pre-rollout project exactly once from its current stored stage, including already-V2 rows. A private project-independent ledger closes the cohort even when it was empty or its project events are later removed by a valid hard delete, while one event per project retains detailed audit. It seeds fresh server-owned stage timing, closes Paid as Complete, keeps Archived out of current work, cancels prohibited and legacy-review work, makes retired reviews terminal, initializes later direct inserts through a deferred invariant, rejects future Call/Site Visit work at the database boundary, preserves the existing confirmed admin hard-delete cascade, retires legacy writers, exposes `staff_projects_index_v2` and `staff_project_state_counts_v1`, and lifts the queue safety cap to 5,000. The server queue pages hosted-safe ranges and fails closed at that ceiling without changing the response shape.
 
 The rollout migration is applied in positively identified staging and production. Preview is wired only to the staging Supabase project, while Production is wired only to production. Before the production transaction, the unchanged migration was rehearsed with rollback against the real portfolio and a completed physical backup was verified. The exact file SHA-256 was `a9e91e48e0a894bbe9201cc39c7ba5e83c4d33b9d8912c0b6d369bf058755ef3`. Production postflight found all 1,151 projects marked V2 with operational state, one durable rollout ledger row, 1,151 rollout events, no active prohibited work, and all four legacy tables preserved at their preflight counts.
@@ -678,11 +679,11 @@ Overview V2 component boundaries:
 
 - `OverviewTab.tsx`: query/state orchestration, access-ending reporting, and composition handoff only. One failed command-centre read owns one recovery action for the unavailable Project Work and commercial regions.
 - `overview/ProjectOverviewLayout.tsx`: route-owned responsive composition for orientation, Project Work, current design/commercial, and bounded recent notes/events.
-- `overview/ProjectOrientationBand.tsx`: active Overview owner for journey, detailed stage, customer, site, region, reference, operational state, freshness, local-first details editing/retry, and stage correction without repeating the project title or owner management.
+- `overview/ProjectOrientationBand.tsx`: active Overview owner for journey, customer, site, region, reference, operational state, freshness, local-first details editing/retry, and stage correction without repeating project identity, owner management, or the detailed stage already presented in the header.
 - `overview/ProjectStatusDetailsCard.tsx`: compatibility adapter that renders `ProjectOrientationBand` in compatibility mode for `ProjectDetailsMutationFixtureClient` and focused local-first tests. `OverviewTab` does not mount it.
 - `overview/ProjectWorkSection.tsx`: the single Project Work region and high-level V2/state presentation.
 - `overview/ProjectWorkList.tsx`: secondary V2 open/blocked rows inside that region.
-- `overview/ProjectWorkControls.tsx`: V2 mutation-control presentation for manual work, operational-state changes, confirmation correction, and the existing manual Site Visit completion fact. It exposes no Site Visit task, global navigation, or automatic Schedule integration; its sole destination is the active V2 Site Visit-stage booking/confirmation deep link, and it renders no controls for Archived projects.
+- `overview/ProjectWorkControls.tsx`: V2 mutation-control presentation for manual work, operational-state changes, confirmation correction, and the existing manual Site Visit completion fact. It exposes no Site Visit task, global navigation, or automatic Schedule integration; it avoids duplicating the ranked specialist destination and renders no controls for Archived projects.
 - `overview/useProjectWorkCommandController.ts`: V2 browser command, stable retry identity, duplicate suppression, committed/unknown feedback, input state, V2 projection cache patching, and shared invalidation orchestration.
 - `overview/projectWorkVisibilityPolicy.ts`: the shared fail-closed Call/Site Visit identity filter for V2 primary candidates/items/manual titles and bounded recent events. Contextual state-review reasons are not treated as action identity.
 - `overview/ProjectCurrentDesignCommercialCard.tsx`: read-only selected design/commercial presentation. It does not infer lifecycle permission or expose deposit/payment mutation controls.
@@ -694,7 +695,9 @@ Overview V2 component boundaries:
 
 The `activity` module loader now resolves to `OverviewTab`; the old Activity component, three-query snapshot bar, fallback resolver, and summarizer are removed after consumer search proved no remaining code consumer.
 
-The current Project Work presentation consumes a required server-owned ranking reason for ordinary work items. It uses categorical due badges (`Critical`, `Overdue`, `Due today`, or `Upcoming`) while leaving the exact timestamp to the Due field, omits active-state counts already visible elsewhere, and does not render an empty secondary-work slot. Waiting/Closed/Archived details appear only when they add state-specific truth. The command grid becomes one column at and below 768 CSS pixels so tablet and 200%-zoom reading order matches mobile priority.
+The current Project Work presentation consumes a required server-owned ranking reason for ordinary work items. It uses categorical due badges (`Critical`, `Overdue`, `Due today`, or `Upcoming`) while leaving the exact timestamp to the Due field, omits active-state counts already visible elsewhere, and does not render an empty secondary-work slot. Its action title is the strongest route-owned heading, one orange or critical rail marks the server-ranked obligation, and command labels distinguish doing external work from recording its outcome. Waiting/Closed/Archived details appear only when they add state-specific truth.
+
+The route body shares the 1440px portal content ceiling and uses an approximately 62/38 Project Work/commercial split on wide screens. The context band is deliberately quiet, does not repeat the detailed stage owned by the project header, and groups journey/state separately from customer/site facts. Commercial exceptions render before customer-price/quote metrics; design/source facts and recent history are subordinate. At 800 CSS pixels or less the grid stacks from the component's available width, while at and below 768 CSS pixels the DOM and visual order is Project Work, commercial, context, then recent history. Empty exception rows do not reserve grid space.
 
 ## 18. Test and fixture strategy
 
@@ -710,7 +713,7 @@ Implemented focused coverage for the Overview V2 slice includes:
 - Environment-gated, customer-data-free fixture route that composes the real production `OverviewTab` path and its extracted `ProjectOverviewLayout`, `ProjectOrientationBand`, `ProjectWorkSection`, `ProjectCurrentDesignCommercialCard`, and `ProjectRecentNotesEvents` owners with synthetic server responses.
 - Fixture data for the approved V2 work/read-state catalogue, including long project/customer/site/action content, fresh stage review, Waiting/Closed/Archived, stale/mismatch/access-ending, rollout-unavailable, and strict commercial-source cases.
 - Current fixture Playwright assertions cover the strict read-only commercial catalogue, V2 Project Work/read states, one recovery action per failed read, prohibited Call/Site Visit identities, responsive composition, accessibility, and the project shell. No legacy task/action row is rendered or selected.
-- Responsive assertions and attached rendered evidence at 1440x1000, 1280x800, 1024x900, 768x1024, and 390x844; a 640 CSS-pixel 200%-zoom simulation; long-content resilience at all five standard widths; one-column recomposition at 768px and below; no document horizontal overflow, nested vertical scroll owner, or cropped control; semantic headings/regions; actual mobile Tab order; visible focus; reduced motion across descendants; prohibited lifecycle-control absence; and 44px coarse-pointer controls.
+- Responsive assertions and attached rendered evidence at 1600x1000, 1440x1000, 1280x800, 1024x900, 768x1024, and 390x844; a 640 CSS-pixel 200%-zoom simulation; long-content resilience at every standard width; the 1440px content ceiling; one-column recomposition at 768px and below; one visually dominant server-ranked action; exception-before-metrics ordering; no document horizontal overflow, nested vertical scroll owner, or cropped control; semantic headings/regions; actual mobile Tab order; visible focus; reduced motion across descendants; prohibited lifecycle-control absence; and 44px coarse-pointer controls.
 - `npm run test:portal:command-centre:read-only-auth` as the authenticated read-only portfolio/Overview smoke. It runs the portfolio-readiness and credential preflights, rejects production-like or ambiguous hosts, proves the fresh Projects Journey/Stage/State columns and Dashboard journey/state/Work Queue presentation, discovers one RLS-visible project, opens the integrated Overview, checks the extracted regions and absence of duplicate/prohibited controls, suppresses only the identifier-free Web Vitals transport before navigation, and aborts plus reports every other non-`GET`/`HEAD`/`OPTIONS` request.
 - `npm run test:portal:project-work:production-read-only-auth` as the protected, manually dispatched `main` production smoke. It accepts only the exact production portal origin and Supabase ref, reuses the same browser contracts, suppresses Web Vitals, and aborts plus reports every other non-read request.
 

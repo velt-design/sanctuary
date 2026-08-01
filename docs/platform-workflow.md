@@ -30,7 +30,8 @@ Portal staff manage contacts and projects in `apps/portal`.
 - Contacts routes: `/staff/contacts`, `/staff/contacts/new`, `/staff/contacts/[contactId]`.
 - Project routes: `/staff/projects`, `/staff/projects/new`, `/staff/projects/[projectId]`.
 - Project pipeline stages are defined in `apps/portal/lib/projects/pipelineDefinition.ts`.
-- Newly created V2 projects use one operational state plus accountable work items; existing unmarked projects retain legacy stage tasks. Pipeline stage remains journey position, not a task list.
+- V2 projects use one operational state plus accountable work items. Pipeline stage remains journey position, not a task list; the shared server ranking overlays only bounded specialist actions where another domain owns the next step.
+- Active New and Contacted projects are server-assigned to Ellen. Stage changes remain manual: after entering Proposal, staff explicitly select the Proposal owner; before leaving Proposal, that owner hands over and assigns Dave for Confirmed and Delivery work.
 - The project page's staff-facing default is Overview, while the compatibility route key remains `activity`. Overview hosts status/details, current design and commercial truth, the Project Owner, one primary next action, project notes/activity, and the model-appropriate work/task surface.
 - Staff-facing project tabs are Overview, Calculator, Commercial, and conditional Job Packs. Their compatibility route keys remain `activity`, `estimates`, `quotes`, `invoices`, and `job-packs`.
 - Canonical doc: `projects-contacts-estimates-calculator.md`.
@@ -73,7 +74,7 @@ Schedule V2 owns install planning and site visit scheduling.
 
 - Page route: `/staff/schedule`.
 - Normal staff views: Board and Gantt.
-- Site Visits remains a dormant Schedule-owned route/data capability but is hidden from normal navigation. Project work does not link to it; staff may record the bounded manual site-visit-completed confirmation when needed.
+- Site Visits remains a bounded Schedule-owned route/data capability hidden from normal navigation. `Contacted` Project Work can route staff to arrange a visit; `Site Visit` can route them to book/confirm and record completion. These are specialist actions, not work-item rows, and they do not mutate Schedule or stage automatically.
 - API routes: `apps/portal/app/api/staff/v1/schedule`.
 - Canonical doc: `schedule.md`.
 - Readiness route: `GET /api/staff/v1/schedule/readiness`.
@@ -112,7 +113,7 @@ Automation supports project actions, follow-ups, project tasks, email outbox rec
 
 - V2 project-work owner: `apps/portal/lib/projects/workItems` and the `project_work_*` command/read contracts.
 - Legacy-project automation runner: `apps/portal/lib/automation/AutomationRunner.ts`.
-- V2 uses accountable work items and manual email confirmations. It creates no call tasks and never sends or closes automatically.
+- V2 uses accountable work items and manual email confirmations. It creates no call tasks and never sends, changes phase, or closes automatically. `project_enquiry_inactivity_report_v1` is a read-only admin/service dry run over recorded project activity; any resulting `Closed - Lost - No response` command remains a separately approved manual operation.
 - Existing projects remain on legacy `tasks`, `followup_plans`, and `followup_tasks` until reviewed migration; no Contacted backlog records are changed.
 - Canonical doc: `automation-email-audit.md`.
 - Quote/invoice email side effects remain owned by `quotes-invoices-job-packs.md`.

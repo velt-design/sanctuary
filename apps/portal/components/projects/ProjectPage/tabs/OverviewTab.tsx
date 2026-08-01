@@ -173,19 +173,23 @@ export default function OverviewTab({
     if (accessEndingStatus !== null) onAccessEnding?.(accessEndingStatus);
   }, [accessEndingStatus, onAccessEnding]);
 
-  const exception = commandQuery.data && commandQuery.isError ? (
-    <AlertBanner
-      tone="warning"
-      title="Saved Overview"
-      action={
-        <Button variant="secondary" onClick={() => void commandQuery.refetch()}>
-          Retry
-        </Button>
-      }
-    >
-      Latest refresh failed. Facts remain visible; work controls are paused.
-    </AlertBanner>
-  ) : null;
+  const exception =
+    commandQuery.data && commandQuery.isError ? (
+      <AlertBanner
+        tone="warning"
+        title="Saved Overview"
+        action={
+          <Button
+            variant="secondary"
+            onClick={() => void commandQuery.refetch()}
+          >
+            Retry
+          </Button>
+        }
+      >
+        Latest refresh failed. Facts remain visible; work controls are paused.
+      </AlertBanner>
+    ) : null;
 
   let projectWork: ReactNode;
   let commercial: ReactNode;
@@ -319,7 +323,6 @@ export default function OverviewTab({
   ) : (
     <Card
       title="Recent notes and events"
-      eyebrow="Bounded project history"
       padding="compact"
       data-recent-notes-events="true"
     >

@@ -1,14 +1,24 @@
 .layout {
   display: grid;
+  width: 100%;
+  max-width: var(--ui-content-max);
+  margin-inline: auto;
   grid-template-areas:
     "orientation orientation"
     "exception exception"
     "project-work commercial"
     "recent admin";
-  grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr);
+  grid-template-columns: minmax(0, 1.65fr) minmax(360px, 1fr);
   align-items: start;
   gap: var(--ui-grid-gutter);
   min-width: 0;
+}
+
+.layout:not([data-has-exception]) {
+  grid-template-areas:
+    "orientation orientation"
+    "project-work commercial"
+    "recent admin";
 }
 
 .layout > * {
@@ -62,6 +72,15 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.layout[data-overview-composition="stacked"]:not([data-has-exception]) {
+  grid-template-areas:
+    "orientation"
+    "project-work"
+    "commercial"
+    "recent"
+    "admin";
+}
+
 .layout[data-overview-composition="mobile"] {
   grid-template-areas:
     "exception"
@@ -71,6 +90,15 @@
     "recent"
     "admin";
   grid-template-columns: minmax(0, 1fr);
+}
+
+.layout[data-overview-composition="mobile"]:not([data-has-exception]) {
+  grid-template-areas:
+    "project-work"
+    "commercial"
+    "orientation"
+    "recent"
+    "admin";
 }
 
 .layout[data-overview-composition="stacked"]:not([data-has-admin]) .recent,
@@ -90,5 +118,14 @@
       "recent"
       "admin";
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .layout:not([data-overview-composition="mobile"]):not([data-has-exception]) {
+    grid-template-areas:
+      "project-work"
+      "commercial"
+      "orientation"
+      "recent"
+      "admin";
   }
 }

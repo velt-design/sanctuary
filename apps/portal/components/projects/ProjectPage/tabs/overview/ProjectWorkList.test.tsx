@@ -178,16 +178,16 @@ describe("ProjectWorkList", () => {
     expect(emailRow.textContent).toContain("Assigned staff");
     expect(emailRow.textContent).toContain("Due");
     const emailSent = Array.from(emailRow.querySelectorAll("button")).find(
-      (button) => button.textContent === "Email sent",
+      (button) => button.textContent === "Record email sent",
     )!;
     const customerReplied = Array.from(
       emailRow.querySelectorAll("button"),
-    ).find((button) => button.textContent === "Customer replied")!;
+    ).find((button) => button.textContent === "Record customer reply")!;
 
     const stageReviewRow = rowWith(rendered.container, stageReview.title);
     expect(stageReviewRow.textContent).toContain("Jordan");
     const complete = Array.from(stageReviewRow.querySelectorAll("button")).find(
-      (button) => button.textContent === "Complete",
+      (button) => button.textContent === "Mark complete",
     )!;
 
     const blockedRow = rowWith(rendered.container, blocked.title);

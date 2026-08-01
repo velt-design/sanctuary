@@ -65,7 +65,9 @@ function createClient(projectRow: Record<string, unknown>, detail: Record<string
   const estimateQuery = queryResult({ data: detail, error: null });
   const emptyQuery = queryResult({ data: [], error: null });
   return {
-    from: vi.fn((table: string) => table === 'projects' ? projectQuery : table === 'estimates' ? estimateQuery : emptyQuery),
+    from: vi.fn((table: string) =>
+      table === 'projects' ? projectQuery : table === 'estimates' ? estimateQuery : emptyQuery,
+    ),
     rpc: vi.fn(async () => ({ data: [], error: null })),
   } as any;
 }
@@ -92,15 +94,18 @@ function quoteRow(overrides: Record<string, unknown> = {}) {
     created_at: '2026-07-02T00:00:00.000Z',
     sent_at: '2026-07-02T01:00:00.000Z',
     total_inc_gst_cents: 175_000,
-    sendLogs: [{ status: 'SENT', created_at: '2026-07-02T01:00:00.000Z', sent_at: '2026-07-02T01:00:00.000Z' }],
+    sendLogs: [
+      {
+        status: 'SENT',
+        created_at: '2026-07-02T01:00:00.000Z',
+        sent_at: '2026-07-02T01:00:00.000Z',
+      },
+    ],
     ...overrides,
   };
 }
 
-function projectRow(
-  estimates: unknown[],
-  quoteVersions: unknown[] = [],
-) {
+function projectRow(estimates: unknown[], quoteVersions: unknown[] = []) {
   return {
     id: UUID.project,
     pipeline_stage: 'NEW',
@@ -119,12 +124,14 @@ const DETAIL = {
   inputs: {
     schemaVersion: 'v2',
     quoteDiscountPct: '0',
-    modules: [{
-      lengthM: '6',
-      projectionM: '4',
-      pergolaStyle: 'gable',
-      roofMaterial: 'acrylic',
-    }],
+    modules: [
+      {
+        lengthM: '6',
+        projectionM: '4',
+        pergolaStyle: 'gable',
+        roofMaterial: 'acrylic',
+      },
+    ],
   },
   outputs: {
     pricing_sync_state: 'current',
@@ -136,15 +143,11 @@ const DETAIL = {
 
 describe('getProjectCommandCentre', () => {
   beforeEach(() => {
-    commandCentreDependencies.getProjectWorkProjection
-      .mockReset()
-      .mockResolvedValue(PROJECT_WORK);
-    commandCentreDependencies.getProjectWorkDomainActions
-      .mockReset()
-      .mockResolvedValue({
-        recoveryAction: null,
-        specialistAction: null,
-      });
+    commandCentreDependencies.getProjectWorkProjection.mockReset().mockResolvedValue(PROJECT_WORK);
+    commandCentreDependencies.getProjectWorkDomainActions.mockReset().mockResolvedValue({
+      recoveryAction: null,
+      specialistAction: null,
+    });
     commandCentreDependencies.isProjectWorkModelV2.mockReset().mockResolvedValue(false);
   });
 
@@ -152,7 +155,10 @@ describe('getProjectCommandCentre', () => {
     const client = createClient(projectRow([]));
     const result = await getProjectCommandCentre(`proj_${UUID.project}`, client);
     expect(result?.workModel).toBe('legacy');
-    expect(result?.currentDesign).toMatchObject({ source: 'none', designState: 'none' });
+    expect(result?.currentDesign).toMatchObject({
+      source: 'none',
+      designState: 'none',
+    });
     expect(result).toMatchObject({
       legacyWork: { status: 'retired' },
       owner: {
@@ -175,15 +181,8 @@ describe('getProjectCommandCentre', () => {
 
   it('uses project work as the sole V2 operation owner', async () => {
     commandCentreDependencies.isProjectWorkModelV2.mockResolvedValueOnce(true);
-    const client = createClient(
-      projectRow([estimateRow()], [quoteRow()]),
-      DETAIL,
-    );
-    const result = await getProjectCommandCentre(
-      `proj_${UUID.project}`,
-      client,
-      { userId: 'viewer-1', isAdmin: true },
-    );
+    const client = createClient(projectRow([estimateRow()], [quoteRow()]), DETAIL);
+    const result = await getProjectCommandCentre(`proj_${UUID.project}`, client, { userId: 'viewer-1', isAdmin: true });
 
     expect(result?.workModel).toBe('v2');
     expect(result).toHaveProperty('projectWork', PROJECT_WORK);
@@ -200,14 +199,17 @@ describe('getProjectCommandCentre', () => {
       supabase: client,
       projectId: `proj_${UUID.project}`,
       projectUuid: UUID.project,
+      stage: 'new',
       currentDesign: result?.currentDesign,
     });
-    expect(commandCentreDependencies.getProjectWorkProjection).toHaveBeenCalledWith(expect.objectContaining({
-      supabase: client,
-      projectUuid: UUID.project,
-      recoveryAction: null,
-      specialistAction: null,
-    }));
+    expect(commandCentreDependencies.getProjectWorkProjection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        supabase: client,
+        projectUuid: UUID.project,
+        recoveryAction: null,
+        specialistAction: null,
+      }),
+    );
   });
 
   it('fails closed when a marked V2 project has no project-work projection', async () => {
@@ -215,9 +217,9 @@ describe('getProjectCommandCentre', () => {
     commandCentreDependencies.getProjectWorkProjection.mockResolvedValueOnce(null);
     const client = createClient(projectRow([]));
 
-    await expect(
-      getProjectCommandCentre(`proj_${UUID.project}`, client),
-    ).rejects.toThrow('V2 project work could not be loaded');
+    await expect(getProjectCommandCentre(`proj_${UUID.project}`, client)).rejects.toThrow(
+      'V2 project work could not be loaded',
+    );
   });
 
   it('returns the quote-ready estimate price and ignores the ambiguous saved summary', async () => {
@@ -283,7 +285,9 @@ describe('getProjectCommandCentre', () => {
   });
 
   it('keeps quote price but marks a missing exact source without loading another estimate', async () => {
-    const missingSource = quoteRow({ source_estimate_version_id: UUID.newerEstimate });
+    const missingSource = quoteRow({
+      source_estimate_version_id: UUID.newerEstimate,
+    });
     const client = createClient(projectRow([estimateRow()], [missingSource]));
     const result = await getProjectCommandCentre(`proj_${UUID.project}`, client);
     expect(result?.currentDesign).toMatchObject({
@@ -303,7 +307,10 @@ describe('getProjectCommandCentre', () => {
       `proj_${UUID.project}`,
       createClient(projectRow([estimateRow()], [missingPrice]), DETAIL),
     );
-    expect(result?.currentDesign.price).toEqual({ source: 'quote', totalIncGstCents: null });
+    expect(result?.currentDesign.price).toEqual({
+      source: 'quote',
+      totalIncGstCents: null,
+    });
     expect(result?.currentDesign.warnings).toContain('quote_price_unavailable');
   });
 
@@ -312,17 +319,22 @@ describe('getProjectCommandCentre', () => {
       `proj_${UUID.project}`,
       createClient(projectRow([estimateRow()]), {
         ...DETAIL,
-        outputs: { pricing_sync_state: 'current', totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
+        outputs: {
+          pricing_sync_state: 'current',
+          totals: { cost_ex_gst: 0, cost_inc_gst: 0 },
+        },
       }),
     );
-    expect(result?.currentDesign.price).toEqual({ source: 'estimate', totalIncGstCents: null });
+    expect(result?.currentDesign.price).toEqual({
+      source: 'estimate',
+      totalIncGstCents: null,
+    });
     expect(result?.currentDesign.warnings).toContain('estimate_price_unavailable');
   });
 
   it('fails the complete read when selected estimate detail cannot be loaded', async () => {
-    await expect(getProjectCommandCentre(
-      `proj_${UUID.project}`,
-      createClient(projectRow([estimateRow()]), null),
-    )).rejects.toThrow('Selected estimate detail unavailable');
+    await expect(
+      getProjectCommandCentre(`proj_${UUID.project}`, createClient(projectRow([estimateRow()]), null)),
+    ).rejects.toThrow('Selected estimate detail unavailable');
   });
 });

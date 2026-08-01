@@ -139,6 +139,7 @@ export default function ProjectHeaderOwnerControl({
         >
           <ProjectOwnerControls
             projectId={project.id}
+            stage={project.stage}
             owner={owner}
             disabled={controlsPaused}
             runMutation={runMutation}

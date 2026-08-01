@@ -191,7 +191,7 @@ describe("ProjectWorkSection", () => {
       ),
     ).toHaveLength(1);
     const primaryPanel = rendered.container.querySelector(
-      'section[data-tone="inverse"]',
+      '[data-primary-project-work="true"]',
     )!;
     expect(primaryPanel.textContent).toContain(primary.title);
     expect(primaryPanel.textContent).toContain("This work is due today.");
@@ -202,7 +202,7 @@ describe("ProjectWorkSection", () => {
     expect(valueFor(primaryPanel, "Due")).toContain("30 Jul 2026");
     expect(
       Array.from(primaryPanel.querySelectorAll("button")).some(
-        (button) => button.textContent === "Complete",
+        (button) => button.textContent === "Mark complete",
       ),
     ).toBe(true);
     expect(
@@ -289,7 +289,7 @@ describe("ProjectWorkSection", () => {
     ).toBeNull();
     expect(
       Array.from(rendered.container.querySelectorAll("button")).some((button) =>
-        /^(?:Complete|Email sent|Customer replied)$/.test(
+        /^(?:Mark complete|Record email sent|Record customer reply)$/.test(
           button.textContent ?? "",
         ),
       ),
@@ -307,11 +307,12 @@ describe("ProjectWorkSection", () => {
           owner: "Design specialist",
           expectedResult: "Concept approved for estimating",
           href: `/staff/projects/${PROJECT_ID}/design`,
+          actionLabel: "Review design",
         },
       }),
     );
     const primaryPanel = rendered.container.querySelector(
-      'section[data-tone="inverse"]',
+      '[data-primary-project-work="true"]',
     )!;
 
     expect(valueFor(primaryPanel, "Owner")).toBe("Design specialist");
@@ -321,6 +322,44 @@ describe("ProjectWorkSection", () => {
     expect(
       primaryPanel.querySelector<HTMLAnchorElement>("a")?.getAttribute("href"),
     ).toBe(`/staff/projects/${PROJECT_ID}/design`);
+    expect(primaryPanel.textContent).toContain("Review design");
+    expect(primaryPanel.textContent).not.toContain("Open next step");
+  });
+
+  it("makes the approved Site Visit workflow and completion command prominent", () => {
+    const rendered = renderV2(
+      projection({
+        primaryAction: {
+          kind: "specialist",
+          key: `journey-site-visit:complete:${PROJECT_ID}`,
+          title: "Complete the site visit",
+          reason: "The project is at Site Visit and no completion is recorded.",
+          owner: "Operations",
+          expectedResult: "The visit is completed and recorded before quoting.",
+          href: `/staff/schedule?view=site-visits&project=${PROJECT_ID}`,
+          actionLabel: "Book or confirm site visit",
+        },
+      }),
+      false,
+      "site_visit",
+    );
+    const primaryPanel = rendered.container.querySelector(
+      '[data-primary-project-work="true"]',
+    )!;
+
+    expect(primaryPanel.textContent).toContain("Book or confirm site visit");
+    expect(primaryPanel.textContent).toContain("Record visit complete");
+    expect(
+      primaryPanel.querySelector<HTMLAnchorElement>("a")?.getAttribute("href"),
+    ).toBe(`/staff/schedule?view=site-visits&project=${PROJECT_ID}`);
+
+    const manage = Array.from(
+      rendered.container.querySelectorAll("button"),
+    ).find((button) => button.textContent === "Manage project work")!;
+    act(() => manage.click());
+    expect(
+      rendered.container.querySelector('[data-manual-site-visit-fact="true"]'),
+    ).toBeNull();
   });
 
   it("fails closed when V2 server work identifies a prohibited Call or Site Visit action", () => {
@@ -367,9 +406,7 @@ describe("ProjectWorkSection", () => {
     );
     expect(rendered.container.textContent).toContain(allowedSecondary.title);
     expect(
-      rendered.container.querySelector(
-        'section[data-tone="inverse"], section[data-tone="critical"]',
-      ),
+      rendered.container.querySelector('[data-primary-project-work="true"]'),
     ).toBeNull();
     expect(
       Array.from(rendered.container.querySelectorAll("button")).every(

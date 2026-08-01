@@ -58,4 +58,19 @@ describe("projectWorkVisibilityPolicy", () => {
   ])("classifies prohibited recovery/specialist identity", (primary) => {
     expect(isProhibitedProjectWorkPrimary(primary)).toBe(true);
   });
+
+  it("permits only the bounded server-owned Site Visit specialist action", () => {
+    expect(
+      isProhibitedProjectWorkPrimary({
+        kind: "specialist",
+        key: "journey-site-visit:complete:proj_fixture",
+        title: "Complete the site visit",
+        reason: "The project is at the Site Visit stage.",
+        owner: "Operations",
+        expectedResult: "The site visit is recorded complete.",
+        href: "/staff/schedule?view=site-visits&project=proj_fixture",
+        actionLabel: "Book or confirm site visit",
+      }),
+    ).toBe(false);
+  });
 });

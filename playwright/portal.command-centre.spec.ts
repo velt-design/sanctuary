@@ -147,7 +147,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
     text: [
       "Email the customer with an enquiry follow-up",
       "Overdue",
-      "Customer replied",
+      "Record customer reply",
     ],
   },
   "v2-close-review": {
@@ -194,6 +194,26 @@ const WORK_SCENARIO_EXPECTATIONS = {
     model: "v2",
     text: ["No current project work", "The server has no current next action"],
   },
+  "v2-contacted-site-visit": {
+    model: "v2",
+    text: ["Arrange the site visit", "Arrange site visit", "Operations"],
+  },
+  "v2-site-visit": {
+    model: "v2",
+    text: [
+      "Complete the site visit",
+      "Book or confirm site visit",
+      "Record visit complete",
+    ],
+  },
+  "v2-site-visit-complete": {
+    model: "v2",
+    text: ["Review proposal outcome", "Mark complete"],
+  },
+  "v2-quoting": {
+    model: "v2",
+    text: ["Prepare the quote", "Create draft quote", "Commercial"],
+  },
   "v2-correction-review": {
     model: "v2",
     text: [
@@ -207,7 +227,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-closed": {
     model: "v2",
-    text: ["Project closed", "lost timing deferred"],
+    text: ["Project closed", "Lost - Timing deferred"],
   },
   "v2-archived": {
     model: "v2",
@@ -219,7 +239,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-stage-review": {
     model: "v2",
-    text: ["Review proposal outcome", "commercial", "Complete"],
+    text: ["Review proposal outcome", "Commercial", "Mark complete"],
   },
   "v2-triage": {
     model: "v2",
@@ -405,7 +425,9 @@ for (const state of COMMAND_CENTRE_VIEW_STATES) {
       await expect(layout).toContainText(text);
     }
 
-    const emailControl = layout.getByRole("button", { name: "Email sent" });
+    const emailControl = layout.getByRole("button", {
+      name: "Record email sent",
+    });
     if (expected.emailControl === "enabled") {
       await expect(emailControl).toBeEnabled();
     } else if (expected.emailControl === "disabled") {
@@ -454,6 +476,11 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
     await expect(layout).toContainText("Due");
     await expect(layout).toContainText("$1,234.56 inc GST");
     await expect(layout).toContainText("No current quote");
+
+    const layoutWidth = await layout.evaluate(
+      (element) => element.getBoundingClientRect().width,
+    );
+    expect(layoutWidth).toBeLessThanOrEqual(1440);
 
     const regionOrder = await layout
       .locator(":scope > [data-project-overview-region]")
@@ -567,7 +594,7 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
   for (const heading of [
     "Project Work",
     "Current design & commercial",
-    "Project orientation",
+    "Project context",
     "Recent notes and events",
   ]) {
     await expect(
@@ -653,7 +680,9 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
     ).toBe(String(index));
   }
 
-  const primary = page.getByRole("button", { name: "Email sent" }).first();
+  const primary = page
+    .locator('[data-primary-project-work="true"]')
+    .getByRole("button", { name: "Record email sent" });
   await primary.focus();
   await expect(primary).toBeFocused();
   const focusPresentation = await primary.evaluate((element) => {
@@ -701,6 +730,60 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
       }),
     ).toHaveCount(0);
   }
+});
+
+test("renders one unmistakable next action before quiet supporting truth", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.goto(
+    fixtureUrl({ scenario: "missing-estimate-price", work: "v2-primary" }),
+  );
+  const layout = page.locator('[data-project-overview-layout="true"]');
+  const primary = layout.locator('[data-primary-project-work="true"]');
+  const primaryTitle = primary.getByRole("heading", {
+    level: 3,
+    name: "Email the customer with the first enquiry response",
+  });
+  const commercialTitle = layout.getByRole("heading", {
+    level: 2,
+    name: "Current design & commercial",
+  });
+  await expect(primary).toHaveCount(1);
+  await expect(primary).toContainText("Send externally first.");
+  await expect(
+    primary.getByRole("button", { name: "Record email sent" }),
+  ).toBeVisible();
+  await expect(
+    primary.getByRole("button", { name: "Record customer reply" }),
+  ).toBeVisible();
+
+  const hierarchy = await Promise.all([
+    primaryTitle.evaluate((element) =>
+      Number.parseFloat(getComputedStyle(element).fontSize),
+    ),
+    commercialTitle.evaluate((element) =>
+      Number.parseFloat(getComputedStyle(element).fontSize),
+    ),
+    primary.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return Number.parseFloat(style.borderLeftWidth);
+    }),
+  ]);
+  expect(hierarchy[0]).toBeGreaterThan(hierarchy[1]);
+  expect(hierarchy[2]).toBeGreaterThanOrEqual(4);
+
+  const warning = layout.locator(
+    '[data-command-centre-warning="estimate-price-unavailable"]',
+  );
+  const metrics = layout.getByLabel("Current design and commercial metrics");
+  await expect(warning).toBeVisible();
+  await expect(metrics).toBeVisible();
+  const [warningTop, metricsTop] = await Promise.all([
+    warning.evaluate((element) => element.getBoundingClientRect().top),
+    metrics.evaluate((element) => element.getBoundingClientRect().top),
+  ]);
+  expect(warningTop).toBeLessThan(metricsTop);
 });
 
 test("keeps coarse-pointer Project Work controls at least 44px high", async ({
@@ -755,7 +838,10 @@ test("uses the existing semantic email command with one stable submit", async ({
   );
 
   await page.goto(fixtureUrl({ work: "v2-primary" }));
-  await page.getByRole("button", { name: "Email sent" }).first().click();
+  await page
+    .locator('[data-primary-project-work="true"]')
+    .getByRole("button", { name: "Record email sent" })
+    .click();
   await expect(page.getByText("Saved on the server.")).toBeVisible();
   expect(commands).toHaveLength(1);
   expect(commands[0]).toMatchObject({
@@ -840,9 +926,11 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
     await expect(page.getByRole("tab", { name: "Calculator" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Commercial" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Emails" })).toHaveCount(0);
-    await expect(
-      page.locator('[data-project-orientation="true"]'),
-    ).toBeVisible();
+    const orientation = page.locator('[data-project-orientation="true"]');
+    await expect(orientation).toBeVisible();
+    await expect(orientation.getByText("Stage", { exact: true })).toHaveCount(
+      0,
+    );
     await expect(
       page.locator('[data-project-work-section="true"]'),
     ).toHaveCount(1);

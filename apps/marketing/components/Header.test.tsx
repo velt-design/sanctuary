@@ -110,18 +110,38 @@ describe('shared mobile header interaction', () => {
 
     const header = document.querySelector<HTMLElement>('header.site');
     const desktopCta = header?.querySelector<HTMLAnchorElement>('.nav-cta');
-    const homeLink = header?.querySelector<HTMLAnchorElement>(
-      'nav[aria-label="Primary"] a[href="/"]',
+    const brandLink = header?.querySelector<HTMLAnchorElement>('.site-brand');
+    const activePrimaryLink = header?.querySelector<HTMLAnchorElement>(
+      'nav[aria-label="Primary"] a[aria-current="page"]',
     );
 
     expect(header?.getAttribute('data-hero-navigation')).toBe('overlay');
-    expect(homeLink?.getAttribute('aria-current')).toBe('page');
+    expect(brandLink?.getAttribute('href')).toBe('/');
+    expect(activePrimaryLink).toBeNull();
     expect(desktopCta?.getAttribute('href')).toBe(buildEnquiryHref({
       enquiryType: 'residential',
       sourcePath: '/',
       sourceComponent: 'header',
     }));
     expect(desktopCta?.getAttribute('data-enquiry-type')).toBe('residential');
+  });
+
+  it('balances the four desktop links around the viewport centre', async () => {
+    await renderHeader();
+
+    const linkLabels = (selector: string) => Array.from(
+      document.querySelectorAll<HTMLAnchorElement>(selector),
+      (link) => link.textContent?.trim(),
+    );
+
+    expect(linkLabels('.nav-list__cluster--left a')).toEqual([
+      'Projects',
+      'Products',
+    ]);
+    expect(linkLabels('.nav-list__cluster--right a')).toEqual([
+      'Commercial',
+      'Professionals',
+    ]);
   });
 
   it('uses governed audience, project and product context for the global enquiry action', async () => {

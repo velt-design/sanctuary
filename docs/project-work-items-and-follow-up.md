@@ -22,14 +22,14 @@ The current change set completes the portfolio-wide V2 model:
 - every existing project receives a V2 marker/state at one fixed rollout timestamp and behaves as if it just entered its stored stage;
 - `New` uses the existing lead initializer; later non-terminal stages receive one five-business-day stage review when no stronger current work exists; `Paid` becomes `Closed - Complete`; Archived receives no active work;
 - a future stage change replaces only prior `STAGE_REVIEW` work and preserves cadence, commercial, design, confirmation, and specialist facts;
-- Call and Site Visit work is absent; a Site Visit-stage review is proposal progress, never a Site Visit task;
+- Call and Site Visit work items are absent; stage-aware Site Visit guidance is a server-owned specialist candidate, never a stored task;
 - the staff-wide Work Queue and Dashboard preview consume one server-composed current row per project, and the full queue is searchable/filterable by effective owner, detailed stage, and urgency before it is paged without truncating the portfolio;
 - marker inventory, operational state, and project enrichment are direct bounded reads rather than fragile embedded PostgREST relationships; missing or truncated authoritative inventory fails closed;
 - Overview, snapshot, summary, Work Queue, and Dashboard cache changes run through `projectWorkCache.ts`: V2 projection fan-out has one helper, `patchProjectCommandCentreCache` is the sole complete command-centre response patch owner, and one invalidator refreshes every Project Work consumer after accepted commands;
 - cached or background-refresh-failed Project Work is visible but read-only, while an unavailable V2 contract fails closed as a named not-ready state;
 - normal work-item commands are available from the queue, while personal Dashboard reminders remain separate;
 - admins can retract an incorrect confirmation without deleting its history;
-- Site Visits is hidden from normal navigation and stays outside work items; an active V2 project in the Site Visit stage has one bounded deep link to the retained booking/confirmation workflow, while its optional completion fact remains separate and manual; and
+- Site Visits is hidden from normal navigation and stays outside work items; the shared server ranking can route `Contacted` and `Site Visit` projects to the retained booking/confirmation workflow, while the completion fact remains separate and manual; and
 - Schedule, Running Jobs, quotes, and invoices retain their specialist source-of-truth boundaries; and
 - legacy task/follow-up/action rows remain only as guarded audit/rollback evidence, with product readers, writers, actions, routes, and navigation retired.
 
@@ -390,20 +390,22 @@ The bounded initial confirmation types are:
 
 A correction appends a retraction event with a required reason. It does not overwrite the original history, reverse later lifecycle or commercial facts, or silently restart a cadence. It creates a durable review signal that remains ahead of ordinary work for that project. The queue carries that exact signal ID and row version. After checking current work and lifecycle state, an admin explicitly resolves only that signal with a second reasoned, idempotent command; stale or already-resolved metadata returns a conflict and cannot clear another correction. Resolution retains both confirmation events and adds an audit event.
 
-## 12. Site Visit Interim Rule
+## 12. Site Visit And Quote Journey Rule
 
-The Site Visits operational page is not currently used.
-
-Until a broader reactivation:
+Site Visits remains a Schedule-owned specialist capability rather than a general navigation or task surface. The normal lead-to-quote ranking is:
 
 - hide Site Visits from global navigation and generic discovery surfaces;
 - do not link project work items to the Site Visits page;
-- allow only the active V2 Site Visit-stage control to deep-link staff to the retained direct booking/confirmation workflow;
+- keep `New` focused on enquiry qualification, first contact, and response evidence;
+- at `Contacted`, expose one server-owned `Arrange the site visit` specialist action to the retained direct booking/confirmation workflow;
+- at `Site Visit`, expose one server-owned completion-oriented action with explicit `Book or confirm site visit` and `Record visit complete` controls until the durable completion fact exists;
+- after `SITE_VISIT_COMPLETED`, remove the visit action and allow the remaining authoritative work/ranking to surface;
+- expose `Prepare the quote` only at `Quoting` when the current commercial projection contains a valid estimate, or after staff explicitly correct the stage to `Quoting` with the required no-visit reason;
 - stop generating `BOOK_SITE_VISIT` and `ATTEND_SITE_VISIT` task candidates;
 - retain existing route/data code as dormant unless a later retirement review proves deletion safe; and
 - if staff need the fact, use one bounded manual `site_visit_completed` confirmation.
 
-The Site Visit pipeline stage may remain. The manual confirmation does not automatically advance it.
+The specialist link, completion confirmation, and stage correction are distinct commands. None automatically changes Schedule, creates a quote, sends a customer message, or advances the project stage.
 
 ## 13. Personal Reminders
 

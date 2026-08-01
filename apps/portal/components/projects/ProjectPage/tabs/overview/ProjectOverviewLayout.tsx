@@ -11,7 +11,7 @@ import styles from "./ProjectOverviewLayout.module.css";
 const MOBILE_OVERVIEW_QUERY = "(max-width: 768px)";
 const COMPACT_OVERVIEW_MAX_WIDTH = 800;
 
-function subscribeToCompactOverview(
+function subscribeToOverviewComposition(
   node: HTMLDivElement | null,
   callback: () => void,
 ) {
@@ -40,9 +40,7 @@ function overviewCompositionSnapshot(
   if (typeof window === "undefined") return "wide";
   if (window.matchMedia?.(MOBILE_OVERVIEW_QUERY).matches) return "mobile";
   const width = node?.getBoundingClientRect().width ?? 0;
-  return width > 0 && width <= COMPACT_OVERVIEW_MAX_WIDTH
-    ? "stacked"
-    : "wide";
+  return width > 0 && width <= COMPACT_OVERVIEW_MAX_WIDTH ? "stacked" : "wide";
 }
 
 type ProjectOverviewLayoutProps = {
@@ -92,7 +90,7 @@ export default function ProjectOverviewLayout({
   const layoutRef = useRef<HTMLDivElement>(null);
   const subscribe = useCallback(
     (callback: () => void) =>
-      subscribeToCompactOverview(layoutRef.current, callback),
+      subscribeToOverviewComposition(layoutRef.current, callback),
     [],
   );
   const composition = useSyncExternalStore(
@@ -143,6 +141,9 @@ export default function ProjectOverviewLayout({
       data-project-overview-layout="true"
       data-overview-composition={composition}
       data-command-centre-state={state}
+      data-has-exception={
+        exception !== null && exception !== undefined ? "true" : undefined
+      }
       data-has-admin={
         admin !== null && admin !== undefined ? "true" : undefined
       }

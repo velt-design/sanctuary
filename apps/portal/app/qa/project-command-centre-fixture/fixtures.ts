@@ -5,6 +5,10 @@ import type {
   ProjectWorkProjection,
 } from "@/lib/projects/workItems/types";
 import { commandCentreFixtureStaff } from "./commandCentreFixtureStaff";
+import {
+  COMMAND_CENTRE_JOURNEY_WORK_SCENARIOS,
+  createJourneyWorkflowFixtures,
+} from "./journeyWorkflowFixtures";
 
 export { commandCentreFixtureStaff };
 
@@ -36,6 +40,7 @@ export const COMMAND_CENTRE_WORK_SCENARIOS = [
   "v2-blocked",
   "v2-no-owner",
   "v2-no-action",
+  ...COMMAND_CENTRE_JOURNEY_WORK_SCENARIOS,
   "v2-correction-review",
   "v2-waiting",
   "v2-closed",
@@ -361,6 +366,10 @@ export const commandCentreWorkFixtures: Record<
     },
     stage: "new",
   },
+  ...createJourneyWorkflowFixtures({
+    base: V2_BASE,
+    stageReviewItem: V2_STAGE_REVIEW_ITEM,
+  }),
   "v2-correction-review": {
     workModel: "v2",
     projectWork: {

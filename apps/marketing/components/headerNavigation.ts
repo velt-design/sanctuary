@@ -1,5 +1,5 @@
 type HeaderNavigationItem = {
-  id: 'home' | 'projects' | 'products' | 'commercial' | 'professional' | 'contact';
+  id: 'projects' | 'products' | 'commercial' | 'professional';
   label: string;
   desktopLabel?: string;
   href: string;
@@ -15,12 +15,6 @@ type PrimaryNavigationItem = {
 };
 
 const primaryNavigationItems: readonly PrimaryNavigationItem[] = [
-  {
-    id: 'home',
-    label: 'Home',
-    href: '/',
-    matches: (pathname) => pathname === '/',
-  },
   {
     id: 'projects',
     label: 'Projects',
@@ -45,12 +39,6 @@ const primaryNavigationItems: readonly PrimaryNavigationItem[] = [
     label: 'Professionals',
     href: '/architects-designers-builders',
     matches: (pathname) => pathname === '/architects-designers-builders',
-  },
-  {
-    id: 'contact',
-    label: 'Contact',
-    href: '/contact',
-    matches: (pathname) => pathname === '/contact',
   },
 ];
 
@@ -104,7 +92,5 @@ export function getDesktopHeaderNavigation(
 export function getMobileHeaderNavigation(
   pathname: string,
 ): HeaderNavigationItem[] {
-  return primaryNavigationItems
-    .filter((item) => item.id !== 'home' && item.id !== 'contact')
-    .map((item) => toNavigationItem(item, pathname, true));
+  return primaryNavigationItems.map((item) => toNavigationItem(item, pathname, true));
 }

@@ -15,9 +15,8 @@ describe('shared header navigation model', () => {
     );
   });
 
-  it('exposes the residential, commercial and professional desktop pathways', () => {
+  it('exposes four desktop pathways around a two-item centre split', () => {
     expect(getDesktopHeaderNavigation('/').map(({ label, href }) => ({ label, href }))).toEqual([
-      { label: 'Home', href: '/' },
       { label: 'Projects', href: '/projects' },
       { label: 'Products', href: '/products' },
       { label: 'Commercial', href: '/commercial-pergolas-auckland' },
@@ -25,7 +24,6 @@ describe('shared header navigation model', () => {
         label: 'Professionals',
         href: '/architects-designers-builders',
       },
-      { label: 'Contact', href: '/contact' },
     ]);
   });
 

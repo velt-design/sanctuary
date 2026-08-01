@@ -9,13 +9,7 @@ const viewports = [
   { label: 'mobile', width: 390, height: 844 },
 ] as const;
 
-const groupHeadings = [
-  'Overdue',
-  'Today',
-  'Next 7 business days',
-  'Blocked',
-  'Needs triage',
-] as const;
+const groupHeadings = ['Overdue', 'Today', 'Next 7 business days', 'Blocked', 'Needs triage'] as const;
 
 async function expectNoDocumentOverflow(page: Page) {
   const widths = await page.evaluate(() => ({
@@ -48,14 +42,15 @@ for (const viewport of viewports) {
     page.on('request', (request) => {
       if (request.url().includes('/api/staff/')) staffRequests.push(request.url());
     });
-    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
     await page.goto(FIXTURE_PATH);
 
     const fixture = page.locator('[data-portal-qa-fixture="project-work-queue"]');
     await expect(fixture).toBeVisible();
-    await expect(
-      fixture.locator('[data-project-work-queue-fixture-hydrated="true"]'),
-    ).toBeAttached();
+    await expect(fixture.locator('[data-project-work-queue-fixture-hydrated="true"]')).toBeAttached();
     await expect(page.getByRole('heading', { level: 1, name: 'Work Queue' })).toBeVisible();
 
     for (const heading of groupHeadings) {
@@ -67,8 +62,15 @@ for (const viewport of viewports) {
     await expect(fixture.getByText('Kauri Lane Shelter')).toBeVisible();
     await expect(fixture.getByText('Estuary Outdoor Room')).toBeVisible();
     await expect(fixture.getByText('Northern Courtyard Cover')).toBeVisible();
-    await expect(fixture.locator('a[href*="site-visit"]')).toHaveCount(0);
-    await expect(fixture.getByRole('link', { name: /site visit/i })).toHaveCount(0);
+    await expect(fixture.getByRole('link', { name: 'Ridgeview Pergola' })).toHaveAttribute(
+      'href',
+      '/staff/projects/proj_fixture_queue_today?tab=activity',
+    );
+    await expect(fixture.getByRole('link', { name: 'Arrange site visit' })).toHaveAttribute(
+      'href',
+      '/staff/schedule?view=site-visits&project=proj_fixture_queue_today',
+    );
+    await expect(fixture.getByText('Open workspace', { exact: true })).toHaveCount(0);
 
     if (viewport.label === 'mobile') {
       const blockedRow = fixture.locator('[data-queue-group="blocked"]');
@@ -86,7 +88,9 @@ test('preserves keyboard order and visible focus across project and action contr
   await page.goto(FIXTURE_PATH);
 
   await page.keyboard.press('Tab');
-  const firstProject = page.getByRole('link', { name: 'Harbour Courtyard Canopy' });
+  const firstProject = page.getByRole('link', {
+    name: 'Harbour Courtyard Canopy',
+  });
   await expectVisibleFocus(firstProject);
 
   await page.keyboard.press('Tab');
@@ -99,9 +103,7 @@ test('preserves keyboard order and visible focus across project and action contr
 test('reflows at 200% zoom without creating document overflow', async ({ page }) => {
   await page.setViewportSize({ width: 720, height: 500 });
   await page.goto(FIXTURE_PATH);
-  await expect(
-    page.locator('[data-project-work-queue-fixture-hydrated="true"]'),
-  ).toBeAttached();
+  await expect(page.locator('[data-project-work-queue-fixture-hydrated="true"]')).toBeAttached();
   await page.evaluate(() => {
     document.documentElement.style.zoom = '2';
   });
