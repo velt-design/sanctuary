@@ -21,10 +21,11 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-01 | Schedule Board Silent Persistence | Promoted | Treat the placed card as normal Board feedback. Keep routine checking/saving/saved/reconciliation UI invisible, hold optimistic placement through ambiguous outcomes, compare bounded authoritative snapshots before applying one correction, and show one affected-card Retry or Refresh notice only when staff action is required. Preserve server-owned V2 truth, preview/re-preview, confirmation, and cross-instance mutation exclusion. |
 | 2026-08-01 | Project Phase Ownership Handoffs | Promoted | Assign active New/Contacted projects to Ellen at the server boundary, keep Proposal and Dave delivery handoffs manual, and never let an ownership rule advance pipeline stage. Before any bulk Lost closure, use one read-only all-activity report with future-Waiting protection and evidence fingerprints; migration/system rollout events do not prove a customer enquiry was handled. |
 | 2026-08-01 | Project Journey Action Eligibility | Promoted | Rank Overview and Work Queue from one server adapter: New remains enquiry-led, Contacted and Site Visit may expose only the bounded Schedule-owned visit action, and estimate-to-quote creation is eligible only at Quoting. Use explicit CTA labels/destinations, durable visit-completion evidence, and a reasoned stage correction for the no-visit path; never infer this in either browser surface. |
 | 2026-08-01 | Schedule Operational Presentation | Promoted | Keep Board and Gantt attention, commitment/flex wording, forecast workload, and persistence language under named shared presentation owners. Derive only scan aids from server forecast facts; never imply a browser-owned capacity limit. At phone/zoom widths use a single-column read-only Gantt agenda, while desktop keeps sticky crew identity and labels bars only when legible. |
-| 2026-07-31 | Schedule Board Gestures          | Promoted | Commit the last visible pointer-owned semantic target, keep the source card anchored, block gestures before they start when Schedule cannot accept a command, and show checking/reviewing/saving/reconciling/confirmed-or-restored feedback on the affected card. Keep exact timing and affected-job consequences server-owned. |
+| 2026-07-31 | Schedule Board Gestures          | Promoted | Commit the last visible pointer-owned semantic target, keep the source card anchored, and block gestures before they start when Schedule cannot accept a command. Keep persistence lifecycle internal and show only the newer action-required card notice; keep exact timing and affected-job consequences server-owned. |
 | 2026-07-31 | Schedule Authoritative Timing    | Promoted | A browser drag may request start and duration but must not claim an exact new finish: crew calendars, holidays, closures, affected jobs, preview/re-preview, and commit remain server-owned. At phone width use a read-only agenda from the same Gantt model and route changes to Board instead of compressing desktop manipulation. |
 | 2026-07-31 | Project Overview Hierarchy       | Promoted | Present one authority and one visual centre: server-ranked work visibly leads, repeated stage and empty slots are absent, and mobile priority applies at or below 768px. |
 | 2026-07-31 | Pipeline Accountability          | Promoted | Keep journey, detailed stage, and operational state separate; expose owner and the current server-ranked obligation across Dashboard, Projects, Queue, and Overview; filter owners before pagination; and require an explicit review before stage correction recalculates Project Work. |
@@ -4441,16 +4442,17 @@ valid result, falling back to the last visible valid target only if final
 collision data disappears. Resolve the zero-based command position in one pure
 post-removal order owner shared by optimistic production handling and the
 in-memory QA fixture. Reject no-op/restricted destinations and
-disable move/action controls before an uncommittable gesture. Present the
-existing preview/save/rollback/reconciliation lifecycle on the affected card;
-never infer persistence in the drag owner. Group job commands by intent and
+disable move/action controls before an uncommittable gesture. Keep the
+preview/save/rollback/reconciliation lifecycle out of the drag owner; present
+only the action-required outcome under the newer silent-persistence guardrail.
+Never infer persistence in the drag owner. Group job commands by intent and
 keep duration shortcuts inside the duration dialog. Prove every insertion
 position, representative rendered beginning/middle/end and cross-crew moves,
 and all transaction states against the in-memory fixture, never shared data.
 Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`;
 `docs/portal-production-readiness.md`
 Related docs/tests: `apps/portal/app/staff/schedule/useScheduleBoardDragController.ts`;
-`apps/portal/app/staff/schedule/useScheduleBoardChangeFeedback.ts`;
+`apps/portal/app/staff/schedule/useScheduleBoardMutationNotice.ts`;
 `apps/portal/app/staff/schedule/scheduleBoardOrder.ts`;
 `apps/portal/app/staff/schedule/ScheduleBoardActions.tsx`;
 `playwright/portal.schedule-board-confidence-fixture.spec.ts`
@@ -4506,11 +4508,41 @@ and Gantt must count the same server facts, name every attention reason without
 colour alone, and never describe summed forecast days as a capacity limit.
 Desktop Gantt keeps sticky crew identity and labels bars when legible; phone
 and constrained 200%-zoom layouts use the same model in a single-column
-read-only agenda with a clear route to Board for changes. Persistence state
-remains a shared route-level status and never implies confirmation before the
-existing command/reconciliation lifecycle completes.
+read-only agenda with a clear route to Board for changes. Gantt retains the
+route-level persistence status; Board follows the newer silent-persistence
+guardrail and never implies confirmation before the command/reconciliation
+lifecycle completes.
 Promoted to: `docs/schedule.md`
 Related docs/tests: `apps/portal/app/staff/schedule/ScheduleOperationalPresentation.ts`;
 `apps/portal/app/staff/schedule/ScheduleBoardCards.tsx`;
 `apps/portal/app/staff/schedule/ScheduleGanttModel.ts`;
+`playwright/portal.schedule-board-confidence-fixture.spec.ts`
+
+### 2026-08-01 - Schedule Board Silent Persistence - The Placed Card Is Normal Feedback
+
+Date: 2026-08-01
+Area: Schedule Board drag/drop persistence and reconciliation presentation
+Status: Promoted
+Decision or mistake: Board exposed checking, reviewing, saving, reconciling,
+saved, verified, and restored banners around ordinary moves, and an ambiguous
+command error rolled the optimistic card back before the authoritative read.
+That could produce an old-position/new-position jump when the command had
+actually committed.
+Why it mattered: Staff judge Schedule by whether a job remains exactly where
+they place it. Routine lifecycle narration and forward/back correction made a
+server-safe command path look unreliable and duplicated the card, toast, and
+route-level account of one event.
+Current guardrail: On Board, the placed card is normal feedback. Keep routine
+persistence state silent and keep controls unavailable while a command is
+unsettled. A definitive rejection restores once and owns one inline Retry.
+For a commit-ambiguous outcome, retain the optimistic placement while two
+bounded authoritative reads allow a late commit to appear; if server truth
+matches, remain silent, if it differs apply it once with Retry, and if the read
+fails retain the placement with one Refresh action. Never infer saved state in
+the browser, weaken affected-job preview/re-preview or confirmation, write to
+the shared query cache as optimism, or surface a duplicate toast/page banner.
+Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/portal/app/staff/schedule/scheduleBoardPlacementIntent.ts`;
+`apps/portal/app/staff/schedule/useScheduleBoardMutationNotice.ts`;
+`apps/portal/app/staff/schedule/ScheduleClient.test.tsx`;
 `playwright/portal.schedule-board-confidence-fixture.spec.ts`

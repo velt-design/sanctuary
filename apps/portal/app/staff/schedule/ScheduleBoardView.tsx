@@ -33,7 +33,7 @@ import {
   useScheduleBoardDragController,
   type ScheduleBoardDrop,
 } from './useScheduleBoardDragController';
-import type { ScheduleBoardChangeFeedback } from './useScheduleBoardChangeFeedback';
+import type { ScheduleBoardMutationNotice } from './useScheduleBoardMutationNotice';
 import {
   buildScheduleAttentionPresentation,
   buildSchedulePlanPresentation,
@@ -69,7 +69,7 @@ export type ScheduleBoardViewProps = {
     disabled: boolean;
     reason?: string;
   };
-  changeFeedback?: ScheduleBoardChangeFeedback | null;
+  mutationNotice?: ScheduleBoardMutationNotice | null;
   buildJobMenuActions: (args: {
     id: string;
     scheduleItem: ScheduleItem;
@@ -228,7 +228,7 @@ export default function ScheduleBoardView({
   onShowCompletedChange,
   onDrop,
   interaction = { disabled: false },
-  changeFeedback = null,
+  mutationNotice = null,
   buildJobMenuActions,
   buildDowntimeMenuActions,
 }: ScheduleBoardViewProps) {
@@ -353,7 +353,7 @@ export default function ScheduleBoardView({
                     job={job}
                     interactionDisabled={interaction.disabled}
                     interactionDisabledReason={interaction.reason}
-                    changeFeedback={changeFeedback?.projectId === job.projectId ? changeFeedback : null}
+                    mutationNotice={mutationNotice?.projectId === job.projectId ? mutationNotice : null}
                   />
                 ))}
               </div>
@@ -429,11 +429,6 @@ export default function ScheduleBoardView({
         </aside>
 
         <section className={styles.mainPanel} aria-label="Installer lanes">
-          {interaction.disabled ? (
-            <div className={styles.boardInteractionNotice} role="status" aria-live="polite">
-              {interaction.reason ?? 'Schedule changes are temporarily paused.'}
-            </div>
-          ) : null}
           <div className={cx(styles.legendRow, styles.boardControls)} aria-label="Schedule controls">
             <div className={styles.boardLegend}>
               {scheduleMode === 'v2' ? (
@@ -575,7 +570,7 @@ export default function ScheduleBoardView({
                     clientContacted={clientUpdateStatus === 'acknowledged'}
                     interactionDisabled={interaction.disabled}
                     interactionDisabledReason={interaction.reason}
-                    changeFeedback={changeFeedback?.projectId === scheduleItem.projectId ? changeFeedback : null}
+                    mutationNotice={mutationNotice?.projectId === scheduleItem.projectId ? mutationNotice : null}
                     sequencePosition={itemIndex + 1}
                     onMount={(node) => boardCardRefs.current.set(id, node)}
                   />,

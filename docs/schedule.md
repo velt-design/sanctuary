@@ -161,13 +161,20 @@ derived by the pure `scheduleBoardOrder.ts` owner after removing the moving
 card from its source lane. Same-position/unscheduled drops, hidden crews, and
 cross-crew downtime moves are rejected before a command. While any Schedule
 write or authoritative reconciliation is active, Board move and action
-controls are unavailable before activation. The affected project card names
-checking, review, saving, reconciliation, saved, restored, or verified state
-and its intended destination; only a validated command response may show
-saved, while ambiguous outcomes remain reconciling until a fresh snapshot.
+controls are unavailable before activation. Routine checking, saving,
+refreshing, saved, and verified state is deliberately silent on Board: the
+optimistic card position is the interaction feedback. A definitive rejection
+restores the checkpoint once and adds one concise Retry notice to the affected
+card. A commit-ambiguous response keeps the card in its intended position while
+two bounded authoritative reads absorb a late server commit; matching server
+truth stays silent, different server truth is applied once with Retry, and an
+unavailable verification read keeps the optimistic position with one Refresh
+notice. These rules do not create browser Schedule truth: only validated
+command responses and authoritative snapshots settle persistence.
 `useScheduleBoardDragController.ts` owns gesture geometry and scroll behavior;
-`useScheduleBoardChangeFeedback.ts` presents the existing command lifecycle
-without creating Schedule truth. Gantt
+`scheduleBoardPlacementIntent.ts` matches an exact lane/position against a V2
+snapshot, and `useScheduleBoardMutationNotice.ts` owns only the exceptional
+inline notice. Gantt
 job bars are keyboard focusable and open the existing action dialog with
 Enter/Space. Dialog-level Enter/P shortcuts run only when the dialog itself is
 focused, so Enter on a quick-action button activates that button. Its
@@ -195,9 +202,11 @@ Board and Gantt both count a job as needing attention when it has an attached
 warning/error, a required client update, or drift beyond stored flex. Crew
 headers show job count plus summed server-forecast days for comparison; this
 is a scan aid, not a browser-derived capacity limit or replacement for the
-server-owned next-available date. The route-level saved/saving/refreshing/
-failed/stale indicator remains visible across both views and uses text plus
-shape/border treatment rather than colour alone.
+server-owned next-available date. Gantt retains its route-level
+saved/saving/refreshing/failed/stale indicator. Board omits routine persistence
+status and suppresses duplicate page-level mutation alerts when its affected
+card owns the actionable failure or stale notice. Cold-load, access, and
+general read-health failures remain page-owned.
 
 Project name is the primary job label. Customer display name and site address
 form one deduplicated secondary identity line on Board cards, Gantt rows,
@@ -305,7 +314,7 @@ npx playwright test playwright/portal.schedule-board-confidence-fixture.spec.ts 
 npx playwright test playwright/portal.schedule-board-confidence-fixture.spec.ts --project=portal-chromium --workers=1
 ```
 
-The focused Schedule gate currently passes 53 files and 406 tests, including
+The focused Schedule gate currently passes 54 files and 413 tests, including
 atomic Gantt adjustment, confirmed-preview continuity, stale-response
 rejection, strict affected-job confirmation/cancellation,
 cross-instance mutation ownership, malformed-response rejection, optimistic
@@ -313,8 +322,9 @@ rollback/reconciliation, cache authority, nine-crew Board rendering,
 crew-filter persistence/fail-open recovery, hidden-lane exclusion,
 pointer-owned drop geometry, fresh release remeasurement, exhaustive insertion
 positions and cross-crew ordering, proportional
-auto-scroll, blocked uncommittable gestures, grouped actions, card-level
-transaction outcomes, Board control semantics, shared job
+auto-scroll, blocked uncommittable gestures, grouped actions, silent normal
+Board persistence, action-required inline recovery, exact snapshot placement
+matching, Board control semantics, shared job
 identity/search presentation, server-authoritative Gantt timing review,
 stale-impact disabling, bounded Gantt project loading, phone/zoom agenda mode,
 and Gantt keyboard/responsive behavior. With current staff test credentials,
@@ -339,13 +349,13 @@ unscheduled jobs, and an optional 108-bar large schedule. Every command
 callback is inert. Use `?view=board|gantt&scale=standard|large` for deterministic
 responsive and performance evidence without creating or mutating shared
 Schedule records. Board drops update fixture-only in-memory arrays so the
-rendered committed position can be asserted without any API/RPC call. Board additionally accepts
-`&state=checking|reviewing|saving|reconciling|saved|restored|verified` to render
-transaction feedback without a command. Run
+rendered committed position can be asserted without any API/RPC call. Board
+additionally accepts `&state=failed|stale` to render the exceptional Retry and
+Refresh notices without a command; normal drops stay silent. Run
 `playwright/portal.schedule-board-confidence-fixture.spec.ts` with the
 `portal-fixture` project for the six-width/200%-zoom, beginning/middle/end and
-cross-crew order, held-pointer drag,
-grouped-action, focus-return, no-write, and state matrix.
+cross-crew order, held-pointer drag, grouped-action, focus-return, no-write,
+silent-success, and action-required state matrix.
 Use `portal-chromium` after the normal staff-auth setup to prove the same inert
 matrix in an authenticated browser context; use `portal-fixture` for the
 credential-free local gate. Neither variant may issue a staff write.

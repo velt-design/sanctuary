@@ -1150,9 +1150,10 @@ describe('ScheduleClient', () => {
       ganttMocks.latestProps.onResizePin(scheduleItemId, '2026-04-13', 3);
     });
     await act(async () => {
-      vi.advanceTimersByTime(200);
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 6; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
     });
 
     expect(adjustJob).toHaveBeenCalledTimes(1);
@@ -1590,9 +1591,10 @@ describe('ScheduleClient', () => {
     });
 
     await act(async () => {
-      vi.advanceTimersByTime(200);
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 6; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
     });
 
     expect(assignJob).toHaveBeenCalledWith({
@@ -1602,12 +1604,8 @@ describe('ScheduleClient', () => {
       force: false,
       today: '2026-04-07',
     });
-    expect(dndMocks.latestBoardProps.changeFeedback).toMatchObject({
-      projectId: betaProjectId,
-      action: 'Schedule',
-      destination: 'Crew Alpha',
-      phase: 'saved',
-    });
+    expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
+    expect(rendered.container.textContent).not.toMatch(/Saving|Saved|Checking saved schedule/);
 
     rendered.unmount();
   });
@@ -1635,9 +1633,9 @@ describe('ScheduleClient', () => {
 
     const { rendered } = renderSchedule(snapshot);
     await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let index = 0; index < 6; index += 1) await Promise.resolve();
+      vi.runOnlyPendingTimers();
+      for (let index = 0; index < 6; index += 1) await Promise.resolve();
     });
 
     act(() => {
@@ -1724,10 +1722,7 @@ describe('ScheduleClient', () => {
 
     expect(document.body.textContent).toContain('Move other scheduled jobs?');
     expect(document.body.textContent).toContain('Alpha Deck');
-    expect(dndMocks.latestBoardProps.changeFeedback).toMatchObject({
-      projectId: betaProjectId,
-      phase: 'reviewing',
-    });
+    expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
     expect(assignJob).toHaveBeenCalledTimes(1);
     expect(assignJob).toHaveBeenLastCalledWith(expect.objectContaining({ force: false }));
 
@@ -1761,7 +1756,8 @@ describe('ScheduleClient', () => {
     expect(assignJob).toHaveBeenCalledTimes(3);
     expect(assignJob).toHaveBeenNthCalledWith(2, expect.objectContaining({ force: false }));
     expect(assignJob).toHaveBeenLastCalledWith(expect.objectContaining({ force: true }));
-    expect(toastMocks.success).toHaveBeenCalledWith('Job scheduled.');
+    expect(toastMocks.success).not.toHaveBeenCalledWith('Job scheduled.');
+    expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
 
     rendered.unmount();
   });
@@ -1884,9 +1880,10 @@ describe('ScheduleClient', () => {
       saveButton?.click();
     });
     await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 6; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
     });
 
     expect(assignJob).toHaveBeenCalledTimes(2);
@@ -1895,7 +1892,12 @@ describe('ScheduleClient', () => {
     expect(assignJob).not.toHaveBeenCalledWith(expect.objectContaining({ force: true }));
     expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
     expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeDrop);
-    expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job.');
+    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(dndMocks.latestBoardProps.mutationNotice).toMatchObject({
+      projectId: betaProjectId,
+      tone: 'error',
+      actionLabel: 'Retry',
+    });
 
     rendered.unmount();
   });
@@ -1937,21 +1939,22 @@ describe('ScheduleClient', () => {
     });
 
     await act(async () => {
-      vi.advanceTimersByTime(200);
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(200);
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 6; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
     });
 
     expect(document.body.textContent).not.toContain('Move other scheduled jobs?');
     expect(assignJob).toHaveBeenCalledTimes(1);
     expect(assignJob).toHaveBeenCalledWith(expect.objectContaining({ force: false }));
     expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
-    expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job.');
+    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(dndMocks.latestBoardProps.mutationNotice).toMatchObject({
+      projectId: betaProjectId,
+      tone: 'error',
+      actionLabel: 'Retry',
+    });
 
     rendered.unmount();
   });
@@ -2071,7 +2074,8 @@ describe('ScheduleClient', () => {
     expect(markJobDone).toHaveBeenCalledTimes(1);
     expect(document.body.textContent).not.toContain('Finished early');
     expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeCancel);
-    expect(rendered.container.textContent).toContain('Saved');
+    expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
+    expect(rendered.container.textContent).not.toMatch(/Saving|Saved|Checking saved schedule/);
     rendered.unmount();
   });
 
@@ -2083,12 +2087,14 @@ describe('ScheduleClient', () => {
       queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
       staleTime: 30_000,
     }));
-    vi.mocked(assignJob).mockRejectedValue(
-      new ApiError('assign failed', {
-        status: 422,
-        body: { error: 'assign failed' },
-      }),
-    );
+    vi.mocked(assignJob)
+      .mockRejectedValueOnce(
+        new ApiError('assign failed', {
+          status: 422,
+          body: { error: 'assign failed' },
+        }),
+      )
+      .mockResolvedValueOnce(emptyCrewMutationResponse());
 
     const { rendered } = renderSchedule(snapshot);
 
@@ -2118,23 +2124,23 @@ describe('ScheduleClient', () => {
 
     const unscheduledAfter = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
     expect(unscheduledAfter?.textContent).toContain('Beta Deck');
-    expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job.');
-    expect(rendered.container.textContent).toContain('Schedule change was not saved');
+    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(rendered.container.textContent).not.toContain('Schedule change was not saved');
+    expect(dndMocks.latestBoardProps.mutationNotice).toMatchObject({
+      projectId: betaProjectId,
+      tone: 'error',
+      actionLabel: 'Retry',
+    });
     expect(scheduleSnapshotQueryFn).toHaveBeenCalledTimes(fetchesBeforeRejectedAssignment);
 
-    const refreshButton = Array.from(rendered.container.querySelectorAll('button')).find(
-      (button) => button.textContent?.trim() === 'Refresh schedule',
-    ) as HTMLButtonElement | undefined;
-    act(() => refreshButton?.click());
+    act(() => dndMocks.latestBoardProps.mutationNotice.onAction());
     await act(async () => {
-      for (let index = 0; index < 6; index += 1) await Promise.resolve();
-      vi.runOnlyPendingTimers();
+      vi.advanceTimersByTime(200);
       for (let index = 0; index < 6; index += 1) await Promise.resolve();
     });
 
-    expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeRejectedAssignment);
-    expect(rendered.container.textContent).not.toContain('Schedule change was not saved');
-    expect(rendered.container.textContent).toContain('Saved');
+    expect(assignJob).toHaveBeenCalledTimes(2);
+    expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
 
     rendered.unmount();
   });
@@ -2167,15 +2173,17 @@ describe('ScheduleClient', () => {
     });
 
     await act(async () => {
-      vi.advanceTimersByTime(200);
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 6; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
     });
 
     expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
-    expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job.');
+    expect(toastMocks.error).not.toHaveBeenCalled();
     expect(toastMocks.success).not.toHaveBeenCalledWith('Job scheduled.');
     expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeAssignment);
+    expect(dndMocks.latestBoardProps.mutationNotice).toMatchObject({ tone: 'error', actionLabel: 'Retry' });
 
     rendered.unmount();
   });
@@ -2228,14 +2236,17 @@ describe('ScheduleClient', () => {
       });
     });
     await act(async () => {
-      vi.advanceTimersByTime(200);
-      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 6; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
     });
 
     expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
     expect(toastMocks.success).not.toHaveBeenCalledWith('Job scheduled.');
-    expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job.');
+    expect(toastMocks.error).not.toHaveBeenCalled();
     expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeAssignment);
+    expect(dndMocks.latestBoardProps.mutationNotice).toMatchObject({ tone: 'error', actionLabel: 'Retry' });
     rendered.unmount();
   });
 
@@ -2277,14 +2288,17 @@ describe('ScheduleClient', () => {
       });
     });
     await act(async () => {
-      vi.advanceTimersByTime(200);
-      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 6; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
     });
 
     expect(assignJob).toHaveBeenCalledTimes(1);
     expect(document.body.textContent).not.toContain('Move other scheduled jobs?');
     expect(toastMocks.success).not.toHaveBeenCalledWith('Job scheduled.');
     expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
+    expect(dndMocks.latestBoardProps.mutationNotice).toMatchObject({ tone: 'error', actionLabel: 'Retry' });
     rendered.unmount();
   });
 
@@ -2339,11 +2353,10 @@ describe('ScheduleClient', () => {
 
     expect(assignJob).toHaveBeenCalledTimes(1);
     expect(scheduleSnapshotQueryFn).toHaveBeenCalledTimes(1);
-    expect(rendered.container.textContent).toContain('Refreshing');
-    expect(dndMocks.latestBoardProps.changeFeedback).toMatchObject({
-      projectId: betaProjectId,
-      phase: 'reconciling',
-    });
+    expect(rendered.container.textContent).not.toMatch(/Refreshing|Saving|Saved|Checking saved schedule/);
+    expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ disabled: true });
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).not.toContain('Beta Deck');
 
     act(dropBetaIntoCrew);
     await act(async () => {
@@ -2353,21 +2366,154 @@ describe('ScheduleClient', () => {
     });
 
     expect(assignJob).toHaveBeenCalledTimes(1);
-    expect(toastMocks.info).toHaveBeenCalledWith(
-      'The schedule is refreshing. Try again when the latest saved version is visible.',
-    );
-    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).not.toContain('Beta Deck');
 
     await act(async () => {
       resolveAuthoritativeSnapshot(authoritativeSnapshot);
       await authoritativeSnapshotPromise;
-      for (let index = 0; index < 5; index += 1) await Promise.resolve();
-      vi.runOnlyPendingTimers();
-      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 6; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
     });
 
-    expect(rendered.container.textContent).toContain('Saved');
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
+    expect(dndMocks.latestBoardProps.mutationNotice).toMatchObject({ tone: 'error', actionLabel: 'Retry' });
+    expect(rendered.container.textContent).not.toMatch(/Refreshing|Saving|Saved|Checking saved schedule/);
 
+    rendered.unmount();
+  });
+
+  it('keeps the card in place when an ambiguous failure reconciles to the intended saved position', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    const committedSnapshot: ScheduleV2Snapshot = {
+      ...snapshot,
+      generatedAt: '2026-04-07T12:00:00.000Z',
+      scheduleItems: [
+        ...snapshot.scheduleItems,
+        {
+          ...snapshot.scheduleItems[0],
+          id: `sch_${BETA_SCHEDULE_ITEM_UUID}`,
+          projectId: betaProjectId,
+          estimateId: betaEstimateId,
+          scheduledJobId: BETA_SCHEDULED_JOB_UUID,
+          sortIndex: 1,
+          forecastStart: '2026-04-10',
+          forecastEndExclusive: '2026-04-14',
+        },
+      ],
+      unscheduledJobs: [],
+    };
+    let resolveCommittedSnapshot!: (value: ScheduleV2Snapshot) => void;
+    const committedSnapshotPromise = new Promise<ScheduleV2Snapshot>((resolve) => {
+      resolveCommittedSnapshot = resolve;
+    });
+    scheduleSnapshotQueryFn
+      .mockResolvedValueOnce(snapshot)
+      .mockImplementation(() => committedSnapshotPromise);
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn,
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob).mockRejectedValue(
+      new ApiError('Commit result unknown', {
+        status: 500,
+        body: { error: 'Commit result unknown' },
+      }),
+    );
+
+    const { rendered } = renderSchedule(snapshot);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      for (let index = 0; index < 6; index += 1) await Promise.resolve();
+    });
+
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).not.toContain('Beta Deck');
+    expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
+
+    await act(async () => {
+      resolveCommittedSnapshot(committedSnapshot);
+      await committedSnapshotPromise;
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 8; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
+    });
+
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).not.toContain('Beta Deck');
+    expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ disabled: false });
+    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(rendered.container.textContent).not.toMatch(/Refreshing|Saving|Saved|Checking saved schedule/);
+    rendered.unmount();
+  });
+
+  it('keeps the card in place and offers one Refresh action when verification cannot load', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryFn
+      .mockResolvedValueOnce(snapshot)
+      .mockRejectedValue(new Error('offline'));
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn,
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob).mockRejectedValue(
+      new ApiError('Commit result unknown', {
+        status: 500,
+        body: { error: 'Commit result unknown' },
+      }),
+    );
+
+    const { rendered } = renderSchedule(snapshot);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+    await act(async () => {
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 8; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
+    });
+
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).not.toContain('Beta Deck');
+    expect(dndMocks.latestBoardProps.mutationNotice).toMatchObject({
+      projectId: betaProjectId,
+      tone: 'warning',
+      actionLabel: 'Refresh',
+    });
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ disabled: true });
+    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(rendered.container.textContent).not.toContain('Schedule may be out of date');
     rendered.unmount();
   });
 
@@ -2416,11 +2562,9 @@ describe('ScheduleClient', () => {
       await Promise.resolve();
     });
     expect(assignJob).toHaveBeenCalledTimes(1);
-    expect(dndMocks.latestBoardProps.changeFeedback).toMatchObject({
-      projectId: betaProjectId,
-      phase: 'checking',
-    });
+    expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
     expect(dndMocks.latestBoardProps.interaction).toMatchObject({ disabled: true });
+    expect(first.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).not.toContain('Beta Deck');
     const boardKey = qk.schedule.board('example.supabase.co', '2026-04-07');
     expect(
       queryClient
@@ -2440,7 +2584,8 @@ describe('ScheduleClient', () => {
     });
 
     expect(second.container.textContent).toContain('Beta Deck');
-    expect(second.container.textContent).toContain('Refreshing');
+    expect(second.container.textContent).not.toMatch(/Refreshing|Saving|Saved|Checking saved schedule/);
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ disabled: true });
 
     act(dropBetaIntoCrew);
     await act(async () => {
@@ -2462,12 +2607,12 @@ describe('ScheduleClient', () => {
     });
 
     expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeSettlement);
-    expect(second.container.textContent).toContain('Saved');
     expect(second.container.textContent).toContain('Beta Deck');
+    expect(second.container.textContent).not.toMatch(/Refreshing|Saving|Saved|Checking saved schedule/);
     second.unmount();
   });
 
-  it('shows a specific API error and rolls back when unscheduled assignment returns 409', async () => {
+  it('restores once with one retry notice when unscheduled assignment returns 409', async () => {
     vi.useFakeTimers();
     const snapshot = boardMutationSnapshot();
     scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
@@ -2500,23 +2645,25 @@ describe('ScheduleClient', () => {
     });
 
     await act(async () => {
-      vi.advanceTimersByTime(200);
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 6; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
     });
 
     const unscheduledAfter = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
     expect(unscheduledAfter?.textContent).toContain('Beta Deck');
-    expect(dndMocks.latestBoardProps.changeFeedback).toMatchObject({
+    expect(dndMocks.latestBoardProps.mutationNotice).toMatchObject({
       projectId: betaProjectId,
-      phase: 'verified',
+      tone: 'error',
+      actionLabel: 'Retry',
     });
-    expect(toastMocks.error).toHaveBeenCalledWith('Job is already scheduled in this crew. Refresh the board.');
+    expect(toastMocks.error).not.toHaveBeenCalled();
 
     rendered.unmount();
   });
 
-  it('shows a request reference and rolls back when unscheduled assignment returns 500', async () => {
+  it('logs a request reference but shows only one retry notice when assignment returns 500', async () => {
     vi.useFakeTimers();
     window.localStorage.setItem('sp_schedule_debug', '1');
     const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
@@ -2552,14 +2699,20 @@ describe('ScheduleClient', () => {
     });
 
     await act(async () => {
-      vi.advanceTimersByTime(200);
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 6; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
     });
 
     const unscheduledAfter = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
     expect(unscheduledAfter?.textContent).toContain('Beta Deck');
-    expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job. Reference: req_assign_500.');
+    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(dndMocks.latestBoardProps.mutationNotice).toMatchObject({
+      projectId: betaProjectId,
+      tone: 'error',
+      actionLabel: 'Retry',
+    });
     expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeAmbiguousAssignment);
     const scheduleDebugPayloads = debugSpy.mock.calls
       .filter((call) => call[0] === '[schedule]')
@@ -2597,7 +2750,7 @@ describe('ScheduleClient', () => {
     rendered.unmount();
   });
 
-  it('shows assign diagnostics and rolls back when unscheduled assignment returns 500', async () => {
+  it('keeps assign diagnostics out of routine Board presentation when assignment returns 500', async () => {
     vi.useFakeTimers();
     const snapshot = boardMutationSnapshot();
     scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
@@ -2637,16 +2790,20 @@ describe('ScheduleClient', () => {
     });
 
     await act(async () => {
-      vi.advanceTimersByTime(200);
-      await Promise.resolve();
-      await Promise.resolve();
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let index = 0; index < 6; index += 1) await Promise.resolve();
+        await vi.runOnlyPendingTimersAsync();
+      }
     });
 
     const unscheduledAfter = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
     expect(unscheduledAfter?.textContent).toContain('Beta Deck');
-    expect(toastMocks.error).toHaveBeenCalledWith(
-      'Failed to schedule job. P0001: failed to update every scheduled job forecast. Reference: req_assign_diag_500.',
-    );
+    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(dndMocks.latestBoardProps.mutationNotice).toMatchObject({
+      projectId: betaProjectId,
+      tone: 'error',
+      actionLabel: 'Retry',
+    });
 
     rendered.unmount();
   });
@@ -2772,7 +2929,8 @@ describe('ScheduleClient', () => {
     expect(cached?.conflicts).toEqual([]);
     expect(queryClient.getQueryData<ScheduleV2Snapshot>(ganttCacheKey)).toBeUndefined();
     expect(rendered.container.textContent).toContain('Beta Deck');
-    expect(toastMocks.success).toHaveBeenCalledWith('Job scheduled.');
+    expect(toastMocks.success).not.toHaveBeenCalledWith('Job scheduled.');
+    expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
 
     rendered.unmount();
   });

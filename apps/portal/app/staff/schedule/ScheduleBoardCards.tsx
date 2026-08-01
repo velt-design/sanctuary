@@ -9,7 +9,7 @@ import { normalizeProjectStatus, projectStatusLabel } from '@/lib/types/project'
 import type { ScheduleItem, ScheduleItemStatus } from '@/lib/types/scheduling';
 import type { SchedulableJob } from './ScheduleClientModel';
 import { ScheduleBoardActions, type ScheduleBoardMenuAction } from './ScheduleBoardActions';
-import { scheduleBoardChangeLabel, type ScheduleBoardChangeFeedback } from './useScheduleBoardChangeFeedback';
+import type { ScheduleBoardMutationNotice } from './useScheduleBoardMutationNotice';
 import type { ScheduleAttentionPresentation } from './ScheduleOperationalPresentation';
 import styles from './scheduleBoard.module.css';
 
@@ -87,7 +87,7 @@ function JobCardShell({
   dragHandleRef,
   style,
   dropTarget,
-  changeFeedback,
+  mutationNotice,
   sequencePosition,
 }: {
   dragId?: string;
@@ -117,7 +117,7 @@ function JobCardShell({
   dragHandleRef?: (node: HTMLElement | null) => void;
   style?: CSSProperties;
   dropTarget?: boolean;
-  changeFeedback?: ScheduleBoardChangeFeedback | null;
+  mutationNotice?: ScheduleBoardMutationNotice | null;
   sequencePosition?: number;
 }) {
   const identity = (
@@ -149,7 +149,7 @@ function JobCardShell({
       data-draggable={draggable ? 'true' : undefined}
       data-dragging={dragging ? 'true' : undefined}
       data-issue-level={issueLevel ?? (warning ? 'warning' : undefined)}
-      data-change-state={changeFeedback?.phase}
+      data-mutation-notice={mutationNotice?.tone}
     >
       <div className={styles.jobTopRow}>
         <div className={styles.jobMain}>
@@ -211,10 +211,17 @@ function JobCardShell({
         ) : null}
       </div>
 
-      {changeFeedback ? (
-        <div className={styles.cardChangeFeedback} data-state={changeFeedback.phase} role="status" aria-live="polite">
-          <span>{scheduleBoardChangeLabel(changeFeedback)}</span>
-          <span className={styles.cardChangeDestination}>{changeFeedback.destination}</span>
+      {mutationNotice ? (
+        <div className={styles.cardMutationNotice} data-tone={mutationNotice.tone} role="alert">
+          <span>{mutationNotice.message}</span>
+          <button
+            type="button"
+            className={styles.cardMutationAction}
+            data-no-dnd="true"
+            onClick={mutationNotice.onAction}
+          >
+            {mutationNotice.actionLabel}
+          </button>
         </div>
       ) : null}
 
@@ -241,12 +248,12 @@ export function UnscheduledJobCard({
   job,
   interactionDisabled = false,
   interactionDisabledReason,
-  changeFeedback,
+  mutationNotice,
 }: {
   job: SchedulableJob;
   interactionDisabled?: boolean;
   interactionDisabledReason?: string;
-  changeFeedback?: ScheduleBoardChangeFeedback | null;
+  mutationNotice?: ScheduleBoardMutationNotice | null;
 }) {
   const router = useRouter();
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
@@ -274,7 +281,7 @@ export function UnscheduledJobCard({
       moveDisabled={interactionDisabled}
       moveDisabledReason={interactionDisabledReason}
       dragging={isDragging}
-      changeFeedback={changeFeedback}
+      mutationNotice={mutationNotice}
       cardRef={(node) => setNodeRef(node as any)}
       dragHandleRef={setActivatorNodeRef}
       style={style}
@@ -298,7 +305,7 @@ export function ScheduledJobCard({
   onMount,
   interactionDisabled = false,
   interactionDisabledReason,
-  changeFeedback,
+  mutationNotice,
   sequencePosition,
 }: {
   id: string;
@@ -316,7 +323,7 @@ export function ScheduledJobCard({
   onMount?: (node: HTMLElement | null) => void;
   interactionDisabled?: boolean;
   interactionDisabledReason?: string;
-  changeFeedback?: ScheduleBoardChangeFeedback | null;
+  mutationNotice?: ScheduleBoardMutationNotice | null;
   sequencePosition?: number;
 }) {
   const router = useRouter();
@@ -361,7 +368,7 @@ export function ScheduledJobCard({
           disabledReason={interactionDisabledReason}
         />
       }
-      changeFeedback={changeFeedback}
+      mutationNotice={mutationNotice}
       sequencePosition={sequencePosition}
       cardRef={(node) => {
         setNodeRef(node as any);

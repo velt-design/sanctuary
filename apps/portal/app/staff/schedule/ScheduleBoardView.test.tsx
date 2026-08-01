@@ -555,7 +555,8 @@ describe('ScheduleBoardView', () => {
 
     const move = rendered.container.querySelector<HTMLButtonElement>('button[aria-label="Move Alpha Deck unavailable"]');
     expect(move?.disabled).toBe(true);
-    expect(rendered.container.textContent).toContain('Another schedule change is still saving.');
+    expect(move?.title).toBe('Another schedule change is still saving.');
+    expect(rendered.container.textContent).not.toContain('Another schedule change is still saving.');
 
     act(() => {
       dndMocks.latestContextProps.onDragStart({ active: { id: 'job_alpha' } });
@@ -565,25 +566,30 @@ describe('ScheduleBoardView', () => {
     rendered.unmount();
   });
 
-  it('shows card-level saving and restored outcomes with their intended destination', () => {
+  it('shows only an actionable card-level notice after a failed move', () => {
+    const onAction = vi.fn();
     const rendered = renderIntoDocument(
       <ScheduleBoardView
         {...baseProps({
-          changeFeedback: {
+          mutationNotice: {
             id: 1,
             projectId: 'proj_alpha',
-            action: 'Schedule',
-            destination: 'Crew Alpha',
-            phase: 'saving',
+            tone: 'error',
+            message: 'Move wasn\'t saved. Previous position restored.',
+            actionLabel: 'Retry',
+            onAction,
           },
         })}
       />,
     );
 
     const card = rendered.container.querySelector('[data-schedule-card-id="job_alpha"]');
-    expect(card?.getAttribute('data-change-state')).toBe('saving');
-    expect(card?.textContent).toContain('Saving schedule');
-    expect(card?.textContent).toContain('Crew Alpha');
+    expect(card?.getAttribute('data-mutation-notice')).toBe('error');
+    expect(card?.textContent).toContain('Previous position restored');
+    const retry = Array.from(card?.querySelectorAll<HTMLButtonElement>('button') ?? [])
+      .find((button) => button.textContent === 'Retry');
+    act(() => retry?.click());
+    expect(onAction).toHaveBeenCalledOnce();
     rendered.unmount();
   });
 

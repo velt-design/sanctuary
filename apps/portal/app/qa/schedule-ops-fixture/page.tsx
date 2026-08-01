@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import ScheduleOpsFixtureClient from './ScheduleOpsFixtureClient';
-import type { ScheduleBoardChangePhase } from '@/app/staff/schedule/useScheduleBoardChangeFeedback';
 
 function arePortalQaFixturesEnabled(): boolean {
   return process.env.ENABLE_PORTAL_QA_FIXTURES?.trim() === '1';
@@ -15,17 +14,9 @@ export default async function ScheduleOpsFixturePage({
   const params = await searchParams;
   const initialView = params.view === 'gantt' ? 'gantt' : 'board';
   const scale = params.scale === 'large' ? 'large' : 'standard';
-  const supportedStates = new Set<ScheduleBoardChangePhase>([
-    'checking',
-    'reviewing',
-    'saving',
-    'reconciling',
-    'saved',
-    'restored',
-    'verified',
-  ]);
-  const initialState = supportedStates.has(params.state as ScheduleBoardChangePhase)
-    ? params.state as ScheduleBoardChangePhase
+  const supportedStates = new Set(['failed', 'stale']);
+  const initialState = supportedStates.has(params.state ?? '')
+    ? params.state as 'failed' | 'stale'
     : null;
 
   return (

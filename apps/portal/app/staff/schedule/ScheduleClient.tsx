@@ -86,9 +86,10 @@ import { recentScheduleTelemetryEvents, sendScheduleTelemetry } from './schedule
 import type { ScheduleClientTelemetryEvent } from '@/lib/scheduling/scheduleTelemetry';
 import { createScheduleSnapshotRequestTracker } from './scheduleSnapshotRequestTracker';
 import {
-  useScheduleBoardChangeFeedback,
-  type ScheduleBoardChangePhase,
-} from './useScheduleBoardChangeFeedback';
+  scheduleSnapshotMatchesBoardPlacement,
+  type ScheduleBoardPlacementIntent,
+} from './scheduleBoardPlacementIntent';
+import { useScheduleBoardMutationNotice } from './useScheduleBoardMutationNotice';
 import {
   formatScheduleCommitmentLabel,
   hasScheduleCommitment as hasPlannedCommitment,
@@ -125,6 +126,7 @@ const LazyScheduleDiagnosticsPanel = dynamic(() => import('./ScheduleDiagnostics
 });
 
 const USE_SCHEDULE_V2 = true;
+const BOARD_RECONCILIATION_SETTLE_MS = 180;
 
 type ScheduleTrustState = {
   status: 'saved' | 'saving' | 'refreshing' | 'failed' | 'stale';
@@ -150,7 +152,22 @@ type ScheduleMutationOptions = {
   requireSourceSchedule?: boolean;
   expectedCrewId?: string;
   expectedSourceCrewId?: string;
+  boardPlacementIntent?: ScheduleBoardPlacementIntent;
+  onSettlement?: (settlement: ScheduleMutationSettlement) => void;
   onPhase?: (phase: 'checking' | 'reviewing' | 'saving' | 'reconciling' | 'cancelled') => void;
+};
+
+type ScheduleMutationSettlement =
+  | { status: 'saved' | 'cancelled' }
+  | { status: 'restored'; message: string; requestId?: string | null }
+  | { status: 'stale'; message: string; requestId?: string | null };
+
+type ScheduleBoardChange = {
+  projectId: string;
+  action: string;
+  destination: string;
+  placementIntent: ScheduleBoardPlacementIntent;
+  retry: () => void;
 };
 
 function formatSavedTime(value: string | null): string | null {
@@ -571,6 +588,8 @@ export default function ScheduleClient({
   const hostKey = supabaseHost || 'unknown';
   const scheduleMutationScope = `${hostKey}:${today}`;
   const scheduleMutationOwnerRef = useRef(Symbol('schedule-client'));
+  const handleBoardDropRef = useRef<(activeId: string, dropTarget: ScheduleBoardDrop) => void>(() => {});
+  const handleUnscheduleRef = useRef<(id: string) => Promise<boolean>>(async () => false);
   const subscribeToScheduleMutationActivity = useCallback(
     (listener: () => void) => subscribeScheduleMutationActivity(scheduleMutationScope, listener),
     [scheduleMutationScope],
@@ -614,6 +633,7 @@ export default function ScheduleClient({
   const v2SnapshotIgnoredDuringMutationRef = useRef(false);
   const v2ObservedForeignMutationRef = useRef(false);
   const v2CommittedPreviewPendingRef = useRef(false);
+  const v2BoardMutationErrorOwnedRef = useRef(false);
   const requestedScheduleViewRef = useRef<ScheduleView | null>(null);
   const refreshScheduleRef = useRef<() => void>(() => {});
   const v2LocallyWrittenSnapshotsRef = useRef<WeakSet<object>>(new WeakSet());
@@ -704,7 +724,7 @@ export default function ScheduleClient({
   const [recentTelemetryEvents, setRecentTelemetryEvents] = useState<ScheduleClientTelemetryEvent[]>(() => recentScheduleTelemetryEvents());
   const [syncing, setSyncing] = useState(false);
   const [scheduleTrust, setScheduleTrustState] = useState<ScheduleTrustState>(initialScheduleTrustRef.current);
-  const boardChangeFeedback = useScheduleBoardChangeFeedback(scheduleTrust.status);
+  const boardMutationNotice = useScheduleBoardMutationNotice();
   const deferredQuery = useDeferredValue(query);
   const devOnly = process.env.NODE_ENV !== 'production';
   const telemetryEmittedRef = useRef<Set<string>>(new Set());
@@ -1590,6 +1610,10 @@ export default function ScheduleClient({
       return;
     }
 
+    if (view === 'board' && (v2PendingMutationsRef.current > 0 || v2BoardMutationErrorOwnedRef.current)) {
+      return;
+    }
+
     const msg = err instanceof Error ? err.message : 'Failed to load schedule data.';
     const showingCached = hydratedFromCacheRef.current || installers.length > 0 || scheduleItems.length > 0 || projects.length > 0;
     if (showingCached) {
@@ -1897,6 +1921,61 @@ export default function ScheduleClient({
     void refreshSchedule();
   };
 
+  async function settleBoardPlacementFromServer(
+    intent: ScheduleBoardPlacementIntent,
+    preserveCommittedPreview: boolean,
+  ): Promise<'saved' | 'restored' | 'stale'> {
+    const reconciliationRun = v2ReconciliationRunRef.current + 1;
+    v2ReconciliationRunRef.current = reconciliationRun;
+    const snapshotKind = view === 'gantt' ? 'gantt' : 'board';
+    const activeQueryKey = snapshotKind === 'gantt' ? ganttSnapshotKey : boardSnapshotKey;
+    const inactiveQueryKey = snapshotKind === 'gantt' ? boardSnapshotKey : ['schedule', hostKey, 'gantt'];
+
+    const fetchSnapshot = async (): Promise<ScheduleV2Snapshot> => {
+      await queryClient.cancelQueries({ queryKey: activeQueryKey, exact: true });
+      void queryClient.invalidateQueries({ queryKey: inactiveQueryKey, refetchType: 'none' });
+      return snapshotKind === 'gantt'
+        ? await queryClient.fetchQuery({
+            queryKey: ganttSnapshotKey,
+            queryFn: loadTrackedGanttSnapshot,
+            staleTime: 0,
+          })
+        : await queryClient.fetchQuery({
+            queryKey: boardSnapshotKey,
+            queryFn: loadTrackedBoardSnapshot,
+            staleTime: 0,
+          });
+    };
+
+    try {
+      let snapshot = await fetchSnapshot();
+      let matches = scheduleSnapshotMatchesBoardPlacement(snapshot, intent);
+      if (!matches) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, BOARD_RECONCILIATION_SETTLE_MS));
+        snapshot = await fetchSnapshot();
+        matches = scheduleSnapshotMatchesBoardPlacement(snapshot, intent);
+      }
+      if (v2ReconciliationRunRef.current !== reconciliationRun) return 'stale';
+      applySnapshotFromQuery(snapshot, snapshotKind, { authoritative: true });
+      setSyncing(false);
+      return matches ? 'saved' : 'restored';
+    } catch {
+      if (v2ReconciliationRunRef.current === reconciliationRun) {
+        v2ReconciliationPendingRef.current = false;
+        v2SnapshotIgnoredDuringMutationRef.current = false;
+        setSyncing(false);
+        updateScheduleTrust({
+          status: 'stale',
+          savedAt: scheduleTrustRef.current.savedAt,
+          message: preserveCommittedPreview
+            ? 'The change may be saved, but the latest schedule could not be verified.'
+            : 'The latest saved schedule could not be verified.',
+        });
+      }
+      return 'stale';
+    }
+  }
+
   useEffect(() => {
     const foreignMutationCount = Math.max(
       0,
@@ -1934,6 +2013,7 @@ export default function ScheduleClient({
       let rollbackOptimistic: (() => void) | undefined;
       let rolledBack = false;
       let reconcileAfterFailure = false;
+      let reconciliationHandled = false;
       const rollback = () => {
         if (rolledBack) return;
         rolledBack = true;
@@ -2002,6 +2082,7 @@ export default function ScheduleClient({
             });
             if (!confirmed) {
               opts?.onPhase?.('cancelled');
+              opts?.onSettlement?.({ status: 'cancelled' });
               sealV2SnapshotRequestEpochs();
               rollback();
               reconcileAfterFailure = true;
@@ -2090,7 +2171,8 @@ export default function ScheduleClient({
         }
 
         opts?.onSuccess?.(res);
-        if (opts?.successToast) toast.success(opts.successToast);
+        opts?.onSettlement?.({ status: 'saved' });
+        if (opts?.successToast && !opts.boardPlacementIntent) toast.success(opts.successToast);
         if (!refreshRequired) updateScheduleTrust({ status: 'saved', savedAt: nowIso() });
         return true;
       } catch (err) {
@@ -2103,9 +2185,43 @@ export default function ScheduleClient({
           opts?.refreshOnError === true;
         if (reconcileAfterFailure) opts?.onPhase?.('reconciling');
         v2ReconciliationPendingRef.current = reconcileAfterFailure;
-        rollback();
         opts?.onError?.(err);
-        toast.error(userMessage);
+
+        if (reconcileAfterFailure && opts?.boardPlacementIntent) {
+          v2BoardMutationErrorOwnedRef.current = true;
+          updateScheduleTrust({
+            status: 'refreshing',
+            savedAt: trustBeforeMutation.savedAt,
+          });
+          const settlement = await settleBoardPlacementFromServer(
+            opts.boardPlacementIntent,
+            true,
+          );
+          reconciliationHandled = true;
+          if (settlement === 'saved') {
+            v2BoardMutationErrorOwnedRef.current = false;
+            opts?.onSettlement?.({ status: 'saved' });
+            return true;
+          }
+          if (settlement === 'restored') {
+            v2BoardMutationErrorOwnedRef.current = false;
+            opts?.onSettlement?.({
+              status: 'restored',
+              message: userMessage,
+              requestId: err instanceof ApiError ? err.requestId ?? null : null,
+            });
+            return false;
+          }
+          opts?.onSettlement?.({
+            status: 'stale',
+            message: 'The latest saved schedule could not be verified.',
+            requestId: err instanceof ApiError ? err.requestId ?? null : null,
+          });
+          return false;
+        }
+
+        rollback();
+        if (!opts?.boardPlacementIntent) toast.error(userMessage);
         updateScheduleTrust({
           status: reconcileAfterFailure ? 'refreshing' : 'failed',
           savedAt: trustBeforeMutation.savedAt,
@@ -2114,11 +2230,16 @@ export default function ScheduleClient({
             : 'The last change was not saved. The schedule has been restored to the last known saved version.',
           requestId: err instanceof ApiError ? err.requestId ?? null : null,
         });
+        opts?.onSettlement?.({
+          status: 'restored',
+          message: userMessage,
+          requestId: err instanceof ApiError ? err.requestId ?? null : null,
+        });
         return false;
       } finally {
         v2PendingMutationsRef.current = Math.max(0, v2PendingMutationsRef.current - 1);
         endSharedMutationActivity();
-        if (reconcileAfterFailure && v2PendingMutationsRef.current === 0) {
+        if (reconcileAfterFailure && !reconciliationHandled && v2PendingMutationsRef.current === 0) {
           v2SnapshotIgnoredDuringMutationRef.current = false;
           refreshSchedule();
         } else if (v2SnapshotIgnoredDuringMutationRef.current && v2PendingMutationsRef.current === 0) {
@@ -2159,41 +2280,54 @@ export default function ScheduleClient({
   }
 
   async function runBoardChange(
-    change: { projectId: string; action: string; destination: string },
+    change: ScheduleBoardChange,
     run: (force: boolean) => Promise<any>,
     opts?: ScheduleMutationOptions,
   ): Promise<boolean> {
-    const feedbackId = boardChangeFeedback.begin(change);
-    let lastPhase: Parameters<NonNullable<ScheduleMutationOptions['onPhase']>>[0] | null = null;
-    const succeeded = await runWithCommitConfirmation(run, {
+    boardMutationNotice.clear(change.projectId);
+    return await runWithCommitConfirmation(run, {
       ...opts,
-      onPhase: (phase) => {
-        lastPhase = phase;
-        if (phase === 'cancelled') {
-          boardChangeFeedback.setPhase(feedbackId, 'restored');
-        } else {
-          boardChangeFeedback.setPhase(feedbackId, phase as ScheduleBoardChangePhase);
-        }
-        opts?.onPhase?.(phase);
-      },
+      boardPlacementIntent: change.placementIntent,
       onSuccess: (response) => {
+        v2BoardMutationErrorOwnedRef.current = false;
         opts?.onSuccess?.(response);
-        boardChangeFeedback.setPhase(feedbackId, lastPhase === 'reconciling' ? 'reconciling' : 'saved');
+        boardMutationNotice.clear(change.projectId);
       },
       onError: (error) => {
         opts?.onError?.(error);
-        boardChangeFeedback.setPhase(
-          feedbackId,
-          scheduleMutationNeedsReconciliation(error) || opts?.refreshOnError === true
-            ? 'reconciling'
-            : 'restored',
-        );
+      },
+      onSettlement: (settlement) => {
+        opts?.onSettlement?.(settlement);
+        if (settlement.status === 'saved' || settlement.status === 'cancelled') {
+          boardMutationNotice.clear(change.projectId);
+          return;
+        }
+        if (settlement.status === 'stale') {
+          boardMutationNotice.show({
+            projectId: change.projectId,
+            tone: 'warning',
+            message: 'Couldn\'t verify this change. Refresh before moving another job.',
+            actionLabel: 'Refresh',
+            onAction: () => {
+              v2BoardMutationErrorOwnedRef.current = false;
+              boardMutationNotice.clear(change.projectId);
+              void refreshSchedule({ authoritative: true });
+            },
+          });
+          return;
+        }
+        boardMutationNotice.show({
+          projectId: change.projectId,
+          tone: 'error',
+          message: `${change.action} wasn\'t saved. Previous position restored.`,
+          actionLabel: 'Retry',
+          onAction: () => {
+            boardMutationNotice.clear(change.projectId);
+            change.retry();
+          },
+        });
       },
     });
-    if (!succeeded && lastPhase !== 'reconciling') {
-      boardChangeFeedback.setPhase(feedbackId, 'restored');
-    }
-    return succeeded;
   }
 
   function scheduleMutationErrorDebug(error: unknown): Record<string, unknown> {
@@ -2543,9 +2677,16 @@ export default function ScheduleClient({
         projectId: item.projectId,
         action: 'Unschedule',
         destination: 'Unscheduled',
+        placementIntent: {
+          projectId: item.projectId,
+          scheduleItemId: item.id,
+          laneId: null,
+          insertionIndex: null,
+        },
+        retry: () => {
+          void handleUnscheduleRef.current(id);
+        },
       }, (force) => unassignJob({ job_id: projectUuid, force, today }), {
-        successToast: 'Job unscheduled.',
-        errorToast: 'Failed to unschedule job.',
         targetJobIds: [projectUuid],
         expectedCrewId,
         optimistic: () => {
@@ -2564,6 +2705,7 @@ export default function ScheduleClient({
 
     return false;
   }
+  handleUnscheduleRef.current = handleUnschedule;
 
   async function handleRemoveOrphanedScheduleItems() {
     if (scheduleMode === 'v2') {
@@ -3197,11 +3339,19 @@ export default function ScheduleClient({
 
         const destination = installers.find((installer) => installer.id === destInstallerId)?.name ?? 'crew schedule';
         void runBoardChange(
-          { projectId: job.projectId, action: 'Schedule', destination },
+          {
+            projectId: job.projectId,
+            action: 'Schedule',
+            destination,
+            placementIntent: {
+              projectId: job.projectId,
+              laneId: destInstallerId,
+              insertionIndex: destIndex,
+            },
+            retry: () => handleBoardDropRef.current(activeId, dropTarget),
+          },
           (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: destIndex, force, today }),
           {
-            successToast: 'Job scheduled.',
-            errorToast: 'Failed to schedule job.',
             formatErrorToast: formatAssignMutationErrorToast,
             targetJobIds: [projectUuid],
             expectedCrewId: crewUuid,
@@ -3294,7 +3444,18 @@ export default function ScheduleClient({
 
         const destination = installers.find((installer) => installer.id === destInstallerId)?.name ?? 'crew schedule';
         void runBoardChange(
-          { projectId: activeItem.projectId, action: 'Reorder', destination },
+          {
+            projectId: activeItem.projectId,
+            action: 'Reorder',
+            destination,
+            placementIntent: {
+              projectId: activeItem.projectId,
+              scheduleItemId: activeItem.id,
+              laneId: destInstallerId,
+              insertionIndex: insertAt,
+            },
+            retry: () => handleBoardDropRef.current(activeId, dropTarget),
+          },
           (force) =>
             reorderScheduleItemsV2({
               crew_id: crewUuid,
@@ -3304,8 +3465,6 @@ export default function ScheduleClient({
               today,
             }),
           {
-            successToast: 'Schedule updated.',
-            errorToast: 'Failed to reorder schedule.',
             targetJobIds:
               activeItem.itemType === 'job'
                 ? [
@@ -3364,11 +3523,20 @@ export default function ScheduleClient({
 
         const destination = installers.find((installer) => installer.id === destInstallerId)?.name ?? 'crew schedule';
         void runBoardChange(
-          { projectId: activeItem.projectId, action: 'Move', destination },
+          {
+            projectId: activeItem.projectId,
+            action: 'Move',
+            destination,
+            placementIntent: {
+              projectId: activeItem.projectId,
+              scheduleItemId: activeItem.id,
+              laneId: destInstallerId,
+              insertionIndex: insertAt,
+            },
+            retry: () => handleBoardDropRef.current(activeId, dropTarget),
+          },
           (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: insertAt, force, today }),
           {
-            successToast: 'Job moved.',
-            errorToast: 'Failed to move job.',
             formatErrorToast: formatAssignMutationErrorToast,
             targetJobIds: [projectUuid],
             requireSourceSchedule: true,
@@ -3465,6 +3633,7 @@ export default function ScheduleClient({
 
     void persist(nextItems, { successToast: 'Schedule updated.' });
   }
+  handleBoardDropRef.current = handleBoardDrop;
 
   const handleRunDiagnostics = () => {
     if (diagnosticsBusy) return;
@@ -4005,21 +4174,24 @@ export default function ScheduleClient({
         title="Schedule"
         right={
           <HeaderActions>
-            <span
-              className={styles.saveStatus}
-              data-state={scheduleTrust.status}
-              role="status"
-              aria-live="polite"
-            >
-              {scheduleTrustLabel}
-            </span>
+            {view === 'gantt' ? (
+              <span
+                className={styles.saveStatus}
+                data-state={scheduleTrust.status}
+                role="status"
+                aria-live="polite"
+              >
+                {scheduleTrustLabel}
+              </span>
+            ) : null}
             {scheduleTabs}
           </HeaderActions>
         }
       />
 
       <div className={cx(styles.stack, styles.stackLocked)}>
-        {scheduleTrust.status === 'failed' || scheduleTrust.status === 'stale' ? (
+        {(scheduleTrust.status === 'failed' || scheduleTrust.status === 'stale')
+          && (view === 'gantt' || !boardMutationNotice.notice) ? (
           <AlertBanner
             tone={scheduleTrust.status === 'failed' ? 'error' : 'warning'}
             title={scheduleTrust.status === 'failed' ? 'Schedule change was not saved' : 'Schedule may be out of date'}
@@ -4130,7 +4302,7 @@ export default function ScheduleClient({
               disabled: boardInteractionDisabled,
               reason: boardInteractionDisabledReason,
             }}
-            changeFeedback={boardChangeFeedback.change}
+            mutationNotice={boardMutationNotice.notice}
             buildJobMenuActions={buildJobMenuActions}
             buildDowntimeMenuActions={buildDowntimeMenuActions}
           />

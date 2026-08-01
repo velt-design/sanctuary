@@ -4,10 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ScheduleBoardView, { type ScheduleBoardMenuAction } from '@/app/staff/schedule/ScheduleBoardView';
 import ScheduleGanttView from '@/app/staff/schedule/ScheduleGanttView';
 import ScheduleGanttTimingReview from '@/app/staff/schedule/ScheduleGanttTimingReview';
-import type {
-  ScheduleBoardChangeFeedback,
-  ScheduleBoardChangePhase,
-} from '@/app/staff/schedule/useScheduleBoardChangeFeedback';
+import type { ScheduleBoardMutationNotice } from '@/app/staff/schedule/useScheduleBoardMutationNotice';
 import { addDaysYmd } from '@/lib/scheduling/date';
 import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 import type { ScheduleItem } from '@/lib/types/scheduling';
@@ -23,7 +20,7 @@ export default function ScheduleOpsFixtureClient({
 }: {
   initialView: 'board' | 'gantt';
   scale: 'standard' | 'large';
-  initialState: ScheduleBoardChangePhase | null;
+  initialState: 'failed' | 'stale' | null;
 }) {
   const fixture = useMemo(() => createScheduleOpsFixture(scale), [scale]);
   const boardModel = useMemo(() => boardModelForFixture(fixture), [fixture]);
@@ -39,7 +36,7 @@ export default function ScheduleOpsFixtureClient({
     Array.from(fixture.scheduleItemById, ([id, item]) => [id, { ...item }]),
   ));
   const [unscheduledJobs, setUnscheduledJobs] = useState(() => fixture.unscheduledJobs.slice());
-  const [dragFeedback, setDragFeedback] = useState<ScheduleBoardChangeFeedback | null>(null);
+  const [noticeState, setNoticeState] = useState(initialState);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
   const visibleUnscheduled = useMemo(() => {
@@ -61,16 +58,19 @@ export default function ScheduleOpsFixtureClient({
   const feedbackProjectId = Array.from(scheduleItemById.values()).find(
     (item) => item.itemType !== 'downtime',
   )?.projectId ?? null;
-  const changeFeedback: ScheduleBoardChangeFeedback | null = initialState && feedbackProjectId
+  const mutationNotice: ScheduleBoardMutationNotice | null = noticeState && feedbackProjectId
     ? {
         id: 1,
         projectId: feedbackProjectId,
-        action: 'Move',
-        destination: fixture.installers[1]?.name ?? fixture.installers[0]?.name ?? 'Fixture crew',
-        phase: initialState,
+        tone: noticeState === 'failed' ? 'error' : 'warning',
+        message: noticeState === 'failed'
+          ? 'Move wasn\'t saved. Previous position restored.'
+          : 'Couldn\'t verify this change. Refresh before moving another job.',
+        actionLabel: noticeState === 'failed' ? 'Retry' : 'Refresh',
+        onAction: () => setNoticeState(null),
       }
-    : dragFeedback;
-  const interactionDisabled = Boolean(initialState && ['checking', 'reviewing', 'saving', 'reconciling'].includes(initialState));
+    : null;
+  const interactionDisabled = noticeState === 'stale';
 
   if (!hydrated) {
     return <div className={styles.loading} role="status">Loading synthetic Schedule fixture…</div>;
@@ -135,14 +135,7 @@ export default function ScheduleOpsFixtureClient({
     setLaneItems(nextLanes);
     setScheduleItemById(nextItemById);
     setUnscheduledJobs((jobs) => jobs.filter((candidate) => candidate.id !== activeId));
-    const crewName = fixture.installers.find((crew) => crew.id === destinationCrewId)?.name ?? 'Fixture crew';
-    setDragFeedback({
-      id: Date.now(),
-      projectId: job.projectId,
-      action: activeItem ? (sourceCrewId === destinationCrewId ? 'Reorder' : 'Move') : 'Schedule',
-      destination: `${crewName} · position ${order.insertionIndex + 1}`,
-      phase: 'verified',
-    });
+    setNoticeState(null);
   };
 
   return (
@@ -199,9 +192,9 @@ export default function ScheduleOpsFixtureClient({
           onDrop={handleFixtureDrop}
           interaction={{
             disabled: interactionDisabled,
-            reason: interactionDisabled ? 'Synthetic schedule change in progress.' : undefined,
+            reason: interactionDisabled ? 'Refresh the schedule before making another change.' : undefined,
           }}
-          changeFeedback={changeFeedback}
+          mutationNotice={mutationNotice}
           buildJobMenuActions={fixtureActions}
           buildDowntimeMenuActions={fixtureDowntimeActions}
         />

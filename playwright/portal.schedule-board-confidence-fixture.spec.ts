@@ -203,6 +203,8 @@ test('commits the exact indicated beginning, middle, end, and cross-crew order i
     'fixture-unscheduled-18',
   ]);
   await expect(page.locator('[data-schedule-card-id="fixture-unscheduled-18"] [data-schedule-position="3"]')).toBeVisible();
+  await expect(page.locator('[data-mutation-notice]')).toHaveCount(0);
+  await expect(page.locator('[data-change-state]')).toHaveCount(0);
 
   await page.goto(FIXTURE_PATH);
   await dragCardToIndex(page, 'fixture-schedule-1', 'fixture-crew-3', 2);
@@ -215,20 +217,20 @@ test('commits the exact indicated beginning, middle, end, and cross-crew order i
   expect(writes).toEqual([]);
 });
 
-for (const state of ['checking', 'reviewing', 'saving', 'reconciling', 'saved', 'restored', 'verified'] as const) {
-  test(`renders the ${state} card outcome without a Schedule command`, async ({ page }) => {
+for (const state of ['failed', 'stale'] as const) {
+  test(`renders only the actionable ${state} card notice without a Schedule command`, async ({ page }) => {
     const writes: string[] = [];
     page.on('request', (request) => {
       if (request.url().includes('/api/staff/') && request.method() !== 'GET') writes.push(request.url());
     });
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(`${FIXTURE_PATH}&state=${state}`);
-    const card = page.locator(`[data-change-state="${state}"]`);
+    const card = page.locator(`[data-mutation-notice="${state === 'failed' ? 'error' : 'warning'}"]`);
     await expect(card).toBeVisible();
-    if (['checking', 'reviewing', 'saving', 'reconciling'].includes(state)) {
-      await expect(page.getByText('Synthetic schedule change in progress.')).toBeVisible();
-      await expect(card.getByRole('button', { name: /^Job actions for / })).toBeDisabled();
-    }
+    const action = card.getByRole('button', { name: state === 'failed' ? 'Retry' : 'Refresh' });
+    await expect(action).toBeVisible();
+    await action.click();
+    await expect(page.locator('[data-mutation-notice]')).toHaveCount(0);
     expect(writes).toEqual([]);
   });
 }

@@ -827,14 +827,15 @@ When valid disposable staff credentials are available, rerun the same file
 with `--project=portal-chromium` so authentication setup and the full inert
 operational matrix are proven together without changing Schedule data.
 
-The Board fixture accepts
-`&state=checking|reviewing|saving|reconciling|saved|restored|verified`. The gate
+The Board fixture accepts `&state=failed|stale`. Normal in-memory drops render
+no routine persistence notice; the two state variants prove the only
+actionable Retry and Refresh notices and clear them without a write. The gate
 covers 1600/1440/1280/1024/768/390, 200% zoom, shared crew workload and
 attention wording, desktop Gantt bar labels, the read-only phone/zoom agenda,
 grouped job actions and focus return, a held pointer drag whose source stays
 anchored, the visible semantic destination, exact beginning/middle/end
-insertion and cross-crew order, disabled gestures during uncommitted work, and
-absence of staff API writes.
+insertion and cross-crew order, silent normal outcomes, failure-only recovery,
+and absence of staff API writes.
 
 Minimum targeted schedule tests:
 
@@ -886,10 +887,13 @@ Schedule Board:
 - After approval, change a reported affected date in a controlled test and
   confirm the second preview prevents `force: true`, restores the prior local
   state, and refreshes from the server.
-- Exercise a safe rejected mutation and confirm the page keeps a visible
-  failure/refresh state after the toast.
-- Exercise a timeout or malformed success response and confirm the page does
-  not claim the change was saved while it reconciles the authoritative state.
+- Exercise a safe rejected mutation and confirm the card restores once with
+  one inline Retry action, without a toast, route banner, or routine status.
+- Exercise a timeout or malformed success response and confirm the card stays
+  at the indicated destination while reconciliation is pending. If the server
+  committed, it must remain there silently; if authoritative truth differs, it
+  must move once and show Retry; if verification cannot load, it must stay put
+  with one Refresh action.
 - Confirm HTTP 501 is treated as the documented pre-commit schema/RPC
   unavailable rejection, while network, 408, other 5xx, and malformed success
   envelopes reconcile as commit-ambiguous.

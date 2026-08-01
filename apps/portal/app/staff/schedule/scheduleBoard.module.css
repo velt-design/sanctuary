@@ -499,41 +499,43 @@
   color: var(--ui-text-strong);
 }
 
-.cardChangeFeedback {
+.cardMutationNotice {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   margin-top: 7px;
   padding: 6px 8px;
-  border: var(--ui-border-width) solid var(--ui-status-info-border);
+  border: var(--ui-border-width) solid var(--ui-status-error-border);
   border-left-width: var(--ui-status-edge);
-  background: var(--ui-status-info-bg);
+  background: var(--ui-status-error-bg);
   color: var(--ui-text-strong);
   font-size: 11px;
   font-weight: 800;
   border-radius: var(--ui-radius-control);
 }
 
-.cardChangeFeedback[data-state='saved'],
-.cardChangeFeedback[data-state='verified'] {
-  border-color: var(--ui-status-success-border);
-  background: var(--ui-status-success-bg);
+.cardMutationNotice[data-tone='warning'] {
+  border-color: var(--ui-status-warning-border);
+  background: var(--ui-status-warning-bg);
 }
 
-.cardChangeFeedback[data-state='restored'] {
-  border-color: var(--ui-status-error-border);
-  background: var(--ui-status-error-bg);
+.cardMutationAction {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 3px 8px;
+  border: var(--ui-border-width) solid currentColor;
+  border-radius: var(--ui-radius-control);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
 
-.cardChangeDestination {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--ui-text-strong);
-  font-weight: 650;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.cardMutationAction:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+  box-shadow: none;
 }
 
 .cardMetaItem + .cardMetaItem::before {
@@ -687,17 +689,6 @@
   font-size: 11px;
   font-weight: 800;
   line-height: 1.35;
-}
-
-.boardInteractionNotice {
-  margin: 8px 12px 0;
-  padding: 8px 10px;
-  border: var(--ui-border-width) solid var(--ui-status-info-border);
-  border-left-width: var(--ui-status-edge);
-  background: var(--ui-status-info-bg);
-  color: var(--ui-text-strong);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .dragLiveRegion {
