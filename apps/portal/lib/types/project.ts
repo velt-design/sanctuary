@@ -1,5 +1,7 @@
 import { PIPELINE_STAGES, normalizePipelineStageKey, type PipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import type { ProjectOperationalState } from '@/lib/projects/workItems/types';
+import type { ProjectClosedOutcome } from '@/lib/projects/workItems/types';
+import type { ProjectOwnerKey } from '@/lib/projects/commandCentre/types';
 import { warnOnce } from '@/lib/utils/warnOnce';
 
 export type ProjectStatus = Uppercase<PipelineStageKey>;
@@ -120,6 +122,10 @@ export type Project = {
   status?: ProjectStatus;
   operationalState?: ProjectOperationalState;
   effectiveState?: ProjectEffectiveState;
+  projectOwnerKey?: ProjectOwnerKey | null;
+  waitingUntil?: string | null;
+  waitingReason?: string | null;
+  closedOutcome?: ProjectClosedOutcome | null;
   isLost?: boolean;
   isArchived?: boolean;
   legacyStatus?: string;

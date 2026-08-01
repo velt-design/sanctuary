@@ -1,25 +1,22 @@
-import type { Project, ProjectStatus } from '@/lib/types/project';
-import { PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
+import type { Project } from '@/lib/types/project';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import { resolveProjectJourney } from '@/lib/projects/projectJourney';
 import {
   Badge,
+  Button,
   ProjectStageBadge,
-  Select,
   TableCell,
 } from '@/components/ui/foundation';
 import styles from './ProjectIndexLifecycleCells.module.css';
 
 export default function ProjectIndexLifecycleCells({
   project,
-  projectName,
   stageBusy,
-  onStageChange,
+  onCorrectStage,
 }: {
   project: Project;
-  projectName: string;
   stageBusy: boolean;
-  onStageChange: (project: Project, nextStage: string) => void;
+  onCorrectStage: (project: Project) => void;
 }) {
   const stage = normalizePipelineStageKey(project.status ?? 'NEW');
   const journey = resolveProjectJourney(stage);
@@ -35,25 +32,21 @@ export default function ProjectIndexLifecycleCells({
       <TableCell data-column="Stage">
         <div className={styles.statusCell}>
           <ProjectStageBadge stage={stage ?? 'new'} compact />
-          <Select
-            fieldClassName={styles.inlineSelectField}
-            className={styles.inlineSelect}
-            aria-label={`Stage for ${projectName || 'project'}`}
-            value={(project.status ?? 'NEW') as ProjectStatus}
+          <Button
+            type="button"
+            variant="quiet"
+            size="small"
+            aria-label={`Correct stage for ${project.projectName || project.name || 'project'}`}
             disabled={stageBusy}
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}
-            onChange={(event) => {
+            onClick={(event) => {
               event.stopPropagation();
-              onStageChange(project, event.target.value);
+              onCorrectStage(project);
             }}
+            onKeyDown={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
           >
-            {PROJECT_STATUS_ORDER.map((status) => (
-              <option key={status} value={status}>
-                {projectStatusLabel(status)}
-              </option>
-            ))}
-          </Select>
+            {stageBusy ? 'Saving...' : 'Correct'}
+          </Button>
         </div>
       </TableCell>
       <TableCell data-column="State">

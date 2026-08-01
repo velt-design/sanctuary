@@ -1,23 +1,46 @@
 "use client";
 
-import { useSyncExternalStore, type ReactNode } from "react";
+import {
+  useCallback,
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import styles from "./ProjectOverviewLayout.module.css";
 
-const MOBILE_OVERVIEW_QUERY = "(max-width: 767px)";
+const MOBILE_OVERVIEW_QUERY = "(max-width: 768px)";
+const COMPACT_OVERVIEW_MAX_WIDTH = 800;
 
-function subscribeToMobileOverview(callback: () => void) {
+function subscribeToOverviewComposition(
+  node: HTMLDivElement | null,
+  callback: () => void,
+) {
   if (typeof window === "undefined" || !window.matchMedia)
     return () => undefined;
   const media = window.matchMedia(MOBILE_OVERVIEW_QUERY);
   media.addEventListener("change", callback);
-  return () => media.removeEventListener("change", callback);
+  window.addEventListener("resize", callback);
+  const observer =
+    node && typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(callback)
+      : null;
+  if (node) observer?.observe(node);
+  return () => {
+    media.removeEventListener("change", callback);
+    window.removeEventListener("resize", callback);
+    observer?.disconnect();
+  };
 }
 
-function mobileOverviewSnapshot(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    Boolean(window.matchMedia?.(MOBILE_OVERVIEW_QUERY).matches)
-  );
+type OverviewComposition = "wide" | "stacked" | "mobile";
+
+function overviewCompositionSnapshot(
+  node: HTMLDivElement | null,
+): OverviewComposition {
+  if (typeof window === "undefined") return "wide";
+  if (window.matchMedia?.(MOBILE_OVERVIEW_QUERY).matches) return "mobile";
+  const width = node?.getBoundingClientRect().width ?? 0;
+  return width > 0 && width <= COMPACT_OVERVIEW_MAX_WIDTH ? "stacked" : "wide";
 }
 
 type ProjectOverviewLayoutProps = {
@@ -64,11 +87,18 @@ export default function ProjectOverviewLayout({
   admin,
   state,
 }: ProjectOverviewLayoutProps) {
-  const mobile = useSyncExternalStore(
-    subscribeToMobileOverview,
-    mobileOverviewSnapshot,
-    () => false,
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const subscribe = useCallback(
+    (callback: () => void) =>
+      subscribeToOverviewComposition(layoutRef.current, callback),
+    [],
   );
+  const composition = useSyncExternalStore(
+    subscribe,
+    () => overviewCompositionSnapshot(layoutRef.current),
+    () => "wide" as const,
+  );
+  const mobile = composition === "mobile";
   const orientationRegion = (
     <Region key="orientation" name="orientation" className={styles.orientation}>
       {orientation}
@@ -106,9 +136,14 @@ export default function ProjectOverviewLayout({
 
   return (
     <div
+      ref={layoutRef}
       className={styles.layout}
       data-project-overview-layout="true"
+      data-overview-composition={composition}
       data-command-centre-state={state}
+      data-has-exception={
+        exception !== null && exception !== undefined ? "true" : undefined
+      }
       data-has-admin={
         admin !== null && admin !== undefined ? "true" : undefined
       }

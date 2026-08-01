@@ -48,12 +48,14 @@ export default function ProjectWorkControls({
   projectId,
   host,
   pipelineStage,
+  siteVisitActionProminent = false,
   onRefresh,
 }: {
   controller: ProjectWorkCommandController;
   projectId: string;
   host: string;
   pipelineStage: ProjectPageSnapshot["project"]["stage"];
+  siteVisitActionProminent?: boolean;
   onRefresh: () => void;
 }) {
   const reviewItem =
@@ -64,6 +66,11 @@ export default function ProjectWorkControls({
     (fact) => fact.type === "SITE_VISIT_COMPLETED",
   );
   const active = controller.projection.effectiveState === "ACTIVE";
+  const controlsLabel = active
+    ? "Manage project work"
+    : controller.projection.effectiveState === "WAITING"
+      ? "Resume or update waiting"
+      : "Reopen project";
 
   if (controller.projection.effectiveState === "ARCHIVED") return null;
 
@@ -71,14 +78,12 @@ export default function ProjectWorkControls({
     <div className={styles.controlsSection}>
       <Button
         type="button"
-        variant="secondary"
+        variant="tertiary"
         disabled={controller.stale}
         aria-expanded={controller.controlsOpen}
         onClick={() => controller.setControlsOpen(!controller.controlsOpen)}
       >
-        {controller.controlsOpen
-          ? "Close work controls"
-          : "Manage project work"}
+        {controller.controlsOpen ? "Close work controls" : controlsLabel}
       </Button>
       {controller.controlsOpen ? (
         <div className={styles.controlStack}>
@@ -244,7 +249,9 @@ export default function ProjectWorkControls({
             />
           ) : null}
 
-          {active && pipelineStage === "site_visit" ? (
+          {active &&
+          pipelineStage === "site_visit" &&
+          !siteVisitActionProminent ? (
             <div
               className={styles.manualFact}
               data-manual-site-visit-fact="true"

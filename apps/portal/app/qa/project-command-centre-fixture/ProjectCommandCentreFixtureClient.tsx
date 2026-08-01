@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { ProjectCommandCentreCurrentDesign } from "@/lib/projects/commandCentre/types";
 import {
   AlertBanner,
+  Button,
   Card,
   DataStatePanel,
   LoadingSkeleton,
@@ -162,17 +163,13 @@ export default function ProjectCommandCentreFixtureClient({
     stage: work.stage,
   };
   const exception =
-    viewState === "refreshing" ? (
-      <AlertBanner tone="info" title="Refreshing the Overview">
-        Saved facts remain visible and Project Work controls are paused.
-      </AlertBanner>
-    ) : viewState === "stale" ? (
-      <AlertBanner tone="warning" title="Showing a saved Overview">
-        The latest refresh failed. Saved facts remain visible and read-only.
-      </AlertBanner>
-    ) : viewState === "model-mismatch" ? (
-      <AlertBanner tone="warning" title="Project work is updating">
-        Project Work is paused until the latest server reads agree.
+    viewState === "stale" ? (
+      <AlertBanner
+        tone="warning"
+        title="Saved Overview"
+        action={<Button variant="secondary">Retry</Button>}
+      >
+        Latest refresh failed. Facts remain visible; work controls are paused.
       </AlertBanner>
     ) : viewState === "summary" ? (
       <AlertBanner tone="info" title="Loading the complete project">
@@ -181,74 +178,55 @@ export default function ProjectCommandCentreFixtureClient({
       </AlertBanner>
     ) : null;
 
-  const projectWork = viewState === "pending" ? (
-    <WorkState model="pending">
-      <Card padding="compact">
-        <LoadingSkeleton rows={5} label="Loading Project Work" />
-      </Card>
-    </WorkState>
-  ) : viewState === "failed" ? (
-    <WorkState model="failed">
-      <DataStatePanel
-        state="error"
-        title="Could not load Project Work"
-        description="No next action is available until the server view loads."
+  const projectWork =
+    viewState === "pending" ? (
+      <WorkState model="pending">
+        <Card padding="compact">
+          <LoadingSkeleton rows={5} label="Loading Project Work" />
+        </Card>
+      </WorkState>
+    ) : viewState === "failed" || viewState === "retry" ? (
+      <WorkState model="failed">
+        <DataStatePanel
+          state="error"
+          title="Could not load the Project Overview"
+          description="No next action or commercial position is available until the server view loads."
+          onRetry={viewState === "retry" ? () => undefined : undefined}
+        />
+      </WorkState>
+    ) : viewState === "model-mismatch" ? (
+      <WorkState model="mismatch">
+        <DataStatePanel
+          state="error"
+          title="Project work is updating"
+          description="No action is available until server reads agree."
+        />
+      </WorkState>
+    ) : (
+      <ProjectWorkSection
+        workModel="v2"
+        projectId={project.id}
+        host="fixture"
+        projectWork={work.projectWork}
+        pipelineStage={project.stage}
+        stale={stale}
+        onRefresh={() => undefined}
+        initialStaff={commandCentreFixtureStaff}
       />
-    </WorkState>
-  ) : viewState === "retry" ? (
-    <WorkState model="failed">
-      <DataStatePanel
-        state="error"
-        title="Could not load Project Work"
-        description="No next action is available until the server view loads."
-        onRetry={() => undefined}
-      />
-    </WorkState>
-  ) : viewState === "model-mismatch" ? (
-    <WorkState model="mismatch">
-      <DataStatePanel
-        state="error"
-        title="Project work is updating"
-        description="No action is available until server reads agree."
-      />
-    </WorkState>
-  ) : (
-    <ProjectWorkSection
-      workModel="v2"
-      projectId={project.id}
-      host="fixture"
-      projectWork={work.projectWork}
-      pipelineStage={project.stage}
-      stale={stale}
-      onRefresh={() => undefined}
-      initialStaff={commandCentreFixtureStaff}
-    />
-  );
+    );
 
-  const commercial = viewState === "pending" ? (
-    <Card padding="compact">
-      <LoadingSkeleton
-        rows={4}
-        columns={2}
-        label="Loading current design and commercial state"
-      />
-    </Card>
-  ) : viewState === "failed" ? (
-    <DataStatePanel
-      state="error"
-      title="Could not load current design and commercial state"
-      description="No commercial fallback has been selected."
-    />
-  ) : viewState === "retry" ? (
-    <DataStatePanel
-      state="error"
-      title="Could not load current design and commercial state"
-      description="No commercial fallback has been selected."
-      onRetry={() => undefined}
-    />
-  ) : (
-    <ProjectCurrentDesignCommercialCard data={currentDesign} />
-  );
+  const commercial =
+    viewState === "pending" ? (
+      <Card padding="compact">
+        <LoadingSkeleton
+          rows={4}
+          columns={2}
+          label="Loading current design and commercial state"
+        />
+      </Card>
+    ) : viewState === "failed" || viewState === "retry" ? null : (
+      <ProjectCurrentDesignCommercialCard data={currentDesign} />
+    );
 
   const recent =
     viewState === "summary" ? (

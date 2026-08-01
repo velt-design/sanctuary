@@ -1,4 +1,21 @@
 const PROHIBITED_PROJECT_WORK_IDENTITY = /\b(?:call|site[\s_-]*visits?)\b/i;
+export const SITE_VISIT_SPECIALIST_KEY_PREFIX = "journey-site-visit:";
+
+export function isApprovedSiteVisitSpecialistIdentity(values: {
+  actionKind?: string | null;
+  key?: string | null;
+  sourceKey?: string | null;
+  href?: string | null;
+}): boolean {
+  const key = values.key ?? values.sourceKey ?? "";
+  return (
+    (values.actionKind === undefined || values.actionKind === "specialist") &&
+    key.startsWith(SITE_VISIT_SPECIALIST_KEY_PREFIX) &&
+    /^\/staff\/schedule\?view=site-visits&project=proj_[a-z0-9_.%-]+$/i.test(
+      values.href ?? "",
+    )
+  );
+}
 
 export function hasProhibitedProjectWorkText(
   ...values: Array<string | null | undefined>

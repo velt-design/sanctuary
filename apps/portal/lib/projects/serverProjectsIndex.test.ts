@@ -1,12 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
 import { loadProjectsIndexData, ProjectsIndexSchemaError } from './serverProjectsIndex';
 
+const { getAuthoritativeProjectWorkQueue } = vi.hoisted(() => ({
+  getAuthoritativeProjectWorkQueue: vi.fn().mockResolvedValue({
+    entries: [],
+    generatedAt: '2026-07-31T00:00:00.000Z',
+  }),
+}));
+
+vi.mock('./workItems/teamQueue', () => ({ getAuthoritativeProjectWorkQueue }));
+
 const params = {
   archive: 'active',
   search: 'deck',
   status: 'SENT',
   journey: 'PROPOSAL',
   state: 'WAITING',
+  owner: 'jordan',
   page: 1,
   pageSize: 50,
   sort: 'newest',
@@ -58,7 +68,7 @@ describe('loadProjectsIndexData', () => {
       id: 'ct_22222222-2222-4222-8222-222222222222',
       displayName: 'Alex Contact',
     })]);
-    expect(rpc).toHaveBeenCalledWith('staff_projects_index_v2', {
+    expect(rpc).toHaveBeenCalledWith('staff_projects_index_v3', {
       p_archive: 'active',
       p_search: 'deck',
       p_status: 'SENT',
@@ -68,8 +78,16 @@ describe('loadProjectsIndexData', () => {
       p_page_size: 50,
       p_sort: 'newest',
       p_state: 'WAITING',
+      p_owner: 'jordan',
       p_stages: ['SENT'],
     });
+    expect(getAuthoritativeProjectWorkQueue).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        limit: 1,
+        projectIds: ['proj_11111111-1111-4111-8111-111111111111'],
+      },
+    );
   });
 
   it('translates a journey filter into its canonical detailed stages', async () => {
@@ -84,7 +102,7 @@ describe('loadProjectsIndexData', () => {
     );
 
     expect(rpc).toHaveBeenCalledWith(
-      'staff_projects_index_v2',
+      'staff_projects_index_v3',
       expect.objectContaining({
         p_state: 'all',
         p_stages: ['SITE_VISIT', 'QUOTING', 'SENT'],
@@ -104,7 +122,7 @@ describe('loadProjectsIndexData', () => {
     );
 
     expect(rpc).toHaveBeenCalledWith(
-      'staff_projects_index_v2',
+      'staff_projects_index_v3',
       expect.objectContaining({ p_stages: ['__NO_MATCH__'] }),
     );
   });

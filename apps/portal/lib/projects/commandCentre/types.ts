@@ -2,12 +2,7 @@ import type { ProjectWorkProjection } from '../workItems/types';
 
 export type CommandCentreQuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED';
 
-export type CommandCentreSource =
-  | 'accepted_quote'
-  | 'sent_quote'
-  | 'draft_quote'
-  | 'estimate'
-  | 'none';
+export type CommandCentreSource = 'accepted_quote' | 'sent_quote' | 'draft_quote' | 'estimate' | 'none';
 
 export type CommandCentreStatusTone = 'accepted' | 'sent' | 'draft' | 'declined' | 'neutral';
 
@@ -84,7 +79,7 @@ export type ProjectCommandCentreCurrentDesign = {
   };
 };
 
-export type ProjectOwnerKey = 'jordan' | 'jp' | 'joe' | 'bruce';
+export type ProjectOwnerKey = 'ellen' | 'jordan' | 'jp' | 'joe' | 'bruce' | 'dave';
 
 export type ProjectOwnerOption = {
   key: ProjectOwnerKey;
@@ -130,9 +125,7 @@ type V2ProjectCommandCentreResponse = ProjectCommandCentreResponseBase & {
   operations?: never;
 };
 
-export type ProjectCommandCentreResponse =
-  | LegacyProjectCommandCentreResponse
-  | V2ProjectCommandCentreResponse;
+export type ProjectCommandCentreResponse = LegacyProjectCommandCentreResponse | V2ProjectCommandCentreResponse;
 
 export type ProjectCommandException = {
   projectId: string;

@@ -67,6 +67,28 @@ describe("ProjectJourneyStatus", () => {
     rendered.unmount();
   });
 
+  it("can omit a stage already presented by the owning project header", () => {
+    const rendered = renderIntoDocument(
+      <ProjectJourneyStatus
+        stage="contacted"
+        operationalState="ACTIVE"
+        showStage={false}
+      />,
+    );
+    const summary = rendered.container.querySelector(
+      "[data-project-journey-status]",
+    );
+
+    expect(summary?.getAttribute("data-project-stage")).toBe("contacted");
+    expect(summary?.getAttribute("data-has-stage")).toBe("false");
+    expect(summary?.textContent).toContain("Enquiry");
+    expect(summary?.textContent).toContain("Active");
+    expect(summary?.textContent).not.toContain("Stage");
+    expect(summary?.textContent).not.toContain("Contacted");
+
+    rendered.unmount();
+  });
+
   it("shows a safe explicit unknown state without exposing arbitrary input", () => {
     const rendered = renderIntoDocument(
       <ProjectJourneyStatus

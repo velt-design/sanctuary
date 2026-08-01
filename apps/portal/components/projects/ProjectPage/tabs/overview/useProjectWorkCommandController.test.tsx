@@ -86,7 +86,12 @@ function projection(
     waitingReason: null,
     closedOutcome: null,
     stateRowVersion: 1,
-    primaryAction: { kind: "workItem", item, dueState: "today" },
+    primaryAction: {
+      kind: "workItem",
+      item,
+      dueState: "today",
+      reason: "This work is due today.",
+    },
     openItems: [item],
     blockedItems: [],
     confirmedFacts: [],
@@ -184,9 +189,7 @@ function expectCommittedProjection(
   );
   expect(
     mocks.patchProjectWorkProjectionCaches.mock.invocationCallOrder[0],
-  ).toBeLessThan(
-    mocks.invalidateProjectWorkReads.mock.invocationCallOrder[0]!,
-  );
+  ).toBeLessThan(mocks.invalidateProjectWorkReads.mock.invocationCallOrder[0]!);
   expect(controller().projection).toBe(nextProjection);
   expect(controller().message).toBe("Saved on the server.");
   expect(controller().error).toBeNull();

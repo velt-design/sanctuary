@@ -1,6 +1,14 @@
+.card > header {
+  background: var(--ui-surface-secondary);
+}
+
+.card > header h2 {
+  font-size: var(--ui-font-size-card-heading);
+}
+
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(16rem, 2fr);
+  grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.9fr);
   min-width: 0;
 }
 
@@ -10,7 +18,7 @@
   align-content: start;
   gap: var(--ui-space-3);
   min-width: 0;
-  padding: var(--ui-space-4);
+  padding: var(--ui-space-3);
 }
 
 .events {

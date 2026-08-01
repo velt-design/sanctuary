@@ -62,8 +62,10 @@ export function useProjectsIndexMutations(host: string) {
       try {
         await correctProjectIndexStage({ queryClient, host, project, correction });
         toast.success(`Stage corrected to ${label}.`);
+        return true;
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to update stage.');
+        return false;
       } finally {
         setPendingStages((current) => withPendingKey(current, project.id, false));
       }

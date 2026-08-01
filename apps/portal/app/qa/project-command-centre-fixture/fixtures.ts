@@ -5,6 +5,10 @@ import type {
   ProjectWorkProjection,
 } from "@/lib/projects/workItems/types";
 import { commandCentreFixtureStaff } from "./commandCentreFixtureStaff";
+import {
+  COMMAND_CENTRE_JOURNEY_WORK_SCENARIOS,
+  createJourneyWorkflowFixtures,
+} from "./journeyWorkflowFixtures";
 
 export { commandCentreFixtureStaff };
 
@@ -32,9 +36,11 @@ export const COMMAND_CENTRE_WORK_SCENARIOS = [
   "v2-critical",
   "v2-overdue",
   "v2-future",
+  "v2-long-content",
   "v2-blocked",
   "v2-no-owner",
   "v2-no-action",
+  ...COMMAND_CENTRE_JOURNEY_WORK_SCENARIOS,
   "v2-correction-review",
   "v2-waiting",
   "v2-closed",
@@ -143,6 +149,14 @@ const V2_STAGE_REVIEW_ITEM: ProjectWorkItem = {
   seriesKey: null,
 };
 
+const V2_LONG_CONTENT_ITEM: ProjectWorkItem = {
+  ...V2_SECONDARY_ITEM,
+  id: "10000000-0000-4000-8000-000000000007",
+  title:
+    "Confirm the revised multi-zone outdoor living design, final customer selections, and installation constraints",
+  dueAt: "2026-08-08T05:00:00.000Z",
+};
+
 const V2_BLOCKED_ITEM: ProjectWorkItem = {
   ...V2_SECONDARY_ITEM,
   id: "10000000-0000-4000-8000-000000000003",
@@ -166,6 +180,7 @@ const V2_BASE: ProjectWorkProjection = {
     kind: "workItem",
     item: V2_PRIMARY_ITEM,
     dueState: "today",
+    reason: "This work is due today.",
   },
   openItems: [V2_PRIMARY_ITEM, V2_SECONDARY_ITEM],
   blockedItems: [],
@@ -214,6 +229,7 @@ export const commandCentreWorkFixtures: Record<
         kind: "workItem",
         item: V2_FOLLOW_UP_ITEM,
         dueState: "overdue",
+        reason: "This work is overdue.",
       },
       openItems: [V2_FOLLOW_UP_ITEM],
     },
@@ -227,6 +243,7 @@ export const commandCentreWorkFixtures: Record<
         kind: "workItem",
         item: V2_CLOSE_REVIEW_ITEM,
         dueState: "future",
+        reason: "This is the earliest due current work.",
       },
       openItems: [V2_CLOSE_REVIEW_ITEM],
     },
@@ -244,6 +261,7 @@ export const commandCentreWorkFixtures: Record<
           priorityReason: "The customer decision is blocked.",
         },
         dueState: "critical",
+        reason: "Critical work is ranked ahead of other current work.",
       },
       openItems: [
         {
@@ -263,6 +281,7 @@ export const commandCentreWorkFixtures: Record<
         kind: "workItem",
         item: V2_FOLLOW_UP_ITEM,
         dueState: "overdue",
+        reason: "This work is overdue.",
       },
       openItems: [V2_FOLLOW_UP_ITEM],
     },
@@ -276,10 +295,31 @@ export const commandCentreWorkFixtures: Record<
         kind: "workItem",
         item: V2_SECONDARY_ITEM,
         dueState: "future",
+        reason: "This is the earliest due current work.",
       },
       openItems: [V2_SECONDARY_ITEM],
     },
     stage: "quoting",
+  },
+  "v2-long-content": {
+    workModel: "v2",
+    projectWork: {
+      ...V2_BASE,
+      primaryAction: {
+        kind: "workItem",
+        item: V2_LONG_CONTENT_ITEM,
+        dueState: "future",
+        reason: "This is the earliest due current work.",
+      },
+      openItems: [V2_LONG_CONTENT_ITEM],
+    },
+    stage: "quoting",
+    project: {
+      name: "Alexandra Montgomery and Christopher Williamson - North Harbour outdoor living project",
+      contactName: "Alexandra Montgomery and Christopher Williamson",
+      siteAddress:
+        "Apartment 14, 1847 Great North Road, Point Chevalier, Auckland",
+    },
   },
   "v2-blocked": {
     workModel: "v2",
@@ -301,6 +341,7 @@ export const commandCentreWorkFixtures: Record<
           effectiveAssignee: { kind: "unassigned" },
         },
         dueState: "future",
+        reason: "This is the earliest due current work.",
       },
       openItems: [
         {
@@ -325,6 +366,10 @@ export const commandCentreWorkFixtures: Record<
     },
     stage: "new",
   },
+  ...createJourneyWorkflowFixtures({
+    base: V2_BASE,
+    stageReviewItem: V2_STAGE_REVIEW_ITEM,
+  }),
   "v2-correction-review": {
     workModel: "v2",
     projectWork: {
@@ -408,6 +453,7 @@ export const commandCentreWorkFixtures: Record<
         kind: "workItem",
         item: V2_STAGE_REVIEW_ITEM,
         dueState: "future",
+        reason: "This is the earliest due current work.",
       },
       openItems: [V2_STAGE_REVIEW_ITEM],
     },

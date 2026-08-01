@@ -38,66 +38,94 @@ function client(result: { data: unknown; error: unknown }) {
   };
 }
 
+function clientWithSiteVisitFacts(confirmations: unknown[]) {
+  const repairQuery: Record<string, any> = {};
+  repairQuery.select = vi.fn(() => repairQuery);
+  repairQuery.eq = vi.fn(() => repairQuery);
+  repairQuery.order = vi.fn(() => repairQuery);
+  repairQuery.limit = vi.fn(async () => ({ data: [], error: null }));
+
+  const confirmationQuery: Record<string, any> = {};
+  confirmationQuery.select = vi.fn(() => confirmationQuery);
+  confirmationQuery.eq = vi.fn(() => confirmationQuery);
+  confirmationQuery.limit = vi.fn(async () => ({
+    data: confirmations,
+    error: null,
+  }));
+
+  return {
+    from: vi.fn((table: string) => (table === 'project_confirmation_events' ? confirmationQuery : repairQuery)),
+  };
+}
+
 describe('project-work domain action read', () => {
   it('maps the oldest open durable repair signal to a staff-safe recovery action', async () => {
     const supabase = client({
-      data: [{
-        id: 'repair-1',
-        repair_kind: 'QUOTE_CADENCE_RECONCILIATION',
-        quote_version_id: QUOTE_VERSION_UUID,
-        error_message: 'The quote follow-up reminder could not be updated.',
-      }],
+      data: [
+        {
+          id: 'repair-1',
+          repair_kind: 'QUOTE_CADENCE_RECONCILIATION',
+          quote_version_id: QUOTE_VERSION_UUID,
+          error_message: 'The quote follow-up reminder could not be updated.',
+        },
+      ],
       error: null,
     });
 
-    await expect(getProjectWorkDomainActions({
-      supabase: supabase as never,
-      projectId: PROJECT_ID,
-      projectUuid: PROJECT_UUID,
-      currentDesign,
-    })).resolves.toEqual({
+    await expect(
+      getProjectWorkDomainActions({
+        supabase: supabase as never,
+        projectId: PROJECT_ID,
+        projectUuid: PROJECT_UUID,
+        stage: 'quoting',
+        currentDesign,
+      }),
+    ).resolves.toEqual({
       recoveryAction: {
         kind: 'recovery',
         key: 'quote-cadence-repair:repair-1',
         title: 'Repair quote follow-up sync',
         reason: 'The quote follow-up reminder could not be updated.',
         href: `/staff/projects/${PROJECT_ID}?tab=quotes&quoteId=qv_${QUOTE_VERSION_UUID}`,
+        actionLabel: 'Repair quote follow-up',
       },
       specialistAction: null,
     });
     expect(supabase.from).toHaveBeenCalledWith('project_work_repair_signals');
     expect(supabase.query.eq).toHaveBeenNthCalledWith(1, 'project_id', PROJECT_UUID);
     expect(supabase.query.eq).toHaveBeenNthCalledWith(2, 'status', 'OPEN');
-    expect(supabase.query.order).toHaveBeenNthCalledWith(
-      1,
-      'first_detected_at',
-      { ascending: true },
-    );
+    expect(supabase.query.order).toHaveBeenNthCalledWith(1, 'first_detected_at', { ascending: true });
   });
 
   it('maps confirmation correction review without claiming a quote repair', async () => {
     const supabase = client({
-      data: [{
-        id: 'repair-2',
-        repair_kind: 'CONFIRMATION_RETRACTION_REVIEW',
-        quote_version_id: null,
-        confirmation_event_id: '33333333-3333-4333-8333-333333333333',
-        error_message: 'A recorded confirmation was corrected.',
-      }],
+      data: [
+        {
+          id: 'repair-2',
+          repair_kind: 'CONFIRMATION_RETRACTION_REVIEW',
+          quote_version_id: null,
+          confirmation_event_id: '33333333-3333-4333-8333-333333333333',
+          error_message: 'A recorded confirmation was corrected.',
+        },
+      ],
       error: null,
     });
 
-    await expect(getProjectWorkDomainActions({
-      supabase: supabase as never,
-      projectId: PROJECT_ID,
-      projectUuid: PROJECT_UUID,
-      currentDesign,
-    })).resolves.toMatchObject({
+    await expect(
+      getProjectWorkDomainActions({
+        supabase: supabase as never,
+        projectId: PROJECT_ID,
+        projectUuid: PROJECT_UUID,
+        stage: 'quoting',
+        currentDesign,
+      }),
+    ).resolves.toMatchObject({
       recoveryAction: {
         key: 'confirmation-retraction-review:repair-2',
         title: 'Review corrected confirmation',
         reason: 'A recorded confirmation was corrected.',
         href: `/staff/projects/${PROJECT_ID}?tab=activity`,
+        actionLabel: 'Review correction',
       },
     });
   });
@@ -105,56 +133,104 @@ describe('project-work domain action read', () => {
   it('falls through to canonical specialist derivation when no repair is open', async () => {
     const supabase = client({ data: [], error: null });
 
-    await expect(getProjectWorkDomainActions({
-      supabase: supabase as never,
-      projectId: PROJECT_ID,
-      projectUuid: PROJECT_UUID,
-      currentDesign: {
-        ...currentDesign,
-        source: 'draft_quote',
-        quote: {
-          id: `qv_${QUOTE_VERSION_UUID}`,
-          quoteRef: 'Q-1',
-          versionNumber: 1,
-          status: 'DRAFT',
-          createdAt: null,
-          sentAt: null,
-          deliveryState: 'draft',
+    await expect(
+      getProjectWorkDomainActions({
+        supabase: supabase as never,
+        projectId: PROJECT_ID,
+        projectUuid: PROJECT_UUID,
+        stage: 'quoting',
+        currentDesign: {
+          ...currentDesign,
+          source: 'draft_quote',
+          quote: {
+            id: `qv_${QUOTE_VERSION_UUID}`,
+            quoteRef: 'Q-1',
+            versionNumber: 1,
+            status: 'DRAFT',
+            createdAt: null,
+            sentAt: null,
+            deliveryState: 'draft',
+          },
         },
-      },
-    })).resolves.toMatchObject({
+      }),
+    ).resolves.toMatchObject({
       recoveryAction: null,
       specialistAction: { title: 'Finalise and send the draft quote' },
     });
   });
 
+  it('uses the active Site Visit completion fact to stop promoting the visit', async () => {
+    const incomplete = clientWithSiteVisitFacts([]);
+    await expect(
+      getProjectWorkDomainActions({
+        supabase: incomplete as never,
+        projectId: PROJECT_ID,
+        projectUuid: PROJECT_UUID,
+        stage: 'site_visit',
+        currentDesign,
+      }),
+    ).resolves.toMatchObject({
+      specialistAction: { title: 'Complete the site visit' },
+    });
+
+    const completed = clientWithSiteVisitFacts([
+      {
+        id: '44444444-4444-4444-8444-444444444444',
+        project_id: PROJECT_UUID,
+        event_kind: 'CONFIRMED',
+        confirmation_type: 'SITE_VISIT_COMPLETED',
+        retracts_event_id: null,
+      },
+    ]);
+    await expect(
+      getProjectWorkDomainActions({
+        supabase: completed as never,
+        projectId: PROJECT_ID,
+        projectUuid: PROJECT_UUID,
+        stage: 'site_visit',
+        currentDesign,
+      }),
+    ).resolves.toEqual({
+      recoveryAction: null,
+      specialistAction: null,
+    });
+  });
+
   it('fails closed when the durable recovery read is unavailable or malformed', async () => {
-    await expect(getProjectWorkDomainActions({
-      supabase: client({
-        data: null,
-        error: { message: 'repair read unavailable', code: 'XX000' },
-      }) as never,
-      projectId: PROJECT_ID,
-      projectUuid: PROJECT_UUID,
-      currentDesign,
-    })).rejects.toMatchObject({
+    await expect(
+      getProjectWorkDomainActions({
+        supabase: client({
+          data: null,
+          error: { message: 'repair read unavailable', code: 'XX000' },
+        }) as never,
+        projectId: PROJECT_ID,
+        projectUuid: PROJECT_UUID,
+        stage: 'quoting',
+        currentDesign,
+      }),
+    ).rejects.toMatchObject({
       message: 'repair read unavailable',
       code: 'XX000',
     });
 
-    await expect(getProjectWorkDomainActions({
-      supabase: client({
-        data: [{
-          id: 'repair-1',
-          repair_kind: 'QUOTE_CADENCE_RECONCILIATION',
-          quote_version_id: null,
-          error_message: 'Repair requires review.',
-        }],
-        error: null,
-      }) as never,
-      projectId: PROJECT_ID,
-      projectUuid: PROJECT_UUID,
-      currentDesign,
-    })).rejects.toThrow('Open quote cadence repair signal is incomplete');
+    await expect(
+      getProjectWorkDomainActions({
+        supabase: client({
+          data: [
+            {
+              id: 'repair-1',
+              repair_kind: 'QUOTE_CADENCE_RECONCILIATION',
+              quote_version_id: null,
+              error_message: 'Repair requires review.',
+            },
+          ],
+          error: null,
+        }) as never,
+        projectId: PROJECT_ID,
+        projectUuid: PROJECT_UUID,
+        stage: 'quoting',
+        currentDesign,
+      }),
+    ).rejects.toThrow('Open quote cadence repair signal is incomplete');
   });
 });

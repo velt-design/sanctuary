@@ -24,13 +24,7 @@ export const PROJECT_LOST_OUTCOMES = [
 const PROJECT_WORK_ITEM_STATUSES = ['OPEN', 'BLOCKED', 'DONE', 'CANCELLED'] as const;
 export type ProjectWorkItemStatus = (typeof PROJECT_WORK_ITEM_STATUSES)[number];
 
-export const PROJECT_WORK_RESPONSIBILITY_AREAS = [
-  'CUSTOMER',
-  'DESIGN',
-  'COMMERCIAL',
-  'OPERATIONS',
-  'ADMIN',
-] as const;
+export const PROJECT_WORK_RESPONSIBILITY_AREAS = ['CUSTOMER', 'DESIGN', 'COMMERCIAL', 'OPERATIONS', 'ADMIN'] as const;
 export type ProjectWorkResponsibilityArea = (typeof PROJECT_WORK_RESPONSIBILITY_AREAS)[number];
 
 const PROJECT_WORK_ITEM_PRIORITIES = ['NORMAL', 'CRITICAL'] as const;
@@ -59,9 +53,7 @@ const PROJECT_CONFIRMATION_TYPES = [
 export type ProjectConfirmationType = (typeof PROJECT_CONFIRMATION_TYPES)[number];
 
 export type ProjectWorkEffectiveAssignee =
-  | { kind: 'staff'; userId: string }
-  | { kind: 'projectOwner'; ownerKey: string }
-  | { kind: 'unassigned' };
+  { kind: 'staff'; userId: string } | { kind: 'projectOwner'; ownerKey: string } | { kind: 'unassigned' };
 
 export type ProjectWorkItem = {
   id: string;
@@ -109,11 +101,13 @@ export type ProjectWorkPrimaryCandidate =
       title: string;
       reason: string;
       href: string | null;
+      actionLabel?: string;
     }
   | {
       kind: 'workItem';
       item: ProjectWorkItem;
       dueState: 'critical' | 'overdue' | 'today' | 'future';
+      reason: string;
     }
   | {
       kind: 'specialist';
@@ -123,6 +117,7 @@ export type ProjectWorkPrimaryCandidate =
       owner: string;
       expectedResult: string;
       href: string | null;
+      actionLabel?: string;
     }
   | {
       kind: 'needsTriage';
@@ -158,19 +153,9 @@ export type ProjectWorkProjection = {
   generatedAt: string;
 };
 
-export type ProjectWorkQueueGroup =
-  | 'overdue'
-  | 'today'
-  | 'nextSevenBusinessDays'
-  | 'blocked'
-  | 'needsTriage';
+export type ProjectWorkQueueGroup = 'overdue' | 'today' | 'nextSevenBusinessDays' | 'blocked' | 'needsTriage';
 
-export type ProjectWorkQueueActionKind =
-  | 'recovery'
-  | 'workItem'
-  | 'specialist'
-  | 'stateReview'
-  | 'needsTriage';
+export type ProjectWorkQueueActionKind = 'recovery' | 'workItem' | 'specialist' | 'stateReview' | 'needsTriage';
 
 export type ProjectWorkQueueEntry = {
   projectId: string;
@@ -193,5 +178,6 @@ export type ProjectWorkQueueEntry = {
   subjectId: string | null;
   repairSignalId?: string | null;
   repairSignalRowVersion?: number | null;
+  actionLabel?: string | null;
   href: string;
 };

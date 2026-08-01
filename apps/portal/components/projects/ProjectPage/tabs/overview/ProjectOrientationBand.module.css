@@ -4,11 +4,36 @@
 }
 
 .orientation {
+  container-type: inline-size;
   border: var(--ui-border-width) solid var(--ui-border);
   border-radius: var(--ui-radius-panel);
   background: var(--ui-surface-primary);
   color: var(--ui-text);
   font-family: var(--ui-font-body);
+}
+
+.orientationSummary {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.7fr) minmax(0, 2.3fr);
+  min-width: 0;
+}
+
+.journey {
+  border-right: var(--ui-border-width) solid var(--ui-border);
+  border-bottom: 0;
+  background: var(--ui-surface-secondary);
+}
+
+.orientationSummary > .journey > dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-5);
+  padding: var(--ui-space-3) var(--ui-space-4);
+}
+
+.orientationSummary > .journey > dl > div,
+.orientationSummary > .journey > dl > div:last-child {
+  border: 0;
+  padding: 0;
 }
 
 .orientationHeader {
@@ -17,16 +42,15 @@
   justify-content: space-between;
   gap: var(--ui-space-4);
   border-bottom: var(--ui-border-width) solid var(--ui-border);
-  padding: var(--ui-space-3) var(--ui-space-4);
+  padding: var(--ui-space-2) var(--ui-space-3);
 }
 
 .orientationHeader h2 {
   margin: 0;
-  color: var(--ui-text-muted);
-  font-family: var(--ui-font-body);
-  font-size: var(--ui-font-size-caption);
+  color: var(--ui-text-strong);
+  font-family: var(--ui-font-display);
+  font-size: var(--ui-font-size-card-heading);
   font-weight: 600;
-  letter-spacing: var(--ui-letter-spacing-label);
   text-transform: uppercase;
 }
 
@@ -46,18 +70,19 @@
 
 .orientationFacts {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns:
+    minmax(150px, 1.2fr)
+    minmax(150px, 1.2fr)
+    minmax(110px, 0.8fr)
+    minmax(140px, 1fr);
+  gap: var(--ui-space-5);
   margin: 0;
+  padding: var(--ui-space-3) var(--ui-space-4);
 }
 
 .orientationFacts > div {
   min-width: 0;
-  border-right: var(--ui-border-width) solid var(--ui-border);
-  padding: var(--ui-space-3) var(--ui-space-4);
-}
-
-.orientationFacts > div:last-child {
-  border-right: 0;
+  padding: 0;
 }
 
 .orientationFacts dt {
@@ -87,6 +112,10 @@
   color: var(--ui-text-muted);
 }
 
+.orientationFacts > div[data-context-priority="secondary"] dd {
+  font-size: var(--ui-font-size-caption);
+}
+
 .detailsNotice {
   padding: var(--ui-space-3) var(--ui-space-4) 0;
 }
@@ -103,24 +132,37 @@
   padding: var(--ui-space-4);
 }
 
-@media (max-width: 1024px) {
-  .orientationFacts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@container (max-width: 900px) {
+  .orientationSummary {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .orientationFacts > div:nth-child(2) {
+  .journey {
     border-right: 0;
+    border-bottom: var(--ui-border-width) solid var(--ui-border);
   }
 
-  .orientationFacts > div:nth-child(n + 3) {
-    border-top: var(--ui-border-width) solid var(--ui-border);
+  .orientationFacts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--ui-space-4);
   }
 }
 
-@media (max-width: 767px) {
+@container (max-width: 560px) {
+  .orientationSummary > .journey > dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-2) var(--ui-space-3);
+  }
+
+  .orientationSummary > .journey > dl > div,
+  .orientationSummary > .journey > dl > div:last-child {
+    border: 0;
+    padding: 0;
+  }
+
   .orientationHeader {
-    align-items: stretch;
-    flex-direction: column;
+    gap: var(--ui-space-2);
   }
 
   .overviewActions,
@@ -129,17 +171,14 @@
   }
 
   .orientationFacts {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-3);
   }
 
-  .orientationFacts > div,
-  .orientationFacts > div:nth-child(2) {
+  .orientationFacts > div[data-context-priority="secondary"] {
     border-top: var(--ui-border-width) solid var(--ui-border);
-    border-right: 0;
-  }
-
-  .orientationFacts > div:first-child {
-    border-top: 0;
+    padding-top: var(--ui-space-2);
   }
 
   .detailsForm {
@@ -148,6 +187,13 @@
 
   .overviewActions button {
     min-height: 44px;
+  }
+}
+
+@container (max-width: 360px) {
+  .orientationHeader {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

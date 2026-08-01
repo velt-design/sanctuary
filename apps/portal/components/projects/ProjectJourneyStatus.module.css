@@ -23,6 +23,14 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.summary[data-has-stage="false"] .facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.summary[data-has-stage="false"][data-has-operational-state="false"] .facts {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .facts > div {
   min-width: 0;
   padding: var(--ui-space-3) var(--ui-space-4);

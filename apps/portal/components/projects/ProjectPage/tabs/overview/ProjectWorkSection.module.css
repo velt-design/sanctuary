@@ -20,15 +20,72 @@
 
 .reason,
 .subsectionHeading p,
-.manualFact p {
+.manualFact p,
+.pausedNotice {
   margin: 0;
 }
 
 .reason,
 .subsectionHeading p,
-.manualFact p {
+.manualFact p,
+.pausedNotice {
   color: var(--ui-text-muted);
   font-size: var(--ui-font-size-small);
+}
+
+.reason {
+  max-width: 62ch;
+  color: var(--ui-text);
+  font-size: var(--ui-font-size-body);
+  line-height: var(--ui-line-height-body);
+}
+
+.pausedNotice {
+  border-left: var(--ui-status-edge) solid var(--ui-status-warning-border);
+  padding-left: var(--ui-space-2);
+}
+
+.primaryStatus {
+  color: var(--ui-text);
+}
+
+.card > header {
+  padding-bottom: var(--ui-space-2);
+}
+
+.card > header h2 {
+  font-size: var(--ui-font-size-section);
+}
+
+.primaryAction {
+  border-left: var(--ui-status-edge) solid var(--ui-action);
+  background: var(--ui-surface-elevated);
+}
+
+.primaryAction[data-tone="critical"] {
+  border-left-color: var(--ui-destructive);
+}
+
+.primaryAction > header {
+  padding: var(--ui-space-4);
+}
+
+.primaryAction > header h3 {
+  max-width: 30ch;
+  font-size: var(--ui-font-size-detail-title);
+}
+
+.primaryAction > div {
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-3);
+}
+
+.primaryAction > footer {
+  padding: var(--ui-space-3);
+}
+
+.primaryFacts > div {
+  padding: var(--ui-space-2) var(--ui-space-3);
 }
 
 .inlineActions,
@@ -40,6 +97,30 @@
   gap: var(--ui-space-2);
 }
 
+.commandArea {
+  display: grid;
+  gap: var(--ui-space-2);
+}
+
+.commandLabel {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 600;
+  letter-spacing: var(--ui-letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.commandHelp {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.45;
+}
+
+.commandHelp strong {
+  color: var(--ui-text-strong);
+}
+
 .controlsSection,
 .workList {
   border-top: var(--ui-border-width) solid var(--ui-border);
@@ -48,6 +129,41 @@
 
 .controlsSection > button {
   justify-self: start;
+}
+
+@container (min-width: 700px) {
+  .primaryAction {
+    display: grid;
+    grid-template-areas:
+      "action-heading action-heading"
+      "action-body action-command";
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.42fr);
+  }
+
+  .primaryAction > header {
+    grid-area: action-heading;
+  }
+
+  .primaryAction > div {
+    grid-area: action-body;
+  }
+
+  .primaryAction > footer {
+    display: grid;
+    grid-area: action-command;
+    align-content: center;
+    border-top: 0;
+    border-left: var(--ui-border-width) solid var(--ui-border);
+  }
+
+  .commandArea .inlineActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .commandArea .inlineActions > * {
+    width: 100%;
+  }
 }
 
 .disclosure {
@@ -119,6 +235,39 @@
 }
 
 @container (max-width: 620px) {
+  .card .primaryAction > header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--ui-space-1) var(--ui-space-3);
+  }
+
+  .primaryAction > header > div:first-child {
+    display: contents;
+  }
+
+  .primaryAction > header > div:first-child > span {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .primaryAction > header > div:first-child > h3 {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .primaryAction > header > div:last-child {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .primaryFacts[data-columns="2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .primaryFacts[data-columns="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .formGrid {
     grid-template-columns: minmax(0, 1fr);
   }

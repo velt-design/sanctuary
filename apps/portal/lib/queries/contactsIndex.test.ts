@@ -27,7 +27,7 @@ function projectsResponse(): ProjectsIndexResponse {
     archive: 'active',
     projects: { rows: [], totalCount: 0, truncated: false, page: 1, pageSize: 50, totalPages: 1 },
     contacts: { rows: [contact], totalCount: null, truncated: false },
-    query: { search: '', status: 'all', journey: 'all', state: 'all', sort: 'newest' },
+    query: { search: '', status: 'all', journey: 'all', state: 'all', owner: 'all', sort: 'newest' },
     generatedAt: 'cached',
   };
 }

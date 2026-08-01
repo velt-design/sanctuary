@@ -9,8 +9,10 @@ import {
 } from '@/lib/projects/projectJourney';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { mapProjectRecord } from './projectRecord';
+import { getAuthoritativeProjectWorkQueue } from './workItems/teamQueue';
 import type {
   ProjectsIndexParams,
+  ProjectsIndexProject,
   ProjectsIndexResponse,
 } from './projectsIndexContract';
 
@@ -35,7 +37,7 @@ function isMissingFunction(error: unknown): boolean {
   const message = typeof candidate.message === 'string' ? candidate.message : '';
   return code === 'PGRST202'
     || code === '42883'
-    || /staff_projects_index_v[12]|schema cache|function .* does not exist/i.test(message);
+    || /staff_projects_index_v[123]|schema cache|function .* does not exist/i.test(message);
 }
 
 function readPayload(value: unknown): RpcPayload {
@@ -81,7 +83,7 @@ export async function loadProjectsIndexData(
   supabase?: SupabaseClient,
 ): Promise<Pick<ProjectsIndexResponse, 'projects' | 'contacts'>> {
   const client = supabase ?? (await getSupabaseServerAuth());
-  const result = await client.rpc('staff_projects_index_v2', {
+  const result = await client.rpc('staff_projects_index_v3', {
     p_archive: params.archive,
     p_search: params.search,
     p_status: params.status,
@@ -92,6 +94,7 @@ export async function loadProjectsIndexData(
     p_sort: params.sort,
     p_state: params.state,
     p_stages: stagesForProjectsIndex(params),
+    p_owner: params.owner,
   });
   if (result.error) {
     if (isMissingFunction(result.error)) throw new ProjectsIndexSchemaError();
@@ -100,7 +103,32 @@ export async function loadProjectsIndexData(
 
   const payload = readPayload(result.data);
   const rawRows = (Array.isArray(payload.rows) ? payload.rows : []) as Record<string, unknown>[];
-  const projects = rawRows.map(mapProjectRecord);
+  const mappedProjects = rawRows.map(mapProjectRecord);
+  const queue = mappedProjects.length
+    ? await getAuthoritativeProjectWorkQueue(client, {
+        projectIds: mappedProjects.map((project) => project.id),
+        limit: mappedProjects.length,
+      })
+    : { entries: [] };
+  const queueByProjectId = new Map(
+    queue.entries.map((entry) => [entry.projectId, entry]),
+  );
+  const projects: ProjectsIndexProject[] = mappedProjects.map((project) => {
+    const entry = queueByProjectId.get(project.id);
+    return {
+      ...project,
+      nextAction: entry
+        ? {
+            title: entry.title,
+            reason: entry.reason,
+            dueAt: entry.dueAt,
+            group: entry.group,
+            actionKind: entry.actionKind,
+            href: entry.href,
+          }
+        : null,
+    };
+  });
   const contacts = new Map(
     rawRows
       .map(contactFromProjectRow)

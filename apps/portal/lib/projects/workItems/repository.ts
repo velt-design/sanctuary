@@ -3,6 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { resolveProjectWorkEffectiveAssignee } from './effectiveAssignee';
+import { activeConfirmationEventRows } from './confirmationFacts';
 import { getAuthoritativeProjectWorkQueue } from './teamQueue';
 import {
   resolveProjectWorkPrimaryAction,
@@ -26,9 +27,7 @@ import type {
 type Row = Record<string, unknown>;
 
 function rows(value: unknown): Row[] {
-  return Array.isArray(value)
-    ? value.filter((entry): entry is Row => Boolean(entry && typeof entry === 'object'))
-    : [];
+  return Array.isArray(value) ? value.filter((entry): entry is Row => Boolean(entry && typeof entry === 'object')) : [];
 }
 
 function text(value: unknown): string | null {
@@ -106,7 +105,10 @@ function mapConfirmationFact(row: Row): ProjectWorkConfirmationFact | null {
 }
 
 async function queryRows(
-  query: PromiseLike<{ data: unknown; error: { message?: string; code?: string } | null }>,
+  query: PromiseLike<{
+    data: unknown;
+    error: { message?: string; code?: string } | null;
+  }>,
   fallback: string,
 ): Promise<Row[]> {
   const result = await query;
@@ -153,20 +155,14 @@ export async function getProjectWorkProjection(params: {
     queryRows(
       supabase
         .from('project_confirmation_events')
-        .select(
-          'id,event_kind,confirmation_type,subject_kind,subject_id,occurred_at,recorded_at,retracts_event_id',
-        )
+        .select('id,event_kind,confirmation_type,subject_kind,subject_id,occurred_at,recorded_at,retracts_event_id')
         .eq('project_id', projectUuid)
         .order('recorded_at', { ascending: false })
         .limit(100),
       'Failed to load project confirmation facts',
     ),
     queryRows(
-      supabase
-        .from('project_owner_assignments')
-        .select('owner_key')
-        .eq('project_id', projectUuid)
-        .limit(1),
+      supabase.from('project_owner_assignments').select('owner_key').eq('project_id', projectUuid).limit(1),
       'Failed to load project owner',
     ),
   ]);
@@ -182,14 +178,7 @@ export async function getProjectWorkProjection(params: {
     .filter((item): item is ProjectWorkItem => item !== null);
   const openItems = allItems.filter((item) => item.status === 'OPEN');
   const blockedItems = allItems.filter((item) => item.status === 'BLOCKED');
-  const retractedIds = new Set(
-    confirmationRows
-      .filter((row) => text(row.event_kind) === 'RETRACTED')
-      .map((row) => text(row.retracts_event_id))
-      .filter((id): id is string => id !== null),
-  );
-  const confirmedFacts = confirmationRows
-    .filter((row) => text(row.event_kind) === 'CONFIRMED' && !retractedIds.has(text(row.id) ?? ''))
+  const confirmedFacts = activeConfirmationEventRows(confirmationRows)
     .map(mapConfirmationFact)
     .filter((fact): fact is ProjectWorkConfirmationFact => fact !== null);
   const archived = Boolean(iso(projectRows[0].archived_at));
@@ -220,9 +209,7 @@ export async function getProjectWorkProjection(params: {
           : {
               kind: 'none' as const,
               title: 'Project waiting',
-              reason: waitingUntil
-                ? `Waiting until ${waitingUntil}.`
-                : 'This project is intentionally waiting.',
+              reason: waitingUntil ? `Waiting until ${waitingUntil}.` : 'This project is intentionally waiting.',
             }
         : resolveProjectWorkPrimaryAction({
             workItems: openItems,

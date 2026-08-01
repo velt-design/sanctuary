@@ -1,0 +1,26 @@
+.action {
+  display: grid;
+  gap: var(--ui-space-1);
+  min-width: 220px;
+  max-width: 420px;
+}
+
+.action strong {
+  color: var(--ui-text-strong);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.35;
+}
+
+.action span,
+.action small {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  line-height: 1.4;
+}
+
+@media (max-width: 767px) {
+  .action {
+    min-width: 0;
+    max-width: none;
+  }
+}

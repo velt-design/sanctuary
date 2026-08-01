@@ -6,20 +6,14 @@ import {
   commandCentreQuoteDeliveryState,
   normalizeCommandCentreCommercialCandidates,
 } from '@/lib/projects/commandCentre/commercialSelection';
-import {
-  fetchAllPages,
-  fetchRowsByIdChunks,
-  MAX_LIST_FETCH_ROWS,
-} from '@/lib/list/listLimits';
+import { fetchAllPages, fetchRowsByIdChunks, MAX_LIST_FETCH_ROWS } from '@/lib/list/listLimits';
 import { resolveCommandCentreSelection } from '@/lib/projects/commandCentre/resolve';
-import { appIdFromUuid, isRecord } from '@/lib/supabase/mappers';
-import {
-  commercialProjectWorkActions,
-  type ProjectWorkDomainActions,
-} from './domainActionAdapters';
+import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
+import { projectWorkDomainActions, type ProjectWorkDomainActions } from './domainActionAdapters';
+import { hasActiveProjectConfirmation } from './confirmationFacts';
 import { resolveProjectWorkEffectiveAssignee } from './effectiveAssignee';
-import { listProjectWorkModelV2Ids } from './modelBoundary';
-import { isRetiredProjectWorkIdentity } from './prohibitedWork';
+import { getProjectWorkModelV2Ids, listProjectWorkModelV2Ids } from './modelBoundary';
+import { isApprovedSiteVisitSpecialistIdentity, isRetiredProjectWorkIdentity } from './prohibitedWork';
 import type {
   ProjectWorkItemPriority,
   ProjectWorkItemSourceType,
@@ -70,9 +64,7 @@ export type ActiveProjectDomainCandidate = {
 };
 
 function rows(value: unknown): Row[] {
-  return Array.isArray(value)
-    ? value.filter((entry): entry is Row => isRecord(entry))
-    : [];
+  return Array.isArray(value) ? value.filter((entry): entry is Row => isRecord(entry)) : [];
 }
 
 function relationRows(value: unknown): Row[] {
@@ -126,17 +118,23 @@ function projectActivityHref(projectId: string): string {
   return `/staff/projects/${encodeURIComponent(projectId)}?tab=activity`;
 }
 
-function maskRetiredQueueEntry(
-  entry: ProjectWorkQueueEntry,
-): ProjectWorkQueueEntry {
+function maskRetiredQueueEntry(entry: ProjectWorkQueueEntry): ProjectWorkQueueEntry {
+  if (
+    isApprovedSiteVisitSpecialistIdentity({
+      actionKind: entry.actionKind,
+      sourceKey: entry.sourceKey,
+      href: entry.href,
+    })
+  ) {
+    return entry;
+  }
   if (!isRetiredProjectWorkIdentity(entry)) return entry;
   return {
     ...entry,
     group: 'needsTriage',
     actionKind: 'needsTriage',
     title: 'Legacy work needs review',
-    reason:
-      'A retired project action is still selected by the server. Review Project Work before continuing.',
+    reason: 'A retired project action is still selected by the server. Review Project Work before continuing.',
     dueAt: null,
     priority: null,
     blockedReason: null,
@@ -149,6 +147,7 @@ function maskRetiredQueueEntry(
     subjectId: null,
     repairSignalId: null,
     repairSignalRowVersion: null,
+    actionLabel: 'Review project',
     href: projectActivityHref(entry.projectId),
   };
 }
@@ -159,11 +158,7 @@ function durableHref(params: {
   subjectKind: string | null;
   subjectId: string | null;
 }): string {
-  if (
-    params.actionKind === 'recovery'
-    && params.subjectKind === 'QUOTE_VERSION'
-    && params.subjectId
-  ) {
+  if (params.actionKind === 'recovery' && params.subjectKind === 'QUOTE_VERSION' && params.subjectId) {
     try {
       const quoteId = appIdFromUuid('qv', params.subjectId);
       return `/staff/projects/${encodeURIComponent(params.projectId)}?tab=quotes&quoteId=${encodeURIComponent(quoteId)}`;
@@ -192,9 +187,7 @@ function mapDurableQueueRow(row: Row): ProjectWorkQueueEntry {
   const workItemRowVersion = positiveInteger(row.work_item_row_version);
   const stateRowVersion = positiveInteger(row.state_row_version);
   const repairSignalId = text(row.repair_signal_id);
-  const repairSignalRowVersion = positiveInteger(
-    row.repair_signal_row_version,
-  );
+  const repairSignalRowVersion = positiveInteger(row.repair_signal_row_version);
   if (kind === 'workItem' && (!workItemId || !workItemRowVersion)) {
     throw new Error('Project work queue item is missing command metadata');
   }
@@ -218,10 +211,7 @@ function mapDurableQueueRow(row: Row): ProjectWorkQueueEntry {
     dueAt: iso(row.due_at),
     priority: priority(row.priority),
     blockedReason: text(row.blocked_reason),
-    effectiveAssignee: resolveProjectWorkEffectiveAssignee(
-      text(row.assignee_user_id),
-      text(row.project_owner_key),
-    ),
+    effectiveAssignee: resolveProjectWorkEffectiveAssignee(text(row.assignee_user_id), text(row.project_owner_key)),
     workItemId,
     workItemRowVersion,
     stateRowVersion,
@@ -231,11 +221,12 @@ function mapDurableQueueRow(row: Row): ProjectWorkQueueEntry {
     subjectId,
     repairSignalId,
     repairSignalRowVersion,
+    actionLabel: null,
     href: durableHref({ projectId, actionKind: kind, subjectKind, subjectId }),
   };
 }
 
-function domainCandidateFromProjectRow(row: Row): ActiveProjectDomainCandidate | null {
+function domainCandidateFromProjectRow(row: Row, siteVisitCompleted: boolean): ActiveProjectDomainCandidate | null {
   const projectUuid = text(row.id);
   const projectName = text(row.name);
   const stage = text(row.pipeline_stage);
@@ -251,10 +242,10 @@ function domainCandidateFromProjectRow(row: Row): ActiveProjectDomainCandidate |
   const currentCommercial = {
     source: selection.source,
     designState: selection.sourceEstimateMissing
-      ? 'source_unavailable' as const
+      ? ('source_unavailable' as const)
       : selection.estimate
-        ? 'available' as const
-        : 'none' as const,
+        ? ('available' as const)
+        : ('none' as const),
     estimate: selection.estimate ? { id: selection.estimate.id } : null,
     quote: selection.quote
       ? {
@@ -268,9 +259,7 @@ function domainCandidateFromProjectRow(row: Row): ActiveProjectDomainCandidate |
       estimate: selection.estimate
         ? `${basePath}?tab=estimates&estimateId=${encodeURIComponent(selection.estimate.id)}`
         : null,
-      quote: selection.quote
-        ? `${basePath}?tab=quotes&quoteId=${encodeURIComponent(selection.quote.id)}`
-        : null,
+      quote: selection.quote ? `${basePath}?tab=quotes&quoteId=${encodeURIComponent(selection.quote.id)}` : null,
     },
   };
   const ownerRow = relationRows(row.ownerAssignment)[0];
@@ -280,19 +269,28 @@ function domainCandidateFromProjectRow(row: Row): ActiveProjectDomainCandidate |
     projectName,
     stage: stage.toLowerCase(),
     projectOwnerKey: text(ownerRow?.owner_key),
-    actions: commercialProjectWorkActions(currentCommercial),
+    actions: projectWorkDomainActions({
+      projectId,
+      stage: stage.toLowerCase(),
+      siteVisitCompleted,
+      currentDesign: currentCommercial,
+    }),
   };
 }
 
 async function loadActiveProjectDomainCandidates(
   supabase: SupabaseClient,
+  projectUuids: readonly string[] | null = null,
 ): Promise<ActiveProjectDomainCandidate[]> {
-  const v2ProjectIds = [...await listProjectWorkModelV2Ids(supabase)].sort();
+  const v2ProjectIds = [
+    ...(projectUuids
+      ? await getProjectWorkModelV2Ids(supabase, projectUuids)
+      : await listProjectWorkModelV2Ids(supabase)),
+  ].sort();
   if (!v2ProjectIds.length) return [];
 
-  const activeStateRows = await fetchRowsByIdChunks<Row>(
-    v2ProjectIds,
-    (projectIds) => supabase
+  const activeStateRows = await fetchRowsByIdChunks<Row>(v2ProjectIds, (projectIds) =>
+    supabase
       .from('project_operational_states')
       .select('project_id,state')
       .in('project_id', projectIds)
@@ -303,17 +301,31 @@ async function loadActiveProjectDomainCandidates(
     .filter((projectId): projectId is string => projectId !== null);
   if (!activeProjectIds.length) return [];
 
-  const projectRows = await fetchRowsByIdChunks<Row>(
-    activeProjectIds,
-    (projectIds) => supabase
-      .from('projects')
-      .select(ACTIVE_V2_COMMERCIAL_PROJECTS_SELECT)
-      .in('id', projectIds)
-      .is('archived_at', null)
-      .order('id', { ascending: true }),
-  );
+  const [projectRows, confirmationRows] = await Promise.all([
+    fetchRowsByIdChunks<Row>(activeProjectIds, (projectIds) =>
+      supabase
+        .from('projects')
+        .select(ACTIVE_V2_COMMERCIAL_PROJECTS_SELECT)
+        .in('id', projectIds)
+        .is('archived_at', null)
+        .order('id', { ascending: true }),
+    ),
+    fetchRowsByIdChunks<Row>(activeProjectIds, (projectIds) =>
+      supabase
+        .from('project_confirmation_events')
+        .select('id,project_id,event_kind,confirmation_type,retracts_event_id')
+        .in('project_id', projectIds)
+        .eq('confirmation_type', 'SITE_VISIT_COMPLETED'),
+    ),
+  ]);
   return projectRows
-    .map(domainCandidateFromProjectRow)
+    .map((row) => {
+      const projectUuid = text(row.id);
+      return domainCandidateFromProjectRow(
+        row,
+        projectUuid ? hasActiveProjectConfirmation(confirmationRows, projectUuid, 'SITE_VISIT_COMPLETED') : false,
+      );
+    })
     .filter((candidate): candidate is ActiveProjectDomainCandidate => candidate !== null);
 }
 
@@ -330,12 +342,14 @@ function entryComparison(left: ProjectWorkQueueEntry, right: ProjectWorkQueueEnt
 }
 
 function durableActionIsProtected(entry: ProjectWorkQueueEntry): boolean {
-  return entry.actionKind === 'recovery'
-    || entry.actionKind === 'stateReview'
-    || entry.priority === 'CRITICAL'
-    || entry.group === 'overdue'
-    || entry.group === 'today'
-    || entry.group === 'blocked';
+  return (
+    entry.actionKind === 'recovery' ||
+    entry.actionKind === 'stateReview' ||
+    entry.priority === 'CRITICAL' ||
+    entry.group === 'overdue' ||
+    entry.group === 'today' ||
+    entry.group === 'blocked'
+  );
 }
 
 function domainEntryBase(
@@ -403,14 +417,16 @@ export function composeProjectWorkQueue(params: {
         dueAt: null,
         priority: null,
         blockedReason: recoveryAction.reason,
+        sourceKey: recoveryAction.key,
+        actionLabel: recoveryAction.actionLabel ?? 'Review recovery',
         href: recoveryAction.href ?? projectActivityHref(project.projectId),
       });
       continue;
     }
     if (
-      specialistAction
-      && (!existing || !durableActionIsProtected(existing))
-      && (!existing || existing.actionKind === 'needsTriage' || existing.actionKind === 'workItem')
+      specialistAction &&
+      (!existing || !durableActionIsProtected(existing)) &&
+      (!existing || existing.actionKind === 'needsTriage' || existing.actionKind === 'workItem')
     ) {
       byProject.set(project.projectId, {
         ...domainEntryBase(project),
@@ -421,94 +437,95 @@ export function composeProjectWorkQueue(params: {
         dueAt: null,
         priority: null,
         blockedReason: null,
+        sourceKey: specialistAction.key,
+        actionLabel: specialistAction.actionLabel ?? 'Open workflow',
         href: specialistAction.href ?? projectActivityHref(project.projectId),
       });
     }
   }
 
-  return [...byProject.values()]
-    .map(maskRetiredQueueEntry)
-    .sort(entryComparison)
-    .slice(0, params.limit);
+  return [...byProject.values()].map(maskRetiredQueueEntry).sort(entryComparison).slice(0, params.limit);
 }
 
 async function loadDurableProjectWorkQueueRows(
   supabase: SupabaseClient,
   now: Date,
+  projectUuids: readonly string[] | null = null,
 ): Promise<Row[]> {
   let result;
   try {
-    result = await fetchAllPages<Row>((from, to) => supabase
-      .rpc('project_work_queue_v3', {
+    result = await fetchAllPages<Row>((from, to) => {
+      const query = supabase.rpc('project_work_queue_v3', {
         p_now: now.toISOString(),
         p_limit: MAX_LIST_FETCH_ROWS,
-      })
-      .range(from, to));
+      });
+      const scoped = projectUuids?.length ? query.in('project_id', [...projectUuids]) : query;
+      return scoped.range(from, to);
+    });
   } catch (error) {
     if (error instanceof Error) throw error;
     if (isRecord(error)) {
-      throw Object.assign(
-        new Error(text(error.message) ?? 'Failed to load project work queue'),
-        error,
-      );
+      throw Object.assign(new Error(text(error.message) ?? 'Failed to load project work queue'), error);
     }
     throw new Error('Failed to load project work queue');
   }
 
   if (result.truncated) {
-    throw new Error(
-      `Project work queue exceeded the safe ${MAX_LIST_FETCH_ROWS}-row fetch limit`,
-    );
+    throw new Error(`Project work queue exceeded the safe ${MAX_LIST_FETCH_ROWS}-row fetch limit`);
   }
   return result.rows;
 }
 
-async function assertProjectWorkPortfolioComplete(
-  supabase: SupabaseClient,
-): Promise<void> {
+async function assertProjectWorkPortfolioComplete(supabase: SupabaseClient): Promise<void> {
   const result = await supabase.rpc('staff_project_state_counts_v1');
   if (result.error) {
-    const message =
-      text(result.error.message) ?? 'Project Work portfolio state is unavailable';
-    const rolloutIncomplete =
-      /PROJECT_WORK_ROLLOUT_INCOMPLETE/i.test(message);
+    const message = text(result.error.message) ?? 'Project Work portfolio state is unavailable';
+    const rolloutIncomplete = /PROJECT_WORK_ROLLOUT_INCOMPLETE/i.test(message);
     throw Object.assign(new Error(message), result.error, {
-      code: rolloutIncomplete
-        ? 'PROJECT_WORK_INVENTORY_INCOMPLETE'
-        : result.error.code,
+      code: rolloutIncomplete ? 'PROJECT_WORK_INVENTORY_INCOMPLETE' : result.error.code,
     });
   }
   const payload = isRecord(result.data) ? result.data : null;
   const totalCount = payload?.totalCount;
-  if (
-    typeof totalCount !== 'number'
-    || !Number.isFinite(totalCount)
-    || totalCount < 0
-  ) {
-    throw Object.assign(
-      new Error('Project Work portfolio state count is malformed'),
-      { code: 'PROJECT_WORK_INVENTORY_INCOMPLETE' },
-    );
+  if (typeof totalCount !== 'number' || !Number.isFinite(totalCount) || totalCount < 0) {
+    throw Object.assign(new Error('Project Work portfolio state count is malformed'), {
+      code: 'PROJECT_WORK_INVENTORY_INCOMPLETE',
+    });
   }
 }
 
 export async function getAuthoritativeProjectWorkQueue(
   supabase: SupabaseClient,
-  options: { now?: Date; limit?: number } = {},
+  options: {
+    now?: Date;
+    limit?: number;
+    projectIds?: readonly string[];
+  } = {},
 ): Promise<{ entries: ProjectWorkQueueEntry[]; generatedAt: string }> {
   const now = options.now ?? new Date();
+  const projectUuids = options.projectIds
+    ? Array.from(new Set(options.projectIds.map((projectId) => uuidFromAppId(projectId, 'proj')))).sort()
+    : null;
+  if (projectUuids && projectUuids.length === 0) {
+    await assertProjectWorkPortfolioComplete(supabase);
+    return { entries: [], generatedAt: now.toISOString() };
+  }
   const limit = Math.min(
     MAX_LIST_FETCH_ROWS,
-    Math.max(1, options.limit ?? MAX_LIST_FETCH_ROWS),
+    Math.max(1, options.limit ?? projectUuids?.length ?? MAX_LIST_FETCH_ROWS),
   );
   const [durableRows, domainCandidates] = await Promise.all([
-    loadDurableProjectWorkQueueRows(supabase, now),
-    loadActiveProjectDomainCandidates(supabase),
+    loadDurableProjectWorkQueueRows(supabase, now, projectUuids),
+    loadActiveProjectDomainCandidates(supabase, projectUuids),
     assertProjectWorkPortfolioComplete(supabase),
   ]);
   const durableEntries = rows(durableRows).map(mapDurableQueueRow);
   return {
-    entries: composeProjectWorkQueue({ durableEntries, domainCandidates, limit }),
+    entries: composeProjectWorkQueue({
+      durableEntries,
+      domainCandidates,
+      limit,
+    }),
     generatedAt: now.toISOString(),
   };
 }

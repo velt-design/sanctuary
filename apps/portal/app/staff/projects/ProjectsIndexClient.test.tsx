@@ -126,6 +126,7 @@ function matchingIndexData(options: { queryKey: readonly unknown[] }) {
     status: Project['status'] | 'all';
     journey: 'all' | 'ENQUIRY' | 'PROPOSAL' | 'CONFIRMED' | 'DELIVERY' | 'SETTLED';
     state: 'all' | 'ACTIVE' | 'WAITING' | 'CLOSED' | 'ARCHIVED';
+    owner: 'all' | 'unassigned' | 'jordan' | 'jp' | 'joe' | 'bruce';
     page: number;
     pageSize: 25 | 50 | 100;
     sort: 'newest';
@@ -146,6 +147,7 @@ function matchingIndexData(options: { queryKey: readonly unknown[] }) {
       status: params.status,
       journey: params.journey,
       state: params.state,
+      owner: params.owner,
       sort: params.sort,
     },
     generatedAt: '2026-04-03T01:00:00.000Z',
@@ -157,6 +159,7 @@ const ALL_FILTERS = {
   journeyFilter: 'all',
   stageFilter: 'all',
   stateFilter: 'all',
+  ownerFilter: 'all',
   archiveFilter: 'active',
 } as const;
 
@@ -200,6 +203,7 @@ describe('ProjectsIndexClient', () => {
           journeyFilter: 'PROPOSAL',
           stageFilter: 'SENT',
           stateFilter: 'WAITING',
+          ownerFilter: 'all',
           archiveFilter: 'active',
         }}
       />,
@@ -212,6 +216,7 @@ describe('ProjectsIndexClient', () => {
           status: 'SENT',
           journey: 'PROPOSAL',
           state: 'WAITING',
+          owner: 'all',
           page: 1,
           pageSize: 50,
           sort: 'newest',
@@ -234,6 +239,8 @@ describe('ProjectsIndexClient', () => {
       'Journey',
       'Stage',
       'State',
+      'Owner',
+      'Next attention',
       'Actions',
     ]);
     expect(prefetchQuery).not.toHaveBeenCalled();

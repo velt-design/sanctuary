@@ -87,7 +87,12 @@ function projection(
     waitingReason: null,
     closedOutcome: null,
     stateRowVersion: 1,
-    primaryAction: { kind: "workItem", item: primary, dueState: "today" },
+    primaryAction: {
+      kind: "workItem",
+      item: primary,
+      dueState: "today",
+      reason: "This work is due today.",
+    },
     openItems: [primary],
     blockedItems: [],
     confirmedFacts: [],
@@ -169,7 +174,12 @@ describe("ProjectWorkSection", () => {
       priorityReason: "Engineering is required before pricing.",
     });
     const projectWork = projection({
-      primaryAction: { kind: "workItem", item: primary, dueState: "today" },
+      primaryAction: {
+        kind: "workItem",
+        item: primary,
+        dueState: "today",
+        reason: "This work is due today.",
+      },
       openItems: [primary, other],
       blockedItems: [blocked],
     });
@@ -181,9 +191,10 @@ describe("ProjectWorkSection", () => {
       ),
     ).toHaveLength(1);
     const primaryPanel = rendered.container.querySelector(
-      'section[data-tone="inverse"]',
+      '[data-primary-project-work="true"]',
     )!;
     expect(primaryPanel.textContent).toContain(primary.title);
+    expect(primaryPanel.textContent).toContain("This work is due today.");
     expect(primaryPanel.textContent).not.toContain(
       "work selected by the server",
     );
@@ -191,7 +202,7 @@ describe("ProjectWorkSection", () => {
     expect(valueFor(primaryPanel, "Due")).toContain("30 Jul 2026");
     expect(
       Array.from(primaryPanel.querySelectorAll("button")).some(
-        (button) => button.textContent === "Complete",
+        (button) => button.textContent === "Mark complete",
       ),
     ).toBe(true);
     expect(
@@ -208,11 +219,41 @@ describe("ProjectWorkSection", () => {
     expect(list.textContent).toContain("Sam Sales");
     expect(list.textContent).toContain(blocked.title);
     expect(list.textContent).not.toContain(primary.title);
-    expect(rendered.container.textContent).toContain(
-      "1 blocked project-work item",
-    );
+    expect(rendered.container.textContent).toContain("1 blocked");
     expect(rendered.container.textContent).toContain(
       "Waiting for structural drawings.",
+    );
+  });
+
+  it("omits repeated state, counts, and the secondary-work slot when the primary action is the only work", () => {
+    const rendered = renderV2(projection());
+
+    expect(rendered.container.textContent).toContain("This work is due today.");
+    expect(rendered.container.textContent).not.toContain("Operational state");
+    expect(rendered.container.textContent).not.toContain("Current work");
+    expect(rendered.container.textContent).not.toContain("No other open work");
+    expect(
+      rendered.container.querySelector('[data-project-work-list="v2"]'),
+    ).toBeNull();
+  });
+
+  it("uses a concise badge for future work and leaves the exact date to the due field", () => {
+    const primary = workItem({ dueAt: "2026-08-08T05:00:00.000Z" });
+    const rendered = renderV2(
+      projection({
+        primaryAction: {
+          kind: "workItem",
+          item: primary,
+          dueState: "future",
+          reason: "This is the earliest due current work.",
+        },
+        openItems: [primary],
+      }),
+    );
+
+    expect(rendered.container.textContent).toContain("Upcoming");
+    expect(rendered.container.textContent?.match(/8 Aug 2026/g)).toHaveLength(
+      1,
     );
   });
 
@@ -225,7 +266,12 @@ describe("ProjectWorkSection", () => {
     });
     const rendered = renderV2(
       projection({
-        primaryAction: { kind: "workItem", item: blocked, dueState: "critical" },
+        primaryAction: {
+          kind: "workItem",
+          item: blocked,
+          dueState: "critical",
+          reason: "Critical work is ranked ahead of other current work.",
+        },
         openItems: [],
         blockedItems: [blocked],
       }),
@@ -243,7 +289,7 @@ describe("ProjectWorkSection", () => {
     ).toBeNull();
     expect(
       Array.from(rendered.container.querySelectorAll("button")).some((button) =>
-        /^(?:Complete|Email sent|Customer replied)$/.test(
+        /^(?:Mark complete|Record email sent|Record customer reply)$/.test(
           button.textContent ?? "",
         ),
       ),
@@ -261,11 +307,12 @@ describe("ProjectWorkSection", () => {
           owner: "Design specialist",
           expectedResult: "Concept approved for estimating",
           href: `/staff/projects/${PROJECT_ID}/design`,
+          actionLabel: "Review design",
         },
       }),
     );
     const primaryPanel = rendered.container.querySelector(
-      'section[data-tone="inverse"]',
+      '[data-primary-project-work="true"]',
     )!;
 
     expect(valueFor(primaryPanel, "Owner")).toBe("Design specialist");
@@ -275,6 +322,44 @@ describe("ProjectWorkSection", () => {
     expect(
       primaryPanel.querySelector<HTMLAnchorElement>("a")?.getAttribute("href"),
     ).toBe(`/staff/projects/${PROJECT_ID}/design`);
+    expect(primaryPanel.textContent).toContain("Review design");
+    expect(primaryPanel.textContent).not.toContain("Open next step");
+  });
+
+  it("makes the approved Site Visit workflow and completion command prominent", () => {
+    const rendered = renderV2(
+      projection({
+        primaryAction: {
+          kind: "specialist",
+          key: `journey-site-visit:complete:${PROJECT_ID}`,
+          title: "Complete the site visit",
+          reason: "The project is at Site Visit and no completion is recorded.",
+          owner: "Operations",
+          expectedResult: "The visit is completed and recorded before quoting.",
+          href: `/staff/schedule?view=site-visits&project=${PROJECT_ID}`,
+          actionLabel: "Book or confirm site visit",
+        },
+      }),
+      false,
+      "site_visit",
+    );
+    const primaryPanel = rendered.container.querySelector(
+      '[data-primary-project-work="true"]',
+    )!;
+
+    expect(primaryPanel.textContent).toContain("Book or confirm site visit");
+    expect(primaryPanel.textContent).toContain("Record visit complete");
+    expect(
+      primaryPanel.querySelector<HTMLAnchorElement>("a")?.getAttribute("href"),
+    ).toBe(`/staff/schedule?view=site-visits&project=${PROJECT_ID}`);
+
+    const manage = Array.from(
+      rendered.container.querySelectorAll("button"),
+    ).find((button) => button.textContent === "Manage project work")!;
+    act(() => manage.click());
+    expect(
+      rendered.container.querySelector('[data-manual-site-visit-fact="true"]'),
+    ).toBeNull();
   });
 
   it("fails closed when V2 server work identifies a prohibited Call or Site Visit action", () => {
@@ -301,6 +386,7 @@ describe("ProjectWorkSection", () => {
           kind: "workItem",
           item: prohibitedPrimary,
           dueState: "today",
+          reason: "This work is due today.",
         },
         openItems: [prohibitedPrimary, prohibitedSecondary, allowedSecondary],
       }),
@@ -320,9 +406,7 @@ describe("ProjectWorkSection", () => {
     );
     expect(rendered.container.textContent).toContain(allowedSecondary.title);
     expect(
-      rendered.container.querySelector(
-        'section[data-tone="inverse"], section[data-tone="critical"]',
-      ),
+      rendered.container.querySelector('[data-primary-project-work="true"]'),
     ).toBeNull();
     expect(
       Array.from(rendered.container.querySelectorAll("button")).every(
@@ -383,8 +467,9 @@ describe("ProjectWorkSection", () => {
       detailLabel: "Waiting until",
       detailValue: "5 Aug 2026",
       waitingReason: "Customer requested more time.",
-      notice: "Ordinary project work is paused",
+      omittedNotice: "Ordinary project work is paused",
       canChangeState: true,
+      controlLabel: "Resume or update waiting",
     },
     {
       state: "Closed",
@@ -413,10 +498,11 @@ describe("ProjectWorkSection", () => {
         ],
       }),
       detailLabel: "Outcome",
-      detailValue: "lost no response",
+      detailValue: "Lost - No response",
       waitingReason: null,
-      notice: "Closed project work is paused",
+      omittedNotice: "Closed project work is paused",
       canChangeState: true,
+      controlLabel: "Reopen project",
     },
     {
       state: "Archived",
@@ -444,11 +530,12 @@ describe("ProjectWorkSection", () => {
           }),
         ],
       }),
-      detailLabel: "Operational state",
-      detailValue: "Archived",
+      detailLabel: null,
+      detailValue: null,
       waitingReason: null,
-      notice: "Archived project work is read-only",
+      omittedNotice: "Archived project work is read-only",
       canChangeState: false,
+      controlLabel: null,
     },
   ])(
     "renders $state from the server projection without deriving a replacement state",
@@ -457,20 +544,25 @@ describe("ProjectWorkSection", () => {
       detailLabel,
       detailValue,
       waitingReason,
-      notice,
+      omittedNotice,
       canChangeState,
+      controlLabel,
     }) => {
       const rendered = renderV2(projectWork);
       const stateGrid = rendered.container.querySelector(
-        'dl[aria-label="Project work state"]',
-      )!;
+        'dl[aria-label="Project work state details"]',
+      );
 
-      expect(valueFor(stateGrid, detailLabel)).toContain(detailValue);
-      if (waitingReason) {
+      if (detailLabel && detailValue) {
+        expect(stateGrid).not.toBeNull();
+        expect(valueFor(stateGrid!, detailLabel)).toContain(detailValue);
+      } else {
+        expect(stateGrid).toBeNull();
+      }
+      if (waitingReason && stateGrid) {
         expect(valueFor(stateGrid, "Waiting reason")).toBe(waitingReason);
       }
-      expect(valueFor(stateGrid, "Current work")).toBeNull();
-      expect(rendered.container.textContent).toContain(notice);
+      expect(rendered.container.textContent).not.toContain(omittedNotice);
       expect(rendered.container.textContent).not.toContain(
         "Hidden ordinary work",
       );
@@ -488,7 +580,7 @@ describe("ProjectWorkSection", () => {
 
       const manage = Array.from(
         rendered.container.querySelectorAll("button"),
-      ).find((button) => button.textContent === "Manage project work");
+      ).find((button) => button.textContent === controlLabel);
       if (canChangeState) {
         expect(manage).not.toBeUndefined();
         act(() => manage?.click());
@@ -504,5 +596,4 @@ describe("ProjectWorkSection", () => {
       }
     },
   );
-
 });

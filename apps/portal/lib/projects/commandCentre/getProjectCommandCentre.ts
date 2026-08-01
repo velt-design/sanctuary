@@ -9,10 +9,7 @@ import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import type { Estimate } from '@/lib/types/estimate';
 import { resolveCommandCentreSelection } from './resolve';
 import { buildProjectOwnerSummary } from './projectOwners';
-import {
-  resolveCommandCentreCostingState,
-  summarizeCommandCentreDesign,
-} from './summarizeDesign';
+import { resolveCommandCentreCostingState, summarizeCommandCentreDesign } from './summarizeDesign';
 import {
   COMMAND_CENTRE_COMMERCIAL_RELATIONS_SELECT,
   commandCentreQuoteDeliveryState,
@@ -68,10 +65,7 @@ function parseRecord(value: unknown): AnyRecord | null {
   }
 }
 
-function storedEstimateFromRow(
-  row: AnyRecord,
-  candidate: CommandCentreEstimateCandidate,
-): Estimate | null {
+function storedEstimateFromRow(row: AnyRecord, candidate: CommandCentreEstimateCandidate): Estimate | null {
   const inputs = parseRecord(row.inputs);
   const outputs = parseRecord(row.outputs);
   if (!inputs || !outputs) return null;
@@ -123,20 +117,21 @@ export async function getProjectCommandCentre(
   }
 
   const [projectResult, usesV2ProjectWork] = await Promise.all([
-    supabase
-      .from('projects')
-      .select(PROJECT_COMMAND_CENTRE_SELECT)
-      .eq('id', projectUuid)
-      .maybeSingle(),
+    supabase.from('projects').select(PROJECT_COMMAND_CENTRE_SELECT).eq('id', projectUuid).maybeSingle(),
     isProjectWorkModelV2(supabase, projectUuid),
   ]);
   if (projectResult.error) throw new Error(projectResult.error.message ?? 'Failed to load command centre');
   if (!projectResult.data) return null;
 
   const projectRow = projectResult.data as AnyRecord;
-  const stage = String(projectRow.pipeline_stage ?? 'new').trim().toLowerCase();
+  const stage = String(projectRow.pipeline_stage ?? 'new')
+    .trim()
+    .toLowerCase();
   const { quotes, estimates } = normalizeCommandCentreCommercialCandidates(projectRow);
-  const selection = resolveCommandCentreSelection({ estimates, quoteVersions: quotes });
+  const selection = resolveCommandCentreSelection({
+    estimates,
+    quoteVersions: quotes,
+  });
 
   let selectedDetail: AnyRecord | null = null;
   if (selection.estimate) {
@@ -188,45 +183,50 @@ export async function getProjectCommandCentre(
       : estimate
         ? { source: 'estimate', totalIncGstCents: estimatePriceIncGstCents }
         : { source: 'none', totalIncGstCents: null },
-    estimate: estimate ? {
-      id: estimate.id,
-      versionLabel: estimate.versionLabel,
-      savedAt: estimate.createdAt,
-      isActiveDraft: estimate.status === 'draft' && !estimate.isLocked,
-      isLocked: estimate.isLocked,
-      isQuoteSource: quoteSelected,
-      costingState: resolveCommandCentreCostingState(selectedDetail?.outputs),
-    } : null,
-    quote: quote ? {
-      id: quote.id,
-      quoteRef: quote.quoteRef,
-      versionNumber: quote.versionNumber,
-      status: quote.status,
-      createdAt: quote.createdAt,
-      sentAt: quote.sentAt,
-      deliveryState: commandCentreQuoteDeliveryState(quote),
-    } : null,
-    newerEstimate: selection.newerEstimate ? {
-      id: selection.newerEstimate.id,
-      versionLabel: selection.newerEstimate.versionLabel,
-      savedAt: selection.newerEstimate.createdAt,
-    } : null,
-    latestDeclinedQuote: !quote && selection.latestDeclinedQuote ? {
-      quoteVersionId: selection.latestDeclinedQuote.id,
-      quoteRef: selection.latestDeclinedQuote.quoteRef,
-      versionNumber: selection.latestDeclinedQuote.versionNumber,
-      createdAt: selection.latestDeclinedQuote.createdAt,
-    } : null,
+    estimate: estimate
+      ? {
+          id: estimate.id,
+          versionLabel: estimate.versionLabel,
+          savedAt: estimate.createdAt,
+          isActiveDraft: estimate.status === 'draft' && !estimate.isLocked,
+          isLocked: estimate.isLocked,
+          isQuoteSource: quoteSelected,
+          costingState: resolveCommandCentreCostingState(selectedDetail?.outputs),
+        }
+      : null,
+    quote: quote
+      ? {
+          id: quote.id,
+          quoteRef: quote.quoteRef,
+          versionNumber: quote.versionNumber,
+          status: quote.status,
+          createdAt: quote.createdAt,
+          sentAt: quote.sentAt,
+          deliveryState: commandCentreQuoteDeliveryState(quote),
+        }
+      : null,
+    newerEstimate: selection.newerEstimate
+      ? {
+          id: selection.newerEstimate.id,
+          versionLabel: selection.newerEstimate.versionLabel,
+          savedAt: selection.newerEstimate.createdAt,
+        }
+      : null,
+    latestDeclinedQuote:
+      !quote && selection.latestDeclinedQuote
+        ? {
+            quoteVersionId: selection.latestDeclinedQuote.id,
+            quoteRef: selection.latestDeclinedQuote.quoteRef,
+            versionNumber: selection.latestDeclinedQuote.versionNumber,
+            createdAt: selection.latestDeclinedQuote.createdAt,
+          }
+        : null,
     warnings,
     links: {
       designs: `${basePath}?tab=estimates`,
       quotes: `${basePath}?tab=quotes`,
-      estimate: estimate
-        ? `${basePath}?tab=estimates&estimateId=${encodeURIComponent(estimate.id)}`
-        : null,
-      quote: quote
-        ? `${basePath}?tab=quotes&quoteId=${encodeURIComponent(quote.id)}`
-        : null,
+      estimate: estimate ? `${basePath}?tab=estimates&estimateId=${encodeURIComponent(estimate.id)}` : null,
+      quote: quote ? `${basePath}?tab=quotes&quoteId=${encodeURIComponent(quote.id)}` : null,
     },
   };
 
@@ -238,12 +238,13 @@ export async function getProjectCommandCentre(
   const ownerRow = relationRows(projectRow.ownerAssignment)[0];
   const owner = buildProjectOwnerSummary({
     stage,
-    assignment: ownerRow && trimmedString(ownerRow.owner_key)
-      ? {
-          ownerKey: String(ownerRow.owner_key),
-          updatedAt: isoTimestamp(ownerRow.updated_at) ?? new Date(0).toISOString(),
-        }
-      : null,
+    assignment:
+      ownerRow && trimmedString(ownerRow.owner_key)
+        ? {
+            ownerKey: String(ownerRow.owner_key),
+            updatedAt: isoTimestamp(ownerRow.updated_at) ?? new Date(0).toISOString(),
+          }
+        : null,
     isAdmin: viewer.isAdmin,
   });
   if (usesV2ProjectWork) {
@@ -251,6 +252,7 @@ export async function getProjectCommandCentre(
       supabase,
       projectId,
       projectUuid,
+      stage,
       currentDesign,
     });
     const projectWork = await getProjectWorkProjection({

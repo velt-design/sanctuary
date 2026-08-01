@@ -23,12 +23,14 @@ export default function ProjectJourneyStatus({
   presentation = "panel",
   className,
   ariaLabel = "Project journey and status",
+  showStage = true,
 }: {
   stage: unknown;
   operationalState?: ProjectEffectiveState | null;
   presentation?: "panel" | "embedded";
   className?: string;
   ariaLabel?: string;
+  showStage?: boolean;
 }) {
   const journey = resolveProjectJourney(stage);
   const state = operationalState
@@ -45,6 +47,7 @@ export default function ProjectJourneyStatus({
       data-project-stage={journey.stage ?? undefined}
       data-project-operational-state={operationalState ?? undefined}
       data-has-operational-state={state ? "true" : "false"}
+      data-has-stage={showStage ? "true" : "false"}
       data-presentation={presentation}
     >
       <dl className={styles.facts}>
@@ -52,10 +55,12 @@ export default function ProjectJourneyStatus({
           <dt>Journey</dt>
           <dd>{journey.phaseLabel}</dd>
         </div>
-        <div>
-          <dt>Stage</dt>
-          <dd>{journey.stageLabel}</dd>
-        </div>
+        {showStage ? (
+          <div>
+            <dt>Stage</dt>
+            <dd>{journey.stageLabel}</dd>
+          </div>
+        ) : null}
         {state ? (
           <div>
             <dt>Operational state</dt>

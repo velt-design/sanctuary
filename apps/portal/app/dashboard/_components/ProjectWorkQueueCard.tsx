@@ -2,6 +2,7 @@ import Link from 'next/link';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { ProjectStageBadge } from '@/components/ui/foundation/SanctuaryStatus';
 import {
+  effectiveAssigneeLabel,
   queueDueLabel,
   queueEntryStage,
   type WorkQueueEntryView,
@@ -43,7 +44,10 @@ export default function ProjectWorkQueueCard({
                       <small>{entry.reason}</small>
                     </span>
                     {stage ? <ProjectStageBadge stage={stage} compact /> : <span />}
-                    <span className={dash.queueDue} data-state={entry.group}>{queueDueLabel(entry)}</span>
+                    <span className={dash.queueAccountability}>
+                      <span className={dash.queueOwner}>Owner: {effectiveAssigneeLabel(entry, [])}</span>
+                      <span className={dash.queueDue} data-state={entry.group}>When: {queueDueLabel(entry)}</span>
+                    </span>
                   </Link>
                 </li>
               );

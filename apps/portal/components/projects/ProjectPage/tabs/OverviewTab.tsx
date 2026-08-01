@@ -173,37 +173,23 @@ export default function OverviewTab({
     if (accessEndingStatus !== null) onAccessEnding?.(accessEndingStatus);
   }, [accessEndingStatus, onAccessEnding]);
 
-  const exception = workModelMismatch ? (
-    <AlertBanner
-      tone="warning"
-      title="Project work is updating"
-      action={
-        <Button variant="secondary" onClick={refreshProjectWorkModel}>
-          Retry
-        </Button>
-      }
-    >
-      Project Work is paused until the latest server reads agree.
-    </AlertBanner>
-  ) : commandQuery.data && commandQuery.isError ? (
-    <AlertBanner
-      tone="warning"
-      title="Showing a saved Overview"
-      action={
-        <Button variant="secondary" onClick={() => void commandQuery.refetch()}>
-          Retry
-        </Button>
-      }
-    >
-      The latest refresh failed. Saved Project Work and commercial facts remain
-      visible, with work controls paused.
-    </AlertBanner>
-  ) : commandQuery.data && commandQuery.isFetching ? (
-    <AlertBanner tone="info" title="Refreshing the Overview">
-      Saved server facts remain visible while the latest view loads. Project
-      Work controls are paused.
-    </AlertBanner>
-  ) : null;
+  const exception =
+    commandQuery.data && commandQuery.isError ? (
+      <AlertBanner
+        tone="warning"
+        title="Saved Overview"
+        action={
+          <Button
+            variant="secondary"
+            onClick={() => void commandQuery.refetch()}
+          >
+            Retry
+          </Button>
+        }
+      >
+        Latest refresh failed. Facts remain visible; work controls are paused.
+      </AlertBanner>
+    ) : null;
 
   let projectWork: ReactNode;
   let commercial: ReactNode;
@@ -241,11 +227,6 @@ export default function OverviewTab({
         <ProjectCurrentDesignCommercialCard
           data={commandQuery.data.currentDesign}
           projectId={snapshot.project.id}
-          canRecordDeposit={
-            commandQuery.data.workModel === "v2"
-              && snapshot.project.stage === "sent"
-          }
-          onDepositRecorded={refreshProjectWorkModel}
         />
       </Suspense>
     );
@@ -316,20 +297,13 @@ export default function OverviewTab({
       <ProjectWorkState model="failed">
         <DataStatePanel
           state="error"
-          title="Could not load Project Work"
-          description="No next action is available until the server view loads."
+          title="Could not load the Project Overview"
+          description="No next action or commercial position is available until the server view loads."
           onRetry={() => void commandQuery.refetch()}
         />
       </ProjectWorkState>
     );
-    commercial = (
-      <DataStatePanel
-        state="error"
-        title="Could not load current design and commercial state"
-        description="No commercial fallback has been selected."
-        onRetry={() => void commandQuery.refetch()}
-      />
-    );
+    commercial = null;
   }
 
   const recent = snapshotContentReady ? (
@@ -349,7 +323,6 @@ export default function OverviewTab({
   ) : (
     <Card
       title="Recent notes and events"
-      eyebrow="Bounded project history"
       padding="compact"
       data-recent-notes-events="true"
     >

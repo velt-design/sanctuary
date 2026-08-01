@@ -23,6 +23,7 @@ export function projectsIndexResponseMatchesRequest(
     && response.query.status === params.status
     && response.query.journey === params.journey
     && response.query.state === params.state
+    && response.query.owner === params.owner
     && response.query.sort === params.sort
     && response.projects.page === params.page
     && response.projects.pageSize === params.pageSize;

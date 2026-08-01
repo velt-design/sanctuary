@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { renderIntoDocument } from '../../../../../../../test/reactHarness';
 import type { ProjectCommandCentreCurrentDesign } from '@/lib/projects/commandCentre/types';
 import ProjectCurrentDesignCommercialCard from './ProjectCurrentDesignCommercialCard';
@@ -64,8 +64,6 @@ describe('ProjectCurrentDesignCommercialCard', () => {
   it('keeps exact quote price while clearly marking its source design unavailable', () => {
     const rendered = renderIntoDocument(<ProjectCurrentDesignCommercialCard
       projectId="proj_1"
-      canRecordDeposit
-      onDepositRecorded={vi.fn()}
       data={base({
       source: 'accepted_quote',
       statusLabel: 'Quote accepted',
@@ -90,7 +88,8 @@ describe('ProjectCurrentDesignCommercialCard', () => {
     expect(rendered.container.textContent).toContain('Source design unavailable');
     expect(rendered.container.textContent).toContain('$2,000 inc GST');
     expect(rendered.container.textContent).toContain('no other estimate has been substituted');
-    expect(rendered.container.textContent).toContain('Record deposit received');
+    expect(rendered.container.textContent).not.toContain('Record deposit received');
+    expect(rendered.container.querySelectorAll('button')).toHaveLength(0);
     expect(
       rendered.container
         .querySelector(

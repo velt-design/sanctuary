@@ -1,5 +1,14 @@
 .card {
   min-width: 0;
+  container-type: inline-size;
+}
+
+.card > header {
+  background: var(--ui-surface-secondary);
+}
+
+.card > header h2 {
+  font-size: var(--ui-font-size-card-heading);
 }
 
 .stack,
@@ -7,6 +16,104 @@
   display: grid;
   gap: var(--ui-space-3);
   min-width: 0;
+}
+
+.notices:empty {
+  display: none;
+}
+
+.commercialSummary,
+.emptySummary {
+  min-width: 0;
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-elevated);
+}
+
+.decisionFacts,
+.sourceFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.decisionFacts {
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+}
+
+.sourceFacts {
+  background: var(--ui-surface-secondary);
+}
+
+.decisionFacts > div,
+.sourceFacts > div {
+  min-width: 0;
+  padding: var(--ui-space-4);
+}
+
+.decisionFacts > div + div,
+.sourceFacts > div + div {
+  border-left: var(--ui-border-width) solid var(--ui-border);
+}
+
+.decisionFacts dt,
+.sourceFacts dt {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 600;
+  letter-spacing: var(--ui-letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.decisionFacts dd,
+.sourceFacts dd {
+  margin: var(--ui-space-2) 0 0;
+  color: var(--ui-text-strong);
+  font-family: var(--ui-font-display);
+  font-weight: 600;
+  line-height: var(--ui-line-height-heading);
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.decisionFacts dd {
+  font-size: var(--ui-font-size-section);
+}
+
+.decisionFacts > div[data-emphasis] dd {
+  color: var(--ui-action-text);
+}
+
+.sourceFacts dd {
+  font-size: var(--ui-font-size-card-heading);
+}
+
+.decisionFacts span,
+.sourceFacts span {
+  display: block;
+  margin-top: var(--ui-space-2);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.emptySummary {
+  display: grid;
+  gap: var(--ui-space-1);
+  padding: var(--ui-space-4);
+}
+
+.emptySummary strong {
+  color: var(--ui-text-strong);
+  font-family: var(--ui-font-display);
+  font-size: var(--ui-font-size-card-heading);
+  text-transform: uppercase;
+}
+
+.emptySummary p {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
 }
 
 .links {

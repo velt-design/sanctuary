@@ -538,8 +538,21 @@
 .queueProject { display: grid; min-width: 0; gap: 2px; }
 .queueProject strong { overflow: hidden; color: var(--ui-text-strong); font-size: var(--ui-font-size-small); text-overflow: ellipsis; white-space: nowrap; }
 .queueProject small { overflow: hidden; color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); text-overflow: ellipsis; white-space: nowrap; }
+.queueAccountability {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  min-width: 0;
+}
+.queueOwner {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .queueDue {
-  justify-self: end;
   color: var(--ui-text-muted);
   font-size: var(--ui-font-size-caption);
   font-weight: 700;
@@ -764,6 +777,7 @@
   .taskAddButton { width: 100%; }
   .queueRow { grid-template-columns: minmax(0, 1fr) auto; }
   .queueRow > :first-child { grid-column: 1 / -1; }
+  .queueAccountability { max-width: 132px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

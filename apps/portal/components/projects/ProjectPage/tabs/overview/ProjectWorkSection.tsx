@@ -5,7 +5,12 @@ import { fetchProjectStaffDirectory } from "@/lib/projects/commandCentre/client"
 import type { ProjectCommandStaffSummary } from "@/lib/projects/commandCentre/types";
 import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type { ProjectWorkProjection } from "@/lib/projects/workItems/types";
+import { isApprovedSiteVisitSpecialistIdentity } from "@/lib/projects/workItems/prohibitedWork";
 import { isGenericCompletableWorkSource } from "@/lib/projects/workItems/workItemCapabilities";
+import {
+  projectClosedOutcomeLabel,
+  projectWorkResponsibilityLabel,
+} from "@/lib/projects/workItems/presentation";
 import { qk } from "@/lib/queries/keys";
 import {
   ActionPanel,
@@ -22,7 +27,6 @@ import {
   formatProjectWorkDue,
   isDecisionReviewWorkItem,
   projectWorkAssigneeLabel,
-  projectWorkStateLabel,
 } from "./projectWorkPresentation";
 import {
   useProjectWorkCommandController,
@@ -55,14 +59,15 @@ function primaryPresentation(
   const { primary, primaryItem } = controller;
   const title =
     primary.kind === "workItem" ? primary.item.title : primary.title;
-  const reason =
-    primary.kind === "workItem"
-      ? null
-      : primary.reason;
+  const reason = primary.reason;
   const href =
-    (primary.kind === "recovery" || primary.kind === "specialist") &&
-    !/site[\s_-]*visits?/i.test(primary.href ?? "")
+    primary.kind === "recovery" || primary.kind === "specialist"
       ? primary.href
+      : null;
+  const actionLabel =
+    primary.kind === "recovery" || primary.kind === "specialist"
+      ? (primary.actionLabel ??
+        (primary.kind === "recovery" ? "Review recovery" : "Open workflow"))
       : null;
   const badge =
     primary.kind === "workItem"
@@ -72,11 +77,11 @@ function primaryPresentation(
           ? "Overdue"
           : primary.dueState === "today"
             ? "Due today"
-            : formatProjectWorkDue(primary.item.dueAt)
+            : "Upcoming"
       : primary.kind === "needsTriage" || primary.kind === "stateReview"
         ? "Review"
         : primary.kind === "none"
-          ? "Status"
+          ? null
           : "Ready";
   const owner =
     primary.kind === "workItem"
@@ -92,19 +97,39 @@ function primaryPresentation(
         : "Not provided";
   const expectedResult =
     primary.kind === "specialist" ? primary.expectedResult : null;
+  const details =
+    primary.kind === "workItem"
+      ? [
+          { label: "Owner", value: owner },
+          { label: "Due", value: due },
+          {
+            label: "Area",
+            value: projectWorkResponsibilityLabel(
+              primary.item.responsibilityArea,
+            ),
+          },
+        ]
+      : primary.kind === "specialist"
+        ? [
+            { label: "Owner", value: owner },
+            { label: "When", value: "Ready now" },
+          ]
+        : primary.kind === "stateReview"
+          ? [{ label: "Due", value: due }]
+          : [];
 
   return {
     title,
     reason,
     href,
+    actionLabel,
     badge,
-    owner,
-    due,
+    details,
     expectedResult,
     tone:
       primary.kind === "workItem" && primary.dueState === "critical"
         ? ("critical" as const)
-        : ("inverse" as const),
+        : ("default" as const),
     statusTone:
       badge === "Critical"
         ? ("error" as const)
@@ -149,35 +174,27 @@ export default function ProjectWorkSection({
   const staff = staffQuery.data ?? [];
   const primary = primaryPresentation(controller, staff);
   const active = controller.projection.effectiveState === "ACTIVE";
+  const siteVisitCompleted = controller.projection.confirmedFacts.some(
+    (fact) => fact.type === "SITE_VISIT_COMPLETED",
+  );
+  const siteVisitPrimary =
+    controller.primary.kind === "specialist" &&
+    isApprovedSiteVisitSpecialistIdentity({
+      actionKind: controller.primary.kind,
+      key: controller.primary.key,
+      href: controller.primary.href,
+    });
   const prohibitedPrimary = isProhibitedProjectWorkPrimary(controller.primary);
   const blockedPrimary =
     active &&
     controller.primary.kind === "workItem" &&
     controller.primary.item.status === "BLOCKED";
-  const visibleOpenItems = controller.projection.openItems.filter(
-    (item) => !isProhibitedProjectWorkItem(item),
-  );
-  const visibleBlockedItems = controller.projection.blockedItems.filter(
-    (item) => !isProhibitedProjectWorkItem(item),
-  );
   const ordinaryPrimarySuppressed =
     !active &&
     (controller.primary.kind === "workItem" ||
       controller.primary.kind === "recovery" ||
       controller.primary.kind === "specialist");
   const stateItems = [
-    {
-      label: "Operational state",
-      value: projectWorkStateLabel(controller.projection.effectiveState),
-    },
-    ...(active
-      ? [
-          {
-            label: "Current work",
-            value: `${visibleOpenItems.length} open · ${visibleBlockedItems.length} blocked`,
-          },
-        ]
-      : []),
     ...(controller.projection.effectiveState === "WAITING"
       ? [
           {
@@ -196,34 +213,13 @@ export default function ProjectWorkSection({
       ? [
           {
             label: "Outcome",
-            value:
-              controller.projection.closedOutcome
-                ?.replaceAll("_", " ")
-                .toLowerCase() ?? "Not provided",
+            value: projectClosedOutcomeLabel(
+              controller.projection.closedOutcome,
+            ),
           },
         ]
       : []),
   ];
-  const nonActiveNotice =
-    controller.projection.effectiveState === "WAITING"
-      ? {
-          title: "Ordinary project work is paused",
-          detail:
-            "Only the server-provided waiting review and operational-state controls are available.",
-        }
-      : controller.projection.effectiveState === "CLOSED"
-        ? {
-            title: "Closed project work is paused",
-            detail:
-              "Reopen the project through its operational state before creating or acting on work.",
-          }
-        : controller.projection.effectiveState === "ARCHIVED"
-          ? {
-              title: "Archived project work is read-only",
-              detail:
-                "Archived projects expose no active Project Work or mutation controls.",
-            }
-          : null;
 
   return (
     <Card
@@ -232,41 +228,23 @@ export default function ProjectWorkSection({
       data-project-work-model="v2"
       aria-label="Project Work"
       title="Project Work"
-      eyebrow="Server-ranked next action"
+      eyebrow="Next project action"
       padding="compact"
-      action={
-        <Badge
-          tone={
-            controller.projection.effectiveState === "WAITING"
-              ? "warning"
-              : "neutral"
-          }
-        >
-          {projectWorkStateLabel(controller.projection.effectiveState)}
-        </Badge>
-      }
     >
       <div className={styles.stack}>
-        <KeyValueGrid
-          columns={stateItems.length > 2 ? 3 : 2}
-          ariaLabel="Project work state"
-          items={stateItems}
-        />
-
-        {active && visibleBlockedItems.length && !blockedPrimary ? (
-          <AlertBanner
-            tone="blocking"
-            title={`${visibleBlockedItems.length} blocked project-work ${visibleBlockedItems.length === 1 ? "item" : "items"}`}
-          >
-            Blocked work stays visible below but cannot become an enabled
-            primary action.
-          </AlertBanner>
+        {stateItems.length ? (
+          <KeyValueGrid
+            columns={stateItems.length === 1 ? 1 : 2}
+            ariaLabel="Project work state details"
+            items={stateItems}
+          />
         ) : null}
 
         {prohibitedPrimary ? (
           <AlertBanner tone="blocking" title="Legacy work needs review">
-            A retired legacy, Call, or Site Visit action is server-selected. It
-            stays hidden and no browser replacement is chosen.
+            A retired legacy, Call, or unapproved Site Visit action is
+            server-selected. It stays hidden and no browser replacement is
+            chosen.
           </AlertBanner>
         ) : ordinaryPrimarySuppressed ? (
           <AlertBanner tone="warning" title="Project work state needs review">
@@ -274,99 +252,146 @@ export default function ProjectWorkSection({
             browser action is available.
           </AlertBanner>
         ) : blockedPrimary ? (
-          <AlertBanner tone="blocking" title="Blocked project work needs review">
+          <AlertBanner
+            tone="blocking"
+            title="Blocked project work needs review"
+          >
             The server selected blocked work as the primary action. It remains
             visible below as an exception, but no action is enabled until the
             server returns it to open work.
           </AlertBanner>
         ) : (
           <ActionPanel
+            className={styles.primaryAction}
+            data-primary-project-work="true"
             title={primary.title}
             eyebrow={
-              controller.primary.kind === "workItem"
-                ? "Primary project work"
+              controller.primary.kind === "workItem" ||
+              controller.primary.kind === "specialist" ||
+              controller.primary.kind === "recovery"
+                ? "Do this next"
                 : "Project state"
             }
             tone={primary.tone}
-            status={<Badge tone={primary.statusTone}>{primary.badge}</Badge>}
+            status={
+              primary.badge ? (
+                <Badge
+                  className={styles.primaryStatus}
+                  tone={primary.statusTone}
+                >
+                  {primary.badge}
+                </Badge>
+              ) : undefined
+            }
             footer={
-              <div className={styles.inlineActions}>
-                {active && primary.href ? (
-                  <ButtonLink href={primary.href}>Open</ButtonLink>
-                ) : null}
-                {active &&
-                primary.primaryItem &&
-                isGenericCompletableWorkSource(
-                  primary.primaryItem.sourceType,
-                ) ? (
-                  <Button
-                    loading={
-                      controller.pendingItemId === primary.primaryItem.id
-                    }
-                    disabled={controller.pending || controller.stale}
-                    onClick={() =>
-                      void controller.runItemAction(
-                        primary.primaryItem!,
-                        "complete",
-                      )
-                    }
-                  >
-                    Complete
-                  </Button>
-                ) : null}
-                {active &&
-                controller.primarySentCommand &&
-                primary.primaryItem ? (
-                  <Button
-                    loading={
-                      controller.pendingItemId === primary.primaryItem.id
-                    }
-                    disabled={controller.pending || controller.stale}
-                    onClick={() =>
-                      void controller.runItemAction(
-                        primary.primaryItem!,
-                        "sent",
-                      )
-                    }
-                  >
-                    Email sent
-                  </Button>
-                ) : null}
-                {active &&
-                controller.primaryCanRecordReply &&
-                primary.primaryItem ? (
-                  <Button
-                    variant="secondary"
-                    disabled={controller.pending || controller.stale}
-                    onClick={() =>
-                      void controller.runItemAction(
-                        primary.primaryItem!,
-                        "reply",
-                      )
-                    }
-                  >
-                    Customer replied
-                  </Button>
-                ) : null}
+              <div className={styles.commandArea}>
+                {controller.primarySentCommand ? (
+                  <p className={styles.commandHelp}>
+                    <strong>Send externally first.</strong> Then record the
+                    outcome.
+                  </p>
+                ) : (
+                  <span className={styles.commandLabel}>
+                    {primary.href
+                      ? "Continue in the owning workflow"
+                      : "Record the outcome"}
+                  </span>
+                )}
+                <div className={styles.inlineActions}>
+                  {active && primary.href ? (
+                    <ButtonLink href={primary.href} disabled={controller.stale}>
+                      {primary.actionLabel}
+                    </ButtonLink>
+                  ) : null}
+                  {active &&
+                  pipelineStage.trim().toLowerCase() === "site_visit" &&
+                  siteVisitPrimary &&
+                  !siteVisitCompleted ? (
+                    <Button
+                      variant="secondary"
+                      loading={controller.pending}
+                      disabled={controller.pending || controller.stale}
+                      onClick={() => void controller.recordSiteVisitCompleted()}
+                    >
+                      Record visit complete
+                    </Button>
+                  ) : null}
+                  {active &&
+                  primary.primaryItem &&
+                  isGenericCompletableWorkSource(
+                    primary.primaryItem.sourceType,
+                  ) ? (
+                    <Button
+                      loading={
+                        controller.pendingItemId === primary.primaryItem.id
+                      }
+                      disabled={controller.pending || controller.stale}
+                      onClick={() =>
+                        void controller.runItemAction(
+                          primary.primaryItem!,
+                          "complete",
+                        )
+                      }
+                    >
+                      Mark complete
+                    </Button>
+                  ) : null}
+                  {active &&
+                  controller.primarySentCommand &&
+                  primary.primaryItem ? (
+                    <Button
+                      loading={
+                        controller.pendingItemId === primary.primaryItem.id
+                      }
+                      disabled={controller.pending || controller.stale}
+                      onClick={() =>
+                        void controller.runItemAction(
+                          primary.primaryItem!,
+                          "sent",
+                        )
+                      }
+                    >
+                      Record email sent
+                    </Button>
+                  ) : null}
+                  {active &&
+                  controller.primaryCanRecordReply &&
+                  primary.primaryItem ? (
+                    <Button
+                      variant="tertiary"
+                      disabled={controller.pending || controller.stale}
+                      onClick={() =>
+                        void controller.runItemAction(
+                          primary.primaryItem!,
+                          "reply",
+                        )
+                      }
+                    >
+                      Record customer reply
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             }
           >
             {primary.reason ? (
-              <p className={styles.reason}>{primary.reason}</p>
+              <p className={styles.reason} data-primary-work-reason="true">
+                {primary.reason}
+              </p>
             ) : null}
-            <KeyValueGrid
-              columns={3}
-              items={[
-                { label: "Owner", value: primary.owner },
-                { label: "Due", value: primary.due },
-                {
-                  label: "Source",
-                  value: primary.primaryItem
-                    ? primary.primaryItem.responsibilityArea.toLowerCase()
-                    : controller.primary.kind,
-                },
-              ]}
-            />
+            {primary.details.length ? (
+              <KeyValueGrid
+                className={styles.primaryFacts}
+                columns={
+                  primary.details.length >= 3
+                    ? 3
+                    : primary.details.length === 2
+                      ? 2
+                      : 1
+                }
+                items={primary.details}
+              />
+            ) : null}
             {primary.expectedResult ? (
               <KeyValueGrid
                 columns={1}
@@ -396,10 +421,6 @@ export default function ProjectWorkSection({
 
         {active ? (
           <ProjectWorkList controller={controller} staff={staff} />
-        ) : nonActiveNotice ? (
-          <AlertBanner tone="info" title={nonActiveNotice.title}>
-            {nonActiveNotice.detail}
-          </AlertBanner>
         ) : null}
 
         <ProjectWorkControls
@@ -407,13 +428,14 @@ export default function ProjectWorkSection({
           projectId={projectId}
           host={host}
           pipelineStage={pipelineStage}
+          siteVisitActionProminent={siteVisitPrimary}
           onRefresh={onRefresh}
         />
 
         {controller.stale ? (
-          <AlertBanner tone="warning" title="Work controls paused">
-            Refresh the Overview before changing project work.
-          </AlertBanner>
+          <p className={styles.pausedNotice} role="status">
+            Work controls paused until the Overview refresh completes.
+          </p>
         ) : null}
         {controller.message ? (
           <AlertBanner tone="info" title="Project work updated">

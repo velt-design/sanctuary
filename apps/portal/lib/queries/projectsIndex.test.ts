@@ -25,6 +25,7 @@ describe('projects index query', () => {
       status: 'QUOTING',
       journey: 'PROPOSAL',
       state: 'WAITING',
+      owner: 'all',
       page: 2,
       pageSize: 25,
       sort: 'name_asc',

@@ -2,13 +2,7 @@
 
 import type { ProjectCommandStaffSummary } from "@/lib/projects/commandCentre/types";
 import { isGenericCompletableWorkSource } from "@/lib/projects/workItems/workItemCapabilities";
-import {
-  Badge,
-  Button,
-  EmptyState,
-  TaskList,
-  TaskRow,
-} from "@/components/ui/foundation";
+import { Badge, Button, TaskList, TaskRow } from "@/components/ui/foundation";
 import type { ProjectWorkCommandController } from "./useProjectWorkCommandController";
 import {
   formatProjectWorkDue,
@@ -39,6 +33,7 @@ export default function ProjectWorkList(props: ProjectWorkListProps) {
     (item) => item.id !== primaryId && !isProhibitedProjectWorkItem(item),
   );
   const items = [...visibleOpenItems, ...visibleBlockedItems];
+  if (!items.length) return null;
 
   return (
     <section
@@ -69,92 +64,81 @@ export default function ProjectWorkList(props: ProjectWorkListProps) {
         </div>
       </div>
 
-      {items.length ? (
-        <TaskList ariaLabel="Other project work">
-          {items.map((item) => {
-            const sendCommand = sentCommandForWorkItem(item);
-            const cadence = isCadenceWorkItem(item);
-            const blocked = item.status === "BLOCKED";
-            const itemPending = props.controller.pendingItemId === item.id;
-            const controlsDisabled =
-              props.controller.pending || props.controller.stale || blocked;
-            const description = blocked
-              ? `${item.blockedReason ?? "This work is blocked."} · ${projectWorkAssigneeLabel(item, props.staff)}`
-              : `${item.responsibilityArea.toLowerCase()} · ${projectWorkAssigneeLabel(item, props.staff)} · Due ${formatProjectWorkDue(item.dueAt)}`;
-            return (
-              <TaskRow
-                key={item.id}
-                checked={false}
-                showControl={false}
-                label={item.title}
-                description={description}
-                status={
-                  <div className={styles.badges}>
-                    {item.priority === "CRITICAL" ? (
-                      <Badge tone="error">Critical</Badge>
+      <TaskList ariaLabel="Other project work">
+        {items.map((item) => {
+          const sendCommand = sentCommandForWorkItem(item);
+          const cadence = isCadenceWorkItem(item);
+          const blocked = item.status === "BLOCKED";
+          const itemPending = props.controller.pendingItemId === item.id;
+          const controlsDisabled =
+            props.controller.pending || props.controller.stale || blocked;
+          const description = blocked
+            ? `${item.blockedReason ?? "This work is blocked."} · ${projectWorkAssigneeLabel(item, props.staff)}`
+            : `${item.responsibilityArea.toLowerCase()} · ${projectWorkAssigneeLabel(item, props.staff)} · Due ${formatProjectWorkDue(item.dueAt)}`;
+          return (
+            <TaskRow
+              key={item.id}
+              checked={false}
+              showControl={false}
+              label={item.title}
+              description={description}
+              status={
+                <div className={styles.badges}>
+                  {item.priority === "CRITICAL" ? (
+                    <Badge tone="error">Critical</Badge>
+                  ) : null}
+                  {blocked ? <Badge tone="error">Blocked</Badge> : null}
+                  {!blocked && isDecisionReviewWorkItem(item) ? (
+                    <Badge tone="warning">Decision required</Badge>
+                  ) : null}
+                </div>
+              }
+              actions={
+                !blocked ? (
+                  <div className={styles.rowActions}>
+                    {sendCommand ? (
+                      <Button
+                        size="small"
+                        loading={itemPending}
+                        disabled={controlsDisabled}
+                        onClick={() =>
+                          void props.controller.runItemAction(item, "sent")
+                        }
+                      >
+                        Record email sent
+                      </Button>
                     ) : null}
-                    {blocked ? <Badge tone="error">Blocked</Badge> : null}
-                    {!blocked && isDecisionReviewWorkItem(item) ? (
-                      <Badge tone="warning">Decision required</Badge>
+                    {cadence ? (
+                      <Button
+                        size="small"
+                        variant="secondary"
+                        disabled={controlsDisabled}
+                        onClick={() =>
+                          void props.controller.runItemAction(item, "reply")
+                        }
+                      >
+                        Record customer reply
+                      </Button>
+                    ) : null}
+                    {isGenericCompletableWorkSource(item.sourceType) ? (
+                      <Button
+                        size="small"
+                        loading={itemPending}
+                        disabled={controlsDisabled}
+                        onClick={() =>
+                          void props.controller.runItemAction(item, "complete")
+                        }
+                      >
+                        Mark complete
+                      </Button>
                     ) : null}
                   </div>
-                }
-                actions={
-                  !blocked ? (
-                    <div className={styles.rowActions}>
-                      {sendCommand ? (
-                        <Button
-                          size="small"
-                          loading={itemPending}
-                          disabled={controlsDisabled}
-                          onClick={() =>
-                            void props.controller.runItemAction(item, "sent")
-                          }
-                        >
-                          Email sent
-                        </Button>
-                      ) : null}
-                      {cadence ? (
-                        <Button
-                          size="small"
-                          variant="secondary"
-                          disabled={controlsDisabled}
-                          onClick={() =>
-                            void props.controller.runItemAction(item, "reply")
-                          }
-                        >
-                          Customer replied
-                        </Button>
-                      ) : null}
-                      {isGenericCompletableWorkSource(item.sourceType) ? (
-                        <Button
-                          size="small"
-                          loading={itemPending}
-                          disabled={controlsDisabled}
-                          onClick={() =>
-                            void props.controller.runItemAction(
-                              item,
-                              "complete",
-                            )
-                          }
-                        >
-                          Complete
-                        </Button>
-                      ) : null}
-                    </div>
-                  ) : null
-                }
-              />
-            );
-          })}
-        </TaskList>
-      ) : (
-        <EmptyState
-          compact
-          title="No other open work"
-          description="The primary action above is the only current work selected by the server."
-        />
-      )}
+                ) : null
+              }
+            />
+          );
+        })}
+      </TaskList>
     </section>
   );
 }

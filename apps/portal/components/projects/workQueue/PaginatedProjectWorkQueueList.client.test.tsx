@@ -31,6 +31,24 @@ vi.mock('next/link', () => ({
 function entries(count: number): WorkQueueEntryView[] {
   return Array.from({ length: count }, (_, index) => ({
     projectId: `proj_${index + 1}`,
+    projectName: `Project ${index + 1}`,
+    stage: 'contacted',
+    group: 'today',
+    actionKind: 'workItem',
+    title: 'Follow up',
+    reason: 'Customer follow-up is due.',
+    dueAt: '2026-07-31T00:00:00.000Z',
+    priority: null,
+    blockedReason: null,
+    effectiveAssignee: { kind: 'unassigned' },
+    workItemId: null,
+    workItemRowVersion: null,
+    stateRowVersion: 1,
+    sourceType: null,
+    sourceKey: null,
+    subjectKind: null,
+    subjectId: null,
+    href: `/staff/projects/proj_${index + 1}`,
   })) as WorkQueueEntryView[];
 }
 

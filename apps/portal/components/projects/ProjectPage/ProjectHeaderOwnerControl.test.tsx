@@ -70,7 +70,7 @@ const project = {
 
 function response(
   owner: {
-    key: "jordan" | "jp" | "joe" | "bruce";
+    key: "ellen" | "jordan" | "jp" | "joe" | "bruce" | "dave";
     displayName: string;
   } | null,
 ) {
@@ -148,6 +148,33 @@ describe("ProjectHeaderOwnerControl", () => {
     );
     expect(control?.textContent).toContain("Unassigned");
     expect(control?.textContent).not.toContain("Jordan");
+
+    rendered.unmount();
+  });
+
+  it("keeps Enquiry ownership with Ellen and explains the manual Proposal handoff", () => {
+    const rendered = renderOwnerControl(
+      response({ key: "ellen", displayName: "Ellen" }),
+    );
+
+    act(() => {
+      rendered.container
+        .querySelector<HTMLButtonElement>(
+          'button[aria-label^="Manage project owner"]',
+        )
+        ?.click();
+    });
+
+    expect(rendered.container.textContent).toContain(
+      "Ellen owns every Enquiry project",
+    );
+    const options = Array.from(rendered.container.querySelectorAll("option"));
+    expect(options.find((option) => option.value === "ellen")?.disabled).toBe(
+      false,
+    );
+    expect(options.find((option) => option.value === "dave")?.disabled).toBe(
+      true,
+    );
 
     rendered.unmount();
   });

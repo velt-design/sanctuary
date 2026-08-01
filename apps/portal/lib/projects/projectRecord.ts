@@ -6,6 +6,11 @@ import {
 } from '@/lib/types/project';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import type { ProjectOperationalState } from '@/lib/projects/workItems/types';
+import {
+  PROJECT_CLOSED_OUTCOMES,
+  type ProjectClosedOutcome,
+} from '@/lib/projects/workItems/types';
+import { isProjectOwnerKey } from '@/lib/projects/commandCentre/projectOwners';
 import { nowIso } from '@/lib/utils/time';
 
 function operationalState(value: unknown): ProjectOperationalState | undefined {
@@ -19,6 +24,13 @@ function effectiveState(value: unknown): ProjectEffectiveState | undefined {
     && PROJECT_EFFECTIVE_STATES.includes(value as ProjectEffectiveState)
     ? value as ProjectEffectiveState
     : undefined;
+}
+
+function closedOutcome(value: unknown): ProjectClosedOutcome | null {
+  return typeof value === 'string'
+    && PROJECT_CLOSED_OUTCOMES.includes(value as ProjectClosedOutcome)
+    ? value as ProjectClosedOutcome
+    : null;
 }
 
 export function mapProjectRecord(row: Record<string, unknown>): Project {
@@ -44,6 +56,12 @@ export function mapProjectRecord(row: Record<string, unknown>): Project {
     status: normalized.status,
     operationalState: operationalState(row.operational_state),
     effectiveState: effectiveState(row.effective_state),
+    projectOwnerKey: isProjectOwnerKey(row.project_owner_key)
+      ? row.project_owner_key
+      : null,
+    waitingUntil: typeof row.waiting_until === 'string' ? row.waiting_until : null,
+    waitingReason: typeof row.waiting_reason === 'string' ? row.waiting_reason : null,
+    closedOutcome: closedOutcome(row.closed_outcome),
     isLost: normalized.isLost,
     isArchived: typeof row.archived_at === 'string' ? true : normalized.isArchived,
     legacyStatus: normalized.legacyStatus,

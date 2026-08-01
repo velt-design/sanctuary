@@ -61,7 +61,12 @@ function projection({
     waitingReason: null,
     closedOutcome: null,
     stateRowVersion: 1,
-    primaryAction: { kind: "workItem", item: primary, dueState: "today" },
+    primaryAction: {
+      kind: "workItem",
+      item: primary,
+      dueState: "today",
+      reason: "This work is due today.",
+    },
     openItems,
     blockedItems,
     confirmedFacts: [],
@@ -105,6 +110,23 @@ function rowWith(container: HTMLElement, text: string): HTMLLIElement {
 describe("ProjectWorkList", () => {
   afterEach(() => {
     document.body.innerHTML = "";
+  });
+
+  it("renders nothing when the server selected the only current item", () => {
+    const primary = workItem();
+    const rendered = renderIntoDocument(
+      <ProjectWorkList
+        controller={controllerFor(
+          projection({ primary, openItems: [primary] }),
+        )}
+      />,
+    );
+
+    expect(rendered.container.textContent).toBe("");
+    expect(
+      rendered.container.querySelector('[data-project-work-list="v2"]'),
+    ).toBeNull();
+    rendered.unmount();
   });
 
   it("keeps the primary item out of the list and routes email/manual actions through the controller", async () => {
@@ -156,16 +178,16 @@ describe("ProjectWorkList", () => {
     expect(emailRow.textContent).toContain("Assigned staff");
     expect(emailRow.textContent).toContain("Due");
     const emailSent = Array.from(emailRow.querySelectorAll("button")).find(
-      (button) => button.textContent === "Email sent",
+      (button) => button.textContent === "Record email sent",
     )!;
     const customerReplied = Array.from(
       emailRow.querySelectorAll("button"),
-    ).find((button) => button.textContent === "Customer replied")!;
+    ).find((button) => button.textContent === "Record customer reply")!;
 
     const stageReviewRow = rowWith(rendered.container, stageReview.title);
     expect(stageReviewRow.textContent).toContain("Jordan");
     const complete = Array.from(stageReviewRow.querySelectorAll("button")).find(
-      (button) => button.textContent === "Complete",
+      (button) => button.textContent === "Mark complete",
     )!;
 
     const blockedRow = rowWith(rendered.container, blocked.title);
@@ -224,5 +246,4 @@ describe("ProjectWorkList", () => {
     expect(runItemAction).not.toHaveBeenCalled();
     rendered.unmount();
   });
-
 });
