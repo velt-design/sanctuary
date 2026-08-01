@@ -322,16 +322,22 @@ const initialSnapshot: ScheduleV2Snapshot = {
 };
 
 const CREW_UUID = '00000000-0000-4000-8000-000000000001';
+const SECOND_CREW_UUID = '00000000-0000-4000-8000-000000000002';
 const ALPHA_PROJECT_UUID = '00000000-0000-4000-8000-000000000101';
 const ALPHA_ESTIMATE_UUID = '00000000-0000-4000-8000-000000000201';
 const BETA_PROJECT_UUID = '00000000-0000-4000-8000-000000000102';
+const GAMMA_PROJECT_UUID = '00000000-0000-4000-8000-000000000103';
 const BETA_ESTIMATE_UUID = '00000000-0000-4000-8000-000000000202';
+const GAMMA_ESTIMATE_UUID = '00000000-0000-4000-8000-000000000203';
 const SCHEDULE_ITEM_UUID = '00000000-0000-4000-8000-000000000301';
 const BETA_SCHEDULE_ITEM_UUID = '00000000-0000-4000-8000-000000000302';
+const GAMMA_SCHEDULE_ITEM_UUID = '00000000-0000-4000-8000-000000000303';
 const SCHEDULED_JOB_UUID = '00000000-0000-4000-8000-000000000401';
 const BETA_SCHEDULED_JOB_UUID = '00000000-0000-4000-8000-000000000402';
+const GAMMA_SCHEDULED_JOB_UUID = '00000000-0000-4000-8000-000000000403';
 
 const crewId = `crew_${CREW_UUID}`;
+const secondCrewId = `crew_${SECOND_CREW_UUID}`;
 const alphaProjectId = `proj_${ALPHA_PROJECT_UUID}`;
 const alphaEstimateId = `est_${ALPHA_ESTIMATE_UUID}`;
 const betaProjectId = `proj_${BETA_PROJECT_UUID}`;
@@ -361,6 +367,7 @@ function crewJobMutationItem(input: {
   endExclusive: string;
   durationDays: number;
   mode?: 'floating' | 'pinned';
+  crewUuid?: string;
 }) {
   return {
     id: input.scheduleItemId,
@@ -372,7 +379,7 @@ function crewJobMutationItem(input: {
     job: {
       id: input.scheduledJobId,
       job_id: input.projectId,
-      crew_id: CREW_UUID,
+      crew_id: input.crewUuid ?? CREW_UUID,
       mode: input.mode ?? 'floating',
       planned_commitment_type: null,
       planned_week_start: null,
@@ -394,12 +401,13 @@ function crewJobMutationItem(input: {
 function crewMutationResponse(
   items: ReturnType<typeof crewJobMutationItem>[],
   nextAvailableDate: string,
+  crewUuid = CREW_UUID,
 ) {
   return {
     ok: true,
-    crew_id: CREW_UUID,
+    crew_id: crewUuid,
     schedule: {
-      crew_id: CREW_UUID,
+      crew_id: crewUuid,
       items,
       conflicts: [],
       next_available_date: nextAvailableDate,
@@ -2020,7 +2028,7 @@ describe('ScheduleClient', () => {
     expect(assignJob).toHaveBeenLastCalledWith(expect.objectContaining({ force: false }));
     expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
     expect(toastMocks.success).not.toHaveBeenCalledWith('Job scheduled.');
-    expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeCancellation);
+    expect(scheduleSnapshotQueryFn.mock.calls.length).toBe(fetchesBeforeCancellation);
 
     rendered.unmount();
   });
@@ -2302,7 +2310,7 @@ describe('ScheduleClient', () => {
     rendered.unmount();
   });
 
-  it('blocks another mutation until an ambiguous-failure refetch returns the authoritative snapshot', async () => {
+  it('keeps the Board movable while one ambiguous placement is being verified', async () => {
     vi.useFakeTimers();
     const snapshot = boardMutationSnapshot();
     const authoritativeSnapshot = {
@@ -2355,17 +2363,11 @@ describe('ScheduleClient', () => {
     expect(scheduleSnapshotQueryFn).toHaveBeenCalledTimes(1);
     expect(rendered.container.textContent).not.toMatch(/Refreshing|Saving|Saved|Checking saved schedule/);
     expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
-    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ disabled: true });
-    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).not.toContain('Beta Deck');
-
-    act(dropBetaIntoCrew);
-    await act(async () => {
-      vi.advanceTimersByTime(200);
-      await Promise.resolve();
-      await Promise.resolve();
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({
+      moveDisabled: false,
+      actionDisabled: true,
+      blockedLaneIds: [],
     });
-
-    expect(assignJob).toHaveBeenCalledTimes(1);
     expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).not.toContain('Beta Deck');
 
     await act(async () => {
@@ -2379,6 +2381,7 @@ describe('ScheduleClient', () => {
 
     expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
     expect(dndMocks.latestBoardProps.mutationNotice).toMatchObject({ tone: 'error', actionLabel: 'Retry' });
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ moveDisabled: false });
     expect(rendered.container.textContent).not.toMatch(/Refreshing|Saving|Saved|Checking saved schedule/);
 
     rendered.unmount();
@@ -2459,7 +2462,7 @@ describe('ScheduleClient', () => {
 
     expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).not.toContain('Beta Deck');
     expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
-    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ disabled: false });
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ moveDisabled: false, actionDisabled: false });
     expect(toastMocks.error).not.toHaveBeenCalled();
     expect(rendered.container.textContent).not.toMatch(/Refreshing|Saving|Saved|Checking saved schedule/);
     rendered.unmount();
@@ -2511,7 +2514,12 @@ describe('ScheduleClient', () => {
       tone: 'warning',
       actionLabel: 'Refresh',
     });
-    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ disabled: true });
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({
+      moveDisabled: false,
+      actionDisabled: true,
+      blockedLaneIds: [crewId],
+      blockedProjectIds: [betaProjectId],
+    });
     expect(toastMocks.error).not.toHaveBeenCalled();
     expect(rendered.container.textContent).not.toContain('Schedule may be out of date');
     rendered.unmount();
@@ -2563,7 +2571,7 @@ describe('ScheduleClient', () => {
     });
     expect(assignJob).toHaveBeenCalledTimes(1);
     expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
-    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ disabled: true });
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ moveDisabled: false, actionDisabled: true });
     expect(first.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).not.toContain('Beta Deck');
     const boardKey = qk.schedule.board('example.supabase.co', '2026-04-07');
     expect(
@@ -2585,7 +2593,7 @@ describe('ScheduleClient', () => {
 
     expect(second.container.textContent).toContain('Beta Deck');
     expect(second.container.textContent).not.toMatch(/Refreshing|Saving|Saved|Checking saved schedule/);
-    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ disabled: true });
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ moveDisabled: true, actionDisabled: true });
 
     act(dropBetaIntoCrew);
     await act(async () => {
@@ -2594,7 +2602,7 @@ describe('ScheduleClient', () => {
     });
     expect(assignJob).toHaveBeenCalledTimes(1);
     expect(toastMocks.info).toHaveBeenCalledWith(
-      'Another schedule change is still saving. Try again in a moment.',
+      'The schedule is refreshing. Try again when the latest saved version is visible.',
     );
 
     const fetchesBeforeSettlement = scheduleSnapshotQueryFn.mock.calls.length;
@@ -2932,6 +2940,344 @@ describe('ScheduleClient', () => {
     expect(toastMocks.success).not.toHaveBeenCalledWith('Job scheduled.');
     expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
 
+    rendered.unmount();
+  });
+
+  it('keeps the latest same-lane order visible while overlapping saves queue in the background', async () => {
+    const snapshot = boardMutationSnapshot();
+    snapshot.unscheduledJobs = [];
+    snapshot.scheduleItems.push({
+      ...snapshot.scheduleItems[0],
+      id: `sch_${BETA_SCHEDULE_ITEM_UUID}`,
+      projectId: betaProjectId,
+      estimateId: betaEstimateId,
+      scheduledJobId: BETA_SCHEDULED_JOB_UUID,
+      sortIndex: 1,
+      forecastStart: '2026-04-10',
+      forecastEndExclusive: '2026-04-14',
+    });
+
+    let resolveFirst!: (value: any) => void;
+    let resolveSecond!: (value: any) => void;
+    const firstSave = new Promise<any>((resolve) => { resolveFirst = resolve; });
+    const secondSave = new Promise<any>((resolve) => { resolveSecond = resolve; });
+    vi.mocked(reorderItems)
+      .mockImplementationOnce(() => firstSave)
+      .mockImplementationOnce(() => secondSave);
+
+    const { rendered } = renderSchedule(snapshot);
+    await act(async () => { await Promise.resolve(); });
+    const laneOrder = () => (dndMocks.latestBoardProps.laneItems.get(crewId) ?? [])
+      .slice()
+      .sort((a: { sortIndex: number }, b: { sortIndex: number }) => a.sortIndex - b.sortIndex)
+      .map((item: { id: string }) => item.id);
+
+    act(() => {
+      dndMocks.latestBoardProps.onDrop(scheduleItemId, {
+        kind: 'lane',
+        laneId: crewId,
+        insertionIndex: 1,
+        placement: 'end',
+        overId: `lane:${crewId}`,
+      });
+    });
+    await act(async () => { for (let index = 0; index < 4; index += 1) await Promise.resolve(); });
+    expect(reorderItems).toHaveBeenCalledTimes(1);
+    expect(laneOrder()).toEqual([`sch_${BETA_SCHEDULE_ITEM_UUID}`, scheduleItemId]);
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ moveDisabled: false, actionDisabled: true });
+
+    act(() => {
+      dndMocks.latestBoardProps.onDrop(scheduleItemId, {
+        kind: 'lane',
+        laneId: crewId,
+        insertionIndex: 0,
+        placement: 'before',
+        overId: `sch_${BETA_SCHEDULE_ITEM_UUID}`,
+      });
+    });
+    await act(async () => { for (let index = 0; index < 4; index += 1) await Promise.resolve(); });
+    expect(reorderItems).toHaveBeenCalledTimes(1);
+    expect(laneOrder()).toEqual([scheduleItemId, `sch_${BETA_SCHEDULE_ITEM_UUID}`]);
+
+    const firstResponse = crewMutationResponse([
+      crewJobMutationItem({
+        scheduleItemId: BETA_SCHEDULE_ITEM_UUID,
+        scheduledJobId: BETA_SCHEDULED_JOB_UUID,
+        projectId: BETA_PROJECT_UUID,
+        position: 0,
+        start: '2026-04-08',
+        endExclusive: '2026-04-10',
+        durationDays: 2,
+      }),
+      crewJobMutationItem({
+        scheduleItemId: SCHEDULE_ITEM_UUID,
+        scheduledJobId: SCHEDULED_JOB_UUID,
+        projectId: ALPHA_PROJECT_UUID,
+        position: 1,
+        start: '2026-04-10',
+        endExclusive: '2026-04-14',
+        durationDays: 2,
+      }),
+    ], '2026-04-14');
+    await act(async () => {
+      resolveFirst(firstResponse);
+      await firstSave;
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    });
+    expect(reorderItems).toHaveBeenCalledTimes(2);
+    expect(reorderItems).toHaveBeenLastCalledWith(expect.objectContaining({ new_position: 0 }));
+    expect(laneOrder()).toEqual([scheduleItemId, `sch_${BETA_SCHEDULE_ITEM_UUID}`]);
+
+    const secondResponse = crewMutationResponse([
+      crewJobMutationItem({
+        scheduleItemId: SCHEDULE_ITEM_UUID,
+        scheduledJobId: SCHEDULED_JOB_UUID,
+        projectId: ALPHA_PROJECT_UUID,
+        position: 0,
+        start: '2026-04-08',
+        endExclusive: '2026-04-10',
+        durationDays: 2,
+      }),
+      crewJobMutationItem({
+        scheduleItemId: BETA_SCHEDULE_ITEM_UUID,
+        scheduledJobId: BETA_SCHEDULED_JOB_UUID,
+        projectId: BETA_PROJECT_UUID,
+        position: 1,
+        start: '2026-04-10',
+        endExclusive: '2026-04-14',
+        durationDays: 2,
+      }),
+    ], '2026-04-14');
+    await act(async () => {
+      resolveSecond(secondResponse);
+      await secondSave;
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    });
+    expect(laneOrder()).toEqual([scheduleItemId, `sch_${BETA_SCHEDULE_ITEM_UUID}`]);
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ moveDisabled: false, actionDisabled: false });
+    expect(dndMocks.latestBoardProps.mutationNotice).toBeNull();
+    rendered.unmount();
+  });
+
+  it('persists independent crew placements concurrently and ignores out-of-order response timing', async () => {
+    const snapshot = boardMutationSnapshot();
+    const gammaProjectId = `proj_${GAMMA_PROJECT_UUID}`;
+    const gammaEstimateId = `est_${GAMMA_ESTIMATE_UUID}`;
+    const gammaJobId = `job_${gammaProjectId}_${gammaEstimateId}`;
+    snapshot.installers.push({
+      ...snapshot.installers[0],
+      id: secondCrewId,
+      name: 'Crew Bravo',
+      sortOrder: 1,
+      color: '#2563eb',
+    });
+    snapshot.projects.push({
+      id: gammaProjectId,
+      projectName: 'Gamma Deck',
+      name: 'Gamma Deck',
+      status: 'DEPOSIT',
+      nextActionDate: '2026-04-10',
+      followUpDate: '2026-04-10',
+    });
+    snapshot.unscheduledJobs.push({
+      projectId: gammaProjectId,
+      estimateId: gammaEstimateId,
+      projectName: 'Gamma Deck',
+      status: 'DEPOSIT',
+      durationDays: 1,
+    });
+    snapshot.nextAvailableByInstallerId[secondCrewId] = '2026-04-08';
+
+    let resolveAlphaCrew!: (value: any) => void;
+    let resolveBravoCrew!: (value: any) => void;
+    const alphaCrewSave = new Promise<any>((resolve) => { resolveAlphaCrew = resolve; });
+    const bravoCrewSave = new Promise<any>((resolve) => { resolveBravoCrew = resolve; });
+    vi.mocked(assignJob).mockImplementation((input: { crew_id: string }) =>
+      input.crew_id === SECOND_CREW_UUID ? bravoCrewSave : alphaCrewSave,
+    );
+
+    const { rendered } = renderSchedule(snapshot);
+    await act(async () => { await Promise.resolve(); });
+    act(() => {
+      dndMocks.latestBoardProps.onDrop(betaJobId, {
+        kind: 'lane',
+        laneId: crewId,
+        insertionIndex: 1,
+        placement: 'end',
+        overId: `lane:${crewId}`,
+      });
+      dndMocks.latestBoardProps.onDrop(gammaJobId, {
+        kind: 'lane',
+        laneId: secondCrewId,
+        insertionIndex: 0,
+        placement: 'end',
+        overId: `lane:${secondCrewId}`,
+      });
+    });
+    await act(async () => { for (let index = 0; index < 6; index += 1) await Promise.resolve(); });
+
+    expect(assignJob).toHaveBeenCalledTimes(2);
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ moveDisabled: false, actionDisabled: true });
+    expect((dndMocks.latestBoardProps.laneItems.get(crewId) ?? []).some((item: { projectId: string }) => item.projectId === betaProjectId)).toBe(true);
+    expect((dndMocks.latestBoardProps.laneItems.get(secondCrewId) ?? []).some((item: { projectId: string }) => item.projectId === gammaProjectId)).toBe(true);
+
+    const bravoResponse = crewMutationResponse([
+      crewJobMutationItem({
+        scheduleItemId: GAMMA_SCHEDULE_ITEM_UUID,
+        scheduledJobId: GAMMA_SCHEDULED_JOB_UUID,
+        projectId: GAMMA_PROJECT_UUID,
+        position: 0,
+        start: '2026-04-08',
+        endExclusive: '2026-04-09',
+        durationDays: 1,
+        crewUuid: SECOND_CREW_UUID,
+      }),
+    ], '2026-04-09', SECOND_CREW_UUID);
+    await act(async () => {
+      resolveBravoCrew(bravoResponse);
+      await bravoCrewSave;
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    });
+    expect((dndMocks.latestBoardProps.laneItems.get(secondCrewId) ?? []).some((item: { id: string }) => item.id === `sch_${GAMMA_SCHEDULE_ITEM_UUID}`)).toBe(true);
+    expect((dndMocks.latestBoardProps.laneItems.get(crewId) ?? []).some((item: { projectId: string }) => item.projectId === betaProjectId)).toBe(true);
+
+    const alphaResponse = crewMutationResponse([
+      crewJobMutationItem({
+        scheduleItemId: SCHEDULE_ITEM_UUID,
+        scheduledJobId: SCHEDULED_JOB_UUID,
+        projectId: ALPHA_PROJECT_UUID,
+        position: 0,
+        start: '2026-04-08',
+        endExclusive: '2026-04-10',
+        durationDays: 2,
+      }),
+      crewJobMutationItem({
+        scheduleItemId: BETA_SCHEDULE_ITEM_UUID,
+        scheduledJobId: BETA_SCHEDULED_JOB_UUID,
+        projectId: BETA_PROJECT_UUID,
+        position: 1,
+        start: '2026-04-10',
+        endExclusive: '2026-04-14',
+        durationDays: 2,
+      }),
+    ], '2026-04-14');
+    await act(async () => {
+      resolveAlphaCrew(alphaResponse);
+      await alphaCrewSave;
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    });
+
+    expect((dndMocks.latestBoardProps.laneItems.get(crewId) ?? []).some((item: { id: string }) => item.id === `sch_${BETA_SCHEDULE_ITEM_UUID}`)).toBe(true);
+    expect((dndMocks.latestBoardProps.laneItems.get(secondCrewId) ?? []).some((item: { id: string }) => item.id === `sch_${GAMMA_SCHEDULE_ITEM_UUID}`)).toBe(true);
+    expect(dndMocks.latestBoardProps.interaction).toMatchObject({ moveDisabled: false, actionDisabled: false });
+    rendered.unmount();
+  });
+
+  it('rebases a rapid reorder of a newly assigned temporary card onto its server identity', async () => {
+    const snapshot = boardMutationSnapshot();
+    let resolveAssignment!: (value: any) => void;
+    let resolveReorder!: (value: any) => void;
+    const assignmentSave = new Promise<any>((resolve) => { resolveAssignment = resolve; });
+    const reorderSave = new Promise<any>((resolve) => { resolveReorder = resolve; });
+    vi.mocked(assignJob).mockImplementation(() => assignmentSave);
+    vi.mocked(reorderItems).mockImplementation(() => reorderSave);
+
+    const { rendered } = renderSchedule(snapshot);
+    await act(async () => { await Promise.resolve(); });
+    act(() => {
+      dndMocks.latestBoardProps.onDrop(betaJobId, {
+        kind: 'lane',
+        laneId: crewId,
+        insertionIndex: 1,
+        placement: 'end',
+        overId: `lane:${crewId}`,
+      });
+    });
+    await act(async () => { for (let index = 0; index < 4; index += 1) await Promise.resolve(); });
+    const temporaryItem = (dndMocks.latestBoardProps.laneItems.get(crewId) ?? []).find(
+      (item: { projectId: string }) => item.projectId === betaProjectId,
+    );
+    expect(temporaryItem?.id).toMatch(/^tmp_/);
+
+    act(() => {
+      dndMocks.latestBoardProps.onDrop(temporaryItem.id, {
+        kind: 'lane',
+        laneId: crewId,
+        insertionIndex: 0,
+        placement: 'before',
+        overId: scheduleItemId,
+      });
+    });
+    await act(async () => { for (let index = 0; index < 4; index += 1) await Promise.resolve(); });
+    expect(reorderItems).not.toHaveBeenCalled();
+    expect((dndMocks.latestBoardProps.laneItems.get(crewId) ?? [])
+      .slice()
+      .sort((a: { sortIndex: number }, b: { sortIndex: number }) => a.sortIndex - b.sortIndex)
+      .map((item: { projectId: string }) => item.projectId)).toEqual([betaProjectId, alphaProjectId]);
+
+    const assignmentResponse = crewMutationResponse([
+      crewJobMutationItem({
+        scheduleItemId: SCHEDULE_ITEM_UUID,
+        scheduledJobId: SCHEDULED_JOB_UUID,
+        projectId: ALPHA_PROJECT_UUID,
+        position: 0,
+        start: '2026-04-08',
+        endExclusive: '2026-04-10',
+        durationDays: 2,
+      }),
+      crewJobMutationItem({
+        scheduleItemId: BETA_SCHEDULE_ITEM_UUID,
+        scheduledJobId: BETA_SCHEDULED_JOB_UUID,
+        projectId: BETA_PROJECT_UUID,
+        position: 1,
+        start: '2026-04-10',
+        endExclusive: '2026-04-14',
+        durationDays: 2,
+      }),
+    ], '2026-04-14');
+    await act(async () => {
+      resolveAssignment(assignmentResponse);
+      await assignmentSave;
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    });
+    expect(reorderItems).toHaveBeenCalledWith(expect.objectContaining({
+      item_id: BETA_SCHEDULE_ITEM_UUID,
+      new_position: 0,
+    }));
+    expect((dndMocks.latestBoardProps.laneItems.get(crewId) ?? [])
+      .slice()
+      .sort((a: { sortIndex: number }, b: { sortIndex: number }) => a.sortIndex - b.sortIndex)
+      .map((item: { projectId: string }) => item.projectId)).toEqual([betaProjectId, alphaProjectId]);
+
+    const reorderResponse = crewMutationResponse([
+      crewJobMutationItem({
+        scheduleItemId: BETA_SCHEDULE_ITEM_UUID,
+        scheduledJobId: BETA_SCHEDULED_JOB_UUID,
+        projectId: BETA_PROJECT_UUID,
+        position: 0,
+        start: '2026-04-08',
+        endExclusive: '2026-04-10',
+        durationDays: 2,
+      }),
+      crewJobMutationItem({
+        scheduleItemId: SCHEDULE_ITEM_UUID,
+        scheduledJobId: SCHEDULED_JOB_UUID,
+        projectId: ALPHA_PROJECT_UUID,
+        position: 1,
+        start: '2026-04-10',
+        endExclusive: '2026-04-14',
+        durationDays: 2,
+      }),
+    ], '2026-04-14');
+    await act(async () => {
+      resolveReorder(reorderResponse);
+      await reorderSave;
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    });
+    expect((dndMocks.latestBoardProps.laneItems.get(crewId) ?? [])
+      .slice()
+      .sort((a: { sortIndex: number }, b: { sortIndex: number }) => a.sortIndex - b.sortIndex)
+      .map((item: { projectId: string }) => item.projectId)).toEqual([betaProjectId, alphaProjectId]);
     rendered.unmount();
   });
 });

@@ -20,7 +20,7 @@ export default function ScheduleOpsFixtureClient({
 }: {
   initialView: 'board' | 'gantt';
   scale: 'standard' | 'large';
-  initialState: 'failed' | 'stale' | null;
+  initialState: 'failed' | 'stale' | 'slow' | null;
 }) {
   const fixture = useMemo(() => createScheduleOpsFixture(scale), [scale]);
   const boardModel = useMemo(() => boardModelForFixture(fixture), [fixture]);
@@ -55,22 +55,22 @@ export default function ScheduleOpsFixtureClient({
     { label: 'Edit downtime…', group: 'timing', onClick: noMutation },
     { label: 'Delete downtime', group: 'exceptions', tone: 'danger', onClick: noMutation },
   ];
-  const feedbackProjectId = Array.from(scheduleItemById.values()).find(
+  const feedbackItem = Array.from(scheduleItemById.values()).find(
     (item) => item.itemType !== 'downtime',
-  )?.projectId ?? null;
-  const mutationNotice: ScheduleBoardMutationNotice | null = noticeState && feedbackProjectId
+  ) ?? null;
+  const feedbackProjectId = feedbackItem?.projectId ?? null;
+  const mutationNotice: ScheduleBoardMutationNotice | null = noticeState && noticeState !== 'slow' && feedbackProjectId
     ? {
         id: 1,
         projectId: feedbackProjectId,
         tone: noticeState === 'failed' ? 'error' : 'warning',
         message: noticeState === 'failed'
           ? 'Move wasn\'t saved. Previous position restored.'
-          : 'Couldn\'t verify this change. Refresh before moving another job.',
+          : 'Couldn\'t verify this change. Refresh this job before moving it again.',
         actionLabel: noticeState === 'failed' ? 'Retry' : 'Refresh',
         onAction: () => setNoticeState(null),
       }
     : null;
-  const interactionDisabled = noticeState === 'stale';
 
   if (!hydrated) {
     return <div className={styles.loading} role="status">Loading synthetic Schedule fixture…</div>;
@@ -191,8 +191,15 @@ export default function ScheduleOpsFixtureClient({
           onShowCompletedChange={setShowCompleted}
           onDrop={handleFixtureDrop}
           interaction={{
-            disabled: interactionDisabled,
-            reason: interactionDisabled ? 'Refresh the schedule before making another change.' : undefined,
+            moveDisabled: false,
+            actionDisabled: noticeState === 'slow' || noticeState === 'stale',
+            actionDisabledReason: noticeState === 'slow'
+              ? 'Placement changes are saving in the background.'
+              : noticeState === 'stale'
+                ? 'Refresh this job before changing it again.'
+                : undefined,
+            blockedLaneIds: noticeState === 'stale' && feedbackItem ? [feedbackItem.installerId] : [],
+            blockedProjectIds: noticeState === 'stale' && feedbackProjectId ? [feedbackProjectId] : [],
           }}
           mutationNotice={mutationNotice}
           buildJobMenuActions={fixtureActions}

@@ -66,10 +66,15 @@ export type ScheduleBoardViewProps = {
   onShowCompletedChange: (value: boolean) => void;
   onDrop: (activeId: string, drop: ScheduleBoardDrop) => void;
   interaction?: {
-    disabled: boolean;
-    reason?: string;
+    moveDisabled: boolean;
+    actionDisabled: boolean;
+    moveDisabledReason?: string;
+    actionDisabledReason?: string;
+    blockedLaneIds?: readonly string[];
+    blockedProjectIds?: readonly string[];
   };
   mutationNotice?: ScheduleBoardMutationNotice | null;
+  mutationNotices?: readonly ScheduleBoardMutationNotice[];
   buildJobMenuActions: (args: {
     id: string;
     scheduleItem: ScheduleItem;
@@ -227,8 +232,9 @@ export default function ScheduleBoardView({
   onToggleUnscheduledCollapsed,
   onShowCompletedChange,
   onDrop,
-  interaction = { disabled: false },
+  interaction = { moveDisabled: false, actionDisabled: false },
   mutationNotice = null,
+  mutationNotices = [],
   buildJobMenuActions,
   buildDowntimeMenuActions,
 }: ScheduleBoardViewProps) {
@@ -263,6 +269,24 @@ export default function ScheduleBoardView({
   );
 
   const visibleInstallerIds = useMemo(() => visibleInstallers.map((installer) => installer.id), [visibleInstallers]);
+  const blockedLaneIds = useMemo(() => new Set(interaction.blockedLaneIds ?? []), [interaction.blockedLaneIds]);
+  const blockedProjectIds = useMemo(() => new Set(interaction.blockedProjectIds ?? []), [interaction.blockedProjectIds]);
+  const blockedDragIds = useMemo(() => {
+    const blocked = new Set<string>();
+    for (const item of scheduleItemById.values()) {
+      if (blockedLaneIds.has(item.installerId) || (item.projectId && blockedProjectIds.has(item.projectId))) {
+        blocked.add(item.id);
+      }
+    }
+    for (const job of unscheduledJobsAll) {
+      if (blockedProjectIds.has(job.projectId)) blocked.add(job.id);
+    }
+    return blocked;
+  }, [blockedLaneIds, blockedProjectIds, scheduleItemById, unscheduledJobsAll]);
+  const mutationNoticeByProjectId = useMemo(() => {
+    const notices = mutationNotice ? [...mutationNotices, mutationNotice] : [...mutationNotices];
+    return new Map(notices.map((notice) => [notice.projectId, notice]));
+  }, [mutationNotice, mutationNotices]);
   const {
     sensors,
     activeDragId,
@@ -277,7 +301,9 @@ export default function ScheduleBoardView({
     handleDragEnd,
     clearDragState,
   } = useScheduleBoardDragController({
-    interactionDisabled: interaction.disabled,
+    interactionDisabled: interaction.moveDisabled,
+    blockedDragIds,
+    blockedLaneIds,
     visibleInstallerIds,
     laneItems,
     scheduleItemById,
@@ -351,9 +377,9 @@ export default function ScheduleBoardView({
                   <UnscheduledJobCard
                     key={job.id}
                     job={job}
-                    interactionDisabled={interaction.disabled}
-                    interactionDisabledReason={interaction.reason}
-                    mutationNotice={mutationNotice?.projectId === job.projectId ? mutationNotice : null}
+                    interactionDisabled={interaction.moveDisabled || blockedProjectIds.has(job.projectId)}
+                    interactionDisabledReason={interaction.moveDisabledReason ?? (blockedProjectIds.has(job.projectId) ? 'Refresh this job before moving it again.' : undefined)}
+                    mutationNotice={mutationNoticeByProjectId.get(job.projectId) ?? null}
                   />
                 ))}
               </div>
@@ -528,6 +554,7 @@ export default function ScheduleBoardView({
 
                 if (scheduleItem?.itemType === 'downtime') {
                   const downtimeActions = buildDowntimeMenuActions(id, scheduleItem);
+                  const laneBlocked = blockedLaneIds.has(scheduleItem.installerId);
 
                   cards.push(
                     <DowntimeCard
@@ -538,8 +565,10 @@ export default function ScheduleBoardView({
                       dropTarget={showInsertBefore}
                       menuActions={downtimeActions}
                       issueLevel={issueLevel}
-                      interactionDisabled={interaction.disabled}
-                      interactionDisabledReason={interaction.reason}
+                      interactionDisabled={interaction.moveDisabled || laneBlocked}
+                      interactionDisabledReason={interaction.moveDisabledReason ?? (laneBlocked ? 'Refresh this crew lane before moving it again.' : undefined)}
+                      actionDisabled={interaction.actionDisabled || laneBlocked}
+                      actionDisabledReason={interaction.actionDisabledReason ?? (laneBlocked ? 'Refresh this crew lane before changing it again.' : undefined)}
                       sequencePosition={itemIndex + 1}
                       onMount={(node) => boardCardRefs.current.set(id, node)}
                     />,
@@ -552,6 +581,7 @@ export default function ScheduleBoardView({
                 const plan = buildSchedulePlanPresentation(scheduleItem, formatShortDate);
                 const attention = buildScheduleAttentionPresentation({ item: scheduleItem, issueLevel });
                 const clientUpdateStatus = scheduleItem.clientUpdateStatus ?? 'none';
+                const placementBlocked = blockedLaneIds.has(scheduleItem.installerId) || blockedProjectIds.has(scheduleItem.projectId);
 
                 cards.push(
                   <ScheduledJobCard
@@ -568,9 +598,11 @@ export default function ScheduleBoardView({
                     planCommitted={plan.committed}
                     attention={attention}
                     clientContacted={clientUpdateStatus === 'acknowledged'}
-                    interactionDisabled={interaction.disabled}
-                    interactionDisabledReason={interaction.reason}
-                    mutationNotice={mutationNotice?.projectId === scheduleItem.projectId ? mutationNotice : null}
+                    interactionDisabled={interaction.moveDisabled || placementBlocked}
+                    interactionDisabledReason={interaction.moveDisabledReason ?? (placementBlocked ? 'Refresh this job or crew lane before moving it again.' : undefined)}
+                    actionDisabled={interaction.actionDisabled || placementBlocked}
+                    actionDisabledReason={interaction.actionDisabledReason ?? (placementBlocked ? 'Refresh this job or crew lane before changing it again.' : undefined)}
+                    mutationNotice={mutationNoticeByProjectId.get(scheduleItem.projectId) ?? null}
                     sequencePosition={itemIndex + 1}
                     onMount={(node) => boardCardRefs.current.set(id, node)}
                   />,

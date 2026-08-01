@@ -217,6 +217,32 @@ test('commits the exact indicated beginning, middle, end, and cross-crew order i
   expect(writes).toEqual([]);
 });
 
+test('keeps placement gestures active during synthetic slow background persistence', async ({ page }) => {
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/staff/') && request.method() !== 'GET') writes.push(request.url());
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${FIXTURE_PATH}&state=slow`);
+  await expect(page.locator('[data-mutation-notice]')).toHaveCount(0);
+  await expect(page.locator('[data-change-state]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Move / }).first()).toBeEnabled();
+
+  await dragCardToIndex(page, 'fixture-unscheduled-18', 'fixture-crew-2', 2);
+  expect(await cardOrder(page, 'fixture-crew-2')).toEqual([
+    'fixture-schedule-1',
+    'fixture-schedule-10',
+    'fixture-unscheduled-18',
+  ]);
+  await dragCardToIndex(page, 'fixture-schedule-2', 'fixture-crew-1', 2);
+  expect(await cardOrder(page, 'fixture-crew-1')).toEqual([
+    'fixture-schedule-0',
+    'fixture-schedule-9',
+    'fixture-schedule-2',
+  ]);
+  expect(writes).toEqual([]);
+});
+
 for (const state of ['failed', 'stale'] as const) {
   test(`renders only the actionable ${state} card notice without a Schedule command`, async ({ page }) => {
     const writes: string[] = [];
@@ -229,6 +255,12 @@ for (const state of ['failed', 'stale'] as const) {
     await expect(card).toBeVisible();
     const action = card.getByRole('button', { name: state === 'failed' ? 'Retry' : 'Refresh' });
     await expect(action).toBeVisible();
+    if (state === 'stale') {
+      await expect(
+        page.locator('[data-board-lane-id="fixture-crew-1"]').getByRole('button', { name: /^Move / }).first(),
+      ).toBeDisabled();
+      await expect(page.locator('[data-board-lane-id="fixture-crew-2"]').getByRole('button', { name: /^Move / }).first()).toBeEnabled();
+    }
     await action.click();
     await expect(page.locator('[data-mutation-notice]')).toHaveCount(0);
     expect(writes).toEqual([]);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 export type ScheduleBoardMutationNotice = {
   id: number;
@@ -12,15 +12,18 @@ export type ScheduleBoardMutationNotice = {
 };
 
 export function useScheduleBoardMutationNotice() {
-  const [notice, setNotice] = useState<ScheduleBoardMutationNotice | null>(null);
+  const [notices, setNotices] = useState<ScheduleBoardMutationNotice[]>([]);
+  const sequenceRef = useRef(0);
 
   const clear = useCallback((projectId?: string) => {
-    setNotice((current) => (!projectId || current?.projectId === projectId ? null : current));
+    setNotices((current) => projectId ? current.filter((notice) => notice.projectId !== projectId) : []);
   }, []);
 
   const show = useCallback((next: Omit<ScheduleBoardMutationNotice, 'id'>) => {
-    setNotice((current) => ({ ...next, id: (current?.id ?? 0) + 1 }));
+    sequenceRef.current += 1;
+    const notice = { ...next, id: sequenceRef.current };
+    setNotices((current) => [...current.filter((item) => item.projectId !== next.projectId), notice]);
   }, []);
 
-  return { notice, clear, show };
+  return { notices, notice: notices.at(-1) ?? null, clear, show };
 }

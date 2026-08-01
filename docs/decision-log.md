@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-01 | Schedule Board Intent Queue      | Promoted | Keep confirmed Schedule state separate from visible Board intent. Run disjoint crew placements concurrently, serialize overlapping project/lane resources, and replay every newer operation after validated responses or scoped rollback so response order cannot rewind staff intent. Ambiguous recovery blocks only affected resources; cross-instance clients remain read-only because they do not own the optimistic layer. |
 | 2026-08-01 | Schedule Board Silent Persistence | Promoted | Treat the placed card as normal Board feedback. Keep routine checking/saving/saved/reconciliation UI invisible, hold optimistic placement through ambiguous outcomes, compare bounded authoritative snapshots before applying one correction, and show one affected-card Retry or Refresh notice only when staff action is required. Preserve server-owned V2 truth, preview/re-preview, confirmation, and cross-instance mutation exclusion. |
 | 2026-08-01 | Marketing Project Switching      | Promoted | Keep desktop canonical project-detail transitions inside one mounted route owner: preserve rail DOM/state/focus, decode the responsive hero before commit, retain an intersecting hero anchor or align it below the fixed header, and capture only marked project Back/Forward entries before the framework remounts the dynamic route. Keep mobile, direct, refresh, modified-click and no-JavaScript navigation canonical. |
 | 2026-08-01 | Project Phase Ownership Handoffs | Promoted | Assign active New/Contacted projects to Ellen at the server boundary, keep Proposal and Dave delivery handoffs manual, and never let an ownership rule advance pipeline stage. Before any bulk Lost closure, use one read-only all-activity report with future-Waiting protection and evidence fingerprints; migration/system rollout events do not prove a customer enquiry was handled. |
@@ -4534,8 +4535,9 @@ they place it. Routine lifecycle narration and forward/back correction made a
 server-safe command path look unreliable and duplicated the card, toast, and
 route-level account of one event.
 Current guardrail: On Board, the placed card is normal feedback. Keep routine
-persistence state silent and keep controls unavailable while a command is
-unsettled. A definitive rejection restores once and owns one inline Retry.
+persistence state silent. Placement controls remain available through the
+resource-scoped intent queue; only affected resources pause for unverifiable
+recovery. A definitive rejection restores once and owns one inline Retry.
 For a commit-ambiguous outcome, retain the optimistic placement while two
 bounded authoritative reads allow a late commit to appear; if server truth
 matches, remain silent, if it differs apply it once with Retry, and if the read
@@ -4545,6 +4547,31 @@ the shared query cache as optimism, or surface a duplicate toast/page banner.
 Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/portal/app/staff/schedule/scheduleBoardPlacementIntent.ts`;
 `apps/portal/app/staff/schedule/useScheduleBoardMutationNotice.ts`;
+`apps/portal/app/staff/schedule/ScheduleClient.test.tsx`;
+`playwright/portal.schedule-board-confidence-fixture.spec.ts`
+
+### 2026-08-01 - Schedule Board Intent Queue - Newer Placement Must Win
+
+Date: 2026-08-01
+Area: Schedule Board placement concurrency, response ordering, and scoped recovery
+Status: Promoted
+Decision or mistake: A page-wide pending flag serialized every Board write and
+made all placement controls unavailable for the full API round trip. Simply
+removing that flag would let an older response or rollback overwrite newer
+visual intent.
+Why it mattered: Staff could not continue planning while a save ran, and slow
+responses made a correctly placed card feel provisional. Concurrent requests
+without resource ownership would have traded that delay for lost ordering.
+Current guardrail: Maintain a confirmed component-local base plus ordered
+placement operations. Apply intent immediately; run disjoint crew resources
+concurrently; serialize commands sharing a project or source/destination lane;
+merge validated responses into confirmed state and replay every remaining
+operation. Definitive failure removes only its operation. Ambiguous failure
+keeps the operation and blocks only its resources until bounded read recovery.
+Do not publish optimism as shared Schedule truth, bypass V2 commands, weaken
+preview/re-preview/confirmation, or treat this as multi-staff revision safety.
+Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/portal/app/staff/schedule/scheduleBoardCommandController.ts`;
 `apps/portal/app/staff/schedule/ScheduleClient.test.tsx`;
 `playwright/portal.schedule-board-confidence-fixture.spec.ts`
 
