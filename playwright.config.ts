@@ -8,6 +8,7 @@ const baseURL = process.env.PORTAL_BASE_URL?.trim() || `http://127.0.0.1:${port}
 const portalPlaywrightDistDir = process.env.PORTAL_PLAYWRIGHT_DIST_DIR?.trim() || DEFAULT_PORTAL_PLAYWRIGHT_DIST_DIR;
 const useProductionPortal = process.env.PORTAL_PLAYWRIGHT_PRODUCTION === '1';
 const portalStaffStorageState = process.env.PORTAL_STAFF_STORAGE_STATE?.trim() || 'playwright/.auth/portal-staff.json';
+const portalVercelProtectionBypass = process.env.PORTAL_VERCEL_PROTECTION_BYPASS?.trim();
 
 export default defineConfig({
   testDir: './playwright',
@@ -21,6 +22,14 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   use: {
     baseURL,
+    ...(portalVercelProtectionBypass
+      ? {
+          extraHTTPHeaders: {
+            'x-vercel-protection-bypass': portalVercelProtectionBypass,
+            'x-vercel-set-bypass-cookie': 'true',
+          },
+        }
+      : {}),
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

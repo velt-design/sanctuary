@@ -135,7 +135,17 @@ test("authenticated Project Overview is one read-only command-centre surface", a
         await openPortalPage(page, "/staff/projects", { heading: "Projects" });
         await expectVisiblePortalProject(page);
 
-        const projectHref = await page
+        const projectsTable = page.getByRole("table", { name: "Projects" });
+        const activeProjectRow = projectsTable
+          .locator("tbody tr")
+          .filter({
+            has: page.locator('[data-column="State"]', {
+              hasText: /^Active$/,
+            }),
+          })
+          .first();
+        await expect(activeProjectRow).toBeVisible();
+        const projectHref = await activeProjectRow
           .locator('a[href^="/staff/projects/proj_"]')
           .first()
           .getAttribute("href");
@@ -205,6 +215,28 @@ test("authenticated Project Overview is one read-only command-centre surface", a
         await expect(
           page.getByRole("button", { name: /\bsite visits?\b/i }),
         ).toHaveCount(0);
+
+        await overview.getByRole("button", { name: "Close project" }).click();
+        const closeDialog = page.getByRole("dialog", {
+          name: "Close project",
+        });
+        await expect(closeDialog).toBeVisible();
+        await expect(
+          closeDialog.getByRole("radio", { name: /^Lost/ }),
+        ).not.toBeChecked();
+        await expect(
+          closeDialog.getByRole("radio", { name: /^Cancelled/ }),
+        ).not.toBeChecked();
+        await expect(
+          closeDialog.getByRole("radio", { name: /^Complete/ }),
+        ).not.toBeChecked();
+        await expect(closeDialog.getByText("What will happen")).toBeVisible();
+        await expect(
+          closeDialog.getByRole("button", { name: "Choose a close outcome" }),
+        ).toBeDisabled();
+        await closeDialog
+          .getByRole("button", { name: "Keep project open" })
+          .click();
       },
     );
   } finally {

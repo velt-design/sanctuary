@@ -66,6 +66,30 @@ test("authenticated Work Queue is ready through its read-only route", async ({
           page.getByText("Work Queue not ready", { exact: true }),
         ).toHaveCount(0);
 
+        const staleReview = page.getByRole("region", {
+          name: "Stale enquiry review",
+        });
+        await expect(staleReview).toBeVisible();
+        await expect(staleReview).toContainText("Nothing closes automatically");
+        await staleReview
+          .getByRole("button", { name: "Review exact list" })
+          .click();
+        const reviewDialog = page.getByRole("dialog", {
+          name: "Review stale enquiries",
+        });
+        await expect(reviewDialog).toBeVisible();
+        await expect(reviewDialog).toContainText(
+          "None are selected by default",
+        );
+        const candidateCheckboxes = reviewDialog.getByRole("checkbox");
+        for (let index = 0; index < (await candidateCheckboxes.count()); index += 1) {
+          await expect(candidateCheckboxes.nth(index)).not.toBeChecked();
+        }
+        await expect(
+          reviewDialog.getByRole("button", { name: "Review selected (0)" }),
+        ).toBeDisabled();
+        await reviewDialog.getByRole("button", { name: "Cancel" }).click();
+
         const queueRows = page.locator(
           "li[data-queue-group][data-action-kind]",
         );
