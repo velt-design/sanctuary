@@ -126,7 +126,13 @@ function NoScriptConversationFallback({
   );
 }
 
-export default async function HomePage() {
+type HomepageExperienceProps = {
+  enableAnalytics?: boolean;
+};
+
+async function HomepageExperience({
+  enableAnalytics = true,
+}: HomepageExperienceProps = {}) {
   const leadProject = findProject('warkworth-outdoor-room');
   const openingImage = leadProject.gallery[0] ?? leadProject.heroImage;
   const responses = getIntentResponses(projects);
@@ -137,7 +143,7 @@ export default async function HomePage() {
       className={styles.page}
       data-homepage-variant={HOME_VARIANT}
     >
-      <HomepageDesignConversationTracker />
+      {enableAnalytics ? <HomepageDesignConversationTracker /> : null}
       <JsonLd
         data={[
           {
@@ -352,4 +358,8 @@ export default async function HomePage() {
 
     </MarketingPage>
   );
+}
+
+export default function HomePage() {
+  return <HomepageExperience />;
 }

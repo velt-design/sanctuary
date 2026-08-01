@@ -1,21 +1,21 @@
 export const residentialProjectProof = [
   {
-    slug: 'warkworth-outdoor-room',
-    label: 'Freestanding gable outdoor room',
-    summary: 'A mixed-roof gable room with cedar lining, deck and fireplace.',
-    facts: ['5.0 x 6.0 m footprint', '30 m² freestanding room'],
+    slug: 'dairy-flat-estate',
+    label: 'House-aligned acrylic gable',
+    summary: 'An aluminium and acrylic gable follows the existing house roofline.',
+    facts: ['8.6 x 3.3 m footprint', 'Acrylic roofing selected for daylight'],
   },
   {
-    slug: 'tindalls-bay-pavilion',
-    label: 'Mixed roofing around a complex home',
-    summary: 'Acrylic and solid zones cover a layered patio and carport.',
-    facts: ['108 m² patio and carport scope', 'Mixed roof and edge treatments'],
+    slug: 'mt-maunganui-box',
+    label: 'First-floor opal acrylic cover',
+    summary: 'A box-perimeter cover preserves the balustrade, outlook and natural light.',
+    facts: ['Opal acrylic at a 5 degree fall', 'First-floor deck geometry'],
   },
   {
-    slug: 'muriwai-courtyard',
-    label: 'A new hip roof on a familiar footprint',
-    summary: 'A new hip roof keeps the courtyard’s established footprint.',
-    facts: ['8.0 x 5.0 m footprint', '40 m² courtyard cover'],
+    slug: 'st-heliers-townhouse',
+    label: 'Open gable townhouse cover',
+    summary: 'Opal acrylic extends the roofline with a custom street-facing gable frame.',
+    facts: ['6.0 x 3.0 m footprint', 'Open gable with opal acrylic'],
   },
 ] as const;
 

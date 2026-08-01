@@ -4,6 +4,7 @@ import {
   getDesktopHeaderNavigation,
   getMobileHeaderNavigation,
   isHeaderHeroOverlayPath,
+  shouldShowDesktopHeaderCta,
 } from './headerNavigation';
 
 describe('shared header navigation model', () => {
@@ -29,10 +30,16 @@ describe('shared header navigation model', () => {
 
   it('keeps the experimental project opening within the shared hero treatment', () => {
     expect(isHeaderHeroOverlayPath('/')).toBe(true);
-    expect(isHeaderHeroOverlayPath('/')).toBe(true);
+    expect(isHeaderHeroOverlayPath('/home-guided')).toBe(true);
     expect(isHeaderHeroOverlayPath('/home-experimental')).toBe(false);
     expect(isHeaderHeroOverlayPath('/home-v2')).toBe(false);
     expect(isHeaderHeroOverlayPath('/contact')).toBe(false);
+  });
+
+  it('suppresses only the guided route desktop CTA', () => {
+    expect(shouldShowDesktopHeaderCta('/home-guided')).toBe(false);
+    expect(shouldShowDesktopHeaderCta('/')).toBe(true);
+    expect(shouldShowDesktopHeaderCta('/commercial-pergolas-auckland')).toBe(true);
   });
 
   it('clarifies product discovery and exposes the approved mobile pathways', () => {

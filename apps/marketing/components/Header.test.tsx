@@ -144,6 +144,24 @@ describe('shared mobile header interaction', () => {
     ]);
   });
 
+  it('removes only the guided route desktop CTA and keeps the mobile action', async () => {
+    currentPathname = '/home-guided';
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 0,
+    });
+    await renderHeader();
+
+    expect(document.querySelector('header.site .nav-cta')).toBeNull();
+    expect(document.querySelector('header.site')?.getAttribute('data-hero-navigation'))
+      .toBe('overlay');
+
+    await openMenu();
+    expect(document.querySelector<HTMLAnchorElement>(
+      '#mobile-menu .mobile-menu__link--estimate',
+    )?.textContent).toContain('Start your project');
+  });
+
   it('uses governed audience, project and product context for the global enquiry action', async () => {
     currentPathname = '/architects-designers-builders';
     await renderHeader();

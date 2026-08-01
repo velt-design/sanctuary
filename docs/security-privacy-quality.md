@@ -50,6 +50,7 @@ other unconditional vendor request. The executable browser boundary is
 | ArchiPro Pixel | marketing | `apps/marketing/components/ArchiproPixel.tsx`, `apps/marketing/app/runtime-archipro.js/route.ts` | Campaign performance tracking | Marketing |
 | Homepage design-conversation events | analytics | `apps/marketing/app/_home/HomepageDesignConversationTracker.tsx` | Measures the production `/` view, first-question start and answer, governed matched-project views, project opens, project-reference selection, capability/support navigation and general-enquiry exits while analytics is enabled | Marketing and Engineering |
 | Guided-home experiment events | analytics | `apps/marketing/app/home-journey/JourneyTracker.tsx` | Measures the noindex `/home-journey` experiment view, closed answer and Back choices, and the single final enquiry exit while analytics is enabled | Marketing and Engineering |
+| Guided design-conversation events | analytics | `apps/marketing/app/_home-guided/GuidedHomepageTracker.ts` | Measures the noindex `/home-guided` view, closed question/answer/change/reset values, five stable results and the primary destination click while analytics is enabled | Marketing and Engineering |
 
 When adding or removing tracking, update this table and the privacy behavior.
 
@@ -76,9 +77,19 @@ emit visitor-entered content, dimensions, contact details or image data. It is
 inactive until analytics consent is enabled and does not backfill choices made
 before consent.
 
+The staged guided design conversation uses the separate
+`guided_design_conversation_home_v1` variant and only allowlisted audience,
+question, answer, result, focus and destination values. Valid destination
+continuation may add the complete non-personal trio `source_experience:
+guided-home-v1`, `source_pathway` and `source_focus` to an embedded enquiry.
+The pathway and focus are closed values from the same guided contract. Partial,
+unknown, duplicate-valued and arbitrary input is discarded, and the URL never
+contains visitor-entered text or personal information.
+
 Enquiry conversion events retain their category gates and event names. Where
 available they also include validated `source_path`, `source_component`,
-`source_project`, and `source_product` values from the shared enquiry-context
+`source_project`, `source_product`, `source_experience`, `source_pathway`, and
+`source_focus` values from the shared enquiry-context
 contract. These properties use known paths, component identifiers, and canonical
 project/product slugs only. Names, contact details, messages, dimensions, upload
 names, and upload contents must not be placed in enquiry URLs or analytics events.

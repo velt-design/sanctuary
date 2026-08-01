@@ -1,3 +1,15 @@
+import {
+  GUIDED_ENQUIRY_SOURCE_EXPERIENCE,
+  guidedBusinessRoles,
+  guidedCoverFocuses,
+  guidedOutdoorUses,
+  guidedProfessionalNeeds,
+  guidedResultIds,
+  guidedSiteConstraints,
+  type GuidedFocusId,
+  type GuidedResultId,
+} from './guidedJourneyContract';
+
 export type EnquiryAudience = 'residential' | 'commercial' | 'professional';
 
 type EnquirySourceComponent =
@@ -16,6 +28,9 @@ export type EnquiryContext = {
   sourceComponent?: EnquirySourceComponent;
   sourceProject?: string;
   sourceProduct?: string;
+  sourceExperience?: typeof GUIDED_ENQUIRY_SOURCE_EXPERIENCE;
+  sourcePathway?: GuidedResultId;
+  sourceFocus?: GuidedFocusId;
 };
 
 type EnquiryContextProperties = {
@@ -24,6 +39,9 @@ type EnquiryContextProperties = {
   source_component?: EnquirySourceComponent;
   source_project?: string;
   source_product?: string;
+  source_experience?: typeof GUIDED_ENQUIRY_SOURCE_EXPERIENCE;
+  source_pathway?: GuidedResultId;
+  source_focus?: GuidedFocusId;
 };
 
 type EnquiryAnalyticsProperties = Record<string, unknown>
@@ -53,6 +71,21 @@ const sourceComponents = new Set<EnquirySourceComponent>([
   'footer',
   'embedded_form',
 ]);
+const guidedPathways = new Set<GuidedResultId>(guidedResultIds);
+const guidedFocuses = new Set<GuidedFocusId>([
+  ...guidedCoverFocuses,
+  ...guidedOutdoorUses,
+  ...guidedSiteConstraints,
+  ...guidedBusinessRoles,
+  ...guidedProfessionalNeeds,
+]);
+const guidedFocusesByPathway: Record<GuidedResultId, ReadonlySet<GuidedFocusId>> = {
+  'residential-cover': new Set(guidedCoverFocuses),
+  'outdoor-room': new Set(guidedOutdoorUses),
+  bespoke: new Set(guidedSiteConstraints),
+  commercial: new Set(guidedBusinessRoles),
+  professional: new Set(guidedProfessionalNeeds),
+};
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_PATH_LENGTH = 240;
@@ -63,6 +96,9 @@ const contextPropertyKeys = [
   'source_component',
   'source_project',
   'source_product',
+  'source_experience',
+  'source_pathway',
+  'source_focus',
 ] as const satisfies ReadonlyArray<keyof EnquiryContextProperties>;
 
 const serviceAudienceByPath = new Map<string, EnquiryAudience>([
@@ -132,6 +168,29 @@ function normalizeSourceComponent(
   return normalized && sourceComponents.has(normalized) ? normalized : undefined;
 }
 
+function normalizeGuidedExperience(
+  value: SearchValue,
+): typeof GUIDED_ENQUIRY_SOURCE_EXPERIENCE | undefined {
+  return firstValue(value)?.trim().toLowerCase()
+    === GUIDED_ENQUIRY_SOURCE_EXPERIENCE
+    ? GUIDED_ENQUIRY_SOURCE_EXPERIENCE
+    : undefined;
+}
+
+function normalizeGuidedPathway(value: SearchValue): GuidedResultId | undefined {
+  const normalized = firstValue(value)?.trim().toLowerCase() as
+    | GuidedResultId
+    | undefined;
+  return normalized && guidedPathways.has(normalized) ? normalized : undefined;
+}
+
+function normalizeGuidedFocus(value: SearchValue): GuidedFocusId | undefined {
+  const normalized = firstValue(value)?.trim().toLowerCase() as
+    | GuidedFocusId
+    | undefined;
+  return normalized && guidedFocuses.has(normalized) ? normalized : undefined;
+}
+
 function normalizeSourcePath(value: SearchValue): string | undefined {
   const normalized = firstValue(value)?.trim();
   if (
@@ -182,6 +241,17 @@ export function parseEnquiryContext(
     searchParams.source_product,
     knownContext.productSlugs,
   );
+  const sourceExperience = normalizeGuidedExperience(
+    searchParams.source_experience,
+  );
+  const sourcePathway = normalizeGuidedPathway(searchParams.source_pathway);
+  const sourceFocus = normalizeGuidedFocus(searchParams.source_focus);
+  const hasCompleteGuidedContext = Boolean(
+    sourceExperience
+      && sourcePathway
+      && sourceFocus
+      && guidedFocusesByPathway[sourcePathway].has(sourceFocus),
+  );
 
   return {
     ...(enquiryType ? { enquiryType } : {}),
@@ -189,6 +259,9 @@ export function parseEnquiryContext(
     ...(sourceComponent ? { sourceComponent } : {}),
     ...(sourceProject ? { sourceProject } : {}),
     ...(sourceProduct ? { sourceProduct } : {}),
+    ...(hasCompleteGuidedContext
+      ? { sourceExperience, sourcePathway, sourceFocus }
+      : {}),
   };
 }
 
@@ -199,6 +272,9 @@ export function buildEnquiryHref(context: EnquiryContext = {}): string {
     source_component: context.sourceComponent,
     source_project: context.sourceProject,
     source_product: context.sourceProduct,
+    source_experience: context.sourceExperience,
+    source_pathway: context.sourcePathway,
+    source_focus: context.sourceFocus,
   });
   const params = new URLSearchParams();
 
@@ -209,6 +285,11 @@ export function buildEnquiryHref(context: EnquiryContext = {}): string {
   }
   if (normalized.sourceProject) params.set('source_project', normalized.sourceProject);
   if (normalized.sourceProduct) params.set('source_product', normalized.sourceProduct);
+  if (normalized.sourceExperience) {
+    params.set('source_experience', normalized.sourceExperience);
+    params.set('source_pathway', normalized.sourcePathway!);
+    params.set('source_focus', normalized.sourceFocus!);
+  }
 
   const query = params.toString();
   return `/contact${query ? `?${query}` : ''}#contact-form`;
@@ -223,6 +304,9 @@ export function getEnquiryContextProperties(
     source_component: context.sourceComponent,
     source_project: context.sourceProject,
     source_product: context.sourceProduct,
+    source_experience: context.sourceExperience,
+    source_pathway: context.sourcePathway,
+    source_focus: context.sourceFocus,
   });
 
   return {
@@ -233,6 +317,13 @@ export function getEnquiryContextProperties(
       : {}),
     ...(normalized.sourceProject ? { source_project: normalized.sourceProject } : {}),
     ...(normalized.sourceProduct ? { source_product: normalized.sourceProduct } : {}),
+    ...(normalized.sourceExperience
+      ? {
+          source_experience: normalized.sourceExperience,
+          source_pathway: normalized.sourcePathway,
+          source_focus: normalized.sourceFocus,
+        }
+      : {}),
   };
 }
 

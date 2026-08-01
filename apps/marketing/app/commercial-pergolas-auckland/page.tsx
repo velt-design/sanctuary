@@ -2,6 +2,10 @@ import type { Metadata } from 'next';
 import '@fontsource-variable/instrument-sans';
 import '@fontsource-variable/inter';
 import SeoLandingPage from '@/components/seo-landing/SeoLandingPage';
+import {
+  resolveGuidedJourneyContext,
+  type GuidedJourneySearchParams,
+} from '@/lib/guidedJourneyContext';
 import { commercialPergolasConfig } from './content';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import '../../components/seo-landing/seo-landing.css';
@@ -27,4 +31,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function CommercialPergolasAucklandPage() { return <SeoLandingPage config={commercialPergolasConfig} />; }
+type CommercialPergolasAucklandPageProps = {
+  searchParams?: Promise<GuidedJourneySearchParams>;
+};
+
+export default async function CommercialPergolasAucklandPage({
+  searchParams,
+}: CommercialPergolasAucklandPageProps) {
+  const guidedContext = resolveGuidedJourneyContext(
+    'commercial',
+    searchParams ? await searchParams : {},
+  );
+  return <SeoLandingPage config={commercialPergolasConfig} guidedContext={guidedContext} />;
+}

@@ -89,6 +89,39 @@ describe('enquiry context', () => {
     });
   });
 
+  it('keeps only a complete validated guided source context', () => {
+    expect(getEnquiryContextProperties({
+      enquiryType: 'commercial',
+      sourcePath: '/commercial-pergolas-auckland',
+      sourceComponent: 'embedded_form',
+      sourceExperience: 'guided-home-v1',
+      sourcePathway: 'commercial',
+      sourceFocus: 'collaborate',
+    })).toEqual({
+      enquiry_type: 'commercial',
+      source_path: '/commercial-pergolas-auckland',
+      source_component: 'embedded_form',
+      source_experience: 'guided-home-v1',
+      source_pathway: 'commercial',
+      source_focus: 'collaborate',
+    });
+
+    expect(parseEnquiryContext({
+      source_experience: 'guided-home-v1',
+      source_pathway: 'free-text',
+      source_focus: 'person@example.test',
+    })).toEqual({});
+    expect(parseEnquiryContext({
+      source_experience: 'guided-home-v1',
+      source_pathway: 'commercial',
+    })).toEqual({});
+    expect(parseEnquiryContext({
+      source_experience: 'guided-home-v1',
+      source_pathway: 'residential-cover',
+      source_focus: 'collaborate',
+    })).toEqual({});
+  });
+
   it('prevents arbitrary analytics properties from overriding canonical context', () => {
     expect(getEnquiryAnalyticsProperties(
       {

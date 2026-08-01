@@ -13,6 +13,7 @@ import {
   getDesktopHeaderNavigation,
   getMobileHeaderNavigation,
   isHeaderHeroOverlayPath,
+  shouldShowDesktopHeaderCta,
 } from './headerNavigation';
 
 const HERO_HEADER_SOLID_SCROLL_PX = 24;
@@ -36,6 +37,7 @@ export default function Header() {
     sourceComponent: 'header',
   });
   const isHeroOverlayRoute = isHeaderHeroOverlayPath(currentPath);
+  const showDesktopCta = shouldShowDesktopHeaderCta(currentPath);
   const mobileToggleRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const firstMobileLinkRef = useRef<HTMLAnchorElement>(null);
@@ -291,14 +293,16 @@ export default function Header() {
             </div>
           </nav>
           <div className="header-actions">
-            <Link
-              href={headerEnquiryHref}
-              className="nav-cta"
-              data-homepage-event="header_estimate_click"
-              data-enquiry-type={routeEnquiryContext.enquiryType}
-            >
-              <span className="nav-cta__label">Start your project</span>
-            </Link>
+            {showDesktopCta ? (
+              <Link
+                href={headerEnquiryHref}
+                className="nav-cta"
+                data-homepage-event="header_estimate_click"
+                data-enquiry-type={routeEnquiryContext.enquiryType}
+              >
+                <span className="nav-cta__label">Start your project</span>
+              </Link>
+            ) : null}
             <button
               ref={mobileToggleRef}
               type="button"

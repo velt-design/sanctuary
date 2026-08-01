@@ -44,6 +44,7 @@ const primaryNavigationItems: readonly PrimaryNavigationItem[] = [
 
 const heroOverlayPaths = new Set([
   '/',
+  '/home-guided',
   '/pergola-guides',
   '/pergolas-auckland',
   '/custom-pergolas-auckland',
@@ -67,6 +68,10 @@ export function getCanonicalHeaderPathname(
 
 export function isHeaderHeroOverlayPath(pathname: string): boolean {
   return heroOverlayPaths.has(pathname);
+}
+
+export function shouldShowDesktopHeaderCta(pathname: string): boolean {
+  return pathname !== '/home-guided';
 }
 
 function toNavigationItem(

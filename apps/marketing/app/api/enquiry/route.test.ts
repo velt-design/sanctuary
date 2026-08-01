@@ -243,6 +243,9 @@ describe('POST /api/enquiry attribution', () => {
             source_component: 'project_cta',
             source_project: 'warkworth-outdoor-room',
             source_product: 'unknown-product',
+            source_experience: 'guided-home-v1',
+            source_pathway: 'residential-cover',
+            source_focus: 'daylight',
             email: 'must-not-be-kept@example.test',
           },
           utm: { utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'winter' },
@@ -278,6 +281,9 @@ describe('POST /api/enquiry attribution', () => {
       source_path: '/projects/warkworth-outdoor-room',
       source_component: 'project_cta',
       source_project: 'warkworth-outdoor-room',
+      source_experience: 'guided-home-v1',
+      source_pathway: 'residential-cover',
+      source_focus: 'daylight',
     });
     const leadEvents = db.audit_events.filter((event) => event.type === 'marketing.lead_submitted');
     expect(leadEvents).toHaveLength(1);

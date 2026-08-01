@@ -2,6 +2,7 @@ import type {
   SeoLandingBlock,
   SeoLandingGuideFirstLayer,
 } from './types';
+import { orderGuidedItemsBySlug } from '@/lib/guidedJourneyContext';
 
 export function orderSeoLandingBlocks(
   blocks: readonly SeoLandingBlock[],
@@ -26,6 +27,36 @@ export function orderSeoLandingBlocks(
   }
 
   return orderedBlocks;
+}
+
+export function prioritizeSeoLandingProjectEvidence(
+  blocks: readonly SeoLandingBlock[],
+  preferredProjectSlugs: readonly string[] = [],
+): SeoLandingBlock[] {
+  if (!preferredProjectSlugs.length) return [...blocks];
+  return blocks.map((block) => block.kind === 'projects'
+    ? {
+        ...block,
+        items: orderGuidedItemsBySlug(block.items, preferredProjectSlugs),
+      }
+    : block);
+}
+
+export function prioritizeSeoLandingGuideFirstLayer(
+  blocks: readonly SeoLandingBlock[],
+  config: SeoLandingGuideFirstLayer,
+  preferredProjectSlugs: readonly string[] = [],
+): SeoLandingGuideFirstLayer {
+  const projectBlock = blocks.find(({ id }) => id === config.projectBlockId);
+  if (projectBlock?.kind !== 'projects' || !preferredProjectSlugs.length) {
+    return config;
+  }
+  const availableSlugs = new Set(projectBlock.items.map(({ slug }) => slug));
+  const preferredProject = preferredProjectSlugs.find((slug) =>
+    availableSlugs.has(slug));
+  return preferredProject
+    ? { ...config, projectSlug: preferredProject }
+    : config;
 }
 
 type GuideFirstLayerViewModel = {
