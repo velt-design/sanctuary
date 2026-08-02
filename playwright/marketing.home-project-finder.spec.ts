@@ -35,6 +35,9 @@ async function projectFinderEvents(page: Page) {
         || entry.event.startsWith('project_result_')
         || entry.event.startsWith('project_pathway_')
         || entry.event.startsWith('project_reference_')
+        || entry.event.startsWith('project_view_')
+        || entry.event.startsWith('project_enquiry_')
+        || entry.event.startsWith('project_audience_')
         || entry.event.startsWith('brief_')
       )
     ))
@@ -75,6 +78,17 @@ test('project finder route is protected, noindex and separate from the live home
   await expect(page.locator('header.site')).toBeVisible();
   await expect(page.locator('footer')).toBeVisible();
   await expect(page.locator('[data-project-direction]')).toHaveCount(3);
+  await expect(page.getByRole('link', { name: 'Commercial clients' }))
+    .toHaveAttribute('href', '/commercial-pergolas-auckland');
+  await expect(page.getByRole('link', { name: 'Architects, designers and builders' }))
+    .toHaveAttribute('href', '/architects-designers-builders');
+  await expect(page.locator('[data-project-direction] img')).toHaveCount(3);
+  await expect(page.locator('[data-project-direction] img').first())
+    .toHaveAttribute('loading', 'lazy');
+  await expect(page.getByRole('img', {
+    name: 'Interior outdoor room with cedar ceiling, pendant lighting and lounge seating',
+  }).first()).toHaveAttribute('fetchpriority', 'high');
+  await expect(page.locator('main img[loading="eager"]')).toHaveCount(0);
   await expect(page.locator('h1')).toHaveCount(1);
   await expectNoHorizontalOverflow(page);
 
@@ -110,7 +124,7 @@ test('each project direction gives one useful pathway and two governed reference
     await expect(page.getByRole('heading', { level: 2, name: heading, exact: true }))
       .toBeVisible();
     await expect(page.locator('[data-project-finder-result] a').first())
-      .toHaveAttribute('href', pathway);
+      .toHaveAttribute('href', `${pathway}?project=${direction}`);
     for (const projectName of projectNames) {
       await expect(page.getByRole('heading', { level: 3, name: projectName }))
         .toBeVisible();
@@ -145,7 +159,7 @@ test('brief builder enforces three priorities and carries the controlled brief i
   );
   await expect(page.getByRole('heading', {
     level: 3,
-    name: /A complete outdoor room for regular use, cooking and entertaining, and natural light\./,
+    name: /A complete outdoor room designed to make the space work every day, support cooking and entertaining, and preserve natural light\./,
   })).toBeVisible();
 
   await page.getByRole('link', { name: 'Send this brief to Sanctuary' }).click();
@@ -167,6 +181,44 @@ test('brief builder enforces three priorities and carries the controlled brief i
     project_direction: 'outdoor-room',
     project_priorities: ['daylight', 'everyday-use', 'entertaining'],
   });
+});
+
+test('the recommended service page retains the selected brief through enquiry', async ({
+  page,
+}) => {
+  await setAnalyticsConsent(page, false);
+  await page.goto('/home-project-finder?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination');
+  await page.getByRole('link', { name: 'Explore bespoke pergolas' }).click();
+
+  await expect(page).toHaveURL(
+    /\/custom-pergolas-auckland\?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination$/,
+  );
+  const journeyContext = page.locator('[data-project-finder-journey-context]');
+  await expect(journeyContext).toBeVisible();
+  await expect(journeyContext.getByRole('heading', { level: 2 })).toHaveText(
+    'A bespoke pergola response designed to keep the structure visually open, coordinate cleanly with the wider project, and preserve natural light.',
+  );
+  await expect(journeyContext.getByRole('link', { name: 'Refine your brief' }))
+    .toHaveAttribute(
+      'href',
+      '/home-project-finder?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination',
+    );
+
+  const formContext = JSON.parse(await page.locator(
+    '#project-details input[name="enquiryContext"]',
+  ).inputValue());
+  expect(formContext).toMatchObject({
+    enquiry_type: 'residential',
+    source_path: '/custom-pergolas-auckland',
+    source_component: 'embedded_form',
+    source_experience: 'project-finder-home-v1',
+    project_direction: 'bespoke',
+    project_priorities: ['daylight', 'open-structure', 'coordination'],
+  });
+  await expect(page.locator('header.site .nav-cta')).toHaveAttribute(
+    'href',
+    /project_direction=bespoke.*project_priorities=daylight%2Copen-structure%2Ccoordination/,
+  );
 });
 
 test('URL state is canonical, refreshable and restored by browser history', async ({
@@ -267,6 +319,22 @@ test('analytics use consent-aware closed project finder values', async ({ page }
   await selectDirection(consented, 'bespoke');
   await consented.getByRole('button', { name: 'Refine what matters' }).click();
   await consented.locator('[data-project-priority]').first().check();
+  await expect.poll(async () => (
+    await projectFinderEvents(consented)
+  ).filter((event) => event.event === 'project_result_view').length).toBe(1);
+
+  await consented.evaluate(() => {
+    document.addEventListener('click', (event) => {
+      const target = event.target instanceof Element
+        ? event.target.closest('[data-project-finder-event]')
+        : null;
+      if (target) event.preventDefault();
+    }, true);
+  });
+  const firstProject = consented.locator('[data-project-evidence]').first();
+  await firstProject.getByRole('link', { name: 'View project' }).click();
+  await firstProject.getByRole('link', { name: 'Use as a reference' }).click();
+  await consented.getByRole('link', { name: 'Commercial clients' }).click();
   const events = await projectFinderEvents(consented);
   expect(events.map((event) => event.event)).toEqual(expect.arrayContaining([
     'project_finder_home_view',
@@ -275,7 +343,11 @@ test('analytics use consent-aware closed project finder values', async ({ page }
     'brief_builder_open',
     'brief_priority_select',
     'brief_summary_view',
+    'project_view_click',
+    'project_enquiry_reference_click',
+    'project_audience_path_click',
   ]));
+  expect(events.filter((event) => event.event === 'project_result_view')).toHaveLength(1);
   for (const event of events) {
     expect(JSON.stringify(event)).not.toMatch(/@|email|phone|free_text|address/i);
     expect(event).toMatchObject({
@@ -309,7 +381,50 @@ test('no-JavaScript visitors receive direct project and enquiry pathways', async
     .toHaveAttribute('href', '/outdoor-rooms-auckland');
   await expect(page.getByRole('link', { name: 'A bespoke or difficult-site solution' }))
     .toHaveAttribute('href', '/custom-pergolas-auckland');
+  await expect(page.getByRole('link', { name: 'Commercial clients' }))
+    .toHaveAttribute('href', '/commercial-pergolas-auckland');
+  await expect(page.getByRole('link', { name: 'Architects, designers and builders' }))
+    .toHaveAttribute('href', '/architects-designers-builders');
   await context.close();
+});
+
+test('direction cards stay compact on mobile and avoid narrow tablet columns', async ({
+  page,
+}) => {
+  await setAnalyticsConsent(page, false);
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto('/home-project-finder');
+
+  for (const width of [320, 390, 430]) {
+    await page.setViewportSize({ width, height: 900 });
+    const cards = await page.locator('[data-project-direction]').evaluateAll((elements) => (
+      elements.map((element) => {
+        const card = element.getBoundingClientRect();
+        const image = element.querySelector('img')?.getBoundingClientRect();
+        return { cardHeight: card.height, imageWidth: image?.width ?? 0 };
+      })
+    ));
+    for (const card of cards) {
+      expect(card.cardHeight).toBeLessThan(230);
+      expect(card.imageWidth).toBeLessThanOrEqual(100);
+    }
+    await expectNoHorizontalOverflow(page);
+  }
+
+  for (const width of [768, 900]) {
+    await page.setViewportSize({ width, height: 1024 });
+    const cards = await page.locator('[data-project-direction]').evaluateAll((elements) => (
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { width: rect.width, height: rect.height };
+      })
+    ));
+    for (const card of cards) {
+      expect(card.width).toBeGreaterThan(width * .75);
+      expect(card.height).toBeLessThan(320);
+    }
+    await expectNoHorizontalOverflow(page);
+  }
 });
 
 test('the full selected journey stays usable and overflow-free across the QA matrix', async ({
@@ -327,13 +442,15 @@ test('the full selected journey stays usable and overflow-free across the QA mat
     { width: 414, height: 896 },
     { width: 430, height: 932 },
     { width: 768, height: 1024 },
+    { width: 900, height: 1180 },
     { width: 1024, height: 768 },
     { width: 1440, height: 900 },
   ];
+  await page.setViewportSize(viewports[0]);
+  await page.goto('/home-project-finder');
 
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
-    await page.goto('/home-project-finder');
     await expectNoHorizontalOverflow(page);
     await selectDirection(page, 'outdoor-room');
     await page.getByRole('button', { name: 'Refine what matters' }).click();
@@ -346,5 +463,7 @@ test('the full selected journey stays usable and overflow-free across the QA mat
     await expect(page.locator('[data-project-evidence]')).toHaveCount(2);
     await expect(page.getByRole('link', { name: 'Send your brief' })).toBeVisible();
     await expectNoHorizontalOverflow(page);
+    await page.getByRole('button', { name: 'Start again' }).click();
+    await expect(page).toHaveURL(/\/home-project-finder$/);
   }
 });

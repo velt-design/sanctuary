@@ -6,6 +6,7 @@ import {
   resolveGuidedJourneyContext,
   type GuidedJourneySearchParams,
 } from '@/lib/guidedJourneyContext';
+import { resolveProjectFinderJourneyContext } from '@/lib/projectFinderContinuation';
 import { outdoorRoomsConfig } from './content';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import '../../components/seo-landing/seo-landing.css';
@@ -18,9 +19,19 @@ type OutdoorRoomsAucklandPageProps = {
 export default async function OutdoorRoomsAucklandPage({
   searchParams,
 }: OutdoorRoomsAucklandPageProps) {
+  const params = searchParams ? await searchParams : {};
   const guidedContext = resolveGuidedJourneyContext(
     'outdoor-room',
-    searchParams ? await searchParams : {},
+    params,
   );
-  return <SeoLandingPage config={outdoorRoomsConfig} guidedContext={guidedContext} />;
+  const projectFinderContext = guidedContext
+    ? null
+    : resolveProjectFinderJourneyContext('outdoor-room', params);
+  return (
+    <SeoLandingPage
+      config={outdoorRoomsConfig}
+      guidedContext={guidedContext}
+      projectFinderContext={projectFinderContext}
+    />
+  );
 }

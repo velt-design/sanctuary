@@ -51,7 +51,7 @@ other unconditional vendor request. The executable browser boundary is
 | Homepage design-conversation events | analytics | `apps/marketing/app/_home/HomepageDesignConversationTracker.tsx` | Measures the production `/` view, first-question start and answer, governed matched-project views, project opens, project-reference selection, capability/support navigation and general-enquiry exits while analytics is enabled | Marketing and Engineering |
 | Guided-home experiment events | analytics | `apps/marketing/app/home-journey/JourneyTracker.tsx` | Measures the noindex `/home-journey` experiment view, closed answer and Back choices, and the single final enquiry exit while analytics is enabled | Marketing and Engineering |
 | Guided design-conversation events | analytics | `apps/marketing/app/_home-guided/GuidedHomepageTracker.ts` | Measures the noindex `/home-guided` view, closed question/answer/change/reset values, five stable results and the primary destination click while analytics is enabled | Marketing and Engineering |
-| Project-led visual-finder events | analytics | `apps/marketing/app/_home-project-finder/ProjectFinderTracker.tsx` | Measures the noindex `/home-project-finder` view, closed direction and priority changes, governed project opens, brief continuation and reset actions while analytics is enabled | Marketing and Engineering |
+| Project-led visual-finder events | analytics | `apps/marketing/app/_home-project-finder/ProjectFinderTracker.tsx` | Measures the noindex `/home-project-finder` view, closed direction and priority changes, one result view per direction, separate project-detail and enquiry-reference actions, secondary commercial/professional paths, brief continuation and reset actions while analytics is enabled | Marketing and Engineering |
 
 When adding or removing tracking, update this table and the privacy behavior.
 
@@ -89,12 +89,16 @@ contains visitor-entered text or personal information.
 
 The project-led visual finder uses the separate `project_finder_home_v1`
 variant. Its listener emits only allowlisted direction, priority, component,
-project and destination values and remains inactive until analytics consent is
-enabled. Valid enquiry continuation may carry `source_experience:
+project, audience-path and destination values and remains inactive until
+analytics consent is enabled. `project_result_view`, `project_view_click`,
+`project_enquiry_reference_click` and `project_audience_path_click` represent
+separate intents; changing priorities does not emit another result view for the
+same direction. Valid enquiry continuation may carry `source_experience:
 project-finder-home-v1`, one closed `project_direction` and up to three closed
-`project_priorities`; invalid, duplicate and excess values are discarded. The
-prototype URL and analytics contract contain no free text, contact details,
-dimensions or uploaded content.
+`project_priorities` through a matching service-page URL, embedded form or
+header enquiry action. Invalid, wrong-route, duplicate and excess values are
+discarded. The prototype URL and analytics contract contain no free text,
+contact details, dimensions or uploaded content.
 
 Enquiry conversion events retain their category gates and event names. Where
 available they also include validated `source_path`, `source_component`,

@@ -5,10 +5,8 @@ import type {
   ProjectDirection,
   ProjectPriority,
 } from '../../lib/projectFinderContract';
-import {
-  priorityOrderByDirection,
-  projectPriorityContent,
-} from './projectFinderContent';
+import { projectPriorityContent } from './projectFinderContent';
+import { projectFinderPriorityOrderByDirection } from '../../lib/projectFinderContinuation';
 import styles from './projectFinderHomepage.module.css';
 
 type BuildBriefProps = {
@@ -30,7 +28,7 @@ export default function BuildBrief({
   onClear,
   priorities,
 }: BuildBriefProps) {
-  const order = priorityOrderByDirection[direction];
+  const order = projectFinderPriorityOrderByDirection[direction];
 
   return (
     <div className={styles.briefBuilder}>

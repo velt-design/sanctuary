@@ -5,6 +5,7 @@ import '@fontsource-variable/instrument-sans';
 import '@fontsource-variable/inter';
 import JsonLd from '@/components/JsonLd';
 import GuidedJourneyContext from '@/components/guided-journey/GuidedJourneyContext';
+import ProjectFinderJourneyContext from '@/components/project-finder/ProjectFinderJourneyContext';
 import {
   Button,
   Container,
@@ -22,6 +23,7 @@ import {
   resolveGuidedJourneyContext,
   type GuidedJourneySearchParams,
 } from '@/lib/guidedJourneyContext';
+import { resolveProjectFinderJourneyContext } from '@/lib/projectFinderContinuation';
 import { absoluteUrl } from '@/lib/seo';
 import AcrylicPergolaEnquiryForm from '../acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm';
 import MobileServiceDisclosure from './MobileServiceDisclosure';
@@ -81,10 +83,14 @@ type PergolasAucklandPageProps = {
 export default async function PergolasAucklandPage({
   searchParams,
 }: PergolasAucklandPageProps) {
+  const params = searchParams ? await searchParams : {};
   const guidedContext = resolveGuidedJourneyContext(
     'residential-cover',
-    searchParams ? await searchParams : {},
+    params,
   );
+  const projectFinderContext = guidedContext
+    ? null
+    : resolveProjectFinderJourneyContext('cover', params);
   const projectProof = orderGuidedItemsBySlug(
     baseProjectProof,
     guidedContext?.preferredProjectSlugs,
@@ -197,6 +203,7 @@ export default async function PergolasAucklandPage({
       </section>
 
       <GuidedJourneyContext context={guidedContext} />
+      <ProjectFinderJourneyContext context={projectFinderContext} />
 
       <Section
         id="design-brief"
@@ -464,7 +471,7 @@ export default async function PergolasAucklandPage({
         <Container width="wide">
           <AcrylicPergolaEnquiryForm
             initialEnquiryType="residential"
-            sourceContext={guidedContext?.enquiryContext ?? {
+            sourceContext={guidedContext?.enquiryContext ?? projectFinderContext?.enquiryContext ?? {
               enquiryType: 'residential',
               sourcePath: route,
               sourceComponent: 'embedded_form',

@@ -1,0 +1,68 @@
+.root {
+  border-bottom: 1px solid var(--color-rule-strong);
+  background: var(--color-surface-elevated);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: end;
+  padding-block: clamp(2rem, 4vw, 3.5rem);
+}
+
+.copy {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin-bottom: .8rem;
+}
+
+.copy h2 {
+  max-width: 52rem;
+  margin: 0 0 .8rem;
+  font-size: clamp(1.75rem, 3.2vw, 3.15rem);
+  line-height: 1.02;
+}
+
+.copy p {
+  max-width: 42rem;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: 400 clamp(.94rem, 1.2vw, 1.04rem)/1.6 var(--font-body);
+}
+
+.actions {
+  display: grid;
+  gap: .65rem;
+  justify-items: start;
+}
+
+.actions a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-rule-strong);
+  color: var(--color-text-primary);
+  font: 600 .7rem/1.2 var(--font-body);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.actions a:first-child {
+  border-bottom-color: var(--color-accent-olive);
+}
+
+.actions a:focus-visible {
+  outline: 2px solid var(--color-accent-olive);
+  outline-offset: 4px;
+}
+
+@media (max-width: 760px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    padding-block: 2rem 2.25rem;
+  }
+}

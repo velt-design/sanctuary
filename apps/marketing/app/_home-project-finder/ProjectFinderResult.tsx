@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type { RefObject } from 'react';
 import { buildEnquiryHref } from '../../lib/enquiryContext';
+import { buildProjectFinderDestinationHref } from '../../lib/projectFinderContinuation';
 import {
   PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
   PROJECT_FINDER_HOME_PATH,
@@ -29,6 +30,7 @@ export default function ProjectFinderResult({
   resultRef,
 }: ProjectFinderResultProps) {
   const content = projectDirectionContent[direction];
+  const pathwayHref = buildProjectFinderDestinationHref(direction, priorities);
   const enquiryHref = buildEnquiryHref({
     enquiryType: 'residential',
     sourcePath: PROJECT_FINDER_HOME_PATH,
@@ -60,7 +62,7 @@ export default function ProjectFinderResult({
             data-project-direction={direction}
             data-project-priorities={priorities.join(',')}
             data-source-component="project_finder"
-            href={content.pathwayHref}
+            href={pathwayHref}
           >
             {content.pathwayLabel}
           </Link>

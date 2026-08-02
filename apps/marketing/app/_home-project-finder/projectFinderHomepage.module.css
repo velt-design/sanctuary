@@ -335,6 +335,41 @@
   padding-bottom: .12rem;
 }
 
+.audiencePaths {
+  display: flex;
+  gap: 1.5rem 2.25rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-rule);
+}
+
+.audiencePaths p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: 400 .82rem/1.5 var(--font-body);
+}
+
+.audiencePaths div {
+  display: flex;
+  gap: 1rem 1.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.audiencePaths a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-rule-strong);
+  color: var(--color-text-primary);
+  font: 600 .68rem/1.25 var(--font-body);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
 .directionCard:active {
   transform: scale(var(--motion-press-scale));
 }
@@ -634,11 +669,35 @@
   font-weight: 600;
 }
 
+.noScriptAudience {
+  display: flex;
+  gap: .75rem 1.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-block: 1.5rem;
+}
+
+.noScriptAudience span {
+  color: var(--color-text-secondary);
+  font-size: .82rem;
+}
+
+.noScriptAudience a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-rule-strong);
+  color: var(--color-text-primary);
+  font-size: .78rem;
+  font-weight: 600;
+}
+
 .heroPrimaryAction:focus-visible,
 .heroSecondaryAction:focus-visible,
 .heroProjectMeta a:focus-visible,
 .proofItem:focus-visible,
 .directionCard:focus-visible,
+.audiencePaths a:focus-visible,
 .resultActions a:focus-visible,
 .resultActions button:focus-visible,
 .priorityChoice:has(input:focus-visible),
@@ -695,6 +754,45 @@
 
   .briefSummary {
     position: static;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 900px) {
+  .directionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .directionCard {
+    min-height: 230px;
+    grid-template-columns: minmax(220px, 38%) 2rem minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    gap: .75rem 1.25rem;
+    padding: 0 1.5rem 0 0;
+  }
+
+  .directionImage {
+    min-height: 230px;
+    grid-column: 1;
+    grid-row: 1 / 4;
+    margin: 0;
+  }
+
+  .directionNumber {
+    grid-column: 2;
+    grid-row: 1;
+    margin-top: 1.5rem;
+  }
+
+  .directionCopy {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    margin-top: 1.5rem;
+  }
+
+  .directionState {
+    grid-column: 3;
+    grid-row: 3;
+    margin-bottom: 1.5rem;
   }
 }
 
@@ -763,6 +861,15 @@
     grid-template-columns: 1fr;
   }
 
+  .audiencePaths {
+    display: grid;
+    gap: .75rem;
+  }
+
+  .audiencePaths div {
+    justify-content: flex-start;
+  }
+
   .projectActions,
   .escapeActions {
     display: grid;
@@ -802,13 +909,43 @@
   }
 
   .directionCard {
-    grid-template-rows: 155px auto auto;
-    padding: 0 1.15rem 1.15rem;
+    min-height: 144px;
+    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    gap: .35rem .9rem;
+    padding: .75rem 1rem .75rem 0;
   }
 
   .directionImage {
-    min-height: 155px;
-    margin-inline: -1.15rem;
+    min-height: 128px;
+    grid-column: 1;
+    grid-row: 1 / 4;
+    margin: 0;
+  }
+
+  .directionNumber {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .directionCopy {
+    grid-column: 2;
+    grid-row: 2;
+    gap: .35rem;
+  }
+
+  .directionCopy strong {
+    font-size: clamp(1.08rem, 5.4vw, 1.35rem);
+  }
+
+  .directionCopy > span {
+    font-size: .78rem;
+    line-height: 1.4;
+  }
+
+  .directionState {
+    grid-column: 2;
+    grid-row: 3;
   }
 
   .briefLayout {
@@ -850,11 +987,12 @@
   }
 
   .directionCard {
-    grid-template-rows: 145px auto auto;
+    grid-template-columns: 78px minmax(0, 1fr);
+    padding-right: .85rem;
   }
 
   .directionImage {
-    min-height: 145px;
+    min-height: 132px;
   }
 }
 

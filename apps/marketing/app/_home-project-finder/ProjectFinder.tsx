@@ -123,17 +123,18 @@ export default function ProjectFinder({
   }, [state.project]);
 
   useEffect(() => {
-    if (!state.project || !consent.analytics) return;
-    const key = `${state.project}:${priorities.join(',')}`;
-    if (lastResultViewRef.current === key) return;
-    lastResultViewRef.current = key;
+    if (!state.project) {
+      lastResultViewRef.current = null;
+      return;
+    }
+    if (!consent.analytics || lastResultViewRef.current === state.project) return;
+    lastResultViewRef.current = state.project;
     pushProjectFinderEvent('project_result_view', {
       project_direction: state.project,
-      ...(priorities.length ? { project_priorities: priorities } : {}),
       source_component: 'project_finder',
       step_number: 2,
     });
-  }, [consent.analytics, priorities, state.project]);
+  }, [consent.analytics, state.project]);
 
   useEffect(() => {
     if (!briefOpen || !state.project || !consent.analytics) return;
@@ -313,8 +314,8 @@ export default function ProjectFinder({
                       <Image
                         alt={choiceMedia.alt}
                         fill
-                        loading="eager"
-                        sizes="(max-width: 760px) calc(100vw - 2.5rem), (max-width: 1100px) 33vw, 420px"
+                        loading="lazy"
+                        sizes="(max-width: 430px) 96px, (max-width: 760px) calc(100vw - 2.5rem), (max-width: 900px) 36vw, (max-width: 1100px) 33vw, 420px"
                         src={choiceMedia.src}
                         style={{ objectPosition: choiceMedia.objectPosition }}
                       />
@@ -336,6 +337,28 @@ export default function ProjectFinder({
               })}
             </div>
           </fieldset>
+
+          <nav className={styles.audiencePaths} aria-label="Other project pathways">
+            <p>Planning a commercial or consultant-led project?</p>
+            <div>
+              <Link
+                data-project-finder-event="project_audience_path_click"
+                data-audience-path="commercial"
+                data-source-component="project_finder"
+                href="/commercial-pergolas-auckland"
+              >
+                Commercial clients
+              </Link>
+              <Link
+                data-project-finder-event="project_audience_path_click"
+                data-audience-path="professional"
+                data-source-component="project_finder"
+                href="/architects-designers-builders"
+              >
+                Architects, designers and builders
+              </Link>
+            </div>
+          </nav>
         </Container>
       </section>
 
@@ -412,7 +435,7 @@ export default function ProjectFinder({
                         <p>{project.reason}</p>
                         <div className={styles.projectActions}>
                           <Link
-                            data-project-finder-event="project_reference_click"
+                            data-project-finder-event="project_view_click"
                             data-project-direction={state.project}
                             data-project-priorities={priorities.join(',')}
                             data-selected-project={project.projectSlug}
@@ -422,7 +445,7 @@ export default function ProjectFinder({
                             View project
                           </Link>
                           <Link
-                            data-project-finder-event="project_reference_click"
+                            data-project-finder-event="project_enquiry_reference_click"
                             data-project-direction={state.project}
                             data-project-priorities={priorities.join(',')}
                             data-selected-project={project.projectSlug}

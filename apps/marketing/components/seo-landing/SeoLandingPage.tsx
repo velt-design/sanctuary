@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import JsonLd from '@/components/JsonLd';
 import GuidedJourneyContext from '@/components/guided-journey/GuidedJourneyContext';
+import ProjectFinderJourneyContext from '@/components/project-finder/ProjectFinderJourneyContext';
 import { Button, Container, Eyebrow, Heading, Section, Text, TextLink } from '@/components/marketing-foundation';
 import AcrylicPergolaEnquiryForm from '@/app/acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm';
 import { absoluteUrl } from '@/lib/seo';
@@ -10,6 +11,7 @@ import SeoLandingMobileDisclosure from './SeoLandingMobileDisclosure';
 import PergolaGuideNavigation from './PergolaGuideNavigation';
 import type { SeoLandingPageConfig } from './types';
 import type { GuidedJourneyContext as GuidedJourneyContextModel } from '@/lib/guidedJourneyContext';
+import type { ProjectFinderJourneyContext as ProjectFinderJourneyContextModel } from '@/lib/projectFinderContinuation';
 import {
   buildGuideFirstLayer,
   orderSeoLandingBlocks,
@@ -21,11 +23,13 @@ import { findPergolaGuide, pergolaGuideEditorialReview } from '@/data/pergolaGui
 type SeoLandingPageProps = {
   config: SeoLandingPageConfig;
   guidedContext?: GuidedJourneyContextModel | null;
+  projectFinderContext?: ProjectFinderJourneyContextModel | null;
 };
 
 export default function SeoLandingPage({
   config,
   guidedContext = null,
+  projectFinderContext = null,
 }: SeoLandingPageProps) {
   const guide = findPergolaGuide(config.route);
   const enquiryType = config.enquiryType ?? 'residential';
@@ -95,6 +99,7 @@ export default function SeoLandingPage({
         </Container>
       </section>
       <GuidedJourneyContext context={guidedContext} />
+      <ProjectFinderJourneyContext context={projectFinderContext} />
       {config.showGuideNavigation === false
         ? null
         : <PergolaGuideNavigation route={config.route} />}
@@ -130,7 +135,7 @@ export default function SeoLandingPage({
       ) : (
         <SeoLandingBlocks blocks={blocks} disclosureGroups={config.mobileDisclosureGroups} />
       )}
-      <Section id="project-details" tone="warm" className="acrylic-section acrylic-section--estimate" aria-label={config.form.ariaLabel}><Container width="wide"><AcrylicPergolaEnquiryForm eyebrow={config.form.eyebrow} heading={config.form.heading} intro={config.form.intro} submitLabel={config.form.submitLabel} messageLabel={config.form.messageLabel} messagePlaceholder={config.form.messagePlaceholder} briefFields={config.form.briefFields} directContact={config.form.directContact} roofPreference={config.form.roofPreference} initialEnquiryType={enquiryType} sourceContext={guidedContext?.enquiryContext ?? { enquiryType, sourcePath: config.route, sourceComponent: 'embedded_form' }} /></Container></Section>
+      <Section id="project-details" tone="warm" className="acrylic-section acrylic-section--estimate" aria-label={config.form.ariaLabel}><Container width="wide"><AcrylicPergolaEnquiryForm eyebrow={config.form.eyebrow} heading={config.form.heading} intro={config.form.intro} submitLabel={config.form.submitLabel} messageLabel={config.form.messageLabel} messagePlaceholder={config.form.messagePlaceholder} briefFields={config.form.briefFields} directContact={config.form.directContact} roofPreference={config.form.roofPreference} initialEnquiryType={enquiryType} sourceContext={guidedContext?.enquiryContext ?? projectFinderContext?.enquiryContext ?? { enquiryType, sourcePath: config.route, sourceComponent: 'embedded_form' }} /></Container></Section>
     </main>
   );
 }

@@ -23,6 +23,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   currentPathname = '/projects';
+  window.history.replaceState({}, '', '/');
   mediaListeners = [];
   Object.defineProperty(window, 'scrollY', {
     configurable: true,
@@ -190,6 +191,26 @@ describe('shared mobile header interaction', () => {
       ...getEnquiryRouteContext(currentPathname),
       sourcePath: currentPathname,
       sourceComponent: 'header',
+    }));
+  });
+
+  it('preserves a project finder brief in service-page enquiry actions', async () => {
+    currentPathname = '/outdoor-rooms-auckland';
+    window.history.replaceState(
+      {},
+      '',
+      '/outdoor-rooms-auckland?project=outdoor-room&priorities=daylight,everyday-use',
+    );
+    await renderHeader();
+
+    const desktopCta = document.querySelector<HTMLAnchorElement>('header.site .nav-cta');
+    expect(desktopCta?.getAttribute('href')).toBe(buildEnquiryHref({
+      enquiryType: 'residential',
+      sourcePath: currentPathname,
+      sourceComponent: 'header',
+      sourceExperience: 'project-finder-home-v1',
+      projectDirection: 'outdoor-room',
+      projectPriorities: ['daylight', 'everyday-use'],
     }));
   });
 

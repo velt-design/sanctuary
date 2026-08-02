@@ -7,7 +7,13 @@ import { createPortal } from 'react-dom';
 import {
   buildEnquiryHref,
   getEnquiryRouteContext,
+  type EnquiryContext,
 } from '@/lib/enquiryContext';
+import {
+  projectFinderDestinationByDirection,
+  resolveProjectFinderJourneyContextFromReader,
+} from '@/lib/projectFinderContinuation';
+import { projectDirections } from '@/lib/projectFinderContract';
 import {
   getCanonicalHeaderPathname,
   getDesktopHeaderNavigation,
@@ -26,13 +32,23 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [heroHeaderScrolled, setHeroHeaderScrolled] = useState(false);
+  const [projectFinderEnquiryContext, setProjectFinderEnquiryContext] =
+    useState<EnquiryContext | null>(null);
   const pathname = usePathname();
   const currentPath = getCanonicalHeaderPathname(pathname);
   const desktopNavigationItems = getDesktopHeaderNavigation(currentPath);
   const mobileNavigationItems = getMobileHeaderNavigation(currentPath);
   const routeEnquiryContext = getEnquiryRouteContext(currentPath);
+  const projectFinderDirection = projectDirections.find(
+    (direction) => projectFinderDestinationByDirection[direction] === currentPath,
+  );
+  const projectFinderContext = projectFinderDirection
+    && projectFinderEnquiryContext?.projectDirection === projectFinderDirection
+    ? projectFinderEnquiryContext
+    : null;
   const headerEnquiryHref = buildEnquiryHref({
     ...routeEnquiryContext,
+    ...projectFinderContext,
     sourcePath: currentPath,
     sourceComponent: 'header',
   });
@@ -62,6 +78,24 @@ export default function Header() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const syncProjectFinderContext = () => {
+      if (!projectFinderDirection) {
+        setProjectFinderEnquiryContext(null);
+        return;
+      }
+      const context = resolveProjectFinderJourneyContextFromReader(
+        projectFinderDirection,
+        new URLSearchParams(window.location.search),
+      );
+      setProjectFinderEnquiryContext(context?.enquiryContext ?? null);
+    };
+
+    syncProjectFinderContext();
+    window.addEventListener('popstate', syncProjectFinderContext);
+    return () => window.removeEventListener('popstate', syncProjectFinderContext);
+  }, [projectFinderDirection]);
 
   useEffect(() => {
     if (!isHeroOverlayRoute) {

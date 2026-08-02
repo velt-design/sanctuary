@@ -1280,3 +1280,36 @@ It should not feel like the visitor has arrived at a quiz.
 The desired sequence is:
 
 > See the quality. Understand the offer. Recognise the project. Refine the priorities when useful. Continue with relevant evidence and a clear next step.
+
+---
+
+# 25. Approved targeted refinement addendum
+
+The post-launch refinement keeps the three residential project directions as
+the only finder cards. It adds a quiet secondary line for commercial clients
+and architects, designers and builders, including the no-JavaScript fallback;
+these links must not read as a fourth finder choice.
+
+Recommended residential service links preserve the closed `project` and up to
+three canonical `priorities`. The matching service page repeats the saved brief,
+links back to the exact finder state and carries the same governed context into
+its embedded form and shared header enquiry action. Wrong-route, duplicate and
+arbitrary values render no continuation layer. Service-page canonicals remain
+unchanged.
+
+At 320-430px, each direction is a compact horizontal comparison row with a
+small project image and complete readable label and explanation. At 768-900px,
+the three cards use full-width horizontal rows rather than premature narrow
+columns. All controls keep the existing touch-target, focus and overflow
+contracts.
+
+Only the hero is initial high-priority media. Direction and evidence images
+remain lazy and use responsive size hints matched to their rendered geometry.
+Generated brief copy uses one concise grammatical sentence with direction-led
+priority order.
+
+Analytics distinguish `project_result_view`, `project_view_click`,
+`project_enquiry_reference_click` and `project_audience_path_click`.
+`project_result_view` fires once for a newly viewed direction and must not fire
+again when only priorities change. All event properties remain closed,
+non-personal and consent-gated.

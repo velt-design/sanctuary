@@ -17,9 +17,13 @@ const delegatedEvents = new Set([
   'project_finder_start_click',
   'project_pathway_click',
   'brief_enquiry_click',
-  'project_reference_click',
+  'project_view_click',
+  'project_enquiry_reference_click',
+  'project_audience_path_click',
   'project_finder_direct_enquiry_click',
 ]);
+
+const audiencePaths = new Set(['commercial', 'professional']);
 
 function viewportCategory(): 'mobile' | 'tablet' | 'desktop' {
   if (window.innerWidth <= 640) return 'mobile';
@@ -67,11 +71,15 @@ export default function ProjectFinderTracker() {
         ? target.dataset.selectedProject
         : undefined;
       const stepNumber = Number.parseInt(target.dataset.stepNumber ?? '', 10);
+      const audiencePath = audiencePaths.has(target.dataset.audiencePath ?? '')
+        ? target.dataset.audiencePath
+        : undefined;
 
       pushProjectFinderEvent(eventName, {
         ...(direction ? { project_direction: direction } : {}),
         ...(priorities.length ? { project_priorities: priorities } : {}),
         ...(selectedProject ? { selected_project: selectedProject } : {}),
+        ...(audiencePath ? { audience_path: audiencePath } : {}),
         ...(target.dataset.sourceComponent
           ? { source_component: target.dataset.sourceComponent }
           : {}),

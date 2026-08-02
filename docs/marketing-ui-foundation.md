@@ -402,13 +402,25 @@ Back, Forward and refresh, and never stores visitor-entered text or PII.
 
 The client finder uses one accessible radio group, native checkboxes, a three-item
 selection ceiling, visible focus and one polite live region. A no-JavaScript
-fallback exposes all three service pathways and a direct enquiry action. Valid
+fallback exposes all three service pathways, quiet commercial and professional
+paths, and a direct enquiry action. The interactive finder shows those two
+audience paths as a secondary line rather than a fourth direction card. Valid
 finder continuation may add `source_experience: project-finder-home-v1`, a closed
 `project_direction` and up to three closed `project_priorities` to contact links.
-The contact page repeats this governed starting brief visibly; unknown values are
-discarded. `project_finder_home_v1` analytics remain inactive until analytics
-consent and carry only closed direction, priority, component, project and
-destination values. The authoritative product and acceptance contract is
+Recommended service links retain the closed selection in `project` and
+`priorities`; the matching indexed service page repeats the brief and passes it
+through its embedded form and shared header enquiry action without changing its
+canonical. Wrong-route, duplicate and unknown values are discarded. The contact
+page also repeats a governed starting brief visibly. At 320-430px direction cards
+use compact horizontal comparison rows; at 768-900px they remain full-width
+horizontal rows rather than three narrow columns. Only the hero has initial
+high-priority image loading; finder and evidence media are lazy. Generated brief
+headings use one grammatical direction-led sentence. `project_finder_home_v1`
+analytics remain inactive until analytics consent and distinguish result views,
+project-detail views, enquiry-reference choices and secondary-audience paths.
+A result view does not repeat when only priorities change. Events carry only
+closed direction, priority, component, project, audience and destination values.
+The authoritative product and acceptance contract is
 `sanctuary-project-led-visual-finder-homepage-prototype.md`.
 
 The root reuses the Foundation page/actions, shared project catalogue, live

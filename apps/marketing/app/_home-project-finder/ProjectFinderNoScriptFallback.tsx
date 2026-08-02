@@ -34,6 +34,13 @@ export default function ProjectFinderNoScriptFallback({
             </li>
           ))}
         </ul>
+        <nav className={styles.noScriptAudience} aria-label="Other project pathways">
+          <span>Other project pathways</span>
+          <Link href="/commercial-pergolas-auckland">Commercial clients</Link>
+          <Link href="/architects-designers-builders">
+            Architects, designers and builders
+          </Link>
+        </nav>
         <Link className={styles.noScriptAction} href={enquiryHref}>
           Start your project
         </Link>

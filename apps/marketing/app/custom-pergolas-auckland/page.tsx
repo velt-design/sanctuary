@@ -6,6 +6,7 @@ import {
   resolveGuidedJourneyContext,
   type GuidedJourneySearchParams,
 } from '@/lib/guidedJourneyContext';
+import { resolveProjectFinderJourneyContext } from '@/lib/projectFinderContinuation';
 import { customPergolasConfig } from './content';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import '../../components/seo-landing/seo-landing.css';
@@ -32,9 +33,19 @@ type CustomPergolasAucklandPageProps = {
 export default async function CustomPergolasAucklandPage({
   searchParams,
 }: CustomPergolasAucklandPageProps) {
+  const params = searchParams ? await searchParams : {};
   const guidedContext = resolveGuidedJourneyContext(
     'bespoke',
-    searchParams ? await searchParams : {},
+    params,
   );
-  return <SeoLandingPage config={customPergolasConfig} guidedContext={guidedContext} />;
+  const projectFinderContext = guidedContext
+    ? null
+    : resolveProjectFinderJourneyContext('bespoke', params);
+  return (
+    <SeoLandingPage
+      config={customPergolasConfig}
+      guidedContext={guidedContext}
+      projectFinderContext={projectFinderContext}
+    />
+  );
 }

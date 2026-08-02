@@ -9,9 +9,9 @@ import {
   type ProjectPriority,
 } from '../../lib/projectFinderContract';
 import {
-  buildBriefHeading,
-  projectDirectionContent,
-} from './projectFinderContent';
+  buildProjectFinderBriefHeading,
+  buildProjectFinderDestinationHref,
+} from '../../lib/projectFinderContinuation';
 import styles from './projectFinderHomepage.module.css';
 
 type BriefSummaryProps = {
@@ -25,7 +25,7 @@ export default function BriefSummary({
   onChangePriorities,
   priorities,
 }: BriefSummaryProps) {
-  const content = projectDirectionContent[direction];
+  const pathwayHref = buildProjectFinderDestinationHref(direction, priorities);
   const enquiryHref = buildEnquiryHref({
     enquiryType: 'residential',
     sourcePath: PROJECT_FINDER_HOME_PATH,
@@ -43,7 +43,7 @@ export default function BriefSummary({
     >
       <p className={styles.eyebrow}>Your starting brief</p>
       <h3 id="brief-summary-heading">
-        {buildBriefHeading(direction, priorities)}
+        {buildProjectFinderBriefHeading(direction, priorities)}
       </h3>
       <p>
         This is an early direction, not a final design. The roof, structure and
@@ -65,7 +65,7 @@ export default function BriefSummary({
           data-project-direction={direction}
           data-project-priorities={priorities.join(',')}
           data-source-component="brief_summary"
-          href={content.pathwayHref}
+          href={pathwayHref}
         >
           Explore the recommended pathway
         </Link>
