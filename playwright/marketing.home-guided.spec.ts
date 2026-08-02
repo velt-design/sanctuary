@@ -153,7 +153,7 @@ test('guided homepage stays out of the sitemap and the live homepage remains can
   );
   await expect(page.getByRole('heading', {
     level: 1,
-    name: 'Custom pergolas for Auckland homes and sites.',
+    name: 'Outdoor spaces designed around the way you live.',
   })).toBeVisible();
 });
 

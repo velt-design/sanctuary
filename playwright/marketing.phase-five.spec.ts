@@ -48,15 +48,15 @@ const semanticParityRoutes = [
   {
     path: '/',
     requiredMarkers: [
-      'data-homepage-variant="design_conversation_home_v3"',
-      'Custom pergolas for Auckland homes and sites.',
+      'data-homepage-variant="project_finder_home_v2"',
+      'Outdoor spaces designed around the way you live.',
       'role="radiogroup"',
       'application/ld+json',
       'id="footer-contact-heading"',
     ],
     exactMarkerCounts: [
-      ['data-project-intent=', 3],
-      ['data-matched-projects=', 3],
+      ['data-project-direction=', 3],
+      ['data-audience-path=', 2],
     ],
   },
   {
@@ -623,13 +623,22 @@ test('release identity and semantic route state survive cache-busted requests', 
     }
   }
 
-  for (const retiredPath of ['/home-v2', '/home-experimental']) {
+  for (const retiredPath of [
+    '/home-v2',
+    '/home-experimental',
+    '/home-project-finder',
+  ]) {
     const response = await request.get(retiredPath, { maxRedirects: 0 });
     expect(response.status(), `${retiredPath} redirect status`).toBe(308);
     expect(
       new URL(response.headers().location, String(baseURL)).pathname,
       `${retiredPath} redirect destination`,
     ).toBe('/');
+    if (retiredPath === '/home-project-finder') {
+      expect(response.headers()['x-robots-tag']).toMatch(
+        /noindex.*nofollow/i,
+      );
+    }
   }
 
   const sitemapResponse = await request.get('/sitemap.xml');
@@ -640,6 +649,7 @@ test('release identity and semantic route state survive cache-busted requests', 
   );
   expect(sitemap).not.toContain(`${publicOrigin}/home-v2`);
   expect(sitemap).not.toContain(`${publicOrigin}/home-experimental`);
+  expect(sitemap).not.toContain(`${publicOrigin}/home-project-finder`);
   releaseIds.add(sitemapResponse.headers()[releaseHeader]);
 
   const robotsResponse = await request.get('/robots.txt');

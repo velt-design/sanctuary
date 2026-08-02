@@ -4,11 +4,12 @@
 
 **Repository:** `velt-design/sanctuary`  
 **Document path:** `docs/sanctuary-project-led-visual-finder-homepage-prototype.md`  
-**Prototype route:** `/home-project-finder`  
-**Status:** Authoritative prototype brief  
+**Production route:** `/`
+**Retired comparison route:** `/home-project-finder`
+**Status:** Production homepage specification and promotion history
 **Date:** 2 August 2026  
 **Primary surface:** Sanctuary Pergolas marketing website  
-**Live homepage:** `/` must remain unchanged during prototype development  
+**Live homepage:** `/` uses the approved project finder after prototype approval
 **Related comparison route:** `/home-guided`
 
 ---
@@ -998,9 +999,10 @@ Do not promote the prototype based only on finder interaction rate. The key outc
 Suggested structure:
 
 ```text
-apps/marketing/app/home-project-finder/page.tsx
-apps/marketing/app/home-project-finder/routeContract.ts
+apps/marketing/app/page.tsx
+apps/marketing/app/home-project-finder/route.ts
 apps/marketing/app/_home-project-finder/ProjectFinderHomepage.tsx
+apps/marketing/app/_home-project-finder/routeContract.ts
 apps/marketing/app/_home-project-finder/ProjectFinder.tsx
 apps/marketing/app/_home-project-finder/ProjectFinderResult.tsx
 apps/marketing/app/_home-project-finder/BuildBrief.tsx
@@ -1011,6 +1013,7 @@ apps/marketing/app/_home-project-finder/projectFinderMedia.ts
 apps/marketing/app/_home-project-finder/ProjectFinderTracker.tsx
 apps/marketing/app/_home-project-finder/projectFinderHomepage.module.css
 apps/marketing/app/_home-project-finder/*.test.tsx
+apps/marketing/app/home-project-finder/route.test.ts
 playwright/marketing.home-project-finder.spec.ts
 ```
 
@@ -1346,3 +1349,38 @@ CTA and shared header carry the preserved context into enquiry. Related project
 links update the validated project slug while retaining direction and priorities.
 Invalid, duplicate, missing or mismatched values are discarded. Project
 canonicals remain unchanged and no visitor-entered text is added to URLs.
+
+---
+
+# 27. Approved production promotion
+
+Production promotion was approved on 2 August 2026. This section supersedes
+the prototype-only route and non-promotion constraints above; those constraints
+remain the historical development guardrail rather than the current routing
+contract.
+
+The project finder is the sole renderer for `/`, owned by
+`apps/marketing/app/_home-project-finder/`. The root is indexable and
+self-canonical, retains the approved homepage title, description, Open Graph
+identity and WebSite/WebPage schema, and remains listed once in the sitemap.
+The superseded `apps/marketing/app/_home/` implementation and its duplicate
+browser suite are retired. `/home-project-finder` permanently redirects to `/`,
+preserves valid query parameters, carries `X-Robots-Tag: noindex, nofollow` and
+is not listed in the sitemap.
+
+Production analytics use `homepage_variant: project_finder_home_v2` and
+`source_path: /`. Enquiry continuation deliberately retains
+`source_experience: project-finder-home-v1` as the stable journey schema. The
+shared header enquiry is measured by the finder owner, while both shared header
+and footer canonicalise Next's optimized `/index` alias to `/` before building
+enquiry context.
+
+The final no-structure refinement keeps the approved visible sequence intact.
+At 320px, tall phones retain the full-viewport hero instead of falling back to
+a fixed 568px opening. Once the root hero has scrolled, its header becomes fully
+opaque so underlying proof and card headings cannot show through; other hero
+routes retain their existing header treatment. The production browser owner is
+`playwright/marketing.home-project-finder.spec.ts`, including the 320-1440
+journey matrix, redirect/indexing checks, image-loading contract, continuation,
+consent-aware analytics and repeatable CLS, first-result and production-LCP
+budgets.

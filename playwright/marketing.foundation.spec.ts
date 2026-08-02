@@ -159,13 +159,13 @@ for (const viewport of viewports) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 
-  test(`public homepage retains its approved implementation at ${viewport.name}`, async ({ page }) => {
+  test(`public homepage retains its approved project finder at ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto('/');
-    const main = page.locator('main[data-homepage-variant="design_conversation_home_v3"]');
-    await expect(main.getByRole('heading', { level: 1, name: 'Custom pergolas for Auckland homes and sites.' })).toBeVisible();
-    await expect(main.getByRole('link', { name: 'Find a relevant project' })).toHaveAttribute('href', '#design-conversation');
-    await expect(main.getByRole('heading', { name: 'From brief to installation.' })).toBeAttached();
+    const main = page.locator('main[data-homepage-variant="project_finder_home_v2"]');
+    await expect(main.getByRole('heading', { level: 1, name: 'Outdoor spaces designed around the way you live.' })).toBeVisible();
+    await expect(main.getByRole('link', { name: 'Find your project direction' })).toHaveAttribute('href', '#project-finder');
+    await expect(main.getByRole('heading', { name: 'Which project feels closest to what you want to create?' })).toBeAttached();
     await expect(main.getByRole('radio')).toHaveCount(3);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
@@ -595,30 +595,34 @@ test('shared interactions retain stable desktop defaults and homepage compatibil
 
   await page.goto('/');
   const main = page.locator(
-    'main[data-homepage-variant="design_conversation_home_v3"]',
+    'main[data-homepage-variant="project_finder_home_v2"]',
   );
   await expect(main.getByRole('radio')).toHaveCount(3);
   await expect(main.locator('details[data-mobile-disclosure]')).toHaveCount(0);
 });
 
-test('homepage design conversation preserves mobile radio state, focus and analytics attributes', async ({ page }) => {
+test('homepage project finder preserves mobile radio state, focus and analytics attributes', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
 
   const main = page.locator(
-    'main[data-homepage-variant="design_conversation_home_v3"]',
+    'main[data-homepage-variant="project_finder_home_v2"]',
   );
   const radios = main.getByRole('radio');
   await radios.first().focus();
   await page.keyboard.press('ArrowDown');
-  await expect(radios.nth(1)).toBeFocused();
   await expect(radios.nth(1)).toHaveAttribute('aria-checked', 'true');
   await expect(radios.nth(1)).toHaveAttribute(
-    'data-project-intent',
+    'data-project-direction',
     'outdoor-room',
   );
-  await expect(main.locator('[data-intent-response="outdoor-room"]'))
+  await expect(main.locator('[data-project-finder-result="outdoor-room"]'))
     .toBeVisible();
+  await expect(main.getByRole('heading', {
+    level: 2,
+    name: 'A complete outdoor room',
+    exact: true,
+  }).first()).toBeFocused();
 });
 
 test('shared disclosure and gallery motion is removed when reduced motion is requested', async ({ page }) => {

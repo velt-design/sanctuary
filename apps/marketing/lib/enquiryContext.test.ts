@@ -125,13 +125,13 @@ describe('enquiry context', () => {
   it('carries only validated project finder context into the contact journey', () => {
     expect(buildEnquiryHref({
       enquiryType: 'residential',
-      sourcePath: '/home-project-finder',
+      sourcePath: '/',
       sourceComponent: 'brief_summary',
       sourceExperience: 'project-finder-home-v1',
       projectDirection: 'outdoor-room',
       projectPriorities: ['entertaining', 'daylight', 'entertaining'],
     })).toBe(
-      '/contact?enquiry_type=residential&source_path=%2Fhome-project-finder&source_component=brief_summary&source_experience=project-finder-home-v1&project_direction=outdoor-room&project_priorities=daylight%2Centertaining#contact-form',
+      '/contact?enquiry_type=residential&source_path=%2F&source_component=brief_summary&source_experience=project-finder-home-v1&project_direction=outdoor-room&project_priorities=daylight%2Centertaining#contact-form',
     );
 
     expect(parseEnquiryContext({
@@ -176,7 +176,7 @@ describe('enquiry context', () => {
     expect(inferEnquiryAudience('/products')).toBeUndefined();
     expect(inferEnquiryAudience('/contact')).toBeUndefined();
     expect(inferEnquiryAudience('/unknown')).toBeUndefined();
-    expect(getEnquiryRouteContext('/home-project-finder')).toEqual({
+    expect(getEnquiryRouteContext('/')).toEqual({
       enquiryType: 'residential',
       sourceExperience: 'project-finder-home-v1',
     });

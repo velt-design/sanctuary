@@ -38,6 +38,11 @@ header.site{
   transition:transform .6s cubic-bezier(.21,.8,.35,1), opacity .45s ease, background-color .5s ease, border-color .5s ease;
 }
 header.site{ --navH: 82px; }
+body:has(main[data-project-finder-home-variant]) header.site.site--hero-scrolled{
+  background:var(--headerSurface);
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
 .navbar{position:relative;display:flex;align-items:center;justify-content:space-between;height:var(--navH);gap:18px}
 .site-brand{flex-shrink:0;display:flex;align-items:center;height:var(--navH);margin:0;color:inherit;font-family:"Instrument Sans Variable","Helvetica Neue",sans-serif;font-weight:650;line-height:1;letter-spacing:-.015em;text-transform:uppercase}
 .site-brand:focus-visible,
@@ -210,11 +215,8 @@ body.mobile-menu-open .mobile-toggle:active{background:color-mix(in srgb, var(--
   header.site.site--hero-overlay:not(.site--hero-scrolled) .nav-cta:focus-visible{outline-color:#fff}
 }
 
-/* At compact desktop widths the brand owns Home and the project action owns
-   Contact, leaving room for the two audience pathways without overlap. */
+/* Keep all four primary pathways comfortably spaced at compact desktop widths. */
 @media (min-width:901px) and (max-width:1279px){
-  .nav-list__item--home,
-  .nav-list__item--contact{display:none}
   .nav-list__cluster{gap:6px}
   .navlink-btn{padding-inline:5px;font-size:.64rem}
 }

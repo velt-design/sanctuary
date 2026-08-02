@@ -28,11 +28,11 @@ commercial, professional, guide, footer and homepage-close work. The
 historical baseline and first-pass results remain below; the dated Phase 3 and
 Phase 4 follow-ups define the current production state.
 
-The 2026-07-26 homepage promotion supersedes only the homepage measurements and
-disclosure inventory in this record. The production root now uses the bounded
-first-question design conversation documented in
-`docs/marketing-ui-foundation.md`; disclosure measurements below remain
-historical evidence for the retired homepage.
+The 2026-08-02 project-finder promotion supersedes the homepage measurements,
+owner map and disclosure inventory in this record. The production root now
+uses the bounded project-led visual finder documented in
+`docs/marketing-ui-foundation.md`; the earlier design-conversation measurements
+below remain historical evidence for the retired homepage.
 
 The original pass covered the homepage, residential and custom service pages,
 the product hub and product pages, commercial and professional journeys, the
@@ -77,10 +77,10 @@ The current public site uses the following shorter decision path:
   final conversion section. The product hub plus product and project details,
   which link to rather than embed the form, keep one short final project
   action before the shared footer.
-- The homepage is `design_conversation_home_v3`. It retains one closed
-  question and the same governed two-project match contract, but uses shorter
-  hero, choice, result, capability and process copy. Stable
-  `data-design-conversation-event` names and the existing storage key remain.
+- The production homepage is `project_finder_home_v2`. It retains the reduced
+  first layer while using three closed visual directions, an optional
+  three-priority brief and two governed projects after selection. Enquiry
+  continuation keeps the stable `project-finder-home-v1` schema.
 - The product hub retains all ten catalogue destinations with one-line
   summaries, one governed project and one guide. Product details retain one
   fit condition, one constraint, one controlled gallery, an honest evidence
@@ -150,7 +150,7 @@ distributed.
 
 | Surface | Content and composition owners | Contracts that must remain stable |
 | --- | --- | --- |
-| Homepage | `app/_home/Homepage.tsx`, `DesignConversation.tsx`, `matching.ts`, `content.ts`, `homepage.module.css` | `data-design-conversation-event` analytics names, governed project/review evidence, enquiry references, metadata/schema and the first-question-only boundary |
+| Homepage | `app/page.tsx`, `app/_home-project-finder/**` and the retired-route handler | `project_finder_home_v2`, separated consent-aware finder events, governed project/review evidence, root metadata/schema, stable enquiry continuation and the evidence-first conversion boundary |
 | Residential | `app/pergolas-auckland/page.tsx`, route `content.ts` and CSS, shared acrylic/SEO styles | Public section anchors, guide links, project evidence, embedded enquiry attribution |
 | Custom, commercial, guide detail | Thin route config plus `components/seo-landing/SeoLandingPage.tsx`, `SeoLandingBlocks.tsx`, `types.ts`, and `seo-landing.css` | Nine shared-renderer consumers, route-specific metadata/schema, claims, section IDs, related links, enquiry audience |
 | Products | `data/products.ts`, `ProductsHub.tsx`, `ProductDetailPage.tsx`, `ProductCard.tsx`, `MobileProductDisclosure.tsx`, `product-pages.module.css` | Catalogue as claim/metadata/schema/sitemap truth, product slugs, project references, product enquiry context |
@@ -508,8 +508,9 @@ Major copy-reduction follow-up, 29 July 2026:
 - Forms keep their first-brief fields visible and place technical choices in
   one optional disclosure without changing intake validation, attachment,
   retry, attribution or analytics behavior.
-- The homepage advances to `design_conversation_home_v3`; event names,
-  governed matches and closed-intent storage remain stable.
+- The homepage is superseded by the approved production visual finder at
+  `project_finder_home_v2`; the prior design-conversation owner and storage
+  contract are retired.
 - Products keep all ten canonical routes, honest evidence states, one gallery
   and three disclosure IDs. Projects keep governed facts and media while
   removing repeated narrative and circular navigation.

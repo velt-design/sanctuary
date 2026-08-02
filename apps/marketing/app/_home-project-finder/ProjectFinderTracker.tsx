@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useConsent } from '@/components/ConsentProvider';
 import {
   PROJECT_FINDER_HOME_PATH,
@@ -22,6 +22,7 @@ const delegatedEvents = new Set([
 ]);
 
 const audiencePaths = new Set(['commercial', 'professional']);
+const enquiryAudiences = new Set(['residential', 'commercial', 'professional']);
 
 function viewportCategory(): 'mobile' | 'tablet' | 'desktop' {
   if (window.innerWidth <= 640) return 'mobile';
@@ -46,16 +47,25 @@ export function pushProjectFinderEvent(
 
 export default function ProjectFinderTracker() {
   const { consent } = useConsent();
+  const trackedViewRef = useRef(false);
 
   useEffect(() => {
     if (!consent.analytics) return;
-    pushProjectFinderEvent('project_finder_home_view');
+    if (!trackedViewRef.current) {
+      trackedViewRef.current = true;
+      pushProjectFinderEvent('project_finder_home_view');
+    }
 
     const handleClick = (event: MouseEvent) => {
       const target = event.target instanceof Element
-        ? event.target.closest<HTMLElement>('[data-project-finder-event]')
+        ? event.target.closest<HTMLElement>(
+            '[data-project-finder-event], [data-homepage-event]',
+          )
         : null;
-      const eventName = target?.dataset.projectFinderEvent;
+      const isHeaderEnquiry = target?.dataset.homepageEvent
+        === 'header_estimate_click';
+      const eventName = target?.dataset.projectFinderEvent
+        ?? (isHeaderEnquiry ? 'project_finder_direct_enquiry_click' : undefined);
       if (!target || !eventName || !delegatedEvents.has(eventName)) return;
 
       const direction = isProjectDirection(target.dataset.projectDirection)
@@ -72,15 +82,22 @@ export default function ProjectFinderTracker() {
       const audiencePath = audiencePaths.has(target.dataset.audiencePath ?? '')
         ? target.dataset.audiencePath
         : undefined;
+      const enquiryType = enquiryAudiences.has(target.dataset.enquiryType ?? '')
+        ? target.dataset.enquiryType
+        : undefined;
+      const destination = target.closest<HTMLAnchorElement>('a[href]')
+        ?.getAttribute('href');
 
       pushProjectFinderEvent(eventName, {
         ...(direction ? { project_direction: direction } : {}),
         ...(priorities.length ? { project_priorities: priorities } : {}),
         ...(selectedProject ? { selected_project: selectedProject } : {}),
         ...(audiencePath ? { audience_path: audiencePath } : {}),
+        ...(enquiryType ? { enquiry_type: enquiryType } : {}),
         ...(target.dataset.sourceComponent
           ? { source_component: target.dataset.sourceComponent }
-          : {}),
+          : (isHeaderEnquiry ? { source_component: 'header' } : {})),
+        ...(isHeaderEnquiry && destination ? { destination } : {}),
         ...(Number.isFinite(stepNumber) ? { step_number: stepNumber } : {}),
       });
     };

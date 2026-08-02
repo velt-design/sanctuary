@@ -42,7 +42,7 @@ describe('project finder continuation', () => {
       direction: 'bespoke',
       priorities: ['daylight', 'open-structure', 'coordination'],
       destination: '/custom-pergolas-auckland',
-      returnHref: '/home-project-finder?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination',
+      returnHref: '/?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination',
       enquiryContext: {
         enquiryType: 'residential',
         sourcePath: '/custom-pergolas-auckland',

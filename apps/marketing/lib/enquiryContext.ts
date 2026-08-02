@@ -126,7 +126,7 @@ const contextPropertyKeys = [
 ] as const satisfies ReadonlyArray<keyof EnquiryContextProperties>;
 
 const serviceAudienceByPath = new Map<string, EnquiryAudience>([
-  ['/', 'residential'],
+  [PROJECT_FINDER_HOME_PATH, 'residential'],
   ['/pergolas-auckland', 'residential'],
   ['/custom-pergolas-auckland', 'residential'],
   ['/aluminium-pergolas-auckland', 'residential'],
@@ -134,7 +134,6 @@ const serviceAudienceByPath = new Map<string, EnquiryAudience>([
   ['/gable-pergolas-auckland', 'residential'],
   ['/pitched-pergolas-auckland', 'residential'],
   ['/outdoor-rooms-auckland', 'residential'],
-  [PROJECT_FINDER_HOME_PATH, 'residential'],
   ['/pergolas-with-blinds', 'residential'],
   ['/acrylic-pergolas-vs-louvre-roofs', 'residential'],
   ['/acrylic-roof-pergolas-auckland', 'residential'],
@@ -230,6 +229,14 @@ function normalizeProjectDirection(
 function normalizeFinderPriorities(value: SearchValue): ProjectPriority[] {
   if (Array.isArray(value) || typeof value !== 'string') return [];
   return normalizeProjectPriorities(value.split(','));
+}
+
+export function getCanonicalMarketingPathname(
+  pathname: string | null,
+): string {
+  // Next's optimized static root can expose the public URL as its filesystem
+  // alias. Shared route-aware conversion links must retain the canonical root.
+  return !pathname || pathname === '/index' ? '/' : pathname;
 }
 
 function normalizeSourcePath(value: SearchValue): string | undefined {

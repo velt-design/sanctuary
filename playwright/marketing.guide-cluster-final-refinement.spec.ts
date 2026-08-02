@@ -212,27 +212,24 @@ test('dependent guide snippets keep project outcomes tied to the recorded design
   }
 });
 
-test('homepage design conversation uses written project context instead of unsupported scores', async ({ page }) => {
+test('homepage project finder uses written project context instead of unsupported scores', async ({ page }) => {
   await preparePage(page);
   await page.goto('/');
   const conversation = page.locator(
-    'main[data-homepage-variant="design_conversation_home_v3"]:visible section[aria-labelledby="design-conversation-heading"]',
+    'main[data-homepage-variant="project_finder_home_v2"]:visible',
   );
   await expect(conversation).toBeVisible();
-  await expect(conversation.getByText(
-    'Starting points only.',
-  )).toBeVisible();
   await conversation.getByRole('radio', {
-    name: /Cover a deck/,
+    name: /A refined deck cover/,
   }).click();
   await expect(conversation.getByText(
-    'Start with the house connection, daylight and how the deck should work.',
+    'Start with a refined fixed-roof pergola designed around shelter, daylight, shade and the connection to the house.',
   )).toBeVisible();
   await expect(conversation.getByText(
-    'An acrylic gable follows the roofline with one infilled end.',
+    'The new gable follows the house roofline while keeping daylight central to the brief.',
   )).toBeVisible();
   await expect(conversation.getByText(
-    'A box-perimeter cover follows the first-floor deck and outlook.',
+    'A compact townhouse cover with an open gable and a deliberate street-facing frame.',
   )).toBeVisible();
   await expect(conversation.getByText(/\b[1-5]\s*\/\s*5\b/)).toHaveCount(0);
   const copy = await page.locator('body').innerText();

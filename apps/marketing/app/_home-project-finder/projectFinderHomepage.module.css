@@ -468,6 +468,16 @@
   text-transform: uppercase;
 }
 
+.projectActions a,
+.audiencePaths a {
+  transition: opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.projectActions a:active,
+.audiencePaths a:active {
+  opacity: var(--motion-press-opacity);
+}
+
 .briefRegion {
   padding-block: clamp(3.5rem, 7vw, 6.5rem);
   background: var(--color-surface-elevated);
@@ -1069,10 +1079,6 @@
 }
 
 @media (max-width: 340px) {
-  .hero {
-    min-height: 568px;
-  }
-
   .heroContent {
     padding-bottom: 1rem;
   }

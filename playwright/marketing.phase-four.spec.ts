@@ -687,7 +687,7 @@ test('professional capability route is discoverable, governed and source aware',
   await page.goto('/');
   await expect(
     page.locator(
-      'a[data-design-conversation-event="design_conversation_capability_open"][href="/architects-designers-builders"]',
+      'a[data-project-finder-event="project_audience_path_click"][href="/architects-designers-builders"]',
     ),
   ).toHaveCount(1);
   await page.goto('/sitemap.xml');
@@ -955,27 +955,26 @@ test('guide first layers remain complete without JavaScript', async ({
   }
 });
 
-test('homepage keeps the first design conversation bounded and the footer compact and useful', async ({
+test('homepage keeps the project finder bounded and the footer compact and useful', async ({
   page,
 }) => {
   for (const viewport of targetViewports) {
     await page.setViewportSize(viewport);
     await page.goto('/', { waitUntil: 'networkidle' });
     const main = page.locator(
-      'main[data-homepage-variant="design_conversation_home_v3"]',
+      'main[data-homepage-variant="project_finder_home_v2"]',
     );
     const footer = page.locator('footer');
 
-    await expect(main.locator(':scope > section, :scope > aside')).toHaveCount(
-      5,
-    );
+    await expect(main.locator('[data-homepage-hero]')).toHaveCount(1);
+    await expect(main.getByRole('complementary', { name: 'Why Sanctuary' }))
+      .toHaveCount(1);
     await expect(main.getByRole('radio')).toHaveCount(3);
-    await expect(main.locator('[data-intent-response]')).toHaveCount(0);
+    await expect(main.locator('[data-project-finder-result]')).toHaveCount(0);
+    await expect(main.locator('[data-project-evidence]')).toHaveCount(0);
     await expect(main.locator('details')).toHaveCount(0);
-    await expect(main.locator('section[aria-labelledby="homepage-capability-heading"] article'))
-      .toHaveCount(3);
-    await expect(main.locator('section[aria-labelledby="homepage-process-heading"] li'))
-      .toHaveCount(3);
+    await expect(main.getByRole('navigation', { name: 'Other project pathways' })
+      .getByRole('link')).toHaveCount(2);
     await expect(main.getByText('What matters most for the space?')).toHaveCount(
       0,
     );
@@ -999,6 +998,7 @@ test('homepage keeps the first design conversation bounded and the footer compac
       enquiryType: 'residential',
       sourcePath: '/',
       sourceComponent: 'footer',
+      sourceExperience: 'project-finder-home-v1',
     }));
     await expect(
       footer.getByRole('link', {

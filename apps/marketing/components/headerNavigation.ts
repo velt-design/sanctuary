@@ -45,7 +45,6 @@ const primaryNavigationItems: readonly PrimaryNavigationItem[] = [
 const heroOverlayPaths = new Set([
   '/',
   '/home-guided',
-  '/home-project-finder',
   '/pergola-guides',
   '/pergolas-auckland',
   '/custom-pergolas-auckland',
@@ -58,14 +57,6 @@ const heroOverlayPaths = new Set([
   '/acrylic-pergolas-vs-louvre-roofs',
   '/commercial-pergolas-auckland',
 ]);
-
-export function getCanonicalHeaderPathname(
-  pathname: string | null,
-): string {
-  // Next's production static render can expose the public root as its
-  // filesystem alias. Header state and enquiry context must use the public URL.
-  return !pathname || pathname === '/index' ? '/' : pathname;
-}
 
 export function isHeaderHeroOverlayPath(pathname: string): boolean {
   return heroOverlayPaths.has(pathname);

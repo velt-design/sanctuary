@@ -52,6 +52,17 @@ changing the roadmap's unresolved guide-classification goals:
 This checkpoint does not mark G04 through G23 complete and does not approve the
 optional form or consent guides. Claims and evidence gates below remain active.
 
+### 2 August 2026 homepage-owner checkpoint
+
+The approved project-led visual finder now owns the production `/` route at
+`apps/marketing/app/_home-project-finder/**`, with its regression contract in
+`playwright/marketing.home-project-finder.spec.ts`. The former
+`apps/marketing/app/_home/**` owner and `playwright/marketing.homepage.spec.ts`
+are retired. G22 remains not started, but its executable prompt and file list
+below are suspended: re-scope G22 against the current finder journey and obtain
+approval for that revised placement before implementation. Do not recreate the
+deleted homepage tree or use its historical event contract.
+
 ## Operating protocol for coding agents
 
 For every goal:
@@ -2825,6 +2836,12 @@ The guide ecosystem has a documented, consent-safe event taxonomy that measures 
 **Relative effort:** Small to medium  
 **Implementation risk:** Low  
 **Dependencies:** G07 and G09
+
+> **Current-owner note (2 August 2026):** The ready-to-use prompt, file list and
+> test command below describe the retired homepage owner and must not be run as
+> written. Re-scope this goal to `app/_home-project-finder/**` and
+> `marketing.home-project-finder.spec.ts`, preserving the approved project-led
+> structure unless a separate product decision authorises a placement change.
 
 **Ready-to-use Codex goal prompt**
 

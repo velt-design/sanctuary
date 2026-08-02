@@ -57,25 +57,24 @@ const routeCases: readonly RouteCase[] = [
     maximumVisibleWords: 450,
     maximumVisibleHeadingRegions: 7,
     mobileSignals: [
-      'Custom pergolas for Auckland homes and sites.',
+      'Outdoor spaces designed around the way you live.',
       'Warkworth Outdoor Room',
-      'What are you trying to create?',
-      'Find a relevant project',
+      'Which project feels closest to what you want to create?',
+      'Find your project direction',
     ],
     primaryAction: {
-      name: 'Find a relevant project',
-      href: '#design-conversation',
+      name: 'Find your project direction',
+      href: '#project-finder',
     },
     stableSections: [
       '[data-homepage-hero]',
-      'section[aria-labelledby="homepage-capability-heading"]',
-      'section[aria-labelledby="homepage-process-heading"]',
+      '#project-finder',
+      'nav[aria-label="Other project pathways"]',
     ],
     meaningfulLinks: [
-      '/projects',
-      '/pergolas-auckland',
-      '/products',
-      '/pergola-guides',
+      '/projects/warkworth-outdoor-room',
+      '/commercial-pergolas-auckland',
+      '/architects-designers-builders',
     ],
     schemaTypes: ['WebSite', 'WebPage'],
   },
@@ -1049,7 +1048,7 @@ test('the mobile commercial pathway opens the top of the target page', async ({
 
   const commercialLink = page.locator(
     'a[href="/commercial-pergolas-auckland"]',
-    { hasText: 'Explore commercial work' },
+    { hasText: 'Commercial clients' },
   ).first();
   await commercialLink.click();
 
@@ -1068,7 +1067,7 @@ test('the mobile commercial pathway opens the top of the target page', async ({
   await expect(page).toHaveURL(/\/$/);
   await expect(
     page.locator(
-      'main[data-homepage-variant="design_conversation_home_v3"]:visible',
+      'main[data-homepage-variant="project_finder_home_v2"]:visible',
     ),
   ).toBeVisible();
 });

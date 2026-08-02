@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import ReviewBadge from '@/components/reviews/ReviewBadge';
 import {
   buildEnquiryHref,
+  getCanonicalMarketingPathname,
   getEnquiryRouteContext,
 } from '@/lib/enquiryContext';
 import styles from './SiteFooter.module.css';
@@ -16,7 +17,7 @@ type SiteFooterProps = {
 };
 
 export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProps) {
-  const pathname = usePathname() ?? '/';
+  const pathname = getCanonicalMarketingPathname(usePathname());
   const enquiryHref = buildEnquiryHref({
     ...getEnquiryRouteContext(pathname),
     sourcePath: pathname,

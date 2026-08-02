@@ -171,24 +171,25 @@ test('homepage and footer adapters provide active feedback while selected state 
 
   const firstIntent = page.getByRole('radio').first();
   const unselectedPress = await holdActive(page, firstIntent);
-  expect(Number(unselectedPress.pressed.opacity)).toBeLessThan(1);
+  expect(unselectedPress.pressed.transform).not.toBe(unselectedPress.before.transform);
 
   await firstIntent.click();
   await expect(firstIntent).toHaveAttribute('aria-checked', 'true');
   const selectedPress = await holdActive(page, firstIntent);
   expect(selectedPress.pressed.opacity).toBe('1');
+  expect(selectedPress.pressed.transform).not.toBe(selectedPress.before.transform);
 
-  const projectCard = page.locator('[data-intent-response] article').first();
+  const projectCard = page.locator('[data-project-evidence]').first();
   const projectLink = projectCard.locator(
-    'a[data-design-conversation-event="design_conversation_project_open"]',
+    'a[data-project-finder-event="project_view_click"]',
   );
-  await expectHeldFeedback(page, projectLink, projectCard);
+  await expectHeldFeedback(page, projectLink);
 
-  const audienceCard = page.locator('article').filter({
-    has: page.getByRole('link', { name: /homeowner|commercial|architect/i }),
-  }).first();
-  const audienceLink = audienceCard.getByRole('link');
-  await expectHeldFeedback(page, audienceLink, audienceCard);
+  const audienceLink = page
+    .getByRole('navigation', { name: 'Other project pathways' })
+    .getByRole('link')
+    .first();
+  await expectHeldFeedback(page, audienceLink);
 
   const footerReview = page.getByRole('link', { name: /Google reviews/ }).last();
   const footerPress = await holdActive(page, footerReview);
@@ -398,6 +399,11 @@ test('route progress never appears before its existing 150 ms delay', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await preparePage(page);
   await page.goto('/');
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  const productNavigationLink = page
+    .getByRole('navigation', { name: 'Mobile primary' })
+    .getByRole('link', { name: 'Pergola options' });
+  await expect(productNavigationLink).toBeVisible();
   await page.evaluate(() => {
     const progress = document.querySelector('.route-progress');
     if (!progress) throw new Error('Missing route progress element');
@@ -415,8 +421,7 @@ test('route progress never appears before its existing 150 ms delay', async ({
       .__tm02ProgressTimings = timings;
   });
 
-  await page.getByRole('link', { name: 'Compare pergola options' })
-    .click();
+  await productNavigationLink.click();
   await expect(page).toHaveURL(/\/products$/);
   await page.waitForTimeout(220);
   const timings = await page.evaluate(() => (
@@ -455,11 +460,11 @@ test('capture TM-02 paired pressed-state evidence', async ({ page }) => {
   await page.goto('/');
   clear = await forcePseudoState(
     page,
-    ['[data-design-conversation-interactive] [role="radio"]:first-child'],
+    ['[data-project-finder-interactive] [role="radio"]:first-child'],
     ['active'],
   );
   await page.waitForTimeout(180);
-  await page.locator('[data-design-conversation-interactive] [role="radiogroup"]')
+  await page.locator('[data-project-finder-interactive] [role="radiogroup"]')
     .screenshot({
       path: path.join(
         evidenceDirectory,

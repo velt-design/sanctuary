@@ -34,7 +34,6 @@ async function projectFinderEvents(page: Page) {
         || entry.event.startsWith('project_direction_')
         || entry.event.startsWith('project_result_')
         || entry.event.startsWith('project_pathway_')
-        || entry.event.startsWith('project_reference_')
         || entry.event.startsWith('project_view_')
         || entry.event.startsWith('project_audience_')
         || entry.event.startsWith('brief_')
@@ -49,18 +48,18 @@ async function selectDirection(page: Page, direction: string) {
     .toHaveAttribute('data-project-finder-result', direction);
 }
 
-test('project finder route is protected, noindex and separate from the live homepage', async ({
+test('project finder is the indexable live homepage and the prototype URL redirects', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setAnalyticsConsent(page, false);
-  const response = await page.goto('/home-project-finder');
+  const response = await page.goto('/');
 
   expect(response?.status()).toBe(200);
-  expect(response?.headers()['x-robots-tag']).toMatch(/noindex.*nofollow/i);
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+  expect(response?.headers()['x-robots-tag'] ?? '').not.toMatch(/noindex/i);
+  await expect(page.locator('meta[name="robots"]')).not.toHaveAttribute(
     'content',
-    /noindex.*nofollow/i,
+    /noindex/i,
   );
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     'href',
@@ -76,6 +75,12 @@ test('project finder route is protected, noindex and separate from the live home
     .getByRole('link', { name: /61 Google reviews/ })).toBeVisible();
   await expect(page.locator('header.site')).toBeVisible();
   await expect(page.locator('footer')).toBeVisible();
+  await expect(page.locator('footer').getByRole('link', {
+    name: 'Start your project',
+  })).toHaveAttribute(
+    'href',
+    '/contact?enquiry_type=residential&source_path=%2F&source_component=footer&source_experience=project-finder-home-v1#contact-form',
+  );
   await expect(page.locator('[data-project-direction]')).toHaveCount(3);
   await expect(page.getByRole('link', { name: 'Commercial clients' }))
     .toHaveAttribute('href', '/commercial-pergolas-auckland');
@@ -106,22 +111,130 @@ test('project finder route is protected, noindex and separate from the live home
   expect(openingGeometry.heroHeight).toBeGreaterThan(700);
   await expectNoHorizontalOverflow(page);
 
+  await page.evaluate(() => window.scrollTo(0, 240));
+  await expect(page.locator('header.site')).toHaveAttribute(
+    'data-hero-navigation',
+    'solid',
+  );
+  await expect(page.locator('header.site')).toHaveCSS(
+    'background-color',
+    'rgb(248, 248, 245)',
+  );
+  await page.evaluate(() => window.scrollTo(0, 0));
+
   await page.goto('/sitemap.xml');
   await expect(page.locator('body')).not.toContainText(
     `${publicOrigin}/home-project-finder`,
   );
 
-  await page.goto('/');
-  await expect(page.locator('meta[name="robots"]')).not.toHaveAttribute(
-    'content',
-    /noindex/i,
+  const redirect = await page.request.get('/home-project-finder', {
+    maxRedirects: 0,
+  });
+  expect(redirect.status()).toBe(308);
+  expect(new URL(redirect.headers()['location']).pathname).toBe('/');
+  expect(redirect.headers()['x-robots-tag']).toMatch(/noindex.*nofollow/i);
+
+  await page.goto('/home-project-finder?project=cover');
+  await expect(page).toHaveURL(/\/\?project=cover$/);
+  await expect(page.locator('[data-project-finder-result="cover"]')).toBeVisible();
+});
+
+test('the production finder stays within its repeatable interaction and layout budget', async ({
+  page,
+}) => {
+  const enforceProductionLcp = (
+    process.env.MARKETING_HOMEPAGE_PRODUCTION_PERF === '1'
   );
-  await expect(page.getByRole('heading', {
-    level: 1,
-    name: 'Custom pergolas for Auckland homes and sites.',
-  })).toBeVisible();
-  await expect(page.locator('[data-homepage-hero]')
-    .getByRole('link', { name: 'Start your project' })).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    const metrics = {
+      cls: 0,
+      lcp: 0,
+      firstResultResponseMs: null as number | null,
+    };
+    (window as typeof window & {
+      __projectFinderPerformance?: typeof metrics;
+    }).__projectFinderPerformance = metrics;
+
+    try {
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const shift = entry as PerformanceEntry & {
+            hadRecentInput?: boolean;
+            value?: number;
+          };
+          if (!shift.hadRecentInput) metrics.cls += shift.value ?? 0;
+        }
+      }).observe({ type: 'layout-shift', buffered: true });
+      new PerformanceObserver((list) => {
+        const latest = list.getEntries().at(-1);
+        if (latest) metrics.lcp = latest.startTime;
+      }).observe({ type: 'largest-contentful-paint', buffered: true });
+    } catch {
+      // The assertions below expose a browser without the required observers.
+    }
+  });
+  await setAnalyticsConsent(page, false);
+  await page.goto('/');
+  const main = page.locator(
+    'main[data-project-finder-home-variant="project_finder_home_v2"]',
+  );
+  const heroImage = main.locator('[data-homepage-hero] img');
+  await expect(heroImage).toHaveJSProperty('complete', true);
+  await expect(heroImage).toHaveAttribute('fetchpriority', 'high');
+  await page.waitForTimeout(500);
+
+  const firstDirection = main.locator('[data-project-direction="cover"]');
+  await firstDirection.scrollIntoViewIfNeeded();
+  await page.evaluate(() => {
+    const metrics = (
+      window as typeof window & {
+        __projectFinderPerformance?: {
+          cls: number;
+          lcp: number;
+          firstResultResponseMs: number | null;
+        };
+      }
+    ).__projectFinderPerformance;
+    const control = document.querySelector<HTMLButtonElement>(
+      '[role="radio"][data-project-direction="cover"]',
+    );
+    const finder = document.querySelector(
+      '[data-project-finder-interactive]',
+    );
+    if (!metrics || !control || !finder) return;
+
+    const observer = new MutationObserver(() => {
+      if (!finder.querySelector('[data-project-finder-result="cover"]')) return;
+      metrics.firstResultResponseMs = performance.now() - startedAt;
+      observer.disconnect();
+    });
+    let startedAt = 0;
+    observer.observe(finder, { childList: true, subtree: true });
+    control.addEventListener('click', () => {
+      startedAt = performance.now();
+    }, { capture: true, once: true });
+  });
+  await firstDirection.click();
+  await expect(main.locator('[data-project-finder-result="cover"]')).toBeVisible();
+
+  const metrics = await page.evaluate(() => (
+    (window as typeof window & {
+      __projectFinderPerformance?: {
+        cls: number;
+        lcp: number;
+        firstResultResponseMs: number | null;
+      };
+    }).__projectFinderPerformance
+  ));
+  expect(metrics?.lcp ?? 0).toBeGreaterThan(0);
+  if (enforceProductionLcp) {
+    expect(metrics?.lcp ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(2_500);
+  }
+  expect(metrics?.cls ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(0.1);
+  expect(
+    metrics?.firstResultResponseMs ?? Number.POSITIVE_INFINITY,
+  ).toBeLessThanOrEqual(500);
 });
 
 test('each project direction gives one useful pathway and two governed references', async ({
@@ -135,7 +248,7 @@ test('each project direction gives one useful pathway and two governed reference
   ] as const;
 
   for (const [direction, heading, pathway, projectNames] of paths) {
-    await page.goto('/home-project-finder');
+    await page.goto('/');
     await selectDirection(page, direction);
     await expect(page.getByRole('heading', { level: 2, name: heading, exact: true }))
       .toBeVisible();
@@ -146,6 +259,8 @@ test('each project direction gives one useful pathway and two governed reference
         .toBeVisible();
     }
     await expect(page.locator('[data-selected-project]')).toHaveCount(2);
+    await expect(page.getByRole('link', { name: 'View all projects' }))
+      .toHaveAttribute('href', '/projects');
     await expect(page.getByRole('link', { name: 'Use as a reference' }))
       .toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Start your project now' }))
@@ -159,7 +274,7 @@ test('brief builder enforces three priorities and defers the controlled brief en
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setAnalyticsConsent(page, false);
-  await page.goto('/home-project-finder');
+  await page.goto('/');
   await selectDirection(page, 'outdoor-room');
   await page.getByRole('button', { name: 'Refine what matters' }).click();
 
@@ -197,7 +312,7 @@ test('brief builder enforces three priorities and defers the controlled brief en
   ).inputValue());
   expect(context).toMatchObject({
     enquiry_type: 'residential',
-    source_path: '/home-project-finder',
+    source_path: '/',
     source_component: 'project_finder',
     source_experience: 'project-finder-home-v1',
     project_direction: 'outdoor-room',
@@ -209,7 +324,7 @@ test('the recommended service page retains the selected brief through enquiry', 
   page,
 }) => {
   await setAnalyticsConsent(page, false);
-  await page.goto('/home-project-finder?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination');
+  await page.goto('/?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination');
   await page.getByRole('link', { name: 'Explore bespoke pergolas' }).click();
 
   await expect(page).toHaveURL(
@@ -223,7 +338,7 @@ test('the recommended service page retains the selected brief through enquiry', 
   await expect(journeyContext.getByRole('link', { name: 'Refine your brief' }))
     .toHaveAttribute(
       'href',
-      '/home-project-finder?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination',
+      '/?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination',
     );
   await expect(journeyContext.getByRole('link', { name: 'Continue to enquiry' }))
     .toHaveCount(0);
@@ -251,7 +366,7 @@ test('viewing a project keeps the finder brief and viewed project through a late
   await page.setViewportSize({ width: 390, height: 844 });
   await setAnalyticsConsent(page, false);
   await page.goto(
-    '/home-project-finder?project=outdoor-room&priorities=daylight%2Centertaining',
+    '/?project=outdoor-room&priorities=daylight%2Centertaining',
   );
 
   const projectCard = page.locator(
@@ -302,12 +417,12 @@ test('URL state is canonical, refreshable and restored by browser history', asyn
   page,
 }) => {
   await setAnalyticsConsent(page, false);
-  await page.goto('/home-project-finder?project=invalid&priorities=daylight&free_text=secret');
-  await expect(page).toHaveURL(/\/home-project-finder$/);
+  await page.goto('/?project=invalid&priorities=daylight&free_text=secret');
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.getByText('secret')).toHaveCount(0);
 
-  await page.goto('/home-project-finder?project=cover&project=bespoke');
-  await expect(page).toHaveURL(/\/home-project-finder$/);
+  await page.goto('/?project=cover&project=bespoke');
+  await expect(page).toHaveURL(/\/$/);
 
   await selectDirection(page, 'cover');
   await selectDirection(page, 'bespoke');
@@ -328,7 +443,7 @@ test('keyboard selection uses roving radio behavior and predictable focus', asyn
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setAnalyticsConsent(page, false);
-  await page.goto('/home-project-finder');
+  await page.goto('/');
   const cover = page.locator('[data-project-direction="cover"]');
   await cover.focus();
   await cover.press('ArrowDown');
@@ -367,14 +482,14 @@ test('mobile menu remains operable without losing finder URL state', async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setAnalyticsConsent(page, false);
-  await page.goto('/home-project-finder?project=cover');
+  await page.goto('/?project=cover');
   await page.getByRole('button', { name: 'Open menu' }).click();
   await expect(page.locator('#mobile-menu')).toHaveAttribute(
     'data-mobile-menu-state',
     'open',
   );
   await page.getByRole('button', { name: 'Close menu' }).click();
-  await expect(page).toHaveURL(/home-project-finder\?project=cover$/);
+  await expect(page).toHaveURL(/\?project=cover$/);
   await expect(page.locator('#mobile-menu')).toHaveAttribute(
     'data-mobile-menu-state',
     'closed',
@@ -383,7 +498,7 @@ test('mobile menu remains operable without losing finder URL state', async ({
 
 test('analytics use consent-aware closed project finder values', async ({ page }) => {
   await setAnalyticsConsent(page, false);
-  await page.goto('/home-project-finder');
+  await page.goto('/');
   await selectDirection(page, 'cover');
   await page.getByRole('button', { name: 'Refine what matters' }).click();
   await page.locator('[data-project-priority]').first().check();
@@ -392,7 +507,7 @@ test('analytics use consent-aware closed project finder values', async ({ page }
   const consented = await page.context().browser()?.newPage();
   if (!consented) throw new Error('Browser page unavailable');
   await setAnalyticsConsent(consented, true);
-  await consented.goto('/home-project-finder');
+  await consented.goto('/');
   await selectDirection(consented, 'bespoke');
   await consented.getByRole('button', { name: 'Refine what matters' }).click();
   await consented.locator('[data-project-priority]').first().check();
@@ -403,7 +518,9 @@ test('analytics use consent-aware closed project finder values', async ({ page }
   await consented.evaluate(() => {
     document.addEventListener('click', (event) => {
       const target = event.target instanceof Element
-        ? event.target.closest('[data-project-finder-event]')
+        ? event.target.closest(
+            '[data-project-finder-event], [data-homepage-event]',
+          )
         : null;
       if (target) event.preventDefault();
     }, true);
@@ -411,6 +528,7 @@ test('analytics use consent-aware closed project finder values', async ({ page }
   const firstProject = consented.locator('[data-project-evidence]').first();
   await firstProject.getByRole('link', { name: 'View project' }).click();
   await consented.getByRole('link', { name: 'Commercial clients' }).click();
+  await consented.locator('header.site .nav-cta').click();
   const events = await projectFinderEvents(consented);
   expect(events.map((event) => event.event)).toEqual(expect.arrayContaining([
     'project_finder_home_view',
@@ -421,15 +539,23 @@ test('analytics use consent-aware closed project finder values', async ({ page }
     'brief_summary_view',
     'project_view_click',
     'project_audience_path_click',
+    'project_finder_direct_enquiry_click',
   ]));
   expect(events.filter((event) => event.event === 'project_result_view')).toHaveLength(1);
   for (const event of events) {
     expect(JSON.stringify(event)).not.toMatch(/@|email|phone|free_text|address/i);
     expect(event).toMatchObject({
-      homepage_variant: 'project_finder_home_v1',
-      source_path: '/home-project-finder',
+      homepage_variant: 'project_finder_home_v2',
+      source_path: '/',
     });
   }
+  expect(events.find((event) => (
+    event.event === 'project_finder_direct_enquiry_click'
+    && event.source_component === 'header'
+  ))).toMatchObject({
+    enquiry_type: 'residential',
+    source_path: '/',
+  });
   await consented.close();
 });
 
@@ -440,7 +566,7 @@ test('no-JavaScript visitors receive direct project and enquiry pathways', async
 }) => {
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();
-  await page.goto('/home-project-finder');
+  await page.goto('/');
   await expect(page.getByRole('heading', {
     level: 1,
     name: 'Outdoor spaces designed around the way you live.',
@@ -468,7 +594,7 @@ test('direction cards stay compact on mobile and avoid narrow tablet columns', a
 }) => {
   await setAnalyticsConsent(page, false);
   await page.setViewportSize({ width: 320, height: 900 });
-  await page.goto('/home-project-finder');
+  await page.goto('/');
 
   for (const width of [320, 390, 430]) {
     await page.setViewportSize({ width, height: 900 });
@@ -482,6 +608,11 @@ test('direction cards stay compact on mobile and avoid narrow tablet columns', a
     for (const card of cards) {
       expect(card.cardHeight).toBeLessThan(230);
       expect(card.imageWidth).toBeLessThanOrEqual(116);
+    }
+    if (width === 320) {
+      const proofTop = await page.locator('[aria-label="Why Sanctuary"]')
+        .evaluate((element) => element.getBoundingClientRect().top);
+      expect(proofTop).toBeGreaterThanOrEqual(899);
     }
     await expectNoHorizontalOverflow(page);
   }
@@ -522,7 +653,7 @@ test('the full selected journey stays usable and overflow-free across the QA mat
     { width: 1440, height: 900 },
   ];
   await page.setViewportSize(viewports[0]);
-  await page.goto('/home-project-finder');
+  await page.goto('/');
 
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
@@ -539,6 +670,6 @@ test('the full selected journey stays usable and overflow-free across the QA mat
     await expect(page.getByRole('link', { name: 'Send your brief' })).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await page.getByRole('button', { name: 'Start again' }).click();
-    await expect(page).toHaveURL(/\/home-project-finder$/);
+    await expect(page).toHaveURL(/\/$/);
   }
 });

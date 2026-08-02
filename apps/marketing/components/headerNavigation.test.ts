@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { getCanonicalMarketingPathname } from '@/lib/enquiryContext';
 import {
-  getCanonicalHeaderPathname,
   getDesktopHeaderNavigation,
   getMobileHeaderNavigation,
   isHeaderHeroOverlayPath,
@@ -9,9 +9,9 @@ import {
 
 describe('shared header navigation model', () => {
   it('canonicalizes the production static root alias without changing real routes', () => {
-    expect(getCanonicalHeaderPathname(null)).toBe('/');
-    expect(getCanonicalHeaderPathname('/index')).toBe('/');
-    expect(getCanonicalHeaderPathname('/products/pergolas/gable')).toBe(
+    expect(getCanonicalMarketingPathname(null)).toBe('/');
+    expect(getCanonicalMarketingPathname('/index')).toBe('/');
+    expect(getCanonicalMarketingPathname('/products/pergolas/gable')).toBe(
       '/products/pergolas/gable',
     );
   });
@@ -28,10 +28,10 @@ describe('shared header navigation model', () => {
     ]);
   });
 
-  it('keeps the experimental project opening within the shared hero treatment', () => {
+  it('keeps the production project opening within the shared hero treatment', () => {
     expect(isHeaderHeroOverlayPath('/')).toBe(true);
     expect(isHeaderHeroOverlayPath('/home-guided')).toBe(true);
-    expect(isHeaderHeroOverlayPath('/home-project-finder')).toBe(true);
+    expect(isHeaderHeroOverlayPath('/home-project-finder')).toBe(false);
     expect(isHeaderHeroOverlayPath('/home-experimental')).toBe(false);
     expect(isHeaderHeroOverlayPath('/home-v2')).toBe(false);
     expect(isHeaderHeroOverlayPath('/contact')).toBe(false);
@@ -39,7 +39,6 @@ describe('shared header navigation model', () => {
 
   it('suppresses only the guided route desktop CTA', () => {
     expect(shouldShowDesktopHeaderCta('/home-guided')).toBe(false);
-    expect(shouldShowDesktopHeaderCta('/home-project-finder')).toBe(true);
     expect(shouldShowDesktopHeaderCta('/')).toBe(true);
     expect(shouldShowDesktopHeaderCta('/commercial-pergolas-auckland')).toBe(true);
   });

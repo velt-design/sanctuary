@@ -11,14 +11,14 @@ describe('parseSubmittedEnquiryContext', () => {
   it('accepts governed project-finder context and canonicalises priorities', () => {
     expect(parseSubmittedEnquiryContext({
       enquiry_type: 'residential',
-      source_path: '/home-project-finder',
+      source_path: '/',
       source_component: 'brief_summary',
       source_experience: 'project-finder-home-v1',
       project_direction: 'outdoor-room',
       project_priorities: ['shade', 'daylight', 'shade', 'everyday-use', 'open-structure'],
     }, knownContext)).toEqual({
       enquiryType: 'residential',
-      sourcePath: '/home-project-finder',
+      sourcePath: '/',
       sourceComponent: 'brief_summary',
       sourceExperience: 'project-finder-home-v1',
       projectDirection: 'outdoor-room',

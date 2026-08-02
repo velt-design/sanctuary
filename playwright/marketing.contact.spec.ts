@@ -243,7 +243,7 @@ test('neutral, audience, project and product entry routes use one canonical cont
 
   await page.goto('/', { waitUntil: 'networkidle' });
   const professionalPathway = page.getByRole('link', {
-    name: 'Explore collaboration',
+    name: 'Architects, designers and builders',
   });
   await expect(professionalPathway).toHaveAttribute(
     'href',
@@ -515,7 +515,9 @@ test('no-JavaScript fallback keeps personal data out of the URL and uses native 
 
 test('API errors keep values and retries reuse the submission UUID', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await preparePage(page);
+  await preparePage(page, {
+    consent: { ...consentChoice, marketing: true },
+  });
   const payloads: Array<Record<string, unknown>> = [];
   await page.route('**/api/enquiry', async (handler) => {
     payloads.push(handler.request().postDataJSON() as Record<string, unknown>);

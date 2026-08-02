@@ -1,5 +1,5 @@
-export const PROJECT_FINDER_HOME_PATH = '/home-project-finder';
-export const PROJECT_FINDER_HOME_VARIANT = 'project_finder_home_v1';
+export const PROJECT_FINDER_HOME_PATH = '/';
+export const PROJECT_FINDER_HOME_VARIANT = 'project_finder_home_v2';
 export const PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE =
   'project-finder-home-v1';
 

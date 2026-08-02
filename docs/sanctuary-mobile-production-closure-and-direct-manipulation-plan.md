@@ -12,6 +12,12 @@
 > **Primary outcome:** one verified production release, one directly manipulated product-gallery interaction, and one authorised production enquiry reconciliation
 > **Owner amendment:** physical-device and assistive-technology testing were removed from this programme on 27 July 2026; they are not merge or completion gates
 
+> **Homepage-owner supersession (2 August 2026):** references below to
+> `apps/marketing/app/_home/**` and `playwright/marketing.homepage.spec.ts`
+> describe the completed PDR-01 snapshot. The current production owner is
+> `apps/marketing/app/_home-project-finder/**`, verified by
+> `playwright/marketing.home-project-finder.spec.ts`.
+
 ## Document purpose and authority
 
 This document converts the completed Sanctuary Pergolas mobile UX and implementation maturity review into the next bounded implementation programme.
@@ -419,7 +425,7 @@ The existing release-identity implementation and Phase 5 semantic test provide t
 Primary:
 
 - `apps/marketing/app/page.tsx`
-- `apps/marketing/app/_home/**`
+- `apps/marketing/app/_home-project-finder/**`
 - `apps/marketing/app/pergolas-auckland/**`
 - `apps/marketing/app/custom-pergolas-auckland/content.ts`
 - `apps/marketing/app/commercial-pergolas-auckland/content.ts`
@@ -435,7 +441,7 @@ Primary:
 
 Focused supporting owners:
 
-- `playwright/marketing.homepage.spec.ts`
+- `playwright/marketing.home-project-finder.spec.ts`
 - `playwright/marketing.phase-three.spec.ts`
 - `playwright/marketing.phase-four.spec.ts`
 - `playwright/marketing.contact.spec.ts`
@@ -507,7 +513,7 @@ npx playwright test \
   --workers=1
 
 npx playwright test \
-  playwright/marketing.homepage.spec.ts \
+  playwright/marketing.home-project-finder.spec.ts \
   playwright/marketing.phase-three.spec.ts \
   playwright/marketing.phase-four.spec.ts \
   playwright/marketing.contact.spec.ts \

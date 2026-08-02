@@ -293,20 +293,10 @@ contact path. The product hub plus product and project details link to, rather
 than embed, the enquiry form and retain one short route-owned final action.
 
 The approved public homepage lives at `/` and is owned by
-`apps/marketing/app/_home/`. It opens with the completed Warkworth Outdoor Room
-and asks one bounded design-conversation question: `What are you trying to
-create?` Three closed answers map deterministically to exactly two governed
-project records each: home cover uses Dairy Flat and Mt Maunganui; complete
-outdoor room uses Warkworth and Riverhead; commercial or architect-led uses The
-Good Home and KiwiRail. Missing governed records fail closed rather than
-silently inheriting another project's editorial rationale. Visitors may open
-either case study, carry its canonical slug and validated audience into
-`/contact`, browse all projects or leave without choosing a reference. No
-second or third question, scoring, free-text URL state or automated
-recommendation is present.
-
-That one-question limit remains the production `/` contract. The explicitly
-requested comparison route `/home-journey` is a separate, noindex guided-home
+`apps/marketing/app/_home-project-finder/`. Its production visual, interaction,
+SEO, continuation and measurement contracts are defined in the project-finder
+section below. The explicitly requested comparison route `/home-journey`
+remains a separate, noindex guided-home
 experiment owned by `apps/marketing/app/home-journey/`; it is self-contained,
 canonicalises to `/`, stays out of the sitemap and does not change or duplicate
 the approved root implementation. It shows one question at a time and branches
@@ -388,116 +378,65 @@ embedded destination form as `source_experience`, `source_pathway` and
 All three additions are allowlisted, lower-case, non-personal and kept only as a
 complete group. Arbitrary values and partial guided attribution are discarded.
 
-The protected project-led visual finder lives at `/home-project-finder` and is
-owned by `apps/marketing/app/_home-project-finder/` with a thin public route
-entrypoint. It is a noindex/nofollow, root-canonical prototype, stays out of the
-sitemap and does not change the live `/` renderer. The route reuses the shared
-Foundation header, footer, actions, live Google review data, project catalogue,
-project media, consent owner and enquiry-context builder. Its route-owned hero,
-three image-led directions, optional six-priority brief and two governed project
-references per direction fail closed when referenced project data or media is
-missing. The three direction IDs and six priority IDs are closed values; the URL
-stores only a valid `project` and up to three canonical `priorities`, supports
-Back, Forward and refresh, and never stores visitor-entered text or PII.
+The approved project-led visual finder is the production `/` homepage and is
+owned once by `apps/marketing/app/_home-project-finder/`. The root is indexable,
+self-canonical and retains the approved title, description, Open Graph identity
+and WebSite/WebPage schema. `/home-project-finder` is retired through a permanent
+redirect to `/`, retains an `X-Robots-Tag: noindex, nofollow` response header and
+stays out of the sitemap. The superseded `apps/marketing/app/_home/` owner and
+its duplicate browser suite are deleted. `/home-v2` and `/home-experimental`
+also remain permanent redirects; none is retained as a second homepage tree.
 
-The client finder uses one accessible radio group, native checkboxes, a three-item
-selection ceiling, visible focus and one polite live region. A no-JavaScript
-fallback exposes all three service pathways, quiet commercial and professional
-paths, and a direct enquiry action. The interactive finder shows those two
-audience paths as a secondary line rather than a fourth direction card. Valid
-finder continuation may add `source_experience: project-finder-home-v1`, a closed
-`project_direction` and up to three closed `project_priorities` to contact links.
-Recommended service links retain the closed selection in `project` and
-`priorities`; the matching indexed service page repeats the brief and passes it
-through its embedded form and shared header enquiry action without changing its
-canonical. Wrong-route, duplicate and unknown values are discarded. The contact
-page also repeats a governed starting brief visibly. At 320-430px direction cards
-use compact horizontal comparison rows; at 768-900px they remain full-width
-horizontal rows rather than three narrow columns. Only the hero has initial
-high-priority image loading; finder and evidence media are lazy. Generated brief
-headings use one grammatical direction-led sentence. `project_finder_home_v1`
-analytics remain inactive until analytics consent and distinguish result views,
-project-detail opens and secondary-audience paths. The retired visible
-project-reference action has no retained dead event. A result view does not
-repeat when only priorities change. Events carry only closed direction,
-priority, component, project, audience and destination values.
+The production page reuses the shared Foundation header, footer and actions,
+live Google review data, governed project catalogue and media, consent owner
+and enquiry-context builder. Its immersive hero, ruled proof rail, three
+image-led directions, optional six-priority brief, recommendation, two governed
+projects per direction and evidence-first conversion close remain the approved
+visible structure. Mobile exposes one hero action and compact complete direction
+rows at 320-430px; the hero continues to fill tall 320px viewports. Tablet keeps
+full-width landscape rows through 900px. The root-only scrolled header uses an
+opaque surface so content cannot ghost through it. Only the hero is initially
+high priority; direction and evidence images are lazy.
 
-The approved visual refinement aligns the finder with the root homepage's
-immersive editorial system without changing `/`: a viewport-filling hero, the
-same ruled proof-rail proportions, independent image-led direction cards,
-bordered recommendation composition and elevated evidence cards. Mobile shows
-one hero action, uses compact complete direction rows at 320-430px and removes
-the early recommendation and brief enquiry actions. Tablet keeps full-width
-landscape rows through 900px. The in-page conversion close appears only after a
-direction and its two built projects. Finder project links carry validated
-direction, priorities and project slug invisibly into project detail; the
-finder-origin case study suppresses its introduction CTA while its final CTA,
-related-project links and shared header preserve the governed enquiry context.
-Project canonicals and non-finder project journeys remain unchanged.
-The authoritative product and acceptance contract is
+The client finder uses one accessible radio group, native checkboxes, a
+three-item priority ceiling, visible focus and one polite live region. URL state
+contains only one valid `project` and up to three canonical `priorities`, supports
+Back, Forward and refresh, and stores no visitor-entered text or PII. The
+no-JavaScript fallback exposes all three service routes plus quiet commercial
+and professional paths. The interactive audience paths remain a secondary line,
+not a fourth direction card. Invalid, duplicate, excess and wrong-route values
+fail closed.
+
+Recommended service and project-detail links retain the closed direction and
+priorities. A viewed project may add one validated matching reference slug. The
+destination service repeats the governed brief and preserves it through its
+embedded form and shared header; finder-origin project detail suppresses the
+early introduction CTA while its related-project links, final CTA and header
+retain the context. Project canonicals and ordinary non-finder journeys remain
+unchanged. The in-page `Send your brief` action appears only after the selected
+direction and built work. Shared header and footer route attribution canonicalise
+Next's production `/index` alias to `/`.
+
+Consent-aware production analytics use `homepage_variant:
+project_finder_home_v2`, `source_path: /` and the existing closed finder event
+names. `project_result_view`, `project_view_click` and
+`project_audience_path_click` remain separate intents; priority changes do not
+repeat a result view and the retired reference action has no event. The shared
+header enquiry maps into `project_finder_direct_enquiry_click`. Events carry
+only closed direction, priority, component, project, audience, destination and
+validated enquiry-audience values. Enquiry continuation deliberately retains
+`source_experience: project-finder-home-v1` as the stable journey contract; the
+v2 homepage variant distinguishes the production release without breaking the
+existing enquiry schema.
+
+The focused production owner is
+`playwright/marketing.home-project-finder.spec.ts`. It covers root metadata and
+schema, the retired-route redirect, 320-1440 responsive behavior, mobile hero
+height, root-only scrolled-header opacity, URL/history state, keyboard and
+no-JavaScript access, consent-aware analytics, lazy image loading, service and
+project continuation, mobile-menu state, overflow and the complete selected
+journey. The authoritative product and acceptance history remains
 `sanctuary-project-led-visual-finder-homepage-prototype.md`.
-
-The root reuses the Foundation page/actions, shared project catalogue, live
-Google rating, header/footer, consent owner and enquiry-context builder. A
-narrow client island owns radio state, optional session restoration and
-consent-aware interaction measurement; the route shell, metadata, structured
-data, proof, capability pathways, process and enquiry close remain server
-rendered. The hero fragment lands on the single visible question introduction
-with the first choice substantially in view at 320px and at the 360px by 400px
-CSS viewport used for 200 percent zoom checks. With JavaScript disabled, that
-same introduction remains visible and the interactive controls are replaced by
-all three pathways, their six governed project references and direct enquiry
-links while the Auckland capability and three-stage process content stays
-visible.
-
-The homepage remains an indexable, self-canonical Auckland service entrypoint
-with the approved title, description, Open Graph identity and WebSite/WebPage
-schema. Residential, commercial and professional capability links, products,
-planning guides, review proof, direct phone and enquiry actions preserve the
-useful responsibilities of the retired long-form homepage without restoring
-its repeated planning inventory or five disclosures. The shared header keeps
-the root hero-overlay treatment on desktop and the solid 64px header on tablet
-and mobile.
-
-Homepage controls expose stable `data-design-conversation-event` attributes.
-`HomepageDesignConversationTracker.tsx` records only the event name,
-`design_conversation_home_v3` variant, viewport category, destination, closed
-intent, canonical project slugs, matched pair, step and validated audience
-after analytics consent. Pointer activation and radio Arrow, Home and End
-selection use the same tracked activation path. The shared header publishes its
-validated route audience to the homepage tracker. Tracking captures no
-visitor-entered content and does not backfill pre-consent interactions.
-The major copy reduction is reported as `v3`; stable event names and the
-unchanged closed-intent storage key preserve the interaction contract while
-keeping earlier copy variants distinguishable.
-
-The former production implementation under `apps/marketing/app/home-v2/` is
-retired except for its redirect entrypoint. `/home-v2` and
-`/home-experimental` permanently redirect to `/`; neither is navigated, emitted
-in the sitemap or retained as a second homepage implementation. The established
-legacy owners `apps/marketing/app/home.css` and
-`apps/marketing/components/home/**` remain unchanged because they are a
-separate retirement lane.
-
-The promotion baseline uses one eager hero image and adds no runtime
-dependencies. A local production-build check at 390px and DPR 2 measured
-256ms LCP, 0.0182 CLS, a 65ms first-answer response, a 60.4KiB opening image
-transfer and a 3.8KiB gzip feature chunk. These figures verify the bounded
-release budget; deployed real-user monitoring remains the source for
-production performance.
-
-The focused homepage browser lane always enforces a `0.1` CLS ceiling and a
-500ms first-answer response ceiling after the answer control is in view. The
-response measurement starts in the browser at the click event, so Playwright
-scroll and command latency are excluded. Set
-`MARKETING_HOMEPAGE_PRODUCTION_PERF=1` only while targeting a local production
-build to add the repeatable 2.5 second LCP ceiling; development compilation is
-not valid LCP evidence. The lane also checks high fetch priority on the single
-eager image, selected-option hover/focus contrast and inverse-surface focus
-colour. These local regression budgets supplement rather than replace deployed
-real-user monitoring.
-
-Root height and overflow normalisation must preserve the shared mobile-menu and consent locks. The homepage browser suite opens the mobile menu from a non-zero scroll position and verifies that the document stays fixed, Escape restores focus, and the prior reading position returns when the menu closes.
 
 ## Verification
 
@@ -514,7 +453,6 @@ Root height and overflow normalisation must preserve the shared mobile-menu and 
 - `npx playwright test playwright/marketing.foundation.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.home-guided.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.home-project-finder.spec.ts --config=playwright.marketing.config.ts`
-- `npx playwright test playwright/marketing.homepage.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.projects.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.products.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.contact.spec.ts --config=playwright.marketing.config.ts`
@@ -548,8 +486,8 @@ The dedicated Phase 3 suite visits the hub, all ten product routes, residential 
 The dedicated Phase 4 suite covers commercial proof/stages/context, the
 professional capability route and intercepted payload/analytics, the guide hub
 and all seven guide first layers, refresh/Back, no-JavaScript completeness,
-the bounded homepage question/capability/process structure and footer utility
-at 430px, 390px and 360px. Set
+the bounded homepage finder/proof structure and footer utility at 430px, 390px
+and 360px. Set
 `MARKETING_PHASE_FOUR_CAPTURE=before|after` and
 `MARKETING_PHASE_FOUR_WIDTH=430|390|360` for reproducible evidence under
 `artifacts/mobile-ux-phase-4/`. A deployed capture must also set
@@ -570,6 +508,6 @@ collection, gallery, filter, selector and responsive contracts while asserting
 the reduced Brief/Response hierarchy and single related-project navigation
 system. The contact suite retains canonical and legacy preselection,
 project/product refresh and history, validation, attachment, duplicate-submit,
-consented analytics and lower-case non-personal context coverage. Homepage and
-hero-navigation suites preserve the established desktop composition,
-`design_conversation_home_v3` and responsive header states.
+consented analytics and lower-case non-personal context coverage. The finder
+and hero-navigation suites preserve the approved desktop composition,
+`project_finder_home_v2` and responsive header states.

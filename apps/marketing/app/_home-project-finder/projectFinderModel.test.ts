@@ -42,7 +42,7 @@ describe('project finder state model', () => {
       project: 'bespoke',
       priorities: ['coordination', 'daylight', 'open-structure'],
     })).toBe(
-      '/home-project-finder?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination',
+      '/?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination',
     );
   });
 

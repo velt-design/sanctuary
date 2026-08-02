@@ -3629,13 +3629,13 @@ Related docs/tests: `apps/marketing/components/seo-landing/seoLandingViewModel.t
 ### 2026-07-26 - Marketing Static Root Routing - Canonicalise Before Header Decisions
 
 Date: 2026-07-26
-Area: Shared public header production routing
+Area: Shared public route-aware production routing
 Status: Promoted
 Decision or mistake: Next's optimized static root rendered `usePathname()` as the filesystem alias `/index`, although the public URL and matched route were `/`. The shared header treated that alias as unknown, so the production homepage lost its residential estimate audience, emitted `source_path=/index` and missed its desktop hero-overlay state. Development checks received `/` and stayed green. A separate short-viewport test could also move focus before the menu's scheduled first-link focus had settled, making its final-link assertion timing-dependent.
-Why it mattered: The most prominent homepage enquiry action contradicted the canonical Phase 1 context contract in raw production HTML, while a real menu focus contract looked flaky only because the test raced its owner.
-Current guardrail: Canonicalise the production static root alias once before header navigation, hero and enquiry decisions. Verify the optimized generated root HTML and deployed raw/browser output, not only development routing. In focus tests, first observe the component's promised initial focus, then move focus to another target.
+Why it mattered: The most prominent homepage enquiry action contradicted the canonical Phase 1 context contract in raw production HTML, and the same raw alias later leaked through the shared footer, while a real menu focus contract looked flaky only because the test raced its owner.
+Current guardrail: Canonicalise the production static root alias once for every shared route-aware navigation and conversion owner before hero, audience or enquiry decisions. Verify the optimized generated root HTML and deployed raw/browser output, including header and footer destinations, not only development routing. In focus tests, first observe the component's promised initial focus, then move focus to another target.
 Promoted to: `docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`
-Related docs/tests: `apps/marketing/components/headerNavigation.ts`; `apps/marketing/components/headerNavigation.test.ts`; `apps/marketing/components/Header.test.tsx`; `playwright/marketing.homepage.spec.ts`; `playwright/marketing.shared-header.spec.ts`; `playwright/marketing.phase-four.spec.ts`
+Related docs/tests: `apps/marketing/lib/enquiryContext.ts`; `apps/marketing/components/headerNavigation.ts`; `apps/marketing/components/Header.tsx`; `apps/marketing/components/SiteFooter.tsx`; `apps/marketing/components/headerNavigation.test.ts`; `apps/marketing/components/Header.test.tsx`; `playwright/marketing.home-project-finder.spec.ts`; `playwright/marketing.shared-header.spec.ts`; `playwright/marketing.phase-four.spec.ts`
 
 ### 2026-07-26 - Marketing Enquiry Reconciliation - One Opaque Identifier
 
@@ -3745,7 +3745,7 @@ Decision or mistake: The approved first-design-conversation prototype replaced t
 Why it mattered: A visual promotion can silently discard canonical metadata, structured data, crawlable Auckland capability, process and enquiry pathways, while preserving every old page as a fallback creates permanent drift and bloat.
 Current guardrail: Move the approved experience into one production owner, explicitly transfer SEO, proof, capability, process, enquiry, consent and no-JavaScript responsibilities, then delete the superseded implementation. Keep comparison URLs only as permanent redirects to the canonical root and prove the production page plus redirects in one focused browser lane.
 Promoted to: `docs/marketing-ui-foundation.md`; `docs/security-privacy-quality.md`; `docs/testing-and-qa.md`
-Related docs/tests: `apps/marketing/app/_home/`; `apps/marketing/app/page.tsx`; `apps/marketing/next.config.ts`; `playwright/marketing.homepage.spec.ts`; `playwright/marketing.phase-four.spec.ts`
+Related docs/tests: `apps/marketing/app/_home-project-finder/`; `apps/marketing/app/page.tsx`; `apps/marketing/app/home-project-finder/route.ts`; `playwright/marketing.home-project-finder.spec.ts`; `playwright/marketing.phase-four.spec.ts`; `playwright/marketing.phase-five.spec.ts`
 
 ### 2026-07-26 - Marketing Homepage Interaction - Test The Actual Handoff
 

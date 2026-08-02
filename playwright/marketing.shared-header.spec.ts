@@ -54,12 +54,10 @@ test('the architectural editorial header is shared by established public routes'
     }));
     await expect(header.getByRole('navigation', { name: 'Primary' }).getByRole('link'))
       .toHaveText([
-        'Home',
         'Projects',
         'Products',
         'Commercial',
         'Professionals',
-        'Contact',
       ]);
     await expect(header.getByRole('link', { name: 'Commercial' }))
       .toHaveAttribute('href', '/commercial-pergolas-auckland');
@@ -71,18 +69,18 @@ test('the architectural editorial header is shared by established public routes'
 
     const geometry = await header.evaluate((element) => {
       const brand = element.querySelector<HTMLElement>('.site-brand');
-      const projects = element.querySelector<HTMLElement>('a[href="/projects"]');
       const products = element.querySelector<HTMLElement>('a[href="/products"]');
-      if (!brand || !projects || !products) return null;
-      const projectsRect = projects.getBoundingClientRect();
+      const commercial = element.querySelector<HTMLElement>('a[href="/commercial-pergolas-auckland"]');
+      if (!brand || !products || !commercial) return null;
       const productsRect = products.getBoundingClientRect();
+      const commercialRect = commercial.getBoundingClientRect();
       return {
         headerHeight: element.getBoundingClientRect().height,
         headerBackground: getComputedStyle(element).backgroundColor,
         heroNavigation: element.dataset.heroNavigation ?? null,
         headerFont: getComputedStyle(element).fontFamily,
         brandFont: getComputedStyle(brand).fontFamily,
-        navGapMidpoint: (projectsRect.right + productsRect.left) / 2,
+        navGapMidpoint: (productsRect.right + commercialRect.left) / 2,
         viewportCenter: window.innerWidth / 2,
       };
     });

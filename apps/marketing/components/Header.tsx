@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import {
   buildEnquiryHref,
+  getCanonicalMarketingPathname,
   getEnquiryRouteContext,
   type EnquiryContext,
 } from '@/lib/enquiryContext';
@@ -16,7 +17,6 @@ import {
 } from '@/lib/projectFinderContinuation';
 import { projectDirections } from '@/lib/projectFinderContract';
 import {
-  getCanonicalHeaderPathname,
   getDesktopHeaderNavigation,
   getMobileHeaderNavigation,
   isHeaderHeroOverlayPath,
@@ -36,7 +36,7 @@ export default function Header() {
   const [projectFinderEnquiryContext, setProjectFinderEnquiryContext] =
     useState<EnquiryContext | null>(null);
   const pathname = usePathname();
-  const currentPath = getCanonicalHeaderPathname(pathname);
+  const currentPath = getCanonicalMarketingPathname(pathname);
   const desktopNavigationItems = getDesktopHeaderNavigation(currentPath);
   const mobileNavigationItems = getMobileHeaderNavigation(currentPath);
   const routeEnquiryContext = getEnquiryRouteContext(currentPath);

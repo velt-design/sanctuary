@@ -128,9 +128,9 @@ The suite verifies three commercial cases and stages, commercial source
 context, professional route discovery/schema/sitemap, supported-file guidance,
 an intercepted professional payload, canonical consented analytics with no
 personal properties, ten visible guide distinctions, all seven guide first
-layers, refresh/Back, no-JavaScript completeness, the production homepage's one
-first-question radio group, three capability pathways and three process stages,
-plus compact footer utility at 430, 390 and 360 pixels. The retired homepage's
+layers, refresh/Back, no-JavaScript completeness, the production homepage's
+three-direction finder, proof rail and two quiet audience paths, plus compact
+footer utility at 430, 390 and 360 pixels. The retired homepage's
 seven-region/five-disclosure budget is historical evidence only. Set
 `MARKETING_PHASE_FOUR_CAPTURE=before|after` and
 `MARKETING_PHASE_FOUR_WIDTH=430|390|360` to write or update the 36-record JSON
@@ -138,27 +138,25 @@ and representative screenshots under `artifacts/mobile-ux-phase-4/`. Add
 `MARKETING_BASE_URL=https://www.sanctuarypergolas.co.nz` only for read-only
 deployed smoke/capture and continue intercepting `**/api/enquiry`.
 
-The production first-design-conversation homepage has a focused lane:
-`npx playwright test playwright/marketing.homepage.spec.ts --config=playwright.marketing.config.ts`.
+The production project-finder homepage has a focused lane:
+`npx playwright test playwright/marketing.home-project-finder.spec.ts --config=playwright.marketing.config.ts`.
 It covers the complete required 320-to-1440 responsive matrix, canonical
-indexable metadata and WebSite/WebPage schema, permanent comparison-route
-redirects, first-question radio keyboard and screen-reader structure,
-stable project-specific link names, hero-fragment visibility at narrow and
-200-percent-zoom viewports, selected hover and inverse/selected focus contrast,
-44-pixel touch dimensions, reduced motion, JavaScript-disabled fallback,
-unavailable session storage, image failure, consent granted/denied pointer and
-keyboard analytics, deterministic fail-closed two-project responses, validated
-project-reference handoff to `/contact`, retained capability/process content,
-the shared mobile-menu scroll/focus contract, and local CLS/first-answer
-performance ceilings. For the LCP ceiling, start a local production build,
+indexable metadata and WebSite/WebPage schema, the permanent noindex comparison
+redirect, radio keyboard and screen-reader structure, compact mobile and tablet
+cards, full-height narrow hero, root-only opaque scrolled header, 44-pixel touch
+dimensions, reduced motion, JavaScript-disabled fallback, consent
+granted/denied analytics, deterministic two-project evidence, service/project
+and enquiry continuation, URL history, mobile-menu state and local
+CLS/first-result performance ceilings. For the LCP ceiling, start a local
+production build,
 point `MARKETING_BASE_URL` at it, and add
 `MARKETING_HOMEPAGE_PRODUCTION_PERF=1`; development compilation is deliberately
 excluded from LCP evidence.
 
-The homepage lane identifies the current copy as
-`design_conversation_home_v3`. Stable event names, the governed two-project
-matches and the closed-intent storage key remain unchanged; tests assert the
-v3 analytics property so results are not mixed with earlier copy variants.
+The homepage lane identifies the production release as
+`project_finder_home_v2` with canonical analytics `source_path: /`. Enquiry
+continuation intentionally retains `source_experience: project-finder-home-v1`
+as its stable journey schema; focused tests assert both dimensions.
 
 The staged guided-homepage programme has a separate focused lane:
 `npx playwright test playwright/marketing.home-guided.spec.ts --config=playwright.marketing.config.ts`.

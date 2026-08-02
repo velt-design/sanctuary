@@ -123,6 +123,7 @@ describe('shared mobile header interaction', () => {
       enquiryType: 'residential',
       sourcePath: '/',
       sourceComponent: 'header',
+      sourceExperience: 'project-finder-home-v1',
     }));
     expect(desktopCta?.getAttribute('data-enquiry-type')).toBe('residential');
   });

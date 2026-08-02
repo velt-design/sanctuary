@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import JsonLd from '../../components/JsonLd';
 import {
   Container,
   MarketingPage,
@@ -8,6 +9,7 @@ import { GOOGLE_PLACE } from '../../data/reviews';
 import { projects } from '../../data/projects';
 import { buildEnquiryHref } from '../../lib/enquiryContext';
 import { getGoogleRating } from '../../lib/googleReviews';
+import { absoluteUrl } from '../../lib/seo';
 import {
   PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
   PROJECT_FINDER_HOME_PATH,
@@ -19,6 +21,10 @@ import ProjectFinderTracker from './ProjectFinderTracker';
 import { buildProjectFinderHomepageMedia } from './projectFinderMedia';
 import type { ProjectFinderState } from './projectFinderModel';
 import styles from './projectFinderHomepage.module.css';
+import {
+  projectFinderHomepageDescription,
+  projectFinderHomepageTitle,
+} from './routeContract';
 
 type ProjectFinderHomepageProps = {
   initialState: ProjectFinderState;
@@ -39,12 +45,36 @@ export default async function ProjectFinderHomepage({
   return (
     <MarketingPage
       className={styles.page}
+      data-homepage-variant={PROJECT_FINDER_HOME_VARIANT}
       data-project-finder-home-variant={PROJECT_FINDER_HOME_VARIANT}
     >
       <ProjectFinderTracker />
+      <JsonLd
+        data={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: 'Sanctuary Pergolas',
+            url: absoluteUrl(PROJECT_FINDER_HOME_PATH),
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'WebPage',
+            name: projectFinderHomepageTitle,
+            url: absoluteUrl(PROJECT_FINDER_HOME_PATH),
+            description: projectFinderHomepageDescription,
+            isPartOf: {
+              '@type': 'WebSite',
+              name: 'Sanctuary Pergolas',
+              url: absoluteUrl(PROJECT_FINDER_HOME_PATH),
+            },
+          },
+        ]}
+      />
       <section
         className={styles.hero}
         aria-labelledby="project-finder-home-heading"
+        data-homepage-hero
       >
         <Image
           alt={media.hero.alt}
