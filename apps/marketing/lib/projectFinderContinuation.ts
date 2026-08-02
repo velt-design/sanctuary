@@ -26,6 +26,16 @@ export type ProjectFinderJourneyContext = {
   enquiryContext: EnquiryContext;
 };
 
+export type ProjectFinderSelection = {
+  direction: ProjectDirection;
+  priorities: ProjectPriority[];
+};
+
+export type ProjectFinderProjectJourneyContext = ProjectFinderSelection & {
+  sourceProject: string;
+  enquiryContext: EnquiryContext;
+};
+
 export const projectFinderDestinationByDirection: Record<
   ProjectDirection,
   string
@@ -55,6 +65,8 @@ const briefClauseByPriority: Record<ProjectPriority, string> = {
   'open-structure': 'keep the structure visually open',
   coordination: 'coordinate cleanly with the wider project',
 };
+
+const PROJECT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const projectFinderPriorityOrderByDirection: Record<
   ProjectDirection,
@@ -127,6 +139,27 @@ function buildSelectionParams(
   return params;
 }
 
+function readSelection(
+  params: ProjectFinderJourneyParamReader,
+  expectedDirection?: ProjectDirection,
+): ProjectFinderSelection | null {
+  const direction = readSingle(params, 'project')?.trim().toLowerCase();
+  if (
+    !isProjectDirection(direction)
+    || (expectedDirection && direction !== expectedDirection)
+  ) {
+    return null;
+  }
+
+  const rawPriorities = readSingle(params, 'priorities');
+  return {
+    direction,
+    priorities: rawPriorities
+      ? normalizeProjectPriorities(rawPriorities.split(','))
+      : [],
+  };
+}
+
 export function buildProjectFinderBriefHeading(
   direction: ProjectDirection,
   priorities: readonly ProjectPriority[],
@@ -152,19 +185,26 @@ export function buildProjectFinderDestinationHref(
   ).toString()}`;
 }
 
+export function buildProjectFinderProjectHref(
+  direction: ProjectDirection,
+  priorities: readonly ProjectPriority[],
+  projectSlug: string,
+): string {
+  if (!PROJECT_SLUG_PATTERN.test(projectSlug)) {
+    throw new Error(`Invalid project finder project slug: ${projectSlug}`);
+  }
+  const params = buildSelectionParams(direction, priorities);
+  params.set('reference', projectSlug);
+  return `/projects/${projectSlug}?${params.toString()}`;
+}
+
 export function resolveProjectFinderJourneyContextFromReader(
   expectedDirection: ProjectDirection,
   params: ProjectFinderJourneyParamReader,
 ): ProjectFinderJourneyContext | null {
-  const direction = readSingle(params, 'project')?.trim().toLowerCase();
-  if (!isProjectDirection(direction) || direction !== expectedDirection) {
-    return null;
-  }
-
-  const rawPriorities = readSingle(params, 'priorities');
-  const priorities = rawPriorities
-    ? normalizeProjectPriorities(rawPriorities.split(','))
-    : [];
+  const selectionContext = readSelection(params, expectedDirection);
+  if (!selectionContext) return null;
+  const { direction, priorities } = selectionContext;
   const selection = buildSelectionParams(direction, priorities).toString();
   const destination = projectFinderDestinationByDirection[direction];
 
@@ -185,12 +225,50 @@ export function resolveProjectFinderJourneyContextFromReader(
   };
 }
 
+export function resolveProjectFinderProjectJourneyContextFromReader(
+  expectedProjectSlug: string,
+  params: ProjectFinderJourneyParamReader,
+): ProjectFinderProjectJourneyContext | null {
+  if (!PROJECT_SLUG_PATTERN.test(expectedProjectSlug)) return null;
+  const sourceProject = readSingle(params, 'reference')?.trim().toLowerCase();
+  if (sourceProject !== expectedProjectSlug) return null;
+
+  const selectionContext = readSelection(params);
+  if (!selectionContext) return null;
+  const { direction, priorities } = selectionContext;
+  const sourcePath = `/projects/${sourceProject}`;
+
+  return {
+    direction,
+    priorities,
+    sourceProject,
+    enquiryContext: {
+      sourcePath,
+      sourceComponent: 'project_cta',
+      sourceProject,
+      sourceExperience: PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
+      projectDirection: direction,
+      projectPriorities: priorities,
+    },
+  };
+}
+
 export function resolveProjectFinderJourneyContext(
   expectedDirection: ProjectDirection,
   params: ProjectFinderJourneySearchParams,
 ): ProjectFinderJourneyContext | null {
   return resolveProjectFinderJourneyContextFromReader(
     expectedDirection,
+    recordReader(params),
+  );
+}
+
+export function resolveProjectFinderProjectJourneyContext(
+  expectedProjectSlug: string,
+  params: ProjectFinderJourneySearchParams,
+): ProjectFinderProjectJourneyContext | null {
+  return resolveProjectFinderProjectJourneyContextFromReader(
+    expectedProjectSlug,
     recordReader(params),
   );
 }

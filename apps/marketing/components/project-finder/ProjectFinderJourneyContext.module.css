@@ -50,10 +50,6 @@
   text-transform: uppercase;
 }
 
-.actions a:first-child {
-  border-bottom-color: var(--color-accent-olive);
-}
-
 .actions a:focus-visible {
   outline: 2px solid var(--color-accent-olive);
   outline-offset: 4px;

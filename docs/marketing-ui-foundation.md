@@ -417,9 +417,23 @@ horizontal rows rather than three narrow columns. Only the hero has initial
 high-priority image loading; finder and evidence media are lazy. Generated brief
 headings use one grammatical direction-led sentence. `project_finder_home_v1`
 analytics remain inactive until analytics consent and distinguish result views,
-project-detail views, enquiry-reference choices and secondary-audience paths.
-A result view does not repeat when only priorities change. Events carry only
-closed direction, priority, component, project, audience and destination values.
+project-detail opens and secondary-audience paths. The retired visible
+project-reference action has no retained dead event. A result view does not
+repeat when only priorities change. Events carry only closed direction,
+priority, component, project, audience and destination values.
+
+The approved visual refinement aligns the finder with the root homepage's
+immersive editorial system without changing `/`: a viewport-filling hero, the
+same ruled proof-rail proportions, independent image-led direction cards,
+bordered recommendation composition and elevated evidence cards. Mobile shows
+one hero action, uses compact complete direction rows at 320-430px and removes
+the early recommendation and brief enquiry actions. Tablet keeps full-width
+landscape rows through 900px. The in-page conversion close appears only after a
+direction and its two built projects. Finder project links carry validated
+direction, priorities and project slug invisibly into project detail; the
+finder-origin case study suppresses its introduction CTA while its final CTA,
+related-project links and shared header preserve the governed enquiry context.
+Project canonicals and non-finder project journeys remain unchanged.
 The authoritative product and acceptance contract is
 `sanctuary-project-led-visual-finder-homepage-prototype.md`.
 

@@ -2,6 +2,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Project } from '@/data/projects';
 import { buildEnquiryHref } from '@/lib/enquiryContext';
+import {
+  buildProjectFinderProjectHref,
+  type ProjectFinderSelection,
+} from '@/lib/projectFinderContinuation';
+import { PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE } from '@/lib/projectFinderContract';
 import MobileProjectDisclosure from './MobileProjectDisclosure';
 import ProjectGallery from './ProjectGallery';
 import {
@@ -21,6 +26,7 @@ export type ProjectDetailContentProps = {
   showBreadcrumb?: boolean;
   sourcePath?: string;
   titleAs?: 'h1' | 'h2';
+  projectFinderSelection?: ProjectFinderSelection | null;
 };
 
 export default function ProjectDetailContent({
@@ -31,6 +37,7 @@ export default function ProjectDetailContent({
   showBreadcrumb = false,
   sourcePath,
   titleAs = 'h1',
+  projectFinderSelection = null,
 }: ProjectDetailContentProps) {
   if (!project) {
     return (
@@ -61,7 +68,21 @@ export default function ProjectDetailContent({
     sourcePath: sourcePath ?? `/projects/${project.slug}`,
     sourceComponent: 'project_cta',
     sourceProject: project.slug,
+    ...(projectFinderSelection
+      ? {
+          sourceExperience: PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
+          projectDirection: projectFinderSelection.direction,
+          projectPriorities: projectFinderSelection.priorities,
+        }
+      : {}),
   });
+  const projectHref = (slug: string) => projectFinderSelection
+    ? buildProjectFinderProjectHref(
+        projectFinderSelection.direction,
+        projectFinderSelection.priorities,
+        slug,
+      )
+    : `/projects/${slug}`;
 
   return (
     <article
@@ -92,11 +113,13 @@ export default function ProjectDetailContent({
         </div>
         <div className="project-case-study__intro-copy">
           <p>{project.blurb}</p>
-          <div className="project-case-study__intro-actions">
-            <Link className="project-action project-action--primary" href={enquiryHref}>
-              {getProjectIntroCta(project)}
-            </Link>
-          </div>
+          {!projectFinderSelection ? (
+            <div className="project-case-study__intro-actions">
+              <Link className="project-action project-action--primary" href={enquiryHref}>
+                {getProjectIntroCta(project)}
+              </Link>
+            </div>
+          ) : null}
         </div>
       </header>
 
@@ -248,7 +271,7 @@ export default function ProjectDetailContent({
           </div>
           <div className="project-case-study__related-list">
             {relatedProjects.map((related) => (
-              <Link href={`/projects/${related.slug}`} key={related.slug}>
+              <Link href={projectHref(related.slug)} key={related.slug}>
                 <span className="project-case-study__related-image">
                   <Image
                     src={related.heroImage.src}

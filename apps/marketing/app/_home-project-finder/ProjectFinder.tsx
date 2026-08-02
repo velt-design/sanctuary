@@ -14,6 +14,7 @@ import {
   Container,
 } from '../../components/marketing-foundation/Primitives';
 import { buildEnquiryHref } from '../../lib/enquiryContext';
+import { buildProjectFinderProjectHref } from '../../lib/projectFinderContinuation';
 import {
   PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
   PROJECT_FINDER_HOME_PATH,
@@ -399,20 +400,24 @@ export default function ProjectFinder({
           >
             <Container width="wide">
               <header className={styles.evidenceHeader}>
-                <p className={styles.eyebrow}>Relevant built work</p>
-                <h2 id="project-evidence-heading">Two useful project references.</h2>
+                <div>
+                  <p className={styles.eyebrow}>Relevant built work</p>
+                  <h2 id="project-evidence-heading">Built work in this direction.</h2>
+                </div>
+                <p>
+                  Explore how comparable briefs, constraints and architectural
+                  details were resolved before deciding what belongs in your project.
+                </p>
               </header>
               <div className={styles.projectGrid}>
                 {media.evidenceByDirection[state.project].map((project) => {
-                  const referenceHref = buildEnquiryHref({
-                    enquiryType: 'residential',
-                    sourcePath: PROJECT_FINDER_HOME_PATH,
-                    sourceComponent: 'project_card',
-                    sourceProject: project.projectSlug,
-                    sourceExperience: PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
-                    projectDirection: state.project,
-                    projectPriorities: priorities,
-                  });
+                  const direction = state.project;
+                  if (!direction) return null;
+                  const projectHref = buildProjectFinderProjectHref(
+                    direction,
+                    priorities,
+                    project.projectSlug,
+                  );
                   return (
                     <article
                       className={styles.projectCard}
@@ -440,19 +445,9 @@ export default function ProjectFinder({
                             data-project-priorities={priorities.join(',')}
                             data-selected-project={project.projectSlug}
                             data-source-component="project_card"
-                            href={`/projects/${project.projectSlug}`}
+                            href={projectHref}
                           >
                             View project
-                          </Link>
-                          <Link
-                            data-project-finder-event="project_enquiry_reference_click"
-                            data-project-direction={state.project}
-                            data-project-priorities={priorities.join(',')}
-                            data-selected-project={project.projectSlug}
-                            data-source-component="project_card"
-                            href={referenceHref}
-                          >
-                            Use as a reference
                           </Link>
                         </div>
                       </div>
@@ -465,43 +460,38 @@ export default function ProjectFinder({
         </>
       ) : null}
 
-      <section className={styles.close} aria-labelledby="project-finder-close-heading">
-        <Container className={styles.closeLayout} width="wide">
-          <div>
-            <p className={styles.eyebrow}>Start a conversation</p>
-            <h2 id="project-finder-close-heading">
-              {state.project
-                ? `Ready to discuss ${projectDirectionContent[state.project].label.toLowerCase()}?`
-                : 'Not sure which direction fits?'}
-            </h2>
-            <p>
-              {state.project
-                ? `Send the direction${priorities.length ? ' and priorities' : ''} you have selected so Sanctuary can review the site and next steps.`
-                : 'Sanctuary can review the site, intended use and the relationship to the house before the design direction is fixed.'}
-            </p>
-          </div>
-          <div className={styles.closeActions}>
-            <Link
-              className={styles.closePrimaryAction}
-              data-project-finder-event="project_finder_direct_enquiry_click"
-              data-project-direction={state.project}
-              data-project-priorities={priorities.join(',')}
-              data-source-component="project_finder"
-              href={directEnquiryHref}
-            >
-              {state.project ? 'Send your brief' : 'Start your project'}
-            </Link>
-            {state.project ? (
+      {state.project ? (
+        <section className={styles.close} aria-labelledby="project-finder-close-heading">
+          <Container className={styles.closeLayout} width="wide">
+            <div>
+              <p className={styles.eyebrow}>After exploring the work</p>
+              <h2 id="project-finder-close-heading">
+                Ready to discuss {projectDirectionContent[state.project].label.toLowerCase()}?
+              </h2>
+              <p>
+                Send the direction{priorities.length ? ' and priorities' : ''} you
+                selected so Sanctuary can review the site and shape a useful next step.
+              </p>
+            </div>
+            <div className={styles.closeActions}>
+              <Link
+                className={styles.closePrimaryAction}
+                data-project-finder-event="project_finder_direct_enquiry_click"
+                data-project-direction={state.project}
+                data-project-priorities={priorities.join(',')}
+                data-source-component="project_finder"
+                href={directEnquiryHref}
+              >
+                Send your brief
+              </Link>
               <a href="tel:+64228545633">Call Sanctuary</a>
-            ) : null}
-            {state.project ? (
               <button className={styles.reset} onClick={reset} type="button">
                 Start again
               </button>
-            ) : null}
-          </div>
-        </Container>
-      </section>
+            </div>
+          </Container>
+        </section>
+      ) : null}
 
       <p
         className="visually-hidden"

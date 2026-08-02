@@ -228,7 +228,7 @@ Immediately establish:
 - what Sanctuary does;
 - the quality and character of the work;
 - that the page is based on completed projects;
-- the two main actions available.
+- the primary exploratory action, with a secondary enquiry action on desktop only.
 
 ### Recommended content
 
@@ -254,7 +254,8 @@ This scrolls to the visual project finder.
 
 `Start your project`
 
-This opens the existing residential enquiry journey with source attribution for the prototype hero.
+This remains a desktop action. It is hidden on mobile so the first viewport has
+one clear next step: finding a project direction.
 
 ### Hero image
 
@@ -284,7 +285,7 @@ Show a quiet completed-project attribution:
 
 ### Mobile behavior
 
-- hero height should be approximately `78svh` to `92svh`, not necessarily a forced full viewport;
+- hero and fixed mobile header should together occupy at least the opening viewport;
 - headline, copy and actions must fit comfortably at 320 px width and short viewport heights;
 - stack actions at small widths;
 - avoid placing the project attribution below the fold when practical;
@@ -507,12 +508,8 @@ This opens or reveals the Build your brief interaction.
 
 ### Escape actions
 
-Also provide quiet text links:
-
-- `View all projects`
-- `Start your project now`
-
-These must remain visually secondary.
+Also provide `View all projects` as a quiet text link. Do not offer a direct
+enquiry from this early recommendation state.
 
 ---
 
@@ -627,15 +624,11 @@ It must include:
 
 **Primary**
 
-`Send this brief to Sanctuary`
+`Explore the recommended service`
 
-This opens the existing enquiry path with validated hidden context.
-
-**Secondary**
-
-`Explore the recommended pathway`
-
-This links to the relevant service page while preserving the prototype source and selected context where supported.
+This links to the relevant service page while preserving the prototype source
+and selected context. The brief panel does not introduce an enquiry CTA before
+the visitor sees service or built-project evidence.
 
 **Quiet**
 
@@ -652,7 +645,7 @@ The enquiry journey should receive closed, validated values including:
 - `source_component: hero | project_finder | brief_summary | project_card`
 - `project_direction: cover | outdoor-room | bespoke`
 - `project_priorities: validated closed list`
-- relevant project reference when selected;
+- the last project opened from the finder when a later enquiry begins;
 - residential enquiry type.
 
 The visible enquiry form should summarise the selected direction and priorities in plain language.
@@ -698,8 +691,11 @@ Each preview should include:
 - project title;
 - location;
 - one short reason it is relevant;
-- `View project`;
-- `Use as a reference`.
+- `View project` as the sole card action.
+
+The view link carries only validated finder direction, priority and project-slug
+context. Project-detail enquiry actions use it later without displaying a
+premature reference-selection control.
 
 Avoid long project descriptions on the homepage.
 
@@ -950,8 +946,8 @@ Recommended events:
 - `brief_priority_select`
 - `brief_priority_remove`
 - `brief_summary_view`
-- `brief_enquiry_click`
-- `project_reference_click`
+- `project_view_click`
+- `project_audience_path_click`
 - `project_pathway_click`
 - `project_finder_direct_enquiry_click`
 
@@ -1194,7 +1190,7 @@ The prototype is complete when:
 
 - all primary actions preserve validated source attribution;
 - selected direction and priorities reach the enquiry form;
-- project references reach the enquiry form;
+- the last project viewed from finder evidence reaches a later project enquiry;
 - analytics are consent-aware;
 - analytics contain no personal or free-text data;
 - the prototype can be compared cleanly with the current and guided routes.
@@ -1308,8 +1304,45 @@ remain lazy and use responsive size hints matched to their rendered geometry.
 Generated brief copy uses one concise grammatical sentence with direction-led
 priority order.
 
-Analytics distinguish `project_result_view`, `project_view_click`,
-`project_enquiry_reference_click` and `project_audience_path_click`.
+Analytics distinguish `project_result_view`, `project_view_click` and
+`project_audience_path_click`. Removing the visible reference action also
+retires its dedicated event rather than leaving a dead analytics contract.
 `project_result_view` fires once for a newly viewed direction and must not fire
 again when only priorities change. All event properties remain closed,
 non-personal and consent-gated.
+
+---
+
+# 26. Approved visual refinement and informed-lead addendum
+
+This addendum supersedes earlier CTA and sizing guidance where the two conflict.
+The live homepage remains the visual benchmark; only its already-absent mobile
+hero enquiry action is asserted, not redesigned.
+
+The finder hero uses the same immersive editorial proportions as the homepage.
+On desktop it fills the opening viewport beneath the overlay header. At 900px
+and below the solid header plus hero fill the viewport, except where a short
+viewport needs additional height to keep the copy and project attribution
+readable. Mobile exposes only `Find your project direction`; the desktop hero
+may retain its established enquiry action.
+
+The proof rail adopts the homepage's ruled three-part composition, display-type
+figures and restrained uppercase detail. The three directions remain the only
+finder choices. They use independent image-led editorial cards on desktop,
+compact complete comparison rows at 320-430px, and full-width landscape rows at
+768-900px. Commercial and professional routes remain a quiet line beneath them.
+
+The selected result is one bordered recommendation with a single primary service
+action, optional priority refinement and a quiet all-projects escape. The brief
+summary continues to the recommended service rather than enquiry. Relevant work
+uses a restrained section heading, explanatory copy and two elevated project
+cards with `View project` as their only action. The page's direct enquiry close
+appears only after this built evidence and only after a direction is selected.
+
+Opening a governed project preserves the closed direction, up to three canonical
+priorities and that project slug. Finder-origin visitors do not see the normal
+project-introduction enquiry CTA; after reading the case study, the final project
+CTA and shared header carry the preserved context into enquiry. Related project
+links update the validated project slug while retaining direction and priorities.
+Invalid, duplicate, missing or mismatched values are discarded. Project
+canonicals remain unchanged and no visitor-entered text is added to URLs.

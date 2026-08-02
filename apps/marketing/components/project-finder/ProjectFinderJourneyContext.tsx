@@ -27,12 +27,11 @@ export default function ProjectFinderJourneyContext({
             {context.summaryHeading}
           </Heading>
           <p>
-            We have kept this direction with you. It will be included if you
-            enquire from this page.
+            This direction will stay with you while you explore the service and
+            will be included if you enquire later.
           </p>
         </div>
         <nav className={styles.actions} aria-label="Your saved project brief">
-          <a href="#project-details">Continue to enquiry</a>
           <Link href={context.returnHref}>Refine your brief</Link>
         </nav>
       </Container>

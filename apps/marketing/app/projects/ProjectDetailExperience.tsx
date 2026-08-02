@@ -11,6 +11,10 @@ import {
 import JsonLd from '@/components/JsonLd';
 import type { Project } from '@/data/projects';
 import {
+  buildProjectFinderProjectHref,
+  type ProjectFinderSelection,
+} from '@/lib/projectFinderContinuation';
+import {
   buildProjectDetailHistoryState,
   captureProjectSwitchAnchor,
   getProjectDetailSlug,
@@ -40,6 +44,7 @@ type ProjectDetailExperienceProps = {
   initialProjectIndex: number;
   initialRelatedProjects: Project[];
   projects: ProjectCollectionItem[];
+  projectFinderSelection?: ProjectFinderSelection | null;
 };
 
 let projectRecordsPromise: Promise<Project[]> | null = null;
@@ -93,6 +98,7 @@ export default function ProjectDetailExperience({
   initialProjectIndex,
   initialRelatedProjects,
   projects,
+  projectFinderSelection = null,
 }: ProjectDetailExperienceProps) {
   const [selection, setSelection] = useState<ProjectSelection>({
     project: initialProject,
@@ -109,6 +115,16 @@ export default function ProjectDetailExperience({
   const selectionPromisesRef = useRef(new Map<string, Promise<ProjectSelection | null>>());
   const heroPromisesRef = useRef(new Map<string, Promise<void>>());
   selectionRef.current = selection;
+
+  const buildProjectHref = useCallback((slug: string) => (
+    projectFinderSelection
+      ? buildProjectFinderProjectHref(
+          projectFinderSelection.direction,
+          projectFinderSelection.priorities,
+          slug,
+        )
+      : `/projects/${slug}`
+  ), [projectFinderSelection]);
 
   const loadSelection = useCallback((slug: string) => {
     const cached = selectionPromisesRef.current.get(slug);
@@ -182,7 +198,7 @@ export default function ProjectDetailExperience({
       window.history.pushState(
         buildProjectDetailHistoryState(window.history.state, slug),
         '',
-        `/projects/${slug}`,
+        buildProjectHref(slug),
       );
     }
 
@@ -190,7 +206,7 @@ export default function ProjectDetailExperience({
     setSelection(nextSelection);
     setPendingProjectSlug(null);
     setAnnouncement(`${nextSelection.project.title} project loaded.`);
-  }, [prepareProject]);
+  }, [buildProjectHref, prepareProject]);
 
   const handleProjectIntent = useCallback((slug: string) => {
     if (!window.matchMedia('(min-width: 900px)').matches) return;
@@ -331,6 +347,7 @@ export default function ProjectDetailExperience({
             onProjectIntent={handleProjectIntent}
             onProjectSelect={handleProjectSelect}
             pendingProjectSlug={pendingProjectSlug}
+            buildProjectHref={buildProjectHref}
           />
           <ProjectDetailContent
             project={selection.project}
@@ -340,6 +357,7 @@ export default function ProjectDetailExperience({
             showBreadcrumb
             sourcePath={`/projects/${selection.project.slug}`}
             titleAs="h1"
+            projectFinderSelection={projectFinderSelection}
           />
         </div>
       </main>

@@ -12,6 +12,7 @@ import {
 import {
   projectFinderDestinationByDirection,
   resolveProjectFinderJourneyContextFromReader,
+  resolveProjectFinderProjectJourneyContextFromReader,
 } from '@/lib/projectFinderContinuation';
 import { projectDirections } from '@/lib/projectFinderContract';
 import {
@@ -42,8 +43,16 @@ export default function Header() {
   const projectFinderDirection = projectDirections.find(
     (direction) => projectFinderDestinationByDirection[direction] === currentPath,
   );
-  const projectFinderContext = projectFinderDirection
-    && projectFinderEnquiryContext?.projectDirection === projectFinderDirection
+  const projectFinderProjectSlug = currentPath.match(
+    /^\/projects\/([a-z0-9]+(?:-[a-z0-9]+)*)$/,
+  )?.[1];
+  const projectFinderContext = projectFinderEnquiryContext
+    && (
+      (projectFinderDirection
+        && projectFinderEnquiryContext.projectDirection === projectFinderDirection)
+      || (projectFinderProjectSlug
+        && projectFinderEnquiryContext.sourceProject === projectFinderProjectSlug)
+    )
     ? projectFinderEnquiryContext
     : null;
   const headerEnquiryHref = buildEnquiryHref({
@@ -81,21 +90,27 @@ export default function Header() {
 
   useEffect(() => {
     const syncProjectFinderContext = () => {
-      if (!projectFinderDirection) {
+      if (!projectFinderDirection && !projectFinderProjectSlug) {
         setProjectFinderEnquiryContext(null);
         return;
       }
-      const context = resolveProjectFinderJourneyContextFromReader(
-        projectFinderDirection,
-        new URLSearchParams(window.location.search),
-      );
+      const params = new URLSearchParams(window.location.search);
+      const context = projectFinderDirection
+        ? resolveProjectFinderJourneyContextFromReader(
+            projectFinderDirection,
+            params,
+          )
+        : resolveProjectFinderProjectJourneyContextFromReader(
+            projectFinderProjectSlug!,
+            params,
+          );
       setProjectFinderEnquiryContext(context?.enquiryContext ?? null);
     };
 
     syncProjectFinderContext();
     window.addEventListener('popstate', syncProjectFinderContext);
     return () => window.removeEventListener('popstate', syncProjectFinderContext);
-  }, [projectFinderDirection]);
+  }, [projectFinderDirection, projectFinderProjectSlug]);
 
   useEffect(() => {
     if (!isHeroOverlayRoute) {

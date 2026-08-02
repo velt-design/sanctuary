@@ -16,9 +16,7 @@ type TrackingWindow = typeof window & {
 const delegatedEvents = new Set([
   'project_finder_start_click',
   'project_pathway_click',
-  'brief_enquiry_click',
   'project_view_click',
-  'project_enquiry_reference_click',
   'project_audience_path_click',
   'project_finder_direct_enquiry_click',
 ]);

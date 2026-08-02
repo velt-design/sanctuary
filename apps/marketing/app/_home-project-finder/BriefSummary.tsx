@@ -1,10 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { buildEnquiryHref } from '../../lib/enquiryContext';
 import {
-  PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
-  PROJECT_FINDER_HOME_PATH,
   type ProjectDirection,
   type ProjectPriority,
 } from '../../lib/projectFinderContract';
@@ -26,14 +23,6 @@ export default function BriefSummary({
   priorities,
 }: BriefSummaryProps) {
   const pathwayHref = buildProjectFinderDestinationHref(direction, priorities);
-  const enquiryHref = buildEnquiryHref({
-    enquiryType: 'residential',
-    sourcePath: PROJECT_FINDER_HOME_PATH,
-    sourceComponent: 'brief_summary',
-    sourceExperience: PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
-    projectDirection: direction,
-    projectPriorities: [...priorities],
-  });
 
   return (
     <aside
@@ -52,22 +41,13 @@ export default function BriefSummary({
       <div className={styles.briefActions}>
         <Link
           className={styles.briefPrimaryAction}
-          data-project-finder-event="brief_enquiry_click"
-          data-project-direction={direction}
-          data-project-priorities={priorities.join(',')}
-          data-source-component="brief_summary"
-          href={enquiryHref}
-        >
-          Send this brief to Sanctuary
-        </Link>
-        <Link
           data-project-finder-event="project_pathway_click"
           data-project-direction={direction}
           data-project-priorities={priorities.join(',')}
           data-source-component="brief_summary"
           href={pathwayHref}
         >
-          Explore the recommended pathway
+          Explore the recommended service
         </Link>
         <button onClick={onChangePriorities} type="button">
           Change priorities

@@ -23,7 +23,7 @@ export const projectDirectionContent: Record<
   cover: {
     label: projectDirectionLabels.cover,
     description:
-      'Reliable shelter over a deck or patio, with light, shade and connection to the house considered carefully.',
+      'Shelter for a deck or patio, balanced with daylight, shade and the connection to the house.',
     responseHeading: 'Residential pergola planning',
     responseExplanation:
       'Start with a refined fixed-roof pergola designed around shelter, daylight, shade and the connection to the house.',
@@ -38,7 +38,7 @@ export const projectDirectionContent: Record<
   'outdoor-room': {
     label: projectDirectionLabels['outdoor-room'],
     description:
-      'A more integrated space for dining, entertaining, cooking, relaxing or poolside use.',
+      'An integrated space for dining, cooking, entertaining or everyday use.',
     responseHeading: 'A complete outdoor room',
     responseExplanation:
       'Start with a more integrated space where roofing, layout, lighting, furniture and key features can be considered together.',
@@ -53,7 +53,7 @@ export const projectDirectionContent: Record<
   bespoke: {
     label: projectDirectionLabels.bespoke,
     description:
-      'For unusual geometry, restricted posts, changing levels, difficult roof connections or wider project coordination.',
+      'A design-led response for difficult geometry, levels, structure or wider project coordination.',
     responseHeading: 'Bespoke pergola design',
     responseExplanation:
       'Start with a design-led pathway for difficult connections, structure, levels, geometry or coordination with a wider project.',

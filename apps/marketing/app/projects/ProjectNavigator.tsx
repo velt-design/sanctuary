@@ -52,6 +52,7 @@ type ProjectNavigatorProps = {
     event: ReactMouseEvent<HTMLAnchorElement>,
   ) => void;
   pendingProjectSlug?: string | null;
+  buildProjectHref?: (slug: string) => string;
 };
 
 export default function ProjectNavigator({
@@ -62,6 +63,7 @@ export default function ProjectNavigator({
   onProjectIntent,
   onProjectSelect,
   pendingProjectSlug = null,
+  buildProjectHref = (slug) => `/projects/${slug}`,
 }: ProjectNavigatorProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -409,7 +411,7 @@ export default function ProjectNavigator({
                       data-project-card={project.slug}
                       eyebrow={project.location}
                       headingLevel="h2"
-                      href={`/projects/${project.slug}`}
+                      href={buildProjectHref(project.slug)}
                       media={{
                         image: project.heroImage.src,
                         alt: project.heroImage.alt,

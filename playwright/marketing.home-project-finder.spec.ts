@@ -36,7 +36,6 @@ async function projectFinderEvents(page: Page) {
         || entry.event.startsWith('project_pathway_')
         || entry.event.startsWith('project_reference_')
         || entry.event.startsWith('project_view_')
-        || entry.event.startsWith('project_enquiry_')
         || entry.event.startsWith('project_audience_')
         || entry.event.startsWith('brief_')
       )
@@ -89,7 +88,22 @@ test('project finder route is protected, noindex and separate from the live home
     name: 'Interior outdoor room with cedar ceiling, pendant lighting and lounge seating',
   }).first()).toHaveAttribute('fetchpriority', 'high');
   await expect(page.locator('main img[loading="eager"]')).toHaveCount(0);
+  await expect(page.locator('main').getByRole('link', { name: 'Start your project' }))
+    .toBeHidden();
   await expect(page.locator('h1')).toHaveCount(1);
+  const openingGeometry = await page.evaluate(() => {
+    const hero = document.querySelector<HTMLElement>('main section');
+    const proof = document.querySelector<HTMLElement>('[aria-label="Why Sanctuary"]');
+    return {
+      heroHeight: hero?.getBoundingClientRect().height ?? 0,
+      proofTop: proof?.getBoundingClientRect().top ?? 0,
+      viewportHeight: window.innerHeight,
+    };
+  });
+  expect(openingGeometry.proofTop).toBeGreaterThanOrEqual(
+    openingGeometry.viewportHeight - 1,
+  );
+  expect(openingGeometry.heroHeight).toBeGreaterThan(700);
   await expectNoHorizontalOverflow(page);
 
   await page.goto('/sitemap.xml');
@@ -106,6 +120,8 @@ test('project finder route is protected, noindex and separate from the live home
     level: 1,
     name: 'Custom pergolas for Auckland homes and sites.',
   })).toBeVisible();
+  await expect(page.locator('[data-homepage-hero]')
+    .getByRole('link', { name: 'Start your project' })).toHaveCount(0);
 });
 
 test('each project direction gives one useful pathway and two governed references', async ({
@@ -129,12 +145,16 @@ test('each project direction gives one useful pathway and two governed reference
       await expect(page.getByRole('heading', { level: 3, name: projectName }))
         .toBeVisible();
     }
-    await expect(page.locator('[data-selected-project]')).toHaveCount(4);
+    await expect(page.locator('[data-selected-project]')).toHaveCount(2);
+    await expect(page.getByRole('link', { name: 'Use as a reference' }))
+      .toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Start your project now' }))
+      .toHaveCount(0);
     await expectNoHorizontalOverflow(page);
   }
 });
 
-test('brief builder enforces three priorities and carries the controlled brief into contact', async ({
+test('brief builder enforces three priorities and defers the controlled brief enquiry until after proof', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -162,7 +182,9 @@ test('brief builder enforces three priorities and carries the controlled brief i
     name: /A complete outdoor room designed to make the space work every day, support cooking and entertaining, and preserve natural light\./,
   })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Send this brief to Sanctuary' }).click();
+  await expect(page.getByRole('link', { name: 'Send this brief to Sanctuary' }))
+    .toHaveCount(0);
+  await page.getByRole('link', { name: 'Send your brief' }).click();
   await expect(page).toHaveURL(/\/contact\?.*project_direction=outdoor-room/);
   await expect(page.locator('.contact-form__context')).toContainText(
     'Starting brief: A complete outdoor room',
@@ -176,7 +198,7 @@ test('brief builder enforces three priorities and carries the controlled brief i
   expect(context).toMatchObject({
     enquiry_type: 'residential',
     source_path: '/home-project-finder',
-    source_component: 'brief_summary',
+    source_component: 'project_finder',
     source_experience: 'project-finder-home-v1',
     project_direction: 'outdoor-room',
     project_priorities: ['daylight', 'everyday-use', 'entertaining'],
@@ -203,6 +225,8 @@ test('the recommended service page retains the selected brief through enquiry', 
       'href',
       '/home-project-finder?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination',
     );
+  await expect(journeyContext.getByRole('link', { name: 'Continue to enquiry' }))
+    .toHaveCount(0);
 
   const formContext = JSON.parse(await page.locator(
     '#project-details input[name="enquiryContext"]',
@@ -219,6 +243,59 @@ test('the recommended service page retains the selected brief through enquiry', 
     'href',
     /project_direction=bespoke.*project_priorities=daylight%2Copen-structure%2Ccoordination/,
   );
+});
+
+test('viewing a project keeps the finder brief and viewed project through a later enquiry', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setAnalyticsConsent(page, false);
+  await page.goto(
+    '/home-project-finder?project=outdoor-room&priorities=daylight%2Centertaining',
+  );
+
+  const projectCard = page.locator(
+    '[data-project-evidence="warkworth-outdoor-room"]',
+  );
+  const viewProject = projectCard.getByRole('link', { name: 'View project' });
+  await expect(viewProject).toHaveAttribute(
+    'href',
+    '/projects/warkworth-outdoor-room?project=outdoor-room&priorities=daylight%2Centertaining&reference=warkworth-outdoor-room',
+  );
+  await viewProject.click();
+
+  await expect(page).toHaveURL(
+    /\/projects\/warkworth-outdoor-room\?project=outdoor-room&priorities=daylight%2Centertaining&reference=warkworth-outdoor-room$/,
+  );
+  await expect(page.locator('.project-case-study__intro-actions')).toHaveCount(0);
+  const finalEnquiry = page.locator('.project-case-study__final-cta')
+    .getByRole('link', { name: 'Send project brief' });
+  await expect(finalEnquiry).toHaveAttribute(
+    'href',
+    /source_project=warkworth-outdoor-room.*source_experience=project-finder-home-v1.*project_direction=outdoor-room.*project_priorities=daylight%2Centertaining/,
+  );
+  await expect(page.locator('header.site .nav-cta')).toHaveAttribute(
+    'href',
+    /source_project=warkworth-outdoor-room.*source_experience=project-finder-home-v1.*project_direction=outdoor-room.*project_priorities=daylight%2Centertaining/,
+  );
+  const relatedProject = page.locator('.project-case-study__related-list a');
+  const relatedCount = await relatedProject.count();
+  expect(relatedCount).toBeGreaterThan(0);
+  await expect(relatedProject.first()).toHaveAttribute(
+    'href',
+    /\?project=outdoor-room&priorities=daylight%2Centertaining&reference=/,
+  );
+
+  await finalEnquiry.click();
+  const context = JSON.parse(await page.locator(
+    '#contact-form input[name="enquiryContext"]',
+  ).inputValue());
+  expect(context).toMatchObject({
+    source_project: 'warkworth-outdoor-room',
+    source_experience: 'project-finder-home-v1',
+    project_direction: 'outdoor-room',
+    project_priorities: ['daylight', 'entertaining'],
+  });
 });
 
 test('URL state is canonical, refreshable and restored by browser history', async ({
@@ -333,7 +410,6 @@ test('analytics use consent-aware closed project finder values', async ({ page }
   });
   const firstProject = consented.locator('[data-project-evidence]').first();
   await firstProject.getByRole('link', { name: 'View project' }).click();
-  await firstProject.getByRole('link', { name: 'Use as a reference' }).click();
   await consented.getByRole('link', { name: 'Commercial clients' }).click();
   const events = await projectFinderEvents(consented);
   expect(events.map((event) => event.event)).toEqual(expect.arrayContaining([
@@ -344,7 +420,6 @@ test('analytics use consent-aware closed project finder values', async ({ page }
     'brief_priority_select',
     'brief_summary_view',
     'project_view_click',
-    'project_enquiry_reference_click',
     'project_audience_path_click',
   ]));
   expect(events.filter((event) => event.event === 'project_result_view')).toHaveLength(1);
@@ -406,7 +481,7 @@ test('direction cards stay compact on mobile and avoid narrow tablet columns', a
     ));
     for (const card of cards) {
       expect(card.cardHeight).toBeLessThan(230);
-      expect(card.imageWidth).toBeLessThanOrEqual(100);
+      expect(card.imageWidth).toBeLessThanOrEqual(116);
     }
     await expectNoHorizontalOverflow(page);
   }

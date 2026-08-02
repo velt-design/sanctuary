@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildProjectFinderBriefHeading,
   buildProjectFinderDestinationHref,
+  buildProjectFinderProjectHref,
   resolveProjectFinderJourneyContext,
+  resolveProjectFinderProjectJourneyContext,
 } from './projectFinderContinuation';
 
 describe('project finder continuation', () => {
@@ -50,6 +52,49 @@ describe('project finder continuation', () => {
         projectPriorities: ['daylight', 'open-structure', 'coordination'],
       },
     });
+  });
+
+  it('carries the selection and viewed project into a later project enquiry', () => {
+    expect(buildProjectFinderProjectHref('outdoor-room', [
+      'entertaining',
+      'daylight',
+    ], 'warkworth-outdoor-room')).toBe(
+      '/projects/warkworth-outdoor-room?project=outdoor-room&priorities=daylight%2Centertaining&reference=warkworth-outdoor-room',
+    );
+    expect(resolveProjectFinderProjectJourneyContext(
+      'warkworth-outdoor-room',
+      {
+        project: 'outdoor-room',
+        priorities: 'entertaining,daylight',
+        reference: 'warkworth-outdoor-room',
+      },
+    )).toMatchObject({
+      direction: 'outdoor-room',
+      priorities: ['daylight', 'entertaining'],
+      sourceProject: 'warkworth-outdoor-room',
+      enquiryContext: {
+        sourcePath: '/projects/warkworth-outdoor-room',
+        sourceComponent: 'project_cta',
+        sourceProject: 'warkworth-outdoor-room',
+        sourceExperience: 'project-finder-home-v1',
+        projectDirection: 'outdoor-room',
+        projectPriorities: ['daylight', 'entertaining'],
+      },
+    });
+  });
+
+  it('rejects project continuation when its reference is missing or mismatched', () => {
+    expect(resolveProjectFinderProjectJourneyContext(
+      'warkworth-outdoor-room',
+      { project: 'outdoor-room' },
+    )).toBeNull();
+    expect(resolveProjectFinderProjectJourneyContext(
+      'warkworth-outdoor-room',
+      {
+        project: 'outdoor-room',
+        reference: 'riverhead-gable-pavilion',
+      },
+    )).toBeNull();
   });
 
   it('rejects wrong-route, duplicate and arbitrary direction values', () => {

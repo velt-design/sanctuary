@@ -214,6 +214,27 @@ describe('shared mobile header interaction', () => {
     }));
   });
 
+  it('preserves a finder brief and viewed project in project-page enquiry actions', async () => {
+    currentPathname = '/projects/warkworth-outdoor-room';
+    window.history.replaceState(
+      {},
+      '',
+      '/projects/warkworth-outdoor-room?project=outdoor-room&priorities=daylight,everyday-use&reference=warkworth-outdoor-room',
+    );
+    await renderHeader();
+
+    const desktopCta = document.querySelector<HTMLAnchorElement>('header.site .nav-cta');
+    expect(desktopCta?.getAttribute('href')).toBe(buildEnquiryHref({
+      enquiryType: 'residential',
+      sourcePath: currentPathname,
+      sourceComponent: 'header',
+      sourceProject: 'warkworth-outdoor-room',
+      sourceExperience: 'project-finder-home-v1',
+      projectDirection: 'outdoor-room',
+      projectPriorities: ['daylight', 'everyday-use'],
+    }));
+  });
+
   it('opens one accessible menu tree, moves focus and reversibly locks page scroll', async () => {
     await renderHeader();
     const menu = document.querySelector<HTMLDivElement>('#mobile-menu');

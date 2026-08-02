@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Project } from '@/data/projects';
 import { buildEnquiryHref } from '@/lib/enquiryContext';
+import type { ProjectFinderSelection } from '@/lib/projectFinderContinuation';
 import ProjectDetailContent from './ProjectDetailContent';
 import ProjectDetailExperience from './ProjectDetailExperience';
 import ProjectNavigator from './ProjectNavigator';
@@ -13,6 +14,7 @@ type ProjectsExperienceProps = {
   initialSlugFromUrl?: string;
   initialSearchParams?: string;
   detailMode?: boolean;
+  projectFinderSelection?: ProjectFinderSelection | null;
 };
 
 export default function ProjectsExperience({
@@ -20,6 +22,7 @@ export default function ProjectsExperience({
   initialSlugFromUrl = '',
   initialSearchParams = '',
   detailMode = false,
+  projectFinderSelection = null,
 }: ProjectsExperienceProps) {
   const selectedIndex = Math.max(
     0,
@@ -56,6 +59,7 @@ export default function ProjectsExperience({
         initialProjectIndex={selectedIndex}
         initialRelatedProjects={relatedProjects}
         projects={collectionProjects}
+        projectFinderSelection={projectFinderSelection}
       />
     );
   }
