@@ -2,15 +2,15 @@
 
 import type { RefObject } from 'react';
 import type {
-  ProjectDirection,
   ProjectPriority,
+  ResidentialProjectFinderHomeDirection,
 } from '../../lib/projectFinderContract';
 import { projectPriorityContent } from './projectFinderContent';
 import { projectFinderPriorityOrderByDirection } from '../../lib/projectFinderContinuation';
 import styles from './projectFinderHomepage.module.css';
 
 type BuildBriefProps = {
-  direction: ProjectDirection;
+  direction: ResidentialProjectFinderHomeDirection;
   firstPriorityRef: RefObject<HTMLInputElement | null>;
   headingRef: RefObject<HTMLHeadingElement | null>;
   limitMessage: string;

@@ -5,6 +5,7 @@ import { useConsent } from '@/components/ConsentProvider';
 import {
   PROJECT_FINDER_HOME_PATH,
   PROJECT_FINDER_HOME_VARIANT,
+  isCommercialProfessionalPath,
   isProjectDirection,
   normalizeProjectPriorities,
 } from '@/lib/projectFinderContract';
@@ -17,11 +18,9 @@ const delegatedEvents = new Set([
   'project_finder_start_click',
   'project_pathway_click',
   'project_view_click',
-  'project_audience_path_click',
   'project_finder_direct_enquiry_click',
 ]);
 
-const audiencePaths = new Set(['commercial', 'professional']);
 const enquiryAudiences = new Set(['residential', 'commercial', 'professional']);
 
 function viewportCategory(): 'mobile' | 'tablet' | 'desktop' {
@@ -74,14 +73,16 @@ export default function ProjectFinderTracker() {
       const priorities = normalizeProjectPriorities(
         (target.dataset.projectPriorities ?? '').split(','),
       );
+      const professionalPath = isCommercialProfessionalPath(
+        target.dataset.professionalPath,
+      )
+        ? target.dataset.professionalPath
+        : undefined;
       const selectedProject = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
         .test(target.dataset.selectedProject ?? '')
         ? target.dataset.selectedProject
         : undefined;
       const stepNumber = Number.parseInt(target.dataset.stepNumber ?? '', 10);
-      const audiencePath = audiencePaths.has(target.dataset.audiencePath ?? '')
-        ? target.dataset.audiencePath
-        : undefined;
       const enquiryType = enquiryAudiences.has(target.dataset.enquiryType ?? '')
         ? target.dataset.enquiryType
         : undefined;
@@ -90,9 +91,9 @@ export default function ProjectFinderTracker() {
 
       pushProjectFinderEvent(eventName, {
         ...(direction ? { project_direction: direction } : {}),
+        ...(professionalPath ? { professional_path: professionalPath } : {}),
         ...(priorities.length ? { project_priorities: priorities } : {}),
         ...(selectedProject ? { selected_project: selectedProject } : {}),
-        ...(audiencePath ? { audience_path: audiencePath } : {}),
         ...(enquiryType ? { enquiry_type: enquiryType } : {}),
         ...(target.dataset.sourceComponent
           ? { source_component: target.dataset.sourceComponent }

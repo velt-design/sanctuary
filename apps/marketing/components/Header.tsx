@@ -12,10 +12,16 @@ import {
 } from '@/lib/enquiryContext';
 import {
   projectFinderDestinationByDirection,
+  resolveProjectFinderHomeDestination,
+  resolveProjectFinderHomeEnquiryContextFromReader,
+  resolveProjectFinderHomeSelectionFromReader,
   resolveProjectFinderJourneyContextFromReader,
   resolveProjectFinderProjectJourneyContextFromReader,
 } from '@/lib/projectFinderContinuation';
-import { projectDirections } from '@/lib/projectFinderContract';
+import {
+  PROJECT_FINDER_STATE_EVENT,
+  residentialProjectDirections,
+} from '@/lib/projectFinderContract';
 import {
   getDesktopHeaderNavigation,
   getMobileHeaderNavigation,
@@ -25,6 +31,12 @@ import {
 
 const HERO_HEADER_SOLID_SCROLL_PX = 24;
 const DESKTOP_MENU_MEDIA_QUERY = '(min-width: 901px)';
+const PROJECT_FINDER_HOME_DESTINATION_PATHS = new Set([
+  '/acrylic-roof-pergolas-auckland',
+  '/custom-pergolas-auckland',
+  '/commercial-pergolas-auckland',
+  '/architects-designers-builders',
+]);
 const MENU_FOCUSABLE_SELECTOR = [
   'a[href]:not([tabindex="-1"])',
   'button:not([disabled]):not([tabindex="-1"])',
@@ -40,7 +52,7 @@ export default function Header() {
   const desktopNavigationItems = getDesktopHeaderNavigation(currentPath);
   const mobileNavigationItems = getMobileHeaderNavigation(currentPath);
   const routeEnquiryContext = getEnquiryRouteContext(currentPath);
-  const projectFinderDirection = projectDirections.find(
+  const projectFinderDirection = residentialProjectDirections.find(
     (direction) => projectFinderDestinationByDirection[direction] === currentPath,
   );
   const projectFinderProjectSlug = currentPath.match(
@@ -48,7 +60,9 @@ export default function Header() {
   )?.[1];
   const projectFinderContext = projectFinderEnquiryContext
     && (
-      (projectFinderDirection
+      currentPath === '/'
+      || PROJECT_FINDER_HOME_DESTINATION_PATHS.has(currentPath)
+      || (projectFinderDirection
         && projectFinderEnquiryContext.projectDirection === projectFinderDirection)
       || (projectFinderProjectSlug
         && projectFinderEnquiryContext.sourceProject === projectFinderProjectSlug)
@@ -61,6 +75,8 @@ export default function Header() {
     sourcePath: currentPath,
     sourceComponent: 'header',
   });
+  const headerEnquiryType = projectFinderContext?.enquiryType
+    ?? routeEnquiryContext.enquiryType;
   const isHeroOverlayRoute = isHeaderHeroOverlayPath(currentPath);
   const showDesktopCta = shouldShowDesktopHeaderCta(currentPath);
   const mobileToggleRef = useRef<HTMLButtonElement>(null);
@@ -90,27 +106,64 @@ export default function Header() {
 
   useEffect(() => {
     const syncProjectFinderContext = () => {
-      if (!projectFinderDirection && !projectFinderProjectSlug) {
+      const supportsHomeSelection = currentPath === '/'
+        || PROJECT_FINDER_HOME_DESTINATION_PATHS.has(currentPath);
+      if (
+        !supportsHomeSelection
+        && !projectFinderDirection
+        && !projectFinderProjectSlug
+      ) {
         setProjectFinderEnquiryContext(null);
         return;
       }
       const params = new URLSearchParams(window.location.search);
+      const homeSelection = supportsHomeSelection
+        ? resolveProjectFinderHomeSelectionFromReader(params)
+        : null;
+      const isCompletedHomeSelection = homeSelection
+        && (
+          homeSelection.direction !== 'commercial-professional'
+          || Boolean(homeSelection.professionalPath)
+        );
+      const homeContext = homeSelection
+        && (
+          currentPath === '/'
+          || (
+            isCompletedHomeSelection
+            && resolveProjectFinderHomeDestination(homeSelection) === currentPath
+          )
+        )
+        ? resolveProjectFinderHomeEnquiryContextFromReader(params)
+        : null;
+      if (homeContext) {
+        setProjectFinderEnquiryContext(homeContext);
+        return;
+      }
       const context = projectFinderDirection
         ? resolveProjectFinderJourneyContextFromReader(
             projectFinderDirection,
             params,
-          )
-        : resolveProjectFinderProjectJourneyContextFromReader(
-            projectFinderProjectSlug!,
-            params,
-          );
-      setProjectFinderEnquiryContext(context?.enquiryContext ?? null);
+          )?.enquiryContext
+        : projectFinderProjectSlug
+          ? resolveProjectFinderProjectJourneyContextFromReader(
+              projectFinderProjectSlug,
+              params,
+            )?.enquiryContext
+          : null;
+      setProjectFinderEnquiryContext(context ?? null);
     };
 
     syncProjectFinderContext();
     window.addEventListener('popstate', syncProjectFinderContext);
-    return () => window.removeEventListener('popstate', syncProjectFinderContext);
-  }, [projectFinderDirection, projectFinderProjectSlug]);
+    window.addEventListener(PROJECT_FINDER_STATE_EVENT, syncProjectFinderContext);
+    return () => {
+      window.removeEventListener('popstate', syncProjectFinderContext);
+      window.removeEventListener(
+        PROJECT_FINDER_STATE_EVENT,
+        syncProjectFinderContext,
+      );
+    };
+  }, [currentPath, projectFinderDirection, projectFinderProjectSlug]);
 
   useEffect(() => {
     if (!isHeroOverlayRoute) {
@@ -347,7 +400,10 @@ export default function Header() {
                 href={headerEnquiryHref}
                 className="nav-cta"
                 data-homepage-event="header_estimate_click"
-                data-enquiry-type={routeEnquiryContext.enquiryType}
+                data-enquiry-type={headerEnquiryType}
+                data-professional-path={projectFinderContext?.projectProfessionalPath}
+                data-project-direction={projectFinderContext?.projectDirection}
+                data-project-priorities={projectFinderContext?.projectPriorities?.join(',')}
               >
                 <span className="nav-cta__label">Start your project</span>
               </Link>
@@ -401,7 +457,10 @@ export default function Header() {
                   href={headerEnquiryHref}
                   className="mobile-menu__link mobile-menu__link--estimate"
                   data-homepage-event="header_estimate_click"
-                  data-enquiry-type={routeEnquiryContext.enquiryType}
+                  data-enquiry-type={headerEnquiryType}
+                  data-professional-path={projectFinderContext?.projectProfessionalPath}
+                  data-project-direction={projectFinderContext?.projectDirection}
+                  data-project-priorities={projectFinderContext?.projectPriorities?.join(',')}
                   onClick={handleMobileNavigation}
                 >
                   Start your project

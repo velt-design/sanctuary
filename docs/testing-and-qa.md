@@ -143,10 +143,11 @@ The production project-finder homepage has a focused lane:
 It covers the complete required 320-to-1440 responsive matrix, canonical
 indexable metadata and WebSite/WebPage schema, the permanent noindex comparison
 redirect, radio keyboard and screen-reader structure, compact mobile and tablet
-cards, full-height narrow hero, root-only opaque scrolled header, 44-pixel touch
-dimensions, reduced motion, JavaScript-disabled fallback, consent
-granted/denied analytics, deterministic two-project evidence, service/project
-and enquiry continuation, URL history, mobile-menu state and local
+cards for both choice layers, full-height narrow hero, root-only opaque scrolled
+header, 44-pixel touch dimensions, reduced motion, JavaScript-disabled fallback,
+consent granted/denied analytics, deterministic two-project evidence for all five
+results, residential service/project continuation, commercial/professional
+service and enquiry attribution, URL history, mobile-menu state and local
 CLS/first-result performance ceilings. For the LCP ceiling, start a local
 production build,
 point `MARKETING_BASE_URL` at it, and add
@@ -156,7 +157,10 @@ excluded from LCP evidence.
 The homepage lane identifies the production release as
 `project_finder_home_v2` with canonical analytics `source_path: /`. Enquiry
 continuation intentionally retains `source_experience: project-finder-home-v1`
-as its stable journey schema; focused tests assert both dimensions.
+as its stable journey schema. The first layer accepts only `cover`, `bespoke` or
+`commercial-professional`; the nested branch accepts only `venue`,
+`builder-contractor` or `architects-designers`. Focused tests assert the release,
+journey and closed-state dimensions together.
 
 The staged guided-homepage programme has a separate focused lane:
 `npx playwright test playwright/marketing.home-guided.spec.ts --config=playwright.marketing.config.ts`.

@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   buildProjectFinderBriefHeading,
   buildProjectFinderDestinationHref,
+  buildProjectFinderHomeDestinationHref,
   buildProjectFinderProjectHref,
+  resolveProjectFinderHomeEnquiryContextFromReader,
+  resolveProjectFinderHomeSelectionFromReader,
   resolveProjectFinderJourneyContext,
   resolveProjectFinderProjectJourneyContext,
 } from './projectFinderContinuation';
@@ -10,7 +13,7 @@ import {
 describe('project finder continuation', () => {
   it('builds concise, grammatical brief headings', () => {
     expect(buildProjectFinderBriefHeading('cover', [])).toBe(
-      'A refined deck cover, shaped to your home and site.',
+      'A simple cover, shaped to your home and site.',
     );
     expect(buildProjectFinderBriefHeading('outdoor-room', ['everyday-use'])).toBe(
       'A complete outdoor room designed to make the space work every day.',
@@ -20,7 +23,7 @@ describe('project finder continuation', () => {
       'daylight',
       'open-structure',
     ])).toBe(
-      'A bespoke pergola response designed to keep the structure visually open, coordinate cleanly with the wider project, and preserve natural light.',
+      'A custom pergola design developed to keep the structure visually open, coordinate cleanly with the wider project, and preserve natural light.',
     );
   });
 
@@ -51,6 +54,43 @@ describe('project finder continuation', () => {
         projectDirection: 'bespoke',
         projectPriorities: ['daylight', 'open-structure', 'coordination'],
       },
+    });
+  });
+
+  it('routes the in-place homepage choices without changing legacy service contracts', () => {
+    expect(buildProjectFinderHomeDestinationHref({
+      direction: 'cover',
+      priorities: ['daylight'],
+    })).toBe(
+      '/acrylic-roof-pergolas-auckland?project=cover&priorities=daylight',
+    );
+    expect(buildProjectFinderHomeDestinationHref({
+      direction: 'bespoke',
+      priorities: ['coordination'],
+    })).toBe(
+      '/custom-pergolas-auckland?project=bespoke&priorities=coordination',
+    );
+    expect(buildProjectFinderDestinationHref('cover', [])).toBe(
+      '/pergolas-auckland?project=cover',
+    );
+  });
+
+  it('resolves closed commercial and professional homepage attribution', () => {
+    const params = new URLSearchParams(
+      'project=commercial-professional&professional_path=architects-designers',
+    );
+    expect(resolveProjectFinderHomeSelectionFromReader(params)).toEqual({
+      direction: 'commercial-professional',
+      priorities: [],
+      professionalPath: 'architects-designers',
+    });
+    expect(resolveProjectFinderHomeEnquiryContextFromReader(params)).toEqual({
+      enquiryType: 'professional',
+      sourcePath: '/',
+      sourceComponent: 'header',
+      sourceExperience: 'project-finder-home-v1',
+      projectDirection: 'commercial-professional',
+      projectProfessionalPath: 'architects-designers',
     });
   });
 

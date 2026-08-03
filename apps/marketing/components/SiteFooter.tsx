@@ -3,12 +3,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import ReviewBadge from '@/components/reviews/ReviewBadge';
 import {
   buildEnquiryHref,
   getCanonicalMarketingPathname,
   getEnquiryRouteContext,
+  type EnquiryContext,
 } from '@/lib/enquiryContext';
+import {
+  resolveProjectFinderHomeEnquiryContextFromReader,
+} from '@/lib/projectFinderContinuation';
+import { PROJECT_FINDER_STATE_EVENT } from '@/lib/projectFinderContract';
 import styles from './SiteFooter.module.css';
 
 type SiteFooterProps = {
@@ -18,8 +24,41 @@ type SiteFooterProps = {
 
 export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProps) {
   const pathname = getCanonicalMarketingPathname(usePathname());
+  const [projectFinderContext, setProjectFinderContext] =
+    useState<EnquiryContext | null>(null);
+
+  useEffect(() => {
+    if (pathname !== '/') {
+      setProjectFinderContext(null);
+      return undefined;
+    }
+
+    const syncProjectFinderContext = () => {
+      setProjectFinderContext(
+        resolveProjectFinderHomeEnquiryContextFromReader(
+          new URLSearchParams(window.location.search),
+        ),
+      );
+    };
+
+    syncProjectFinderContext();
+    window.addEventListener('popstate', syncProjectFinderContext);
+    window.addEventListener(
+      PROJECT_FINDER_STATE_EVENT,
+      syncProjectFinderContext,
+    );
+    return () => {
+      window.removeEventListener('popstate', syncProjectFinderContext);
+      window.removeEventListener(
+        PROJECT_FINDER_STATE_EVENT,
+        syncProjectFinderContext,
+      );
+    };
+  }, [pathname]);
+
   const enquiryHref = buildEnquiryHref({
     ...getEnquiryRouteContext(pathname),
+    ...projectFinderContext,
     sourcePath: pathname,
     sourceComponent: 'footer',
   });

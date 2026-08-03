@@ -2,28 +2,27 @@
 
 import Link from 'next/link';
 import {
-  type ProjectDirection,
   type ProjectPriority,
+  type ResidentialProjectFinderHomeDirection,
 } from '../../lib/projectFinderContract';
 import {
   buildProjectFinderBriefHeading,
-  buildProjectFinderDestinationHref,
 } from '../../lib/projectFinderContinuation';
 import styles from './projectFinderHomepage.module.css';
 
 type BriefSummaryProps = {
-  direction: ProjectDirection;
+  direction: ResidentialProjectFinderHomeDirection;
   onChangePriorities: () => void;
+  pathwayHref: string;
   priorities: readonly ProjectPriority[];
 };
 
 export default function BriefSummary({
   direction,
   onChangePriorities,
+  pathwayHref,
   priorities,
 }: BriefSummaryProps) {
-  const pathwayHref = buildProjectFinderDestinationHref(direction, priorities);
-
   return (
     <aside
       className={styles.briefSummary}

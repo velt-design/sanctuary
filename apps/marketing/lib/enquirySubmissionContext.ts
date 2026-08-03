@@ -29,6 +29,9 @@ export function parseSubmittedEnquiryContext(
       source_pathway: stringValue(rawContext.source_pathway),
       source_focus: stringValue(rawContext.source_focus),
       project_direction: stringValue(rawContext.project_direction),
+      project_professional_path: stringValue(
+        rawContext.project_professional_path,
+      ),
       project_priorities: Array.isArray(rawPriorities)
         ? rawPriorities.join(',')
         : stringValue(rawPriorities),

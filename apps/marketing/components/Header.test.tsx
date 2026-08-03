@@ -215,6 +215,40 @@ describe('shared mobile header interaction', () => {
     }));
   });
 
+  it('preserves a completed professional path only on its matching destination', async () => {
+    currentPathname = '/architects-designers-builders';
+    window.history.replaceState(
+      {},
+      '',
+      '/architects-designers-builders?project=commercial-professional&professional_path=architects-designers',
+    );
+    await renderHeader();
+
+    const desktopCta = document.querySelector<HTMLAnchorElement>('header.site .nav-cta');
+    expect(desktopCta?.getAttribute('href')).toBe(buildEnquiryHref({
+      enquiryType: 'professional',
+      sourcePath: currentPathname,
+      sourceComponent: 'header',
+      sourceExperience: 'project-finder-home-v1',
+      projectDirection: 'commercial-professional',
+      projectProfessionalPath: 'architects-designers',
+    }));
+
+    window.history.replaceState(
+      {},
+      '',
+      '/architects-designers-builders?project=commercial-professional',
+    );
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await act(async () => undefined);
+
+    expect(desktopCta?.getAttribute('href')).toBe(buildEnquiryHref({
+      ...getEnquiryRouteContext(currentPathname),
+      sourcePath: currentPathname,
+      sourceComponent: 'header',
+    }));
+  });
+
   it('preserves a finder brief and viewed project in project-page enquiry actions', async () => {
     currentPathname = '/projects/warkworth-outdoor-room';
     window.history.replaceState(

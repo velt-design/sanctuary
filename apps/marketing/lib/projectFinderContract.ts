@@ -2,11 +2,29 @@ export const PROJECT_FINDER_HOME_PATH = '/';
 export const PROJECT_FINDER_HOME_VARIANT = 'project_finder_home_v2';
 export const PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE =
   'project-finder-home-v1';
+export const PROJECT_FINDER_STATE_EVENT = 'projectfinderstatechange';
 
-export const projectDirections = [
+export const residentialProjectDirections = [
   'cover',
   'outdoor-room',
   'bespoke',
+] as const;
+
+const projectDirections = [
+  ...residentialProjectDirections,
+  'commercial-professional',
+] as const;
+
+export const projectFinderHomeDirections = [
+  'cover',
+  'bespoke',
+  'commercial-professional',
+] as const;
+
+export const commercialProfessionalPaths = [
+  'venue',
+  'builder-contractor',
+  'architects-designers',
 ] as const;
 
 export const projectPriorities = [
@@ -19,12 +37,32 @@ export const projectPriorities = [
 ] as const;
 
 export type ProjectDirection = (typeof projectDirections)[number];
+export type ResidentialProjectDirection =
+  (typeof residentialProjectDirections)[number];
+export type ProjectFinderHomeDirection =
+  (typeof projectFinderHomeDirections)[number];
+export type ResidentialProjectFinderHomeDirection = Exclude<
+  ProjectFinderHomeDirection,
+  'commercial-professional'
+>;
+export type CommercialProfessionalPath =
+  (typeof commercialProfessionalPaths)[number];
 export type ProjectPriority = (typeof projectPriorities)[number];
 
 export const projectDirectionLabels: Record<ProjectDirection, string> = {
-  cover: 'A refined deck cover',
+  cover: 'Simple cover',
   'outdoor-room': 'A complete outdoor room',
-  bespoke: 'A bespoke or difficult-site solution',
+  bespoke: 'Custom design',
+  'commercial-professional': 'Commercial / Professional',
+};
+
+export const commercialProfessionalPathLabels: Record<
+  CommercialProfessionalPath,
+  string
+> = {
+  venue: 'Extending a Venue',
+  'builder-contractor': 'Builder or Contractor',
+  'architects-designers': 'Architects and Designers',
 };
 
 export const projectPriorityLabels: Record<ProjectPriority, string> = {
@@ -41,6 +79,33 @@ export function isProjectDirection(
 ): value is ProjectDirection {
   return Boolean(
     value && (projectDirections as readonly string[]).includes(value),
+  );
+}
+
+export function isResidentialProjectDirection(
+  value: string | null | undefined,
+): value is ResidentialProjectDirection {
+  return Boolean(
+    value
+      && (residentialProjectDirections as readonly string[]).includes(value),
+  );
+}
+
+export function isProjectFinderHomeDirection(
+  value: string | null | undefined,
+): value is ProjectFinderHomeDirection {
+  return Boolean(
+    value
+      && (projectFinderHomeDirections as readonly string[]).includes(value),
+  );
+}
+
+export function isCommercialProfessionalPath(
+  value: string | null | undefined,
+): value is CommercialProfessionalPath {
+  return Boolean(
+    value
+      && (commercialProfessionalPaths as readonly string[]).includes(value),
   );
 }
 

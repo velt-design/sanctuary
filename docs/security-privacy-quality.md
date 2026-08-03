@@ -50,7 +50,7 @@ other unconditional vendor request. The executable browser boundary is
 | ArchiPro Pixel | marketing | `apps/marketing/components/ArchiproPixel.tsx`, `apps/marketing/app/runtime-archipro.js/route.ts` | Campaign performance tracking | Marketing |
 | Guided-home experiment events | analytics | `apps/marketing/app/home-journey/JourneyTracker.tsx` | Measures the noindex `/home-journey` experiment view, closed answer and Back choices, and the single final enquiry exit while analytics is enabled | Marketing and Engineering |
 | Guided design-conversation events | analytics | `apps/marketing/app/_home-guided/GuidedHomepageTracker.ts` | Measures the noindex `/home-guided` view, closed question/answer/change/reset values, five stable results and the primary destination click while analytics is enabled | Marketing and Engineering |
-| Project-led visual-finder events | analytics | `apps/marketing/app/_home-project-finder/ProjectFinderTracker.tsx` | Measures the production `/` view, closed direction and priority changes, one result view per direction, project-detail opens, secondary commercial/professional paths, service continuation and header/final enquiry exits while analytics is enabled | Marketing and Engineering |
+| Project-led visual-finder events | analytics | `apps/marketing/app/_home-project-finder/ProjectFinderTracker.tsx` | Measures the production `/` view, closed direction, commercial/professional-path and priority changes, completed result views, project-detail opens, service continuation and header/final enquiry exits while analytics is enabled | Marketing and Engineering |
 
 When adding or removing tracking, update this table and the privacy behavior.
 
@@ -72,18 +72,21 @@ contains visitor-entered text or personal information.
 
 The production project-led visual finder uses the
 `project_finder_home_v2` homepage variant and canonical `source_path: /`.
-Its listener emits only allowlisted direction, priority, component, project,
-audience-path, destination and validated enquiry-audience values and remains
+Its listener emits only allowlisted direction, commercial/professional path,
+priority, component, project, destination and validated enquiry-audience values and remains
 inactive until analytics consent is enabled. The shared header enquiry maps to
 `project_finder_direct_enquiry_click` with `source_component: header`.
-`project_result_view`, `project_view_click` and
-`project_audience_path_click` represent separate intents; changing priorities
-does not emit another result view for the same direction. The removed reference
-CTA has no retained analytics event. Valid enquiry continuation deliberately
-retains the stable journey contract `source_experience:
-project-finder-home-v1`, one closed `project_direction` and
-up to three closed `project_priorities` through a matching service-page URL,
-embedded form, project detail or header enquiry action. Project-detail
+`project_result_view`, `project_view_click` and `project_pathway_click`
+represent separate intents. `professional_path_select` and
+`professional_path_change` use one of three closed values; changing priorities
+does not emit another result view for the same residential direction, and the
+commercial/professional parent emits no result view until a path is selected.
+The removed reference CTA has no retained analytics event. Valid enquiry
+continuation deliberately retains the stable journey contract
+`source_experience: project-finder-home-v1`, one closed `project_direction` and
+either one closed `project_professional_path` or up to three closed
+`project_priorities` through the relevant homepage, service-page URL, embedded
+residential form, project detail or header enquiry action. Project-detail
 continuation may also carry one canonical `reference` slug that must match the
 current governed project before it becomes `source_project`; related project
 navigation replaces that slug. Invalid, wrong-route, mismatched, duplicate and
@@ -95,7 +98,8 @@ header and does not own a second analytics or rendering tree.
 Enquiry conversion events retain their category gates and event names. Where
 available they also include validated `source_path`, `source_component`,
 `source_project`, `source_product`, `source_experience`, `source_pathway`, and
-`source_focus`, `project_direction`, and `project_priorities` values from the shared enquiry-context
+`source_focus`, `project_direction`, `project_professional_path`, and
+`project_priorities` values from the shared enquiry-context
 contract. These properties use known paths, component identifiers, and canonical
 project/product slugs only. Names, contact details, messages, dimensions, upload
 names, and upload contents must not be placed in enquiry URLs or analytics events.

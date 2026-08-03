@@ -137,9 +137,30 @@ describe('enquiry context', () => {
     expect(parseEnquiryContext({
       source_experience: 'project-finder-home-v1',
       project_direction: 'not-valid',
+      project_professional_path: 'person@example.test',
       project_priorities: 'daylight,person@example.test',
     })).toEqual({
       sourceExperience: 'project-finder-home-v1',
+    });
+
+    expect(buildEnquiryHref({
+      enquiryType: 'professional',
+      sourcePath: '/',
+      sourceComponent: 'project_finder',
+      sourceExperience: 'project-finder-home-v1',
+      projectDirection: 'commercial-professional',
+      projectProfessionalPath: 'builder-contractor',
+    })).toBe(
+      '/contact?enquiry_type=professional&source_path=%2F&source_component=project_finder&source_experience=project-finder-home-v1&project_direction=commercial-professional&project_professional_path=builder-contractor#contact-form',
+    );
+
+    expect(parseEnquiryContext({
+      source_experience: 'project-finder-home-v1',
+      project_direction: 'cover',
+      project_professional_path: 'builder-contractor',
+    })).toEqual({
+      sourceExperience: 'project-finder-home-v1',
+      projectDirection: 'cover',
     });
   });
 

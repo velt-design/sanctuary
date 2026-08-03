@@ -132,5 +132,17 @@ describe('enquiry form contract', () => {
       audience:
         'Priorities: Plan for cooking or entertaining, Keep natural light · Residential enquiry',
     });
+
+    expect(getEnquiryContextDisplay({
+      enquiryType: 'professional',
+      sourceExperience: 'project-finder-home-v1',
+      projectDirection: 'commercial-professional',
+      projectProfessionalPath: 'architects-designers',
+    })).toEqual({
+      isVisible: true,
+      heading: 'Starting brief: Architects and Designers',
+      audience:
+        'Commercial / Professional · Architects and Designers · Professional enquiry',
+    });
   });
 });

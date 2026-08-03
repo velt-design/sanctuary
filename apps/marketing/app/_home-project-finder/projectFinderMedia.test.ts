@@ -9,10 +9,20 @@ describe('project finder governed media', () => {
     expect(Object.values(media.choiceByDirection).map((item) => item.projectSlug))
       .toEqual([
         'dairy-flat-estate',
-        'warkworth-outdoor-room',
         'tindalls-bay-pavilion',
+        'goodhome-commercial-terrace',
+      ]);
+    expect(Object.values(media.choiceByProfessionalPath)
+      .map((item) => item.projectSlug)).toEqual([
+        'goodhome-commercial-terrace',
+        'lilliput-mini-golf',
+        'kiwi-rail-platform',
       ]);
     for (const evidence of Object.values(media.evidenceByDirection)) {
+      expect(evidence).toHaveLength(2);
+      expect(evidence.every((project) => Boolean(project.reason))).toBe(true);
+    }
+    for (const evidence of Object.values(media.evidenceByProfessionalPath)) {
       expect(evidence).toHaveLength(2);
       expect(evidence.every((project) => Boolean(project.reason))).toBe(true);
     }

@@ -1384,3 +1384,50 @@ routes retain their existing header treatment. The production browser owner is
 journey matrix, redirect/indexing checks, image-loading contract, continuation,
 consent-aware analytics and repeatable CLS, first-result and production-LCP
 budgets.
+
+---
+
+# 28. Approved in-place customer-journey refinement
+
+The 3 August 2026 customer-journey refinement supersedes the first-layer choice
+and quiet audience-link details in sections 25 and 26. It does not create a new
+homepage version. The sole production renderer remains `/`, owned by
+`apps/marketing/app/_home-project-finder/`, with `project_finder_home_v2` as its
+analytics variant and `project-finder-home-v1` as the stable enquiry schema.
+The hero, proof rail, choice cards, tailored result, relevant built work and
+evidence-first enquiry close remain the visible sequence.
+
+The first layer is exactly `Simple cover`, `Custom design` and `Commercial /
+Professional`. `Simple cover` recommends acrylic roof pergolas, uses governed
+Dairy Flat and St Heliers evidence, and continues to
+`/acrylic-roof-pergolas-auckland`. `Custom design` recommends the custom design
+path, uses governed Tindalls Bay and Warkworth evidence, and continues to
+`/custom-pergolas-auckland`. Both retain the optional controlled-priority brief.
+
+`Commercial / Professional` reveals a second image-led radio group in the same
+finder: `Extending a Venue`, `Builder or Contractor`, and `Architects and
+Designers`. A parent selection alone is not a result. Each child selection
+reveals and scrolls to its tailored result, two relevant existing projects and
+an evidence-first close. Venue work continues to
+`/commercial-pergolas-auckland` with commercial enquiry attribution; builder,
+contractor, architect and designer work continues to
+`/architects-designers-builders` with professional attribution. The destination
+pages are outside this refinement and remain unchanged.
+
+Canonical URL state accepts one first-layer `project`; residential selections
+may add up to three `priorities`, while the commercial/professional parent may
+add exactly one `professional_path`. Incompatible, duplicate, unknown and excess
+values fail closed. Push-state selection, Back, Forward, refresh, reset and the
+shared header and footer enquiries stay synchronized. Pointer selection scrolls
+to the next
+decision or result; keyboard selection moves focus to its heading. Both radio
+groups keep roving-arrow, Home and End behavior. The JavaScript-disabled
+fallback exposes all five final destinations directly.
+
+Analytics remain consent-gated and non-personal. In addition to the established
+direction, result, project, pathway, brief and enquiry events, the nested branch
+uses `professional_path_select` and `professional_path_change` with one of three
+closed values. The commercial/professional parent does not emit a result view;
+the completed child result does. Responsive verification covers both choice
+layers and all five results from 320 to 1440 pixels, including overflow, touch
+targets, history, focus, attribution and no-JavaScript access.

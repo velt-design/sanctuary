@@ -78,9 +78,11 @@ The current public site uses the following shorter decision path:
   which link to rather than embed the form, keep one short final project
   action before the shared footer.
 - The production homepage is `project_finder_home_v2`. It retains the reduced
-  first layer while using three closed visual directions, an optional
-  three-priority brief and two governed projects after selection. Enquiry
-  continuation keeps the stable `project-finder-home-v1` schema.
+  first layer with `Simple cover`, `Custom design` and `Commercial /
+  Professional`. The third choice reveals three closed role/project paths in
+  the same page; the optional three-priority brief remains residential-only and
+  each completed result shows two governed projects. Enquiry continuation keeps
+  the stable `project-finder-home-v1` schema.
 - The product hub retains all ten catalogue destinations with one-line
   summaries, one governed project and one guide. Product details retain one
   fit condition, one constraint, one controlled gallery, an honest evidence

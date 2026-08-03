@@ -3,6 +3,7 @@ import {
   buildProjectFinderHref,
   parseProjectFinderRecord,
   parseProjectFinderState,
+  selectCommercialProfessionalPath,
   selectProjectDirection,
   updateProjectPriority,
 } from './projectFinderModel';
@@ -10,15 +11,19 @@ import {
 describe('project finder state model', () => {
   it('parses only closed project and priority values', () => {
     expect(parseProjectFinderRecord({
-      project: 'outdoor-room',
+      project: 'bespoke',
       priorities: 'entertaining,daylight,entertaining,unknown',
       free_text: 'person@example.test',
     })).toEqual({
-      project: 'outdoor-room',
+      project: 'bespoke',
       priorities: ['daylight', 'entertaining'],
     });
     expect(parseProjectFinderRecord({
       project: 'unknown',
+      priorities: 'daylight',
+    })).toEqual({});
+    expect(parseProjectFinderRecord({
+      project: 'outdoor-room',
       priorities: 'daylight',
     })).toEqual({});
   });
@@ -50,9 +55,43 @@ describe('project finder state model', () => {
     expect(selectProjectDirection({
       project: 'cover',
       priorities: ['daylight', 'shade'],
-    }, 'outdoor-room')).toEqual({
-      project: 'outdoor-room',
+    }, 'bespoke')).toEqual({
+      project: 'bespoke',
       priorities: ['daylight', 'shade'],
+    });
+  });
+
+  it('keeps the commercial and professional subpath closed and incompatible with priorities', () => {
+    expect(parseProjectFinderRecord({
+      project: 'commercial-professional',
+      professional_path: 'builder-contractor',
+      priorities: 'daylight,shade',
+    })).toEqual({
+      project: 'commercial-professional',
+      professionalPath: 'builder-contractor',
+    });
+    expect(buildProjectFinderHref({
+      project: 'commercial-professional',
+      professionalPath: 'architects-designers',
+      priorities: ['daylight'],
+    })).toBe(
+      '/?project=commercial-professional&professional_path=architects-designers',
+    );
+    expect(selectCommercialProfessionalPath(
+      { project: 'commercial-professional' },
+      'venue',
+    )).toEqual({
+      project: 'commercial-professional',
+      professionalPath: 'venue',
+    });
+  });
+
+  it('clears residential priorities when moving into the commercial branch', () => {
+    expect(selectProjectDirection({
+      project: 'cover',
+      priorities: ['daylight', 'shade'],
+    }, 'commercial-professional')).toEqual({
+      project: 'commercial-professional',
     });
   });
 

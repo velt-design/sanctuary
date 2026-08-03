@@ -5,6 +5,7 @@ import {
 } from './enquiryContactValidation';
 import type { EnquiryAudience, EnquiryContext } from './enquiryContext';
 import {
+  commercialProfessionalPathLabels,
   projectDirectionLabels,
   projectPriorityLabels,
 } from './projectFinderContract';
@@ -93,22 +94,28 @@ export function getEnquiryContextDisplay(
   const directionLabel = context.projectDirection
     ? projectDirectionLabels[context.projectDirection]
     : null;
+  const professionalPathLabel = context.projectProfessionalPath
+    ? commercialProfessionalPathLabels[context.projectProfessionalPath]
+    : null;
   const priorityLabel = context.projectPriorities?.length
     ? `Priorities: ${context.projectPriorities
       .map((priority) => projectPriorityLabels[priority])
       .join(', ')}`
     : null;
   const finderDetailLabel = [
-    isItemContext ? directionLabel : null,
+    isItemContext || professionalPathLabel ? directionLabel : null,
+    professionalPathLabel,
     priorityLabel,
     audienceLabel ? `${audienceLabel} enquiry` : null,
   ].filter(Boolean).join(' · ');
 
   return {
-    isVisible: Boolean(isItemContext || directionLabel || audienceLabel),
+    isVisible: Boolean(
+      isItemContext || directionLabel || professionalPathLabel || audienceLabel,
+    ),
     heading: itemLabel
-      ?? (directionLabel
-        ? `Starting brief: ${directionLabel}`
+      ?? (professionalPathLabel || directionLabel
+        ? `Starting brief: ${professionalPathLabel ?? directionLabel}`
         : audienceLabel
           ? `${audienceLabel} project`
           : ''),

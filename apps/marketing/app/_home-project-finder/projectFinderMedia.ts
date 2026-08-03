@@ -1,6 +1,13 @@
 import type { Project } from '../../data/projects';
-import { projectDirectionContent } from './projectFinderContent';
-import type { ProjectDirection } from '@/lib/projectFinderContract';
+import {
+  commercialProfessionalPathContent,
+  residentialProjectResultContent,
+} from './projectFinderContent';
+import type {
+  CommercialProfessionalPath,
+  ProjectFinderHomeDirection,
+  ResidentialProjectFinderHomeDirection,
+} from '@/lib/projectFinderContract';
 
 type ProjectFinderMedia = {
   alt: string;
@@ -11,14 +18,25 @@ type ProjectFinderMedia = {
   src: string;
 };
 
-type ProjectEvidence = ProjectFinderMedia & {
+export type ProjectEvidence = ProjectFinderMedia & {
   reason: string;
 };
 
 export type ProjectFinderHomepageMedia = {
   hero: ProjectFinderMedia;
-  choiceByDirection: Record<ProjectDirection, ProjectFinderMedia>;
-  evidenceByDirection: Record<ProjectDirection, readonly ProjectEvidence[]>;
+  choiceByDirection: Record<ProjectFinderHomeDirection, ProjectFinderMedia>;
+  choiceByProfessionalPath: Record<
+    CommercialProfessionalPath,
+    ProjectFinderMedia
+  >;
+  evidenceByDirection: Record<
+    ResidentialProjectFinderHomeDirection,
+    readonly ProjectEvidence[]
+  >;
+  evidenceByProfessionalPath: Record<
+    CommercialProfessionalPath,
+    readonly ProjectEvidence[]
+  >;
 };
 
 type ProjectReference = {
@@ -54,13 +72,12 @@ function resolveMedia(
 
 function evidence(
   projects: readonly Project[],
-  direction: ProjectDirection,
   references: readonly ProjectReference[],
+  reasonBySlug: Readonly<Record<string, string>>,
 ): ProjectEvidence[] {
   return references.map((reference) => {
     const media = resolveMedia(projects, reference);
-    const reason = projectDirectionContent[direction]
-      .evidenceReasonBySlug[media.projectSlug];
+    const reason = reasonBySlug[media.projectSlug];
     if (!reason) {
       throw new Error(`Missing project finder rationale: ${media.projectSlug}`);
     }
@@ -78,26 +95,70 @@ export function buildProjectFinderHomepageMedia(
     }),
     choiceByDirection: {
       cover: resolveMedia(projects, { projectSlug: 'dairy-flat-estate' }),
-      'outdoor-room': resolveMedia(projects, {
-        projectSlug: 'warkworth-outdoor-room',
-      }),
       bespoke: resolveMedia(projects, {
         projectSlug: 'tindalls-bay-pavilion',
       }),
+      'commercial-professional': resolveMedia(projects, {
+        projectSlug: 'goodhome-commercial-terrace',
+      }),
+    },
+    choiceByProfessionalPath: {
+      venue: resolveMedia(projects, {
+        projectSlug: 'goodhome-commercial-terrace',
+      }),
+      'builder-contractor': resolveMedia(projects, {
+        projectSlug: 'lilliput-mini-golf',
+      }),
+      'architects-designers': resolveMedia(projects, {
+        projectSlug: 'kiwi-rail-platform',
+        galleryIndex: 0,
+      }),
     },
     evidenceByDirection: {
-      cover: evidence(projects, 'cover', [
-        { projectSlug: 'dairy-flat-estate' },
-        { projectSlug: 'st-heliers-townhouse' },
-      ]),
-      'outdoor-room': evidence(projects, 'outdoor-room', [
-        { projectSlug: 'warkworth-outdoor-room', galleryIndex: 0 },
-        { projectSlug: 'riverhead-gable-pavilion' },
-      ]),
-      bespoke: evidence(projects, 'bespoke', [
-        { projectSlug: 'tindalls-bay-pavilion', galleryIndex: 0 },
-        { projectSlug: 'ardmore-box-carport' },
-      ]),
+      cover: evidence(
+        projects,
+        [
+          { projectSlug: 'dairy-flat-estate' },
+          { projectSlug: 'st-heliers-townhouse' },
+        ],
+        residentialProjectResultContent.cover.evidenceReasonBySlug,
+      ),
+      bespoke: evidence(
+        projects,
+        [
+          { projectSlug: 'tindalls-bay-pavilion', galleryIndex: 0 },
+          { projectSlug: 'warkworth-outdoor-room', galleryIndex: 0 },
+        ],
+        residentialProjectResultContent.bespoke.evidenceReasonBySlug,
+      ),
+    },
+    evidenceByProfessionalPath: {
+      venue: evidence(
+        projects,
+        [
+          { projectSlug: 'goodhome-commercial-terrace', galleryIndex: 0 },
+          { projectSlug: 'lilliput-mini-golf' },
+        ],
+        commercialProfessionalPathContent.venue.evidenceReasonBySlug,
+      ),
+      'builder-contractor': evidence(
+        projects,
+        [
+          { projectSlug: 'lilliput-mini-golf' },
+          { projectSlug: 'kiwi-rail-platform', galleryIndex: 0 },
+        ],
+        commercialProfessionalPathContent['builder-contractor']
+          .evidenceReasonBySlug,
+      ),
+      'architects-designers': evidence(
+        projects,
+        [
+          { projectSlug: 'kiwi-rail-platform', galleryIndex: 0 },
+          { projectSlug: 'goodhome-commercial-terrace', galleryIndex: 0 },
+        ],
+        commercialProfessionalPathContent['architects-designers']
+          .evidenceReasonBySlug,
+      ),
     },
   };
 }

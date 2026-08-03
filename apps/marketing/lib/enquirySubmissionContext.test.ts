@@ -37,4 +37,23 @@ describe('parseSubmittedEnquiryContext', () => {
       sourceExperience: 'project-finder-home-v1',
     });
   });
+
+  it('accepts a closed commercial or professional homepage pathway', () => {
+    expect(parseSubmittedEnquiryContext({
+      enquiry_type: 'commercial',
+      source_path: '/',
+      source_component: 'project_finder',
+      source_experience: 'project-finder-home-v1',
+      project_direction: 'commercial-professional',
+      project_professional_path: 'venue',
+      project_priorities: ['daylight'],
+    }, knownContext)).toEqual({
+      enquiryType: 'commercial',
+      sourcePath: '/',
+      sourceComponent: 'project_finder',
+      sourceExperience: 'project-finder-home-v1',
+      projectDirection: 'commercial-professional',
+      projectProfessionalPath: 'venue',
+    });
+  });
 });

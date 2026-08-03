@@ -2,9 +2,14 @@ import Link from 'next/link';
 import styles from './projectFinderHomepage.module.css';
 
 const fallbackPaths = [
-  { href: '/pergolas-auckland', label: 'A refined deck cover' },
-  { href: '/outdoor-rooms-auckland', label: 'A complete outdoor room' },
-  { href: '/custom-pergolas-auckland', label: 'A bespoke or difficult-site solution' },
+  { href: '/acrylic-roof-pergolas-auckland', label: 'Simple cover' },
+  { href: '/custom-pergolas-auckland', label: 'Custom design' },
+] as const;
+
+const professionalFallbackPaths = [
+  { href: '/commercial-pergolas-auckland', label: 'Extending a Venue' },
+  { href: '/architects-designers-builders', label: 'Builder or Contractor' },
+  { href: '/architects-designers-builders', label: 'Architects and Designers' },
 ] as const;
 
 export default function ProjectFinderNoScriptFallback({
@@ -21,11 +26,11 @@ export default function ProjectFinderNoScriptFallback({
       >
         <p className={styles.eyebrow}>Find your starting point</p>
         <h2 id="project-finder-no-script-heading">
-          Three direct project pathways.
+          Choose the path that best fits your project.
         </h2>
         <p>
           The visual finder needs JavaScript. You can still explore each
-          project direction or start an enquiry directly.
+          project pathway or start an enquiry directly.
         </p>
         <ul>
           {fallbackPaths.map((path) => (
@@ -34,12 +39,14 @@ export default function ProjectFinderNoScriptFallback({
             </li>
           ))}
         </ul>
-        <nav className={styles.noScriptAudience} aria-label="Other project pathways">
-          <span>Other project pathways</span>
-          <Link href="/commercial-pergolas-auckland">Commercial clients</Link>
-          <Link href="/architects-designers-builders">
-            Architects, designers and builders
-          </Link>
+        <nav
+          className={styles.noScriptAudience}
+          aria-label="Commercial and professional pathways"
+        >
+          <span>Commercial / Professional</span>
+          {professionalFallbackPaths.map((path) => (
+            <Link href={path.href} key={path.label}>{path.label}</Link>
+          ))}
         </nav>
         <Link className={styles.noScriptAction} href={enquiryHref}>
           Start your project

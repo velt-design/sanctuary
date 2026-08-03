@@ -1,14 +1,18 @@
 import {
   PROJECT_FINDER_HOME_PATH,
-  isProjectDirection,
+  isCommercialProfessionalPath,
+  isProjectFinderHomeDirection,
   normalizeProjectPriorities,
   projectPriorities,
-  type ProjectDirection,
+  type CommercialProfessionalPath,
+  type ProjectFinderHomeDirection,
   type ProjectPriority,
+  type ResidentialProjectFinderHomeDirection,
 } from '@/lib/projectFinderContract';
 
 export type ProjectFinderState = {
-  project?: ProjectDirection;
+  project?: ProjectFinderHomeDirection;
+  professionalPath?: CommercialProfessionalPath;
   priorities?: ProjectPriority[];
 };
 
@@ -30,7 +34,19 @@ export function parseProjectFinderState(
   params: ProjectFinderParamReader,
 ): ProjectFinderState {
   const project = readSingle(params, 'project')?.trim().toLowerCase();
-  if (!isProjectDirection(project)) return {};
+  if (!isProjectFinderHomeDirection(project)) return {};
+
+  if (project === 'commercial-professional') {
+    const professionalPath = readSingle(params, 'professional_path')
+      ?.trim()
+      .toLowerCase();
+    return {
+      project,
+      ...(isCommercialProfessionalPath(professionalPath)
+        ? { professionalPath }
+        : {}),
+    };
+  }
 
   const rawPriorities = readSingle(params, 'priorities');
   const priorities = rawPriorities
@@ -62,7 +78,17 @@ export function parseProjectFinderRecord(
 export function buildProjectFinderHref(state: ProjectFinderState): string {
   const params = new URLSearchParams();
   if (state.project) params.set('project', state.project);
-  if (state.project && state.priorities?.length) {
+  if (
+    state.project === 'commercial-professional'
+    && state.professionalPath
+  ) {
+    params.set('professional_path', state.professionalPath);
+  }
+  if (
+    state.project
+    && state.project !== 'commercial-professional'
+    && state.priorities?.length
+  ) {
     const normalized = normalizeProjectPriorities(state.priorities);
     if (normalized.length) params.set('priorities', normalized.join(','));
   }
@@ -74,14 +100,23 @@ export function buildProjectFinderHref(state: ProjectFinderState): string {
 
 export function selectProjectDirection(
   state: ProjectFinderState,
-  project: ProjectDirection,
+  project: ProjectFinderHomeDirection,
 ): ProjectFinderState {
+  if (project === 'commercial-professional') return { project };
   return {
     project,
-    ...(state.priorities?.length
+    ...(state.project !== 'commercial-professional' && state.priorities?.length
       ? { priorities: normalizeProjectPriorities(state.priorities) }
       : {}),
   };
+}
+
+export function selectCommercialProfessionalPath(
+  state: ProjectFinderState,
+  professionalPath: CommercialProfessionalPath,
+): ProjectFinderState {
+  if (state.project !== 'commercial-professional') return state;
+  return { project: state.project, professionalPath };
 }
 
 export function updateProjectPriority(
@@ -89,7 +124,11 @@ export function updateProjectPriority(
   priority: ProjectPriority,
   selected: boolean,
 ): { state: ProjectFinderState; limitReached: boolean } {
-  if (!state.project || !projectPriorities.includes(priority)) {
+  if (
+    !state.project
+    || state.project === 'commercial-professional'
+    || !projectPriorities.includes(priority)
+  ) {
     return { state, limitReached: false };
   }
   const current = normalizeProjectPriorities(state.priorities ?? []);
@@ -109,4 +148,11 @@ export function updateProjectPriority(
     },
     limitReached: false,
   };
+}
+export function isResidentialProjectFinderState(
+  state: ProjectFinderState,
+): state is ProjectFinderState & {
+  project: ResidentialProjectFinderHomeDirection;
+} {
+  return state.project === 'cover' || state.project === 'bespoke';
 }

@@ -12,8 +12,11 @@ import {
 import {
   PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
   PROJECT_FINDER_HOME_PATH,
+  isCommercialProfessionalPath,
   isProjectDirection,
+  isResidentialProjectDirection,
   normalizeProjectPriorities,
+  type CommercialProfessionalPath,
   type ProjectDirection,
   type ProjectPriority,
 } from './projectFinderContract';
@@ -47,6 +50,7 @@ export type EnquiryContext = {
   sourcePathway?: GuidedResultId;
   sourceFocus?: GuidedFocusId;
   projectDirection?: ProjectDirection;
+  projectProfessionalPath?: CommercialProfessionalPath;
   projectPriorities?: ProjectPriority[];
 };
 
@@ -60,6 +64,7 @@ type EnquiryContextProperties = {
   source_pathway?: GuidedResultId;
   source_focus?: GuidedFocusId;
   project_direction?: ProjectDirection;
+  project_professional_path?: CommercialProfessionalPath;
   project_priorities?: ProjectPriority[];
 };
 
@@ -122,6 +127,7 @@ const contextPropertyKeys = [
   'source_pathway',
   'source_focus',
   'project_direction',
+  'project_professional_path',
   'project_priorities',
 ] as const satisfies ReadonlyArray<keyof EnquiryContextProperties>;
 
@@ -231,6 +237,13 @@ function normalizeFinderPriorities(value: SearchValue): ProjectPriority[] {
   return normalizeProjectPriorities(value.split(','));
 }
 
+function normalizeProjectProfessionalPath(
+  value: SearchValue,
+): CommercialProfessionalPath | undefined {
+  const normalized = firstValue(value)?.trim().toLowerCase();
+  return isCommercialProfessionalPath(normalized) ? normalized : undefined;
+}
+
 export function getCanonicalMarketingPathname(
   pathname: string | null,
 ): string {
@@ -303,7 +316,10 @@ export function parseEnquiryContext(
   const projectDirection = normalizeProjectDirection(
     searchParams.project_direction,
   );
-  const projectPriorities = projectDirection
+  const projectProfessionalPath = projectDirection === 'commercial-professional'
+    ? normalizeProjectProfessionalPath(searchParams.project_professional_path)
+    : undefined;
+  const projectPriorities = isResidentialProjectDirection(projectDirection)
     ? normalizeFinderPriorities(searchParams.project_priorities)
     : [];
   const hasProjectFinderContext =
@@ -322,6 +338,7 @@ export function parseEnquiryContext(
       ? {
           sourceExperience,
           ...(projectDirection ? { projectDirection } : {}),
+          ...(projectProfessionalPath ? { projectProfessionalPath } : {}),
           ...(projectPriorities.length ? { projectPriorities } : {}),
         }
       : {}),
@@ -339,6 +356,7 @@ export function buildEnquiryHref(context: EnquiryContext = {}): string {
     source_pathway: context.sourcePathway,
     source_focus: context.sourceFocus,
     project_direction: context.projectDirection,
+    project_professional_path: context.projectProfessionalPath,
     project_priorities: context.projectPriorities?.join(','),
   });
   const params = new URLSearchParams();
@@ -360,6 +378,12 @@ export function buildEnquiryHref(context: EnquiryContext = {}): string {
     params.set('source_experience', normalized.sourceExperience);
     if (normalized.projectDirection) {
       params.set('project_direction', normalized.projectDirection);
+    }
+    if (normalized.projectProfessionalPath) {
+      params.set(
+        'project_professional_path',
+        normalized.projectProfessionalPath,
+      );
     }
     if (normalized.projectPriorities?.length) {
       params.set('project_priorities', normalized.projectPriorities.join(','));
@@ -383,6 +407,7 @@ export function getEnquiryContextProperties(
     source_pathway: context.sourcePathway,
     source_focus: context.sourceFocus,
     project_direction: context.projectDirection,
+    project_professional_path: context.projectProfessionalPath,
     project_priorities: context.projectPriorities?.join(','),
   });
 
@@ -406,6 +431,12 @@ export function getEnquiryContextProperties(
           source_experience: normalized.sourceExperience,
           ...(normalized.projectDirection
             ? { project_direction: normalized.projectDirection }
+            : {}),
+          ...(normalized.projectProfessionalPath
+            ? {
+                project_professional_path:
+                  normalized.projectProfessionalPath,
+              }
             : {}),
           ...(normalized.projectPriorities?.length
             ? { project_priorities: normalized.projectPriorities }

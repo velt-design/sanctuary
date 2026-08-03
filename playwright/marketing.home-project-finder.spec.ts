@@ -35,7 +35,7 @@ async function projectFinderEvents(page: Page) {
         || entry.event.startsWith('project_result_')
         || entry.event.startsWith('project_pathway_')
         || entry.event.startsWith('project_view_')
-        || entry.event.startsWith('project_audience_')
+        || entry.event.startsWith('professional_path_')
         || entry.event.startsWith('brief_')
       )
     ))
@@ -44,8 +44,21 @@ async function projectFinderEvents(page: Page) {
 
 async function selectDirection(page: Page, direction: string) {
   await page.locator(`[data-project-direction="${direction}"]`).click();
+  if (direction === 'commercial-professional') {
+    await expect(page.locator('[data-professional-path-chooser]')).toBeVisible();
+    return;
+  }
   await expect(page.locator('[data-project-finder-result]'))
     .toHaveAttribute('data-project-finder-result', direction);
+}
+
+async function selectProfessionalPath(page: Page, path: string) {
+  await page.locator(`[data-professional-path="${path}"]`).click();
+  await expect(page.locator('[data-project-finder-result]'))
+    .toHaveAttribute(
+      'data-project-finder-result',
+      `commercial-professional:${path}`,
+    );
 }
 
 test('project finder is the indexable live homepage and the prototype URL redirects', async ({
@@ -82,10 +95,11 @@ test('project finder is the indexable live homepage and the prototype URL redire
     '/contact?enquiry_type=residential&source_path=%2F&source_component=footer&source_experience=project-finder-home-v1#contact-form',
   );
   await expect(page.locator('[data-project-direction]')).toHaveCount(3);
-  await expect(page.getByRole('link', { name: 'Commercial clients' }))
-    .toHaveAttribute('href', '/commercial-pergolas-auckland');
-  await expect(page.getByRole('link', { name: 'Architects, designers and builders' }))
-    .toHaveAttribute('href', '/architects-designers-builders');
+  await expect(page.getByRole('radio', { name: /Simple cover/ })).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Custom design/ })).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Commercial \/ Professional/ }))
+    .toBeVisible();
+  await expect(page.locator('[data-professional-path-chooser]')).toHaveCount(0);
   await expect(page.locator('[data-project-direction] img')).toHaveCount(3);
   await expect(page.locator('[data-project-direction] img').first())
     .toHaveAttribute('loading', 'lazy');
@@ -237,14 +251,13 @@ test('the production finder stays within its repeatable interaction and layout b
   ).toBeLessThanOrEqual(500);
 });
 
-test('each project direction gives one useful pathway and two governed references', async ({
+test('the two residential directions give one useful pathway and two governed references', async ({
   page,
 }) => {
   await setAnalyticsConsent(page, false);
   const paths = [
-    ['cover', 'Residential pergola planning', '/pergolas-auckland', ['Dairy Flat Estate', 'St Heliers Townhouse']],
-    ['outdoor-room', 'A complete outdoor room', '/outdoor-rooms-auckland', ['Warkworth Outdoor Room', 'Riverhead Gable Pavilion']],
-    ['bespoke', 'Bespoke pergola design', '/custom-pergolas-auckland', ['Tindalls Bay - Patio & Carport', 'Ardmore Box Carport']],
+    ['cover', 'Acrylic roof pergolas', '/acrylic-roof-pergolas-auckland', ['Dairy Flat Estate', 'St Heliers Townhouse']],
+    ['bespoke', 'Custom pergola design', '/custom-pergolas-auckland', ['Tindalls Bay - Patio & Carport', 'Warkworth Outdoor Room']],
   ] as const;
 
   for (const [direction, heading, pathway, projectNames] of paths) {
@@ -269,13 +282,56 @@ test('each project direction gives one useful pathway and two governed reference
   }
 });
 
+test('commercial and professional choices reveal tailored results and evidence', async ({
+  page,
+}) => {
+  await setAnalyticsConsent(page, false);
+  const paths = [
+    ['venue', 'Extend your venue with confidence', '/commercial-pergolas-auckland', ['The Good Home Takanini', 'Lilliput Mini Golf']],
+    ['builder-contractor', 'A defined pergola package for your build', '/architects-designers-builders', ['Lilliput Mini Golf', 'KiwiRail Head Office']],
+    ['architects-designers', 'Pergola collaboration for architects and designers', '/architects-designers-builders', ['KiwiRail Head Office', 'The Good Home Takanini']],
+  ] as const;
+
+  for (const [path, heading, destination, projectNames] of paths) {
+    await page.goto('/');
+    await selectDirection(page, 'commercial-professional');
+    await expect(page.locator('[data-professional-path]')).toHaveCount(3);
+    await selectProfessionalPath(page, path);
+    await expect(page.getByRole('heading', { level: 2, name: heading, exact: true }))
+      .toBeVisible();
+    await expect(page.locator('[data-project-finder-result] a').first())
+      .toHaveAttribute(
+        'href',
+        `${destination}?project=commercial-professional&professional_path=${path}`,
+      );
+    for (const projectName of projectNames) {
+      await expect(page.getByRole('heading', { level: 3, name: projectName }))
+        .toBeVisible();
+    }
+    await expect(page.locator('[data-selected-project]')).toHaveCount(2);
+    await expect(page.getByRole('button', { name: 'Refine what matters' }))
+      .toHaveCount(0);
+    await expect(page.locator('footer').getByRole('link', {
+      name: 'Start your project',
+    })).toHaveAttribute(
+      'href',
+      new RegExp(
+        `enquiry_type=${path === 'venue' ? 'commercial' : 'professional'}`
+        + '.*project_direction=commercial-professional'
+        + `.*project_professional_path=${path}`,
+      ),
+    );
+    await expectNoHorizontalOverflow(page);
+  }
+});
+
 test('brief builder enforces three priorities and defers the controlled brief enquiry until after proof', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setAnalyticsConsent(page, false);
   await page.goto('/');
-  await selectDirection(page, 'outdoor-room');
+  await selectDirection(page, 'bespoke');
   await page.getByRole('button', { name: 'Refine what matters' }).click();
 
   const priorities = page.locator('[data-project-priority]');
@@ -290,22 +346,22 @@ test('brief builder enforces three priorities and defers the controlled brief en
   )).toBeVisible();
   await expect(priorities.nth(3)).not.toBeChecked();
   await expect(page).toHaveURL(
-    /project=outdoor-room&priorities=daylight%2Ceveryday-use%2Centertaining$/,
+    /project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination$/,
   );
   await expect(page.getByRole('heading', {
     level: 3,
-    name: /A complete outdoor room designed to make the space work every day, support cooking and entertaining, and preserve natural light\./,
+    name: /A custom pergola design developed to keep the structure visually open, coordinate cleanly with the wider project, and preserve natural light\./,
   })).toBeVisible();
 
   await expect(page.getByRole('link', { name: 'Send this brief to Sanctuary' }))
     .toHaveCount(0);
   await page.getByRole('link', { name: 'Send your brief' }).click();
-  await expect(page).toHaveURL(/\/contact\?.*project_direction=outdoor-room/);
+  await expect(page).toHaveURL(/\/contact\?.*project_direction=bespoke/);
   await expect(page.locator('.contact-form__context')).toContainText(
-    'Starting brief: A complete outdoor room',
+    'Starting brief: Custom design',
   );
   await expect(page.locator('.contact-form__context')).toContainText(
-    'Use the space more often',
+    'Keep the structure open',
   );
   const context = JSON.parse(await page.locator(
     '#contact-form input[name="enquiryContext"]',
@@ -315,8 +371,8 @@ test('brief builder enforces three priorities and defers the controlled brief en
     source_path: '/',
     source_component: 'project_finder',
     source_experience: 'project-finder-home-v1',
-    project_direction: 'outdoor-room',
-    project_priorities: ['daylight', 'everyday-use', 'entertaining'],
+    project_direction: 'bespoke',
+    project_priorities: ['daylight', 'open-structure', 'coordination'],
   });
 });
 
@@ -325,7 +381,7 @@ test('the recommended service page retains the selected brief through enquiry', 
 }) => {
   await setAnalyticsConsent(page, false);
   await page.goto('/?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination');
-  await page.getByRole('link', { name: 'Explore bespoke pergolas' }).click();
+  await page.getByRole('link', { name: 'Explore custom pergolas' }).click();
 
   await expect(page).toHaveURL(
     /\/custom-pergolas-auckland\?project=bespoke&priorities=daylight%2Copen-structure%2Ccoordination$/,
@@ -333,7 +389,7 @@ test('the recommended service page retains the selected brief through enquiry', 
   const journeyContext = page.locator('[data-project-finder-journey-context]');
   await expect(journeyContext).toBeVisible();
   await expect(journeyContext.getByRole('heading', { level: 2 })).toHaveText(
-    'A bespoke pergola response designed to keep the structure visually open, coordinate cleanly with the wider project, and preserve natural light.',
+    'A custom pergola design developed to keep the structure visually open, coordinate cleanly with the wider project, and preserve natural light.',
   );
   await expect(journeyContext.getByRole('link', { name: 'Refine your brief' }))
     .toHaveAttribute(
@@ -366,7 +422,7 @@ test('viewing a project keeps the finder brief and viewed project through a late
   await page.setViewportSize({ width: 390, height: 844 });
   await setAnalyticsConsent(page, false);
   await page.goto(
-    '/?project=outdoor-room&priorities=daylight%2Centertaining',
+    '/?project=bespoke&priorities=daylight%2Ccoordination',
   );
 
   const projectCard = page.locator(
@@ -375,30 +431,30 @@ test('viewing a project keeps the finder brief and viewed project through a late
   const viewProject = projectCard.getByRole('link', { name: 'View project' });
   await expect(viewProject).toHaveAttribute(
     'href',
-    '/projects/warkworth-outdoor-room?project=outdoor-room&priorities=daylight%2Centertaining&reference=warkworth-outdoor-room',
+    '/projects/warkworth-outdoor-room?project=bespoke&priorities=daylight%2Ccoordination&reference=warkworth-outdoor-room',
   );
   await viewProject.click();
 
   await expect(page).toHaveURL(
-    /\/projects\/warkworth-outdoor-room\?project=outdoor-room&priorities=daylight%2Centertaining&reference=warkworth-outdoor-room$/,
+    /\/projects\/warkworth-outdoor-room\?project=bespoke&priorities=daylight%2Ccoordination&reference=warkworth-outdoor-room$/,
   );
   await expect(page.locator('.project-case-study__intro-actions')).toHaveCount(0);
   const finalEnquiry = page.locator('.project-case-study__final-cta')
     .getByRole('link', { name: 'Send project brief' });
   await expect(finalEnquiry).toHaveAttribute(
     'href',
-    /source_project=warkworth-outdoor-room.*source_experience=project-finder-home-v1.*project_direction=outdoor-room.*project_priorities=daylight%2Centertaining/,
+    /source_project=warkworth-outdoor-room.*source_experience=project-finder-home-v1.*project_direction=bespoke.*project_priorities=daylight%2Ccoordination/,
   );
   await expect(page.locator('header.site .nav-cta')).toHaveAttribute(
     'href',
-    /source_project=warkworth-outdoor-room.*source_experience=project-finder-home-v1.*project_direction=outdoor-room.*project_priorities=daylight%2Centertaining/,
+    /source_project=warkworth-outdoor-room.*source_experience=project-finder-home-v1.*project_direction=bespoke.*project_priorities=daylight%2Ccoordination/,
   );
   const relatedProject = page.locator('.project-case-study__related-list a');
   const relatedCount = await relatedProject.count();
   expect(relatedCount).toBeGreaterThan(0);
   await expect(relatedProject.first()).toHaveAttribute(
     'href',
-    /\?project=outdoor-room&priorities=daylight%2Centertaining&reference=/,
+    /\?project=bespoke&priorities=daylight%2Ccoordination&reference=/,
   );
 
   await finalEnquiry.click();
@@ -408,8 +464,8 @@ test('viewing a project keeps the finder brief and viewed project through a late
   expect(context).toMatchObject({
     source_project: 'warkworth-outdoor-room',
     source_experience: 'project-finder-home-v1',
-    project_direction: 'outdoor-room',
-    project_priorities: ['daylight', 'entertaining'],
+    project_direction: 'bespoke',
+    project_priorities: ['daylight', 'coordination'],
   });
 });
 
@@ -436,6 +492,28 @@ test('URL state is canonical, refreshable and restored by browser history', asyn
     .toHaveAttribute('aria-checked', 'true');
   await page.reload();
   await expect(page.locator('[data-project-finder-result="bespoke"]')).toBeVisible();
+
+  await selectDirection(page, 'commercial-professional');
+  await selectProfessionalPath(page, 'venue');
+  await expect(page).toHaveURL(
+    /project=commercial-professional&professional_path=venue$/,
+  );
+  await page.goBack();
+  await expect(page.locator('[data-professional-path-chooser]')).toBeVisible();
+  await expect(page.locator('[data-project-finder-result]')).toHaveCount(0);
+  await page.goForward();
+  await expect(page.locator('button[data-professional-path="venue"]'))
+    .toHaveAttribute('aria-checked', 'true');
+  await page.reload();
+  await expect(page.locator(
+    '[data-project-finder-result="commercial-professional:venue"]',
+  )).toBeVisible();
+
+  await page.goto(
+    '/?project=commercial-professional&professional_path=invalid&priorities=daylight',
+  );
+  await expect(page).toHaveURL(/\?project=commercial-professional$/);
+  await expect(page.locator('[data-professional-path-chooser]')).toBeVisible();
 });
 
 test('keyboard selection uses roving radio behavior and predictable focus', async ({
@@ -447,14 +525,35 @@ test('keyboard selection uses roving radio behavior and predictable focus', asyn
   const cover = page.locator('[data-project-direction="cover"]');
   await cover.focus();
   await cover.press('ArrowDown');
-  await expect(page).toHaveURL(/project=outdoor-room$/);
-  await expect(page.locator('button[data-project-direction="outdoor-room"]'))
+  await expect(page).toHaveURL(/project=bespoke$/);
+  await expect(page.locator('button[data-project-direction="bespoke"]'))
     .toHaveAttribute('aria-checked', 'true');
   await expect(page.getByRole('heading', {
     level: 2,
-    name: 'A complete outdoor room',
+    name: 'Custom pergola design',
     exact: true,
   }).first()).toBeFocused();
+
+  const bespoke = page.locator('button[data-project-direction="bespoke"]');
+  await bespoke.focus();
+  await bespoke.press('ArrowDown');
+  await expect(page).toHaveURL(/project=commercial-professional$/);
+  await expect(page.getByRole('heading', {
+    level: 2,
+    name: 'Which pathway fits best?',
+    exact: true,
+  })).toBeFocused();
+  const venue = page.locator('button[data-professional-path="venue"]');
+  await venue.focus();
+  await venue.press('ArrowDown');
+  await expect(page).toHaveURL(
+    /project=commercial-professional&professional_path=builder-contractor$/,
+  );
+  await expect(page.getByRole('heading', {
+    level: 2,
+    name: 'A defined pergola package for your build',
+    exact: true,
+  })).toBeFocused();
 
   const ids = await page.locator('[id]').evaluateAll((elements) => (
     elements.map((element) => element.id)
@@ -527,7 +626,9 @@ test('analytics use consent-aware closed project finder values', async ({ page }
   });
   const firstProject = consented.locator('[data-project-evidence]').first();
   await firstProject.getByRole('link', { name: 'View project' }).click();
-  await consented.getByRole('link', { name: 'Commercial clients' }).click();
+  await selectDirection(consented, 'commercial-professional');
+  await selectProfessionalPath(consented, 'venue');
+  await consented.getByRole('link', { name: 'Explore commercial pergolas' }).click();
   await consented.locator('header.site .nav-cta').click();
   const events = await projectFinderEvents(consented);
   expect(events.map((event) => event.event)).toEqual(expect.arrayContaining([
@@ -538,10 +639,11 @@ test('analytics use consent-aware closed project finder values', async ({ page }
     'brief_priority_select',
     'brief_summary_view',
     'project_view_click',
-    'project_audience_path_click',
+    'professional_path_select',
+    'project_pathway_click',
     'project_finder_direct_enquiry_click',
   ]));
-  expect(events.filter((event) => event.event === 'project_result_view')).toHaveLength(1);
+  expect(events.filter((event) => event.event === 'project_result_view')).toHaveLength(2);
   for (const event of events) {
     expect(JSON.stringify(event)).not.toMatch(/@|email|phone|free_text|address/i);
     expect(event).toMatchObject({
@@ -553,8 +655,10 @@ test('analytics use consent-aware closed project finder values', async ({ page }
     event.event === 'project_finder_direct_enquiry_click'
     && event.source_component === 'header'
   ))).toMatchObject({
-    enquiry_type: 'residential',
+    enquiry_type: 'commercial',
     source_path: '/',
+    project_direction: 'commercial-professional',
+    professional_path: 'venue',
   });
   await consented.close();
 });
@@ -573,18 +677,18 @@ test('no-JavaScript visitors receive direct project and enquiry pathways', async
   })).toBeVisible();
   await expect(page.getByRole('heading', {
     level: 2,
-    name: 'Three direct project pathways.',
+    name: 'Choose the path that best fits your project.',
   })).toBeVisible();
   await expect(page.locator('[data-project-finder-interactive]')).toBeHidden();
-  await expect(page.getByRole('link', { name: 'A refined deck cover' }))
-    .toHaveAttribute('href', '/pergolas-auckland');
-  await expect(page.getByRole('link', { name: 'A complete outdoor room' }))
-    .toHaveAttribute('href', '/outdoor-rooms-auckland');
-  await expect(page.getByRole('link', { name: 'A bespoke or difficult-site solution' }))
+  await expect(page.getByRole('link', { name: 'Simple cover' }))
+    .toHaveAttribute('href', '/acrylic-roof-pergolas-auckland');
+  await expect(page.getByRole('link', { name: 'Custom design' }))
     .toHaveAttribute('href', '/custom-pergolas-auckland');
-  await expect(page.getByRole('link', { name: 'Commercial clients' }))
+  await expect(page.getByRole('link', { name: 'Extending a Venue' }))
     .toHaveAttribute('href', '/commercial-pergolas-auckland');
-  await expect(page.getByRole('link', { name: 'Architects, designers and builders' }))
+  await expect(page.getByRole('link', { name: 'Builder or Contractor' }))
+    .toHaveAttribute('href', '/architects-designers-builders');
+  await expect(page.getByRole('link', { name: 'Architects and Designers' }))
     .toHaveAttribute('href', '/architects-designers-builders');
   await context.close();
 });
@@ -631,6 +735,21 @@ test('direction cards stay compact on mobile and avoid narrow tablet columns', a
     }
     await expectNoHorizontalOverflow(page);
   }
+
+  await page.setViewportSize({ width: 390, height: 900 });
+  await selectDirection(page, 'commercial-professional');
+  const professionalCards = await page.locator('[data-professional-path]')
+    .evaluateAll((elements) => elements.map((element) => {
+      const card = element.getBoundingClientRect();
+      const image = element.querySelector('img')?.getBoundingClientRect();
+      return { cardHeight: card.height, imageWidth: image?.width ?? 0 };
+    }));
+  expect(professionalCards).toHaveLength(3);
+  for (const card of professionalCards) {
+    expect(card.cardHeight).toBeLessThan(230);
+    expect(card.imageWidth).toBeLessThanOrEqual(116);
+  }
+  await expectNoHorizontalOverflow(page);
 });
 
 test('the full selected journey stays usable and overflow-free across the QA matrix', async ({
@@ -658,16 +777,30 @@ test('the full selected journey stays usable and overflow-free across the QA mat
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await expectNoHorizontalOverflow(page);
-    await selectDirection(page, 'outdoor-room');
+    await selectDirection(page, 'bespoke');
     await page.getByRole('button', { name: 'Refine what matters' }).click();
     const priorities = page.locator('[data-project-priority]');
     await priorities.nth(0).check();
     await priorities.nth(1).check();
     await priorities.nth(2).check();
-    await expect(page.getByRole('heading', { level: 3, name: /A complete outdoor room/ }))
+    await expect(page.getByRole('heading', { level: 3, name: /A custom pergola design/ }))
       .toBeVisible();
     await expect(page.locator('[data-project-evidence]')).toHaveCount(2);
     await expect(page.getByRole('link', { name: 'Send your brief' })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await page.getByRole('button', { name: 'Start again' }).click();
+    await expect(page).toHaveURL(/\/$/);
+
+    await selectDirection(page, 'commercial-professional');
+    await selectProfessionalPath(page, 'architects-designers');
+    await expect(page.getByRole('heading', {
+      level: 2,
+      name: 'Pergola collaboration for architects and designers',
+      exact: true,
+    })).toBeVisible();
+    await expect(page.locator('[data-project-evidence]')).toHaveCount(2);
+    await expect(page.getByRole('link', { name: 'Send your brief' }))
+      .toBeVisible();
     await expectNoHorizontalOverflow(page);
     await page.getByRole('button', { name: 'Start again' }).click();
     await expect(page).toHaveURL(/\/$/);

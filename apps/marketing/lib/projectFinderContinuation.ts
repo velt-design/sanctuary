@@ -2,10 +2,14 @@ import type { EnquiryContext } from './enquiryContext';
 import {
   PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
   PROJECT_FINDER_HOME_PATH,
-  isProjectDirection,
+  isCommercialProfessionalPath,
+  isProjectFinderHomeDirection,
+  isResidentialProjectDirection,
   normalizeProjectPriorities,
-  type ProjectDirection,
+  type CommercialProfessionalPath,
+  type ProjectFinderHomeDirection,
   type ProjectPriority,
+  type ResidentialProjectDirection,
 } from './projectFinderContract';
 
 type SearchValue = string | string[] | undefined;
@@ -18,7 +22,7 @@ export type ProjectFinderJourneyParamReader = {
 };
 
 export type ProjectFinderJourneyContext = {
-  direction: ProjectDirection;
+  direction: ResidentialProjectDirection;
   priorities: ProjectPriority[];
   destination: string;
   summaryHeading: string;
@@ -27,8 +31,14 @@ export type ProjectFinderJourneyContext = {
 };
 
 export type ProjectFinderSelection = {
-  direction: ProjectDirection;
+  direction: ResidentialProjectDirection;
   priorities: ProjectPriority[];
+};
+
+export type ProjectFinderHomeSelection = {
+  direction: ProjectFinderHomeDirection;
+  priorities: ProjectPriority[];
+  professionalPath?: CommercialProfessionalPath;
 };
 
 export type ProjectFinderProjectJourneyContext = ProjectFinderSelection & {
@@ -37,7 +47,7 @@ export type ProjectFinderProjectJourneyContext = ProjectFinderSelection & {
 };
 
 export const projectFinderDestinationByDirection: Record<
-  ProjectDirection,
+  ResidentialProjectDirection,
   string
 > = {
   cover: '/pergolas-auckland',
@@ -45,16 +55,16 @@ export const projectFinderDestinationByDirection: Record<
   bespoke: '/custom-pergolas-auckland',
 };
 
-const briefOpeningByDirection: Record<ProjectDirection, string> = {
-  cover: 'A refined deck cover designed to',
+const briefOpeningByDirection: Record<ResidentialProjectDirection, string> = {
+  cover: 'A simple cover designed to',
   'outdoor-room': 'A complete outdoor room designed to',
-  bespoke: 'A bespoke pergola response designed to',
+  bespoke: 'A custom pergola design developed to',
 };
 
-const defaultBriefByDirection: Record<ProjectDirection, string> = {
-  cover: 'A refined deck cover, shaped to your home and site.',
+const defaultBriefByDirection: Record<ResidentialProjectDirection, string> = {
+  cover: 'A simple cover, shaped to your home and site.',
   'outdoor-room': 'A complete outdoor room, shaped around how you want to live.',
-  bespoke: 'A considered bespoke response for your site and wider project.',
+  bespoke: 'A custom pergola design, shaped around your site and wider project.',
 };
 
 const briefClauseByPriority: Record<ProjectPriority, string> = {
@@ -69,7 +79,7 @@ const briefClauseByPriority: Record<ProjectPriority, string> = {
 const PROJECT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const projectFinderPriorityOrderByDirection: Record<
-  ProjectDirection,
+  ResidentialProjectDirection,
   readonly ProjectPriority[]
 > = {
   cover: [
@@ -130,7 +140,7 @@ function recordReader(
 }
 
 function buildSelectionParams(
-  direction: ProjectDirection,
+  direction: ResidentialProjectDirection,
   priorities: readonly ProjectPriority[],
 ): URLSearchParams {
   const params = new URLSearchParams({ project: direction });
@@ -139,13 +149,115 @@ function buildSelectionParams(
   return params;
 }
 
+function readProjectFinderHomeSelection(
+  params: ProjectFinderJourneyParamReader,
+): ProjectFinderHomeSelection | null {
+  const direction = readSingle(params, 'project')?.trim().toLowerCase();
+  if (!isProjectFinderHomeDirection(direction)) return null;
+
+  if (direction === 'commercial-professional') {
+    const professionalPath = readSingle(params, 'professional_path')
+      ?.trim()
+      .toLowerCase();
+    return {
+      direction,
+      priorities: [],
+      ...(isCommercialProfessionalPath(professionalPath)
+        ? { professionalPath }
+        : {}),
+    };
+  }
+
+  const rawPriorities = readSingle(params, 'priorities');
+  return {
+    direction,
+    priorities: rawPriorities
+      ? normalizeProjectPriorities(rawPriorities.split(','))
+      : [],
+  };
+}
+
+function buildProjectFinderHomeSelectionParams(
+  selection: ProjectFinderHomeSelection,
+): URLSearchParams {
+  const params = new URLSearchParams({ project: selection.direction });
+  if (
+    selection.direction === 'commercial-professional'
+    && selection.professionalPath
+  ) {
+    params.set('professional_path', selection.professionalPath);
+  } else if (selection.priorities.length) {
+    params.set(
+      'priorities',
+      normalizeProjectPriorities(selection.priorities).join(','),
+    );
+  }
+  return params;
+}
+
+export function resolveProjectFinderHomeDestination(
+  selection: ProjectFinderHomeSelection,
+): string {
+  if (selection.direction === 'cover') {
+    return '/acrylic-roof-pergolas-auckland';
+  }
+  if (selection.direction === 'bespoke') {
+    return '/custom-pergolas-auckland';
+  }
+  return selection.professionalPath === 'venue'
+    ? '/commercial-pergolas-auckland'
+    : '/architects-designers-builders';
+}
+
+export function buildProjectFinderHomeDestinationHref(
+  selection: ProjectFinderHomeSelection,
+): string {
+  const destination = resolveProjectFinderHomeDestination(selection);
+  const params = buildProjectFinderHomeSelectionParams(selection);
+  return `${destination}?${params.toString()}`;
+}
+
+export function resolveProjectFinderHomeSelectionFromReader(
+  params: ProjectFinderJourneyParamReader,
+): ProjectFinderHomeSelection | null {
+  return readProjectFinderHomeSelection(params);
+}
+
+export function resolveProjectFinderHomeEnquiryContextFromReader(
+  params: ProjectFinderJourneyParamReader,
+): EnquiryContext | null {
+  const selection = readProjectFinderHomeSelection(params);
+  if (!selection) return null;
+  const isCommercialProfessional =
+    selection.direction === 'commercial-professional';
+  const enquiryType = isCommercialProfessional
+    ? (selection.professionalPath && selection.professionalPath !== 'venue'
+      ? 'professional'
+      : 'commercial')
+    : 'residential';
+
+  return {
+    enquiryType,
+    sourcePath: PROJECT_FINDER_HOME_PATH,
+    sourceComponent: 'header',
+    sourceExperience: PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
+    projectDirection: selection.direction,
+    ...(selection.professionalPath
+      ? { projectProfessionalPath: selection.professionalPath }
+      : {}),
+    ...(selection.priorities.length
+      ? { projectPriorities: selection.priorities }
+      : {}),
+  };
+}
+
 function readSelection(
   params: ProjectFinderJourneyParamReader,
-  expectedDirection?: ProjectDirection,
+  expectedDirection?: ResidentialProjectDirection,
 ): ProjectFinderSelection | null {
   const direction = readSingle(params, 'project')?.trim().toLowerCase();
   if (
-    !isProjectDirection(direction)
+    !isResidentialProjectDirection(direction)
     || (expectedDirection && direction !== expectedDirection)
   ) {
     return null;
@@ -161,7 +273,7 @@ function readSelection(
 }
 
 export function buildProjectFinderBriefHeading(
-  direction: ProjectDirection,
+  direction: ResidentialProjectDirection,
   priorities: readonly ProjectPriority[],
 ): string {
   const normalized = normalizeProjectPriorities(priorities);
@@ -176,7 +288,7 @@ export function buildProjectFinderBriefHeading(
 }
 
 export function buildProjectFinderDestinationHref(
-  direction: ProjectDirection,
+  direction: ResidentialProjectDirection,
   priorities: readonly ProjectPriority[],
 ): string {
   return `${projectFinderDestinationByDirection[direction]}?${buildSelectionParams(
@@ -186,7 +298,7 @@ export function buildProjectFinderDestinationHref(
 }
 
 export function buildProjectFinderProjectHref(
-  direction: ProjectDirection,
+  direction: ResidentialProjectDirection,
   priorities: readonly ProjectPriority[],
   projectSlug: string,
 ): string {
@@ -199,7 +311,7 @@ export function buildProjectFinderProjectHref(
 }
 
 export function resolveProjectFinderJourneyContextFromReader(
-  expectedDirection: ProjectDirection,
+  expectedDirection: ResidentialProjectDirection,
   params: ProjectFinderJourneyParamReader,
 ): ProjectFinderJourneyContext | null {
   const selectionContext = readSelection(params, expectedDirection);
@@ -254,7 +366,7 @@ export function resolveProjectFinderProjectJourneyContextFromReader(
 }
 
 export function resolveProjectFinderJourneyContext(
-  expectedDirection: ProjectDirection,
+  expectedDirection: ResidentialProjectDirection,
   params: ProjectFinderJourneySearchParams,
 ): ProjectFinderJourneyContext | null {
   return resolveProjectFinderJourneyContextFromReader(

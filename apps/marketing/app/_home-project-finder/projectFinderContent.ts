@@ -1,68 +1,149 @@
-import type {
-  ProjectDirection,
-  ProjectPriority,
-} from '@/lib/projectFinderContract';
+import type { EnquiryAudience } from '@/lib/enquiryContext';
 import {
+  commercialProfessionalPathLabels,
   projectDirectionLabels,
   projectPriorityLabels,
+  type CommercialProfessionalPath,
+  type ProjectFinderHomeDirection,
+  type ProjectPriority,
+  type ResidentialProjectFinderHomeDirection,
 } from '@/lib/projectFinderContract';
 
-export type ProjectDirectionContent = {
+export type ProjectDirectionChoiceContent = {
   label: string;
   description: string;
+};
+
+export type ProjectResultContent = {
   responseHeading: string;
   responseExplanation: string;
   pathwayLabel: string;
+  closeHeading: string;
+  closeExplanation: string;
   evidenceReasonBySlug: Readonly<Record<string, string>>;
 };
 
+export type CommercialProfessionalPathContent =
+  ProjectDirectionChoiceContent
+  & ProjectResultContent
+  & { enquiryType: EnquiryAudience };
+
 export const projectDirectionContent: Record<
-  ProjectDirection,
-  ProjectDirectionContent
+  ProjectFinderHomeDirection,
+  ProjectDirectionChoiceContent
 > = {
   cover: {
     label: projectDirectionLabels.cover,
     description:
-      'Shelter for a deck or patio, balanced with daylight, shade and the connection to the house.',
-    responseHeading: 'Residential pergola planning',
-    responseExplanation:
-      'Start with a refined fixed-roof pergola designed around shelter, daylight, shade and the connection to the house.',
-    pathwayLabel: 'Explore residential pergolas',
-    evidenceReasonBySlug: {
-      'dairy-flat-estate':
-        'The new gable follows the house roofline while keeping daylight central to the brief.',
-      'st-heliers-townhouse':
-        'A compact townhouse cover with an open gable and a deliberate street-facing frame.',
-    },
-  },
-  'outdoor-room': {
-    label: projectDirectionLabels['outdoor-room'],
-    description:
-      'An integrated space for dining, cooking, entertaining or everyday use.',
-    responseHeading: 'A complete outdoor room',
-    responseExplanation:
-      'Start with a more integrated space where roofing, layout, lighting, furniture and key features can be considered together.',
-    pathwayLabel: 'Explore outdoor rooms',
-    evidenceReasonBySlug: {
-      'warkworth-outdoor-room':
-        'Roofing, cedar lining, a new deck, fireplace and lighting were planned as one room.',
-      'riverhead-gable-pavilion':
-        'A timber-lined poolside pavilion keeps the outlook open and integrates warm lighting.',
-    },
+      'A considered acrylic-roof cover for reliable shelter while preserving useful daylight.',
   },
   bespoke: {
     label: projectDirectionLabels.bespoke,
     description:
-      'A design-led response for difficult geometry, levels, structure or wider project coordination.',
-    responseHeading: 'Bespoke pergola design',
+      'A more individual pergola or outdoor room shaped around the home, site and how the space will be used.',
+  },
+  'commercial-professional': {
+    label: projectDirectionLabels['commercial-professional'],
+    description:
+      'For venues, builders, contractors, architects and designers who need a clear project pathway.',
+  },
+};
+
+export const residentialProjectResultContent: Record<
+  ResidentialProjectFinderHomeDirection,
+  ProjectResultContent
+> = {
+  cover: {
+    responseHeading: 'Acrylic roof pergolas',
     responseExplanation:
-      'Start with a design-led pathway for difficult connections, structure, levels, geometry or coordination with a wider project.',
-    pathwayLabel: 'Explore bespoke pergolas',
+      'Start with a simple, considered cover designed around shelter, daylight and a clean connection to the house.',
+    pathwayLabel: 'Explore acrylic roof pergolas',
+    closeHeading: 'Ready to discuss a simple cover?',
+    closeExplanation:
+      'Send the direction and priorities you selected so Sanctuary can review the site and shape a useful next step.',
+    evidenceReasonBySlug: {
+      'dairy-flat-estate':
+        'An acrylic gable follows the house roofline while keeping daylight central to the brief.',
+      'st-heliers-townhouse':
+        'A compact opal-acrylic cover extends the home with a deliberate street-facing frame.',
+    },
+  },
+  bespoke: {
+    responseHeading: 'Custom pergola design',
+    responseExplanation:
+      'Start with a design-led pathway for an outdoor room, distinctive roof form or site that needs a more individual response.',
+    pathwayLabel: 'Explore custom pergolas',
+    closeHeading: 'Ready to discuss your custom design?',
+    closeExplanation:
+      'Send the direction and priorities you selected so Sanctuary can review the design intent, site and useful next step.',
     evidenceReasonBySlug: {
       'tindalls-bay-pavilion':
         'Mixed roof zones resolve a combined patio and carport around complex house geometry.',
-      'ardmore-box-carport':
-        'A wide clear-access span combines a box perimeter with an internal gable roof form.',
+      'warkworth-outdoor-room':
+        'Roofing, cedar lining, deck, fireplace and lighting were planned as one complete outdoor room.',
+    },
+  },
+};
+
+export const commercialProfessionalPathContent: Record<
+  CommercialProfessionalPath,
+  CommercialProfessionalPathContent
+> = {
+  venue: {
+    label: commercialProfessionalPathLabels.venue,
+    description:
+      'Create more usable customer space while coordinating the building, operations, access and installation.',
+    responseHeading: 'Extend your venue with confidence',
+    responseExplanation:
+      'Start with a commercial design-and-build pathway shaped around your venue, operating requirements and the experience beneath the roof.',
+    pathwayLabel: 'Explore commercial pergolas',
+    enquiryType: 'commercial',
+    closeHeading: 'Ready to explore an extension to your venue?',
+    closeExplanation:
+      'Share the site, intended use and operating constraints so Sanctuary can help define a practical next step.',
+    evidenceReasonBySlug: {
+      'goodhome-commercial-terrace':
+        'Two gables extend the restaurant courtyard while preserving the established villa-style facade.',
+      'lilliput-mini-golf':
+        'A straightforward pitched cover was coordinated within a wider customer-facing venue renovation.',
+    },
+  },
+  'builder-contractor': {
+    label: commercialProfessionalPathLabels['builder-contractor'],
+    description:
+      'A clearly defined pergola package coordinated with your programme, trades and site responsibilities.',
+    responseHeading: 'A defined pergola package for your build',
+    responseExplanation:
+      'Start with clear scope, responsibilities and delivery coordination around the drawings, programme and wider build.',
+    pathwayLabel: 'Explore builder collaboration',
+    enquiryType: 'professional',
+    closeHeading: 'Ready to define the pergola package?',
+    closeExplanation:
+      'Share the project stage, available documents and the scope Sanctuary should own so responsibilities are clear early.',
+    evidenceReasonBySlug: {
+      'lilliput-mini-golf':
+        'Supply and installation were coordinated within a consultant-led venue renovation and wider trade sequence.',
+      'kiwi-rail-platform':
+        'A long aluminium and acrylic canopy was delivered around defined building and lighting interfaces.',
+    },
+  },
+  'architects-designers': {
+    label: commercialProfessionalPathLabels['architects-designers'],
+    description:
+      'Early design input, buildability, technical coordination or delivery of a developed package.',
+    responseHeading: 'Pergola collaboration for architects and designers',
+    responseExplanation:
+      'Start with a professional pathway for design integration, buildability, scope and delivery within the wider project team.',
+    pathwayLabel: 'Explore professional collaboration',
+    enquiryType: 'professional',
+    closeHeading: 'Ready to bring Sanctuary into the project?',
+    closeExplanation:
+      'Share the brief, drawings and open decisions so Sanctuary can define where design input or delivery support is most useful.',
+    evidenceReasonBySlug: {
+      'kiwi-rail-platform':
+        'Sanctuary helped deliver an architect-led canopy with coordinated structure, roofing and lighting.',
+      'goodhome-commercial-terrace':
+        'The new gables align with the existing architecture while extending the customer-facing space.',
     },
   },
 };

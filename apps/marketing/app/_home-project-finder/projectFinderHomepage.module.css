@@ -189,12 +189,14 @@
 }
 
 .finder,
+.professionalChooser,
 .evidence,
 .close {
   padding-block: clamp(4.5rem, 8vw, 7.5rem);
 }
 
 .finder,
+.professionalChooser,
 .result,
 .briefRegion,
 .evidence,
@@ -215,6 +217,10 @@
 .finderHeader,
 .evidenceHeader {
   margin-bottom: clamp(2.5rem, 5vw, 4.5rem);
+}
+
+.professionalChooser {
+  background: var(--color-surface-neutral);
 }
 
 .finderHeader {
@@ -332,6 +338,10 @@
   font: 400 .9rem/1.58 var(--font-body);
 }
 
+.professionalPathCard {
+  background: var(--color-surface-elevated);
+}
+
 .directionState {
   grid-column: 2;
   width: fit-content;
@@ -400,6 +410,7 @@
 }
 
 .resultCopy h2:focus-visible,
+.professionalChooser h2:focus-visible,
 .briefHeader h3:focus-visible {
   outline: 2px solid var(--color-accent-olive);
   outline-offset: .4rem;
@@ -1004,6 +1015,7 @@
   }
 
   .finder,
+  .professionalChooser,
   .evidence,
   .close {
     padding-block: 4rem;

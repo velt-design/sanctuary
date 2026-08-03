@@ -2,39 +2,44 @@
 
 import Link from 'next/link';
 import type { RefObject } from 'react';
-import { buildProjectFinderDestinationHref } from '../../lib/projectFinderContinuation';
 import {
-  type ProjectDirection,
+  type CommercialProfessionalPath,
+  type ProjectFinderHomeDirection,
   type ProjectPriority,
 } from '../../lib/projectFinderContract';
 import { Container } from '../../components/marketing-foundation/Primitives';
-import { projectDirectionContent } from './projectFinderContent';
+import type { ProjectResultContent } from './projectFinderContent';
 import styles from './projectFinderHomepage.module.css';
 
 type ProjectFinderResultProps = {
-  direction: ProjectDirection;
+  content: ProjectResultContent;
+  direction: ProjectFinderHomeDirection;
   headingRef: RefObject<HTMLHeadingElement | null>;
-  onOpenBrief: () => void;
+  onOpenBrief?: () => void;
+  pathwayHref: string;
   priorities: readonly ProjectPriority[];
+  professionalPath?: CommercialProfessionalPath;
+  resultKey: string;
   resultRef: RefObject<HTMLElement | null>;
 };
 
 export default function ProjectFinderResult({
+  content,
   direction,
   headingRef,
   onOpenBrief,
+  pathwayHref,
   priorities,
+  professionalPath,
+  resultKey,
   resultRef,
 }: ProjectFinderResultProps) {
-  const content = projectDirectionContent[direction];
-  const pathwayHref = buildProjectFinderDestinationHref(direction, priorities);
-
   return (
     <section
       className={styles.result}
       ref={resultRef}
       aria-labelledby="project-finder-result-heading"
-      data-project-finder-result={direction}
+      data-project-finder-result={resultKey}
     >
       <Container className={styles.resultLayout} width="wide">
         <div className={styles.resultCopy}>
@@ -49,15 +54,18 @@ export default function ProjectFinderResult({
             className={styles.resultPrimaryAction}
             data-project-finder-event="project_pathway_click"
             data-project-direction={direction}
+            data-professional-path={professionalPath}
             data-project-priorities={priorities.join(',')}
             data-source-component="project_finder"
             href={pathwayHref}
           >
             {content.pathwayLabel}
           </Link>
-          <button onClick={onOpenBrief} type="button">
-            Refine what matters
-          </button>
+          {onOpenBrief ? (
+            <button onClick={onOpenBrief} type="button">
+              Refine what matters
+            </button>
+          ) : null}
           <div className={styles.escapeActions}>
             <Link href="/projects">View all projects</Link>
           </div>

@@ -390,41 +390,58 @@ also remain permanent redirects; none is retained as a second homepage tree.
 The production page reuses the shared Foundation header, footer and actions,
 live Google review data, governed project catalogue and media, consent owner
 and enquiry-context builder. Its immersive hero, ruled proof rail, three
-image-led directions, optional six-priority brief, recommendation, two governed
-projects per direction and evidence-first conversion close remain the approved
-visible structure. Mobile exposes one hero action and compact complete direction
+image-led directions, tailored recommendation, two governed projects per result
+and evidence-first conversion close remain the approved visible structure. The
+three first-layer choices are `Simple cover`, `Custom design` and `Commercial /
+Professional`. The commercial/professional choice reveals a second three-card
+radio group for `Extending a Venue`, `Builder or Contractor` and `Architects and
+Designers`; it is part of the same owner and page, not a new route or homepage
+variant. The optional six-priority brief remains available only for the two
+residential choices. Mobile exposes one hero action and compact complete choice
 rows at 320-430px; the hero continues to fill tall 320px viewports. Tablet keeps
 full-width landscape rows through 900px. The root-only scrolled header uses an
 opaque surface so content cannot ghost through it. Only the hero is initially
-high priority; direction and evidence images are lazy.
+high priority; choice and evidence images are lazy.
 
-The client finder uses one accessible radio group, native checkboxes, a
-three-item priority ceiling, visible focus and one polite live region. URL state
-contains only one valid `project` and up to three canonical `priorities`, supports
-Back, Forward and refresh, and stores no visitor-entered text or PII. The
-no-JavaScript fallback exposes all three service routes plus quiet commercial
-and professional paths. The interactive audience paths remain a secondary line,
-not a fourth direction card. Invalid, duplicate, excess and wrong-route values
-fail closed.
+The client finder uses one first-layer radio group, a conditionally mounted
+commercial/professional radio group, native residential checkboxes, a three-item
+priority ceiling, visible focus and one polite live region. URL state contains
+one valid `project`, either up to three canonical residential `priorities` or one
+canonical `professional_path`, supports Back, Forward and refresh, and stores no
+visitor-entered text or PII. The no-JavaScript fallback exposes the two
+residential destinations and all three commercial/professional destinations
+directly. Invalid, duplicate, excess, incompatible and wrong-route values fail
+closed.
 
-Recommended service and project-detail links retain the closed direction and
-priorities. A viewed project may add one validated matching reference slug. The
-destination service repeats the governed brief and preserves it through its
-embedded form and shared header; finder-origin project detail suppresses the
+`Simple cover` continues to `/acrylic-roof-pergolas-auckland`; `Custom design`
+continues to `/custom-pergolas-auckland`; `Extending a Venue` continues to
+`/commercial-pergolas-auckland`; the builder/contractor and architect/designer
+results continue to `/architects-designers-builders`. Recommended residential
+service and project-detail links retain the closed direction and priorities. A
+viewed residential project may add one validated matching reference slug. The
+matching residential service repeats the governed brief and preserves it through
+its embedded form and shared header; finder-origin project detail suppresses the
 early introduction CTA while its related-project links, final CTA and header
-retain the context. Project canonicals and ordinary non-finder journeys remain
-unchanged. The in-page `Send your brief` action appears only after the selected
-direction and built work. Shared header and footer route attribution canonicalise
-Next's production `/index` alias to `/`.
+retain the context. Commercial/professional service, header, footer and
+direct-enquiry links carry the closed direction and `professional_path`, with
+the correct commercial or professional enquiry audience. Destination page
+content is not owned or
+changed by this homepage refinement. Project canonicals and ordinary non-finder
+journeys remain unchanged. The in-page `Send your brief` action appears only
+after the selected result and built work. Shared header and footer route
+attribution canonicalise Next's production `/index` alias to `/`.
 
 Consent-aware production analytics use `homepage_variant:
 project_finder_home_v2`, `source_path: /` and the existing closed finder event
 names. `project_result_view`, `project_view_click` and
-`project_audience_path_click` remain separate intents; priority changes do not
-repeat a result view and the retired reference action has no event. The shared
-header enquiry maps into `project_finder_direct_enquiry_click`. Events carry
-only closed direction, priority, component, project, audience, destination and
-validated enquiry-audience values. Enquiry continuation deliberately retains
+`project_pathway_click` remain separate intents; `professional_path_select` and
+`professional_path_change` measure the nested choice. Priority changes do not
+repeat a result view and choosing `Commercial / Professional` does not emit a
+result view until one of its three paths is selected. The retired reference
+action has no event. The shared header enquiry maps into
+`project_finder_direct_enquiry_click`. Events carry only closed direction,
+professional-path, priority, component, project, destination and validated
+enquiry-audience values. Enquiry continuation deliberately retains
 `source_experience: project-finder-home-v1` as the stable journey contract; the
 v2 homepage variant distinguishes the production release without breaking the
 existing enquiry schema.
@@ -434,8 +451,9 @@ The focused production owner is
 schema, the retired-route redirect, 320-1440 responsive behavior, mobile hero
 height, root-only scrolled-header opacity, URL/history state, keyboard and
 no-JavaScript access, consent-aware analytics, lazy image loading, service and
-project continuation, mobile-menu state, overflow and the complete selected
-journey. The authoritative product and acceptance history remains
+residential project continuation, all five tailored results, mobile-menu state,
+overflow and the complete residential and commercial/professional journeys. The
+authoritative product and acceptance history remains
 `sanctuary-project-led-visual-finder-homepage-prototype.md`.
 
 ## Verification
