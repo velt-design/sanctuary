@@ -6,6 +6,7 @@ describe('project finder governed media', () => {
   it('resolves the hero, choices and two evidence projects per direction', () => {
     const media = buildProjectFinderHomepageMedia(projects);
     expect(media.hero.projectSlug).toBe('warkworth-outdoor-room');
+    expect(media.hero.mobileSrc).toBe('/images/warkworth-gable-02.jpg');
     expect(Object.values(media.choiceByDirection).map((item) => item.projectSlug))
       .toEqual([
         'dairy-flat-estate',

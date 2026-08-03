@@ -393,7 +393,11 @@ export default function ProjectFinder({
         id="project-finder"
         aria-labelledby="project-finder-heading"
       >
-        <Container width="wide">
+        <Container
+          data-project-finder-opening
+          id="project-finder-opening"
+          width="wide"
+        >
           <header className={styles.finderHeader}>
             <p className={styles.eyebrow}>Find your starting point</p>
             <h2 id="project-finder-heading">
@@ -408,7 +412,7 @@ export default function ProjectFinder({
             aria-labelledby="project-finder-heading"
           >
             <legend className="visually-hidden">Choose a project direction</legend>
-            <div className={styles.directionGrid}>
+            <div className={`${styles.directionGrid} ${styles.primaryDirectionGrid}`}>
               {projectFinderHomeDirections.map((direction, index) => {
                 const content = projectDirectionContent[direction];
                 const choiceMedia = media.choiceByDirection[direction];

@@ -22,6 +22,48 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
 }
 
+async function waitForCinematicWelcome(page: Page) {
+  await expect(page.locator('[data-homepage-welcome]')).toBeHidden({
+    timeout: 3_000,
+  });
+}
+
+async function projectFinderOpeningGeometry(page: Page) {
+  return page.locator('[data-project-finder-opening]').evaluate((opening) => {
+    const openingRect = opening.getBoundingClientRect();
+    const viewportTop = window.visualViewport?.offsetTop ?? 0;
+    const viewportBottom = viewportTop
+      + (window.visualViewport?.height ?? window.innerHeight);
+    const headerBottom = Math.max(
+      viewportTop,
+      document.querySelector<HTMLElement>('header.site')
+        ?.getBoundingClientRect().bottom ?? viewportTop,
+    );
+    const availableTop = headerBottom + 8;
+    const availableBottom = viewportBottom - 8;
+    const availableHeight = Math.max(0, availableBottom - availableTop);
+    return {
+      availableBottom,
+      availableHeight,
+      availableTop,
+      bottom: openingRect.bottom,
+      fits: openingRect.height <= availableHeight + 1,
+      top: openingRect.top,
+    };
+  });
+}
+
+async function expectProjectFinderOpeningAligned(page: Page) {
+  await expect.poll(async () => {
+    const geometry = await projectFinderOpeningGeometry(page);
+    if (geometry.fits) {
+      return geometry.top >= geometry.availableTop - 2
+        && geometry.bottom <= geometry.availableBottom + 2;
+    }
+    return Math.abs(geometry.top - geometry.availableTop) <= 2;
+  }).toBe(true);
+}
+
 async function projectFinderEvents(page: Page) {
   return page.evaluate(() => (
     (window.dataLayer ?? []).filter((entry): entry is Record<string, unknown> => (
@@ -78,15 +120,56 @@ test('project finder is the indexable live homepage and the prototype URL redire
     'href',
     publicOrigin,
   );
+  await waitForCinematicWelcome(page);
+  const heroJourney = page.locator('[data-homepage-hero-journey]');
+  const header = page.locator('header.site');
+  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'image');
+  await expect(header).toHaveAttribute('data-hero-navigation', 'overlay');
+  await expect(header.locator('.nav-cta')).toHaveCount(0);
+  await expect(page.getByRole('heading', {
+    level: 1,
+    name: 'Outdoor spaces designed around the way you live.',
+  })).toBeHidden();
+  await expect(page.getByText('Fixed-roof pergola design and build in Auckland'))
+    .toBeHidden();
+  const revealArrow = page.getByRole('button', {
+    name: 'Reveal the Sanctuary introduction',
+  });
+  await expect(page.locator('[data-homepage-hero-symbol="chevron"]'))
+    .toHaveCount(2);
+  await expect(revealArrow).toBeVisible();
+  const chevronGeometry = await revealArrow.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const styles = getComputedStyle(element);
+    return {
+      backgroundColor: styles.backgroundColor,
+      borderStyle: styles.borderStyle,
+      height: rect.height,
+      width: rect.width,
+    };
+  });
+  expect(chevronGeometry.width).toBeGreaterThanOrEqual(56);
+  expect(chevronGeometry.height).toBeGreaterThanOrEqual(64);
+  expect(chevronGeometry.borderStyle).toBe('none');
+  expect(chevronGeometry.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+  await revealArrow.click();
+  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'story');
   await expect(page.getByRole('heading', {
     level: 1,
     name: 'Outdoor spaces designed around the way you live.',
   })).toBeVisible();
   await expect(page.getByText('Fixed-roof pergola design and build in Auckland'))
     .toBeVisible();
+  await expect(page.getByRole('link', {
+    name: 'Warkworth Outdoor Room, Warkworth',
+  })).toBeVisible();
+  const continueArrow = page.getByRole('button', {
+    name: 'Continue to choose your project starting point',
+  });
+  await expect(continueArrow).toBeVisible();
   await expect(page.getByRole('complementary', { name: 'Why Sanctuary' })
     .getByRole('link', { name: /61 Google reviews/ })).toBeVisible();
-  await expect(page.locator('header.site')).toBeVisible();
+  await expect(header).toBeVisible();
   await expect(page.locator('footer')).toBeVisible();
   await expect(page.locator('footer').getByRole('link', {
     name: 'Start your project',
@@ -106,7 +189,9 @@ test('project finder is the indexable live homepage and the prototype URL redire
   await expect(page.getByRole('img', {
     name: 'Interior outdoor room with cedar ceiling, pendant lighting and lounge seating',
   }).first()).toHaveAttribute('fetchpriority', 'high');
-  await expect(page.locator('main img[loading="eager"]')).toHaveCount(0);
+  await expect(page.locator('[data-homepage-hero] img'))
+    .toHaveAttribute('loading', 'eager');
+  await expect(page.locator('main img[loading="eager"]')).toHaveCount(1);
   await expect(page.locator('main').getByRole('link', { name: 'Start your project' }))
     .toBeHidden();
   await expect(page.locator('h1')).toHaveCount(1);
@@ -126,15 +211,18 @@ test('project finder is the indexable live homepage and the prototype URL redire
   await expectNoHorizontalOverflow(page);
 
   await page.evaluate(() => window.scrollTo(0, 240));
-  await expect(page.locator('header.site')).toHaveAttribute(
+  await expect(header).toHaveAttribute(
     'data-hero-navigation',
-    'solid',
+    'overlay',
   );
-  await expect(page.locator('header.site')).toHaveCSS(
-    'background-color',
-    'rgb(248, 248, 245)',
-  );
-  await page.evaluate(() => window.scrollTo(0, 0));
+  await continueArrow.click();
+  await expect(page.getByRole('heading', {
+    level: 2,
+    name: 'Which starting point best describes your project?',
+  })).toBeInViewport();
+  await expect(header).toHaveAttribute('data-hero-navigation', 'solid');
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'auto' }));
+  await expect(header).toHaveAttribute('data-hero-navigation', 'overlay');
 
   await page.goto('/sitemap.xml');
   await expect(page.locator('body')).not.toContainText(
@@ -151,6 +239,109 @@ test('project finder is the indexable live homepage and the prototype URL redire
   await page.goto('/home-project-finder?project=cover');
   await expect(page).toHaveURL(/\/\?project=cover$/);
   await expect(page.locator('[data-project-finder-result="cover"]')).toBeVisible();
+});
+
+test('the welcome screen is immediate, bounded and reduced-motion safe', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await setAnalyticsConsent(page, false);
+  await page.route('**/_next/image?*', async (route) => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  const welcome = page.locator('[data-homepage-welcome]');
+  await expect(welcome).toBeVisible();
+  await expect(welcome.locator('span')).toHaveText('Welcome to');
+  await expect(welcome.locator('strong')).toHaveText('Sanctuary Pergolas');
+  await expect(welcome.locator('a, button, header, nav')).toHaveCount(0);
+  await expect(welcome).toHaveCSS('background-color', 'rgb(23, 24, 23)');
+  await expect(welcome).toHaveCSS('transition-duration', '0s');
+  await expect(page.locator('header.site')).toBeHidden();
+  await expect(welcome).toBeHidden({ timeout: 2_500 });
+  await expect(page.locator('header.site')).toBeVisible();
+  await expect(page.locator('[data-homepage-hero]')).toBeInViewport();
+});
+
+test('mobile art direction and two deliberate scroll gestures lead into text-only choices', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await setAnalyticsConsent(page, false);
+  await page.goto('/');
+  await waitForCinematicWelcome(page);
+
+  const heroJourney = page.locator('[data-homepage-hero-journey]');
+  const heroImage = page.locator('[data-homepage-hero] img');
+  await expect.poll(() => heroImage.evaluate((image) => (
+    (image as HTMLImageElement).currentSrc
+  ))).toContain('warkworth-gable-02.jpg');
+  await expect.poll(() => heroImage.evaluate((image) => (
+    (image as HTMLImageElement).naturalWidth
+  ))).toBeGreaterThan(0);
+  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'image');
+
+  await page.mouse.wheel(0, 600);
+  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'story');
+  await expect(page.getByRole('heading', {
+    level: 1,
+    name: 'Outdoor spaces designed around the way you live.',
+  })).toBeVisible();
+
+  await page.waitForTimeout(220);
+  await page.mouse.wheel(0, 600);
+  const finderHeading = page.getByRole('heading', {
+    level: 2,
+    name: 'Which starting point best describes your project?',
+  });
+  await expect(finderHeading).toBeInViewport();
+  await expectProjectFinderOpeningAligned(page);
+
+  const primaryDirections = page.locator('[data-project-direction]');
+  await expect(primaryDirections).toHaveCount(3);
+  await expect(primaryDirections.locator('img')).toHaveCount(3);
+  expect(await primaryDirections.locator('img').evaluateAll((images) => (
+    images.every((image) => image.getClientRects().length === 0)
+  ))).toBe(true);
+  const simpleCoverTitle = page.getByRole('radio', { name: /Simple cover/ })
+    .locator('strong');
+  const optionTitleSize = await simpleCoverTitle.evaluate((element) => (
+    Number.parseFloat(getComputedStyle(element).fontSize)
+  ));
+  expect(optionTitleSize).toBeGreaterThanOrEqual(36);
+
+  await page.getByRole('radio', { name: /Commercial \/ Professional/ }).click();
+  await expect(page.locator('[data-professional-path]').first().locator('img'))
+    .toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test('the finder landing contains the complete opening whenever the viewport can hold it', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await setAnalyticsConsent(page, false);
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForCinematicWelcome(page);
+    await page.getByRole('button', {
+      name: 'Reveal the Sanctuary introduction',
+    }).click();
+    await page.getByRole('button', {
+      name: 'Continue to choose your project starting point',
+    }).click();
+    await expectProjectFinderOpeningAligned(page);
+    expect((await projectFinderOpeningGeometry(page)).fits).toBe(true);
+    await expectNoHorizontalOverflow(page);
+  }
 });
 
 test('the production finder stays within its repeatable interaction and layout budget', async ({
@@ -679,6 +870,7 @@ test('no-JavaScript visitors receive direct project and enquiry pathways', async
     level: 2,
     name: 'Choose the path that best fits your project.',
   })).toBeVisible();
+  await expect(page.locator('header.site')).toBeVisible();
   await expect(page.locator('[data-project-finder-interactive]')).toBeHidden();
   await expect(page.getByRole('link', { name: 'Simple cover' }))
     .toHaveAttribute('href', '/acrylic-roof-pergolas-auckland');

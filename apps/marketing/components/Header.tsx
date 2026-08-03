@@ -174,7 +174,13 @@ export default function Header() {
     let rafId = 0;
     const syncHeroHeader = () => {
       rafId = 0;
-      setHeroHeaderScrolled(window.scrollY > HERO_HEADER_SOLID_SCROLL_PX);
+      const homepageHeroJourney = currentPath === '/'
+        ? document.querySelector<HTMLElement>('[data-homepage-hero-journey]')
+        : null;
+      const solidThreshold = homepageHeroJourney
+        ? homepageHeroJourney.offsetTop + homepageHeroJourney.offsetHeight - 1
+        : HERO_HEADER_SOLID_SCROLL_PX;
+      setHeroHeaderScrolled(window.scrollY > solidThreshold);
     };
     const scheduleHeroHeaderSync = () => {
       if (rafId) return;
@@ -183,9 +189,11 @@ export default function Header() {
 
     syncHeroHeader();
     window.addEventListener('scroll', scheduleHeroHeaderSync, { passive: true });
+    window.addEventListener('resize', scheduleHeroHeaderSync);
     return () => {
       if (rafId) window.cancelAnimationFrame(rafId);
       window.removeEventListener('scroll', scheduleHeroHeaderSync);
+      window.removeEventListener('resize', scheduleHeroHeaderSync);
     };
   }, [currentPath, isHeroOverlayRoute]);
 
@@ -395,7 +403,7 @@ export default function Header() {
             </div>
           </nav>
           <div className="header-actions">
-            {showDesktopCta ? (
+            {showDesktopCta && (currentPath !== '/' || heroHeaderScrolled) ? (
               <Link
                 href={headerEnquiryHref}
                 className="nav-cta"

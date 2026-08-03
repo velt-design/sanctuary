@@ -119,13 +119,7 @@ describe('shared mobile header interaction', () => {
     expect(header?.getAttribute('data-hero-navigation')).toBe('overlay');
     expect(brandLink?.getAttribute('href')).toBe('/');
     expect(activePrimaryLink).toBeNull();
-    expect(desktopCta?.getAttribute('href')).toBe(buildEnquiryHref({
-      enquiryType: 'residential',
-      sourcePath: '/',
-      sourceComponent: 'header',
-      sourceExperience: 'project-finder-home-v1',
-    }));
-    expect(desktopCta?.getAttribute('data-enquiry-type')).toBe('residential');
+    expect(desktopCta).toBeNull();
   });
 
   it('balances the four desktop links around the viewport centre', async () => {

@@ -1431,3 +1431,59 @@ closed values. The commercial/professional parent does not emit a result view;
 the completed child result does. Responsive verification covers both choice
 layers and all five results from 320 to 1440 pixels, including overflow, touch
 targets, history, focus, attribution and no-JavaScript access.
+
+---
+
+# 29. Approved cinematic opening refinement
+
+The 3 August 2026 cinematic refinement changes the opening of the existing
+production homepage in place. It does not add a route, homepage variant, content
+owner or alternate implementation. `/` remains owned by
+`apps/marketing/app/_home-project-finder/`; `project_finder_home_v2` and the
+stable `project-finder-home-v1` enquiry schema do not change. The proof rail,
+finder, all five results, built evidence, URL/history behavior and destination
+pages remain as approved in section 28.
+
+The server-rendered first paint includes a fixed charcoal welcome veil with no
+visible or operable shared header. `WELCOME TO` is oversized muted grey and
+`SANCTUARY PERGOLAS` is oversized white. The veil waits for the existing
+priority Warkworth hero image to decode, exits after a 1.4-second fallback if
+decoding does not resolve, holds long enough to avoid a cached-image flash, and
+uses no fade when `prefers-reduced-motion: reduce` is active. It is visual only,
+does not capture focus and is removed from the JavaScript-disabled rendering.
+
+After the veil, the first viewport is the existing hero project image only,
+beneath the transparent shared header. The visible desktop header enquiry action
+is withheld. One bottom-centred bold open chevron advances the native document
+scroll. It has no stem, circle, label, background or other enclosing shape; its
+invisible hit area remains at least 56 pixels wide and its heavier stroke remains
+legible over both responsive crops. Through 760px the priority picture uses the
+portrait `warkworth-gable-02.jpg`; larger widths retain the existing wide project
+image. The hero remains sticky while the first forward wheel gesture, upward
+touch swipe, Page Down, Space or Arrow Down reveals the existing shade, eyebrow,
+H1, support and Warkworth project attribution. The next equivalent gesture, or
+the second matching chevron, uses the established `project_finder_start_click`
+event and advances to the inner question-and-three-choices wrapper. The landing
+uses the actual fixed-header bottom and visual viewport: it centres the complete
+wrapper when it fits, and otherwise aligns its top eight pixels beneath the
+header for natural continuation. It does not target the outer section padding.
+Input returns to native document
+scrolling at that boundary, reverse scrolling is not intercepted and reduced
+motion uses immediate movement. No hero enquiry CTA is rendered.
+
+The shared header stays transparent at mobile and desktop widths while either
+hero stage is active, and becomes opaque only after the hero journey boundary.
+Its normal route-aware project action returns at that boundary. The story remains
+complete at the short 360x400 matrix size, while 320x568, 390x844 and 1440x900
+retain the full cinematic scale. The staged owner reserves its full scroll
+geometry from first paint, so revealing content does not shift downstream
+layout. JavaScript-disabled visitors see the complete hero story immediately,
+the shared header remains available and the direct five-destination fallback is
+unchanged.
+
+At 760px and below, the first three project directions are text-only ruled rows
+with oversized direction titles and no rendered card image. This refinement is
+limited to the initial starting-point group: the nested commercial/professional
+pathway cards remain image-led, and tablet/desktop retain the existing imagery.
+Mobile-only spacing contracts enough for the complete opening to fit common
+phone heights while preserving every description and the full control target.

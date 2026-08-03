@@ -21,6 +21,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-03 | Marketing Cinematic Hero         | Promoted | Consume at most one forward gesture per active hero stage, then land against the measured inner finder opening rather than padded section chrome. Centre the complete opening when it fits the live visual viewport, otherwise top-align it beneath the fixed header. Preserve reverse scrolling, responsive priority art direction and primary-mobile text-only choices. |
+| 2026-08-03 | Marketing Welcome Stacking       | Promoted | A page-owned fixed welcome veil can still sit beneath a shell-owned fixed header because an ancestor creates a lower stacking context. Verify the rendered first paint, hide and disable the global header through a page-presence hook while the veil exists, and provide an explicit no-JavaScript override so progressive enhancement cannot remove navigation. |
 | 2026-08-01 | Project Close Journey            | Promoted | Closing is a dedicated explicit lifecycle flow, never a generic state dropdown. Preserve stage, show cancellation/queue/reopen consequences, require a structured Lost outcome with optional note, and keep reasons for Cancelled/Complete. Bulk stale-Enquiry closure selects none by default, requires an exact second confirmation, revalidates report fingerprints and current activity/future-Waiting protection server-side, and rejects the whole batch on drift. |
 | 2026-08-01 | Project Lost Close Reasons       | Promoted | Treat the selected structured Lost outcome as the business reason. Do not force staff to repeat it in free text; allow an optional note, derive a neutral server cancellation explanation for remaining work, and retain explicit reasons for Waiting, Cancelled, and Complete. |
 | 2026-08-01 | Schedule Board Intent Queue      | Promoted | Keep confirmed Schedule state separate from visible Board intent. Run disjoint crew placements concurrently, serialize overlapping project/lane resources, and replay every newer operation after validated responses or scoped rollback so response order cannot rewind staff intent. Ambiguous recovery blocks only affected resources; cross-instance clients remain read-only because they do not own the optimistic layer. |
@@ -4623,3 +4625,59 @@ Promoted to: `docs/project-command-centre-architecture.md`; `docs/platform-workf
 Related docs/tests: `apps/portal/components/projects/ProjectPage/tabs/overview/ProjectCloseDialog.tsx`; `apps/portal/app/staff/projects/work-queue/InactiveEnquiryReview.client.tsx`; `supabase/migrations/20260801000002_project_enquiry_bulk_close.sql`; `test/project-enquiry-bulk-close-migration.test.ts`; `playwright/portal.command-centre.spec.ts`; `playwright/portal.project-work-queue-fixture.spec.ts`
 
 Release evidence: exact rollback rehearsals and schema-only applies passed in staging and production; production retained 1,149/1,149 state coverage and zero batch receipts. Protected staging and live production then passed authenticated GET-only Overview/Work Queue evidence, including opening Close Project without submitting. Production's first smoke correctly failed closed on the previously staging-only V3 Projects-index prerequisite; applying its already-reviewed exact read migration restored the route to `200` before release handoff.
+
+### 2026-08-03 - Marketing Welcome Stacking - Shell Chrome Must Be Verified Visually
+
+Date: 2026-08-03
+Area: Marketing homepage welcome veil, shared header and progressive enhancement
+Status: Promoted
+Decision or mistake: The first cinematic welcome veil used a larger local
+`z-index` than the fixed shared header, but its page ancestor established a lower
+stacking context. DOM assertions confirmed that the veil itself contained no
+header or controls while the rendered header remained visible above it.
+Why it mattered: The production opening contradicted the approved headerless
+welcome moment, and a structural browser test could not see the visual layering
+failure. Hiding the header without considering no JavaScript would have fixed the
+enhanced path by making the fallback navigation disappear permanently.
+Current guardrail: For page-owned fullscreen presentation above shared shell
+chrome, verify the actual first paint. Use a stable page-presence hook to hide,
+disable and remove the shared header from visibility while the veil exists, then
+restore it when the veil unmounts. Pair that rule with an explicit `<noscript>`
+override so the page content and navigation remain available without hydration.
+Promoted to: `docs/marketing-ui-foundation.md`;
+`docs/sanctuary-project-led-visual-finder-homepage-prototype.md`;
+`docs/testing-and-qa.md`
+Related docs/tests: `apps/marketing/styles/header.css`;
+`apps/marketing/app/_home-project-finder/CinematicHero.tsx`;
+`playwright/marketing.home-project-finder.spec.ts`
+
+### 2026-08-03 - Marketing Cinematic Hero - Bounded Gestures And Mobile Art Direction
+
+Date: 2026-08-03
+Area: Marketing homepage hero interaction and mobile starting-point hierarchy
+Status: Promoted
+Decision or mistake: Continuous native scrolling made the pinned image-to-story
+transition easy to enter but did not guarantee that the next deliberate gesture
+would leave the story. The wide hero crop and image-led starting-point cards also
+gave narrow screens less useful composition and weaker choice hierarchy.
+Why it mattered: The opening felt staged without having a dependable second
+step, while mobile visitors spent valuable viewport space on repeated imagery
+instead of the three decisions.
+Current guardrail: While the cinematic hero is active, consume at most one
+forward wheel gesture, upward swipe or forward keyboard scroll per stage, then
+release input at the finder boundary and leave reverse scrolling native. Use a
+responsive priority picture for genuine mobile art direction. The second stage
+must target the measured inner finder opening, centre it when its complete bounds
+fit between the live header and visual viewport, and top-align it beneath the
+header when they do not; never infer this landing from outer section padding.
+Limit the
+text-only, oversized ruled-row treatment to the primary mobile directions; keep
+the nested professional chooser and wider layouts image-led. Verify rendered
+current image source, two-gesture advancement, reduced motion, choice-image
+visibility, landing top/bottom containment and horizontal containment.
+Promoted to: `docs/marketing-ui-foundation.md`;
+`docs/sanctuary-project-led-visual-finder-homepage-prototype.md`;
+`docs/testing-and-qa.md`
+Related docs/tests: `apps/marketing/app/_home-project-finder/CinematicHero.tsx`;
+`apps/marketing/app/_home-project-finder/projectFinderHomepage.module.css`;
+`playwright/marketing.home-project-finder.spec.ts`

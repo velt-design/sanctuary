@@ -202,6 +202,27 @@ body.mobile-menu-open header.site .site-brand{ color:var(--fg) !important; }
 body.mobile-menu-open .mobile-toggle{ background:transparent !important; color:var(--fg) !important; }
 body.mobile-menu-open .mobile-toggle:active{background:color-mix(in srgb, var(--headerSurface) 78%, var(--accentRed) 22%) !important}
 
+/* The production homepage keeps its navigation over both cinematic hero stages. */
+body:has(main[data-project-finder-home-variant]) header.site.site--hero-overlay:not(.site--hero-scrolled){
+  border-bottom-color:rgba(255,255,255,.5);
+  background:transparent;
+  color:#fff;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+body:has(main[data-project-finder-home-variant]) header.site.site--hero-overlay:not(.site--hero-scrolled) :is(.site-brand,.navlink-btn){color:#fff}
+body:has(main[data-project-finder-home-variant]) header.site.site--hero-overlay:not(.site--hero-scrolled) .mobile-toggle{
+  border-color:rgba(255,255,255,.62);
+  color:#fff;
+}
+body:has(main[data-project-finder-home-variant]) header.site.site--hero-overlay:not(.site--hero-scrolled) .mobile-toggle:focus-visible{outline-color:#fff}
+body:has([data-homepage-welcome]) header.site{
+  opacity:0 !important;
+  visibility:hidden;
+  pointer-events:none !important;
+  transition:none !important;
+}
+
 @media (min-width:901px){
   header.site.site--hero-overlay:not(.site--hero-scrolled){
     border-bottom-color:rgba(255,255,255,.5);

@@ -390,18 +390,42 @@ also remain permanent redirects; none is retained as a second homepage tree.
 The production page reuses the shared Foundation header, footer and actions,
 live Google review data, governed project catalogue and media, consent owner
 and enquiry-context builder. Its immersive hero, ruled proof rail, three
-image-led directions, tailored recommendation, two governed projects per result
+desktop image-led directions, tailored recommendation, two governed projects per result
 and evidence-first conversion close remain the approved visible structure. The
 three first-layer choices are `Simple cover`, `Custom design` and `Commercial /
 Professional`. The commercial/professional choice reveals a second three-card
 radio group for `Extending a Venue`, `Builder or Contractor` and `Architects and
 Designers`; it is part of the same owner and page, not a new route or homepage
 variant. The optional six-priority brief remains available only for the two
-residential choices. Mobile exposes one hero action and compact complete choice
-rows at 320-430px; the hero continues to fill tall 320px viewports. Tablet keeps
-full-width landscape rows through 900px. The root-only scrolled header uses an
-opaque surface so content cannot ghost through it. Only the hero is initially
-high priority; choice and evidence images are lazy.
+residential choices. The opening is now cinematic without changing this owner:
+an immediate charcoal welcome veil presents `WELCOME TO` in muted grey and
+`SANCTUARY PERGOLAS` in white, with the shared header inaccessible and visually
+absent. It leaves as soon as the priority Warkworth hero image is decoded, or
+after a bounded 1.4-second fallback, and removes the fade for reduced-motion
+visitors. The first full viewport is the project image with a transparent shared
+header, no enquiry action and one bottom-centred bold open chevron, without a
+stem, label, background or visible enclosing shape. Its Warkworth interior uses
+the dedicated portrait `warkworth-gable-02.jpg` art direction through 760px and
+the existing wide project image above that breakpoint. While the hero journey
+is active, one forward wheel gesture, upward touch swipe or forward keyboard
+scroll reveals the existing eyebrow, headline, support and Warkworth attribution;
+the next advances to the measured question-and-three-choices wrapper rather than
+the finder section's padded edge. When that complete wrapper fits between the
+live header and visual viewport bottom it is centred in the available space;
+otherwise its top is aligned eight pixels beneath the header. The matching
+chevrons provide the same two steps. The bounded controller releases at the finder boundary, keeps reverse
+scrolling native and does not add layout height dynamically. The header stays transparent and withholds its
+desktop project action until the hero journey is left, then returns to its opaque
+surface. JavaScript-disabled visitors bypass the veil and receive the complete
+hero story plus the existing direct fallback. Mobile keeps compact complete
+choice rows at 320-430px, tablet keeps full-width landscape rows through 900px,
+and short-height layouts retain every required story element without colliding
+with the header. Through 760px the first three starting-point choices become
+large-title, text-only ruled rows; their imagery remains lazy and is not rendered.
+Their vertical gaps and padding contract modestly so the complete opening fits
+common phone viewports without removing copy or reducing touch targets.
+The nested commercial/professional chooser keeps its existing image-led cards.
+Only the hero is initially high priority; choice and evidence images are lazy.
 
 The client finder uses one first-layer radio group, a conditionally mounted
 commercial/professional radio group, native residential checkboxes, a three-item
@@ -449,10 +473,12 @@ existing enquiry schema.
 The focused production owner is
 `playwright/marketing.home-project-finder.spec.ts`. It covers root metadata and
 schema, the retired-route redirect, 320-1440 responsive behavior, mobile hero
-height, root-only scrolled-header opacity, URL/history state, keyboard and
-no-JavaScript access, consent-aware analytics, lazy image loading, service and
-residential project continuation, all five tailored results, mobile-menu state,
-overflow and the complete residential and commercial/professional journeys. The
+height, the decoded-image welcome deadline, reduced-motion exit, image and story
+stages, both down controls, transparent-to-solid root header boundary,
+URL/history state, keyboard and no-JavaScript access, consent-aware analytics,
+lazy image loading, service and residential project continuation, all five
+tailored results, mobile-menu state, overflow and the complete residential and
+commercial/professional journeys. The
 authoritative product and acceptance history remains
 `sanctuary-project-led-visual-finder-homepage-prototype.md`.
 

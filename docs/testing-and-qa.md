@@ -142,13 +142,23 @@ The production project-finder homepage has a focused lane:
 `npx playwright test playwright/marketing.home-project-finder.spec.ts --config=playwright.marketing.config.ts`.
 It covers the complete required 320-to-1440 responsive matrix, canonical
 indexable metadata and WebSite/WebPage schema, the permanent noindex comparison
-redirect, radio keyboard and screen-reader structure, compact mobile and tablet
-cards for both choice layers, full-height narrow hero, root-only opaque scrolled
-header, 44-pixel touch dimensions, reduced motion, JavaScript-disabled fallback,
-consent granted/denied analytics, deterministic two-project evidence for all five
-results, residential service/project continuation, commercial/professional
-service and enquiry attribution, URL history, mobile-menu state and local
-CLS/first-result performance ceilings. For the LCP ceiling, start a local
+redirect, radio keyboard and screen-reader structure, mobile text-only oversized
+first-layer choices, retained image-led nested choices and tablet cards,
+full-height narrow hero, responsive Warkworth art direction, root-only opaque scrolled
+header, decoded-image welcome deadline, image and story stages, both bold open
+chevron controls, one forward input gesture per hero stage, measured finder
+landing containment at 390x844, 430x932 and 1440x900, 44-pixel touch dimensions,
+reduced motion, JavaScript-disabled
+fallback, consent granted/denied analytics, deterministic two-project evidence
+for all five results, residential service/project continuation,
+commercial/professional service and enquiry attribution, URL history,
+mobile-menu state and local CLS/first-result performance ceilings. The welcome
+check must prove the shared header is visually absent while the veil exists,
+returns after it leaves, and remains available without JavaScript. Representative
+visual evidence includes readable story composition at 320x568, 360x400,
+390x844 and 1440x900, with the transparent header and absent header CTA through
+both hero stages and the solid header only after the hero boundary. For the LCP
+ceiling, start a local
 production build,
 point `MARKETING_BASE_URL` at it, and add
 `MARKETING_HOMEPAGE_PRODUCTION_PERF=1`; development compilation is deliberately

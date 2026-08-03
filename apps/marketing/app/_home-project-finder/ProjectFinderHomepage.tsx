@@ -1,5 +1,3 @@
-import Image from 'next/image';
-import Link from 'next/link';
 import JsonLd from '../../components/JsonLd';
 import {
   Container,
@@ -25,6 +23,7 @@ import {
   projectFinderHomepageDescription,
   projectFinderHomepageTitle,
 } from './routeContract';
+import CinematicHero from './CinematicHero';
 
 type ProjectFinderHomepageProps = {
   initialState: ProjectFinderState;
@@ -71,62 +70,7 @@ export default async function ProjectFinderHomepage({
           },
         ]}
       />
-      <section
-        className={styles.hero}
-        aria-labelledby="project-finder-home-heading"
-        data-homepage-hero
-      >
-        <Image
-          alt={media.hero.alt}
-          className={styles.heroImage}
-          fill
-          fetchPriority="high"
-          priority
-          sizes="100vw"
-          src={media.hero.src}
-          style={{ objectPosition: media.hero.objectPosition }}
-        />
-        <div className={styles.heroShade} aria-hidden="true" />
-        <Container className={styles.heroContent} width="wide">
-          <div className={styles.heroCopy}>
-            <p className={styles.heroEyebrow}>
-              Fixed-roof pergola design and build in Auckland
-            </p>
-            <h1 id="project-finder-home-heading">
-              Outdoor spaces designed around the way you live.
-            </h1>
-            <p className={styles.heroSupport}>
-              Custom pergolas and outdoor rooms, designed around the house, the
-              site and how the space will be used.
-            </p>
-            <div className={styles.heroActions}>
-              <a
-                className={styles.heroPrimaryAction}
-                data-project-finder-event="project_finder_start_click"
-                data-source-component="hero"
-                data-step-number="1"
-                href="#project-finder"
-              >
-                Find your project direction
-              </a>
-              <Link
-                className={styles.heroSecondaryAction}
-                data-project-finder-event="project_finder_direct_enquiry_click"
-                data-source-component="hero"
-                href={heroEnquiryHref}
-              >
-                Start your project
-              </Link>
-            </div>
-          </div>
-          <p className={styles.heroProjectMeta}>
-            <span>Completed project</span>
-            <Link href={`/projects/${media.hero.projectSlug}`}>
-              {media.hero.projectTitle}, {media.hero.location}
-            </Link>
-          </p>
-        </Container>
-      </section>
+      <CinematicHero media={media.hero} />
 
       <aside className={styles.proofRail} aria-label="Why Sanctuary">
         <Container className={styles.proofItems} width="wide">

@@ -12,6 +12,8 @@ import type {
 type ProjectFinderMedia = {
   alt: string;
   location: string;
+  mobileObjectPosition?: string;
+  mobileSrc?: string;
   objectPosition?: string;
   projectSlug: string;
   projectTitle: string;
@@ -89,10 +91,14 @@ export function buildProjectFinderHomepageMedia(
   projects: readonly Project[],
 ): ProjectFinderHomepageMedia {
   return {
-    hero: resolveMedia(projects, {
-      projectSlug: 'warkworth-outdoor-room',
-      galleryIndex: 0,
-    }),
+    hero: {
+      ...resolveMedia(projects, {
+        projectSlug: 'warkworth-outdoor-room',
+        galleryIndex: 0,
+      }),
+      mobileObjectPosition: '50% 50%',
+      mobileSrc: '/images/warkworth-gable-02.jpg',
+    },
     choiceByDirection: {
       cover: resolveMedia(projects, { projectSlug: 'dairy-flat-estate' }),
       bespoke: resolveMedia(projects, {
