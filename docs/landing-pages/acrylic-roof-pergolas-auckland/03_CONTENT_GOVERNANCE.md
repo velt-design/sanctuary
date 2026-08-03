@@ -2,6 +2,14 @@
 
 This file controls accuracy, claims and publication decisions for the acrylic-roof landing page.
 
+The active `docs/marketing-claims-register.md` overrides the default
+confirmation requirements below for the exact wording and scope of any claim
+it marks Approved. Explicit Sanctuary leadership approval recorded in that
+register is sufficient for publication; a supplier or technical document does
+not also need to be present in the repository. Claims not covered by an
+Approved register entry continue to use the confirmation rules and safe
+fallbacks below.
+
 ## Non-negotiable writing rules
 
 Use:
@@ -81,7 +89,8 @@ The page may explain that:
 - Consent and engineering requirements depend on the final site and design.
 - Acrylic and polycarbonate are different materials.
 
-Do not add exact performance values unless approved.
+Do not add exact performance values unless approved in the active Marketing
+Claims Register.
 
 ## Claims requiring confirmation before publication
 
@@ -104,7 +113,8 @@ Confirm:
 
 ### Performance
 
-Confirm before using any figure or strong performance claim:
+Confirm before using any figure or strong performance claim, unless the active
+Marketing Claims Register already approves its exact wording and scope:
 
 - Visible light transmission
 - Solar transmission

@@ -47,7 +47,10 @@ Focused browser QA covers 1440 x 1000, 1024 x 768, 768 x 1024 and 390 x 844. It 
 
 ## Claims and assets requiring verification
 
-These items are deliberately omitted or stated conditionally until approved evidence exists:
+These items are deliberately omitted or stated conditionally until the active
+Marketing Claims Register records explicit approval. Supporting evidence is
+recommended, but the register may approve a claim from direct business
+knowledge, a supplier statement or another basis accepted by Sanctuary:
 
 - Starting, example or square-metre pricing, including GST and dated scope.
 - Response, design, fabrication or installation time promises.
@@ -172,4 +175,4 @@ Existing project photography and project facts come from `apps/marketing/data/pr
 - `docs/Sanctuary_Pergolas_AI_Copywriting_Context_Pack.md`
 - `docs/marketing-ui-foundation.md`
 - `docs/landing-pages/acrylic-roof-pergolas-auckland/03_CONTENT_GOVERNANCE.md`
-- Supplied Marketing Brain v1.1 handoff and strategy-extraction prompt. These sources define evidence, privacy and claim-review discipline; they do not provide approved numerical public claims.
+- Supplied Marketing Brain v1.1 handoff and strategy-extraction prompt. These sources define evidence, privacy and claim-review discipline; numerical public claims become approved only when the active Marketing Claims Register records that approval.

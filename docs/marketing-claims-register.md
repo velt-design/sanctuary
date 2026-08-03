@@ -2,26 +2,46 @@
 
 Status: active approval register for public marketing copy.
 
-Public copy must not state a numeric or categorical claim from this register until the evidence, limitation, owner and review date are complete. Internal estimate data, project notes and old sales copy are not approval by themselves.
+This register is the approval authority for public marketing claims. Sanctuary
+leadership, including the repository owner acting for the business, may approve
+any claim by giving an explicit instruction and recording it here. An approved
+claim does not require its supporting document to be checked into the
+repository before publication.
 
-The July 2026 guide-cluster pass removed ungoverned headline durations, combined warranty durations, category-wide UV and heat outcomes, generic span ranges, numeric wind thresholds, broad maintenance comparisons and absolute wind or rain language from indexable marketing pages. The final refinement also replaced homepage material scores with written considerations, qualified lighting and heater performance, aligned linked project detail with the current project summaries and removed unsupported blind-control detail. A browser regression reads every route in the generated sitemap. Those surfaces now use proposal-stage or exact-product wording until an owner approves evidence here. The outdated brochure endpoint is retired to the governed web guide library rather than treated as current claim evidence.
+For every approved claim, record the approved wording or claim family, the
+approval basis, any important limitation, the approval owner, the approval or
+review date, and the public surfaces it covers. The approval basis may be
+direct business knowledge, a supplier statement, an operational decision, a
+project record, a technical document, legal advice, or another source accepted
+by the approval owner. Supporting documents are encouraged for future review,
+especially for technical, legal and supplier claims, but they are not a
+publication prerequisite when the register records explicit approval.
+
+Agents must not infer approval from internal estimate data, project notes, old
+sales copy or an unrecorded source. They may record an explicit approval given
+in the current task. Apply an approval only to the wording and scope recorded;
+broader implications remain unapproved unless they are stated separately.
+
+The July 2026 guide-cluster pass removed ungoverned headline durations, combined warranty durations, category-wide UV and heat outcomes, generic span ranges, numeric wind thresholds, broad maintenance comparisons and absolute wind or rain language from indexable marketing pages. The final refinement also replaced homepage material scores with written considerations, qualified lighting and heater performance, aligned linked project detail with the current project summaries and removed unsupported blind-control detail. A browser regression reads every route in the generated sitemap. Those surfaces now use proposal-stage or exact-product wording until an owner approves the relevant claim here. The outdated brochure endpoint is retired to the governed web guide library rather than treated as current claim evidence.
 
 The 29 July 2026 follow-up retires the separate `/start` and `/start/explore`
 flows instead of maintaining a second public conversion system. Claims checks
 and manual review continue to cover every public acquisition surface, including
 any future noindex entry flow. The retired acrylic v2 route permanently
 redirects to the governed primary route and is no longer a second copy surface.
-Every Pending or project-specific status below is unchanged.
+Every Pending or project-specific status below remains unavailable for general
+public use until an approval owner changes its status here.
 
-| Claim area | Public wording status | Evidence required | Important limitation | Approval owner | Review date | Applies to |
+| Claim area | Public wording status | Approval basis / supporting record | Important limitation | Approval owner | Review date | Applies to |
 | --- | --- | --- | --- | --- | --- | --- |
 | Pergola price bands and examples | Pending approval. Do not publish a number. | Dated set of representative projects and current sell pricing, with scope and outliers identified. | State GST treatment, inclusions, exclusions, engineering, consent, site access and accessories beside every band. | Sanctuary commercial lead and finance | Pending | Cost guide and any page mentioning price |
 | Service area and Auckland base | Approved for qualitative use. Sanctuary is Auckland based and considers selected projects up to about a three-hour drive away when the project is a good fit. The Auckland address is a staffed base of operations; customers should contact the team before visiting. | Sanctuary leadership confirmation of current travel and office practice. | Do not promise that every project inside the travel area will be accepted, describe the base as a showroom, or guarantee that a particular staff member is available without an appointment. | Sanctuary leadership | 2026-07-29 | Footer, service-area copy, contact details and structured data |
 | Louvre supply position | Pending approval. Do not present louvres as a Sanctuary product. | Current product-range decision and any supplier or delivery arrangement. | Separate Sanctuary fixed-roof approaches from external louvre proposals until confirmed. | Sanctuary product and leadership | Pending | Acrylic vs Louvre, forms and product navigation |
-| Workmanship warranty | Pending approval. Do not publish a duration. | Current signed warranty terms and exclusions. | Keep workmanship separate from product, coating, electrical and accessory warranties. | Sanctuary leadership and legal | Pending | All service pages, footer and sales material |
+| Workmanship warranty | Approved wording: `Sanctuary Pergolas offers a 10-year warranty on workmanship.` Equivalent wording may use `10 year` where required by the surrounding style. | Explicit Sanctuary leadership approval on 2026-08-03 based on current business terms. Written warranty terms may be added later as a supporting record but are not required for publication of this approved claim. | This approval covers Sanctuary workmanship only. Do not present it as a combined product, coating, electrical, accessory or manufacturer warranty, and do not add coverage details or exclusions that have not been separately approved. | Sanctuary leadership | 2026-08-03 | All service pages, footer and sales material |
 | Product and coating warranties | Pending approval. Do not combine into one Sanctuary warranty. | Current manufacturer schedules for each specified product and finish. | Terms vary by product, exposure, installation and maintenance. | Sanctuary product lead | Pending | Product pages and guides |
 | Design, manufacture and installation timing | Pending approval. Do not publish a general duration. | Current operational lead-time data by project stage and project type. | Scheduling, design development, approval, material and site readiness can change the programme. | Sanctuary operations | Pending | All service pages and forms |
-| Acrylic ultraviolet or heat performance | Pending approval. Do not publish percentages or broad comfort outcomes. | Current manufacturer data for each offered sheet specification. | Product, colour, thickness, orientation and project composition affect the result. | Sanctuary product lead | Pending | Acrylic product and comparison pages |
+| Acrylic ultraviolet performance, including 99% UV blocking | Approved wording: `Our acrylic roofing blocks 99% of UV light.` Equivalent wording may refer to Sanctuary's acrylic roofing or the acrylic roofing Sanctuary supplies. | Explicit Sanctuary leadership approval on 2026-08-03, based on statements from current acrylic suppliers. Supplier technical documents may be added later as supporting records but are not required for publication. | This approval covers UV-light blocking only. It does not by itself approve a heat-reduction, comfort, fading-prevention, skin-protection, product-life or complete-installed-assembly claim. Re-review if Sanctuary changes to acrylic roofing for which suppliers do not support the figure. | Sanctuary leadership | 2026-08-03 | Acrylic product, landing and comparison pages |
+| Acrylic heat, solar-control or light-transmission performance | Pending approval. Do not publish percentages or broad comfort outcomes. | Current manufacturer data for each offered sheet specification. | Product, colour, thickness, orientation and project composition affect the result. A verified UV-blocking figure does not substantiate heat, glare, solar-control or visible-light outcomes. | Sanctuary product lead | Pending | Acrylic product, landing and comparison pages |
 | Waterproof or all-weather performance | Pending approval. Avoid absolute language. | Product documentation plus defined drainage, junction and operating conditions. | Roofs, open edges, louvres, blinds and unusual weather behave differently. | Sanctuary design and product leads | Pending | Roof, blind and outdoor-room pages |
 | Wind, span and structural capacity | Project-specific. Do not publish a general threshold. | Project engineering or approved system documentation for the exact assembly. | Site exposure, geometry, connection, material and loads determine the answer. | Sanctuary design lead and project engineer | Per project | Aluminium, form, custom and commercial pages |
 | Coastal suitability and maintenance | Pending approval. Use conditional project language only. | Coating-system documentation and current care schedule by exposure zone. | Finish, cut edges, dissimilar metals, cleaning and local exposure matter. | Sanctuary product lead | Pending | Aluminium and product pages |

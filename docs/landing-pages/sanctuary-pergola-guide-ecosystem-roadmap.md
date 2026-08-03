@@ -26,6 +26,10 @@ Read these sources before implementation:
 Authority order:
 
 - `docs/marketing-claims-register.md` governs whether a public claim may be made.
+- An Approved entry in that register is sufficient publication authority for
+  its recorded wording and scope. The approval may be based on explicit
+  Sanctuary business approval, including a supplier statement, without the
+  underlying source document being stored in the repository.
 - `docs/Sanctuary_Pergolas_AI_Copywriting_Context_Pack.md` governs brand positioning, terminology, tone, customer language, and copy boundaries.
 - This roadmap governs target information architecture, guide visibility, implementation order, and pull-request scope.
 - Current code and tests define the implementation baseline that must be changed safely.
@@ -3628,9 +3632,15 @@ Do not use a large production build alone as proof that the goal is correct.
 
 A missing approval blocks only the claim or public feature that depends on it. It must not block claims-safe information-architecture, schema, hub, navigation, or internal-link improvements.
 
-### Gate register
+### Default approval inputs and safe fallbacks
 
-| Gate | Evidence required | Likely owner | Goals blocked | Safe fallback if unavailable |
+The table below describes the information normally requested before Sanctuary
+approves a claim. It is not a second approval system and does not override an
+Approved entry in `docs/marketing-claims-register.md`. Sanctuary leadership may
+approve a claim on another recorded basis; once that approval is in the claims
+register, the related copy is no longer blocked within the approved scope.
+
+| Gate | Recommended approval input | Likely owner | Goals blocked while claim remains Pending | Safe fallback if unavailable |
 | --- | --- | --- | --- | --- |
 | Current pergola pricing | A dated set of representative current sell-price examples or bands, project scopes, GST treatment, inclusions, exclusions, engineering, consent, access, accessories, and known outliers | Sanctuary commercial lead and finance | Any numerical addition to G12; no structural roadmap goal | Keep the Cost guide scope-led and publish no number |
 | Lead times and installation duration | Current operational data by stage and project type, definitions of each stage, capacity assumptions, exclusions, and review date | Sanctuary operations | Any new general timing copy in G11 to G18, G24, or G26 | State that the programme is confirmed for the completed project in writing |

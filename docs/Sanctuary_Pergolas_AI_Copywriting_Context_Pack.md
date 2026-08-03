@@ -110,7 +110,11 @@ Customers commonly fear that a new roof will darken the lounge, block sunlight, 
 - Compare clear and tinted roof options around light, glare, appearance and maintenance.
 - Design the cover around the level of openness and shade you want.
 
-Avoid quantified UV, heat or light-performance figures until the exact product, tint and approved technical source are confirmed.
+Avoid quantified UV, heat or light-performance figures unless the active
+Marketing Claims Register explicitly approves the wording and scope. The
+register may record Sanctuary approval based on supplier statements or another
+business-approved source without requiring the source document in the
+repository.
 
 ### Tier 2: Premium design and finish
 
@@ -526,9 +530,13 @@ Check these on every campaign or page update:
 
 Use a placeholder rather than guessing: `[[VERIFY: current lead time]]`.
 
-### Requires written technical, legal or supplier substantiation
+### Requires explicit claims-register approval
 
-Do not publish these without an approved source matched to the exact product and design:
+Do not publish these unless the active Marketing Claims Register approves the
+claim and records its scope, approval basis, limitations, owner and review date.
+Written technical, legal or supplier substantiation is encouraged, but explicit
+Sanctuary approval recorded in the register is the publication authority and
+may rely on a supplier statement or other business-approved source:
 
 - warranty duration, scope, exclusions and whether it covers materials, workmanship, electrical work, coatings or manufacturer products;
 - exact UV-blocking, heat-reduction or light-transmission percentages;
