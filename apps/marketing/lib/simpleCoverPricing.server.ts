@@ -47,8 +47,6 @@ export async function calculateFrozenSimpleCoverPricing(
   const displayedFromIncGst = roundMarketingCustomerPrice(customerPrice.incGst, 'residential');
   if (displayedFromIncGst <= 0) throw new Error('Customer price could not be displayed.');
 
-  const moduleResult = siteOutput.pergolas[0]?.modules[0];
-  const rafterCount = Math.max(0, Math.round(moduleResult?.derived.rafter_count ?? 0));
   const postCount = simpleCoverPostCount(input.widthMm);
   const publicResult: SimpleCoverPricedResult = {
     ok: true,
@@ -57,7 +55,7 @@ export async function calculateFrozenSimpleCoverPricing(
     areaM2: simpleCoverAreaM2(input),
     postCount,
     postSpacingMm: Math.round(input.widthMm / (postCount - 1)),
-    plan: buildSimpleCoverPlan(postCount, rafterCount),
+    plan: buildSimpleCoverPlan(input.widthMm, postCount),
     price: {
       fromIncGst: displayedFromIncGst,
       currency: 'NZD',

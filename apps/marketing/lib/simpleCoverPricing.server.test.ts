@@ -42,6 +42,9 @@ describe('frozen Simple cover pricing', () => {
     expect(result.customerPrice.displayedFromIncGst % 250).toBe(0);
     expect(result.costingConfiguration).toMatchObject({ versionId: 'version-17', versionNumber: 17 });
     expect(result.publicResult.configuration).toEqual({ versionNumber: 17 });
+    expect(result.publicResult.plan.rafterPositions).toHaveLength(
+      result.siteOutput.pergolas[0]?.modules[0]?.derived.rafter_count ?? 0,
+    );
     expect(result.publicResult).not.toHaveProperty('siteOutput');
     expect(result.publicResult).not.toHaveProperty('customerPrice.exactIncGst');
   });

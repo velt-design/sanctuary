@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildSimpleCoverPlan,
   buildSimpleCoverSiteInputs,
   getSimpleCoverCustomResult,
   parseSimpleCoverInput,
   simpleCoverPostCount,
+  simpleCoverRafterLayout,
   toCustomerSafeSimpleCoverResult,
 } from './simpleCoverCalculator';
 
@@ -19,6 +21,25 @@ describe('Simple cover calculator contract', () => {
     const count = simpleCoverPostCount(widthMm);
     expect(count).toBe(expectedCount);
     expect(widthMm / (count - 1)).toBeLessThanOrEqual(4_000);
+  });
+
+  it('uses the canonical acrylic-rafter layout in customer-safe plans', () => {
+    const layout = simpleCoverRafterLayout(4_700);
+
+    expect(layout.rafterCount).toBe(9);
+    expect(layout.spacingMm).toBeLessThanOrEqual(642);
+    expect(layout.spacingMm).toBe(581.25);
+    expect(layout.positions[0]).toBeCloseTo(25 / 4_700);
+    expect(layout.positions.at(-1)).toBeCloseTo(4_675 / 4_700);
+  });
+
+  it('aligns the outside faces of edge rafters and posts to the overall width', () => {
+    const plan = buildSimpleCoverPlan(4_700, 3);
+
+    expect(plan.postPositions[0]).toBeCloseTo(50 / 4_700);
+    expect(plan.postPositions.at(-1)).toBeCloseTo(4_650 / 4_700);
+    expect(plan.rafterPositions[0]).toBeCloseTo(25 / 4_700);
+    expect(plan.rafterPositions.at(-1)).toBeCloseTo(4_675 / 4_700);
   });
 
   it('accepts only the public ranges and 100 mm increment', () => {

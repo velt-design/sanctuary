@@ -1,4 +1,7 @@
-import type { SiteInputsV1 } from '@sp/costing';
+import {
+  calculateAcrylicRafterLayoutV1,
+  type SiteInputsV1,
+} from '@sp/costing';
 import { buildEnquiryHref } from './enquiryContext';
 
 export const SIMPLE_COVER_WIDTH_MIN_MM = 1_000;
@@ -12,6 +15,10 @@ const SIMPLE_COVER_POST_HEIGHT_M = 2.4;
 export const SIMPLE_COVER_MAX_POST_SPACING_MM = 4_000;
 export const SIMPLE_COVER_GROUND_MAX_AREA_M2 = 30;
 export const SIMPLE_COVER_ELEVATED_MAX_AREA_M2 = 20;
+export const SIMPLE_COVER_LEDGER_WIDTH_MM = 50;
+export const SIMPLE_COVER_RAFTER_WIDTH_MM = 50;
+export const SIMPLE_COVER_FRONT_BEAM_WIDTH_MM = 100;
+export const SIMPLE_COVER_POST_SIZE_MM = 100;
 const SIMPLE_COVER_PATH = '/simple-cover-calculator';
 
 export type SimpleCoverLevel = 'ground' | 'elevated';
@@ -109,16 +116,26 @@ export function simpleCoverPostCount(widthMm: number): number {
   return Math.max(2, Math.ceil(widthMm / SIMPLE_COVER_MAX_POST_SPACING_MM) + 1);
 }
 
-function evenlySpacedPositions(count: number): number[] {
-  if (!Number.isSafeInteger(count) || count < 1) return [];
-  if (count === 1) return [0.5];
-  return Array.from({ length: count }, (_, index) => index / (count - 1));
+export function simpleCoverRafterLayout(widthMm: number) {
+  return calculateAcrylicRafterLayoutV1(widthMm);
 }
 
-export function buildSimpleCoverPlan(postCount: number, rafterCount = 0): SimpleCoverPlan {
+function evenlySpacedMemberCentrePositions(widthMm: number, memberWidthMm: number, count: number): number[] {
+  if (!Number.isSafeInteger(count) || count < 1) return [];
+  if (count === 1) return [0.5];
+  const safeWidthMm = Number.isFinite(widthMm) ? Math.max(0, widthMm) : 0;
+  if (safeWidthMm === 0) return Array.from({ length: count }, () => 0.5);
+  const inset = Math.min(0.5, memberWidthMm / 2 / safeWidthMm);
+  return Array.from(
+    { length: count },
+    (_, index) => inset + (index / (count - 1)) * (1 - inset * 2),
+  );
+}
+
+export function buildSimpleCoverPlan(widthMm: number, postCount: number): SimpleCoverPlan {
   return {
-    postPositions: evenlySpacedPositions(postCount),
-    rafterPositions: evenlySpacedPositions(rafterCount),
+    postPositions: evenlySpacedMemberCentrePositions(widthMm, SIMPLE_COVER_POST_SIZE_MM, postCount),
+    rafterPositions: simpleCoverRafterLayout(widthMm).positions,
   };
 }
 
@@ -145,7 +162,7 @@ export function getSimpleCoverCustomResult(input: SimpleCoverInput): SimpleCover
     areaM2,
     postCount,
     postSpacingMm: Math.round(input.widthMm / (postCount - 1)),
-    plan: buildSimpleCoverPlan(postCount),
+    plan: buildSimpleCoverPlan(input.widthMm, postCount),
     reasonCode: input.level === 'ground' ? 'ground_area_limit' : 'elevated_area_limit',
     reason: `${formatCustomArea(areaM2)} m² exceeds the ${maxAreaM2} m² ${levelLabel} Simple cover limit.`,
     continuation: {

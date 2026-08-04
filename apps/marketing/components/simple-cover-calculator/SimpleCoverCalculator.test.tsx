@@ -35,8 +35,11 @@ function priced(input: SimpleCoverInput): SimpleCoverPricedResult {
     postCount,
     postSpacingMm: Math.round(input.widthMm / (postCount - 1)),
     plan: {
-      postPositions: Array.from({ length: postCount }, (_, index) => index / (postCount - 1)),
-      rafterPositions: [0, .25, .5, .75, 1],
+      postPositions: Array.from(
+        { length: postCount },
+        (_, index) => .05 / (input.widthMm / 1_000) + (index / (postCount - 1)) * (1 - .1 / (input.widthMm / 1_000)),
+      ),
+      rafterPositions: [25, 1_512.5, 3_000, 4_487.5, 5_975].map((position) => position / 6_000),
     },
     price: { fromIncGst: 24_250, currency: 'NZD' },
     configuration: { versionNumber: 9 },
@@ -81,7 +84,12 @@ describe('SimpleCoverCalculator', () => {
     expect(projection).toMatchObject({ min: '1000', max: '6000', step: '100', value: '3000' });
     expect(document.querySelector('[role="img"]')?.getAttribute('aria-label')).toContain('6.0 m wide by 3.0 m');
     expect(document.body.textContent).toContain('Concept plan, not a construction drawing.');
-    expect(document.querySelectorAll('button')).toHaveLength(4);
+    expect(document.querySelectorAll('button')).toHaveLength(0);
+    expect(document.querySelectorAll('input[inputmode="decimal"]')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-terminal="true"]')).toHaveLength(4);
+    expect(document.querySelectorAll('[data-plan-rafter]')).toHaveLength(11);
+    expect(document.querySelectorAll('[data-plan-post]')).toHaveLength(3);
+    expect(document.querySelector('[data-plan-header]')?.textContent).not.toContain('18.0 m²');
   });
 
   it('loads a live published price and updates dimensions without a submit action', async () => {
@@ -128,5 +136,27 @@ describe('SimpleCoverCalculator', () => {
     expect(container.textContent).toContain('Your design is still here.');
     expect(container.textContent).toContain('18.0 m²');
     expect(container.textContent).not.toContain('private configuration detail');
+    expect(container.querySelectorAll('[data-plan-rafter]')).toHaveLength(11);
+  });
+
+  it('accepts precise dimensions without step buttons', async () => {
+    mockPricingFetch();
+    const container = await render();
+    await settlePrice();
+
+    const widthMetres = container.querySelector('input[inputmode="decimal"]') as HTMLInputElement;
+    await act(async () => widthMetres.focus());
+    expect(widthMetres.selectionStart).toBe(0);
+    expect(widthMetres.selectionEnd).toBe(widthMetres.value.length);
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(widthMetres, '4.74');
+      widthMetres.dispatchEvent(new Event('input', { bubbles: true }));
+      widthMetres.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await act(async () => widthMetres.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
+
+    expect((container.querySelector('#simple-cover-width') as HTMLInputElement).value).toBe('4700');
+    expect(widthMetres.value).toBe('4.7');
   });
 });

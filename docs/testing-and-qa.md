@@ -317,7 +317,7 @@ controls; accessible retained-value validation; and a complete JavaScript-disabl
 form fallback.
 
 Public Simple cover calculator changes should run
-`npx vitest run packages/costing/src/commercial/customerPricing.test.ts packages/costing/src/server/publishedConfiguration.test.ts apps/marketing/lib/publishedCostingConfiguration.server.test.ts apps/marketing/lib/simpleCoverCalculator.test.ts apps/marketing/lib/simpleCoverPricing.server.test.ts apps/marketing/app/api/simple-cover-price/route.test.ts apps/marketing/components/simple-cover-calculator/SimpleCoverCalculator.test.tsx test/simple-cover-pricing-parity.test.ts`
+`npx vitest run packages/costing/src/commercial/customerPricing.test.ts packages/costing/src/engine/rafterLayout.test.ts packages/costing/src/server/publishedConfiguration.test.ts apps/marketing/lib/publishedCostingConfiguration.server.test.ts apps/marketing/lib/simpleCoverCalculator.test.ts apps/marketing/lib/simpleCoverPricing.server.test.ts apps/marketing/app/api/simple-cover-price/route.test.ts apps/marketing/components/simple-cover-calculator/SimpleCoverCalculator.test.tsx test/simple-cover-pricing-parity.test.ts`
 and
 `npx playwright test playwright/marketing.simple-cover-calculator.spec.ts --config=playwright.marketing.config.ts --workers=1`.
 This focused lane proves published-only fail-closed configuration access,

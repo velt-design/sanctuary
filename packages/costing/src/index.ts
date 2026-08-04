@@ -2,6 +2,7 @@ export { calculateCostV1, calculateCostV1WithMaterialsExplain, calculateJobCostV
 export { buildMaterialsV1Explain } from './engine/bom';
 export { calculateInfillsTakeoffV1, poolInfillsTakeoffsV1 } from './engine/infillTakeoff';
 export { allocateMoneyCentsByWeightV1 } from './engine/moneyAllocation';
+export * from './engine/rafterLayout';
 export * from './blinds';
 export * from './engine/materials_explain';
 export * from './engine/config';

@@ -146,6 +146,8 @@ apps/marketing/app/api/enquiry/route.ts
 
 `/simple-cover-calculator` is a reusable marketing component and standalone noindex route. Its fixed input adapter is intentionally narrower than the staff calculator: fascia connection, pitched acrylic roof, deck brackets, normal access, easy ground, standard black finish, no blinds or electrical work, and automatic posts with no spacing above four metres. It does not import portal UI, CSS, drawing code, or the Design Workbench.
 
+`calculateAcrylicRafterLayoutV1` in `@sp/costing` owns the acrylic rafter count, clear centre spacing and normalized plan positions used by both costing derivation and customer-safe concept plans. Its first and last 50 mm rafter faces align to the overall cover width. Marketing may style those positions independently but must not duplicate the 642 mm spacing derivation.
+
 The public pricing path is:
 
 ```text

@@ -22,6 +22,7 @@ import {
 } from './types';
 import type { CostingConfigV1 } from './config';
 import { buildRafterCutLengthExplanationV1 } from './rafterExplanation';
+import { calculateAcrylicRafterLayoutV1, RAFTER_SPACING_MM_MAX } from './rafterLayout';
 
 const GST_RATE = 0.15;
 const DEFAULT_POST_CUT_HEIGHT_M = 2.4;
@@ -30,8 +31,6 @@ const DEFAULT_GROUND: GroundCondition = 'easy';
 const DEFAULT_ROOF_TYPE: RoofType = 'pitched';
 const DEFAULT_MIXED_MODE: MixedRoofMode = 'ridge_skylight';
 
-const RAFTER_SPACING_MM_MAX = 642;
-const RAFTER_THICKNESS_MM = 50;
 const TIMBER_RAFTER_SPACING_MM_MAX = 500;
 const TIMBER_EDGE_RAFTER_PROFILE = '150x50';
 const TIMBER_COMMON_RAFTER_DEFAULT_PROFILE = '80x50';
@@ -498,9 +497,8 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const isAcrylicRoof = inputs.roof_material === 'acrylic';
   const calcRafterSpacing = (lengthMm: number) => {
     if (isAcrylicRoof) {
-      const clearLenMm = Math.max(0, lengthMm - RAFTER_THICKNESS_MM);
-      const bays = Math.max(1, Math.ceil(clearLenMm / RAFTER_SPACING_MM_MAX));
-      return { rafterCount: bays + 1, bayCount: bays, clearLenMm };
+      const { rafterCount, bayCount, clearLengthMm: clearLenMm } = calculateAcrylicRafterLayoutV1(lengthMm);
+      return { rafterCount, bayCount, clearLenMm };
     }
     const rafterCount = Math.ceil(lengthMm / RAFTER_SPACING_MM_MAX) + 1;
     return { rafterCount, bayCount: Math.max(0, rafterCount - 1), clearLenMm: lengthMm };
