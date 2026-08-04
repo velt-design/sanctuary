@@ -470,6 +470,31 @@ page must not show a synthetic price or inactive configurator controls.
 `/acrylic-roof-pergolas-auckland` remains unchanged as the only indexable
 acrylic landing-page and sitemap owner.
 
+`/simple-cover-calculator` is the separate reusable calculator route. It is
+self-canonical and `noindex,follow`; the component owns its marketing
+presentation and does not import portal UI or drawing CSS. Native 100 mm range
+controls cover 1-10 m width and 1-6 m projection with a 6 x 3 m default, a
+ground/elevated choice, live area, automatic post layout and an accessible
+architectural concept plan. A valid Simple combination shows `From $X`, GST
+and standard installation wording and the public costing version. An over-limit
+combination keeps the dimensions, removes price and gives the exact 30 m2 or
+20 m2 reason plus an attributed Custom design route. Published costing failure
+keeps the design visible and shows no price.
+
+The focused public-calculator owner is
+`playwright/marketing.simple-cover-calculator.spec.ts`, backed by the costing,
+resolver, route, component and root parity unit suites named in
+`docs/testing-and-qa.md`.
+
+The Simple cover hero owns one viewport when its content fits, but its desktop
+grid must grow with the copy on short screens rather than letting the copy,
+media or proof rail escape a definite-height row. At 900 pixels and below the
+approved image-first stack remains the route contract. Plain and
+homepage-attributed documents keep contiguous hero, optional saved-brief and
+fit-section boundaries, visible headline-to-intro spacing, aligned media edges,
+fixed-header anchor clearance and zero horizontal overflow from 320 to 1440
+pixels, including viewport heights down to 500 pixels.
+
 Consent-aware production analytics use `homepage_variant:
 project_finder_home_v2`, `source_path: /` and the existing closed finder event
 names. `project_result_view`, `project_view_click` and

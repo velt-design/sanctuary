@@ -77,7 +77,8 @@ Portal may adapt package output for UI and persistence. It must not fork package
 
 `packages/costing` owns commercial truth:
 
-- costing engine behavior, base config, material/BOM logic, install/labour logic, overheads, accessories, and pricing semantics.
+- costing engine behavior, base config, material/BOM logic, install/labour logic, overheads, accessories, customer-price sequencing, and pricing semantics.
+- its server-only export validates, hashes and applies immutable published configuration records; app-owned server adapters may retrieve those records but must not reimplement their trust checks.
 - commercial design input contracts, pricing adapters, and comparison helpers.
 
 `packages/geometry` owns physical geometry truth:
@@ -176,7 +177,7 @@ When app code needs a domain behavior change:
 
 Portal drawing code may adapt `@sp/geometry` for workbench state, persistence, and rendering, but geometry-ready plan, sheet, section, interaction, and 3D semantics must remain views of the same solved geometry. Calculator-era plan models, object overlays, and sheet renderers may be presentation, edit-support, or compatibility layers; they must not become competing geometry owners.
 
-Costing must come from `@sp/costing`. Marketing must not create a pricing fork. Portal overrides may layer database-owned overrides on top of package base config through documented portal helpers.
+Costing must come from `@sp/costing`. Marketing must not create a pricing fork. Public pricing may use only an active immutable published configuration and must fail closed rather than use legacy overrides or package defaults. Portal overrides may layer database-owned overrides on top of package base config through documented portal helpers.
 
 Durable background-job kinds and transition policy must come from `@sp/jobs`. Apps and workers may supply handlers and workflow adapters, but they must not fork the kind registry, queue-message schema, status machine, effect-state machine, or rollout vocabulary.
 

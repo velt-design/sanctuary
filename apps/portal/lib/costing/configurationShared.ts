@@ -1,7 +1,7 @@
 import 'server-only';
 
-import { createHash } from 'node:crypto';
 import type { CostingControlConfigV1, CostingControlDiffEntryV1, CostingControlImpactRowV1 } from '@sp/costing';
+import { hashCostingControlConfigV1 } from '@sp/costing/server';
 import type {
   CostingConfigurationVersion,
   CostingConfigurationVersionSummary,
@@ -35,18 +35,8 @@ type VersionRow = {
   publication_impact: unknown;
 };
 
-function canonicalise(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonicalise);
-  if (!value || typeof value !== 'object') return value;
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, item]) => [key, canonicalise(item)]),
-  );
-}
-
 export function hashCostingControlConfig(config: CostingControlConfigV1): string {
-  return createHash('sha256').update(JSON.stringify(canonicalise(config))).digest('hex');
+  return hashCostingControlConfigV1(config);
 }
 
 function requiredString(value: unknown, field: string): string {

@@ -21,6 +21,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-04 | Public Simple Cover Pricing      | Promoted | Resolve the active immutable publication server-side, validate/hash/apply it through `@sp/costing/server`, calculate canonical site cost and package-owned customer price, then allow-list the public response. Never fall back to legacy/default configuration, expose true cost, import portal UI/drawings, or move the autoresponder before frozen-result parity and production publication are proven. |
+| 2026-08-04 | Simple Cover Responsive Containment | Promoted | Let the desktop hero grow with its content on short screens while retaining one-viewport ownership when the content fits. Test plain and homepage-attributed states at breakpoint edges for contiguous sections, child and proof-rail containment, text spacing, header clearance, aligned media and horizontal overflow. |
 | 2026-08-04 | Simple Cover Sales Page           | Promoted | Keep the noindex Simple cover continuation short, image-led and sales-focused: prove product fit, Sanctuary finish, useful choices, honest limits, governed reviews and the existing enquiry path without repeating project cards or guide copy. Reserve the post-hero fit section as the future costing integration point, but do not publish synthetic prices or inactive configurator controls. |
 | 2026-08-03 | Simple Cover Pathway              | Promoted | Keep the acrylic research page as the sole indexable SEO owner and send homepage Simple cover intent to a distinct noindex conversion route. Define simple by a clear fixed-roof scope rather than the absence of optional side blinds, preserve closed journey context and attribution, and provide a clear Custom design off-ramp for materially broader briefs. |
 | 2026-08-03 | Marketing Cinematic Hero         | Promoted | Consume at most one forward gesture per active hero stage, then land against the measured inner finder opening rather than padded section chrome. Centre the complete opening when it fits the live visual viewport, otherwise top-align it beneath the fixed header. Preserve reverse scrolling, responsive priority art direction and primary-mobile text-only choices. |
@@ -4713,8 +4715,10 @@ Related docs/tests: `apps/marketing/app/simple-pergolas-auckland/**`;
 `playwright/marketing.simple-pergolas.spec.ts`;
 `playwright/marketing.home-project-finder.spec.ts`
 
+### 2026-08-04 - Simple Cover Sales Page - Concise Image-Led Conversion Route
+
 Date: 2026-08-04
-Area: Simple cover conversion-page density and future pricing integration
+Area: Simple Cover Sales Page
 Status: Promoted
 Decision or mistake: The first Simple cover conversion page repeated extended
 guide copy, FAQs, process detail and governed project cards after a homepage
@@ -4740,3 +4744,57 @@ Promoted to: `docs/marketing-ui-foundation.md`;
 Related docs/tests: `apps/marketing/app/simple-pergolas-auckland/**`;
 `playwright/marketing.simple-pergolas.spec.ts`;
 `playwright/marketing.home-guided.spec.ts`
+
+### 2026-08-04 - Simple Cover Responsive Containment - Content-Growing Hero Boundaries
+
+Date: 2026-08-04
+Area: Simple Cover Responsive Containment
+Status: Promoted
+Decision or mistake: The desktop hero combined a definite viewport height with
+a smaller fixed minimum height. On short screens the grid items honoured their
+content height while the hero itself stayed shorter, so the copy, media and
+proof rail overlapped the following fit or saved-brief section. The existing
+viewport tests asserted the hero boundary only at taller desktop sizes and did
+not compare each section with its children or next sibling.
+Why it mattered: A page could pass ordinary overflow and hero-height checks
+while still allowing visible sections to occupy the same vertical space.
+Current guardrail: Use a content-growing minimum-height hero rather than a
+definite height. Preserve exact one-viewport ownership only when the content
+fits. Test plain and attributed route states at breakpoint edges and short
+heights, asserting child containment, contiguous section boundaries, proof-rail
+text containment, header clearance, text spacing and horizontal overflow both
+before and after anchor scrolling.
+Promoted to: `docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/marketing/app/simple-pergolas-auckland/simple-pergolas-auckland.module.css`;
+`playwright/marketing.simple-pergolas.spec.ts`
+
+### 2026-08-04 - Public Simple Cover Pricing - Published-Only Frozen Boundary
+
+Date: 2026-08-04
+Area: Public Simple Cover Pricing
+Status: Promoted
+Decision or mistake: The existing marketing estimator calculated against
+package defaults while the portal could apply a mutable active configuration.
+Reusing that path for a public calculator would make a polished price diverge
+silently after a staff pricing publication. Returning an engine result directly
+would also expose internal cost structure.
+Why it mattered: Public price trust depends on configuration identity and exact
+input parity, not merely sharing a formula package. The calculator,
+autoresponder and saved enquiry must eventually be able to reference one frozen
+calculation without exposing its internal evidence to the browser.
+Current guardrail: Resolve only the singleton immutable published version on the
+marketing server, then validate, hash and apply it through the server-only
+`@sp/costing` boundary. Use the same fixed `SiteInputsV1`, canonical site engine
+and package-owned customer-price sequence as portal parity tests. Keep complete
+inputs, outputs, exact price and provenance in one server-side frozen result,
+then return an explicit customer-safe allow-list. Missing or invalid publication
+removes price. Keep marketing presentation independent from portal UI and
+drawings, and leave the live autoresponder unchanged until production
+publication and parity are confirmed.
+Promoted to: `docs/costing-and-geometry.md`; `docs/target-architecture.md`;
+`docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`
+Related docs/tests: `packages/costing/src/server/publishedConfiguration.ts`;
+`packages/costing/src/commercial/customerPricing.ts`;
+`apps/marketing/lib/simpleCoverPricing.server.ts`;
+`test/simple-cover-pricing-parity.test.ts`;
+`playwright/marketing.simple-cover-calculator.spec.ts`

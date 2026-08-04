@@ -34,7 +34,8 @@ type EnquirySourceComponent =
   | 'embedded_form'
   | 'project_finder'
   | 'brief_summary'
-  | 'project_card';
+  | 'project_card'
+  | 'public_calculator';
 
 type EnquirySourceExperience =
   | typeof GUIDED_ENQUIRY_SOURCE_EXPERIENCE
@@ -97,6 +98,7 @@ const sourceComponents = new Set<EnquirySourceComponent>([
   'project_finder',
   'brief_summary',
   'project_card',
+  'public_calculator',
 ]);
 const guidedPathways = new Set<GuidedResultId>(guidedResultIds);
 const guidedFocuses = new Set<GuidedFocusId>([
@@ -134,6 +136,7 @@ const contextPropertyKeys = [
 const serviceAudienceByPath = new Map<string, EnquiryAudience>([
   [PROJECT_FINDER_HOME_PATH, 'residential'],
   ['/simple-pergolas-auckland', 'residential'],
+  ['/simple-cover-calculator', 'residential'],
   ['/pergolas-auckland', 'residential'],
   ['/custom-pergolas-auckland', 'residential'],
   ['/aluminium-pergolas-auckland', 'residential'],

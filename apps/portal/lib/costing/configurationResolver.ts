@@ -5,9 +5,9 @@ import {
   applyCostingControlConfigV1,
   loadCostingConfigV1,
   snapshotCostingControlConfigV1,
-  validateCostingControlConfigV1,
   type CostingConfigV1,
 } from '@sp/costing';
+import { resolvePublishedCostingConfigurationRecordV1 } from '@sp/costing/server';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { getCostingConfigWithOverrides } from './overrides';
 import {
@@ -75,32 +75,7 @@ export async function resolvePublishedCostingConfiguration(
   if (!versionId) return resolveLegacyConfiguration(client);
 
   const version = await getCostingConfigurationVersionById(versionId, client);
-  if (version.status !== 'published') {
-    throw new Error('The current costing configuration pointer does not reference a published version.');
-  }
-
-  const base = loadCostingConfigV1();
-  const validation = validateCostingControlConfigV1(version.config, base);
-  if (!validation.ok) {
-    const detail = validation.issues.map((issue) => `${issue.path}: ${issue.message}`).join('; ');
-    throw new Error(`Published costing configuration ${version.id} is incompatible with this engine: ${detail}`);
-  }
-  const calculatedHash = hashCostingControlConfig(validation.value);
-  if (calculatedHash !== version.contentHash) {
-    throw new Error(`Published costing configuration ${version.id} failed its content hash check.`);
-  }
-
-  return {
-    config: applyCostingControlConfigV1(base, validation.value),
-    provenance: {
-      schemaVersion: 'costing-provenance.v1',
-      source: 'published',
-      versionId: version.id,
-      versionNumber: version.versionNumber,
-      contentHash: version.contentHash,
-      baseManifestVersion: version.baseManifestVersion,
-    },
-  };
+  return resolvePublishedCostingConfigurationRecordV1(version);
 }
 
 export async function resolveHistoricalCostingConfiguration(

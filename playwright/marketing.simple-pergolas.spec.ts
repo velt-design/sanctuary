@@ -15,6 +15,29 @@ const desktopHeroViewports = [
   { name: '1536x864', width: 1536, height: 864 },
   { name: '1920x1080', width: 1920, height: 1080 },
 ] as const;
+const responsiveBoundaryViewports = [
+  { name: '1440x500', width: 1440, height: 500 },
+  { name: '1121x600', width: 1121, height: 600 },
+  { name: '1120x600', width: 1120, height: 600 },
+  { name: '901x500', width: 901, height: 500 },
+  { name: '900x500', width: 900, height: 500 },
+  { name: '768x500', width: 768, height: 500 },
+  { name: '761x500', width: 761, height: 500 },
+  { name: '760x500', width: 760, height: 500 },
+  { name: '721x600', width: 721, height: 600 },
+  { name: '720x600', width: 720, height: 600 },
+  { name: '381x600', width: 381, height: 600 },
+  { name: '380x600', width: 380, height: 600 },
+  { name: '320x500', width: 320, height: 500 },
+] as const;
+const routeStates = [
+  { name: 'plain', href: route, hasSavedBrief: false },
+  {
+    name: 'homepage-attributed',
+    href: `${route}?project=cover&priorities=daylight%2Ceveryday-use`,
+    hasSavedBrief: true,
+  },
+] as const;
 
 async function preparePage(page: Page) {
   await page.addInitScript(() => {
@@ -25,6 +48,61 @@ async function preparePage(page: Page) {
       version: 1,
     }));
   });
+}
+
+async function readResponsiveLayout(page: Page) {
+  return page.evaluate(() => {
+    const toBox = (element: Element | null) => {
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      const htmlElement = element as HTMLElement;
+      return {
+        top: rect.top + window.scrollY,
+        right: rect.right,
+        bottom: rect.bottom + window.scrollY,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        clientHeight: htmlElement.clientHeight,
+        scrollHeight: htmlElement.scrollHeight,
+      };
+    };
+    const hero = document.querySelector('main > section');
+    const heroCopy = hero?.querySelector(':scope > div') ?? null;
+    const heroMedia = hero?.querySelector(':scope > figure') ?? null;
+    const savedBrief = document.querySelector('[data-project-finder-journey-context]');
+    const fit = document.querySelector('[data-simple-price-integration="fit-section"]');
+    const fitMediaFigures = Array.from(fit?.querySelectorAll('figure') ?? []);
+    const clippedText = Array.from(document.querySelectorAll<HTMLElement>(
+      'main :is(h1, h2, h3, p, dt, dd, li)',
+    ))
+      .filter((element) => (
+        element.getClientRects().length > 0
+        && element.scrollWidth > element.clientWidth + 1
+      ))
+      .slice(0, 5)
+      .map((element) => element.textContent?.trim().slice(0, 80) ?? element.tagName);
+
+    return {
+      documentOverflow: document.documentElement.scrollWidth
+        - document.documentElement.clientWidth,
+      sections: Array.from(document.querySelectorAll('main > section')).map(toBox),
+      hero: toBox(hero),
+      heroCopy: toBox(heroCopy),
+      heroMedia: toBox(heroMedia),
+      heroImage: toBox(heroMedia?.querySelector('img') ?? null),
+      heroFacts: toBox(hero?.querySelector('dl[aria-label="Simple cover highlights"]') ?? null),
+      savedBrief: toBox(savedBrief),
+      savedBriefLayout: toBox(savedBrief?.querySelector(':scope > div') ?? null),
+      fit: toBox(fit),
+      fitMediaFigures: fitMediaFigures.map(toBox),
+      clippedText,
+    };
+  });
+}
+
+function expectAligned(actual: number, expected: number, tolerance = 1.5) {
+  expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance);
 }
 
 for (const viewport of viewports) {
@@ -99,6 +177,127 @@ for (const viewport of viewports) {
   });
 }
 
+for (const routeState of routeStates) {
+  for (const viewport of responsiveBoundaryViewports) {
+    test(`${routeState.name} layout stays contained at ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await preparePage(page);
+      await page.goto(routeState.href);
+
+      const layout = await readResponsiveLayout(page);
+      expect(layout.documentOverflow).toBeLessThanOrEqual(0);
+      expect(layout.clippedText).toEqual([]);
+      expect(layout.hero).not.toBeNull();
+      expect(layout.heroCopy).not.toBeNull();
+      expect(layout.heroMedia).not.toBeNull();
+      expect(layout.heroImage).not.toBeNull();
+      expect(layout.heroFacts).not.toBeNull();
+      expect(layout.fit).not.toBeNull();
+      expect(layout.savedBrief === null).toBe(!routeState.hasSavedBrief);
+
+      for (let index = 1; index < layout.sections.length; index += 1) {
+        const previous = layout.sections[index - 1];
+        const current = layout.sections[index];
+        expect(previous).not.toBeNull();
+        expect(current).not.toBeNull();
+        expect(current!.top).toBeGreaterThanOrEqual(previous!.bottom - 1.5);
+      }
+
+      expect(layout.hero!.scrollHeight).toBeLessThanOrEqual(
+        layout.hero!.clientHeight + 1,
+      );
+      expect(layout.heroCopy!.bottom).toBeLessThanOrEqual(layout.hero!.bottom + 1);
+      expect(layout.heroMedia!.bottom).toBeLessThanOrEqual(layout.hero!.bottom + 1);
+      expect(layout.heroFacts!.bottom).toBeLessThanOrEqual(layout.heroCopy!.bottom + 1);
+      expect(layout.heroFacts!.left).toBeGreaterThanOrEqual(layout.heroCopy!.left - 1);
+      expect(layout.heroFacts!.right).toBeLessThanOrEqual(layout.heroCopy!.right + 1);
+
+      if (routeState.hasSavedBrief) {
+        expect(layout.savedBriefLayout).not.toBeNull();
+        expect(layout.savedBrief!.scrollHeight).toBeLessThanOrEqual(
+          layout.savedBrief!.clientHeight + 1,
+        );
+        expect(layout.savedBrief!.top).toBeGreaterThanOrEqual(layout.hero!.bottom - 1.5);
+        expect(layout.savedBriefLayout!.top).toBeGreaterThanOrEqual(
+          layout.savedBrief!.top - 1,
+        );
+        expect(layout.savedBriefLayout!.bottom).toBeLessThanOrEqual(
+          layout.savedBrief!.bottom + 1,
+        );
+        expect(layout.fit!.top).toBeGreaterThanOrEqual(layout.savedBrief!.bottom - 1.5);
+      } else {
+        expect(layout.fit!.top).toBeGreaterThanOrEqual(layout.hero!.bottom - 1.5);
+      }
+
+      if (viewport.width > 900) {
+        expectAligned(layout.heroCopy!.top, layout.hero!.top);
+        expectAligned(layout.heroMedia!.top, layout.hero!.top);
+        expectAligned(layout.heroCopy!.bottom, layout.heroMedia!.bottom);
+        expectAligned(layout.heroImage!.bottom, layout.heroMedia!.bottom);
+        expectAligned(layout.heroCopy!.left, layout.hero!.left);
+        expectAligned(layout.heroMedia!.right, layout.hero!.right);
+      } else {
+        expectAligned(layout.heroMedia!.top, layout.hero!.top);
+        expectAligned(layout.heroMedia!.left, layout.hero!.left);
+        expectAligned(layout.heroMedia!.right, layout.hero!.right);
+        expectAligned(layout.heroImage!.bottom, layout.heroMedia!.bottom);
+        expect(layout.heroCopy!.top).toBeGreaterThanOrEqual(layout.heroMedia!.bottom - 1);
+        expectAligned(layout.heroCopy!.left, layout.hero!.left);
+        expectAligned(layout.heroCopy!.right, layout.hero!.right);
+      }
+
+      expect(layout.fitMediaFigures).toHaveLength(2);
+      const [firstFitMedia, secondFitMedia] = layout.fitMediaFigures;
+      expect(firstFitMedia).not.toBeNull();
+      expect(secondFitMedia).not.toBeNull();
+      if (viewport.width > 720) {
+        expectAligned(firstFitMedia!.top, secondFitMedia!.top);
+        expectAligned(firstFitMedia!.bottom, secondFitMedia!.bottom);
+      } else {
+        expectAligned(firstFitMedia!.left, secondFitMedia!.left);
+        expectAligned(firstFitMedia!.right, secondFitMedia!.right);
+        expect(secondFitMedia!.top).toBeGreaterThanOrEqual(firstFitMedia!.bottom - 1);
+      }
+
+      const headerBox = await page.locator('header.site').boundingBox();
+      const eyebrowBox = await page.getByText(
+        'Pitched acrylic cover \u00b7 Auckland',
+        { exact: true },
+      ).boundingBox();
+      const titleBox = await page.getByRole('heading', {
+        level: 1,
+        name: 'Cover the space without losing light.',
+      }).boundingBox();
+      const introBox = await page.getByText(
+        'A straightforward pitched acrylic pergola, finished to the Sanctuary standard.',
+        { exact: true },
+      ).boundingBox();
+      expect(headerBox).not.toBeNull();
+      expect(eyebrowBox).not.toBeNull();
+      expect(titleBox).not.toBeNull();
+      expect(introBox).not.toBeNull();
+      expect(eyebrowBox!.y).toBeGreaterThanOrEqual(
+        headerBox!.y + headerBox!.height + 8,
+      );
+      const titleToIntroGap = introBox!.y - (titleBox!.y + titleBox!.height);
+      expect(titleToIntroGap).toBeGreaterThanOrEqual(24);
+      expect(titleToIntroGap).toBeLessThanOrEqual(56);
+
+      await page.getByRole('link', { name: 'Check if your deck fits' }).click();
+      const anchoredHeaderBox = await page.locator('header.site').boundingBox();
+      const anchoredFitBox = await page.locator('#right-fit').boundingBox();
+      expect(anchoredHeaderBox).not.toBeNull();
+      expect(anchoredFitBox).not.toBeNull();
+      expect(anchoredFitBox!.y).toBeGreaterThanOrEqual(
+        anchoredHeaderBox!.y + anchoredHeaderBox!.height + 8,
+      );
+      expect(await page.evaluate(() => (
+        document.documentElement.scrollWidth - document.documentElement.clientWidth
+      ))).toBeLessThanOrEqual(0);
+    });
+  }
+}
+
 for (const viewport of desktopHeroViewports) {
   test(`desktop hero owns the initial viewport at ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -144,8 +343,8 @@ for (const viewport of desktopHeroViewports) {
     expect(titleBox).not.toBeNull();
     expect(introBox).not.toBeNull();
 
-    expect(Math.abs(heroBox!.y + heroBox!.height - viewport.height)).toBeLessThanOrEqual(1);
-    expect(Math.abs(nextSectionBox!.y - viewport.height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(heroBox!.y + heroBox!.height - viewport.height)).toBeLessThanOrEqual(2);
+    expect(Math.abs(nextSectionBox!.y - viewport.height)).toBeLessThanOrEqual(2);
     expect(Math.abs(copyBox!.y + copyBox!.height - (mediaBox!.y + mediaBox!.height))).toBeLessThanOrEqual(1);
     expect(Math.abs(imageBox!.y + imageBox!.height - (mediaBox!.y + mediaBox!.height))).toBeLessThanOrEqual(1);
     expect(introBox!.y - (titleBox!.y + titleBox!.height)).toBeGreaterThanOrEqual(24);

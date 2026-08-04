@@ -21,6 +21,11 @@ function roundingStep(enquiryType: EnquiryType) {
   return enquiryType === 'commercial' ? 500 : 250;
 }
 
+export function roundMarketingCustomerPrice(customerPriceIncGst: number, enquiryType: EnquiryType): number {
+  if (!Number.isFinite(customerPriceIncGst) || customerPriceIncGst <= 0) return 0;
+  return roundTo(customerPriceIncGst, roundingStep(enquiryType));
+}
+
 /**
  * Convert true cost (incl. GST) into a customer-facing indicative investment range
  * (installed, incl. GST), one-sided:
@@ -36,11 +41,9 @@ export function toIndicativeRangeOneSided(trueCostIncGst: number, enquiryType: E
   const low = baseline;
   const high = baseline * UPLIFT_MAX;
 
-  const step = roundingStep(enquiryType);
-
   return {
-    lowIncGst: roundTo(low, step),
-    highIncGst: roundTo(high, step),
+    lowIncGst: roundMarketingCustomerPrice(low, enquiryType),
+    highIncGst: roundMarketingCustomerPrice(high, enquiryType),
   };
 }
 
@@ -50,7 +53,7 @@ export function toIndicativeSingleAmount(trueCostIncGst: number, enquiryType: En
   }
 
   const baseline = trueCostIncGst * QUOTE_MULTIPLIER;
-  const rounded = roundTo(baseline, roundingStep(enquiryType));
+  const rounded = roundMarketingCustomerPrice(baseline, enquiryType);
 
   return {
     lowIncGst: rounded,
