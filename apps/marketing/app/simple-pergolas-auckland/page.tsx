@@ -159,7 +159,7 @@ export default async function SimplePergolasPage({
               </Heading>
             </div>
             <Text size="large">
-              Simple describes the project conditions—not the quality of the
+              Simple describes the project conditions, not the quality of the
               finished pergola.
             </Text>
           </header>
@@ -321,7 +321,7 @@ export default async function SimplePergolasPage({
           <header className={styles.reviewsHeader}>
             <Eyebrow>Customer experience</Eyebrow>
             <Heading id="simple-reviews-title">
-              Built to feel good—and feel straightforward.
+              Built to feel good. Built to feel straightforward.
             </Heading>
           </header>
           <div className={styles.reviewGrid}>

@@ -302,7 +302,12 @@ The focused conversion-page suite covers 320, 390, 768, 1024 and 1440 pixel
 viewports; one H1; priority hero decoding; self-canonical `noindex,follow`
 metadata; sitemap exclusion; preserved acrylic SEO ownership; zero horizontal
 overflow; desktop/mobile priority hero art direction; homepage priority, header
-and embedded-form context without project detours; approved product-fit copy;
+and embedded-form context without project detours; fixed-header hero clearance,
+the compact 1024-pixel proof rail; exact desktop hero viewport ownership at
+1366x768, 1440x900, 1536x864 and 1920x1080; aligned copy, media and image bottom
+edges; at least 24 pixels between the hero headline and supporting paragraph;
+both 6-metre Simple cover limits, em dash-free page copy and contained criteria
+headings; approved product-fit copy;
 deck-level and optional-blind qualification; absence of synthetic configurator
 controls; accessible retained-value validation; and a complete JavaScript-disabled
 form fallback.

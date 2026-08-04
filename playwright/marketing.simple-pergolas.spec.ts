@@ -9,6 +9,12 @@ const viewports = [
   { name: '390x844', width: 390, height: 844 },
   { name: '320x720', width: 320, height: 720 },
 ] as const;
+const desktopHeroViewports = [
+  { name: '1366x768', width: 1366, height: 768 },
+  { name: '1440x900', width: 1440, height: 900 },
+  { name: '1536x864', width: 1536, height: 864 },
+  { name: '1920x1080', width: 1920, height: 1080 },
+] as const;
 
 async function preparePage(page: Page) {
   await page.addInitScript(() => {
@@ -39,6 +45,7 @@ for (const viewport of viewports) {
     await expect(page.getByText('A straightforward pitched acrylic pergola, finished to the Sanctuary standard.')).toBeVisible();
     await expect(page.getByRole('link', { name: 'Get an initial estimate' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Simple form. Sanctuary finish.' })).toBeAttached();
+    await expect(page.getByRole('heading', { name: 'Up to 6 m', exact: true })).toHaveCount(2);
     await expect(page.getByText('Optional blinds', { exact: true })).toBeAttached();
     await expect(page.getByText('Rob Ebert', { exact: true })).toBeAttached();
     await expect(page.getByText('Pierre and Tracy', { exact: true })).toBeAttached();
@@ -50,9 +57,37 @@ for (const viewport of viewports) {
     await expect(page.getByRole('button', { name: 'Request my initial estimate' })).toBeAttached();
     await expect(page.locator('[data-simple-price-integration="fit-section"]')).toBeAttached();
     await expect(page.locator('input[type="range"]')).toHaveCount(0);
+    await expect(page.locator('main')).not.toContainText('—');
     expect(await page.evaluate(() => (
       document.documentElement.scrollWidth <= document.documentElement.clientWidth
     ))).toBe(true);
+
+    const longestCriteriaHeading = page.getByRole('heading', {
+      name: 'Straightforward',
+      exact: true,
+    });
+    expect(await longestCriteriaHeading.evaluate((heading) => (
+      heading.scrollWidth <= heading.clientWidth
+    ))).toBe(true);
+
+    const headerBox = await page.locator('header.site').boundingBox();
+    const heroEyebrowBox = await page.getByText(
+      'Pitched acrylic cover \u00b7 Auckland',
+      { exact: true },
+    ).boundingBox();
+    expect(headerBox).not.toBeNull();
+    expect(heroEyebrowBox).not.toBeNull();
+    expect(heroEyebrowBox!.y).toBeGreaterThanOrEqual(
+      headerBox!.y + headerBox!.height + 8,
+    );
+
+    if (viewport.width === 1024) {
+      const factsBox = await page.locator(
+        'dl[aria-label="Simple cover highlights"]',
+      ).boundingBox();
+      expect(factsBox).not.toBeNull();
+      expect(factsBox!.height).toBeLessThan(100);
+    }
 
     const priorityImage = page.locator('main section').first().locator('picture img');
     await expect.poll(() => priorityImage.evaluate((image) => (
@@ -61,6 +96,59 @@ for (const viewport of viewports) {
     await expect.poll(() => priorityImage.evaluate((image) => (
       (image as HTMLImageElement).currentSrc
     ))).toContain(viewport.width <= 760 ? 'pitched-11' : 'pitched-03');
+  });
+}
+
+for (const viewport of desktopHeroViewports) {
+  test(`desktop hero owns the initial viewport at ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await preparePage(page);
+    await page.goto(route);
+
+    const hero = page.locator('main > section').first();
+    const nextSection = page.locator('main > section').nth(1);
+    const heroCopy = hero.locator('h1').locator('..');
+    const heroMedia = hero.locator('figure');
+    const heroImage = heroMedia.locator('img');
+    const title = hero.locator('h1');
+    const intro = hero.getByText(
+      'A straightforward pitched acrylic pergola, finished to the Sanctuary standard.',
+      { exact: true },
+    );
+
+    await expect(heroImage).toBeVisible();
+
+    const [
+      heroBox,
+      nextSectionBox,
+      copyBox,
+      mediaBox,
+      imageBox,
+      titleBox,
+      introBox,
+    ] = await Promise.all([
+      hero.boundingBox(),
+      nextSection.boundingBox(),
+      heroCopy.boundingBox(),
+      heroMedia.boundingBox(),
+      heroImage.boundingBox(),
+      title.boundingBox(),
+      intro.boundingBox(),
+    ]);
+
+    expect(heroBox).not.toBeNull();
+    expect(nextSectionBox).not.toBeNull();
+    expect(copyBox).not.toBeNull();
+    expect(mediaBox).not.toBeNull();
+    expect(imageBox).not.toBeNull();
+    expect(titleBox).not.toBeNull();
+    expect(introBox).not.toBeNull();
+
+    expect(Math.abs(heroBox!.y + heroBox!.height - viewport.height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(nextSectionBox!.y - viewport.height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(copyBox!.y + copyBox!.height - (mediaBox!.y + mediaBox!.height))).toBeLessThanOrEqual(1);
+    expect(Math.abs(imageBox!.y + imageBox!.height - (mediaBox!.y + mediaBox!.height))).toBeLessThanOrEqual(1);
+    expect(introBox!.y - (titleBox!.y + titleBox!.height)).toBeGreaterThanOrEqual(24);
   });
 }
 

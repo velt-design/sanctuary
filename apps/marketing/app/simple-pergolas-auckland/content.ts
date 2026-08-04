@@ -6,7 +6,7 @@ export const simpleCoverFitCriteria = [
   },
   {
     label: 'Post spacing',
-    value: 'Generally up to 4 m',
+    value: 'Up to 6 m',
     text: 'Post positions are resolved around the deck, outlook and structure.',
   },
   {

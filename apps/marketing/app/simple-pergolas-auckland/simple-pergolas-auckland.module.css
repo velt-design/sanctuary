@@ -1,4 +1,6 @@
 .page {
+  --simple-section-space: clamp(4rem, 6vw, 6rem);
+  --simple-lead-gap: clamp(2.75rem, 4vw, 4.5rem);
   overflow: clip;
 }
 
@@ -26,7 +28,7 @@
 .heroCopy {
   min-width: 0;
   display: flex;
-  padding: clamp(3.25rem, 7vw, 7rem) clamp(2.25rem, 5vw, 5.75rem) clamp(2.5rem, 5vw, 4.75rem) var(--page-gutter);
+  padding: max(clamp(3.25rem, 7vw, 7rem), calc(var(--header-height) + 2rem)) clamp(2.25rem, 5vw, 5.75rem) clamp(2rem, 4vw, 4rem) var(--page-gutter);
   flex-direction: column;
   justify-content: center;
 }
@@ -97,6 +99,42 @@
   object-position: 50% 50%;
 }
 
+@media (min-width: 901px) {
+  .hero {
+    height: 100dvh;
+    min-height: 38rem;
+  }
+
+  .heroTitle {
+    margin-bottom: clamp(1.5rem, 2vw, 2rem);
+  }
+}
+
+@media (min-width: 901px) and (max-height: 820px) {
+  .heroCopy {
+    padding: calc(var(--header-height) + 1.25rem)
+      clamp(2.25rem, 5vw, 5.75rem) 1.5rem var(--page-gutter);
+  }
+
+  .heroEyebrow {
+    margin-bottom: 1.25rem;
+  }
+
+  .heroTitle {
+    max-width: 9.4ch;
+    font-size: clamp(3.6rem, 5vw, 4.6rem);
+    line-height: .92;
+  }
+
+  .heroActions {
+    margin-top: 1.5rem;
+  }
+
+  .heroFacts {
+    padding-top: 1.5rem;
+  }
+}
+
 .heroMedia::after {
   content: '';
   position: absolute;
@@ -124,7 +162,7 @@
 .boundary,
 .reviews,
 .estimate {
-  padding-block: var(--section-space);
+  padding-block: var(--simple-section-space);
   border-top: 1px solid var(--color-rule);
 }
 
@@ -137,7 +175,7 @@
   grid-template-columns: minmax(0, 1.15fr) minmax(18rem, .55fr);
   gap: clamp(2rem, 8vw, 8rem);
   align-items: end;
-  margin-bottom: clamp(3rem, 7vw, 6rem);
+  margin-bottom: var(--simple-lead-gap);
 }
 
 .sectionIntro > div {
@@ -193,7 +231,7 @@
 .fitCriteria {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-top: clamp(2.5rem, 5vw, 4.5rem);
+  margin-top: clamp(2rem, 3vw, 3rem);
   border-top: 1px solid var(--color-rule-strong);
   border-left: 1px solid var(--color-rule);
 }
@@ -209,8 +247,8 @@
 
 .fitCriteria h3 {
   margin: auto 0 .9rem;
-  font: 500 clamp(1.5rem, 2.3vw, 2.35rem)/1.02 var(--font-display);
-  letter-spacing: -.04em;
+  font: 500 clamp(1.5rem, 1.8vw, 2rem)/1.04 var(--font-display);
+  letter-spacing: -.035em;
 }
 
 .fitCriteria p {
@@ -288,7 +326,7 @@
 
 .standardCopy {
   display: flex;
-  padding: var(--section-space) var(--page-gutter) var(--section-space) clamp(2.5rem, 5vw, 6rem);
+  padding: var(--simple-section-space) var(--page-gutter) var(--simple-section-space) clamp(2.5rem, 5vw, 6rem);
   flex-direction: column;
   justify-content: center;
 }
@@ -369,7 +407,7 @@
 }
 
 .options {
-  padding-block: var(--section-space);
+  padding-block: var(--simple-section-space);
   border-top: 1px solid var(--color-rule);
   background: var(--color-inverse-surface);
   color: var(--color-inverse-text);
@@ -440,7 +478,7 @@
 }
 
 .boundaryGrid article {
-  min-height: 30rem;
+  min-height: 28rem;
   display: flex;
   padding: clamp(1.75rem, 4vw, 4rem);
   flex-direction: column;
@@ -455,7 +493,7 @@
 
 .boundaryGrid h3 {
   max-width: 13ch;
-  margin: clamp(2.5rem, 6vw, 5rem) 0 1.5rem;
+  margin: clamp(2.5rem, 4vw, 4rem) 0 1.5rem;
   font: 500 clamp(2rem, 3.7vw, 4rem)/.98 var(--font-display);
   letter-spacing: -.05em;
 }
@@ -479,7 +517,7 @@
   grid-template-columns: minmax(10rem, .45fr) minmax(0, 1.55fr);
   gap: clamp(2rem, 8vw, 8rem);
   align-items: start;
-  margin-bottom: clamp(3rem, 7vw, 6rem);
+  margin-bottom: var(--simple-lead-gap);
 }
 
 .reviewsHeader h2 {
@@ -494,7 +532,7 @@
 }
 
 .reviewGrid figure {
-  min-height: clamp(24rem, 35vw, 36rem);
+  min-height: clamp(23rem, 32vw, 32rem);
   display: flex;
   padding: clamp(1.75rem, 4vw, 4rem);
   flex-direction: column;
@@ -555,17 +593,6 @@
     font-size: clamp(3.5rem, 6.5vw, 5.8rem);
   }
 
-  .heroFacts {
-    grid-template-columns: 1fr;
-    gap: .65rem;
-  }
-
-  .heroFacts div {
-    display: grid;
-    grid-template-columns: 8rem minmax(0, 1fr);
-    align-items: baseline;
-  }
-
   .fitCriteria {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -582,6 +609,8 @@
 @media (max-width: 900px) {
   .page {
     --header-height: 64px;
+    --simple-section-space: clamp(4.25rem, 8vw, 5rem);
+    --simple-lead-gap: clamp(2.5rem, 6vw, 3.5rem);
   }
 
   .hero {
@@ -630,7 +659,7 @@
   }
 
   .standardCopy {
-    padding: var(--section-space) var(--page-gutter);
+    padding: var(--simple-section-space) var(--page-gutter);
   }
 
   .optionsGrid {
@@ -651,6 +680,11 @@
 }
 
 @media (max-width: 720px) {
+  .page {
+    --simple-section-space: 4rem;
+    --simple-lead-gap: 2.5rem;
+  }
+
   .heroMedia {
     min-height: 60svh;
   }
@@ -676,21 +710,8 @@
     width: 100%;
   }
 
-  .heroFacts div {
-    grid-template-columns: 6.8rem minmax(0, 1fr);
-  }
-
-  .fit,
-  .boundary,
-  .reviews,
-  .estimate,
-  .options {
-    padding-block: 4.5rem;
-  }
-
   .sectionIntro {
     gap: 1.5rem;
-    margin-bottom: 3rem;
   }
 
   .fitLevels,
@@ -701,11 +722,11 @@
   }
 
   .fitLevels article {
-    min-height: 18rem;
+    min-height: clamp(14.5rem, 62vw, 16rem);
   }
 
   .fitLevels strong {
-    font-size: clamp(8rem, 43vw, 12rem);
+    font-size: clamp(7rem, 37vw, 9rem);
   }
 
   .fitCriteria {
@@ -717,11 +738,11 @@
   }
 
   .fitCriteria h3 {
-    margin-top: 3rem;
+    margin-top: 2rem;
   }
 
   .fitMedia figure {
-    min-height: 88vw;
+    min-height: 84vw;
   }
 
   .fitCaveat {
@@ -734,7 +755,7 @@
   }
 
   .standardCopy {
-    padding-block: 4.5rem;
+    padding-block: var(--simple-section-space);
   }
 
   .standardList li,
@@ -747,11 +768,19 @@
   }
 
   .boundaryGrid article {
-    min-height: 27rem;
+    min-height: 0;
   }
 
   .reviewGrid figure {
-    min-height: 25rem;
+    min-height: 0;
+  }
+
+  .reviewGrid blockquote {
+    margin-bottom: clamp(3rem, 12vw, 4rem);
+  }
+
+  .reviewGrid figcaption {
+    margin-top: 0;
   }
 
   .estimate :global(.acrylic-form) {
@@ -777,13 +806,8 @@
     font-size: 3.15rem;
   }
 
-  .heroFacts div {
-    grid-template-columns: 1fr;
-    gap: .2rem;
-  }
-
   .fitLevels article {
-    min-height: 16rem;
+    min-height: 14.5rem;
   }
 
   .standardList li,
