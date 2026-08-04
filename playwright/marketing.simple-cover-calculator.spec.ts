@@ -235,3 +235,30 @@ test('calculator exposes visible keyboard focus and live output semantics', asyn
   await expect(widthMetres).toHaveValue('6.1');
   await expect(page.getByText('18.3 m²', { exact: true })).toHaveCount(2);
 });
+
+for (const viewport of [
+  { name: 'mobile', width: 390, height: 844 },
+  { name: 'desktop', width: 1366, height: 768 },
+] as const) {
+  test(`result panel stays stable across the Simple limit at ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await prepareCalculator(page);
+    await page.goto(route);
+    await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
+
+    await setRange(page, '#simple-cover-projection', 5_100);
+    const customCard = page.locator('[data-result-state="custom"]');
+    await expect(customCard).toBeVisible();
+    const customHeight = (await customCard.boundingBox())?.height ?? 0;
+
+    await setRange(page, '#simple-cover-projection', 5_000);
+    const loadingCard = page.locator('[data-result-state="loading"]');
+    await expect(loadingCard).toBeVisible();
+    const loadingHeight = (await loadingCard.boundingBox())?.height ?? 0;
+    await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
+    const pricedHeight = (await page.locator('[data-result-state="priced"]').boundingBox())?.height ?? 0;
+
+    expect(Math.abs(customHeight - loadingHeight)).toBeLessThanOrEqual(1);
+    expect(Math.abs(pricedHeight - loadingHeight)).toBeLessThanOrEqual(1);
+  });
+}

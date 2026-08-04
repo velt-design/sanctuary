@@ -447,24 +447,24 @@ test('the two residential directions give one useful pathway and two governed re
 }) => {
   await setAnalyticsConsent(page, false);
   const paths = [
-    ['cover', 'A simple acrylic pergola', '/simple-pergolas-auckland', ['Dairy Flat Estate', 'St Heliers Townhouse']],
-    ['bespoke', 'Custom pergola design', '/custom-pergolas-auckland', ['Tindalls Bay - Patio & Carport', 'Warkworth Outdoor Room']],
+    ['cover', 'A simple acrylic pergola', 'Explore simple pergolas', '/simple-pergolas-auckland?project=cover', 'View all projects', '/projects', ['Dairy Flat Estate', 'St Heliers Townhouse']],
+    ['bespoke', 'Custom pergola design', 'Explore projects', '/projects', 'Explore custom pergolas', '/custom-pergolas-auckland?project=bespoke', ['Tindalls Bay - Patio & Carport', 'Warkworth Outdoor Room']],
   ] as const;
 
-  for (const [direction, heading, pathway, projectNames] of paths) {
+  for (const [direction, heading, primaryLabel, primaryHref, secondaryLabel, secondaryHref, projectNames] of paths) {
     await page.goto('/');
     await selectDirection(page, direction);
     await expect(page.getByRole('heading', { level: 2, name: heading, exact: true }))
       .toBeVisible();
-    await expect(page.locator('[data-project-finder-result] a').first())
-      .toHaveAttribute('href', `${pathway}?project=${direction}`);
+    await expect(page.getByRole('link', { name: primaryLabel, exact: true }))
+      .toHaveAttribute('href', primaryHref);
     for (const projectName of projectNames) {
       await expect(page.getByRole('heading', { level: 3, name: projectName }))
         .toBeVisible();
     }
     await expect(page.locator('[data-selected-project]')).toHaveCount(2);
-    await expect(page.getByRole('link', { name: 'View all projects' }))
-      .toHaveAttribute('href', '/projects');
+    await expect(page.getByRole('link', { name: secondaryLabel, exact: true }))
+      .toHaveAttribute('href', secondaryHref);
     await expect(page.getByRole('link', { name: 'Use as a reference' }))
       .toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Start your project now' }))

@@ -1399,12 +1399,18 @@ evidence-first enquiry close remain the visible sequence.
 
 The first layer is exactly `Simple cover`, `Custom design` and `Commercial /
 Professional`. `Simple cover` recommends acrylic roof pergolas, uses governed
-Dairy Flat and St Heliers evidence, and continues to
+Dairy Flat and St Heliers evidence, and uses the dedicated pitched acrylic
+product image `pitched-01.webp` for immediate product recognition. It continues to
 `/simple-pergolas-auckland`. That destination is a distinct, noindex conversion
 page; `/acrylic-roof-pergolas-auckland` remains the unchanged indexable acrylic
 research owner. `Custom design` recommends the custom design
-path, uses governed Tindalls Bay and Warkworth evidence, and continues to
-`/custom-pergolas-auckland`. Both retain the optional controlled-priority brief.
+path, uses the Mt Maunganui Box hero image and governed Tindalls Bay and
+Warkworth evidence. Its result leads with `Explore projects` to `/projects` and
+retains the attributed `/custom-pergolas-auckland` pathway as the quiet
+`Explore custom pergolas` action. Both residential paths retain the optional
+controlled-priority brief. The Commercial / Professional first-layer choice
+uses the second Lilliput Mini Golf image to show an occupied venue beneath the
+structure.
 
 `Commercial / Professional` reveals a second image-led radio group in the same
 finder: `Extending a Venue`, `Builder or Contractor`, and `Architects and

@@ -20,13 +20,21 @@ type ProjectFinderMedia = {
   src: string;
 };
 
+type ProjectFinderChoiceMedia = Pick<
+  ProjectFinderMedia,
+  'alt' | 'objectPosition' | 'src'
+>;
+
 export type ProjectEvidence = ProjectFinderMedia & {
   reason: string;
 };
 
 export type ProjectFinderHomepageMedia = {
   hero: ProjectFinderMedia;
-  choiceByDirection: Record<ProjectFinderHomeDirection, ProjectFinderMedia>;
+  choiceByDirection: Record<
+    ProjectFinderHomeDirection,
+    ProjectFinderChoiceMedia
+  >;
   choiceByProfessionalPath: Record<
     CommercialProfessionalPath,
     ProjectFinderMedia
@@ -100,12 +108,17 @@ export function buildProjectFinderHomepageMedia(
       mobileSrc: '/images/warkworth-gable-02.jpg',
     },
     choiceByDirection: {
-      cover: resolveMedia(projects, { projectSlug: 'dairy-flat-estate' }),
+      cover: {
+        alt: 'White pitched acrylic pergola covering a ground-level patio beside a weatherboard home',
+        objectPosition: '50% 50%',
+        src: '/images/simple-pergolas/pitched-01.webp',
+      },
       bespoke: resolveMedia(projects, {
-        projectSlug: 'tindalls-bay-pavilion',
+        projectSlug: 'mt-maunganui-box',
       }),
       'commercial-professional': resolveMedia(projects, {
-        projectSlug: 'goodhome-commercial-terrace',
+        projectSlug: 'lilliput-mini-golf',
+        galleryIndex: 1,
       }),
     },
     choiceByProfessionalPath: {
