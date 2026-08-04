@@ -1465,7 +1465,9 @@ beneath the transparent shared header. The visible desktop header enquiry action
 is withheld. One bottom-centred bold open chevron advances the native document
 scroll. It has no stem, circle, label, background or other enclosing shape; its
 invisible hit area remains at least 56 pixels wide and its heavier stroke remains
-legible over both responsive crops. Through 760px the priority picture uses the
+legible over both responsive crops. A restrained periodic downward nudge makes
+the chevron discoverable without adding decorative chrome; reduced-motion users
+receive the static mark. Through 760px the priority picture uses the
 portrait `warkworth-gable-02.jpg`; larger widths retain the existing wide project
 image. The hero remains sticky while the first forward wheel gesture, upward
 touch swipe, Page Down, Space or Arrow Down reveals the existing shade, eyebrow,
@@ -1478,6 +1480,12 @@ header for natural continuation. It does not target the outer section padding.
 Input returns to native document
 scrolling at that boundary, reverse scrolling is not intercepted and reduced
 motion uses immediate movement. No hero enquiry CTA is rendered.
+
+On touch devices, the first forward movement of an active swipe is cancelled
+before the distance threshold is reached, preventing native momentum from
+carrying one gesture through both hero stages. The welcome veil also suppresses
+touch panning until it has left. One touch sequence can therefore reveal only
+one stage; advancing again requires a new touch start.
 
 The shared header stays transparent at mobile and desktop widths while either
 hero stage is active, and becomes opaque only after the hero journey boundary.
