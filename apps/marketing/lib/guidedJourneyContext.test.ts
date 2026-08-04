@@ -19,7 +19,7 @@ const cases: ReadonlyArray<{
   ...['daylight', 'shade', 'balanced'].map((focus) => ({
     resultId: 'residential-cover' as const,
     params: { focus },
-    destination: '/pergolas-auckland',
+    destination: '/simple-pergolas-auckland',
     focusId: focus,
   })),
   ...['everyday', 'entertaining', 'poolside'].map((use) => ({

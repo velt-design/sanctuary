@@ -241,7 +241,7 @@ export const resultTitles: Record<GuidedResultId, string> = {
 };
 
 export const resultCtaLabels: Record<GuidedResultId, string> = {
-  'residential-cover': 'Explore residential pergolas',
+  'residential-cover': 'Explore simple pergolas',
   'outdoor-room': 'Explore outdoor rooms',
   bespoke: 'Explore bespoke pergolas',
   commercial: 'Explore commercial projects',
@@ -249,7 +249,7 @@ export const resultCtaLabels: Record<GuidedResultId, string> = {
 };
 
 export const resultRoutes: Record<GuidedResultId, string> = {
-  'residential-cover': '/pergolas-auckland',
+  'residential-cover': '/simple-pergolas-auckland',
   'outdoor-room': '/outdoor-rooms-auckland',
   bespoke: '/custom-pergolas-auckland',
   commercial: '/commercial-pergolas-auckland',

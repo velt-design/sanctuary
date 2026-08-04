@@ -95,6 +95,14 @@ text, contact details, dimensions or uploaded content. The retired
 `/home-project-finder` URL permanently redirects to `/`, carries a noindex
 header and does not own a second analytics or rendering tree.
 
+The homepage Simple cover destination is `/simple-pergolas-auckland`. This
+conversion route is `noindex,follow`, excluded from the sitemap and distinct
+from the indexable `/acrylic-roof-pergolas-auckland` research owner. It accepts
+only the existing closed `project` and `priorities` URL values. Its embedded
+initial-estimate form reuses the existing attachment, consent, attribution,
+validation, idempotency and fallback contracts; the route adds no visitor text,
+contact data or attachment detail to the URL or analytics payload.
+
 Enquiry conversion events retain their category gates and event names. Where
 available they also include validated `source_path`, `source_component`,
 `source_project`, `source_product`, `source_experience`, `source_pathway`, and

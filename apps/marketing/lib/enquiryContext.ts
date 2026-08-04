@@ -133,6 +133,7 @@ const contextPropertyKeys = [
 
 const serviceAudienceByPath = new Map<string, EnquiryAudience>([
   [PROJECT_FINDER_HOME_PATH, 'residential'],
+  ['/simple-pergolas-auckland', 'residential'],
   ['/pergolas-auckland', 'residential'],
   ['/custom-pergolas-auckland', 'residential'],
   ['/aluminium-pergolas-auckland', 'residential'],

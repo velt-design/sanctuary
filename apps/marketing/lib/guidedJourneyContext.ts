@@ -47,7 +47,7 @@ type ContextCopy = {
 };
 
 const destinationByResult: Record<GuidedResultId, string> = {
-  'residential-cover': '/pergolas-auckland',
+  'residential-cover': '/simple-pergolas-auckland',
   'outdoor-room': '/outdoor-rooms-auckland',
   bespoke: '/custom-pergolas-auckland',
   commercial: '/commercial-pergolas-auckland',

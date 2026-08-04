@@ -26,8 +26,11 @@ The July 2026 guide-cluster pass removed ungoverned headline durations, combined
 
 The 29 July 2026 follow-up retires the separate `/start` and `/start/explore`
 flows instead of maintaining a second public conversion system. Claims checks
-and manual review continue to cover every public acquisition surface, including
-any future noindex entry flow. The retired acrylic v2 route permanently
+and manual review cover every public acquisition surface, including the
+noindex `/simple-pergolas-auckland` conversion route. That route uses the
+approved workmanship and acrylic UV wording, qualifies roof and blind weather
+behaviour, publishes no price or timing promise and limits project facts to the
+current governed records. The retired acrylic v2 route permanently
 redirects to the governed primary route and is no longer a second copy surface.
 Every Pending or project-specific status below remains unavailable for general
 public use until an approval owner changes its status here.

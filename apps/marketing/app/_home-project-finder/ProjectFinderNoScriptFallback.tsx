@@ -2,7 +2,7 @@ import Link from 'next/link';
 import styles from './projectFinderHomepage.module.css';
 
 const fallbackPaths = [
-  { href: '/acrylic-roof-pergolas-auckland', label: 'Simple cover' },
+  { href: '/simple-pergolas-auckland', label: 'Simple cover' },
   { href: '/custom-pergolas-auckland', label: 'Custom design' },
 ] as const;
 

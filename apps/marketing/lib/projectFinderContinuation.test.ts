@@ -62,7 +62,7 @@ describe('project finder continuation', () => {
       direction: 'cover',
       priorities: ['daylight'],
     })).toBe(
-      '/acrylic-roof-pergolas-auckland?project=cover&priorities=daylight',
+      '/simple-pergolas-auckland?project=cover&priorities=daylight',
     );
     expect(buildProjectFinderHomeDestinationHref({
       direction: 'bespoke',
@@ -71,7 +71,7 @@ describe('project finder continuation', () => {
       '/custom-pergolas-auckland?project=bespoke&priorities=coordination',
     );
     expect(buildProjectFinderDestinationHref('cover', [])).toBe(
-      '/pergolas-auckland?project=cover',
+      '/simple-pergolas-auckland?project=cover',
     );
   });
 

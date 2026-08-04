@@ -193,6 +193,7 @@ describe('enquiry context', () => {
       'professional',
     );
     expect(inferEnquiryAudience('/pergolas-auckland')).toBe('residential');
+    expect(inferEnquiryAudience('/simple-pergolas-auckland')).toBe('residential');
     expect(inferEnquiryAudience('/projects')).toBeUndefined();
     expect(inferEnquiryAudience('/products')).toBeUndefined();
     expect(inferEnquiryAudience('/contact')).toBeUndefined();

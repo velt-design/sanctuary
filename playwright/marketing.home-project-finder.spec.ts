@@ -447,7 +447,7 @@ test('the two residential directions give one useful pathway and two governed re
 }) => {
   await setAnalyticsConsent(page, false);
   const paths = [
-    ['cover', 'Acrylic roof pergolas', '/acrylic-roof-pergolas-auckland', ['Dairy Flat Estate', 'St Heliers Townhouse']],
+    ['cover', 'A simple acrylic pergola', '/simple-pergolas-auckland', ['Dairy Flat Estate', 'St Heliers Townhouse']],
     ['bespoke', 'Custom pergola design', '/custom-pergolas-auckland', ['Tindalls Bay - Patio & Carport', 'Warkworth Outdoor Room']],
   ] as const;
 
@@ -873,7 +873,7 @@ test('no-JavaScript visitors receive direct project and enquiry pathways', async
   await expect(page.locator('header.site')).toBeVisible();
   await expect(page.locator('[data-project-finder-interactive]')).toBeHidden();
   await expect(page.getByRole('link', { name: 'Simple cover' }))
-    .toHaveAttribute('href', '/acrylic-roof-pergolas-auckland');
+    .toHaveAttribute('href', '/simple-pergolas-auckland');
   await expect(page.getByRole('link', { name: 'Custom design' }))
     .toHaveAttribute('href', '/custom-pergolas-auckland');
   await expect(page.getByRole('link', { name: 'Extending a Venue' }))

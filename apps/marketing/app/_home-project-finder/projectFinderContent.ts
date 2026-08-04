@@ -54,10 +54,10 @@ export const residentialProjectResultContent: Record<
   ProjectResultContent
 > = {
   cover: {
-    responseHeading: 'Acrylic roof pergolas',
+    responseHeading: 'A simple acrylic pergola',
     responseExplanation:
       'Start with a simple, considered cover designed around shelter, daylight and a clean connection to the house.',
-    pathwayLabel: 'Explore acrylic roof pergolas',
+    pathwayLabel: 'Explore simple pergolas',
     closeHeading: 'Ready to discuss a simple cover?',
     closeExplanation:
       'Send the direction and priorities you selected so Sanctuary can review the site and shape a useful next step.',

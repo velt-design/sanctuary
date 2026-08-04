@@ -27,6 +27,8 @@ type AcrylicPergolaEnquiryFormProps = {
   submitLabel?: string;
   messageLabel?: string;
   messagePlaceholder?: string;
+  successHeading?: string;
+  successMessage?: string;
   briefFields?: readonly EnquiryBriefField[];
   directContact?: {
     intro: string;
@@ -149,6 +151,8 @@ export default function AcrylicPergolaEnquiryForm({
   submitLabel = 'Send project brief',
   messageLabel = 'Project brief',
   messagePlaceholder = 'How will you use the space? What should the pergola improve?',
+  successHeading = 'Project brief sent.',
+  successMessage = 'We’ll review it and contact you about the next step.',
   briefFields = [],
   directContact,
   initialEnquiryType,
@@ -701,8 +705,8 @@ export default function AcrylicPergolaEnquiryForm({
       >
         {submitState === 'success' ? (
           <div className="acrylic-form__status-message acrylic-form__status-message--success" role="status">
-            <h3>Project brief sent.</h3>
-            <p>We’ll review it and contact you about the next step.</p>
+            <h3>{successHeading}</h3>
+            <p>{successMessage}</p>
           </div>
         ) : null}
         {submitState === 'error' ? (

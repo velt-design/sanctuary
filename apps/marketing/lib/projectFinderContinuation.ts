@@ -50,7 +50,7 @@ export const projectFinderDestinationByDirection: Record<
   ResidentialProjectDirection,
   string
 > = {
-  cover: '/pergolas-auckland',
+  cover: '/simple-pergolas-auckland',
   'outdoor-room': '/outdoor-rooms-auckland',
   bespoke: '/custom-pergolas-auckland',
 };
@@ -199,7 +199,7 @@ export function resolveProjectFinderHomeDestination(
   selection: ProjectFinderHomeSelection,
 ): string {
   if (selection.direction === 'cover') {
-    return '/acrylic-roof-pergolas-auckland';
+    return '/simple-pergolas-auckland';
   }
   if (selection.direction === 'bespoke') {
     return '/custom-pergolas-auckland';

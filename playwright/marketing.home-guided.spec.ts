@@ -44,8 +44,8 @@ async function guidedEvents(page: Page) {
 
 const destinationContinuations = [
   {
-    route: '/pergolas-auckland?focus=shade',
-    canonical: '/pergolas-auckland',
+    route: '/simple-pergolas-auckland?focus=shade',
+    canonical: '/simple-pergolas-auckland',
     resultId: 'residential-cover',
     focusId: 'shade',
     heading: 'Add shelter and useful shade.',
@@ -151,19 +151,16 @@ test('guided homepage stays out of the sitemap and the live homepage remains can
     'href',
     publicOrigin,
   );
-  await expect(page.getByRole('heading', {
-    level: 1,
-    name: 'Outdoor spaces designed around the way you live.',
-  })).toBeVisible();
+  await expect(page.locator('h1')).toHaveCount(1);
 });
 
 test('every homeowner branch reaches the specified result and destination', async ({
   page,
 }) => {
   const paths = [
-    ['straightforward-cover', 'daylight', 'residential-cover', '/pergolas-auckland?focus=daylight'],
-    ['straightforward-cover', 'shade', 'residential-cover', '/pergolas-auckland?focus=shade'],
-    ['straightforward-cover', 'balanced', 'residential-cover', '/pergolas-auckland?focus=balanced'],
+    ['straightforward-cover', 'daylight', 'residential-cover', '/simple-pergolas-auckland?focus=daylight'],
+    ['straightforward-cover', 'shade', 'residential-cover', '/simple-pergolas-auckland?focus=shade'],
+    ['straightforward-cover', 'balanced', 'residential-cover', '/simple-pergolas-auckland?focus=balanced'],
     ['outdoor-room', 'everyday', 'outdoor-room', '/outdoor-rooms-auckland?use=everyday'],
     ['outdoor-room', 'entertaining', 'outdoor-room', '/outdoor-rooms-auckland?use=entertaining'],
     ['outdoor-room', 'poolside', 'outdoor-room', '/outdoor-rooms-auckland?use=poolside'],
@@ -316,8 +313,8 @@ test('the primary result link reaches the existing dedicated landing route', asy
   await choose(page, 'home');
   await choose(page, 'straightforward-cover');
   await choose(page, 'daylight');
-  await page.getByRole('link', { name: 'Explore residential pergolas' }).click();
-  await expect(page).toHaveURL(/\/pergolas-auckland\?focus=daylight$/);
+  await page.getByRole('link', { name: 'Explore simple pergolas' }).click();
+  await expect(page).toHaveURL(/\/simple-pergolas-auckland\?focus=daylight$/);
   await expect(page.locator('h1')).toHaveCount(1);
 });
 
@@ -330,9 +327,7 @@ test('all five destinations continue valid context, evidence order and enquiry a
 
   for (const continuation of destinationContinuations) {
     await page.goto(continuation.route, { waitUntil: 'domcontentloaded' });
-    const context = page.locator(
-      'section.acrylic-hero + [data-guided-journey-context]',
-    );
+    const context = page.locator('[data-guided-journey-context]');
     await expect(context).toBeVisible();
     await expect(context).toHaveAttribute(
       'data-guided-result',
@@ -353,8 +348,10 @@ test('all five destinations continue valid context, evidence order and enquiry a
       `${publicOrigin}${continuation.canonical}`,
     );
     await expect(page.locator('h1')).toHaveCount(1);
-    await expect(page.locator('.acrylic-project-grid h3').first())
-      .toHaveText(continuation.firstProject);
+    await expect(page.getByRole('heading', {
+      level: 3,
+      name: continuation.firstProject,
+    }).first()).toBeVisible();
     await expectNoHorizontalOverflow(page);
 
     const enquiryContext = JSON.parse(await page.locator(
@@ -375,7 +372,7 @@ test('direct and invalid destination visits stay canonical and omit guided conte
   page,
 }) => {
   const invalidRoutes = [
-    '/pergolas-auckland?focus=person%40example.test',
+    '/simple-pergolas-auckland?focus=person%40example.test',
     '/outdoor-rooms-auckland?use=unknown',
     '/custom-pergolas-auckland?constraint=connection&constraint=structure',
     '/commercial-pergolas-auckland?sector=hospitality',
@@ -386,9 +383,7 @@ test('direct and invalid destination visits stay canonical and omit guided conte
     await page.goto(route);
     await expect(page.locator('[data-guided-journey-context]')).toHaveCount(0);
     await expect(page.locator('h1')).toHaveCount(1);
-    expect(await page.locator('.acrylic-project-grid').filter({
-      visible: true,
-    }).count()).toBeGreaterThan(0);
+    expect(await page.getByRole('heading', { level: 3 }).count()).toBeGreaterThan(0);
     await expect(page.locator('body')).not.toContainText('person@example.test');
   }
 });

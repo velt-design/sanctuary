@@ -32,6 +32,7 @@ import {
 const HERO_HEADER_SOLID_SCROLL_PX = 24;
 const DESKTOP_MENU_MEDIA_QUERY = '(min-width: 901px)';
 const PROJECT_FINDER_HOME_DESTINATION_PATHS = new Set([
+  '/simple-pergolas-auckland',
   '/acrylic-roof-pergolas-auckland',
   '/custom-pergolas-auckland',
   '/commercial-pergolas-auckland',
@@ -52,9 +53,11 @@ export default function Header() {
   const desktopNavigationItems = getDesktopHeaderNavigation(currentPath);
   const mobileNavigationItems = getMobileHeaderNavigation(currentPath);
   const routeEnquiryContext = getEnquiryRouteContext(currentPath);
-  const projectFinderDirection = residentialProjectDirections.find(
-    (direction) => projectFinderDestinationByDirection[direction] === currentPath,
-  );
+  const projectFinderDirection = currentPath === '/acrylic-roof-pergolas-auckland'
+    ? 'cover'
+    : residentialProjectDirections.find(
+      (direction) => projectFinderDestinationByDirection[direction] === currentPath,
+    );
   const projectFinderProjectSlug = currentPath.match(
     /^\/projects\/([a-z0-9]+(?:-[a-z0-9]+)*)$/,
   )?.[1];

@@ -1400,7 +1400,9 @@ evidence-first enquiry close remain the visible sequence.
 The first layer is exactly `Simple cover`, `Custom design` and `Commercial /
 Professional`. `Simple cover` recommends acrylic roof pergolas, uses governed
 Dairy Flat and St Heliers evidence, and continues to
-`/acrylic-roof-pergolas-auckland`. `Custom design` recommends the custom design
+`/simple-pergolas-auckland`. That destination is a distinct, noindex conversion
+page; `/acrylic-roof-pergolas-auckland` remains the unchanged indexable acrylic
+research owner. `Custom design` recommends the custom design
 path, uses governed Tindalls Bay and Warkworth evidence, and continues to
 `/custom-pergolas-auckland`. Both retain the optional controlled-priority brief.
 
@@ -1412,7 +1414,7 @@ an evidence-first close. Venue work continues to
 `/commercial-pergolas-auckland` with commercial enquiry attribution; builder,
 contractor, architect and designer work continues to
 `/architects-designers-builders` with professional attribution. The destination
-pages are outside this refinement and remain unchanged.
+commercial and professional destination pages remain unchanged.
 
 Canonical URL state accepts one first-layer `project`; residential selections
 may add up to three `priorities`, while the commercial/professional parent may

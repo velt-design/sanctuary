@@ -437,7 +437,7 @@ residential destinations and all three commercial/professional destinations
 directly. Invalid, duplicate, excess, incompatible and wrong-route values fail
 closed.
 
-`Simple cover` continues to `/acrylic-roof-pergolas-auckland`; `Custom design`
+`Simple cover` continues to `/simple-pergolas-auckland`; `Custom design`
 continues to `/custom-pergolas-auckland`; `Extending a Venue` continues to
 `/commercial-pergolas-auckland`; the builder/contractor and architect/designer
 results continue to `/architects-designers-builders`. Recommended residential
@@ -449,11 +449,23 @@ early introduction CTA while its related-project links, final CTA and header
 retain the context. Commercial/professional service, header, footer and
 direct-enquiry links carry the closed direction and `professional_path`, with
 the correct commercial or professional enquiry audience. Destination page
-content is not owned or
-changed by this homepage refinement. Project canonicals and ordinary non-finder
+content is not owned by the homepage. Project canonicals and ordinary non-finder
 journeys remain unchanged. The in-page `Send your brief` action appears only
 after the selected result and built work. Shared header and footer route
 attribution canonicalise Next's production `/index` alias to `/`.
+
+`/simple-pergolas-auckland` is the dedicated conversion continuation for the
+Simple cover choice. It is a new route-owned Foundation adoption rather than a
+second acrylic SEO page: it is self-canonical, `noindex,follow`, absent from the
+sitemap and directly accessible with or without JavaScript. Its split image-led
+hero leads with `Cover the space without losing light.`, followed by a clear fit
+definition, roof-plus-optional-blind levels, strengths and limitations, three
+governed residential projects, defined scope and process, a Custom design
+off-ramp, concise FAQs and the existing privacy-preserving enquiry contract
+reworded as an initial-estimate request. Homepage direction and priority context
+continues through the page, project evidence, embedded form and shared header.
+`/acrylic-roof-pergolas-auckland` remains unchanged as the only indexable
+acrylic landing-page and sitemap owner.
 
 Consent-aware production analytics use `homepage_variant:
 project_finder_home_v2`, `source_path: /` and the existing closed finder event

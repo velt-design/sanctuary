@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-03 | Simple Cover Pathway              | Promoted | Keep the acrylic research page as the sole indexable SEO owner and send homepage Simple cover intent to a distinct noindex conversion route. Define simple by a clear fixed-roof scope rather than the absence of optional side blinds, preserve closed journey context and attribution, and provide a clear Custom design off-ramp for materially broader briefs. |
 | 2026-08-03 | Marketing Cinematic Hero         | Promoted | Consume at most one forward gesture per active hero stage, then land against the measured inner finder opening rather than padded section chrome. Centre the complete opening when it fits the live visual viewport, otherwise top-align it beneath the fixed header. Preserve reverse scrolling, responsive priority art direction and primary-mobile text-only choices. |
 | 2026-08-03 | Marketing Welcome Stacking       | Promoted | A page-owned fixed welcome veil can still sit beneath a shell-owned fixed header because an ancestor creates a lower stacking context. Verify the rendered first paint, hide and disable the global header through a page-presence hook while the veil exists, and provide an explicit no-JavaScript override so progressive enhancement cannot remove navigation. |
 | 2026-08-01 | Project Close Journey            | Promoted | Closing is a dedicated explicit lifecycle flow, never a generic state dropdown. Preserve stage, show cancellation/queue/reopen consequences, require a structured Lost outcome with optional note, and keep reasons for Cancelled/Complete. Bulk stale-Enquiry closure selects none by default, requires an exact second confirmation, revalidates report fingerprints and current activity/future-Waiting protection server-side, and rejects the whole batch on drift. |
@@ -4680,4 +4681,33 @@ Promoted to: `docs/marketing-ui-foundation.md`;
 `docs/testing-and-qa.md`
 Related docs/tests: `apps/marketing/app/_home-project-finder/CinematicHero.tsx`;
 `apps/marketing/app/_home-project-finder/projectFinderHomepage.module.css`;
+`playwright/marketing.home-project-finder.spec.ts`
+
+### 2026-08-03 - Simple Cover Pathway - Separate Conversion Intent From Acrylic SEO
+
+Date: 2026-08-03
+Area: Marketing homepage continuation, acrylic SEO ownership and residential conversion
+Status: Promoted
+Decision or mistake: The homepage Simple cover result was sent directly to the
+indexable acrylic research page, forcing one route to act as both a technical
+guide and a focused sales continuation. The initial pathway definition also
+treated side blinds as evidence that a project belonged in Custom design.
+Why it mattered: Visitors who had already selected a straightforward cover met
+a comparison-led experience instead of a concise buying journey, while the
+product boundary understated a useful option that remains compatible with a
+fixed acrylic-roof pergola.
+Current guardrail: Keep `/acrylic-roof-pergolas-auckland` as the sole indexable
+acrylic research owner. Send Simple cover to the distinct, self-canonical,
+noindex and sitemap-excluded `/simple-pergolas-auckland` conversion route.
+Define simple by the clarity of the fixed roof and structural scope, not by the
+absence of optional side blinds. Keep complex forms, mixed roofs, lined
+ceilings, extensive integrated services and difficult connections as the
+Custom design off-ramp. Preserve closed homepage context, enquiry attribution,
+no-JavaScript access and claims governance on both routes.
+Promoted to: `docs/marketing-ui-foundation.md`;
+`docs/security-privacy-quality.md`;
+`docs/landing-pages/sanctuary-pergola-guide-ecosystem-roadmap.md`
+Related docs/tests: `apps/marketing/app/simple-pergolas-auckland/**`;
+`apps/marketing/lib/projectFinderContinuation.ts`;
+`playwright/marketing.simple-pergolas.spec.ts`;
 `playwright/marketing.home-project-finder.spec.ts`
