@@ -69,6 +69,16 @@ const SETTING_SECTIONS: Array<[Exclude<CostingControlSection, 'comparison' | 'pu
   ['rules', 'Supported rules'],
 ];
 
+function canPublishComparison(comparison: CostingConfigurationComparison | null): boolean {
+  return Boolean(
+    comparison
+    && (
+      comparison.diff.length > 0
+      || (comparison.currentVersionId === null && comparison.currentSource === 'legacy-overrides')
+    ),
+  );
+}
+
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const data = await response.json();
@@ -690,7 +700,13 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
               confirmed={confirmed}
               busy={busy}
               dirty={dirty}
-              hasChanges={Boolean(editor.comparison?.diff.length)}
+              publishable={canPublishComparison(editor.comparison)}
+              initialBaseline={Boolean(
+                editor.comparison
+                && editor.comparison.currentVersionId === null
+                && editor.comparison.currentSource === 'legacy-overrides'
+                && editor.comparison.diff.length === 0,
+              )}
               onPublishNoteChange={setPublishNote}
               onConfirmedChange={setConfirmed}
               onPublish={publishDraft}
@@ -734,7 +750,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
                   <button
                     className={styles.button}
                     type="button"
-                    disabled={busy || !editor.comparison?.diff.length}
+                    disabled={busy || !canPublishComparison(editor.comparison)}
                     onClick={() => setSection('publish')}
                   >
                     Continue to publish

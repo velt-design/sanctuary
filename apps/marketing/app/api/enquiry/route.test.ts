@@ -16,6 +16,7 @@ const h = vi.hoisted(() => ({
     pergolas: [],
   })),
   priceAllBlinds: vi.fn((_items: unknown[]) => ({ totals: { totalIncCents: 0 } })),
+  getPublishedCostingConfiguration: vi.fn(),
 }));
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -27,6 +28,10 @@ vi.mock('@sp/costing', () => ({
   autoSplitByMaxWidth: vi.fn(),
   getBlindSystemLimits: vi.fn(() => ({ maxWidthMm: 5000, maxCoverLengthMm: 3000 })),
   priceAllBlinds: h.priceAllBlinds,
+}));
+
+vi.mock('../../../lib/publishedCostingConfiguration.server', () => ({
+  getPublishedCostingConfiguration: h.getPublishedCostingConfiguration,
 }));
 
 vi.mock('@/lib/enquiryBudgets', () => ({
@@ -211,6 +216,18 @@ describe('POST /api/enquiry attribution', () => {
     h.createClient.mockReset();
     h.calculateCostV1.mockClear();
     h.priceAllBlinds.mockClear();
+    h.getPublishedCostingConfiguration.mockReset();
+    h.getPublishedCostingConfiguration.mockResolvedValue({
+      config: { marker: 'published-v1' },
+      provenance: {
+        schemaVersion: 'costing-provenance.v1',
+        source: 'published',
+        versionId: '11111111-1111-4111-8111-111111111111',
+        versionNumber: 1,
+        contentHash: 'published-v1-hash',
+        baseManifestVersion: 'costing-v1',
+      },
+    });
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://supabase.test';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
   });
@@ -318,7 +335,11 @@ describe('POST /api/enquiry attribution', () => {
       ]),
     );
     expect(h.calculateCostV1).toHaveBeenCalledTimes(1);
-    expect(h.calculateCostV1).toHaveBeenCalledWith(expect.objectContaining({ post_count: 2 }));
+    expect(h.calculateCostV1).toHaveBeenCalledWith(
+      expect.objectContaining({ post_count: 2 }),
+      { marker: 'published-v1' },
+    );
+    expect(db.estimates[0]?.configVersions.costingControl).toMatchObject({ versionNumber: 1 });
     expect(db.estimates[0]?.inputs.modules[0]?.postCount).toBe('2');
     expect(db.estimates[0]?.outputs.totals.cost_inc_gst).toBe(10000);
   });
@@ -471,6 +492,42 @@ describe('POST /api/enquiry attribution', () => {
     expect(db.estimates[0]?.inputs.modules[0]?.postCount).toBe('2');
     expect(db.estimates[0]?.outputs.totals.cost_inc_gst).toBe(0);
     expect(db.estimates[0]?.derived.pricingMode).toBe('indicative_fallback');
+  });
+
+  it('never falls back to package pricing when the published version is unavailable', async () => {
+    const { client, db } = makeDb();
+    h.createClient.mockReturnValue(client);
+    h.getPublishedCostingConfiguration.mockRejectedValueOnce(new Error('No publication'));
+    const { POST } = await import('./route');
+
+    const response = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        submissionId: SUBMISSION_ID,
+        enquiryType: 'residential',
+        name: 'Alex',
+        email: 'alex@example.test',
+        phone: '021000000',
+        suburb: 'Takapuna',
+        dimensions: { widthM: 5, depthM: 3, heightM: 2.4 },
+        style: 'pitched',
+        roofMaterials: ['acrylic'],
+        addOns: {},
+        source: 'website',
+        honeypot: '',
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(h.calculateCostV1).not.toHaveBeenCalled();
+    expect(client.rpc).toHaveBeenCalledWith(
+      'marketing_enquiry_intake',
+      expect.objectContaining({
+        p_payload: expect.objectContaining({ baseBudgetLowIncGst: null }),
+      }),
+    );
+    expect(db.estimates[0]?.configVersions).toBeNull();
   });
 
   it('returns the original result on a retry without duplicating side effects', async () => {

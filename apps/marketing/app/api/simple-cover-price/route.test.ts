@@ -25,7 +25,7 @@ describe('POST /api/simple-cover-price', () => {
     h.calculateSimpleCoverPublicResult.mockResolvedValue({
       ok: true,
       status: 'priced',
-      input: { widthMm: 6_000, projectionMm: 3_000, level: 'ground' },
+      input: { widthMm: 6_000, projectionMm: 3_000, level: 'ground', connection: 'facade' },
       areaM2: 18,
       postCount: 3,
       postSpacingMm: 3_000,
@@ -37,7 +37,7 @@ describe('POST /api/simple-cover-price', () => {
     });
     const { POST } = await import('./route');
 
-    const response = await POST(request({ widthMm: 6_000, projectionMm: 3_000, level: 'ground' }));
+    const response = await POST(request({ widthMm: 6_000, projectionMm: 3_000, level: 'ground', connection: 'facade' }));
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -48,7 +48,7 @@ describe('POST /api/simple-cover-price', () => {
 
   it('rejects out-of-contract dimensions before costing', async () => {
     const { POST } = await import('./route');
-    const response = await POST(request({ widthMm: 6_050, projectionMm: 3_000, level: 'ground' }));
+    const response = await POST(request({ widthMm: 6_050, projectionMm: 3_000, level: 'ground', connection: 'fascia' }));
 
     expect(response.status).toBe(422);
     expect(h.calculateSimpleCoverPublicResult).not.toHaveBeenCalled();
@@ -57,7 +57,7 @@ describe('POST /api/simple-cover-price', () => {
   it('fails closed without leaking the configuration error', async () => {
     h.calculateSimpleCoverPublicResult.mockRejectedValue(new Error('supplier rate row and secret details'));
     const { POST } = await import('./route');
-    const response = await POST(request({ widthMm: 6_000, projectionMm: 3_000, level: 'ground' }));
+    const response = await POST(request({ widthMm: 6_000, projectionMm: 3_000, level: 'ground', connection: 'soffit' }));
     const body = await response.json();
 
     expect(response.status).toBe(503);
@@ -69,7 +69,7 @@ describe('POST /api/simple-cover-price', () => {
     vi.stubEnv('NODE_ENV', 'production');
     const { POST } = await import('./route');
     const response = await POST(request(
-      { widthMm: 6_000, projectionMm: 3_000, level: 'ground' },
+      { widthMm: 6_000, projectionMm: 3_000, level: 'ground', connection: 'fascia' },
       { Origin: 'https://attacker.example' },
     ));
     vi.unstubAllEnvs();

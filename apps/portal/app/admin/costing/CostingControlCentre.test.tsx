@@ -334,6 +334,21 @@ describe('CostingControlCentre', () => {
     rendered.unmount();
   });
 
+  it('lets Version 1 publish the current portal prices as an unchanged baseline', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(editorPayload('draft')), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })));
+    const rendered = renderIntoDocument(<CostingControlCentre initialOverview={overview('draft')} />);
+    await click(buttonByText(rendered.container, 'Continue draft v1'));
+    await click(buttonByText(rendered.container, 'Review impact'));
+
+    expect(rendered.container.textContent).toContain('can publish it unchanged as the shared baseline');
+    expect(rendered.container.textContent).toContain('No price movement');
+    expect(buttonByText(rendered.container, 'Continue to publish').disabled).toBe(false);
+    rendered.unmount();
+  });
+
   it('saves, validates and refreshes the server-owned comparison', async () => {
     const savedCandidate = structuredClone(config);
     savedCandidate.overheads.crewDayHours = 9;

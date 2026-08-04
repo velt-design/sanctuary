@@ -35,7 +35,7 @@ export default function SimpleCoverCalculatorPage() {
           </div>
           <div className={styles.heroSupport}>
             <Text size="large">
-              A live architectural concept plan and costing guide for a fascia-connected pitched acrylic Simple cover.
+              A live architectural concept plan and costing guide for a pitched acrylic Simple cover.
             </Text>
             <dl>
               <div><dt>Starting size</dt><dd>6.0 × 3.0 m</dd></div>
@@ -57,7 +57,7 @@ export default function SimpleCoverCalculatorPage() {
           <div className={styles.scopeNotes}>
             <article>
               <span>Included</span>
-              <p>GST, standard installation, fascia connection, deck brackets, normal access and a standard colour.</p>
+              <p>GST, standard installation, your selected house connection, deck brackets, normal access and a standard colour.</p>
             </article>
             <article>
               <span>Confirmed next</span>

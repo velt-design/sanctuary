@@ -12,6 +12,8 @@ import {
 import {
   SIMPLE_COVER_DEFAULT_PROJECTION_MM,
   SIMPLE_COVER_DEFAULT_WIDTH_MM,
+  SIMPLE_COVER_DEFAULT_CONNECTION,
+  SIMPLE_COVER_CONNECTION_OPTIONS,
   SIMPLE_COVER_ELEVATED_MAX_AREA_M2,
   SIMPLE_COVER_FRONT_BEAM_WIDTH_MM,
   SIMPLE_COVER_GROUND_MAX_AREA_M2,
@@ -29,6 +31,7 @@ import {
   simpleCoverAreaM2,
   simpleCoverPostCount,
   type SimpleCoverInput,
+  type SimpleCoverConnection,
   type SimpleCoverLevel,
   type SimpleCoverPublicResult,
 } from '@/lib/simpleCoverCalculator';
@@ -68,7 +71,8 @@ function currentResultMatches(result: SimpleCoverPublicResult | null, input: Sim
     && 'input' in result
     && result.input.widthMm === input.widthMm
     && result.input.projectionMm === input.projectionMm
-    && result.input.level === input.level,
+    && result.input.level === input.level
+    && result.input.connection === input.connection,
   );
 }
 
@@ -206,7 +210,15 @@ function ConceptPlan({
     : {
         '--plan-ratio': input.widthMm / input.projectionMm,
       };
-  const label = `Concept plan for a ${formatMetres(input.widthMm)} wide by ${formatMetres(input.projectionMm)} projection pitched acrylic cover, ${formatArea(areaM2)}, with a fascia connection and ${postCount} posts.`;
+  const connectionLabel = SIMPLE_COVER_CONNECTION_OPTIONS.find(({ value }) => value === input.connection)?.label
+    ?? 'Fascia';
+  const connectionDescription = input.connection === 'soffit'
+    ? 'soffit-bracket'
+    : connectionLabel.toLowerCase();
+  const houseEdgeLabel = input.connection === 'soffit'
+    ? 'House / soffit edge'
+    : `House / ${input.connection} edge`;
+  const label = `Concept plan for a ${formatMetres(input.widthMm)} wide by ${formatMetres(input.projectionMm)} projection pitched acrylic cover, ${formatArea(areaM2)}, with a ${connectionDescription} connection and ${postCount} posts.`;
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -247,7 +259,7 @@ function ConceptPlan({
           aria-hidden="true"
           data-plan-footprint
         >
-          <div className={styles.houseBand}><span>House / fascia edge</span></div>
+          <div className={styles.houseBand}><span>{houseEdgeLabel}</span></div>
           <div className={styles.roofField}>
             {plan.rafterPositions.map((position, index) => (
               <span
@@ -357,6 +369,7 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
     widthMm: SIMPLE_COVER_DEFAULT_WIDTH_MM,
     projectionMm: SIMPLE_COVER_DEFAULT_PROJECTION_MM,
     level: 'ground',
+    connection: SIMPLE_COVER_DEFAULT_CONNECTION,
   });
   const [result, setResult] = useState<SimpleCoverPublicResult | null>(null);
   const [pending, setPending] = useState(true);
@@ -412,6 +425,10 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
     setInput((current) => ({ ...current, level }));
   }
 
+  function setConnection(connection: SimpleCoverConnection) {
+    setInput((current) => ({ ...current, connection }));
+  }
+
   return (
     <section className={`${styles.calculator} ${className}`.trim()} aria-labelledby="simple-cover-calculator-title" data-simple-cover-calculator>
       <header className={styles.intro}>
@@ -460,7 +477,20 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
           </fieldset>
 
           <dl className={styles.fixedSpecification}>
-            <div><dt>Connection</dt><dd>House fascia</dd></div>
+            <div className={styles.connectionSpecification}>
+              <dt><label htmlFor="simple-cover-connection">Connection</label></dt>
+              <dd>
+                <select
+                  id="simple-cover-connection"
+                  value={input.connection}
+                  onChange={(event) => setConnection(event.currentTarget.value as SimpleCoverConnection)}
+                >
+                  {SIMPLE_COVER_CONNECTION_OPTIONS.map((option) => (
+                    <option value={option.value} key={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </dd>
+            </div>
             <div><dt>Roof</dt><dd>Pitched acrylic</dd></div>
             <div><dt>Finish</dt><dd>Standard colour</dd></div>
             <div><dt>Site</dt><dd>Normal access / easy ground</dd></div>

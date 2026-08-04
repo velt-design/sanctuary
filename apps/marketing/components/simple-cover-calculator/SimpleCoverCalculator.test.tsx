@@ -90,6 +90,9 @@ describe('SimpleCoverCalculator', () => {
     expect(document.querySelectorAll('[data-plan-rafter]')).toHaveLength(11);
     expect(document.querySelectorAll('[data-plan-post]')).toHaveLength(3);
     expect(document.querySelector('[data-plan-header]')?.textContent).not.toContain('18.0 m²');
+    expect(document.querySelector('#simple-cover-connection')).toMatchObject({ value: 'fascia' });
+    expect(Array.from(document.querySelectorAll('#simple-cover-connection option')).map((option) => option.textContent))
+      .toEqual(['Fascia', 'Facade', 'Soffit brackets']);
   });
 
   it('loads a live published price and updates dimensions without a submit action', async () => {
@@ -108,6 +111,16 @@ describe('SimpleCoverCalculator', () => {
     expect(container.querySelector('[data-result-state="loading"]')).not.toBeNull();
     await settlePrice();
     expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body))).toMatchObject({ widthMm: 6_100 });
+
+    const connection = container.querySelector('#simple-cover-connection') as HTMLSelectElement;
+    await act(async () => {
+      connection.value = 'soffit';
+      connection.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('[role="img"]')?.getAttribute('aria-label')).toContain('soffit-bracket connection');
+    expect(container.textContent).toContain('House / soffit edge');
+    await settlePrice();
+    expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body))).toMatchObject({ connection: 'soffit' });
   });
 
   it('retains out-of-range-for-Simple inputs, removes price and gives the exact custom route', async () => {

@@ -28,6 +28,7 @@ async function prepareCalculator(page: Page, requestCounter?: { count: number })
       widthMm: number;
       projectionMm: number;
       level: 'ground' | 'elevated';
+      connection: 'fascia' | 'facade' | 'soffit';
     };
     const areaM2 = input.widthMm * input.projectionMm / 1_000_000;
     const postCount = Math.max(2, Math.ceil(input.widthMm / 4_000) + 1);
@@ -84,6 +85,7 @@ for (const viewport of viewports) {
     await expect(page.getByText('GST and standard installation included.', { exact: true })).toBeVisible();
     await expect(page.getByText('Concept plan, not a construction drawing.', { exact: true })).toBeVisible();
     await expect(page.getByRole('img', { name: 'Concept plan for a 6.0 m wide by 3.0 m projection pitched acrylic cover, 18.0 m², with a fascia connection and 3 posts.' })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Connection' })).toHaveValue('fascia');
 
     const width = page.getByRole('slider', { name: 'Width along the house' });
     const projection = page.getByRole('slider', { name: 'Projection from the house' });
@@ -105,7 +107,7 @@ for (const viewport of viewports) {
       const figure = calculator?.querySelector('figure');
       const controlBox = controls?.getBoundingClientRect();
       const figureBox = figure?.getBoundingClientRect();
-      const shortTargets = Array.from(calculator?.querySelectorAll<HTMLElement>('a, input[type="range"], [data-dimension-value]') ?? [])
+      const shortTargets = Array.from(calculator?.querySelectorAll<HTMLElement>('a, select, input[type="range"], [data-dimension-value]') ?? [])
         .filter((element) => {
           const box = element.getBoundingClientRect();
           return box.width < 44 || box.height < 44;
@@ -234,6 +236,12 @@ test('calculator exposes visible keyboard focus and live output semantics', asyn
   await expect(page.locator('#simple-cover-width')).toHaveValue('6100');
   await expect(widthMetres).toHaveValue('6.1');
   await expect(page.getByText('18.3 m²', { exact: true })).toHaveCount(2);
+
+  const connection = page.getByRole('combobox', { name: 'Connection' });
+  await connection.selectOption('soffit');
+  await expect(page.getByText('House / soffit edge', { exact: true })).toBeVisible();
+  await expect(page.getByRole('img')).toHaveAttribute('aria-label', /soffit-bracket connection/);
+  await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
 });
 
 for (const viewport of [

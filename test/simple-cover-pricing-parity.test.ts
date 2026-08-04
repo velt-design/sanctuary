@@ -25,7 +25,7 @@ function portalSiteInputs(input: SimpleCoverInput) {
     lengthM: String(input.widthMm / 1_000),
     projectionM: String(input.projectionMm / 1_000),
     postCount: String(simpleCoverPostCount(input.widthMm)),
-    houseConnectionType: 'fascia' as const,
+    houseConnectionType: input.connection,
   };
   module.flashings = makeDefaultFlashings(module);
   values.height = input.level === 'ground' ? 'single_storey' : 'two_storey';
@@ -35,11 +35,11 @@ function portalSiteInputs(input: SimpleCoverInput) {
 
 describe('Simple cover portal pricing parity', () => {
   it.each([
-    { widthMm: 1_000, projectionMm: 1_000, level: 'ground' as const },
-    { widthMm: 6_000, projectionMm: 3_000, level: 'ground' as const },
-    { widthMm: 5_000, projectionMm: 4_000, level: 'elevated' as const },
-    { widthMm: 10_000, projectionMm: 3_000, level: 'ground' as const },
-  ])('reproduces portal cost and customer price for $widthMm x $projectionMm', (input) => {
+    { widthMm: 1_000, projectionMm: 1_000, level: 'ground' as const, connection: 'fascia' as const },
+    { widthMm: 6_000, projectionMm: 3_000, level: 'ground' as const, connection: 'facade' as const },
+    { widthMm: 5_000, projectionMm: 4_000, level: 'elevated' as const, connection: 'soffit' as const },
+    { widthMm: 10_000, projectionMm: 3_000, level: 'ground' as const, connection: 'fascia' as const },
+  ])('reproduces portal cost and customer price for $connection at $widthMm x $projectionMm', (input) => {
     const base = loadCostingConfigV1();
     const control = snapshotCostingControlConfigV1(base);
     control.labour.crewHourRateExGst = 97;

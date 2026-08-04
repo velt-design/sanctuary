@@ -121,7 +121,7 @@ Changing any code-owned item is a normal package semantic change with package re
 
 - Draft rows may be edited and revalidated; published rows are immutable.
 - Draft name and purpose use bounded plain text and persist when a version is cloned. The publication note remains a separate publish-time audit field.
-- Publishing requires a saved hash, compare-time current-version ID, non-empty audit note, a clear diff, and representative impact. The RPC locks publication and rejects stale drafts or comparisons.
+- Publishing requires a saved hash, compare-time current-version ID, non-empty audit note, and representative impact. Normal publications also require a clear diff. The first publication may have an empty diff only when it freezes the active legacy-effective portal pricing unchanged as Version 1. The RPC locks publication and rejects stale drafts or comparisons.
 - Rollback means cloning a compatible previous published version into a new draft and publishing that new version. History is never rewritten.
 - A package manifest change must ship with an explicit compatibility/migration decision for the current published control snapshot. Incompatible published data fails closed.
 - Published estimates store `estimates.costing_config_version_id`; pre-publication estimates store the full hashed legacy control snapshot in `outputs.configVersions.costingControl`. All estimates retain frozen inputs and outputs as the historical commercial record.
@@ -134,7 +134,7 @@ Marketing enquiry estimates also use `@sp/costing`. Do not create a marketing-on
 
 Pitched-acrylic pergolas use a flat `$2000 ex GST` overhead total only when EVERY module is `pergola_style === 'pitched'` AND `roof_material === 'acrylic'` AND not `box_perimeter`, AND every acrylic module is at or below `3.0m` sloped `rafter_length_m`. If any module fails any of those checks (gable, hip-corner, box-perimeter, mixed/timber, or rafter > 3m), the costing engine falls back to the normal `fixed_plus_variable` overhead formula. (Tightened from "any acrylic-only" to "pitched-acrylic only" in PR-PE2 / 2026-06-16 — gable / box-perimeter / hip-corner acrylic builds carry their own per-style startup costs that the flat cap was hiding.)
 
-Website enquiry base pergola budgets use the `1.25x true cost` lower amount only and encode that as equal low/high values; optional blinds remain a range based on the same corrected shared blind list-price baseline, with No cover assumed. The enquiry flow builds one canonical two-post "standard build" costing snapshot and reuses it for the rounded email budget, saved calculator inputs, and exact saved costing outputs. Costing failure remains non-blocking and produces unavailable/placeholder pricing rather than a second calculation with divergent inputs. The canonical customer-price sequence now lives in `@sp/costing`: markup, ex-GST cents, discount, ex-GST cents, GST, then inc-GST cents. The portal pricing module re-exports that package owner so existing calculator and quote consumers keep one compatible import path.
+Website enquiry base pergola budgets use the `1.25x true cost` lower amount only and encode that as equal low/high values; optional blinds remain a range based on the same corrected shared blind list-price baseline, with No cover assumed. The enquiry flow resolves the active immutable published configuration once, builds one canonical two-post "standard build" costing snapshot, and reuses it for the rounded email budget, saved calculator inputs, exact saved costing outputs, and saved configuration provenance. Missing or invalid publication removes the base price without blocking the enquiry; it never falls back to package defaults or recalculates with divergent inputs. The canonical customer-price sequence now lives in `@sp/costing`: markup, ex-GST cents, discount, ex-GST cents, GST, then inc-GST cents. The portal pricing module re-exports that package owner so existing calculator and quote consumers keep one compatible import path.
 
 Primary route:
 
@@ -144,7 +144,7 @@ apps/marketing/app/api/enquiry/route.ts
 
 ### Public Simple cover calculator
 
-`/simple-cover-calculator` is a reusable marketing component and standalone noindex route. Its fixed input adapter is intentionally narrower than the staff calculator: fascia connection, pitched acrylic roof, deck brackets, normal access, easy ground, standard black finish, no blinds or electrical work, and automatic posts with no spacing above four metres. It does not import portal UI, CSS, drawing code, or the Design Workbench.
+`/simple-cover-calculator` is a reusable marketing component and standalone noindex route. Its input adapter is intentionally narrower than the staff calculator: a customer-selectable fascia, facade or soffit-bracket connection; pitched acrylic roof; deck brackets; normal access; easy ground; standard black finish; no blinds or electrical work; and automatic posts with no spacing above four metres. It does not import portal UI, CSS, drawing code, or the Design Workbench.
 
 `calculateAcrylicRafterLayoutV1` in `@sp/costing` owns the acrylic rafter count, clear centre spacing and normalized plan positions used by both costing derivation and customer-safe concept plans. Its first and last 50 mm rafter faces align to the overall cover width. Marketing may style those positions independently but must not duplicate the 642 mm spacing derivation.
 
@@ -163,7 +163,7 @@ bounded same-origin public request
 
 The marketing resolver reads the singleton publication pointer and immutable published version through the server-only service-role client. It has no legacy or package-default fallback. Missing, draft, incompatible, unreadable or hash-mismatched configuration fails closed with no price. The endpoint returns only selected inputs, area, post/rafter plan positions, rounded customer price and public version number; true cost, BOM, labour, overhead, hashes and version IDs remain server-only.
 
-`FrozenSimpleCoverPricingResult` keeps the validated inputs, canonical site inputs, full engine output, exact/display customer price and full published provenance together for future saved-enquiry and autoresponder use. The live enquiry/autoresponder path is unchanged in this pass and must not consume the new contract until production publication and parity evidence are confirmed.
+`FrozenSimpleCoverPricingResult` keeps the validated inputs, canonical site inputs, full engine output, exact/display customer price and full published provenance together. The enquiry/autoresponder path uses the same published-only resolver and saves that provenance with its own canonical enquiry snapshot. Deployment and the first publication remain separate rollout gates: until a compatible version is published, neither public path may emit a base price.
 
 ## Infill Takeoff And Procurement
 

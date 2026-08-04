@@ -19,14 +19,26 @@ export const SIMPLE_COVER_LEDGER_WIDTH_MM = 50;
 export const SIMPLE_COVER_RAFTER_WIDTH_MM = 50;
 export const SIMPLE_COVER_FRONT_BEAM_WIDTH_MM = 100;
 export const SIMPLE_COVER_POST_SIZE_MM = 100;
+export const SIMPLE_COVER_DEFAULT_CONNECTION = 'fascia' as const;
 const SIMPLE_COVER_PATH = '/simple-cover-calculator';
 
 export type SimpleCoverLevel = 'ground' | 'elevated';
+export type SimpleCoverConnection = 'fascia' | 'facade' | 'soffit';
+
+export const SIMPLE_COVER_CONNECTION_OPTIONS: ReadonlyArray<{
+  value: SimpleCoverConnection;
+  label: string;
+}> = [
+  { value: 'fascia', label: 'Fascia' },
+  { value: 'facade', label: 'Facade' },
+  { value: 'soffit', label: 'Soffit brackets' },
+];
 
 export type SimpleCoverInput = {
   widthMm: number;
   projectionMm: number;
   level: SimpleCoverLevel;
+  connection: SimpleCoverConnection;
 };
 
 export type SimpleCoverPlan = {
@@ -98,6 +110,7 @@ export function parseSimpleCoverInput(value: unknown): SimpleCoverInput | null {
     !isSteppedInteger(input.widthMm, SIMPLE_COVER_WIDTH_MIN_MM, SIMPLE_COVER_WIDTH_MAX_MM)
     || !isSteppedInteger(input.projectionMm, SIMPLE_COVER_PROJECTION_MIN_MM, SIMPLE_COVER_PROJECTION_MAX_MM)
     || (input.level !== 'ground' && input.level !== 'elevated')
+    || (input.connection !== 'fascia' && input.connection !== 'facade' && input.connection !== 'soffit')
   ) {
     return null;
   }
@@ -105,6 +118,7 @@ export function parseSimpleCoverInput(value: unknown): SimpleCoverInput | null {
     widthMm: input.widthMm,
     projectionMm: input.projectionMm,
     level: input.level,
+    connection: input.connection,
   };
 }
 
@@ -247,7 +261,7 @@ export function buildSimpleCoverSiteInputs(input: SimpleCoverInput): SiteInputsV
           extras: [{ band: '201-300', length_m: widthM }],
         },
         overrides: {},
-        house_connection_type: 'fascia',
+        house_connection_type: input.connection,
         attachment_length_mm: input.widthMm,
         post_connection_type: 'deck_bracket',
         access: 'normal',

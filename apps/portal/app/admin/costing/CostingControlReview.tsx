@@ -16,6 +16,10 @@ export function CostingComparison(props: {
 }) {
   const diff = props.comparison?.diff ?? props.version.publicationDiff ?? [];
   const impact = props.comparison?.impact ?? props.version.publicationImpact ?? [];
+  const initialBaseline = props.version.status === 'draft'
+    && props.comparison?.currentVersionId === null
+    && props.comparison.currentSource === 'legacy-overrides'
+    && diff.length === 0;
   const largeChanges = impact.filter((row) => row.deltaPercent !== null && Math.abs(row.deltaPercent) >= 10);
   return (
     <div className={styles.reviewSection}>
@@ -88,8 +92,9 @@ export function CostingComparison(props: {
           </div>
         ) : (
           <div className={styles.emptyInline}>
-            This saved version matches the active pricing configuration. Change and save a supported value to
-            generate a review.
+            {initialBaseline
+              ? 'This first version matches the active portal pricing and can publish it unchanged as the shared baseline.'
+              : 'This saved version matches the active pricing configuration. Change and save a supported value to generate a review.'}
           </div>
         )}
       </div>
@@ -123,7 +128,9 @@ export function CostingComparison(props: {
           </div>
         ) : (
           <div className={styles.emptyInline}>
-            Save a changed draft to generate representative project impacts.
+            {initialBaseline
+              ? 'No price movement: representative projects retain their current portal totals.'
+              : 'Save a changed draft to generate representative project impacts.'}
           </div>
         )}
       </div>
@@ -153,7 +160,8 @@ export function CostingPublishPanel(props: {
   confirmed: boolean;
   busy: boolean;
   dirty: boolean;
-  hasChanges: boolean;
+  publishable: boolean;
+  initialBaseline: boolean;
   onPublishNoteChange: (value: string) => void;
   onConfirmedChange: (value: boolean) => void;
   onPublish: () => void;
@@ -169,7 +177,9 @@ export function CostingPublishPanel(props: {
         </p>
       </div>
       <label className={styles.field}>
-        <span className={styles.fieldLabelStrong}>Reason for this pricing change</span>
+        <span className={styles.fieldLabelStrong}>
+          {props.initialBaseline ? 'Reason for establishing this baseline' : 'Reason for this pricing change'}
+        </span>
         <span className={styles.fieldDescription}>
           This becomes the permanent audit note in version history.
         </span>
@@ -194,7 +204,9 @@ export function CostingPublishPanel(props: {
       </label>
       <div className={styles.publishRow}>
         <span className={styles.muted}>
-          Publishing is disabled until the draft is saved, changed and explicitly confirmed.
+          {props.initialBaseline
+            ? 'Publishing is disabled until the saved baseline is explicitly confirmed.'
+            : 'Publishing is disabled until the draft is saved, changed and explicitly confirmed.'}
         </span>
         <button
           className={styles.button}
@@ -204,7 +216,7 @@ export function CostingPublishPanel(props: {
             || props.dirty
             || !props.confirmed
             || props.publishNote.trim().length < 3
-            || !props.hasChanges
+            || !props.publishable
           }
           onClick={props.onPublish}
         >

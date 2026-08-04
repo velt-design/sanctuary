@@ -235,7 +235,9 @@ export async function publishCostingConfigurationDraft(
   if (comparison.currentVersionId !== expectedCurrentVersionId) {
     throw new Error('The published configuration changed. Refresh the comparison before publishing.');
   }
-  if (comparison.diff.length === 0) {
+  const isInitialBaselinePublication = comparison.currentVersionId === null
+    && comparison.currentSource === 'legacy-overrides';
+  if (comparison.diff.length === 0 && !isInitialBaselinePublication) {
     throw new Error('The draft has no changes to publish.');
   }
 
