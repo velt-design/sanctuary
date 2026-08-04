@@ -61,22 +61,24 @@ test.describe("design booklet workbench fixture", () => {
     await expect(
       page.locator("[data-portal-sidebar-mode], [data-portal-mobile-top-bar]"),
     ).toHaveCount(0);
-    await expect(
-      page.getByRole("heading", {
-        name: "Shape the customer document.",
-      }),
-    ).toBeVisible();
+    const details = page.locator("#booklet-details");
+    await expect(details).not.toHaveAttribute("open", "");
+    await expect(details.getByText("Outdoor living concept")).toBeVisible();
+    await details.locator("summary").click();
     await expect(page.getByLabel("Roof form")).toHaveValue("pitched");
     await expect(page.getByLabel("Roofing choice")).toHaveValue("combination");
+    await details.locator("summary").click();
     await expect(railButtons).toHaveCount(5);
     await expect(railButtons.first()).toContainText("Cover");
     await expect(railButtons.last()).toContainText("Review");
 
-    await page.getByRole("button", { name: "Add image page" }).click();
+    await page.getByRole("button", { name: "Add page" }).click();
+    await page.getByRole("button", { name: "Image page" }).click();
     await expect(railButtons).toHaveCount(6);
     await expect(page.locator('[data-page-kind="image"]')).toBeVisible();
 
-    await page.getByRole("button", { name: "Add drawing page" }).click();
+    await page.getByRole("button", { name: "Add page" }).click();
+    await page.getByRole("button", { name: "Drawing page" }).click();
     await expect(railButtons).toHaveCount(7);
     await expect(page.locator('[data-page-kind="drawings"]')).toBeVisible();
 
@@ -85,6 +87,9 @@ test.describe("design booklet workbench fixture", () => {
         name: /^One large \+ two small/,
       })
       .click();
+    await page
+      .getByRole("textbox", { name: "Sheet title" })
+      .fill("Roof package");
     const firstDrawingEditor = page.locator('[data-drawing-editor-slot="1"]');
     await firstDrawingEditor.getByLabel("Drawing title").selectOption("custom");
     await firstDrawingEditor
@@ -92,9 +97,23 @@ test.describe("design booklet workbench fixture", () => {
       .fill("Roof section");
     await expect(
       page.locator(
-        '[data-page-kind="drawings"] [data-drawing-slot="1"] figcaption',
+        '[data-page-kind="drawings"] [data-drawing-slot="1"] figcaption strong',
       ),
-    ).toHaveText("Roof section");
+    ).toHaveText("ROOF SECTION");
+    const titleBlock = page.locator(
+      '[data-page-kind="drawings"] footer[aria-label="A-02 title block"]',
+    );
+    await expect(titleBlock).toContainText("ROOF PACKAGE");
+    await expect(titleBlock).toContainText("SANCTUARY");
+    await expect(titleBlock).toContainText(
+      "Concept design — not for construction",
+    );
+    await expect(titleBlock).toContainText("Pitched pergola");
+    await expect(titleBlock).toContainText("Combination roofing");
+    await expect(titleBlock).toContainText("Booklet");
+    await expect(page.locator('[data-page-kind="drawings"]')).not.toContainText(
+      "ARCHITECTURAL PACKAGE",
+    );
     await expect(
       page.locator('[data-page-kind="drawings"] [data-drawing-slot]'),
     ).toHaveCount(3);
@@ -103,14 +122,15 @@ test.describe("design booklet workbench fixture", () => {
       '[data-composer-page="drawing-page-2"]',
     );
     await addedDrawingCard
-      .getByRole("button", { name: "Move Drawings 2 earlier" })
+      .getByRole("button", { name: "Move ROOF PACKAGE earlier" })
       .click();
-    await expect(railButtons.nth(4)).toContainText("Drawings 2");
+    await expect(railButtons.nth(4)).toContainText("ROOF PACKAGE");
 
-    await page
-      .locator('[data-composer-page="image-page-2"]')
-      .getByRole("button", { name: /^Remove / })
-      .click();
+    const removedImageCard = page.locator(
+      '[data-composer-page="image-page-2"]',
+    );
+    await removedImageCard.hover();
+    await removedImageCard.getByRole("button", { name: /^Remove / }).click();
     await expect(railButtons).toHaveCount(6);
     await expect(railButtons.first()).toContainText("Cover");
     await expect(railButtons.last()).toContainText("Review");
@@ -169,14 +189,14 @@ test.describe("design booklet workbench fixture", () => {
     page,
   }) => {
     for (const viewport of [
-      { width: 1920, height: 1080 },
-      { width: 1440, height: 900 },
-      { width: 1366, height: 768 },
+      { width: 1920, height: 1080, expectEditorFit: true },
+      { width: 1440, height: 900, expectEditorFit: true },
+      { width: 1366, height: 768, expectEditorFit: false },
     ]) {
       await page.setViewportSize(viewport);
       await page.goto(FIXTURE_PATH);
 
-      const bookletPage = page.locator('[data-page-kind="cover"]');
+      const bookletPage = page.locator('[data-page-kind="cover"]:visible');
       await expect(bookletPage).toBeVisible();
       const bounds = await bookletPage.boundingBox();
       expect(bounds).not.toBeNull();
@@ -200,6 +220,10 @@ test.describe("design booklet workbench fixture", () => {
         const preview = document.querySelector(
           'section[aria-label="Landscape A4 booklet preview"]',
         );
+        const editor = document.querySelector("[data-selected-page-editor]");
+        const pageNavigation = document.querySelector(
+          'nav[aria-label="Booklet pages"]',
+        );
         return {
           documentWidth: document.documentElement.scrollWidth,
           documentHeight: document.documentElement.scrollHeight,
@@ -210,12 +234,22 @@ test.describe("design booklet workbench fixture", () => {
             preview instanceof HTMLElement &&
             (preview.scrollWidth > preview.clientWidth + 1 ||
               preview.scrollHeight > preview.clientHeight + 1),
+          editorOverflow:
+            editor instanceof HTMLElement &&
+            editor.scrollHeight > editor.clientHeight + 1,
+          pageNavigationOverflow:
+            pageNavigation instanceof HTMLElement &&
+            pageNavigation.scrollHeight > pageNavigation.clientHeight + 1,
         };
       });
       expect(layout.documentWidth).toBeLessThanOrEqual(viewport.width + 1);
       expect(layout.documentHeight).toBeLessThanOrEqual(viewport.height + 1);
-      expect(layout.railOverflow).toBe(true);
+      expect(layout.railOverflow).toBe(false);
       expect(layout.previewOverflow).toBe(false);
+      expect(layout.pageNavigationOverflow).toBe(false);
+      if (viewport.expectEditorFit) {
+        expect(layout.editorOverflow).toBe(false);
+      }
     }
   });
 
@@ -232,6 +266,9 @@ test.describe("design booklet workbench fixture", () => {
       .locator('[data-booklet-page-select="drawing-page-1"]')
       .click();
     await expect(page.locator('[data-page-kind="drawings"]')).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "Sheet title" }),
+    ).toHaveValue("PROPOSED ROOF PLAN");
 
     await page
       .locator('[data-composer-page="drawing-page-1"]')
@@ -242,6 +279,11 @@ test.describe("design booklet workbench fixture", () => {
     await expect(
       page.locator('[data-page-kind="drawings"] [data-drawing-slot]'),
     ).toHaveCount(4);
+    await expect(
+      page.locator(
+        '[data-page-kind="drawings"] footer[aria-label="A-01 title block"]',
+      ),
+    ).toBeVisible();
 
     const hasHorizontalDocumentOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth + 1,
@@ -269,10 +311,17 @@ test.describe("design booklet workbench fixture", () => {
       drawingPage.getByRole("main"),
       presentation.drawing.area,
     );
+    await expectPointRect(
+      drawingPage,
+      drawingPage.locator('footer[aria-label="A-01 title block"]'),
+      presentation.drawing.titleBlock,
+    );
+    expect(presentation.drawing.area.top).toBeLessThanOrEqual(20);
+    expect(
+      presentation.drawing.area.height / presentation.page.height,
+    ).toBeGreaterThan(0.74);
 
-    await pageRail
-      .locator('[data-booklet-page-select="review"]')
-      .click();
+    await pageRail.locator('[data-booklet-page-select="review"]').click();
     const reviewPage = page.locator('[data-page-kind="review"]');
     await expect(reviewPage).toBeVisible();
     await expectPointRect(

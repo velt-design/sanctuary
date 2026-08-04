@@ -15,6 +15,7 @@ import {
   DESIGN_BOOKLET_PDF_FONT_FILES,
   readDesignBookletPdfFont,
 } from "./pdfAssets";
+import { drawDesignBookletDrawingTitleBlock } from "./pdfDrawingTitleBlock";
 import {
   addDesignBookletPage as addPage,
   DESIGN_BOOKLET_PDF_COLORS,
@@ -482,24 +483,12 @@ function renderDrawingPage(
   resolvedPage: {
     pageNumber: number;
     pageCount: number;
+    sheetNumber: string;
     page: DesignBookletDrawingPage;
   },
 ) {
-  const { pdf, fonts, draft, images } = context;
+  const { pdf, fonts, images } = context;
   const page = addPage(pdf);
-  drawBrandAt(
-    page,
-    fonts,
-    DESIGN_BOOKLET_PDF_LEFT,
-    pdfYFromTopBaseline(presentation.chrome.header.brandPrimaryBaseline),
-  );
-  drawRightLabel(
-    page,
-    fonts,
-    `Drawings / ${String(resolvedPage.pageNumber).padStart(2, "0")}`,
-    pdfYFromTopBaseline(presentation.chrome.header.labelBaseline),
-    colors.muted,
-  );
 
   const layout = DESIGN_BOOKLET_DRAWING_LAYOUTS[resolvedPage.page.layout];
   const drawings = visibleDesignBookletDrawings(resolvedPage.page);
@@ -516,27 +505,43 @@ function renderDrawingPage(
         height: frame.height - titleHeight,
       },
       white,
+      presentation.drawing.imageBorderWidth,
     );
-    drawWrappedText(page, designBookletDrawingTitle(drawing.title), {
-      x: frame.x + presentation.drawing.caption.insetX,
-      y: frame.y + presentation.drawing.caption.baselineFromBottom,
-      width: frame.width - presentation.drawing.caption.insetX * 2,
-      font: fonts.display,
-      size: presentation.drawing.caption.size,
-      lineHeight: presentation.drawing.caption.lineHeight,
-      maxLines: presentation.drawing.caption.maxLines,
-      color: colors.ink,
-      tracking: -0.045,
-    });
+    drawRule(
+      page,
+      frame.x,
+      frame.y + titleHeight,
+      frame.width,
+      colors.ruleStrong,
+      presentation.drawing.imageBorderWidth,
+    );
+    drawEyebrow(
+      page,
+      `${String(index + 1).padStart(2, "0")} /`,
+      frame.x + presentation.drawing.caption.insetX,
+      frame.y + presentation.drawing.caption.baselineFromBottom,
+      fonts,
+      colors.muted,
+      presentation.drawing.caption.size * 0.72,
+      0.12,
+    );
+    drawWrappedText(
+      page,
+      designBookletDrawingTitle(drawing.title).toUpperCase(),
+      {
+        x: frame.x + 27,
+        y: frame.y + presentation.drawing.caption.baselineFromBottom,
+        width: frame.width - 27 - presentation.drawing.caption.insetX,
+        font: fonts.semibold,
+        size: presentation.drawing.caption.size,
+        lineHeight: presentation.drawing.caption.lineHeight,
+        maxLines: presentation.drawing.caption.maxLines,
+        color: colors.ink,
+        tracking: 0.06,
+      },
+    );
   });
-
-  drawFooter(
-    page,
-    resolvedPage.pageNumber,
-    resolvedPage.pageCount,
-    draft.customerName,
-    fonts,
-  );
+  drawDesignBookletDrawingTitleBlock(context, page, resolvedPage);
 }
 
 function renderReview(

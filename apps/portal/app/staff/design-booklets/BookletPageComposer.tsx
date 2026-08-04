@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import {
   DESIGN_BOOKLET_DRAWING_LAYOUT_IDS,
   DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS,
@@ -12,7 +13,10 @@ import {
   buildDesignBookletRenderModel,
   DESIGN_BOOKLET_DRAWING_LAYOUTS,
   DESIGN_BOOKLET_FOCAL_POINTS,
+  DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH,
+  DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH,
   moveDesignBookletDrawing,
+  normalizeDesignBookletSheetTitle,
   visibleDesignBookletDrawings,
 } from "@/lib/designBooklets/pageModel";
 import type { DesignBookletPreviewAsset } from "./DesignBookletPages";
@@ -58,9 +62,6 @@ function FocalPointControl({
           </button>
         ))}
       </div>
-      <p>
-        Keep the important part of the image visible when the page is cropped.
-      </p>
     </fieldset>
   );
 }
@@ -115,10 +116,7 @@ function ImageEditor({
               onChange({ ...image, altText: event.target.value })
             }
           />
-          <small>
-            Used by screen readers in this preview; it is not embedded in the
-            PDF.
-          </small>
+          <small>Preview accessibility only — not embedded in the PDF.</small>
         </label>
         <FocalPointControl
           value={image.focalPoint}
@@ -291,6 +289,42 @@ function DrawingPageEditor({
 
   return (
     <div className={styles.drawingPageEditor}>
+      <div className={styles.sheetDetailsEditor}>
+        <label className={styles.field}>
+          <span>Sheet title</span>
+          <input
+            value={page.pageTitle}
+            maxLength={DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH}
+            onChange={(event) =>
+              onChange({
+                ...page,
+                pageTitle: normalizeDesignBookletSheetTitle(event.target.value),
+              })
+            }
+          />
+        </label>
+        <label className={styles.field}>
+          <span>Revision</span>
+          <input
+            value={page.revision}
+            maxLength={DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH}
+            onChange={(event) =>
+              onChange({ ...page, revision: event.target.value })
+            }
+          />
+        </label>
+        <label className={styles.field}>
+          <span>Issue date</span>
+          <input
+            type="date"
+            value={page.issueDate}
+            onChange={(event) =>
+              onChange({ ...page, issueDate: event.target.value })
+            }
+          />
+        </label>
+      </div>
+
       <fieldset className={styles.layoutFieldset}>
         <legend>Drawing layout</legend>
         <div className={styles.layoutOptions}>
@@ -355,9 +389,40 @@ export default function BookletPageComposer({
   const model = buildDesignBookletRenderModel(draft);
   const selected =
     model.find((page) => page.key === selectedPageKey) ?? model[0];
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const addPageControlRef = useRef<HTMLDivElement>(null);
+  const addPageButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isAddMenuOpen) return;
+
+    function closeOnOutsidePointer(event: PointerEvent) {
+      if (!addPageControlRef.current?.contains(event.target as Node)) {
+        setIsAddMenuOpen(false);
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setIsAddMenuOpen(false);
+      addPageButtonRef.current?.focus();
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isAddMenuOpen]);
+
+  function addPage(kind: "image" | "drawings") {
+    onAddPage(kind);
+    setIsAddMenuOpen(false);
+  }
 
   return (
-    <>
+    <div className={styles.pageComposerWorkspace}>
       <nav className={styles.pageComposer} aria-label="Booklet pages">
         <button
           type="button"
@@ -368,7 +433,7 @@ export default function BookletPageComposer({
         >
           <span>01</span>
           <strong>Cover</strong>
-          <small>Fixed first page</small>
+          <small>Fixed</small>
         </button>
 
         {draft.contentPages.map((page, index) => {
@@ -400,23 +465,26 @@ export default function BookletPageComposer({
                   disabled={index === 0}
                   onClick={() => onMovePage(page.id, -1)}
                   aria-label={`Move ${resolved.label} earlier`}
+                  title="Move earlier"
                 >
-                  Earlier
+                  <span aria-hidden="true">↑</span>
                 </button>
                 <button
                   type="button"
                   disabled={index === draft.contentPages.length - 1}
                   onClick={() => onMovePage(page.id, 1)}
                   aria-label={`Move ${resolved.label} later`}
+                  title="Move later"
                 >
-                  Later
+                  <span aria-hidden="true">↓</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => onRemovePage(page)}
                   aria-label={`Remove ${resolved.label}`}
+                  title="Remove page"
                 >
-                  Remove
+                  <span aria-hidden="true">×</span>
                 </button>
               </div>
             </article>
@@ -432,29 +500,48 @@ export default function BookletPageComposer({
         >
           <span>{String(model.length).padStart(2, "0")}</span>
           <strong>Review</strong>
-          <small>Fixed final page</small>
+          <small>Fixed</small>
         </button>
       </nav>
 
-      <div className={styles.addPageActions}>
-        <button type="button" onClick={() => onAddPage("image")}>
-          Add image page
+      <div className={styles.addPageControl} ref={addPageControlRef}>
+        <button
+          type="button"
+          ref={addPageButtonRef}
+          aria-expanded={isAddMenuOpen}
+          aria-controls="booklet-add-page-menu"
+          onClick={() => setIsAddMenuOpen((current) => !current)}
+        >
+          <span aria-hidden="true">+</span> Add page
         </button>
-        <button type="button" onClick={() => onAddPage("drawings")}>
-          Add drawing page
-        </button>
+        {isAddMenuOpen ? (
+          <div
+            className={styles.addPageMenu}
+            id="booklet-add-page-menu"
+            aria-label="Choose page type"
+          >
+            <button type="button" onClick={() => addPage("image")}>
+              <strong>Image page</strong>
+              <span>One full-page customer render</span>
+            </button>
+            <button type="button" onClick={() => addPage("drawings")}>
+              <strong>Drawing page</strong>
+              <span>Plan, section or elevation layouts</span>
+            </button>
+          </div>
+        ) : null}
       </div>
 
-      <section className={styles.selectedPageEditor} aria-live="polite">
+      <section
+        className={styles.selectedPageEditor}
+        data-selected-page-editor
+        aria-live="polite"
+      >
         <header>
-          <div>
-            <p className={styles.sectionEyebrow}>Selected page</p>
-            <h3>{selected.label}</h3>
-          </div>
-          <span>
-            {String(selected.pageNumber).padStart(2, "0")} /{" "}
-            {String(selected.pageCount).padStart(2, "0")}
-          </span>
+          <p className={styles.sectionEyebrow}>
+            {selected.kind === "drawings" ? "Sheet settings" : "Page settings"}
+          </p>
+          <strong>{selected.label}</strong>
         </header>
 
         {selected.kind === "cover" ? (
@@ -491,10 +578,7 @@ export default function BookletPageComposer({
 
         {selected.kind === "review" ? (
           <div className={styles.reviewPageEditor}>
-            <p>
-              The final review prompts and Sanctuary call to action are fixed.
-              You can still choose the closing image and its focus.
-            </p>
+            <p>Review copy is fixed. Choose the closing image and its focus.</p>
             <ImageEditor
               eyebrow="Final-page image"
               image={draft.reviewPage.image}
@@ -506,6 +590,6 @@ export default function BookletPageComposer({
           </div>
         ) : null}
       </section>
-    </>
+    </div>
   );
 }

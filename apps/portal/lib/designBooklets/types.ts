@@ -112,6 +112,9 @@ export type DesignBookletImagePage = {
 export type DesignBookletDrawingPage = {
   id: string;
   kind: "drawings";
+  pageTitle: string;
+  revision: string;
+  issueDate: string;
   layout: DesignBookletDrawingLayoutId;
   drawings: [
     DesignBookletDrawingItem,

@@ -108,10 +108,10 @@ describe("DesignBookletPages", () => {
   });
 
   it.each([
-    ["one-large", 1, ["Plan"]],
-    ["two-equal", 2, ["Plan", "Section"]],
-    ["large-plus-two", 3, ["Plan", "Section", "Elevation"]],
-    ["four-grid", 4, ["Plan", "Section", "Elevation", "Isometric"]],
+    ["one-large", 1, ["PLAN"]],
+    ["two-equal", 2, ["PLAN", "SECTION"]],
+    ["large-plus-two", 3, ["PLAN", "SECTION", "ELEVATION"]],
+    ["four-grid", 4, ["PLAN", "SECTION", "ELEVATION", "ISOMETRIC"]],
   ] satisfies Array<[DesignBookletDrawingLayoutId, number, string[]]>)(
     "renders the %s drawing preset with %i titled slots",
     (layout, expectedSlots, expectedTitles) => {
@@ -135,10 +135,24 @@ describe("DesignBookletPages", () => {
       expect(figures).toHaveLength(expectedSlots);
       expect(
         figures.map(
-          (figure) => figure.querySelector("figcaption")?.textContent,
+          (figure) => figure.querySelector("figcaption strong")?.textContent,
         ),
       ).toEqual(expectedTitles);
       expect(figures.every((figure) => figure.querySelector("img"))).toBe(true);
+      const titleBlock = page?.querySelector(
+        'footer[aria-label="A-01 title block"]',
+      );
+      expect(titleBlock?.textContent).toContain("PROPOSED ROOF PLAN");
+      expect(titleBlock?.textContent).toContain("SANCTUARY");
+      expect(titleBlock?.textContent).toContain(
+        "Concept design — not for construction",
+      );
+      expect(titleBlock?.textContent).toContain("Pitched pergola");
+      expect(titleBlock?.textContent).toContain("Combination roofing");
+      expect(titleBlock?.textContent).toContain("A-01");
+      expect(titleBlock?.textContent).toContain("Booklet");
+      expect(page?.querySelectorAll("footer")).toHaveLength(1);
+      expect(page?.querySelector("header")).toBeNull();
 
       rendered.unmount();
     },

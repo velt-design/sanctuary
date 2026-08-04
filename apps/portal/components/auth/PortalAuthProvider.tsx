@@ -19,6 +19,22 @@ import { clearLegacyUnscopedCalculatorSessionDrafts } from '@/lib/localFirst/ses
 
 const ROLE_CACHE_KEY = 'sanctuary-portal:portal-role-cache:v1';
 
+type BrowserSessionRead =
+  | { status: 'available'; session: Session | null }
+  | { status: 'unavailable' };
+
+async function readBrowserSession(
+  supabase: ReturnType<typeof getSupabaseBrowser>,
+): Promise<BrowserSessionRead> {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) return { status: 'unavailable' };
+    return { status: 'available', session: data.session ?? null };
+  } catch {
+    return { status: 'unavailable' };
+  }
+}
+
 type CachedRole = {
   userId: string;
   role: PortalRole;
@@ -152,8 +168,15 @@ export default function PortalAuthProvider({
   );
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    await applySession(data.session ?? null);
+    const result = await readBrowserSession(supabase);
+    if (result.status === 'unavailable') {
+      const currentState = stateRef.current;
+      if (currentState.status === 'loading') {
+        setState({ status: 'lookup_failed', user: currentState.user, role: null });
+      }
+      return;
+    }
+    await applySession(result.session);
   }, [applySession, supabase]);
 
   const signOut = useCallback(
@@ -203,9 +226,16 @@ export default function PortalAuthProvider({
     let active = true;
 
     void (async () => {
-      const { data } = await supabase.auth.getSession();
+      const result = await readBrowserSession(supabase);
       if (!active) return;
-      await applySession(data.session ?? null);
+      if (result.status === 'unavailable') {
+        const currentState = stateRef.current;
+        if (currentState.status === 'loading') {
+          setState({ status: 'lookup_failed', user: currentState.user, role: null });
+        }
+        return;
+      }
+      await applySession(result.session);
     })();
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {

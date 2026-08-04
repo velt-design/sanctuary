@@ -76,7 +76,12 @@ describe("design booklet PDF", () => {
     expect(pageText[0]).toContain("Pitched pergola");
     expect(pageText[0]).toContain("Combination roofing");
     expect(pageText[0]).toContain("01 / 05");
-    expect(pageText[3]).toContain("Plan");
+    expect(pageText[3]).toContain("0 1 / PLAN");
+    expect(pageText[3]).toContain("PROPOSED ROOF PLAN");
+    expect(pageText[3]).toContain("A-01");
+    expect(pageText[3]).toContain("CONCEPT DESIGN - NOT FOR CONSTRUCTION");
+    expect(pageText[3]).toContain("Pitched pergola");
+    expect(pageText[3]).toContain("Combination roofing");
     expect(pageText[4]).toContain("Review the concept");
     expect(pageText[4]).toContain("Discuss this concept with Sanctuary");
     expect(pageText[4]).toContain("05 / 05");
@@ -119,12 +124,15 @@ describe("design booklet PDF", () => {
       "four-grid",
     ];
     draft.contentPages = [];
-    for (const layout of layouts) {
+    for (const [index, layout] of layouts.entries()) {
       const page = createDesignBookletDrawingPage(draft.contentPages, {
         id: "plan",
         alt: TONI_DESIGN_BOOKLET_ASSETS.plan.alt,
       });
       page.layout = layout;
+      page.pageTitle = `Architectural sheet ${index + 1}`;
+      page.revision = String(index + 1).padStart(2, "0");
+      page.issueDate = "2026-08-04";
       page.drawings[0].title = {
         kind: "custom",
         value: `Custom ${layout} detail`,
@@ -139,11 +147,18 @@ describe("design booklet PDF", () => {
     expect(document.getPageCount()).toBe(6);
     expectLandscapeA4Pages(document);
     layouts.forEach((layout, index) => {
-      expect(pageText[index + 1]).toContain(`Custom ${layout} detail`);
+      expect(pageText[index + 1]).toContain(
+        `CUSTOM ${layout.toUpperCase()} DETAIL`,
+      );
+      expect(pageText[index + 1]).toContain(`ARCHITECTURAL SHEET ${index + 1}`);
+      expect(pageText[index + 1]).toContain(
+        `A-${String(index + 1).padStart(2, "0")}`,
+      );
+      expect(pageText[index + 1]).toContain("04 AUG 2026");
     });
-    expect(pageText[4]).toContain("Section");
-    expect(pageText[4]).toContain("Elevation");
-    expect(pageText[4]).toContain("Isometric");
+    expect(pageText[4]).toContain("SECTION");
+    expect(pageText[4]).toContain("ELEVATION");
+    expect(pageText[4]).toContain("ISOMETRIC");
     expect(pageText[5]).toContain("06 / 06");
 
     const outputDirectory = process.env.DESIGN_BOOKLET_OUTPUT_DIR?.trim();

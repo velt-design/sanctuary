@@ -43,7 +43,9 @@ Each drawing page keeps four reusable drawing slots and exposes one of four layo
 - one large drawing plus two smaller drawings;
 - a four-drawing grid.
 
-Changing to a layout with fewer drawings hides rather than discards the other slots. Visible drawings can be reordered. Each image is shown without full-bleed cropping and has a clean caption underneath. Captions use `Plan`, `Section`, `Elevation`, or `Isometric`, or an 80-character custom title.
+Changing to a layout with fewer drawings hides rather than discards the other slots. Visible drawings can be reordered. Each image is shown without full-bleed cropping and has an uppercase technical caption underneath in the form `01 / PLAN`. Captions use `Plan`, `Section`, `Elevation`, or `Isometric`, or an 80-character custom title.
+
+Every drawing page is presented as an architectural concept sheet. Staff can edit its sheet title, revision, issue date, and each visible drawing caption; the sheet number is derived automatically as `A-01`, `A-02`, and so on. Sheet titles are normalized to uppercase when edited, loaded from a saved draft, previewed, and exported. The drawing field starts near the top rule and occupies most of the sheet; there is no separate running logo or architectural-package header. A restrained bottom title block is the sole identity and information area, with Sanctuary identity, the uppercase sheet title and number, customer, project, governed roof-form and roofing labels, revision, issue date, fixed concept status, and secondary booklet pagination. The fixed status is `Concept design — not for construction`; no scale, approval, consent, performance, or construction claim is inferred. Older schema-v2 drafts remain readable because missing drawing-page metadata is normalized to safe defaults when loaded.
 
 The final `Review the concept` page has fixed, approved review prompts and call to action. Staff can replace and refocus its closing image, but cannot edit the copy in the workbench.
 
@@ -80,9 +82,9 @@ fixtures and isolated use.
 
 `buildDesignBookletRenderModel()` is the shared owner of page order, stable page keys, labels, numbering, and count for the browser preview and PDF. The drawing-layout definitions, image focal positions, title resolution, and fixed review copy are also shared.
 
-`presentation.ts` owns the merged browser/PDF visual contract. It keeps the artifact inside a compact `3.8cqw` frame in the preview, equal to `31.99pt` on the canonical landscape A4 canvas; assigns Instrument Sans to display roles and Inter to body roles; bottom-anchors the cover story so title wrapping grows upward from a stable lower composition; leaves the cover image unshaded; and fixes the review page at a 45% image / 55% story split. The browser scales the shared point model from the booklet container while `pdf-lib` consumes the same geometry and font roles directly, so responsive preview sizing does not change the exported composition.
+`presentation.ts` owns the merged browser/PDF visual contract. It keeps the artifact inside a compact `3.8cqw` frame in the preview, equal to `31.99pt` on the canonical landscape A4 canvas; assigns Instrument Sans to display roles and Inter to body roles; bottom-anchors the cover story so title wrapping grows upward from a stable lower composition; leaves the cover image unshaded; fixes the review page at a 45% image / 55% story split; and defines the drawing canvas plus architectural title-block geometry. Drawing sheets use a tighter 20pt inset, begin the drawing field 18pt below the sheet edge, reserve only a compact caption band, and finish with a 93pt title block. The browser scales the shared point model from the booklet container while `pdf-lib` consumes the same geometry and font roles directly, so responsive preview sizing does not change the exported composition.
 
-On desktop, the route chrome presents the existing editors in a compact, independently scrolling control panel beside a wider preview workspace. The preview owns the remaining viewport and fits the complete A4 page without document or preview scrolling at common desktop sizes. At 960px and below, the preview moves above the controls and the page returns to a single-column flow. This shell is route-owned and does not alter the shared page renderer or PDF geometry.
+On desktop, the route chrome presents a compact control rail beside a wider preview workspace. The normal five-page workflow fits at 1920×1080 and 1440×900 without scrolling the rail or page list: booklet details are progressively disclosed, page rows expose contextual reorder/remove controls, and one `Add page` menu owns both page types. Only the selected-page editor may scroll when expanded details, advanced controls, or larger drawing layouts need more room. The preview owns the remaining viewport and fits the complete A4 page without document or preview scrolling at common desktop sizes. At 960px and below, the preview moves above the controls and the page returns to a single-column flow. This shell is route-owned and does not alter the shared page renderer or PDF geometry.
 
 There is no email delivery, customer sending, audit event, task creation, or
 workflow automation.
@@ -102,7 +104,7 @@ push, migration-up, or repair command was used.
 
 ## Content Ownership
 
-`apps/marketing/data/products.ts` remains the canonical owner of generic roof-form and material wording. `apps/marketing/lib/designBookletContent.ts` selects existing content without strengthening it. The server-only Portal adapter at `apps/portal/lib/designBooklets/marketingContent.ts` exposes only the roof-form names and material labels needed on the cover.
+`apps/marketing/data/products.ts` remains the canonical owner of generic roof-form and material wording. `apps/marketing/lib/designBookletContent.ts` selects existing content without strengthening it. The server-only Portal adapter at `apps/portal/lib/designBooklets/marketingContent.ts` exposes only the roof-form names and material labels needed in the booklet.
 
 The first material choices use the public labels from `generalRoofPreference`:
 
@@ -122,6 +124,7 @@ Do not turn the `timber` intake key into a customer-facing "timber roof" claim. 
 - `apps/portal/lib/designBooklets/defaults.ts`: Toni asset catalogue and default draft.
 - `apps/portal/lib/designBooklets/request.ts`: multipart draft and image validation.
 - `apps/portal/lib/designBooklets/pdf.ts`: landscape PDF renderer over the shared page model.
+- `apps/portal/lib/designBooklets/pdfDrawingTitleBlock.ts`: architectural drawing-sheet title-block painter shared by every PDF drawing layout.
 - `apps/portal/lib/designBooklets/marketingContent.ts`: narrow marketing-content adapter.
 - `apps/portal/lib/designBooklets/projectPersistence.ts`: auth-bound project draft, private asset, and signed PDF owner.
 - `apps/portal/lib/designBooklets/projectPdf.ts`: saved-asset PDF assembly and private signed export owner.
@@ -160,7 +163,8 @@ The standalone multipart server additionally:
 - limits all custom uploads in one request to 120 MB;
 - limits each custom upload to 12,000 pixels on either side and 50 megapixels;
 - allows at most 24 middle content pages;
-- limits customer name to 80 characters, booklet title to 120, image descriptions to 240, and custom drawing titles to 80;
+- limits customer name to 80 characters, booklet title to 120, drawing-page titles to 80, revisions to 12, image descriptions to 240, and custom drawing titles to 80;
+- requires drawing-page issue dates to be valid ISO calendar dates;
 - rejects invalid or duplicate identifiers, duplicate file fields, unreferenced uploads, unsupported schema values, and malformed page or drawing-slot data.
 
 Oversize requests return `413`; other invalid requests return `400`. API
@@ -175,7 +179,7 @@ node node_modules/vitest/vitest.mjs run apps/marketing/lib/designBookletContent.
 node node_modules/@playwright/test/cli.js test playwright/portal.design-booklet-workbench.spec.ts --project=portal-fixture --workers=1
 ```
 
-For deterministic PDF evidence, set `DESIGN_BOOKLET_OUTPUT_DIR=output/pdf` while running `apps/portal/lib/designBooklets/pdf.test.ts`. This writes the default five-page Toni booklet and a six-page drawing-layout fixture. Render both with Poppler and inspect every page. Browser visual QA should inspect every default page, mixed add/remove/reorder behavior, all drawing layouts, image focal positions, a custom drawing title, PDF parity, and desktop plus narrow layouts on the gated fixture.
+For deterministic PDF evidence, set `DESIGN_BOOKLET_OUTPUT_DIR=output/pdf` while running `apps/portal/lib/designBooklets/pdf.test.ts`. This writes the default five-page Toni booklet and a six-page drawing-layout fixture. Render both with Poppler and inspect every page. Browser visual QA should inspect every default page, mixed add/remove/reorder behavior, all drawing layouts, image focal positions, editable page and drawing titles, uppercase title normalization, `01 / PLAN` captions, the absence of a separate drawing-page running header, the sole bottom architectural title block, PDF parity, and desktop plus narrow layouts on the gated fixture.
 
 ## Explicit Non-goals
 

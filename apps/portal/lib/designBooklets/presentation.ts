@@ -105,6 +105,17 @@ const REVIEW_CALL_TO_ACTION_BASELINE = 520.28;
 const REVIEW_CALL_TO_ACTION_SIZE = 10;
 const REVIEW_CALL_TO_ACTION_LINE_HEIGHT = 12;
 
+const DRAWING_SHEET_INSET = 20;
+const DRAWING_TITLE_BLOCK_WIDTH = PAGE_WIDTH - DRAWING_SHEET_INSET * 2;
+const DRAWING_TITLE_COLUMN_WIDTH = DRAWING_TITLE_BLOCK_WIDTH * 0.4;
+const DRAWING_PROJECT_COLUMN_WIDTH = DRAWING_TITLE_BLOCK_WIDTH * 0.22;
+const DRAWING_DESIGN_COLUMN_WIDTH = DRAWING_TITLE_BLOCK_WIDTH * 0.24;
+const DRAWING_META_COLUMN_WIDTH =
+  DRAWING_TITLE_BLOCK_WIDTH -
+  DRAWING_TITLE_COLUMN_WIDTH -
+  DRAWING_PROJECT_COLUMN_WIDTH -
+  DRAWING_DESIGN_COLUMN_WIDTH;
+
 export const DESIGN_BOOKLET_PRESENTATION = {
   page: {
     width: PAGE_WIDTH,
@@ -202,20 +213,48 @@ export const DESIGN_BOOKLET_PRESENTATION = {
   },
   drawing: {
     area: {
-      x: ARTIFACT_INSET,
-      top: 68,
-      width: PAGE_WIDTH - ARTIFACT_INSET * 2,
-      height: 478,
+      x: DRAWING_SHEET_INSET,
+      top: 18,
+      width: PAGE_WIDTH - DRAWING_SHEET_INSET * 2,
+      height: 447,
     },
     caption: {
-      reserveHeight: 30,
-      insetX: 2,
-      baselineFromBottom: 16,
-      size: 9.5,
-      lineHeight: 11.4,
-      maxLines: 2,
+      reserveHeight: 22,
+      insetX: 4,
+      baselineFromBottom: 11.5,
+      size: 7.4,
+      lineHeight: 8.8,
+      maxLines: 1,
     },
-    imageBorderWidth: 0.65,
+    imageBorderWidth: 0.45,
+    titleBlock: {
+      x: DRAWING_SHEET_INSET,
+      top: 482,
+      width: DRAWING_TITLE_BLOCK_WIDTH,
+      height: 93,
+      titleColumnWidth: DRAWING_TITLE_COLUMN_WIDTH,
+      projectColumnWidth: DRAWING_PROJECT_COLUMN_WIDTH,
+      designColumnWidth: DRAWING_DESIGN_COLUMN_WIDTH,
+      metaColumnWidth: DRAWING_META_COLUMN_WIDTH,
+      paddingX: 9,
+      paddingTop: 8,
+      brandSize: 8.4,
+      brandLineHeight: 9,
+      brandDescriptorSize: 4.2,
+      brandDescriptorLineHeight: 5,
+      labelSize: 4.7,
+      labelLineHeight: 5.7,
+      valueSize: 6.7,
+      valueLineHeight: 8,
+      titleSize: 17.5,
+      titleLineHeight: 18.5,
+      statusSize: 5,
+      statusLineHeight: 6,
+      sheetSize: 20,
+      sheetLineHeight: 20,
+      outerRuleWidth: 0.8,
+      ruleWidth: 0.35,
+    },
   },
   review: {
     image: {

@@ -12,6 +12,7 @@ import {
   designBookletDrawingTitle,
   moveDesignBookletContentPage,
   moveDesignBookletDrawing,
+  normalizeDesignBookletSheetTitle,
   renderableDesignBookletAssetSources,
   visibleDesignBookletDrawings,
 } from "./pageModel";
@@ -60,7 +61,7 @@ describe("design booklet page model", () => {
       {
         key: "drawing-page-1",
         kind: "drawings",
-        label: "Drawings 1",
+        label: "PROPOSED ROOF PLAN",
         pageNumber: 2,
         pageCount: 5,
       },
@@ -86,6 +87,9 @@ describe("design booklet page model", () => {
         pageCount: 5,
       },
     ]);
+    expect(buildDesignBookletRenderModel(draft)[1]).toMatchObject({
+      sheetNumber: "A-01",
+    });
   });
 
   it("supports the two-page minimum when no optional content pages remain", () => {
@@ -140,6 +144,8 @@ describe("design booklet page model", () => {
     expect(drawings).toMatchObject({
       id: "drawing-page-2",
       kind: "drawings",
+      pageTitle: "CONCEPT DRAWINGS",
+      revision: "01",
       layout: "one-large",
     });
     expect(drawings.drawings.map((item) => item.title)).toEqual([
@@ -152,6 +158,12 @@ describe("design booklet page model", () => {
       new Set(drawings.drawings.map((item) => item.image.assetId)).size,
     ).toBe(4);
     expect(nextImage.id).toBe("image-page-4");
+  });
+
+  it("normalizes sheet titles to architectural uppercase", () => {
+    expect(normalizeDesignBookletSheetTitle("Roof framing plan")).toBe(
+      "ROOF FRAMING PLAN",
+    );
   });
 
   it("moves optional pages without moving past either boundary", () => {

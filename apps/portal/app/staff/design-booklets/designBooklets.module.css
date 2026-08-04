@@ -37,7 +37,7 @@
   position: relative;
   z-index: 30;
   display: grid;
-  height: 72px;
+  height: 64px;
   padding: 0 24px;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -92,7 +92,7 @@
 }
 
 .primaryButton {
-  min-height: 44px;
+  min-height: 42px;
   padding: 0 20px;
   border: 1px solid var(--booklet-olive);
   background: var(--booklet-olive);
@@ -150,9 +150,9 @@
 
 .workspace {
   display: grid;
-  height: calc(100dvh - 72px);
+  height: calc(100dvh - 64px);
   min-height: 0;
-  grid-template-columns: clamp(320px, 26vw, 390px) minmax(0, 1fr);
+  grid-template-columns: clamp(310px, 22vw, 340px) minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -162,20 +162,98 @@
 }
 
 .controlRail {
+  display: grid;
   min-width: 0;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
   border-right: 1px solid var(--booklet-rule-strong);
   background: var(--booklet-paper);
-  scrollbar-color: var(--booklet-rule-strong) transparent;
-  scrollbar-width: thin;
 }
 
-.railIntroduction {
-  padding: 26px 24px 24px;
+.bookletDetails {
+  position: relative;
   border-bottom: 1px solid var(--booklet-rule-strong);
   background: var(--booklet-canvas);
+}
+
+.bookletDetails > summary {
+  display: flex;
+  min-height: 74px;
+  padding: 14px 16px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.bookletDetails > summary::-webkit-details-marker {
+  display: none;
+}
+
+.bookletDetails > summary:hover,
+.bookletDetails > summary:focus-visible {
+  background: #ebeae3;
+  outline: 2px solid var(--booklet-ink);
+  outline-offset: -2px;
+}
+
+.detailsSummaryCopy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.detailsSummaryCopy strong,
+.selectedPageEditor > header strong {
+  overflow: hidden;
+  font-family: var(--font-design-booklet-instrument), Arial, sans-serif;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailsSummaryCopy strong {
+  margin-top: 2px;
+  font-size: 15px;
+}
+
+.detailsSummaryCopy > span:last-child {
+  overflow: hidden;
+  color: var(--booklet-muted);
+  font-size: 9px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailsToggle {
+  display: inline-flex;
+  min-height: 34px;
+  padding: 0 10px;
+  flex: 0 0 auto;
+  align-items: center;
+  border: 1px solid var(--booklet-rule-strong);
+  background: var(--booklet-paper);
+  color: var(--booklet-ink);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.detailsToggleOpen,
+.bookletDetails[open] .detailsToggleClosed {
+  display: none;
+}
+
+.bookletDetails[open] .detailsToggleOpen {
+  display: inline;
+}
+
+.detailsPanel {
+  padding: 0 16px 16px;
 }
 
 .sectionEyebrow {
@@ -187,53 +265,31 @@
   text-transform: uppercase;
 }
 
-.railIntroduction h1,
 .railSectionHeader h2,
 .previewToolbar h2,
-.selectedPageEditor h3 {
+.selectedPageEditor > header strong {
   margin: 0;
   font-family: var(--font-design-booklet-instrument), Arial, sans-serif;
   font-weight: 550;
   letter-spacing: -0.035em;
 }
 
-.railIntroduction h1 {
-  max-width: 310px;
-  margin-top: 10px;
-  font-size: 30px;
-  line-height: 0.98;
-}
-
-.railSummary {
-  display: grid;
-  margin-top: 20px;
-  border-top: 1px solid var(--booklet-rule);
-}
-
-.railSummary span {
-  padding: 9px 0;
-  border-bottom: 1px solid var(--booklet-rule);
-  color: var(--booklet-muted);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .railSection {
-  padding: 24px;
-  border-bottom: 1px solid var(--booklet-rule-strong);
+  display: grid;
+  min-height: 0;
+  padding: 14px 14px 0;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .railSectionHeader {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .railSectionHeader > span {
-  padding-top: 2px;
   color: var(--booklet-muted);
   font-size: 9px;
   font-weight: 750;
@@ -241,25 +297,22 @@
 }
 
 .railSectionHeader .sectionEyebrow {
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 }
 
 .railSectionHeader h2 {
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1;
-}
-
-.railSectionCopy {
-  margin: 14px 0 18px 40px;
-  color: var(--booklet-muted);
-  font-size: 11px;
-  line-height: 1.45;
 }
 
 .detailsGrid {
   display: grid;
-  margin-top: 20px;
-  gap: 15px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 8px;
+}
+
+.detailsGrid .field:nth-child(-n + 2) {
+  grid-column: 1 / -1;
 }
 
 .field {
@@ -308,16 +361,27 @@
 }
 
 .sourceNote {
-  margin: 14px 0 0;
+  margin: 10px 0 0;
   color: var(--booklet-muted);
-  font-size: 10px;
-  line-height: 1.45;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.pageComposerWorkspace {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto auto minmax(0, 1fr);
 }
 
 .pageComposer {
   display: grid;
+  max-height: 234px;
+  overflow-x: hidden;
+  overflow-y: auto;
   border-top: 1px solid var(--booklet-rule-strong);
   border-left: 1px solid var(--booklet-rule);
+  scrollbar-color: var(--booklet-rule-strong) transparent;
+  scrollbar-width: thin;
 }
 
 .fixedPageCard,
@@ -333,11 +397,11 @@
 .composerPageSelect {
   display: grid;
   width: 100%;
-  min-height: 68px;
-  padding: 12px 13px;
-  grid-template-columns: 28px minmax(0, 1fr);
+  min-height: 46px;
+  padding: 7px 9px;
+  grid-template-columns: 24px minmax(0, 1fr);
   align-content: center;
-  gap: 3px 8px;
+  gap: 1px 7px;
   border: 0;
   background: transparent;
   color: var(--booklet-ink);
@@ -357,15 +421,21 @@
 .fixedPageCard strong,
 .composerPageSelect strong {
   font-family: var(--font-design-booklet-instrument), Arial, sans-serif;
-  font-size: 15px;
+  overflow: hidden;
+  font-size: 14px;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fixedPageCard small,
 .composerPageSelect small {
+  overflow: hidden;
   color: var(--booklet-muted);
-  font-size: 9px;
-  line-height: 1.25;
+  font-size: 8px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fixedPageCard:hover,
@@ -397,19 +467,37 @@
 
 .composerPageCard {
   display: grid;
-  grid-template-rows: auto auto;
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .composerPageActions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  position: absolute;
+  z-index: 2;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  align-items: stretch;
+  background: var(--booklet-paper);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.composerPageCard:hover .composerPageActions,
+.composerPageCard:focus-within .composerPageActions,
+.composerPageSelect[aria-current="page"] + .composerPageActions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .previewControls button,
 .inlineActions button,
 .fileButton,
 .composerPageActions button,
-.addPageActions button {
+.addPageControl > button,
+.addPageMenu button {
   min-height: 42px;
   border: 1px solid var(--booklet-rule-strong);
   background: transparent;
@@ -422,12 +510,15 @@
 }
 
 .composerPageActions button {
-  min-height: 34px;
-  border-width: 1px 1px 0 0;
+  width: 36px;
+  min-height: 0;
+  padding: 0;
+  border-width: 0 0 0 1px;
+  font-size: 15px;
+  letter-spacing: 0;
 }
 
 .composerPageActions button:last-child {
-  border-right: 0;
   color: #742719;
 }
 
@@ -439,8 +530,10 @@
 .fileButton:focus-within,
 .composerPageActions button:hover:not(:disabled),
 .composerPageActions button:focus-visible,
-.addPageActions button:hover,
-.addPageActions button:focus-visible {
+.addPageControl > button:hover,
+.addPageControl > button:focus-visible,
+.addPageMenu button:hover,
+.addPageMenu button:focus-visible {
   border-color: var(--booklet-ink);
   background: var(--booklet-ink);
   color: var(--booklet-paper-strong);
@@ -455,52 +548,107 @@
   opacity: 0.32;
 }
 
-.addPageActions {
-  display: grid;
-  margin-top: 12px;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+.addPageControl {
+  position: relative;
+  padding: 8px 0 10px;
 }
 
-.addPageActions button {
+.addPageControl > button {
+  width: 100%;
+  min-height: 38px;
   padding: 0 10px;
 }
 
+.addPageControl > button > span {
+  margin-right: 5px;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.addPageMenu {
+  display: grid;
+  position: absolute;
+  z-index: 20;
+  top: calc(100% - 8px);
+  right: 0;
+  left: 0;
+  border: 1px solid var(--booklet-rule-strong);
+  background: var(--booklet-paper-strong);
+  box-shadow: 0 16px 32px rgb(32 34 31 / 16%);
+}
+
+.addPageMenu button {
+  display: grid;
+  min-height: 58px;
+  padding: 9px 11px;
+  align-content: center;
+  gap: 3px;
+  border: 0;
+  border-bottom: 1px solid var(--booklet-rule);
+  text-align: left;
+}
+
+.addPageMenu button:last-child {
+  border-bottom: 0;
+}
+
+.addPageMenu strong {
+  font-family: var(--font-design-booklet-instrument), Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.addPageMenu span {
+  color: var(--booklet-muted);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.addPageMenu button:hover span,
+.addPageMenu button:focus-visible span {
+  color: rgb(255 255 255 / 72%);
+}
+
 .selectedPageEditor {
-  margin-top: 24px;
-  padding-top: 20px;
+  min-height: 0;
+  padding: 14px 2px 18px 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   border-top: 1px solid var(--booklet-rule-strong);
+  scrollbar-color: var(--booklet-rule-strong) transparent;
+  scrollbar-width: thin;
 }
 
 .selectedPageEditor > header {
   display: flex;
-  margin-bottom: 16px;
-  align-items: end;
+  min-height: 30px;
+  margin-bottom: 12px;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
-.selectedPageEditor h3 {
-  margin-top: 5px;
-  font-size: 25px;
-  line-height: 1;
-}
-
-.selectedPageEditor > header > span {
-  color: var(--booklet-muted);
-  font-size: 8px;
-  font-weight: 750;
-  letter-spacing: 0.1em;
+.selectedPageEditor > header strong {
+  max-width: 60%;
+  font-size: 15px;
+  line-height: 1.1;
 }
 
 .imageEditor {
   display: grid;
-  gap: 16px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
 }
 
 .editorImagePreview {
   position: relative;
-  aspect-ratio: 16 / 10;
+  width: 92px;
+  height: 72px;
   overflow: hidden;
   border: 1px solid var(--booklet-rule);
   background: var(--booklet-paper-strong);
@@ -518,7 +666,7 @@
   position: absolute;
   right: 8px;
   bottom: 8px;
-  padding: 6px 7px;
+  padding: 5px 6px;
   background: rgb(32 34 31 / 82%);
   color: #fff;
   font-size: 7px;
@@ -530,7 +678,7 @@
 .imageEditorFields,
 .drawingSlotFields {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .inlineActions {
@@ -578,7 +726,7 @@
 
 .focalGrid {
   display: grid;
-  width: 132px;
+  width: 108px;
   grid-template-columns: repeat(3, 1fr);
   border-top: 1px solid var(--booklet-rule-strong);
   border-left: 1px solid var(--booklet-rule-strong);
@@ -586,8 +734,8 @@
 
 .focalGrid button {
   display: grid;
-  width: 44px;
-  min-height: 44px;
+  width: 36px;
+  min-height: 36px;
   padding: 0;
   place-items: center;
   border: 0;
@@ -618,16 +766,24 @@
   background: #fff;
 }
 
-.focalFieldset > p {
-  margin: 8px 0 0;
-  color: var(--booklet-muted);
-  font-size: 9px;
-  line-height: 1.4;
-}
-
 .drawingPageEditor {
   display: grid;
   gap: 22px;
+}
+
+.sheetDetailsEditor {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+
+.sheetDetailsEditor label:first-child {
+  grid-column: 1 / -1;
+}
+
+.sheetDetailsEditor input {
+  min-width: 0;
 }
 
 .layoutOptions {
@@ -724,25 +880,6 @@
   line-height: 1.45;
 }
 
-.railFooter {
-  padding: 22px 24px 26px;
-  background: var(--booklet-olive);
-  color: #fff;
-}
-
-.railFooter span {
-  font-size: 8px;
-  font-weight: 750;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-}
-
-.railFooter p {
-  margin: 7px 0 0;
-  color: rgb(255 255 255 / 72%);
-  font-size: 10px;
-}
-
 .previewWorkspace {
   display: grid;
   min-width: 0;
@@ -754,8 +891,8 @@
 
 .previewToolbar {
   display: flex;
-  min-height: 86px;
-  padding: 15px 24px;
+  min-height: 58px;
+  padding: 9px 20px;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
@@ -764,11 +901,11 @@
 }
 
 .previewToolbar .sectionEyebrow {
-  margin-bottom: 5px;
+  margin-bottom: 2px;
 }
 
 .previewToolbar h2 {
-  font-size: 27px;
+  font-size: 21px;
   line-height: 1;
 }
 
@@ -787,8 +924,8 @@
 }
 
 .previewControls button {
-  min-height: 42px;
-  padding: 0 13px;
+  min-height: 38px;
+  padding: 0 11px;
   border-left: 0;
 }
 
@@ -803,8 +940,7 @@
   overflow: hidden;
   place-items: center;
   background:
-    linear-gradient(rgb(255 255 255 / 12%), rgb(255 255 255 / 12%)),
-    #e3e4de;
+    linear-gradient(rgb(255 255 255 / 12%), rgb(255 255 255 / 12%)), #e3e4de;
   container-type: size;
 }
 
@@ -857,10 +993,9 @@
     padding: 0 18px;
   }
 
-  .railIntroduction,
   .railSection {
-    padding-right: 20px;
-    padding-left: 20px;
+    padding-right: 12px;
+    padding-left: 12px;
   }
 
   .previewToolbar {
@@ -902,12 +1037,18 @@
   }
 
   .controlRail {
+    display: block;
     overflow: visible;
     border-right: 0;
   }
 
-  .railIntroduction h1 {
-    max-width: 520px;
+  .railSection {
+    display: block;
+    padding: 18px;
+  }
+
+  .pageComposerWorkspace {
+    display: block;
   }
 
   .detailsGrid {
@@ -915,15 +1056,24 @@
   }
 
   .pageComposer {
+    max-height: none;
+    overflow: visible;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .selectedPageEditor {
     max-width: 760px;
+    margin-top: 18px;
+    overflow: visible;
   }
 
   .imageEditor {
-    grid-template-columns: minmax(220px, 0.85fr) minmax(280px, 1.15fr);
+    grid-template-columns: 120px minmax(280px, 1fr);
+  }
+
+  .editorImagePreview {
+    width: 120px;
+    height: 94px;
   }
 
   .drawingSlotEditor {
@@ -963,7 +1113,7 @@
   }
 
   .previewToolbar {
-    min-height: 76px;
+    min-height: 64px;
     padding: 12px 14px;
     gap: 12px;
   }
@@ -1007,13 +1157,18 @@
     min-height: 0;
   }
 
-  .railIntroduction,
   .railSection {
-    padding: 22px 18px;
+    padding: 16px 14px;
   }
 
-  .railIntroduction h1 {
-    font-size: 28px;
+  .bookletDetails > summary {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .detailsPanel {
+    padding-right: 14px;
+    padding-left: 14px;
   }
 
   .detailsGrid,
@@ -1026,13 +1181,34 @@
     grid-template-columns: 1fr;
   }
 
+  .editorImagePreview {
+    width: 112px;
+    height: 88px;
+  }
+
+  .composerPageActions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .composerPageSelect {
+    padding-right: 116px;
+  }
+
+  .composerPageActions button {
+    width: 38px;
+  }
+
   .layoutOptions {
     grid-template-columns: 1fr;
   }
 
-  .railFooter {
-    padding-right: 18px;
-    padding-left: 18px;
+  .sheetDetailsEditor {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sheetDetailsEditor label:first-child {
+    grid-column: 1 / -1;
   }
 
   .errorMessage {

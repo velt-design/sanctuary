@@ -89,7 +89,8 @@ describe("project-linked Design Booklet Workbench", () => {
         'a[href="/staff/projects/proj_project-1"]',
       )?.textContent,
     ).toContain("Return to AAA courtyard");
-    expect(rendered.container.textContent).toContain(
+    expect(rendered.container.textContent).toContain("Saved to project");
+    expect(rendered.container.textContent).not.toContain(
       "Choices and uploaded images stay with this project.",
     );
     expect(mocks.load).toHaveBeenCalledWith("proj_project-1");

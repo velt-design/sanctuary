@@ -3,7 +3,11 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { createToniDesignBookletDraft } from "./defaults";
-import { DESIGN_BOOKLET_MAX_CONTENT_PAGES } from "./pageModel";
+import {
+  DESIGN_BOOKLET_MAX_CONTENT_PAGES,
+  DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH,
+  DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH,
+} from "./pageModel";
 import {
   DESIGN_BOOKLET_MAX_CUSTOM_TITLE_LENGTH,
   DESIGN_BOOKLET_MAX_IMAGE_BYTES,
@@ -173,6 +177,64 @@ describe("design booklet request parsing", () => {
       expect(
         drawingPage(parseDesignBookletDraft(draft)).drawings[0].title,
       ).toEqual({ kind: "preset", value });
+    },
+  );
+
+  it("normalizes saved drawing pages created before title-block metadata", () => {
+    const legacyDraft = structuredClone(
+      createToniDesignBookletDraft(),
+    ) as unknown as {
+      contentPages: Array<Record<string, unknown>>;
+    };
+    const legacyDrawingPage = legacyDraft.contentPages[2]!;
+    delete legacyDrawingPage.pageTitle;
+    delete legacyDrawingPage.revision;
+    delete legacyDrawingPage.issueDate;
+
+    const parsed = parseDesignBookletDraft(legacyDraft);
+    expect(drawingPage(parsed)).toMatchObject({
+      pageTitle: "CONCEPT DRAWINGS",
+      revision: "01",
+    });
+    expect(drawingPage(parsed).issueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("normalizes persisted drawing sheet titles to uppercase", () => {
+    const draft = createToniDesignBookletDraft();
+    drawingPage(draft).pageTitle = "Roof framing plan";
+
+    expect(drawingPage(parseDesignBookletDraft(draft)).pageTitle).toBe(
+      "ROOF FRAMING PLAN",
+    );
+  });
+
+  it.each([
+    ["pageTitle", " ", /title is required/i],
+    [
+      "pageTitle",
+      "x".repeat(DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH + 1),
+      new RegExp(
+        `${DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH} characters or fewer`,
+        "i",
+      ),
+    ],
+    ["revision", " ", /revision is required/i],
+    [
+      "revision",
+      "x".repeat(DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH + 1),
+      new RegExp(
+        `${DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH} characters or fewer`,
+        "i",
+      ),
+    ],
+    ["issueDate", "04/08/2026", /must use YYYY-MM-DD/i],
+    ["issueDate", "2026-02-31", /must use YYYY-MM-DD/i],
+  ] as const)(
+    "rejects invalid drawing-page %s metadata",
+    (key, value, error) => {
+      const draft = createToniDesignBookletDraft();
+      Object.assign(drawingPage(draft), { [key]: value });
+      expect(() => parseDesignBookletDraft(draft)).toThrow(error);
     },
   );
 

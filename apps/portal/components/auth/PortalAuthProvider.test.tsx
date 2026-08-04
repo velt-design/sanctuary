@@ -135,6 +135,35 @@ describe('PortalAuthProvider', () => {
     rendered.unmount();
   });
 
+  it('preserves the server-known session when the browser token refresh cannot reach Supabase', async () => {
+    getSessionMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    const rendered = renderIntoDocument(
+      <PortalAuthProvider
+        initialAuthState={{
+          status: 'authenticated',
+          user: { id: 'user_1', email: 'ops@example.com' },
+          role: 'admin',
+        }}
+      >
+        <SessionProbe />
+      </PortalAuthProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const probe = rendered.container.querySelector('[data-status]') as HTMLElement;
+    expect(probe.dataset.status).toBe('authenticated');
+    expect(probe.dataset.role).toBe('admin');
+    expect(probe.dataset.email).toBe('ops@example.com');
+    expect(fetchPortalRoleMock).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
   it('keeps queued work for the same user when sign-out is confirmed', async () => {
     bindLocalFirstStoreOwner('user_1');
     await ensureLocalFirstStoreReady();

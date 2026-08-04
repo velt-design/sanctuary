@@ -251,11 +251,12 @@ export function drawDesignBookletRule(
   y: number,
   width: number,
   color: Color = DESIGN_BOOKLET_PDF_COLORS.rule,
+  thickness = 0.65,
 ) {
   page.drawLine({
     start: { x, y },
     end: { x: x + width, y },
-    thickness: 0.65,
+    thickness,
     color,
   });
 }
@@ -388,6 +389,7 @@ export function drawDesignBookletImageContain(
   image: PDFImage,
   frame: { x: number; y: number; width: number; height: number },
   background: Color = DESIGN_BOOKLET_PDF_COLORS.paperStrong,
+  borderWidth = 0.6,
 ) {
   page.drawRectangle({ ...frame, color: background });
   const scale = Math.min(
@@ -405,7 +407,7 @@ export function drawDesignBookletImageContain(
   page.drawRectangle({
     ...frame,
     borderColor: DESIGN_BOOKLET_PDF_COLORS.rule,
-    borderWidth: 0.6,
+    borderWidth,
   });
 }
 

@@ -53,9 +53,7 @@ function setInputValue(input: HTMLInputElement, value: string) {
 }
 
 function pageRailButtons(container: ParentNode): HTMLButtonElement[] {
-  return Array.from(
-    container.querySelectorAll("[data-booklet-page-select]"),
-  );
+  return Array.from(container.querySelectorAll("[data-booklet-page-select]"));
 }
 
 function compactText(element: Element): string {
@@ -87,11 +85,17 @@ describe("DesignBookletWorkbenchClient", () => {
       "01 Cover",
       "02 Image 1",
       "03 Image 2",
-      "04 Drawings 1",
+      "04 PROPOSED ROOF PLAN",
       "05 Review",
     ]);
-    expect(rendered.container.textContent).toContain("Fixed first page");
-    expect(rendered.container.textContent).toContain("Fixed final page");
+    expect(rendered.container.textContent).not.toContain(
+      "Shape the customer document.",
+    );
+    expect(
+      rendered.container
+        .querySelector("details#booklet-details")
+        ?.hasAttribute("open"),
+    ).toBe(false);
     expect(
       rendered.container.querySelectorAll("[data-composer-page]"),
     ).toHaveLength(3);
@@ -122,13 +126,15 @@ describe("DesignBookletWorkbenchClient", () => {
   it("adds, reorders and removes mixed content pages while keeping fixed endpoints", () => {
     const rendered = renderWorkbench();
 
-    click(buttonContaining(rendered.container, "Add image page"));
+    click(buttonContaining(rendered.container, "Add page"));
+    click(buttonContaining(rendered.container, "Image page"));
     expect(pageRailButtons(rendered.container)).toHaveLength(6);
     expect(
       rendered.container.querySelector('[data-page-kind="image"]'),
     ).not.toBeNull();
 
-    click(buttonContaining(rendered.container, "Add drawing page"));
+    click(buttonContaining(rendered.container, "Add page"));
+    click(buttonContaining(rendered.container, "Drawing page"));
     expect(pageRailButtons(rendered.container)).toHaveLength(7);
     expect(
       rendered.container.querySelector('[data-page-kind="drawings"]'),
@@ -141,14 +147,16 @@ describe("DesignBookletWorkbenchClient", () => {
       '[data-composer-page="drawing-page-2"]',
     );
     click(
-      addedDrawingCard?.querySelector('[aria-label="Move Drawings 2 earlier"]'),
+      addedDrawingCard?.querySelector(
+        '[aria-label="Move CONCEPT DRAWINGS earlier"]',
+      ),
     );
     expect(pageRailButtons(rendered.container).map(compactText)).toEqual([
       "01 Cover",
       "02 Image 1",
       "03 Image 2",
-      "04 Drawings 1",
-      "05 Drawings 2",
+      "04 PROPOSED ROOF PLAN",
+      "05 CONCEPT DRAWINGS",
       "06 Image 3",
       "07 Review",
     ]);
@@ -160,14 +168,35 @@ describe("DesignBookletWorkbenchClient", () => {
     expect(pageRailButtons(rendered.container).map(compactText)).toEqual([
       "01 Cover",
       "02 Image 1",
-      "03 Drawings 1",
-      "04 Drawings 2",
+      "03 PROPOSED ROOF PLAN",
+      "04 CONCEPT DRAWINGS",
       "05 Image 2",
       "06 Review",
     ]);
     expect(
       rendered.container.querySelector('[data-composer-page="image-page-2"]'),
     ).toBeNull();
+
+    rendered.unmount();
+  });
+
+  it("dismisses the add-page menu with Escape and returns focus", () => {
+    const rendered = renderWorkbench();
+    const addPageButton = buttonContaining(rendered.container, "Add page");
+
+    addPageButton.focus();
+    click(addPageButton);
+    expect(
+      rendered.container.querySelector("#booklet-add-page-menu"),
+    ).not.toBeNull();
+
+    act(() =>
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })),
+    );
+    expect(
+      rendered.container.querySelector("#booklet-add-page-menu"),
+    ).toBeNull();
+    expect(document.activeElement).toBe(addPageButton);
 
     rendered.unmount();
   });
@@ -211,6 +240,22 @@ describe("DesignBookletWorkbenchClient", () => {
       drawingPreview?.querySelectorAll("[data-drawing-slot]"),
     ).toHaveLength(4);
 
+    const pageTitleInput = Array.from(
+      rendered.container.querySelectorAll("label"),
+    )
+      .find(
+        (label) => label.querySelector("span")?.textContent === "Sheet title",
+      )
+      ?.querySelector("input") as HTMLInputElement;
+    setInputValue(pageTitleInput, "Proposed roof layout");
+    expect(
+      drawingPreview?.querySelector('footer[aria-label$="title block"] h2')
+        ?.textContent,
+    ).toBe("PROPOSED ROOF LAYOUT");
+    expect(compactText(drawingCard?.querySelector("button") as Element)).toBe(
+      "04 PROPOSED ROOF LAYOUT",
+    );
+
     const firstDrawingEditor = rendered.container.querySelector(
       '[data-drawing-editor-slot="1"]',
     );
@@ -230,9 +275,9 @@ describe("DesignBookletWorkbenchClient", () => {
     setInputValue(customTitleInput, "North-west elevation");
 
     expect(
-      drawingPreview?.querySelector('[data-drawing-slot="1"] figcaption')
+      drawingPreview?.querySelector('[data-drawing-slot="1"] figcaption strong')
         ?.textContent,
-    ).toBe("North-west elevation");
+    ).toBe("NORTH-WEST ELEVATION");
 
     rendered.unmount();
   });

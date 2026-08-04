@@ -26,8 +26,12 @@ import {
 } from "./types";
 import { TONI_DESIGN_BOOKLET_ASSETS } from "./defaults";
 import {
+  currentDesignBookletIssueDate,
+  DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH,
+  DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH,
   DESIGN_BOOKLET_MAX_IMAGE_BYTES,
   DESIGN_BOOKLET_MAX_CONTENT_PAGES,
+  normalizeDesignBookletSheetTitle,
   renderableDesignBookletAssetSources,
 } from "./pageModel";
 import { readDesignBookletDefaultImage } from "./pdfAssets";
@@ -78,6 +82,15 @@ function requiredText(
     );
   }
   return cleaned;
+}
+
+function isIsoCalendarDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return (
+    !Number.isNaN(parsed.valueOf()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
 }
 
 function stableId(value: unknown, context: string, ids: Set<string>): string {
@@ -232,9 +245,37 @@ function parseContentPage(
         `${context} must provide four reusable drawing slots.`,
       );
     }
+    const issueDate =
+      typeof value.issueDate === "undefined"
+        ? currentDesignBookletIssueDate()
+        : requiredText(value.issueDate, `${context} issue date`, 10);
+    if (!isIsoCalendarDate(issueDate)) {
+      throw new DesignBookletRequestError(
+        `${context} issue date must use YYYY-MM-DD.`,
+      );
+    }
     return {
       id,
       kind: "drawings",
+      pageTitle:
+        typeof value.pageTitle === "undefined"
+          ? "CONCEPT DRAWINGS"
+          : normalizeDesignBookletSheetTitle(
+              requiredText(
+                value.pageTitle,
+                `${context} title`,
+                DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH,
+              ),
+            ),
+      revision:
+        typeof value.revision === "undefined"
+          ? "01"
+          : requiredText(
+              value.revision,
+              `${context} revision`,
+              DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH,
+            ),
+      issueDate,
       layout: value.layout,
       drawings: value.drawings.map((drawing, drawingIndex) =>
         parseDrawingItem(

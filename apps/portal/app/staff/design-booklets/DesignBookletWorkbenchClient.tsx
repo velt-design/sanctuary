@@ -306,6 +306,9 @@ export default function DesignBookletWorkbenchClient({
         </a>
         <div className={styles.headerStatus}>
           <span>
+            {linkedProjectId ? "Project booklet" : "Standalone booklet"}
+          </span>
+          <strong>
             {linkedProjectId
               ? saveState === "saved"
                 ? "Saved to project"
@@ -318,12 +321,7 @@ export default function DesignBookletWorkbenchClient({
                       : saveState === "error"
                         ? "Save needs attention"
                         : "Project booklet"
-              : "Customer preview"}
-          </span>
-          <strong>
-            {selectedPage.label} /{" "}
-            {String(selectedPage.pageNumber).padStart(2, "0")} of{" "}
-            {String(pageModel.length).padStart(2, "0")}
+              : "Preview only · not saved"}
           </strong>
         </div>
         <div className={styles.headerActions}>
@@ -356,109 +354,102 @@ export default function DesignBookletWorkbenchClient({
 
       <div className={styles.workspace}>
         <aside className={styles.controlRail} aria-label="Booklet controls">
-          <div className={styles.railIntroduction}>
-            <p className={styles.sectionEyebrow}>Design booklet workbench</p>
-            <h1>Shape the customer document.</h1>
-            <div className={styles.railSummary}>
-              <span>{selectionSummary}</span>
-              <span>{pageModel.length} landscape pages</span>
-            </div>
-          </div>
+          <details className={styles.bookletDetails} id="booklet-details">
+            <summary>
+              <span className={styles.detailsSummaryCopy}>
+                <span className={styles.sectionEyebrow}>Booklet details</span>
+                <strong>{draft.projectTitle}</strong>
+                <span>{selectionSummary}</span>
+              </span>
+              <span className={styles.detailsToggle} aria-hidden="true">
+                <span className={styles.detailsToggleClosed}>Edit</span>
+                <span className={styles.detailsToggleOpen}>Close</span>
+              </span>
+            </summary>
 
-          <section className={styles.railSection} id="booklet-details">
-            <header className={styles.railSectionHeader}>
-              <span>01</span>
-              <div>
-                <p className={styles.sectionEyebrow}>Booklet details</p>
-                <h2>Cover story</h2>
+            <div className={styles.detailsPanel}>
+              <div className={styles.detailsGrid}>
+                <label className={styles.field}>
+                  <span>Customer name</span>
+                  <input
+                    required
+                    value={draft.customerName}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        customerName: event.target.value,
+                      }))
+                    }
+                    maxLength={80}
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>Booklet title</span>
+                  <input
+                    required
+                    value={draft.projectTitle}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        projectTitle: event.target.value,
+                      }))
+                    }
+                    maxLength={120}
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>Roof form</span>
+                  <select
+                    value={draft.roofFormId}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        roofFormId: event.target
+                          .value as DesignBookletDraft["roofFormId"],
+                      }))
+                    }
+                  >
+                    {DESIGN_BOOKLET_ROOF_FORM_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {content.roofForms[id].name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className={styles.field}>
+                  <span>Roofing choice</span>
+                  <select
+                    value={draft.materialId}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        materialId: event.target
+                          .value as DesignBookletDraft["materialId"],
+                      }))
+                    }
+                  >
+                    {DESIGN_BOOKLET_MATERIAL_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {content.materials[id].label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
-            </header>
-
-            <div className={styles.detailsGrid}>
-              <label className={styles.field}>
-                <span>Customer name</span>
-                <input
-                  required
-                  value={draft.customerName}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      customerName: event.target.value,
-                    }))
-                  }
-                  maxLength={80}
-                />
-              </label>
-              <label className={styles.field}>
-                <span>Booklet title</span>
-                <input
-                  required
-                  value={draft.projectTitle}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      projectTitle: event.target.value,
-                    }))
-                  }
-                  maxLength={120}
-                />
-              </label>
-              <label className={styles.field}>
-                <span>Roof form</span>
-                <select
-                  value={draft.roofFormId}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      roofFormId: event.target
-                        .value as DesignBookletDraft["roofFormId"],
-                    }))
-                  }
-                >
-                  {DESIGN_BOOKLET_ROOF_FORM_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {content.roofForms[id].name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.field}>
-                <span>Roofing choice</span>
-                <select
-                  value={draft.materialId}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      materialId: event.target
-                        .value as DesignBookletDraft["materialId"],
-                    }))
-                  }
-                >
-                  {DESIGN_BOOKLET_MATERIAL_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {content.materials[id].label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <p className={styles.sourceNote}>
+                Roof and material labels use governed marketing content.
+              </p>
             </div>
-            <p className={styles.sourceNote}>
-              Labels come from governed marketing content. No product claims
-              are added.
-            </p>
-          </section>
+          </details>
 
           <section className={styles.railSection} id="booklet-pages">
             <header className={styles.railSectionHeader}>
-              <span>02</span>
               <div>
-                <p className={styles.sectionEyebrow}>Booklet pages</p>
-                <h2>Pages and content</h2>
+                <p className={styles.sectionEyebrow}>Booklet structure</p>
+                <h2>Pages</h2>
               </div>
+              <span>{String(pageModel.length).padStart(2, "0")}</span>
             </header>
-            <p className={styles.railSectionCopy}>
-              Select a page to edit it. Cover and review stay fixed.
-            </p>
             <BookletPageComposer
               draft={draft}
               selectedPageKey={selectedPageKey}
@@ -473,17 +464,6 @@ export default function DesignBookletWorkbenchClient({
               onUseAsCover={useAsCover}
             />
           </section>
-
-          <footer className={styles.railFooter}>
-            <span>
-              {linkedProjectId ? "Saved project booklet" : "Preview and download only"}
-            </span>
-            <p>
-              {linkedProjectId
-                ? "Choices and uploaded images stay with this project."
-                : "Nothing is saved or sent."}
-            </p>
-          </footer>
         </aside>
 
         <section
@@ -493,7 +473,7 @@ export default function DesignBookletWorkbenchClient({
         >
           <header className={styles.previewToolbar}>
             <div>
-              <p className={styles.sectionEyebrow}>Customer preview</p>
+              <p className={styles.sectionEyebrow}>Page preview</p>
               <h2>{selectedPage.label}</h2>
             </div>
             <div className={styles.previewControls}>

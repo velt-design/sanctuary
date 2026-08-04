@@ -8,9 +8,12 @@ import type {
 import {
   buildDesignBookletRenderModel,
   DESIGN_BOOKLET_DRAWING_LAYOUTS,
+  DESIGN_BOOKLET_DRAWING_STATUS,
   DESIGN_BOOKLET_FOCAL_POINTS,
   DESIGN_BOOKLET_REVIEW_COPY,
   designBookletDrawingTitle,
+  formatDesignBookletIssueDate,
+  normalizeDesignBookletSheetTitle,
   visibleDesignBookletDrawings,
 } from "@/lib/designBooklets/pageModel";
 import {
@@ -364,14 +367,18 @@ function ImagePage({
 
 function DrawingPage({
   draft,
+  content,
   pageNumber,
   pageCount,
+  sheetNumber,
   page,
   assets,
 }: {
   draft: DesignBookletDraft;
+  content: DesignBookletContentCatalog;
   pageNumber: number;
   pageCount: number;
+  sheetNumber: string;
   page: Extract<
     DesignBookletDraft["contentPages"][number],
     { kind: "drawings" }
@@ -390,7 +397,6 @@ function DrawingPage({
       style={BOOKLET_PAGE_STYLE}
     >
       <div className={styles.pageTopRule} aria-hidden="true" />
-      <PageHeader pageNumber={pageNumber} label="Drawings" muted />
       <main
         className={styles.drawingCanvas}
         style={{
@@ -439,19 +445,96 @@ function DrawingPage({
                   lineHeight: point(presentation.drawing.caption.lineHeight),
                 }}
               >
-                {normalizeDesignBookletPresentationText(
-                  designBookletDrawingTitle(drawing.title),
-                )}
+                <span>{String(index + 1).padStart(2, "0")} /</span>
+                <strong>
+                  {normalizeDesignBookletPresentationText(
+                    designBookletDrawingTitle(drawing.title),
+                  ).toUpperCase()}
+                </strong>
               </figcaption>
             </figure>
           );
         })}
       </main>
-      <PageFooter
-        pageNumber={pageNumber}
-        pageCount={pageCount}
-        customerName={draft.customerName}
-      />
+      <footer
+        className={styles.drawingTitleBlock}
+        aria-label={`${sheetNumber} title block`}
+        style={{
+          left: point(presentation.drawing.titleBlock.x),
+          top: point(presentation.drawing.titleBlock.top),
+          width: point(presentation.drawing.titleBlock.width),
+          height: point(presentation.drawing.titleBlock.height),
+          gridTemplateColumns: [
+            presentation.drawing.titleBlock.titleColumnWidth,
+            presentation.drawing.titleBlock.projectColumnWidth,
+            presentation.drawing.titleBlock.designColumnWidth,
+            presentation.drawing.titleBlock.metaColumnWidth,
+          ]
+            .map(point)
+            .join(" "),
+        }}
+      >
+        <section className={styles.titleBlockStory}>
+          <div
+            className={styles.titleBlockIdentity}
+            aria-label="Sanctuary Pergolas"
+          >
+            <strong>SANCTUARY</strong>
+            <span>PERGOLAS · ARCHITECTURAL CONCEPT</span>
+          </div>
+          <h2>
+            {normalizeDesignBookletSheetTitle(
+              normalizeDesignBookletPresentationText(page.pageTitle),
+            )}
+          </h2>
+          <span className={styles.titleBlockStatus}>
+            {DESIGN_BOOKLET_DRAWING_STATUS}
+          </span>
+        </section>
+        <section className={styles.titleBlockDetails}>
+          <div>
+            <span>Project</span>
+            <strong>{draft.projectTitle}</strong>
+          </div>
+          <div>
+            <span>Prepared for</span>
+            <strong>{draft.customerName}</strong>
+          </div>
+        </section>
+        <section className={styles.titleBlockDetails}>
+          <div>
+            <span>Roof form</span>
+            <strong>{content.roofForms[draft.roofFormId].name}</strong>
+          </div>
+          <div>
+            <span>Roofing</span>
+            <strong>{content.materials[draft.materialId].label}</strong>
+          </div>
+        </section>
+        <section className={styles.titleBlockMeta}>
+          <div>
+            <span>Sheet</span>
+            <strong>{sheetNumber}</strong>
+          </div>
+          <dl>
+            <div>
+              <dt>Rev</dt>
+              <dd>{page.revision}</dd>
+            </div>
+            <div>
+              <dt>Issued</dt>
+              <dd>{formatDesignBookletIssueDate(page.issueDate)}</dd>
+            </div>
+            <div>
+              <dt>Booklet</dt>
+              <dd>
+                {String(pageNumber).padStart(2, "0")} /{" "}
+                {String(pageCount).padStart(2, "0")}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </footer>
     </article>
   );
 }
@@ -691,8 +774,10 @@ export default function DesignBookletPages({
     return (
       <DrawingPage
         draft={draft}
+        content={content}
         pageNumber={resolvedPage.pageNumber}
         pageCount={resolvedPage.pageCount}
+        sheetNumber={resolvedPage.sheetNumber}
         page={resolvedPage.page}
         assets={assets}
       />

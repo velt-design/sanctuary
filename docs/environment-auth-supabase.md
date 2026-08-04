@@ -64,6 +64,14 @@ The portal uses Supabase Auth plus `public.portal_users`.
 - Browser auth state is provided by `apps/portal/components/auth/PortalAuthProvider.tsx`.
 - Route helper selection, diagnostics, response conventions, and public token route boundaries are documented in `docs/staff-api-auth-contracts.md`.
 
+`PortalAuthProvider` seeds its state from the server-verified render and then
+reconciles the browser session. A browser `getSession()` or token-refresh
+transport failure is not evidence that the user signed out: the provider keeps
+an existing server-known authenticated or unauthenticated state, maps only an
+unresolved loading state to `lookup_failed`, and must not leave an unhandled
+promise that can take over a development or QA page. A successful browser
+session read remains authoritative and continues through the normal role check.
+
 If a user can sign in but sees no portal data, check that they have a `portal_users` row.
 
 ## Authenticated Browser Test Account
@@ -283,4 +291,8 @@ For JOB-01/JOB-02/JOB-03, the public job tables have RLS enabled with browser-ro
 - `Unable to save enquiry` after the public rate-limit check can mean `marketing_enquiry_intake` is installed but its `enquiry_requests` pricing columns are not; apply `20260724043000_marketing_enquiry_budget_columns.sql` and rerun a rollback-only RPC contract.
 - Portal `no_access` means the Supabase user exists but lacks a `portal_users` role.
 - Portal `lookup_failed` means the role lookup errored.
+- A browser-only `Failed to fetch` during session refresh should leave the
+  server-known page usable. If it reaches an unhandled-error overlay, check the
+  `PortalAuthProvider` session-read boundary before treating it as a sign-out or
+  a route failure.
 - Schedule fallback activation means Schedule V2 schema or client readiness failed and should be investigated before release.

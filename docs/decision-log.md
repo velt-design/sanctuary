@@ -4798,3 +4798,24 @@ Related docs/tests: `packages/costing/src/server/publishedConfiguration.ts`;
 `apps/marketing/lib/simpleCoverPricing.server.ts`;
 `test/simple-cover-pricing-parity.test.ts`;
 `playwright/marketing.simple-cover-calculator.spec.ts`
+
+### 2026-08-05 - Portal Browser Session Refresh - Transport Failure Is Not Sign-Out
+
+Date: 2026-08-05
+Area: Portal browser authentication and QA viewer reliability
+Status: Promoted
+Decision or mistake: The root auth provider awaited `supabase.auth.getSession()`
+without handling a rejected token refresh. A temporary network failure therefore
+escaped as an unhandled promise and Next development rendered a full-page
+`Failed to fetch` overlay above an otherwise independent Design Booklet fixture.
+Why it mattered: A transport failure looked like a broken booklet renderer and
+could interrupt any portal page even when the server render already held a
+truthful authenticated or unauthenticated state.
+Current guardrail: Treat browser session-read failure as temporary
+unavailability, not proof of sign-out. Preserve the server-known state, map only
+an unresolved loading state to `lookup_failed`, and cover rejected `getSession()`
+with a provider-level regression test. Successful reads still reconcile through
+the normal role owner.
+Promoted to: `docs/environment-auth-supabase.md`
+Related docs/tests: `apps/portal/components/auth/PortalAuthProvider.tsx`;
+`apps/portal/components/auth/PortalAuthProvider.test.tsx`

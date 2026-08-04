@@ -3,6 +3,7 @@ import type {
   DesignBookletDraft,
   DesignBookletDrawingPage,
 } from "./types";
+import { currentDesignBookletIssueDate } from "./pageModel";
 
 export const TONI_DESIGN_BOOKLET_ASSETS: Record<
   DesignBookletDefaultAssetId,
@@ -49,6 +50,9 @@ function defaultDrawingPage(): DesignBookletDrawingPage {
   return {
     id: "drawing-page-1",
     kind: "drawings",
+    pageTitle: "PROPOSED ROOF PLAN",
+    revision: "01",
+    issueDate: currentDesignBookletIssueDate(),
     layout: "one-large",
     drawings: titles.map((value, index) => ({
       id: `drawing-page-1-item-${index + 1}`,

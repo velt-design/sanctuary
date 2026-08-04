@@ -13,6 +13,38 @@ import type {
 
 export const DESIGN_BOOKLET_MAX_CONTENT_PAGES = 24;
 export const DESIGN_BOOKLET_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+export const DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH = 80;
+export const DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH = 12;
+export const DESIGN_BOOKLET_DRAWING_STATUS =
+  "Concept design — not for construction";
+
+export function normalizeDesignBookletSheetTitle(value: string): string {
+  return value.toUpperCase();
+}
+
+export function currentDesignBookletIssueDate(now = new Date()): string {
+  return now.toISOString().slice(0, 10);
+}
+
+export function formatDesignBookletIssueDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  const month = [
+    "JAN",
+    "FEB",
+    "MAR",
+    "APR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AUG",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DEC",
+  ][Number(match[2]) - 1];
+  return month ? `${match[3]} ${month} ${match[1]}` : value;
+}
 
 export const DESIGN_BOOKLET_REVIEW_COPY = {
   eyebrow: "Your review",
@@ -149,6 +181,7 @@ type ResolvedDesignBookletPage =
       key: string;
       kind: "drawings";
       label: string;
+      sheetNumber: string;
       pageNumber: number;
       pageCount: number;
       page: DesignBookletDrawingPage;
@@ -183,7 +216,8 @@ export function buildDesignBookletRenderModel(
     return {
       key: page.id,
       kind: "drawings",
-      label: `Drawings ${drawingNumber}`,
+      label: normalizeDesignBookletSheetTitle(page.pageTitle),
+      sheetNumber: `A-${String(drawingNumber).padStart(2, "0")}`,
       pageNumber: index + 2,
       pageCount,
       page,
@@ -303,6 +337,9 @@ export function createDesignBookletDrawingPage(
   return {
     id,
     kind: "drawings",
+    pageTitle: "CONCEPT DRAWINGS",
+    revision: "01",
+    issueDate: currentDesignBookletIssueDate(),
     layout: "one-large",
     drawings,
   };

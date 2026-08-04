@@ -267,7 +267,7 @@
   min-height: 0;
   place-items: center;
   overflow: hidden;
-  border: calc(var(--booklet-point) * 0.65) solid #d8d4c9;
+  border: calc(var(--booklet-point) * 0.45) solid #bfc0b7;
   background: #fff;
 }
 
@@ -280,18 +280,212 @@
 
 .drawingFigure figcaption {
   position: absolute;
-  display: -webkit-box;
+  display: grid;
   overflow: hidden;
-  height: calc(var(--booklet-point) * 22.8);
+  height: calc(var(--booklet-point) * 18);
+  grid-template-columns: calc(var(--booklet-point) * 27) minmax(0, 1fr);
+  align-items: baseline;
   color: #20221f;
   font-family:
     var(--font-design-booklet-instrument), var(--font-inter), Inter, Arial,
     sans-serif;
-  font-weight: 520;
-  letter-spacing: -0.045em;
+  font-weight: 650;
+  letter-spacing: 0.06em;
   overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.drawingFigure figcaption span {
+  color: #666960;
+  font-family: var(--font-inter), Inter, Arial, sans-serif;
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.drawingFigure figcaption strong {
+  display: block;
+  overflow: hidden;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawingTitleBlock {
+  position: absolute;
+  display: grid;
+  overflow: hidden;
+  border-top: calc(var(--booklet-point) * 0.8) solid #20221f;
+  border-bottom: calc(var(--booklet-point) * 0.8) solid #20221f;
+  background: #f4f1ea;
+  color: #20221f;
+}
+
+.drawingTitleBlock > section {
+  min-width: 0;
+  padding: calc(var(--booklet-point) * 8) calc(var(--booklet-point) * 9);
+  border-right: calc(var(--booklet-point) * 0.35) solid #a8a89f;
+}
+
+.drawingTitleBlock > section:last-child {
+  border-right: 0;
+}
+
+.titleBlockStory {
+  position: relative;
+  display: grid;
+  align-content: start;
+}
+
+.titleBlockStory h2,
+.titleBlockStatus,
+.titleBlockIdentity strong,
+.titleBlockIdentity span,
+.titleBlockDetails span,
+.titleBlockDetails strong,
+.titleBlockMeta span,
+.titleBlockMeta strong,
+.titleBlockMeta dl,
+.titleBlockMeta dt,
+.titleBlockMeta dd {
+  margin: 0;
+}
+
+.titleBlockDetails span,
+.titleBlockMeta span,
+.titleBlockMeta dt {
+  color: #666960;
+  font-family: var(--font-inter), Inter, Arial, sans-serif;
+  font-size: calc(var(--booklet-point) * 4.7);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: calc(var(--booklet-point) * 5.7);
+  text-transform: uppercase;
+}
+
+.titleBlockIdentity {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--booklet-point) * 5);
+  min-width: 0;
+  color: #4f5748;
+  white-space: nowrap;
+}
+
+.titleBlockIdentity strong {
+  flex: 0 0 auto;
+  font-family:
+    var(--font-design-booklet-instrument), var(--font-inter), Inter, Arial,
+    sans-serif;
+  font-size: calc(var(--booklet-point) * 8.4);
+  font-weight: 680;
+  letter-spacing: 0.08em;
+  line-height: calc(var(--booklet-point) * 9);
+}
+
+.titleBlockIdentity span {
+  overflow: hidden;
+  color: #666960;
+  font-size: calc(var(--booklet-point) * 4.2);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: calc(var(--booklet-point) * 5);
+  text-overflow: ellipsis;
+}
+
+.titleBlockStory h2 {
+  display: -webkit-box;
+  margin-top: calc(var(--booklet-point) * 8);
+  overflow: hidden;
+  font-family:
+    var(--font-design-booklet-instrument), var(--font-inter), Inter, Arial,
+    sans-serif;
+  font-size: calc(var(--booklet-point) * 17.5);
+  font-weight: 560;
+  letter-spacing: -0.025em;
+  line-height: calc(var(--booklet-point) * 18.5);
+  text-transform: uppercase;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.titleBlockStatus {
+  position: absolute;
+  right: calc(var(--booklet-point) * 9);
+  bottom: calc(var(--booklet-point) * 7);
+  left: calc(var(--booklet-point) * 9);
+  color: #666960;
+  font-size: calc(var(--booklet-point) * 5);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: calc(var(--booklet-point) * 6);
+  text-transform: uppercase;
+}
+
+.titleBlockDetails {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: calc(var(--booklet-point) * 4);
+}
+
+.titleBlockDetails div {
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  gap: calc(var(--booklet-point) * 2.5);
+}
+
+.titleBlockDetails strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: calc(var(--booklet-point) * 6.7);
+  font-weight: 600;
+  line-height: calc(var(--booklet-point) * 8);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.titleBlockMeta {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: calc(var(--booklet-point) * 5);
+}
+
+.titleBlockMeta > div {
+  display: grid;
+  gap: calc(var(--booklet-point) * 2);
+}
+
+.titleBlockMeta > div strong {
+  font-family:
+    var(--font-design-booklet-instrument), var(--font-inter), Inter, Arial,
+    sans-serif;
+  font-size: calc(var(--booklet-point) * 20);
+  font-weight: 520;
+  letter-spacing: -0.04em;
+  line-height: calc(var(--booklet-point) * 20);
+}
+
+.titleBlockMeta dl {
+  display: grid;
+  align-content: end;
+  gap: calc(var(--booklet-point) * 2.5);
+}
+
+.titleBlockMeta dl div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: calc(var(--booklet-point) * 3);
+}
+
+.titleBlockMeta dd {
+  overflow: hidden;
+  font-size: calc(var(--booklet-point) * 5.5);
+  font-weight: 650;
+  line-height: calc(var(--booklet-point) * 6.5);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .reviewPaper {
