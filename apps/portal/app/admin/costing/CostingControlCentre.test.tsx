@@ -349,6 +349,41 @@ describe('CostingControlCentre', () => {
     rendered.unmount();
   });
 
+  it('resets a stale first draft to the complete active manifest and settings', async () => {
+    const stale = structuredClone(config);
+    stale.baseManifestVersion = 'v1.7';
+    stale.labour.crewHourRateExGst -= 5;
+    const payload = editorPayload('draft', stale);
+    const fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'PUT') {
+        return new Response(JSON.stringify(editorPayload('draft')), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (String(url) === '/api/admin/costing/configurations') {
+        return new Response(JSON.stringify(overview('draft')), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetch);
+    const rendered = renderIntoDocument(<CostingControlCentre initialOverview={overview('draft')} />);
+    await click(buttonByText(rendered.container, 'Continue draft v1'));
+    await click(buttonByText(rendered.container, 'Reset all to active'));
+    await click(buttonByText(rendered.container, 'Save & validate'));
+
+    const putCall = fetch.mock.calls.find(([, init]) => init?.method === 'PUT');
+    const saved = JSON.parse(String((putCall?.[1] as RequestInit | undefined)?.body));
+    expect(saved.config).toEqual(config);
+    rendered.unmount();
+  });
+
   it('saves, validates and refreshes the server-owned comparison', async () => {
     const savedCandidate = structuredClone(config);
     savedCandidate.overheads.crewDayHours = 9;

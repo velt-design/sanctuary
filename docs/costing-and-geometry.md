@@ -120,6 +120,7 @@ Changing any code-owned item is a normal package semantic change with package re
 ### Version and rollback rules
 
 - Draft rows may be edited and revalidated; published rows are immutable.
+- A stale first draft can be reset in one explicit action to the complete active legacy-effective snapshot, including the package manifest version; resetting only visible rate sections is not sufficient for an exact baseline publication.
 - Draft name and purpose use bounded plain text and persist when a version is cloned. The publication note remains a separate publish-time audit field.
 - Publishing requires a saved hash, compare-time current-version ID, non-empty audit note, and representative impact. Normal publications also require a clear diff. The first publication may have an empty diff only when it freezes the active legacy-effective portal pricing unchanged as Version 1. The RPC locks publication and rejects stale drafts or comparisons.
 - Rollback means cloning a compatible previous published version into a new draft and publishing that new version. History is never rewritten.

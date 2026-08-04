@@ -148,6 +148,9 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
       : { materials: 0, labour: 0, overheads: 0, rules: 0 },
     [baseline, config],
   );
+  const configMatchesBaseline = Boolean(
+    config && baseline && JSON.stringify(config) === JSON.stringify(baseline),
+  );
 
   useEffect(() => {
     if (!dirty) return;
@@ -733,6 +736,23 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
                 </span>
               </div>
               <div className={styles.toolbarActions}>
+                {!configMatchesBaseline ? (
+                  <button
+                    className={styles.buttonSecondary}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => updateConfig((next) => {
+                      next.schemaVersion = baseline.schemaVersion;
+                      next.baseManifestVersion = baseline.baseManifestVersion;
+                      next.materialRatesExGst = structuredClone(baseline.materialRatesExGst);
+                      next.labour = structuredClone(baseline.labour);
+                      next.overheads = structuredClone(baseline.overheads);
+                      next.rules = structuredClone(baseline.rules);
+                    })}
+                  >
+                    Reset all to active
+                  </button>
+                ) : null}
                 <button
                   className={styles.buttonSecondary}
                   type="button"
