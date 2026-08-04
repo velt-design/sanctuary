@@ -12,12 +12,18 @@ import {
 import {
   SIMPLE_COVER_DEFAULT_PROJECTION_MM,
   SIMPLE_COVER_DEFAULT_WIDTH_MM,
+  SIMPLE_COVER_DEFAULT_CONNECTION,
+  SIMPLE_COVER_CONNECTION_OPTIONS,
   SIMPLE_COVER_ELEVATED_MAX_AREA_M2,
+  SIMPLE_COVER_FRONT_BEAM_WIDTH_MM,
   SIMPLE_COVER_GROUND_MAX_AREA_M2,
   SIMPLE_COVER_INCREMENT_MM,
+  SIMPLE_COVER_LEDGER_WIDTH_MM,
   SIMPLE_COVER_MAX_POST_SPACING_MM,
+  SIMPLE_COVER_POST_SIZE_MM,
   SIMPLE_COVER_PROJECTION_MAX_MM,
   SIMPLE_COVER_PROJECTION_MIN_MM,
+  SIMPLE_COVER_RAFTER_WIDTH_MM,
   SIMPLE_COVER_WIDTH_MAX_MM,
   SIMPLE_COVER_WIDTH_MIN_MM,
   buildSimpleCoverPlan,
@@ -25,6 +31,7 @@ import {
   simpleCoverAreaM2,
   simpleCoverPostCount,
   type SimpleCoverInput,
+  type SimpleCoverConnection,
   type SimpleCoverLevel,
   type SimpleCoverPublicResult,
 } from '@/lib/simpleCoverCalculator';
@@ -33,6 +40,14 @@ import styles from './SimpleCoverCalculator.module.css';
 const PRICE_DEBOUNCE_MS = 180;
 
 type DimensionKey = 'widthMm' | 'projectionMm';
+type PlanFootprintStyle = CSSProperties & {
+  '--member-50'?: string;
+  '--member-100'?: string;
+  '--plan-ratio'?: number;
+};
+type RangeControlStyle = CSSProperties & {
+  '--range-progress': string;
+};
 
 function formatMetres(mm: number): string {
   return `${(mm / 1_000).toFixed(1)} m`;
@@ -56,7 +71,8 @@ function currentResultMatches(result: SimpleCoverPublicResult | null, input: Sim
     && 'input' in result
     && result.input.widthMm === input.widthMm
     && result.input.projectionMm === input.projectionMm
-    && result.input.level === input.level,
+    && result.input.level === input.level
+    && result.input.connection === input.connection,
   );
 }
 
@@ -75,22 +91,62 @@ function DimensionControl({
   max: number;
   onChange: (value: number) => void;
 }) {
+  const [draftMetres, setDraftMetres] = useState((value / 1_000).toFixed(1));
+
+  useEffect(() => {
+    setDraftMetres((value / 1_000).toFixed(1));
+  }, [value]);
+
+  function commitDraft() {
+    const parsedMetres = Number.parseFloat(draftMetres);
+    if (!Number.isFinite(parsedMetres)) {
+      setDraftMetres((value / 1_000).toFixed(1));
+      return;
+    }
+    const snappedMm = Math.round(parsedMetres * 10) * SIMPLE_COVER_INCREMENT_MM;
+    const nextValue = Math.min(max, Math.max(min, snappedMm));
+    setDraftMetres((nextValue / 1_000).toFixed(1));
+    onChange(nextValue);
+  }
+
+  const metreMarks = Array.from(
+    { length: Math.floor((max - min) / 1_000) + 1 },
+    (_, index) => min + index * 1_000,
+  );
+  const rangeStyle: RangeControlStyle = {
+    '--range-progress': `${((value - min) / (max - min)) * 100}%`,
+  };
+
   return (
     <div className={styles.dimensionControl}>
       <div className={styles.dimensionHeading}>
         <label htmlFor={id}>{label}</label>
-        <output htmlFor={id} aria-live="off">{formatMetres(value)}</output>
+        <label className={styles.dimensionValue} data-dimension-value>
+          <span className={styles.srOnly}>{label} in metres</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            pattern="[0-9]*[.]?[0-9]*"
+            value={draftMetres}
+            onFocus={(event) => event.currentTarget.select()}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setDraftMetres(event.currentTarget.value)}
+            onBlur={commitDraft}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                commitDraft();
+                event.currentTarget.blur();
+              }
+              if (event.key === 'Escape') {
+                setDraftMetres((value / 1_000).toFixed(1));
+                event.currentTarget.blur();
+              }
+            }}
+          />
+          <span aria-hidden="true">m</span>
+        </label>
       </div>
-      <div className={styles.rangeRow}>
-        <button
-          type="button"
-          className={styles.stepButton}
-          aria-label={`Decrease ${label.toLowerCase()} by 100 millimetres`}
-          disabled={value <= min}
-          onClick={() => onChange(Math.max(min, value - SIMPLE_COVER_INCREMENT_MM))}
-        >
-          −
-        </button>
+      <div className={styles.rangeControl} style={rangeStyle}>
         <input
           id={id}
           className={styles.range}
@@ -102,19 +158,18 @@ function DimensionControl({
           aria-valuetext={formatMetres(value)}
           onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(Number(event.currentTarget.value))}
         />
-        <button
-          type="button"
-          className={styles.stepButton}
-          aria-label={`Increase ${label.toLowerCase()} by 100 millimetres`}
-          disabled={value >= max}
-          onClick={() => onChange(Math.min(max, value + SIMPLE_COVER_INCREMENT_MM))}
-        >
-          +
-        </button>
-      </div>
-      <div className={styles.rangeLimits} aria-hidden="true">
-        <span>{formatMetres(min)}</span>
-        <span>{formatMetres(max)}</span>
+        <div className={styles.rangeRail} aria-hidden="true">
+          {metreMarks.map((mark, index) => (
+            <span
+              className={styles.rangeStop}
+              data-terminal={index === 0 || index === metreMarks.length - 1 ? 'true' : undefined}
+              style={{ left: `${((mark - min) / (max - min)) * 100}%` }}
+              key={mark}
+            >
+              {mark / 1_000}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -130,7 +185,13 @@ function ConceptPlan({
   const areaM2 = simpleCoverAreaM2(input);
   const postCount = simpleCoverPostCount(input.widthMm);
   const matching = currentResultMatches(result, input) && result && 'plan' in result ? result : null;
-  const plan = matching?.plan ?? buildSimpleCoverPlan(postCount);
+  const plan = matching?.plan?.rafterPositions.length
+    ? matching.plan
+    : buildSimpleCoverPlan(input.widthMm, postCount);
+  const rafterSpacingMm = plan.rafterPositions.length > 1
+    ? Math.round((plan.rafterPositions[1] - plan.rafterPositions[0]) * input.widthMm)
+    : 0;
+  const isShallowPlan = input.widthMm / input.projectionMm >= 4;
   const viewportRef = useRef<HTMLDivElement>(null);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const scale = viewportSize.width > 0 && viewportSize.height > 0
@@ -139,15 +200,25 @@ function ConceptPlan({
         viewportSize.height * .66 / input.projectionMm,
       )
     : 0;
-  const footprintStyle = scale > 0
+  const footprintStyle: PlanFootprintStyle = scale > 0
     ? {
         width: input.widthMm * scale,
         height: input.projectionMm * scale,
+        '--member-50': `${Math.max(3, SIMPLE_COVER_RAFTER_WIDTH_MM * scale)}px`,
+        '--member-100': `${Math.max(5, SIMPLE_COVER_POST_SIZE_MM * scale)}px`,
       }
     : {
         '--plan-ratio': input.widthMm / input.projectionMm,
-      } as CSSProperties;
-  const label = `Concept plan for a ${formatMetres(input.widthMm)} wide by ${formatMetres(input.projectionMm)} projection pitched acrylic cover, ${formatArea(areaM2)}, with a fascia connection and ${postCount} posts.`;
+      };
+  const connectionLabel = SIMPLE_COVER_CONNECTION_OPTIONS.find(({ value }) => value === input.connection)?.label
+    ?? 'Fascia';
+  const connectionDescription = input.connection === 'soffit'
+    ? 'soffit-bracket'
+    : connectionLabel.toLowerCase();
+  const houseEdgeLabel = input.connection === 'soffit'
+    ? 'House / soffit edge'
+    : `House / ${input.connection} edge`;
+  const label = `Concept plan for a ${formatMetres(input.widthMm)} wide by ${formatMetres(input.projectionMm)} projection pitched acrylic cover, ${formatArea(areaM2)}, with a ${connectionDescription} connection and ${postCount} posts.`;
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -173,42 +244,59 @@ function ConceptPlan({
 
   return (
     <figure className={styles.planFigure}>
-      <div className={styles.planTopline}>
+      <div className={styles.planTopline} data-plan-header>
         <div>
           <span>Architectural plan</span>
-          <strong>{formatArea(areaM2)}</strong>
+          <small>Plan / scale to fit</small>
         </div>
         <span>{input.level === 'ground' ? 'Ground level' : 'Elevated'}</span>
       </div>
       <div ref={viewportRef} className={styles.planViewport} role="img" aria-label={label}>
         <div className={styles.planGrid} aria-hidden="true" />
-        <div className={styles.footprint} style={footprintStyle} aria-hidden="true" data-plan-footprint>
-          <div className={styles.houseBand}><span>House / fascia edge</span></div>
+        <div
+          className={`${styles.footprint} ${isShallowPlan ? styles.shallowPlan : ''}`.trim()}
+          style={footprintStyle}
+          aria-hidden="true"
+          data-plan-footprint
+        >
+          <div className={styles.houseBand}><span>{houseEdgeLabel}</span></div>
           <div className={styles.roofField}>
             {plan.rafterPositions.map((position, index) => (
               <span
                 className={styles.rafter}
                 style={{ left: `${position * 100}%` }}
                 key={`rafter-${index}`}
+                data-plan-rafter
               />
             ))}
             <span className={styles.fallArrow}>Roof fall</span>
           </div>
-          <div className={styles.frontBeam} />
-          {plan.postPositions.map((position, index) => (
+          <div className={styles.ledger} data-plan-ledger />
+          <div className={styles.frontBeam} data-plan-front-beam />
+          {plan.postPositions.map((position) => (
             <span
               className={styles.post}
               style={{ left: `${position * 100}%` }}
-              key={`post-${index}`}
-            ><i>{index + 1}</i></span>
+              key={`post-${position}`}
+              data-plan-post
+            />
           ))}
-          <div className={styles.widthDimension}><span>{formatMetres(input.widthMm)} width</span></div>
-          <div className={styles.projectionDimension}><span>{formatMetres(input.projectionMm)} projection</span></div>
+          <div className={styles.widthDimension}>
+            <i className={styles.dimensionStart} />
+            <i className={styles.dimensionEnd} />
+            <span>{formatMetres(input.widthMm)} width</span>
+          </div>
+          <div className={styles.projectionDimension}>
+            <i className={styles.dimensionStart} />
+            <i className={styles.dimensionEnd} />
+            <span>{formatMetres(input.projectionMm)} projection</span>
+          </div>
         </div>
       </div>
       <figcaption>
         <span>Concept plan, not a construction drawing.</span>
-        <span>{postCount} posts · maximum {SIMPLE_COVER_MAX_POST_SPACING_MM / 1_000} m spacing</span>
+        <span>{SIMPLE_COVER_RAFTER_WIDTH_MM} mm rafters / {SIMPLE_COVER_LEDGER_WIDTH_MM} mm ledger · {SIMPLE_COVER_FRONT_BEAM_WIDTH_MM} mm beam / {SIMPLE_COVER_POST_SIZE_MM} mm posts</span>
+        <span>{postCount} posts · max {SIMPLE_COVER_MAX_POST_SPACING_MM / 1_000} m · rafters {rafterSpacingMm} mm c/c</span>
       </figcaption>
     </figure>
   );
@@ -281,6 +369,7 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
     widthMm: SIMPLE_COVER_DEFAULT_WIDTH_MM,
     projectionMm: SIMPLE_COVER_DEFAULT_PROJECTION_MM,
     level: 'ground',
+    connection: SIMPLE_COVER_DEFAULT_CONNECTION,
   });
   const [result, setResult] = useState<SimpleCoverPublicResult | null>(null);
   const [pending, setPending] = useState(true);
@@ -336,6 +425,10 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
     setInput((current) => ({ ...current, level }));
   }
 
+  function setConnection(connection: SimpleCoverConnection) {
+    setInput((current) => ({ ...current, connection }));
+  }
+
   return (
     <section className={`${styles.calculator} ${className}`.trim()} aria-labelledby="simple-cover-calculator-title" data-simple-cover-calculator>
       <header className={styles.intro}>
@@ -384,7 +477,20 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
           </fieldset>
 
           <dl className={styles.fixedSpecification}>
-            <div><dt>Connection</dt><dd>House fascia</dd></div>
+            <div className={styles.connectionSpecification}>
+              <dt><label htmlFor="simple-cover-connection">Connection</label></dt>
+              <dd>
+                <select
+                  id="simple-cover-connection"
+                  value={input.connection}
+                  onChange={(event) => setConnection(event.currentTarget.value as SimpleCoverConnection)}
+                >
+                  {SIMPLE_COVER_CONNECTION_OPTIONS.map((option) => (
+                    <option value={option.value} key={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </dd>
+            </div>
             <div><dt>Roof</dt><dd>Pitched acrylic</dd></div>
             <div><dt>Finish</dt><dd>Standard colour</dd></div>
             <div><dt>Site</dt><dd>Normal access / easy ground</dd></div>

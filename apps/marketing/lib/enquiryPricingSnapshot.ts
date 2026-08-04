@@ -6,11 +6,15 @@ import {
   type BlindLineItemInput,
   type CostInputsV1,
 } from '@sp/costing';
+import type {
+  PublishedCostingConfigurationProvenanceV1,
+  ResolvedPublishedCostingConfigurationV1,
+} from '@sp/costing/server';
 import { buildEstimateDbPayload } from '../../../apps/portal/lib/estimates/persistence';
 import { buildEnquiryBudgets } from './enquiryBudgets';
 import { QUOTE_MULTIPLIER, type MoneyRange } from './enquiryEstimate';
 
-type EnquiryPricingParams = {
+export type EnquiryPricingParams = {
   enquiryType: string;
   name: string;
   suburb: string;
@@ -28,9 +32,10 @@ type EnquiryBudgets = {
   budgetBasis: string | null;
 };
 
-type EnquiryPricingSnapshot = {
+export type EnquiryPricingSnapshot = {
   costInputs: CostInputsV1 | null;
   costResult: ReturnType<typeof calculateCostV1> | null;
+  costingConfiguration: PublishedCostingConfigurationProvenanceV1 | null;
   calculatorInputs: Record<string, unknown>;
   budgets: EnquiryBudgets;
 };
@@ -198,12 +203,15 @@ function calculatorInputsFromSnapshot(
   };
 }
 
-export function buildEnquiryPricingSnapshot(params: EnquiryPricingParams): EnquiryPricingSnapshot {
+export function buildEnquiryPricingSnapshot(
+  params: EnquiryPricingParams,
+  resolved: ResolvedPublishedCostingConfigurationV1 | null,
+): EnquiryPricingSnapshot {
   const costInputs = buildCanonicalCostInputs(params);
   let costResult: ReturnType<typeof calculateCostV1> | null = null;
-  if (costInputs) {
+  if (costInputs && resolved) {
     try {
-      costResult = calculateCostV1(costInputs);
+      costResult = calculateCostV1(costInputs, resolved.config);
     } catch {
       // Pricing is best-effort and must never block an enquiry submission.
     }
@@ -226,6 +234,7 @@ export function buildEnquiryPricingSnapshot(params: EnquiryPricingParams): Enqui
   return {
     costInputs,
     costResult,
+    costingConfiguration: costResult ? resolved?.provenance ?? null : null,
     calculatorInputs: calculatorInputsFromSnapshot(params, costInputs, blindItems),
     budgets,
   };
@@ -316,6 +325,9 @@ export function buildEnquiryDraftEstimateRow(params: EnquiryPricingParams & {
       },
       version: 1,
       createdBy: params.createdBy,
+      configVersions: params.pricing.costingConfiguration
+        ? { costingControl: params.pricing.costingConfiguration }
+        : null,
     }),
   };
 }

@@ -1,4 +1,7 @@
-import type { SiteInputsV1 } from '@sp/costing';
+import {
+  calculateAcrylicRafterLayoutV1,
+  type SiteInputsV1,
+} from '@sp/costing';
 import { buildEnquiryHref } from './enquiryContext';
 
 export const SIMPLE_COVER_WIDTH_MIN_MM = 1_000;
@@ -12,14 +15,30 @@ const SIMPLE_COVER_POST_HEIGHT_M = 2.4;
 export const SIMPLE_COVER_MAX_POST_SPACING_MM = 4_000;
 export const SIMPLE_COVER_GROUND_MAX_AREA_M2 = 30;
 export const SIMPLE_COVER_ELEVATED_MAX_AREA_M2 = 20;
+export const SIMPLE_COVER_LEDGER_WIDTH_MM = 50;
+export const SIMPLE_COVER_RAFTER_WIDTH_MM = 50;
+export const SIMPLE_COVER_FRONT_BEAM_WIDTH_MM = 100;
+export const SIMPLE_COVER_POST_SIZE_MM = 100;
+export const SIMPLE_COVER_DEFAULT_CONNECTION = 'fascia' as const;
 const SIMPLE_COVER_PATH = '/simple-cover-calculator';
 
 export type SimpleCoverLevel = 'ground' | 'elevated';
+export type SimpleCoverConnection = 'fascia' | 'facade' | 'soffit';
+
+export const SIMPLE_COVER_CONNECTION_OPTIONS: ReadonlyArray<{
+  value: SimpleCoverConnection;
+  label: string;
+}> = [
+  { value: 'fascia', label: 'Fascia' },
+  { value: 'facade', label: 'Facade' },
+  { value: 'soffit', label: 'Soffit brackets' },
+];
 
 export type SimpleCoverInput = {
   widthMm: number;
   projectionMm: number;
   level: SimpleCoverLevel;
+  connection: SimpleCoverConnection;
 };
 
 export type SimpleCoverPlan = {
@@ -91,6 +110,7 @@ export function parseSimpleCoverInput(value: unknown): SimpleCoverInput | null {
     !isSteppedInteger(input.widthMm, SIMPLE_COVER_WIDTH_MIN_MM, SIMPLE_COVER_WIDTH_MAX_MM)
     || !isSteppedInteger(input.projectionMm, SIMPLE_COVER_PROJECTION_MIN_MM, SIMPLE_COVER_PROJECTION_MAX_MM)
     || (input.level !== 'ground' && input.level !== 'elevated')
+    || (input.connection !== 'fascia' && input.connection !== 'facade' && input.connection !== 'soffit')
   ) {
     return null;
   }
@@ -98,6 +118,7 @@ export function parseSimpleCoverInput(value: unknown): SimpleCoverInput | null {
     widthMm: input.widthMm,
     projectionMm: input.projectionMm,
     level: input.level,
+    connection: input.connection,
   };
 }
 
@@ -109,16 +130,26 @@ export function simpleCoverPostCount(widthMm: number): number {
   return Math.max(2, Math.ceil(widthMm / SIMPLE_COVER_MAX_POST_SPACING_MM) + 1);
 }
 
-function evenlySpacedPositions(count: number): number[] {
-  if (!Number.isSafeInteger(count) || count < 1) return [];
-  if (count === 1) return [0.5];
-  return Array.from({ length: count }, (_, index) => index / (count - 1));
+export function simpleCoverRafterLayout(widthMm: number) {
+  return calculateAcrylicRafterLayoutV1(widthMm);
 }
 
-export function buildSimpleCoverPlan(postCount: number, rafterCount = 0): SimpleCoverPlan {
+function evenlySpacedMemberCentrePositions(widthMm: number, memberWidthMm: number, count: number): number[] {
+  if (!Number.isSafeInteger(count) || count < 1) return [];
+  if (count === 1) return [0.5];
+  const safeWidthMm = Number.isFinite(widthMm) ? Math.max(0, widthMm) : 0;
+  if (safeWidthMm === 0) return Array.from({ length: count }, () => 0.5);
+  const inset = Math.min(0.5, memberWidthMm / 2 / safeWidthMm);
+  return Array.from(
+    { length: count },
+    (_, index) => inset + (index / (count - 1)) * (1 - inset * 2),
+  );
+}
+
+export function buildSimpleCoverPlan(widthMm: number, postCount: number): SimpleCoverPlan {
   return {
-    postPositions: evenlySpacedPositions(postCount),
-    rafterPositions: evenlySpacedPositions(rafterCount),
+    postPositions: evenlySpacedMemberCentrePositions(widthMm, SIMPLE_COVER_POST_SIZE_MM, postCount),
+    rafterPositions: simpleCoverRafterLayout(widthMm).positions,
   };
 }
 
@@ -145,7 +176,7 @@ export function getSimpleCoverCustomResult(input: SimpleCoverInput): SimpleCover
     areaM2,
     postCount,
     postSpacingMm: Math.round(input.widthMm / (postCount - 1)),
-    plan: buildSimpleCoverPlan(postCount),
+    plan: buildSimpleCoverPlan(input.widthMm, postCount),
     reasonCode: input.level === 'ground' ? 'ground_area_limit' : 'elevated_area_limit',
     reason: `${formatCustomArea(areaM2)} m² exceeds the ${maxAreaM2} m² ${levelLabel} Simple cover limit.`,
     continuation: {
@@ -230,7 +261,7 @@ export function buildSimpleCoverSiteInputs(input: SimpleCoverInput): SiteInputsV
           extras: [{ band: '201-300', length_m: widthM }],
         },
         overrides: {},
-        house_connection_type: 'fascia',
+        house_connection_type: input.connection,
         attachment_length_mm: input.widthMm,
         post_connection_type: 'deck_bracket',
         access: 'normal',

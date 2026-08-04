@@ -1399,12 +1399,18 @@ evidence-first enquiry close remain the visible sequence.
 
 The first layer is exactly `Simple cover`, `Custom design` and `Commercial /
 Professional`. `Simple cover` recommends acrylic roof pergolas, uses governed
-Dairy Flat and St Heliers evidence, and continues to
+Dairy Flat and St Heliers evidence, and uses the dedicated pitched acrylic
+product image `pitched-01.webp` for immediate product recognition. It continues to
 `/simple-pergolas-auckland`. That destination is a distinct, noindex conversion
 page; `/acrylic-roof-pergolas-auckland` remains the unchanged indexable acrylic
 research owner. `Custom design` recommends the custom design
-path, uses governed Tindalls Bay and Warkworth evidence, and continues to
-`/custom-pergolas-auckland`. Both retain the optional controlled-priority brief.
+path, uses the Mt Maunganui Box hero image and governed Tindalls Bay and
+Warkworth evidence. Its result leads with `Explore projects` to `/projects` and
+retains the attributed `/custom-pergolas-auckland` pathway as the quiet
+`Explore custom pergolas` action. Both residential paths retain the optional
+controlled-priority brief. The Commercial / Professional first-layer choice
+uses the second Lilliput Mini Golf image to show an occupied venue beneath the
+structure.
 
 `Commercial / Professional` reveals a second image-led radio group in the same
 finder: `Extending a Venue`, `Builder or Contractor`, and `Architects and
@@ -1459,7 +1465,9 @@ beneath the transparent shared header. The visible desktop header enquiry action
 is withheld. One bottom-centred bold open chevron advances the native document
 scroll. It has no stem, circle, label, background or other enclosing shape; its
 invisible hit area remains at least 56 pixels wide and its heavier stroke remains
-legible over both responsive crops. Through 760px the priority picture uses the
+legible over both responsive crops. A restrained periodic downward nudge makes
+the chevron discoverable without adding decorative chrome; reduced-motion users
+receive the static mark. Through 760px the priority picture uses the
 portrait `warkworth-gable-02.jpg`; larger widths retain the existing wide project
 image. The hero remains sticky while the first forward wheel gesture, upward
 touch swipe, Page Down, Space or Arrow Down reveals the existing shade, eyebrow,
@@ -1472,6 +1480,12 @@ header for natural continuation. It does not target the outer section padding.
 Input returns to native document
 scrolling at that boundary, reverse scrolling is not intercepted and reduced
 motion uses immediate movement. No hero enquiry CTA is rendered.
+
+On touch devices, the first forward movement of an active swipe is cancelled
+before the distance threshold is reached, preventing native momentum from
+carrying one gesture through both hero stages. The welcome veil also suppresses
+touch panning until it has left. One touch sequence can therefore reveal only
+one stage; advancing again requires a new touch start.
 
 The shared header stays transparent at mobile and desktop widths while either
 hero stage is active, and becomes opaque only after the hero journey boundary.

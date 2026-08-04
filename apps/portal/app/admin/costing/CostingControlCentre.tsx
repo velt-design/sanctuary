@@ -69,6 +69,16 @@ const SETTING_SECTIONS: Array<[Exclude<CostingControlSection, 'comparison' | 'pu
   ['rules', 'Supported rules'],
 ];
 
+function canPublishComparison(comparison: CostingConfigurationComparison | null): boolean {
+  return Boolean(
+    comparison
+    && (
+      comparison.diff.length > 0
+      || (comparison.currentVersionId === null && comparison.currentSource === 'legacy-overrides')
+    ),
+  );
+}
+
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const data = await response.json();
@@ -137,6 +147,9 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
       ? countCostingChangesBySection(config, baseline)
       : { materials: 0, labour: 0, overheads: 0, rules: 0 },
     [baseline, config],
+  );
+  const configMatchesBaseline = Boolean(
+    config && baseline && JSON.stringify(config) === JSON.stringify(baseline),
   );
 
   useEffect(() => {
@@ -690,7 +703,13 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
               confirmed={confirmed}
               busy={busy}
               dirty={dirty}
-              hasChanges={Boolean(editor.comparison?.diff.length)}
+              publishable={canPublishComparison(editor.comparison)}
+              initialBaseline={Boolean(
+                editor.comparison
+                && editor.comparison.currentVersionId === null
+                && editor.comparison.currentSource === 'legacy-overrides'
+                && editor.comparison.diff.length === 0,
+              )}
               onPublishNoteChange={setPublishNote}
               onConfirmedChange={setConfirmed}
               onPublish={publishDraft}
@@ -717,6 +736,23 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
                 </span>
               </div>
               <div className={styles.toolbarActions}>
+                {!configMatchesBaseline ? (
+                  <button
+                    className={styles.buttonSecondary}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => updateConfig((next) => {
+                      next.schemaVersion = baseline.schemaVersion;
+                      next.baseManifestVersion = baseline.baseManifestVersion;
+                      next.materialRatesExGst = structuredClone(baseline.materialRatesExGst);
+                      next.labour = structuredClone(baseline.labour);
+                      next.overheads = structuredClone(baseline.overheads);
+                      next.rules = structuredClone(baseline.rules);
+                    })}
+                  >
+                    Reset all to active
+                  </button>
+                ) : null}
                 <button
                   className={styles.buttonSecondary}
                   type="button"
@@ -734,7 +770,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
                   <button
                     className={styles.button}
                     type="button"
-                    disabled={busy || !editor.comparison?.diff.length}
+                    disabled={busy || !canPublishComparison(editor.comparison)}
                     onClick={() => setSection('publish')}
                   >
                     Continue to publish

@@ -473,9 +473,13 @@ acrylic landing-page and sitemap owner.
 `/simple-cover-calculator` is the separate reusable calculator route. It is
 self-canonical and `noindex,follow`; the component owns its marketing
 presentation and does not import portal UI or drawing CSS. Native 100 mm range
-controls cover 1-10 m width and 1-6 m projection with a 6 x 3 m default, a
-ground/elevated choice, live area, automatic post layout and an accessible
-architectural concept plan. A valid Simple combination shows `From $X`, GST
+controls use the Projects view-scale language with metre stops and square handles;
+editable metre values cover 1-10 m width and 1-6 m projection
+with a 6 x 3 m default, a ground/elevated choice, live area, automatic post
+layout and an accessible architectural concept plan. The plan uses the
+package-owned acrylic-rafter layout even when price is unavailable, with scaled 50 mm
+rafter/ledger and 100 mm beam/post outlines, technical dimensions and a distinct
+marketing presentation. A valid Simple combination shows `From $X`, GST
 and standard installation wording and the public costing version. An over-limit
 combination keeps the dimensions, removes price and gives the exact 30 m2 or
 20 m2 reason plus an attributed Custom design route. Published costing failure

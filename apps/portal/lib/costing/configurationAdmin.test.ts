@@ -139,6 +139,63 @@ describe('costing configuration admin publication', () => {
     }));
   });
 
+  it('allows the first published version to freeze active legacy pricing unchanged', async () => {
+    const activeConfig = loadCostingConfigV1();
+    const draft = {
+      ...draftVersion(),
+      config: snapshotCostingControlConfigV1(activeConfig),
+    };
+    draft.contentHash = hashCostingControlConfig(draft.config);
+    getCostingConfigurationVersionById.mockResolvedValue(draft);
+    const rpc = vi.fn(async () => ({ data: publishedRow(draft), error: null }));
+    const { publishCostingConfigurationDraft } = await import('./configurationAdmin');
+
+    await publishCostingConfigurationDraft(
+      { rpc } as unknown as SupabaseClient,
+      draft.id,
+      draft.contentHash,
+      null,
+      'Freeze current portal pricing as Version 1.',
+    );
+
+    expect(rpc).toHaveBeenCalledWith('publish_costing_configuration_version', expect.objectContaining({
+      p_expected_current_version_id: null,
+      p_publication_diff: [],
+    }));
+  });
+
+  it('still rejects an unchanged draft after a version has been published', async () => {
+    const activeConfig = loadCostingConfigV1();
+    const draft = {
+      ...draftVersion(),
+      config: snapshotCostingControlConfigV1(activeConfig),
+    };
+    draft.contentHash = hashCostingControlConfig(draft.config);
+    getCostingConfigurationVersionById.mockResolvedValue(draft);
+    resolvePublishedCostingConfiguration.mockResolvedValue({
+      config: activeConfig,
+      provenance: {
+        schemaVersion: 'costing-provenance.v1',
+        source: 'published',
+        versionId: '22222222-2222-4222-8222-222222222222',
+        versionNumber: 1,
+        contentHash: '1'.repeat(64),
+        baseManifestVersion: 'v1.7',
+      },
+    });
+    const rpc = vi.fn();
+    const { publishCostingConfigurationDraft } = await import('./configurationAdmin');
+
+    await expect(publishCostingConfigurationDraft(
+      { rpc } as unknown as SupabaseClient,
+      draft.id,
+      draft.contentHash,
+      '22222222-2222-4222-8222-222222222222',
+      'No pricing changes.',
+    )).rejects.toThrow('no changes');
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it('returns the package-owned active snapshot needed for clear draft comparisons and resets', async () => {
     const draft = draftVersion();
     const activeConfig = loadCostingConfigV1();

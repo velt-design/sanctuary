@@ -4,8 +4,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
   buildEnquiryDraftEstimateRow,
-  buildEnquiryPricingSnapshot,
 } from '../../../lib/enquiryPricingSnapshot';
+import { buildPublishedEnquiryPricingSnapshot } from '../../../lib/publishedEnquiryPricingSnapshot.server';
 import {
   normalizeMarketingAttributionInput,
   recordMarketingConversionEvent,
@@ -424,7 +424,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const pricing = buildEnquiryPricingSnapshot({
+  const pricing = await buildPublishedEnquiryPricingSnapshot({
     enquiryType,
     name,
     suburb,

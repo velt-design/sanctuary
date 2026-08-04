@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildSimpleCoverPlan,
   buildSimpleCoverSiteInputs,
   getSimpleCoverCustomResult,
   parseSimpleCoverInput,
   simpleCoverPostCount,
+  simpleCoverRafterLayout,
   toCustomerSafeSimpleCoverResult,
 } from './simpleCoverCalculator';
 
@@ -21,16 +23,36 @@ describe('Simple cover calculator contract', () => {
     expect(widthMm / (count - 1)).toBeLessThanOrEqual(4_000);
   });
 
-  it('accepts only the public ranges and 100 mm increment', () => {
-    expect(parseSimpleCoverInput({ widthMm: 1_000, projectionMm: 1_000, level: 'ground' })).not.toBeNull();
-    expect(parseSimpleCoverInput({ widthMm: 10_000, projectionMm: 6_000, level: 'elevated' })).not.toBeNull();
-    expect(parseSimpleCoverInput({ widthMm: 6_050, projectionMm: 3_000, level: 'ground' })).toBeNull();
-    expect(parseSimpleCoverInput({ widthMm: 10_100, projectionMm: 3_000, level: 'ground' })).toBeNull();
-    expect(parseSimpleCoverInput({ widthMm: 6_000, projectionMm: 900, level: 'ground' })).toBeNull();
+  it('uses the canonical acrylic-rafter layout in customer-safe plans', () => {
+    const layout = simpleCoverRafterLayout(4_700);
+
+    expect(layout.rafterCount).toBe(9);
+    expect(layout.spacingMm).toBeLessThanOrEqual(642);
+    expect(layout.spacingMm).toBe(581.25);
+    expect(layout.positions[0]).toBeCloseTo(25 / 4_700);
+    expect(layout.positions.at(-1)).toBeCloseTo(4_675 / 4_700);
   });
 
-  it('maps every approved fixed choice into canonical costing inputs', () => {
-    const site = buildSimpleCoverSiteInputs({ widthMm: 6_000, projectionMm: 3_000, level: 'elevated' });
+  it('aligns the outside faces of edge rafters and posts to the overall width', () => {
+    const plan = buildSimpleCoverPlan(4_700, 3);
+
+    expect(plan.postPositions[0]).toBeCloseTo(50 / 4_700);
+    expect(plan.postPositions.at(-1)).toBeCloseTo(4_650 / 4_700);
+    expect(plan.rafterPositions[0]).toBeCloseTo(25 / 4_700);
+    expect(plan.rafterPositions.at(-1)).toBeCloseTo(4_675 / 4_700);
+  });
+
+  it('accepts only the public ranges and 100 mm increment', () => {
+    expect(parseSimpleCoverInput({ widthMm: 1_000, projectionMm: 1_000, level: 'ground', connection: 'fascia' })).not.toBeNull();
+    expect(parseSimpleCoverInput({ widthMm: 10_000, projectionMm: 6_000, level: 'elevated', connection: 'soffit' })).not.toBeNull();
+    expect(parseSimpleCoverInput({ widthMm: 6_050, projectionMm: 3_000, level: 'ground', connection: 'fascia' })).toBeNull();
+    expect(parseSimpleCoverInput({ widthMm: 10_100, projectionMm: 3_000, level: 'ground', connection: 'facade' })).toBeNull();
+    expect(parseSimpleCoverInput({ widthMm: 6_000, projectionMm: 900, level: 'ground', connection: 'soffit' })).toBeNull();
+    expect(parseSimpleCoverInput({ widthMm: 6_000, projectionMm: 3_000, level: 'ground', connection: 'wall' })).toBeNull();
+  });
+
+  it.each(['fascia', 'facade', 'soffit'] as const)('maps %s and every approved fixed choice into canonical costing inputs', (connection) => {
+    const site = buildSimpleCoverSiteInputs({ widthMm: 6_000, projectionMm: 3_000, level: 'elevated', connection });
     const module = site.pergolas[0]?.modules[0];
 
     expect(site).toMatchObject({
@@ -47,7 +69,7 @@ describe('Simple cover calculator contract', () => {
       pergola_style: 'pitched',
       roof_material: 'acrylic',
       extrusion_colour: 'Black',
-      house_connection_type: 'fascia',
+      house_connection_type: connection,
       attachment_length_mm: 6_000,
       post_connection_type: 'deck_bracket',
       access: 'normal',
@@ -58,10 +80,10 @@ describe('Simple cover calculator contract', () => {
   });
 
   it('keeps the limit inclusive and gives the exact custom reason above it', () => {
-    expect(getSimpleCoverCustomResult({ widthMm: 10_000, projectionMm: 3_000, level: 'ground' })).toBeNull();
-    expect(getSimpleCoverCustomResult({ widthMm: 5_000, projectionMm: 4_000, level: 'elevated' })).toBeNull();
+    expect(getSimpleCoverCustomResult({ widthMm: 10_000, projectionMm: 3_000, level: 'ground', connection: 'fascia' })).toBeNull();
+    expect(getSimpleCoverCustomResult({ widthMm: 5_000, projectionMm: 4_000, level: 'elevated', connection: 'facade' })).toBeNull();
 
-    const ground = getSimpleCoverCustomResult({ widthMm: 10_000, projectionMm: 3_100, level: 'ground' });
+    const ground = getSimpleCoverCustomResult({ widthMm: 10_000, projectionMm: 3_100, level: 'ground', connection: 'soffit' });
     expect(ground).toMatchObject({
       status: 'custom',
       reasonCode: 'ground_area_limit',
@@ -69,7 +91,7 @@ describe('Simple cover calculator contract', () => {
     });
     expect(ground?.continuation.href).toContain('source_component=public_calculator');
 
-    expect(getSimpleCoverCustomResult({ widthMm: 5_100, projectionMm: 4_000, level: 'elevated' })).toMatchObject({
+    expect(getSimpleCoverCustomResult({ widthMm: 5_100, projectionMm: 4_000, level: 'elevated', connection: 'fascia' })).toMatchObject({
       reasonCode: 'elevated_area_limit',
       reason: '20.4 m² exceeds the 20 m² elevated Simple cover limit.',
     });
@@ -79,7 +101,7 @@ describe('Simple cover calculator contract', () => {
     const safe = toCustomerSafeSimpleCoverResult({
       ok: true,
       status: 'priced',
-      input: { widthMm: 6_000, projectionMm: 3_000, level: 'ground' },
+      input: { widthMm: 6_000, projectionMm: 3_000, level: 'ground', connection: 'fascia' },
       areaM2: 18,
       postCount: 3,
       postSpacingMm: 3_000,

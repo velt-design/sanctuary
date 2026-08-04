@@ -31,6 +31,8 @@
   transition:
     opacity 420ms cubic-bezier(.22, 1, .36, 1),
     visibility 0s linear 420ms;
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 
 .welcome[data-welcome-phase='leaving'] {
@@ -269,6 +271,13 @@
 
 .heroJourney[data-hero-stage='story'] .heroArrowStory {
   transition-delay: 320ms;
+}
+
+.heroJourney[data-hero-stage='image'] .heroArrowImage path,
+.heroJourney[data-hero-stage='story'] .heroArrowStory path {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hero-chevron-nudge 2.4s cubic-bezier(.45, 0, .2, 1) .45s infinite;
 }
 
 .heroArrow:focus-visible {
@@ -1288,6 +1297,18 @@
   }
 }
 
+@keyframes hero-chevron-nudge {
+  0%,
+  34%,
+  72%,
+  100% {
+    transform: translateY(0);
+  }
+  52% {
+    transform: translateY(.24rem);
+  }
+}
+
 @media (max-height: 620px) {
   .heroContent {
     gap: .75rem;
@@ -1385,6 +1406,11 @@
   .briefRegion {
     animation: none;
     transition: none;
+  }
+
+  .heroJourney[data-hero-stage='image'] .heroArrowImage path,
+  .heroJourney[data-hero-stage='story'] .heroArrowStory path {
+    animation: none;
   }
 
   .heroArrow svg {

@@ -28,6 +28,45 @@ async function waitForCinematicWelcome(page: Page) {
   });
 }
 
+async function dispatchForwardTouchGesture(
+  page: Page,
+  movePositions: readonly number[],
+) {
+  return page.evaluate((positions) => {
+    const target = document.body;
+    const makeTouch = (clientY: number) => new Touch({
+      clientX: window.innerWidth / 2,
+      clientY,
+      identifier: 1,
+      pageX: window.innerWidth / 2,
+      pageY: clientY + window.scrollY,
+      target,
+    });
+    const dispatch = (
+      type: 'touchstart' | 'touchmove' | 'touchend',
+      clientY: number,
+    ) => {
+      const activeTouches = type === 'touchend' ? [] : [makeTouch(clientY)];
+      const event = new TouchEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        changedTouches: [makeTouch(clientY)],
+        touches: activeTouches,
+      });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+
+    const startY = positions[0] ?? 700;
+    dispatch('touchstart', startY);
+    const preventedMoves = positions.slice(1).map((clientY) => (
+      dispatch('touchmove', clientY)
+    ));
+    dispatch('touchend', positions.at(-1) ?? startY);
+    return preventedMoves;
+  }, movePositions);
+}
+
 async function projectFinderOpeningGeometry(page: Page) {
   return page.locator('[data-project-finder-opening]').evaluate((opening) => {
     const openingRect = opening.getBoundingClientRect();
@@ -152,6 +191,9 @@ test('project finder is the indexable live homepage and the prototype URL redire
   expect(chevronGeometry.height).toBeGreaterThanOrEqual(64);
   expect(chevronGeometry.borderStyle).toBe('none');
   expect(chevronGeometry.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+  expect(await revealArrow.locator('path').evaluate((path) => (
+    getComputedStyle(path).animationName
+  ))).toContain('hero-chevron-nudge');
   await revealArrow.click();
   await expect(heroJourney).toHaveAttribute('data-hero-stage', 'story');
   await expect(page.getByRole('heading', {
@@ -317,6 +359,41 @@ test('mobile art direction and two deliberate scroll gestures lead into text-onl
   await expectNoHorizontalOverflow(page);
 });
 
+test('one mobile touch gesture can advance only one cinematic hero stage', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await setAnalyticsConsent(page, false);
+  await page.goto('/');
+
+  const welcome = page.locator('[data-homepage-welcome]');
+  await expect(welcome).toHaveCSS('touch-action', 'none');
+  await waitForCinematicWelcome(page);
+
+  const heroJourney = page.locator('[data-homepage-hero-journey]');
+  await expect(page.locator('[data-homepage-hero-arrow="reveal"] path'))
+    .toHaveCSS('animation-name', 'none');
+  const preventedMoves = await dispatchForwardTouchGesture(
+    page,
+    [700, 690, 650, 590],
+  );
+  expect(preventedMoves).toEqual([true, true, true]);
+  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'story');
+  await expect(page.getByRole('heading', {
+    level: 2,
+    name: 'Which starting point best describes your project?',
+  })).not.toBeInViewport();
+
+  await dispatchForwardTouchGesture(page, [700, 650]);
+  const finderHeading = page.getByRole('heading', {
+    level: 2,
+    name: 'Which starting point best describes your project?',
+  });
+  await expect(finderHeading).toBeInViewport();
+  await expectProjectFinderOpeningAligned(page);
+});
+
 test('the finder landing contains the complete opening whenever the viewport can hold it', async ({
   page,
 }) => {
@@ -447,24 +524,24 @@ test('the two residential directions give one useful pathway and two governed re
 }) => {
   await setAnalyticsConsent(page, false);
   const paths = [
-    ['cover', 'A simple acrylic pergola', '/simple-pergolas-auckland', ['Dairy Flat Estate', 'St Heliers Townhouse']],
-    ['bespoke', 'Custom pergola design', '/custom-pergolas-auckland', ['Tindalls Bay - Patio & Carport', 'Warkworth Outdoor Room']],
+    ['cover', 'A simple acrylic pergola', 'Explore simple pergolas', '/simple-pergolas-auckland?project=cover', 'View all projects', '/projects', ['Dairy Flat Estate', 'St Heliers Townhouse']],
+    ['bespoke', 'Custom pergola design', 'Explore projects', '/projects', 'Explore custom pergolas', '/custom-pergolas-auckland?project=bespoke', ['Tindalls Bay - Patio & Carport', 'Warkworth Outdoor Room']],
   ] as const;
 
-  for (const [direction, heading, pathway, projectNames] of paths) {
+  for (const [direction, heading, primaryLabel, primaryHref, secondaryLabel, secondaryHref, projectNames] of paths) {
     await page.goto('/');
     await selectDirection(page, direction);
     await expect(page.getByRole('heading', { level: 2, name: heading, exact: true }))
       .toBeVisible();
-    await expect(page.locator('[data-project-finder-result] a').first())
-      .toHaveAttribute('href', `${pathway}?project=${direction}`);
+    await expect(page.getByRole('link', { name: primaryLabel, exact: true }))
+      .toHaveAttribute('href', primaryHref);
     for (const projectName of projectNames) {
       await expect(page.getByRole('heading', { level: 3, name: projectName }))
         .toBeVisible();
     }
     await expect(page.locator('[data-selected-project]')).toHaveCount(2);
-    await expect(page.getByRole('link', { name: 'View all projects' }))
-      .toHaveAttribute('href', '/projects');
+    await expect(page.getByRole('link', { name: secondaryLabel, exact: true }))
+      .toHaveAttribute('href', secondaryHref);
     await expect(page.getByRole('link', { name: 'Use as a reference' }))
       .toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Start your project now' }))

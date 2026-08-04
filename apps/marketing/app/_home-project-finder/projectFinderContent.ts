@@ -18,6 +18,8 @@ export type ProjectResultContent = {
   responseHeading: string;
   responseExplanation: string;
   pathwayLabel: string;
+  primaryDestination?: string;
+  secondaryServiceLabel?: string;
   closeHeading: string;
   closeExplanation: string;
   evidenceReasonBySlug: Readonly<Record<string, string>>;
@@ -72,7 +74,9 @@ export const residentialProjectResultContent: Record<
     responseHeading: 'Custom pergola design',
     responseExplanation:
       'Start with a design-led pathway for an outdoor room, distinctive roof form or site that needs a more individual response.',
-    pathwayLabel: 'Explore custom pergolas',
+    pathwayLabel: 'Explore projects',
+    primaryDestination: '/projects',
+    secondaryServiceLabel: 'Explore custom pergolas',
     closeHeading: 'Ready to discuss your custom design?',
     closeExplanation:
       'Send the direction and priorities you selected so Sanctuary can review the design intent, site and useful next step.',

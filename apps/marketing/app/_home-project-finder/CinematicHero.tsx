@@ -253,8 +253,14 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
       const startY = touchStartYRef.current;
       const currentY = event.touches[0]?.clientY;
       if (startY === null || currentY === undefined || !journeyIsActive()) return;
-      if (startY - currentY < TOUCH_SWIPE_THRESHOLD_PX) return;
-      event.preventDefault();
+      const forwardDistance = startY - currentY;
+      if (forwardDistance <= 0) return;
+
+      // Cancel native panning from the first forward movement. Waiting until
+      // the swipe threshold lets mobile Safari begin a momentum scroll that
+      // can carry the same gesture through both hero stages.
+      if (event.cancelable) event.preventDefault();
+      if (forwardDistance < TOUCH_SWIPE_THRESHOLD_PX) return;
       if (touchGestureHandledRef.current) return;
       touchGestureHandledRef.current = true;
       advanceHeroJourney();

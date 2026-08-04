@@ -34,7 +34,7 @@ describe('frozen Simple cover pricing', () => {
 
   it('freezes inputs, engine output, exact price and configuration together', async () => {
     const { calculateFrozenSimpleCoverPricing } = await import('./simpleCoverPricing.server');
-    const result = await calculateFrozenSimpleCoverPricing({ widthMm: 6_000, projectionMm: 3_000, level: 'ground' });
+    const result = await calculateFrozenSimpleCoverPricing({ widthMm: 6_000, projectionMm: 3_000, level: 'ground', connection: 'soffit' });
     const expectedPrice = calculateCustomerPriceFromCostEx(result.siteOutput.totals.cost_ex_gst, 0);
 
     expect(result.schemaVersion).toBe('simple-cover-pricing.v1');
@@ -42,13 +42,17 @@ describe('frozen Simple cover pricing', () => {
     expect(result.customerPrice.displayedFromIncGst % 250).toBe(0);
     expect(result.costingConfiguration).toMatchObject({ versionId: 'version-17', versionNumber: 17 });
     expect(result.publicResult.configuration).toEqual({ versionNumber: 17 });
+    expect(result.siteInputs.pergolas[0]?.modules[0]?.house_connection_type).toBe('soffit');
+    expect(result.publicResult.plan.rafterPositions).toHaveLength(
+      result.siteOutput.pergolas[0]?.modules[0]?.derived.rafter_count ?? 0,
+    );
     expect(result.publicResult).not.toHaveProperty('siteOutput');
     expect(result.publicResult).not.toHaveProperty('customerPrice.exactIncGst');
   });
 
   it('returns a custom route without reading costing configuration', async () => {
     const { calculateSimpleCoverPublicResult } = await import('./simpleCoverPricing.server');
-    const result = await calculateSimpleCoverPublicResult({ widthMm: 10_000, projectionMm: 3_100, level: 'ground' });
+    const result = await calculateSimpleCoverPublicResult({ widthMm: 10_000, projectionMm: 3_100, level: 'ground', connection: 'fascia' });
 
     expect(result.status).toBe('custom');
     expect(h.getPublishedCostingConfiguration).not.toHaveBeenCalled();

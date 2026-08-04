@@ -7,11 +7,11 @@ describe('project finder governed media', () => {
     const media = buildProjectFinderHomepageMedia(projects);
     expect(media.hero.projectSlug).toBe('warkworth-outdoor-room');
     expect(media.hero.mobileSrc).toBe('/images/warkworth-gable-02.jpg');
-    expect(Object.values(media.choiceByDirection).map((item) => item.projectSlug))
+    expect(Object.values(media.choiceByDirection).map((item) => item.src))
       .toEqual([
-        'dairy-flat-estate',
-        'tindalls-bay-pavilion',
-        'goodhome-commercial-terrace',
+        '/images/simple-pergolas/pitched-01.webp',
+        '/images/project-mt-maunganui-01.jpg',
+        '/images/project-tamaki-dr-02.jpg',
       ]);
     expect(Object.values(media.choiceByProfessionalPath)
       .map((item) => item.projectSlug)).toEqual([

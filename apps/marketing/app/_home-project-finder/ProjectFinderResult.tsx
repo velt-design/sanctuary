@@ -34,6 +34,8 @@ export default function ProjectFinderResult({
   resultKey,
   resultRef,
 }: ProjectFinderResultProps) {
+  const primaryHref = content.primaryDestination ?? pathwayHref;
+
   return (
     <section
       className={styles.result}
@@ -57,7 +59,7 @@ export default function ProjectFinderResult({
             data-professional-path={professionalPath}
             data-project-priorities={priorities.join(',')}
             data-source-component="project_finder"
-            href={pathwayHref}
+            href={primaryHref}
           >
             {content.pathwayLabel}
           </Link>
@@ -67,7 +69,20 @@ export default function ProjectFinderResult({
             </button>
           ) : null}
           <div className={styles.escapeActions}>
-            <Link href="/projects">View all projects</Link>
+            {content.secondaryServiceLabel ? (
+              <Link
+                data-project-finder-event="project_pathway_click"
+                data-project-direction={direction}
+                data-professional-path={professionalPath}
+                data-project-priorities={priorities.join(',')}
+                data-source-component="project_finder"
+                href={pathwayHref}
+              >
+                {content.secondaryServiceLabel}
+              </Link>
+            ) : (
+              <Link href="/projects">View all projects</Link>
+            )}
           </div>
         </div>
       </Container>
