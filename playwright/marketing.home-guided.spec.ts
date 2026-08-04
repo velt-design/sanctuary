@@ -50,7 +50,7 @@ const destinationContinuations = [
     focusId: 'shade',
     heading: 'Add shelter and useful shade.',
     returnHref: '/home-guided?audience=home&goal=straightforward-cover&focus=shade',
-    firstProject: 'St Heliers Townhouse',
+    firstProject: null,
     enquiryType: 'residential',
   },
   {
@@ -318,7 +318,7 @@ test('the primary result link reaches the existing dedicated landing route', asy
   await expect(page.locator('h1')).toHaveCount(1);
 });
 
-test('all five destinations continue valid context, evidence order and enquiry attribution', async ({
+test('all five destinations continue valid context, route-appropriate evidence and enquiry attribution', async ({
   page,
 }) => {
   test.setTimeout(180_000);
@@ -348,10 +348,14 @@ test('all five destinations continue valid context, evidence order and enquiry a
       `${publicOrigin}${continuation.canonical}`,
     );
     await expect(page.locator('h1')).toHaveCount(1);
-    await expect(page.getByRole('heading', {
-      level: 3,
-      name: continuation.firstProject,
-    }).first()).toBeVisible();
+    if (continuation.firstProject) {
+      await expect(page.getByRole('heading', {
+        level: 3,
+        name: continuation.firstProject,
+      }).first()).toBeVisible();
+    } else {
+      await expect(page.getByRole('link', { name: 'View project' })).toHaveCount(0);
+    }
     await expectNoHorizontalOverflow(page);
 
     const enquiryContext = JSON.parse(await page.locator(

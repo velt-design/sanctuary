@@ -459,11 +459,14 @@ Simple cover choice. It is a new route-owned Foundation adoption rather than a
 second acrylic SEO page: it is self-canonical, `noindex,follow`, absent from the
 sitemap and directly accessible with or without JavaScript. Its split image-led
 hero leads with `Cover the space without losing light.`, followed by a clear fit
-definition, roof-plus-optional-blind levels, strengths and limitations, three
-governed residential projects, defined scope and process, a Custom design
-off-ramp, concise FAQs and the existing privacy-preserving enquiry contract
-reworded as an initial-estimate request. Homepage direction and priority context
-continues through the page, project evidence, embedded form and shared header.
+definition, the Sanctuary finish and inclusions, useful material and blind
+choices, an honest Simple-versus-Custom boundary, two governed reviews and the
+existing privacy-preserving enquiry contract reworded as an initial-estimate
+request. It intentionally omits project detours and extended guide copy. Homepage
+direction and priority context continues through the page, embedded form and
+shared header. The fit section directly after the hero is the named future
+integration point for a separately governed price configurator; the production
+page must not show a synthetic price or inactive configurator controls.
 `/acrylic-roof-pergolas-auckland` remains unchanged as the only indexable
 acrylic landing-page and sitemap owner.
 

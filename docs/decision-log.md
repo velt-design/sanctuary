@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-04 | Simple Cover Sales Page           | Promoted | Keep the noindex Simple cover continuation short, image-led and sales-focused: prove product fit, Sanctuary finish, useful choices, honest limits, governed reviews and the existing enquiry path without repeating project cards or guide copy. Reserve the post-hero fit section as the future costing integration point, but do not publish synthetic prices or inactive configurator controls. |
 | 2026-08-03 | Simple Cover Pathway              | Promoted | Keep the acrylic research page as the sole indexable SEO owner and send homepage Simple cover intent to a distinct noindex conversion route. Define simple by a clear fixed-roof scope rather than the absence of optional side blinds, preserve closed journey context and attribution, and provide a clear Custom design off-ramp for materially broader briefs. |
 | 2026-08-03 | Marketing Cinematic Hero         | Promoted | Consume at most one forward gesture per active hero stage, then land against the measured inner finder opening rather than padded section chrome. Centre the complete opening when it fits the live visual viewport, otherwise top-align it beneath the fixed header. Preserve reverse scrolling, responsive priority art direction and primary-mobile text-only choices. |
 | 2026-08-03 | Marketing Welcome Stacking       | Promoted | A page-owned fixed welcome veil can still sit beneath a shell-owned fixed header because an ancestor creates a lower stacking context. Verify the rendered first paint, hide and disable the global header through a page-presence hook while the veil exists, and provide an explicit no-JavaScript override so progressive enhancement cannot remove navigation. |
@@ -4711,3 +4712,31 @@ Related docs/tests: `apps/marketing/app/simple-pergolas-auckland/**`;
 `apps/marketing/lib/projectFinderContinuation.ts`;
 `playwright/marketing.simple-pergolas.spec.ts`;
 `playwright/marketing.home-project-finder.spec.ts`
+
+Date: 2026-08-04
+Area: Simple cover conversion-page density and future pricing integration
+Status: Promoted
+Decision or mistake: The first Simple cover conversion page repeated extended
+guide copy, FAQs, process detail and governed project cards after a homepage
+journey that had already established intent. That made a straightforward product
+feel more complex and required a destination test to treat project evidence as a
+universal contract. A future price configurator was also valuable, but adding an
+unconnected price or inactive controls would create a false promise before the
+portal costing boundary is designed.
+Why it mattered: These visitors usually recognise a pitched acrylic pergola and
+need fast confidence about fit, finish, options and likely next action. Repeating
+research content weakens momentum. Pricing is a high-trust claim and must be
+connected to governed costing inputs before it is presented as an estimate.
+Current guardrail: Keep `/simple-pergolas-auckland` image-led and concise. Show
+the approved Simple product-fit limits, Sanctuary finish, inclusions, acrylic and
+blind choices, honest Simple-versus-Custom boundary, governed reviews and the
+existing attributed enquiry form. Do not require project cards on this route.
+Keep the fit section directly after the hero as the named future pricing
+integration point, but implement the configurator in a separate costing-aware
+change with no duplicated engine logic, synthetic price or inert controls.
+Promoted to: `docs/marketing-ui-foundation.md`;
+`docs/marketing-claims-register.md`;
+`docs/landing-pages/sanctuary-pergola-guide-ecosystem-roadmap.md`
+Related docs/tests: `apps/marketing/app/simple-pergolas-auckland/**`;
+`playwright/marketing.simple-pergolas.spec.ts`;
+`playwright/marketing.home-guided.spec.ts`

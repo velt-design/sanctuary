@@ -301,9 +301,11 @@ and
 The focused conversion-page suite covers 320, 390, 768, 1024 and 1440 pixel
 viewports; one H1; priority hero decoding; self-canonical `noindex,follow`
 metadata; sitemap exclusion; preserved acrylic SEO ownership; zero horizontal
-overflow; homepage priority, project-link, header and embedded-form context;
-optional blinds; accessible retained-value validation; and a complete
-JavaScript-disabled form fallback.
+overflow; desktop/mobile priority hero art direction; homepage priority, header
+and embedded-form context without project detours; approved product-fit copy;
+deck-level and optional-blind qualification; absence of synthetic configurator
+controls; accessible retained-value validation; and a complete JavaScript-disabled
+form fallback.
 
 Project-page changes should run
 `npx vitest run apps/marketing/app/projects/projectFilters.test.ts apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/app/projects/projectSeo.test.ts apps/marketing/lib/projectDetailNavigation.test.ts apps/marketing/data/projects.claims.test.ts`

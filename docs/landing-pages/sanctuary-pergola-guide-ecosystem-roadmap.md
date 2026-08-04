@@ -73,12 +73,13 @@ The production homepage Simple cover result now continues to
 `/simple-pergolas-auckland`. This is an intentionally separate, noindex
 conversion page, not a new guide or a duplicate acrylic content owner. It is
 self-canonical, excluded from the sitemap and built around solution fit,
-optional side blinds, honest limitations, governed residential evidence and a
-low-friction initial-estimate enquiry. The legacy no-JavaScript homepage path
+the Sanctuary standard, optional side blinds, honest limitations, governed
+reviews and a low-friction initial-estimate enquiry. It intentionally avoids
+project detours and extended research copy. The legacy no-JavaScript homepage path
 and the noindex `/home-guided` experiment use the same destination. The existing
 `/acrylic-roof-pergolas-auckland` route remains the sole indexable acrylic SEO
 owner and is unchanged by this checkpoint. The new route uses only approved
-general claims or exact current project records and preserves the existing
+general claims and product-fit limits and preserves the existing
 consent and enquiry-attribution contracts.
 
 ## Operating protocol for coding agents
