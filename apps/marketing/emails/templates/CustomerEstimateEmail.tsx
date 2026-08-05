@@ -60,9 +60,28 @@ function supplied(value: unknown): string {
 }
 
 function dimensions(props: ResidentialOrCommercial): string {
+  if (
+    props.simpleCoverEstimate
+    && Number.isFinite(props.widthM)
+    && props.widthM > 0
+    && Number.isFinite(props.depthM)
+    && props.depthM > 0
+  ) {
+    return `${props.widthM}m wide × ${props.depthM}m deep`;
+  }
   const values = [props.widthM, props.depthM, props.heightM];
   if (!values.every((value) => Number.isFinite(value) && value > 0)) return 'Not supplied';
   return `${props.widthM}m wide × ${props.depthM}m deep × ${props.heightM}m high`;
+}
+
+function simpleCoverLevel(value: NonNullable<ResidentialOrCommercial['simpleCoverEstimate']>['level']): string {
+  return value === 'elevated' ? 'Elevated deck' : 'Ground-level deck';
+}
+
+function simpleCoverConnection(value: NonNullable<ResidentialOrCommercial['simpleCoverEstimate']>['connection']): string {
+  if (value === 'facade') return 'Facade';
+  if (value === 'soffit') return 'Soffit brackets';
+  return 'Fascia';
 }
 
 export function CustomerEstimateEmail(props: CustomerEstimateEmailProps) {
@@ -79,7 +98,9 @@ export function CustomerEstimateEmail(props: CustomerEstimateEmailProps) {
       ? props.addons.filter((addon) => typeof addon === 'string' && addon.trim()).join(', ')
       : 'None selected';
 
-  const estimateNote = baseIsSingleAmount
+  const estimateNote = props.simpleCoverEstimate
+    ? `This is an early installed estimate, not a quote. It uses the selected dimensions, ${simpleCoverLevel(props.simpleCoverEstimate.level).toLowerCase()} and ${simpleCoverConnection(props.simpleCoverEstimate.connection).toLowerCase()}, together with the standard Simple calculator assumptions. Final scope and pricing follow Sanctuary's review of the site conditions and connection details.`
+    : baseIsSingleAmount
     ? 'This is an early guide, not a quote. It is based on the dimensions and options submitted, with standard access, fixings, colour and fascia connection assumed. Final scope and pricing follow a review of the site conditions and connection details.'
     : 'This is an early guide, not a quote. The range reflects the stored assumptions available when this enquiry was submitted. Final scope and pricing follow a review of the site conditions and connection details.';
 
@@ -108,6 +129,12 @@ export function CustomerEstimateEmail(props: CustomerEstimateEmailProps) {
         rows={[
           { label: isCommercial ? 'Project area' : 'Project location', value: supplied(props.suburb) },
           { label: 'Approximate dimensions', value: dimensions(props) },
+          ...(props.simpleCoverEstimate
+            ? [
+                { label: 'Deck level', value: simpleCoverLevel(props.simpleCoverEstimate.level) },
+                { label: 'House connection', value: simpleCoverConnection(props.simpleCoverEstimate.connection) },
+              ]
+            : []),
           { label: 'Pergola form', value: supplied(props.style) },
           { label: 'Roof approach', value: supplied(props.roof) },
           { label: 'Options to discuss', value: options },

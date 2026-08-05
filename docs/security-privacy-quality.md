@@ -51,6 +51,7 @@ other unconditional vendor request. The executable browser boundary is
 | Guided-home experiment events | analytics | `apps/marketing/app/home-journey/JourneyTracker.tsx` | Measures the noindex `/home-journey` experiment view, closed answer and Back choices, and the single final enquiry exit while analytics is enabled | Marketing and Engineering |
 | Guided design-conversation events | analytics | `apps/marketing/app/_home-guided/GuidedHomepageTracker.ts` | Measures the noindex `/home-guided` view, closed question/answer/change/reset values, five stable results and the primary destination click while analytics is enabled | Marketing and Engineering |
 | Project-led visual-finder events | analytics | `apps/marketing/app/_home-project-finder/ProjectFinderTracker.tsx` | Measures the production `/` view, closed direction, commercial/professional-path and priority changes, completed result views, project-detail opens, service continuation and header/final enquiry exits while analytics is enabled | Marketing and Engineering |
+| Simple cover calculator funnel | analytics | `apps/marketing/lib/simpleCoverAnalytics.ts`, `apps/marketing/components/simple-cover-calculator/SimpleCoverCalculator.tsx`, `apps/marketing/app/simple-pergolas-auckland/SimplePergolaJourney.tsx` | Measures calculator view, first interaction, closed result state, result-continuation CTA and form start while analytics is enabled; emits only placement, result status, source path, viewport category and calculation-attached boolean | Marketing and Engineering |
 
 When adding or removing tracking, update this table and the privacy behavior.
 
@@ -99,9 +100,28 @@ The homepage Simple cover destination is `/simple-pergolas-auckland`. This
 conversion route is `noindex,follow`, excluded from the sitemap and distinct
 from the indexable `/acrylic-roof-pergolas-auckland` research owner. It accepts
 only the existing closed `project` and `priorities` URL values. Its embedded
-initial-estimate form reuses the existing attachment, consent, attribution,
-validation, idempotency and fallback contracts; the route adds no visitor text,
-contact data or attachment detail to the URL or analytics payload.
+calculator stores a same-tab closed handoff only after a visitor chooses the
+result-continuation CTA. A priced result labels that request `Request a site
+measure`, but the page does not record a booked visit or promise a quote;
+Custom and unavailable results retain review wording. The handoff and enquiry
+POST may carry an opaque authenticated
+calculation reference, but no price, dimensions, connection, reference, visitor
+text, contact data or attachment detail enters the URL or calculator analytics.
+The five funnel events remain inactive until analytics is enabled and are not
+backfilled. The focused form reuses the existing attachment, consent,
+attribution, validation, idempotency and fallback contracts.
+
+The Simple calculation reference is compact authenticated ciphertext, not a
+browser-selected pricing source. Its AES-256-GCM key is derived server-side from
+the already-required service-role secret with a Simple-specific domain; local
+development has an explicit non-production fallback and production fails closed
+without server secret material. The public response cannot decode the embedded
+published-version provenance or frozen-result hash. Enquiry intake removes the
+raw reference from its stored raw payload, does not write it to application
+logs, and may use it only after authenticated decryption, historical
+publication resolution and exact
+frozen-result hash comparison. Failure drops the linked price without blocking
+the enquiry.
 
 Enquiry conversion events retain their category gates and event names. Where
 available they also include validated `source_path`, `source_component`,

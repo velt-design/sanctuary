@@ -17,6 +17,11 @@ const h = vi.hoisted(() => ({
   })),
   priceAllBlinds: vi.fn((_items: unknown[]) => ({ totals: { totalIncCents: 0 } })),
   getPublishedCostingConfiguration: vi.fn(),
+  getPublishedCostingConfigurationByProvenance: vi.fn(),
+  readSimpleCoverCalculationRef: vi.fn(),
+  calculateFrozenSimpleCoverPricingWithConfiguration: vi.fn(),
+  hashFrozenSimpleCoverPricingResult: vi.fn(() => 'b'.repeat(64)),
+  frozenSimpleCoverHashesMatch: vi.fn((left: string, right: string) => left === right),
 }));
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -34,6 +39,18 @@ vi.mock('@sp/costing', () => ({
 
 vi.mock('../../../lib/publishedCostingConfiguration.server', () => ({
   getPublishedCostingConfiguration: h.getPublishedCostingConfiguration,
+  getPublishedCostingConfigurationByProvenance: h.getPublishedCostingConfigurationByProvenance,
+}));
+
+vi.mock('../../../lib/simpleCoverCalculationRef.server', () => ({
+  readSimpleCoverCalculationRef: h.readSimpleCoverCalculationRef,
+  hashFrozenSimpleCoverPricingResult: h.hashFrozenSimpleCoverPricingResult,
+  frozenSimpleCoverHashesMatch: h.frozenSimpleCoverHashesMatch,
+}));
+
+vi.mock('../../../lib/simpleCoverPricing.server', () => ({
+  calculateFrozenSimpleCoverPricingWithConfiguration:
+    h.calculateFrozenSimpleCoverPricingWithConfiguration,
 }));
 
 vi.mock('@/lib/enquiryBudgets', () => ({
@@ -219,7 +236,13 @@ describe('POST /api/enquiry attribution', () => {
     h.calculateCostV1.mockClear();
     h.priceAllBlinds.mockClear();
     h.getPublishedCostingConfiguration.mockReset();
-    h.getPublishedCostingConfiguration.mockResolvedValue({
+    h.getPublishedCostingConfigurationByProvenance.mockReset();
+    h.readSimpleCoverCalculationRef.mockReset();
+    h.calculateFrozenSimpleCoverPricingWithConfiguration.mockReset();
+    h.hashFrozenSimpleCoverPricingResult.mockClear();
+    h.frozenSimpleCoverHashesMatch.mockClear();
+    h.readSimpleCoverCalculationRef.mockReturnValue(null);
+    const resolved = {
       config: { marker: 'published-v1' },
       provenance: {
         schemaVersion: 'costing-provenance.v1',
@@ -229,7 +252,9 @@ describe('POST /api/enquiry attribution', () => {
         contentHash: 'published-v1-hash',
         baseManifestVersion: 'costing-v1',
       },
-    });
+    };
+    h.getPublishedCostingConfiguration.mockResolvedValue(resolved);
+    h.getPublishedCostingConfigurationByProvenance.mockResolvedValue(resolved);
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://supabase.test';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
   });
@@ -325,6 +350,10 @@ describe('POST /api/enquiry attribution', () => {
     });
     expect(JSON.stringify(leadEvents)).not.toContain('Taylor');
     expect(JSON.stringify(leadEvents)).not.toContain('must-not-be-kept');
+    expect(leadEvents[0]?.payload).toMatchObject({
+      baseBudgetLowIncGst: 12000,
+      baseBudgetHighIncGst: 12000,
+    });
     expect(h.priceAllBlinds).toHaveBeenCalledTimes(1);
     expect(h.priceAllBlinds.mock.calls[0]?.[0]).toEqual(
       expect.arrayContaining([
@@ -344,6 +373,217 @@ describe('POST /api/enquiry attribution', () => {
     expect(db.estimates[0]?.configVersions.costingControl).toMatchObject({ versionNumber: 1 });
     expect(db.estimates[0]?.inputs.modules[0]?.postCount).toBe('2');
     expect(db.estimates[0]?.outputs.totals.cost_inc_gst).toBe(10000);
+  });
+
+  it('uses a verified calculation reference as the authoritative Simple selection without persisting or tracking the token', async () => {
+    const { client, db } = makeDb();
+    h.createClient.mockReturnValue(client);
+    const provenance = {
+      schemaVersion: 'costing-provenance.v1' as const,
+      source: 'published' as const,
+      versionId: '11111111-1111-4111-8111-111111111111',
+      versionNumber: 1,
+      contentHash: 'a'.repeat(64),
+      baseManifestVersion: 'costing-v1',
+    };
+    const input = {
+      widthMm: 6_000,
+      projectionMm: 3_000,
+      level: 'elevated' as const,
+      connection: 'soffit' as const,
+    };
+    const siteInputs = {
+      pergolas: [{
+        id: 'pergola-1',
+        label: 'Pergola 1',
+        modules: [{
+          length_m: 6,
+          roof_span_m: 3,
+          post_cut_height_m: 2.4,
+          post_count: 3,
+          pergola_style: 'pitched',
+          roof_material: 'acrylic',
+          extrusion_colour: 'Black',
+          house_connection_type: 'soffit',
+          post_connection_type: 'deck_bracket',
+          access: 'normal',
+          height: 'two_storey',
+          ground: 'easy',
+        }],
+      }],
+      job_type: 'residential',
+      pricing_classification: 'simple',
+      approval_requirement: 'neither',
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+      quote_discount_pct: 0,
+    };
+    const siteOutput = {
+      materials: { lines: [], totals: { materials_ex_gst: 0 } },
+      install: { actions: [], totals: { crew_minutes: 0, crew_hours: 0, install_ex_gst: 0 } },
+      overhead: { method: 'job_rollup', ops_ex_gst: 0, sales_ex_gst: 0, total_ex_gst: 0 },
+      totals: { cost_inc_gst: 18_000, cost_ex_gst: 15_652, warnings: [], notes_and_warnings: [] },
+      warnings: [],
+      pergolas: [],
+      shared: {},
+    };
+    const frozen = {
+      schemaVersion: 'simple-cover-pricing.v1',
+      input,
+      siteInputs,
+      siteOutput,
+      customerPrice: {
+        exactExGst: 21_304.35,
+        exactIncGst: 24_500,
+        displayedFromIncGst: 24_500,
+      },
+      costingConfiguration: provenance,
+      publicResult: {
+        ok: true,
+        status: 'priced',
+        input,
+        areaM2: 18,
+        postCount: 3,
+        postSpacingMm: 3_000,
+        plan: { postPositions: [0, 0.5, 1], rafterPositions: [0, 0.5, 1] },
+        price: { fromIncGst: 24_500, currency: 'NZD' },
+        configuration: { versionNumber: 1 },
+      },
+    };
+    h.readSimpleCoverCalculationRef.mockReturnValue({
+      schemaVersion: 'simple-cover-calculation-ref.v1',
+      input,
+      costingConfiguration: provenance,
+      issuedAt: 1_786_000_000,
+      frozenResultHash: 'b'.repeat(64),
+    });
+    h.calculateFrozenSimpleCoverPricingWithConfiguration.mockReturnValue(frozen);
+    const { POST } = await import('./route');
+    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    (sendCustomerAutoresponder as any).mockClear();
+    const calculationRef = 'sc1.secret-opaque-reference';
+
+    const response = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        submissionId: SUBMISSION_ID,
+        enquiryType: 'residential',
+        name: 'Simple Customer',
+        email: 'simple@example.test',
+        phone: '021000000',
+        suburb: 'Takapuna',
+        dimensions: { widthM: 1, depthM: 1, heightM: 9 },
+        style: 'gable',
+        roofMaterials: ['timber'],
+        addOns: {},
+        simpleCoverStatus: 'priced',
+        calculationRef,
+        source: 'website',
+        page: '/simple-pergolas-auckland',
+        honeypot: '',
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(client.rpc).toHaveBeenCalledWith(
+      'marketing_enquiry_intake',
+      expect.objectContaining({
+        p_payload: expect.objectContaining({
+          widthM: 6,
+          depthM: 3,
+          heightM: null,
+          style: 'pitched',
+          roofMaterials: ['acrylic'],
+          baseBudgetLowIncGst: 24_500,
+          baseBudgetHighIncGst: 24_500,
+        }),
+      }),
+    );
+    expect(db.enquiry_requests[0]?.raw_payload).not.toHaveProperty('calculationRef');
+    expect(JSON.stringify(db.enquiry_requests[0]?.raw_payload)).not.toContain(calculationRef);
+    expect(db.estimates[0]?.inputs).toMatchObject({
+      height: 'two_storey',
+      modules: [expect.objectContaining({
+        lengthM: '6',
+        projectionM: '3',
+        houseConnectionType: 'soffit',
+      })],
+      frozenSimpleCoverSiteInputs: siteInputs,
+    });
+    expect(db.estimates[0]?.outputs).toMatchObject({
+      totals: siteOutput.totals,
+      frozenSimpleCoverSiteOutput: siteOutput,
+    });
+    expect(db.estimates[0]?.configVersions).toEqual({ costingControl: provenance });
+    expect(db.estimates[0]?.derived).toMatchObject({
+      pricingSource: 'simple_cover_calculator_verified',
+    });
+    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[0]).toMatchObject({
+      widthM: 6,
+      depthM: 3,
+      heightM: 0,
+      style: 'Pitched',
+      roof: 'Acrylic',
+      baseRange: { lowIncGst: 24_500, highIncGst: 24_500 },
+      simpleCoverEstimate: { level: 'elevated', connection: 'soffit' },
+    });
+    const leadEvents = db.audit_events.filter((event) => event.type === 'marketing.lead_submitted');
+    expect(leadEvents).toHaveLength(1);
+    expect(leadEvents[0]?.payload).toMatchObject({
+      pricing_source: 'simple_cover_calculator_verified',
+    });
+    expect(JSON.stringify(leadEvents)).not.toContain(calculationRef);
+    expect(JSON.stringify(leadEvents)).not.toContain('24500');
+    expect(JSON.stringify(leadEvents)).not.toContain('widthM');
+  });
+
+  it('submits an invalid Simple calculation reference without synthesizing a replacement price', async () => {
+    const { client, db } = makeDb();
+    h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    (sendCustomerAutoresponder as any).mockClear();
+
+    const response = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        submissionId: SUBMISSION_ID,
+        enquiryType: 'residential',
+        name: 'Fallback Customer',
+        email: 'fallback@example.test',
+        phone: '021000000',
+        suburb: 'Takapuna',
+        dimensions: { widthM: 6, depthM: 3 },
+        style: 'pitched',
+        roofMaterials: ['acrylic'],
+        addOns: {},
+        simpleCoverStatus: 'priced',
+        calculationRef: 'sc1.tampered',
+        source: 'website',
+        page: '/simple-pergolas-auckland',
+        honeypot: '',
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(h.getPublishedCostingConfiguration).not.toHaveBeenCalled();
+    expect(client.rpc).toHaveBeenCalledWith(
+      'marketing_enquiry_intake',
+      expect.objectContaining({
+        p_payload: expect.objectContaining({
+          baseBudgetLowIncGst: null,
+          baseBudgetHighIncGst: null,
+        }),
+      }),
+    );
+    expect(db.enquiry_requests[0]?.raw_payload).not.toHaveProperty('calculationRef');
+    expect(db.estimates[0]?.derived).toMatchObject({
+      pricingSource: 'simple_cover_unpriced',
+    });
+    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[0]).not.toHaveProperty('baseRange');
+    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[0]).not.toHaveProperty('simpleCoverEstimate');
   });
 
   it.each(['residential', 'commercial', 'professional'] as const)(

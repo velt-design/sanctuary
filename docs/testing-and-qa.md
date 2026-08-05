@@ -303,28 +303,37 @@ viewports; one H1; priority hero decoding; self-canonical `noindex,follow`
 metadata; sitemap exclusion; preserved acrylic SEO ownership; zero horizontal
 overflow; desktop/mobile priority hero art direction; homepage priority, header
 and embedded-form context without project detours; fixed-header hero clearance,
-the compact 1024-pixel proof rail; exact desktop hero viewport ownership at
+the calculator immediately after the hero and the ground/elevated comparison
+immediately after the calculator; exact desktop hero viewport ownership at
 1366x768, 1440x900, 1536x864 and 1920x1080; aligned copy, media and image bottom
 edges; at least 24 pixels between the hero headline and supporting paragraph;
 plain and homepage-attributed boundary matrices from 320 to 1440 pixels at
-500-pixel-and-taller short-screen heights; contiguous hero, saved-brief and fit
-sections; contained proof-rail text; fixed-header anchor clearance after
-scrolling; aligned stacked and side-by-side media edges; unclipped visible text;
-both 6-metre Simple cover limits, em dash-free page copy and contained criteria
-headings; approved product-fit copy;
-deck-level and optional-blind qualification; absence of synthetic configurator
-controls; accessible retained-value validation; and a complete JavaScript-disabled
-form fallback.
+500-pixel-and-taller short-screen heights; contiguous hero, calculator, saved
+brief and proof sections; fixed-header anchor clearance; unclipped visible text;
+the approved six-metre projection and four-metre maximum post spacing; real
+published calculator controls rather than synthetic pricing; priced, Custom and
+unavailable continuations; the priced `Request a site measure` handoff without
+an automatic-visit promise; calculator-to-form summary continuity without URL
+state; the mobile-only eyebrow/short calculator heading, compressed hero facts,
+three Sanctuary proof points, hidden standalone inclusions panel, three compact
+option rows and two qualification cards; shared live/fallback Google rating and
+curated-review attribution plus its desktop-side/mobile-below header order;
+restored ground/elevated imagery with equal-ratio stacked mobile cards and
+side-by-side wider cards; removed redundant
+Simple-form questions; optional-blind qualification; accessible retained-value
+validation; and a complete JavaScript-disabled contact-form fallback.
 
 Public Simple cover calculator changes should run
-`npx vitest run packages/costing/src/commercial/customerPricing.test.ts packages/costing/src/engine/rafterLayout.test.ts packages/costing/src/server/publishedConfiguration.test.ts apps/marketing/lib/publishedCostingConfiguration.server.test.ts apps/marketing/lib/simpleCoverCalculator.test.ts apps/marketing/lib/simpleCoverPricing.server.test.ts apps/marketing/app/api/simple-cover-price/route.test.ts apps/marketing/components/simple-cover-calculator/SimpleCoverCalculator.test.tsx test/simple-cover-pricing-parity.test.ts`
+`npx vitest run packages/costing/src/commercial/customerPricing.test.ts packages/costing/src/engine/rafterLayout.test.ts packages/costing/src/server/publishedConfiguration.test.ts apps/marketing/lib/publishedCostingConfiguration.server.test.ts apps/marketing/lib/simpleCoverCalculator.test.ts apps/marketing/lib/simpleCoverPricing.server.test.ts apps/marketing/lib/simpleCoverCalculationRef.server.test.ts apps/marketing/lib/simpleCoverHandoff.test.ts apps/marketing/lib/simpleCoverAnalytics.test.ts apps/marketing/lib/enquiryPricingSnapshot.test.ts apps/marketing/app/api/simple-cover-price/route.test.ts apps/marketing/app/api/enquiry/route.test.ts apps/marketing/components/simple-cover-calculator/SimpleCoverCalculator.test.tsx apps/marketing/app/acrylic-roof-pergolas-auckland/SimpleCoverEnquirySummary.test.tsx apps/marketing/app/acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm.test.tsx test/simple-cover-pricing-parity.test.ts`
 and
-`npx playwright test playwright/marketing.simple-cover-calculator.spec.ts --config=playwright.marketing.config.ts --workers=1`.
+`npx playwright test playwright/marketing.simple-cover-calculator.spec.ts playwright/marketing.simple-pergolas.spec.ts --config=playwright.marketing.config.ts --workers=1`.
 This focused lane proves published-only fail-closed configuration access,
-customer-safe serialization, portal/customer-price parity, 100 mm boundaries,
-four-metre post spacing, Simple-versus-Custom limits, retained inputs,
-accessibility and responsive containment at mobile, tablet, short-laptop and
-desktop sizes.
+customer-safe serialization, authenticated encrypted reference tamper rejection,
+exact historical frozen-result continuity, invalid-reference graceful fallback,
+portal/customer-price parity, 100 mm boundaries, four-metre post spacing,
+Simple-versus-Custom limits, safe closed analytics, retained inputs, accessible
+handoff and responsive containment at mobile, tablet, short-laptop and desktop
+sizes.
 
 Project-page changes should run
 `npx vitest run apps/marketing/app/projects/projectFilters.test.ts apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/app/projects/projectSeo.test.ts apps/marketing/lib/projectDetailNavigation.test.ts apps/marketing/data/projects.claims.test.ts`

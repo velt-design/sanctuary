@@ -54,7 +54,7 @@ type SimpleCoverResultBase = {
   plan: SimpleCoverPlan;
 };
 
-export type SimpleCoverPricedResult = SimpleCoverResultBase & {
+export type FrozenSimpleCoverPricedResult = SimpleCoverResultBase & {
   ok: true;
   status: 'priced';
   price: {
@@ -64,6 +64,11 @@ export type SimpleCoverPricedResult = SimpleCoverResultBase & {
   configuration: {
     versionNumber: number;
   };
+};
+
+export type SimpleCoverPricedResult = FrozenSimpleCoverPricedResult & {
+  /** Opaque server-authenticated reference to the exact frozen calculation. */
+  calculationRef: string;
 };
 
 export type SimpleCoverCustomResult = SimpleCoverResultBase & {
@@ -206,6 +211,7 @@ export function toCustomerSafeSimpleCoverResult(result: SimpleCoverPublicResult)
       },
       price: { ...result.price },
       configuration: { versionNumber: result.configuration.versionNumber },
+      calculationRef: result.calculationRef,
     };
   }
   if (result.status === 'custom') {

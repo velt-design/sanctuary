@@ -175,7 +175,7 @@ describe('guided design conversation model', () => {
       audience: 'home',
       goal: 'straightforward-cover',
       focus: 'daylight',
-    })).toBe('/pergolas-auckland?focus=daylight');
+    })).toBe('/simple-pergolas-auckland?focus=daylight');
     expect(buildGuidedDestinationHref({
       audience: 'home',
       goal: 'outdoor-room',

@@ -1,6 +1,6 @@
 .page {
-  --simple-section-space: clamp(4rem, 6vw, 6rem);
-  --simple-lead-gap: clamp(2.75rem, 4vw, 4.5rem);
+  --simple-section-space: clamp(3.75rem, 5vw, 5rem);
+  --simple-lead-gap: clamp(2.5rem, 3.5vw, 3.75rem);
   overflow-x: clip;
   overflow-y: visible;
 }
@@ -20,6 +20,15 @@
 .page section[id],
 .page h2[id] {
   scroll-margin-top: calc(var(--header-height) + 1.25rem);
+}
+
+.srOnly {
+  width: 1px;
+  height: 1px;
+  position: absolute;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .hero {
@@ -166,16 +175,103 @@
   text-transform: uppercase;
 }
 
-.fit,
+.calculatorSection,
+.boundary,
+.reviews,
+.estimate {
+  border-top: 1px solid var(--color-rule);
+}
+
+.calculatorSection {
+  background: var(--color-surface-elevated);
+}
+
+.levelComparison {
+  padding-block: clamp(3rem, 4vw, 4rem);
+  border-top: 1px solid var(--color-rule);
+  background: var(--color-canvas);
+}
+
+.levelComparisonContainer {
+  width: min(100%, 100rem);
+  max-width: none;
+}
+
+.levelComparisonHeader {
+  max-width: 38rem;
+  display: grid;
+  gap: .9rem;
+  margin-bottom: clamp(1.75rem, 2.5vw, 2.5rem);
+}
+
+.levelComparisonHeader h2 {
+  max-width: 13ch;
+  font-size: clamp(2.5rem, 3.3vw, 3.75rem);
+  line-height: 1;
+}
+
+.levelComparisonGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(.75rem, 1.25vw, 1.25rem);
+}
+
+.levelComparisonGrid figure {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--color-rule);
+  background: var(--color-surface-elevated);
+}
+
+.levelComparisonMedia {
+  position: relative;
+  aspect-ratio: 8 / 5;
+  overflow: hidden;
+  background: var(--color-surface-neutral);
+}
+
+.levelComparisonMedia img {
+  object-fit: cover;
+}
+
+.levelComparisonGrid figure:last-child .levelComparisonMedia img {
+  object-position: 50% 56%;
+}
+
+.levelComparisonGrid figcaption {
+  min-height: 3.25rem;
+  display: flex;
+  padding: .9rem 1.1rem;
+  align-items: center;
+  color: var(--color-text-secondary);
+  font: 650 .66rem/1.35 var(--font-body);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.page :global([data-project-finder-journey-context] > div),
+.page :global([data-guided-journey-context] > div) {
+  gap: clamp(1rem, 2.5vw, 2.5rem);
+  padding-block: clamp(1.35rem, 2.2vw, 2rem);
+}
+
+.page :global([data-project-finder-journey-context] h2),
+.page :global([data-guided-journey-context] h2) {
+  margin-bottom: .45rem;
+  font-size: clamp(1.4rem, 2.2vw, 2.15rem);
+  line-height: 1.04;
+}
+
+.page :global([data-project-finder-journey-context] p),
+.page :global([data-guided-journey-context] p) {
+  font-size: clamp(.84rem, 1vw, .96rem);
+  line-height: 1.48;
+}
+
 .boundary,
 .reviews,
 .estimate {
   padding-block: var(--simple-section-space);
-  border-top: 1px solid var(--color-rule);
-}
-
-.fit {
-  background: var(--color-surface-elevated);
 }
 
 .sectionIntro {
@@ -201,99 +297,11 @@
   color: var(--color-text-secondary);
 }
 
-.fitLevels {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-top: 1px solid var(--color-rule-strong);
-  border-left: 1px solid var(--color-rule);
-}
-
-.fitLevels article {
-  min-height: clamp(18rem, 30vw, 29rem);
-  display: grid;
-  padding: clamp(1.5rem, 3.5vw, 3.5rem);
-  grid-template-rows: auto 1fr auto;
-  border-right: 1px solid var(--color-rule);
-  border-bottom: 1px solid var(--color-rule);
-}
-
-.fitLevels span,
-.fitCriteria span {
-  color: var(--color-text-subtle);
-  font: 600 .68rem/1.35 var(--font-body);
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.fitLevels strong {
-  align-self: center;
-  font: 450 clamp(7rem, 16vw, 15rem)/.72 var(--font-display);
-  letter-spacing: -.085em;
-}
-
-.fitLevels p {
-  margin-bottom: 0;
-  font: 500 clamp(1.05rem, 1.7vw, 1.4rem)/1.2 var(--font-display);
-}
-
-.fitCriteria {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-top: clamp(2rem, 3vw, 3rem);
-  border-top: 1px solid var(--color-rule-strong);
-  border-left: 1px solid var(--color-rule);
-}
-
-.fitCriteria article {
-  min-height: 16rem;
-  display: flex;
-  padding: clamp(1.35rem, 2.5vw, 2.25rem);
-  flex-direction: column;
-  border-right: 1px solid var(--color-rule);
-  border-bottom: 1px solid var(--color-rule);
-}
-
-.fitCriteria h3 {
-  margin: auto 0 .9rem;
-  font: 500 clamp(1.5rem, 1.8vw, 2rem)/1.04 var(--font-display);
-  letter-spacing: -.035em;
-}
-
-.fitCriteria p {
-  margin-bottom: 0;
-  color: var(--color-text-secondary);
-  font: 400 .83rem/1.6 var(--font-body);
-}
-
-.fitMedia {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--grid-gap);
-  margin-top: var(--grid-gap);
-}
-
-.fitMedia figure {
-  position: relative;
-  min-height: min(45vw, 40rem);
-  overflow: hidden;
-  background: var(--color-surface-neutral);
-}
-
-.fitMedia img,
 .standardMedia img,
 .optionsMedia img {
   object-fit: cover;
 }
 
-.fitMedia figure:first-child img {
-  object-position: 50% 48%;
-}
-
-.fitMedia figure:last-child img {
-  object-position: 50% 54%;
-}
-
-.fitMedia figcaption,
 .standardMedia > span {
   position: absolute;
   right: 1.25rem;
@@ -307,13 +315,6 @@
   text-transform: uppercase;
 }
 
-.fitCaveat {
-  max-width: 59rem;
-  margin: 1.5rem 0 0 auto;
-  color: var(--color-text-subtle);
-  font: 400 .72rem/1.65 var(--font-body);
-}
-
 .standard {
   display: grid;
   grid-template-columns: minmax(0, 1.14fr) minmax(25rem, .86fr);
@@ -323,7 +324,7 @@
 
 .standardMedia {
   position: relative;
-  min-height: min(82vw, 61rem);
+  min-height: min(68vw, 50rem);
   overflow: hidden;
   background: var(--color-surface-neutral);
 }
@@ -430,7 +431,7 @@
 
 .optionsMedia {
   position: relative;
-  min-height: min(62vw, 50rem);
+  min-height: min(52vw, 44rem);
   overflow: hidden;
   background: rgba(255, 255, 255, .08);
 }
@@ -486,7 +487,7 @@
 }
 
 .boundaryGrid article {
-  min-height: 28rem;
+  min-height: 24rem;
   display: flex;
   padding: clamp(1.75rem, 4vw, 4rem);
   flex-direction: column;
@@ -522,53 +523,149 @@
 
 .reviewsHeader {
   display: grid;
-  grid-template-columns: minmax(10rem, .45fr) minmax(0, 1.55fr);
-  gap: clamp(2rem, 8vw, 8rem);
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: end;
   margin-bottom: var(--simple-lead-gap);
 }
 
+.reviewsTitleGroup {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
 .reviewsHeader h2 {
-  max-width: 14ch;
+  max-width: 13ch;
+  font-size: clamp(2.75rem, 4.2vw, 4.75rem);
+  line-height: .98;
+}
+
+.googleTrust {
+  width: fit-content;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: .3rem .65rem;
+  align-items: center;
+  justify-self: end;
+  margin-bottom: .15rem;
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.googleTrust > .googleMark {
+  width: 1.3rem;
+  height: 1.3rem;
+  grid-row: 1 / 3;
+}
+
+.googleTrust > span:nth-child(2) {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+}
+
+.googleTrust strong {
+  font: 560 1.15rem/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+
+.googleTrust > span:last-child {
+  color: var(--color-text-subtle);
+  font: 600 .63rem/1.2 var(--font-body);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.googleTrust:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 4px;
+}
+
+.googleMark {
+  width: .9rem;
+  height: .9rem;
+  flex: 0 0 auto;
+}
+
+.reviewStars {
+  color: #e7a612;
+  font: 650 .75rem/1 var(--font-body);
+  letter-spacing: .08em;
 }
 
 .reviewGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-top: 1px solid var(--color-rule-strong);
-  border-left: 1px solid var(--color-rule);
+  gap: clamp(.75rem, 1.25vw, 1.25rem);
 }
 
 .reviewGrid figure {
-  min-height: clamp(23rem, 32vw, 32rem);
+  position: relative;
+  min-height: clamp(20rem, 24vw, 23.5rem);
   display: flex;
-  padding: clamp(1.75rem, 4vw, 4rem);
+  padding: clamp(1.75rem, 3.2vw, 3rem);
   flex-direction: column;
-  border-right: 1px solid var(--color-rule);
-  border-bottom: 1px solid var(--color-rule);
+  overflow: hidden;
+  border: 1px solid var(--color-rule);
+  background: color-mix(in srgb, var(--color-surface-elevated) 60%, transparent);
+}
+
+.reviewQuote {
+  position: absolute;
+  top: -.35rem;
+  right: 1rem;
+  color: rgba(17, 18, 16, .055);
+  font: 400 clamp(5.5rem, 8vw, 8rem)/1 Georgia, serif;
+  pointer-events: none;
 }
 
 .reviewGrid blockquote {
-  margin-bottom: 3rem;
-  font: 450 clamp(1.65rem, 3vw, 3.2rem)/1.08 var(--font-display);
-  letter-spacing: -.04em;
+  max-width: 31ch;
+  margin: clamp(1.5rem, 2.5vw, 2.25rem) 0 clamp(2.25rem, 4vw, 3.25rem);
+  font: 450 clamp(1.3rem, 1.85vw, 1.85rem)/1.36 var(--font-display);
+  letter-spacing: -.025em;
 }
 
 .reviewGrid figcaption {
-  display: grid;
-  gap: .35rem;
+  display: flex;
+  gap: .85rem;
+  align-items: center;
   margin-top: auto;
+}
+
+.reviewAvatar {
+  width: 2.7rem;
+  height: 2.7rem;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(17, 18, 16, .07);
+  color: var(--color-text-primary);
+  font: 650 .72rem/1 var(--font-body);
+  letter-spacing: .025em;
+}
+
+.reviewAuthor {
+  min-width: 0;
+  display: grid;
+  gap: .3rem;
 }
 
 .reviewGrid figcaption strong {
   font: 600 .85rem/1.3 var(--font-body);
 }
 
-.reviewGrid figcaption span {
+.reviewAuthor > span {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
   color: var(--color-text-subtle);
-  font: 600 .62rem/1.3 var(--font-body);
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font: 500 .68rem/1.3 var(--font-body);
 }
 
 .estimate {
@@ -601,14 +698,6 @@
     font-size: clamp(3.5rem, 6.5vw, 5.8rem);
   }
 
-  .fitCriteria {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .fitCriteria article {
-    min-height: 13rem;
-  }
-
   .standard {
     grid-template-columns: minmax(0, 1fr) minmax(24rem, .92fr);
   }
@@ -617,8 +706,8 @@
 @media (max-width: 900px) {
   .page {
     --header-height: 64px;
-    --simple-section-space: clamp(4.25rem, 8vw, 5rem);
-    --simple-lead-gap: clamp(2.5rem, 6vw, 3.5rem);
+    --simple-section-space: clamp(3.75rem, 7vw, 4.5rem);
+    --simple-lead-gap: clamp(2.25rem, 5vw, 3rem);
   }
 
   .hero {
@@ -682,6 +771,11 @@
     gap: 1.5rem;
   }
 
+  .googleTrust {
+    justify-self: start;
+    margin-bottom: 0;
+  }
+
   .estimate :global(.acrylic-form__intro) {
     position: static;
   }
@@ -689,12 +783,12 @@
 
 @media (max-width: 720px) {
   .page {
-    --simple-section-space: 4rem;
-    --simple-lead-gap: 2.5rem;
+    --simple-section-space: 3.25rem;
+    --simple-lead-gap: 1.75rem;
   }
 
   .heroMedia {
-    min-height: 60svh;
+    min-height: 54svh;
   }
 
   .heroCopy {
@@ -718,77 +812,208 @@
     width: 100%;
   }
 
+  .heroFacts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+    margin-top: 2rem;
+    padding-top: 1.2rem;
+  }
+
+  .heroFacts > div:first-child {
+    display: none;
+  }
+
+  .heroFacts dt {
+    margin-bottom: .3rem;
+    font-size: .58rem;
+  }
+
+  .heroFacts dd {
+    font-size: .98rem;
+  }
+
+  .levelComparison {
+    padding-block: 2.75rem;
+  }
+
+  .levelComparisonHeader {
+    gap: .7rem;
+    margin-bottom: 1.35rem;
+  }
+
+  .levelComparisonHeader h2 {
+    font-size: clamp(2rem, 10vw, 2.8rem);
+  }
+
+  .levelComparisonGrid {
+    grid-template-columns: 1fr;
+    gap: .75rem;
+  }
+
+  .levelComparisonMedia {
+    aspect-ratio: 4 / 3;
+  }
+
   .sectionIntro {
     gap: 1.5rem;
   }
 
-  .fitLevels,
-  .fitMedia,
   .boundaryGrid,
   .reviewGrid {
     grid-template-columns: 1fr;
   }
 
-  .fitLevels article {
-    min-height: clamp(14.5rem, 62vw, 16rem);
-  }
-
-  .fitLevels strong {
-    font-size: clamp(7rem, 37vw, 9rem);
-  }
-
-  .fitCriteria {
-    grid-template-columns: 1fr;
-  }
-
-  .fitCriteria article {
+  .standardMedia,
+  .optionsMedia {
     min-height: 0;
   }
 
-  .fitCriteria h3 {
-    margin-top: 2rem;
+  .standardMedia {
+    min-height: 72vw;
   }
 
-  .fitMedia figure {
-    min-height: 84vw;
-  }
-
-  .fitCaveat {
-    margin-left: 0;
-  }
-
-  .standardMedia,
   .optionsMedia {
-    min-height: 105vw;
+    min-height: 66vw;
   }
 
   .standardCopy {
     padding-block: var(--simple-section-space);
   }
 
+  .standardCopy > p,
+  .standardList li p,
+  .inclusions {
+    display: none;
+  }
+
+  .standardCopy > h2 {
+    margin-bottom: 0;
+  }
+
+  .standardList {
+    margin-top: 1.75rem;
+  }
+
   .standardList li,
   .optionList article {
-    grid-template-columns: 1.75rem minmax(0, 1fr);
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 1rem 0;
+  }
+
+  .standardList li {
+    grid-template-columns: .65rem minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .standardList li::before {
+    content: '';
+    width: .28rem;
+    height: .28rem;
+    display: block;
+    border-radius: 50%;
+    background: var(--color-text-primary);
+  }
+
+  .standardList li > span,
+  .optionList article > span,
+  .optionList small {
+    display: none;
+  }
+
+  .standardList h3,
+  .optionList h3 {
+    margin-bottom: 0;
+    font-size: 1.05rem;
+    line-height: 1.2;
+  }
+
+  .optionList h3 {
+    margin-bottom: .3rem;
+  }
+
+  .optionList p {
+    font-size: .76rem;
+    line-height: 1.48;
   }
 
   .optionsGrid {
-    gap: 2.75rem;
+    gap: 2.25rem;
+  }
+
+  .optionsCopy > h2 {
+    margin-bottom: 1.5rem;
   }
 
   .boundaryGrid article {
     min-height: 0;
+    padding: 1.5rem;
+  }
+
+  .boundary .sectionIntro {
+    margin-bottom: 1.5rem;
+  }
+
+  .boundary .sectionIntro h2 {
+    font-size: clamp(2.25rem, 11vw, 3rem);
+  }
+
+  .boundary .sectionIntro > p {
+    font-size: .8rem;
+    line-height: 1.5;
+  }
+
+  .boundaryGrid h3 {
+    max-width: none;
+    margin: 1.15rem 0 .85rem;
+    font-size: 1.55rem;
+    line-height: 1.05;
+  }
+
+  .boundaryGrid ul {
+    gap: .5rem;
+    margin-bottom: 1.25rem;
+    font-size: .76rem;
+    line-height: 1.48;
+  }
+
+  .boundaryGrid :is(a) {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
   }
 
   .reviewGrid figure {
     min-height: 0;
+    padding: clamp(1.35rem, 6vw, 1.75rem);
   }
 
   .reviewGrid blockquote {
-    margin-bottom: clamp(3rem, 12vw, 4rem);
+    max-width: 30ch;
+    margin: 1.35rem 0 2rem;
+    font-size: clamp(1.2rem, 5.5vw, 1.4rem);
+    line-height: 1.4;
   }
 
   .reviewGrid figcaption {
     margin-top: 0;
+  }
+
+  .reviewsHeader {
+    gap: 1.25rem;
+  }
+
+  .reviewsTitleGroup {
+    gap: .8rem;
+  }
+
+  .reviewsHeader h2 {
+    font-size: clamp(2.25rem, 10vw, 3rem);
+    line-height: 1;
+  }
+
+  .reviewGrid {
+    gap: .75rem;
   }
 
   .estimate :global(.acrylic-form) {
@@ -807,21 +1032,32 @@
 
 @media (max-width: 380px) {
   .heroMedia {
-    min-height: 55svh;
+    min-height: 50svh;
   }
 
   .heroTitle {
     font-size: 3.15rem;
   }
 
-  .fitLevels article {
-    min-height: 14.5rem;
+  .standardList li {
+    grid-template-columns: .65rem minmax(0, 1fr);
+    gap: 0;
   }
 
-  .standardList li,
   .optionList article {
-    grid-template-columns: 1.45rem minmax(0, 1fr);
-    gap: .75rem;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+@media (max-width: 720px) and (max-height: 700px) {
+  .heroMedia {
+    min-height: 46svh;
+  }
+
+  .heroCopy {
+    padding-top: 2.75rem;
+    padding-bottom: 2.5rem;
   }
 }
 

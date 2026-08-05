@@ -4,11 +4,14 @@ import Link from 'next/link';
 import {
   type CSSProperties,
   type ChangeEvent,
+  type MouseEvent as ReactMouseEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+import { useConsent } from '@/components/ConsentProvider';
 import {
   SIMPLE_COVER_DEFAULT_PROJECTION_MM,
   SIMPLE_COVER_DEFAULT_WIDTH_MM,
@@ -35,6 +38,20 @@ import {
   type SimpleCoverLevel,
   type SimpleCoverPublicResult,
 } from '@/lib/simpleCoverCalculator';
+import {
+  readStoredSimpleCoverHandoff,
+  storeSimpleCoverHandoff,
+  type SimpleCoverHandoff,
+} from '@/lib/simpleCoverHandoff';
+import {
+  getSimpleCoverViewportCategory,
+  pushSimpleCoverFunnelEvent,
+  type SimpleCoverFunnelEventName,
+  type SimpleCoverFunnelProperties,
+  type SimpleCoverPlacement,
+  type SimpleCoverResultStatus,
+  type SimpleCoverSourcePath,
+} from '../../lib/simpleCoverAnalytics';
 import styles from './SimpleCoverCalculator.module.css';
 
 const PRICE_DEBOUNCE_MS = 180;
@@ -48,6 +65,21 @@ type PlanFootprintStyle = CSSProperties & {
 type RangeControlStyle = CSSProperties & {
   '--range-progress': string;
 };
+
+export type SimpleCoverCalculatorProps = {
+  className?: string;
+  placement?: SimpleCoverPlacement;
+  onContinue?: (handoff: SimpleCoverHandoff) => void;
+  continuationHref?: string;
+};
+
+const DEFAULT_CONTINUATION_HREF = '/simple-pergolas-auckland#initial-estimate';
+
+function sourcePathForPlacement(placement: SimpleCoverPlacement): SimpleCoverSourcePath {
+  return placement === 'embedded'
+    ? '/simple-pergolas-auckland'
+    : '/simple-cover-calculator';
+}
 
 function formatMetres(mm: number): string {
   return `${(mm / 1_000).toFixed(1)} m`;
@@ -73,6 +105,29 @@ function currentResultMatches(result: SimpleCoverPublicResult | null, input: Sim
     && result.input.projectionMm === input.projectionMm
     && result.input.level === input.level
     && result.input.connection === input.connection,
+  );
+}
+
+function currentResultStatus(
+  result: SimpleCoverPublicResult | null,
+  input: SimpleCoverInput,
+  pending: boolean,
+): SimpleCoverResultStatus {
+  if (pending || !result) return 'pending';
+  if (result.status === 'unavailable' || result.status === 'invalid') return 'unavailable';
+  return currentResultMatches(result, input) ? result.status : 'pending';
+}
+
+function calculationIsAttached(
+  result: SimpleCoverPublicResult | null,
+  input: SimpleCoverInput,
+  pending: boolean,
+): boolean {
+  return Boolean(
+    !pending
+    && result?.status === 'priced'
+    && currentResultMatches(result, input)
+    && result.calculationRef,
   );
 }
 
@@ -190,7 +245,7 @@ function CompactPricingSummary({
   if (result?.status === 'priced') {
     state = isCurrent ? 'priced' : 'updating';
     label = isCurrent ? 'Live estimate' : 'Updating estimate';
-    value = `From ${formatPrice(result.price.fromIncGst)}`;
+    value = isCurrent ? `From ${formatPrice(result.price.fromIncGst)}` : 'Updating…';
   } else if (isCurrent && result?.status === 'custom') {
     state = 'custom';
     label = 'Project scope';
@@ -370,13 +425,17 @@ function PricingResult({
   input,
   result,
   pending,
+  continuationHref,
+  onContinue,
 }: {
   input: SimpleCoverInput;
   result: SimpleCoverPublicResult | null;
   pending: boolean;
+  continuationHref: string;
+  onContinue: (event: ReactMouseEvent<HTMLAnchorElement>, handoff: SimpleCoverHandoff) => void;
 }) {
   const isCurrent = currentResultMatches(result, input);
-  const visibleResult = result && (isCurrent || result.status === 'unavailable' || result.status === 'invalid')
+  const visibleResult = !pending && result && (isCurrent || result.status === 'unavailable' || result.status === 'invalid')
     ? result
     : null;
 
@@ -384,22 +443,52 @@ function PricingResult({
     return (
       <div className={`${styles.resultCard} ${styles.customCard}`} data-result-state="custom">
         <span className={styles.resultEyebrow}>Custom design recommended</span>
-        <h3>Let’s resolve this one around your site.</h3>
+        <h3>This one needs a Custom design.</h3>
         <p>{visibleResult.reason}</p>
-        <p className={styles.customNote}>Your dimensions have been kept. We’ll use them as the starting point for a tailored design.</p>
-        <Link className={styles.resultLink} href={visibleResult.continuation.href}>
-          {visibleResult.continuation.label}
-        </Link>
+        <p className={styles.customNote}>Continue with these selections for a site-specific review, or explore Sanctuary’s Custom design service.</p>
+        <div className={styles.resultActions}>
+          <Link
+            className={styles.resultLink}
+            href={continuationHref}
+            onClick={(event) => onContinue(event, {
+              schemaVersion: 'simple-cover-handoff.v1',
+              status: 'custom',
+              input: { ...input },
+              calculationRef: null,
+              displayedPriceIncGst: null,
+              configurationVersion: null,
+            })}
+          >
+            Ask Sanctuary to review these selections
+          </Link>
+          <Link className={styles.quietResultLink} href="/custom-pergolas-auckland">
+            Explore Custom design
+          </Link>
+        </div>
       </div>
     );
   }
 
-  if (visibleResult?.status === 'priced') {
+  if (visibleResult?.status === 'priced' && !pending && visibleResult.calculationRef) {
     return (
       <div className={styles.resultCard} data-result-state="priced">
         <span className={styles.resultEyebrow}>Initial installed estimate</span>
         <p className={styles.price} data-result-price>From {formatPrice(visibleResult.price.fromIncGst)}</p>
         <p className={styles.inclusion}>GST and standard installation included.</p>
+        <Link
+          className={`${styles.resultLink} ${styles.primaryResultLink}`}
+          href={continuationHref}
+          onClick={(event) => onContinue(event, {
+            schemaVersion: 'simple-cover-handoff.v1',
+            status: 'priced',
+            input: { ...input },
+            calculationRef: visibleResult.calculationRef,
+            displayedPriceIncGst: visibleResult.price.fromIncGst,
+            configurationVersion: visibleResult.configuration.versionNumber,
+          })}
+        >
+          Request a site measure
+        </Link>
         <div className={styles.resultMeta}>
           <span>Live pricing set v{visibleResult.configuration.versionNumber}</span>
           <span>{formatArea(visibleResult.areaM2)}</span>
@@ -415,6 +504,22 @@ function PricingResult({
         <span className={styles.resultEyebrow}>Estimate unavailable</span>
         <h3>Your design is still here.</h3>
         <p>{visibleResult.message}</p>
+        {!pending ? (
+          <Link
+            className={styles.resultLink}
+            href={continuationHref}
+            onClick={(event) => onContinue(event, {
+              schemaVersion: 'simple-cover-handoff.v1',
+              status: 'unavailable',
+              input: { ...input },
+              calculationRef: null,
+              displayedPriceIncGst: null,
+              configurationVersion: null,
+            })}
+          >
+            Send these selections for review
+          </Link>
+        ) : null}
       </div>
     );
   }
@@ -428,7 +533,13 @@ function PricingResult({
   );
 }
 
-export default function SimpleCoverCalculator({ className = '' }: { className?: string }) {
+export default function SimpleCoverCalculator({
+  className = '',
+  placement = 'standalone',
+  onContinue,
+  continuationHref = DEFAULT_CONTINUATION_HREF,
+}: SimpleCoverCalculatorProps) {
+  const { consent } = useConsent();
   const [input, setInput] = useState<SimpleCoverInput>({
     widthMm: SIMPLE_COVER_DEFAULT_WIDTH_MM,
     projectionMm: SIMPLE_COVER_DEFAULT_PROJECTION_MM,
@@ -437,11 +548,71 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
   });
   const [result, setResult] = useState<SimpleCoverPublicResult | null>(null);
   const [pending, setPending] = useState(true);
+  const [inputReady, setInputReady] = useState(placement === 'standalone');
   const requestSequence = useRef(0);
+  const trackedViewRef = useRef(false);
+  const firstInteractionRef = useRef(false);
+  const lastTrackedResultStatusRef = useRef<SimpleCoverResultStatus | null>(null);
   const customResult = useMemo(() => getSimpleCoverCustomResult(input), [input]);
   const areaM2 = simpleCoverAreaM2(input);
+  const resultStatus = currentResultStatus(result, input, pending);
+  const resultPending = resultStatus === 'pending';
+  const hasCalculation = calculationIsAttached(result, input, pending);
+  const sourcePath = sourcePathForPlacement(placement);
+
+  const analyticsProperties = useCallback((
+    status: SimpleCoverResultStatus = resultStatus,
+    calculationAttached: boolean = hasCalculation,
+  ): SimpleCoverFunnelProperties => ({
+    placement,
+    result_status: status,
+    source_path: sourcePath,
+    viewport_category: getSimpleCoverViewportCategory(window.innerWidth),
+    calculation_attached: calculationAttached,
+  }), [hasCalculation, placement, resultStatus, sourcePath]);
+
+  const trackEvent = useCallback((event: SimpleCoverFunnelEventName) => {
+    if (!consent.analytics) return;
+    pushSimpleCoverFunnelEvent(event, analyticsProperties());
+  }, [analyticsProperties, consent.analytics]);
+
+  const trackFirstInteraction = useCallback(() => {
+    if (firstInteractionRef.current) return;
+    firstInteractionRef.current = true;
+    trackEvent('simple_calculator_first_interaction');
+  }, [trackEvent]);
 
   useEffect(() => {
+    if (placement !== 'embedded') {
+      setInputReady(true);
+      return;
+    }
+
+    if (window.location.hash === '#initial-estimate') {
+      const storedHandoff = readStoredSimpleCoverHandoff();
+      if (storedHandoff) setInput(storedHandoff.input);
+    }
+    setInputReady(true);
+  }, [placement]);
+
+  useEffect(() => {
+    if (!consent.analytics || trackedViewRef.current) return;
+    trackedViewRef.current = true;
+    pushSimpleCoverFunnelEvent('simple_calculator_view', analyticsProperties());
+  }, [analyticsProperties, consent.analytics]);
+
+  useEffect(() => {
+    if (resultStatus === 'pending' || lastTrackedResultStatusRef.current === resultStatus) return;
+    lastTrackedResultStatusRef.current = resultStatus;
+    if (!consent.analytics) return;
+    pushSimpleCoverFunnelEvent(
+      'simple_calculator_result_view',
+      analyticsProperties(resultStatus, hasCalculation),
+    );
+  }, [analyticsProperties, consent.analytics, hasCalculation, resultStatus]);
+
+  useEffect(() => {
+    if (!inputReady) return;
     const sequence = ++requestSequence.current;
     if (customResult) {
       setResult(customResult);
@@ -479,7 +650,7 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [customResult, input]);
+  }, [customResult, input, inputReady]);
 
   function setDimension(key: DimensionKey, value: number) {
     setInput((current) => ({ ...current, [key]: value }));
@@ -493,17 +664,64 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
     setInput((current) => ({ ...current, connection }));
   }
 
+  function continueWithHandoff(
+    event: ReactMouseEvent<HTMLAnchorElement>,
+    handoff: SimpleCoverHandoff,
+  ) {
+    trackFirstInteraction();
+    storeSimpleCoverHandoff(handoff);
+    if (consent.analytics) {
+      pushSimpleCoverFunnelEvent(
+        'simple_calculator_cta_click',
+        analyticsProperties(
+          handoff.status,
+          handoff.status === 'priced' && Boolean(handoff.calculationRef),
+        ),
+      );
+    }
+    if (onContinue) {
+      event.preventDefault();
+      onContinue(handoff);
+    }
+  }
+
   return (
-    <section className={`${styles.calculator} ${className}`.trim()} aria-labelledby="simple-cover-calculator-title" data-simple-cover-calculator>
-      <header className={styles.intro}>
+    <section
+      className={`${styles.calculator} ${className}`.trim()}
+      aria-labelledby="simple-cover-calculator-title"
+      data-simple-cover-calculator
+      data-placement={placement}
+    >
+      <header className={`${styles.intro} ${placement === 'embedded' ? styles.embeddedIntro : ''}`.trim()}>
         <div>
           <p className={styles.eyebrow}>Simple cover calculator</p>
-          <h2 id="simple-cover-calculator-title">Shape the cover. See the plan and price together.</h2>
+          <h2 id="simple-cover-calculator-title">
+            {placement === 'embedded'
+              ? (
+                <>
+                  <span className={styles.embeddedDesktopTitle}>
+                    Set the footprint. See the installed estimate.
+                  </span>
+                  <span className={styles.embeddedMobileTitle}>
+                    Price your Simple cover.
+                  </span>
+                </>
+              )
+              : 'Shape the cover. See the plan and price together.'}
+          </h2>
         </div>
-        <p>Adjust the footprint and deck level. The estimate follows the same published costing configuration used by our staff calculator.</p>
+        <p>
+          {placement === 'embedded'
+            ? 'Choose the dimensions, deck level and house connection. Your live estimate and concept plan update together.'
+            : 'Adjust the footprint and deck level. The estimate follows the same published costing configuration used by our staff calculator.'}
+        </p>
       </header>
 
-      <form className={styles.workspace} onSubmit={(event) => event.preventDefault()}>
+      <form
+        className={styles.workspace}
+        onSubmit={(event) => event.preventDefault()}
+        onChangeCapture={trackFirstInteraction}
+      >
         <div className={styles.stageShell} data-calculator-stage-shell>
           <div className={styles.focusRunway} data-calculator-focus-runway>
             <div className={styles.mobileStage} data-calculator-mobile-stage>
@@ -566,7 +784,13 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
         </div>
 
         <div className={styles.resultRegion} aria-live="polite" aria-atomic="true">
-          <PricingResult input={input} result={result} pending={pending} />
+          <PricingResult
+            input={input}
+            result={result}
+            pending={resultPending}
+            continuationHref={continuationHref}
+            onContinue={continueWithHandoff}
+          />
         </div>
       </form>
     </section>

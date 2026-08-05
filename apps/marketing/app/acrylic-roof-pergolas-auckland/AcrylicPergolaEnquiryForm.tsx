@@ -18,7 +18,9 @@ import {
   type EnquiryFormFieldErrors,
 } from '@/lib/enquiryFormContract';
 import { getEnquiryAnalyticsProperties, getEnquiryContextProperties, type EnquiryAudience, type EnquiryContext } from '@/lib/enquiryContext';
+import type { SimpleCoverHandoff } from '@/lib/simpleCoverHandoff';
 import type { EnquiryBriefField } from '@/components/seo-landing/types';
+import SimpleCoverEnquirySummary from './SimpleCoverEnquirySummary';
 
 type AcrylicPergolaEnquiryFormProps = {
   eyebrow?: string;
@@ -47,6 +49,8 @@ type AcrylicPergolaEnquiryFormProps = {
       roofMaterials: ReadonlyArray<string>;
     }>;
   };
+  variant?: 'default' | 'simple-cover';
+  simpleCoverEstimate?: SimpleCoverHandoff | null;
 };
 
 const pergolaForms = [
@@ -132,6 +136,28 @@ function fieldErrorId(field: EnquiryFormField): string {
   return `acrylic-enquiry-${field}-error`;
 }
 
+function EnquiryMessageField({
+  label,
+  placeholder,
+}: {
+  label: string;
+  placeholder: string;
+}) {
+  return (
+    <div className="acrylic-form__field acrylic-form__field--wide">
+      <label htmlFor="acrylic-enquiry-message">
+        {label} <span>Optional</span>
+      </label>
+      <textarea
+        id="acrylic-enquiry-message"
+        name="message"
+        rows={5}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
 const fieldTargets: Record<EnquiryFormField, string> = {
   enquiryType: 'acrylic-enquiry-type',
   name: 'acrylic-enquiry-name',
@@ -158,7 +184,10 @@ export default function AcrylicPergolaEnquiryForm({
   initialEnquiryType,
   sourceContext = {},
   roofPreference = acrylicRoofPreference,
+  variant = 'default',
+  simpleCoverEstimate = null,
 }: AcrylicPergolaEnquiryFormProps = {}) {
+  const isSimpleCover = variant === 'simple-cover';
   const {
     consent,
     hasTrackingDecision,
@@ -166,7 +195,9 @@ export default function AcrylicPergolaEnquiryForm({
     trackingRegionPolicy,
   } = useConsent();
   const [isEnhanced, setIsEnhanced] = useState(false);
-  const [enquiryType, setEnquiryType] = useState<EnquiryAudience | null>(initialEnquiryType ?? sourceContext.enquiryType ?? null);
+  const [enquiryType, setEnquiryType] = useState<EnquiryAudience | null>(
+    isSimpleCover ? 'residential' : initialEnquiryType ?? sourceContext.enquiryType ?? null,
+  );
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<EnquiryFormFieldErrors>({});
   const [submitState, setSubmitState] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
@@ -258,7 +289,9 @@ export default function AcrylicPergolaEnquiryForm({
       const attachments = await uploadEnquiryAttachments(files, submissionId);
       const selectedPriorities = formData.getAll('priorities').map(String);
       const selectedAccessories = formData.getAll('accessories').map(String);
-      const selectedRoofPreference = String(formData.get('roofPreference') ?? '');
+      const selectedRoofPreference = isSimpleCover
+        ? 'Pitched acrylic'
+        : String(formData.get('roofPreference') ?? '');
       const selectedRoofOption = roofPreference.options.find((option) => option.value === selectedRoofPreference);
       const attribution = getBrowserMarketingAttribution({
         consent,
@@ -273,10 +306,15 @@ export default function AcrylicPergolaEnquiryForm({
         acrylicInfillPanels: selectedAccessories.includes('Acrylic infill panels'),
         other: selectedAccessories.includes('Other'),
       };
-      const roofMaterials = selectedRoofOption ? [...selectedRoofOption.roofMaterials] : [];
+      const roofMaterials = isSimpleCover
+        ? ['acrylic']
+        : selectedRoofOption ? [...selectedRoofOption.roofMaterials] : [];
 
-      const preferredStyle = String(formData.get('style') ?? '');
+      const preferredStyle = isSimpleCover ? 'pitched' : String(formData.get('style') ?? '');
       const pageSpecificDetails = Object.fromEntries(briefFields.map((field) => [field.name, String(formData.get(field.name) ?? '').trim() || null]));
+      const simpleCoverInput = simpleCoverEstimate?.input ?? null;
+      const hasPricedSimpleCoverReference = simpleCoverEstimate?.status === 'priced'
+        && Boolean(simpleCoverEstimate.calculationRef);
       const response = await fetch('/api/enquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -290,13 +328,23 @@ export default function AcrylicPergolaEnquiryForm({
           suburb: String(formData.get('suburb') ?? '').trim(),
           message: String(formData.get('message') ?? '').trim(),
           dimensions: {
-            widthM: String(formData.get('widthM') ?? '').trim() || null,
-            depthM: String(formData.get('depthM') ?? '').trim() || null,
-            heightM: String(formData.get('heightM') ?? '').trim() || null,
+            widthM: simpleCoverInput && !hasPricedSimpleCoverReference
+              ? simpleCoverInput.widthMm / 1_000
+              : isSimpleCover ? null : String(formData.get('widthM') ?? '').trim() || null,
+            depthM: simpleCoverInput && !hasPricedSimpleCoverReference
+              ? simpleCoverInput.projectionMm / 1_000
+              : isSimpleCover ? null : String(formData.get('depthM') ?? '').trim() || null,
+            heightM: isSimpleCover ? null : String(formData.get('heightM') ?? '').trim() || null,
           },
           style: preferredStyle === 'unsure' ? '' : preferredStyle,
           roofMaterials,
           addOns,
+          calculationRef: hasPricedSimpleCoverReference
+            ? simpleCoverEstimate.calculationRef
+            : null,
+          simpleCoverStatus: isSimpleCover
+            ? simpleCoverEstimate?.status ?? 'unconfigured'
+            : null,
           files: attachments.files,
           projectDetails: {
             [roofPreference.detailKey]: selectedRoofPreference || null,
@@ -305,6 +353,16 @@ export default function AcrylicPergolaEnquiryForm({
             accessories: selectedAccessories,
             consentStatus: String(formData.get('consentStatus') ?? '').trim() || null,
             timeframe: String(formData.get('timeframe') ?? '').trim() || null,
+            ...(isSimpleCover ? {
+              simpleCover: simpleCoverInput ? {
+                status: simpleCoverEstimate?.status ?? 'unconfigured',
+                calculationAttached: simpleCoverEstimate?.status === 'priced',
+                ...(!hasPricedSimpleCoverReference ? {
+                  deckLevel: simpleCoverInput.level,
+                  connection: simpleCoverInput.connection,
+                } : {}),
+              } : null,
+            } : {}),
             ...pageSpecificDetails,
           },
           utm: attribution.utm,
@@ -344,7 +402,7 @@ export default function AcrylicPergolaEnquiryForm({
 
   return (
     <form
-      className="acrylic-form"
+      className={`acrylic-form${isSimpleCover ? ' acrylic-form--simple-cover' : ''}`}
       method="post"
       action="/api/enquiry/fallback"
       noValidate={isEnhanced}
@@ -358,6 +416,7 @@ export default function AcrylicPergolaEnquiryForm({
         readOnly
       />
       <input type="hidden" name="source" value="website" readOnly />
+      {isSimpleCover ? <input type="hidden" name="enquiryType" value="residential" readOnly /> : null}
       <input
         type="hidden"
         name="enquiryContext"
@@ -385,9 +444,10 @@ export default function AcrylicPergolaEnquiryForm({
       </div>
 
       <div className="acrylic-form__fields">
+        {isSimpleCover ? <SimpleCoverEnquirySummary estimate={simpleCoverEstimate} /> : null}
         <EnquiryErrorSummary className="acrylic-form__error-summary" id="acrylic-enquiry-error-summary" items={errorSummaryItems} ref={errorSummaryRef} />
 
-        <div className="acrylic-form__field">
+        {!isSimpleCover ? <div className="acrylic-form__field">
           <label htmlFor="acrylic-enquiry-type">
             Project type <span>Required</span>
           </label>
@@ -417,7 +477,7 @@ export default function AcrylicPergolaEnquiryForm({
               {errors.enquiryType}
             </p>
           ) : null}
-        </div>
+        </div> : null}
 
         <div className="acrylic-form__field acrylic-form__field--wide">
           <label htmlFor="acrylic-enquiry-suburb">
@@ -426,12 +486,9 @@ export default function AcrylicPergolaEnquiryForm({
           <input id="acrylic-enquiry-suburb" name="suburb" autoComplete="address-level2" />
         </div>
 
-        <div className="acrylic-form__field acrylic-form__field--wide">
-          <label htmlFor="acrylic-enquiry-message">
-            {messageLabel} <span>Optional</span>
-          </label>
-          <textarea id="acrylic-enquiry-message" name="message" rows={5} placeholder={messagePlaceholder} />
-        </div>
+        {!isSimpleCover ? (
+          <EnquiryMessageField label={messageLabel} placeholder={messagePlaceholder} />
+        ) : null}
 
         <div className="acrylic-form__field">
           <label htmlFor="acrylic-enquiry-name">
@@ -499,6 +556,10 @@ export default function AcrylicPergolaEnquiryForm({
           ) : null}
         </div>
 
+        {isSimpleCover ? (
+          <EnquiryMessageField label={messageLabel} placeholder={messagePlaceholder} />
+        ) : null}
+
         <div className="acrylic-form__field acrylic-form__field--wide">
           <label htmlFor="acrylic-enquiry-files">
             Photos, plans or sketches <span>Optional</span>
@@ -549,9 +610,9 @@ export default function AcrylicPergolaEnquiryForm({
         </div>
 
         <details className="acrylic-form__optional acrylic-form__field--wide">
-          <summary>Add optional project details</summary>
+          <summary>{isSimpleCover ? 'Add optional preferences' : 'Add optional project details'}</summary>
           <div className="acrylic-form__optional-fields">
-        <fieldset className="acrylic-form__fieldset acrylic-form__field--wide">
+        {!isSimpleCover ? <fieldset className="acrylic-form__fieldset acrylic-form__field--wide">
           <legend>
             Dimensions <span>Optional</span>
           </legend>
@@ -572,9 +633,9 @@ export default function AcrylicPergolaEnquiryForm({
               <small>metres</small>
             </label>
           </div>
-        </fieldset>
+        </fieldset> : null}
 
-        {briefFields.map((field) => (
+        {!isSimpleCover ? briefFields.map((field) => (
           <div className={`acrylic-form__field${field.wide ? ' acrylic-form__field--wide' : ''}`} key={field.name}>
             <label htmlFor={`acrylic-enquiry-${field.name}`}>
               {field.label} <span>Optional</span>
@@ -594,9 +655,9 @@ export default function AcrylicPergolaEnquiryForm({
               <input id={`acrylic-enquiry-${field.name}`} name={field.name} placeholder={field.placeholder} />
             )}
           </div>
-        ))}
+        )) : null}
 
-        <div className="acrylic-form__field">
+        {!isSimpleCover ? <div className="acrylic-form__field">
           <label htmlFor="acrylic-enquiry-style">
             Pergola form <span>Optional</span>
           </label>
@@ -608,9 +669,9 @@ export default function AcrylicPergolaEnquiryForm({
               </option>
             ))}
           </select>
-        </div>
+        </div> : null}
 
-        <div className="acrylic-form__field">
+        {!isSimpleCover ? <div className="acrylic-form__field">
           <label htmlFor="acrylic-enquiry-attachment">
             Attachment <span>Optional</span>
           </label>
@@ -620,9 +681,9 @@ export default function AcrylicPergolaEnquiryForm({
             <option value="freestanding">Freestanding</option>
             <option value="unsure">Unsure</option>
           </select>
-        </div>
+        </div> : null}
 
-        <div className="acrylic-form__field acrylic-form__field--wide">
+        {!isSimpleCover ? <div className="acrylic-form__field acrylic-form__field--wide">
           <label htmlFor="acrylic-enquiry-roof">
             Roof <span>Optional</span>
           </label>
@@ -634,7 +695,7 @@ export default function AcrylicPergolaEnquiryForm({
               </option>
             ))}
           </select>
-        </div>
+        </div> : null}
 
         <fieldset className="acrylic-form__fieldset">
           <legend>
@@ -664,12 +725,12 @@ export default function AcrylicPergolaEnquiryForm({
           </div>
         </fieldset>
 
-        <div className="acrylic-form__field">
+        {!isSimpleCover ? <div className="acrylic-form__field">
           <label htmlFor="acrylic-enquiry-consent">
             Plans or consent <span>Optional</span>
           </label>
           <input id="acrylic-enquiry-consent" name="consentStatus" placeholder="For example: early ideas or plans available" />
-        </div>
+        </div> : null}
 
         <div className="acrylic-form__field">
           <label htmlFor="acrylic-enquiry-timeframe">

@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Image, { getImageProps } from 'next/image';
 import '@fontsource-variable/instrument-sans';
 import '@fontsource-variable/inter';
-import AcrylicPergolaEnquiryForm from '@/app/acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm';
 import GuidedJourneyContext from '@/components/guided-journey/GuidedJourneyContext';
 import {
   ActionGroup,
@@ -15,20 +14,21 @@ import {
   TextLink,
 } from '@/components/marketing-foundation';
 import ProjectFinderJourneyContext from '@/components/project-finder/ProjectFinderJourneyContext';
-import { featuredReviews } from '@/data/reviews';
+import GoogleReviewMark from '@/components/reviews/GoogleReviewMark';
+import { GOOGLE_PLACE, featuredReviews } from '@/data/reviews';
 import {
   resolveGuidedJourneyContext,
   type GuidedJourneySearchParams,
 } from '@/lib/guidedJourneyContext';
 import { resolveProjectFinderJourneyContext } from '@/lib/projectFinderContinuation';
+import { getGoogleRating } from '@/lib/googleReviews';
 import {
   simpleCoverBoundary,
-  simpleCoverFitCriteria,
   simpleCoverInclusions,
   simpleCoverOptions,
-  simpleCoverRoofPreference,
   simpleCoverStandard,
 } from './content';
+import SimplePergolaJourney from './SimplePergolaJourney';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import styles from './simple-pergolas-auckland.module.css';
 
@@ -67,6 +67,17 @@ const simpleCoverReviews = ['Rob Ebert', 'Pierre and Tracy'].flatMap((author) =>
   return review ? [review] : [];
 });
 
+function reviewInitials(author: string): string {
+  const parts = author
+    .trim()
+    .split(/\s+/)
+    .filter((part) => part.toLowerCase() !== 'and');
+
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts.at(-1)?.[0] ?? ''}`.toUpperCase();
+}
+
 type SimplePergolasPageProps = {
   searchParams?: Promise<GuidedJourneySearchParams>;
 };
@@ -79,6 +90,14 @@ export default async function SimplePergolasPage({
   const projectFinderContext = guidedContext
     ? null
     : resolveProjectFinderJourneyContext('cover', params);
+  const enquiryContext = guidedContext?.enquiryContext
+    ?? projectFinderContext?.enquiryContext
+    ?? {
+      enquiryType: 'residential' as const,
+      sourcePath: route,
+      sourceComponent: 'embedded_form',
+    };
+  const googleReview = await getGoogleRating();
   const mobileHero = getImageProps({
     alt: 'Pitched acrylic pergola preserving daylight over an outdoor living space',
     fetchPriority: 'high',
@@ -120,12 +139,11 @@ export default async function SimplePergolasPage({
             Sanctuary standard.
           </Text>
           <ActionGroup className={styles.heroActions}>
-            <Button href="#initial-estimate">Get an initial estimate</Button>
-            <TextLink href="#right-fit">Check if your deck fits</TextLink>
+            <Button href="#price-your-cover">Price your Simple cover</Button>
           </ActionGroup>
           <dl className={styles.heroFacts} aria-label="Simple cover highlights">
-            <div><dt>Ground level</dt><dd>Up to 30 m²</dd></div>
-            <div><dt>Elevated deck</dt><dd>Up to 20 m²</dd></div>
+            <div><dt>Live estimate</dt><dd>Plan + initial estimate</dd></div>
+            <div><dt>Simple range</dt><dd>Ground or elevated</dd></div>
             <div><dt>Workmanship</dt><dd>10-year warranty</dd></div>
           </dl>
         </div>
@@ -141,82 +159,49 @@ export default async function SimplePergolasPage({
         </figure>
       </section>
 
-      <GuidedJourneyContext context={guidedContext} />
-      <ProjectFinderJourneyContext context={projectFinderContext} />
-
-      <section
-        className={styles.fit}
-        id="right-fit"
-        aria-labelledby="simple-fit-title"
-        data-simple-price-integration="fit-section"
-      >
-        <Container width="wide">
-          <header className={styles.sectionIntro}>
-            <div>
-              <Eyebrow>Does your deck fit?</Eyebrow>
-              <Heading id="simple-fit-title">
-                Clear limits make the first decision easy.
+      <SimplePergolaJourney sourceContext={enquiryContext}>
+        <section
+          className={styles.levelComparison}
+          aria-labelledby="simple-level-comparison-title"
+        >
+          <Container width="wide" className={styles.levelComparisonContainer}>
+            <header className={styles.levelComparisonHeader}>
+              <Eyebrow>Built at either level</Eyebrow>
+              <Heading id="simple-level-comparison-title">
+                Ground level or elevated.
               </Heading>
+            </header>
+            <div className={styles.levelComparisonGrid}>
+              <figure>
+                <div className={styles.levelComparisonMedia}>
+                  <Image
+                    src="/images/simple-pergolas/pitched-01.webp"
+                    alt="White pitched acrylic pergola covering a ground-level patio beside a weatherboard home"
+                    fill
+                    sizes="(max-width: 720px) 100vw, 50vw"
+                  />
+                </div>
+                <figcaption>Ground-level cover</figcaption>
+              </figure>
+              <figure>
+                <div className={styles.levelComparisonMedia}>
+                  <Image
+                    src="/images/simple-pergolas/pitched-10.webp"
+                    alt="White pitched acrylic pergola attached above an elevated timber deck"
+                    fill
+                    sizes="(max-width: 720px) 100vw, 50vw"
+                  />
+                </div>
+                <figcaption>Elevated-deck cover</figcaption>
+              </figure>
             </div>
-            <Text size="large">
-              Simple describes the project conditions, not the quality of the
-              finished pergola.
-            </Text>
-          </header>
+          </Container>
+        </section>
 
-          <div className={styles.fitLevels}>
-            <article>
-              <span>Ground-level deck</span>
-              <strong>30</strong>
-              <p>square metres maximum</p>
-            </article>
-            <article>
-              <span>Elevated or first-floor deck</span>
-              <strong>20</strong>
-              <p>square metres maximum</p>
-            </article>
-          </div>
+        <GuidedJourneyContext context={guidedContext} />
+        <ProjectFinderJourneyContext context={projectFinderContext} />
 
-          <div className={styles.fitCriteria}>
-            {simpleCoverFitCriteria.map((criterion) => (
-              <article key={criterion.label}>
-                <span>{criterion.label}</span>
-                <h3>{criterion.value}</h3>
-                <p>{criterion.text}</p>
-              </article>
-            ))}
-          </div>
-
-          <div className={styles.fitMedia}>
-            <figure>
-              <Image
-                src="/images/simple-pergolas/pitched-01.webp"
-                alt="White pitched acrylic pergola covering a ground-level patio beside a weatherboard home"
-                fill
-                sizes="(max-width: 760px) 100vw, 50vw"
-              />
-              <figcaption>Ground-level cover</figcaption>
-            </figure>
-            <figure>
-              <Image
-                src="/images/simple-pergolas/pitched-10.webp"
-                alt="White pitched acrylic pergola attached above an elevated timber deck"
-                fill
-                sizes="(max-width: 760px) 100vw, 50vw"
-              />
-              <figcaption>Elevated-deck cover</figcaption>
-            </figure>
-          </div>
-
-          <p className={styles.fitCaveat}>
-            These are Sanctuary’s Simple cover product limits, not a consent
-            or structural promise. The site, connection, exposure and approval
-            pathway still need to be confirmed.
-          </p>
-        </Container>
-      </section>
-
-      <section className={styles.standard} aria-labelledby="sanctuary-standard-title">
+        <section className={styles.standard} aria-labelledby="sanctuary-standard-title">
         <div className={styles.standardMedia}>
           <Image
             src="/images/simple-pergolas/pitched-06.webp"
@@ -288,27 +273,26 @@ export default async function SimplePergolasPage({
         <Container width="wide">
           <header className={styles.sectionIntro}>
             <div>
-              <Eyebrow>A focused product</Eyebrow>
+              <Eyebrow>Choose the right path</Eyebrow>
               <Heading id="simple-boundary-title">
-                Know when Simple is the right answer.
+                Simple or Custom?
               </Heading>
             </div>
             <Text size="large">
-              The roof is fixed and open sides can still admit wind-driven
-              rain. If the architecture or structure drives the brief, Custom
-              design is the better starting point.
+              Simple is a fixed roof with open sides, so wind-driven rain can
+              still enter. More involved architecture belongs in Custom.
             </Text>
           </header>
           <div className={styles.boundaryGrid}>
             <article>
               <Eyebrow>Simple cover</Eyebrow>
-              <h3>Keep this pathway when</h3>
+              <h3>Choose Simple when</h3>
               <ul>{simpleCoverBoundary.simple.map((item) => <li key={item}>{item}</li>)}</ul>
-              <Button href="#initial-estimate">Start a Simple cover estimate</Button>
+              <Button href="#price-your-cover">Price your Simple cover</Button>
             </article>
             <article>
               <Eyebrow>Custom design</Eyebrow>
-              <h3>Move to Custom when</h3>
+              <h3>Choose Custom when</h3>
               <ul>{simpleCoverBoundary.custom.map((item) => <li key={item}>{item}</li>)}</ul>
               <TextLink href="/custom-pergolas-auckland">Explore Custom design</TextLink>
             </article>
@@ -319,72 +303,48 @@ export default async function SimplePergolasPage({
       <section className={styles.reviews} aria-labelledby="simple-reviews-title">
         <Container width="wide">
           <header className={styles.reviewsHeader}>
-            <Eyebrow>Customer experience</Eyebrow>
-            <Heading id="simple-reviews-title">
-              Built to feel good. Built to feel straightforward.
-            </Heading>
+            <div className={styles.reviewsTitleGroup}>
+              <Eyebrow>Customer experience</Eyebrow>
+              <Heading id="simple-reviews-title">
+                Thoughtful work, clearly delivered.
+              </Heading>
+            </div>
+            <a
+              className={styles.googleTrust}
+              href={GOOGLE_PLACE.reviewsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${googleReview.rating.toFixed(1)} out of 5 from ${googleReview.count} Google reviews`}
+            >
+              <GoogleReviewMark className={styles.googleMark} />
+              <span>
+                <strong>{googleReview.rating.toFixed(1)}</strong>
+                <span className={styles.reviewStars} aria-hidden="true">★★★★★</span>
+              </span>
+              <span>{googleReview.count} Google reviews</span>
+            </a>
           </header>
           <div className={styles.reviewGrid}>
             {simpleCoverReviews.map((review) => (
               <figure key={review.author}>
-                <blockquote>“{review.quote}”</blockquote>
-                <figcaption><strong>{review.author}</strong><span>Five-star Google review</span></figcaption>
+                <span className={styles.reviewQuote} aria-hidden="true">”</span>
+                <span className={styles.reviewStars} aria-hidden="true">★★★★★</span>
+                <blockquote>{review.quote}</blockquote>
+                <figcaption>
+                  <span className={styles.reviewAvatar} aria-hidden="true">
+                    {reviewInitials(review.author)}
+                  </span>
+                  <span className={styles.reviewAuthor}>
+                    <strong>{review.author}</strong>
+                    <span><GoogleReviewMark className={styles.googleMark} />Google review</span>
+                  </span>
+                </figcaption>
               </figure>
             ))}
           </div>
         </Container>
       </section>
-
-      <section
-        className={styles.estimate}
-        id="initial-estimate"
-        aria-label="Simple pergola initial estimate enquiry"
-      >
-        <Container width="wide">
-          <AcrylicPergolaEnquiryForm
-            initialEnquiryType="residential"
-            sourceContext={guidedContext?.enquiryContext ?? projectFinderContext?.enquiryContext ?? {
-              enquiryType: 'residential',
-              sourcePath: route,
-              sourceComponent: 'embedded_form',
-            }}
-            eyebrow="Initial estimate"
-            heading="Get an initial Simple cover estimate."
-            intro="Send your suburb, approximate size, deck level and a few photos. We’ll confirm whether the project fits this pathway and what is needed next."
-            submitLabel="Request my initial estimate"
-            successHeading="Estimate request sent."
-            successMessage="We’ll review the space and come back to you with the most useful next step."
-            messageLabel="What do you want the cover to change?"
-            messagePlaceholder="For example: cover the deck, retain daylight at the kitchen and allow for a blind on the western side."
-            briefFields={[
-              {
-                name: 'deckLevel',
-                label: 'Deck level',
-                type: 'select',
-                options: [
-                  'Ground-level deck or patio',
-                  'Elevated or first-floor deck',
-                  'Unsure',
-                ],
-                wide: true,
-              },
-              {
-                name: 'sideProtection',
-                label: 'Side protection',
-                type: 'select',
-                options: [
-                  'Roof only',
-                  'Roof with one side blind',
-                  'Roof with blinds on more than one side',
-                  'Unsure: please recommend an arrangement',
-                ],
-                wide: true,
-              },
-            ]}
-            roofPreference={simpleCoverRoofPreference}
-          />
-        </Container>
-      </section>
+      </SimplePergolaJourney>
     </MarketingPage>
   );
 }

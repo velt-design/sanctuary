@@ -18,6 +18,8 @@ import type {
 import { buildEstimateDbPayload } from '../../../apps/portal/lib/estimates/persistence';
 import { buildEnquiryBudgets } from './enquiryBudgets';
 import { QUOTE_MULTIPLIER, type MoneyRange } from './enquiryEstimate';
+import type { FrozenSimpleCoverPricingResult } from './simpleCoverPricing.server';
+import type { SimpleCoverInput } from './simpleCoverCalculator';
 
 export type EnquiryPricingParams = {
   enquiryType: string;
@@ -43,6 +45,24 @@ export type EnquiryPricingSnapshot = {
   costingConfiguration: PublishedCostingConfigurationProvenanceV1 | null;
   calculatorInputs: Record<string, unknown>;
   budgets: EnquiryBudgets;
+  pricingSource:
+    | 'current_published_enquiry'
+    | 'simple_cover_calculator_verified'
+    | 'simple_cover_unpriced'
+    | 'unavailable';
+  verifiedSimpleCover: {
+    input: SimpleCoverInput;
+    widthM: number;
+    depthM: number;
+    level: SimpleCoverInput['level'];
+    connection: SimpleCoverInput['connection'];
+    displayedEstimateIncGst: number;
+  } | null;
+};
+
+export type EnquiryPricingOptions = {
+  verifiedSimpleCover?: FrozenSimpleCoverPricingResult;
+  suppressGenericPricing?: boolean;
 };
 
 function isTruthy(value: unknown): boolean {
@@ -143,7 +163,7 @@ function calculatorInputsFromSnapshot(
 ): Record<string, unknown> {
   const module = costInputs?.pergolas?.[0]?.modules?.[0];
   const lengthM = module?.length_m ?? 6;
-  const projectionM = module?.projection_m ?? 3;
+  const projectionM = module?.roof_span_m ?? module?.projection_m ?? 3;
   const postCutHeightM = module?.post_cut_height_m ?? 2.4;
   const roofMaterial = module?.roof_material ?? roofMaterialForCosting(params.roofMaterials);
   const pergolaStyle = module?.pergola_style ?? pergolaStyleForCosting(params.style);
@@ -223,10 +243,24 @@ function calculatorInputsFromSnapshot(
 export function buildEnquiryPricingSnapshot(
   params: EnquiryPricingParams,
   resolved: ResolvedPublishedCostingConfigurationV1 | null,
+  options: EnquiryPricingOptions = {},
 ): EnquiryPricingSnapshot {
-  const costInputs = buildCanonicalCostInputs(params);
+  const verified = options.verifiedSimpleCover;
+  const effectiveParams: EnquiryPricingParams = verified
+    ? {
+        ...params,
+        widthM: verified.input.widthMm / 1_000,
+        depthM: verified.input.projectionMm / 1_000,
+        heightM: null,
+        style: 'pitched',
+        roofMaterials: ['acrylic'],
+      }
+    : params;
+  const costInputs = verified?.siteInputs ?? buildCanonicalCostInputs(effectiveParams);
   let costResult: CostOutputV1 | SiteOutputV1 | null = null;
-  if (costInputs && resolved) {
+  if (verified) {
+    costResult = verified.siteOutput;
+  } else if (costInputs && resolved && !options.suppressGenericPricing) {
     try {
       costResult = isCommercialPolicyV2Enabled(resolved.config)
         ? calculateSiteCostV1(costInputs, resolved.config)
@@ -236,26 +270,65 @@ export function buildEnquiryPricingSnapshot(
     }
   }
 
-  const blindItems = buildBlindItems(params);
-  const blindPricing = blindItems.length ? priceAllBlinds(blindItems) : null;
+  const blindItems = buildBlindItems(effectiveParams);
+  const blindPricing = blindItems.length && (!options.suppressGenericPricing || Boolean(verified))
+    ? priceAllBlinds(blindItems)
+    : null;
   const blindsQuoteIncGst = blindPricing && blindPricing.totals.totalIncCents > 0
     ? blindPricing.totals.totalIncCents / 100
     : null;
   const baseTrueCostIncGst = costResult?.totals?.cost_inc_gst;
-  const budgets = buildEnquiryBudgets({
-    enquiryType: params.enquiryType,
+  let budgets = buildEnquiryBudgets({
+    enquiryType: effectiveParams.enquiryType,
     baseTrueCostIncGst: typeof baseTrueCostIncGst === 'number' && Number.isFinite(baseTrueCostIncGst) && baseTrueCostIncGst > 0
       ? baseTrueCostIncGst
       : null,
     blindsQuoteIncGst,
   });
+  if (verified) {
+    const displayed = verified.customerPrice.displayedFromIncGst;
+    budgets = {
+      ...budgets,
+      baseRange: { lowIncGst: displayed, highIncGst: displayed },
+      budgetBasis: budgets.blindsRange
+        ? 'verified Simple cover calculator estimate; blinds priced separately'
+        : 'verified Simple cover calculator estimate',
+    };
+  } else if (options.suppressGenericPricing) {
+    budgets = { baseRange: null, blindsRange: null, budgetBasis: null };
+  }
+
+  const verifiedSimpleCover = verified
+    ? {
+        input: verified.input,
+        widthM: verified.input.widthMm / 1_000,
+        depthM: verified.input.projectionMm / 1_000,
+        level: verified.input.level,
+        connection: verified.input.connection,
+        displayedEstimateIncGst: verified.customerPrice.displayedFromIncGst,
+      }
+    : null;
+  const pricingSource: EnquiryPricingSnapshot['pricingSource'] = verified
+    ? 'simple_cover_calculator_verified'
+    : options.suppressGenericPricing
+      ? 'simple_cover_unpriced'
+      : costResult
+        ? 'current_published_enquiry'
+        : 'unavailable';
+  const calculatorInputs = calculatorInputsFromSnapshot(effectiveParams, costInputs, blindItems);
+  if (verified) {
+    calculatorInputs.frozenSimpleCoverSiteInputs = verified.siteInputs;
+  }
 
   return {
     costInputs,
     costResult,
-    costingConfiguration: costResult ? resolved?.provenance ?? null : null,
-    calculatorInputs: calculatorInputsFromSnapshot(params, costInputs, blindItems),
+    costingConfiguration: verified?.costingConfiguration
+      ?? (costResult ? resolved?.provenance ?? null : null),
+    calculatorInputs,
     budgets,
+    pricingSource,
+    verifiedSimpleCover,
   };
 }
 
@@ -267,6 +340,12 @@ export function buildEnquiryDraftEstimateRow(params: EnquiryPricingParams & {
   message: string;
   pricing: EnquiryPricingSnapshot;
 }): Record<string, unknown> {
+  const verifiedSimple = params.pricing.verifiedSimpleCover;
+  const enquiryWidthM = verifiedSimple?.widthM ?? params.widthM;
+  const enquiryDepthM = verifiedSimple?.depthM ?? params.depthM;
+  const enquiryHeightM = verifiedSimple ? null : params.heightM;
+  const enquiryStyle = verifiedSimple ? 'pitched' : params.style;
+  const enquiryRoofMaterials = verifiedSimple ? ['acrylic'] : params.roofMaterials;
   const warnings = ['Draft design created automatically from website enquiry.'];
   if (isTruthy(params.addOns.lighting) || isTruthy(params.addOns.heating) || isTruthy(params.addOns.slats)) {
     warnings.push('Some enquiry add-ons are captured as notes only and still need staff review in the calculator.');
@@ -276,6 +355,9 @@ export function buildEnquiryDraftEstimateRow(params: EnquiryPricingParams & {
     source: 'marketing_enquiry',
     enquiryType: params.enquiryType,
     budgetBasis: params.pricing.budgets.budgetBasis,
+    ...(params.pricing.pricingSource.startsWith('simple_cover_')
+      ? { pricingSource: params.pricing.pricingSource }
+      : {}),
   };
   let outputs: Record<string, unknown>;
   if (params.pricing.costResult) {
@@ -292,6 +374,7 @@ export function buildEnquiryDraftEstimateRow(params: EnquiryPricingParams & {
       shared: (result as { shared?: unknown }).shared ?? null,
       pricing_policy: 'pricing_policy' in result ? result.pricing_policy : undefined,
       customer_add_ons: 'customer_add_ons' in result ? result.customer_add_ons : undefined,
+      ...(verifiedSimple ? { frozenSimpleCoverSiteOutput: result } : {}),
     };
     derived = { ...derived, pricingMode: 'full_costing' };
   } else {
@@ -335,11 +418,11 @@ export function buildEnquiryDraftEstimateRow(params: EnquiryPricingParams & {
         },
         enquiry: {
           enquiryType: params.enquiryType,
-          widthM: params.widthM,
-          depthM: params.depthM,
-          heightM: params.heightM,
-          style: params.style || null,
-          roofMaterials: params.roofMaterials,
+          widthM: enquiryWidthM,
+          depthM: enquiryDepthM,
+          heightM: enquiryHeightM,
+          style: enquiryStyle || null,
+          roofMaterials: enquiryRoofMaterials,
           addOns: params.addOns,
           message: params.message || null,
         },

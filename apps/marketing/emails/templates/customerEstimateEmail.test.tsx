@@ -142,6 +142,32 @@ describe('customer estimate autoresponder emails', () => {
     );
   });
 
+  it('describes a verified Simple calculator estimate with its 2D size, deck level and connection', async () => {
+    const text = await render(
+      CustomerResidentialEmail({
+        ...residential,
+        widthM: 6,
+        depthM: 3,
+        heightM: 0,
+        style: 'Pitched',
+        roof: 'Acrylic',
+        simpleCoverEstimate: { level: 'elevated', connection: 'soffit' },
+        callWindowText: 'ignored',
+      }),
+      { plainText: true },
+    );
+
+    expect(text).toContain('6m wide × 3m deep');
+    expect(text).not.toContain('3m deep × 0m high');
+    expect(text).toContain('Deck level');
+    expect(text).toContain('Elevated deck');
+    expect(text).toContain('House connection');
+    expect(text).toContain('Soffit brackets');
+    expect(text).toContain('selected dimensions, elevated deck and soffit brackets');
+    expect(text).toContain('standard Simple calculator assumptions');
+    expect(text).not.toContain('fascia connection assumed');
+  });
+
   it('renders the professional hierarchy without promising a call window', async () => {
     const text = await render(
       CustomerProfessionalEmail({

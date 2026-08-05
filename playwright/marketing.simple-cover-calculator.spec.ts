@@ -16,15 +16,19 @@ function memberCentrePositions(widthMm: number, memberWidthMm: number, count: nu
   return Array.from({ length: count }, (_, index) => inset + index / (count - 1) * (1 - inset * 2));
 }
 
-async function prepareCalculator(page: Page, requestCounter?: { count: number }) {
-  await page.addInitScript(() => {
+async function prepareCalculator(
+  page: Page,
+  requestCounter?: { count: number },
+  options: { analytics?: boolean; pricing?: 'priced' | 'unavailable' } = {},
+) {
+  await page.addInitScript(({ analytics }) => {
     window.localStorage.setItem('sp_consent_v1', JSON.stringify({
-      analytics: false,
+      analytics,
       marketing: false,
       updatedAt: new Date().toISOString(),
       version: 1,
     }));
-  });
+  }, { analytics: options.analytics ?? false });
   await page.route('**/api/simple-cover-price', async (requestRoute) => {
     requestCounter && (requestCounter.count += 1);
     const input = requestRoute.request().postDataJSON() as {
@@ -33,6 +37,18 @@ async function prepareCalculator(page: Page, requestCounter?: { count: number })
       level: 'ground' | 'elevated';
       connection: 'fascia' | 'facade' | 'soffit';
     };
+    if (options.pricing === 'unavailable') {
+      await requestRoute.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: false,
+          status: 'unavailable',
+          message: 'Live pricing is temporarily unavailable. Your selections are still here—please try again shortly.',
+        }),
+      });
+      return;
+    }
     const areaM2 = input.widthMm * input.projectionMm / 1_000_000;
     const postCount = Math.max(2, Math.ceil(input.widthMm / 4_000) + 1);
     await requestRoute.fulfill({
@@ -55,6 +71,7 @@ async function prepareCalculator(page: Page, requestCounter?: { count: number })
         },
         price: { fromIncGst: 24_250, currency: 'NZD' },
         configuration: { versionNumber: 23 },
+        calculationRef: `signed-ref-${input.widthMm}-${input.projectionMm}-${input.level}-${input.connection}`,
       }),
     });
   });
@@ -104,7 +121,7 @@ for (const viewport of viewports) {
     await expect(projection).toHaveAttribute('min', '1000');
     await expect(projection).toHaveAttribute('max', '6000');
     await expect(projection).toHaveAttribute('step', '100');
-    await expect(page.locator('[data-simple-cover-calculator] button')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Request a site measure', exact: true })).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Width along the house in metres' })).toHaveValue('6.0');
     await expect(page.locator('[data-plan-header]')).toContainText('18.0 m²');
     if (viewport.width <= 560) {
@@ -328,6 +345,7 @@ test('calculator handles post boundaries, custom limits and recovery without los
   await expect(prominentPrice(page)).toHaveText(/From \$24,250/);
 
   await setRange(page, '#simple-cover-width', 4_000);
+  await expect(page.getByRole('link', { name: 'Request a site measure', exact: true })).toHaveCount(0);
   await expect(page.getByText(/2 posts · max 4 m · rafters/)).toBeVisible();
   await setRange(page, '#simple-cover-width', 4_100);
   await expect(page.getByText(/3 posts · max 4 m · rafters/)).toBeVisible();
@@ -340,7 +358,21 @@ test('calculator handles post boundaries, custom limits and recovery without los
   await expect(page.getByText('From $24,250', { exact: true })).toHaveCount(0);
   await expect(page.locator('#simple-cover-width')).toHaveValue('6000');
   await expect(page.locator('#simple-cover-projection')).toHaveValue('3400');
-  await expect(page.getByRole('link', { name: 'Discuss a custom design' })).toHaveAttribute('href', /source_component=public_calculator/);
+  await expect(page.getByRole('link', { name: 'Ask Sanctuary to review these selections', exact: true }))
+    .toHaveAttribute('href', '/simple-pergolas-auckland#initial-estimate');
+  await expect(page.getByRole('link', { name: 'Explore Custom design', exact: true }))
+    .toHaveAttribute('href', '/custom-pergolas-auckland');
+  await page.evaluate(() => {
+    document.addEventListener('click', (event) => event.preventDefault(), { capture: true, once: true });
+  });
+  await page.getByRole('link', { name: 'Ask Sanctuary to review these selections', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => JSON.parse(String(
+    window.sessionStorage.getItem('sanctuary.simple-cover-handoff.v1'),
+  )))).toMatchObject({
+    status: 'custom',
+    calculationRef: null,
+    input: { widthMm: 6_000, projectionMm: 3_400, level: 'elevated' },
+  });
   const requestsAtCustom = requests.count;
   await page.waitForTimeout(250);
   expect(requests.count).toBe(requestsAtCustom);
@@ -363,6 +395,107 @@ test('calculator handles post boundaries, custom limits and recovery without los
     const box = await page.locator('[data-plan-footprint]').boundingBox();
     return box ? box.width / box.height : 0;
   }).toBeCloseTo(1 / 6, 2);
+});
+
+test('priced and unavailable continuations store selections without exposing them in navigation', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepareCalculator(page);
+  await page.goto(route);
+  const pricedReview = page.getByRole('link', { name: 'Request a site measure', exact: true });
+  await expect(pricedReview).toBeVisible();
+  await expect(pricedReview).toHaveAttribute('href', '/simple-pergolas-auckland#initial-estimate');
+  await page.evaluate(() => {
+    document.addEventListener('click', (event) => event.preventDefault(), { capture: true, once: true });
+  });
+  await pricedReview.click();
+  const pricedHandoff = await page.evaluate(() => JSON.parse(String(
+    window.sessionStorage.getItem('sanctuary.simple-cover-handoff.v1'),
+  )) as Record<string, unknown>);
+  expect(pricedHandoff).toMatchObject({
+    status: 'priced',
+    calculationRef: 'signed-ref-6000-3000-ground-fascia',
+    displayedPriceIncGst: 24_250,
+    configurationVersion: 23,
+    input: {
+      widthMm: 6_000,
+      projectionMm: 3_000,
+      level: 'ground',
+      connection: 'fascia',
+    },
+  });
+  expect(page.url()).not.toContain('width');
+  expect(page.url()).not.toContain('price');
+  expect(page.url()).not.toContain('calculation');
+
+  await page.unroute('**/api/simple-cover-price');
+  await prepareCalculator(page, undefined, { pricing: 'unavailable' });
+  await page.reload();
+  await expect(page.locator('[data-result-state="unavailable"]')).toBeVisible();
+  await expect(page.getByText('Your design is still here.', { exact: true })).toBeVisible();
+  const unavailableReview = page.getByRole('link', { name: 'Send these selections for review', exact: true });
+  await expect(unavailableReview).toBeVisible();
+  await page.evaluate(() => {
+    document.addEventListener('click', (event) => event.preventDefault(), { capture: true, once: true });
+  });
+  await unavailableReview.click();
+  const unavailableHandoff = await page.evaluate(() => JSON.parse(String(
+    window.sessionStorage.getItem('sanctuary.simple-cover-handoff.v1'),
+  )) as Record<string, unknown>);
+  expect(unavailableHandoff).toMatchObject({
+    status: 'unavailable',
+    calculationRef: null,
+    displayedPriceIncGst: null,
+    configurationVersion: null,
+    input: { widthMm: 6_000, projectionMm: 3_000 },
+  });
+});
+
+test('calculator funnel analytics are consented, transition-based and closed', async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await prepareCalculator(page, undefined, { analytics: true });
+  await page.goto(route);
+  await expect(prominentPrice(page)).toHaveText(/From \$24,250/);
+
+  await setRange(page, '#simple-cover-width', 6_100);
+  await expect(prominentPrice(page)).toHaveText(/From \$24,250/);
+  await setRange(page, '#simple-cover-width', 6_200);
+  await expect(prominentPrice(page)).toHaveText(/From \$24,250/);
+
+  const review = page.getByRole('link', { name: 'Request a site measure', exact: true });
+  await page.evaluate(() => {
+    document.addEventListener('click', (event) => event.preventDefault(), { capture: true, once: true });
+  });
+  await review.click();
+
+  const events = await page.evaluate(() => (
+    ((window as typeof window & { dataLayer?: unknown[] }).dataLayer ?? [])
+      .filter((entry): entry is Record<string, unknown> => Boolean(
+        entry
+        && !Array.isArray(entry)
+        && typeof entry === 'object'
+        && String((entry as Record<string, unknown>).event ?? '').startsWith('simple_calculator_'),
+      ))
+  ));
+  expect(events.map(({ event }) => event)).toEqual([
+    'simple_calculator_view',
+    'simple_calculator_result_view',
+    'simple_calculator_first_interaction',
+    'simple_calculator_cta_click',
+  ]);
+  expect(events.filter(({ event }) => event === 'simple_calculator_result_view')).toHaveLength(1);
+  for (const event of events) {
+    expect(Object.keys(event).filter((key) => !key.startsWith('gtm.')).sort()).toEqual([
+      'calculation_attached',
+      'event',
+      'placement',
+      'result_status',
+      'source_path',
+      'viewport_category',
+    ]);
+    expect(event).not.toHaveProperty('price');
+    expect(event).not.toHaveProperty('widthMm');
+    expect(event).not.toHaveProperty('calculationRef');
+  }
 });
 
 test('calculator exposes visible keyboard focus and live output semantics', async ({ page }) => {
@@ -413,7 +546,8 @@ for (const viewport of [
 
     if (viewport.width <= 560) {
       await setRange(page, '#simple-cover-width', 6_100);
-      await expect(page.locator('[data-compact-price-state="updating"]')).toContainText('From $24,250');
+      await expect(page.locator('[data-compact-price-state="updating"]')).toContainText('Updating…');
+      await expect(page.locator('[data-compact-price-state="updating"]')).not.toContainText('$24,250');
       await expect(page.locator('[data-compact-price-state="priced"]')).toContainText('From $24,250');
       await setRange(page, '#simple-cover-width', 6_000);
       await expect(page.locator('[data-compact-price-state="priced"]')).toContainText('From $24,250');

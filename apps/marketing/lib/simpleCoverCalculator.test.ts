@@ -108,10 +108,15 @@ describe('Simple cover calculator contract', () => {
       plan: { postPositions: [0, .5, 1], rafterPositions: [0, 1] },
       price: { fromIncGst: 24_250, currency: 'NZD' },
       configuration: { versionNumber: 7 },
+      calculationRef: 'sc1.opaque-reference',
       internalTrueCostExGst: 12_345,
     } as Parameters<typeof toCustomerSafeSimpleCoverResult>[0]);
 
     expect(safe).not.toHaveProperty('internalTrueCostExGst');
-    expect(safe).toMatchObject({ status: 'priced', configuration: { versionNumber: 7 } });
+    expect(safe).toMatchObject({
+      status: 'priced',
+      configuration: { versionNumber: 7 },
+      calculationRef: 'sc1.opaque-reference',
+    });
   });
 });

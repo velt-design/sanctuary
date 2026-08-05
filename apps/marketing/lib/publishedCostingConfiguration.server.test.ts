@@ -8,6 +8,7 @@ import { hashCostingControlConfigV1 } from '@sp/costing/server';
 import {
   PublishedCostingConfigurationUnavailableError,
   getPublishedCostingConfiguration,
+  getPublishedCostingConfigurationByProvenance,
 } from './publishedCostingConfiguration.server';
 
 function clientFor(input: {
@@ -62,5 +63,43 @@ describe('marketing published costing resolver', () => {
   ])('fails closed for %s', async (_label, publication, version) => {
     await expect(getPublishedCostingConfiguration(clientFor({ publication, version })))
       .rejects.toBeInstanceOf(PublishedCostingConfigurationUnavailableError);
+  });
+
+  it('resolves a historical published version only when every provenance field matches', async () => {
+    const control = snapshotCostingControlConfigV1(loadCostingConfigV1());
+    const contentHash = hashCostingControlConfigV1(control);
+    const client = clientFor({
+      publication: { data: null, error: null },
+      version: {
+        data: {
+          id: 'historical-version-4',
+          version_number: 4,
+          status: 'published',
+          config_json: control,
+          content_hash: contentHash,
+          base_manifest_version: control.baseManifestVersion,
+        },
+        error: null,
+      },
+    });
+    const provenance = {
+      schemaVersion: 'costing-provenance.v1' as const,
+      source: 'published' as const,
+      versionId: 'historical-version-4',
+      versionNumber: 4,
+      contentHash,
+      baseManifestVersion: control.baseManifestVersion,
+    };
+
+    await expect(getPublishedCostingConfigurationByProvenance(provenance, client))
+      .resolves.toMatchObject({ provenance });
+    await expect(getPublishedCostingConfigurationByProvenance({
+      ...provenance,
+      versionNumber: 5,
+    }, client)).rejects.toBeInstanceOf(PublishedCostingConfigurationUnavailableError);
+    await expect(getPublishedCostingConfigurationByProvenance({
+      ...provenance,
+      contentHash: 'f'.repeat(64),
+    }, client)).rejects.toBeInstanceOf(PublishedCostingConfigurationUnavailableError);
   });
 });

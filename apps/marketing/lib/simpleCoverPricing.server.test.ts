@@ -62,4 +62,18 @@ describe('frozen Simple cover pricing', () => {
     expect(result.status).toBe('custom');
     expect(h.getPublishedCostingConfiguration).not.toHaveBeenCalled();
   });
+
+  it('adds an opaque calculation reference only at the priced public boundary', async () => {
+    const {
+      calculateFrozenSimpleCoverPricing,
+      calculateSimpleCoverPublicResult,
+    } = await import('./simpleCoverPricing.server');
+    const input = { widthMm: 6_000, projectionMm: 3_000, level: 'ground' as const, connection: 'facade' as const };
+    const frozen = await calculateFrozenSimpleCoverPricing(input);
+    const publicResult = await calculateSimpleCoverPublicResult(input);
+
+    expect(frozen.publicResult).not.toHaveProperty('calculationRef');
+    expect(publicResult).toMatchObject({ status: 'priced' });
+    expect(publicResult).toHaveProperty('calculationRef', expect.stringMatching(/^sc1\./));
+  });
 });

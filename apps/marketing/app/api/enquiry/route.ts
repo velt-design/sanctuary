@@ -317,6 +317,11 @@ export async function POST(req: Request) {
   const company = sanitizeSingleLine(getField('company'), MAX_FIELD_LENGTH);
   const page = sanitizeSingleLine(getField('page'), MAX_FIELD_LENGTH);
   const source = sanitizeSingleLine(getField('source'), MAX_FIELD_LENGTH) || 'website';
+  const calculationRef = sanitizeSingleLine(getField('calculationRef'), 2_048);
+  const simpleCoverStatusRaw = sanitizeSingleLine(getField('simpleCoverStatus'), 32);
+  const simpleCoverStatus = (
+    ['priced', 'custom', 'unavailable', 'unconfigured'] as const
+  ).find((status) => status === simpleCoverStatusRaw) ?? null;
   const rawEnquiryContext = isPlainObject(payload.enquiryContext)
     ? payload.enquiryContext
     : {};
@@ -360,6 +365,7 @@ export async function POST(req: Request) {
   const {
     uploadSessionToken: _uploadSessionToken,
     enquiryContext: _untrustedEnquiryContext,
+    calculationRef: _opaqueCalculationRef,
     ...payloadWithoutUploadToken
   } = payload;
   const rawPayload = safeJsonPayload({
@@ -434,8 +440,17 @@ export async function POST(req: Request) {
     style,
     roofMaterials,
     addOns,
+  }, {
+    calculationRef: calculationRef || null,
+    suppressGenericPricing: Boolean(simpleCoverStatus || calculationRef),
   });
   const budgets = pricing.budgets;
+  const verifiedSimpleCover = pricing.verifiedSimpleCover;
+  const effectiveWidthM = verifiedSimpleCover?.widthM ?? widthM;
+  const effectiveDepthM = verifiedSimpleCover?.depthM ?? depthM;
+  const effectiveHeightM = verifiedSimpleCover ? null : heightM;
+  const effectiveStyle = verifiedSimpleCover ? 'pitched' : style;
+  const effectiveRoofMaterials = verifiedSimpleCover ? ['acrylic'] : roofMaterials;
 
   let intake;
   try {
@@ -450,11 +465,11 @@ export async function POST(req: Request) {
         phoneRaw,
         suburb,
         message,
-        widthM,
-        depthM,
-        heightM,
-        style,
-        roofMaterials,
+        widthM: effectiveWidthM,
+        depthM: effectiveDepthM,
+        heightM: effectiveHeightM,
+        style: effectiveStyle,
+        roofMaterials: effectiveRoofMaterials,
         addOns,
         company,
         baseBudgetLowIncGst: budgets.baseRange?.lowIncGst ?? null,
@@ -509,8 +524,12 @@ export async function POST(req: Request) {
       source,
       page: page || null,
       ...enquiryContext,
-      baseBudgetLowIncGst: budgets.baseRange?.lowIncGst ?? null,
-      baseBudgetHighIncGst: budgets.baseRange?.highIncGst ?? null,
+      ...(simpleCoverStatus || calculationRef
+        ? { pricing_source: pricing.pricingSource }
+        : {
+            baseBudgetLowIncGst: budgets.baseRange?.lowIncGst ?? null,
+            baseBudgetHighIncGst: budgets.baseRange?.highIncGst ?? null,
+          }),
     },
     supabase,
   });
@@ -529,11 +548,11 @@ export async function POST(req: Request) {
           suburb,
           message,
           enquiryType,
-          widthM,
-          depthM,
-          heightM,
-          style,
-          roofMaterials,
+          widthM: effectiveWidthM,
+          depthM: effectiveDepthM,
+          heightM: effectiveHeightM,
+          style: effectiveStyle,
+          roofMaterials: effectiveRoofMaterials,
           addOns,
           pricing,
         }) as any,
@@ -619,13 +638,21 @@ export async function POST(req: Request) {
           utmCampaign,
           landingUrl: page || undefined,
           ...attachmentContext,
-          widthM: Number.isFinite(widthM ?? NaN) ? Number(widthM) : 0,
-          depthM: Number.isFinite(depthM ?? NaN) ? Number(depthM) : 0,
-          heightM: Number.isFinite(heightM ?? NaN) ? Number(heightM) : 0,
-          style: formatStyleLabel(style),
-          roof: formatRoofLabel(roofMaterials),
+          widthM: Number.isFinite(effectiveWidthM ?? NaN) ? Number(effectiveWidthM) : 0,
+          depthM: Number.isFinite(effectiveDepthM ?? NaN) ? Number(effectiveDepthM) : 0,
+          heightM: Number.isFinite(effectiveHeightM ?? NaN) ? Number(effectiveHeightM) : 0,
+          style: formatStyleLabel(effectiveStyle),
+          roof: formatRoofLabel(effectiveRoofMaterials),
           addons,
           blindsSelected,
+          ...(verifiedSimpleCover
+            ? {
+                simpleCoverEstimate: {
+                  level: verifiedSimpleCover.level,
+                  connection: verifiedSimpleCover.connection,
+                },
+              }
+            : {}),
           ...(budgets.baseRange ? { baseRange: budgets.baseRange } : {}),
           ...(budgets.blindsRange ? { blindsRange: budgets.blindsRange } : {}),
         } satisfies ResidentialOrCommercialEnquiry;

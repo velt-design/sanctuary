@@ -5,9 +5,13 @@ import {
   calculateSiteCostV1,
   type SiteOutputV1,
 } from '@sp/costing';
-import type { PublishedCostingConfigurationProvenanceV1 } from '@sp/costing/server';
+import type {
+  PublishedCostingConfigurationProvenanceV1,
+  ResolvedPublishedCostingConfigurationV1,
+} from '@sp/costing/server';
 import { roundMarketingCustomerPrice } from './enquiryEstimate';
 import { getPublishedCostingConfiguration } from './publishedCostingConfiguration.server';
+import { issueSimpleCoverCalculationRef } from './simpleCoverCalculationRef.server';
 import {
   buildSimpleCoverPlan,
   buildSimpleCoverSiteInputs,
@@ -15,7 +19,7 @@ import {
   simpleCoverAreaM2,
   simpleCoverPostCount,
   type SimpleCoverInput,
-  type SimpleCoverPricedResult,
+  type FrozenSimpleCoverPricedResult,
   type SimpleCoverPublicResult,
 } from './simpleCoverCalculator';
 
@@ -30,13 +34,13 @@ export type FrozenSimpleCoverPricingResult = {
     displayedFromIncGst: number;
   };
   costingConfiguration: PublishedCostingConfigurationProvenanceV1;
-  publicResult: SimpleCoverPricedResult;
+  publicResult: FrozenSimpleCoverPricedResult;
 };
 
-export async function calculateFrozenSimpleCoverPricing(
+export function calculateFrozenSimpleCoverPricingWithConfiguration(
   input: SimpleCoverInput,
-): Promise<FrozenSimpleCoverPricingResult> {
-  const resolved = await getPublishedCostingConfiguration();
+  resolved: ResolvedPublishedCostingConfigurationV1,
+): FrozenSimpleCoverPricingResult {
   const siteInputs = buildSimpleCoverSiteInputs(input);
   const siteOutput = calculateSiteCostV1(siteInputs, resolved.config);
   const customerPrice = calculateCustomerPriceFromCostEx(
@@ -52,7 +56,7 @@ export async function calculateFrozenSimpleCoverPricing(
   if (displayedFromIncGst <= 0) throw new Error('Customer price could not be displayed.');
 
   const postCount = simpleCoverPostCount(input.widthMm);
-  const publicResult: SimpleCoverPricedResult = {
+  const publicResult: FrozenSimpleCoverPricedResult = {
     ok: true,
     status: 'priced',
     input,
@@ -84,9 +88,23 @@ export async function calculateFrozenSimpleCoverPricing(
   };
 }
 
+export async function calculateFrozenSimpleCoverPricing(
+  input: SimpleCoverInput,
+): Promise<FrozenSimpleCoverPricingResult> {
+  return calculateFrozenSimpleCoverPricingWithConfiguration(
+    input,
+    await getPublishedCostingConfiguration(),
+  );
+}
+
 export async function calculateSimpleCoverPublicResult(
   input: SimpleCoverInput,
 ): Promise<SimpleCoverPublicResult> {
-  return getSimpleCoverCustomResult(input)
-    ?? (await calculateFrozenSimpleCoverPricing(input)).publicResult;
+  const custom = getSimpleCoverCustomResult(input);
+  if (custom) return custom;
+  const frozen = await calculateFrozenSimpleCoverPricing(input);
+  return {
+    ...frozen.publicResult,
+    calculationRef: issueSimpleCoverCalculationRef(frozen),
+  };
 }

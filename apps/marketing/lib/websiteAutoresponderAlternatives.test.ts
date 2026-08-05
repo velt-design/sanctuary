@@ -213,4 +213,33 @@ describe('website autoresponder layout alternatives', () => {
     expect(rendered.text).not.toContain('Early installed estimate');
     expect(rendered.text).not.toContain('$0');
   });
+
+  it('renders verified Simple calculator assumptions without inventing a height or fascia connection', async () => {
+    const fixture = getWebsiteAutoresponderPreviewFixture(
+      'residential-pitched-without-blinds',
+    );
+    const variables = {
+      ...fixture.variables,
+      widthM: 6,
+      depthM: 3,
+      heightM: 0,
+      simpleCoverEstimate: { level: 'elevated', connection: 'soffit' },
+      baseRange: { lowIncGst: 24_500, highIncGst: 24_500 },
+    };
+
+    const rendered = await renderWebsiteAutoresponder(
+      fixture.templateId,
+      variables as unknown as Record<string, unknown>,
+    );
+
+    expect(rendered.text).toContain('6m wide × 3m deep');
+    expect(rendered.text).not.toContain('3m deep × 0m high');
+    expect(rendered.text).toContain('Deck level');
+    expect(rendered.text).toContain('Elevated deck');
+    expect(rendered.text).toContain('House connection');
+    expect(rendered.text).toContain('Soffit brackets');
+    expect(rendered.text).toContain('selected dimensions, elevated deck and soffit brackets');
+    expect(rendered.text).toContain('standard Simple calculator assumptions');
+    expect(rendered.text).not.toContain('fascia connection');
+  });
 });

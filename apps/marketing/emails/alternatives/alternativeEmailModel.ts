@@ -50,11 +50,30 @@ function firstName(value: unknown): string {
 }
 
 function dimensions(props: ResidentialOrCommercialEnquiry): string {
+  if (
+    props.simpleCoverEstimate
+    && Number.isFinite(props.widthM)
+    && props.widthM > 0
+    && Number.isFinite(props.depthM)
+    && props.depthM > 0
+  ) {
+    return `${props.widthM}m wide × ${props.depthM}m deep`;
+  }
   const values = [props.widthM, props.depthM, props.heightM];
   if (!values.every((value) => Number.isFinite(value) && value > 0)) {
     return 'Not supplied';
   }
   return `${props.widthM}m wide × ${props.depthM}m deep × ${props.heightM}m high`;
+}
+
+function simpleCoverLevel(value: NonNullable<ResidentialOrCommercialEnquiry['simpleCoverEstimate']>['level']): string {
+  return value === 'elevated' ? 'Elevated deck' : 'Ground-level deck';
+}
+
+function simpleCoverConnection(value: NonNullable<ResidentialOrCommercialEnquiry['simpleCoverEstimate']>['connection']): string {
+  if (value === 'facade') return 'Facade';
+  if (value === 'soffit') return 'Soffit brackets';
+  return 'Fascia';
 }
 
 function estimateModel(
@@ -74,7 +93,9 @@ function estimateModel(
       props.blindsSelected && props.blindsRange
         ? formatInvestmentAmount(props.blindsRange, formatNZD)
         : undefined,
-    estimateNote: baseIsSingleAmount
+    estimateNote: props.simpleCoverEstimate
+      ? `An early installed estimate, including GST. It is not a quote. It uses the selected dimensions, ${simpleCoverLevel(props.simpleCoverEstimate.level).toLowerCase()} and ${simpleCoverConnection(props.simpleCoverEstimate.connection).toLowerCase()}, together with the standard Simple calculator assumptions. We will confirm the final scope after reviewing the site and connection details.`
+      : baseIsSingleAmount
       ? 'An early installed estimate, including GST. It is not a quote and assumes standard access, fixings, colour and fascia connection. We will confirm the final scope after reviewing the site and connection details.'
       : 'An early installed range, including GST. It reflects the assumptions stored with this enquiry and is not a quote. We will confirm the final scope after reviewing the site and connection details.',
   };
@@ -166,6 +187,12 @@ function buildEstimateModel(
         value: supplied(props.suburb),
       },
       { label: 'Approximate dimensions', value: dimensions(props) },
+      ...(props.simpleCoverEstimate
+        ? [
+            { label: 'Deck level', value: simpleCoverLevel(props.simpleCoverEstimate.level) },
+            { label: 'House connection', value: simpleCoverConnection(props.simpleCoverEstimate.connection) },
+          ]
+        : []),
       { label: 'Pergola form', value: supplied(props.style) },
       { label: 'Roof approach', value: supplied(props.roof) },
       { label: 'Options to discuss', value: options },

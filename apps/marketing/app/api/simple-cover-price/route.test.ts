@@ -32,6 +32,7 @@ describe('POST /api/simple-cover-price', () => {
       plan: { postPositions: [0, 0.5, 1], rafterPositions: [0, 0.5, 1] },
       price: { fromIncGst: 24_250, currency: 'NZD' },
       configuration: { versionNumber: 7 },
+      calculationRef: 'sc1.opaque-authenticated-reference',
       internalTrueCostExGst: 12_345,
       costingConfiguration: { versionId: 'private-id', contentHash: 'private-hash' },
     });
@@ -43,6 +44,7 @@ describe('POST /api/simple-cover-price', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toContain('no-store');
     expect(body.price).toEqual({ fromIncGst: 24_250, currency: 'NZD' });
+    expect(body.calculationRef).toBe('sc1.opaque-authenticated-reference');
     expect(JSON.stringify(body)).not.toMatch(/cost_ex_gst|materials|install|contentHash|versionId|internalTrueCost/);
   });
 

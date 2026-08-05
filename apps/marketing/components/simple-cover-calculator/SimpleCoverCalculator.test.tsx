@@ -3,7 +3,17 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SimpleCoverInput, SimpleCoverPricedResult } from '@/lib/simpleCoverCalculator';
-import SimpleCoverCalculator from './SimpleCoverCalculator';
+import {
+  SIMPLE_COVER_HANDOFF_STORAGE_KEY,
+  type SimpleCoverHandoff,
+} from '@/lib/simpleCoverHandoff';
+import SimpleCoverCalculator, { type SimpleCoverCalculatorProps } from './SimpleCoverCalculator';
+
+const consentState = vi.hoisted(() => ({ analytics: false }));
+
+vi.mock('@/components/ConsentProvider', () => ({
+  useConsent: () => ({ consent: { analytics: consentState.analytics } }),
+}));
 
 let root: Root | null = null;
 
@@ -13,6 +23,10 @@ beforeAll(() => {
 
 beforeEach(() => {
   vi.useFakeTimers();
+  consentState.analytics = false;
+  window.sessionStorage.clear();
+  window.history.replaceState({}, '', '/simple-cover-calculator');
+  delete (window as typeof window & { dataLayer?: unknown[] }).dataLayer;
 });
 
 afterEach(async () => {
@@ -43,6 +57,7 @@ function priced(input: SimpleCoverInput): SimpleCoverPricedResult {
     },
     price: { fromIncGst: 24_250, currency: 'NZD' },
     configuration: { versionNumber: 9 },
+    calculationRef: 'signed-calculation-reference',
   };
 }
 
@@ -53,11 +68,11 @@ function mockPricingFetch() {
   });
 }
 
-async function render() {
+async function render(props: SimpleCoverCalculatorProps = {}) {
   const container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
-  await act(async () => root?.render(<SimpleCoverCalculator />));
+  await act(async () => root?.render(<SimpleCoverCalculator {...props} />));
   return container;
 }
 
@@ -104,9 +119,10 @@ describe('SimpleCoverCalculator', () => {
       .toEqual(['Fascia', 'Facade', 'Soffit brackets']);
   });
 
-  it('loads a live published price and updates dimensions without a submit action', async () => {
+  it('loads a live published price, exposes the review action and never continues a stale result', async () => {
     const fetchMock = mockPricingFetch();
-    const container = await render();
+    const onContinue = vi.fn();
+    const container = await render({ onContinue });
     await settlePrice();
 
     expect(fetchMock).toHaveBeenCalledWith('/api/simple-cover-price', expect.objectContaining({ method: 'POST', cache: 'no-store' }));
@@ -114,14 +130,35 @@ describe('SimpleCoverCalculator', () => {
     expect(container.textContent).toContain('GST and standard installation included.');
     expect(container.textContent).toContain('Live pricing set v9');
     expect(container.querySelector('[data-compact-price-state="priced"]')?.textContent).toContain('From $24,250');
+    const reviewLink = Array.from(container.querySelectorAll('a')).find((link) => (
+      link.textContent?.trim() === 'Request a site measure'
+    ));
+    expect(reviewLink?.getAttribute('href')).toBe('/simple-pergolas-auckland#initial-estimate');
 
     const width = container.querySelector('#simple-cover-width') as HTMLInputElement;
     await act(async () => setRange(width, '6100'));
     expect(container.textContent).toContain('6.1 m');
     expect(container.querySelector('[data-result-state="loading"]')).not.toBeNull();
-    expect(container.querySelector('[data-compact-price-state="updating"]')?.textContent).toContain('From $24,250');
+    expect(container.textContent).not.toContain('Request a site measure');
+    expect(container.querySelector('[data-compact-price-state="updating"]')?.textContent).toContain('Updating…');
+    expect(container.querySelector('[data-compact-price-state="updating"]')?.textContent).not.toContain('$24,250');
     await settlePrice();
     expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body))).toMatchObject({ widthMm: 6_100 });
+
+    const currentReviewLink = Array.from(container.querySelectorAll('a')).find((link) => (
+      link.textContent?.trim() === 'Request a site measure'
+    )) as HTMLAnchorElement;
+    await act(async () => currentReviewLink.click());
+    expect(onContinue).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'priced',
+      input: expect.objectContaining({ widthMm: 6_100 }),
+      calculationRef: 'signed-calculation-reference',
+      displayedPriceIncGst: 24_250,
+      configurationVersion: 9,
+    }));
+    expect(JSON.parse(String(window.sessionStorage.getItem(SIMPLE_COVER_HANDOFF_STORAGE_KEY))))
+      .toMatchObject({ status: 'priced', input: { widthMm: 6_100 } });
+    expect((window as typeof window & { dataLayer?: unknown[] }).dataLayer).toBeUndefined();
 
     const connection = container.querySelector('#simple-cover-connection') as HTMLSelectElement;
     await act(async () => {
@@ -134,9 +171,10 @@ describe('SimpleCoverCalculator', () => {
     expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body))).toMatchObject({ connection: 'soffit' });
   });
 
-  it('retains out-of-range-for-Simple inputs, removes price and gives the exact custom route', async () => {
+  it('retains out-of-range-for-Simple inputs and offers both review and a restrained Custom route', async () => {
     const fetchMock = mockPricingFetch();
-    const container = await render();
+    const onContinue = vi.fn();
+    const container = await render({ onContinue });
     await settlePrice();
     fetchMock.mockClear();
 
@@ -147,19 +185,42 @@ describe('SimpleCoverCalculator', () => {
     expect(container.textContent).not.toContain('From $');
     expect(container.querySelector('[data-result-state="custom"]')).not.toBeNull();
     expect(container.querySelector('[data-compact-price-state="custom"]')?.textContent).toContain('Custom design');
-    expect(container.querySelector('a')?.getAttribute('href')).toContain('source_component=public_calculator');
+    const reviewLink = Array.from(container.querySelectorAll('a')).find((link) => (
+      link.textContent?.trim() === 'Ask Sanctuary to review these selections'
+    )) as HTMLAnchorElement;
+    expect(reviewLink.getAttribute('href')).toBe('/simple-pergolas-auckland#initial-estimate');
+    expect(Array.from(container.querySelectorAll('a')).find((link) => (
+      link.textContent?.trim() === 'Explore Custom design'
+    ))?.getAttribute('href')).toBe('/custom-pergolas-auckland');
+    await act(async () => reviewLink.click());
+    expect(onContinue).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'custom',
+      input: expect.objectContaining({ projectionMm: 6_000 }),
+      calculationRef: null,
+    }));
     await settlePrice();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('shows a safe unavailable state and preserves the design', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('private configuration detail'));
-    const container = await render();
+    const onContinue = vi.fn();
+    const container = await render({ onContinue });
     await settlePrice();
 
     expect(container.querySelector('[data-result-state="unavailable"]')).not.toBeNull();
     expect(container.querySelector('[data-compact-price-state="unavailable"]')?.textContent).toContain('Unavailable');
     expect(container.textContent).toContain('Your design is still here.');
+    const reviewLink = Array.from(container.querySelectorAll('a')).find((link) => (
+      link.textContent?.trim() === 'Send these selections for review'
+    )) as HTMLAnchorElement;
+    expect(reviewLink).toBeTruthy();
+    await act(async () => reviewLink.click());
+    expect(onContinue).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'unavailable',
+      input: expect.objectContaining({ widthMm: 6_000, projectionMm: 3_000 }),
+      calculationRef: null,
+    }));
     expect(container.textContent).toContain('18.0 m²');
     expect(container.textContent).not.toContain('private configuration detail');
     expect(container.querySelectorAll('[data-plan-rafter]')).toHaveLength(11);
@@ -184,5 +245,91 @@ describe('SimpleCoverCalculator', () => {
 
     expect((container.querySelector('#simple-cover-width') as HTMLInputElement).value).toBe('4700');
     expect(widthMetres.value).toBe('4.7');
+  });
+
+  it('uses the concise embedded introduction and restores only an intentional stored handoff landing', async () => {
+    mockPricingFetch();
+    const storedHandoff: SimpleCoverHandoff = {
+      schemaVersion: 'simple-cover-handoff.v1',
+      status: 'custom',
+      input: { widthMm: 7_200, projectionMm: 4_200, level: 'elevated', connection: 'soffit' },
+      calculationRef: null,
+      displayedPriceIncGst: null,
+      configurationVersion: null,
+    };
+    window.sessionStorage.setItem(SIMPLE_COVER_HANDOFF_STORAGE_KEY, JSON.stringify(storedHandoff));
+    window.history.replaceState({}, '', '/simple-pergolas-auckland#initial-estimate');
+
+    const container = await render({ placement: 'embedded' });
+    expect(container.querySelector('h2')?.textContent).toContain('See the installed estimate');
+    expect(container.querySelector('h2')?.textContent).toContain('Price your Simple cover.');
+    expect((container.querySelector('#simple-cover-width') as HTMLInputElement).value).toBe('7200');
+    expect((container.querySelector('#simple-cover-projection') as HTMLInputElement).value).toBe('4200');
+    expect((container.querySelector('#simple-cover-connection') as HTMLSelectElement).value).toBe('soffit');
+  });
+
+  it('emits one consented first interaction and closed result/CTA events without sensitive fields', async () => {
+    consentState.analytics = true;
+    mockPricingFetch();
+    const onContinue = vi.fn();
+    const container = await render({ placement: 'embedded', onContinue });
+    await settlePrice();
+
+    const width = container.querySelector('#simple-cover-width') as HTMLInputElement;
+    await act(async () => setRange(width, '6100'));
+    await settlePrice();
+    await act(async () => setRange(width, '6200'));
+    await settlePrice();
+    const reviewLink = Array.from(container.querySelectorAll('a')).find((link) => (
+      link.textContent?.trim() === 'Request a site measure'
+    )) as HTMLAnchorElement;
+    await act(async () => reviewLink.click());
+
+    const events = (window as typeof window & { dataLayer?: Array<Record<string, unknown>> }).dataLayer ?? [];
+    expect(events.map(({ event }) => event)).toEqual([
+      'simple_calculator_view',
+      'simple_calculator_result_view',
+      'simple_calculator_first_interaction',
+      'simple_calculator_cta_click',
+    ]);
+    expect(events.filter(({ event }) => event === 'simple_calculator_first_interaction')).toHaveLength(1);
+    for (const event of events) {
+      expect(Object.keys(event).sort()).toEqual([
+        'calculation_attached',
+        'event',
+        'placement',
+        'result_status',
+        'source_path',
+        'viewport_category',
+      ]);
+      expect(event).not.toHaveProperty('price');
+      expect(event).not.toHaveProperty('widthMm');
+      expect(event).not.toHaveProperty('calculationRef');
+    }
+  });
+
+  it('does not backfill result or interaction events that happened before analytics consent', async () => {
+    mockPricingFetch();
+    const onContinue = vi.fn();
+    const container = await render({ onContinue });
+    await settlePrice();
+
+    const width = container.querySelector('#simple-cover-width') as HTMLInputElement;
+    await act(async () => setRange(width, '6100'));
+    await settlePrice();
+    consentState.analytics = true;
+    await act(async () => root?.render(<SimpleCoverCalculator onContinue={onContinue} />));
+    await act(async () => setRange(width, '6200'));
+    await settlePrice();
+
+    const reviewLink = Array.from(container.querySelectorAll('a')).find((link) => (
+      link.textContent?.trim() === 'Request a site measure'
+    )) as HTMLAnchorElement;
+    await act(async () => reviewLink.click());
+    const events = (window as typeof window & { dataLayer?: Array<Record<string, unknown>> }).dataLayer ?? [];
+    expect(events.map(({ event }) => event)).toEqual([
+      'simple_calculator_view',
+      'simple_calculator_cta_click',
+    ]);
   });
 });

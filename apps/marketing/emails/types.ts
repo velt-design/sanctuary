@@ -43,6 +43,11 @@ export interface ResidentialOrCommercial extends EnquiryBase {
   addons: string[];
   blindsSelected: boolean;
 
+  simpleCoverEstimate?: {
+    level: 'ground' | 'elevated';
+    connection: 'fascia' | 'facade' | 'soffit';
+  };
+
   baseRange: MoneyRange;
   blindsRange?: MoneyRange;
 }

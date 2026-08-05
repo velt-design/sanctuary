@@ -458,21 +458,43 @@ attribution canonicalise Next's production `/index` alias to `/`.
 Simple cover choice. It is a new route-owned Foundation adoption rather than a
 second acrylic SEO page: it is self-canonical, `noindex,follow`, absent from the
 sitemap and directly accessible with or without JavaScript. Its split image-led
-hero leads with `Cover the space without losing light.`, followed by a clear fit
-definition, the Sanctuary finish and inclusions, useful material and blind
-choices, an honest Simple-versus-Custom boundary, two governed reviews and the
-existing privacy-preserving enquiry contract reworded as an initial-estimate
-request. It intentionally omits project detours and extended guide copy. Homepage
-direction and priority context continues through the page, embedded form and
-shared header. The fit section directly after the hero is the named future
-integration point for a separately governed price configurator; the production
-page must not show a synthetic price or inactive configurator controls.
+hero leads with `Cover the space without losing light.` and the primary
+`Price your Simple cover` action. The complete governed calculator now appears
+immediately after that hero and absorbs the former long fit section. The
+calculator is followed immediately by one real-project comparison using the
+existing ground-level and elevated-deck images. Desktop keeps the pair side by
+side beneath one grouped heading; mobile stacks equal-ratio cards with source
+order and captions intact. The remaining
+mobile page shows the Sanctuary-finish heading and three compact proof points,
+hides the standalone inclusions panel while the live-result strip retains GST
+and installation context, reduces material/blind choices to three option rows,
+and uses two concise Simple-versus-Custom qualification cards. The review
+section consumes the shared live/fallback Google rating owner and curated
+review records for one rating/count trust treatment plus Google attribution
+beside each reviewer; it does not copy aggregate or quote data into the route.
+The trust treatment sits beside the grouped review heading on desktop and
+beneath it on narrower screens, while review cards retain content-led mobile
+height and two-column alignment where space permits.
+
+At 560 CSS pixels and below the embedded calculator introduction shows only
+the existing eyebrow and `Price your Simple cover.`; the standalone calculator
+retains its fuller introduction. A priced result's `Request a site measure`
+action carries the closed configuration and opaque calculation reference into
+a visible summary above the final form. Supporting copy states that Sanctuary
+reviews the request and confirms whether a site measure is the right next step;
+the CTA does not book a visit or promise a quote. Custom and unavailable
+results keep selection-aware review continuations and do not invent a price.
+Redundant project-type, roof-form, attachment, dimensions, deck-level and
+connection questions remain removed from this focused form. It intentionally
+omits project detours and extended guide copy. Homepage direction and priority
+context continues through the page, embedded form and shared header.
 `/acrylic-roof-pergolas-auckland` remains unchanged as the only indexable
 acrylic landing-page and sitemap owner.
 
-`/simple-cover-calculator` is the separate reusable calculator route. It is
-self-canonical and `noindex,follow`; the component owns its marketing
-presentation and does not import portal UI or drawing CSS. Native 100 mm range
+`/simple-cover-calculator` remains the separate shareable calculator route. It
+is self-canonical and `noindex,follow`; both routes render the same component,
+with only intro placement and continuation behavior varying. The component owns
+its marketing presentation and does not import portal UI or drawing CSS. Native 100 mm range
 controls use the Projects view-scale language with metre stops and square handles;
 editable metre values cover 1-10 m width and 1-6 m projection
 with a 6 x 3 m default, a ground/elevated choice, automatic post layout and an
@@ -480,11 +502,14 @@ accessible architectural concept plan. The plan topline owns the live area besid
 the level, keeping that design fact attached to the drawing. The plan uses the
 package-owned acrylic-rafter layout even when price is unavailable, with scaled 50 mm
 rafter/ledger and 100 mm beam/post outlines, technical dimensions and a distinct
-marketing presentation. A valid Simple combination shows `From $X`, GST
-and standard installation wording and the public costing version. An over-limit
-combination keeps the dimensions, removes price and gives the exact 30 m2 or
-20 m2 reason plus an attributed Custom design route. Published costing failure
-keeps the design visible and shows no price.
+marketing presentation. A valid Simple combination shows `From $X`, GST,
+standard installation wording, the public costing version and the clear
+`Request a site measure` next step. The standalone CTA stores the closed handoff in same-tab session storage
+before continuing to the focused sales page; no price, dimensions or reference
+enter the URL. An over-limit combination keeps the dimensions, removes price,
+gives the exact 30 m2 or 20 m2 reason and offers both Sanctuary review and the
+Custom design route. Published costing failure keeps the design visible, shows
+no price and still offers a selection-aware review continuation.
 
 At 560 CSS pixels and below, normal-height phones use one bounded focus stage
 beneath the fixed header containing only the concept plan, prominent live price
@@ -499,8 +524,9 @@ The focus stage consumes `100svh` minus the header, settles with native
 `position: sticky` for a short page-owned runway, then releases into a separate
 72-pixel-minimum deck-level choice followed by options and assumptions. The
 supporting live-result strip comes after every price-affecting input and carries
-GST, installation and pricing-set context instead of repeating a second large
-price; Custom and unavailable states retain their full route-specific guidance.
+GST, installation and pricing-set context plus the next-step CTA instead of
+repeating a second large price; Custom and unavailable states retain their full
+route-specific guidance.
 The stage does not intercept wheel or touch input and
 does not use document scroll snap. Viewports below 580 CSS pixels in height,
 mobile landscape and widths at or below 320 CSS pixels use the same semantic

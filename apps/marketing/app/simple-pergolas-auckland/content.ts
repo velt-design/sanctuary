@@ -1,53 +1,24 @@
-export const simpleCoverFitCriteria = [
-  {
-    label: 'Projection',
-    value: 'Up to 6 m',
-    text: 'Measured out from the house, subject to the site and structure.',
-  },
-  {
-    label: 'Post spacing',
-    value: 'Up to 6 m',
-    text: 'Post positions are resolved around the deck, outlook and structure.',
-  },
-  {
-    label: 'House connection',
-    value: 'Straightforward',
-    text: 'A clear connection without difficult rooflines or unusual interfaces.',
-  },
-  {
-    label: 'Site access',
-    value: 'Workable',
-    text: 'Enough access to deliver materials and install the pergola safely.',
-  },
-] as const;
-
 export const simpleCoverStandard = [
   {
     number: '01',
     title: 'Proportioned for the house',
-    text: 'The roof height, frame and post positions are set to sit calmly against the home.',
+    text: 'Roof height, frame and post positions are set to sit calmly against the home.',
   },
   {
     number: '02',
-    title: 'A resolved connection',
-    text: 'The house junction, flashings and frame are considered as one finished detail.',
+    title: 'Connection and drainage resolved',
+    text: 'The house junction, flashings, roof fall, guttering and outlets are resolved together.',
   },
   {
     number: '03',
-    title: 'Drainage designed in',
-    text: 'Roof fall, guttering and outlets are resolved with the structure rather than added later.',
-  },
-  {
-    number: '04',
     title: 'Built and finished by Sanctuary',
     text: 'Sanctuary Pergolas offers a 10-year warranty on workmanship.',
   },
 ] as const;
 
 export const simpleCoverInclusions = [
-  'A pitched aluminium frame designed around the agreed dimensions',
-  'Acrylic roofing, house flashings, guttering and outlets',
-  'Post and house connections for the confirmed site',
+  'Pitched aluminium frame and acrylic roofing',
+  'Confirmed house and post connections, flashings and drainage',
   'Delivery and installation within the agreed proposal',
 ] as const;
 
@@ -61,39 +32,24 @@ export const simpleCoverOptions = [
   {
     number: '02',
     title: 'Frame colour',
-    text: 'Select a standard powder-coat colour that settles the frame into the house or makes it deliberate.',
+    text: 'Select a standard powder-coat colour to settle the frame into the house or make it deliberate.',
     note: 'The exact finish is confirmed in your proposal.',
   },
   {
     number: '03',
     title: 'Optional blinds',
-    text: 'Add a blind to one or more selected sides for low sun, privacy or an exposed edge.',
+    text: 'Add blinds to selected sides for low sun, privacy or an exposed edge.',
     note: 'Opening size, fabric and exposure still need to be checked.',
   },
 ] as const;
 
 export const simpleCoverBoundary = {
   simple: [
-    'One straightforward pitched acrylic roof',
-    'Within the ground-level or elevated-deck size limits',
-    'A clear house connection and workable installation access',
-    'Roof only, or optional blinds on selected sides',
+    'One pitched acrylic roof within the calculator limits',
+    'A straightforward house connection and workable site access',
   ],
   custom: [
-    'Gable, hip, mixed or lined roof forms',
-    'Difficult structural or multi-level connections',
-    'Integrated fireplaces, extensive services or unusual geometry',
-    'A project outside the Simple cover size or access limits',
-  ],
-} as const;
-
-export const simpleCoverRoofPreference = {
-  detailKey: 'acrylicOption' as const,
-  options: [
-    { label: 'Clear acrylic', value: 'Clear acrylic', roofMaterials: ['acrylic'] },
-    { label: 'Light grey acrylic', value: 'Light grey acrylic', roofMaterials: ['acrylic'] },
-    { label: 'Dark grey acrylic', value: 'Dark grey acrylic', roofMaterials: ['acrylic'] },
-    { label: 'Opal acrylic', value: 'Opal acrylic', roofMaterials: ['acrylic'] },
-    { label: 'Unsure: recommend the right option', value: 'Unsure', roofMaterials: [] },
+    'Different roof forms, unusual geometry or complex connections',
+    'A project outside the Simple limits or needing integrated features',
   ],
 } as const;
