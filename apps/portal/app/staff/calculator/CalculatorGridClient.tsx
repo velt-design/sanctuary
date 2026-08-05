@@ -1,6 +1,6 @@
 'use client';
 
-import type { CostInputsV1, RoofType, SiteInputsV1 } from '@sp/costing';
+import { evaluateSimpleRangeEligibilityV2, type CostInputsV1, type RoofType, type SiteInputsV1 } from '@sp/costing';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -98,6 +98,7 @@ import { useCalculatorHouseFootprintController } from './useCalculatorHouseFootp
 import { useCalculatorBlindsController } from './useCalculatorBlindsController';
 import { useCalculatorFlashingsController } from './useCalculatorFlashingsController';
 import { useCalculatorInputController } from './useCalculatorInputController';
+import { useSimplePricingClassification } from './useSimplePricingClassification';
 import { useCalculatorResultPresentation } from './useCalculatorResultPresentation';
 import { useCalculatorWorkspaceSession } from './useCalculatorWorkspaceSession';
 import CalculatorWorkspaceView, { type CalculatorWorkspaceViewProps } from './CalculatorWorkspaceView';
@@ -310,6 +311,12 @@ export default function CalculatorGridClient({
   const readyToCalculate = values.modules.length > 0 && !hasModuleErrors;
 
   const requestPayload = useMemo<SiteInputsV1>(() => buildSiteInputsFromCalculatorInputs(values), [values]);
+
+  const simpleEligibility = useMemo(
+    () => evaluateSimpleRangeEligibilityV2(requestPayload),
+    [requestPayload],
+  );
+  useSimplePricingClassification({ values, setValues, simpleEligible: simpleEligibility.eligible });
 
   const requestPayloadJson = useMemo(() => JSON.stringify(requestPayload), [requestPayload]);
   const activeModulePayload = useMemo<CostInputsV1 | null>(() => {

@@ -20,6 +20,8 @@ const POST_CONNECTIONS = ['pile_1m', 'pile_1_5m', 'deck_bracket', 'slab_anchors'
 const ACCESS_LEVELS = ['easy', 'normal', 'hard'] as const;
 const HEIGHT_CATEGORIES = ['single_storey', 'two_storey'] as const;
 const JOB_TYPES = ['residential', 'commercial'] as const;
+const PRICING_CLASSIFICATIONS = ['simple', 'bespoke'] as const;
+const APPROVAL_REQUIREMENTS = ['neither', 'engineering_required', 'full_building_consent'] as const;
 const GROUND_CONDITIONS = ['easy', 'hard'] as const;
 const ROOF_TYPES = ['pitched', 'low_gable', 'gable'] as const;
 const BOX_GUTTER_EDGES = ['house', 'our', 'none'] as const;
@@ -561,6 +563,12 @@ export async function POST(req: Request) {
   if (!hasPergolas && !hasModules) return badRequest('pergolas or modules must be a non-empty array');
   if (hasPergolas && hasModules) return badRequest('Provide either pergolas or modules (not both).');
   if (body.job_type !== undefined && !isOneOf(JOB_TYPES, body.job_type)) return badRequest('Invalid job_type');
+  if (body.pricing_classification !== undefined && !isOneOf(PRICING_CLASSIFICATIONS, body.pricing_classification)) {
+    return badRequest('Invalid pricing_classification');
+  }
+  if (body.approval_requirement !== undefined && !isOneOf(APPROVAL_REQUIREMENTS, body.approval_requirement)) {
+    return badRequest('Invalid approval_requirement');
+  }
 
   const travel_ex_gst = body.travel_ex_gst !== undefined ? toNumber(body.travel_ex_gst) : undefined;
   const extras_allowance_ex_gst = body.extras_allowance_ex_gst !== undefined ? toNumber(body.extras_allowance_ex_gst) : undefined;
@@ -569,6 +577,8 @@ export async function POST(req: Request) {
   const site: SiteInputsV1 = {
     pergolas: [],
     job_type: body.job_type,
+    pricing_classification: body.pricing_classification,
+    approval_requirement: body.approval_requirement,
     travel_ex_gst,
     extras_allowance_ex_gst,
     quote_discount_pct,

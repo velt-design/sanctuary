@@ -877,6 +877,8 @@ export type PergolaInputsV1 = {
 export type SiteInputsV1 = {
   pergolas: PergolaInputsV1[];
   job_type?: JobType;
+  pricing_classification?: import('../commercial/simpleRangePricing').PricingClassificationV2;
+  approval_requirement?: import('../commercial/simpleRangePricing').ApprovalRequirementV2;
   travel_ex_gst?: number;
   extras_allowance_ex_gst?: number;
   quote_discount_pct?: number;
@@ -910,6 +912,10 @@ export type SiteOutputV1 = {
   overhead: OverheadV1;
   add_ons: AddOnsV1;
   totals: TotalsV1;
+  pricing_policy?: import('../commercial/simpleRangePricing').SitePricingPolicyV2;
+  customer_add_ons?: {
+    approval: import('../commercial/simpleRangePricing').ApprovalCustomerAllowanceV2 | null;
+  };
   infill_takeoff?: InfillTakeoffV1;
 };
 

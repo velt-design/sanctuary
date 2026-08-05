@@ -118,6 +118,9 @@ export async function createCostingConfigurationDraft(
   } else {
     const active = await resolvePublishedCostingConfiguration(supabase);
     config = snapshotCostingControlConfigV1(active.config);
+    // A fresh draft is the explicit upgrade point. It preserves the active
+    // editable rates while opting into the latest package-owned policy.
+    config.baseManifestVersion = String(loadCostingConfigV1().manifest.version);
     basedOnVersionId = active.provenance.versionId;
   }
 

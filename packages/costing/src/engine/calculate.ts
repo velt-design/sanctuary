@@ -14,6 +14,12 @@ import {
 } from './infillIncrementalBaseline';
 import { buildDayCycleActions, buildInstallV1, computeSiteDays, DAY_CYCLE_ACTION_IDS } from './install';
 import { buildOverheadV1 } from './overheads';
+import {
+  buildSimpleRangeOverheadV2,
+  calculateApprovalCustomerAllowanceV2,
+  isCommercialPolicyV2Enabled,
+  resolveSitePricingPolicyV2,
+} from '../commercial/simpleRangePricing';
 import type {
   CostInputsV1,
   CostOutputV1,
@@ -846,6 +852,8 @@ function calculateSiteCostV1Internal(
   const jobType = normalizeJobType(inputs.job_type);
   const jobTravel = roundMoney(Number(inputs.travel_ex_gst ?? 0));
   const jobExtras = roundMoney(Number(inputs.extras_allowance_ex_gst ?? 0));
+  const commercialPolicyEnabled = isCommercialPolicyV2Enabled(cfg);
+  const pricingPolicy = commercialPolicyEnabled ? resolveSitePricingPolicyV2(inputs) : undefined;
 
   const warnings: string[] = [];
 
@@ -1203,16 +1211,18 @@ function calculateSiteCostV1Internal(
   for (let idx = 0; idx < pergolaOutputs.length; idx += 1) {
     const pergola = pergolaOutputs[idx];
     const pergolaFlags = deriveOverheadFlagsForModules(pergola.modules);
-    const overheadResult = buildOverheadV1(cfg, {
-      module_count: pergola.module_count,
-      total_crew_hours: Number(pergola.install.totals.crew_hours ?? 0),
-      has_gable: pergolaFlags.has_gable,
-      has_box_perimeter: pergolaFlags.has_box_perimeter,
-      has_timber_or_mixed: pergolaFlags.has_timber_or_mixed,
-      has_acrylic_only: pergolaFlags.has_acrylic_only,
-      all_pitched_acrylic: pergolaFlags.all_pitched_acrylic,
-      max_acrylic_rafter_length_m: pergolaFlags.max_acrylic_rafter_length_m,
-    });
+    const overheadResult = pricingPolicy?.resolved_classification === 'simple'
+      ? { overhead: buildSimpleRangeOverheadV2(cfg, crewHoursTotal), notes_and_warnings: [] }
+      : buildOverheadV1(cfg, {
+          module_count: pergola.module_count,
+          total_crew_hours: Number(pergola.install.totals.crew_hours ?? 0),
+          has_gable: pergolaFlags.has_gable,
+          has_box_perimeter: pergolaFlags.has_box_perimeter,
+          has_timber_or_mixed: pergolaFlags.has_timber_or_mixed,
+          has_acrylic_only: pergolaFlags.has_acrylic_only,
+          all_pitched_acrylic: pergolaFlags.all_pitched_acrylic,
+          max_acrylic_rafter_length_m: pergolaFlags.max_acrylic_rafter_length_m,
+        });
 
     if (overheadResult.notes_and_warnings.length) {
       const prefix = pergola.label ? `[Pergola ${pergola.label}]` : `[Pergola ${idx + 1}]`;
@@ -1307,6 +1317,14 @@ function calculateSiteCostV1Internal(
       warnings: toWarnings(warnings),
       notes_and_warnings: warnings,
     },
+    ...(pricingPolicy
+      ? {
+          pricing_policy: pricingPolicy,
+          customer_add_ons: {
+            approval: calculateApprovalCustomerAllowanceV2(inputs, cfg),
+          },
+        }
+      : null),
   };
 
   if (includeInfillBaseline && siteInfillTakeoff.items.length > 0) {

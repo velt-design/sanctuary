@@ -274,6 +274,8 @@ export function buildSimpleCoverSiteInputs(input: SimpleCoverInput): SiteInputsV
       }],
     }],
     job_type: 'residential',
+    pricing_classification: 'simple',
+    approval_requirement: 'neither',
     travel_ex_gst: 0,
     extras_allowance_ex_gst: 0,
     quote_discount_pct: 0,

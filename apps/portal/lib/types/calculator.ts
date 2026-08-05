@@ -10,6 +10,8 @@ import type {
   JobType,
   PergolaStyleUi,
   PostConnectionType,
+  PricingClassificationV2,
+  ApprovalRequirementV2,
   RoofMaterial,
   RoofType,
 } from '@sp/costing';
@@ -362,6 +364,8 @@ export type CalculatorInputs = {
   access: AccessLevel;
   height: HeightCategory;
   jobType: JobType;
+  pricingClassification?: PricingClassificationV2;
+  approvalRequirement?: ApprovalRequirementV2;
   travelExGst: string;
   extrasAllowanceExGst: string;
   quoteDiscountPct: string;
@@ -488,6 +492,8 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
     access: legacy.access,
     height: legacy.height,
     jobType: 'residential',
+    pricingClassification: 'bespoke',
+    approvalRequirement: 'neither',
     travelExGst: legacy.travelExGst,
     extrasAllowanceExGst: legacy.extrasAllowanceExGst,
     quoteDiscountPct: legacy.quoteDiscountPct,

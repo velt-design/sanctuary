@@ -85,6 +85,14 @@ function estimateFromRow(row: any): Estimate {
         : outputsRaw?.siteShared && typeof outputsRaw.siteShared === 'object'
           ? outputsRaw.siteShared
           : undefined,
+    pricing_policy:
+      outputsRaw?.pricing_policy && typeof outputsRaw.pricing_policy === 'object'
+        ? outputsRaw.pricing_policy
+        : undefined,
+    customer_add_ons:
+      outputsRaw?.customer_add_ons && typeof outputsRaw.customer_add_ons === 'object'
+        ? outputsRaw.customer_add_ons
+        : undefined,
   };
 
   const configVersions = isRecord(outputsRaw?.configVersions)

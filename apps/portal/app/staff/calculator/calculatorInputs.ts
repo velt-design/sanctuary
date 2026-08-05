@@ -209,6 +209,8 @@ export function makeDefaultCalculatorInputs(): CalculatorInputs {
     access: 'normal',
     height: 'single_storey',
     jobType: 'residential',
+    pricingClassification: 'simple',
+    approvalRequirement: 'neither',
     travelExGst: '0',
     extrasAllowanceExGst: '0',
     quoteDiscountPct: '0',
@@ -670,6 +672,11 @@ export function normalizeCalculatorInputsForUi(value: CalculatorInputs): Calcula
     ...value,
     schemaVersion: 'v2',
     jobType: value.jobType === 'commercial' ? 'commercial' : 'residential',
+    pricingClassification: value.pricingClassification === 'simple' ? 'simple' : 'bespoke',
+    approvalRequirement:
+      value.approvalRequirement === 'engineering_required' || value.approvalRequirement === 'full_building_consent'
+        ? value.approvalRequirement
+        : 'neither',
     pergolas: finalPergolas,
     modules,
     blinds: normalizeBlindsStateForUi((value as any).blinds),

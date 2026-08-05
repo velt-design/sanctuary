@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+  applyCostingControlConfigV1,
   loadCostingConfigV1,
   snapshotCostingControlConfigV1,
 } from '@sp/costing';
@@ -275,6 +276,39 @@ describe('costing configuration admin publication', () => {
       name: 'Copy of supplier update',
       purpose: 'Check the previous supplier assumptions.',
       based_on_version_id: source.id,
+    }));
+  });
+
+  it('makes a fresh draft the explicit v1.9 policy upgrade point', async () => {
+    const base = loadCostingConfigV1();
+    const publishedControl = snapshotCostingControlConfigV1(base);
+    publishedControl.baseManifestVersion = 'v1.8';
+    resolvePublishedCostingConfiguration.mockResolvedValue({
+      config: applyCostingControlConfigV1(base, publishedControl),
+      provenance: {
+        source: 'published',
+        versionId: 'published-v1',
+      },
+    });
+    const insert = vi.fn();
+    const builder: Record<string, ReturnType<typeof vi.fn>> = {};
+    builder.insert = insert.mockImplementation(() => builder);
+    builder.select = vi.fn(() => builder);
+    builder.single = vi.fn(async () => ({ data: draftRow(draftVersion()), error: null }));
+    const client = { from: vi.fn(() => builder) } as unknown as SupabaseClient;
+    const { createCostingConfigurationDraft } = await import('./configurationAdmin');
+
+    await createCostingConfigurationDraft(
+      client,
+      { id: 'admin-1', email: 'admin@example.com' },
+      null,
+      { name: 'Version 2', purpose: 'Review the new Simple range policy.' },
+    );
+
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+      base_manifest_version: 'v1.9',
+      based_on_version_id: 'published-v1',
+      config_json: expect.objectContaining({ baseManifestVersion: 'v1.9' }),
     }));
   });
 

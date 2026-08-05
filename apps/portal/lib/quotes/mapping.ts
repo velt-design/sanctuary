@@ -465,6 +465,22 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
     coreTotalIncCents += lineTotalCents(qty, unitPriceIncGstCents);
   }
 
+  const approval = outputs?.customer_add_ons?.approval;
+  const approvalIncGst = toNumber(approval?.sell_inc_gst);
+  if (approval && Number.isFinite(approvalIncGst) && approvalIncGst > 0) {
+    const qty = 1;
+    const unitPriceIncGstCents = toCents(approvalIncGst);
+    lineItems.push({
+      description: approval.requirement === 'full_building_consent'
+        ? 'Full building consent\n- Includes engineering; customer allowance, not discountable'
+        : 'Engineering\n- Customer allowance, not discountable',
+      qty,
+      unitPriceIncGstCents,
+      lineTotalIncGstCents: lineTotalCents(qty, unitPriceIncGstCents),
+      sortOrder: lineItems.length,
+    });
+  }
+
   const lightingTotal = extractLightingTotalCents(estimate);
   if (lightingTotal !== null) {
     const qty = 1;

@@ -62,6 +62,32 @@ function makeEstimate(overrides: Record<string, unknown> = {}) {
 }
 
 describe('buildQuoteLineItemsFromEstimate', () => {
+  it('adds a frozen engineering allowance without markup or quote discount', () => {
+    const estimate = makeEstimate({
+      inputs: {
+        ...makeEstimate().inputs,
+        quoteDiscountPct: '20',
+        approvalRequirement: 'engineering_required',
+      },
+      outputs: {
+        ...makeEstimate().outputs,
+        pergolas: [{ id: 'pergola-1', label: 'Pergola 1', totals: { cost_ex_gst: 100 } }],
+        siteShared: { totals: { cost_ex_gst: 0 } },
+        customer_add_ons: {
+          approval: {
+            requirement: 'engineering_required',
+            sell_ex_gst: 5000,
+            sell_inc_gst: 5750,
+          },
+        },
+      },
+    });
+    const result = buildQuoteLineItemsFromEstimate(estimate);
+    const engineering = result.items.find((item) => item.description.startsWith('Engineering'));
+    expect(engineering?.unitPriceIncGstCents).toBe(575_000);
+    expect(engineering?.description).not.toContain('20% applied');
+  });
+
   it('prices pergola + site snapshot lines using cost * 1.25 then GST', () => {
     const estimate = makeEstimate({
       inputs: {

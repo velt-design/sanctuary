@@ -46,6 +46,12 @@ export const CALCULATOR_CONFIGURATION_SECTIONS = [
     fieldIds: ['project-context', 'draft-notice'],
   },
   {
+    id: 'pricing-basis',
+    title: 'Pricing basis',
+    density: 'compact',
+    fieldIds: ['pricingClassification', 'approvalRequirement'],
+  },
+  {
     id: 'connections-site',
     title: 'Connections & Site',
     fieldIds: ['houseConnectionType', 'postConnectionType', 'ground', 'access', 'height', 'jobType'],

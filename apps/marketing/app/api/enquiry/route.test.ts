@@ -25,6 +25,8 @@ vi.mock('@supabase/supabase-js', () => ({
 
 vi.mock('@sp/costing', () => ({
   calculateCostV1: h.calculateCostV1,
+  calculateSiteCostV1: vi.fn(),
+  isCommercialPolicyV2Enabled: vi.fn(() => false),
   autoSplitByMaxWidth: vi.fn(),
   getBlindSystemLimits: vi.fn(() => ({ maxWidthMm: 5000, maxCoverLengthMm: 3000 })),
   priceAllBlinds: h.priceAllBlinds,

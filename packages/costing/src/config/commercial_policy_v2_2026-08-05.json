@@ -1,0 +1,16 @@
+{
+  "version": "v2",
+  "simple_range": {
+    "ground_max_area_m2": 30,
+    "elevated_max_area_m2": 20,
+    "base_overhead_ex_gst": 2000,
+    "included_crew_days": 3,
+    "additional_crew_day_ex_gst": 500
+  },
+  "approval_allowances": {
+    "engineering_base_sell_ex_gst": 5000,
+    "building_consent_base_sell_ex_gst": 10000,
+    "additional_pergola_sell_ex_gst": 3000,
+    "additional_module_sell_ex_gst": 1500
+  }
+}

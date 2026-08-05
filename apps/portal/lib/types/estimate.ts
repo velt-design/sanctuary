@@ -6,6 +6,7 @@ import type {
   OverheadV1,
   PergolaOutputV1,
   SiteSharedOutputV1,
+  SiteOutputV1,
   TotalsV1,
   WarningV1,
 } from '@sp/costing';
@@ -51,6 +52,8 @@ export type Estimate = {
     pergolas?: PergolaOutputV1[];
     siteShared?: SiteSharedOutputV1;
     shared?: SiteSharedOutputV1;
+    pricing_policy?: SiteOutputV1['pricing_policy'];
+    customer_add_ons?: SiteOutputV1['customer_add_ons'];
   };
 
   configVersions: {

@@ -93,7 +93,8 @@ const MAX_CURRENCY_VALUE = 10_000_000;
 const MAX_MINUTES_VALUE = 10_080;
 const MAX_MULTIPLIER_VALUE = 10;
 const COMPATIBLE_BASE_MANIFEST_UPGRADES: Record<string, readonly string[]> = {
-  'v1.7': ['v1.8'],
+  'v1.7': ['v1.8', 'v1.9'],
+  'v1.8': ['v1.9'],
 };
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -173,7 +174,7 @@ export function snapshotCostingControlConfigV1(config: CostingConfigV1): Costing
 
   return {
     schemaVersion: COSTING_CONTROL_CONFIG_SCHEMA_VERSION,
-    baseManifestVersion: String(config.manifest.version),
+    baseManifestVersion: config.appliedControlManifestVersion ?? String(config.manifest.version),
     materialRatesExGst: Object.fromEntries(
       config.materials.items.map((item) => [item.id, Number(item.cost_ex_gst)]),
     ),
@@ -430,6 +431,7 @@ export function applyCostingControlConfigV1(
   }
   const control = validated.value;
   const config = deepClone(baseConfig);
+  config.appliedControlManifestVersion = control.baseManifestVersion;
 
   config.materials.items = config.materials.items.map((item) => ({
     ...item,
@@ -546,12 +548,18 @@ export const COSTING_CONTROL_PREVIEW_SCENARIOS_V1: ReadonlyArray<{
   {
     id: 'standard-pitched-acrylic',
     label: 'Standard pitched acrylic 6m x 3m',
-    inputs: { pergolas: [{ id: 'preview-1', modules: [{ ...BASE_PREVIEW_INPUT }] }] },
+    inputs: {
+      pricing_classification: 'simple',
+      approval_requirement: 'neither',
+      pergolas: [{ id: 'preview-1', modules: [{ ...BASE_PREVIEW_INPUT }] }],
+    },
   },
   {
     id: 'gable-acrylic-hard-access',
     label: 'Gable acrylic 7m x 6m, hard access',
     inputs: {
+      pricing_classification: 'bespoke',
+      approval_requirement: 'neither',
       pergolas: [{
         id: 'preview-1',
         modules: [{
@@ -572,6 +580,8 @@ export const COSTING_CONTROL_PREVIEW_SCENARIOS_V1: ReadonlyArray<{
     id: 'box-perimeter-timber',
     label: 'Box perimeter timber 6m x 4m',
     inputs: {
+      pricing_classification: 'bespoke',
+      approval_requirement: 'neither',
       pergolas: [{
         id: 'preview-1',
         modules: [{
@@ -592,6 +602,8 @@ export const COSTING_CONTROL_PREVIEW_SCENARIOS_V1: ReadonlyArray<{
     id: 'two-pergola-site',
     label: 'Two-pergola residential site',
     inputs: {
+      pricing_classification: 'bespoke',
+      approval_requirement: 'neither',
       travel_ex_gst: 350,
       extras_allowance_ex_gst: 500,
       pergolas: [

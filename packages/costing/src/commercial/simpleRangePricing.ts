@@ -1,0 +1,162 @@
+import { GST_RATE } from '../blinds';
+import type { CostingConfigV1 } from '../engine/config';
+import type { OverheadV1, SiteInputsV1 } from '../engine/types';
+
+export type PricingClassificationV2 = 'simple' | 'bespoke';
+export type ApprovalRequirementV2 = 'neither' | 'engineering_required' | 'full_building_consent';
+
+export type SimpleRangeReasonCodeV2 =
+  | 'MANUALLY_BESPOKE'
+  | 'APPROVAL_REQUIRED'
+  | 'MULTIPLE_PERGOLAS'
+  | 'MULTIPLE_MODULES'
+  | 'NON_RESIDENTIAL'
+  | 'NON_PITCHED_ACRYLIC'
+  | 'AREA_LIMIT_EXCEEDED'
+  | 'NON_STANDARD_CONNECTION'
+  | 'NON_STANDARD_POST_CONNECTION'
+  | 'NON_STANDARD_ACCESS'
+  | 'NON_STANDARD_GROUND'
+  | 'NON_STANDARD_COLOUR'
+  | 'CUSTOM_POWDERCOAT'
+  | 'INFILLS_INCLUDED';
+
+export type SitePricingPolicyV2 = {
+  requested_classification: PricingClassificationV2;
+  resolved_classification: PricingClassificationV2;
+  simple_eligible: boolean;
+  reason_codes: SimpleRangeReasonCodeV2[];
+};
+
+export type ApprovalCustomerAllowanceV2 = {
+  requirement: Exclude<ApprovalRequirementV2, 'neither'>;
+  pergola_count: number;
+  module_count: number;
+  additional_pergola_count: number;
+  additional_module_count: number;
+  sell_ex_gst: number;
+  gst: number;
+  sell_inc_gst: number;
+  markup_included: true;
+  discount_eligible: false;
+};
+
+function roundMoney(value: number): number {
+  return Number.isFinite(value) ? Math.round(value * 100) / 100 : 0;
+}
+
+function effectiveManifestVersion(config: CostingConfigV1): string {
+  return config.appliedControlManifestVersion ?? String(config.manifest.version);
+}
+
+export function isCommercialPolicyV2Enabled(config: CostingConfigV1): boolean {
+  const match = /^v(\d+)\.(\d+)/.exec(effectiveManifestVersion(config));
+  if (!match) return false;
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  return major > 1 || (major === 1 && minor >= 9);
+}
+
+export function evaluateSimpleRangeEligibilityV2(inputs: SiteInputsV1): {
+  eligible: boolean;
+  reason_codes: SimpleRangeReasonCodeV2[];
+} {
+  const reasons: SimpleRangeReasonCodeV2[] = [];
+  const pergolas = Array.isArray(inputs.pergolas) ? inputs.pergolas : [];
+  const modules = pergolas.flatMap((pergola) => Array.isArray(pergola.modules) ? pergola.modules : []);
+
+  if (pergolas.length !== 1) reasons.push('MULTIPLE_PERGOLAS');
+  if (modules.length !== 1) reasons.push('MULTIPLE_MODULES');
+  if ((inputs.job_type ?? 'residential') !== 'residential') reasons.push('NON_RESIDENTIAL');
+
+  for (const module of modules) {
+    if (module.pergola_style !== 'pitched' || module.roof_material !== 'acrylic' || module.box_perimeter_enabled) {
+      reasons.push('NON_PITCHED_ACRYLIC');
+    }
+    const projection = Number(module.roof_span_m ?? module.projection_m ?? 0);
+    const area = Math.max(0, Number(module.length_m ?? 0)) * Math.max(0, projection);
+    const maxArea = module.height === 'two_storey' ? 20 : 30;
+    if (area > maxArea) reasons.push('AREA_LIMIT_EXCEEDED');
+    if (!['fascia', 'facade', 'soffit'].includes(module.house_connection_type)) reasons.push('NON_STANDARD_CONNECTION');
+    if (module.post_connection_type !== 'deck_bracket') reasons.push('NON_STANDARD_POST_CONNECTION');
+    if (module.access !== 'normal') reasons.push('NON_STANDARD_ACCESS');
+    if ((module.ground ?? 'easy') !== 'easy') reasons.push('NON_STANDARD_GROUND');
+    if (module.extrusion_colour !== 'Black') reasons.push('NON_STANDARD_COLOUR');
+    if (module.powdercoat_is_custom) reasons.push('CUSTOM_POWDERCOAT');
+    if ((module.infills?.length ?? 0) > 0) reasons.push('INFILLS_INCLUDED');
+  }
+
+  const reasonCodes = [...new Set(reasons)];
+  return { eligible: reasonCodes.length === 0, reason_codes: reasonCodes };
+}
+
+export function resolveSitePricingPolicyV2(inputs: SiteInputsV1): SitePricingPolicyV2 {
+  const requested = inputs.pricing_classification === 'simple' ? 'simple' : 'bespoke';
+  const approval = inputs.approval_requirement ?? 'neither';
+  const eligibility = evaluateSimpleRangeEligibilityV2(inputs);
+  const reasons = [...eligibility.reason_codes];
+  if (requested === 'bespoke') reasons.unshift('MANUALLY_BESPOKE');
+  if (approval !== 'neither') reasons.unshift('APPROVAL_REQUIRED');
+  const reasonCodes = [...new Set(reasons)];
+  const simpleEligible = eligibility.eligible && approval === 'neither';
+  return {
+    requested_classification: requested,
+    resolved_classification: requested === 'simple' && simpleEligible ? 'simple' : 'bespoke',
+    simple_eligible: simpleEligible,
+    reason_codes: reasonCodes,
+  };
+}
+
+export function buildSimpleRangeOverheadV2(config: CostingConfigV1, totalCrewHours: number): OverheadV1 {
+  const policy = config.commercialPolicy.simple_range;
+  const allocation = (config.overheads as unknown as {
+    allocation_method_v1_1?: { crew_day_hours?: number };
+  }).allocation_method_v1_1;
+  const crewDayHours = Math.max(0.01, Number(allocation?.crew_day_hours ?? 9));
+  const crewDays = Math.max(0, Number(totalCrewHours) || 0) / crewDayHours;
+  const excessCrewDays = Math.max(0, crewDays - Number(policy.included_crew_days));
+  const total = roundMoney(
+    Number(policy.base_overhead_ex_gst)
+      + excessCrewDays * Number(policy.additional_crew_day_ex_gst),
+  );
+  return {
+    method: 'simple_progressive',
+    ops_ex_gst: total,
+    sales_ex_gst: 0,
+    total_ex_gst: total,
+  };
+}
+
+export function calculateApprovalCustomerAllowanceV2(
+  inputs: SiteInputsV1,
+  config: CostingConfigV1,
+): ApprovalCustomerAllowanceV2 | null {
+  const requirement = inputs.approval_requirement ?? 'neither';
+  if (requirement === 'neither') return null;
+  const pergolaCount = Math.max(0, inputs.pergolas.length);
+  const moduleCount = inputs.pergolas.reduce((sum, pergola) => sum + pergola.modules.length, 0);
+  const additionalPergolaCount = Math.max(0, pergolaCount - 1);
+  const additionalModuleCount = Math.max(0, moduleCount - pergolaCount);
+  const policy = config.commercialPolicy.approval_allowances;
+  const base = requirement === 'full_building_consent'
+    ? Number(policy.building_consent_base_sell_ex_gst)
+    : Number(policy.engineering_base_sell_ex_gst);
+  const sellExGst = roundMoney(
+    base
+      + additionalPergolaCount * Number(policy.additional_pergola_sell_ex_gst)
+      + additionalModuleCount * Number(policy.additional_module_sell_ex_gst),
+  );
+  const sellIncGst = roundMoney(sellExGst * (1 + GST_RATE));
+  return {
+    requirement,
+    pergola_count: pergolaCount,
+    module_count: moduleCount,
+    additional_pergola_count: additionalPergolaCount,
+    additional_module_count: additionalModuleCount,
+    sell_ex_gst: sellExGst,
+    gst: roundMoney(sellIncGst - sellExGst),
+    sell_inc_gst: sellIncGst,
+    markup_included: true,
+    discount_eligible: false,
+  };
+}

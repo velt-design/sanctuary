@@ -81,6 +81,8 @@ export async function loadEstimate(estimateUuid: string): Promise<QuoteSourceEst
           : (row.outputs as any)?.siteShared && typeof (row.outputs as any).siteShared === 'object'
             ? (row.outputs as any).siteShared
             : undefined,
+      pricing_policy: (row.outputs as any)?.pricing_policy,
+      customer_add_ons: (row.outputs as any)?.customer_add_ons,
     },
     configVersions: (row.outputs as any)?.configVersions ?? {
       pricebook: '',

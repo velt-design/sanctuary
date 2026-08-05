@@ -18,6 +18,7 @@ describe('calculator configuration sections', () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(CALCULATOR_CONFIGURATION_SECTIONS.map((section) => section.id)).toEqual([
       'context',
+      'pricing-basis',
       'connections-site',
       'structure',
       'flashings',

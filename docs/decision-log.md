@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-05 | Costing Version 2                | Promoted | Keep Simple eligibility, progressive overhead, and approval allowances in `@sp/costing`; gate semantics by the published base manifest so code deployment cannot reprice Version 1. Freeze resolved policy and non-discountable direct-sell approval lines with the estimate and quote from that frozen result. |
 | 2026-08-05 | Portal Browser Session Refresh   | Promoted | Treat a browser session-read or token-refresh transport failure as temporary unavailability rather than proof of sign-out. Preserve server-known auth state, map only unresolved loading to `lookup_failed`, and keep the rejection handled so a route or QA fixture remains usable. |
 | 2026-08-04 | Marketing Pricing Version 1      | Promoted | Use the same active published configuration for public calculator and autoresponder costing, save autoresponder provenance, and fail closed without blocking enquiry intake. Version 1 may freeze legacy-effective portal pricing with an empty diff; later unchanged drafts remain blocked. |
 | 2026-08-04 | Public Simple Cover Pricing      | Promoted | Resolve the active immutable publication server-side, validate/hash/apply it through `@sp/costing/server`, calculate canonical site cost and package-owned customer price, then allow-list the public response. Never fall back to legacy/default configuration, expose true cost, or import portal UI/drawings. Keep deployment and first publication as explicit rollout gates. |
@@ -4837,3 +4838,14 @@ the normal role owner.
 Promoted to: `docs/environment-auth-supabase.md`
 Related docs/tests: `apps/portal/components/auth/PortalAuthProvider.tsx`;
 `apps/portal/components/auth/PortalAuthProvider.test.tsx`
+
+### 2026-08-05 - Costing Version 2 - Published Policy Gate
+
+Date: 2026-08-05
+Area: Costing Version 2
+Status: Promoted
+Decision or mistake: Version 2 Simple/Bespoke policy and engineering/consent allowances are package-owned and activated by the published base manifest, not by deployment alone.
+Why it mattered: Deploying new package code while Version 1 was published could otherwise silently change portal, public calculator, and autoresponder prices. Approval allowances also risked receiving markup or discounts twice.
+Current guardrail: Preserve older manifest semantics, make a fresh draft the explicit upgrade point, freeze requested/resolved classification and approval results with the estimate, and quote approval from that frozen direct-sell line with GST only.
+Promoted to: `docs/costing-and-geometry.md`; `docs/projects-contacts-estimates-calculator.md`; `docs/automation-email-audit.md`
+Related docs/tests: `packages/costing/src/commercial/simpleRangePricing.test.ts`; `apps/portal/app/staff/calculator/calculatorPricingPreview.test.ts`; `apps/portal/lib/quotes/mapping.test.ts`

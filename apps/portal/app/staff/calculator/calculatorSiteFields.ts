@@ -64,6 +64,33 @@ export function buildCalculatorSiteFields({
 
   return [
     {
+      id: 'pricingClassification',
+      label: 'Pricing classification',
+      type: 'select',
+      value: values.pricingClassification ?? 'bespoke',
+      onChange: (v) => setJobField('pricingClassification', v as CalculatorInputs['pricingClassification']),
+      options: [
+        { label: 'Simple', value: 'simple' },
+        { label: 'Bespoke', value: 'bespoke' },
+      ],
+      helperText: values.pricingClassification === 'simple'
+        ? 'Uses the published Simple range policy while the design remains eligible.'
+        : 'Uses the full bespoke overhead policy.',
+    },
+    {
+      id: 'approvalRequirement',
+      label: 'Approvals',
+      type: 'select',
+      value: values.approvalRequirement ?? 'neither',
+      onChange: (v) => setJobField('approvalRequirement', v as CalculatorInputs['approvalRequirement']),
+      options: [
+        { label: 'Neither', value: 'neither' },
+        { label: 'Engineering required', value: 'engineering_required' },
+        { label: 'Full building consent', value: 'full_building_consent' },
+      ],
+      helperText: 'Approval allowances already include markup, exclude GST, and are never discounted.',
+    },
+    {
       id: 'houseConnectionType',
       label: 'House connection',
       type: 'select',

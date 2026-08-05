@@ -1,10 +1,15 @@
 import {
   autoSplitByMaxWidth,
   calculateCostV1,
+  calculateSiteCostV1,
   getBlindSystemLimits,
   priceAllBlinds,
   type BlindLineItemInput,
   type CostInputsV1,
+  type CostOutputV1,
+  type SiteInputsV1,
+  type SiteOutputV1,
+  isCommercialPolicyV2Enabled,
 } from '@sp/costing';
 import type {
   PublishedCostingConfigurationProvenanceV1,
@@ -33,8 +38,8 @@ type EnquiryBudgets = {
 };
 
 export type EnquiryPricingSnapshot = {
-  costInputs: CostInputsV1 | null;
-  costResult: ReturnType<typeof calculateCostV1> | null;
+  costInputs: SiteInputsV1 | null;
+  costResult: CostOutputV1 | SiteOutputV1 | null;
   costingConfiguration: PublishedCostingConfigurationProvenanceV1 | null;
   calculatorInputs: Record<string, unknown>;
   budgets: EnquiryBudgets;
@@ -69,9 +74,9 @@ function heightCategoryForCosting(heightM: number | null): CostInputsV1['height'
   return typeof heightM === 'number' && Number.isFinite(heightM) && heightM >= 3 ? 'two_storey' : 'single_storey';
 }
 
-function buildCanonicalCostInputs(params: EnquiryPricingParams): CostInputsV1 | null {
+function buildCanonicalCostInputs(params: EnquiryPricingParams): SiteInputsV1 | null {
   if (!Number.isFinite(params.widthM ?? NaN) || !Number.isFinite(params.depthM ?? NaN)) return null;
-  return {
+  const module: CostInputsV1 = {
     length_m: Math.max(0.1, Number(params.widthM)),
     projection_m: Math.max(0.1, Number(params.depthM)),
     post_cut_height_m: Number.isFinite(params.heightM ?? NaN) ? Math.max(1, Number(params.heightM)) : 2.4,
@@ -84,6 +89,15 @@ function buildCanonicalCostInputs(params: EnquiryPricingParams): CostInputsV1 | 
     access: 'normal',
     height: heightCategoryForCosting(params.heightM),
     ground: 'easy',
+  };
+  return {
+    pergolas: [{ id: 'pergola-1', label: 'Pergola 1', modules: [module] }],
+    job_type: 'residential',
+    pricing_classification: 'simple',
+    approval_requirement: 'neither',
+    travel_ex_gst: 0,
+    extras_allowance_ex_gst: 0,
+    quote_discount_pct: 0,
   };
 }
 
@@ -124,22 +138,25 @@ function buildBlindItems(params: EnquiryPricingParams): BlindLineItemInput[] {
 
 function calculatorInputsFromSnapshot(
   params: EnquiryPricingParams,
-  costInputs: CostInputsV1 | null,
+  costInputs: SiteInputsV1 | null,
   blindItems: BlindLineItemInput[],
 ): Record<string, unknown> {
-  const lengthM = costInputs?.length_m ?? 6;
-  const projectionM = costInputs?.projection_m ?? 3;
-  const postCutHeightM = costInputs?.post_cut_height_m ?? 2.4;
-  const roofMaterial = costInputs?.roof_material ?? roofMaterialForCosting(params.roofMaterials);
-  const pergolaStyle = costInputs?.pergola_style ?? pergolaStyleForCosting(params.style);
+  const module = costInputs?.pergolas?.[0]?.modules?.[0];
+  const lengthM = module?.length_m ?? 6;
+  const projectionM = module?.projection_m ?? 3;
+  const postCutHeightM = module?.post_cut_height_m ?? 2.4;
+  const roofMaterial = module?.roof_material ?? roofMaterialForCosting(params.roofMaterials);
+  const pergolaStyle = module?.pergola_style ?? pergolaStyleForCosting(params.style);
 
   return {
     schemaVersion: 'v2',
     projectName: `${params.name} - ${params.suburb || 'Enquiry'}`.trim(),
     quoteRef: '',
-    access: costInputs?.access ?? 'normal',
-    height: costInputs?.height ?? heightCategoryForCosting(params.heightM),
+    access: module?.access ?? 'normal',
+    height: module?.height ?? heightCategoryForCosting(params.heightM),
     jobType: 'residential',
+    pricingClassification: 'simple',
+    approvalRequirement: 'neither',
     travelExGst: '0',
     extrasAllowanceExGst: '0',
     quoteDiscountPct: '0',
@@ -148,7 +165,7 @@ function calculatorInputsFromSnapshot(
       pergolaId: 'pergola-1',
       pergolaStyle,
       roofMaterial,
-      extrusionColour: costInputs?.extrusion_colour ?? 'Black',
+      extrusionColour: module?.extrusion_colour ?? 'Black',
       powdercoatStandardColour: '',
       powdercoatIsCustom: false,
       powdercoatCustomColour: '',
@@ -178,10 +195,10 @@ function calculatorInputsFromSnapshot(
       timberRoofAboveType: 'insulated_panels',
       timberInsulatedPanelThicknessMm: '50',
       timberTrayWidthMm: '500',
-      postCount: String(costInputs?.post_count ?? 2),
-      houseConnectionType: costInputs?.house_connection_type ?? 'fascia',
-      postConnectionType: costInputs?.post_connection_type ?? 'deck_bracket',
-      ground: costInputs?.ground ?? 'easy',
+      postCount: String(module?.post_count ?? 2),
+      houseConnectionType: module?.house_connection_type ?? 'fascia',
+      postConnectionType: module?.post_connection_type ?? 'deck_bracket',
+      ground: module?.ground ?? 'easy',
       lengthM: String(lengthM),
       projectionM: String(projectionM),
       hipCornerLengthBM: '0',
@@ -208,10 +225,12 @@ export function buildEnquiryPricingSnapshot(
   resolved: ResolvedPublishedCostingConfigurationV1 | null,
 ): EnquiryPricingSnapshot {
   const costInputs = buildCanonicalCostInputs(params);
-  let costResult: ReturnType<typeof calculateCostV1> | null = null;
+  let costResult: CostOutputV1 | SiteOutputV1 | null = null;
   if (costInputs && resolved) {
     try {
-      costResult = calculateCostV1(costInputs, resolved.config);
+      costResult = isCommercialPolicyV2Enabled(resolved.config)
+        ? calculateSiteCostV1(costInputs, resolved.config)
+        : calculateCostV1(costInputs.pergolas[0]!.modules[0]!, resolved.config);
     } catch {
       // Pricing is best-effort and must never block an enquiry submission.
     }
@@ -271,6 +290,8 @@ export function buildEnquiryDraftEstimateRow(params: EnquiryPricingParams & {
       pergolas: (result as { pergolas?: unknown[] }).pergolas ?? [],
       siteShared: (result as { shared?: unknown }).shared ?? null,
       shared: (result as { shared?: unknown }).shared ?? null,
+      pricing_policy: 'pricing_policy' in result ? result.pricing_policy : undefined,
+      customer_add_ons: 'customer_add_ons' in result ? result.customer_add_ons : undefined,
     };
     derived = { ...derived, pricingMode: 'full_costing' };
   } else {

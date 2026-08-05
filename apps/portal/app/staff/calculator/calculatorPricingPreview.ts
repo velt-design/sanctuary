@@ -18,7 +18,7 @@ import {
 
 type CalculatorPricingPreviewRow = {
   id: string;
-  kind: 'pergola' | 'pergola_component' | 'infill' | 'shared' | 'blind' | 'lighting';
+  kind: 'pergola' | 'pergola_component' | 'infill' | 'shared' | 'approval' | 'blind' | 'lighting';
   parentId?: string;
   label: string;
   detail: string;
@@ -137,6 +137,21 @@ export function buildCalculatorPricingPreview({
     });
     pricedAmounts.push(priceIncGstCents);
     undiscountedAmounts.push(customerPriceIncCents(sharedCostEx, 0));
+  }
+
+  const approval = result?.customer_add_ons?.approval;
+  if (approval) {
+    const priceIncGstCents = toCents(approval.sell_inc_gst);
+    rows.push({
+      id: 'approval',
+      kind: 'approval',
+      label: approval.requirement === 'full_building_consent' ? 'Full building consent' : 'Engineering',
+      detail: 'Customer allowance · Markup included · Not discountable',
+      priceIncGstCents,
+      status: 'priced',
+    });
+    pricedAmounts.push(priceIncGstCents);
+    undiscountedAmounts.push(priceIncGstCents);
   }
 
   blindPricing.items.forEach((blind, index) => {

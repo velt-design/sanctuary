@@ -30,6 +30,8 @@ const COST_OUTPUT_KEYS = new Set([
   'pergolas',
   'siteShared',
   'shared',
+  'pricing_policy',
+  'customer_add_ons',
   ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY,
   ESTIMATE_PRICING_PRESERVE_REASON_OUTPUT_KEY,
 ]);
@@ -387,6 +389,8 @@ export function buildSiteInputsFromCalculatorInputs(inputs: CalculatorInputs): S
   return {
     pergolas: groupedPergolas.filter((pergola) => pergola.modules.length > 0),
     job_type: inputs.jobType,
+    pricing_classification: inputs.pricingClassification ?? 'bespoke',
+    approval_requirement: inputs.approvalRequirement ?? 'neither',
     travel_ex_gst: Number.isFinite(toNumber(inputs.travelExGst)) ? toNumber(inputs.travelExGst) : 0,
     extras_allowance_ex_gst: Number.isFinite(toNumber(inputs.extrasAllowanceExGst)) ? toNumber(inputs.extrasAllowanceExGst) : 0,
     quote_discount_pct: Number.isFinite(toNumber(inputs.quoteDiscountPct)) ? toNumber(inputs.quoteDiscountPct) : 0,
@@ -500,6 +504,8 @@ export function buildEstimatePayloadFromSiteCosting(args: {
       pergolas: args.siteResult.pergolas,
       siteShared: args.siteResult.shared,
       shared: args.siteResult.shared,
+      pricing_policy: args.siteResult.pricing_policy,
+      customer_add_ons: args.siteResult.customer_add_ons,
       [ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY]: 'current' satisfies EstimatePricingSyncState,
     },
     configVersions: args.configVersions ?? args.basePayload.configVersions,
