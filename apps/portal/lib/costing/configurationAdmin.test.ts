@@ -302,13 +302,13 @@ describe('costing configuration admin publication', () => {
       client,
       { id: 'admin-1', email: 'admin@example.com' },
       null,
-      { name: 'Version 2', purpose: 'Review the new Simple range policy.' },
+      { name: 'Version 4', purpose: 'Review the new Simple range policy.' },
     );
 
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({
-      base_manifest_version: 'v2.0',
+      base_manifest_version: 'v2.1',
       based_on_version_id: 'published-v1',
-      config_json: expect.objectContaining({ baseManifestVersion: 'v2.0' }),
+      config_json: expect.objectContaining({ baseManifestVersion: 'v2.1' }),
     }));
   });
 

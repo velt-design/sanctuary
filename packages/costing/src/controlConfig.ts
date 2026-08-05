@@ -1,3 +1,4 @@
+import { calculateCustomerPriceFromCostEx } from './commercial/customerPricing';
 import { calculateSiteCostV1 } from './engine/calculate';
 import type { CostingConfigV1 } from './engine/config';
 import type { CostInputsV1, SiteInputsV1 } from './engine/types';
@@ -85,6 +86,9 @@ export type CostingControlImpactRowV1 = {
   afterInstallExGst: number;
   beforeOverheadExGst: number;
   afterOverheadExGst: number;
+  beforeCustomerPriceIncGst?: number;
+  afterCustomerPriceIncGst?: number;
+  customerPriceDeltaPercent?: number | null;
 };
 
 type UnknownRecord = Record<string, unknown>;
@@ -93,9 +97,10 @@ const MAX_CURRENCY_VALUE = 10_000_000;
 const MAX_MINUTES_VALUE = 10_080;
 const MAX_MULTIPLIER_VALUE = 10;
 const COMPATIBLE_BASE_MANIFEST_UPGRADES: Record<string, readonly string[]> = {
-  'v1.7': ['v1.8', 'v1.9', 'v2.0'],
-  'v1.8': ['v1.9', 'v2.0'],
-  'v1.9': ['v2.0'],
+  'v1.7': ['v1.8', 'v1.9', 'v2.0', 'v2.1'],
+  'v1.8': ['v1.9', 'v2.0', 'v2.1'],
+  'v1.9': ['v2.0', 'v2.1'],
+  'v2.0': ['v2.1'],
 };
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -653,6 +658,18 @@ export function previewCostingControlSiteImpactV1(
   const beforeTotal = before.totals.cost_ex_gst;
   const afterTotal = after.totals.cost_ex_gst;
   const delta = round(afterTotal - beforeTotal, 2);
+  const beforeCustomerPrice = calculateCustomerPriceFromCostEx(
+    beforeTotal,
+    inputs.quote_discount_pct,
+    before.pricing_policy?.customer_price_uplift_pct,
+  );
+  const afterCustomerPrice = calculateCustomerPriceFromCostEx(
+    afterTotal,
+    inputs.quote_discount_pct,
+    after.pricing_policy?.customer_price_uplift_pct,
+  );
+  const beforeCustomerPriceIncGst = beforeCustomerPrice?.incGst ?? 0;
+  const afterCustomerPriceIncGst = afterCustomerPrice?.incGst ?? 0;
   return {
     id,
     label,
@@ -666,5 +683,10 @@ export function previewCostingControlSiteImpactV1(
     afterInstallExGst: after.install.totals.install_ex_gst,
     beforeOverheadExGst: before.overhead.total_ex_gst,
     afterOverheadExGst: after.overhead.total_ex_gst,
+    beforeCustomerPriceIncGst,
+    afterCustomerPriceIncGst,
+    customerPriceDeltaPercent: beforeCustomerPriceIncGst === 0
+      ? null
+      : round(((afterCustomerPriceIncGst - beforeCustomerPriceIncGst) / beforeCustomerPriceIncGst) * 100, 2),
   };
 }

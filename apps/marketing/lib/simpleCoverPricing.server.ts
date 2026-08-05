@@ -39,7 +39,11 @@ export async function calculateFrozenSimpleCoverPricing(
   const resolved = await getPublishedCostingConfiguration();
   const siteInputs = buildSimpleCoverSiteInputs(input);
   const siteOutput = calculateSiteCostV1(siteInputs, resolved.config);
-  const customerPrice = calculateCustomerPriceFromCostEx(siteOutput.totals.cost_ex_gst, 0);
+  const customerPrice = calculateCustomerPriceFromCostEx(
+    siteOutput.totals.cost_ex_gst,
+    0,
+    siteOutput.pricing_policy?.customer_price_uplift_pct,
+  );
   if (!customerPrice || customerPrice.incGst <= 0) {
     throw new Error('Customer price could not be calculated.');
   }

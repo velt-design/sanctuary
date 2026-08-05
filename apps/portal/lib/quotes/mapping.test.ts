@@ -175,6 +175,26 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.coreTotalIncCents).toBe(20125);
   });
 
+  it('uses the frozen Simple uplift when handing an estimate to a quote', () => {
+    const estimate = makeEstimate({
+      outputs: {
+        ...makeEstimate().outputs,
+        pricing_policy: {
+          requested_classification: 'simple',
+          resolved_classification: 'simple',
+          simple_eligible: true,
+          reason_codes: [],
+          customer_price_uplift_pct: 10,
+        },
+        pergolas: [{ id: 'pergola-1', label: 'Pergola 1', totals: { cost_ex_gst: 100 } }],
+        siteShared: { totals: { cost_ex_gst: 0 } },
+      },
+    });
+
+    const result = buildQuoteLineItemsFromEstimate(estimate);
+    expect(result.items[0]?.unitPriceIncGstCents).toBe(15_813);
+  });
+
   it('ignores explanatory infill attributions and keeps one pergola quote line', () => {
     const estimate = makeEstimate({
       inputs: {

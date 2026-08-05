@@ -44,8 +44,14 @@ type PricingPreviewInput = {
   estimateSnapshot?: Record<string, unknown> | null;
 };
 
-function customerPriceIncCents(costExGst: number, discountPct: number): number {
-  return toCents(calculateStaffCustomerPriceFromCostEx(costExGst, discountPct)?.incGst ?? 0);
+function customerPriceIncCents(
+  costExGst: number,
+  discountPct: number,
+  customerPriceUpliftPct: number,
+): number {
+  return toCents(
+    calculateStaffCustomerPriceFromCostEx(costExGst, discountPct, customerPriceUpliftPct)?.incGst ?? 0,
+  );
 }
 
 function titleCase(value: string): string {
@@ -82,6 +88,7 @@ export function buildCalculatorPricingPreview({
   const pricedAmounts: number[] = [];
   const undiscountedAmounts: number[] = [];
   const discountPct = normalizeStaffQuoteDiscountPct(inputs.quoteDiscountPct);
+  const customerPriceUpliftPct = result?.pricing_policy?.customer_price_uplift_pct ?? 0;
   const pergolas = result?.pergolas ?? [];
   const pricedPergolas = pergolas.filter((pergola) => Number.isFinite(pergola.totals?.cost_ex_gst) && pergola.totals.cost_ex_gst >= 0);
   const sharedCostEx = result?.shared?.totals?.cost_ex_gst;
@@ -93,7 +100,7 @@ export function buildCalculatorPricingPreview({
     const lineCostEx = !showSharedLine && hasSharedCost && pergolaIndex === 0
       ? roundQuoteMoney(pergola.totals.cost_ex_gst + sharedCostEx)
       : pergola.totals.cost_ex_gst;
-    const priceIncGstCents = customerPriceIncCents(lineCostEx, discountPct);
+    const priceIncGstCents = customerPriceIncCents(lineCostEx, discountPct, customerPriceUpliftPct);
     rows.push({
       id: `pergola:${pergola.id}`,
       kind: 'pergola',
@@ -103,7 +110,7 @@ export function buildCalculatorPricingPreview({
       status: 'priced',
     });
     pricedAmounts.push(priceIncGstCents);
-    undiscountedAmounts.push(customerPriceIncCents(lineCostEx, 0));
+    undiscountedAmounts.push(customerPriceIncCents(lineCostEx, 0, customerPriceUpliftPct));
 
     const infillBreakdown = pergola.infill_cost_breakdown;
     const baselineLineCostEx = infillBreakdown?.schema_version === 'infill_cost_breakdown_v2'
@@ -121,12 +128,18 @@ export function buildCalculatorPricingPreview({
       parentPriceIncGstCents: priceIncGstCents,
       baselinePriceIncGstCents: baselineLineCostEx === null
         ? null
-        : customerPriceIncCents(baselineLineCostEx, discountPct),
+        : customerPriceIncCents(
+            baselineLineCostEx,
+            discountPct,
+            infillBreakdown?.schema_version === 'infill_cost_breakdown_v2'
+              ? infillBreakdown.baseline_customer_price_uplift_pct ?? customerPriceUpliftPct
+              : customerPriceUpliftPct,
+          ),
     }));
   });
 
   if (showSharedLine && typeof sharedCostEx === 'number') {
-    const priceIncGstCents = customerPriceIncCents(sharedCostEx, discountPct);
+    const priceIncGstCents = customerPriceIncCents(sharedCostEx, discountPct, customerPriceUpliftPct);
     rows.push({
       id: 'shared-site-costs',
       kind: 'shared',
@@ -136,7 +149,7 @@ export function buildCalculatorPricingPreview({
       status: 'priced',
     });
     pricedAmounts.push(priceIncGstCents);
-    undiscountedAmounts.push(customerPriceIncCents(sharedCostEx, 0));
+    undiscountedAmounts.push(customerPriceIncCents(sharedCostEx, 0, customerPriceUpliftPct));
   }
 
   const approval = result?.customer_add_ons?.approval;

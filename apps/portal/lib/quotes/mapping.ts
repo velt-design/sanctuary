@@ -17,6 +17,7 @@ import type { QuoteLineItem } from './types';
 import { extractLightingTotalCents } from './estimateAddons';
 import {
   calculateStaffCustomerPriceFromCostEx,
+  normalizeStaffCustomerPriceUpliftPct,
   normalizeStaffQuoteDiscountPct,
   roundQuoteMoney,
 } from './pricing';
@@ -182,8 +183,14 @@ type ModuleField = {
   value: string | null;
 };
 
-function lineUnitPriceIncFromCostEx(costEx: number, quoteDiscountPct: number): number {
-  return toCents(calculateStaffCustomerPriceFromCostEx(costEx, quoteDiscountPct)?.incGst ?? 0);
+function lineUnitPriceIncFromCostEx(
+  costEx: number,
+  quoteDiscountPct: number,
+  customerPriceUpliftPct: number,
+): number {
+  return toCents(
+    calculateStaffCustomerPriceFromCostEx(costEx, quoteDiscountPct, customerPriceUpliftPct)?.incGst ?? 0,
+  );
 }
 
 function withQuoteDiscountDescription(description: string, quoteDiscountPct: number): string {
@@ -379,6 +386,9 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
   const quoteDiscountPct = normalizeStaffQuoteDiscountPct(inputs?.quoteDiscountPct);
   const modules = inputs?.modules ?? [];
   const outputs = ((estimate as any)?.outputs ?? {}) as any;
+  const customerPriceUpliftPct = normalizeStaffCustomerPriceUpliftPct(
+    outputs?.pricing_policy?.customer_price_uplift_pct,
+  );
   const snapshotPergolas = Array.isArray(outputs?.pergolas) ? outputs.pergolas : [];
   const snapshotShared = outputs?.siteShared ?? outputs?.shared ?? null;
   const inputPergolas = buildInputPergolaModules(inputs);
@@ -419,7 +429,11 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
         ? roundQuoteMoney(pergolaCostEx + sharedCostEx)
         : pergolaCostEx;
 
-      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(lineCostEx, quoteDiscountPct);
+      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(
+        lineCostEx,
+        quoteDiscountPct,
+        customerPriceUpliftPct,
+      );
       const qty = 1;
       const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
       lineItems.push({
@@ -434,7 +448,11 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
 
     if (showSharedLine) {
       const qty = 1;
-      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(sharedCostEx, quoteDiscountPct);
+      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(
+        sharedCostEx,
+        quoteDiscountPct,
+        customerPriceUpliftPct,
+      );
       const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
       lineItems.push({
         description: withQuoteDiscountDescription(
@@ -453,7 +471,11 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
   if (lineItems.length === 0) {
     const legacyCoreCostEx = toNumber(outputs?.totals?.cost_ex_gst);
     const safeLegacyCoreCostEx = Number.isFinite(legacyCoreCostEx) && legacyCoreCostEx > 0 ? legacyCoreCostEx : 0;
-    const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(safeLegacyCoreCostEx, quoteDiscountPct);
+    const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(
+      safeLegacyCoreCostEx,
+      quoteDiscountPct,
+      customerPriceUpliftPct,
+    );
     const qty = 1;
     lineItems.push({
       description: withQuoteDiscountDescription(buildLegacyCoreDescription(modules), quoteDiscountPct),

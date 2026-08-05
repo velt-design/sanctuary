@@ -5,6 +5,7 @@ import { loadCostingConfigV1 } from '../engine/config';
 import type { CostInputsV1, SiteInputsV1 } from '../engine/types';
 import {
   calculateApprovalCustomerAllowanceV2,
+  buildSimpleRangeOverheadV2,
   evaluateSimpleRangeEligibilityV2,
 } from './simpleRangePricing';
 
@@ -49,13 +50,36 @@ describe('Version 2 commercial policy', () => {
     expect(evaluateSimpleRangeEligibilityV2(site({ pergolas: [{ modules: [module()] }, { modules: [module()] }] })).reason_codes).toContain('MULTIPLE_PERGOLAS');
   });
 
-  it('removes the 3m overhead cliff and scales only after three crew-days', () => {
+  it('starts Simple overhead at $750 and scales continuously after one productive crew-day', () => {
+    const config = loadCostingConfigV1();
+    expect(buildSimpleRangeOverheadV2(config, 8).total_ex_gst).toBe(750);
+    expect(buildSimpleRangeOverheadV2(config, 12).total_ex_gst).toBe(1000);
+    expect(buildSimpleRangeOverheadV2(config, 16).total_ex_gst).toBe(1250);
+
     const at29 = calculateSiteCostV1(site({ pergolas: [{ modules: [module({ projection_m: 2.9 })] }] }));
     const at30 = calculateSiteCostV1(site({ pergolas: [{ modules: [module({ projection_m: 3 })] }] }));
     expect(at29.overhead.method).toBe('simple_progressive');
     expect(at30.overhead.method).toBe('simple_progressive');
-    expect(at29.overhead.total_ex_gst).toBeGreaterThanOrEqual(2000);
+    expect(at29.overhead.total_ex_gst).toBeGreaterThanOrEqual(750);
     expect(Math.abs(at30.overhead.total_ex_gst - at29.overhead.total_ex_gst)).toBeLessThan(200);
+  });
+
+  it('keeps the smallest Simple job to one genuine site day', () => {
+    const result = calculateSiteCostV1(site({ pergolas: [{ modules: [module({ length_m: 1, projection_m: 1 })] }] }));
+    const outputModule = result.pergolas[0]?.modules[0];
+    const dayCycleActions = result.install.actions.filter((action) => action.id.includes('day_cycle.'));
+    const fixedMobilisationActions = result.install.actions.filter((action) => (
+      ['Mobilisation', 'Demobilisation'].includes(action.category)
+      && !action.id.includes('day_cycle.')
+    ));
+
+    expect(outputModule?.derived.site_days).toBe(1);
+    expect(dayCycleActions).toHaveLength(3);
+    expect(dayCycleActions.every((action) => action.qty === 1)).toBe(true);
+    expect(fixedMobilisationActions.length).toBeGreaterThan(0);
+    expect(fixedMobilisationActions.every((action) => action.qty === 1)).toBe(true);
+    expect(result.overhead.total_ex_gst).toBe(750);
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(10);
   });
 
   it.each([
@@ -83,5 +107,20 @@ describe('Version 2 commercial policy', () => {
     const result = calculateSiteCostV1(site(), publishedV1);
     expect(result.pricing_policy).toBeUndefined();
     expect(result.overhead.method).not.toBe('simple_progressive');
+  });
+
+  it('keeps published v2.0 mobilisation, overhead and customer pricing semantics', () => {
+    const base = loadCostingConfigV1();
+    const control = snapshotCostingControlConfigV1(base);
+    control.baseManifestVersion = 'v2.0';
+    const publishedV3 = applyCostingControlConfigV1(base, control);
+    const result = calculateSiteCostV1(
+      site({ pergolas: [{ modules: [module({ length_m: 1, projection_m: 1 })] }] }),
+      publishedV3,
+    );
+
+    expect(result.pergolas[0]?.modules[0]?.derived.site_days).toBe(2);
+    expect(result.overhead.total_ex_gst).toBeGreaterThanOrEqual(2000);
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(0);
   });
 });

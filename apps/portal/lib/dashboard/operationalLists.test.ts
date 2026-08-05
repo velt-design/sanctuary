@@ -39,4 +39,22 @@ describe('dashboard operational lists', () => {
     });
     expect(result[0]?.href).toContain('?tab=estimates&estimateId=');
   });
+
+  it('uses the frozen Simple uplift in Recent Estimates', async () => {
+    const estimates = queryResult([{
+      id: '00000000-0000-4000-8000-000000000002',
+      project_id: '00000000-0000-4000-8000-000000000001',
+      status: 'draft',
+      version: 4,
+      total_true_cost_ex_gst: 1000,
+      outputs: { pricing_policy: { customer_price_uplift_pct: 10 } },
+      created_at: '2026-07-20T00:00:00.000Z',
+      updated_at: '2026-07-21T00:00:00.000Z',
+      projects: { name: 'Simple pergola' },
+    }]);
+    const client = { from: vi.fn(() => estimates) } as any;
+
+    const result = await listDashboardRecentEstimates(client);
+    expect(result[0]?.customerPriceIncGst).toBe(1581.25);
+  });
 });

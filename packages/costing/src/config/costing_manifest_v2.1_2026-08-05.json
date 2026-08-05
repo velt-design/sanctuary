@@ -1,0 +1,21 @@
+{
+  "version": "v2.1",
+  "inputs_schema_version": "v1",
+  "files": {
+    "pricebook_materials": "materials/sanctuary_pricebook_materials_2025-11_exgst_v1.1.json",
+    "materials_additions": "materials/sanctuary_materials_additions_v1_2026-01-08.json",
+    "hardware_placeholders": "hardware/hardware_placeholders_v1.json",
+    "install_actions": "install_actions_v1.8_2026-07-28.json",
+    "bom_strategy": "bom/bom_strategy_v1.1.json",
+    "overheads": "overheads_v1.1_2026-01-08.json",
+    "costing_rules": "costing_rules_v1.3_2026-01-08.json",
+    "commercial_policy": "commercial_policy_v3_2026-08-05.json"
+  },
+  "integration_notes": [
+    "Retains the v2.0 material rates, labour, geometry and stock-selection policy.",
+    "v2.1 derives Simple site days from productive installation work so mobilisation cannot create another mobilisation day.",
+    "v2.1 applies the progressive Simple overhead from $750 ex GST and a 10% Simple customer-price uplift before discount and GST.",
+    "Published configurations retain the commercial behavior of their base manifest until a newer manifest is explicitly published."
+  ],
+  "generated_at": "2026-08-05"
+}

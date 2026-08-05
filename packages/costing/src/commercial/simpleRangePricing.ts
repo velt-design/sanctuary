@@ -1,4 +1,5 @@
 import { GST_RATE } from '../blinds';
+import commercialPolicyV2Json from '../config/commercial_policy_v2_2026-08-05.json';
 import type { CostingConfigV1 } from '../engine/config';
 import type { OverheadV1, SiteInputsV1 } from '../engine/types';
 import { isCostingManifestAtLeast } from '../manifestVersion';
@@ -27,6 +28,7 @@ export type SitePricingPolicyV2 = {
   resolved_classification: PricingClassificationV2;
   simple_eligible: boolean;
   reason_codes: SimpleRangeReasonCodeV2[];
+  customer_price_uplift_pct: number;
 };
 
 export type ApprovalCustomerAllowanceV2 = {
@@ -48,6 +50,14 @@ function roundMoney(value: number): number {
 
 export function isCommercialPolicyV2Enabled(config: CostingConfigV1): boolean {
   return isCostingManifestAtLeast(config, 1, 9);
+}
+
+export function isCommercialPolicyV3Enabled(config: CostingConfigV1): boolean {
+  return isCostingManifestAtLeast(config, 2, 1);
+}
+
+function commercialPolicyForConfig(config: CostingConfigV1) {
+  return isCommercialPolicyV3Enabled(config) ? config.commercialPolicy : commercialPolicyV2Json;
 }
 
 export function evaluateSimpleRangeEligibilityV2(inputs: SiteInputsV1): {
@@ -83,7 +93,10 @@ export function evaluateSimpleRangeEligibilityV2(inputs: SiteInputsV1): {
   return { eligible: reasonCodes.length === 0, reason_codes: reasonCodes };
 }
 
-export function resolveSitePricingPolicyV2(inputs: SiteInputsV1): SitePricingPolicyV2 {
+export function resolveSitePricingPolicyV2(
+  inputs: SiteInputsV1,
+  config?: CostingConfigV1,
+): SitePricingPolicyV2 {
   const requested = inputs.pricing_classification === 'simple' ? 'simple' : 'bespoke';
   const approval = inputs.approval_requirement ?? 'neither';
   const eligibility = evaluateSimpleRangeEligibilityV2(inputs);
@@ -92,16 +105,23 @@ export function resolveSitePricingPolicyV2(inputs: SiteInputsV1): SitePricingPol
   if (approval !== 'neither') reasons.unshift('APPROVAL_REQUIRED');
   const reasonCodes = [...new Set(reasons)];
   const simpleEligible = eligibility.eligible && approval === 'neither';
+  const resolvedClassification = requested === 'simple' && simpleEligible ? 'simple' : 'bespoke';
+  const customerPriceUpliftPct = config
+    && resolvedClassification === 'simple'
+    && isCommercialPolicyV3Enabled(config)
+    ? Number(config.commercialPolicy.simple_range.customer_price_uplift_pct)
+    : 0;
   return {
     requested_classification: requested,
-    resolved_classification: requested === 'simple' && simpleEligible ? 'simple' : 'bespoke',
+    resolved_classification: resolvedClassification,
     simple_eligible: simpleEligible,
     reason_codes: reasonCodes,
+    customer_price_uplift_pct: Number.isFinite(customerPriceUpliftPct) ? customerPriceUpliftPct : 0,
   };
 }
 
 export function buildSimpleRangeOverheadV2(config: CostingConfigV1, totalCrewHours: number): OverheadV1 {
-  const policy = config.commercialPolicy.simple_range;
+  const policy = commercialPolicyForConfig(config).simple_range;
   const allocation = (config.overheads as unknown as {
     allocation_method_v1_1?: { crew_day_hours?: number };
   }).allocation_method_v1_1;
@@ -130,7 +150,7 @@ export function calculateApprovalCustomerAllowanceV2(
   const moduleCount = inputs.pergolas.reduce((sum, pergola) => sum + pergola.modules.length, 0);
   const additionalPergolaCount = Math.max(0, pergolaCount - 1);
   const additionalModuleCount = Math.max(0, moduleCount - pergolaCount);
-  const policy = config.commercialPolicy.approval_allowances;
+  const policy = commercialPolicyForConfig(config).approval_allowances;
   const base = requirement === 'full_building_consent'
     ? Number(policy.building_consent_base_sell_ex_gst)
     : Number(policy.engineering_base_sell_ex_gst);

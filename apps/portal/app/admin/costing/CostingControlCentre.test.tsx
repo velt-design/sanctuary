@@ -315,6 +315,9 @@ describe('CostingControlCentre', () => {
         afterInstallExGst: 300,
         beforeOverheadExGst: 200,
         afterOverheadExGst: 200,
+        beforeCustomerPriceIncGst: 1437.5,
+        afterCustomerPriceIncGst: 1610,
+        customerPriceDeltaPercent: 12,
       }],
     });
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), {
@@ -330,6 +333,7 @@ describe('CostingControlCentre', () => {
     expect(rendered.container.textContent).toContain('Materials');
     expect(rendered.container.textContent).toContain('Labour');
     expect(rendered.container.textContent).toContain('Overheads');
+    expect(rendered.container.textContent).toContain('Customer price inc GST');
     expect(buttonByText(rendered.container, 'Continue to publish').disabled).toBe(false);
     rendered.unmount();
   });
@@ -501,6 +505,9 @@ describe('CostingControlCentre', () => {
         afterInstallExGst: 350,
         beforeOverheadExGst: 200,
         afterOverheadExGst: 200,
+        beforeCustomerPriceIncGst: 1437.5,
+        afterCustomerPriceIncGst: 1509.38,
+        customerPriceDeltaPercent: 5,
       },
       draftContentHash: payload.version.contentHash,
       currentVersionId: null,

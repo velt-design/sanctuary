@@ -19,9 +19,26 @@ describe('costing control configuration', () => {
     expect(snapshotCostingControlConfigV1(applied)).toEqual(snapshot);
     expect(previewCostingControlImpactV1(base, applied)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ deltaExGst: 0, deltaPercent: 0 }),
+        expect.objectContaining({
+          deltaExGst: 0,
+          deltaPercent: 0,
+          customerPriceDeltaPercent: 0,
+        }),
       ]),
     );
+  });
+
+  it('shows customer-price movement when a manifest changes Simple sell policy', () => {
+    const active = loadCostingConfigV1();
+    const historicalControl = snapshotCostingControlConfigV1(active);
+    historicalControl.baseManifestVersion = 'v2.0';
+    const historical = applyCostingControlConfigV1(active, historicalControl);
+    const impact = previewCostingControlImpactV1(historical, active)
+      .find((row) => row.id === 'standard-pitched-acrylic');
+
+    expect(impact?.beforeCustomerPriceIncGst).toBeGreaterThan(0);
+    expect(impact?.afterCustomerPriceIncGst).toBeGreaterThan(0);
+    expect(impact?.customerPriceDeltaPercent).not.toBeNull();
   });
 
   it('keeps v1.7 published action minutes compatible with the latest package base', () => {
@@ -34,7 +51,7 @@ describe('costing control configuration', () => {
     expect(validation.ok).toBe(true);
 
     const applied = applyCostingControlConfigV1(base, historical);
-    expect(applied.manifest.version).toBe('v2.0');
+    expect(applied.manifest.version).toBe('v2.1');
     expect(applied.appliedControlManifestVersion).toBe('v1.7');
     expect(
       applied.installActions.actions.find((action) => action.id === 'infill.setup_setout_each')?.base_minutes,

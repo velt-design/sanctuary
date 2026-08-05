@@ -1,12 +1,15 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { calculateStaffCustomerPriceFromCostEx } from '@/lib/quotes/pricing';
+import {
+  calculateStaffCustomerPriceFromCostEx,
+  normalizeStaffCustomerPriceUpliftPct,
+} from '@/lib/quotes/pricing';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import type { DashboardRecentEstimate } from './types';
 
 const RECENT_ESTIMATE_COLUMNS =
-  'id,project_id,status,version,total_true_cost_ex_gst,created_at,updated_at,projects!inner(id,name,archived_at)';
+  'id,project_id,status,version,total_true_cost_ex_gst,outputs,created_at,updated_at,projects!inner(id,name,archived_at)';
 
 type NamedRelation = { name?: string | null } | Array<{ name?: string | null }> | null;
 
@@ -16,6 +19,7 @@ type RecentEstimateRow = {
   status?: string | null;
   version?: number | string | null;
   total_true_cost_ex_gst?: number | string | null;
+  outputs?: Record<string, unknown> | null;
   created_at?: string | null;
   updated_at?: string | null;
   projects?: (NamedRelation & { archived_at?: string | null }) | null;
@@ -68,7 +72,12 @@ export async function listDashboardRecentEstimates(
     const projectId = appIdFromUuid('proj', projectUuid);
     const estimateId = appIdFromUuid('est', estimateUuid);
     const version = finiteNumber(row.version);
-    const customerPrice = calculateStaffCustomerPriceFromCostEx(finiteNumber(row.total_true_cost_ex_gst));
+    const pricingPolicy = row.outputs?.pricing_policy as Record<string, unknown> | undefined;
+    const customerPrice = calculateStaffCustomerPriceFromCostEx(
+      finiteNumber(row.total_true_cost_ex_gst),
+      0,
+      normalizeStaffCustomerPriceUpliftPct(pricingPolicy?.customer_price_uplift_pct),
+    );
 
     return [{
       estimateId,

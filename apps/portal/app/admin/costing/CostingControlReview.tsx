@@ -122,6 +122,15 @@ export function CostingComparison(props: {
                   <ImpactLine label="Labour" before={row.beforeInstallExGst} after={row.afterInstallExGst} />
                   <ImpactLine label="Overheads" before={row.beforeOverheadExGst} after={row.afterOverheadExGst} />
                   <ImpactLine label="Total ex GST" before={row.beforeTotalExGst} after={row.afterTotalExGst} total />
+                  {typeof row.beforeCustomerPriceIncGst === 'number'
+                    && typeof row.afterCustomerPriceIncGst === 'number' ? (
+                      <ImpactLine
+                        label="Customer price inc GST"
+                        before={row.beforeCustomerPriceIncGst}
+                        after={row.afterCustomerPriceIncGst}
+                        total
+                      />
+                    ) : null}
                 </dl>
               </article>
             ))}

@@ -228,6 +228,15 @@ export function CostingEstimatePreview(props: {
               after={preview.impact.afterTotalExGst}
               total
             />
+            {typeof preview.impact.beforeCustomerPriceIncGst === 'number'
+              && typeof preview.impact.afterCustomerPriceIncGst === 'number' ? (
+                <MoneyMovement
+                  label="Customer price inc GST"
+                  before={preview.impact.beforeCustomerPriceIncGst}
+                  after={preview.impact.afterCustomerPriceIncGst}
+                  total
+                />
+              ) : null}
           </dl>
           <details className={styles.inlineTechnical}>
             <summary>Saved provenance details</summary>

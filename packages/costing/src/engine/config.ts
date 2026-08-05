@@ -1,15 +1,15 @@
 import bomStrategyJson from '../config/bom/bom_strategy_v1.1.json';
 import hardwareJson from '../config/hardware/hardware_placeholders_v1.json';
 import installActionsJson from '../config/install_actions_v1.8_2026-07-28.json';
-import manifestJson from '../config/costing_manifest_v2.0_2026-08-05.json';
+import manifestJson from '../config/costing_manifest_v2.1_2026-08-05.json';
 import overheadsJson from '../config/overheads_v1.1_2026-01-08.json';
 import costingRulesJson from '../config/costing_rules_v1.3_2026-01-08.json';
-import commercialPolicyJson from '../config/commercial_policy_v2_2026-08-05.json';
+import commercialPolicyJson from '../config/commercial_policy_v3_2026-08-05.json';
 import { loadCostingMaterialsV1, type MaterialsPricebookV1 } from './materialsConfig';
 
 export { loadCostingMaterialsV1, type MaterialsPricebookV1 } from './materialsConfig';
 
-export const ACTIVE_COSTING_MANIFEST_PATH = 'packages/costing/src/config/costing_manifest_v2.0_2026-08-05.json' as const;
+export const ACTIVE_COSTING_MANIFEST_PATH = 'packages/costing/src/config/costing_manifest_v2.1_2026-08-05.json' as const;
 
 export type CostingManifestV1 = typeof manifestJson;
 export type HardwarePlaceholdersV1 = typeof hardwareJson;
@@ -17,7 +17,7 @@ export type BomStrategyV1 = typeof bomStrategyJson;
 export type InstallActionsV1 = typeof installActionsJson;
 export type OverheadsV1 = typeof overheadsJson;
 export type CostingRulesV1 = typeof costingRulesJson;
-export type CommercialPolicyV2 = typeof commercialPolicyJson;
+export type CommercialPolicyV3 = typeof commercialPolicyJson;
 
 export type CostingConfigV1 = {
   manifest: CostingManifestV1;
@@ -27,7 +27,7 @@ export type CostingConfigV1 = {
   installActions: InstallActionsV1;
   overheads: OverheadsV1;
   rules: CostingRulesV1;
-  commercialPolicy: CommercialPolicyV2;
+  commercialPolicy: CommercialPolicyV3;
   /** Runtime provenance. Published older controls keep their original policy semantics. */
   appliedControlManifestVersion?: string;
 };
@@ -40,7 +40,7 @@ const EXPECTED_FILES = {
   bom_strategy: 'bom/bom_strategy_v1.1.json',
   overheads: 'overheads_v1.1_2026-01-08.json',
   costing_rules: 'costing_rules_v1.3_2026-01-08.json',
-  commercial_policy: 'commercial_policy_v2_2026-08-05.json',
+  commercial_policy: 'commercial_policy_v3_2026-08-05.json',
 } as const;
 
 export function loadCostingConfigV1(): CostingConfigV1 {

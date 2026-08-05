@@ -3,5 +3,6 @@ export {
   MAX_CUSTOMER_PRICE_DISCOUNT_PCT as MAX_STAFF_QUOTE_DISCOUNT_PCT,
   calculateCustomerPriceFromCostEx as calculateStaffCustomerPriceFromCostEx,
   normalizeCustomerPriceDiscountPct as normalizeStaffQuoteDiscountPct,
+  normalizeCustomerPriceUpliftPct as normalizeStaffCustomerPriceUpliftPct,
   roundCustomerMoney as roundQuoteMoney,
 } from '@sp/costing';

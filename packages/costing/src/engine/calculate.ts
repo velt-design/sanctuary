@@ -13,6 +13,7 @@ import {
   withoutSiteInfillsV1,
 } from './infillIncrementalBaseline';
 import { buildDayCycleActions, buildInstallV1, computeSiteDays, DAY_CYCLE_ACTION_IDS } from './install';
+import { resolveSiteDayCyclePolicyV1 } from './simpleSiteDayPolicy';
 import { buildOverheadV1 } from './overheads';
 import {
   buildSimpleRangeOverheadV2,
@@ -853,7 +854,7 @@ function calculateSiteCostV1Internal(
   const jobTravel = roundMoney(Number(inputs.travel_ex_gst ?? 0));
   const jobExtras = roundMoney(Number(inputs.extras_allowance_ex_gst ?? 0));
   const commercialPolicyEnabled = isCommercialPolicyV2Enabled(cfg);
-  const pricingPolicy = commercialPolicyEnabled ? resolveSitePricingPolicyV2(inputs) : undefined;
+  const pricingPolicy = commercialPolicyEnabled ? resolveSitePricingPolicyV2(inputs, cfg) : undefined;
 
   const warnings: string[] = [];
 
@@ -1120,36 +1121,14 @@ function calculateSiteCostV1Internal(
     pergolaOutputs.reduce((acc, pergola) => acc + pergola.install.totals.crew_minutes, 0) + jobActions.reduce((acc, a) => acc + a.minutes, 0),
   );
   const baseCrewHours = roundMoney(baseCrewMinutes / 60);
-
-  const buildSiteDayCycle = (siteDays: number) => {
-    const dayCycleActions = new Map<string, InstallActionV1>();
-    const dayWarnings: string[] = [];
-
-    for (const module of modulesAll) {
-      const jobDerived = { ...module.derived, module_count: modulesAll.length };
-      const dayResult = buildDayCycleActions(module.inputs_normalized, jobDerived as any, cfg, siteDays);
-      for (const action of dayResult.install.actions) {
-        const existing = dayCycleActions.get(action.id);
-        if (!existing || action.minutes > existing.minutes) dayCycleActions.set(action.id, action);
-      }
-      dayWarnings.push(...dayResult.notes_and_warnings.map((w) => `[Site] ${w}`));
-    }
-
-    const actions = Array.from(dayCycleActions.values()).sort((a, b) => a.id.localeCompare(b.id));
-    const crewMinutes = roundMoney(actions.reduce((acc, a) => acc + a.minutes, 0));
-    const crewHours = roundMoney(crewMinutes / 60);
-    const installExGst = roundMoney(actions.reduce((acc, a) => acc + a.cost_ex_gst, 0));
-
-    return { actions, crewMinutes, crewHours, installExGst, warnings: dayWarnings };
-  };
-
-  let siteDays = computeSiteDays(baseCrewHours, cfg);
-  let dayCycle = buildSiteDayCycle(siteDays);
-  const siteDaysRecalc = computeSiteDays(baseCrewHours + dayCycle.crewHours, cfg);
-  if (siteDaysRecalc > siteDays) {
-    siteDays = siteDaysRecalc;
-    dayCycle = buildSiteDayCycle(siteDays);
-  }
+  const siteDayPolicy = resolveSiteDayCyclePolicyV1({
+    config: cfg,
+    pricingPolicy,
+    baseCrewHours,
+    installActions: siteInstallActions,
+    modules: modulesAll,
+  });
+  const { siteDays, dayCycle } = siteDayPolicy;
 
   sharedNotes.push(...dayCycle.warnings);
   warnings.push(...dayCycle.warnings);
@@ -1212,7 +1191,7 @@ function calculateSiteCostV1Internal(
     const pergola = pergolaOutputs[idx];
     const pergolaFlags = deriveOverheadFlagsForModules(pergola.modules);
     const overheadResult = pricingPolicy?.resolved_classification === 'simple'
-      ? { overhead: buildSimpleRangeOverheadV2(cfg, crewHoursTotal), notes_and_warnings: [] }
+      ? { overhead: buildSimpleRangeOverheadV2(cfg, siteDayPolicy.productiveCrewHours ?? crewHoursTotal), notes_and_warnings: [] }
       : buildOverheadV1(cfg, {
           module_count: pergola.module_count,
           total_crew_hours: Number(pergola.install.totals.crew_hours ?? 0),

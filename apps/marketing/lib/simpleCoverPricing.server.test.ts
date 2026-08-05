@@ -35,10 +35,15 @@ describe('frozen Simple cover pricing', () => {
   it('freezes inputs, engine output, exact price and configuration together', async () => {
     const { calculateFrozenSimpleCoverPricing } = await import('./simpleCoverPricing.server');
     const result = await calculateFrozenSimpleCoverPricing({ widthMm: 6_000, projectionMm: 3_000, level: 'ground', connection: 'soffit' });
-    const expectedPrice = calculateCustomerPriceFromCostEx(result.siteOutput.totals.cost_ex_gst, 0);
+    const expectedPrice = calculateCustomerPriceFromCostEx(
+      result.siteOutput.totals.cost_ex_gst,
+      0,
+      result.siteOutput.pricing_policy?.customer_price_uplift_pct,
+    );
 
     expect(result.schemaVersion).toBe('simple-cover-pricing.v1');
     expect(result.customerPrice.exactIncGst).toBe(expectedPrice?.incGst);
+    expect(result.siteOutput.pricing_policy?.customer_price_uplift_pct).toBe(10);
     expect(result.customerPrice.displayedFromIncGst % 250).toBe(0);
     expect(result.costingConfiguration).toMatchObject({ versionId: 'version-17', versionNumber: 17 });
     expect(result.publicResult.configuration).toEqual({ versionNumber: 17 });

@@ -327,6 +327,7 @@ export type InfillCostBreakdownV2 = {
   items: InfillCostBreakdownItemV1[];
   baseline: InfillCostComponentsV1;
   baseline_shared_cost_ex_gst: number;
+  baseline_customer_price_uplift_pct?: number;
   totals: InfillCostComponentsV1;
   notes_and_warnings: string[];
 };

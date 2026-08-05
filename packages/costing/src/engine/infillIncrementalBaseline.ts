@@ -90,6 +90,7 @@ export function applySiteInfillIncrementalBaselineV2(
         items: attributed.items,
         baseline: attributed.remainder,
         baseline_shared_cost_ex_gst: baseline.shared.totals.cost_ex_gst,
+        baseline_customer_price_uplift_pct: baseline.pricing_policy?.customer_price_uplift_pct ?? 0,
         totals: attributed.totals,
         notes_and_warnings: [
           ...attributed.notes_and_warnings,
@@ -151,6 +152,7 @@ export function applySiteInfillIncrementalBaselineV2(
       items,
       baseline: publicComponents(baselineComponents),
       baseline_shared_cost_ex_gst: baseline.shared.totals.cost_ex_gst,
+      baseline_customer_price_uplift_pct: baseline.pricing_policy?.customer_price_uplift_pct ?? 0,
       totals: publicComponents(currentComponents),
       notes_and_warnings: [
         ...attributed.notes_and_warnings,
