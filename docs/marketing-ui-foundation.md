@@ -486,23 +486,27 @@ combination keeps the dimensions, removes price and gives the exact 30 m2 or
 20 m2 reason plus an attributed Custom design route. Published costing failure
 keeps the design visible and shows no price.
 
-At 560 CSS pixels and below, normal-height phones use one bounded calculator
-stage beneath the fixed header: concept plan first, dimensions and the compact
-ground/elevated choice second, and one stable-height live-result strip last. The
-dimensions heading owns the prominent live price on mobile; while a new price is
-being resolved it retains the previous figure in a subdued updating state. The
-priced result strip supports that focal point with GST, installation and pricing-set
-context instead of repeating a second large price. Custom and unavailable states
-continue to replace the strip with their complete route-specific guidance.
-The stage consumes the available small viewport (`100svh` minus the header),
-settles with native `position: sticky` for a short page-owned runway, then
-releases into the connection and fixed-assumption block. It does not intercept
-wheel or touch input and does not use document scroll snap. Viewports below
-700 CSS pixels in height, mobile landscape and widths at or below 320 CSS
-pixels use the same semantic controls in normal document flow so browser chrome,
-keyboard use and zoom cannot trap or clip the calculator. The governed mobile
-stage matrix is 430 x 932, 390 x 844 and 360 x 800; short-height, landscape and
-200 percent zoom-equivalent checks prove the native-scrolling fallback.
+At 560 CSS pixels and below, normal-height phones use one bounded focus stage
+beneath the fixed header containing only the concept plan, prominent live price
+and two dimension controls. Its composition is capped and vertically centred,
+so taller phones gain balanced whitespace while a 393 x 650 Safari-usable
+viewport contracts that whitespace before reducing the essential plan and
+control space. Each range input owns a 60-pixel touch lane while retaining the
+thin architectural rail and compact square handle. The dimensions heading keeps
+the previous price in a subdued updating state while a new price is resolved.
+
+The focus stage consumes `100svh` minus the header, settles with native
+`position: sticky` for a short page-owned runway, then releases into a separate
+72-pixel-minimum deck-level choice and the supporting live-result strip. The
+priced strip carries GST, installation and pricing-set context instead of
+repeating a second large price; Custom and unavailable states retain their full
+route-specific guidance. The stage does not intercept wheel or touch input and
+does not use document scroll snap. Viewports below 580 CSS pixels in height,
+mobile landscape and widths at or below 320 CSS pixels use the same semantic
+controls in normal document flow so browser chrome, keyboard use and zoom cannot
+trap or clip the calculator. The governed mobile matrix includes 430 x 932,
+393 x 650, 390 x 844 and 360 x 800; short-height, landscape and 200 percent
+zoom-equivalent checks prove the native-scrolling fallback.
 
 The focused public-calculator owner is
 `playwright/marketing.simple-cover-calculator.spec.ts`, backed by the costing,

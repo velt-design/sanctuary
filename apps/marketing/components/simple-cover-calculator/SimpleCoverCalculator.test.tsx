@@ -91,6 +91,9 @@ describe('SimpleCoverCalculator', () => {
     expect(document.querySelectorAll('[data-plan-post]')).toHaveLength(3);
     expect(document.querySelector('[data-plan-header]')?.textContent).toContain('18.0 m²');
     expect(document.querySelector('[data-compact-price]')?.textContent).toContain('Calculating…');
+    expect(document.querySelector('[data-calculator-mobile-stage] [data-calculator-level-control]')).toBeNull();
+    expect(document.querySelector('[data-calculator-mobile-stage] [data-result-state]')).toBeNull();
+    expect(document.querySelector('[data-calculator-level-control]')?.textContent).toContain('02 / Deck level');
     expect(document.querySelector('#simple-cover-connection')).toMatchObject({ value: 'fascia' });
     expect(Array.from(document.querySelectorAll('#simple-cover-connection option')).map((option) => option.textContent))
       .toEqual(['Fascia', 'Facade', 'Soffit brackets']);

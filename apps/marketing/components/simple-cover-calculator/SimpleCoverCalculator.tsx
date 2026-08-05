@@ -212,6 +212,30 @@ function CompactPricingSummary({
   );
 }
 
+function LevelControl({
+  level,
+  onChange,
+}: {
+  level: SimpleCoverLevel;
+  onChange: (level: SimpleCoverLevel) => void;
+}) {
+  return (
+    <fieldset className={styles.levelFieldset} data-calculator-level-control>
+      <legend>02 / Deck level</legend>
+      <div className={styles.levelOptions}>
+        <label className={level === 'ground' ? styles.levelSelected : undefined}>
+          <input type="radio" name="simple-cover-level" value="ground" checked={level === 'ground'} onChange={() => onChange('ground')} />
+          <span><strong>Ground level</strong><small>Up to {SIMPLE_COVER_GROUND_MAX_AREA_M2} m²</small></span>
+        </label>
+        <label className={level === 'elevated' ? styles.levelSelected : undefined}>
+          <input type="radio" name="simple-cover-level" value="elevated" checked={level === 'elevated'} onChange={() => onChange('elevated')} />
+          <span><strong>Elevated / first floor</strong><small>Up to {SIMPLE_COVER_ELEVATED_MAX_AREA_M2} m²</small></span>
+        </label>
+      </div>
+    </fieldset>
+  );
+}
+
 function ConceptPlan({
   input,
   result,
@@ -481,54 +505,46 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
 
       <form className={styles.workspace} onSubmit={(event) => event.preventDefault()}>
         <div className={styles.stageShell} data-calculator-stage-shell>
-          <div className={styles.mobileStage} data-calculator-mobile-stage>
-            <div className={styles.controls} data-calculator-controls>
-              <div className={styles.controlsHeading}>
-                <span>01 / Dimensions</span>
-                <CompactPricingSummary input={input} result={result} />
-              </div>
-              <DimensionControl
-                id="simple-cover-width"
-                label="Width along the house"
-                value={input.widthMm}
-                min={SIMPLE_COVER_WIDTH_MIN_MM}
-                max={SIMPLE_COVER_WIDTH_MAX_MM}
-                onChange={(value) => setDimension('widthMm', value)}
-              />
-              <DimensionControl
-                id="simple-cover-projection"
-                label="Projection from the house"
-                value={input.projectionMm}
-                min={SIMPLE_COVER_PROJECTION_MIN_MM}
-                max={SIMPLE_COVER_PROJECTION_MAX_MM}
-                onChange={(value) => setDimension('projectionMm', value)}
-              />
-
-              <fieldset className={styles.levelFieldset}>
-                <legend>Deck level</legend>
-                <div className={styles.levelOptions}>
-                  <label className={input.level === 'ground' ? styles.levelSelected : undefined}>
-                    <input type="radio" name="simple-cover-level" value="ground" checked={input.level === 'ground'} onChange={() => setLevel('ground')} />
-                    <span><strong>Ground level</strong><small>Up to {SIMPLE_COVER_GROUND_MAX_AREA_M2} m²</small></span>
-                  </label>
-                  <label className={input.level === 'elevated' ? styles.levelSelected : undefined}>
-                    <input type="radio" name="simple-cover-level" value="elevated" checked={input.level === 'elevated'} onChange={() => setLevel('elevated')} />
-                    <span><strong>Elevated / first floor</strong><small>Up to {SIMPLE_COVER_ELEVATED_MAX_AREA_M2} m²</small></span>
-                  </label>
+          <div className={styles.focusRunway} data-calculator-focus-runway>
+            <div className={styles.mobileStage} data-calculator-mobile-stage>
+              <div className={styles.focusComposition} data-calculator-focus-composition>
+                <div className={styles.controls} data-calculator-controls>
+                  <div className={styles.controlsHeading}>
+                    <span>01 / Dimensions</span>
+                    <CompactPricingSummary input={input} result={result} />
+                  </div>
+                  <DimensionControl
+                    id="simple-cover-width"
+                    label="Width along the house"
+                    value={input.widthMm}
+                    min={SIMPLE_COVER_WIDTH_MIN_MM}
+                    max={SIMPLE_COVER_WIDTH_MAX_MM}
+                    onChange={(value) => setDimension('widthMm', value)}
+                  />
+                  <DimensionControl
+                    id="simple-cover-projection"
+                    label="Projection from the house"
+                    value={input.projectionMm}
+                    min={SIMPLE_COVER_PROJECTION_MIN_MM}
+                    max={SIMPLE_COVER_PROJECTION_MAX_MM}
+                    onChange={(value) => setDimension('projectionMm', value)}
+                  />
                 </div>
-              </fieldset>
-            </div>
 
-            <ConceptPlan input={input} result={result} />
-            <div className={styles.resultRegion} aria-live="polite" aria-atomic="true">
-              <PricingResult input={input} result={result} pending={pending} />
+                <ConceptPlan input={input} result={result} />
+              </div>
             </div>
+          </div>
+
+          <LevelControl level={input.level} onChange={setLevel} />
+          <div className={styles.resultRegion} aria-live="polite" aria-atomic="true">
+            <PricingResult input={input} result={result} pending={pending} />
           </div>
         </div>
 
         <div className={styles.secondaryControls} data-calculator-secondary-controls>
           <div className={styles.secondaryHeading}>
-            <span>02 / Options and assumptions</span>
+            <span>03 / Options and assumptions</span>
             <small>Included in this live estimate</small>
           </div>
           <dl className={styles.fixedSpecification}>

@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 const route = '/simple-cover-calculator';
 const viewports = [
   { name: 'large mobile', width: 430, height: 932 },
+  { name: 'iPhone 15 Pro usable viewport', width: 393, height: 650 },
   { name: 'mobile', width: 390, height: 844 },
   { name: 'compact mobile', width: 360, height: 800 },
   { name: 'tablet', width: 768, height: 1024 },
@@ -202,7 +203,7 @@ for (const viewport of viewports) {
             const box = element.getBoundingClientRect();
             return { top: box.top, bottom: box.bottom, height: box.height };
           });
-        const levelBoxes = Array.from(document.querySelectorAll<HTMLElement>('[data-calculator-mobile-stage] input[type="radio"]'))
+        const levelBoxes = Array.from(document.querySelectorAll<HTMLElement>('[data-calculator-level-control] input[type="radio"]'))
           .map((element) => {
             const box = element.closest('label')?.getBoundingClientRect();
             return box ? { top: box.top, bottom: box.bottom, height: box.height } : null;
@@ -213,9 +214,14 @@ for (const viewport of viewports) {
           viewportHeight: window.innerHeight,
           header: rect('[data-header-ui="architectural-editorial"]'),
           stage: rect('[data-calculator-mobile-stage]'),
+          composition: rect('[data-calculator-focus-composition]'),
+          runway: rect('[data-calculator-focus-runway]'),
           plan: rect('[data-calculator-mobile-stage] figure'),
           controls: rect('[data-calculator-controls]'),
-          result: rect('[data-calculator-mobile-stage] [data-result-state]'),
+          level: rect('[data-calculator-level-control]'),
+          result: rect('[data-result-state]'),
+          stageResultCount: document.querySelectorAll('[data-calculator-mobile-stage] [data-result-state]').length,
+          stageLevelCount: document.querySelectorAll('[data-calculator-mobile-stage] [data-calculator-level-control]').length,
           sliderBoxes,
           levelBoxes,
           stagePosition: stage ? getComputedStyle(stage).position : null,
@@ -226,22 +232,38 @@ for (const viewport of viewports) {
 
       expect(stageLayout.header).not.toBeNull();
       expect(stageLayout.stage).not.toBeNull();
+      expect(stageLayout.composition).not.toBeNull();
+      expect(stageLayout.runway).not.toBeNull();
       expect(stageLayout.plan).not.toBeNull();
       expect(stageLayout.controls).not.toBeNull();
+      expect(stageLayout.level).not.toBeNull();
       expect(stageLayout.result).not.toBeNull();
       expect(stageLayout.stagePosition).toBe('sticky');
       expect(stageLayout.documentScrollSnap).toBe('none');
       expect(stageLayout.bodyScrollSnap).toBe('none');
       expect(Math.abs(stageLayout.stage!.top - stageLayout.header!.bottom)).toBeLessThanOrEqual(2);
       expect(stageLayout.stage!.bottom).toBeLessThanOrEqual(stageLayout.viewportHeight + 1);
-      expect(stageLayout.plan!.top).toBeGreaterThanOrEqual(stageLayout.header!.bottom - 1);
+      expect(Math.abs(
+        (stageLayout.composition!.top - stageLayout.stage!.top)
+        - (stageLayout.stage!.bottom - stageLayout.composition!.bottom),
+      )).toBeLessThanOrEqual(2);
+      expect(stageLayout.plan!.top).toBeGreaterThanOrEqual(stageLayout.composition!.top - 1);
       expect(stageLayout.plan!.bottom).toBeLessThanOrEqual(stageLayout.controls!.top + 1);
-      expect(stageLayout.controls!.bottom).toBeLessThanOrEqual(stageLayout.result!.top + 1);
-      expect(stageLayout.result!.bottom).toBeLessThanOrEqual(stageLayout.viewportHeight);
+      expect(stageLayout.controls!.bottom).toBeLessThanOrEqual(stageLayout.composition!.bottom + 1);
+      expect(stageLayout.level!.top).toBeGreaterThanOrEqual(stageLayout.runway!.bottom - 1);
+      expect(stageLayout.level!.bottom).toBeLessThanOrEqual(stageLayout.result!.top + 1);
+      expect(stageLayout.stageResultCount).toBe(0);
+      expect(stageLayout.stageLevelCount).toBe(0);
       expect(stageLayout.sliderBoxes).toHaveLength(2);
-      expect(stageLayout.sliderBoxes.every((box) => box.height >= 44 && box.top >= stageLayout.header!.bottom && box.bottom <= stageLayout.viewportHeight)).toBe(true);
+      expect(stageLayout.sliderBoxes.every((box) => box.height >= 60 && box.top >= stageLayout.stage!.top && box.bottom <= stageLayout.stage!.bottom)).toBe(true);
       expect(stageLayout.levelBoxes).toHaveLength(2);
-      expect(stageLayout.levelBoxes.every((box) => box.height >= 44 && box.top >= stageLayout.header!.bottom && box.bottom <= stageLayout.viewportHeight)).toBe(true);
+      expect(stageLayout.levelBoxes.every((box) => box.height >= 72)).toBe(true);
+
+      await page.evaluate(() => window.scrollBy(0, 64));
+      const heldStageTop = await page.locator('[data-calculator-mobile-stage]').evaluate((element) => (
+        element.getBoundingClientRect().top
+      ));
+      expect(Math.abs(heldStageTop - stageLayout.header!.bottom)).toBeLessThanOrEqual(2);
     }
   });
 }
@@ -262,9 +284,11 @@ for (const viewport of [
       const stage = calculator?.querySelector<HTMLElement>('[data-calculator-mobile-stage]');
       const plan = stage?.querySelector<HTMLElement>('figure');
       const controls = stage?.querySelector<HTMLElement>('[data-calculator-controls]');
-      const result = stage?.querySelector<HTMLElement>('[data-result-state]');
+      const level = calculator?.querySelector<HTMLElement>('[data-calculator-level-control]');
+      const result = calculator?.querySelector<HTMLElement>('[data-result-state]');
       const planBox = plan?.getBoundingClientRect();
       const controlBox = controls?.getBoundingClientRect();
+      const levelBox = level?.getBoundingClientRect();
       const resultBox = result?.getBoundingClientRect();
       return {
         overflow: document.body.scrollWidth - document.body.clientWidth,
@@ -273,9 +297,11 @@ for (const viewport of [
         ordered: Boolean(
           planBox
           && controlBox
+          && levelBox
           && resultBox
           && planBox.bottom <= controlBox.top + 1
-          && controlBox.bottom <= resultBox.top + 1,
+          && controlBox.bottom <= levelBox.top + 1
+          && levelBox.bottom <= resultBox.top + 1,
         ),
       };
     });
