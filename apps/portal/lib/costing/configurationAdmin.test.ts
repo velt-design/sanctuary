@@ -306,9 +306,9 @@ describe('costing configuration admin publication', () => {
     );
 
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({
-      base_manifest_version: 'v2.2',
+      base_manifest_version: 'v2.3',
       based_on_version_id: 'published-v1',
-      config_json: expect.objectContaining({ baseManifestVersion: 'v2.2' }),
+      config_json: expect.objectContaining({ baseManifestVersion: 'v2.3' }),
     }));
   });
 

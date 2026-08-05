@@ -129,11 +129,13 @@ Changing any code-owned item is a normal package semantic change with package re
 - A package manifest change must ship with an explicit compatibility/migration decision for the current published control snapshot. Incompatible published data fails closed.
 - Published estimates store `estimates.costing_config_version_id`; pre-publication estimates store the full hashed legacy control snapshot in `outputs.configVersions.costingControl`. All estimates retain frozen inputs and outputs as the historical commercial record.
 
-The active package manifest is `v2.2`. Published `v1.7`, `v1.8`, `v1.9`, `v2.0` and `v2.1` snapshots retain their stored rates and original package behavior when applied to this package base. A fresh draft copies the active editable rates but advances to `v2.2`; only publishing that draft activates the Version 5 Simple customer-price policy. Cloning an older version preserves that version's semantics for rollback.
+The active package manifest is `v2.3`. Published `v1.7`, `v1.8`, `v1.9`, `v2.0`, `v2.1` and `v2.2` snapshots retain their stored rates and original package behavior when applied to this package base. A fresh draft copies the active editable rates but advances to `v2.3`; only publishing that draft activates the Version 6 rafter-length labour curve. Cloning an older version preserves that version's semantics for rollback.
 
 Manifest `v2.0` corrects non-continuous extrusion procurement such as rafters. The BOM compares the whole purchase needed for each eligible stock length and chooses the lowest total ex-GST cost, then least waste, fewest bars and lowest cost per metre. Continuous ledger, beam, stringer and gutter runs keep the splice-minimising rule. Published `v1.9` retains the earlier cost-per-metre-first non-continuous selection so Version 2 remains reproducible.
 
 Manifest `v2.1` derives Simple site days from productive installation actions only. One-time mobilisation/demobilisation is still charged once, and setup, pack-down and tidy remain charged once per genuine productive site day, but those activities cannot create another mobilisation day. Bespoke and published `v2.0` calculations retain the earlier total-crew-hour day-cycle behavior.
+
+Manifest `v2.3` retains the existing actual sloped rafter cut-length and total-installed-metre takeoff, preserves the 2m and 3m loading points at `0.18` and `0.42`, and raises the 4m, 5m and 6m points to `1.20`, `2.80` and `5.00`. The engine linearly interpolates between points, so increasing projection produces a smooth labour increase rather than a threshold jump. Published `v2.2` and earlier controls preserve their frozen curve values.
 
 ## Marketing Estimate Use
 

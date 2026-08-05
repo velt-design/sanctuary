@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { calculateCostV1 } from './engine/calculate';
 import { loadCostingConfigV1 } from './engine/config';
 import {
   applyCostingControlConfigV1,
@@ -51,11 +52,57 @@ describe('costing control configuration', () => {
     expect(validation.ok).toBe(true);
 
     const applied = applyCostingControlConfigV1(base, historical);
-    expect(applied.manifest.version).toBe('v2.2');
+    expect(applied.manifest.version).toBe('v2.3');
     expect(applied.appliedControlManifestVersion).toBe('v1.7');
     expect(
       applied.installActions.actions.find((action) => action.id === 'infill.setup_setout_each')?.base_minutes,
     ).toBe(16.8);
+  });
+
+  it('keeps the published v2.2 rafter curve reproducible after the v2.3 upgrade', () => {
+    const base = loadCostingConfigV1();
+    const historical = snapshotCostingControlConfigV1(base);
+    historical.baseManifestVersion = 'v2.2';
+    historical.labour.rafterLengthLoadingCurve = [
+      { length_m: 2, minutes_per_m: 0.18 },
+      { length_m: 3, minutes_per_m: 0.42 },
+      { length_m: 4, minutes_per_m: 0.96 },
+      { length_m: 5, minutes_per_m: 2.16 },
+      { length_m: 6, minutes_per_m: 3.84 },
+    ];
+
+    const validation = validateCostingControlConfigV1(historical, base);
+    expect(validation.ok).toBe(true);
+    const historicalConfig = applyCostingControlConfigV1(base, historical);
+    expect(snapshotCostingControlConfigV1(base).labour.rafterLengthLoadingCurve).toEqual([
+      { length_m: 2, minutes_per_m: 0.18 },
+      { length_m: 3, minutes_per_m: 0.42 },
+      { length_m: 4, minutes_per_m: 1.2 },
+      { length_m: 5, minutes_per_m: 2.8 },
+      { length_m: 6, minutes_per_m: 5 },
+    ]);
+    expect(snapshotCostingControlConfigV1(historicalConfig).labour.rafterLengthLoadingCurve)
+      .toEqual(historical.labour.rafterLengthLoadingCurve);
+
+    const inputs = {
+      length_m: 6,
+      post_cut_height_m: 2.4,
+      post_count: 3,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+      house_connection_type: 'fascia' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+      ground: 'easy' as const,
+      pergola_style: 'pitched' as const,
+    };
+    const loadingMinutes = (projection_m: number, config: typeof base) =>
+      calculateCostV1({ ...inputs, projection_m }, config).install.actions
+        .find((action) => action.id === 'rafters.rafter_length_loading_m')?.minutes ?? 0;
+
+    expect(loadingMinutes(3, base)).toBeCloseTo(loadingMinutes(3, historicalConfig), 2);
+    expect(loadingMinutes(6, base)).toBeGreaterThan(loadingMinutes(6, historicalConfig) * 1.2);
   });
 
   it('rejects unknown keys and cross-field rule violations', () => {
