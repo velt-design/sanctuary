@@ -118,10 +118,8 @@
   border-bottom: 1px solid var(--color-rule-strong, #aeb2aa);
 }
 
-.controlsHeading strong {
-  font: 500 clamp(1.5rem, 2.2vw, 2.2rem)/1 var(--font-display, "Instrument Sans Variable", sans-serif);
-  letter-spacing: -.035em;
-  font-variant-numeric: tabular-nums;
+.compactPricing {
+  display: none;
 }
 
 .dimensionControl {
@@ -499,6 +497,18 @@
   font: 560 .57rem/1.2 var(--font-body, sans-serif);
   letter-spacing: .11em;
   text-transform: uppercase;
+}
+
+.planState {
+  justify-items: end;
+  text-align: right;
+}
+
+.planState strong {
+  color: var(--drawing-ink);
+  font: 500 clamp(1rem, 1.6vw, 1.35rem)/1 var(--font-display, "Instrument Sans Variable", sans-serif);
+  letter-spacing: -.025em;
+  font-variant-numeric: tabular-nums;
 }
 
 .planViewport {
@@ -1037,8 +1047,36 @@
     padding-bottom: .3rem;
   }
 
-  .controlsHeading strong {
-    font-size: 1.2rem;
+  .compactPricing {
+    min-width: 0;
+    display: grid;
+    justify-items: end;
+    gap: .08rem;
+    text-align: right;
+  }
+
+  .compactPricing small {
+    color: var(--color-text-subtle, #5f635c);
+    font: 650 .5rem/1 var(--font-body, "Inter Variable", Arial, sans-serif);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+
+  .compactPricing span {
+    color: var(--color-text-primary, #111210);
+    font: 500 clamp(1.12rem, 5.1vw, 1.35rem)/1 var(--font-display, "Instrument Sans Variable", sans-serif);
+    letter-spacing: -.035em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .compactPricing[data-compact-price-state='updating'] span {
+    opacity: .58;
+  }
+
+  .compactPricing[data-compact-price-state='custom'] span,
+  .compactPricing[data-compact-price-state='unavailable'] span {
+    font-size: clamp(.95rem, 4.4vw, 1.15rem);
   }
 
   .dimensionControl {
@@ -1126,6 +1164,14 @@
     display: none;
   }
 
+  .planState {
+    gap: .12rem;
+  }
+
+  .planState strong {
+    font-size: .95rem;
+  }
+
   .planViewport {
     min-height: 0;
   }
@@ -1175,7 +1221,7 @@
 
   .resultCard {
     min-height: 7.75rem;
-    grid-template-columns: minmax(0, 1fr) minmax(8.5rem, auto);
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto auto;
     gap: .15rem 1rem;
     align-items: center;
@@ -1194,19 +1240,28 @@
   }
 
   .price {
-    grid-column: 1;
-    grid-row: 2;
-    font-size: clamp(2.2rem, 10vw, 3rem);
+    width: 1px;
+    height: 1px;
+    position: absolute;
+    overflow: hidden;
+    clip-path: inset(50%);
     white-space: nowrap;
   }
 
   .inclusion {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    max-width: 24rem;
+    font-size: .7rem;
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  .resultMeta {
     grid-column: 2;
-    grid-row: 1;
-    align-self: end;
-    font-size: .67rem;
-    line-height: 1.3;
-    text-align: right;
+    grid-row: 1 / 3;
+    align-self: center;
   }
 
   .resultCard > small {

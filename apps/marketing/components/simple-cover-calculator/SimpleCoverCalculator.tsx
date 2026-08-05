@@ -175,6 +175,43 @@ function DimensionControl({
   );
 }
 
+function CompactPricingSummary({
+  input,
+  result,
+}: {
+  input: SimpleCoverInput;
+  result: SimpleCoverPublicResult | null;
+}) {
+  const isCurrent = currentResultMatches(result, input);
+  let state = 'loading';
+  let label = 'Live estimate';
+  let value = 'Calculating…';
+
+  if (result?.status === 'priced') {
+    state = isCurrent ? 'priced' : 'updating';
+    label = isCurrent ? 'Live estimate' : 'Updating estimate';
+    value = `From ${formatPrice(result.price.fromIncGst)}`;
+  } else if (isCurrent && result?.status === 'custom') {
+    state = 'custom';
+    label = 'Project scope';
+    value = 'Custom design';
+  } else if (result?.status === 'unavailable' || result?.status === 'invalid') {
+    state = 'unavailable';
+    value = 'Unavailable';
+  }
+
+  return (
+    <div
+      className={styles.compactPricing}
+      data-compact-price
+      data-compact-price-state={state}
+    >
+      <small>{label}</small>
+      <span>{value}</span>
+    </div>
+  );
+}
+
 function ConceptPlan({
   input,
   result,
@@ -249,7 +286,10 @@ function ConceptPlan({
           <span>Architectural plan</span>
           <small>Plan / scale to fit</small>
         </div>
-        <span>{input.level === 'ground' ? 'Ground level' : 'Elevated'}</span>
+        <div className={styles.planState}>
+          <span>{input.level === 'ground' ? 'Ground level' : 'Elevated'}</span>
+          <strong>{formatArea(areaM2)}</strong>
+        </div>
       </div>
       <div ref={viewportRef} className={styles.planViewport} role="img" aria-label={label}>
         <div className={styles.planGrid} aria-hidden="true" />
@@ -334,7 +374,7 @@ function PricingResult({
     return (
       <div className={styles.resultCard} data-result-state="priced">
         <span className={styles.resultEyebrow}>Initial installed estimate</span>
-        <p className={styles.price}>From {formatPrice(visibleResult.price.fromIncGst)}</p>
+        <p className={styles.price} data-result-price>From {formatPrice(visibleResult.price.fromIncGst)}</p>
         <p className={styles.inclusion}>GST and standard installation included.</p>
         <div className={styles.resultMeta}>
           <span>Live pricing set v{visibleResult.configuration.versionNumber}</span>
@@ -445,7 +485,7 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
             <div className={styles.controls} data-calculator-controls>
               <div className={styles.controlsHeading}>
                 <span>01 / Dimensions</span>
-                <strong>{formatArea(areaM2)}</strong>
+                <CompactPricingSummary input={input} result={result} />
               </div>
               <DimensionControl
                 id="simple-cover-width"

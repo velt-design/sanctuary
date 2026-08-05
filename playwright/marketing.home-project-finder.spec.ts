@@ -466,7 +466,7 @@ test('the production finder stays within its repeatable interaction and layout b
   await expect(heroImage).toHaveAttribute('fetchpriority', 'high');
   await page.waitForTimeout(500);
 
-  const firstDirection = main.locator('[data-project-direction="cover"]');
+  const firstDirection = main.locator('[data-project-direction="bespoke"]');
   await firstDirection.scrollIntoViewIfNeeded();
   await page.evaluate(() => {
     const metrics = (
@@ -479,7 +479,7 @@ test('the production finder stays within its repeatable interaction and layout b
       }
     ).__projectFinderPerformance;
     const control = document.querySelector<HTMLButtonElement>(
-      '[role="radio"][data-project-direction="cover"]',
+      '[role="radio"][data-project-direction="bespoke"]',
     );
     const finder = document.querySelector(
       '[data-project-finder-interactive]',
@@ -487,7 +487,7 @@ test('the production finder stays within its repeatable interaction and layout b
     if (!metrics || !control || !finder) return;
 
     const observer = new MutationObserver(() => {
-      if (!finder.querySelector('[data-project-finder-result="cover"]')) return;
+      if (!finder.querySelector('[data-project-finder-result="bespoke"]')) return;
       metrics.firstResultResponseMs = performance.now() - startedAt;
       observer.disconnect();
     });
@@ -498,7 +498,7 @@ test('the production finder stays within its repeatable interaction and layout b
     }, { capture: true, once: true });
   });
   await firstDirection.click();
-  await expect(main.locator('[data-project-finder-result="cover"]')).toBeVisible();
+  await expect(main.locator('[data-project-finder-result="bespoke"]')).toBeVisible();
 
   const metrics = await page.evaluate(() => (
     (window as typeof window & {
@@ -529,8 +529,12 @@ test('the two residential directions give one useful pathway and two governed re
   ] as const;
 
   for (const [direction, heading, primaryLabel, primaryHref, secondaryLabel, secondaryHref, projectNames] of paths) {
-    await page.goto('/');
-    await selectDirection(page, direction);
+    if (direction === 'cover') {
+      await page.goto('/?project=cover');
+    } else {
+      await page.goto('/');
+      await selectDirection(page, direction);
+    }
     await expect(page.getByRole('heading', { level: 2, name: heading, exact: true }))
       .toBeVisible();
     await expect(page.getByRole('link', { name: primaryLabel, exact: true }))
@@ -548,6 +552,15 @@ test('the two residential directions give one useful pathway and two governed re
       .toHaveCount(0);
     await expectNoHorizontalOverflow(page);
   }
+});
+
+test('Simple cover opens the dedicated simple acrylic pergola page directly', async ({
+  page,
+}) => {
+  await setAnalyticsConsent(page, false);
+  await page.goto('/');
+  await page.locator('[data-project-direction="cover"]').click();
+  await expect(page).toHaveURL(/\/simple-pergolas-auckland$/);
 });
 
 test('commercial and professional choices reveal tailored results and evidence', async ({
@@ -748,7 +761,7 @@ test('URL state is canonical, refreshable and restored by browser history', asyn
   await page.goto('/?project=cover&project=bespoke');
   await expect(page).toHaveURL(/\/$/);
 
-  await selectDirection(page, 'cover');
+  await page.goto('/?project=cover');
   await selectDirection(page, 'bespoke');
   await expect(page).toHaveURL(/project=bespoke$/);
   await page.goBack();
@@ -866,7 +879,7 @@ test('mobile menu remains operable without losing finder URL state', async ({
 test('analytics use consent-aware closed project finder values', async ({ page }) => {
   await setAnalyticsConsent(page, false);
   await page.goto('/');
-  await selectDirection(page, 'cover');
+  await page.goto('/?project=cover');
   await page.getByRole('button', { name: 'Refine what matters' }).click();
   await page.locator('[data-project-priority]').first().check();
   expect(await projectFinderEvents(page)).toEqual([]);

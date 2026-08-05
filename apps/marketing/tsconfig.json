@@ -56,7 +56,9 @@
     ".next/playwright-marketing/types/**/*.ts",
     ".next/playwright-marketing/dev/types/**/*.ts",
     ".next/playwright-content-audit/types/**/*.ts",
-    ".next/playwright-content-audit/dev/types/**/*.ts"
+    ".next/playwright-content-audit/dev/types/**/*.ts",
+    ".next/playwright-marketing-cover-direct/types/**/*.ts",
+    ".next/playwright-marketing-cover-direct/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

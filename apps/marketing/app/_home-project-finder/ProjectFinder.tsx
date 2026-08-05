@@ -11,7 +11,10 @@ import {
 import { useConsent } from '@/components/ConsentProvider';
 import { Container } from '../../components/marketing-foundation/Primitives';
 import { buildEnquiryHref, type EnquiryAudience } from '../../lib/enquiryContext';
-import { buildProjectFinderHomeDestinationHref } from '../../lib/projectFinderContinuation';
+import {
+  buildProjectFinderHomeDestinationHref,
+  projectFinderDestinationByDirection,
+} from '../../lib/projectFinderContinuation';
 import {
   PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
   PROJECT_FINDER_HOME_PATH,
@@ -297,6 +300,15 @@ export default function ProjectFinder({
     event: MouseEvent<HTMLButtonElement>,
     direction: ProjectFinderHomeDirection,
   ) => {
+    if (direction === 'cover') {
+      track('project_direction_select', {
+        project_direction: direction,
+        source_component: 'project_finder',
+        step_number: 1,
+      });
+      window.location.assign(projectFinderDestinationByDirection.cover);
+      return;
+    }
     chooseDirection(direction, event.detail === 0 ? 'keyboard' : 'pointer');
   };
 

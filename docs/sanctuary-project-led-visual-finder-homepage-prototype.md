@@ -1503,3 +1503,12 @@ limited to the initial starting-point group: the nested commercial/professional
 pathway cards remain image-led, and tablet/desktop retain the existing imagery.
 Mobile-only spacing contracts enough for the complete opening to fit common
 phone heights while preserving every description and the full control target.
+
+---
+
+# 30. Simple cover direct destination
+
+The `Simple cover` first-layer card now opens `/simple-pergolas-auckland`
+directly. It no longer requires visitors to view the intermediate homepage
+recommendation before reaching the dedicated simple acrylic pergola page.
+Canonical saved finder state such as `/?project=cover` remains supported.

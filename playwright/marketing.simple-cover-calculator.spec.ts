@@ -69,6 +69,12 @@ async function setRange(page: Page, selector: string, value: number) {
   }, value);
 }
 
+function prominentPrice(page: Page) {
+  return page.viewportSize()!.width <= 560
+    ? page.locator('[data-compact-price]')
+    : page.locator('[data-result-price]');
+}
+
 for (const viewport of viewports) {
   test(`calculator remains complete and contained at ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -83,7 +89,7 @@ for (const viewport of viewports) {
     );
     await expect(page.getByRole('heading', { level: 1, name: 'Start with the footprint.' })).toBeVisible();
     await expect(page.getByRole('heading', { level: 2, name: 'Shape the cover. See the plan and price together.' })).toBeAttached();
-    await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
+    await expect(prominentPrice(page)).toHaveText(/From \$24,250/);
     await expect(page.getByText('GST and standard installation included.', { exact: true })).toBeVisible();
     await expect(page.getByText('Concept plan, not a construction drawing.', { exact: true })).toBeVisible();
     await expect(page.getByRole('img', { name: 'Concept plan for a 6.0 m wide by 3.0 m projection pitched acrylic cover, 18.0 m², with a fascia connection and 3 posts.' })).toBeVisible();
@@ -99,7 +105,12 @@ for (const viewport of viewports) {
     await expect(projection).toHaveAttribute('step', '100');
     await expect(page.locator('[data-simple-cover-calculator] button')).toHaveCount(0);
     await expect(page.getByRole('textbox', { name: 'Width along the house in metres' })).toHaveValue('6.0');
-    await expect(page.locator('[data-plan-header]')).not.toContainText('18.0 m²');
+    await expect(page.locator('[data-plan-header]')).toContainText('18.0 m²');
+    if (viewport.width <= 560) {
+      await expect(page.locator('[data-compact-price]')).toBeVisible();
+    } else {
+      await expect(page.locator('[data-compact-price]')).toBeHidden();
+    }
     await expect(page.locator('[data-plan-rafter]')).toHaveCount(11);
     await expect(page.locator('[data-plan-post]')).toHaveCount(3);
 
@@ -244,7 +255,7 @@ for (const viewport of [
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await prepareCalculator(page);
     await page.goto(route);
-    await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
+    await expect(prominentPrice(page)).toHaveText(/From \$24,250/);
 
     const fallback = await page.evaluate(() => {
       const calculator = document.querySelector<HTMLElement>('[data-simple-cover-calculator]');
@@ -281,7 +292,7 @@ test('calculator handles post boundaries, custom limits and recovery without los
   await page.setViewportSize({ width: 1024, height: 800 });
   await prepareCalculator(page, requests);
   await page.goto(route);
-  await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
+  await expect(prominentPrice(page)).toHaveText(/From \$24,250/);
 
   await setRange(page, '#simple-cover-width', 4_000);
   await expect(page.getByText(/2 posts · max 4 m · rafters/)).toBeVisible();
@@ -302,7 +313,7 @@ test('calculator handles post boundaries, custom limits and recovery without los
   expect(requests.count).toBe(requestsAtCustom);
 
   await setRange(page, '#simple-cover-projection', 3_300);
-  await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
+  await expect(prominentPrice(page)).toHaveText(/From \$24,250/);
   expect(requests.count).toBeGreaterThan(requestsAtCustom);
 
   await setRange(page, '#simple-cover-width', 10_000);
@@ -325,7 +336,7 @@ test('calculator exposes visible keyboard focus and live output semantics', asyn
   await page.setViewportSize({ width: 390, height: 844 });
   await prepareCalculator(page);
   await page.goto(route);
-  await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
+  await expect(prominentPrice(page)).toHaveText(/From \$24,250/);
 
   const calculator = page.locator('[data-simple-cover-calculator]');
   await expect(calculator.locator('[aria-live="polite"]')).toHaveCount(1);
@@ -354,7 +365,7 @@ test('calculator exposes visible keyboard focus and live output semantics', asyn
   await connection.selectOption('soffit');
   await expect(page.getByText('House / soffit edge', { exact: true })).toBeVisible();
   await expect(page.getByRole('img', { name: /soffit-bracket connection/ })).toHaveAttribute('aria-label', /soffit-bracket connection/);
-  await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
+  await expect(prominentPrice(page)).toHaveText(/From \$24,250/);
 });
 
 for (const viewport of [
@@ -365,7 +376,15 @@ for (const viewport of [
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await prepareCalculator(page);
     await page.goto(route);
-    await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
+    await expect(prominentPrice(page)).toHaveText(/From \$24,250/);
+
+    if (viewport.width <= 560) {
+      await setRange(page, '#simple-cover-width', 6_100);
+      await expect(page.locator('[data-compact-price-state="updating"]')).toContainText('From $24,250');
+      await expect(page.locator('[data-compact-price-state="priced"]')).toContainText('From $24,250');
+      await setRange(page, '#simple-cover-width', 6_000);
+      await expect(page.locator('[data-compact-price-state="priced"]')).toContainText('From $24,250');
+    }
 
     await setRange(page, '#simple-cover-projection', 5_100);
     const customCard = page.locator('[data-result-state="custom"]');
@@ -375,8 +394,11 @@ for (const viewport of [
     await setRange(page, '#simple-cover-projection', 5_000);
     const loadingCard = page.locator('[data-result-state="loading"]');
     await expect(loadingCard).toBeVisible();
+    if (viewport.width <= 560) {
+      await expect(page.locator('[data-compact-price-state="loading"]')).toContainText('Calculating…');
+    }
     const loadingHeight = (await loadingCard.boundingBox())?.height ?? 0;
-    await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
+    await expect(prominentPrice(page)).toHaveText(/From \$24,250/);
     const pricedHeight = (await page.locator('[data-result-state="priced"]').boundingBox())?.height ?? 0;
 
     expect(Math.abs(customHeight - loadingHeight)).toBeLessThanOrEqual(1);

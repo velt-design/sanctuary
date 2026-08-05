@@ -89,7 +89,8 @@ describe('SimpleCoverCalculator', () => {
     expect(document.querySelectorAll('[data-terminal="true"]')).toHaveLength(4);
     expect(document.querySelectorAll('[data-plan-rafter]')).toHaveLength(11);
     expect(document.querySelectorAll('[data-plan-post]')).toHaveLength(3);
-    expect(document.querySelector('[data-plan-header]')?.textContent).not.toContain('18.0 m²');
+    expect(document.querySelector('[data-plan-header]')?.textContent).toContain('18.0 m²');
+    expect(document.querySelector('[data-compact-price]')?.textContent).toContain('Calculating…');
     expect(document.querySelector('#simple-cover-connection')).toMatchObject({ value: 'fascia' });
     expect(Array.from(document.querySelectorAll('#simple-cover-connection option')).map((option) => option.textContent))
       .toEqual(['Fascia', 'Facade', 'Soffit brackets']);
@@ -104,11 +105,13 @@ describe('SimpleCoverCalculator', () => {
     expect(container.textContent).toContain('From $24,250');
     expect(container.textContent).toContain('GST and standard installation included.');
     expect(container.textContent).toContain('Live pricing set v9');
+    expect(container.querySelector('[data-compact-price-state="priced"]')?.textContent).toContain('From $24,250');
 
     const width = container.querySelector('#simple-cover-width') as HTMLInputElement;
     await act(async () => setRange(width, '6100'));
     expect(container.textContent).toContain('6.1 m');
     expect(container.querySelector('[data-result-state="loading"]')).not.toBeNull();
+    expect(container.querySelector('[data-compact-price-state="updating"]')?.textContent).toContain('From $24,250');
     await settlePrice();
     expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body))).toMatchObject({ widthMm: 6_100 });
 
@@ -135,6 +138,7 @@ describe('SimpleCoverCalculator', () => {
     expect(container.textContent).toContain('36.0 m² exceeds the 30 m² ground-level Simple cover limit.');
     expect(container.textContent).not.toContain('From $');
     expect(container.querySelector('[data-result-state="custom"]')).not.toBeNull();
+    expect(container.querySelector('[data-compact-price-state="custom"]')?.textContent).toContain('Custom design');
     expect(container.querySelector('a')?.getAttribute('href')).toContain('source_component=public_calculator');
     await settlePrice();
     expect(fetchMock).not.toHaveBeenCalled();
@@ -146,6 +150,7 @@ describe('SimpleCoverCalculator', () => {
     await settlePrice();
 
     expect(container.querySelector('[data-result-state="unavailable"]')).not.toBeNull();
+    expect(container.querySelector('[data-compact-price-state="unavailable"]')?.textContent).toContain('Unavailable');
     expect(container.textContent).toContain('Your design is still here.');
     expect(container.textContent).toContain('18.0 m²');
     expect(container.textContent).not.toContain('private configuration detail');

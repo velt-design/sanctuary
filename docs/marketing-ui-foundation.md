@@ -475,8 +475,9 @@ self-canonical and `noindex,follow`; the component owns its marketing
 presentation and does not import portal UI or drawing CSS. Native 100 mm range
 controls use the Projects view-scale language with metre stops and square handles;
 editable metre values cover 1-10 m width and 1-6 m projection
-with a 6 x 3 m default, a ground/elevated choice, live area, automatic post
-layout and an accessible architectural concept plan. The plan uses the
+with a 6 x 3 m default, a ground/elevated choice, automatic post layout and an
+accessible architectural concept plan. The plan topline owns the live area beside
+the level, keeping that design fact attached to the drawing. The plan uses the
 package-owned acrylic-rafter layout even when price is unavailable, with scaled 50 mm
 rafter/ledger and 100 mm beam/post outlines, technical dimensions and a distinct
 marketing presentation. A valid Simple combination shows `From $X`, GST
@@ -487,7 +488,12 @@ keeps the design visible and shows no price.
 
 At 560 CSS pixels and below, normal-height phones use one bounded calculator
 stage beneath the fixed header: concept plan first, dimensions and the compact
-ground/elevated choice second, and one stable-height live-result strip last.
+ground/elevated choice second, and one stable-height live-result strip last. The
+dimensions heading owns the prominent live price on mobile; while a new price is
+being resolved it retains the previous figure in a subdued updating state. The
+priced result strip supports that focal point with GST, installation and pricing-set
+context instead of repeating a second large price. Custom and unavailable states
+continue to replace the strip with their complete route-specific guidance.
 The stage consumes the available small viewport (`100svh` minus the header),
 settles with native `position: sticky` for a short page-owned runway, then
 releases into the connection and fixed-assumption block. It does not intercept
