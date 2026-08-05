@@ -43,7 +43,7 @@ describe('Version 2 calculator pricing preview', () => {
       result.pricing_policy?.customer_price_uplift_pct,
     );
 
-    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(10);
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(21);
     expect(preview.totalIncGstCents).toBe(Math.round((expected?.incGst ?? 0) * 100));
   });
 });

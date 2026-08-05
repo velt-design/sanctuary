@@ -3,6 +3,7 @@ import { applyCostingControlConfigV1, snapshotCostingControlConfigV1 } from '../
 import { calculateSiteCostV1 } from '../engine/calculate';
 import { loadCostingConfigV1 } from '../engine/config';
 import type { CostInputsV1, SiteInputsV1 } from '../engine/types';
+import { calculateCustomerPriceFromCostEx } from './customerPricing';
 import {
   calculateApprovalCustomerAllowanceV2,
   buildSimpleRangeOverheadV2,
@@ -79,7 +80,7 @@ describe('Version 2 commercial policy', () => {
     expect(fixedMobilisationActions.length).toBeGreaterThan(0);
     expect(fixedMobilisationActions.every((action) => action.qty === 1)).toBe(true);
     expect(result.overhead.total_ex_gst).toBe(750);
-    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(10);
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(21);
   });
 
   it.each([
@@ -122,5 +123,39 @@ describe('Version 2 commercial policy', () => {
     expect(result.pergolas[0]?.modules[0]?.derived.site_days).toBe(2);
     expect(result.overhead.total_ex_gst).toBeGreaterThanOrEqual(2000);
     expect(result.pricing_policy?.customer_price_uplift_pct).toBe(0);
+  });
+
+  it('keeps published v2.1 Simple customer pricing at the Version 4 uplift', () => {
+    const base = loadCostingConfigV1();
+    const control = snapshotCostingControlConfigV1(base);
+    control.baseManifestVersion = 'v2.1';
+    const publishedV4 = applyCostingControlConfigV1(base, control);
+    const result = calculateSiteCostV1(site(), publishedV4);
+
+    expect(result.overhead.method).toBe('simple_progressive');
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(10);
+  });
+
+  it('prices Version 5 exactly 10% above Version 4 before final cent rounding', () => {
+    const current = loadCostingConfigV1();
+    const historicalControl = snapshotCostingControlConfigV1(current);
+    historicalControl.baseManifestVersion = 'v2.1';
+    const version4 = applyCostingControlConfigV1(current, historicalControl);
+    const version4Result = calculateSiteCostV1(site(), version4);
+    const version5Result = calculateSiteCostV1(site(), current);
+    const version4Price = calculateCustomerPriceFromCostEx(
+      version4Result.totals.cost_ex_gst,
+      0,
+      version4Result.pricing_policy?.customer_price_uplift_pct,
+    );
+    const version5Price = calculateCustomerPriceFromCostEx(
+      version5Result.totals.cost_ex_gst,
+      0,
+      version5Result.pricing_policy?.customer_price_uplift_pct,
+    );
+
+    expect(version5Result.totals.cost_ex_gst).toBe(version4Result.totals.cost_ex_gst);
+    expect(version5Result.pricing_policy?.customer_price_uplift_pct).toBe(21);
+    expect((version5Price?.incGst ?? 0) / (version4Price?.incGst ?? 1)).toBeCloseTo(1.1, 4);
   });
 });

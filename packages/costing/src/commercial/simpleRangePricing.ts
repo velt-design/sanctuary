@@ -1,5 +1,6 @@
 import { GST_RATE } from '../blinds';
 import commercialPolicyV2Json from '../config/commercial_policy_v2_2026-08-05.json';
+import commercialPolicyV3Json from '../config/commercial_policy_v3_2026-08-05.json';
 import type { CostingConfigV1 } from '../engine/config';
 import type { OverheadV1, SiteInputsV1 } from '../engine/types';
 import { isCostingManifestAtLeast } from '../manifestVersion';
@@ -56,8 +57,24 @@ export function isCommercialPolicyV3Enabled(config: CostingConfigV1): boolean {
   return isCostingManifestAtLeast(config, 2, 1);
 }
 
+export function isCommercialPolicyV4Enabled(config: CostingConfigV1): boolean {
+  return isCostingManifestAtLeast(config, 2, 2);
+}
+
 function commercialPolicyForConfig(config: CostingConfigV1) {
-  return isCommercialPolicyV3Enabled(config) ? config.commercialPolicy : commercialPolicyV2Json;
+  if (isCommercialPolicyV4Enabled(config)) return config.commercialPolicy;
+  if (isCommercialPolicyV3Enabled(config)) return commercialPolicyV3Json;
+  return commercialPolicyV2Json;
+}
+
+function simpleCustomerPriceUpliftForConfig(config: CostingConfigV1): number {
+  if (isCommercialPolicyV4Enabled(config)) {
+    return Number(config.commercialPolicy.simple_range.customer_price_uplift_pct);
+  }
+  if (isCommercialPolicyV3Enabled(config)) {
+    return Number(commercialPolicyV3Json.simple_range.customer_price_uplift_pct);
+  }
+  return 0;
 }
 
 export function evaluateSimpleRangeEligibilityV2(inputs: SiteInputsV1): {
@@ -108,8 +125,7 @@ export function resolveSitePricingPolicyV2(
   const resolvedClassification = requested === 'simple' && simpleEligible ? 'simple' : 'bespoke';
   const customerPriceUpliftPct = config
     && resolvedClassification === 'simple'
-    && isCommercialPolicyV3Enabled(config)
-    ? Number(config.commercialPolicy.simple_range.customer_price_uplift_pct)
+    ? simpleCustomerPriceUpliftForConfig(config)
     : 0;
   return {
     requested_classification: requested,

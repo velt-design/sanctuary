@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-05 | Costing Version 5                | Promoted | Raise the frozen Simple customer-price uplift from 10% to 21% behind manifest `v2.2`, which produces an exact additional 10% increase on Version 4 while keeping Version 4, Bespoke and approval allowances unchanged. |
 | 2026-08-05 | Costing Stock Optimisation       | Promoted | Choose non-continuous extrusion stock by the total purchase cost for the complete cut group, then waste, bar count and cost per metre. Gate the correction by the base manifest so an older published configuration remains reproducible. |
 | 2026-08-05 | Costing Version 4                | Promoted | Derive Simple site days and overhead from productive installation work so mobilisation cannot create another mobilisation day. Freeze the `$750` progressive overhead policy and 10% customer-price uplift behind manifest `v2.1`. |
 | 2026-08-05 | Costing Version 2                | Promoted | Keep Simple eligibility, progressive overhead, and approval allowances in `@sp/costing`; gate semantics by the published base manifest so code deployment cannot reprice Version 1. Freeze resolved policy and non-discountable direct-sell approval lines with the estimate and quote from that frozen result. |
@@ -4862,6 +4863,17 @@ Why it mattered: A negligible unit-rate difference added `$190.52 ex GST` and `1
 Current guardrail: For non-continuous cuts, compare whole-bar total purchase cost first, then waste, bar count and cost per metre. Preserve the splice-minimising rule for continuous runs and gate the corrected ranking by the published base manifest.
 Promoted to: `docs/costing-and-geometry.md`
 Related docs/tests: `packages/costing/src/engine/bom.test.ts`; `packages/costing/src/config/bom/bom_strategy_v1.1.json`
+
+### 2026-08-05 - Costing Version 5 - Additional Simple Price Increase
+
+Date: 2026-08-05
+Area: Simple customer pricing
+Status: Promoted
+Decision or mistake: Version 5 increases the complete Version 4 Simple customer price by a further 10%. Because policy uplift is measured against the post-markup base, the frozen uplift moves from 10% to 21% (`1.10 × 1.10 = 1.21`) rather than to 20%.
+Why it mattered: Adding ten percentage points would produce only a 9.09% increase on the live Version 4 price and would not match the approved commercial change.
+Current guardrail: Gate the 21% uplift behind manifest `v2.2`, preserve published `v2.1` at 10%, and continue freezing the resolved uplift in every Simple costing output consumed by the portal, marketing calculator, autoresponder and quote handoff. Bespoke and approval allowances remain unchanged.
+Promoted to: `docs/costing-and-geometry.md`; `docs/projects-contacts-estimates-calculator.md`; `docs/automation-email-audit.md`; `docs/quotes-invoices-job-packs.md`
+Related docs/tests: `packages/costing/src/commercial/simpleRangePricing.test.ts`; `apps/marketing/lib/simpleCoverPricing.server.test.ts`; `apps/portal/app/staff/calculator/calculatorPricingPreview.test.ts`
 
 ### 2026-08-05 - Costing Version 4 - Mobilisation Does Not Create Mobilisation
 

@@ -43,7 +43,7 @@ describe('frozen Simple cover pricing', () => {
 
     expect(result.schemaVersion).toBe('simple-cover-pricing.v1');
     expect(result.customerPrice.exactIncGst).toBe(expectedPrice?.incGst);
-    expect(result.siteOutput.pricing_policy?.customer_price_uplift_pct).toBe(10);
+    expect(result.siteOutput.pricing_policy?.customer_price_uplift_pct).toBe(21);
     expect(result.customerPrice.displayedFromIncGst % 250).toBe(0);
     expect(result.costingConfiguration).toMatchObject({ versionId: 'version-17', versionNumber: 17 });
     expect(result.publicResult.configuration).toEqual({ versionNumber: 17 });
