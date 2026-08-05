@@ -13,7 +13,7 @@
   },
   "integration_notes": [
     "Retains the v2.2 material rates, geometry, stock-selection, productive site-day, Simple overhead and customer-price policies.",
-    "v2.3 preserves the 2m and 3m rafter-length loading points and raises the 4m, 5m and 6m points to 1.20, 2.80 and 5.00.",
+    "v2.3 sets the approved 2m to 6m rafter-length loading points to 0.18, 0.42, 1.20, 2.80 and 5.00.",
     "The rafter-length curve continues to use actual sloped cut length, total installed rafter metres and linear interpolation between points.",
     "Bespoke pricing and non-discountable engineering and building-consent allowances remain unchanged.",
     "Published configurations retain the commercial behavior of their base manifest until a newer manifest is explicitly published."

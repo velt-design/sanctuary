@@ -135,7 +135,7 @@ Manifest `v2.0` corrects non-continuous extrusion procurement such as rafters. T
 
 Manifest `v2.1` derives Simple site days from productive installation actions only. One-time mobilisation/demobilisation is still charged once, and setup, pack-down and tidy remain charged once per genuine productive site day, but those activities cannot create another mobilisation day. Bespoke and published `v2.0` calculations retain the earlier total-crew-hour day-cycle behavior.
 
-Manifest `v2.3` retains the existing actual sloped rafter cut-length and total-installed-metre takeoff, preserves the 2m and 3m loading points at `0.18` and `0.42`, and raises the 4m, 5m and 6m points to `1.20`, `2.80` and `5.00`. The engine linearly interpolates between points, so increasing projection produces a smooth labour increase rather than a threshold jump. Published `v2.2` and earlier controls preserve their frozen curve values.
+Manifest `v2.3` retains the existing actual sloped rafter cut-length and total-installed-metre takeoff and sets the approved 2m through 6m loading points to `0.18`, `0.42`, `1.20`, `2.80` and `5.00`. The engine linearly interpolates between points, so increasing projection produces a smooth labour change rather than a threshold jump. Published `v2.2` and earlier controls preserve their frozen curve values, including any administrator-edited values.
 
 ## Marketing Estimate Use
 
