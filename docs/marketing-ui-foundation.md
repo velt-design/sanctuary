@@ -497,10 +497,11 @@ the previous price in a subdued updating state while a new price is resolved.
 
 The focus stage consumes `100svh` minus the header, settles with native
 `position: sticky` for a short page-owned runway, then releases into a separate
-72-pixel-minimum deck-level choice and the supporting live-result strip. The
-priced strip carries GST, installation and pricing-set context instead of
-repeating a second large price; Custom and unavailable states retain their full
-route-specific guidance. The stage does not intercept wheel or touch input and
+72-pixel-minimum deck-level choice followed by options and assumptions. The
+supporting live-result strip comes after every price-affecting input and carries
+GST, installation and pricing-set context instead of repeating a second large
+price; Custom and unavailable states retain their full route-specific guidance.
+The stage does not intercept wheel or touch input and
 does not use document scroll snap. Viewports below 580 CSS pixels in height,
 mobile landscape and widths at or below 320 CSS pixels use the same semantic
 controls in normal document flow so browser chrome, keyboard use and zoom cannot

@@ -219,6 +219,7 @@ for (const viewport of viewports) {
           plan: rect('[data-calculator-mobile-stage] figure'),
           controls: rect('[data-calculator-controls]'),
           level: rect('[data-calculator-level-control]'),
+          options: rect('[data-calculator-secondary-controls]'),
           result: rect('[data-result-state]'),
           stageResultCount: document.querySelectorAll('[data-calculator-mobile-stage] [data-result-state]').length,
           stageLevelCount: document.querySelectorAll('[data-calculator-mobile-stage] [data-calculator-level-control]').length,
@@ -237,6 +238,7 @@ for (const viewport of viewports) {
       expect(stageLayout.plan).not.toBeNull();
       expect(stageLayout.controls).not.toBeNull();
       expect(stageLayout.level).not.toBeNull();
+      expect(stageLayout.options).not.toBeNull();
       expect(stageLayout.result).not.toBeNull();
       expect(stageLayout.stagePosition).toBe('sticky');
       expect(stageLayout.documentScrollSnap).toBe('none');
@@ -251,7 +253,8 @@ for (const viewport of viewports) {
       expect(stageLayout.plan!.bottom).toBeLessThanOrEqual(stageLayout.controls!.top + 1);
       expect(stageLayout.controls!.bottom).toBeLessThanOrEqual(stageLayout.composition!.bottom + 1);
       expect(stageLayout.level!.top).toBeGreaterThanOrEqual(stageLayout.runway!.bottom - 1);
-      expect(stageLayout.level!.bottom).toBeLessThanOrEqual(stageLayout.result!.top + 1);
+      expect(stageLayout.level!.bottom).toBeLessThanOrEqual(stageLayout.options!.top + 1);
+      expect(stageLayout.options!.bottom).toBeLessThanOrEqual(stageLayout.result!.top + 1);
       expect(stageLayout.stageResultCount).toBe(0);
       expect(stageLayout.stageLevelCount).toBe(0);
       expect(stageLayout.sliderBoxes).toHaveLength(2);
@@ -285,10 +288,12 @@ for (const viewport of [
       const plan = stage?.querySelector<HTMLElement>('figure');
       const controls = stage?.querySelector<HTMLElement>('[data-calculator-controls]');
       const level = calculator?.querySelector<HTMLElement>('[data-calculator-level-control]');
+      const options = calculator?.querySelector<HTMLElement>('[data-calculator-secondary-controls]');
       const result = calculator?.querySelector<HTMLElement>('[data-result-state]');
       const planBox = plan?.getBoundingClientRect();
       const controlBox = controls?.getBoundingClientRect();
       const levelBox = level?.getBoundingClientRect();
+      const optionsBox = options?.getBoundingClientRect();
       const resultBox = result?.getBoundingClientRect();
       return {
         overflow: document.body.scrollWidth - document.body.clientWidth,
@@ -298,10 +303,12 @@ for (const viewport of [
           planBox
           && controlBox
           && levelBox
+          && optionsBox
           && resultBox
           && planBox.bottom <= controlBox.top + 1
           && controlBox.bottom <= levelBox.top + 1
-          && levelBox.bottom <= resultBox.top + 1,
+          && levelBox.bottom <= optionsBox.top + 1
+          && optionsBox.bottom <= resultBox.top + 1,
         ),
       };
     });

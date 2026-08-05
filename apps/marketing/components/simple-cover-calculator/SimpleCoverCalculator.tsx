@@ -537,9 +537,6 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
           </div>
 
           <LevelControl level={input.level} onChange={setLevel} />
-          <div className={styles.resultRegion} aria-live="polite" aria-atomic="true">
-            <PricingResult input={input} result={result} pending={pending} />
-          </div>
         </div>
 
         <div className={styles.secondaryControls} data-calculator-secondary-controls>
@@ -566,6 +563,10 @@ export default function SimpleCoverCalculator({ className = '' }: { className?: 
             <div><dt>Finish</dt><dd>Standard colour</dd></div>
             <div><dt>Site</dt><dd>Normal access / easy ground</dd></div>
           </dl>
+        </div>
+
+        <div className={styles.resultRegion} aria-live="polite" aria-atomic="true">
+          <PricingResult input={input} result={result} pending={pending} />
         </div>
       </form>
     </section>
