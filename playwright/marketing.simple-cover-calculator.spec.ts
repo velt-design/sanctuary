@@ -2,7 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 
 const route = '/simple-cover-calculator';
 const viewports = [
+  { name: 'large mobile', width: 430, height: 932 },
   { name: 'mobile', width: 390, height: 844 },
+  { name: 'compact mobile', width: 360, height: 800 },
   { name: 'tablet', width: 768, height: 1024 },
   { name: 'short laptop', width: 1366, height: 768 },
   { name: 'desktop', width: 1600, height: 1000 },
@@ -103,10 +105,14 @@ for (const viewport of viewports) {
 
     const layout = await page.evaluate(() => {
       const calculator = document.querySelector<HTMLElement>('[data-simple-cover-calculator]');
-      const controls = calculator?.querySelector('form');
+      const controls = calculator?.querySelector<HTMLElement>('[data-calculator-controls]');
       const figure = calculator?.querySelector('figure');
+      const secondary = calculator?.querySelector<HTMLElement>('[data-calculator-secondary-controls]');
+      const stageShell = calculator?.querySelector<HTMLElement>('[data-calculator-stage-shell]');
       const controlBox = controls?.getBoundingClientRect();
       const figureBox = figure?.getBoundingClientRect();
+      const secondaryBox = secondary?.getBoundingClientRect();
+      const stageShellBox = stageShell?.getBoundingClientRect();
       const shortTargets = Array.from(calculator?.querySelectorAll<HTMLElement>('a, select, input[type="range"], [data-dimension-value]') ?? [])
         .filter((element) => {
           const box = element.getBoundingClientRect();
@@ -118,6 +124,8 @@ for (const viewport of viewports) {
         calculatorWidth: calculator?.getBoundingClientRect().width ?? 0,
         controlBox: controlBox ? { top: controlBox.top, right: controlBox.right, bottom: controlBox.bottom, left: controlBox.left } : null,
         figureBox: figureBox ? { top: figureBox.top, right: figureBox.right, bottom: figureBox.bottom, left: figureBox.left } : null,
+        secondaryBox: secondaryBox ? { top: secondaryBox.top, right: secondaryBox.right, bottom: secondaryBox.bottom, left: secondaryBox.left } : null,
+        stageShellBox: stageShellBox ? { top: stageShellBox.top, right: stageShellBox.right, bottom: stageShellBox.bottom, left: stageShellBox.left } : null,
         shortTargets,
       };
     });
@@ -127,6 +135,8 @@ for (const viewport of viewports) {
     expect(layout.shortTargets).toEqual([]);
     expect(layout.controlBox).not.toBeNull();
     expect(layout.figureBox).not.toBeNull();
+    expect(layout.secondaryBox).not.toBeNull();
+    expect(layout.stageShellBox).not.toBeNull();
     const structure = await page.evaluate(() => {
       const post = document.querySelector<HTMLElement>('[data-plan-post]');
       const rafter = document.querySelector<HTMLElement>('[data-plan-rafter]');
@@ -154,12 +164,115 @@ for (const viewport of viewports) {
     expect(structure.rafterEdges).toEqual(['solid', 'solid']);
     expect(structure.ledgerEdges).toEqual(['solid', 'solid']);
     expect(structure.beamEdges).toEqual(['solid', 'solid']);
-    if (viewport.width <= 820) {
+    if (viewport.width <= 560) {
+      expect(layout.figureBox!.bottom).toBeLessThanOrEqual(layout.controlBox!.top + 1);
+      expect(layout.secondaryBox!.top).toBeGreaterThan(layout.controlBox!.bottom);
+      expect(Math.abs(layout.secondaryBox!.top - layout.stageShellBox!.bottom)).toBeLessThanOrEqual(1);
+    } else if (viewport.width <= 820) {
       expect(layout.figureBox!.top).toBeGreaterThanOrEqual(layout.controlBox!.bottom - 1);
     } else {
       expect(Math.abs(layout.figureBox!.top - layout.controlBox!.top)).toBeLessThanOrEqual(1);
       expect(layout.figureBox!.left).toBeGreaterThanOrEqual(layout.controlBox!.right - 1);
     }
+
+    if (viewport.width <= 560) {
+      await page.locator('[data-calculator-stage-shell]').evaluate((element) => {
+        element.scrollIntoView({ block: 'start' });
+      });
+
+      const stageLayout = await page.evaluate(() => {
+        const rect = (selector: string) => {
+          const element = document.querySelector<HTMLElement>(selector);
+          const box = element?.getBoundingClientRect();
+          return box ? { top: box.top, bottom: box.bottom, height: box.height } : null;
+        };
+        const sliderBoxes = Array.from(document.querySelectorAll<HTMLElement>('[data-calculator-mobile-stage] input[type="range"]'))
+          .map((element) => {
+            const box = element.getBoundingClientRect();
+            return { top: box.top, bottom: box.bottom, height: box.height };
+          });
+        const levelBoxes = Array.from(document.querySelectorAll<HTMLElement>('[data-calculator-mobile-stage] input[type="radio"]'))
+          .map((element) => {
+            const box = element.closest('label')?.getBoundingClientRect();
+            return box ? { top: box.top, bottom: box.bottom, height: box.height } : null;
+          })
+          .filter((box): box is { top: number; bottom: number; height: number } => box !== null);
+        const stage = document.querySelector<HTMLElement>('[data-calculator-mobile-stage]');
+        return {
+          viewportHeight: window.innerHeight,
+          header: rect('[data-header-ui="architectural-editorial"]'),
+          stage: rect('[data-calculator-mobile-stage]'),
+          plan: rect('[data-calculator-mobile-stage] figure'),
+          controls: rect('[data-calculator-controls]'),
+          result: rect('[data-calculator-mobile-stage] [data-result-state]'),
+          sliderBoxes,
+          levelBoxes,
+          stagePosition: stage ? getComputedStyle(stage).position : null,
+          documentScrollSnap: getComputedStyle(document.documentElement).scrollSnapType,
+          bodyScrollSnap: getComputedStyle(document.body).scrollSnapType,
+        };
+      });
+
+      expect(stageLayout.header).not.toBeNull();
+      expect(stageLayout.stage).not.toBeNull();
+      expect(stageLayout.plan).not.toBeNull();
+      expect(stageLayout.controls).not.toBeNull();
+      expect(stageLayout.result).not.toBeNull();
+      expect(stageLayout.stagePosition).toBe('sticky');
+      expect(stageLayout.documentScrollSnap).toBe('none');
+      expect(stageLayout.bodyScrollSnap).toBe('none');
+      expect(Math.abs(stageLayout.stage!.top - stageLayout.header!.bottom)).toBeLessThanOrEqual(2);
+      expect(stageLayout.stage!.bottom).toBeLessThanOrEqual(stageLayout.viewportHeight + 1);
+      expect(stageLayout.plan!.top).toBeGreaterThanOrEqual(stageLayout.header!.bottom - 1);
+      expect(stageLayout.plan!.bottom).toBeLessThanOrEqual(stageLayout.controls!.top + 1);
+      expect(stageLayout.controls!.bottom).toBeLessThanOrEqual(stageLayout.result!.top + 1);
+      expect(stageLayout.result!.bottom).toBeLessThanOrEqual(stageLayout.viewportHeight);
+      expect(stageLayout.sliderBoxes).toHaveLength(2);
+      expect(stageLayout.sliderBoxes.every((box) => box.height >= 44 && box.top >= stageLayout.header!.bottom && box.bottom <= stageLayout.viewportHeight)).toBe(true);
+      expect(stageLayout.levelBoxes).toHaveLength(2);
+      expect(stageLayout.levelBoxes.every((box) => box.height >= 44 && box.top >= stageLayout.header!.bottom && box.bottom <= stageLayout.viewportHeight)).toBe(true);
+    }
+  });
+}
+
+for (const viewport of [
+  { name: 'short mobile', width: 360, height: 480 },
+  { name: 'mobile landscape', width: 640, height: 360 },
+  { name: '200 percent zoom equivalent', width: 195, height: 422 },
+] as const) {
+  test(`calculator keeps native scrolling at ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await prepareCalculator(page);
+    await page.goto(route);
+    await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
+
+    const fallback = await page.evaluate(() => {
+      const calculator = document.querySelector<HTMLElement>('[data-simple-cover-calculator]');
+      const stage = calculator?.querySelector<HTMLElement>('[data-calculator-mobile-stage]');
+      const plan = stage?.querySelector<HTMLElement>('figure');
+      const controls = stage?.querySelector<HTMLElement>('[data-calculator-controls]');
+      const result = stage?.querySelector<HTMLElement>('[data-result-state]');
+      const planBox = plan?.getBoundingClientRect();
+      const controlBox = controls?.getBoundingClientRect();
+      const resultBox = result?.getBoundingClientRect();
+      return {
+        overflow: document.body.scrollWidth - document.body.clientWidth,
+        pageCanScroll: document.body.scrollHeight > window.innerHeight,
+        stagePosition: stage ? getComputedStyle(stage).position : null,
+        ordered: Boolean(
+          planBox
+          && controlBox
+          && resultBox
+          && planBox.bottom <= controlBox.top + 1
+          && controlBox.bottom <= resultBox.top + 1,
+        ),
+      };
+    });
+
+    expect(fallback.overflow).toBeLessThanOrEqual(0);
+    expect(fallback.pageCanScroll).toBe(true);
+    expect(fallback.stagePosition).not.toBe('sticky');
+    expect(fallback.ordered).toBe(true);
   });
 }
 
@@ -240,7 +353,7 @@ test('calculator exposes visible keyboard focus and live output semantics', asyn
   const connection = page.getByRole('combobox', { name: 'Connection' });
   await connection.selectOption('soffit');
   await expect(page.getByText('House / soffit edge', { exact: true })).toBeVisible();
-  await expect(page.getByRole('img')).toHaveAttribute('aria-label', /soffit-bracket connection/);
+  await expect(page.getByRole('img', { name: /soffit-bracket connection/ })).toHaveAttribute('aria-label', /soffit-bracket connection/);
   await expect(page.getByText('From $24,250', { exact: true })).toBeVisible();
 });
 
