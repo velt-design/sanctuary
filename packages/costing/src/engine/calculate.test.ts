@@ -1745,8 +1745,8 @@ describe('calculateCostV1', () => {
 
     expect(shortAction.qty).toBeCloseTo(short.derived.total_installed_rafter_length_m, 6);
     expect(longAction.qty).toBeCloseTo(long.derived.total_installed_rafter_length_m, 6);
-    expect(shortAction.applied_multipliers.rafter_length_loading_curve).toBeCloseTo(0.18, 2);
-    expect(longAction.applied_multipliers.rafter_length_loading_curve).toBeGreaterThan(4.5);
+    expect(shortAction.applied_multipliers.rafter_length_loading_curve).toBeCloseTo(0.5, 2);
+    expect(longAction.applied_multipliers.rafter_length_loading_curve).toBeGreaterThan(7.5);
     expect(longAction.minutes / Math.max(longAction.qty, 1e-6)).toBeGreaterThan(
       (shortAction.minutes / Math.max(shortAction.qty, 1e-6)) * 10,
     );

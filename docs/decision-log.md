@@ -4881,7 +4881,7 @@ Related docs/tests: `packages/costing/src/commercial/simpleRangePricing.test.ts`
 Date: 2026-08-05
 Area: Rafter labour takeoff
 Status: Promoted
-Decision or mistake: Version 6 sets the approved 2m through 6m rafter-length loading points to `0.18`, `0.42`, `1.20`, `2.80`, `5.00`. The previously published Version 5 control contained administrator-edited values, so all five points are an explicit reviewed diff even though the first two match the new package defaults.
+Decision or mistake: The initial proposed curve was lower than the administrator-edited Version 5 production curve and would have reduced long-rafter labour, contrary to the stated goal. Version 6 instead keeps the live 2m and 3m points at `0.50` and `1.00`, then raises the 4m, 5m and 6m points to `3.75`, `6.50` and `7.80`.
 Why it mattered: Long rafters are materially harder to handle and install, but a projection threshold or app-local surcharge would create cliffs and pricing drift.
 Current guardrail: Use actual package-derived sloped cut length and total installed rafter metres, interpolate between configuration points, preserve historical controls, and activate a changed curve only through a new published base manifest consumed by the portal, marketing calculator and autoresponder.
 Promoted to: `docs/costing-and-geometry.md`; `docs/projects-contacts-estimates-calculator.md`; `docs/automation-email-audit.md`; `docs/quotes-invoices-job-packs.md`

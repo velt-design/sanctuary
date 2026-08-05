@@ -64,22 +64,22 @@ describe('costing control configuration', () => {
     const historical = snapshotCostingControlConfigV1(base);
     historical.baseManifestVersion = 'v2.2';
     historical.labour.rafterLengthLoadingCurve = [
-      { length_m: 2, minutes_per_m: 0.18 },
-      { length_m: 3, minutes_per_m: 0.42 },
-      { length_m: 4, minutes_per_m: 0.96 },
-      { length_m: 5, minutes_per_m: 2.16 },
-      { length_m: 6, minutes_per_m: 3.84 },
+      { length_m: 2, minutes_per_m: 0.5 },
+      { length_m: 3, minutes_per_m: 1 },
+      { length_m: 4, minutes_per_m: 3 },
+      { length_m: 5, minutes_per_m: 5 },
+      { length_m: 6, minutes_per_m: 6 },
     ];
 
     const validation = validateCostingControlConfigV1(historical, base);
     expect(validation.ok).toBe(true);
     const historicalConfig = applyCostingControlConfigV1(base, historical);
     expect(snapshotCostingControlConfigV1(base).labour.rafterLengthLoadingCurve).toEqual([
-      { length_m: 2, minutes_per_m: 0.18 },
-      { length_m: 3, minutes_per_m: 0.42 },
-      { length_m: 4, minutes_per_m: 1.2 },
-      { length_m: 5, minutes_per_m: 2.8 },
-      { length_m: 6, minutes_per_m: 5 },
+      { length_m: 2, minutes_per_m: 0.5 },
+      { length_m: 3, minutes_per_m: 1 },
+      { length_m: 4, minutes_per_m: 3.75 },
+      { length_m: 5, minutes_per_m: 6.5 },
+      { length_m: 6, minutes_per_m: 7.8 },
     ]);
     expect(snapshotCostingControlConfigV1(historicalConfig).labour.rafterLengthLoadingCurve)
       .toEqual(historical.labour.rafterLengthLoadingCurve);

@@ -115,23 +115,23 @@
       "points": [
         {
           "length_m": 2,
-          "minutes_per_m": 0.18
+          "minutes_per_m": 0.5
         },
         {
           "length_m": 3,
-          "minutes_per_m": 0.42
+          "minutes_per_m": 1
         },
         {
           "length_m": 4,
-          "minutes_per_m": 1.2
+          "minutes_per_m": 3.75
         },
         {
           "length_m": 5,
-          "minutes_per_m": 2.8
+          "minutes_per_m": 6.5
         },
         {
           "length_m": 6,
-          "minutes_per_m": 5
+          "minutes_per_m": 7.8
         }
       ],
       "notes": "Additional rafter labour loading. Version 1.9 sets the approved 2m to 6m rates with linear interpolation between points. Uses cut lengths where available and weights by total installed rafter metres.",
@@ -2022,7 +2022,7 @@
       "date": "2026-08-05",
       "changes": [
         "Retained the existing rafter-length loading action and actual cut-length driver",
-        "Set the 2m to 6m curve points to 0.18, 0.42, 1.20, 2.80 and 5.00",
+        "Set the approved 2m to 6m curve points to 0.50, 1.00, 3.75, 6.50 and 7.80",
         "Retained linear interpolation between curve points"
       ]
     }
