@@ -279,7 +279,7 @@ describe('costing configuration admin publication', () => {
     }));
   });
 
-  it('makes a fresh draft the explicit v1.9 policy upgrade point', async () => {
+  it('makes a fresh draft the explicit active-manifest upgrade point', async () => {
     const base = loadCostingConfigV1();
     const publishedControl = snapshotCostingControlConfigV1(base);
     publishedControl.baseManifestVersion = 'v1.8';
@@ -306,9 +306,9 @@ describe('costing configuration admin publication', () => {
     );
 
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({
-      base_manifest_version: 'v1.9',
+      base_manifest_version: 'v2.0',
       based_on_version_id: 'published-v1',
-      config_json: expect.objectContaining({ baseManifestVersion: 'v1.9' }),
+      config_json: expect.objectContaining({ baseManifestVersion: 'v2.0' }),
     }));
   });
 

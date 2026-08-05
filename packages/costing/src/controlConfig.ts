@@ -93,8 +93,9 @@ const MAX_CURRENCY_VALUE = 10_000_000;
 const MAX_MINUTES_VALUE = 10_080;
 const MAX_MULTIPLIER_VALUE = 10;
 const COMPATIBLE_BASE_MANIFEST_UPGRADES: Record<string, readonly string[]> = {
-  'v1.7': ['v1.8', 'v1.9'],
-  'v1.8': ['v1.9'],
+  'v1.7': ['v1.8', 'v1.9', 'v2.0'],
+  'v1.8': ['v1.9', 'v2.0'],
+  'v1.9': ['v2.0'],
 };
 
 function isRecord(value: unknown): value is UnknownRecord {

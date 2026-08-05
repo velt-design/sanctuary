@@ -16,6 +16,8 @@ import {
   snapshotInputs,
 } from './materials_explain';
 import { INFILL_JOINER_FIXING_SPACING_M } from './infillConstants';
+import { isCostingManifestAtLeast } from '../manifestVersion';
+import { describeNonContinuousStockSelection, shouldPreferNonContinuousStock } from './stockSelectionRanking';
 
 type PricebookItem = CostingConfigV1['materials']['items'][number];
 
@@ -370,7 +372,13 @@ function selectBestStock(
   bars: Array<PricebookItem & { stock_length_m: number }>,
   cuts: CutItem[],
   preferred: number[],
-  opts?: { trace?: MaterialsExplainCollector; groupKey?: string; kerfM?: number; preferredStockLengths?: number[] },
+  opts?: {
+    trace?: MaterialsExplainCollector;
+    groupKey?: string;
+    kerfM?: number;
+    preferredStockLengths?: number[];
+    prioritiseTotalPurchaseCost?: boolean;
+  },
 ): {
   bar: (PricebookItem & { stock_length_m: number }) | null;
   barsUsed: number;
@@ -438,6 +446,7 @@ function selectBestStock(
   if (!evaluated.length) return { bar: null, barsUsed: 0, wasteM: 0 };
 
   const anyExactFit = hasContinuousRun && evaluated.some((candidate) => candidate.isExactFit);
+  const nonContinuousPriority = opts?.prioritiseTotalPurchaseCost ? 'total_purchase_cost' : 'cost_per_m';
   let best = evaluated[0];
 
   for (let i = 1; i < evaluated.length; i += 1) {
@@ -480,20 +489,7 @@ function selectBestStock(
       continue;
     }
 
-    const bestCostPerM = best.costPerM;
-    if (candidate.costPerM < bestCostPerM - EPS) {
-      best = candidate;
-      continue;
-    }
-    if (Math.abs(candidate.costPerM - bestCostPerM) <= EPS) {
-      if (candidate.wasteM < best.wasteM - EPS) {
-        best = candidate;
-        continue;
-      }
-      if (Math.abs(candidate.wasteM - best.wasteM) <= EPS && candidate.barsUsed < best.barsUsed) {
-        best = candidate;
-      }
-    }
+    if (shouldPreferNonContinuousStock(candidate, best, nonContinuousPriority)) best = candidate;
   }
 
   if (opts?.trace && opts.groupKey) {
@@ -523,7 +519,7 @@ function selectBestStock(
       },
       rule: hasContinuousRun
         ? 'continuous-run: prefer least splice-joins, then exact-fit, then total-cost, then bars-used, then waste, then cost-per-m'
-        : 'non-continuous: prefer lowest cost-per-m, then waste, then bars-used',
+        : describeNonContinuousStockSelection(nonContinuousPriority),
     });
   }
 
@@ -2280,6 +2276,7 @@ function buildMaterialsV1Internal(
       groupKey,
       kerfM: group.kerf_m,
       preferredStockLengths: group.preferred_stock_lengths_m,
+      prioritiseTotalPurchaseCost: isCostingManifestAtLeast(config, 2, 0),
     });
     if (!selection.bar || selection.barsUsed <= 0) {
       if (trace) {

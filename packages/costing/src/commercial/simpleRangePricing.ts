@@ -1,6 +1,7 @@
 import { GST_RATE } from '../blinds';
 import type { CostingConfigV1 } from '../engine/config';
 import type { OverheadV1, SiteInputsV1 } from '../engine/types';
+import { isCostingManifestAtLeast } from '../manifestVersion';
 
 export type PricingClassificationV2 = 'simple' | 'bespoke';
 export type ApprovalRequirementV2 = 'neither' | 'engineering_required' | 'full_building_consent';
@@ -45,16 +46,8 @@ function roundMoney(value: number): number {
   return Number.isFinite(value) ? Math.round(value * 100) / 100 : 0;
 }
 
-function effectiveManifestVersion(config: CostingConfigV1): string {
-  return config.appliedControlManifestVersion ?? String(config.manifest.version);
-}
-
 export function isCommercialPolicyV2Enabled(config: CostingConfigV1): boolean {
-  const match = /^v(\d+)\.(\d+)/.exec(effectiveManifestVersion(config));
-  if (!match) return false;
-  const major = Number(match[1]);
-  const minor = Number(match[2]);
-  return major > 1 || (major === 1 && minor >= 9);
+  return isCostingManifestAtLeast(config, 1, 9);
 }
 
 export function evaluateSimpleRangeEligibilityV2(inputs: SiteInputsV1): {

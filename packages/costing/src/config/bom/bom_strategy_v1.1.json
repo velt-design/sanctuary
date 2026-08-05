@@ -1,0 +1,32 @@
+{
+  "version": "bom_strategy_v1.1_2026-08-05",
+  "method": "greedy_bin_packing",
+  "principles": [
+    "Order by full-length bars (4m/5m/6m) as priced in the materials pricebook.",
+    "Convert cut pieces into bar counts using greedy bin packing per profile.",
+    "Choose non-continuous stock by the lowest total purchase cost, then least waste and fewest bars.",
+    "Do not assume offcut reuse across different jobs (conservative true-cost).",
+    "Track and report offcuts as waste for the job; optionally keep for internal salvage later."
+  ],
+  "settings": {
+    "reuse_offcuts_across_jobs": false,
+    "min_offcut_to_report_m": 0.4,
+    "waste_allowance_percent": 0.0,
+    "stock_length_preference_m": [
+      8.0,
+      6.0,
+      5.0,
+      4.0
+    ],
+    "tie_breaker": "lowest_total_purchase_cost_then_least_waste_then_fewest_bars_then_lowest_cost_per_m"
+  },
+  "algorithm_outline": [
+    "For each profile, build a list of required cut lengths (m) from derived quantities and detailing rules.",
+    "For each available stock length for that profile (from the pricebook), arrange the required cuts and calculate whole bars, total purchase cost and waste.",
+    "For continuous runs, preserve the existing splice-minimising selection rule.",
+    "For non-continuous cuts, select the lowest total purchase cost, then least waste, then fewest bars, then lowest cost per metre.",
+    "Sort cut lengths descending; place each length into the first bar with enough remaining length; otherwise start a new bar.",
+    "Compute bars_used, total_stock_length, total_cut_length, waste_length = total_stock_length - total_cut_length.",
+    "If waste_allowance_percent > 0, inflate bars_used by that % (rounded up) and recompute waste."
+  ]
+}

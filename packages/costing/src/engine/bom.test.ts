@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { applyCostingControlConfigV1, snapshotCostingControlConfigV1 } from '../controlConfig';
 import { calculateCostV1 } from './calculate';
 import { __test__ } from './bom';
+import { loadCostingConfigV1 } from './config';
 import type { StockSelectionExplain } from './materials_explain';
 
 const baseInputs = {
@@ -99,6 +101,46 @@ describe('selectBestStock continuous runs', () => {
 
     expect(result.bar?.stock_length_m).toBe(4);
     expect(result.barsUsed).toBe(2);
+  });
+
+  it('v2.0 minimises total rafter purchase cost before cost per metre', () => {
+    const bars = [
+      makeBar(4, 76.2783),
+      makeBar(5, 95.3565),
+      makeBar(6, 114.4435),
+    ];
+    const cuts = Array.from({ length: 13 }, () => makeCut(2.8696354033511327, 'Rafters', 'single'));
+
+    const result = __test__.selectBestStock(bars, cuts, [6, 5, 4], {
+      prioritiseTotalPurchaseCost: true,
+    });
+
+    expect(result.bar?.stock_length_m).toBe(6);
+    expect(result.barsUsed).toBe(7);
+    expect(result.wasteM).toBeCloseTo(4.6947397564, 6);
+  });
+
+  it('keeps v1.9 rafter stock selection while v2.0 activates the corrected rule', () => {
+    const inputs = {
+      ...baseInputs,
+      length_m: 7.2,
+      projection_m: 3,
+      post_count: 3,
+      house_connection_type: 'fascia' as const,
+    };
+    const base = loadCostingConfigV1();
+    const historicalControl = snapshotCostingControlConfigV1(base);
+    historicalControl.baseManifestVersion = 'v1.9';
+    const historicalConfig = applyCostingControlConfigV1(base, historicalControl);
+
+    const current = calculateCostV1(inputs, base);
+    const historical = calculateCostV1(inputs, historicalConfig);
+    const rafterLine = (result: typeof current) => result.materials.lines.find(
+      (line) => line.profile === '100x50' && line.notes?.includes('(Rafters)'),
+    );
+
+    expect(rafterLine(current)).toMatchObject({ label: '100x50 6m (Black)', qty: 7, line_cost_ex_gst: 801.1 });
+    expect(rafterLine(historical)).toMatchObject({ label: '100x50 4m (Black)', qty: 13, line_cost_ex_gst: 991.62 });
   });
 });
 
