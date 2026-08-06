@@ -331,6 +331,56 @@ test('deliberate pathway choices reveal the next section on mobile only', async 
   await expect(desktopPathway).toBeFocused();
 });
 
+test('desktop Simple calculator gives the plan priority and keeps the result action comfortable', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await preparePage(page, { reducedMotion: true });
+  await mockSimpleCoverPrice(page);
+  await page.goto(
+    `${route}?enquiry_type=residential&source_path=%2Fsimple-cover-calculator`,
+    { waitUntil: 'networkidle' },
+  );
+
+  const calculator = page.locator('[data-simple-cover-calculator]');
+  const controls = calculator.locator('[data-calculator-controls]');
+  const plan = calculator.locator('figure');
+  const result = calculator.locator('[data-result-state="priced"]');
+  const price = calculator.locator('[data-result-price]');
+  const action = calculator.getByRole('link', { name: 'Request a site measure', exact: true });
+  await expect(action).toBeVisible();
+
+  const [controlsBox, planBox, resultBox, priceBox, actionBox] = await Promise.all([
+    controls.boundingBox(),
+    plan.boundingBox(),
+    result.boundingBox(),
+    price.boundingBox(),
+    action.boundingBox(),
+  ]);
+  expect(controlsBox).not.toBeNull();
+  expect(planBox).not.toBeNull();
+  expect(resultBox).not.toBeNull();
+  expect(priceBox).not.toBeNull();
+  expect(actionBox).not.toBeNull();
+  expect(planBox!.width).toBeGreaterThan(controlsBox!.width * 1.8);
+  expect(planBox!.height).toBeGreaterThan(resultBox!.height * 2);
+  expect(resultBox!.height).toBeLessThanOrEqual(270);
+  expect(actionBox!.width).toBeGreaterThanOrEqual(270);
+  expect(actionBox!.height).toBeGreaterThanOrEqual(56);
+  expect(actionBox!.x).toBeGreaterThan(priceBox!.x + priceBox!.width);
+
+  await page.setViewportSize({ width: 1024, height: 900 });
+  const [narrowPriceBox, narrowActionBox] = await Promise.all([
+    price.boundingBox(),
+    action.boundingBox(),
+  ]);
+  expect(narrowPriceBox).not.toBeNull();
+  expect(narrowActionBox).not.toBeNull();
+  expect(narrowActionBox!.y).toBeGreaterThan(narrowPriceBox!.y + narrowPriceBox!.height);
+  expect(narrowActionBox!.width).toBeGreaterThanOrEqual(270);
+  expect(narrowActionBox!.height).toBeGreaterThanOrEqual(56);
+});
+
 test('neutral, audience, project and product entry routes use one canonical contract', async ({
   page,
 }) => {

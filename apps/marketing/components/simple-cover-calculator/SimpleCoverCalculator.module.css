@@ -974,6 +974,47 @@
   animation: pricePulse 1.6s ease-in-out infinite;
 }
 
+@media (min-width: 821px) {
+  .calculator[data-placement='contact'] .workspace {
+    grid-template-columns: minmax(18rem, 3.5fr) minmax(0, 8.5fr);
+  }
+
+  .calculator[data-placement='contact'] .planViewport {
+    min-height: clamp(29rem, 33vw, 34rem);
+  }
+
+  .calculator[data-placement='contact'] .resultRegion {
+    --result-panel-min-height: 14.5rem;
+  }
+}
+
+@media (min-width: 1101px) {
+  .calculator[data-placement='contact'] .resultCard[data-result-state='priced'] {
+    grid-template-columns: minmax(0, 1fr) minmax(17rem, 19rem);
+    grid-template-rows: auto auto auto auto auto;
+    gap: .45rem clamp(1.5rem, 2.25vw, 2.25rem);
+    align-items: center;
+    padding: clamp(1.5rem, 2.2vw, 2rem);
+  }
+
+  .calculator[data-placement='contact'] .resultCard[data-result-state='priced'] .price {
+    font-size: clamp(3.2rem, 4.4vw, 4.75rem);
+  }
+
+  .calculator[data-placement='contact'] .resultCard[data-result-state='priced'] .primaryResultLink {
+    width: 100%;
+    min-width: 0;
+    min-height: 56px;
+    justify-content: center;
+    align-self: center;
+    padding: 1rem 1.25rem;
+  }
+
+  .calculator[data-placement='contact'] .resultCard[data-result-state='priced'] .resultMeta {
+    padding-top: .6rem;
+  }
+}
+
 @keyframes pricePulse {
   from { background-position: 100% 0; }
   to { background-position: -100% 0; }
@@ -1047,6 +1088,30 @@
   .resultActions .resultLink,
   .primaryResultLink {
     width: max-content;
+  }
+}
+
+@media (min-width: 821px) and (max-width: 1100px) {
+  .calculator[data-placement='contact'] .workspace {
+    grid-template-columns: minmax(18rem, 4fr) minmax(0, 8fr);
+  }
+
+  .calculator[data-placement='contact'] .resultCard[data-result-state='priced'] {
+    min-height: 0;
+    gap: .6rem;
+    padding: clamp(1.5rem, 3vw, 2rem);
+  }
+
+  .calculator[data-placement='contact'] .resultCard[data-result-state='priced'] .price {
+    font-size: clamp(3rem, 6vw, 4.25rem);
+  }
+
+  .calculator[data-placement='contact'] .resultCard[data-result-state='priced'] .primaryResultLink {
+    width: min(100%, 20rem);
+    min-width: 0;
+    min-height: 56px;
+    justify-content: center;
+    padding: 1rem 1.25rem;
   }
 }
 
