@@ -37,6 +37,12 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }));
 
+vi.mock('@/lib/queries/schedule', () => ({
+  scheduleV2SnapshotQueryOptions: (host: string, today: string) => ({
+    queryKey: ['schedule-v2', host, today],
+  }),
+}));
+
 vi.mock('./UserMenu', () => ({
   default: () => <div data-testid="mock-user-menu">User menu</div>,
 }));
@@ -217,6 +223,24 @@ describe('PortalSidebarPanel', () => {
     expect(linkByText(rendered.container, 'Board')).toBeInstanceOf(HTMLAnchorElement);
     expect(linkByText(rendered.container, 'Gantt')).toBeInstanceOf(HTMLAnchorElement);
     expect(queryLinkByText(rendered.container, 'Site visits')).toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('prefetches ordinary routes only after navigation intent', () => {
+    const rendered = renderSidebar();
+    const scheduleLink = linkByLabel(rendered.container, 'Schedule');
+
+    expect(transitionMocks.routerPrefetch).not.toHaveBeenCalled();
+
+    act(() => {
+      scheduleLink.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      scheduleLink.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    });
+
+    expect(transitionMocks.routerPrefetch).toHaveBeenCalledTimes(1);
+    expect(transitionMocks.routerPrefetch).toHaveBeenCalledWith('/schedule');
+    expect(transitionMocks.prefetchQuery).toHaveBeenCalledTimes(1);
 
     rendered.unmount();
   });

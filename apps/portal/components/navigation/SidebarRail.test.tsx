@@ -1,3 +1,4 @@
+import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import SidebarRail from './SidebarRail';
 import { renderIntoDocument } from '../../../../test/reactHarness';
@@ -26,6 +27,12 @@ vi.mock('next/navigation', () => ({
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({
     prefetchQuery: transitionMocks.prefetchQuery,
+  }),
+}));
+
+vi.mock('@/lib/queries/schedule', () => ({
+  scheduleV2SnapshotQueryOptions: (host: string, today: string) => ({
+    queryKey: ['schedule-v2', host, today],
   }),
 }));
 
@@ -127,6 +134,24 @@ describe('SidebarRail', () => {
       source: 'sidebar-rail',
       control: scheduleLink,
     });
+
+    rendered.unmount();
+  });
+
+  it('prefetches ordinary routes only after navigation intent', () => {
+    const rendered = renderIntoDocument(<SidebarRail role="staff" />);
+    const scheduleLink = linkByLabel(rendered.container, 'Schedule');
+
+    expect(transitionMocks.routerPrefetch).not.toHaveBeenCalled();
+
+    act(() => {
+      scheduleLink.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      scheduleLink.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    });
+
+    expect(transitionMocks.routerPrefetch).toHaveBeenCalledTimes(1);
+    expect(transitionMocks.routerPrefetch).toHaveBeenCalledWith('/schedule');
+    expect(transitionMocks.prefetchQuery).toHaveBeenCalledTimes(1);
 
     rendered.unmount();
   });

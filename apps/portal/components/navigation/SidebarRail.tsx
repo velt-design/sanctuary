@@ -70,6 +70,11 @@ export default function SidebarRail({
         preloadPortalIndex(queryClient, router, href);
         return;
       }
+      const routeToken = `route:${href}`;
+      if (!prefetchedRef.current.has(routeToken)) {
+        prefetchedRef.current.add(routeToken);
+        router.prefetch(href);
+      }
       if (key !== 'schedule') return;
       const token = `${key}:${hostKey}:${today}`;
       if (prefetchedRef.current.has(token)) return;
@@ -114,7 +119,7 @@ export default function SidebarRail({
               <Link
                 key={key}
                 href={href}
-                prefetch={portalIndexTarget(href) ? false : undefined}
+                prefetch={false}
                 aria-label={label}
                 aria-current={active ? 'page' : undefined}
                 className={cx(styles.iconButton, active && styles.iconButtonActive)}

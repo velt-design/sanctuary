@@ -199,6 +199,11 @@ export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sideb
         preloadPortalIndex(queryClient, router, href);
         return;
       }
+      const routeToken = `route:${href}`;
+      if (!prefetchedRef.current.has(routeToken)) {
+        prefetchedRef.current.add(routeToken);
+        router.prefetch(href);
+      }
       if (key !== 'schedule') return;
       const token = `${key}:${hostKey}:${today}`;
       if (prefetchedRef.current.has(token)) return;
@@ -244,7 +249,7 @@ export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sideb
                 <div className={cx(styles.parentRow, isParentCurrent && styles.parentRowBubbled)}>
                   <Link
                     href={item.href}
-                    prefetch={portalIndexTarget(item.href) ? false : undefined}
+                    prefetch={false}
                     aria-label={item.label}
                     aria-current={isParentCurrent ? 'page' : undefined}
                     className={styles.parentLink}
@@ -289,7 +294,7 @@ export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sideb
                           <Link
                             key={child.key}
                             href={child.href}
-                            prefetch={portalIndexTarget(child.href) ? false : undefined}
+                            prefetch={false}
                             aria-current={childActive ? 'page' : undefined}
                             className={cx(styles.childRow, childActive && styles.childRowActive)}
                             onClick={(event) => handleNavLinkClick(event, child.href, child.label)}

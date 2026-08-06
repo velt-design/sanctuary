@@ -115,6 +115,26 @@ export function getProjectSnapshotPlaceholderFromCaches(
   host: string,
   projectId: string,
 ): ProjectPageSnapshotResponse | undefined {
+  const indexMatch = queryClient
+    .getQueriesData<ProjectsIndexResponse>({
+      queryKey: qk.projects.indexPrefix(PROJECTS_INDEX_QUERY_SCOPE),
+    })
+    .map(([, response]) => response)
+    .filter((response): response is ProjectsIndexResponse => Boolean(response))
+    .sort((left, right) => right.generatedAt.localeCompare(left.generatedAt))
+    .map((response) => {
+      const project = response.projects.rows.find((entry) => entry.id === projectId);
+      if (!project) return null;
+      const contact = project.contactId
+        ? response.contacts.rows.find((entry) => entry.id === project.contactId)
+        : undefined;
+      return { project, contact };
+    })
+    .find((match) => match !== null);
+  if (indexMatch) {
+    return buildProjectSnapshotPlaceholder(indexMatch.project, indexMatch.contact);
+  }
+
   const project = (['active', 'all'] as const)
     .flatMap((scope) => queryClient.getQueryData<Project[]>(qk.projects.list(host, scope)) ?? [])
     .find((entry) => entry.id === projectId);

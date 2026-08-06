@@ -106,6 +106,7 @@ describe('projectCache helpers', () => {
       }]],
     ]);
     const queryClient = {
+      getQueriesData: () => [],
       getQueryData: (key: readonly unknown[]) => values.get(JSON.stringify(key)),
     } as any;
 
@@ -117,14 +118,82 @@ describe('projectCache helpers', () => {
     expect(result?.snapshot.project.contactPhone).toBe('021 123 4567');
   });
 
+  it('builds the immediate project shell from the current Projects Index cache', () => {
+    const client = new QueryClient();
+    const response: ProjectsIndexResponse = {
+      archive: 'active',
+      projects: {
+        rows: [{
+          id: 'proj_123',
+          contactId: 'ct_1',
+          projectName: 'Beach House',
+          status: 'QUOTING',
+          isArchived: false,
+          siteAddress: '1 Ocean Road',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z',
+        }],
+        totalCount: 1,
+        truncated: false,
+        page: 1,
+        pageSize: 50,
+        totalPages: 1,
+      },
+      contacts: {
+        rows: [{
+          id: 'ct_1',
+          displayName: 'Alex Mason',
+          email: 'alex@example.com',
+          phone: '021 123 4567',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z',
+        }],
+        totalCount: 1,
+        truncated: false,
+      },
+      query: {
+        search: '',
+        status: 'all',
+        journey: 'all',
+        state: 'all',
+        owner: 'all',
+        sort: 'newest',
+      },
+      generatedAt: '2026-03-02T00:00:00.000Z',
+    };
+    client.setQueryData(
+      qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'),
+      response,
+    );
+
+    const result = getProjectSnapshotPlaceholderFromCaches(client, 'host', 'proj_123');
+
+    expect(result).toMatchObject({
+      generatedAt: '2026-03-02T00:00:00.000Z',
+      snapshot: {
+        project: {
+          id: 'proj_123',
+          name: 'Beach House',
+          contactId: 'ct_1',
+          contactName: 'Alex Mason',
+          contactEmail: 'alex@example.com',
+          contactPhone: '021 123 4567',
+          siteAddress: '1 Ocean Road',
+        },
+        pipeline: { stage: 'quoting' },
+      },
+    });
+  });
+
   it('never reads a project from another query client or host boundary', () => {
     const userA = {
+      getQueriesData: () => [],
       getQueryData: (key: readonly unknown[]) =>
         JSON.stringify(key) === JSON.stringify(qk.projects.list('host-a', 'active'))
           ? [{ id: 'proj_private', projectName: 'Private', status: 'NEW' }]
           : undefined,
     } as any;
-    const userB = { getQueryData: () => undefined } as any;
+    const userB = { getQueriesData: () => [], getQueryData: () => undefined } as any;
 
     expect(getProjectSnapshotPlaceholderFromCaches(userA, 'host-a', 'proj_private')).toBeDefined();
     expect(getProjectSnapshotPlaceholderFromCaches(userA, 'host-b', 'proj_private')).toBeUndefined();
