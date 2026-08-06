@@ -80,6 +80,7 @@ export type DesignBookletContentCatalog = {
 export type DesignBookletAssetSource = {
   assetId: string;
   defaultAssetId: DesignBookletDefaultAssetId;
+  useDefaultAsset?: boolean;
   altText: string;
 };
 
@@ -125,8 +126,7 @@ export type DesignBookletDrawingPage = {
 };
 
 export type DesignBookletContentPage =
-  | DesignBookletImagePage
-  | DesignBookletDrawingPage;
+  DesignBookletImagePage | DesignBookletDrawingPage;
 
 export type DesignBookletDraft = {
   schemaVersion: typeof DESIGN_BOOKLET_SCHEMA_VERSION;

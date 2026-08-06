@@ -1,7 +1,6 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type {
   DesignBookletContentCatalog,
-  DesignBookletDefaultAssetId,
   DesignBookletDraft,
   DesignBookletImagePlacement,
 } from "@/lib/designBooklets/types";
@@ -22,22 +21,20 @@ import {
   normalizeDesignBookletPresentationText,
   type DesignBookletPresentationFontRole,
 } from "@/lib/designBooklets/presentation";
+import DesignBookletPreviewImage from "./DesignBookletPreviewImage";
+import type {
+  DesignBookletAssetDisplayHandler,
+  DesignBookletPreviewAsset,
+} from "./previewAssets";
 import styles from "./designBookletPages.module.css";
-
-export type DesignBookletPreviewAsset = {
-  id: string;
-  src: string;
-  alt: string;
-  label: string;
-  defaultAssetId: DesignBookletDefaultAssetId;
-  file?: File;
-};
 
 type Props = {
   selectedPageKey: string;
   draft: DesignBookletDraft;
   content: DesignBookletContentCatalog;
   assets: Record<string, DesignBookletPreviewAsset>;
+  drawingPagePreview: ReactNode;
+  onAssetDisplayState: DesignBookletAssetDisplayHandler;
 };
 
 type BookletPageStyle = CSSProperties & {
@@ -210,11 +207,13 @@ function CoverPage({
   content,
   asset,
   pageCount,
+  onAssetDisplayState,
 }: {
   draft: DesignBookletDraft;
   content: DesignBookletContentCatalog;
   asset: DesignBookletPreviewAsset;
   pageCount: number;
+  onAssetDisplayState: DesignBookletAssetDisplayHandler;
 }) {
   const roofForm = content.roofForms[draft.roofFormId];
   const material = content.materials[draft.materialId];
@@ -227,11 +226,12 @@ function CoverPage({
       aria-label={`Booklet page 1 of ${pageCount}`}
       style={BOOKLET_PAGE_STYLE}
     >
-      <img
+      <DesignBookletPreviewImage
         className={styles.fullBleedImage}
-        style={focalStyle(draft.cover)}
-        src={asset.src}
+        imageStyle={{ ...focalStyle(draft.cover), objectFit: "cover" }}
+        asset={asset}
         alt={draft.cover.altText}
+        onDisplayState={onAssetDisplayState}
       />
       <PageHeader pageNumber={1} label="Concept design" light />
       <main
@@ -332,12 +332,14 @@ function ImagePage({
   pageCount,
   placement,
   asset,
+  onAssetDisplayState,
 }: {
   draft: DesignBookletDraft;
   pageNumber: number;
   pageCount: number;
   placement: DesignBookletImagePlacement;
   asset: DesignBookletPreviewAsset;
+  onAssetDisplayState: DesignBookletAssetDisplayHandler;
 }) {
   return (
     <article
@@ -347,11 +349,12 @@ function ImagePage({
       aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
       style={BOOKLET_PAGE_STYLE}
     >
-      <img
+      <DesignBookletPreviewImage
         className={styles.fullBleedImage}
-        style={focalStyle(placement)}
-        src={asset.src}
+        imageStyle={{ ...focalStyle(placement), objectFit: "cover" }}
+        asset={asset}
         alt={placement.altText}
+        onDisplayState={onAssetDisplayState}
       />
       <div className={styles.imageChromeShade} aria-hidden="true" />
       <PageHeader pageNumber={pageNumber} label="Concept image" light />
@@ -544,11 +547,13 @@ function ReviewPage({
   pageNumber,
   pageCount,
   asset,
+  onAssetDisplayState,
 }: {
   draft: DesignBookletDraft;
   pageNumber: number;
   pageCount: number;
   asset: DesignBookletPreviewAsset;
+  onAssetDisplayState: DesignBookletAssetDisplayHandler;
 }) {
   return (
     <article
@@ -569,10 +574,14 @@ function ReviewPage({
           height: point(presentation.review.image.height),
         }}
       >
-        <img
-          style={focalStyle(draft.reviewPage.image)}
-          src={asset.src}
+        <DesignBookletPreviewImage
+          imageStyle={{
+            ...focalStyle(draft.reviewPage.image),
+            objectFit: "cover",
+          }}
+          asset={asset}
           alt={draft.reviewPage.image.altText}
+          onDisplayState={onAssetDisplayState}
         />
       </figure>
       <div
@@ -742,6 +751,8 @@ export default function DesignBookletPages({
   draft,
   content,
   assets,
+  drawingPagePreview,
+  onAssetDisplayState,
 }: Props) {
   const model = buildDesignBookletRenderModel(draft);
   const resolvedPage =
@@ -754,6 +765,7 @@ export default function DesignBookletPages({
         content={content}
         asset={assets[draft.cover.assetId]}
         pageCount={resolvedPage.pageCount}
+        onAssetDisplayState={onAssetDisplayState}
       />
     );
   }
@@ -766,21 +778,24 @@ export default function DesignBookletPages({
         pageCount={resolvedPage.pageCount}
         placement={resolvedPage.page.image}
         asset={assets[resolvedPage.page.image.assetId]}
+        onAssetDisplayState={onAssetDisplayState}
       />
     );
   }
 
   if (resolvedPage.kind === "drawings") {
     return (
-      <DrawingPage
-        draft={draft}
-        content={content}
-        pageNumber={resolvedPage.pageNumber}
-        pageCount={resolvedPage.pageCount}
-        sheetNumber={resolvedPage.sheetNumber}
-        page={resolvedPage.page}
-        assets={assets}
-      />
+      drawingPagePreview ?? (
+        <DrawingPage
+          draft={draft}
+          content={content}
+          pageNumber={resolvedPage.pageNumber}
+          pageCount={resolvedPage.pageCount}
+          sheetNumber={resolvedPage.sheetNumber}
+          page={resolvedPage.page}
+          assets={assets}
+        />
+      )
     );
   }
 
@@ -790,6 +805,7 @@ export default function DesignBookletPages({
       pageNumber={resolvedPage.pageNumber}
       pageCount={resolvedPage.pageCount}
       asset={assets[draft.reviewPage.image.assetId]}
+      onAssetDisplayState={onAssetDisplayState}
     />
   );
 }

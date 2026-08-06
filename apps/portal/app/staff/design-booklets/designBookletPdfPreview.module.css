@@ -1,0 +1,88 @@
+.page {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 297 / 210;
+  border-top: 4px solid #4f5748;
+  background: #f8f6f1;
+  box-shadow: 0 22px 54px rgb(35 39 33 / 18%);
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #f8f6f1;
+}
+
+.state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 32px;
+  background: rgb(248 246 241 / 92%);
+  color: #20221f;
+  font:
+    500 12px/1.45 var(--font-inter),
+    Inter,
+    Arial,
+    sans-serif;
+  text-align: center;
+}
+
+.state strong {
+  font:
+    600 13px/1.25 var(--font-instrument-sans),
+    "Instrument Sans",
+    Arial,
+    sans-serif;
+}
+
+.state > span:last-child {
+  max-width: 340px;
+  color: #666960;
+}
+
+.state button {
+  min-height: 36px;
+  margin-top: 6px;
+  padding: 0 16px;
+  border: 1px solid #4f5748;
+  border-radius: 0;
+  background: #4f5748;
+  color: #fff;
+  cursor: pointer;
+  font:
+    600 10px/1 var(--font-inter),
+    Inter,
+    Arial,
+    sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #4f5748;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: booklet-pdf-spin 700ms linear infinite;
+}
+
+@keyframes booklet-pdf-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-right-color: #4f5748;
+    opacity: 0.55;
+  }
+}

@@ -2,7 +2,10 @@
 
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { createToniDesignBookletDraft } from "./defaults";
+import {
+  createProjectDesignBookletDraft,
+  createToniDesignBookletDraft,
+} from "./defaults";
 import {
   DESIGN_BOOKLET_MAX_CONTENT_PAGES,
   DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH,
@@ -296,6 +299,14 @@ describe("design booklet request parsing", () => {
         137, 80, 78, 71, 13, 10, 26, 10,
       ]);
     }
+  });
+
+  it("accepts empty project slots without loading Toni images", async () => {
+    const draft = createProjectDesignBookletDraft("Client AAA");
+    const parsed = await parseDesignBookletFormData(formDataForDraft(draft));
+
+    expect(parsed.draft.cover.useDefaultAsset).toBe(false);
+    expect(parsed.images).toEqual({});
   });
 
   it("accepts a valid uploaded PNG and preserves its bytes", async () => {

@@ -1300,30 +1300,41 @@
   }
 
   .rangeControl {
-    height: 60px;
+    height: 72px;
   }
 
   .range {
-    height: 60px;
+    height: 72px;
   }
 
   .rangeRail {
-    top: 29px;
+    top: 35px;
   }
 
   .range::-webkit-slider-thumb {
-    width: 14px;
-    height: 16px;
-    margin-top: -7.5px;
+    width: 44px;
+    height: 44px;
+    margin-top: -21.5px;
+    box-sizing: border-box;
+    border: 14px solid transparent;
+    background-clip: padding-box;
   }
 
   .range::-moz-range-thumb {
-    width: 14px;
-    height: 16px;
+    width: 44px;
+    height: 44px;
+    box-sizing: border-box;
+    border: 14px solid transparent;
+    background-clip: padding-box;
   }
 
   .rangeStop {
+    padding-top: 16px;
     font-size: .51rem;
+  }
+
+  .rangeStop[data-terminal='true'] {
+    padding-top: 18px;
   }
 
   .levelFieldset {

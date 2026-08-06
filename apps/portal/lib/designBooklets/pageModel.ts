@@ -298,6 +298,7 @@ export function createDesignBookletImagePage(
   defaultAsset: {
     id: DesignBookletDefaultAssetId;
     alt: string;
+    useDefaultAsset?: boolean;
   },
 ): DesignBookletImagePage {
   const currentIds = existingPageAndAssetIds(pages);
@@ -308,6 +309,7 @@ export function createDesignBookletImagePage(
     image: {
       assetId: `${id}-image`,
       defaultAssetId: defaultAsset.id,
+      useDefaultAsset: defaultAsset.useDefaultAsset,
       altText: defaultAsset.alt,
       focalPoint: "center",
     },
@@ -319,6 +321,7 @@ export function createDesignBookletDrawingPage(
   defaultAsset: {
     id: DesignBookletDefaultAssetId;
     alt: string;
+    useDefaultAsset?: boolean;
   },
 ): DesignBookletDrawingPage {
   const currentIds = existingPageAndAssetIds(pages);
@@ -329,6 +332,7 @@ export function createDesignBookletDrawingPage(
     image: {
       assetId: `${id}-drawing-${index + 1}`,
       defaultAssetId: defaultAsset.id,
+      useDefaultAsset: defaultAsset.useDefaultAsset,
       altText: defaultAsset.alt,
     },
     title: { kind: "preset", value },

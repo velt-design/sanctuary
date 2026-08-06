@@ -150,9 +150,18 @@ function parseAssetSource(
       `${context} has an invalid default image.`,
     );
   }
+  if (
+    value.useDefaultAsset !== undefined &&
+    typeof value.useDefaultAsset !== "boolean"
+  ) {
+    throw new DesignBookletRequestError(
+      `${context} has an invalid default-image setting.`,
+    );
+  }
   return {
     assetId: stableId(value.assetId, `${context} image`, ids),
     defaultAssetId,
+    ...(value.useDefaultAsset === false ? { useDefaultAsset: false } : {}),
     altText: requiredText(value.altText, `${context} image description`, 240),
   };
 }
@@ -420,7 +429,7 @@ async function readUploadedImage(
 async function readImageEntry(
   formData: FormData,
   asset: DesignBookletAssetSource,
-): Promise<DesignBookletImage> {
+): Promise<DesignBookletImage | null> {
   const key = `asset:${asset.assetId}`;
   const entries = formData.getAll(key);
   if (entries.length > 1) {
@@ -429,7 +438,9 @@ async function readImageEntry(
     );
   }
   const entry = entries[0];
-  if (entry === undefined) return readDefaultAsset(asset);
+  if (entry === undefined) {
+    return asset.useDefaultAsset === false ? null : readDefaultAsset(asset);
+  }
   if (typeof entry === "string") {
     throw new DesignBookletRequestError(`${asset.altText} is invalid.`);
   }
@@ -495,7 +506,12 @@ export async function parseDesignBookletFormData(formData: FormData): Promise<{
   );
   return {
     draft,
-    images: Object.fromEntries(entries),
+    images: Object.fromEntries(
+      entries.filter(
+        (entry): entry is readonly [string, DesignBookletImage] =>
+          entry[1] !== null,
+      ),
+    ),
   };
 }
 
@@ -503,9 +519,12 @@ export async function loadToniDesignBookletImages(
   draft: DesignBookletDraft,
 ): Promise<DesignBookletImages> {
   const entries = await Promise.all(
-    renderableDesignBookletAssetSources(draft).map(
-      async (asset) => [asset.assetId, await readDefaultAsset(asset)] as const,
-    ),
+    renderableDesignBookletAssetSources(draft)
+      .filter((asset) => asset.useDefaultAsset !== false)
+      .map(
+        async (asset) =>
+          [asset.assetId, await readDefaultAsset(asset)] as const,
+      ),
   );
   return Object.fromEntries(entries);
 }

@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { uuidFromAppId } from "@/lib/supabase/mappers";
 import {
   createProjectDesignBookletDraft,
+  neutralizeProjectDesignBookletMedia,
   TONI_DESIGN_BOOKLET_ASSETS,
 } from "./defaults";
 import { DESIGN_BOOKLET_MAX_IMAGE_BYTES } from "./pageModel";
@@ -129,7 +130,10 @@ async function signedAsset(
 ): Promise<ProjectDesignBookletAsset> {
   const signed = await supabase.storage
     .from(PROJECT_DESIGN_BOOKLET_BUCKET)
-    .createSignedUrl(row.storage_path, PROJECT_DESIGN_BOOKLET_SIGNED_URL_SECONDS);
+    .createSignedUrl(
+      row.storage_path,
+      PROJECT_DESIGN_BOOKLET_SIGNED_URL_SECONDS,
+    );
   if (signed.error || !signed.data?.signedUrl) {
     throw new ProjectDesignBookletError(
       "A saved booklet image could not be opened.",
@@ -180,7 +184,9 @@ export async function loadProjectDesignBooklet(
   let draft: DesignBookletDraft;
   try {
     draft = booklet
-      ? parseDesignBookletDraft(booklet.draft)
+      ? neutralizeProjectDesignBookletMedia(
+          parseDesignBookletDraft(booklet.draft),
+        )
       : createProjectDesignBookletDraft(customerNameFromProject(project.row));
   } catch {
     throw new ProjectDesignBookletError(
@@ -325,7 +331,10 @@ async function ensureAssetCapacity(
   const alreadyExists = (existing.data ?? []).some(
     (row) => row.asset_key === assetKey,
   );
-  if (!alreadyExists && (existing.count ?? 0) >= PROJECT_DESIGN_BOOKLET_MAX_ASSETS) {
+  if (
+    !alreadyExists &&
+    (existing.count ?? 0) >= PROJECT_DESIGN_BOOKLET_MAX_ASSETS
+  ) {
     throw new ProjectDesignBookletError(
       `A project booklet can store up to ${PROJECT_DESIGN_BOOKLET_MAX_ASSETS} custom images.`,
       422,

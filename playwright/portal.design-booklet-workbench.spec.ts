@@ -33,13 +33,34 @@ async function expectPointRect(
   expect(childBounds.height / pointScale).toBeCloseTo(expected.height, 1);
 }
 
+async function extractPageText(bytes: Uint8Array, pageNumber: number) {
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const task = getDocument({ data: bytes.slice() });
+  const document = await task.promise;
+  try {
+    const pdfPage = await document.getPage(pageNumber);
+    const content = await pdfPage.getTextContent();
+    return content.items
+      .map((item) => ("str" in item ? item.str : ""))
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+  } finally {
+    await document.destroy();
+  }
+}
+
 test.describe("design booklet workbench fixture", () => {
   test("composes mixed pages and downloads the matching dynamic PDF", async ({
     page,
   }, testInfo) => {
     const unexpectedRequests: string[] = [];
+    let pdfRequestCount = 0;
     page.on("request", (request) => {
       const url = request.url();
+      if (/\/api\/qa\/design-booklet-workbench\/pdf/.test(url)) {
+        pdfRequestCount += 1;
+      }
       if (
         /\/(?:auth|rest|storage)\/v1\//i.test(new URL(url).pathname) ||
         /\/api\/staff\/v1\/(?:projects|tasks|work-items|quotes|estimates)/.test(
@@ -95,28 +116,21 @@ test.describe("design booklet workbench fixture", () => {
     await firstDrawingEditor
       .getByRole("textbox", { name: "Custom title" })
       .fill("Roof section");
-    await expect(
-      page.locator(
-        '[data-page-kind="drawings"] [data-drawing-slot="1"] figcaption strong',
-      ),
-    ).toHaveText("ROOF SECTION");
-    const titleBlock = page.locator(
-      '[data-page-kind="drawings"] footer[aria-label="A-02 title block"]',
+    const exactDrawingPreview = page.locator('[data-page-kind="drawings"]');
+    await expect(exactDrawingPreview).toHaveAttribute(
+      "data-pdf-preview-state",
+      "ready",
+      { timeout: 20_000 },
     );
-    await expect(titleBlock).toContainText("ROOF PACKAGE");
-    await expect(titleBlock).toContainText("SANCTUARY");
-    await expect(titleBlock).toContainText(
-      "Concept design — not for construction",
+    const previewCanvasSize = await exactDrawingPreview
+      .locator("canvas")
+      .evaluate((canvas) => ({ width: canvas.width, height: canvas.height }));
+    expect(previewCanvasSize.width).toBeGreaterThan(0);
+    expect(previewCanvasSize.height).toBeGreaterThan(0);
+    await expect(exactDrawingPreview.locator("figcaption, footer")).toHaveCount(
+      0,
     );
-    await expect(titleBlock).toContainText("Pitched pergola");
-    await expect(titleBlock).toContainText("Combination roofing");
-    await expect(titleBlock).toContainText("Booklet");
-    await expect(page.locator('[data-page-kind="drawings"]')).not.toContainText(
-      "ARCHITECTURAL PACKAGE",
-    );
-    await expect(
-      page.locator('[data-page-kind="drawings"] [data-drawing-slot]'),
-    ).toHaveCount(3);
+    await expect(page.locator("[data-drawing-editor-slot]")).toHaveCount(3);
 
     const addedDrawingCard = page.locator(
       '[data-composer-page="drawing-page-2"]',
@@ -157,6 +171,13 @@ test.describe("design booklet workbench fixture", () => {
         `[data-booklet-page="${pageIndex + 1}"]`,
       );
       await expect(bookletPage).toBeVisible();
+      if ((await bookletPage.getAttribute("data-page-kind")) === "drawings") {
+        await expect(bookletPage).toHaveAttribute(
+          "data-pdf-preview-state",
+          "ready",
+          { timeout: 20_000 },
+        );
+      }
       const bounds = await bookletPage.boundingBox();
       expect(bounds).not.toBeNull();
       expect((bounds?.width ?? 0) / (bounds?.height ?? 1)).toBeCloseTo(
@@ -168,6 +189,7 @@ test.describe("design booklet workbench fixture", () => {
       });
     }
 
+    const previewPdfRequestCount = pdfRequestCount;
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Download PDF" }).click();
     const download = await downloadPromise;
@@ -182,6 +204,14 @@ test.describe("design booklet workbench fixture", () => {
       expect(pdfPage.getWidth()).toBeCloseTo(841.89, 1);
       expect(pdfPage.getHeight()).toBeCloseTo(595.28, 1);
     }
+    const pageTexts = await Promise.all(
+      Array.from({ length: finalPageCount }, (_, index) =>
+        extractPageText(new Uint8Array(bytes), index + 1),
+      ),
+    );
+    expect(pageTexts.some((text) => text.includes("ROOF PACKAGE"))).toBe(true);
+    expect(pageTexts.some((text) => text.includes("ROOF SECTION"))).toBe(true);
+    expect(pdfRequestCount).toBe(previewPdfRequestCount);
     expect(unexpectedRequests).toEqual([]);
   });
 
@@ -276,14 +306,12 @@ test.describe("design booklet workbench fixture", () => {
       .first()
       .click();
     await page.getByRole("button", { name: /^Four-drawing grid/ }).click();
-    await expect(
-      page.locator('[data-page-kind="drawings"] [data-drawing-slot]'),
-    ).toHaveCount(4);
-    await expect(
-      page.locator(
-        '[data-page-kind="drawings"] footer[aria-label="A-01 title block"]',
-      ),
-    ).toBeVisible();
+    await expect(page.locator("[data-drawing-editor-slot]")).toHaveCount(4);
+    await expect(page.locator('[data-page-kind="drawings"]')).toHaveAttribute(
+      "data-pdf-preview-state",
+      "ready",
+      { timeout: 20_000 },
+    );
 
     const hasHorizontalDocumentOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth + 1,
@@ -291,7 +319,7 @@ test.describe("design booklet workbench fixture", () => {
     expect(hasHorizontalDocumentOverflow).toBe(false);
   });
 
-  test("uses the shared PDF point geometry and matching font baselines in the browser preview", async ({
+  test("renders drawing sheets from the exact PDF while preserving shared HTML geometry elsewhere", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
@@ -306,16 +334,20 @@ test.describe("design booklet workbench fixture", () => {
 
     const drawingPage = page.locator('[data-page-kind="drawings"]');
     await expect(drawingPage).toBeVisible();
-    await expectPointRect(
-      drawingPage,
-      drawingPage.getByRole("main"),
-      presentation.drawing.area,
+    await expect(drawingPage).toHaveAttribute(
+      "data-pdf-preview-state",
+      "ready",
+      { timeout: 20_000 },
     );
-    await expectPointRect(
-      drawingPage,
-      drawingPage.locator('footer[aria-label="A-01 title block"]'),
-      presentation.drawing.titleBlock,
-    );
+    const drawingCanvas = drawingPage.locator("canvas");
+    await expect(drawingCanvas).toBeVisible();
+    const drawingBounds = await drawingPage.boundingBox();
+    const canvasBounds = await drawingCanvas.boundingBox();
+    expect(drawingBounds).not.toBeNull();
+    expect(canvasBounds).not.toBeNull();
+    expect(
+      (canvasBounds?.width ?? 0) / (canvasBounds?.height ?? 1),
+    ).toBeCloseTo(297 / 210, 2);
     expect(presentation.drawing.area.top).toBeLessThanOrEqual(20);
     expect(
       presentation.drawing.area.height / presentation.page.height,

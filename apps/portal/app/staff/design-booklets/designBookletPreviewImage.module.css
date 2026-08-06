@@ -1,0 +1,70 @@
+.root {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  background: #4f5748;
+}
+
+.root[data-image-tone="paper"] {
+  background: #f4f1ea;
+}
+
+.root > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.state {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 16px;
+  background: rgb(35 39 33 / 48%);
+  color: #fff;
+  font:
+    600 10px/1.35 var(--font-inter),
+    Inter,
+    Arial,
+    sans-serif;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.root[data-image-tone="paper"] .state {
+  background: rgb(244 241 234 / 88%);
+  color: #4f5748;
+}
+
+.root[data-image-state="error"] .state {
+  background: rgb(103 44 35 / 86%);
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: booklet-image-spin 700ms linear infinite;
+}
+
+@keyframes booklet-image-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-right-color: currentcolor;
+    opacity: 0.55;
+  }
+}

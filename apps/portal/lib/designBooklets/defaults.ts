@@ -117,8 +117,53 @@ export function createProjectDesignBookletDraft(
   customerName?: string | null,
 ): DesignBookletDraft {
   const draft = createToniDesignBookletDraft();
-  const normalizedCustomerName = customerName?.trim();
-  return normalizedCustomerName
-    ? { ...draft, customerName: normalizedCustomerName.slice(0, 80) }
-    : draft;
+  const normalizedCustomerName =
+    customerName?.trim().slice(0, 80) || "Customer";
+  return neutralizeProjectDesignBookletMedia({
+    ...draft,
+    customerName: normalizedCustomerName,
+  });
+}
+
+export function neutralizeProjectDesignBookletMedia(
+  draft: DesignBookletDraft,
+): DesignBookletDraft {
+  return {
+    ...draft,
+    cover: {
+      ...draft.cover,
+      useDefaultAsset: false,
+      altText: "Customer design cover image",
+    },
+    contentPages: draft.contentPages.map((page, pageIndex) =>
+      page.kind === "image"
+        ? {
+            ...page,
+            image: {
+              ...page.image,
+              useDefaultAsset: false,
+              altText: `Customer design image ${pageIndex + 1}`,
+            },
+          }
+        : {
+            ...page,
+            drawings: page.drawings.map((drawing, drawingIndex) => ({
+              ...drawing,
+              image: {
+                ...drawing.image,
+                useDefaultAsset: false,
+                altText: `Customer drawing ${drawingIndex + 1}`,
+              },
+            })) as DesignBookletDrawingPage["drawings"],
+          },
+    ),
+    reviewPage: {
+      ...draft.reviewPage,
+      image: {
+        ...draft.reviewPage.image,
+        useDefaultAsset: false,
+        altText: "Customer design review image",
+      },
+    },
+  };
 }

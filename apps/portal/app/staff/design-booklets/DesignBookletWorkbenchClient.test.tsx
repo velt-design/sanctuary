@@ -5,13 +5,23 @@ import { getMarketingDesignBookletContent } from "../../../../marketing/lib/desi
 import DesignBookletWorkbenchClient from "./DesignBookletWorkbenchClient";
 
 function renderWorkbench() {
-  return renderIntoDocument(
+  const rendered = renderIntoDocument(
     <DesignBookletWorkbenchClient
       content={getMarketingDesignBookletContent()}
       pdfEndpoint="/api/qa/design-booklet-workbench/pdf"
       qaFixture
     />,
   );
+  loadImages(rendered.container);
+  return rendered;
+}
+
+function loadImages(container: ParentNode) {
+  act(() => {
+    container
+      .querySelectorAll("img")
+      .forEach((image) => image.dispatchEvent(new Event("load")));
+  });
 }
 
 function click(element: Element | null | undefined) {
@@ -211,6 +221,7 @@ describe("DesignBookletWorkbenchClient", () => {
     click(
       rendered.container.querySelector('button[aria-label="Bottom right"]'),
     );
+    loadImages(rendered.container);
 
     const imagePreview = rendered.container.querySelector(
       '[data-page-kind="image"] img',
@@ -233,12 +244,13 @@ describe("DesignBookletWorkbenchClient", () => {
     const drawingPreview = rendered.container.querySelector(
       '[data-page-kind="drawings"]',
     );
-    expect(drawingPreview?.getAttribute("data-drawing-layout")).toBe(
-      "four-grid",
+    expect(drawingPreview?.getAttribute("data-pdf-preview-state")).toBe(
+      "loading",
     );
     expect(
-      drawingPreview?.querySelectorAll("[data-drawing-slot]"),
+      rendered.container.querySelectorAll("[data-drawing-editor-slot]"),
     ).toHaveLength(4);
+    expect(drawingPreview?.querySelector("figcaption")).toBeNull();
 
     const pageTitleInput = Array.from(
       rendered.container.querySelectorAll("label"),
@@ -248,10 +260,6 @@ describe("DesignBookletWorkbenchClient", () => {
       )
       ?.querySelector("input") as HTMLInputElement;
     setInputValue(pageTitleInput, "Proposed roof layout");
-    expect(
-      drawingPreview?.querySelector('footer[aria-label$="title block"] h2')
-        ?.textContent,
-    ).toBe("PROPOSED ROOF LAYOUT");
     expect(compactText(drawingCard?.querySelector("button") as Element)).toBe(
       "04 PROPOSED ROOF LAYOUT",
     );
@@ -274,10 +282,7 @@ describe("DesignBookletWorkbenchClient", () => {
     ) as HTMLInputElement;
     setInputValue(customTitleInput, "North-west elevation");
 
-    expect(
-      drawingPreview?.querySelector('[data-drawing-slot="1"] figcaption strong')
-        ?.textContent,
-    ).toBe("NORTH-WEST ELEVATION");
+    expect(customTitleInput.value).toBe("North-west elevation");
 
     rendered.unmount();
   });
@@ -315,6 +320,7 @@ describe("DesignBookletWorkbenchClient", () => {
         ?.getAttribute("src"),
     ).toBe("blob:image-page");
 
+    loadImages(rendered.container);
     click(buttonContaining(rendered.container, "Use as cover"));
     expect(createObjectUrl).toHaveBeenCalledTimes(2);
     expect(

@@ -14,9 +14,8 @@ import type {
   DesignBookletDraft,
   DesignBookletDrawingLayoutId,
 } from "@/lib/designBooklets/types";
-import DesignBookletPages, {
-  type DesignBookletPreviewAsset,
-} from "./DesignBookletPages";
+import DesignBookletPages from "./DesignBookletPages";
+import type { DesignBookletPreviewAsset } from "./previewAssets";
 
 const presentation = DESIGN_BOOKLET_PRESENTATION;
 
@@ -38,6 +37,7 @@ function assetsFor(
           alt: source.altText,
           label: defaultAsset.label,
           defaultAssetId: source.defaultAssetId,
+          state: "loading" as const,
         },
       ];
     }),
@@ -51,6 +51,8 @@ function renderPage(draft: DesignBookletDraft, selectedPageKey: string) {
       draft={draft}
       content={getMarketingDesignBookletContent()}
       assets={assetsFor(draft)}
+      drawingPagePreview={null}
+      onAssetDisplayState={() => undefined}
     />,
   );
 }

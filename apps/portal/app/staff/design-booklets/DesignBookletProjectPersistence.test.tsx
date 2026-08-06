@@ -2,7 +2,10 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../test/reactHarness";
 import { getMarketingDesignBookletContent } from "../../../../marketing/lib/designBookletContent";
-import { createProjectDesignBookletDraft } from "@/lib/designBooklets/defaults";
+import {
+  createProjectDesignBookletDraft,
+  createToniDesignBookletDraft,
+} from "@/lib/designBooklets/defaults";
 import DesignBookletWorkbenchClient from "./DesignBookletWorkbenchClient";
 
 const mocks = vi.hoisted(() => ({
@@ -97,6 +100,33 @@ describe("project-linked Design Booklet Workbench", () => {
     rendered.unmount();
   });
 
+  it("does not expose Toni media from an older saved project draft", async () => {
+    mocks.load.mockResolvedValueOnce({
+      project: {
+        id: "proj_project-1",
+        name: "AAA courtyard",
+        customerName: "Client AAA",
+        returnHref: "/staff/projects/proj_project-1",
+      },
+      draft: createToniDesignBookletDraft(),
+      revision: 3,
+      saved: true,
+      updatedAt: "2026-07-31T00:00:00.000Z",
+      assets: [],
+    });
+
+    const rendered = renderProjectWorkbench();
+    await flushEffects();
+
+    expect(
+      rendered.container.querySelector(
+        'img[src*="/images/design-booklets/toni/"]',
+      ),
+    ).toBeNull();
+    expect(rendered.container.textContent).not.toContain("Toni concept");
+    rendered.unmount();
+  });
+
   it("autosaves draft changes with the loaded revision", async () => {
     vi.useFakeTimers();
     const rendered = renderProjectWorkbench();
@@ -135,7 +165,15 @@ describe("project-linked Design Booklet Workbench", () => {
     const anchorClick = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => undefined);
-    const legacyFetch = vi.spyOn(globalThis, "fetch");
+    const pdfBytes = new TextEncoder().encode("%PDF-1.7 fixture");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(pdfBytes, {
+        status: 200,
+        headers: { "Content-Type": "application/pdf" },
+      }),
+    );
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:exact-booklet-pdf");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
     const rendered = renderProjectWorkbench();
     await flushEffects();
     const downloadButton = Array.from(
@@ -146,11 +184,74 @@ describe("project-linked Design Booklet Workbench", () => {
       downloadButton?.click();
       await Promise.resolve();
       await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
     expect(mocks.publishPdf).toHaveBeenCalledWith("proj_project-1");
-    expect(anchorClick).toHaveBeenCalled();
-    expect(legacyFetch).not.toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "https://storage.example.test/booklet.pdf?token=short",
+      { cache: "no-store", credentials: "omit" },
+    );
+    await vi.waitFor(() => {
+      if (!anchorClick.mock.calls.length) {
+        throw new Error(
+          rendered.container.querySelector('[role="alert"]')?.textContent ||
+            "PDF download did not create an anchor",
+        );
+      }
+    });
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      "/api/legacy-multipart-pdf",
+      expect.anything(),
+    );
+    rendered.unmount();
+  });
+
+  it("reuses the exact PDF prepared for a drawing preview when downloading", async () => {
+    const anchorClick = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      Promise.resolve(
+        new Response(new TextEncoder().encode("%PDF-1.7 exact preview"), {
+          status: 200,
+          headers: { "Content-Type": "application/pdf" },
+        }),
+      ),
+    );
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:exact-booklet-pdf");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    const rendered = renderProjectWorkbench();
+    await flushEffects();
+
+    act(() => {
+      (
+        rendered.container.querySelector(
+          '[data-booklet-page-select="drawing-page-1"]',
+        ) as HTMLButtonElement
+      ).click();
+    });
+
+    await vi.waitFor(() => expect(mocks.publishPdf).toHaveBeenCalledTimes(1), {
+      timeout: 2_000,
+    });
+    await vi.waitFor(() =>
+      expect(
+        Array.from(rendered.container.querySelectorAll("button")).some(
+          (button) => button.textContent?.trim() === "Download PDF",
+        ),
+      ).toBe(true),
+    );
+
+    const downloadButton = Array.from(
+      rendered.container.querySelectorAll("button"),
+    ).find((button) => button.textContent?.trim() === "Download PDF");
+    act(() => downloadButton?.click());
+    await vi.waitFor(() => expect(anchorClick).toHaveBeenCalled());
+
+    expect(mocks.publishPdf).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
     rendered.unmount();
   });
 });

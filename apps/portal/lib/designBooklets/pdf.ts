@@ -161,15 +161,11 @@ async function embedShadeOverlays(pdf: PDFDocument) {
   };
 }
 
-function requiredImage(
+function optionalImage(
   images: Record<string, PDFImage>,
   assetId: string,
-): PDFImage {
-  const image = images[assetId];
-  if (!image) {
-    throw new Error(`Missing design booklet image ${assetId}.`);
-  }
-  return image;
+): PDFImage | undefined {
+  return images[assetId] as PDFImage | undefined;
 }
 
 function placementFocus(placement: DesignBookletImagePlacement) {
@@ -230,9 +226,19 @@ function drawRightLabel(
 
 function drawFullBleedImage(
   page: PDFPage,
-  image: PDFImage,
+  image: PDFImage | undefined,
   placement: DesignBookletImagePlacement,
 ) {
+  if (!image) {
+    page.drawRectangle({
+      x: 0,
+      y: 0,
+      width: PAGE_WIDTH,
+      height: PAGE_HEIGHT,
+      color: colors.accent,
+    });
+    return;
+  }
   drawImageCover(
     page,
     image,
@@ -250,7 +256,7 @@ function renderCover(
   const page = addPage(pdf);
   drawFullBleedImage(
     page,
-    requiredImage(images, draft.cover.assetId),
+    optionalImage(images, draft.cover.assetId),
     draft.cover,
   );
 
@@ -423,7 +429,7 @@ function renderImagePage(
   const { pdf, fonts, draft, images } = context;
   const page = addPage(pdf);
   const placement = resolvedPage.page.image;
-  drawFullBleedImage(page, requiredImage(images, placement.assetId), placement);
+  drawFullBleedImage(page, optionalImage(images, placement.assetId), placement);
 
   page.drawImage(context.overlays.imagePage, {
     x: 0,
@@ -495,18 +501,29 @@ function renderDrawingPage(
   drawings.forEach((drawing, index) => {
     const frame = drawingSlotFrame(layout.frames[index]);
     const titleHeight = presentation.drawing.caption.reserveHeight;
-    drawImageContain(
-      page,
-      requiredImage(images, drawing.image.assetId),
-      {
-        x: frame.x,
-        y: frame.y + titleHeight,
-        width: frame.width,
-        height: frame.height - titleHeight,
-      },
-      white,
-      presentation.drawing.imageBorderWidth,
-    );
+    const imageFrame = {
+      x: frame.x,
+      y: frame.y + titleHeight,
+      width: frame.width,
+      height: frame.height - titleHeight,
+    };
+    const image = optionalImage(images, drawing.image.assetId);
+    if (image) {
+      drawImageContain(
+        page,
+        image,
+        imageFrame,
+        white,
+        presentation.drawing.imageBorderWidth,
+      );
+    } else {
+      page.drawRectangle({
+        ...imageFrame,
+        color: white,
+        borderColor: colors.ruleStrong,
+        borderWidth: presentation.drawing.imageBorderWidth,
+      });
+    }
     drawRule(
       page,
       frame.x,
@@ -552,17 +569,23 @@ function renderReview(
   const { pdf, fonts, draft, images } = context;
   const page = addPage(pdf);
   const imageFrame = presentation.review.image;
-  drawImageCover(
-    page,
-    requiredImage(images, draft.reviewPage.image.assetId),
-    {
-      x: imageFrame.x,
-      y: pdfYFromTop(imageFrame.top, imageFrame.height),
-      width: imageFrame.width,
-      height: imageFrame.height,
-    },
-    placementFocus(draft.reviewPage.image),
-  );
+  const reviewFrame = {
+    x: imageFrame.x,
+    y: pdfYFromTop(imageFrame.top, imageFrame.height),
+    width: imageFrame.width,
+    height: imageFrame.height,
+  };
+  const reviewImage = optionalImage(images, draft.reviewPage.image.assetId);
+  if (reviewImage) {
+    drawImageCover(
+      page,
+      reviewImage,
+      reviewFrame,
+      placementFocus(draft.reviewPage.image),
+    );
+  } else {
+    page.drawRectangle({ ...reviewFrame, color: colors.accent });
+  }
   page.drawImage(context.overlays.reviewEdge, {
     x: imageFrame.x,
     y: pdfYFromTop(imageFrame.top, imageFrame.height),

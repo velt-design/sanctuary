@@ -18,10 +18,11 @@ import {
   moveDesignBookletContentPage,
   renderableDesignBookletAssetSources,
 } from "@/lib/designBooklets/pageModel";
-import { publishProjectDesignBookletPdfClient } from "@/lib/designBooklets/projectClient";
 import BookletPageComposer from "./BookletPageComposer";
+import DesignBookletDrawingPdfPreview from "./DesignBookletDrawingPdfPreview";
 import DesignBookletPages from "./DesignBookletPages";
 import styles from "./designBooklets.module.css";
+import { useDesignBookletPdfArtifact } from "./useDesignBookletPdfArtifact";
 import {
   previewAssetFromSource,
   useProjectDesignBookletController,
@@ -33,21 +34,6 @@ type Props = {
   projectId?: string;
   qaFixture?: boolean;
 };
-
-function filenameFromResponse(
-  response: Response,
-  customerName: string,
-): string {
-  const disposition = response.headers.get("content-disposition") ?? "";
-  const match = disposition.match(/filename="([^"]+)"/i);
-  if (match?.[1]) return match[1];
-  const slug =
-    customerName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "") || "customer";
-  return `${slug}-design-booklet.pdf`;
-}
 
 export default function DesignBookletWorkbenchClient({
   content,
@@ -65,6 +51,7 @@ export default function DesignBookletWorkbenchClient({
     saveState,
     persistenceError,
     setPersistenceError,
+    markAssetDisplayState,
     revokeAssetUrl,
     replaceAsset,
     copyAsset,
@@ -84,6 +71,25 @@ export default function DesignBookletWorkbenchClient({
     pageModel.findIndex((page) => page.key === selectedPageKey),
   );
   const selectedPage = pageModel[selectedPageIndex] ?? pageModel[0];
+  const hasBlockingImageState = renderableDesignBookletAssetSources(draft).some(
+    (source) => {
+      const asset = assets[source.assetId];
+      return asset?.state === "loading" || asset?.state === "error";
+    },
+  );
+  const pdfArtifact = useDesignBookletPdfArtifact({
+    draft,
+    assets,
+    linkedProjectId,
+    pdfEndpoint,
+    flushSave,
+    autoPrepare: selectedPage.kind === "drawings",
+    canPrepare:
+      !hasBlockingImageState &&
+      saveState !== "loading" &&
+      saveState !== "uploading" &&
+      saveState !== "error",
+  });
 
   const selectionSummary = useMemo(() => {
     const roofForm = content.roofForms[draft.roofFormId];
@@ -116,13 +122,28 @@ export default function DesignBookletWorkbenchClient({
               const id = ["render-1", "render-2", "render-3"][
                 imageCount % 3
               ] as "render-1" | "render-2" | "render-3";
-              return { id, alt: TONI_DESIGN_BOOKLET_ASSETS[id].alt };
+              return linkedProjectId
+                ? {
+                    id,
+                    alt: `Customer design image ${imageCount + 1}`,
+                    useDefaultAsset: false,
+                  }
+                : { id, alt: TONI_DESIGN_BOOKLET_ASSETS[id].alt };
             })(),
           )
-        : createDesignBookletDrawingPage(draft.contentPages, {
-            id: "plan",
-            alt: TONI_DESIGN_BOOKLET_ASSETS.plan.alt,
-          });
+        : createDesignBookletDrawingPage(
+            draft.contentPages,
+            linkedProjectId
+              ? {
+                  id: "plan",
+                  alt: "Customer drawing",
+                  useDefaultAsset: false,
+                }
+              : {
+                  id: "plan",
+                  alt: TONI_DESIGN_BOOKLET_ASSETS.plan.alt,
+                },
+          );
 
     const pageSources =
       page.kind === "image"
@@ -242,45 +263,7 @@ export default function DesignBookletWorkbenchClient({
     setIsDownloading(true);
     setDownloadError("");
     try {
-      if (linkedProjectId) {
-        await flushSave();
-        const download =
-          await publishProjectDesignBookletPdfClient(linkedProjectId);
-        const link = document.createElement("a");
-        link.href = download.downloadUrl;
-        link.download = download.filename;
-        link.rel = "noopener";
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        return;
-      }
-      const formData = new FormData();
-      formData.set("draft", JSON.stringify(draft));
-      for (const source of renderableDesignBookletAssetSources(draft)) {
-        const asset = assets[source.assetId];
-        if (asset?.file) formData.set(`asset:${source.assetId}`, asset.file);
-      }
-      const response = await fetch(pdfEndpoint, {
-        method: "POST",
-        body: formData,
-        credentials: "same-origin",
-      });
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(payload?.error || "The PDF could not be generated.");
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filenameFromResponse(response, draft.customerName);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      await pdfArtifact.download();
     } catch (error) {
       setDownloadError(
         error instanceof Error
@@ -315,7 +298,7 @@ export default function DesignBookletWorkbenchClient({
                 : saveState === "saving"
                   ? "Saving changes"
                   : saveState === "uploading"
-                    ? "Optimising image"
+                    ? "Uploading image"
                     : saveState === "loading"
                       ? "Loading project"
                       : saveState === "error"
@@ -342,12 +325,20 @@ export default function DesignBookletWorkbenchClient({
             onClick={downloadPdf}
             disabled={
               isDownloading ||
+              hasBlockingImageState ||
               saveState === "loading" ||
               saveState === "uploading" ||
               (Boolean(linkedProjectId) && saveState === "error")
             }
           >
-            {isDownloading ? "Building PDF..." : "Download PDF"}
+            {isDownloading
+              ? "Preparing download..."
+              : hasBlockingImageState
+                ? "Preparing images..."
+                : selectedPage.kind === "drawings" &&
+                    pdfArtifact.state !== "ready"
+                  ? "Preparing exact preview..."
+                  : "Download PDF"}
           </button>
         </div>
       </header>
@@ -462,6 +453,7 @@ export default function DesignBookletWorkbenchClient({
               onUpdateFixedImage={updateFixedImage}
               onReplaceAsset={updateAsset}
               onUseAsCover={useAsCover}
+              onAssetDisplayState={markAssetDisplayState}
             />
           </section>
         </aside>
@@ -509,6 +501,19 @@ export default function DesignBookletWorkbenchClient({
                 draft={draft}
                 content={content}
                 assets={assets}
+                drawingPagePreview={
+                  <DesignBookletDrawingPdfPreview
+                    bytes={pdfArtifact.bytes}
+                    pageNumber={selectedPage.pageNumber}
+                    pageCount={selectedPage.pageCount}
+                    state={pdfArtifact.state}
+                    error={pdfArtifact.error}
+                    onRetry={() => {
+                      void pdfArtifact.prepare().catch(() => undefined);
+                    }}
+                  />
+                }
+                onAssetDisplayState={markAssetDisplayState}
               />
             </div>
           </div>

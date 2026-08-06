@@ -275,7 +275,7 @@ for (const viewport of viewports) {
       expect(stageLayout.stageResultCount).toBe(0);
       expect(stageLayout.stageLevelCount).toBe(0);
       expect(stageLayout.sliderBoxes).toHaveLength(2);
-      expect(stageLayout.sliderBoxes.every((box) => box.height >= 60 && box.top >= stageLayout.stage!.top && box.bottom <= stageLayout.stage!.bottom)).toBe(true);
+      expect(stageLayout.sliderBoxes.every((box) => box.height >= 72 && box.top >= stageLayout.stage!.top && box.bottom <= stageLayout.stage!.bottom)).toBe(true);
       expect(stageLayout.levelBoxes).toHaveLength(2);
       expect(stageLayout.levelBoxes.every((box) => box.height >= 72)).toBe(true);
 

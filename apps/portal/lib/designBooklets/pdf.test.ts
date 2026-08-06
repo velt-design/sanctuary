@@ -5,6 +5,7 @@ import path from "node:path";
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import {
+  createProjectDesignBookletDraft,
   createToniDesignBookletDraft,
   TONI_DESIGN_BOOKLET_ASSETS,
 } from "./defaults";
@@ -62,6 +63,32 @@ function expectLandscapeA4Pages(document: PDFDocument) {
 }
 
 describe("design booklet PDF", () => {
+  it("renders neutral placeholders when a new project has no images", async () => {
+    const draft = createProjectDesignBookletDraft("Client AAA");
+    const bytes = await generateDesignBookletPdf({
+      draft,
+      content: getDesignBookletContentCatalog(),
+      images: {},
+    });
+    const document = await PDFDocument.load(bytes);
+
+    expect(document.getPageCount()).toBe(5);
+    expectLandscapeA4Pages(document);
+
+    const outputDirectory = process.env.DESIGN_BOOKLET_OUTPUT_DIR?.trim();
+    if (outputDirectory) {
+      const absoluteDirectory = path.resolve(outputDirectory);
+      await mkdir(absoluteDirectory, { recursive: true });
+      await writeFile(
+        path.join(
+          absoluteDirectory,
+          designBookletPdfFilename(draft.customerName),
+        ),
+        bytes,
+      );
+    }
+  });
+
   it("renders the default Toni booklet as five numbered landscape A4 pages", async () => {
     const draft = createToniDesignBookletDraft();
     const bytes = await generateToniPdf(draft);

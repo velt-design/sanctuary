@@ -19,7 +19,11 @@ import {
   normalizeDesignBookletSheetTitle,
   visibleDesignBookletDrawings,
 } from "@/lib/designBooklets/pageModel";
-import type { DesignBookletPreviewAsset } from "./DesignBookletPages";
+import DesignBookletPreviewImage from "./DesignBookletPreviewImage";
+import type {
+  DesignBookletAssetDisplayHandler,
+  DesignBookletPreviewAsset,
+} from "./previewAssets";
 import styles from "./designBooklets.module.css";
 
 type Props = {
@@ -37,6 +41,7 @@ type Props = {
   ) => void;
   onReplaceAsset: (assetId: string, file: File | undefined) => void;
   onUseAsCover: (image: DesignBookletImagePlacement) => void;
+  onAssetDisplayState: DesignBookletAssetDisplayHandler;
 };
 
 function FocalPointControl({
@@ -74,6 +79,7 @@ function ImageEditor({
   onChange,
   onReplaceAsset,
   onUseAsCover,
+  onAssetDisplayState,
 }: {
   eyebrow: string;
   image: DesignBookletImagePlacement;
@@ -82,11 +88,18 @@ function ImageEditor({
   onChange: (image: DesignBookletImagePlacement) => void;
   onReplaceAsset: (assetId: string, file: File | undefined) => void;
   onUseAsCover?: () => void;
+  onAssetDisplayState: DesignBookletAssetDisplayHandler;
 }) {
   return (
     <div className={styles.imageEditor}>
       <div className={styles.editorImagePreview}>
-        <img src={asset.src} alt="" />
+        <DesignBookletPreviewImage
+          asset={asset}
+          alt=""
+          tone="paper"
+          showEmptyLabel
+          onDisplayState={onAssetDisplayState}
+        />
         <span>{eyebrow}</span>
       </div>
       <div className={styles.imageEditorFields}>
@@ -102,7 +115,11 @@ function ImageEditor({
             />
           </label>
           {onUseAsCover ? (
-            <button type="button" onClick={onUseAsCover}>
+            <button
+              type="button"
+              onClick={onUseAsCover}
+              disabled={asset.state !== "ready"}
+            >
               Use as cover
             </button>
           ) : null}
@@ -157,6 +174,7 @@ function DrawingSlotEditor({
   onChange,
   onMove,
   onReplaceAsset,
+  onAssetDisplayState,
 }: {
   drawing: DesignBookletDrawingItem;
   asset: DesignBookletPreviewAsset;
@@ -165,6 +183,7 @@ function DrawingSlotEditor({
   onChange: (drawing: DesignBookletDrawingItem) => void;
   onMove: (direction: -1 | 1) => void;
   onReplaceAsset: (assetId: string, file: File | undefined) => void;
+  onAssetDisplayState: DesignBookletAssetDisplayHandler;
 }) {
   const titleValue =
     drawing.title.kind === "custom" ? "custom" : drawing.title.value;
@@ -174,7 +193,13 @@ function DrawingSlotEditor({
       data-drawing-editor-slot={index + 1}
     >
       <div className={styles.drawingSlotImage}>
-        <img src={asset.src} alt="" />
+        <DesignBookletPreviewImage
+          asset={asset}
+          alt=""
+          tone="paper"
+          showEmptyLabel
+          onDisplayState={onAssetDisplayState}
+        />
         <span>{String(index + 1).padStart(2, "0")}</span>
       </div>
       <div className={styles.drawingSlotFields}>
@@ -271,11 +296,13 @@ function DrawingPageEditor({
   assets,
   onChange,
   onReplaceAsset,
+  onAssetDisplayState,
 }: {
   page: DesignBookletDrawingPage;
   assets: Record<string, DesignBookletPreviewAsset>;
   onChange: (page: DesignBookletDrawingPage) => void;
   onReplaceAsset: (assetId: string, file: File | undefined) => void;
+  onAssetDisplayState: DesignBookletAssetDisplayHandler;
 }) {
   const visibleDrawings = visibleDesignBookletDrawings(page);
   const slotCount = visibleDrawings.length;
@@ -366,6 +393,7 @@ function DrawingPageEditor({
               })
             }
             onReplaceAsset={onReplaceAsset}
+            onAssetDisplayState={onAssetDisplayState}
           />
         ))}
       </div>
@@ -385,6 +413,7 @@ export default function BookletPageComposer({
   onUpdateFixedImage,
   onReplaceAsset,
   onUseAsCover,
+  onAssetDisplayState,
 }: Props) {
   const model = buildDesignBookletRenderModel(draft);
   const selected =
@@ -552,6 +581,7 @@ export default function BookletPageComposer({
             replaceLabel="Replace cover"
             onChange={(image) => onUpdateFixedImage("cover", image)}
             onReplaceAsset={onReplaceAsset}
+            onAssetDisplayState={onAssetDisplayState}
           />
         ) : null}
 
@@ -564,6 +594,7 @@ export default function BookletPageComposer({
             onChange={(image) => onUpdatePage({ ...selected.page, image })}
             onReplaceAsset={onReplaceAsset}
             onUseAsCover={() => onUseAsCover(selected.page.image)}
+            onAssetDisplayState={onAssetDisplayState}
           />
         ) : null}
 
@@ -573,6 +604,7 @@ export default function BookletPageComposer({
             assets={assets}
             onChange={onUpdatePage}
             onReplaceAsset={onReplaceAsset}
+            onAssetDisplayState={onAssetDisplayState}
           />
         ) : null}
 
@@ -586,6 +618,7 @@ export default function BookletPageComposer({
               replaceLabel="Replace final image"
               onChange={(image) => onUpdateFixedImage("review", image)}
               onReplaceAsset={onReplaceAsset}
+              onAssetDisplayState={onAssetDisplayState}
             />
           </div>
         ) : null}

@@ -25,7 +25,7 @@ describe("project design booklet persistence migration", () => {
 
   it("keeps image assets and generated PDFs in a private, project-scoped bucket", () => {
     expect(migration).toContain("'design-booklet-assets'");
-    expect(migration).toContain("false,\n  20971520");
+    expect(migration).toMatch(/false,\r?\n {2}20971520/);
     expect(migration).toContain("'application/pdf'");
     expect(migration).toContain(
       "projects.id::text = split_part(storage.objects.name, '/', 1)",
@@ -40,8 +40,8 @@ describe("project design booklet persistence migration", () => {
     expect(migration).toContain(
       "alter table public.project_design_booklet_assets enable row level security",
     );
-    expect(migration.match(/select public\.has_portal_access\(\)/g)?.length).toBeGreaterThanOrEqual(
-      6,
-    );
+    expect(
+      migration.match(/select public\.has_portal_access\(\)/g)?.length,
+    ).toBeGreaterThanOrEqual(6);
   });
 });

@@ -1,0 +1,3 @@
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'FCP', routeTemplate: '/dashboard' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'TTFB', routeTemplate: '/dashboard' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'LCP', routeTemplate: '/dashboard' }
