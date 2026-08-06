@@ -440,46 +440,58 @@ export default function Header() {
       </header>
 
       {mounted && createPortal(
-        <div
-          ref={mobileMenuRef}
-          id="mobile-menu"
-          className={`mobile-menu ${mobileMenuOpen ? 'open' : ''}`}
-          aria-hidden={!mobileMenuOpen}
-          data-mobile-menu-state={mobileMenuOpen ? 'open' : 'closed'}
-          inert={!mobileMenuOpen}
-        >
-          <nav aria-label="Mobile primary" className="mobile-nav">
-            <ul className="mobile-menu__list">
-              {mobileNavigationItems.map((item, index) => (
-                <li key={item.id}>
+        <>
+          <div
+            aria-hidden="true"
+            className={`mobile-menu-backdrop ${mobileMenuOpen ? 'open' : ''}`}
+            data-mobile-menu-backdrop
+            data-mobile-menu-backdrop-state={mobileMenuOpen ? 'open' : 'closed'}
+            onClick={() => closeMobileMenu()}
+          />
+          <div
+            ref={mobileMenuRef}
+            id="mobile-menu"
+            className={`mobile-menu ${mobileMenuOpen ? 'open' : ''}`}
+            aria-hidden={!mobileMenuOpen}
+            aria-label="Site navigation"
+            aria-modal={mobileMenuOpen || undefined}
+            data-mobile-menu-state={mobileMenuOpen ? 'open' : 'closed'}
+            inert={!mobileMenuOpen}
+            role="dialog"
+          >
+            <nav aria-label="Mobile primary" className="mobile-nav">
+              <ul className="mobile-menu__list">
+                {mobileNavigationItems.map((item, index) => (
+                  <li key={item.id}>
+                    <Link
+                      ref={index === 0 ? firstMobileLinkRef : undefined}
+                      href={item.href}
+                      className="mobile-menu__link"
+                      aria-current={item.current ? 'page' : undefined}
+                      onClick={handleMobileNavigation}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+                <li>
                   <Link
-                    ref={index === 0 ? firstMobileLinkRef : undefined}
-                    href={item.href}
-                    className="mobile-menu__link"
-                    aria-current={item.current ? 'page' : undefined}
+                    href={headerEnquiryHref}
+                    className="mobile-menu__link mobile-menu__link--estimate"
+                    data-homepage-event="header_estimate_click"
+                    data-enquiry-type={headerEnquiryType}
+                    data-professional-path={projectFinderContext?.projectProfessionalPath}
+                    data-project-direction={projectFinderContext?.projectDirection}
+                    data-project-priorities={projectFinderContext?.projectPriorities?.join(',')}
                     onClick={handleMobileNavigation}
                   >
-                    {item.label}
+                    Start your project
                   </Link>
                 </li>
-              ))}
-              <li>
-                <Link
-                  href={headerEnquiryHref}
-                  className="mobile-menu__link mobile-menu__link--estimate"
-                  data-homepage-event="header_estimate_click"
-                  data-enquiry-type={headerEnquiryType}
-                  data-professional-path={projectFinderContext?.projectProfessionalPath}
-                  data-project-direction={projectFinderContext?.projectDirection}
-                  data-project-priorities={projectFinderContext?.projectPriorities?.join(',')}
-                  onClick={handleMobileNavigation}
-                >
-                  Start your project
-                </Link>
-              </li>
-            </ul>
-          </nav>
-        </div>,
+              </ul>
+            </nav>
+          </div>
+        </>,
         document.body,
       )}
     </>

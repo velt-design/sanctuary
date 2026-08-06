@@ -19,7 +19,6 @@ const fullGovernedFiles = [
   'apps/marketing/app/projects/projects.css',
   'apps/marketing/app/projects/projectCollection.css',
   'apps/marketing/components/products/product-pages.module.css',
-  'apps/marketing/app/_home/homepage.module.css',
   'apps/marketing/app/pergolas-auckland/pergolas-auckland.css',
   'apps/marketing/components/seo-landing/seo-landing.css',
   'apps/marketing/app/contact/contact.css',
@@ -161,15 +160,6 @@ describe('marketing motion contract', () => {
         ],
       },
       {
-        file: 'apps/marketing/app/_home/homepage.module.css',
-        required: [
-          '.intentOption[data-selected="true"]:active',
-          '.projectCard:has(a:active)',
-          '.audienceGrid article:has(a:active)',
-          '.selectedSummary button:active',
-        ],
-      },
-      {
         file: 'apps/marketing/app/pergolas-auckland/pergolas-auckland.css',
         required: ['.pergolas-auckland__mobile-disclosure-summary:active'],
       },
@@ -184,7 +174,7 @@ describe('marketing motion contract', () => {
           '.contact-action--primary:disabled',
           '.contact-form__type-options > label:has(input:checked):active',
           '.contact-form__checks label:has(input:checked)',
-          '.contact-form input[type="file"]::file-selector-button:active',
+          '.contact-form__shared input[type="file"]::file-selector-button:active',
           '.contact-form__files button:active',
           '@media (hover: hover) and (pointer: fine)',
         ],

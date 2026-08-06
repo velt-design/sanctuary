@@ -301,6 +301,29 @@ describe('shared mobile header interaction', () => {
     expect(window.scrollTo).toHaveBeenCalledWith(0, 320);
   });
 
+  it('closes from the page backdrop without moving focus or losing scroll position', async () => {
+    await renderHeader();
+    const trigger = await openMenu();
+    const menu = document.querySelector<HTMLDivElement>('#mobile-menu');
+    const backdrop = document.querySelector<HTMLDivElement>(
+      '[data-mobile-menu-backdrop]',
+    );
+
+    expect(menu?.getAttribute('role')).toBe('dialog');
+    expect(menu?.getAttribute('aria-modal')).toBe('true');
+    expect(backdrop?.getAttribute('data-mobile-menu-backdrop-state')).toBe('open');
+
+    await act(async () => backdrop?.click());
+
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(menu?.getAttribute('aria-hidden')).toBe('true');
+    expect(menu?.hasAttribute('aria-modal')).toBe(false);
+    expect(backdrop?.getAttribute('data-mobile-menu-backdrop-state')).toBe('closed');
+    expect(document.body.classList.contains('no-scroll')).toBe(false);
+    expect(document.body.classList.contains('mobile-menu-open')).toBe(false);
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 320);
+  });
+
   it('cycles Tab and Shift+Tab through the trigger and every menu destination', async () => {
     await renderHeader();
     const trigger = await openMenu();

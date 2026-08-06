@@ -24,6 +24,7 @@ type WelcomePhase = 'visible' | 'leaving' | 'hidden';
 const WELCOME_MINIMUM_MS = 450;
 const WELCOME_TIMEOUT_MS = 1_400;
 const WELCOME_FADE_MS = 420;
+const STORY_AUTO_REVEAL_DELAY_MS = 1_250;
 const WHEEL_GESTURE_RESET_MS = 180;
 const TOUCH_SWIPE_THRESHOLD_PX = 36;
 const FINDER_VIEWPORT_GAP_PX = 8;
@@ -52,12 +53,14 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
   const [heroDecoded, setHeroDecoded] = useState(false);
   const [heroStage, setHeroStage] = useState<HeroStage>('image');
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [storyCommitted, setStoryCommitted] = useState(false);
   const [welcomePhase, setWelcomePhase] = useState<WelcomePhase>('visible');
   const journeyRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const imageArrowRef = useRef<HTMLButtonElement>(null);
   const storyArrowRef = useRef<HTMLButtonElement>(null);
   const heroStageRef = useRef<HeroStage>('image');
+  const storyCommittedRef = useRef(false);
   const touchGestureHandledRef = useRef(false);
   const touchStartYRef = useRef<number | null>(null);
   const welcomeStartedAtRef = useRef(0);
@@ -122,12 +125,74 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
     };
   }, [heroDecoded, reducedMotion]);
 
+  const revealStoryCopy = useCallback(() => {
+    if (storyCommittedRef.current) return;
+    storyCommittedRef.current = true;
+    heroStageRef.current = 'story';
+    setStoryCommitted(true);
+    setHeroStage('story');
+  }, []);
+
+  useEffect(() => {
+    if (
+      !heroDecoded
+      || welcomePhase !== 'hidden'
+      || storyCommitted
+    ) return undefined;
+
+    let delayElapsed = reducedMotion;
+    let revealTimer = 0;
+    let bodyObserver: MutationObserver | null = null;
+
+    const stopWaiting = () => {
+      if (revealTimer) window.clearTimeout(revealTimer);
+      bodyObserver?.disconnect();
+      document.removeEventListener('visibilitychange', revealIfReady);
+    };
+    const revealIfReady = () => {
+      if (
+        !delayElapsed
+        || document.visibilityState !== 'visible'
+        || document.body.classList.contains('mobile-menu-open')
+      ) return;
+      revealStoryCopy();
+      stopWaiting();
+    };
+
+    document.addEventListener('visibilitychange', revealIfReady);
+    bodyObserver = new MutationObserver(revealIfReady);
+    bodyObserver.observe(document.body, {
+      attributeFilter: ['class'],
+      attributes: true,
+    });
+
+    if (reducedMotion) {
+      revealIfReady();
+    } else {
+      revealTimer = window.setTimeout(() => {
+        delayElapsed = true;
+        revealIfReady();
+      }, STORY_AUTO_REVEAL_DELAY_MS);
+    }
+
+    return stopWaiting;
+  }, [
+    heroDecoded,
+    reducedMotion,
+    revealStoryCopy,
+    storyCommitted,
+    welcomePhase,
+  ]);
+
   const syncHeroStage = useCallback(() => {
     const journey = journeyRef.current;
     if (!journey) return;
     const revealedDistance = Math.max(0, -journey.getBoundingClientRect().top);
     const revealThreshold = Math.min(window.innerHeight * .26, 280);
-    const nextStage = revealedDistance >= revealThreshold ? 'story' : 'image';
+    const nextStage = storyCommittedRef.current
+      || revealedDistance >= revealThreshold
+      ? 'story'
+      : 'image';
     heroStageRef.current = nextStage;
     setHeroStage(nextStage);
   }, []);
@@ -176,12 +241,13 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
   const revealStory = useCallback(() => {
     const journey = journeyRef.current;
     if (!journey) return;
+    revealStoryCopy();
     const journeyTop = window.scrollY + journey.getBoundingClientRect().top;
     window.scrollTo({
       behavior: scrollBehavior(),
       top: journeyTop + Math.min(window.innerHeight * .68, 620),
     });
-  }, []);
+  }, [revealStoryCopy]);
 
   const continueToFinder = useCallback(() => {
     const opening = document.getElementById('project-finder-opening');

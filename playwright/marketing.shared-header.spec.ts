@@ -44,14 +44,18 @@ test('the architectural editorial header is shared by established public routes'
     const cta = header.getByRole('link', { name: 'Start your project' });
     await expect(header).toBeVisible();
     await expect(header).toHaveAttribute('data-header-ui', 'architectural-editorial');
-    await expect(cta).toBeVisible();
-    await expect(cta).toHaveCSS('border-radius', '0px');
-    await expect(cta).toHaveCSS('background-color', 'rgb(79, 87, 72)');
-    await expect(cta).toHaveAttribute('href', buildEnquiryHref({
-      ...getEnquiryRouteContext(resolvedPath),
-      sourcePath: resolvedPath,
-      sourceComponent: 'header',
-    }));
+    if (resolvedPath === '/') {
+      await expect(cta).toHaveCount(0);
+    } else {
+      await expect(cta).toBeVisible();
+      await expect(cta).toHaveCSS('border-radius', '0px');
+      await expect(cta).toHaveCSS('background-color', 'rgb(79, 87, 72)');
+      await expect(cta).toHaveAttribute('href', buildEnquiryHref({
+        ...getEnquiryRouteContext(resolvedPath),
+        sourcePath: resolvedPath,
+        sourceComponent: 'header',
+      }));
+    }
     await expect(header.getByRole('navigation', { name: 'Primary' }).getByRole('link'))
       .toHaveText([
         'Projects',
@@ -182,6 +186,38 @@ test('the shared mobile header uses the compact square menu and restores keyboar
   await expect(page.locator('#mobile-menu')).toHaveAttribute('inert', '');
 });
 
+test('tapping the uncovered mobile backdrop closes the menu without activating the page', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await preparePage(page);
+  await page.goto('/contact');
+  await expect(page.locator('[data-contact-page]:visible').last()).toBeVisible();
+  await page.waitForTimeout(600);
+  await page.evaluate(() => window.scrollTo(0, 320));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(320);
+
+  const originalUrl = page.url();
+  const menuButton = page.locator('button[aria-controls="mobile-menu"]');
+  const menu = page.locator('#mobile-menu');
+  const backdrop = page.locator('[data-mobile-menu-backdrop]');
+
+  await menuButton.click();
+  await expect(menu).toHaveAttribute('role', 'dialog');
+  await expect(menu).toHaveAttribute('aria-modal', 'true');
+  await expect(backdrop).toHaveAttribute('data-mobile-menu-backdrop-state', 'open');
+
+  const menuBounds = await menu.boundingBox();
+  expect(menuBounds).not.toBeNull();
+  const outsideY = Math.min(830, Math.ceil(menuBounds!.y + menuBounds!.height + 24));
+  await page.mouse.click(195, outsideY);
+
+  await expect(menu).toHaveAttribute('data-mobile-menu-state', 'closed');
+  await expect(backdrop).toHaveAttribute('data-mobile-menu-backdrop-state', 'closed');
+  await expect(page.locator('body')).not.toHaveClass(/mobile-menu-open/);
+  await expect(page.locator('body')).not.toHaveClass(/no-scroll/);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(320);
+  expect(page.url()).toBe(originalUrl);
+});
+
 test('shared header destinations remain functional', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page);
@@ -196,7 +232,7 @@ test('compact desktop keeps audience routes visible without colliding with the p
 }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await preparePage(page);
-  await page.goto('/');
+  await page.goto('/projects');
 
   const header = page.locator('header.site');
   const primary = header.getByRole('navigation', { name: 'Primary' });

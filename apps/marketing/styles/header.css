@@ -150,6 +150,9 @@ body:has(main[data-project-finder-home-variant]) header.site.site--hero-scrolled
 .mobile-toggle.open::before{content:'Close'}
 .mobile-toggle__pulse{display:none}
 
+.mobile-menu-backdrop{display:none;position:fixed;inset:var(--navH) 0 0;background:rgba(12,13,11,.22);opacity:0;pointer-events:none;transition:
+  opacity var(--motion-duration-panel-exit) var(--motion-ease-exit);z-index:3400;touch-action:manipulation}
+.mobile-menu-backdrop.open{opacity:1;pointer-events:auto;transition-duration:var(--motion-duration-panel-enter);transition-timing-function:var(--motion-ease-enter)}
 .mobile-menu{display:none;position:fixed;inset:var(--navH) 0 auto;height:auto;max-height:calc(100dvh - var(--navH));min-height:0;overflow-y:auto;overscroll-behavior:contain;background:var(--headerSurface);color:var(--fg);
   border-bottom:1px solid var(--headerRuleStrong);box-shadow:none;
   transform:translateY(-1rem);opacity:0;pointer-events:none;transition:
@@ -250,6 +253,7 @@ body:has([data-homepage-welcome]) header.site{
   header.site .desktop-nav{display:none}
   .nav-cta{display:none}
   .mobile-toggle{display:inline-flex}
+  .mobile-menu-backdrop,
   .mobile-menu{display:block}
 }
 
@@ -258,6 +262,7 @@ body:has([data-homepage-welcome]) header.site{
   .navlink-btn,
   .nav-cta,
   .mobile-toggle,
+  .mobile-menu-backdrop,
   .mobile-menu,
   .mobile-menu__link,
   .mobile-menu__sublink{

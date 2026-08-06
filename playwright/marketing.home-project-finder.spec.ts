@@ -283,6 +283,70 @@ test('project finder is the indexable live homepage and the prototype URL redire
   await expect(page.locator('[data-project-finder-result="cover"]')).toBeVisible();
 });
 
+test('the hero story reveals after 1.25 seconds without moving the viewport', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setAnalyticsConsent(page, false);
+  await page.goto('/');
+  const revealTiming = await page.evaluate(() => new Promise<{
+    delayMs: number;
+    scrollY: number;
+  }>((resolve) => {
+    let imageVisibleAt: number | null = null;
+    const checkReveal = () => {
+      if (!document.querySelector('[data-homepage-welcome]') && imageVisibleAt === null) {
+        imageVisibleAt = performance.now();
+      }
+      if (
+        imageVisibleAt !== null
+        && document.querySelector('[data-homepage-hero-journey]')
+          ?.getAttribute('data-hero-stage') === 'story'
+      ) {
+        observer.disconnect();
+        resolve({
+          delayMs: performance.now() - imageVisibleAt,
+          scrollY: window.scrollY,
+        });
+      }
+    };
+    const observer = new MutationObserver(checkReveal);
+    observer.observe(document.body, {
+      attributeFilter: ['data-hero-stage'],
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
+    checkReveal();
+  }));
+
+  expect(revealTiming.delayMs).toBeGreaterThanOrEqual(1_200);
+  expect(revealTiming.delayMs).toBeLessThan(1_700);
+  expect(revealTiming.scrollY).toBe(0);
+  await expect(page.getByRole('heading', {
+    level: 1,
+    name: 'Outdoor spaces designed around the way you live.',
+  })).toBeVisible();
+});
+
+test('the automatic hero reveal waits until the mobile menu is dismissed', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setAnalyticsConsent(page, false);
+  await page.goto('/');
+  await waitForCinematicWelcome(page);
+
+  const heroJourney = page.locator('[data-homepage-hero-journey]');
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await page.waitForTimeout(1_400);
+  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'image');
+
+  await page.locator('[data-mobile-menu-backdrop]').click();
+  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'story');
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+});
+
 test('the welcome screen is immediate, bounded and reduced-motion safe', async ({
   page,
 }) => {
@@ -303,9 +367,15 @@ test('the welcome screen is immediate, bounded and reduced-motion safe', async (
   await expect(welcome).toBeHidden({ timeout: 2_500 });
   await expect(page.locator('header.site')).toBeVisible();
   await expect(page.locator('[data-homepage-hero]')).toBeInViewport();
+  await expect(page.locator('[data-homepage-hero-journey]'))
+    .toHaveAttribute('data-hero-stage', 'story');
+  await expect(page.getByRole('heading', {
+    level: 1,
+    name: 'Outdoor spaces designed around the way you live.',
+  })).toBeVisible();
 });
 
-test('mobile art direction and two deliberate scroll gestures lead into text-only choices', async ({
+test('mobile art direction and one deliberate scroll gesture follow the automatic story reveal', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -322,16 +392,12 @@ test('mobile art direction and two deliberate scroll gestures lead into text-onl
   await expect.poll(() => heroImage.evaluate((image) => (
     (image as HTMLImageElement).naturalWidth
   ))).toBeGreaterThan(0);
-  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'image');
-
-  await page.mouse.wheel(0, 600);
   await expect(heroJourney).toHaveAttribute('data-hero-stage', 'story');
   await expect(page.getByRole('heading', {
     level: 1,
     name: 'Outdoor spaces designed around the way you live.',
   })).toBeVisible();
 
-  await page.waitForTimeout(220);
   await page.mouse.wheel(0, 600);
   const finderHeading = page.getByRole('heading', {
     level: 2,
@@ -363,7 +429,6 @@ test('one mobile touch gesture can advance only one cinematic hero stage', async
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
   await setAnalyticsConsent(page, false);
   await page.goto('/');
 
@@ -372,8 +437,7 @@ test('one mobile touch gesture can advance only one cinematic hero stage', async
   await waitForCinematicWelcome(page);
 
   const heroJourney = page.locator('[data-homepage-hero-journey]');
-  await expect(page.locator('[data-homepage-hero-arrow="reveal"] path'))
-    .toHaveCSS('animation-name', 'none');
+  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'image');
   const preventedMoves = await dispatchForwardTouchGesture(
     page,
     [700, 690, 650, 590],
@@ -385,6 +449,7 @@ test('one mobile touch gesture can advance only one cinematic hero stage', async
     name: 'Which starting point best describes your project?',
   })).not.toBeInViewport();
 
+  await page.waitForTimeout(720);
   await dispatchForwardTouchGesture(page, [700, 650]);
   const finderHeading = page.getByRole('heading', {
     level: 2,
@@ -409,9 +474,8 @@ test('the finder landing contains the complete opening whenever the viewport can
     await page.setViewportSize(viewport);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForCinematicWelcome(page);
-    await page.getByRole('button', {
-      name: 'Reveal the Sanctuary introduction',
-    }).click();
+    await expect(page.locator('[data-homepage-hero-journey]'))
+      .toHaveAttribute('data-hero-stage', 'story');
     await page.getByRole('button', {
       name: 'Continue to choose your project starting point',
     }).click();

@@ -160,7 +160,7 @@ supporting-depth disclosure. Remaining authored paragraphs, project records
 and blocks stay in original order inside that disclosure, remain expanded
 without JavaScript and keep distinct headings across the SEO programme.
 
-The shared public header now uses the architectural editorial treatment across marketing routes: Instrument Sans branding, Inter navigation, square controls, a thin 1px rule, the olive `#4f5748` project action, and a 64px solid collapsed mobile state. Its four desktop destinations are split into two pairs so the midpoint between Products and Commercial sits on the viewport centreline rather than inheriting unequal outer-link widths. The mobile menu exposes Projects, Pergola options, Commercial and Professionals, followed by `Start your project`. It preserves source context, keeps body scroll locked, contains keyboard focus within the open navigation and trigger, closes with Escape or navigation, and returns focus to its trigger when the visitor dismisses it. The root skip link uses critical inline positioning to stay outside the initial layout even when the stylesheet is delayed or unavailable, while the shared focus rule still reveals it to keyboard users.
+The shared public header now uses the architectural editorial treatment across marketing routes: Instrument Sans branding, Inter navigation, square controls, a thin 1px rule, the olive `#4f5748` project action, and a 64px solid collapsed mobile state. Its four desktop destinations are split into two pairs so the midpoint between Products and Commercial sits on the viewport centreline rather than inheriting unequal outer-link widths. The mobile menu exposes Projects, Pergola options, Commercial and Professionals, followed by `Start your project`. It preserves source context, keeps body scroll locked, contains keyboard focus within the open navigation and trigger, closes with Escape, navigation or a tap on the dimmed page backdrop, and prevents that outside tap from reaching underlying page controls. It returns focus to its trigger when a keyboard visitor dismisses it. The root skip link uses critical inline positioning to stay outside the initial layout even when the stylesheet is delayed or unavailable, while the shared focus rule still reveals it to keyboard users.
 
 The ten programme routes and `/pergola-guides` additionally use the approved hero-overlay state on desktop. At the top of those pages, the hero begins at the viewport edge beneath a transparent header with white navigation and a fine light rule, fills at least one viewport, and keeps the following section below the fold. After a deliberate scroll, the header returns to the solid canvas, dark text and blur treatment. At 900px and below the header stays solid and the hero begins below it. Keep transparent overlap limited to routes listed by the shared header; all other public routes use the same new header in its solid state.
 
@@ -411,10 +411,13 @@ visitors. The first full viewport is the project image with a transparent shared
 header, no enquiry action and one bottom-centred bold open chevron, without a
 stem, label, background or visible enclosing shape. Its Warkworth interior uses
 the dedicated portrait `warkworth-gable-02.jpg` art direction through 760px and
-the existing wide project image above that breakpoint. While the hero journey
-is active, one forward wheel gesture, upward touch swipe or forward keyboard
-scroll reveals the existing eyebrow, headline, support and Warkworth attribution;
-the next advances to the measured question-and-three-choices wrapper rather than
+the existing wide project image above that breakpoint. Once the welcome veil is
+gone, the project image remains unobstructed for 1.25 seconds before the existing
+eyebrow, headline, support and Warkworth attribution transition into place without
+moving the viewport. Reduced-motion visitors receive the story immediately without
+animation. A deliberate forward wheel gesture, upward touch swipe, forward keyboard
+scroll or reveal-chevron activation wins immediately when it precedes the timer;
+the following forward action advances to the measured question-and-three-choices wrapper rather than
 the finder section's padded edge. When that complete wrapper fits between the
 live header and visual viewport bottom it is centred in the available space;
 otherwise its top is aligned eight pixels beneath the header. The matching
