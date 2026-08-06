@@ -26,8 +26,8 @@
   opacity: 1;
   visibility: visible;
   transition:
-    opacity 420ms cubic-bezier(.22, 1, .36, 1),
-    visibility 0s linear 420ms;
+    opacity 650ms cubic-bezier(.4, 0, .2, 1),
+    visibility 0s linear 650ms;
   overscroll-behavior: contain;
   touch-action: none;
 }
@@ -98,12 +98,10 @@
 .heroSupport,
 .heroProjectMeta {
   opacity: 0;
-  transform: translateY(1.5rem);
   visibility: hidden;
   transition:
-    opacity 700ms cubic-bezier(.22, 1, .36, 1),
-    transform 700ms cubic-bezier(.22, 1, .36, 1),
-    visibility 0s linear 700ms;
+    opacity 1000ms cubic-bezier(.4, 0, .2, 1),
+    visibility 0s linear 1000ms;
 }
 
 .heroJourney[data-story-visible='true'] :is(
@@ -112,7 +110,6 @@
   .heroProjectMeta
 ) {
   opacity: 1;
-  transform: translateY(0);
   visibility: visible;
   transition-delay: 0s;
 }
@@ -219,12 +216,11 @@
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
-  transform: translateX(-50%) translateY(.75rem);
+  transform: translateX(-50%);
   visibility: hidden;
   transition:
-    opacity 420ms ease,
-    transform 420ms cubic-bezier(.22, 1, .36, 1),
-    visibility 0s linear 420ms;
+    opacity 600ms ease,
+    visibility 0s linear 600ms;
   touch-action: manipulation;
 }
 
@@ -243,9 +239,8 @@
 .heroJourney[data-story-visible='true'] .heroArrow {
   opacity: 1;
   pointer-events: auto;
-  transform: translateX(-50%) translateY(0);
   visibility: visible;
-  transition-delay: 320ms;
+  transition-delay: 200ms;
 }
 
 .heroJourney[data-story-visible='true'] .heroArrow path {
@@ -261,7 +256,7 @@
 
 .heroArrow:active {
   background: transparent;
-  transform: translateX(-50%) translateY(.15rem);
+  transform: translateX(-50%);
 }
 
 .proofRail {

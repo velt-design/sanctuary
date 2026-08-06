@@ -145,9 +145,10 @@ indexable metadata and WebSite/WebPage schema, the permanent noindex comparison
 redirect, radio keyboard and screen-reader structure, mobile text-only oversized
 first-layer choices, retained image-led nested choices and tablet cards,
 full-height narrow hero, responsive Warkworth art direction, root-only opaque scrolled
-header, decoded-image welcome deadline, the stable single H1 across the veil-to-image
-reveal, 500ms mobile/tablet and 400ms desktop supporting-copy delays, one bold open
-continue chevron, native wheel/touch/keyboard scrolling, measured finder
+header, decoded-image welcome deadline, the stable single H1 and synchronized
+650ms shared-header fade across the veil-to-image reveal, 800ms mobile/tablet and
+700ms desktop supporting-copy delays followed by a one-second in-place fade, one
+bold open continue chevron with its delayed 600ms fade, native wheel/touch/keyboard scrolling, measured finder
 landing containment at 390x844, 430x932 and 1440x900, 44-pixel touch dimensions,
 reduced motion, JavaScript-disabled
 fallback, consent granted/denied analytics, deterministic two-project evidence

@@ -406,16 +406,20 @@ residential choices. The opening is cinematic without changing this owner. The
 single H1, `Outdoor spaces designed around the way you live.`, is immediately
 visible over the charcoal welcome veil and remains in the same position while
 that veil reveals the priority Warkworth hero image. The shared header is
-inaccessible and visually absent while the veil exists. The veil leaves as soon
-as the image is decoded, or after a bounded 1.4-second fallback, and its fade is
-removed for reduced-motion visitors. The image uses the dedicated portrait
+inaccessible and visually absent before the reveal begins, then its complete
+brand-and-navigation unit fades in with the image. The veil still starts leaving
+as soon as the image is decoded, or after a bounded 1.4-second fallback; only its
+softer 650ms fade duration changes, and the fade is removed for reduced-motion
+visitors. The image uses the dedicated portrait
 `warkworth-gable-02.jpg` art direction through 760px and the existing wide
 project image above that breakpoint. After the image is visible, the eyebrow,
-support copy, Warkworth attribution and one bottom-centred continue chevron fade
-and rise into place after 500ms through the 900px mobile and tablet range, or
-400ms from 901px upward. Reduced-motion visitors receive this supporting layer
-immediately. The supporting reveal waits while the mobile menu is open. The
-chevron has no stem, label, background or visible enclosing shape and advances
+support copy and Warkworth attribution remain in place and fade in over one
+second after an 800ms delay through the 900px mobile and tablet range, or a
+700ms delay from 901px upward. The bottom-centred continue chevron fades over
+600ms beginning 200ms after the supporting layer starts. Reduced-motion visitors
+receive the complete supporting layer immediately. The supporting reveal waits
+while the mobile menu is open. The chevron has no stem, label, background or
+visible enclosing shape and advances
 to the measured question-and-three-choices wrapper. When that complete wrapper
 fits between the live header and visual viewport bottom it is centred in the
 available space; otherwise its top is aligned eight pixels beneath the header.
@@ -575,8 +579,9 @@ The focused production owner is
 `playwright/marketing.home-project-finder.spec.ts`. It covers root metadata and
 schema, the retired-route redirect, 320-1440 responsive behavior, one-viewport
 mobile hero height, the decoded-image welcome deadline, stable loading-to-image
-H1, responsive supporting-copy delay, reduced-motion exit, the single continue
-control, native input behavior, transparent-to-solid root header boundary,
+H1, synchronized 650ms image/header fade, responsive in-place supporting-copy
+delay and duration, reduced-motion exit, the single continue control, native
+input behavior, transparent-to-solid root header boundary,
 URL/history state, keyboard and no-JavaScript access, consent-aware analytics,
 lazy image loading, service and residential project continuation, all five
 tailored results, mobile-menu state, overflow and the complete residential and

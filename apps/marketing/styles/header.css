@@ -219,11 +219,17 @@ body:has(main[data-project-finder-home-variant]) header.site.site--hero-overlay:
   color:#fff;
 }
 body:has(main[data-project-finder-home-variant]) header.site.site--hero-overlay:not(.site--hero-scrolled) .mobile-toggle:focus-visible{outline-color:#fff}
-body:has([data-homepage-welcome]) header.site{
+body:has([data-homepage-welcome][data-welcome-phase='visible']) header.site{
   opacity:0 !important;
   visibility:hidden;
   pointer-events:none !important;
   transition:none !important;
+}
+body:has([data-homepage-welcome][data-welcome-phase='leaving']) header.site{
+  opacity:1 !important;
+  visibility:visible;
+  pointer-events:auto !important;
+  transition:opacity 650ms cubic-bezier(.4,0,.2,1) !important;
 }
 
 @media (min-width:901px){

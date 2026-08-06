@@ -270,15 +270,14 @@ test('project finder is the indexable live homepage and the prototype URL redire
   await expect(page.locator('[data-project-finder-result="cover"]')).toBeVisible();
 });
 
-test('the hero story uses its responsive reveal delay without moving the viewport', async ({
+test('the hero supporting copy uses its longer responsive delay and fades in place', async ({
   page,
 }) => {
   await setAnalyticsConsent(page, false);
-
   for (const scenario of [
-    { viewport: { width: 390, height: 844 }, expectedDelay: 500 },
-    { viewport: { width: 768, height: 1024 }, expectedDelay: 500 },
-    { viewport: { width: 1440, height: 900 }, expectedDelay: 400 },
+    { viewport: { width: 390, height: 844 }, expectedDelay: 800 },
+    { viewport: { width: 768, height: 1024 }, expectedDelay: 800 },
+    { viewport: { width: 1440, height: 900 }, expectedDelay: 700 },
   ]) {
     await page.setViewportSize(scenario.viewport);
     await page.goto('/');
@@ -289,13 +288,55 @@ test('the hero story uses its responsive reveal delay without moving the viewpor
     expect(revealTiming.delayMs)
       .toBeLessThan(scenario.expectedDelay + 350);
     expect(revealTiming.scrollY).toBe(0);
-    await expect(page.getByRole('heading', {
-      level: 1,
-      name: 'Outdoor spaces designed around the way you live.',
-    })).toBeVisible();
+    const transition = await page.locator('[data-homepage-story] p').first()
+      .evaluate((element) => {
+        const styles = getComputedStyle(element);
+        return [styles.transitionDuration, styles.transform];
+      });
+    expect(transition[0]).toContain('1s');
+    expect(transition[1]).toBe('none');
+    const chevronTransition = await page.locator('[data-homepage-hero-arrow]')
+      .evaluate((element) => {
+        const styles = getComputedStyle(element);
+        return [styles.transitionDuration, styles.transitionDelay];
+      });
+    expect(chevronTransition[0]).toContain('0.6s');
+    expect(chevronTransition[1]).toContain('0.2s');
   }
 });
 
+test('the hero image and shared header use the same softer fade', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setAnalyticsConsent(page, false);
+  await page.route('**/_next/image?*', async (route) => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const welcome = page.locator('[data-homepage-welcome]');
+  await expect(welcome).toHaveAttribute(
+    'data-welcome-phase',
+    'leaving',
+    { timeout: 2_500 },
+  );
+  const transitionDurations = await page.evaluate(() => ({
+    header: getComputedStyle(document.querySelector('header.site')!).transitionDuration,
+    welcome: getComputedStyle(document.querySelector('[data-homepage-welcome]')!)
+      .transitionDuration,
+  }));
+  expect(transitionDurations.header).toContain('0.65s');
+  expect(transitionDurations.welcome).toContain('0.65s');
+  await page.waitForTimeout(180);
+  const fadeOpacities = await page.evaluate(() => ({
+    header: Number.parseFloat(getComputedStyle(document.querySelector('header.site')!).opacity),
+    welcome: Number.parseFloat(getComputedStyle(
+      document.querySelector('[data-homepage-welcome]')!,
+    ).opacity),
+  }));
+  for (const opacity of Object.values(fadeOpacities)) {
+    expect(opacity).toBeGreaterThan(0);
+    expect(opacity).toBeLessThan(1);
+  }
+});
 test('the automatic hero reveal waits until the mobile menu is dismissed', async ({
   page,
 }) => {
@@ -321,7 +362,7 @@ test('the automatic hero reveal waits until the mobile menu is dismissed', async
   const heroJourney = page.locator('[data-homepage-hero-journey]');
   await expect(page.locator('#mobile-menu'))
     .toHaveAttribute('data-mobile-menu-state', 'open');
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(1_000);
   await expect(heroJourney).toHaveAttribute('data-story-visible', 'false');
 
   await page.locator('[data-mobile-menu-backdrop]').click();
