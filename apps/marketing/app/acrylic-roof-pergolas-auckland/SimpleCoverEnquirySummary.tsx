@@ -18,8 +18,10 @@ function formatPrice(value: number): string {
 
 export default function SimpleCoverEnquirySummary({
   estimate,
+  changeHref = '#price-your-cover',
 }: {
   estimate: SimpleCoverHandoff | null;
+  changeHref?: string;
 }) {
   const connection = estimate
     ? SIMPLE_COVER_CONNECTION_OPTIONS.find((option) => option.value === estimate.input.connection)?.label
@@ -68,13 +70,13 @@ export default function SimpleCoverEnquirySummary({
                 ? 'We’ll use these selections to understand the footprint and recommend the right Custom pathway.'
                 : 'Live pricing is unavailable, but these selections will still give the team a useful starting point.'}
           </p>
-          <Link href="#price-your-cover">Change this configuration</Link>
+          <Link href={changeHref}>Change this configuration</Link>
         </>
       ) : (
         <>
           <h3 id="simple-cover-enquiry-summary-title">No calculator result is attached yet.</h3>
           <p>You can still enquire now, or configure the footprint first so the team receives the same dimensions, deck level and connection.</p>
-          <Link href="#price-your-cover">Price your Simple cover</Link>
+          <Link href={changeHref}>Price your Simple cover</Link>
         </>
       )}
     </section>

@@ -9,6 +9,7 @@ import {
 } from '../apps/marketing/lib/enquiryContext';
 
 const route = '/contact';
+const customRoute = `${route}?enquiry_type=residential&source_experience=project-finder-home-v1&project_direction=bespoke`;
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
 const phaseOneCapture = process.env.MARKETING_PHASE_ONE_CAPTURE?.trim();
 const phaseOneEvidenceDirectory = path.join(
@@ -22,6 +23,52 @@ const consentChoice = {
   updatedAt: '2026-07-24T00:00:00.000Z',
   version: 1,
 };
+
+const contactCalculationRef = 'sc1.contact-playwright-reference';
+
+function memberCentrePositions(widthMm: number, memberWidthMm: number, count: number) {
+  const inset = memberWidthMm / 2 / widthMm;
+  return Array.from(
+    { length: count },
+    (_, index) => inset + index / (count - 1) * (1 - inset * 2),
+  );
+}
+
+async function mockSimpleCoverPrice(page: Page) {
+  await page.route('**/api/simple-cover-price', async (requestRoute) => {
+    const input = requestRoute.request().postDataJSON() as {
+      widthMm: number;
+      projectionMm: number;
+      level: 'ground' | 'elevated';
+      connection: 'fascia' | 'facade' | 'soffit';
+    };
+    const areaM2 = input.widthMm * input.projectionMm / 1_000_000;
+    const postCount = Math.max(2, Math.ceil(input.widthMm / 4_000) + 1);
+    await requestRoute.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        status: 'priced',
+        input,
+        areaM2,
+        postCount,
+        postSpacingMm: Math.round(input.widthMm / (postCount - 1)),
+        plan: {
+          postPositions: memberCentrePositions(input.widthMm, 100, postCount),
+          rafterPositions: memberCentrePositions(
+            input.widthMm,
+            50,
+            Math.max(2, Math.ceil((input.widthMm - 50) / 642) + 1),
+          ),
+        },
+        price: { fromIncGst: 24_250, currency: 'NZD' },
+        configuration: { versionNumber: 23 },
+        calculationRef: contactCalculationRef,
+      }),
+    });
+  });
+}
 
 async function preparePage(
   page: Page,
@@ -117,7 +164,7 @@ for (const viewport of [
         hydrationErrors.push(message.text());
       }
     });
-    const response = await page.goto(`${route}?enquiry_type=residential`, {
+    const response = await page.goto(customRoute, {
       waitUntil: 'networkidle',
     });
     expect(response?.ok()).toBe(true);
@@ -128,7 +175,7 @@ for (const viewport of [
       level: 1,
       name: 'Tell us about your project.',
     })).toBeVisible();
-    await expect(main.getByRole('radio', { name: 'Residential', exact: false }))
+    await expect(main.getByRole('radio', { name: 'Custom design', exact: false }))
       .toBeChecked();
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       'href',
@@ -191,42 +238,97 @@ for (const viewport of [
   });
 }
 
-test('canonical and legacy preselection are server rendered and invalid values leave the chooser open', async ({
+test('trusted context preselects a pathway while generic residential and invalid values leave it open', async ({
   page,
   request,
 }) => {
   await preparePage(page);
 
-  for (const [value, name] of [
-    ['residential', 'Residential'],
-    ['commercial', 'Commercial'],
+  for (const [value, audienceName] of [
+    ['commercial', 'Organisation or venue'],
     ['professional', 'Architect, designer or builder'],
   ] as const) {
     const response = await request.get(`${route}?enquiry_type=${value}`);
     expect(response.ok()).toBe(true);
     const html = await response.text();
-    expect(html).toMatch(
-      new RegExp(`<input[^>]*name="enquiryType"[^>]*checked=""[^>]*value="${value}"`),
-    );
+    expect(html).toContain('value="commercial-professional"');
 
     await page.goto(`${route}?enquiry_type=${value}`, { waitUntil: 'networkidle' });
-    await expect(page.getByRole('radio', { name, exact: false })).toBeChecked();
+    await expect(page.getByRole('radio', { name: 'Commercial / Professional', exact: false })).toBeChecked();
+    await expect(page.getByRole('radio', { name: audienceName, exact: false })).toBeChecked();
   }
 
   await page.goto(`${route}?enquiry=professional`, { waitUntil: 'networkidle' });
+  await expect(page.getByRole('radio', { name: 'Commercial / Professional', exact: false })).toBeChecked();
   await expect(page.getByRole('radio', {
     name: 'Architect, designer or builder',
     exact: false,
   })).toBeChecked();
 
+  await page.goto(`${route}?enquiry_type=residential`, { waitUntil: 'networkidle' });
+  expect(await page.locator('input[name="contactPathway"]').evaluateAll((radios) =>
+    radios.every((radio) => !(radio as HTMLInputElement).checked),
+  )).toBe(true);
+
+  await page.goto(customRoute, { waitUntil: 'networkidle' });
+  await expect(page.getByRole('radio', { name: 'Custom design', exact: false })).toBeChecked();
+
+  await page.goto(
+    `${route}?enquiry_type=residential&source_path=%2Fsimple-cover-calculator`,
+    { waitUntil: 'networkidle' },
+  );
+  await expect(page.getByRole('radio', { name: 'Simple cover', exact: false })).toBeChecked();
+
   await page.goto(
     `${route}?enquiry_type=general&source_path=https%3A%2F%2Fevil.test&source_project=unknown`,
     { waitUntil: 'networkidle' },
   );
-  expect(await page.getByRole('radio').evaluateAll((radios) =>
+  expect(await page.locator('input[name="contactPathway"]').evaluateAll((radios) =>
     radios.every((radio) => !(radio as HTMLInputElement).checked),
   )).toBe(true);
   await expect(page.getByLabel('Enquiry context')).toHaveCount(0);
+});
+
+test('deliberate pathway choices reveal the next section on mobile only', async ({ page }) => {
+  await preparePage(page, { reducedMotion: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(route, { waitUntil: 'networkidle' });
+
+  const simplePathway = page.getByRole('radio', { name: 'Simple cover', exact: false });
+  await simplePathway.focus();
+  await simplePathway.press('Space');
+  await expect(simplePathway).toBeChecked();
+  await expect.poll(() => page.locator('#contact-simple-calculator').evaluate((element) => (
+    Math.round(element.getBoundingClientRect().top)
+  ))).toBeGreaterThanOrEqual(64);
+  await expect.poll(() => page.locator('#contact-simple-calculator').evaluate((element) => (
+    Math.round(element.getBoundingClientRect().top)
+  ))).toBeLessThanOrEqual(96);
+  await expect(simplePathway).toBeFocused();
+
+  const customPathway = page.getByRole('radio', { name: 'Custom design', exact: false });
+  await customPathway.focus();
+  await customPathway.press('Space');
+  await expect(customPathway).toBeChecked();
+  await expect.poll(() => page.locator('#contact-project-details').evaluate((element) => (
+    Math.round(element.getBoundingClientRect().top)
+  ))).toBeGreaterThanOrEqual(64);
+  await expect.poll(() => page.locator('#contact-project-details').evaluate((element) => (
+    Math.round(element.getBoundingClientRect().top)
+  ))).toBeLessThanOrEqual(104);
+  await expect(customPathway).toBeFocused();
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(route, { waitUntil: 'networkidle' });
+  const desktopPathway = page.getByRole('radio', { name: 'Custom design', exact: false });
+  await desktopPathway.focus();
+  const desktopScrollBeforeSelection = await page.evaluate(() => window.scrollY);
+  await desktopPathway.press('Space');
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+  }));
+  expect(await page.evaluate(() => window.scrollY)).toBe(desktopScrollBeforeSelection);
+  await expect(desktopPathway).toBeFocused();
 });
 
 test('neutral, audience, project and product entry routes use one canonical contract', async ({
@@ -241,24 +343,12 @@ test('neutral, audience, project and product entry routes use one canonical cont
   )).toBe(true);
   await expect(page.getByLabel('Enquiry context')).toHaveCount(0);
 
-  await page.goto('/', { waitUntil: 'networkidle' });
-  const professionalPathway = page.getByRole('link', {
-    name: 'Architects, designers and builders',
-  });
-  await expect(professionalPathway).toHaveAttribute(
-    'href',
-    '/architects-designers-builders',
-  );
-  await professionalPathway.click();
-  await expect(page).toHaveURL('/architects-designers-builders');
-  await expect(page.locator('[data-seo-landing="architects-designers-builders"]'))
-    .toBeVisible();
-
   type EntryCase = {
     name: string;
     route: string;
     context: EnquiryContext;
     audience?: EnquiryAudience;
+    pathway?: 'commercial-professional';
     contextLabel: string;
     link: (currentPage: Page) => Locator;
   };
@@ -285,6 +375,7 @@ test('neutral, audience, project and product entry routes use one canonical cont
         sourceComponent: 'header',
       },
       audience: 'commercial',
+      pathway: 'commercial-professional',
       contextLabel: 'Commercial project',
       link: (currentPage) => currentPage.locator('header.site')
         .getByRole('link', { name: 'Start your project' }),
@@ -298,6 +389,7 @@ test('neutral, audience, project and product entry routes use one canonical cont
         sourceComponent: 'header',
       },
       audience: 'professional',
+      pathway: 'commercial-professional',
       contextLabel: 'Professional project',
       link: (currentPage) => currentPage.locator('header.site')
         .getByRole('link', { name: 'Start your project' }),
@@ -326,6 +418,7 @@ test('neutral, audience, project and product entry routes use one canonical cont
         sourceComponent: 'header',
       },
       audience: 'commercial',
+      pathway: 'commercial-professional',
       contextLabel: 'Project: The Good Home Takanini',
       link: (currentPage) => currentPage.locator('header.site')
         .getByRole('link', { name: 'Start your project' }),
@@ -362,15 +455,19 @@ test('neutral, audience, project and product entry routes use one canonical cont
       entryCase.contextLabel,
     );
 
-    if (entryCase.audience) {
+    if (entryCase.pathway === 'commercial-professional') {
+      await expect(page.getByRole('radio', {
+        name: 'Commercial / Professional',
+        exact: false,
+      })).toBeChecked();
       await expect(page.getByRole('radio', {
         name: entryCase.audience === 'professional'
           ? 'Architect, designer or builder'
-          : entryCase.audience[0]!.toUpperCase() + entryCase.audience.slice(1),
+          : 'Organisation or venue',
         exact: false,
       })).toBeChecked();
     } else {
-      expect(await page.getByRole('radio').evaluateAll((radios) =>
+      expect(await page.locator('input[name="contactPathway"]').evaluateAll((radios) =>
         radios.every((radio) => !(radio as HTMLInputElement).checked),
       )).toBe(true);
     }
@@ -384,22 +481,15 @@ test('validation is specific, focuses an error summary and preserves entered det
   await preparePage(page);
   await page.goto(route, { waitUntil: 'networkidle' });
 
+  await page.getByRole('radio', { name: 'Custom design', exact: false }).check();
   const message = page.getByLabel('Project brief Optional');
   await message.fill('A sheltered dining area that keeps daylight in the kitchen.');
-  await page.getByRole('button', { name: 'Send project brief' }).click();
-  await expect(page.locator('#contact-enquiryType-error')).toHaveText(
-    'Choose a project type.',
-  );
+  await page.getByRole('button', { name: 'Send custom project brief' }).click();
   const summary = page.locator('#contact-error-summary');
   await expect(summary).toBeFocused();
   await expect(message).toHaveValue(
     'A sheltered dining area that keeps daylight in the kitchen.',
   );
-  await summary.getByRole('link', { name: 'Choose a project type.' }).click();
-  await expect(page.getByRole('radio').first()).toBeFocused();
-
-  await page.getByRole('radio', { name: 'Residential', exact: false }).check();
-  await page.getByRole('button', { name: 'Send project brief' }).click();
   await expect(page.locator('#contact-name-error')).toHaveText('Enter your name.');
   await expect(summary).toBeFocused();
   await summary.getByRole('link', { name: 'Enter your name.' }).click();
@@ -408,7 +498,7 @@ test('validation is specific, focuses an error summary and preserves entered det
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
   await page.getByLabel('Email Required').fill('not-an-email');
-  await page.getByRole('button', { name: 'Send project brief' }).click();
+  await page.getByRole('button', { name: 'Send custom project brief' }).click();
   await expect(page.locator('#contact-email-error')).toHaveText(
     'Enter a valid email address.',
   );
@@ -426,11 +516,12 @@ test('direct form puts the useful first brief before optional technical detail',
   await preparePage(page);
   await page.goto(route, { waitUntil: 'networkidle' });
 
-  await expect(page.getByRole('group', { name: 'Project type Required' })).toBeVisible();
+  await expect(page.getByRole('group', { name: '01 Choose your pathway Required' })).toBeVisible();
+  await page.getByRole('radio', { name: 'Custom design', exact: false }).check();
   await expect(page.getByLabel('Name Required')).toHaveAttribute('required', '');
   await expect(page.getByLabel('Phone Required')).toHaveAttribute('required', '');
   await expect(page.getByLabel('Email Required')).toHaveAttribute('required', '');
-  await expect(page.getByLabel('Suburb Optional')).not.toHaveAttribute('required', '');
+  await expect(page.getByLabel('Project suburb Optional')).not.toHaveAttribute('required', '');
   await expect(page.getByLabel('Project brief Optional')).not.toHaveAttribute('required', '');
   await expect(page.locator('#contact-form')).toHaveAttribute('method', 'post');
   await expect(page.locator('#contact-form')).toHaveAttribute(
@@ -438,10 +529,12 @@ test('direct form puts the useful first brief before optional technical detail',
     '/api/enquiry/fallback',
   );
   await expect(page.locator('#contact-form input[name="page"]')).toHaveValue('/contact');
-  await expect(page.locator('#contact-form input[name="enquiryContext"]')).toHaveValue('{}');
+  await expect(page.locator('#contact-form input[name="enquiryContext"]')).toHaveValue(
+    JSON.stringify({ enquiry_type: 'residential' }),
+  );
 
   const orderedFields = [
-    '#contact-enquiry-type-residential',
+    '#contact-pathway-simple',
     '#contact-suburb',
     '#contact-message',
     '#contact-name',
@@ -462,11 +555,109 @@ test('direct form puts the useful first brief before optional technical detail',
     'Up to 8 PDF, JPG, JPEG, PNG or WebP files, 20 MB total.',
     { exact: true },
   )).toBeVisible();
-  const optionalDetails = page.getByText('Add optional project details', { exact: true });
+  const optionalDetails = page.getByText('Additional project details', { exact: true });
   await expect(optionalDetails).toBeVisible();
+  const optionalSummary = page.locator('.contact-form__optional > summary');
+  await expect(optionalSummary).toContainText('04');
+  await expect(optionalSummary).toContainText('Optional');
+  expect((await optionalSummary.boundingBox())?.height).toBeGreaterThanOrEqual(44);
   await expect(page.getByRole('group', { name: 'Roof Optional' })).toBeHidden();
   await optionalDetails.click();
   await expect(page.getByRole('group', { name: 'Roof Optional' })).toBeVisible();
+});
+
+test('Simple cover carries the secure priced configuration into the shared enquiry', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await preparePage(page);
+  await mockSimpleCoverPrice(page);
+  let submittedBody: Record<string, unknown> | null = null;
+  await page.route('**/api/enquiry', async (requestRoute) => {
+    submittedBody = requestRoute.request().postDataJSON() as Record<string, unknown>;
+    await requestRoute.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+
+  await page.goto(`${route}?enquiry_type=residential&source_path=%2Fsimple-cover-calculator`);
+  await expect(page.getByRole('radio', { name: 'Simple cover', exact: false })).toBeChecked();
+  const calculatorContinue = page.getByRole('link', { name: 'Request a site measure', exact: true });
+  await expect(calculatorContinue).toBeVisible();
+  await calculatorContinue.click();
+
+  const summary = page.locator('[data-simple-cover-enquiry-summary="priced"]');
+  await expect(summary).toContainText('From $24,250');
+  await expect(summary).toContainText('6.0 m × 3.0 m');
+  await page.getByLabel('Name Required').fill('Test Customer');
+  await page.getByLabel('Phone Required').fill('021 234 5678');
+  await page.getByLabel('Email Required').fill('test@example.com');
+  await page.getByRole('button', { name: 'Request a site measure', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Request received.');
+
+  expect(submittedBody).toMatchObject({
+    enquiryType: 'residential',
+    calculationRef: contactCalculationRef,
+    simpleCoverStatus: 'priced',
+    dimensions: { widthM: null, depthM: null, heightM: null },
+    projectDetails: {
+      contactPathway: 'simple',
+      simpleCover: { status: 'priced', calculationAttached: true },
+    },
+  });
+  expect(page.url()).not.toContain(contactCalculationRef);
+  expect(page.url()).not.toContain('test%40example.com');
+});
+
+test('switching pathways retains shared fields and excludes branch-only values', async ({
+  page,
+}) => {
+  await preparePage(page);
+  let submittedBody: Record<string, unknown> | null = null;
+  await page.route('**/api/enquiry', async (requestRoute) => {
+    submittedBody = requestRoute.request().postDataJSON() as Record<string, unknown>;
+    await requestRoute.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+  await page.goto(route);
+
+  await page.getByRole('radio', { name: 'Commercial / Professional', exact: false }).check();
+  await page.getByRole('radio', { name: 'Architect, designer or builder', exact: false }).check();
+  await page.getByLabel('Project suburb Optional').fill('Grey Lynn');
+  await page.getByLabel('Project scope Optional').fill('A coordinated project scope.');
+  await page.getByLabel('Name Required').fill('Project Lead');
+  await page.getByLabel('Phone Required').fill('021 234 5678');
+  await page.getByLabel('Email Required').fill('lead@example.com');
+  await page.getByLabel('Organisation or practice Optional').fill('Studio North');
+  await page.getByLabel('Your role Optional').selectOption('architect-designer');
+  await page.getByLabel('Project stage Optional').selectOption('concept-design');
+
+  await page.getByRole('radio', { name: 'Custom design', exact: false }).check();
+  await expect(page.getByLabel('Project suburb Optional')).toHaveValue('Grey Lynn');
+  await expect(page.getByLabel('Name Required')).toHaveValue('Project Lead');
+  await expect(page.getByLabel('Project brief Optional')).toHaveValue('A coordinated project scope.');
+  await expect(page.locator('#contact-company')).toHaveCount(0);
+  await expect(page.locator('#contact-role')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Send custom project brief' }).click();
+  await expect(page.getByRole('status')).toContainText('Project brief sent.');
+
+  expect(submittedBody).toMatchObject({
+    enquiryType: 'residential',
+    company: null,
+    suburb: 'Grey Lynn',
+    message: 'A coordinated project scope.',
+    dimensions: { widthM: null, depthM: null, heightM: null },
+    projectDetails: {
+      contactPathway: 'custom',
+    },
+  });
+  expect((submittedBody as Record<string, Record<string, unknown>>).projectDetails)
+    .not.toHaveProperty('projectRole');
 });
 
 test('no-JavaScript fallback keeps personal data out of the URL and uses native validation', async ({
@@ -536,11 +727,12 @@ test('API errors keep values and retries reuse the submission UUID', async ({ pa
     waitUntil: 'networkidle',
     },
   );
+  await page.getByRole('radio', { name: 'Custom design', exact: false }).check();
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
   await page.getByLabel('Email Required').fill('test@example.com');
   await page.getByLabel('Project brief Optional').fill('Keep this project brief.');
-  await page.getByRole('button', { name: 'Send project brief' }).click();
+  await page.getByRole('button', { name: 'Send custom project brief' }).click();
 
   const alert = page.locator('.contact-form__submit-error');
   await expect(alert).toContainText('Enquiry service unavailable');
@@ -549,7 +741,7 @@ test('API errors keep values and retries reuse the submission UUID', async ({ pa
   await expect(page.getByLabel('Project brief Optional'))
     .toHaveValue('Keep this project brief.');
 
-  await page.getByRole('button', { name: 'Send project brief' }).click();
+  await page.getByRole('button', { name: 'Send custom project brief' }).click();
   await expect(page.getByRole('status')).toContainText(
     'Project brief sent.',
   );
@@ -611,11 +803,12 @@ test('the submit lock prevents duplicate requests and consent controls lead even
     `${route}?enquiry_type=residential&source_path=%2F&source_component=hero`,
     { waitUntil: 'networkidle' },
   );
+  await page.getByRole('radio', { name: 'Custom design', exact: false }).check();
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
   await page.getByLabel('Email Required').fill('test@example.com');
 
-  const submit = page.getByRole('button', { name: 'Send project brief' });
+  const submit = page.getByRole('button', { name: 'Send custom project brief' });
   await submit.evaluate((button) => {
     (button as HTMLButtonElement).click();
     (button as HTMLButtonElement).click();
@@ -670,6 +863,7 @@ test('residential attachments keep exact policy errors and fail visibly when upl
     });
   });
   await page.goto(`${route}?enquiry_type=residential`, { waitUntil: 'networkidle' });
+  await page.getByRole('radio', { name: 'Custom design', exact: false }).check();
   await page.getByLabel('Name Required').fill('Test Homeowner');
   await page.getByLabel('Phone Required').fill('021 000 0000');
   await page.getByLabel('Email Required').fill('test@example.com');
@@ -689,7 +883,7 @@ test('residential attachments keep exact policy errors and fail visibly when upl
   await expect(page.locator('#contact-files-error')).toHaveText(
     'Each file must be larger than 0 bytes and no larger than 20 MB.',
   );
-  await page.getByRole('button', { name: 'Send project brief' }).click();
+  await page.getByRole('button', { name: 'Send custom project brief' }).click();
   expect(requestCount).toBe(0);
   const summary = page.locator('#contact-error-summary');
   await expect(summary).toBeFocused();
@@ -706,7 +900,7 @@ test('residential attachments keep exact policy errors and fail visibly when upl
   await expect(page.locator('#contact-files-error')).toHaveText(
     'Attachments must be PDF, JPG, PNG, or WebP files with matching file extensions.',
   );
-  await page.getByRole('button', { name: 'Send project brief' }).click();
+  await page.getByRole('button', { name: 'Send custom project brief' }).click();
   expect(requestCount).toBe(0);
   await expect(summary).toBeFocused();
   await summary.getByRole('link', {
@@ -722,7 +916,7 @@ test('residential attachments keep exact policy errors and fail visibly when upl
   await expect(page.getByRole('list', { name: 'Selected files' })).toContainText(
     'plan.pdf',
   );
-  await page.getByRole('button', { name: 'Send project brief' }).click();
+  await page.getByRole('button', { name: 'Send custom project brief' }).click();
   await expect(page.locator('.contact-form__submit-error')).toContainText(
     'We could not upload your attachments. Please try again or remove them before submitting.',
   );
@@ -746,8 +940,9 @@ test('project context survives refresh and browser history', async ({ page }) =>
   await expect(page.getByLabel('Enquiry context')).toContainText(
     'Project: Warkworth Outdoor Room',
   );
-  await expect(page.getByRole('radio', { name: 'Residential', exact: false }))
-    .toBeChecked();
+  expect(await page.locator('input[name="contactPathway"]').evaluateAll((radios) =>
+    radios.every((radio) => !(radio as HTMLInputElement).checked),
+  )).toBe(true);
 
   await page.reload({ waitUntil: 'networkidle' });
   await expect(page.getByLabel('Enquiry context')).toContainText(
@@ -782,10 +977,11 @@ test('product context is visible and included in the submitted payload', async (
   await expect(page.getByLabel('Enquiry context')).toContainText(
     'Pergola option: Gable pergola',
   );
-  expect(await page.getByRole('radio').evaluateAll((radios) =>
+  expect(await page.locator('input[name="contactPathway"]').evaluateAll((radios) =>
     radios.every((radio) => !(radio as HTMLInputElement).checked),
   )).toBe(true);
-  await page.getByRole('radio', { name: 'Commercial', exact: false }).check();
+  await page.getByRole('radio', { name: 'Commercial / Professional', exact: false }).check();
+  await page.getByRole('radio', { name: 'Organisation or venue', exact: false }).check();
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
   await page.getByLabel('Email Required').fill('test@example.com');
@@ -809,6 +1005,7 @@ test('form semantics exclude the honeypot and keep IDs and error associations va
   await page.setViewportSize({ width: 360, height: 800 });
   await preparePage(page);
   await page.goto(route, { waitUntil: 'networkidle' });
+  await page.getByRole('radio', { name: 'Commercial / Professional', exact: false }).check();
 
   const duplicateIds = await page.locator('[id]').evaluateAll((elements) => {
     const counts = new Map<string, number>();
@@ -830,7 +1027,7 @@ test('form semantics exclude the honeypot and keep IDs and error associations va
   const typeErrorId = await page.locator('fieldset.contact-form__type')
     .getAttribute('aria-describedby');
   expect(typeErrorId).toBe('contact-enquiryType-error');
-  await expect(page.locator(`#${typeErrorId}`)).toContainText('Choose a project type.');
+  await expect(page.locator(`#${typeErrorId}`)).toContainText('Choose who is enquiring.');
 });
 
 test('contact form fragments clear the fixed header at mobile and desktop widths', async ({
@@ -851,7 +1048,7 @@ test('contact form fragments clear the fixed header at mobile and desktop widths
     const header = page.locator('header.site');
     const form = page.locator('#contact-form');
     await expect(form).toBeVisible();
-    await expect(form.getByRole('heading', { name: 'Project brief' })).toBeVisible();
+    await expect(form.getByRole('heading', { name: 'Choose the right starting point.' })).toBeVisible();
 
     const [headerBounds, formBounds] = await Promise.all([
       header.boundingBox(),

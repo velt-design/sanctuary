@@ -66,6 +66,14 @@ phone and email are required, while suburb, project brief and technical detail
 remain optional. Phone and email reachability validation belongs at the shared
 client/server boundary rather than in route-local form branches.
 
+The `/contact` presentation maps three sales pathways onto that same intake:
+Simple and Custom remain residential; Commercial / Professional resolves to the
+selected commercial or professional audience. Organisation, project role and
+project stage stay optional project context and do not create another intake or
+email owner. A Contact Simple continuation uses the same authenticated frozen
+calculation reference and `simpleCoverStatus` as the dedicated Simple page, so
+the server-owned verified-pricing and autoresponder behavior below is unchanged.
+
 Portal transactional email and marketing contact/enquiry email use thin server-only adapters over `@sp/email-provider`. The package normalizes the message, enforces a bounded timeout/abort contract, classifies provider outcomes, and keeps raw provider responses out of app errors and logs. Existing stable marketing IDs are forwarded as compatibility idempotency keys where available. Quote/invoice delivery remains request-bound but is now crash/replay safe: `private.commercial_email_intents` freezes the exact request and provider key, checkpoints provider acceptance before business finalisation, and lets a later request resume the same identity. This does not enable a worker producer/handler or move automation/outbox ownership.
 
 The durable JOB-03 email coordinator is a reusable worker primitive, not an enabled handler. It freezes one exact job/effect-derived Resend key, recipients, subject, content, attachments, tags, token bytes, request hash, and 20-hour automatic retry expiry. Its checkpoints are `prepared`, `dispatch_started`, `provider_accepted`, `finalised`, and `uncertain`. A retry after uncertainty may use only that same key and byte-identical request before expiry/attempt exhaustion; it must never manufacture a new key. Provider acceptance is evidence to resume an idempotent business finaliser, not business completion.

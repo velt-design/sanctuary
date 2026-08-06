@@ -274,15 +274,17 @@ section after it, while the product hub plus product and project details keep
 one short final project action.
 
 Contact-page or embedded-enquiry changes should run
-`npx vitest run apps/marketing/lib/enquiryFormContract.test.ts apps/marketing/app/contact/contactFormModel.test.ts apps/marketing/app/contact/enquiryRoute.test.ts apps/marketing/lib/enquiryAttachments.test.ts apps/marketing/app/api/enquiry/route.test.ts`
+`npx vitest run apps/marketing/lib/enquiryFormContract.test.ts apps/marketing/app/contact/contactFormModel.test.ts apps/marketing/app/contact/contactJourney.test.ts apps/marketing/app/contact/enquiryRoute.test.ts apps/marketing/lib/enquiryAttachments.test.ts apps/marketing/lib/simpleCoverEnquiryPayload.test.ts apps/marketing/lib/simpleCoverAnalytics.test.ts apps/marketing/app/api/enquiry/route.test.ts`
 and
 `npx playwright test playwright/marketing.contact.spec.ts playwright/marketing.seo-landing.spec.ts playwright/marketing.seo-programme.spec.ts playwright/marketing.acrylic-foundation.spec.ts playwright/marketing.acrylic-copy-variant.spec.ts --config=playwright.marketing.config.ts`
 before the full marketing browser lane. These focused suites cover 320,
 390, 430, tablet and desktop widths; server-rendered query preselection;
 persistent labels and form metadata; minimum 44 pixel targets; reduced motion;
 zero textual or generated em dashes; no horizontal overflow or nested content
-scroll; a neutral/residential/commercial/professional/project/product entry
-matrix; focused client validation; retained values and UUID reuse after API
+scroll; a neutral/Simple/Custom/commercial/professional/project/product entry
+matrix; secure priced-calculator handoff; branch switching with shared-value
+retention and branch-only exclusion; the 44-pixel `04 Additional project
+details` summary; focused client validation; retained values and UUID reuse after API
 failure; duplicate-submit exclusion; consent-controlled events; attribution;
 attachment policy errors; visible failure when attachment signing or upload is
 unavailable; and lower-case

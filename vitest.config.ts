@@ -23,6 +23,8 @@ export default defineConfig({
       { find: '@/lib/enquiryFormContract', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquiryFormContract.ts') },
       { find: '@/lib/simpleCoverCalculator', replacement: path.resolve(__dirname, 'apps/marketing/lib/simpleCoverCalculator.ts') },
       { find: '@/lib/simpleCoverHandoff', replacement: path.resolve(__dirname, 'apps/marketing/lib/simpleCoverHandoff.ts') },
+      { find: '@/lib/simpleCoverEnquiryPayload', replacement: path.resolve(__dirname, 'apps/marketing/lib/simpleCoverEnquiryPayload.ts') },
+      { find: '@/lib/simpleCoverAnalytics', replacement: path.resolve(__dirname, 'apps/marketing/lib/simpleCoverAnalytics.ts') },
       { find: '@/lib/simpleCoverPricing.server', replacement: path.resolve(__dirname, 'apps/marketing/lib/simpleCoverPricing.server.ts') },
       { find: '@/lib/guidedJourneyContract', replacement: path.resolve(__dirname, 'apps/marketing/lib/guidedJourneyContract.ts') },
       { find: '@/lib/guidedJourneyContext', replacement: path.resolve(__dirname, 'apps/marketing/lib/guidedJourneyContext.ts') },

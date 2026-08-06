@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   getSimpleCoverViewportCategory,
+  getSimpleCoverSourcePath,
   pushSimpleCoverFunnelEvent,
 } from './simpleCoverAnalytics';
 
@@ -18,6 +19,9 @@ describe('pushSimpleCoverFunnelEvent', () => {
     expect(getSimpleCoverViewportCategory(641)).toBe('tablet');
     expect(getSimpleCoverViewportCategory(1_024)).toBe('tablet');
     expect(getSimpleCoverViewportCategory(1_025)).toBe('desktop');
+    expect(getSimpleCoverSourcePath('standalone')).toBe('/simple-cover-calculator');
+    expect(getSimpleCoverSourcePath('embedded')).toBe('/simple-pergolas-auckland');
+    expect(getSimpleCoverSourcePath('contact')).toBe('/contact');
   });
 
   it('emits only the closed, non-personal funnel fields', () => {
@@ -50,7 +54,7 @@ describe('pushSimpleCoverFunnelEvent', () => {
       {
         placement: 'campaign' as 'embedded',
         result_status: 'priced',
-        source_path: '/contact' as '/simple-pergolas-auckland',
+        source_path: '/unexpected' as '/simple-pergolas-auckland',
         viewport_category: 'desktop',
         calculation_attached: true,
       },
@@ -60,5 +64,15 @@ describe('pushSimpleCoverFunnelEvent', () => {
       null as unknown as Parameters<typeof pushSimpleCoverFunnelEvent>[1],
     )).toBe(false);
     expect((window as TrackingWindow).dataLayer).toBeUndefined();
+  });
+
+  it('accepts the governed contact placement without adding personal data', () => {
+    expect(pushSimpleCoverFunnelEvent('simple_calculator_form_start', {
+      placement: 'contact',
+      result_status: 'priced',
+      source_path: '/contact',
+      viewport_category: 'desktop',
+      calculation_attached: true,
+    })).toBe(true);
   });
 });

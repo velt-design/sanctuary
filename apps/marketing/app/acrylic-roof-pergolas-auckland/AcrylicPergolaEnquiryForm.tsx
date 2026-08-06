@@ -19,6 +19,7 @@ import {
 } from '@/lib/enquiryFormContract';
 import { getEnquiryAnalyticsProperties, getEnquiryContextProperties, type EnquiryAudience, type EnquiryContext } from '@/lib/enquiryContext';
 import type { SimpleCoverHandoff } from '@/lib/simpleCoverHandoff';
+import { buildSimpleCoverEnquiryPayload } from '@/lib/simpleCoverEnquiryPayload';
 import type { EnquiryBriefField } from '@/components/seo-landing/types';
 import SimpleCoverEnquirySummary from './SimpleCoverEnquirySummary';
 
@@ -312,9 +313,7 @@ export default function AcrylicPergolaEnquiryForm({
 
       const preferredStyle = isSimpleCover ? 'pitched' : String(formData.get('style') ?? '');
       const pageSpecificDetails = Object.fromEntries(briefFields.map((field) => [field.name, String(formData.get(field.name) ?? '').trim() || null]));
-      const simpleCoverInput = simpleCoverEstimate?.input ?? null;
-      const hasPricedSimpleCoverReference = simpleCoverEstimate?.status === 'priced'
-        && Boolean(simpleCoverEstimate.calculationRef);
+      const simpleCoverPayload = buildSimpleCoverEnquiryPayload(simpleCoverEstimate);
       const response = await fetch('/api/enquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -327,23 +326,17 @@ export default function AcrylicPergolaEnquiryForm({
           email: String(formData.get('email') ?? '').trim(),
           suburb: String(formData.get('suburb') ?? '').trim(),
           message: String(formData.get('message') ?? '').trim(),
-          dimensions: {
-            widthM: simpleCoverInput && !hasPricedSimpleCoverReference
-              ? simpleCoverInput.widthMm / 1_000
-              : isSimpleCover ? null : String(formData.get('widthM') ?? '').trim() || null,
-            depthM: simpleCoverInput && !hasPricedSimpleCoverReference
-              ? simpleCoverInput.projectionMm / 1_000
-              : isSimpleCover ? null : String(formData.get('depthM') ?? '').trim() || null,
-            heightM: isSimpleCover ? null : String(formData.get('heightM') ?? '').trim() || null,
+          dimensions: isSimpleCover ? simpleCoverPayload.dimensions : {
+            widthM: String(formData.get('widthM') ?? '').trim() || null,
+            depthM: String(formData.get('depthM') ?? '').trim() || null,
+            heightM: String(formData.get('heightM') ?? '').trim() || null,
           },
           style: preferredStyle === 'unsure' ? '' : preferredStyle,
           roofMaterials,
           addOns,
-          calculationRef: hasPricedSimpleCoverReference
-            ? simpleCoverEstimate.calculationRef
-            : null,
+          calculationRef: isSimpleCover ? simpleCoverPayload.calculationRef : null,
           simpleCoverStatus: isSimpleCover
-            ? simpleCoverEstimate?.status ?? 'unconfigured'
+            ? simpleCoverPayload.simpleCoverStatus
             : null,
           files: attachments.files,
           projectDetails: {
@@ -353,16 +346,7 @@ export default function AcrylicPergolaEnquiryForm({
             accessories: selectedAccessories,
             consentStatus: String(formData.get('consentStatus') ?? '').trim() || null,
             timeframe: String(formData.get('timeframe') ?? '').trim() || null,
-            ...(isSimpleCover ? {
-              simpleCover: simpleCoverInput ? {
-                status: simpleCoverEstimate?.status ?? 'unconfigured',
-                calculationAttached: simpleCoverEstimate?.status === 'priced',
-                ...(!hasPricedSimpleCoverReference ? {
-                  deckLevel: simpleCoverInput.level,
-                  connection: simpleCoverInput.connection,
-                } : {}),
-              } : null,
-            } : {}),
+            ...(isSimpleCover ? simpleCoverPayload.projectDetails : {}),
             ...pageSpecificDetails,
           },
           utm: attribution.utm,

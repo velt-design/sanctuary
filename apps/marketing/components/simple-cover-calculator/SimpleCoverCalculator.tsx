@@ -45,12 +45,12 @@ import {
 } from '@/lib/simpleCoverHandoff';
 import {
   getSimpleCoverViewportCategory,
+  getSimpleCoverSourcePath,
   pushSimpleCoverFunnelEvent,
   type SimpleCoverFunnelEventName,
   type SimpleCoverFunnelProperties,
   type SimpleCoverPlacement,
   type SimpleCoverResultStatus,
-  type SimpleCoverSourcePath,
 } from '../../lib/simpleCoverAnalytics';
 import styles from './SimpleCoverCalculator.module.css';
 
@@ -74,12 +74,6 @@ export type SimpleCoverCalculatorProps = {
 };
 
 const DEFAULT_CONTINUATION_HREF = '/simple-pergolas-auckland#initial-estimate';
-
-function sourcePathForPlacement(placement: SimpleCoverPlacement): SimpleCoverSourcePath {
-  return placement === 'embedded'
-    ? '/simple-pergolas-auckland'
-    : '/simple-cover-calculator';
-}
 
 function formatMetres(mm: number): string {
   return `${(mm / 1_000).toFixed(1)} m`;
@@ -558,7 +552,7 @@ export default function SimpleCoverCalculator({
   const resultStatus = currentResultStatus(result, input, pending);
   const resultPending = resultStatus === 'pending';
   const hasCalculation = calculationIsAttached(result, input, pending);
-  const sourcePath = sourcePathForPlacement(placement);
+  const sourcePath = getSimpleCoverSourcePath(placement);
 
   const analyticsProperties = useCallback((
     status: SimpleCoverResultStatus = resultStatus,
@@ -583,12 +577,15 @@ export default function SimpleCoverCalculator({
   }, [trackEvent]);
 
   useEffect(() => {
-    if (placement !== 'embedded') {
+    if (placement === 'standalone') {
       setInputReady(true);
       return;
     }
 
-    if (window.location.hash === '#initial-estimate') {
+    if (
+      (placement === 'embedded' && window.location.hash === '#initial-estimate')
+      || placement === 'contact'
+    ) {
       const storedHandoff = readStoredSimpleCoverHandoff();
       if (storedHandoff) setInput(storedHandoff.input);
     }
@@ -692,11 +689,11 @@ export default function SimpleCoverCalculator({
       data-simple-cover-calculator
       data-placement={placement}
     >
-      <header className={`${styles.intro} ${placement === 'embedded' ? styles.embeddedIntro : ''}`.trim()}>
+      <header className={`${styles.intro} ${placement !== 'standalone' ? styles.embeddedIntro : ''}`.trim()}>
         <div>
           <p className={styles.eyebrow}>Simple cover calculator</p>
           <h2 id="simple-cover-calculator-title">
-            {placement === 'embedded'
+            {placement !== 'standalone'
               ? (
                 <>
                   <span className={styles.embeddedDesktopTitle}>
@@ -711,15 +708,14 @@ export default function SimpleCoverCalculator({
           </h2>
         </div>
         <p>
-          {placement === 'embedded'
+          {placement !== 'standalone'
             ? 'Choose the dimensions, deck level and house connection. Your live estimate and concept plan update together.'
             : 'Adjust the footprint and deck level. The estimate follows the same published costing configuration used by our staff calculator.'}
         </p>
       </header>
 
-      <form
+      <div
         className={styles.workspace}
-        onSubmit={(event) => event.preventDefault()}
         onChangeCapture={trackFirstInteraction}
       >
         <div className={styles.stageShell} data-calculator-stage-shell>
@@ -792,7 +788,7 @@ export default function SimpleCoverCalculator({
             onContinue={continueWithHandoff}
           />
         </div>
-      </form>
+      </div>
     </section>
   );
 }

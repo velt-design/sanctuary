@@ -7,9 +7,9 @@ export type SimpleCoverFunnelEventName =
   | 'simple_calculator_cta_click'
   | 'simple_calculator_form_start';
 
-export type SimpleCoverPlacement = 'standalone' | 'embedded';
+export type SimpleCoverPlacement = 'standalone' | 'embedded' | 'contact';
 export type SimpleCoverResultStatus = 'pending' | 'priced' | 'custom' | 'unavailable';
-export type SimpleCoverSourcePath = '/simple-cover-calculator' | '/simple-pergolas-auckland';
+export type SimpleCoverSourcePath = '/simple-cover-calculator' | '/simple-pergolas-auckland' | '/contact';
 export type SimpleCoverViewportCategory = 'mobile' | 'tablet' | 'desktop';
 
 export type SimpleCoverFunnelProperties = {
@@ -31,11 +31,12 @@ const allowedEvents = new Set<SimpleCoverFunnelEventName>([
   'simple_calculator_cta_click',
   'simple_calculator_form_start',
 ]);
-const allowedPlacements = new Set<SimpleCoverPlacement>(['standalone', 'embedded']);
+const allowedPlacements = new Set<SimpleCoverPlacement>(['standalone', 'embedded', 'contact']);
 const allowedStatuses = new Set<SimpleCoverResultStatus>(['pending', 'priced', 'custom', 'unavailable']);
 const allowedSourcePaths = new Set<SimpleCoverSourcePath>([
   '/simple-cover-calculator',
   '/simple-pergolas-auckland',
+  '/contact',
 ]);
 const allowedViewportCategories = new Set<SimpleCoverViewportCategory>([
   'mobile',
@@ -47,6 +48,12 @@ export function getSimpleCoverViewportCategory(viewportWidth: number): SimpleCov
   if (viewportWidth <= 640) return 'mobile';
   if (viewportWidth <= 1024) return 'tablet';
   return 'desktop';
+}
+
+export function getSimpleCoverSourcePath(placement: SimpleCoverPlacement): SimpleCoverSourcePath {
+  if (placement === 'embedded') return '/simple-pergolas-auckland';
+  if (placement === 'contact') return '/contact';
+  return '/simple-cover-calculator';
 }
 
 /**

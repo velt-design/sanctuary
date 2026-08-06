@@ -264,9 +264,13 @@ visible and cannot be upgraded by presentation code.
 
 Visible product-page copy and decorative markers use natural punctuation without em dashes. Catalogue unit coverage governs the ten product records, while the product browser suite checks rendered copy and generated marker content on representative routes.
 
-`/contact` is an approved route-scoped adoption. Its small server page owns the editorial introduction, governed Warkworth project image and query-string preselection before hydration. `ContactEnquiryForm.tsx` owns one responsive form tree at every width, and `contact.css` owns the square, rule-led Foundation presentation. The three retired legacy contact stylesheets and the duplicated desktop/mobile page trees must not be restored.
+`/contact` is an approved route-scoped adoption. Its small server page owns the unchanged editorial introduction, governed Warkworth project image and validated query context before hydration. `ContactEnquiryForm.tsx` owns one responsive submission tree at every width, `contactJourney.ts` owns the local Simple/Custom/Commercial-Professional presentation mapping, and `contact.css` owns the square, rule-led Foundation presentation. The three retired legacy contact stylesheets and duplicated desktop/mobile page trees must not be restored.
 
-The direct and embedded residential, custom, commercial and professional enquiry forms share the contract in `apps/marketing/lib/enquiryFormContract.ts`. Required fields match the intake API: project type, name, phone and email; project suburb, project brief and technical choices are optional. Both form families keep project type, suburb, brief, contact details and files in the first layer. Dimensions, pergola form, roof approach and other options sit inside one native `Add optional project details` disclosure. Their upload controls use the governed attachment accept list and the shared concise eight-file, 20 MB total helper. Do not add route-local required-field rules or upload copy.
+The contact opening mirrors the homepage with three local sales pathways without changing the canonical intake audience: Simple and Custom both submit as residential, while Commercial / Professional asks which governed business audience applies. Trusted finder direction, Simple source route, or commercial/professional audience may preselect the matching pathway; a generic residential audience remains open because it does not distinguish Simple from Custom. Switching pathways retains shared suburb, brief, files and contact fields while unmounted branch-only organisation, role and stage values do not enter another branch's payload.
+
+Simple embeds the shared marketing calculator with `placement: contact`; the calculator is not a nested form. Shared enquiry fields remain closed until the visitor continues with a priced, Custom or unavailable result. The handoff reuses the shared authenticated calculation-reference payload owner and summary; no costing or geometry logic is copied into Contact. Custom retains the residential project brief. Commercial / Professional adds organisation, project role and project stage, while the shared message becomes project scope. Custom and business paths keep dimensions, pergola form, roof approach and other options inside one native full-width `04 Additional project details` disclosure with an Optional label and visible plus/minus state. The complete summary remains keyboard-operable and at least 44 pixels high.
+
+The direct and embedded residential, custom, commercial and professional enquiry forms continue to share the contract in `apps/marketing/lib/enquiryFormContract.ts`. Name, phone and email remain required once a contact pathway reaches the shared form; project suburb, project brief/scope and technical choices remain optional. Upload controls use the governed attachment accept list and the shared concise eight-file, 20 MB total helper. Do not add route-local reachability rules or upload copy.
 
 The enhanced forms keep the existing `/api/enquiry` payload and one
 browser-generated submission UUID across retries. Their no-JavaScript action
@@ -283,8 +287,9 @@ or successful enhanced submissions retain entered values. A synchronous ref
 lock closes the double-click window before any asynchronous upload or request
 begins. The shared enquiry-context contract server-renders validated audience,
 source path, source component, project slug and product slug values above the
-form and repeats recognised context in the success state; direct `/contact`
-stays neutral and unknown values are ignored. Visible and generated contact
+form; direct `/contact` stays neutral and unknown values are ignored. The
+enhanced Contact payload adds only the closed local `contactPathway`, project
+role and project stage values to project details. Visible and generated contact
 content must not use em dashes.
 
 Routes that already end in this embedded form do not render a second generic

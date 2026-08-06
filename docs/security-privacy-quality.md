@@ -111,6 +111,16 @@ The five funnel events remain inactive until analytics is enabled and are not
 backfilled. The focused form reuses the existing attachment, consent,
 attribution, validation, idempotency and fallback contracts.
 
+`/contact` may also render the shared calculator with the closed `contact`
+placement and `/contact` source path. The local pathway selector is presentation,
+not a new intake audience: Simple and Custom resolve to `residential`, while the
+combined business path requires `commercial` or `professional`. Contact submit
+events may include only the closed `contact_pathway` value. Calculator funnel
+events keep the existing five-field allowlist, and neither event family may
+include organisation, role, stage, free text, contact data, dimensions, price or
+the opaque calculation reference. Simple calculator state reaches enquiry only
+in the POST body; the URL remains context-only.
+
 The Simple calculation reference is compact authenticated ciphertext, not a
 browser-selected pricing source. Its AES-256-GCM key is derived server-side from
 the already-required service-role secret with a Simple-specific domain; local
@@ -138,7 +148,10 @@ route context and repeated project options, assigns a server UUID, and redirects
 a successful submission to a noindex confirmation route. Optional file inputs
 remain disabled until enhancement because signed private uploads require
 JavaScript. Project type, name, phone and email are required through the same
-client/server intake contract.
+client/server intake contract. On `/contact`, JavaScript enhancement may present
+three sales pathways over that contract; the no-JavaScript form keeps the direct
+residential/commercial/professional project-type POST and never enables the
+calculator or private uploads.
 The enhanced success event's `lead_event_id` reuses the browser-generated
 submission UUID that the intake boundary already validates. This non-personal
 opaque identifier allows one analytics success event to reconcile exactly with
