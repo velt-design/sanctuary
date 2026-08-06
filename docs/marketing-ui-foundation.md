@@ -402,31 +402,29 @@ Professional`. The commercial/professional choice reveals a second three-card
 radio group for `Extending a Venue`, `Builder or Contractor` and `Architects and
 Designers`; it is part of the same owner and page, not a new route or homepage
 variant. The optional six-priority brief remains available only for the two
-residential choices. The opening is now cinematic without changing this owner:
-an immediate charcoal welcome veil presents `WELCOME TO` in muted grey and
-`SANCTUARY PERGOLAS` in white, with the shared header inaccessible and visually
-absent. It leaves as soon as the priority Warkworth hero image is decoded, or
-after a bounded 1.4-second fallback, and removes the fade for reduced-motion
-visitors. The first full viewport is the project image with a transparent shared
-header, no enquiry action and one bottom-centred bold open chevron, without a
-stem, label, background or visible enclosing shape. Its Warkworth interior uses
-the dedicated portrait `warkworth-gable-02.jpg` art direction through 760px and
-the existing wide project image above that breakpoint. Once the welcome veil is
-gone, the project image remains unobstructed for 500ms through the 900px mobile and
-tablet range, or 400ms from 901px upward, before the existing eyebrow, headline,
-support and Warkworth attribution transition into place without moving the viewport.
-The same fade and rise apply across screen types. Reduced-motion visitors receive the story immediately without
-animation. A deliberate forward wheel gesture, upward touch swipe, forward keyboard
-scroll or reveal-chevron activation wins immediately when it precedes the timer;
-the following forward action advances to the measured question-and-three-choices wrapper rather than
-the finder section's padded edge. When that complete wrapper fits between the
-live header and visual viewport bottom it is centred in the available space;
-otherwise its top is aligned eight pixels beneath the header. The matching
-chevrons provide the same two steps. The bounded controller releases at the finder boundary, keeps reverse
-scrolling native and does not add layout height dynamically. The header stays transparent and withholds its
-desktop project action until the hero journey is left, then returns to its opaque
-surface. JavaScript-disabled visitors bypass the veil and receive the complete
-hero story plus the existing direct fallback. Mobile keeps compact complete
+residential choices. The opening is cinematic without changing this owner. The
+single H1, `Outdoor spaces designed around the way you live.`, is immediately
+visible over the charcoal welcome veil and remains in the same position while
+that veil reveals the priority Warkworth hero image. The shared header is
+inaccessible and visually absent while the veil exists. The veil leaves as soon
+as the image is decoded, or after a bounded 1.4-second fallback, and its fade is
+removed for reduced-motion visitors. The image uses the dedicated portrait
+`warkworth-gable-02.jpg` art direction through 760px and the existing wide
+project image above that breakpoint. After the image is visible, the eyebrow,
+support copy, Warkworth attribution and one bottom-centred continue chevron fade
+and rise into place after 500ms through the 900px mobile and tablet range, or
+400ms from 901px upward. Reduced-motion visitors receive this supporting layer
+immediately. The supporting reveal waits while the mobile menu is open. The
+chevron has no stem, label, background or visible enclosing shape and advances
+to the measured question-and-three-choices wrapper. When that complete wrapper
+fits between the live header and visual viewport bottom it is centred in the
+available space; otherwise its top is aligned eight pixels beneath the header.
+The hero owns exactly one viewport and does not intercept wheel, touch or
+keyboard input; ordinary scrolling is native and there is no scroll-controlled
+copy stage or extended sticky runway. The header stays transparent and withholds
+its desktop project action until the hero boundary is left, then returns to its
+opaque surface. JavaScript-disabled visitors bypass the veil and receive the
+complete hero story plus the existing direct fallback. Mobile keeps compact complete
 choice rows at 320-430px, tablet keeps full-width landscape rows through 900px,
 and short-height layouts retain every required story element without colliding
 with the header. Through 760px the first three starting-point choices become
@@ -575,9 +573,10 @@ existing enquiry schema.
 
 The focused production owner is
 `playwright/marketing.home-project-finder.spec.ts`. It covers root metadata and
-schema, the retired-route redirect, 320-1440 responsive behavior, mobile hero
-height, the decoded-image welcome deadline, reduced-motion exit, image and story
-stages, both down controls, transparent-to-solid root header boundary,
+schema, the retired-route redirect, 320-1440 responsive behavior, one-viewport
+mobile hero height, the decoded-image welcome deadline, stable loading-to-image
+H1, responsive supporting-copy delay, reduced-motion exit, the single continue
+control, native input behavior, transparent-to-solid root header boundary,
 URL/history state, keyboard and no-JavaScript access, consent-aware analytics,
 lazy image loading, service and residential project continuation, all five
 tailored results, mobile-menu state, overflow and the complete residential and

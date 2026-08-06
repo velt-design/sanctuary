@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 2,
+  "capturedAt": "2026-08-06T06:39:54.588Z",
+  "buildId": null,
+  "journeys": [
+    {
+      "name": "projects-to-dashboard",
+      "kind": "warm-navigation",
+      "feedbackMs": 17,
+      "usefulContentMs": 1859,
+      "backgroundSettledMs": 6877,
+      "productTargetMet": false,
+      "regressionBudgetMet": false,
+      "requestCount": 9,
+      "transferBytes": 102579,
+      "longestTaskMs": 0,
+      "blockingOverlaySeen": false
+    },
+    {
+      "name": "dashboard-to-schedule",
+      "kind": "warm-navigation",
+      "feedbackMs": 13,
+      "usefulContentMs": 9468,
+      "backgroundSettledMs": 14474,
+      "productTargetMet": false,
+      "regressionBudgetMet": false,
+      "requestCount": 11,
+      "transferBytes": 139644,
+      "longestTaskMs": 0,
+      "blockingOverlaySeen": false
+    },
+    {
+      "name": "dashboard-to-work-queue",
+      "kind": "warm-navigation",
+      "feedbackMs": 14,
+      "usefulContentMs": 6932,
+      "backgroundSettledMs": 11933,
+      "productTargetMet": false,
+      "regressionBudgetMet": false,
+      "requestCount": 8,
+      "transferBytes": 15800,
+      "longestTaskMs": 0,
+      "blockingOverlaySeen": false
+    },
+    {
+      "name": "dashboard-to-design-list",
+      "kind": "warm-navigation",
+      "feedbackMs": 13,
+      "usefulContentMs": 4899,
+      "backgroundSettledMs": 9905,
+      "productTargetMet": false,
+      "regressionBudgetMet": false,
+      "requestCount": 17,
+      "transferBytes": 38932,
+      "longestTaskMs": 0,
+      "blockingOverlaySeen": false
+    },
+    {
+      "name": "dashboard-to-running-jobs",
+      "kind": "warm-navigation",
+      "feedbackMs": 15,
+      "usefulContentMs": 1846,
+      "backgroundSettledMs": 6851,
+      "productTargetMet": false,
+      "regressionBudgetMet": false,
+      "requestCount": 9,
+      "transferBytes": 18332,
+      "longestTaskMs": 0,
+      "blockingOverlaySeen": false
+    }
+  ]
+}

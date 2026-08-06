@@ -205,7 +205,7 @@ body.mobile-menu-open header.site .site-brand{ color:var(--fg) !important; }
 body.mobile-menu-open .mobile-toggle{ background:transparent !important; color:var(--fg) !important; }
 body.mobile-menu-open .mobile-toggle:active{background:color-mix(in srgb, var(--headerSurface) 78%, var(--accentRed) 22%) !important}
 
-/* The production homepage keeps its navigation over both cinematic hero stages. */
+/* The production homepage keeps its navigation over the full-viewport hero. */
 body:has(main[data-project-finder-home-variant]) header.site.site--hero-overlay:not(.site--hero-scrolled){
   border-bottom-color:rgba(255,255,255,.5);
   background:transparent;

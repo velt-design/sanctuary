@@ -18,7 +18,6 @@ type CinematicHeroProps = {
   media: ProjectFinderHomepageMedia['hero'];
 };
 
-type HeroStage = 'image' | 'story';
 type WelcomePhase = 'visible' | 'leaving' | 'hidden';
 
 const WELCOME_MINIMUM_MS = 450;
@@ -27,8 +26,6 @@ const WELCOME_FADE_MS = 420;
 const STORY_AUTO_REVEAL_DESKTOP_DELAY_MS = 400;
 const STORY_AUTO_REVEAL_MOBILE_DELAY_MS = 500;
 const MOBILE_HERO_MEDIA_QUERY = '(max-width: 900px)';
-const WHEEL_GESTURE_RESET_MS = 180;
-const TOUCH_SWIPE_THRESHOLD_PX = 36;
 const FINDER_VIEWPORT_GAP_PX = 8;
 
 function prefersReducedMotion() {
@@ -53,21 +50,10 @@ function ChevronMarker() {
 
 export default function CinematicHero({ media }: CinematicHeroProps) {
   const [heroDecoded, setHeroDecoded] = useState(false);
-  const [heroStage, setHeroStage] = useState<HeroStage>('image');
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [storyCommitted, setStoryCommitted] = useState(false);
+  const [storyVisible, setStoryVisible] = useState(false);
   const [welcomePhase, setWelcomePhase] = useState<WelcomePhase>('visible');
-  const journeyRef = useRef<HTMLDivElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const imageArrowRef = useRef<HTMLButtonElement>(null);
-  const storyArrowRef = useRef<HTMLButtonElement>(null);
-  const heroStageRef = useRef<HeroStage>('image');
-  const storyCommittedRef = useRef(false);
-  const touchGestureHandledRef = useRef(false);
-  const touchStartYRef = useRef<number | null>(null);
   const welcomeStartedAtRef = useRef(0);
-  const wheelGestureHandledRef = useRef(false);
-  const wheelGestureTimerRef = useRef(0);
 
   const mobileHero = getImageProps({
     alt: media.alt,
@@ -127,20 +113,8 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
     };
   }, [heroDecoded, reducedMotion]);
 
-  const revealStoryCopy = useCallback(() => {
-    if (storyCommittedRef.current) return;
-    storyCommittedRef.current = true;
-    heroStageRef.current = 'story';
-    setStoryCommitted(true);
-    setHeroStage('story');
-  }, []);
-
   useEffect(() => {
-    if (
-      !heroDecoded
-      || welcomePhase !== 'hidden'
-      || storyCommitted
-    ) return undefined;
+    if (welcomePhase !== 'hidden' || storyVisible) return undefined;
 
     let delayElapsed = reducedMotion;
     let revealTimer = 0;
@@ -157,7 +131,7 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
         || document.visibilityState !== 'visible'
         || document.body.classList.contains('mobile-menu-open')
       ) return;
-      revealStoryCopy();
+      setStoryVisible(true);
       stopWaiting();
     };
 
@@ -181,60 +155,7 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
     }
 
     return stopWaiting;
-  }, [
-    heroDecoded,
-    reducedMotion,
-    revealStoryCopy,
-    storyCommitted,
-    welcomePhase,
-  ]);
-
-  const syncHeroStage = useCallback(() => {
-    const journey = journeyRef.current;
-    if (!journey) return;
-    const revealedDistance = Math.max(0, -journey.getBoundingClientRect().top);
-    const revealThreshold = Math.min(window.innerHeight * .26, 280);
-    const nextStage = storyCommittedRef.current
-      || revealedDistance >= revealThreshold
-      ? 'story'
-      : 'image';
-    heroStageRef.current = nextStage;
-    setHeroStage(nextStage);
-  }, []);
-
-  useEffect(() => {
-    let rafId = 0;
-    const scheduleStageSync = () => {
-      if (rafId) return;
-      rafId = window.requestAnimationFrame(() => {
-        rafId = 0;
-        syncHeroStage();
-      });
-    };
-
-    syncHeroStage();
-    window.addEventListener('scroll', scheduleStageSync, { passive: true });
-    window.addEventListener('resize', scheduleStageSync);
-    return () => {
-      if (rafId) window.cancelAnimationFrame(rafId);
-      window.removeEventListener('scroll', scheduleStageSync);
-      window.removeEventListener('resize', scheduleStageSync);
-    };
-  }, [syncHeroStage]);
-
-  useEffect(() => {
-    const activeElement = document.activeElement;
-    if (heroStage === 'story' && activeElement === imageArrowRef.current) {
-      const focusDelay = reducedMotion ? 0 : WELCOME_FADE_MS;
-      const focusTimer = window.setTimeout(() => {
-        headingRef.current?.focus({ preventScroll: true });
-      }, focusDelay);
-      return () => window.clearTimeout(focusTimer);
-    } else if (heroStage === 'image' && activeElement === storyArrowRef.current) {
-      imageArrowRef.current?.focus({ preventScroll: true });
-    }
-    return undefined;
-  }, [heroStage, reducedMotion]);
+  }, [reducedMotion, storyVisible, welcomePhase]);
 
   const handleHeroImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
     const image = event.currentTarget;
@@ -242,17 +163,6 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
       .catch(() => undefined)
       .finally(() => setHeroDecoded(true));
   };
-
-  const revealStory = useCallback(() => {
-    const journey = journeyRef.current;
-    if (!journey) return;
-    revealStoryCopy();
-    const journeyTop = window.scrollY + journey.getBoundingClientRect().top;
-    window.scrollTo({
-      behavior: scrollBehavior(),
-      top: journeyTop + Math.min(window.innerHeight * .68, 620),
-    });
-  }, [revealStoryCopy]);
 
   const continueToFinder = useCallback(() => {
     const opening = document.getElementById('project-finder-opening');
@@ -280,101 +190,6 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
     });
   }, []);
 
-  const advanceHeroJourney = useCallback(() => {
-    if (heroStageRef.current === 'image') {
-      heroStageRef.current = 'story';
-      revealStory();
-      return;
-    }
-    continueToFinder();
-  }, [continueToFinder, revealStory]);
-
-  useEffect(() => {
-    if (welcomePhase !== 'hidden') return undefined;
-
-    const journeyIsActive = () => {
-      const journey = journeyRef.current;
-      const finder = document.getElementById('project-finder');
-      if (!journey || !finder) return false;
-      const journeyRect = journey.getBoundingClientRect();
-      const finderTop = window.scrollY + finder.getBoundingClientRect().top;
-      return journeyRect.top <= 1
-        && journeyRect.bottom > 1
-        && window.scrollY < finderTop - 1;
-    };
-
-    const handleWheel = (event: WheelEvent) => {
-      if (event.deltaY <= 0 || !journeyIsActive()) return;
-      event.preventDefault();
-      window.clearTimeout(wheelGestureTimerRef.current);
-      wheelGestureTimerRef.current = window.setTimeout(() => {
-        wheelGestureHandledRef.current = false;
-      }, WHEEL_GESTURE_RESET_MS);
-      if (wheelGestureHandledRef.current) return;
-      wheelGestureHandledRef.current = true;
-      advanceHeroJourney();
-    };
-
-    const handleTouchStart = (event: TouchEvent) => {
-      touchStartYRef.current = event.touches[0]?.clientY ?? null;
-      touchGestureHandledRef.current = false;
-    };
-
-    const handleTouchMove = (event: TouchEvent) => {
-      const startY = touchStartYRef.current;
-      const currentY = event.touches[0]?.clientY;
-      if (startY === null || currentY === undefined || !journeyIsActive()) return;
-      const forwardDistance = startY - currentY;
-      if (forwardDistance <= 0) return;
-
-      // Cancel native panning from the first forward movement. Waiting until
-      // the swipe threshold lets mobile Safari begin a momentum scroll that
-      // can carry the same gesture through both hero stages.
-      if (event.cancelable) event.preventDefault();
-      if (forwardDistance < TOUCH_SWIPE_THRESHOLD_PX) return;
-      if (touchGestureHandledRef.current) return;
-      touchGestureHandledRef.current = true;
-      advanceHeroJourney();
-    };
-
-    const resetTouchGesture = () => {
-      touchStartYRef.current = null;
-      touchGestureHandledRef.current = false;
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (
-        event.repeat
-        || event.altKey
-        || event.ctrlKey
-        || event.metaKey
-        || event.shiftKey
-        || !['ArrowDown', 'PageDown', ' '].includes(event.key)
-        || target?.closest('a, button, input, select, textarea, [contenteditable="true"]')
-        || !journeyIsActive()
-      ) return;
-      event.preventDefault();
-      advanceHeroJourney();
-    };
-
-    window.addEventListener('wheel', handleWheel, { passive: false });
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', resetTouchGesture, { passive: true });
-    window.addEventListener('touchcancel', resetTouchGesture, { passive: true });
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.clearTimeout(wheelGestureTimerRef.current);
-      window.removeEventListener('wheel', handleWheel);
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', resetTouchGesture);
-      window.removeEventListener('touchcancel', resetTouchGesture);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [advanceHeroJourney, welcomePhase]);
-
   return (
     <>
       {welcomePhase !== 'hidden' ? (
@@ -383,27 +198,18 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
           className={styles.welcome}
           data-homepage-welcome
           data-welcome-phase={welcomePhase}
-        >
-          <div className={styles.welcomeInner}>
-            <p className={styles.welcomeTitle}>
-              <span>Welcome to</span>
-              <strong>Sanctuary Pergolas</strong>
-            </p>
-          </div>
-        </div>
+        />
       ) : null}
 
       <div
-        ref={journeyRef}
         className={styles.heroJourney}
         data-homepage-hero-journey
-        data-hero-stage={heroStage}
+        data-story-visible={storyVisible ? 'true' : 'false'}
       >
         <section
           className={styles.hero}
           aria-labelledby="project-finder-home-heading"
           data-homepage-hero
-          data-homepage-hero-sticky
         >
           <div className={styles.heroMedia}>
             <picture>
@@ -438,11 +244,7 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
               <p className={styles.heroEyebrow}>
                 Fixed-roof pergola design and build in Auckland
               </p>
-              <h1
-                ref={headingRef}
-                id="project-finder-home-heading"
-                tabIndex={-1}
-              >
+              <h1 id="project-finder-home-heading">
                 Outdoor spaces designed around the way you live.
               </h1>
               <p className={styles.heroSupport}>
@@ -459,29 +261,16 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
           </Container>
 
           <button
-            ref={imageArrowRef}
             type="button"
-            aria-hidden={heroStage !== 'image'}
-            aria-label="Reveal the Sanctuary introduction"
-            className={`${styles.heroArrow} ${styles.heroArrowImage}`}
-            data-homepage-hero-arrow="reveal"
-            onClick={revealStory}
-            tabIndex={heroStage === 'image' ? 0 : -1}
-          >
-            <ChevronMarker />
-          </button>
-          <button
-            ref={storyArrowRef}
-            type="button"
-            aria-hidden={heroStage !== 'story'}
+            aria-hidden={!storyVisible}
             aria-label="Continue to choose your project starting point"
-            className={`${styles.heroArrow} ${styles.heroArrowStory}`}
+            className={styles.heroArrow}
             data-homepage-hero-arrow="continue"
             data-project-finder-event="project_finder_start_click"
             data-source-component="hero"
             data-step-number="1"
             onClick={continueToFinder}
-            tabIndex={heroStage === 'story' ? 0 : -1}
+            tabIndex={storyVisible ? 0 : -1}
           >
             <ChevronMarker />
           </button>
@@ -492,8 +281,13 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
         <style>{`
           [data-homepage-welcome] { display: none !important; }
           [data-homepage-hero-journey] { height: auto !important; }
-          [data-homepage-hero-sticky] { position: relative !important; }
           [data-homepage-hero-shade], [data-homepage-story] {
+            opacity: 1 !important;
+            transform: none !important;
+            visibility: visible !important;
+          }
+          [data-homepage-story] > * > *,
+          [data-homepage-story] > p {
             opacity: 1 !important;
             transform: none !important;
             visibility: visible !important;

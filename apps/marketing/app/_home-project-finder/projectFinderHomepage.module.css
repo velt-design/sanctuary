@@ -21,11 +21,8 @@
   position: fixed;
   inset: 0;
   z-index: 5000;
-  display: grid;
-  align-items: center;
   overflow: hidden;
   background: #171817;
-  color: white;
   opacity: 1;
   visibility: visible;
   transition:
@@ -40,42 +37,15 @@
   visibility: hidden;
 }
 
-.welcomeInner {
-  width: 100%;
-  padding-inline: clamp(1.25rem, 4vw, 4.5rem);
-}
-
-.welcomeTitle {
-  display: grid;
-  gap: .08em;
-  margin: 0;
-  font: 650 clamp(3rem, 9.2vw, 8.5rem)/.86 var(--font-display);
-  letter-spacing: -.065em;
-  text-transform: uppercase;
-  text-wrap: balance;
-}
-
-.welcomeTitle > span {
-  color: #70736f;
-}
-
-.welcomeTitle > strong {
-  max-width: 12ch;
-  color: #f7f7f3;
-  font: inherit;
-}
-
 .heroJourney {
   position: relative;
-  height: 210svh;
-  min-height: 72rem;
+  height: 100svh;
   background: var(--color-inverse-surface);
 }
 
 .hero {
-  position: sticky;
-  top: 0;
-  height: 100svh;
+  position: relative;
+  height: 100%;
   min-height: 0;
   display: flex;
   align-items: end;
@@ -105,19 +75,28 @@
   background:
     linear-gradient(90deg, rgba(9, 10, 8, .78) 0%, rgba(9, 10, 8, .34) 58%, rgba(9, 10, 8, .18) 100%),
     linear-gradient(0deg, rgba(9, 10, 8, .6) 0%, transparent 58%);
-  opacity: 0;
-  transition: opacity 700ms cubic-bezier(.22, 1, .36, 1);
 }
 
 .heroContent {
   position: absolute;
   inset: 0;
+  /* Keep the single H1 above both the welcome veil and decoded image. */
   z-index: 1;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: var(--grid-gap);
   align-items: end;
   padding-block: calc(var(--header-height) + 3rem) clamp(6.5rem, 10vh, 8rem);
+  pointer-events: none;
+}
+
+:global(body:has([data-homepage-welcome])) .heroContent {
+  z-index: 5001;
+}
+
+.heroEyebrow,
+.heroSupport,
+.heroProjectMeta {
   opacity: 0;
   transform: translateY(1.5rem);
   visibility: hidden;
@@ -127,12 +106,12 @@
     visibility 0s linear 700ms;
 }
 
-.heroJourney[data-hero-stage='story'] .heroShade,
-.heroJourney[data-hero-stage='story'] .heroContent {
+.heroJourney[data-story-visible='true'] :is(
+  .heroEyebrow,
+  .heroSupport,
+  .heroProjectMeta
+) {
   opacity: 1;
-}
-
-.heroJourney[data-hero-stage='story'] .heroContent {
   transform: translateY(0);
   visibility: visible;
   transition-delay: 0s;
@@ -218,6 +197,7 @@
   display: inline-flex;
   align-items: center;
   color: white;
+  pointer-events: auto;
   text-decoration: underline;
   text-underline-offset: .3rem;
 }
@@ -260,21 +240,15 @@
   transition: transform 240ms cubic-bezier(.22, 1, .36, 1);
 }
 
-.heroJourney[data-hero-stage='image'] .heroArrowImage,
-.heroJourney[data-hero-stage='story'] .heroArrowStory {
+.heroJourney[data-story-visible='true'] .heroArrow {
   opacity: 1;
   pointer-events: auto;
   transform: translateX(-50%) translateY(0);
   visibility: visible;
-  transition-delay: 0s;
-}
-
-.heroJourney[data-hero-stage='story'] .heroArrowStory {
   transition-delay: 320ms;
 }
 
-.heroJourney[data-hero-stage='image'] .heroArrowImage path,
-.heroJourney[data-hero-stage='story'] .heroArrowStory path {
+.heroJourney[data-story-visible='true'] .heroArrow path {
   transform-box: fill-box;
   transform-origin: center;
   animation: hero-chevron-nudge 2.4s cubic-bezier(.45, 0, .2, 1) .45s infinite;
@@ -1397,8 +1371,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .welcome,
-  .heroShade,
-  .heroContent,
+  .heroEyebrow,
+  .heroSupport,
+  .heroProjectMeta,
   .heroArrow,
   .heroArrow svg,
   .directionCard,
@@ -1408,8 +1383,7 @@
     transition: none;
   }
 
-  .heroJourney[data-hero-stage='image'] .heroArrowImage path,
-  .heroJourney[data-hero-stage='story'] .heroArrowStory path {
+  .heroJourney[data-story-visible='true'] .heroArrow path {
     animation: none;
   }
 

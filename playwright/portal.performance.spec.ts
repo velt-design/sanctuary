@@ -311,6 +311,35 @@ async function firstProjectOpenLink(page: Page): Promise<Locator> {
   return openLink;
 }
 
+async function prepareDashboardNavigation(page: Page, parent?: 'Projects' | 'Pricebook'): Promise<void> {
+  await page.goto('/dashboard');
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 60_000 });
+  if (!parent) return;
+  const expand = page.getByRole('button', { name: `Expand ${parent}`, exact: true }).first();
+  if (await expand.count()) await expand.click();
+}
+
+async function measurePortalShellNavigation(
+  page: Page,
+  input: {
+    name: string;
+    link: Locator;
+    heading: string;
+  },
+): Promise<void> {
+  await expect(input.link).toBeVisible({ timeout: 60_000 });
+  await input.link.hover();
+  await measureWarmJourney(
+    page,
+    input.name,
+    () => input.link.dispatchEvent('click'),
+    () => expect(
+      page.locator('[data-portal-route-progress="true"], [data-portal-instant-shell]').first(),
+    ).toBeVisible(),
+    () => expect(page.getByRole('heading', { name: input.heading, exact: true })).toBeVisible(),
+  );
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test.beforeEach(async ({ page }) => {
@@ -481,6 +510,45 @@ test('captures warm Contacts navigation', async ({ page }) => {
     },
     () => expect(page.locator('[data-contacts-index-background-ready="true"]')).toBeVisible({ timeout: 60_000 }),
   );
+});
+
+test('captures warm navigation to the remaining instant-shell routes', async ({ page }) => {
+  await page.goto('/staff/projects');
+  await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible({ timeout: 60_000 });
+  await measurePortalShellNavigation(page, {
+    name: 'projects-to-dashboard',
+    link: page.getByRole('link', { name: 'Dashboard', exact: true }).first(),
+    heading: 'Dashboard',
+  });
+
+  await prepareDashboardNavigation(page);
+  await measurePortalShellNavigation(page, {
+    name: 'dashboard-to-schedule',
+    link: page.getByRole('link', { name: 'Schedule', exact: true }).first(),
+    heading: 'Schedule',
+  });
+
+  await prepareDashboardNavigation(page, 'Projects');
+  await measurePortalShellNavigation(page, {
+    name: 'dashboard-to-work-queue',
+    link: page.getByRole('link', { name: 'Work Queue', exact: true }).first(),
+    heading: 'Work Queue',
+  });
+
+  await prepareDashboardNavigation(page, 'Projects');
+  await measurePortalShellNavigation(page, {
+    name: 'dashboard-to-design-list',
+    link: page.getByRole('link', { name: 'Drafting Queue', exact: true }).first(),
+    heading: 'Drafting Queue',
+  });
+
+  await prepareDashboardNavigation(page, 'Projects');
+  await measurePortalShellNavigation(page, {
+    name: 'dashboard-to-running-jobs',
+    link: page.getByRole('link', { name: 'Running Jobs', exact: true }).first(),
+    heading: 'Running Jobs',
+  });
+
 });
 
 test('captures schedule and calculator interaction metrics', async ({ page }) => {

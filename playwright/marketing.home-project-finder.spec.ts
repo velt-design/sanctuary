@@ -41,7 +41,7 @@ async function measureAutomaticHeroReveal(page: Page) {
       if (
         imageVisibleAt !== null
         && document.querySelector('[data-homepage-hero-journey]')
-          ?.getAttribute('data-hero-stage') === 'story'
+          ?.getAttribute('data-story-visible') === 'true'
       ) {
         observer.disconnect();
         resolve({
@@ -52,52 +52,13 @@ async function measureAutomaticHeroReveal(page: Page) {
     };
     const observer = new MutationObserver(checkReveal);
     observer.observe(document.body, {
-      attributeFilter: ['data-hero-stage'],
+      attributeFilter: ['data-story-visible'],
       attributes: true,
       childList: true,
       subtree: true,
     });
     checkReveal();
   }));
-}
-
-async function dispatchForwardTouchGesture(
-  page: Page,
-  movePositions: readonly number[],
-) {
-  return page.evaluate((positions) => {
-    const target = document.body;
-    const makeTouch = (clientY: number) => new Touch({
-      clientX: window.innerWidth / 2,
-      clientY,
-      identifier: 1,
-      pageX: window.innerWidth / 2,
-      pageY: clientY + window.scrollY,
-      target,
-    });
-    const dispatch = (
-      type: 'touchstart' | 'touchmove' | 'touchend',
-      clientY: number,
-    ) => {
-      const activeTouches = type === 'touchend' ? [] : [makeTouch(clientY)];
-      const event = new TouchEvent(type, {
-        bubbles: true,
-        cancelable: true,
-        changedTouches: [makeTouch(clientY)],
-        touches: activeTouches,
-      });
-      window.dispatchEvent(event);
-      return event.defaultPrevented;
-    };
-
-    const startY = positions[0] ?? 700;
-    dispatch('touchstart', startY);
-    const preventedMoves = positions.slice(1).map((clientY) => (
-      dispatch('touchmove', clientY)
-    ));
-    dispatch('touchend', positions.at(-1) ?? startY);
-    return preventedMoves;
-  }, movePositions);
 }
 
 async function projectFinderOpeningGeometry(page: Page) {
@@ -192,25 +153,33 @@ test('project finder is the indexable live homepage and the prototype URL redire
     'href',
     publicOrigin,
   );
-  await waitForCinematicWelcome(page);
   const heroJourney = page.locator('[data-homepage-hero-journey]');
   const header = page.locator('header.site');
-  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'image');
-  await expect(header).toHaveAttribute('data-hero-navigation', 'overlay');
-  await expect(header.locator('.nav-cta')).toHaveCount(0);
-  await expect(page.getByRole('heading', {
+  const heading = page.getByRole('heading', {
     level: 1,
     name: 'Outdoor spaces designed around the way you live.',
-  })).toBeHidden();
+  });
+  await expect(heading).toBeVisible();
+  await waitForCinematicWelcome(page);
+  await expect(header).toHaveAttribute('data-hero-navigation', 'overlay');
+  await expect(header.locator('.nav-cta')).toHaveCount(0);
+  await expect(heading).toBeVisible();
   await expect(page.getByText('Fixed-roof pergola design and build in Auckland'))
     .toBeHidden();
-  const revealArrow = page.getByRole('button', {
-    name: 'Reveal the Sanctuary introduction',
-  });
   await expect(page.locator('[data-homepage-hero-symbol="chevron"]'))
-    .toHaveCount(2);
-  await expect(revealArrow).toBeVisible();
-  const chevronGeometry = await revealArrow.evaluate((element) => {
+    .toHaveCount(1);
+  const continueArrow = page.getByRole('button', {
+    name: 'Continue to choose your project starting point',
+  });
+  await expect(continueArrow).toBeHidden();
+  await expect(heroJourney).toHaveAttribute('data-story-visible', 'true');
+  await expect(page.getByText('Fixed-roof pergola design and build in Auckland'))
+    .toBeVisible();
+  await expect(page.getByRole('link', {
+    name: 'Warkworth Outdoor Room, Warkworth',
+  })).toBeVisible();
+  await expect(continueArrow).toBeVisible();
+  const chevronGeometry = await continueArrow.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     const styles = getComputedStyle(element);
     return {
@@ -224,24 +193,9 @@ test('project finder is the indexable live homepage and the prototype URL redire
   expect(chevronGeometry.height).toBeGreaterThanOrEqual(64);
   expect(chevronGeometry.borderStyle).toBe('none');
   expect(chevronGeometry.backgroundColor).toBe('rgba(0, 0, 0, 0)');
-  expect(await revealArrow.locator('path').evaluate((path) => (
+  expect(await continueArrow.locator('path').evaluate((path) => (
     getComputedStyle(path).animationName
   ))).toContain('hero-chevron-nudge');
-  await revealArrow.click();
-  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'story');
-  await expect(page.getByRole('heading', {
-    level: 1,
-    name: 'Outdoor spaces designed around the way you live.',
-  })).toBeVisible();
-  await expect(page.getByText('Fixed-roof pergola design and build in Auckland'))
-    .toBeVisible();
-  await expect(page.getByRole('link', {
-    name: 'Warkworth Outdoor Room, Warkworth',
-  })).toBeVisible();
-  const continueArrow = page.getByRole('button', {
-    name: 'Continue to choose your project starting point',
-  });
-  await expect(continueArrow).toBeVisible();
   await expect(page.getByRole('complementary', { name: 'Why Sanctuary' })
     .getByRole('link', { name: /61 Google reviews/ })).toBeVisible();
   await expect(header).toBeVisible();
@@ -368,10 +322,10 @@ test('the automatic hero reveal waits until the mobile menu is dismissed', async
   await expect(page.locator('#mobile-menu'))
     .toHaveAttribute('data-mobile-menu-state', 'open');
   await page.waitForTimeout(700);
-  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'image');
+  await expect(heroJourney).toHaveAttribute('data-story-visible', 'false');
 
   await page.locator('[data-mobile-menu-backdrop]').click();
-  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'story');
+  await expect(heroJourney).toHaveAttribute('data-story-visible', 'true');
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 });
 
@@ -385,9 +339,14 @@ test('the welcome screen is immediate, bounded and reduced-motion safe', async (
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 
   const welcome = page.locator('[data-homepage-welcome]');
+  const heading = page.getByRole('heading', {
+    level: 1,
+    name: 'Outdoor spaces designed around the way you live.',
+  });
   await expect(welcome).toBeVisible();
-  await expect(welcome.locator('span')).toHaveText('Welcome to');
-  await expect(welcome.locator('strong')).toHaveText('Sanctuary Pergolas');
+  await expect(heading).toBeVisible();
+  await expect(page.getByText('Welcome to Sanctuary Pergolas')).toHaveCount(0);
+  const loadingHeadingBox = await heading.boundingBox();
   await expect(welcome.locator('a, button, header, nav')).toHaveCount(0);
   await expect(welcome).toHaveCSS('background-color', 'rgb(23, 24, 23)');
   await expect(welcome).toHaveCSS('transition-duration', '0s');
@@ -396,14 +355,18 @@ test('the welcome screen is immediate, bounded and reduced-motion safe', async (
   await expect(page.locator('header.site')).toBeVisible();
   await expect(page.locator('[data-homepage-hero]')).toBeInViewport();
   await expect(page.locator('[data-homepage-hero-journey]'))
-    .toHaveAttribute('data-hero-stage', 'story');
-  await expect(page.getByRole('heading', {
-    level: 1,
-    name: 'Outdoor spaces designed around the way you live.',
-  })).toBeVisible();
+    .toHaveAttribute('data-story-visible', 'true');
+  await expect(heading).toBeVisible();
+  const revealedHeadingBox = await heading.boundingBox();
+  expect(loadingHeadingBox).not.toBeNull();
+  expect(revealedHeadingBox).not.toBeNull();
+  expect(Math.abs((loadingHeadingBox?.x ?? 0) - (revealedHeadingBox?.x ?? 0)))
+    .toBeLessThanOrEqual(1);
+  expect(Math.abs((loadingHeadingBox?.y ?? 0) - (revealedHeadingBox?.y ?? 0)))
+    .toBeLessThanOrEqual(1);
 });
 
-test('mobile art direction and one deliberate scroll gesture follow the automatic story reveal', async ({
+test('mobile art direction and native scrolling follow the automatic story reveal', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -412,7 +375,6 @@ test('mobile art direction and one deliberate scroll gesture follow the automati
   await page.goto('/');
   await waitForCinematicWelcome(page);
 
-  const heroJourney = page.locator('[data-homepage-hero-journey]');
   const heroImage = page.locator('[data-homepage-hero] img');
   await expect.poll(() => heroImage.evaluate((image) => (
     (image as HTMLImageElement).currentSrc
@@ -420,19 +382,19 @@ test('mobile art direction and one deliberate scroll gesture follow the automati
   await expect.poll(() => heroImage.evaluate((image) => (
     (image as HTMLImageElement).naturalWidth
   ))).toBeGreaterThan(0);
-  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'story');
+  await expect(page.locator('[data-homepage-hero-journey]'))
+    .toHaveAttribute('data-story-visible', 'true');
   await expect(page.getByRole('heading', {
     level: 1,
     name: 'Outdoor spaces designed around the way you live.',
   })).toBeVisible();
 
-  await page.mouse.wheel(0, 600);
+  await page.mouse.wheel(0, 900);
   const finderHeading = page.getByRole('heading', {
     level: 2,
     name: 'Which starting point best describes your project?',
   });
   await expect(finderHeading).toBeInViewport();
-  await expectProjectFinderOpeningAligned(page);
 
   const primaryDirections = page.locator('[data-project-direction]');
   await expect(primaryDirections).toHaveCount(3);
@@ -453,38 +415,51 @@ test('mobile art direction and one deliberate scroll gesture follow the automati
   await expectNoHorizontalOverflow(page);
 });
 
-test('one mobile touch gesture can advance only one cinematic hero stage', async ({
+test('the hero uses native wheel, touch and keyboard scrolling without interception', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setAnalyticsConsent(page, false);
   await page.goto('/');
 
-  const welcome = page.locator('[data-homepage-welcome]');
-  await expect(welcome).toHaveCSS('touch-action', 'none');
   await waitForCinematicWelcome(page);
-
   const heroJourney = page.locator('[data-homepage-hero-journey]');
-  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'image');
-  const preventedMoves = await dispatchForwardTouchGesture(
-    page,
-    [700, 690, 650, 590],
-  );
-  expect(preventedMoves).toEqual([true, true, true]);
-  await expect(heroJourney).toHaveAttribute('data-hero-stage', 'story');
-  await expect(page.getByRole('heading', {
-    level: 2,
-    name: 'Which starting point best describes your project?',
-  })).not.toBeInViewport();
-
-  await page.waitForTimeout(720);
-  await dispatchForwardTouchGesture(page, [700, 650]);
-  const finderHeading = page.getByRole('heading', {
-    level: 2,
-    name: 'Which starting point best describes your project?',
+  const prevented = await page.evaluate(() => {
+    const wheel = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      deltaY: 120,
+    });
+    const touch = new TouchEvent('touchmove', {
+      bubbles: true,
+      cancelable: true,
+    });
+    const key = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'PageDown',
+    });
+    window.dispatchEvent(wheel);
+    window.dispatchEvent(touch);
+    window.dispatchEvent(key);
+    return {
+      key: key.defaultPrevented,
+      touch: touch.defaultPrevented,
+      wheel: wheel.defaultPrevented,
+    };
   });
-  await expect(finderHeading).toBeInViewport();
-  await expectProjectFinderOpeningAligned(page);
+  expect(prevented).toEqual({ key: false, touch: false, wheel: false });
+  const heroHeight = await heroJourney.evaluate((element) => (
+    element.getBoundingClientRect().height
+  ));
+  const viewportHeight = await page.evaluate(() => window.innerHeight);
+  expect(Math.abs(heroHeight - viewportHeight)).toBeLessThanOrEqual(1);
+  await page.mouse.wheel(0, 240);
+  await expect.poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(0);
+  await page.keyboard.press('PageDown');
+  await expect.poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(240);
 });
 
 test('the finder landing contains the complete opening whenever the viewport can hold it', async ({
@@ -503,7 +478,7 @@ test('the finder landing contains the complete opening whenever the viewport can
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await waitForCinematicWelcome(page);
     await expect(page.locator('[data-homepage-hero-journey]'))
-      .toHaveAttribute('data-hero-stage', 'story');
+      .toHaveAttribute('data-story-visible', 'true');
     await page.getByRole('button', {
       name: 'Continue to choose your project starting point',
     }).click();
