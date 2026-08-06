@@ -412,7 +412,7 @@ header, no enquiry action and one bottom-centred bold open chevron, without a
 stem, label, background or visible enclosing shape. Its Warkworth interior uses
 the dedicated portrait `warkworth-gable-02.jpg` art direction through 760px and
 the existing wide project image above that breakpoint. Once the welcome veil is
-gone, the project image remains unobstructed for 1.25 seconds before the existing
+gone, the project image remains unobstructed for 0.75 seconds before the existing
 eyebrow, headline, support and Warkworth attribution transition into place without
 moving the viewport. Reduced-motion visitors receive the story immediately without
 animation. A deliberate forward wheel gesture, upward touch swipe, forward keyboard

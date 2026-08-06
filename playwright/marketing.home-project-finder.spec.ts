@@ -283,7 +283,7 @@ test('project finder is the indexable live homepage and the prototype URL redire
   await expect(page.locator('[data-project-finder-result="cover"]')).toBeVisible();
 });
 
-test('the hero story reveals after 1.25 seconds without moving the viewport', async ({
+test('the hero story reveals after 0.75 seconds without moving the viewport', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -320,8 +320,8 @@ test('the hero story reveals after 1.25 seconds without moving the viewport', as
     checkReveal();
   }));
 
-  expect(revealTiming.delayMs).toBeGreaterThanOrEqual(1_200);
-  expect(revealTiming.delayMs).toBeLessThan(1_700);
+  expect(revealTiming.delayMs).toBeGreaterThanOrEqual(700);
+  expect(revealTiming.delayMs).toBeLessThan(1_200);
   expect(revealTiming.scrollY).toBe(0);
   await expect(page.getByRole('heading', {
     level: 1,
