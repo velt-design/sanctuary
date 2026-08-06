@@ -316,22 +316,24 @@ test('project finder is the indexable live homepage and the prototype URL redire
   await expect(page.locator('[data-project-finder-result="cover"]')).toBeVisible();
 });
 
-test('the hero story uses the same 0.75-second reveal across screen types', async ({
+test('the hero story uses its responsive reveal delay without moving the viewport', async ({
   page,
 }) => {
   await setAnalyticsConsent(page, false);
 
-  for (const viewport of [
-    { width: 390, height: 844 },
-    { width: 768, height: 1024 },
-    { width: 1440, height: 900 },
+  for (const scenario of [
+    { viewport: { width: 390, height: 844 }, expectedDelay: 500 },
+    { viewport: { width: 768, height: 1024 }, expectedDelay: 500 },
+    { viewport: { width: 1440, height: 900 }, expectedDelay: 400 },
   ]) {
-    await page.setViewportSize(viewport);
+    await page.setViewportSize(scenario.viewport);
     await page.goto('/');
     const revealTiming = await measureAutomaticHeroReveal(page);
 
-    expect(revealTiming.delayMs).toBeGreaterThanOrEqual(700);
-    expect(revealTiming.delayMs).toBeLessThan(1_200);
+    expect(revealTiming.delayMs)
+      .toBeGreaterThanOrEqual(scenario.expectedDelay - 50);
+    expect(revealTiming.delayMs)
+      .toBeLessThan(scenario.expectedDelay + 350);
     expect(revealTiming.scrollY).toBe(0);
     await expect(page.getByRole('heading', {
       level: 1,
@@ -346,11 +348,26 @@ test('the automatic hero reveal waits until the mobile menu is dismissed', async
   await page.setViewportSize({ width: 390, height: 844 });
   await setAnalyticsConsent(page, false);
   await page.goto('/');
-  await waitForCinematicWelcome(page);
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    const openMenuWhenReady = () => {
+      if (document.querySelector('[data-homepage-welcome]')) return;
+      const menuButton = document.querySelector<HTMLButtonElement>(
+        'button[aria-controls="mobile-menu"]',
+      );
+      if (!menuButton) return;
+      observer.disconnect();
+      menuButton.click();
+      resolve();
+    };
+    const observer = new MutationObserver(openMenuWhenReady);
+    observer.observe(document.body, { childList: true, subtree: true });
+    openMenuWhenReady();
+  }));
 
   const heroJourney = page.locator('[data-homepage-hero-journey]');
-  await page.getByRole('button', { name: 'Open menu' }).click();
-  await page.waitForTimeout(1_400);
+  await expect(page.locator('#mobile-menu'))
+    .toHaveAttribute('data-mobile-menu-state', 'open');
+  await page.waitForTimeout(700);
   await expect(heroJourney).toHaveAttribute('data-hero-stage', 'image');
 
   await page.locator('[data-mobile-menu-backdrop]').click();

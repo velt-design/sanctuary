@@ -24,7 +24,9 @@ type WelcomePhase = 'visible' | 'leaving' | 'hidden';
 const WELCOME_MINIMUM_MS = 450;
 const WELCOME_TIMEOUT_MS = 1_400;
 const WELCOME_FADE_MS = 420;
-const STORY_AUTO_REVEAL_DELAY_MS = 750;
+const STORY_AUTO_REVEAL_DESKTOP_DELAY_MS = 400;
+const STORY_AUTO_REVEAL_MOBILE_DELAY_MS = 500;
+const MOBILE_HERO_MEDIA_QUERY = '(max-width: 900px)';
 const WHEEL_GESTURE_RESET_MS = 180;
 const TOUCH_SWIPE_THRESHOLD_PX = 36;
 const FINDER_VIEWPORT_GAP_PX = 8;
@@ -169,10 +171,13 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
     if (reducedMotion) {
       revealIfReady();
     } else {
+      const revealDelay = window.matchMedia(MOBILE_HERO_MEDIA_QUERY).matches
+        ? STORY_AUTO_REVEAL_MOBILE_DELAY_MS
+        : STORY_AUTO_REVEAL_DESKTOP_DELAY_MS;
       revealTimer = window.setTimeout(() => {
         delayElapsed = true;
         revealIfReady();
-      }, STORY_AUTO_REVEAL_DELAY_MS);
+      }, revealDelay);
     }
 
     return stopWaiting;
