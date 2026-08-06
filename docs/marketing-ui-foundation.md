@@ -414,7 +414,8 @@ the dedicated portrait `warkworth-gable-02.jpg` art direction through 760px and
 the existing wide project image above that breakpoint. Once the welcome veil is
 gone, the project image remains unobstructed for 0.75 seconds before the existing
 eyebrow, headline, support and Warkworth attribution transition into place without
-moving the viewport. Reduced-motion visitors receive the story immediately without
+moving the viewport. The same delay, fade and rise apply on mobile, tablet and
+desktop. Reduced-motion visitors receive the story immediately without
 animation. A deliberate forward wheel gesture, upward touch swipe, forward keyboard
 scroll or reveal-chevron activation wins immediately when it precedes the timer;
 the following forward action advances to the measured question-and-three-choices wrapper rather than

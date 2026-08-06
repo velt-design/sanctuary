@@ -28,6 +28,39 @@ async function waitForCinematicWelcome(page: Page) {
   });
 }
 
+async function measureAutomaticHeroReveal(page: Page) {
+  return page.evaluate(() => new Promise<{
+    delayMs: number;
+    scrollY: number;
+  }>((resolve) => {
+    let imageVisibleAt: number | null = null;
+    const checkReveal = () => {
+      if (!document.querySelector('[data-homepage-welcome]') && imageVisibleAt === null) {
+        imageVisibleAt = performance.now();
+      }
+      if (
+        imageVisibleAt !== null
+        && document.querySelector('[data-homepage-hero-journey]')
+          ?.getAttribute('data-hero-stage') === 'story'
+      ) {
+        observer.disconnect();
+        resolve({
+          delayMs: performance.now() - imageVisibleAt,
+          scrollY: window.scrollY,
+        });
+      }
+    };
+    const observer = new MutationObserver(checkReveal);
+    observer.observe(document.body, {
+      attributeFilter: ['data-hero-stage'],
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
+    checkReveal();
+  }));
+}
+
 async function dispatchForwardTouchGesture(
   page: Page,
   movePositions: readonly number[],
@@ -283,50 +316,28 @@ test('project finder is the indexable live homepage and the prototype URL redire
   await expect(page.locator('[data-project-finder-result="cover"]')).toBeVisible();
 });
 
-test('the hero story reveals after 0.75 seconds without moving the viewport', async ({
+test('the hero story uses the same 0.75-second reveal across screen types', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
   await setAnalyticsConsent(page, false);
-  await page.goto('/');
-  const revealTiming = await page.evaluate(() => new Promise<{
-    delayMs: number;
-    scrollY: number;
-  }>((resolve) => {
-    let imageVisibleAt: number | null = null;
-    const checkReveal = () => {
-      if (!document.querySelector('[data-homepage-welcome]') && imageVisibleAt === null) {
-        imageVisibleAt = performance.now();
-      }
-      if (
-        imageVisibleAt !== null
-        && document.querySelector('[data-homepage-hero-journey]')
-          ?.getAttribute('data-hero-stage') === 'story'
-      ) {
-        observer.disconnect();
-        resolve({
-          delayMs: performance.now() - imageVisibleAt,
-          scrollY: window.scrollY,
-        });
-      }
-    };
-    const observer = new MutationObserver(checkReveal);
-    observer.observe(document.body, {
-      attributeFilter: ['data-hero-stage'],
-      attributes: true,
-      childList: true,
-      subtree: true,
-    });
-    checkReveal();
-  }));
 
-  expect(revealTiming.delayMs).toBeGreaterThanOrEqual(700);
-  expect(revealTiming.delayMs).toBeLessThan(1_200);
-  expect(revealTiming.scrollY).toBe(0);
-  await expect(page.getByRole('heading', {
-    level: 1,
-    name: 'Outdoor spaces designed around the way you live.',
-  })).toBeVisible();
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    const revealTiming = await measureAutomaticHeroReveal(page);
+
+    expect(revealTiming.delayMs).toBeGreaterThanOrEqual(700);
+    expect(revealTiming.delayMs).toBeLessThan(1_200);
+    expect(revealTiming.scrollY).toBe(0);
+    await expect(page.getByRole('heading', {
+      level: 1,
+      name: 'Outdoor spaces designed around the way you live.',
+    })).toBeVisible();
+  }
 });
 
 test('the automatic hero reveal waits until the mobile menu is dismissed', async ({
