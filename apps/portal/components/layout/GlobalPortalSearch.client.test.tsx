@@ -10,6 +10,11 @@ const navigation = vi.hoisted(() => ({
   pathname: '/staff/dashboard',
   search: '',
   beginRouteTransition: vi.fn(),
+  prefetch: vi.fn(),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ prefetch: navigation.prefetch }),
 }));
 
 vi.mock('@/components/page-state/PortalRouteTransition', async (importOriginal) => {
@@ -28,7 +33,7 @@ vi.mock('@/components/page-state/PortalRouteTransition', async (importOriginal) 
 });
 
 vi.mock('next/link', () => ({
-  default: ({ children, href, onClick, ...props }: any) => (
+  default: ({ children, href, onClick, prefetch: _prefetch, ...props }: any) => (
     <a
       href={href}
       {...props}
@@ -105,6 +110,7 @@ describe('GlobalPortalSearch', () => {
     navigation.pathname = '/staff/dashboard';
     navigation.search = '';
     navigation.beginRouteTransition.mockReset();
+    navigation.prefetch.mockReset();
     window.history.replaceState(null, '', navigation.pathname);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(searchResponse())));
   });
@@ -204,7 +210,12 @@ describe('GlobalPortalSearch', () => {
     });
     await flushQueryNotifications();
 
-    act(() => (document.querySelector('[role="option"]') as HTMLAnchorElement).click());
+    const projectResult = document.querySelector('[role="option"]') as HTMLAnchorElement;
+    act(() => {
+      projectResult.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    });
+    expect(navigation.prefetch).toHaveBeenCalledWith('/staff/projects/proj_1');
+    act(() => projectResult.click());
     expect(input.value).toBe('re');
     expect(document.body.textContent).toContain('Opening');
 

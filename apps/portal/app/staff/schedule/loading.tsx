@@ -1,5 +1,5 @@
-import BlueprintLoadingScreen from '@/components/page-state/BlueprintLoadingScreen';
+import PortalRoutePendingFrame from '@/components/page-state/PortalRoutePendingFrame';
 
 export default function Loading() {
-  return <BlueprintLoadingScreen />;
+  return <PortalRoutePendingFrame route="schedule" />;
 }

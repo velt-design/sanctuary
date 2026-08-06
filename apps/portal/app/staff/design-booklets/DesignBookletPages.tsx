@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import type {
   DesignBookletContentCatalog,
   DesignBookletDraft,
@@ -33,7 +33,6 @@ type Props = {
   draft: DesignBookletDraft;
   content: DesignBookletContentCatalog;
   assets: Record<string, DesignBookletPreviewAsset>;
-  drawingPagePreview: ReactNode;
   onAssetDisplayState: DesignBookletAssetDisplayHandler;
 };
 
@@ -376,6 +375,7 @@ function DrawingPage({
   sheetNumber,
   page,
   assets,
+  onAssetDisplayState,
 }: {
   draft: DesignBookletDraft;
   content: DesignBookletContentCatalog;
@@ -387,6 +387,7 @@ function DrawingPage({
     { kind: "drawings" }
   >;
   assets: Record<string, DesignBookletPreviewAsset>;
+  onAssetDisplayState: DesignBookletAssetDisplayHandler;
 }) {
   const layout = DESIGN_BOOKLET_DRAWING_LAYOUTS[page.layout];
   const drawings = visibleDesignBookletDrawings(page);
@@ -396,6 +397,7 @@ function DrawingPage({
       data-booklet-page={pageNumber}
       data-page-kind="drawings"
       data-drawing-layout={page.layout}
+      data-drawing-preview="instant-html"
       aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
       style={BOOKLET_PAGE_STYLE}
     >
@@ -430,7 +432,14 @@ function DrawingPage({
                   bottom: point(presentation.drawing.caption.reserveHeight),
                 }}
               >
-                <img src={asset.src} alt={drawing.image.altText} />
+                <DesignBookletPreviewImage
+                  asset={asset}
+                  alt={drawing.image.altText}
+                  imageClassName={styles.drawingImage}
+                  tone="paper"
+                  showEmptyLabel
+                  onDisplayState={onAssetDisplayState}
+                />
               </div>
               <figcaption
                 style={{
@@ -751,7 +760,6 @@ export default function DesignBookletPages({
   draft,
   content,
   assets,
-  drawingPagePreview,
   onAssetDisplayState,
 }: Props) {
   const model = buildDesignBookletRenderModel(draft);
@@ -785,17 +793,16 @@ export default function DesignBookletPages({
 
   if (resolvedPage.kind === "drawings") {
     return (
-      drawingPagePreview ?? (
-        <DrawingPage
-          draft={draft}
-          content={content}
-          pageNumber={resolvedPage.pageNumber}
-          pageCount={resolvedPage.pageCount}
-          sheetNumber={resolvedPage.sheetNumber}
-          page={resolvedPage.page}
-          assets={assets}
-        />
-      )
+      <DrawingPage
+        draft={draft}
+        content={content}
+        pageNumber={resolvedPage.pageNumber}
+        pageCount={resolvedPage.pageCount}
+        sheetNumber={resolvedPage.sheetNumber}
+        page={resolvedPage.page}
+        assets={assets}
+        onAssetDisplayState={onAssetDisplayState}
+      />
     );
   }
 

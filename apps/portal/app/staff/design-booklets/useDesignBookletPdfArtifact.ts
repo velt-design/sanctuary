@@ -1,17 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { renderableDesignBookletAssetSources } from "@/lib/designBooklets/pageModel";
 import { publishProjectDesignBookletPdfClient } from "@/lib/designBooklets/projectClient";
 import type { DesignBookletDraft } from "@/lib/designBooklets/types";
 import type { DesignBookletPreviewAsset } from "./previewAssets";
 
-export type DesignBookletPdfArtifactState =
-  "idle" | "preparing" | "ready" | "error";
-
 type DesignBookletPdfArtifact = {
   key: string;
-  bytes: Uint8Array;
   blob: Blob;
   filename: string;
 };
@@ -29,8 +25,6 @@ type Input = {
   linkedProjectId: string | null;
   pdfEndpoint: string;
   flushSave: () => Promise<void>;
-  autoPrepare: boolean;
-  canPrepare: boolean;
 };
 
 function filenameFromResponse(
@@ -87,27 +81,12 @@ async function responsePdfBlob(
   return blob;
 }
 
-async function blobBytes(blob: Blob): Promise<Uint8Array> {
-  if (typeof blob.arrayBuffer === "function") {
-    return new Uint8Array(await blob.arrayBuffer());
-  }
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () =>
-      reject(reader.error || new Error("The PDF could not be read."));
-    reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
-    reader.readAsArrayBuffer(blob);
-  });
-}
-
 export function useDesignBookletPdfArtifact({
   draft,
   assets,
   linkedProjectId,
   pdfEndpoint,
   flushSave,
-  autoPrepare,
-  canPrepare,
 }: Input) {
   const key = useMemo(
     () => designBookletPdfArtifactKey(draft, assets),
@@ -121,15 +100,7 @@ export function useDesignBookletPdfArtifact({
   } | null>(null);
   const generationQueueRef = useRef<Promise<void>>(Promise.resolve());
   const requestSequenceRef = useRef(0);
-  const [artifact, setArtifact] = useState<DesignBookletPdfArtifact | null>(
-    null,
-  );
-  const [state, setState] = useState<DesignBookletPdfArtifactState>("idle");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    keyRef.current = key;
-  }, [key]);
+  keyRef.current = key;
 
   const prepare = useCallback(async (): Promise<DesignBookletPdfArtifact> => {
     const requestedKey = key;
@@ -140,8 +111,6 @@ export function useDesignBookletPdfArtifact({
       return inFlightRef.current.promise;
     }
 
-    setState("preparing");
-    setError("");
     const draftSnapshot = draft;
     const assetsSnapshot = assets;
     const requestSequence = ++requestSequenceRef.current;
@@ -197,7 +166,6 @@ export function useDesignBookletPdfArtifact({
 
       return {
         key: requestedKey,
-        bytes: await blobBytes(blob),
         blob,
         filename,
       };
@@ -205,7 +173,7 @@ export function useDesignBookletPdfArtifact({
 
     // Project PDFs are published to a stable latest.pdf path. Serialising every
     // generation prevents an older request from finishing last and overwriting
-    // the artifact that the preview and download are meant to share.
+    // the latest authoritative download.
     const promise = generationQueueRef.current.then(generate, generate);
     generationQueueRef.current = promise.then(
       () => undefined,
@@ -217,45 +185,15 @@ export function useDesignBookletPdfArtifact({
       const nextArtifact = await promise;
       if (keyRef.current === requestedKey) {
         artifactRef.current = nextArtifact;
-        setArtifact(nextArtifact);
-        setState("ready");
       }
       return nextArtifact;
     } catch (caught) {
       if (caught instanceof StaleDesignBookletPdfRequest) throw caught;
-      if (keyRef.current === requestedKey) {
-        setState("error");
-        setError(
-          caught instanceof Error
-            ? caught.message
-            : "The PDF preview could not be prepared.",
-        );
-      }
       throw caught;
     } finally {
       if (inFlightRef.current?.promise === promise) inFlightRef.current = null;
     }
   }, [assets, draft, flushSave, key, linkedProjectId, pdfEndpoint]);
-
-  useEffect(() => {
-    if (artifactRef.current?.key === key) {
-      setArtifact(artifactRef.current);
-      setState("ready");
-      setError("");
-      return;
-    }
-    setArtifact(null);
-    if (!autoPrepare || !canPrepare) {
-      setState("idle");
-      return;
-    }
-    setState("preparing");
-    setError("");
-    const timer = window.setTimeout(() => {
-      void prepare().catch(() => undefined);
-    }, 500);
-    return () => window.clearTimeout(timer);
-  }, [autoPrepare, canPrepare, key, prepare]);
 
   const download = useCallback(async () => {
     const currentArtifact =
@@ -275,12 +213,5 @@ export function useDesignBookletPdfArtifact({
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }, [key, prepare]);
 
-  const currentArtifact = artifact?.key === key ? artifact : null;
-  return {
-    state,
-    error,
-    bytes: currentArtifact?.bytes ?? null,
-    prepare,
-    download,
-  };
+  return { download };
 }

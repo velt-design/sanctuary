@@ -116,20 +116,15 @@ test.describe("design booklet workbench fixture", () => {
     await firstDrawingEditor
       .getByRole("textbox", { name: "Custom title" })
       .fill("Roof section");
-    const exactDrawingPreview = page.locator('[data-page-kind="drawings"]');
-    await expect(exactDrawingPreview).toHaveAttribute(
-      "data-pdf-preview-state",
-      "ready",
-      { timeout: 20_000 },
+    const drawingPreview = page.locator('[data-page-kind="drawings"]');
+    await expect(drawingPreview).toHaveAttribute(
+      "data-drawing-preview",
+      "instant-html",
     );
-    const previewCanvasSize = await exactDrawingPreview
-      .locator("canvas")
-      .evaluate((canvas) => ({ width: canvas.width, height: canvas.height }));
-    expect(previewCanvasSize.width).toBeGreaterThan(0);
-    expect(previewCanvasSize.height).toBeGreaterThan(0);
-    await expect(exactDrawingPreview.locator("figcaption, footer")).toHaveCount(
-      0,
-    );
+    await expect(drawingPreview.locator("canvas")).toHaveCount(0);
+    await expect(drawingPreview.locator("figcaption")).toHaveCount(3);
+    await expect(drawingPreview.locator("footer")).toHaveCount(1);
+    expect(pdfRequestCount).toBe(0);
     await expect(page.locator("[data-drawing-editor-slot]")).toHaveCount(3);
 
     const addedDrawingCard = page.locator(
@@ -173,9 +168,8 @@ test.describe("design booklet workbench fixture", () => {
       await expect(bookletPage).toBeVisible();
       if ((await bookletPage.getAttribute("data-page-kind")) === "drawings") {
         await expect(bookletPage).toHaveAttribute(
-          "data-pdf-preview-state",
-          "ready",
-          { timeout: 20_000 },
+          "data-drawing-preview",
+          "instant-html",
         );
       }
       const bounds = await bookletPage.boundingBox();
@@ -189,7 +183,7 @@ test.describe("design booklet workbench fixture", () => {
       });
     }
 
-    const previewPdfRequestCount = pdfRequestCount;
+    expect(pdfRequestCount).toBe(0);
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Download PDF" }).click();
     const download = await downloadPromise;
@@ -211,7 +205,7 @@ test.describe("design booklet workbench fixture", () => {
     );
     expect(pageTexts.some((text) => text.includes("ROOF PACKAGE"))).toBe(true);
     expect(pageTexts.some((text) => text.includes("ROOF SECTION"))).toBe(true);
-    expect(pdfRequestCount).toBe(previewPdfRequestCount);
+    expect(pdfRequestCount).toBe(1);
     expect(unexpectedRequests).toEqual([]);
   });
 
@@ -308,9 +302,8 @@ test.describe("design booklet workbench fixture", () => {
     await page.getByRole("button", { name: /^Four-drawing grid/ }).click();
     await expect(page.locator("[data-drawing-editor-slot]")).toHaveCount(4);
     await expect(page.locator('[data-page-kind="drawings"]')).toHaveAttribute(
-      "data-pdf-preview-state",
-      "ready",
-      { timeout: 20_000 },
+      "data-drawing-preview",
+      "instant-html",
     );
 
     const hasHorizontalDocumentOverflow = await page.evaluate(
@@ -319,7 +312,7 @@ test.describe("design booklet workbench fixture", () => {
     expect(hasHorizontalDocumentOverflow).toBe(false);
   });
 
-  test("renders drawing sheets from the exact PDF while preserving shared HTML geometry elsewhere", async ({
+  test("renders drawing sheets instantly from the shared A4 geometry", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
@@ -335,19 +328,21 @@ test.describe("design booklet workbench fixture", () => {
     const drawingPage = page.locator('[data-page-kind="drawings"]');
     await expect(drawingPage).toBeVisible();
     await expect(drawingPage).toHaveAttribute(
-      "data-pdf-preview-state",
-      "ready",
-      { timeout: 20_000 },
+      "data-drawing-preview",
+      "instant-html",
     );
-    const drawingCanvas = drawingPage.locator("canvas");
-    await expect(drawingCanvas).toBeVisible();
-    const drawingBounds = await drawingPage.boundingBox();
-    const canvasBounds = await drawingCanvas.boundingBox();
-    expect(drawingBounds).not.toBeNull();
-    expect(canvasBounds).not.toBeNull();
-    expect(
-      (canvasBounds?.width ?? 0) / (canvasBounds?.height ?? 1),
-    ).toBeCloseTo(297 / 210, 2);
+    await expect(drawingPage.locator("canvas")).toHaveCount(0);
+    await expectPointRect(
+      drawingPage,
+      drawingPage.locator("main"),
+      presentation.drawing.area,
+    );
+    await expectPointRect(drawingPage, drawingPage.locator("footer"), {
+      x: presentation.drawing.titleBlock.x,
+      top: presentation.drawing.titleBlock.top,
+      width: presentation.drawing.titleBlock.width,
+      height: presentation.drawing.titleBlock.height,
+    });
     expect(presentation.drawing.area.top).toBeLessThanOrEqual(20);
     expect(
       presentation.drawing.area.height / presentation.page.height,

@@ -244,13 +244,16 @@ describe("DesignBookletWorkbenchClient", () => {
     const drawingPreview = rendered.container.querySelector(
       '[data-page-kind="drawings"]',
     );
-    expect(drawingPreview?.getAttribute("data-pdf-preview-state")).toBe(
-      "loading",
+    expect(drawingPreview?.getAttribute("data-drawing-preview")).toBe(
+      "instant-html",
     );
     expect(
       rendered.container.querySelectorAll("[data-drawing-editor-slot]"),
     ).toHaveLength(4);
-    expect(drawingPreview?.querySelector("figcaption")).toBeNull();
+    expect(drawingPreview?.querySelector("figcaption")).not.toBeNull();
+    expect(
+      drawingPreview?.querySelector('footer[aria-label="A-01 title block"]'),
+    ).not.toBeNull();
 
     const pageTitleInput = Array.from(
       rendered.container.querySelectorAll("label"),

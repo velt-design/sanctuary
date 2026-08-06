@@ -35,6 +35,7 @@ import type {
   DesignBookletPreviewAsset,
   DesignBookletPreviewAssetState,
 } from "./previewAssets";
+import { preloadDesignBookletImage } from "./preloadDesignBookletImage";
 
 type DesignBookletAssetMap = Record<string, DesignBookletPreviewAsset>;
 
@@ -128,6 +129,10 @@ export function useProjectDesignBookletController(projectId?: string) {
   );
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const assetUploadQueuesRef = useRef(new Map<string, Promise<void>>());
+  const assetReplacementSequenceRef = useRef(new Map<string, number>());
+  const pendingAssetOperationsRef = useRef(0);
+  const assetOperationErrorRef = useRef<Error | null>(null);
 
   useEffect(() => {
     draftRef.current = draft;
@@ -269,7 +274,9 @@ export function useProjectDesignBookletController(projectId?: string) {
           revisionRef.current = saved.revision;
           lastSavedDraftRef.current = serialized;
           if (JSON.stringify(draftRef.current) === serialized) {
-            setSaveState("saved");
+            setSaveState(
+              pendingAssetOperationsRef.current > 0 ? "uploading" : "saved",
+            );
           }
         })
         .catch((error) => {
@@ -310,6 +317,10 @@ export function useProjectDesignBookletController(projectId?: string) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
+    while (assetUploadQueuesRef.current.size > 0) {
+      await Promise.all([...assetUploadQueuesRef.current.values()]);
+    }
+    if (assetOperationErrorRef.current) throw assetOperationErrorRef.current;
     await queueSave(draftRef.current);
     await saveQueueRef.current;
   }, [linkedProjectId, queueSave]);
@@ -325,92 +336,104 @@ export function useProjectDesignBookletController(projectId?: string) {
       const existing = assets[assetId];
       if (!existing) return;
 
+      const localSrc = URL.createObjectURL(file);
+      blobUrlsRef.current.add(localSrc);
+      revokeAssetUrl(existing);
       setAssets((current) => ({
         ...current,
         [assetId]: {
           ...current[assetId],
+          src: localSrc,
+          file,
+          label: file.name,
           state: "loading",
           errorMessage: undefined,
-          label: file.name,
         },
       }));
+      setPersistenceError("");
 
       if (!linkedProjectId) {
-        const src = URL.createObjectURL(file);
-        blobUrlsRef.current.add(src);
-        revokeAssetUrl(existing);
-        setAssets((current) => ({
-          ...current,
-          [assetId]: {
-            ...current[assetId],
-            src,
-            file,
-            label: file.name,
-            state: "loading",
-            errorMessage: undefined,
-          },
-        }));
         setPersistenceError("");
         return;
       }
 
+      const sequence =
+        (assetReplacementSequenceRef.current.get(assetId) ?? 0) + 1;
+      assetReplacementSequenceRef.current.set(assetId, sequence);
+      pendingAssetOperationsRef.current += 1;
+      assetOperationErrorRef.current = null;
       setSaveState("uploading");
-      setPersistenceError("");
-      try {
-        const compressed = await compressDesignBookletImage(file);
-        const localSrc = URL.createObjectURL(compressed);
-        blobUrlsRef.current.add(localSrc);
-        revokeAssetUrl(existing);
-        setAssets((current) => ({
-          ...current,
-          [assetId]: {
-            ...current[assetId],
-            src: localSrc,
-            file: compressed,
-            label: file.name,
-            state: "loading",
-            errorMessage: undefined,
-          },
-        }));
+      const previousOperation =
+        assetUploadQueuesRef.current.get(assetId) ?? Promise.resolve();
+      const isLatest = () =>
+        assetReplacementSequenceRef.current.get(assetId) === sequence;
 
-        const saved = await uploadProjectDesignBookletAssetClient(
-          linkedProjectId,
-          assetId,
-          compressed,
-        );
-        setAssets((current) => {
-          const source = allDesignBookletAssetSources(draftRef.current).find(
-            (candidate) => candidate.assetId === assetId,
+      const operation = previousOperation
+        .catch(() => undefined)
+        .then(async () => {
+          const compressed = await compressDesignBookletImage(file);
+          const saved = await uploadProjectDesignBookletAssetClient(
+            linkedProjectId,
+            assetId,
+            compressed,
           );
-          const currentAsset = current[assetId];
-          if (!source || !currentAsset) return current;
-          revokeAssetUrl(currentAsset);
-          return {
-            ...current,
-            [assetId]: persistedPreviewAsset(source, saved),
-          };
+          if (!isLatest()) return;
+
+          // Keep the instant local preview visible until the durable signed
+          // source has loaded. The swap is then atomic, so a slow network or
+          // CSP failure cannot replace a working preview with a broken image.
+          await preloadDesignBookletImage(saved.src);
+          if (!isLatest()) return;
+          setAssets((current) => {
+            const source = allDesignBookletAssetSources(draftRef.current).find(
+              (candidate) => candidate.assetId === assetId,
+            );
+            const currentAsset = current[assetId];
+            if (!source || !currentAsset || currentAsset.src !== localSrc) {
+              return current;
+            }
+            revokeAssetUrl(currentAsset);
+            return {
+              ...current,
+              [assetId]: {
+                ...persistedPreviewAsset(source, saved),
+                state: "ready",
+              },
+            };
+          });
+        })
+        .catch((error) => {
+          if (!isLatest()) return;
+          const failure =
+            error instanceof Error
+              ? error
+              : new Error("The image could not be saved.");
+          assetOperationErrorRef.current = failure;
+          setSaveState("error");
+          setPersistenceError(failure.message);
+        })
+        .finally(() => {
+          pendingAssetOperationsRef.current = Math.max(
+            0,
+            pendingAssetOperationsRef.current - 1,
+          );
+          if (assetUploadQueuesRef.current.get(assetId) === operation) {
+            assetUploadQueuesRef.current.delete(assetId);
+          }
+          if (
+            isLatest() &&
+            pendingAssetOperationsRef.current === 0 &&
+            !assetOperationErrorRef.current
+          ) {
+            setSaveState(
+              JSON.stringify(draftRef.current) === lastSavedDraftRef.current
+                ? "saved"
+                : "saving",
+            );
+          }
         });
-        setSaveState(
-          JSON.stringify(draftRef.current) === lastSavedDraftRef.current
-            ? "saved"
-            : "saving",
-        );
-      } catch (error) {
-        setSaveState("error");
-        const message =
-          error instanceof Error
-            ? error.message
-            : "The image could not be saved.";
-        setAssets((current) => ({
-          ...current,
-          [assetId]: {
-            ...current[assetId],
-            state: "error",
-            errorMessage: message,
-          },
-        }));
-        setPersistenceError(message);
-      }
+      assetUploadQueuesRef.current.set(assetId, operation);
+      await operation;
     },
     [assets, linkedProjectId, revokeAssetUrl],
   );

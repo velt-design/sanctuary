@@ -117,6 +117,33 @@ Work Queue may show one compact admin-only **Stale enquiry review** panel above 
 
 The canonical `/login` and `/access-status` routes use the same hard-edge Foundation tokens through `PublicAuthShell`; `/staff/login` remains a query-preserving redirect. Generic page-message and pending-state surfaces share that token owner, so authentication, failure, and loading states do not reintroduce the retired rounded-card layer.
 
+### Instant route shell contract
+
+`portalInstantRoutes.ts`, `PortalRouteTransition`, and the shared pending frames
+own the small contract for warm portal page
+changes. Dashboard, Projects, Contacts, Schedule, Work Queue, Drafting Queue,
+Running Jobs, Calculator, and Project Detail render a truthful destination
+header and structural frame synchronously while the persistent sidebar stays
+mounted. Projects and Contacts retain their richer client-mounted index frames;
+the other shared frames release when the new route commits. Same-page query
+changes such as Schedule Board/Gantt do not replace usable route content.
+
+Navigation prefetch remains intent-only. It loads the exact route chunk and,
+where one exists, only that route's lightweight current-user summary query.
+Authoritative APIs, access-ending behavior, local-first queues, specialist lazy
+modules, and background refresh remain with their existing owners. This is not
+authority to persist broad portal data or duplicate database records in the
+browser.
+
+A future routine portal page should add its metadata and path recognition to
+the instant-route registry, use the shared frame from its `loading.tsx`, and
+preload only its exact safe route code from navigation intent. Add an
+intent-preload query only when its owner does not expand every shared route's
+bundle graph; otherwise let the route-owned query start after commit behind the
+immediate frame. If the page needs a specialist frame or cannot truthfully
+release on route commit, record that exception in the registry and cover it
+with a focused transition test.
+
 The current portal intentionally combines shared semantic `--ui-*` roles with
 active route-owned, compatibility and specialist presentation. Examples
 include the compatibility tokens retained for the design workbench and theme
@@ -153,7 +180,7 @@ and has no implied completion sequence.
 
 | Surface | Current presentation owner | Boundary to preserve |
 | --- | --- | --- |
-| Staff shell and navigation | `PortalShell`, navigation modules, semantic portal tokens, mobile drawer | Keep current expanded/collapsed/mobile behavior, focus ownership and active compatibility tokens. |
+| Staff shell and navigation | `PortalShell`, navigation modules, instant-route registry/frame, semantic portal tokens, mobile drawer | Keep current expanded/collapsed/mobile behavior, focus ownership, truthful route-shell release rules, intent-only prefetch, and active compatibility tokens. |
 | Dashboard | dashboard header, quick actions, pipeline, operational panels, activity and task owners | Preserve current hierarchy and data semantics; do not infer new metrics or restyle other routes from Dashboard. |
 | Project Work Queue | Work Queue route/components plus `teamQueue.ts` and paginated list owner | Keep one row per project, direct marker/state ownership, server-owned precedence, durable command feedback, complete portfolio reachability, and the named rollout-not-ready state. Personal reminders remain separate. |
 | Projects and Contacts | `StaffPageHeader`, `PageHeader`, shared controls/surfaces/statuses plus route-owned composition | Keep search, filters, pending states, cache/local-first behavior and page actions with their domain owners. |

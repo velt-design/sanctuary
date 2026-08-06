@@ -513,6 +513,7 @@ test('captures warm Contacts navigation', async ({ page }) => {
 });
 
 test('captures warm navigation to the remaining instant-shell routes', async ({ page }) => {
+  test.setTimeout(180_000);
   await page.goto('/staff/projects');
   await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible({ timeout: 60_000 });
   await measurePortalShellNavigation(page, {

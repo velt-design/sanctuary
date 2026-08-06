@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   upload: vi.fn(),
   copy: vi.fn(),
   publishPdf: vi.fn(),
+  compress: vi.fn(),
+  preload: vi.fn(),
 }));
 
 vi.mock("@/lib/designBooklets/projectClient", () => ({
@@ -23,6 +25,24 @@ vi.mock("@/lib/designBooklets/projectClient", () => ({
   copyProjectDesignBookletAssetClient: mocks.copy,
   publishProjectDesignBookletPdfClient: mocks.publishPdf,
 }));
+
+vi.mock("@/lib/designBooklets/imageCompression", () => ({
+  compressDesignBookletImage: mocks.compress,
+}));
+
+vi.mock("./preloadDesignBookletImage", () => ({
+  preloadDesignBookletImage: mocks.preload,
+}));
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+  return { promise, resolve, reject };
+}
 
 function renderProjectWorkbench() {
   return renderIntoDocument(
@@ -63,6 +83,8 @@ describe("project-linked Design Booklet Workbench", () => {
     });
     mocks.upload.mockReset();
     mocks.copy.mockReset();
+    mocks.compress.mockReset().mockImplementation(async (file: File) => file);
+    mocks.preload.mockReset().mockResolvedValue(undefined);
     mocks.publishPdf.mockReset().mockResolvedValue({
       downloadUrl: "https://storage.example.test/booklet.pdf?token=short",
       filename: "client-aaa-design-booklet.pdf",
@@ -208,13 +230,13 @@ describe("project-linked Design Booklet Workbench", () => {
     rendered.unmount();
   });
 
-  it("reuses the exact PDF prepared for a drawing preview when downloading", async () => {
+  it("renders a drawing immediately without generating a PDF, then generates once on download", async () => {
     const anchorClick = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => undefined);
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       Promise.resolve(
-        new Response(new TextEncoder().encode("%PDF-1.7 exact preview"), {
+        new Response(new TextEncoder().encode("%PDF-1.7 download"), {
           status: 200,
           headers: { "Content-Type": "application/pdf" },
         }),
@@ -233,16 +255,15 @@ describe("project-linked Design Booklet Workbench", () => {
       ).click();
     });
 
-    await vi.waitFor(() => expect(mocks.publishPdf).toHaveBeenCalledTimes(1), {
-      timeout: 2_000,
-    });
-    await vi.waitFor(() =>
-      expect(
-        Array.from(rendered.container.querySelectorAll("button")).some(
-          (button) => button.textContent?.trim() === "Download PDF",
-        ),
-      ).toBe(true),
+    const drawingPreview = rendered.container.querySelector(
+      '[data-page-kind="drawings"]',
     );
+    expect(drawingPreview?.getAttribute("data-drawing-preview")).toBe(
+      "instant-html",
+    );
+    expect(drawingPreview?.querySelector("footer")).not.toBeNull();
+    expect(mocks.publishPdf).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
 
     const downloadButton = Array.from(
       rendered.container.querySelectorAll("button"),
@@ -252,6 +273,224 @@ describe("project-linked Design Booklet Workbench", () => {
 
     expect(mocks.publishPdf).toHaveBeenCalledTimes(1);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+    rendered.unmount();
+  });
+
+  it("shows the selected drawing before compression and atomically swaps to the saved source", async () => {
+    const compression = deferred<File>();
+    const upload = deferred<{
+      assetId: string;
+      src: string;
+      label: string;
+      mediaType: "image/jpeg";
+      byteSize: number;
+      width: number;
+      height: number;
+      updatedAt: string;
+    }>();
+    const preload = deferred<void>();
+    mocks.compress.mockReturnValueOnce(compression.promise);
+    mocks.upload.mockReturnValueOnce(upload.promise);
+    mocks.preload.mockReturnValueOnce(preload.promise);
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:instant-drawing");
+    const revokeObjectUrl = vi
+      .spyOn(URL, "revokeObjectURL")
+      .mockImplementation(() => undefined);
+
+    const rendered = renderProjectWorkbench();
+    await flushEffects();
+    act(() => {
+      (
+        rendered.container.querySelector(
+          '[data-booklet-page-select="drawing-page-1"]',
+        ) as HTMLButtonElement
+      ).click();
+    });
+    const input = rendered.container.querySelector(
+      '[data-drawing-editor-slot="1"] input[type="file"]',
+    ) as HTMLInputElement;
+    const original = new File(["large drawing"], "roof-plan.png", {
+      type: "image/png",
+    });
+    Object.defineProperty(input, "files", {
+      configurable: true,
+      value: [original],
+    });
+    act(() => input.dispatchEvent(new Event("change", { bubbles: true })));
+
+    expect(
+      rendered.container
+        .querySelector('[data-page-kind="drawings"] img')
+        ?.getAttribute("src"),
+    ).toBe("blob:instant-drawing");
+    expect(rendered.container.textContent).toContain("Uploading image");
+    await flushEffects();
+    expect(mocks.compress).toHaveBeenCalledWith(original);
+    expect(mocks.upload).not.toHaveBeenCalled();
+
+    const compressed = new File(["compressed"], "roof-plan.jpg", {
+      type: "image/jpeg",
+    });
+    await act(async () => {
+      compression.resolve(compressed);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mocks.upload).toHaveBeenCalledWith(
+      "proj_project-1",
+      expect.any(String),
+      compressed,
+    );
+
+    await act(async () => {
+      upload.resolve({
+        assetId: "drawing-page-1-drawing-1",
+        src: "https://storage.example.test/saved-roof-plan.jpg",
+        label: "roof-plan.jpg",
+        mediaType: "image/jpeg",
+        byteSize: 10,
+        width: 1200,
+        height: 800,
+        updatedAt: "2026-08-06T00:00:00.000Z",
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mocks.preload).toHaveBeenCalledWith(
+      "https://storage.example.test/saved-roof-plan.jpg",
+    );
+    expect(
+      rendered.container
+        .querySelector('[data-page-kind="drawings"] img')
+        ?.getAttribute("src"),
+    ).toBe("blob:instant-drawing");
+
+    await act(async () => {
+      preload.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(
+      rendered.container
+        .querySelector('[data-page-kind="drawings"] img')
+        ?.getAttribute("src"),
+    ).toBe("https://storage.example.test/saved-roof-plan.jpg");
+    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:instant-drawing");
+    expect(rendered.container.textContent).toContain("Saved to project");
+    rendered.unmount();
+  });
+
+  it("keeps the newest rapid replacement visible and persists replacements in selection order", async () => {
+    const firstUpload = deferred<{
+      assetId: string;
+      src: string;
+      label: string;
+      mediaType: "image/jpeg";
+      byteSize: number;
+      width: number;
+      height: number;
+      updatedAt: string;
+    }>();
+    const secondUpload = deferred<{
+      assetId: string;
+      src: string;
+      label: string;
+      mediaType: "image/jpeg";
+      byteSize: number;
+      width: number;
+      height: number;
+      updatedAt: string;
+    }>();
+    mocks.upload
+      .mockReturnValueOnce(firstUpload.promise)
+      .mockReturnValueOnce(secondUpload.promise);
+    vi.spyOn(URL, "createObjectURL")
+      .mockReturnValueOnce("blob:first")
+      .mockReturnValueOnce("blob:second");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+
+    const rendered = renderProjectWorkbench();
+    await flushEffects();
+    act(() => {
+      (
+        rendered.container.querySelector(
+          '[data-booklet-page-select="drawing-page-1"]',
+        ) as HTMLButtonElement
+      ).click();
+    });
+    const input = rendered.container.querySelector(
+      '[data-drawing-editor-slot="1"] input[type="file"]',
+    ) as HTMLInputElement;
+    const replace = (file: File) => {
+      Object.defineProperty(input, "files", {
+        configurable: true,
+        value: [file],
+      });
+      act(() => input.dispatchEvent(new Event("change", { bubbles: true })));
+    };
+    const first = new File(["first"], "first.png", { type: "image/png" });
+    const second = new File(["second"], "second.png", { type: "image/png" });
+
+    replace(first);
+    await flushEffects();
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    replace(second);
+    expect(
+      rendered.container
+        .querySelector('[data-page-kind="drawings"] img')
+        ?.getAttribute("src"),
+    ).toBe("blob:second");
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      firstUpload.resolve({
+        assetId: "drawing-page-1-drawing-1",
+        src: "https://storage.example.test/first.jpg",
+        label: "first.jpg",
+        mediaType: "image/jpeg",
+        byteSize: 5,
+        width: 100,
+        height: 100,
+        updatedAt: "2026-08-06T00:00:00.000Z",
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mocks.upload).toHaveBeenCalledTimes(2);
+    expect(mocks.upload.mock.calls[0]?.[2]?.name).toBe("first.png");
+    expect(mocks.upload.mock.calls[1]?.[2]?.name).toBe("second.png");
+    expect(mocks.preload).not.toHaveBeenCalledWith(
+      "https://storage.example.test/first.jpg",
+    );
+    expect(
+      rendered.container
+        .querySelector('[data-page-kind="drawings"] img')
+        ?.getAttribute("src"),
+    ).toBe("blob:second");
+
+    await act(async () => {
+      secondUpload.resolve({
+        assetId: "drawing-page-1-drawing-1",
+        src: "https://storage.example.test/second.jpg",
+        label: "second.jpg",
+        mediaType: "image/jpeg",
+        byteSize: 6,
+        width: 100,
+        height: 100,
+        updatedAt: "2026-08-06T00:00:01.000Z",
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await vi.waitFor(() =>
+      expect(
+        rendered.container
+          .querySelector('[data-page-kind="drawings"] img')
+          ?.getAttribute("src"),
+      ).toBe("https://storage.example.test/second.jpg"),
+    );
     rendered.unmount();
   });
 });

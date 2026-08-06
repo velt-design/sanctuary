@@ -51,7 +51,6 @@ function renderPage(draft: DesignBookletDraft, selectedPageKey: string) {
       draft={draft}
       content={getMarketingDesignBookletContent()}
       assets={assetsFor(draft)}
-      drawingPagePreview={null}
       onAssetDisplayState={() => undefined}
     />,
   );

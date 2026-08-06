@@ -3,9 +3,51 @@
 import Link from 'next/link';
 import HeaderActions from '@/components/layout/HeaderActions';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
+import type { PortalInstantRoute } from '@/lib/portalInstantRoutes';
 import styles from './ProjectsIndexPendingFrame.module.css';
 
-export default function ProjectsIndexPendingFrame() {
+type ProjectsIndexPendingFrameProps = {
+  instantRoute?: PortalInstantRoute;
+  title?: string;
+  description?: string;
+  projectLabel?: string | null;
+};
+
+export default function ProjectsIndexPendingFrame({
+  instantRoute = 'projects-index',
+  title = 'Projects',
+  description,
+  projectLabel,
+}: ProjectsIndexPendingFrameProps = {}) {
+  if (instantRoute !== 'projects-index') {
+    const visibleTitle = instantRoute === 'project-detail' && projectLabel?.trim()
+      ? projectLabel.trim()
+      : title;
+
+    return (
+      <main
+        className={styles.page}
+        data-portal-instant-shell={instantRoute}
+        data-portal-instant-shell-state="pending"
+        data-project-route-pending={instantRoute === 'project-detail' ? 'true' : undefined}
+        aria-busy="true"
+      >
+        <StaffPageHeader variant="index" title={visibleTitle} />
+        <div className={styles.stack}>
+          <section className={styles.section} aria-label={`${visibleTitle} workspace`}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Workspace</h2>
+              <span className={styles.muted}>Updating…</span>
+            </div>
+            <div className={styles.sectionBody}>
+              <p className={styles.note} role="status">{description}</p>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main
       className={styles.page}

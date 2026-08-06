@@ -188,6 +188,56 @@ describe('PortalRouteTransitionProvider', () => {
     expect(rendered.container.textContent).toContain('Dashboard content');
     rendered.unmount();
   });
+
+  it('shows a truthful generic route shell immediately and releases it when the route commits', () => {
+    const rendered = renderIntoDocument(
+      <PortalRouteTransitionProvider>
+        <Trigger href="/staff/schedule" />
+        <PortalInstantRouteContent><div>Dashboard content</div></PortalInstantRouteContent>
+      </PortalRouteTransitionProvider>,
+    );
+
+    act(() => rendered.container.querySelector('button')?.click());
+
+    expect(rendered.container.querySelector('[data-portal-instant-shell="schedule"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Schedule');
+    expect(rendered.container.textContent).toContain('Updating crews');
+    expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBe('true');
+
+    mockPathname = '/staff/schedule';
+    window.history.replaceState({}, '', '/staff/schedule');
+    rendered.rerender(
+      <PortalRouteTransitionProvider>
+        <Trigger href="/staff/schedule" />
+        <PortalInstantRouteContent><div>Schedule content</div></PortalInstantRouteContent>
+      </PortalRouteTransitionProvider>,
+    );
+
+    expect(rendered.container.querySelector('[data-portal-instant-shell="schedule"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBeNull();
+    expect(rendered.container.textContent).toContain('Schedule content');
+    rendered.unmount();
+  });
+
+  it('keeps current route content visible for same-page query changes', () => {
+    mockPathname = '/staff/schedule';
+    mockSearchParams = new URLSearchParams('view=board');
+    window.history.replaceState({}, '', '/staff/schedule?view=board');
+    const rendered = renderIntoDocument(
+      <PortalRouteTransitionProvider>
+        <Trigger href="/staff/schedule?view=gantt" />
+        <PortalInstantRouteContent><div>Current schedule content</div></PortalInstantRouteContent>
+      </PortalRouteTransitionProvider>,
+    );
+
+    act(() => rendered.container.querySelector('button')?.click());
+
+    expect(rendered.container.querySelector('[data-portal-route-progress="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-instant-shell]')).toBeNull();
+    expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBeNull();
+    expect(rendered.container.textContent).toContain('Current schedule content');
+    rendered.unmount();
+  });
 });
 
 describe('shouldStartRouteTransitionForHref', () => {

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery, type QueryClient } from '@tanstack/react-query';
 import {
   ArrowRight,
@@ -117,6 +118,7 @@ function ActiveGlobalPortalSearch({
   queryClient: QueryClient;
   shortcutEnabled?: boolean;
 }) {
+  const router = useRouter();
   const routeTransition = usePortalRouteTransition();
   const pathname = routeTransition.pathname
     ?? (typeof window === 'undefined' ? null : window.location.pathname);
@@ -127,6 +129,7 @@ function ActiveGlobalPortalSearch({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const navigationStartRouteKeyRef = useRef<string | null>(null);
+  const prefetchedHrefRef = useRef(new Set<string>());
   const listboxId = useId();
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -306,6 +309,15 @@ function ActiveGlobalPortalSearch({
     });
   };
 
+  const preloadSearchDestination = useCallback(
+    (href: string) => {
+      if (prefetchedHrefRef.current.has(href)) return;
+      prefetchedHrefRef.current.add(href);
+      router.prefetch(href);
+    },
+    [router],
+  );
+
   const renderResult = (result: SearchResult, index: number) => {
     const description = resultDescription(result);
     const optionId = `${listboxId}-option-${index}`;
@@ -316,13 +328,20 @@ function ActiveGlobalPortalSearch({
         id={optionId}
         key={`${result.kind}-${result.id}`}
         href={result.href}
+        prefetch={false}
         role="option"
         aria-selected={activeIndex === index}
         aria-current={current ? 'page' : undefined}
         className={styles.result}
         data-active={activeIndex === index ? 'true' : undefined}
         data-current={current ? 'true' : undefined}
-        onMouseEnter={() => setActiveIndex(index)}
+        onMouseEnter={() => {
+          setActiveIndex(index);
+          preloadSearchDestination(result.href);
+        }}
+        onFocus={() => preloadSearchDestination(result.href)}
+        onPointerDown={() => preloadSearchDestination(result.href)}
+        onTouchStart={() => preloadSearchDestination(result.href)}
         onClick={(event) => {
           if (current) {
             event.preventDefault();
@@ -451,6 +470,11 @@ function ActiveGlobalPortalSearch({
                 <Link
                   className={styles.viewAll}
                   href={`/staff/projects?q=${encodeURIComponent(trimmedQuery)}`}
+                  prefetch={false}
+                  onMouseEnter={() => preloadSearchDestination(`/staff/projects?q=${encodeURIComponent(trimmedQuery)}`)}
+                  onFocus={() => preloadSearchDestination(`/staff/projects?q=${encodeURIComponent(trimmedQuery)}`)}
+                  onPointerDown={() => preloadSearchDestination(`/staff/projects?q=${encodeURIComponent(trimmedQuery)}`)}
+                  onTouchStart={() => preloadSearchDestination(`/staff/projects?q=${encodeURIComponent(trimmedQuery)}`)}
                   onClick={(event) => handleNavigationClick(event, `/staff/projects?q=${encodeURIComponent(trimmedQuery)}`, 'matching projects')}
                 >
                   {navigatingHref === `/staff/projects?q=${encodeURIComponent(trimmedQuery)}` ? 'Opening projects' : 'View all matching projects'} <ArrowRight aria-hidden="true" />
@@ -460,6 +484,11 @@ function ActiveGlobalPortalSearch({
                 <Link
                   className={styles.viewAll}
                   href={`/staff/contacts?q=${encodeURIComponent(trimmedQuery)}`}
+                  prefetch={false}
+                  onMouseEnter={() => preloadSearchDestination(`/staff/contacts?q=${encodeURIComponent(trimmedQuery)}`)}
+                  onFocus={() => preloadSearchDestination(`/staff/contacts?q=${encodeURIComponent(trimmedQuery)}`)}
+                  onPointerDown={() => preloadSearchDestination(`/staff/contacts?q=${encodeURIComponent(trimmedQuery)}`)}
+                  onTouchStart={() => preloadSearchDestination(`/staff/contacts?q=${encodeURIComponent(trimmedQuery)}`)}
                   onClick={(event) => handleNavigationClick(event, `/staff/contacts?q=${encodeURIComponent(trimmedQuery)}`, 'matching contacts')}
                 >
                   {navigatingHref === `/staff/contacts?q=${encodeURIComponent(trimmedQuery)}` ? 'Opening contacts' : 'View all matching contacts'} <ArrowRight aria-hidden="true" />

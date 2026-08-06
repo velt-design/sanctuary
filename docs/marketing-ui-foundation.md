@@ -412,7 +412,11 @@ as soon as the image is decoded, or after a bounded 1.4-second fallback; only it
 softer 650ms fade duration changes, and the fade is removed for reduced-motion
 visitors. The image uses the dedicated portrait
 `warkworth-gable-02.jpg` art direction through 760px and the existing wide
-project image above that breakpoint. After the image is visible, the eyebrow,
+project image above that breakpoint. Within the H1, `Outdoor spaces` uses 78%
+white while `designed around the way you live.` uses a 98% opaque near-white
+warm ivory (`rgb(250, 247, 240)`), preserving one semantic heading while
+creating two coherent editorial phrases.
+After the image is visible, the eyebrow,
 support copy and Warkworth attribution remain in place and fade in over one
 second after an 800ms delay through the 900px mobile and tablet range, or a
 700ms delay from 901px upward. The bottom-centred continue chevron fades over

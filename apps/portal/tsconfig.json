@@ -72,7 +72,9 @@
     ".next/playwright-overview-v2-coverage/types/**/*.ts",
     ".next/playwright-overview-v2-coverage/dev/types/**/*.ts",
     ".next/playwright-overview-v2-browser/types/**/*.ts",
-    ".next/playwright-overview-v2-browser/dev/types/**/*.ts"
+    ".next/playwright-overview-v2-browser/dev/types/**/*.ts",
+    ".next/codex-design-booklet/types/**/*.ts",
+    ".next/codex-design-booklet/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

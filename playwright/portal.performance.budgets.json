@@ -70,35 +70,35 @@
       "name": "projects-to-dashboard",
       "feedbackMsMax": 100,
       "usefulContentMsMax": 500,
-      "enforced": false,
+      "enforced": true,
       "aggregation": "p75"
     },
     {
       "name": "dashboard-to-schedule",
       "feedbackMsMax": 100,
       "usefulContentMsMax": 500,
-      "enforced": false,
+      "enforced": true,
       "aggregation": "p75"
     },
     {
       "name": "dashboard-to-work-queue",
       "feedbackMsMax": 100,
       "usefulContentMsMax": 500,
-      "enforced": false,
+      "enforced": true,
       "aggregation": "p75"
     },
     {
       "name": "dashboard-to-design-list",
       "feedbackMsMax": 100,
       "usefulContentMsMax": 500,
-      "enforced": false,
+      "enforced": true,
       "aggregation": "p75"
     },
     {
       "name": "dashboard-to-running-jobs",
       "feedbackMsMax": 100,
       "usefulContentMsMax": 500,
-      "enforced": false,
+      "enforced": true,
       "aggregation": "p75"
     }
   ],

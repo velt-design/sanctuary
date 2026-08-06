@@ -314,6 +314,12 @@ surface with the full-page loading overlay; full-page loading remains a
 cold-route/auth boundary only. The separate dormant Site Visits route keeps
 normal App Router navigation.
 
+Warm navigation from another portal page now renders the truthful shared
+Schedule frame immediately and preloads the exact Board or Gantt query selected
+by the destination URL. The frame releases when the Schedule route commits;
+the existing mounted Board/Gantt behavior above still owns same-page view
+changes, cached snapshots, mutations, and refresh truth.
+
 Use:
 
 ```bash

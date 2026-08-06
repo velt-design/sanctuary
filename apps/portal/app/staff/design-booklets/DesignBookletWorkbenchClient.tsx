@@ -19,7 +19,6 @@ import {
   renderableDesignBookletAssetSources,
 } from "@/lib/designBooklets/pageModel";
 import BookletPageComposer from "./BookletPageComposer";
-import DesignBookletDrawingPdfPreview from "./DesignBookletDrawingPdfPreview";
 import DesignBookletPages from "./DesignBookletPages";
 import styles from "./designBooklets.module.css";
 import { useDesignBookletPdfArtifact } from "./useDesignBookletPdfArtifact";
@@ -83,12 +82,6 @@ export default function DesignBookletWorkbenchClient({
     linkedProjectId,
     pdfEndpoint,
     flushSave,
-    autoPrepare: selectedPage.kind === "drawings",
-    canPrepare:
-      !hasBlockingImageState &&
-      saveState !== "loading" &&
-      saveState !== "uploading" &&
-      saveState !== "error",
   });
 
   const selectionSummary = useMemo(() => {
@@ -335,10 +328,7 @@ export default function DesignBookletWorkbenchClient({
               ? "Preparing download..."
               : hasBlockingImageState
                 ? "Preparing images..."
-                : selectedPage.kind === "drawings" &&
-                    pdfArtifact.state !== "ready"
-                  ? "Preparing exact preview..."
-                  : "Download PDF"}
+                : "Download PDF"}
           </button>
         </div>
       </header>
@@ -501,18 +491,6 @@ export default function DesignBookletWorkbenchClient({
                 draft={draft}
                 content={content}
                 assets={assets}
-                drawingPagePreview={
-                  <DesignBookletDrawingPdfPreview
-                    bytes={pdfArtifact.bytes}
-                    pageNumber={selectedPage.pageNumber}
-                    pageCount={selectedPage.pageCount}
-                    state={pdfArtifact.state}
-                    error={pdfArtifact.error}
-                    onRetry={() => {
-                      void pdfArtifact.prepare().catch(() => undefined);
-                    }}
-                  />
-                }
                 onAssetDisplayState={markAssetDisplayState}
               />
             </div>

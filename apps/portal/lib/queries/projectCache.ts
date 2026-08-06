@@ -8,7 +8,8 @@ import {
   patchContactAcrossIndexCaches,
 } from './contactsIndex';
 import { normalizeProjectStatus } from '@/lib/types/project';
-import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
+import { normalizePipelineStageKey, stageKeyToStatus } from '@/lib/projects/pipelineDefinition';
+import type { PortalSearchResponse } from '@/lib/search/portalSearchContract';
 import { invalidatePortalSearchQueries } from './portalSearch';
 import {
   PROJECTS_INDEX_QUERY_SCOPE,
@@ -138,11 +139,31 @@ export function getProjectSnapshotPlaceholderFromCaches(
   const project = (['active', 'all'] as const)
     .flatMap((scope) => queryClient.getQueryData<Project[]>(qk.projects.list(host, scope)) ?? [])
     .find((entry) => entry.id === projectId);
-  if (!project) return undefined;
+  if (project) {
+    const contacts = queryClient.getQueryData<Contact[]>(qk.contacts.list(host));
+    const contact = project.contactId ? contacts?.find((entry) => entry.id === project.contactId) : undefined;
+    return buildProjectSnapshotPlaceholder(project, contact);
+  }
 
-  const contacts = queryClient.getQueryData<Contact[]>(qk.contacts.list(host));
-  const contact = project.contactId ? contacts?.find((entry) => entry.id === project.contactId) : undefined;
-  return buildProjectSnapshotPlaceholder(project, contact);
+  const searchMatch = queryClient
+    .getQueriesData<PortalSearchResponse>({ queryKey: qk.search.portalPrefix() })
+    .map(([, response]) => response)
+    .filter((response): response is PortalSearchResponse => Boolean(response))
+    .sort((left, right) => right.generatedAt.localeCompare(left.generatedAt))
+    .flatMap((response) => response.projects.map((project) => ({ project, generatedAt: response.generatedAt })))
+    .find((entry) => entry.project.id === projectId);
+  if (!searchMatch) return undefined;
+
+  return buildProjectSnapshotPlaceholder({
+    id: searchMatch.project.id,
+    projectName: searchMatch.project.name,
+    clientName: searchMatch.project.contactName ?? undefined,
+    quoteRef: searchMatch.project.reference ?? undefined,
+    siteAddress: searchMatch.project.siteAddress ?? undefined,
+    status: stageKeyToStatus(searchMatch.project.stage),
+    isArchived: searchMatch.project.archived,
+    createdAt: searchMatch.generatedAt,
+  });
 }
 
 export function patchProjectSnapshot(

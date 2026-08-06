@@ -185,6 +185,41 @@ describe('projectCache helpers', () => {
     });
   });
 
+  it('builds the immediate project shell from a current-user portal search result', () => {
+    const client = new QueryClient();
+    client.setQueryData(qk.search.portal('beach'), {
+      query: 'beach',
+      projects: [{
+        kind: 'project',
+        id: 'proj_search',
+        href: '/staff/projects/proj_search',
+        name: 'Beach House',
+        reference: 'Q-2026',
+        siteAddress: '1 Ocean Road',
+        contactName: 'Alex Mason',
+        stage: 'quoting',
+        archived: false,
+      }],
+      contacts: [],
+      generatedAt: '2026-08-06T00:00:00.000Z',
+    });
+
+    const result = getProjectSnapshotPlaceholderFromCaches(client, 'host', 'proj_search');
+
+    expect(result).toMatchObject({
+      snapshot: {
+        project: {
+          id: 'proj_search',
+          name: 'Beach House',
+          contactName: 'Alex Mason',
+          quoteRef: 'Q-2026',
+          siteAddress: '1 Ocean Road',
+        },
+        pipeline: { stage: 'quoting' },
+      },
+    });
+  });
+
   it('never reads a project from another query client or host boundary', () => {
     const userA = {
       getQueriesData: () => [],

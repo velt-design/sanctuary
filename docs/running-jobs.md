@@ -72,6 +72,9 @@ The script uses the portal-owned pipeline definition for stage normalization; th
 
 Running Jobs shares the spreadsheet shell with Drafting Queue. It should keep:
 
+- A truthful Running Jobs frame immediately on warm portal navigation, with
+  the exact route chunk preloaded only from intent and the route-owned
+  current-user list query settling behind that frame.
 - The shared searchable staff header when rendered as a standalone route; embedded spreadsheet surfaces remain headerless.
 - Frozen first column.
 - Stable widths and zoom behavior.

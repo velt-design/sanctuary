@@ -271,7 +271,7 @@
   background: #fff;
 }
 
-.drawingImageFrame img {
+.drawingImage {
   display: block;
   width: 100%;
   height: 100%;

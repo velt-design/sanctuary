@@ -14,12 +14,18 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import PortalNavigationProgress from './PortalNavigationProgress';
 import ProjectsIndexPendingFrame from './ProjectsIndexPendingFrame';
 import ContactsIndexPendingFrame from './ContactsIndexPendingFrame';
+import {
+  PORTAL_INSTANT_ROUTE_DEFINITIONS,
+  portalInstantRouteReleasesOnCommit,
+  portalInstantRouteTarget,
+  type PortalInstantRoute,
+} from '@/lib/portalInstantRoutes';
+
+export type { PortalInstantRoute } from '@/lib/portalInstantRoutes';
 
 const MAX_TRANSITION_MS = 8000;
 const DEFAULT_MESSAGE = 'Preparing workspace...';
 const MAX_INSTANT_ROUTE_MS = 8000;
-
-export type PortalInstantRoute = 'projects-index' | 'contacts-index';
 
 type PortalRouteTransitionInput = {
   href: string;
@@ -30,9 +36,10 @@ type PortalRouteTransitionInput = {
 
 type PortalRouteTransitionContextValue = {
   beginRouteTransition: (input: PortalRouteTransitionInput) => void;
-  beginInstantRoute: (route: PortalInstantRoute) => void;
+  beginInstantRoute: (route: PortalInstantRoute, options?: { label?: string | null }) => void;
   finishInstantRoute: (route: PortalInstantRoute) => void;
   instantRoute: PortalInstantRoute | null;
+  instantRouteLabel: string | null;
   pendingHref: string | null;
   pathname: string | null;
   routeKey: string;
@@ -53,6 +60,7 @@ const PortalRouteTransitionContext = createContext<PortalRouteTransitionContextV
   beginInstantRoute: () => {},
   finishInstantRoute: () => {},
   instantRoute: null,
+  instantRouteLabel: null,
   pendingHref: null,
   pathname: null,
   routeKey: '',
@@ -118,6 +126,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
   const [visible, setVisible] = useState(false);
   const [ariaLabel, setAriaLabel] = useState(DEFAULT_MESSAGE);
   const [instantRoute, setInstantRoute] = useState<PortalInstantRoute | null>(null);
+  const [instantRouteLabel, setInstantRouteLabel] = useState<string | null>(null);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   const clearTimer = useCallback((timerRef: { current: number | null }) => {
@@ -161,10 +170,38 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
     setVisible(false);
   }, [clearBusyControl, clearTimer]);
 
+  const finishInstantRoute = useCallback(
+    (route: PortalInstantRoute) => {
+      setInstantRoute((current) => (current === route ? null : current));
+      setInstantRouteLabel(null);
+      clearTimer(instantRouteTimerRef);
+    },
+    [clearTimer],
+  );
+
+  const beginInstantRoute = useCallback(
+    (route: PortalInstantRoute, options?: { label?: string | null }) => {
+      clearTimer(instantRouteTimerRef);
+      setInstantRoute(route);
+      setInstantRouteLabel(options?.label?.trim() || null);
+      instantRouteTimerRef.current = window.setTimeout(() => {
+        instantRouteTimerRef.current = null;
+        setInstantRoute((current) => (current === route ? null : current));
+        setInstantRouteLabel(null);
+      }, MAX_INSTANT_ROUTE_MS);
+    },
+    [clearTimer],
+  );
+
   const beginRouteTransition = useCallback(
     (input: PortalRouteTransitionInput) => {
       if (typeof window === 'undefined') return;
       if (!shouldStartRouteTransitionForHref(input.href)) return;
+
+      const target = portalInstantRouteTarget(input.href, window.location.href);
+      if (target && target.url.pathname !== window.location.pathname) {
+        beginInstantRoute(target.route, { label: input.label });
+      }
 
       activeRef.current = true;
       setPendingHref(input.href);
@@ -178,36 +215,19 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
         finishRouteTransition();
       }, MAX_TRANSITION_MS);
     },
-    [clearTimer, finishRouteTransition, markBusyControl],
-  );
-
-  const finishInstantRoute = useCallback(
-    (route: PortalInstantRoute) => {
-      setInstantRoute((current) => (current === route ? null : current));
-      clearTimer(instantRouteTimerRef);
-    },
-    [clearTimer],
-  );
-
-  const beginInstantRoute = useCallback(
-    (route: PortalInstantRoute) => {
-      clearTimer(instantRouteTimerRef);
-      setInstantRoute(route);
-      instantRouteTimerRef.current = window.setTimeout(() => {
-        instantRouteTimerRef.current = null;
-        setInstantRoute((current) => (current === route ? null : current));
-      }, MAX_INSTANT_ROUTE_MS);
-    },
-    [clearTimer],
+    [beginInstantRoute, clearTimer, finishRouteTransition, markBusyControl],
   );
 
   useEffect(() => {
     const previousRouteKey = previousRouteKeyRef.current;
     previousRouteKeyRef.current = routeKey;
     if (!previousRouteKey || previousRouteKey === routeKey) return;
+    if (instantRoute && portalInstantRouteReleasesOnCommit(instantRoute)) {
+      finishInstantRoute(instantRoute);
+    }
     if (!activeRef.current) return;
     finishRouteTransition();
-  }, [finishRouteTransition, routeKey]);
+  }, [finishInstantRoute, finishRouteTransition, instantRoute, routeKey]);
 
   useEffect(
     () => () => {
@@ -222,6 +242,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
     const handlePopState = () => {
       clearTimer(instantRouteTimerRef);
       setInstantRoute(null);
+      setInstantRouteLabel(null);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -233,11 +254,21 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
       beginInstantRoute,
       finishInstantRoute,
       instantRoute,
+      instantRouteLabel,
       pendingHref,
       pathname,
       routeKey,
     }),
-    [beginInstantRoute, beginRouteTransition, finishInstantRoute, instantRoute, pendingHref, pathname, routeKey],
+    [
+      beginInstantRoute,
+      beginRouteTransition,
+      finishInstantRoute,
+      instantRoute,
+      instantRouteLabel,
+      pendingHref,
+      pathname,
+      routeKey,
+    ],
   );
 
   return (
@@ -249,12 +280,23 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
 }
 
 export function PortalInstantRouteContent({ children }: { children: ReactNode }) {
-  const { instantRoute } = usePortalRouteTransition();
+  const { instantRoute, instantRouteLabel } = usePortalRouteTransition();
+  const instantDefinition = instantRoute
+    ? PORTAL_INSTANT_ROUTE_DEFINITIONS[instantRoute]
+    : null;
 
   return (
     <>
       {instantRoute === 'projects-index' ? <ProjectsIndexPendingFrame /> : null}
       {instantRoute === 'contacts-index' ? <ContactsIndexPendingFrame /> : null}
+      {instantRoute && instantDefinition && instantRoute !== 'projects-index' && instantRoute !== 'contacts-index' ? (
+        <ProjectsIndexPendingFrame
+          instantRoute={instantRoute}
+          title={instantDefinition.title}
+          description={instantDefinition.description}
+          projectLabel={instantRouteLabel}
+        />
+      ) : null}
       <div
         style={{ display: instantRoute ? 'none' : 'contents' }}
         aria-hidden={instantRoute ? 'true' : undefined}

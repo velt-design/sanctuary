@@ -245,7 +245,15 @@ export default function CinematicHero({ media }: CinematicHeroProps) {
                 Fixed-roof pergola design and build in Auckland
               </p>
               <h1 id="project-finder-home-heading">
-                Outdoor spaces designed around the way you live.
+                <span data-homepage-hero-title-tone="supporting">
+                  Outdoor spaces
+                </span>{' '}
+                <span
+                  className={styles.heroTitleEmphasis}
+                  data-homepage-hero-title-tone="emphasis"
+                >
+                  designed around the way you live.
+                </span>
               </h1>
               <p className={styles.heroSupport}>
                 Custom pergolas and outdoor rooms, designed around the house,

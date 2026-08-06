@@ -70,6 +70,9 @@ Creating, starting, reprioritising, completing, or cancelling a request updates 
 
 The Drafting Queue shares the spreadsheet shell with Running Jobs. It should keep:
 
+- A truthful Drafting Queue frame immediately on warm portal navigation, with
+  the exact route chunk preloaded only from intent and the route-owned
+  current-user list query settling behind that frame.
 - The shared searchable staff header when rendered as a standalone route; embedded spreadsheet surfaces remain headerless.
 - Spreadsheet keyboard/navigation behavior.
 - Optimistic cell editing.
