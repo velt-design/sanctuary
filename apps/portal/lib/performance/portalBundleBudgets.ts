@@ -2,6 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import zlib from 'node:zlib';
+import {
+  PORTAL_POST_AUTH_SHELL_BUNDLE_BUDGETS,
+  PORTAL_POST_AUTH_SHELL_BUNDLE_MARKER,
+  type PortalPostAuthShellBundleBudgets,
+} from './portalPostAuthShellBundle';
 
 export type PortalBundleBudgets = {
   initialRawBytes: number;
@@ -29,8 +34,9 @@ type PortalLazyChunkMetric = {
   rawBytes: number;
   gzipBytes: number;
 };
+type PortalBundleBudgetName = keyof PortalBundleBudgets | 'postAuthShellRawBytes' | 'postAuthShellGzipBytes';
 type PortalBundleBudgetFailure = {
-  budget: keyof PortalBundleBudgets;
+  budget: PortalBundleBudgetName;
   actual: number;
   limit: number;
 };
@@ -46,6 +52,14 @@ export type PortalBundleBudgetReport = {
     rawBytes: number;
     gzipBytes: number;
     largestEntry: PortalLazyChunkMetric | null;
+  };
+  postAuthShell: {
+    marker: string;
+    budgets: PortalPostAuthShellBundleBudgets;
+    entries: PortalLazyChunkMetric[];
+    files: PortalBundleFileMetric[];
+    rawBytes: number;
+    gzipBytes: number;
   };
   topContributors: PortalBundleFileMetric[];
   failures: PortalBundleBudgetFailure[];
@@ -121,11 +135,10 @@ export const PORTAL_BUNDLE_ROUTES: readonly PortalBundleRouteConfig[] = [
     clientReferenceManifest: 'server/app/staff/projects/[projectId]/page_client-reference-manifest.js',
     reactLoadableManifest: 'server/app/staff/projects/[projectId]/page/react-loadable-manifest.json',
     budgets: {
-      // 2026-07-19 fresh build after splitting 3D Review behind explicit
-      // viewport intent. Each value is the fresh measurement plus 5%, rounded
-      // to KiB; the combined ceiling remains below the original route cap.
-      initialRawBytes: 742_400,
-      initialGzipBytes: 212_992,
+      // 2026-08-07 fresh build with the exact project loading frame plus 5%,
+      // rounded up to KiB. 3D Review remains behind explicit viewport intent.
+      initialRawBytes: 809_984,
+      initialGzipBytes: 225_280,
       lazyTotalRawBytes: 1_822_720,
       lazyTotalGzipBytes: 380_928,
       largestLazyRawBytes: 1_567_744,
@@ -154,10 +167,10 @@ export const PORTAL_BUNDLE_ROUTES: readonly PortalBundleRouteConfig[] = [
     clientReferenceManifest: 'server/app/staff/projects/[projectId]/design-workbench/page_client-reference-manifest.js',
     reactLoadableManifest: 'server/app/staff/projects/[projectId]/design-workbench/page/react-loadable-manifest.json',
     budgets: {
-      // The old all-initial ceiling is redistributed across initial and 3D-lazy
-      // code without increasing the combined raw or gzip allowance.
-      initialRawBytes: 1_701_888,
-      initialGzipBytes: 415_744,
+      // 2026-08-06 fresh exact-frame build plus 5%, rounded up to KiB. The 3D
+      // runtime remains isolated in the separately capped intent-loaded group.
+      initialRawBytes: 1_805_312,
+      initialGzipBytes: 439_296,
       lazyTotalRawBytes: 979_968,
       lazyTotalGzipBytes: 256_000,
       largestLazyRawBytes: 979_968,
@@ -359,6 +372,26 @@ function excludeInitialChunks(
     .filter((entry) => entry.files.length > 0);
 }
 
+function entryContainsMarker(nextDir: string, entry: PortalLazyChunkMetric, marker: string): boolean {
+  const markerBytes = Buffer.from(marker);
+  return entry.files.some((file) => {
+    if (!file.file.endsWith('.js')) return false;
+    return fs.readFileSync(path.join(nextDir, file.file)).includes(markerBytes);
+  });
+}
+
+function excludeFiles(
+  entries: PortalLazyChunkMetric[],
+  excluded: ReadonlySet<string>,
+): PortalLazyChunkMetric[] {
+  return entries
+    .map((entry) => {
+      const files = entry.files.filter((file) => !excluded.has(file.file));
+      return { ...entry, files, rawBytes: sumRaw(files), gzipBytes: sumGzip(files) };
+    })
+    .filter((entry) => entry.files.length > 0);
+}
+
 function failuresFor(report: Omit<PortalBundleBudgetReport, 'failures'>): PortalBundleBudgetFailure[] {
   const actual: PortalBundleBudgets = {
     initialRawBytes: report.initial.rawBytes,
@@ -368,9 +401,25 @@ function failuresFor(report: Omit<PortalBundleBudgetReport, 'failures'>): Portal
     largestLazyRawBytes: report.lazy.largestEntry?.rawBytes ?? 0,
     largestLazyGzipBytes: report.lazy.largestEntry?.gzipBytes ?? 0,
   };
-  return (Object.keys(actual) as Array<keyof PortalBundleBudgets>)
+  const routeFailures = (Object.keys(actual) as Array<keyof PortalBundleBudgets>)
     .filter((budget) => actual[budget] > report.budgets[budget])
     .map((budget) => ({ budget, actual: actual[budget], limit: report.budgets[budget] }));
+  const shellFailures: PortalBundleBudgetFailure[] = [];
+  if (report.postAuthShell.rawBytes > report.postAuthShell.budgets.rawBytes) {
+    shellFailures.push({
+      budget: 'postAuthShellRawBytes',
+      actual: report.postAuthShell.rawBytes,
+      limit: report.postAuthShell.budgets.rawBytes,
+    });
+  }
+  if (report.postAuthShell.gzipBytes > report.postAuthShell.budgets.gzipBytes) {
+    shellFailures.push({
+      budget: 'postAuthShellGzipBytes',
+      actual: report.postAuthShell.gzipBytes,
+      limit: report.postAuthShell.budgets.gzipBytes,
+    });
+  }
+  return [...routeFailures, ...shellFailures];
 }
 
 export function formatBytes(bytes: number): string {
@@ -382,12 +431,17 @@ export function analyzePortalBundleRoute(options: {
   rootDir?: string;
   nextDir?: string;
   budgets?: Partial<PortalBundleBudgets>;
+  postAuthShellBudgets?: Partial<PortalPostAuthShellBundleBudgets>;
   topContributors?: number;
 }): PortalBundleBudgetReport {
   const nextDir = options.nextDir ?? path.join(options.rootDir ?? process.cwd(), 'apps/portal/.next');
   if (!fs.existsSync(nextDir)) throw new PortalBundleBudgetError(missingArtifact(nextDir));
   const config = options.config;
   const budgets = { ...config.budgets, ...(options.budgets ?? {}) };
+  const postAuthShellBudgets = {
+    ...PORTAL_POST_AUTH_SHELL_BUNDLE_BUDGETS,
+    ...(options.postAuthShellBudgets ?? {}),
+  };
   const clientManifest = readClientManifest(nextDir, config);
   const initial = uniqueMetrics(nextDir, initialFiles(clientManifest));
   // Turbopack can repeat layout/page CSS in a dynamic import's loadable entry.
@@ -411,15 +465,29 @@ export function analyzePortalBundleRoute(options: {
         ),
       ]
     : emittedTurbopackEntries;
-  const entries = uniqueLazyEntries(excludeInitialChunks(
+  const allEntries = uniqueLazyEntries(excludeInitialChunks(
     [
       ...lazyEntries(nextDir, loadableManifest, reconciliationEntries),
       ...emittedTurbopackEntries,
     ],
     initiallyLoaded,
   ));
+  const postAuthShellEntries = allEntries.filter((entry) =>
+    entryContainsMarker(nextDir, entry, PORTAL_POST_AUTH_SHELL_BUNDLE_MARKER));
+  const postAuthShellFiles = uniqueMetrics(
+    nextDir,
+    postAuthShellEntries.flatMap((entry) => entry.files.map((file) => file.file)),
+  );
+  const postAuthShellFileNames = new Set(postAuthShellFiles.map((file) => file.file));
+  const entries = uniqueLazyEntries(excludeFiles(
+    allEntries.filter((entry) => !postAuthShellEntries.includes(entry)),
+    postAuthShellFileNames,
+  ));
   const lazy = uniqueMetrics(nextDir, entries.flatMap((entry) => entry.files.map((file) => file.file)));
-  const topContributors = uniqueMetrics(nextDir, [...initial, ...lazy].map((file) => file.file))
+  const topContributors = uniqueMetrics(
+    nextDir,
+    [...initial, ...lazy, ...postAuthShellFiles].map((file) => file.file),
+  )
     .sort((a, b) => b.rawBytes - a.rawBytes)
     .slice(0, options.topContributors ?? 10);
   const withoutFailures: Omit<PortalBundleBudgetReport, 'failures'> = {
@@ -434,6 +502,14 @@ export function analyzePortalBundleRoute(options: {
       rawBytes: sumRaw(lazy),
       gzipBytes: sumGzip(lazy),
       largestEntry: entries[0] ?? null,
+    },
+    postAuthShell: {
+      marker: PORTAL_POST_AUTH_SHELL_BUNDLE_MARKER,
+      budgets: postAuthShellBudgets,
+      entries: postAuthShellEntries,
+      files: postAuthShellFiles,
+      rawBytes: sumRaw(postAuthShellFiles),
+      gzipBytes: sumGzip(postAuthShellFiles),
     },
     topContributors,
   };

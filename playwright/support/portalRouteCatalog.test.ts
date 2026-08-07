@@ -3,6 +3,10 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import {
+  PORTAL_INSTANT_ROUTE_DEFINITIONS,
+  portalInstantRouteForPathname,
+} from '../../apps/portal/lib/portalInstantRoutes';
 import { portalScenarioRegistry, seededPortalScenarios } from './portalScenarioRegistry';
 import { agentAccessSmokeRoutes, agentScenarioSmokeRoutes, portalRouteCatalog } from './portalRouteCatalog';
 
@@ -28,6 +32,7 @@ const shellMarkers = new Set([
   'authenticated-standalone-shell',
 ]);
 const debugExportStatuses = new Set(['exported', 'planned', 'not-applicable']);
+const instantShellStatuses = new Set(['required', 'excluded', 'redirect']);
 
 function collectPageRoutes(directory: string, routeSegments: string[] = []): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -38,6 +43,12 @@ function collectPageRoutes(directory: string, routeSegments: string[] = []): str
     if (entry.name !== 'page.tsx') return [];
     return [`/${routeSegments.join('/')}`.replace(/\/$/, '') || '/'];
   });
+}
+
+function concreteRoutePath(routePattern: string): string {
+  return routePattern
+    .split('?')[0]
+    .replace(/:[^/]+/g, 'fixture-id');
 }
 
 describe('portalRouteCatalog', () => {
@@ -56,6 +67,7 @@ describe('portalRouteCatalog', () => {
       expect(smokeStatuses.has(entry.smokeStatus), entry.id).toBe(true);
       expect(shellMarkers.has(entry.expectedShell), entry.id).toBe(true);
       expect(debugExportStatuses.has(entry.debugExportStatus), entry.id).toBe(true);
+      expect(instantShellStatuses.has(entry.instantShell.status), entry.id).toBe(true);
       expect(entry.notes.trim().length, entry.id).toBeGreaterThan(0);
 
       expect(entry.ownerDoc, entry.id).toMatch(/^docs\/.+\.md$/);
@@ -74,6 +86,36 @@ describe('portalRouteCatalog', () => {
     const filesystemRoutes = collectPageRoutes(path.resolve(process.cwd(), 'apps/portal/app')).sort();
     const catalogRoutes = portalRouteCatalog.map((entry) => entry.routePattern.split('?')[0]).sort();
     expect(catalogRoutes).toEqual(filesystemRoutes);
+  });
+
+  it('keeps every required application route aligned with the instant-shell registry', () => {
+    const requiredEntries = portalRouteCatalog.filter(
+      (entry) => entry.instantShell.status === 'required',
+    );
+
+    for (const entry of requiredEntries) {
+      const pathname = concreteRoutePath(entry.routePattern);
+      expect(portalInstantRouteForPathname(pathname), entry.id).toBe(entry.instantShell.route);
+    }
+
+    expect(
+      [...new Set(requiredEntries.map((entry) => entry.instantShell.route))].sort(),
+    ).toEqual(Object.keys(PORTAL_INSTANT_ROUTE_DEFINITIONS).sort());
+  });
+
+  it('requires normal authenticated pages while keeping diagnostics explicitly excluded', () => {
+    for (const entry of portalRouteCatalog) {
+      if (
+        (entry.requiredRole === 'staff' || entry.requiredRole === 'admin')
+        && entry.category !== 'diagnostic'
+        && entry.instantShell.status !== 'redirect'
+      ) {
+        expect(entry.instantShell.status, entry.id).toBe('required');
+      }
+    }
+
+    expect(portalRouteCatalog.find((entry) => entry.id === 'sidebar-lab')?.instantShell)
+      .toEqual({ status: 'excluded' });
   });
 
   it('keeps the initial authenticated agent smoke intentionally small', () => {

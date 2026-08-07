@@ -170,7 +170,7 @@ jobs:
   portal-performance:
     name: Portal Performance Report
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       CI: true
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -220,6 +220,20 @@ jobs:
             echo "Authenticated performance repetition ${run}/5"
             PORTAL_PERF_ARTIFACT="artifacts/portal-performance/run-${run}.json" npm run test:portal:performance:capture
           done
+
+      - name: Production offline shell gate
+        id: portal_offline_shell
+        run: npm run test:portal:offline-shell
+
+      - name: Offline shell failure guidance
+        if: ${{ failure() && steps.portal_offline_shell.outcome == 'failure' }}
+        run: |
+          {
+            echo
+            echo "### Offline Shell Failure"
+            echo
+            echo "This gate must not silently skip. Confirm the authenticated project prerequisite, the production service worker, and the completed versioned static cache before reviewing the trace."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Portal performance failure guidance
         if: ${{ failure() && steps.portal_performance.outcome == 'failure' }}

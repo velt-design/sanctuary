@@ -119,30 +119,46 @@ The canonical `/login` and `/access-status` routes use the same hard-edge Founda
 
 ### Instant route shell contract
 
-`portalInstantRoutes.ts`, `PortalRouteTransition`, and the shared pending frames
-own the small contract for warm portal page
-changes. Dashboard, Projects, Contacts, Schedule, Work Queue, Drafting Queue,
-Running Jobs, Calculator, and Project Detail render a truthful destination
-header and structural frame synchronously while the persistent sidebar stays
-mounted. Projects and Contacts retain their richer client-mounted index frames;
-the other shared frames release when the new route commits. Same-page query
-changes such as Schedule Board/Gantt do not replace usable route content.
+`portalInstantRoutes.ts`, `PortalRouteTransition`, and the route-owned pending
+frames make the current portal structure local and stable. Dashboard, Projects,
+Contacts, Schedule, Work Queue, Drafting Queue, Running Jobs, Calculator,
+project/contact/create/detail routes, Commercial detail routes, the Design
+Workbench frame, staff workbenches, and admin destinations render the same
+header, actions, controls, tabs, table/card geometry, and navigation used by
+their settled page. Individual names, counts, rows, prices, permissions, and
+other live values may remain inline pending. A heading, generic skeleton, or
+stack of loading screens is not an acceptable destination frame.
 
-Navigation prefetch remains intent-only. It loads the exact route chunk and,
-where one exists, only that route's lightweight current-user summary query.
-Authoritative APIs, access-ending behavior, local-first queues, specialist lazy
-modules, and background refresh remain with their existing owners. This is not
-authority to persist broad portal data or duplicate database records in the
-browser.
+The shared shell and sidebar remain mounted. Once a destination frame is
+visible it must not disappear while data settles; same-page query changes such
+as Schedule Board/Gantt and Project Overview/Calculator/Commercial continue to
+use their owned in-page structure. This is a continuity and performance change,
+not a restyle: current spacing, typography, colours, hierarchy, controls, and
+responsive behavior remain canonical.
 
-A future routine portal page should add its metadata and path recognition to
-the instant-route registry, use the shared frame from its `loading.tsx`, and
-preload only its exact safe route code from navigation intent. Add an
-intent-preload query only when its owner does not expand every shared route's
-bundle graph; otherwise let the route-owned query start after commit behind the
-immediate frame. If the page needs a specialist frame or cannot truthfully
-release on route commit, record that exception in the registry and cover it
-with a focused transition test.
+After a live authenticated role check, the portal preloads the small Dashboard,
+Projects, Contacts, and shared-route frame code and warms only safe static build
+assets. Route data remains API/query-owned. Heavy Calculator, drawing,
+workbench, PDF, email, quote/invoice, and other specialist code stays behind its
+existing route or intent boundary. Intent preloading may still load an exact
+route chunk or lightweight current-user summary, but it must not fan out
+customer data across routes.
+
+While the already-open app is offline, clicks and browser Back/Forward across
+registered portal destinations replace the previous route content with the
+destination's data-free frame and keep navigation usable. Project tabs can
+switch between the data-free Overview, Calculator, Commercial, and known nested
+frames without mounting stale customer data. Reconnection offers an explicit
+reload for live data and authority. This slice deliberately does not cache HTML,
+RSC/Flight, or API responses, so an offline hard refresh or new tab is not
+supported.
+
+A future routine portal page must add path recognition and its exact data-free
+frame to the instant-route registry, reuse that frame from its nearest
+`loading.tsx`, and add route-specific structure/continuity tests. Any specialist
+exception must stay intent-loaded and be named in the registry. Do not broaden
+the service-worker allowlist or persist server responses to make a frame appear
+faster.
 
 The current portal intentionally combines shared semantic `--ui-*` roles with
 active route-owned, compatibility and specialist presentation. Examples
@@ -180,7 +196,7 @@ and has no implied completion sequence.
 
 | Surface | Current presentation owner | Boundary to preserve |
 | --- | --- | --- |
-| Staff shell and navigation | `PortalShell`, navigation modules, instant-route registry/frame, semantic portal tokens, mobile drawer | Keep current expanded/collapsed/mobile behavior, focus ownership, truthful route-shell release rules, intent-only prefetch, and active compatibility tokens. |
+| Staff shell and navigation | `PortalShell`, navigation modules, instant-route registry/frame, semantic portal tokens, mobile drawer | Keep current expanded/collapsed/mobile behavior, focus ownership, exact-frame continuity, post-verification core-frame preload, intent-only data/specialist preload, soft-offline limits, and active compatibility tokens. |
 | Dashboard | dashboard header, quick actions, pipeline, operational panels, activity and task owners | Preserve current hierarchy and data semantics; do not infer new metrics or restyle other routes from Dashboard. |
 | Project Work Queue | Work Queue route/components plus `teamQueue.ts` and paginated list owner | Keep one row per project, direct marker/state ownership, server-owned precedence, durable command feedback, complete portfolio reachability, and the named rollout-not-ready state. Personal reminders remain separate. |
 | Projects and Contacts | `StaffPageHeader`, `PageHeader`, shared controls/surfaces/statuses plus route-owned composition | Keep search, filters, pending states, cache/local-first behavior and page actions with their domain owners. |

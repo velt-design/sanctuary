@@ -12,6 +12,7 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 - Keep this doc aligned when route categories, smoke policy, or ownership changes.
 - Browser smoke specs should consume catalog subsets such as `agentAccessSmokeRoutes` and `agentScenarioSmokeRoutes`; do not create new hardcoded route lists.
 - Dynamic project, estimate, quote, workbench, and calculator routes are backed by explicit local/staging scenarios before they run in browser smoke.
+- Declare every route's `instantShell` metadata as `required`, `excluded`, or `redirect`; required entries also name their exact instant-route frame.
 
 ## Smoke Statuses
 
@@ -31,6 +32,14 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 | `planned` | The route should expose the contract after a safe seeded scenario or owner-specific payload is added. |
 | `not-applicable` | The route is simple enough that route smoke and browser evidence are sufficient for now. |
 
+## Instant Shell Statuses
+
+| Status | Meaning |
+| --- | --- |
+| `required` | An authenticated workflow route must map to a real exact frame in `portalInstantRoutes.ts`. |
+| `excluded` | Public-auth and QA/diagnostic pages are deliberately outside the authenticated instant-shell contract. `/staff/sidebar-lab` is intentionally in this group. |
+| `redirect` | The page exists only to redirect to a canonical route and does not own another frame. |
+
 ## Current Catalog
 
 | Id | Route Pattern | Category | Role | Data Need | Smoke Status | Debug Export | Owner Doc |
@@ -42,6 +51,7 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 | `qa-email-preview-workbench-fixture` | `/qa/email-preview-workbench-fixture` | diagnostic | fixture | fixture_flag | fixture-only | not-applicable | `docs/automation-email-audit.md` |
 | `qa-design-booklet-workbench-fixture` | `/qa/design-booklet-workbench-fixture` | diagnostic | fixture | fixture_flag | fixture-only | not-applicable | `docs/design-booklets.md` |
 | `projects-index` | `/staff/projects` | project | staff | visible_project | agent-access | not-applicable | `docs/projects-contacts-estimates-calculator.md` |
+| `work-queue` | `/staff/projects/work-queue` | project | staff | scenario_required | catalog-only | planned | `docs/project-work-items-and-follow-up.md` |
 | `contacts-index` | `/staff/contacts` | project | staff | none | agent-access | not-applicable | `docs/projects-contacts-estimates-calculator.md` |
 | `schedule` | `/staff/schedule` | schedule | staff | none | agent-access | planned | `docs/schedule.md` |
 | `admin-costing` | `/admin/costing` | admin | admin | admin_role | admin-only | planned | `docs/costing-and-geometry.md` |
@@ -60,6 +70,33 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 | `admin-cost-overheads` | `/admin/costs/overheads` | admin | admin | admin_role | admin-only | planned | `docs/costing-and-geometry.md` |
 | `admin-imports` | `/admin/imports` | admin | admin | admin_role | admin-only | planned | `docs/supabase-schema-map.md` |
 | `qa-design-workbench-fixture` | `/qa/design-workbench-fixture?fixture=:fixtureSlug` | diagnostic | fixture | fixture_flag | fixture-only | exported | `docs/design-workbench-architecture.md` |
+
+## Immediate Shell And Offline Coverage
+
+The smoke catalogue above owns access and scenario coverage. The separate
+executable registry in `apps/portal/lib/portalInstantRoutes.ts` owns immediate
+presentation coverage for current staff/admin destinations and compatibility
+aliases. Each registered route must resolve to its real data-free final frame;
+route-specific tests must assert its identifying controls, regions, tabs, or
+table structure rather than accepting only a heading or generic skeleton.
+The catalog test inventories every page, proves every `required` entry resolves
+to its declared instant route, and proves every instant-route definition is
+owned by at least one required catalog entry. Exact-frame dispatch is exhaustive
+and fails closed if a newly registered route has no real frame.
+
+After live authentication, the small core frame chunks are preloaded and their
+safe static build assets may be served by the versioned static-only service
+worker. Data reads, role checks, and specialist modules remain with their route
+owners. When the already-open app loses its network, the same registry supports
+soft navigation and browser Back/Forward without retaining the previous
+route's customer data. Diagnostic/QA routes are outside this offline contract.
+An offline hard refresh or new tab is deliberately unsupported because HTML,
+RSC/Flight, API, and protected responses are never service-worker cached.
+
+When adding a portal page, update both registries where applicable: the route
+catalog for access/smoke ownership, and the instant-route registry plus exact
+pending frame for presentation continuity. A redirect-only alias may normalize
+to an existing frame; it must not recreate retired UI or data ownership.
 
 ## Current Smoke Lane
 

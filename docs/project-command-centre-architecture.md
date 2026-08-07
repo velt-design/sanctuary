@@ -567,7 +567,15 @@ No raw tokens, token hashes, internal true cost, margin, service-role data, or o
 
 ## 11. Existing loading, caching, and local-first model
 
-The query key is `qk.projects.commandCentre(host, projectId)`. It uses the authenticated user's existing QueryClient and a one-day garbage-collection window. It is stale immediately and refetches whenever Overview remounts, so a return from Calculator or Commercial refreshes current commercial state without adding cache logic to those critical workflows.
+Before protected reads settle, Project Detail renders its real two-row header,
+tabs, Overview command layout, commercial region, and recent-history geometry
+with data-free inline pending values. The accepted structure remains mounted as
+values settle; it never substitutes invented project, customer, price, work, or
+permission facts. While the already-open app is offline, the same data-free
+Overview/Calculator/Commercial frames remain navigable without command
+authority. Offline hard refresh/new-tab startup is not supported.
+
+The query key is `qk.projects.commandCentre(host, projectId)`. It uses the authenticated user's existing memory-only QueryClient and a one-day garbage-collection window. It is stale immediately and refetches whenever Overview remounts, so a return from Calculator or Commercial refreshes current commercial state without adding cache logic to those critical workflows.
 
 Accepted V2 commands use `patchProjectWorkProjectionCaches` to fan the returned projection into matching command-centre, snapshot, and summary caches. Header-owner commands use `patchProjectCommandCentreCache` as the sole complete command-centre response patch owner. Both paths then use `invalidateProjectWorkReads` to refresh project, Work Queue, and Dashboard consumers. No Overview component calls `setQueryData` for those caches directly. Project Work controls are enabled only while their owning reads are fresh and the snapshot and command-centre agree; cached background-refresh, refresh-failed, rollout-incomplete, or model-mismatch facts stay visible without mutation controls.
 

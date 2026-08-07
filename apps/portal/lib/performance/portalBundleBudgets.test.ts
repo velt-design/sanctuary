@@ -7,6 +7,7 @@ import {
   budgetAtFivePercent,
   type PortalBundleRouteConfig,
 } from './portalBundleBudgets';
+import { PORTAL_POST_AUTH_SHELL_BUNDLE_MARKER } from './portalPostAuthShellBundle';
 
 let tempDir: string | null = null;
 
@@ -182,6 +183,69 @@ describe('portal route bundle budgets', () => {
     expect(report.initial.rawBytes).toBe(10);
     expect(report.lazy.rawBytes).toBe(20);
     expect(report.lazy.entries[0]?.files.map((file) => file.file)).toEqual(['static/lazy.js']);
+  });
+
+  it('classifies the marked post-auth shell separately from route lazy code', () => {
+    const { nextDir, config } = fixture();
+    write(path.join(nextDir, config.reactLoadableManifest), JSON.stringify({
+      shell: { files: ['static/shell.js', 'static/shell.css'] },
+      route: { files: ['static/lazy.js'] },
+    }));
+    write(path.join(nextDir, 'static/shell.js'), `const marker = ${JSON.stringify(PORTAL_POST_AUTH_SHELL_BUNDLE_MARKER)};`);
+    write(path.join(nextDir, 'static/shell.css'), Buffer.alloc(12, 3));
+
+    const report = analyzePortalBundleRoute({ nextDir, config });
+
+    expect(report.postAuthShell.entries.map((entry) => entry.id)).toEqual(['shell']);
+    expect(report.postAuthShell.files.map((file) => file.file)).toEqual([
+      'static/shell.css',
+      'static/shell.js',
+    ]);
+    expect(report.lazy.files.map((file) => file.file)).toEqual(['static/lazy.js']);
+    expect(report.lazy.rawBytes).toBe(20);
+  });
+
+  it('deduplicates files shared by equivalent post-auth shell loader groups', () => {
+    const { nextDir, config } = fixture();
+    write(path.join(nextDir, config.reactLoadableManifest), JSON.stringify({
+      shellA: { files: ['static/shell-marker.js', 'static/shell-a.js'] },
+      shellB: { files: ['static/shell-marker.js', 'static/shell-b.js'] },
+    }));
+    const markerContents = `const marker = ${JSON.stringify(PORTAL_POST_AUTH_SHELL_BUNDLE_MARKER)};`;
+    write(path.join(nextDir, 'static/shell-marker.js'), markerContents);
+    write(path.join(nextDir, 'static/shell-a.js'), Buffer.alloc(12, 3));
+    write(path.join(nextDir, 'static/shell-b.js'), Buffer.alloc(18, 4));
+
+    const report = analyzePortalBundleRoute({ nextDir, config });
+
+    expect(report.postAuthShell.entries).toHaveLength(2);
+    expect(report.postAuthShell.rawBytes).toBe(Buffer.byteLength(markerContents) + 30);
+    expect(report.postAuthShell.files).toHaveLength(3);
+    expect(report.lazy.rawBytes).toBe(0);
+  });
+
+  it('fails the separate post-auth shell cap without changing route budgets', () => {
+    const { nextDir, config } = fixture();
+    write(path.join(nextDir, config.reactLoadableManifest), JSON.stringify({
+      shell: { files: ['static/shell.js'] },
+    }));
+    write(
+      path.join(nextDir, 'static/shell.js'),
+      `${PORTAL_POST_AUTH_SHELL_BUNDLE_MARKER}${'x'.repeat(40)}`,
+    );
+
+    const report = analyzePortalBundleRoute({
+      nextDir,
+      config,
+      postAuthShellBudgets: { rawBytes: 10, gzipBytes: 1_000 },
+    });
+
+    expect(report.lazy.rawBytes).toBe(0);
+    expect(report.failures).toContainEqual({
+      budget: 'postAuthShellRawBytes',
+      actual: Buffer.byteLength(PORTAL_POST_AUTH_SHELL_BUNDLE_MARKER) + 40,
+      limit: 10,
+    });
   });
 
   it('reports changed manifest paths with the fresh-build recovery command', () => {

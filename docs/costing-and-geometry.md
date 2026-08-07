@@ -69,6 +69,14 @@ Do not price from calculator while claiming the saved source is workbench-solved
 
 The admin-only control centre is `/admin/costing`. Its browser component calls guarded admin APIs only. `apps/portal/lib/costing/configurationAdmin.ts` owns draft/version orchestration, while `configurationResolver.ts` owns the staff calculation read path. Published version rows are immutable; a separate singleton publication row points to the current version so switching versions never mutates an old published row.
 
+The control-centre route and Pricebook compatibility entries render the final
+data-free admin header, workflow navigation, status/summary geometry, and inline
+pending values from the portal shell before configuration reads settle. Soft
+offline navigation may show that presentation while the app remains open, but
+it exposes no cached configuration values and cannot validate, save, publish,
+or roll back. Those actions remain live-admin and server-authoritative; offline
+hard refresh/new-tab startup is not supported.
+
 The admin experience is a guided `Overview -> Edit settings -> Review impact -> Publish` workflow. Every draft and immutable published version has a concise name and purpose; these are version identity, not a replacement for the separate publication audit note. The editor payload includes the validated active configuration snapshot alongside the selected draft so the UI can show active and draft values, changed counts by section, grouped material categories and labour subsections, changed-only filtering, and field/group/section resets without reconstructing costing logic in the portal. Material context may display existing package-owned product, supplier, unit, category, notes, and unconfirmed-assumption flags, but those identities and meanings are not editable.
 
 Draft changes remain browser-local until `Save & validate` calls the admin API. While editing, a debounced admin-only validation request runs the same package-owned typed and cross-field validation without saving or touching Supabase rows; save and publish still revalidate authoritatively. Package validation issues are attached to business-labelled fields. Review continues to use the package-generated diff and fixed representative-scenario preview, including material, labour, overhead, and total movement. Admins can optionally select a recent or searched saved estimate and compare its frozen calculator inputs under the active and saved-draft configurations. This real-estimate preview is server-calculated through the canonical calculator-to-site adapter and `@sp/costing`; it is read-only and never updates the estimate, its frozen outputs, or provenance. UUIDs, hashes, schema names, manifests, and raw diff paths are available only as optional technical detail.

@@ -191,6 +191,52 @@ GTM owns GA4 and Google Ads browser tags; there is no separate coded browser GA4
 
 The same accepted enquiry stores the first-party GA client ID only when analytics is enabled. Campaign fields, click identifiers, landing URL, and referrer require marketing to be enabled; landing/referrer query strings and fragments are removed. The server re-applies those category gates rather than trusting browser filtering, while keeping the exact analytics/marketing snapshot plus `user_choice` or `regional_default` basis used at submission. Portal lifecycle audit events are `marketing.site_visit_booked` for confirmed visits only, `marketing.quote_accepted`, `marketing.deposit_received`, and `marketing.project_lost` for the closed structured loss allowlist. The database trigger creates a durable GA4 outbox row; a five-minute cron claims it with a lease and maps those events to `qualify_lead`, `quote_accepted`, `close_convert_lead`, and `close_unconvert_lead`. Quote acceptance and deposit received include only the authoritative GST-inclusive quote value and `NZD` currency; the won event reads the frozen quote total from its open deposit invoice. GA4 key events are `generate_lead`, `qualify_lead`, `quote_accepted`, and `close_convert_lead`; `close_unconvert_lead` is deliberately diagnostic and must not become a bidding conversion. Delivery uses the originating visitor identity, never a staff browser identity, sends no project/contact IDs, email addresses, free text, or unapproved UTM fields, skips events without enabled analytics or a valid client ID, and bounds retries to eight attempts and GA4's 72-hour backdating window. Claiming one row immediately before dispatch reduces lease overlap, but GA4 Measurement Protocol does not provide generic non-purchase event deduplication: if GA4 accepts a request and the completion checkpoint fails, a retry can duplicate that analytics event. The outbox is therefore at-least-once, not exactly-once, and its stable delivery identity remains available for reconciliation. GA4 Measurement Protocol secrets remain server-only. Direct Google Ads API upload or enhanced conversions remain a later integration once the required action IDs and credentials are available.
 
+## Portal Offline Shell And Browser Cache Boundary
+
+The offline-capable portal shell caches presentation code and public assets,
+not protected content. Its service worker is release-versioned and may cache
+only same-origin immutable `/_next/static` JavaScript, CSS, fonts, and Wasm plus
+the explicit public logo allowlist. Static fetches omit credentials. The worker
+rejects navigations/documents, HTML, RSC/Flight, API requests, requests with
+Authorization or Range headers, redirects, private/no-store responses,
+attachments, and PDF/DWG/blob content. A waiting worker may warm its own
+version without deleting the cache still owned by the active worker; old
+release caches are removed when the new worker activates, or immediately after
+an already-active worker finishes a verified warm. `/sw.js` itself remains
+`no-store`.
+
+React Query server responses stay memory-only. A cached role may shape the
+data-free shell and a cached per-owner theme may style it, but neither is live
+authorization and neither may mount customer or commercial data. Current
+session and role verification gate data-bearing providers. Logout, user change,
+or verified access loss hides protected content immediately and independently
+clears that owner's drafts, queued mutations, session fallbacks, theme, retired
+query cache, and sensitive legacy browser keys. Every fresh verified document
+also clears pre-owner legacy stores before authenticated providers mount, without
+deleting the current owner's valid scoped drafts. Before an identity/access purge
+starts, the browser synchronously records a customer-data-free cleanup quarantine
+in local storage with a same-origin cookie fallback. The marker survives reloads,
+records the departing owner, and clears only after both owner-scoped and legacy
+cleanup succeed; a later login must finish that work before mounting data. If
+neither marker store is writable, the current document remains hard-locked and
+does not navigate. With a durable marker, logout, verified owner change, and
+access-loss redirects cross a hard document boundary so Next's in-memory
+Router/RSC prefetch cache cannot outlive the verified portal owner.
+
+The authenticated browser observes same-origin portal API `401` and `403`
+responses across both shared JSON clients and specialist raw-fetch flows. A
+`401` immediately unmounts data-bearing providers while session and role are
+revalidated. A `403` triggers the same live role check without treating an
+endpoint-specific permission denial as whole-portal access loss. Owner data is
+purged only when the live check confirms logout or removal of portal access.
+
+Offline navigation is intentionally soft-only: while the authenticated app
+remains open, registered routes can show their exact data-free frames and wait
+for reconnection. Hard refresh and new-tab offline startup are not supported in
+this slice because there is no cached document fallback. Email, quote, invoice,
+payment, permission, destructive, and other authority-bearing actions remain
+server-authoritative and must not auto-resume from a presentation frame.
+
 ## Durable Background-Job Boundary
 
 The durable foundation defines one logged PGMQ queue, a durable job ledger, a private frozen-payload table, append-only events, effect checkpoints, worker heartbeats, and service-role-only security-definer RPCs. JOB-02 adds a dark-by-default Node worker with strict response validation, safe structured logs, cached health output, bounded execution, and an RPC-only Supabase adapter. JOB-03 adds the Node-only `@sp/email-provider` contract, durable email-effect coordinator, private append-only provider receipts, and signed provider-acceptance reconciliation. No deployment evidence, workflow producer, or commercial handler is enabled yet; JOB-04 through JOB-08 remain pending.

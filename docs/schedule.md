@@ -308,17 +308,18 @@ direct URL changes still synchronize the selected view. Only the active view's
 model is derived: Board does not build while Gantt is active, and Gantt builds
 only its lane items.
 
-These changes retain the shared non-blocking portal progress bar and mark only
-the selected view button busy. They must not replace the usable Schedule
-surface with the full-page loading overlay; full-page loading remains a
-cold-route/auth boundary only. The separate dormant Site Visits route keeps
-normal App Router navigation.
+These changes mark only the selected view button busy and must not replace the
+usable Schedule surface with a full-page loading overlay. The separate dormant
+Site Visits route keeps normal App Router navigation.
 
-Warm navigation from another portal page now renders the truthful shared
-Schedule frame immediately and preloads the exact Board or Gantt query selected
-by the destination URL. The frame releases when the Schedule route commits;
-the existing mounted Board/Gantt behavior above still owns same-page view
-changes, cached snapshots, mutations, and refresh truth.
+Navigation from another portal page renders the final Schedule header, Board/
+Gantt controls, timeline/lane geometry, and inline pending values immediately.
+The data-free frame remains visible until the route-owned view settles; the
+existing mounted Board/Gantt behavior above still owns same-page view changes,
+cached in-memory snapshots, mutations, and refresh truth. While the already-open
+app is offline, the frame remains navigable but contains no retained jobs and
+offers no Schedule mutation authority. Offline hard refresh/new-tab startup is
+not supported.
 
 Use:
 

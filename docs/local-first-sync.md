@@ -17,11 +17,13 @@ The portal uses local-first primitives for heavy staff editing flows where routi
 
 ## Authenticated Owner Boundary
 
-Persisted browser state belongs to one authenticated user. React Query uses `sanctuary-portal-react-query:v4:<userId>` and the local-first store uses `sanctuary-portal-local-first:v2:<userId>`. The providers mount inside `PortalAuthProvider`; unauthenticated pages receive an ephemeral QueryClient and do not hydrate persisted portal data.
+Persisted drafts and queued mutations belong to one authenticated user in the local-first store at `sanctuary-portal-local-first:v2:<userId>`. React Query is memory-only: server query responses, including quote, estimate, customer, and operational responses, are never hydrated from or written to durable browser storage. The retired `sanctuary-portal-react-query:v4:<userId>` key remains only in owner cleanup so older releases cannot leave data behind. Data-bearing providers mount only after a live role verification; a cached role may render the data-free shell but cannot mount owner data.
 
-On an owner change, the old queue runtime stops, removes online listeners, retry timers, and store subscribers, clears its in-memory QueryClient, and only then hydrates the new owner. Legacy unscoped query, local-first, and calculator session keys are quarantined and never replayed for a guessed owner. Calculator working copies inherit the local-first owner boundary and its physical session fallback key is `sanctuary-portal:calculator:draft:v2:<userId>:<draftScope>`.
+On logout, owner change, or verified access loss, the old queue runtime stops, removes online listeners, retry timers, and store subscribers, clears its in-memory QueryClient, and clears that owner's drafts, queue, theme, retired query cache, and sensitive legacy browser keys. The transition also starts a new document so Next's Router/RSC prefetch memory cannot cross the identity boundary. The next owner is not mounted unless its current session and role verify live. Calculator working copies inherit the local-first owner boundary and its physical session fallback key is `sanctuary-portal:calculator:draft:v2:<userId>:<draftScope>`.
 
-Sign-out is immediate when there is no retained work. Queued, offline, conflicted, failed, or draft work may be kept for the same user's next sign-in or the user may remain signed in. Actively syncing work requires the user to remain signed in until completion or explicitly confirm a discard. A discard clears only the current owner's local-first queue and working copies.
+Same-origin portal API `401` and `403` responses trigger a live session/role recheck even in specialist flows that use raw `fetch`. A `401` locks the owner data boundary during that check; a route-specific `403` does not delete drafts unless the live role read confirms whole-portal access was removed.
+
+Sign-out is immediate when there is no retained work. If queued, syncing, offline, conflicted, failed, or draft work exists, the user must either remain signed in or explicitly confirm permanent local discard. Confirmed sign-out clears the departing owner's local data even if one browser backend reports a cleanup failure; access is never restored from a partly deleted cache.
 
 ## Mutation Keys
 

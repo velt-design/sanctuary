@@ -65,6 +65,16 @@ The post-breakaway workbench is object-first and intentionally strict:
 
 The current implementation is north-star aligned and exposes a project-level `WorkbenchSolvedProjectArtifact` as the live UI boundary. `WorkbenchSolvedModel` no longer exposes loose project geometry/status aliases; UI and state consumers read project geometry, plan layers, snap sources, and diagnostics from the bundled artifact. Runtime clients memoize a `DrawingWorkbenchSolvedBase` by draft/project identity and derive selection, visibility, and viewport UI from that base. UI-only changes must reuse the solved-model identity; a persisted draft or geometry-identity change creates the next solve.
 
+The route's immediate pending frame is a data-free presentation owner outside
+the drawing runtime. It reproduces the Workbench header, mode controls, tool
+rail, stage, inspector, and status geometry without importing drawings,
+geometry, costing, calculator inputs, or a project draft. The actual Workbench
+runtime remains specialist-loaded. Soft offline navigation may show this frame
+while the already-open portal remains mounted, but it cannot edit or save a
+design; offline hard refresh/new-tab startup is not supported. This frame has
+legacy-cull row `N/A`, neither removes nor builds on legacy, has no Phase 2
+dependency, and consolidates no function or type.
+
 ## Runtime Boundaries
 
 Live workbench roots are:
