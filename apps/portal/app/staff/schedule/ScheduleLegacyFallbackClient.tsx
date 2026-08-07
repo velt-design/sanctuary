@@ -36,6 +36,10 @@ import type { ScheduleDiagnosticsResult } from './ScheduleDiagnosticsPanel';
 import type { ScheduleBoardDrop, ScheduleBoardMenuAction, ScheduleBoardViewProps } from './ScheduleBoardView';
 import type { ScheduleGanttViewProps } from './ScheduleGanttView';
 import ScheduleViewTabs, { type ScheduleView } from './ScheduleViewTabs';
+import SchedulePendingFrame, {
+  ScheduleBoardChunkPendingFrame,
+  ScheduleGanttChunkPendingFrame,
+} from './SchedulePendingFrame';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
 import { EMPTY_SCHEDULE_BOARD_MODEL, isCompletedScheduleItem } from './ScheduleBoardModelShared';
 import { buildScheduleBoardModelLegacy, toScheduleProjectSummary } from './ScheduleBoardModelLegacy';
@@ -53,7 +57,7 @@ const LazyScheduleBoardView = dynamic<ScheduleBoardViewProps>(
   () => import('./ScheduleBoardView'),
   {
     ssr: false,
-    loading: () => <p className={styles.note}>Loading Board...</p>,
+    loading: ScheduleBoardChunkPendingFrame,
   },
 );
 
@@ -61,7 +65,7 @@ const LazyScheduleGanttView = dynamic<ScheduleGanttViewProps>(
   () => import('./ScheduleGanttView'),
   {
     ssr: false,
-    loading: () => <p className={styles.note}>Loading Gantt...</p>,
+    loading: ScheduleGanttChunkPendingFrame,
   },
 );
 
@@ -347,6 +351,7 @@ export default function ScheduleLegacyFallbackClient({
     const href = `/staff/schedule?${qs.toString()}`;
     const label = next === 'site_visits' ? 'Site visits' : next === 'gantt' ? 'Gantt' : 'Board';
     beginRouteTransition({ href, label, source: 'schedule-view', control });
+    if (navigator.onLine === false) return;
     startUiTransition(() => {
       router.replace(href);
       if (next !== 'site_visits') setView(next);
@@ -1008,11 +1013,15 @@ export default function ScheduleLegacyFallbackClient({
   };
 
   const handleGanttOpenProject = (projectId: string) => {
-    router.push(`/staff/projects/${encodeURIComponent(projectId)}`);
+    const href = `/staff/projects/${encodeURIComponent(projectId)}`;
+    beginRouteTransition({ href, label: 'Project', source: 'schedule-gantt' });
+    if (navigator.onLine !== false) router.push(href);
   };
 
   const handleGanttOpenProjectPack = (projectId: string, estimateId: string) => {
-    router.push(`/staff/projects/${encodeURIComponent(projectId)}/estimate/${encodeURIComponent(estimateId)}`);
+    const href = `/staff/projects/${encodeURIComponent(projectId)}/estimate/${encodeURIComponent(estimateId)}`;
+    beginRouteTransition({ href, label: 'Project pack', source: 'schedule-gantt' });
+    if (navigator.onLine !== false) router.push(href);
   };
 
   const handleGanttOpenPinEdit = (id: string, requestedStart: string) => {
@@ -1320,21 +1329,7 @@ export default function ScheduleLegacyFallbackClient({
   ) : null;
 
   if (!hydrated) {
-    return (
-      <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
-        <StaffPageHeader
-          title="Schedule"
-          right={
-            <HeaderActions>
-              {scheduleTabs}
-            </HeaderActions>
-          }
-        />
-        <div className={styles.stack}>
-          <p className={styles.note}>Loading schedule data from the portal database…</p>
-        </div>
-      </PageLayout>
-    );
+    return <SchedulePendingFrame view={view === 'gantt' ? 'gantt' : 'board'} />;
   }
 
   if (loadError) {
@@ -1353,7 +1348,16 @@ export default function ScheduleLegacyFallbackClient({
         : 'supabase/portal_schema.sql';
 
     return (
-      <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
+      <PageLayout
+        width="full"
+        density="compact"
+        data-ui-foundation-consumer="schedule"
+        data-portal-page-shell="schedule"
+        data-portal-page-shell-ready="true"
+        data-portal-page-shell-state="error"
+        data-schedule-background-ready="false"
+        className={cx(styles.page, styles.pageLocked)}
+      >
         <StaffPageHeader
           title="Schedule"
           right={
@@ -1418,7 +1422,16 @@ export default function ScheduleLegacyFallbackClient({
   }
 
   return (
-    <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
+    <PageLayout
+      width="full"
+      density="compact"
+      data-ui-foundation-consumer="schedule"
+      data-portal-page-shell="schedule"
+      data-portal-page-shell-ready="true"
+      data-portal-page-shell-state="ready"
+      data-schedule-background-ready="true"
+      className={cx(styles.page, styles.pageLocked)}
+    >
       <StaffPageHeader
         title="Schedule"
         right={

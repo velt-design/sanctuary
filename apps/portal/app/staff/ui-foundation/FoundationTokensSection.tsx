@@ -57,7 +57,11 @@ export function FoundationTokensSection({
 }) {
   return (
     <>
-      <section className={styles.hero} aria-labelledby="foundation-title">
+      <section
+        className={styles.hero}
+        aria-labelledby="foundation-title"
+        data-portal-shell-region="ui-foundation-headers"
+      >
         <div className={styles.heroBrand}>
           <p>Sanctuary<br />Staff Portal</p>
           <h1 id="foundation-title">UI Foundation</h1>
@@ -123,7 +127,11 @@ export function FoundationTokensSection({
         </div>
       </section>
 
-      <section className={styles.foundationGrid} aria-label="Design foundations">
+      <section
+        className={styles.foundationGrid}
+        aria-label="Design foundations"
+        data-portal-shell-region="ui-foundation-tokens"
+      >
         <article className={styles.catalogueSection}>
           <div className={styles.sectionTitle}><h2>1. Design tokens</h2><small>Semantic roles</small></div>
           {colourGroups.map((group) => (

@@ -1107,7 +1107,11 @@ describe('ScheduleClient', () => {
       boardButton?.click();
     });
 
-    expect(rendered.container.textContent).toContain('Loading schedule data from the portal database…');
+    expect(
+      rendered.container.querySelector('[data-portal-page-shell="schedule"][data-portal-page-shell-state="pending"]'),
+    ).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Unscheduled jobs"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Installer lanes"]')).not.toBeNull();
 
     await act(async () => {
       await Promise.resolve();
@@ -1123,7 +1127,9 @@ describe('ScheduleClient', () => {
 
     expect(scheduleSnapshotQueryFn).toHaveBeenCalled();
     expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toEqual(boardSnapshot);
-    expect(rendered.container.textContent).toContain('Loading schedule data from the portal database…');
+    expect(
+      rendered.container.querySelector('[data-portal-page-shell="schedule"][data-portal-page-shell-state="pending"]'),
+    ).not.toBeNull();
     expect(rendered.container.textContent).not.toContain('Alpha Deck');
 
     rendered.unmount();

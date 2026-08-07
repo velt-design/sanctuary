@@ -10,7 +10,6 @@ import { AlertBanner, TaskScheduleFeedback } from '@/components/ui/foundation/Fo
 import {
   Card,
   EmptyState,
-  LoadingSkeleton,
   PageLayout,
   Table,
   TableBody,
@@ -29,6 +28,7 @@ import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
 import styles from '../contacts.module.css';
 import { isValidOptionalContactEmail, useContactDetailsDraft } from './useContactDetailsDraft';
+import ContactDetailPendingFrame, { ContactProjectsPendingTable } from './ContactDetailPendingFrame';
 
 type ContactDetailsViewProps = {
   contact: Contact;
@@ -66,7 +66,12 @@ export function ContactDetailsView({
   } = useContactDetailsDraft(contact, hostKey);
 
   return (
-    <PageLayout className={styles.page}>
+    <PageLayout
+      className={styles.page}
+      data-portal-page-shell="contact-detail"
+      data-portal-page-shell-ready="true"
+      data-portal-page-shell-state="ready"
+    >
       <StaffPageHeader
         variant="detail"
         title={displayed.displayName || contact.displayName}
@@ -86,6 +91,7 @@ export function ContactDetailsView({
       <Card
         title="Contact info"
         aria-label="Contact info"
+        data-portal-page-region="contact-info"
         action={
           <div className={styles.detailActions}>
             {statusText ? <TaskScheduleFeedback state={error ? 'retry' : isSaving ? 'saving' : 'saved'}>{statusText}</TaskScheduleFeedback> : null}
@@ -168,9 +174,17 @@ export function ContactDetailsView({
         </Table>
       </Card>
 
-      <Card title="Projects" aria-label="Projects for contact" padding="none">
+      <Card
+        title="Projects"
+        aria-label="Projects for contact"
+        padding="none"
+        data-portal-page-region="contact-projects"
+      >
         {!projectsLoaded ? (
-          <LoadingSkeleton rows={3} columns={4} label="Loading projects" />
+          <>
+            <ContactProjectsPendingTable />
+            <span className="visually-hidden" role="status">Loading projects</span>
+          </>
         ) : projects.length ? (
           <Table className={styles.responsiveTable}>
             <TableHeader><TableRow><TableHead>Project</TableHead><TableHead className={styles.mobileOptional}>Region</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
@@ -200,7 +214,12 @@ export function ContactDetailsView({
 
 function ContactDetailState({ title, description }: { title: string; description: string }) {
   return (
-    <PageLayout className={styles.page}>
+    <PageLayout
+      className={styles.page}
+      data-portal-page-shell="contact-detail"
+      data-portal-page-shell-ready="true"
+      data-portal-page-shell-state="unavailable"
+    >
       <StaffPageHeader
         variant="detail"
         title="Contact"
@@ -238,7 +257,7 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
   }, [projectsQuery.error, toast]);
 
   if (typeof contactQuery.data === 'undefined') {
-    return <ContactDetailState title="Loading contact" description="Retrieving the latest saved contact details." />;
+    return <ContactDetailPendingFrame />;
   }
 
   if (!contactQuery.data) {

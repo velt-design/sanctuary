@@ -205,6 +205,12 @@
   background: var(--ui-surface-secondary);
 }
 
+.loadingCrewRow {
+  height: 64px;
+  color: var(--ui-text-muted);
+  font-size: 12px;
+}
+
 .crewRowInactive {
   background: var(--ui-surface-sunken);
 }

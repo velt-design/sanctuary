@@ -1,7 +1,7 @@
 'use client';
 
 import Modal from '@/components/ui/modal/Modal';
-import { useRouter } from 'next/navigation';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { buildEstimateEntityKey } from '@/lib/localFirst/portalEntities';
 import { useAliasedEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
 import type { CalculatorEstimateSaveOutcome } from './calculatorEstimateSave';
@@ -27,7 +27,7 @@ export default function CalculatorSaveOutcomeDialog({
   liveCalculatorTotalIncGstCents?: number | null;
   onDismiss: () => void;
 }) {
-  const router = useRouter();
+  const { navigateRoute } = usePortalRouteTransition();
   const syncState = useAliasedEntitySyncState(
     outcome?.estimateId,
     buildEstimateEntityKey,
@@ -38,9 +38,9 @@ export default function CalculatorSaveOutcomeDialog({
   const ui = buildCalculatorSaveOutcomeUi(outcome, syncState, liveCalculatorTotalIncGstCents);
   const quotePreviewBlocked = outcome.quotePreview.blockingIssues.length > 0;
   const routes = buildCalculatorEstimateHandoffRoutes(outcome.projectId, outcome.estimateId);
-  const navigate = (href: string) => {
+  const navigate = (href: string, label: string) => {
     onDismiss();
-    router.push(href);
+    navigateRoute({ href, label, source: 'calculator-save-outcome' });
   };
   return (
     <Modal
@@ -138,13 +138,13 @@ export default function CalculatorSaveOutcomeDialog({
         <button type="button" className={sharedStyles.modalButtonSecondary} onClick={onDismiss}>
           Stay in calculator
         </button>
-        <button type="button" className={sharedStyles.modalButtonSecondary} onClick={() => navigate(routes.project)}>
+        <button type="button" className={sharedStyles.modalButtonSecondary} onClick={() => navigate(routes.project, 'Project')}>
           Back to project
         </button>
         <button
           type="button"
           className={sharedStyles.modalButtonPrimary}
-          onClick={() => navigate(routes.quote)}
+          onClick={() => navigate(routes.quote, 'Quote')}
           disabled={ui.quoteDisabled}
         >
           Create quote from this design

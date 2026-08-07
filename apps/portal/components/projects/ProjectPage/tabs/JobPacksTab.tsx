@@ -1,14 +1,13 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import SpreadsheetPageTemplate from '@/components/spreadsheet/SpreadsheetPageTemplate';
 import styles from './JobPacksTab.module.css';
 import {
   Badge,
   DataStatePanel,
-  LoadingSkeleton,
   Table,
   TableBody,
   TableCell,
@@ -21,13 +20,16 @@ import { estimateDetailQueryOptions } from '@/lib/queries/projectEstimates';
 import { generatedJobPacksByProjectQueryOptions } from '@/lib/queries/jobPacks';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { coerceJobPackSheet, useJobPackSpreadsheetAdapter, type JobPackSheetKey } from './useJobPackSpreadsheetAdapter';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
+import JobPackDetailPendingFrame from './JobPackDetailPendingFrame';
+import JobPacksPendingFrame from './JobPacksPendingFrame';
 
 function formatDate(value: string | null | undefined): string {
   return formatPortalDate(value, { fallback: '-' });
 }
 
 export default function JobPacksTab({ projectId }: { projectId: string }) {
-  const router = useRouter();
+  const { navigateRoute } = usePortalRouteTransition();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -75,9 +77,16 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
       qs.delete('mode');
 
       const query = qs.toString();
-      router.replace(`${pathname}${query ? `?${query}` : ''}`);
+      navigateRoute(
+        {
+          href: `${pathname}${query ? `?${query}` : ''}`,
+          label: nextTab === 'job-packs' ? 'Job packs' : 'Calculator',
+          source: 'project-job-pack',
+        },
+        { replace: true, scroll: false },
+      );
     },
-    [pathname, router, searchParams],
+    [navigateRoute, pathname, searchParams],
   );
 
   const handleBackToList = useCallback(() => {
@@ -118,7 +127,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
     return (
       <div className={styles.wrapper}>
         {selectedDetailQuery.isLoading ? (
-          <LoadingSkeleton rows={5} columns={5} label="Loading job pack" />
+          <JobPackDetailPendingFrame sheet={sheet} onBack={handleBackToList} />
         ) : selectedDetailQuery.isError ? (
           <DataStatePanel
             state="error"
@@ -141,6 +150,10 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
     );
   }
 
+  if (jobPacksQuery.isLoading) {
+    return <JobPacksPendingFrame />;
+  }
+
   return (
     <div className={styles.wrapper}>
       <div className={styles.header}>
@@ -150,7 +163,6 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      {jobPacksQuery.isLoading ? <LoadingSkeleton rows={4} columns={4} label="Loading job packs" /> : null}
       {jobPacksQuery.isError ? (
         <DataStatePanel
           state="error"

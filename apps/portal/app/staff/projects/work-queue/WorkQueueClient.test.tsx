@@ -67,6 +67,19 @@ describe('WorkQueueClient', () => {
     document.body.innerHTML = '';
   });
 
+  it('renders the final queue filter and list structure while data is pending', () => {
+    useQueryMock
+      .mockReturnValueOnce(queryState())
+      .mockReturnValueOnce(queryState());
+
+    const rendered = renderIntoDocument(<WorkQueueClient />);
+    const root = rendered.container.querySelector('[data-project-work-queue-state="pending"]');
+    expect(root?.querySelector('[aria-label="Work Queue filters"]')).not.toBeNull();
+    expect(root?.querySelector('[aria-label="Project work queue"]')).not.toBeNull();
+    expect(root?.getAttribute('data-portal-page-shell-ready')).toBe('true');
+    rendered.unmount();
+  });
+
   it('fails closed with a named pre-rollout state and does not expose migration controls', () => {
     const notReady = new ApiError('Schema unavailable', {
       status: 503,

@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/foundation';
 import { EmailPreviewCanvas } from './EmailPreviewCanvas';
 import { EmailPreviewControls } from './EmailPreviewControls';
+import { EmailPreviewPendingCanvas } from './EmailPreviewPendingCanvas';
 import { useEmailPreviewWorkbench } from './useEmailPreviewWorkbench';
 import styles from './email-previews.module.css';
 
@@ -19,9 +20,11 @@ export default function EmailPreviewClient({
     <section
       className={styles.workspace}
       aria-label="Customer enquiry email design workbench"
-      aria-busy={controller.loading || undefined}
+      data-email-preview-background-ready={controller.preview ? 'true' : 'false'}
     >
-      <EmailPreviewControls controller={controller} />
+      <div data-portal-shell-region="email-previews-controls">
+        <EmailPreviewControls controller={controller} />
+      </div>
 
       {controller.loadError ? (
         <div className={styles.loadError} role="alert">
@@ -35,16 +38,12 @@ export default function EmailPreviewClient({
         </div>
       ) : null}
 
-      {controller.loading ? (
-        <div className={styles.loading} role="status">
-          <span />
-          <div>
-            <strong>Rendering the workbench</strong>
-            <p>Preparing three exact customer emails in light and dark.</p>
-          </div>
-        </div>
-      ) : (
+      {controller.preview ? (
         <EmailPreviewCanvas controller={controller} />
+      ) : (
+        <EmailPreviewPendingCanvas
+          state={controller.loadError ? 'unavailable' : 'loading'}
+        />
       )}
     </section>
   );

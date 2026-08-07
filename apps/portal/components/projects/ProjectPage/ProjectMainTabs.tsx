@@ -39,10 +39,12 @@ export default function ProjectMainTabs({
       aria-label="Project tab content"
       role="tabpanel"
       data-project-active-tab={activeTab}
+      data-portal-route-region="project-tab"
     >
       <div
         className={`${layout.projectTabBody} ${activeTab === 'estimates' ? layout.sectionBodyWorkspace : ''}`}
         data-project-tab-body={activeTab}
+        data-project-tab-shell-ready="true"
       >
         {activeTab === 'activity' ? (
           <OverviewTab

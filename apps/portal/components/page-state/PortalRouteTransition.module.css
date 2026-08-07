@@ -1,0 +1,55 @@
+.routeHost {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.offlineNotice {
+  position: fixed;
+  z-index: 70;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  max-width: min(480px, calc(100vw - 32px));
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--portal-border-strong, #7b7368);
+  background: var(--portal-surface, #f7f3eb);
+  color: var(--portal-ink, #171510);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 16%);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.offlineNotice a {
+  flex: 0 0 auto;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .offlineNotice {
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    max-width: none;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+.focusTarget {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+}

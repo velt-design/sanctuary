@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/navigation/PortalRouteLink';
 import { useRouter } from 'next/navigation';
 import { useQuery, type QueryClient } from '@tanstack/react-query';
 import {

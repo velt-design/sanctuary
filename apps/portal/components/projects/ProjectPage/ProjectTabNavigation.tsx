@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   coerceProjectTab,
@@ -12,6 +12,7 @@ import {
 } from '@/lib/projects/projectTabs';
 import { preloadProjectTab } from './projectTabModules';
 import { TabNavigation } from '@/components/ui/foundation';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 
 export default function ProjectTabNavigation({
   hasJobPacks,
@@ -29,7 +30,7 @@ export default function ProjectTabNavigation({
   onTabSelect?: (tab: ProjectNavigationTabKey) => void;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
+  const { navigateRoute } = usePortalRouteTransition();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const requestedTab = searchParams.get('tab') ?? initialTab;
@@ -45,8 +46,11 @@ export default function ProjectTabNavigation({
     if (nextTab !== 'quotes') query.delete('quotePreview');
     if (nextTab !== 'job-packs') query.delete('sheet');
     query.delete('mode');
-    router.replace(`${pathname}?${query.toString()}`);
-  }, [pathname, router, searchParams]);
+    const href = `${pathname}?${query.toString()}`;
+    const label = getAvailableProjectTabs(hasJobPacks)
+      .find((item) => item.navigationKey === nextTab)?.label ?? 'Project';
+    navigateRoute({ href, label, source: 'project-tab' }, { replace: true, scroll: false });
+  }, [hasJobPacks, navigateRoute, pathname, searchParams]);
 
   useEffect(() => {
     if (requestedTab === activeTab) return;

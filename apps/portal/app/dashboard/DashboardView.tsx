@@ -13,26 +13,36 @@ export default function DashboardView({
   state = 'fresh',
   onRetry,
 }: {
-  data: DashboardData;
-  state?: 'cached' | 'fresh' | 'refresh-failed';
+  data?: DashboardData;
+  state?: 'pending' | 'cached' | 'fresh' | 'refresh-failed';
   onRetry?: () => void;
 }) {
+  const loading = !data;
+
   return (
     <main
       className={dash.page}
+      data-portal-page-shell="dashboard"
+      data-portal-page-shell-ready="true"
       data-ui-foundation-consumer="dashboard"
       data-dashboard-state={state}
       data-dashboard-background-ready={state === 'fresh' ? 'true' : 'false'}
     >
-      <DashboardHero updatedAtIso={data.updatedAtIso} />
+      <DashboardHero updatedAtIso={data?.updatedAtIso} />
 
       <div className={dash.content}>
-        {state === 'cached' ? (
-          <div className={dash.refreshStatus} role="status">Updating...</div>
+        {state === 'pending' || state === 'cached' ? (
+          <div className={dash.refreshStatus} role="status">
+            {loading ? 'Updating dashboard values...' : 'Updating...'}
+          </div>
         ) : null}
         {state === 'refresh-failed' ? (
           <div className={`${stateStyles.inlineNotice} ${dash.refreshNotice}`} role="status">
-            <span>Could not refresh the dashboard. Showing the last saved information.</span>
+            <span>
+              {data
+                ? 'Could not refresh the dashboard. Showing the last saved information.'
+                : 'Could not load the dashboard. Connect and retry; the workspace remains available.'}
+            </span>
             {onRetry ? (
               <button type="button" className={stateStyles.secondaryAction} onClick={onRetry}>Retry</button>
             ) : null}
@@ -41,19 +51,21 @@ export default function DashboardView({
 
         <div className={dash.layout}>
           <PipelineCountsCard
-            counts={data.pipelineCounts}
-            stateCounts={data.projectStateCounts}
-            stateCountsAvailable={data.projectStateCountsAvailable !== false}
+            counts={data?.pipelineCounts}
+            stateCounts={data?.projectStateCounts}
+            stateCountsAvailable={data ? data.projectStateCountsAvailable !== false : undefined}
+            loading={loading}
           />
 
           <div className={dash.workspaceGrid}>
             <ProjectWorkQueueCard
-              items={data.projectWorkQueue ?? []}
-              available={data.projectWorkQueueAvailable !== false}
+              items={data ? data.projectWorkQueue ?? [] : undefined}
+              available={data ? data.projectWorkQueueAvailable !== false : undefined}
+              loading={loading}
             />
-            <RecentActivityCard items={data.recentActivity} />
-            <RecentEstimatesCard items={data.recentEstimates} />
-            <DashboardTasksCard initialTasks={data.personalTasks} />
+            <RecentActivityCard items={data?.recentActivity} loading={loading} />
+            <RecentEstimatesCard items={data?.recentEstimates} loading={loading} />
+            <DashboardTasksCard initialTasks={data?.personalTasks} loading={loading} />
           </div>
         </div>
       </div>

@@ -2,16 +2,16 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import PortalDebugExportButton from "@/components/debug/PortalDebugExportButton";
 import ProjectPageFrame from "@/components/projects/ProjectPage/ProjectPageFrame";
+import ProjectPagePendingFrame from "@/components/projects/ProjectPage/ProjectPagePendingFrame";
 import styles from "@/components/projects/ProjectPage/ProjectPage.module.css";
 import StaffPageHeader from "@/components/layout/StaffPageHeader";
 import {
   AlertBanner,
   Button,
-  Card,
   DataStatePanel,
-  LoadingSkeleton,
   PageLayout,
 } from "@/components/ui/foundation";
 import {
@@ -29,10 +29,15 @@ import {
   projectPageSnapshotQueryOptions,
   projectPageSummaryQueryOptions,
 } from "@/lib/queries/projects";
+import type {
+  ProjectNavigationTabKey,
+  ProjectTabKey,
+} from "@/lib/projects/projectTabs";
 import {
   supabaseHostFromUrl,
   supabaseRuntimeUrl,
 } from "@/lib/supabase/browserClient";
+import { usePortalRouteTransition } from "@/components/page-state/PortalRouteTransition";
 
 export default function ProjectSnapshotPageClient({
   projectId,
@@ -46,6 +51,7 @@ export default function ProjectSnapshotPageClient({
   debugExportEnabled: boolean;
 }) {
   const queryClient = useQueryClient();
+  const routeSearchParams = useSearchParams();
   const [commandCentreAccess, setCommandCentreAccess] = useState<{
     projectId: string;
     status: number;
@@ -120,6 +126,24 @@ export default function ProjectSnapshotPageClient({
     void snapshotQuery.refetch();
     if (!cachedSummary) void summaryQuery.refetch();
   };
+  const { navigateRoute } = usePortalRouteTransition();
+  const replacePendingTab = useCallback(
+    (nextTab: ProjectTabKey) => {
+      const query = new URLSearchParams(
+        typeof window === "undefined" ? "" : window.location.search,
+      );
+      query.set("tab", nextTab);
+      if (nextTab !== "quotes") query.delete("quotePreview");
+      if (nextTab !== "job-packs") query.delete("sheet");
+      query.delete("mode");
+      const href = `/staff/projects/${encodeURIComponent(projectId)}?${query.toString()}`;
+      navigateRoute(
+        { href, label: 'Project', source: 'project-pending-tab' },
+        { replace: true, scroll: false },
+      );
+    },
+    [navigateRoute, projectId],
+  );
   const debugExport = useMemo<PortalPageDebugExport | null>(() => {
     if (!debugExportEnabled || loadState !== "fresh" || !snapshot) return null;
 
@@ -192,6 +216,33 @@ export default function ProjectSnapshotPageClient({
         ? "The project may have been removed, or your access may have changed."
         : "Check your connection and try again.";
 
+    if (pending) {
+      const pendingQuoteId = routeSearchParams.get("quoteId")?.trim() || null;
+      const pendingEstimateId =
+        routeSearchParams.get("estimateId")?.trim() || estimateId;
+      const quoteDetail = tab === "quotes" && Boolean(pendingQuoteId);
+      const jobPackDetail = tab === "job-packs" && Boolean(pendingEstimateId);
+
+      return (
+        <ProjectPagePendingFrame
+          activeTab={tab}
+          projectId={projectId}
+          quoteDetail={quoteDetail}
+          quotePreview={
+            quoteDetail && routeSearchParams.get("quotePreview") === "1"
+          }
+          quoteId={pendingQuoteId}
+          jobPackDetail={jobPackDetail}
+          jobPackSheet={routeSearchParams.get("sheet")}
+          jobPackEstimateId={pendingEstimateId}
+          onTabSelect={(nextTab: ProjectNavigationTabKey) =>
+            replacePendingTab(nextTab)
+          }
+          onCommercialViewSelect={replacePendingTab}
+        />
+      );
+    }
+
     return (
       <PageLayout
         width="full"
@@ -199,6 +250,7 @@ export default function ProjectSnapshotPageClient({
         data-ui-foundation-consumer="project-detail"
         data-project-id={projectId}
         data-project-snapshot-state={loadState}
+        data-portal-page-shell="project-detail"
       >
         <StaffPageHeader
           variant="detail"
@@ -207,18 +259,12 @@ export default function ProjectSnapshotPageClient({
           description={message}
           back={{ label: "Back to Projects", href: "/staff/projects" }}
         />
-        {pending ? (
-          <Card padding="compact">
-            <LoadingSkeleton rows={5} columns={4} label="Loading project" />
-          </Card>
-        ) : (
-          <DataStatePanel
-            state={unavailable ? "unavailable" : "error"}
-            title={title}
-            description={message}
-            onRetry={!unavailable ? retry : undefined}
-          />
-        )}
+        <DataStatePanel
+          state={unavailable ? "unavailable" : "error"}
+          title={title}
+          description={message}
+          onRetry={!unavailable ? retry : undefined}
+        />
       </PageLayout>
     );
   }
@@ -232,6 +278,8 @@ export default function ProjectSnapshotPageClient({
       data-project-id={projectId}
       data-project-shell-ready="true"
       data-project-snapshot-state={loadState}
+      data-portal-page-shell="project-detail"
+      data-portal-page-shell-ready="true"
     >
       {debugExport ? <PortalDebugExportButton payload={debugExport} /> : null}
       {loadState === "summary" ? (

@@ -6,7 +6,7 @@ import type { CalculatorEstimateSaveOutcome } from './calculatorEstimateSave';
 import CalculatorSaveOutcomeDialog from './CalculatorSaveOutcomeDialog';
 
 const mocks = vi.hoisted(() => ({
-  push: vi.fn(),
+  navigateRoute: vi.fn(() => true),
   syncState: {
     entityKey: 'estimate:detail:estimate-1',
     status: 'idle' as LocalFirstEntityStatus,
@@ -16,8 +16,8 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mocks.push }),
+vi.mock('@/components/page-state/PortalRouteTransition', () => ({
+  usePortalRouteTransition: () => ({ navigateRoute: mocks.navigateRoute }),
 }));
 
 vi.mock('@/lib/localFirst/useEntitySyncState', () => ({
@@ -87,7 +87,8 @@ function quoteButton(): HTMLButtonElement {
 
 afterEach(() => {
   document.body.innerHTML = '';
-  mocks.push.mockReset();
+  mocks.navigateRoute.mockReset();
+  mocks.navigateRoute.mockReturnValue(true);
   mocks.syncState.status = 'idle';
   mocks.syncState.lastError = undefined;
 });
@@ -139,7 +140,7 @@ describe('CalculatorSaveOutcomeDialog', () => {
       });
 
       expect(onDismiss).not.toHaveBeenCalled();
-      expect(mocks.push).not.toHaveBeenCalled();
+      expect(mocks.navigateRoute).not.toHaveBeenCalled();
     },
   );
 
@@ -151,9 +152,11 @@ describe('CalculatorSaveOutcomeDialog', () => {
     });
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
-    expect(mocks.push).toHaveBeenCalledWith(
-      '/staff/projects/project-1?tab=quotes&createFromEstimateId=estimate-1',
-    );
+    expect(mocks.navigateRoute).toHaveBeenCalledWith({
+      href: '/staff/projects/project-1?tab=quotes&createFromEstimateId=estimate-1',
+      label: 'Quote',
+      source: 'calculator-save-outcome',
+    });
   });
 
   it('updates the same dialog from queued through syncing to server-confirmed sync', () => {
@@ -192,7 +195,7 @@ describe('CalculatorSaveOutcomeDialog', () => {
     });
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
-    expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.navigateRoute).not.toHaveBeenCalled();
   });
 
   it('returns to the exact saved estimate', () => {
@@ -203,9 +206,11 @@ describe('CalculatorSaveOutcomeDialog', () => {
     });
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
-    expect(mocks.push).toHaveBeenCalledWith(
-      '/staff/projects/project-1?tab=estimates&estimateId=estimate-1',
-    );
+    expect(mocks.navigateRoute).toHaveBeenCalledWith({
+      href: '/staff/projects/project-1?tab=estimates&estimateId=estimate-1',
+      label: 'Project',
+      source: 'calculator-save-outcome',
+    });
   });
 
   it.each([

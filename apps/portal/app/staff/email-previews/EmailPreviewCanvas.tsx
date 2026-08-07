@@ -170,6 +170,7 @@ export function EmailPreviewCanvas({
       data-preview-viewport={controller.viewport}
       data-preview-theme={controller.theme}
       data-testid="email-preview-canvas"
+      data-portal-shell-region="email-previews-canvas"
     >
       <header className={styles.canvasHeader}>
         <div>

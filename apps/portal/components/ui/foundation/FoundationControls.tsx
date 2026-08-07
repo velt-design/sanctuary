@@ -10,7 +10,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
-import Link from 'next/link';
+import Link from '@/components/navigation/PortalRouteLink';
 import { LoaderCircle } from 'lucide-react';
 import styles from './FoundationControls.module.css';
 

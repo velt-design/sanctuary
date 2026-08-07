@@ -9,7 +9,6 @@ import {
   AlertBanner,
   AlertActionButton,
   DataStatePanel,
-  LoadingSkeleton,
   PageLayout,
 } from '@/components/ui/foundation';
 import { fetchProjectStaffDirectory } from '@/lib/projects/commandCentre/client';
@@ -20,6 +19,7 @@ import { projectWorkQueueQueryOptions } from '@/lib/queries/projectWorkQueue';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import styles from './workQueuePage.module.css';
 import InactiveEnquiryReview from './InactiveEnquiryReview.client';
+import { WorkQueuePendingBody } from './WorkQueuePendingFrame';
 
 function isAccessEndingError(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
@@ -74,6 +74,8 @@ export default function WorkQueueClient({
       width="full"
       density="compact"
       className={styles.page}
+      data-portal-page-shell="work-queue"
+      data-portal-page-shell-ready="true"
       data-project-work-queue-state={state}
       data-project-work-queue-background-ready={state === 'fresh' ? 'true' : 'false'}
     >
@@ -107,7 +109,7 @@ export default function WorkQueueClient({
       ) : null}
 
       {state === 'pending' ? (
-        <LoadingSkeleton rows={7} columns={4} label="Loading project work queue" />
+        <WorkQueuePendingBody />
       ) : state === 'not-ready' ? (
         <DataStatePanel
           state="unavailable"

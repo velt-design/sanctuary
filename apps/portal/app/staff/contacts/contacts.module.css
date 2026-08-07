@@ -13,6 +13,20 @@
 .detailTable td { overflow-wrap: anywhere; }
 .responsiveTable { min-width: 100%; table-layout: fixed; }
 .status { margin-bottom: var(--ui-space-4); }
+.pendingValue {
+  display: block;
+  width: min(100%, 10rem);
+  height: 0.8rem;
+  background: var(--ui-surface-sunken);
+  opacity: 0.8;
+}
+.pendingInlineValue {
+  display: inline-block;
+  width: 8rem;
+  height: 0.75rem;
+  background: var(--ui-surface-sunken);
+  vertical-align: middle;
+}
 .dialog { display: grid; gap: var(--ui-space-4); padding: var(--ui-space-5); }
 .dialogHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ui-space-4); padding-bottom: var(--ui-space-3); border-bottom: var(--ui-border-width) solid var(--ui-border); }
 .dialogTitle { margin: 0; color: var(--ui-text-strong); font-family: var(--ui-font-display); font-size: var(--ui-font-size-section); line-height: var(--ui-line-height-heading); text-transform: uppercase; }

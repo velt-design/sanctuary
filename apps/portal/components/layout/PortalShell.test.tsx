@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PortalShell from './PortalShell';
 import { dispatchKeyboard, renderIntoDocument } from '../../../../test/reactHarness';
 import { act } from 'react';
+import { PortalRouteTransitionProvider } from '@/components/page-state/PortalRouteTransition';
 
 const replaceMock = vi.fn();
 
@@ -14,11 +15,13 @@ let mockSession = {
 };
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    replace: replaceMock,
-  }),
   usePathname: () => mockPathname,
   useSearchParams: () => mockSearchParams,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
+
+vi.mock('@/lib/portalDocumentNavigation', () => ({
+  replacePortalDocument: (...args: unknown[]) => replaceMock(...args),
 }));
 
 vi.mock('@/components/navigation/SidebarRail', () => ({
@@ -280,6 +283,30 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
+  it('shows the real route frame and portal chrome before auth data settles', async () => {
+    mockSession = { status: 'loading', email: null, role: null } as any;
+
+    const rendered = renderIntoDocument(
+      <PortalShell>
+        <div data-testid="child">Sensitive route content</div>
+      </PortalShell>,
+    );
+
+    await act(async () => {
+      await import('@/components/page-state/PortalExactRouteFrame');
+      await Promise.resolve();
+    });
+
+    expect(rendered.container.querySelector('[data-testid="child"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-pinned-sidebar"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-page-shell="projects"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-shell-auth-state]')?.getAttribute(
+      'data-portal-shell-auth-state',
+    )).toBe('booting');
+
+    rendered.unmount();
+  });
+
   it('renders authenticated design booklets without normal portal chrome', () => {
     mockPathname = '/staff/design-booklets';
 
@@ -331,7 +358,7 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
-  it('does not blank protected content or fire a client redirect on first mount', () => {
+  it('keeps protected data unmounted and does not fire a client redirect on first mount', () => {
     mockSession = {
       status: 'unauthenticated',
       email: null,
@@ -345,9 +372,52 @@ describe('PortalShell', () => {
       </PortalShell>,
     );
 
-    expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toContain('Fallback child');
+    expect(rendered.container.querySelector('[data-testid="child"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-portal-shell-auth-state="locked"]')).not.toBeNull();
     expect(replaceMock).not.toHaveBeenCalled();
 
+    rendered.unmount();
+  });
+
+  it('keeps current chrome when a React link handler cancels navigation', async () => {
+    const rendered = renderIntoDocument(
+      <PortalRouteTransitionProvider>
+        <PortalShell>
+          <a
+            href="/staff/projects/proj_123/design-workbench"
+            onClick={(event) => event.preventDefault()}
+          >
+            Design Workbench
+          </a>
+        </PortalShell>
+      </PortalRouteTransitionProvider>,
+    );
+
+    await act(async () => {
+      rendered.container.querySelector('a')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+      );
+      await Promise.resolve();
+    });
+
+    expect(rendered.container.querySelector('[data-portal-sidebar-mode]')?.getAttribute(
+      'data-portal-sidebar-mode',
+    )).toBe('pinned');
+    expect(rendered.container.querySelector('[data-testid="mock-sidebar-rail"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-pinned-sidebar"]')).not.toBeNull();
+    rendered.unmount();
+  });
+
+  it('uses a new document when verified access is lost so prefetched RSC data is discarded', () => {
+    const rendered = renderIntoDocument(
+      <PortalShell><div data-testid="child">Sensitive child</div></PortalShell>,
+    );
+
+    mockSession = { status: 'no_access', email: 'ops@example.com', role: null } as any;
+    rendered.rerender(<PortalShell><div data-testid="child">Sensitive child</div></PortalShell>);
+
+    expect(rendered.container.querySelector('[data-testid="child"]')).toBeNull();
+    expect(replaceMock).toHaveBeenCalledWith(expect.stringContaining('/access-status?'));
     rendered.unmount();
   });
 

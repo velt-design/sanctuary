@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/navigation/PortalRouteLink';
 import { useEffect, useRef, useState } from 'react';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 

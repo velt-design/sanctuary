@@ -1,5 +1,5 @@
-import PortalRoutePendingFrame from '@/components/page-state/PortalRoutePendingFrame';
+import RunningJobsPendingFrame from './RunningJobsPendingFrame';
 
 export default function RunningJobsLoading() {
-  return <PortalRoutePendingFrame route="running-jobs" />;
+  return <RunningJobsPendingFrame />;
 }

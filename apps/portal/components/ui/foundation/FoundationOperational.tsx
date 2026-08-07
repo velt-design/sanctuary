@@ -20,6 +20,7 @@ export function TabNavigation<Key extends string>({
   onIntent,
   ariaLabel,
   className,
+  disabled = false,
 }: {
   items: readonly FoundationTabItem<Key>[];
   selectedKey: Key;
@@ -27,10 +28,12 @@ export function TabNavigation<Key extends string>({
   onIntent?: (key: Key) => void;
   ariaLabel: string;
   className?: string;
+  disabled?: boolean;
 }) {
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const moveSelection = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (disabled) return;
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
     const nextIndex = event.key === 'Home'
@@ -62,6 +65,7 @@ export function TabNavigation<Key extends string>({
               aria-controls={item.controls}
               role="tab"
               tabIndex={selected ? 0 : -1}
+              disabled={disabled}
               onClick={() => onSelect(item.key)}
               onFocus={() => onIntent?.(item.key)}
               onKeyDown={(event) => moveSelection(event, index)}

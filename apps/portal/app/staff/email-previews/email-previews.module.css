@@ -773,6 +773,29 @@
   transform-origin: top left;
 }
 
+.pendingEmailFrame {
+  display: grid;
+  width: var(--preview-frame-width);
+  height: var(--preview-frame-height);
+  place-items: start center;
+  padding-top: 120px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--ui-surface-elevated) 65%, transparent),
+      transparent
+    ),
+    var(--ui-surface-primary);
+  background-size: 200% 100%;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 700;
+  transform: scale(var(--preview-frame-scale));
+  transform-origin: top left;
+  animation: pending-email-shimmer 1.2s linear infinite;
+}
+
 .previewCardFooter {
   border-top: var(--ui-border-width) solid var(--ui-border);
   background: var(--ui-surface-primary);
@@ -830,6 +853,12 @@
 @keyframes shimmer {
   to {
     transform: translateX(100%);
+  }
+}
+
+@keyframes pending-email-shimmer {
+  to {
+    background-position: -200% 0;
   }
 }
 
@@ -1066,7 +1095,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .fixtureImagePlaceholder::after,
-  .loading > span::after {
+  .loading > span::after,
+  .pendingEmailFrame {
     animation: none;
   }
 }

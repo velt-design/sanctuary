@@ -1,6 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
 import { apiJson } from '@/lib/repo/apiClient';
-import { portalEditorPersistMeta } from '@/lib/react-query/persistence';
 import type { EstimateDetail, EstimateMeta } from '@/lib/estimates/types';
 import { qk } from './keys';
 
@@ -24,7 +23,6 @@ export const estimateMetasByProjectQueryOptions = (host: string, projectId: stri
     queryFn: () => fetchEstimateMetasByProject(projectId),
     staleTime: TEN_MINUTES,
     gcTime: ONE_DAY,
-    meta: portalEditorPersistMeta,
   });
 
 export const estimateDetailQueryOptions = (host: string, estimateId: string) =>
@@ -33,5 +31,4 @@ export const estimateDetailQueryOptions = (host: string, estimateId: string) =>
     queryFn: () => fetchEstimateDetail(estimateId),
     staleTime: TEN_MINUTES,
     gcTime: ONE_DAY,
-    meta: portalEditorPersistMeta,
   });

@@ -26,7 +26,11 @@ export function CostingWorkflow(props: {
     { number: 4, label: 'Publish', action: props.onPublish, enabled: props.hasEditor && props.canPublish },
   ];
   return (
-    <nav className={styles.workflow} aria-label="Costing workflow">
+    <nav
+      className={styles.workflow}
+      aria-label="Costing workflow"
+      data-portal-shell-region="admin-costing-workflow"
+    >
       {steps.map((step) => (
         <button
           key={step.number}
@@ -72,7 +76,11 @@ export function CostingStatusSummary(props: {
   dirty: boolean;
 }) {
   return (
-    <section className={styles.statusGrid} aria-label="Pricing configuration status">
+    <section
+      className={styles.statusGrid}
+      aria-label="Pricing configuration status"
+      data-portal-shell-region="admin-costing-status"
+    >
       <StatusCard
         label="Active pricing"
         value={props.currentVersion
@@ -116,7 +124,10 @@ export function VersionHistory(props: {
   onClone: (id?: string) => void;
 }) {
   return (
-    <section className={styles.card}>
+    <section
+      className={styles.card}
+      data-portal-shell-region="admin-costing-history"
+    >
       <div className={styles.cardHeader}>
         <div>
           <h2>Version history</h2>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import CalculatorGridClient from '@/app/staff/calculator/CalculatorGridClient';
 import CalculatorDesignNavigationSelect from '@/app/staff/calculator/CalculatorDesignNavigationSelect';
@@ -10,8 +10,10 @@ import type {
   CalculatorProjectWorkspace,
 } from '@/app/staff/calculator/calculatorWorkspace';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
-import { Button, Card, DataStatePanel, LoadingSkeleton, Select } from '@/components/ui/foundation';
+import { Button, Card, DataStatePanel, Select } from '@/components/ui/foundation';
+import ProjectCalculatorPendingFrame from './ProjectCalculatorPendingFrame';
 import styles from './ProjectCalculatorTab.module.css';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 
 function versionNumber(label: string): number {
   const match = label.match(/\d+/);
@@ -48,7 +50,7 @@ export default function ProjectCalculatorTab({
   projectId: string;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
+  const { navigateRoute } = usePortalRouteTransition();
   const searchParams = useSearchParams();
   const estimatesQuery = useQuery(estimateMetasByProjectQueryOptions(host, projectId));
   const estimates = useMemo(
@@ -65,8 +67,11 @@ export default function ProjectCalculatorTab({
   const replaceParams = useCallback((update: (query: URLSearchParams) => void) => {
     const query = new URLSearchParams(searchParams.toString());
     update(query);
-    router.replace(`${pathname}?${query.toString()}`);
-  }, [pathname, router, searchParams]);
+    navigateRoute(
+      { href: `${pathname}?${query.toString()}`, label: 'Calculator', source: 'project-calculator' },
+      { replace: true, scroll: false },
+    );
+  }, [navigateRoute, pathname, searchParams]);
 
   const openDraft = useCallback((estimateId: string) => {
     replaceParams((query) => {
@@ -166,17 +171,18 @@ export default function ProjectCalculatorTab({
   }), [designNavigation, host, newDesign, onEstimateSaved, onOpenProject, projectId, revisionSource, selectedEstimate]);
 
   if (estimatesQuery.isPending) {
-    return (
-      <div className={styles.container} data-project-calculator="true" data-project-calculator-state="pending">
-        <UnavailableDesignNavigation label="Loading project designs" />
-        <LoadingSkeleton rows={4} columns={4} label="Loading project designs" />
-      </div>
-    );
+    return <ProjectCalculatorPendingFrame />;
   }
 
   if (estimatesQuery.isError) {
     return (
-      <div className={styles.container} data-project-calculator="true" data-project-calculator-state="error">
+      <div
+        className={styles.container}
+        data-project-calculator="true"
+        data-project-calculator-state="error"
+        data-portal-page-shell="project-calculator"
+        data-portal-page-shell-ready="true"
+      >
         <UnavailableDesignNavigation label="Project designs unavailable" />
         <DataStatePanel
           state="error"
@@ -192,6 +198,10 @@ export default function ProjectCalculatorTab({
   const invalidRevision = fromEstimateId && !revisionSource;
   const historicalSelection = selectedEstimate && !selectedEstimate.isActiveDraft;
 
+  if (!editEstimateId && !fromEstimateId && !newDesign) {
+    return <ProjectCalculatorPendingFrame />;
+  }
+
   return (
     <div
       className={styles.container}
@@ -203,6 +213,8 @@ export default function ProjectCalculatorTab({
           : editEstimateId || fromEstimateId || newDesign
             ? 'ready'
             : 'opening'}
+      data-portal-page-shell="project-calculator"
+      data-portal-page-shell-ready="true"
     >
       {historicalSelection || invalidSelection || invalidRevision ? <ProjectDesignNavigation navigation={designNavigation} /> : null}
 
@@ -226,9 +238,7 @@ export default function ProjectCalculatorTab({
         <div className={styles.calculatorSurface}>
           <CalculatorGridClient workspace={workspace} />
         </div>
-      ) : (
-        <LoadingSkeleton rows={4} columns={4} label="Opening Calculator" />
-      )}
+      ) : null}
     </div>
   );
 }

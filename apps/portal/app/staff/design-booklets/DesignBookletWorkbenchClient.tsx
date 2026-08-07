@@ -272,10 +272,20 @@ export default function DesignBookletWorkbenchClient({
     <main
       className={styles.workbench}
       data-design-booklet-workbench
+      data-portal-page-shell="design-booklets"
+      data-portal-page-shell-ready="true"
       data-project-state={linkedProjectId ? saveState : undefined}
+      data-design-booklet-background-ready={
+        !linkedProjectId || saveState === "saved" || saveState === "saving"
+          ? "true"
+          : "false"
+      }
       data-qa-fixture={qaFixture ? "true" : undefined}
     >
-      <header className={styles.siteHeader}>
+      <header
+        className={styles.siteHeader}
+        data-portal-shell-region="design-booklets-header"
+      >
         <a className={styles.siteBrand} href="#booklet-preview">
           <strong>SANCTUARY</strong>
           <span>DESIGN BOOKLETS</span>
@@ -334,7 +344,11 @@ export default function DesignBookletWorkbenchClient({
       </header>
 
       <div className={styles.workspace}>
-        <aside className={styles.controlRail} aria-label="Booklet controls">
+        <aside
+          className={styles.controlRail}
+          aria-label="Booklet controls"
+          data-portal-shell-region="design-booklets-controls"
+        >
           <details className={styles.bookletDetails} id="booklet-details">
             <summary>
               <span className={styles.detailsSummaryCopy}>
@@ -452,6 +466,7 @@ export default function DesignBookletWorkbenchClient({
           className={styles.previewWorkspace}
           id="booklet-preview"
           aria-label="Landscape A4 booklet preview"
+          data-portal-shell-region="design-booklets-preview"
         >
           <header className={styles.previewToolbar}>
             <div>

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, ReactNode, SetStateAction } from "react";
-import Link from "next/link";
+import Link from '@/components/navigation/PortalRouteLink';
 import { QuoteStatusBadge } from "@/components/ui/foundation/SanctuaryStatus";
 import { StickyActionBar } from "@/components/ui/foundation/FoundationSurfaces";
 import type { EstimateMeta } from "@/lib/estimates/types";
@@ -198,6 +198,8 @@ export default function QuoteDetailView({
       role="region"
       aria-label="Quote detail"
       data-quotes-view="detail"
+      data-portal-page-shell="quote-detail"
+      data-portal-page-shell-ready="true"
     >
       <div className={styles.detailHeader}>
         <button

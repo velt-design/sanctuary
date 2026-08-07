@@ -80,7 +80,11 @@ export function FoundationPatternsSection({
   };
 
   return (
-    <section className={styles.patterns} aria-label="Interaction and responsive patterns">
+    <section
+      className={styles.patterns}
+      aria-label="Interaction and responsive patterns"
+      data-portal-shell-region="ui-foundation-patterns"
+    >
       <article className={styles.patternPanel}>
         <div className={styles.sectionTitle}><h2>4. Interaction state reference</h2><small>Authoritative visual states</small></div>
         <div className={styles.interactionTable}>

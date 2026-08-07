@@ -11,6 +11,7 @@ import type { SchedulableJob } from './ScheduleClientModel';
 import { ScheduleBoardActions, type ScheduleBoardMenuAction } from './ScheduleBoardActions';
 import type { ScheduleBoardMutationNotice } from './useScheduleBoardMutationNotice';
 import type { ScheduleAttentionPresentation } from './ScheduleOperationalPresentation';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import styles from './scheduleBoard.module.css';
 
 export type { ScheduleBoardMenuAction } from './ScheduleBoardActions';
@@ -256,6 +257,7 @@ export function UnscheduledJobCard({
   mutationNotice?: ScheduleBoardMutationNotice | null;
 }) {
   const router = useRouter();
+  const { beginRouteTransition } = usePortalRouteTransition();
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
     id: job.id,
     data: { kind: 'job' },
@@ -274,7 +276,11 @@ export function UnscheduledJobCard({
       statusLabel={formatScheduleBoardStatusLabel(job.status)}
       durationLabel={job.durationLabel}
       durationTitle={job.durationTitle}
-      onOpen={() => router.push(`/staff/projects/${encodeURIComponent(job.projectId)}`)}
+      onOpen={() => {
+        const href = `/staff/projects/${encodeURIComponent(job.projectId)}`;
+        beginRouteTransition({ href, label: job.projectName, source: 'schedule-card' });
+        if (navigator.onLine !== false) router.push(href);
+      }}
       warning={job.warnings.length > 0}
       dragProps={{ ...attributes, ...listeners }}
       draggable
@@ -331,6 +337,7 @@ export function ScheduledJobCard({
   sequencePosition?: number;
 }) {
   const router = useRouter();
+  const { beginRouteTransition } = usePortalRouteTransition();
   const locked = isLockedScheduleStatus(scheduleStatus);
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useSortable({
     id,
@@ -355,7 +362,11 @@ export function ScheduledJobCard({
       planCommitted={planCommitted}
       attention={attention}
       clientContacted={clientContacted}
-      onOpen={job ? () => router.push(`/staff/projects/${encodeURIComponent(job.projectId)}`) : undefined}
+      onOpen={job ? () => {
+        const href = `/staff/projects/${encodeURIComponent(job.projectId)}`;
+        beginRouteTransition({ href, label: job.projectName, source: 'schedule-card' });
+        if (navigator.onLine !== false) router.push(href);
+      } : undefined}
       dateLine={dateLine}
       warning={Boolean(job?.warnings?.length)}
       issueLevel={issueLevel}

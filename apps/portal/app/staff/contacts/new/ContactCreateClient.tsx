@@ -41,7 +41,12 @@ export default function ContactCreateClient() {
   }, [busy, draft.displayName, draft.email]);
 
   return (
-    <PageLayout className={styles.page}>
+    <PageLayout
+      className={styles.page}
+      data-portal-page-shell="contact-create"
+      data-portal-page-shell-ready="true"
+      data-portal-page-shell-state="ready"
+    >
       <StaffPageHeader
         variant="detail"
         title="New Contact"
@@ -54,7 +59,7 @@ export default function ContactCreateClient() {
         }
       />
 
-      <Card title="Contact details" aria-label="Contact form">
+      <Card title="Contact details" aria-label="Contact form" data-portal-page-region="contact-form">
         <form
           onSubmit={async (event) => {
             event.preventDefault();

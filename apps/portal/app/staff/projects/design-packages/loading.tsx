@@ -1,5 +1,5 @@
-import PortalRoutePendingFrame from '@/components/page-state/PortalRoutePendingFrame';
+import DesignPackagesPendingFrame from './DesignPackagesPendingFrame';
 
 export default function DesignPackagesLoading() {
-  return <PortalRoutePendingFrame route="design-list" />;
+  return <DesignPackagesPendingFrame />;
 }

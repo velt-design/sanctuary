@@ -717,6 +717,24 @@
   }
 }
 
+.pendingCellValue {
+  display: block;
+  width: min(82%, 10rem);
+  height: calc(10px * var(--sheet-scale));
+  background: var(--ui-surface-sunken);
+  opacity: 0.85;
+}
+
+.emptyGridCell {
+  height: calc(var(--sheet-row-height) * 2);
+  padding: 18px 16px;
+  border-right: var(--ui-border-width) solid var(--ui-border);
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-secondary);
+  color: var(--ui-text-muted);
+  text-align: center;
+}
+
 @media (max-width: 980px) {
   .page {
     padding: 12px 12px 6px;

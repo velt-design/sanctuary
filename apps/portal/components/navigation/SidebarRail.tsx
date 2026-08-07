@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useMemo, useRef } from 'react';
@@ -16,6 +15,7 @@ import {
   shouldStartRouteTransitionForHref,
   usePortalRouteTransition,
 } from '@/components/page-state/PortalRouteTransition';
+import Link from '@/components/navigation/PortalRouteLink';
 import {
   openPortalIndexInstantly,
   portalIndexTarget,
@@ -58,7 +58,7 @@ export default function SidebarRail({
   const router = useRouter();
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
   const queryClient = useQueryClient();
-  const { beginInstantRoute, beginRouteTransition } = usePortalRouteTransition();
+  const { beginInstantRoute } = usePortalRouteTransition();
 
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const today = useMemo(() => todayYmd(), []);
@@ -85,23 +85,20 @@ export default function SidebarRail({
   );
 
   const handleNavClick = useCallback(
-    (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
+    (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
       if (!shouldHandleRouteTransitionClick(event)) return;
       if (!shouldStartRouteTransitionForHref(href)) return;
+      // PortalRouteLink owns offline presentation and ordinary transitions.
+      // The index shortcut is online-only because router.replace needs a live
+      // route response.
+      if (navigator.onLine === false) return;
       const indexTarget = portalIndexTarget(href);
       if (indexTarget) {
         beginInstantRoute(indexTarget.route);
         if (openPortalIndexInstantly(event, router, href)) return;
       }
-
-      beginRouteTransition({
-        href,
-        label,
-        source: 'sidebar-rail',
-        control: event.currentTarget,
-      });
     },
-    [beginInstantRoute, beginRouteTransition, router],
+    [beginInstantRoute, router],
   );
 
   return (
@@ -124,7 +121,7 @@ export default function SidebarRail({
                 aria-current={active ? 'page' : undefined}
                 className={cx(styles.iconButton, active && styles.iconButtonActive)}
                 data-nav-key={key}
-                onClick={(event) => handleNavClick(event, href, label)}
+                onClick={(event) => handleNavClick(event, href)}
                 onMouseEnter={() => prefetchFor(key, href)}
                 onFocus={() => prefetchFor(key, href)}
                 onPointerDown={() => prefetchFor(key, href)}

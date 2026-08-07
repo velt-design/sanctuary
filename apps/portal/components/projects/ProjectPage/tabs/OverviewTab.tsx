@@ -14,9 +14,14 @@ import {
   Button,
   Card,
   DataStatePanel,
-  LoadingSkeleton,
 } from "@/components/ui/foundation";
 import ProjectOverviewLayout from "./overview/ProjectOverviewLayout";
+import {
+  ProjectCommercialPendingCard,
+  ProjectOrientationPendingCard,
+  ProjectRecentPendingCard,
+  ProjectWorkPendingCard,
+} from "./overview/ProjectOverviewPendingFrame";
 import type { ProjectOrientationFreshness } from "./overview/ProjectOrientationBand";
 
 const ProjectCurrentDesignCommercialCard = lazy(
@@ -214,15 +219,7 @@ export default function OverviewTab({
   } else if (commandQuery.data) {
     commercial = (
       <Suspense
-        fallback={
-          <Card padding="compact">
-            <LoadingSkeleton
-              rows={4}
-              columns={2}
-              label="Loading commercial summary"
-            />
-          </Card>
-        }
+        fallback={<ProjectCommercialPendingCard />}
       >
         <ProjectCurrentDesignCommercialCard
           data={commandQuery.data.currentDesign}
@@ -247,9 +244,7 @@ export default function OverviewTab({
         <Suspense
           fallback={
             <ProjectWorkState model={commandQuery.data.workModel}>
-              <Card padding="compact">
-                <LoadingSkeleton rows={5} label="Loading Project Work" />
-              </Card>
+              <ProjectWorkPendingCard />
             </ProjectWorkState>
           }
         >
@@ -278,20 +273,10 @@ export default function OverviewTab({
   } else if (commandQuery.isPending) {
     projectWork = (
       <ProjectWorkState model="pending">
-        <Card padding="compact">
-          <LoadingSkeleton rows={5} label="Loading Project Work" />
-        </Card>
+        <ProjectWorkPendingCard />
       </ProjectWorkState>
     );
-    commercial = (
-      <Card padding="compact">
-        <LoadingSkeleton
-          rows={4}
-          columns={2}
-          label="Loading current design and commercial state"
-        />
-      </Card>
-    );
+    commercial = <ProjectCommercialPendingCard />;
   } else {
     projectWork = (
       <ProjectWorkState model="failed">
@@ -303,16 +288,18 @@ export default function OverviewTab({
         />
       </ProjectWorkState>
     );
-    commercial = null;
+    commercial = (
+      <DataStatePanel
+        state="unavailable"
+        title="Commercial state unavailable"
+        description="Commercial facts remain unavailable until the Project Overview server view loads."
+      />
+    );
   }
 
   const recent = snapshotContentReady ? (
     <Suspense
-      fallback={
-        <Card padding="compact" data-recent-notes-events="true">
-          <LoadingSkeleton rows={4} label="Loading recent notes and events" />
-        </Card>
-      }
+      fallback={<ProjectRecentPendingCard />}
     >
       <ProjectRecentNotesEvents
         projectId={snapshot.project.id}
@@ -342,20 +329,16 @@ export default function OverviewTab({
   );
 
   return (
-    <div data-project-overview="true">
+    <div
+      data-project-overview="true"
+      data-portal-page-shell="project-overview"
+      data-portal-page-shell-ready="true"
+    >
       <ProjectOverviewLayout
         state={commandCentreState}
         orientation={
           <Suspense
-            fallback={
-              <Card padding="compact">
-                <LoadingSkeleton
-                  rows={2}
-                  columns={4}
-                  label="Loading project orientation"
-                />
-              </Card>
-            }
+            fallback={<ProjectOrientationPendingCard />}
           >
             <ProjectOrientationBand
               project={snapshot.project}

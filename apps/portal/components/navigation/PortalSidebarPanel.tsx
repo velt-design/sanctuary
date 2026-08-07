@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
@@ -13,6 +12,7 @@ import {
   shouldStartRouteTransitionForHref,
   usePortalRouteTransition,
 } from '@/components/page-state/PortalRouteTransition';
+import Link from '@/components/navigation/PortalRouteLink';
 import { scheduleV2SnapshotQueryOptions } from '@/lib/queries/schedule';
 import { todayYmd } from '@/lib/scheduling/date';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
@@ -119,7 +119,7 @@ export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sideb
   const router = useRouter();
   const searchParams = useSearchParams();
   const { email, role } = usePortalSession();
-  const { beginInstantRoute, beginRouteTransition } = usePortalRouteTransition();
+  const { beginInstantRoute } = usePortalRouteTransition();
   const queryClient = useQueryClient();
   const [hashValue, setHashValue] = useState('');
   const [openParentState, setOpenParentState] = useState<PinnedOpenParentState | null>(null);
@@ -165,17 +165,17 @@ export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sideb
   }, [activeParentKey, routeKey]);
 
   const handleNavLinkClick = useCallback(
-    (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
+    (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
       if (!shouldHandleRouteTransitionClick(event)) return;
       if (!shouldStartRouteTransitionForHref(href)) return;
+      if (navigator.onLine === false) return;
       const indexTarget = portalIndexTarget(href);
       if (indexTarget) {
         beginInstantRoute(indexTarget.route);
         if (openPortalIndexInstantly(event, router, href)) return;
       }
-      beginRouteTransition({ href, label, source: 'sidebar-panel', control: event.currentTarget });
     },
-    [beginInstantRoute, beginRouteTransition, router],
+    [beginInstantRoute, router],
   );
 
   const handleChevronClick = useCallback(
@@ -214,17 +214,17 @@ export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sideb
   );
 
   const handleIconLinkClick = useCallback(
-    (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
+    (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
       if (!shouldHandleRouteTransitionClick(event)) return;
       if (!shouldStartRouteTransitionForHref(href)) return;
+      if (navigator.onLine === false) return;
       const indexTarget = portalIndexTarget(href);
       if (indexTarget) {
         beginInstantRoute(indexTarget.route);
         if (openPortalIndexInstantly(event, router, href)) return;
       }
-      beginRouteTransition({ href, label, source: 'sidebar-rail', control: event.currentTarget });
     },
-    [beginInstantRoute, beginRouteTransition, router],
+    [beginInstantRoute, router],
   );
 
   return (
@@ -254,7 +254,7 @@ export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sideb
                     aria-current={isParentCurrent ? 'page' : undefined}
                     className={styles.parentLink}
                     data-nav-key={item.key}
-                    onClick={(event) => handleIconLinkClick(event, item.href, item.label)}
+                    onClick={(event) => handleIconLinkClick(event, item.href)}
                     onMouseEnter={() => prefetchFor(item.key, item.href)}
                     onFocus={() => prefetchFor(item.key, item.href)}
                     onPointerDown={() => prefetchFor(item.key, item.href)}
@@ -297,7 +297,7 @@ export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sideb
                             prefetch={false}
                             aria-current={childActive ? 'page' : undefined}
                             className={cx(styles.childRow, childActive && styles.childRowActive)}
-                            onClick={(event) => handleNavLinkClick(event, child.href, child.label)}
+                            onClick={(event) => handleNavLinkClick(event, child.href)}
                             onMouseEnter={() => prefetchFor(item.key, child.href)}
                             onFocus={() => prefetchFor(item.key, child.href)}
                             onPointerDown={() => prefetchFor(item.key, child.href)}

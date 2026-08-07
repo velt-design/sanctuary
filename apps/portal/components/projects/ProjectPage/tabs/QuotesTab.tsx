@@ -7,6 +7,7 @@ import { DataStatePanel } from "@/components/ui/foundation/FoundationFeedback";
 import { useUnsavedChangesGuard } from "@/components/ui/foundation/useUnsavedChangesGuard";
 import styles from "./QuotesTab.module.css";
 import QuoteDetailView from "./QuoteDetailView";
+import QuoteDetailPendingView from "./QuoteDetailPendingView";
 import QuotesListView from "./QuotesListView";
 import QuoteWorkflowDialogs from "./QuoteWorkflowDialogs";
 import { useQuoteLifecycleActions } from "./useQuoteLifecycleActions";
@@ -1014,7 +1015,7 @@ export default function QuotesTab({
   };
 
   if (selectedId && detailLoading) {
-    return <p className={styles.note}>Loading quote…</p>;
+    return <QuoteDetailPendingView onBack={() => selectQuote(null)} />;
   }
 
   if (selectedId && quoteDetailQuery.error) {

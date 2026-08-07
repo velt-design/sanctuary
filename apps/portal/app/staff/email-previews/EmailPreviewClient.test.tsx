@@ -176,8 +176,21 @@ describe('EmailPreviewClient', () => {
   it('provides synchronized fixture, comparison, focus, viewport, theme, zoom and reset controls', async () => {
     const rendered = renderIntoDocument(<EmailPreviewClient />);
     expect(rendered.container.textContent).toContain(
-      'Rendering the workbench',
+      'Compare three design directions',
     );
+    expect(
+      rendered.container.querySelector(
+        '[data-portal-shell-region="email-previews-controls"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector(
+        '[data-portal-shell-region="email-previews-canvas"][aria-busy="true"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelectorAll('[data-portal-value-slot="loading"]'),
+    ).toHaveLength(14);
     await flushEffects();
 
     expect(select(rendered.container, 'Customer type').value).toBe('residential');

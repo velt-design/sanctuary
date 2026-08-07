@@ -8,13 +8,10 @@ import { ButtonLink, Input, Select } from '@/components/ui/foundation/Foundation
 import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
 import {
   Card,
-  LoadingSkeleton,
   PageLayout,
   Table,
   TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from '@/components/ui/foundation/FoundationSurfaces';
 import { Pagination } from '@/components/ui/foundation/FoundationPagination';
@@ -29,6 +26,7 @@ import type {
   ContactsIndexPageSize,
   ContactsIndexSort,
 } from '@/lib/contacts/contactsIndexContract';
+import { ContactsIndexPendingTable, ContactsIndexTableHeader } from './ContactsIndexTable';
 
 export default function ContactsIndexClient({ initialQuery = '' }: { initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery);
@@ -66,6 +64,8 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
   return (
     <PageLayout
       className={styles.page}
+      data-portal-page-shell="contacts"
+      data-portal-page-shell-ready="true"
       data-contacts-index-state={contactsIndex.state}
       data-contacts-index-background-ready={contactsIndex.backgroundReady ? 'true' : 'false'}
     >
@@ -91,7 +91,12 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
       />
 
       <div className={styles.stack}>
-        <Card title="Find contacts" aria-label="Search contacts" padding="compact">
+        <Card
+          title="Find contacts"
+          aria-label="Search contacts"
+          padding="compact"
+          data-portal-page-region="contacts-filters"
+        >
           <div role="search" aria-label="Search and filter" className={styles.listControls}>
             <Input
               id="contactSearch"
@@ -136,6 +141,7 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
             </span>
           )}
           aria-label="Contacts list"
+          data-portal-page-region="contacts-list"
           aria-busy={contactsIndex.state === 'pending' || contactsIndex.state === 'cached'}
           padding="none"
         >
@@ -160,8 +166,8 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
 
               {contacts.length ? (
                 <>
-                  <Table className={styles.responsiveTable}>
-                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead className={styles.mobileOptional}>Email</TableHead><TableHead className={styles.mobileOptional}>Phone</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
+                  <Table className={styles.responsiveTable} aria-label="Contacts">
+                    <ContactsIndexTableHeader />
                     <TableBody>
                       {contacts.map((contact) => (
                         <TableRow key={contact.id}>
@@ -189,7 +195,10 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
                   onClear={debouncedQuery.trim() ? () => setQuery('') : undefined}
                 />
               ) : contactsIndex.state === 'pending' || contactsIndex.state === 'cached' ? (
-                <LoadingSkeleton rows={5} columns={5} label="Updating contacts..." />
+                <>
+                  <ContactsIndexPendingTable />
+                  <span className="visually-hidden" role="status">Updating contacts...</span>
+                </>
               ) : null}
             </>
           )}

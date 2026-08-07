@@ -8,10 +8,16 @@ vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
 }));
 
 vi.mock('./_components/DashboardTasksCard.client', () => ({
-  default: (props: { initialTasks: Array<{ title: string; completedAt?: string | null }> }) => (
-    <section aria-label="My Tasks">
+  default: (props: { initialTasks?: Array<{ title: string; completedAt?: string | null }>; loading?: boolean }) => (
+    <section
+      aria-label="My Tasks"
+      aria-busy={props.loading}
+      data-dashboard-card-state={props.loading ? 'loading' : 'ready'}
+      data-portal-shell-region="dashboard-tasks"
+    >
       <h2>My Tasks</h2>
-      {props.initialTasks.map((task) => (
+      {props.loading ? <div data-dashboard-loading-rows="true">Updating personal tasks...</div> : null}
+      {(props.initialTasks ?? []).map((task) => (
         <div key={task.title} style={{ textDecoration: task.completedAt ? 'line-through' : undefined }}>
           {task.title}
         </div>
@@ -105,6 +111,8 @@ describe('DashboardView', () => {
     const markup = renderToStaticMarkup(<DashboardView data={data} />);
 
     expect(markup).toContain('Dashboard');
+    expect(markup).toContain('data-portal-page-shell="dashboard"');
+    expect(markup).toContain('data-portal-page-shell-ready="true"');
     expect(markup).toContain('Welcome back');
     expect(markup).toContain('Quick actions');
     expect(markup).toContain('Project portfolio');
@@ -174,6 +182,7 @@ describe('DashboardView', () => {
     const markup = renderToStaticMarkup(<DashboardView data={data} state="cached" />);
 
     expect(markup).toContain('data-dashboard-state="cached"');
+    expect(markup).toContain('data-portal-page-shell="dashboard"');
     expect(markup).toContain('data-dashboard-background-ready="false"');
     expect(markup).toContain('Updating...');
     expect(markup).toContain('Beach House');
@@ -188,5 +197,34 @@ describe('DashboardView', () => {
     expect(markup).toContain('Showing the last saved information');
     expect(markup).toContain('Retry');
     expect(markup).toContain('Beach House');
+  });
+
+  it('keeps the exact final Dashboard structure while individual values and rows load', () => {
+    const markup = renderToStaticMarkup(<DashboardView state="pending" />);
+    const shellOpeningTag = markup.match(/^<main[^>]*>/)?.[0] ?? '';
+
+    expect(markup).toContain('data-portal-page-shell="dashboard"');
+    expect(markup).toContain('data-portal-page-shell-ready="true"');
+    expect(shellOpeningTag).not.toContain('aria-busy');
+    expect(markup).toContain('data-dashboard-state="pending"');
+    expect(markup).toContain('Quick actions');
+    expect(markup).toContain('New project');
+    expect(markup).toContain('Calculator');
+    expect(markup).toContain('Schedule');
+    expect(markup).toContain('aria-label="Project portfolio"');
+    expect(markup).toContain('aria-label="Work Queue"');
+    expect(markup).toContain('aria-label="Recent Activity"');
+    expect(markup).toContain('aria-label="Recent Estimates"');
+    expect(markup).toContain('aria-label="My Tasks"');
+    expect(markup).toContain('data-portal-shell-region="dashboard-hero"');
+    expect(markup).toContain('data-portal-shell-region="dashboard-portfolio"');
+    expect(markup).toContain('data-portal-shell-region="dashboard-work-queue"');
+    expect(markup).toContain('data-portal-shell-region="dashboard-recent-activity"');
+    expect(markup).toContain('data-portal-shell-region="dashboard-recent-estimates"');
+    expect(markup).toContain('data-portal-shell-region="dashboard-tasks"');
+    expect(markup).toContain('data-project-state-counts="loading"');
+    expect(markup).toContain('data-dashboard-loading-rows="true"');
+    expect(markup).toContain('Updating dashboard values...');
+    expect(markup).not.toContain('The latest pipeline, Project Work, estimates, activity, and personal tasks will appear here shortly.');
   });
 });

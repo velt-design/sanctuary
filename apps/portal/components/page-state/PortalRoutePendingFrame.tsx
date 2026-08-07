@@ -34,3 +34,24 @@ export default function PortalRoutePendingFrame({
     </main>
   );
 }
+
+export function PortalUnregisteredRouteFrame() {
+  const description = 'The portal shell is ready while this page opens.';
+
+  return (
+    <main
+      className={styles.page}
+      data-portal-route-registration="missing"
+      aria-busy="true"
+    >
+      <header className={styles.header}>
+        <h1>Opening portal page...</h1>
+        <p>{description}</p>
+      </header>
+      <p className={styles.status} role="status">{description}</p>
+      <div className={styles.structure} aria-hidden="true">
+        <span /><span /><span />
+      </div>
+    </main>
+  );
+}

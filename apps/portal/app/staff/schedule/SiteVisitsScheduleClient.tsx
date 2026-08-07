@@ -8,11 +8,12 @@ import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import ScheduleViewTabs, { type ScheduleView } from './ScheduleViewTabs';
+import { SiteVisitsChunkPendingFrame } from './SiteVisitsPendingFrame';
 import styles from './schedule.module.css';
 
 const LazySiteVisitsView = dynamic(() => import('./SiteVisitsView'), {
   ssr: false,
-  loading: () => <p className={styles.note}>Loading site visits...</p>,
+  loading: SiteVisitsChunkPendingFrame,
 });
 
 function cx(...classes: Array<string | false | null | undefined>): string {
@@ -41,6 +42,7 @@ export default function SiteVisitsScheduleClient() {
     qs.set('view', scheduleViewParam(next));
     const href = `/staff/schedule?${qs.toString()}`;
     beginRouteTransition({ href, label: scheduleViewLabel(next), source: 'schedule-view', control });
+    if (navigator.onLine === false) return;
     startUiTransition(() => {
       router.replace(href);
     });

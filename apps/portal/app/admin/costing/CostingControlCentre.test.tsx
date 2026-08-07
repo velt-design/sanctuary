@@ -3,6 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadCostingConfigV1, snapshotCostingControlConfigV1 } from '@sp/costing';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import CostingControlCentre from './CostingControlCentre';
+import {
+  PORTAL_NAVIGATION_INTENT_EVENT,
+  type PortalNavigationIntentDetail,
+} from '@/lib/portalNavigationIntent';
 
 const config = snapshotCostingControlConfigV1(loadCostingConfigV1());
 const materialId = Object.keys(config.materialRatesExGst)[0]!;
@@ -123,6 +127,9 @@ describe('CostingControlCentre', () => {
     }} />);
 
     expect(rendered.container.textContent).toContain('Legacy calculator settings');
+    expect(rendered.container.querySelector('[data-portal-page-shell="admin-costing"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-page-shell-ready="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-shell-region="admin-costing-history"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Start with a safe draft');
     expect(rendered.container.textContent).toContain('Nothing changes for staff or customers');
     expect(buttonByText(rendered.container, 'Create first draft').disabled).toBe(false);
@@ -335,6 +342,34 @@ describe('CostingControlCentre', () => {
     expect(rendered.container.textContent).toContain('Overheads');
     expect(rendered.container.textContent).toContain('Customer price inc GST');
     expect(buttonByText(rendered.container, 'Continue to publish').disabled).toBe(false);
+    rendered.unmount();
+  });
+
+  it('blocks the shared portal navigation intent while costing edits are unsaved', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(editorPayload('draft')), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })));
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal('confirm', confirm);
+    const rendered = renderIntoDocument(<CostingControlCentre initialOverview={overview('draft')} />);
+    await click(buttonByText(rendered.container, 'Continue draft v1'));
+    await click(buttonByText(rendered.container, 'Overheads'));
+    await changeInput(labelledInput(rendered.container, 'Crew day length'), '9');
+
+    const intent = new CustomEvent<PortalNavigationIntentDetail>(
+      PORTAL_NAVIGATION_INTENT_EVENT,
+      {
+        cancelable: true,
+        detail: { href: '/staff/projects', source: 'test' },
+      },
+    );
+    act(() => document.dispatchEvent(intent));
+
+    expect(intent.defaultPrevented).toBe(true);
+    expect(confirm).toHaveBeenCalledWith(
+      'Leave this draft? Your unsaved costing changes will be lost.',
+    );
     rendered.unmount();
   });
 

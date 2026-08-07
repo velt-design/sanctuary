@@ -1,0 +1,11 @@
+.host {
+  display: contents;
+}
+
+.fallback {
+  display: contents;
+}
+
+.host:has([data-portal-page-shell-ready='true']) > .fallback {
+  display: none;
+}

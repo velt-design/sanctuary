@@ -1,5 +1,5 @@
-import PortalRoutePendingFrame from '@/components/page-state/PortalRoutePendingFrame';
+import WorkQueuePendingFrame from './WorkQueuePendingFrame';
 
 export default function ProjectWorkQueueLoading() {
-  return <PortalRoutePendingFrame route="work-queue" />;
+  return <WorkQueuePendingFrame />;
 }

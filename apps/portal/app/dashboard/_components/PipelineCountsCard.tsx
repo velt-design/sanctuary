@@ -18,12 +18,14 @@ export default function PipelineCountsCard({
   counts,
   stateCounts,
   stateCountsAvailable = true,
+  loading = false,
 }: {
-  counts: PipelineCounts;
+  counts?: PipelineCounts;
   stateCounts?: ProjectOperationalStateCounts;
   stateCountsAvailable?: boolean;
+  loading?: boolean;
 }) {
-  const normalized = toCanonicalStageCounts(counts);
+  const normalized = toCanonicalStageCounts(counts ?? {});
   const journeyCounts = aggregateProjectStageCountsByJourney(normalized);
   const gridStyle = {
     gridTemplateColumns: `repeat(${PROJECT_JOURNEY_PHASES.length}, minmax(0, 1fr))`,
@@ -37,10 +39,16 @@ export default function PipelineCountsCard({
   }
 
   return (
-    <section className={`${styles.section} ${dash.card} ${dash.pipelineCard}`} aria-label="Project portfolio">
+    <section
+      className={`${styles.section} ${dash.card} ${dash.pipelineCard}`}
+      aria-label="Project portfolio"
+      aria-busy={loading}
+      data-dashboard-card-state={loading ? 'loading' : 'ready'}
+      data-portal-shell-region="dashboard-portfolio"
+    >
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <h2 className={styles.sectionTitle}>Project portfolio</h2>
-        <span className={dash.sectionMeta}>Journey and state</span>
+        <span className={dash.sectionMeta}>{loading ? 'Updating counts...' : 'Journey and state'}</span>
       </div>
       <div className={`${styles.sectionBody} ${dash.cardBody} ${dash.cardBodyNoScroll}`}>
         <div className={dash.pipelineStrip}>
@@ -50,11 +58,13 @@ export default function PipelineCountsCard({
               return (
                 <ProjectsIndexLink
                   key={phase}
-                  className={`${dash.pipelineCell} ${count > 0 ? dash.pipelineCellActive : ''}`}
+                  className={`${dash.pipelineCell} ${!loading && count > 0 ? dash.pipelineCellActive : ''}`}
                   href={journeyHref(phase)}
                 >
                   <span className={dash.pipelineLabel}>{PROJECT_JOURNEY_PHASE_LABELS[phase]}</span>
-                  <span className={`${dash.pipelineCount} ${count === 0 ? dash.pipelineCountMuted : ''}`}>{count}</span>
+                  <span className={`${dash.pipelineCount} ${loading || count === 0 ? dash.pipelineCountMuted : ''}`}>
+                    {loading ? '--' : count}
+                  </span>
                 </ProjectsIndexLink>
               );
             })}
@@ -63,7 +73,7 @@ export default function PipelineCountsCard({
         <div
           className={dash.projectStateGrid}
           aria-label="Project operational states"
-          data-project-state-counts={stateCountsAvailable && stateCounts ? 'ready' : 'unavailable'}
+          data-project-state-counts={loading ? 'loading' : stateCountsAvailable && stateCounts ? 'ready' : 'unavailable'}
         >
           {OPERATIONAL_STATES.map((state) => (
             <ProjectsIndexLink

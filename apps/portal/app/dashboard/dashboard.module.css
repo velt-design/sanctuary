@@ -187,8 +187,7 @@
 }
 
 .content,
-.layout,
-.pendingLayout {
+.layout {
   display: grid;
   min-width: 0;
 }
@@ -198,29 +197,6 @@
   gap: var(--ui-space-3);
 }
 
-.pendingLayout { align-content: start; }
-
-.pendingCard {
-  display: grid;
-  justify-items: start;
-  gap: var(--ui-space-2);
-  width: min(720px, 100%);
-  border: var(--ui-border-width) solid var(--ui-border-strong);
-  border-left: var(--ui-status-edge) solid var(--ui-action);
-  background: var(--ui-surface-primary);
-  padding: var(--ui-space-5);
-}
-
-.pendingTitle,
-.pendingDescription { margin: 0; }
-.pendingTitle {
-  color: var(--ui-text-strong);
-  font-family: var(--ui-font-display);
-  font-size: var(--ui-font-size-section);
-  line-height: var(--ui-line-height-heading);
-  text-transform: uppercase;
-}
-.pendingDescription,
 .refreshStatus { color: var(--ui-text-muted); font-size: var(--ui-font-size-small); }
 .refreshStatus {
   justify-self: end;
@@ -601,6 +577,37 @@
   color: var(--ui-text-muted);
   font-size: var(--ui-font-size-small);
 }
+
+.loadingRows {
+  position: relative;
+  display: grid;
+  min-height: 82px;
+  overflow: hidden;
+}
+
+.loadingStatus {
+  padding: var(--ui-space-2) var(--ui-space-3);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+}
+
+.loadingRow {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.7fr) minmax(150px, 1fr) minmax(72px, 0.35fr);
+  align-items: center;
+  gap: var(--ui-space-3);
+  min-height: 54px;
+  border-top: var(--ui-border-width) solid var(--ui-border);
+  padding: var(--ui-space-2) var(--ui-space-3);
+}
+
+.loadingRow > span {
+  height: 9px;
+  background: color-mix(in srgb, var(--ui-border) 58%, transparent);
+}
+
+.loadingRow > span:nth-child(2) { width: 74%; }
+.loadingRow > span:nth-child(3) { justify-self: end; width: 52px; }
 
 .taskComposer {
   display: grid;

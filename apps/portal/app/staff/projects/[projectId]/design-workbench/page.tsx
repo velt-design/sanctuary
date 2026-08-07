@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/navigation/PortalRouteLink';
 import { notFound } from 'next/navigation';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import DesignWorkbenchEstimateClient from './DesignWorkbenchEstimateClient';

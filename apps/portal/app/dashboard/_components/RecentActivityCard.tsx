@@ -1,10 +1,11 @@
-import Link from 'next/link';
+import Link from '@/components/navigation/PortalRouteLink';
 import type { DashboardRecentActivityItem } from '@/lib/dashboard/types';
 import { PORTAL_TIME_ZONE } from '@/lib/format/portalDateTime';
 import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import dash from '../dashboard.module.css';
 import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+import DashboardLoadingRows from './DashboardLoadingRows';
 
 function authorLabel(item: DashboardRecentActivityItem): string {
   const resolved = projectNoteAuthorDisplayName({
@@ -29,9 +30,21 @@ function activityTimeLabel(value: string): string {
   }).format(date);
 }
 
-export default function RecentActivityCard({ items }: { items: DashboardRecentActivityItem[] }) {
+export default function RecentActivityCard({
+  items,
+  loading = false,
+}: {
+  items?: DashboardRecentActivityItem[];
+  loading?: boolean;
+}) {
   return (
-    <section className={`${styles.section} ${dash.card} ${dash.activityCard}`} aria-label="Recent Activity">
+    <section
+      className={`${styles.section} ${dash.card} ${dash.activityCard}`}
+      aria-label="Recent Activity"
+      aria-busy={loading}
+      data-dashboard-card-state={loading ? 'loading' : 'ready'}
+      data-portal-shell-region="dashboard-recent-activity"
+    >
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>Recent Activity</h2>
@@ -39,11 +52,13 @@ export default function RecentActivityCard({ items }: { items: DashboardRecentAc
         </div>
       </div>
       <div className={`${styles.sectionBody} ${dash.cardBody}`}>
-        {items.length ? (
+        {loading ? (
+          <DashboardLoadingRows label="Updating recent activity..." rows={4} />
+        ) : items?.length ? (
           <ul className={dash.activityList}>
             {items.slice(0, 6).map((item) => (
               <li key={item.id}>
-                <Link href={item.href} className={dash.activityItem}>
+                <Link href={item.href} prefetch={false} className={dash.activityItem}>
                   <div className={dash.activityHeaderRow}>
                     <Badge tone="success" edge className={dash.activityTypePill}>Project note</Badge>
                     <span className={dash.activityTime}>{activityTimeLabel(item.at)}</span>

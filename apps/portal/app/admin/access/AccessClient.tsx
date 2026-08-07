@@ -355,9 +355,22 @@ export default function AccessClient() {
   };
 
   return (
-    <div className={styles.page} data-ui-foundation-consumer="admin-access">
-      <StaffPageHeader title="Access" />
-      <div className={styles.card}>
+    <div
+      className={styles.page}
+      data-ui-foundation-consumer="admin-access"
+      data-portal-page-shell="admin-access"
+      data-portal-page-shell-ready="true"
+      data-admin-access-background-ready={
+        !loadingCrews && !crewsError ? 'true' : 'false'
+      }
+    >
+      <div data-portal-shell-region="admin-access-header">
+        <StaffPageHeader title="Access" />
+      </div>
+      <div
+        className={styles.card}
+        data-portal-shell-region="admin-access-user"
+      >
         <p className={styles.intro}>
           Create a portal user (or update an existing one) with a temporary password. The user can log in immediately.
         </p>
@@ -425,7 +438,10 @@ export default function AccessClient() {
         ) : null}
       </div>
 
-      <div className={styles.card}>
+      <div
+        className={styles.card}
+        data-portal-shell-region="admin-access-crews"
+      >
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Schedule crews</h2>
           <p className={styles.sectionHelper}>
@@ -489,11 +505,14 @@ export default function AccessClient() {
           </div>
         </form>
 
-        {loadingCrews ? <p className={styles.helper}>Loading crews…</p> : null}
         {!loadingCrews && crewsError ? <p className={styles.errorText}>{crewsError}</p> : null}
 
-        {!loadingCrews ? (
-          <div className={styles.crewTableWrap} role="region" aria-label="Schedule crews table">
+        <div
+          className={styles.crewTableWrap}
+          role="region"
+          aria-label="Schedule crews table"
+          aria-busy={loadingCrews || undefined}
+        >
             <table className={styles.crewTable}>
               <thead>
                 <tr>
@@ -508,7 +527,13 @@ export default function AccessClient() {
                 </tr>
               </thead>
               <tbody>
-                {crews.map((crew, index) => {
+                {loadingCrews ? (
+                  <tr>
+                    <td colSpan={8} className={styles.loadingCrewRow}>
+                      <span data-portal-value-slot="loading" role="status">Loading crew values…</span>
+                    </td>
+                  </tr>
+                ) : crews.map((crew, index) => {
                   const disabledDeactivate = crew.is_active && crew.scheduled_item_count > 0;
                   const rowBusy = savingCrewId === crew.id || reorderBusy;
                   return (
@@ -621,7 +646,7 @@ export default function AccessClient() {
                     </tr>
                   );
                 })}
-                {!crews.length ? (
+                {!loadingCrews && !crews.length ? (
                   <tr>
                     <td colSpan={8}>No crews found.</td>
                   </tr>
@@ -629,7 +654,6 @@ export default function AccessClient() {
               </tbody>
             </table>
           </div>
-        ) : null}
       </div>
     </div>
   );

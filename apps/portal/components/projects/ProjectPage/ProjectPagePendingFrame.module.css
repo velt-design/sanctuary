@@ -1,0 +1,49 @@
+.pendingTitle {
+  min-width: 13rem;
+}
+
+.owner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-height: var(--ui-control-sm);
+  white-space: nowrap;
+}
+
+.owner strong {
+  color: var(--ui-text-strong);
+  font-size: var(--ui-font-size-caption);
+  letter-spacing: var(--ui-letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.jobPacks {
+  display: grid;
+  gap: var(--ui-density-section-gap);
+  min-width: 0;
+}
+
+.jobPacksHeader {
+  display: grid;
+  gap: var(--ui-space-1);
+}
+
+.jobPacksHeader h2 {
+  margin: 0;
+  color: var(--ui-text-strong);
+  font-family: var(--ui-font-display);
+  font-size: var(--ui-font-size-title);
+  text-transform: uppercase;
+}
+
+.jobPacksHeader p {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+}
+
+@media (max-width: 767px) {
+  .pendingTitle {
+    min-width: 9rem;
+  }
+}

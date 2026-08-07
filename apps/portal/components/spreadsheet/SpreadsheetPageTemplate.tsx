@@ -20,6 +20,10 @@ import type {
   SpreadsheetAdapter,
   SpreadsheetEditorElement,
 } from './types';
+import {
+  SpreadsheetStructureGrid,
+  type SpreadsheetRouteShell,
+} from './SpreadsheetPendingFrame';
 import styles from './spreadsheet.module.css';
 
 type PendingPointerCell<TKey extends string> = {
@@ -58,10 +62,12 @@ export default function SpreadsheetPageTemplate<
   adapter,
   embedded = false,
   zoomDockPlacement = 'sheet',
+  routeShell,
 }: {
   adapter: SpreadsheetAdapter<TRow, TKey, TEditableKey, TEditorValue, TOptimisticModel>;
   embedded?: boolean;
   zoomDockPlacement?: 'sheet' | 'viewport';
+  routeShell?: SpreadsheetRouteShell;
 }) {
   const shell = useSpreadsheetShell({
     columns: adapter.columns,
@@ -340,7 +346,22 @@ export default function SpreadsheetPageTemplate<
   );
 
   return (
-    <main className={`${styles.page} ${embedded ? styles.pageEmbedded : ''}`} data-ui-foundation-consumer="spreadsheet">
+    <main
+      className={`${styles.page} ${embedded ? styles.pageEmbedded : ''}`}
+      data-ui-foundation-consumer="spreadsheet"
+      data-portal-page-shell={!embedded ? routeShell : undefined}
+      data-portal-page-shell-ready={!embedded && routeShell ? 'true' : undefined}
+      data-portal-page-shell-state={!embedded && routeShell
+        ? adapter.loading && !adapter.allRows.length
+          ? 'pending'
+          : adapter.hasError && !adapter.allRows.length
+            ? 'error'
+            : 'ready'
+        : undefined}
+      data-portal-page-background-ready={!embedded && routeShell
+        ? !adapter.loading && !adapter.hasError ? 'true' : 'false'
+        : undefined}
+    >
       {embedded ? null : <StaffPageHeader title={adapter.title} />}
 
       <div className={styles.stack}>
@@ -348,15 +369,24 @@ export default function SpreadsheetPageTemplate<
           {adapter.toolbar}
 
           {adapter.loading && !adapter.allRows.length ? (
-            <div className={styles.emptyState}>{adapter.loadingMessage}</div>
+            <SpreadsheetStructureGrid
+              columns={adapter.columns}
+              label={adapter.title}
+              state="pending"
+            />
           ) : adapter.hasError && !adapter.allRows.length ? (
             <div className={styles.emptyState}>{adapter.errorMessage}</div>
           ) : !shell.visibleRows.length ? (
-            <div className={styles.emptyTable}>{adapter.emptyMessage}</div>
+            <SpreadsheetStructureGrid
+              columns={adapter.columns}
+              label={adapter.title}
+              state="empty"
+              emptyMessage={adapter.emptyMessage}
+            />
           ) : (
             <div ref={shell.sheetViewportRef} className={styles.sheetViewport} {...shell.viewportProps}>
               <div ref={shell.gridRef} className={styles.tableScroller} style={shell.sheetVars} tabIndex={0} onKeyDown={handleGridKeyDown}>
-                <table className={styles.table}>
+                <table className={styles.table} aria-label={adapter.title}>
                   <colgroup>
                     <col style={{ width: shell.rowNumberWidthPx }} />
                     {shell.displayColumns.map((column) => (

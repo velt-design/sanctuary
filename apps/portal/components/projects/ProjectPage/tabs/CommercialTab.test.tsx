@@ -4,7 +4,7 @@ import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import CommercialTab from './CommercialTab';
 
 const dynamicState = vi.hoisted(() => ({ callCount: 0 }));
-const replace = vi.fn();
+const routeTransitionMocks = vi.hoisted(() => ({ navigateRoute: vi.fn() }));
 const prefetchQuery = vi.fn();
 let search = 'tab=quotes';
 
@@ -17,8 +17,11 @@ vi.mock('next/dynamic', () => ({
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/staff/projects/proj_1',
-  useRouter: () => ({ replace }),
   useSearchParams: () => new URLSearchParams(search),
+}));
+
+vi.mock('@/components/page-state/PortalRouteTransition', () => ({
+  usePortalRouteTransition: () => ({ navigateRoute: routeTransitionMocks.navigateRoute }),
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -27,7 +30,7 @@ vi.mock('@tanstack/react-query', () => ({
 
 describe('CommercialTab', () => {
   beforeEach(() => {
-    replace.mockReset();
+    routeTransitionMocks.navigateRoute.mockReset();
     prefetchQuery.mockReset();
     search = 'tab=quotes';
   });
@@ -62,8 +65,13 @@ describe('CommercialTab', () => {
       .find((button) => button.textContent === 'Invoices');
     act(() => invoices?.click());
 
-    expect(replace).toHaveBeenCalledWith(
-      '/staff/projects/proj_1?tab=invoices&quoteId=q_1&createFromEstimateId=est_1&campaign=winter',
+    expect(routeTransitionMocks.navigateRoute).toHaveBeenCalledWith(
+      {
+        href: '/staff/projects/proj_1?tab=invoices&quoteId=q_1&createFromEstimateId=est_1&campaign=winter',
+        label: 'Invoices',
+        source: 'project-commercial',
+      },
+      { replace: true, scroll: false },
     );
     expect(invoices?.getAttribute('aria-selected')).toBe('true');
     expect(rendered.container.querySelector('[data-testid="invoices-subview"]')).not.toBeNull();
@@ -78,8 +86,13 @@ describe('CommercialTab', () => {
       .find((button) => button.textContent === 'Preview');
     expect(preview?.disabled).toBe(false);
     act(() => preview?.click());
-    expect(replace).toHaveBeenCalledWith(
-      '/staff/projects/proj_1?tab=quotes&quoteId=q_1&campaign=winter&quotePreview=1',
+    expect(routeTransitionMocks.navigateRoute).toHaveBeenCalledWith(
+      {
+        href: '/staff/projects/proj_1?tab=quotes&quoteId=q_1&campaign=winter&quotePreview=1',
+        label: 'Quote preview',
+        source: 'project-commercial',
+      },
+      { replace: true, scroll: false },
     );
     rendered.unmount();
   });

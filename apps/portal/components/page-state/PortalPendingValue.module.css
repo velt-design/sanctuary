@@ -1,0 +1,61 @@
+.value {
+  display: inline-block;
+  width: var(--project-pending-value-width, 9rem);
+  max-width: 100%;
+  height: 0.78em;
+  border-radius: var(--ui-radius-control);
+  background: linear-gradient(
+    90deg,
+    var(--ui-surface-sunken) 0%,
+    var(--ui-surface-secondary) 48%,
+    var(--ui-surface-sunken) 100%
+  );
+  background-size: 220% 100%;
+  animation: project-pending-value 1.2s ease-in-out infinite;
+  vertical-align: middle;
+}
+
+.short {
+  --project-pending-value-width: 4.5rem;
+}
+
+.medium {
+  --project-pending-value-width: 8rem;
+}
+
+.long {
+  --project-pending-value-width: 13rem;
+}
+
+.full {
+  --project-pending-value-width: 100%;
+}
+
+.screenReaderOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes project-pending-value {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .value {
+    animation: none;
+    background: var(--ui-surface-sunken);
+  }
+}

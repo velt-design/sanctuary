@@ -1,116 +1,101 @@
 'use client';
 
-import Link from 'next/link';
-import HeaderActions from '@/components/layout/HeaderActions';
-import StaffPageHeader from '@/components/layout/StaffPageHeader';
-import type { PortalInstantRoute } from '@/lib/portalInstantRoutes';
-import styles from './ProjectsIndexPendingFrame.module.css';
+import ProjectsIndexFrame from '@/app/staff/projects/ProjectsIndexFrame';
+import { ProjectsIndexPendingTable } from '@/app/staff/projects/ProjectsIndexTableHeader';
+import {
+  PROJECT_JOURNEY_FILTER_OPTIONS,
+  PROJECT_STAGE_FILTER_OPTIONS,
+  PROJECT_STATE_FILTER_OPTIONS,
+  parseProjectsIndexFilters,
+} from '@/app/staff/projects/projectIndexFilters';
+import { PROJECTS_INDEX_OWNER_OPTIONS } from '@/lib/projects/projectsIndexContract';
+import { SearchFilterBar } from '@/components/ui/foundation';
 
-type ProjectsIndexPendingFrameProps = {
-  instantRoute?: PortalInstantRoute;
-  title?: string;
-  description?: string;
-  projectLabel?: string | null;
-};
+const noop = () => {};
+
+type PendingSearchParams = Pick<URLSearchParams, 'toString'>;
 
 export default function ProjectsIndexPendingFrame({
-  instantRoute = 'projects-index',
-  title = 'Projects',
-  description,
-  projectLabel,
-}: ProjectsIndexPendingFrameProps = {}) {
-  if (instantRoute !== 'projects-index') {
-    const visibleTitle = instantRoute === 'project-detail' && projectLabel?.trim()
-      ? projectLabel.trim()
-      : title;
-
-    return (
-      <main
-        className={styles.page}
-        data-portal-instant-shell={instantRoute}
-        data-portal-instant-shell-state="pending"
-        data-project-route-pending={instantRoute === 'project-detail' ? 'true' : undefined}
-        aria-busy="true"
-      >
-        <StaffPageHeader variant="index" title={visibleTitle} />
-        <div className={styles.stack}>
-          <section className={styles.section} aria-label={`${visibleTitle} workspace`}>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>Workspace</h2>
-              <span className={styles.muted}>Updating…</span>
-            </div>
-            <div className={styles.sectionBody}>
-              <p className={styles.note} role="status">{description}</p>
-            </div>
-          </section>
-        </div>
-      </main>
-    );
-  }
+  searchParams,
+}: {
+  searchParams?: PendingSearchParams | null;
+}) {
+  const filters = parseProjectsIndexFilters(
+    new URLSearchParams(searchParams?.toString() ?? ''),
+  );
 
   return (
-    <main
-      className={styles.page}
-      data-projects-index-state="pending"
-      data-ui-foundation-consumer="projects-pending"
-      data-projects-index-background-ready="false"
-      aria-label="Opening projects"
-    >
-      <StaffPageHeader
-        variant="index"
-        title="Projects"
-        right={
-          <HeaderActions className={styles.actions}>
-            <Link className={styles.action} href="/staff/projects/design-packages">
-              Drafting Queue
-            </Link>
-            <Link className={styles.action} href="/staff/projects/running-jobs">
-              Running Jobs
-            </Link>
-            <Link className={styles.action} href="/staff/projects/new">
-              New Project
-            </Link>
-          </HeaderActions>
-        }
-      />
-
-      <div className={styles.stack}>
-        <section className={styles.section} aria-label="Filters">
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Filters</h2>
-          </div>
-          <div className={styles.sectionBody}>
-            <div className={styles.formGrid} aria-busy="true">
-              <div className={styles.field}>
-                <label htmlFor="projectSearchPending">Search</label>
-                <input id="projectSearchPending" placeholder="Name, client, phone, address…" disabled />
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="projectStatusPending">Status</label>
-                <select id="projectStatusPending" defaultValue="all" disabled>
-                  <option value="all">All</option>
-                </select>
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="projectArchivePending">Archive</label>
-                <select id="projectArchivePending" defaultValue="active" disabled>
-                  <option value="active">Active</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.section} aria-label="Projects list" aria-busy="true">
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>All Projects</h2>
-            <span className={styles.muted}>Updating…</span>
-          </div>
-          <div className={styles.sectionBody}>
-            <p className={styles.note}>Updating projects…</p>
-          </div>
-        </section>
-      </div>
-    </main>
+    <ProjectsIndexFrame
+      state="pending"
+      backgroundReady={false}
+      totalCount={null}
+      visibleCount={0}
+      rangeLabel={<span data-portal-value-slot="loading">Updating…</span>}
+      filters={
+        <SearchFilterBar
+          query={filters.query}
+          onQueryChange={noop}
+          searchId="projectSearch"
+          queryPlaceholder="Name, client, phone or address…"
+          collapseFiltersOnNarrow
+          disabled
+          filters={[
+            {
+              id: 'projectJourneyFilter',
+              label: 'Journey',
+              value: filters.journeyFilter,
+              onChange: noop,
+              options: [...PROJECT_JOURNEY_FILTER_OPTIONS],
+            },
+            {
+              id: 'projectStageFilter',
+              label: 'Stage',
+              value: filters.stageFilter,
+              onChange: noop,
+              options: [...PROJECT_STAGE_FILTER_OPTIONS],
+            },
+            {
+              id: 'projectStateFilter',
+              label: 'State',
+              value: filters.stateFilter,
+              onChange: noop,
+              options: [...PROJECT_STATE_FILTER_OPTIONS],
+            },
+            {
+              id: 'projectOwnerFilter',
+              label: 'Owner',
+              value: filters.ownerFilter,
+              onChange: noop,
+              options: [...PROJECTS_INDEX_OWNER_OPTIONS],
+            },
+            {
+              id: 'projectSort',
+              label: 'Sort',
+              value: 'newest',
+              onChange: noop,
+              options: [
+                { value: 'newest', label: 'Newest first' },
+                { value: 'oldest', label: 'Oldest first' },
+                { value: 'name_asc', label: 'Name A–Z' },
+                { value: 'name_desc', label: 'Name Z–A' },
+              ],
+            },
+            {
+              id: 'projectPageSize',
+              label: 'Rows',
+              value: '50',
+              onChange: noop,
+              options: [
+                { value: '50', label: '50 rows' },
+                { value: '25', label: '25 rows' },
+                { value: '100', label: '100 rows' },
+              ],
+            },
+          ]}
+          onClearAll={noop}
+        />
+      }
+      list={<ProjectsIndexPendingTable />}
+    />
   );
 }

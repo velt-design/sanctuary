@@ -8,6 +8,14 @@ const routerPrefetch = vi.fn();
 const routerReplace = vi.fn();
 const prefetchQuery = vi.fn();
 const beginInstantRoute = vi.fn();
+const beginRouteTransition = vi.fn();
+
+function setNavigatorOnline(online: boolean): void {
+  Object.defineProperty(window.navigator, 'onLine', {
+    configurable: true,
+    value: online,
+  });
+}
 
 vi.mock('next/link', () => ({
   default: ({ children, prefetch: _prefetch, ...props }: any) => <a {...props}>{children}</a>,
@@ -21,7 +29,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 });
 vi.mock('@/components/page-state/PortalRouteTransition', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/components/page-state/PortalRouteTransition')>();
-  return { ...actual, usePortalRouteTransition: () => ({ beginInstantRoute }) };
+  return {
+    ...actual,
+    usePortalRouteTransition: () => ({ beginInstantRoute, beginRouteTransition }),
+  };
 });
 
 describe('PortalIndexLink Contacts navigation', () => {
@@ -30,9 +41,14 @@ describe('PortalIndexLink Contacts navigation', () => {
     routerReplace.mockReset();
     prefetchQuery.mockReset();
     beginInstantRoute.mockReset();
+    beginRouteTransition.mockReset();
+    setNavigatorOnline(true);
     window.history.replaceState(null, '', '/dashboard');
   });
-  afterEach(() => { document.body.innerHTML = ''; });
+  afterEach(() => {
+    document.body.innerHTML = '';
+    setNavigatorOnline(true);
+  });
 
   it.each(['mouseover', 'focusin', 'pointerdown', 'touchstart'])('preloads Contacts route and data on %s intent', (eventName) => {
     const rendered = renderIntoDocument(<PortalIndexLink href="/staff/contacts">Contacts</PortalIndexLink>);
@@ -69,6 +85,29 @@ describe('PortalIndexLink Contacts navigation', () => {
     act(() => link?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })));
     expect(beginInstantRoute).toHaveBeenCalledWith('contacts-index');
     expect(routerReplace).toHaveBeenCalledWith('/staff/contacts', { scroll: false });
+    rendered.unmount();
+  });
+
+  it('uses the offline shell instead of the live index shortcut when disconnected', () => {
+    setNavigatorOnline(false);
+    const rendered = renderIntoDocument(
+      <PortalIndexLink href="/staff/contacts">Contacts</PortalIndexLink>,
+    );
+    const link = rendered.container.querySelector('a');
+
+    const navigationAccepted = link?.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+    );
+
+    expect(navigationAccepted).toBe(false);
+    expect(beginInstantRoute).not.toHaveBeenCalled();
+    expect(routerReplace).not.toHaveBeenCalled();
+    expect(beginRouteTransition).toHaveBeenCalledTimes(1);
+    expect(beginRouteTransition).toHaveBeenCalledWith(expect.objectContaining({
+      href: '/staff/contacts',
+      source: 'portal-route-link',
+      control: link,
+    }));
     rendered.unmount();
   });
 });

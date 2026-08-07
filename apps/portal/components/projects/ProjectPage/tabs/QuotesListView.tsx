@@ -13,6 +13,8 @@ import { quotePdfUrl } from "@/lib/quotes/quotesRepo";
 import type { QuoteVersion } from "@/lib/quotes/types";
 import styles from "./QuotesTab.module.css";
 import QuoteModal from "./QuoteWorkflowModal";
+import { ProjectPendingStatus } from "../ProjectPendingValue";
+import { QuoteListPendingRows } from "./CommercialPendingFrames";
 import {
   formatDateShort,
   formatMoneyFromCents,
@@ -58,6 +60,8 @@ export default function QuotesListView({
       role="region"
       aria-label="Quotes"
       data-quotes-view="list"
+      data-portal-page-shell="quote-list"
+      data-portal-page-shell-ready="true"
     >
       <div className={styles.header}>
         <div>
@@ -73,7 +77,11 @@ export default function QuotesListView({
         </button>
       </div>
 
-      {quotesLoading ? <p className={styles.note}>Loading quotes…</p> : null}
+      {quotesLoading ? (
+        <ProjectPendingStatus>
+          Quote list structure is ready. Quote values are loading.
+        </ProjectPendingStatus>
+      ) : null}
       {quotesError ? (
         <DataStatePanel
           state={quotes.length ? "stale" : "error"}
@@ -100,7 +108,7 @@ export default function QuotesListView({
         </div>
       ) : null}
 
-      {quotes.length ? (
+      {quotesLoading || quotes.length ? (
         <div className={styles.tableWrap}>
           <table className={styles.listTable}>
             <thead>
@@ -115,6 +123,7 @@ export default function QuotesListView({
               </tr>
             </thead>
             <tbody>
+              {quotesLoading && !quotes.length ? <QuoteListPendingRows /> : null}
               {quotes.map((quote) => {
                 const expired = isExpired(quote.expiresAt);
                 const quoteSyncPending =

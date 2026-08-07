@@ -53,7 +53,12 @@ const projects: Array<{
 
 export function FoundationComponentsSection({ currentStage }: { currentStage: PipelineStageKey }) {
   return (
-    <section className={styles.componentArea} id="components" aria-labelledby="components-heading">
+    <section
+      className={styles.componentArea}
+      id="components"
+      aria-labelledby="components-heading"
+      data-portal-shell-region="ui-foundation-components"
+    >
       <div className={styles.sectionTitle}><h2 id="components-heading">3. Components</h2><small>Real reusable exports</small></div>
       <div className={styles.componentGrid}>
         <div className={styles.componentMain}>

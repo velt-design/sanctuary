@@ -35,6 +35,7 @@ import { SALES_PEOPLE } from '@/src/config/salesPeople';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/lib/queries/keys';
 import { useSiteVisitProjectDeepLink } from './useSiteVisitProjectDeepLink';
+import { SiteVisitsChunkPendingFrame } from './SiteVisitsPendingFrame';
 
 const styles = { ...sharedStyles, ...siteVisitsStyles };
 
@@ -907,19 +908,7 @@ export default function SiteVisitsView() {
     }
   };
 
-  if (!mounted) {
-    return (
-      <section className={styles.siteVisitsShell} aria-label="Site visits calendar">
-        <div className={styles.siteVisitsTopBar}>
-          <div className={styles.siteVisitsControls}>
-            <span className={cx(styles.muted, styles.controlMeta)}>
-              Loading site visits…
-            </span>
-          </div>
-        </div>
-      </section>
-    );
-  }
+  if (!mounted) return <SiteVisitsChunkPendingFrame />;
 
   return (
     <section

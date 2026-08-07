@@ -163,7 +163,13 @@ export default function ProjectCreateClient() {
   ]);
 
   return (
-    <PageLayout className={styles.page} data-ui-foundation-consumer="project-create">
+    <PageLayout
+      className={styles.page}
+      data-ui-foundation-consumer="project-create"
+      data-portal-page-shell="project-create"
+      data-portal-page-shell-ready="true"
+      data-portal-page-shell-state="ready"
+    >
       <StaffPageHeader
         variant="detail"
         title="New Project"
@@ -172,7 +178,7 @@ export default function ProjectCreateClient() {
         right={<HeaderActions><ProjectsIndexLink variant="secondary" href="/staff/projects">Projects</ProjectsIndexLink></HeaderActions>}
       />
 
-      <Card title="Project details" aria-label="Project form">
+      <Card title="Project details" aria-label="Project form" data-portal-shell-region="project-create-form">
         <form
           onSubmit={(event) => {
             event.preventDefault();

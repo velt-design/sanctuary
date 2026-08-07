@@ -3,14 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import ProjectTabNavigation from './ProjectTabNavigation';
 
-const replaceMock = vi.fn();
 const preloadMock = vi.fn();
+const routeTransitionMocks = vi.hoisted(() => ({ navigateRoute: vi.fn() }));
 let mockSearchParams = 'tab=activity';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/staff/projects/proj_1',
-  useRouter: () => ({ replace: replaceMock }),
   useSearchParams: () => new URLSearchParams(mockSearchParams),
+}));
+
+vi.mock('@/components/page-state/PortalRouteTransition', () => ({
+  usePortalRouteTransition: () => ({ navigateRoute: routeTransitionMocks.navigateRoute }),
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -29,7 +32,7 @@ vi.mock('@/lib/supabase/browserClient', () => ({
 describe('ProjectTabNavigation', () => {
   beforeEach(() => {
     mockSearchParams = 'tab=activity';
-    replaceMock.mockReset();
+    routeTransitionMocks.navigateRoute.mockReset();
     preloadMock.mockReset();
   });
 
@@ -62,7 +65,14 @@ describe('ProjectTabNavigation', () => {
       <ProjectTabNavigation hasJobPacks host="host" initialTab="details" projectId="proj_1" />,
     );
 
-    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity&campaign=winter');
+    expect(routeTransitionMocks.navigateRoute).toHaveBeenCalledWith(
+      {
+        href: '/staff/projects/proj_1?tab=activity&campaign=winter',
+        label: 'Overview',
+        source: 'project-tab',
+      },
+      { replace: true, scroll: false },
+    );
     rendered.unmount();
   });
 
@@ -86,7 +96,14 @@ describe('ProjectTabNavigation', () => {
     });
 
     expect(preloadMock).toHaveBeenCalledWith('quotes', expect.objectContaining({ host: 'host', projectId: 'proj_1' }));
-    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=quotes');
+    expect(routeTransitionMocks.navigateRoute).toHaveBeenCalledWith(
+      {
+        href: '/staff/projects/proj_1?tab=quotes',
+        label: 'Commercial',
+        source: 'project-tab',
+      },
+      { replace: true, scroll: false },
+    );
     expect(onTabSelect).toHaveBeenCalledWith('quotes');
     rendered.unmount();
   });
@@ -107,7 +124,14 @@ describe('ProjectTabNavigation', () => {
       <ProjectTabNavigation hasJobPacks host="host" initialTab="emails" projectId="proj_1" />,
     );
 
-    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity&campaign=winter');
+    expect(routeTransitionMocks.navigateRoute).toHaveBeenCalledWith(
+      {
+        href: '/staff/projects/proj_1?tab=activity&campaign=winter',
+        label: 'Overview',
+        source: 'project-tab',
+      },
+      { replace: true, scroll: false },
+    );
     rendered.unmount();
   });
 });

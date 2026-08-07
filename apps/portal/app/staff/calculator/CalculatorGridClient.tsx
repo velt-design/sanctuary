@@ -15,6 +15,7 @@ import { supportsHouseFootprints } from '@/lib/types/calculator';
 import type { Project } from '@/lib/types/project';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import InfillPreview from './InfillPreview';
 import {
   addedSupportSummary,
@@ -125,6 +126,7 @@ export default function CalculatorGridClient({
   const role = (roleProp ?? (sessionRole ?? 'staff')) === 'admin' ? 'admin' : 'staff';
   const canViewInternalCosts = role === 'admin';
 
+  const { navigateRoute } = usePortalRouteTransition();
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
@@ -560,7 +562,13 @@ export default function CalculatorGridClient({
     selectProject: () => setProjectPickerOpen(true),
     openProject: () => {
       if (workspace) workspace.onOpenProject();
-      else if (projectId) router.push(`/staff/projects/${encodeURIComponent(projectId)}`);
+      else if (projectId) {
+        navigateRoute({
+          href: `/staff/projects/${encodeURIComponent(projectId)}`,
+          label: 'Project',
+          source: 'calculator-status',
+        });
+      }
     },
     openIssues,
     openBlinds: () => {
@@ -585,7 +593,11 @@ export default function CalculatorGridClient({
 
   const handleProjectSelect = (selectedProject: Project) => {
     setProjectPickerOpen(false);
-    router.push(`/staff/calculator?projectId=${encodeURIComponent(selectedProject.id)}&openActiveDraft=1`);
+    navigateRoute({
+      href: `/staff/calculator?projectId=${encodeURIComponent(selectedProject.id)}&openActiveDraft=1`,
+      label: 'Calculator',
+      source: 'calculator-project-picker',
+    });
   };
 
   const calculatorSaveContext: CalculatorSaveContext = {

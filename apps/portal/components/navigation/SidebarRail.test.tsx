@@ -13,6 +13,13 @@ const transitionMocks = vi.hoisted(() => ({
 
 let mockPathname = '/dashboard';
 
+function setNavigatorOnline(online: boolean): void {
+  Object.defineProperty(window.navigator, 'onLine', {
+    configurable: true,
+    value: online,
+  });
+}
+
 function preventDocumentNavigation(event: Event): void {
   const target = event.target;
   if (!(target instanceof Element)) return;
@@ -68,6 +75,7 @@ describe('SidebarRail', () => {
     transitionMocks.routerPrefetch.mockReset();
     transitionMocks.routerReplace.mockReset();
     mockPathname = '/dashboard';
+    setNavigatorOnline(true);
     window.history.replaceState({}, '', '/dashboard');
     document.addEventListener('click', preventDocumentNavigation);
   });
@@ -75,6 +83,7 @@ describe('SidebarRail', () => {
   afterEach(() => {
     document.removeEventListener('click', preventDocumentNavigation);
     document.body.innerHTML = '';
+    setNavigatorOnline(true);
     window.history.replaceState({}, '', '/');
   });
 
@@ -131,10 +140,34 @@ describe('SidebarRail', () => {
     expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
       href: '/schedule',
       label: 'Schedule',
-      source: 'sidebar-rail',
+      source: 'portal-route-link',
       control: scheduleLink,
     });
 
+    rendered.unmount();
+  });
+
+  it('cancels Next navigation and hands an offline primary route to the shell presenter', () => {
+    mockPathname = '/staff/projects';
+    window.history.replaceState({}, '', '/staff/projects');
+    setNavigatorOnline(false);
+    const rendered = renderIntoDocument(<SidebarRail role="staff" />);
+    const dashboardLink = linkByLabel(rendered.container, 'Dashboard');
+
+    const navigationAccepted = dashboardLink.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+    );
+
+    expect(navigationAccepted).toBe(false);
+    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledTimes(1);
+    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
+      href: '/dashboard',
+      label: 'Dashboard',
+      source: 'portal-route-link',
+      control: dashboardLink,
+    });
+    expect(transitionMocks.routerReplace).not.toHaveBeenCalled();
+    expect(transitionMocks.beginInstantRoute).not.toHaveBeenCalled();
     rendered.unmount();
   });
 

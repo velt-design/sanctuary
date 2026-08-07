@@ -1,0 +1,258 @@
+.shell {
+  display: grid;
+  container-type: inline-size;
+  min-width: 0;
+  min-height: 640px;
+  height: max(640px, calc(100dvh - var(--project-page-masthead-height, 140px) - 48px));
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--ui-space-2);
+  color: var(--ui-text);
+  background: var(--ui-canvas);
+  font-family: var(--ui-font-body);
+}
+
+.commandBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+  min-width: 0;
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-primary);
+  padding: var(--ui-space-2) var(--ui-space-3);
+}
+
+.identity,
+.commandMeta,
+.configuration,
+.moduleRail,
+.form,
+.section,
+.field,
+.resultInspector,
+.resultBody {
+  display: grid;
+  min-width: 0;
+}
+
+.identity {
+  gap: var(--ui-space-1);
+}
+
+.identity strong,
+.resultHeader h2,
+.section h2 {
+  margin: 0;
+  color: var(--ui-text-strong);
+  font-family: var(--ui-font-display);
+  text-transform: uppercase;
+}
+
+.identity strong {
+  font-size: var(--ui-font-size-section);
+}
+
+.commandMeta {
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: center;
+  gap: var(--ui-space-2);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+}
+
+.commandActions,
+.mode,
+.resultTabs {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+}
+
+.commandActions button,
+.mode button,
+.resultTabs button {
+  min-height: var(--ui-control-sm);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-secondary);
+  color: var(--ui-text-muted);
+  padding-inline: var(--ui-space-2);
+  font: inherit;
+  font-size: var(--ui-font-size-label);
+}
+
+.commandActions > button:last-child {
+  border-color: var(--ui-action);
+  background: var(--ui-action);
+  color: var(--ui-action-foreground);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(620px, 1fr) minmax(360px, 0.58fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.configuration {
+  grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
+  align-content: start;
+  gap: var(--ui-space-3);
+  min-height: 0;
+  overflow: hidden auto;
+  padding-right: var(--ui-space-3);
+}
+
+.moduleRail {
+  align-content: start;
+  gap: var(--ui-space-2);
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-primary);
+  padding: var(--ui-space-3);
+}
+
+.railTitle,
+.label {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 600;
+  letter-spacing: var(--ui-letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.moduleItem {
+  display: grid;
+  gap: var(--ui-space-1);
+  min-height: 68px;
+  border: var(--ui-border-width) solid var(--ui-action);
+  border-left: var(--ui-status-edge) solid var(--ui-action);
+  background: var(--ui-surface-elevated);
+  padding: var(--ui-space-2);
+}
+
+.form {
+  align-content: start;
+  gap: var(--ui-space-3);
+}
+
+.section {
+  gap: var(--ui-space-3);
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-primary);
+  padding: var(--ui-space-3);
+}
+
+.section h2 {
+  font-size: var(--ui-font-size-section);
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+}
+
+.field {
+  gap: var(--ui-space-2);
+  min-height: 76px;
+  border-top: var(--ui-border-width) solid var(--ui-border);
+  padding-top: var(--ui-space-2);
+}
+
+.resultInspector {
+  align-content: start;
+  gap: var(--ui-space-3);
+  min-height: 0;
+  overflow: hidden auto;
+  border-left: var(--ui-border-width) solid var(--ui-border-strong);
+  background: var(--ui-surface-secondary);
+  padding: var(--ui-space-3);
+}
+
+.resultHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+}
+
+.resultHeader h2 {
+  font-size: var(--ui-font-size-title);
+}
+
+.resultTabs {
+  overflow-x: auto;
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+  padding-bottom: var(--ui-space-2);
+}
+
+.resultTabs button:first-child {
+  border-color: var(--ui-action);
+  color: var(--ui-text-strong);
+}
+
+.resultBody {
+  gap: var(--ui-space-3);
+}
+
+.priceCard,
+.resultCard {
+  display: grid;
+  gap: var(--ui-space-2);
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-primary);
+  padding: var(--ui-space-3);
+}
+
+.priceCard {
+  min-height: 112px;
+}
+
+@media (max-width: 1119px) {
+  .shell {
+    height: auto;
+    min-height: 0;
+  }
+
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: visible;
+  }
+
+  .configuration,
+  .resultInspector {
+    overflow: visible;
+  }
+
+  .resultInspector {
+    border-top: var(--ui-border-width) solid var(--ui-border-strong);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .commandBar,
+  .resultHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .commandActions {
+    flex-wrap: wrap;
+  }
+
+  .configuration,
+  .fieldGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (pointer: coarse) {
+  .commandActions button,
+  .mode button,
+  .resultTabs button {
+    min-height: 44px;
+  }
+}

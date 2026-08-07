@@ -40,6 +40,11 @@ import {
   type CostingControlSection,
   type ValidationIssue,
 } from './costingControlModel';
+import {
+  hasCheckedPortalNavigationIntent,
+  PORTAL_NAVIGATION_INTENT_EVENT,
+  type PortalNavigationIntentDetail,
+} from '@/lib/portalNavigationIntent';
 import styles from './costingControl.module.css';
 
 type Catalog = {
@@ -159,6 +164,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
       event.returnValue = '';
     };
     const guardLink = (event: MouseEvent) => {
+      if (hasCheckedPortalNavigationIntent(event)) return;
       const target = event.target;
       if (!(target instanceof Element)) return;
       const link = target.closest('a[href]');
@@ -169,11 +175,22 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
         event.stopPropagation();
       }
     };
+    const guardPortalNavigation = (event: Event) => {
+      const intent = event as CustomEvent<PortalNavigationIntentDetail>;
+      if (!intent.detail?.href) return;
+      const destination = new URL(intent.detail.href, window.location.href);
+      if (destination.href === window.location.href) return;
+      if (!window.confirm('Leave this draft? Your unsaved costing changes will be lost.')) {
+        event.preventDefault();
+      }
+    };
     window.addEventListener('beforeunload', beforeUnload);
     document.addEventListener('click', guardLink, true);
+    document.addEventListener(PORTAL_NAVIGATION_INTENT_EVENT, guardPortalNavigation);
     return () => {
       window.removeEventListener('beforeunload', beforeUnload);
       document.removeEventListener('click', guardLink, true);
+      document.removeEventListener(PORTAL_NAVIGATION_INTENT_EVENT, guardPortalNavigation);
     };
   }, [dirty]);
 
@@ -435,8 +452,16 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   return (
-    <main className={styles.page}>
-      <header className={styles.header}>
+    <main
+      className={styles.page}
+      data-portal-page-shell="admin-costing"
+      data-portal-page-shell-ready="true"
+      data-costing-background-ready="true"
+    >
+      <header
+        className={styles.header}
+        data-portal-shell-region="admin-costing-header"
+      >
         <div>
           <div className={styles.eyebrow}>Pricebook</div>
           <h1 className={styles.title}>Costing control centre</h1>
@@ -521,7 +546,10 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
       ) : null}
 
       {!editor ? (
-        <section className={styles.onboardingCard}>
+        <section
+          className={styles.onboardingCard}
+          data-portal-shell-region="admin-costing-overview"
+        >
           <div>
             <div className={styles.eyebrow}>Step 1 · Overview</div>
             <h2>{latestDraft ? 'Continue the current pricing review' : 'Start with a safe draft'}</h2>
@@ -552,7 +580,10 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
       />
 
       {editor && config && baseline ? (
-        <section className={styles.editorCard}>
+        <section
+          className={styles.editorCard}
+          data-portal-shell-region="admin-costing-editor"
+        >
           <div className={styles.cardHeader}>
             <div>
               <div className={styles.eyebrow}>

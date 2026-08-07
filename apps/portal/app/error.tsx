@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/navigation/PortalRouteLink';
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import PageMessagePanel from '@/components/page-state/PageMessagePanel';

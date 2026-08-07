@@ -1,11 +1,15 @@
 import { act } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { useProjectInstantOpen } from './ProjectInstantOpen';
 import ProjectInstantNavigationProvider from './ProjectInstantNavigation';
 
 const replace = vi.fn();
-const routeTransition = vi.hoisted(() => ({ pendingHref: null as string | null }));
+const routeTransition = vi.hoisted(() => ({
+  beginRouteTransition: vi.fn(),
+  pendingHref: null as string | null,
+}));
+const originalNavigatorOnline = Object.getOwnPropertyDescriptor(navigator, 'onLine');
 
 vi.mock('./[projectId]/ProjectSnapshotPageClient', () => ({
   default: ({ projectId, tab }: { projectId: string; tab: string }) => (
@@ -19,7 +23,10 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/components/page-state/PortalRouteTransition', () => ({
-  usePortalRouteTransition: () => ({ pendingHref: routeTransition.pendingHref }),
+  usePortalRouteTransition: () => ({
+    beginRouteTransition: routeTransition.beginRouteTransition,
+    pendingHref: routeTransition.pendingHref,
+  }),
 }));
 
 function InstantOpenHarness({ onOpened }: { onOpened?: () => void }) {
@@ -48,8 +55,18 @@ function renderHarness() {
 describe('useProjectInstantOpen', () => {
   beforeEach(() => {
     replace.mockReset();
+    routeTransition.beginRouteTransition.mockReset();
     routeTransition.pendingHref = null;
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
     window.history.replaceState(null, '', '/staff/projects');
+  });
+
+  afterEach(() => {
+    if (originalNavigatorOnline) {
+      Object.defineProperty(navigator, 'onLine', originalNavigatorOnline);
+    } else {
+      Reflect.deleteProperty(navigator, 'onLine');
+    }
   });
 
   it('updates history and shows the cached project client before the server route settles', () => {
@@ -80,6 +97,25 @@ describe('useProjectInstantOpen', () => {
     act(() => window.dispatchEvent(new PopStateEvent('popstate')));
 
     expect(rendered.container.textContent).toContain('Open project');
+    rendered.unmount();
+  });
+
+  it('routes row and keyboard opens through the data-free shell while offline', () => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    const rendered = renderHarness();
+
+    act(() => {
+      rendered.container.querySelector('button')?.click();
+    });
+
+    expect(routeTransition.beginRouteTransition).toHaveBeenCalledWith({
+      href: '/staff/projects/proj_1',
+      label: 'Project',
+      source: 'projects-index-row',
+    });
+    expect(replace).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe('/staff/projects');
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBeNull();
     rendered.unmount();
   });
 

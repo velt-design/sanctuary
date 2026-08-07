@@ -5,5 +5,5 @@ import { useDesignListSpreadsheetAdapter } from './useDesignListSpreadsheetAdapt
 
 export default function DesignPackagesClient() {
   const adapter = useDesignListSpreadsheetAdapter();
-  return <SpreadsheetPageTemplate adapter={adapter} />;
+  return <SpreadsheetPageTemplate adapter={adapter} routeShell="design-list" />;
 }

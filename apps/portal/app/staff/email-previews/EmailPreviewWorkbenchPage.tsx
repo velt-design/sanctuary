@@ -21,12 +21,19 @@ export default function EmailPreviewWorkbenchPage({
   qaFixture = false,
 }: EmailPreviewWorkbenchPageProps = {}) {
   return (
-    <PageLayout width="full" data-ui-foundation-consumer="email-previews">
-      {qaFixture ? (
-        <PageHeader {...headerProps} />
-      ) : (
-        <StaffPageHeader {...headerProps} searchShortcutEnabled={false} />
-      )}
+    <PageLayout
+      width="full"
+      data-ui-foundation-consumer="email-previews"
+      data-portal-page-shell="email-previews"
+      data-portal-page-shell-ready="true"
+    >
+      <div data-portal-shell-region="email-previews-header">
+        {qaFixture ? (
+          <PageHeader {...headerProps} />
+        ) : (
+          <StaffPageHeader {...headerProps} searchShortcutEnabled={false} />
+        )}
+      </div>
       <EmailPreviewClient previewEndpoint={previewEndpoint} />
     </PageLayout>
   );

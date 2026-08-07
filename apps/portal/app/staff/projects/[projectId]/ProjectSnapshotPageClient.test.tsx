@@ -8,6 +8,13 @@ const useQueryMock = vi.fn();
 const placeholderMock = vi.fn();
 const refetchMock = vi.fn();
 const removeQueriesMock = vi.fn();
+const replaceMock = vi.fn();
+let routeSearchParams = new URLSearchParams();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: replaceMock }),
+  useSearchParams: () => routeSearchParams,
+}));
 
 vi.mock("@/components/navigation/ProjectsIndexLink", () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
@@ -131,6 +138,8 @@ describe("ProjectSnapshotPageClient", () => {
     placeholderMock.mockReset();
     refetchMock.mockReset();
     removeQueriesMock.mockReset();
+    replaceMock.mockReset();
+    routeSearchParams = new URLSearchParams();
     placeholderMock.mockReturnValue(summaryResponse);
   });
 
@@ -386,6 +395,33 @@ describe("ProjectSnapshotPageClient", () => {
     expect(rendered.container.textContent).toContain("Opening project");
     expect(rendered.container.textContent).not.toContain("Project unavailable");
 
+    rendered.unmount();
+  });
+
+  it("keeps the requested deep project structure while the snapshot loads", () => {
+    placeholderMock.mockReturnValue(undefined);
+    mockProjectQueries({ snapshot: pendingQuery() });
+    routeSearchParams = new URLSearchParams(
+      "tab=quotes&quoteId=quote_1&quotePreview=1",
+    );
+
+    const rendered = renderIntoDocument(
+      <ProjectSnapshotPageClient
+        projectId="proj_1"
+        tab="quotes"
+        estimateId={null}
+        debugExportEnabled
+      />,
+    );
+
+    expect(
+      rendered.container.querySelector('[data-project-quote-id="quote_1"]'),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector(
+        '[data-portal-page-shell="quote-preview"]',
+      ),
+    ).not.toBeNull();
     rendered.unmount();
   });
 

@@ -1,6 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
 import { getQuoteVersion, listQuoteVersions } from '@/lib/quotes/quotesRepo';
-import { portalEditorPersistMeta } from '@/lib/react-query/persistence';
 import { qk } from './keys';
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
@@ -12,7 +11,6 @@ export const quoteVersionsByProjectQueryOptions = (host: string, projectId: stri
     queryFn: () => listQuoteVersions(projectId),
     staleTime: TEN_MINUTES,
     gcTime: ONE_DAY,
-    meta: portalEditorPersistMeta,
   });
 
 export const quoteVersionDetailQueryOptions = (host: string, quoteVersionId: string) =>
@@ -21,5 +19,4 @@ export const quoteVersionDetailQueryOptions = (host: string, quoteVersionId: str
     queryFn: () => getQuoteVersion(quoteVersionId),
     staleTime: TEN_MINUTES,
     gcTime: ONE_DAY,
-    meta: portalEditorPersistMeta,
   });

@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/navigation/PortalRouteLink';
 import type { ProjectCommandStaffSummary } from '@/lib/projects/commandCentre/types';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import { Badge, Button, ButtonLink, ProjectStageBadge } from '@/components/ui/foundation';

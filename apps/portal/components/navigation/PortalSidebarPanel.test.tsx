@@ -15,6 +15,13 @@ let mockPathname = '/dashboard';
 let mockSearchParams = new URLSearchParams();
 let mockRole: 'admin' | 'staff' = 'staff';
 
+function setNavigatorOnline(online: boolean): void {
+  Object.defineProperty(window.navigator, 'onLine', {
+    configurable: true,
+    value: online,
+  });
+}
+
 function preventDocumentNavigation(event: Event): void {
   const target = event.target;
   if (!(target instanceof Element)) return;
@@ -105,6 +112,7 @@ describe('PortalSidebarPanel', () => {
     mockPathname = '/dashboard';
     mockSearchParams = new URLSearchParams();
     mockRole = 'staff';
+    setNavigatorOnline(true);
     window.history.replaceState({}, '', '/dashboard');
     document.addEventListener('click', preventDocumentNavigation);
   });
@@ -112,6 +120,7 @@ describe('PortalSidebarPanel', () => {
   afterEach(() => {
     document.removeEventListener('click', preventDocumentNavigation);
     document.body.innerHTML = '';
+    setNavigatorOnline(true);
     window.history.replaceState({}, '', '/');
   });
 
@@ -242,6 +251,46 @@ describe('PortalSidebarPanel', () => {
     expect(transitionMocks.routerPrefetch).toHaveBeenCalledWith('/schedule');
     expect(transitionMocks.prefetchQuery).toHaveBeenCalledTimes(1);
 
+    rendered.unmount();
+  });
+
+  it('keeps the mounted portal visible when a primary link is used offline', () => {
+    mockPathname = '/staff/projects';
+    window.history.replaceState({}, '', '/staff/projects');
+    setNavigatorOnline(false);
+    const rendered = renderSidebar();
+    const dashboardLink = linkByLabel(rendered.container, 'Dashboard');
+
+    const navigationAccepted = dashboardLink.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+    );
+
+    expect(navigationAccepted).toBe(false);
+    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledTimes(1);
+    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
+      href: '/dashboard',
+      label: 'Dashboard',
+      source: 'portal-route-link',
+      control: dashboardLink,
+    });
+    expect(transitionMocks.routerReplace).not.toHaveBeenCalled();
+    expect(transitionMocks.beginInstantRoute).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
+  it('does not invoke the online Projects index shortcut while offline', () => {
+    setNavigatorOnline(false);
+    const rendered = renderSidebar();
+    const projectsLink = linkByLabel(rendered.container, 'Projects');
+
+    const navigationAccepted = projectsLink.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+    );
+
+    expect(navigationAccepted).toBe(false);
+    expect(transitionMocks.routerReplace).not.toHaveBeenCalled();
+    expect(transitionMocks.beginInstantRoute).not.toHaveBeenCalled();
+    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledTimes(1);
     rendered.unmount();
   });
 });

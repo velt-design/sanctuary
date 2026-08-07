@@ -1,5 +1,5 @@
-import BlueprintLoadingScreen from '@/components/page-state/BlueprintLoadingScreen';
+import PortalCurrentRouteFrame from '@/components/page-state/PortalCurrentRouteFrame';
 
 export default function Loading() {
-  return <BlueprintLoadingScreen />;
+  return <PortalCurrentRouteFrame />;
 }

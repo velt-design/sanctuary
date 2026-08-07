@@ -83,6 +83,22 @@ describe("DesignBookletWorkbenchClient", () => {
     const railButtons = pageRailButtons(rendered.container);
 
     expect(
+      rendered.container.querySelector(
+        '[data-portal-page-shell="design-booklets"][data-portal-page-shell-ready="true"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector(
+        '[data-portal-shell-region="design-booklets-controls"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector(
+        '[data-portal-shell-region="design-booklets-preview"]',
+      ),
+    ).not.toBeNull();
+
+    expect(
       rendered.container.querySelector('aside[aria-label="Booklet controls"]'),
     ).not.toBeNull();
     expect(

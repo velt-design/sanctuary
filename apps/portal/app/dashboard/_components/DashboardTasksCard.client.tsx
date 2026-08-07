@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { DashboardPersonalTask } from '@/lib/dashboard/types';
 import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import dash from '../dashboard.module.css';
 import { Button, Input } from '@/components/ui/foundation/FoundationControls';
 import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+import DashboardLoadingRows from './DashboardLoadingRows';
 
 async function readTaskResponse(res: Response): Promise<DashboardPersonalTask> {
   const body = await res.json().catch(() => null);
@@ -17,12 +18,25 @@ async function readTaskResponse(res: Response): Promise<DashboardPersonalTask> {
   return body.task as DashboardPersonalTask;
 }
 
-export default function DashboardTasksCard({ initialTasks }: { initialTasks: DashboardPersonalTask[] }) {
-  const [tasks, setTasks] = useState(initialTasks);
+export default function DashboardTasksCard({
+  initialTasks,
+  loading = false,
+}: {
+  initialTasks?: DashboardPersonalTask[];
+  loading?: boolean;
+}) {
+  const receivedInitialTasksRef = useRef(initialTasks !== undefined);
+  const [tasks, setTasks] = useState(initialTasks ?? []);
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (receivedInitialTasksRef.current || initialTasks === undefined) return;
+    receivedInitialTasksRef.current = true;
+    setTasks(initialTasks);
+  }, [initialTasks]);
 
   async function createTask() {
     const nextTitle = title.trim();
@@ -79,7 +93,13 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
   }
 
   return (
-    <section className={`${styles.section} ${dash.card} ${dash.tasksCard}`} aria-label="My Tasks">
+    <section
+      className={`${styles.section} ${dash.card} ${dash.tasksCard}`}
+      aria-label="My Tasks"
+      aria-busy={loading}
+      data-dashboard-card-state={loading ? 'loading' : 'ready'}
+      data-portal-shell-region="dashboard-tasks"
+    >
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>My Tasks</h2>
@@ -107,15 +127,17 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
               setTitle(event.target.value);
               if (error) setError(null);
             }}
-            disabled={submitting}
+            disabled={loading || submitting}
           />
-          <Button className={dash.taskAddButton} type="submit" loading={submitting} disabled={!title.trim()}>
+          <Button className={dash.taskAddButton} type="submit" loading={submitting} disabled={loading || !title.trim()}>
             Add
           </Button>
         </form>
         {error ? <div className={dash.taskError}>{error}</div> : null}
 
-        {tasks.length ? (
+        {loading ? (
+          <DashboardLoadingRows label="Updating personal tasks..." rows={3} />
+        ) : tasks.length ? (
           <TaskList className={dash.taskList} ariaLabel="Personal tasks">
             {tasks.map((task) => {
               const completed = Boolean(task.completedAt);

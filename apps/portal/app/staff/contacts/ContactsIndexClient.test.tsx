@@ -84,6 +84,8 @@ describe('ContactsIndexClient', () => {
     const rendered = renderIntoDocument(<ContactsIndexClient />);
     expect(rendered.container.textContent).toContain(state === 'pending' ? 'Updating contacts...' : 'Updating...');
     expect(rendered.container.textContent).not.toContain('No contacts found.');
+    expect(rendered.container.querySelector('[aria-label="Contacts list"] table')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-page-shell="contacts"]')?.getAttribute('data-portal-page-shell-ready')).toBe('true');
     rendered.unmount();
   });
 

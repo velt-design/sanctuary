@@ -3,14 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import ProjectCalculatorTab from './ProjectCalculatorTab';
 
-const replace = vi.fn();
+const routeTransitionMocks = vi.hoisted(() => ({ navigateRoute: vi.fn() }));
 const useQueryMock = vi.fn();
 let search = 'tab=estimates';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/staff/projects/proj_1',
-  useRouter: () => ({ replace }),
   useSearchParams: () => new URLSearchParams(search),
+}));
+
+vi.mock('@/components/page-state/PortalRouteTransition', () => ({
+  usePortalRouteTransition: () => ({ navigateRoute: routeTransitionMocks.navigateRoute }),
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -62,7 +65,7 @@ const historical = { ...activeDraft, id: 'est_history', versionLabel: 'V1', isAc
 
 describe('ProjectCalculatorTab', () => {
   beforeEach(() => {
-    replace.mockReset();
+    routeTransitionMocks.navigateRoute.mockReset();
     search = 'tab=estimates';
     useQueryMock.mockReturnValue({ data: [activeDraft, historical], isPending: false, isError: false });
   });
@@ -73,7 +76,14 @@ describe('ProjectCalculatorTab', () => {
 
   it('opens the active editable draft when the project route has no design intent', () => {
     const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
-    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&estimateId=est_draft');
+    expect(routeTransitionMocks.navigateRoute).toHaveBeenCalledWith(
+      {
+        href: '/staff/projects/proj_1?tab=estimates&estimateId=est_draft',
+        label: 'Calculator',
+        source: 'project-calculator',
+      },
+      { replace: true, scroll: false },
+    );
     rendered.unmount();
   });
 
@@ -97,8 +107,13 @@ describe('ProjectCalculatorTab', () => {
     expect(calculator?.getAttribute('data-create-new')).toBe('true');
 
     act(() => rendered.container.querySelector<HTMLButtonElement>('button')?.click());
-    expect(replace).toHaveBeenCalledWith(
-      '/staff/projects/proj_1?tab=estimates&campaign=winter&estimateId=est_saved',
+    expect(routeTransitionMocks.navigateRoute).toHaveBeenCalledWith(
+      {
+        href: '/staff/projects/proj_1?tab=estimates&campaign=winter&estimateId=est_saved',
+        label: 'Calculator',
+        source: 'project-calculator',
+      },
+      { replace: true, scroll: false },
     );
     rendered.unmount();
   });
@@ -114,14 +129,28 @@ describe('ProjectCalculatorTab', () => {
     const startRevision = Array.from(rendered.container.querySelectorAll('button'))
       .find((button) => button.textContent === 'Start revision');
     act(() => startRevision?.click());
-    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&fromEstimateId=est_history');
+    expect(routeTransitionMocks.navigateRoute).toHaveBeenCalledWith(
+      {
+        href: '/staff/projects/proj_1?tab=estimates&fromEstimateId=est_history',
+        label: 'Calculator',
+        source: 'project-calculator',
+      },
+      { replace: true, scroll: false },
+    );
     rendered.unmount();
   });
 
   it('starts with a deliberate blank design when the project has no designs', () => {
     useQueryMock.mockReturnValue({ data: [], isPending: false, isError: false });
     const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
-    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&newDesign=1');
+    expect(routeTransitionMocks.navigateRoute).toHaveBeenCalledWith(
+      {
+        href: '/staff/projects/proj_1?tab=estimates&newDesign=1',
+        label: 'Calculator',
+        source: 'project-calculator',
+      },
+      { replace: true, scroll: false },
+    );
     rendered.unmount();
   });
 

@@ -1,5 +1,5 @@
-import DashboardPendingView from './DashboardPendingView';
+import DashboardView from './DashboardView';
 
 export default function Loading() {
-  return <DashboardPendingView />;
+  return <DashboardView state="pending" />;
 }

@@ -55,12 +55,15 @@ export default function ProjectPageFrame({
       className={styles.pageFrame}
       data-project-page-frame="true"
       data-project-masthead-sticky="true"
+      data-portal-page-shell="project-detail"
+      data-portal-page-shell-ready="true"
     >
       <div
         ref={mastheadRef}
         className={`${styles.pageFrameMastheadSlot} ${styles.pageFrameMastheadSlotSticky}`}
         data-project-masthead-slot="fixed"
         data-project-masthead-slot-sticky="true"
+        data-portal-route-region="project-header"
       >
         <ProjectHeader
           project={snapshot.project}

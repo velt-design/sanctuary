@@ -179,23 +179,30 @@ export default function ImportsClient() {
   const canImport = Boolean((summary.contacts.length || summary.projects.length || summary.estimates.length || summary.scheduleItems.length) && !busy);
 
   return (
-    <main className={styles.page} data-ui-foundation-consumer="imports">
-      <StaffPageHeader
-        title="Imports"
-        right={
-          <HeaderActions>
-            <span className={styles.muted}>{busy ? 'Working…' : `${sources.length} file(s)`}</span>
-            <button
-              type="button"
-              className={styles.button}
-              onClick={() => fileInputRef.current?.click()}
-              disabled={busy}
-            >
-              Select JSON files
-            </button>
-          </HeaderActions>
-        }
-      />
+    <main
+      className={styles.page}
+      data-ui-foundation-consumer="imports"
+      data-portal-page-shell="admin-imports"
+      data-portal-page-shell-ready="true"
+    >
+      <div data-portal-shell-region="admin-imports-header">
+        <StaffPageHeader
+          title="Imports"
+          right={
+            <HeaderActions>
+              <span className={styles.muted}>{busy ? 'Working…' : `${sources.length} file(s)`}</span>
+              <button
+                type="button"
+                className={styles.button}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={busy}
+              >
+                Select JSON files
+              </button>
+            </HeaderActions>
+          }
+        />
+      </div>
 
       <input
         ref={fileInputRef}
@@ -242,7 +249,11 @@ export default function ImportsClient() {
       />
 
       <div className={styles.pageStack}>
-        <section className={styles.section} aria-label="Import summary">
+        <section
+          className={styles.section}
+          aria-label="Import summary"
+          data-portal-shell-region="admin-imports-summary"
+        >
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Summary</h2>
             <button
@@ -309,7 +320,11 @@ export default function ImportsClient() {
         </section>
 
         {sources.length ? (
-          <section className={styles.section} aria-label="Files">
+          <section
+            className={styles.section}
+            aria-label="Files"
+            data-portal-shell-region="admin-imports-files"
+          >
             <div className={styles.sectionHeader}>
               <h2 className={styles.sectionTitle}>Files</h2>
               <button type="button" className={styles.buttonSecondary} onClick={() => setSources([])} disabled={busy}>

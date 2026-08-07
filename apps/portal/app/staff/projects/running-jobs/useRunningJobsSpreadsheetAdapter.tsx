@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/navigation/PortalRouteLink';
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';

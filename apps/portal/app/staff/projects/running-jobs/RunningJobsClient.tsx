@@ -5,5 +5,5 @@ import { useRunningJobsSpreadsheetAdapter } from './useRunningJobsSpreadsheetAda
 
 export default function RunningJobsClient() {
   const adapter = useRunningJobsSpreadsheetAdapter();
-  return <SpreadsheetPageTemplate adapter={adapter} />;
+  return <SpreadsheetPageTemplate adapter={adapter} routeShell="running-jobs" />;
 }

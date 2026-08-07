@@ -967,6 +967,34 @@
   width: 100%;
 }
 
+.pendingBookletPage {
+  display: grid;
+  aspect-ratio: 297 / 210;
+  place-items: center;
+  border: 1px solid var(--booklet-rule-strong);
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 62%),
+      transparent
+    ),
+    var(--booklet-paper-strong);
+  background-size: 200% 100%;
+  color: var(--booklet-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  animation: pending-booklet-shimmer 1.2s linear infinite;
+}
+
+@keyframes pending-booklet-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
 .errorMessage {
   position: fixed;
   z-index: 40;
@@ -1229,5 +1257,9 @@
 @media (prefers-reduced-motion: reduce) {
   .workbench {
     scroll-behavior: auto;
+  }
+
+  .pendingBookletPage {
+    animation: none;
   }
 }

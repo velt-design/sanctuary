@@ -10,3 +10,53 @@
   color: var(--ui-text-muted);
   font-size: var(--ui-font-size-small);
 }
+
+.pendingWrapper {
+  display: grid;
+  gap: var(--ui-space-4);
+  min-width: 0;
+}
+
+.pendingFilters {
+  display: grid;
+  grid-template-columns: minmax(240px, 2fr) repeat(3, minmax(150px, 1fr));
+  gap: var(--ui-space-3);
+  align-items: end;
+}
+
+.pendingCount {
+  display: block;
+  width: 1.25rem;
+  height: 0.75rem;
+  background: currentColor;
+  opacity: 0.22;
+}
+
+.pendingCell {
+  display: grid;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+
+.pendingCell span {
+  display: block;
+  width: min(100%, 10rem);
+  height: 0.7rem;
+  background: var(--ui-surface-sunken);
+}
+
+.pendingCell span:last-child {
+  width: min(72%, 7rem);
+}
+
+@media (max-width: 1100px) {
+  .pendingFilters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .pendingFilters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

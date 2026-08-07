@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/navigation/PortalRouteLink';
 import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { preloadWorkbenchViewport } from './workbenchViewportModules';
 import styles from './DrawingWorkbench.module.css';

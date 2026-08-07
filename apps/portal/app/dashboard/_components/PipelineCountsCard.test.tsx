@@ -61,4 +61,16 @@ describe('PipelineCountsCard', () => {
     expect(markup).toContain('data-project-state-counts="unavailable"');
     expect(markup).toMatch(/Active<\/span><strong>—</);
   });
+
+  it('keeps every portfolio destination visible without inventing pending counts', () => {
+    const markup = renderToStaticMarkup(<PipelineCountsCard loading />);
+
+    expect(markup).toContain('data-dashboard-card-state="loading"');
+    expect(markup).toContain('data-project-state-counts="loading"');
+    expect(markup).toContain('href="/staff/projects?journey=ENQUIRY"');
+    expect(markup).toContain('href="/staff/projects?journey=PROPOSAL"');
+    expect(markup).toContain('href="/staff/projects?state=WAITING"');
+    expect(markup).toContain('Updating counts...');
+    expect(markup).not.toMatch(/Enquiry<\/span><span[^>]*>0</);
+  });
 });

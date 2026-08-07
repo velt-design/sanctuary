@@ -2,13 +2,15 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
-import { Button, LoadingSkeleton, TabNavigation } from '@/components/ui/foundation';
+import { Button, TabNavigation } from '@/components/ui/foundation';
+import { InvoicesPendingView, QuotesPendingView } from './CommercialPendingFrames';
 import styles from './CommercialTab.module.css';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 
 type CommercialView = 'quotes' | 'invoices';
 type QuoteView = 'edit' | 'preview';
@@ -16,10 +18,10 @@ type QuoteView = 'edit' | 'preview';
 const loadQuotesTab = () => import('./QuotesTab');
 const loadInvoicesTab = () => import('./InvoicesTab');
 const QuotesTab = dynamic(loadQuotesTab, {
-  loading: () => <LoadingSkeleton rows={4} columns={5} label="Loading quotes" />,
+  loading: () => <QuotesPendingView />,
 });
 const InvoicesTab = dynamic(loadInvoicesTab, {
-  loading: () => <LoadingSkeleton rows={4} columns={6} label="Loading invoices" />,
+  loading: () => <InvoicesPendingView />,
 });
 
 export default function CommercialTab({
@@ -32,7 +34,7 @@ export default function CommercialTab({
   view: CommercialView;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
+  const { navigateRoute } = usePortalRouteTransition();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const quoteView: QuoteView = searchParams.get('quotePreview') === '1' ? 'preview' : 'edit';
@@ -49,10 +51,16 @@ export default function CommercialTab({
     setOptimisticView(null);
   }, [view]);
 
-  const replaceParams = (update: (query: URLSearchParams) => void) => {
+  const replaceParams = (
+    update: (query: URLSearchParams) => void,
+    label = 'Commercial',
+  ) => {
     const query = new URLSearchParams(searchParams.toString());
     update(query);
-    router.replace(`${pathname}?${query.toString()}`);
+    navigateRoute(
+      { href: `${pathname}?${query.toString()}`, label, source: 'project-commercial' },
+      { replace: true, scroll: false },
+    );
   };
 
   const setView = (nextView: CommercialView) => {
@@ -61,7 +69,7 @@ export default function CommercialTab({
       query.set('tab', nextView);
       if (nextView === 'invoices') query.delete('quotePreview');
       query.delete('mode');
-    });
+    }, nextView === 'invoices' ? 'Invoices' : 'Quotes');
   };
 
   const setQuotePreview = (preview: boolean) => {
@@ -70,7 +78,7 @@ export default function CommercialTab({
       if (preview) query.set('quotePreview', '1');
       else query.delete('quotePreview');
       query.delete('mode');
-    });
+    }, preview ? 'Quote preview' : 'Quote editor');
   };
 
   const preload = (nextView: CommercialView) => {
@@ -87,8 +95,13 @@ export default function CommercialTab({
   };
 
   return (
-    <div className={styles.container} data-project-commercial-view={activeView}>
-      <div className={styles.toolbar}>
+    <div
+      className={styles.container}
+      data-project-commercial-view={activeView}
+      data-portal-page-shell="project-commercial"
+      data-portal-page-shell-ready="true"
+    >
+      <div className={styles.toolbar} data-portal-route-region="commercial-navigation">
         <TabNavigation
           items={[
             { key: 'quotes', label: 'Quotes' },

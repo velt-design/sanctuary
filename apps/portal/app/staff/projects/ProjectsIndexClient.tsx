@@ -5,9 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent }
 import type { Project } from '@/lib/types/project';
 import { projectStatusLabel } from '@/lib/types/project';
 import styles from './ProjectsIndexClient.module.css';
-import StaffPageHeader from '@/components/layout/StaffPageHeader';
-import HeaderActions from '@/components/layout/HeaderActions';
-import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { ProjectRowTooltip, useProjectRowTooltip } from './ProjectRowTooltip';
@@ -49,23 +46,20 @@ import type {
   ProjectsIndexStateFilter,
 } from '@/lib/projects/projectsIndexContract';
 import { PROJECTS_INDEX_OWNER_OPTIONS } from '@/lib/projects/projectsIndexContract';
+import ProjectsIndexFrame from './ProjectsIndexFrame';
+import ProjectsIndexTableHeader, { ProjectsIndexPendingTable } from './ProjectsIndexTableHeader';
 import {
   AlertBanner,
   Button,
   ButtonLink,
-  Card,
   DataStatePanel,
   DestructiveConfirmation,
   Input,
-  LoadingSkeleton,
-  PageLayout,
   Pagination,
   SearchFilterBar,
   Table,
   TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
   Textarea,
 } from '@/components/ui/foundation';
@@ -266,38 +260,24 @@ export default function ProjectsIndexClient({
       })()
     : '';
 
-  return (
-    <PageLayout
-      width="full"
-      density="compact"
-      className={styles.page}
-      data-projects-index-state={projectsIndex.state}
-      data-projects-index-background-ready={projectsIndex.backgroundReady ? 'true' : 'false'}
-    >
-      <StaffPageHeader
-        title="Projects"
-        variant="index"
-        description="Search, update and continue work across the project pipeline."
-        count={`${projectsIndex.data?.projects.totalCount ?? projects.length} projects`}
-        primaryAction={{ label: 'New project', href: '/staff/projects/new' }}
-        right={
-          <HeaderActions>
-            <ButtonLink variant="tertiary" href="/staff/projects/design-packages">Drafting Queue</ButtonLink>
-            <ButtonLink variant="secondary" href="/staff/projects/running-jobs">Running Jobs</ButtonLink>
-          </HeaderActions>
-        }
-      />
+  const rangeLabel = projectsIndex.state === 'pending' || projectsIndex.state === 'cached'
+    ? 'Updating…'
+    : projectsIndex.state === 'fresh'
+      ? `${rangeStart}–${rangeEnd} of ${totalCount}`
+      : projectsIndex.state === 'unavailable'
+        ? 'Access unavailable'
+        : 'Refresh failed';
 
-      <ListCountBanner
-        totalCount={projectsIndex.data?.projects.totalCount ?? null}
-        visibleCount={projects.length}
-        entityLabelSingular="project"
-        entityLabelPlural="projects"
-        truncated={projectsIndex.data?.projects.truncated ?? false}
-      />
-      <div className={styles.stack}>
-        <Card title="Filters" padding="compact" aria-label="Filters">
-            <SearchFilterBar
+  return (
+    <ProjectsIndexFrame
+      state={projectsIndex.state}
+      backgroundReady={projectsIndex.backgroundReady}
+      totalCount={projectsIndex.data?.projects.totalCount ?? null}
+      visibleCount={projects.length}
+      truncated={projectsIndex.data?.projects.truncated ?? false}
+      rangeLabel={rangeLabel}
+      filters={(
+        <SearchFilterBar
               query={query}
               onQueryChange={setQuery}
               searchId="projectSearch"
@@ -326,21 +306,9 @@ export default function ProjectsIndexClient({
                 setPage(1);
               }}
             />
-        </Card>
-
-        <Card
-          title="All Projects"
-          padding="none"
-          aria-label="Projects list"
-          action={(
-            <div className={styles.muted} suppressHydrationWarning>
-              {projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? 'Updating…' : null}
-              {projectsIndex.state === 'fresh' ? `${rangeStart}–${rangeEnd} of ${totalCount}` : null}
-              {projectsIndex.state === 'unavailable' ? 'Access unavailable' : null}
-              {projectsIndex.state === 'refresh-failed' ? 'Refresh failed' : null}
-            </div>
-          )}
-        >
+      )}
+      list={(
+        <>
             {projectsIndex.state === 'refresh-failed' ? (
               <DataStatePanel
                 state={projects.length ? 'stale' : 'error'}
@@ -349,21 +317,8 @@ export default function ProjectsIndexClient({
             ) : null}
             {filteredProjects.length ? (
               <>
-                <Table aria-label="Projects">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Address</TableHead>
-                      <TableHead>Journey</TableHead>
-                      <TableHead>Stage</TableHead>
-                      <TableHead>State</TableHead>
-                      <TableHead>Owner</TableHead>
-                      <TableHead>Next attention</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                <Table aria-label="Projects" data-portal-shell-structure="projects-table">
+                  <ProjectsIndexTableHeader />
                   <TableBody>
                     {filteredProjects.map((p) => {
                       const contact = p.contactId ? contactsById.get(p.contactId) : null;
@@ -539,7 +494,7 @@ export default function ProjectsIndexClient({
                 />
               </>
             ) : projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? (
-              <LoadingSkeleton rows={5} columns={4} label="Updating projects…" />
+              <ProjectsIndexPendingTable />
             ) : projectsIndex.state === 'unavailable' ? (
               <DataStatePanel state="unavailable" />
             ) : projectsIndex.state === 'refresh-failed' ? (
@@ -575,9 +530,10 @@ export default function ProjectsIndexClient({
                 }
               />
             )}
-        </Card>
-      </div>
-
+        </>
+      )}
+      additionalContent={(
+        <>
       <DestructiveConfirmation
         open={Boolean(deleteTarget)}
         title="Delete project?"
@@ -708,7 +664,8 @@ export default function ProjectsIndexClient({
       ) : null}
 
       <ProjectRowTooltip host={host} visibleInfo={visibleInfo} fallbackClientName={visibleFallback} />
-
-    </PageLayout>
+        </>
+      )}
+    />
   );
 }

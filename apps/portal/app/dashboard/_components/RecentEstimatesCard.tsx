@@ -1,9 +1,10 @@
-import Link from 'next/link';
+import Link from '@/components/navigation/PortalRouteLink';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
 import { PORTAL_TIME_ZONE } from '@/lib/format/portalDateTime';
 import type { DashboardRecentEstimate } from '@/lib/dashboard/types';
 import dash from '../dashboard.module.css';
+import DashboardLoadingRows from './DashboardLoadingRows';
 
 const nzd = new Intl.NumberFormat('en-NZ', {
   style: 'currency',
@@ -21,9 +22,21 @@ function updatedLabel(value: string): string {
   }).format(date);
 }
 
-export default function RecentEstimatesCard({ items }: { items: DashboardRecentEstimate[] }) {
+export default function RecentEstimatesCard({
+  items,
+  loading = false,
+}: {
+  items?: DashboardRecentEstimate[];
+  loading?: boolean;
+}) {
   return (
-    <section className={`${styles.section} ${dash.card} ${dash.estimatesCard}`} aria-label="Recent Estimates">
+    <section
+      className={`${styles.section} ${dash.card} ${dash.estimatesCard}`}
+      aria-label="Recent Estimates"
+      aria-busy={loading}
+      data-dashboard-card-state={loading ? 'loading' : 'ready'}
+      data-portal-shell-region="dashboard-recent-estimates"
+    >
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>Recent Estimates</h2>
@@ -31,11 +44,13 @@ export default function RecentEstimatesCard({ items }: { items: DashboardRecentE
         </div>
       </div>
       <div className={`${styles.sectionBody} ${dash.cardBody}`}>
-        {items.length ? (
+        {loading ? (
+          <DashboardLoadingRows label="Updating recent estimates..." rows={2} />
+        ) : items?.length ? (
           <ul className={dash.operationalList}>
             {items.map((item) => (
               <li key={item.estimateId}>
-                <Link className={`${dash.operationalRow} ${dash.estimateRow}`} href={item.href}>
+                <Link className={`${dash.operationalRow} ${dash.estimateRow}`} href={item.href} prefetch={false}>
                   <span className={dash.rowPrimary}>
                     <strong>{item.projectName}</strong>
                     <small><Badge>{item.versionLabel}</Badge> <span>Draft</span></small>

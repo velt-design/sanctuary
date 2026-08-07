@@ -16,13 +16,8 @@ vi.mock('./useDashboardData', () => ({
   useDashboardData: (...args: unknown[]) => useDashboardData(...args),
 }));
 
-vi.mock('./DashboardView', () => ({
-  default: ({ data, state, onRetry }: { data: DashboardData; state: string; onRetry: () => void }) => (
-    <main data-dashboard-state={state} data-project-count={data.kpis.newLeads}>
-      <h1>Dashboard</h1>
-      <button type="button" onClick={onRetry}>Retry saved dashboard</button>
-    </main>
-  ),
+vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
+  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 }));
 
 const data: DashboardData = {
@@ -40,7 +35,7 @@ const data: DashboardData = {
     next7: [],
     hrefSiteVisits: '/staff/schedule?view=site-visits',
   },
-  pipelineCounts: {},
+  pipelineCounts: { NEW: 2 },
   recentEstimates: [],
   recentActivity: [],
   personalTasks: [],
@@ -75,7 +70,8 @@ describe('DashboardClient', () => {
 
     expect(useDashboardData).toHaveBeenCalledWith('next7');
     expect(rendered.container.querySelector('[data-dashboard-state="fresh"]')).not.toBeNull();
-    expect(rendered.container.firstElementChild?.getAttribute('data-project-count')).toBe('2');
+    expect(rendered.container.querySelector('[data-portal-page-shell="dashboard"]')).not.toBeNull();
+    expect(rendered.container.querySelector('a[href="/staff/projects?journey=ENQUIRY"]')?.textContent).toContain('2');
     rendered.unmount();
   });
 
@@ -84,7 +80,18 @@ describe('DashboardClient', () => {
     const rendered = renderIntoDocument(<DashboardClient queueMode="today" />);
 
     expect(rendered.container.querySelector('[data-dashboard-state="pending"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Updating dashboard...');
+    const shell = rendered.container.querySelector('[data-portal-page-shell="dashboard"]');
+    expect(shell).not.toBeNull();
+    expect(shell?.getAttribute('data-portal-page-shell-ready')).toBe('true');
+    expect(shell?.hasAttribute('aria-busy')).toBe(false);
+    expect(rendered.container.textContent).toContain('Updating dashboard values...');
+    expect(rendered.container.querySelector('[aria-label="Project portfolio"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Work Queue"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Recent Activity"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Recent Estimates"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="My Tasks"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-shell-region="dashboard-hero"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-shell-region="dashboard-portfolio"]')).not.toBeNull();
     expect(rendered.container.textContent).not.toContain('Dashboard unavailable');
     rendered.unmount();
   });
@@ -94,9 +101,12 @@ describe('DashboardClient', () => {
     const rendered = renderIntoDocument(<DashboardClient queueMode="today" />);
 
     expect(rendered.container.querySelector('[data-dashboard-state="refresh-failed"]')).not.toBeNull();
-    expect(rendered.container.firstElementChild?.getAttribute('data-project-count')).toBe('2');
+    expect(rendered.container.querySelector('[data-portal-page-shell="dashboard"]')).not.toBeNull();
+    const retryButton = Array.from(rendered.container.querySelectorAll('button'))
+      .find((button) => button.textContent?.trim() === 'Retry');
+    if (!(retryButton instanceof HTMLButtonElement)) throw new Error('Retry button not found.');
     act(() => {
-      (rendered.container.querySelector('button') as HTMLButtonElement).click();
+      retryButton.click();
     });
     expect(retry).toHaveBeenCalledTimes(1);
     rendered.unmount();
@@ -107,8 +117,12 @@ describe('DashboardClient', () => {
     const rendered = renderIntoDocument(<DashboardClient queueMode="today" />);
 
     expect(rendered.container.textContent).toContain('Could not load the dashboard');
+    expect(rendered.container.querySelector('[aria-label="Project portfolio"]')).not.toBeNull();
+    const retryButton = Array.from(rendered.container.querySelectorAll('button'))
+      .find((button) => button.textContent?.trim() === 'Retry');
+    if (!(retryButton instanceof HTMLButtonElement)) throw new Error('Retry button not found.');
     act(() => {
-      (rendered.container.querySelector('button') as HTMLButtonElement).click();
+      retryButton.click();
     });
     expect(retry).toHaveBeenCalledTimes(1);
     rendered.unmount();
@@ -120,7 +134,7 @@ describe('DashboardClient', () => {
 
     expect(rendered.container.querySelector('[data-dashboard-state="unavailable"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Dashboard unavailable');
-    expect(rendered.container.firstElementChild?.getAttribute('data-project-count')).toBeNull();
+    expect(rendered.container.querySelector('[data-portal-page-shell="dashboard"]')).toBeNull();
     rendered.unmount();
   });
 });

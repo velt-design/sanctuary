@@ -9,7 +9,6 @@ import {
   Badge,
   Button,
   DataStatePanel,
-  LoadingSkeleton,
   Table,
   TableBody,
   TableCell,
@@ -25,6 +24,7 @@ import { qk } from '@/lib/queries/keys';
 import { sendProjectDepositInvoice } from '@/lib/repo/invoicesRepo';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import CommercialFinalFailureGuidance from '@/components/commercial/CommercialFinalFailureGuidance';
+import { InvoicesPendingView } from './CommercialPendingFrames';
 
 const InvoiceArtifactPreviewDialog = dynamic(() => import('./InvoiceArtifactPreviewDialog'));
 
@@ -94,32 +94,49 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
   };
 
   if (invoicesQuery.isPending) {
-    return <LoadingSkeleton rows={3} columns={6} label="Loading invoices" />;
+    return <InvoicesPendingView />;
   }
 
   if (invoicesQuery.isError) {
     return (
+      <div
+        data-project-invoices="true"
+        data-portal-page-shell="invoice-list"
+        data-portal-page-shell-ready="true"
+      >
       <DataStatePanel
         state="error"
         title="Could not load invoices"
         description={invoicesQuery.error instanceof Error ? invoicesQuery.error.message : 'Failed to load invoices.'}
         onRetry={() => void invoicesQuery.refetch()}
       />
+      </div>
     );
   }
 
   if (!invoices.length) {
     return (
+      <div
+        data-project-invoices="true"
+        data-portal-page-shell="invoice-list"
+        data-portal-page-shell-ready="true"
+      >
       <DataStatePanel
         state="empty"
         title="No invoices yet"
         description="Deposit invoices appear here after a quote is accepted. If delivery ever fails, this tab is where staff can resend it."
       />
+      </div>
     );
   }
 
   return (
-    <div className={styles.wrapper}>
+    <div
+      className={styles.wrapper}
+      data-project-invoices="true"
+      data-portal-page-shell="invoice-list"
+      data-portal-page-shell-ready="true"
+    >
       <div className={styles.header}>
         <h3 className={styles.title}>Invoices</h3>
         <p className={styles.subtitle}>

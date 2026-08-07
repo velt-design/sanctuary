@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/navigation/PortalRouteLink';
 import { createElement, type ReactNode } from 'react';
 import MoreMenu, { type MoreMenuItem } from '@/components/portal/MoreMenu';
 import { Button, ButtonLink, type ButtonVariant } from '@/components/ui/foundation/FoundationControls';
@@ -12,6 +12,7 @@ export type PageHeaderVariant = 'default' | 'dashboard' | 'index' | 'detail';
 export type HeaderPrimaryAction = {
   label: string;
   href?: string;
+  prefetch?: boolean;
   onClick?: () => void;
   loading?: boolean;
   disabled?: boolean;
@@ -92,6 +93,7 @@ export default function PageHeader({
           usesFoundation ? (
             <ButtonLink
               href={primaryAction.href}
+              prefetch={primaryAction.prefetch}
               variant={foundationActionVariant(primaryAction.tone)}
               disabled={Boolean(primaryAction.disabled || primaryAction.loading)}
             >
@@ -104,6 +106,7 @@ export default function PageHeader({
                 (primaryAction.disabled || primaryAction.loading) && styles.actionDisabled,
               )}
               href={primaryAction.href}
+              prefetch={primaryAction.prefetch}
               aria-disabled={Boolean(primaryAction.disabled || primaryAction.loading)}
             >
               {primaryLabel}

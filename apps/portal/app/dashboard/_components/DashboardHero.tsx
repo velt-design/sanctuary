@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/navigation/PortalRouteLink';
 import { CalendarDays, Calculator, FolderPlus } from 'lucide-react';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { PORTAL_TIME_ZONE } from '@/lib/format/portalDateTime';
@@ -26,10 +26,14 @@ function dateParts(value: string): Record<string, string> {
   );
 }
 
-export default function DashboardHero({ updatedAtIso }: { updatedAtIso: string }) {
-  const date = dateParts(updatedAtIso);
+export default function DashboardHero({ updatedAtIso }: { updatedAtIso?: string | null }) {
+  const date = dateParts(updatedAtIso ?? '');
   return (
-    <div className={dash.hero} data-dashboard-hero="true">
+    <div
+      className={dash.hero}
+      data-dashboard-hero="true"
+      data-portal-shell-region="dashboard-hero"
+    >
       <StaffPageHeader
         variant="dashboard"
         title="Dashboard"
@@ -43,7 +47,7 @@ export default function DashboardHero({ updatedAtIso }: { updatedAtIso: string }
                 {QUICK_ACTIONS.map((action) => {
                   const Icon = action.icon;
                   return (
-                    <Link key={action.href} href={action.href} className={dash.quickAction}>
+                    <Link key={action.href} href={action.href} prefetch={false} className={dash.quickAction}>
                       <Icon aria-hidden="true" />
                       <span>{action.label}</span>
                     </Link>

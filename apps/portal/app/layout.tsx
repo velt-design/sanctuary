@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { connection } from 'next/server';
 import localFont from 'next/font/local';
 import '@fontsource/barlow-condensed/600.css';
 import '@fontsource/barlow-condensed/700.css';
@@ -7,13 +8,10 @@ import '@/components/ui/foundation/foundation.tokens.css';
 import PortalAuthProvider from '@/components/auth/PortalAuthProvider';
 import { ToastProvider } from '@/components/ui/toast/ToastProvider';
 import PortalShell from '@/components/layout/PortalShell';
-import type { CSSProperties } from 'react';
 import { Providers } from './providers';
-import { getPortalAccessState } from '@/lib/auth';
-import { initialPortalAuthStateFromAccess } from '@/lib/portalAccess';
-import { loadPortalThemeForUser, portalThemeStyleVars } from '@/lib/theme/server';
 import PortalVitalsReporter from '@/components/performance/PortalVitalsReporter';
 import SupabaseEnvHydrator from '@/components/diagnostics/SupabaseEnvHydrator';
+import { PortalRouteTransitionProvider } from '@/components/page-state/PortalRouteTransition';
 
 export const metadata: Metadata = {
   title: 'Sanctuary Portal',
@@ -31,25 +29,21 @@ const portalInter = localFont({
 });
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  let cssVars: CSSProperties = {} as CSSProperties;
-  const accessState = await getPortalAccessState();
-
-  try {
-    const theme = await loadPortalThemeForUser(accessState.kind === 'authenticated' ? accessState.session.user.id : null);
-    cssVars = portalThemeStyleVars(theme) as CSSProperties;
-  } catch {
-    cssVars = {} as CSSProperties;
-  }
+  // PortalShell reads the request URL to choose the exact data-free route frame.
+  // This opts out of build-time prerendering without waiting on auth or data.
+  await connection();
 
   return (
-    <html lang="en" className={portalInter.variable} style={cssVars}>
+    <html lang="en" className={portalInter.variable}>
       <body>
         <SupabaseEnvHydrator />
-        <PortalAuthProvider initialAuthState={initialPortalAuthStateFromAccess(accessState)}>
+        <PortalAuthProvider>
           <Providers>
             <PortalVitalsReporter />
             <ToastProvider>
-              <PortalShell>{children}</PortalShell>
+              <PortalRouteTransitionProvider>
+                <PortalShell>{children}</PortalShell>
+              </PortalRouteTransitionProvider>
             </ToastProvider>
           </Providers>
         </PortalAuthProvider>

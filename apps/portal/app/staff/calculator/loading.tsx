@@ -1,5 +1,5 @@
-import PortalRoutePendingFrame from '@/components/page-state/PortalRoutePendingFrame';
+import CalculatorShellPendingFrame from './CalculatorShellPendingFrame';
 
 export default function CalculatorLoading() {
-  return <PortalRoutePendingFrame route="calculator" />;
+  return <CalculatorShellPendingFrame />;
 }

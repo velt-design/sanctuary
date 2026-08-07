@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ComponentProps } from 'react';
@@ -8,6 +7,7 @@ import { ButtonLink, type ButtonVariant, type ControlSize } from '@/components/u
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { shouldHandleRouteTransitionClick } from '@/components/page-state/PortalRouteTransition';
 import { openPortalIndexInstantly, portalIndexTarget, preloadPortalIndex } from '@/lib/queries/portalIndexNavigation';
+import Link from '@/components/navigation/PortalRouteLink';
 
 type PortalIndexLinkProps = Omit<ComponentProps<typeof Link>, 'href'> & {
   href: string;
@@ -39,6 +39,7 @@ export default function PortalIndexLink({
     onClick: (event: Parameters<NonNullable<ComponentProps<typeof Link>['onClick']>>[0]) => {
         onClick?.(event);
         if (event.defaultPrevented || !shouldHandleRouteTransitionClick(event)) return;
+        if (navigator.onLine === false) return;
         const target = portalIndexTarget(href);
         if (!target) return;
         beginInstantRoute(target.route);

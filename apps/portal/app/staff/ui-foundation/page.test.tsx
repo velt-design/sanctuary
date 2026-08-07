@@ -15,6 +15,11 @@ describe('/staff/ui-foundation', () => {
     const rendered = renderIntoDocument(<UIFoundationPage />);
 
     expect(rendered.container.querySelector('[data-ui-foundation="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-page-shell="ui-foundation"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-page-shell-ready="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-shell-region="ui-foundation-headers"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-shell-region="ui-foundation-components"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-shell-region="ui-foundation-patterns"]')).not.toBeNull();
     expect(rendered.container.querySelector('h1')?.textContent).toBe('UI Foundation');
     expect(rendered.container.querySelectorAll('h1')).toHaveLength(1);
     expect(rendered.container.querySelectorAll('h2').length).toBeGreaterThan(0);

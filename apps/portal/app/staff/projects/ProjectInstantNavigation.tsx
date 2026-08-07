@@ -22,7 +22,7 @@ const ProjectInstantNavigationContext = createContext<ProjectInstantNavigationVa
 export default function ProjectInstantNavigationProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { pendingHref } = usePortalRouteTransition();
+  const { beginRouteTransition, pendingHref } = usePortalRouteTransition();
   const [instantView, setInstantView] = useState<ReactNode | null>(null);
   const [instantPathname, setInstantPathname] = useState<string | null>(null);
   const observedInstantPathRef = useRef(false);
@@ -34,13 +34,21 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
   }, []);
 
   const showProject = useCallback((href: string, view: ReactNode) => {
+    if (navigator.onLine === false) {
+      beginRouteTransition({
+        href,
+        label: 'Project',
+        source: 'projects-index-row',
+      });
+      return;
+    }
     const nextPathname = new URL(href, window.location.href).pathname;
     observedInstantPathRef.current = false;
     setInstantPathname(nextPathname);
     setInstantView(view);
     window.history.pushState(null, '', `${href}?tab=activity`);
     router.replace(href, { scroll: false });
-  }, [router]);
+  }, [beginRouteTransition, router]);
 
   useEffect(() => {
     clearInstantView();
