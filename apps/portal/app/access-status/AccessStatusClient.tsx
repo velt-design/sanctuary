@@ -14,7 +14,7 @@ export default function AccessStatusClient({
   callbackUrl: string;
 }) {
   const router = useRouter();
-  const { signOut } = usePortalSession();
+  const { refresh, signOut } = usePortalSession();
 
   if (state === 'no-access') {
     return (
@@ -54,7 +54,8 @@ export default function AccessStatusClient({
         <button
           type="button"
           className={styles.primaryAction}
-          onClick={() => {
+          onClick={async () => {
+            await refresh();
             router.replace(callbackUrl);
           }}
         >

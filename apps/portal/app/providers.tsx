@@ -1,19 +1,20 @@
 'use client';
 
 import { type ReactNode, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { createIDBPersister } from '@/lib/react-query/idbPersister';
-import {
-  portalQueryStorageKey,
-  resolvePortalQueryCacheBuster,
-  shouldDehydratePortalQuery,
-} from '@/lib/react-query/persistence';
 import LocalFirstRuntime from '@/components/sync/LocalFirstRuntime';
 import LocalFirstPortalMutations from '@/components/sync/LocalFirstPortalMutations';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { PortalQueryClientScope } from '@/lib/react-query/PortalQueryClientContext';
+import PortalThemeRuntime from '@/components/theme/PortalThemeRuntime';
+import PortalCoreShellPreloader from '@/components/offline/PortalCoreShellPreloader';
+
+const PortalAuthenticatedOfflineRuntime = dynamic(
+  () => import('@/components/offline/PortalAuthenticatedOfflineRuntime'),
+  { loading: () => null, ssr: false },
+);
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
 
@@ -32,8 +33,6 @@ function createPortalQueryClient() {
 
 function PortalDataBoundary({ children, ownerId }: { children: ReactNode; ownerId: string | null }) {
   const [queryClient] = useState(createPortalQueryClient);
-  const [persister] = useState(() => ownerId ? createIDBPersister(portalQueryStorageKey(ownerId)) : null);
-  const buster = resolvePortalQueryCacheBuster(process.env.NEXT_PUBLIC_QUERY_CACHE_BUSTER);
 
   useEffect(() => () => queryClient.clear(), [queryClient]);
 
@@ -41,38 +40,33 @@ function PortalDataBoundary({ children, ownerId }: { children: ReactNode; ownerI
     <PortalQueryClientScope client={queryClient}>
       {ownerId ? <LocalFirstRuntime ownerId={ownerId} /> : null}
       {ownerId ? <LocalFirstPortalMutations /> : null}
+      {ownerId ? <PortalCoreShellPreloader /> : null}
+      {ownerId ? (
+        <PortalAuthenticatedOfflineRuntime
+          version={process.env.NEXT_PUBLIC_PORTAL_STATIC_CACHE_VERSION ?? ''}
+          enabled={process.env.NODE_ENV === 'production'}
+        />
+      ) : null}
       {children}
       {process.env.NODE_ENV === 'development' ? <ReactQueryDevtools initialIsOpen={false} /> : null}
     </PortalQueryClientScope>
   );
 
-  if (!ownerId || !persister) {
-    return <QueryClientProvider client={queryClient}>{content}</QueryClientProvider>;
-  }
-
-  return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{
-        persister,
-        maxAge: ONE_DAY,
-        buster,
-        dehydrateOptions: {
-          shouldDehydrateQuery: shouldDehydratePortalQuery,
-        },
-      }}
-    >
-      {content}
-    </PersistQueryClientProvider>
-  );
+  return <QueryClientProvider client={queryClient}>{content}</QueryClientProvider>;
 }
 
 export function Providers({ children }: { children: ReactNode }) {
-  const { status, user } = usePortalSession();
+  const { status, user, role } = usePortalSession();
   const ownerId = status === 'authenticated' ? user?.id ?? null : null;
+  const presentationOwnerId = status === 'loading' || status === 'authenticated'
+    ? user?.id ?? null
+    : null;
   return (
-    <PortalDataBoundary key={ownerId ?? 'anonymous'} ownerId={ownerId}>
-      {children}
-    </PortalDataBoundary>
+    <>
+      {presentationOwnerId ? <PortalThemeRuntime ownerId={presentationOwnerId} /> : null}
+      <PortalDataBoundary key={ownerId ? `${ownerId}:${role ?? 'none'}` : 'anonymous'} ownerId={ownerId}>
+        {children}
+      </PortalDataBoundary>
+    </>
   );
 }

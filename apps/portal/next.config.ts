@@ -2,10 +2,24 @@ import path from 'node:path';
 import type { NextConfig } from 'next';
 
 const playwrightDistDir = process.env.PORTAL_PLAYWRIGHT_DIST_DIR?.trim();
+const portalReleaseCandidate =
+  process.env.PORTAL_RELEASE_SHA?.trim()
+  || process.env.VERCEL_GIT_COMMIT_SHA?.trim()
+  || process.env.GITHUB_SHA?.trim()
+  || '';
+const portalBuildId = /^[a-f0-9]{7,40}$/i.test(portalReleaseCandidate)
+  ? portalReleaseCandidate
+  : `local-${Date.now().toString(36)}`;
+const portalStaticCacheVersion = `v1-${portalBuildId}`;
 
 const nextConfig: NextConfig = {
   ...(playwrightDistDir ? { distDir: playwrightDistDir } : {}),
+  generateBuildId: async () => portalBuildId,
   experimental: { externalDir: true },
+  env: {
+    NEXT_PUBLIC_BUILD_ID: portalBuildId,
+    NEXT_PUBLIC_PORTAL_STATIC_CACHE_VERSION: portalStaticCacheVersion,
+  },
   allowedDevOrigins: ['127.0.0.1'],
   transpilePackages: ['@sp/costing', '@sp/email-provider', '@sp/geometry', '@sp/quote-format', '@sp/theme'],
   // Enforce TypeScript correctness during production builds.
@@ -69,6 +83,13 @@ const nextConfig: NextConfig = {
       {
         source: '/:path*',
         headers: securityHeaders,
+      },
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
       },
       {
         source: '/login/callback',

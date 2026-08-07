@@ -5,6 +5,7 @@ import { renderIntoDocument } from '../../../../test/reactHarness';
 
 const replaceMock = vi.fn();
 const signOutMock = vi.fn();
+const refreshMock = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -14,6 +15,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/components/auth/PortalAuthProvider', () => ({
   usePortalSession: () => ({
+    refresh: () => refreshMock(),
     signOut: (...args: unknown[]) => signOutMock(...args),
   }),
 }));
@@ -22,6 +24,7 @@ describe('AccessStatusClient', () => {
   beforeEach(() => {
     replaceMock.mockReset();
     signOutMock.mockReset();
+    refreshMock.mockReset().mockResolvedValue(undefined);
     signOutMock.mockResolvedValue(undefined);
   });
 
@@ -60,6 +63,7 @@ describe('AccessStatusClient', () => {
       await Promise.resolve();
     });
 
+    expect(refreshMock).toHaveBeenCalledOnce();
     expect(replaceMock).toHaveBeenCalledWith('/staff/projects?q=deck');
 
     await act(async () => {
