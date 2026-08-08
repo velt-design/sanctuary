@@ -23,6 +23,14 @@ async function requestCalculatorCosting(
   return json as SiteOutputV1;
 }
 
+export function calculatorCostingRequestReady(input: {
+  hasValidModules: boolean;
+  awaitsSavedEstimate: boolean;
+  savedEstimateHydrated: boolean;
+}): boolean {
+  return input.hasValidModules && (!input.awaitsSavedEstimate || input.savedEstimateHydrated);
+}
+
 export function useCalculatorCostingRequest(input: {
   readyToCalculate: boolean;
   requestPayloadJson: string;

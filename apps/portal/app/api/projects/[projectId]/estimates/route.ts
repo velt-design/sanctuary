@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createRouteDiagnostics, measureRouteStep } from '@/lib/api/routeDiagnostics';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from '@/lib/estimates/flow';
@@ -16,6 +17,11 @@ import { isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 export const runtime = 'nodejs';
 
 type AnyRecord = Record<string, unknown>;
+
+function privateNoStore<T extends Response>(response: T): T {
+  response.headers.set('cache-control', 'private, no-store');
+  return response;
+}
 
 function isEstimatePricingSourceColumn(column: string): boolean {
   return column === 'pricing_source' || column === 'pricing_source_metadata' || column === 'commercial_design_input';
@@ -42,9 +48,10 @@ async function insertEstimateWithRetry(supabase: SupabaseClient, payload: Record
   return { data: null, error: { message: 'Supabase insert failed after retries', code: 'CLIENT_RETRY' } };
 }
 
-export async function GET(_req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const auth = await requireStaffContext();
-  if (!auth.ok) return auth.response;
+export async function GET(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
+  const diagnostics = createRouteDiagnostics(req, '/api/projects/[projectId]/estimates');
+  const auth = await measureRouteStep(diagnostics, 'auth', () => requireStaffContext(diagnostics));
+  if (!auth.ok) return privateNoStore(auth.response);
   const supabase = auth.supabase;
 
   let projectUuid: string;
@@ -52,27 +59,40 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
     const { projectId } = await ctx.params;
     projectUuid = uuidFromAppId(projectId, 'proj');
   } catch {
-    return jsonError('Invalid projectId', 400);
+    return privateNoStore(jsonError('Invalid projectId', 400, diagnostics));
   }
 
-  const res = await supabase
+  const res = await measureRouteStep(diagnostics, 'estimates', async () => await supabase
     .from('estimates')
-    .select('id, project_id, created_at, status, created_by, summary_json, summary, outputs, warnings, costing_manifest, costing_rules, total_true_cost_ex_gst, total_true_cost_inc_gst')
+    .select('id, project_id, created_at, status, created_by, summary_json, summary, inputs, outputs, warnings, costing_manifest, costing_rules, total_true_cost_ex_gst, total_true_cost_inc_gst, internal_notes')
     .eq('project_id', projectUuid)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false }));
 
-  if (res.error) return jsonError(res.error.message ?? 'Failed to load estimates', 500);
+  if (res.error) return privateNoStore(jsonError(res.error.message ?? 'Failed to load estimates', 500, diagnostics));
 
   const rows = Array.isArray(res.data) ? res.data : [];
   const versionLabels = buildVersionLabelMap(rows);
-  const flowMaps = await loadProjectEstimateFlowMaps(projectUuid, rows as any[]);
+  const flowMaps = await measureRouteStep(
+    diagnostics,
+    'flow',
+    () => loadProjectEstimateFlowMaps(projectUuid, rows as any[], supabase),
+  );
 
   const estimates = rows.map((row) => {
     const label = versionLabels.get(String(row?.id ?? '')) ?? 'V-';
     return mapEstimateMeta({ ...row, ...estimateFlowStateFor(flowMaps.flowByEstimateId, String(row?.id ?? '')) }, label);
   });
+  const activeDraftRow = rows.find((row) => String(row?.id ?? '') === flowMaps.activeDraftEstimateId);
+  const activeDraftEstimate = activeDraftRow
+    ? mapEstimateDetail(
+        activeDraftRow,
+        versionLabels.get(String(activeDraftRow.id ?? '')) ?? 'V-',
+        flowMaps.editabilityByEstimateId.get(String(activeDraftRow.id ?? '')) ?? null,
+        estimateFlowStateFor(flowMaps.flowByEstimateId, String(activeDraftRow.id ?? '')),
+      )
+    : null;
 
-  return jsonOk({ estimates });
+  return privateNoStore(jsonOk({ estimates, activeDraftEstimate }, 200, diagnostics));
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {

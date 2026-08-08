@@ -3,6 +3,7 @@ import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import {
+  calculatorCostingRequestReady,
   useCalculatorCostingRequest,
   type CalculatorCostingRequester,
 } from './useCalculatorCostingRequest';
@@ -56,6 +57,24 @@ afterEach(() => {
 });
 
 describe('useCalculatorCostingRequest', () => {
+  it('does not price default inputs while a saved estimate is still hydrating', () => {
+    expect(calculatorCostingRequestReady({
+      hasValidModules: true,
+      awaitsSavedEstimate: true,
+      savedEstimateHydrated: false,
+    })).toBe(false);
+    expect(calculatorCostingRequestReady({
+      hasValidModules: true,
+      awaitsSavedEstimate: true,
+      savedEstimateHydrated: true,
+    })).toBe(true);
+    expect(calculatorCostingRequestReady({
+      hasValidModules: true,
+      awaitsSavedEstimate: false,
+      savedEstimateHydrated: false,
+    })).toBe(true);
+  });
+
   it('debounces a valid request and records the matching successful payload', async () => {
     vi.useFakeTimers();
     const request = vi.fn<CalculatorCostingRequester>().mockResolvedValue(result('latest'));

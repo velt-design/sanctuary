@@ -64,7 +64,7 @@ describe('published costing configuration resolver', () => {
     config.labour.crewHourRateExGst = 91;
     const row = versionRow(config);
     const client = clientFor({
-      publication: { data: { current_version_id: row.id }, error: null },
+      publication: { data: { current_version_id: row.id, current_version: row }, error: null },
       version: { data: row, error: null },
     });
     const { resolvePublishedCostingConfiguration } = await import('./configurationResolver');
@@ -80,6 +80,7 @@ describe('published costing configuration resolver', () => {
       contentHash: row.content_hash,
       baseManifestVersion: config.baseManifestVersion,
     });
+    expect(client.from).toHaveBeenCalledTimes(1);
     expect(getCostingConfigWithOverrides).not.toHaveBeenCalled();
   });
 
@@ -112,7 +113,7 @@ describe('published costing configuration resolver', () => {
     const row = versionRow();
     row.content_hash = '0'.repeat(64);
     const client = clientFor({
-      publication: { data: { current_version_id: row.id }, error: null },
+      publication: { data: { current_version_id: row.id, current_version: row }, error: null },
       version: { data: row, error: null },
     });
     const { resolvePublishedCostingConfiguration } = await import('./configurationResolver');

@@ -85,7 +85,10 @@ import { useCalculatorPreviewSplit } from './useCalculatorPreviewSplit';
 import {
   deriveCalculatorResultFreshness,
 } from './calculatorResultFreshness';
-import { useCalculatorCostingRequest } from './useCalculatorCostingRequest';
+import {
+  calculatorCostingRequestReady,
+  useCalculatorCostingRequest,
+} from './useCalculatorCostingRequest';
 import { useCalculatorInfillController } from './useCalculatorInfillController';
 import { useCalculatorIssueNavigation } from './useCalculatorIssueNavigation';
 import {
@@ -310,7 +313,11 @@ export default function CalculatorGridClient({
   } = useCalculatorBlindsController({ values, setValues });
   const infillsState = normalizeInfillsStateForUi(activeModule.infills);
 
-  const readyToCalculate = values.modules.length > 0 && !hasModuleErrors;
+  const readyToCalculate = calculatorCostingRequestReady({
+    hasValidModules: values.modules.length > 0 && !hasModuleErrors,
+    awaitsSavedEstimate: Boolean(activeEditEstimateId),
+    savedEstimateHydrated: Boolean(loadedEstimateDetail),
+  });
 
   const requestPayload = useMemo<SiteInputsV1>(() => buildSiteInputsFromCalculatorInputs(values), [values]);
 

@@ -1,4 +1,10 @@
-import { getPortalSession } from '@/lib/auth';
+import { requireStaffContext } from '@/lib/api/staffApi';
+import {
+  applyRouteDiagnostics,
+  createRouteDiagnostics,
+  measureRouteStep,
+  type RouteDiagnostics,
+} from '@/lib/api/routeDiagnostics';
 import { resolvePublishedCostingConfiguration } from '@/lib/costing/configurationResolver';
 import { calculateSiteCostV1 } from '@sp/costing';
 import type { CostInputsV1, ExtrusionColour, PergolaInputsV1, SiteInputsV1 } from '@sp/costing';
@@ -55,6 +61,11 @@ function toNumber(value: unknown): number {
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
+}
+
+function privateDiagnosticResponse<T extends Response>(response: T, diagnostics: RouteDiagnostics): T {
+  response.headers.set('cache-control', 'private, no-store');
+  return applyRouteDiagnostics(response, diagnostics);
 }
 
 function parseInfills(raw: unknown): CostInputsV1['infills'] | { error: string } | undefined {
@@ -548,26 +559,29 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
 }
 
 export async function POST(req: Request) {
-  const session = await getPortalSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const diagnostics = createRouteDiagnostics(req, '/api/staff/costing/v1/job');
+  const respond = <T extends Response>(response: T) => privateDiagnosticResponse(response, diagnostics);
+  const reject = (message: string) => respond(badRequest(message));
+  const auth = await measureRouteStep(diagnostics, 'auth', () => requireStaffContext(diagnostics));
+  if (!auth.ok) return respond(auth.response);
 
   let body: any;
   try {
-    body = await req.json();
+    body = await measureRouteStep(diagnostics, 'body', () => req.json());
   } catch {
-    return badRequest('Invalid JSON body');
+    return reject('Invalid JSON body');
   }
 
   const hasPergolas = Array.isArray(body?.pergolas) && body.pergolas.length > 0;
   const hasModules = Array.isArray(body?.modules) && body.modules.length > 0;
-  if (!hasPergolas && !hasModules) return badRequest('pergolas or modules must be a non-empty array');
-  if (hasPergolas && hasModules) return badRequest('Provide either pergolas or modules (not both).');
-  if (body.job_type !== undefined && !isOneOf(JOB_TYPES, body.job_type)) return badRequest('Invalid job_type');
+  if (!hasPergolas && !hasModules) return reject('pergolas or modules must be a non-empty array');
+  if (hasPergolas && hasModules) return reject('Provide either pergolas or modules (not both).');
+  if (body.job_type !== undefined && !isOneOf(JOB_TYPES, body.job_type)) return reject('Invalid job_type');
   if (body.pricing_classification !== undefined && !isOneOf(PRICING_CLASSIFICATIONS, body.pricing_classification)) {
-    return badRequest('Invalid pricing_classification');
+    return reject('Invalid pricing_classification');
   }
   if (body.approval_requirement !== undefined && !isOneOf(APPROVAL_REQUIREMENTS, body.approval_requirement)) {
-    return badRequest('Invalid approval_requirement');
+    return reject('Invalid approval_requirement');
   }
 
   const travel_ex_gst = body.travel_ex_gst !== undefined ? toNumber(body.travel_ex_gst) : undefined;
@@ -588,17 +602,17 @@ export async function POST(req: Request) {
     const pergolas: PergolaInputsV1[] = [];
     for (let pIdx = 0; pIdx < body.pergolas.length; pIdx += 1) {
       const rawPergola = body.pergolas[pIdx];
-      if (!rawPergola || typeof rawPergola !== 'object') return badRequest(`pergolas[${pIdx}] must be an object`);
+      if (!rawPergola || typeof rawPergola !== 'object') return reject(`pergolas[${pIdx}] must be an object`);
 
       const rawModules = (rawPergola as any).modules;
-      if (!Array.isArray(rawModules) || rawModules.length === 0) return badRequest(`pergolas[${pIdx}].modules must be a non-empty array`);
+      if (!Array.isArray(rawModules) || rawModules.length === 0) return reject(`pergolas[${pIdx}].modules must be a non-empty array`);
 
       const modules: CostInputsV1[] = [];
       for (let mIdx = 0; mIdx < rawModules.length; mIdx += 1) {
         const raw = rawModules[mIdx];
-        if (!raw || typeof raw !== 'object') return badRequest(`pergolas[${pIdx}].modules[${mIdx}] must be an object`);
+        if (!raw || typeof raw !== 'object') return reject(`pergolas[${pIdx}].modules[${mIdx}] must be an object`);
         const parsed = parseModule(raw);
-        if ('error' in parsed) return badRequest(`pergolas[${pIdx}].modules[${mIdx}]: ${parsed.error}`);
+        if ('error' in parsed) return reject(`pergolas[${pIdx}].modules[${mIdx}]: ${parsed.error}`);
         modules.push(parsed);
       }
 
@@ -613,9 +627,9 @@ export async function POST(req: Request) {
     const modules: CostInputsV1[] = [];
     for (let mIdx = 0; mIdx < body.modules.length; mIdx += 1) {
       const raw = body.modules[mIdx];
-      if (!raw || typeof raw !== 'object') return badRequest(`modules[${mIdx}] must be an object`);
+      if (!raw || typeof raw !== 'object') return reject(`modules[${mIdx}] must be an object`);
       const parsed = parseModule(raw);
-      if ('error' in parsed) return badRequest(parsed.error);
+      if ('error' in parsed) return reject(parsed.error);
       modules.push(parsed);
     }
 
@@ -623,11 +637,16 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { config, provenance } = await resolvePublishedCostingConfiguration();
-    const result = calculateSiteCostV1(site, config);
-    return NextResponse.json({ ...result, costingConfiguration: provenance });
+    const { config, provenance } = await measureRouteStep(diagnostics, 'config', () =>
+      resolvePublishedCostingConfiguration(auth.supabase),
+    );
+    const result = await measureRouteStep(diagnostics, 'calculate', async () => calculateSiteCostV1(site, config));
+    const response = await measureRouteStep(diagnostics, 'serialize', async () =>
+      NextResponse.json({ ...result, costingConfiguration: provenance }),
+    );
+    return respond(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Costing failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return respond(NextResponse.json({ error: message }, { status: 500 }));
   }
 }

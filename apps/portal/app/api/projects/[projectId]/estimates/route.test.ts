@@ -156,6 +156,72 @@ function blockedWorkbenchReadiness() {
   };
 }
 
+describe('GET /api/projects/[projectId]/estimates', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    requireStaffContext.mockReset();
+    buildVersionLabelMap.mockReset();
+    loadProjectEstimateFlowMaps.mockReset();
+    mapEstimateDetail.mockReset();
+    mapEstimateMeta.mockReset();
+  });
+
+  it('returns estimate metadata and the active draft detail from one auth-bound read', async () => {
+    const rows = [
+      { id: 'estimate-active', project_id: 'project-uuid', created_at: '2026-08-08T00:00:00.000Z' },
+      { id: 'estimate-history', project_id: 'project-uuid', created_at: '2026-08-01T00:00:00.000Z' },
+    ];
+    const order = vi.fn().mockResolvedValue({ data: rows, error: null });
+    const select = vi.fn(() => ({
+      eq: () => ({ order }),
+    }));
+    const supabase = { from: vi.fn(() => ({ select })) };
+    const activeDetail = { id: 'est_active', projectId: 'proj_project-uuid', calculatorSnapshot: {} };
+    requireStaffContext.mockResolvedValue({
+      ok: true,
+      session: { user: { id: 'user-1' }, role: 'staff' },
+      supabase,
+    });
+    buildVersionLabelMap.mockReturnValue(new Map([
+      ['estimate-active', 'V2'],
+      ['estimate-history', 'V1'],
+    ]));
+    loadProjectEstimateFlowMaps.mockResolvedValue({
+      activeDraftEstimateId: 'estimate-active',
+      editabilityByEstimateId: new Map([['estimate-active', { isLocked: false }]]),
+      flowByEstimateId: new Map(),
+    });
+    mapEstimateMeta
+      .mockReturnValueOnce({ id: 'est_active', projectId: 'proj_project-uuid', isActiveDraft: true })
+      .mockReturnValueOnce({ id: 'est_history', projectId: 'proj_project-uuid', isActiveDraft: false });
+    mapEstimateDetail.mockReturnValue(activeDetail);
+
+    const mod = await import('./route');
+    const response = await mod.GET(
+      new Request('http://localhost/api/projects/proj_1/estimates'),
+      { params: Promise.resolve({ projectId: 'proj_1' }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(select).toHaveBeenCalledWith(expect.stringContaining('inputs'));
+    expect(loadProjectEstimateFlowMaps).toHaveBeenCalledWith('project-uuid', rows, supabase);
+    expect(mapEstimateDetail).toHaveBeenCalledWith(
+      rows[0],
+      'V2',
+      { isLocked: false },
+      null,
+    );
+    await expect(response.json()).resolves.toEqual({
+      estimates: [
+        { id: 'est_active', projectId: 'proj_project-uuid', isActiveDraft: true },
+        { id: 'est_history', projectId: 'proj_project-uuid', isActiveDraft: false },
+      ],
+      activeDraftEstimate: activeDetail,
+    });
+  });
+});
+
 describe('POST /api/projects/[projectId]/estimates', () => {
   afterEach(() => {
     if (ORIGINAL_PRICING_SOURCE_ENV === undefined) {

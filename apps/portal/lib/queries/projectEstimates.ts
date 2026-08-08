@@ -6,9 +6,18 @@ import { qk } from './keys';
 const ONE_DAY = 1000 * 60 * 60 * 24;
 const TEN_MINUTES = 1000 * 60 * 10;
 
-async function fetchEstimateMetasByProject(projectId: string): Promise<EstimateMeta[]> {
-  const res = await apiJson<{ estimates: EstimateMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/estimates`);
-  return Array.isArray(res.estimates) ? res.estimates : [];
+async function fetchEstimateMetasByProject(projectId: string): Promise<{
+  estimates: EstimateMeta[];
+  activeDraftEstimate: EstimateDetail | null;
+}> {
+  const res = await apiJson<{
+    estimates: EstimateMeta[];
+    activeDraftEstimate?: EstimateDetail | null;
+  }>(`/api/projects/${encodeURIComponent(projectId)}/estimates`);
+  return {
+    estimates: Array.isArray(res.estimates) ? res.estimates : [],
+    activeDraftEstimate: res.activeDraftEstimate ?? null,
+  };
 }
 
 async function fetchEstimateDetail(estimateId: string): Promise<EstimateDetail> {
@@ -20,7 +29,17 @@ async function fetchEstimateDetail(estimateId: string): Promise<EstimateDetail> 
 export const estimateMetasByProjectQueryOptions = (host: string, projectId: string) =>
   queryOptions({
     queryKey: qk.estimates.metaByProject(host, projectId),
-    queryFn: () => fetchEstimateMetasByProject(projectId),
+    queryFn: async ({ client }) => {
+      const response = await fetchEstimateMetasByProject(projectId);
+      const activeDraft = response.activeDraftEstimate;
+      if (
+        activeDraft?.projectId === projectId &&
+        response.estimates.some((estimate) => estimate.id === activeDraft.id && estimate.isActiveDraft)
+      ) {
+        client.setQueryData(qk.estimates.detail(host, activeDraft.id), activeDraft);
+      }
+      return response.estimates;
+    },
     staleTime: TEN_MINUTES,
     gcTime: ONE_DAY,
   });

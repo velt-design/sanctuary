@@ -97,6 +97,8 @@ admin draft
 
 Before the first version is explicitly published, the resolver preserves the previous effective behavior: it loads the legacy material/action/curve overrides, snapshots their exact effective typed configuration, hashes it, and returns that snapshot as calculation provenance. Once a version is published, staff calculator, materials-explain, V2 costing, and job-pack material-option reads use the published version. A database error after the version schema exists fails closed; it must not silently fall back from a published version to package defaults. The legacy immediate-write routes return `409` and the old Pricebook pages redirect to the control centre.
 
+Published resolution loads the singleton publication pointer and its immutable version through their existing foreign-key relationship in one auth-bound database request. It still validates the mapped version ID and content hash and fails closed when the joined version is absent or mismatched; reducing a database round trip must not weaken publication authority or provenance.
+
 Production published **Version 1 — Current portal baseline** on 2026-08-04 from the complete active legacy-effective `v1.8` snapshot. The authoritative review recorded `0` changed values and `0.0%` movement across every representative scenario. Staff costing, the public Simple cover calculator, and the website enquiry costing snapshot now resolve that immutable version; the public response exposes only `versionNumber: 1` provenance.
 
 ### Complete configuration boundary

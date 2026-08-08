@@ -61,7 +61,7 @@ export async function resolvePublishedCostingConfiguration(
   const client = supabase ?? await getSupabaseServerAuth();
   const publication = await client
     .from('costing_configuration_publication')
-    .select('current_version_id')
+    .select('current_version_id, current_version:costing_configuration_versions(*)')
     .eq('singleton', true)
     .maybeSingle();
 
@@ -74,7 +74,16 @@ export async function resolvePublishedCostingConfiguration(
     : null;
   if (!versionId) return resolveLegacyConfiguration(client);
 
-  const version = await getCostingConfigurationVersionById(versionId, client);
+  const joinedVersion = Array.isArray(publication.data?.current_version)
+    ? publication.data.current_version[0]
+    : publication.data?.current_version;
+  if (!joinedVersion || typeof joinedVersion !== 'object') {
+    throw new Error('The published costing configuration version could not be loaded.');
+  }
+  const version = mapCostingConfigurationVersion(joinedVersion);
+  if (version.id !== versionId) {
+    throw new Error('The published costing configuration version does not match its publication pointer.');
+  }
   return resolvePublishedCostingConfigurationRecordV1(version);
 }
 
