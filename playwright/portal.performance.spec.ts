@@ -673,6 +673,7 @@ async function measureInteraction(
   action: () => Promise<unknown>,
   feedbackReady: () => Promise<unknown>,
   usefulContentReady?: () => Promise<PortalFinalFrameCapture>,
+  backgroundReady?: () => Promise<unknown>,
 ) {
   const budget = interactionBudget(name);
   const probe = await beginPortalJourney(page);
@@ -681,6 +682,7 @@ async function measureInteraction(
   const feedbackMs = elapsedJourneyMs(probe);
   const finalFrame = await usefulContentReady?.();
   const usefulContentMs = elapsedJourneyMs(probe);
+  await backgroundReady?.();
   const backgroundSettledMs = await waitForBackgroundSettled(page, probe);
   if (finalFrame) await assertPortalFinalFrameContinuity(finalFrame);
   const regressionBudgetMet =
@@ -721,15 +723,19 @@ async function measureProjectTab(
   name: string,
   tab: Locator,
   usefulContentReady: () => Promise<PortalFinalFrameCapture>,
+  backgroundReady?: () => Promise<unknown>,
 ) {
   await expect(tab).toBeVisible({ timeout: 60_000 });
-  await tab.hover();
   await measureInteraction(
     page,
     name,
-    () => tab.click(),
+    async () => {
+      await tab.hover();
+      await tab.click();
+    },
     () => expect(tab).toHaveAttribute("aria-selected", "true"),
     usefulContentReady,
+    backgroundReady,
   );
 }
 
@@ -892,6 +898,7 @@ test("captures warm navigation and project tab metrics", async ({ page }) => {
   });
   await measureProjectTab(page, "project-tab-calculator", calculatorTab, () =>
     calculatorFinalFrame(page, "project"),
+    () => expect(page.locator('[data-result-freshness="current"]:visible').first()).toBeVisible({ timeout: 60_000 }),
   );
 
   const commercialTab = page.getByRole("tab", {
@@ -903,6 +910,7 @@ test("captures warm navigation and project tab metrics", async ({ page }) => {
     "project-tab-commercial-quotes",
     commercialTab,
     () => commercialQuotesFinalFrame(page),
+    () => expect(page.getByText("Quote list structure is ready. Quote values are loading.", { exact: true })).toHaveCount(0, { timeout: 60_000 }),
   );
 
   const invoicesTab = page.getByRole("tab", { name: "Invoices", exact: true });
@@ -911,6 +919,7 @@ test("captures warm navigation and project tab metrics", async ({ page }) => {
     "project-tab-commercial-invoices",
     invoicesTab,
     () => commercialInvoicesFinalFrame(page),
+    () => expect(page.getByText("Invoice list structure is ready. Invoice values are loading.", { exact: true })).toHaveCount(0, { timeout: 60_000 }),
   );
 
   const overviewTab = page.getByRole("tab", { name: "Overview", exact: true });
