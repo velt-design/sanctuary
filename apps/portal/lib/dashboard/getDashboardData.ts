@@ -9,6 +9,7 @@ import { listVisibleDashboardTasks } from './tasks';
 import { listDashboardRecentEstimates } from './operationalLists';
 import { getProjectWorkQueue } from '@/lib/projects/workItems/repository';
 import { getProjectOperationalStateCounts } from '@/lib/projects/workItems/stateCounts';
+import { measureRouteStep, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
 
 type SnapshotKpis = {
   new_leads?: number;
@@ -81,7 +82,10 @@ export async function getDashboardData(opts: {
   queueMode: QueueMode;
   userId?: string | null;
   supabase?: SupabaseClient | null;
+  diagnostics?: PortalServerLogContext | null;
 }): Promise<DashboardData> {
+  const timed = <T>(name: string, operation: () => Promise<T>) =>
+    measureRouteStep(opts.diagnostics, name, operation);
   const [
     snapshot,
     recentEstimates,
@@ -90,15 +94,17 @@ export async function getDashboardData(opts: {
     projectWorkQueue,
     projectStateCounts,
   ] = await Promise.all([
-    getDashboardSnapshotCached(opts.queueMode) as Promise<SnapshotData>,
-    listDashboardRecentEstimates(supabaseServiceRole),
-    listRecentProjectNoteActivity(supabaseServiceRole, 8),
-    opts.userId ? listVisibleDashboardTasks(supabaseServiceRole, opts.userId) : Promise.resolve([]),
+    timed('snapshot', () => getDashboardSnapshotCached(opts.queueMode) as Promise<SnapshotData>),
+    timed('recent_estimates', () => listDashboardRecentEstimates(supabaseServiceRole)),
+    timed('recent_activity', () => listRecentProjectNoteActivity(supabaseServiceRole, 8)),
+    opts.userId
+      ? timed('personal_tasks', () => listVisibleDashboardTasks(supabaseServiceRole, opts.userId as string))
+      : Promise.resolve([]),
     opts.supabase
-      ? getProjectWorkQueue(opts.supabase, { limit: 5 }).catch(() => null)
+      ? timed('work_queue', () => getProjectWorkQueue(opts.supabase as SupabaseClient, { limit: 5 })).catch(() => null)
       : Promise.resolve(null),
     opts.supabase
-      ? getProjectOperationalStateCounts(opts.supabase).catch(() => null)
+      ? timed('state_counts', () => getProjectOperationalStateCounts(opts.supabase as SupabaseClient)).catch(() => null)
       : Promise.resolve(null),
   ]);
 

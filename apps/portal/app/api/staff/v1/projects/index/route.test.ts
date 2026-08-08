@@ -57,7 +57,7 @@ describe('GET /api/staff/v1/projects/index', () => {
       page: 1,
       pageSize: 50,
       sort: 'newest',
-    }, expect.anything());
+    }, expect.anything(), expect.objectContaining({ route: '/api/staff/v1/projects/index' }));
     await expect(res.json()).resolves.toEqual({
       archive: 'active',
       ...loaded,
@@ -90,7 +90,7 @@ describe('GET /api/staff/v1/projects/index', () => {
       page: 2,
       pageSize: 25,
       sort: 'name_asc',
-    }, expect.anything());
+    }, expect.anything(), expect.objectContaining({ route: '/api/staff/v1/projects/index' }));
   });
 
   it('routes archived state through the archived storage scope', async () => {
@@ -102,6 +102,7 @@ describe('GET /api/staff/v1/projects/index', () => {
     expect(res.status).toBe(200);
     expect(loadProjectsIndexData).toHaveBeenCalledWith(
       expect.objectContaining({ archive: 'archived', state: 'ARCHIVED' }),
+      expect.anything(),
       expect.anything(),
     );
   });
@@ -120,6 +121,7 @@ describe('GET /api/staff/v1/projects/index', () => {
     expect(loadProjectsIndexData).toHaveBeenCalledWith(
       expect.objectContaining({ archive, state }),
       expect.anything(),
+      expect.anything(),
     );
   });
 
@@ -132,6 +134,7 @@ describe('GET /api/staff/v1/projects/index', () => {
     expect(res.status).toBe(200);
     expect(loadProjectsIndexData).toHaveBeenCalledWith(
       expect.objectContaining({ archive: 'all', state: 'all' }),
+      expect.anything(),
       expect.anything(),
     );
   });

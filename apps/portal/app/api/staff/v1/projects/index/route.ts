@@ -1,5 +1,5 @@
 import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
-import { createRouteDiagnostics, logPortalServerError } from '@/lib/api/routeDiagnostics';
+import { createRouteDiagnostics, logPortalServerError, measureRouteStep } from '@/lib/api/routeDiagnostics';
 import {
   loadProjectsIndexData,
   ProjectsIndexSchemaError,
@@ -18,7 +18,7 @@ export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
   const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/projects/index');
-  const auth = await requireStaffContext(diagnostics);
+  const auth = await measureRouteStep(diagnostics, 'auth', () => requireStaffContext(diagnostics));
   if (!auth.ok) return auth.response;
 
   const searchParams = new URL(req.url).searchParams;
@@ -74,7 +74,7 @@ export async function GET(req: Request) {
       pageSize,
       sort,
     } as const;
-    const { projects, contacts } = await loadProjectsIndexData(params, auth.supabase);
+    const { projects, contacts } = await loadProjectsIndexData(params, auth.supabase, diagnostics);
     const response = jsonOk(
       {
         archive,

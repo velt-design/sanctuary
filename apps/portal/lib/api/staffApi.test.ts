@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRouteDiagnostics } from './routeDiagnostics';
+import { createRouteDiagnostics, measureRouteStep } from './routeDiagnostics';
 import { jsonError, jsonOk } from './staffApi';
 
 describe('staffApi diagnostics responses', () => {
@@ -26,5 +26,15 @@ describe('staffApi diagnostics responses', () => {
     await expect(res.json()).resolves.toEqual({ error: 'Boom' });
     expect(res.headers.get('x-portal-request-id')).toMatch(/^req_|^[0-9a-f-]{36}$/i);
     expect(res.headers.get('server-timing')).toContain('total;dur=');
+  });
+
+  it('adds safe named step durations without response descriptions', async () => {
+    const diagnostics = createRouteDiagnostics(new Request('http://localhost/api/test'), '/api/test');
+    await measureRouteStep(diagnostics, 'db_query', async () => undefined);
+
+    const res = jsonOk({ ok: true }, 200, diagnostics);
+
+    expect(res.headers.get('server-timing')).toMatch(/total;dur=[\d.]+, db_query;dur=[\d.]+/);
+    expect(res.headers.get('server-timing')).not.toContain('desc=');
   });
 });

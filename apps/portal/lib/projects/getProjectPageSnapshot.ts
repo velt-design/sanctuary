@@ -1,7 +1,11 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { logPortalServerError, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
+import {
+  logPortalServerError,
+  measureRouteStep,
+  type PortalServerLogContext,
+} from '@/lib/api/routeDiagnostics';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { appIdFromUuid, isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
@@ -209,13 +213,13 @@ export async function getProjectPageSummary(
   if (!projectUuid) return null;
 
   const [projectRes, owner, usesV2ProjectWork] = await Promise.all([
-    client
+    measureRouteStep(diagnostics, 'project', async () => client
       .from('projects')
       .select('*,contact:contacts(*)')
       .eq('id', projectUuid)
-      .maybeSingle(),
-    loadProjectHeaderOwner(client, projectUuid),
-    isProjectWorkModelV2(client, projectUuid),
+      .maybeSingle()),
+    measureRouteStep(diagnostics, 'owner', () => loadProjectHeaderOwner(client, projectUuid)),
+    measureRouteStep(diagnostics, 'work_model', () => isProjectWorkModelV2(client, projectUuid)),
   ]);
   if (projectRes?.error) {
     logSnapshotError(diagnostics, 'project summary query failed', projectRes.error, 'projects');
@@ -251,12 +255,12 @@ export async function getProjectPageSnapshot(
   // request, avoiding a browser-open path with many HTTP round trips while
   // retaining auth-bound RLS on every relation.
   const [projectRes, relatedRes, owner, usesV2ProjectWork] = await Promise.all([
-    client
+    measureRouteStep(diagnostics, 'project', async () => client
       .from('projects')
       .select('*,contact:contacts(*)')
       .eq('id', projectUuid)
-      .maybeSingle(),
-    client
+      .maybeSingle()),
+    measureRouteStep(diagnostics, 'related', async () => client
       .from('projects')
       .select(PROJECT_RELATED_SNAPSHOT_SELECT)
       .eq('id', projectUuid)
@@ -265,9 +269,9 @@ export async function getProjectPageSnapshot(
       .order('created_at', { referencedTable: 'notes', ascending: false })
       .limit(1, { referencedTable: 'jobPacks' })
       .limit(PROJECT_NOTES_SNAPSHOT_LIMIT, { referencedTable: 'notes' })
-      .maybeSingle(),
-    loadProjectHeaderOwner(client, projectUuid),
-    isProjectWorkModelV2(client, projectUuid),
+      .maybeSingle()),
+    measureRouteStep(diagnostics, 'owner', () => loadProjectHeaderOwner(client, projectUuid)),
+    measureRouteStep(diagnostics, 'work_model', () => isProjectWorkModelV2(client, projectUuid)),
   ]);
 
   const projectRow = projectRes?.data ?? null;
@@ -300,7 +304,11 @@ export async function getProjectPageSnapshot(
 
   const hasJobPacks = relationRows(relatedRow?.jobPacks).length > 0;
   const projectWork = workModelVersion === 2
-    ? await getAuthoritativeProjectWorkProjection(projectIdOut, client)
+    ? await measureRouteStep(
+        diagnostics,
+        'work_projection',
+        () => getAuthoritativeProjectWorkProjection(projectIdOut, client),
+      )
     : null;
   if (workModelVersion === 2 && !projectWork) {
     throw new Error('V2 project work could not be loaded');

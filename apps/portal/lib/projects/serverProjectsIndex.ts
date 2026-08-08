@@ -15,6 +15,7 @@ import type {
   ProjectsIndexProject,
   ProjectsIndexResponse,
 } from './projectsIndexContract';
+import { measureRouteStep, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
 
 type RpcPayload = {
   rows?: unknown;
@@ -81,9 +82,10 @@ function stagesForProjectsIndex(params: ProjectsIndexParams): string[] | null {
 export async function loadProjectsIndexData(
   params: ProjectsIndexParams,
   supabase?: SupabaseClient,
+  diagnostics?: PortalServerLogContext | null,
 ): Promise<Pick<ProjectsIndexResponse, 'projects' | 'contacts'>> {
   const client = supabase ?? (await getSupabaseServerAuth());
-  const result = await client.rpc('staff_projects_index_v3', {
+  const result = await measureRouteStep(diagnostics, 'index_rpc', async () => client.rpc('staff_projects_index_v3', {
     p_archive: params.archive,
     p_search: params.search,
     p_status: params.status,
@@ -95,7 +97,7 @@ export async function loadProjectsIndexData(
     p_state: params.state,
     p_stages: stagesForProjectsIndex(params),
     p_owner: params.owner,
-  });
+  }));
   if (result.error) {
     if (isMissingFunction(result.error)) throw new ProjectsIndexSchemaError();
     throw result.error;
@@ -105,10 +107,10 @@ export async function loadProjectsIndexData(
   const rawRows = (Array.isArray(payload.rows) ? payload.rows : []) as Record<string, unknown>[];
   const mappedProjects = rawRows.map(mapProjectRecord);
   const queue = mappedProjects.length
-    ? await getAuthoritativeProjectWorkQueue(client, {
+    ? await measureRouteStep(diagnostics, 'work_queue', () => getAuthoritativeProjectWorkQueue(client, {
         projectIds: mappedProjects.map((project) => project.id),
         limit: mappedProjects.length,
-      })
+      }))
     : { entries: [] };
   const queueByProjectId = new Map(
     queue.entries.map((entry) => [entry.projectId, entry]),

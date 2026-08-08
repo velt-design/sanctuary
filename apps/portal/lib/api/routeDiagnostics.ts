@@ -10,6 +10,7 @@ export type PortalServerLogContext = {
 export type RouteDiagnostics = PortalServerLogContext & {
   requestId: string;
   startedAt: number;
+  timings: Map<string, number>;
 };
 
 type RouteLogInput = {
@@ -93,13 +94,48 @@ export function createRouteDiagnostics(request: Request | null | undefined, rout
     route,
     method: method ?? request?.method ?? 'GET',
     startedAt: performance.now(),
+    timings: new Map(),
   };
+}
+
+function validTimingName(name: string): boolean {
+  return /^[a-z][a-z0-9_-]{0,39}$/i.test(name);
+}
+
+function recordRouteTiming(
+  diagnostics: PortalServerLogContext | null | undefined,
+  name: string,
+  duration: number,
+): void {
+  if (!diagnostics || !validTimingName(name) || !Number.isFinite(duration) || duration < 0) return;
+  const timings = 'timings' in diagnostics && diagnostics.timings instanceof Map
+    ? diagnostics.timings as Map<string, number>
+    : null;
+  if (!timings || timings.size >= 12 && !timings.has(name)) return;
+  timings.set(name, Number(((timings.get(name) ?? 0) + duration).toFixed(1)));
+}
+
+export async function measureRouteStep<T>(
+  diagnostics: PortalServerLogContext | null | undefined,
+  name: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const startedAt = performance.now();
+  try {
+    return await operation();
+  } finally {
+    recordRouteTiming(diagnostics, name, performance.now() - startedAt);
+  }
 }
 
 export function applyRouteDiagnostics<T extends Response>(response: T, diagnostics?: RouteDiagnostics | null): T {
   if (!diagnostics) return response;
   response.headers.set('x-portal-request-id', diagnostics.requestId);
-  response.headers.set('server-timing', `total;dur=${(durationMs(diagnostics) ?? 0).toFixed(1)}`);
+  const metrics = [
+    `total;dur=${(durationMs(diagnostics) ?? 0).toFixed(1)}`,
+    ...Array.from(diagnostics.timings, ([name, duration]) => `${name};dur=${duration.toFixed(1)}`),
+  ];
+  response.headers.set('server-timing', metrics.join(', '));
   return response;
 }
 

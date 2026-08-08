@@ -7,6 +7,7 @@ const isProjectWorkModelV2 = vi.fn();
 
 vi.mock('@/lib/api/routeDiagnostics', () => ({
   logPortalServerError,
+  measureRouteStep: (_diagnostics: unknown, _name: string, operation: () => Promise<unknown>) => operation(),
 }));
 
 vi.mock('@/lib/projects/workItems/getAuthoritativeProjectWorkProjection', () => ({

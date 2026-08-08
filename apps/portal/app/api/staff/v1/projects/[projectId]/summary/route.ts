@@ -1,4 +1,4 @@
-import { createRouteDiagnostics, logPortalServerError } from '@/lib/api/routeDiagnostics';
+import { createRouteDiagnostics, logPortalServerError, measureRouteStep } from '@/lib/api/routeDiagnostics';
 import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
 import { getProjectPageSummary } from '@/lib/projects/getProjectPageSnapshot';
 
@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 
 export async function GET(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
   const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/projects/[projectId]/summary');
-  const auth = await requireStaffContext(diagnostics);
+  const auth = await measureRouteStep(diagnostics, 'auth', () => requireStaffContext(diagnostics));
   if (!auth.ok) return auth.response;
 
   const { projectId } = await ctx.params;

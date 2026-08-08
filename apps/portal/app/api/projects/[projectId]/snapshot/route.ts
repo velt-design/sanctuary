@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createRouteDiagnostics, logPortalServerError } from '@/lib/api/routeDiagnostics';
+import {
+  applyRouteDiagnostics,
+  createRouteDiagnostics,
+  logPortalServerError,
+  measureRouteStep,
+} from '@/lib/api/routeDiagnostics';
 import { jsonError, requireStaffContext } from '@/lib/api/staffApi';
 import { getProjectPageSnapshot } from '@/lib/projects/getProjectPageSnapshot';
 
@@ -12,7 +17,7 @@ function privateNoStore(response: Response): Response {
 
 export async function GET(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
   const diagnostics = createRouteDiagnostics(req, '/api/projects/[projectId]/snapshot');
-  const auth = await requireStaffContext(diagnostics);
+  const auth = await measureRouteStep(diagnostics, 'auth', () => requireStaffContext(diagnostics));
   if (!auth.ok) return privateNoStore(auth.response);
 
   const { projectId } = await ctx.params;
@@ -29,15 +34,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ projectId: stri
     if (!snapshot) return privateNoStore(jsonError('Project not found', 404, diagnostics));
 
     return privateNoStore(
-      NextResponse.json({
+      applyRouteDiagnostics(NextResponse.json({
         snapshot,
         generatedAt: new Date().toISOString(),
-      }, {
-        headers: {
-          'x-portal-request-id': diagnostics.requestId,
-          'server-timing': `total;dur=${(performance.now() - diagnostics.startedAt).toFixed(1)}`,
-        },
-      }),
+      }), diagnostics),
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to load project snapshot';

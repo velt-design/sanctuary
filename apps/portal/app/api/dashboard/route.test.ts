@@ -59,9 +59,11 @@ describe('GET /api/dashboard', () => {
       queueMode: 'next7',
       userId: 'user_1',
       supabase: {},
+      diagnostics: expect.objectContaining({ route: '/api/dashboard' }),
     });
     expect(res.status).toBe(200);
     expect(res.headers.get('cache-control')).toBe('private, no-store');
+    expect(res.headers.get('server-timing')).toMatch(/total;dur=[\d.]+, auth;dur=[\d.]+/);
     await expect(res.json()).resolves.toEqual(
       expect.objectContaining({
         updatedAtIso: '2026-04-08T00:00:00.000Z',

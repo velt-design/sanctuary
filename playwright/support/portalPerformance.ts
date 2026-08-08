@@ -15,6 +15,24 @@ export type PortalPerformanceJourney = {
   blockingOverlaySeen: boolean;
   productTargetMet: boolean;
   regressionBudgetMet: boolean;
+  apiRequests: PortalApiRequestMetric[];
+};
+
+type PortalApiRequestMetric = {
+  route: string;
+  queryKeys: string[];
+  method: string;
+  status: number | null;
+  durationMs: number;
+  responseStartMs: number | null;
+  transferBytes: number;
+  encodedBodyBytes: number;
+  serverTiming: PortalServerTimingMetric[];
+};
+
+type PortalServerTimingMetric = {
+  name: string;
+  durationMs: number | null;
 };
 
 export type PortalPerformanceRun = {
@@ -40,6 +58,72 @@ type JourneyProbe = {
   requests: Request[];
   onRequest: (request: Request) => void;
 };
+
+type BrowserApiResourceMetric = {
+  url: string;
+  durationMs: number;
+  responseStartMs: number;
+  transferBytes: number;
+  encodedBodyBytes: number;
+};
+
+const UUID_SEGMENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const APP_ID_SEGMENT = /^(?:[a-z][a-z0-9-]*_)?[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function idParameterName(previousSegment: string | undefined): string {
+  if (previousSegment === 'projects') return '[projectId]';
+  if (previousSegment === 'contacts') return '[contactId]';
+  if (previousSegment === 'estimates') return '[estimateId]';
+  if (previousSegment === 'quotes') return '[quoteId]';
+  if (previousSegment === 'invoices') return '[invoiceId]';
+  if (previousSegment === 'job-packs') return '[jobPackId]';
+  return '[id]';
+}
+
+export function portalApiRouteTemplate(rawUrl: string): {
+  route: string;
+  queryKeys: string[];
+} {
+  const url = new URL(rawUrl, 'http://portal.invalid');
+  const segments = url.pathname.split('/').filter(Boolean);
+  const safeSegments = segments.map((segment, index) =>
+    UUID_SEGMENT.test(segment) || APP_ID_SEGMENT.test(segment)
+      ? idParameterName(segments[index - 1])
+      : segment,
+  );
+  return {
+    route: `/${safeSegments.join('/')}`,
+    queryKeys: Array.from(new Set(url.searchParams.keys())).sort(),
+  };
+}
+
+export function parsePortalServerTiming(headerValue: string | null): PortalServerTimingMetric[] {
+  if (!headerValue) return [];
+  return headerValue.split(',').flatMap((rawMetric) => {
+    const parts = rawMetric.trim().split(';');
+    const name = parts[0]?.trim() ?? '';
+    if (!/^[a-z][a-z0-9_-]*$/i.test(name)) return [];
+    const durationPart = parts.find((part) => /^\s*dur=/i.test(part));
+    const parsedDuration = durationPart
+      ? Number(durationPart.replace(/^\s*dur=/i, '').trim())
+      : Number.NaN;
+    return [{
+      name,
+      durationMs: Number.isFinite(parsedDuration)
+        ? Number(parsedDuration.toFixed(1))
+        : null,
+    }];
+  });
+}
+
+function shiftMatchingResource(
+  resourcesByUrl: Map<string, BrowserApiResourceMetric[]>,
+  url: string,
+): BrowserApiResourceMetric | null {
+  const matches = resourcesByUrl.get(url);
+  if (!matches?.length) return null;
+  return matches.shift() ?? null;
+}
 
 export type PortalFinalFrameCapture = {
   name: string;
@@ -337,18 +421,23 @@ export async function finishPortalJourney(
   probe: JourneyProbe,
   input: Omit<
     PortalPerformanceJourney,
-    "requestCount" | "transferBytes" | "longestTaskMs" | "blockingOverlaySeen"
+    | "requestCount"
+    | "transferBytes"
+    | "longestTaskMs"
+    | "blockingOverlaySeen"
+    | "apiRequests"
   >,
 ): Promise<PortalPerformanceJourney> {
   page.off("request", probe.onRequest);
   const currentOrigin = new URL(page.url()).origin;
-  const requestCount = probe.requests.filter((request) => {
+  const sameOriginRequests = probe.requests.filter((request) => {
     try {
       return new URL(request.url()).origin === currentOrigin;
     } catch {
       return false;
     }
-  }).length;
+  });
+  const requestCount = sameOriginRequests.length;
 
   const browserMetrics = await page.evaluate(
     ({ resourceStartIndex, longTaskStartIndex, currentOrigin }) => {
@@ -374,6 +463,20 @@ export async function finishPortalJourney(
         longestTaskMs: longTasks.length ? Math.max(...longTasks) : 0,
         blockingOverlaySeen:
           window.__portalPerformanceProbe?.blockingOverlaySeen ?? false,
+        apiResources: resources.flatMap((entry) => {
+          try {
+            if (!new URL(entry.name).pathname.startsWith('/api/')) return [];
+            return [{
+              url: entry.name,
+              durationMs: entry.duration,
+              responseStartMs: entry.responseStart,
+              transferBytes: Math.max(0, entry.transferSize || 0),
+              encodedBodyBytes: Math.max(0, entry.encodedBodySize || 0),
+            }];
+          } catch {
+            return [];
+          }
+        }),
       };
     },
     {
@@ -383,12 +486,48 @@ export async function finishPortalJourney(
     },
   );
 
+  const resourcesByUrl = new Map<string, BrowserApiResourceMetric[]>();
+  for (const resource of browserMetrics.apiResources) {
+    const matches = resourcesByUrl.get(resource.url) ?? [];
+    matches.push(resource);
+    resourcesByUrl.set(resource.url, matches);
+  }
+  const apiRequests = await Promise.all(
+    sameOriginRequests.flatMap((request) => {
+      const url = new URL(request.url());
+      if (!url.pathname.startsWith('/api/')) return [];
+      return [request.response().catch(() => null).then(async (response) => {
+        const resource = shiftMatchingResource(resourcesByUrl, request.url());
+        const timing = request.timing();
+        const serverTimingHeader = response
+          ? await response.headerValue('server-timing').catch(() => null)
+          : null;
+        const safeRoute = portalApiRouteTemplate(request.url());
+        return {
+          ...safeRoute,
+          method: request.method(),
+          status: response?.status() ?? null,
+          durationMs: Number(Math.max(0, resource?.durationMs ?? timing.responseEnd ?? 0).toFixed(1)),
+          responseStartMs: resource
+            ? Number(Math.max(0, resource.responseStartMs).toFixed(1))
+            : timing.responseStart >= 0
+              ? Number(timing.responseStart.toFixed(1))
+              : null,
+          transferBytes: resource?.transferBytes ?? 0,
+          encodedBodyBytes: resource?.encodedBodyBytes ?? 0,
+          serverTiming: parsePortalServerTiming(serverTimingHeader),
+        } satisfies PortalApiRequestMetric;
+      })];
+    }),
+  );
+
   return {
     ...input,
     requestCount,
     transferBytes: browserMetrics.transferBytes,
     longestTaskMs: Number(browserMetrics.longestTaskMs.toFixed(1)),
     blockingOverlaySeen: browserMetrics.blockingOverlaySeen,
+    apiRequests,
   };
 }
 
