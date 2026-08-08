@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fromMock = vi.fn();
 const logPortalServerError = vi.fn();
-const getAuthoritativeProjectWorkProjection = vi.fn();
+const getProjectCommandCentre = vi.fn();
 const isProjectWorkModelV2 = vi.fn();
 
 vi.mock('@/lib/api/routeDiagnostics', () => ({
@@ -10,8 +10,8 @@ vi.mock('@/lib/api/routeDiagnostics', () => ({
   measureRouteStep: (_diagnostics: unknown, _name: string, operation: () => Promise<unknown>) => operation(),
 }));
 
-vi.mock('@/lib/projects/workItems/getAuthoritativeProjectWorkProjection', () => ({
-  getAuthoritativeProjectWorkProjection,
+vi.mock('@/lib/projects/commandCentre/getProjectCommandCentre', () => ({
+  getProjectCommandCentre,
 }));
 
 vi.mock('@/lib/projects/workItems/modelBoundary', () => ({
@@ -59,7 +59,20 @@ describe('getProjectPageSnapshot', () => {
     logPortalServerError.mockReset();
     fakeAuth.auth.getUser.mockClear();
     fakeAuth.rpc.mockClear();
-    getAuthoritativeProjectWorkProjection.mockReset();
+    getProjectCommandCentre.mockReset().mockResolvedValue({
+      projectId: 'proj_fixture',
+      workModel: 'legacy',
+      legacyWork: { status: 'retired' },
+      owner: {
+        owner: { key: 'jordan', displayName: 'Jordan' },
+        required: true,
+        missing: false,
+        version: null,
+        permissions: { canManage: false },
+      },
+      currentDesign: {},
+      generatedAt: '2026-07-29T00:00:00.000Z',
+    });
     isProjectWorkModelV2.mockReset().mockResolvedValue(false);
   });
 
@@ -108,11 +121,7 @@ describe('getProjectPageSnapshot', () => {
 
     fromMock
       .mockReturnValueOnce(projectQuery)
-      .mockReturnValueOnce(relatedQuery)
-      .mockReturnValueOnce(createQuery({
-        data: { owner_key: 'jordan' },
-        error: null,
-      }));
+      .mockReturnValueOnce(relatedQuery);
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
     const snapshot = await getProjectPageSnapshot(
@@ -147,12 +156,16 @@ describe('getProjectPageSnapshot', () => {
     expect(snapshot?.emails).toHaveLength(1);
     expect(snapshot?.notes).toMatchObject([{ id: 'note_1', isOwn: true }]);
     expect(snapshot?.activity).toHaveLength(1);
-    expect(fromMock).toHaveBeenCalledTimes(3);
+    expect(fromMock).toHaveBeenCalledTimes(2);
     expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
     expect(fromMock).toHaveBeenNthCalledWith(2, 'projects');
-    expect(fromMock).toHaveBeenNthCalledWith(3, 'project_owner_assignments');
     expect(projectQuery.select).toHaveBeenCalledWith('*,contact:contacts(*)');
-    expect(isProjectWorkModelV2).toHaveBeenCalledWith(expect.any(Object), projectId);
+    expect(getProjectCommandCentre).toHaveBeenCalledWith(
+      `proj_${projectId}`,
+      expect.any(Object),
+      undefined,
+      expect.any(Object),
+    );
     expect(relatedQuery.is).toHaveBeenCalledWith('notes.deleted_at', null);
     expect(relatedQuery.limit).toHaveBeenCalledWith(50, { referencedTable: 'notes' });
     expect(String(relatedQuery.select.mock.calls[0]?.[0] ?? '')).not.toMatch(
@@ -217,8 +230,7 @@ describe('getProjectPageSnapshot', () => {
 
     fromMock
       .mockReturnValueOnce(createQuery(projectResult.promise))
-      .mockReturnValueOnce(createQuery(relatedResult.promise))
-      .mockReturnValueOnce(createQuery({ data: [], error: null }));
+      .mockReturnValueOnce(createQuery(relatedResult.promise));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
     const pendingSnapshot = getProjectPageSnapshot(
@@ -228,10 +240,9 @@ describe('getProjectPageSnapshot', () => {
       'auth-user-1',
     );
 
-    expect(fromMock).toHaveBeenCalledTimes(3);
+    expect(fromMock).toHaveBeenCalledTimes(2);
     expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
     expect(fromMock).toHaveBeenNthCalledWith(2, 'projects');
-    expect(fromMock).toHaveBeenNthCalledWith(3, 'project_owner_assignments');
 
     projectResult.resolve({
       data: {
@@ -303,8 +314,7 @@ describe('getProjectPageSnapshot', () => {
 
   it('loads authoritative work for a V2 project without legacy task-check reads', async () => {
     const projectId = '11111111-1111-4111-8111-111111111111';
-    isProjectWorkModelV2.mockResolvedValueOnce(true);
-    getAuthoritativeProjectWorkProjection.mockResolvedValue({
+    const projectWork = {
       projectId,
       modelVersion: 2,
       operationalState: 'ACTIVE',
@@ -321,6 +331,20 @@ describe('getProjectPageSnapshot', () => {
       openItems: [],
       blockedItems: [],
       confirmedFacts: [],
+      generatedAt: '2026-07-29T00:00:00.000Z',
+    };
+    getProjectCommandCentre.mockResolvedValueOnce({
+      projectId: `proj_${projectId}`,
+      workModel: 'v2',
+      projectWork,
+      owner: {
+        owner: null,
+        required: true,
+        missing: true,
+        version: null,
+        permissions: { canManage: false },
+      },
+      currentDesign: {},
       generatedAt: '2026-07-29T00:00:00.000Z',
     });
     fromMock
@@ -339,8 +363,7 @@ describe('getProjectPageSnapshot', () => {
           notes: [],
         },
         error: null,
-      }))
-      .mockReturnValueOnce(createQuery({ data: [], error: null }));
+      }));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
     const snapshot = await getProjectPageSnapshot(
@@ -351,11 +374,9 @@ describe('getProjectPageSnapshot', () => {
     );
 
     expect(snapshot?.workModel).toBe('v2');
-    expect(fromMock).toHaveBeenCalledTimes(3);
+    expect(snapshot?.projectWork).toEqual(projectWork);
+    expect(snapshot?.commandCentre).toMatchObject({ workModel: 'v2', projectWork });
+    expect(fromMock).toHaveBeenCalledTimes(2);
     expect(fromMock).not.toHaveBeenCalledWith('project_task_checks');
-    expect(getAuthoritativeProjectWorkProjection).toHaveBeenCalledWith(
-      `proj_${projectId}`,
-      expect.any(Object),
-    );
   });
 });

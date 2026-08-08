@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const requireStaffContext = vi.fn();
 const getProjectPageSnapshot = vi.fn();
+const getProjectCommandCentre = vi.fn();
 const supabase = { from: vi.fn() };
 
 vi.mock('@/lib/api/staffApi', async () => {
@@ -16,11 +17,16 @@ vi.mock('@/lib/projects/getProjectPageSnapshot', () => ({
   getProjectPageSnapshot,
 }));
 
+vi.mock('@/lib/projects/commandCentre/getProjectCommandCentre', () => ({
+  getProjectCommandCentre,
+}));
+
 describe('GET /api/projects/[projectId]/snapshot diagnostics and cache policy', () => {
   beforeEach(() => {
     vi.resetModules();
     requireStaffContext.mockReset();
     getProjectPageSnapshot.mockReset();
+    getProjectCommandCentre.mockReset().mockResolvedValue({ workModel: 'legacy' });
     supabase.from.mockReset();
     requireStaffContext.mockResolvedValue({
       ok: true,
@@ -58,6 +64,13 @@ describe('GET /api/projects/[projectId]/snapshot diagnostics and cache policy', 
       }),
       supabase,
       'user_1',
+      expect.any(Promise),
+    );
+    expect(getProjectCommandCentre).toHaveBeenCalledWith(
+      'proj_1',
+      supabase,
+      { userId: 'user_1', isAdmin: false },
+      expect.objectContaining({ route: '/api/projects/[projectId]/snapshot' }),
     );
   });
 

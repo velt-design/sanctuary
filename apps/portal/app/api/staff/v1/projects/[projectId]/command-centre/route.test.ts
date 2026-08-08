@@ -56,7 +56,7 @@ describe('GET /api/staff/v1/projects/[projectId]/command-centre', () => {
     expect(getProjectCommandCentre).toHaveBeenCalledWith(projectId, expect.anything(), {
       userId: 'user-1',
       isAdmin: false,
-    });
+    }, expect.objectContaining({ route: '/api/staff/v1/projects/[projectId]/command-centre' }));
     await expect(res.json()).resolves.toEqual(response);
   });
 

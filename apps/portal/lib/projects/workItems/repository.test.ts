@@ -8,7 +8,11 @@ vi.mock("./teamQueue", () => ({
   getAuthoritativeProjectWorkQueue: mocks.getAuthoritativeProjectWorkQueue,
 }));
 
-import { getProjectWorkProjection, getProjectWorkQueue } from "./repository";
+import {
+  applyProjectWorkDomainActions,
+  getProjectWorkProjection,
+  getProjectWorkQueue,
+} from "./repository";
 
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -274,6 +278,54 @@ describe("project work projection", () => {
     expect(projection?.confirmedFacts.map((fact) => fact.id)).toEqual([
       currentId,
     ]);
+  });
+});
+
+describe("project work domain enrichment", () => {
+  const now = new Date("2026-07-29T02:00:00.000Z");
+
+  it("applies a specialist action to an already-loaded active projection", async () => {
+    const projection = await getProjectWorkProjection({
+      supabase: client({}),
+      projectUuid: PROJECT_ID,
+      now,
+    });
+    if (!projection) throw new Error("Expected V2 projection");
+
+    const enriched = applyProjectWorkDomainActions(projection, {
+      specialistAction: {
+        kind: "specialist",
+        key: "quote",
+        title: "Prepare quote",
+        reason: "Estimate ready",
+        owner: "Commercial",
+        expectedResult: "Draft quote created",
+        href: "/quotes",
+      },
+    }, now);
+
+    expect(enriched.primaryAction).toMatchObject({ kind: "specialist", title: "Prepare quote" });
+  });
+
+  it("does not make waiting work actionable", async () => {
+    const projection = await getProjectWorkProjection({
+      supabase: client({ state: "WAITING", waitingUntil: "2026-07-30T00:00:00.000Z" }),
+      projectUuid: PROJECT_ID,
+      now,
+    });
+    if (!projection) throw new Error("Expected V2 projection");
+
+    expect(applyProjectWorkDomainActions(projection, {
+      specialistAction: {
+        kind: "specialist",
+        key: "quote",
+        title: "Prepare quote",
+        reason: "Estimate ready",
+        owner: "Commercial",
+        expectedResult: "Draft quote created",
+        href: null,
+      },
+    }, now)).toBe(projection);
   });
 });
 

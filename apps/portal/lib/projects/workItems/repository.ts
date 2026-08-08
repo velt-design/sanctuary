@@ -238,6 +238,29 @@ export async function getProjectWorkProjection(params: {
   };
 }
 
+export function applyProjectWorkDomainActions(
+  projection: ProjectWorkProjection,
+  actions: {
+    recoveryAction?: RecoveryActionCandidate | null;
+    specialistAction?: SpecialistActionCandidate | null;
+  },
+  now = new Date(),
+): ProjectWorkProjection {
+  if (projection.effectiveState !== 'ACTIVE') return projection;
+  return {
+    ...projection,
+    primaryAction: resolveProjectWorkPrimaryAction({
+      workItems: projection.openItems,
+      recoveryAction: actions.recoveryAction,
+      specialistAction: actions.specialistAction,
+      needsTriageReason: projection.blockedItems.length
+        ? 'Blocked project work requires review.'
+        : 'No current staff work or specialist action is recorded.',
+      now,
+    }),
+  };
+}
+
 export async function getProjectWorkQueue(
   supabase: SupabaseClient,
   options: { now?: Date; limit?: number } = {},

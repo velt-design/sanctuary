@@ -3,16 +3,20 @@ import type { ProjectWorkProjection } from '../workItems/types';
 
 const commandCentreDependencies = vi.hoisted(() => ({
   getProjectWorkProjection: vi.fn(),
-  getProjectWorkDomainActions: vi.fn(),
+  applyProjectWorkDomainActions: vi.fn(),
+  loadProjectWorkDomainFacts: vi.fn(),
+  composeProjectWorkDomainActions: vi.fn(),
   isProjectWorkModelV2: vi.fn(),
 }));
 
 vi.mock('@/lib/projects/workItems/repository', () => ({
   getProjectWorkProjection: commandCentreDependencies.getProjectWorkProjection,
+  applyProjectWorkDomainActions: commandCentreDependencies.applyProjectWorkDomainActions,
 }));
 
 vi.mock('@/lib/projects/workItems/getProjectWorkDomainActions', () => ({
-  getProjectWorkDomainActions: commandCentreDependencies.getProjectWorkDomainActions,
+  loadProjectWorkDomainFacts: commandCentreDependencies.loadProjectWorkDomainFacts,
+  composeProjectWorkDomainActions: commandCentreDependencies.composeProjectWorkDomainActions,
 }));
 
 vi.mock('@/lib/projects/workItems/modelBoundary', () => ({
@@ -144,7 +148,12 @@ const DETAIL = {
 describe('getProjectCommandCentre', () => {
   beforeEach(() => {
     commandCentreDependencies.getProjectWorkProjection.mockReset().mockResolvedValue(PROJECT_WORK);
-    commandCentreDependencies.getProjectWorkDomainActions.mockReset().mockResolvedValue({
+    commandCentreDependencies.applyProjectWorkDomainActions.mockReset().mockReturnValue(PROJECT_WORK);
+    commandCentreDependencies.loadProjectWorkDomainFacts.mockReset().mockResolvedValue({
+      siteVisitCompleted: false,
+      recoveryAction: null,
+    });
+    commandCentreDependencies.composeProjectWorkDomainActions.mockReset().mockReturnValue({
       recoveryAction: null,
       specialistAction: null,
     });
@@ -195,20 +204,29 @@ describe('getProjectCommandCentre', () => {
       estimate: { id: `est_${UUID.estimate}`, isQuoteSource: true },
     });
     expect(commandCentreDependencies.getProjectWorkProjection).toHaveBeenCalledOnce();
-    expect(commandCentreDependencies.getProjectWorkDomainActions).toHaveBeenCalledWith({
+    expect(commandCentreDependencies.loadProjectWorkDomainFacts).toHaveBeenCalledWith({
       supabase: client,
       projectId: `proj_${UUID.project}`,
       projectUuid: UUID.project,
       stage: 'new',
+    });
+    expect(commandCentreDependencies.composeProjectWorkDomainActions).toHaveBeenCalledWith({
+      projectId: `proj_${UUID.project}`,
+      stage: 'new',
       currentDesign: result?.currentDesign,
+      facts: { siteVisitCompleted: false, recoveryAction: null },
     });
     expect(commandCentreDependencies.getProjectWorkProjection).toHaveBeenCalledWith(
       expect.objectContaining({
         supabase: client,
         projectUuid: UUID.project,
-        recoveryAction: null,
-        specialistAction: null,
+        now: expect.any(Date),
       }),
+    );
+    expect(commandCentreDependencies.applyProjectWorkDomainActions).toHaveBeenCalledWith(
+      PROJECT_WORK,
+      { recoveryAction: null, specialistAction: null },
+      expect.any(Date),
     );
   });
 

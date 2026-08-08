@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ProjectPageSnapshot,
@@ -135,9 +135,15 @@ export default function OverviewTab({
   onAccessEnding?: (status: number) => void;
 }) {
   const queryClient = useQueryClient();
-  const commandQuery = useQuery(
-    projectCommandCentreQueryOptions(host, snapshot.project.id),
+  const commandQueryOptions = useMemo(
+    () => projectCommandCentreQueryOptions(host, snapshot.project.id),
+    [host, snapshot.project.id],
   );
+  const commandQuery = useQuery({
+    ...commandQueryOptions,
+    enabled: snapshotState === "fresh" && !snapshot.commandCentre,
+    placeholderData: snapshot.commandCentre,
+  });
   const accessEndingStatus =
     commandQuery.error instanceof ApiError &&
     [401, 403, 404].includes(commandQuery.error.status)
@@ -177,6 +183,11 @@ export default function OverviewTab({
   useEffect(() => {
     if (accessEndingStatus !== null) onAccessEnding?.(accessEndingStatus);
   }, [accessEndingStatus, onAccessEnding]);
+
+  useEffect(() => {
+    if (!snapshot.commandCentre) return;
+    queryClient.setQueryData(commandQueryOptions.queryKey, snapshot.commandCentre);
+  }, [commandQueryOptions.queryKey, queryClient, snapshot.commandCentre]);
 
   const exception =
     commandQuery.data && commandQuery.isError ? (

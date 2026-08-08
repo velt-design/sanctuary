@@ -5,11 +5,15 @@ import { ApiError } from "@/lib/repo/apiClient";
 
 const useQueryMock = vi.fn();
 const invalidateQueriesMock = vi.fn();
+const setQueryDataMock = vi.fn();
 
 vi.mock("@tanstack/react-query", () => ({
   queryOptions: (options: unknown) => options,
   useQuery: (...args: unknown[]) => useQueryMock(...args),
-  useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
+  useQueryClient: () => ({
+    invalidateQueries: invalidateQueriesMock,
+    setQueryData: setQueryDataMock,
+  }),
 }));
 
 vi.mock("./overview/ProjectOrientationBand", () => ({
@@ -161,6 +165,7 @@ describe("OverviewTab", () => {
     document.body.innerHTML = "";
     useQueryMock.mockReset();
     invalidateQueriesMock.mockReset().mockResolvedValue(undefined);
+    setQueryDataMock.mockReset();
   });
 
   afterEach(() => {
@@ -217,6 +222,36 @@ describe("OverviewTab", () => {
       rendered.container.querySelector("[data-stage3-workstreams-slot]"),
     ).toBeNull();
     expect(rendered.container.textContent).not.toContain("Tasks");
+    rendered.unmount();
+  });
+
+  it("uses the snapshot bootstrap without starting a duplicate command-centre request", () => {
+    const commandCentre = {
+      workModel: "v2",
+      currentDesign: { source: "estimate" },
+      projectWork: v2Projection,
+      owner: {},
+      generatedAt: "2026-08-08T00:00:00.000Z",
+    };
+    useQueryMock.mockReturnValue(queryState({ data: commandCentre }));
+
+    const rendered = renderIntoDocument(
+      <OverviewTab
+        snapshot={{ ...snapshot, commandCentre } as any}
+        snapshotContentReady
+        snapshotState="fresh"
+        host="host"
+      />,
+    );
+
+    expect(useQueryMock).toHaveBeenCalledWith(expect.objectContaining({
+      enabled: false,
+      placeholderData: commandCentre,
+    }));
+    expect(setQueryDataMock).toHaveBeenCalledWith(
+      ["projects", "host", "commandCentre", "proj_1"],
+      commandCentre,
+    );
     rendered.unmount();
   });
 

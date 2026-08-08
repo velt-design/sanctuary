@@ -23,7 +23,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ projectId: stri
       getProjectCommandCentre(id, auth.supabase, {
         userId: auth.session.user.id,
         isAdmin: auth.session.role === 'admin',
-      }));
+      }, diagnostics));
     if (!commandCentre) return privateNoStore(jsonError('Project not found', 404, diagnostics));
 
     const response = jsonOk(commandCentre, 200, diagnostics);

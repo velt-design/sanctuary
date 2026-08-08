@@ -17,6 +17,7 @@ const ONE_DAY = 1000 * 60 * 60 * 24;
 const THIRTY_MINUTES = 1000 * 60 * 30;
 const TEN_MINUTES = 1000 * 60 * 10;
 const FIVE_MINUTES = 1000 * 60 * 5;
+const TEN_SECONDS = 1000 * 10;
 
 async function fetchProjectPageSnapshot(projectId: string): Promise<ProjectPageSnapshotResponse> {
   return apiJson<ProjectPageSnapshotResponse>(`/api/projects/${encodeURIComponent(projectId)}/snapshot`);
@@ -64,9 +65,8 @@ export const projectCommandCentreQueryOptions = (host: string, projectId: string
   queryOptions({
     queryKey: qk.projects.commandCentre(host, projectId),
     queryFn: () => fetchProjectCommandCentre(projectId),
-    staleTime: 0,
+    staleTime: TEN_SECONDS,
     gcTime: ONE_DAY,
-    refetchOnMount: 'always',
   });
 
 export const projectTooltipSummaryQueryOptions = (host: string, projectId: string) =>

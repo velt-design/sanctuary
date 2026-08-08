@@ -461,7 +461,7 @@ The route `apps/portal/app/staff/projects/[projectId]/page.tsx` keeps the intern
 
 `ProjectSnapshotPageClient.tsx` owns the project summary/full-snapshot transition and page-level unavailable state. `ProjectPageFrame.tsx` owns the two-row project header and full-width body; the header is sticky above the mobile breakpoint and returns to normal flow on mobile. `ProjectTabNavigation.tsx` owns the shared tab registry, grouped active state, URL normalization, and intent preloading; `ProjectMainTabs.tsx` owns active workflow rendering. `CommercialTab.tsx` owns Quotes/Invoices composition and quote Edit/Preview URL state without taking over either subview's side effects. The retired rail, panel-slot, drag, resize, collapsible-header, and narrow-layout Details-tab systems have no runtime compatibility path.
 
-The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is allowed to render during the snapshot `summary` state because its commercial read is independent; snapshot-owned notes and tasks remain explicitly updating until the full snapshot is ready.
+The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. Its real structure may render during the snapshot `summary` state; command-centre values plus snapshot-owned notes and events remain inline pending until the complete snapshot is ready.
 
 The current staff-facing lazy navigation owners are:
 
@@ -505,7 +505,7 @@ Additional strict rules:
 
 Estimate persistence and locks remain owned by `apps/portal/lib/estimates`. Quote status, totals, send history, public tokens, PDFs, email, invoice creation, and job-pack effects remain owned by `apps/portal/lib/quotes` and their specialist routes.
 
-The command centre is a read model only. It reuses `computeEstimateEditability()` to identify the unlocked active draft boundary. It does not change statuses, editability, line items, totals, tokens, source metadata, artifacts, or downstream records.
+The command centre is a read model only. It reuses `computeEstimateEditability()` to identify the unlocked active draft boundary. After its bounded project/design selection read, selected estimate detail, raw domain facts, and the base Project Work projection load concurrently; pure composition applies the resulting specialist action to that already-loaded projection. It does not change statuses, editability, line items, totals, tokens, source metadata, artifacts, or downstream records.
 
 Estimate design labels reuse quote module formatters. Costing freshness is derived only from stored `outputs.pricing_sync_state`:
 
@@ -518,15 +518,15 @@ No costing engine or costing input layer is imported.
 
 ## 6. Existing project snapshot
 
-`ProjectPageSnapshot` remains the complete project-detail read model for identity, pipeline, notes, bounded activity, and emails. Legacy project tasks are no longer part of the snapshot contract.
+`ProjectPageSnapshot` remains the complete project-detail read model for identity, pipeline, notes, bounded activity, emails, and one embedded normalized command-centre response. Legacy project tasks are no longer part of the snapshot contract.
 
-The snapshot remains shared with project routes and workbench route context, so putting commercial version arrays or estimate inputs into it would enlarge unrelated reads and weaken its ownership. The command-centre endpoint is therefore a separate read model and query key.
+The snapshot remains shared with project routes and workbench route context, so raw commercial version arrays and estimate inputs remain private to command-centre composition. The complete snapshot invokes that server owner once and embeds only its bounded normalized response; the direct command-centre endpoint and query key remain the refresh/fallback boundary.
 
 The Overview composes:
 
 - Header/project identity from the existing project snapshot/summary.
 - Customer/site/reference context from the existing project snapshot/summary.
-- Current design and commercial facts from the dedicated command-centre response.
+- Current design and commercial facts from the embedded command-centre response, or the direct refresh/fallback response.
 - The single V2 Project Work region from the command-centre response's Project Work projection when present; the snapshot is not a second V2 work authority.
 - Notes and bounded recent events only after the full project snapshot is ready.
 
@@ -575,9 +575,9 @@ permission facts. While the already-open app is offline, the same data-free
 Overview/Calculator/Commercial frames remain navigable without command
 authority. Offline hard refresh/new-tab startup is not supported.
 
-The query key is `qk.projects.commandCentre(host, projectId)`. It uses the authenticated user's existing memory-only QueryClient and a one-day garbage-collection window. It is stale immediately and refetches whenever Overview remounts, so a return from Calculator or Commercial refreshes current commercial state without adding cache logic to those critical workflows.
+The query key is `qk.projects.commandCentre(host, projectId)`. It uses the authenticated user's existing memory-only QueryClient and a one-day garbage-collection window. A fresh complete snapshot seeds its embedded command-centre response for ten seconds so Overview does not duplicate the bootstrap request. Successful mutations invalidate the key; a missing embedded response enables the direct endpoint as a compatibility fallback. No response is persisted or service-worker cached.
 
-Accepted V2 commands use `patchProjectWorkProjectionCaches` to fan the returned projection into matching command-centre, snapshot, and summary caches. Header-owner commands use `patchProjectCommandCentreCache` as the sole complete command-centre response patch owner. Both paths then use `invalidateProjectWorkReads` to refresh project, Work Queue, and Dashboard consumers. No Overview component calls `setQueryData` for those caches directly. Project Work controls are enabled only while their owning reads are fresh and the snapshot and command-centre agree; cached background-refresh, refresh-failed, rollout-incomplete, or model-mismatch facts stay visible without mutation controls.
+Accepted V2 commands use `patchProjectWorkProjectionCaches` to fan the returned projection into matching command-centre, snapshot, and summary caches. Header-owner commands use `patchProjectCommandCentreCache` as the sole mutation-time complete command-centre response patch owner. Both paths then use `invalidateProjectWorkReads` to refresh project, Work Queue, and Dashboard consumers. `OverviewTab` may set only the exact server-returned embedded command-centre response into its matching current-user query key; it does not derive or patch business facts. Project Work controls are enabled only while their owning reads are fresh and the snapshot and command-centre agree; cached background-refresh, refresh-failed, rollout-incomplete, or model-mismatch facts stay visible without mutation controls.
 
 Overview states are explicit:
 
@@ -678,7 +678,7 @@ Contract:
 - No side effects.
 - No direct browser Supabase reads.
 
-Existing summary and complete snapshot routes remain unchanged and independent.
+The summary route remains a small independent shell read. The complete snapshot route is the one cold-detail bootstrap owner: it invokes command-centre composition once with the authenticated viewer, embeds the result, and reuses that result for owner and Project Work. The direct command-centre route remains available for refresh and compatibility fallback.
 
 Current supporting routes include:
 
@@ -788,8 +788,8 @@ Stage 1 verification completed on 2026-07-20:
 ## 21. Confirmed implementation decisions
 
 - Keep `activity` as the internal/default tab key and label it `Overview`.
-- Keep `ProjectPageSnapshot` focused on current project facts; retired legacy task rows are no longer part of it.
-- Use a separate server-owned command-centre read model and query key.
+- Keep `ProjectPageSnapshot` focused on bounded current project facts plus one normalized embedded command-centre response; retired legacy task rows are no longer part of it.
+- Use one server-owned command-centre composition and a separate current-user memory query key. The snapshot embeds the cold bootstrap result; the direct route owns refresh/fallback.
 - Use auth-bound staff access only.
 - Apply accepted > sent > draft and exact source only.
 - Never select declined quotes.

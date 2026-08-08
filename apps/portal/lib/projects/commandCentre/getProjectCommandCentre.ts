@@ -2,8 +2,14 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildQuoteHandoffPreviewFromEstimate } from '@/lib/quotes/estimateHandoffPreview';
-import { getProjectWorkProjection } from '@/lib/projects/workItems/repository';
-import { getProjectWorkDomainActions } from '@/lib/projects/workItems/getProjectWorkDomainActions';
+import {
+  applyProjectWorkDomainActions,
+  getProjectWorkProjection,
+} from '@/lib/projects/workItems/repository';
+import {
+  composeProjectWorkDomainActions,
+  loadProjectWorkDomainFacts,
+} from '@/lib/projects/workItems/getProjectWorkDomainActions';
 import { isProjectWorkModelV2 } from '@/lib/projects/workItems/modelBoundary';
 import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import type { Estimate } from '@/lib/types/estimate';
@@ -21,6 +27,7 @@ import type {
   ProjectCommandCentreCurrentDesign,
   ProjectCommandCentreResponse,
 } from './types';
+import { measureRouteStep, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
 
 const PROJECT_COMMAND_CENTRE_SELECT = `
   id,
@@ -108,6 +115,7 @@ export async function getProjectCommandCentre(
   projectId: string,
   supabase: SupabaseClient,
   viewer: { userId: string; isAdmin: boolean } = { userId: '', isAdmin: false },
+  diagnostics?: PortalServerLogContext | null,
 ): Promise<ProjectCommandCentreResponse | null> {
   let projectUuid: string;
   try {
@@ -116,10 +124,14 @@ export async function getProjectCommandCentre(
     return null;
   }
 
-  const [projectResult, usesV2ProjectWork] = await Promise.all([
-    supabase.from('projects').select(PROJECT_COMMAND_CENTRE_SELECT).eq('id', projectUuid).maybeSingle(),
-    isProjectWorkModelV2(supabase, projectUuid),
-  ]);
+  const [projectResult, usesV2ProjectWork] = await measureRouteStep(
+    diagnostics,
+    'command_base',
+    () => Promise.all([
+      supabase.from('projects').select(PROJECT_COMMAND_CENTRE_SELECT).eq('id', projectUuid).maybeSingle(),
+      isProjectWorkModelV2(supabase, projectUuid),
+    ]),
+  );
   if (projectResult.error) throw new Error(projectResult.error.message ?? 'Failed to load command centre');
   if (!projectResult.data) return null;
 
@@ -133,18 +145,40 @@ export async function getProjectCommandCentre(
     quoteVersions: quotes,
   });
 
-  let selectedDetail: AnyRecord | null = null;
-  if (selection.estimate) {
-    const estimateResult = await supabase
-      .from('estimates')
-      .select('id,project_id,created_at,updated_at,status,version,inputs,outputs,costing_manifest,costing_rules')
-      .eq('id', selection.estimate.sourceId)
-      .maybeSingle();
-    if (estimateResult.error || !estimateResult.data) {
-      throw new Error(estimateResult.error?.message ?? 'Selected estimate detail unavailable');
-    }
-    selectedDetail = estimateResult.data as AnyRecord;
-  }
+  const selectedDetailPromise: Promise<AnyRecord | null> = selection.estimate
+    ? measureRouteStep(diagnostics, 'command_detail', async () => {
+        const estimateResult = await supabase
+          .from('estimates')
+          .select('id,project_id,created_at,updated_at,status,version,inputs,outputs,costing_manifest,costing_rules')
+          .eq('id', selection.estimate?.sourceId ?? '')
+          .maybeSingle();
+        if (estimateResult.error || !estimateResult.data) {
+          throw new Error(estimateResult.error?.message ?? 'Selected estimate detail unavailable');
+        }
+        return estimateResult.data as AnyRecord;
+      })
+    : Promise.resolve(null);
+  const projectionNow = new Date();
+  const domainFactsPromise = usesV2ProjectWork
+    ? measureRouteStep(diagnostics, 'domain_facts', () => loadProjectWorkDomainFacts({
+        supabase,
+        projectId,
+        projectUuid,
+        stage,
+      }))
+    : Promise.resolve(null);
+  const projectWorkPromise = usesV2ProjectWork
+    ? measureRouteStep(diagnostics, 'work_projection', () => getProjectWorkProjection({
+        supabase,
+        projectUuid,
+        now: projectionNow,
+      }))
+    : Promise.resolve(null);
+  const [selectedDetail, domainFacts, baseProjectWork] = await Promise.all([
+    selectedDetailPromise,
+    domainFactsPromise,
+    projectWorkPromise,
+  ]);
 
   const status = statusPresentation(selection.source);
   const quoteSelected = selection.quote !== null;
@@ -248,19 +282,20 @@ export async function getProjectCommandCentre(
     isAdmin: viewer.isAdmin,
   });
   if (usesV2ProjectWork) {
-    const domainActions = await getProjectWorkDomainActions({
-      supabase,
+    if (!domainFacts || !baseProjectWork) {
+      throw new Error('V2 project work could not be loaded');
+    }
+    const domainActions = composeProjectWorkDomainActions({
       projectId,
-      projectUuid,
       stage,
       currentDesign,
+      facts: domainFacts,
     });
-    const projectWork = await getProjectWorkProjection({
-      supabase,
-      projectUuid,
-      ...domainActions,
-    });
-    if (!projectWork) throw new Error('V2 project work could not be loaded');
+    const projectWork = applyProjectWorkDomainActions(
+      baseProjectWork,
+      domainActions,
+      projectionNow,
+    );
     return {
       ...common,
       workModel: 'v2',

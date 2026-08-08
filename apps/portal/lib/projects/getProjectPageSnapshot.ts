@@ -12,8 +12,9 @@ import { normalizeProjectStatus } from '@/lib/types/project';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import type { ProjectActivityItem, ProjectEmailLog, ProjectNote, ProjectPageSnapshot } from '@/lib/projects/types';
 import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
-import { getAuthoritativeProjectWorkProjection } from '@/lib/projects/workItems/getAuthoritativeProjectWorkProjection';
 import { isProjectWorkModelV2 } from '@/lib/projects/workItems/modelBoundary';
+import { getProjectCommandCentre } from '@/lib/projects/commandCentre/getProjectCommandCentre';
+import type { ProjectCommandCentreResponse } from '@/lib/projects/commandCentre/types';
 
 const PROJECT_NOTES_SNAPSHOT_LIMIT = 50;
 
@@ -244,6 +245,7 @@ export async function getProjectPageSnapshot(
   diagnostics?: PortalServerLogContext,
   supabase?: SupabaseClient,
   authenticatedUserId?: string | null,
+  commandCentreRead?: Promise<ProjectCommandCentreResponse | null>,
 ): Promise<ProjectPageSnapshot | null> {
   const client = supabase ?? (await getSupabaseServerAuth());
   const projectUuid = safeUuidFromAppId(projectId, 'proj');
@@ -254,7 +256,13 @@ export async function getProjectPageSnapshot(
   // rows are embedded through their declared foreign keys in one PostgREST
   // request, avoiding a browser-open path with many HTTP round trips while
   // retaining auth-bound RLS on every relation.
-  const [projectRes, relatedRes, owner, usesV2ProjectWork] = await Promise.all([
+  const commandCentrePromise = commandCentreRead ?? getProjectCommandCentre(
+    projectId,
+    client,
+    undefined,
+    diagnostics,
+  );
+  const [projectRes, relatedRes, commandCentre] = await Promise.all([
     measureRouteStep(diagnostics, 'project', async () => client
       .from('projects')
       .select('*,contact:contacts(*)')
@@ -270,8 +278,7 @@ export async function getProjectPageSnapshot(
       .limit(1, { referencedTable: 'jobPacks' })
       .limit(PROJECT_NOTES_SNAPSHOT_LIMIT, { referencedTable: 'notes' })
       .maybeSingle()),
-    measureRouteStep(diagnostics, 'owner', () => loadProjectHeaderOwner(client, projectUuid)),
-    measureRouteStep(diagnostics, 'work_model', () => isProjectWorkModelV2(client, projectUuid)),
+    measureRouteStep(diagnostics, 'command_centre', () => commandCentrePromise),
   ]);
 
   const projectRow = projectRes?.data ?? null;
@@ -284,11 +291,11 @@ export async function getProjectPageSnapshot(
     logSnapshotError(diagnostics, 'project related snapshot query failed', relatedRes.error, 'projects+relations');
     throw new Error('Failed to load complete project snapshot');
   }
+  if (!commandCentre) throw new Error('Project command centre could not be loaded');
 
   const summary = mapProjectSummary(projectRow, projectId);
-  const workModelVersion = usesV2ProjectWork ? 2 : null;
+  const workModelVersion = commandCentre.workModel === 'v2' ? 2 : null;
   const stage = summary.stage;
-  const projectIdOut = summary.project.id;
 
   const currentUserId = authenticatedUserId === undefined
     ? (await client.auth.getUser())?.data?.user?.id ?? null
@@ -303,16 +310,8 @@ export async function getProjectPageSnapshot(
   const activity = outboxActivity.sort((a, b) => String(b.at).localeCompare(String(a.at)));
 
   const hasJobPacks = relationRows(relatedRow?.jobPacks).length > 0;
-  const projectWork = workModelVersion === 2
-    ? await measureRouteStep(
-        diagnostics,
-        'work_projection',
-        () => getAuthoritativeProjectWorkProjection(projectIdOut, client),
-      )
-    : null;
-  if (workModelVersion === 2 && !projectWork) {
-    throw new Error('V2 project work could not be loaded');
-  }
+  const projectWork = commandCentre.workModel === 'v2' ? commandCentre.projectWork : null;
+  const owner = commandCentre.owner.owner ?? undefined;
 
   const notes = relationRows(relatedRow?.notes)
     .map((row) => mapProjectNote(row, currentUserId))
@@ -321,6 +320,7 @@ export async function getProjectPageSnapshot(
   return {
     workModel: workModelVersion === 2 ? 'v2' : 'legacy',
     ...(projectWork ? { projectWork } : null),
+    commandCentre,
     project: {
       ...summary.project,
       ...(owner ? { owner } : null),

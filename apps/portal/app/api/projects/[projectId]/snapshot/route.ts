@@ -7,6 +7,7 @@ import {
 } from '@/lib/api/routeDiagnostics';
 import { jsonError, requireStaffContext } from '@/lib/api/staffApi';
 import { getProjectPageSnapshot } from '@/lib/projects/getProjectPageSnapshot';
+import { getProjectCommandCentre } from '@/lib/projects/commandCentre/getProjectCommandCentre';
 
 export const runtime = 'nodejs';
 
@@ -25,11 +26,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ projectId: stri
   if (!id) return privateNoStore(jsonError('Invalid projectId', 400, diagnostics));
 
   try {
+    const commandCentreRead = getProjectCommandCentre(id, auth.supabase, {
+      userId: auth.session.user.id,
+      isAdmin: auth.session.role === 'admin',
+    }, diagnostics);
     const snapshot = await getProjectPageSnapshot(
       id,
       diagnostics,
       auth.supabase,
       auth.session.user.id,
+      commandCentreRead,
     );
     if (!snapshot) return privateNoStore(jsonError('Project not found', 404, diagnostics));
 

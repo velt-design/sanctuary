@@ -77,6 +77,16 @@ export async function getProjectWorkDomainActions(params: {
   stage: string;
   currentDesign: ProjectCommandCentreCurrentDesign;
 }): Promise<ProjectWorkDomainActions> {
+  const facts = await loadProjectWorkDomainFacts(params);
+  return composeProjectWorkDomainActions({ ...params, facts });
+}
+
+export async function loadProjectWorkDomainFacts(params: {
+  supabase: SupabaseClient;
+  projectId: string;
+  projectUuid: string;
+  stage: string;
+}) {
   const stage = params.stage.trim().toLowerCase();
   const confirmationRead =
     stage === 'contacted' || stage === 'site_visit'
@@ -114,13 +124,30 @@ export async function getProjectWorkDomainActions(params: {
   const confirmationRows = Array.isArray(confirmationResult.data)
     ? (confirmationResult.data as ConfirmationIdentityRow[])
     : [];
+  return {
+    siteVisitCompleted: hasActiveProjectConfirmation(
+      confirmationRows,
+      params.projectUuid,
+      'SITE_VISIT_COMPLETED',
+    ),
+    recoveryAction: repairRecoveryAction(row, params.projectId),
+  };
+}
+
+export function composeProjectWorkDomainActions(params: {
+  projectId: string;
+  stage: string;
+  currentDesign: ProjectCommandCentreCurrentDesign;
+  facts: Awaited<ReturnType<typeof loadProjectWorkDomainFacts>>;
+}): ProjectWorkDomainActions {
+  const stage = params.stage.trim().toLowerCase();
   return projectWorkDomainActions(
     {
       projectId: params.projectId,
       stage,
-      siteVisitCompleted: hasActiveProjectConfirmation(confirmationRows, params.projectUuid, 'SITE_VISIT_COMPLETED'),
+      siteVisitCompleted: params.facts.siteVisitCompleted,
       currentDesign: params.currentDesign,
     },
-    repairRecoveryAction(row, params.projectId),
+    params.facts.recoveryAction,
   );
 }
