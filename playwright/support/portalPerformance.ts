@@ -8,6 +8,7 @@ export type PortalPerformanceJourney = {
   kind: PortalPerformanceJourneyKind;
   feedbackMs: number;
   usefulContentMs: number;
+  liveDataReadyMs?: number;
   backgroundSettledMs?: number;
   requestCount: number;
   transferBytes: number;

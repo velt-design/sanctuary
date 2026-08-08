@@ -33,6 +33,7 @@ type JourneyBudget = {
   name: string;
   feedbackMsMax: number;
   usefulContentMsMax: number;
+  liveDataReadyMsMax?: number;
   enforced: boolean;
   aggregation?: "run" | "p75";
   productFeedbackMsMax?: number;
@@ -452,6 +453,12 @@ function assertRegressionBudget(
     journey.usefulContentMs,
     `${journey.name} useful content ${journey.usefulContentMs}ms exceeded ${budget.usefulContentMsMax}ms`,
   ).toBeLessThanOrEqual(budget.usefulContentMsMax);
+  if (budget.liveDataReadyMsMax !== undefined) {
+    expect(
+      journey.liveDataReadyMs,
+      `${journey.name} live data ${journey.liveDataReadyMs ?? 'missing'}ms exceeded ${budget.liveDataReadyMsMax}ms`,
+    ).toBeLessThanOrEqual(budget.liveDataReadyMsMax);
+  }
 }
 
 async function measureColdRoute(
@@ -641,6 +648,7 @@ async function measureWarmJourney(
   const finalFrame = await usefulContentReady();
   const usefulContentMs = elapsedJourneyMs(probe);
   await backgroundReady?.();
+  const liveDataReadyMs = backgroundReady ? elapsedJourneyMs(probe) : undefined;
   const backgroundSettledMs = await waitForBackgroundSettled(page, probe);
   await assertPortalFinalFrameContinuity(finalFrame);
   const regressionBudgetMet =
@@ -653,6 +661,7 @@ async function measureWarmJourney(
     kind: "warm-navigation",
     feedbackMs,
     usefulContentMs,
+    liveDataReadyMs,
     backgroundSettledMs,
     productTargetMet:
       feedbackMs <= productFeedbackMsMax &&
@@ -683,6 +692,7 @@ async function measureInteraction(
   const finalFrame = await usefulContentReady?.();
   const usefulContentMs = elapsedJourneyMs(probe);
   await backgroundReady?.();
+  const liveDataReadyMs = backgroundReady ? elapsedJourneyMs(probe) : undefined;
   const backgroundSettledMs = await waitForBackgroundSettled(page, probe);
   if (finalFrame) await assertPortalFinalFrameContinuity(finalFrame);
   const regressionBudgetMet =
@@ -693,6 +703,7 @@ async function measureInteraction(
     kind: "interaction",
     feedbackMs,
     usefulContentMs,
+    liveDataReadyMs,
     backgroundSettledMs,
     productTargetMet:
       feedbackMs <=
@@ -771,14 +782,19 @@ async function measurePortalShellNavigation(
     link: Locator;
     feedback: Locator;
     finalFrame: FinalFrameReady;
+    backgroundReady?: () => Promise<unknown>;
+    intentStartsData?: boolean;
   },
 ): Promise<void> {
   await expect(input.link).toBeVisible({ timeout: 60_000 });
-  await input.link.hover();
+  if (!input.intentStartsData) await input.link.hover();
   await measureWarmJourney(
     page,
     input.name,
-    () => input.link.dispatchEvent("click"),
+    async () => {
+      if (input.intentStartsData) await input.link.hover();
+      await input.link.dispatchEvent("click");
+    },
     () =>
       expect(
         page
@@ -787,6 +803,7 @@ async function measurePortalShellNavigation(
           .first(),
       ).toBeVisible(),
     input.finalFrame,
+    input.backgroundReady,
   );
 }
 
@@ -1115,6 +1132,8 @@ test("captures warm navigation to the remaining instant-shell routes", async ({
     link: page.getByRole("link", { name: "Work Queue", exact: true }).first(),
     feedback: page.locator("[data-project-work-queue-state]"),
     finalFrame: () => workQueueFinalFrame(page),
+    backgroundReady: () => expect(page.locator('[data-project-work-queue-state="fresh"]')).toBeVisible({ timeout: 60_000 }),
+    intentStartsData: true,
   });
 
   await prepareDashboardNavigation(page, "Projects");

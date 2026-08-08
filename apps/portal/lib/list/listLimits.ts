@@ -131,22 +131,35 @@ type SupabaseRowsResponse<T> = {
 
 /**
  * Fetch rows for a potentially large set of IDs without producing an
- * oversized PostgREST URL. Chunks are fetched sequentially to keep request
- * concurrency bounded when several related tables are loaded in parallel.
+ * oversized PostgREST URL. Chunks are sequential by default; callers may opt
+ * into explicitly bounded concurrency when independent reads justify it.
  */
 export async function fetchRowsByIdChunks<T>(
   ids: readonly string[],
   buildChunk: (chunkIds: string[]) => PromiseLike<SupabaseRowsResponse<T>>,
-  options?: { chunkSize?: number },
+  options?: { chunkSize?: number; maxConcurrency?: number },
 ): Promise<T[]> {
   const chunkSize = options?.chunkSize ?? LIST_ID_FILTER_CHUNK_SIZE;
+  const maxConcurrency = options?.maxConcurrency ?? 1;
   if (chunkSize <= 0) throw new Error('fetchRowsByIdChunks: chunkSize must be > 0');
+  if (!Number.isInteger(maxConcurrency) || maxConcurrency <= 0) {
+    throw new Error('fetchRowsByIdChunks: maxConcurrency must be a positive integer');
+  }
 
-  const rows: T[] = [];
+  const chunks: string[][] = [];
   for (let offset = 0; offset < ids.length; offset += chunkSize) {
-    const response = await buildChunk(ids.slice(offset, offset + chunkSize));
-    if (response.error) throw response.error;
-    if (Array.isArray(response.data)) rows.push(...response.data);
+    chunks.push(ids.slice(offset, offset + chunkSize));
+  }
+  const rows: T[] = [];
+  for (let offset = 0; offset < chunks.length; offset += maxConcurrency) {
+    const batch = await Promise.all(
+      chunks.slice(offset, offset + maxConcurrency).map(async (chunkIds) => {
+        const response = await buildChunk(chunkIds);
+        if (response.error) throw response.error;
+        return Array.isArray(response.data) ? response.data : [];
+      }),
+    );
+    for (const chunkRows of batch) rows.push(...chunkRows);
   }
   return rows;
 }

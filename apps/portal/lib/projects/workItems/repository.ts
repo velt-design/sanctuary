@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { PortalServerLogContext } from '@/lib/api/routeDiagnostics';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { resolveProjectWorkEffectiveAssignee } from './effectiveAssignee';
 import { activeConfirmationEventRows } from './confirmationFacts';
@@ -263,7 +264,7 @@ export function applyProjectWorkDomainActions(
 
 export async function getProjectWorkQueue(
   supabase: SupabaseClient,
-  options: { now?: Date; limit?: number } = {},
+  options: { now?: Date; limit?: number; diagnostics?: PortalServerLogContext | null } = {},
 ): ReturnType<typeof getAuthoritativeProjectWorkQueue> {
   return getAuthoritativeProjectWorkQueue(supabase, options);
 }

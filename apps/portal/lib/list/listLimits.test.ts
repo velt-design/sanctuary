@@ -104,6 +104,26 @@ describe('fetchRowsByIdChunks', () => {
     expect(rows).toEqual([]);
   });
 
+  it('supports bounded parallel batches while preserving input order', async () => {
+    const ids = ['a', 'b', 'c', 'd', 'e'];
+    let active = 0;
+    let maxActive = 0;
+    const rows = await fetchRowsByIdChunks(
+      ids,
+      async ([id]) => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, id === 'a' ? 10 : 0));
+        active -= 1;
+        return { data: [{ id }], error: null };
+      },
+      { chunkSize: 1, maxConcurrency: 2 },
+    );
+
+    expect(maxActive).toBe(2);
+    expect(rows.map((row) => row.id)).toEqual(ids);
+  });
+
   it('propagates the first chunk error and stops', async () => {
     let calls = 0;
     await expect(
@@ -122,6 +142,9 @@ describe('fetchRowsByIdChunks', () => {
     await expect(
       fetchRowsByIdChunks(['a'], async () => ({ data: [], error: null }), { chunkSize: 0 }),
     ).rejects.toThrow(/chunkSize/);
+    await expect(
+      fetchRowsByIdChunks(['a'], async () => ({ data: [], error: null }), { maxConcurrency: 0 }),
+    ).rejects.toThrow(/maxConcurrency/);
   });
 });
 

@@ -91,6 +91,7 @@
       "name": "dashboard-to-work-queue",
       "feedbackMsMax": 100,
       "usefulContentMsMax": 500,
+      "liveDataReadyMsMax": 2500,
       "enforced": true,
       "aggregation": "p75"
     },

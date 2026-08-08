@@ -6,6 +6,7 @@ import WorkQueueClient from './WorkQueueClient';
 
 const useQueryMock = vi.fn();
 const queueRefetch = vi.fn();
+let portalRole: 'admin' | 'staff' = 'staff';
 
 vi.mock('next/link', () => ({
   default: ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) =>
@@ -23,6 +24,14 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/lib/supabase/browserClient', () => ({
   supabaseHostFromUrl: () => 'host',
   supabaseRuntimeUrl: () => 'https://host.supabase.co',
+}));
+
+vi.mock('@/components/auth/PortalAuthProvider', () => ({
+  usePortalSession: () => ({ role: portalRole }),
+}));
+
+vi.mock('./InactiveEnquiryReview.client', () => ({
+  default: () => <div data-testid="inactive-enquiry-review" />,
 }));
 
 vi.mock('@/components/projects/workQueue/PaginatedProjectWorkQueueList.client', () => ({
@@ -61,6 +70,7 @@ describe('WorkQueueClient', () => {
     document.body.innerHTML = '';
     useQueryMock.mockReset();
     queueRefetch.mockReset();
+    portalRole = 'staff';
   });
 
   afterEach(() => {
@@ -77,6 +87,18 @@ describe('WorkQueueClient', () => {
     expect(root?.querySelector('[aria-label="Work Queue filters"]')).not.toBeNull();
     expect(root?.querySelector('[aria-label="Project work queue"]')).not.toBeNull();
     expect(root?.getAttribute('data-portal-page-shell-ready')).toBe('true');
+    rendered.unmount();
+  });
+
+  it('shows inactive-enquiry review only for the verified admin role', () => {
+    portalRole = 'admin';
+    useQueryMock
+      .mockReturnValueOnce(queryState())
+      .mockReturnValueOnce(queryState());
+
+    const rendered = renderIntoDocument(<WorkQueueClient />);
+
+    expect(rendered.container.querySelector('[data-testid="inactive-enquiry-review"]')).not.toBeNull();
     rendered.unmount();
   });
 

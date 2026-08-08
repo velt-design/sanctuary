@@ -55,8 +55,8 @@ const lines = [
   '',
   `Five authenticated runs; build ${runs[0].buildId ?? 'local/unknown'}.`,
   '',
-  '| Journey | Kind | Feedback p50 / p75 / p95 | Useful p50 / p75 / p95 | Requests p75 | Transfer p75 | Long task p95 | Product target | Regression budget |',
-  '| --- | --- | ---: | ---: | ---: | ---: | ---: | :---: | :---: |',
+  '| Journey | Kind | Feedback p50 / p75 / p95 | Useful p50 / p75 / p95 | Live data p50 / p75 / p95 | Requests p75 | Transfer p75 | Long task p95 | Product target | Regression budget |',
+  '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | :---: | :---: |',
 ];
 
 for (const name of reportedNames) {
@@ -64,18 +64,27 @@ for (const name of reportedNames) {
   const stat = (field, fraction) => percentile(samples.map((sample) => Number(sample[field]) || 0), fraction);
   const feedback = [0.5, 0.75, 0.95].map((fraction) => stat('feedbackMs', fraction));
   const useful = [0.5, 0.75, 0.95].map((fraction) => stat('usefulContentMs', fraction));
+  const liveDataValues = samples.every((sample) => Number.isFinite(sample.liveDataReadyMs))
+    ? [0.5, 0.75, 0.95].map((fraction) => stat('liveDataReadyMs', fraction))
+    : null;
+  const liveData = liveDataValues
+    ? `${liveDataValues.join(' / ')}ms`
+    : '—';
   const product = samples.every((sample) => sample.productTargetMet);
   const aggregateBudget = aggregateBudgets.get(name);
   const regression = aggregateBudget
-    ? feedback[1] <= aggregateBudget.feedbackMsMax && useful[1] <= aggregateBudget.usefulContentMsMax
+    ? feedback[1] <= aggregateBudget.feedbackMsMax
+      && useful[1] <= aggregateBudget.usefulContentMsMax
+      && (aggregateBudget.liveDataReadyMsMax === undefined
+        || (liveDataValues !== null && liveDataValues[1] <= aggregateBudget.liveDataReadyMsMax))
     : samples.every((sample) => sample.regressionBudgetMet);
   if (!regression && aggregateBudget) {
     throw new Error(
-      `${name} p75 regression exceeded its locked ceiling: feedback ${feedback[1]}ms/${aggregateBudget.feedbackMsMax}ms, useful ${useful[1]}ms/${aggregateBudget.usefulContentMsMax}ms.`,
+      `${name} p75 regression exceeded its locked ceiling: feedback ${feedback[1]}ms/${aggregateBudget.feedbackMsMax}ms, useful ${useful[1]}ms/${aggregateBudget.usefulContentMsMax}ms, live data ${liveDataValues?.[1] ?? 'missing'}ms/${aggregateBudget.liveDataReadyMsMax ?? 'not-set'}ms.`,
     );
   }
   lines.push(
-    `| ${name} | ${samples[0].kind} | ${feedback.join(' / ')}ms | ${useful.join(' / ')}ms | ${stat('requestCount', 0.75)} | ${Math.round(stat('transferBytes', 0.75) / 1024)} KiB | ${stat('longestTaskMs', 0.95)}ms | ${product ? 'PASS' : 'MISS'} | ${regression ? 'PASS' : 'MISS'} |`,
+    `| ${name} | ${samples[0].kind} | ${feedback.join(' / ')}ms | ${useful.join(' / ')}ms | ${liveData} | ${stat('requestCount', 0.75)} | ${Math.round(stat('transferBytes', 0.75) / 1024)} KiB | ${stat('longestTaskMs', 0.95)}ms | ${product ? 'PASS' : 'MISS'} | ${regression ? 'PASS' : 'MISS'} |`,
   );
 }
 

@@ -89,14 +89,19 @@ describe("GET /api/staff/v1/work-items/queue", () => {
     expect(response.headers.get("x-portal-request-id")).toBe("req-team-queue");
     expect(response.headers.get("server-timing")).toMatch(/auth;dur=[\d.]+.*work_queue;dur=[\d.]+/);
     await expect(response.json()).resolves.toEqual(QUEUE);
-    expect(mocks.getProjectWorkQueue).toHaveBeenCalledWith(SUPABASE);
+    expect(mocks.getProjectWorkQueue).toHaveBeenCalledWith(SUPABASE, {
+      diagnostics: expect.objectContaining({ route: '/api/staff/v1/work-items/queue' }),
+    });
   });
 
   it("supports a bounded Dashboard projection without changing the full-queue contract", async () => {
     const response = await GET(request("?limit=5"));
 
     expect(response.status).toBe(200);
-    expect(mocks.getProjectWorkQueue).toHaveBeenCalledWith(SUPABASE, { limit: 5 });
+    expect(mocks.getProjectWorkQueue).toHaveBeenCalledWith(SUPABASE, {
+      limit: 5,
+      diagnostics: expect.objectContaining({ route: '/api/staff/v1/work-items/queue' }),
+    });
   });
 
   it.each(["0", "51", "1.5", "many"])("rejects invalid limit %s", async (limit) => {

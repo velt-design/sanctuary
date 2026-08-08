@@ -487,15 +487,15 @@ describe('getAuthoritativeProjectWorkQueue', () => {
     });
   });
 
-  it('loads active V2 commercial candidates through direct model and state owners', async () => {
-    modelBoundaryMocks.listProjectWorkModelV2Ids.mockResolvedValue(new Set([PROJECT_UUID]));
-    const stateEq = vi.fn().mockResolvedValue({
+  it('loads active commercial candidates through the complete portfolio state owner', async () => {
+    const stateRange = vi.fn().mockResolvedValue({
       data: [{ project_id: PROJECT_UUID, state: 'ACTIVE' }],
       error: null,
     });
-    const stateIn = vi.fn(() => ({ eq: stateEq }));
-    const stateSelect = vi.fn((_selection: string) => ({ in: stateIn }));
-    const projectOrder = vi.fn().mockResolvedValue({
+    const stateOrder = vi.fn(() => ({ range: stateRange }));
+    const stateEq = vi.fn(() => ({ order: stateOrder }));
+    const stateSelect = vi.fn((_selection: string) => ({ eq: stateEq }));
+    const projectRange = vi.fn().mockResolvedValue({
       data: [
         {
           id: PROJECT_UUID,
@@ -508,14 +508,13 @@ describe('getAuthoritativeProjectWorkQueue', () => {
       ],
       error: null,
     });
+    const projectOrder = vi.fn(() => ({ range: projectRange }));
     const projectIs = vi.fn(() => ({ order: projectOrder }));
-    const projectIn = vi.fn(() => ({ is: projectIs }));
-    const projectSelect = vi.fn((_selection: string) => ({ in: projectIn }));
-    const confirmationEq = vi.fn().mockResolvedValue({ data: [], error: null });
-    const confirmationIn = vi.fn(() => ({ eq: confirmationEq }));
-    const confirmationSelect = vi.fn((_selection: string) => ({
-      in: confirmationIn,
-    }));
+    const projectSelect = vi.fn((_selection: string) => ({ is: projectIs }));
+    const confirmationRange = vi.fn().mockResolvedValue({ data: [], error: null });
+    const confirmationOrder = vi.fn(() => ({ range: confirmationRange }));
+    const confirmationEq = vi.fn(() => ({ order: confirmationOrder }));
+    const confirmationSelect = vi.fn((_selection: string) => ({ eq: confirmationEq }));
     const from = vi.fn((table: string) => {
       if (table === 'project_operational_states') return { select: stateSelect };
       if (table === 'projects') return { select: projectSelect };
@@ -535,11 +534,15 @@ describe('getAuthoritativeProjectWorkQueue', () => {
     });
 
     expect(stateSelect).toHaveBeenCalledWith('project_id,state');
-    expect(stateIn).toHaveBeenCalledWith('project_id', [PROJECT_UUID]);
     expect(stateEq).toHaveBeenCalledWith('state', 'ACTIVE');
-    expect(projectIn).toHaveBeenCalledWith('id', [PROJECT_UUID]);
-    expect(confirmationIn).toHaveBeenCalledWith('project_id', [PROJECT_UUID]);
+    expect(stateOrder).toHaveBeenCalledWith('project_id', { ascending: true });
+    expect(stateRange).toHaveBeenCalledWith(0, 999);
+    expect(modelBoundaryMocks.listProjectWorkModelV2Ids).not.toHaveBeenCalled();
+    expect(modelBoundaryMocks.getProjectWorkModelV2Ids).not.toHaveBeenCalled();
+    expect(projectIs).toHaveBeenCalledWith('archived_at', null);
+    expect(projectRange).toHaveBeenCalledWith(0, 999);
     expect(confirmationEq).toHaveBeenCalledWith('confirmation_type', 'SITE_VISIT_COMPLETED');
+    expect(confirmationRange).toHaveBeenCalledWith(0, 999);
     const select = String(projectSelect.mock.calls[0]?.[0] ?? '');
     expect(select).not.toContain('project_work_model_versions');
     expect(select).not.toContain('project_operational_states');

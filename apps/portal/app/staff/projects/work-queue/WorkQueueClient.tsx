@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import PaginatedProjectWorkQueueList from '@/components/projects/workQueue/PaginatedProjectWorkQueueList.client';
 import type { WorkQueueEntryView } from '@/components/projects/workQueue/workQueuePresentation';
@@ -25,18 +26,24 @@ function isAccessEndingError(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
-export default function WorkQueueClient({
-  canReviewInactiveEnquiries = false,
-}: {
-  canReviewInactiveEnquiries?: boolean;
-}) {
+const subscribeToHydration = () => () => undefined;
+const hydratedBrowserSnapshot = () => true;
+const pendingServerSnapshot = () => false;
+
+export default function WorkQueueClient() {
+  const { role } = usePortalSession();
+  const canReviewInactiveEnquiries = role === 'admin';
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    hydratedBrowserSnapshot,
+    pendingServerSnapshot,
+  );
   const host = useMemo(
     () => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown',
     [],
   );
   const queue = useQuery({
     ...projectWorkQueueQueryOptions(host),
-    refetchOnMount: 'always',
     retry: (failureCount, error) => (
       !isAccessEndingError(error)
       && !isProjectWorkUnavailableError(error)
@@ -52,10 +59,12 @@ export default function WorkQueueClient({
 
   const unavailable = isAccessEndingError(queue.error);
   const notReady = isProjectWorkUnavailableError(queue.error);
-  const entries = unavailable || notReady
+  const entries = unavailable || notReady || !hydrated
     ? []
     : (queue.data?.entries ?? []) as WorkQueueEntryView[];
-  const state = unavailable
+  const state = !hydrated
+    ? 'pending'
+    : unavailable
     ? 'unavailable'
     : notReady
       ? 'not-ready'

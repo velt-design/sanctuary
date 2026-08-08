@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { measureRouteStep, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
 import {
   COMMAND_CENTRE_COMMERCIAL_RELATIONS_SELECT,
   commandCentreQuoteDeliveryState,
@@ -12,7 +13,7 @@ import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import { projectWorkDomainActions, type ProjectWorkDomainActions } from './domainActionAdapters';
 import { hasActiveProjectConfirmation } from './confirmationFacts';
 import { resolveProjectWorkEffectiveAssignee } from './effectiveAssignee';
-import { getProjectWorkModelV2Ids, listProjectWorkModelV2Ids } from './modelBoundary';
+import { getProjectWorkModelV2Ids } from './modelBoundary';
 import { isApprovedSiteVisitSpecialistIdentity, isRetiredProjectWorkIdentity } from './prohibitedWork';
 import type {
   ProjectWorkItemPriority,
@@ -51,6 +52,7 @@ const GROUP_RANK: Record<ProjectWorkQueueGroup, number> = {
   blocked: 3,
   needsTriage: 4,
 };
+const QUEUE_RELATED_READ_CONCURRENCY = 4;
 
 type Row = Record<string, unknown>;
 
@@ -281,43 +283,116 @@ function domainCandidateFromProjectRow(row: Row, siteVisitCompleted: boolean): A
 async function loadActiveProjectDomainCandidates(
   supabase: SupabaseClient,
   projectUuids: readonly string[] | null = null,
+  diagnostics?: PortalServerLogContext | null,
 ): Promise<ActiveProjectDomainCandidate[]> {
-  const v2ProjectIds = [
-    ...(projectUuids
-      ? await getProjectWorkModelV2Ids(supabase, projectUuids)
-      : await listProjectWorkModelV2Ids(supabase)),
-  ].sort();
-  if (!v2ProjectIds.length) return [];
+  let activeStateRows: Row[];
+  let projectRows: Row[];
+  let confirmationRows: Row[];
 
-  const activeStateRows = await fetchRowsByIdChunks<Row>(v2ProjectIds, (projectIds) =>
-    supabase
-      .from('project_operational_states')
-      .select('project_id,state')
-      .in('project_id', projectIds)
-      .eq('state', 'ACTIVE'),
-  );
-  const activeProjectIds = activeStateRows
-    .map((row) => text(row.project_id))
-    .filter((projectId): projectId is string => projectId !== null);
-  if (!activeProjectIds.length) return [];
+  if (projectUuids) {
+    const v2ProjectIds = [
+      ...await measureRouteStep(
+        diagnostics,
+        'queue_inventory',
+        () => getProjectWorkModelV2Ids(supabase, projectUuids),
+      ),
+    ].sort();
+    if (!v2ProjectIds.length) return [];
+    activeStateRows = await measureRouteStep(
+      diagnostics,
+      'queue_states',
+      () => fetchRowsByIdChunks<Row>(v2ProjectIds, (projectIds) =>
+        supabase
+          .from('project_operational_states')
+          .select('project_id,state')
+          .in('project_id', projectIds)
+          .eq('state', 'ACTIVE'),
+      ),
+    );
+    const activeProjectIds = activeStateRows
+      .map((row) => text(row.project_id))
+      .filter((projectId): projectId is string => projectId !== null);
+    if (!activeProjectIds.length) return [];
+    [projectRows, confirmationRows] = await Promise.all([
+      measureRouteStep(diagnostics, 'queue_projects', () => fetchRowsByIdChunks<Row>(activeProjectIds, (projectIds) =>
+        supabase
+          .from('projects')
+          .select(ACTIVE_V2_COMMERCIAL_PROJECTS_SELECT)
+          .in('id', projectIds)
+          .is('archived_at', null)
+          .order('id', { ascending: true }),
+        { maxConcurrency: QUEUE_RELATED_READ_CONCURRENCY },
+      )),
+      measureRouteStep(diagnostics, 'queue_confirms', () => fetchRowsByIdChunks<Row>(activeProjectIds, (projectIds) =>
+        supabase
+          .from('project_confirmation_events')
+          .select('id,project_id,event_kind,confirmation_type,retracts_event_id')
+          .in('project_id', projectIds)
+          .eq('confirmation_type', 'SITE_VISIT_COMPLETED'),
+        { maxConcurrency: QUEUE_RELATED_READ_CONCURRENCY },
+      )),
+    ]);
+  } else {
+    [activeStateRows, projectRows, confirmationRows] = await Promise.all([
+      measureRouteStep(diagnostics, 'queue_states', async () => {
+        const result = await fetchAllPages<Row>((from, to) => supabase
+          .from('project_operational_states')
+          .select('project_id,state')
+          .eq('state', 'ACTIVE')
+          .order('project_id', { ascending: true })
+          .range(from, to));
+        if (result.truncated) {
+          throw Object.assign(new Error('Active Project Work state inventory exceeded the authoritative read limit'), {
+            code: 'PROJECT_WORK_INVENTORY_INCOMPLETE',
+          });
+        }
+        return result.rows;
+      }),
+      measureRouteStep(diagnostics, 'queue_projects', async () => {
+        const result = await fetchAllPages<Row>((from, to) => supabase
+          .from('projects')
+          .select(ACTIVE_V2_COMMERCIAL_PROJECTS_SELECT)
+          .is('archived_at', null)
+          .order('id', { ascending: true })
+          .range(from, to));
+        if (result.truncated) {
+          throw Object.assign(new Error('Project Work commercial candidate inventory exceeded the authoritative read limit'), {
+            code: 'PROJECT_WORK_INVENTORY_INCOMPLETE',
+          });
+        }
+        return result.rows;
+      }),
+      measureRouteStep(diagnostics, 'queue_confirms', async () => {
+        const result = await fetchAllPages<Row>((from, to) => supabase
+          .from('project_confirmation_events')
+          .select('id,project_id,event_kind,confirmation_type,retracts_event_id')
+          .eq('confirmation_type', 'SITE_VISIT_COMPLETED')
+          .order('id', { ascending: true })
+          .range(from, to));
+        if (result.truncated) {
+          throw Object.assign(new Error('Project Work confirmation inventory exceeded the authoritative read limit'), {
+            code: 'PROJECT_WORK_INVENTORY_INCOMPLETE',
+          });
+        }
+        return result.rows;
+      }),
+    ]);
+    const activeProjectIdSet = new Set(
+      activeStateRows
+        .map((row) => text(row.project_id))
+        .filter((projectId): projectId is string => projectId !== null),
+    );
+    if (!activeProjectIdSet.size) return [];
+    projectRows = projectRows.filter((row) => {
+      const projectId = text(row.id);
+      return projectId ? activeProjectIdSet.has(projectId) : false;
+    });
+    confirmationRows = confirmationRows.filter((row) => {
+      const projectId = text(row.project_id);
+      return projectId ? activeProjectIdSet.has(projectId) : false;
+    });
+  }
 
-  const [projectRows, confirmationRows] = await Promise.all([
-    fetchRowsByIdChunks<Row>(activeProjectIds, (projectIds) =>
-      supabase
-        .from('projects')
-        .select(ACTIVE_V2_COMMERCIAL_PROJECTS_SELECT)
-        .in('id', projectIds)
-        .is('archived_at', null)
-        .order('id', { ascending: true }),
-    ),
-    fetchRowsByIdChunks<Row>(activeProjectIds, (projectIds) =>
-      supabase
-        .from('project_confirmation_events')
-        .select('id,project_id,event_kind,confirmation_type,retracts_event_id')
-        .in('project_id', projectIds)
-        .eq('confirmation_type', 'SITE_VISIT_COMPLETED'),
-    ),
-  ]);
   return projectRows
     .map((row) => {
       const projectUuid = text(row.id);
@@ -500,6 +575,7 @@ export async function getAuthoritativeProjectWorkQueue(
     now?: Date;
     limit?: number;
     projectIds?: readonly string[];
+    diagnostics?: PortalServerLogContext | null;
   } = {},
 ): Promise<{ entries: ProjectWorkQueueEntry[]; generatedAt: string }> {
   const now = options.now ?? new Date();
@@ -515,9 +591,9 @@ export async function getAuthoritativeProjectWorkQueue(
     Math.max(1, options.limit ?? projectUuids?.length ?? MAX_LIST_FETCH_ROWS),
   );
   const [durableRows, domainCandidates] = await Promise.all([
-    loadDurableProjectWorkQueueRows(supabase, now, projectUuids),
-    loadActiveProjectDomainCandidates(supabase, projectUuids),
-    assertProjectWorkPortfolioComplete(supabase),
+    measureRouteStep(options.diagnostics, 'queue_durable', () => loadDurableProjectWorkQueueRows(supabase, now, projectUuids)),
+    loadActiveProjectDomainCandidates(supabase, projectUuids, options.diagnostics),
+    measureRouteStep(options.diagnostics, 'queue_counts', () => assertProjectWorkPortfolioComplete(supabase)),
   ]);
   const durableEntries = rows(durableRows).map(mapDurableQueueRow);
   return {

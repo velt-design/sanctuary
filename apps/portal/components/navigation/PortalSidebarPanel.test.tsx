@@ -39,6 +39,7 @@ vi.mock('@/components/auth/PortalAuthProvider', () => ({
 }));
 
 vi.mock('@tanstack/react-query', () => ({
+  queryOptions: (options: unknown) => options,
   useQueryClient: () => ({
     prefetchQuery: transitionMocks.prefetchQuery,
   }),
@@ -250,6 +251,26 @@ describe('PortalSidebarPanel', () => {
     expect(transitionMocks.routerPrefetch).toHaveBeenCalledTimes(1);
     expect(transitionMocks.routerPrefetch).toHaveBeenCalledWith('/schedule');
     expect(transitionMocks.prefetchQuery).toHaveBeenCalledTimes(1);
+
+    rendered.unmount();
+  });
+
+  it('preloads Work Queue data once on repeated navigation intent', () => {
+    mockPathname = '/staff/projects';
+    const rendered = renderSidebar();
+    const workQueueLink = linkByText(rendered.container, 'Work Queue');
+
+    act(() => {
+      workQueueLink.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      workQueueLink.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    });
+
+    expect(transitionMocks.routerPrefetch).toHaveBeenCalledTimes(1);
+    expect(transitionMocks.routerPrefetch).toHaveBeenCalledWith('/staff/projects/work-queue');
+    expect(transitionMocks.prefetchQuery).toHaveBeenCalledTimes(1);
+    expect(transitionMocks.prefetchQuery).toHaveBeenCalledWith(expect.objectContaining({
+      queryKey: expect.arrayContaining(['projectWork', 'queue']),
+    }));
 
     rendered.unmount();
   });

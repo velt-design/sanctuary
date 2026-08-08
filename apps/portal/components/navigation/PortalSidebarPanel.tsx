@@ -21,6 +21,10 @@ import {
   portalIndexTarget,
   preloadPortalIndex,
 } from '@/lib/queries/portalIndexNavigation';
+import {
+  preloadProjectWorkQueue,
+  PROJECT_WORK_QUEUE_HREF,
+} from '@/lib/queries/projectWorkQueue';
 import styles from './PortalSidebarPanel.module.css';
 
 type PinnedOpenParentState = {
@@ -197,6 +201,14 @@ export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sideb
     (key: string, href: string) => {
       if (portalIndexTarget(href)) {
         preloadPortalIndex(queryClient, router, href);
+        return;
+      }
+      if (href === PROJECT_WORK_QUEUE_HREF) {
+        const token = `work-queue:${hostKey}`;
+        if (!prefetchedRef.current.has(token)) {
+          prefetchedRef.current.add(token);
+          preloadProjectWorkQueue(queryClient, router, hostKey);
+        }
         return;
       }
       const routeToken = `route:${href}`;

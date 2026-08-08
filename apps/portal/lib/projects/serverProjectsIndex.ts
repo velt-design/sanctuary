@@ -110,6 +110,7 @@ export async function loadProjectsIndexData(
     ? await measureRouteStep(diagnostics, 'work_queue', () => getAuthoritativeProjectWorkQueue(client, {
         projectIds: mappedProjects.map((project) => project.id),
         limit: mappedProjects.length,
+        diagnostics,
       }))
     : { entries: [] };
   const queueByProjectId = new Map(

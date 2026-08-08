@@ -22,8 +22,8 @@ export async function GET(req: Request) {
   try {
     const queue = await measureRouteStep(diagnostics, 'work_queue', () =>
       limit === null
-        ? getProjectWorkQueue(auth.supabase)
-        : getProjectWorkQueue(auth.supabase, { limit }));
+        ? getProjectWorkQueue(auth.supabase, { diagnostics })
+        : getProjectWorkQueue(auth.supabase, { limit, diagnostics }));
     return workJsonOk(queue, diagnostics);
   } catch (error) {
     const mapped = workDatabaseError(error);
