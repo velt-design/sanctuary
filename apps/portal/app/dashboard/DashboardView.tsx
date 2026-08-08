@@ -7,17 +7,27 @@ import dash from './dashboard.module.css';
 import DashboardHero from './_components/DashboardHero';
 import RecentEstimatesCard from './_components/RecentEstimatesCard';
 import ProjectWorkQueueCard from './_components/ProjectWorkQueueCard';
+import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
+
+type DashboardWorkQueueView = {
+  items?: ProjectWorkQueueEntry[];
+  available?: boolean;
+  loading: boolean;
+};
 
 export default function DashboardView({
   data,
   state = 'fresh',
   onRetry,
+  workQueue,
 }: {
   data?: DashboardData;
   state?: 'pending' | 'cached' | 'fresh' | 'refresh-failed';
   onRetry?: () => void;
+  workQueue?: DashboardWorkQueueView;
 }) {
   const loading = !data;
+  const workQueueLoading = workQueue?.loading ?? loading;
 
   return (
     <main
@@ -26,7 +36,8 @@ export default function DashboardView({
       data-portal-page-shell-ready="true"
       data-ui-foundation-consumer="dashboard"
       data-dashboard-state={state}
-      data-dashboard-background-ready={state === 'fresh' ? 'true' : 'false'}
+      data-dashboard-core-ready={state === 'fresh' ? 'true' : 'false'}
+      data-dashboard-background-ready={state === 'fresh' && !workQueueLoading ? 'true' : 'false'}
     >
       <DashboardHero updatedAtIso={data?.updatedAtIso} />
 
@@ -59,9 +70,9 @@ export default function DashboardView({
 
           <div className={dash.workspaceGrid}>
             <ProjectWorkQueueCard
-              items={data ? data.projectWorkQueue ?? [] : undefined}
-              available={data ? data.projectWorkQueueAvailable !== false : undefined}
-              loading={loading}
+              items={workQueue?.items}
+              available={workQueue?.available}
+              loading={workQueueLoading}
             />
             <RecentActivityCard items={data?.recentActivity} loading={loading} />
             <RecentEstimatesCard items={data?.recentEstimates} loading={loading} />

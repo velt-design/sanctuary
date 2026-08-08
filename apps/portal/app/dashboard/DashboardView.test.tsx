@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import DashboardView from './DashboardView';
 import type { DashboardData } from '@/lib/dashboard/types';
+import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
 
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
@@ -33,30 +34,6 @@ const data: DashboardData = {
     quotesToSend: 1,
     installsThisWeek: 3,
   },
-  projectWorkQueue: [
-    {
-      projectId: 'proj_123',
-      projectName: 'Beach House',
-      stage: 'contacted',
-      group: 'today',
-      actionKind: 'workItem',
-      title: 'Send first enquiry email',
-      reason: 'This project work is due today.',
-      dueAt: '2026-04-02T09:00:00.000Z',
-      priority: 'NORMAL',
-      blockedReason: null,
-      effectiveAssignee: { kind: 'unassigned' },
-      workItemId: '11111111-1111-4111-8111-111111111111',
-      workItemRowVersion: 1,
-      stateRowVersion: 1,
-      sourceType: 'LEAD_CADENCE',
-      sourceKey: 'lead:first-email:project:v1',
-      subjectKind: 'PROJECT',
-      subjectId: '22222222-2222-4222-8222-222222222222',
-      href: '/staff/projects/proj_123?tab=activity',
-    },
-  ],
-  projectWorkQueueAvailable: true,
   schedule: {
     startingSoon: [],
     crewAvailability: [],
@@ -106,9 +83,41 @@ const data: DashboardData = {
   ],
 };
 
+const workQueue: {
+  items: ProjectWorkQueueEntry[];
+  available: boolean;
+  loading: boolean;
+} = {
+  items: [
+    {
+      projectId: 'proj_123',
+      projectName: 'Beach House',
+      stage: 'contacted',
+      group: 'today',
+      actionKind: 'workItem',
+      title: 'Send first enquiry email',
+      reason: 'This project work is due today.',
+      dueAt: '2026-04-02T09:00:00.000Z',
+      priority: 'NORMAL',
+      blockedReason: null,
+      effectiveAssignee: { kind: 'unassigned' },
+      workItemId: '11111111-1111-4111-8111-111111111111',
+      workItemRowVersion: 1,
+      stateRowVersion: 1,
+      sourceType: 'LEAD_CADENCE',
+      sourceKey: 'lead:first-email:project:v1',
+      subjectKind: 'PROJECT',
+      subjectId: '22222222-2222-4222-8222-222222222222',
+      href: '/staff/projects/proj_123?tab=activity',
+    },
+  ],
+  available: true,
+  loading: false,
+};
+
 describe('DashboardView', () => {
   it('renders the concept-led operational dashboard sections', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} />);
+    const markup = renderToStaticMarkup(<DashboardView data={data} workQueue={workQueue} />);
 
     expect(markup).toContain('Dashboard');
     expect(markup).toContain('data-portal-page-shell="dashboard"');
@@ -130,7 +139,7 @@ describe('DashboardView', () => {
   });
 
   it('renders recent activity with category, project, note, and author hierarchy', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} />);
+    const markup = renderToStaticMarkup(<DashboardView data={data} workQueue={workQueue} />);
 
     const labelIndex = markup.lastIndexOf('Project note');
     const projectIndex = markup.indexOf('Beach House', labelIndex);
@@ -147,7 +156,7 @@ describe('DashboardView', () => {
   });
 
   it('prioritizes the overview before the ordered operations row', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} />);
+    const markup = renderToStaticMarkup(<DashboardView data={data} workQueue={workQueue} />);
 
     const portfolioIndex = markup.indexOf('Project portfolio');
     const activityIndex = markup.indexOf('Recent Activity');
@@ -167,7 +176,7 @@ describe('DashboardView', () => {
   });
 
   it('does not render retired exceptions, installs, or misleading quote labels', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} />);
+    const markup = renderToStaticMarkup(<DashboardView data={data} workQueue={workQueue} />);
 
     expect(markup).not.toContain('Project Exceptions');
     expect(markup).not.toContain('Installs this week');
@@ -179,7 +188,7 @@ describe('DashboardView', () => {
   });
 
   it('marks cached data as updating without hiding it', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} state="cached" />);
+    const markup = renderToStaticMarkup(<DashboardView data={data} state="cached" workQueue={workQueue} />);
 
     expect(markup).toContain('data-dashboard-state="cached"');
     expect(markup).toContain('data-portal-page-shell="dashboard"');
@@ -190,7 +199,7 @@ describe('DashboardView', () => {
 
   it('keeps known data and offers Retry after a refresh failure', () => {
     const markup = renderToStaticMarkup(
-      <DashboardView data={data} state="refresh-failed" onRetry={() => undefined} />,
+      <DashboardView data={data} state="refresh-failed" onRetry={() => undefined} workQueue={workQueue} />,
     );
 
     expect(markup).toContain('data-dashboard-state="refresh-failed"');

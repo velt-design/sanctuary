@@ -51,8 +51,8 @@ const QUEUE = {
   generatedAt: "2026-08-03T00:00:00.000Z",
 };
 
-function request() {
-  return new Request("http://localhost/api/staff/v1/work-items/queue", {
+function request(search = "") {
+  return new Request(`http://localhost/api/staff/v1/work-items/queue${search}`, {
     headers: { "x-request-id": "req-team-queue" },
   });
 }
@@ -87,8 +87,24 @@ describe("GET /api/staff/v1/work-items/queue", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("x-portal-request-id")).toBe("req-team-queue");
+    expect(response.headers.get("server-timing")).toMatch(/auth;dur=[\d.]+.*work_queue;dur=[\d.]+/);
     await expect(response.json()).resolves.toEqual(QUEUE);
     expect(mocks.getProjectWorkQueue).toHaveBeenCalledWith(SUPABASE);
+  });
+
+  it("supports a bounded Dashboard projection without changing the full-queue contract", async () => {
+    const response = await GET(request("?limit=5"));
+
+    expect(response.status).toBe(200);
+    expect(mocks.getProjectWorkQueue).toHaveBeenCalledWith(SUPABASE, { limit: 5 });
+  });
+
+  it.each(["0", "51", "1.5", "many"])("rejects invalid limit %s", async (limit) => {
+    const response = await GET(request(`?limit=${limit}`));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code: "INVALID_LIMIT" });
+    expect(mocks.getProjectWorkQueue).not.toHaveBeenCalled();
   });
 
   it("maps an unavailable queue RPC to a retryable 503 contract", async () => {

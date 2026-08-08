@@ -11,6 +11,7 @@ export const qk = {
   dashboard: {
     dataPrefix: () => ['dashboard', 'data'] as const,
     data: (queueMode: QueueMode) => ['dashboard', 'data', queueMode] as const,
+    workQueue: () => ['dashboard', 'data', 'workQueue'] as const,
   },
   contacts: {
     list: (host: string) => ['contacts', host, 'list'] as const,

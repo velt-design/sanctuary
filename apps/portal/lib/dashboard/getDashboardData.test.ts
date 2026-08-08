@@ -4,7 +4,6 @@ const getDashboardSnapshotCached = vi.fn();
 const listRecentProjectNoteActivity = vi.fn();
 const listVisibleDashboardTasks = vi.fn();
 const listDashboardRecentEstimates = vi.fn();
-const getProjectWorkQueue = vi.fn();
 const getProjectOperationalStateCounts = vi.fn();
 
 vi.mock('./getDashboardSnapshotCached', () => ({
@@ -23,10 +22,6 @@ vi.mock('./operationalLists', () => ({
   listDashboardRecentEstimates: (...args: unknown[]) => listDashboardRecentEstimates(...args),
 }));
 
-vi.mock('@/lib/projects/workItems/repository', () => ({
-  getProjectWorkQueue: (...args: unknown[]) => getProjectWorkQueue(...args),
-}));
-
 vi.mock('@/lib/projects/workItems/stateCounts', () => ({
   getProjectOperationalStateCounts: (...args: unknown[]) =>
     getProjectOperationalStateCounts(...args),
@@ -43,12 +38,12 @@ describe('getDashboardData', () => {
     listRecentProjectNoteActivity.mockReset();
     listVisibleDashboardTasks.mockReset();
     listDashboardRecentEstimates.mockReset();
-    getProjectWorkQueue.mockReset();
     getProjectOperationalStateCounts.mockReset().mockResolvedValue({
       ACTIVE: 1,
       WAITING: 0,
       CLOSED: 0,
       ARCHIVED: 0,
+      totalCount: 1,
     });
 
     getDashboardSnapshotCached.mockResolvedValue({
@@ -90,10 +85,6 @@ describe('getDashboardData', () => {
         href: '/staff/projects/proj_1?tab=estimates&estimateId=est_1',
       },
     ]);
-    getProjectWorkQueue.mockResolvedValue({
-      entries: [{ projectId: 'proj_1', projectName: 'Project One' }],
-      generatedAt: '2026-05-30T00:00:00.000Z',
-    });
   });
 
   it('maps snapshot data with recent activity and personal tasks', async () => {
@@ -122,7 +113,7 @@ describe('getDashboardData', () => {
     expect(data.personalTasks).toEqual([]);
   });
 
-  it('loads the compact V2 Work Queue through the request-bound staff client', async () => {
+  it('loads portfolio state counts through the request-bound staff client', async () => {
     const { getDashboardData } = await import('./getDashboardData');
     const staffClient = { rpc: vi.fn() } as never;
 
@@ -132,15 +123,13 @@ describe('getDashboardData', () => {
       supabase: staffClient,
     });
 
-    expect(getProjectWorkQueue).toHaveBeenCalledWith(staffClient, { limit: 5 });
-    expect(data.projectWorkQueue).toEqual([
-      { projectId: 'proj_1', projectName: 'Project One' },
-    ]);
-    expect(data.projectWorkQueueAvailable).toBe(true);
+    expect(getProjectOperationalStateCounts).toHaveBeenCalledWith(staffClient);
+    expect(data.projectStateCounts).toEqual(expect.objectContaining({ ACTIVE: 1, totalCount: 1 }));
+    expect(data.projectStateCountsAvailable).toBe(true);
   });
 
-  it('keeps the rest of the Dashboard usable when the V2 queue read fails', async () => {
-    getProjectWorkQueue.mockRejectedValueOnce(new Error('queue unavailable'));
+  it('keeps the rest of the Dashboard usable when the state-count read fails', async () => {
+    getProjectOperationalStateCounts.mockRejectedValueOnce(new Error('state counts unavailable'));
     const { getDashboardData } = await import('./getDashboardData');
 
     const data = await getDashboardData({
@@ -148,12 +137,12 @@ describe('getDashboardData', () => {
       supabase: { rpc: vi.fn() } as never,
     });
 
-    expect(data.projectWorkQueue).toEqual([]);
-    expect(data.projectWorkQueueAvailable).toBe(false);
+    expect(data.projectStateCounts).toBeUndefined();
+    expect(data.projectStateCountsAvailable).toBe(false);
     expect(data.pipelineCounts.NEW).toBe(2);
   });
 
-  it('does not expose Site Visits as Dashboard work', async () => {
+  it('maps the site-visit snapshot independently from Project Work', async () => {
     getDashboardSnapshotCached.mockResolvedValue({
       updated_at: '2026-05-30T00:00:00.000Z',
       kpis: {},
@@ -165,6 +154,6 @@ describe('getDashboardData', () => {
 
     const data = await getDashboardData({ queueMode: 'today' });
 
-    expect(data.projectWorkQueue).toEqual([]);
+    expect(data.siteVisits.unscheduledCount).toBe(12);
   });
 });

@@ -6,6 +6,7 @@ import DashboardClient from './DashboardClient';
 
 const retry = vi.fn();
 const useDashboardData = vi.fn();
+const useDashboardWorkQueue = vi.fn();
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: undefined }),
@@ -14,6 +15,7 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('./useDashboardData', () => ({
   useDashboardData: (...args: unknown[]) => useDashboardData(...args),
+  useDashboardWorkQueue: (...args: unknown[]) => useDashboardWorkQueue(...args),
 }));
 
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
@@ -59,6 +61,8 @@ describe('DashboardClient', () => {
     retry.mockReset();
     useDashboardData.mockReset();
     useDashboardData.mockReturnValue(result('fresh'));
+    useDashboardWorkQueue.mockReset();
+    useDashboardWorkQueue.mockReturnValue({ items: [], available: true, loading: false });
   });
 
   afterEach(() => {
@@ -93,6 +97,18 @@ describe('DashboardClient', () => {
     expect(rendered.container.querySelector('[data-portal-shell-region="dashboard-hero"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-portal-shell-region="dashboard-portfolio"]')).not.toBeNull();
     expect(rendered.container.textContent).not.toContain('Dashboard unavailable');
+    rendered.unmount();
+  });
+
+  it('renders core Dashboard values while only the Work Queue remains pending', () => {
+    useDashboardWorkQueue.mockReturnValue({ items: undefined, available: false, loading: true });
+    const rendered = renderIntoDocument(<DashboardClient queueMode="today" />);
+
+    expect(rendered.container.querySelector('[data-dashboard-core-ready="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-dashboard-background-ready="false"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-dashboard-work-queue-ready="false"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Updating project work...');
+    expect(rendered.container.textContent).not.toContain('Updating dashboard values...');
     rendered.unmount();
   });
 

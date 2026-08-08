@@ -3,7 +3,7 @@
 import PageMessagePanel from '@/components/page-state/PageMessagePanel';
 import type { QueueMode } from '@/lib/dashboard/types';
 import DashboardView from './DashboardView';
-import { useDashboardData } from './useDashboardData';
+import { useDashboardData, useDashboardWorkQueue } from './useDashboardData';
 
 export default function DashboardClient({
   queueMode,
@@ -11,6 +11,7 @@ export default function DashboardClient({
   queueMode: QueueMode;
 }) {
   const dashboard = useDashboardData(queueMode);
+  const workQueue = useDashboardWorkQueue();
 
   if (dashboard.state === 'unavailable') {
     return (
@@ -32,6 +33,7 @@ export default function DashboardClient({
       data={dashboard.data}
       state={dashboard.state}
       onRetry={() => void dashboard.retry()}
+      workQueue={workQueue}
     />
   );
 }

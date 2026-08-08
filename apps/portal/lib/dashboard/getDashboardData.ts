@@ -7,7 +7,6 @@ import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { listRecentProjectNoteActivity } from './activity';
 import { listVisibleDashboardTasks } from './tasks';
 import { listDashboardRecentEstimates } from './operationalLists';
-import { getProjectWorkQueue } from '@/lib/projects/workItems/repository';
 import { getProjectOperationalStateCounts } from '@/lib/projects/workItems/stateCounts';
 import { measureRouteStep, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
 
@@ -91,7 +90,6 @@ export async function getDashboardData(opts: {
     recentEstimates,
     recentActivity,
     personalTasks,
-    projectWorkQueue,
     projectStateCounts,
   ] = await Promise.all([
     timed('snapshot', () => getDashboardSnapshotCached(opts.queueMode) as Promise<SnapshotData>),
@@ -100,9 +98,6 @@ export async function getDashboardData(opts: {
     opts.userId
       ? timed('personal_tasks', () => listVisibleDashboardTasks(supabaseServiceRole, opts.userId as string))
       : Promise.resolve([]),
-    opts.supabase
-      ? timed('work_queue', () => getProjectWorkQueue(opts.supabase as SupabaseClient, { limit: 5 })).catch(() => null)
-      : Promise.resolve(null),
     opts.supabase
       ? timed('state_counts', () => getProjectOperationalStateCounts(opts.supabase as SupabaseClient)).catch(() => null)
       : Promise.resolve(null),
@@ -165,8 +160,6 @@ export async function getDashboardData(opts: {
       quotesToSend: asNumber(kpis.quotes_to_send),
       installsThisWeek: asNumber(kpis.installs_this_week),
     },
-    projectWorkQueue: projectWorkQueue?.entries ?? [],
-    projectWorkQueueAvailable: projectWorkQueue !== null,
     projectStateCounts: projectStateCounts ?? undefined,
     projectStateCountsAvailable: projectStateCounts !== null,
     schedule,

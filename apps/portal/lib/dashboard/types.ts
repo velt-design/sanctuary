@@ -1,4 +1,3 @@
-import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
 import type { ProjectOperationalStateCounts } from '@/lib/projects/workItems/stateCounts';
 
 export type QueueMode = 'today' | 'next7' | 'alldue';
@@ -82,8 +81,6 @@ export interface DashboardPersonalTask {
 export interface DashboardData {
   updatedAtIso: string;
   kpis: DashboardKpis;
-  projectWorkQueue?: ProjectWorkQueueEntry[];
-  projectWorkQueueAvailable?: boolean;
   projectStateCounts?: ProjectOperationalStateCounts;
   projectStateCountsAvailable?: boolean;
   schedule: ScheduleSnapshot;

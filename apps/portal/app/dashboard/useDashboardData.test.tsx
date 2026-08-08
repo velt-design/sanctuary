@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/repo/apiClient';
 import { qk } from '@/lib/queries/keys';
 import { renderIntoDocument } from '../../../../test/reactHarness';
-import { useDashboardData } from './useDashboardData';
+import { useDashboardData, useDashboardWorkQueue } from './useDashboardData';
 
 const useQuery = vi.fn();
 const retry = vi.fn();
@@ -24,6 +24,17 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 function Probe() {
   const result = useDashboardData('today');
   return <div data-state={result.state} data-known={result.data ? 'true' : 'false'} />;
+}
+
+function WorkQueueProbe() {
+  const result = useDashboardWorkQueue();
+  return (
+    <div
+      data-loading={result.loading ? 'true' : 'false'}
+      data-available={result.available ? 'true' : 'false'}
+      data-items={result.items?.length ?? 0}
+    />
+  );
 }
 
 describe('useDashboardData', () => {
@@ -91,6 +102,33 @@ describe('useDashboardData', () => {
 
     expect(rendered.container.firstElementChild?.getAttribute('data-state')).toBe('unavailable');
     expect(rendered.container.firstElementChild?.getAttribute('data-known')).toBe('false');
+    rendered.unmount();
+  });
+
+  it('loads the bounded Work Queue independently from core Dashboard data', () => {
+    useQuery.mockReturnValue({
+      data: { entries: [{ projectId: 'proj_1' }], generatedAt: '2026-08-08T00:00:00.000Z' },
+      error: null,
+      isFetching: false,
+    });
+    const rendered = renderIntoDocument(<WorkQueueProbe />);
+
+    expect(useQuery).toHaveBeenCalledWith(expect.objectContaining({
+      queryKey: qk.dashboard.workQueue(),
+      refetchOnMount: 'always',
+    }));
+    expect(rendered.container.firstElementChild?.getAttribute('data-loading')).toBe('false');
+    expect(rendered.container.firstElementChild?.getAttribute('data-available')).toBe('true');
+    expect(rendered.container.firstElementChild?.getAttribute('data-items')).toBe('1');
+    rendered.unmount();
+  });
+
+  it('keeps only the Work Queue inline loader pending while its request runs', () => {
+    useQuery.mockReturnValue({ data: undefined, error: null, isFetching: true });
+    const rendered = renderIntoDocument(<WorkQueueProbe />);
+
+    expect(rendered.container.firstElementChild?.getAttribute('data-loading')).toBe('true');
+    expect(rendered.container.firstElementChild?.getAttribute('data-available')).toBe('false');
     rendered.unmount();
   });
 });

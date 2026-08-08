@@ -27,6 +27,7 @@ export default function ProjectWorkQueueCard({
       aria-label="Work Queue"
       aria-busy={loading}
       data-dashboard-card-state={loading ? 'loading' : 'ready'}
+      data-dashboard-work-queue-ready={loading ? 'false' : 'true'}
       data-portal-shell-region="dashboard-work-queue"
     >
       <div className={`${styles.sectionHeader} ${dash.cardHeader} ${dash.queueHeader}`}>

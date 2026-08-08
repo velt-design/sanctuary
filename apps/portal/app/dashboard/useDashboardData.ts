@@ -3,9 +3,10 @@
 import { useQuery } from '@tanstack/react-query';
 import type { QueueMode } from '@/lib/dashboard/types';
 import { dashboardDataQueryOptions } from '@/lib/queries/dashboard';
+import { dashboardWorkQueueQueryOptions } from '@/lib/queries/dashboard';
 import { ApiError } from '@/lib/repo/apiClient';
 
-export type DashboardReadState =
+type DashboardReadState =
   | 'pending'
   | 'cached'
   | 'fresh'
@@ -38,5 +39,22 @@ export function useDashboardData(queueMode: QueueMode) {
     error: query.error,
     retry: query.refetch,
     backgroundReady: state === 'fresh',
+  };
+}
+
+export function useDashboardWorkQueue() {
+  const query = useQuery({
+    ...dashboardWorkQueueQueryOptions(),
+    refetchOnMount: 'always',
+    retry: (failureCount, error) => !isAccessEndingError(error) && failureCount < 2,
+  });
+  const unavailable = isAccessEndingError(query.error);
+  const knownData = unavailable ? undefined : query.data;
+  const loading = !knownData && !query.error;
+
+  return {
+    items: knownData?.entries,
+    available: Boolean(knownData) || (!query.error && !loading),
+    loading,
   };
 }
