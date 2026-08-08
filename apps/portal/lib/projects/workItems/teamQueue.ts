@@ -283,35 +283,40 @@ function domainCandidateFromProjectRow(row: Row, siteVisitCompleted: boolean): A
 async function loadActiveProjectDomainCandidates(
   supabase: SupabaseClient,
   projectUuids: readonly string[] | null = null,
+  validatedActiveProjectUuids: readonly string[] | null = null,
   diagnostics?: PortalServerLogContext | null,
 ): Promise<ActiveProjectDomainCandidate[]> {
-  let activeStateRows: Row[];
   let projectRows: Row[];
   let confirmationRows: Row[];
 
   if (projectUuids) {
-    const v2ProjectIds = [
-      ...await measureRouteStep(
+    let activeProjectIds: readonly string[];
+    if (validatedActiveProjectUuids) {
+      activeProjectIds = validatedActiveProjectUuids;
+    } else {
+      const v2ProjectIds = [
+        ...await measureRouteStep(
+          diagnostics,
+          'queue_inventory',
+          () => getProjectWorkModelV2Ids(supabase, projectUuids),
+        ),
+      ].sort();
+      if (!v2ProjectIds.length) return [];
+      const activeStateRows = await measureRouteStep(
         diagnostics,
-        'queue_inventory',
-        () => getProjectWorkModelV2Ids(supabase, projectUuids),
-      ),
-    ].sort();
-    if (!v2ProjectIds.length) return [];
-    activeStateRows = await measureRouteStep(
-      diagnostics,
-      'queue_states',
-      () => fetchRowsByIdChunks<Row>(v2ProjectIds, (projectIds) =>
-        supabase
-          .from('project_operational_states')
-          .select('project_id,state')
-          .in('project_id', projectIds)
-          .eq('state', 'ACTIVE'),
-      ),
-    );
-    const activeProjectIds = activeStateRows
-      .map((row) => text(row.project_id))
-      .filter((projectId): projectId is string => projectId !== null);
+        'queue_states',
+        () => fetchRowsByIdChunks<Row>(v2ProjectIds, (projectIds) =>
+          supabase
+            .from('project_operational_states')
+            .select('project_id,state')
+            .in('project_id', projectIds)
+            .eq('state', 'ACTIVE'),
+        ),
+      );
+      activeProjectIds = activeStateRows
+        .map((row) => text(row.project_id))
+        .filter((projectId): projectId is string => projectId !== null);
+    }
     if (!activeProjectIds.length) return [];
     [projectRows, confirmationRows] = await Promise.all([
       measureRouteStep(diagnostics, 'queue_projects', () => fetchRowsByIdChunks<Row>(activeProjectIds, (projectIds) =>
@@ -333,7 +338,7 @@ async function loadActiveProjectDomainCandidates(
       )),
     ]);
   } else {
-    [activeStateRows, projectRows, confirmationRows] = await Promise.all([
+    const [activeStateRows, allProjectRows, allConfirmationRows] = await Promise.all([
       measureRouteStep(diagnostics, 'queue_states', async () => {
         const result = await fetchAllPages<Row>((from, to) => supabase
           .from('project_operational_states')
@@ -383,11 +388,11 @@ async function loadActiveProjectDomainCandidates(
         .filter((projectId): projectId is string => projectId !== null),
     );
     if (!activeProjectIdSet.size) return [];
-    projectRows = projectRows.filter((row) => {
+    projectRows = allProjectRows.filter((row) => {
       const projectId = text(row.id);
       return projectId ? activeProjectIdSet.has(projectId) : false;
     });
-    confirmationRows = confirmationRows.filter((row) => {
+    confirmationRows = allConfirmationRows.filter((row) => {
       const projectId = text(row.project_id);
       return projectId ? activeProjectIdSet.has(projectId) : false;
     });
@@ -575,6 +580,7 @@ export async function getAuthoritativeProjectWorkQueue(
     now?: Date;
     limit?: number;
     projectIds?: readonly string[];
+    validatedActiveProjectIds?: readonly string[];
     diagnostics?: PortalServerLogContext | null;
   } = {},
 ): Promise<{ entries: ProjectWorkQueueEntry[]; generatedAt: string }> {
@@ -582,6 +588,18 @@ export async function getAuthoritativeProjectWorkQueue(
   const projectUuids = options.projectIds
     ? Array.from(new Set(options.projectIds.map((projectId) => uuidFromAppId(projectId, 'proj')))).sort()
     : null;
+  const validatedActiveProjectUuids = options.validatedActiveProjectIds
+    ? Array.from(new Set(options.validatedActiveProjectIds.map((projectId) => uuidFromAppId(projectId, 'proj')))).sort()
+    : null;
+  if (validatedActiveProjectUuids && !projectUuids) {
+    throw new Error('Validated active Project Work scope requires an explicit project scope');
+  }
+  if (validatedActiveProjectUuids && projectUuids) {
+    const projectUuidSet = new Set(projectUuids);
+    if (validatedActiveProjectUuids.some((projectUuid) => !projectUuidSet.has(projectUuid))) {
+      throw new Error('Validated active Project Work scope must be a subset of the requested project scope');
+    }
+  }
   if (projectUuids && projectUuids.length === 0) {
     await assertProjectWorkPortfolioComplete(supabase);
     return { entries: [], generatedAt: now.toISOString() };
@@ -592,7 +610,12 @@ export async function getAuthoritativeProjectWorkQueue(
   );
   const [durableRows, domainCandidates] = await Promise.all([
     measureRouteStep(options.diagnostics, 'queue_durable', () => loadDurableProjectWorkQueueRows(supabase, now, projectUuids)),
-    loadActiveProjectDomainCandidates(supabase, projectUuids, options.diagnostics),
+    loadActiveProjectDomainCandidates(
+      supabase,
+      projectUuids,
+      validatedActiveProjectUuids,
+      options.diagnostics,
+    ),
     measureRouteStep(options.diagnostics, 'queue_counts', () => assertProjectWorkPortfolioComplete(supabase)),
   ]);
   const durableEntries = rows(durableRows).map(mapDurableQueueRow);

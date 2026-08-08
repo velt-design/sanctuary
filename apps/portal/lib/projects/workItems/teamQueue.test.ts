@@ -358,6 +358,57 @@ describe('getAuthoritativeProjectWorkQueue', () => {
     expect(modelBoundaryMocks.listProjectWorkModelV2Ids).not.toHaveBeenCalled();
   });
 
+  it('uses a validated active page scope without repeating marker and state reads', async () => {
+    const projectOrder = vi.fn().mockResolvedValue({
+      data: [{
+        id: PROJECT_UUID,
+        name: 'Validated active fixture',
+        pipeline_stage: 'QUOTING',
+        ownerAssignment: [],
+        estimates: [],
+        quotes: [],
+      }],
+      error: null,
+    });
+    const projectIs = vi.fn(() => ({ order: projectOrder }));
+    const projectIn = vi.fn(() => ({ is: projectIs }));
+    const projectSelect = vi.fn(() => ({ in: projectIn }));
+    const confirmationEq = vi.fn().mockResolvedValue({ data: [], error: null });
+    const confirmationIn = vi.fn(() => ({ eq: confirmationEq }));
+    const confirmationSelect = vi.fn(() => ({ in: confirmationIn }));
+    const from = vi.fn((table: string) => {
+      if (table === 'projects') return { select: projectSelect };
+      if (table === 'project_confirmation_events') return { select: confirmationSelect };
+      throw new Error(`Unexpected table ${table}`);
+    });
+    const { rpc } = pagedRpc({ data: [] });
+    const supabase = { rpc, from } as any;
+
+    await expect(getAuthoritativeProjectWorkQueue(supabase, {
+      projectIds: [PROJECT_ID],
+      validatedActiveProjectIds: [PROJECT_ID],
+    })).resolves.toMatchObject({ entries: [] });
+
+    expect(modelBoundaryMocks.getProjectWorkModelV2Ids).not.toHaveBeenCalled();
+    expect(from).not.toHaveBeenCalledWith('project_operational_states');
+    expect(projectIn).toHaveBeenCalledWith('id', [PROJECT_UUID]);
+    expect(confirmationIn).toHaveBeenCalledWith('project_id', [PROJECT_UUID]);
+  });
+
+  it('rejects a validated active scope without a matching requested project scope', async () => {
+    const supabase = { rpc: vi.fn(), from: vi.fn() } as any;
+
+    await expect(getAuthoritativeProjectWorkQueue(supabase, {
+      validatedActiveProjectIds: [PROJECT_ID],
+    })).rejects.toThrow(/requires an explicit project scope/i);
+
+    await expect(getAuthoritativeProjectWorkQueue(supabase, {
+      projectIds: [PROJECT_ID],
+      validatedActiveProjectIds: ['proj_22222222-2222-4222-8222-222222222222'],
+    })).rejects.toThrow(/must be a subset/i);
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+
   it('maps the richer V3 RPC contract and effective assignee metadata', async () => {
     const { rpc, range } = pagedRpc({
       data: [

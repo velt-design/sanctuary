@@ -1,9 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   ProjectsIndexParams,
   ProjectsIndexResponse,
 } from '@/lib/projects/projectsIndexContract';
-import { projectsIndexResponseMatchesRequest } from './useProjectsIndexData';
+
+const { useQuery } = vi.hoisted(() => ({ useQuery: vi.fn() }));
+
+vi.mock('@tanstack/react-query', () => ({
+  keepPreviousData: Symbol('keepPreviousData'),
+  queryOptions: <T,>(options: T) => options,
+  useQuery,
+}));
+
+import { projectsIndexResponseMatchesRequest, useProjectsIndexData } from './useProjectsIndexData';
 
 const params: ProjectsIndexParams = {
   archive: 'active',
@@ -40,6 +49,25 @@ const response: ProjectsIndexResponse = {
 };
 
 describe('projectsIndexResponseMatchesRequest', () => {
+  beforeEach(() => {
+    useQuery.mockReset();
+    useQuery.mockReturnValue({
+      data: response,
+      error: null,
+      isFetching: false,
+      isPlaceholderData: false,
+      refetch: vi.fn(),
+    });
+  });
+
+  it('keeps a fresh navigation-intent result instead of refetching on mount', () => {
+    useProjectsIndexData(params);
+
+    expect(useQuery).toHaveBeenCalledWith(expect.not.objectContaining({
+      refetchOnMount: 'always',
+    }));
+  });
+
   it('accepts the exact server-confirmed response', () => {
     expect(projectsIndexResponseMatchesRequest(response, params)).toBe(true);
   });

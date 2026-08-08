@@ -42,6 +42,7 @@
       "name": "dashboard-to-projects",
       "feedbackMsMax": 100,
       "usefulContentMsMax": 500,
+      "liveDataReadyMsMax": 3500,
       "enforced": true,
       "aggregation": "p75"
     },

@@ -33,7 +33,6 @@ export function useProjectsIndexData(params: ProjectsIndexParams) {
   const query = useQuery({
     ...projectsIndexQueryOptions(params.archive, params),
     placeholderData: keepPreviousData,
-    refetchOnMount: 'always',
     retry: (failureCount, error) => !isAccessEndingError(error) && failureCount < 2,
   });
 

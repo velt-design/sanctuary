@@ -844,12 +844,14 @@ test("captures warm navigation and project tab metrics", async ({ page }) => {
   const projectsNavLink = page
     .getByRole("link", { name: "Projects", exact: true })
     .first();
-  await projectsNavLink.hover();
 
   await measureWarmJourney(
     page,
     "dashboard-to-projects",
-    () => projectsNavLink.dispatchEvent("click"),
+    async () => {
+      await projectsNavLink.hover();
+      await projectsNavLink.dispatchEvent("click");
+    },
     () =>
       expect(
         page

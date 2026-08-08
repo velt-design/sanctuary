@@ -106,9 +106,13 @@ export async function loadProjectsIndexData(
   const payload = readPayload(result.data);
   const rawRows = (Array.isArray(payload.rows) ? payload.rows : []) as Record<string, unknown>[];
   const mappedProjects = rawRows.map(mapProjectRecord);
+  const validatedActiveProjectIds = mappedProjects
+    .filter((project) => project.effectiveState === 'ACTIVE' && !project.isArchived)
+    .map((project) => project.id);
   const queue = mappedProjects.length
     ? await measureRouteStep(diagnostics, 'work_queue', () => getAuthoritativeProjectWorkQueue(client, {
         projectIds: mappedProjects.map((project) => project.id),
+        validatedActiveProjectIds,
         limit: mappedProjects.length,
         diagnostics,
       }))

@@ -86,7 +86,37 @@ describe('loadProjectsIndexData', () => {
       {
         limit: 1,
         projectIds: ['proj_11111111-1111-4111-8111-111111111111'],
+        validatedActiveProjectIds: [],
       },
+    );
+  });
+
+  it('reuses active rows proven by the V3 index boundary', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        rows: [{
+          id: '11111111-1111-4111-8111-111111111111',
+          name: 'Active Deck Build',
+          pipeline_stage: 'QUOTING',
+          operational_state: 'ACTIVE',
+          effective_state: 'ACTIVE',
+          archived_at: null,
+        }],
+        totalCount: 1,
+        page: 1,
+        pageSize: 50,
+      },
+      error: null,
+    });
+
+    await loadProjectsIndexData(params, { rpc } as any);
+
+    expect(getAuthoritativeProjectWorkQueue).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        projectIds: ['proj_11111111-1111-4111-8111-111111111111'],
+        validatedActiveProjectIds: ['proj_11111111-1111-4111-8111-111111111111'],
+      }),
     );
   });
 
