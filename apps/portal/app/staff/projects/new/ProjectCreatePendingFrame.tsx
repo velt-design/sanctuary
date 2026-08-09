@@ -42,7 +42,7 @@ export default function ProjectCreatePendingFrame() {
               id="projectContactPending"
               label="Primary contact *"
               fieldClassName={styles.fullWidth}
-              placeholder="Loading contactsâ€¦"
+              placeholder="Loading contacts..."
               disabled
             />
             <Input id="projectNamePending" label="Project name *" disabled />
