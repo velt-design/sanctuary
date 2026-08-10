@@ -21,7 +21,6 @@ type MaterialsExplainApiResponse = {
 
 export function useCalculatorMaterialsDebug({
   available,
-  isAdvancedUi,
   activeModuleIndex,
   readyToCalculate,
   activeModulePayload,
@@ -29,7 +28,6 @@ export function useCalculatorMaterialsDebug({
   onError,
 }: {
   available: boolean;
-  isAdvancedUi: boolean;
   activeModuleIndex: number;
   readyToCalculate: boolean;
   activeModulePayload: CostInputsV1 | null;
@@ -53,11 +51,6 @@ export function useCalculatorMaterialsDebug({
     setData(null);
     setError(null);
   }, [available]);
-
-  useEffect(() => {
-    if (isAdvancedUi) return;
-    setEnabled(false);
-  }, [isAdvancedUi]);
 
   useEffect(() => {
     if (!enabled || !available || !readyToCalculate || !activeModulePayload) {

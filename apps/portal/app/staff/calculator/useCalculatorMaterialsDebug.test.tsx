@@ -23,7 +23,6 @@ function Probe({ args }: { args: ControllerArgs }) {
 function makeArgs(overrides: Partial<ControllerArgs> = {}): ControllerArgs {
   return {
     available: true,
-    isAdvancedUi: true,
     activeModuleIndex: 0,
     readyToCalculate: true,
     activeModulePayload: { id: 'module-1' } as unknown as CostInputsV1,
@@ -69,7 +68,7 @@ afterEach(() => {
 });
 
 describe('useCalculatorMaterialsDebug', () => {
-  it('owns the debounced trace request, focus selection, and mode lifecycle', async () => {
+  it('owns the debounced trace request, focus selection, and availability lifecycle', async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => response });
     vi.stubGlobal('fetch', fetchMock);
@@ -94,7 +93,7 @@ describe('useCalculatorMaterialsDebug', () => {
     rendered.rerender(<Probe args={{ ...args, activeModuleIndex: 1 }} />);
     expect(controller().focusLineIndex).toBeNull();
 
-    rendered.rerender(<Probe args={{ ...args, isAdvancedUi: false }} />);
+    rendered.rerender(<Probe args={{ ...args, available: false }} />);
     expect(controller().enabled).toBe(false);
     expect(controller().materialsExplain).toBeNull();
     rendered.unmount();

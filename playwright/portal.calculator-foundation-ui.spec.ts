@@ -570,21 +570,20 @@ test('Calculator configuration keeps dropdowns in the intended responsive column
   }
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.getByRole('button', { name: 'Advanced', exact: true }).click();
+  await page.locator('[data-calculator-configuration-section="flashings"] > summary').click();
+  await page.locator('[data-calculator-configuration-section="overrides"] > summary').click();
   await expectSpecialistSectionFullWidth(page, 'flashings');
   await expectConfigurationSelectColumns(page, 2, 'overrides');
-  await expectConfigurationSelectColumns(page, 2, 'house-footprint');
+  await expect(page.locator('[data-calculator-configuration-section="house-footprint"]')).toHaveCount(0);
   await expectConfigurationWorkspaceContained(page);
   await expectNoDocumentOverflow(page);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expectConfigurationSelectColumns(page, 1, 'overrides');
-  await expectConfigurationSelectColumns(page, 1, 'house-footprint');
   await expectSpecialistSectionFullWidth(page, 'flashings');
   await expectConfigurationWorkspaceContained(page);
   await expectNoDocumentOverflow(page);
 
-  await page.getByRole('button', { name: 'Basic', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await expectConfigurationSelectColumns(page, 1);
   await expect(
@@ -620,7 +619,6 @@ test('Calculator material and labour disclosures remain complete and scan-friend
       narrow: viewport.width === 390,
     });
 
-    await page.getByRole('button', { name: 'Advanced', exact: true }).click();
     await exerciseBreakdownDisclosures({
       page,
       inspector,
@@ -664,8 +662,6 @@ test('Calculator command order, focus, and causal readiness remain clear when st
     const commandBar = page.locator('[data-calculator-command-bar]');
     const readiness = commandBar.locator('[data-calculator-command-readiness]');
     const identityAction = commandBar.locator('[data-calculator-project-picker="enabled"]');
-    const basic = commandBar.getByRole('button', { name: 'Basic', exact: true });
-    const advanced = commandBar.getByRole('button', { name: 'Advanced', exact: true });
     const save = commandBar.locator('[data-calculator-command-save]');
     const inspector = page.getByRole('region', { name: 'Calculator result inspector' });
     const pricingTab = inspector.getByRole('tab', { name: 'Pricing', exact: true });
@@ -674,7 +670,6 @@ test('Calculator command order, focus, and causal readiness remain clear when st
       const selectors = [
         '[data-calculator-command-identity]',
         '[data-calculator-command-readiness]',
-        '[data-calculator-command-mode]',
         '[data-calculator-command-save]',
       ];
       const nodes = selectors.map((selector) => element.querySelector<HTMLElement>(selector));
@@ -725,14 +720,13 @@ test('Calculator command order, focus, and causal readiness remain clear when st
 
     await expect(readiness).toHaveText('Ready to save');
     expect(await computedContrastRatio(readiness)).toBeGreaterThanOrEqual(4.5);
-    expect(await computedContrastRatio(basic)).toBeGreaterThanOrEqual(4.5);
     expect(await computedContrastRatio(pricingTab)).toBeGreaterThanOrEqual(4.5);
 
     await page.keyboard.press('Tab');
     await identityAction.focus();
-    for (const [index, control] of [identityAction, basic, advanced, save].entries()) {
+    for (const [index, control] of [identityAction, save].entries()) {
       await expectFocusedControlUsable(control);
-      if (index < 3) await page.keyboard.press('Tab');
+      if (index < 1) await page.keyboard.press('Tab');
     }
 
     const issuesTab = inspector.getByRole('tab', { name: 'Issues', exact: true });

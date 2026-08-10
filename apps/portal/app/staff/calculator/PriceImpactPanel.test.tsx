@@ -28,7 +28,7 @@ describe('PriceImpactPanel', () => {
   it('keeps Reset baseline as a component-owned header action', () => {
     const onResetBaseline = vi.fn();
     const { container, unmount } = renderIntoDocument(
-      <PriceImpactPanel diff={null} isAdvancedUi={false} onResetBaseline={onResetBaseline} />,
+      <PriceImpactPanel diff={null} onResetBaseline={onResetBaseline} />,
     );
 
     const button = container.querySelector('button');
@@ -40,27 +40,23 @@ describe('PriceImpactPanel', () => {
     unmount();
   });
 
-  it('shows compact deltas and reserves driver detail for Advanced mode', () => {
-    const basic = renderIntoDocument(
-      <PriceImpactPanel diff={diff} isAdvancedUi={false} onResetBaseline={vi.fn()} />,
+  it('shows compact deltas and keeps driver detail in a closed disclosure', () => {
+    const rendered = renderIntoDocument(
+      <PriceImpactPanel diff={diff} onResetBaseline={vi.fn()} />,
     );
-    expect(basic.container.textContent).toContain('True cost change (inc GST)+$115.00');
-    expect(basic.container.textContent).toContain('Ex GST +$100.00');
-    expect(basic.container.textContent).toContain('Materials+$40.00');
-    expect(basic.container.textContent).toContain('Install+$30.00');
-    expect(basic.container.textContent).toContain('Overhead+$30.00');
-    expect(basic.container.textContent).toContain('Crew hours+2 h');
-    expect(basic.container.textContent).toContain('Install days+1 d');
-    expect(basic.container.textContent).not.toContain('Top materials changes');
-    basic.unmount();
-
-    const advanced = renderIntoDocument(
-      <PriceImpactPanel diff={diff} isAdvancedUi onResetBaseline={vi.fn()} />,
-    );
-    expect(advanced.container.textContent).toContain('Top materials changes');
-    expect(advanced.container.textContent).toContain('Roof sheets+$40.00');
-    expect(advanced.container.textContent).toContain('Install roof+30 min');
-    advanced.unmount();
+    expect(rendered.container.textContent).toContain('True cost change (inc GST)+$115.00');
+    expect(rendered.container.textContent).toContain('Ex GST +$100.00');
+    expect(rendered.container.textContent).toContain('Materials+$40.00');
+    expect(rendered.container.textContent).toContain('Install+$30.00');
+    expect(rendered.container.textContent).toContain('Overhead+$30.00');
+    expect(rendered.container.textContent).toContain('Crew hours+2 h');
+    expect(rendered.container.textContent).toContain('Install days+1 d');
+    const details = rendered.container.querySelector<HTMLDetailsElement>('details');
+    expect(details?.open).toBe(false);
+    expect(details?.textContent).toContain('Top materials changes');
+    expect(details?.textContent).toContain('Roof sheets+$40.00');
+    expect(details?.textContent).toContain('Install roof+30 min');
+    rendered.unmount();
   });
 
   it('uses a quiet empty-change state while retaining operational metrics', () => {
@@ -78,7 +74,7 @@ describe('PriceImpactPanel', () => {
       installDrivers: [],
     };
     const { container, unmount } = renderIntoDocument(
-      <PriceImpactPanel diff={unchanged} isAdvancedUi={false} onResetBaseline={vi.fn()} />,
+      <PriceImpactPanel diff={unchanged} onResetBaseline={vi.fn()} />,
     );
 
     expect(container.textContent).toContain('No cost change from baseline.');

@@ -31,7 +31,7 @@ type CalculatorConfigurationSectionDefinition = {
   density?: CalculatorConfigurationSectionDensity;
   surface?: CalculatorConfigurationSectionSurface;
   fieldLabelAsTitle?: boolean;
-  advancedOnly?: boolean;
+  collapsible?: boolean;
   fieldIds: readonly string[];
 };
 
@@ -107,13 +107,13 @@ export const CALCULATOR_CONFIGURATION_SECTIONS = [
   {
     id: 'flashings',
     title: 'Flashings',
-    advancedOnly: true,
+    collapsible: true,
     fieldIds: ['flashings'],
   },
   {
     id: 'overrides',
-    title: 'Overrides',
-    advancedOnly: true,
+    title: 'Structural overrides',
+    collapsible: true,
     fieldIds: [
       'ledgerProfileOverride',
       'rafterProfileOverride',
@@ -146,23 +146,6 @@ export const CALCULATOR_CONFIGURATION_SECTIONS = [
     title: 'Allowances',
     fieldIds: ['travelExGst', 'extrasAllowanceExGst', 'quoteDiscountPct'],
   },
-  {
-    id: 'house-footprint',
-    title: 'House Footprint',
-    advancedOnly: true,
-    fieldIds: [
-      'attachmentSide',
-      'drawingRotationQuarterTurns',
-      'houseFootprintPreset',
-      'houseFootprintBandDepthM',
-      'houseFootprintReturnRunM',
-      'houseFootprintRecessWidthM',
-      'houseFootprintRecessDepthM',
-      'houseFootprintLeftLegRunM',
-      'houseFootprintRightLegRunM',
-      'houseFootprintSideRunM',
-    ],
-  },
 ] as const satisfies readonly CalculatorConfigurationSectionDefinition[];
 
 const WIDE_FIELD_IDS = new Set([
@@ -180,24 +163,12 @@ export function calculatorConfigurationFieldLayout(fieldId: string): CalculatorC
   return 'standard';
 }
 
-export function calculatorConfigurationSectionRequiresAdvancedUi(
-  sectionId: string | null,
-): boolean {
-  if (!sectionId) return false;
-  const section = CALCULATOR_CONFIGURATION_SECTIONS.find(({ id }) => id === sectionId);
-  return Boolean(section && 'advancedOnly' in section && section.advancedOnly);
-}
-
 export function buildCalculatorConfigurationSections(
   fields: readonly CalculatorConfigurationField[],
-  isAdvancedUi: boolean,
 ): CalculatorConfigurationSection[] {
   const fieldsById = new Map(fields.map((field) => [field.id, field]));
 
-  return CALCULATOR_CONFIGURATION_SECTIONS.filter(
-    (section) => !('advancedOnly' in section) || !section.advancedOnly || isAdvancedUi,
-  )
-    .map((section) => ({
+  return CALCULATOR_CONFIGURATION_SECTIONS.map((section) => ({
       ...section,
       fields: section.fieldIds.flatMap((fieldId) => {
         const field = fieldsById.get(fieldId);

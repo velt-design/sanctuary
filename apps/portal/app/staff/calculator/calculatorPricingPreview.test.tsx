@@ -120,9 +120,10 @@ describe('calculator pricing preview', () => {
 
     expect(preview.rows.map((row) => [row.kind, row.label, row.status, row.priceIncGstCents])).toEqual([
       ['pergola', 'Front patio', 'priced', 12_938],
-      ['pergola_component', 'Base pergola without infills', 'included', 10_350],
+      ['module', 'Module 1', 'included', 12_938],
       ['infill', 'Front infill', 'included', 2_588],
       ['pergola', 'Pool cover', 'priced', 25_875],
+      ['module', 'Module 1', 'included', 25_875],
       ['shared', 'Shared site costs', 'priced', 5_175],
       ['blind', 'West blind', 'priced', 178_250],
       ['lighting', 'Lighting', 'priced', 30_000],
@@ -175,7 +176,7 @@ describe('calculator pricing preview', () => {
       priceIncGstCents: 20_125,
     });
     expect(preview.rows.slice(1, 3).map((row) => [row.kind, row.priceIncGstCents])).toEqual([
-      ['pergola_component', 17_250],
+      ['module', 20_125],
       ['infill', 2_875],
     ]);
     expect(preview.rows.at(-1)).toMatchObject({ kind: 'blind', status: 'unpriced', priceIncGstCents: null });
@@ -197,7 +198,7 @@ describe('calculator pricing preview', () => {
       status: 'included',
       priceIncGstCents: null,
     });
-    expect(preview.rows.some((row) => row.kind === 'pergola_component')).toBe(false);
+    expect(preview.rows.some((row) => row.kind === 'module')).toBe(true);
   });
 
   it('holds the last current preview while costing is stale', () => {

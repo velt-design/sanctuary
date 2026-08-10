@@ -8,7 +8,6 @@ import styles from './CalculatorConfigurationForm.module.css';
 
 type CalculatorConfigurationFormProps = {
   fields: readonly CalculatorConfigurationField[];
-  isAdvancedUi: boolean;
   isEmbedded?: boolean;
 };
 
@@ -20,10 +19,9 @@ const layoutClassNames: Record<CalculatorConfigurationFieldLayout, string> = {
 
 export default function CalculatorConfigurationForm({
   fields,
-  isAdvancedUi,
   isEmbedded = false,
 }: CalculatorConfigurationFormProps) {
-  const sections = buildCalculatorConfigurationSections(fields, isAdvancedUi);
+  const sections = buildCalculatorConfigurationSections(fields);
   const surfaces = sections.reduce<
     Array<
       | { type: 'sheet'; key: string; sections: typeof sections }
@@ -44,16 +42,8 @@ export default function CalculatorConfigurationForm({
     return groups;
   }, []);
 
-  const renderSection = (section: (typeof sections)[number], surface: 'quiet' | 'card') => (
-    <section
-      key={section.id}
-      className={`${styles.section} ${surface === 'card' ? styles.sectionCard : styles.sectionQuiet}${section.density === 'compact' ? ` ${styles.sectionCompact}` : ''}`}
-      aria-label={section.title}
-      data-calculator-configuration-section={section.id}
-      data-section-density={section.density ?? 'default'}
-      data-section-surface={surface}
-    >
-      {section.fieldLabelAsTitle ? null : <h2 className={styles.sectionTitle}>{section.title}</h2>}
+  const renderSection = (section: (typeof sections)[number], surface: 'quiet' | 'card') => {
+    const fieldGrid = (
       <div className={styles.fieldGrid} data-calculator-field-grid>
         {section.fields.map((field) => (
           <div
@@ -84,8 +74,32 @@ export default function CalculatorConfigurationForm({
           </div>
         ))}
       </div>
-    </section>
-  );
+    );
+    const className = `${styles.section} ${surface === 'card' ? styles.sectionCard : styles.sectionQuiet}${section.density === 'compact' ? ` ${styles.sectionCompact}` : ''}`;
+    const sharedProps = {
+      className,
+      'aria-label': section.title,
+      'data-calculator-configuration-section': section.id,
+      'data-section-density': section.density ?? 'default',
+      'data-section-surface': surface,
+    };
+
+    if (section.collapsible) {
+      return (
+        <details key={section.id} {...sharedProps} className={`${className} ${styles.sectionDisclosure}`}>
+          <summary className={styles.sectionSummary}>{section.title}</summary>
+          <div className={styles.sectionDisclosureBody}>{fieldGrid}</div>
+        </details>
+      );
+    }
+
+    return (
+      <section key={section.id} {...sharedProps}>
+        {section.fieldLabelAsTitle ? null : <h2 className={styles.sectionTitle}>{section.title}</h2>}
+        {fieldGrid}
+      </section>
+    );
+  };
 
   return (
     <div

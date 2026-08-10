@@ -1,15 +1,4 @@
-import type {
-  CalculatorHouseFootprintParams,
-  CalculatorInputs,
-  CalculatorModuleInputs,
-} from '@/lib/types/calculator';
-import {
-  normalizeAttachmentSide,
-  normalizeDrawingRotationQuarterTurns,
-  normalizeHouseFootprintParams,
-  normalizeHouseFootprintPreset,
-  supportsHouseFootprints,
-} from '@/lib/types/calculator';
+import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { CalculatorConfigurationField as FieldSchemaItem } from './calculatorConfigurationSections';
 import { DP_ELBOW_OPTIONS, DP_JOIN_OPTIONS } from './calculatorConfigurationFieldOptions';
 import type { CalculatorResolvedDefaultTexts } from './calculatorResolvedDefaults';
@@ -24,14 +13,8 @@ type CalculatorJobFieldSetter = <K extends Exclude<keyof CalculatorInputs, 'modu
   next: CalculatorInputs[K],
 ) => void;
 
-type CalculatorHouseFootprintParamSetter = (
-  key: keyof CalculatorHouseFootprintParams,
-  value: string,
-) => void;
-
 export type CalculatorSiteFieldBuilderInput = {
   activeModule: CalculatorModuleInputs;
-  activeDrawingRotationQuarterTurns: number;
   values: CalculatorInputs;
   errors: Partial<Record<keyof CalculatorModuleInputs, string>>;
   resolvedDefaults: CalculatorResolvedDefaultTexts;
@@ -41,12 +24,10 @@ export type CalculatorSiteFieldBuilderInput = {
   hasOurGutterUi: boolean;
   setModuleField: CalculatorModuleFieldSetter;
   setJobField: CalculatorJobFieldSetter;
-  setHouseFootprintParam: CalculatorHouseFootprintParamSetter;
 };
 
 export function buildCalculatorSiteFields({
   activeModule,
-  activeDrawingRotationQuarterTurns,
   values,
   errors,
   resolvedDefaults,
@@ -56,11 +37,7 @@ export function buildCalculatorSiteFields({
   hasOurGutterUi,
   setModuleField,
   setJobField,
-  setHouseFootprintParam,
 }: CalculatorSiteFieldBuilderInput): FieldSchemaItem[] {
-  const activeAttachmentSide = normalizeAttachmentSide(activeModule.attachmentSide);
-  const activeHouseFootprintPreset = normalizeHouseFootprintPreset(activeModule.houseFootprintPreset);
-  const activeHouseFootprintParams = normalizeHouseFootprintParams(activeModule.houseFootprintParams);
   return [
     {
       id: 'pricingClassification',
@@ -102,150 +79,6 @@ export function buildCalculatorSiteFields({
         { label: 'None', value: 'none' },
       ],
     },
-    ...(activeModule.houseConnectionType !== 'none' && supportsHouseFootprints(activeModule.pergolaStyle)
-        ? [
-          {
-            id: 'attachmentSide',
-            label: 'Attachment side',
-            type: 'select',
-            value: activeAttachmentSide,
-            onChange: (v) => setModuleField('attachmentSide', v as CalculatorModuleInputs['attachmentSide']),
-            options: [
-              { label: 'Rear', value: 'rear' },
-              { label: 'Front', value: 'front' },
-              { label: 'Left', value: 'left' },
-              { label: 'Right', value: 'right' },
-            ],
-            helperText: 'Select which pergola edge connects to the house in drawings and connection counts.',
-          } satisfies FieldSchemaItem,
-          {
-            id: 'drawingRotationQuarterTurns',
-            label: 'Drawing rotation',
-            type: 'select',
-            value: String(activeDrawingRotationQuarterTurns),
-            onChange: (v) =>
-              setModuleField(
-                'drawingRotationQuarterTurns',
-                normalizeDrawingRotationQuarterTurns(v) as CalculatorModuleInputs['drawingRotationQuarterTurns'],
-              ),
-            options: [
-              { label: '0 deg', value: '0' },
-              { label: '90 deg', value: '1' },
-              { label: '180 deg', value: '2' },
-              { label: '270 deg', value: '3' },
-            ],
-            helperText: 'Rotates the drawing preview in 90 degree increments without changing pricing drivers.',
-          } satisfies FieldSchemaItem,
-          {
-            id: 'houseFootprintPreset',
-            label: 'House footprint',
-            type: 'select',
-            value: activeHouseFootprintPreset,
-            onChange: (v) => setModuleField('houseFootprintPreset', normalizeHouseFootprintPreset(v) as CalculatorModuleInputs['houseFootprintPreset']),
-            options: [
-              { label: 'Straight', value: 'straight' },
-              { label: 'L left', value: 'l_left' },
-              { label: 'L right', value: 'l_right' },
-              { label: 'Recess left', value: 'recess_left' },
-              { label: 'Recess right', value: 'recess_right' },
-              { label: 'U shape', value: 'u_shape' },
-              { label: 'Wrap left', value: 'wrap_left' },
-              { label: 'Wrap right', value: 'wrap_right' },
-            ],
-            helperText: 'Preset house outline used for the plan preview and drawing sheet.',
-          } satisfies FieldSchemaItem,
-          {
-            id: 'houseFootprintBandDepthM',
-            label: 'Footprint band depth (m)',
-            type: 'number',
-            value: activeHouseFootprintParams.bandDepthM,
-            onChange: (v) => setHouseFootprintParam('bandDepthM', String(v)),
-            helperText: 'Depth of the main hatched house band.',
-          } satisfies FieldSchemaItem,
-          {
-            id: 'houseFootprintWidthM',
-            label: 'House width (m)',
-            type: 'number',
-            value: activeHouseFootprintParams.widthM,
-            onChange: (v) => setHouseFootprintParam('widthM', String(v)),
-            helperText: 'Blank matches the pergola length.',
-          } satisfies FieldSchemaItem,
-          {
-            id: 'houseFootprintOffsetXM',
-            label: 'House offset X (m)',
-            type: 'number',
-            value: activeHouseFootprintParams.offsetXM,
-            onChange: (v) => setHouseFootprintParam('offsetXM', String(v)),
-            helperText: 'Negative values extend left of the pergola.',
-          } satisfies FieldSchemaItem,
-          {
-            id: 'houseFootprintSetbackM',
-            label: 'Facade setback (m)',
-            type: 'number',
-            value: activeHouseFootprintParams.setbackM,
-            onChange: (v) => setHouseFootprintParam('setbackM', String(v)),
-            helperText: 'Visual house context only; pergola attachment stays fixed.',
-          } satisfies FieldSchemaItem,
-          ...((activeHouseFootprintPreset === 'l_left' || activeHouseFootprintPreset === 'l_right')
-            ? [
-                {
-                  id: 'houseFootprintReturnRunM',
-                  label: 'Return run (m)',
-                  type: 'number',
-                  value: activeHouseFootprintParams.returnRunM,
-                  onChange: (v) => setHouseFootprintParam('returnRunM', String(v)),
-                } satisfies FieldSchemaItem,
-              ]
-            : []),
-          ...((activeHouseFootprintPreset === 'recess_left' || activeHouseFootprintPreset === 'recess_right')
-            ? [
-                {
-                  id: 'houseFootprintRecessWidthM',
-                  label: 'Recess width (m)',
-                  type: 'number',
-                  value: activeHouseFootprintParams.recessWidthM,
-                  onChange: (v) => setHouseFootprintParam('recessWidthM', String(v)),
-                } satisfies FieldSchemaItem,
-                {
-                  id: 'houseFootprintRecessDepthM',
-                  label: 'Recess depth (m)',
-                  type: 'number',
-                  value: activeHouseFootprintParams.recessDepthM,
-                  onChange: (v) => setHouseFootprintParam('recessDepthM', String(v)),
-                } satisfies FieldSchemaItem,
-              ]
-            : []),
-          ...(activeHouseFootprintPreset === 'u_shape'
-            ? [
-                {
-                  id: 'houseFootprintLeftLegRunM',
-                  label: 'Left leg run (m)',
-                  type: 'number',
-                  value: activeHouseFootprintParams.leftLegRunM,
-                  onChange: (v) => setHouseFootprintParam('leftLegRunM', String(v)),
-                } satisfies FieldSchemaItem,
-                {
-                  id: 'houseFootprintRightLegRunM',
-                  label: 'Right leg run (m)',
-                  type: 'number',
-                  value: activeHouseFootprintParams.rightLegRunM,
-                  onChange: (v) => setHouseFootprintParam('rightLegRunM', String(v)),
-                } satisfies FieldSchemaItem,
-              ]
-            : []),
-          ...((activeHouseFootprintPreset === 'wrap_left' || activeHouseFootprintPreset === 'wrap_right')
-            ? [
-                {
-                  id: 'houseFootprintSideRunM',
-                  label: 'Side run (m)',
-                  type: 'number',
-                  value: activeHouseFootprintParams.sideRunM,
-                  onChange: (v) => setHouseFootprintParam('sideRunM', String(v)),
-                } satisfies FieldSchemaItem,
-              ]
-            : []),
-        ]
-      : []),
     {
       id: 'postConnectionType',
       label: 'Post connection',

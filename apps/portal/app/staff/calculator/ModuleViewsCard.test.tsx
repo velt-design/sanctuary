@@ -1814,7 +1814,7 @@ describe('ModuleViewsCard', () => {
     expect(houseFocusBox.height).toBeGreaterThan(pergolaFocusBox.height);
   });
 
-  it('shows the edit-footprint trigger for eligible calculator plan views', () => {
+  it('keeps legacy house movement controls out of calculator plan views', () => {
     const drawing = makeDrawingModule();
     const markup = renderToStaticMarkup(
       <ModuleViewsCard
@@ -1824,24 +1824,23 @@ describe('ModuleViewsCard', () => {
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
-        footprintEditor={makeFootprintEditor()}
       />,
     );
 
-    expect(markup).toContain('Edit footprint');
+    expect(markup).not.toContain('Edit footprint');
     expect(markup).not.toContain('House footprint editor');
+    expect(markup).not.toContain('Rotate -90');
   });
 
   it('renders the canvas toolbar and handle overlays while editing the footprint', () => {
     const drawing = makeDrawingModule({ houseFootprintPreset: 'recess_left' });
     const markup = renderToStaticMarkup(
-      <ModuleViewsCard
-        moduleLabel="M1"
+      <ModuleDrawingRenderer
         view="plan"
-        onViewChange={() => undefined}
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
+        presentation="card"
         footprintEditor={makeFootprintEditor({ isEditing: true, activeHandleId: 'bandDepth' })}
       />,
     );
@@ -1876,13 +1875,12 @@ describe('ModuleViewsCard', () => {
     };
 
     const markup = renderToStaticMarkup(
-      <ModuleViewsCard
-        moduleLabel="M1"
+      <ModuleDrawingRenderer
         view="plan"
-        onViewChange={() => undefined}
         status="ready"
         planModel={planModel}
         sectionModel={drawing.sectionModel}
+        presentation="card"
         footprintEditor={makeFootprintEditor({ isEditing: true })}
       />,
     );
@@ -1895,13 +1893,12 @@ describe('ModuleViewsCard', () => {
   it('renders U-shape handle affordances on both parallel legs', () => {
     const drawing = makeDrawingModule({ houseFootprintPreset: 'u_shape' });
     const markup = renderToStaticMarkup(
-      <ModuleViewsCard
-        moduleLabel="M1"
+      <ModuleDrawingRenderer
         view="plan"
-        onViewChange={() => undefined}
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
+        presentation="card"
         footprintEditor={makeFootprintEditor({ isEditing: true })}
       />,
     );
@@ -2494,7 +2491,6 @@ describe('ModuleViewsCard', () => {
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
-        footprintEditor={makeFootprintEditor()}
       />,
     );
 
@@ -2502,7 +2498,7 @@ describe('ModuleViewsCard', () => {
     expect(markup).not.toContain('House footprint editor');
   });
 
-  it('switches the header control to Done while editing', () => {
+  it('does not expose an editing state in the calculator module header', () => {
     const drawing = makeDrawingModule();
     const markup = renderToStaticMarkup(
       <ModuleViewsCard
@@ -2512,11 +2508,10 @@ describe('ModuleViewsCard', () => {
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
-        footprintEditor={makeFootprintEditor({ isEditing: true })}
       />,
     );
 
-    expect(markup).toContain('>Done<');
+    expect(markup).not.toContain('>Done<');
     expect(markup).not.toContain('Editing footprint');
   });
 

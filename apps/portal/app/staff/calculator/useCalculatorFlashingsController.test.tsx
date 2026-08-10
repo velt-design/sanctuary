@@ -41,6 +41,14 @@ afterEach(() => {
 });
 
 describe('useCalculatorFlashingsController', () => {
+  it('uses a hydration-stable identifier for the default primary row', () => {
+    const first = makeDefaultCalculatorInputs();
+    const second = makeDefaultCalculatorInputs();
+
+    expect(first.modules[0].flashings?.rows[0].id).toBe('primary');
+    expect(second.modules[0].flashings?.rows[0].id).toBe('primary');
+  });
+
   it('owns extra-row add, update, and guarded removal mutations', () => {
     const rendered = renderIntoDocument(<Probe initialValues={makeDefaultCalculatorInputs()} />);
     const primaryId = controller().primaryRow.id;

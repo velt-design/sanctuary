@@ -207,7 +207,7 @@ Each valid pergola output also exposes `infill_cost_breakdown_v2`. The engine pe
 
 The `v1.8` labour calibration keeps the `$75/h ex-GST` single-installer crew basis. Infill actions now explicitly include measurement, stock handling, templating where needed, cutting, deburring, acrylic edge finishing, drilling, support preparation, complete sealing, protective-film removal, and cleanup. Active default minutes are: setup/set-out `30 min/instance`; cut/prepare/install joiners `6 min/m`; drilling/fixing `0.75 min/fixing`; cut/prepare/install sheet panels `25 min/m2`; strip panels `9 min/panel`; cut/prepare/install added supports `28 min/support`; final align/seal/clean `15 min/instance`. Access and height multipliers continue to apply.
 
-Blocked or untraceable takeoff returns a blocked attribution and must not be presented as a separately priced customer breakdown. The Calculator may allocate the already-finalized pergola sell cents across a ready structure/infill attribution for explanation, but it must not treat those included contributions as additive quote items.
+Blocked or untraceable takeoff returns a blocked attribution and must not be presented as a separately priced customer breakdown. The Calculator allocates already-finalized pergola sell cents across physical modules in proportion to each package-produced module true cost, using the shared deterministic cent allocator so the module children reconcile exactly to the pergola parent. Ready infill contributions sit beneath their owning module and remain contained within its allocation. Neither module allocations nor infill contributions are additive quote items.
 
 ## Geometry Source Of Truth
 

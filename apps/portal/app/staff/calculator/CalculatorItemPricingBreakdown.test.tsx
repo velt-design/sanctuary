@@ -14,18 +14,18 @@ const preview: CalculatorPricingPreview = {
       status: 'priced',
     },
     {
-      id: 'pergola-component:p1',
-      kind: 'pergola_component',
+      id: 'module:p1:1',
+      kind: 'module',
       parentId: 'pergola:p1',
-      label: 'Base pergola without infills',
-      detail: 'Starting price for Front patio',
+      label: 'Module 1',
+      detail: 'Front patio · 6m × 3m · Allocated share of pergola price',
       priceIncGstCents: 10_000_00,
       status: 'included',
     },
     {
       id: 'infill:p1:0:i1',
       kind: 'infill',
-      parentId: 'pergola:p1',
+      parentId: 'module:p1:1',
       label: 'Front infill',
       detail: 'Front patio · Module 1 · Front',
       priceIncGstCents: 2_345_67,
@@ -68,8 +68,8 @@ describe('CalculatorItemPricingBreakdown', () => {
 
     expect(container.textContent).toContain('Price by item');
     expect(container.textContent).toContain('Front patio2 modulesPergola$12,345.67');
-    expect(container.textContent).toContain('Base pergola without infillsStarting price for Front patioBase$10,000.00base price');
-    expect(container.textContent).toContain('Front infillFront patio · Module 1 · FrontInfill$2,345.67adds to pergola price');
+    expect(container.textContent).toContain('Module 1Front patio · 6m × 3m · Allocated share of pergola priceModule$10,000.00allocated module price');
+    expect(container.textContent).toContain('Front infillFront patio · Module 1 · FrontInfill$2,345.67included in module price');
     expect(container.textContent).toContain('West blindOmni · 2m × 2mBlind$1,782.50');
     expect(container.textContent).toContain('Unfinished blindZiptrak · Dimensions requiredBlindNot priced');
     expect(container.textContent).toContain('Priced items total$14,138.17');

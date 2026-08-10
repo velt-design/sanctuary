@@ -68,7 +68,9 @@ export function isPrimaryFlashingLengthAutoLinked(lengthInput: string, module: C
 
 export function makeDefaultPrimaryFlashingRow(module: CalculatorModuleInputs): CalculatorFlashingsState['rows'][number] {
   return {
-    id: makeFlashingId(),
+    // The primary row is unique within a module. Keep its initial identifier
+    // deterministic so server rendering and hydration produce identical markup.
+    id: 'primary',
     kind: 'primary',
     band: defaultPrimaryFlashingBandForModule(module),
     lengthM: formatFlashingLengthInput(roofLengthForPrimaryFlashing(module)),
@@ -89,12 +91,12 @@ export function normalizeFlashingsStateForUi(value: unknown, module: CalculatorM
   if (rowsRaw) {
     const normalizedRows = rowsRaw
       .filter((item: unknown) => item && typeof item === 'object')
-      .map((item: unknown) => {
+      .map((item: unknown, index: number) => {
         const record = item as Record<string, unknown>;
         const idRaw = typeof record.id === 'string' ? record.id.trim() : '';
         const kind = record.kind === 'primary' ? 'primary' : 'extra';
         return {
-          id: idRaw || makeFlashingId(),
+          id: idRaw || (kind === 'primary' ? 'primary' : `extra-${index + 1}`),
           kind,
           band: normalizeFlashingBand(record.band),
           lengthM: String(record.lengthM ?? ''),
@@ -133,11 +135,11 @@ export function normalizeFlashingsStateForUi(value: unknown, module: CalculatorM
   const legacyExtrasRaw = Array.isArray(source.extras) ? source.extras : [];
   const extras = legacyExtrasRaw
     .filter((item: unknown) => item && typeof item === 'object')
-    .map((item: unknown) => {
+    .map((item: unknown, index: number) => {
       const record = item as Record<string, unknown>;
       const idRaw = typeof record.id === 'string' ? record.id.trim() : '';
       return {
-        id: idRaw || makeFlashingId(),
+        id: idRaw || `extra-${index + 1}`,
         kind: 'extra' as const,
         band: normalizeFlashingBand(record.band),
         lengthM: String(record.lengthM ?? ''),

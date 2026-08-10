@@ -9,11 +9,9 @@ import {
 
 export default function PriceImpactPanel({
   diff,
-  isAdvancedUi,
   onResetBaseline,
 }: {
   diff: ImpactDiff | null;
-  isAdvancedUi: boolean;
   onResetBaseline: () => void;
 }) {
   const presentation = diff ? buildPriceImpactPresentation(diff) : null;
@@ -61,7 +59,8 @@ export default function PriceImpactPanel({
             </div>
           </dl>
 
-          {isAdvancedUi ? (
+          <details className={styles.driversDisclosure}>
+            <summary>Detailed cost drivers</summary>
             <div className={styles.drivers}>
               <div>
                 <div className={styles.driversTitle}>Top materials changes</div>
@@ -95,7 +94,7 @@ export default function PriceImpactPanel({
                 )}
               </div>
             </div>
-          ) : null}
+          </details>
         </>
       )}
     </section>

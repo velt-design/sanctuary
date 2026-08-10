@@ -15,7 +15,7 @@ export type CalculatorInternalTrueCost = {
 
 type CalculatorIncludedPriceRow = {
   id: string;
-  kind: 'pergola_component' | 'infill';
+  kind: 'infill';
   parentId: string;
   label: string;
   detail: string;
@@ -68,7 +68,7 @@ function fallbackRows(
       return {
         id: `infill:${pergolaId}:${moduleIndex}:${infill.id}`,
         kind: 'infill' as const,
-        parentId: `pergola:${pergolaId}`,
+        parentId: `module:${pergolaId}:${moduleIndex + 1}`,
         label: infill.label?.trim() || `Infill ${infillIndex + 1}`,
         detail: infillDetail(pergolaLabel, moduleIndex, infill, quantity),
         priceIncGstCents: null,
@@ -110,7 +110,6 @@ export function buildCalculatorPergolaIncludedPriceRows({
     });
   });
 
-  const baseId = `pergola-component:${pergola.id}`;
   const contributionIds = breakdown.items.map((item) => ({
     id: `infill-contribution:${item.module_id}:${item.infill_id}`,
     weight: toCents(item.total_ex_gst),
@@ -119,15 +118,7 @@ export function buildCalculatorPergolaIncludedPriceRows({
     parentPriceIncGstCents - baselinePriceIncGstCents,
     contributionIds,
   );
-  const rows: CalculatorIncludedPriceRow[] = [{
-    id: baseId,
-    kind: 'pergola_component',
-    parentId: `pergola:${pergola.id}`,
-    label: 'Base pergola without infills',
-    detail: `Starting price for ${pergolaLabel}`,
-    priceIncGstCents: baselinePriceIncGstCents,
-    status: 'included',
-  }];
+  const rows: CalculatorIncludedPriceRow[] = [];
 
   breakdown.items.forEach((item, fallbackIndex) => {
     const input = inputByEngineKey.get(engineItemKey(item.module_id, item.infill_id));
@@ -137,7 +128,7 @@ export function buildCalculatorPergolaIncludedPriceRows({
     rows.push({
       id: `infill:${pergola.id}:${moduleIndex}:${item.infill_id}`,
       kind: 'infill',
-      parentId: `pergola:${pergola.id}`,
+      parentId: `module:${pergola.id}:${moduleIndex + 1}`,
       label: input?.infill.label?.trim() || item.label?.trim() || `Infill ${(input?.infillIndex ?? fallbackIndex) + 1}`,
       detail: infillDetail(pergolaLabel, moduleIndex, input?.infill, item.quantity),
       priceIncGstCents: contributions[contributionId] ?? 0,

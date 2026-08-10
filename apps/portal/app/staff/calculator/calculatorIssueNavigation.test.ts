@@ -11,7 +11,7 @@ describe('calculator issue navigation', () => {
     expect(calculatorIssueSectionId('lengthM')).toBe('structure');
     expect(calculatorIssueSectionId('flashings')).toBe('flashings');
     expect(calculatorIssueSectionId('ledgerProfileOverride')).toBe('overrides');
-    expect(calculatorIssueSectionId('houseFootprintPreset')).toBe('house-footprint');
+    expect(calculatorIssueSectionId('houseFootprintPreset')).toBeNull();
     expect(calculatorIssueSectionId('fallDistanceMm')).toBeNull();
   });
 

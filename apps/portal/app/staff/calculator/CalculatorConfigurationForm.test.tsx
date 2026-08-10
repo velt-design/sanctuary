@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 describe('CalculatorConfigurationForm', () => {
-  it('renders existing Basic sections, flat field appearance, and working controls', () => {
+  it('renders core sections plus closed specialist disclosures and working controls', () => {
     const onChange = vi.fn();
     const fields: CalculatorConfigurationField[] = [
       { id: 'project-context', label: 'Project', type: 'readOnly', value: 'Agent Project' },
@@ -50,7 +50,7 @@ describe('CalculatorConfigurationForm', () => {
       { id: 'flashings', label: 'Flashings', type: 'custom', content: <span>Advanced content</span> },
     ];
 
-    renderIntoDocument(<CalculatorConfigurationForm fields={fields} isAdvancedUi={false} />);
+    renderIntoDocument(<CalculatorConfigurationForm fields={fields} />);
 
     expect(
       document
@@ -73,7 +73,9 @@ describe('CalculatorConfigurationForm', () => {
     expect(infillsSection?.querySelector('h2')).toBeNull();
     expect(blindsSection?.querySelector('[data-field-part="label"]')?.textContent).toBe('Blinds');
     expect(infillsSection?.querySelector('[data-field-part="label"]')?.textContent).toBe('Infills');
-    expect(document.querySelector('[aria-label="Flashings"]')).toBeNull();
+    const flashings = document.querySelector<HTMLDetailsElement>('[aria-label="Flashings"]');
+    expect(flashings).not.toBeNull();
+    expect(flashings?.open).toBe(false);
     expect(document.querySelector('[data-calculator-field="roofOrientation"]')).toBeNull();
     expect(document.querySelector('[data-calculator-field="blindsList"]')?.getAttribute('data-field-layout')).toBe('full');
     expect(document.querySelector('[data-field-tile-appearance="configuration"]')).not.toBeNull();
@@ -106,7 +108,7 @@ describe('CalculatorConfigurationForm', () => {
     expect(onChange).toHaveBeenCalledWith('fascia');
   });
 
-  it('renders Advanced sections in the existing order with full-width specialist fields', () => {
+  it('renders specialist disclosures in order and omits the legacy house footprint section', () => {
     const fields: CalculatorConfigurationField[] = [
       { id: 'lengthM', label: 'Length', type: 'number', value: '6' },
       { id: 'flashings', label: 'Flashings', type: 'custom', content: <span>Flashing editor</span> },
@@ -116,15 +118,18 @@ describe('CalculatorConfigurationForm', () => {
       { id: 'houseFootprintPreset', label: 'Footprint', type: 'select', value: 'rectangle', options: [] },
     ];
 
-    renderIntoDocument(<CalculatorConfigurationForm fields={fields} isAdvancedUi />);
+    renderIntoDocument(<CalculatorConfigurationForm fields={fields} />);
 
     expect(
       Array.from(document.querySelectorAll('[data-calculator-configuration-section]')).map((section) =>
         section.getAttribute('data-calculator-configuration-section'),
       ),
-    ).toEqual(['structure', 'flashings', 'overrides', 'blinds', 'infills', 'house-footprint']);
+    ).toEqual(['structure', 'flashings', 'overrides', 'blinds', 'infills']);
+    expect(document.querySelector('[data-calculator-configuration-section="house-footprint"]')).toBeNull();
+    expect(document.querySelector('[data-calculator-field="houseFootprintPreset"]')).toBeNull();
+    expect(document.querySelector<HTMLDetailsElement>('[data-calculator-configuration-section="overrides"]')?.open).toBe(false);
     expect(document.querySelector('[data-calculator-field="flashings"]')?.getAttribute('data-field-layout')).toBe('full');
-    expect(document.querySelectorAll('[data-calculator-configuration-sheet]')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-calculator-configuration-sheet]')).toHaveLength(1);
     expect(document.querySelector('[data-calculator-configuration-section="structure"]')?.getAttribute('data-section-surface')).toBe('quiet');
   });
 
@@ -132,7 +137,6 @@ describe('CalculatorConfigurationForm', () => {
     renderIntoDocument(
       <CalculatorConfigurationForm
         fields={[{ id: 'boxPerimeterEnabled', label: 'Box perimeter', type: 'toggle', value: false }]}
-        isAdvancedUi={false}
       />,
     );
 
@@ -153,7 +157,6 @@ describe('CalculatorConfigurationForm', () => {
             value: 'Embedded Project',
           },
         ]}
-        isAdvancedUi={false}
         isEmbedded
       />,
     );

@@ -5,14 +5,10 @@ import CalculatorDesignNavigationSelect from './CalculatorDesignNavigationSelect
 import type { CalculatorDesignNavigation } from './calculatorWorkspace';
 import type { CalculatorLocalDraftStatus } from './useCalculatorDraftSession';
 
-export type CalculatorUiMode = 'basic' | 'advanced';
-
 type CalculatorCommandBarProps = {
   projectLabel: string;
   isEditingDesign: boolean;
   activeModuleLabel: string;
-  uiMode: CalculatorUiMode;
-  onUiModeChange: (mode: CalculatorUiMode) => void;
   readinessSummary: CalculatorReadinessSummary;
   localDraftStatus: CalculatorLocalDraftStatus;
   onSelectProject?: () => void;
@@ -28,8 +24,6 @@ export default function CalculatorCommandBar({
   projectLabel,
   isEditingDesign,
   activeModuleLabel,
-  uiMode,
-  onUiModeChange,
   readinessSummary,
   localDraftStatus,
   onSelectProject,
@@ -94,24 +88,6 @@ export default function CalculatorCommandBar({
         >
           {readinessSummary.label}
         </span>
-
-        <div
-          className={styles.commandBarMode}
-          aria-label="Calculator detail level"
-          data-calculator-command-mode
-        >
-          {(['basic', 'advanced'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              className={uiMode === mode ? styles.commandBarModeActive : styles.commandBarModeButton}
-              onClick={() => onUiModeChange(mode)}
-              aria-pressed={uiMode === mode}
-            >
-              {mode === 'basic' ? 'Basic' : 'Advanced'}
-            </button>
-          ))}
-        </div>
 
         <button
           type="button"

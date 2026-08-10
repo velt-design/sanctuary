@@ -15,10 +15,11 @@ import {
   buildCalculatorPergolaIncludedPriceRows,
   type CalculatorInternalTrueCost,
 } from './calculatorInfillPricing';
+import { buildCalculatorModulePriceRows } from './calculatorModulePricing';
 
 type CalculatorPricingPreviewRow = {
   id: string;
-  kind: 'pergola' | 'pergola_component' | 'infill' | 'shared' | 'approval' | 'blind' | 'lighting';
+  kind: 'pergola' | 'module' | 'infill' | 'shared' | 'approval' | 'blind' | 'lighting';
   parentId?: string;
   label: string;
   detail: string;
@@ -112,6 +113,14 @@ export function buildCalculatorPricingPreview({
     pricedAmounts.push(priceIncGstCents);
     undiscountedAmounts.push(customerPriceIncCents(lineCostEx, 0, customerPriceUpliftPct));
 
+    const pergolaModules = modulesForPergola(inputs, pergola.id);
+    rows.push(...buildCalculatorModulePriceRows({
+      pergola,
+      pergolaLabel,
+      modules: pergolaModules,
+      parentPriceIncGstCents: priceIncGstCents,
+    }));
+
     const infillBreakdown = pergola.infill_cost_breakdown;
     const baselineLineCostEx = infillBreakdown?.schema_version === 'infill_cost_breakdown_v2'
       ? roundQuoteMoney(
@@ -124,7 +133,7 @@ export function buildCalculatorPricingPreview({
     rows.push(...buildCalculatorPergolaIncludedPriceRows({
       pergola,
       pergolaLabel,
-      modules: modulesForPergola(inputs, pergola.id),
+      modules: pergolaModules,
       parentPriceIncGstCents: priceIncGstCents,
       baselinePriceIncGstCents: baselineLineCostEx === null
         ? null

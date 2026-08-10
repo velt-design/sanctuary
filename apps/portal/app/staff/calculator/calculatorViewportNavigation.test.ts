@@ -83,6 +83,22 @@ describe('calculator viewport navigation', () => {
     expect(tile.getBoundingClientRect().bottom).toBeLessThanOrEqual(484);
   });
 
+  it('opens a closed configuration disclosure before focusing its field', () => {
+    const disclosure = document.createElement('details');
+    const tile = document.createElement('div');
+    tile.dataset.calculatorField = 'flashings';
+    const target = document.createElement('input');
+    target.id = 'flashings';
+    tile.appendChild(target);
+    disclosure.appendChild(tile);
+    document.body.appendChild(disclosure);
+
+    revealAndFocusCalculatorTarget(target);
+
+    expect(disclosure.open).toBe(true);
+    expect(document.activeElement).toBe(target);
+  });
+
   it('accounts for contiguous sticky chrome and focuses a custom field descendant', () => {
     const mobileBar = document.createElement('div');
     mobileBar.dataset.portalMobileTopBar = '';

@@ -86,6 +86,14 @@
   padding-left: 22px;
 }
 
+.nestedIncludedRow th {
+  padding-left: 34px;
+}
+
+.nestedIncludedRow td:last-child {
+  color: var(--ui-text-muted);
+}
+
 .includedRow td:last-child {
   color: var(--ui-text-muted);
 }
@@ -168,6 +176,10 @@
 
   .includedRow th {
     padding-left: 16px;
+  }
+
+  .nestedIncludedRow th {
+    padding-left: 24px;
   }
 
   .includedContribution span {

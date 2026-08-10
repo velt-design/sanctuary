@@ -2,8 +2,6 @@ import styles from './CalculatorGrid.module.css';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
 import {
   ModuleDrawingRenderer,
-  canEditHouseFootprintPlan,
-  type ModuleFootprintEditorProps,
   type ModuleViewsStatus,
   type ModuleViewsTab,
 } from './ModuleDrawingRenderer';
@@ -20,7 +18,6 @@ type ModuleViewsCardProps = {
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   presentation?: 'full' | 'minimal';
-  footprintEditor?: ModuleFootprintEditorProps;
 };
 
 const TAB_ITEMS: Array<{ id: ModuleViewsTab; label: string }> = [
@@ -37,11 +34,9 @@ export default function ModuleViewsCard({
   planModel,
   sectionModel,
   presentation = 'full',
-  footprintEditor,
 }: ModuleViewsCardProps) {
   const isMinimal = presentation === 'minimal';
   const drawingSurface = isMinimal ? 'minimal' : 'card';
-  const canEditFootprint = !isMinimal && view === 'plan' && Boolean(footprintEditor?.available) && canEditHouseFootprintPlan(planModel);
 
   return (
     <section
@@ -75,19 +70,6 @@ export default function ModuleViewsCard({
               );
             })}
           </div>
-          {canEditFootprint ? (
-            <button
-              type="button"
-              className={
-                footprintEditor?.isEditing
-                  ? `${styles.moduleViewsSecondaryButton} ${styles.moduleViewsSecondaryButtonActive}`
-                  : styles.moduleViewsSecondaryButton
-              }
-              onClick={footprintEditor?.isEditing ? footprintEditor.onDoneEditing : footprintEditor?.onStartEditing}
-            >
-              {footprintEditor?.isEditing ? 'Done' : 'Edit footprint'}
-            </button>
-          ) : null}
         </div>
       </div>
 
@@ -98,7 +80,6 @@ export default function ModuleViewsCard({
         planModel={planModel}
         sectionModel={sectionModel}
         presentation={drawingSurface}
-        footprintEditor={canEditFootprint ? footprintEditor : undefined}
       />
 
       {isMinimal ? null : (

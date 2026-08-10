@@ -14,15 +14,13 @@ function navigation(): IssueNavigation {
   return latest;
 }
 
-function Probe({ revealAdvanced = false }: { revealAdvanced?: boolean }) {
+function Probe() {
   const [activeModuleIndex, setActiveModuleIndex] = useState(0);
-  const [advancedVisible, setAdvancedVisible] = useState(false);
   latest = useCalculatorIssueNavigation({
     activeModuleIndex,
     setActiveModuleIndex,
-    onRevealAdvancedSection: revealAdvanced ? () => setAdvancedVisible(true) : undefined,
   });
-  return <div data-active-module={activeModuleIndex} data-advanced-visible={advancedVisible} />;
+  return <div data-active-module={activeModuleIndex} />;
 }
 
 afterEach(() => {
@@ -79,25 +77,6 @@ describe('useCalculatorIssueNavigation', () => {
     expect(focus).not.toHaveBeenCalled();
     act(() => callbacks.get(2)?.(0));
     expect(focus).toHaveBeenCalledWith({ preventScroll: true });
-
-    rendered.unmount();
-  });
-
-  it('reveals Advanced mode before navigating to an Advanced-only issue target', () => {
-    const rendered = renderIntoDocument(<Probe revealAdvanced />);
-
-    act(() => navigation().selectIssue({
-      moduleIndex: 0,
-      moduleLabel: 'Module 1',
-      fieldId: 'flashings',
-      sectionId: 'flashings',
-      label: 'Flashings',
-      message: 'Enter a flashing length of 0 or more.',
-    }));
-
-    expect(
-      rendered.container.querySelector('[data-active-module]')?.getAttribute('data-advanced-visible'),
-    ).toBe('true');
 
     rendered.unmount();
   });

@@ -20,8 +20,6 @@ function renderBar(overrides: Partial<Parameters<typeof CalculatorCommandBar>[0]
       projectLabel="Agent Project"
       isEditingDesign
       activeModuleLabel="Pergola 1 · Module 1"
-      uiMode="basic"
-      onUiModeChange={vi.fn()}
       readinessSummary={readySummary}
       localDraftStatus={{ kind: 'saved' }}
       onSelectProject={vi.fn()}
@@ -34,7 +32,7 @@ function renderBar(overrides: Partial<Parameters<typeof CalculatorCommandBar>[0]
 }
 
 describe('CalculatorCommandBar', () => {
-  it('renders identity, readiness, Basic/Advanced, and one Save in source order', () => {
+  it('renders identity, readiness, and one Save in source order', () => {
     const markup = renderBar();
 
     expect(markup).toContain('<h1');
@@ -42,8 +40,8 @@ describe('CalculatorCommandBar', () => {
     expect(markup).toContain('Agent Project');
     expect(markup).toContain('Editing draft');
     expect(markup).toContain('Pergola 1 · Module 1');
-    expect(markup).toContain('aria-pressed="true"');
-    expect(markup).toContain('aria-pressed="false"');
+    expect(markup).not.toContain('Basic');
+    expect(markup).not.toContain('Advanced');
     expect(markup).toContain('Ready to save');
     expect(markup).toContain('Saved locally');
     expect(markup).toContain('Browser draft only — use Save to update the estimate.');
@@ -52,12 +50,6 @@ describe('CalculatorCommandBar', () => {
       markup.indexOf('data-calculator-command-readiness'),
     );
     expect(markup.indexOf('data-calculator-command-readiness')).toBeLessThan(
-      markup.indexOf('>Basic</button>'),
-    );
-    expect(markup.indexOf('>Basic</button>')).toBeLessThan(
-      markup.indexOf('>Advanced</button>'),
-    );
-    expect(markup.indexOf('>Advanced</button>')).toBeLessThan(
       markup.indexOf('data-calculator-command-save'),
     );
     expect(markup.match(/data-calculator-command-save/g)).toHaveLength(1);

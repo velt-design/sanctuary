@@ -17,10 +17,8 @@ function buildFields(moduleOverrides: Partial<CalculatorModuleInputs> = {}, hasO
   const values = { ...makeDefaultCalculatorInputs(), modules: [activeModule] };
   const setModuleField = vi.fn() as unknown as CalculatorSiteFieldBuilderInput['setModuleField'];
   const setJobField = vi.fn() as unknown as CalculatorSiteFieldBuilderInput['setJobField'];
-  const setHouseFootprintParam = vi.fn() as unknown as CalculatorSiteFieldBuilderInput['setHouseFootprintParam'];
   const fields = buildCalculatorSiteFields({
     activeModule,
-    activeDrawingRotationQuarterTurns: 0,
     values,
     errors: {},
     resolvedDefaults: { downpipeCount: 'Auto - current result uses 1 downpipe' },
@@ -30,21 +28,19 @@ function buildFields(moduleOverrides: Partial<CalculatorModuleInputs> = {}, hasO
     hasOurGutterUi,
     setModuleField,
     setJobField,
-    setHouseFootprintParam,
   });
 
-  return { fields, setModuleField, setJobField, setHouseFootprintParam };
+  return { fields, setModuleField, setJobField };
 }
 
 describe('calculator site fields', () => {
-  it('builds connection, footprint, site, and drainage controls in the established order', () => {
+  it('builds connection, site, and drainage controls in the established order', () => {
     const { fields } = buildFields();
     const ids = fields.map((field) => field.id);
 
-    expect(ids.indexOf('houseConnectionType')).toBeLessThan(ids.indexOf('attachmentSide'));
+    expect(ids.indexOf('houseConnectionType')).toBeLessThan(ids.indexOf('postConnectionType'));
     expect(ids.indexOf('postConnectionType')).toBeLessThan(ids.indexOf('access'));
     expect(ids.indexOf('jobType')).toBeLessThan(ids.indexOf('downpipeCount'));
-    expect(fieldById(fields, 'attachmentSide').value).toBe('rear');
     expect(fieldById(fields, 'downpipeCount')).toMatchObject({
       value: '0',
       resolvedDefaultText: 'Auto - current result uses 1 downpipe',
@@ -55,8 +51,8 @@ describe('calculator site fields', () => {
     });
   });
 
-  it('omits footprint controls when the module is freestanding', () => {
-    const { fields } = buildFields({ houseConnectionType: 'none' });
+  it('omits legacy footprint controls for attached and freestanding modules', () => {
+    const { fields } = buildFields();
     const ids = fields.map((field) => field.id);
 
     expect(ids).not.toContain('attachmentSide');
@@ -91,15 +87,13 @@ describe('calculator site fields', () => {
     expect(ids).not.toEqual(expect.arrayContaining(['downpipeCount', 'downpipeJoinCount', 'downpipeElbowCount']));
   });
 
-  it('delegates field changes to the existing module, job, and footprint setters', () => {
-    const { fields, setModuleField, setJobField, setHouseFootprintParam } = buildFields();
+  it('delegates remaining field changes to the existing module and job setters', () => {
+    const { fields, setModuleField, setJobField } = buildFields();
 
-    fieldById(fields, 'drawingRotationQuarterTurns').onChange?.('2');
+    fieldById(fields, 'postConnectionType').onChange?.('slab_anchors');
     fieldById(fields, 'access').onChange?.('hard');
-    fieldById(fields, 'houseFootprintBandDepthM').onChange?.('4.5');
 
-    expect(setModuleField).toHaveBeenCalledWith('drawingRotationQuarterTurns', 2);
+    expect(setModuleField).toHaveBeenCalledWith('postConnectionType', 'slab_anchors');
     expect(setJobField).toHaveBeenCalledWith('access', 'hard');
-    expect(setHouseFootprintParam).toHaveBeenCalledWith('bandDepthM', '4.5');
   });
 });

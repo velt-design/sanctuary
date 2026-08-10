@@ -2,6 +2,8 @@
 
 Status: Approved. Slices 1-7 implemented and verified (2026-07-27).
 
+Current-state note (2026-08-10): the later Calculator detail-disclosure change retired the global Basic/Advanced mode, made structure and staff-safe labour information continuously available, and moved specialist settings plus admin diagnostics into scoped native disclosures. References below to Basic, Advanced, or revealing Advanced mode describe the historical slice evidence rather than the current UI contract; current behavior is owned by `docs/projects-contacts-estimates-calculator.md`.
+
 Source evidence: `docs/calculator-ui-ux-review.md`
 
 ## Outcome and boundaries

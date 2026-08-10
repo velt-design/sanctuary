@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { calculatorConfigurationSectionRequiresAdvancedUi } from './calculatorConfigurationSections';
 import type { CalculatorIssue } from './calculatorIssueNavigation';
 import {
   revealAndFocusCalculatorTarget,
@@ -12,11 +11,9 @@ import {
 export function useCalculatorIssueNavigation({
   activeModuleIndex,
   setActiveModuleIndex,
-  onRevealAdvancedSection,
 }: {
   activeModuleIndex: number;
   setActiveModuleIndex: (moduleIndex: number) => void;
-  onRevealAdvancedSection?: () => void;
 }) {
   const [issuesOpen, setIssuesOpen] = useState(false);
   const pendingIssueFocusRef = useRef<{ moduleIndex: number; fieldId: string } | null>(null);
@@ -40,13 +37,10 @@ export function useCalculatorIssueNavigation({
   const selectIssue = useCallback(
     (issue: CalculatorIssue) => {
       pendingIssueFocusRef.current = { moduleIndex: issue.moduleIndex, fieldId: issue.fieldId };
-      if (calculatorConfigurationSectionRequiresAdvancedUi(issue.sectionId)) {
-        onRevealAdvancedSection?.();
-      }
       setActiveModuleIndex(issue.moduleIndex);
       setIssuesOpen(false);
     },
-    [onRevealAdvancedSection, setActiveModuleIndex],
+    [setActiveModuleIndex],
   );
 
   return {

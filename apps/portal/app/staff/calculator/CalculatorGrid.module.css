@@ -2791,6 +2791,27 @@
   background: var(--ui-surface-elevated);
 }
 
+.adminDiagnostics {
+  overflow: hidden;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-primary);
+}
+
+.adminDiagnosticsSummary {
+  padding: 12px 14px;
+  color: var(--ui-text-strong);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.adminDiagnostics > section {
+  border: 0;
+  border-top: var(--ui-border-width) solid var(--ui-border);
+  border-radius: 0;
+}
+
 .previewCardTitle {
   margin: 0 0 10px 0;
   font-size: 13px;

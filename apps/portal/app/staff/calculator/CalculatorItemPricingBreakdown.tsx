@@ -12,7 +12,7 @@ function moneyFromCents(cents: number): string {
 
 const TYPE_LABELS: Record<CalculatorPricingPreview['rows'][number]['kind'], string> = {
   pergola: 'Pergola',
-  pergola_component: 'Base',
+  module: 'Module',
   infill: 'Infill',
   shared: 'Site',
   approval: 'Approval',
@@ -71,7 +71,7 @@ export default function CalculatorItemPricingBreakdown({
           <p>
             Customer prices include GST
             {preview.discountPct > 0 ? `; ${preview.discountPct}% discount applies to pergola and site prices only` : ''}.
-            {' '}Indented base and infill additions reconcile to their pergola total and are not added again.
+            {' '}Indented module allocations reconcile to their pergola total. Infill amounts are included within their module and are not added again.
           </p>
         </div>
       </header>
@@ -89,8 +89,10 @@ export default function CalculatorItemPricingBreakdown({
               <tr
                 key={row.id}
                 className={
-                  row.kind === 'infill' || row.kind === 'pergola_component'
-                    ? styles.includedRow
+                  row.kind === 'infill'
+                    ? styles.nestedIncludedRow
+                    : row.kind === 'module'
+                      ? styles.includedRow
                     : row.kind === 'shared'
                       ? styles.sharedRow
                       : undefined
@@ -112,7 +114,7 @@ export default function CalculatorItemPricingBreakdown({
                       : (
                           <span className={styles.includedContribution}>
                             <strong>{moneyFromCents(row.priceIncGstCents)}</strong>
-                            <span>{row.kind === 'pergola_component' ? 'base price' : 'adds to pergola price'}</span>
+                            <span>{row.kind === 'module' ? 'allocated module price' : 'included in module price'}</span>
                           </span>
                         )
                     : row.status === 'unpriced'

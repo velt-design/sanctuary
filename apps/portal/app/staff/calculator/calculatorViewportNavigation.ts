@@ -120,6 +120,11 @@ function applyCorrection(target: HTMLElement, scrollOwner: HTMLElement): void {
 }
 
 export function revealAndFocusCalculatorTarget(target: HTMLElement): HTMLElement {
+  let disclosure = target.closest<HTMLDetailsElement>('details:not([open])');
+  while (disclosure) {
+    disclosure.open = true;
+    disclosure = disclosure.parentElement?.closest<HTMLDetailsElement>('details:not([open])') ?? null;
+  }
   const revealNode = revealNodeFor(target);
   const scrollOwner = findCalculatorVerticalScrollOwner(revealNode);
   const focusTarget = focusTargetFor(target);

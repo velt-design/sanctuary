@@ -221,7 +221,7 @@ describe('Calculator trust validation scenarios', () => {
     expect(result.quoteHandoff.lineItems.some((item) => item.description.includes('Lighting'))).toBe(true);
   });
 
-  it('keeps the displayed base pergola equal to the same job without infills', () => {
+  it('keeps displayed infill contributions within the allocated module price', () => {
     const scenario = simpleScenario();
     const withInfill = validateScenario(scenario);
     const withoutInputs = structuredClone(scenario.inputs);
@@ -235,15 +235,13 @@ describe('Calculator trust validation scenarios', () => {
       blindPricing: priceAllBlinds([]),
     });
     const parent = withInfill.livePreview.rows.find((row) => row.kind === 'pergola')!;
-    const base = withInfill.livePreview.rows.find((row) => row.kind === 'pergola_component')!;
+    const modules = withInfill.livePreview.rows.filter((row) => row.kind === 'module');
     const infills = withInfill.livePreview.rows.filter((row) => row.kind === 'infill');
-    const parentWithoutInfills = withoutPreview.rows.find((row) => row.kind === 'pergola')!;
-
-    expect(base.priceIncGstCents).toBe(parentWithoutInfills.priceIncGstCents);
     expect(
-      (base.priceIncGstCents ?? 0)
-      + infills.reduce((sum, row) => sum + (row.priceIncGstCents ?? 0), 0),
+      modules.reduce((sum, row) => sum + (row.priceIncGstCents ?? 0), 0),
     ).toBe(parent.priceIncGstCents);
     expect(infills.every((row) => (row.priceIncGstCents ?? 0) > 0)).toBe(true);
+    expect(infills.every((row) => row.parentId?.startsWith('module:'))).toBe(true);
+    expect(withoutPreview.rows.filter((row) => row.kind === 'module')).toHaveLength(modules.length);
   });
 });

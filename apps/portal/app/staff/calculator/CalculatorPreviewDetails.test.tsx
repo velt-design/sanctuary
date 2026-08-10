@@ -125,7 +125,6 @@ function buildProps(
     materialsBreakdown,
     canViewInternalCosts: false,
     materialsEx: 200,
-    isAdvancedUi: false,
     materialsDebug,
     labourBreakdown,
     resultFreshness: 'current',
@@ -166,7 +165,7 @@ describe('CalculatorPreviewDetails', () => {
 
     act(() => rendered.rerender(
       <CalculatorPreviewDetails
-        {...buildProps('materials', { canViewInternalCosts: true, isAdvancedUi: true })}
+        {...buildProps('materials', { canViewInternalCosts: true })}
       />,
     ));
 
@@ -174,25 +173,19 @@ describe('CalculatorPreviewDetails', () => {
     expect(document.body.textContent).toContain('Materials debug');
   });
 
-  it('preserves the existing admin and Advanced gates for labour details', () => {
+  it('shows labour time to staff while keeping labour cost admin-only', () => {
     const rendered = renderIntoDocument(
       <CalculatorPreviewDetails {...buildProps('labour')} />,
     );
 
-    expect(document.body.textContent).toContain('available to administrators');
-    expect(document.body.textContent).not.toContain('Fit beam');
+    expect(document.body.textContent).toContain('Fit beam');
+    expect(document.body.textContent).toContain('30 min');
+    expect(document.body.textContent).toContain('0.50 crew hr');
+    expect(document.body.textContent).not.toContain('$100.00');
 
     act(() => rendered.rerender(
       <CalculatorPreviewDetails
         {...buildProps('labour', { canViewInternalCosts: true })}
-      />,
-    ));
-    expect(document.body.textContent).toContain('Switch the Calculator to Advanced');
-    expect(document.body.textContent).not.toContain('Fit beam');
-
-    act(() => rendered.rerender(
-      <CalculatorPreviewDetails
-        {...buildProps('labour', { canViewInternalCosts: true, isAdvancedUi: true })}
       />,
     ));
     expect(document.body.textContent).toContain('Fit beam');
@@ -200,17 +193,11 @@ describe('CalculatorPreviewDetails', () => {
     expect(document.body.textContent).toContain('$100.00');
   });
 
-  it('shows selected-module structure outputs only in Advanced mode', () => {
-    const rendered = renderIntoDocument(
+  it('always shows selected-module structure outputs', () => {
+    renderIntoDocument(
       <CalculatorPreviewDetails {...buildProps('workings')} />,
     );
 
-    expect(document.body.textContent).toContain('Switch the Calculator to Advanced');
-    expect(document.body.textContent).not.toContain('12.00');
-
-    act(() => rendered.rerender(
-      <CalculatorPreviewDetails {...buildProps('workings', { isAdvancedUi: true })} />,
-    ));
     expect(document.body.textContent).toContain('Selected module');
     expect(document.body.textContent).toContain('12.00');
   });

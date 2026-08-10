@@ -35,6 +35,22 @@
   font-weight: 750;
 }
 
+.sectionDisclosure {
+  padding: 0;
+}
+
+.sectionSummary {
+  padding: 15px;
+  color: var(--ui-text-strong);
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.sectionDisclosureBody {
+  padding: 0 15px 15px;
+}
+
 .sectionCompact {
   padding-block: 11px;
 }

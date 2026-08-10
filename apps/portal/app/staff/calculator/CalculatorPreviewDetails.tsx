@@ -27,7 +27,6 @@ export type CalculatorPreviewDetailsProps = {
   materialsBreakdown: CalculatorMaterialsBreakdownProps['breakdown'];
   canViewInternalCosts: boolean;
   materialsEx: number | undefined;
-  isAdvancedUi: boolean;
   materialsDebug: CalculatorMaterialsDebugController;
   labourBreakdown: CalculatorLabourBreakdownProps['breakdown'];
   resultFreshness: CalculatorResultFreshness;
@@ -76,7 +75,6 @@ function CalculatorMaterialsPanel({
   materialsBreakdown,
   canViewInternalCosts,
   materialsEx,
-  isAdvancedUi,
   materialsDebug,
   resultFreshness,
 }: Pick<
@@ -84,7 +82,6 @@ function CalculatorMaterialsPanel({
   | 'materialsBreakdown'
   | 'canViewInternalCosts'
   | 'materialsEx'
-  | 'isAdvancedUi'
   | 'materialsDebug'
   | 'resultFreshness'
 >) {
@@ -97,8 +94,11 @@ function CalculatorMaterialsPanel({
         resultFreshness={resultFreshness}
       />
 
-      {isAdvancedUi && canViewInternalCosts ? (
-        <CalculatorMaterialsDebugPanel controller={materialsDebug} />
+      {canViewInternalCosts ? (
+        <details className={styles.adminDiagnostics} data-admin-diagnostics>
+          <summary className={styles.adminDiagnosticsSummary}>Admin diagnostics</summary>
+          <CalculatorMaterialsDebugPanel controller={materialsDebug} />
+        </details>
       ) : null}
     </>
   );
@@ -106,31 +106,12 @@ function CalculatorMaterialsPanel({
 
 function CalculatorLabourPanel({
   canViewInternalCosts,
-  isAdvancedUi,
   labourBreakdown,
   resultFreshness,
 }: Pick<
   CalculatorPreviewDetailsDataProps,
-  'canViewInternalCosts' | 'isAdvancedUi' | 'labourBreakdown' | 'resultFreshness'
+  'canViewInternalCosts' | 'labourBreakdown' | 'resultFreshness'
 >) {
-  if (!canViewInternalCosts) {
-    return (
-      <section className={styles.previewCard} aria-label="Labour breakdown">
-        <h2 className={styles.previewCardTitle}>Labour breakdown</h2>
-        <p className={styles.previewMuted}>Detailed labour assumptions are available to administrators.</p>
-      </section>
-    );
-  }
-
-  if (!isAdvancedUi) {
-    return (
-      <section className={styles.previewCard} aria-label="Labour breakdown">
-        <h2 className={styles.previewCardTitle}>Labour breakdown</h2>
-        <p className={styles.previewMuted}>Switch the Calculator to Advanced to inspect labour assumptions.</p>
-      </section>
-    );
-  }
-
   return (
     <CalculatorLabourBreakdown
       breakdown={labourBreakdown}
@@ -141,18 +122,8 @@ function CalculatorLabourPanel({
 }
 
 function CalculatorWorkingsPanel({
-  isAdvancedUi,
   structureRows,
-}: Pick<CalculatorPreviewDetailsDataProps, 'isAdvancedUi' | 'structureRows'>) {
-  if (!isAdvancedUi) {
-    return (
-      <section className={styles.previewCard} aria-label="Structure outputs">
-        <h2 className={styles.previewCardTitle}>Calculated values</h2>
-        <p className={styles.previewMuted}>Switch the Calculator to Advanced to inspect selected-module outputs.</p>
-      </section>
-    );
-  }
-
+}: Pick<CalculatorPreviewDetailsDataProps, 'structureRows'>) {
   return (
     <section className={styles.previewCard} aria-label="Structure outputs">
       <h2 className={styles.previewCardTitle}>Calculated values</h2>

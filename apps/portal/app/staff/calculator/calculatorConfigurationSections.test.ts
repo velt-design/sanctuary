@@ -4,7 +4,6 @@ import {
   CALCULATOR_CONFIGURATION_SECTIONS,
   buildCalculatorConfigurationSections,
   calculatorConfigurationFieldLayout,
-  calculatorConfigurationSectionRequiresAdvancedUi,
   type CalculatorConfigurationField,
 } from './calculatorConfigurationSections';
 
@@ -26,11 +25,10 @@ describe('calculator configuration sections', () => {
       'blinds',
       'infills',
       'allowances',
-      'house-footprint',
     ]);
   });
 
-  it('preserves Basic order while filtering absent and Advanced-only fields', () => {
+  it('preserves section order while filtering absent fields', () => {
     const sections = buildCalculatorConfigurationSections(
       [
         field('project-context'),
@@ -40,13 +38,13 @@ describe('calculator configuration sections', () => {
         field('blindsList'),
         field('infillsEditor'),
       ],
-      false,
     );
 
     expect(sections.map((section) => section.id)).toEqual([
       'context',
       'connections-site',
       'structure',
+      'flashings',
       'blinds',
       'infills',
     ]);
@@ -54,18 +52,19 @@ describe('calculator configuration sections', () => {
       'project-context',
       'houseConnectionType',
       'lengthM',
+      'flashings',
       'blindsList',
       'infillsEditor',
     ]);
   });
 
-  it('adds existing Advanced fields without inventing missing controls', () => {
+  it('adds specialist disclosures without inventing missing controls or legacy footprint fields', () => {
     const sections = buildCalculatorConfigurationSections(
       [field('flashings'), field('ledgerProfileOverride'), field('houseFootprintPreset')],
-      true,
     );
 
-    expect(sections.map((section) => section.id)).toEqual(['flashings', 'overrides', 'house-footprint']);
+    expect(sections.map((section) => section.id)).toEqual(['flashings', 'overrides']);
+    expect(sections.every((section) => section.collapsible)).toBe(true);
   });
 
   it('assigns standard, wide, and full presentation spans', () => {
@@ -76,10 +75,4 @@ describe('calculator configuration sections', () => {
     expect(calculatorConfigurationFieldLayout('infillsEditor')).toBe('full');
   });
 
-  it('identifies sections that Issue Jump must reveal in Advanced mode', () => {
-    expect(calculatorConfigurationSectionRequiresAdvancedUi('structure')).toBe(false);
-    expect(calculatorConfigurationSectionRequiresAdvancedUi('flashings')).toBe(true);
-    expect(calculatorConfigurationSectionRequiresAdvancedUi('overrides')).toBe(true);
-    expect(calculatorConfigurationSectionRequiresAdvancedUi(null)).toBe(false);
-  });
 });

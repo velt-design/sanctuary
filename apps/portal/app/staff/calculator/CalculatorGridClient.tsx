@@ -11,7 +11,6 @@ import {
   useState,
 } from 'react';
 import styles from './CalculatorGrid.module.css';
-import { supportsHouseFootprints } from '@/lib/types/calculator';
 import type { Project } from '@/lib/types/project';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
@@ -72,7 +71,6 @@ import {
 } from './calculatorQuoteStatusUi';
 import { CalculatorInfillTile } from './CalculatorInfillOverview';
 import { buildCalculatorIssues } from './calculatorIssueNavigation';
-import type { CalculatorUiMode } from './CalculatorCommandBar';
 import type { CalculatorConfigurationField as FieldSchemaItem } from './calculatorConfigurationSections';
 import { buildCalculatorSiteFields } from './calculatorSiteFields';
 import { buildCalculatorStructureFields } from './calculatorStructureFields';
@@ -94,7 +92,6 @@ import {
 import { useCalculatorMaterialsDebug } from './useCalculatorMaterialsDebug';
 import { useCalculatorInfillCostComparison } from './useCalculatorInfillCostComparison';
 import { useCalculatorInfillActions } from './useCalculatorInfillActions';
-import { useCalculatorHouseFootprintController } from './useCalculatorHouseFootprintController';
 import { useCalculatorBlindsController } from './useCalculatorBlindsController';
 import { useCalculatorFlashingsController } from './useCalculatorFlashingsController';
 import { useCalculatorInputController } from './useCalculatorInputController';
@@ -107,9 +104,6 @@ import {
   resolveCalculatorWorkspaceRoute,
   type CalculatorProjectWorkspace,
 } from './calculatorWorkspace';
-
-const UI_MODE_STORAGE_KEY = 'sanctuary-portal:calculator:uiMode:v1';
-
 
 export default function CalculatorGridClient({
   email: emailProp,
@@ -174,33 +168,9 @@ export default function CalculatorGridClient({
     queryClient,
     toast,
   });
-  const [uiMode, setUiMode] = useState<CalculatorUiMode>('basic');
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [moduleViewsTab, setModuleViewsTab] = useState<ModuleViewsTab>('plan');
   const previewSplit = useCalculatorPreviewSplit();
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const raw = window.localStorage.getItem(UI_MODE_STORAGE_KEY);
-      if (raw === 'advanced' || raw === 'basic') {
-        setUiMode(raw);
-      }
-    } catch {
-      void 0;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(UI_MODE_STORAGE_KEY, uiMode);
-    } catch {
-      void 0;
-    }
-  }, [uiMode]);
-
-  const isAdvancedUi = uiMode === 'advanced';
 
   const pergolas = useMemo(() => calculatorPergolaOptions(values), [values]);
   const fallbackPergolaId = pergolas[0]?.id ?? 'pergola-1';
@@ -224,7 +194,6 @@ export default function CalculatorGridClient({
     });
   }, [modulesWithPergola, fallbackPergolaId]);
   const activeModule = modulesWithPergola[activeModuleIndex] ?? modulesWithPergola[0] ?? makeDefaultModule(fallbackPergolaId);
-  const canEditHouseFootprintByInputs = activeModule.houseConnectionType !== 'none' && supportsHouseFootprints(activeModule.pergolaStyle);
   const activePergolaId =
     typeof activeModule.pergolaId === 'string' && knownPergolaIds.has(activeModule.pergolaId) ? activeModule.pergolaId : fallbackPergolaId;
 
@@ -355,7 +324,6 @@ export default function CalculatorGridClient({
 
   const materialsDebug = useCalculatorMaterialsDebug({
     available: materialsDebugAvailable,
-    isAdvancedUi,
     activeModuleIndex,
     readyToCalculate,
     activeModulePayload,
@@ -386,7 +354,6 @@ export default function CalculatorGridClient({
   } = useCalculatorIssueNavigation({
     activeModuleIndex,
     setActiveModuleIndex,
-    onRevealAdvancedSection: () => setUiMode('advanced'),
   });
 
   const {
@@ -417,7 +384,7 @@ export default function CalculatorGridClient({
 
   const activeModuleLabel = moduleNavigatorModel.activeModuleLabel;
   const {
-    resultModules, moduleResult, modulePlanModel, moduleSectionModel, rafterCutLengthExplanation, canEditActiveHouseFootprint,
+    resultModules, moduleResult, modulePlanModel, moduleSectionModel, rafterCutLengthExplanation,
     moduleViewsStatus, moduleViewsStatusDetail, impactDiff, resetImpactBaseline,
     derivedArea, derivedRoofArea, derivedPitchUsed, derivedAcrylicArea, derivedTimberArea,
     derivedAcrylicBaysTotal, derivedSlopeLength, derivedBoxPitch, derivedBoxRiseMm, derivedBoxMaxFallMm,
@@ -443,20 +410,6 @@ export default function CalculatorGridClient({
     canViewInternalCosts,
     issuesCount,
     openIssues,
-    setModuleField,
-  });
-  const {
-    drawingRotationQuarterTurns: activeDrawingRotationQuarterTurns,
-    setHouseFootprintParam,
-    editor: houseFootprintEditor,
-  } = useCalculatorHouseFootprintController({
-    activeModule,
-    activeModuleIndex,
-    activePergolaId,
-    canEditByInputs: canEditHouseFootprintByInputs,
-    editorAvailable: canEditActiveHouseFootprint,
-    moduleViewsTab,
-    setValues,
     setModuleField,
   });
   const blindsListContent = (
@@ -799,7 +752,6 @@ export default function CalculatorGridClient({
     }),
     ...buildCalculatorSiteFields({
       activeModule,
-      activeDrawingRotationQuarterTurns,
       values,
       errors,
       resolvedDefaults,
@@ -809,7 +761,6 @@ export default function CalculatorGridClient({
       hasOurGutterUi,
       setModuleField,
       setJobField,
-      setHouseFootprintParam,
     }),
 
     ...buildCalculatorWorkflowFields({
@@ -977,8 +928,6 @@ export default function CalculatorGridClient({
       projectLabel: project ? project.projectName ?? project.name ?? 'Select project' : 'Select project',
       isEditingDesign,
       activeModuleLabel,
-      uiMode,
-      onUiModeChange: setUiMode,
       readinessSummary: quoteStatusUi.readinessSummary,
       localDraftStatus,
       onSelectProject: workspace ? undefined : () => setProjectPickerOpen(true),
@@ -1002,7 +951,7 @@ export default function CalculatorGridClient({
     },
     pricingSummary: pricingSummaryProps,
     jobTemplatePicker: { onApply: handleApplyJobTemplate },
-    configurationForm: { fields: schema, isAdvancedUi },
+    configurationForm: { fields: schema },
     resultFreshness,
     pricingPreview,
     actualCostEstimateId: canViewInternalCosts && isEditingDesign ? activeEditEstimateId : null,
@@ -1014,11 +963,9 @@ export default function CalculatorGridClient({
       statusDetail: moduleViewsStatusDetail,
       planModel: modulePlanModel,
       sectionModel: moduleSectionModel,
-      footprintEditor: houseFootprintEditor,
     },
     priceImpact: canViewInternalCosts ? {
       diff: impactDiff,
-      isAdvancedUi,
       onResetBaseline: resetImpactBaseline,
     } : null,
     quoteStatus: {
@@ -1031,7 +978,6 @@ export default function CalculatorGridClient({
       materialsBreakdown,
       canViewInternalCosts,
       materialsEx,
-      isAdvancedUi,
       materialsDebug,
       labourBreakdown,
       resultFreshness,

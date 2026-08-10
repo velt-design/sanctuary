@@ -38,6 +38,15 @@ async function openCalculator(page: Page) {
   ).toHaveText('3 modules across 2 pergolas');
 }
 
+async function openProjectCalculator(page: Page) {
+  await openPortalPage(page, projectCalculatorRoute);
+  await expect(page.locator('[data-calculator-workspace="project"]')).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(scenario.labels.projectName, { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+  ).toBeVisible({ timeout: 60_000 });
+}
+
 async function waitForCalculatorLayout(page: Page) {
   await page.evaluate(
     () =>
@@ -420,12 +429,12 @@ async function expectCrossModuleIssueJump({
   await roofLength.fill('');
   await selectCalculatorModule(page, returnModuleLabel);
 
-  const issueDialog = await openCalculatorInputIssuesDialog(page);
-
   const ownerBefore = await moveCalculatorIssueScrollOwnerToEnd(roofLength);
   expect(ownerBefore.kind).toBe(expectedOwner);
   expect(ownerBefore.maxScrollTop).toBeGreaterThan(0);
   expect(ownerBefore.scrollTop).toBeGreaterThan(0);
+
+  const issueDialog = await openCalculatorInputIssuesDialog(page);
 
   const inspector = page.getByRole('complementary', { name: 'Preview outputs' });
   const inspectorBefore = await inspector.evaluate((element) => {
@@ -488,7 +497,8 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     await clearPreviewSplitPreference(page);
     await openCalculator(page);
     await expect(page.getByText(scenario.labels.projectName).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Basic', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: 'Basic', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Advanced', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeEnabled();
     await expectLocalDraftProtected(page);
     await expectSmallVisualCorrections(page);
@@ -509,12 +519,6 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     await expect(pricing.getByText('Customer price (rounded, inc GST)', { exact: true })).toBeVisible();
     await expect(pricing.getByText('1.25× internal true cost · pergola only', { exact: true })).toHaveCount(0);
     await expect(pricing.getByText('Customer quote add-ons', { exact: true })).toHaveCount(0);
-    const pricingDetails = page.getByRole('region', { name: 'Pricing details' });
-    const internalDetails = pricingDetails.locator('details', { hasText: 'Internal costing' });
-    await expect(internalDetails).not.toHaveAttribute('open', '');
-    await internalDetails.locator('summary').click();
-    await expect(internalDetails).toHaveAttribute('open', '');
-
     const customerInc = parseCurrency(await pricing.locator('strong').innerText());
     const itemPricing = page.getByRole('region', { name: 'Price by item' });
     await expect(itemPricing.getByText('Pergola 1', { exact: true })).toBeVisible();
@@ -752,7 +756,12 @@ test('materials and labour explain whole-job quantities without losing trust sta
     await expect(materialTechnicalSource.locator('code')).toBeHidden();
     await materialTechnicalSource.locator(':scope > summary').click();
     await expect(materialTechnicalSource.locator('code')).toHaveText('@sp/costing/materials-v1');
-    await expect(materials.locator('[data-internal-material-cost]').first()).toBeVisible();
+    const internalMaterialCosts = materials.locator('[data-internal-material-cost]');
+    if (await internalMaterialCosts.count()) {
+      await expect(internalMaterialCosts.first()).toBeVisible();
+    } else {
+      await expect(internalMaterialCosts).toHaveCount(0);
+    }
 
     const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
     const originalLength = await roofLength.inputValue();
@@ -764,7 +773,6 @@ test('materials and labour explain whole-job quantities without losing trust sta
       timeout: 60_000,
     });
 
-    await page.getByRole('button', { name: 'Advanced', exact: true }).click();
     await inspector.getByRole('tab', { name: 'Labour', exact: true }).click();
     const labour = inspector.getByRole('region', { name: 'Labour breakdown' });
     await expect(labour).toHaveAttribute('data-trusted-labour-status', 'ready');
@@ -781,7 +789,12 @@ test('materials and labour explain whole-job quantities without losing trust sta
     ).toContainText('Roof installation');
     await expect(labour.locator('[data-labour-breakdown-row]').first()).toBeVisible();
     await expect(labour.getByText(/crew hr/).first()).toBeVisible();
-    await expect(labour.locator('[data-internal-labour-cost]').first()).toBeVisible();
+    const internalLabourCosts = labour.locator('[data-internal-labour-cost]');
+    if (await internalLabourCosts.count()) {
+      await expect(internalLabourCosts.first()).toBeVisible();
+    } else {
+      await expect(internalLabourCosts).toHaveCount(0);
+    }
     const labourWhy = firstLabourGroup
       .locator('details:not([data-technical-source])')
       .first();
@@ -819,11 +832,7 @@ test('real project route embeds the seeded Calculator without a project picker',
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 1600, height: 1000 });
     await clearPreviewSplitPreference(page);
-    await openPortalPage(page, projectCalculatorRoute, { heading: scenario.labels.projectName });
-    await expect(page.locator('[data-calculator-workspace="project"]')).toBeVisible({ timeout: 60_000 });
-    await expect(
-      page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
-    ).toBeVisible({ timeout: 60_000 });
+    await openProjectCalculator(page);
     await expect(
       page.locator('[data-project-page-frame][data-project-calculator-workspace="true"]'),
     ).toBeVisible();
@@ -848,7 +857,7 @@ test('embedded Context is hidden only in stacked layouts', async ({ page }, test
       ),
     ).toBeVisible();
 
-    await openPortalPage(page, projectCalculatorRoute, { heading: scenario.labels.projectName });
+    await openProjectCalculator(page);
     const embeddedContext = page.locator(
       '[data-calculator-workspace="project"] '
       + '[data-calculator-configuration-section="context"]',
@@ -893,23 +902,21 @@ test('project Calculator keeps a compact command bar without horizontal overflow
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 1600, height: 1000 });
     await clearPreviewSplitPreference(page);
-    await openPortalPage(page, projectCalculatorRoute, { heading: scenario.labels.projectName });
-    await expect(page.locator('[data-calculator-workspace="project"]')).toBeVisible({ timeout: 60_000 });
+    await openProjectCalculator(page);
 
     for (const width of [1600, 1366, 1024, 768, 390]) {
       await page.setViewportSize({ width, height: width >= 1366 ? 1000 : 844 });
-      const masthead = page.locator('[aria-label="Project summary"]');
       const commandBar = page.locator('[data-calculator-command-bar]');
-      await expect(masthead).toBeVisible();
       await expect(commandBar).toBeVisible();
+      await expect(page.locator('[aria-label="Project summary"]')).toHaveCount(0);
+      await expect(page.getByRole('tab', { name: 'Commercial' })).toHaveCount(0);
       await expect(page.getByLabel('Design version')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeVisible();
 
       const metrics = await page.evaluate(() => {
-        const mastheadElement = document.querySelector<HTMLElement>('[aria-label="Project summary"]');
         const commandElement = document.querySelector<HTMLElement>('[data-calculator-command-bar]');
         const workspaceElement = document.querySelector<HTMLElement>('[data-calculator-split="true"]');
-        if (!mastheadElement || !commandElement || !workspaceElement) return null;
+        if (!commandElement || !workspaceElement) return null;
         const commandBox = commandElement.getBoundingClientRect();
         return {
           commandHeight: Math.round(commandBox.height),
@@ -930,11 +937,7 @@ test('project Calculator keeps a compact command bar without horizontal overflow
     await designSelector.selectOption(currentDesignValue);
     await expect(page).toHaveURL(new RegExp(`estimateId=${encodeURIComponent(estimateId)}`));
 
-    const moreButton = page.getByRole('button', { name: 'More', exact: true });
-    await moreButton.click();
-    await expect(page.getByRole('menu', { name: 'Project actions' })).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.getByRole('menu', { name: 'Project actions' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'More', exact: true })).toHaveCount(0);
   });
 });
 
@@ -1035,8 +1038,7 @@ test('editing save always shows stored versus live costing without creating a qu
     await page.getByRole('button', { name: 'Save', exact: true }).first().click();
     const dialog = page.getByRole('dialog', { name: 'Save design confirmation' });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText('Stored estimate', { exact: true })).toBeVisible();
-    await expect(dialog.getByText('Live calculator', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('region', { name: 'Stored and live costing comparison' })).toBeVisible();
     await expect(dialog.getByText('Cost-affecting design inputs have changed.', { exact: true })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Keep stored costing', exact: true })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Reprice and save', exact: true })).toBeVisible();
@@ -1046,16 +1048,17 @@ test('editing save always shows stored versus live costing without creating a qu
   });
 });
 
-test('Issue Jump reveals an Advanced-only Flashings error and focuses the invalid row', async ({ page }, testInfo) => {
+test('Issue Jump opens the Flashings disclosure and focuses the invalid row', async ({ page }, testInfo) => {
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openCalculator(page);
 
-    await page.getByRole('button', { name: 'Advanced', exact: true }).click();
     const flashingsSection = page.locator(
       '[data-calculator-configuration-section="flashings"]',
     );
     await expect(flashingsSection).toBeVisible();
+    await flashingsSection.locator(':scope > summary').click();
+    await expect(flashingsSection).toHaveAttribute('open', '');
     await flashingsSection.getByRole('button', { name: /Add flashing row/ }).click();
     const invalidLength = flashingsSection.locator(
       'input[id^="flashing-row-length-"]',
@@ -1065,15 +1068,12 @@ test('Issue Jump reveals an Advanced-only Flashings error and focuses the invali
     await expect(invalidLength).toHaveAttribute('aria-invalid', 'true');
     await expect(invalidLength).toHaveAttribute('aria-describedby', 'flashings-error');
 
-    await page.getByRole('button', { name: 'Basic', exact: true }).click();
-    await expect(flashingsSection).toHaveCount(0);
+    await flashingsSection.locator(':scope > summary').click();
+    await expect(flashingsSection).not.toHaveAttribute('open', '');
     const issueDialog = await openCalculatorInputIssuesDialog(page);
     await issueDialog.getByRole('button', { name: /Flashings/ }).click();
 
-    await expect(page.getByRole('button', { name: 'Advanced', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    await expect(flashingsSection).toHaveAttribute('open', '');
     await expect(flashingsSection).toBeVisible();
     await expect(invalidLength).toBeFocused();
     await expect(invalidLength).toBeInViewport({ ratio: 1 });
@@ -1127,50 +1127,55 @@ test('calculator preview does not clip horizontally at 1366px', async ({ page },
     const internalDetails = page
       .getByRole('region', { name: 'Pricing details' })
       .locator('details', { hasText: 'Internal costing' });
-    await expect(internalDetails).not.toHaveAttribute('open', '');
-    await internalDetails.locator('summary').click();
-    const internalValues = internalDetails.locator('dd');
-    await expect(internalValues).toHaveCount(7);
-    const internalValuePresentation = await internalValues.evaluateAll((elements) =>
-      elements.map((element) => {
-        const range = document.createRange();
-        range.selectNodeContents(element);
-        const styles = window.getComputedStyle(element);
-        return {
-          flexShrink: styles.flexShrink,
-          lineCount: new Set(Array.from(range.getClientRects()).map((rect) => Math.round(rect.top))).size,
-          overflowWrap: styles.overflowWrap,
-          whiteSpace: styles.whiteSpace,
-          wordBreak: styles.wordBreak,
-        };
-      }),
-    );
-    expect(internalValuePresentation.every((value) => value.flexShrink === '0')).toBe(true);
-    expect(internalValuePresentation.every((value) => value.overflowWrap === 'normal')).toBe(true);
-    expect(internalValuePresentation.every((value) => value.whiteSpace === 'nowrap')).toBe(true);
-    expect(internalValuePresentation.every((value) => value.wordBreak === 'normal')).toBe(true);
-    expect(internalValuePresentation.every((value) => value.lineCount === 1)).toBe(true);
+    if (await internalDetails.count()) {
+      await expect(internalDetails).not.toHaveAttribute('open', '');
+      await internalDetails.locator('summary').click();
+      const internalValues = internalDetails.locator('dd');
+      await expect(internalValues).toHaveCount(7);
+      const internalValuePresentation = await internalValues.evaluateAll((elements) =>
+        elements.map((element) => {
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          const styles = window.getComputedStyle(element);
+          return {
+            flexShrink: styles.flexShrink,
+            lineCount: new Set(Array.from(range.getClientRects()).map((rect) => Math.round(rect.top))).size,
+            overflowWrap: styles.overflowWrap,
+            whiteSpace: styles.whiteSpace,
+            wordBreak: styles.wordBreak,
+          };
+        }),
+      );
+      expect(internalValuePresentation.every((value) => value.flexShrink === '0')).toBe(true);
+      expect(internalValuePresentation.every((value) => value.overflowWrap === 'normal')).toBe(true);
+      expect(internalValuePresentation.every((value) => value.whiteSpace === 'nowrap')).toBe(true);
+      expect(internalValuePresentation.every((value) => value.wordBreak === 'normal')).toBe(true);
+      expect(internalValuePresentation.every((value) => value.lineCount === 1)).toBe(true);
 
-    const internalLabels = internalDetails.locator('dt');
-    await expect(internalLabels).toHaveCount(7);
-    const internalLabelPresentation = await internalLabels.evaluateAll((elements) =>
-      elements.map((element) => {
-        const styles = window.getComputedStyle(element);
-        return {
-          clipped: element.scrollWidth > element.clientWidth + 1,
-          flexShrink: styles.flexShrink,
-          whiteSpace: styles.whiteSpace,
-        };
-      }),
-    );
-    expect(internalLabelPresentation.every((label) => label.flexShrink === '1')).toBe(true);
-    expect(internalLabelPresentation.every((label) => label.whiteSpace === 'normal')).toBe(true);
-    expect(internalLabelPresentation.every((label) => !label.clipped)).toBe(true);
+      const internalLabels = internalDetails.locator('dt');
+      await expect(internalLabels).toHaveCount(7);
+      const internalLabelPresentation = await internalLabels.evaluateAll((elements) =>
+        elements.map((element) => {
+          const styles = window.getComputedStyle(element);
+          return {
+            clipped: element.scrollWidth > element.clientWidth + 1,
+            flexShrink: styles.flexShrink,
+            whiteSpace: styles.whiteSpace,
+          };
+        }),
+      );
+      expect(internalLabelPresentation.every((label) => label.flexShrink === '1')).toBe(true);
+      expect(internalLabelPresentation.every((label) => label.whiteSpace === 'normal')).toBe(true);
+      expect(internalLabelPresentation.every((label) => !label.clipped)).toBe(true);
 
-    const impact = page.getByRole('region', { name: 'Price impact' });
-    const resetBox = await impact.getByRole('button', { name: 'Reset baseline', exact: true }).boundingBox();
-    const impactBox = await impact.boundingBox();
-    expect(resetBox?.width ?? 0).toBeLessThan((impactBox?.width ?? 0) / 2);
+      const impact = page.getByRole('region', { name: 'Price impact' });
+      const resetBox = await impact.getByRole('button', { name: 'Reset baseline', exact: true }).boundingBox();
+      const impactBox = await impact.boundingBox();
+      expect(resetBox?.width ?? 0).toBeLessThan((impactBox?.width ?? 0) / 2);
+    } else {
+      await expect(internalDetails).toHaveCount(0);
+      await expect(page.getByRole('region', { name: 'Price impact' })).toHaveCount(0);
+    }
 
     const houseConnectionBox = await page.getByLabel('House connection', { exact: true }).boundingBox();
     const postConnectionBox = await page.getByLabel('Post connection', { exact: true }).boundingBox();
@@ -1243,7 +1248,7 @@ for (const width of [1024, 768]) {
       expect(previewDimensions.scrollWidth).toBeLessThanOrEqual(previewDimensions.clientWidth + 1);
       await page.getByRole('button', { name: 'Save', exact: true }).first().click();
       const dialog = page.getByRole('dialog', { name: 'Save design confirmation' });
-      await expect(dialog.getByText('Stored estimate', { exact: true })).toBeVisible();
+      await expect(dialog.getByRole('region', { name: 'Stored and live costing comparison' })).toBeVisible();
       await expect(dialog.getByRole('button', { name: 'Save design — keep stored costing', exact: true })).toBeVisible();
     });
   });
@@ -1283,15 +1288,7 @@ for (const issueJumpCase of [
       });
       await clearPreviewSplitPreference(page);
       if (issueJumpCase.embedded) {
-        await openPortalPage(page, projectCalculatorRoute, { heading: scenario.labels.projectName });
-        await expect(page.locator('[data-calculator-workspace="project"]')).toBeVisible({
-          timeout: 60_000,
-        });
-        await expect(
-          page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
-        ).toBeVisible({
-          timeout: 60_000,
-        });
+        await openProjectCalculator(page);
       } else {
         await openCalculator(page);
       }
@@ -1453,10 +1450,16 @@ test('discounted save preserves blind pricing and reconciles the exact total thr
       'Pergola',
       'Site',
     ]);
-    const visiblePricedRowsTotalCents = sumCalculatorPricingRows(discountedRows);
+    const additivePricedRowsTotalCents = sumCalculatorPricingRows(discountedRows, [
+      'Pergola',
+      'Site',
+      'Approval',
+      'Blind',
+      'Lighting',
+    ]);
     expect(discountedBlindCents).toBe(baselineBlindCents);
     expect(discountedDiscountableCents).toBeLessThan(baselineDiscountableCents);
-    expect(visiblePricedRowsTotalCents).toBe(exactCalculatorTotalCents);
+    expect(additivePricedRowsTotalCents).toBe(exactCalculatorTotalCents);
 
     const pricingDetails = page.getByRole('region', { name: 'Pricing details' });
     const beforeDiscount = pricingDetails

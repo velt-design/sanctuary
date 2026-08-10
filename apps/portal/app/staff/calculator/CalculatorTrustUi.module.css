@@ -75,8 +75,6 @@
 
 .commandBarProject:focus-visible,
 .commandBarDesignSelector:focus-visible,
-.commandBarModeButton:focus-visible,
-.commandBarModeActive:focus-visible,
 .commandBarSave:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--ui-action) 20%, transparent);
   outline-offset: 2px;
@@ -125,26 +123,6 @@
   border: var(--ui-border-width) solid var(--ui-status-error-border);
   background: var(--ui-status-error-bg);
   color: var(--ui-status-error-border);
-}
-
-.commandBarMode {
-  display: inline-flex;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: var(--ui-radius-control);
-  background: var(--ui-surface-secondary);
-}
-
-.commandBarModeButton,
-.commandBarModeActive {
-  border: 1px solid transparent;
-  border-radius: var(--ui-radius-control);
-  padding: 5px 9px;
-  background: transparent;
-  color: var(--ui-text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
 }
 
 .commandBarDraftStatus,
@@ -207,12 +185,6 @@
   font: inherit;
   font-size: 11px;
   font-weight: 700;
-}
-
-.commandBarModeActive {
-  border-color: color-mix(in srgb, var(--ui-action) 34%, transparent);
-  background: color-mix(in srgb, var(--ui-action) 10%, transparent);
-  color: var(--ui-text);
 }
 
 .commandBarSave {
@@ -421,8 +393,6 @@
 
 @container (max-width: 779px) {
   .commandBarProject,
-  .commandBarModeButton,
-  .commandBarModeActive,
   .commandBarSave,
   .commandBarDesignSelector {
     min-height: 44px;
@@ -545,8 +515,6 @@
 
 .commandBarProject:focus-visible,
 .commandBarDesignSelector:focus-visible,
-.commandBarModeButton:focus-visible,
-.commandBarModeActive:focus-visible,
 .commandBarSave:focus-visible,
 .projectPickerSearch:focus-visible,
 .projectPickerRow:focus-visible,
@@ -559,9 +527,6 @@
 .commandBarStatusReview,
 .commandBarStatusWaiting,
 .commandBarStatusBlocked,
-.commandBarMode,
-.commandBarModeButton,
-.commandBarModeActive,
 .commandBarDesignSelector,
 .commandBarSave,
 .commandBarError,
@@ -597,22 +562,6 @@
   border-color: var(--ui-status-error-border);
   background: var(--ui-status-error-bg);
   color: var(--ui-status-error-border);
-}
-
-.commandBarMode {
-  border-color: var(--ui-border);
-  background: var(--ui-surface-secondary);
-}
-
-.commandBarModeButton,
-.commandBarModeActive {
-  color: var(--ui-text-muted);
-}
-
-.commandBarModeActive {
-  border-color: var(--ui-surface-inverse);
-  background: var(--ui-surface-inverse);
-  color: var(--ui-text-inverse);
 }
 
 .commandBarDesignSelector,
