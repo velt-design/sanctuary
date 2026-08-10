@@ -61,21 +61,25 @@ export function buildCalculatorSiteFields({
   const activeAttachmentSide = normalizeAttachmentSide(activeModule.attachmentSide);
   const activeHouseFootprintPreset = normalizeHouseFootprintPreset(activeModule.houseFootprintPreset);
   const activeHouseFootprintParams = normalizeHouseFootprintParams(activeModule.houseFootprintParams);
+  const hasOpenPergola = values.modules.some((module) => module.roofMaterial === 'none');
 
   return [
     {
       id: 'pricingClassification',
       label: 'Pricing classification',
       type: 'select',
-      value: values.pricingClassification ?? 'bespoke',
+      value: hasOpenPergola ? 'bespoke' : values.pricingClassification ?? 'bespoke',
       onChange: (v) => setJobField('pricingClassification', v as CalculatorInputs['pricingClassification']),
       options: [
         { label: 'Simple', value: 'simple' },
         { label: 'Bespoke', value: 'bespoke' },
       ],
-      helperText: values.pricingClassification === 'simple'
-        ? 'Uses the published Simple range policy while the design remains eligible.'
-        : 'Uses the full bespoke overhead policy.',
+      helperText: hasOpenPergola
+        ? 'Open pergolas always use bespoke pricing.'
+        : values.pricingClassification === 'simple'
+          ? 'Uses the published Simple range policy while the design remains eligible.'
+          : 'Uses the full bespoke overhead policy.',
+      disabled: hasOpenPergola,
     },
     {
       id: 'approvalRequirement',
@@ -355,40 +359,44 @@ export function buildCalculatorSiteFields({
         ]
       : []),
 
-    {
-      id: 'downpipeCount',
-      label: 'Downpipes (count)',
-      type: 'number',
-      value: activeModule.downpipeCount,
-      onChange: (v: string | boolean) => setModuleField('downpipeCount', String(v)),
-      error: errors.downpipeCount,
-      resolvedDefaultText: resolvedDefaults.downpipeCount,
-      helperText: activeModule.boxPerimeterEnabled
-        ? 'Default 1 when any "our" gutter edge is set'
-        : 'Default 1 when any "our" gutter is used',
-    } satisfies FieldSchemaItem,
-    {
-      id: 'downpipeJoinCount',
-      label: 'Downpipe joins',
-      type: 'select',
-      value: activeModule.downpipeJoinCount,
-      onChange: (v: string | boolean) => setModuleField('downpipeJoinCount', String(v)),
-      options: DP_JOIN_OPTIONS,
-      error: errors.downpipeJoinCount,
-      helperText: 'Joins/couplers for downpipe sections (10 min each).',
-    } satisfies FieldSchemaItem,
-    ...(hasOurGutterUi
+    ...(activeModule.roofMaterial !== 'none'
       ? [
           {
-            id: 'downpipeElbowCount',
-            label: 'Downpipe elbows',
-            type: 'select',
-            value: activeModule.downpipeElbowCount,
-            onChange: (v: string | boolean) => setModuleField('downpipeElbowCount', String(v)),
-            options: DP_ELBOW_OPTIONS,
-            error: errors.downpipeElbowCount,
-            helperText: 'Elbows/fittings (10 min each). Only applicable when our gutter is used.',
+            id: 'downpipeCount',
+            label: 'Downpipes (count)',
+            type: 'number',
+            value: activeModule.downpipeCount,
+            onChange: (v: string | boolean) => setModuleField('downpipeCount', String(v)),
+            error: errors.downpipeCount,
+            resolvedDefaultText: resolvedDefaults.downpipeCount,
+            helperText: activeModule.boxPerimeterEnabled
+              ? 'Default 1 when any "our" gutter edge is set'
+              : 'Default 1 when any "our" gutter is used',
           } satisfies FieldSchemaItem,
+          {
+            id: 'downpipeJoinCount',
+            label: 'Downpipe joins',
+            type: 'select',
+            value: activeModule.downpipeJoinCount,
+            onChange: (v: string | boolean) => setModuleField('downpipeJoinCount', String(v)),
+            options: DP_JOIN_OPTIONS,
+            error: errors.downpipeJoinCount,
+            helperText: 'Joins/couplers for downpipe sections (10 min each).',
+          } satisfies FieldSchemaItem,
+          ...(hasOurGutterUi
+            ? [
+                {
+                  id: 'downpipeElbowCount',
+                  label: 'Downpipe elbows',
+                  type: 'select',
+                  value: activeModule.downpipeElbowCount,
+                  onChange: (v: string | boolean) => setModuleField('downpipeElbowCount', String(v)),
+                  options: DP_ELBOW_OPTIONS,
+                  error: errors.downpipeElbowCount,
+                  helperText: 'Elbows/fittings (10 min each). Only applicable when our gutter is used.',
+                } satisfies FieldSchemaItem,
+              ]
+            : []),
         ]
       : []),
   ];

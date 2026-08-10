@@ -72,7 +72,7 @@ function joinStyleLabels(styles: string[]): string {
 function buildModuleDescription(module: CalculatorModuleInputs, index: number): string {
   const lines: string[] = [];
   const style = toTitleCase(module.pergolaStyle);
-  const roof = toTitleCase(module.roofMaterial);
+  const roof = formatModuleRoof(module) ?? '—';
   const colour = module.powdercoatIsCustom
     ? `${module.extrusionColour} (${module.powdercoatCustomColour?.trim() || 'custom'})`
     : `${module.extrusionColour}${module.powdercoatStandardColour?.trim() ? ` (${module.powdercoatStandardColour.trim()})` : ''}`;

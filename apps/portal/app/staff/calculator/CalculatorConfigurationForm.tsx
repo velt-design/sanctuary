@@ -74,6 +74,7 @@ export default function CalculatorConfigurationForm({
               disabled={field.disabled}
               min={field.min}
               max={field.max}
+              step={field.step}
               helperText={field.error ? undefined : field.resolvedDefaultText}
               helperPart="resolved"
               error={field.error}

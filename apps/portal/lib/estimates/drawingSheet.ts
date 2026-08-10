@@ -128,6 +128,7 @@ function formatRoofMaterialLabel(value: string | null | undefined): string | nul
   const trimmed = trimOrNull(value);
   if (!trimmed) return null;
   const normalized = trimmed.toLowerCase();
+  if (normalized === 'none') return 'No roof covering';
   if ((normalized.includes('acrylic') && normalized.includes('timber')) || normalized.includes('mixed') || normalized.includes('comb')) {
     return 'Combination';
   }

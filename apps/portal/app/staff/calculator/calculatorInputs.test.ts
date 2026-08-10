@@ -5,6 +5,7 @@ import {
   calculatorDraftSessionKey,
   buildInfillItemsForPreset,
   calculatorInputsFromEstimateDetail,
+  makeDefaultCalculatorInputs,
   makeDefaultBlindItem,
   makeDefaultModule,
   normalizeBlindsStateForUi,
@@ -48,6 +49,7 @@ describe('calculator input defaults and normalization', () => {
     expect(module.pergolaStyle).toBe('pitched');
     expect(module.lengthM).toBe('6');
     expect(module.projectionM).toBe('3');
+    expect(module.rafterSpacingMm).toBe('500');
     expect(module.houseConnectionType).toBe('soffit');
     expect(module.flashings?.rows[0]).toMatchObject({
       kind: 'primary',
@@ -56,6 +58,36 @@ describe('calculator input defaults and normalization', () => {
       purpose: 'CUSTOM',
     });
     expect(module.infills).toEqual({ items: [] });
+  });
+
+  it('normalizes saved open pergolas to the supported frame contract', () => {
+    const normalized = normalizeCalculatorInputsForUi({
+      ...makeDefaultCalculatorInputs(),
+      pricingClassification: 'simple',
+      modules: [{
+        ...makeDefaultModule('pergola-1'),
+        roofMaterial: 'none',
+        pergolaStyle: 'gable',
+        boxPerimeterEnabled: true,
+        roofPitchDeg: '25',
+        rafterSpacingMm: '725',
+        downpipeCount: '2',
+        overhangEnabled: true,
+        flashings: { rows: [{ id: 'extra-1', kind: 'extra', band: '301-400', lengthM: '2' }] },
+      }],
+    });
+
+    expect(normalized.modules[0]).toMatchObject({
+      roofMaterial: 'none',
+      pergolaStyle: 'pitched',
+      boxPerimeterEnabled: false,
+      roofPitchDeg: '0',
+      rafterSpacingMm: '725',
+      downpipeCount: '0',
+      overhangEnabled: false,
+      flashings: { rows: [] },
+    });
+    expect(normalized.pricingClassification).toBe('bespoke');
   });
 
   it('defaults new infills to explicit material, direction and No support answers while preserving saved choices', () => {

@@ -47,6 +47,8 @@ export function buildFlashingDefaultsForModule(
   module: CalculatorModuleInputs,
   derived?: FlashingDefaultsDerivedInput,
 ): FlashingDefaultUi[] {
+  if (module.roofMaterial === 'none') return [];
+
   const roofType = getRoofTypeForModule(module);
   const projectionM = Number.isFinite(toNumber(module.projectionM)) ? Math.max(0, toNumber(module.projectionM)) : 0;
   const roofLengthM = roofLengthForPrimaryFlashing(module);

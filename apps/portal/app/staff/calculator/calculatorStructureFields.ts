@@ -16,7 +16,9 @@ import {
   STRUT_PROFILE_OPTIONS,
 } from './calculatorConfigurationFieldOptions';
 import {
+  applyOpenPergolaDefaults,
   computeBayCountsForModule,
+  DEFAULT_OPEN_PERGOLA_RAFTER_SPACING_MM,
   defaultMixedAcrylicBays,
   getRoofTypeForModule,
   isGutterBeamProfile,
@@ -67,6 +69,7 @@ export function buildCalculatorStructureFields({
   setModuleField,
   setModuleOverride,
 }: CalculatorStructureFieldBuilderInput): FieldSchemaItem[] {
+  const isOpenPergola = activeModule.roofMaterial === 'none';
   const roofTypeForInputs = getRoofTypeForModule(activeModule);
   const roofSpanForInputsM = toNumber(activeModule.projectionM);
   const pitchForInputsDegRaw = toNumber(activeModule.roofPitchDeg);
@@ -110,10 +113,10 @@ export function buildCalculatorStructureFields({
   const moduleOverrides = activeModule.overrides ?? {};
   const boxPerimeterBeamProfileUsedUi = normalizeOverrideValue(moduleOverrides.boxPerimeterBeamProfile) ?? '300x50';
   const frontBeamOverride = normalizeOverrideValue(moduleOverrides.frontBeamProfile);
-  const frontBeamProfileUsed = frontBeamOverride ?? 'SP Gutter';
+  const frontBeamProfileUsed = isOpenPergola ? '150x50' : frontBeamOverride ?? 'SP Gutter';
   const integratedGutterBeamUi = isGutterBeamProfile(frontBeamProfileUsed);
   const showSeparateGutterToggle =
-    !activeModule.boxPerimeterEnabled && !activeModule.overhangEnabled && !activeModule.invertedEnabled && !integratedGutterBeamUi;
+    !isOpenPergola && !activeModule.boxPerimeterEnabled && !activeModule.overhangEnabled && !activeModule.invertedEnabled && !integratedGutterBeamUi;
   const gableGutterOptions =
     activeModule.houseConnectionType === 'none' ? [GABLE_GUTTER_OPTIONS[1]] : GABLE_GUTTER_OPTIONS;
 
@@ -143,9 +146,12 @@ export function buildCalculatorStructureFields({
         { label: 'Hip (corner)', value: 'hip_corner' },
       ],
       helperText:
-        activeModule.pergolaStyle === 'gable' || activeModule.pergolaStyle === 'hip' || activeModule.pergolaStyle === 'hip_corner'
-          ? 'v1 assumptions (check Details)'
-          : undefined,
+        isOpenPergola
+          ? 'Open pergolas use the standard pitched frame.'
+          : activeModule.pergolaStyle === 'gable' || activeModule.pergolaStyle === 'hip' || activeModule.pergolaStyle === 'hip_corner'
+            ? 'v1 assumptions (check Details)'
+            : undefined,
+      disabled: isOpenPergola,
     },
     {
       id: 'boxPerimeterEnabled',
@@ -153,13 +159,15 @@ export function buildCalculatorStructureFields({
       type: 'toggle',
       value: activeModule.boxPerimeterEnabled,
       onChange: (v) => setModuleField('boxPerimeterEnabled', Boolean(v)),
-      disabled: activeModule.pergolaStyle === 'hip_corner',
+      disabled: isOpenPergola || activeModule.pergolaStyle === 'hip_corner',
       helperText:
-        activeModule.pergolaStyle === 'hip_corner'
-          ? 'Not supported for hip corner'
-          : activeModule.boxPerimeterEnabled
-            ? `Box beam = ${boxPerimeterBeamProfileUsedUi}`
-            : undefined,
+        isOpenPergola
+          ? 'Not available without roof covering.'
+          : activeModule.pergolaStyle === 'hip_corner'
+            ? 'Not supported for hip corner'
+            : activeModule.boxPerimeterEnabled
+              ? `Box beam = ${boxPerimeterBeamProfileUsedUi}`
+              : undefined,
     },
     {
       id: 'roofMaterial',
@@ -172,8 +180,10 @@ export function buildCalculatorStructureFields({
           const modules = prev.modules.slice();
           const current = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
           const updated: CalculatorModuleInputs =
-            next === 'mixed'
-              ? (() => {
+            next === 'none'
+              ? applyOpenPergolaDefaults({ ...current, roofMaterial: next })
+              : next === 'mixed'
+                ? (() => {
                   const bayCounts = computeBayCountsForModule(current);
                   const withDefault = (value: string | undefined, bayCount: number) =>
                     hasNonEmptyValue(value) ? value : defaultMixedAcrylicBays(bayCount);
@@ -187,18 +197,38 @@ export function buildCalculatorStructureFields({
                           mixedAcrylicBaysB: withDefault(current.mixedAcrylicBaysB, bayCounts.bayCountB),
                         }),
                   };
-                })()
-              : { ...current, roofMaterial: next };
+                  })()
+                : { ...current, roofMaterial: next };
           modules[activeModuleIndex] = updated;
-          return { ...prev, modules };
+          return {
+            ...prev,
+            modules,
+            ...(next === 'none' ? { pricingClassification: 'bespoke' as const } : null),
+          };
         });
       },
       options: [
         { label: 'Acrylic', value: 'acrylic' },
         { label: 'Timber', value: 'timber' },
         { label: 'Mixed (Acrylic + Timber)', value: 'mixed' },
+        { label: 'Open / no roof covering', value: 'none' },
       ],
     },
+    ...(isOpenPergola
+      ? [
+          {
+            id: 'rafterSpacingMm',
+            label: 'Rafter spacing (mm)',
+            type: 'number',
+            value: activeModule.rafterSpacingMm ?? DEFAULT_OPEN_PERGOLA_RAFTER_SPACING_MM,
+            onChange: (v: string | boolean) => setModuleField('rafterSpacingMm', String(v)),
+            min: 1,
+            step: 1,
+            error: errors.rafterSpacingMm,
+            helperText: 'Target spacing; defaults to 500mm and has no upper cap.',
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
     ...(activeModule.roofMaterial === 'mixed'
       ? [
           ...(computeBayCountsForModule(activeModule).roofType === 'pitched'
@@ -376,21 +406,33 @@ export function buildCalculatorStructureFields({
 
     {
       id: 'lengthM',
-      label: activeModule.pergolaStyle === 'hip_corner' ? 'Roof Length A (m)' : 'Roof Length (m)',
+      label: isOpenPergola
+        ? 'Pergola length (m)'
+        : activeModule.pergolaStyle === 'hip_corner'
+          ? 'Roof Length A (m)'
+          : 'Roof Length (m)',
       type: 'number',
       value: activeModule.lengthM,
       onChange: (v) => setModuleField('lengthM', String(v)),
       error: errors.lengthM,
-      helperText: 'Roof Length: dimension parallel to the ridge / gutter.',
+      helperText: isOpenPergola
+        ? 'Frame length parallel to the front beam.'
+        : 'Roof Length: dimension parallel to the ridge / gutter.',
     },
     {
       id: 'projectionM',
-      label: activeModule.pergolaStyle === 'hip_corner' ? 'Roof Span A (m)' : 'Roof Span (Eave‑to‑Eave) (m)',
+      label: isOpenPergola
+        ? 'Pergola projection (m)'
+        : activeModule.pergolaStyle === 'hip_corner'
+          ? 'Roof Span A (m)'
+          : 'Roof Span (Eave‑to‑Eave) (m)',
       type: 'number',
       value: activeModule.projectionM,
       onChange: (v) => setModuleField('projectionM', String(v)),
       error: errors.projectionM,
-      helperText: 'Roof Span (Eave‑to‑Eave): total width across the roof (both sides for gable, single slope for pitched).',
+      helperText: isOpenPergola
+        ? 'Frame projection from the house/support edge to the front beam.'
+        : 'Roof Span (Eave‑to‑Eave): total width across the roof (both sides for gable, single slope for pitched).',
     },
     ...(activeModule.pergolaStyle === 'hip_corner'
       ? [
@@ -416,24 +458,30 @@ export function buildCalculatorStructureFields({
       id: 'roofPitchDeg',
       label: 'Roof pitch (deg)',
       type: 'number',
-      value: activeModule.roofPitchDeg,
+      value: isOpenPergola ? '0' : activeModule.roofPitchDeg,
       onChange: (v) => setModuleField('roofPitchDeg', String(v)),
       error: errors.roofPitchDeg,
-      resolvedDefaultText: resolvedDefaults.roofPitchDeg,
-      helperText: activeModule.boxPerimeterEnabled
-        ? 'Auto-computed for box perimeter'
-        : activeModule.roofPitchDeg.trim()
-          ? 'Overrides default pitch for roof type'
-          : 'Blank = default pitch',
-      disabled: activeModule.boxPerimeterEnabled,
+      resolvedDefaultText: isOpenPergola ? undefined : resolvedDefaults.roofPitchDeg,
+      helperText: isOpenPergola
+        ? 'Fixed at 0° for an open pergola.'
+        : activeModule.boxPerimeterEnabled
+          ? 'Auto-computed for box perimeter'
+          : activeModule.roofPitchDeg.trim()
+            ? 'Overrides default pitch for roof type'
+            : 'Blank = default pitch',
+      disabled: isOpenPergola || activeModule.boxPerimeterEnabled,
     },
-    {
-      id: 'flashings',
-      label: 'Flashings',
-      type: 'custom',
-      content: flashingTileContent,
-      error: errors.flashings,
-    },
+    ...(!isOpenPergola
+      ? [
+          {
+            id: 'flashings',
+            label: 'Flashings',
+            type: 'custom',
+            content: flashingTileContent,
+            error: errors.flashings,
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
     ...(activeModule.pergolaStyle === 'gable'
       ? [
           {
@@ -465,7 +513,7 @@ export function buildCalculatorStructureFields({
           } satisfies FieldSchemaItem,
         ]
       : []),
-    ...(roofTypeForInputs === 'pitched' && !activeModule.boxPerimeterEnabled
+    ...(!isOpenPergola && roofTypeForInputs === 'pitched' && !activeModule.boxPerimeterEnabled
       ? [
           {
             id: 'invertedEnabled',
@@ -492,7 +540,7 @@ export function buildCalculatorStructureFields({
             : []),
         ]
       : []),
-    ...(!activeModule.boxPerimeterEnabled
+    ...(!isOpenPergola && !activeModule.boxPerimeterEnabled
       ? [
           {
             id: 'overhangEnabled',
@@ -535,19 +583,21 @@ export function buildCalculatorStructureFields({
       id: 'ledgerProfileOverride',
       label: 'Ledger override',
       type: 'select',
-      value: moduleOverrides.ledgerProfile ?? '',
+      value: isOpenPergola ? '150x50' : moduleOverrides.ledgerProfile ?? '',
       onChange: (v) => setModuleOverride('ledgerProfile', String(v)),
       options: LEDGER_PROFILE_OPTIONS,
-      helperText: 'Override ledger/stringer profile',
+      helperText: isOpenPergola ? 'Fixed at 150x50 for an open pergola.' : 'Override ledger/stringer profile',
+      disabled: isOpenPergola,
     },
     {
       id: 'rafterProfileOverride',
       label: 'Rafter override',
       type: 'select',
-      value: moduleOverrides.rafterProfile ?? '',
+      value: isOpenPergola ? '150x50' : moduleOverrides.rafterProfile ?? '',
       onChange: (v) => setModuleOverride('rafterProfile', String(v)),
       options: RAFTER_PROFILE_OPTIONS,
-      helperText: 'Override auto rafter profile selection',
+      helperText: isOpenPergola ? 'Fixed at 150x50 for an open pergola.' : 'Override auto rafter profile selection',
+      disabled: isOpenPergola,
     },
     {
       id: 'postProfileOverride',
@@ -564,12 +614,15 @@ export function buildCalculatorStructureFields({
             id: 'frontBeamProfileOverride',
             label: 'Front beam override',
             type: 'select',
-            value: moduleOverrides.frontBeamProfile ?? '',
+            value: isOpenPergola ? '150x50' : moduleOverrides.frontBeamProfile ?? '',
             onChange: (v) => setModuleOverride('frontBeamProfile', String(v)),
             options: FRONT_BEAM_PROFILE_OPTIONS,
-            helperText: integratedGutterBeamUi
-              ? 'SP gutter selected = integrated gutter beam'
-              : 'Select a non‑gutter beam to allow a separate gutter',
+            helperText: isOpenPergola
+              ? 'Fixed at 150x50 for an open pergola.'
+              : integratedGutterBeamUi
+                ? 'SP gutter selected = integrated gutter beam'
+                : 'Select a non‑gutter beam to allow a separate gutter',
+            disabled: isOpenPergola,
           } satisfies FieldSchemaItem,
         ]
       : []),

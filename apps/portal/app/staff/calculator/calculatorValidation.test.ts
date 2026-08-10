@@ -111,4 +111,14 @@ describe('buildCalculatorModuleErrors', () => {
     expect(errors[1]).toMatchObject({ timberTrayWidthMm: 'Choose 400, 500, or 600' });
     expect(errors[2]).toMatchObject({ flashings: 'Enter a flashing length of 0 or more.' });
   });
+
+  it('requires positive open-pergola spacing without an upper cap', () => {
+    const errors = buildCalculatorModuleErrors([
+      makeModule({ roofMaterial: 'none', rafterSpacingMm: '0' }),
+      makeModule({ roofMaterial: 'none', rafterSpacingMm: '50000' }),
+    ]);
+
+    expect(errors[0]).toMatchObject({ rafterSpacingMm: 'Enter a rafter spacing > 0' });
+    expect(errors[1]).toEqual({});
+  });
 });

@@ -80,6 +80,14 @@ describe('calculator site fields', () => {
     expect(fieldById(fields, 'downpipeElbowCount').options).toHaveLength(21);
   });
 
+  it('forces bespoke pricing and hides drainage controls for an open pergola', () => {
+    const { fields } = buildFields({ roofMaterial: 'none' }, true);
+    const ids = fields.map((field) => field.id);
+
+    expect(fieldById(fields, 'pricingClassification')).toMatchObject({ value: 'bespoke', disabled: true });
+    expect(ids).not.toEqual(expect.arrayContaining(['downpipeCount', 'downpipeJoinCount', 'downpipeElbowCount']));
+  });
+
   it('delegates field changes to the existing module, job, and footprint setters', () => {
     const { fields, setModuleField, setJobField, setHouseFootprintParam } = buildFields();
 

@@ -21,6 +21,7 @@ import {
   type StructureType,
 } from './types';
 import type { CostingConfigV1 } from './config';
+import { calculateOpenPergolaRafterLayout, isOpenPergolaRoof, OPEN_PERGOLA_PROFILE } from './openPergola';
 import { buildRafterCutLengthExplanationV1 } from './rafterExplanation';
 import { calculateAcrylicRafterLayoutV1, RAFTER_SPACING_MM_MAX } from './rafterLayout';
 
@@ -348,6 +349,7 @@ function normalizeMixedRoof(
 
 export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<CostingConfigV1, 'rules'>): DerivedResultV1 {
   const warnings: string[] = [];
+  const isOpenRoof = isOpenPergolaRoof(inputs.roof_material);
 
   const lengthM = toPositiveNumber(inputs.length_m, 1);
   const roofSpanFromRoofSpanM = toPositiveNumber((inputs as any).roof_span_m, NaN);
@@ -369,7 +371,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const projectionM = roofSpanM;
   const postCutHeightM = toPositiveNumber(inputs.post_cut_height_m, DEFAULT_POST_CUT_HEIGHT_M);
   const roofPitchDegRaw = typeof inputs.roof_pitch_deg === 'number' ? inputs.roof_pitch_deg : Number.parseFloat(String(inputs.roof_pitch_deg ?? ''));
-  const roofPitchDeg = Number.isFinite(roofPitchDegRaw) ? clamp(roofPitchDegRaw, 0, 85) : null;
+  const roofPitchDeg = isOpenRoof ? 0 : Number.isFinite(roofPitchDegRaw) ? clamp(roofPitchDegRaw, 0, 85) : null;
 
   const postCountRaw = typeof inputs.post_count === 'number' ? inputs.post_count : Number.parseInt(String(inputs.post_count ?? ''), 10);
   const postCount = Number.isFinite(postCountRaw) && postCountRaw > 0 ? Math.round(postCountRaw) : DEFAULT_POST_COUNT;
@@ -387,11 +389,14 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
       ? attachmentLengthMmRaw
       : null;
 
-  const styleNormalized = normalizePergolaStyle(inputs.pergola_style);
+  const requestedStyle = normalizePergolaStyle(inputs.pergola_style);
+  const styleNormalized = isOpenRoof
+    ? { style: 'pitched' as const, warnings: requestedStyle.style === 'pitched' ? [] : ['Open pergolas use the standard pitched frame.'] }
+    : requestedStyle;
   warnings.push(...styleNormalized.warnings);
 
-  const structureType = pickStructureType(styleNormalized.style, inputs.box_perimeter_enabled);
-  const roofType = pickRoofType(styleNormalized.style, structureType, inputs.internal_roof_type);
+  const structureType = pickStructureType(styleNormalized.style, isOpenRoof ? false : inputs.box_perimeter_enabled);
+  const roofType = isOpenRoof ? 'pitched' : pickRoofType(styleNormalized.style, structureType, inputs.internal_roof_type);
   const isBoxPerimeter = structureType === 'box_perimeter';
 
   const defaultGableEndFramesMode: GableEndFramesMode =
@@ -414,8 +419,8 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const overhangEnabledRaw = inputs.overhang_enabled === true;
   const invertedEnabledRaw = inputs.inverted_enabled === true;
-  const overhangEnabled = overhangEnabledRaw && !isBoxPerimeter;
-  const invertedEnabled = invertedEnabledRaw && roofType === 'pitched';
+  const overhangEnabled = !isOpenRoof && overhangEnabledRaw && !isBoxPerimeter;
+  const invertedEnabled = !isOpenRoof && invertedEnabledRaw && roofType === 'pitched';
 
   if (overhangEnabledRaw && isBoxPerimeter) {
     warnings.push('INVALID: Overhang cannot be used with Box Perimeter.');
@@ -443,8 +448,12 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   warnings.push(...profileWarnings);
 
   const overrideRafterProfile = normalizeOverrideProfile(overrides.rafter_profile);
-  const rafterProfileAuto = inputs.roof_material === 'timber' ? TIMBER_COMMON_RAFTER_DEFAULT_PROFILE : rafterProfileAutoBase;
-  const rafterProfile = overrideRafterProfile ?? rafterProfileAuto;
+  const rafterProfileAuto = isOpenRoof
+    ? OPEN_PERGOLA_PROFILE
+    : inputs.roof_material === 'timber'
+      ? TIMBER_COMMON_RAFTER_DEFAULT_PROFILE
+      : rafterProfileAutoBase;
+  const rafterProfile = isOpenRoof ? OPEN_PERGOLA_PROFILE : overrideRafterProfile ?? rafterProfileAuto;
 
   const overrideLedgerProfile = normalizeOverrideProfile(overrides.ledger_profile);
   const overridePostProfile = normalizeOverrideProfile(overrides.post_profile);
@@ -499,6 +508,9 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     if (isAcrylicRoof) {
       const { rafterCount, bayCount, clearLengthMm: clearLenMm } = calculateAcrylicRafterLayoutV1(lengthMm);
       return { rafterCount, bayCount, clearLenMm };
+    }
+    if (isOpenRoof) {
+      return calculateOpenPergolaRafterLayout(lengthMm, inputs.rafter_spacing_mm);
     }
     const rafterCount = Math.ceil(lengthMm / RAFTER_SPACING_MM_MAX) + 1;
     return { rafterCount, bayCount: Math.max(0, rafterCount - 1), clearLenMm: lengthMm };
@@ -845,7 +857,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const coverageMultiplier = roofType === 'pitched' || roofType === 'hip_corner' ? 1 : roofPlaneCount;
   const baseLinearLength = roofType === 'hip_corner' ? lengthM + hipCornerLengthBM : lengthM;
-  const foamLengthM = baseLinearLength * coverageMultiplier;
+  const foamLengthM = isOpenRoof ? 0 : baseLinearLength * coverageMultiplier;
 
   const flashingDefaultCandidates: Array<Omit<FlashingDefaultNormalizedV1, 'selected_band'>> = [];
   const pushFlashingDefault = (key: string, label: string, defaultBand: FlashingBandV1, lengthMRaw: number) => {
@@ -860,7 +872,9 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   };
 
   const roofLengthForFlashingM = Math.max(0, baseLinearLength);
-  if (roofType === 'pitched') {
+  if (isOpenRoof) {
+    // Open pergolas have no roof covering, so they also have no automatic roof flashings.
+  } else if (roofType === 'pitched') {
     pushFlashingDefault('pitched_primary', 'Primary flashing', FLASHING_BAND_201_300, roofLengthForFlashingM);
     if (slopeDirection === 'toward_house') {
       pushFlashingDefault('pitched_secondary', 'Secondary flashing', FLASHING_BAND_201_300, roofLengthForFlashingM);
@@ -909,7 +923,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   });
 
   const flashingExtras: FlashingNormalizedV1['extras'] = [];
-  const rawFlashingExtras = Array.isArray(inputs.flashings?.extras) ? inputs.flashings.extras : [];
+  const rawFlashingExtras = !isOpenRoof && Array.isArray(inputs.flashings?.extras) ? inputs.flashings.extras : [];
   for (const extra of rawFlashingExtras) {
     const lengthM = toNonNegativeNumber((extra as any)?.length_m, NaN);
     if (!Number.isFinite(lengthM) || lengthM <= 0) continue;
@@ -955,7 +969,11 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const defaultBoxBeamProfile = String(boxDefaults?.perimeter_beam_profile_default ?? '300x50');
   const defaultPostProfile = String(pitchedDefaults?.posts_profile ?? '100x100');
 
-  const frontBeamProfileUsed = structureType === 'pitched' ? overrideFrontBeamProfile ?? defaultFrontBeamProfile : null;
+  const frontBeamProfileUsed = structureType === 'pitched'
+    ? isOpenRoof
+      ? OPEN_PERGOLA_PROFILE
+      : overrideFrontBeamProfile ?? defaultFrontBeamProfile
+    : null;
   const integratedGutterBeam = structureType === 'pitched' && isGutterBeamProfile(frontBeamProfileUsed);
   const frontBeamLengthM =
     structureType === 'pitched' && frontBeamProfileUsed && !integratedGutterBeam
@@ -963,7 +981,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
         ? Math.max(0, lengthM) + Math.max(0, hipCornerLengthBM)
         : Math.max(0, lengthM)
       : 0;
-  const separateGutterEnabledRaw = inputs.separate_gutter_enabled === true;
+  const separateGutterEnabledRaw = !isOpenRoof && inputs.separate_gutter_enabled === true;
 
   const invertedHouseGutter = invertedEnabled ? inputs.inverted_house_gutter !== false : false;
   let gutterMode: GutterMode = 'default';
@@ -1004,7 +1022,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const ledgerProfileDefault = roofPitchDegUsed <= 5 ? rafterProfile : oneSizeUpProfile(rafterProfile);
   const ledgerProfileAuto = hasLedger ? ledgerProfileDefault : rafterProfile;
-  const ledgerProfileUsed: string = overrideLedgerProfile ?? ledgerProfileAuto;
+  const ledgerProfileUsed: string = isOpenRoof ? OPEN_PERGOLA_PROFILE : overrideLedgerProfile ?? ledgerProfileAuto;
   const ledgerLengthM = hasLedger ? lengthM : 0;
 
   const gableEndFrameCount =
@@ -1101,10 +1119,15 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const hasOurGutter = ourGutterLengthM > 0;
 
   const downpipeCountRaw = toNonNegativeNumber(inputs.downpipe_count, NaN);
-  const downpipeCount =
-    Number.isFinite(downpipeCountRaw) && downpipeCountRaw > 0 ? Math.round(downpipeCountRaw) : ourGutterLengthM > 0 ? 1 : 0;
+  const downpipeCount = isOpenRoof
+    ? 0
+    : Number.isFinite(downpipeCountRaw) && downpipeCountRaw > 0
+      ? Math.round(downpipeCountRaw)
+      : ourGutterLengthM > 0
+        ? 1
+        : 0;
   const downpipeJoinCountRaw = toNonNegativeNumber(inputs.downpipe_join_count, 0);
-  const downpipeJoinCountUsed = clampNumber(Math.round(downpipeJoinCountRaw), 0, 20);
+  const downpipeJoinCountUsed = isOpenRoof ? 0 : clampNumber(Math.round(downpipeJoinCountRaw), 0, 20);
   const downpipeElbowCountRaw = toNonNegativeNumber(inputs.downpipe_elbow_count, 0);
   const downpipeElbowCountUsed = hasOurGutter ? clampNumber(Math.round(downpipeElbowCountRaw), 0, 40) : 0;
   if (!hasOurGutter && downpipeElbowCountRaw > 0) {
@@ -1332,8 +1355,9 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     totalRafterPieces * representativeCommonRafterCutLengthM + hipRafterCount * hipRafterCutLengthM,
   );
   const joinerRunsTotal = roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip' ? rafterCount * 2 : rafterCount;
-  const rafterClearLenMm = isAcrylicRoof ? rafterA.clearLenMm : 0;
-  const rafterSpacingMm = isAcrylicRoof && rafterCountA > 1 ? rafterA.clearLenMm / (rafterCountA - 1) : 0;
+  const hasResolvedRafterSpacing = isAcrylicRoof || isOpenRoof;
+  const rafterClearLenMm = hasResolvedRafterSpacing ? rafterA.clearLenMm : 0;
+  const rafterSpacingMm = hasResolvedRafterSpacing && rafterCountA > 1 ? rafterA.clearLenMm / (rafterCountA - 1) : 0;
   const rafterCutLengthExplanation = buildRafterCutLengthExplanationV1({
     roofType,
     enteredSpanM: projectionM,
@@ -1416,7 +1440,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
         }
       : null),
     rafter_count: rafterCountUsed,
-    ...(isAcrylicRoof
+    ...(hasResolvedRafterSpacing
       ? {
           rafter_clear_len_mm: rafterClearLenMm,
           rafter_spacing_mm: rafterSpacingMm,

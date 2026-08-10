@@ -235,6 +235,8 @@ export function useCalculatorResultPresentation({
   }, [activeModule.downpipeElbowCount, activeModuleIndex, hasOurGutterUi]);
 
   const roofingProcurementSummary = useMemo(() => {
+    if (activeModule.roofMaterial === 'none') return 'No roof covering';
+
     const lines = moduleResult?.materials?.lines ?? [];
     if (!Array.isArray(lines) || !lines.length) return '—';
 
@@ -267,7 +269,7 @@ export function useCalculatorResultPresentation({
 
     const parts = [sheetPart ?? stripPart, cedarPart].filter(Boolean);
     return parts.length ? (parts as string[]).join(' · ') : '—';
-  }, [moduleResult]);
+  }, [activeModule.roofMaterial, moduleResult]);
 
   const rafterCountTotal =
     typeof rafterCount === 'number'
@@ -291,7 +293,7 @@ export function useCalculatorResultPresentation({
     roofSize: activeModule.pergolaStyle === 'hip_corner'
       ? `A: ${activeModule.lengthM}×${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}×${activeModule.hipCornerProjectionBM}m`
       : `${activeModule.lengthM}m × ${activeModule.projectionM}m`,
-    roofMaterial: activeModule.roofMaterial,
+    roofMaterial: activeModule.roofMaterial === 'none' ? 'No roof covering' : activeModule.roofMaterial,
     roofPitch: typeof derivedPitchUsed === 'number'
       ? `${derivedPitchUsed.toFixed(0)}°`
       : activeModule.roofPitchDeg.trim()

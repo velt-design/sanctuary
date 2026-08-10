@@ -30,6 +30,7 @@ export function formatModuleStyle(module: CalculatorModuleInputs): string | null
 
 export function formatModuleRoof(module: CalculatorModuleInputs): string | null {
   const raw = typeof module?.roofMaterial === 'string' ? module.roofMaterial.trim() : '';
+  if (raw === 'none') return 'No roof covering';
   return raw ? toTitleCase(raw) : null;
 }
 

@@ -13,6 +13,7 @@ export type CalculatorConfigurationField = {
   disabled?: boolean;
   min?: number | string;
   max?: number | string;
+  step?: number | string;
   helperText?: string;
   resolvedDefaultText?: string;
   error?: string;
@@ -63,6 +64,7 @@ export const CALCULATOR_CONFIGURATION_SECTIONS = [
       'pergolaStyle',
       'boxPerimeterEnabled',
       'roofMaterial',
+      'rafterSpacingMm',
       'mixedAcrylicBaysMain',
       'mixedAcrylicBaysA',
       'mixedAcrylicBaysB',

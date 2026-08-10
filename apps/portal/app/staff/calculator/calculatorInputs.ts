@@ -42,6 +42,7 @@ export {
 } from './calculatorFlashings';
 
 export const RAFTER_SPACING_MM_MAX = 642;
+export const DEFAULT_OPEN_PERGOLA_RAFTER_SPACING_MM = '500';
 
 const DEFAULT_MIXED_ACRYLIC_BAYS = 2;
 export type InfillPresetKey = 'front' | 'house' | 'side' | 'gable_triangles' | 'wall_panel' | 'custom';
@@ -94,6 +95,7 @@ export function isGutterBeamProfile(profile: string | undefined): boolean {
 }
 
 export function computeHasOurGutter(module: CalculatorModuleInputs): boolean {
+  if (module.roofMaterial === 'none') return false;
   if (module.invertedEnabled && module.invertedHouseGutter) return false;
   if (module.boxPerimeterEnabled) {
     return module.boxGutterHouseEdge === 'our' || module.boxGutterFarEdge === 'our';
@@ -107,6 +109,29 @@ export function computeHasOurGutter(module: CalculatorModuleInputs): boolean {
   const frontBeamOverride = normalizeOverrideValue(module.overrides?.frontBeamProfile);
   const frontBeamProfileUsed = frontBeamOverride ?? 'SP Gutter';
   return isGutterBeamProfile(frontBeamProfileUsed);
+}
+
+export function applyOpenPergolaDefaults(module: CalculatorModuleInputs): CalculatorModuleInputs {
+  if (module.roofMaterial !== 'none') return module;
+  return {
+    ...module,
+    pergolaStyle: 'pitched',
+    boxPerimeterEnabled: false,
+    internalRoofType: 'pitched',
+    fallDistanceMm: '0',
+    roofPitchDeg: '0',
+    rafterSpacingMm: module.rafterSpacingMm?.trim() || DEFAULT_OPEN_PERGOLA_RAFTER_SPACING_MM,
+    boxGutterHouseEdge: 'none',
+    boxGutterFarEdge: 'none',
+    downpipeCount: '0',
+    downpipeJoinCount: '0',
+    downpipeElbowCount: '0',
+    separateGutterEnabled: false,
+    overhangEnabled: false,
+    invertedEnabled: false,
+    invertedHouseGutter: false,
+    flashings: { rows: [] },
+  };
 }
 
 export function getRoofTypeForModule(module: CalculatorModuleInputs): RoofType {
@@ -151,6 +176,7 @@ export function makeDefaultModule(pergolaId = 'pergola-1'): CalculatorModuleInpu
     internalRoofType: 'pitched',
     fallDistanceMm: '0',
     roofPitchDeg: '',
+    rafterSpacingMm: DEFAULT_OPEN_PERGOLA_RAFTER_SPACING_MM,
     gableEndFramesMode: 'outer_end_only',
     gableHouseEdgeGutter: 'house',
     gableOuterEdgeGutter: 'our',
@@ -585,6 +611,8 @@ function normalizeModuleForUi(value: unknown): CalculatorModuleInputs {
   merged.flashings = normalizeFlashingsStateForUi((source as any).flashings, merged);
   merged.infills = normalizeInfillsStateForUi((source as any).infills);
 
+  if (merged.roofMaterial === 'none') return applyOpenPergolaDefaults(merged);
+
   if (merged.pergolaStyle === 'gable' && merged.houseConnectionType === 'none') {
     merged.gableHouseEdgeGutter = 'our';
     merged.gableOuterEdgeGutter = 'our';
@@ -672,7 +700,11 @@ export function normalizeCalculatorInputsForUi(value: CalculatorInputs): Calcula
     ...value,
     schemaVersion: 'v2',
     jobType: value.jobType === 'commercial' ? 'commercial' : 'residential',
-    pricingClassification: value.pricingClassification === 'simple' ? 'simple' : 'bespoke',
+    pricingClassification: modules.some((module) => module.roofMaterial === 'none')
+      ? 'bespoke'
+      : value.pricingClassification === 'simple'
+        ? 'simple'
+        : 'bespoke',
     approvalRequirement:
       value.approvalRequirement === 'engineering_required' || value.approvalRequirement === 'full_building_consent'
         ? value.approvalRequirement

@@ -143,6 +143,7 @@ function computeBayCountsForModule(
 function buildFlashingDefaultsForModule(
   module: CalculatorModuleInputs,
 ): Array<{ key: string; defaultBand: CalculatorFlashingBand; lengthM: number }> {
+  if (module.roofMaterial === 'none') return [];
   const roofType = getRoofTypeForModule(module);
   const projectionM = Number.isFinite(toNumber(module.projectionM)) ? Math.max(0, toNumber(module.projectionM)) : 0;
   const roofLengthM = roofLengthForPrimaryFlashing(module);
@@ -228,10 +229,12 @@ function deriveAttachmentLengthMm(
 export function buildPergolaModuleCostFields(
   module: CalculatorModuleInputs,
 ): Omit<CostInputsV1, 'access' | 'height' | 'travel_ex_gst' | 'extras_allowance_ex_gst' | 'quote_discount_pct'> {
+  const isOpenPergola = module.roofMaterial === 'none';
   const length_m = toNumber(module.lengthM);
   const roof_span_m = toNumber(module.projectionM);
   const post_cut_height_m = toNumber(module.postCutHeightM);
-  const roof_pitch_deg = module.roofPitchDeg.trim() ? toNumber(module.roofPitchDeg) : Number.NaN;
+  const roof_pitch_deg = isOpenPergola ? 0 : module.roofPitchDeg.trim() ? toNumber(module.roofPitchDeg) : Number.NaN;
+  const rafter_spacing_mm = isOpenPergola ? toNumber(module.rafterSpacingMm ?? '500') : Number.NaN;
   const post_count = toNumber(module.postCount);
   const downpipe_count = toNumber(module.downpipeCount);
   const downpipe_join_count = toNumber(module.downpipeJoinCount);
@@ -254,43 +257,43 @@ export function buildPergolaModuleCostFields(
       length_m: toNumber(extra.lengthM),
     }))
     .filter((extra) => Number.isFinite(extra.length_m) && extra.length_m > 0);
-  const flashings =
-    flashingDefaultOverrides.length || flashingExtras.length
-      ? {
-          ...(flashingDefaultOverrides.length ? { default_overrides: flashingDefaultOverrides } : null),
-          ...(flashingExtras.length ? { extras: flashingExtras } : null),
-        }
-      : undefined;
+  const flashings = !isOpenPergola && (flashingDefaultOverrides.length || flashingExtras.length)
+    ? {
+        ...(flashingDefaultOverrides.length ? { default_overrides: flashingDefaultOverrides } : null),
+        ...(flashingExtras.length ? { extras: flashingExtras } : null),
+      }
+    : undefined;
 
   return {
     length_m,
     roof_span_m,
     post_cut_height_m,
     roof_pitch_deg: Number.isFinite(roof_pitch_deg) ? roof_pitch_deg : undefined,
+    rafter_spacing_mm: Number.isFinite(rafter_spacing_mm) && rafter_spacing_mm > 0 ? rafter_spacing_mm : undefined,
     post_count,
-    pergola_style: module.pergolaStyle,
+    pergola_style: isOpenPergola ? 'pitched' : module.pergolaStyle,
     gable_end_frames_mode: module.gableEndFramesMode,
-    box_perimeter_enabled: module.boxPerimeterEnabled,
-    internal_roof_type: module.boxPerimeterEnabled ? undefined : module.internalRoofType,
-    fall_distance_mm: module.boxPerimeterEnabled ? fall_distance_mm : undefined,
-    box_gutter_house_edge: module.boxPerimeterEnabled ? module.boxGutterHouseEdge : undefined,
-    box_gutter_far_edge: module.boxPerimeterEnabled ? module.boxGutterFarEdge : undefined,
-    gable_house_edge_gutter: module.pergolaStyle === 'gable' ? module.gableHouseEdgeGutter : undefined,
-    gable_outer_edge_gutter: module.pergolaStyle === 'gable' ? module.gableOuterEdgeGutter : undefined,
-    downpipe_count: Number.isFinite(downpipe_count) ? downpipe_count : undefined,
-    downpipe_join_count: Number.isFinite(downpipe_join_count) ? downpipe_join_count : undefined,
-    downpipe_elbow_count: Number.isFinite(downpipe_elbow_count) ? downpipe_elbow_count : undefined,
-    separate_gutter_enabled: module.separateGutterEnabled,
-    overhang_enabled: module.overhangEnabled,
-    overhang_amount_m: module.overhangEnabled ? toNumber(module.overhangAmountM) : undefined,
-    overhang_support_beam_profile: module.overhangEnabled ? module.overhangSupportBeamProfile : undefined,
-    inverted_enabled: module.invertedEnabled,
-    inverted_house_gutter: module.invertedEnabled ? module.invertedHouseGutter : undefined,
+    box_perimeter_enabled: isOpenPergola ? false : module.boxPerimeterEnabled,
+    internal_roof_type: isOpenPergola ? 'pitched' : module.boxPerimeterEnabled ? undefined : module.internalRoofType,
+    fall_distance_mm: isOpenPergola ? 0 : module.boxPerimeterEnabled ? fall_distance_mm : undefined,
+    box_gutter_house_edge: !isOpenPergola && module.boxPerimeterEnabled ? module.boxGutterHouseEdge : undefined,
+    box_gutter_far_edge: !isOpenPergola && module.boxPerimeterEnabled ? module.boxGutterFarEdge : undefined,
+    gable_house_edge_gutter: !isOpenPergola && module.pergolaStyle === 'gable' ? module.gableHouseEdgeGutter : undefined,
+    gable_outer_edge_gutter: !isOpenPergola && module.pergolaStyle === 'gable' ? module.gableOuterEdgeGutter : undefined,
+    downpipe_count: isOpenPergola ? 0 : Number.isFinite(downpipe_count) ? downpipe_count : undefined,
+    downpipe_join_count: isOpenPergola ? 0 : Number.isFinite(downpipe_join_count) ? downpipe_join_count : undefined,
+    downpipe_elbow_count: isOpenPergola ? 0 : Number.isFinite(downpipe_elbow_count) ? downpipe_elbow_count : undefined,
+    separate_gutter_enabled: isOpenPergola ? false : module.separateGutterEnabled,
+    overhang_enabled: isOpenPergola ? false : module.overhangEnabled,
+    overhang_amount_m: !isOpenPergola && module.overhangEnabled ? toNumber(module.overhangAmountM) : undefined,
+    overhang_support_beam_profile: !isOpenPergola && module.overhangEnabled ? module.overhangSupportBeamProfile : undefined,
+    inverted_enabled: isOpenPergola ? false : module.invertedEnabled,
+    inverted_house_gutter: !isOpenPergola && module.invertedEnabled ? module.invertedHouseGutter : undefined,
     overrides: {
-      ledger_profile: normalizeOverrideValue(overrides.ledgerProfile),
-      rafter_profile: normalizeOverrideValue(overrides.rafterProfile),
+      ledger_profile: isOpenPergola ? '150x50' : normalizeOverrideValue(overrides.ledgerProfile),
+      rafter_profile: isOpenPergola ? '150x50' : normalizeOverrideValue(overrides.rafterProfile),
       post_profile: normalizeOverrideValue(overrides.postProfile),
-      front_beam_profile: normalizeOverrideValue(overrides.frontBeamProfile),
+      front_beam_profile: isOpenPergola ? '150x50' : normalizeOverrideValue(overrides.frontBeamProfile),
       ridge_beam_profile: normalizeOverrideValue(overrides.ridgeBeamProfile),
       box_perimeter_beam_profile: normalizeOverrideValue(overrides.boxPerimeterBeamProfile),
       overhang_support_beam_profile: normalizeOverrideValue(overrides.overhangSupportBeamProfile),
@@ -326,7 +329,7 @@ export function buildPergolaModuleCostFields(
         : undefined,
     flashings,
     hip_corner:
-      module.pergolaStyle === 'hip_corner'
+      !isOpenPergola && module.pergolaStyle === 'hip_corner'
         ? {
             length_b_m: Number.isFinite(hip_corner_length_b_m) && hip_corner_length_b_m > 0 ? hip_corner_length_b_m : undefined,
             projection_b_m:
@@ -389,7 +392,9 @@ export function buildSiteInputsFromCalculatorInputs(inputs: CalculatorInputs): S
   return {
     pergolas: groupedPergolas.filter((pergola) => pergola.modules.length > 0),
     job_type: inputs.jobType,
-    pricing_classification: inputs.pricingClassification ?? 'bespoke',
+    pricing_classification: inputs.modules.some((module) => module.roofMaterial === 'none')
+      ? 'bespoke'
+      : inputs.pricingClassification ?? 'bespoke',
     approval_requirement: inputs.approvalRequirement ?? 'neither',
     travel_ex_gst: Number.isFinite(toNumber(inputs.travelExGst)) ? toNumber(inputs.travelExGst) : 0,
     extras_allowance_ex_gst: Number.isFinite(toNumber(inputs.extrasAllowanceExGst)) ? toNumber(inputs.extrasAllowanceExGst) : 0,

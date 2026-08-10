@@ -116,6 +116,10 @@ describe('formatModuleStyle / formatModuleRoof', () => {
   it('returns title-cased roof material label', () => {
     expect(formatModuleRoof(module({ roofMaterial: 'acrylic' }))).toBe('Acrylic');
   });
+
+  it('uses customer-friendly wording for an open pergola', () => {
+    expect(formatModuleRoof(module({ roofMaterial: 'none' }))).toBe('No roof covering');
+  });
 });
 
 describe('formatModuleColour', () => {

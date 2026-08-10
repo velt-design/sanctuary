@@ -105,6 +105,49 @@ describe('calculator structure fields', () => {
     expect(material.values().modules[0].mixedAcrylicBaysMain).not.toBe('');
   });
 
+  it('selects and presents an open pergola with fixed frame rules', () => {
+    const selection = buildFields({
+      pergolaStyle: 'gable',
+      boxPerimeterEnabled: true,
+      roofPitchDeg: '25',
+      overhangEnabled: true,
+      invertedEnabled: true,
+      downpipeCount: '2',
+      flashings: { rows: [{ id: 'extra-1', kind: 'extra', band: '301-400', lengthM: '2' }] },
+    });
+    fieldById(selection.fields, 'roofMaterial').onChange?.('none');
+
+    expect(selection.values().modules[0]).toMatchObject({
+      roofMaterial: 'none',
+      pergolaStyle: 'pitched',
+      boxPerimeterEnabled: false,
+      roofPitchDeg: '0',
+      rafterSpacingMm: '500',
+      overhangEnabled: false,
+      invertedEnabled: false,
+      downpipeCount: '0',
+      flashings: { rows: [] },
+    });
+
+    const open = buildFields({
+      roofMaterial: 'none',
+      rafterSpacingMm: '725',
+      overrides: {
+        ledgerProfile: '100x50',
+        rafterProfile: '80x50',
+        frontBeamProfile: 'SP Gutter',
+      },
+    });
+    const ids = open.fields.map((field) => field.id);
+    expect(fieldById(open.fields, 'rafterSpacingMm')).toMatchObject({ value: '725', min: 1, step: 1 });
+    expect(fieldById(open.fields, 'pergolaStyle').disabled).toBe(true);
+    expect(fieldById(open.fields, 'roofPitchDeg')).toMatchObject({ value: '0', disabled: true });
+    expect(fieldById(open.fields, 'ledgerProfileOverride')).toMatchObject({ value: '150x50', disabled: true });
+    expect(fieldById(open.fields, 'rafterProfileOverride')).toMatchObject({ value: '150x50', disabled: true });
+    expect(fieldById(open.fields, 'frontBeamProfileOverride')).toMatchObject({ value: '150x50', disabled: true });
+    expect(ids).not.toEqual(expect.arrayContaining(['flashings', 'overhangEnabled', 'invertedEnabled', 'separateGutterEnabled']));
+  });
+
   it('delegates ordinary fields and overrides to their existing setters', () => {
     const { fields, setModuleField, setModuleOverride } = buildFields();
 

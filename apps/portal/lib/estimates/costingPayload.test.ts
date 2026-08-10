@@ -121,6 +121,63 @@ describe('costingPayload', () => {
     expect(moduleInputs?.attachment_length_mm).toBeNull();
   });
 
+  it('canonicalizes an open pergola and always requests bespoke pricing', () => {
+    const inputs = makeInputs();
+    inputs.pricingClassification = 'simple';
+    inputs.modules = [{
+      ...inputs.modules[0]!,
+      pergolaStyle: 'gable',
+      roofMaterial: 'none',
+      rafterSpacingMm: '725',
+      roofPitchDeg: '25',
+      boxPerimeterEnabled: true,
+      downpipeCount: '3',
+      downpipeJoinCount: '2',
+      downpipeElbowCount: '4',
+      separateGutterEnabled: true,
+      overhangEnabled: true,
+      invertedEnabled: true,
+      flashings: {
+        rows: [{ id: 'extra-1', kind: 'extra', band: '301-400', lengthM: '2' }],
+      },
+      overrides: {
+        ledgerProfile: '100x50',
+        rafterProfile: '80x50',
+        frontBeamProfile: 'SP Gutter',
+        postProfile: '150x150',
+      },
+    }];
+
+    const payload = buildSiteInputsFromCalculatorInputs(inputs);
+    const module = payload.pergolas[0]?.modules[0];
+
+    expect(payload.pricing_classification).toBe('bespoke');
+    expect(module).toMatchObject({
+      pergola_style: 'pitched',
+      roof_material: 'none',
+      roof_pitch_deg: 0,
+      rafter_spacing_mm: 725,
+      box_perimeter_enabled: false,
+      downpipe_count: 0,
+      downpipe_join_count: 0,
+      downpipe_elbow_count: 0,
+      separate_gutter_enabled: false,
+      overhang_enabled: false,
+      inverted_enabled: false,
+      overrides: {
+        ledger_profile: '150x50',
+        rafter_profile: '150x50',
+        front_beam_profile: '150x50',
+        post_profile: '150x150',
+      },
+    });
+    expect(module?.flashings).toBeUndefined();
+
+    const result = calculateSiteCostV1(payload);
+    expect(result.pricing_policy?.resolved_classification).toBe('bespoke');
+    expect(result.pergolas[0]?.modules[0]?.derived.rafter_spacing_mm).toBeLessThanOrEqual(725);
+  });
+
   it('preserves non-cost outputs such as drawing overrides when rebuilding an estimate payload', () => {
     const inputs = makeInputs();
     const siteResult = {

@@ -36,6 +36,10 @@ function normaliseEnumValue(value: unknown): string {
   return value.trim().toLowerCase().replace(/\s+/g, '_');
 }
 
+function formatRoofMaterial(value: string): string {
+  return value === 'none' ? 'No roof covering' : titleCase(value);
+}
+
 function isSchedulableEstimate(estimate: Estimate): boolean {
   return normaliseEnumValue((estimate as any).status) !== 'archived';
 }
@@ -52,7 +56,7 @@ function getJobDescriptorFromEstimate(estimate: Estimate): string {
   if (isCalculatorInputsV2(inputs)) {
     const m = inputs.modules?.[0];
     if (!m) return '—';
-    const base = `${titleCase(m.pergolaStyle)} · ${titleCase(m.roofMaterial)}`;
+    const base = `${titleCase(m.pergolaStyle)} · ${formatRoofMaterial(m.roofMaterial)}`;
     const length = Number.parseFloat(m.lengthM);
     const projection = Number.parseFloat(m.projectionM);
     const pitch = Number.parseFloat(m.roofPitchDeg);
@@ -62,7 +66,7 @@ function getJobDescriptorFromEstimate(estimate: Estimate): string {
     return `${base}${dims}${pitchLabel}`;
   }
   if (isLegacyCalculatorInputsV1(inputs)) {
-    const base = `${titleCase(inputs.pergolaStyle)} · ${titleCase(inputs.roofMaterial)}`;
+    const base = `${titleCase(inputs.pergolaStyle)} · ${formatRoofMaterial(inputs.roofMaterial)}`;
     const length = Number.parseFloat(inputs.lengthM);
     const projection = Number.parseFloat(inputs.projectionM);
     const pitch = Number.parseFloat(inputs.roofPitchDeg);

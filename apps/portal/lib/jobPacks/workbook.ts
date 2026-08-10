@@ -33,6 +33,10 @@ export type JobPackCellKey = 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g';
 export type JobPackEditableCellKey = 'a' | 'c' | 'd';
 type PowdercoatRowOrigin = 'base' | 'manual' | 'draft';
 
+function formatRoofMaterial(value: unknown): string {
+  return value === 'none' ? 'No roof covering' : String(value ?? '-');
+}
+
 type PowdercoatSpreadsheetRow = {
   origin: PowdercoatRowOrigin;
   storedRow: JobPackPowdercoatStoredRow;
@@ -247,7 +251,7 @@ function buildReadableInputs(inputs: unknown): ReadableInputs {
       title: `Module ${index + 1}`,
       rows: [
         { label: 'Style', value: String(module.pergolaStyle ?? '-') },
-        { label: 'Roof material', value: String(module.roofMaterial ?? '-') },
+        { label: 'Roof material', value: formatRoofMaterial(module.roofMaterial) },
         { label: 'Extrusion colour', value: String(module.extrusionColour ?? '-') },
         { label: 'Roof length (m)', value: String(module.lengthM ?? '-') },
         { label: 'Roof span (m)', value: String(module.projectionM ?? '-') },
@@ -281,7 +285,7 @@ function buildReadableInputs(inputs: unknown): ReadableInputs {
           title: 'Module 1',
           rows: [
             { label: 'Style', value: String(inputs.pergolaStyle ?? '-') },
-            { label: 'Roof material', value: String(inputs.roofMaterial ?? '-') },
+            { label: 'Roof material', value: formatRoofMaterial(inputs.roofMaterial) },
             { label: 'Extrusion colour', value: String(inputs.extrusionColour ?? '-') },
             { label: 'Roof length (m)', value: String(inputs.lengthM ?? '-') },
             { label: 'Roof span (m)', value: String(inputs.projectionM ?? '-') },

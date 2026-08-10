@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 
 const PERGOLA_STYLES = ['pitched', 'gable', 'hip', 'hip_corner', 'box_perimeter'] as const;
-const ROOF_MATERIALS = ['acrylic', 'timber', 'mixed'] as const;
+const ROOF_MATERIALS = ['acrylic', 'timber', 'mixed', 'none'] as const;
 const TIMBER_ROOF_ABOVE_TYPES = ['insulated_panels', 'steel_corrugated', 'steel_tray'] as const;
 const TIMBER_TRAY_WIDTHS = [400, 500, 600] as const;
 const MIXED_ROOF_MODES = ['ridge_skylight', 'area_override', 'acrylic_bays'] as const;
@@ -258,6 +258,7 @@ export async function POST(req: Request) {
   const roof_span_m = roof_span_m_raw !== undefined ? toNumber(roof_span_m_raw) : NaN;
   const projection_m = projection_m_raw !== undefined ? toNumber(projection_m_raw) : NaN;
   const roof_pitch_deg = body.roof_pitch_deg !== undefined ? toNumber(body.roof_pitch_deg) : undefined;
+  const rafter_spacing_mm = body.rafter_spacing_mm !== undefined ? toNumber(body.rafter_spacing_mm) : undefined;
   const gutter_length_m = body.gutter_length_m !== undefined ? toNumber(body.gutter_length_m) : undefined;
     const downpipe_count = body.downpipe_count !== undefined ? toNumber(body.downpipe_count) : undefined;
     const downpipe_join_count = body.downpipe_join_count !== undefined ? toNumber(body.downpipe_join_count) : undefined;
@@ -280,6 +281,9 @@ export async function POST(req: Request) {
   if (roof_pitch_deg !== undefined && (!Number.isFinite(roof_pitch_deg) || roof_pitch_deg < 0 || roof_pitch_deg > 85)) {
     return badRequest('roof_pitch_deg must be a number between 0 and 85');
   }
+  if (rafter_spacing_mm !== undefined && (!Number.isFinite(rafter_spacing_mm) || rafter_spacing_mm <= 0)) {
+    return badRequest('rafter_spacing_mm must be a number > 0');
+  }
   if (gutter_length_m !== undefined && (!Number.isFinite(gutter_length_m) || gutter_length_m < 0)) {
     return badRequest('gutter_length_m must be a number >= 0');
   }
@@ -298,6 +302,14 @@ export async function POST(req: Request) {
 
   if (!isOneOf(PERGOLA_STYLES, body.pergola_style)) return badRequest('Invalid pergola_style');
   if (!isOneOf(ROOF_MATERIALS, body.roof_material)) return badRequest('Invalid roof_material');
+  if (body.roof_material === 'none') {
+    if (body.pergola_style !== 'pitched' || body.box_perimeter_enabled === true) {
+      return badRequest('No roofing is only available for the standard pitched frame');
+    }
+    if (roof_pitch_deg !== undefined && roof_pitch_deg !== 0) {
+      return badRequest('No roofing requires roof_pitch_deg to be 0');
+    }
+  }
   if (body.timber_roof_above_type !== undefined && !isOneOf(TIMBER_ROOF_ABOVE_TYPES, body.timber_roof_above_type)) {
     return badRequest('Invalid timber_roof_above_type');
   }
@@ -501,6 +513,7 @@ export async function POST(req: Request) {
     roof_span_m: resolvedRoofSpanM,
     post_cut_height_m: body.post_cut_height_m !== undefined ? toNumber(body.post_cut_height_m) : undefined,
     roof_pitch_deg,
+    rafter_spacing_mm,
     post_count: body.post_count !== undefined ? toNumber(body.post_count) : undefined,
 
     pergola_style: body.pergola_style,

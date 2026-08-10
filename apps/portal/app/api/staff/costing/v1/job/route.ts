@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 
 const PERGOLA_STYLES = ['pitched', 'gable', 'hip', 'hip_corner', 'box_perimeter'] as const;
-const ROOF_MATERIALS = ['acrylic', 'timber', 'mixed'] as const;
+const ROOF_MATERIALS = ['acrylic', 'timber', 'mixed', 'none'] as const;
 const TIMBER_ROOF_ABOVE_TYPES = ['insulated_panels', 'steel_corrugated', 'steel_tray'] as const;
 const TIMBER_TRAY_WIDTHS = [400, 500, 600] as const;
 const MIXED_ROOF_MODES = ['ridge_skylight', 'area_override', 'acrylic_bays'] as const;
@@ -251,6 +251,7 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
   const roof_span_m = roof_span_m_raw !== undefined ? toNumber(roof_span_m_raw) : NaN;
   const projection_m = projection_m_raw !== undefined ? toNumber(projection_m_raw) : NaN;
   const roof_pitch_deg = raw.roof_pitch_deg !== undefined ? toNumber(raw.roof_pitch_deg) : undefined;
+  const rafter_spacing_mm = raw.rafter_spacing_mm !== undefined ? toNumber(raw.rafter_spacing_mm) : undefined;
   const gutter_length_m = raw.gutter_length_m !== undefined ? toNumber(raw.gutter_length_m) : undefined;
     const downpipe_count = raw.downpipe_count !== undefined ? toNumber(raw.downpipe_count) : undefined;
     const downpipe_join_count = raw.downpipe_join_count !== undefined ? toNumber(raw.downpipe_join_count) : undefined;
@@ -273,6 +274,9 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
   if (roof_pitch_deg !== undefined && (!Number.isFinite(roof_pitch_deg) || roof_pitch_deg < 0 || roof_pitch_deg > 85)) {
     return { error: 'modules[].roof_pitch_deg must be a number between 0 and 85' };
   }
+  if (rafter_spacing_mm !== undefined && (!Number.isFinite(rafter_spacing_mm) || rafter_spacing_mm <= 0)) {
+    return { error: 'modules[].rafter_spacing_mm must be a number > 0' };
+  }
   if (gutter_length_m !== undefined && (!Number.isFinite(gutter_length_m) || gutter_length_m < 0)) {
     return { error: 'modules[].gutter_length_m must be a number >= 0' };
   }
@@ -291,6 +295,14 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
 
   if (!isOneOf(PERGOLA_STYLES, raw.pergola_style)) return { error: 'Invalid modules[].pergola_style' };
   if (!isOneOf(ROOF_MATERIALS, raw.roof_material)) return { error: 'Invalid modules[].roof_material' };
+  if (raw.roof_material === 'none') {
+    if (raw.pergola_style !== 'pitched' || raw.box_perimeter_enabled === true) {
+      return { error: 'No roofing is only available for the standard pitched frame' };
+    }
+    if (roof_pitch_deg !== undefined && roof_pitch_deg !== 0) {
+      return { error: 'No roofing requires modules[].roof_pitch_deg to be 0' };
+    }
+  }
   if (raw.timber_roof_above_type !== undefined && !isOneOf(TIMBER_ROOF_ABOVE_TYPES, raw.timber_roof_above_type)) {
     return { error: 'Invalid modules[].timber_roof_above_type' };
   }
@@ -496,6 +508,7 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
     roof_span_m: resolvedRoofSpanM,
     post_cut_height_m: raw.post_cut_height_m !== undefined ? toNumber(raw.post_cut_height_m) : undefined,
     roof_pitch_deg,
+    rafter_spacing_mm,
     post_count: raw.post_count !== undefined ? toNumber(raw.post_count) : undefined,
 
     pergola_style: raw.pergola_style,

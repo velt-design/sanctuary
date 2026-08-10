@@ -278,6 +278,8 @@ export type CalculatorModuleInputs = {
   internalRoofType: RoofType;
   fallDistanceMm: string;
   roofPitchDeg: string;
+  /** Open-pergola target rafter spacing in millimetres. */
+  rafterSpacingMm?: string;
   gableEndFramesMode: 'none' | 'outer_end_only' | 'both_ends';
   gableHouseEdgeGutter: 'house' | 'our';
   gableOuterEdgeGutter: 'house' | 'our';

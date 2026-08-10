@@ -151,6 +151,8 @@ function deriveRoofingText(_row: RunningJobsEstimateLite | null, module: Calcula
       return 'Timber';
     case 'mixed':
       return 'Combination';
+    case 'none':
+      return 'No roof covering';
     default:
       return toTitleCase(module.roofMaterial);
   }

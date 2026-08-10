@@ -65,7 +65,10 @@ function safeJsonStringify(value: unknown): string {
 
 function modulesSummaryFromInputs(inputs: unknown): string[] {
   if (isCalculatorInputsV2(inputs)) {
-    const modules = inputs.modules ?? [];
+    const modules = (inputs.modules ?? []).map((module) => ({
+      ...module,
+      roofMaterial: module.roofMaterial === 'none' ? 'No roof covering' : module.roofMaterial,
+    }));
     return modules.map((m, idx) => {
       const base =
         m?.pergolaStyle === 'hip_corner'

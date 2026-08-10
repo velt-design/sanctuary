@@ -16,6 +16,7 @@ export function buildCalculatorModuleErrors(
 ): CalculatorModuleErrors[] {
   return modules.map((module) => {
     const next: CalculatorModuleErrors = {};
+    const isOpenPergola = module.roofMaterial === 'none';
 
     const length = toNumber(module.lengthM);
     if (!Number.isFinite(length) || length <= 0) next.lengthM = 'Enter a length > 0';
@@ -34,19 +35,19 @@ export function buildCalculatorModuleErrors(
     const postHeight = toNumber(module.postCutHeightM);
     if (!Number.isFinite(postHeight) || postHeight <= 0) next.postCutHeightM = 'Enter a post cut height > 0';
 
-    if (module.roofPitchDeg.trim()) {
+    if (!isOpenPergola && module.roofPitchDeg.trim()) {
       const pitch = toNumber(module.roofPitchDeg);
       if (!Number.isFinite(pitch) || pitch < 0 || pitch > 85) next.roofPitchDeg = 'Enter a pitch between 0 and 85';
     }
 
     const roofTypeForModule = getRoofTypeForModule(module);
-    if (module.overhangEnabled && module.boxPerimeterEnabled) {
+    if (!isOpenPergola && module.overhangEnabled && module.boxPerimeterEnabled) {
       next.overhangEnabled = 'Overhang cannot be used with Box Perimeter.';
     }
-    if (module.invertedEnabled && (roofTypeForModule !== 'pitched' || module.boxPerimeterEnabled)) {
+    if (!isOpenPergola && module.invertedEnabled && (roofTypeForModule !== 'pitched' || module.boxPerimeterEnabled)) {
       next.invertedEnabled = 'Inverted option is only available for Pitched roofs.';
     }
-    if (module.overhangEnabled) {
+    if (!isOpenPergola && module.overhangEnabled) {
       const overhangAmount = toNumber(module.overhangAmountM);
       if (!Number.isFinite(overhangAmount) || overhangAmount < 0 || overhangAmount > 1.5) {
         next.overhangAmountM = 'Enter an overhang between 0 and 1.5m';
@@ -62,12 +63,12 @@ export function buildCalculatorModuleErrors(
     if (!Number.isFinite(postCount) || postCount <= 0) next.postCount = 'Enter a post count > 0';
 
     const downpipeCount = toNumber(module.downpipeCount);
-    if (module.downpipeCount.trim()) {
+    if (!isOpenPergola && module.downpipeCount.trim()) {
       if (!Number.isFinite(downpipeCount) || downpipeCount < 0) next.downpipeCount = 'Enter a downpipe count >= 0';
     }
 
     const downpipeJoinCount = toNonNegativeInt(module.downpipeJoinCount);
-    if (!Number.isFinite(downpipeJoinCount) || downpipeJoinCount < 0 || downpipeJoinCount > 10) {
+    if (!isOpenPergola && (!Number.isFinite(downpipeJoinCount) || downpipeJoinCount < 0 || downpipeJoinCount > 10)) {
       next.downpipeJoinCount = 'Choose 0–10';
     }
 
@@ -75,6 +76,13 @@ export function buildCalculatorModuleErrors(
       const downpipeElbowCount = toNonNegativeInt(module.downpipeElbowCount);
       if (!Number.isFinite(downpipeElbowCount) || downpipeElbowCount < 0 || downpipeElbowCount > 20) {
         next.downpipeElbowCount = 'Choose 0–20';
+      }
+    }
+
+    if (isOpenPergola) {
+      const rafterSpacingMm = toNumber(module.rafterSpacingMm ?? '500');
+      if (!Number.isFinite(rafterSpacingMm) || rafterSpacingMm <= 0) {
+        next.rafterSpacingMm = 'Enter a rafter spacing > 0';
       }
     }
 
@@ -137,12 +145,14 @@ export function buildCalculatorModuleErrors(
       }
     }
 
-    const flashings = normalizeFlashingsStateForUi(module.flashings, module);
-    const hasInvalidLength = flashings.rows.some((row) => {
-      const length = toNumber(row.lengthM);
-      return !Number.isFinite(length) || length < 0;
-    });
-    if (hasInvalidLength) next.flashings = 'Enter a flashing length of 0 or more.';
+    if (!isOpenPergola) {
+      const flashings = normalizeFlashingsStateForUi(module.flashings, module);
+      const hasInvalidLength = flashings.rows.some((row) => {
+        const length = toNumber(row.lengthM);
+        return !Number.isFinite(length) || length < 0;
+      });
+      if (hasInvalidLength) next.flashings = 'Enter a flashing length of 0 or more.';
+    }
 
     return next;
   });

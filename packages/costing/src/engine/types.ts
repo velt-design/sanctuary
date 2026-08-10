@@ -6,7 +6,7 @@ export type StructureType = 'pitched' | 'box_perimeter';
 
 export type PergolaStyleUi = 'pitched' | 'gable' | 'hip' | 'hip_corner' | 'box_perimeter';
 
-export type RoofMaterial = 'acrylic' | 'timber' | 'mixed';
+export type RoofMaterial = 'acrylic' | 'timber' | 'mixed' | 'none';
 
 export type TimberRoofAboveType = 'insulated_panels' | 'steel_corrugated' | 'steel_tray';
 
@@ -352,6 +352,8 @@ export type CostInputsV1 = {
   projection_m?: number; // legacy alias for roof_span_m
   post_cut_height_m?: number;
   roof_pitch_deg?: number;
+  /** Staff-entered target spacing for open pergola rafters. Defaults to 500mm. */
+  rafter_spacing_mm?: number;
 
   pergola_style: PergolaStyleUi;
   roof_material: RoofMaterial;
@@ -972,6 +974,8 @@ export type PergolaModuleCostInputV2 = {
   projection_m?: number;
   post_cut_height_m?: number;
   roof_pitch_deg?: number;
+  /** Staff-entered target spacing for open pergola rafters. Defaults to 500mm. */
+  rafter_spacing_mm?: number;
 
   pergola_style: PergolaStyleUi;
   roof_material: RoofMaterial;

@@ -11,6 +11,10 @@ function toNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function formatRoofMaterial(value: unknown): string {
+  return value === 'none' ? 'No roof covering' : String(value ?? '—');
+}
+
 function normaliseWhitespace(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
@@ -205,7 +209,7 @@ function formatModuleSummary(module: CalculatorModuleInputs): string {
   const projection = toNumber(module.projectionM);
   const pitch = toNumber(module.roofPitchDeg);
   const pitchLabel = pitch !== null ? `${pitch.toFixed(0)}°` : 'default pitch';
-  return `${module.pergolaStyle} · ${module.roofMaterial} · ${length ?? '—'}×${projection ?? '—'}m · ${pitchLabel}`;
+  return `${module.pergolaStyle} · ${formatRoofMaterial(module.roofMaterial)} · ${length ?? '—'}×${projection ?? '—'}m · ${pitchLabel}`;
 }
 
 function getFirstModule(inputs: CalculatorInputs | LegacyCalculatorInputsV1): CalculatorModuleInputs | null {
@@ -282,7 +286,7 @@ export function buildJobPack(estimate: Estimate): JobPack {
 
   const moduleCount = isCalculatorInputsV2(inputs) ? inputs.modules.length : 1;
   const roofType = firstModule?.pergolaStyle ?? '—';
-  const roofMaterialMode = firstModule?.roofMaterial ?? '—';
+  const roofMaterialMode = formatRoofMaterial(firstModule?.roofMaterial);
   const pitchDeg = typeof (estimate as any).derived?.roof_pitch_deg_used === 'number' ? (estimate as any).derived.roof_pitch_deg_used : toNumber(firstModule?.roofPitchDeg ?? '');
   const lengthM = toNumber(firstModule?.lengthM ?? '');
   const projectionM = toNumber(firstModule?.projectionM ?? '');
@@ -316,7 +320,11 @@ export function buildJobPack(estimate: Estimate): JobPack {
   if (lengthM !== null && projectionM !== null) {
     specLines.push(`Geometry: ${lengthM}m (roof length) × ${projectionM}m (roof span, eave‑to‑eave)`);
   }
-  specLines.push(`Standards: 642mm rafter centres; 1.2m max bracket spacing (assumed)`);
+  specLines.push(
+    firstModule?.roofMaterial === 'none'
+      ? `Standards: ${firstModule.rafterSpacingMm || '500'}mm target rafter spacing; 150x50 rafters, ledger/rear beam, and front beam`
+      : 'Standards: 642mm rafter centres; 1.2m max bracket spacing (assumed)',
+  );
   specLines.push(`Post cut height default: 2.4m (editable)`);
   if (firstModule) {
     specLines.push(`Connections: house=${firstModule.houseConnectionType}; posts=${firstModule.postConnectionType}`);
