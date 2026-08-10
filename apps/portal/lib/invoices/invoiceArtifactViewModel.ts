@@ -8,6 +8,9 @@ export type DepositInvoiceArtifactInput = {
   issueDate: string;
   dueDate: string;
   depositPercent: number;
+  paymentTermLabel?: string | null;
+  paymentTermCalculation?: 'fixed' | 'percentage' | null;
+  paymentTermPercentage?: number | null;
   quoteTotalIncGstCents: number;
   totalIncGstCents: number;
   totalExGstCents: number;
@@ -34,6 +37,8 @@ export type DepositInvoiceArtifactViewModel = {
   };
   deposit: {
     percent: string;
+    label: string;
+    basis: string;
     explanation: string;
   };
   totals: {
@@ -124,10 +129,16 @@ export function buildDepositInvoiceArtifactViewModel(
 ): DepositInvoiceArtifactViewModel {
   const depositPercent = formatPercent(input.depositPercent);
   const quoteIdentity = `${input.quoteRef} v${input.quoteVersionNumber}`;
+  const paymentLabel = input.paymentTermLabel?.trim() || 'Deposit';
+  const paymentBasis = input.paymentTermCalculation === 'fixed'
+    ? 'Fixed amount'
+    : input.paymentTermLabel
+      ? `${formatPercent(input.paymentTermPercentage ?? input.depositPercent)}% of the remaining balance`
+      : `${depositPercent}%`;
 
   return {
     header: {
-      title: "Deposit invoice",
+      title: input.paymentTermLabel ? "Invoice" : "Deposit invoice",
       invoiceRef: input.invoiceRef,
       quoteRef: input.quoteRef,
       quoteVersionNumber: input.quoteVersionNumber,
@@ -145,7 +156,11 @@ export function buildDepositInvoiceArtifactViewModel(
     },
     deposit: {
       percent: depositPercent,
-      explanation: `This invoice requests the ${depositPercent}% deposit for quote ${quoteIdentity}.`,
+      label: paymentLabel,
+      basis: paymentBasis,
+      explanation: input.paymentTermLabel?.trim()
+        ? `This invoice requests the ${input.paymentTermLabel.trim().toLowerCase()} payment for quote ${quoteIdentity}.`
+        : `This invoice requests the ${depositPercent}% initial payment for quote ${quoteIdentity}.`,
     },
     totals: {
       quoteTotalIncGst: formatMoney(input.quoteTotalIncGstCents),

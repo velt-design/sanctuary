@@ -1,4 +1,5 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { requireAdminSession } from '@/lib/api/adminApi';
 import { deleteDraftQuoteVersion, getQuoteVersionDetail, updateDraftQuoteVersion } from '@/lib/quotes/server';
 import { NextResponse } from 'next/server';
 
@@ -68,6 +69,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ quoteVersionI
         : typeof body.depositPercent === 'string'
           ? Number(body.depositPercent)
           : undefined,
+      paymentTerms: Array.isArray(body.paymentTerms) ? body.paymentTerms : undefined,
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : body.expiresAt === null ? null : undefined,
       lineItems: Array.isArray(body.lineItems) ? body.lineItems : undefined,
       expectedCommercialRevision,
@@ -79,15 +81,15 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ quoteVersionI
 }
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ quoteVersionId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireAdminSession();
+  if (!auth.ok) return auth.response;
 
   const { quoteVersionId } = await ctx.params;
   const id = typeof quoteVersionId === 'string' ? quoteVersionId.trim() : '';
   if (!id) return jsonError('Invalid quoteVersionId', 400);
 
   try {
-    await deleteDraftQuoteVersion(id);
+    await deleteDraftQuoteVersion(id, auth.session.user.id);
     return jsonOk({ ok: true });
   } catch (err) {
     return quoteErrorResponse(err, 'Failed to delete quote');

@@ -70,12 +70,12 @@ function InvoiceShell({
   );
 }
 
-function InvoiceTopBar() {
+function InvoiceTopBar({ invoice }: { invoice: PublicDepositInvoice }) {
   return (
     <div className={styles.topBar}>
       <div className={styles.topBarLeft}>
         <span className={styles.topBarContext}>Customer invoice</span>
-        <span className={styles.statusPill}>Invoice open</span>
+        <span className={styles.statusPill}>{invoice.status === "PAID" ? "Invoice paid" : "Invoice open"}</span>
       </div>
       <Link href="/contact" className={styles.topBarButton}>
         Contact Sanctuary
@@ -88,8 +88,8 @@ function InvoiceHeader({ invoice }: { invoice: PublicDepositInvoice }) {
   return (
     <header className={styles.docHeader}>
       <div>
-        <p className={styles.docLabel}>Sanctuary deposit invoice</p>
-        <h1 className={styles.docTitle}>Deposit invoice</h1>
+        <p className={styles.docLabel}>Sanctuary invoice</p>
+        <h1 className={styles.docTitle}>Invoice</h1>
         <p className={styles.docReference}>{invoice.invoiceRef}</p>
       </div>
       <p className={styles.docWordmark}>Sanctuary Pergolas</p>
@@ -100,7 +100,7 @@ function InvoiceHeader({ invoice }: { invoice: PublicDepositInvoice }) {
 function PaymentSummary({ invoice }: { invoice: PublicDepositInvoice }) {
   const fields = [
     {
-      label: "Amount due",
+      label: invoice.status === "PAID" ? "Amount paid" : "Amount due",
       value: formatMoney(invoice.totalIncGstCents),
       className: styles.summaryAmount,
     },
@@ -136,8 +136,7 @@ function InvoiceIntroduction({ invoice }: { invoice: PublicDepositInvoice }) {
   return (
     <section className={styles.introSection} aria-label="About this invoice">
       <p className={styles.introText}>
-        This invoice is for the {formatPercent(invoice.depositPercent)} deposit
-        on quote{" "}
+        This invoice is for <strong>{invoice.paymentTermLabel}</strong> ({invoice.paymentTermPosition} of {invoice.paymentTermCount}) on quote{" "}
         <strong>
           {invoice.quoteRef} v{invoice.quoteVersionNumber}
         </strong>{" "}
@@ -207,7 +206,7 @@ function InvoiceCalculation({ invoice }: { invoice: PublicDepositInvoice }) {
       <div className={styles.tableFrame}>
         <table className={styles.lineItemsTable}>
           <caption className={styles.visuallyHidden}>
-            Deposit invoice calculation
+            Invoice calculation
           </caption>
           <thead>
             <tr>
@@ -224,14 +223,14 @@ function InvoiceCalculation({ invoice }: { invoice: PublicDepositInvoice }) {
             <tr>
               <td data-label="Description">
                 <span className={styles.descriptionHeading}>
-                  Deposit for {projectName}
+                  {invoice.paymentTermLabel} for {projectName}
                 </span>
                 <span className={styles.descriptionMeta}>
                   Quote {invoice.quoteRef} v{invoice.quoteVersionNumber}
                 </span>
               </td>
-              <td className={styles.numericCell} data-label="Deposit rate">
-                {formatPercent(invoice.depositPercent)}
+              <td className={styles.numericCell} data-label="Payment stage">
+                {invoice.paymentTermPosition} of {invoice.paymentTermCount}
               </td>
               <td className={styles.numericCell} data-label="Amount inc GST">
                 {formatMoney(invoice.totalIncGstCents)}
@@ -354,13 +353,13 @@ function InvoiceDocuments({
           href={pdfHref}
           label="Invoice PDF"
           unavailableLabel="Invoice PDF unavailable"
-          description="Download a print-ready copy of this deposit invoice."
+          description="Download a print-ready copy of this invoice."
         />
         <DocumentAction
           href={quoteHref}
           label="Source quote PDF"
           unavailableLabel="Source quote PDF unavailable"
-          description="Review the accepted quote this deposit relates to."
+          description="Review the accepted quote this invoice relates to."
         />
       </div>
     </section>
@@ -393,7 +392,7 @@ export function InvoiceDocument({
   quoteHref,
 }: InvoiceDocumentProps) {
   return (
-    <InvoiceShell topBar={<InvoiceTopBar />}>
+    <InvoiceShell topBar={<InvoiceTopBar invoice={invoice} />}>
       <article className={styles.documentCard}>
         <InvoiceHeader invoice={invoice} />
         <PaymentSummary invoice={invoice} />

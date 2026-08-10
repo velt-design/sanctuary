@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { PDFDocument } from "pdf-lib";
 import sharp from "sharp";
 import { uuidFromAppId } from "@/lib/supabase/mappers";
 import {
@@ -9,7 +10,11 @@ import {
   neutralizeProjectDesignBookletMedia,
   TONI_DESIGN_BOOKLET_ASSETS,
 } from "./defaults";
-import { DESIGN_BOOKLET_MAX_IMAGE_BYTES } from "./pageModel";
+import {
+  DESIGN_BOOKLET_MAX_IMAGE_BYTES,
+  DESIGN_BOOKLET_MAX_PDF_BYTES,
+  DESIGN_BOOKLET_MAX_PDF_PAGES,
+} from "./pageModel";
 import { readDesignBookletDefaultImage } from "./pdfAssets";
 import { parseDesignBookletDraft } from "./request";
 import {
@@ -23,11 +28,12 @@ import type {
 } from "./projectTypes";
 
 export const PROJECT_DESIGN_BOOKLET_BUCKET = "design-booklet-assets";
-const PROJECT_DESIGN_BOOKLET_MAX_ASSETS = 48;
+const PROJECT_DESIGN_BOOKLET_MAX_ASSETS = 96;
 const PROJECT_DESIGN_BOOKLET_SIGNED_URL_SECONDS = 60 * 60;
 
 const ASSET_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/;
 const STORAGE_IMAGE_PREFIX = "images";
+const STORAGE_DOCUMENT_PREFIX = "documents";
 const MAX_IMAGE_DIMENSION = 4096;
 const MAX_IMAGE_PIXELS = 50_000_000;
 
@@ -48,10 +54,11 @@ type AssetRow = {
   asset_key: string;
   storage_path: string;
   file_name: string;
-  media_type: "image/jpeg" | "image/png";
+  media_type: "image/jpeg" | "image/png" | "application/pdf";
   byte_size: number;
   width: number;
   height: number;
+  page_count: number;
   updated_at: string | null;
 };
 
@@ -149,6 +156,7 @@ async function signedAsset(
     byteSize: row.byte_size,
     width: row.width,
     height: row.height,
+    pageCount: row.page_count,
     updatedAt: row.updated_at,
   };
 }
@@ -167,7 +175,7 @@ export async function loadProjectDesignBooklet(
     supabase
       .from("project_design_booklet_assets")
       .select(
-        "project_id, asset_key, storage_path, file_name, media_type, byte_size, width, height, updated_at",
+        "project_id, asset_key, storage_path, file_name, media_type, byte_size, width, height, page_count, updated_at",
       )
       .eq("project_id", project.uuid),
   ]);
@@ -345,12 +353,26 @@ async function ensureAssetCapacity(
 
 export async function prepareProjectDesignBookletAssetUpload(
   supabase: SupabaseClient,
-  input: { projectId: string; assetId: string },
+  input: {
+    projectId: string;
+    assetId: string;
+    mediaType: "image/jpeg" | "image/png" | "application/pdf";
+  },
 ): Promise<{ path: string; signedUrl: string }> {
   const project = await loadProject(supabase, input.projectId);
   const assetKey = normalizedAssetKey(input.assetId);
   await ensureAssetCapacity(supabase, project.uuid, assetKey);
-  const path = `${project.uuid}/${STORAGE_IMAGE_PREFIX}/${assetKey}/${randomUUID()}.jpg`;
+  const isPdf = input.mediaType === "application/pdf";
+  if (!isPdf && !["image/jpeg", "image/png"].includes(input.mediaType)) {
+    throw new ProjectDesignBookletError(
+      "Choose a PNG, JPEG, or PDF asset.",
+      422,
+      "invalid_asset_media_type",
+    );
+  }
+  const prefix = isPdf ? STORAGE_DOCUMENT_PREFIX : STORAGE_IMAGE_PREFIX;
+  const extension = isPdf ? "pdf" : "jpg";
+  const path = `${project.uuid}/${prefix}/${assetKey}/${randomUUID()}.${extension}`;
   const signed = await supabase.storage
     .from(PROJECT_DESIGN_BOOKLET_BUCKET)
     .createSignedUploadUrl(path);
@@ -377,14 +399,20 @@ function assertProjectAssetPath(
   projectUuid: string,
   assetKey: string,
   path: string,
+  mediaType: "image/jpeg" | "image/png" | "application/pdf",
 ): void {
-  const prefix = `${projectUuid}/${STORAGE_IMAGE_PREFIX}/${assetKey}/`;
+  const isPdf = mediaType === "application/pdf";
+  const storagePrefix = isPdf ? STORAGE_DOCUMENT_PREFIX : STORAGE_IMAGE_PREFIX;
+  const extension = isPdf ? "pdf" : "jpg";
+  const prefix = `${projectUuid}/${storagePrefix}/${assetKey}/`;
   if (
     !path.startsWith(prefix) ||
-    !/^[0-9a-f-]{36}\.jpg$/i.test(path.slice(prefix.length))
+    !new RegExp(`^[0-9a-f-]{36}\\.${extension}$`, "i").test(
+      path.slice(prefix.length),
+    )
   ) {
     throw new ProjectDesignBookletError(
-      "Invalid booklet image upload.",
+      "Invalid booklet asset upload.",
       422,
       "invalid_asset_path",
     );
@@ -463,6 +491,70 @@ async function normalizeStoredImage(
   );
 }
 
+async function validateStoredPdf(
+  supabase: SupabaseClient,
+  path: string,
+): Promise<{
+  bytes: Uint8Array;
+  width: number;
+  height: number;
+  pageCount: number;
+}> {
+  const downloaded = await supabase.storage
+    .from(PROJECT_DESIGN_BOOKLET_BUCKET)
+    .download(path);
+  if (downloaded.error || !downloaded.data) {
+    throw new ProjectDesignBookletError(
+      "The uploaded PDF could not be verified.",
+      422,
+      "asset_download_failed",
+    );
+  }
+  if (
+    downloaded.data.size <= 0 ||
+    downloaded.data.size > DESIGN_BOOKLET_MAX_PDF_BYTES
+  ) {
+    throw new ProjectDesignBookletError(
+      "The uploaded PDF must be 20 MB or smaller.",
+      413,
+      "asset_too_large",
+    );
+  }
+  const bytes = new Uint8Array(await downloaded.data.arrayBuffer());
+  try {
+    const pdf = await PDFDocument.load(bytes, { updateMetadata: false });
+    const pageCount = pdf.getPageCount();
+    if (pageCount < 1 || pageCount > DESIGN_BOOKLET_MAX_PDF_PAGES) {
+      throw new ProjectDesignBookletError(
+        `The drawing PDF must contain between 1 and ${DESIGN_BOOKLET_MAX_PDF_PAGES} pages.`,
+        422,
+        "invalid_asset_pdf_pages",
+      );
+    }
+    const { width, height } = pdf.getPage(0).getSize();
+    if (!(width > 0) || !(height > 0)) {
+      throw new ProjectDesignBookletError(
+        "The drawing PDF page size is invalid.",
+        422,
+        "invalid_asset_dimensions",
+      );
+    }
+    return {
+      bytes,
+      width: Math.max(1, Math.round(width)),
+      height: Math.max(1, Math.round(height)),
+      pageCount,
+    };
+  } catch (error) {
+    if (error instanceof ProjectDesignBookletError) throw error;
+    throw new ProjectDesignBookletError(
+      "The uploaded file is encrypted, damaged, or not a readable PDF.",
+      422,
+      "invalid_asset_pdf",
+    );
+  }
+}
+
 async function replaceAssetRecord(
   supabase: SupabaseClient,
   input: {
@@ -471,13 +563,20 @@ async function replaceAssetRecord(
     path: string;
     fileName: string;
     userId: string;
-    normalized: { bytes: Uint8Array; width: number; height: number };
+    asset: {
+      bytes: Uint8Array;
+      width: number;
+      height: number;
+      pageCount: number;
+      mediaType: "image/jpeg" | "application/pdf";
+      replaceStoredBytes: boolean;
+    };
   },
 ): Promise<ProjectDesignBookletAsset> {
   const previous = await supabase
     .from("project_design_booklet_assets")
     .select(
-      "project_id, asset_key, storage_path, file_name, media_type, byte_size, width, height, updated_at",
+      "project_id, asset_key, storage_path, file_name, media_type, byte_size, width, height, page_count, updated_at",
     )
     .eq("project_id", input.projectUuid)
     .eq("asset_key", input.assetKey)
@@ -490,22 +589,24 @@ async function replaceAssetRecord(
     );
   }
 
-  const normalizedUpload = await supabase.storage
-    .from(PROJECT_DESIGN_BOOKLET_BUCKET)
-    .upload(input.path, input.normalized.bytes, {
-      contentType: "image/jpeg",
-      cacheControl: "3600",
-      upsert: true,
-    });
-  if (normalizedUpload.error) {
-    await supabase.storage
+  if (input.asset.replaceStoredBytes) {
+    const normalizedUpload = await supabase.storage
       .from(PROJECT_DESIGN_BOOKLET_BUCKET)
-      .remove([input.path]);
-    throw new ProjectDesignBookletError(
-      "The image could not be normalized.",
-      503,
-      "asset_normalize_failed",
-    );
+      .upload(input.path, input.asset.bytes, {
+        contentType: input.asset.mediaType,
+        cacheControl: "3600",
+        upsert: true,
+      });
+    if (normalizedUpload.error) {
+      await supabase.storage
+        .from(PROJECT_DESIGN_BOOKLET_BUCKET)
+        .remove([input.path]);
+      throw new ProjectDesignBookletError(
+        "The image could not be normalized.",
+        503,
+        "asset_normalize_failed",
+      );
+    }
   }
 
   const now = new Date().toISOString();
@@ -517,10 +618,11 @@ async function replaceAssetRecord(
         asset_key: input.assetKey,
         storage_path: input.path,
         file_name: safeFileName(input.fileName),
-        media_type: "image/jpeg",
-        byte_size: input.normalized.bytes.byteLength,
-        width: input.normalized.width,
-        height: input.normalized.height,
+        media_type: input.asset.mediaType,
+        byte_size: input.asset.bytes.byteLength,
+        width: input.asset.width,
+        height: input.asset.height,
+        page_count: input.asset.pageCount,
         created_by: input.userId,
         updated_by: input.userId,
         updated_at: now,
@@ -528,7 +630,7 @@ async function replaceAssetRecord(
       { onConflict: "project_id,asset_key" },
     )
     .select(
-      "project_id, asset_key, storage_path, file_name, media_type, byte_size, width, height, updated_at",
+      "project_id, asset_key, storage_path, file_name, media_type, byte_size, width, height, page_count, updated_at",
     )
     .single();
   if (saved.error || !saved.data) {
@@ -558,29 +660,56 @@ export async function completeProjectDesignBookletAssetUpload(
     assetId: string;
     path: string;
     fileName: string;
+    mediaType: "image/jpeg" | "image/png" | "application/pdf";
     userId: string;
   },
 ): Promise<ProjectDesignBookletAsset> {
   const project = await loadProject(supabase, input.projectId);
   const assetKey = normalizedAssetKey(input.assetId);
-  assertProjectAssetPath(project.uuid, assetKey, input.path);
-  let normalized: Awaited<ReturnType<typeof normalizeStoredImage>>;
+  assertProjectAssetPath(project.uuid, assetKey, input.path, input.mediaType);
   try {
-    normalized = await normalizeStoredImage(supabase, input.path);
+    if (input.mediaType === "application/pdf") {
+      const verified = await validateStoredPdf(supabase, input.path);
+      return replaceAssetRecord(supabase, {
+        projectUuid: project.uuid,
+        assetKey,
+        path: input.path,
+        fileName: input.fileName,
+        userId: input.userId,
+        asset: {
+          ...verified,
+          mediaType: "application/pdf",
+          replaceStoredBytes: false,
+        },
+      });
+    }
+    if (!["image/jpeg", "image/png"].includes(input.mediaType)) {
+      throw new ProjectDesignBookletError(
+        "Choose a PNG, JPEG, or PDF asset.",
+        422,
+        "invalid_asset_media_type",
+      );
+    }
+    const normalized = await normalizeStoredImage(supabase, input.path);
+    return replaceAssetRecord(supabase, {
+      projectUuid: project.uuid,
+      assetKey,
+      path: input.path,
+      fileName: input.fileName,
+      userId: input.userId,
+      asset: {
+        ...normalized,
+        pageCount: 1,
+        mediaType: "image/jpeg",
+        replaceStoredBytes: true,
+      },
+    });
   } catch (error) {
     await supabase.storage
       .from(PROJECT_DESIGN_BOOKLET_BUCKET)
       .remove([input.path]);
     throw error;
   }
-  return replaceAssetRecord(supabase, {
-    projectUuid: project.uuid,
-    assetKey,
-    path: input.path,
-    fileName: input.fileName,
-    userId: input.userId,
-    normalized,
-  });
 }
 
 export async function copyProjectDesignBookletAsset(
@@ -599,7 +728,7 @@ export async function copyProjectDesignBookletAsset(
   const source = await supabase
     .from("project_design_booklet_assets")
     .select(
-      "project_id, asset_key, storage_path, file_name, media_type, byte_size, width, height, updated_at",
+      "project_id, asset_key, storage_path, file_name, media_type, byte_size, width, height, page_count, updated_at",
     )
     .eq("project_id", project.uuid)
     .eq("asset_key", sourceAssetKey)
@@ -660,7 +789,12 @@ export async function copyProjectDesignBookletAsset(
       path,
       fileName,
       userId: input.userId,
-      normalized,
+      asset: {
+        ...normalized,
+        pageCount: 1,
+        mediaType: "image/jpeg",
+        replaceStoredBytes: true,
+      },
     });
   } catch (error) {
     if (error instanceof ProjectDesignBookletError) throw error;

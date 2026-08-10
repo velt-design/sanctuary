@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, type Locator, test } from "@playwright/test";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import {
   DESIGN_BOOKLET_PRESENTATION,
   designBookletCssBaselineOffset,
@@ -207,6 +207,83 @@ test.describe("design booklet workbench fixture", () => {
     expect(pageTexts.some((text) => text.includes("ROOF SECTION"))).toBe(true);
     expect(pdfRequestCount).toBe(1);
     expect(unexpectedRequests).toEqual([]);
+  });
+
+  test("previews a multi-page drawing PDF immediately and exports the selected source page", async ({
+    page,
+  }) => {
+    let pdfRequestCount = 0;
+    page.on("request", (request) => {
+      if (/\/api\/qa\/design-booklet-workbench\/pdf/.test(request.url())) {
+        pdfRequestCount += 1;
+      }
+    });
+    const source = await PDFDocument.create();
+    const font = await source.embedFont(StandardFonts.Helvetica);
+    const first = source.addPage([842, 595]);
+    first.drawText("SOURCE SHEET ONE", {
+      x: 120,
+      y: 300,
+      size: 34,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    const second = source.addPage([842, 595]);
+    second.drawText("SOURCE SHEET TWO", {
+      x: 120,
+      y: 300,
+      size: 34,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    const sourceBytes = await source.save({ useObjectStreams: false });
+
+    await page.goto(FIXTURE_PATH);
+    await page.locator('[data-booklet-page-select="drawing-page-1"]').click();
+    const firstDrawingEditor = page.locator('[data-drawing-editor-slot="1"]');
+    await firstDrawingEditor.locator('input[type="file"]').setInputFiles({
+      name: "architectural-set.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from(sourceBytes),
+    });
+
+    await expect(
+      firstDrawingEditor.getByText("architectural-set.pdf"),
+    ).toBeVisible();
+    const pageSelector = firstDrawingEditor.getByLabel("PDF page");
+    await expect(pageSelector.locator("option")).toHaveCount(2);
+    await pageSelector.selectOption("2");
+    await expect(pageSelector).toHaveValue("2");
+    await expect
+      .poll(async () =>
+        page
+          .locator('[data-page-kind="drawings"] img')
+          .first()
+          .evaluate(
+            (image) =>
+              image instanceof HTMLImageElement &&
+              image.complete &&
+              image.naturalWidth > 0,
+          ),
+      )
+      .toBe(true);
+    expect(pdfRequestCount).toBe(0);
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download PDF" }).click();
+    const download = await downloadPromise;
+    const downloadPath = test.info().outputPath("selected-source-page.pdf");
+    await download.saveAs(downloadPath);
+    const bytes = new Uint8Array(await readFile(downloadPath));
+    const booklet = await PDFDocument.load(bytes);
+    const texts = await Promise.all(
+      Array.from({ length: booklet.getPageCount() }, (_, index) =>
+        extractPageText(bytes, index + 1),
+      ),
+    );
+    expect(texts.some((text) => text.includes("SOURCE SHEET TWO"))).toBe(true);
+    expect(texts.some((text) => text.includes("SOURCE SHEET ONE"))).toBe(false);
+    expect(pdfRequestCount).toBe(1);
   });
 
   test("keeps the complete A4 preview inside common desktop viewports", async ({

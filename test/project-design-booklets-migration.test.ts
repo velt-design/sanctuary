@@ -11,6 +11,13 @@ const migration = readFileSync(
   ),
   "utf8",
 ).toLowerCase();
+const pdfDrawingMigration = readFileSync(
+  path.join(
+    process.cwd(),
+    "supabase/migrations/20260810_000001_project_design_booklet_pdf_drawings.sql",
+  ),
+  "utf8",
+).toLowerCase();
 
 describe("project design booklet persistence migration", () => {
   it("owns one active draft per project with optimistic revisions", () => {
@@ -43,5 +50,15 @@ describe("project design booklet persistence migration", () => {
     expect(
       migration.match(/select public\.has_portal_access\(\)/g)?.length,
     ).toBeGreaterThanOrEqual(6);
+  });
+
+  it("adds validated PDF drawing metadata without weakening the existing access boundary", () => {
+    expect(pdfDrawingMigration).toContain("'application/pdf'");
+    expect(pdfDrawingMigration).toContain(
+      "add column if not exists page_count integer not null default 1",
+    );
+    expect(pdfDrawingMigration).toContain("page_count between 1 and 50");
+    expect(pdfDrawingMigration).not.toContain("grant ");
+    expect(pdfDrawingMigration).not.toContain("policy");
   });
 });

@@ -41,7 +41,6 @@ export function useQuotesTabSelection({
     () => supabaseHostFromUrl(supabaseRuntimeUrl()) || "unknown",
     [],
   );
-  const didAutoSelectInitialQuoteRef = useRef(false);
   const prefetchedQuoteDetailsRef = useRef(new Set<string>());
   const detailErrorNotifiedRef = useRef<string | null>(null);
 
@@ -151,7 +150,6 @@ export function useQuotesTabSelection({
       quoteId: string | null,
       options?: { createFromEstimateId?: string | null },
     ) => {
-      if (quoteId) didAutoSelectInitialQuoteRef.current = true;
       setSelectedId(quoteId);
       onSelectedQuoteChange?.(quoteId);
       updateParams({
@@ -183,15 +181,11 @@ export function useQuotesTabSelection({
   useEffect(() => {
     let nextSelectedId: string | null | undefined;
     if (selectedFromUrl) {
-      didAutoSelectInitialQuoteRef.current = true;
       nextSelectedId = selectedFromUrl;
     } else if (!quotes.length) {
       nextSelectedId = quotesLoading ? undefined : null;
     } else if (selectedId && quotes.some((quote) => quote.id === selectedId)) {
       nextSelectedId = undefined;
-    } else if (!didAutoSelectInitialQuoteRef.current) {
-      didAutoSelectInitialQuoteRef.current = true;
-      nextSelectedId = quotes[0]?.id ?? null;
     } else {
       nextSelectedId = null;
     }

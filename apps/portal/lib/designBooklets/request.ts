@@ -1,5 +1,6 @@
 import "server-only";
 
+import { PDFDocument } from "pdf-lib";
 import sharp, { type Metadata } from "sharp";
 import {
   DESIGN_BOOKLET_DEFAULT_ASSET_IDS,
@@ -23,6 +24,8 @@ import {
   type DesignBookletImages,
   type DesignBookletMaterialId,
   type DesignBookletRoofFormId,
+  type DesignBookletPdfDocument,
+  type DesignBookletPdfDocuments,
 } from "./types";
 import { TONI_DESIGN_BOOKLET_ASSETS } from "./defaults";
 import {
@@ -30,7 +33,10 @@ import {
   DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH,
   DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH,
   DESIGN_BOOKLET_MAX_IMAGE_BYTES,
+  DESIGN_BOOKLET_MAX_PDF_BYTES,
+  DESIGN_BOOKLET_MAX_PDF_PAGES,
   DESIGN_BOOKLET_MAX_CONTENT_PAGES,
+  designBookletDrawingPdfSources,
   normalizeDesignBookletSheetTitle,
   renderableDesignBookletAssetSources,
 } from "./pageModel";
@@ -219,9 +225,40 @@ function parseDrawingItem(
   ids: Set<string>,
 ): DesignBookletDrawingItem {
   const value = valueRecord(raw, context);
+  const pdf =
+    value.pdf === undefined
+      ? undefined
+      : (() => {
+          const source = valueRecord(value.pdf, `${context} PDF`);
+          const pageNumber = Number(source.pageNumber);
+          const pageCount = Number(source.pageCount);
+          if (
+            !Number.isSafeInteger(pageCount) ||
+            pageCount < 1 ||
+            pageCount > DESIGN_BOOKLET_MAX_PDF_PAGES ||
+            !Number.isSafeInteger(pageNumber) ||
+            pageNumber < 1 ||
+            pageNumber > pageCount
+          ) {
+            throw new DesignBookletRequestError(
+              `${context} PDF page is invalid.`,
+            );
+          }
+          return {
+            assetId: stableId(source.assetId, `${context} PDF`, ids),
+            fileName: requiredText(
+              source.fileName,
+              `${context} PDF file name`,
+              160,
+            ),
+            pageNumber,
+            pageCount,
+          };
+        })();
   return {
     id: stableId(value.id, context, ids),
     image: parseAssetSource(value.image, context, ids),
+    ...(pdf ? { pdf } : {}),
     title: parseDrawingTitle(value.title, context),
   };
 }
@@ -426,6 +463,40 @@ async function readUploadedImage(
   };
 }
 
+async function readUploadedPdf(
+  entry: File,
+  context: string,
+): Promise<{ document: DesignBookletPdfDocument; pageCount: number }> {
+  if (entry.size === 0) {
+    throw new DesignBookletRequestError(`${context} is empty.`);
+  }
+  if (entry.size > DESIGN_BOOKLET_MAX_PDF_BYTES) {
+    throw new DesignBookletRequestError(
+      `${context} must be 20 MB or smaller.`,
+      413,
+    );
+  }
+  if (entry.type !== "application/pdf") {
+    throw new DesignBookletRequestError(`${context} must be a PDF.`);
+  }
+  const bytes = new Uint8Array(await entry.arrayBuffer());
+  try {
+    const pdf = await PDFDocument.load(bytes, { updateMetadata: false });
+    const pageCount = pdf.getPageCount();
+    if (pageCount < 1 || pageCount > DESIGN_BOOKLET_MAX_PDF_PAGES) {
+      throw new DesignBookletRequestError(
+        `${context} must contain between 1 and ${DESIGN_BOOKLET_MAX_PDF_PAGES} pages.`,
+      );
+    }
+    return { document: { bytes }, pageCount };
+  } catch (error) {
+    if (error instanceof DesignBookletRequestError) throw error;
+    throw new DesignBookletRequestError(
+      `${context} is encrypted, damaged, or not a readable PDF.`,
+    );
+  }
+}
+
 async function readImageEntry(
   formData: FormData,
   asset: DesignBookletAssetSource,
@@ -462,6 +533,7 @@ function uploadedAssetEntries(formData: FormData): Array<[string, File]> {
 export async function parseDesignBookletFormData(formData: FormData): Promise<{
   draft: DesignBookletDraft;
   images: DesignBookletImages;
+  documents: DesignBookletPdfDocuments;
 }> {
   const draftValues = formData.getAll("draft");
   if (draftValues.length !== 1 || typeof draftValues[0] !== "string") {
@@ -476,8 +548,9 @@ export async function parseDesignBookletFormData(formData: FormData): Promise<{
   }
   const draft = parseDesignBookletDraft(parsedDraft);
   const assets = renderableDesignBookletAssetSources(draft);
+  const documents = designBookletDrawingPdfSources(draft);
   const allowedUploadKeys = new Set(
-    assets.map((asset) => `asset:${asset.assetId}`),
+    [...assets, ...documents].map((asset) => `asset:${asset.assetId}`),
   );
   const uploads = uploadedAssetEntries(formData);
   for (const [key] of uploads) {
@@ -504,6 +577,24 @@ export async function parseDesignBookletFormData(formData: FormData): Promise<{
         [asset.assetId, await readImageEntry(formData, asset)] as const,
     ),
   );
+  const documentEntries = await Promise.all(
+    documents.map(async (document) => {
+      const key = `asset:${document.assetId}`;
+      const values = formData.getAll(key);
+      if (values.length !== 1 || typeof values[0] === "string") {
+        throw new DesignBookletRequestError(
+          `${document.fileName} PDF data is missing or invalid.`,
+        );
+      }
+      const uploaded = await readUploadedPdf(values[0], document.fileName);
+      if (uploaded.pageCount !== document.pageCount) {
+        throw new DesignBookletRequestError(
+          `${document.fileName} page count does not match the booklet draft.`,
+        );
+      }
+      return [document.assetId, uploaded.document] as const;
+    }),
+  );
   return {
     draft,
     images: Object.fromEntries(
@@ -512,6 +603,7 @@ export async function parseDesignBookletFormData(formData: FormData): Promise<{
           entry[1] !== null,
       ),
     ),
+    documents: Object.fromEntries(documentEntries),
   };
 }
 

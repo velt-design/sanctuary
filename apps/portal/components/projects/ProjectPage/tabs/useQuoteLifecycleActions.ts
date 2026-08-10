@@ -18,7 +18,6 @@ import {
 import { qk } from "@/lib/queries/keys";
 import { invalidateProjectReadCaches } from "@/lib/queries/projectCache";
 import {
-  deleteDraftQuoteVersion,
   markQuoteAccepted,
   markQuoteDeclined,
   previewDraftQuoteRefreshFromEstimate,
@@ -71,7 +70,6 @@ type UseQuoteLifecycleActionsInput = {
   setRefreshPreviewError: Setter<string | null>;
   refreshBusy: boolean;
   setRefreshBusy: Setter<boolean>;
-  setDeleteConfirmOpen: Setter<boolean>;
   jobPackBusy: boolean;
   setJobPackBusy: Setter<boolean>;
 };
@@ -100,7 +98,6 @@ export function useQuoteLifecycleActions({
   setRefreshPreviewError,
   refreshBusy,
   setRefreshBusy,
-  setDeleteConfirmOpen,
   jobPackBusy,
   setJobPackBusy,
 }: UseQuoteLifecycleActionsInput) {
@@ -146,37 +143,6 @@ export function useQuoteLifecycleActions({
     },
     [detail, openSendModal, pendingResendId, revise, setExpiredPromptOpen],
   );
-
-  const deleteDraft = useCallback(async () => {
-    if (!detail) return;
-    if (isLocalQuoteId(detail.id) || draftSyncPending) {
-      toast.error("Wait for the draft to finish syncing before deleting.");
-      return;
-    }
-    try {
-      await deleteDraftQuoteVersion(detail.id);
-      queryClient.removeQueries({
-        queryKey: qk.quotes.detail(hostKey, detail.id),
-      });
-      setDeleteConfirmOpen(false);
-      selectQuote(null);
-      await refreshQuotes();
-      toast.success("Draft deleted.");
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to delete draft";
-      toast.error(message);
-    }
-  }, [
-    detail,
-    draftSyncPending,
-    hostKey,
-    queryClient,
-    refreshQuotes,
-    selectQuote,
-    setDeleteConfirmOpen,
-    toast,
-  ]);
 
   const openRefresh = useCallback(() => {
     setRefreshMode("pricing_only");
@@ -397,7 +363,6 @@ export function useQuoteLifecycleActions({
     revise,
     resend,
     resolveExpiredQuote,
-    deleteDraft,
     openRefresh,
     refreshFromEstimate,
     accept,

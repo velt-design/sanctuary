@@ -7,12 +7,20 @@ import { qk } from '../queries/keys';
 import { upsertContactAcrossIndexCaches } from '../queries/contactsIndex';
 import { patchProjectSnapshot } from '../queries/projectCache';
 import type { ProjectNote, ProjectPageSnapshotResponse } from '../projects/types';
-import { DEFAULT_QUOTE_INTRO, DEFAULT_QUOTE_TERMS, applyDepositPercentToTerms } from '../quotes/defaults';
+import { DEFAULT_QUOTE_INTRO, DEFAULT_QUOTE_TERMS } from '../quotes/defaults';
 import {
   buildQuoteHandoffPreviewFromEstimate,
   type QuoteHandoffPreview,
 } from '../quotes/estimateHandoffPreview';
 import { assertQuoteEstimateMappingReady, buildQuoteLineItemsFromEstimate } from '../quotes/mapping';
+import {
+  applyPaymentScheduleToTerms,
+  buildDefaultQuotePaymentSchedule,
+  buildLegacyQuotePaymentSchedule,
+  paymentScheduleCompatibilityDepositPercent,
+  requireValidQuotePaymentSchedule,
+  type QuotePaymentTerm,
+} from '../quotes/paymentSchedule';
 import type { QuoteLineItem, QuoteVersion, QuoteVersionDetail } from '../quotes/types';
 import { totalsFromLineItems } from '../quotes/utils';
 import type { Contact } from '../types/contact';
@@ -78,6 +86,7 @@ type PortalQuoteDraftPatch = {
   introText?: string | null;
   termsText?: string | null;
   depositPercent?: number;
+  paymentTerms?: QuotePaymentTerm[];
   expiresAt?: string | null;
   lineItems?: Array<{ description: string; qty: number; unitPriceIncGstCents: number }>;
 };
@@ -177,6 +186,7 @@ function quoteVersionFromDetail(detail: QuoteVersionDetail): QuoteVersion {
     versionNumber: detail.versionNumber,
     status: detail.status,
     depositPercent: detail.depositPercent,
+    paymentTerms: detail.paymentTerms,
     sourceEstimateVersionId: detail.sourceEstimateVersionId,
     sourceEstimateVersionLabel: detail.sourceEstimateVersionLabel,
     revisedFromQuoteVersionId: detail.revisedFromQuoteVersionId ?? null,
@@ -405,8 +415,13 @@ export function buildOptimisticQuoteDetail(args: {
     sortOrder: item.sortOrder,
   }));
   const totals = totalsFromLineItems(lineItems);
-  const depositPercent = 50;
-  const termsText = applyDepositPercentToTerms(DEFAULT_QUOTE_TERMS, depositPercent);
+  const paymentTerms = buildDefaultQuotePaymentSchedule({
+    quoteTotalIncGstCents: totals.totalIncGstCents,
+    approvalRequirement: mapping?.approvalRequirement,
+    approvalIncGstCents: mapping?.approvalIncGstCents,
+  });
+  const depositPercent = paymentScheduleCompatibilityDepositPercent(paymentTerms, totals.totalIncGstCents);
+  const termsText = applyPaymentScheduleToTerms(DEFAULT_QUOTE_TERMS, paymentTerms);
 
   return {
     id: args.quoteVersionId,
@@ -416,6 +431,7 @@ export function buildOptimisticQuoteDetail(args: {
     versionNumber,
     status: 'DRAFT',
     depositPercent,
+    paymentTerms,
     sourceEstimateVersionId: args.estimateDetail.id,
     sourceEstimateVersionLabel: args.estimateDetail.versionLabel,
     revisedFromQuoteVersionId: null,
@@ -444,7 +460,6 @@ export function buildOptimisticQuoteDetail(args: {
 }
 
 export function applyDraftPatchToQuoteDetail(detail: QuoteVersionDetail, patch: PortalQuoteDraftPatch): QuoteVersionDetail {
-  const nextDepositPercent = typeof patch.depositPercent === 'number' ? patch.depositPercent : detail.depositPercent;
   const nextLineItems: QuoteLineItem[] = Array.isArray(patch.lineItems)
     ? patch.lineItems.map((item, idx) => ({
         id: detail.lineItems[idx]?.id ?? `${detail.id}:line:${idx + 1}`,
@@ -457,16 +472,27 @@ export function applyDraftPatchToQuoteDetail(detail: QuoteVersionDetail, patch: 
     : detail.lineItems;
 
   const totals = totalsFromLineItems(nextLineItems);
+  const requestedPaymentTerms = Array.isArray(patch.paymentTerms)
+    ? patch.paymentTerms
+    : typeof patch.depositPercent === 'number'
+      ? buildLegacyQuotePaymentSchedule(totals.totalIncGstCents, patch.depositPercent)
+      : detail.paymentTerms ?? buildLegacyQuotePaymentSchedule(totals.totalIncGstCents, detail.depositPercent);
+  const nextPaymentTerms = requireValidQuotePaymentSchedule(requestedPaymentTerms, totals.totalIncGstCents);
+  const nextDepositPercent = paymentScheduleCompatibilityDepositPercent(nextPaymentTerms, totals.totalIncGstCents);
 
   return {
     ...detail,
     reference: Object.prototype.hasOwnProperty.call(patch, 'reference') ? patch.reference ?? null : detail.reference ?? null,
     introText: Object.prototype.hasOwnProperty.call(patch, 'introText') ? patch.introText ?? null : detail.introText ?? null,
     termsText:
-      Object.prototype.hasOwnProperty.call(patch, 'termsText') || Object.prototype.hasOwnProperty.call(patch, 'depositPercent')
-        ? applyDepositPercentToTerms(patch.termsText ?? detail.termsText ?? DEFAULT_QUOTE_TERMS, nextDepositPercent)
+      Object.prototype.hasOwnProperty.call(patch, 'termsText')
+        || Object.prototype.hasOwnProperty.call(patch, 'depositPercent')
+        || Object.prototype.hasOwnProperty.call(patch, 'paymentTerms')
+        || Array.isArray(patch.lineItems)
+        ? applyPaymentScheduleToTerms(patch.termsText ?? detail.termsText ?? DEFAULT_QUOTE_TERMS, nextPaymentTerms)
         : detail.termsText,
     depositPercent: nextDepositPercent,
+    paymentTerms: nextPaymentTerms,
     expiresAt: Object.prototype.hasOwnProperty.call(patch, 'expiresAt') ? patch.expiresAt ?? null : detail.expiresAt ?? null,
     lineItems: nextLineItems,
     totals,

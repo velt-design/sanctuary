@@ -76,9 +76,6 @@ type QuoteWorkflowDialogsProps = {
   expiredPromptOpen: boolean;
   closeExpiredPrompt: () => void;
   resolveExpiredQuote: (mode: ExpiredQuoteMode) => void;
-  deleteConfirmOpen: boolean;
-  closeDeleteConfirm: () => void;
-  deleteDraft: () => void;
 };
 
 export default function QuoteWorkflowDialogs({
@@ -126,9 +123,6 @@ export default function QuoteWorkflowDialogs({
   expiredPromptOpen,
   closeExpiredPrompt,
   resolveExpiredQuote,
-  deleteConfirmOpen,
-  closeDeleteConfirm,
-  deleteDraft,
 }: QuoteWorkflowDialogsProps) {
   const toast = useToast();
 
@@ -694,40 +688,6 @@ export default function QuoteWorkflowDialogs({
         </QuoteModal>
       ) : null}
 
-      {deleteConfirmOpen ? (
-        <QuoteModal label="Delete draft quote" onClose={closeDeleteConfirm}>
-          <div className={styles.modalHeader}>
-            <h4 className={styles.cardTitle}>Delete draft?</h4>
-            <button
-              type="button"
-              className={styles.modalClose}
-              onClick={closeDeleteConfirm}
-            >
-              Close
-            </button>
-          </div>
-          <p className={styles.modalBodyText}>
-            This will remove the draft quote version. Sent quotes cannot be
-            deleted.
-          </p>
-          <div className={styles.modalFooter}>
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={closeDeleteConfirm}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className={styles.dangerButton}
-              onClick={deleteDraft}
-            >
-              Delete draft
-            </button>
-          </div>
-        </QuoteModal>
-      ) : null}
     </>
   );
 }

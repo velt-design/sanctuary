@@ -49,15 +49,16 @@ export async function renderDepositInvoicePdfDocument(
 ): Promise<{ bytes: Uint8Array; layout: DepositInvoicePdfLayout }> {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
-  pdf.setTitle(`${data.invoiceRef} - Deposit invoice - Sanctuary Pergolas`);
+  const documentLabel = data.paymentTermLabel ? 'Invoice' : 'Deposit invoice';
+  pdf.setTitle(`${data.invoiceRef} - ${documentLabel} - Sanctuary Pergolas`);
   pdf.setAuthor("Sanctuary Pergolas");
   pdf.setSubject(
-    `Deposit invoice for quote ${data.quoteRef} v${data.quoteVersionNumber}`,
+    `${documentLabel} for quote ${data.quoteRef} v${data.quoteVersionNumber}`,
   );
   pdf.setCreator("Sanctuary Pergolas");
   pdf.setKeywords([
     "Sanctuary Pergolas",
-    "deposit invoice",
+    "invoice",
     data.invoiceRef,
     data.quoteRef,
   ]);
@@ -204,7 +205,7 @@ export async function renderDepositInvoicePdfDocument(
     size: amountSize,
     font: fonts.semibold,
   });
-  drawText(page, "Deposit requested", {
+  drawText(page, vm.deposit.label, {
     x: summaryLeftX,
     y: summaryTopY - 91,
     size: FONT_SIZES.bodySmall,
@@ -319,7 +320,7 @@ export async function renderDepositInvoicePdfDocument(
   );
   const explanationHeight = 20 + explanationLines.length * LINE_HEIGHTS.body;
   ensureSpace(explanationHeight + 18);
-  drawSectionLabel("Deposit request");
+  drawSectionLabel("Payment request");
   for (const line of explanationLines) {
     drawText(page, line, {
       x: CONTENT_X0,
@@ -335,7 +336,7 @@ export async function renderDepositInvoicePdfDocument(
 
   const calculationRows = [
     ["Source quote total (incl. GST)", vm.totals.quoteTotalIncGst],
-    ["Deposit requested", `${vm.deposit.percent}%`],
+    [vm.deposit.label, vm.deposit.basis],
     ["Subtotal (excl. GST)", vm.totals.totalExGst],
     ["GST (15%)", vm.totals.gst],
   ] as const;

@@ -56,6 +56,7 @@ export const qk = {
   },
   invoices: {
     byProject: (host: string, projectId: string) => ['invoices', host, 'byProject', projectId] as const,
+    scheduleByProject: (host: string, projectId: string) => ['invoices', host, 'scheduleByProject', projectId] as const,
   },
   schedule: {
     snapshot: (host: string) => ['schedule', host, 'snapshot'] as const,

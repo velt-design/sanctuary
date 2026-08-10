@@ -2,6 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import { DataStatePanel } from "@/components/ui/foundation/FoundationFeedback";
+import { OverflowMenu } from "@/components/ui/foundation";
 import { QuoteStatusBadge } from "@/components/ui/foundation/SanctuaryStatus";
 import type { EstimateMeta } from "@/lib/estimates/types";
 import { getAliasedLocalFirstEntitySyncState } from "@/lib/localFirst/store";
@@ -13,6 +14,7 @@ import { quotePdfUrl } from "@/lib/quotes/quotesRepo";
 import type { QuoteVersion } from "@/lib/quotes/types";
 import styles from "./QuotesTab.module.css";
 import QuoteModal from "./QuoteWorkflowModal";
+import type { QuoteDeleteTarget } from "./useQuoteDeletion";
 import {
   formatDateShort,
   formatMoneyFromCents,
@@ -34,6 +36,8 @@ type QuotesListViewProps = {
   estimatesLoading: boolean;
   estimates: EstimateMeta[];
   createQuote: () => void;
+  isAdmin: boolean;
+  deleteQuote: (quote: QuoteDeleteTarget) => void;
 };
 
 export default function QuotesListView({
@@ -51,6 +55,8 @@ export default function QuotesListView({
   estimatesLoading,
   estimates,
   createQuote,
+  isAdmin,
+  deleteQuote,
 }: QuotesListViewProps) {
   return (
     <div
@@ -112,6 +118,7 @@ export default function QuotesListView({
                 <th>Status</th>
                 <th>Amount (inc GST)</th>
                 <th>PDF</th>
+                {isAdmin ? <th>Actions</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -143,7 +150,7 @@ export default function QuotesListView({
                     onMouseEnter={() => prefetchQuoteDetail(quote.id)}
                     onFocus={() => prefetchQuoteDetail(quote.id)}
                   >
-                    <td>{`${quote.quoteRef} • v${quote.versionNumber}`}</td>
+                    <td>{`${quote.quoteRef} - v${quote.versionNumber}`}</td>
                     <td>{quote.sourceEstimateVersionLabel}</td>
                     <td>
                       {quote.status === "DRAFT"
@@ -192,6 +199,25 @@ export default function QuotesListView({
                         "—"
                       )}
                     </td>
+                    {isAdmin ? (
+                      <td
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        {quote.status === "DRAFT" && quote.isCurrentDraft ? (
+                          <OverflowMenu
+                            label={`Actions for ${quote.quoteRef} version ${quote.versionNumber}`}
+                            menuLabel={`${quote.quoteRef} v${quote.versionNumber}`}
+                            items={[{
+                              label: "Delete draft quote",
+                              destructive: true,
+                              onSelect: () => deleteQuote({ id: quote.id, quoteRef: quote.quoteRef, versionNumber: quote.versionNumber }),
+                              disabled: isLocalQuoteId(quote.id) || quoteSyncPending,
+                            }]}
+                          />
+                        ) : null}
+                      </td>
+                    ) : null}
                   </tr>
                 );
               })}

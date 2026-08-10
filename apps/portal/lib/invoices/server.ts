@@ -23,6 +23,7 @@ import { buildDepositInvoiceEmailInput } from './emailPresentation';
 import { parseFrozenInvoiceEmail, redactInvoiceToken, type FrozenInvoiceEmail, type InvoiceRecipientLists } from './deliveryIntent';
 import { preparedDepositInvoicePreview, prospectiveDepositInvoicePreview } from './staffPreview';
 import type { DepositInvoiceArtifactPreview, DepositInvoiceSummary } from './types';
+import { normalizeStoredQuotePaymentSchedule, paymentScheduleCompatibilityDepositPercent, type QuotePaymentTerm } from '../quotes/paymentSchedule';
 
 const REPLY_TO_EMAIL = 'info@sanctuarypergolas.co.nz';
 
@@ -34,7 +35,13 @@ type DepositInvoiceRow = {
   quote_ref: string;
   quote_version_number: number;
   invoice_ref: string;
-  status: 'OPEN' | 'VOID';
+  status: 'OPEN' | 'PAID' | 'VOID';
+  payment_term_id: string;
+  payment_term_label: string;
+  payment_term_position: number;
+  payment_term_count: number;
+  payment_term_calculation: 'fixed' | 'percentage';
+  payment_term_percentage: number | null;
   issue_date: string;
   due_date: string;
   reference: string | null;
@@ -52,6 +59,12 @@ type DepositInvoiceRow = {
   pdf_file_id: string | null;
   sent_at: string | null;
   sent_by: string | null;
+  paid_at: string | null;
+  paid_by: string | null;
+  payment_reference: string | null;
+  payment_method: string | null;
+  payment_note: string | null;
+  voided_by: string | null;
   created_at: string;
   updated_at: string;
   voided_at: string | null;
@@ -67,6 +80,7 @@ type AcceptedQuoteContext = {
   status: string;
   depositPercent: number;
   quoteTotalIncGstCents: number;
+  paymentTerms: QuotePaymentTerm[];
   customerName: string | null;
   projectName: string | null;
   projectAddress: string | null;
@@ -165,8 +179,10 @@ function normalizeRecipients(list: string[]): string[] {
   return out;
 }
 
-function normalizeStatus(value: unknown): 'OPEN' | 'VOID' {
-  return String(value ?? '').toUpperCase() === 'VOID' ? 'VOID' : 'OPEN';
+function normalizeStatus(value: unknown): 'OPEN' | 'PAID' | 'VOID' {
+  const normalized = String(value ?? '').toUpperCase();
+  if (normalized === 'VOID' || normalized === 'PAID') return normalized;
+  return 'OPEN';
 }
 
 function missingTableError(error: any): boolean {
@@ -258,6 +274,14 @@ function mapInvoiceRow(row: any): DepositInvoiceRow {
     quote_version_number: Number(row?.quote_version_number ?? 0) || 0,
     invoice_ref: String(row?.invoice_ref ?? ''),
     status: normalizeStatus(row?.status),
+    payment_term_id: String(row?.payment_term_id ?? 'payment-1'),
+    payment_term_label: String(row?.payment_term_label ?? 'Initial payment'),
+    payment_term_position: Number(row?.payment_term_position ?? 1) || 1,
+    payment_term_count: Number(row?.payment_term_count ?? 1) || 1,
+    payment_term_calculation: row?.payment_term_calculation === 'fixed' ? 'fixed' : 'percentage',
+    payment_term_percentage: row?.payment_term_percentage === null || row?.payment_term_percentage === undefined
+      ? null
+      : parsePercent(row.payment_term_percentage),
     issue_date: String(row?.issue_date ?? ''),
     due_date: String(row?.due_date ?? ''),
     reference: typeof row?.reference === 'string' ? row.reference : null,
@@ -275,6 +299,12 @@ function mapInvoiceRow(row: any): DepositInvoiceRow {
     pdf_file_id: typeof row?.pdf_file_id === 'string' ? row.pdf_file_id : null,
     sent_at: typeof row?.sent_at === 'string' ? row.sent_at : null,
     sent_by: typeof row?.sent_by === 'string' ? row.sent_by : null,
+    paid_at: typeof row?.paid_at === 'string' ? row.paid_at : null,
+    paid_by: typeof row?.paid_by === 'string' ? row.paid_by : null,
+    payment_reference: typeof row?.payment_reference === 'string' ? row.payment_reference : null,
+    payment_method: typeof row?.payment_method === 'string' ? row.payment_method : null,
+    payment_note: typeof row?.payment_note === 'string' ? row.payment_note : null,
+    voided_by: typeof row?.voided_by === 'string' ? row.voided_by : null,
     created_at: typeof row?.created_at === 'string' ? row.created_at : nowIso(),
     updated_at: typeof row?.updated_at === 'string' ? row.updated_at : nowIso(),
     voided_at: typeof row?.voided_at === 'string' ? row.voided_at : null,
@@ -307,6 +337,12 @@ function mapInvoiceSummary(invoice: DepositInvoiceRow, latestAttempt: DepositInv
     quoteVersionNumber: invoice.quote_version_number,
     invoiceRef: invoice.invoice_ref,
     status: invoice.status,
+    paymentTermId: invoice.payment_term_id,
+    paymentTermLabel: invoice.payment_term_label,
+    paymentTermPosition: invoice.payment_term_position,
+    paymentTermCount: invoice.payment_term_count,
+    paymentTermCalculation: invoice.payment_term_calculation,
+    paymentTermPercentage: invoice.payment_term_percentage,
     issueDate: invoice.issue_date,
     dueDate: invoice.due_date,
     reference: invoice.reference,
@@ -319,6 +355,14 @@ function mapInvoiceSummary(invoice: DepositInvoiceRow, latestAttempt: DepositInv
     gstCents: invoice.gst_cents,
     createdAt: invoice.created_at,
     sentAt: invoice.sent_at,
+    paidAt: invoice.paid_at,
+    paidBy: invoice.paid_by,
+    paymentReference: invoice.payment_reference,
+    paymentMethod: invoice.payment_method,
+    paymentNote: invoice.payment_note,
+    voidedAt: invoice.voided_at,
+    voidedBy: invoice.voided_by,
+    voidReason: invoice.void_reason,
     lastDeliveryStatus: latestAttempt?.status ?? 'NOT_SENT',
     lastDeliveryError: latestAttempt?.error_message ?? null,
     lastDeliveryAttemptAt: latestAttempt ? latestAttempt.sent_at ?? latestAttempt.created_at : null,
@@ -333,7 +377,7 @@ function mapInvoiceSummary(invoice: DepositInvoiceRow, latestAttempt: DepositInv
 async function loadAcceptedQuoteContext(quoteVersionUuid: string): Promise<AcceptedQuoteContext | null> {
   const versionRes = await supabaseServiceRole
     .from('quote_versions')
-    .select('id, quote_id, status, version_number, deposit_percent, total_inc_gst_cents, customer_name')
+    .select('id, quote_id, status, version_number, deposit_percent, payment_terms, total_inc_gst_cents, customer_name')
     .eq('id', quoteVersionUuid)
     .single();
 
@@ -389,6 +433,11 @@ async function loadAcceptedQuoteContext(quoteVersionUuid: string): Promise<Accep
     status: String((versionRes.data as any).status ?? '').toUpperCase(),
     depositPercent: parsePercent((versionRes.data as any).deposit_percent),
     quoteTotalIncGstCents: Number((versionRes.data as any).total_inc_gst_cents ?? 0) || 0,
+    paymentTerms: normalizeStoredQuotePaymentSchedule(
+      (versionRes.data as any).payment_terms,
+      Number((versionRes.data as any).total_inc_gst_cents ?? 0) || 0,
+      parsePercent((versionRes.data as any).deposit_percent),
+    ),
     customerName,
     projectName: typeof projectRow?.name === 'string' ? projectRow.name : null,
     projectAddress: typeof projectRow?.site_address === 'string' ? projectRow.site_address : null,
@@ -448,20 +497,33 @@ async function createOpenInvoice(
     reference?: string | null;
   },
 ): Promise<{ invoice: DepositInvoiceRow; created: boolean }> {
-  const existing = await loadOpenInvoiceByQuoteVersion(
-    context.quoteVersionUuid,
-  );
+  const firstTerm = context.paymentTerms[0];
+  if (!firstTerm) throw new Error('Quote payment schedule is missing');
+  const existingRes = await supabaseServiceRole.from('deposit_invoices').select('*')
+    .eq('quote_version_id', context.quoteVersionUuid)
+    .eq('payment_term_id', firstTerm.id)
+    .neq('status', 'VOID')
+    .maybeSingle();
+  const existing = existingRes.data ? mapInvoiceRow(existingRes.data) : null;
   if (existing) return { invoice: existing, created: false };
 
   const invoiceRef = await allocateInvoiceRef();
-  const depositPercent = overrides?.depositPercent === undefined ? context.depositPercent : parsePercent(overrides.depositPercent);
-  const amount = computeDepositAmounts(context.quoteTotalIncGstCents, depositPercent);
+  const depositPercent = paymentScheduleCompatibilityDepositPercent([firstTerm], context.quoteTotalIncGstCents);
+  const invoiceInc = firstTerm.resolvedAmountIncGstCents;
+  const invoiceEx = roundInt(invoiceInc / 1.15);
+  const amount = {
+    depositPercent,
+    quoteTotalIncGstCents: context.quoteTotalIncGstCents,
+    totalIncGstCents: invoiceInc,
+    totalExGstCents: invoiceEx,
+    gstCents: invoiceInc - invoiceEx,
+  };
 
   const issueDate = toDateOnly(nowIso());
   const dueDate = normalizeDateOnlyInput(overrides?.dueDate) ?? addDaysDateOnly(issueDate, 7);
   const reference =
     normalizeOptionalText(overrides?.reference) ??
-    `Deposit for Quote ${context.quoteRef}${context.projectName ? ` - ${context.projectName}` : ''}`;
+    `${firstTerm.label} for Quote ${context.quoteRef}${context.projectName ? ` - ${context.projectName}` : ''}`;
 
   const insertRes = await supabaseServiceRole
     .from('deposit_invoices')
@@ -486,15 +548,24 @@ async function createOpenInvoice(
       gst_cents: amount.gstCents,
       payment_instructions: paymentInstructions(),
       created_by: actor,
+      payment_term_id: firstTerm.id,
+      payment_term_label: firstTerm.label,
+      payment_term_position: 1,
+      payment_term_count: context.paymentTerms.length,
+      payment_term_calculation: firstTerm.calculationType,
+      payment_term_percentage: firstTerm.percentageOfRemainder,
     } as any)
     .select('*')
     .single();
 
   if (insertRes.error || !insertRes.data) {
     if (isUniqueViolation(insertRes.error)) {
-      const raced = await loadOpenInvoiceByQuoteVersion(
-        context.quoteVersionUuid,
-      );
+      const racedRes = await supabaseServiceRole.from('deposit_invoices').select('*')
+        .eq('quote_version_id', context.quoteVersionUuid)
+        .eq('payment_term_id', firstTerm.id)
+        .neq('status', 'VOID')
+        .maybeSingle();
+      const raced = racedRes.data ? mapInvoiceRow(racedRes.data) : null;
       if (raced) return { invoice: raced, created: false };
     }
     throw new Error(errorMessage(insertRes.error, 'Failed to create deposit invoice'));
@@ -574,6 +645,9 @@ function invoiceArtifactInput(invoice: DepositInvoiceRow) {
     issueDate: invoice.issue_date,
     dueDate: invoice.due_date,
     depositPercent: invoice.deposit_percent,
+    paymentTermLabel: invoice.payment_term_label,
+    paymentTermCalculation: invoice.payment_term_calculation,
+    paymentTermPercentage: invoice.payment_term_percentage,
     quoteTotalIncGstCents: invoice.quote_total_inc_gst_cents,
     totalIncGstCents: invoice.total_inc_gst_cents,
     totalExGstCents: invoice.total_ex_gst_cents,
@@ -799,7 +873,7 @@ async function prepareInvoiceEmailIntent(
   })();
   const { token, tokenHash } = generateAcceptToken();
   const pdf = await ensureInvoicePdf(invoice, actor);
-  const subject = `Deposit invoice - ${invoice.invoice_ref}`;
+  const subject = `${invoice.payment_term_label} invoice - ${invoice.invoice_ref}`;
   const rendered = await renderDepositInvoiceEmail(
     buildDepositInvoiceEmailInput({
       invoiceRef: invoice.invoice_ref,
@@ -811,6 +885,9 @@ async function prepareInvoiceEmailIntent(
       issueDate: invoice.issue_date,
       dueDate: invoice.due_date,
       depositPercent: invoice.deposit_percent,
+      paymentTermLabel: invoice.payment_term_label,
+      paymentTermCalculation: invoice.payment_term_calculation,
+      paymentTermPercentage: invoice.payment_term_percentage,
       quoteTotalIncGstCents: invoice.quote_total_inc_gst_cents,
       totalIncGstCents: invoice.total_inc_gst_cents,
       totalExGstCents: invoice.total_ex_gst_cents,
@@ -1200,7 +1277,7 @@ export async function getDepositInvoiceArtifactPreview(invoiceId: string): Promi
     ...invoiceArtifactInput(invoice),
     invoiceId,
     recipients: { to: [], cc: [], bcc: [] },
-    subject: `Deposit invoice - ${invoice.invoice_ref}`,
+    subject: `${invoice.payment_term_label} invoice - ${invoice.invoice_ref}`,
     invoiceLink: `https://preview.invalid/invoice/${encodeURIComponent(invoice.id)}?token=preview-only`,
     paymentLines: invoicePaymentLines(invoice),
     referenceId: invoice.reference ?? undefined,

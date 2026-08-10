@@ -40,6 +40,8 @@ type Props = {
     image: DesignBookletImagePlacement,
   ) => void;
   onReplaceAsset: (assetId: string, file: File | undefined) => void;
+  onReplaceDrawingPdf: (drawingId: string, file: File | undefined) => void;
+  onSelectDrawingPdfPage: (drawingId: string, pageNumber: number) => void;
   onUseAsCover: (image: DesignBookletImagePlacement) => void;
   onAssetDisplayState: DesignBookletAssetDisplayHandler;
 };
@@ -174,6 +176,7 @@ function DrawingSlotEditor({
   onChange,
   onMove,
   onReplaceAsset,
+  onSelectPdfPage,
   onAssetDisplayState,
 }: {
   drawing: DesignBookletDrawingItem;
@@ -183,6 +186,7 @@ function DrawingSlotEditor({
   onChange: (drawing: DesignBookletDrawingItem) => void;
   onMove: (direction: -1 | 1) => void;
   onReplaceAsset: (assetId: string, file: File | undefined) => void;
+  onSelectPdfPage: (drawingId: string, pageNumber: number) => void;
   onAssetDisplayState: DesignBookletAssetDisplayHandler;
 }) {
   const titleValue =
@@ -246,7 +250,7 @@ function DrawingSlotEditor({
           </label>
         ) : null}
         <label className={styles.field}>
-          <span>Image description</span>
+          <span>Drawing description</span>
           <input
             value={drawing.image.altText}
             maxLength={240}
@@ -258,14 +262,32 @@ function DrawingSlotEditor({
             }
           />
         </label>
+        {drawing.pdf ? (
+          <label className={styles.field}>
+            <span>PDF page</span>
+            <select
+              value={drawing.pdf.pageNumber}
+              onChange={(event) =>
+                onSelectPdfPage(drawing.id, Number(event.target.value))
+              }
+            >
+              {Array.from({ length: drawing.pdf.pageCount }, (_, index) => (
+                <option key={index + 1} value={index + 1}>
+                  Page {index + 1} of {drawing.pdf?.pageCount}
+                </option>
+              ))}
+            </select>
+            <small>{drawing.pdf.fileName}</small>
+          </label>
+        ) : null}
         <div className={styles.inlineActions}>
           <label className={styles.fileButton}>
             Replace drawing
             <input
               type="file"
-              accept="image/png,image/jpeg"
+              accept="application/pdf,.pdf"
               onChange={(event) =>
-                onReplaceAsset(drawing.image.assetId, event.target.files?.[0])
+                onReplaceAsset(drawing.id, event.target.files?.[0])
               }
             />
           </label>
@@ -296,12 +318,14 @@ function DrawingPageEditor({
   assets,
   onChange,
   onReplaceAsset,
+  onSelectDrawingPdfPage,
   onAssetDisplayState,
 }: {
   page: DesignBookletDrawingPage;
   assets: Record<string, DesignBookletPreviewAsset>;
   onChange: (page: DesignBookletDrawingPage) => void;
   onReplaceAsset: (assetId: string, file: File | undefined) => void;
+  onSelectDrawingPdfPage: (drawingId: string, pageNumber: number) => void;
   onAssetDisplayState: DesignBookletAssetDisplayHandler;
 }) {
   const visibleDrawings = visibleDesignBookletDrawings(page);
@@ -393,6 +417,7 @@ function DrawingPageEditor({
               })
             }
             onReplaceAsset={onReplaceAsset}
+            onSelectPdfPage={onSelectDrawingPdfPage}
             onAssetDisplayState={onAssetDisplayState}
           />
         ))}
@@ -412,6 +437,8 @@ export default function BookletPageComposer({
   onUpdatePage,
   onUpdateFixedImage,
   onReplaceAsset,
+  onReplaceDrawingPdf,
+  onSelectDrawingPdfPage,
   onUseAsCover,
   onAssetDisplayState,
 }: Props) {
@@ -603,7 +630,8 @@ export default function BookletPageComposer({
             page={selected.page}
             assets={assets}
             onChange={onUpdatePage}
-            onReplaceAsset={onReplaceAsset}
+            onReplaceAsset={onReplaceDrawingPdf}
+            onSelectDrawingPdfPage={onSelectDrawingPdfPage}
             onAssetDisplayState={onAssetDisplayState}
           />
         ) : null}

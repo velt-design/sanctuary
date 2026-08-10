@@ -6,6 +6,7 @@ import {
   createProjectDesignBookletDraft,
   createToniDesignBookletDraft,
 } from "@/lib/designBooklets/defaults";
+import type { ProjectDesignBookletAsset } from "@/lib/designBooklets/projectTypes";
 import DesignBookletWorkbenchClient from "./DesignBookletWorkbenchClient";
 
 const mocks = vi.hoisted(() => ({
@@ -16,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   publishPdf: vi.fn(),
   compress: vi.fn(),
   preload: vi.fn(),
+  renderPdfPreview: vi.fn(),
 }));
 
 vi.mock("@/lib/designBooklets/projectClient", () => ({
@@ -32,6 +34,10 @@ vi.mock("@/lib/designBooklets/imageCompression", () => ({
 
 vi.mock("./preloadDesignBookletImage", () => ({
   preloadDesignBookletImage: mocks.preload,
+}));
+
+vi.mock("./renderDesignBookletPdfPreview", () => ({
+  renderDesignBookletPdfPreview: mocks.renderPdfPreview,
 }));
 
 function deferred<T>() {
@@ -85,6 +91,26 @@ describe("project-linked Design Booklet Workbench", () => {
     mocks.copy.mockReset();
     mocks.compress.mockReset().mockImplementation(async (file: File) => file);
     mocks.preload.mockReset().mockResolvedValue(undefined);
+    mocks.renderPdfPreview
+      .mockReset()
+      .mockImplementation(
+        async (
+          _source: File | string,
+          fileName: string,
+          pageNumber: number,
+        ) => ({
+          file: new File(
+            [`preview-${pageNumber}`],
+            `${fileName}-${pageNumber}.jpg`,
+            {
+              type: "image/jpeg",
+            },
+          ),
+          pageCount: 2,
+          width: 1200,
+          height: 800,
+        }),
+      );
     mocks.publishPdf.mockReset().mockResolvedValue({
       downloadUrl: "https://storage.example.test/booklet.pdf?token=short",
       filename: "client-aaa-design-booklet.pdf",
@@ -276,9 +302,19 @@ describe("project-linked Design Booklet Workbench", () => {
     rendered.unmount();
   });
 
-  it("shows the selected drawing before compression and atomically swaps to the saved source", async () => {
-    const compression = deferred<File>();
-    const upload = deferred<{
+  it("shows a local PDF preview before persistence and atomically swaps to the saved preview", async () => {
+    const documentUpload = deferred<{
+      assetId: string;
+      src: string;
+      label: string;
+      mediaType: "application/pdf";
+      byteSize: number;
+      width: number;
+      height: number;
+      pageCount: number;
+      updatedAt: string;
+    }>();
+    const previewUpload = deferred<{
       assetId: string;
       src: string;
       label: string;
@@ -286,11 +322,13 @@ describe("project-linked Design Booklet Workbench", () => {
       byteSize: number;
       width: number;
       height: number;
+      pageCount: number;
       updatedAt: string;
     }>();
     const preload = deferred<void>();
-    mocks.compress.mockReturnValueOnce(compression.promise);
-    mocks.upload.mockReturnValueOnce(upload.promise);
+    mocks.upload
+      .mockReturnValueOnce(documentUpload.promise)
+      .mockReturnValueOnce(previewUpload.promise);
     mocks.preload.mockReturnValueOnce(preload.promise);
     vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:instant-drawing");
     const revokeObjectUrl = vi
@@ -309,8 +347,8 @@ describe("project-linked Design Booklet Workbench", () => {
     const input = rendered.container.querySelector(
       '[data-drawing-editor-slot="1"] input[type="file"]',
     ) as HTMLInputElement;
-    const original = new File(["large drawing"], "roof-plan.png", {
-      type: "image/png",
+    const original = new File(["%PDF drawing"], "roof-plan.pdf", {
+      type: "application/pdf",
     });
     Object.defineProperty(input, "files", {
       configurable: true,
@@ -318,32 +356,39 @@ describe("project-linked Design Booklet Workbench", () => {
     });
     act(() => input.dispatchEvent(new Event("change", { bubbles: true })));
 
+    await flushEffects();
+    expect(mocks.renderPdfPreview).toHaveBeenCalledWith(
+      original,
+      "roof-plan.pdf",
+      1,
+    );
     expect(
       rendered.container
         .querySelector('[data-page-kind="drawings"] img')
         ?.getAttribute("src"),
     ).toBe("blob:instant-drawing");
-    expect(rendered.container.textContent).toContain("Uploading image");
-    await flushEffects();
-    expect(mocks.compress).toHaveBeenCalledWith(original);
-    expect(mocks.upload).not.toHaveBeenCalled();
-
-    const compressed = new File(["compressed"], "roof-plan.jpg", {
-      type: "image/jpeg",
-    });
-    await act(async () => {
-      compression.resolve(compressed);
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    expect(rendered.container.textContent).toContain("Saving booklet assets");
+    expect(mocks.compress).not.toHaveBeenCalled();
     expect(mocks.upload).toHaveBeenCalledWith(
       "proj_project-1",
-      expect.any(String),
-      compressed,
+      expect.stringMatching(/-pdf$/),
+      original,
     );
+    expect(mocks.upload).toHaveBeenCalledTimes(2);
 
     await act(async () => {
-      upload.resolve({
+      documentUpload.resolve({
+        assetId: "drawing-page-1-drawing-1-pdf",
+        src: "https://storage.example.test/roof-plan.pdf",
+        label: "roof-plan.pdf",
+        mediaType: "application/pdf",
+        byteSize: 20,
+        width: 842,
+        height: 595,
+        pageCount: 2,
+        updatedAt: "2026-08-10T00:00:00.000Z",
+      });
+      previewUpload.resolve({
         assetId: "drawing-page-1-drawing-1",
         src: "https://storage.example.test/saved-roof-plan.jpg",
         label: "roof-plan.jpg",
@@ -351,7 +396,8 @@ describe("project-linked Design Booklet Workbench", () => {
         byteSize: 10,
         width: 1200,
         height: 800,
-        updatedAt: "2026-08-06T00:00:00.000Z",
+        pageCount: 1,
+        updatedAt: "2026-08-10T00:00:00.000Z",
       });
       await Promise.resolve();
       await Promise.resolve();
@@ -376,34 +422,117 @@ describe("project-linked Design Booklet Workbench", () => {
         ?.getAttribute("src"),
     ).toBe("https://storage.example.test/saved-roof-plan.jpg");
     expect(revokeObjectUrl).toHaveBeenCalledWith("blob:instant-drawing");
-    expect(rendered.container.textContent).toContain("Saved to project");
+    await vi.waitFor(
+      () =>
+        expect(rendered.container.textContent).toContain("Saved to project"),
+      { timeout: 1500 },
+    );
     rendered.unmount();
   });
 
-  it("keeps the newest rapid replacement visible and persists replacements in selection order", async () => {
-    const firstUpload = deferred<{
-      assetId: string;
-      src: string;
-      label: string;
-      mediaType: "image/jpeg";
-      byteSize: number;
-      width: number;
-      height: number;
-      updatedAt: string;
-    }>();
-    const secondUpload = deferred<{
-      assetId: string;
-      src: string;
-      label: string;
-      mediaType: "image/jpeg";
-      byteSize: number;
-      width: number;
-      height: number;
-      updatedAt: string;
-    }>();
+  it("switches a multi-page drawing locally and uploads only its refreshed preview", async () => {
     mocks.upload
-      .mockReturnValueOnce(firstUpload.promise)
-      .mockReturnValueOnce(secondUpload.promise);
+      .mockResolvedValueOnce({
+        assetId: "drawing-page-1-drawing-1-pdf",
+        src: "https://storage.example.test/roof-set.pdf",
+        label: "roof-set.pdf",
+        mediaType: "application/pdf",
+        byteSize: 20,
+        width: 842,
+        height: 595,
+        pageCount: 2,
+        updatedAt: "2026-08-10T00:00:00.000Z",
+      })
+      .mockResolvedValueOnce({
+        assetId: "drawing-page-1-drawing-1",
+        src: "https://storage.example.test/page-1.jpg",
+        label: "page-1.jpg",
+        mediaType: "image/jpeg",
+        byteSize: 10,
+        width: 1200,
+        height: 800,
+        pageCount: 1,
+        updatedAt: "2026-08-10T00:00:00.000Z",
+      })
+      .mockResolvedValueOnce({
+        assetId: "drawing-page-1-drawing-1",
+        src: "https://storage.example.test/page-2.jpg",
+        label: "page-2.jpg",
+        mediaType: "image/jpeg",
+        byteSize: 10,
+        width: 1200,
+        height: 800,
+        pageCount: 1,
+        updatedAt: "2026-08-10T00:01:00.000Z",
+      });
+    vi.spyOn(URL, "createObjectURL")
+      .mockReturnValueOnce("blob:page-1")
+      .mockReturnValueOnce("blob:page-2");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+
+    const rendered = renderProjectWorkbench();
+    await flushEffects();
+    act(() => {
+      (
+        rendered.container.querySelector(
+          '[data-booklet-page-select="drawing-page-1"]',
+        ) as HTMLButtonElement
+      ).click();
+    });
+    const input = rendered.container.querySelector(
+      '[data-drawing-editor-slot="1"] input[type="file"]',
+    ) as HTMLInputElement;
+    const original = new File(["%PDF drawing"], "roof-set.pdf", {
+      type: "application/pdf",
+    });
+    Object.defineProperty(input, "files", {
+      configurable: true,
+      value: [original],
+    });
+    act(() => input.dispatchEvent(new Event("change", { bubbles: true })));
+    await vi.waitFor(() => expect(mocks.upload).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() =>
+      expect(rendered.container.textContent).toContain("Saved to project"),
+    );
+
+    const pageSelect = Array.from(
+      rendered.container.querySelectorAll("select"),
+    ).find((select) => select.parentElement?.textContent?.includes("PDF page"));
+    expect(pageSelect?.querySelectorAll("option")).toHaveLength(2);
+    act(() => {
+      if (!pageSelect) throw new Error("Expected the PDF page selector.");
+      pageSelect.value = "2";
+      pageSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    await vi.waitFor(() =>
+      expect(mocks.renderPdfPreview).toHaveBeenLastCalledWith(
+        "https://storage.example.test/roof-set.pdf",
+        "roof-set.pdf",
+        2,
+      ),
+    );
+    await vi.waitFor(() => expect(mocks.upload).toHaveBeenCalledTimes(3));
+    expect(mocks.upload.mock.calls[2]?.[1]).toBe("drawing-page-1-drawing-1");
+    expect(mocks.upload.mock.calls[2]?.[2]?.type).toBe("image/jpeg");
+    expect(
+      rendered.container
+        .querySelector('[data-page-kind="drawings"] img')
+        ?.getAttribute("src"),
+    ).toBe("https://storage.example.test/page-2.jpg");
+    rendered.unmount();
+  });
+
+  it("keeps the newest rapid PDF replacement visible and persists replacements in selection order", async () => {
+    const firstDocument = deferred<ProjectDesignBookletAsset>();
+    const firstPreview = deferred<ProjectDesignBookletAsset>();
+    const secondDocument = deferred<ProjectDesignBookletAsset>();
+    const secondPreview = deferred<ProjectDesignBookletAsset>();
+    mocks.upload
+      .mockReturnValueOnce(firstDocument.promise)
+      .mockReturnValueOnce(firstPreview.promise)
+      .mockReturnValueOnce(secondDocument.promise)
+      .mockReturnValueOnce(secondPreview.promise);
     vi.spyOn(URL, "createObjectURL")
       .mockReturnValueOnce("blob:first")
       .mockReturnValueOnce("blob:second");
@@ -428,41 +557,56 @@ describe("project-linked Design Booklet Workbench", () => {
       });
       act(() => input.dispatchEvent(new Event("change", { bubbles: true })));
     };
-    const first = new File(["first"], "first.png", { type: "image/png" });
-    const second = new File(["second"], "second.png", { type: "image/png" });
+    const first = new File(["first"], "first.pdf", {
+      type: "application/pdf",
+    });
+    const second = new File(["second"], "second.pdf", {
+      type: "application/pdf",
+    });
 
     replace(first);
     await flushEffects();
-    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.upload).toHaveBeenCalledTimes(2);
     replace(second);
+    await flushEffects();
     expect(
       rendered.container
         .querySelector('[data-page-kind="drawings"] img')
         ?.getAttribute("src"),
     ).toBe("blob:second");
-    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.upload).toHaveBeenCalledTimes(2);
 
     await act(async () => {
-      firstUpload.resolve({
+      firstDocument.resolve({
+        assetId: "drawing-page-1-drawing-1-pdf",
+        src: "https://storage/first.pdf",
+        label: "first.pdf",
+        mediaType: "application/pdf",
+        byteSize: 10,
+        width: 842,
+        height: 595,
+        pageCount: 2,
+        updatedAt: "2026-08-10T00:00:00.000Z",
+      });
+      firstPreview.resolve({
         assetId: "drawing-page-1-drawing-1",
-        src: "https://storage.example.test/first.jpg",
+        src: "https://storage/first.jpg",
         label: "first.jpg",
         mediaType: "image/jpeg",
         byteSize: 5,
         width: 100,
         height: 100,
-        updatedAt: "2026-08-06T00:00:00.000Z",
+        pageCount: 1,
+        updatedAt: "2026-08-10T00:00:00.000Z",
       });
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
     });
-    expect(mocks.upload).toHaveBeenCalledTimes(2);
-    expect(mocks.upload.mock.calls[0]?.[2]?.name).toBe("first.png");
-    expect(mocks.upload.mock.calls[1]?.[2]?.name).toBe("second.png");
-    expect(mocks.preload).not.toHaveBeenCalledWith(
-      "https://storage.example.test/first.jpg",
-    );
+    expect(mocks.upload).toHaveBeenCalledTimes(4);
+    expect(mocks.upload.mock.calls[0]?.[2]?.name).toBe("first.pdf");
+    expect(mocks.upload.mock.calls[2]?.[2]?.name).toBe("second.pdf");
+    expect(mocks.preload).not.toHaveBeenCalledWith("https://storage/first.jpg");
     expect(
       rendered.container
         .querySelector('[data-page-kind="drawings"] img')
@@ -470,7 +614,18 @@ describe("project-linked Design Booklet Workbench", () => {
     ).toBe("blob:second");
 
     await act(async () => {
-      secondUpload.resolve({
+      secondDocument.resolve({
+        assetId: "drawing-page-1-drawing-1-pdf",
+        pageCount: 2,
+        src: "https://storage.example.test/second.pdf",
+        label: "second.pdf",
+        mediaType: "application/pdf",
+        byteSize: 10,
+        width: 842,
+        height: 595,
+        updatedAt: "2026-08-10T00:00:01.000Z",
+      });
+      secondPreview.resolve({
         assetId: "drawing-page-1-drawing-1",
         src: "https://storage.example.test/second.jpg",
         label: "second.jpg",
@@ -478,7 +633,8 @@ describe("project-linked Design Booklet Workbench", () => {
         byteSize: 6,
         width: 100,
         height: 100,
-        updatedAt: "2026-08-06T00:00:01.000Z",
+        pageCount: 1,
+        updatedAt: "2026-08-10T00:00:01.000Z",
       });
       await Promise.resolve();
       await Promise.resolve();

@@ -2,10 +2,7 @@ import type {
   ProjectDesignBookletAsset,
   ProjectDesignBookletSnapshot,
 } from "./projectTypes";
-import type {
-  DesignBookletDefaultAssetId,
-  DesignBookletDraft,
-} from "./types";
+import type { DesignBookletDefaultAssetId, DesignBookletDraft } from "./types";
 
 type ApiErrorPayload = { error?: string; code?: string };
 
@@ -70,11 +67,11 @@ export async function uploadProjectDesignBookletAssetClient(
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ assetId }),
+    body: JSON.stringify({ assetId, mediaType: file.type }),
   });
   const signed = await apiPayload<{
     upload: { path: string; signedUrl: string };
-  }>(signResponse, "The image upload could not be prepared.");
+  }>(signResponse, "The asset upload could not be prepared.");
 
   const uploadResponse = await fetch(signed.upload.signedUrl, {
     method: "PUT",
@@ -86,22 +83,26 @@ export async function uploadProjectDesignBookletAssetClient(
     body: file,
   });
   if (!uploadResponse.ok) {
-    throw new Error("The image could not be uploaded.");
+    throw new Error("The asset could not be uploaded.");
   }
 
-  const completeResponse = await fetch(endpoint(projectId, "/assets/complete"), {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      assetId,
-      path: signed.upload.path,
-      fileName: file.name,
-    }),
-  });
+  const completeResponse = await fetch(
+    endpoint(projectId, "/assets/complete"),
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        assetId,
+        path: signed.upload.path,
+        fileName: file.name,
+        mediaType: file.type,
+      }),
+    },
+  );
   const completed = await apiPayload<{ asset: ProjectDesignBookletAsset }>(
     completeResponse,
-    "The image could not be saved.",
+    "The asset could not be saved.",
   );
   return completed.asset;
 }

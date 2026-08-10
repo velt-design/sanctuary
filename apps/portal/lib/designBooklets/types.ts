@@ -98,9 +98,17 @@ export type DesignBookletDrawingTitle =
       value: string;
     };
 
+type DesignBookletDrawingPdfSource = {
+  assetId: string;
+  fileName: string;
+  pageNumber: number;
+  pageCount: number;
+};
+
 export type DesignBookletDrawingItem = {
   id: string;
   image: DesignBookletAssetSource;
+  pdf?: DesignBookletDrawingPdfSource;
   title: DesignBookletDrawingTitle;
 };
 
@@ -126,7 +134,8 @@ export type DesignBookletDrawingPage = {
 };
 
 export type DesignBookletContentPage =
-  DesignBookletImagePage | DesignBookletDrawingPage;
+  | DesignBookletImagePage
+  | DesignBookletDrawingPage;
 
 export type DesignBookletDraft = {
   schemaVersion: typeof DESIGN_BOOKLET_SCHEMA_VERSION;
@@ -147,3 +156,12 @@ export type DesignBookletImage = {
 };
 
 export type DesignBookletImages = Record<string, DesignBookletImage>;
+
+export type DesignBookletPdfDocument = {
+  bytes: Uint8Array;
+};
+
+export type DesignBookletPdfDocuments = Record<
+  string,
+  DesignBookletPdfDocument
+>;

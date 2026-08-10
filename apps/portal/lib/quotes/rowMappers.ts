@@ -2,6 +2,7 @@ import 'server-only';
 
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { normalizeDepositPercent } from './defaults';
+import { normalizeStoredQuotePaymentSchedule } from './paymentSchedule';
 import { nowIso } from './serverHelpers';
 import type { QuoteLineItem, QuoteSendLog, QuoteStatus, QuoteVersion } from './types';
 
@@ -27,6 +28,9 @@ export function mapQuoteVersionRow(
   const estimateLabelRaw = estimateLabelMap.get(estimateId) ?? 'V-';
   const estimateLabel = estimateLabelRaw.startsWith('Estimate') ? estimateLabelRaw : `Estimate ${estimateLabelRaw}`;
 
+  const depositPercent = normalizeDepositPercent(row?.deposit_percent, 50);
+  const totalIncGstCents = Number(row?.total_inc_gst_cents ?? 0) || 0;
+
   return {
     id: appIdFromUuid('qv', String(row?.id ?? '')),
     quoteId: appIdFromUuid('qt', String(row?.quote_id ?? row?.quotes?.id ?? '')),
@@ -34,7 +38,8 @@ export function mapQuoteVersionRow(
     quoteRef,
     versionNumber: Number(row?.version_number ?? 0) || 0,
     status: toStatus(row?.status),
-    depositPercent: normalizeDepositPercent(row?.deposit_percent, 50),
+    depositPercent,
+    paymentTerms: normalizeStoredQuotePaymentSchedule(row?.payment_terms, totalIncGstCents, depositPercent),
     sourceEstimateVersionId: appIdFromUuid('est', estimateId),
     sourceEstimateVersionLabel: estimateLabel,
     revisedFromQuoteVersionId: row?.revised_from_quote_version_id
@@ -63,7 +68,7 @@ export function mapQuoteVersionRow(
     introText: typeof row?.intro_text === 'string' ? row.intro_text : null,
     termsText: typeof row?.terms_text === 'string' ? row.terms_text : null,
     totals: {
-      totalIncGstCents: Number(row?.total_inc_gst_cents ?? 0) || 0,
+      totalIncGstCents,
       totalExGstCents: Number(row?.total_ex_gst_cents ?? 0) || 0,
       gstCents: Number(row?.gst_cents ?? 0) || 0,
     },

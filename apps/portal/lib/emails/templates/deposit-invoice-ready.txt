@@ -1,10 +1,10 @@
 SANCTUARY PERGOLAS
 
-DEPOSIT INVOICE {{invoice_number}}
+INVOICE {{invoice_number}}
 
 Hi {{name}},
 
-This {{deposit_percent}} deposit invoice relates to quote {{quote_number}}{{#if project_name}} for {{project_name}}{{else}}{{#if project_address}} at {{project_address}}{{/if}}{{/if}}. {{#if attachment_names}}The attached PDF and online invoice contain{{else}}The online invoice contains{{/if}} the complete payment record.
+This {{payment_stage}} invoice relates to quote {{quote_number}}{{#if project_name}} for {{project_name}}{{else}}{{#if project_address}} at {{project_address}}{{/if}}{{/if}}. {{#if attachment_names}}The attached PDF and online invoice contain{{else}}The online invoice contains{{/if}} the complete payment record.
 
 {{#if personal_note_text}}A NOTE FROM THE SANCTUARY TEAM
 {{personal_note_text}}
@@ -20,7 +20,7 @@ REVIEW INVOICE
 INVOICE DETAILS
 Invoice number: {{invoice_number}}
 Related quote: {{quote_number}}
-Deposit: {{deposit_percent}} of the source quote total
+Payment stage: {{payment_stage}}
 {{#if project_name}}Project: {{project_name}}
 {{/if}}{{#if project_address}}Site: {{project_address}}
 {{/if}}{{#if source_quote_total_inc_gst}}Source quote total incl. GST: {{source_quote_total_inc_gst}}

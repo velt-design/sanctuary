@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
-    <title>Deposit invoice {{invoice_number}}</title>
+    <title>Invoice {{invoice_number}}</title>
     <style>
       @media only screen and (max-width: 660px) {
         .email-gutter {
@@ -61,7 +61,7 @@
         color: transparent;
       "
     >
-      Deposit invoice {{invoice_number}} for {{invoice_total_inc_gst}}{{#if
+      Invoice {{invoice_number}} for {{invoice_total_inc_gst}}{{#if
       due_date}}, due {{due_date}}{{/if}}.
     </div>
     <table
@@ -106,7 +106,7 @@
                     <td
                       style="padding:31px 0 8px; font-size:11px; line-height:1.3; font-weight:650; letter-spacing:0.12em; text-transform:uppercase; color:{{brand_accent_hex}};"
                     >
-                      Deposit invoice
+                      Invoice
                     </td>
                   </tr>
                   <tr>
@@ -121,7 +121,7 @@
                     <td
                       style="padding:20px 0 0; font-size:15px; line-height:1.7; color:{{brand_ink_muted_hex}};"
                     >
-                      Hi {{name}}, this {{deposit_percent}} deposit invoice
+                      Hi {{name}}, this {{payment_stage}} invoice
                       relates to quote
                       <strong style="color:{{brand_ink_hex}};"
                         >{{quote_number}}</strong
@@ -306,14 +306,14 @@
                             class="detail-label"
                             style="padding:7px 0; font-size:13px; line-height:1.4; color:{{brand_ink_muted_hex}};"
                           >
-                            Deposit
+                            Payment stage
                           </td>
                           <td
                             class="detail-value"
                             align="right"
                             style="padding:7px 0; font-size:14px; line-height:1.4; color:{{brand_ink_hex}};"
                           >
-                            {{deposit_percent}} of the source quote total
+                            {{payment_stage}}
                           </td>
                         </tr>
                         {{#if project_name}}

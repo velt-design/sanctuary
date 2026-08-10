@@ -8,7 +8,7 @@ Owner surface: authenticated standalone Portal route at `/staff/design-booklets`
 
 The Design Booklet Workbench assembles a customer-facing landscape concept booklet from a fixed cover and review page plus a user-composed sequence of image and drawing pages. New project booklets start with the approved page structure and neutral empty media surfaces; Toni's plan and renders are isolated to the standalone and QA fixture.
 
-Project-linked replacement images are stored in the private
+Project-linked replacement media is stored in the private
 `design-booklet-assets` bucket and previewed through short-lived signed URLs.
 The portal production CSP must retain `https://*.supabase.co` in `img-src`;
 `connect-src` permission alone does not allow an `<img>` to display the saved
@@ -43,11 +43,11 @@ Each drawing page keeps four reusable drawing slots and exposes one of four layo
 - one large drawing plus two smaller drawings;
 - a four-drawing grid.
 
-Changing to a layout with fewer drawings hides rather than discards the other slots. Visible drawings can be reordered. Each image is shown without full-bleed cropping and has an uppercase technical caption underneath in the form `01 / PLAN`. Captions use `Plan`, `Section`, `Elevation`, or `Isometric`, or an 80-character custom title.
+Changing to a layout with fewer drawings hides rather than discards the other slots. Visible drawings can be reordered. Drawing replacements are PDF files. Each slot stores the original PDF plus a lightweight JPEG preview of the selected source page; staff can choose a different page when a PDF contains multiple sheets. Each drawing is shown without full-bleed cropping and has an uppercase technical caption underneath in the form `01 / PLAN`. Captions use `Plan`, `Section`, `Elevation`, or `Isometric`, or an 80-character custom title. Older image-only drawing slots remain readable.
 
 Every drawing page is presented as an architectural concept sheet. Staff can edit its sheet title, revision, issue date, and each visible drawing caption; the sheet number is derived automatically as `A-01`, `A-02`, and so on. Sheet titles are normalized to uppercase when edited, loaded from a saved draft, previewed, and exported. The drawing field starts near the top rule and occupies most of the sheet; there is no separate running logo or architectural-package header. A restrained bottom title block is the sole identity and information area, with Sanctuary identity, the uppercase sheet title and number, customer, project, governed roof-form and roofing labels, revision, issue date, fixed concept status, and secondary booklet pagination. The fixed status is `Concept design — not for construction`; no scale, approval, consent, performance, or construction claim is inferred. Older schema-v2 drafts remain readable because missing drawing-page metadata is normalized to safe defaults when loaded.
 
-Drawing pages use an immediate route-owned HTML preview built from the same landscape-A4 point geometry, layout frames, type roles, captions, and title-block measurements as the PDF renderer. This is a deliberately near-print preview rather than a rendered PDF page: selecting a drawing never waits for a full-booklet generation, and a newly selected local image can paint as soon as the browser decodes it. The downloaded PDF remains the authoritative output. It is generated only on request from the latest saved project draft and assets, cached for an unchanged booklet, invalidated by source changes, and serialized because project exports share the stable private `exports/latest.pdf` path.
+Drawing pages use an immediate route-owned HTML preview built from the same landscape-A4 point geometry, layout frames, type roles, captions, and title-block measurements as the PDF renderer. This is a deliberately near-print preview rather than a rendered booklet page: PDF.js rasterizes only the selected source sheet in the browser, so drawing selection does not wait for upload or full-booklet generation. The downloaded booklet embeds the selected original PDF page with `pdf-lib`, preserving vector linework and text instead of exporting the JPEG preview. It is generated only on request from the latest saved project draft and assets, cached for an unchanged booklet, invalidated by source changes, and serialized because project exports share the stable private `exports/latest.pdf` path.
 
 The final `Review the concept` page has fixed, approved review prompts and call to action. Staff can replace and refocus its closing image, but cannot edit the copy in the workbench.
 
@@ -71,7 +71,7 @@ standalone default eligibility. Every project-linked draft, including an older
 saved schema-v2 draft, is normalized to neutral media sources while its uploaded
 project assets remain authoritative.
 
-Replacement PNG/JPEG files receive an immediate local object URL for preview;
+Replacement PNG/JPEG render files receive an immediate local object URL for preview;
 browser resizing and JPEG encoding then continue in the background before a
 direct signed upload to the private `design-booklet-assets` bucket. Repeated
 replacements of one slot are persisted in selection order, while only the
@@ -81,6 +81,14 @@ upserts `project_design_booklet_assets`. The local preview remains mounted
 until the returned signed source has itself preloaded, then swaps atomically.
 Upload or saved-source display failures remain visible and are never presented
 as saved success.
+
+Drawing replacements accept PDF only. PDF.js renders the selected page locally
+to a bounded JPEG preview before persistence begins. The original PDF and that
+preview are uploaded independently through the same signed private-Storage
+boundary, and the draft records the PDF asset, filename, selected page, and
+verified page count. Changing the selected page re-renders and uploads only the
+preview; it does not re-upload the original document. Project download remains
+blocked until both assets and the updated draft are durably saved.
 
 Project PDF generation loads the saved draft and private assets server-side.
 The generated PDF is written to the project's private `exports/latest.pdf`
@@ -134,7 +142,7 @@ Do not turn the `timber` intake key into a customer-facing "timber roof" claim. 
 - `apps/portal/lib/designBooklets/types.ts`: schema-v2 draft and page contracts.
 - `apps/portal/lib/designBooklets/pageModel.ts`: shared page resolution, drawing layouts, focal positions, review copy, and composition helpers.
 - `apps/portal/lib/designBooklets/defaults.ts`: Toni standalone asset catalogue plus neutral project-draft factory.
-- `apps/portal/lib/designBooklets/request.ts`: multipart draft and image validation.
+- `apps/portal/lib/designBooklets/request.ts`: multipart draft, image, and drawing-PDF validation.
 - `apps/portal/lib/designBooklets/pdf.ts`: landscape PDF renderer over the shared page model.
 - `apps/portal/lib/designBooklets/pdfDrawingTitleBlock.ts`: architectural drawing-sheet title-block painter shared by every PDF drawing layout.
 - `apps/portal/lib/designBooklets/marketingContent.ts`: narrow marketing-content adapter.
@@ -142,6 +150,7 @@ Do not turn the `timber` intake key into a customer-facing "timber roof" claim. 
 - `apps/portal/lib/designBooklets/projectPdf.ts`: saved-asset PDF assembly and private signed export owner.
 - `apps/portal/lib/designBooklets/projectClient.ts`: browser-to-staff-API and signed-upload adapter.
 - `apps/portal/lib/designBooklets/imageCompression.ts`: bounded browser image resizing and JPEG compression.
+- `apps/portal/app/staff/design-booklets/renderDesignBookletPdfPreview.ts`: single-page PDF.js preview rasterization for the editing loop.
 - `apps/portal/app/api/staff/v1/design-booklets/pdf/route.ts`: authenticated PDF download.
 - `apps/portal/app/api/staff/v1/projects/[projectId]/design-booklet/**`: project snapshot/save, signed asset upload/complete/copy, and signed PDF publication.
 - `apps/portal/public/images/design-booklets/toni/**`: bundled Toni plan and renders.
@@ -158,12 +167,13 @@ browser sends only small JSON to the staff API, uploads the compressed image
 directly to its signed private Storage destination, and receives only a signed
 URL for the generated PDF.
 
-The project and standalone paths retain a 15 MB source-image limit. The project
+The project and standalone paths retain a 15 MB source-image limit. Drawing PDF
+sources are limited to 20 MB and 50 pages. The project
 path additionally:
 
 - resizes images to a maximum 4096-pixel edge and targets a 3 MB browser upload;
 - verifies and re-encodes stored images server-side with a 50-megapixel decode cap;
-- allows at most 48 custom image records per project;
+- allows at most 96 custom media records per project, covering each PDF source and its preview;
 - keeps Storage private, project-folder scoped, and authenticated through short-lived signed URLs;
 - stores only one generated `latest.pdf` export per project;
 - serializes browser-requested PDF generations and reuses the cached artifact while the booklet inputs remain unchanged.
@@ -171,13 +181,14 @@ path additionally:
 The standalone multipart server additionally:
 
 - rejects a declared multipart request above 128 MiB before parsing its body, leaving 8 MiB of headroom over the file-total allowance for the draft and multipart framing;
-- accepts PNG and JPEG only, decodes each upload, and verifies that its bytes match its declared media type;
+- accepts PNG and JPEG images plus referenced drawing PDFs, decodes each upload, and verifies that its bytes match its declared media type;
 - normalizes EXIF orientation before an uploaded image reaches the PDF renderer;
 - limits all custom uploads in one request to 120 MB;
 - limits each custom upload to 12,000 pixels on either side and 50 megapixels;
 - allows at most 24 middle content pages;
 - limits customer name to 80 characters, booklet title to 120, drawing-page titles to 80, revisions to 12, image descriptions to 240, and custom drawing titles to 80;
 - requires drawing-page issue dates to be valid ISO calendar dates;
+- validates each PDF page count and selected page before render;
 - rejects invalid or duplicate identifiers, duplicate file fields, unreferenced uploads, unsupported schema values, and malformed page or drawing-slot data.
 
 Oversize requests return `413`; other invalid requests return `400`. API
@@ -192,7 +203,7 @@ node node_modules/vitest/vitest.mjs run apps/marketing/lib/designBookletContent.
 node node_modules/@playwright/test/cli.js test playwright/portal.design-booklet-workbench.spec.ts --project=portal-fixture --workers=1
 ```
 
-For deterministic PDF evidence, set `DESIGN_BOOKLET_OUTPUT_DIR=output/pdf` while running `apps/portal/lib/designBooklets/pdf.test.ts`. This writes the neutral five-page new-project booklet, the default five-page Toni booklet, and a six-page drawing-layout fixture. Render all three with Poppler and inspect every page. Browser visual QA should inspect every default page, mixed add/remove/reorder behavior, all drawing layouts, image focal positions, editable page and drawing titles, uppercase title normalization, `01 / PLAN` captions, the absence of a separate drawing-page running header, the sole bottom architectural title block, instant drawing selection without a PDF request, local-image loading and atomic saved-source replacement, media empty/loading/error states, one on-demand download request, and desktop plus narrow layouts on the gated fixture. Compare the drawing preview and rendered PDF for shared frame/title-block geometry while treating the PDF as the final output authority.
+For deterministic PDF evidence, set `DESIGN_BOOKLET_OUTPUT_DIR=output/pdf` while running `apps/portal/lib/designBooklets/pdf.test.ts`. This writes the neutral five-page new-project booklet, the default five-page Toni booklet, a six-page drawing-layout fixture, and the original-PDF drawing fixture. Render every PDF with Poppler and inspect every page. Browser visual QA should inspect every default page, mixed add/remove/reorder behavior, all drawing layouts, image focal positions, editable page and drawing titles, uppercase title normalization, `01 / PLAN` captions, the absence of a separate drawing-page running header, the sole bottom architectural title block, immediate PDF preview, multi-page selection, atomic saved-source replacement, media empty/loading/error states, one on-demand download request, and desktop plus narrow layouts on the gated fixture. Compare the drawing preview and rendered PDF for shared frame/title-block geometry while treating the PDF as the final output authority.
 
 ## Explicit Non-goals
 

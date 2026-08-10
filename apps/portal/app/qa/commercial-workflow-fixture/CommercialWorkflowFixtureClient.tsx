@@ -9,6 +9,7 @@ import type {
   QuoteLineItem,
   QuoteVersionDetail,
 } from '@/lib/quotes/types';
+import { buildLegacyQuotePaymentSchedule } from '@/lib/quotes/paymentSchedule';
 
 export type CommercialWorkflowFixtureScenario = 'retryable' | 'needs-attention';
 
@@ -128,8 +129,8 @@ export default function CommercialWorkflowFixtureClient({
   const [draftReference, setDraftReference] = useState(
     detail.reference ?? '',
   );
-  const [draftDepositPercent, setDraftDepositPercent] = useState(
-    String(detail.depositPercent),
+  const [draftPaymentTerms, setDraftPaymentTerms] = useState(
+    detail.paymentTerms ?? buildLegacyQuotePaymentSchedule(detail.totals.totalIncGstCents, detail.depositPercent),
   );
   const [draftItems, setDraftItems] = useState(detail.lineItems);
   const [unitInputDrafts, setUnitInputDrafts] = useState<
@@ -194,9 +195,6 @@ export default function CommercialWorkflowFixtureClient({
       expiredPromptOpen={false}
       closeExpiredPrompt={() => undefined}
       resolveExpiredQuote={() => undefined}
-      deleteConfirmOpen={false}
-      closeDeleteConfirm={() => undefined}
-      deleteDraft={() => undefined}
     />
   );
 
@@ -222,6 +220,7 @@ export default function CommercialWorkflowFixtureClient({
       downloadingDraftPdf={false}
       downloadDraftPdf={() => undefined}
       saveDraft={() => undefined}
+      canDeleteQuote={false}
       openDeleteConfirm={() => undefined}
       openJobPackHref={null}
       canGenerateJobPack={false}
@@ -236,8 +235,8 @@ export default function CommercialWorkflowFixtureClient({
       setDraftExpiry={setDraftExpiry}
       draftReference={draftReference}
       setDraftReference={setDraftReference}
-      draftDepositPercent={draftDepositPercent}
-      setDraftDepositPercent={setDraftDepositPercent}
+      draftPaymentTerms={draftPaymentTerms}
+      setDraftPaymentTerms={setDraftPaymentTerms}
       draftItems={draftItems}
       setDraftItems={setDraftItems}
       unitInputDrafts={unitInputDrafts}

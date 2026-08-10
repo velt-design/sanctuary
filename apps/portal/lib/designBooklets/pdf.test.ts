@@ -2,7 +2,7 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import {
   createProjectDesignBookletDraft,
@@ -204,6 +204,64 @@ describe("design booklet PDF", () => {
       "toni-family-design-booklet.pdf",
     );
   });
+
+  it("embeds the selected original PDF page as vector content", async () => {
+    const source = await PDFDocument.create();
+    const sourceFont = await source.embedFont(StandardFonts.Helvetica);
+    for (const label of ["SOURCE PAGE ONE", "SOURCE PAGE TWO"]) {
+      const page = source.addPage([842, 595]);
+      page.drawRectangle({
+        x: 40,
+        y: 40,
+        width: 762,
+        height: 515,
+        borderColor: rgb(0.15, 0.2, 0.15),
+        borderWidth: 2,
+      });
+      page.drawText(label, {
+        x: 100,
+        y: 300,
+        size: 42,
+        font: sourceFont,
+      });
+    }
+    const sourceBytes = await source.save({ useObjectStreams: false });
+    const draft = createToniDesignBookletDraft();
+    const drawingPage = draft.contentPages.find(
+      (page) => page.kind === "drawings",
+    );
+    if (!drawingPage || drawingPage.kind !== "drawings") {
+      throw new Error("Expected the Toni drawing page.");
+    }
+    drawingPage.drawings[0].pdf = {
+      assetId: "drawing-page-1-drawing-1-pdf",
+      fileName: "architectural-package.pdf",
+      pageNumber: 2,
+      pageCount: 2,
+    };
+
+    const bytes = await generateDesignBookletPdf({
+      draft,
+      content: getDesignBookletContentCatalog(),
+      images: await loadToniDesignBookletImages(draft),
+      documents: {
+        "drawing-page-1-drawing-1-pdf": { bytes: sourceBytes },
+      },
+    });
+    const outputDirectory = process.env.DESIGN_BOOKLET_OUTPUT_DIR?.trim();
+    if (outputDirectory) {
+      await mkdir(outputDirectory, { recursive: true });
+      await writeFile(
+        path.join(outputDirectory, "pdf-source-drawing-booklet.pdf"),
+        bytes,
+      );
+    }
+    const pageText = await extractPdfPageText(bytes);
+
+    expect(pageText[3]).toContain("SOURCE PAGE TWO");
+    expect(pageText[3]).not.toContain("SOURCE PAGE ONE");
+    expect(pageText[3]).toContain("PROPOSED ROOF PLAN");
+  }, 30_000);
 
   it("signals when valid long text is shortened to fit a page frame", async () => {
     const draft = createToniDesignBookletDraft();

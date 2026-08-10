@@ -55,7 +55,7 @@ Quotes are created from estimates and can be viewed publicly through tokenized r
 - `CommercialTab.tsx` owns Quotes/Invoices composition while `QuotesTab.tsx` and `InvoicesTab.tsx` retain their specialist workflow behavior.
 - Staff quote APIs live under `apps/portal/app/api/quotes` and `apps/portal/app/api/staff/v1/quotes`.
 - Public quote routes live under `apps/marketing/app/quote/[quoteId]`.
-- Deposit invoice routes live under portal staff APIs and public marketing invoice routes.
+- Invoice list/preview/send routes live under portal staff APIs, while scheduled invoice creation and paid-state recording are admin-only. Public marketing invoice routes remain token scoped.
 - Quote and invoice emails use Resend-backed transactional helpers.
 - Canonical doc: `quotes-invoices-job-packs.md`.
 

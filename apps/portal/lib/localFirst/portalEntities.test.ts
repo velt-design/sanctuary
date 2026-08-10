@@ -213,7 +213,7 @@ describe('portalEntities', () => {
     });
 
     expect(updated.depositPercent).toBe(25);
-    expect(updated.termsText).toContain('A 25% deposit is required to confirm your booking.');
+    expect(updated.termsText).toContain('Payment schedule: Initial payment: 25% of the balance after fixed payments; Final payment: 75% of the balance after fixed payments.');
     expect(updated.totals).toEqual({
       totalIncGstCents: 4600,
       totalExGstCents: 4000,

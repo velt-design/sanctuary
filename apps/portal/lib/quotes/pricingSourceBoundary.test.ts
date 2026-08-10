@@ -51,7 +51,7 @@ describe('quote pricing source output boundaries', () => {
     );
     expect(publicQuote).not.toContain('pricing_source');
     expect(publicInvoice).toContain(
-      'id, status, invoice_ref, quote_ref, quote_version_id, quote_version_number, issue_date, due_date, reference, customer_name, project_name, project_address, payment_instructions, deposit_percent, quote_total_inc_gst_cents, total_inc_gst_cents, total_ex_gst_cents, gst_cents, portal_token_expires_at, pdf_file_id',
+      'id, status, invoice_ref, quote_ref, quote_version_id, quote_version_number, issue_date, due_date, reference, customer_name, project_name, project_address, payment_instructions, deposit_percent, payment_term_label, payment_term_position, payment_term_count, paid_at, quote_total_inc_gst_cents, total_inc_gst_cents, total_ex_gst_cents, gst_cents, portal_token_expires_at, pdf_file_id',
     );
     expect(publicInvoice).not.toContain('pricing_source');
   });

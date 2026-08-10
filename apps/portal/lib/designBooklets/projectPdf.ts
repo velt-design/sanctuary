@@ -1,12 +1,12 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  designBookletPdfFilename,
-  generateDesignBookletPdf,
-} from "./pdf";
+import { designBookletPdfFilename, generateDesignBookletPdf } from "./pdf";
 import { getDesignBookletContentCatalog } from "./marketingContent";
-import { renderableDesignBookletAssetSources } from "./pageModel";
+import {
+  designBookletDrawingPdfSources,
+  renderableDesignBookletAssetSources,
+} from "./pageModel";
 import {
   loadProjectDesignBooklet,
   PROJECT_DESIGN_BOOKLET_BUCKET,
@@ -18,6 +18,7 @@ import type {
   DesignBookletDraft,
   DesignBookletImage,
   DesignBookletImages,
+  DesignBookletPdfDocuments,
 } from "./types";
 
 const PROJECT_DESIGN_BOOKLET_EXPORT_URL_SECONDS = 10 * 60;
@@ -27,18 +28,27 @@ type AssetRow = {
   asset_key: string;
   storage_path: string;
   file_name: string;
-  media_type: "image/jpeg" | "image/png";
+  media_type: "image/jpeg" | "image/png" | "application/pdf";
 };
 
-async function loadProjectDesignBookletImages(
+async function loadProjectDesignBookletAssets(
   supabase: SupabaseClient,
   projectUuid: string,
   draft: DesignBookletDraft,
-): Promise<DesignBookletImages> {
+): Promise<{
+  images: DesignBookletImages;
+  documents: DesignBookletPdfDocuments;
+}> {
   const images = await loadToniDesignBookletImages(draft);
+  const documents: DesignBookletPdfDocuments = {};
   const sources = renderableDesignBookletAssetSources(draft);
-  const assetKeys = [...new Set(sources.map((source) => source.assetId))];
-  if (!assetKeys.length) return images;
+  const assetKeys = [
+    ...new Set([
+      ...sources.map((source) => source.assetId),
+      ...designBookletDrawingPdfSources(draft).map((source) => source.assetId),
+    ]),
+  ];
+  if (!assetKeys.length) return { images, documents };
 
   const assets = await supabase
     .from("project_design_booklet_assets")
@@ -65,13 +75,18 @@ async function loadProjectDesignBookletImages(
           "asset_download_failed",
         );
       }
-      images[asset.asset_key] = {
-        bytes: new Uint8Array(await downloaded.data.arrayBuffer()),
-        mediaType: asset.media_type,
-      } satisfies DesignBookletImage;
+      const bytes = new Uint8Array(await downloaded.data.arrayBuffer());
+      if (asset.media_type === "application/pdf") {
+        documents[asset.asset_key] = { bytes };
+      } else {
+        images[asset.asset_key] = {
+          bytes,
+          mediaType: asset.media_type,
+        } satisfies DesignBookletImage;
+      }
     }),
   );
-  return images;
+  return { images, documents };
 }
 
 export async function publishProjectDesignBookletPdf(
@@ -80,14 +95,14 @@ export async function publishProjectDesignBookletPdf(
 ): Promise<{ downloadUrl: string; filename: string }> {
   const projectUuid = projectUuidFromId(projectId);
   const snapshot = await loadProjectDesignBooklet(supabase, projectId);
-  const images = await loadProjectDesignBookletImages(
+  const assets = await loadProjectDesignBookletAssets(
     supabase,
     projectUuid,
     snapshot.draft,
   );
   const pdfBytes = await generateDesignBookletPdf({
     draft: snapshot.draft,
-    images,
+    ...assets,
     content: getDesignBookletContentCatalog(),
   });
   const path = `${projectUuid}/${STORAGE_EXPORT_PREFIX}/latest.pdf`;

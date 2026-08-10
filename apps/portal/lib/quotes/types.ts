@@ -1,3 +1,5 @@
+import type { QuotePaymentTerm } from './paymentSchedule';
+
 export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED';
 
 export type QuoteTotals = {
@@ -23,6 +25,7 @@ export type QuoteVersion = {
   versionNumber: number;
   status: QuoteStatus;
   depositPercent: number;
+  paymentTerms?: QuotePaymentTerm[];
   sourceEstimateVersionId: string;
   sourceEstimateVersionLabel: string;
   revisedFromQuoteVersionId?: string | null;

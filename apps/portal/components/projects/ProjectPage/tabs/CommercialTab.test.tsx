@@ -55,7 +55,7 @@ describe('CommercialTab', () => {
     rendered.unmount();
   });
 
-  it('switches to Invoices, clears preview, and preserves quote and unrelated context', () => {
+  it('switches to Invoices, clears the quote detail and preview, and preserves unrelated context', () => {
     search = 'tab=quotes&quoteId=q_1&quotePreview=1&createFromEstimateId=est_1&campaign=winter';
     const rendered = renderIntoDocument(<CommercialTab host="host" projectId="proj_1" view="quotes" />);
     const invoices = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
@@ -63,7 +63,7 @@ describe('CommercialTab', () => {
     act(() => invoices?.click());
 
     expect(replace).toHaveBeenCalledWith(
-      '/staff/projects/proj_1?tab=invoices&quoteId=q_1&createFromEstimateId=est_1&campaign=winter',
+      '/staff/projects/proj_1?tab=invoices&createFromEstimateId=est_1&campaign=winter',
     );
     expect(invoices?.getAttribute('aria-selected')).toBe('true');
     expect(rendered.container.querySelector('[data-testid="invoices-subview"]')).not.toBeNull();

@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/toast/ToastProvider";
+import { usePortalSession } from "@/components/auth/PortalAuthProvider";
 import { DataStatePanel } from "@/components/ui/foundation/FoundationFeedback";
 import { useUnsavedChangesGuard } from "@/components/ui/foundation/useUnsavedChangesGuard";
 import styles from "./QuotesTab.module.css";
 import QuoteDetailView from "./QuoteDetailView";
 import QuotesListView from "./QuotesListView";
 import QuoteWorkflowDialogs from "./QuoteWorkflowDialogs";
+import QuoteDeleteConfirmation from "./QuoteDeleteConfirmation";
 import { useQuoteLifecycleActions } from "./useQuoteLifecycleActions";
+import { useQuoteDeletion } from "./useQuoteDeletion";
 import { useQuotePdfPreviews } from "./useQuotePdfPreviews";
 import { useQuotesTabSelection } from "./useQuotesTabSelection";
 import type { EstimateDetail } from "@/lib/estimates/types";
@@ -18,6 +21,11 @@ import type {
   QuoteLineItem,
   QuoteVersionDetail,
 } from "@/lib/quotes/types";
+import {
+  buildLegacyQuotePaymentSchedule,
+  evaluateQuotePaymentSchedule,
+  type QuotePaymentTerm,
+} from "@/lib/quotes/paymentSchedule";
 import {
   getPreparedQuoteDelivery,
   previewQuotePdf,
@@ -56,10 +64,8 @@ import {
   defaultPersonalNote,
   defaultSubject,
   downloadPdfBytes,
-  formatPercentInput,
   isPergolaLineItemDescription,
   parseMoneyInput,
-  parsePercentInput,
   quoteDraftFilename,
   validateAttachment,
   type SendEditorMode,
@@ -71,6 +77,16 @@ function newDeliveryIntentId(): string {
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `quote-delivery:${token}`;
+}
+
+function paymentTermsInputKey(terms: readonly QuotePaymentTerm[]): string {
+  return JSON.stringify(terms.map((term) => ({
+    id: term.id,
+    label: term.label,
+    calculationType: term.calculationType,
+    fixedAmountIncGstCents: term.fixedAmountIncGstCents,
+    percentageOfRemainder: term.percentageOfRemainder,
+  })));
 }
 
 function deliveryIntentStorageKey(
@@ -135,6 +151,7 @@ export default function QuotesTab({
   onSelectedQuoteChange?: (quoteId: string | null) => void;
 }) {
   const toast = useToast();
+  const { isAdmin } = usePortalSession();
   const queryClient = useQueryClient();
   const autoCreateRef = useRef<string | null>(null);
   const {
@@ -203,8 +220,6 @@ export default function QuotesTab({
   );
   const [refreshBusy, setRefreshBusy] = useState(false);
 
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-
   const [draftItems, setDraftItems] = useState<QuoteLineItem[]>([]);
   const [draftPergolaOverrideMode, setDraftPergolaOverrideMode] = useState<
     Record<string, boolean>
@@ -218,7 +233,7 @@ export default function QuotesTab({
   const [draftReference, setDraftReference] = useState("");
   const [draftIntro, setDraftIntro] = useState("");
   const [draftTerms, setDraftTerms] = useState("");
-  const [draftDepositPercent, setDraftDepositPercent] = useState("50");
+  const [draftPaymentTerms, setDraftPaymentTerms] = useState<QuotePaymentTerm[]>([]);
   const [draftExpiry, setDraftExpiry] = useState("");
   const [savingDraft, setSavingDraft] = useState(false);
   const [downloadingDraftPdf, setDownloadingDraftPdf] = useState(false);
@@ -232,7 +247,10 @@ export default function QuotesTab({
       setDraftReference(quoteDetail.reference ?? "");
       setDraftIntro(quoteDetail.introText ?? "");
       setDraftTerms(quoteDetail.termsText ?? "");
-      setDraftDepositPercent(formatPercentInput(quoteDetail.depositPercent));
+      setDraftPaymentTerms(
+        quoteDetail.paymentTerms
+          ?? buildLegacyQuotePaymentSchedule(quoteDetail.totals.totalIncGstCents, quoteDetail.depositPercent),
+      );
       setDraftExpiry(quoteDetail.expiresAt ?? "");
     },
     [],
@@ -394,6 +412,10 @@ export default function QuotesTab({
       gstCents: gst,
     };
   }, [detail, effectiveDraftItems]);
+  const paymentScheduleEvaluation = useMemo(
+    () => evaluateQuotePaymentSchedule(draftPaymentTerms, detailTotals?.totalIncGstCents ?? 0),
+    [detailTotals?.totalIncGstCents, draftPaymentTerms],
+  );
 
   const draftDirty = useMemo(() => {
     if (!detail) return false;
@@ -412,11 +434,9 @@ export default function QuotesTab({
     if ((detail.reference ?? "") !== draftReference) return true;
     if ((detail.introText ?? "") !== draftIntro) return true;
     if ((detail.termsText ?? "") !== draftTerms) return true;
-    if (
-      formatPercentInput(detail.depositPercent) !==
-      formatPercentInput(parsePercentInput(draftDepositPercent))
-    )
-      return true;
+    const storedTerms = detail.paymentTerms
+      ?? buildLegacyQuotePaymentSchedule(detail.totals.totalIncGstCents, detail.depositPercent);
+    if (paymentTermsInputKey(storedTerms) !== paymentTermsInputKey(draftPaymentTerms)) return true;
     if ((detail.expiresAt ?? "") !== draftExpiry) return true;
     return false;
   }, [
@@ -425,7 +445,7 @@ export default function QuotesTab({
     draftReference,
     draftIntro,
     draftTerms,
-    draftDepositPercent,
+    draftPaymentTerms,
     draftExpiry,
   ]);
   const guardUnsavedDraft = useUnsavedChangesGuard(
@@ -436,11 +456,12 @@ export default function QuotesTab({
   const previewDetail = useMemo(() => {
     if (!detail) return null;
     if (detail.status !== "DRAFT") return detail;
+    if (paymentScheduleEvaluation.errors.length) return detail;
     return applyDraftPatchToQuoteDetail(detail, {
       reference: draftReference,
       introText: draftIntro,
       termsText: draftTerms,
-      depositPercent: parsePercentInput(draftDepositPercent),
+      paymentTerms: paymentScheduleEvaluation.terms,
       expiresAt: draftExpiry || null,
       lineItems: effectiveDraftItems.map((item) => ({
         description: item.description,
@@ -450,12 +471,13 @@ export default function QuotesTab({
     });
   }, [
     detail,
-    draftDepositPercent,
+    draftPaymentTerms,
     draftExpiry,
     draftIntro,
     draftReference,
     draftTerms,
     effectiveDraftItems,
+    paymentScheduleEvaluation,
   ]);
 
   const reviewQuoteDetail = useMemo(
@@ -597,11 +619,14 @@ export default function QuotesTab({
 
       setSavingDraft(true);
       try {
+        if (paymentScheduleEvaluation.errors.length) {
+          throw new Error(paymentScheduleEvaluation.errors.join(" "));
+        }
         const patch = {
           reference: draftReference,
           introText: draftIntro,
           termsText: draftTerms,
-          depositPercent: parsePercentInput(draftDepositPercent),
+          paymentTerms: paymentScheduleEvaluation.terms,
           expiresAt: draftExpiry || null,
           lineItems: effectiveDraftItems.map((item) => ({
             description: item.description,
@@ -633,7 +658,7 @@ export default function QuotesTab({
         setDraftReference(updated.reference ?? "");
         setDraftIntro(updated.introText ?? "");
         setDraftTerms(updated.termsText ?? "");
-        setDraftDepositPercent(formatPercentInput(updated.depositPercent));
+        setDraftPaymentTerms(updated.paymentTerms ?? paymentScheduleEvaluation.terms);
         setDraftExpiry(updated.expiresAt ?? "");
         if (!opts?.silent) {
           toast.success("Draft saved locally. Syncing in the background.");
@@ -649,7 +674,7 @@ export default function QuotesTab({
     },
     [
       detail,
-      draftDepositPercent,
+      draftPaymentTerms,
       draftDirty,
       draftExpiry,
       draftIntro,
@@ -661,6 +686,7 @@ export default function QuotesTab({
       projectId,
       queryClient,
       toast,
+      paymentScheduleEvaluation,
     ],
   );
 
@@ -934,7 +960,6 @@ export default function QuotesTab({
     revise: handleRevise,
     resend: handleResendClick,
     resolveExpiredQuote: handleExpiredResend,
-    deleteDraft: handleDeleteDraft,
     openRefresh: openRefreshModal,
     refreshFromEstimate: handleRefreshFromEstimate,
     accept: handleAccept,
@@ -965,9 +990,15 @@ export default function QuotesTab({
     setRefreshPreviewError,
     refreshBusy,
     setRefreshBusy,
-    setDeleteConfirmOpen,
     jobPackBusy,
     setJobPackBusy,
+  });
+
+  const quoteDeletion = useQuoteDeletion({
+    hostKey,
+    selectedQuoteId: selectedId,
+    refreshQuotes,
+    selectQuote,
   });
 
   const handleAddRow = () => {
@@ -1084,8 +1115,9 @@ export default function QuotesTab({
         downloadingDraftPdf={downloadingDraftPdf}
         downloadDraftPdf={() => void handleDownloadDraftPdf()}
         saveDraft={() => void handleSaveDraft()}
+        canDeleteQuote={isAdmin}
         openDeleteConfirm={() => {
-          setDeleteConfirmOpen(true);
+          quoteDeletion.requestDelete({ id: detail.id, quoteRef: detail.quoteRef, versionNumber: detail.versionNumber });
           setMoreActionsOpen(false);
         }}
         openJobPackHref={openJobPackHref}
@@ -1101,8 +1133,8 @@ export default function QuotesTab({
         setDraftExpiry={setDraftExpiry}
         draftReference={draftReference}
         setDraftReference={setDraftReference}
-        draftDepositPercent={draftDepositPercent}
-        setDraftDepositPercent={setDraftDepositPercent}
+        draftPaymentTerms={draftPaymentTerms}
+        setDraftPaymentTerms={setDraftPaymentTerms}
         draftItems={draftItems}
         setDraftItems={setDraftItems}
         unitInputDrafts={unitInputDrafts}
@@ -1129,6 +1161,7 @@ export default function QuotesTab({
         acceptBusy={acceptBusy}
         decline={() => void handleDecline()}
         dialogs={
+          <>
           <QuoteWorkflowDialogs
             detail={detail}
             refreshConfirmOpen={refreshConfirmOpen}
@@ -1174,16 +1207,21 @@ export default function QuotesTab({
             expiredPromptOpen={expiredPromptOpen}
             closeExpiredPrompt={() => setExpiredPromptOpen(false)}
             resolveExpiredQuote={(mode) => void handleExpiredResend(mode)}
-            deleteConfirmOpen={deleteConfirmOpen}
-            closeDeleteConfirm={() => setDeleteConfirmOpen(false)}
-            deleteDraft={() => void handleDeleteDraft()}
           />
+          <QuoteDeleteConfirmation
+            target={quoteDeletion.target}
+            pending={quoteDeletion.pending}
+            onCancel={quoteDeletion.cancelDelete}
+            onConfirm={() => void quoteDeletion.confirmDelete()}
+          />
+          </>
         }
       />
     );
   }
 
   return (
+    <>
     <QuotesListView
       quotes={quotes}
       quotesLoading={quotesLoading}
@@ -1199,6 +1237,15 @@ export default function QuotesTab({
       estimatesLoading={estimatesLoading}
       estimates={estimates}
       createQuote={() => void handleCreateQuote()}
+      isAdmin={isAdmin}
+      deleteQuote={quoteDeletion.requestDelete}
     />
+    <QuoteDeleteConfirmation
+      target={quoteDeletion.target}
+      pending={quoteDeletion.pending}
+      onCancel={quoteDeletion.cancelDelete}
+      onConfirm={() => void quoteDeletion.confirmDelete()}
+    />
+    </>
   );
 }

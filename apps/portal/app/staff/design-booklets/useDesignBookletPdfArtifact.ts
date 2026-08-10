@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useMemo, useRef } from "react";
-import { renderableDesignBookletAssetSources } from "@/lib/designBooklets/pageModel";
+import {
+  designBookletDrawingPdfSources,
+  renderableDesignBookletAssetSources,
+} from "@/lib/designBooklets/pageModel";
 import { publishProjectDesignBookletPdfClient } from "@/lib/designBooklets/projectClient";
 import type { DesignBookletDraft } from "@/lib/designBooklets/types";
 import type { DesignBookletPreviewAsset } from "./previewAssets";
@@ -63,7 +66,29 @@ function designBookletPdfArtifactKey(
       };
     },
   );
-  return JSON.stringify({ draft, assetState });
+  const documentState = draft.contentPages.flatMap((page) =>
+    page.kind === "drawings"
+      ? page.drawings.flatMap((drawing) => {
+          if (!drawing.pdf) return [];
+          const file = assets[drawing.image.assetId]?.sourcePdfFile;
+          return [
+            {
+              assetId: drawing.pdf.assetId,
+              src: assets[drawing.image.assetId]?.sourcePdfSrc ?? "",
+              file: file
+                ? {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    lastModified: file.lastModified,
+                  }
+                : null,
+            },
+          ];
+        })
+      : [],
+  );
+  return JSON.stringify({ draft, assetState, documentState });
 }
 
 async function responsePdfBlob(
@@ -151,6 +176,15 @@ export function useDesignBookletPdfArtifact({
         )) {
           const asset = assetsSnapshot[source.assetId];
           if (asset?.file) formData.set(`asset:${source.assetId}`, asset.file);
+        }
+        for (const source of designBookletDrawingPdfSources(draftSnapshot)) {
+          const drawing = draftSnapshot.contentPages
+            .flatMap((page) => (page.kind === "drawings" ? page.drawings : []))
+            .find((candidate) => candidate.pdf?.assetId === source.assetId);
+          const file = drawing
+            ? assetsSnapshot[drawing.image.assetId]?.sourcePdfFile
+            : undefined;
+          if (file) formData.set(`asset:${source.assetId}`, file);
         }
         const response = await fetch(pdfEndpoint, {
           method: "POST",

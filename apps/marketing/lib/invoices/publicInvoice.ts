@@ -6,7 +6,7 @@ import { getServiceSupabase } from '@/lib/supabaseService';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type InvoiceStatus = 'OPEN' | 'VOID';
+type InvoiceStatus = 'OPEN' | 'PAID' | 'VOID';
 
 type InvoiceRow = {
   id: string;
@@ -23,6 +23,10 @@ type InvoiceRow = {
   project_address: string | null;
   payment_instructions: string | null;
   deposit_percent: number;
+  payment_term_label: string;
+  payment_term_position: number;
+  payment_term_count: number;
+  paid_at: string | null;
   quote_total_inc_gst_cents: number;
   total_inc_gst_cents: number;
   total_ex_gst_cents: number;
@@ -46,6 +50,10 @@ export type PublicDepositInvoice = {
   projectAddress: string | null;
   paymentInstructions: string | null;
   depositPercent: number;
+  paymentTermLabel: string;
+  paymentTermPosition: number;
+  paymentTermCount: number;
+  paidAt: string | null;
   quoteTotalIncGstCents: number;
   totalIncGstCents: number;
   totalExGstCents: number;
@@ -74,7 +82,9 @@ function invoiceUuidFromParam(value: string): string {
 }
 
 function toStatus(value: unknown): InvoiceStatus {
-  return String(value ?? '').toUpperCase() === 'VOID' ? 'VOID' : 'OPEN';
+  const status = String(value ?? '').toUpperCase();
+  if (status === 'VOID' || status === 'PAID') return status;
+  return 'OPEN';
 }
 
 function mapInvoiceRow(row: any): InvoiceRow {
@@ -93,6 +103,10 @@ function mapInvoiceRow(row: any): InvoiceRow {
     project_address: typeof row?.project_address === 'string' ? row.project_address : null,
     payment_instructions: typeof row?.payment_instructions === 'string' ? row.payment_instructions : null,
     deposit_percent: Number(row?.deposit_percent ?? 0) || 0,
+    payment_term_label: String(row?.payment_term_label ?? 'Initial payment'),
+    payment_term_position: Number(row?.payment_term_position ?? 1) || 1,
+    payment_term_count: Number(row?.payment_term_count ?? 1) || 1,
+    paid_at: typeof row?.paid_at === 'string' ? row.paid_at : null,
     quote_total_inc_gst_cents: Number(row?.quote_total_inc_gst_cents ?? 0) || 0,
     total_inc_gst_cents: Number(row?.total_inc_gst_cents ?? 0) || 0,
     total_ex_gst_cents: Number(row?.total_ex_gst_cents ?? 0) || 0,
@@ -118,6 +132,10 @@ function toPublicInvoice(row: InvoiceRow, quotePdfFileId: string | null): Public
     projectAddress: row.project_address,
     paymentInstructions: row.payment_instructions,
     depositPercent: row.deposit_percent,
+    paymentTermLabel: row.payment_term_label,
+    paymentTermPosition: row.payment_term_position,
+    paymentTermCount: row.payment_term_count,
+    paidAt: row.paid_at,
     quoteTotalIncGstCents: row.quote_total_inc_gst_cents,
     totalIncGstCents: row.total_inc_gst_cents,
     totalExGstCents: row.total_ex_gst_cents,
@@ -164,7 +182,7 @@ async function loadInvoiceByToken(params: { invoiceId: string; token: string }):
   const invoiceRes = await supabase
     .from('deposit_invoices')
     .select(
-      'id, status, invoice_ref, quote_ref, quote_version_id, quote_version_number, issue_date, due_date, reference, customer_name, project_name, project_address, payment_instructions, deposit_percent, quote_total_inc_gst_cents, total_inc_gst_cents, total_ex_gst_cents, gst_cents, portal_token_expires_at, pdf_file_id',
+      'id, status, invoice_ref, quote_ref, quote_version_id, quote_version_number, issue_date, due_date, reference, customer_name, project_name, project_address, payment_instructions, deposit_percent, payment_term_label, payment_term_position, payment_term_count, paid_at, quote_total_inc_gst_cents, total_inc_gst_cents, total_ex_gst_cents, gst_cents, portal_token_expires_at, pdf_file_id',
     )
     .eq('id', invoiceUuid)
     .eq('portal_token_hash', tokenHash)
@@ -222,7 +240,7 @@ export async function loadPublicDepositInvoicePdfByToken(params: {
   }
 
   const row = access.row;
-  if (!row || row.status !== 'OPEN' || !row.pdf_file_id) return null;
+  if (!row || row.status === 'VOID' || !row.pdf_file_id) return null;
 
   const file = await loadFileArtifact(row.pdf_file_id);
   if (!file) return null;
@@ -242,7 +260,7 @@ export async function loadPublicSourceQuotePdfByInvoiceToken(params: {
   }
 
   const row = access.row;
-  if (!row || row.status !== 'OPEN') return null;
+  if (!row || row.status === 'VOID') return null;
 
   const quotePdfFileId = await loadQuotePdfFileId(row.quote_version_id);
   if (!quotePdfFileId) return null;

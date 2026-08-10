@@ -41,6 +41,7 @@ export function buildDepositInvoiceEmailInput(
     project_address: input.projectAddress ?? undefined,
     quote_number: `${viewModel.header.quoteRef} v${viewModel.header.quoteVersionNumber}`,
     deposit_percent: `${viewModel.deposit.percent}%`,
+    payment_stage: input.paymentTermLabel?.trim() || 'Initial payment',
     source_quote_total_inc_gst: viewModel.totals.quoteTotalIncGst,
     invoice_subtotal_ex_gst: viewModel.totals.totalExGst,
     invoice_gst: viewModel.totals.gst,

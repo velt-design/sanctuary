@@ -358,6 +358,8 @@ type QuoteEstimateMapping = {
   items: Omit<QuoteLineItem, 'id'>[];
   coreTotalIncCents: number;
   blockingIssues: QuoteMappingBlockingIssue[];
+  approvalRequirement: 'neither' | 'engineering_required' | 'full_building_consent' | null;
+  approvalIncGstCents: number;
 };
 
 export class QuoteHandoffBlockedError extends Error {
@@ -489,6 +491,16 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
 
   const approval = outputs?.customer_add_ons?.approval;
   const approvalIncGst = toNumber(approval?.sell_inc_gst);
+  const approvalRequirement = approval?.requirement === 'full_building_consent'
+    ? 'full_building_consent'
+    : approval?.requirement === 'engineering_required'
+      ? 'engineering_required'
+      : approval?.requirement === 'neither'
+        ? 'neither'
+        : null;
+  const approvalIncGstCents = Number.isFinite(approvalIncGst) && approvalIncGst > 0
+    ? toCents(approvalIncGst)
+    : 0;
   if (approval && Number.isFinite(approvalIncGst) && approvalIncGst > 0) {
     const qty = 1;
     const unitPriceIncGstCents = toCents(approvalIncGst);
@@ -561,5 +573,11 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
     });
   }
 
-  return { items: lineItems, coreTotalIncCents, blockingIssues };
+  return {
+    items: lineItems,
+    coreTotalIncCents,
+    blockingIssues,
+    approvalRequirement,
+    approvalIncGstCents,
+  };
 }

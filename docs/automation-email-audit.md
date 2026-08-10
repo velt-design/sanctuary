@@ -4,6 +4,8 @@ Status: Current.
 
 This doc owns current-state guidance for portal automation events, Project Work and follow-ups, email outbox, email previews, audit events, and marketing enquiry email side effects. Quote/invoice transactional side effects remain owned by `docs/quotes-invoices-job-packs.md`.
 
+Scheduled invoice creation and whole-invoice payment recording append `invoice.created` and `invoice.paid` commercial audit events after their authoritative invoice write. These events are evidence only; they do not send email, infer partial payment, or mutate quote state.
+
 ## Read First
 
 - Use `## Ownership` and `## Current Data Flow` to locate the request-bound or durable email owner before changing a send.

@@ -17,6 +17,7 @@ export type DepositInvoiceEmailInput = {
   source_quote_total_inc_gst?: string;
   quote_number: string;
   deposit_percent: string;
+  payment_stage?: string;
   due_date?: string;
   project_address?: string;
   invoice_link: string;
@@ -48,6 +49,7 @@ export async function renderDepositInvoiceEmail(input: DepositInvoiceEmailInput)
     'deposit-invoice-ready',
     {
       ...input,
+      payment_stage: input.payment_stage?.trim() || `${input.deposit_percent} initial payment`,
       payment_reference: paymentReference,
       contact_email: input.contact_email?.trim() || DEFAULT_CONTACT_EMAIL,
       attachment_names: attachmentNames?.length ? attachmentNames : undefined,
@@ -63,7 +65,7 @@ export async function sendDepositInvoiceEmail(input: DepositInvoiceEmailInput) {
     to: input.to,
     cc: input.cc,
     bcc: input.bcc,
-    subject: input.subject ?? `Deposit invoice - ${input.invoice_number}`,
+    subject: input.subject ?? `${input.payment_stage?.trim() || 'Payment'} invoice - ${input.invoice_number}`,
     html,
     text,
     attachments: input.attachments,

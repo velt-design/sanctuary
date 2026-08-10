@@ -59,6 +59,7 @@ Use `useLocalWorkingCopy` for entity draft state. Use aliased sync helpers when 
 - Failed mutations should remain visible to the affected entity, not block the whole portal.
 - Estimate and quote creates carry stable client intent IDs so a lost response replays the committed server record.
 - Quote draft writes carry the last server-confirmed monotonic commercial revision. Only one draft save may be in flight for a quote; stale `409` or locked `423` responses become visible conflicts and refresh the authoritative quote rather than chaining optimistic overwrites.
+- Optimistic quote draft patches keep totals, the compatibility deposit percentage, ordered payment terms, and the generated payment-schedule sentence together. The server-confirmed quote remains authoritative after sync; local wording must not restore the retired single-deposit contract.
 
 ## ID Aliases
 

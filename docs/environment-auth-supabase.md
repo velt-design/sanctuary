@@ -223,6 +223,14 @@ grants, both timestamp triggers, the private Storage bucket contract, and zero
 new booklet, asset, or Storage object rows. The date-only migration ledger was
 left untouched, and no blanket migration command or repair was used.
 
+The checked-in forward migration
+`20260810_000001_project_design_booklet_pdf_drawings.sql` extends that boundary
+for original drawing PDFs and verified page counts. It has not been applied to
+the shared staging or production database in this implementation pass. Apply
+and verify that exact reviewed file before deploying application code that
+writes PDF drawing assets; its presence in the repository is not deployment
+evidence.
+
 Marketing enquiry intake requires both `20260723_000001_marketing_enquiry_intake_security.sql` and the forward compatibility migration `20260724043000_marketing_enquiry_budget_columns.sql`. The latter adds nullable pricing snapshot columns to installations whose existing `enquiry_requests` table predates those fields.
 
 Project owner handoffs and the authoritative stale-Enquiry dry run require `20260801_000001_project_owner_handoffs_and_enquiry_inactivity.sql`. Apply it before running `npm run portal:enquiries:inactive`; that command is read-only and does not close or advance projects.

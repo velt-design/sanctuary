@@ -12,20 +12,19 @@ import {
   type PergolaModuleDraft,
 } from "@/lib/quotes/pergolaDraft";
 import { quotePdfUrl } from "@/lib/quotes/quotesRepo";
+import type { QuotePaymentTerm } from "@/lib/quotes/paymentSchedule";
 import type { QuoteLineItem, QuoteVersionDetail } from "@/lib/quotes/types";
 import { isLocalQuoteId } from "@/lib/localFirst/portalEntities";
 import styles from "./QuotesTab.module.css";
 import QuoteLineItemsEditor from "./QuoteLineItemsEditor";
+import QuotePaymentTermsEditor from "./QuotePaymentTermsEditor";
 import QuotePdfInlinePreview from "./QuotePdfInlinePreview";
 import {
   formatDateShort,
   formatDateTime,
   formatMoneyFromCents,
   formatMoneyInputValue,
-  formatPercentInput,
   isPergolaLineItemDescription,
-  normalizePercentInput,
-  parsePercentInput,
   parseQtyInput,
   sanitizeMoneyInput,
 } from "./quotesTabModel";
@@ -53,6 +52,7 @@ type QuoteDetailViewProps = {
   downloadingDraftPdf: boolean;
   downloadDraftPdf: () => void;
   saveDraft: () => void;
+  canDeleteQuote: boolean;
   openDeleteConfirm: () => void;
   openJobPackHref: string | null;
   canGenerateJobPack: boolean;
@@ -67,8 +67,8 @@ type QuoteDetailViewProps = {
   setDraftExpiry: Setter<string>;
   draftReference: string;
   setDraftReference: Setter<string>;
-  draftDepositPercent: string;
-  setDraftDepositPercent: Setter<string>;
+  draftPaymentTerms: QuotePaymentTerm[];
+  setDraftPaymentTerms: Setter<QuotePaymentTerm[]>;
   draftItems: QuoteLineItem[];
   setDraftItems: Setter<QuoteLineItem[]>;
   unitInputDrafts: Record<string, string>;
@@ -133,6 +133,7 @@ export default function QuoteDetailView({
   downloadingDraftPdf,
   downloadDraftPdf: handleDownloadDraftPdf,
   saveDraft: handleSaveDraft,
+  canDeleteQuote,
   openDeleteConfirm,
   openJobPackHref,
   canGenerateJobPack,
@@ -147,8 +148,8 @@ export default function QuoteDetailView({
   setDraftExpiry,
   draftReference,
   setDraftReference,
-  draftDepositPercent,
-  setDraftDepositPercent,
+  draftPaymentTerms,
+  setDraftPaymentTerms,
   draftItems,
   setDraftItems,
   unitInputDrafts,
@@ -281,7 +282,7 @@ export default function QuoteDetailView({
                 className={styles.primaryButton}
                 href={`/staff/projects/${encodeURIComponent(projectId)}?tab=invoices`}
               >
-                Open deposit invoice
+                Open invoices
               </Link>
             )
           ) : (
@@ -342,14 +343,16 @@ export default function QuoteDetailView({
                         ? "Syncing..."
                         : "Save draft"}
                     </button>
-                    <button
-                      type="button"
-                      className={`${styles.moreActionsItem} ${styles.moreActionsDanger}`}
-                      onClick={openDeleteConfirm}
-                      disabled={isLocalQuoteId(detail.id) || draftSyncPending}
-                    >
-                      Delete draft
-                    </button>
+                    {canDeleteQuote ? (
+                      <button
+                        type="button"
+                        className={`${styles.moreActionsItem} ${styles.moreActionsDanger}`}
+                        onClick={openDeleteConfirm}
+                        disabled={isLocalQuoteId(detail.id) || draftSyncPending}
+                      >
+                        Delete draft
+                      </button>
+                    ) : null}
                   </>
                 ) : (
                   <>
@@ -389,7 +392,7 @@ export default function QuoteDetailView({
                         className={styles.moreActionsItemLink}
                         href={`/staff/projects/${encodeURIComponent(projectId)}?tab=invoices`}
                       >
-                        Open deposit invoice
+                        Open invoices
                       </Link>
                     ) : null}
                     {openJobPackHref ? (
@@ -570,31 +573,6 @@ export default function QuoteDetailView({
                   </div>
                 )}
               </div>
-              <div className={styles.metaBlock}>
-                <div className={styles.metaLabel}>Deposit %</div>
-                {editableDraft ? (
-                  <input
-                    className={styles.metaInput}
-                    inputMode="decimal"
-                    value={draftDepositPercent}
-                    onChange={(e) =>
-                      setDraftDepositPercent(
-                        normalizePercentInput(e.target.value),
-                      )
-                    }
-                    onBlur={(e) =>
-                      setDraftDepositPercent(
-                        formatPercentInput(parsePercentInput(e.target.value)),
-                      )
-                    }
-                    placeholder="50"
-                  />
-                ) : (
-                  <div className={styles.metaValue}>
-                    {formatPercentInput(detail.depositPercent)}%
-                  </div>
-                )}
-              </div>
             </div>
 
             <div className={styles.metaBlock}>
@@ -682,6 +660,13 @@ export default function QuoteDetailView({
             </div>
           </section>
 
+          <QuotePaymentTermsEditor
+            editable={editableDraft}
+            quoteTotalIncGstCents={detailTotals?.totalIncGstCents ?? detail.totals.totalIncGstCents}
+            terms={draftPaymentTerms}
+            setTerms={setDraftPaymentTerms}
+          />
+
           <section className={styles.card}>
             <div className={styles.cardHeader}>
               <h4 className={styles.cardTitle}>Intro & Terms</h4>
@@ -747,10 +732,10 @@ export default function QuoteDetailView({
               </div>
               <p className={styles.muted}>
                 {!commercialWorkflowReady
-                  ? "The database upgrade must be applied before recording a decision or preparing the deposit invoice."
+                  ? "The database upgrade must be applied before recording a decision or preparing the first invoice."
                   : expired
                   ? "This quote has expired. Create and send a current revision before accepting it."
-                  : "Acceptance locks this version, prepares its deposit invoice, and attempts email delivery."}
+                  : "Acceptance locks this version, prepares its first scheduled invoice, and attempts email delivery."}
               </p>
             </section>
           ) : null}

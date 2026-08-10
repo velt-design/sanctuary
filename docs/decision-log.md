@@ -21,6 +21,9 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-10 | Design Booklet PDF Drawings      | Promoted | Keep original customer drawings as private PDF assets. Rasterize only the selected sheet locally for an immediate editing preview, persist that preview separately, and embed the selected original PDF page into the booklet export so technical linework remains vector-sharp. Page changes replace only the preview. |
+| 2026-08-10 | Quote Payment Schedules          | Promoted | Freeze ordered fixed-dollar or percentage-of-remainder terms on the quote. Acceptance creates only the first whole invoice; admins create later terms in order and mark each invoice paid in full with evidence. Never infer payment from quote acceptance or add partial-paid invoice amounts. |
+| 2026-08-10 | Commercial Record Retirement     | Promoted | Scope payment metrics to the current accepted quote version. Keep older invoices historical, void open invoices with evidence instead of deleting them, and permit permanent quote deletion only for an admin deleting the unsent current draft. |
 | 2026-08-06 | Design Booklet Instant Preview   | Promoted | Show a selected drawing immediately from its local browser URL and render the sheet from shared A4 HTML geometry. Compress and persist replacements in order behind that preview, preload the durable signed source before an atomic swap, and generate the authoritative PDF only on download from latest saved inputs. |
 | 2026-08-06 | Portal Routine Project Opening   | Promoted | Treat the current combined Projects-index response as the first immediate project-shell cache, not a retired query-key generation. Keep the authenticated snapshot authoritative in the background, use the small summary only when no known shell exists, and disable viewport-wide sidebar prefetch in favour of exact hover/focus/pointer/touch intent. |
 | 2026-08-06 | Design Booklet PDF Authority     | Superseded | Superseded by the instant-preview boundary: shared A4 geometry now owns the responsive drawing preview, while the on-demand PDF remains the authoritative saved output and stable export writes remain serialized. Project-linked drafts still use neutral media states; Toni assets remain fixture-only. |
@@ -4948,6 +4951,17 @@ Current guardrail: Create the local object URL first and render drawing sheets f
 Promoted to: `docs/design-booklets.md`
 Related docs/tests: `apps/portal/app/staff/design-booklets/useProjectDesignBookletController.ts`; `apps/portal/app/staff/design-booklets/DesignBookletPages.tsx`; `apps/portal/app/staff/design-booklets/DesignBookletProjectPersistence.test.tsx`; `playwright/portal.design-booklet-workbench.spec.ts`
 
+### 2026-08-10 - Design Booklet PDF Drawings - Preview A Raster, Export The Source
+
+Date: 2026-08-10
+Area: Project Design Booklet drawing sources, preview and export
+Status: Promoted
+Decision or mistake: Drawing slots previously treated technical plans like ordinary images. Making the complete booklet PDF the preview source was accurate but slow; saving only a raster was fast but discarded the quality and page structure of the customer's original drawing package.
+Why it mattered: Staff need an immediate editing response, while the delivered architectural sheet needs sharp linework and a deterministic source page. Multi-page drawing packages must not be split manually or re-uploaded just to select another sheet.
+Current guardrail: Store the original PDF as a private project asset and a bounded JPEG of its selected page as a separate preview asset. Generate that preview locally with PDF.js before persistence, record and validate the selected page against a bounded verified page count, and replace only the preview when page selection changes. On booklet download, embed the selected original PDF page with `pdf-lib`; never substitute the preview when the source PDF is available. Continue accepting older image-only drawing drafts.
+Promoted to: `docs/design-booklets.md`; `docs/supabase-schema-map.md`; `docs/environment-auth-supabase.md`
+Related docs/tests: `apps/portal/app/staff/design-booklets/renderDesignBookletPdfPreview.ts`; `apps/portal/app/staff/design-booklets/useProjectDesignBookletController.ts`; `apps/portal/lib/designBooklets/pdf.test.ts`; `apps/portal/lib/designBooklets/request.test.ts`; `apps/portal/lib/designBooklets/projectClient.test.ts`; `test/project-design-booklets-migration.test.ts`
+
 ### 2026-08-06 - Portal Routine Project Opening - Follow The Current Cache Owner
 
 Date: 2026-08-06
@@ -4958,3 +4972,25 @@ Why it mattered: The delay looked like a database-structure problem, but the use
 Current guardrail: Read the freshest matching combined Projects-index response from the authenticated user's QueryClient before compatibility list keys. Keep the authenticated complete snapshot as background authority, preserve access-ending data hiding, and use the small summary API only when no known shell exists. Set sidebar links to `prefetch={false}` and start route/data preload only from hover, focus, pointer-down, or touch. Do not introduce persisted local project data or redesign the database until a remaining measured journey identifies that boundary as the owner.
 Promoted to: `docs/projects-contacts-estimates-calculator.md`; `docs/portal-production-readiness.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/portal/lib/queries/projectCache.ts`; `apps/portal/lib/queries/projectCache.test.ts`; `apps/portal/components/navigation/PortalSidebarPanel.tsx`; `apps/portal/components/navigation/SidebarRail.tsx`; `playwright/portal.performance.spec.ts`
+
+### 2026-08-10 - Quote Payment Schedules - Freeze Terms, Invoice Whole Stages
+
+Date: 2026-08-10
+Area: Quotes, invoices, project payments and Commercial navigation
+Status: Promoted
+Decision or mistake: A single deposit percentage could not represent consent fees paid up front followed by staged construction payments, and treating a job payment plan as a partly paid invoice would blur invoice identity, delivery, and payment evidence.
+Why it mattered: Building-consent jobs need the saved consent-and-engineering allowance invoiced first, then the remaining quote split 50/50; ordinary and engineering-only jobs remain 50/50. Admins also need an auditable view of invoiced, paid, open, and not-yet-invoiced value without quote acceptance implying payment.
+Current guardrail: Freeze ordered fixed-dollar or percentage-of-remainder terms on the quote; require percentage terms to total 100% and resolved cents to reconcile. Acceptance creates only term one. Admins create later whole invoices in order and mark an open invoice paid in full with evidence. Never add partial-paid invoice amounts or infer payment from acceptance. Commercial navigation is list-first unless an explicit deep link or create action selects a record.
+Promoted to: `docs/quotes-invoices-job-packs.md`; `docs/supabase-schema-map.md`; `docs/staff-api-auth-contracts.md`; `docs/platform-workflow.md`
+Related docs/tests: `apps/portal/lib/quotes/paymentSchedule.ts`; `apps/portal/lib/invoices/adminPayments.ts`; `test/quote-payment-schedule-migration.test.ts`
+
+### 2026-08-10 - Commercial Record Retirement - Scope, Void, Or Delete Deliberately
+
+Date: 2026-08-10
+Area: Invoice schedule totals, invoice voiding and quote deletion
+Status: Promoted
+Decision or mistake: Project-level invoice totals combined invoices from old and current quote versions, making the current schedule exceed its accepted quote. The UI also lacked an owned correction path for an invoice created in error, while draft quote deletion was staff-authenticated despite being presented as an administrator action.
+Why it mattered: Historical invoices must remain discoverable without changing the balance of the current accepted quote. Deleting issued financial records or sent quotes would break numbering and audit history, but an unsent draft quote has no equivalent customer-facing obligation.
+Current guardrail: Calculate payment metrics only from non-void invoices for the exact current accepted quote version and label older rows historical. Admins void an open invoice with a required reason, retained invoice identity and invalidated public token; paid invoices are not voidable. Only admins may permanently delete the authoritative unsent current draft quote after typed confirmation; later commercial states remain immutable records.
+Promoted to: `docs/quotes-invoices-job-packs.md`; `docs/staff-api-auth-contracts.md`; `docs/ui-foundation.md`
+Related docs/tests: `apps/portal/lib/invoices/invoiceSchedule.test.ts`; `apps/portal/app/api/admin/invoices/[invoiceId]/void/route.test.ts`; `apps/portal/app/api/quotes/[quoteVersionId]/route.test.ts`; `apps/portal/components/projects/ProjectPage/tabs/QuotesTab.test.tsx`

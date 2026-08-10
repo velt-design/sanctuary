@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   requireStaffSession: vi.fn(),
+  requireAdminSession: vi.fn(),
+  deleteDraftQuoteVersion: vi.fn(),
   updateDraftQuoteVersion: vi.fn(),
+}));
+
+vi.mock('@/lib/api/adminApi', () => ({
+  requireAdminSession: mocks.requireAdminSession,
 }));
 
 vi.mock('@/lib/api/staffApi', () => ({
@@ -17,7 +23,7 @@ vi.mock('@/lib/api/staffApi', () => ({
 }));
 
 vi.mock('@/lib/quotes/server', () => ({
-  deleteDraftQuoteVersion: vi.fn(),
+  deleteDraftQuoteVersion: mocks.deleteDraftQuoteVersion,
   getQuoteVersionDetail: vi.fn(),
   updateDraftQuoteVersion: mocks.updateDraftQuoteVersion,
 }));
@@ -38,6 +44,8 @@ describe('PATCH /api/quotes/[quoteVersionId]', () => {
   beforeEach(() => {
     mocks.requireStaffSession.mockReset();
     mocks.updateDraftQuoteVersion.mockReset();
+    mocks.requireAdminSession.mockReset();
+    mocks.deleteDraftQuoteVersion.mockReset();
     mocks.requireStaffSession.mockResolvedValue({
       user: { email: 'ops@example.com' },
     });
@@ -88,5 +96,29 @@ describe('PATCH /api/quotes/[quoteVersionId]', () => {
     await expect(response.json()).resolves.toEqual(
       expect.objectContaining({ code: 'QUOTE_STALE' }),
     );
+  });
+});
+
+describe('DELETE /api/quotes/[quoteVersionId]', () => {
+  beforeEach(() => {
+    mocks.requireAdminSession.mockReset();
+    mocks.deleteDraftQuoteVersion.mockReset();
+  });
+
+  it('requires an admin before deleting a draft quote', async () => {
+    mocks.requireAdminSession.mockResolvedValue({ ok: false, response: Response.json({ error: 'Forbidden' }, { status: 403 }) });
+    const { DELETE } = await import('./route');
+    const response = await DELETE(new Request('http://localhost/api/quotes/qv_1', { method: 'DELETE' }), context);
+    expect(response.status).toBe(403);
+    expect(mocks.deleteDraftQuoteVersion).not.toHaveBeenCalled();
+  });
+
+  it('allows an admin to delete an unsent draft quote', async () => {
+    mocks.requireAdminSession.mockResolvedValue({ ok: true, session: { user: { id: 'admin-1' } } });
+    mocks.deleteDraftQuoteVersion.mockResolvedValue(undefined);
+    const { DELETE } = await import('./route');
+    const response = await DELETE(new Request('http://localhost/api/quotes/qv_1', { method: 'DELETE' }), context);
+    expect(response.status).toBe(200);
+    expect(mocks.deleteDraftQuoteVersion).toHaveBeenCalledWith('qv_1', 'admin-1');
   });
 });

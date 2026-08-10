@@ -53,6 +53,8 @@ export default function DesignBookletWorkbenchClient({
     markAssetDisplayState,
     revokeAssetUrl,
     replaceAsset,
+    replaceDrawingPdf,
+    selectDrawingPdfPage,
     copyAsset,
     flushSave,
   } = useProjectDesignBookletController(projectId);
@@ -291,7 +293,7 @@ export default function DesignBookletWorkbenchClient({
                 : saveState === "saving"
                   ? "Saving changes"
                   : saveState === "uploading"
-                    ? "Uploading image"
+                    ? "Saving booklet assets"
                     : saveState === "loading"
                       ? "Loading project"
                       : saveState === "error"
@@ -327,7 +329,7 @@ export default function DesignBookletWorkbenchClient({
             {isDownloading
               ? "Preparing download..."
               : hasBlockingImageState
-                ? "Preparing images..."
+                ? "Preparing assets..."
                 : "Download PDF"}
           </button>
         </div>
@@ -442,6 +444,16 @@ export default function DesignBookletWorkbenchClient({
               onUpdatePage={updatePage}
               onUpdateFixedImage={updateFixedImage}
               onReplaceAsset={updateAsset}
+              onReplaceDrawingPdf={(drawingId, file) => {
+                setDownloadError("");
+                setPersistenceError("");
+                void replaceDrawingPdf(drawingId, file);
+              }}
+              onSelectDrawingPdfPage={(drawingId, pageNumber) => {
+                setDownloadError("");
+                setPersistenceError("");
+                void selectDrawingPdfPage(drawingId, pageNumber);
+              }}
               onUseAsCover={useAsCover}
               onAssetDisplayState={markAssetDisplayState}
             />

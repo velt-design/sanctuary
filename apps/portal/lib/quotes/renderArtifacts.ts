@@ -163,6 +163,7 @@ export function buildQuoteRenderHash(detail: QuoteVersionDetail): string {
     introText: detail.introText ?? null,
     termsText: detail.termsText ?? null,
     depositPercent: detail.depositPercent,
+    paymentTerms: detail.paymentTerms ?? null,
     totals: detail.totals,
     contact: detail.contact,
     project: detail.project,
@@ -185,6 +186,10 @@ export function buildQuotePreviewBasePayload(params: {
   logoUrl?: string;
 }): QuotePreviewBasePayload {
   const quoteNumberValue = quoteNumber(params.detail);
+  const firstPayment = params.detail.paymentTerms?.[0];
+  const firstPaymentDescription = firstPayment
+    ? `${firstPayment.label} (${formatCurrency(firstPayment.resolvedAmountIncGstCents)})`
+    : `${formatPercent(params.detail.depositPercent)}% initial payment`;
 
   return {
     name: params.detail.customerName || params.detail.contact.name || 'there',
@@ -196,9 +201,11 @@ export function buildQuotePreviewBasePayload(params: {
     project_address: params.detail.project.siteAddress ?? undefined,
     quote_accept_link: params.quoteAcceptUrl,
     quote_valid_until: params.expiresAtLabel,
-    deposit_percent: formatPercent(params.detail.depositPercent),
+    deposit_percent: firstPayment?.calculationType === 'fixed'
+      ? undefined
+      : formatPercent(firstPayment?.percentageOfRemainder ?? params.detail.depositPercent),
     next_step_text:
-      'If you accept, we will issue your deposit invoice with payment details. No payment is due with this quote.',
+      `If you accept, we will issue the first scheduled invoice for ${firstPaymentDescription}. No payment is due with this quote.`,
     logo_url: params.logoUrl,
     reference_id: params.detail.reference ?? params.detail.project.quoteRef ?? undefined,
     default_subject: quoteDefaultSubject(quoteNumberValue),

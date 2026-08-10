@@ -42,6 +42,10 @@ const fixtureInvoice: PublicDepositInvoice = {
     "Include the invoice number as your reference.",
   ].join("\n"),
   depositPercent: 50,
+  paymentTermLabel: 'Initial payment',
+  paymentTermPosition: 1,
+  paymentTermCount: 2,
+  paidAt: null,
   quoteTotalIncGstCents: 2300000,
   totalIncGstCents: 1150000,
   totalExGstCents: 1000000,
@@ -102,7 +106,7 @@ describe("public invoice presentation", () => {
     const rendered = renderIntoDocument(view);
 
     expect(rendered.container.querySelector("h1")?.textContent).toBe(
-      "Deposit invoice",
+      "Invoice",
     );
     expect(rendered.container.querySelectorAll("h1")).toHaveLength(1);
     expect(
@@ -121,16 +125,16 @@ describe("public invoice presentation", () => {
       rendered.container.querySelector(
         'section[aria-label="About this invoice"]',
       )?.textContent,
-    ).toContain("50% deposit on quote Q-2026-0092 v3");
+    ).toContain("Initial payment (1 of 2) on quote Q-2026-0092 v3");
     expect(
       rendered.container.querySelector(
         'section[aria-labelledby="invoice-details-heading"]',
       )?.textContent,
     ).toContain("28 Aug 2026");
     expect(
-      rendered.container.querySelector('[data-label="Deposit rate"]')
+      rendered.container.querySelector('[data-label="Payment stage"]')
         ?.textContent,
-    ).toBe("50%");
+    ).toBe("1 of 2");
     expect(
       rendered.container.querySelector('[data-label="Amount inc GST"]')
         ?.textContent,

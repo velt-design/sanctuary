@@ -16,6 +16,7 @@ import {
 } from "@/lib/designBooklets/defaults";
 import { compressDesignBookletImage } from "@/lib/designBooklets/imageCompression";
 import { allDesignBookletAssetSources } from "@/lib/designBooklets/pageModel";
+import { designBookletDrawingPdfAssetId } from "@/lib/designBooklets/pageModel";
 import {
   copyProjectDesignBookletAssetClient,
   loadProjectDesignBookletClient,
@@ -30,12 +31,14 @@ import type {
 import type {
   DesignBookletAssetSource,
   DesignBookletDraft,
+  DesignBookletDrawingItem,
 } from "@/lib/designBooklets/types";
 import type {
   DesignBookletPreviewAsset,
   DesignBookletPreviewAssetState,
 } from "./previewAssets";
 import { preloadDesignBookletImage } from "./preloadDesignBookletImage";
+import { renderDesignBookletPdfPreview } from "./renderDesignBookletPdfPreview";
 
 type DesignBookletAssetMap = Record<string, DesignBookletPreviewAsset>;
 
@@ -93,7 +96,58 @@ function snapshotAssets(
     const source = sources.get(asset.assetId);
     if (source) next[asset.assetId] = persistedPreviewAsset(source, asset);
   }
+  const persistedById = new Map(
+    snapshot.assets.map((asset) => [asset.assetId, asset]),
+  );
+  for (const page of snapshot.draft.contentPages) {
+    if (page.kind !== "drawings") continue;
+    for (const drawing of page.drawings) {
+      if (!drawing.pdf) continue;
+      const preview = next[drawing.image.assetId];
+      const document = persistedById.get(drawing.pdf.assetId);
+      if (preview && document?.mediaType === "application/pdf") {
+        next[drawing.image.assetId] = {
+          ...preview,
+          sourcePdfSrc: document.src,
+        };
+      }
+    }
+  }
   return next;
+}
+
+function drawingFromDraft(
+  draft: DesignBookletDraft,
+  drawingId: string,
+): DesignBookletDrawingItem | null {
+  for (const page of draft.contentPages) {
+    if (page.kind !== "drawings") continue;
+    const drawing = page.drawings.find(
+      (candidate) => candidate.id === drawingId,
+    );
+    if (drawing) return drawing;
+  }
+  return null;
+}
+
+function updateDraftDrawing(
+  draft: DesignBookletDraft,
+  drawingId: string,
+  update: (drawing: DesignBookletDrawingItem) => DesignBookletDrawingItem,
+): DesignBookletDraft {
+  return {
+    ...draft,
+    contentPages: draft.contentPages.map((page) =>
+      page.kind !== "drawings"
+        ? page
+        : {
+            ...page,
+            drawings: page.drawings.map((drawing) =>
+              drawing.id === drawingId ? update(drawing) : drawing,
+            ) as typeof page.drawings,
+          },
+    ),
+  };
 }
 
 type ProjectDesignBookletContext = ProjectDesignBookletSnapshot["project"];
@@ -266,6 +320,12 @@ export function useProjectDesignBookletController(projectId?: string) {
       const operation = saveQueueRef.current
         .catch(() => undefined)
         .then(async () => {
+          while (assetUploadQueuesRef.current.size > 0) {
+            await Promise.all([...assetUploadQueuesRef.current.values()]);
+          }
+          if (assetOperationErrorRef.current) {
+            throw assetOperationErrorRef.current;
+          }
           const saved = await saveProjectDesignBookletClient(
             linkedProjectId,
             nextDraft,
@@ -325,6 +385,62 @@ export function useProjectDesignBookletController(projectId?: string) {
     await saveQueueRef.current;
   }, [linkedProjectId, queueSave]);
 
+  const enqueueAssetOperation = useCallback(
+    async (
+      assetId: string,
+      run: (isLatest: () => boolean) => Promise<void>,
+      failureMessage: string,
+      requestedSequence?: number,
+    ): Promise<void> => {
+      const sequence =
+        requestedSequence ??
+        (assetReplacementSequenceRef.current.get(assetId) ?? 0) + 1;
+      assetReplacementSequenceRef.current.set(assetId, sequence);
+      pendingAssetOperationsRef.current += 1;
+      assetOperationErrorRef.current = null;
+      setSaveState("uploading");
+      const previousOperation =
+        assetUploadQueuesRef.current.get(assetId) ?? Promise.resolve();
+      const isLatest = () =>
+        assetReplacementSequenceRef.current.get(assetId) === sequence;
+      let operation: Promise<void>;
+      operation = previousOperation
+        .catch(() => undefined)
+        .then(() => run(isLatest))
+        .catch((error) => {
+          if (!isLatest()) return;
+          const failure =
+            error instanceof Error ? error : new Error(failureMessage);
+          assetOperationErrorRef.current = failure;
+          setSaveState("error");
+          setPersistenceError(failure.message);
+        })
+        .finally(() => {
+          pendingAssetOperationsRef.current = Math.max(
+            0,
+            pendingAssetOperationsRef.current - 1,
+          );
+          if (assetUploadQueuesRef.current.get(assetId) === operation) {
+            assetUploadQueuesRef.current.delete(assetId);
+          }
+          if (
+            isLatest() &&
+            pendingAssetOperationsRef.current === 0 &&
+            !assetOperationErrorRef.current
+          ) {
+            setSaveState(
+              JSON.stringify(draftRef.current) === lastSavedDraftRef.current
+                ? "saved"
+                : "saving",
+            );
+          }
+        });
+      assetUploadQueuesRef.current.set(assetId, operation);
+      await operation;
+    },
+    [],
+  );
+
   const replaceAsset = useCallback(
     async (assetId: string, file: File | undefined): Promise<void> => {
       if (!file) return;
@@ -357,20 +473,9 @@ export function useProjectDesignBookletController(projectId?: string) {
         return;
       }
 
-      const sequence =
-        (assetReplacementSequenceRef.current.get(assetId) ?? 0) + 1;
-      assetReplacementSequenceRef.current.set(assetId, sequence);
-      pendingAssetOperationsRef.current += 1;
-      assetOperationErrorRef.current = null;
-      setSaveState("uploading");
-      const previousOperation =
-        assetUploadQueuesRef.current.get(assetId) ?? Promise.resolve();
-      const isLatest = () =>
-        assetReplacementSequenceRef.current.get(assetId) === sequence;
-
-      const operation = previousOperation
-        .catch(() => undefined)
-        .then(async () => {
+      await enqueueAssetOperation(
+        assetId,
+        async (isLatest) => {
           const compressed = await compressDesignBookletImage(file);
           const saved = await uploadProjectDesignBookletAssetClient(
             linkedProjectId,
@@ -401,41 +506,271 @@ export function useProjectDesignBookletController(projectId?: string) {
               },
             };
           });
-        })
-        .catch((error) => {
-          if (!isLatest()) return;
-          const failure =
-            error instanceof Error
-              ? error
-              : new Error("The image could not be saved.");
-          assetOperationErrorRef.current = failure;
-          setSaveState("error");
-          setPersistenceError(failure.message);
-        })
-        .finally(() => {
-          pendingAssetOperationsRef.current = Math.max(
-            0,
-            pendingAssetOperationsRef.current - 1,
-          );
-          if (assetUploadQueuesRef.current.get(assetId) === operation) {
-            assetUploadQueuesRef.current.delete(assetId);
-          }
-          if (
-            isLatest() &&
-            pendingAssetOperationsRef.current === 0 &&
-            !assetOperationErrorRef.current
-          ) {
-            setSaveState(
-              JSON.stringify(draftRef.current) === lastSavedDraftRef.current
-                ? "saved"
-                : "saving",
+        },
+        "The image could not be saved.",
+      );
+    },
+    [assets, enqueueAssetOperation, linkedProjectId, revokeAssetUrl],
+  );
+
+  const replaceDrawingPdf = useCallback(
+    async (drawingId: string, file: File | undefined): Promise<void> => {
+      if (!file) return;
+      if (file.type !== "application/pdf") {
+        setPersistenceError("Choose a PDF drawing.");
+        setSaveState(linkedProjectId ? "error" : "standalone");
+        return;
+      }
+      const drawing = drawingFromDraft(draftRef.current, drawingId);
+      if (!drawing) return;
+      const assetId = drawing.image.assetId;
+      const existing = assets[assetId];
+      if (!existing) return;
+      const sequence =
+        (assetReplacementSequenceRef.current.get(assetId) ?? 0) + 1;
+      assetReplacementSequenceRef.current.set(assetId, sequence);
+      const isLatest = () =>
+        assetReplacementSequenceRef.current.get(assetId) === sequence;
+      setPersistenceError("");
+      setAssets((current) => ({
+        ...current,
+        [assetId]: {
+          ...current[assetId],
+          label: file.name,
+          state: "loading",
+          errorMessage: undefined,
+        },
+      }));
+
+      let preview: Awaited<ReturnType<typeof renderDesignBookletPdfPreview>>;
+      try {
+        preview = await renderDesignBookletPdfPreview(file, file.name, 1);
+      } catch (error) {
+        if (!isLatest()) return;
+        const message =
+          error instanceof Error
+            ? error.message
+            : "The drawing PDF could not be previewed.";
+        setAssets((current) => ({
+          ...current,
+          [assetId]: {
+            ...current[assetId],
+            state: "error",
+            errorMessage: message,
+          },
+        }));
+        setPersistenceError(message);
+        setSaveState(linkedProjectId ? "error" : "standalone");
+        return;
+      }
+      if (!isLatest()) return;
+
+      const localSrc = URL.createObjectURL(preview.file);
+      blobUrlsRef.current.add(localSrc);
+      revokeAssetUrl(existing);
+      const pdfAssetId =
+        drawing.pdf?.assetId ?? designBookletDrawingPdfAssetId(drawing);
+      const nextDraft = updateDraftDrawing(
+        draftRef.current,
+        drawingId,
+        (current) => ({
+          ...current,
+          pdf: {
+            assetId: pdfAssetId,
+            fileName: file.name,
+            pageNumber: 1,
+            pageCount: preview.pageCount,
+          },
+        }),
+      );
+      draftRef.current = nextDraft;
+      setDraft(nextDraft);
+      setAssets((current) => ({
+        ...current,
+        [assetId]: {
+          ...current[assetId],
+          src: localSrc,
+          file: preview.file,
+          sourcePdfFile: file,
+          sourcePdfSrc: undefined,
+          label: file.name,
+          state: "loading",
+          errorMessage: undefined,
+        },
+      }));
+      if (!linkedProjectId) return;
+
+      await enqueueAssetOperation(
+        assetId,
+        async (operationIsLatest) => {
+          const [savedDocument, savedPreview] = await Promise.all([
+            uploadProjectDesignBookletAssetClient(
+              linkedProjectId,
+              pdfAssetId,
+              file,
+            ),
+            uploadProjectDesignBookletAssetClient(
+              linkedProjectId,
+              assetId,
+              preview.file,
+            ),
+          ]);
+          if (savedDocument.pageCount !== preview.pageCount) {
+            throw new Error(
+              "The saved PDF page count did not match its preview.",
             );
           }
-        });
-      assetUploadQueuesRef.current.set(assetId, operation);
-      await operation;
+          if (!operationIsLatest()) return;
+          await preloadDesignBookletImage(savedPreview.src);
+          if (!operationIsLatest()) return;
+          setAssets((current) => {
+            const source = allDesignBookletAssetSources(draftRef.current).find(
+              (candidate) => candidate.assetId === assetId,
+            );
+            const currentAsset = current[assetId];
+            if (!source || !currentAsset || currentAsset.src !== localSrc) {
+              return current;
+            }
+            revokeAssetUrl(currentAsset);
+            return {
+              ...current,
+              [assetId]: {
+                ...persistedPreviewAsset(source, savedPreview),
+                sourcePdfSrc: savedDocument.src,
+                state: "ready",
+              },
+            };
+          });
+        },
+        "The drawing PDF could not be saved.",
+        sequence,
+      );
     },
-    [assets, linkedProjectId, revokeAssetUrl],
+    [assets, enqueueAssetOperation, linkedProjectId, revokeAssetUrl],
+  );
+
+  const selectDrawingPdfPage = useCallback(
+    async (drawingId: string, pageNumber: number): Promise<void> => {
+      const drawing = drawingFromDraft(draftRef.current, drawingId);
+      if (!drawing?.pdf || drawing.pdf.pageNumber === pageNumber) return;
+      if (
+        !Number.isSafeInteger(pageNumber) ||
+        pageNumber < 1 ||
+        pageNumber > drawing.pdf.pageCount
+      ) {
+        setPersistenceError("Choose a valid PDF page.");
+        return;
+      }
+      const assetId = drawing.image.assetId;
+      const existing = assets[assetId];
+      const pdfSource = existing?.sourcePdfFile ?? existing?.sourcePdfSrc;
+      if (!existing || !pdfSource) {
+        setPersistenceError("The drawing PDF source could not be opened.");
+        return;
+      }
+      const sequence =
+        (assetReplacementSequenceRef.current.get(assetId) ?? 0) + 1;
+      assetReplacementSequenceRef.current.set(assetId, sequence);
+      const isLatest = () =>
+        assetReplacementSequenceRef.current.get(assetId) === sequence;
+      setPersistenceError("");
+      setAssets((current) => ({
+        ...current,
+        [assetId]: {
+          ...current[assetId],
+          state: "loading",
+          errorMessage: undefined,
+        },
+      }));
+
+      let preview: Awaited<ReturnType<typeof renderDesignBookletPdfPreview>>;
+      try {
+        preview = await renderDesignBookletPdfPreview(
+          pdfSource,
+          drawing.pdf.fileName,
+          pageNumber,
+        );
+      } catch (error) {
+        if (!isLatest()) return;
+        const message =
+          error instanceof Error
+            ? error.message
+            : "The selected PDF page could not be previewed.";
+        setAssets((current) => ({
+          ...current,
+          [assetId]: {
+            ...current[assetId],
+            state: "error",
+            errorMessage: message,
+          },
+        }));
+        setPersistenceError(message);
+        return;
+      }
+      if (!isLatest()) return;
+
+      const localSrc = URL.createObjectURL(preview.file);
+      blobUrlsRef.current.add(localSrc);
+      revokeAssetUrl(existing);
+      const nextDraft = updateDraftDrawing(
+        draftRef.current,
+        drawingId,
+        (current) => ({
+          ...current,
+          pdf: current.pdf
+            ? { ...current.pdf, pageNumber, pageCount: preview.pageCount }
+            : undefined,
+        }),
+      );
+      draftRef.current = nextDraft;
+      setDraft(nextDraft);
+      setAssets((current) => ({
+        ...current,
+        [assetId]: {
+          ...current[assetId],
+          src: localSrc,
+          file: preview.file,
+          state: "loading",
+          errorMessage: undefined,
+        },
+      }));
+      if (!linkedProjectId) return;
+
+      await enqueueAssetOperation(
+        assetId,
+        async (operationIsLatest) => {
+          const savedPreview = await uploadProjectDesignBookletAssetClient(
+            linkedProjectId,
+            assetId,
+            preview.file,
+          );
+          if (!operationIsLatest()) return;
+          await preloadDesignBookletImage(savedPreview.src);
+          if (!operationIsLatest()) return;
+          setAssets((current) => {
+            const source = allDesignBookletAssetSources(draftRef.current).find(
+              (candidate) => candidate.assetId === assetId,
+            );
+            const currentAsset = current[assetId];
+            if (!source || !currentAsset || currentAsset.src !== localSrc) {
+              return current;
+            }
+            revokeAssetUrl(currentAsset);
+            return {
+              ...current,
+              [assetId]: {
+                ...persistedPreviewAsset(source, savedPreview),
+                sourcePdfSrc: currentAsset.sourcePdfSrc,
+                state: "ready",
+              },
+            };
+          });
+        },
+        "The selected PDF page could not be saved.",
+        sequence,
+      );
+    },
+    [assets, enqueueAssetOperation, linkedProjectId, revokeAssetUrl],
   );
 
   const copyAsset = useCallback(
@@ -524,6 +859,8 @@ export function useProjectDesignBookletController(projectId?: string) {
     markAssetDisplayState,
     revokeAssetUrl,
     replaceAsset,
+    replaceDrawingPdf,
+    selectDrawingPdfPage,
     copyAsset,
     flushSave,
   };

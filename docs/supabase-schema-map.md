@@ -90,13 +90,13 @@ Owner doc: `docs/design-booklets.md`.
 Tables and Storage:
 
 - `project_design_booklets`: one active schema-v2 draft per project, with an optimistic `revision`.
-- `project_design_booklet_assets`: private image metadata keyed by project and stable booklet `asset_key`.
-- private Storage bucket `design-booklet-assets`: project-folder image objects and one replaceable `exports/latest.pdf`.
+- `project_design_booklet_assets`: private image or drawing-PDF metadata keyed by project and stable booklet `asset_key`; PDF rows include a verified `page_count`.
+- private Storage bucket `design-booklet-assets`: project-folder image/document objects and one replaceable `exports/latest.pdf`.
 
 Primary write path:
 
 - `PUT /api/staff/v1/projects/[projectId]/design-booklet` validates and autosaves the draft through the request's auth-bound Supabase client.
-- The asset `sign`, `complete`, and `copy` routes under the same project boundary prepare a short-lived direct upload, verify/normalize stored bytes, and upsert metadata only after Storage succeeds.
+- The asset `sign`, `complete`, and `copy` routes under the same project boundary prepare a short-lived direct upload, verify/normalize stored image or PDF bytes, and upsert metadata only after Storage succeeds. Drawing PDFs retain their original bytes; their selected-page JPEG preview is a separate asset.
 - `POST .../design-booklet/pdf` reads the saved draft/assets, generates the customer PDF, replaces the project's private latest export, and returns a short-lived signed download URL.
 
 Primary read path:
@@ -112,6 +112,7 @@ Access rule:
 Migration source:
 
 - `supabase/migrations/20260731_000001_project_design_booklets.sql`.
+- `supabase/migrations/20260810_000001_project_design_booklet_pdf_drawings.sql` adds PDF asset media metadata and bounded page counts. It must be applied before deploying the PDF-drawing application path.
 
 ## Quotes, Invoices, Artifacts, And Job Packs
 
@@ -148,6 +149,7 @@ Primary write path:
 - Public accept/decline and public invoice actions through token-bound marketing routes only after server-side token validation.
 - Public token routes and generated artifacts should continue to read quote-version totals and line items, not raw commercial payloads.
 - `quote_versions.pricing_source` and `quote_versions.pricing_source_metadata` store compact provenance only. Raw `estimates.commercial_design_input` must not be copied into quote versions, public token routes, invoices, PDFs, emails, or job-pack outputs.
+- `quote_versions.payment_terms` is the frozen ordered schedule of fixed-dollar and percentage-of-remainder terms, including resolved cents. `deposit_invoices.payment_term_*` binds each non-void invoice to exactly one term; `paid_at`, `paid_by`, `payment_reference`, `payment_method`, and `payment_note` own whole-invoice payment evidence. There is no partial-payment amount field.
 
 Primary read path:
 
@@ -158,7 +160,7 @@ Primary read path:
 
 Access rule:
 
-- Staff writes are server-owned and should not bypass quote/invoice domain helpers.
+- Staff writes are server-owned and should not bypass quote/invoice domain helpers. Invoice creation and paid-state changes are admin-only through `apps/portal/app/api/admin/projects/[projectId]/invoices` and `apps/portal/app/api/admin/invoices/[invoiceId]/paid`.
 - Commercial transaction and intent RPCs are revoked from `anon` and `authenticated`; narrow server-owned service-role adapters call them only after staff auth or public-token validation.
 - `private.commercial_email_intents` freezes request identity and checkpoints. It is not a browser table, public read model, or substitute for quote/invoice send logs.
 - Public quote links use `quote_versions.accept_token_hash`; public invoice links use `deposit_invoices.portal_token_hash`.
@@ -167,7 +169,7 @@ Access rule:
 
 Migration source:
 
-- Quote and invoice migrations under `supabase/migrations/20260209_*`, `20260216_*`, `20260220_*`, `20260314_*`, `20260318_000002_job_pack_sheet_overrides.sql`, `20260320_000001_job_pack_generations.sql`, `20260321_000001_job_pack_generations_schema_reload.sql`, `20260408_000001_portal_security_hardening.sql`, quote-version source metadata migration `20260504_000002_quote_version_pricing_source_metadata.sql`, and commercial trust migration `20260728_000001_commercial_workflow_trust.sql`.
+- Quote and invoice migrations under `supabase/migrations/20260209_*`, `20260216_*`, `20260220_*`, `20260314_*`, `20260318_000002_job_pack_sheet_overrides.sql`, `20260320_000001_job_pack_generations.sql`, `20260321_000001_job_pack_generations_schema_reload.sql`, `20260408_000001_portal_security_hardening.sql`, quote-version source metadata migration `20260504_000002_quote_version_pricing_source_metadata.sql`, commercial trust migration `20260728_000001_commercial_workflow_trust.sql`, and payment schedule/whole-invoice payment migration `20260810_000002_quote_payment_schedules_and_invoice_payments.sql`.
 - `supabase/portal_schema.sql` is a legacy baseline/snapshot reference for these tables.
 
 ## Schedule, Site Visits, And Running Jobs

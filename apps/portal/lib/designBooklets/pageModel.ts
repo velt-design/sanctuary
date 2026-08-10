@@ -13,6 +13,8 @@ import type {
 
 export const DESIGN_BOOKLET_MAX_CONTENT_PAGES = 24;
 export const DESIGN_BOOKLET_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+export const DESIGN_BOOKLET_MAX_PDF_BYTES = 20 * 1024 * 1024;
+export const DESIGN_BOOKLET_MAX_PDF_PAGES = 50;
 export const DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH = 80;
 export const DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH = 12;
 export const DESIGN_BOOKLET_DRAWING_STATUS =
@@ -20,6 +22,12 @@ export const DESIGN_BOOKLET_DRAWING_STATUS =
 
 export function normalizeDesignBookletSheetTitle(value: string): string {
   return value.toUpperCase();
+}
+
+export function designBookletDrawingPdfAssetId(
+  drawing: DesignBookletDrawingItem,
+): string {
+  return `${drawing.image.assetId.slice(0, 76)}-pdf`;
 }
 
 export function currentDesignBookletIssueDate(now = new Date()): string {
@@ -271,6 +279,14 @@ export function renderableDesignBookletAssetSources(
   ];
 }
 
+export function designBookletDrawingPdfSources(draft: DesignBookletDraft) {
+  return draft.contentPages.flatMap((page) =>
+    page.kind === "drawings"
+      ? page.drawings.flatMap((drawing) => (drawing.pdf ? [drawing.pdf] : []))
+      : [],
+  );
+}
+
 function nextAvailableId(prefix: string, currentIds: Set<string>): string {
   let sequence = 1;
   while (currentIds.has(`${prefix}-${sequence}`)) sequence += 1;
@@ -288,6 +304,7 @@ function existingPageAndAssetIds(
         : page.drawings.flatMap((drawing) => [
             drawing.id,
             drawing.image.assetId,
+            ...(drawing.pdf ? [drawing.pdf.assetId] : []),
           ]),
     ),
   ]);

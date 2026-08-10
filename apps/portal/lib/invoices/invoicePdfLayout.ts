@@ -425,7 +425,7 @@ export function prepareMetaLines(
   const invoiceDetails = [
     `Issued ${vm.dates.issue}`,
     `Quote ${vm.header.quoteRef} v${vm.header.quoteVersionNumber}`,
-    `Deposit ${vm.deposit.percent}%`,
+    `${vm.deposit.label} ${vm.deposit.basis}`,
     "Currency NZD",
   ].flatMap((value) =>
     wrapText(fonts.regular, value, FONT_SIZES.bodySmall, columnWidths[2]!).map(

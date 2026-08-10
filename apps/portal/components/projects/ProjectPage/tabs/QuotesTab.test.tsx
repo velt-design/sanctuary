@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act } from 'react';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import QuotesTab from './QuotesTab';
 
@@ -13,6 +14,7 @@ const invalidateQueries = vi.fn();
 const getQueryData = vi.fn();
 const fetchQuery = vi.fn();
 const removeQueries = vi.fn();
+let portalIsAdmin = true;
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace, push }),
@@ -36,6 +38,10 @@ vi.mock('@/components/ui/toast/ToastProvider', () => ({
     success: toastSuccess,
     error: toastError,
   }),
+}));
+
+vi.mock('@/components/auth/PortalAuthProvider', () => ({
+  usePortalSession: () => ({ isAdmin: portalIsAdmin, role: portalIsAdmin ? 'admin' : 'staff' }),
 }));
 
 vi.mock('@/lib/supabase/browserClient', () => ({
@@ -185,6 +191,7 @@ describe('QuotesTab draft ownership UI', () => {
     removeQueries.mockReset();
     useQueryMock.mockReset();
     activeQuoteDetail = quoteDetail;
+    portalIsAdmin = true;
 
     const responses = [
       {
@@ -250,6 +257,21 @@ describe('QuotesTab draft ownership UI', () => {
     expect(rendered.container.textContent).toContain('Internal');
 
     rendered.unmount();
+  });
+
+  it('shows draft deletion only to admins', () => {
+    const admin = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
+    const adminMore = Array.from(admin.container.querySelectorAll('button')).find((button) => button.textContent?.includes('More actions'));
+    act(() => adminMore?.click());
+    expect(admin.container.textContent).toContain('Delete draft');
+    admin.unmount();
+
+    portalIsAdmin = false;
+    const staff = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
+    const staffMore = Array.from(staff.container.querySelectorAll('button')).find((button) => button.textContent?.includes('More actions'));
+    act(() => staffMore?.click());
+    expect(staff.container.textContent).not.toContain('Delete draft');
+    staff.unmount();
   });
 
   it('makes an unfinished frozen delivery the primary recovery action', () => {

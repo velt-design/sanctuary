@@ -48,3 +48,29 @@
   color: var(--ui-destructive);
   font-size: var(--ui-font-size-small);
 }
+
+.scheduleRows {
+  display: grid;
+  gap: 0;
+  border-top: var(--ui-border-width) solid var(--ui-border);
+}
+
+.scheduleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-3) var(--ui-space-4);
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+}
+
+.scheduleRow:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 767px) {
+  .scheduleRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

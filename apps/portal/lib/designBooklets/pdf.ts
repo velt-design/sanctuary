@@ -1,6 +1,12 @@
 import "server-only";
 
-import { PDFDocument, type Color, type PDFImage, type PDFPage } from "pdf-lib";
+import {
+  PDFDocument,
+  type Color,
+  type PDFEmbeddedPage,
+  type PDFImage,
+  type PDFPage,
+} from "pdf-lib";
 import sharp from "sharp";
 import fontkit from "@/lib/quotes/fontkit";
 import {
@@ -46,6 +52,7 @@ import type {
   DesignBookletImagePage,
   DesignBookletImagePlacement,
   DesignBookletImages,
+  DesignBookletPdfDocuments,
 } from "./types";
 
 export { DESIGN_BOOKLET_PDF_PAGE_SIZE } from "./pdfLayout";
@@ -69,6 +76,7 @@ type PdfRenderContext = {
   draft: DesignBookletDraft;
   content: DesignBookletContentCatalog;
   images: Record<string, PDFImage>;
+  drawingPdfPages: Record<string, PDFEmbeddedPage>;
   overlays: {
     imagePage: PDFImage;
     reviewEdge: PDFImage;
@@ -82,6 +90,43 @@ async function embedImage(
   return image.mediaType === "image/png"
     ? pdf.embedPng(image.bytes)
     : pdf.embedJpg(image.bytes);
+}
+
+function drawingPdfPageKey(assetId: string, pageNumber: number): string {
+  return `${assetId}:${pageNumber}`;
+}
+
+async function embedDrawingPdfPages(
+  pdf: PDFDocument,
+  draft: DesignBookletDraft,
+  documents: DesignBookletPdfDocuments,
+): Promise<Record<string, PDFEmbeddedPage>> {
+  const requested = new Map<string, { assetId: string; pageNumber: number }>();
+  for (const page of draft.contentPages) {
+    if (page.kind !== "drawings") continue;
+    for (const drawing of page.drawings) {
+      if (!drawing.pdf) continue;
+      requested.set(
+        drawingPdfPageKey(drawing.pdf.assetId, drawing.pdf.pageNumber),
+        drawing.pdf,
+      );
+    }
+  }
+  const entries = await Promise.all(
+    [...requested.entries()].map(async ([key, source]) => {
+      const document = documents[source.assetId];
+      if (!document) {
+        throw new Error(`Drawing PDF "${source.assetId}" is unavailable.`);
+      }
+      const [embedded] = await pdf.embedPdf(document.bytes, [
+        source.pageNumber - 1,
+      ]);
+      if (!embedded)
+        throw new Error("The selected drawing PDF page is unavailable.");
+      return [key, embedded] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
 }
 
 async function embedImages(
@@ -484,6 +529,31 @@ function drawingSlotFrame(frame: {
   return { x, y: top - height, width, height };
 }
 
+function drawPdfPageContain(
+  page: PDFPage,
+  embedded: PDFEmbeddedPage,
+  frame: { x: number; y: number; width: number; height: number },
+): void {
+  page.drawRectangle({
+    ...frame,
+    color: white,
+    borderColor: colors.ruleStrong,
+    borderWidth: presentation.drawing.imageBorderWidth,
+  });
+  const scale = Math.min(
+    frame.width / embedded.width,
+    frame.height / embedded.height,
+  );
+  const width = embedded.width * scale;
+  const height = embedded.height * scale;
+  page.drawPage(embedded, {
+    x: frame.x + (frame.width - width) / 2,
+    y: frame.y + (frame.height - height) / 2,
+    width,
+    height,
+  });
+}
+
 function renderDrawingPage(
   context: PdfRenderContext,
   resolvedPage: {
@@ -493,7 +563,7 @@ function renderDrawingPage(
     page: DesignBookletDrawingPage;
   },
 ) {
-  const { pdf, fonts, images } = context;
+  const { pdf, fonts, images, drawingPdfPages } = context;
   const page = addPage(pdf);
 
   const layout = DESIGN_BOOKLET_DRAWING_LAYOUTS[resolvedPage.page.layout];
@@ -507,8 +577,15 @@ function renderDrawingPage(
       width: frame.width,
       height: frame.height - titleHeight,
     };
+    const pdfPage = drawing.pdf
+      ? drawingPdfPages[
+          drawingPdfPageKey(drawing.pdf.assetId, drawing.pdf.pageNumber)
+        ]
+      : undefined;
     const image = optionalImage(images, drawing.image.assetId);
-    if (image) {
+    if (pdfPage) {
+      drawPdfPageContain(page, pdfPage, imageFrame);
+    } else if (image) {
       drawImageContain(
         page,
         image,
@@ -736,6 +813,7 @@ export async function generateDesignBookletPdf(input: {
   draft: DesignBookletDraft;
   content: DesignBookletContentCatalog;
   images: DesignBookletImages;
+  documents?: DesignBookletPdfDocuments;
 }): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
@@ -761,8 +839,9 @@ export async function generateDesignBookletPdf(input: {
     medium: await pdf.embedFont(mediumBytes, { subset: true }),
     semibold: await pdf.embedFont(semiboldBytes, { subset: true }),
   };
-  const [images, overlays] = await Promise.all([
+  const [images, drawingPdfPages, overlays] = await Promise.all([
     embedImages(pdf, input.images),
+    embedDrawingPdfPages(pdf, input.draft, input.documents ?? {}),
     embedShadeOverlays(pdf),
   ]);
   const context: PdfRenderContext = {
@@ -771,6 +850,7 @@ export async function generateDesignBookletPdf(input: {
     draft: input.draft,
     content: input.content,
     images,
+    drawingPdfPages,
     overlays,
   };
 

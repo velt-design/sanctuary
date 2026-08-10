@@ -8,13 +8,21 @@ import { reconcileQuoteOutcomeCadence } from '@/lib/projects/workItems/quoteCade
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import type { Estimate } from '@/lib/types/estimate';
 import type { QuoteAcceptResult, QuoteLineItem, QuoteSendLog, QuoteStatus, QuoteVersion, QuoteVersionDetail } from './types';
+import type { QuotePaymentTerm } from './paymentSchedule';
 import {
   DEFAULT_QUOTE_INTRO,
   DEFAULT_QUOTE_TERMS,
-  applyDepositPercentToTerms,
   normalizeDepositPercent,
 } from './defaults';
 import { assertQuoteEstimateMappingReady, buildQuoteLineItemsFromEstimate } from './mapping';
+import {
+  applyPaymentScheduleToTerms,
+  buildDefaultQuotePaymentSchedule,
+  buildLegacyQuotePaymentSchedule,
+  normalizeStoredQuotePaymentSchedule,
+  paymentScheduleCompatibilityDepositPercent,
+  requireValidQuotePaymentSchedule,
+} from './paymentSchedule';
 import {
   buildQuotePricingSourceCopyFromEstimate,
   buildQuotePricingSourceCopyFromQuoteVersion,
@@ -379,9 +387,14 @@ export async function createQuoteFromEstimate(
   );
 
   const introText = extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO;
-  const depositPercent = 50;
+  const paymentTerms = buildDefaultQuotePaymentSchedule({
+    quoteTotalIncGstCents: totals.totalIncGstCents,
+    approvalRequirement: mapping.approvalRequirement,
+    approvalIncGstCents: mapping.approvalIncGstCents,
+  });
+  const depositPercent = paymentScheduleCompatibilityDepositPercent(paymentTerms, totals.totalIncGstCents);
   const termsSource = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
-  const termsText = applyDepositPercentToTerms(termsSource, depositPercent);
+  const termsText = applyPaymentScheduleToTerms(termsSource, paymentTerms);
   const customerName = await loadProjectCustomerName(projectUuid);
   const pricingSourceCopy = buildQuotePricingSourceCopyFromEstimate({
     estimate,
@@ -403,6 +416,7 @@ export async function createQuoteFromEstimate(
     p_intro_text: introText,
     p_terms_text: termsText,
     p_deposit_percent: depositPercent,
+    p_payment_terms: paymentTerms,
     p_expires_at: null,
     p_total_inc_gst_cents: totals.totalIncGstCents,
     p_total_ex_gst_cents: totals.totalExGstCents,
@@ -452,6 +466,7 @@ export async function updateDraftQuoteVersion(
     introText?: string | null;
     termsText?: string | null;
     depositPercent?: number;
+    paymentTerms?: QuotePaymentTerm[];
     expiresAt?: string | null;
     lineItems?: Array<{ description: string; qty: number; unitPriceIncGstCents: number }>;
     expectedCommercialRevision: number;
@@ -486,20 +501,30 @@ export async function updateDraftQuoteVersion(
   const totals = totalsFromNormalizedLineItems(normalizedLineItems);
 
   const existingDepositPercent = normalizeDepositPercent((versionRes.data as any)?.deposit_percent, 50);
-  const nextDepositPercent = patch.depositPercent === undefined
-    ? existingDepositPercent
-    : normalizeDepositPercent(patch.depositPercent, existingDepositPercent);
+  const existingPaymentTerms = normalizeStoredQuotePaymentSchedule(
+    (versionRes.data as any)?.payment_terms,
+    currentDetail.totals.totalIncGstCents,
+    existingDepositPercent,
+  );
+  const requestedPaymentTerms = Array.isArray(patch.paymentTerms)
+    ? patch.paymentTerms
+    : patch.depositPercent !== undefined
+      ? buildLegacyQuotePaymentSchedule(totals.totalIncGstCents, patch.depositPercent)
+      : existingPaymentTerms;
+  const nextPaymentTerms = requireValidQuotePaymentSchedule(requestedPaymentTerms, totals.totalIncGstCents);
+  const nextDepositPercent = paymentScheduleCompatibilityDepositPercent(nextPaymentTerms, totals.totalIncGstCents);
 
   const existingTermsText = typeof (versionRes.data as any)?.terms_text === 'string'
     ? String((versionRes.data as any).terms_text)
     : null;
   const nextTermsText = patch.termsText === null
     ? null
-    : typeof patch.termsText === 'string'
-      ? applyDepositPercentToTerms(patch.termsText, nextDepositPercent)
-      : patch.depositPercent !== undefined
-        ? applyDepositPercentToTerms(existingTermsText ?? DEFAULT_QUOTE_TERMS, nextDepositPercent)
-        : undefined;
+    : applyPaymentScheduleToTerms(
+        typeof patch.termsText === 'string'
+          ? patch.termsText
+          : existingTermsText ?? DEFAULT_QUOTE_TERMS,
+        nextPaymentTerms,
+      );
 
   const currentRow = versionRes.data as any;
   const updateRes = await supabaseServiceRole.rpc(
@@ -520,6 +545,7 @@ export async function updateDraftQuoteVersion(
           ? currentDetail.termsText ?? null
           : nextTermsText,
       p_deposit_percent: nextDepositPercent,
+      p_payment_terms: nextPaymentTerms,
       p_expires_at:
         typeof patch.expiresAt === 'string' || patch.expiresAt === null
           ? patch.expiresAt
@@ -583,25 +609,36 @@ export async function refreshDraftQuoteVersionFromEstimate(
 
   const mapping = buildQuoteLineItemsFromEstimate(estimate);
   assertQuoteEstimateMappingReady(mapping);
+  const generatedItems = mapping.items.map((item, idx) => ({
+    id: currentDetail.lineItems[idx]?.id ?? `${currentDetail.id}:line:${idx + 1}`,
+    description: item.description,
+    qty: item.qty,
+    unitPriceIncGstCents: item.unitPriceIncGstCents,
+    lineTotalIncGstCents: lineTotalCents(item.qty, item.unitPriceIncGstCents),
+    sortOrder: idx,
+  }));
+  const generatedTotals = totalsFromLineItems(generatedItems);
+  const generatedPaymentTerms = buildDefaultQuotePaymentSchedule({
+    quoteTotalIncGstCents: generatedTotals.totalIncGstCents,
+    approvalRequirement: mapping.approvalRequirement,
+    approvalIncGstCents: mapping.approvalIncGstCents,
+  });
+  const generatedDepositPercent = paymentScheduleCompatibilityDepositPercent(
+    generatedPaymentTerms,
+    generatedTotals.totalIncGstCents,
+  );
   const generatedDetail: QuoteVersionDetail = {
     ...currentDetail,
     sourceEstimateVersionId: estimateVersionId,
     sourceEstimateVersionLabel: estimateLabel,
-    lineItems: mapping.items.map((item, idx) => ({
-      id: currentDetail.lineItems[idx]?.id ?? `${currentDetail.id}:line:${idx + 1}`,
-      description: item.description,
-      qty: item.qty,
-      unitPriceIncGstCents: item.unitPriceIncGstCents,
-      lineTotalIncGstCents: lineTotalCents(item.qty, item.unitPriceIncGstCents),
-      sortOrder: idx,
-    })),
-    totals: currentDetail.totals,
+    lineItems: generatedItems,
+    totals: generatedTotals,
+    paymentTerms: generatedPaymentTerms,
   };
-  const depositPercent = 50;
   const introText = extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO;
   const termsSource = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
-  const termsText = applyDepositPercentToTerms(termsSource, depositPercent);
-  generatedDetail.depositPercent = depositPercent;
+  const termsText = applyPaymentScheduleToTerms(termsSource, generatedPaymentTerms);
+  generatedDetail.depositPercent = generatedDepositPercent;
   generatedDetail.introText = introText;
   generatedDetail.termsText = termsText;
   generatedDetail.reference = null;
@@ -629,6 +666,11 @@ export async function refreshDraftQuoteVersionFromEstimate(
   });
   const pricingColumns = quotePricingSourceDbColumns(pricingSourceCopy);
   const proposed = preview.proposedQuote;
+  const proposedPaymentTerms = requireValidQuotePaymentSchedule(
+    proposed.paymentTerms ?? buildLegacyQuotePaymentSchedule(totals.totalIncGstCents, proposed.depositPercent),
+    totals.totalIncGstCents,
+  );
+  const proposedDepositPercent = paymentScheduleCompatibilityDepositPercent(proposedPaymentTerms, totals.totalIncGstCents);
   const updateRes = await supabaseServiceRole.rpc(
     'commercial_quote_update_draft',
     {
@@ -636,8 +678,9 @@ export async function refreshDraftQuoteVersionFromEstimate(
       p_expected_commercial_revision: currentDetail.commercialRevision,
       p_reference: proposed.reference ?? null,
       p_intro_text: proposed.introText ?? null,
-      p_terms_text: proposed.termsText ?? null,
-      p_deposit_percent: proposed.depositPercent,
+      p_terms_text: applyPaymentScheduleToTerms(proposed.termsText, proposedPaymentTerms),
+      p_deposit_percent: proposedDepositPercent,
+      p_payment_terms: proposedPaymentTerms,
       p_expires_at: proposed.expiresAt ?? null,
       p_source_estimate_version_id: estimateUuid,
       p_total_inc_gst_cents: totals.totalIncGstCents,
@@ -711,26 +754,34 @@ export async function previewDraftQuoteRefreshFromEstimate(
   const mapping = buildQuoteLineItemsFromEstimate(estimate);
   assertQuoteEstimateMappingReady(mapping);
 
+  const generatedItems = mapping.items.map((item, idx) => ({
+    id: currentDetail.lineItems[idx]?.id ?? `${currentDetail.id}:line:${idx + 1}`,
+    description: item.description,
+    qty: item.qty,
+    unitPriceIncGstCents: item.unitPriceIncGstCents,
+    lineTotalIncGstCents: lineTotalCents(item.qty, item.unitPriceIncGstCents),
+    sortOrder: idx,
+  }));
+  const generatedTotals = totalsFromLineItems(generatedItems);
+  const generatedPaymentTerms = buildDefaultQuotePaymentSchedule({
+    quoteTotalIncGstCents: generatedTotals.totalIncGstCents,
+    approvalRequirement: mapping.approvalRequirement,
+    approvalIncGstCents: mapping.approvalIncGstCents,
+  });
   const generatedDetail: QuoteVersionDetail = {
     ...currentDetail,
     sourceEstimateVersionId: estimateVersionId,
     sourceEstimateVersionLabel: estimateLabel,
-    lineItems: mapping.items.map((item, idx) => ({
-      id: currentDetail.lineItems[idx]?.id ?? `${currentDetail.id}:line:${idx + 1}`,
-      description: item.description,
-      qty: item.qty,
-      unitPriceIncGstCents: item.unitPriceIncGstCents,
-      lineTotalIncGstCents: lineTotalCents(item.qty, item.unitPriceIncGstCents),
-      sortOrder: idx,
-    })),
-    totals: currentDetail.totals,
+    lineItems: generatedItems,
+    totals: generatedTotals,
     reference: null,
     introText: extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO,
-    termsText: applyDepositPercentToTerms(
+    termsText: applyPaymentScheduleToTerms(
       extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS,
-      50,
+      generatedPaymentTerms,
     ),
-    depositPercent: 50,
+    depositPercent: paymentScheduleCompatibilityDepositPercent(generatedPaymentTerms, generatedTotals.totalIncGstCents),
+    paymentTerms: generatedPaymentTerms,
     expiresAt: null,
   };
 
@@ -741,7 +792,7 @@ export async function previewDraftQuoteRefreshFromEstimate(
   });
 }
 
-export async function deleteDraftQuoteVersion(quoteVersionId: string): Promise<void> {
+export async function deleteDraftQuoteVersion(quoteVersionId: string, actor: string | null = null): Promise<void> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
   const res = await supabaseServiceRole
     .from('quote_versions')
@@ -766,7 +817,7 @@ export async function deleteDraftQuoteVersion(quoteVersionId: string): Promise<v
 
   const projectUuid = String((res.data as any)?.quotes?.project_id ?? '');
   if (projectUuid) {
-    await insertAuditEvent({ projectId: projectUuid, type: 'quote.deleted', payload: { quoteVersionId: quoteVersionUuid } });
+    await insertAuditEvent({ projectId: projectUuid, type: 'quote.deleted', payload: { quoteVersionId: quoteVersionUuid, actor } });
   }
 }
 
@@ -812,9 +863,18 @@ export async function reviseQuoteVersion(
       ? versionRes.data.customer_name.trim()
       : null;
   const inheritedDepositPercent = normalizeDepositPercent(versionRes.data.deposit_percent, 50);
+  const inheritedPaymentTerms = normalizeStoredQuotePaymentSchedule(
+    versionRes.data.payment_terms,
+    totals.totalIncGstCents,
+    inheritedDepositPercent,
+  );
+  const inheritedCompatibilityPercent = paymentScheduleCompatibilityDepositPercent(
+    inheritedPaymentTerms,
+    totals.totalIncGstCents,
+  );
   const customerName = inheritedCustomerName || (await loadProjectCustomerName(String(projectRes.data.project_id ?? '')));
   const inheritedTermsText = typeof versionRes.data.terms_text === 'string' ? versionRes.data.terms_text : null;
-  const termsText = inheritedTermsText ? applyDepositPercentToTerms(inheritedTermsText, inheritedDepositPercent) : null;
+  const termsText = inheritedTermsText ? applyPaymentScheduleToTerms(inheritedTermsText, inheritedPaymentTerms) : null;
   const sourceEstimateUuid = String(versionRes.data.source_estimate_version_id ?? '');
   const copiedAt = nowIso();
   let pricingSourceCopy: QuotePricingSourceCopy | null = buildQuotePricingSourceCopyFromQuoteVersion({
@@ -869,7 +929,8 @@ export async function reviseQuoteVersion(
       p_reference: versionRes.data.reference ?? null,
       p_intro_text: versionRes.data.intro_text ?? null,
       p_terms_text: termsText,
-      p_deposit_percent: inheritedDepositPercent,
+      p_deposit_percent: inheritedCompatibilityPercent,
+      p_payment_terms: inheritedPaymentTerms,
       p_expires_at: null,
       p_total_inc_gst_cents: totals.totalIncGstCents,
       p_total_ex_gst_cents: totals.totalExGstCents,

@@ -57,9 +57,11 @@ export default function CommercialTab({
 
   const setView = (nextView: CommercialView) => {
     setOptimisticView(nextView);
+    setSelectedQuoteId(null);
     replaceParams((query) => {
       query.set('tab', nextView);
-      if (nextView === 'invoices') query.delete('quotePreview');
+      query.delete('quoteId');
+      query.delete('quotePreview');
       query.delete('mode');
     });
   };

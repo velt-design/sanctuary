@@ -1,5 +1,6 @@
 import type { QuoteLineItem, QuoteVersionDetail } from './types';
 import { totalsFromLineItems } from './utils';
+import { buildLegacyQuotePaymentSchedule, requireValidQuotePaymentSchedule } from './paymentSchedule';
 
 export type QuoteRefreshMode = 'pricing_only' | 'generated_content' | 'full_rebuild';
 
@@ -82,11 +83,22 @@ export function buildQuoteRefreshPreview(params: {
     renderHash: null,
   };
 
+  proposedQuote.paymentTerms = requireValidQuotePaymentSchedule(
+    mode === 'full_rebuild'
+      ? generated.paymentTerms ?? buildLegacyQuotePaymentSchedule(proposedQuote.totals.totalIncGstCents, generated.depositPercent)
+      : current.paymentTerms ?? buildLegacyQuotePaymentSchedule(proposedQuote.totals.totalIncGstCents, current.depositPercent),
+    proposedQuote.totals.totalIncGstCents,
+  );
+
   if (mode === 'full_rebuild') {
     proposedQuote.reference = null;
     proposedQuote.introText = generated.introText;
     proposedQuote.termsText = generated.termsText;
     proposedQuote.depositPercent = generated.depositPercent;
+    proposedQuote.paymentTerms = requireValidQuotePaymentSchedule(
+      generated.paymentTerms ?? buildLegacyQuotePaymentSchedule(proposedQuote.totals.totalIncGstCents, generated.depositPercent),
+      proposedQuote.totals.totalIncGstCents,
+    );
     proposedQuote.expiresAt = null;
   }
 
@@ -116,6 +128,9 @@ export function buildQuoteRefreshPreview(params: {
   if (current.introText !== proposedQuote.introText) summary.push('Intro changed');
   if (current.termsText !== proposedQuote.termsText) summary.push('Terms changed');
   if (current.depositPercent !== proposedQuote.depositPercent) summary.push('Deposit changed');
+  if (JSON.stringify(current.paymentTerms) !== JSON.stringify(proposedQuote.paymentTerms)) {
+    summary.push('Payment schedule changed');
+  }
   if (current.expiresAt !== proposedQuote.expiresAt) summary.push(proposedQuote.expiresAt ? 'Expiry changed' : 'Expiry reset');
   if (current.reference !== proposedQuote.reference) summary.push(proposedQuote.reference ? 'Reference changed' : 'Reference reset');
 

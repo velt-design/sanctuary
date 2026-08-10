@@ -1,6 +1,7 @@
 // @vitest-environment node
 
 import sharp from "sharp";
+import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import {
   createProjectDesignBookletDraft,
@@ -307,6 +308,55 @@ describe("design booklet request parsing", () => {
 
     expect(parsed.draft.cover.useDefaultAsset).toBe(false);
     expect(parsed.images).toEqual({});
+  });
+
+  it("accepts an original drawing PDF and validates its selected page metadata", async () => {
+    const source = await PDFDocument.create();
+    source.addPage([842, 595]);
+    source.addPage([595, 842]);
+    const sourceBytes = await source.save({ useObjectStreams: false });
+    const draft = createProjectDesignBookletDraft("Client AAA");
+    const drawingPage = draft.contentPages.find(
+      (page) => page.kind === "drawings",
+    );
+    if (!drawingPage || drawingPage.kind !== "drawings") {
+      throw new Error("Expected a drawing page.");
+    }
+    drawingPage.drawings[0].pdf = {
+      assetId: "drawing-page-1-drawing-1-pdf",
+      fileName: "architectural-package.pdf",
+      pageNumber: 2,
+      pageCount: 2,
+    };
+    const formData = formDataForDraft(draft);
+    formData.set(
+      "asset:drawing-page-1-drawing-1-pdf",
+      new File(
+        [Uint8Array.from(sourceBytes).buffer],
+        "architectural-package.pdf",
+        {
+          type: "application/pdf",
+        },
+      ),
+    );
+
+    const parsed = await parseDesignBookletFormData(formData);
+
+    const parsedDrawingPage = parsed.draft.contentPages.find(
+      (page) => page.kind === "drawings",
+    );
+    expect(parsedDrawingPage?.kind).toBe("drawings");
+    if (!parsedDrawingPage || parsedDrawingPage.kind !== "drawings") {
+      throw new Error("Expected a parsed drawing page.");
+    }
+    expect(parsedDrawingPage.drawings[0].pdf).toMatchObject({
+      assetId: "drawing-page-1-drawing-1-pdf",
+      pageNumber: 2,
+      pageCount: 2,
+    });
+    expect(
+      parsed.documents["drawing-page-1-drawing-1-pdf"]?.bytes.slice(0, 5),
+    ).toEqual(sourceBytes.slice(0, 5));
   });
 
   it("accepts a valid uploaded PNG and preserves its bytes", async () => {
