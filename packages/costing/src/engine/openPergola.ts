@@ -1,6 +1,6 @@
 import type { RoofMaterial } from './types';
 
-export const OPEN_PERGOLA_PROFILE = '150x50';
+export const OPEN_PERGOLA_DEFAULT_PROFILE = '150x50';
 const OPEN_PERGOLA_DEFAULT_RAFTER_SPACING_MM = 500;
 
 export function isOpenPergolaRoof(material: RoofMaterial): boolean {

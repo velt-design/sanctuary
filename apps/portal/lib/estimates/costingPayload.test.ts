@@ -147,7 +147,7 @@ describe('costingPayload', () => {
       overrides: {
         ledgerProfile: '100x50',
         rafterProfile: '80x50',
-        frontBeamProfile: 'SP Gutter',
+        frontBeamProfile: '200x50',
         postProfile: '150x150',
       },
     }];
@@ -169,9 +169,9 @@ describe('costingPayload', () => {
       overhang_enabled: false,
       inverted_enabled: false,
       overrides: {
-        ledger_profile: '150x50',
-        rafter_profile: '150x50',
-        front_beam_profile: '150x50',
+        ledger_profile: '100x50',
+        rafter_profile: '80x50',
+        front_beam_profile: '200x50',
         post_profile: '150x150',
       },
     });
@@ -179,8 +179,13 @@ describe('costingPayload', () => {
 
     const result = calculateSiteCostV1(payload);
     expect(result.pricing_policy?.resolved_classification).toBe('simple');
-    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(10);
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(21);
     expect(result.overhead.method).toBe('simple_progressive');
+    expect(result.pergolas[0]?.modules[0]?.derived).toMatchObject({
+      ledger_profile_used: '100x50',
+      front_beam_profile_used: '200x50',
+    });
+    expect(result.pergolas[0]?.modules[0]?.inputs_normalized.rafter_profile).toBe('80x50');
     expect(result.pergolas[0]?.modules[0]?.derived.rafter_spacing_mm).toBeLessThanOrEqual(725);
   });
 

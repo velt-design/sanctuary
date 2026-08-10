@@ -131,6 +131,11 @@ describe('calculator structure fields', () => {
       invertedEnabled: false,
       downpipeCount: '0',
       flashings: { rows: [] },
+      overrides: {
+        ledgerProfile: '150x50',
+        rafterProfile: '150x50',
+        frontBeamProfile: '150x50',
+      },
     });
     expect(selection.values().pricingClassification).toBe('simple');
 
@@ -140,16 +145,22 @@ describe('calculator structure fields', () => {
       overrides: {
         ledgerProfile: '100x50',
         rafterProfile: '80x50',
-        frontBeamProfile: 'SP Gutter',
+        frontBeamProfile: '200x50',
       },
     });
     const ids = open.fields.map((field) => field.id);
     expect(fieldById(open.fields, 'rafterSpacingMm')).toMatchObject({ value: '725', min: 1, step: 1 });
     expect(fieldById(open.fields, 'pergolaStyle').disabled).toBe(true);
     expect(fieldById(open.fields, 'roofPitchDeg')).toMatchObject({ value: '0', disabled: true });
-    expect(fieldById(open.fields, 'ledgerProfileOverride')).toMatchObject({ value: '150x50', disabled: true });
-    expect(fieldById(open.fields, 'rafterProfileOverride')).toMatchObject({ value: '150x50', disabled: true });
-    expect(fieldById(open.fields, 'frontBeamProfileOverride')).toMatchObject({ value: '150x50', disabled: true });
+    const expectedOpenProfiles = ['50x50', '80x50', '100x50', '150x50', '200x50', '250x50', '300x50'];
+    expect(fieldById(open.fields, 'ledgerProfileOverride')).toMatchObject({ value: '100x50' });
+    expect(fieldById(open.fields, 'rafterProfileOverride')).toMatchObject({ value: '80x50' });
+    expect(fieldById(open.fields, 'frontBeamProfileOverride')).toMatchObject({ value: '200x50' });
+    for (const fieldId of ['ledgerProfileOverride', 'rafterProfileOverride', 'frontBeamProfileOverride']) {
+      const field = fieldById(open.fields, fieldId);
+      expect(field.disabled).not.toBe(true);
+      expect(field.options?.map((option) => option.value)).toEqual(expectedOpenProfiles);
+    }
     expect(ids).not.toEqual(expect.arrayContaining(['flashings', 'overhangEnabled', 'invertedEnabled', 'separateGutterEnabled']));
   });
 

@@ -21,7 +21,7 @@ import {
   type StructureType,
 } from './types';
 import type { CostingConfigV1 } from './config';
-import { calculateOpenPergolaRafterLayout, isOpenPergolaRoof, OPEN_PERGOLA_PROFILE } from './openPergola';
+import { calculateOpenPergolaRafterLayout, isOpenPergolaRoof, OPEN_PERGOLA_DEFAULT_PROFILE } from './openPergola';
 import { buildRafterCutLengthExplanationV1 } from './rafterExplanation';
 import { calculateAcrylicRafterLayoutV1, RAFTER_SPACING_MM_MAX } from './rafterLayout';
 
@@ -449,11 +449,11 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const overrideRafterProfile = normalizeOverrideProfile(overrides.rafter_profile);
   const rafterProfileAuto = isOpenRoof
-    ? OPEN_PERGOLA_PROFILE
+    ? OPEN_PERGOLA_DEFAULT_PROFILE
     : inputs.roof_material === 'timber'
       ? TIMBER_COMMON_RAFTER_DEFAULT_PROFILE
       : rafterProfileAutoBase;
-  const rafterProfile = isOpenRoof ? OPEN_PERGOLA_PROFILE : overrideRafterProfile ?? rafterProfileAuto;
+  const rafterProfile = overrideRafterProfile ?? rafterProfileAuto;
 
   const overrideLedgerProfile = normalizeOverrideProfile(overrides.ledger_profile);
   const overridePostProfile = normalizeOverrideProfile(overrides.post_profile);
@@ -971,7 +971,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const frontBeamProfileUsed = structureType === 'pitched'
     ? isOpenRoof
-      ? OPEN_PERGOLA_PROFILE
+      ? overrideFrontBeamProfile ?? OPEN_PERGOLA_DEFAULT_PROFILE
       : overrideFrontBeamProfile ?? defaultFrontBeamProfile
     : null;
   const integratedGutterBeam = structureType === 'pitched' && isGutterBeamProfile(frontBeamProfileUsed);
@@ -1022,7 +1022,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const ledgerProfileDefault = roofPitchDegUsed <= 5 ? rafterProfile : oneSizeUpProfile(rafterProfile);
   const ledgerProfileAuto = hasLedger ? ledgerProfileDefault : rafterProfile;
-  const ledgerProfileUsed: string = isOpenRoof ? OPEN_PERGOLA_PROFILE : overrideLedgerProfile ?? ledgerProfileAuto;
+  const ledgerProfileUsed: string = overrideLedgerProfile ?? (isOpenRoof ? OPEN_PERGOLA_DEFAULT_PROFILE : ledgerProfileAuto);
   const ledgerLengthM = hasLedger ? lengthM : 0;
 
   const gableEndFrameCount =

@@ -1,6 +1,12 @@
 import type { FieldOption } from './FieldTile';
+import { OPEN_PERGOLA_50MM_PROFILE_VALUES } from './calculatorOpenPergola';
 
 const DEFAULT_OVERRIDE_OPTION: FieldOption = { label: 'Default (auto)', value: '' };
+
+export const OPEN_PERGOLA_PROFILE_OPTIONS: FieldOption[] = OPEN_PERGOLA_50MM_PROFILE_VALUES.map((profile) => ({
+  label: profile,
+  value: profile,
+}));
 
 export const RAFTER_PROFILE_OPTIONS: FieldOption[] = [
   DEFAULT_OVERRIDE_OPTION,

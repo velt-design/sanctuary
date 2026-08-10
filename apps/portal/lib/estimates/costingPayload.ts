@@ -290,10 +290,10 @@ export function buildPergolaModuleCostFields(
     inverted_enabled: isOpenPergola ? false : module.invertedEnabled,
     inverted_house_gutter: !isOpenPergola && module.invertedEnabled ? module.invertedHouseGutter : undefined,
     overrides: {
-      ledger_profile: isOpenPergola ? '150x50' : normalizeOverrideValue(overrides.ledgerProfile),
-      rafter_profile: isOpenPergola ? '150x50' : normalizeOverrideValue(overrides.rafterProfile),
+      ledger_profile: isOpenPergola ? normalizeOverrideValue(overrides.ledgerProfile) ?? '150x50' : normalizeOverrideValue(overrides.ledgerProfile),
+      rafter_profile: isOpenPergola ? normalizeOverrideValue(overrides.rafterProfile) ?? '150x50' : normalizeOverrideValue(overrides.rafterProfile),
       post_profile: normalizeOverrideValue(overrides.postProfile),
-      front_beam_profile: isOpenPergola ? '150x50' : normalizeOverrideValue(overrides.frontBeamProfile),
+      front_beam_profile: isOpenPergola ? normalizeOverrideValue(overrides.frontBeamProfile) ?? '150x50' : normalizeOverrideValue(overrides.frontBeamProfile),
       ridge_beam_profile: normalizeOverrideValue(overrides.ridgeBeamProfile),
       box_perimeter_beam_profile: normalizeOverrideValue(overrides.boxPerimeterBeamProfile),
       overhang_support_beam_profile: normalizeOverrideValue(overrides.overhangSupportBeamProfile),

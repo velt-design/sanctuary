@@ -86,6 +86,11 @@ describe('calculator input defaults and normalization', () => {
       downpipeCount: '0',
       overhangEnabled: false,
       flashings: { rows: [] },
+      overrides: {
+        ledgerProfile: '150x50',
+        rafterProfile: '150x50',
+        frontBeamProfile: '150x50',
+      },
     });
     expect(normalized.pricingClassification).toBe('simple');
   });

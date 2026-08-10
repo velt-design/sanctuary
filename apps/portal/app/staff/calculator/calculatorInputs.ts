@@ -29,6 +29,7 @@ import {
   supportsHouseFootprints,
 } from '@/lib/types/calculator';
 import { makeDefaultFlashings, normalizeFlashingsStateForUi } from './calculatorFlashings';
+import { applyOpenPergolaDefaults, DEFAULT_OPEN_PERGOLA_RAFTER_SPACING_MM } from './calculatorOpenPergola';
 
 export {
   formatFlashingLengthInput,
@@ -42,7 +43,6 @@ export {
 } from './calculatorFlashings';
 
 export const RAFTER_SPACING_MM_MAX = 642;
-export const DEFAULT_OPEN_PERGOLA_RAFTER_SPACING_MM = '500';
 
 const DEFAULT_MIXED_ACRYLIC_BAYS = 2;
 export type InfillPresetKey = 'front' | 'house' | 'side' | 'gable_triangles' | 'wall_panel' | 'custom';
@@ -109,29 +109,6 @@ export function computeHasOurGutter(module: CalculatorModuleInputs): boolean {
   const frontBeamOverride = normalizeOverrideValue(module.overrides?.frontBeamProfile);
   const frontBeamProfileUsed = frontBeamOverride ?? 'SP Gutter';
   return isGutterBeamProfile(frontBeamProfileUsed);
-}
-
-export function applyOpenPergolaDefaults(module: CalculatorModuleInputs): CalculatorModuleInputs {
-  if (module.roofMaterial !== 'none') return module;
-  return {
-    ...module,
-    pergolaStyle: 'pitched',
-    boxPerimeterEnabled: false,
-    internalRoofType: 'pitched',
-    fallDistanceMm: '0',
-    roofPitchDeg: '0',
-    rafterSpacingMm: module.rafterSpacingMm?.trim() || DEFAULT_OPEN_PERGOLA_RAFTER_SPACING_MM,
-    boxGutterHouseEdge: 'none',
-    boxGutterFarEdge: 'none',
-    downpipeCount: '0',
-    downpipeJoinCount: '0',
-    downpipeElbowCount: '0',
-    separateGutterEnabled: false,
-    overhangEnabled: false,
-    invertedEnabled: false,
-    invertedHouseGutter: false,
-    flashings: { rows: [] },
-  };
 }
 
 export function getRoofTypeForModule(module: CalculatorModuleInputs): RoofType {

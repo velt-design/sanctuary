@@ -62,13 +62,13 @@ describe('Version 2 commercial policy', () => {
     ).reason_codes).toContain('NON_PITCHED_ACRYLIC');
   });
 
-  it('uses Simple overhead with a 10% uplift for open pergolas', () => {
+  it('uses Simple overhead with the current 21% uplift for open pergolas', () => {
     const result = calculateSiteCostV1(
       site({ pergolas: [{ modules: [module({ roof_material: 'none' })] }] }),
     );
 
     expect(result.pricing_policy?.resolved_classification).toBe('simple');
-    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(10);
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(21);
     expect(result.overhead.method).toBe('simple_progressive');
   });
 

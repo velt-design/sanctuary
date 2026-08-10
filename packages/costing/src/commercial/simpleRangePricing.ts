@@ -8,8 +8,6 @@ import { isCostingManifestAtLeast } from '../manifestVersion';
 export type PricingClassificationV2 = 'simple' | 'bespoke';
 export type ApprovalRequirementV2 = 'neither' | 'engineering_required' | 'full_building_consent';
 
-export const OPEN_PERGOLA_SIMPLE_CUSTOMER_PRICE_UPLIFT_PCT = 10;
-
 export type SimpleRangeReasonCodeV2 =
   | 'MANUALLY_BESPOKE'
   | 'APPROVAL_REQUIRED'
@@ -69,12 +67,7 @@ function commercialPolicyForConfig(config: CostingConfigV1) {
   return commercialPolicyV2Json;
 }
 
-function simpleCustomerPriceUpliftForConfig(config: CostingConfigV1, inputs: SiteInputsV1): number {
-  const modules = inputs.pergolas.flatMap((pergola) => pergola.modules);
-  const isOpenPergola = modules.length === 1 && modules[0]?.roof_material === 'none';
-  if (isOpenPergola && isCommercialPolicyV4Enabled(config)) {
-    return OPEN_PERGOLA_SIMPLE_CUSTOMER_PRICE_UPLIFT_PCT;
-  }
+function simpleCustomerPriceUpliftForConfig(config: CostingConfigV1): number {
   if (isCommercialPolicyV4Enabled(config)) {
     return Number(config.commercialPolicy.simple_range.customer_price_uplift_pct);
   }
@@ -133,7 +126,7 @@ export function resolveSitePricingPolicyV2(
   const resolvedClassification = requested === 'simple' && simpleEligible ? 'simple' : 'bespoke';
   const customerPriceUpliftPct = config
     && resolvedClassification === 'simple'
-    ? simpleCustomerPriceUpliftForConfig(config, inputs)
+    ? simpleCustomerPriceUpliftForConfig(config)
     : 0;
   return {
     requested_classification: requested,

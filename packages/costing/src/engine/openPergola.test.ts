@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { calculateCostV1 } from './calculate';
 
 describe('open pergola costing', () => {
-  it('costs a flat 150x50 pitched frame without roofing or drainage', () => {
+  it('costs a flat pitched frame with editable 50mm-wide profiles and no roofing or drainage', () => {
     const result = calculateCostV1({
       length_m: 6,
       projection_m: 3,
@@ -28,7 +28,7 @@ describe('open pergola costing', () => {
       overrides: {
         ledger_profile: '100x50',
         rafter_profile: '80x50',
-        front_beam_profile: 'SP Gutter',
+        front_beam_profile: '200x50',
         post_profile: '150x150',
       },
     });
@@ -39,7 +39,7 @@ describe('open pergola costing', () => {
       roof_type: 'pitched',
       roof_material: 'none',
       roof_pitch_deg: 0,
-      rafter_profile: '150x50',
+      rafter_profile: '80x50',
       gutter_length_m: 0,
       downpipe_count: 0,
       downpipe_join_count: 0,
@@ -49,8 +49,8 @@ describe('open pergola costing', () => {
     expect(result.derived).toMatchObject({
       roof_pitch_deg_used: 0,
       rafter_count: 10,
-      ledger_profile_used: '150x50',
-      front_beam_profile_used: '150x50',
+      ledger_profile_used: '100x50',
+      front_beam_profile_used: '200x50',
       post_profile_used: '150x150',
       flashing_total_m: 0,
       our_gutter_length_m: 0,
@@ -61,4 +61,33 @@ describe('open pergola costing', () => {
     expect(result.install.actions.some((action) => action.id === 'frame.install_front_beam_m')).toBe(true);
     expect(result.materials.lines.some((line) => /acrylic|cedar|flashing|gutter|foam/i.test(`${line.id} ${line.label}`))).toBe(false);
   });
+
+  it.each(['50x50', '80x50', '100x50', '150x50', '200x50', '250x50', '300x50'])(
+    'honours the %s open-frame profile override',
+    (profile) => {
+      const result = calculateCostV1({
+        length_m: 3,
+        projection_m: 2,
+        post_cut_height_m: 2.4,
+        post_count: 2,
+        pergola_style: 'pitched',
+        roof_material: 'none',
+        extrusion_colour: 'Black',
+        house_connection_type: 'soffit',
+        post_connection_type: 'deck_bracket',
+        access: 'normal',
+        height: 'single_storey',
+        overrides: {
+          ledger_profile: profile,
+          rafter_profile: profile,
+          front_beam_profile: profile,
+        },
+      });
+
+      expect(result.inputs_normalized.rafter_profile).toBe(profile);
+      expect(result.derived.ledger_profile_used).toBe(profile);
+      expect(result.derived.front_beam_profile_used).toBe(profile);
+      expect(result.materials.lines.some((line) => line.profile === profile)).toBe(true);
+    },
+  );
 });

@@ -9,6 +9,7 @@ import {
   GABLE_END_FRAME_OPTIONS,
   GABLE_GUTTER_OPTIONS,
   LEDGER_PROFILE_OPTIONS,
+  OPEN_PERGOLA_PROFILE_OPTIONS,
   POST_PROFILE_OPTIONS,
   POWDERCOAT_STANDARD_COLOURS,
   RAFTER_PROFILE_OPTIONS,
@@ -16,9 +17,7 @@ import {
   STRUT_PROFILE_OPTIONS,
 } from './calculatorConfigurationFieldOptions';
 import {
-  applyOpenPergolaDefaults,
   computeBayCountsForModule,
-  DEFAULT_OPEN_PERGOLA_RAFTER_SPACING_MM,
   defaultMixedAcrylicBays,
   getRoofTypeForModule,
   isGutterBeamProfile,
@@ -26,6 +25,11 @@ import {
   normalizeOverrideValue,
   toNumber,
 } from './calculatorInputs';
+import {
+  applyOpenPergolaDefaults,
+  DEFAULT_OPEN_PERGOLA_PROFILE,
+  DEFAULT_OPEN_PERGOLA_RAFTER_SPACING_MM,
+} from './calculatorOpenPergola';
 
 function hasNonEmptyValue(value: string | undefined): value is string {
   return value !== undefined && value !== null && String(value).trim() !== '';
@@ -113,7 +117,9 @@ export function buildCalculatorStructureFields({
   const moduleOverrides = activeModule.overrides ?? {};
   const boxPerimeterBeamProfileUsedUi = normalizeOverrideValue(moduleOverrides.boxPerimeterBeamProfile) ?? '300x50';
   const frontBeamOverride = normalizeOverrideValue(moduleOverrides.frontBeamProfile);
-  const frontBeamProfileUsed = isOpenPergola ? '150x50' : frontBeamOverride ?? 'SP Gutter';
+  const frontBeamProfileUsed = isOpenPergola
+    ? frontBeamOverride ?? DEFAULT_OPEN_PERGOLA_PROFILE
+    : frontBeamOverride ?? 'SP Gutter';
   const integratedGutterBeamUi = isGutterBeamProfile(frontBeamProfileUsed);
   const showSeparateGutterToggle =
     !isOpenPergola && !activeModule.boxPerimeterEnabled && !activeModule.overhangEnabled && !activeModule.invertedEnabled && !integratedGutterBeamUi;
@@ -582,21 +588,19 @@ export function buildCalculatorStructureFields({
       id: 'ledgerProfileOverride',
       label: 'Ledger override',
       type: 'select',
-      value: isOpenPergola ? '150x50' : moduleOverrides.ledgerProfile ?? '',
+      value: isOpenPergola ? moduleOverrides.ledgerProfile ?? DEFAULT_OPEN_PERGOLA_PROFILE : moduleOverrides.ledgerProfile ?? '',
       onChange: (v) => setModuleOverride('ledgerProfile', String(v)),
-      options: LEDGER_PROFILE_OPTIONS,
-      helperText: isOpenPergola ? 'Fixed at 150x50 for an open pergola.' : 'Override ledger/stringer profile',
-      disabled: isOpenPergola,
+      options: isOpenPergola ? OPEN_PERGOLA_PROFILE_OPTIONS : LEDGER_PROFILE_OPTIONS,
+      helperText: isOpenPergola ? 'Defaults to 150x50; select any 50mm-wide profile.' : 'Override ledger/stringer profile',
     },
     {
       id: 'rafterProfileOverride',
       label: 'Rafter override',
       type: 'select',
-      value: isOpenPergola ? '150x50' : moduleOverrides.rafterProfile ?? '',
+      value: isOpenPergola ? moduleOverrides.rafterProfile ?? DEFAULT_OPEN_PERGOLA_PROFILE : moduleOverrides.rafterProfile ?? '',
       onChange: (v) => setModuleOverride('rafterProfile', String(v)),
-      options: RAFTER_PROFILE_OPTIONS,
-      helperText: isOpenPergola ? 'Fixed at 150x50 for an open pergola.' : 'Override auto rafter profile selection',
-      disabled: isOpenPergola,
+      options: isOpenPergola ? OPEN_PERGOLA_PROFILE_OPTIONS : RAFTER_PROFILE_OPTIONS,
+      helperText: isOpenPergola ? 'Defaults to 150x50; select any 50mm-wide profile.' : 'Override auto rafter profile selection',
     },
     {
       id: 'postProfileOverride',
@@ -613,15 +617,14 @@ export function buildCalculatorStructureFields({
             id: 'frontBeamProfileOverride',
             label: 'Front beam override',
             type: 'select',
-            value: isOpenPergola ? '150x50' : moduleOverrides.frontBeamProfile ?? '',
+            value: isOpenPergola ? moduleOverrides.frontBeamProfile ?? DEFAULT_OPEN_PERGOLA_PROFILE : moduleOverrides.frontBeamProfile ?? '',
             onChange: (v) => setModuleOverride('frontBeamProfile', String(v)),
-            options: FRONT_BEAM_PROFILE_OPTIONS,
+            options: isOpenPergola ? OPEN_PERGOLA_PROFILE_OPTIONS : FRONT_BEAM_PROFILE_OPTIONS,
             helperText: isOpenPergola
-              ? 'Fixed at 150x50 for an open pergola.'
+              ? 'Defaults to 150x50; select any 50mm-wide profile.'
               : integratedGutterBeamUi
                 ? 'SP gutter selected = integrated gutter beam'
                 : 'Select a non‑gutter beam to allow a separate gutter',
-            disabled: isOpenPergola,
           } satisfies FieldSchemaItem,
         ]
       : []),
