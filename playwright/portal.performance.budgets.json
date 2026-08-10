@@ -104,7 +104,7 @@
   ],
   "interactions": [
     {
-      "name": "project-tab-calculator",
+      "name": "project-tab-commercial-estimates",
       "route": "/staff/projects/[projectId]",
       "feedbackMsMax": 100,
       "usefulContentMsMax": 500,

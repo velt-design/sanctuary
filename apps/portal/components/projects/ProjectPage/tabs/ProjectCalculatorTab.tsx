@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import CalculatorGridClient from '@/app/staff/calculator/CalculatorGridClient';
@@ -11,6 +11,7 @@ import type {
 } from '@/app/staff/calculator/calculatorWorkspace';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { Button, Card, DataStatePanel, LoadingSkeleton, Select } from '@/components/ui/foundation';
+import EstimatesListView from './EstimatesListView';
 import styles from './ProjectCalculatorTab.module.css';
 
 function versionNumber(label: string): number {
@@ -43,9 +44,11 @@ function UnavailableDesignNavigation({ label }: { label: string }) {
 export default function ProjectCalculatorTab({
   host,
   projectId,
+  projectName = 'Project estimate',
 }: {
   host: string;
   projectId: string;
+  projectName?: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -66,6 +69,12 @@ export default function ProjectCalculatorTab({
     const query = new URLSearchParams(searchParams.toString());
     update(query);
     router.replace(`${pathname}?${query.toString()}`);
+  }, [pathname, router, searchParams]);
+
+  const pushParams = useCallback((update: (query: URLSearchParams) => void) => {
+    const query = new URLSearchParams(searchParams.toString());
+    update(query);
+    router.push(`${pathname}?${query.toString()}`);
   }, [pathname, router, searchParams]);
 
   const openDraft = useCallback((estimateId: string) => {
@@ -95,12 +104,41 @@ export default function ProjectCalculatorTab({
     });
   }, [replaceParams]);
 
-  useEffect(() => {
-    if (estimatesQuery.isPending || estimatesQuery.isError) return;
-    if (editEstimateId || fromEstimateId || newDesign) return;
-    if (activeDraft) openDraft(activeDraft.id);
-    else openBlankDesign();
-  }, [activeDraft, editEstimateId, estimatesQuery.isError, estimatesQuery.isPending, fromEstimateId, newDesign, openBlankDesign, openDraft]);
+  const openFromList = useCallback((estimateId: string) => {
+    pushParams((query) => {
+      query.set('tab', 'estimates');
+      query.set('estimateId', estimateId);
+      query.delete('fromEstimateId');
+      query.delete('newDesign');
+    });
+  }, [pushParams]);
+
+  const createFromList = useCallback(() => {
+    pushParams((query) => {
+      query.set('tab', 'estimates');
+      query.set('newDesign', '1');
+      query.delete('estimateId');
+      query.delete('fromEstimateId');
+    });
+  }, [pushParams]);
+
+  const duplicateFromList = useCallback((estimateId: string) => {
+    pushParams((query) => {
+      query.set('tab', 'estimates');
+      query.set('fromEstimateId', estimateId);
+      query.delete('estimateId');
+      query.delete('newDesign');
+    });
+  }, [pushParams]);
+
+  const backToEstimates = useCallback(() => {
+    replaceParams((query) => {
+      query.set('tab', 'estimates');
+      query.delete('estimateId');
+      query.delete('fromEstimateId');
+      query.delete('newDesign');
+    });
+  }, [replaceParams]);
 
   const handleSelection = useCallback((value: string) => {
     if (value === 'new') {
@@ -165,9 +203,44 @@ export default function ProjectCalculatorTab({
     onOpenProject,
   }), [designNavigation, host, newDesign, onEstimateSaved, onOpenProject, projectId, revisionSource, selectedEstimate]);
 
+  const hasCalculatorIntent = Boolean(editEstimateId || fromEstimateId || newDesign);
+  if (!hasCalculatorIntent) {
+    return (
+      <EstimatesListView
+        estimates={estimates}
+        loading={estimatesQuery.isPending}
+        error={estimatesQuery.isError
+          ? estimatesQuery.error instanceof Error
+            ? estimatesQuery.error.message
+            : 'Could not load estimates.'
+          : null}
+        onRetry={() => void estimatesQuery.refetch()}
+        onCreate={createFromList}
+        onOpen={openFromList}
+        onDuplicate={duplicateFromList}
+      />
+    );
+  }
+
+  const workspaceLabel = newDesign
+    ? 'New estimate'
+    : revisionSource
+      ? `New revision from ${revisionSource.versionLabel}`
+      : selectedEstimate?.versionLabel ?? 'Estimate workspace';
+  const listReturn = (
+    <div className={styles.workspaceBar} data-calculator-workspace-bar="true">
+      <Button type="button" variant="quiet" size="small" onClick={backToEstimates}>Back to estimates</Button>
+      <div className={styles.workspaceContext}>
+        <strong>{projectName}</strong>
+        <span>{workspaceLabel}</span>
+      </div>
+    </div>
+  );
+
   if (estimatesQuery.isPending) {
     return (
       <div className={styles.container} data-project-calculator="true" data-project-calculator-state="pending">
+        {listReturn}
         <UnavailableDesignNavigation label="Loading project designs" />
         <LoadingSkeleton rows={4} columns={4} label="Loading project designs" />
       </div>
@@ -177,6 +250,7 @@ export default function ProjectCalculatorTab({
   if (estimatesQuery.isError) {
     return (
       <div className={styles.container} data-project-calculator="true" data-project-calculator-state="error">
+        {listReturn}
         <UnavailableDesignNavigation label="Project designs unavailable" />
         <DataStatePanel
           state="error"
@@ -204,6 +278,7 @@ export default function ProjectCalculatorTab({
             ? 'ready'
             : 'opening'}
     >
+      {listReturn}
       {historicalSelection || invalidSelection || invalidRevision ? <ProjectDesignNavigation navigation={designNavigation} /> : null}
 
       {historicalSelection ? (

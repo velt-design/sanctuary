@@ -6,7 +6,6 @@ import { coerceProjectTab, type ProjectNavigationTabKey } from '@/lib/projects/p
 import layout from './ProjectPage.module.css';
 import {
   CommercialTab,
-  ProjectCalculatorTab,
   OverviewTab,
   JobPacksTab,
 } from './projectTabModules';
@@ -17,6 +16,7 @@ export default function ProjectMainTabs({
   snapshotContentReady = true,
   snapshotState = 'fresh',
   tab,
+  calculatorWorkspace = false,
   optimisticTab,
   onProjectAccessEnding,
 }: {
@@ -25,6 +25,7 @@ export default function ProjectMainTabs({
   snapshotContentReady?: boolean;
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
+  calculatorWorkspace?: boolean;
   optimisticTab?: ProjectNavigationTabKey | null;
   onProjectAccessEnding?: (status: number) => void;
 }) {
@@ -53,11 +54,14 @@ export default function ProjectMainTabs({
             onAccessEnding={onProjectAccessEnding}
           />
         ) : null}
-        {activeTab === 'estimates' ? (
-          <ProjectCalculatorTab host={host} projectId={snapshot.project.id} />
-        ) : null}
-        {activeTab === 'quotes' || activeTab === 'invoices' ? (
-          <CommercialTab host={host} projectId={snapshot.project.id} view={activeTab} />
+        {activeTab === 'estimates' || activeTab === 'quotes' || activeTab === 'invoices' ? (
+          <CommercialTab
+            host={host}
+            projectId={snapshot.project.id}
+            projectName={snapshot.project.name}
+            view={activeTab}
+            calculatorWorkspace={calculatorWorkspace}
+          />
         ) : null}
         {activeTab === 'job-packs' ? <JobPacksTab projectId={snapshot.project.id} /> : null}
       </div>

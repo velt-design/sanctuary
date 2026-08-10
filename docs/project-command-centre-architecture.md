@@ -38,12 +38,12 @@ When an older command-centre document conflicts with this section, use this sect
 The following existing decisions remain authoritative:
 
 - The default staff label is `Overview`; the internal URL/tab key remains `activity`.
-- The two-row project header, global search, tab registry, lazy workflow boundaries, optimistic tab navigation, and access-ending cache clearing remain. The header is sticky above the mobile breakpoint and returns to normal document flow on mobile.
+- The two-row project header, global search, tab registry, lazy workflow boundaries, optimistic tab navigation, and access-ending cache clearing remain for normal Project Detail navigation. Explicit estimate create/open/revision intent replaces that header and the Commercial subtabs with the compact calculator workspace bar until staff return to the Estimates list. The normal header is sticky above the mobile breakpoint and returns to normal document flow on mobile.
 - The current quote/design resolver remains strict: newest accepted quote, then sent, then draft, then eligible estimate; declined and manually superseded versions are never current.
 - A quote may use only its exact source estimate and stored GST-inclusive total. Missing source or price stays unavailable; no estimate fallback or repricing is allowed.
 - Project stage, project operational state, and project work are three different facts.
 - Every project uses Project Work after the portfolio migration. Existing projects enter V2 as though they had just entered their stored stage at the single rollout timestamp; no browser code derives that state.
-- Workbench, Calculator, Commercial, Job Packs, Schedule V2, and Running Jobs keep their existing source-of-truth and mutation boundaries.
+- Workbench, Commercial, Job Packs, Schedule V2, and Running Jobs keep their existing source-of-truth and mutation boundaries. Commercial presents Estimates first and mounts the existing Calculator owner only for an explicit estimate create/open/duplicate intent.
 
 ### 3. Observed Approved-Handover Baseline
 
@@ -132,8 +132,8 @@ A conditional region is omitted when it is irrelevant. When it is relevant but t
 
 - Customer/detail editing stays with the current project/contact detail mutation owner.
 - Design summary links to the exact selected estimate or Design Workbench only when that link is valid.
-- Calculator owns estimate editing and price calculation.
-- Commercial owns quotes, acceptance, invoices, PDFs, emails, and public-token effects.
+- Commercial owns the list-first Estimates, Quotes, and Invoices navigation. Calculator continues to own estimate editing and price calculation after an explicit estimate action.
+- Commercial's quote and invoice owners retain acceptance, PDFs, emails, and public-token effects.
 - Job Packs remains conditional.
 - Schedule Board/Gantt owns install planning and actual timing.
 - Running Jobs owns its current operational fields.
@@ -159,7 +159,7 @@ Desktop:
 +------------------------------------------------------------------------------+
 | EXISTING PROJECT HEADER - sticky above mobile, normal flow on mobile          |
 | Project + stage | search | owner | actions                                   |
-| Overview | Calculator | Commercial | Job Packs                               |
+| Overview | Commercial | Job Packs                                            |
 +------------------------------------------------------------------------------+
 | ORIENTATION: customer/email | site/region | reference | state/freshness       |
 +------------------------------------------------------------------------------+
@@ -459,7 +459,7 @@ Required owner and guardrail docs are:
 
 The route `apps/portal/app/staff/projects/[projectId]/page.tsx` keeps the internal default tab key `activity`. The staff-facing label is `Overview`; preserving the key keeps URLs, old links, lazy-loading boundaries, and tests compatible.
 
-`ProjectSnapshotPageClient.tsx` owns the project summary/full-snapshot transition and page-level unavailable state. `ProjectPageFrame.tsx` owns the two-row project header and full-width body; the header is sticky above the mobile breakpoint and returns to normal flow on mobile. `ProjectTabNavigation.tsx` owns the shared tab registry, grouped active state, URL normalization, and intent preloading; `ProjectMainTabs.tsx` owns active workflow rendering. `CommercialTab.tsx` owns Quotes/Invoices composition and quote Edit/Preview URL state without taking over either subview's side effects. The retired rail, panel-slot, drag, resize, collapsible-header, and narrow-layout Details-tab systems have no runtime compatibility path.
+`ProjectSnapshotPageClient.tsx` owns the project summary/full-snapshot transition, page-level unavailable state, and focused-calculator page density. `ProjectPageFrame.tsx` owns the normal two-row project header, focused-workspace header suppression, and full-width body; the normal header is sticky above the mobile breakpoint and returns to normal flow on mobile. `ProjectTabNavigation.tsx` owns the shared tab registry, grouped active state, URL normalization, and intent preloading; `ProjectMainTabs.tsx` owns active workflow rendering. `CommercialTab.tsx` owns Estimates/Quotes/Invoices composition, focused estimate-workspace subtab suppression, and quote Edit/Preview URL state without taking over specialist side effects. The retired rail, panel-slot, drag, resize, collapsible-header, and narrow-layout Details-tab systems have no runtime compatibility path.
 
 The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is allowed to render during the snapshot `summary` state because its commercial read is independent; snapshot-owned notes and tasks remain explicitly updating until the full snapshot is ready.
 

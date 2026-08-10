@@ -11,6 +11,7 @@ export default function ProjectPageShell({
   snapshotContentReady = true,
   snapshotState = 'fresh',
   tab,
+  calculatorWorkspace = false,
   optimisticTab,
   onProjectAccessEnding,
 }: {
@@ -19,6 +20,7 @@ export default function ProjectPageShell({
   snapshotContentReady?: boolean;
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
+  calculatorWorkspace?: boolean;
   optimisticTab?: ProjectNavigationTabKey | null;
   onProjectAccessEnding?: (status: number) => void;
 }) {
@@ -30,6 +32,7 @@ export default function ProjectPageShell({
         snapshotContentReady={snapshotContentReady}
         snapshotState={snapshotState}
         tab={tab}
+        calculatorWorkspace={calculatorWorkspace}
         optimisticTab={optimisticTab}
         onProjectAccessEnding={onProjectAccessEnding}
       />

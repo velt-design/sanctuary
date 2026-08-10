@@ -3,6 +3,20 @@ import { preloadProjectTabData } from './projectTabDataPreload';
 import { qk } from '@/lib/queries/keys';
 
 describe('project tab data preload', () => {
+  it('preloads estimate metadata for the Commercial landing view', async () => {
+    const prefetchQuery = vi.fn().mockResolvedValue(undefined);
+
+    await preloadProjectTabData('estimates', {
+      host: 'host',
+      projectId: 'proj_1',
+      queryClient: { prefetchQuery } as any,
+    });
+
+    expect(prefetchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: qk.estimates.metaByProject('host', 'proj_1') }),
+    );
+  });
+
   it('preloads both design metadata and quote versions for Quotes', async () => {
     const prefetchQuery = vi.fn().mockResolvedValue(undefined);
 

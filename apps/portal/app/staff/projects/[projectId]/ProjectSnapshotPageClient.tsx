@@ -38,11 +38,13 @@ export default function ProjectSnapshotPageClient({
   projectId,
   tab,
   estimateId,
+  calculatorWorkspace = false,
   debugExportEnabled,
 }: {
   projectId: string;
   tab: string;
   estimateId: string | null;
+  calculatorWorkspace?: boolean;
   debugExportEnabled: boolean;
 }) {
   const queryClient = useQueryClient();
@@ -226,8 +228,9 @@ export default function ProjectSnapshotPageClient({
   return (
     <PageLayout
       width="full"
-      className={styles.page}
+      className={`${styles.page} ${calculatorWorkspace ? styles.calculatorPageLayout : ""}`}
       data-ui-foundation-consumer="project-detail"
+      data-project-calculator-workspace={calculatorWorkspace ? "true" : undefined}
       data-project-background-ready={loadState === "fresh" ? "true" : undefined}
       data-project-id={projectId}
       data-project-shell-ready="true"
@@ -258,6 +261,7 @@ export default function ProjectSnapshotPageClient({
         snapshotContentReady={snapshotContentReady}
         snapshotState={loadState}
         tab={tab}
+        calculatorWorkspace={calculatorWorkspace}
         onProjectAccessEnding={handleProjectAccessEnding}
       />
     </PageLayout>

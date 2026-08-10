@@ -10,11 +10,15 @@ import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { Button, LoadingSkeleton, TabNavigation } from '@/components/ui/foundation';
 import styles from './CommercialTab.module.css';
 
-type CommercialView = 'quotes' | 'invoices';
+type CommercialView = 'estimates' | 'quotes' | 'invoices';
 type QuoteView = 'edit' | 'preview';
 
+const loadEstimatesTab = () => import('./ProjectCalculatorTab');
 const loadQuotesTab = () => import('./QuotesTab');
 const loadInvoicesTab = () => import('./InvoicesTab');
+const EstimatesTab = dynamic(loadEstimatesTab, {
+  loading: () => <LoadingSkeleton rows={4} columns={5} label="Loading estimates" />,
+});
 const QuotesTab = dynamic(loadQuotesTab, {
   loading: () => <LoadingSkeleton rows={4} columns={5} label="Loading quotes" />,
 });
@@ -25,11 +29,15 @@ const InvoicesTab = dynamic(loadInvoicesTab, {
 export default function CommercialTab({
   host,
   projectId,
+  projectName = 'Project estimate',
   view,
+  calculatorWorkspace = false,
 }: {
   host: string;
   projectId: string;
+  projectName?: string;
   view: CommercialView;
+  calculatorWorkspace?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -62,6 +70,9 @@ export default function CommercialTab({
       query.set('tab', nextView);
       query.delete('quoteId');
       query.delete('quotePreview');
+      query.delete('estimateId');
+      query.delete('fromEstimateId');
+      query.delete('newDesign');
       query.delete('mode');
     });
   };
@@ -76,6 +87,11 @@ export default function CommercialTab({
   };
 
   const preload = (nextView: CommercialView) => {
+    if (nextView === 'estimates') {
+      void loadEstimatesTab();
+      void queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(host, projectId));
+      return;
+    }
     if (nextView === 'quotes') {
       void loadQuotesTab();
       void Promise.all([
@@ -89,10 +105,15 @@ export default function CommercialTab({
   };
 
   return (
-    <div className={styles.container} data-project-commercial-view={activeView}>
-      <div className={styles.toolbar}>
+    <div
+      className={`${styles.container} ${calculatorWorkspace ? styles.containerCalculatorWorkspace : ''}`}
+      data-project-commercial-view={activeView}
+      data-commercial-calculator-workspace={calculatorWorkspace ? "true" : undefined}
+    >
+      {!calculatorWorkspace ? <div className={styles.toolbar}>
         <TabNavigation
           items={[
+            { key: 'estimates', label: 'Estimates' },
             { key: 'quotes', label: 'Quotes' },
             { key: 'invoices', label: 'Invoices' },
           ]}
@@ -123,9 +144,11 @@ export default function CommercialTab({
             })}
           </div>
         ) : null}
-      </div>
+      </div> : null}
 
-      {activeView === 'quotes' ? (
+      {activeView === 'estimates' ? (
+        <EstimatesTab host={host} projectId={projectId} projectName={projectName} />
+      ) : activeView === 'quotes' ? (
         <QuotesTab
           projectId={projectId}
           selectedQuoteId={selectedQuoteId}

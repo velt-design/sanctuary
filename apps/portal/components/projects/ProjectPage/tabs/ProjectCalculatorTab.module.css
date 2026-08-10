@@ -8,6 +8,39 @@
   gap: var(--ui-density-section-gap);
 }
 
+.workspaceBar {
+  display: flex;
+  align-items: center;
+  min-height: var(--ui-control-lg);
+  gap: var(--ui-space-3);
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-elevated);
+  padding-inline: var(--ui-space-2);
+}
+
+.workspaceContext {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--ui-space-2);
+  border-left: var(--ui-border-width) solid var(--ui-border);
+  padding-left: var(--ui-space-3);
+  font-size: var(--ui-font-size-small);
+}
+
+.workspaceContext strong {
+  max-width: min(34vw, 30rem);
+  overflow: hidden;
+  color: var(--ui-text-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspaceContext span {
+  color: var(--ui-text-muted);
+  white-space: nowrap;
+}
+
 .stateToolbar {
   display: flex;
   align-items: center;
@@ -62,6 +95,23 @@
 }
 
 @media (max-width: 620px) {
+  .workspaceBar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--ui-space-1);
+    padding-block: var(--ui-space-2);
+  }
+
+  .workspaceContext {
+    width: 100%;
+    border-left: 0;
+    padding-left: var(--ui-space-2);
+  }
+
+  .workspaceContext strong {
+    max-width: 60vw;
+  }
+
   .stateToolbar {
     align-items: stretch;
   }

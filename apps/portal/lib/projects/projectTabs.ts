@@ -1,8 +1,8 @@
 const PROJECT_ROUTE_TABS = [
   { key: 'activity', label: 'Overview', navigationKey: 'activity' },
-  { key: 'estimates', label: 'Calculator', navigationKey: 'estimates' },
-  { key: 'quotes', label: 'Commercial', navigationKey: 'quotes' },
-  { key: 'invoices', label: 'Commercial', navigationKey: 'quotes' },
+  { key: 'estimates', label: 'Commercial', navigationKey: 'estimates' },
+  { key: 'quotes', label: 'Commercial', navigationKey: 'estimates' },
+  { key: 'invoices', label: 'Commercial', navigationKey: 'estimates' },
   { key: 'job-packs', label: 'Job Packs', navigationKey: 'job-packs' },
 ] as const;
 

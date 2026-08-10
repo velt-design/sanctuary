@@ -422,22 +422,24 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
   await reopen.click();
   await expect(page.getByRole('navigation', { name: 'Project sections' })).toBeVisible({ timeout: 60_000 });
 
-  const calculatorTab = page.getByRole('tab', { name: 'Calculator', exact: true });
-  await measureProjectTab(
-    page,
-    'project-tab-calculator',
-    calculatorTab,
-    async () => {
-      await expect(page.locator('[data-project-tab-body="estimates"]')).toBeVisible();
-      await expect(page.locator('[data-project-calculator], [data-project-tab-loading="estimates"]').first()).toBeVisible();
-    },
-  );
-
   const commercialTab = page.getByRole('tab', { name: 'Commercial', exact: true });
   await measureProjectTab(
     page,
-    'project-tab-commercial-quotes',
+    'project-tab-commercial-estimates',
     commercialTab,
+    async () => {
+      await expect(page.locator('[data-project-tab-body="estimates"]')).toBeVisible();
+      await expect(
+        page.locator('[data-estimates-view="list"], [data-project-tab-loading="estimates"]').first(),
+      ).toBeVisible();
+    },
+  );
+
+  const quotesTab = page.getByRole('tab', { name: 'Quotes', exact: true });
+  await measureProjectTab(
+    page,
+    'project-tab-commercial-quotes',
+    quotesTab,
     async () => {
       await expect(page.locator('[data-project-tab-body="quotes"]')).toBeVisible();
       await expect(

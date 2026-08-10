@@ -8,12 +8,13 @@ vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
 }));
 
 vi.mock('./ProjectSnapshotPageClient', () => ({
-  default: (props: { projectId: string; tab: string; estimateId: string | null; debugExportEnabled: boolean }) => (
+  default: (props: { projectId: string; tab: string; estimateId: string | null; calculatorWorkspace: boolean; debugExportEnabled: boolean }) => (
     <div
       data-testid="project-page"
       data-project-id={props.projectId}
       data-tab={props.tab}
       data-estimate-id={props.estimateId ?? ''}
+      data-calculator-workspace={String(props.calculatorWorkspace)}
       data-debug-enabled={String(props.debugExportEnabled)}
     />
   ),
@@ -41,6 +42,17 @@ describe('ProjectDetailPage', () => {
     expect(markup).toContain('data-project-id="proj_1"');
     expect(markup).toContain('data-tab="quotes"');
     expect(markup).toContain('data-estimate-id="est_1"');
+    expect(markup).toContain('data-calculator-workspace="false"');
+  });
+
+  it('selects the focused calculator workspace only for explicit Estimates intent', async () => {
+    const ui = (await ProjectDetailPage({
+      params: Promise.resolve({ projectId: 'proj_1' }),
+      searchParams: Promise.resolve({ tab: 'estimates', fromEstimateId: 'est_1' }),
+    })) as ReactElement;
+    const markup = renderToStaticMarkup(ui);
+
+    expect(markup).toContain('data-calculator-workspace="true"');
   });
 
   it('coerces removed files tabs back to activity', async () => {

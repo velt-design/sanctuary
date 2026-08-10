@@ -36,10 +36,11 @@ vi.mock("./ProjectTabNavigation", () => ({
 }));
 
 vi.mock("./ProjectPageShell", () => ({
-  default: ({ optimisticTab }: any) => (
+  default: ({ optimisticTab, calculatorWorkspace }: any) => (
     <section
       data-testid="mock-project-shell"
       data-optimistic-tab={optimisticTab ?? ""}
+      data-calculator-workspace={String(Boolean(calculatorWorkspace))}
     >
       Shell
     </section>
@@ -170,6 +171,20 @@ describe("ProjectPageFrame", () => {
         .querySelector('[data-testid="mock-project-shell"]')
         ?.getAttribute("data-optimistic-tab"),
     ).toBe("job-packs");
+    rendered.unmount();
+  });
+
+  it("replaces the project masthead with the focused calculator workspace", () => {
+    const rendered = renderIntoDocument(
+      <ProjectPageFrame snapshot={snapshot} host="host" tab="estimates" calculatorWorkspace />,
+    );
+
+    expect(rendered.container.querySelector('[data-project-calculator-workspace="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-project-masthead-slot="fixed"]')).toBeNull();
+    expect(
+      rendered.container.querySelector('[data-testid="mock-project-shell"]')?.getAttribute('data-calculator-workspace'),
+    ).toBe('true');
+    expect(rendered.container.textContent).not.toContain('Test project');
     rendered.unmount();
   });
 });

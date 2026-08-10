@@ -34,21 +34,36 @@ const v2Snapshot: ProjectPageSnapshot = {
 export default async function ProjectPageShellFixture({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; model?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    model?: string;
+    estimateId?: string;
+    fromEstimateId?: string;
+    newDesign?: string;
+  }>;
 }) {
   if (!arePortalQaFixturesEnabled()) notFound();
   const params = await searchParams;
   const snapshot = v2Snapshot;
   const tab = coerceProjectTab(params.tab, snapshot.project.hasJobPacks ?? false);
+  const calculatorWorkspace = tab === 'estimates'
+    && Boolean(params.estimateId?.trim() || params.fromEstimateId?.trim() || params.newDesign === '1');
 
   return (
     <main
-      className={styles.page}
+      className={`${styles.page} ${calculatorWorkspace ? styles.calculatorPageLayout : ''}`}
       data-portal-qa-fixture="project-page-shell"
       data-project-work-fixture-model={snapshot.workModel}
     >
       <FixtureLocalFirstBoundary>
-        <ProjectPageFrame snapshot={snapshot} host="fixture" snapshotContentReady snapshotState="fresh" tab={tab} />
+        <ProjectPageFrame
+          snapshot={snapshot}
+          host="fixture"
+          snapshotContentReady
+          snapshotState="fresh"
+          tab={tab}
+          calculatorWorkspace={calculatorWorkspace}
+        />
       </FixtureLocalFirstBoundary>
     </main>
   );

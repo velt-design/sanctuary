@@ -366,16 +366,13 @@ test("Projects Index and Project Detail prove the foundation on real workflows",
     page.locator('[data-project-active-tab="estimates"]:visible'),
   ).toHaveCount(1);
   await expect(
-    page.locator('[data-project-calculator="true"]:visible'),
-  ).toHaveAttribute(
-    "data-project-calculator-state",
-    /^(ready|locked|invalid|error)$/,
-  );
+    page.locator('[data-estimates-view="list"]:visible'),
+  ).toHaveCount(1);
   await expectNoDocumentOverflow(page);
   await expectNoLegacyRoundedSurfaces(
-    page.locator('[data-project-calculator="true"]:visible'),
+    page.locator('[data-estimates-view="list"]:visible'),
   );
-  await capture(page, "project-detail-calculator", "1440x1000");
+  await capture(page, "project-detail-estimates", "1440x1000");
 
   await openFresh(page, `${detailRoute!}?tab=quotes`);
   await expect(

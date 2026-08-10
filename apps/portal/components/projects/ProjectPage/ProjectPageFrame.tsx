@@ -16,6 +16,7 @@ export default function ProjectPageFrame({
   snapshotContentReady = true,
   snapshotState = "fresh",
   tab,
+  calculatorWorkspace = false,
   onProjectAccessEnding,
 }: {
   snapshot: ProjectPageSnapshot;
@@ -23,6 +24,7 @@ export default function ProjectPageFrame({
   snapshotContentReady?: boolean;
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
+  calculatorWorkspace?: boolean;
   onProjectAccessEnding?: (status: number) => void;
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -47,31 +49,34 @@ export default function ProjectPageFrame({
     const observer = new ResizeObserver(update);
     observer.observe(masthead);
     return () => observer.disconnect();
-  }, []);
+  }, [calculatorWorkspace]);
 
   return (
     <div
       ref={frameRef}
-      className={styles.pageFrame}
+      className={`${styles.pageFrame} ${calculatorWorkspace ? styles.pageFrameCalculatorWorkspace : ""}`}
       data-project-page-frame="true"
-      data-project-masthead-sticky="true"
+      data-project-masthead-sticky={calculatorWorkspace ? undefined : "true"}
+      data-project-calculator-workspace={calculatorWorkspace ? "true" : undefined}
     >
-      <div
-        ref={mastheadRef}
-        className={`${styles.pageFrameMastheadSlot} ${styles.pageFrameMastheadSlotSticky}`}
-        data-project-masthead-slot="fixed"
-        data-project-masthead-slot-sticky="true"
-      >
-        <ProjectHeader
-          project={snapshot.project}
-          workModel={snapshot.workModel}
-          host={host}
-          tab={tab}
-          ownerControlsPaused={snapshotState !== "fresh"}
-          optimisticTab={optimisticTab}
-          onTabSelect={setOptimisticTab}
-        />
-      </div>
+      {!calculatorWorkspace ? (
+        <div
+          ref={mastheadRef}
+          className={`${styles.pageFrameMastheadSlot} ${styles.pageFrameMastheadSlotSticky}`}
+          data-project-masthead-slot="fixed"
+          data-project-masthead-slot-sticky="true"
+        >
+          <ProjectHeader
+            project={snapshot.project}
+            workModel={snapshot.workModel}
+            host={host}
+            tab={tab}
+            ownerControlsPaused={snapshotState !== "fresh"}
+            optimisticTab={optimisticTab}
+            onTabSelect={setOptimisticTab}
+          />
+        </div>
+      ) : null}
 
       <div className={styles.pageFrameBody}>
         <ProjectPageShell
@@ -80,6 +85,7 @@ export default function ProjectPageFrame({
           snapshotContentReady={snapshotContentReady}
           snapshotState={snapshotState}
           tab={tab}
+          calculatorWorkspace={calculatorWorkspace}
           optimisticTab={optimisticTab}
           onProjectAccessEnding={onProjectAccessEnding}
         />

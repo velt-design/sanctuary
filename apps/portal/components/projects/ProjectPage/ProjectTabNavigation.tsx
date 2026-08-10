@@ -39,11 +39,18 @@ export default function ProjectTabNavigation({
   const selectedNavigationKey = tabs.find((item) => isProjectNavigationTabSelected(item.navigationKey, selectedTab))?.navigationKey
     ?? 'activity';
 
-  const replaceTab = useCallback((nextTab: ProjectTabKey) => {
+  const replaceTab = useCallback((nextTab: ProjectTabKey, resetNestedSelection = false) => {
     const query = new URLSearchParams(searchParams.toString());
     query.set('tab', nextTab);
     if (nextTab !== 'quotes') query.delete('quotePreview');
     if (nextTab !== 'job-packs') query.delete('sheet');
+    if (resetNestedSelection) {
+      query.delete('quoteId');
+      query.delete('quotePreview');
+      query.delete('estimateId');
+      query.delete('fromEstimateId');
+      query.delete('newDesign');
+    }
     query.delete('mode');
     router.replace(`${pathname}?${query.toString()}`);
   }, [pathname, router, searchParams]);
@@ -59,7 +66,7 @@ export default function ProjectTabNavigation({
 
   const selectTab = (tab: ProjectNavigationTabKey) => {
     onTabSelect?.(tab);
-    replaceTab(tab);
+    replaceTab(tab, true);
   };
 
   return (

@@ -937,7 +937,7 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
       tabRow.getByRole("navigation", { name: "Project sections" }),
     ).toBeVisible();
     await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Calculator" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Calculator" })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "Commercial" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Emails" })).toHaveCount(0);
     const orientation = page.locator('[data-project-orientation="true"]');
@@ -1081,9 +1081,13 @@ test("moves into Commercial while preserving unrelated project query parameters"
   );
   await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=activity&campaign=winter`);
   await page.getByRole("tab", { name: "Commercial" }).click();
-  await expect(page).toHaveURL(/tab=quotes/);
+  await expect(page).toHaveURL(/tab=estimates/);
   await expect(page).toHaveURL(/campaign=winter/);
   await expect(page.getByRole("tab", { name: "Commercial" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.getByRole("tab", { name: "Estimates" })).toHaveAttribute(
     "aria-selected",
     "true",
   );
@@ -1143,10 +1147,11 @@ test("shows historical project designs as locked Calculator revision sources", a
   await page.goto(
     `${PROJECT_SHELL_FIXTURE_PATH}?tab=estimates&estimateId=est_history`,
   );
-  await expect(page.getByRole("tab", { name: "Calculator" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
+  await expect(
+    page.locator('[data-project-page-frame][data-project-calculator-workspace="true"]'),
+  ).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Commercial" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Back to estimates" })).toBeVisible();
   await expect(
     page.locator('[data-calculator-locked-source="true"]'),
   ).toContainText("cannot be edited directly");

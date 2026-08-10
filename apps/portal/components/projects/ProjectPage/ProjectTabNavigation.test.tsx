@@ -37,13 +37,13 @@ describe('ProjectTabNavigation', () => {
     document.body.innerHTML = '';
   });
 
-  it('shows the four navigation owners with conditional Job Packs', () => {
+  it('shows the three navigation owners with conditional Job Packs', () => {
     const rendered = renderIntoDocument(
       <ProjectTabNavigation hasJobPacks host="host" initialTab="activity" projectId="proj_1" />,
     );
     const labels = Array.from(rendered.container.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent?.trim());
 
-    expect(labels).toEqual(['Overview', 'Calculator', 'Commercial', 'Job Packs']);
+    expect(labels).toEqual(['Overview', 'Commercial', 'Job Packs']);
     expect(rendered.container.querySelector('[aria-selected="true"]')?.textContent).toContain('Overview');
     rendered.unmount();
   });
@@ -85,9 +85,9 @@ describe('ProjectTabNavigation', () => {
       commercial?.click();
     });
 
-    expect(preloadMock).toHaveBeenCalledWith('quotes', expect.objectContaining({ host: 'host', projectId: 'proj_1' }));
-    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=quotes');
-    expect(onTabSelect).toHaveBeenCalledWith('quotes');
+    expect(preloadMock).toHaveBeenCalledWith('estimates', expect.objectContaining({ host: 'host', projectId: 'proj_1' }));
+    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates');
+    expect(onTabSelect).toHaveBeenCalledWith('estimates');
     rendered.unmount();
   });
 
@@ -98,6 +98,20 @@ describe('ProjectTabNavigation', () => {
     );
 
     expect(rendered.container.querySelector('[aria-selected="true"]')?.textContent).toContain('Commercial');
+    rendered.unmount();
+  });
+
+  it('returns to the Estimates list when Commercial is selected', () => {
+    mockSearchParams = 'tab=activity&estimateId=est_1&fromEstimateId=est_0&newDesign=1&campaign=winter';
+    const rendered = renderIntoDocument(
+      <ProjectTabNavigation hasJobPacks host="host" initialTab="activity" projectId="proj_1" />,
+    );
+    const commercial = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
+      .find((tab) => tab.textContent?.trim() === 'Commercial');
+
+    act(() => commercial?.click());
+
+    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&campaign=winter');
     rendered.unmount();
   });
 

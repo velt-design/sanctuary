@@ -29,6 +29,9 @@ export default async function ProjectDetailPage({
   const resolvedSearchParams = await searchParams;
   const tab = parseTab(resolvedSearchParams?.tab);
   const estimateId = parseSingleSearchParam(resolvedSearchParams?.estimateId);
+  const fromEstimateId = parseSingleSearchParam(resolvedSearchParams?.fromEstimateId);
+  const newDesign = parseSingleSearchParam(resolvedSearchParams?.newDesign) === '1';
+  const calculatorWorkspace = tab === 'estimates' && Boolean(estimateId || fromEstimateId || newDesign);
   if (!projectId.trim()) {
     return (
       <PageLayout width="full" data-ui-foundation-consumer="project-detail">
@@ -53,6 +56,7 @@ export default async function ProjectDetailPage({
       projectId={projectId}
       tab={tab}
       estimateId={estimateId}
+      calculatorWorkspace={calculatorWorkspace}
       debugExportEnabled={isPortalPageDebugExportEnabled()}
     />
   );

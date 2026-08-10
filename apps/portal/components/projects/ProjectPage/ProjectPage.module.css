@@ -4,6 +4,14 @@
   gap: var(--ui-density-section-gap);
 }
 
+.calculatorPageLayout {
+  padding: var(--ui-space-2);
+}
+
+.calculatorPageLayout.page {
+  gap: 0;
+}
+
 .pageFrame,
 .pageFrameBody,
 .fullWidthShell,
@@ -23,6 +31,13 @@
   align-content: start;
   gap: var(--ui-grid-gutter);
   min-height: 100%;
+}
+
+.pageFrameCalculatorWorkspace {
+  --project-page-masthead-height: var(--ui-control-lg) !important;
+  --project-page-sticky-masthead-height: 0px;
+
+  gap: 0;
 }
 
 .pageFrameMastheadSlot {

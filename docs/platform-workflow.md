@@ -33,7 +33,7 @@ Portal staff manage contacts and projects in `apps/portal`.
 - V2 projects use one operational state plus accountable work items. Pipeline stage remains journey position, not a task list; the shared server ranking overlays only bounded specialist actions where another domain owns the next step.
 - Active New and Contacted projects are server-assigned to Ellen. Stage changes remain manual: after entering Proposal, staff explicitly select the Proposal owner; before leaving Proposal, that owner hands over and assigns Dave for Confirmed and Delivery work.
 - The project page's staff-facing default is Overview, while the compatibility route key remains `activity`. Overview hosts status/details, current design and commercial truth, the Project Owner, one primary next action, project notes/activity, and the model-appropriate work/task surface.
-- Staff-facing project tabs are Overview, Calculator, Commercial, and conditional Job Packs. Their compatibility route keys remain `activity`, `estimates`, `quotes`, `invoices`, and `job-packs`.
+- Staff-facing project tabs are Overview, Commercial, and conditional Job Packs. Commercial opens to Estimates, followed by Quotes and Invoices. The compatibility route keys remain `activity`, `estimates`, `quotes`, `invoices`, and `job-packs`.
 - Canonical doc: `projects-contacts-estimates-calculator.md`.
 
 ## Estimate Flow
@@ -41,7 +41,7 @@ Portal staff manage contacts and projects in `apps/portal`.
 Staff create estimates from the Calculator, either standalone or embedded in a project.
 
 - Main calculator route: `/staff/calculator`.
-- Project Calculator surface: `/staff/projects/[projectId]?tab=estimates`; the route key remains for compatibility even though the visible label is Calculator.
+- Project Estimates list: `/staff/projects/[projectId]?tab=estimates`. Explicit `estimateId`, `fromEstimateId`, or `newDesign=1` intent opens the embedded Calculator from that list.
 - Estimate APIs live under `apps/portal/app/api/projects/[projectId]/estimates` and `apps/portal/app/api/estimates/[estimateId]`.
 - Estimate snapshots carry calculator inputs, derived costing output, and drawing state.
 - Sent, accepted, or declined quote versions lock the related estimate.
@@ -52,7 +52,7 @@ Staff create estimates from the Calculator, either standalone or embedded in a p
 Quotes are created from estimates and can be viewed publicly through tokenized routes.
 
 - Project Commercial surface: `/staff/projects/[projectId]?tab=quotes` or `?tab=invoices`.
-- `CommercialTab.tsx` owns Quotes/Invoices composition while `QuotesTab.tsx` and `InvoicesTab.tsx` retain their specialist workflow behavior.
+- `CommercialTab.tsx` owns Estimates/Quotes/Invoices composition while the estimate/Calculator, quote, and invoice specialists retain their workflow behavior.
 - Staff quote APIs live under `apps/portal/app/api/quotes` and `apps/portal/app/api/staff/v1/quotes`.
 - Public quote routes live under `apps/marketing/app/quote/[quoteId]`.
 - Invoice list/preview/send and reconciled job-level Paid/Open/Remaining reads live under portal staff APIs. Whole-invoice creation/status changes plus payment, adjustment, allocation and reversal controls are admin-only. Public marketing invoice routes remain token scoped.

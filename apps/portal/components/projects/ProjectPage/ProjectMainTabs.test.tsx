@@ -15,9 +15,15 @@ vi.mock('./projectTabModules', () => ({
   OverviewTab: ({ snapshotContentReady }: { snapshotContentReady: boolean }) => (
     <div data-testid="overview-tab" data-snapshot-ready={String(snapshotContentReady)} />
   ),
-  CommercialTab: ({ view }: { view: string }) => <div data-testid="commercial-tab" data-view={view} />,
+  CommercialTab: ({ view, projectName, calculatorWorkspace }: { view: string; projectName: string; calculatorWorkspace: boolean }) => (
+    <div
+      data-testid="commercial-tab"
+      data-view={view}
+      data-project-name={projectName}
+      data-calculator-workspace={String(Boolean(calculatorWorkspace))}
+    />
+  ),
   JobPacksTab: () => <div data-testid="job-packs-tab" />,
-  ProjectCalculatorTab: () => <div data-testid="calculator-tab" />,
 }));
 
 const snapshot = {
@@ -38,10 +44,10 @@ describe('ProjectMainTabs', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders the requested tab at full width without a nested tab bar or details tab', () => {
+  it('renders Estimates through the Commercial owner at full width', () => {
     const rendered = renderIntoDocument(<ProjectMainTabs host="host" snapshot={snapshot} tab="estimates" />);
 
-    expect(rendered.container.querySelector('[data-testid="calculator-tab"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="commercial-tab"]')?.getAttribute('data-view')).toBe('estimates');
     expect(rendered.container.querySelector('[role="tablist"]')).toBeNull();
     expect(rendered.container.textContent).not.toContain('Details');
     expect(rendered.container.querySelector('[data-project-tab-body="estimates"]')).not.toBeNull();
@@ -49,10 +55,14 @@ describe('ProjectMainTabs', () => {
     rendered.unmount();
   });
 
-  it('renders the project Calculator without the legacy inline configurator', () => {
-    const rendered = renderIntoDocument(<ProjectMainTabs host="host" snapshot={snapshot} tab="estimates" />);
-    expect(rendered.container.querySelector('[data-testid="calculator-tab"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-configurator-location]')).toBeNull();
+  it('passes focused workspace context to the estimate owner', () => {
+    const rendered = renderIntoDocument(
+      <ProjectMainTabs host="host" snapshot={snapshot} tab="estimates" calculatorWorkspace />,
+    );
+    const commercial = rendered.container.querySelector('[data-testid="commercial-tab"]');
+
+    expect(commercial?.getAttribute('data-project-name')).toBe('Deck Build');
+    expect(commercial?.getAttribute('data-calculator-workspace')).toBe('true');
     rendered.unmount();
   });
 

@@ -9,7 +9,7 @@ export type ProjectTabModuleKey = ProjectTabKey;
 
 const loaders = {
   activity: () => import('./tabs/OverviewTab'),
-  estimates: () => import('./tabs/ProjectCalculatorTab'),
+  estimates: () => import('./tabs/CommercialTab'),
   quotes: () => import('./tabs/CommercialTab'),
   invoices: () => import('./tabs/CommercialTab'),
   'job-packs': () => import('./tabs/JobPacksTab'),
@@ -26,7 +26,6 @@ function loadingState(label: string, key: ProjectTabModuleKey) {
 }
 
 export const OverviewTab = dynamic(loaders.activity, { loading: loadingState('overview', 'activity') });
-export const ProjectCalculatorTab = dynamic(loaders.estimates, { loading: loadingState('calculator', 'estimates') });
 export const CommercialTab = dynamic(loaders.quotes, { loading: loadingState('commercial', 'quotes') });
 export const JobPacksTab = dynamic(loaders['job-packs'], { loading: loadingState('job packs', 'job-packs') });
 

@@ -4,12 +4,13 @@ import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import ProjectCalculatorTab from './ProjectCalculatorTab';
 
 const replace = vi.fn();
+const push = vi.fn();
 const useQueryMock = vi.fn();
 let search = 'tab=estimates';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/staff/projects/proj_1',
-  useRouter: () => ({ replace }),
+  useRouter: () => ({ replace, push }),
   useSearchParams: () => new URLSearchParams(search),
 }));
 
@@ -63,6 +64,7 @@ const historical = { ...activeDraft, id: 'est_history', versionLabel: 'V1', isAc
 describe('ProjectCalculatorTab', () => {
   beforeEach(() => {
     replace.mockReset();
+    push.mockReset();
     search = 'tab=estimates';
     useQueryMock.mockReturnValue({ data: [activeDraft, historical], isPending: false, isError: false });
   });
@@ -71,19 +73,32 @@ describe('ProjectCalculatorTab', () => {
     document.body.innerHTML = '';
   });
 
-  it('opens the active editable draft when the project route has no design intent', () => {
+  it('shows the versioned estimate list when the route has no design intent', () => {
     const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
-    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&estimateId=est_draft');
+    expect(rendered.container.querySelector('[data-estimates-view="list"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Estimates');
+    expect(rendered.container.textContent).toContain('V2');
+    expect(rendered.container.textContent).toContain('V1');
+    expect(replace).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+
+    const edit = Array.from(rendered.container.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Edit in calculator');
+    act(() => edit?.click());
+    expect(push).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&estimateId=est_draft');
     rendered.unmount();
   });
 
   it('moves active design navigation into the embedded Calculator command surface', () => {
     search = 'tab=estimates&estimateId=est_draft';
-    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" projectName="Deck Build" />);
     expect(rendered.container.querySelector('[data-project-calculator-state-navigation]')).toBeNull();
     expect(rendered.container.querySelector<HTMLSelectElement>('[aria-label="Design version"]')?.value).toBe('draft:est_draft');
     expect(rendered.container.querySelector('[data-testid="design-state"]')?.textContent).toBe('Current draft · V2');
     expect(rendered.container.textContent).not.toContain('Project Calculator');
+    expect(rendered.container.textContent).toContain('Back to estimates');
+    expect(rendered.container.querySelector('[data-calculator-workspace-bar="true"]')?.textContent).toContain('Deck Build');
+    expect(rendered.container.querySelector('[data-calculator-workspace-bar="true"]')?.textContent).toContain('V2');
     rendered.unmount();
   });
 
@@ -96,7 +111,9 @@ describe('ProjectCalculatorTab', () => {
     expect(calculator?.getAttribute('data-from-estimate-id')).toBe('est_history');
     expect(calculator?.getAttribute('data-create-new')).toBe('true');
 
-    act(() => rendered.container.querySelector<HTMLButtonElement>('button')?.click());
+    const saveFixture = Array.from(rendered.container.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Save fixture');
+    act(() => saveFixture?.click());
     expect(replace).toHaveBeenCalledWith(
       '/staff/projects/proj_1?tab=estimates&campaign=winter&estimateId=est_saved',
     );
@@ -118,10 +135,36 @@ describe('ProjectCalculatorTab', () => {
     rendered.unmount();
   });
 
-  it('starts with a deliberate blank design when the project has no designs', () => {
+  it('offers a deliberate blank estimate when the project has no designs', () => {
     useQueryMock.mockReturnValue({ data: [], isPending: false, isError: false });
     const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
-    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&newDesign=1');
+    expect(rendered.container.textContent).toContain('No estimates yet');
+    const create = Array.from(rendered.container.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Create estimate');
+    act(() => create?.click());
+    expect(push).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&newDesign=1');
+    rendered.unmount();
+  });
+
+  it('opens Duplicate as a new calculator revision without mutating its source', () => {
+    search = 'tab=estimates&campaign=winter';
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    const duplicate = Array.from(rendered.container.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Duplicate');
+    act(() => duplicate?.click());
+    expect(push).toHaveBeenCalledWith(
+      '/staff/projects/proj_1?tab=estimates&campaign=winter&fromEstimateId=est_draft',
+    );
+    rendered.unmount();
+  });
+
+  it('returns an explicit calculator deep link to the Estimates list', () => {
+    search = 'tab=estimates&estimateId=est_draft&campaign=winter';
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    const back = Array.from(rendered.container.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Back to estimates');
+    act(() => back?.click());
+    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&campaign=winter');
     rendered.unmount();
   });
 

@@ -824,7 +824,12 @@ test('real project route embeds the seeded Calculator without a project picker',
     await expect(
       page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
     ).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByRole('tab', { name: 'Calculator' })).toHaveAttribute('aria-selected', 'true');
+    await expect(
+      page.locator('[data-project-page-frame][data-project-calculator-workspace="true"]'),
+    ).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Commercial' })).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: 'Estimates' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Back to estimates' })).toBeVisible();
     await expect(page.locator('[data-calculator-project-picker="fixed"]')).toHaveCount(0);
     await expect(page.locator('[data-calculator-project-picker="enabled"]')).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`tab=estimates.*estimateId=${encodeURIComponent(estimateId)}`));

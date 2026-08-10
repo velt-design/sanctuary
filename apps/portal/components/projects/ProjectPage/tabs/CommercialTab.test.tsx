@@ -10,7 +10,7 @@ let search = 'tab=quotes';
 
 vi.mock('next/dynamic', () => ({
   default: () => {
-    const kind = dynamicState.callCount++ === 0 ? 'quotes' : 'invoices';
+    const kind = ['estimates', 'quotes', 'invoices'][dynamicState.callCount++] ?? 'unknown';
     return (props: any) => <div data-testid={`${kind}-subview`} data-project-id={props.projectId} />;
   },
 }));
@@ -36,11 +36,14 @@ describe('CommercialTab', () => {
     document.body.innerHTML = '';
   });
 
-  it('keeps Quotes and Invoices as lazy subviews behind one owner', () => {
-    const rendered = renderIntoDocument(<CommercialTab host="host" projectId="proj_1" view="quotes" />);
-    expect(rendered.container.querySelector('[data-testid="quotes-subview"]')).not.toBeNull();
+  it('keeps Estimates, Quotes and Invoices as lazy subviews behind one owner', () => {
+    search = 'tab=estimates';
+    const rendered = renderIntoDocument(<CommercialTab host="host" projectId="proj_1" view="estimates" />);
+    expect(rendered.container.querySelector('[data-testid="estimates-subview"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="quotes-subview"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="invoices-subview"]')).toBeNull();
     expect(Array.from(rendered.container.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent)).toEqual([
+      'Estimates',
       'Quotes',
       'Invoices',
     ]);
@@ -51,7 +54,32 @@ describe('CommercialTab', () => {
     search = 'tab=invoices';
     const rendered = renderIntoDocument(<CommercialTab host="host" projectId="proj_1" view="invoices" />);
     expect(rendered.container.querySelector('[data-testid="invoices-subview"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="estimates-subview"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="quotes-subview"]')).toBeNull();
+    rendered.unmount();
+  });
+
+  it('switches to the Estimates list and clears nested record selections', () => {
+    search = 'tab=quotes&quoteId=q_1&quotePreview=1&estimateId=est_1&fromEstimateId=est_0&newDesign=1&campaign=winter';
+    const rendered = renderIntoDocument(<CommercialTab host="host" projectId="proj_1" view="quotes" />);
+    const estimates = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
+      .find((button) => button.textContent === 'Estimates');
+
+    act(() => estimates?.click());
+
+    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&campaign=winter');
+    expect(rendered.container.querySelector('[data-testid="estimates-subview"]')).not.toBeNull();
+    rendered.unmount();
+  });
+
+  it('removes Commercial navigation chrome in focused calculator mode', () => {
+    search = 'tab=estimates&estimateId=est_1';
+    const rendered = renderIntoDocument(
+      <CommercialTab host="host" projectId="proj_1" projectName="Deck Build" view="estimates" calculatorWorkspace />,
+    );
+
+    expect(rendered.container.querySelector('[data-commercial-calculator-workspace="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[role="tablist"]')).toBeNull();
     rendered.unmount();
   });
 
