@@ -80,11 +80,14 @@ describe('calculator site fields', () => {
     expect(fieldById(fields, 'downpipeElbowCount').options).toHaveLength(21);
   });
 
-  it('forces bespoke pricing and hides drainage controls for an open pergola', () => {
-    const { fields } = buildFields({ roofMaterial: 'none' }, true);
+  it('keeps Simple selectable and hides drainage controls for an open pergola', () => {
+    const { fields, setJobField } = buildFields({ roofMaterial: 'none' }, true);
     const ids = fields.map((field) => field.id);
+    const pricingField = fieldById(fields, 'pricingClassification');
 
-    expect(fieldById(fields, 'pricingClassification')).toMatchObject({ value: 'bespoke', disabled: true });
+    expect(pricingField.disabled).not.toBe(true);
+    pricingField.onChange?.('simple');
+    expect(setJobField).toHaveBeenCalledWith('pricingClassification', 'simple');
     expect(ids).not.toEqual(expect.arrayContaining(['downpipeCount', 'downpipeJoinCount', 'downpipeElbowCount']));
   });
 

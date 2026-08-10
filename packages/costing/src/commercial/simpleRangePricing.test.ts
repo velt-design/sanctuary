@@ -51,6 +51,37 @@ describe('Version 2 commercial policy', () => {
     expect(evaluateSimpleRangeEligibilityV2(site({ pergolas: [{ modules: [module()] }, { modules: [module()] }] })).reason_codes).toContain('MULTIPLE_PERGOLAS');
   });
 
+  it('allows an open pergola through the same Simple eligibility rules', () => {
+    const openSite = site({ pergolas: [{ modules: [module({ roof_material: 'none' })] }] });
+    expect(evaluateSimpleRangeEligibilityV2(openSite)).toEqual({ eligible: true, reason_codes: [] });
+
+    const hardAccess = site({ pergolas: [{ modules: [module({ roof_material: 'none', access: 'hard' })] }] });
+    expect(evaluateSimpleRangeEligibilityV2(hardAccess).reason_codes).toContain('NON_STANDARD_ACCESS');
+    expect(evaluateSimpleRangeEligibilityV2(
+      site({ pergolas: [{ modules: [module({ roof_material: 'timber' })] }] }),
+    ).reason_codes).toContain('NON_PITCHED_ACRYLIC');
+  });
+
+  it('uses Simple overhead with a 10% uplift for open pergolas', () => {
+    const result = calculateSiteCostV1(
+      site({ pergolas: [{ modules: [module({ roof_material: 'none' })] }] }),
+    );
+
+    expect(result.pricing_policy?.resolved_classification).toBe('simple');
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(10);
+    expect(result.overhead.method).toBe('simple_progressive');
+  });
+
+  it('keeps approvals Bespoke for open pergolas', () => {
+    const result = calculateSiteCostV1(site({
+      approval_requirement: 'engineering_required',
+      pergolas: [{ modules: [module({ roof_material: 'none' })] }],
+    }));
+
+    expect(result.pricing_policy?.resolved_classification).toBe('bespoke');
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(0);
+  });
+
   it('starts Simple overhead at $750 and scales continuously after one productive crew-day', () => {
     const config = loadCostingConfigV1();
     expect(buildSimpleRangeOverheadV2(config, 8).total_ex_gst).toBe(750);

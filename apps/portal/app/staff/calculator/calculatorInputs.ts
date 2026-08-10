@@ -700,11 +700,7 @@ export function normalizeCalculatorInputsForUi(value: CalculatorInputs): Calcula
     ...value,
     schemaVersion: 'v2',
     jobType: value.jobType === 'commercial' ? 'commercial' : 'residential',
-    pricingClassification: modules.some((module) => module.roofMaterial === 'none')
-      ? 'bespoke'
-      : value.pricingClassification === 'simple'
-        ? 'simple'
-        : 'bespoke',
+    pricingClassification: value.pricingClassification === 'simple' ? 'simple' : 'bespoke',
     approvalRequirement:
       value.approvalRequirement === 'engineering_required' || value.approvalRequirement === 'full_building_consent'
         ? value.approvalRequirement

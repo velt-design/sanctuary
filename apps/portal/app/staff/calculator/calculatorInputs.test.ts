@@ -87,7 +87,7 @@ describe('calculator input defaults and normalization', () => {
       overhangEnabled: false,
       flashings: { rows: [] },
     });
-    expect(normalized.pricingClassification).toBe('bespoke');
+    expect(normalized.pricingClassification).toBe('simple');
   });
 
   it('defaults new infills to explicit material, direction and No support answers while preserving saved choices', () => {

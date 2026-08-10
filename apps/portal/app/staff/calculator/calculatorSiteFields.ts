@@ -61,25 +61,20 @@ export function buildCalculatorSiteFields({
   const activeAttachmentSide = normalizeAttachmentSide(activeModule.attachmentSide);
   const activeHouseFootprintPreset = normalizeHouseFootprintPreset(activeModule.houseFootprintPreset);
   const activeHouseFootprintParams = normalizeHouseFootprintParams(activeModule.houseFootprintParams);
-  const hasOpenPergola = values.modules.some((module) => module.roofMaterial === 'none');
-
   return [
     {
       id: 'pricingClassification',
       label: 'Pricing classification',
       type: 'select',
-      value: hasOpenPergola ? 'bespoke' : values.pricingClassification ?? 'bespoke',
+      value: values.pricingClassification ?? 'bespoke',
       onChange: (v) => setJobField('pricingClassification', v as CalculatorInputs['pricingClassification']),
       options: [
         { label: 'Simple', value: 'simple' },
         { label: 'Bespoke', value: 'bespoke' },
       ],
-      helperText: hasOpenPergola
-        ? 'Open pergolas always use bespoke pricing.'
-        : values.pricingClassification === 'simple'
-          ? 'Uses the published Simple range policy while the design remains eligible.'
-          : 'Uses the full bespoke overhead policy.',
-      disabled: hasOpenPergola,
+      helperText: values.pricingClassification === 'simple'
+        ? 'Uses the published Simple range policy while the design remains eligible.'
+        : 'Uses the full bespoke overhead policy.',
     },
     {
       id: 'approvalRequirement',

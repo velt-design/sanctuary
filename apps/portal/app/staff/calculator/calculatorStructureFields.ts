@@ -203,7 +203,6 @@ export function buildCalculatorStructureFields({
           return {
             ...prev,
             modules,
-            ...(next === 'none' ? { pricingClassification: 'bespoke' as const } : null),
           };
         });
       },

@@ -392,9 +392,7 @@ export function buildSiteInputsFromCalculatorInputs(inputs: CalculatorInputs): S
   return {
     pergolas: groupedPergolas.filter((pergola) => pergola.modules.length > 0),
     job_type: inputs.jobType,
-    pricing_classification: inputs.modules.some((module) => module.roofMaterial === 'none')
-      ? 'bespoke'
-      : inputs.pricingClassification ?? 'bespoke',
+    pricing_classification: inputs.pricingClassification ?? 'bespoke',
     approval_requirement: inputs.approvalRequirement ?? 'neither',
     travel_ex_gst: Number.isFinite(toNumber(inputs.travelExGst)) ? toNumber(inputs.travelExGst) : 0,
     extras_allowance_ex_gst: Number.isFinite(toNumber(inputs.extrasAllowanceExGst)) ? toNumber(inputs.extrasAllowanceExGst) : 0,

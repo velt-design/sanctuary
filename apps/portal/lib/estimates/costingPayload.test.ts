@@ -121,13 +121,17 @@ describe('costingPayload', () => {
     expect(moduleInputs?.attachment_length_mm).toBeNull();
   });
 
-  it('canonicalizes an open pergola and always requests bespoke pricing', () => {
+  it('canonicalizes an eligible open pergola and requests Simple pricing', () => {
     const inputs = makeInputs();
     inputs.pricingClassification = 'simple';
     inputs.modules = [{
       ...inputs.modules[0]!,
       pergolaStyle: 'gable',
       roofMaterial: 'none',
+      extrusionColour: 'Black',
+      postConnectionType: 'deck_bracket',
+      lengthM: '6',
+      projectionM: '3',
       rafterSpacingMm: '725',
       roofPitchDeg: '25',
       boxPerimeterEnabled: true,
@@ -151,7 +155,7 @@ describe('costingPayload', () => {
     const payload = buildSiteInputsFromCalculatorInputs(inputs);
     const module = payload.pergolas[0]?.modules[0];
 
-    expect(payload.pricing_classification).toBe('bespoke');
+    expect(payload.pricing_classification).toBe('simple');
     expect(module).toMatchObject({
       pergola_style: 'pitched',
       roof_material: 'none',
@@ -174,7 +178,9 @@ describe('costingPayload', () => {
     expect(module?.flashings).toBeUndefined();
 
     const result = calculateSiteCostV1(payload);
-    expect(result.pricing_policy?.resolved_classification).toBe('bespoke');
+    expect(result.pricing_policy?.resolved_classification).toBe('simple');
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(10);
+    expect(result.overhead.method).toBe('simple_progressive');
     expect(result.pergolas[0]?.modules[0]?.derived.rafter_spacing_mm).toBeLessThanOrEqual(725);
   });
 

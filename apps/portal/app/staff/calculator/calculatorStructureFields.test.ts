@@ -15,12 +15,16 @@ function fieldById(fields: readonly CalculatorConfigurationField[], id: string):
   return field;
 }
 
-function buildFields(moduleOverrides: Partial<CalculatorModuleInputs> = {}) {
+function buildFields(
+  moduleOverrides: Partial<CalculatorModuleInputs> = {},
+  inputOverrides: Partial<CalculatorInputs> = {},
+) {
   const activeModule = makeDefaultModule('pergola-1');
   Object.assign(activeModule, moduleOverrides);
 
   let values: CalculatorInputs = {
     ...makeDefaultCalculatorInputs(),
+    ...inputOverrides,
     modules: [activeModule],
   };
   const setValues: Dispatch<SetStateAction<CalculatorInputs>> = (action) => {
@@ -114,7 +118,7 @@ describe('calculator structure fields', () => {
       invertedEnabled: true,
       downpipeCount: '2',
       flashings: { rows: [{ id: 'extra-1', kind: 'extra', band: '301-400', lengthM: '2' }] },
-    });
+    }, { pricingClassification: 'simple' });
     fieldById(selection.fields, 'roofMaterial').onChange?.('none');
 
     expect(selection.values().modules[0]).toMatchObject({
@@ -128,6 +132,7 @@ describe('calculator structure fields', () => {
       downpipeCount: '0',
       flashings: { rows: [] },
     });
+    expect(selection.values().pricingClassification).toBe('simple');
 
     const open = buildFields({
       roofMaterial: 'none',
