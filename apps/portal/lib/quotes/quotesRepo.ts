@@ -136,6 +136,15 @@ export async function deleteDraftQuoteVersion(quoteVersionId: string): Promise<v
   await apiJson(`/api/quotes/${encodeURIComponent(quoteVersionId)}`, { method: 'DELETE' });
 }
 
+export async function markQuoteVersionSuperseded(quoteVersionId: string): Promise<QuoteVersionDetail> {
+  const response = await apiJson<{ quoteVersion: QuoteVersionDetail }>(
+    `/api/admin/quotes/${encodeURIComponent(quoteVersionId)}/supersede`,
+    { method: 'POST' },
+  );
+  if (!response.quoteVersion) throw new Error('Failed to mark quote superseded');
+  return response.quoteVersion;
+}
+
 export async function sendQuote(
   quoteVersionId: string,
   payload: QuoteSendPayload,

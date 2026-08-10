@@ -187,7 +187,14 @@ async function loadQuoteForMode(quoteVersionId: string, mode: QuoteEmailMode): P
   const detail = await getQuoteVersionDetail(quoteVersionId);
   if (!detail) throw new Error('Quote not found');
   if (mode === 'send' && detail.status !== 'DRAFT') throw new Error('Quote is locked');
-  if (mode === 'resend' && detail.status === 'DRAFT') throw new Error('Quote must be sent first');
+  if (
+    mode === 'resend' &&
+    detail.status !== 'SENT' &&
+    detail.status !== 'ACCEPTED' &&
+    detail.status !== 'DECLINED'
+  ) {
+    throw new Error(detail.status === 'SUPERSEDED' ? 'Superseded quotes cannot be resent' : 'Quote must be sent first');
+  }
   return detail;
 }
 
@@ -209,7 +216,9 @@ async function loadPreviewBaseForMode(
 
   const status = typeof (res.data as any)?.status === 'string' ? String((res.data as any).status).toUpperCase() : 'DRAFT';
   if (mode === 'send' && status !== 'DRAFT') throw new Error('Quote is locked');
-  if (mode === 'resend' && status === 'DRAFT') throw new Error('Quote must be sent first');
+  if (mode === 'resend' && status !== 'SENT' && status !== 'ACCEPTED' && status !== 'DECLINED') {
+    throw new Error(status === 'SUPERSEDED' ? 'Superseded quotes cannot be resent' : 'Quote must be sent first');
+  }
 
   const cachedBase = isQuotePreviewBasePayload((res.data as any)?.preview_base_payload)
     ? ((res.data as any).preview_base_payload as QuotePreviewBasePayload)

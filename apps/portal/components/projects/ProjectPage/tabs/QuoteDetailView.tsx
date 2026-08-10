@@ -54,6 +54,9 @@ type QuoteDetailViewProps = {
   saveDraft: () => void;
   canDeleteQuote: boolean;
   openDeleteConfirm: () => void;
+  canSupersedeQuote: boolean;
+  supersedeQuote: () => void;
+  supersedeBusy: boolean;
   openJobPackHref: string | null;
   canGenerateJobPack: boolean;
   generateJobPack: () => void;
@@ -135,6 +138,9 @@ export default function QuoteDetailView({
   saveDraft: handleSaveDraft,
   canDeleteQuote,
   openDeleteConfirm,
+  canSupersedeQuote,
+  supersedeQuote,
+  supersedeBusy,
   openJobPackHref,
   canGenerateJobPack,
   generateJobPack: handleGenerateJobPack,
@@ -394,6 +400,17 @@ export default function QuoteDetailView({
                       >
                         Open invoices
                       </Link>
+                    ) : null}
+                    {canSupersedeQuote &&
+                    (detail.status === "SENT" || detail.status === "ACCEPTED") ? (
+                      <button
+                        type="button"
+                        className={styles.moreActionsItem}
+                        onClick={supersedeQuote}
+                        disabled={supersedeBusy}
+                      >
+                        {supersedeBusy ? "Marking superseded..." : "Mark superseded"}
+                      </button>
                     ) : null}
                     {openJobPackHref ? (
                       <Link

@@ -7,7 +7,7 @@ import type {
 } from './types';
 
 const QUOTE_PRECEDENCE: Array<{
-  status: Exclude<CommandCentreQuoteStatus, 'DECLINED'>;
+  status: Exclude<CommandCentreQuoteStatus, 'DECLINED' | 'SUPERSEDED'>;
   source: Exclude<CommandCentreSource, 'estimate' | 'none'>;
 }> = [
   { status: 'ACCEPTED', source: 'accepted_quote' },
@@ -44,7 +44,7 @@ function findNewerEstimate(
 /**
  * Selects the command-centre design source without applying presentation or
  * pricing fallbacks. Quote-backed selections may use only their exact source
- * estimate; declined quotes are historical outcomes and are never current.
+ * estimate; declined and superseded quotes are historical outcomes and are never current.
  */
 export function resolveCommandCentreSelection(args: {
   estimates: CommandCentreEstimateCandidate[];

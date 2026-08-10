@@ -75,6 +75,7 @@ export const QUOTE_STATUS_PRESENTATION = {
   SENT: { label: 'Sent', detail: 'With client', tone: 'warning' },
   ACCEPTED: { label: 'Accepted', detail: 'Approved', tone: 'success' },
   DECLINED: { label: 'Declined', detail: 'Rejected', tone: 'error' },
+  SUPERSEDED: { label: 'Superseded', detail: 'Historical', tone: 'neutral' },
 } satisfies Record<QuoteStatus, StatusPresentation>;
 
 export const ESTIMATE_STATUS_PRESENTATION = {

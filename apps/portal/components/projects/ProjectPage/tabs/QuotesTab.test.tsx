@@ -14,6 +14,7 @@ const invalidateQueries = vi.fn();
 const getQueryData = vi.fn();
 const fetchQuery = vi.fn();
 const removeQueries = vi.fn();
+const markQuoteVersionSuperseded = vi.hoisted(() => vi.fn());
 let portalIsAdmin = true;
 
 vi.mock('next/navigation', () => ({
@@ -93,6 +94,7 @@ vi.mock('@/lib/quotes/quotesRepo', () => ({
   getPreparedQuoteDelivery: vi.fn(),
   markQuoteAccepted: vi.fn(),
   markQuoteDeclined: vi.fn(),
+  markQuoteVersionSuperseded,
   previewQuotePdf: vi.fn(),
   previewDraftQuoteRefreshFromEstimate: vi.fn(),
   quotePdfUrl: (id: string) => `/api/quotes/${id}/pdf`,
@@ -189,9 +191,15 @@ describe('QuotesTab draft ownership UI', () => {
     getQueryData.mockReset();
     fetchQuery.mockReset();
     removeQueries.mockReset();
+    markQuoteVersionSuperseded.mockReset();
     useQueryMock.mockReset();
     activeQuoteDetail = quoteDetail;
     portalIsAdmin = true;
+    markQuoteVersionSuperseded.mockResolvedValue({
+      ...quoteDetail,
+      status: 'SUPERSEDED',
+      isCurrentDraft: false,
+    });
 
     const responses = [
       {
@@ -271,6 +279,38 @@ describe('QuotesTab draft ownership UI', () => {
     const staffMore = Array.from(staff.container.querySelectorAll('button')).find((button) => button.textContent?.includes('More actions'));
     act(() => staffMore?.click());
     expect(staff.container.textContent).not.toContain('Delete draft');
+    staff.unmount();
+  });
+
+  it('lets an admin immediately mark a sent or accepted quote superseded', async () => {
+    activeQuoteDetail = {
+      ...quoteDetail,
+      status: 'ACCEPTED',
+      isCurrentDraft: false,
+      sentAt: '2026-07-28T00:00:00.000Z',
+    };
+    const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
+    const more = Array.from(rendered.container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('More actions'),
+    );
+    act(() => more?.click());
+    const supersede = Array.from(rendered.container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Mark superseded'),
+    );
+
+    expect(supersede).toBeDefined();
+    await act(async () => supersede?.click());
+    expect(markQuoteVersionSuperseded).toHaveBeenCalledWith('qv_1');
+    expect(toastSuccess).toHaveBeenCalledWith('Q-1001 v1 marked superseded.');
+    rendered.unmount();
+
+    portalIsAdmin = false;
+    const staff = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
+    const staffMore = Array.from(staff.container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('More actions'),
+    );
+    act(() => staffMore?.click());
+    expect(staff.container.textContent).not.toContain('Mark superseded');
     staff.unmount();
   });
 

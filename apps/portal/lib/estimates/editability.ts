@@ -30,7 +30,7 @@ type LockCandidate = {
   quoteVersionNumber: number | null;
 };
 
-const LOCKING_STATUSES = new Set(['SENT', 'ACCEPTED', 'DECLINED']);
+const LOCKING_STATUSES = new Set(['SENT', 'ACCEPTED', 'DECLINED', 'SUPERSEDED']);
 
 function asTrimmedString(value: unknown): string | null {
   if (typeof value !== 'string') return null;

@@ -201,7 +201,9 @@ export function protectedQuoteVersionRefreshReason(input: {
   hasJobPackGeneration?: boolean;
 }): 'status_locked' | 'invoice_backed' | 'job_pack_backed' | null {
   const status = typeof input.status === 'string' ? input.status.toUpperCase() : '';
-  if (status === 'SENT' || status === 'ACCEPTED' || status === 'DECLINED') return 'status_locked';
+  if (status === 'SENT' || status === 'ACCEPTED' || status === 'DECLINED' || status === 'SUPERSEDED') {
+    return 'status_locked';
+  }
   if (input.hasDepositInvoice) return 'invoice_backed';
   if (input.hasJobPackGeneration) return 'job_pack_backed';
   return null;

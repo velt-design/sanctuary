@@ -111,4 +111,14 @@ describe('resolveCommandCentreSelection', () => {
     expect(result.quote?.id).toBe(newer.id);
     expect(result.acceptedQuoteCount).toBe(2);
   });
+
+  it('keeps superseded quotes as history rather than a current commercial source', () => {
+    const source = estimate('estimate-1', '2026-07-01T00:00:00.000Z');
+    const superseded = quote('quote-old', 'SUPERSEDED', source.sourceId, '2026-07-02T00:00:00.000Z');
+    const result = resolveCommandCentreSelection({ estimates: [source], quoteVersions: [superseded] });
+
+    expect(result.source).toBe('estimate');
+    expect(result.quote).toBeNull();
+    expect(result.acceptedQuoteCount).toBe(0);
+  });
 });

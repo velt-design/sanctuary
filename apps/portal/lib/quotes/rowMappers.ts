@@ -8,7 +8,9 @@ import type { QuoteLineItem, QuoteSendLog, QuoteStatus, QuoteVersion } from './t
 
 function toStatus(raw: unknown): QuoteStatus {
   const value = typeof raw === 'string' ? raw.toUpperCase() : '';
-  if (value === 'SENT' || value === 'ACCEPTED' || value === 'DECLINED') return value as QuoteStatus;
+  if (value === 'SENT' || value === 'ACCEPTED' || value === 'DECLINED' || value === 'SUPERSEDED') {
+    return value as QuoteStatus;
+  }
   return 'DRAFT';
 }
 
@@ -61,6 +63,8 @@ export function mapQuoteVersionRow(
     createdBy: typeof row?.created_by === 'string' ? row.created_by : null,
     sentAt: typeof row?.sent_at === 'string' ? row.sent_at : null,
     sentBy: typeof row?.sent_by === 'string' ? row.sent_by : null,
+    supersededAt: typeof row?.superseded_at === 'string' ? row.superseded_at : null,
+    supersededBy: typeof row?.superseded_by === 'string' ? row.superseded_by : null,
     expiresAt: typeof row?.expires_at === 'string' ? row.expires_at : null,
     reference: typeof row?.reference === 'string' ? row.reference : null,
     customerName:

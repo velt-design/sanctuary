@@ -56,18 +56,23 @@ describe('computeEstimateEditability', () => {
     expect(result.lockedByQuoteVersionNumber).toBe(16);
   });
 
-  it('locks when a related quote version is accepted or declined', () => {
+  it('locks when a related quote version is accepted, declined, or superseded', () => {
     const accepted = computeEstimateEditability({
       quoteVersions: [{ id: 'qv-1', status: 'ACCEPTED', created_at: '2026-03-17T00:00:00Z', version_number: 4 }],
     });
     const declined = computeEstimateEditability({
       quoteVersions: [{ id: 'qv-2', status: 'DECLINED', created_at: '2026-03-18T00:00:00Z', version_number: 5 }],
     });
+    const superseded = computeEstimateEditability({
+      quoteVersions: [{ id: 'qv-3', status: 'SUPERSEDED', created_at: '2026-03-19T00:00:00Z', version_number: 6 }],
+    });
 
     expect(accepted.isLocked).toBe(true);
     expect(accepted.lockedByQuoteVersionNumber).toBe(4);
     expect(declined.isLocked).toBe(true);
     expect(declined.lockedByQuoteVersionNumber).toBe(5);
+    expect(superseded.isLocked).toBe(true);
+    expect(superseded.lockedByQuoteVersionNumber).toBe(6);
   });
 
   it('locks from send logs even if quote status has not advanced yet', () => {

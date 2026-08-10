@@ -63,7 +63,13 @@ function estimateStatus(value: unknown): CommandCentreEstimateCandidate['status'
 
 function quoteStatus(value: unknown): CommandCentreQuoteStatus | null {
   const status = trimmedString(value)?.toUpperCase();
-  if (status === 'DRAFT' || status === 'SENT' || status === 'ACCEPTED' || status === 'DECLINED') {
+  if (
+    status === 'DRAFT' ||
+    status === 'SENT' ||
+    status === 'ACCEPTED' ||
+    status === 'DECLINED' ||
+    status === 'SUPERSEDED'
+  ) {
     return status;
   }
   return null;

@@ -15,6 +15,7 @@ import type { QuoteVersion } from "@/lib/quotes/types";
 import styles from "./QuotesTab.module.css";
 import QuoteModal from "./QuoteWorkflowModal";
 import type { QuoteDeleteTarget } from "./useQuoteDeletion";
+import type { QuoteSupersedeTarget } from "./useQuoteSuperseding";
 import {
   formatDateShort,
   formatMoneyFromCents,
@@ -38,6 +39,8 @@ type QuotesListViewProps = {
   createQuote: () => void;
   isAdmin: boolean;
   deleteQuote: (quote: QuoteDeleteTarget) => void;
+  supersedeQuote: (quote: QuoteSupersedeTarget) => void;
+  supersedePendingId: string | null;
 };
 
 export default function QuotesListView({
@@ -57,6 +60,8 @@ export default function QuotesListView({
   createQuote,
   isAdmin,
   deleteQuote,
+  supersedeQuote,
+  supersedePendingId,
 }: QuotesListViewProps) {
   return (
     <div
@@ -129,6 +134,8 @@ export default function QuotesListView({
                     quote.id,
                     buildQuoteEntityKey,
                   ).pendingCount > 0;
+                const canDelete = quote.status === "DRAFT" && quote.isCurrentDraft;
+                const canSupersede = quote.status === "SENT" || quote.status === "ACCEPTED";
                 return (
                   <tr
                     key={quote.id}
@@ -204,16 +211,20 @@ export default function QuotesListView({
                         onClick={(event) => event.stopPropagation()}
                         onKeyDown={(event) => event.stopPropagation()}
                       >
-                        {quote.status === "DRAFT" && quote.isCurrentDraft ? (
+                        {canDelete || canSupersede ? (
                           <OverflowMenu
                             label={`Actions for ${quote.quoteRef} version ${quote.versionNumber}`}
                             menuLabel={`${quote.quoteRef} v${quote.versionNumber}`}
-                            items={[{
-                              label: "Delete draft quote",
-                              destructive: true,
-                              onSelect: () => deleteQuote({ id: quote.id, quoteRef: quote.quoteRef, versionNumber: quote.versionNumber }),
-                              disabled: isLocalQuoteId(quote.id) || quoteSyncPending,
-                            }]}
+                            items={canDelete ? [{
+                                label: "Delete draft quote",
+                                destructive: true,
+                                onSelect: () => deleteQuote({ id: quote.id, quoteRef: quote.quoteRef, versionNumber: quote.versionNumber }),
+                                disabled: isLocalQuoteId(quote.id) || quoteSyncPending,
+                              }] : [{
+                                label: supersedePendingId === quote.id ? "Marking superseded..." : "Mark superseded",
+                                onSelect: () => supersedeQuote({ id: quote.id, quoteRef: quote.quoteRef, versionNumber: quote.versionNumber }),
+                                disabled: supersedePendingId !== null,
+                              }]}
                           />
                         ) : null}
                       </td>

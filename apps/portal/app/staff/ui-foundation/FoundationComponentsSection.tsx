@@ -34,7 +34,7 @@ import type { QuoteStatus } from '@/lib/quotes/types';
 import type { EstimateStatus } from '@/lib/estimates/types';
 import styles from './ui-foundation.module.css';
 
-const quoteStatuses: QuoteStatus[] = ['DRAFT', 'SENT', 'ACCEPTED', 'DECLINED'];
+const quoteStatuses: QuoteStatus[] = ['DRAFT', 'SENT', 'ACCEPTED', 'DECLINED', 'SUPERSEDED'];
 const estimateStatuses: EstimateStatus[] = ['draft', 'archived'];
 
 const projects: Array<{

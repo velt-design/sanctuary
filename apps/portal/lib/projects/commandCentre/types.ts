@@ -1,6 +1,6 @@
 import type { ProjectWorkProjection } from '../workItems/types';
 
-export type CommandCentreQuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED';
+export type CommandCentreQuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'SUPERSEDED';
 
 export type CommandCentreSource = 'accepted_quote' | 'sent_quote' | 'draft_quote' | 'estimate' | 'none';
 

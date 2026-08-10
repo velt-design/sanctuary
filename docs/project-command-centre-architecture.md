@@ -39,7 +39,7 @@ The following existing decisions remain authoritative:
 
 - The default staff label is `Overview`; the internal URL/tab key remains `activity`.
 - The two-row project header, global search, tab registry, lazy workflow boundaries, optimistic tab navigation, and access-ending cache clearing remain. The header is sticky above the mobile breakpoint and returns to normal document flow on mobile.
-- The current quote/design resolver remains strict: newest accepted quote, then sent, then draft, then eligible estimate; declined is never current.
+- The current quote/design resolver remains strict: newest accepted quote, then sent, then draft, then eligible estimate; declined and manually superseded versions are never current.
 - A quote may use only its exact source estimate and stored GST-inclusive total. Missing source or price stays unavailable; no estimate fallback or repricing is allowed.
 - Project stage, project operational state, and project work are three different facts.
 - Every project uses Project Work after the portfolio migration. Existing projects enter V2 as though they had just entered their stored stage at the single rollout timestamp; no browser code derives that state.
@@ -601,7 +601,7 @@ The existing authenticated Project Detail journey already measures the active ta
 | V1 fact | Canonical Stage 1 source | Stage 1 behavior |
 | --- | --- | --- |
 | Project identity | Existing project summary/snapshot | Reuse header and customer context |
-| Current quote | `quote_versions` | Strict accepted > sent > draft |
+| Current quote | `quote_versions` | Strict accepted > sent > draft; declined/superseded remain history |
 | Quote source design | `source_estimate_version_id` | Exact match only |
 | Quote customer price | Raw `total_inc_gst_cents` | No fallback |
 | Estimate selection | `estimates` plus quote-derived lock state | Active eligible draft, then latest non-archived |
@@ -631,7 +631,7 @@ The payload contains:
 - Selected estimate identity/version/saved/lock/source/costing facts.
 - Selected quote identity/reference/version/status/timestamps/delivery facts.
 - Optional newer unrelated estimate.
-- Optional declined historical outcome when no quote is current.
+- Optional declined historical outcome when no quote is current; superseded versions remain Commercial history only.
 - Explicit integrity/source/price warnings.
 - Existing specialist-tab links.
 - One normalized Project Owner summary and permission.
@@ -784,7 +784,7 @@ Stage 1 verification completed on 2026-07-20:
 - Use a separate server-owned command-centre read model and query key.
 - Use auth-bound staff access only.
 - Apply accepted > sent > draft and exact source only.
-- Never select declined quotes.
+- Never select declined or superseded quotes.
 - Never fall back from quote source or quote price to an estimate.
 - Read stored estimate summary and freshness; do not run costing.
 - Keep existing project identity, notes, lazy boundaries, and compatible URL keys while consolidating details and stage correction into Overview; remove retired project-task presentation.

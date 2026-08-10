@@ -197,7 +197,7 @@ Before enabling `workbench_solved`, evidence must include automated gate coverag
 Estimate editability is derived from related quote versions and send logs.
 
 - Draft estimates are editable unless a locking quote state exists.
-- Quote statuses `SENT`, `ACCEPTED`, and `DECLINED` lock the source estimate.
+- Quote statuses `SENT`, `ACCEPTED`, `DECLINED`, and `SUPERSEDED` lock the source estimate; manually retiring a customer-facing quote never makes its source estimate editable again.
 - Sent quote send logs also participate in lock detection.
 - Locked estimate updates return `ESTIMATE_LOCKED` with editability details.
 - Internal notes can be patched separately, but estimate snapshot updates must respect editability.
@@ -240,7 +240,7 @@ The strict selection owner is `apps/portal/lib/projects/commandCentre/resolve.ts
 5. Else the newest non-archived draft estimate.
 6. Else no current design.
 
-`DECLINED` quotes are historical outcomes and never become current. A decline may be shown as context only after resolution has fallen through to an estimate.
+`DECLINED` and manually `SUPERSEDED` quotes are historical outcomes and never become current. A decline may be shown as context only after resolution has fallen through to an estimate; superseded versions remain available through Commercial history rather than becoming an Overview source.
 
 ### Source-of-truth rules for Overview
 
@@ -338,7 +338,7 @@ Manual or browser checks should cover:
 - Load a project detail page and confirm `ProjectPageSnapshot` pipeline, task, activity, and email sections match current data.
 - Create an estimate from calculator/project estimate flow and confirm version label, summary, snapshot, and active draft state.
 - Update an unlocked estimate and confirm local-first pending/success state clears.
-- Try to update a sent/accepted/declined quote-backed estimate and confirm `ESTIMATE_LOCKED` conflict behavior.
+- Try to update a sent/accepted/declined/superseded quote-backed estimate and confirm `ESTIMATE_LOCKED` conflict behavior.
 - Create a quote from an estimate and confirm the handoff uses quote domain routes.
 - Edit a valid calculator estimate and confirm Save always shows stored versus Live costing, Preserve remains primary, and opening the dialog creates no quote.
 - Save locally and confirm the outcome state follows the estimate entity queue; error/conflict blocks quote handoff while queued, syncing, synced, and offline states retain the local-first path.

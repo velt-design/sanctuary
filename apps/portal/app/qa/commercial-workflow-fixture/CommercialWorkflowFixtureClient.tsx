@@ -222,6 +222,9 @@ export default function CommercialWorkflowFixtureClient({
       saveDraft={() => undefined}
       canDeleteQuote={false}
       openDeleteConfirm={() => undefined}
+      canSupersedeQuote={false}
+      supersedeQuote={() => undefined}
+      supersedeBusy={false}
       openJobPackHref={null}
       canGenerateJobPack={false}
       generateJobPack={() => undefined}

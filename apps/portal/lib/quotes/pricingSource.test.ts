@@ -186,6 +186,7 @@ describe('quote pricing source metadata', () => {
     expect(protectedQuoteVersionRefreshReason({ status: 'SENT' })).toBe('status_locked');
     expect(protectedQuoteVersionRefreshReason({ status: 'ACCEPTED' })).toBe('status_locked');
     expect(protectedQuoteVersionRefreshReason({ status: 'DECLINED' })).toBe('status_locked');
+    expect(protectedQuoteVersionRefreshReason({ status: 'SUPERSEDED' })).toBe('status_locked');
     expect(protectedQuoteVersionRefreshReason({ status: 'DRAFT', hasDepositInvoice: true })).toBe('invoice_backed');
     expect(protectedQuoteVersionRefreshReason({ status: 'DRAFT', hasJobPackGeneration: true })).toBe('job_pack_backed');
     expect(protectedQuoteVersionRefreshReason({ status: 'DRAFT' })).toBeNull();

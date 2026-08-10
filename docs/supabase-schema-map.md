@@ -150,6 +150,7 @@ Primary write path:
 - Public token routes and generated artifacts should continue to read quote-version totals and line items, not raw commercial payloads.
 - `quote_versions.pricing_source` and `quote_versions.pricing_source_metadata` store compact provenance only. Raw `estimates.commercial_design_input` must not be copied into quote versions, public token routes, invoices, PDFs, emails, or job-pack outputs.
 - `quote_versions.payment_terms` is the frozen ordered schedule of fixed-dollar and percentage-of-remainder terms, including resolved cents. `deposit_invoices.payment_term_*` binds each non-void invoice to exactly one term; `paid_at`, `paid_by`, `payment_reference`, `payment_method`, and `payment_note` own whole-invoice payment evidence. There is no partial-payment amount field.
+- `quote_versions.status = 'SUPERSEDED'` is a manual admin retirement state for a previously `SENT` or `ACCEPTED` version. `superseded_at` and `superseded_by` record that transition; accepted, delivery, PDF, invoice, and payment evidence remain unchanged.
 
 Primary read path:
 
@@ -160,7 +161,7 @@ Primary read path:
 
 Access rule:
 
-- Staff writes are server-owned and should not bypass quote/invoice domain helpers. Invoice creation and paid-state changes are admin-only through `apps/portal/app/api/admin/projects/[projectId]/invoices` and `apps/portal/app/api/admin/invoices/[invoiceId]/paid`.
+- Staff writes are server-owned and should not bypass quote/invoice domain helpers. Invoice creation and paid-state changes are admin-only through `apps/portal/app/api/admin/projects/[projectId]/invoices` and `apps/portal/app/api/admin/invoices/[invoiceId]/paid`; manual quote superseding is admin-only through `apps/portal/app/api/admin/quotes/[quoteVersionId]/supersede`.
 - Commercial transaction and intent RPCs are revoked from `anon` and `authenticated`; narrow server-owned service-role adapters call them only after staff auth or public-token validation.
 - `private.commercial_email_intents` freezes request identity and checkpoints. It is not a browser table, public read model, or substitute for quote/invoice send logs.
 - Public quote links use `quote_versions.accept_token_hash`; public invoice links use `deposit_invoices.portal_token_hash`.
@@ -169,7 +170,7 @@ Access rule:
 
 Migration source:
 
-- Quote and invoice migrations under `supabase/migrations/20260209_*`, `20260216_*`, `20260220_*`, `20260314_*`, `20260318_000002_job_pack_sheet_overrides.sql`, `20260320_000001_job_pack_generations.sql`, `20260321_000001_job_pack_generations_schema_reload.sql`, `20260408_000001_portal_security_hardening.sql`, quote-version source metadata migration `20260504_000002_quote_version_pricing_source_metadata.sql`, commercial trust migration `20260728_000001_commercial_workflow_trust.sql`, and payment schedule/whole-invoice payment migration `20260810_000002_quote_payment_schedules_and_invoice_payments.sql`.
+- Quote and invoice migrations under `supabase/migrations/20260209_*`, `20260216_*`, `20260220_*`, `20260314_*`, `20260318_000002_job_pack_sheet_overrides.sql`, `20260320_000001_job_pack_generations.sql`, `20260321_000001_job_pack_generations_schema_reload.sql`, `20260408_000001_portal_security_hardening.sql`, quote-version source metadata migration `20260504_000002_quote_version_pricing_source_metadata.sql`, commercial trust migration `20260728_000001_commercial_workflow_trust.sql`, payment schedule/whole-invoice payment migration `20260810_000002_quote_payment_schedules_and_invoice_payments.sql`, and manual quote retirement migration `20260810000003_manual_quote_superseded_status.sql`.
 - `supabase/portal_schema.sql` is a legacy baseline/snapshot reference for these tables.
 
 ## Schedule, Site Visits, And Running Jobs

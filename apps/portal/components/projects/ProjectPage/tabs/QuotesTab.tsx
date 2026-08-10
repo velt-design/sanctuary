@@ -13,6 +13,7 @@ import QuoteWorkflowDialogs from "./QuoteWorkflowDialogs";
 import QuoteDeleteConfirmation from "./QuoteDeleteConfirmation";
 import { useQuoteLifecycleActions } from "./useQuoteLifecycleActions";
 import { useQuoteDeletion } from "./useQuoteDeletion";
+import { useQuoteSuperseding } from "./useQuoteSuperseding";
 import { useQuotePdfPreviews } from "./useQuotePdfPreviews";
 import { useQuotesTabSelection } from "./useQuotesTabSelection";
 import type { EstimateDetail } from "@/lib/estimates/types";
@@ -1000,6 +1001,10 @@ export default function QuotesTab({
     refreshQuotes,
     selectQuote,
   });
+  const quoteSuperseding = useQuoteSuperseding({
+    hostKey,
+    refreshQuotes,
+  });
 
   const handleAddRow = () => {
     setDraftItems((prev) => [
@@ -1120,6 +1125,16 @@ export default function QuotesTab({
           quoteDeletion.requestDelete({ id: detail.id, quoteRef: detail.quoteRef, versionNumber: detail.versionNumber });
           setMoreActionsOpen(false);
         }}
+        canSupersedeQuote={isAdmin}
+        supersedeQuote={() => {
+          setMoreActionsOpen(false);
+          void quoteSuperseding.supersedeQuote({
+            id: detail.id,
+            quoteRef: detail.quoteRef,
+            versionNumber: detail.versionNumber,
+          });
+        }}
+        supersedeBusy={quoteSuperseding.pendingId === detail.id}
         openJobPackHref={openJobPackHref}
         canGenerateJobPack={canGenerateJobPack}
         generateJobPack={() => void handleGenerateJobPack()}
@@ -1239,6 +1254,8 @@ export default function QuotesTab({
       createQuote={() => void handleCreateQuote()}
       isAdmin={isAdmin}
       deleteQuote={quoteDeletion.requestDelete}
+      supersedeQuote={(quote) => void quoteSuperseding.supersedeQuote(quote)}
+      supersedePendingId={quoteSuperseding.pendingId}
     />
     <QuoteDeleteConfirmation
       target={quoteDeletion.target}

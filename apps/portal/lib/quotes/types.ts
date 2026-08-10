@@ -1,6 +1,6 @@
 import type { QuotePaymentTerm } from './paymentSchedule';
 
-export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED';
+export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'SUPERSEDED';
 
 export type QuoteTotals = {
   totalIncGstCents: number;
@@ -37,6 +37,8 @@ export type QuoteVersion = {
   createdBy?: string | null;
   sentAt?: string | null;
   sentBy?: string | null;
+  supersededAt?: string | null;
+  supersededBy?: string | null;
   expiresAt?: string | null;
   reference?: string | null;
   customerName?: string | null;

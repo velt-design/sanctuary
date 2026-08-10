@@ -27,7 +27,7 @@ describe('Sanctuary status components', () => {
   });
 
   it('renders quote and estimate presentation statuses with context', () => {
-    const quoteStatuses: QuoteStatus[] = ['DRAFT', 'SENT', 'ACCEPTED', 'DECLINED'];
+    const quoteStatuses: QuoteStatus[] = ['DRAFT', 'SENT', 'ACCEPTED', 'DECLINED', 'SUPERSEDED'];
     const estimateStatuses: EstimateStatus[] = ['draft', 'archived'];
     const rendered = renderIntoDocument(
       <div>
@@ -39,6 +39,7 @@ describe('Sanctuary status components', () => {
     expect(rendered.container.textContent).toContain('Accepted');
     expect(rendered.container.textContent).toContain('Declined');
     expect(rendered.container.textContent).toContain('Sent');
+    expect(rendered.container.textContent).toContain('Superseded');
     expect(rendered.container.textContent).toContain('Historical');
 
     rendered.unmount();
