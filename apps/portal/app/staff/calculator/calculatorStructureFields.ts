@@ -27,6 +27,7 @@ import {
 } from './calculatorInputs';
 import {
   applyOpenPergolaDefaults,
+  applyRoofedPergolaDefaults,
   DEFAULT_OPEN_PERGOLA_PROFILE,
   DEFAULT_OPEN_PERGOLA_RAFTER_SPACING_MM,
 } from './calculatorOpenPergola';
@@ -190,21 +191,25 @@ export function buildCalculatorStructureFields({
               ? applyOpenPergolaDefaults({ ...current, roofMaterial: next })
               : next === 'mixed'
                 ? (() => {
-                  const bayCounts = computeBayCountsForModule(current);
+                  const roofed = current.roofMaterial === 'none'
+                    ? applyRoofedPergolaDefaults(current, next)
+                    : { ...current, roofMaterial: next };
+                  const bayCounts = computeBayCountsForModule(roofed);
                   const withDefault = (value: string | undefined, bayCount: number) =>
                     hasNonEmptyValue(value) ? value : defaultMixedAcrylicBays(bayCount);
                   return {
-                    ...current,
-                    roofMaterial: next,
+                    ...roofed,
                     ...(bayCounts.roofType === 'pitched'
-                      ? { mixedAcrylicBaysMain: withDefault(current.mixedAcrylicBaysMain, bayCounts.bayCountMain) }
+                      ? { mixedAcrylicBaysMain: withDefault(roofed.mixedAcrylicBaysMain, bayCounts.bayCountMain) }
                       : {
-                          mixedAcrylicBaysA: withDefault(current.mixedAcrylicBaysA, bayCounts.bayCountA),
-                          mixedAcrylicBaysB: withDefault(current.mixedAcrylicBaysB, bayCounts.bayCountB),
+                          mixedAcrylicBaysA: withDefault(roofed.mixedAcrylicBaysA, bayCounts.bayCountA),
+                          mixedAcrylicBaysB: withDefault(roofed.mixedAcrylicBaysB, bayCounts.bayCountB),
                         }),
                   };
                   })()
-                : { ...current, roofMaterial: next };
+                : current.roofMaterial === 'none'
+                  ? applyRoofedPergolaDefaults(current, next)
+                  : { ...current, roofMaterial: next };
           modules[activeModuleIndex] = updated;
           return {
             ...prev,

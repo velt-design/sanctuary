@@ -164,6 +164,58 @@ describe('calculator structure fields', () => {
     expect(ids).not.toEqual(expect.arrayContaining(['flashings', 'overhangEnabled', 'invertedEnabled', 'separateGutterEnabled']));
   });
 
+  it('returns the standard 6m x 3m module to its exact roofed defaults after Open', () => {
+    const selection = buildFields();
+    const before = selection.values().modules[0];
+    const roofMaterial = fieldById(selection.fields, 'roofMaterial');
+
+    roofMaterial.onChange?.('none');
+    expect(selection.values().modules[0]).not.toEqual(before);
+
+    roofMaterial.onChange?.('acrylic');
+    expect(selection.values().modules[0]).toEqual(before);
+  });
+
+  it.each(['acrylic', 'timber', 'mixed'] as const)(
+    'applies roofed defaults while preserving job context when Open changes to %s',
+    (roofMaterialValue) => {
+      const selection = buildFields({
+        roofMaterial: 'none',
+        lengthM: '7.2',
+        projectionM: '3.4',
+        postCount: '6',
+        extrusionColour: 'White',
+        roofPitchDeg: '0',
+        flashings: { rows: [] },
+        overrides: {
+          ledgerProfile: '150x50',
+          rafterProfile: '150x50',
+          frontBeamProfile: '150x50',
+          postProfile: '100x100',
+        },
+      });
+
+      fieldById(selection.fields, 'roofMaterial').onChange?.(roofMaterialValue);
+
+      expect(selection.values().modules[0]).toMatchObject({
+        roofMaterial: roofMaterialValue,
+        pergolaStyle: 'pitched',
+        lengthM: '7.2',
+        projectionM: '3.4',
+        postCount: '6',
+        extrusionColour: 'White',
+        roofPitchDeg: '',
+        flashings: {
+          rows: [expect.objectContaining({ kind: 'primary', band: '201-300', lengthM: '7.2' })],
+        },
+        overrides: { postProfile: '100x100' },
+      });
+      if (roofMaterialValue === 'mixed') {
+        expect(selection.values().modules[0].mixedAcrylicBaysMain).not.toBe('');
+      }
+    },
+  );
+
   it('delegates ordinary fields and overrides to their existing setters', () => {
     const { fields, setModuleField, setModuleOverride } = buildFields();
 
