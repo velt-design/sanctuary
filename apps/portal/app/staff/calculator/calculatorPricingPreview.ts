@@ -5,6 +5,10 @@ import type { BlindPricingResult, SiteOutputV1 } from '@sp/costing';
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
 import { extractLightingTotalCents } from '@/lib/quotes/estimateAddons';
 import {
+  hasStructuredCalculatorLighting,
+  priceCalculatorLighting,
+} from '@/lib/estimates/calculatorLighting';
+import {
   calculateStaffCustomerPriceFromCostEx,
   normalizeStaffQuoteDiscountPct,
   roundQuoteMoney,
@@ -192,18 +196,40 @@ export function buildCalculatorPricingPreview({
     }
   });
 
-  const lightingTotalCents = extractLightingTotalCents(estimateSnapshot);
-  if (lightingTotalCents !== null) {
-    rows.push({
-      id: 'lighting',
-      kind: 'lighting',
-      label: 'Lighting',
-      detail: 'Hardware, wiring and electrical',
-      priceIncGstCents: lightingTotalCents,
-      status: 'priced',
+  if (hasStructuredCalculatorLighting(inputs)) {
+    priceCalculatorLighting(inputs).items.forEach((lighting) => {
+      if (lighting.lightCount <= 0 && lighting.errors.length === 0) return;
+      const isPriced = lighting.errors.length === 0;
+      const priceIncGstCents = isPriced ? lighting.lightingSellIncCents : null;
+      rows.push({
+        id: `lighting:${lighting.pergolaId}`,
+        kind: 'lighting',
+        label: `${lighting.label?.trim() || 'Pergola'} lighting`,
+        detail: isPriced
+          ? `${lighting.lightCount} rafter light${lighting.lightCount === 1 ? '' : 's'} · ${lighting.driverCount} driver${lighting.driverCount === 1 ? '' : 's'}${lighting.dimmer ? ' · Dimmer' : ''}`
+          : lighting.errors[0] ?? 'Lighting needs review',
+        priceIncGstCents,
+        status: isPriced ? 'priced' : 'unpriced',
+      });
+      if (priceIncGstCents !== null) {
+        pricedAmounts.push(priceIncGstCents);
+        undiscountedAmounts.push(priceIncGstCents);
+      }
     });
-    pricedAmounts.push(lightingTotalCents);
-    undiscountedAmounts.push(lightingTotalCents);
+  } else {
+    const lightingTotalCents = extractLightingTotalCents(estimateSnapshot);
+    if (lightingTotalCents !== null) {
+      rows.push({
+        id: 'lighting',
+        kind: 'lighting',
+        label: 'Lighting',
+        detail: 'Preserved historical lighting allowance',
+        priceIncGstCents: lightingTotalCents,
+        status: 'priced',
+      });
+      pricedAmounts.push(lightingTotalCents);
+      undiscountedAmounts.push(lightingTotalCents);
+    }
   }
 
   const totals = totalsFromIncGstCents(pricedAmounts);

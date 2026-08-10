@@ -62,6 +62,7 @@ import {
   buildFlashingDefaultsForModule,
 } from './calculatorFlashingUi';
 import CalculatorBlindsEditor from './CalculatorBlindsEditor';
+import CalculatorLightingEditor from './CalculatorLightingEditor';
 import CalculatorFlashingsEditor from './CalculatorFlashingsEditor';
 import {
   buildCalculatorQuoteStatusUi,
@@ -98,6 +99,11 @@ import { useCalculatorInputController } from './useCalculatorInputController';
 import { useSimplePricingClassification } from './useSimplePricingClassification';
 import { useCalculatorResultPresentation } from './useCalculatorResultPresentation';
 import { useCalculatorWorkspaceSession } from './useCalculatorWorkspaceSession';
+import { priceCalculatorLighting } from '@/lib/estimates/calculatorLighting';
+import {
+  buildCalculatorLightingUi,
+  updateCalculatorPergolaLighting,
+} from './calculatorLightingUi';
 import CalculatorWorkspaceView, { type CalculatorWorkspaceViewProps } from './CalculatorWorkspaceView';
 import type { CalculatorInfillWorkspaceProps } from './CalculatorInfillWorkspace';
 import {
@@ -196,6 +202,11 @@ export default function CalculatorGridClient({
   const activeModule = modulesWithPergola[activeModuleIndex] ?? modulesWithPergola[0] ?? makeDefaultModule(fallbackPergolaId);
   const activePergolaId =
     typeof activeModule.pergolaId === 'string' && knownPergolaIds.has(activeModule.pergolaId) ? activeModule.pergolaId : fallbackPergolaId;
+  const lightingUi = useMemo(
+    () => buildCalculatorLightingUi(values, activePergolaId),
+    [activePergolaId, values],
+  );
+  const lightingPricing = useMemo(() => priceCalculatorLighting(values), [values]);
 
   const errorsByModule = useMemo(() => buildCalculatorModuleErrors(values.modules), [values.modules]);
   const moduleNavigatorModel = useMemo(
@@ -425,6 +436,14 @@ export default function CalculatorGridClient({
       onAdd={addBlind}
     />
   );
+  const lightingEditorContent = lightingUi.visible ? (
+    <CalculatorLightingEditor
+      ui={lightingUi}
+      onChange={(patch) => {
+        setValues((current) => updateCalculatorPergolaLighting(current, activePergolaId, patch));
+      }}
+    />
+  ) : null;
 
   const roofRafterSpacingEstimate = useMemo(
     () =>
@@ -502,12 +521,13 @@ export default function CalculatorGridClient({
         projectHasContact,
         inputIssueCount: issuesCount,
         invalidBlindCount: blindsUi.rows.filter((row) => row.hasErrors).length,
+        invalidLightingCount: lightingPricing.items.filter((item) => item.errors.length > 0).length,
         engineError,
         resultFreshness,
         infillItems: infillsState.items,
         infillUiById,
       }),
-    [blindsUi.rows, engineError, infillUiById, infillsState.items, issuesCount, project, projectHasContact, projectId, resultFreshness],
+    [blindsUi.rows, engineError, infillUiById, infillsState.items, issuesCount, lightingPricing.items, project, projectHasContact, projectId, resultFreshness],
   );
   const statusActionHandlers: Record<CalculatorQuoteStatusActionKey, () => void> = {
     selectProject: () => setProjectPickerOpen(true),
@@ -516,6 +536,11 @@ export default function CalculatorGridClient({
       else if (projectId) router.push(`/staff/projects/${encodeURIComponent(projectId)}`);
     },
     openIssues,
+    openLighting: () => {
+      const element = document.getElementById('lightingEditor');
+      element?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      element?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus({ preventScroll: true });
+    },
     openBlinds: () => {
       const element = document.getElementById('blindsList');
       element?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -764,6 +789,8 @@ export default function CalculatorGridClient({
     }),
 
     ...buildCalculatorWorkflowFields({
+      lightingEditorContent,
+      lightingSummaryText: lightingUi.summaryText,
       blindsListContent,
       blindsUi,
       infillsTileContent,

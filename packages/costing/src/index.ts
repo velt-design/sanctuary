@@ -4,6 +4,7 @@ export { calculateInfillsTakeoffV1, poolInfillsTakeoffsV1 } from './engine/infil
 export { allocateMoneyCentsByWeightV1 } from './engine/moneyAllocation';
 export * from './engine/rafterLayout';
 export * from './blinds';
+export * from './lighting';
 export * from './engine/materials_explain';
 export * from './engine/config';
 export * from './engine/types';

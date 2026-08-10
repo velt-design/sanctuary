@@ -7,6 +7,7 @@ import type {
   CalculatorInfillsState,
   CalculatorModuleInputs,
   CalculatorPergola,
+  CalculatorLightingInput,
   InfillLineItem,
 } from '@/lib/types/calculator';
 import { inferEdgeConfirmations, makeNoEdgeConfirmations, resolveSupportConfirmations } from './infillSupportPresentation';
@@ -217,9 +218,27 @@ export function makeDefaultCalculatorInputs(): CalculatorInputs {
     travelExGst: '0',
     extrasAllowanceExGst: '0',
     quoteDiscountPct: '0',
-    pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+    pergolas: [{ id: 'pergola-1', label: 'Pergola 1', lighting: makeDefaultCalculatorLightingInput() }],
     modules: [makeDefaultModule('pergola-1')],
     blinds: makeDefaultBlinds(),
+  };
+}
+
+export function makeDefaultCalculatorLightingInput(): CalculatorLightingInput {
+  return { lightCount: '0', dimmer: false };
+}
+
+export function normalizeCalculatorLightingInput(value: unknown): CalculatorLightingInput {
+  const source = value && typeof value === 'object' ? value as Partial<CalculatorLightingInput> : {};
+  const rawLightCount = source.lightCount;
+  return {
+    lightCount:
+      typeof rawLightCount === 'string'
+        ? rawLightCount
+        : typeof rawLightCount === 'number' && Number.isFinite(rawLightCount)
+          ? String(rawLightCount)
+          : '0',
+    dimmer: source.dimmer === true,
   };
 }
 
@@ -637,7 +656,10 @@ export function normalizePergolasForUi(value: unknown): CalculatorPergola[] {
     seen.add(id);
 
     const label = typeof raw.label === 'string' && raw.label.trim() ? raw.label.trim() : `Pergola ${out.length + 1}`;
-    out.push({ id, label });
+    const lighting = Object.prototype.hasOwnProperty.call(raw, 'lighting')
+      ? normalizeCalculatorLightingInput(raw.lighting)
+      : undefined;
+    out.push({ id, label, ...(lighting ? { lighting } : {}) });
   }
 
   if (!out.length) out.push({ id: 'pergola-1', label: 'Pergola 1' });
@@ -700,7 +722,11 @@ export function nextPergola(values: CalculatorInputs): CalculatorPergola {
   const ids = new Set(existing.map((pergola) => pergola.id));
   let ordinal = 1;
   while (ids.has(`pergola-${ordinal}`)) ordinal += 1;
-  return { id: `pergola-${ordinal}`, label: `Pergola ${ordinal}` };
+  return {
+    id: `pergola-${ordinal}`,
+    label: `Pergola ${ordinal}`,
+    lighting: makeDefaultCalculatorLightingInput(),
+  };
 }
 
 export function prunePergolasForModules(pergolas: CalculatorPergola[] | undefined, modules: CalculatorModuleInputs[]): CalculatorPergola[] {

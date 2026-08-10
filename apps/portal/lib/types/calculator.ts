@@ -229,6 +229,11 @@ export type CalculatorInfillsState = {
   items: InfillLineItem[];
 };
 
+export type CalculatorLightingInput = {
+  lightCount: string;
+  dimmer: boolean;
+};
+
 type LegacyBlindInputsV1 = {
   systemType: BlindSystemType;
   totalWidthMm: string;
@@ -356,6 +361,7 @@ export type CalculatorModuleInputs = {
 export type CalculatorPergola = {
   id: string;
   label: string;
+  lighting?: CalculatorLightingInput;
 };
 
 export type CalculatorInputs = {

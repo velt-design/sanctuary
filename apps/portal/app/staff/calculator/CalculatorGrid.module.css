@@ -764,6 +764,89 @@
   gap: 6px;
 }
 
+.lightingEditor {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.lightingContext {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+}
+
+.lightingContext > div {
+  display: grid;
+  gap: 2px;
+}
+
+.lightingContext span {
+  color: var(--ui-text-muted);
+  font-size: 12px;
+}
+
+.lightingContext > span {
+  text-align: right;
+}
+
+.lightingFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lightingBreakdown {
+  display: grid;
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-secondary);
+}
+
+.lightingBreakdown > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  font-size: 12px;
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+}
+
+.lightingBreakdown > div:last-child {
+  border-bottom: 0;
+}
+
+.lightingTotal {
+  background: var(--ui-surface-primary);
+  color: var(--ui-text-strong);
+  font-size: 13px !important;
+}
+
+.lightingError {
+  border-left: 3px solid var(--ui-destructive);
+  background: color-mix(in srgb, var(--ui-destructive) 8%, var(--ui-surface-primary));
+  color: var(--ui-text-strong);
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 620px) {
+  .lightingContext {
+    display: grid;
+  }
+
+  .lightingContext > span {
+    text-align: left;
+  }
+
+  .lightingFieldGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .infillTileSummary {
   display: grid;
   gap: 2px;

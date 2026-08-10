@@ -95,6 +95,8 @@ export function buildCalculatorContextFields({
   ];
 }
 export type CalculatorWorkflowFieldBuilderInput = {
+  lightingEditorContent: ReactNode | null;
+  lightingSummaryText: string;
   blindsListContent: ReactNode;
   blindsUi: {
     summaryText: string;
@@ -154,6 +156,8 @@ function formatMaybeNumber(value: number | undefined, digits = 2): string {
 }
 
 export function buildCalculatorWorkflowFields({
+  lightingEditorContent,
+  lightingSummaryText,
   blindsListContent,
   blindsUi,
   infillsTileContent,
@@ -193,6 +197,15 @@ export function buildCalculatorWorkflowFields({
   resultFreshness,
 }: CalculatorWorkflowFieldBuilderInput): FieldSchemaItem[] {
   return [
+    ...(lightingEditorContent
+      ? [{
+          id: 'lightingEditor',
+          label: 'Lighting',
+          type: 'custom',
+          content: lightingEditorContent,
+          helperText: lightingSummaryText,
+        } satisfies FieldSchemaItem]
+      : []),
     {
       id: 'blindsList',
       label: 'Blinds',

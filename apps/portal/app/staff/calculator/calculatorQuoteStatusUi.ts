@@ -27,7 +27,7 @@ type CalculatorUiWarningGroups = {
   warningsHelperText: string | undefined;
 };
 
-export type CalculatorQuoteStatusActionKey = 'selectProject' | 'openProject' | 'openIssues' | 'openBlinds' | 'openInfills';
+export type CalculatorQuoteStatusActionKey = 'selectProject' | 'openProject' | 'openIssues' | 'openLighting' | 'openBlinds' | 'openInfills';
 
 type CalculatorQuoteStatusItem = {
   id: string;
@@ -112,6 +112,7 @@ export function buildCalculatorQuoteStatusUi({
   projectHasContact,
   inputIssueCount,
   invalidBlindCount,
+  invalidLightingCount,
   engineError,
   resultFreshness,
   infillItems,
@@ -122,6 +123,7 @@ export function buildCalculatorQuoteStatusUi({
   projectHasContact: boolean;
   inputIssueCount: number;
   invalidBlindCount: number;
+  invalidLightingCount: number;
   engineError: string | null | undefined;
   resultFreshness: CalculatorResultFreshness;
   infillItems: InfillLineItem[];
@@ -172,6 +174,17 @@ export function buildCalculatorQuoteStatusUi({
       actionLabel: normalizedInputIssueCount > 0 ? 'View errors' : undefined,
       actionKey: normalizedInputIssueCount > 0 ? 'openIssues' : undefined,
       causeCount: normalizedInputIssueCount || undefined,
+    },
+    {
+      id: 'lighting',
+      label: 'Lighting priced',
+      level: invalidLightingCount > 0 ? 'block' : 'ok',
+      detail: invalidLightingCount > 0
+        ? `${invalidLightingCount} pergola${invalidLightingCount === 1 ? ' has' : 's have'} invalid lighting`
+        : 'OK',
+      actionLabel: invalidLightingCount > 0 ? 'Review lighting' : undefined,
+      actionKey: invalidLightingCount > 0 ? 'openLighting' : undefined,
+      causeCount: invalidLightingCount > 0 ? invalidLightingCount : undefined,
     },
     {
       id: 'blinds',
