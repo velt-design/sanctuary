@@ -321,5 +321,15 @@ describe('costingPayload', () => {
         modules: [{ ...inputs.modules[0]!, projectionM: '8' }],
       }),
     ).toBe(true);
+
+    expect(
+      hasPricingAffectingCalculatorInputChanges(inputs, {
+        ...inputs,
+        pergolas: [{
+          ...(inputs.pergolas?.[0] ?? { id: 'pergola-1', label: 'Pergola 1' }),
+          lighting: { lightCount: '8', dimmer: true },
+        }],
+      }),
+    ).toBe(true);
   });
 });

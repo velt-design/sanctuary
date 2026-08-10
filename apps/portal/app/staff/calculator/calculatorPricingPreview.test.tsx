@@ -184,6 +184,41 @@ describe('calculator pricing preview', () => {
     expect(preview.unpricedItemCount).toBe(1);
   });
 
+  it('prices structured lighting per pergola and ignores a preserved legacy total', () => {
+    const calculatorInputs = inputs();
+    calculatorInputs.blinds = { items: [] };
+    calculatorInputs.pergolas = [
+      { id: 'p1', label: 'Front patio', lighting: { lightCount: '17', dimmer: false } },
+      { id: 'p2', label: 'Pool cover', lighting: { lightCount: '13', dimmer: true } },
+    ];
+    const siteResult = result();
+    const preview = buildCalculatorPricingPreview({
+      result: siteResult,
+      inputs: calculatorInputs,
+      blindPricing: priceAllBlinds([]),
+      estimateSnapshot: { outputs: { lighting_total_inc_gst: 999 } },
+    });
+
+    expect(preview.rows.filter((row) => row.kind === 'lighting')).toMatchObject([
+      { label: 'Front patio lighting', priceIncGstCents: 453_000, status: 'priced' },
+      { label: 'Pool cover lighting', priceIncGstCents: 427_000, status: 'priced' },
+    ]);
+    expect(preview.totalIncGstCents).toBe(923_988);
+    expect(preview.rows.some((row) => row.priceIncGstCents === 99_900)).toBe(false);
+
+    const quoteMapping = buildQuoteLineItemsFromEstimate({
+      inputs: calculatorInputs,
+      outputs: {
+        pergolas: siteResult.pergolas,
+        siteShared: siteResult.shared,
+        lighting_total_inc_gst: 999,
+      },
+    } as any);
+    expect(quoteMapping.items.reduce((sum, item) => sum + item.lineTotalIncGstCents, 0)).toBe(
+      preview.totalIncGstCents,
+    );
+  });
+
   it('keeps historical results without attribution as included and unpriced', () => {
     const calculatorInputs = inputs();
     const siteResult = result();

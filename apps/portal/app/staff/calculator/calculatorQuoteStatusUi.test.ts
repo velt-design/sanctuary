@@ -127,6 +127,7 @@ describe('calculator quote status UI helpers', () => {
       projectHasContact: false,
       inputIssueCount: 2,
       invalidBlindCount: 2,
+      invalidLightingCount: 0,
       engineError: null,
       resultFreshness: 'invalid',
       infillItems: [draftInfill],
@@ -145,6 +146,7 @@ describe('calculator quote status UI helpers', () => {
       { id: 'project', level: 'ok', detail: 'Attached' },
       { id: 'contact', level: 'block', detail: 'Missing contact on project', actionKey: 'openProject' },
       { id: 'inputs', level: 'block', detail: '2 input issues to fix', actionKey: 'openIssues', causeCount: 2 },
+      { id: 'lighting', level: 'ok', detail: 'OK' },
       { id: 'blinds', level: 'block', detail: '2 blinds need valid dimensions and selections', actionKey: 'openBlinds' },
       { id: 'engine', level: 'block', detail: 'Fix inputs to refresh result', blockedBy: 'inputs', causeCount: 0 },
       { id: 'infills', level: 'block', detail: 'Finish required infill shape fields', actionKey: 'openInfills' },
@@ -158,6 +160,7 @@ describe('calculator quote status UI helpers', () => {
       projectHasContact: false,
       inputIssueCount: 0,
       invalidBlindCount: 0,
+      invalidLightingCount: 0,
       engineError: 'Costing failed',
       resultFreshness: 'error',
       infillItems: [],
@@ -168,6 +171,7 @@ describe('calculator quote status UI helpers', () => {
       { id: 'project', level: 'block', detail: 'Select a project', actionKey: 'selectProject' },
       { id: 'contact', level: 'review', detail: '—' },
       { id: 'inputs', level: 'ok', detail: 'OK' },
+      { id: 'lighting', level: 'ok', detail: 'OK' },
       { id: 'blinds', level: 'ok', detail: 'OK' },
       { id: 'engine', level: 'block', detail: 'Costing failed' },
       { id: 'infills', level: 'ok', detail: 'OK' },
@@ -187,6 +191,7 @@ describe('calculator quote status UI helpers', () => {
       projectHasContact: true,
       inputIssueCount: 1,
       invalidBlindCount: 0,
+      invalidLightingCount: 0,
       engineError: null,
       resultFreshness: 'invalid',
       infillItems: [],
@@ -215,6 +220,7 @@ describe('calculator quote status UI helpers', () => {
       projectHasContact: true,
       inputIssueCount: 0,
       invalidBlindCount: 0,
+      invalidLightingCount: 0,
       engineError: null,
       resultFreshness: 'calculating',
       infillItems: [],
@@ -237,6 +243,7 @@ describe('calculator quote status UI helpers', () => {
       projectHasContact: true,
       inputIssueCount: 0,
       invalidBlindCount: 0,
+      invalidLightingCount: 0,
       engineError: 'Costing failed',
       resultFreshness: 'error',
       infillItems: [],
@@ -255,6 +262,7 @@ describe('calculator quote status UI helpers', () => {
       projectHasContact: true,
       inputIssueCount: 0,
       invalidBlindCount: 1,
+      invalidLightingCount: 0,
       engineError: null,
       resultFreshness: 'current',
       infillItems: [],
@@ -263,6 +271,27 @@ describe('calculator quote status UI helpers', () => {
     expect(blindUi.items.find((item) => item.id === 'blinds')?.detail).toBe(
       '1 blind needs valid dimensions and selections',
     );
+  });
+
+  it('blocks invalid lighting with a direct review action', () => {
+    const ui = buildCalculatorQuoteStatusUi({
+      projectId: 'project-1',
+      hasProject: true,
+      projectHasContact: true,
+      inputIssueCount: 0,
+      invalidBlindCount: 0,
+      invalidLightingCount: 1,
+      engineError: null,
+      resultFreshness: 'current',
+      infillItems: [],
+      infillUiById: new Map(),
+    });
+
+    expect(ui.items.find((item) => item.id === 'lighting')).toMatchObject({
+      level: 'block',
+      detail: '1 pergola has invalid lighting',
+      actionKey: 'openLighting',
+    });
   });
 
   it('keeps save preflight error priority stable', () => {

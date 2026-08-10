@@ -26,6 +26,8 @@ Lint blocks legacy costing engine/config copies in app paths. If you need a cost
 
 Blind customer pricing is also owned by `@sp/costing`. The banded base price receives its fabric multiplier and then a `1.15x` core selling uplift before GST. Motorisation remains a fixed `$900 inc GST` add-on. A blind-roll flashing is `$44/m inc GST` and a pelmet is `$145/m inc GST`, both charged from the entered blind width rather than the pricing-table width band; No cover adds nothing. Motor and roll-cover add-ons do not receive the core uplift. Inclusive blind totals are the quote-line authority, and aggregate ex-GST display totals are derived from those inclusive line totals so calculator and quote totals stay aligned.
 
+Rafter-lighting customer pricing is package-owned and GST-inclusive. Each configured acrylic pergola receives an `$800` startup that includes labour and its first driver, `$190` per light, one optional `$500` dimmer, and `$500` for each additional driver. A standard driver supports 16 lights; a dimmed driver supports 12. Driver quantity is derived, lighting is not limited by rafter count, and each pergola is priced independently. Lighting stays at list price outside the quote discount. Structured calculator lighting takes precedence over the historical opaque lighting-total fallback.
+
 ## Commercial Boundary And Migration Harness
 
 The future commercial flow is geometry-first, but it remains shadow-only until an explicit integration task wires it into estimate or quote persistence:

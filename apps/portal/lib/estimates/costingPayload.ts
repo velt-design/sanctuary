@@ -10,6 +10,7 @@ import type {
 } from '@/lib/types/calculator';
 import { normalizeAttachmentSide } from '@/lib/types/calculator';
 import type { PortalEstimatePayload } from '@/lib/localFirst/portalEntities';
+import { buildCalculatorLightingPricingInputs } from './calculatorLighting';
 
 type AnyRecord = Record<string, unknown>;
 export type EstimateSaveMode = 'preserve_current' | 'reprice_latest';
@@ -441,19 +442,22 @@ function cloneRecord<T extends AnyRecord | undefined>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function normalizeSiteInputsForPricingComparison(inputs: CalculatorInputs): SiteInputsV1 {
+function normalizeCalculatorInputsForPricingComparison(inputs: CalculatorInputs) {
   const payload = buildSiteInputsFromCalculatorInputs(inputs);
   return {
-    ...payload,
-    pergolas: payload.pergolas.map((pergola) => ({
-      ...pergola,
-      label: '',
-    })),
+    site: {
+      ...payload,
+      pergolas: payload.pergolas.map((pergola) => ({
+        ...pergola,
+        label: '',
+      })),
+    },
+    lighting: buildCalculatorLightingPricingInputs(inputs).map((item) => ({ ...item, label: '' })),
   };
 }
 
 export function hasPricingAffectingCalculatorInputChanges(previous: CalculatorInputs, next: CalculatorInputs): boolean {
-  return JSON.stringify(normalizeSiteInputsForPricingComparison(previous)) !== JSON.stringify(normalizeSiteInputsForPricingComparison(next));
+  return JSON.stringify(normalizeCalculatorInputsForPricingComparison(previous)) !== JSON.stringify(normalizeCalculatorInputsForPricingComparison(next));
 }
 
 export function buildEstimatePayloadPreservingCurrentPricing(args: {

@@ -22,6 +22,7 @@ describe('calculator configuration sections', () => {
       'structure',
       'flashings',
       'overrides',
+      'lighting',
       'blinds',
       'infills',
       'allowances',
@@ -35,6 +36,7 @@ describe('calculator configuration sections', () => {
         field('houseConnectionType'),
         field('lengthM'),
         field('flashings'),
+        field('lightingEditor'),
         field('blindsList'),
         field('infillsEditor'),
       ],
@@ -45,6 +47,7 @@ describe('calculator configuration sections', () => {
       'connections-site',
       'structure',
       'flashings',
+      'lighting',
       'blinds',
       'infills',
     ]);
@@ -53,6 +56,7 @@ describe('calculator configuration sections', () => {
       'houseConnectionType',
       'lengthM',
       'flashings',
+      'lightingEditor',
       'blindsList',
       'infillsEditor',
     ]);
@@ -71,6 +75,7 @@ describe('calculator configuration sections', () => {
     expect(calculatorConfigurationFieldLayout('lengthM')).toBe('standard');
     expect(calculatorConfigurationFieldLayout('timberNoteRafters')).toBe('wide');
     expect(calculatorConfigurationFieldLayout('flashings')).toBe('full');
+    expect(calculatorConfigurationFieldLayout('lightingEditor')).toBe('full');
     expect(calculatorConfigurationFieldLayout('blindsList')).toBe('full');
     expect(calculatorConfigurationFieldLayout('infillsEditor')).toBe('full');
   });

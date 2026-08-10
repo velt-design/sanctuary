@@ -16,6 +16,10 @@ import {
 import type { QuoteLineItem } from './types';
 import { extractLightingTotalCents } from './estimateAddons';
 import {
+  hasStructuredCalculatorLighting,
+  priceCalculatorLighting,
+} from '@/lib/estimates/calculatorLighting';
+import {
   calculateStaffCustomerPriceFromCostEx,
   normalizeStaffCustomerPriceUpliftPct,
   normalizeStaffQuoteDiscountPct,
@@ -350,7 +354,7 @@ function buildLegacyCoreDescription(modules: CalculatorModuleInputs[]): string {
 }
 
 type QuoteMappingBlockingIssue = {
-  code: 'INVALID_BLIND';
+  code: 'INVALID_BLIND' | 'INVALID_LIGHTING';
   message: string;
 };
 
@@ -515,17 +519,46 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
     });
   }
 
-  const lightingTotal = extractLightingTotalCents(estimate);
-  if (lightingTotal !== null) {
-    const qty = 1;
-    const description = ['Lighting', '- Inclusive of hardware, wiring, and electrical'].join('\n');
-    lineItems.push({
-      description,
-      qty,
-      unitPriceIncGstCents: lightingTotal,
-      lineTotalIncGstCents: lineTotalCents(qty, lightingTotal),
-      sortOrder: lineItems.length,
+  if (inputs && hasStructuredCalculatorLighting(inputs)) {
+    priceCalculatorLighting(inputs).items.forEach((lighting) => {
+      if (lighting.lightCount <= 0 && lighting.errors.length === 0) return;
+      if (lighting.errors.length) {
+        blockingIssues.push({
+          code: 'INVALID_LIGHTING',
+          message: `${lighting.label?.trim() || 'Pergola'} lighting needs review before a quote can be created: ${lighting.errors[0]}`,
+        });
+        return;
+      }
+
+      const qty = 1;
+      const unitPriceIncGstCents = lighting.lightingSellIncCents;
+      const description = [
+        `${lighting.label?.trim() || 'Pergola'} lighting`,
+        `- ${lighting.lightCount} rafter light${lighting.lightCount === 1 ? '' : 's'}`,
+        `- ${lighting.driverCount} driver${lighting.driverCount === 1 ? '' : 's'}${lighting.dimmer ? '; includes dimmer' : ''}`,
+        '- Customer price includes GST; not discountable',
+      ].join('\n');
+      lineItems.push({
+        description,
+        qty,
+        unitPriceIncGstCents,
+        lineTotalIncGstCents: lineTotalCents(qty, unitPriceIncGstCents),
+        sortOrder: lineItems.length,
+      });
     });
+  } else {
+    const lightingTotal = extractLightingTotalCents(estimate);
+    if (lightingTotal !== null) {
+      const qty = 1;
+      const description = ['Lighting', '- Preserved historical lighting allowance'].join('\n');
+      lineItems.push({
+        description,
+        qty,
+        unitPriceIncGstCents: lightingTotal,
+        lineTotalIncGstCents: lineTotalCents(qty, lightingTotal),
+        sortOrder: lineItems.length,
+      });
+    }
   }
 
   const blindsState = normalizeBlindsState((inputs as any)?.blinds);

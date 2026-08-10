@@ -37,6 +37,8 @@ function workflowFields(overrides: Partial<CalculatorWorkflowFieldBuilderInput> 
   const onOpenIssues = vi.fn();
   const onGenerate = vi.fn();
   const fields = buildCalculatorWorkflowFields({
+    lightingEditorContent: 'lighting-content',
+    lightingSummaryText: 'Eight lights',
     blindsListContent: 'blinds-content',
     blindsUi: { summaryText: 'Two blinds', totalEx: 100, totalInc: 115 },
     infillsTileContent: 'infills-content',
@@ -107,6 +109,7 @@ describe('calculator workflow fields', () => {
   it('builds custom, allowance, computed, issue, and save fields', () => {
     const { fields, onGenerate, onOpenIssues } = workflowFields();
 
+    expect(fieldById(fields, 'lightingEditor').content).toBe('lighting-content');
     expect(fieldById(fields, 'blindsList').content).toBe('blinds-content');
     expect(fieldById(fields, 'infillsEditor').content).toBe('infills-content');
     expect(fieldById(fields, 'areaM2').value).toBe('12.35');

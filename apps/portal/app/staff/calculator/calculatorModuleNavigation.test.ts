@@ -85,7 +85,11 @@ describe('calculatorModuleNavigation', () => {
 
   it('adds a new pergola with a fresh starter module and selects it', () => {
     const result = addCalculatorPergola(makeInputs(), 0);
-    expect(result.values.pergolas?.at(-1)).toEqual({ id: 'pergola-3', label: 'Pergola 3' });
+    expect(result.values.pergolas?.at(-1)).toEqual({
+      id: 'pergola-3',
+      label: 'Pergola 3',
+      lighting: { lightCount: '0', dimmer: false },
+    });
     expect(result.values.modules.at(-1)).toMatchObject({ pergolaId: 'pergola-3', lengthM: '6', projectionM: '3' });
     expect(result.activeModuleIndex).toBe(3);
   });

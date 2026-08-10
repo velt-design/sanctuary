@@ -320,6 +320,55 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     );
   });
 
+  it('prices one non-discountable structured lighting line per pergola', () => {
+    const base = makeEstimate();
+    const estimate = makeEstimate({
+      inputs: {
+        ...(base as any).inputs,
+        quoteDiscountPct: '20',
+        pergolas: [{
+          id: 'pergola-1',
+          label: 'Courtyard',
+          lighting: { lightCount: '17', dimmer: false },
+        }],
+      },
+      outputs: {
+        ...(base as any).outputs,
+        lighting_total_inc_gst: 999,
+      },
+    });
+
+    const result = buildQuoteLineItemsFromEstimate(estimate);
+    const lighting = result.items.find((item) => item.description.startsWith('Courtyard lighting'));
+    expect(lighting?.unitPriceIncGstCents).toBe(453_000);
+    expect(lighting?.description).toContain('17 rafter lights');
+    expect(lighting?.description).toContain('2 drivers');
+    expect(lighting?.description).not.toContain('20% applied');
+    expect(result.items.some((item) => item.unitPriceIncGstCents === 99_900)).toBe(false);
+  });
+
+  it('blocks configured lighting when its pergola has no acrylic module', () => {
+    const base = makeEstimate();
+    const estimate = makeEstimate({
+      inputs: {
+        ...(base as any).inputs,
+        pergolas: [{
+          id: 'pergola-1',
+          label: 'Timber patio',
+          lighting: { lightCount: '4', dimmer: true },
+        }],
+        modules: [makeModule({ roofMaterial: 'timber' })],
+      },
+    });
+
+    const result = buildQuoteLineItemsFromEstimate(estimate);
+    expect(result.blockingIssues).toMatchObject([{
+      code: 'INVALID_LIGHTING',
+      message: expect.stringContaining('available only for acrylic pergolas'),
+    }]);
+    expect(result.items.some((item) => item.description.includes('Timber patio lighting'))).toBe(false);
+  });
+
   it('hands the corrected blind price and roll-cover detail to quote lines', () => {
     const base = makeEstimate();
     const estimate = makeEstimate({

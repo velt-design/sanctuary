@@ -45,6 +45,7 @@ describe('CalculatorConfigurationForm', () => {
         value: '',
         resolvedDefaultText: 'Auto - current result uses 5 deg',
       },
+      { id: 'lightingEditor', label: 'Lighting', type: 'custom', content: <button type="button">Configure lighting</button> },
       { id: 'blindsList', label: 'Blinds', type: 'custom', content: <button type="button">Configure</button> },
       { id: 'infillsEditor', label: 'Infills', type: 'custom', content: <button type="button">Edit infills</button> },
       { id: 'flashings', label: 'Flashings', type: 'custom', content: <span>Advanced content</span> },
@@ -61,16 +62,21 @@ describe('CalculatorConfigurationForm', () => {
     expect(document.querySelector('#project-context')?.textContent).toBe('Agent Project');
     expect(document.querySelector('[data-calculator-configuration-section="connections-site"]')).not.toBeNull();
     expect(document.querySelector('[data-calculator-configuration-section="structure"]')).not.toBeNull();
+    const lightingSection = document.querySelector('[data-calculator-configuration-section="lighting"]');
     const blindsSection = document.querySelector('[data-calculator-configuration-section="blinds"]');
     const infillsSection = document.querySelector('[data-calculator-configuration-section="infills"]');
+    expect(lightingSection?.getAttribute('aria-label')).toBe('Lighting');
     expect(blindsSection?.getAttribute('aria-label')).toBe('Blinds');
     expect(infillsSection?.getAttribute('aria-label')).toBe('Infills');
+    expect(lightingSection?.getAttribute('data-section-surface')).toBe('card');
     expect(blindsSection?.getAttribute('data-section-surface')).toBe('card');
     expect(infillsSection?.getAttribute('data-section-surface')).toBe('card');
     expect(document.querySelectorAll('[data-calculator-configuration-sheet]')).toHaveLength(1);
     expect(document.querySelector('[data-calculator-configuration-section="context"]')?.parentElement?.hasAttribute('data-calculator-configuration-sheet')).toBe(true);
+    expect(lightingSection?.querySelector('h2')).toBeNull();
     expect(blindsSection?.querySelector('h2')).toBeNull();
     expect(infillsSection?.querySelector('h2')).toBeNull();
+    expect(lightingSection?.querySelector('[data-field-part="label"]')?.textContent).toBe('Lighting');
     expect(blindsSection?.querySelector('[data-field-part="label"]')?.textContent).toBe('Blinds');
     expect(infillsSection?.querySelector('[data-field-part="label"]')?.textContent).toBe('Infills');
     const flashings = document.querySelector<HTMLDetailsElement>('[aria-label="Flashings"]');
@@ -113,6 +119,7 @@ describe('CalculatorConfigurationForm', () => {
       { id: 'lengthM', label: 'Length', type: 'number', value: '6' },
       { id: 'flashings', label: 'Flashings', type: 'custom', content: <span>Flashing editor</span> },
       { id: 'ledgerProfileOverride', label: 'Ledger profile', type: 'select', value: '', options: [] },
+      { id: 'lightingEditor', label: 'Lighting', type: 'custom', content: <span>Lighting editor</span> },
       { id: 'blindsList', label: 'Blinds', type: 'custom', content: <span>Blind editor</span> },
       { id: 'infillsEditor', label: 'Infills', type: 'custom', content: <span>Infill editor</span> },
       { id: 'houseFootprintPreset', label: 'Footprint', type: 'select', value: 'rectangle', options: [] },
@@ -124,7 +131,7 @@ describe('CalculatorConfigurationForm', () => {
       Array.from(document.querySelectorAll('[data-calculator-configuration-section]')).map((section) =>
         section.getAttribute('data-calculator-configuration-section'),
       ),
-    ).toEqual(['structure', 'flashings', 'overrides', 'blinds', 'infills']);
+    ).toEqual(['structure', 'flashings', 'overrides', 'lighting', 'blinds', 'infills']);
     expect(document.querySelector('[data-calculator-configuration-section="house-footprint"]')).toBeNull();
     expect(document.querySelector('[data-calculator-field="houseFootprintPreset"]')).toBeNull();
     expect(document.querySelector<HTMLDetailsElement>('[data-calculator-configuration-section="overrides"]')?.open).toBe(false);

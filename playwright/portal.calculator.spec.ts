@@ -84,12 +84,20 @@ async function expectSmallVisualCorrections(page: Page) {
   await expect(page.locator('[data-calculator-field="roofOrientation"]')).toHaveCount(0);
   await expect(page.getByLabel('Roof orientation diagram')).toHaveCount(0);
 
+  const lighting = page.locator('[data-calculator-configuration-section="lighting"]');
   const blinds = page.locator('[data-calculator-configuration-section="blinds"]');
   const infills = page.locator('[data-calculator-configuration-section="infills"]');
+  await expect(lighting).toBeVisible();
   await expect(blinds).toBeVisible();
   await expect(infills).toBeVisible();
+  await expect(lighting.locator('[data-calculator-field="lightingEditor"]')).toHaveCount(1);
   await expect(blinds.locator('[data-calculator-field="blindsList"]')).toHaveCount(1);
   await expect(infills.locator('[data-calculator-field="infillsEditor"]')).toHaveCount(1);
+  expect(
+    await lighting.evaluate((element) =>
+      element.nextElementSibling?.getAttribute('data-calculator-configuration-section'),
+    ),
+  ).toBe('blinds');
   expect(
     await blinds.evaluate((element) =>
       element.nextElementSibling?.getAttribute('data-calculator-configuration-section'),
@@ -104,7 +112,7 @@ async function expectSmallVisualCorrections(page: Page) {
 }
 
 async function expectVisualRefinementSurfaces(page: Page) {
-  await expect(page.locator('[data-section-surface="card"]')).toHaveCount(2);
+  await expect(page.locator('[data-section-surface="card"]')).toHaveCount(3);
   await expect(page.locator('[data-calculator-configuration-sheet]')).toHaveCount(2);
   await expect(page.locator('[data-module-actions="compact"]')).toHaveCount(1);
   await expect(

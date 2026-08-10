@@ -34,7 +34,7 @@ export default function CalculatorLightingEditor({
 
       {!ui.eligible ? (
         <div className={styles.lightingError} role="alert">
-          Rafter lighting is currently available only for pergolas containing acrylic roofing. Set the light quantity to 0 or restore acrylic roofing.
+          Rafter lighting is currently available only for pergolas with an acrylic-roof module. Set the light quantity to 0 or restore the acrylic roof selection.
         </div>
       ) : null}
 

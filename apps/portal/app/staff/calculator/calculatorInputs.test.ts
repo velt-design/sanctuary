@@ -230,7 +230,11 @@ describe('calculator input defaults and normalization', () => {
       travelExGst: '11',
       extrasAllowanceExGst: '22',
       quoteDiscountPct: '3',
-      pergolas: [{ id: 'pergola-main', label: 'Main pergola' }],
+      pergolas: [{
+        id: 'pergola-main',
+        label: 'Main pergola',
+        lighting: { lightCount: '13', dimmer: true },
+      }],
       modules: [
         {
           ...makeDefaultModule('pergola-main'),
@@ -245,7 +249,11 @@ describe('calculator input defaults and normalization', () => {
 
     expect(normalized.projectName).toBe('Estimate');
     expect(normalized.jobType).toBe('commercial');
-    expect(normalized.pergolas).toEqual([{ id: 'pergola-main', label: 'Main pergola' }]);
+    expect(normalized.pergolas).toEqual([{
+      id: 'pergola-main',
+      label: 'Main pergola',
+      lighting: { lightCount: '13', dimmer: true },
+    }]);
     expect(normalized.modules[0]?.pergolaId).toBe('pergola-main');
     expect(normalized.modules[0]?.flashings?.rows[0]?.kind).toBe('primary');
     expect(normalized.blinds?.items[0]?.system).toBe('OMNI');

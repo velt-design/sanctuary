@@ -18,8 +18,9 @@ export function hasStructuredCalculatorLighting(inputs: CalculatorInputs | null 
 }
 
 export function calculatorPergolaSupportsRafterLighting(inputs: CalculatorInputs, pergolaId: string): boolean {
+  const fallbackPergolaId = inputs.pergolas?.[0]?.id;
   return inputs.modules.some(
-    (module) => module.pergolaId === pergolaId && module.roofMaterial === 'acrylic',
+    (module) => (module.pergolaId || fallbackPergolaId) === pergolaId && module.roofMaterial === 'acrylic',
   );
 }
 
