@@ -1,4 +1,4 @@
-export type DepositInvoiceStatus = 'OPEN' | 'PAID' | 'VOID';
+type DepositInvoiceStatus = 'OPEN' | 'PAID' | 'VOID';
 
 export type DepositInvoiceDeliveryStatus = 'NOT_SENT' | 'SENT' | 'FAILED';
 
@@ -54,16 +54,68 @@ export type InvoiceScheduleTerm = {
   position: number;
   termCount: number;
   amountIncGstCents: number;
+  allocatedPaidIncGstCents: number;
+  remainingAmountIncGstCents: number;
+  source: 'quote' | 'instalment' | 'custom';
   invoice: DepositInvoiceSummary | null;
 };
 
+type ProjectPaymentAllocationSummary = {
+  id: string;
+  quoteVersionId: string;
+  paymentTermId: string;
+  stageLabel: string;
+  amountIncGstCents: number;
+  isCurrentSchedule: boolean;
+};
+
+export type ProjectPaymentEntrySummary = {
+  id: string;
+  entryType: 'PAYMENT' | 'ADJUSTMENT' | 'REVERSAL';
+  amountIncGstCents: number;
+  occurredAt: string;
+  paymentMethod: string | null;
+  reference: string | null;
+  note: string | null;
+  reason: string | null;
+  sourceInvoiceId: string | null;
+  sourceInvoiceRef: string | null;
+  reversed: boolean;
+  allocations: ProjectPaymentAllocationSummary[];
+  unallocatedIncGstCents: number;
+};
+
 export type ProjectInvoiceSchedule = {
+  acceptedQuoteVersionId: string | null;
+  acceptedQuoteRef: string | null;
+  acceptedQuoteVersionNumber: number | null;
   acceptedQuoteTotalIncGstCents: number;
   invoicedIncGstCents: number;
   paidIncGstCents: number;
   outstandingIncGstCents: number;
   remainingToInvoiceIncGstCents: number;
+  unallocatedCreditIncGstCents: number;
   terms: InvoiceScheduleTerm[];
+  paymentEntries?: ProjectPaymentEntrySummary[];
+};
+
+export type AdminInvoiceCreationMode = 'next_stage' | 'full_remaining' | 'custom' | 'split';
+
+export type AdminInvoiceCreateInput = {
+  projectId: string;
+  quoteVersionId: string;
+  mode: AdminInvoiceCreationMode;
+  paymentTermId?: string | null;
+  amountIncGstCents?: number | null;
+  splitCount?: number | null;
+  label: string;
+  dueDate?: string | null;
+  reference?: string | null;
+  sendNow?: boolean;
+  allowOverInvoice?: boolean;
+  overrideReason?: string | null;
+  calculationBasis?: 'fixed' | 'percentage';
+  percentage?: number | null;
 };
 
 export type QuoteInvoiceCreateResult = {
@@ -72,6 +124,9 @@ export type QuoteInvoiceCreateResult = {
   sent: boolean;
   alreadySent: boolean;
   sendError: string | null;
+  plannedItemCount?: number;
+  remainingBeforeIncGstCents?: number;
+  remainingAfterIncGstCents?: number;
 };
 
 export type DepositInvoiceArtifactPreview = {

@@ -1,5 +1,11 @@
 import { apiJson } from '@/lib/repo/apiClient';
-import type { DepositInvoiceArtifactPreview, DepositInvoiceSummary, ProjectInvoiceSchedule, QuoteInvoiceCreateResult } from '@/lib/invoices/types';
+import type {
+  AdminInvoiceCreateInput,
+  DepositInvoiceArtifactPreview,
+  DepositInvoiceSummary,
+  ProjectInvoiceSchedule,
+  QuoteInvoiceCreateResult,
+} from '@/lib/invoices/types';
 
 export async function listProjectDepositInvoices(projectId: string): Promise<DepositInvoiceSummary[]> {
   const res = await apiJson<{ invoices: DepositInvoiceSummary[] }>(`/api/staff/v1/projects/${encodeURIComponent(projectId)}/invoices`, {
@@ -30,22 +36,49 @@ export function depositInvoicePdfPreviewUrl(invoiceId: string): string {
 }
 
 export async function loadProjectInvoiceSchedule(projectId: string): Promise<ProjectInvoiceSchedule> {
-  const res = await apiJson<{ schedule: ProjectInvoiceSchedule }>(`/api/admin/projects/${encodeURIComponent(projectId)}/invoices`, {
+  const res = await apiJson<{ schedule: ProjectInvoiceSchedule }>(`/api/staff/v1/projects/${encodeURIComponent(projectId)}/invoice-schedule`, {
     method: 'GET', cache: 'no-store',
   });
   return res.schedule;
 }
 
-export async function createProjectScheduledInvoice(input: {
-  projectId: string;
-  quoteVersionId: string;
-  paymentTermId: string;
-}): Promise<QuoteInvoiceCreateResult> {
+export async function createProjectInvoice(input: AdminInvoiceCreateInput): Promise<QuoteInvoiceCreateResult> {
   const res = await apiJson<{ result: QuoteInvoiceCreateResult }>(`/api/admin/projects/${encodeURIComponent(input.projectId)}/invoices`, {
     method: 'POST',
-    body: JSON.stringify({ quoteVersionId: input.quoteVersionId, paymentTermId: input.paymentTermId }),
+    body: JSON.stringify(input),
   });
   return res.result;
+}
+
+export async function recordProjectPayment(input: {
+  projectId: string;
+  entryType: 'PAYMENT' | 'ADJUSTMENT';
+  amountIncGstCents: number;
+  occurredAt?: string | null;
+  paymentMethod?: string | null;
+  reference?: string | null;
+  note?: string | null;
+  reason?: string | null;
+}): Promise<void> {
+  await apiJson(`/api/admin/projects/${encodeURIComponent(input.projectId)}/payments`, {
+    method: 'POST', body: JSON.stringify(input),
+  });
+}
+
+export async function updatePaymentAllocations(input: {
+  paymentEntryId: string;
+  allocations: Array<{ quoteVersionId: string; paymentTermId: string; amountIncGstCents: number }>;
+  reason: string;
+}): Promise<void> {
+  await apiJson(`/api/admin/payments/${encodeURIComponent(input.paymentEntryId)}/allocations`, {
+    method: 'POST', body: JSON.stringify({ allocations: input.allocations, reason: input.reason }),
+  });
+}
+
+export async function reverseProjectPayment(paymentEntryId: string, reason: string): Promise<void> {
+  await apiJson(`/api/admin/payments/${encodeURIComponent(paymentEntryId)}/reverse`, {
+    method: 'POST', body: JSON.stringify({ reason }),
+  });
 }
 
 export async function markProjectInvoicePaid(invoiceId: string, evidence: {

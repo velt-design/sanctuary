@@ -68,8 +68,64 @@
   border-bottom: 0;
 }
 
+.scheduleFooter,
+.paymentToolbar,
+.paymentRow,
+.emptyCardCopy {
+  padding: var(--ui-space-3) var(--ui-space-4);
+}
+
+.scheduleFooter,
+.paymentToolbar,
+.paymentRow {
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+}
+
+.scheduleFooter {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.paymentToolbar,
+.paymentRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-4);
+}
+
+.paymentToolbar p,
+.emptyCardCopy {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+}
+
+.paymentRows {
+  display: grid;
+  border-top: var(--ui-border-width) solid var(--ui-border);
+}
+
+.paymentRow:last-child {
+  border-bottom: 0;
+}
+
+.allocationCopy {
+  display: grid;
+  flex: 1;
+  gap: var(--ui-space-1);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+}
+
 @media (max-width: 767px) {
   .scheduleRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .paymentToolbar,
+  .paymentRow {
     align-items: stretch;
     flex-direction: column;
   }

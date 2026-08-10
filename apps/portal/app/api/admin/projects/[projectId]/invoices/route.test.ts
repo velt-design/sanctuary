@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   requireAdminSession: vi.fn(),
   getProjectInvoiceSchedule: vi.fn(),
-  createScheduledInvoice: vi.fn(),
+  createAdminInvoice: vi.fn(),
 }));
 
 vi.mock('@/lib/api/adminApi', async () => {
@@ -12,7 +12,7 @@ vi.mock('@/lib/api/adminApi', async () => {
 });
 vi.mock('@/lib/invoices/adminPayments', () => ({
   getProjectInvoiceSchedule: mocks.getProjectInvoiceSchedule,
-  createScheduledInvoice: mocks.createScheduledInvoice,
+  createAdminInvoice: mocks.createAdminInvoice,
 }));
 
 import { GET, POST } from './route';
@@ -32,15 +32,15 @@ describe('admin project invoices route', () => {
   });
 
   it('creates the selected whole scheduled invoice as the admin actor', async () => {
-    mocks.createScheduledInvoice.mockResolvedValue({ created: true, invoice: { invoiceRef: 'INV-1' } });
+    mocks.createAdminInvoice.mockResolvedValue({ created: true, invoice: { invoiceRef: 'INV-1' } });
     const response = await POST(new Request('http://localhost', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ quoteVersionId: 'qv_1', paymentTermId: 'payment-2' }),
+      body: JSON.stringify({ quoteVersionId: 'qv_1', mode: 'next_stage', paymentTermId: 'payment-2', label: 'Final payment' }),
     }), context);
     expect(response.status).toBe(201);
-    expect(mocks.createScheduledInvoice).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mocks.createAdminInvoice).toHaveBeenCalledWith(expect.objectContaining({
       projectId: 'proj_11111111-1111-4111-8111-111111111111',
-      quoteVersionId: 'qv_1', paymentTermId: 'payment-2', actor: 'admin-1',
+      quoteVersionId: 'qv_1', mode: 'next_stage', paymentTermId: 'payment-2', label: 'Final payment', actor: 'admin-1',
     }));
   });
 });

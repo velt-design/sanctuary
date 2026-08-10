@@ -2,27 +2,23 @@ import 'server-only';
 
 import { insertCommercialAuditEvent } from '../commercial/audit';
 import { paymentDetailsText } from '../payments/paymentDetails';
-import { normalizeStoredQuotePaymentSchedule, paymentScheduleCompatibilityDepositPercent } from '../quotes/paymentSchedule';
+import { normalizeStoredQuotePaymentSchedule } from '../quotes/paymentSchedule';
 import { appIdFromUuid, uuidFromAppId } from '../supabase/mappers';
 import { supabaseServiceRole } from '../supabaseClient';
+import { loadProjectPaymentLedger } from './paymentLedger';
+import { projectInvoiceSchedule } from './paymentScheduleProjection';
 import { listDepositInvoicesForProject, sendDepositInvoiceNow } from './server';
-import { summarizeQuoteVersionInvoices } from './invoiceSchedule';
-import type { DepositInvoiceSummary, ProjectInvoiceSchedule, QuoteInvoiceCreateResult } from './types';
+import type {
+  AdminInvoiceCreateInput,
+  DepositInvoiceSummary,
+  ProjectInvoiceSchedule,
+  QuoteInvoiceCreateResult,
+} from './types';
 
 function errorMessage(error: unknown, fallback: string): string {
   return typeof (error as { message?: unknown })?.message === 'string'
     ? String((error as { message: string }).message)
     : fallback;
-}
-
-function dateOnly(value = new Date()): string {
-  return value.toISOString().slice(0, 10);
-}
-
-function addDays(value: string, days: number): string {
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  parsed.setUTCDate(parsed.getUTCDate() + days);
-  return dateOnly(parsed);
 }
 
 function optionalText(value: unknown, maxLength: number): string | null {
@@ -44,156 +40,110 @@ async function latestAcceptedQuoteVersion(projectUuid: string) {
   return versionRes.data ? { quote: quoteRes.data as any, version: versionRes.data as any } : null;
 }
 
-export async function getProjectInvoiceSchedule(projectId: string): Promise<ProjectInvoiceSchedule> {
+function emptySchedule(): ProjectInvoiceSchedule {
+  return {
+    acceptedQuoteVersionId: null,
+    acceptedQuoteRef: null,
+    acceptedQuoteVersionNumber: null,
+    acceptedQuoteTotalIncGstCents: 0,
+    invoicedIncGstCents: 0,
+    paidIncGstCents: 0,
+    outstandingIncGstCents: 0,
+    remainingToInvoiceIncGstCents: 0,
+    unallocatedCreditIncGstCents: 0,
+    terms: [],
+  };
+}
+
+export async function getProjectInvoiceSchedule(
+  projectId: string,
+  options: { includePaymentEntries?: boolean } = {},
+): Promise<ProjectInvoiceSchedule> {
   const projectUuid = uuidFromAppId(projectId, 'proj');
   const [accepted, invoices] = await Promise.all([
     latestAcceptedQuoteVersion(projectUuid),
     listDepositInvoicesForProject(projectId),
   ]);
-  if (!accepted) {
-    return {
-      acceptedQuoteTotalIncGstCents: 0,
-      invoicedIncGstCents: 0,
-      paidIncGstCents: 0,
-      outstandingIncGstCents: 0,
-      remainingToInvoiceIncGstCents: 0,
-      terms: [],
-    };
-  }
+  if (!accepted) return emptySchedule();
 
   const versionUuid = String(accepted.version.id);
   const versionId = appIdFromUuid('qv', versionUuid);
-  const summary = summarizeQuoteVersionInvoices(invoices, versionId);
-  const activeInvoices = summary.active;
   const total = Number(accepted.version.total_inc_gst_cents ?? 0) || 0;
-  const terms = normalizeStoredQuotePaymentSchedule(
+  const normalizedTerms = normalizeStoredQuotePaymentSchedule(
     accepted.version.payment_terms,
     total,
     Number(accepted.version.deposit_percent ?? 50),
   );
-  const invoicesByTerm = new Map(
-    activeInvoices
-      .map((invoice) => [invoice.paymentTermId, invoice]),
+  const invoiceRefsByUuid = new Map(
+    invoices.map((invoice) => [uuidFromAppId(invoice.id, 'inv'), invoice.invoiceRef]),
   );
-  const latestInvoiced = terms.reduce(
-    (sum, term) => sum + (invoicesByTerm.has(term.id) ? term.resolvedAmountIncGstCents : 0),
-    0,
-  );
-  return {
+  const ledger = await loadProjectPaymentLedger({ projectUuid, quoteVersionUuid: versionUuid, invoiceRefsByUuid });
+  return projectInvoiceSchedule({
+    acceptedQuoteVersionId: versionId,
+    acceptedQuoteRef: String(accepted.quote.quote_ref ?? ''),
+    acceptedQuoteVersionNumber: Number(accepted.version.version_number ?? 0) || 0,
     acceptedQuoteTotalIncGstCents: total,
-    invoicedIncGstCents: summary.invoicedIncGstCents,
-    paidIncGstCents: summary.paidIncGstCents,
-    outstandingIncGstCents: summary.outstandingIncGstCents,
-    remainingToInvoiceIncGstCents: Math.max(0, total - latestInvoiced),
-    terms: terms.map((term, index) => ({
-      quoteVersionId: versionId,
-      quoteRef: String(accepted.quote.quote_ref ?? ''),
-      quoteVersionNumber: Number(accepted.version.version_number ?? 0) || 0,
-      paymentTermId: term.id,
+    quoteTerms: normalizedTerms.map((term) => ({
+      id: term.id,
       label: term.label,
-      position: index + 1,
-      termCount: terms.length,
       amountIncGstCents: term.resolvedAmountIncGstCents,
-      invoice: invoicesByTerm.get(term.id) ?? null,
     })),
-  };
+    planItems: ledger.planItems,
+    invoices,
+    paymentEntries: ledger.entries,
+    allocations: ledger.allocations,
+    includePaymentEntries: options.includePaymentEntries === true,
+  });
 }
 
-export async function createScheduledInvoice(params: {
-  projectId: string;
-  quoteVersionId: string;
-  paymentTermId: string;
-  dueDate?: string | null;
-  reference?: string | null;
-  sendNow?: boolean;
-  actor: string | null;
-}): Promise<QuoteInvoiceCreateResult> {
+export async function createAdminInvoice(
+  params: AdminInvoiceCreateInput & { actor: string | null },
+): Promise<QuoteInvoiceCreateResult> {
   const projectUuid = uuidFromAppId(params.projectId, 'proj');
   const quoteVersionUuid = uuidFromAppId(params.quoteVersionId, 'qv');
-  const versionRes = await supabaseServiceRole.from('quote_versions').select('*').eq('id', quoteVersionUuid).single();
-  if (versionRes.error || !versionRes.data) throw new Error(errorMessage(versionRes.error, 'Quote version not found'));
-  const version = versionRes.data as any;
-  if (String(version.status).toUpperCase() !== 'ACCEPTED') throw new Error('Only accepted quotes can be invoiced');
-  const total = Number(version.total_inc_gst_cents ?? 0) || 0;
-  const terms = normalizeStoredQuotePaymentSchedule(version.payment_terms, total, Number(version.deposit_percent ?? 50));
-  const termIndex = terms.findIndex((term) => term.id === params.paymentTermId);
-  if (termIndex < 0) throw new Error('Payment term not found');
-
-  const quoteRes = await supabaseServiceRole.from('quotes').select('id,quote_ref,project_id').eq('id', String(version.quote_id)).single();
-  if (quoteRes.error || !quoteRes.data) throw new Error(errorMessage(quoteRes.error, 'Quote not found'));
-  if (String((quoteRes.data as any).project_id) !== projectUuid) throw new Error('Quote does not belong to this project');
-
-  const existingRes = await supabaseServiceRole.from('deposit_invoices').select('id')
-    .eq('quote_version_id', quoteVersionUuid)
-    .eq('payment_term_id', params.paymentTermId)
-    .neq('status', 'VOID')
-    .maybeSingle();
-  if (existingRes.error) throw new Error(errorMessage(existingRes.error, 'Failed to check invoice'));
-  if (existingRes.data) {
-    const invoice = (await listDepositInvoicesForProject(params.projectId))
-      .find((item) => item.id === appIdFromUuid('inv', String(existingRes.data!.id)));
-    if (!invoice) throw new Error('Invoice already exists');
-    return { invoice, created: false, sent: false, alreadySent: invoice.lastDeliveryStatus === 'SENT', sendError: null };
-  }
-
-  if (termIndex > 0) {
-    const priorIds = terms.slice(0, termIndex).map((term) => term.id);
-    const priorRes = await supabaseServiceRole.from('deposit_invoices').select('payment_term_id')
-      .eq('quote_version_id', quoteVersionUuid).neq('status', 'VOID').in('payment_term_id', priorIds);
-    if (priorRes.error) throw new Error(errorMessage(priorRes.error, 'Failed to check prior invoices'));
-    const createdPriorIds = new Set((priorRes.data ?? []).map((row: any) => String(row.payment_term_id)));
-    if (priorIds.some((id) => !createdPriorIds.has(id))) throw new Error('Create the earlier scheduled invoices first');
-  }
-
-  const [projectRes, refRes] = await Promise.all([
-    supabaseServiceRole.from('projects').select('id,name,site_address').eq('id', projectUuid).single(),
-    supabaseServiceRole.rpc('next_deposit_invoice_ref'),
-  ]);
-  if (projectRes.error || !projectRes.data) throw new Error(errorMessage(projectRes.error, 'Project not found'));
-  if (refRes.error || !refRes.data) throw new Error(errorMessage(refRes.error, 'Failed to allocate invoice reference'));
-
-  const term = terms[termIndex]!;
-  const issueDate = dateOnly();
-  const dueDate = optionalText(params.dueDate, 10) ?? addDays(issueDate, 7);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) throw new Error('Due date must be YYYY-MM-DD');
-  const amountEx = Math.round(term.resolvedAmountIncGstCents / 1.15);
-  const insertRes = await supabaseServiceRole.from('deposit_invoices').insert({
-    project_id: projectUuid,
-    quote_id: String(quoteRes.data.id),
-    quote_version_id: quoteVersionUuid,
-    quote_ref: String((quoteRes.data as any).quote_ref ?? ''),
-    quote_version_number: Number(version.version_number ?? 0) || 0,
-    invoice_ref: String(refRes.data),
-    status: 'OPEN',
-    issue_date: issueDate,
-    due_date: dueDate,
-    reference: optionalText(params.reference, 240) ?? `${term.label} for Quote ${String((quoteRes.data as any).quote_ref ?? '')}`,
-    customer_name: optionalText(version.customer_name, 240),
-    project_name: optionalText((projectRes.data as any).name, 240),
-    project_address: optionalText((projectRes.data as any).site_address, 500),
-    currency: 'NZD',
-    deposit_percent: paymentScheduleCompatibilityDepositPercent([term], total),
-    quote_total_inc_gst_cents: total,
-    total_inc_gst_cents: term.resolvedAmountIncGstCents,
-    total_ex_gst_cents: amountEx,
-    gst_cents: term.resolvedAmountIncGstCents - amountEx,
-    payment_instructions: paymentDetailsText('invoice'),
-    created_by: params.actor,
-    payment_term_id: term.id,
-    payment_term_label: term.label,
-    payment_term_position: termIndex + 1,
-    payment_term_count: terms.length,
-    payment_term_calculation: term.calculationType,
-    payment_term_percentage: term.percentageOfRemainder,
-  } as any).select('id').single();
-  if (insertRes.error || !insertRes.data) throw new Error(errorMessage(insertRes.error, 'Failed to create invoice'));
+  const label = params.label.trim().slice(0, 240);
+  if (label.length < 2) throw new Error('Invoice label is required');
+  const dueDate = optionalText(params.dueDate, 10);
+  if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) throw new Error('Due date must be YYYY-MM-DD');
+  const rpc = await supabaseServiceRole.rpc('commercial_create_admin_invoice', {
+    p_project_id: projectUuid,
+    p_quote_version_id: quoteVersionUuid,
+    p_mode: params.mode,
+    p_payment_term_id: optionalText(params.paymentTermId, 160),
+    p_amount_inc_gst_cents: params.amountIncGstCents == null ? null : Math.trunc(params.amountIncGstCents),
+    p_split_count: params.splitCount == null ? null : Math.trunc(params.splitCount),
+    p_label: label,
+    p_due_date: dueDate,
+    p_reference: optionalText(params.reference, 240),
+    p_payment_instructions: paymentDetailsText('invoice'),
+    p_allow_over_invoice: params.allowOverInvoice === true,
+    p_override_reason: optionalText(params.overrideReason, 1000),
+    p_actor: params.actor,
+  } as any);
+  if (rpc.error) throw new Error(errorMessage(rpc.error, 'Failed to create invoice'));
+  const row = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data;
+  const invoiceUuid = String((row as any)?.invoice_id ?? '');
+  if (!invoiceUuid) throw new Error('Invoice was created but no identifier was returned');
 
   await insertCommercialAuditEvent({
     projectId: projectUuid,
     type: 'invoice.created',
-    payload: { invoiceId: insertRes.data.id, quoteVersionId: quoteVersionUuid, paymentTermId: term.id, actor: params.actor },
+    idempotencyKey: `invoice.created:${invoiceUuid}`,
+    payload: {
+      invoiceId: invoiceUuid,
+      quoteVersionId: quoteVersionUuid,
+      mode: params.mode,
+      paymentTermId: params.paymentTermId ?? null,
+      amountIncGstCents: params.amountIncGstCents ?? null,
+      calculationBasis: params.calculationBasis ?? null,
+      percentage: params.percentage ?? null,
+      overInvoiceOverride: params.allowOverInvoice === true,
+      overrideReason: params.overrideReason ?? null,
+      actor: params.actor,
+    },
   });
-  const invoiceId = appIdFromUuid('inv', String(insertRes.data.id));
+
+  const invoiceId = appIdFromUuid('inv', invoiceUuid);
   let sent = false;
   let sendError: string | null = null;
   if (params.sendNow) {
@@ -206,7 +156,16 @@ export async function createScheduledInvoice(params: {
   }
   const invoice = (await listDepositInvoicesForProject(params.projectId)).find((item) => item.id === invoiceId);
   if (!invoice) throw new Error('Invoice created but could not be reloaded');
-  return { invoice, created: true, sent, alreadySent: false, sendError };
+  return {
+    invoice,
+    created: true,
+    sent,
+    alreadySent: false,
+    sendError,
+    plannedItemCount: Number((row as any)?.planned_item_count ?? 0),
+    remainingBeforeIncGstCents: Number((row as any)?.remaining_before_inc_gst_cents ?? 0),
+    remainingAfterIncGstCents: Number((row as any)?.remaining_after_inc_gst_cents ?? 0),
+  };
 }
 
 export async function markInvoicePaid(params: {
@@ -218,30 +177,26 @@ export async function markInvoicePaid(params: {
   note?: string | null;
 }): Promise<DepositInvoiceSummary> {
   const invoiceUuid = uuidFromAppId(params.invoiceId, 'inv');
-  const invoiceRes = await supabaseServiceRole.from('deposit_invoices').select('*').eq('id', invoiceUuid).single();
+  const invoiceRes = await supabaseServiceRole.from('deposit_invoices').select('project_id,status').eq('id', invoiceUuid).single();
   if (invoiceRes.error || !invoiceRes.data) throw new Error(errorMessage(invoiceRes.error, 'Invoice not found'));
-  const current = invoiceRes.data as any;
-  if (String(current.status).toUpperCase() === 'PAID') {
-    const existing = (await listDepositInvoicesForProject(appIdFromUuid('proj', String(current.project_id))))
-      .find((invoice) => invoice.id === params.invoiceId);
-    if (!existing) throw new Error('Invoice not found');
-    return existing;
-  }
-  if (String(current.status).toUpperCase() !== 'OPEN') throw new Error('Only open invoices can be marked paid');
   const paidAt = optionalText(params.paidAt, 40) ?? new Date().toISOString();
   if (!Number.isFinite(new Date(paidAt).getTime())) throw new Error('Paid date is invalid');
-  const updateRes = await supabaseServiceRole.from('deposit_invoices').update({
-    status: 'PAID', paid_at: new Date(paidAt).toISOString(), paid_by: params.actor,
-    payment_reference: optionalText(params.reference, 240),
-    payment_method: optionalText(params.method, 80),
-    payment_note: optionalText(params.note, 1000),
-  } as any).eq('id', invoiceUuid).eq('status', 'OPEN').select('*').single();
-  if (updateRes.error || !updateRes.data) throw new Error(errorMessage(updateRes.error, 'Failed to mark invoice paid'));
+  const rpc = await supabaseServiceRole.rpc('commercial_mark_invoice_paid_and_record_payment', {
+    p_invoice_id: invoiceUuid,
+    p_actor: params.actor,
+    p_paid_at: new Date(paidAt).toISOString(),
+    p_reference: optionalText(params.reference, 240),
+    p_method: optionalText(params.method, 80),
+    p_note: optionalText(params.note, 1000),
+  } as any);
+  if (rpc.error) throw new Error(errorMessage(rpc.error, 'Failed to mark invoice paid'));
   await insertCommercialAuditEvent({
-    projectId: String(current.project_id), type: 'invoice.paid',
-    payload: { invoiceId: invoiceUuid, paidAt: (updateRes.data as any).paid_at, actor: params.actor },
+    projectId: String((invoiceRes.data as any).project_id),
+    type: 'invoice.paid',
+    idempotencyKey: `invoice.paid:${invoiceUuid}`,
+    payload: { invoiceId: invoiceUuid, paidAt, actor: params.actor },
   });
-  const projectId = appIdFromUuid('proj', String(current.project_id));
+  const projectId = appIdFromUuid('proj', String((invoiceRes.data as any).project_id));
   const updated = (await listDepositInvoicesForProject(projectId)).find((invoice) => invoice.id === params.invoiceId);
   if (!updated) throw new Error('Invoice paid but could not be reloaded');
   return updated;
@@ -259,7 +214,6 @@ export async function voidInvoice(params: {
   if (invoiceRes.error || !invoiceRes.data) throw new Error(errorMessage(invoiceRes.error, 'Invoice not found'));
   const current = invoiceRes.data as any;
   if (String(current.status).toUpperCase() !== 'OPEN') throw new Error('Only open invoices can be voided');
-
   const voidedAt = new Date().toISOString();
   const updateRes = await supabaseServiceRole.from('deposit_invoices').update({
     status: 'VOID',
@@ -270,7 +224,6 @@ export async function voidInvoice(params: {
     portal_token_expires_at: null,
   } as any).eq('id', invoiceUuid).eq('status', 'OPEN').select('id').single();
   if (updateRes.error || !updateRes.data) throw new Error(errorMessage(updateRes.error, 'Failed to void invoice'));
-
   await insertCommercialAuditEvent({
     projectId: String(current.project_id),
     type: 'invoice.voided',

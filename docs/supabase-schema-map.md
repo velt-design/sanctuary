@@ -126,6 +126,9 @@ Tables/RPCs:
 - `quote_send_logs`
 - `deposit_invoices`
 - `deposit_invoice_send_logs`
+- `project_payment_entries`
+- `project_payment_allocations`
+- `project_invoice_plan_items`
 - `private.commercial_email_intents`
 - `file_artifacts`
 - `job_pack_generations`
@@ -136,6 +139,11 @@ Tables/RPCs:
 - `commercial_quote_update_draft(...)`
 - `commercial_quote_prepare_delivery_email(...)`
 - `commercial_accept_quote_and_ensure_invoice(...)`
+- `commercial_record_project_payment_entry(...)`
+- `commercial_mark_invoice_paid_and_record_payment(...)`
+- `commercial_replace_payment_allocations(...)`
+- `commercial_reverse_payment_entry(...)`
+- `commercial_create_admin_invoice(...)`
 - `commercial_email_intent_prepare(...)` plus the bounded read/checkpoint/finalisation RPCs
 
 Primary write path:
@@ -149,7 +157,8 @@ Primary write path:
 - Public accept/decline and public invoice actions through token-bound marketing routes only after server-side token validation.
 - Public token routes and generated artifacts should continue to read quote-version totals and line items, not raw commercial payloads.
 - `quote_versions.pricing_source` and `quote_versions.pricing_source_metadata` store compact provenance only. Raw `estimates.commercial_design_input` must not be copied into quote versions, public token routes, invoices, PDFs, emails, or job-pack outputs.
-- `quote_versions.payment_terms` is the frozen ordered schedule of fixed-dollar and percentage-of-remainder terms, including resolved cents. `deposit_invoices.payment_term_*` binds each non-void invoice to exactly one term; `paid_at`, `paid_by`, `payment_reference`, `payment_method`, and `payment_note` own whole-invoice payment evidence. There is no partial-payment amount field.
+- `quote_versions.payment_terms` is the frozen default schedule of fixed-dollar and percentage-of-remainder terms, including resolved cents. `project_invoice_plan_items` stores future instalments created by an admin split; only the first is invoiced immediately. `deposit_invoices.payment_term_*` binds each non-void whole invoice to a quote or planned term, while `creation_mode` and `creation_override_reason` preserve admin creation evidence. There is no partial-payment amount field.
+- `project_payment_entries` is the append-only job payment/adjustment/reversal ledger. `project_payment_allocations` is reversible allocation history from positive entries to quote-version payment stages. A paid invoice creates one job payment entry transactionally; backfilled paid historical invoices intentionally start unallocated. Paid/Open/Remaining projections use job-level ledger value plus all whole open project invoices, while allocation affects stage presentation rather than invoice identity.
 - `quote_versions.status = 'SUPERSEDED'` is a manual admin retirement state for a previously `SENT` or `ACCEPTED` version. `superseded_at` and `superseded_by` record that transition; accepted, delivery, PDF, invoice, and payment evidence remain unchanged.
 
 Primary read path:
@@ -161,7 +170,7 @@ Primary read path:
 
 Access rule:
 
-- Staff writes are server-owned and should not bypass quote/invoice domain helpers. Invoice creation and paid-state changes are admin-only through `apps/portal/app/api/admin/projects/[projectId]/invoices` and `apps/portal/app/api/admin/invoices/[invoiceId]/paid`; manual quote superseding is admin-only through `apps/portal/app/api/admin/quotes/[quoteVersionId]/supersede`.
+- Staff writes are server-owned and should not bypass quote/invoice domain helpers. Staff read reconciled job totals through `apps/portal/app/api/staff/v1/projects/[projectId]/invoice-schedule`; payment-entry detail is included only for an admin session. Invoice creation, paid-state changes, ledger writes, allocation replacement and reversals are admin-only through the routes under `apps/portal/app/api/admin`. Manual quote superseding remains admin-only through `apps/portal/app/api/admin/quotes/[quoteVersionId]/supersede`.
 - Commercial transaction and intent RPCs are revoked from `anon` and `authenticated`; narrow server-owned service-role adapters call them only after staff auth or public-token validation.
 - `private.commercial_email_intents` freezes request identity and checkpoints. It is not a browser table, public read model, or substitute for quote/invoice send logs.
 - Public quote links use `quote_versions.accept_token_hash`; public invoice links use `deposit_invoices.portal_token_hash`.
