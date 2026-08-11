@@ -237,6 +237,18 @@ were left untouched; no blanket push, migration-up, or repair command was used.
 This is production evidence only; shared staging still requires its own
 positive target check and exact-file apply before testing PDF drawing writes.
 
+Commercial internal names entered the production schema on 2026-08-11 through
+an exact-file apply of
+`20260811000001_commercial_internal_names.sql` to the positively identified
+`SP-Staff-Portal-DB` project `iytanftukulcnavossmd`. Its canonical-LF SHA-256
+was `12929b6cf433bddcbc5e99ebebdca110bbfa11868294998e17552566c2ff0ceb`.
+The exact file passed a rollback rehearsal after completed physical backup
+`1340446792` was confirmed. Postflight verified nullable text columns and the
+120-character constraints on both `estimates` and `quotes`, zero invalid or
+backfilled names, successful PostgREST selects, and the unambiguous
+`20260811000001` migration-ledger entry. No customer or commercial row was
+changed.
+
 Marketing enquiry intake requires both `20260723_000001_marketing_enquiry_intake_security.sql` and the forward compatibility migration `20260724043000_marketing_enquiry_budget_columns.sql`. The latter adds nullable pricing snapshot columns to installations whose existing `enquiry_requests` table predates those fields.
 
 Project owner handoffs and the authoritative stale-Enquiry dry run require `20260801_000001_project_owner_handoffs_and_enquiry_inactivity.sql`. Apply it before running `npm run portal:enquiries:inactive`; that command is read-only and does not close or advance projects.

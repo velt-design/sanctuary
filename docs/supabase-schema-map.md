@@ -182,7 +182,7 @@ Access rule:
 Migration source:
 
 - Quote and invoice migrations under `supabase/migrations/20260209_*`, `20260216_*`, `20260220_*`, `20260314_*`, `20260318_000002_job_pack_sheet_overrides.sql`, `20260320_000001_job_pack_generations.sql`, `20260321_000001_job_pack_generations_schema_reload.sql`, `20260408_000001_portal_security_hardening.sql`, quote-version source metadata migration `20260504_000002_quote_version_pricing_source_metadata.sql`, commercial trust migration `20260728_000001_commercial_workflow_trust.sql`, payment schedule/whole-invoice payment migration `20260810_000002_quote_payment_schedules_and_invoice_payments.sql`, and manual quote retirement migration `20260810000003_manual_quote_superseded_status.sql`.
-- `supabase/migrations/20260811000001_commercial_internal_names.sql` adds bounded staff-only names to estimates and quote families without backfilling historical rows.
+- `supabase/migrations/20260811000001_commercial_internal_names.sql` adds bounded staff-only names to estimates and quote families without backfilling historical rows. It was exact-file applied to production on 2026-08-11; postflight verified both columns, constraints, PostgREST visibility, zero backfilled names, and the unique migration-ledger entry.
 - `supabase/portal_schema.sql` is a legacy baseline/snapshot reference for these tables.
 
 ## Schedule, Site Visits, And Running Jobs
