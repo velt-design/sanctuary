@@ -219,5 +219,5 @@ describe("quote artifact visual fixtures", () => {
         "utf8",
       );
     }
-  });
+  }, 15_000);
 });

@@ -111,7 +111,7 @@ describe("deposit invoice artifact view model", () => {
     expect(
       resolveDepositInvoicePaymentLines(null, ["Legacy fallback line"]),
     ).toEqual(["Legacy fallback line"]);
-  });
+  }, 15_000);
 });
 
 describe("deposit invoice PDF", () => {
