@@ -2,6 +2,7 @@
 
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect } from 'react';
+import { suggestPergolaPostCountV1 } from '@sp/costing';
 
 import type {
   CalculatorFlashingsState,
@@ -53,6 +54,18 @@ export function useCalculatorInputController({
         key === 'houseConnectionType'
           ? (next as CalculatorModuleInputs['houseConnectionType'])
           : updated.houseConnectionType;
+      if (key === 'lengthM' || key === 'houseConnectionType') {
+        const currentSuggestedPostCount = suggestPergolaPostCountV1(
+          Number.parseFloat(current.lengthM),
+          current.houseConnectionType,
+        );
+        if (current.postCount.trim() === String(currentSuggestedPostCount)) {
+          updated.postCount = String(suggestPergolaPostCountV1(
+            Number.parseFloat(updated.lengthM),
+            nextHouseConnection,
+          ));
+        }
+      }
       const nextBoxEnabled =
         key === 'boxPerimeterEnabled' ? Boolean(next) : updated.boxPerimeterEnabled;
 

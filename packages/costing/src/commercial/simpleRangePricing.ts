@@ -2,6 +2,7 @@ import { GST_RATE } from '../blinds';
 import commercialPolicyV2Json from '../config/commercial_policy_v2_2026-08-05.json';
 import commercialPolicyV3Json from '../config/commercial_policy_v3_2026-08-05.json';
 import commercialPolicyV4Json from '../config/commercial_policy_v4_2026-08-05.json';
+import commercialPolicyV5Json from '../config/commercial_policy_v5_2026-08-11.json';
 import type { CostingConfigV1 } from '../engine/config';
 import type { OverheadV1, SiteInputsV1 } from '../engine/types';
 import { isCostingManifestAtLeast } from '../manifestVersion';
@@ -67,16 +68,28 @@ export function isCommercialPolicyV5Enabled(config: CostingConfigV1): boolean {
   return isCostingManifestAtLeast(config, 2, 4);
 }
 
+export function isCommercialPolicyV6Enabled(config: CostingConfigV1): boolean {
+  return isCostingManifestAtLeast(config, 2, 5);
+}
+
 function commercialPolicyForConfig(config: CostingConfigV1) {
-  if (isCommercialPolicyV5Enabled(config)) return config.commercialPolicy;
+  if (isCommercialPolicyV6Enabled(config)) return config.commercialPolicy;
+  if (isCommercialPolicyV5Enabled(config)) return commercialPolicyV5Json;
   if (isCommercialPolicyV4Enabled(config)) return commercialPolicyV4Json;
   if (isCommercialPolicyV3Enabled(config)) return commercialPolicyV3Json;
   return commercialPolicyV2Json;
 }
 
+function commercialPolicyV5OrLaterForConfig(config: CostingConfigV1) {
+  return isCommercialPolicyV6Enabled(config) ? config.commercialPolicy : commercialPolicyV5Json;
+}
+
 function simpleCustomerPriceUpliftForConfig(config: CostingConfigV1): number {
-  if (isCommercialPolicyV5Enabled(config)) {
+  if (isCommercialPolicyV6Enabled(config)) {
     return Number(config.commercialPolicy.simple_range.customer_price_uplift_pct);
+  }
+  if (isCommercialPolicyV5Enabled(config)) {
+    return Number(commercialPolicyV5Json.simple_range.customer_price_uplift_pct);
   }
   if (isCommercialPolicyV4Enabled(config)) {
     return Number(commercialPolicyV4Json.simple_range.customer_price_uplift_pct);
@@ -89,7 +102,7 @@ function simpleCustomerPriceUpliftForConfig(config: CostingConfigV1): number {
 
 function customerPriceMultiplierForConfig(config?: CostingConfigV1): number {
   if (!config || !isCommercialPolicyV5Enabled(config)) return 1.25;
-  const multiplier = Number(config.commercialPolicy.customer_pricing.multiplier);
+  const multiplier = Number(commercialPolicyV5OrLaterForConfig(config).customer_pricing.multiplier);
   return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1.25;
 }
 
@@ -162,7 +175,7 @@ export function productiveInstallTimeMultiplierV5(
   pricingPolicy: SitePricingPolicyV2 | undefined,
 ): number {
   if (!isCommercialPolicyV5Enabled(config) || pricingPolicy?.resolved_classification !== 'bespoke') return 1;
-  const multiplier = Number(config.commercialPolicy.bespoke.productive_install_time_multiplier);
+  const multiplier = Number(commercialPolicyV5OrLaterForConfig(config).bespoke.productive_install_time_multiplier);
   return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1;
 }
 
@@ -172,7 +185,7 @@ export function buildCommercialOverheadV5(
   productiveCrewHours: number,
   resolvedClassification: PricingClassificationV2,
 ): OverheadV1 {
-  const policy = config.commercialPolicy;
+  const policy = commercialPolicyV5OrLaterForConfig(config);
   const pergolaCount = Math.max(0, inputs.pergolas.length);
   const moduleCount = inputs.pergolas.reduce((sum, pergola) => sum + pergola.modules.length, 0);
   const additionalPergolaCount = Math.max(0, pergolaCount - 1);

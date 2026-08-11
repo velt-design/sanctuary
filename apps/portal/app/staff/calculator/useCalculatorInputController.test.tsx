@@ -112,6 +112,22 @@ describe('useCalculatorInputController', () => {
     rendered.unmount();
   });
 
+  it('updates only an untouched post suggestion when length or attachment changes', () => {
+    const rendered = renderIntoDocument(<Probe initialValues={makeValues()} />);
+
+    act(() => controller().setModuleField('lengthM', '9'));
+    expect(currentValues().modules[0].postCount).toBe('4');
+
+    act(() => controller().setModuleField('houseConnectionType', 'none'));
+    expect(currentValues().modules[0].postCount).toBe('8');
+
+    act(() => controller().setModuleField('postCount', '5'));
+    act(() => controller().setModuleField('lengthM', '6'));
+    act(() => controller().setModuleField('houseConnectionType', 'facade'));
+    expect(currentValues().modules[0].postCount).toBe('5');
+    rendered.unmount();
+  });
+
   it('enforces roof and gutter compatibility policy', () => {
     const rendered = renderIntoDocument(
       <Probe initialValues={makeValues({

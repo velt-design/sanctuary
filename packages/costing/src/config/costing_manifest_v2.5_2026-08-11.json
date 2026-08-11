@@ -10,12 +10,13 @@
     "bom_strategy": "bom/bom_strategy_v1.1.json",
     "overheads": "overheads_v1.1_2026-01-08.json",
     "costing_rules": "costing_rules_v1.3_2026-01-08.json",
-    "commercial_policy": "commercial_policy_v5_2026-08-11.json"
+    "commercial_policy": "commercial_policy_v6_2026-08-11.json"
   },
   "integration_notes": [
-    "Retains all v2.4 commercial, geometry, stock-selection and labour behavior.",
+    "Retains the v2.4 geometry, stock-selection, labour, eligibility, Bespoke design and shared 1.3x pricing behavior.",
+    "Raises the once-per-site operational startup from $500 to $1000 ex GST while retaining $500 per pro-rated productive crew-day.",
     "Adds governed 6m powdercoat assumptions for 200x50 and Overhang Gutter 100x100 so every selectable aluminium bar has a standard and custom-colour costing path.",
-    "Published v2.4 and earlier controls hydrate only these new material identities from the immutable v2.5 base rates while retaining their original commercial semantics."
+    "Published v2.4 and earlier controls hydrate only these new material identities from the immutable v2.5 base rates while retaining their original commercial semantics, including the $500 startup."
   ],
   "generated_at": "2026-08-11"
 }

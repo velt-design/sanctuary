@@ -50,7 +50,8 @@ describe('calculator input defaults and normalization', () => {
     expect(module.lengthM).toBe('6');
     expect(module.projectionM).toBe('3');
     expect(module.rafterSpacingMm).toBe('500');
-    expect(module.houseConnectionType).toBe('soffit');
+    expect(module.houseConnectionType).toBe('facade');
+    expect(module.postCount).toBe('3');
     expect(module.flashings?.rows[0]).toMatchObject({
       kind: 'primary',
       band: '201-300',

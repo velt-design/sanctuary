@@ -1,0 +1,29 @@
+{
+  "version": "v6",
+  "customer_pricing": {
+    "multiplier": 1.3
+  },
+  "operational_overhead": {
+    "startup_per_job_ex_gst": 1000,
+    "variable_per_productive_crew_day_ex_gst": 500,
+    "productive_crew_day_hours": 8
+  },
+  "simple_range": {
+    "ground_max_area_m2": 30,
+    "elevated_max_area_m2": 20,
+    "customer_price_uplift_pct": 0
+  },
+  "bespoke": {
+    "productive_install_time_multiplier": 1.2,
+    "design_base_per_job_ex_gst": 1200,
+    "design_additional_pergola_ex_gst": 800,
+    "design_additional_module_ex_gst": 300,
+    "customer_price_uplift_pct": 0
+  },
+  "approval_allowances": {
+    "engineering_base_sell_ex_gst": 5000,
+    "building_consent_base_sell_ex_gst": 10000,
+    "additional_pergola_sell_ex_gst": 3000,
+    "additional_module_sell_ex_gst": 1500
+  }
+}

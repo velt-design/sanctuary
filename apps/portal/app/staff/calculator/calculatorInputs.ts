@@ -1,4 +1,4 @@
-import type { RoofType } from '@sp/costing';
+import { suggestPergolaPostCountV1, type RoofType } from '@sp/costing';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import type {
   BlindLineItem,
@@ -179,8 +179,8 @@ export function makeDefaultModule(pergolaId = 'pergola-1'): CalculatorModuleInpu
     timberInsulatedPanelThicknessMm: '50',
     timberTrayWidthMm: '500',
 
-    postCount: '4',
-    houseConnectionType: 'soffit',
+    postCount: String(suggestPergolaPostCountV1(6, 'facade')),
+    houseConnectionType: 'facade',
     attachmentSide: DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
     drawingRotationQuarterTurns: DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS,
     houseFootprintMode: DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE,

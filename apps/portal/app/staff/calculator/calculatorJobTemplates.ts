@@ -1,3 +1,4 @@
+import { suggestPergolaPostCountV1 } from '@sp/costing';
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
 import { makeDefaultModule } from './calculatorInputs';
 
@@ -22,7 +23,7 @@ function freestandingPitchedAcrylic(pergolaId: string): CalculatorModuleInputs {
     ...makeDefaultModule(pergolaId),
     houseConnectionType: 'none',
     attachmentSide: 'rear',
-    postCount: '4',
+    postCount: String(suggestPergolaPostCountV1(6, 'none')),
   };
 }
 
@@ -41,19 +42,19 @@ export const CALCULATOR_JOB_TEMPLATES: CalculatorJobTemplate[] = [
   {
     key: 'attached_pitched_acrylic',
     label: 'Attached pitched acrylic · 6m × 3m',
-    description: 'Soffit connection, four posts and standard acrylic starting selections.',
+    description: 'Facade connection, three suggested posts and standard acrylic starting selections.',
     buildModule: attachedPitchedAcrylic,
   },
   {
     key: 'freestanding_pitched_acrylic',
     label: 'Freestanding pitched acrylic · 6m × 3m',
-    description: 'No house connection, four posts and standard acrylic starting selections.',
+    description: 'No house connection, three suggested posts on each support beam and standard acrylic starting selections.',
     buildModule: freestandingPitchedAcrylic,
   },
   {
     key: 'attached_gable_acrylic',
     label: 'Attached gable acrylic · 6m × 4m',
-    description: 'Soffit connection, acrylic roof and the configured default gable pitch.',
+    description: 'Facade connection, acrylic roof and the configured default gable pitch.',
     buildModule: attachedGableAcrylic,
   },
 ];

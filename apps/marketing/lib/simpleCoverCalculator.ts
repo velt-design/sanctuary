@@ -1,5 +1,7 @@
 import {
   calculateAcrylicRafterLayoutV1,
+  DEFAULT_PERGOLA_POST_SPACING_M,
+  suggestPergolaPostCountV1,
   type SiteInputsV1,
 } from '@sp/costing';
 import { buildEnquiryHref } from './enquiryContext';
@@ -12,14 +14,14 @@ export const SIMPLE_COVER_INCREMENT_MM = 100;
 export const SIMPLE_COVER_DEFAULT_WIDTH_MM = 6_000;
 export const SIMPLE_COVER_DEFAULT_PROJECTION_MM = 3_000;
 const SIMPLE_COVER_POST_HEIGHT_M = 2.4;
-export const SIMPLE_COVER_MAX_POST_SPACING_MM = 4_000;
+export const SIMPLE_COVER_MAX_POST_SPACING_MM = DEFAULT_PERGOLA_POST_SPACING_M * 1_000;
 export const SIMPLE_COVER_GROUND_MAX_AREA_M2 = 30;
 export const SIMPLE_COVER_ELEVATED_MAX_AREA_M2 = 20;
 export const SIMPLE_COVER_LEDGER_WIDTH_MM = 50;
 export const SIMPLE_COVER_RAFTER_WIDTH_MM = 50;
 export const SIMPLE_COVER_FRONT_BEAM_WIDTH_MM = 100;
 export const SIMPLE_COVER_POST_SIZE_MM = 100;
-export const SIMPLE_COVER_DEFAULT_CONNECTION = 'fascia' as const;
+export const SIMPLE_COVER_DEFAULT_CONNECTION = 'facade' as const;
 const SIMPLE_COVER_PATH = '/simple-cover-calculator';
 
 export type SimpleCoverLevel = 'ground' | 'elevated';
@@ -132,7 +134,7 @@ export function simpleCoverAreaM2(input: Pick<SimpleCoverInput, 'widthMm' | 'pro
 }
 
 export function simpleCoverPostCount(widthMm: number): number {
-  return Math.max(2, Math.ceil(widthMm / SIMPLE_COVER_MAX_POST_SPACING_MM) + 1);
+  return suggestPergolaPostCountV1(widthMm / 1_000, SIMPLE_COVER_DEFAULT_CONNECTION);
 }
 
 export function simpleCoverRafterLayout(widthMm: number) {
