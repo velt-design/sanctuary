@@ -1,0 +1,21 @@
+type CommercialScopeKind = 'base' | 'add_on';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function normalizeCommercialScopeId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  return UUID_PATTERN.test(normalized) ? normalized : null;
+}
+
+export function commercialScopeKind(scopeId: unknown): CommercialScopeKind {
+  return normalizeCommercialScopeId(scopeId) ? 'add_on' : 'base';
+}
+
+export function commercialScopeKey(scopeId: unknown): string {
+  return normalizeCommercialScopeId(scopeId) ?? 'base';
+}
+
+export function isCommercialScopeKind(value: unknown): value is CommercialScopeKind {
+  return value === 'base' || value === 'add_on';
+}

@@ -899,7 +899,7 @@ Select one eligible quote version in this order:
 
 `DECLINED` quote versions never become current.
 
-If more than one quote version is accepted, select the most recent accepted version but raise a data-integrity warning for Stage 0 to classify and test.
+Accepted base and add-on families may coexist legitimately. Select the most recent accepted version as the current design source, but raise a data-integrity warning only when more than one accepted version exists within the same commercial family.
 
 ### 7.2 Design selection when a quote exists
 
@@ -974,10 +974,11 @@ Use the eligible quote selected in Section 7.
 
 When an eligible quote exists:
 
-- Use that quote version's stored total including GST.
+- For a sent or draft quote, use that quote version's stored total including GST.
+- For accepted work, sum the newest accepted stored total from the base family and every accepted add-on family.
 - Do not recalculate.
-- Do not replace a missing quote total with an estimate total.
-- Show `Quote price unavailable` when the stored total is missing or invalid.
+- Do not merge artifacts or replace a missing quote total with an estimate total.
+- Show `Quote price unavailable` when any stored total required by the displayed accepted-project total is missing or invalid.
 
 ### 8.3 Estimate price
 

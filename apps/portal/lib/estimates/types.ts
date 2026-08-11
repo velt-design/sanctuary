@@ -21,6 +21,8 @@ export type EstimateFlowState = {
 export type EstimateMeta = {
   id: string;
   projectId: string;
+  commercialScopeId?: string | null;
+  commercialScopeKind?: 'base' | 'add_on';
   internalName?: string | null;
   createdAt: string;
   status: EstimateStatus;

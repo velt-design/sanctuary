@@ -5,6 +5,7 @@ import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { computeEstimateEditability } from './editability';
 import type { EstimateEditability, EstimateFlowState } from './types';
+import { commercialScopeKey } from '@/lib/commercial/scope';
 
 type QuoteVersionRow = {
   id: string;
@@ -33,6 +34,7 @@ type EstimateRowLite = {
   id: string;
   status: string | null;
   created_at: string | null;
+  commercial_scope_id?: string | null;
 };
 
 type EstimateFlowMaps = {
@@ -67,7 +69,7 @@ export async function loadProjectEstimateFlowMaps(
       (
         await client
           .from('estimates')
-          .select('id, status, created_at')
+          .select('id, status, created_at, commercial_scope_id')
           .eq('project_id', projectUuid)
           .order('created_at', { ascending: false })
       ).data ?? []
@@ -157,22 +159,27 @@ export async function loadProjectEstimateFlowMaps(
     );
   }
 
-  const activeDraftEstimateId =
-    estimates
-      .filter((row) => {
-        const estimateId = String(row?.id ?? '');
-        const editability = editabilityByEstimateId.get(estimateId);
-        return estimateId && isDraftStatus(row?.status) && !editability?.isLocked;
-      })
-      .sort((left, right) => String(right?.created_at ?? '').localeCompare(String(left?.created_at ?? '')))[0]
-      ?.id ?? null;
+  const activeDraftIds = new Set<string>();
+  const activeDraftByScope = new Map<string, EstimateRowLite>();
+  for (const row of estimates) {
+    const estimateId = String(row?.id ?? '');
+    const editability = editabilityByEstimateId.get(estimateId);
+    if (!estimateId || !isDraftStatus(row?.status) || editability?.isLocked) continue;
+    const scopeKey = commercialScopeKey(row?.commercial_scope_id);
+    const current = activeDraftByScope.get(scopeKey);
+    if (!current || String(row?.created_at ?? '') > String(current.created_at ?? '')) {
+      activeDraftByScope.set(scopeKey, row);
+    }
+  }
+  for (const row of activeDraftByScope.values()) activeDraftIds.add(String(row.id));
+  const activeDraftEstimateId = activeDraftByScope.get('base')?.id ?? null;
 
   const flowByEstimateId = new Map<string, EstimateFlowState>();
   for (const estimateId of estimateIds) {
     const editability = editabilityByEstimateId.get(estimateId);
     const generation = generatedByEstimateId.get(estimateId);
     flowByEstimateId.set(estimateId, {
-      isActiveDraft: estimateId === activeDraftEstimateId,
+      isActiveDraft: activeDraftIds.has(estimateId),
       hasSentQuote: Boolean(editability?.isLocked),
       jobPackEligible: Boolean(editability?.isLocked),
       jobPackGeneratedAt: generation?.created_at ?? null,

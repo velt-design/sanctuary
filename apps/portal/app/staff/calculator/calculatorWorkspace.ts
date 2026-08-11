@@ -13,6 +13,8 @@ export type CalculatorProjectWorkspace = {
   fromEstimateId?: string;
   createNewEstimate?: boolean;
   newEstimateInternalName?: string | null;
+  newEstimateCommercialScopeId?: string | null;
+  newEstimateCommercialScopeKind?: 'base' | 'add_on';
   designNavigation: CalculatorDesignNavigation;
   onEstimateSaved: (estimateId: string) => void;
   onOpenProject: () => void;
@@ -26,6 +28,8 @@ type CalculatorWorkspaceRoute = {
   shouldOpenActiveDraft: boolean;
   createNewEstimate: boolean;
   newEstimateInternalName: string | null;
+  newEstimateCommercialScopeId: string | null;
+  newEstimateCommercialScopeKind: 'base' | 'add_on';
 };
 
 export function resolveCalculatorWorkspaceRoute(
@@ -41,6 +45,8 @@ export function resolveCalculatorWorkspaceRoute(
       shouldOpenActiveDraft: false,
       createNewEstimate: Boolean(workspace.createNewEstimate || workspace.fromEstimateId),
       newEstimateInternalName: workspace.newEstimateInternalName?.trim() || null,
+      newEstimateCommercialScopeId: workspace.newEstimateCommercialScopeId?.trim() || null,
+      newEstimateCommercialScopeKind: workspace.newEstimateCommercialScopeKind === 'add_on' ? 'add_on' : 'base',
     };
   }
 
@@ -52,5 +58,7 @@ export function resolveCalculatorWorkspaceRoute(
     shouldOpenActiveDraft: searchParams.get('openActiveDraft') === '1',
     createNewEstimate: Boolean(searchParams.get('fromEstimateId')),
     newEstimateInternalName: searchParams.get('estimateName')?.trim() || null,
+    newEstimateCommercialScopeId: searchParams.get('commercialScopeId')?.trim() || null,
+    newEstimateCommercialScopeKind: searchParams.get('estimateKind') === 'add_on' ? 'add_on' : 'base',
   };
 }

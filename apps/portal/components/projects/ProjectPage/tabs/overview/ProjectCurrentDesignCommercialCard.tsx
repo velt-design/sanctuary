@@ -138,8 +138,8 @@ export default function ProjectCurrentDesignCommercialCard({
           ) : null}
           {data.warnings.includes("multiple_accepted_quotes") ? (
             <div data-command-centre-warning="multiple-accepted-quotes">
-              <AlertBanner tone="warning" title="Multiple accepted quotes">
-                The newest accepted quote is shown; review quote history.
+              <AlertBanner tone="warning" title="Multiple accepted versions in one quote family">
+                The newest accepted version is shown; review that quote&apos;s history.
               </AlertBanner>
             </div>
           ) : null}

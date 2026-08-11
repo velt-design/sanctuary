@@ -6,6 +6,7 @@ import { normalizeStoredQuotePaymentSchedule } from './paymentSchedule';
 import { nowIso } from './serverHelpers';
 import type { QuoteLineItem, QuoteSendLog, QuoteStatus, QuoteVersion } from './types';
 import { normalizeCommercialInternalName } from '@/lib/commercial/internalName';
+import { commercialScopeKind, normalizeCommercialScopeId } from '@/lib/commercial/scope';
 
 function toStatus(raw: unknown): QuoteStatus {
   const value = typeof raw === 'string' ? raw.toUpperCase() : '';
@@ -33,11 +34,14 @@ export function mapQuoteVersionRow(
 
   const depositPercent = normalizeDepositPercent(row?.deposit_percent, 50);
   const totalIncGstCents = Number(row?.total_inc_gst_cents ?? 0) || 0;
+  const commercialScopeId = normalizeCommercialScopeId(row?.quotes?.commercial_scope_id ?? row?.commercial_scope_id);
 
   return {
     id: appIdFromUuid('qv', String(row?.id ?? '')),
     quoteId: appIdFromUuid('qt', String(row?.quote_id ?? row?.quotes?.id ?? '')),
     projectId: projectIdApp,
+    commercialScopeId,
+    commercialScopeKind: commercialScopeKind(commercialScopeId),
     quoteRef,
     internalName: normalizeCommercialInternalName(row?.quotes?.internal_name ?? row?.internal_name),
     versionNumber: Number(row?.version_number ?? 0) || 0,

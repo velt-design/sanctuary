@@ -21,6 +21,8 @@ export type QuoteVersion = {
   id: string;
   quoteId: string;
   projectId: string;
+  commercialScopeId?: string | null;
+  commercialScopeKind?: 'base' | 'add_on';
   quoteRef: string;
   internalName?: string | null;
   versionNumber: number;

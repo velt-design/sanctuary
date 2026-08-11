@@ -92,6 +92,8 @@ type SaveCalculatorEstimateInput = {
   callbacks: SaveCalculatorEstimateCallbacks;
   createNewEstimate?: boolean;
   newEstimateInternalName?: string | null;
+  newEstimateCommercialScopeId?: string | null;
+  newEstimateCommercialScopeKind?: 'base' | 'add_on';
   criticalWarningCount: number;
   draftEntityKey: string;
   draftSessionKey: string;
@@ -167,6 +169,8 @@ async function writeOptimisticEstimate(input: {
   versionLabel: string;
   writeWorkingCopy: typeof writeLocalFirstWorkingCopy;
   internalName?: string | null;
+  commercialScopeId?: string | null;
+  commercialScopeKind?: 'base' | 'add_on';
 }) {
   const optimisticEstimateBase = buildOptimisticEstimateDetail({
     estimateId: input.estimateId,
@@ -176,6 +180,8 @@ async function writeOptimisticEstimate(input: {
     createdBy: input.createdBy,
     createdAt: input.createdAt,
     internalName: input.internalName,
+    commercialScopeId: input.currentEstimate?.commercialScopeId ?? input.commercialScopeId ?? null,
+    commercialScopeKind: input.currentEstimate?.commercialScopeKind ?? input.commercialScopeKind ?? 'base',
   });
   const optimisticEstimate: EstimateDetail = {
     ...optimisticEstimateBase,
@@ -455,12 +461,16 @@ export async function saveCalculatorEstimate(
       versionLabel: buildNextEstimateVersionLabel(cachedEstimateMetas),
       createdBy: input.email || null,
       internalName: input.newEstimateInternalName,
+      commercialScopeId: input.newEstimateCommercialScopeId ?? null,
+      commercialScopeKind: input.newEstimateCommercialScopeKind ?? 'base',
       writeWorkingCopy,
     });
 
     const mutationPayload: PortalEstimateCreateMutationPayload = {
       localEstimateId,
       projectId: input.projectId,
+      commercialScopeId: optimisticEstimate.commercialScopeId ?? null,
+      commercialScopeKind: optimisticEstimate.commercialScopeKind ?? 'base',
       internalName: optimisticEstimate.internalName,
       estimatePayload,
       createDesignRequest: input.request?.createDesignRequest

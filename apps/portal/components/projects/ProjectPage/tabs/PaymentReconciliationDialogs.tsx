@@ -15,7 +15,11 @@ function money(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-type AllocationDraft = { paymentTermId: string; amount: string };
+type AllocationDraft = { quoteVersionId: string; paymentTermId: string; amount: string };
+
+function allocationTargetValue(quoteVersionId: string, paymentTermId: string): string {
+  return quoteVersionId && paymentTermId ? `${quoteVersionId}::${paymentTermId}` : '';
+}
 
 export default function PaymentReconciliationDialogs({
   entryMode,
@@ -45,7 +49,7 @@ export default function PaymentReconciliationDialogs({
   const [reference, setReference] = useState('');
   const [note, setNote] = useState('');
   const [reason, setReason] = useState('');
-  const [allocations, setAllocations] = useState<AllocationDraft[]>([{ paymentTermId: '', amount: '' }]);
+  const [allocations, setAllocations] = useState<AllocationDraft[]>([{ quoteVersionId: '', paymentTermId: '', amount: '' }]);
 
   useEffect(() => {
     if (entryMode) {
@@ -61,15 +65,23 @@ export default function PaymentReconciliationDialogs({
   useEffect(() => {
     if (!allocationTarget) return;
     const current = allocationTarget.allocations.filter((item) => item.isCurrentSchedule);
-    setAllocations(current.length ? current.map((item) => ({ paymentTermId: item.paymentTermId, amount: (item.amountIncGstCents / 100).toFixed(2) })) : [{ paymentTermId: '', amount: '' }]);
+    setAllocations(current.length
+      ? current.map((item) => ({
+          quoteVersionId: item.quoteVersionId,
+          paymentTermId: item.paymentTermId,
+          amount: (item.amountIncGstCents / 100).toFixed(2),
+        }))
+      : [{ quoteVersionId: '', paymentTermId: '', amount: '' }]);
     setReason('');
   }, [allocationTarget]);
 
   useEffect(() => { if (reversalTarget) setReason(''); }, [reversalTarget]);
 
   const allocationTotal = allocations.reduce((sum, item) => sum + toCents(item.amount), 0);
-  const uniqueAllocationTargets = new Set(allocations.map((item) => item.paymentTermId)).size === allocations.length;
-  const allocationValid = allocations.every((item) => item.paymentTermId && toCents(item.amount) > 0)
+  const uniqueAllocationTargets = new Set(
+    allocations.map((item) => allocationTargetValue(item.quoteVersionId, item.paymentTermId)),
+  ).size === allocations.length;
+  const allocationValid = allocations.every((item) => item.quoteVersionId && item.paymentTermId && toCents(item.amount) > 0)
     && uniqueAllocationTargets
     && allocationTotal <= (allocationTarget?.amountIncGstCents ?? 0)
     && reason.trim().length >= 3;
@@ -108,15 +120,24 @@ export default function PaymentReconciliationDialogs({
           <div className={styles.fields}>
             {allocations.map((allocation, index) => (
               <div className={styles.inlineFields} key={index}>
-                <Select label={`Stage ${index + 1}`} value={allocation.paymentTermId} onChange={(event) => setAllocations((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, paymentTermId: event.target.value } : item))} disabled={pending}>
+                <Select label={`Stage ${index + 1}`} value={allocationTargetValue(allocation.quoteVersionId, allocation.paymentTermId)} onChange={(event) => {
+                  const [quoteVersionId = '', paymentTermId = ''] = event.target.value.split('::', 2);
+                  setAllocations((items) => items.map((item, itemIndex) => itemIndex === index
+                    ? { ...item, quoteVersionId, paymentTermId }
+                    : item));
+                }} disabled={pending}>
                   <option value="">Select stage</option>
-                  {schedule.terms.map((term) => <option value={term.paymentTermId} key={term.paymentTermId}>{term.label} — {money(term.remainingAmountIncGstCents)}</option>)}
+                  {schedule.terms.map((term) => (
+                    <option value={allocationTargetValue(term.quoteVersionId, term.paymentTermId)} key={allocationTargetValue(term.quoteVersionId, term.paymentTermId)}>
+                      {term.commercialScopeKind === 'add_on' ? `Add-on ${term.quoteRef} · ` : ''}{term.label} — {money(term.remainingAmountIncGstCents)}
+                    </option>
+                  ))}
                 </Select>
                 <Input label="Amount ($)" inputMode="decimal" value={allocation.amount} onChange={(event) => setAllocations((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, amount: event.target.value } : item))} disabled={pending} />
               </div>
             ))}
             <div>
-              <Button type="button" variant="tertiary" size="small" onClick={() => setAllocations((items) => [...items, { paymentTermId: '', amount: '' }])} disabled={pending || allocations.length >= schedule.terms.length}>Add stage</Button>
+              <Button type="button" variant="tertiary" size="small" onClick={() => setAllocations((items) => [...items, { quoteVersionId: '', paymentTermId: '', amount: '' }])} disabled={pending || allocations.length >= schedule.terms.length}>Add stage</Button>
               {allocations.length > 1 ? <Button type="button" variant="tertiary" size="small" onClick={() => setAllocations((items) => items.slice(0, -1))} disabled={pending}>Remove last</Button> : null}
               {allocations.length ? <Button type="button" variant="tertiary" size="small" onClick={() => setAllocations([])} disabled={pending}>Leave unallocated</Button> : null}
             </div>
@@ -125,7 +146,7 @@ export default function PaymentReconciliationDialogs({
           </div>
           <footer>
             <Button variant="tertiary" onClick={onClose} disabled={pending}>Cancel</Button>
-            <Button onClick={() => onAllocate({ allocations: allocations.map((item) => ({ quoteVersionId: schedule.acceptedQuoteVersionId ?? '', paymentTermId: item.paymentTermId, amountIncGstCents: toCents(item.amount) })), reason: reason.trim() })} disabled={!allocationValid} loading={pending}>Save allocation</Button>
+            <Button onClick={() => onAllocate({ allocations: allocations.map((item) => ({ quoteVersionId: item.quoteVersionId, paymentTermId: item.paymentTermId, amountIncGstCents: toCents(item.amount) })), reason: reason.trim() })} disabled={!allocationValid} loading={pending}>Save allocation</Button>
           </footer>
         </div>
       </Modal>

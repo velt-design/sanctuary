@@ -139,6 +139,8 @@ export default function CalculatorGridClient({
   const {
     createNewEstimate,
     newEstimateInternalName,
+    newEstimateCommercialScopeId,
+    newEstimateCommercialScopeKind,
     projectId,
   } = workspaceRoute;
   const projectEstimatesQuery = useQuery({
@@ -147,8 +149,11 @@ export default function CalculatorGridClient({
   });
   const projectEstimates = projectEstimatesQuery.data ?? [];
   const activeDraftEstimateMeta = useMemo(
-    () => projectEstimates.find((estimate) => estimate.isActiveDraft) ?? null,
-    [projectEstimates],
+    () => projectEstimates.find((estimate) =>
+      estimate.isActiveDraft
+      && (estimate.commercialScopeId ?? null) === (newEstimateCommercialScopeId ?? null),
+    ) ?? null,
+    [newEstimateCommercialScopeId, projectEstimates],
   );
   const {
     activeEditEstimateId,
@@ -594,6 +599,8 @@ export default function CalculatorGridClient({
     queryClient,
     createNewEstimate,
     newEstimateInternalName,
+    newEstimateCommercialScopeId,
+    newEstimateCommercialScopeKind,
     result,
     resultModules,
     values,

@@ -49,6 +49,7 @@ export type InvoiceScheduleTerm = {
   quoteVersionId: string;
   quoteRef: string;
   quoteVersionNumber: number;
+  commercialScopeKind?: 'base' | 'add_on';
   paymentTermId: string;
   label: string;
   position: number;
@@ -58,6 +59,15 @@ export type InvoiceScheduleTerm = {
   remainingAmountIncGstCents: number;
   source: 'quote' | 'instalment' | 'custom';
   invoice: DepositInvoiceSummary | null;
+};
+
+type InvoiceScheduleQuote = {
+  quoteVersionId: string;
+  quoteRef: string;
+  quoteVersionNumber: number;
+  commercialScopeKind: 'base' | 'add_on';
+  totalIncGstCents: number;
+  remainingToInvoiceIncGstCents: number;
 };
 
 type ProjectPaymentAllocationSummary = {
@@ -95,6 +105,7 @@ export type ProjectInvoiceSchedule = {
   outstandingIncGstCents: number;
   remainingToInvoiceIncGstCents: number;
   unallocatedCreditIncGstCents: number;
+  acceptedQuotes?: InvoiceScheduleQuote[];
   terms: InvoiceScheduleTerm[];
   paymentEntries?: ProjectPaymentEntrySummary[];
 };

@@ -13,6 +13,8 @@ describe('resolveCalculatorWorkspaceRoute', () => {
       shouldOpenActiveDraft: true,
       createNewEstimate: false,
       newEstimateInternalName: 'Front option',
+      newEstimateCommercialScopeId: null,
+      newEstimateCommercialScopeKind: 'base',
     });
   });
 
@@ -39,6 +41,27 @@ describe('resolveCalculatorWorkspaceRoute', () => {
       shouldOpenActiveDraft: false,
       createNewEstimate: true,
       newEstimateInternalName: 'Copy of Front option',
+      newEstimateCommercialScopeId: null,
+      newEstimateCommercialScopeKind: 'base',
+    });
+  });
+
+  it('keeps add-on commercial scope context for a new project estimate', () => {
+    expect(resolveCalculatorWorkspaceRoute(new URLSearchParams(), {
+      kind: 'project',
+      host: 'tenant.example',
+      projectId: 'proj_fixed',
+      createNewEstimate: true,
+      newEstimateCommercialScopeId: 'a005305f-55ea-44d6-ab0d-6818b8bac8bf',
+      newEstimateCommercialScopeKind: 'add_on',
+      designNavigation: { value: 'new', stateLabel: 'Add-on', options: [], onChange: () => undefined },
+      onEstimateSaved: () => undefined,
+      onOpenProject: () => undefined,
+    })).toMatchObject({
+      projectId: 'proj_fixed',
+      createNewEstimate: true,
+      newEstimateCommercialScopeId: 'a005305f-55ea-44d6-ab0d-6818b8bac8bf',
+      newEstimateCommercialScopeKind: 'add_on',
     });
   });
 });

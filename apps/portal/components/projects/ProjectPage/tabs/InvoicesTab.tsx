@@ -118,6 +118,10 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
     enabled: true,
   });
   const schedule = scheduleQuery.data ?? null;
+  const currentAcceptedQuoteVersionIds = useMemo(() => new Set(
+    schedule?.acceptedQuotes?.map((quote) => quote.quoteVersionId)
+      ?? (schedule?.acceptedQuoteVersionId ? [schedule.acceptedQuoteVersionId] : []),
+  ), [schedule]);
 
   const refreshInvoiceData = async () => {
     await Promise.all([
@@ -264,12 +268,20 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
       ) : null}
 
       {schedule?.acceptedQuoteVersionId ? (
-        <Card title="Job payment schedule" eyebrow={`Quote ${schedule.acceptedQuoteRef} v${schedule.acceptedQuoteVersionNumber}`} padding="none" headingLevel={4} aria-label="Invoice schedule">
+        <Card
+          title="Job payment schedule"
+          eyebrow={(schedule.acceptedQuotes?.length ?? 0) > 1
+            ? `${schedule.acceptedQuotes?.length} accepted quote scopes`
+            : `Quote ${schedule.acceptedQuoteRef} v${schedule.acceptedQuoteVersionNumber}`}
+          padding="none"
+          headingLevel={4}
+          aria-label="Invoice schedule"
+        >
           <MetricGrid
-            ariaLabel="Current accepted quote payment totals"
+            ariaLabel="Accepted project quote payment totals"
             columns={4}
             items={[
-              { label: 'Job total', value: formatMoneyFromCents(schedule.acceptedQuoteTotalIncGstCents), detail: 'Accepted quote' },
+              { label: 'Job total', value: formatMoneyFromCents(schedule.acceptedQuoteTotalIncGstCents), detail: (schedule.acceptedQuotes?.length ?? 0) > 1 ? 'Base contract and accepted add-ons' : 'Accepted quote' },
               { label: 'Paid', value: formatMoneyFromCents(schedule.paidIncGstCents), detail: schedule.unallocatedCreditIncGstCents > 0 ? `${formatMoneyFromCents(schedule.unallocatedCreditIncGstCents)} unallocated credit` : 'Actual job payments' },
               { label: 'Open', value: formatMoneyFromCents(schedule.outstandingIncGstCents), detail: 'Issued and unpaid' },
               { label: 'Remaining', value: formatMoneyFromCents(schedule.remainingToInvoiceIncGstCents), detail: 'Available to invoice' },
@@ -278,11 +290,14 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
           <div className={styles.scheduleRows}>
             {schedule.terms.map((term) => {
               return (
-                <div className={styles.scheduleRow} key={term.paymentTermId}>
+                <div className={styles.scheduleRow} key={`${term.quoteVersionId}:${term.paymentTermId}`}>
                   <div className={styles.meta}>
-                    <strong>{term.position}. {term.label}</strong>
+                    <div className={styles.statusRow}>
+                      <strong>{term.position}. {term.label}</strong>
+                      {term.commercialScopeKind === 'add_on' ? <Badge tone="info">Add-on</Badge> : null}
+                    </div>
                     <span className={styles.muted}>
-                      {formatMoneyFromCents(term.amountIncGstCents)}
+                      {term.quoteRef} v{term.quoteVersionNumber} · {formatMoneyFromCents(term.amountIncGstCents)}
                       {term.allocatedPaidIncGstCents > 0 ? ` · ${formatMoneyFromCents(term.allocatedPaidIncGstCents)} paid` : ''}
                     </span>
                   </div>
@@ -364,8 +379,8 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
           {invoices.map((invoice) => {
             const canSend = invoice.status === 'OPEN' && invoice.lastDeliveryStatus !== 'SENT' && !invoice.finalFailure;
             const isSending = sendingInvoiceId === invoice.id;
-            const currentQuoteVersionId = schedule?.acceptedQuoteVersionId ?? null;
-            const isHistorical = Boolean(currentQuoteVersionId && invoice.quoteVersionId !== currentQuoteVersionId);
+            const isHistorical = currentAcceptedQuoteVersionIds.size > 0
+              && !currentAcceptedQuoteVersionIds.has(invoice.quoteVersionId);
             const showMarkPaidPrimary = isAdmin && invoice.status === 'OPEN' && !canSend;
             return (
               <TableRow key={invoice.id}>

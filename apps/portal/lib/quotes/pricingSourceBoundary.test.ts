@@ -37,7 +37,7 @@ describe('quote pricing source output boundaries', () => {
     const source = readRepoFile('apps/portal/lib/quotes/serverLoaders.ts');
 
     expect(source).toContain(
-      ".select('id, project_id, created_at, updated_at, status, inputs, outputs, warnings, pricing_source, pricing_source_metadata')",
+      ".select('id, project_id, commercial_scope_id, created_at, updated_at, status, inputs, outputs, warnings, pricing_source, pricing_source_metadata')",
     );
     expect(source).not.toContain('commercial_design_input');
   });

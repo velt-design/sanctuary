@@ -55,6 +55,8 @@ export type PortalEstimatePayload = {
 export type PortalEstimateCreateMutationPayload = {
   localEstimateId: string;
   projectId: string;
+  commercialScopeId?: string | null;
+  commercialScopeKind?: 'base' | 'add_on';
   internalName?: string | null;
   estimatePayload: PortalEstimatePayload;
   createDesignRequest?: {
@@ -166,6 +168,8 @@ function estimateMetaFromDetail(detail: EstimateDetail): EstimateMeta {
   return {
     id: detail.id,
     projectId: detail.projectId,
+    commercialScopeId: detail.commercialScopeId ?? null,
+    commercialScopeKind: detail.commercialScopeKind ?? 'base',
     internalName: detail.internalName,
     createdAt: detail.createdAt,
     status: detail.status,
@@ -185,6 +189,8 @@ function quoteVersionFromDetail(detail: QuoteVersionDetail): QuoteVersion {
     id: detail.id,
     quoteId: detail.quoteId,
     projectId: detail.projectId,
+    commercialScopeId: detail.commercialScopeId ?? null,
+    commercialScopeKind: detail.commercialScopeKind ?? 'base',
     quoteRef: detail.quoteRef,
     internalName: detail.internalName,
     versionNumber: detail.versionNumber,
@@ -351,6 +357,8 @@ export function buildEstimatePayloadFromDetail(detail: EstimateDetail): PortalEs
 export function buildOptimisticEstimateDetail(args: {
   estimateId: string;
   projectId: string;
+  commercialScopeId?: string | null;
+  commercialScopeKind?: 'base' | 'add_on';
   estimatePayload: PortalEstimatePayload;
   versionLabel: string;
   createdBy?: string | null;
@@ -373,6 +381,8 @@ export function buildOptimisticEstimateDetail(args: {
   return {
     id: args.estimateId,
     projectId: args.projectId,
+    commercialScopeId: args.commercialScopeId ?? null,
+    commercialScopeKind: args.commercialScopeKind ?? (args.commercialScopeId ? 'add_on' : 'base'),
     internalName: args.internalName ?? null,
     createdAt,
     status: args.estimatePayload.status,
@@ -407,8 +417,10 @@ export function buildOptimisticQuoteDetail(args: {
   const quoteProject = quoteProjectFieldsFromEstimate(args.estimateDetail);
   const quoteContact = quoteContactFieldsFromEstimate(args.estimateDetail);
   const estimate = toLegacyEstimate(args.estimateDetail);
-  const quoteRef = quoteProject.quoteRef ?? '';
-  const versionNumber = nextQuoteVersionNumber(args.existingQuotes);
+  const commercialScopeId = args.estimateDetail.commercialScopeId ?? null;
+  const scopeQuotes = args.existingQuotes.filter((quote) => (quote.commercialScopeId ?? null) === commercialScopeId);
+  const quoteRef = scopeQuotes[0]?.quoteRef ?? (commercialScopeId ? '' : quoteProject.quoteRef ?? '');
+  const versionNumber = nextQuoteVersionNumber(scopeQuotes);
 
   const mapping = estimate ? buildQuoteLineItemsFromEstimate(estimate) : null;
   if (mapping) assertQuoteEstimateMappingReady(mapping);
@@ -434,6 +446,8 @@ export function buildOptimisticQuoteDetail(args: {
     id: args.quoteVersionId,
     quoteId: args.quoteVersionId,
     projectId: args.projectId,
+    commercialScopeId,
+    commercialScopeKind: args.estimateDetail.commercialScopeKind ?? (commercialScopeId ? 'add_on' : 'base'),
     quoteRef,
     internalName: args.internalName ?? args.estimateDetail.internalName ?? null,
     versionNumber,

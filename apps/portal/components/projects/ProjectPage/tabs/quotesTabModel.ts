@@ -1,11 +1,12 @@
 import type { QuoteLineItem, QuoteVersionDetail } from "@/lib/quotes/types";
 import type { QuoteRefreshMode } from "@/lib/quotes/refresh";
+import type { EstimateMeta } from "@/lib/estimates/types";
 import {
   formatPortalDate,
   formatPortalDateTime,
 } from "@/lib/format/portalDateTime";
 
-export const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
 export const MAX_ATTACHMENTS_TOTAL_BYTES = 4 * 1024 * 1024;
 export const MAX_ATTACHMENT_COUNT = 10;
 export const QUOTE_PREVIEW_DEBOUNCE_MS = 200;
@@ -28,6 +29,16 @@ const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
 ]);
 
 export type SendEditorMode = "compose" | "review";
+
+export function selectEstimateForCommercialScope(
+  estimates: EstimateMeta[],
+  commercialScopeId: string | null,
+): EstimateMeta | null {
+  const sameScope = estimates
+    .filter((estimate) => (estimate.commercialScopeId ?? null) === commercialScopeId)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  return sameScope.find((estimate) => estimate.isActiveDraft) ?? sameScope[0] ?? null;
+}
 
 export function formatMoneyFromCents(value: number): string {
   if (!Number.isFinite(value)) return "—";
@@ -85,34 +96,6 @@ export function parseMoneyInput(value: string): number {
 export function parseQtyInput(value: string): number {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-export function normalizePercentInput(value: string): string {
-  return sanitizeDecimalInput(value);
-}
-
-export function parsePercentInput(value: string): number {
-  const raw = Number.parseFloat(normalizePercentInput(value));
-  if (!Number.isFinite(raw)) return 50;
-  return Math.max(0, Math.min(100, Math.round(raw * 100) / 100));
-}
-
-export function formatPercentInput(value: number): string {
-  if (!Number.isFinite(value)) return "50";
-  return Math.max(0, Math.min(100, value))
-    .toFixed(2)
-    .replace(/\.00$/, "")
-    .replace(/(\.\d)0$/, "$1");
-}
-
-export function dateInputDaysFromToday(days: number): string {
-  const next = new Date();
-  next.setHours(0, 0, 0, 0);
-  next.setDate(next.getDate() + days);
-  const year = next.getFullYear();
-  const month = String(next.getMonth() + 1).padStart(2, "0");
-  const day = String(next.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 export function computeLineTotal(item: QuoteLineItem): number {

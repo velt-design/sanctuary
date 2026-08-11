@@ -24,7 +24,7 @@ function optionalText(value: unknown, maxLength: number): string | null {
 
 export async function loadProjectPaymentLedger(params: {
   projectUuid: string;
-  quoteVersionUuid: string;
+  quoteVersionUuids: string[];
   invoiceRefsByUuid: Map<string, string>;
 }) {
   const [entriesRes, allocationsRes, plansRes] = await Promise.all([
@@ -36,7 +36,7 @@ export async function loadProjectPaymentLedger(params: {
       .eq('project_id', params.projectUuid)
       .is('reversed_at', null),
     supabaseServiceRole.from('project_invoice_plan_items').select('*')
-      .eq('quote_version_id', params.quoteVersionUuid)
+      .in('quote_version_id', params.quoteVersionUuids)
       .is('cancelled_at', null)
       .order('created_at', { ascending: true })
       .order('position', { ascending: true }),
@@ -70,6 +70,7 @@ export async function loadProjectPaymentLedger(params: {
   }));
   const planItems: SchedulePlanItem[] = (plansRes.data ?? []).map((row: any) => ({
     id: appIdFromUuid('pip', String(row.id)),
+    quoteVersionId: appIdFromUuid('qv', String(row.quote_version_id)),
     paymentTermId: String(row.payment_term_id),
     label: String(row.label),
     position: Number(row.position),

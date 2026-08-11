@@ -54,7 +54,12 @@ import {
   nowIso,
   schemaMissingError,
 } from './serverHelpers';
-import { loadEstimate, loadEstimateLabels, loadProjectCustomerName } from './serverLoaders';
+import {
+  loadEstimate,
+  loadEstimateLabels,
+  loadProjectCustomerName,
+  loadQuoteFamilyByCommercialScope,
+} from './serverLoaders';
 import { seedQuoteInternalName } from './internalName.server';
 
 export async function insertAuditEvent(params: {
@@ -86,8 +91,13 @@ export async function updateProjectStage(projectUuid: string, toStage: string, q
   });
 }
 
-async function ensureQuote(projectUuid: string, actor: string | null, internalName: string | null): Promise<{ id: string; quoteRef: string }> {
-  const existing = await supabaseServiceRole.from('quotes').select('id, quote_ref, internal_name').eq('project_id', projectUuid).maybeSingle();
+async function ensureQuote(
+  projectUuid: string,
+  actor: string | null,
+  internalName: string | null,
+  commercialScopeId: string | null,
+): Promise<{ id: string; quoteRef: string }> {
+  const existing = await loadQuoteFamilyByCommercialScope(projectUuid, commercialScopeId);
   if (existing.error) {
     if (missingTableError(existing.error)) throw schemaMissingError();
     throw new Error(errorMessage(existing.error, 'Failed to load quote'));
@@ -109,17 +119,19 @@ async function ensureQuote(projectUuid: string, actor: string | null, internalNa
 
   const insertRes = await supabaseServiceRole
     .from('quotes')
-    .insert({ project_id: projectUuid, quote_ref: quoteRef, created_by: actor, internal_name: internalName } as any)
+    .insert({
+      project_id: projectUuid,
+      quote_ref: quoteRef,
+      created_by: actor,
+      internal_name: internalName,
+      commercial_scope_id: commercialScopeId,
+    } as any)
     .select('id, quote_ref')
     .single();
 
   if (insertRes.error || !insertRes.data) {
     if (String(insertRes.error?.code ?? '') === '23505') {
-      const winner = await supabaseServiceRole
-        .from('quotes')
-        .select('id, quote_ref, internal_name')
-        .eq('project_id', projectUuid)
-        .maybeSingle();
+      const winner = await loadQuoteFamilyByCommercialScope(projectUuid, commercialScopeId);
       if (!winner.error && winner.data?.id) {
         if (!winner.data.internal_name && internalName) {
           await seedQuoteInternalName(String(winner.data.id), internalName);
@@ -134,11 +146,13 @@ async function ensureQuote(projectUuid: string, actor: string | null, internalNa
     throw new Error(errorMessage(insertRes.error, 'Failed to create quote'));
   }
 
-  await supabaseServiceRole
-    .from('projects')
-    .update({ quote_ref: quoteRef } as any)
-    .eq('id', projectUuid)
-    .is('quote_ref', null);
+  if (!commercialScopeId) {
+    await supabaseServiceRole
+      .from('projects')
+      .update({ quote_ref: quoteRef } as any)
+      .eq('id', projectUuid)
+      .is('quote_ref', null);
+  }
 
   return { id: String(insertRes.data.id), quoteRef: String(insertRes.data.quote_ref ?? quoteRef) };
 }
@@ -236,27 +250,24 @@ async function assertQuoteVersionMutableDraftBoundary(quoteVersionUuid: string, 
 export async function listQuoteVersionsForProject(projectId: string): Promise<QuoteVersion[]> {
   const projectUuid = uuidFromAppId(projectId, 'proj');
 
-  const quoteRes = await supabaseServiceRole
+  const quotesRes = await supabaseServiceRole
     .from('quotes')
-    .select('id, quote_ref, internal_name')
-    .eq('project_id', projectUuid)
-    .maybeSingle();
+    .select('id, quote_ref, internal_name, commercial_scope_id')
+    .eq('project_id', projectUuid);
 
-  if (quoteRes.error) {
-    if (missingTableError(quoteRes.error)) return [];
-    throw new Error(errorMessage(quoteRes.error, 'Failed to load quotes'));
+  if (quotesRes.error) {
+    if (missingTableError(quotesRes.error)) return [];
+    throw new Error(errorMessage(quotesRes.error, 'Failed to load quotes'));
   }
-  if (!quoteRes.data) return [];
-
-  const quoteUuid = String(quoteRes.data.id ?? '');
-  if (!quoteUuid) return [];
-  const quoteRef = String(quoteRes.data.quote_ref ?? '');
-  const internalName = typeof quoteRes.data.internal_name === 'string' ? quoteRes.data.internal_name : null;
+  const quoteRows = Array.isArray(quotesRes.data) ? quotesRes.data : [];
+  const quoteIds = quoteRows.map((row) => String(row.id ?? '')).filter(Boolean);
+  if (!quoteIds.length) return [];
+  const quoteById = new Map(quoteRows.map((row) => [String(row.id), row]));
 
   const versionsRes = await supabaseServiceRole
     .from('quote_versions')
     .select('*')
-    .eq('quote_id', quoteUuid)
+    .in('quote_id', quoteIds)
     .order('version_number', { ascending: false });
 
   if (versionsRes.error) {
@@ -266,9 +277,10 @@ export async function listQuoteVersionsForProject(projectId: string): Promise<Qu
 
   const estimateLabels = await loadEstimateLabels(projectUuid);
   const rows = Array.isArray(versionsRes.data) ? versionsRes.data : [];
-  return rows.map((row) =>
-    mapQuoteVersionRow({ ...row, quotes: { quote_ref: quoteRef, id: quoteUuid, internal_name: internalName } }, estimateLabels, projectId),
-  );
+  return rows.map((row) => {
+    const quote = quoteById.get(String(row.quote_id ?? ''));
+    return mapQuoteVersionRow({ ...row, quotes: quote }, estimateLabels, projectId);
+  }).sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
 export async function getQuoteVersionDetail(quoteVersionId: string): Promise<QuoteVersionDetail | null> {
@@ -276,7 +288,7 @@ export async function getQuoteVersionDetail(quoteVersionId: string): Promise<Quo
 
   const versionRes = await supabaseServiceRole
     .from('quote_versions')
-    .select('*, quotes!inner(id, project_id, quote_ref, internal_name)')
+    .select('*, quotes!inner(id, project_id, quote_ref, internal_name, commercial_scope_id)')
     .eq('id', quoteVersionUuid)
     .single();
 
@@ -378,8 +390,9 @@ export async function createQuoteFromEstimate(
 
   const estimate = await loadEstimate(estimateUuid);
   if (!estimate) throw new Error('Estimate not found');
+  if (estimate.projectId !== projectId) throw new Error('Estimate does not belong to this project');
 
-  const quote = await ensureQuote(projectUuid, actor, internalName);
+  const quote = await ensureQuote(projectUuid, actor, internalName, estimate.commercialScopeId);
 
   const mapping = buildQuoteLineItemsFromEstimate(estimate);
   assertQuoteEstimateMappingReady(mapping);

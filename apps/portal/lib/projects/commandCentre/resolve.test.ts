@@ -112,6 +112,25 @@ describe('resolveCommandCentreSelection', () => {
     expect(result.acceptedQuoteCount).toBe(2);
   });
 
+  it('treats accepted add-ons as separate scopes and aggregates their project value', () => {
+    const baseEstimate = estimate('estimate-base', '2026-07-01T00:00:00.000Z');
+    const addOnEstimate = estimate('estimate-addon', '2026-07-04T00:00:00.000Z', {
+      commercialScopeId: 'scope-addon',
+    });
+    const base = quote('quote-base', 'ACCEPTED', baseEstimate.sourceId, '2026-07-02T00:00:00.000Z', {
+      totalIncGstCents: 150000,
+    });
+    const addOn = quote('quote-addon', 'ACCEPTED', addOnEstimate.sourceId, '2026-07-05T00:00:00.000Z', {
+      commercialScopeId: 'scope-addon',
+      totalIncGstCents: 25000,
+    });
+
+    const result = resolveCommandCentreSelection({ estimates: [baseEstimate, addOnEstimate], quoteVersions: [base, addOn] });
+    expect(result.quote?.id).toBe(addOn.id);
+    expect(result.acceptedQuoteCount).toBe(1);
+    expect(result.acceptedProjectTotalIncGstCents).toBe(175000);
+  });
+
   it('keeps superseded quotes as history rather than a current commercial source', () => {
     const source = estimate('estimate-1', '2026-07-01T00:00:00.000Z');
     const superseded = quote('quote-old', 'SUPERSEDED', source.sourceId, '2026-07-02T00:00:00.000Z');

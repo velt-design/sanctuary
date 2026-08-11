@@ -191,6 +191,12 @@ export default function LocalFirstPortalMutations() {
               body: JSON.stringify({
                 clientIntentId: item.id,
                 ...(payload.internalName !== undefined ? { internalName: payload.internalName } : null),
+                ...(payload.commercialScopeKind === 'add_on' && payload.commercialScopeId
+                  ? {
+                      commercialScopeId: payload.commercialScopeId,
+                      commercialScopeKind: 'add_on' as const,
+                    }
+                  : null),
                 calculator_snapshot: {
                   inputs: payload.estimatePayload.inputs,
                   outputs: {

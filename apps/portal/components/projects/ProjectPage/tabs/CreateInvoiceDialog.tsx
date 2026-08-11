@@ -50,6 +50,7 @@ export default function CreateInvoiceDialog({
 }) {
   const firstRef = useRef<HTMLSelectElement | null>(null);
   const [mode, setMode] = useState<AdminInvoiceCreationMode>('next_stage');
+  const [quoteVersionId, setQuoteVersionId] = useState('');
   const [termId, setTermId] = useState('');
   const [label, setLabel] = useState('Progress payment');
   const [dueDate, setDueDate] = useState(defaultDueDate());
@@ -64,7 +65,12 @@ export default function CreateInvoiceDialog({
   useEffect(() => {
     if (!open) return;
     const term = initialTerm ?? schedule.terms.find((item) => !item.invoice && item.remainingAmountIncGstCents > 0) ?? null;
+    const initialQuoteVersionId = term?.quoteVersionId
+      ?? schedule.acceptedQuotes?.find((quote) => quote.remainingToInvoiceIncGstCents > 0)?.quoteVersionId
+      ?? schedule.acceptedQuoteVersionId
+      ?? '';
     setMode('next_stage');
+    setQuoteVersionId(initialQuoteVersionId);
     setTermId(term?.paymentTermId ?? '');
     setLabel(term?.label ?? 'Progress payment');
     setDueDate(defaultDueDate());
@@ -77,18 +83,35 @@ export default function CreateInvoiceDialog({
     setOverrideReason('');
   }, [initialTerm, open, schedule]);
 
-  const selectedTerm = schedule.terms.find((term) => term.paymentTermId === termId) ?? null;
+  const acceptedQuotes = schedule.acceptedQuotes?.length
+    ? schedule.acceptedQuotes
+    : schedule.acceptedQuoteVersionId
+      ? [{
+          quoteVersionId: schedule.acceptedQuoteVersionId,
+          quoteRef: schedule.acceptedQuoteRef ?? '',
+          quoteVersionNumber: schedule.acceptedQuoteVersionNumber ?? 0,
+          commercialScopeKind: 'base' as const,
+          totalIncGstCents: schedule.acceptedQuoteTotalIncGstCents,
+          remainingToInvoiceIncGstCents: schedule.remainingToInvoiceIncGstCents,
+        }]
+      : [];
+  const selectedQuote = acceptedQuotes.find((quote) => quote.quoteVersionId === quoteVersionId) ?? acceptedQuotes[0] ?? null;
+  const selectedQuoteRemaining = selectedQuote?.remainingToInvoiceIncGstCents ?? 0;
+  const selectedTerm = schedule.terms.find((term) =>
+    term.quoteVersionId === selectedQuote?.quoteVersionId && term.paymentTermId === termId,
+  ) ?? null;
   const amount = useMemo(() => {
     if (mode === 'next_stage') return selectedTerm?.remainingAmountIncGstCents ?? 0;
-    if (mode === 'full_remaining') return schedule.remainingToInvoiceIncGstCents;
-    if (mode === 'split') return Math.floor(schedule.remainingToInvoiceIncGstCents / Math.max(2, Number(splitCount) || 2));
+    if (mode === 'full_remaining') return selectedQuoteRemaining;
+    if (mode === 'split') return Math.floor(selectedQuoteRemaining / Math.max(2, Number(splitCount) || 2));
     if (basis === 'percentage') {
-      return Math.round(schedule.remainingToInvoiceIncGstCents * (Number(customValue) || 0) / 100);
+      return Math.round(selectedQuoteRemaining * (Number(customValue) || 0) / 100);
     }
     return dollarsToCents(customValue);
-  }, [basis, customValue, mode, schedule.remainingToInvoiceIncGstCents, selectedTerm, splitCount]);
-  const exceedsRemaining = amount > schedule.remainingToInvoiceIncGstCents;
+  }, [basis, customValue, mode, selectedQuoteRemaining, selectedTerm, splitCount]);
+  const exceedsRemaining = amount > selectedQuoteRemaining;
   const valid = amount > 0
+    && Boolean(selectedQuote)
     && label.trim().length >= 2
     && (mode !== 'next_stage' || Boolean(termId))
     && (mode !== 'split' || Number(splitCount) >= 2)
@@ -96,7 +119,7 @@ export default function CreateInvoiceDialog({
 
   const submit = () => onCreate({
     projectId,
-    quoteVersionId: schedule.acceptedQuoteVersionId ?? '',
+    quoteVersionId: selectedQuote?.quoteVersionId ?? '',
     mode,
     paymentTermId: mode === 'next_stage' ? termId : null,
     amountIncGstCents: mode === 'custom' ? amount : null,
@@ -136,6 +159,23 @@ export default function CreateInvoiceDialog({
         ) : (
           <>
             <div className={styles.fields}>
+              {acceptedQuotes.length > 1 ? (
+                <Select label="Quote scope" value={selectedQuote?.quoteVersionId ?? ''} onChange={(event) => {
+                  const nextQuoteVersionId = event.target.value;
+                  setQuoteVersionId(nextQuoteVersionId);
+                  const nextTerm = schedule.terms.find((term) =>
+                    term.quoteVersionId === nextQuoteVersionId && !term.invoice && term.remainingAmountIncGstCents > 0,
+                  );
+                  setTermId(nextTerm?.paymentTermId ?? '');
+                  setLabel(nextTerm?.label ?? 'Progress payment');
+                }} disabled={pending}>
+                  {acceptedQuotes.map((quote) => (
+                    <option key={quote.quoteVersionId} value={quote.quoteVersionId}>
+                      {quote.commercialScopeKind === 'add_on' ? 'Add-on · ' : ''}{quote.quoteRef} v{quote.quoteVersionNumber} — {money(quote.remainingToInvoiceIncGstCents)} remaining
+                    </option>
+                  ))}
+                </Select>
+              ) : null}
               <Select ref={firstRef} label="Invoice amount" value={mode} onChange={(event) => setMode(event.target.value as AdminInvoiceCreationMode)} disabled={pending}>
                 <option value="next_stage">Next scheduled stage</option>
                 <option value="full_remaining">Full remaining balance</option>
@@ -145,11 +185,15 @@ export default function CreateInvoiceDialog({
               {mode === 'next_stage' ? (
                 <Select label="Payment stage" value={termId} onChange={(event) => {
                   setTermId(event.target.value);
-                  const term = schedule.terms.find((item) => item.paymentTermId === event.target.value);
+                  const term = schedule.terms.find((item) =>
+                    item.quoteVersionId === selectedQuote?.quoteVersionId && item.paymentTermId === event.target.value,
+                  );
                   if (term) setLabel(term.label);
                 }} disabled={pending}>
                   <option value="">Select a stage</option>
-                  {schedule.terms.filter((term) => !term.invoice && term.remainingAmountIncGstCents > 0).map((term) => (
+                  {schedule.terms.filter((term) =>
+                    term.quoteVersionId === selectedQuote?.quoteVersionId && !term.invoice && term.remainingAmountIncGstCents > 0,
+                  ).map((term) => (
                     <option key={term.paymentTermId} value={term.paymentTermId}>{term.label} — {money(term.remainingAmountIncGstCents)}</option>
                   ))}
                 </Select>
@@ -169,7 +213,7 @@ export default function CreateInvoiceDialog({
                 </Select>
               ) : null}
               <AlertBanner tone="info" title={`Invoice amount: ${money(amount)}`}>
-                Job paid {money(schedule.paidIncGstCents)}, open {money(schedule.outstandingIncGstCents)}, available to invoice {money(schedule.remainingToInvoiceIncGstCents)}.
+                {selectedQuote?.commercialScopeKind === 'add_on' ? 'Add-on' : 'Base quote'} available {money(selectedQuoteRemaining)}. Job paid {money(schedule.paidIncGstCents)} and open {money(schedule.outstandingIncGstCents)}.
               </AlertBanner>
               <Input label="Invoice label" value={label} onChange={(event) => setLabel(event.target.value)} disabled={pending} required />
               <div className={styles.inlineFields}>

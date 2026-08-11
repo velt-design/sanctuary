@@ -69,6 +69,7 @@ import {
   isPergolaLineItemDescription,
   parseMoneyInput,
   quoteDraftFilename,
+  selectEstimateForCommercialScope,
   validateAttachment,
   type SendEditorMode,
 } from "./quotesTabModel";
@@ -393,8 +394,8 @@ export default function QuotesTab({
   );
   const refreshEstimateTarget = useMemo(() => {
     if (!detail) return preferredQuoteSourceDesign ?? currentSourceEstimate;
-    return preferredQuoteSourceDesign ?? currentSourceEstimate;
-  }, [currentSourceEstimate, detail, preferredQuoteSourceDesign]);
+    return selectEstimateForCommercialScope(estimates, detail.commercialScopeId ?? null) ?? currentSourceEstimate;
+  }, [currentSourceEstimate, detail, estimates, preferredQuoteSourceDesign]);
   const refreshUsesLatestDesign = Boolean(
     detail &&
     refreshEstimateTarget &&
@@ -513,7 +514,10 @@ export default function QuotesTab({
       return;
     }
     setCreateEstimateId(defaultId);
-    setCreateInternalName(quotes[0]?.internalName ?? preferredQuoteSourceDesign?.internalName ?? "");
+    const family = quotes.find((quote) =>
+      (quote.commercialScopeId ?? null) === (preferredQuoteSourceDesign?.commercialScopeId ?? null),
+    );
+    setCreateInternalName(family?.internalName ?? preferredQuoteSourceDesign?.internalName ?? "");
     setCreateOpen(true);
   };
 

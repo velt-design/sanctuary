@@ -229,7 +229,7 @@ export default function QuoteDetailView({
             }
           />
         }
-        meta={`${detail.quoteRef} · v${detail.versionNumber}`}
+        meta={`${detail.commercialScopeKind === "add_on" ? "Add-on · " : ""}${detail.quoteRef} · v${detail.versionNumber}`}
         issues={
           !commercialWorkflowReady
             ? "Commercial actions unavailable"

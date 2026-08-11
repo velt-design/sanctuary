@@ -204,7 +204,15 @@ function resetDb(seed: Partial<DbState> = {}, queuedIds: Partial<Record<TableNam
 function attachRelations(table: TableName, row: Row, selectArg: string | null): Row {
   if (table === 'quote_versions' && selectArg?.includes('quotes')) {
     const quote = db.quotes.find((item) => item.id === row.quote_id) ?? null;
-    return quote ? { ...row, quotes: { id: quote.id, project_id: quote.project_id, quote_ref: quote.quote_ref } } : { ...row };
+    return quote ? {
+      ...row,
+      quotes: {
+        id: quote.id,
+        project_id: quote.project_id,
+        quote_ref: quote.quote_ref,
+        commercial_scope_id: quote.commercial_scope_id ?? null,
+      },
+    } : { ...row };
   }
   if (table === 'projects' && selectArg?.includes('contacts')) {
     return { ...row, contacts: row.contacts ?? { name: row.contact_name ?? 'Taylor', email: row.contact_email ?? 'taylor@example.com' } };
@@ -367,6 +375,7 @@ function makeQuote(): Row {
     id: ids.quote,
     project_id: ids.project,
     quote_ref: 'Q-1001',
+    commercial_scope_id: null,
   };
 }
 
@@ -375,10 +384,12 @@ function makeEstimate(args: {
   source: 'calculator_live' | 'workbench_solved';
   costExGst: number;
   metadata: Record<string, unknown>;
+  commercialScopeId?: string | null;
 }): Row {
   return {
     id: args.id,
     project_id: ids.project,
+    commercial_scope_id: args.commercialScopeId ?? null,
     status: 'draft',
     created_at: '2026-05-04T00:00:00.000Z',
     updated_at: '2026-05-04T00:00:00.000Z',
@@ -533,6 +544,38 @@ describe('quote pricing source preservation in domain helpers', () => {
     });
     expect(audit).toHaveProperty('sourceMetadataHash');
     expectNoRawCommercialPayload(audit);
+  });
+
+  it('creates an add-on quote family without revising the base quote family', async () => {
+    const commercialScopeId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    resetDb(
+      {
+        estimates: [
+          makeEstimate({ id: ids.estimateCalculator, source: 'calculator_live', costExGst: 100, metadata: {} }),
+          makeEstimate({
+            id: ids.estimateWorkbench,
+            source: 'calculator_live',
+            costExGst: 50,
+            metadata: {},
+            commercialScopeId,
+          }),
+        ],
+        projects: [makeProject()],
+        quotes: [makeQuote()],
+      },
+      { quote_versions: [ids.quoteVersionDraft, ids.quoteVersionCreated] },
+    );
+
+    const { createQuoteFromEstimate } = await import('./serverCore');
+    await createQuoteFromEstimate(appId('proj', ids.project), appId('est', ids.estimateCalculator), 'ops@example.com');
+    await createQuoteFromEstimate(appId('proj', ids.project), appId('est', ids.estimateWorkbench), 'ops@example.com');
+
+    expect(db.quotes).toHaveLength(2);
+    expect(db.quotes.find((row) => row.id === ids.quote)?.commercial_scope_id).toBeNull();
+    const addOnQuote = db.quotes.find((row) => row.commercial_scope_id === commercialScopeId);
+    expect(addOnQuote).toBeTruthy();
+    expect(db.quote_versions.filter((row) => row.quote_id === ids.quote)).toHaveLength(1);
+    expect(db.quote_versions.filter((row) => row.quote_id === addOnQuote?.id)).toHaveLength(1);
   });
 
   it('refreshes only draft quotes with calculator rollback metadata and leaves historical versions unchanged', async () => {

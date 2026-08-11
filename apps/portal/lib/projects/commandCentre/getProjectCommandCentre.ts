@@ -156,7 +156,10 @@ export async function getProjectCommandCentre(
   const warnings: ProjectCommandCentreResponse['currentDesign']['warnings'] = [];
   if (selection.acceptedQuoteCount > 1) warnings.push('multiple_accepted_quotes');
   if (selection.sourceEstimateMissing) warnings.push('source_design_unavailable');
-  if (quoteSelected && selection.quote?.totalIncGstCents === null) warnings.push('quote_price_unavailable');
+  const quotePriceUnavailable = selection.source === 'accepted_quote'
+    ? selection.acceptedProjectTotalIncGstCents === null
+    : selection.quote?.totalIncGstCents === null;
+  if (quoteSelected && quotePriceUnavailable) warnings.push('quote_price_unavailable');
 
   const basePath = `/staff/projects/${encodeURIComponent(projectId)}`;
   const estimate = selection.estimate;
@@ -179,7 +182,12 @@ export async function getProjectCommandCentre(
     designState,
     design: selectedDetail ? summarizeCommandCentreDesign(selectedDetail.inputs) : null,
     price: quote
-      ? { source: 'quote', totalIncGstCents: quote.totalIncGstCents }
+      ? {
+          source: 'quote',
+          totalIncGstCents: selection.source === 'accepted_quote'
+            ? selection.acceptedProjectTotalIncGstCents
+            : quote.totalIncGstCents,
+        }
       : estimate
         ? { source: 'estimate', totalIncGstCents: estimatePriceIncGstCents }
         : { source: 'none', totalIncGstCents: null },

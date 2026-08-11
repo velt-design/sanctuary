@@ -62,6 +62,7 @@ export default function ProjectCalculatorTab({
   const toast = useToast();
   const searchParams = useSearchParams();
   const [createNameOpen, setCreateNameOpen] = useState(false);
+  const [createKind, setCreateKind] = useState<'base' | 'add_on'>('base');
   const [renameTarget, setRenameTarget] = useState<EstimateMeta | null>(null);
   const [renamePending, setRenamePending] = useState(false);
   const estimatesQuery = useQuery(estimateMetasByProjectQueryOptions(host, projectId));
@@ -69,11 +70,19 @@ export default function ProjectCalculatorTab({
     () => [...(estimatesQuery.data ?? [])].sort((a, b) => versionNumber(b.versionLabel) - versionNumber(a.versionLabel)),
     [estimatesQuery.data],
   );
-  const activeDraft = estimates.find((estimate) => estimate.isActiveDraft) ?? null;
+  const activeDrafts = useMemo(
+    () => estimates.filter((estimate) => estimate.isActiveDraft),
+    [estimates],
+  );
+  const activeDraft = activeDrafts.find((estimate) => estimate.commercialScopeKind !== 'add_on')
+    ?? activeDrafts[0]
+    ?? null;
   const editEstimateId = searchParams.get('estimateId')?.trim() ?? '';
   const fromEstimateId = searchParams.get('fromEstimateId')?.trim() ?? '';
   const newDesign = searchParams.get('newDesign') === '1';
   const newEstimateInternalName = searchParams.get('estimateName')?.trim() || null;
+  const requestedCommercialScopeId = searchParams.get('commercialScopeId')?.trim() || null;
+  const requestedEstimateKind = searchParams.get('estimateKind') === 'add_on' ? 'add_on' : 'base';
   const selectedEstimate = estimates.find((estimate) => estimate.id === editEstimateId) ?? null;
   const revisionSource = estimates.find((estimate) => estimate.id === fromEstimateId) ?? null;
 
@@ -96,6 +105,8 @@ export default function ProjectCalculatorTab({
       query.delete('fromEstimateId');
       query.delete('newDesign');
       query.delete('estimateName');
+      query.delete('estimateKind');
+      query.delete('commercialScopeId');
     });
   }, [replaceParams]);
 
@@ -106,6 +117,8 @@ export default function ProjectCalculatorTab({
       query.delete('estimateId');
       query.delete('fromEstimateId');
       query.delete('estimateName');
+      query.delete('estimateKind');
+      query.delete('commercialScopeId');
     });
   }, [replaceParams]);
 
@@ -116,8 +129,16 @@ export default function ProjectCalculatorTab({
       query.delete('estimateId');
       query.delete('newDesign');
       query.delete('estimateName');
+      const source = estimates.find((estimate) => estimate.id === estimateId);
+      if (source?.commercialScopeKind === 'add_on' && source.commercialScopeId) {
+        query.set('estimateKind', 'add_on');
+        query.set('commercialScopeId', source.commercialScopeId);
+      } else {
+        query.delete('estimateKind');
+        query.delete('commercialScopeId');
+      }
     });
-  }, [replaceParams]);
+  }, [estimates, replaceParams]);
 
   const openFromList = useCallback((estimateId: string) => {
     pushParams((query) => {
@@ -126,10 +147,18 @@ export default function ProjectCalculatorTab({
       query.delete('fromEstimateId');
       query.delete('newDesign');
       query.delete('estimateName');
+      query.delete('estimateKind');
+      query.delete('commercialScopeId');
     });
   }, [pushParams]);
 
   const createFromList = useCallback(() => {
+    setCreateKind('base');
+    setCreateNameOpen(true);
+  }, []);
+
+  const createAddOnFromList = useCallback(() => {
+    setCreateKind('add_on');
     setCreateNameOpen(true);
   }, []);
 
@@ -142,8 +171,15 @@ export default function ProjectCalculatorTab({
       query.delete('fromEstimateId');
       if (internalName) query.set('estimateName', internalName);
       else query.delete('estimateName');
+      if (createKind === 'add_on') {
+        query.set('estimateKind', 'add_on');
+        query.set('commercialScopeId', crypto.randomUUID());
+      } else {
+        query.delete('estimateKind');
+        query.delete('commercialScopeId');
+      }
     });
-  }, [pushParams]);
+  }, [createKind, pushParams]);
 
   const duplicateFromList = useCallback((estimateId: string) => {
     pushParams((query) => {
@@ -156,6 +192,13 @@ export default function ProjectCalculatorTab({
         'estimateName',
         copiedCommercialInternalName(source?.internalName, `Estimate ${source?.versionLabel ?? ''}`.trim()),
       );
+      if (source?.commercialScopeKind === 'add_on' && source.commercialScopeId) {
+        query.set('estimateKind', 'add_on');
+        query.set('commercialScopeId', source.commercialScopeId);
+      } else {
+        query.delete('estimateKind');
+        query.delete('commercialScopeId');
+      }
     });
   }, [estimates, pushParams]);
 
@@ -166,6 +209,8 @@ export default function ProjectCalculatorTab({
       query.delete('fromEstimateId');
       query.delete('newDesign');
       query.delete('estimateName');
+      query.delete('estimateKind');
+      query.delete('commercialScopeId');
     });
   }, [replaceParams]);
 
@@ -183,6 +228,8 @@ export default function ProjectCalculatorTab({
       query.delete('fromEstimateId');
       query.delete('newDesign');
       query.delete('estimateName');
+      query.delete('estimateKind');
+      query.delete('commercialScopeId');
     });
   }, [openBlankDesign, openDraft, replaceParams]);
 
@@ -199,18 +246,27 @@ export default function ProjectCalculatorTab({
       : newDesign
         ? newEstimateInternalName || 'Blank design'
         : selectedEstimate
-          ? `${selectedEstimate.isActiveDraft ? 'Current draft' : 'Revision source'} · ${selectedEstimate.versionLabel}`
+          ? `${selectedEstimate.commercialScopeKind === 'add_on' ? 'Add-on · ' : ''}${selectedEstimate.isActiveDraft ? 'Current draft' : 'Revision source'} · ${selectedEstimate.versionLabel}`
           : 'Project design',
     options: [
-      ...(activeDraft ? [{ value: `draft:${activeDraft.id}`, label: `Current draft · ${activeDraft.versionLabel}` }] : []),
+      ...activeDrafts.map((estimate) => ({
+        value: `draft:${estimate.id}`,
+        label: `${estimate.commercialScopeKind === 'add_on' ? 'Add-on · ' : ''}Current draft · ${estimate.versionLabel}`,
+      })),
       { value: 'new', label: 'Start a blank design' },
       ...estimates
         .filter((estimate) => !estimate.isActiveDraft)
-        .map((estimate) => ({ value: `history:${estimate.id}`, label: `Revision source · ${estimate.versionLabel}` })),
-      ...(revisionSource ? [{ value: `revision:${revisionSource.id}`, label: `Revision from ${revisionSource.versionLabel}` }] : []),
+        .map((estimate) => ({
+          value: `history:${estimate.id}`,
+          label: `${estimate.commercialScopeKind === 'add_on' ? 'Add-on · ' : ''}Revision source · ${estimate.versionLabel}`,
+        })),
+      ...(revisionSource ? [{
+        value: `revision:${revisionSource.id}`,
+        label: `${revisionSource.commercialScopeKind === 'add_on' ? 'Add-on · ' : ''}Revision from ${revisionSource.versionLabel}`,
+      }] : []),
     ],
     onChange: handleSelection,
-  }), [activeDraft, estimates, handleSelection, newDesign, newEstimateInternalName, revisionSource, selectedEstimate, selectionValue]);
+  }), [activeDrafts, estimates, handleSelection, newDesign, newEstimateInternalName, revisionSource, selectedEstimate, selectionValue]);
 
   const onEstimateSaved = useCallback((estimateId: string) => openDraft(estimateId), [openDraft]);
   const onOpenProject = useCallback(() => {
@@ -230,10 +286,12 @@ export default function ProjectCalculatorTab({
     fromEstimateId: revisionSource?.id,
     createNewEstimate: newDesign || Boolean(revisionSource),
     newEstimateInternalName,
+    newEstimateCommercialScopeId: revisionSource?.commercialScopeId ?? requestedCommercialScopeId,
+    newEstimateCommercialScopeKind: revisionSource?.commercialScopeKind ?? requestedEstimateKind,
     designNavigation,
     onEstimateSaved,
     onOpenProject,
-  }), [designNavigation, host, newDesign, newEstimateInternalName, onEstimateSaved, onOpenProject, projectId, revisionSource, selectedEstimate]);
+  }), [designNavigation, host, newDesign, newEstimateInternalName, onEstimateSaved, onOpenProject, projectId, requestedCommercialScopeId, requestedEstimateKind, revisionSource, selectedEstimate]);
 
   const renameEstimate = useCallback(async (internalName: string | null) => {
     if (!renameTarget || renamePending) return;
@@ -272,14 +330,17 @@ export default function ProjectCalculatorTab({
           : null}
         onRetry={() => void estimatesQuery.refetch()}
         onCreate={createFromList}
+        onCreateAddOn={createAddOnFromList}
         onOpen={openFromList}
         onDuplicate={duplicateFromList}
         onRename={setRenameTarget}
       />
       <CommercialInternalNameDialog
         open={createNameOpen}
-        title="Create estimate"
-        description="Give this estimate an optional staff-only name before opening the calculator."
+        title={createKind === 'add_on' ? 'Create add-on estimate' : 'Create estimate'}
+        description={createKind === 'add_on'
+          ? 'Create a separate add-on scope without changing the original accepted quote.'
+          : 'Give this estimate an optional staff-only name before opening the calculator.'}
         submitLabel="Open calculator"
         onClose={() => setCreateNameOpen(false)}
         onSubmit={createNamedEstimate}
@@ -299,7 +360,7 @@ export default function ProjectCalculatorTab({
   }
 
   const workspaceLabel = newDesign
-    ? newEstimateInternalName || 'New estimate'
+    ? newEstimateInternalName || (requestedEstimateKind === 'add_on' ? 'New add-on estimate' : 'New estimate')
     : revisionSource
       ? newEstimateInternalName || `New revision from ${revisionSource.versionLabel}`
       : selectedEstimate?.internalName || selectedEstimate?.versionLabel || 'Estimate workspace';

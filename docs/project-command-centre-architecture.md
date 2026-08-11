@@ -40,7 +40,7 @@ The following existing decisions remain authoritative:
 - The default staff label is `Overview`; the internal URL/tab key remains `activity`.
 - The two-row project header, global search, tab registry, lazy workflow boundaries, optimistic tab navigation, and access-ending cache clearing remain for normal Project Detail navigation. Explicit estimate create/open/revision intent replaces that header and the Commercial subtabs with the compact calculator workspace bar until staff return to the Estimates list. The normal header is sticky above the mobile breakpoint and returns to normal document flow on mobile.
 - The current quote/design resolver remains strict: newest accepted quote, then sent, then draft, then eligible estimate; declined and manually superseded versions are never current.
-- A quote may use only its exact source estimate and stored GST-inclusive total. Missing source or price stays unavailable; no estimate fallback or repricing is allowed.
+- A quote may use only its exact source estimate. Sent/draft price uses that exact version's stored GST-inclusive total; accepted project price aggregates the newest accepted stored total from each independent base/add-on family. Missing source or any required price stays unavailable; no estimate fallback or repricing is allowed.
 - Project stage, project operational state, and project work are three different facts.
 - Every project uses Project Work after the portfolio migration. Existing projects enter V2 as though they had just entered their stored stage at the single rollout timestamp; no browser code derives that state.
 - Workbench, Commercial, Job Packs, Schedule V2, and Running Jobs keep their existing source-of-truth and mutation boundaries. Commercial presents Estimates first and mounts the existing Calculator owner only for an explicit estimate create/open/duplicate intent.
@@ -494,12 +494,12 @@ Additional strict rules:
 - `DECLINED` is historical and never current.
 - A selected quote may use only `source_estimate_version_id`.
 - A missing exact source produces `Source design unavailable`; no other estimate is borrowed.
-- A selected quote may use only its raw stored `total_inc_gst_cents`.
-- A missing or invalid quote total produces `Price unavailable`; no estimate price is borrowed.
+- A sent or draft selection may use only its raw stored `total_inc_gst_cents`; accepted project value sums the newest accepted raw total per commercial family.
+- A missing or invalid total required by that display produces `Price unavailable`; no estimate price is borrowed.
 - Estimate price uses the canonical quote-handoff projection from the selected saved estimate snapshot. The read does not invoke costing, and never treats `summary_json.total` as customer price.
 - A blocked or zero-value estimate projection produces `Price unavailable` plus `estimate_price_unavailable`; partial line totals are not presented as a customer total.
 - Accepted quote plus a newer unrelated estimate keeps the accepted quote authoritative and reports the newer estimate separately.
-- Multiple accepted quotes select the newest deterministically and emit an integrity warning.
+- Accepted base and add-on families may coexist. Multiple accepted versions within one commercial family select the newest deterministically and emit an integrity warning.
 
 ## 5. Estimate and quote domain ownership
 
@@ -774,7 +774,7 @@ Stage 1 verification completed on 2026-07-20:
 - Historical rows may contain invalid timestamps, missing totals, or missing source records. Normalization must preserve unknown/unavailable rather than fabricate data.
 - Quote/estimate mutations do not directly update the new endpoint cache. Immediate staleness plus remount/focus refetch is the Stage 1 coherence mechanism; do not add logic to the critical tabs casually.
 - Estimate inputs can be large. The metadata-first plus exact-detail read prevents all historical inputs reaching the browser or being fetched for every estimate.
-- Multiple accepted quotes are an integrity issue. Stage 1 warns but does not mutate history.
+- Multiple accepted versions within one commercial family are an integrity issue. Separate accepted base/add-on families are valid; Stage 1 warns only for the former and never mutates history.
 - A future stage could accidentally duplicate task, communication, or issue truth in the command-centre payload. Extend only through an approved owner contract.
 
 ## 21. Confirmed implementation decisions

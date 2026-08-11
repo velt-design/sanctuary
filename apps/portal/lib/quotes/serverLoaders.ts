@@ -9,7 +9,18 @@ import { missingTableError, nowIso, schemaMissingError } from './serverHelpers';
 type QuoteSourceEstimate = Estimate & {
   pricingSource: unknown;
   pricingSourceMetadata: unknown;
+  commercialScopeId: string | null;
 };
+
+export function loadQuoteFamilyByCommercialScope(projectUuid: string, commercialScopeId: string | null) {
+  const query = supabaseServiceRole
+    .from('quotes')
+    .select('id, quote_ref, internal_name, commercial_scope_id')
+    .eq('project_id', projectUuid);
+  return commercialScopeId
+    ? query.eq('commercial_scope_id', commercialScopeId).maybeSingle()
+    : query.is('commercial_scope_id', null).maybeSingle();
+}
 
 export async function loadEstimateLabels(projectUuid: string): Promise<Map<string, string>> {
   const res = await supabaseServiceRole
@@ -43,7 +54,7 @@ export async function loadProjectCustomerName(projectUuid: string): Promise<stri
 export async function loadEstimate(estimateUuid: string): Promise<QuoteSourceEstimate | null> {
   const res = await supabaseServiceRole
     .from('estimates')
-    .select('id, project_id, created_at, updated_at, status, inputs, outputs, warnings, pricing_source, pricing_source_metadata')
+    .select('id, project_id, commercial_scope_id, created_at, updated_at, status, inputs, outputs, warnings, pricing_source, pricing_source_metadata')
     .eq('id', estimateUuid)
     .maybeSingle();
   if (res.error) {
@@ -93,5 +104,6 @@ export async function loadEstimate(estimateUuid: string): Promise<QuoteSourceEst
     },
     pricingSource: row.pricing_source,
     pricingSourceMetadata: row.pricing_source_metadata,
+    commercialScopeId: typeof row.commercial_scope_id === 'string' ? row.commercial_scope_id : null,
   } as QuoteSourceEstimate;
 }

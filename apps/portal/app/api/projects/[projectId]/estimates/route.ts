@@ -13,6 +13,7 @@ import {
 import { buildVersionLabelMap, extractVersionNumber, mapEstimateDetail, mapEstimateMeta } from '@/lib/estimates/server';
 import { isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import { validateCommercialInternalName } from '@/lib/commercial/internalName';
+import { isCommercialScopeKind, normalizeCommercialScopeId } from '@/lib/commercial/scope';
 
 export const runtime = 'nodejs';
 
@@ -31,7 +32,7 @@ async function insertEstimateWithRetry(supabase: SupabaseClient, payload: Record
 
     const missing = missingColumnFromError(res.error);
     if (missing && missing in working) {
-      if (missing === 'client_intent_id') return res;
+      if (missing === 'client_intent_id' || missing === 'commercial_scope_id') return res;
       if (working.pricing_source === 'workbench_solved' && isEstimatePricingSourceColumn(missing)) return res;
       delete working[missing];
       continue;
@@ -58,7 +59,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
 
   const res = await supabase
     .from('estimates')
-    .select('id, project_id, internal_name, created_at, status, created_by, summary_json, summary, outputs, warnings, costing_manifest, costing_rules, total_true_cost_ex_gst, total_true_cost_inc_gst')
+    .select('id, project_id, commercial_scope_id, internal_name, created_at, status, created_by, summary_json, summary, outputs, warnings, costing_manifest, costing_rules, total_true_cost_ex_gst, total_true_cost_inc_gst')
     .eq('project_id', projectUuid)
     .order('created_at', { ascending: false });
 
@@ -94,6 +95,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const body = parsed.body ?? {};
   const internalName = validateCommercialInternalName(body.internalName);
   if (!internalName.ok) return jsonError(internalName.error, 400);
+  const commercialScopeKind = isCommercialScopeKind(body.commercialScopeKind)
+    ? body.commercialScopeKind
+    : 'base';
+  const commercialScopeId = normalizeCommercialScopeId(body.commercialScopeId);
+  if (commercialScopeKind === 'add_on' && !commercialScopeId) {
+    return jsonError('commercialScopeId is required for an add-on estimate', 400);
+  }
+  if (commercialScopeKind === 'base' && body.commercialScopeId != null) {
+    return jsonError('Base estimates cannot use an add-on scope', 400);
+  }
   const clientIntentId =
     typeof body.clientIntentId === 'string' ? body.clientIntentId.trim() : '';
   if (
@@ -187,6 +198,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const payload: Record<string, any> = {
     project_id: projectUuid,
     client_intent_id: clientIntentId,
+    commercial_scope_id: commercialScopeKind === 'add_on' ? commercialScopeId : null,
     internal_name: internalName.value,
     ...buildEstimateDbPayload({
       status: 'draft',

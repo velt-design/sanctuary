@@ -6,6 +6,7 @@ import { computeEstimateEditability, emptyEstimateEditability } from './editabil
 import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from './flow';
 import { summarizeCalculatorSnapshot } from './summarize';
 import type { EstimateDetail, EstimateEditability, EstimateFlowState, EstimateMeta, EstimateStatus, EstimateSummary } from './types';
+import { commercialScopeKind, normalizeCommercialScopeId } from '@/lib/commercial/scope';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -83,6 +84,7 @@ export function calculatorSnapshotFromRow(row: any): Record<string, unknown> {
 }
 
 export function mapEstimateMeta(row: any, versionLabel: string): EstimateMeta {
+  const commercialScopeId = normalizeCommercialScopeId(row?.commercial_scope_id);
   const flowState: EstimateFlowState = {
     isActiveDraft: Boolean(row?.isActiveDraft),
     hasSentQuote: Boolean(row?.hasSentQuote),
@@ -93,6 +95,8 @@ export function mapEstimateMeta(row: any, versionLabel: string): EstimateMeta {
   return {
     id: appIdFromUuid('est', String(row?.id ?? '')),
     projectId: appIdFromUuid('proj', String(row?.project_id ?? '')),
+    commercialScopeId,
+    commercialScopeKind: commercialScopeKind(commercialScopeId),
     internalName: asString(row?.internal_name),
     createdAt: typeof row?.created_at === 'string' ? row.created_at : new Date().toISOString(),
     status: normaliseEstimateStatus(row?.status),

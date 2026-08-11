@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { DataStatePanel } from "@/components/ui/foundation/FoundationFeedback";
-import { EmptyState, Input, OverflowMenu, SearchFilterBar } from "@/components/ui/foundation";
+import { Badge, EmptyState, Input, OverflowMenu, SearchFilterBar } from "@/components/ui/foundation";
 import { QuoteStatusBadge } from "@/components/ui/foundation/SanctuaryStatus";
 import type { EstimateMeta } from "@/lib/estimates/types";
 import { getAliasedLocalFirstEntitySyncState } from "@/lib/localFirst/store";
@@ -182,12 +182,15 @@ export default function QuotesListView({
                   ).pendingCount > 0;
                 const canDelete = quote.status === "DRAFT" && quote.isCurrentDraft;
                 const canSupersede = quote.status === "SENT" || quote.status === "ACCEPTED";
+                const quoteRefLabel = quote.quoteRef || "Pending reference";
+                const quoteIdentity = quote.internalName
+                  || (quote.commercialScopeKind === "add_on" ? "Add-on quote" : quoteRefLabel);
                 return (
                   <tr
                     key={quote.id}
                     className={styles.rowClickable}
                     tabIndex={0}
-                    aria-label={`Open ${quote.internalName || quote.quoteRef}, ${quote.quoteRef} version ${quote.versionNumber}`}
+                    aria-label={`Open ${quoteIdentity}, ${quoteRefLabel} version ${quote.versionNumber}`}
                     onClick={() => {
                       if (!isLocalQuoteId(quote.id))
                         prefetchQuoteDetail(quote.id);
@@ -205,8 +208,9 @@ export default function QuotesListView({
                   >
                     <td>
                       <span className={styles.documentIdentity}>
-                        <strong>{quote.internalName || quote.quoteRef}</strong>
-                        <small>{`${quote.quoteRef} · v${quote.versionNumber}`}</small>
+                        <strong>{quoteIdentity}</strong>
+                        <small>{`${quoteRefLabel} · v${quote.versionNumber}`}</small>
+                        {quote.commercialScopeKind === "add_on" ? <Badge tone="info">Add-on</Badge> : null}
                       </span>
                     </td>
                     <td>{quote.sourceEstimateVersionLabel}</td>
@@ -314,6 +318,11 @@ export default function QuotesListView({
               value={createEstimateId}
               onChange={(event) => {
                 setCreateEstimateId(event.target.value);
+                const estimate = estimates.find((item) => item.id === event.target.value);
+                const family = quotes.find((quote) =>
+                  (quote.commercialScopeId ?? null) === (estimate?.commercialScopeId ?? null),
+                );
+                setCreateInternalName(family?.internalName ?? estimate?.internalName ?? "");
               }}
               disabled={estimatesLoading}
             >
@@ -321,7 +330,7 @@ export default function QuotesListView({
                 <option key={estimate.id} value={estimate.id}>
                   {estimate.internalName || (estimate.isActiveDraft
                     ? "Current draft design"
-                    : `Design ${estimate.versionLabel}`)}
+                    : `Design ${estimate.versionLabel}`)}{estimate.commercialScopeKind === "add_on" ? " · Add-on" : ""}
                 </option>
               ))}
             </select>

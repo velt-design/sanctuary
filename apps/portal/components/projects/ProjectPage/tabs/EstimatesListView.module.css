@@ -26,6 +26,14 @@
   font-size: var(--ui-font-size-small);
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ui-space-2);
+  flex-wrap: wrap;
+}
+
 .row {
   cursor: pointer;
 }

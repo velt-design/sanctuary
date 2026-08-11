@@ -8,10 +8,11 @@ import type {
 } from './types';
 
 export const COMMAND_CENTRE_COMMERCIAL_RELATIONS_SELECT = `
-  estimates(id,project_id,created_at,status,version),
+  estimates(id,project_id,commercial_scope_id,created_at,status,version),
   quotes(
     id,
     quote_ref,
+    commercial_scope_id,
     quoteVersions:quote_versions(
       id,
       quote_id,
@@ -127,6 +128,7 @@ function normalizeQuoteRows(projectRow: AnyRecord): CommandCentreQuoteCandidate[
         sentAt: isoTimestamp(version.sent_at),
         totalIncGstCents: nonNegativeInteger(version.total_inc_gst_cents),
         sendLogs: logs,
+        commercialScopeId: trimmedString(quote.commercial_scope_id),
       });
     }
   }
@@ -166,6 +168,7 @@ function normalizeEstimateRows(
       status: estimateStatus(row.status),
       versionLabel: labels.get(sourceId) ?? 'V-',
       isLocked: editability.isLocked,
+      commercialScopeId: trimmedString(row.commercial_scope_id),
     }];
   });
 }

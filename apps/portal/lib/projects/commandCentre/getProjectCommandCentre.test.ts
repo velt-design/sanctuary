@@ -27,6 +27,10 @@ const UUID = {
   newerEstimate: '33333333-3333-4333-8333-333333333333',
   quote: '44444444-4444-4444-8444-444444444444',
   quoteParent: '55555555-5555-4555-8555-555555555555',
+  addOnEstimate: '66666666-6666-4666-8666-666666666666',
+  addOnQuote: '77777777-7777-4777-8777-777777777777',
+  addOnQuoteParent: '88888888-8888-4888-8888-888888888888',
+  addOnScope: '99999999-9999-4999-8999-999999999999',
 };
 
 const PROJECT_WORK = {
@@ -105,7 +109,7 @@ function quoteRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function projectRow(estimates: unknown[], quoteVersions: unknown[] = []) {
+function projectRow(estimates: unknown[], quoteVersions: unknown[] = []): Record<string, any> {
   return {
     id: UUID.project,
     pipeline_stage: 'NEW',
@@ -269,6 +273,34 @@ describe('getProjectCommandCentre', () => {
       estimate: { id: `est_${UUID.estimate}` },
       newerEstimate: { id: `est_${UUID.newerEstimate}`, versionLabel: 'V2' },
     });
+  });
+
+  it('aggregates accepted base and add-on quote families without an integrity warning', async () => {
+    const base = quoteRow({ status: 'ACCEPTED', created_at: '2026-07-05T00:00:00.000Z' });
+    const addOn = quoteRow({
+      id: UUID.addOnQuote,
+      quote_id: UUID.addOnQuoteParent,
+      status: 'ACCEPTED',
+      source_estimate_version_id: UUID.addOnEstimate,
+      total_inc_gst_cents: 25_000,
+      created_at: '2026-07-03T00:00:00.000Z',
+    });
+    const row = projectRow([
+      estimateRow(),
+      estimateRow({ id: UUID.addOnEstimate, commercial_scope_id: UUID.addOnScope }),
+    ]);
+    row.quotes = [
+      { id: UUID.quoteParent, quote_ref: 'Q-0100', commercial_scope_id: null, quoteVersions: [base] },
+      { id: UUID.addOnQuoteParent, quote_ref: 'Q-0101', commercial_scope_id: UUID.addOnScope, quoteVersions: [addOn] },
+    ];
+
+    const result = await getProjectCommandCentre(
+      `proj_${UUID.project}`,
+      createClient(row, DETAIL),
+    );
+
+    expect(result?.currentDesign.price).toEqual({ source: 'quote', totalIncGstCents: 200_000 });
+    expect(result?.currentDesign.warnings).not.toContain('multiple_accepted_quotes');
   });
 
   it('does not use a declined quote as the current commercial source', async () => {

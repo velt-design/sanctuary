@@ -26,18 +26,31 @@ function optionalText(value: unknown, maxLength: number): string | null {
   return text ? text.slice(0, maxLength) : null;
 }
 
-async function latestAcceptedQuoteVersion(projectUuid: string) {
-  const quoteRes = await supabaseServiceRole.from('quotes').select('id,quote_ref').eq('project_id', projectUuid).maybeSingle();
-  if (quoteRes.error) throw new Error(errorMessage(quoteRes.error, 'Failed to load project quote'));
-  if (!quoteRes.data) return null;
+async function latestAcceptedQuoteVersions(projectUuid: string) {
+  const quoteRes = await supabaseServiceRole
+    .from('quotes')
+    .select('id,quote_ref,commercial_scope_id')
+    .eq('project_id', projectUuid);
+  if (quoteRes.error) throw new Error(errorMessage(quoteRes.error, 'Failed to load project quotes'));
+  const quotes = Array.isArray(quoteRes.data) ? quoteRes.data : [];
+  const quoteIds = quotes.map((quote) => String(quote.id ?? '')).filter(Boolean);
+  if (!quoteIds.length) return [];
   const versionRes = await supabaseServiceRole.from('quote_versions').select('*')
-    .eq('quote_id', String(quoteRes.data.id))
+    .in('quote_id', quoteIds)
     .eq('status', 'ACCEPTED')
     .order('version_number', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (versionRes.error) throw new Error(errorMessage(versionRes.error, 'Failed to load accepted quote'));
-  return versionRes.data ? { quote: quoteRes.data as any, version: versionRes.data as any } : null;
+    .order('created_at', { ascending: false });
+  if (versionRes.error) throw new Error(errorMessage(versionRes.error, 'Failed to load accepted quotes'));
+  const quoteById = new Map(quotes.map((quote) => [String(quote.id), quote]));
+  const seen = new Set<string>();
+  return (Array.isArray(versionRes.data) ? versionRes.data : []).flatMap((version) => {
+    const quoteId = String((version as any).quote_id ?? '');
+    if (!quoteId || seen.has(quoteId)) return [];
+    const quote = quoteById.get(quoteId);
+    if (!quote) return [];
+    seen.add(quoteId);
+    return [{ quote: quote as any, version: version as any }];
+  });
 }
 
 function emptySchedule(): ProjectInvoiceSchedule {
@@ -51,6 +64,7 @@ function emptySchedule(): ProjectInvoiceSchedule {
     outstandingIncGstCents: 0,
     remainingToInvoiceIncGstCents: 0,
     unallocatedCreditIncGstCents: 0,
+    acceptedQuotes: [],
     terms: [],
   };
 }
@@ -60,34 +74,51 @@ export async function getProjectInvoiceSchedule(
   options: { includePaymentEntries?: boolean } = {},
 ): Promise<ProjectInvoiceSchedule> {
   const projectUuid = uuidFromAppId(projectId, 'proj');
-  const [accepted, invoices] = await Promise.all([
-    latestAcceptedQuoteVersion(projectUuid),
+  const [acceptedQuotes, invoices] = await Promise.all([
+    latestAcceptedQuoteVersions(projectUuid),
     listDepositInvoicesForProject(projectId),
   ]);
-  if (!accepted) return emptySchedule();
+  if (!acceptedQuotes.length) return emptySchedule();
 
-  const versionUuid = String(accepted.version.id);
+  const primary = acceptedQuotes.find((accepted) => !(accepted.quote as any).commercial_scope_id) ?? acceptedQuotes[0];
+  const versionUuid = String(primary.version.id);
   const versionId = appIdFromUuid('qv', versionUuid);
-  const total = Number(accepted.version.total_inc_gst_cents ?? 0) || 0;
-  const normalizedTerms = normalizeStoredQuotePaymentSchedule(
-    accepted.version.payment_terms,
-    total,
-    Number(accepted.version.deposit_percent ?? 50),
-  );
   const invoiceRefsByUuid = new Map(
     invoices.map((invoice) => [uuidFromAppId(invoice.id, 'inv'), invoice.invoiceRef]),
   );
-  const ledger = await loadProjectPaymentLedger({ projectUuid, quoteVersionUuid: versionUuid, invoiceRefsByUuid });
+  const ledger = await loadProjectPaymentLedger({
+    projectUuid,
+    quoteVersionUuids: acceptedQuotes.map((accepted) => String(accepted.version.id)),
+    invoiceRefsByUuid,
+  });
+  const acceptedScheduleQuotes = acceptedQuotes.map((accepted) => {
+    const total = Number(accepted.version.total_inc_gst_cents ?? 0) || 0;
+    const terms = normalizeStoredQuotePaymentSchedule(
+      accepted.version.payment_terms,
+      total,
+      Number(accepted.version.deposit_percent ?? 50),
+    );
+    return {
+      quoteVersionId: appIdFromUuid('qv', String(accepted.version.id)),
+      quoteRef: String(accepted.quote.quote_ref ?? ''),
+      quoteVersionNumber: Number(accepted.version.version_number ?? 0) || 0,
+      commercialScopeKind: accepted.quote.commercial_scope_id ? 'add_on' as const : 'base' as const,
+      totalIncGstCents: total,
+      terms: terms.map((term) => ({
+        id: term.id,
+        label: term.label,
+        amountIncGstCents: term.resolvedAmountIncGstCents,
+      })),
+    };
+  });
+  const primarySchedule = acceptedScheduleQuotes.find((quote) => quote.quoteVersionId === versionId)!;
   return projectInvoiceSchedule({
+    acceptedQuotes: acceptedScheduleQuotes,
     acceptedQuoteVersionId: versionId,
-    acceptedQuoteRef: String(accepted.quote.quote_ref ?? ''),
-    acceptedQuoteVersionNumber: Number(accepted.version.version_number ?? 0) || 0,
-    acceptedQuoteTotalIncGstCents: total,
-    quoteTerms: normalizedTerms.map((term) => ({
-      id: term.id,
-      label: term.label,
-      amountIncGstCents: term.resolvedAmountIncGstCents,
-    })),
+    acceptedQuoteRef: primarySchedule.quoteRef,
+    acceptedQuoteVersionNumber: primarySchedule.quoteVersionNumber,
+    acceptedQuoteTotalIncGstCents: primarySchedule.totalIncGstCents,
+    quoteTerms: primarySchedule.terms,
     planItems: ledger.planItems,
     invoices,
     paymentEntries: ledger.entries,

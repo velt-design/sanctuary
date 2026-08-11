@@ -35,6 +35,8 @@ vi.mock('@/app/staff/calculator/CalculatorGridClient', () => ({
       data-edit-estimate-id={workspace.editEstimateId ?? ''}
       data-from-estimate-id={workspace.fromEstimateId ?? ''}
       data-create-new={String(Boolean(workspace.createNewEstimate))}
+      data-scope-kind={workspace.newEstimateCommercialScopeKind ?? 'base'}
+      data-scope-id={workspace.newEstimateCommercialScopeId ?? ''}
     >
       <select
         aria-label="Design version"
@@ -151,6 +153,21 @@ describe('ProjectCalculatorTab', () => {
       .find((button) => button.textContent === 'Open calculator');
     act(() => openCalculator?.click());
     expect(push).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&newDesign=1');
+    rendered.unmount();
+  });
+
+  it('opens a separate add-on estimate scope without replacing the base design', () => {
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    const createAddOn = Array.from(rendered.container.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Create add-on estimate');
+    act(() => createAddOn?.click());
+    expect(document.body.textContent).toContain('Create a separate add-on scope');
+    const openCalculator = Array.from(document.body.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Open calculator');
+    act(() => openCalculator?.click());
+    const href = String(push.mock.calls.at(-1)?.[0] ?? '');
+    expect(href).toContain('tab=estimates&newDesign=1&estimateKind=add_on&commercialScopeId=');
+    expect(href).toMatch(/commercialScopeId=[0-9a-f-]{36}/i);
     rendered.unmount();
   });
 

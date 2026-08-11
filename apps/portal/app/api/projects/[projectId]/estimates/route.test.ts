@@ -292,6 +292,37 @@ describe('POST /api/projects/[projectId]/estimates', () => {
     await expect(res.json()).resolves.toEqual({ estimate: { id: 'est_1', projectId: 'proj_1' } });
   });
 
+  it('persists the stable commercial scope for an add-on estimate', async () => {
+    const commercialScopeId = '742b51d5-5f31-479b-8e5d-2276e53d5139';
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: {
+        clientIntentId: 'estimate-create:add-on-1',
+        commercialScopeKind: 'add_on',
+        commercialScopeId,
+        calculator_snapshot: {
+          inputs: { schemaVersion: 'v2' },
+          outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
+        },
+      },
+    });
+    estimateExistingOrder.mockResolvedValue({ data: [], error: null });
+    estimateInsertSingle.mockResolvedValue({
+      data: { id: 'estimate-uuid', project_id: 'project-uuid', commercial_scope_id: commercialScopeId, outputs: {} },
+      error: null,
+    });
+
+    const mod = await import('./route');
+    const res = await mod.POST(new Request('http://localhost/api/projects/proj_1/estimates', { method: 'POST' }), {
+      params: Promise.resolve({ projectId: 'proj_1' }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(estimateInsert).toHaveBeenCalledWith(expect.objectContaining({
+      commercial_scope_id: commercialScopeId,
+    }));
+  });
+
   it('returns the original estimate when a create intent is replayed', async () => {
     parseJsonBody.mockResolvedValue({
       ok: true,

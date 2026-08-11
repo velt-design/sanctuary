@@ -33,6 +33,7 @@ function findNewerEstimate(
 ): CommandCentreEstimateCandidate | null {
   if (!selected) return null;
   const eligible = estimates.filter((estimate) => {
+    if ((estimate.commercialScopeId ?? null) !== (selected.commercialScopeId ?? null)) return false;
     if (estimate.status !== 'draft' || estimate.id === selected.id) return false;
     if (!estimate.createdAt) return false;
     if (!selected.createdAt) return true;
@@ -55,7 +56,19 @@ export function resolveCommandCentreSelection(args: {
   const latestDeclinedQuote = quotes
     .filter((quote) => quote.status === 'DECLINED')
     .sort(compareTimestampDesc)[0] ?? null;
-  const acceptedQuoteCount = quotes.filter((quote) => quote.status === 'ACCEPTED').length;
+  const acceptedQuotes = quotes.filter((quote) => quote.status === 'ACCEPTED');
+  const acceptedByScope = new Map<string, CommandCentreQuoteCandidate[]>();
+  for (const quote of acceptedQuotes) {
+    const key = quote.commercialScopeId ?? 'base';
+    const bucket = acceptedByScope.get(key) ?? [];
+    bucket.push(quote);
+    acceptedByScope.set(key, bucket);
+  }
+  const acceptedQuoteCount = Math.max(0, ...[...acceptedByScope.values()].map((bucket) => bucket.length));
+  const acceptedScopeQuotes = [...acceptedByScope.values()].map((bucket) => bucket.slice().sort(compareTimestampDesc)[0]);
+  const acceptedProjectTotalIncGstCents = acceptedScopeQuotes.some((quote) => quote?.totalIncGstCents === null)
+    ? null
+    : acceptedScopeQuotes.reduce((sum, quote) => sum + (quote?.totalIncGstCents ?? 0), 0);
 
   for (const precedence of QUOTE_PRECEDENCE) {
     const quote = quotes
@@ -73,6 +86,7 @@ export function resolveCommandCentreSelection(args: {
       newerEstimate: findNewerEstimate(estimates, estimate),
       latestDeclinedQuote,
       acceptedQuoteCount,
+      acceptedProjectTotalIncGstCents,
       sourceEstimateMissing: estimate === null,
     };
   }
@@ -89,6 +103,7 @@ export function resolveCommandCentreSelection(args: {
       newerEstimate: null,
       latestDeclinedQuote,
       acceptedQuoteCount,
+      acceptedProjectTotalIncGstCents,
       sourceEstimateMissing: false,
     };
   }
@@ -100,6 +115,7 @@ export function resolveCommandCentreSelection(args: {
     newerEstimate: null,
     latestDeclinedQuote,
     acceptedQuoteCount,
+    acceptedProjectTotalIncGstCents,
     sourceEstimateMissing: false,
   };
 }

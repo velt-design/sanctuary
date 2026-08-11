@@ -149,6 +149,7 @@ export type CommandCentreEstimateCandidate = {
   status: 'draft' | 'archived' | 'unknown';
   versionLabel: string;
   isLocked: boolean;
+  commercialScopeId?: string | null;
 };
 
 export type CommandCentreQuoteCandidate = {
@@ -166,6 +167,7 @@ export type CommandCentreQuoteCandidate = {
     createdAt: string | null;
     sentAt: string | null;
   }>;
+  commercialScopeId?: string | null;
 };
 
 export type CommandCentreSelection = {
@@ -175,5 +177,6 @@ export type CommandCentreSelection = {
   newerEstimate: CommandCentreEstimateCandidate | null;
   latestDeclinedQuote: CommandCentreQuoteCandidate | null;
   acceptedQuoteCount: number;
+  acceptedProjectTotalIncGstCents: number | null;
   sourceEstimateMissing: boolean;
 };

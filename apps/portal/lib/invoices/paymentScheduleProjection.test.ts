@@ -74,4 +74,32 @@ describe('projectInvoiceSchedule', () => {
     expect(schedule.terms.reduce((sum, term) => sum + term.amountIncGstCents, 0)).toBe(80000);
     expect(schedule.remainingToInvoiceIncGstCents).toBe(80000);
   });
+
+  it('adds accepted add-ons to the job total while keeping their stages independent', () => {
+    const schedule = projectInvoiceSchedule({
+      acceptedQuotes: [
+        {
+          quoteVersionId: 'qv-base', quoteRef: 'Q-100', quoteVersionNumber: 2,
+          commercialScopeKind: 'base', totalIncGstCents: 100000,
+          terms: [{ id: 'final', label: 'Final', amountIncGstCents: 100000 }],
+        },
+        {
+          quoteVersionId: 'qv-addon', quoteRef: 'Q-101', quoteVersionNumber: 1,
+          commercialScopeKind: 'add_on', totalIncGstCents: 25000,
+          terms: [{ id: 'final', label: 'Add-on payment', amountIncGstCents: 25000 }],
+        },
+      ],
+      acceptedQuoteVersionId: 'qv-base', acceptedQuoteRef: 'Q-100', acceptedQuoteVersionNumber: 2,
+      acceptedQuoteTotalIncGstCents: 100000, quoteTerms: [], planItems: [], invoices: [],
+      paymentEntries: [], allocations: [], includePaymentEntries: false,
+    });
+
+    expect(schedule.acceptedQuoteTotalIncGstCents).toBe(125000);
+    expect(schedule.terms.map((term) => [term.quoteVersionId, term.paymentTermId])).toEqual([
+      ['qv-base', 'final'], ['qv-addon', 'final'],
+    ]);
+    expect(schedule.acceptedQuotes?.[1]).toMatchObject({
+      commercialScopeKind: 'add_on', remainingToInvoiceIncGstCents: 25000,
+    });
+  });
 });

@@ -37,6 +37,7 @@ async function insertEstimateWithRetry(supabase: SupabaseClient, payload: Record
 
     const missing = missingColumnFromError(res.error);
     if (missing && missing in working) {
+      if (missing === 'commercial_scope_id') return res;
       if (working.pricing_source === 'workbench_solved' && isEstimatePricingSourceColumn(missing)) return res;
       delete working[missing];
       continue;
@@ -138,6 +139,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ estimateId: s
 
   const payload: Record<string, any> = {
     project_id: projectUuid,
+    commercial_scope_id: typeof source.commercial_scope_id === 'string' ? source.commercial_scope_id : null,
     internal_name: copiedCommercialInternalName(
       typeof source.internal_name === 'string' ? source.internal_name : null,
       `Estimate ${versionLabels.get(estimateUuid) ?? 'source'}`,

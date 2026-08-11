@@ -34,6 +34,7 @@ export default function EstimatesListView({
   error,
   onRetry,
   onCreate,
+  onCreateAddOn,
   onOpen,
   onDuplicate,
   onRename,
@@ -43,6 +44,7 @@ export default function EstimatesListView({
   error: string | null;
   onRetry: () => void;
   onCreate: () => void;
+  onCreateAddOn: () => void;
   onOpen: (estimateId: string) => void;
   onDuplicate: (estimateId: string) => void;
   onRename: (estimate: EstimateMeta) => void;
@@ -65,7 +67,10 @@ export default function EstimatesListView({
           <h3 className={styles.title}>Estimates</h3>
           <p className={styles.subtitle}>Versioned estimates for this project.</p>
         </div>
-        <Button onClick={onCreate}>Create estimate</Button>
+        <div className={styles.headerActions}>
+          <Button variant="secondary" onClick={onCreateAddOn}>Create add-on estimate</Button>
+          <Button onClick={onCreate}>Create estimate</Button>
+        </div>
       </div>
 
       {loading ? <LoadingSkeleton rows={4} columns={5} label="Loading estimates" /> : null}
@@ -142,6 +147,7 @@ export default function EstimatesListView({
                         {estimate.internalName ? `Estimate ${estimate.versionLabel} · ` : ''}
                         {estimate.createdBy || 'Sanctuary staff'}
                       </small>
+                      {estimate.commercialScopeKind === 'add_on' ? <Badge tone="info">Add-on</Badge> : null}
                     </span>
                   </TableCell>
                   <TableCell>{formatPortalDate(estimate.createdAt, { fallback: '-' })}</TableCell>
