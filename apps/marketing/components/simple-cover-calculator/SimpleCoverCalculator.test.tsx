@@ -114,7 +114,7 @@ describe('SimpleCoverCalculator', () => {
     const result = document.querySelector('[data-result-state]') as HTMLElement;
     expect(levelControl.compareDocumentPosition(options) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
     expect(options.compareDocumentPosition(result) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
-    expect(document.querySelector('#simple-cover-connection')).toMatchObject({ value: 'fascia' });
+    expect(document.querySelector('#simple-cover-connection')).toMatchObject({ value: 'facade' });
     expect(Array.from(document.querySelectorAll('#simple-cover-connection option')).map((option) => option.textContent))
       .toEqual(['Fascia', 'Facade', 'Soffit brackets']);
   });

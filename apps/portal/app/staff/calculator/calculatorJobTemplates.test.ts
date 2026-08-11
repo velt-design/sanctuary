@@ -41,6 +41,7 @@ describe('calculator job templates', () => {
     expect(result.modules[0]).toMatchObject({
       pergolaStyle: 'pitched',
       houseConnectionType: 'none',
+      postCount: '6',
       lengthM: '6',
       projectionM: '3',
     });
