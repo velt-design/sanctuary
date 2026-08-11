@@ -1,0 +1,21 @@
+{
+  "version": "v2.5",
+  "inputs_schema_version": "v1",
+  "files": {
+    "pricebook_materials": "materials/sanctuary_pricebook_materials_2025-11_exgst_v1.1.json",
+    "materials_additions": "materials/sanctuary_materials_additions_v1_2026-01-08.json",
+    "powdercoat_additions": "materials/sanctuary_powdercoat_additions_v1_2026-08-11.json",
+    "hardware_placeholders": "hardware/hardware_placeholders_v1.json",
+    "install_actions": "install_actions_v1.9_2026-08-05.json",
+    "bom_strategy": "bom/bom_strategy_v1.1.json",
+    "overheads": "overheads_v1.1_2026-01-08.json",
+    "costing_rules": "costing_rules_v1.3_2026-01-08.json",
+    "commercial_policy": "commercial_policy_v5_2026-08-11.json"
+  },
+  "integration_notes": [
+    "Retains all v2.4 commercial, geometry, stock-selection and labour behavior.",
+    "Adds governed 6m powdercoat assumptions for 200x50 and Overhang Gutter 100x100 so every selectable aluminium bar has a standard and custom-colour costing path.",
+    "Published v2.4 and earlier controls hydrate only these new material identities from the immutable v2.5 base rates while retaining their original commercial semantics."
+  ],
+  "generated_at": "2026-08-11"
+}

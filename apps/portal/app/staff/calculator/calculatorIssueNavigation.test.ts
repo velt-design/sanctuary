@@ -10,6 +10,7 @@ describe('calculator issue navigation', () => {
   it('maps rendered fields to their configuration section owner', () => {
     expect(calculatorIssueSectionId('lengthM')).toBe('structure');
     expect(calculatorIssueSectionId('flashings')).toBe('flashings');
+    expect(calculatorIssueSectionId('additionalAluminium')).toBe('additional-aluminium');
     expect(calculatorIssueSectionId('ledgerProfileOverride')).toBe('overrides');
     expect(calculatorIssueSectionId('houseFootprintPreset')).toBeNull();
     expect(calculatorIssueSectionId('fallDistanceMm')).toBeNull();

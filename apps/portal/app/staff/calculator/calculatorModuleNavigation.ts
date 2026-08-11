@@ -13,6 +13,7 @@ import {
   normalizePergolasForUi,
   prunePergolasForModules,
 } from './calculatorInputs';
+import { makeAdditionalAluminiumId } from './calculatorAdditionalAluminium';
 
 type CalculatorModuleIssueMap = Partial<Record<keyof CalculatorModuleInputs, string>>;
 
@@ -166,6 +167,11 @@ function duplicateModuleInputs(source: CalculatorModuleInputs): CalculatorModule
   if (duplicate.flashings) {
     duplicate.flashings = {
       rows: duplicate.flashings.rows.map((row) => ({ ...row, id: makeFlashingId() })),
+    };
+  }
+  if (duplicate.additionalAluminium) {
+    duplicate.additionalAluminium = {
+      rows: duplicate.additionalAluminium.rows.map((row) => ({ ...row, id: makeAdditionalAluminiumId() })),
     };
   }
   if (duplicate.infills) {

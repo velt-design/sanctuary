@@ -30,6 +30,7 @@ import {
   supportsHouseFootprints,
 } from '@/lib/types/calculator';
 import { makeDefaultFlashings, normalizeFlashingsStateForUi } from './calculatorFlashings';
+import { normalizeAdditionalAluminiumState } from './calculatorAdditionalAluminium';
 import { applyOpenPergolaDefaults, DEFAULT_OPEN_PERGOLA_RAFTER_SPACING_MM } from './calculatorOpenPergola';
 
 export {
@@ -198,6 +199,7 @@ export function makeDefaultModule(pergolaId = 'pergola-1'): CalculatorModuleInpu
     timberRoofAllowanceExGst: '0',
 
     flashings: { rows: [] },
+    additionalAluminium: { rows: [] },
     overrides: {},
     infills: makeDefaultInfills(),
   };
@@ -605,6 +607,7 @@ function normalizeModuleForUi(value: unknown): CalculatorModuleInputs {
   merged.houseFootprintParams = normalizeHouseFootprintParams(source.houseFootprintParams);
   merged.houseFootprintPolygon = normalizeHouseFootprintPolygon(source.houseFootprintPolygon);
   merged.flashings = normalizeFlashingsStateForUi((source as any).flashings, merged);
+  merged.additionalAluminium = normalizeAdditionalAluminiumState((source as any).additionalAluminium);
   merged.infills = normalizeInfillsStateForUi((source as any).infills);
 
   if (merged.roofMaterial === 'none') return applyOpenPergolaDefaults(merged);

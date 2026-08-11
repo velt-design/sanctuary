@@ -811,6 +811,27 @@ function buildMaterialsV1Internal(
   const bars_used_by_profile: Record<string, number> = {};
   const bars_used_by_profile_by_len: Record<string, Record<string, number>> = {};
 
+  for (const row of inputs.additional_aluminium ?? []) {
+    const quantity = Math.max(0, Math.round(Number(row.quantity)));
+    const stockLengthM = Number(row.stock_length_m);
+    if (!row.profile || quantity <= 0 || !Number.isFinite(stockLengthM) || stockLengthM <= 0) continue;
+    addCuts(
+      row.profile,
+      Array.from({ length: quantity }, () => stockLengthM),
+      `Additional aluminium (${row.profile})`,
+      'single',
+      {
+        origin_prefix: `additional_aluminium_${row.id}`,
+        group_key: `additional_aluminium_${row.id}`,
+        preferred_stock_lengths_m: [stockLengthM],
+        explain: {
+          formula: 'cuts = repeat(quantity, selected stock length)',
+          deps: { quantity, stockLengthM, profile: row.profile },
+        },
+      },
+    );
+  }
+
   const addProfileWaste = (profile: string, wasteM: number) => {
     const waste = Number.isFinite(wasteM) ? wasteM : 0;
     waste_m_by_profile[profile] = roundMoney((waste_m_by_profile[profile] ?? 0) + waste);

@@ -66,6 +66,37 @@ function buildTestConfig(baseMinutes: number, baseScope: 'module' | 'job' = 'mod
 }
 
 describe('calculateCostV1', () => {
+  it('prices additional aluminium as full bars with module finish and no added labour', () => {
+    const baseInput = {
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      pergola_style: 'pitched' as const,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Mill' as const,
+      powdercoat_is_custom: true,
+      powdercoat_custom_colour: 'Special Bronze',
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+    };
+    const baseline = calculateCostV1(baseInput);
+    const result = calculateCostV1({
+      ...baseInput,
+      additional_aluminium: [{ id: 'odd-member', profile: '200x50', stock_length_m: 6, quantity: 2 }],
+    });
+
+    const additionalLine = result.materials.lines.find((line) =>
+      line.profile === '200x50' && line.notes?.includes('Additional aluminium'),
+    );
+    expect(additionalLine).toMatchObject({ qty: 2, unit: 'bar', profile: '200x50' });
+    expect(additionalLine?.unit_cost_ex_gst).toBeCloseTo(170.4174 + (40.4853 * 1.2), 2);
+    expect(result.install).toEqual(baseline.install);
+    expect(result.totals.cost_ex_gst).toBeGreaterThan(baseline.totals.cost_ex_gst);
+    expect(result.totals.warnings.some((warning) => warning.message.includes('Powdercoat pricebook item not found'))).toBe(false);
+  });
   it('fixture: pitched, acrylic, 6m × 3m, black, soffit + deck posts, 2.4m', () => {
     const result = calculateCostV1({
       length_m: 6,

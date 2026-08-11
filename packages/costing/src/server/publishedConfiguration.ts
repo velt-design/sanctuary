@@ -51,16 +51,15 @@ export function resolvePublishedCostingConfigurationRecordV1(
   }
 
   const base = loadCostingConfigV1();
+  const calculatedHash = hashCostingControlConfigV1(record.config);
+  if (calculatedHash !== record.contentHash) {
+    throw new Error(`Published costing configuration ${record.id} failed its content hash check.`);
+  }
   const validation = validateCostingControlConfigV1(record.config, base);
   if (!validation.ok) {
     const detail = validation.issues.map((issue) => `${issue.path}: ${issue.message}`).join('; ');
     throw new Error(`Published costing configuration ${record.id} is incompatible with this engine: ${detail}`);
   }
-  const calculatedHash = hashCostingControlConfigV1(validation.value);
-  if (calculatedHash !== record.contentHash) {
-    throw new Error(`Published costing configuration ${record.id} failed its content hash check.`);
-  }
-
   return {
     config: applyCostingControlConfigV1(base, validation.value),
     provenance: {

@@ -1,0 +1,43 @@
+{
+  "version": "v1",
+  "currency": "NZD",
+  "gst_rate": 0.15,
+  "items": [
+    {
+      "id": "powdercoating_200x50_6m_assumption",
+      "category": "powdercoating",
+      "name": "Powdercoating for 200x50 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "200x50",
+        "length_m": 6.0
+      },
+      "notes": "Assumption: interpolated from the active 250x50 and 300x50 powdercoat rates; custom colours retain the engine's 1.2 multiplier.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "250x50 midpoint note and 300x50 active pricebook rate"
+      },
+      "cost_ex_gst": 40.4853,
+      "cost_inc_gst": 46.56
+    },
+    {
+      "id": "powdercoating_overhang_gutter_100x100_6m_assumption",
+      "category": "powdercoating",
+      "name": "Powdercoating for Overhang Gutter 100x100 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Overhang Gutter 100x100",
+        "length_m": 6.0
+      },
+      "notes": "Assumption: priced the same as the active 100x100 6m powdercoat row until a supplier-specific rate is confirmed; custom colours retain the engine's 1.2 multiplier.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m active pricebook rate"
+      },
+      "cost_ex_gst": 34.8,
+      "cost_inc_gst": 40.02
+    }
+  ]
+}

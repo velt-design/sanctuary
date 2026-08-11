@@ -58,6 +58,23 @@ describe('calculator input defaults and normalization', () => {
       purpose: 'CUSTOM',
     });
     expect(module.infills).toEqual({ items: [] });
+    expect(module.additionalAluminium).toEqual({ rows: [] });
+  });
+
+  it('preserves saved additional aluminium rows during calculator normalization', () => {
+    const normalized = normalizeCalculatorInputsForUi({
+      ...makeDefaultCalculatorInputs(),
+      modules: [{
+        ...makeDefaultModule('pergola-1'),
+        additionalAluminium: {
+          rows: [{ id: 'extra-bar-1', profile: '100x50', stockLengthM: '5', quantity: '3' }],
+        },
+      }],
+    });
+
+    expect(normalized.modules[0].additionalAluminium?.rows).toEqual([
+      { id: 'extra-bar-1', profile: '100x50', stockLengthM: '5', quantity: '3' },
+    ]);
   });
 
   it('normalizes saved open pergolas to the supported frame contract', () => {

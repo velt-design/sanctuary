@@ -121,6 +121,20 @@ describe('costingPayload', () => {
     expect(moduleInputs?.attachment_length_mm).toBeNull();
   });
 
+  it('maps valid additional aluminium rows onto their owning module', () => {
+    const inputs = makeInputs();
+    inputs.modules[0]!.additionalAluminium = {
+      rows: [
+        { id: 'extra-bar-1', profile: '150x50', stockLengthM: '6', quantity: '2' },
+        { id: 'invalid', profile: '', stockLengthM: '', quantity: '0' },
+      ],
+    };
+
+    expect(buildSiteInputsFromCalculatorInputs(inputs).pergolas[0]?.modules[0]?.additional_aluminium).toEqual([
+      { id: 'extra-bar-1', profile: '150x50', stock_length_m: 6, quantity: 2 },
+    ]);
+  });
+
   it('canonicalizes an eligible open pergola and requests Simple pricing', () => {
     const inputs = makeInputs();
     inputs.pricingClassification = 'simple';

@@ -154,6 +154,16 @@ export function buildCalculatorModuleErrors(
       if (hasInvalidLength) next.flashings = 'Enter a flashing length of 0 or more.';
     }
 
+    const hasInvalidAdditionalAluminium = (module.additionalAluminium?.rows ?? []).some((row) => {
+      const stockLengthM = toNumber(row.stockLengthM);
+      const quantity = toNumber(row.quantity);
+      return !row.profile.trim() || !Number.isFinite(stockLengthM) || stockLengthM <= 0 ||
+        !Number.isInteger(quantity) || quantity <= 0 || quantity > 1000;
+    });
+    if (hasInvalidAdditionalAluminium) {
+      next.additionalAluminium = 'Select a profile and stock length, then enter a whole quantity from 1 to 1000.';
+    }
+
     return next;
   });
 }

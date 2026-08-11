@@ -128,6 +128,12 @@ export const CALCULATOR_CONFIGURATION_SECTIONS = [
     ],
   },
   {
+    id: 'additional-aluminium',
+    title: 'Additional aluminium',
+    collapsible: true,
+    fieldIds: ['additionalAluminium'],
+  },
+  {
     id: 'lighting',
     title: 'Lighting',
     surface: 'card',
@@ -162,7 +168,7 @@ const WIDE_FIELD_IDS = new Set([
   'timberNoteEdgeRafters',
 ]);
 
-const FULL_FIELD_IDS = new Set(['flashings', 'lightingEditor', 'blindsList', 'infillsEditor']);
+const FULL_FIELD_IDS = new Set(['flashings', 'additionalAluminium', 'lightingEditor', 'blindsList', 'infillsEditor']);
 
 export function calculatorConfigurationFieldLayout(fieldId: string): CalculatorConfigurationFieldLayout {
   if (FULL_FIELD_IDS.has(fieldId)) return 'full';

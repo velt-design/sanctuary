@@ -99,7 +99,7 @@ The v1 control contract is exhaustive by exact keyset. Unknown keys and missing 
 
 | Current item | Classification | Editable shape |
 | --- | --- | --- |
-| Every active `materials.items[*].cost_ex_gst` value (currently 148 package material IDs) | Safely admin-editable | Non-negative ex-GST number; material identity, unit, attributes, and supplier/product meaning remain package-owned. |
+| Every active `materials.items[*].cost_ex_gst` value (currently 150 package material IDs) | Safely admin-editable | Non-negative ex-GST number; material identity, unit, attributes, and supplier/product meaning remain package-owned. |
 | Install crew-hour rate | Safely admin-editable | Positive ex-GST number; inc-GST companion is derived by the package adapter. |
 | Every action with an existing `base_minutes` value (currently 35 scalar actions and 4 by-profile actions; actions without a base value remain unavailable) | Constrained typed rule | Non-negative bounded minutes. By-profile actions must retain the package-defined profile key and exact profile options. |
 | Existing multiplier values in `access`, `access_logistics`, `height`, `ground`, `structure_type`, and `roof_type` | Constrained typed rule | Positive bounded numbers with the exact package-defined groups/options. Action applicability and multiplier attachment remain code/config-manifest logic. |
@@ -131,13 +131,15 @@ Changing any code-owned item is a normal package semantic change with package re
 - A package manifest change must ship with an explicit compatibility/migration decision for the current published control snapshot. Incompatible published data fails closed.
 - Published estimates store `estimates.costing_config_version_id`; pre-publication estimates store the full hashed legacy control snapshot in `outputs.configVersions.costingControl`. All estimates retain frozen inputs and outputs as the historical commercial record.
 
-The active package manifest is `v2.4`. Published `v1.7` through `v2.3` snapshots retain their stored rates and original package behavior when applied to this package base. A fresh draft copies the active editable rates but advances to `v2.4`; only publishing that draft activates the unified commercial policy. Cloning an older version preserves that version's semantics for rollback.
+The active package manifest is `v2.5`. It retains `v2.4` commercial behavior and adds only the two governed powdercoat assumptions used by Additional aluminium. Compatible published `v2.4` and earlier controls hydrate those new identities from the immutable `v2.5` base after their original content hash is verified; all stored rates and original commercial semantics remain unchanged. A fresh draft copies the active editable rates and advances to `v2.5`. Cloning an older version preserves that version's commercial semantics for rollback.
 
 Manifest `v2.0` corrects non-continuous extrusion procurement such as rafters. The BOM compares the whole purchase needed for each eligible stock length and chooses the lowest total ex-GST cost, then least waste, fewest bars and lowest cost per metre. Continuous ledger, beam, stringer and gutter runs keep the splice-minimising rule. Published `v1.9` retains the earlier cost-per-metre-first non-continuous selection so Version 2 remains reproducible.
 
 Manifest `v2.1` derives Simple site days from productive installation actions only. Manifest `v2.4` extends that basis to Bespoke after multiplying productive actions by `1.2`. One-time mobilisation/demobilisation remains charged once and is not multiplied; setup, pack-down and tidy are charged once per resulting genuine site day. Published `v2.3` and earlier retain their original site-day behavior.
 
 Manifest `v2.3` retains the existing actual sloped rafter cut-length and total-installed-metre takeoff. It keeps the live 2m and 3m loading points at `0.50` and `1.00`, then raises the 4m, 5m and 6m points to `3.75`, `6.50` and `7.80`. The engine linearly interpolates between points, so increasing projection produces a smooth labour increase rather than a threshold jump. Published `v2.2` and earlier controls preserve their frozen curve values, including any administrator-edited values.
+
+Calculator-only `additional_aluminium` rows are explicit full-bar material purchases attached to one module. The staff-only catalogue endpoint derives selectable aluminium profiles and stock lengths from Mill rows in the active published pricebook; it does not expose costs to the browser. The costing package selects the matching bar in the module finish, applies the existing Mill powdercoat overlay and `1.2x` custom-colour multiplier, and includes the result in module and site materials. These rows never enter geometry, member sizing, or install actions. The assumed missing standard powdercoat surcharges are `$40.4853 ex GST` for 200x50 6m and `$34.80 ex GST` for Overhang Gutter 100x100 6m; both remain marked supplier-confirmation required in the additions catalogue.
 
 ## Marketing Estimate Use
 

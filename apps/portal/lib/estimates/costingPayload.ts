@@ -264,6 +264,18 @@ export function buildPergolaModuleCostFields(
         ...(flashingExtras.length ? { extras: flashingExtras } : null),
       }
     : undefined;
+  const additional_aluminium = (module.additionalAluminium?.rows ?? [])
+    .map((row) => ({
+      id: row.id,
+      profile: row.profile.trim(),
+      stock_length_m: toNumber(row.stockLengthM),
+      quantity: toNumber(row.quantity),
+    }))
+    .filter((row) =>
+      Boolean(row.id && row.profile) &&
+      Number.isFinite(row.stock_length_m) && row.stock_length_m > 0 &&
+      Number.isInteger(row.quantity) && row.quantity > 0 && row.quantity <= 1000,
+    );
 
   return {
     length_m,
@@ -329,6 +341,7 @@ export function buildPergolaModuleCostFields(
           }
         : undefined,
     flashings,
+    additional_aluminium: additional_aluminium.length ? additional_aluminium : undefined,
     hip_corner:
       !isOpenPergola && module.pergolaStyle === 'hip_corner'
         ? {

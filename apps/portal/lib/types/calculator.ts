@@ -271,6 +271,17 @@ export type CalculatorFlashingsState = {
   rows: CalculatorFlashingRowInput[];
 };
 
+export type CalculatorAdditionalAluminiumRow = {
+  id: string;
+  profile: string;
+  stockLengthM: string;
+  quantity: string;
+};
+
+export type CalculatorAdditionalAluminiumState = {
+  rows: CalculatorAdditionalAluminiumRow[];
+};
+
 export type CalculatorModuleInputs = {
   pergolaId?: string;
   pergolaStyle: PergolaStyleUi;
@@ -354,6 +365,7 @@ export type CalculatorModuleInputs = {
   timberRoofAllowanceExGst: string;
 
   flashings?: CalculatorFlashingsState;
+  additionalAluminium?: CalculatorAdditionalAluminiumState;
   overrides?: CalculatorModuleOverrides;
   infills?: CalculatorInfillsState;
 };

@@ -64,6 +64,7 @@ import {
 import CalculatorBlindsEditor from './CalculatorBlindsEditor';
 import CalculatorLightingEditor from './CalculatorLightingEditor';
 import CalculatorFlashingsEditor from './CalculatorFlashingsEditor';
+import CalculatorAdditionalAluminiumEditor from './CalculatorAdditionalAluminiumEditor';
 import {
   buildCalculatorQuoteStatusUi,
   buildCalculatorUiWarnings,
@@ -95,6 +96,7 @@ import { useCalculatorInfillCostComparison } from './useCalculatorInfillCostComp
 import { useCalculatorInfillActions } from './useCalculatorInfillActions';
 import { useCalculatorBlindsController } from './useCalculatorBlindsController';
 import { useCalculatorFlashingsController } from './useCalculatorFlashingsController';
+import { useCalculatorAdditionalAluminiumController } from './useCalculatorAdditionalAluminiumController';
 import { useCalculatorInputController } from './useCalculatorInputController';
 import { useSimplePricingClassification } from './useSimplePricingClassification';
 import { useCalculatorResultPresentation } from './useCalculatorResultPresentation';
@@ -365,6 +367,13 @@ export default function CalculatorGridClient({
   } = useCalculatorIssueNavigation({
     activeModuleIndex,
     setActiveModuleIndex,
+  });
+
+  const additionalAluminium = useCalculatorAdditionalAluminiumController({
+    activeModule,
+    activeModuleIndex,
+    activePergolaId,
+    setValues,
   });
 
   const {
@@ -752,6 +761,15 @@ export default function CalculatorGridClient({
     />
   );
 
+  const additionalAluminiumTileContent = (
+    <CalculatorAdditionalAluminiumEditor
+      state={additionalAluminium.state}
+      onAddRow={additionalAluminium.addRow}
+      onUpdateRow={additionalAluminium.updateRow}
+      onRemoveRow={additionalAluminium.removeRow}
+    />
+  );
+
   const schema: FieldSchemaItem[] = [
     ...buildCalculatorContextFields({
       resultFreshness,
@@ -771,6 +789,7 @@ export default function CalculatorGridClient({
       errors,
       resolvedDefaults,
       flashingTileContent,
+      additionalAluminiumTileContent,
       setValues,
       setModuleField,
       setModuleOverride,

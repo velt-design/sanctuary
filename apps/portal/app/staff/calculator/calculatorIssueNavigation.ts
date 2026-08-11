@@ -72,6 +72,8 @@ export function labelForCalculatorIssueField(id: string): string {
       return 'Acrylic bays (B)';
     case 'flashings':
       return 'Flashings';
+    case 'additionalAluminium':
+      return 'Additional aluminium';
     case 'timberRoofAboveType':
       return 'Timber roof above';
     case 'timberInsulatedPanelThicknessMm':

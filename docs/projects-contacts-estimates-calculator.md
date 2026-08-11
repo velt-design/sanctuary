@@ -157,6 +157,8 @@ At `900px` and below the desktop infill rail is replaced by one selector, the fu
 
 Infill purchasing uses `3.05m x 2.03m` sheets, fixed-width Crystalite stock, 3mm consecutive-cut kerf, rotation-safe sheet placement, and job/site pooling. Module output may retain standalone purchasing for comparison, while job/site material totals use the pooled takeoff. Bottom offset never changes finished dimensions, and `match roof rafters` requires the infill to cover the full matching edge with real derived rafter spacing.
 
+Additional aluminium is a third closed specialist disclosure after Structural overrides. It belongs to the active module and accepts published-pricebook profile, stock-length, and whole-quantity rows. Each row inherits the module finish, contributes full bars to package-owned Materials and module true-cost allocation, and deliberately creates no geometry, structural rule, or automatic labour.
+
 ## Estimate Pricing Rollout Boundary
 
 Saved estimate pricing stays on the calculator path. The 2026-06-11 workbench breakaway disables workbench repricing rather than adapting object-first geometry back into calculator inputs.

@@ -49,4 +49,24 @@ describe('published costing configuration boundary', () => {
       baseManifestVersion: control.baseManifestVersion,
     })).toThrow('failed its content hash check');
   });
+
+  it('verifies the stored hash before hydrating compatible v2.5 material additions', () => {
+    const historical = structuredClone(control);
+    historical.baseManifestVersion = 'v2.4';
+    delete historical.materialRatesExGst.powdercoating_200x50_6m_assumption;
+    delete historical.materialRatesExGst.powdercoating_overhang_gutter_100x100_6m_assumption;
+    const historicalHash = hashCostingControlConfigV1(historical);
+
+    const resolved = resolvePublishedCostingConfigurationRecordV1({
+      id: 'version-v2-4',
+      versionNumber: 11,
+      status: 'published',
+      config: historical,
+      contentHash: historicalHash,
+      baseManifestVersion: 'v2.4',
+    });
+
+    expect(resolved.provenance.contentHash).toBe(historicalHash);
+    expect(resolved.config.materials.items.find((item) => item.id === 'powdercoating_200x50_6m_assumption')?.cost_ex_gst).toBe(40.4853);
+  });
 });

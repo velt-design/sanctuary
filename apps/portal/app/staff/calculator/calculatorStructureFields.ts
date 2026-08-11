@@ -53,6 +53,7 @@ export type CalculatorStructureFieldBuilderInput = {
   errors: Partial<Record<keyof CalculatorModuleInputs, string>>;
   resolvedDefaults: CalculatorResolvedDefaultTexts;
   flashingTileContent: ReactNode;
+  additionalAluminiumTileContent?: ReactNode;
   setValues: Dispatch<SetStateAction<CalculatorInputs>>;
   setModuleField: CalculatorModuleFieldSetter;
   setModuleOverride: CalculatorModuleOverrideSetter;
@@ -70,6 +71,7 @@ export function buildCalculatorStructureFields({
   errors,
   resolvedDefaults,
   flashingTileContent,
+  additionalAluminiumTileContent = null,
   setValues,
   setModuleField,
   setModuleOverride,
@@ -492,6 +494,13 @@ export function buildCalculatorStructureFields({
           } satisfies FieldSchemaItem,
         ]
       : []),
+    {
+      id: 'additionalAluminium',
+      label: 'Additional aluminium',
+      type: 'custom',
+      content: additionalAluminiumTileContent,
+      error: errors.additionalAluminium,
+    },
     ...(activeModule.pergolaStyle === 'gable'
       ? [
           {

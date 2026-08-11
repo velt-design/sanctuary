@@ -347,6 +347,13 @@ export type CalculateInfillsTakeoffOptionsV1 = {
   support_stock_lengths_m?: number[];
 };
 
+export type AdditionalAluminiumInputV1 = {
+  id: string;
+  profile: string;
+  stock_length_m: number;
+  quantity: number;
+};
+
 export type CostInputsV1 = {
   length_m: number;
   roof_span_m?: number;
@@ -366,6 +373,7 @@ export type CostInputsV1 = {
   mixed_roof?: MixedRoofInputsV1;
   hip_corner?: HipCornerInputsV1;
   flashings?: FlashingInputsV1;
+  additional_aluminium?: AdditionalAluminiumInputV1[];
 
   post_count?: number;
   house_connection_type: HouseConnectionType;
@@ -443,6 +451,7 @@ export type InputsNormalizedV1 = {
   powdercoat_is_custom?: boolean;
   powdercoat_custom_colour?: string;
   mixed_roof: MixedRoofNormalizedV1 | null;
+  additional_aluminium?: AdditionalAluminiumInputV1[];
 
   post_count: number;
   house_connection_type: HouseConnectionType;
@@ -988,6 +997,7 @@ export type PergolaModuleCostInputV2 = {
   mixed_roof?: MixedRoofInputsV1;
   hip_corner?: HipCornerInputsV1;
   flashings?: FlashingInputsV1;
+  additional_aluminium?: AdditionalAluminiumInputV1[];
 
   post_count?: number;
   house_connection_type: HouseConnectionType;

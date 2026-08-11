@@ -96,14 +96,19 @@ type UnknownRecord = Record<string, unknown>;
 const MAX_CURRENCY_VALUE = 10_000_000;
 const MAX_MINUTES_VALUE = 10_080;
 const MAX_MULTIPLIER_VALUE = 10;
+const COMPATIBLE_BASE_MATERIAL_ADDITIONS = [
+  'powdercoating_200x50_6m_assumption',
+  'powdercoating_overhang_gutter_100x100_6m_assumption',
+] as const;
 const COMPATIBLE_BASE_MANIFEST_UPGRADES: Record<string, readonly string[]> = {
-  'v1.7': ['v1.8', 'v1.9', 'v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4'],
-  'v1.8': ['v1.9', 'v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4'],
-  'v1.9': ['v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4'],
-  'v2.0': ['v2.1', 'v2.2', 'v2.3', 'v2.4'],
-  'v2.1': ['v2.2', 'v2.3', 'v2.4'],
-  'v2.2': ['v2.3', 'v2.4'],
-  'v2.3': ['v2.4'],
+  'v1.7': ['v1.8', 'v1.9', 'v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4', 'v2.5'],
+  'v1.8': ['v1.9', 'v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4', 'v2.5'],
+  'v1.9': ['v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4', 'v2.5'],
+  'v2.0': ['v2.1', 'v2.2', 'v2.3', 'v2.4', 'v2.5'],
+  'v2.1': ['v2.2', 'v2.3', 'v2.4', 'v2.5'],
+  'v2.2': ['v2.3', 'v2.4', 'v2.5'],
+  'v2.3': ['v2.4', 'v2.5'],
+  'v2.4': ['v2.5'],
 };
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -277,7 +282,14 @@ export function validateCostingControlConfigV1(
     });
   }
 
-  const materialRates = isRecord(value.materialRatesExGst) ? value.materialRatesExGst : {};
+  const materialRates = isRecord(value.materialRatesExGst) ? { ...value.materialRatesExGst } : {};
+  if (isCompatibleBaseManifestUpgrade(value.baseManifestVersion, expected.baseManifestVersion)) {
+    for (const id of COMPATIBLE_BASE_MATERIAL_ADDITIONS) {
+      if (materialRates[id] === undefined && expected.materialRatesExGst[id] !== undefined) {
+        materialRates[id] = expected.materialRatesExGst[id];
+      }
+    }
+  }
   compareExactKeys(issues, 'materialRatesExGst', materialRates, expected.materialRatesExGst);
   for (const [id, rate] of Object.entries(materialRates)) {
     addNumberIssue(issues, `materialRatesExGst.${id}`, rate, 0, MAX_CURRENCY_VALUE);
@@ -425,9 +437,10 @@ export function validateCostingControlConfigV1(
     });
   }
 
-  return issues.length > 0
-    ? { ok: false, issues }
-    : { ok: true, value: deepClone(value) as CostingControlConfigV1 };
+  if (issues.length > 0) return { ok: false, issues };
+  const normalized = deepClone(value) as CostingControlConfigV1;
+  normalized.materialRatesExGst = materialRates as Record<string, number>;
+  return { ok: true, value: normalized };
 }
 
 export function applyCostingControlConfigV1(

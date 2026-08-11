@@ -52,11 +52,26 @@ describe('costing control configuration', () => {
     expect(validation.ok).toBe(true);
 
     const applied = applyCostingControlConfigV1(base, historical);
-    expect(applied.manifest.version).toBe('v2.4');
+    expect(applied.manifest.version).toBe('v2.5');
     expect(applied.appliedControlManifestVersion).toBe('v1.7');
     expect(
       applied.installActions.actions.find((action) => action.id === 'infill.setup_setout_each')?.base_minutes,
     ).toBe(16.8);
+  });
+
+  it('hydrates only the v2.5 powdercoat additions into compatible v2.4 controls', () => {
+    const base = loadCostingConfigV1();
+    const historical = snapshotCostingControlConfigV1(base);
+    historical.baseManifestVersion = 'v2.4';
+    delete historical.materialRatesExGst.powdercoating_200x50_6m_assumption;
+    delete historical.materialRatesExGst.powdercoating_overhang_gutter_100x100_6m_assumption;
+
+    const validation = validateCostingControlConfigV1(historical, base);
+    expect(validation.ok).toBe(true);
+    if (!validation.ok) return;
+    expect(validation.value.materialRatesExGst.powdercoating_200x50_6m_assumption).toBe(40.4853);
+    expect(validation.value.materialRatesExGst.powdercoating_overhang_gutter_100x100_6m_assumption).toBe(34.8);
+    expect(applyCostingControlConfigV1(base, historical).appliedControlManifestVersion).toBe('v2.4');
   });
 
   it('keeps the published v2.2 rafter curve reproducible after the v2.4 upgrade', () => {

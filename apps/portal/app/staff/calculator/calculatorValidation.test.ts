@@ -121,4 +121,16 @@ describe('buildCalculatorModuleErrors', () => {
     expect(errors[0]).toMatchObject({ rafterSpacingMm: 'Enter a rafter spacing > 0' });
     expect(errors[1]).toEqual({});
   });
+
+  it('requires complete additional aluminium rows with whole positive quantities', () => {
+    const errors = buildCalculatorModuleErrors([
+      makeModule({
+        additionalAluminium: {
+          rows: [{ id: 'extra-1', profile: '150x50', stockLengthM: '6', quantity: '1.5' }],
+        },
+      }),
+    ]);
+
+    expect(errors[0].additionalAluminium).toContain('whole quantity');
+  });
 });

@@ -22,6 +22,7 @@ describe('calculator configuration sections', () => {
       'structure',
       'flashings',
       'overrides',
+      'additional-aluminium',
       'lighting',
       'blinds',
       'infills',
@@ -64,10 +65,10 @@ describe('calculator configuration sections', () => {
 
   it('adds specialist disclosures without inventing missing controls or legacy footprint fields', () => {
     const sections = buildCalculatorConfigurationSections(
-      [field('flashings'), field('ledgerProfileOverride'), field('houseFootprintPreset')],
+      [field('flashings'), field('ledgerProfileOverride'), field('additionalAluminium'), field('houseFootprintPreset')],
     );
 
-    expect(sections.map((section) => section.id)).toEqual(['flashings', 'overrides']);
+    expect(sections.map((section) => section.id)).toEqual(['flashings', 'overrides', 'additional-aluminium']);
     expect(sections.every((section) => section.collapsible)).toBe(true);
   });
 
@@ -75,6 +76,7 @@ describe('calculator configuration sections', () => {
     expect(calculatorConfigurationFieldLayout('lengthM')).toBe('standard');
     expect(calculatorConfigurationFieldLayout('timberNoteRafters')).toBe('wide');
     expect(calculatorConfigurationFieldLayout('flashings')).toBe('full');
+    expect(calculatorConfigurationFieldLayout('additionalAluminium')).toBe('full');
     expect(calculatorConfigurationFieldLayout('lightingEditor')).toBe('full');
     expect(calculatorConfigurationFieldLayout('blindsList')).toBe('full');
     expect(calculatorConfigurationFieldLayout('infillsEditor')).toBe('full');

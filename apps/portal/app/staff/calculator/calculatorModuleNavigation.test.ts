@@ -113,6 +113,9 @@ describe('calculatorModuleNavigation', () => {
       ...values.modules[0],
       lengthM: '7.25',
       flashings: { rows: [{ id: makeFlashingId(), kind: 'extra', band: '0-200', lengthM: '1' }] },
+      additionalAluminium: {
+        rows: [{ id: 'extra-bar-1', profile: '150x50', stockLengthM: '6', quantity: '2' }],
+      },
       infills: {
         items: [{
           id: makeInfillId(),
@@ -138,6 +141,8 @@ describe('calculatorModuleNavigation', () => {
     expect(duplicate).not.toBe(source);
     expect(duplicate?.flashings).not.toBe(source.flashings);
     expect(duplicate?.flashings?.rows[0].id).not.toBe(source.flashings?.rows[0].id);
+    expect(duplicate?.additionalAluminium).not.toBe(source.additionalAluminium);
+    expect(duplicate?.additionalAluminium?.rows[0].id).not.toBe(source.additionalAluminium?.rows[0].id);
     expect(duplicate?.infills).not.toBe(source.infills);
     expect(duplicate?.infills?.items[0].id).not.toBe(source.infills?.items[0].id);
   });

@@ -1285,6 +1285,20 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     powdercoat_is_custom: powdercoatIsCustom || undefined,
     powdercoat_custom_colour: powdercoatCustomRaw || undefined,
     mixed_roof: mixedRoofNormalized,
+    additional_aluminium: Array.isArray(inputs.additional_aluminium)
+      ? inputs.additional_aluminium
+          .map((row) => ({
+            id: String(row?.id ?? '').trim(),
+            profile: String(row?.profile ?? '').trim(),
+            stock_length_m: Number(row?.stock_length_m),
+            quantity: Math.round(Number(row?.quantity)),
+          }))
+          .filter((row) =>
+            Boolean(row.id && row.profile) &&
+            Number.isFinite(row.stock_length_m) && row.stock_length_m > 0 &&
+            Number.isFinite(row.quantity) && row.quantity > 0 && row.quantity <= 1000,
+          )
+      : undefined,
 
     post_count: postCount,
     house_connection_type: inputs.house_connection_type,

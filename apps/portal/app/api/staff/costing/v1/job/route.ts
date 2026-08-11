@@ -244,6 +244,36 @@ function parseFlashings(raw: unknown): CostInputsV1['flashings'] | { error: stri
   };
 }
 
+function parseAdditionalAluminium(
+  raw: unknown,
+): CostInputsV1['additional_aluminium'] | { error: string } | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) return { error: 'modules[].additional_aluminium must be an array' };
+
+  const rows: NonNullable<CostInputsV1['additional_aluminium']> = [];
+  for (let index = 0; index < raw.length; index += 1) {
+    const source = raw[index];
+    if (!source || typeof source !== 'object') {
+      return { error: `modules[].additional_aluminium[${index}] must be an object` };
+    }
+    const row = source as Record<string, unknown>;
+    const id = typeof row.id === 'string' ? row.id.trim() : '';
+    const profile = typeof row.profile === 'string' ? row.profile.trim() : '';
+    const stockLengthM = toNumber(row.stock_length_m);
+    const quantity = toNumber(row.quantity);
+    if (!id) return { error: `modules[].additional_aluminium[${index}].id must be a non-empty string` };
+    if (!profile) return { error: `modules[].additional_aluminium[${index}].profile must be a non-empty string` };
+    if (!Number.isFinite(stockLengthM) || stockLengthM <= 0) {
+      return { error: `modules[].additional_aluminium[${index}].stock_length_m must be a number > 0` };
+    }
+    if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 1000) {
+      return { error: `modules[].additional_aluminium[${index}].quantity must be a whole number from 1 to 1000` };
+    }
+    rows.push({ id, profile, stock_length_m: stockLengthM, quantity });
+  }
+  return rows;
+}
+
 function parseModule(raw: any): CostInputsV1 | { error: string } {
   const length_m = toNumber(raw.length_m);
   const roof_span_m_raw = raw.roof_span_m;
@@ -500,6 +530,8 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
   if (parsedInfills && 'error' in parsedInfills) return parsedInfills;
   const parsedFlashings = parseFlashings(raw.flashings);
   if (parsedFlashings && 'error' in parsedFlashings) return parsedFlashings;
+  const parsedAdditionalAluminium = parseAdditionalAluminium(raw.additional_aluminium);
+  if (parsedAdditionalAluminium && 'error' in parsedAdditionalAluminium) return parsedAdditionalAluminium;
 
   const resolvedRoofSpanM = roof_span_m_raw !== undefined ? roof_span_m : projection_m;
 
@@ -542,6 +574,7 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
     mixed_roof,
     hip_corner,
     flashings: parsedFlashings,
+    additional_aluminium: parsedAdditionalAluminium,
     infills: parsedInfills,
     overrides,
 
