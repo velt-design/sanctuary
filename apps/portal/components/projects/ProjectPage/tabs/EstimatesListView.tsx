@@ -1,11 +1,14 @@
 'use client';
 
+import { useMemo, useState } from 'react';
+
 import {
   Badge,
   Button,
   DataStatePanel,
   EmptyState,
   LoadingSkeleton,
+  SearchFilterBar,
   Table,
   TableBody,
   TableCell,
@@ -33,6 +36,7 @@ export default function EstimatesListView({
   onCreate,
   onOpen,
   onDuplicate,
+  onRename,
 }: {
   estimates: EstimateMeta[];
   loading: boolean;
@@ -41,7 +45,19 @@ export default function EstimatesListView({
   onCreate: () => void;
   onOpen: (estimateId: string) => void;
   onDuplicate: (estimateId: string) => void;
+  onRename: (estimate: EstimateMeta) => void;
 }) {
+  const [query, setQuery] = useState('');
+  const visibleEstimates = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase();
+    if (!needle) return estimates;
+    return estimates.filter((estimate) => [
+      estimate.internalName,
+      estimate.versionLabel,
+      estimate.createdBy,
+    ].some((value) => String(value ?? '').toLocaleLowerCase().includes(needle)));
+  }, [estimates, query]);
+
   return (
     <div className={styles.wrapper} role="region" aria-label="Estimates" data-estimates-view="list">
       <div className={styles.header}>
@@ -62,7 +78,7 @@ export default function EstimatesListView({
         />
       ) : null}
 
-      {!loading && !estimates.length ? (
+      {!loading && !error && !estimates.length ? (
         <EmptyState
           title="No estimates yet"
           description="Create the first estimate to start pricing this project."
@@ -71,6 +87,25 @@ export default function EstimatesListView({
       ) : null}
 
       {estimates.length ? (
+        <SearchFilterBar
+          query={query}
+          onQueryChange={setQuery}
+          queryPlaceholder="Search estimate names or versions"
+          searchId="estimate-search"
+          filters={[]}
+          onClearAll={() => setQuery('')}
+        />
+      ) : null}
+
+      {!loading && estimates.length && !visibleEstimates.length ? (
+        <EmptyState
+          title="No matching estimates"
+          description="Try a different internal name or version."
+          action={<Button variant="secondary" onClick={() => setQuery('')}>Clear search</Button>}
+        />
+      ) : null}
+
+      {visibleEstimates.length ? (
         <Table aria-label="Project estimates">
           <TableHeader>
             <TableRow>
@@ -82,7 +117,7 @@ export default function EstimatesListView({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {estimates.map((estimate) => {
+            {visibleEstimates.map((estimate) => {
               const status = estimateStatus(estimate);
               const openLabel = estimate.isActiveDraft ? 'Edit in calculator' : 'Open in calculator';
               const open = () => onOpen(estimate.id);
@@ -92,7 +127,7 @@ export default function EstimatesListView({
                   className={styles.row}
                   data-estimate-id={estimate.id}
                   tabIndex={0}
-                  aria-label={`${openLabel}: ${estimate.versionLabel}`}
+                  aria-label={`${openLabel}: ${estimate.internalName || estimate.versionLabel}`}
                   onClick={open}
                   onKeyDown={(event) => {
                     if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -102,8 +137,11 @@ export default function EstimatesListView({
                 >
                   <TableCell>
                     <span className={styles.estimateIdentity}>
-                      <strong>{estimate.versionLabel}</strong>
-                      <small>{estimate.createdBy || 'Sanctuary staff'}</small>
+                      <strong>{estimate.internalName || `Estimate ${estimate.versionLabel}`}</strong>
+                      <small>
+                        {estimate.internalName ? `Estimate ${estimate.versionLabel} · ` : ''}
+                        {estimate.createdBy || 'Sanctuary staff'}
+                      </small>
                     </span>
                   </TableCell>
                   <TableCell>{formatPortalDate(estimate.createdAt, { fallback: '-' })}</TableCell>
@@ -115,6 +153,7 @@ export default function EstimatesListView({
                   >
                     <div className={styles.actions}>
                       <Button size="small" variant="secondary" onClick={open}>{openLabel}</Button>
+                      <Button size="small" variant="quiet" onClick={() => onRename(estimate)}>Rename</Button>
                       <Button size="small" variant="quiet" onClick={() => onDuplicate(estimate.id)}>Duplicate</Button>
                     </div>
                   </TableCell>

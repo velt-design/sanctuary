@@ -138,6 +138,7 @@ export default function CalculatorGridClient({
   );
   const {
     createNewEstimate,
+    newEstimateInternalName,
     projectId,
   } = workspaceRoute;
   const projectEstimatesQuery = useQuery({
@@ -592,6 +593,7 @@ export default function CalculatorGridClient({
     projectId,
     queryClient,
     createNewEstimate,
+    newEstimateInternalName,
     result,
     resultModules,
     values,

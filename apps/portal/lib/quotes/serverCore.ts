@@ -55,6 +55,7 @@ import {
   schemaMissingError,
 } from './serverHelpers';
 import { loadEstimate, loadEstimateLabels, loadProjectCustomerName } from './serverLoaders';
+import { seedQuoteInternalName } from './internalName.server';
 
 export async function insertAuditEvent(params: {
   projectId: string;
@@ -85,13 +86,16 @@ export async function updateProjectStage(projectUuid: string, toStage: string, q
   });
 }
 
-async function ensureQuote(projectUuid: string, actor: string | null): Promise<{ id: string; quoteRef: string }> {
-  const existing = await supabaseServiceRole.from('quotes').select('id, quote_ref').eq('project_id', projectUuid).maybeSingle();
+async function ensureQuote(projectUuid: string, actor: string | null, internalName: string | null): Promise<{ id: string; quoteRef: string }> {
+  const existing = await supabaseServiceRole.from('quotes').select('id, quote_ref, internal_name').eq('project_id', projectUuid).maybeSingle();
   if (existing.error) {
     if (missingTableError(existing.error)) throw schemaMissingError();
     throw new Error(errorMessage(existing.error, 'Failed to load quote'));
   }
   if (existing.data?.id) {
+    if (!existing.data.internal_name && internalName) {
+      await seedQuoteInternalName(String(existing.data.id), internalName);
+    }
     return { id: String(existing.data.id), quoteRef: String(existing.data.quote_ref ?? '') };
   }
 
@@ -105,7 +109,7 @@ async function ensureQuote(projectUuid: string, actor: string | null): Promise<{
 
   const insertRes = await supabaseServiceRole
     .from('quotes')
-    .insert({ project_id: projectUuid, quote_ref: quoteRef, created_by: actor } as any)
+    .insert({ project_id: projectUuid, quote_ref: quoteRef, created_by: actor, internal_name: internalName } as any)
     .select('id, quote_ref')
     .single();
 
@@ -113,10 +117,13 @@ async function ensureQuote(projectUuid: string, actor: string | null): Promise<{
     if (String(insertRes.error?.code ?? '') === '23505') {
       const winner = await supabaseServiceRole
         .from('quotes')
-        .select('id, quote_ref')
+        .select('id, quote_ref, internal_name')
         .eq('project_id', projectUuid)
         .maybeSingle();
       if (!winner.error && winner.data?.id) {
+        if (!winner.data.internal_name && internalName) {
+          await seedQuoteInternalName(String(winner.data.id), internalName);
+        }
         return {
           id: String(winner.data.id),
           quoteRef: String(winner.data.quote_ref ?? ''),
@@ -231,7 +238,7 @@ export async function listQuoteVersionsForProject(projectId: string): Promise<Qu
 
   const quoteRes = await supabaseServiceRole
     .from('quotes')
-    .select('id, quote_ref')
+    .select('id, quote_ref, internal_name')
     .eq('project_id', projectUuid)
     .maybeSingle();
 
@@ -244,6 +251,7 @@ export async function listQuoteVersionsForProject(projectId: string): Promise<Qu
   const quoteUuid = String(quoteRes.data.id ?? '');
   if (!quoteUuid) return [];
   const quoteRef = String(quoteRes.data.quote_ref ?? '');
+  const internalName = typeof quoteRes.data.internal_name === 'string' ? quoteRes.data.internal_name : null;
 
   const versionsRes = await supabaseServiceRole
     .from('quote_versions')
@@ -259,7 +267,7 @@ export async function listQuoteVersionsForProject(projectId: string): Promise<Qu
   const estimateLabels = await loadEstimateLabels(projectUuid);
   const rows = Array.isArray(versionsRes.data) ? versionsRes.data : [];
   return rows.map((row) =>
-    mapQuoteVersionRow({ ...row, quotes: { quote_ref: quoteRef, id: quoteUuid } }, estimateLabels, projectId),
+    mapQuoteVersionRow({ ...row, quotes: { quote_ref: quoteRef, id: quoteUuid, internal_name: internalName } }, estimateLabels, projectId),
   );
 }
 
@@ -268,7 +276,7 @@ export async function getQuoteVersionDetail(quoteVersionId: string): Promise<Quo
 
   const versionRes = await supabaseServiceRole
     .from('quote_versions')
-    .select('*, quotes!inner(id, project_id, quote_ref)')
+    .select('*, quotes!inner(id, project_id, quote_ref, internal_name)')
     .eq('id', quoteVersionUuid)
     .single();
 
@@ -363,6 +371,7 @@ export async function createQuoteFromEstimate(
   estimateVersionId: string,
   actor: string | null,
   clientIntentId = randomUUID(),
+  internalName: string | null = null,
 ): Promise<QuoteVersionDetail> {
   const projectUuid = uuidFromAppId(projectId, 'proj');
   const estimateUuid = uuidFromAppId(estimateVersionId, 'est');
@@ -370,7 +379,7 @@ export async function createQuoteFromEstimate(
   const estimate = await loadEstimate(estimateUuid);
   if (!estimate) throw new Error('Estimate not found');
 
-  const quote = await ensureQuote(projectUuid, actor);
+  const quote = await ensureQuote(projectUuid, actor, internalName);
 
   const mapping = buildQuoteLineItemsFromEstimate(estimate);
   assertQuoteEstimateMappingReady(mapping);

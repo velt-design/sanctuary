@@ -12,6 +12,7 @@ import {
 } from '@/lib/estimates/pricingRollout';
 import { buildVersionLabelMap, extractVersionNumber, mapEstimateDetail, mapEstimateMeta } from '@/lib/estimates/server';
 import { isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
+import { validateCommercialInternalName } from '@/lib/commercial/internalName';
 
 export const runtime = 'nodejs';
 
@@ -57,7 +58,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
 
   const res = await supabase
     .from('estimates')
-    .select('id, project_id, created_at, status, created_by, summary_json, summary, outputs, warnings, costing_manifest, costing_rules, total_true_cost_ex_gst, total_true_cost_inc_gst')
+    .select('id, project_id, internal_name, created_at, status, created_by, summary_json, summary, outputs, warnings, costing_manifest, costing_rules, total_true_cost_ex_gst, total_true_cost_inc_gst')
     .eq('project_id', projectUuid)
     .order('created_at', { ascending: false });
 
@@ -91,6 +92,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400);
   const body = parsed.body ?? {};
+  const internalName = validateCommercialInternalName(body.internalName);
+  if (!internalName.ok) return jsonError(internalName.error, 400);
   const clientIntentId =
     typeof body.clientIntentId === 'string' ? body.clientIntentId.trim() : '';
   if (
@@ -184,6 +187,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const payload: Record<string, any> = {
     project_id: projectUuid,
     client_intent_id: clientIntentId,
+    internal_name: internalName.value,
     ...buildEstimateDbPayload({
       status: 'draft',
       inputs,

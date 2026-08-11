@@ -5,6 +5,7 @@ import { normalizeDepositPercent } from './defaults';
 import { normalizeStoredQuotePaymentSchedule } from './paymentSchedule';
 import { nowIso } from './serverHelpers';
 import type { QuoteLineItem, QuoteSendLog, QuoteStatus, QuoteVersion } from './types';
+import { normalizeCommercialInternalName } from '@/lib/commercial/internalName';
 
 function toStatus(raw: unknown): QuoteStatus {
   const value = typeof raw === 'string' ? raw.toUpperCase() : '';
@@ -38,6 +39,7 @@ export function mapQuoteVersionRow(
     quoteId: appIdFromUuid('qt', String(row?.quote_id ?? row?.quotes?.id ?? '')),
     projectId: projectIdApp,
     quoteRef,
+    internalName: normalizeCommercialInternalName(row?.quotes?.internal_name ?? row?.internal_name),
     versionNumber: Number(row?.version_number ?? 0) || 0,
     status: toStatus(row?.status),
     depositPercent,

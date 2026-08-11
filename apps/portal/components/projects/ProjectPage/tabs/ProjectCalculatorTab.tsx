@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import CalculatorGridClient from '@/app/staff/calculator/CalculatorGridClient';
 import CalculatorDesignNavigationSelect from '@/app/staff/calculator/CalculatorDesignNavigationSelect';
 import type {
@@ -13,6 +13,12 @@ import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimat
 import { Button, Card, DataStatePanel, LoadingSkeleton, Select } from '@/components/ui/foundation';
 import EstimatesListView from './EstimatesListView';
 import styles from './ProjectCalculatorTab.module.css';
+import CommercialInternalNameDialog from './CommercialInternalNameDialog';
+import { copiedCommercialInternalName } from '@/lib/commercial/internalName';
+import { apiJson } from '@/lib/repo/apiClient';
+import { qk } from '@/lib/queries/keys';
+import type { EstimateDetail, EstimateMeta } from '@/lib/estimates/types';
+import { useToast } from '@/components/ui/toast/ToastProvider';
 
 function versionNumber(label: string): number {
   const match = label.match(/\d+/);
@@ -52,7 +58,12 @@ export default function ProjectCalculatorTab({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const toast = useToast();
   const searchParams = useSearchParams();
+  const [createNameOpen, setCreateNameOpen] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<EstimateMeta | null>(null);
+  const [renamePending, setRenamePending] = useState(false);
   const estimatesQuery = useQuery(estimateMetasByProjectQueryOptions(host, projectId));
   const estimates = useMemo(
     () => [...(estimatesQuery.data ?? [])].sort((a, b) => versionNumber(b.versionLabel) - versionNumber(a.versionLabel)),
@@ -62,6 +73,7 @@ export default function ProjectCalculatorTab({
   const editEstimateId = searchParams.get('estimateId')?.trim() ?? '';
   const fromEstimateId = searchParams.get('fromEstimateId')?.trim() ?? '';
   const newDesign = searchParams.get('newDesign') === '1';
+  const newEstimateInternalName = searchParams.get('estimateName')?.trim() || null;
   const selectedEstimate = estimates.find((estimate) => estimate.id === editEstimateId) ?? null;
   const revisionSource = estimates.find((estimate) => estimate.id === fromEstimateId) ?? null;
 
@@ -83,6 +95,7 @@ export default function ProjectCalculatorTab({
       query.set('estimateId', estimateId);
       query.delete('fromEstimateId');
       query.delete('newDesign');
+      query.delete('estimateName');
     });
   }, [replaceParams]);
 
@@ -92,6 +105,7 @@ export default function ProjectCalculatorTab({
       query.set('newDesign', '1');
       query.delete('estimateId');
       query.delete('fromEstimateId');
+      query.delete('estimateName');
     });
   }, [replaceParams]);
 
@@ -101,6 +115,7 @@ export default function ProjectCalculatorTab({
       query.set('fromEstimateId', estimateId);
       query.delete('estimateId');
       query.delete('newDesign');
+      query.delete('estimateName');
     });
   }, [replaceParams]);
 
@@ -110,15 +125,23 @@ export default function ProjectCalculatorTab({
       query.set('estimateId', estimateId);
       query.delete('fromEstimateId');
       query.delete('newDesign');
+      query.delete('estimateName');
     });
   }, [pushParams]);
 
   const createFromList = useCallback(() => {
+    setCreateNameOpen(true);
+  }, []);
+
+  const createNamedEstimate = useCallback((internalName: string | null) => {
+    setCreateNameOpen(false);
     pushParams((query) => {
       query.set('tab', 'estimates');
       query.set('newDesign', '1');
       query.delete('estimateId');
       query.delete('fromEstimateId');
+      if (internalName) query.set('estimateName', internalName);
+      else query.delete('estimateName');
     });
   }, [pushParams]);
 
@@ -128,8 +151,13 @@ export default function ProjectCalculatorTab({
       query.set('fromEstimateId', estimateId);
       query.delete('estimateId');
       query.delete('newDesign');
+      const source = estimates.find((estimate) => estimate.id === estimateId);
+      query.set(
+        'estimateName',
+        copiedCommercialInternalName(source?.internalName, `Estimate ${source?.versionLabel ?? ''}`.trim()),
+      );
     });
-  }, [pushParams]);
+  }, [estimates, pushParams]);
 
   const backToEstimates = useCallback(() => {
     replaceParams((query) => {
@@ -137,6 +165,7 @@ export default function ProjectCalculatorTab({
       query.delete('estimateId');
       query.delete('fromEstimateId');
       query.delete('newDesign');
+      query.delete('estimateName');
     });
   }, [replaceParams]);
 
@@ -153,6 +182,7 @@ export default function ProjectCalculatorTab({
       query.set('estimateId', estimateId);
       query.delete('fromEstimateId');
       query.delete('newDesign');
+      query.delete('estimateName');
     });
   }, [openBlankDesign, openDraft, replaceParams]);
 
@@ -165,9 +195,9 @@ export default function ProjectCalculatorTab({
   const designNavigation = useMemo<CalculatorDesignNavigation>(() => ({
     value: selectionValue,
     stateLabel: revisionSource
-      ? `Revision from ${revisionSource.versionLabel}`
+      ? `Revision from ${revisionSource.internalName || revisionSource.versionLabel}`
       : newDesign
-        ? 'Blank design'
+        ? newEstimateInternalName || 'Blank design'
         : selectedEstimate
           ? `${selectedEstimate.isActiveDraft ? 'Current draft' : 'Revision source'} · ${selectedEstimate.versionLabel}`
           : 'Project design',
@@ -180,7 +210,7 @@ export default function ProjectCalculatorTab({
       ...(revisionSource ? [{ value: `revision:${revisionSource.id}`, label: `Revision from ${revisionSource.versionLabel}` }] : []),
     ],
     onChange: handleSelection,
-  }), [activeDraft, estimates, handleSelection, newDesign, revisionSource, selectedEstimate, selectionValue]);
+  }), [activeDraft, estimates, handleSelection, newDesign, newEstimateInternalName, revisionSource, selectedEstimate, selectionValue]);
 
   const onEstimateSaved = useCallback((estimateId: string) => openDraft(estimateId), [openDraft]);
   const onOpenProject = useCallback(() => {
@@ -189,6 +219,7 @@ export default function ProjectCalculatorTab({
       query.delete('estimateId');
       query.delete('fromEstimateId');
       query.delete('newDesign');
+      query.delete('estimateName');
     });
   }, [replaceParams]);
   const workspace = useMemo<CalculatorProjectWorkspace>(() => ({
@@ -198,14 +229,39 @@ export default function ProjectCalculatorTab({
     editEstimateId: selectedEstimate?.isActiveDraft ? selectedEstimate.id : undefined,
     fromEstimateId: revisionSource?.id,
     createNewEstimate: newDesign || Boolean(revisionSource),
+    newEstimateInternalName,
     designNavigation,
     onEstimateSaved,
     onOpenProject,
-  }), [designNavigation, host, newDesign, onEstimateSaved, onOpenProject, projectId, revisionSource, selectedEstimate]);
+  }), [designNavigation, host, newDesign, newEstimateInternalName, onEstimateSaved, onOpenProject, projectId, revisionSource, selectedEstimate]);
+
+  const renameEstimate = useCallback(async (internalName: string | null) => {
+    if (!renameTarget || renamePending) return;
+    setRenamePending(true);
+    try {
+      const response = await apiJson<{ estimate: EstimateDetail }>(
+        `/api/estimates/${encodeURIComponent(renameTarget.id)}`,
+        { method: 'PATCH', body: JSON.stringify({ internalName }) },
+      );
+      queryClient.setQueryData<EstimateMeta[]>(qk.estimates.metaByProject(host, projectId), (current) =>
+        (current ?? []).map((estimate) => estimate.id === renameTarget.id
+          ? { ...estimate, internalName: response.estimate.internalName }
+          : estimate),
+      );
+      queryClient.setQueryData(qk.estimates.detail(host, renameTarget.id), response.estimate);
+      setRenameTarget(null);
+      toast.success(internalName ? 'Estimate name updated.' : 'Estimate name cleared.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update estimate name');
+    } finally {
+      setRenamePending(false);
+    }
+  }, [host, projectId, queryClient, renamePending, renameTarget, toast]);
 
   const hasCalculatorIntent = Boolean(editEstimateId || fromEstimateId || newDesign);
   if (!hasCalculatorIntent) {
     return (
+      <>
       <EstimatesListView
         estimates={estimates}
         loading={estimatesQuery.isPending}
@@ -218,15 +274,35 @@ export default function ProjectCalculatorTab({
         onCreate={createFromList}
         onOpen={openFromList}
         onDuplicate={duplicateFromList}
+        onRename={setRenameTarget}
       />
+      <CommercialInternalNameDialog
+        open={createNameOpen}
+        title="Create estimate"
+        description="Give this estimate an optional staff-only name before opening the calculator."
+        submitLabel="Open calculator"
+        onClose={() => setCreateNameOpen(false)}
+        onSubmit={createNamedEstimate}
+      />
+      <CommercialInternalNameDialog
+        open={Boolean(renameTarget)}
+        title="Rename estimate"
+        description="The version and pricing history stay unchanged."
+        initialValue={renameTarget?.internalName}
+        submitLabel="Save name"
+        pending={renamePending}
+        onClose={() => { if (!renamePending) setRenameTarget(null); }}
+        onSubmit={renameEstimate}
+      />
+      </>
     );
   }
 
   const workspaceLabel = newDesign
-    ? 'New estimate'
+    ? newEstimateInternalName || 'New estimate'
     : revisionSource
-      ? `New revision from ${revisionSource.versionLabel}`
-      : selectedEstimate?.versionLabel ?? 'Estimate workspace';
+      ? newEstimateInternalName || `New revision from ${revisionSource.versionLabel}`
+      : selectedEstimate?.internalName || selectedEstimate?.versionLabel || 'Estimate workspace';
   const listReturn = (
     <div className={styles.workspaceBar} data-calculator-workspace-bar="true">
       <Button type="button" variant="quiet" size="small" onClick={backToEstimates}>Back to estimates</Button>

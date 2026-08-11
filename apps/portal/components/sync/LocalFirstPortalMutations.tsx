@@ -190,6 +190,7 @@ export default function LocalFirstPortalMutations() {
               method: 'POST',
               body: JSON.stringify({
                 clientIntentId: item.id,
+                ...(payload.internalName !== undefined ? { internalName: payload.internalName } : null),
                 calculator_snapshot: {
                   inputs: payload.estimatePayload.inputs,
                   outputs: {
@@ -356,6 +357,7 @@ export default function LocalFirstPortalMutations() {
             body: JSON.stringify({
               estimateVersionId: resolvedEstimateId,
               clientIntentId: item.id,
+              ...(payload.internalName !== undefined ? { internalName: payload.internalName } : null),
             }),
             skipSaveTracking: true,
           });

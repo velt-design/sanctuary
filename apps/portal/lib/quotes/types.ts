@@ -22,6 +22,7 @@ export type QuoteVersion = {
   quoteId: string;
   projectId: string;
   quoteRef: string;
+  internalName?: string | null;
   versionNumber: number;
   status: QuoteStatus;
   depositPercent: number;

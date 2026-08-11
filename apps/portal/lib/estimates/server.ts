@@ -93,6 +93,7 @@ export function mapEstimateMeta(row: any, versionLabel: string): EstimateMeta {
   return {
     id: appIdFromUuid('est', String(row?.id ?? '')),
     projectId: appIdFromUuid('proj', String(row?.project_id ?? '')),
+    internalName: asString(row?.internal_name),
     createdAt: typeof row?.created_at === 'string' ? row.created_at : new Date().toISOString(),
     status: normaliseEstimateStatus(row?.status),
     summary: summaryFromRow(row),

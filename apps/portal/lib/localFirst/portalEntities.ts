@@ -55,6 +55,7 @@ export type PortalEstimatePayload = {
 export type PortalEstimateCreateMutationPayload = {
   localEstimateId: string;
   projectId: string;
+  internalName?: string | null;
   estimatePayload: PortalEstimatePayload;
   createDesignRequest?: {
     requestSource: Exclude<DesignRequestSource, 'legacy_backfill'>;
@@ -71,6 +72,7 @@ export type PortalQuoteCreateMutationPayload = {
   localQuoteId: string;
   projectId: string;
   estimateId: string;
+  internalName?: string | null;
 };
 
 export type PortalDesignRequestCreateMutationPayload = {
@@ -164,6 +166,7 @@ function estimateMetaFromDetail(detail: EstimateDetail): EstimateMeta {
   return {
     id: detail.id,
     projectId: detail.projectId,
+    internalName: detail.internalName,
     createdAt: detail.createdAt,
     status: detail.status,
     summary: detail.summary,
@@ -183,6 +186,7 @@ function quoteVersionFromDetail(detail: QuoteVersionDetail): QuoteVersion {
     quoteId: detail.quoteId,
     projectId: detail.projectId,
     quoteRef: detail.quoteRef,
+    internalName: detail.internalName,
     versionNumber: detail.versionNumber,
     status: detail.status,
     depositPercent: detail.depositPercent,
@@ -351,6 +355,7 @@ export function buildOptimisticEstimateDetail(args: {
   versionLabel: string;
   createdBy?: string | null;
   createdAt?: string;
+  internalName?: string | null;
 }): EstimateDetail {
   const createdAt = args.createdAt ?? new Date().toISOString();
   const built = buildEstimateSnapshotPayload({
@@ -368,6 +373,7 @@ export function buildOptimisticEstimateDetail(args: {
   return {
     id: args.estimateId,
     projectId: args.projectId,
+    internalName: args.internalName ?? null,
     createdAt,
     status: args.estimatePayload.status,
     summary: built.summaryJson as EstimateSummary,
@@ -395,6 +401,7 @@ export function buildOptimisticQuoteDetail(args: {
   existingQuotes: QuoteVersion[];
   createdBy?: string | null;
   createdAt?: string;
+  internalName?: string | null;
 }): QuoteVersionDetail {
   const createdAt = args.createdAt ?? new Date().toISOString();
   const quoteProject = quoteProjectFieldsFromEstimate(args.estimateDetail);
@@ -428,6 +435,7 @@ export function buildOptimisticQuoteDetail(args: {
     quoteId: args.quoteVersionId,
     projectId: args.projectId,
     quoteRef,
+    internalName: args.internalName ?? args.estimateDetail.internalName ?? null,
     versionNumber,
     status: 'DRAFT',
     depositPercent,

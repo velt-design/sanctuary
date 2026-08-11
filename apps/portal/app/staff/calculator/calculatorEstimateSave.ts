@@ -91,6 +91,7 @@ type SaveCalculatorEstimateInput = {
   activeModuleIndex: number;
   callbacks: SaveCalculatorEstimateCallbacks;
   createNewEstimate?: boolean;
+  newEstimateInternalName?: string | null;
   criticalWarningCount: number;
   draftEntityKey: string;
   draftSessionKey: string;
@@ -165,6 +166,7 @@ async function writeOptimisticEstimate(input: {
   upsertCache: typeof upsertEstimateDetailCache;
   versionLabel: string;
   writeWorkingCopy: typeof writeLocalFirstWorkingCopy;
+  internalName?: string | null;
 }) {
   const optimisticEstimateBase = buildOptimisticEstimateDetail({
     estimateId: input.estimateId,
@@ -173,9 +175,11 @@ async function writeOptimisticEstimate(input: {
     versionLabel: input.versionLabel,
     createdBy: input.createdBy,
     createdAt: input.createdAt,
+    internalName: input.internalName,
   });
   const optimisticEstimate: EstimateDetail = {
     ...optimisticEstimateBase,
+    internalName: input.currentEstimate?.internalName ?? input.internalName ?? null,
     internalNotes: input.currentEstimate?.internalNotes ?? optimisticEstimateBase.internalNotes,
     editability: input.currentEstimate?.editability ?? optimisticEstimateBase.editability,
   };
@@ -450,12 +454,14 @@ export async function saveCalculatorEstimate(
       upsertCache,
       versionLabel: buildNextEstimateVersionLabel(cachedEstimateMetas),
       createdBy: input.email || null,
+      internalName: input.newEstimateInternalName,
       writeWorkingCopy,
     });
 
     const mutationPayload: PortalEstimateCreateMutationPayload = {
       localEstimateId,
       projectId: input.projectId,
+      internalName: optimisticEstimate.internalName,
       estimatePayload,
       createDesignRequest: input.request?.createDesignRequest
         ? {

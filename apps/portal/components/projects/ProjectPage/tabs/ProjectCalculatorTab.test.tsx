@@ -16,6 +16,11 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (...args: unknown[]) => useQueryMock(...args),
+  useQueryClient: () => ({ setQueryData: vi.fn() }),
+}));
+
+vi.mock('@/components/ui/toast/ToastProvider', () => ({
+  useToast: () => ({ success: vi.fn(), error: vi.fn() }),
 }));
 
 vi.mock('@/lib/queries/projectEstimates', () => ({
@@ -142,6 +147,9 @@ describe('ProjectCalculatorTab', () => {
     const create = Array.from(rendered.container.querySelectorAll('button'))
       .find((button) => button.textContent === 'Create estimate');
     act(() => create?.click());
+    const openCalculator = Array.from(document.body.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Open calculator');
+    act(() => openCalculator?.click());
     expect(push).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&newDesign=1');
     rendered.unmount();
   });
@@ -153,7 +161,7 @@ describe('ProjectCalculatorTab', () => {
       .find((button) => button.textContent === 'Duplicate');
     act(() => duplicate?.click());
     expect(push).toHaveBeenCalledWith(
-      '/staff/projects/proj_1?tab=estimates&campaign=winter&fromEstimateId=est_draft',
+      '/staff/projects/proj_1?tab=estimates&campaign=winter&fromEstimateId=est_draft&estimateName=Copy+of+Estimate+V2',
     );
     rendered.unmount();
   });
