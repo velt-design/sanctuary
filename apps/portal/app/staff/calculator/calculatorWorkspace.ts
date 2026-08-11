@@ -12,6 +12,7 @@ export type CalculatorProjectWorkspace = {
   editEstimateId?: string;
   fromEstimateId?: string;
   createNewEstimate?: boolean;
+  newEstimateInternalName?: string | null;
   designNavigation: CalculatorDesignNavigation;
   onEstimateSaved: (estimateId: string) => void;
   onOpenProject: () => void;
@@ -24,6 +25,7 @@ type CalculatorWorkspaceRoute = {
   fromEstimateId: string;
   shouldOpenActiveDraft: boolean;
   createNewEstimate: boolean;
+  newEstimateInternalName: string | null;
 };
 
 export function resolveCalculatorWorkspaceRoute(
@@ -38,6 +40,7 @@ export function resolveCalculatorWorkspaceRoute(
       fromEstimateId: workspace.fromEstimateId?.trim() ?? '',
       shouldOpenActiveDraft: false,
       createNewEstimate: Boolean(workspace.createNewEstimate || workspace.fromEstimateId),
+      newEstimateInternalName: workspace.newEstimateInternalName?.trim() || null,
     };
   }
 
@@ -48,5 +51,6 @@ export function resolveCalculatorWorkspaceRoute(
     fromEstimateId: searchParams.get('fromEstimateId') ?? '',
     shouldOpenActiveDraft: searchParams.get('openActiveDraft') === '1',
     createNewEstimate: Boolean(searchParams.get('fromEstimateId')),
+    newEstimateInternalName: searchParams.get('estimateName')?.trim() || null,
   };
 }

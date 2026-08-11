@@ -11,6 +11,7 @@ import {
 import { buildVersionLabelMap, calculatorSnapshotFromRow, loadEstimateEditability, mapEstimateDetail } from '@/lib/estimates/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
+import { copiedCommercialInternalName } from '@/lib/commercial/internalName';
 
 export const runtime = 'nodejs';
 
@@ -137,6 +138,10 @@ export async function POST(_req: Request, ctx: { params: Promise<{ estimateId: s
 
   const payload: Record<string, any> = {
     project_id: projectUuid,
+    internal_name: copiedCommercialInternalName(
+      typeof source.internal_name === 'string' ? source.internal_name : null,
+      `Estimate ${versionLabels.get(estimateUuid) ?? 'source'}`,
+    ),
     ...buildEstimateDbPayload({
       status: 'draft',
       inputs,

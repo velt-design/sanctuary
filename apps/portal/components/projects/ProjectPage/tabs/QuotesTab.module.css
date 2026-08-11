@@ -280,6 +280,15 @@
   background: var(--ui-surface-primary);
 }
 
+.documentIdentity {
+  display: grid;
+  gap: var(--ui-space-1);
+}
+
+.documentIdentity small {
+  color: var(--ui-text-muted);
+}
+
 .listTable,
 .lineTable,
 .logTable {

@@ -13,6 +13,7 @@ import {
 import { buildVersionLabelMap, extractVersionNumber, loadEstimateEditability, mapEstimateDetail } from '@/lib/estimates/server';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { NextResponse } from 'next/server';
+import { validateCommercialInternalName } from '@/lib/commercial/internalName';
 
 export const runtime = 'nodejs';
 
@@ -123,6 +124,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400);
   const body: AnyRecord = parsed.body ?? {};
+  const hasInternalName = Object.prototype.hasOwnProperty.call(body, 'internalName');
+  const internalName = hasInternalName ? validateCommercialInternalName(body.internalName) : null;
+  if (internalName && !internalName.ok) return jsonError(internalName.error, 400);
 
   const res = await supabase.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
   if (res.error) return jsonError(res.error.message ?? 'Failed to load estimate', 500);
@@ -136,6 +140,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
 
   const now = new Date().toISOString();
   const patch: Record<string, any> = {};
+
+  if (internalName?.ok) {
+    patch.internal_name = internalName.value;
+  }
 
   if (internalNotes !== null) {
     patch.internal_notes = internalNotes || null;

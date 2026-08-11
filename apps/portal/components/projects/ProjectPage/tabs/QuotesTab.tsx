@@ -16,6 +16,7 @@ import { useQuoteDeletion } from "./useQuoteDeletion";
 import { useQuoteSuperseding } from "./useQuoteSuperseding";
 import { useQuotePdfPreviews } from "./useQuotePdfPreviews";
 import { useQuotesTabSelection } from "./useQuotesTabSelection";
+import { useQuoteInternalName } from "./useQuoteInternalName";
 import type { EstimateDetail } from "@/lib/estimates/types";
 import type {
   PreparedQuoteDeliverySummary,
@@ -183,6 +184,8 @@ export default function QuotesTab({
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createEstimateId, setCreateEstimateId] = useState("");
+  const [createInternalName, setCreateInternalName] = useState("");
+  const quoteInternalName = useQuoteInternalName({ hostKey, projectId, quotes });
 
   const [sendOpen, setSendOpen] = useState(false);
   const [sendMode, setSendMode] = useState<"send" | "resend">("send");
@@ -510,11 +513,12 @@ export default function QuotesTab({
       return;
     }
     setCreateEstimateId(defaultId);
+    setCreateInternalName(quotes[0]?.internalName ?? preferredQuoteSourceDesign?.internalName ?? "");
     setCreateOpen(true);
   };
 
   const createDraftQuoteFromEstimate = useCallback(
-    async (estimateId: string, opts?: { closeModal?: boolean }) => {
+    async (estimateId: string, opts?: { closeModal?: boolean; internalName?: string | null }) => {
       if (!estimateId) return;
       try {
         const estimateDetail =
@@ -530,6 +534,7 @@ export default function QuotesTab({
           projectId,
           estimateDetail,
           existingQuotes: quotes,
+          internalName: opts?.internalName ?? estimateDetail.internalName ?? null,
         });
 
         upsertQuoteDetailCache(
@@ -548,6 +553,7 @@ export default function QuotesTab({
           localQuoteId,
           projectId,
           estimateId,
+          internalName: optimisticDetail.internalName ?? null,
         };
         await enqueueAndProcessLocalFirstMutation({
           entityKey: buildQuoteEntityKey(localQuoteId),
@@ -566,12 +572,15 @@ export default function QuotesTab({
         toast.error(msg);
       }
     },
-    [hostKey, projectId, queryClient, selectQuote, toast],
+    [hostKey, projectId, queryClient, quotes, selectQuote, toast],
   );
 
   const handleCreateQuote = async () => {
     if (!createEstimateId) return;
-    await createDraftQuoteFromEstimate(createEstimateId, { closeModal: true });
+    await createDraftQuoteFromEstimate(createEstimateId, {
+      closeModal: true,
+      internalName: createInternalName.trim() || null,
+    });
   };
 
   useEffect(() => {
@@ -1249,6 +1258,8 @@ export default function QuotesTab({
       closeCreate={() => setCreateOpen(false)}
       createEstimateId={createEstimateId}
       setCreateEstimateId={setCreateEstimateId}
+      createInternalName={createInternalName}
+      setCreateInternalName={setCreateInternalName}
       estimatesLoading={estimatesLoading}
       estimates={estimates}
       createQuote={() => void handleCreateQuote()}
@@ -1256,6 +1267,11 @@ export default function QuotesTab({
       deleteQuote={quoteDeletion.requestDelete}
       supersedeQuote={(quote) => void quoteSuperseding.supersedeQuote(quote)}
       supersedePendingId={quoteSuperseding.pendingId}
+      renameTarget={quoteInternalName.target}
+      renamePending={quoteInternalName.pending}
+      renameQuote={quoteInternalName.open}
+      closeRename={quoteInternalName.close}
+      saveRename={quoteInternalName.save}
     />
     <QuoteDeleteConfirmation
       target={quoteDeletion.target}

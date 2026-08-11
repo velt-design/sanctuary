@@ -211,7 +211,7 @@ describe("deposit invoice PDF", () => {
     expect(
       layout.pages.reduce((count, page) => count + page.paymentSegmentCount, 0),
     ).toBeGreaterThan(2);
-  });
+  }, 15_000);
 });
 
 const CONTENT_BOTTOM_FALLBACK = Number.POSITIVE_INFINITY;

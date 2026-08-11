@@ -1,6 +1,7 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { isQuoteHandoffBlockedError } from '@/lib/quotes/mapping';
 import { createQuoteFromEstimate, listQuoteVersionsForProject } from '@/lib/quotes/server';
+import { validateCommercialInternalName } from '@/lib/commercial/internalName';
 
 export const runtime = 'nodejs';
 
@@ -33,6 +34,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   if (!parsed.ok) return jsonError(parsed.error, 400);
 
   const body = parsed.body ?? {};
+  const internalName = validateCommercialInternalName(body.internalName);
+  if (!internalName.ok) return jsonError(internalName.error, 400);
   const estimateVersionId = typeof body.estimateVersionId === 'string' ? body.estimateVersionId.trim() : '';
   if (!estimateVersionId) return jsonError('estimateVersionId is required', 400);
   const clientIntentId =
@@ -48,12 +51,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const actor = typeof session.user?.email === 'string' ? session.user.email.trim() : null;
 
   try {
-    const quoteVersion = await createQuoteFromEstimate(
-      projectIdRaw,
-      estimateVersionId,
-      actor,
-      clientIntentId,
-    );
+    const quoteVersion = internalName.value
+      ? await createQuoteFromEstimate(projectIdRaw, estimateVersionId, actor, clientIntentId, internalName.value)
+      : await createQuoteFromEstimate(projectIdRaw, estimateVersionId, actor, clientIntentId);
     return jsonOk({ quoteVersion }, 201);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to create quote';

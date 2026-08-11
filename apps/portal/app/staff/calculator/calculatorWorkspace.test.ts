@@ -4,7 +4,7 @@ import { resolveCalculatorWorkspaceRoute } from './calculatorWorkspace';
 describe('resolveCalculatorWorkspaceRoute', () => {
   it('keeps the standalone Calculator query contract', () => {
     expect(resolveCalculatorWorkspaceRoute(new URLSearchParams(
-      'projectId=proj_1&editEstimateId=est_1&openActiveDraft=1',
+      'projectId=proj_1&editEstimateId=est_1&openActiveDraft=1&estimateName=Front%20option',
     ))).toEqual({
       host: undefined,
       projectId: 'proj_1',
@@ -12,6 +12,7 @@ describe('resolveCalculatorWorkspaceRoute', () => {
       fromEstimateId: '',
       shouldOpenActiveDraft: true,
       createNewEstimate: false,
+      newEstimateInternalName: 'Front option',
     });
   });
 
@@ -21,6 +22,7 @@ describe('resolveCalculatorWorkspaceRoute', () => {
       host: 'tenant.example',
       projectId: 'proj_fixed',
       fromEstimateId: 'est_source',
+      newEstimateInternalName: 'Copy of Front option',
       designNavigation: {
         value: 'revision:est_source',
         stateLabel: 'Revision from V1',
@@ -36,6 +38,7 @@ describe('resolveCalculatorWorkspaceRoute', () => {
       fromEstimateId: 'est_source',
       shouldOpenActiveDraft: false,
       createNewEstimate: true,
+      newEstimateInternalName: 'Copy of Front option',
     });
   });
 });

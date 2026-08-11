@@ -9,6 +9,7 @@ import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 type EstimateMetaRow = {
   id: string;
   project_id: string;
+  internal_name: string | null;
   created_at: string | null;
   status: string | null;
   created_by: string | null;
@@ -28,7 +29,7 @@ export async function loadProjectEstimateMetas(projectId: string): Promise<Estim
   const res = await supabase
     .from('estimates')
     .select(
-      'id, project_id, created_at, status, created_by, summary_json, summary, outputs, warnings, costing_manifest, costing_rules, total_true_cost_ex_gst, total_true_cost_inc_gst',
+      'id, project_id, internal_name, created_at, status, created_by, summary_json, summary, outputs, warnings, costing_manifest, costing_rules, total_true_cost_ex_gst, total_true_cost_inc_gst',
     )
     .eq('project_id', projectUuid)
     .order('created_at', { ascending: false });

@@ -1,8 +1,8 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { DataStatePanel } from "@/components/ui/foundation/FoundationFeedback";
-import { OverflowMenu } from "@/components/ui/foundation";
+import { EmptyState, Input, OverflowMenu, SearchFilterBar } from "@/components/ui/foundation";
 import { QuoteStatusBadge } from "@/components/ui/foundation/SanctuaryStatus";
 import type { EstimateMeta } from "@/lib/estimates/types";
 import { getAliasedLocalFirstEntitySyncState } from "@/lib/localFirst/store";
@@ -21,6 +21,8 @@ import {
   formatMoneyFromCents,
   isExpired,
 } from "./quotesTabModel";
+import CommercialInternalNameDialog from "./CommercialInternalNameDialog";
+import { COMMERCIAL_INTERNAL_NAME_MAX_LENGTH } from "@/lib/commercial/internalName";
 
 type QuotesListViewProps = {
   quotes: QuoteVersion[];
@@ -34,6 +36,8 @@ type QuotesListViewProps = {
   closeCreate: () => void;
   createEstimateId: string;
   setCreateEstimateId: Dispatch<SetStateAction<string>>;
+  createInternalName: string;
+  setCreateInternalName: Dispatch<SetStateAction<string>>;
   estimatesLoading: boolean;
   estimates: EstimateMeta[];
   createQuote: () => void;
@@ -41,6 +45,11 @@ type QuotesListViewProps = {
   deleteQuote: (quote: QuoteDeleteTarget) => void;
   supersedeQuote: (quote: QuoteSupersedeTarget) => void;
   supersedePendingId: string | null;
+  renameTarget: QuoteVersion | null;
+  renamePending: boolean;
+  renameQuote: (quote: QuoteVersion) => void;
+  closeRename: () => void;
+  saveRename: (internalName: string | null) => void | Promise<void>;
 };
 
 export default function QuotesListView({
@@ -55,6 +64,8 @@ export default function QuotesListView({
   closeCreate,
   createEstimateId,
   setCreateEstimateId,
+  createInternalName,
+  setCreateInternalName,
   estimatesLoading,
   estimates,
   createQuote,
@@ -62,7 +73,24 @@ export default function QuotesListView({
   deleteQuote,
   supersedeQuote,
   supersedePendingId,
+  renameTarget,
+  renamePending,
+  renameQuote,
+  closeRename,
+  saveRename,
 }: QuotesListViewProps) {
+  const [query, setQuery] = useState("");
+  const visibleQuotes = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase();
+    if (!needle) return quotes;
+    return quotes.filter((quote) => [
+      quote.internalName,
+      quote.quoteRef,
+      `v${quote.versionNumber}`,
+      quote.sourceEstimateVersionLabel,
+    ].some((value) => String(value ?? "").toLocaleLowerCase().includes(needle)));
+  }, [query, quotes]);
+
   return (
     <div
       className={styles.wrapper}
@@ -98,7 +126,7 @@ export default function QuotesListView({
         />
       ) : null}
 
-      {!quotesLoading && !quotes.length ? (
+      {!quotesLoading && !quotesError && !quotes.length ? (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No quotes yet.</p>
           <button
@@ -112,6 +140,24 @@ export default function QuotesListView({
       ) : null}
 
       {quotes.length ? (
+        <SearchFilterBar
+          query={query}
+          onQueryChange={setQuery}
+          queryPlaceholder="Search quote names or references"
+          searchId="quote-search"
+          filters={[]}
+          onClearAll={() => setQuery("")}
+        />
+      ) : null}
+
+      {!quotesLoading && quotes.length && !visibleQuotes.length ? (
+        <EmptyState
+          title="No matching quotes"
+          description="Try a different internal name, reference, or version."
+        />
+      ) : null}
+
+      {visibleQuotes.length ? (
         <div className={styles.tableWrap}>
           <table className={styles.listTable}>
             <thead>
@@ -123,11 +169,11 @@ export default function QuotesListView({
                 <th>Status</th>
                 <th>Amount (inc GST)</th>
                 <th>PDF</th>
-                {isAdmin ? <th>Actions</th> : null}
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {quotes.map((quote) => {
+              {visibleQuotes.map((quote) => {
                 const expired = isExpired(quote.expiresAt);
                 const quoteSyncPending =
                   getAliasedLocalFirstEntitySyncState(
@@ -141,7 +187,7 @@ export default function QuotesListView({
                     key={quote.id}
                     className={styles.rowClickable}
                     tabIndex={0}
-                    aria-label={`Open ${quote.quoteRef} version ${quote.versionNumber}`}
+                    aria-label={`Open ${quote.internalName || quote.quoteRef}, ${quote.quoteRef} version ${quote.versionNumber}`}
                     onClick={() => {
                       if (!isLocalQuoteId(quote.id))
                         prefetchQuoteDetail(quote.id);
@@ -157,7 +203,12 @@ export default function QuotesListView({
                     onMouseEnter={() => prefetchQuoteDetail(quote.id)}
                     onFocus={() => prefetchQuoteDetail(quote.id)}
                   >
-                    <td>{`${quote.quoteRef} - v${quote.versionNumber}`}</td>
+                    <td>
+                      <span className={styles.documentIdentity}>
+                        <strong>{quote.internalName || quote.quoteRef}</strong>
+                        <small>{`${quote.quoteRef} · v${quote.versionNumber}`}</small>
+                      </span>
+                    </td>
                     <td>{quote.sourceEstimateVersionLabel}</td>
                     <td>
                       {quote.status === "DRAFT"
@@ -206,29 +257,33 @@ export default function QuotesListView({
                         "—"
                       )}
                     </td>
-                    {isAdmin ? (
-                      <td
-                        onClick={(event) => event.stopPropagation()}
-                        onKeyDown={(event) => event.stopPropagation()}
-                      >
-                        {canDelete || canSupersede ? (
-                          <OverflowMenu
-                            label={`Actions for ${quote.quoteRef} version ${quote.versionNumber}`}
-                            menuLabel={`${quote.quoteRef} v${quote.versionNumber}`}
-                            items={canDelete ? [{
-                                label: "Delete draft quote",
-                                destructive: true,
-                                onSelect: () => deleteQuote({ id: quote.id, quoteRef: quote.quoteRef, versionNumber: quote.versionNumber }),
-                                disabled: isLocalQuoteId(quote.id) || quoteSyncPending,
-                              }] : [{
-                                label: supersedePendingId === quote.id ? "Marking superseded..." : "Mark superseded",
-                                onSelect: () => supersedeQuote({ id: quote.id, quoteRef: quote.quoteRef, versionNumber: quote.versionNumber }),
-                                disabled: supersedePendingId !== null,
-                              }]}
-                          />
-                        ) : null}
-                      </td>
-                    ) : null}
+                    <td
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
+                      <OverflowMenu
+                        label={`Actions for ${quote.quoteRef} version ${quote.versionNumber}`}
+                        menuLabel={`${quote.quoteRef} v${quote.versionNumber}`}
+                        items={[
+                          {
+                            label: "Rename quote",
+                            onSelect: () => renameQuote(quote),
+                            disabled: isLocalQuoteId(quote.id) || quoteSyncPending,
+                          },
+                          ...(isAdmin && canDelete ? [{
+                            label: "Delete draft quote",
+                            destructive: true,
+                            onSelect: () => deleteQuote({ id: quote.id, quoteRef: quote.quoteRef, versionNumber: quote.versionNumber }),
+                            disabled: isLocalQuoteId(quote.id) || quoteSyncPending,
+                          }] : []),
+                          ...(isAdmin && canSupersede ? [{
+                            label: supersedePendingId === quote.id ? "Marking superseded..." : "Mark superseded",
+                            onSelect: () => supersedeQuote({ id: quote.id, quoteRef: quote.quoteRef, versionNumber: quote.versionNumber }),
+                            disabled: supersedePendingId !== null,
+                          }] : []),
+                        ]}
+                      />
+                    </td>
                   </tr>
                 );
               })}
@@ -257,17 +312,27 @@ export default function QuotesListView({
               id="estimateSelect"
               className={styles.metaInput}
               value={createEstimateId}
-              onChange={(event) => setCreateEstimateId(event.target.value)}
+              onChange={(event) => {
+                setCreateEstimateId(event.target.value);
+              }}
               disabled={estimatesLoading}
             >
               {estimates.map((estimate) => (
                 <option key={estimate.id} value={estimate.id}>
-                  {estimate.isActiveDraft
+                  {estimate.internalName || (estimate.isActiveDraft
                     ? "Current draft design"
-                    : `Design ${estimate.versionLabel}`}
+                    : `Design ${estimate.versionLabel}`)}
                 </option>
               ))}
             </select>
+            <Input
+              label="Internal quote name (optional)"
+              value={createInternalName}
+              onChange={(event) => setCreateInternalName(event.target.value)}
+              placeholder="e.g. Front deck pergola"
+              maxLength={COMMERCIAL_INTERNAL_NAME_MAX_LENGTH}
+              helperText="For staff use only; customer documents keep the quote reference."
+            />
           </div>
           <div className={styles.modalFooter}>
             <button
@@ -287,6 +352,17 @@ export default function QuotesListView({
           </div>
         </QuoteModal>
       ) : null}
+
+      <CommercialInternalNameDialog
+        open={Boolean(renameTarget)}
+        title="Rename quote"
+        description="This updates the staff-only name across every version of this quote."
+        initialValue={renameTarget?.internalName}
+        submitLabel="Save name"
+        pending={renamePending}
+        onClose={closeRename}
+        onSubmit={saveRename}
+      />
     </div>
   );
 }

@@ -59,6 +59,7 @@ Primary write path:
 - Project notes (Activity tab) writes through `apps/portal/app/api/staff/v1/projects/[projectId]/notes` and `[noteId]`, reached through `portal.project.note.{create,update,delete}` local-first handlers.
 - Portal user creation through auth/admin helpers and invite/admin tooling, not general staff UI table writes.
 - Estimate pricing source fields were added by ordered forward migration: `estimates.pricing_source`, `estimates.pricing_source_metadata`, and nullable `estimates.commercial_design_input`; estimate write routes remain the only normal staff path for populating them.
+- `estimates.internal_name` is nullable, bounded staff-only identity metadata. Estimate create/rename routes own it independently of historical pricing locks; customer outputs do not consume it.
 
 Primary read path:
 
@@ -152,6 +153,7 @@ Primary write path:
 - Quote domain helpers under `apps/portal/lib/quotes`.
 - Cross-quote/invoice commands, commercial audit, and durable email intent adapters under `apps/portal/lib/commercial`.
 - Quote-version pricing source metadata is nullable, not backfilled, and copied only by quote domain helpers from the saved estimate metadata boundary when quote line items are created, refreshed, or revised.
+- `quotes.internal_name` is nullable, bounded staff-only family metadata shared by all `quote_versions`. Staff rename it through the authenticated quote-domain route; it is not selected by public quote helpers or artifact models.
 - Invoice domain helpers under `apps/portal/lib/invoices`.
 - Email and artifact helpers under `apps/portal/lib/emails`, `apps/portal/lib/outputs`, and quote/invoice/job-pack server helpers.
 - Public accept/decline and public invoice actions through token-bound marketing routes only after server-side token validation.
@@ -180,6 +182,7 @@ Access rule:
 Migration source:
 
 - Quote and invoice migrations under `supabase/migrations/20260209_*`, `20260216_*`, `20260220_*`, `20260314_*`, `20260318_000002_job_pack_sheet_overrides.sql`, `20260320_000001_job_pack_generations.sql`, `20260321_000001_job_pack_generations_schema_reload.sql`, `20260408_000001_portal_security_hardening.sql`, quote-version source metadata migration `20260504_000002_quote_version_pricing_source_metadata.sql`, commercial trust migration `20260728_000001_commercial_workflow_trust.sql`, payment schedule/whole-invoice payment migration `20260810_000002_quote_payment_schedules_and_invoice_payments.sql`, and manual quote retirement migration `20260810000003_manual_quote_superseded_status.sql`.
+- `supabase/migrations/20260811000001_commercial_internal_names.sql` adds bounded staff-only names to estimates and quote families without backfilling historical rows. It was exact-file applied to production on 2026-08-11; postflight verified both columns, constraints, PostgREST visibility, zero backfilled names, and the unique migration-ledger entry.
 - `supabase/portal_schema.sql` is a legacy baseline/snapshot reference for these tables.
 
 ## Schedule, Site Visits, And Running Jobs

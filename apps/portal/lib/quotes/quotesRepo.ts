@@ -136,6 +136,18 @@ export async function deleteDraftQuoteVersion(quoteVersionId: string): Promise<v
   await apiJson(`/api/quotes/${encodeURIComponent(quoteVersionId)}`, { method: 'DELETE' });
 }
 
+export async function updateQuoteInternalName(
+  quoteVersionId: string,
+  internalName: string | null,
+): Promise<QuoteVersionDetail> {
+  const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(
+    `/api/quotes/${encodeURIComponent(quoteVersionId)}/internal-name`,
+    { method: 'PATCH', body: JSON.stringify({ internalName }) },
+  );
+  if (!res.quoteVersion) throw new Error('Failed to update quote name');
+  return res.quoteVersion;
+}
+
 export async function markQuoteVersionSuperseded(quoteVersionId: string): Promise<QuoteVersionDetail> {
   const response = await apiJson<{ quoteVersion: QuoteVersionDetail }>(
     `/api/admin/quotes/${encodeURIComponent(quoteVersionId)}/supersede`,

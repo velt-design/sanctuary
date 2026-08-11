@@ -233,6 +233,33 @@ describe('PATCH /api/estimates/[estimateId]', () => {
     });
   });
 
+  it('renames a historical estimate without entering the pricing edit lock path', async () => {
+    parseJsonBody.mockResolvedValue({ ok: true, body: { internalName: '  Front   deck pergola  ' } });
+    const existing = { id: 'estimate-uuid', project_id: 'project-uuid', internal_name: null };
+    const updated = { ...existing, internal_name: 'Front deck pergola' };
+    estimateMaybeSingle.mockResolvedValue({ data: existing, error: null });
+    estimateUpdateSingle.mockResolvedValue({ data: updated, error: null });
+    estimateOrder.mockResolvedValue({ data: [updated], error: null });
+    buildVersionLabelMap.mockReturnValue(new Map([['estimate-uuid', 'V2']]));
+    loadProjectEstimateFlowMaps.mockResolvedValue({
+      editabilityByEstimateId: new Map([['estimate-uuid', { isLocked: true }]]),
+      flowByEstimateId: new Map(),
+    });
+    mapEstimateDetail.mockReturnValue({ id: 'est_1', internalName: 'Front deck pergola' });
+
+    const { PATCH } = await import('./route');
+    const response = await PATCH(
+      new Request('http://localhost/api/estimates/est_1', { method: 'PATCH' }),
+      { params: Promise.resolve({ estimateId: 'est_1' }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(estimateUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      internal_name: 'Front deck pergola',
+    }));
+    expect(loadEstimateEditability).not.toHaveBeenCalled();
+  });
+
   it('keeps syncedQuoteVersionIds empty after an estimate update', async () => {
     parseJsonBody.mockResolvedValue({
       ok: true,
