@@ -21,6 +21,7 @@ import {
 } from '@/lib/estimates/calculatorLighting';
 import {
   calculateStaffCustomerPriceFromCostEx,
+  normalizeStaffCustomerPriceMultiplier,
   normalizeStaffCustomerPriceUpliftPct,
   normalizeStaffQuoteDiscountPct,
   roundQuoteMoney,
@@ -191,9 +192,15 @@ function lineUnitPriceIncFromCostEx(
   costEx: number,
   quoteDiscountPct: number,
   customerPriceUpliftPct: number,
+  customerPriceMultiplier: number,
 ): number {
   return toCents(
-    calculateStaffCustomerPriceFromCostEx(costEx, quoteDiscountPct, customerPriceUpliftPct)?.incGst ?? 0,
+    calculateStaffCustomerPriceFromCostEx(
+      costEx,
+      quoteDiscountPct,
+      customerPriceUpliftPct,
+      customerPriceMultiplier,
+    )?.incGst ?? 0,
   );
 }
 
@@ -395,6 +402,9 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
   const customerPriceUpliftPct = normalizeStaffCustomerPriceUpliftPct(
     outputs?.pricing_policy?.customer_price_uplift_pct,
   );
+  const customerPriceMultiplier = normalizeStaffCustomerPriceMultiplier(
+    outputs?.pricing_policy?.customer_price_multiplier,
+  );
   const snapshotPergolas = Array.isArray(outputs?.pergolas) ? outputs.pergolas : [];
   const snapshotShared = outputs?.siteShared ?? outputs?.shared ?? null;
   const inputPergolas = buildInputPergolaModules(inputs);
@@ -439,6 +449,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
         lineCostEx,
         quoteDiscountPct,
         customerPriceUpliftPct,
+        customerPriceMultiplier,
       );
       const qty = 1;
       const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
@@ -458,6 +469,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
         sharedCostEx,
         quoteDiscountPct,
         customerPriceUpliftPct,
+        customerPriceMultiplier,
       );
       const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
       lineItems.push({
@@ -481,6 +493,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
       safeLegacyCoreCostEx,
       quoteDiscountPct,
       customerPriceUpliftPct,
+      customerPriceMultiplier,
     );
     const qty = 1;
     lineItems.push({

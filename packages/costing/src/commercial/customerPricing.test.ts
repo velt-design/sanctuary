@@ -29,6 +29,13 @@ describe('customer pricing', () => {
     });
   });
 
+  it('uses a frozen policy multiplier when supplied', () => {
+    expect(calculateCustomerPriceFromCostEx(10_000, 0, 0, 1.3)).toEqual({
+      exGst: 13_000,
+      incGst: 14_950,
+    });
+  });
+
   it('normalizes invalid inputs and protects discount limits', () => {
     expect(calculateCustomerPriceFromCostEx(Number.NaN)).toBeNull();
     expect(normalizeCustomerPriceDiscountPct('-2')).toBe(0);

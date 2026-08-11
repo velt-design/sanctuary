@@ -6,7 +6,7 @@ import type { CostInputsV1, SiteInputsV1 } from '../engine/types';
 import { calculateCustomerPriceFromCostEx } from './customerPricing';
 import {
   calculateApprovalCustomerAllowanceV2,
-  buildSimpleRangeOverheadV2,
+  buildCommercialOverheadV5,
   evaluateSimpleRangeEligibilityV2,
 } from './simpleRangePricing';
 
@@ -62,14 +62,27 @@ describe('Version 2 commercial policy', () => {
     ).reason_codes).toContain('NON_PITCHED_ACRYLIC');
   });
 
-  it('uses Simple overhead with the current 21% uplift for open pergolas', () => {
+  it('allows standard acrylic gable and box-perimeter structures in Simple', () => {
+    expect(evaluateSimpleRangeEligibilityV2(
+      site({ pergolas: [{ modules: [module({ pergola_style: 'gable' })] }] }),
+    )).toEqual({ eligible: true, reason_codes: [] });
+    expect(evaluateSimpleRangeEligibilityV2(
+      site({ pergolas: [{ modules: [module({ box_perimeter_enabled: true })] }] }),
+    )).toEqual({ eligible: true, reason_codes: [] });
+    expect(evaluateSimpleRangeEligibilityV2(
+      site({ pergolas: [{ modules: [module({ pergola_style: 'hip' })] }] }),
+    ).reason_codes).toContain('NON_PITCHED_ACRYLIC');
+  });
+
+  it('uses the unified overhead and 1.3x policy for open pergolas', () => {
     const result = calculateSiteCostV1(
       site({ pergolas: [{ modules: [module({ roof_material: 'none' })] }] }),
     );
 
     expect(result.pricing_policy?.resolved_classification).toBe('simple');
-    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(21);
-    expect(result.overhead.method).toBe('simple_progressive');
+    expect(result.pricing_policy?.customer_price_multiplier).toBe(1.3);
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(0);
+    expect(result.overhead.method).toBe('unified_commercial_v5');
   });
 
   it('keeps approvals Bespoke for open pergolas', () => {
@@ -82,17 +95,17 @@ describe('Version 2 commercial policy', () => {
     expect(result.pricing_policy?.customer_price_uplift_pct).toBe(0);
   });
 
-  it('starts Simple overhead at $750 and scales continuously after one productive crew-day', () => {
+  it('uses one $500 startup and $500 per pro-rated productive crew-day', () => {
     const config = loadCostingConfigV1();
-    expect(buildSimpleRangeOverheadV2(config, 8).total_ex_gst).toBe(750);
-    expect(buildSimpleRangeOverheadV2(config, 12).total_ex_gst).toBe(1000);
-    expect(buildSimpleRangeOverheadV2(config, 16).total_ex_gst).toBe(1250);
+    expect(buildCommercialOverheadV5(config, site(), 8, 'simple').total_ex_gst).toBe(1000);
+    expect(buildCommercialOverheadV5(config, site(), 12, 'simple').total_ex_gst).toBe(1250);
+    expect(buildCommercialOverheadV5(config, site(), 16, 'simple').total_ex_gst).toBe(1500);
 
     const at29 = calculateSiteCostV1(site({ pergolas: [{ modules: [module({ projection_m: 2.9 })] }] }));
     const at30 = calculateSiteCostV1(site({ pergolas: [{ modules: [module({ projection_m: 3 })] }] }));
-    expect(at29.overhead.method).toBe('simple_progressive');
-    expect(at30.overhead.method).toBe('simple_progressive');
-    expect(at29.overhead.total_ex_gst).toBeGreaterThanOrEqual(750);
+    expect(at29.overhead.method).toBe('unified_commercial_v5');
+    expect(at30.overhead.method).toBe('unified_commercial_v5');
+    expect(at29.overhead.total_ex_gst).toBeGreaterThanOrEqual(500);
     expect(Math.abs(at30.overhead.total_ex_gst - at29.overhead.total_ex_gst)).toBeLessThan(200);
   });
 
@@ -110,8 +123,73 @@ describe('Version 2 commercial policy', () => {
     expect(dayCycleActions.every((action) => action.qty === 1)).toBe(true);
     expect(fixedMobilisationActions.length).toBeGreaterThan(0);
     expect(fixedMobilisationActions.every((action) => action.qty === 1)).toBe(true);
-    expect(result.overhead.total_ex_gst).toBe(750);
-    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(21);
+    expect(result.overhead.total_ex_gst).toBe(966.88);
+    expect(result.pricing_policy?.customer_price_multiplier).toBe(1.3);
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(0);
+  });
+
+  it.each([
+    [1, 1, 1200],
+    [1, 2, 1500],
+    [2, 2, 2000],
+    [2, 3, 2300],
+  ])('prices Bespoke design for %i pergolas / %i modules', (pergolaCount, moduleCount, expectedDesign) => {
+    const pergolas = Array.from({ length: pergolaCount }, (_, pergolaIndex) => ({
+      modules: Array.from(
+        { length: pergolaIndex === 0 ? moduleCount - (pergolaCount - 1) : 1 },
+        () => module(),
+      ),
+    }));
+    const config = loadCostingConfigV1();
+    expect(buildCommercialOverheadV5(config, site({ pergolas }), 8, 'bespoke').sales_ex_gst).toBe(expectedDesign);
+  });
+
+  it('adds 20% to Bespoke productive installation actions but not mobilisation', () => {
+    const simple = calculateSiteCostV1(site());
+    const bespoke = calculateSiteCostV1(site({ pricing_classification: 'bespoke' }));
+    const simpleProductive = simple.install.actions.find((action) => action.id.includes('rafters.install_rafter_pitched'));
+    const bespokeProductive = bespoke.install.actions.find((action) => action.id.includes('rafters.install_rafter_pitched'));
+    const simpleMobilisation = simple.install.actions.find((action) => action.id.includes('mob.site_survey'));
+    const bespokeMobilisation = bespoke.install.actions.find((action) => action.id.includes('mob.site_survey'));
+
+    expect(bespokeProductive?.minutes).toBeCloseTo((simpleProductive?.minutes ?? 0) * 1.2, 2);
+    expect(bespokeMobilisation?.minutes).toBe(simpleMobilisation?.minutes);
+  });
+
+  it('calculates the agreed 6m x 3m customer-price anchors', () => {
+    const standard = module({ post_count: 4, house_connection_type: 'soffit', roof_pitch_deg: 5 });
+    const scenarios = [
+      [site({ pergolas: [{ modules: [standard] }] }), 11_576.74],
+      [site({ pricing_classification: 'bespoke', pergolas: [{ modules: [standard] }] }), 14_190.9],
+      [site({ pergolas: [{ modules: [{ ...standard, pergola_style: 'gable' }] }] }), 12_459.74],
+      [site({ pergolas: [{ modules: [{ ...standard, box_perimeter_enabled: true }] }] }), 14_627.02],
+    ] as const;
+
+    for (const [inputs, expectedIncGst] of scenarios) {
+      const result = calculateSiteCostV1(inputs);
+      const customerPrice = calculateCustomerPriceFromCostEx(
+        result.totals.cost_ex_gst,
+        0,
+        result.pricing_policy?.customer_price_uplift_pct,
+        result.pricing_policy?.customer_price_multiplier,
+      );
+      expect(customerPrice?.incGst).toBe(expectedIncGst);
+    }
+  });
+
+  it('calculates and allocates the Bespoke design fee once per site', () => {
+    const inputs = site({
+      pricing_classification: 'bespoke',
+      pergolas: [
+        { id: 'p1', modules: [module(), module()] },
+        { id: 'p2', modules: [module()] },
+      ],
+    });
+    const result = calculateSiteCostV1(inputs);
+    const allocatedSales = result.pergolas.reduce((sum, pergola) => sum + pergola.overhead.sales_ex_gst, 0);
+
+    expect(result.overhead.sales_ex_gst).toBe(2300);
+    expect(allocatedSales).toBe(2300);
   });
 
   it.each([
@@ -167,26 +245,27 @@ describe('Version 2 commercial policy', () => {
     expect(result.pricing_policy?.customer_price_uplift_pct).toBe(10);
   });
 
-  it('prices Version 5 exactly 10% above Version 4 before final cent rounding', () => {
+  it('keeps published v2.3 on the Version 5 uplift and 1.25x multiplier', () => {
     const current = loadCostingConfigV1();
     const historicalControl = snapshotCostingControlConfigV1(current);
-    historicalControl.baseManifestVersion = 'v2.1';
-    const version4 = applyCostingControlConfigV1(current, historicalControl);
-    const version4Result = calculateSiteCostV1(site(), version4);
-    const version5Result = calculateSiteCostV1(site(), current);
-    const version4Price = calculateCustomerPriceFromCostEx(
-      version4Result.totals.cost_ex_gst,
-      0,
-      version4Result.pricing_policy?.customer_price_uplift_pct,
+    historicalControl.baseManifestVersion = 'v2.3';
+    const historical = applyCostingControlConfigV1(current, historicalControl);
+    const result = calculateSiteCostV1(site(), historical);
+    const historicalGable = calculateSiteCostV1(
+      site({ pergolas: [{ modules: [module({ pergola_style: 'gable' })] }] }),
+      historical,
     );
-    const version5Price = calculateCustomerPriceFromCostEx(
-      version5Result.totals.cost_ex_gst,
+    const price = calculateCustomerPriceFromCostEx(
+      result.totals.cost_ex_gst,
       0,
-      version5Result.pricing_policy?.customer_price_uplift_pct,
+      result.pricing_policy?.customer_price_uplift_pct,
+      result.pricing_policy?.customer_price_multiplier,
     );
 
-    expect(version5Result.totals.cost_ex_gst).toBe(version4Result.totals.cost_ex_gst);
-    expect(version5Result.pricing_policy?.customer_price_uplift_pct).toBe(21);
-    expect((version5Price?.incGst ?? 0) / (version4Price?.incGst ?? 1)).toBeCloseTo(1.1, 4);
+    expect(result.overhead.method).toBe('simple_progressive');
+    expect(result.pricing_policy?.customer_price_multiplier).toBe(1.25);
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(21);
+    expect(historicalGable.pricing_policy?.resolved_classification).toBe('bespoke');
+    expect(price?.incGst).toBeGreaterThan(0);
   });
 });

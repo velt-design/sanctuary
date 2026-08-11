@@ -1,4 +1,7 @@
-import type { SitePricingPolicyV2 } from '../commercial/simpleRangePricing';
+import {
+  productiveInstallTimeMultiplierV5,
+  type SitePricingPolicyV2,
+} from '../commercial/simpleRangePricing';
 import { isCostingManifestAtLeast } from '../manifestVersion';
 import type { CostingConfigV1 } from './config';
 import { buildDayCycleActions, computeSiteDays } from './install';
@@ -21,11 +24,38 @@ export function productiveCrewHoursFromInstallActions(
 ): number {
   const minutes = actions.reduce((sum, action) => {
     const category = String(action.category).trim().toLowerCase();
-    if (category === 'mobilisation' || category === 'demobilisation') return sum;
+    if (['mob', 'mobilisation', 'demob', 'demobilisation'].includes(category)) return sum;
     const actionMinutes = Number(action.minutes);
     return Number.isFinite(actionMinutes) && actionMinutes > 0 ? sum + actionMinutes : sum;
   }, 0);
   return roundHours(minutes / 60);
+}
+
+function isProductiveInstallAction(action: Pick<InstallActionV1, 'category'>): boolean {
+  const category = String(action.category).trim().toLowerCase();
+  return !['mob', 'mobilisation', 'demob', 'demobilisation'].includes(category);
+}
+
+export function applyProductiveInstallTimePolicyV5(
+  actions: InstallActionV1[],
+  config: CostingConfigV1,
+  pricingPolicy: SitePricingPolicyV2 | undefined,
+): InstallActionV1[] {
+  const multiplier = productiveInstallTimeMultiplierV5(config, pricingPolicy);
+  if (multiplier === 1) return actions;
+  return actions.map((action) => (
+    isProductiveInstallAction(action)
+      ? {
+          ...action,
+          minutes: Math.round(action.minutes * multiplier * 100) / 100,
+          cost_ex_gst: Math.round(action.cost_ex_gst * multiplier * 100) / 100,
+          applied_multipliers: {
+            ...action.applied_multipliers,
+            bespoke_productive_time: multiplier,
+          },
+        }
+      : action
+  ));
 }
 
 type SiteDayCycle = {
@@ -79,7 +109,8 @@ export function resolveSiteDayCyclePolicyV1(params: {
   productiveCrewHours: number | null;
 } {
   const productiveCrewHours = productiveCrewHoursFromInstallActions(params.installActions);
-  const usesProductiveHours = isProductiveSimpleSiteDayPolicyEnabled(params.config, params.pricingPolicy);
+  const usesProductiveHours = isProductiveSimpleSiteDayPolicyEnabled(params.config, params.pricingPolicy)
+    || (Boolean(params.pricingPolicy) && isCostingManifestAtLeast(params.config, 2, 4));
   let siteDays = computeSiteDays(usesProductiveHours ? productiveCrewHours : params.baseCrewHours, params.config);
   let dayCycle = buildSiteDayCycle(params.modules, params.config, siteDays);
   if (!usesProductiveHours) {

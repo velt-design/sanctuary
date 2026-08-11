@@ -112,7 +112,7 @@ Access rule:
 Migration source:
 
 - `supabase/migrations/20260731_000001_project_design_booklets.sql`.
-- `supabase/migrations/20260810_000001_project_design_booklet_pdf_drawings.sql` adds PDF asset media metadata and bounded page counts. It must be applied before deploying the PDF-drawing application path.
+- `supabase/migrations/20260810_000001_project_design_booklet_pdf_drawings.sql` adds PDF asset media metadata and bounded page counts. It was applied to the positively identified production `SP-Staff-Portal-DB` project on 2026-08-11; shared staging still requires a separate exact-file apply and verification before exercising PDF drawing writes there.
 
 ## Quotes, Invoices, Artifacts, And Job Packs
 

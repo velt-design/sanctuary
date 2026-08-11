@@ -3,6 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   calculateStaffCustomerPriceFromCostEx,
+  normalizeStaffCustomerPriceMultiplier,
   normalizeStaffCustomerPriceUpliftPct,
 } from '@/lib/quotes/pricing';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
@@ -77,6 +78,7 @@ export async function listDashboardRecentEstimates(
       finiteNumber(row.total_true_cost_ex_gst),
       0,
       normalizeStaffCustomerPriceUpliftPct(pricingPolicy?.customer_price_uplift_pct),
+      normalizeStaffCustomerPriceMultiplier(pricingPolicy?.customer_price_multiplier),
     );
 
     return [{

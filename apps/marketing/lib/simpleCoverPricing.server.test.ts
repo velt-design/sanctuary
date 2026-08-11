@@ -39,11 +39,13 @@ describe('frozen Simple cover pricing', () => {
       result.siteOutput.totals.cost_ex_gst,
       0,
       result.siteOutput.pricing_policy?.customer_price_uplift_pct,
+      result.siteOutput.pricing_policy?.customer_price_multiplier,
     );
 
     expect(result.schemaVersion).toBe('simple-cover-pricing.v1');
     expect(result.customerPrice.exactIncGst).toBe(expectedPrice?.incGst);
-    expect(result.siteOutput.pricing_policy?.customer_price_uplift_pct).toBe(21);
+    expect(result.siteOutput.pricing_policy?.customer_price_multiplier).toBe(1.3);
+    expect(result.siteOutput.pricing_policy?.customer_price_uplift_pct).toBe(0);
     expect(result.customerPrice.displayedFromIncGst % 250).toBe(0);
     expect(result.costingConfiguration).toMatchObject({ versionId: 'version-17', versionNumber: 17 });
     expect(result.publicResult.configuration).toEqual({ versionNumber: 17 });

@@ -13,7 +13,10 @@ import {
   withoutSiteInfillsV1,
 } from './infillIncrementalBaseline';
 import { buildDayCycleActions, buildInstallV1, computeSiteDays, DAY_CYCLE_ACTION_IDS } from './install';
-import { resolveSiteDayCyclePolicyV1 } from './simpleSiteDayPolicy';
+import {
+  applyProductiveInstallTimePolicyV5,
+  resolveSiteDayCyclePolicyV1,
+} from './simpleSiteDayPolicy';
 import { buildOverheadV1 } from './overheads';
 import {
   buildSimpleRangeOverheadV2,
@@ -21,6 +24,7 @@ import {
   isCommercialPolicyV2Enabled,
   resolveSitePricingPolicyV2,
 } from '../commercial/simpleRangePricing';
+import { allocateCommercialSiteOverheadV5 } from './commercialSiteOverhead';
 import type {
   CostInputsV1,
   CostOutputV1,
@@ -42,6 +46,15 @@ import type { MaterialsExplainOptions, MaterialsExplainV1 } from './materials_ex
 function roundMoney(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.round(n * 100) / 100;
+}
+
+function installTotalsFromActions(actions: InstallActionV1[]): CostOutputV1['install']['totals'] {
+  const crewMinutes = roundMoney(actions.reduce((sum, action) => sum + Number(action.minutes ?? 0), 0));
+  return {
+    crew_minutes: crewMinutes,
+    crew_hours: roundMoney(crewMinutes / 60),
+    install_ex_gst: roundMoney(actions.reduce((sum, action) => sum + Number(action.cost_ex_gst ?? 0), 0)),
+  };
 }
 
 const BOX_PERIMETER_STARTUP_ACTION_ID = 'mob.box_perimeter_startup';
@@ -921,6 +934,12 @@ function calculateSiteCostV1Internal(
         scope: 'module',
         excludeActionIds: DAY_CYCLE_ACTION_IDS,
       });
+      const moduleInstallActions = applyProductiveInstallTimePolicyV5(
+        installResult.install.actions,
+        cfg,
+        pricingPolicy,
+      );
+      const moduleInstallTotals = installTotalsFromActions(moduleInstallActions);
 
       const moduleNotes = [...derivedResult.notes_and_warnings, ...materialsResult.notes_and_warnings, ...installResult.notes_and_warnings];
       if (moduleNotes.length) {
@@ -929,7 +948,7 @@ function calculateSiteCostV1Internal(
       }
       const moduleWarningsTyped = toWarnings(moduleNotes);
 
-      const moduleCostExGst = roundMoney(materialsResult.materials.totals.materials_ex_gst + installResult.install.totals.install_ex_gst);
+      const moduleCostExGst = roundMoney(materialsResult.materials.totals.materials_ex_gst + moduleInstallTotals.install_ex_gst);
       const moduleCostIncGst = roundMoney(applyGst(moduleCostExGst));
 
       const moduleOutput: CostOutputV1 = {
@@ -937,7 +956,10 @@ function calculateSiteCostV1Internal(
         derived: derivedWithPatch,
         materials: materialsResult.materials,
         infill_takeoff: materialsResult.infill_takeoff,
-        install: installResult.install,
+        install: {
+          actions: moduleInstallActions,
+          totals: moduleInstallTotals,
+        },
         overhead: {
           method: 'site_rollup',
           ops_ex_gst: 0,
@@ -974,7 +996,7 @@ function calculateSiteCostV1Internal(
         });
       }
 
-      for (const action of installResult.install.actions) {
+      for (const action of moduleInstallActions) {
         const labelPrefix = pergola.label ? `[${pergola.label} M${mIdx + 1}]` : `[P${pIdx + 1} M${mIdx + 1}]`;
         const globalPrefix = `m${globalModuleIdx + 1}`;
         pergolaInstallActions.push({
@@ -1106,10 +1128,11 @@ function calculateSiteCostV1Internal(
   }
 
   const sharedInstallActions: InstallActionV1[] = [];
-  const jobActions = Array.from(jobScopedActions.values()).sort((a, b) => a.id.localeCompare(b.id));
+  const jobActionsUnadjusted = Array.from(jobScopedActions.values()).sort((a, b) => a.id.localeCompare(b.id));
   for (const action of scaffoldingLabourActions) {
-    if (!jobActions.some((existing) => existing.id === action.id)) jobActions.push(action);
+    if (!jobActionsUnadjusted.some((existing) => existing.id === action.id)) jobActionsUnadjusted.push(action);
   }
+  const jobActions = applyProductiveInstallTimePolicyV5(jobActionsUnadjusted, cfg, pricingPolicy);
   jobActions.sort((a, b) => a.id.localeCompare(b.id));
   for (const action of jobActions) {
     const scoped = { ...action, id: `job.${action.id}`, label: `[Job] ${action.label}` };
@@ -1183,6 +1206,14 @@ function calculateSiteCostV1Internal(
   const sharedCrewMinutes = roundMoney(jobActions.reduce((acc, a) => acc + a.minutes, 0) + dayCycle.crewMinutes);
   const sharedCrewHours = roundMoney(sharedCrewMinutes / 60);
 
+  const unifiedCommercialOverheads = allocateCommercialSiteOverheadV5({
+    config: cfg,
+    inputs,
+    pricingPolicy,
+    productiveCrewHours: siteDayPolicy.productiveCrewHours ?? crewHoursTotal,
+    pergolas: pergolaOutputs,
+  });
+
   let overheadOpsSum = 0;
   let overheadSalesSum = 0;
   let overheadTotalSum = 0;
@@ -1190,9 +1221,14 @@ function calculateSiteCostV1Internal(
   for (let idx = 0; idx < pergolaOutputs.length; idx += 1) {
     const pergola = pergolaOutputs[idx];
     const pergolaFlags = deriveOverheadFlagsForModules(pergola.modules);
-    const overheadResult = pricingPolicy?.resolved_classification === 'simple'
-      ? { overhead: buildSimpleRangeOverheadV2(cfg, siteDayPolicy.productiveCrewHours ?? crewHoursTotal), notes_and_warnings: [] }
-      : buildOverheadV1(cfg, {
+    const overheadResult = unifiedCommercialOverheads
+      ? {
+          overhead: unifiedCommercialOverheads[pergola.id]!,
+          notes_and_warnings: [],
+        }
+      : pricingPolicy?.resolved_classification === 'simple'
+        ? { overhead: buildSimpleRangeOverheadV2(cfg, siteDayPolicy.productiveCrewHours ?? crewHoursTotal), notes_and_warnings: [] }
+        : buildOverheadV1(cfg, {
           module_count: pergola.module_count,
           total_crew_hours: Number(pergola.install.totals.crew_hours ?? 0),
           has_gable: pergolaFlags.has_gable,
@@ -1201,7 +1237,7 @@ function calculateSiteCostV1Internal(
           has_acrylic_only: pergolaFlags.has_acrylic_only,
           all_pitched_acrylic: pergolaFlags.all_pitched_acrylic,
           max_acrylic_rafter_length_m: pergolaFlags.max_acrylic_rafter_length_m,
-        });
+          });
 
     if (overheadResult.notes_and_warnings.length) {
       const prefix = pergola.label ? `[Pergola ${pergola.label}]` : `[Pergola ${idx + 1}]`;

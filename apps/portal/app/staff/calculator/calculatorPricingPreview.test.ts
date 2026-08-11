@@ -24,7 +24,7 @@ describe('Version 2 calculator pricing preview', () => {
     expect(preview.totalIncGstCents - (preview.undiscountedTotalIncGstCents ?? 0)).not.toBe(0);
   });
 
-  it('applies the frozen Simple customer-price uplift to the core price', () => {
+  it('applies the frozen customer-price multiplier to the core price', () => {
     const inputs = {
       ...makeDefaultCalculatorInputs(),
       pricingClassification: 'simple' as const,
@@ -41,9 +41,11 @@ describe('Version 2 calculator pricing preview', () => {
       result.totals.cost_ex_gst,
       0,
       result.pricing_policy?.customer_price_uplift_pct,
+      result.pricing_policy?.customer_price_multiplier,
     );
 
-    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(21);
+    expect(result.pricing_policy?.customer_price_multiplier).toBe(1.3);
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(0);
     expect(preview.totalIncGstCents).toBe(Math.round((expected?.incGst ?? 0) * 100));
   });
 });

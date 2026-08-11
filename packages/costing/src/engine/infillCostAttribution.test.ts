@@ -121,7 +121,7 @@ describe('pergola infill cost attribution', () => {
     ]);
   });
 
-  it('keeps the single-installer rate and includes the recalibrated preparation work', () => {
+  it('keeps the single-installer rate and applies the Bespoke productive-time allowance', () => {
     const result = calculateSiteCostV1({
       pergolas: [{
         id: 'pergola-1',
@@ -141,14 +141,14 @@ describe('pergola infill cost attribution', () => {
       .filter((action) => action.id.startsWith('infill.'));
 
     expect(loadCostingConfigV1().installActions.basis.crew_hour_rate_ex_gst).toBe(75);
-    expect(actions.reduce((sum, action) => sum + action.minutes, 0)).toBeCloseTo(225.4, 2);
-    expect(actions.reduce((sum, action) => sum + action.cost_ex_gst, 0)).toBe(281.75);
+    expect(actions.reduce((sum, action) => sum + action.minutes, 0)).toBeCloseTo(270.48, 2);
+    expect(actions.reduce((sum, action) => sum + action.cost_ex_gst, 0)).toBe(338.1);
     expect(actions.find((action) => action.id === 'infill.install_sheet_panels_m2')?.label)
       .toContain('Cut, prepare and install');
     expect(actions.find((action) => action.id === 'infill.install_extra_supports_each')).toMatchObject({
       qty: 4,
-      minutes: 112,
-      cost_ex_gst: 140,
+      minutes: 134.4,
+      cost_ex_gst: 168,
     });
   });
 });

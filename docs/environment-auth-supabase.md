@@ -223,13 +223,19 @@ grants, both timestamp triggers, the private Storage bucket contract, and zero
 new booklet, asset, or Storage object rows. The date-only migration ledger was
 left untouched, and no blanket migration command or repair was used.
 
-The checked-in forward migration
+The forward migration
 `20260810_000001_project_design_booklet_pdf_drawings.sql` extends that boundary
-for original drawing PDFs and verified page counts. It has not been applied to
-the shared staging or production database in this implementation pass. Apply
-and verify that exact reviewed file before deploying application code that
-writes PDF drawing assets; its presence in the repository is not deployment
-evidence.
+for original drawing PDFs and verified page counts. It was applied to the
+positively identified production `SP-Staff-Portal-DB` project on 2026-08-11
+after a rollback rehearsal and confirmation of a completed physical backup.
+Its SHA-256 was
+`05ea530365da4de946bf36fc44d77557a666166d811df507e9a2c4c5fdaa0f0`.
+Postflight verified all 82 existing asset rows retained `page_count = 1`, both
+bounded constraints, and a successful PostgREST `page_count` select. The
+colliding `20260810_000002` payment migration and the date-only migration ledger
+were left untouched; no blanket push, migration-up, or repair command was used.
+This is production evidence only; shared staging still requires its own
+positive target check and exact-file apply before testing PDF drawing writes.
 
 Marketing enquiry intake requires both `20260723_000001_marketing_enquiry_intake_security.sql` and the forward compatibility migration `20260724043000_marketing_enquiry_budget_columns.sql`. The latter adds nullable pricing snapshot columns to installations whose existing `enquiry_requests` table predates those fields.
 

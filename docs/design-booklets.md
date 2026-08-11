@@ -122,6 +122,17 @@ bucket contract. No booklet, asset, or Storage object row was created by the
 deployment. The date-only migration ledger was left untouched; no blanket
 push, migration-up, or repair command was used.
 
+On 2026-08-11, exact migration
+`20260810_000001_project_design_booklet_pdf_drawings.sql` was applied to the
+same positively identified production project after a successful rollback
+rehearsal and confirmation of a completed physical backup. The exact SHA-256
+was `05ea530365da4de946bf36fc44d77557a666166d811df507e9a2c4c5fdaa0f0`.
+Postflight retained all 82 asset rows, backfilled every existing row to
+`page_count = 1`, verified PDF media and page-count constraints, and confirmed
+the live PostgREST schema accepted a `page_count` select. The colliding
+`20260810_000002` payment migration and date-only migration ledger remained
+untouched. Shared staging was not changed by this production operation.
+
 ## Content Ownership
 
 `apps/marketing/data/products.ts` remains the canonical owner of generic roof-form and material wording. `apps/marketing/lib/designBookletContent.ts` selects existing content without strengthening it. The server-only Portal adapter at `apps/portal/lib/designBooklets/marketingContent.ts` exposes only the roof-form names and material labels needed in the booklet.

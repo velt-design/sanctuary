@@ -179,8 +179,9 @@ describe('costingPayload', () => {
 
     const result = calculateSiteCostV1(payload);
     expect(result.pricing_policy?.resolved_classification).toBe('simple');
-    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(21);
-    expect(result.overhead.method).toBe('simple_progressive');
+    expect(result.pricing_policy?.customer_price_multiplier).toBe(1.3);
+    expect(result.pricing_policy?.customer_price_uplift_pct).toBe(0);
+    expect(result.overhead.method).toBe('unified_commercial_v5');
     expect(result.pergolas[0]?.modules[0]?.derived).toMatchObject({
       ledger_profile_used: '100x50',
       front_beam_profile_used: '200x50',

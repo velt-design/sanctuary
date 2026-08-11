@@ -2422,7 +2422,7 @@ describe('calculateCostV1', () => {
     expect(survey?.qty).toBe(2);
   });
 
-  it('site rollup: separate pergolas do not share overhead', () => {
+  it('site rollup: unified commercial overhead is calculated once per site', () => {
     const moduleInputs = {
       length_m: 6,
       projection_m: 3,
@@ -2461,13 +2461,17 @@ describe('calculateCostV1', () => {
 
     expect(onePergola.pergola_count).toBe(1);
     expect(twoPergolas.pergola_count).toBe(2);
-    expect(onePergola.overhead.total_ex_gst).toBe(2000);
-    expect(twoPergolas.overhead.total_ex_gst).toBe(4000);
+    expect(onePergola.overhead.method).toBe('unified_commercial_v5');
+    expect(twoPergolas.overhead.method).toBe('site_rollup');
+    expect(twoPergolas.pergolas.every((pergola) => pergola.overhead.method === 'unified_commercial_v5')).toBe(true);
+    expect(onePergola.overhead.sales_ex_gst).toBe(1500);
+    expect(twoPergolas.overhead.sales_ex_gst).toBe(2000);
+    expect(twoPergolas.overhead.total_ex_gst).toBeLessThan(onePergola.overhead.total_ex_gst * 2);
     expect(twoPergolas.shared.install.totals.install_ex_gst).toBeGreaterThan(0);
     expect(roundMoney(twoPergolas.shared.install.totals.install_ex_gst)).toBe(roundMoney(onePergola.shared.install.totals.install_ex_gst));
   });
 
-  it('site rollup: any acrylic module over 3m switches that pergola overhead to variable', () => {
+  it('site rollup: mixed acrylic rafter lengths retain unified commercial overhead', () => {
     const shortModule = {
       length_m: 6,
       projection_m: 3,
@@ -2500,9 +2504,9 @@ describe('calculateCostV1', () => {
       extras_allowance_ex_gst: 0,
     });
 
-    expect(site.pergolas[0]?.overhead.method).toBe('fixed_plus_variable');
-    expect(site.pergolas[0]?.overhead.sales_ex_gst).toBeGreaterThan(0);
-    expect(site.overhead.method).toBe('fixed_plus_variable');
+    expect(site.pergolas[0]?.overhead.method).toBe('unified_commercial_v5');
+    expect(site.pergolas[0]?.overhead.sales_ex_gst).toBe(1500);
+    expect(site.overhead.method).toBe('unified_commercial_v5');
     expect(site.overhead.total_ex_gst).toBeGreaterThan(2000);
   });
 

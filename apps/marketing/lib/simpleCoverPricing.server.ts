@@ -47,6 +47,7 @@ export function calculateFrozenSimpleCoverPricingWithConfiguration(
     siteOutput.totals.cost_ex_gst,
     0,
     siteOutput.pricing_policy?.customer_price_uplift_pct,
+    siteOutput.pricing_policy?.customer_price_multiplier,
   );
   if (!customerPrice || customerPrice.incGst <= 0) {
     throw new Error('Customer price could not be calculated.');

@@ -97,12 +97,13 @@ const MAX_CURRENCY_VALUE = 10_000_000;
 const MAX_MINUTES_VALUE = 10_080;
 const MAX_MULTIPLIER_VALUE = 10;
 const COMPATIBLE_BASE_MANIFEST_UPGRADES: Record<string, readonly string[]> = {
-  'v1.7': ['v1.8', 'v1.9', 'v2.0', 'v2.1', 'v2.2', 'v2.3'],
-  'v1.8': ['v1.9', 'v2.0', 'v2.1', 'v2.2', 'v2.3'],
-  'v1.9': ['v2.0', 'v2.1', 'v2.2', 'v2.3'],
-  'v2.0': ['v2.1', 'v2.2', 'v2.3'],
-  'v2.1': ['v2.2', 'v2.3'],
-  'v2.2': ['v2.3'],
+  'v1.7': ['v1.8', 'v1.9', 'v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4'],
+  'v1.8': ['v1.9', 'v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4'],
+  'v1.9': ['v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4'],
+  'v2.0': ['v2.1', 'v2.2', 'v2.3', 'v2.4'],
+  'v2.1': ['v2.2', 'v2.3', 'v2.4'],
+  'v2.2': ['v2.3', 'v2.4'],
+  'v2.3': ['v2.4'],
 };
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -664,11 +665,13 @@ export function previewCostingControlSiteImpactV1(
     beforeTotal,
     inputs.quote_discount_pct,
     before.pricing_policy?.customer_price_uplift_pct,
+    before.pricing_policy?.customer_price_multiplier,
   );
   const afterCustomerPrice = calculateCustomerPriceFromCostEx(
     afterTotal,
     inputs.quote_discount_pct,
     after.pricing_policy?.customer_price_uplift_pct,
+    after.pricing_policy?.customer_price_multiplier,
   );
   const beforeCustomerPriceIncGst = beforeCustomerPrice?.incGst ?? 0;
   const afterCustomerPriceIncGst = afterCustomerPrice?.incGst ?? 0;

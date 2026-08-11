@@ -52,14 +52,14 @@ describe('costing control configuration', () => {
     expect(validation.ok).toBe(true);
 
     const applied = applyCostingControlConfigV1(base, historical);
-    expect(applied.manifest.version).toBe('v2.3');
+    expect(applied.manifest.version).toBe('v2.4');
     expect(applied.appliedControlManifestVersion).toBe('v1.7');
     expect(
       applied.installActions.actions.find((action) => action.id === 'infill.setup_setout_each')?.base_minutes,
     ).toBe(16.8);
   });
 
-  it('keeps the published v2.2 rafter curve reproducible after the v2.3 upgrade', () => {
+  it('keeps the published v2.2 rafter curve reproducible after the v2.4 upgrade', () => {
     const base = loadCostingConfigV1();
     const historical = snapshotCostingControlConfigV1(base);
     historical.baseManifestVersion = 'v2.2';

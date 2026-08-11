@@ -175,7 +175,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.coreTotalIncCents).toBe(20125);
   });
 
-  it('uses the frozen Simple uplift when handing an estimate to a quote', () => {
+  it('uses the frozen customer-price multiplier when handing an estimate to a quote', () => {
     const estimate = makeEstimate({
       outputs: {
         ...makeEstimate().outputs,
@@ -184,7 +184,8 @@ describe('buildQuoteLineItemsFromEstimate', () => {
           resolved_classification: 'simple',
           simple_eligible: true,
           reason_codes: [],
-          customer_price_uplift_pct: 10,
+          customer_price_multiplier: 1.3,
+          customer_price_uplift_pct: 0,
         },
         pergolas: [{ id: 'pergola-1', label: 'Pergola 1', totals: { cost_ex_gst: 100 } }],
         siteShared: { totals: { cost_ex_gst: 0 } },
@@ -192,7 +193,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     });
 
     const result = buildQuoteLineItemsFromEstimate(estimate);
-    expect(result.items[0]?.unitPriceIncGstCents).toBe(15_813);
+    expect(result.items[0]?.unitPriceIncGstCents).toBe(14_950);
   });
 
   it('ignores explanatory infill attributions and keeps one pergola quote line', () => {
