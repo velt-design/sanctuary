@@ -111,7 +111,7 @@ describe("deposit invoice artifact view model", () => {
     expect(
       resolveDepositInvoicePaymentLines(null, ["Legacy fallback line"]),
     ).toEqual(["Legacy fallback line"]);
-  }, 15_000);
+  });
 });
 
 describe("deposit invoice PDF", () => {
@@ -211,7 +211,7 @@ describe("deposit invoice PDF", () => {
     expect(
       layout.pages.reduce((count, page) => count + page.paymentSegmentCount, 0),
     ).toBeGreaterThan(2);
-  });
+  }, 15_000);
 });
 
 const CONTENT_BOTTOM_FALLBACK = Number.POSITIVE_INFINITY;
