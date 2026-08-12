@@ -1,9 +1,13 @@
 import type { CostingConfigV1 } from './config';
 import type { InstallActionV1, InstallV1, InputsNormalizedV1 } from './types';
 import { evalArithmeticExpr } from './expr';
+import {
+  installActionsWithInfillLabourPolicyV1,
+  type InstallActionConfigV1,
+} from './infillLabourPolicy';
 import { normaliseProfile } from './normalise';
 
-type ActionConfig = CostingConfigV1['installActions']['actions'][number];
+type ActionConfig = InstallActionConfigV1;
 
 type InstallResultV1 = {
   install: InstallV1;
@@ -393,7 +397,7 @@ export function buildInstallV1(
 
   const actionsOut: InstallActionV1[] = [];
 
-  for (const action of config.installActions.actions) {
+  for (const action of installActionsWithInfillLabourPolicyV1(config)) {
     if (excluded.has(action.id)) continue;
     const actionScope = String((action as any).scope ?? 'module');
     if (scope !== 'all' && actionScope !== scope) continue;
@@ -490,7 +494,7 @@ export function buildDayCycleActions(
   }
 
   const actionsById = new Map<DayCycleActionId, ActionConfig>();
-  for (const action of config.installActions.actions) {
+  for (const action of config.installActions.actions as readonly ActionConfig[]) {
     if ((DAY_CYCLE_ACTION_IDS as readonly string[]).includes(action.id)) actionsById.set(action.id as DayCycleActionId, action);
   }
 

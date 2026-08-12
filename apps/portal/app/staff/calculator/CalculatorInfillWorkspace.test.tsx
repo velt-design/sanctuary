@@ -77,6 +77,22 @@ describe('CalculatorInfillWorkspace', () => {
     expect(props.onUndo).toHaveBeenCalledTimes(1);
   });
 
+  it('uses existing-pergola setup language when standalone', () => {
+    const base = makeProps();
+    const props = makeProps({
+      presets: [],
+      rail: {
+        ...base.rail,
+        standalone: true,
+        presets: [],
+      },
+    });
+    renderIntoDocument(<CalculatorInfillWorkspace {...props} />);
+
+    expect(document.body.textContent).toContain('Add an infill to the existing pergola');
+    expect(document.body.textContent).not.toContain('Use a preset for the fastest setup');
+  });
+
   it('renders nothing while the workspace is closed', () => {
     renderIntoDocument(<CalculatorInfillWorkspace {...makeProps({ open: false })} />);
     expect(document.body.textContent).toBe('');

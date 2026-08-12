@@ -114,6 +114,8 @@ export function evaluateSimpleRangeEligibilityV2(inputs: SiteInputsV1, config?: 
   const pergolas = Array.isArray(inputs.pergolas) ? inputs.pergolas : [];
   const modules = pergolas.flatMap((pergola) => Array.isArray(pergola.modules) ? pergola.modules : []);
 
+  if ((inputs.standalone_infills?.infills.length ?? 0) > 0) reasons.push('INFILLS_INCLUDED');
+
   if (pergolas.length !== 1) reasons.push('MULTIPLE_PERGOLAS');
   if (modules.length !== 1) reasons.push('MULTIPLE_MODULES');
   if ((inputs.job_type ?? 'residential') !== 'residential') reasons.push('NON_RESIDENTIAL');

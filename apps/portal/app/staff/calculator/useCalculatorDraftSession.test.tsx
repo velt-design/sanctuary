@@ -56,17 +56,20 @@ function Probe({
   entityKey,
   sessionKey,
   awaitsExternalDraft,
+  allowEmptyDesign = false,
   persistence,
 }: {
   entityKey: string;
   sessionKey: string;
   awaitsExternalDraft: boolean;
+  allowEmptyDesign?: boolean;
   persistence: CalculatorDraftPersistence;
 }) {
   latest = useCalculatorDraftSession({
     draftEntityKey: entityKey,
     draftSessionKey: sessionKey,
     awaitsExternalDraft,
+    allowEmptyDesign,
     persistence,
   });
   return (
@@ -97,6 +100,24 @@ afterEach(() => {
 });
 
 describe('useCalculatorDraftSession', () => {
+  it('initialises a new add-on with no pergola while retaining normal base defaults', async () => {
+    const persistence = makePersistence();
+    const rendered = renderIntoDocument(
+      <Probe
+        entityKey="entity-add-on"
+        sessionKey="session-add-on"
+        awaitsExternalDraft={false}
+        allowEmptyDesign
+        persistence={persistence}
+      />,
+    );
+    await flushEffects();
+
+    expect(latest?.values.pergolas).toEqual([]);
+    expect(latest?.values.modules).toEqual([]);
+    rendered.unmount();
+  });
+
   it('does not persist before hydration completes', async () => {
     const restoration = deferred<CalculatorDraftRestoreResult | null>();
     const write = deferred<CalculatorDraftWriteResult>();

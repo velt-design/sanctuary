@@ -343,7 +343,8 @@ export async function saveCalculatorEstimate(
     }
 
     const activeResultModule = getSiteResultModule(input.result, input.activeModuleIndex) ?? input.resultModules[0] ?? null;
-    if (!activeResultModule?.derived) {
+    const isEmptyAddOn = input.newEstimateCommercialScopeKind === 'add_on' && input.values.modules.length === 0;
+    if (!activeResultModule?.derived && !isEmptyAddOn) {
       callbacks.fail('No derived result available for the active module.');
       return null;
     }
@@ -373,7 +374,7 @@ export async function saveCalculatorEstimate(
       basePayload: {
         status: 'draft',
         inputs: input.values as unknown as Record<string, unknown>,
-        derived: activeResultModule.derived as unknown as Record<string, unknown>,
+        derived: (activeResultModule?.derived ?? {}) as unknown as Record<string, unknown>,
         projectSnapshot: {
           ...projectForSave,
           updatedAt: projectForSave.updatedAt ?? projectForSave.createdAt,

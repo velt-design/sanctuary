@@ -94,6 +94,16 @@ describe('calculatorModuleNavigation', () => {
     expect(result.activeModuleIndex).toBe(3);
   });
 
+  it('adds the first optional pergola to an empty add-on', () => {
+    const values = { ...makeDefaultCalculatorInputs(), pergolas: [], modules: [] };
+    const result = addCalculatorPergola(values, 0);
+
+    expect(result.values.pergolas).toHaveLength(1);
+    expect(result.values.pergolas?.[0]?.id).toBe('pergola-1');
+    expect(result.values.modules[0]).toMatchObject({ pergolaId: 'pergola-1' });
+    expect(result.activeModuleIndex).toBe(0);
+  });
+
   it('renames a pergola without changing its stable id or module assignment', () => {
     const values = makeInputs();
     const result = renameCalculatorPergola(values, 'pergola-2', 'Pool cover');
@@ -174,6 +184,15 @@ describe('calculatorModuleNavigation', () => {
     const values = makeDefaultCalculatorInputs();
     const result = removeCalculatorModule(values, 0, 0);
     expect(result.values).toBe(values);
+    expect(result.activeModuleIndex).toBe(0);
+  });
+
+  it('allows an add-on to return to zero pergolas', () => {
+    const values = makeDefaultCalculatorInputs();
+    const result = removeCalculatorModule(values, 0, 0, { allowEmpty: true });
+
+    expect(result.values.pergolas).toEqual([]);
+    expect(result.values.modules).toEqual([]);
     expect(result.activeModuleIndex).toBe(0);
   });
 });

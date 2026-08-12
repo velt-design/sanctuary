@@ -45,7 +45,7 @@ export type CalculatorWorkspaceViewProps = {
   previewSplit: ReturnType<typeof useCalculatorPreviewSplit>;
   moduleNavigator: ComponentProps<typeof CalculatorModuleNavigator>;
   pricingSummary: CalculatorPricingSummaryProps;
-  jobTemplatePicker: ComponentProps<typeof CalculatorJobTemplatePicker>;
+  jobTemplatePicker: ComponentProps<typeof CalculatorJobTemplatePicker> | null;
   configurationForm: ComponentProps<typeof CalculatorConfigurationForm>;
   resultFreshness: CalculatorPricingSummaryProps['resultFreshness'];
   pricingPreview: CalculatorResultInspectorProps['pricingPreview'];
@@ -249,7 +249,7 @@ export default function CalculatorWorkspaceView({
                 data-calculator-configuration-main
                 onFocusCapture={handleConfigurationFocus}
               >
-                <CalculatorJobTemplatePicker {...jobTemplatePicker} />
+                {jobTemplatePicker ? <CalculatorJobTemplatePicker {...jobTemplatePicker} /> : null}
                 <CalculatorConfigurationForm {...configurationForm} isEmbedded={embedded} />
               </div>
             </div>

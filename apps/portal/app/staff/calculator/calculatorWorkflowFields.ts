@@ -105,6 +105,7 @@ export type CalculatorWorkflowFieldBuilderInput = {
   };
   infillsTileContent: ReactNode;
   infillsSummaryText: string;
+  showInfills?: boolean;
   values: CalculatorInputs;
   setJobField: CalculatorJobFieldSetter;
   derivedArea: number | undefined;
@@ -162,6 +163,7 @@ export function buildCalculatorWorkflowFields({
   blindsUi,
   infillsTileContent,
   infillsSummaryText,
+  showInfills = true,
   values,
   setJobField,
   derivedArea,
@@ -213,13 +215,13 @@ export function buildCalculatorWorkflowFields({
       content: blindsListContent,
       helperText: blindsUi.summaryText,
     },
-    {
+    ...(showInfills ? [{
       id: 'infillsEditor',
       label: 'Infills',
       type: 'custom',
       content: infillsTileContent,
       helperText: infillsSummaryText,
-    },
+    } satisfies FieldSchemaItem] : []),
     {
       id: 'travelExGst',
       label: 'Travel (ex‑GST)',

@@ -98,7 +98,7 @@ export function buildCalculatorModuleNavigatorModel({
   activeModuleIndex: number;
   errorsByModule: CalculatorModuleIssueMap[];
 }): CalculatorModuleNavigatorModel {
-  const pergolas = normalizePergolasForUi(values.pergolas);
+  const pergolas = normalizePergolasForUi(values.pergolas, { allowEmpty: values.modules.length === 0 });
   const fallbackPergolaId = pergolas[0]?.id ?? 'pergola-1';
   const knownPergolaIds = new Set(pergolas.map((pergola) => pergola.id));
   const groups = pergolas.map<CalculatorModuleNavigatorGroup>((pergola) => ({
@@ -142,7 +142,10 @@ export function buildCalculatorModuleNavigatorModel({
 }
 
 function withNormalizedPergolas(values: CalculatorInputs): CalculatorInputs {
-  return { ...values, pergolas: normalizePergolasForUi(values.pergolas) };
+  return {
+    ...values,
+    pergolas: normalizePergolasForUi(values.pergolas, { allowEmpty: values.modules.length === 0 }),
+  };
 }
 
 export function addCalculatorModule(
@@ -235,9 +238,17 @@ export function removeCalculatorModule(
   values: CalculatorInputs,
   activeModuleIndex: number,
   moduleIndex: number,
+  options: { allowEmpty?: boolean } = {},
 ): CalculatorModuleMutationResult {
-  if (values.modules.length <= 1 || !values.modules[moduleIndex]) {
+  if (!values.modules[moduleIndex] || (values.modules.length <= 1 && !options.allowEmpty)) {
     return { values, activeModuleIndex: safeActiveModuleIndex(values, activeModuleIndex) };
+  }
+
+  if (values.modules.length === 1) {
+    return {
+      values: { ...values, pergolas: [], modules: [] },
+      activeModuleIndex: 0,
+    };
   }
 
   const modules = values.modules.slice();
@@ -262,7 +273,7 @@ export function removeCalculatorModule(
 }
 
 export function calculatorPergolaOptions(values: CalculatorInputs): CalculatorPergola[] {
-  return normalizePergolasForUi(values.pergolas);
+  return normalizePergolasForUi(values.pergolas, { allowEmpty: values.modules.length === 0 });
 }
 
 export function renameCalculatorPergola(

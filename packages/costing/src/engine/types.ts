@@ -658,6 +658,7 @@ export type DerivedV1 = {
   acrylic_joiner_bottom_fixings_each?: number;
   acrylic_install_area_m2?: number;
   infill_instance_count?: number;
+  infill_shaped_opening_count?: number;
   infill_joiner_total_m?: number;
   infill_joiner_fixings_each?: number;
   infill_sheet_area_m2?: number;
@@ -887,8 +888,29 @@ export type PergolaInputsV1 = {
   modules: CostInputsV1[];
 };
 
+export type StandaloneInfillsInputV1 = {
+  infills: InfillInputV1[];
+  extrusion_colour: ExtrusionColour;
+  powdercoat_standard_colour?: string;
+  powdercoat_is_custom?: boolean;
+  powdercoat_custom_colour?: string;
+  access: AccessLevel;
+  height: HeightCategory;
+};
+
+export type StandaloneInfillsOutputV1 = {
+  item_count: number;
+  materials: MaterialsV1;
+  install: InstallV1;
+  overhead: OverheadV1;
+  totals: TotalsV1;
+  infill_takeoff?: InfillTakeoffV1;
+};
+
 export type SiteInputsV1 = {
   pergolas: PergolaInputsV1[];
+  /** Infills added to an existing pergola that is not part of this estimate. */
+  standalone_infills?: StandaloneInfillsInputV1;
   job_type?: JobType;
   pricing_classification?: import('../commercial/simpleRangePricing').PricingClassificationV2;
   approval_requirement?: import('../commercial/simpleRangePricing').ApprovalRequirementV2;
@@ -930,6 +952,7 @@ export type SiteOutputV1 = {
     approval: import('../commercial/simpleRangePricing').ApprovalCustomerAllowanceV2 | null;
   };
   infill_takeoff?: InfillTakeoffV1;
+  standalone_infills?: StandaloneInfillsOutputV1;
 };
 
 // ============================================================================

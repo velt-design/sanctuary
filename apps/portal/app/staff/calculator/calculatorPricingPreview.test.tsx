@@ -219,6 +219,48 @@ describe('calculator pricing preview', () => {
     );
   });
 
+  it('shows standalone infills as a priced add-on item without a pergola row', () => {
+    const calculatorInputs = inputs();
+    calculatorInputs.pergolas = [];
+    calculatorInputs.modules = [];
+    calculatorInputs.blinds = { items: [] };
+    calculatorInputs.quoteDiscountPct = '0';
+    calculatorInputs.standaloneInfills = {
+      extrusionColour: 'White',
+      items: [makeDefaultInfillItem({ id: 'existing-wall', label: 'Side wall', location: 'wall' })],
+    };
+    const siteResult = {
+      pergola_count: 0,
+      pergolas: [],
+      shared: { totals: { cost_ex_gst: 0 } },
+      pricing_policy: { customer_price_multiplier: 1.25, customer_price_uplift_pct: 0 },
+      standalone_infills: {
+        item_count: 1,
+        materials: { totals: { materials_ex_gst: 40 } },
+        install: { totals: { install_ex_gst: 30 } },
+        overhead: { total_ex_gst: 30 },
+        totals: { cost_ex_gst: 100 },
+      },
+    } as SiteOutputV1;
+
+    const preview = buildCalculatorPricingPreview({
+      result: siteResult,
+      inputs: calculatorInputs,
+      blindPricing: priceAllBlinds([]),
+    });
+
+    expect(preview.rows).toEqual([
+      expect.objectContaining({
+        id: 'standalone-infills',
+        kind: 'infill',
+        status: 'priced',
+        label: 'Existing pergola infills',
+        priceIncGstCents: 14_375,
+      }),
+    ]);
+    expect(preview.rows.some((row) => row.kind === 'pergola')).toBe(false);
+  });
+
   it('keeps historical results without attribution as included and unpriced', () => {
     const calculatorInputs = inputs();
     const siteResult = result();

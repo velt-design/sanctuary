@@ -18,6 +18,7 @@ import {
   makeDefaultModule,
   makeInfillId,
   normalizeInfillsStateForUi,
+  normalizeStandaloneInfillsStateForUi,
   type InfillPresetKey,
 } from './calculatorInputs';
 import {
@@ -50,6 +51,7 @@ type UseCalculatorInfillActionsOptions = {
   activePergolaId: string;
   infills: readonly InfillLineItem[];
   setValues: Dispatch<SetStateAction<CalculatorInputs>>;
+  standalone?: boolean;
   selectedInfill: InfillLineItem | null;
   selectedInfillEstimate: InfillUiState['estimate'] | null;
   selectedCanOfferRafterMatching: boolean;
@@ -83,6 +85,7 @@ export function useCalculatorInfillActions({
   activePergolaId,
   infills,
   setValues,
+  standalone = false,
   selectedInfill,
   selectedInfillEstimate,
   selectedCanOfferRafterMatching,
@@ -107,6 +110,11 @@ export function useCalculatorInfillActions({
 }: UseCalculatorInfillActionsOptions) {
   const setInfillItems = (updater: (items: InfillLineItem[]) => InfillLineItem[]) => {
     setValues((previous) => {
+      if (standalone) {
+        const current = normalizeStandaloneInfillsStateForUi(previous.standaloneInfills);
+        const nextItems = updater(current.items).map((item) => makeDefaultInfillItem(item));
+        return { ...previous, standaloneInfills: { ...current, items: nextItems } };
+      }
       const modules = previous.modules.slice();
       const currentModule = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
       const currentInfills = normalizeInfillsStateForUi(currentModule.infills);
@@ -123,27 +131,34 @@ export function useCalculatorInfillActions({
   };
 
   const setInfillLocation = (id: string, location: InfillLineItem['location']) => {
-    setValues((previous) => {
-      const modules = previous.modules.slice();
-      const currentModule = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
-      const currentInfills = normalizeInfillsStateForUi(currentModule.infills);
-      const index = currentInfills.items.findIndex((item) => item.id === id);
-      if (index < 0) return previous;
-
-      const items = currentInfills.items.slice();
+    setInfillItems((currentItems) => {
+      const index = currentItems.findIndex((item) => item.id === id);
+      if (index < 0) return currentItems;
+      const items = currentItems.slice();
       const existing = items[index];
-      const preset = buildInfillPreset(currentModule, location);
+      const preset = buildInfillPreset(activeModule, location);
+      const standalonePatch = standalone && preset.widthMode === 'match_roof_rafters'
+        ? {
+            widthMode: 'target_width' as const,
+            support: {
+              ...(preset.support ?? existing.support),
+              internalSupportMode: 'none' as const,
+              internalSupportPositionsM: [],
+            },
+          }
+        : null;
       items[index] = makeDefaultInfillItem({
         ...existing,
         ...preset,
+        ...standalonePatch,
         id: existing.id,
         location,
-        support: { ...existing.support, ...(preset.support ?? {}) },
-        shape: (preset.shape as InfillLineItem['shape'] | undefined) ?? existing.shape,
+        support: { ...existing.support, ...(preset.support ?? {}), ...(standalonePatch?.support ?? {}) },
+        shape: standalone
+          ? existing.shape
+          : (preset.shape as InfillLineItem['shape'] | undefined) ?? existing.shape,
       });
-
-      modules[activeModuleIndex] = { ...currentModule, infills: { items } };
-      return { ...previous, modules };
+      return items;
     });
     clearInfillDraft(id);
     setInfillStage('opening');
@@ -531,7 +546,7 @@ export function useCalculatorInfillActions({
   });
 
   return {
-    presets: INFILL_PRESETS.filter((preset) => preset.key !== 'custom'),
+    presets: standalone ? [] : INFILL_PRESETS.filter((preset) => preset.key !== 'custom'),
     hasClipboard,
     addInfillPreset,
     addCustomInfillFromOverview,

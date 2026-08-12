@@ -229,6 +229,13 @@ export type CalculatorInfillsState = {
   items: InfillLineItem[];
 };
 
+export type CalculatorStandaloneInfillsState = CalculatorInfillsState & {
+  extrusionColour: ExtrusionColour;
+  powdercoatStandardColour?: string;
+  powdercoatIsCustom?: boolean;
+  powdercoatCustomColour?: string;
+};
+
 export type CalculatorLightingInput = {
   lightCount: string;
   dimmer: boolean;
@@ -393,6 +400,8 @@ export type CalculatorInputs = {
   pergolas?: CalculatorPergola[];
   modules: CalculatorModuleInputs[];
   blinds?: CalculatorBlindsState;
+  /** Add-on infills fitted to a pergola that is outside this estimate. */
+  standaloneInfills?: CalculatorStandaloneInfillsState;
 };
 
 export type LegacyCalculatorInputsV1 = {

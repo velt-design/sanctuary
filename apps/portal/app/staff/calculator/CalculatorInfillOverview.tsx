@@ -1,4 +1,4 @@
-import type { KeyboardEvent, RefObject } from 'react';
+import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { PortalMenu } from '@/components/ui/PortalFloatingPanel';
 import type { InfillLineItem } from '@/lib/types/calculator';
 import styles from './CalculatorGrid.module.css';
@@ -93,6 +93,8 @@ export function CalculatorInfillTile({
   onAddCustom,
   onAddPreset,
   onOpenInfills,
+  beforeSummary,
+  standalone = false,
 }: {
   hasInfills: boolean;
   summaryLine1: string;
@@ -103,15 +105,18 @@ export function CalculatorInfillTile({
   onAddCustom: (openModal: boolean) => void;
   onAddPreset: (preset: InfillPresetKey, openModal: boolean) => void;
   onOpenInfills: () => void;
+  beforeSummary?: ReactNode;
+  standalone?: boolean;
 }) {
   return (
     <div className={styles.infillTileContent}>
       <div className={styles.infillTileBody}>
+        {beforeSummary}
         <div className={styles.infillTileStatus}>{hasInfills ? summaryLine1 : 'No infills added yet'}</div>
         <p className={styles.infillTileDescription}>
           {hasInfills
-            ? 'Review configured infills, add new ones, or adjust the panel layout for this module.'
-            : 'Add infills to close exposed sides or gable ends for more shelter and weather protection.'}
+            ? `Review configured infills, add new ones, or adjust the panel layout for ${standalone ? 'the existing pergola' : 'this module'}.`
+            : `Add infills to ${standalone ? 'the existing pergola' : 'close exposed sides or gable ends'} for more shelter and weather protection.`}
         </p>
         {summaryChips.length ? (
           <div className={styles.infillTilePillRow}>
@@ -146,14 +151,14 @@ export function CalculatorInfillTile({
               Edit infills
             </button>
             <InfillAddButton label="Add infill" openModal onAddCustom={onAddCustom} />
-            <InfillPresetMenu label="Presets" presets={presets} onAddPreset={onAddPreset} />
+            {presets.length ? <InfillPresetMenu label="Presets" presets={presets} onAddPreset={onAddPreset} /> : null}
           </>
         ) : (
           <>
             <button type="button" className={styles.infillPrimaryButton} onClick={() => onAddCustom(true)}>
               Add infill
             </button>
-            <InfillPresetMenu label="Use preset" openModal presets={presets} onAddPreset={onAddPreset} />
+            {presets.length ? <InfillPresetMenu label="Use preset" openModal presets={presets} onAddPreset={onAddPreset} /> : null}
             <button type="button" className={styles.infillSecondaryButton} onClick={onOpenInfills}>
               Edit infills
             </button>
@@ -181,6 +186,7 @@ export function CalculatorInfillRail({
   onFocusPrimaryField,
   onMoveInfill,
   onRowRef,
+  standalone = false,
 }: {
   items: InfillLineItem[];
   selectedInfillId: string | null;
@@ -198,13 +204,14 @@ export function CalculatorInfillRail({
   onFocusPrimaryField: (id: string) => void;
   onMoveInfill: (id: string, direction: -1 | 1) => void;
   onRowRef: (id: string, node: HTMLButtonElement | null) => void;
+  standalone?: boolean;
 }) {
   return (
     <aside className={styles.infillRail} aria-label="Infill list">
       <div className={styles.infillRailHeader}>
         <div className={styles.infillRailHeaderActions}>
           <InfillAddButton label="Add infill" compact onAddCustom={onAddCustom} />
-          <InfillPresetMenu label="Presets" compact presets={presets} onAddPreset={onAddPreset} />
+          {presets.length ? <InfillPresetMenu label="Presets" compact presets={presets} onAddPreset={onAddPreset} /> : null}
         </div>
       </div>
 
@@ -224,17 +231,23 @@ export function CalculatorInfillRail({
         ) : (
           <div className={styles.infillListEmpty}>
             <strong className={styles.infillListEmptyTitle}>No infills added yet</strong>
-            <p>Add infills to close exposed sides or gable ends for more shelter and weather protection.</p>
-            <p>Use the buttons above to add your first infill or start from a preset.</p>
+            <p>{standalone
+              ? 'Add infills to the existing pergola for more shelter and weather protection.'
+              : 'Add infills to close exposed sides or gable ends for more shelter and weather protection.'}</p>
+            <p>{standalone
+              ? 'Use the button above to enter the first finished opening.'
+              : 'Use the buttons above to add your first infill or start from a preset.'}</p>
           </div>
         )}
       </div>
 
       <div className={styles.infillRailFooter}>
-        <strong>{hasInfills ? 'Module infill summary' : 'Ready to add infills'}</strong>
+        <strong>{hasInfills ? `${standalone ? 'Existing pergola' : 'Module'} infill summary` : 'Ready to add infills'}</strong>
         <p>{summaryLine1}</p>
         <p>{summaryLine2}</p>
-        {summaryLine3 ? <p>{summaryLine3}</p> : <p>Add infills to improve shelter and weather protection on exposed sides.</p>}
+        {summaryLine3 ? <p>{summaryLine3}</p> : <p>{standalone
+          ? 'Add the finished openings required on the existing pergola.'
+          : 'Add infills to improve shelter and weather protection on exposed sides.'}</p>}
       </div>
     </aside>
   );

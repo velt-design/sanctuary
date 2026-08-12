@@ -382,6 +382,28 @@ export class QuoteHandoffBlockedError extends Error {
   }
 }
 
+function buildStandaloneInfillsDescription(inputs: CalculatorInputs | null): string {
+  const state = inputs?.standaloneInfills;
+  const finish = state?.extrusionColour === 'Mill'
+    ? state.powdercoatIsCustom
+      ? state.powdercoatCustomColour?.trim() || 'Custom powdercoat'
+      : state.powdercoatStandardColour?.trim() || 'Powdercoat'
+    : state?.extrusionColour ?? 'Black';
+  const items = state?.items ?? [];
+  return [
+    'Existing pergola infills',
+    `- Finish: ${finish}`,
+    ...items.map((item, index) => {
+      const label = item.label?.trim() || `Infill ${index + 1}`;
+      const width = item.shape.widthM?.trim() || '—';
+      const height = item.shape.type === 'rect'
+        ? item.shape.heightM?.trim() || '—'
+        : `${item.shape.heightLowM?.trim() || '—'}–${item.shape.heightHighM?.trim() || '—'}`;
+      return `- ${label}: ${width}m × ${height}m${Number(item.qty) > 1 ? `; qty ${item.qty}` : ''}`;
+    }),
+  ].join('\n');
+}
+
 export function isQuoteHandoffBlockedError(error: unknown): error is QuoteHandoffBlockedError {
   return error instanceof QuoteHandoffBlockedError
     || Boolean(error && typeof error === 'object' && (error as { code?: unknown }).code === 'QUOTE_HANDOFF_BLOCKED');
@@ -486,24 +508,71 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
     }
   }
 
-  if (lineItems.length === 0) {
-    const legacyCoreCostEx = toNumber(outputs?.totals?.cost_ex_gst);
-    const safeLegacyCoreCostEx = Number.isFinite(legacyCoreCostEx) && legacyCoreCostEx > 0 ? legacyCoreCostEx : 0;
+  const standaloneInfills = outputs?.standalone_infills;
+  const standaloneInfillsCostEx = toNumber(standaloneInfills?.totals?.cost_ex_gst);
+  if (standaloneInfills && Number.isFinite(standaloneInfillsCostEx) && standaloneInfillsCostEx >= 0) {
+    const qty = 1;
     const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(
-      safeLegacyCoreCostEx,
+      standaloneInfillsCostEx,
       quoteDiscountPct,
       customerPriceUpliftPct,
       customerPriceMultiplier,
     );
-    const qty = 1;
+    const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
     lineItems.push({
-      description: withQuoteDiscountDescription(buildLegacyCoreDescription(modules), quoteDiscountPct),
+      description: withQuoteDiscountDescription(buildStandaloneInfillsDescription(inputs), quoteDiscountPct),
       qty,
       unitPriceIncGstCents,
-      lineTotalIncGstCents: lineTotalCents(qty, unitPriceIncGstCents),
+      lineTotalIncGstCents,
       sortOrder: lineItems.length,
     });
-    coreTotalIncCents += lineTotalCents(qty, unitPriceIncGstCents);
+    coreTotalIncCents += lineTotalIncGstCents;
+
+    const sharedCostEx = toNumber(snapshotShared?.totals?.cost_ex_gst);
+    if (snapshotPergolas.length === 0 && Number.isFinite(sharedCostEx) && sharedCostEx > 0) {
+      const sharedUnitPrice = lineUnitPriceIncFromCostEx(
+        sharedCostEx,
+        quoteDiscountPct,
+        customerPriceUpliftPct,
+        customerPriceMultiplier,
+      );
+      const sharedTotal = lineTotalCents(1, sharedUnitPrice);
+      lineItems.push({
+        description: withQuoteDiscountDescription('Site costs\n- Travel and extras', quoteDiscountPct),
+        qty: 1,
+        unitPriceIncGstCents: sharedUnitPrice,
+        lineTotalIncGstCents: sharedTotal,
+        sortOrder: lineItems.length,
+      });
+      coreTotalIncCents += sharedTotal;
+    }
+  }
+
+  if (lineItems.length === 0) {
+    const legacyCoreCostEx = toNumber(outputs?.totals?.cost_ex_gst);
+    const safeLegacyCoreCostEx = Number.isFinite(legacyCoreCostEx) && legacyCoreCostEx > 0 ? legacyCoreCostEx : 0;
+    if (modules.length > 0 || safeLegacyCoreCostEx > 0) {
+      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(
+        safeLegacyCoreCostEx,
+        quoteDiscountPct,
+        customerPriceUpliftPct,
+        customerPriceMultiplier,
+      );
+      const qty = 1;
+      lineItems.push({
+        description: withQuoteDiscountDescription(
+          modules.length > 0
+            ? buildLegacyCoreDescription(modules)
+            : ['Add-on works', '- Standalone travel and extras allowance'].join('\n'),
+          quoteDiscountPct,
+        ),
+        qty,
+        unitPriceIncGstCents,
+        lineTotalIncGstCents: lineTotalCents(qty, unitPriceIncGstCents),
+        sortOrder: lineItems.length,
+      });
+      coreTotalIncCents += lineTotalCents(qty, unitPriceIncGstCents);
+    }
   }
 
   const approval = outputs?.customer_add_ons?.approval;

@@ -62,6 +62,65 @@ function makeEstimate(overrides: Record<string, unknown> = {}) {
 }
 
 describe('buildQuoteLineItemsFromEstimate', () => {
+  it('creates a blind-only add-on quote without a fake pergola line', () => {
+    const estimate = makeEstimate({
+      inputs: {
+        ...makeEstimate().inputs,
+        pergolas: [],
+        modules: [],
+        blinds: {
+          items: [{
+            id: 'blind-only',
+            label: 'Existing pergola blind',
+            system: 'ZIPTRAK',
+            widthMm: '2000',
+            coverLengthMm: '2400',
+            fabric: 'MESH',
+            motorised: 'NONE',
+            rollCover: 'NONE',
+          }],
+        },
+      },
+    });
+
+    const result = buildQuoteLineItemsFromEstimate(estimate);
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.description).toContain('Existing pergola blind');
+    expect(result.items[0]?.description).not.toContain('Pergola works');
+    expect(result.coreTotalIncCents).toBe(0);
+  });
+
+  it('creates an existing-pergola infill line without a fake pergola line', () => {
+    const estimate = makeEstimate({
+      inputs: {
+        ...makeEstimate().inputs,
+        pergolas: [],
+        modules: [],
+        standaloneInfills: {
+          extrusionColour: 'White',
+          items: [{
+            id: 'wall', label: 'Side wall', qty: '1', location: 'wall',
+            shape: { type: 'rect', widthM: '2.4', heightM: '1.2' },
+          }],
+        },
+      },
+      outputs: {
+        ...makeEstimate().outputs,
+        standalone_infills: { totals: { cost_ex_gst: 100 } },
+        shared: { totals: { cost_ex_gst: 0 } },
+      },
+    });
+
+    const result = buildQuoteLineItemsFromEstimate(estimate);
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.description).toContain('Existing pergola infills');
+    expect(result.items[0]?.description).toContain('Side wall: 2.4m × 1.2m');
+    expect(result.items[0]?.description).not.toContain('Pergola works');
+    expect(result.coreTotalIncCents).toBe(14_375);
+  });
+
   it('adds a frozen engineering allowance without markup or quote discount', () => {
     const estimate = makeEstimate({
       inputs: {

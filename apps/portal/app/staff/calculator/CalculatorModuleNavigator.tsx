@@ -15,6 +15,7 @@ type CalculatorModuleNavigatorProps = {
   model: CalculatorModuleNavigatorModel;
   pergolas: CalculatorPergola[];
   moduleCount: number;
+  allowEmptyModules?: boolean;
   onSelectModule: (moduleIndex: number) => void;
   onAddModule: (pergolaId: string) => void;
   onAddPergola: () => void;
@@ -28,6 +29,7 @@ export default function CalculatorModuleNavigator({
   model,
   pergolas,
   moduleCount,
+  allowEmptyModules = false,
   onSelectModule,
   onAddModule,
   onAddPergola,
@@ -111,6 +113,11 @@ export default function CalculatorModuleNavigator({
         </div>
 
         <div className={styles.groups}>
+          {model.groups.length === 0 ? (
+            <p className={styles.emptyGroup}>
+              No pergolas in this add-on. Add one only if this scope includes another pergola.
+            </p>
+          ) : null}
           {model.groups.map((group) => (
             <section key={group.pergolaId} className={styles.group} aria-labelledby={`${surface}-${group.pergolaId}-heading`}>
               <div className={styles.groupHeader}>
@@ -182,7 +189,7 @@ export default function CalculatorModuleNavigator({
                               type="button"
                               className={styles.removeButton}
                               onClick={() => removeModule(item.moduleIndex, closeAfter)}
-                              disabled={moduleCount <= 1}
+                              disabled={moduleCount <= 1 && !allowEmptyModules}
                             >
                               Remove
                             </button>

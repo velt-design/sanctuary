@@ -406,6 +406,13 @@ export function buildCommercialDesignInputFromCalculatorInputs(args: BuildCommer
       severity: 'info',
     });
   }
+  if (Array.isArray(args.inputs.standaloneInfills?.items) && args.inputs.standaloneInfills.items.length > 0) {
+    diagnostics.push({
+      code: 'calculator_standalone_infills_estimate_scoped',
+      message: 'Existing-pergola infills are estimate-scoped add-ons and are not assigned to a calculator pergola.',
+      severity: 'info',
+    });
+  }
 
   return {
     schemaVersion: COMMERCIAL_DESIGN_INPUT_SCHEMA_VERSION_V1,

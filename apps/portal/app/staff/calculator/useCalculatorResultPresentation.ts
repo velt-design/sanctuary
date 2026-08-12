@@ -42,6 +42,7 @@ type UseCalculatorResultPresentationOptions = {
   activeModule: CalculatorModuleInputs;
   activeModuleIndex: number;
   activeModuleLabel: string;
+  hasActiveModule?: boolean;
   moduleRoutes: CalculatorModuleRoute[];
   moduleViewsTab: ModuleViewsTab;
   engineError: string | null;
@@ -84,6 +85,7 @@ export function useCalculatorResultPresentation({
   activeModule,
   activeModuleIndex,
   activeModuleLabel,
+  hasActiveModule = true,
   moduleRoutes,
   moduleViewsTab,
   engineError,
@@ -115,12 +117,12 @@ export function useCalculatorResultPresentation({
   }, [activeModuleIndex, moduleRoutes, result, resultModules]);
 
   const modulePlanModel = useMemo(
-    () => buildModulePlanModel(activeModule, moduleResult),
-    [activeModule, moduleResult],
+    () => hasActiveModule ? buildModulePlanModel(activeModule, moduleResult) : null,
+    [activeModule, hasActiveModule, moduleResult],
   );
   const moduleSectionModel = useMemo(
-    () => buildModuleSectionModel(activeModule, moduleResult),
-    [activeModule, moduleResult],
+    () => hasActiveModule ? buildModuleSectionModel(activeModule, moduleResult) : null,
+    [activeModule, hasActiveModule, moduleResult],
   );
   const rafterCutLengthExplanation =
     moduleResult?.derived.rafter_cut_length_explanation ?? null;
@@ -143,7 +145,9 @@ export function useCalculatorResultPresentation({
     moduleViewsStatus === 'error'
       ? engineError ?? undefined
       : moduleViewsStatus === 'empty'
-        ? 'Enter valid module dimensions to hydrate the view.'
+        ? hasActiveModule
+          ? 'Enter valid module dimensions to hydrate the view.'
+          : 'No pergola in this add-on. Add one only when it is part of this scope.'
         : moduleViewsStatus === 'ready'
           ? activeViewSource === 'derived'
             ? `Using derived geometry. Active style: ${activeModule.pergolaStyle}${activeModule.boxPerimeterEnabled ? ' (box perimeter)' : ''}`
@@ -289,16 +293,26 @@ export function useCalculatorResultPresentation({
 
   const saveDialogSummary: SaveDialogSummary = {
     modules: String(values.modules.length),
-    activeModule: `${activeModuleLabel}: ${activeModule.pergolaStyle}${activeModule.boxPerimeterEnabled ? ' + box perimeter' : ''}`,
-    roofSize: activeModule.pergolaStyle === 'hip_corner'
-      ? `A: ${activeModule.lengthM}×${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}×${activeModule.hipCornerProjectionBM}m`
-      : `${activeModule.lengthM}m × ${activeModule.projectionM}m`,
-    roofMaterial: activeModule.roofMaterial === 'none' ? 'No roof covering' : activeModule.roofMaterial,
-    roofPitch: typeof derivedPitchUsed === 'number'
-      ? `${derivedPitchUsed.toFixed(0)}°`
-      : activeModule.roofPitchDeg.trim()
-        ? `${activeModule.roofPitchDeg}°`
-        : '—',
+    activeModule: hasActiveModule
+      ? `${activeModuleLabel}: ${activeModule.pergolaStyle}${activeModule.boxPerimeterEnabled ? ' + box perimeter' : ''}`
+      : 'No pergola included',
+    roofSize: !hasActiveModule
+      ? '—'
+      : activeModule.pergolaStyle === 'hip_corner'
+        ? `A: ${activeModule.lengthM}×${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}×${activeModule.hipCornerProjectionBM}m`
+        : `${activeModule.lengthM}m × ${activeModule.projectionM}m`,
+    roofMaterial: !hasActiveModule
+      ? 'No pergola included'
+      : activeModule.roofMaterial === 'none'
+        ? 'No roof covering'
+        : activeModule.roofMaterial,
+    roofPitch: !hasActiveModule
+      ? '—'
+      : typeof derivedPitchUsed === 'number'
+        ? `${derivedPitchUsed.toFixed(0)}°`
+        : activeModule.roofPitchDeg.trim()
+          ? `${activeModule.roofPitchDeg}°`
+          : '—',
     materialsEx: formatMaybeMoney(materialsEx),
     installEx: formatMaybeMoney(installEx),
     overheadEx: formatMaybeMoney(overheadEx),

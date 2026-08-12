@@ -71,7 +71,7 @@ export default function CalculatorItemPricingBreakdown({
           <p>
             Customer prices include GST
             {preview.discountPct > 0 ? `; ${preview.discountPct}% discount applies to pergola and site prices only` : ''}.
-            {' '}Indented module allocations reconcile to their pergola total. Infill amounts are included within their module and are not added again.
+            {' '}Indented module allocations reconcile to their pergola total. Module infills are included within their pergola; existing-pergola add-ons are priced separately.
           </p>
         </div>
       </header>
@@ -89,7 +89,7 @@ export default function CalculatorItemPricingBreakdown({
               <tr
                 key={row.id}
                 className={
-                  row.kind === 'infill'
+                  row.kind === 'infill' && row.status === 'included'
                     ? styles.nestedIncludedRow
                     : row.kind === 'module'
                       ? styles.includedRow

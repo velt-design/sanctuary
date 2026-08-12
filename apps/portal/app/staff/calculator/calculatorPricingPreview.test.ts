@@ -1,10 +1,68 @@
 import { describe, expect, it } from 'vitest';
 import { calculateCustomerPriceFromCostEx, calculateSiteCostV1, priceAllBlinds } from '@sp/costing';
-import { makeDefaultCalculatorInputs } from './calculatorInputs';
+import { makeDefaultCalculatorInputs, makeEmptyAddOnCalculatorInputs } from './calculatorInputs';
 import { buildSiteInputsFromCalculatorInputs } from '@/lib/estimates/costingPayload';
 import { buildCalculatorPricingPreview } from './calculatorPricingPreview';
 
 describe('Version 2 calculator pricing preview', () => {
+  it('shows customer pricing for a blind-only add-on with no pergola', () => {
+    const inputs = {
+      ...makeEmptyAddOnCalculatorInputs(),
+      blinds: {
+        items: [{
+          id: 'blind-only',
+          label: 'Existing pergola blind',
+          system: 'ZIPTRAK' as const,
+          widthMm: '2000',
+          coverLengthMm: '2400',
+          fabric: 'MESH' as const,
+          motorised: 'NONE' as const,
+          rollCover: 'NONE' as const,
+        }],
+      },
+    };
+    const blindPricing = priceAllBlinds([{
+      id: 'blind-only',
+      label: 'Existing pergola blind',
+      system: 'ZIPTRAK',
+      widthMm: 2000,
+      coverLengthMm: 2400,
+      fabric: 'MESH',
+      motorised: false,
+      rollCover: 'NONE',
+    }]);
+    const result = calculateSiteCostV1(buildSiteInputsFromCalculatorInputs(inputs));
+    const preview = buildCalculatorPricingPreview({ result, inputs, blindPricing });
+
+    expect(result.pergolas).toEqual([]);
+    expect(preview.rows.map((row) => row.kind)).toEqual(['blind']);
+    expect(preview.totalIncGstCents).toBeGreaterThan(0);
+    expect(preview.hasCorePricing).toBe(true);
+  });
+
+  it('shows site costs for an allowance-only add-on with no pergola', () => {
+    const inputs = {
+      ...makeEmptyAddOnCalculatorInputs(),
+      travelExGst: '100',
+    };
+    const result = calculateSiteCostV1(buildSiteInputsFromCalculatorInputs(inputs));
+    const preview = buildCalculatorPricingPreview({
+      result,
+      inputs,
+      blindPricing: priceAllBlinds([]),
+    });
+
+    expect(preview.rows).toEqual([
+      expect.objectContaining({
+        id: 'add-on-site-costs',
+        kind: 'shared',
+        status: 'priced',
+        label: 'Site costs',
+      }),
+    ]);
+    expect(preview.totalIncGstCents).toBeGreaterThan(0);
+  });
+
   it('adds engineering at its direct sell price without markup or discount', () => {
     const inputs = {
       ...makeDefaultCalculatorInputs(),

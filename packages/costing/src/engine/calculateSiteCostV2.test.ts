@@ -213,7 +213,7 @@ describe('calculateSiteCostV2', () => {
     expect(v2Out.totals.cost_ex_gst).toBeCloseTo(v1Out.totals.cost_ex_gst, 2);
   });
 
-  it('throws when the V2 input has no pergolas (matches V1 behaviour)', () => {
+  it('keeps the scene-derived V2 contract pergola-backed', () => {
     const v2Input: SiteInputsV2 = {
       schema_version: 'v2',
       pergolas: [],

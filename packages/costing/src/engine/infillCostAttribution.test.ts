@@ -141,8 +141,13 @@ describe('pergola infill cost attribution', () => {
       .filter((action) => action.id.startsWith('infill.'));
 
     expect(loadCostingConfigV1().installActions.basis.crew_hour_rate_ex_gst).toBe(75);
-    expect(actions.reduce((sum, action) => sum + action.minutes, 0)).toBeCloseTo(270.48, 2);
-    expect(actions.reduce((sum, action) => sum + action.cost_ex_gst, 0)).toBe(338.1);
+    expect(actions.reduce((sum, action) => sum + action.minutes, 0)).toBeCloseTo(342.48, 2);
+    expect(actions.reduce((sum, action) => sum + action.cost_ex_gst, 0)).toBe(428.1);
+    expect(actions.find((action) => action.id === 'infill.job_setup_once')).toMatchObject({
+      qty: 1,
+      minutes: 72,
+      cost_ex_gst: 90,
+    });
     expect(actions.find((action) => action.id === 'infill.install_sheet_panels_m2')?.label)
       .toContain('Cut, prepare and install');
     expect(actions.find((action) => action.id === 'infill.install_extra_supports_each')).toMatchObject({

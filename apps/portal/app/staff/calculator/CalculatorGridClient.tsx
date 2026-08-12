@@ -34,6 +34,7 @@ import {
   getPitchForModule,
   makeDefaultModule,
   normalizeInfillsStateForUi,
+  normalizeStandaloneInfillsStateForUi,
   toNumber,
 } from './calculatorInputs';
 import { buildCalculatorModuleErrors } from './calculatorValidation';
@@ -65,6 +66,7 @@ import CalculatorBlindsEditor from './CalculatorBlindsEditor';
 import CalculatorLightingEditor from './CalculatorLightingEditor';
 import CalculatorFlashingsEditor from './CalculatorFlashingsEditor';
 import CalculatorAdditionalAluminiumEditor from './CalculatorAdditionalAluminiumEditor';
+import CalculatorStandaloneInfillFinishEditor from './CalculatorStandaloneInfillFinishEditor';
 import {
   buildCalculatorQuoteStatusUi,
   buildCalculatorUiWarnings,
@@ -143,6 +145,7 @@ export default function CalculatorGridClient({
     newEstimateCommercialScopeKind,
     projectId,
   } = workspaceRoute;
+  const allowEmptyDesign = newEstimateCommercialScopeKind === 'add_on';
   const projectEstimatesQuery = useQuery({
     ...estimateMetasByProjectQueryOptions(hostKey, projectId),
     enabled: Boolean(projectId),
@@ -252,8 +255,10 @@ export default function CalculatorGridClient({
   }, [activeModuleIndex, commitModuleMutation, values]);
 
   const handleRemoveModule = useCallback((moduleIndex: number) => {
-    commitModuleMutation(removeCalculatorModule(values, activeModuleIndex, moduleIndex));
-  }, [activeModuleIndex, commitModuleMutation, values]);
+    commitModuleMutation(removeCalculatorModule(values, activeModuleIndex, moduleIndex, {
+      allowEmpty: allowEmptyDesign,
+    }));
+  }, [activeModuleIndex, allowEmptyDesign, commitModuleMutation, values]);
 
   const errors = errorsByModule[activeModuleIndex] ?? {};
   const hasModuleErrors = errorsByModule.some((map) => Object.values(map).some(Boolean));
@@ -294,9 +299,14 @@ export default function CalculatorGridClient({
     duplicate: duplicateBlind,
     remove: removeBlind,
   } = useCalculatorBlindsController({ values, setValues });
-  const infillsState = normalizeInfillsStateForUi(activeModule.infills);
-
-  const readyToCalculate = values.modules.length > 0 && !hasModuleErrors;
+  const hasActiveModule = values.modules.length > 0;
+  const standaloneInfillsState = normalizeStandaloneInfillsStateForUi(values.standaloneInfills);
+  const useStandaloneInfills = allowEmptyDesign
+    && (!hasActiveModule || standaloneInfillsState.items.length > 0);
+  const infillsState = useStandaloneInfills
+    ? standaloneInfillsState
+    : normalizeInfillsStateForUi(activeModule.infills);
+  const readyToCalculate = (hasActiveModule || allowEmptyDesign) && !hasModuleErrors;
 
   const requestPayload = useMemo<SiteInputsV1>(() => buildSiteInputsFromCalculatorInputs(values), [values]);
 
@@ -425,6 +435,7 @@ export default function CalculatorGridClient({
     activeModule,
     activeModuleIndex,
     activeModuleLabel,
+    hasActiveModule,
     moduleRoutes,
     moduleViewsTab,
     engineError,
@@ -501,7 +512,7 @@ export default function CalculatorGridClient({
     canViewInternalCosts,
     infillsOpen,
     detailsOpen: infillCostDetailsOpen,
-    activeModulePayload,
+    activeModulePayload: useStandaloneInfills ? null : activeModulePayload,
     readyToCalculate,
     isCalculating,
     engineError,
@@ -664,7 +675,7 @@ export default function CalculatorGridClient({
   const selectedCriticalWarnings = selectedComputedWarnings.filter((warning) => warning.severity === 'error');
   const selectedOpeningComplete = selectedInfillUi ? isInfillOpeningComplete(selectedInfillUi) : false;
   const selectedResultStatus = selectedInfillUi ? infillResultStatus(selectedInfillUi) : null;
-  const selectedCanOfferRafterMatching = selectedInfill && selectedInfillEstimate
+  const selectedCanOfferRafterMatching = !useStandaloneInfills && selectedInfill && selectedInfillEstimate
     ? canOfferRafterMatching(selectedInfill.location, selectedInfillEstimate.widthM, toNumber(activeModule.lengthM))
     : false;
   const selectedInfillPreview = selectedInfill && selectedInfillEstimate ? (
@@ -723,6 +734,7 @@ export default function CalculatorGridClient({
     activePergolaId,
     infills: infillsState.items,
     setValues,
+    standalone: useStandaloneInfills,
     selectedInfill,
     selectedInfillEstimate,
     selectedCanOfferRafterMatching,
@@ -757,6 +769,21 @@ export default function CalculatorGridClient({
       onAddCustom={addCustomInfillFromOverview}
       onAddPreset={addInfillPresetFromOverview}
       onOpenInfills={openInfills}
+      standalone={useStandaloneInfills}
+      beforeSummary={useStandaloneInfills ? (
+        <CalculatorStandaloneInfillFinishEditor
+          state={standaloneInfillsState}
+          onChange={(patch) => {
+            setValues((current) => ({
+              ...current,
+              standaloneInfills: {
+                ...normalizeStandaloneInfillsStateForUi(current.standaloneInfills),
+                ...patch,
+              },
+            }));
+          }}
+        />
+      ) : undefined}
     />
   );
 
@@ -791,7 +818,7 @@ export default function CalculatorGridClient({
       setJobField,
     }),
 
-    ...buildCalculatorStructureFields({
+    ...(hasActiveModule ? buildCalculatorStructureFields({
       activeModule,
       activeModuleIndex,
       activePergolaId,
@@ -802,7 +829,7 @@ export default function CalculatorGridClient({
       setValues,
       setModuleField,
       setModuleOverride,
-    }),
+    }) : []),
     ...buildCalculatorSiteFields({
       activeModule,
       values,
@@ -814,7 +841,13 @@ export default function CalculatorGridClient({
       hasOurGutterUi,
       setModuleField,
       setJobField,
-    }),
+    }).filter((field) => hasActiveModule || [
+      'pricingClassification',
+      'approvalRequirement',
+      'access',
+      'height',
+      'jobType',
+    ].includes(field.id)),
 
     ...buildCalculatorWorkflowFields({
       lightingEditorContent,
@@ -823,6 +856,7 @@ export default function CalculatorGridClient({
       blindsUi,
       infillsTileContent,
       infillsSummaryText,
+      showInfills: hasActiveModule || allowEmptyDesign,
       values,
       setJobField,
       derivedArea,
@@ -906,6 +940,7 @@ export default function CalculatorGridClient({
       onFocusPrimaryField: focusInfillPrimaryField,
       onMoveInfill: moveInfill,
       onRowRef: setInfillRowRef,
+      standalone: useStandaloneInfills,
     },
     openingStage: selectedInfill && selectedInfillEstimate && selectedInfillValidation ? {
       item: selectedInfill,
@@ -996,6 +1031,7 @@ export default function CalculatorGridClient({
       model: moduleNavigatorModel,
       pergolas,
       moduleCount: values.modules.length,
+      allowEmptyModules: allowEmptyDesign,
       onSelectModule: setActiveModuleIndex,
       onAddModule: handleAddModule,
       onAddPergola: handleAddPergola,
@@ -1005,7 +1041,7 @@ export default function CalculatorGridClient({
       onRemoveModule: handleRemoveModule,
     },
     pricingSummary: pricingSummaryProps,
-    jobTemplatePicker: { onApply: handleApplyJobTemplate },
+    jobTemplatePicker: hasActiveModule ? { onApply: handleApplyJobTemplate } : null,
     configurationForm: { fields: schema },
     resultFreshness,
     pricingPreview,

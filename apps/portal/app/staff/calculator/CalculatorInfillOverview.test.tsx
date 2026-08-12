@@ -93,6 +93,27 @@ describe('CalculatorInfillOverview', () => {
     expect(markup).toContain('Presets');
   });
 
+  it('uses existing-pergola language for standalone add-on infills', () => {
+    const markup = renderToStaticMarkup(
+      <CalculatorInfillTile
+        standalone
+        beforeSummary={<span>Existing pergola finish</span>}
+        hasInfills={false}
+        summaryLine1="0 infills added"
+        summaryChips={[]}
+        systemSummary="Not configured"
+        totals={{ panels: 0, mullions: 0 }}
+        presets={[]}
+        onAddCustom={noop}
+        onAddPreset={noop}
+        onOpenInfills={noop}
+      />,
+    );
+
+    expect(markup).toContain('Existing pergola finish');
+    expect(markup).toContain('Add infills to the existing pergola');
+  });
+
   it('renders rail empty state and summary footer copy', () => {
     const markup = renderToStaticMarkup(
       <CalculatorInfillRail
@@ -117,6 +138,32 @@ describe('CalculatorInfillOverview', () => {
     expect(markup).toContain('Ready to add infills');
     expect(markup).toContain('Use the buttons above to add your first infill');
     expect(markup).toContain('Front 0 · Side 0 · Gable 0');
+  });
+
+  it('renders standalone rail copy without suggesting module presets', () => {
+    const markup = renderToStaticMarkup(
+      <CalculatorInfillRail
+        standalone
+        items={[]}
+        selectedInfillId={null}
+        uiById={new Map()}
+        rafterSpacingM={0.9}
+        summaryLine1="0 infills added"
+        summaryLine2="Front 0 · Side 0 · Gable 0"
+        summaryLine3={null}
+        hasInfills={false}
+        presets={[]}
+        onAddCustom={noop}
+        onAddPreset={noop}
+        onSelectInfill={noop}
+        onFocusPrimaryField={noop}
+        onMoveInfill={noop}
+        onRowRef={noop}
+      />,
+    );
+
+    expect(markup).toContain('Use the button above to enter the first finished opening');
+    expect(markup).not.toContain('start from a preset');
   });
 
   it('renders selected, draft, auto-switched row chips and move button state', () => {

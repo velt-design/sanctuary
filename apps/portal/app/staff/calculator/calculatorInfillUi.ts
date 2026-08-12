@@ -1,5 +1,5 @@
 import type { CostInputsV1 } from '@sp/costing';
-import type { CalculatorModuleInputs, InfillLineItem } from '@/lib/types/calculator';
+import type { CalculatorInfillsState, CalculatorModuleInputs, InfillLineItem } from '@/lib/types/calculator';
 import { RAFTER_SPACING_MM_MAX, normalizeInfillsStateForUi, toNumber, type InfillPresetKey } from './calculatorInputs';
 import {
   estimateInfillUi as estimateCanonicalInfillUi,
@@ -178,18 +178,38 @@ export function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimat
 
 export function parseInfillsForPayload(module: CalculatorModuleInputs): CostInputsV1['infills'] | undefined {
   const infills = normalizeInfillsStateForUi((module as any).infills);
+  return parseInfillItemsForPayload(infills.items, {
+    roofRafterSpacingM: estimateRoofRafterSpacing(toNumber(module.lengthM)).spacingM,
+    roofEdgeLengthM: toNumber(module.lengthM),
+    allowRafterMatching: true,
+  });
+}
+
+export function parseInfillItemsForPayload(
+  items: CalculatorInfillsState['items'],
+  options: {
+    roofRafterSpacingM?: number;
+    roofEdgeLengthM?: number;
+    allowRafterMatching?: boolean;
+  } = {},
+): CostInputsV1['infills'] | undefined {
+  const infills = normalizeInfillsStateForUi({ items });
   if (!Array.isArray(infills.items) || infills.items.length === 0) return undefined;
 
   const out: NonNullable<CostInputsV1['infills']> = [];
-  const roofRafterSpacingM = estimateRoofRafterSpacing(toNumber(module.lengthM)).spacingM;
+  const roofRafterSpacingM = Number.isFinite(options.roofRafterSpacingM)
+    ? Number(options.roofRafterSpacingM)
+    : RAFTER_SPACING_MM_MAX / 1000;
   for (const raw of infills.items) {
     const resolvedSupport = resolveSupportConfirmations(raw.support);
-    const canonical = estimateCanonicalInfillUi(raw, roofRafterSpacingM, toNumber(module.lengthM));
+    const canonical = estimateCanonicalInfillUi(raw, roofRafterSpacingM, options.roofEdgeLengthM);
     const maxPanelWidth = toNumber(raw.maxPanelWidthM);
     const targetPanelWidth = toNumber(raw.targetPanelWidthM);
     const qty = toNumber(raw.qty);
     const widthMode =
-      (raw.location === 'front' || raw.location === 'house') && raw.widthMode === 'match_roof_rafters'
+      options.allowRafterMatching !== false
+        && (raw.location === 'front' || raw.location === 'house')
+        && raw.widthMode === 'match_roof_rafters'
         ? 'match_roof_rafters'
         : 'target_width';
 
@@ -233,7 +253,10 @@ export function parseInfillsForPayload(module: CalculatorModuleInputs): CostInpu
         has_bottom: resolvedSupport.hasBottom,
         has_left: resolvedSupport.hasLeft,
         has_right: resolvedSupport.hasRight,
-        internal_support_mode: resolvedSupport.internalSupportMode,
+        internal_support_mode:
+          options.allowRafterMatching === false && resolvedSupport.internalSupportMode === 'match_roof_rafters'
+            ? 'none'
+            : resolvedSupport.internalSupportMode,
         internal_support_positions_m: internalPositions,
       },
       shape: shapeOut,

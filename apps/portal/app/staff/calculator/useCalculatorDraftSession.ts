@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 import type { LocalFirstEntityKey } from '@/lib/localFirst/types';
 import type { CalculatorInputs } from '@/lib/types/calculator';
 import {
+  makeEmptyAddOnCalculatorInputs,
   makeDefaultCalculatorInputs,
   normalizeCalculatorInputsForUi,
   type CalculatorDraftSessionSnapshot,
@@ -25,6 +26,7 @@ type UseCalculatorDraftSessionOptions = {
   draftEntityKey: LocalFirstEntityKey;
   draftSessionKey: string;
   awaitsExternalDraft: boolean;
+  allowEmptyDesign?: boolean;
   persistence?: CalculatorDraftPersistence;
 };
 
@@ -52,6 +54,7 @@ export function useCalculatorDraftSession({
   draftEntityKey,
   draftSessionKey,
   awaitsExternalDraft,
+  allowEmptyDesign = false,
   persistence = calculatorDraftPersistence,
 }: UseCalculatorDraftSessionOptions): UseCalculatorDraftSessionResult {
   const draftKey = `${draftEntityKey}\u0000${draftSessionKey}`;
@@ -95,7 +98,7 @@ export function useCalculatorDraftSession({
       if (cancelled || currentDraftKeyRef.current !== draftKey) return;
 
       if (restored) {
-        const normalized = normalizeCalculatorInputsForUi(restored.snapshot.values);
+        const normalized = normalizeCalculatorInputsForUi(restored.snapshot.values, { allowEmpty: allowEmptyDesign });
         const nextActiveModuleIndex = safeModuleIndex(normalized, restored.snapshot.activeModuleIndex);
         setValues(normalized);
         setActiveModuleIndex(nextActiveModuleIndex);
@@ -107,7 +110,9 @@ export function useCalculatorDraftSession({
           fingerprint: draftFingerprint(normalized, nextActiveModuleIndex),
         };
       } else if (!awaitsExternalDraft) {
-        const initialValues = makeDefaultCalculatorInputs();
+        const initialValues = allowEmptyDesign
+          ? makeEmptyAddOnCalculatorInputs()
+          : makeDefaultCalculatorInputs();
         setValues(initialValues);
         setActiveModuleIndex(0);
         setPersistenceReadyKey(draftKey);
@@ -119,12 +124,12 @@ export function useCalculatorDraftSession({
     return () => {
       cancelled = true;
     };
-  }, [awaitsExternalDraft, draftEntityKey, draftKey, draftSessionKey, persistence]);
+  }, [allowEmptyDesign, awaitsExternalDraft, draftEntityKey, draftKey, draftSessionKey, persistence]);
 
   const acceptExternalDraft = useCallback(
     (externalValues: CalculatorInputs, externalActiveModuleIndex = 0) => {
       if (currentDraftKeyRef.current !== draftKey) return;
-      const normalized = normalizeCalculatorInputsForUi(externalValues);
+      const normalized = normalizeCalculatorInputsForUi(externalValues, { allowEmpty: allowEmptyDesign });
       const nextActiveModuleIndex = safeModuleIndex(normalized, externalActiveModuleIndex);
       setValues(normalized);
       setActiveModuleIndex(nextActiveModuleIndex);
@@ -133,7 +138,7 @@ export function useCalculatorDraftSession({
       setStatusState({ key: draftKey, status: { kind: 'idle' } });
       lastScheduledFingerprintRef.current = { key: draftKey, fingerprint: null };
     },
-    [draftKey],
+    [allowEmptyDesign, draftKey],
   );
 
   useEffect(() => {

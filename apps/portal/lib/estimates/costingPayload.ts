@@ -1,6 +1,7 @@
 import type { CostInputsV1, CostOutputV1, SiteInputsV1, SiteOutputV1 } from '@sp/costing';
 import { RAFTER_SPACING_MM_MAX } from '@/app/staff/calculator/infillCompute';
-import { parseInfillsForPayload } from '@/app/staff/calculator/calculatorInfillUi';
+import { parseInfillItemsForPayload, parseInfillsForPayload } from '@/app/staff/calculator/calculatorInfillUi';
+import { normalizeStandaloneInfillsStateForUi } from '@/app/staff/calculator/calculatorInputs';
 import type {
   CalculatorFlashingBand,
   CalculatorFlashingPurpose,
@@ -33,6 +34,7 @@ const COST_OUTPUT_KEYS = new Set([
   'shared',
   'pricing_policy',
   'customer_add_ons',
+  'standalone_infills',
   ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY,
   ESTIMATE_PRICING_PRESERVE_REASON_OUTPUT_KEY,
 ]);
@@ -392,6 +394,10 @@ export function buildSiteInputsFromCalculatorInputs(inputs: CalculatorInputs): S
   }));
   const groupedById = new Map(groupedPergolas.map((pergola) => [pergola.id, pergola]));
   const fallbackPergolaId = pergolas[0]?.id ?? 'pergola-1';
+  const standaloneInfills = normalizeStandaloneInfillsStateForUi(inputs.standaloneInfills);
+  const standaloneInfillItems = parseInfillItemsForPayload(standaloneInfills.items, {
+    allowRafterMatching: false,
+  });
 
   for (const module of inputs.modules) {
     const moduleInput = buildModuleCostInputs(module, inputs.access, inputs.height);
@@ -405,6 +411,17 @@ export function buildSiteInputsFromCalculatorInputs(inputs: CalculatorInputs): S
 
   return {
     pergolas: groupedPergolas.filter((pergola) => pergola.modules.length > 0),
+    standalone_infills: standaloneInfillItems?.length
+      ? {
+          infills: standaloneInfillItems,
+          extrusion_colour: standaloneInfills.extrusionColour,
+          powdercoat_standard_colour: standaloneInfills.powdercoatStandardColour?.trim() || undefined,
+          powdercoat_is_custom: standaloneInfills.powdercoatIsCustom === true,
+          powdercoat_custom_colour: standaloneInfills.powdercoatCustomColour?.trim() || undefined,
+          access: inputs.access,
+          height: inputs.height,
+        }
+      : undefined,
     job_type: inputs.jobType,
     pricing_classification: inputs.pricingClassification ?? 'bespoke',
     approval_requirement: inputs.approvalRequirement ?? 'neither',
@@ -526,6 +543,7 @@ export function buildEstimatePayloadFromSiteCosting(args: {
       shared: args.siteResult.shared,
       pricing_policy: args.siteResult.pricing_policy,
       customer_add_ons: args.siteResult.customer_add_ons,
+      standalone_infills: args.siteResult.standalone_infills,
       [ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY]: 'current' satisfies EstimatePricingSyncState,
     },
     configVersions: args.configVersions ?? args.basePayload.configVersions,

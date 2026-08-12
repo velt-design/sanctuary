@@ -7,6 +7,7 @@ import type {
   CalculatorInfillsState,
   CalculatorModuleInputs,
   CalculatorPergola,
+  CalculatorStandaloneInfillsState,
   CalculatorLightingInput,
   InfillLineItem,
 } from '@/lib/types/calculator';
@@ -223,6 +224,17 @@ export function makeDefaultCalculatorInputs(): CalculatorInputs {
     pergolas: [{ id: 'pergola-1', label: 'Pergola 1', lighting: makeDefaultCalculatorLightingInput() }],
     modules: [makeDefaultModule('pergola-1')],
     blinds: makeDefaultBlinds(),
+    standaloneInfills: makeDefaultStandaloneInfills(),
+  };
+}
+
+export function makeEmptyAddOnCalculatorInputs(): CalculatorInputs {
+  return {
+    ...makeDefaultCalculatorInputs(),
+    pricingClassification: 'bespoke',
+    pergolas: [],
+    modules: [],
+    standaloneInfills: makeDefaultStandaloneInfills(),
   };
 }
 
@@ -363,12 +375,43 @@ function makeDefaultInfills(): CalculatorInfillsState {
   return { items: [] };
 }
 
+function makeDefaultStandaloneInfills(): CalculatorStandaloneInfillsState {
+  return {
+    items: [],
+    extrusionColour: 'Black',
+    powdercoatStandardColour: '',
+    powdercoatIsCustom: false,
+    powdercoatCustomColour: '',
+  };
+}
+
 export function normalizeInfillsStateForUi(value: unknown): CalculatorInfillsState {
   if (!value || typeof value !== 'object' || !Array.isArray((value as any).items)) return makeDefaultInfills();
   const items = (value as any).items
     .filter((item: unknown) => item && typeof item === 'object')
     .map((item: unknown) => makeDefaultInfillItem(item as Partial<InfillLineItem>));
   return { items };
+}
+
+export function normalizeStandaloneInfillsStateForUi(value: unknown): CalculatorStandaloneInfillsState {
+  const source = value && typeof value === 'object'
+    ? value as Partial<CalculatorStandaloneInfillsState>
+    : {};
+  const extrusionColour = source.extrusionColour === 'White' || source.extrusionColour === 'Mill'
+    ? source.extrusionColour
+    : 'Black';
+  return {
+    ...normalizeInfillsStateForUi(source),
+    extrusionColour,
+    powdercoatStandardColour:
+      extrusionColour === 'Mill'
+        && source.powdercoatIsCustom !== true
+        && !(typeof source.powdercoatStandardColour === 'string' && source.powdercoatStandardColour.trim())
+        ? 'Ironsands'
+        : typeof source.powdercoatStandardColour === 'string' ? source.powdercoatStandardColour : '',
+    powdercoatIsCustom: source.powdercoatIsCustom === true,
+    powdercoatCustomColour: typeof source.powdercoatCustomColour === 'string' ? source.powdercoatCustomColour : '',
+  };
 }
 
 export function buildInfillPreset(module: CalculatorModuleInputs, location: InfillLineItem['location']): Partial<InfillLineItem> {
@@ -589,9 +632,18 @@ export function normalizeBlindsStateForUi(value: unknown): CalculatorBlindsState
 
 const CALCULATOR_DRAFT_SESSION_PREFIX = 'sanctuary-portal:calculator:draft:v1';
 
-export function calculatorDraftSessionKey(projectId: string, fromEstimateId: string, editEstimateId: string): string {
+export function calculatorDraftSessionKey(
+  projectId: string,
+  fromEstimateId: string,
+  editEstimateId: string,
+  commercialScopeId = '',
+  commercialScopeKind: 'base' | 'add_on' = 'base',
+): string {
   const modeKey = editEstimateId ? `edit:${editEstimateId}` : fromEstimateId ? `duplicate:${fromEstimateId}` : 'new';
-  return [CALCULATOR_DRAFT_SESSION_PREFIX, projectId || 'none', modeKey].join(':');
+  const scopeKey = !editEstimateId && !fromEstimateId && commercialScopeKind === 'add_on'
+    ? `add-on:${commercialScopeId.trim() || 'new'}`
+    : null;
+  return [CALCULATOR_DRAFT_SESSION_PREFIX, projectId || 'none', modeKey, scopeKey].filter(Boolean).join(':');
 }
 
 function normalizeModuleForUi(value: unknown): CalculatorModuleInputs {
@@ -640,7 +692,10 @@ function normalizePergolaIdForUi(value: unknown, fallback: string): string {
   return trimmed || fallback;
 }
 
-export function normalizePergolasForUi(value: unknown): CalculatorPergola[] {
+export function normalizePergolasForUi(
+  value: unknown,
+  options: { allowEmpty?: boolean } = {},
+): CalculatorPergola[] {
   const rawPergolas = Array.isArray(value) ? value : [];
   const out: CalculatorPergola[] = [];
   const seen = new Set<string>();
@@ -665,15 +720,21 @@ export function normalizePergolasForUi(value: unknown): CalculatorPergola[] {
     out.push({ id, label, ...(lighting ? { lighting } : {}) });
   }
 
-  if (!out.length) out.push({ id: 'pergola-1', label: 'Pergola 1' });
+  if (!out.length && !options.allowEmpty) out.push({ id: 'pergola-1', label: 'Pergola 1' });
   return out;
 }
 
-function normalizeModulesForUi(value: unknown, pergolas: CalculatorPergola[]): CalculatorModuleInputs[] {
+function normalizeModulesForUi(
+  value: unknown,
+  pergolas: CalculatorPergola[],
+  options: { allowEmpty?: boolean } = {},
+): CalculatorModuleInputs[] {
   const fallbackPergolaId = pergolas[0]?.id ?? 'pergola-1';
   const knownPergolaIds = new Set(pergolas.map((p) => p.id));
 
-  if (!Array.isArray(value) || value.length === 0) return [makeDefaultModule(fallbackPergolaId)];
+  if (!Array.isArray(value) || value.length === 0) {
+    return options.allowEmpty ? [] : [makeDefaultModule(fallbackPergolaId)];
+  }
 
   return value.map((item) => {
     const merged = normalizeModuleForUi(item);
@@ -682,9 +743,29 @@ function normalizeModulesForUi(value: unknown, pergolas: CalculatorPergola[]): C
   });
 }
 
-export function normalizeCalculatorInputsForUi(value: CalculatorInputs): CalculatorInputs {
-  const pergolas = normalizePergolasForUi((value as any).pergolas);
-  const normalizedModules = normalizeModulesForUi(value.modules, pergolas);
+export function normalizeCalculatorInputsForUi(
+  value: CalculatorInputs,
+  options: { allowEmpty?: boolean } = {},
+): CalculatorInputs {
+  const allowEmpty = options.allowEmpty === true && Array.isArray(value.modules) && value.modules.length === 0;
+  const pergolas = normalizePergolasForUi((value as any).pergolas, { allowEmpty });
+  const normalizedModules = normalizeModulesForUi(value.modules, pergolas, { allowEmpty });
+  if (allowEmpty) {
+    return {
+      ...value,
+      schemaVersion: 'v2',
+      jobType: value.jobType === 'commercial' ? 'commercial' : 'residential',
+      pricingClassification: 'bespoke',
+      approvalRequirement:
+        value.approvalRequirement === 'engineering_required' || value.approvalRequirement === 'full_building_consent'
+          ? value.approvalRequirement
+          : 'neither',
+      pergolas: [],
+      modules: [],
+      blinds: normalizeBlindsStateForUi((value as any).blinds),
+      standaloneInfills: normalizeStandaloneInfillsStateForUi((value as any).standaloneInfills),
+    };
+  }
   const usedPergolaIds = new Set(normalizedModules.map((module) => module.pergolaId ?? pergolas[0]?.id ?? 'pergola-1'));
   const filteredPergolas = pergolas.filter((pergola) => usedPergolaIds.has(pergola.id));
   const finalPergolas = filteredPergolas.length ? filteredPergolas : [{ id: 'pergola-1', label: 'Pergola 1' }];
@@ -710,12 +791,14 @@ export function normalizeCalculatorInputsForUi(value: CalculatorInputs): Calcula
     pergolas: finalPergolas,
     modules,
     blinds: normalizeBlindsStateForUi((value as any).blinds),
+    standaloneInfills: normalizeStandaloneInfillsStateForUi((value as any).standaloneInfills),
   };
 }
 
 export function calculatorInputsFromEstimateDetail(detail: EstimateDetail): CalculatorInputs {
   const inputs = (detail.calculatorSnapshot as any)?.inputs;
-  if (isCalculatorInputsV2(inputs)) return normalizeCalculatorInputsForUi(inputs);
+  const allowEmpty = detail.commercialScopeKind === 'add_on';
+  if (isCalculatorInputsV2(inputs)) return normalizeCalculatorInputsForUi(inputs, { allowEmpty });
   if (isLegacyCalculatorInputsV1(inputs)) return normalizeCalculatorInputsForUi(migrateLegacyCalculatorInputsToV2(inputs));
   throw new Error('Design inputs are not compatible with this calculator version.');
 }

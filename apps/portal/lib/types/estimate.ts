@@ -54,6 +54,7 @@ export type Estimate = {
     shared?: SiteSharedOutputV1;
     pricing_policy?: SiteOutputV1['pricing_policy'];
     customer_add_ons?: SiteOutputV1['customer_add_ons'];
+    standalone_infills?: SiteOutputV1['standalone_infills'];
   };
 
   configVersions: {

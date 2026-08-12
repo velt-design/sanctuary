@@ -1,6 +1,7 @@
 import { calculateSiteCostV1 } from '@sp/costing';
 import { describe, expect, it } from 'vitest';
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
+import { makeDefaultInfillItem } from '@/app/staff/calculator/calculatorInputs';
 import { buildSiteInputsFromCalculatorInputs } from './costingPayload';
 import {
   buildCommercialDesignInputFromCalculatorInputs,
@@ -289,6 +290,31 @@ describe('commercialDesignPayload', () => {
       accessoryCount: 0,
       notes: ['Calculator blinds are estimate-scoped and are not prorated to modules.'],
     });
+  });
+
+  it('keeps existing-pergola infills as estimate-scoped commercial diagnostics', () => {
+    const commercial = buildCommercialDesignInputFromCalculatorInputs({
+      inputs: makeInputs({
+        pergolas: [],
+        modules: [],
+        standaloneInfills: {
+          extrusionColour: 'Black',
+          items: [makeDefaultInfillItem({
+            id: 'existing-infill-1',
+            label: 'Side infill',
+            location: 'wall',
+          })],
+        },
+      }),
+    });
+
+    expect(commercial.pergolas).toEqual([]);
+    expect(commercial.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'calculator_standalone_infills_estimate_scoped',
+        severity: 'info',
+      }),
+    );
   });
 
   it('preserves commercial mapping fields used by parity diagnostics', () => {

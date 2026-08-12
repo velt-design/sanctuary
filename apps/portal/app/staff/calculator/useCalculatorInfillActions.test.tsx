@@ -17,6 +17,7 @@ type InfillActions = ReturnType<typeof useCalculatorInfillActions>;
 let latest: InfillActions | null = null;
 let values: CalculatorInputs;
 let selectedId = 'infill-a';
+let standalone = false;
 
 const requestInfillSelection = vi.fn();
 const setInfillStage = vi.fn();
@@ -57,8 +58,8 @@ const setValues: Dispatch<SetStateAction<CalculatorInputs>> = (update) => {
 };
 
 function Probe() {
-  const activeModule = values.modules[0];
-  const infills = activeModule.infills?.items ?? [];
+  const activeModule = values.modules[0] ?? makeDefaultModule('pergola-1');
+  const infills = standalone ? values.standaloneInfills?.items ?? [] : activeModule.infills?.items ?? [];
   const selectedInfill = infills.find((item) => item.id === selectedId) ?? null;
   const selectedInfillEstimate = selectedInfill
     ? resolveInfillUiState(selectedInfill, 0.9, undefined, Number(activeModule.lengthM)).estimate
@@ -70,6 +71,7 @@ function Probe() {
     activePergolaId: 'pergola-1',
     infills,
     setValues,
+    standalone,
     selectedInfill,
     selectedInfillEstimate,
     selectedCanOfferRafterMatching: false,
@@ -103,12 +105,33 @@ function Probe() {
 afterEach(() => {
   latest = null;
   selectedId = 'infill-a';
+  standalone = false;
   document.body.innerHTML = '';
   vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
 describe('useCalculatorInfillActions', () => {
+  it('writes standalone add-on infills without creating a pergola or module', () => {
+    vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    standalone = true;
+    const first = makeDefaultInfillItem({ id: 'infill-a', label: 'Existing wall' });
+    values = {
+      ...makeDefaultCalculatorInputs(),
+      pergolas: [],
+      modules: [],
+      standaloneInfills: { extrusionColour: 'Black', items: [first] },
+    };
+    const rendered = renderIntoDocument(<Probe />);
+
+    act(() => actions().changeSelectedItem({ label: 'Updated existing wall' }));
+
+    expect(values.standaloneInfills?.items[0]?.label).toBe('Updated existing wall');
+    expect(values.pergolas).toEqual([]);
+    expect(values.modules).toEqual([]);
+    rendered.unmount();
+  });
+
   it('owns selected-item edits, draft commits, and location lifecycle actions', () => {
     vi.spyOn(console, 'debug').mockImplementation(() => undefined);
     resetValues();

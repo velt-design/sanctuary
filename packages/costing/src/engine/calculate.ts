@@ -25,6 +25,9 @@ import {
   resolveSitePricingPolicyV2,
 } from '../commercial/simpleRangePricing';
 import { allocateCommercialSiteOverheadV5 } from './commercialSiteOverhead';
+import { buildEmptySiteCostV1 } from './emptySite';
+import { calculateStandaloneInfillsV1, mergeStandaloneInfillsIntoSiteV1 } from './standaloneInfills';
+import { addInfillJobSetupToInstallV1, INFILL_JOB_SETUP_ACTION_ID } from './infillLabourPolicy';
 import type {
   CostInputsV1,
   CostOutputV1,
@@ -382,9 +385,13 @@ export function calculateCostV1(inputs: CostInputsV1, config?: CostingConfigV1):
     derived: derivedWithPatch,
   });
 
-  const baseInstall = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
+  const builtInstall = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
     excludeActionIds: DAY_CYCLE_ACTION_IDS,
   });
+  const baseInstall: InstallResult = {
+    install: addInfillJobSetupToInstallV1(builtInstall.install, derivedWithPatch, cfg, true),
+    notes_and_warnings: builtInstall.notes_and_warnings,
+  };
   const baseInstallWithStartup: InstallResult = {
     install: addBoxPerimeterStartupToInstall(baseInstall.install, cfg, overheadFlags.has_box_perimeter),
     notes_and_warnings: baseInstall.notes_and_warnings,
@@ -469,9 +476,13 @@ export function calculateCostV1WithMaterialsExplain(
     derived: derivedWithPatch,
   });
 
-  const baseInstall = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
+  const builtInstall = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
     excludeActionIds: DAY_CYCLE_ACTION_IDS,
   });
+  const baseInstall: InstallResult = {
+    install: addInfillJobSetupToInstallV1(builtInstall.install, derivedWithPatch, cfg, true),
+    notes_and_warnings: builtInstall.notes_and_warnings,
+  };
   const baseInstallWithStartup: InstallResult = {
     install: addBoxPerimeterStartupToInstall(baseInstall.install, cfg, overheadFlags.has_box_perimeter),
     notes_and_warnings: baseInstall.notes_and_warnings,
@@ -594,6 +605,7 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
   const jobMaterialsLines: MaterialsLineV1[] = [];
   const jobInstallActions: InstallActionV1[] = [];
   const warnings: string[] = [];
+  let infillJobSetupAdded = false;
 
   for (let idx = 0; idx < inputs.modules.length; idx += 1) {
     const moduleInput = inputs.modules[idx] as CostInputsV1;
@@ -617,6 +629,13 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
       scope: 'module',
       excludeActionIds: DAY_CYCLE_ACTION_IDS,
     });
+    const moduleInstall = addInfillJobSetupToInstallV1(
+      installResult.install,
+      derivedWithPatch,
+      cfg,
+      !infillJobSetupAdded,
+    );
+    if (moduleInstall.actions.some((action) => action.id === INFILL_JOB_SETUP_ACTION_ID)) infillJobSetupAdded = true;
 
     const moduleWarnings = [
       ...derivedResult.notes_and_warnings,
@@ -625,7 +644,7 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
     ];
     const moduleWarningsTyped = toWarnings(moduleWarnings);
 
-    const moduleCostExGst = roundMoney(materialsResult.materials.totals.materials_ex_gst + installResult.install.totals.install_ex_gst);
+    const moduleCostExGst = roundMoney(materialsResult.materials.totals.materials_ex_gst + moduleInstall.totals.install_ex_gst);
 
     const moduleCostIncGst = roundMoney(applyGst(moduleCostExGst));
 
@@ -634,7 +653,7 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
       derived: derivedWithPatch,
       materials: materialsResult.materials,
       infill_takeoff: materialsResult.infill_takeoff,
-      install: installResult.install,
+      install: moduleInstall,
       overhead: {
         method: 'job_rollup',
         ops_ex_gst: 0,
@@ -663,7 +682,7 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
       });
     }
 
-    for (const action of installResult.install.actions) {
+    for (const action of moduleInstall.actions) {
       jobInstallActions.push({
         ...action,
         id: `m${idx + 1}.${action.id}`,
@@ -859,9 +878,20 @@ function calculateSiteCostV1Internal(
   includeInfillBaseline: boolean,
 ): SiteOutputV1 {
   const cfg = config ?? loadCostingConfigV1();
-  if (!Array.isArray(inputs.pergolas) || inputs.pergolas.length === 0) {
+  if (!Array.isArray(inputs.pergolas)) {
     throw new Error('Site inputs must include at least one pergola.');
   }
+  const hasModuleInfills = inputs.pergolas.some((pergola) =>
+    pergola.modules.some((module) => (module.infills?.length ?? 0) > 0),
+  );
+  const standaloneInfills = calculateStandaloneInfillsV1({
+    inputs,
+    config: cfg,
+    calculateModule: calculateCostV1,
+    toWarnings,
+    includeJobSetup: !hasModuleInfills,
+  });
+  if (inputs.pergolas.length === 0) return buildEmptySiteCostV1(inputs, cfg, standaloneInfills);
 
   const jobType = normalizeJobType(inputs.job_type);
   const jobTravel = roundMoney(Number(inputs.travel_ex_gst ?? 0));
@@ -899,6 +929,7 @@ function calculateSiteCostV1Internal(
   const pergolaOutputs: PergolaOutputV1[] = [];
 
   let globalModuleIdx = 0;
+  let infillJobSetupAdded = false;
 
   for (let pIdx = 0; pIdx < pergolasNormalized.length; pIdx += 1) {
     const pergola = pergolasNormalized[pIdx];
@@ -934,8 +965,15 @@ function calculateSiteCostV1Internal(
         scope: 'module',
         excludeActionIds: DAY_CYCLE_ACTION_IDS,
       });
+      const moduleInstall = addInfillJobSetupToInstallV1(
+        installResult.install,
+        derivedWithPatch,
+        cfg,
+        !infillJobSetupAdded,
+      );
+      if (moduleInstall.actions.some((action) => action.id === INFILL_JOB_SETUP_ACTION_ID)) infillJobSetupAdded = true;
       const moduleInstallActions = applyProductiveInstallTimePolicyV5(
-        installResult.install.actions,
+        moduleInstall.actions,
         cfg,
         pricingPolicy,
       );
@@ -1342,12 +1380,18 @@ function calculateSiteCostV1Internal(
       : null),
   };
 
+  const outputWithStandaloneInfills = mergeStandaloneInfillsIntoSiteV1({
+    output,
+    standalone: standaloneInfills,
+    toWarnings,
+  });
+
   if (includeInfillBaseline && siteInfillTakeoff.items.length > 0) {
     const baseline = calculateSiteCostV1Internal(withoutSiteInfillsV1(inputs), cfg, false);
-    applySiteInfillIncrementalBaselineV2(output, baseline);
+    applySiteInfillIncrementalBaselineV2(outputWithStandaloneInfills, baseline);
   }
 
-  return output;
+  return outputWithStandaloneInfills;
 }
 
 export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfigV1): SiteOutputV1 {
@@ -1416,5 +1460,10 @@ function adaptSiteInputsV2ToV1(inputs: SiteInputsV2): SiteInputsV1 {
  * the output contract is unchanged (only the input layer is migrating).
  */
 export function calculateSiteCostV2(inputs: SiteInputsV2, config?: CostingConfigV1): SiteOutputV1 {
+  // The scene/workbench contract still represents physical pergola geometry.
+  // Pergola-free commercial add-ons belong to the calculator V1 site contract.
+  if (inputs.pergolas.length === 0) {
+    throw new Error('SiteInputsV2 requires at least one pergola.');
+  }
   return calculateSiteCostV1(adaptSiteInputsV2ToV1(inputs), config);
 }

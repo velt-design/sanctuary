@@ -764,6 +764,25 @@
   gap: 6px;
 }
 
+.standaloneInfillFinish {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+}
+
+.standaloneInfillFinishIntro {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ui-text-muted);
+}
+
+.standaloneInfillFinishFields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
 .lightingEditor {
   display: grid;
   gap: 12px;

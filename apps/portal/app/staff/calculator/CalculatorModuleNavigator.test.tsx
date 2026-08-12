@@ -148,6 +148,27 @@ describe('CalculatorModuleNavigator', () => {
     expect(rail.querySelector('button[aria-label="Add module to Pergola 2"]')).not.toBeNull();
   });
 
+  it('shows the optional-pergola empty state for a new add-on', () => {
+    const emptyModel: CalculatorModuleNavigatorModel = {
+      groups: [],
+      items: [],
+      activeModuleLabel: 'No module selected',
+      totalIssueCount: 0,
+    };
+    const { props } = renderNavigator({
+      model: emptyModel,
+      pergolas: [],
+      moduleCount: 0,
+      allowEmptyModules: true,
+    });
+    const rail = document.querySelector('aside[aria-label="Module navigator"]') as HTMLElement;
+
+    expect(rail.textContent).toContain('0 modules across 0 pergolas');
+    expect(rail.textContent).toContain('No pergolas in this add-on');
+    act(() => findButton(rail, 'Add pergola').click());
+    expect(props.onAddPergola).toHaveBeenCalledTimes(1);
+  });
+
   it('commits a pergola name when the editable heading loses focus', () => {
     const { props } = renderNavigator();
     const input = document.querySelector('aside[aria-label="Module navigator"] input[aria-label="Name for Pergola 1"]') as HTMLInputElement;
@@ -214,5 +235,11 @@ describe('CalculatorModuleNavigator', () => {
     renderNavigator({ moduleCount: 1 });
     const rail = document.querySelector('aside[aria-label="Module navigator"]') as HTMLElement;
     expect(findButton(rail, 'Remove').disabled).toBe(true);
+  });
+
+  it('allows removal of the final module for an add-on', () => {
+    renderNavigator({ moduleCount: 1, allowEmptyModules: true });
+    const rail = document.querySelector('aside[aria-label="Module navigator"]') as HTMLElement;
+    expect(findButton(rail, 'Remove').disabled).toBe(false);
   });
 });

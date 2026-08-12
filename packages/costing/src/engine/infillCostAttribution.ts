@@ -90,6 +90,8 @@ function driverForAction(actionId: string): keyof MutableItemCost['drivers'] | n
   switch (actionId) {
     case 'infill.setup_setout_each':
     case 'infill.finish_clean_each':
+    case 'infill.job_setup_once':
+    case 'infill.shaped_opening_each':
       return 'instances';
     case 'infill.install_joiner_m':
       return 'joinerM';

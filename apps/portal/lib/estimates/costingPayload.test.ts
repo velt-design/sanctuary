@@ -121,6 +121,37 @@ describe('costingPayload', () => {
     expect(moduleInputs?.attachment_length_mm).toBeNull();
   });
 
+  it('maps existing-pergola infills without adding pergola geometry', () => {
+    const inputs = makeInputs();
+    inputs.pergolas = [];
+    inputs.modules = [];
+    inputs.standaloneInfills = {
+      extrusionColour: 'White',
+      items: [{
+        id: 'existing-wall',
+        qty: '1',
+        location: 'wall',
+        acrylicSource: 'sheet_panels',
+        panelOrientation: 'vertical',
+        widthMode: 'target_width',
+        targetPanelWidthM: '1.2',
+        maxPanelWidthM: '1.2',
+        support: { hasTop: true, hasBottom: true, hasLeft: true, hasRight: true, internalSupportMode: 'none' },
+        shape: { type: 'rect', widthM: '2.4', heightM: '1.2' },
+      }],
+    };
+
+    const payload = buildSiteInputsFromCalculatorInputs(inputs);
+
+    expect(payload.pergolas).toEqual([]);
+    expect(payload.standalone_infills).toMatchObject({
+      extrusion_colour: 'White',
+      access: 'normal',
+      height: 'single_storey',
+      infills: [expect.objectContaining({ id: 'existing-wall', width_mode: 'target_width' })],
+    });
+  });
+
   it('maps valid additional aluminium rows onto their owning module', () => {
     const inputs = makeInputs();
     inputs.modules[0]!.additionalAluminium = {

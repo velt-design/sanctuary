@@ -604,10 +604,10 @@ export async function POST(req: Request) {
     return badRequest('Invalid JSON body');
   }
 
-  const hasPergolas = Array.isArray(body?.pergolas) && body.pergolas.length > 0;
-  const hasModules = Array.isArray(body?.modules) && body.modules.length > 0;
-  if (!hasPergolas && !hasModules) return badRequest('pergolas or modules must be a non-empty array');
-  if (hasPergolas && hasModules) return badRequest('Provide either pergolas or modules (not both).');
+  const usesPergolaContract = Array.isArray(body?.pergolas);
+  const usesLegacyModuleContract = Array.isArray(body?.modules);
+  if (!usesPergolaContract && !usesLegacyModuleContract) return badRequest('pergolas or modules must be an array');
+  if (usesPergolaContract && usesLegacyModuleContract) return badRequest('Provide either pergolas or modules (not both).');
   if (body.job_type !== undefined && !isOneOf(JOB_TYPES, body.job_type)) return badRequest('Invalid job_type');
   if (body.pricing_classification !== undefined && !isOneOf(PRICING_CLASSIFICATIONS, body.pricing_classification)) {
     return badRequest('Invalid pricing_classification');
@@ -630,7 +630,49 @@ export async function POST(req: Request) {
     quote_discount_pct,
   };
 
-  if (hasPergolas) {
+  if (body.standalone_infills !== undefined) {
+    const rawStandalone = body.standalone_infills;
+    if (!rawStandalone || typeof rawStandalone !== 'object') return badRequest('standalone_infills must be an object');
+    const infills = parseInfills(rawStandalone.infills);
+    if (infills && 'error' in infills) return badRequest(infills.error.replaceAll('modules[].infills', 'standalone_infills.infills'));
+    if (!infills?.length) return badRequest('standalone_infills.infills must contain at least one infill');
+    if (!isOneOf(EXTRUSION_COLOURS, rawStandalone.extrusion_colour)) return badRequest('Invalid standalone_infills.extrusion_colour');
+    if (!isOneOf(ACCESS_LEVELS, rawStandalone.access)) return badRequest('Invalid standalone_infills.access');
+    if (!isOneOf(HEIGHT_CATEGORIES, rawStandalone.height)) return badRequest('Invalid standalone_infills.height');
+    if (rawStandalone.powdercoat_standard_colour !== undefined
+      && !isOneOf(POWDERCOAT_STANDARD_COLOURS, rawStandalone.powdercoat_standard_colour)) {
+      return badRequest('Invalid standalone_infills.powdercoat_standard_colour');
+    }
+    if (rawStandalone.powdercoat_is_custom !== undefined && typeof rawStandalone.powdercoat_is_custom !== 'boolean') {
+      return badRequest('standalone_infills.powdercoat_is_custom must be a boolean');
+    }
+    if (rawStandalone.powdercoat_custom_colour !== undefined && typeof rawStandalone.powdercoat_custom_colour !== 'string') {
+      return badRequest('standalone_infills.powdercoat_custom_colour must be a string');
+    }
+    if (rawStandalone.powdercoat_is_custom === true && !String(rawStandalone.powdercoat_custom_colour ?? '').trim()) {
+      return badRequest('standalone_infills.powdercoat_custom_colour is required for custom powdercoat');
+    }
+    if (rawStandalone.extrusion_colour === 'Mill'
+      && rawStandalone.powdercoat_is_custom !== true
+      && !rawStandalone.powdercoat_standard_colour) {
+      return badRequest('standalone_infills.powdercoat_standard_colour is required for powdercoat');
+    }
+    site.standalone_infills = {
+      infills,
+      extrusion_colour: rawStandalone.extrusion_colour,
+      powdercoat_standard_colour: typeof rawStandalone.powdercoat_standard_colour === 'string'
+        ? rawStandalone.powdercoat_standard_colour
+        : undefined,
+      powdercoat_is_custom: rawStandalone.powdercoat_is_custom === true,
+      powdercoat_custom_colour: typeof rawStandalone.powdercoat_custom_colour === 'string'
+        ? rawStandalone.powdercoat_custom_colour
+        : undefined,
+      access: rawStandalone.access,
+      height: rawStandalone.height,
+    };
+  }
+
+  if (usesPergolaContract) {
     const pergolas: PergolaInputsV1[] = [];
     for (let pIdx = 0; pIdx < body.pergolas.length; pIdx += 1) {
       const rawPergola = body.pergolas[pIdx];
@@ -656,6 +698,7 @@ export async function POST(req: Request) {
     }
     site.pergolas = pergolas;
   } else {
+    if (body.modules.length === 0) return badRequest('modules must be a non-empty array');
     const modules: CostInputsV1[] = [];
     for (let mIdx = 0; mIdx < body.modules.length; mIdx += 1) {
       const raw = body.modules[mIdx];

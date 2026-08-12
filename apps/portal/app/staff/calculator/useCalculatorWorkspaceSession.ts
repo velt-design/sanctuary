@@ -45,6 +45,8 @@ type UseCalculatorWorkspaceSessionOptions = {
     editEstimateId: string;
     fromEstimateId: string;
     shouldOpenActiveDraft: boolean;
+    newEstimateCommercialScopeId?: string | null;
+    newEstimateCommercialScopeKind?: 'base' | 'add_on';
   };
   activeDraftEstimateMetaId: string | null;
   hostKey: string;
@@ -91,8 +93,14 @@ export function useCalculatorWorkspaceSession({
   const activeEditEstimateId = editSessionEstimateId || editEstimateId.trim();
   const isEditingDesign = activeEditEstimateId.length > 0;
   const draftSessionKey = useMemo(
-    () => calculatorDraftSessionKey(projectId, fromEstimateId, activeEditEstimateId),
-    [activeEditEstimateId, fromEstimateId, projectId],
+    () => calculatorDraftSessionKey(
+      projectId,
+      fromEstimateId,
+      activeEditEstimateId,
+      route.newEstimateCommercialScopeId ?? '',
+      route.newEstimateCommercialScopeKind ?? 'base',
+    ),
+    [activeEditEstimateId, fromEstimateId, projectId, route.newEstimateCommercialScopeId, route.newEstimateCommercialScopeKind],
   );
   const draftEntityKey = useMemo(
     () => buildCalculatorDraftEntityKey(draftSessionKey),
@@ -112,6 +120,7 @@ export function useCalculatorWorkspaceSession({
     draftEntityKey,
     draftSessionKey,
     awaitsExternalDraft: Boolean(activeEditEstimateId || fromEstimateId),
+    allowEmptyDesign: route.newEstimateCommercialScopeKind === 'add_on',
     ...(draftPersistence ? { persistence: draftPersistence } : null),
   });
   const [project, setProject] = useState<Project | null>(null);
@@ -239,7 +248,7 @@ export function useCalculatorWorkspaceSession({
           schemaVersion: 'v2',
           modules: Array.isArray(draft.modules) ? draft.modules : [],
           blinds: normalizeBlindsStateForUi((draft as any).blinds),
-        } as CalculatorInputs);
+        } as CalculatorInputs, { allowEmpty: route.newEstimateCommercialScopeKind === 'add_on' });
 
         acceptExternalDraft(normalizedDraft);
         const message = `Draft design started from ${fromEstimateId}`;
@@ -263,6 +272,7 @@ export function useCalculatorWorkspaceSession({
     queryClient,
     restoredFromLocalDraft,
     router,
+    route.newEstimateCommercialScopeKind,
     toast,
     workspace,
   ]);

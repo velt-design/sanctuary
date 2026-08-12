@@ -502,6 +502,52 @@ describe('saveCalculatorEstimate', () => {
     }));
   });
 
+  it('saves a zero-pergola add-on without requiring fake derived module data', async () => {
+    const harness = makeHarness();
+    const values = {
+      ...makeInputs(),
+      pricingClassification: 'bespoke' as const,
+      pergolas: [],
+      modules: [],
+      blinds: { items: [] },
+    };
+    const result = {
+      pergola_count: 0,
+      pergolas: [],
+      shared: {
+        install: { actions: [], totals: { crew_minutes: 0, crew_hours: 0, install_ex_gst: 0 } },
+        add_ons: { travel_ex_gst: 12, extras_allowance_ex_gst: 45 },
+        totals: { cost_ex_gst: 57, cost_inc_gst: 65.55, warnings: [], notes_and_warnings: [] },
+      },
+      materials: { lines: [], totals: { materials_ex_gst: 0, waste_m_by_profile: {}, bars_by_profile: {} } },
+      install: { actions: [], totals: { crew_minutes: 0, crew_hours: 0, install_ex_gst: 0 } },
+      overhead: { method: 'no_pergola_add_on', ops_ex_gst: 0, sales_ex_gst: 0, total_ex_gst: 0 },
+      add_ons: { travel_ex_gst: 12, extras_allowance_ex_gst: 45 },
+      totals: { cost_ex_gst: 57, cost_inc_gst: 65.55, warnings: [], notes_and_warnings: [] },
+    } as any;
+
+    const saved = await saveWithDefaults({
+      values,
+      result,
+      resultModules: [],
+      newEstimateCommercialScopeId: '11111111-1111-4111-8111-111111111111',
+      newEstimateCommercialScopeKind: 'add_on',
+    }, harness);
+
+    expect(harness.callbacks.fail).not.toHaveBeenCalled();
+    expect(harness.services.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({
+      mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.estimateCreate,
+      payload: expect.objectContaining({
+        commercialScopeKind: 'add_on',
+        estimatePayload: expect.objectContaining({
+          inputs: expect.objectContaining({ pergolas: [], modules: [] }),
+          derived: {},
+        }),
+      }),
+    }));
+    expect(saved.outcome).toEqual(expect.objectContaining({ operation: 'created' }));
+  });
+
   it('passes calculator-generated design request payloads through estimate create mutations', async () => {
     const harness = makeHarness();
 

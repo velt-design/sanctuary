@@ -89,6 +89,16 @@ function blindDetail(item: BlindPricingResult['items'][number]): string {
   return `${titleCase(item.system)} · ${dimensions}`;
 }
 
+function standaloneInfillDetail(inputs: CalculatorInputs, itemCount: number): string {
+  const state = inputs.standaloneInfills;
+  const finish = state?.extrusionColour === 'Mill'
+    ? state.powdercoatIsCustom
+      ? state.powdercoatCustomColour?.trim() || 'Custom powdercoat'
+      : state.powdercoatStandardColour?.trim() || 'Powdercoat'
+    : state?.extrusionColour ?? 'Black';
+  return `${itemCount} infill${itemCount === 1 ? '' : 's'} · ${finish} · Existing pergola`;
+}
+
 export function buildCalculatorPricingPreview({
   result,
   inputs,
@@ -175,6 +185,52 @@ export function buildCalculatorPricingPreview({
     undiscountedAmounts.push(customerPriceIncCents(sharedCostEx, 0, customerPriceUpliftPct, customerPriceMultiplier));
   }
 
+
+  const standaloneInfills = result?.standalone_infills;
+  if (standaloneInfills && Number.isFinite(standaloneInfills.totals.cost_ex_gst)) {
+    const priceIncGstCents = customerPriceIncCents(
+      standaloneInfills.totals.cost_ex_gst,
+      discountPct,
+      customerPriceUpliftPct,
+      customerPriceMultiplier,
+    );
+    rows.push({
+      id: 'standalone-infills',
+      kind: 'infill',
+      label: 'Existing pergola infills',
+      detail: standaloneInfillDetail(inputs, standaloneInfills.item_count),
+      priceIncGstCents,
+      status: 'priced',
+      internalTrueCost: {
+        materialsExGstCents: toCents(standaloneInfills.materials.totals.materials_ex_gst),
+        labourExGstCents: toCents(standaloneInfills.install.totals.install_ex_gst),
+        overheadExGstCents: toCents(standaloneInfills.overhead.total_ex_gst),
+        totalExGstCents: toCents(standaloneInfills.totals.cost_ex_gst),
+      },
+    });
+    pricedAmounts.push(priceIncGstCents);
+    undiscountedAmounts.push(customerPriceIncCents(
+      standaloneInfills.totals.cost_ex_gst,
+      0,
+      customerPriceUpliftPct,
+      customerPriceMultiplier,
+    ));
+  }
+
+  if (pergolas.length === 0 && hasSharedCost && typeof sharedCostEx === 'number' && sharedCostEx > 0 && !showSharedLine) {
+    const priceIncGstCents = customerPriceIncCents(sharedCostEx, discountPct, customerPriceUpliftPct, customerPriceMultiplier);
+    rows.push({
+      id: 'add-on-site-costs',
+      kind: 'shared',
+      label: 'Site costs',
+      detail: 'Travel and extras',
+      priceIncGstCents,
+      status: 'priced',
+    });
+    pricedAmounts.push(priceIncGstCents);
+    undiscountedAmounts.push(customerPriceIncCents(sharedCostEx, 0, customerPriceUpliftPct, customerPriceMultiplier));
+  }
+
   const approval = result?.customer_add_ons?.approval;
   if (approval) {
     const priceIncGstCents = toCents(approval.sell_inc_gst);
@@ -252,7 +308,7 @@ export function buildCalculatorPricingPreview({
     undiscountedTotalIncGstCents: undiscountedTotals?.totalIncGstCents ?? null,
     discountPct,
     unpricedItemCount: rows.filter((row) => row.status === 'unpriced').length,
-    hasCorePricing: pricedPergolas.length > 0,
+    hasCorePricing: pricedAmounts.length > 0,
   };
 }
 

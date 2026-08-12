@@ -3,6 +3,60 @@ import { calculateCostV1, calculateJobCostV1, calculateSiteCostV1 } from './calc
 import { loadCostingConfigV1 } from './config';
 import { DAY_CYCLE_ACTION_IDS } from './install';
 
+describe('empty calculator add-on costing', () => {
+  it('returns a current zero-geometry snapshot with standalone allowances', () => {
+    const result = calculateSiteCostV1({
+      pergolas: [],
+      pricing_classification: 'bespoke',
+      travel_ex_gst: 25,
+      extras_allowance_ex_gst: 75,
+    });
+
+    expect(result.pergola_count).toBe(0);
+    expect(result.pergolas).toEqual([]);
+    expect(result.materials.totals.materials_ex_gst).toBe(0);
+    expect(result.install.totals.crew_hours).toBe(0);
+    expect(result.overhead).toMatchObject({ method: 'no_pergola_add_on', total_ex_gst: 0 });
+    expect(result.shared.totals.cost_ex_gst).toBe(100);
+    expect(result.totals).toMatchObject({ cost_ex_gst: 100, cost_inc_gst: 115 });
+    expect(result.pricing_policy?.resolved_classification).toBe('bespoke');
+  });
+
+  it('costs standalone infills without creating a pergola', () => {
+    const result = calculateSiteCostV1({
+      pergolas: [],
+      pricing_classification: 'bespoke',
+      standalone_infills: {
+        extrusion_colour: 'Black',
+        access: 'normal',
+        height: 'single_storey',
+        infills: [{
+          id: 'existing-wall',
+          label: 'Existing pergola wall',
+          qty: 1,
+          location: 'wall',
+          acrylic_source: 'sheet_panels',
+          panel_orientation: 'vertical',
+          width_mode: 'target_width',
+          target_panel_width_m: 1.2,
+          max_panel_width_m: 1.2,
+          support: { has_top: true, has_bottom: true, has_left: true, has_right: true, internal_support_mode: 'none' },
+          shape: { type: 'rect', width_m: 2.4, height_m: 1.2 },
+        }],
+      },
+    });
+
+    expect(result.pergola_count).toBe(0);
+    expect(result.pergolas).toEqual([]);
+    expect(result.standalone_infills?.item_count).toBe(1);
+    expect(result.standalone_infills?.materials.totals.materials_ex_gst).toBeGreaterThan(0);
+    expect(result.standalone_infills?.install.totals.crew_hours).toBeGreaterThan(0);
+    expect(result.materials.lines.every((line) => !/rafter|post|gutter/i.test(line.label))).toBe(true);
+    expect(result.install.actions.every((action) => action.id.startsWith('infill.'))).toBe(true);
+    expect(result.totals.cost_ex_gst).toBe(result.standalone_infills?.totals.cost_ex_gst);
+  });
+});
+
 function roundMoney(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.round(n * 100) / 100;

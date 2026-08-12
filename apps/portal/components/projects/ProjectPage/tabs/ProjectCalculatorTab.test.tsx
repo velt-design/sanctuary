@@ -156,6 +156,23 @@ describe('ProjectCalculatorTab', () => {
     rendered.unmount();
   });
 
+  it('preserves add-on scope when reopening its active calculator draft', () => {
+    const addOnDraft = {
+      ...activeDraft,
+      id: 'est_add_on',
+      commercialScopeId: '11111111-1111-4111-8111-111111111111',
+      commercialScopeKind: 'add_on',
+    };
+    useQueryMock.mockReturnValue({ data: [activeDraft, addOnDraft], isPending: false, isError: false });
+    search = 'tab=estimates&estimateId=est_add_on';
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    const calculator = rendered.container.querySelector('[data-testid="embedded-calculator"]');
+
+    expect(calculator?.getAttribute('data-scope-kind')).toBe('add_on');
+    expect(calculator?.getAttribute('data-scope-id')).toBe(addOnDraft.commercialScopeId);
+    rendered.unmount();
+  });
+
   it('opens a separate add-on estimate scope without replacing the base design', () => {
     const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
     const createAddOn = Array.from(rendered.container.querySelectorAll('button'))

@@ -5,8 +5,10 @@ import {
   calculatorDraftSessionKey,
   buildInfillItemsForPreset,
   calculatorInputsFromEstimateDetail,
+  makeEmptyAddOnCalculatorInputs,
   makeDefaultCalculatorInputs,
   makeDefaultBlindItem,
+  makeDefaultInfillItem,
   makeDefaultModule,
   normalizeBlindsStateForUi,
   normalizeCalculatorInputsForUi,
@@ -42,6 +44,17 @@ function makeEstimateDetail(inputs: unknown): EstimateDetail {
 }
 
 describe('calculator input defaults and normalization', () => {
+  it('starts a new add-on without a default pergola and preserves that empty state explicitly', () => {
+    const empty = makeEmptyAddOnCalculatorInputs();
+    const normalized = normalizeCalculatorInputsForUi(empty, { allowEmpty: true });
+
+    expect(empty.pergolas).toEqual([]);
+    expect(empty.modules).toEqual([]);
+    expect(normalized.pergolas).toEqual([]);
+    expect(normalized.modules).toEqual([]);
+    expect(normalizeCalculatorInputsForUi(empty).modules).toHaveLength(1);
+  });
+
   it('builds the default module shape used by new calculator sessions', () => {
     const module = makeDefaultModule('pergola-a');
 
@@ -278,6 +291,27 @@ describe('calculator input defaults and normalization', () => {
     expect(normalized.blinds?.items[0]?.rollCover).toBe('NONE');
   });
 
+  it('preserves standalone infills on an empty add-on estimate', () => {
+    const inputs = makeEmptyAddOnCalculatorInputs();
+    inputs.standaloneInfills = {
+      extrusionColour: 'Mill',
+      powdercoatStandardColour: 'Flaxpod',
+      items: [makeDefaultInfillItem({ id: 'existing-wall', label: 'Existing wall' })],
+    };
+
+    const normalized = calculatorInputsFromEstimateDetail({
+      ...makeEstimateDetail(inputs),
+      commercialScopeKind: 'add_on',
+    });
+
+    expect(normalized.modules).toEqual([]);
+    expect(normalized.standaloneInfills).toMatchObject({
+      extrusionColour: 'Mill',
+      powdercoatStandardColour: 'Flaxpod',
+      items: [expect.objectContaining({ id: 'existing-wall' })],
+    });
+  });
+
   it('keeps normalized blind state referentially stable after roll-cover defaults exist', () => {
     const blind = makeDefaultBlindItem({ widthMm: '2000', coverLengthMm: '2000' });
     const blinds = { items: [blind] };
@@ -347,6 +381,9 @@ describe('calculator input defaults and normalization', () => {
     );
     expect(calculatorDraftSessionKey('project-1', '', 'estimate-edit')).toBe(
       'sanctuary-portal:calculator:draft:v1:project-1:edit:estimate-edit',
+    );
+    expect(calculatorDraftSessionKey('project-1', '', '', 'scope-1', 'add_on')).toBe(
+      'sanctuary-portal:calculator:draft:v1:project-1:new:add-on:scope-1',
     );
     expect(normalizePanelOrientation('bad')).toBe('vertical');
     expect(normalizeInfillsStateForUi(null)).toEqual({ items: [] });

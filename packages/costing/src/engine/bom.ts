@@ -2080,6 +2080,7 @@ function buildMaterialsV1Internal(
   let infillJoinerFixingsEach = 0;
   let infillStripPanelCount = 0;
   let infillExtraSupportsEach = 0;
+  let infillShapedOpeningCount = 0;
   // Canonical infill takeoff: this is the only active infill material source.
   const canonicalPanels = infillTakeoff.items.flatMap((item) => item.panels);
   const canonicalCuts = infillTakeoff.items.flatMap((item) => item.linear_cuts);
@@ -2091,6 +2092,13 @@ function buildMaterialsV1Internal(
   const canonicalSupportPurchase = infillTakeoff.purchases.find((purchase) => purchase.material === 'support_50x50');
 
   infillInstanceCount = infillTakeoff.totals.instance_count;
+  infillShapedOpeningCount = moduleInfills.reduce((total, infill) => {
+    if (infill.shape.type !== 'mono_slope') return total;
+    const isActuallyShaped = Math.abs(infill.shape.height_high_m - infill.shape.height_low_m) > 0.001;
+    return isActuallyShaped
+      ? total + Math.max(1, Math.round(Number(infill.qty ?? 1)))
+      : total;
+  }, 0);
   infillJoinerTotalM = infillTakeoff.totals.joiner_cut_m;
   infillJoinerFixingsEach = canonicalJoinerCuts.reduce(
     (total, cut) => total + Math.ceil(cut.length_m / INFILL_JOINER_FIXING_SPACING_M),
@@ -2709,6 +2717,7 @@ function buildMaterialsV1Internal(
       acrylic_joiner_bottom_fixings_each: Math.max(0, Math.round(acrylicJoinerBottomFixingsEach)),
       acrylic_install_area_m2: roundMoney(acrylicInstallAreaM2),
       infill_instance_count: Math.max(0, Math.round(infillInstanceCount)),
+      infill_shaped_opening_count: Math.max(0, Math.round(infillShapedOpeningCount)),
       infill_joiner_total_m: roundMoney(infillJoinerTotalM),
       infill_joiner_fixings_each: Math.max(0, Math.round(infillJoinerFixingsEach)),
       infill_sheet_area_m2: roundMoney(infillSheetAreaM2),
