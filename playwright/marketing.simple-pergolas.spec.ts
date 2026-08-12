@@ -120,6 +120,41 @@ for (const viewport of viewports) {
       exact: true,
     })).toBeVisible();
 
+    const hero = page.locator('main > section').first();
+    const heroMedia = hero.locator('figure');
+    const heroCopy = hero.locator(':scope > div').first();
+    if (viewport.width <= 900) {
+      const headerBox = await page.locator('header.site').boundingBox();
+      const mediaBox = await heroMedia.boundingBox();
+      expect(headerBox).not.toBeNull();
+      expect(mediaBox).not.toBeNull();
+      expect(mediaBox!.y).toBeGreaterThanOrEqual(
+        headerBox!.y + headerBox!.height - 1,
+      );
+    }
+    if (viewport.width <= 720) {
+      const mediaBox = await heroMedia.boundingBox();
+      const compactRatio = viewport.height <= 700
+        ? 0.46
+        : viewport.width <= 380
+          ? 0.5
+          : 0.54;
+      const formerlyVisibleHeight = viewport.height * compactRatio - 64;
+      expect(mediaBox).not.toBeNull();
+      expect(mediaBox!.height).toBeGreaterThanOrEqual(formerlyVisibleHeight + 38);
+      await expect(heroMedia.locator('img')).toHaveCSS(
+        'object-position',
+        '50% 42%',
+      );
+      const copyBox = await heroCopy.boundingBox();
+      const heroBox = await hero.boundingBox();
+      expect(copyBox).not.toBeNull();
+      expect(heroBox).not.toBeNull();
+      expect(copyBox!.y + copyBox!.height).toBeLessThanOrEqual(
+        heroBox!.y + heroBox!.height + 1,
+      );
+    }
+
     const calculatorSection = page.locator('#price-your-cover');
     await expect(calculatorSection).toHaveAttribute(
       'data-simple-price-integration',

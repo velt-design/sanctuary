@@ -558,7 +558,9 @@ resolver, route, component and root parity unit suites named in
 The Simple cover hero owns one viewport when its content fits, but its desktop
 grid must grow with the copy on short screens rather than letting the copy,
 media or proof rail escape a definite-height row. At 900 pixels and below the
-approved image-first stack remains the route contract. Plain and
+approved image-first stack remains the route contract. The stacked media begins
+below the fixed header; phone crops bias upward and restore about 2.5rem of
+visible image while keeping the complete hero copy ahead of the next section. Plain and
 homepage-attributed documents keep contiguous hero, optional saved-brief and
 fit-section boundaries, visible headline-to-intro spacing, aligned media edges,
 fixed-header anchor clearance and zero horizontal overflow from 320 to 1440

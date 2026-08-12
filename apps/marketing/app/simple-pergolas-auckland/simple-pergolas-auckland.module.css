@@ -712,6 +712,7 @@
 
   .hero {
     min-height: 0;
+    margin-top: var(--header-height);
     grid-template-columns: 1fr;
   }
 
@@ -788,7 +789,11 @@
   }
 
   .heroMedia {
-    min-height: 54svh;
+    min-height: calc(54svh - var(--header-height) + 2.5rem);
+  }
+
+  .heroImage {
+    object-position: 50% 42%;
   }
 
   .heroCopy {
@@ -1032,7 +1037,7 @@
 
 @media (max-width: 380px) {
   .heroMedia {
-    min-height: 50svh;
+    min-height: calc(50svh - var(--header-height) + 2.5rem);
   }
 
   .heroTitle {
@@ -1052,7 +1057,7 @@
 
 @media (max-width: 720px) and (max-height: 700px) {
   .heroMedia {
-    min-height: 46svh;
+    min-height: calc(46svh - var(--header-height) + 2.5rem);
   }
 
   .heroCopy {
