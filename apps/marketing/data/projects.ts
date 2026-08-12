@@ -402,12 +402,21 @@ const baseProjects: Project[] = [
     type: 'Commercial',
     roof: 'Gable',
     year: '2024',
-    heroImage: { src: '/images/project-goodhome-01.jpg', alt: 'Covered hospitality courtyard with gable pergola', objectPosition: '50% 48%' },
+    heroImage: {
+      src: '/images/project-goodhome-05.jpg',
+      alt: 'The Good Home Takanini courtyard enclosed by clear blinds beneath twin acrylic gables',
+      objectPosition: '50% 48%',
+    },
     gallery: [
+      {
+        src: '/images/project-goodhome-06.jpg',
+        alt: 'Interior view through The Good Home hospitality courtyard at sunset',
+        objectPosition: '50% 48%',
+      },
       { src: '/images/project-goodhome-01.jpg', alt: 'Twilight crowd under the pergola', objectPosition: '50% 48%' },
       { src: '/images/project-goodhome-02.jpg', alt: 'Cafe blinds closing the courtyard edge', objectPosition: '50% 50%' },
-      { src: '/images/project-goodhome-03.jpg', alt: 'Detail of structural column and planter', objectPosition: '50% 52%' },
       { src: '/images/project-goodhome-04.jpg', alt: 'Lighting wash across the roof panels', objectPosition: '50% 44%' },
+      { src: '/images/project-goodhome-03.jpg', alt: 'Detail of structural column and planter', objectPosition: '50% 52%' },
     ],
     blurb: 'Two gables extending the villa-style facade over the restaurant courtyard.',
     constraint:
@@ -597,9 +606,9 @@ const baseProjects: Project[] = [
     roof: 'Gable',
     year: '2020',
     heroImage: {
-      src: '/images/project-atelier-shu-03.jpg',
-      alt: 'Dark-tint acrylic gable canopy across the Atelier Shu Cafe frontage in Newmarket',
-      objectPosition: '50% 48%',
+      src: '/images/project-atelier-shu-06.jpg',
+      alt: 'Dark-tint acrylic gable canopy and integrated blinds at Atelier Shu Cafe in Newmarket',
+      objectPosition: '38% 48%',
     },
     caseStudyHeroImage: {
       src: ATELIER_SHU_CASE_STUDY_HERO_IMAGE,
@@ -608,14 +617,19 @@ const baseProjects: Project[] = [
     },
     gallery: [
       {
-        src: '/images/project-atelier-shu-03.jpg',
-        alt: 'Dark-tint acrylic gable canopy across the Atelier Shu Cafe frontage in Newmarket',
-        objectPosition: '50% 48%',
+        src: '/images/project-atelier-shu-05.jpg',
+        alt: 'Dark-tint acrylic roofing and exposed gable frame above Atelier Shu Cafe seating',
+        objectPosition: '50% 42%',
       },
       {
-        src: '/images/project-atelier-shu-01.jpg',
-        alt: 'Sheltered outdoor seating beneath the Atelier Shu Cafe canopy',
-        objectPosition: '50% 44%',
+        src: '/images/project-atelier-shu-04.jpg',
+        alt: 'Wide view of the Atelier Shu Cafe canopy and integrated blinds',
+        objectPosition: '40% 48%',
+      },
+      {
+        src: '/images/project-atelier-shu-06.jpg',
+        alt: 'Three-quarter view of the Atelier Shu Cafe canopy and deployed blinds',
+        objectPosition: '38% 48%',
       },
     ],
     blurb: 'A dark-tint acrylic gable canopy aligned with the cafe frontage.',
@@ -1018,6 +1032,7 @@ const baseProjects: Project[] = [
 const projectOrder: string[] = [
   'warkworth-outdoor-room',      // Warkworth Outdoor Room
   'mt-maunganui-box',            // Mt Maunganui Box
+  'atelier-shu-cafe',            // Atelier Shu Cafe
   'lilliput-mini-golf',          // Lilliput Mini Golf
   'riverhead-gable-pavilion',    // Riverhead Gable Pavilion
   'velskov-forest',              // Velskov Forest
@@ -1029,7 +1044,6 @@ const projectOrder: string[] = [
   'st-heliers-townhouse',        // St Heliers Townhouse
   'kiwi-rail-platform',          // KiwiRail Head Office
   'waiheke-holiday-home',        // Waiheke Holiday Home
-  'atelier-shu-cafe',            // Atelier Shu Cafe
 ];
 
 export const projects: Project[] = [...baseProjects].sort((a, b) => {

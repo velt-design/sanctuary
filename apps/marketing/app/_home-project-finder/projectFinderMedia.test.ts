@@ -19,6 +19,8 @@ describe('project finder governed media', () => {
         'lilliput-mini-golf',
         'kiwi-rail-platform',
       ]);
+    expect(media.choiceByProfessionalPath.venue.src)
+      .toBe('/images/project-goodhome-06.jpg');
     for (const evidence of Object.values(media.evidenceByDirection)) {
       expect(evidence).toHaveLength(2);
       expect(evidence.every((project) => Boolean(project.reason))).toBe(true);

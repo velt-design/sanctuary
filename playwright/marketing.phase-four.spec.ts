@@ -578,11 +578,11 @@ test('commercial journey leads with three cases and three delivery stages', asyn
   ).toHaveCSS('grid-template-columns', /.+ .+ .+/);
   await expect(commercialMain.locator('.acrylic-hero img')).toHaveAttribute(
     'src',
-    /project-goodhome-03/,
+    /project-goodhome-06/,
   );
   await expect(
     commercialMain.locator('#commercial-projects .acrylic-project-card img').nth(0),
-  ).toHaveAttribute('src', /project-goodhome-02/);
+  ).toHaveAttribute('src', /project-goodhome-05/);
   await expect(
     commercialMain.locator('#commercial-projects .acrylic-project-card img').nth(2),
   ).toHaveAttribute('src', /project-kiwi-rail-01/);

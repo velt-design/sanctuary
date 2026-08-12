@@ -69,10 +69,19 @@ const projectProof = [
     label: 'Dark-tint acrylic',
     summary:
       'A dark-tint acrylic gable canopy aligns with the cafe frontage.',
+    image: {
+      src: '/images/project-atelier-shu-05.jpg',
+      alt: 'Dark-tint acrylic roofing and exposed gable frame above Atelier Shu Cafe seating',
+      objectPosition: '50% 42%',
+    },
   },
 ].flatMap((proof) => {
   const project = projects.find((candidate) => candidate.slug === proof.slug);
-  return project ? [{ ...proof, project }] : [];
+  if (!project) return [];
+  const image = 'image' in proof && proof.image
+    ? proof.image
+    : project.heroImage;
+  return [{ ...proof, project, image }];
 });
 
 export default function AcrylicRoofPergolasAucklandPage() {
@@ -222,7 +231,7 @@ export default function AcrylicRoofPergolasAucklandPage() {
             </Heading>
           </header>
           <div className="acrylic-project-grid">
-            {projectProof.map(({ project, label, summary }) => (
+            {projectProof.map(({ project, label, summary, image }) => (
               <Link
                 href={`/projects/${project.slug}`}
                 className="acrylic-project-card"
@@ -230,11 +239,11 @@ export default function AcrylicRoofPergolasAucklandPage() {
               >
                 <div className="acrylic-project-card__media">
                   <Image
-                    src={project.heroImage.src}
-                    alt={project.heroImage.alt}
+                    src={image.src}
+                    alt={image.alt}
                     fill
                     sizes="(max-width: 720px) 100vw, 33vw"
-                    style={{ objectPosition: project.heroImage.objectPosition }}
+                    style={{ objectPosition: image.objectPosition }}
                   />
                 </div>
                 <div className="acrylic-project-card__body">

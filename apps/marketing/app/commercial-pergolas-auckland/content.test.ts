@@ -101,13 +101,13 @@ describe('commercial service journey content', () => {
       (block) => block.id === 'commercial-capability',
     );
 
-    expect(commercialPergolasConfig.hero.image).toBe('/images/project-goodhome-03.jpg');
+    expect(commercialPergolasConfig.hero.image).toBe('/images/project-goodhome-06.jpg');
     expect(
       projects?.kind === 'projects'
         ? projects.items.map(({ image }) => image?.src ?? null)
         : [],
     ).toEqual([
-      '/images/project-goodhome-02.jpg',
+      '/images/project-goodhome-05.jpg',
       null,
       '/images/project-kiwi-rail-01.jpg',
     ]);

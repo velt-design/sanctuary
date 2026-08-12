@@ -416,7 +416,10 @@ test('Atelier Shu retains its governed front-on canopy case-study image', async 
   );
   await expect(hero.locator('img')).toHaveCSS('object-position', '50% 18%');
   await expect(visibleProjectsMain(page).locator(
-    '.project-case-study__gallery img[src*="project-atelier-shu-03.jpg"]',
+    '.project-case-study__gallery img[src*="project-atelier-shu-05.jpg"]',
+  )).toHaveCount(1);
+  await expect(visibleProjectsMain(page).locator(
+    '.project-case-study__gallery img[src*="project-atelier-shu-04.jpg"]',
   )).toHaveCount(1);
 
   await page.goto('/sitemap-images.xml');
@@ -465,13 +468,13 @@ test('Atelier imagery stays selective and claim-aligned across guide surfaces', 
   const main = visibleMain(page);
   await expect(main.locator('a[href="/projects/atelier-shu-cafe"] img')).toHaveAttribute(
     'src',
-    /project-atelier-shu-03\.jpg/,
+    /project-atelier-shu-05\.jpg/,
   );
-  await expect(main.locator('img[src*="project-atelier-shu-03.jpg"]')).toHaveCount(1);
+  await expect(main.locator('img[src*="project-atelier-shu-05.jpg"]')).toHaveCount(1);
 
   await page.goto('/acrylic-pergolas-vs-louvre-roofs');
   await expect(
-    visibleMain(page).locator('img[src*="project-atelier-shu-03.jpg"]'),
+    visibleMain(page).locator('img[src*="project-atelier-shu-05.jpg"]'),
   ).toHaveCount(0);
 });
 

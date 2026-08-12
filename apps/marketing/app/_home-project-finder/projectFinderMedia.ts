@@ -124,6 +124,7 @@ export function buildProjectFinderHomepageMedia(
     choiceByProfessionalPath: {
       venue: resolveMedia(projects, {
         projectSlug: 'goodhome-commercial-terrace',
+        galleryIndex: 0,
       }),
       'builder-contractor': resolveMedia(projects, {
         projectSlug: 'lilliput-mini-golf',

@@ -121,11 +121,20 @@ describe('published project evidence', () => {
 
   it('keeps the Atelier Shu case-study hero distinct from its reusable card image', () => {
     const project = projects.find((candidate) => candidate.slug === 'atelier-shu-cafe');
-    expect(project?.heroImage.src).toBe('/images/project-atelier-shu-03.jpg');
+    expect(project?.heroImage.src).toBe('/images/project-atelier-shu-06.jpg');
     expect(project?.caseStudyHeroImage).toMatchObject({
       src: ATELIER_SHU_CASE_STUDY_HERO_IMAGE,
       objectPosition: ATELIER_SHU_CASE_STUDY_HERO_OBJECT_POSITION,
     });
+  });
+
+  it('features Atelier Shu third in the project collection', () => {
+    expect(projects.slice(0, 4).map(({ slug }) => slug)).toEqual([
+      'warkworth-outdoor-room',
+      'mt-maunganui-box',
+      'atelier-shu-cafe',
+      'lilliput-mini-golf',
+    ]);
   });
 
   it('uses the full Tindalls Bay composition as hero and keeps both detail views', () => {

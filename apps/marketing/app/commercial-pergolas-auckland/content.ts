@@ -38,9 +38,9 @@ export const commercialPergolasConfig = {
   serviceName: 'Commercial pergola design and build in Auckland',
   serviceType: 'Commercial pergola design and build',
   hero: {
-    image: '/images/project-goodhome-03.jpg',
-    imageAlt: 'Completed Good Home Takanini courtyard beneath a transparent gable pergola',
-    objectPosition: '50% 46%',
+    image: '/images/project-goodhome-06.jpg',
+    imageAlt: 'Interior of The Good Home Takanini hospitality courtyard beneath twin acrylic gables',
+    objectPosition: '50% 48%',
     eyebrow: 'Commercial pergolas in Auckland',
     title: 'Commercial pergolas, designed and installed.',
     intro:
@@ -68,9 +68,9 @@ export const commercialPergolasConfig = {
           summary: 'Two gables extend the villa-style facade over the restaurant courtyard.',
           facts: ['67.7 m² covered area', '25 degree gable relationship'],
           image: {
-            src: '/images/project-goodhome-02.jpg',
-            alt: 'Completed two-zone gable pergola extending The Good Home Takanini courtyard',
-            objectPosition: '50% 52%',
+            src: '/images/project-goodhome-05.jpg',
+            alt: 'The Good Home Takanini courtyard enclosed by clear blinds beneath twin acrylic gables',
+            objectPosition: '50% 48%',
           },
         },
         {

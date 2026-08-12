@@ -1353,11 +1353,11 @@ export const products: ProductRecord[] = [
       },
     ],
     hero: {
-      src: '/images/project-goodhome-02.jpg',
-      alt: 'Cafe blinds deployed along the edge of the Good Home covered courtyard',
+      src: '/images/project-goodhome-05.jpg',
+      alt: 'Clear blinds deployed along the edge of The Good Home covered courtyard',
       caption: 'The Good Home Takanini',
       detail: 'Cafe blinds · Adjustable courtyard edge',
-      objectPosition: '50% 50%',
+      objectPosition: '50% 48%',
     },
     gallery: [
       {
@@ -1392,7 +1392,7 @@ export const products: ProductRecord[] = [
       title: 'Pergola Drop-Down Blinds',
       description:
         'Explore integrated pergola blinds for adjustable low sun, privacy and exposure. See project evidence, fabric trade-offs, controls and planning questions.',
-      ogImage: '/images/project-goodhome-02.jpg',
+      ogImage: '/images/project-goodhome-05.jpg',
     },
     details: productDetails['drop-down-blinds'],
   },
@@ -1623,11 +1623,11 @@ export const products: ProductRecord[] = [
       },
     ],
     hero: {
-      src: '/images/project-goodhome-01.jpg',
-      alt: 'The Good Home covered hospitality courtyard in evening use',
+      src: '/images/project-goodhome-06.jpg',
+      alt: 'The Good Home covered hospitality courtyard in evening light',
       caption: 'Evening-use context',
       detail: 'Heater product and performance are not recorded for this project',
-      objectPosition: '50% 48%',
+      objectPosition: '50% 46%',
     },
     gallery: [
       {
@@ -1663,7 +1663,7 @@ export const products: ProductRecord[] = [
       title: 'Integrated Pergola Patio Heaters',
       description:
         'Plan electric patio heaters around seating, exposure, mounting, clearances and electrical scope. Understand honest trade-offs and what the exact product must confirm.',
-      ogImage: '/images/project-goodhome-01.jpg',
+      ogImage: '/images/project-goodhome-06.jpg',
     },
     details: productDetails['patio-heaters'],
   },

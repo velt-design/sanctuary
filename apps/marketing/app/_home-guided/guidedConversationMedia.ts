@@ -62,7 +62,10 @@ export function buildGuidedHomepageMedia(
     resolveMedia(projects, reference)
   );
 
-  const hospitality = media({ projectSlug: 'goodhome-commercial-terrace' });
+  const hospitality = media({
+    projectSlug: 'goodhome-commercial-terrace',
+    galleryIndex: 0,
+  });
   const workplace = media({ projectSlug: 'kiwi-rail-platform' });
   const recreation = media({
     projectSlug: 'lilliput-mini-golf',

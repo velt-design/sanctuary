@@ -34,6 +34,9 @@ describe('guided homepage governed media', () => {
   it('uses the selected business sector for commercial result evidence', () => {
     const media = buildGuidedHomepageMedia(projects);
 
+    expect(media.commercialResultBySector.hospitality.src)
+      .toBe('/images/project-goodhome-06.jpg');
+
     expect(getGuidedResultMedia(media, 'commercial', {
       audience: 'business',
       sector: 'workplace',
