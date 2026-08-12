@@ -12,6 +12,54 @@ type QuoteSourceEstimate = Estimate & {
   commercialScopeId: string | null;
 };
 
+export function mapQuoteSourceEstimateRow(row: any): QuoteSourceEstimate {
+  const outputs = row.outputs && typeof row.outputs === 'object' ? row.outputs : {};
+  return {
+    id: appIdFromUuid('est', String(row.id ?? '')),
+    projectId: appIdFromUuid('proj', String(row.project_id ?? '')),
+    createdAt: typeof row.created_at === 'string' ? row.created_at : nowIso(),
+    updatedAt: typeof row.updated_at === 'string' ? row.updated_at : undefined,
+    status: String(row.status ?? 'draft') as any,
+    inputs: row.inputs ?? {},
+    derived: outputs.derived ?? {},
+    outputs: {
+      materials: outputs.materials ?? { lines: [], totals: { materials_ex_gst: 0 } },
+      install: outputs.install ?? { actions: [], totals: { crew_minutes: 0, crew_hours: 0, install_ex_gst: 0 } },
+      overhead: outputs.overhead ?? { total_ex_gst: 0 },
+      totals: outputs.totals ?? { cost_ex_gst: 0, cost_inc_gst: 0, warnings: [], notes_and_warnings: [] },
+      warnings: Array.isArray(row.warnings) ? row.warnings : [],
+      cost_snapshot_version: outputs.cost_snapshot_version === 'v2' ? 'v2' : 'v1',
+      pergolas: Array.isArray(outputs.pergolas) ? outputs.pergolas : undefined,
+      siteShared:
+        outputs.siteShared && typeof outputs.siteShared === 'object'
+          ? outputs.siteShared
+          : outputs.shared && typeof outputs.shared === 'object'
+            ? outputs.shared
+            : undefined,
+      shared:
+        outputs.shared && typeof outputs.shared === 'object'
+          ? outputs.shared
+          : outputs.siteShared && typeof outputs.siteShared === 'object'
+            ? outputs.siteShared
+            : undefined,
+      pricing_policy: outputs.pricing_policy,
+      customer_add_ons: outputs.customer_add_ons,
+      standalone_infills: outputs.standalone_infills,
+      additional_aluminium: outputs.additional_aluminium,
+    },
+    configVersions: outputs.configVersions ?? {
+      pricebook: '',
+      installActions: '',
+      overheads: '',
+      rules: '',
+      manifest: '',
+    },
+    pricingSource: row.pricing_source,
+    pricingSourceMetadata: row.pricing_source_metadata,
+    commercialScopeId: typeof row.commercial_scope_id === 'string' ? row.commercial_scope_id : null,
+  } as QuoteSourceEstimate;
+}
+
 export function loadQuoteFamilyByCommercialScope(projectUuid: string, commercialScopeId: string | null) {
   const query = supabaseServiceRole
     .from('quotes')
@@ -63,47 +111,5 @@ export async function loadEstimate(estimateUuid: string): Promise<QuoteSourceEst
   }
   if (!res.data) return null;
 
-  const row = res.data as any;
-  return {
-    id: appIdFromUuid('est', String(row.id ?? '')),
-    projectId: appIdFromUuid('proj', String(row.project_id ?? '')),
-    createdAt: typeof row.created_at === 'string' ? row.created_at : nowIso(),
-    updatedAt: typeof row.updated_at === 'string' ? row.updated_at : undefined,
-    status: String(row.status ?? 'draft') as any,
-    inputs: row.inputs ?? {},
-    derived: (row.outputs as any)?.derived ?? {},
-    outputs: {
-      materials: (row.outputs as any)?.materials ?? { lines: [], totals: { materials_ex_gst: 0 } },
-      install: (row.outputs as any)?.install ?? { actions: [], totals: { crew_minutes: 0, crew_hours: 0, install_ex_gst: 0 } },
-      overhead: (row.outputs as any)?.overhead ?? { total_ex_gst: 0 },
-      totals: (row.outputs as any)?.totals ?? { cost_ex_gst: 0, cost_inc_gst: 0, warnings: [], notes_and_warnings: [] },
-      warnings: Array.isArray(row.warnings) ? row.warnings : [],
-      cost_snapshot_version: (row.outputs as any)?.cost_snapshot_version === 'v2' ? 'v2' : 'v1',
-      pergolas: Array.isArray((row.outputs as any)?.pergolas) ? (row.outputs as any).pergolas : undefined,
-      siteShared:
-        (row.outputs as any)?.siteShared && typeof (row.outputs as any).siteShared === 'object'
-          ? (row.outputs as any).siteShared
-          : (row.outputs as any)?.shared && typeof (row.outputs as any).shared === 'object'
-            ? (row.outputs as any).shared
-            : undefined,
-      shared:
-        (row.outputs as any)?.shared && typeof (row.outputs as any).shared === 'object'
-          ? (row.outputs as any).shared
-          : (row.outputs as any)?.siteShared && typeof (row.outputs as any).siteShared === 'object'
-            ? (row.outputs as any).siteShared
-            : undefined,
-      pricing_policy: (row.outputs as any)?.pricing_policy,
-      customer_add_ons: (row.outputs as any)?.customer_add_ons,
-    },
-    configVersions: (row.outputs as any)?.configVersions ?? {
-      pricebook: '',
-      installActions: '',
-      overheads: '',
-      rules: '',
-      manifest: '',
-    },
-    pricingSource: row.pricing_source,
-    pricingSourceMetadata: row.pricing_source_metadata,
-    commercialScopeId: typeof row.commercial_scope_id === 'string' ? row.commercial_scope_id : null,
-  } as QuoteSourceEstimate;
+  return mapQuoteSourceEstimateRow(res.data as any);
 }
