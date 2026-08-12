@@ -41,6 +41,15 @@ type QuotesListViewProps = {
   estimatesLoading: boolean;
   estimates: EstimateMeta[];
   createQuote: () => void;
+  createMode: "estimate" | "manual";
+  setCreateMode: Dispatch<SetStateAction<"estimate" | "manual">>;
+  manualDescription: string;
+  setManualDescription: Dispatch<SetStateAction<string>>;
+  manualQty: string;
+  setManualQty: Dispatch<SetStateAction<string>>;
+  manualPrice: string;
+  setManualPrice: Dispatch<SetStateAction<string>>;
+  createBusy: boolean;
   isAdmin: boolean;
   deleteQuote: (quote: QuoteDeleteTarget) => void;
   supersedeQuote: (quote: QuoteSupersedeTarget) => void;
@@ -69,6 +78,15 @@ export default function QuotesListView({
   estimatesLoading,
   estimates,
   createQuote,
+  createMode,
+  setCreateMode,
+  manualDescription,
+  setManualDescription,
+  manualQty,
+  setManualQty,
+  manualPrice,
+  setManualPrice,
+  createBusy,
   isAdmin,
   deleteQuote,
   supersedeQuote,
@@ -309,31 +327,46 @@ export default function QuotesListView({
             </button>
           </div>
           <div className={styles.modalBody}>
-            <label className={styles.metaLabel} htmlFor="estimateSelect">
-              Select design version
-            </label>
-            <select
-              id="estimateSelect"
-              className={styles.metaInput}
-              value={createEstimateId}
-              onChange={(event) => {
-                setCreateEstimateId(event.target.value);
-                const estimate = estimates.find((item) => item.id === event.target.value);
-                const family = quotes.find((quote) =>
-                  (quote.commercialScopeId ?? null) === (estimate?.commercialScopeId ?? null),
-                );
-                setCreateInternalName(family?.internalName ?? estimate?.internalName ?? "");
-              }}
-              disabled={estimatesLoading}
-            >
-              {estimates.map((estimate) => (
-                <option key={estimate.id} value={estimate.id}>
-                  {estimate.internalName || (estimate.isActiveDraft
-                    ? "Current draft design"
-                    : `Design ${estimate.versionLabel}`)}{estimate.commercialScopeKind === "add_on" ? " · Add-on" : ""}
-                </option>
-              ))}
-            </select>
+            {isAdmin ? (
+              <div className={styles.modalModeSwitch} aria-label="Quote source">
+                <button type="button" className={createMode === "estimate" ? styles.modalModeButtonActive : styles.modalModeButton} onClick={() => setCreateMode("estimate")}>From estimate</button>
+                <button type="button" className={createMode === "manual" ? styles.modalModeButtonActive : styles.modalModeButton} onClick={() => setCreateMode("manual")}>Manual quote</button>
+              </div>
+            ) : null}
+            {createMode === "estimate" ? (
+              <>
+                <label className={styles.metaLabel} htmlFor="estimateSelect">Select design version</label>
+                <select
+                  id="estimateSelect"
+                  className={styles.metaInput}
+                  value={createEstimateId}
+                  onChange={(event) => {
+                    setCreateEstimateId(event.target.value);
+                    const estimate = estimates.find((item) => item.id === event.target.value);
+                    const family = quotes.find((quote) =>
+                      (quote.commercialScopeId ?? null) === (estimate?.commercialScopeId ?? null),
+                    );
+                    setCreateInternalName(family?.internalName ?? estimate?.internalName ?? "");
+                  }}
+                  disabled={estimatesLoading}
+                >
+                  {!estimates.length ? <option value="">No estimates available</option> : null}
+                  {estimates.map((estimate) => (
+                    <option key={estimate.id} value={estimate.id}>
+                      {estimate.internalName || (estimate.isActiveDraft
+                        ? "Current draft design"
+                        : `Design ${estimate.versionLabel}`)}{estimate.commercialScopeKind === "add_on" ? " · Add-on" : ""}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <div className={styles.manualQuoteFields}>
+                <Input label="First line item" value={manualDescription} onChange={(event) => setManualDescription(event.target.value)} placeholder="e.g. Supply and install additional post" />
+                <Input label="Quantity" type="number" min="0.01" step="0.01" value={manualQty} onChange={(event) => setManualQty(event.target.value)} />
+                <Input label="Unit price (inc GST)" type="number" min="0.01" step="0.01" value={manualPrice} onChange={(event) => setManualPrice(event.target.value)} helperText="Add more lines and edit payment terms after creation." />
+              </div>
+            )}
             <Input
               label="Internal quote name (optional)"
               value={createInternalName}
@@ -355,8 +388,9 @@ export default function QuotesListView({
               type="button"
               className={styles.primaryButton}
               onClick={createQuote}
+              disabled={createBusy || (createMode === "estimate" ? !createEstimateId : !manualDescription.trim() || Number(manualQty) <= 0 || Number(manualPrice) <= 0)}
             >
-              Create quote
+              {createBusy ? "Creating..." : "Create quote"}
             </button>
           </div>
         </QuoteModal>

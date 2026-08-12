@@ -4,6 +4,7 @@ export {
   listQuoteVersionsForProject,
   getQuoteVersionDetail,
   createQuoteFromEstimate,
+  createManualQuote,
   updateDraftQuoteVersion,
   refreshDraftQuoteVersionFromEstimate,
   previewDraftQuoteRefreshFromEstimate,

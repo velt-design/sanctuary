@@ -572,6 +572,13 @@
   gap: 8px;
 }
 
+.manualQuoteFields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(100px, 0.7fr) minmax(150px, 1fr);
+  gap: var(--ui-space-3);
+  align-items: end;
+}
+
 .refreshModeList {
   display: grid;
   gap: 8px;
@@ -1266,6 +1273,10 @@
 }
 
 @media (max-width: 767px) {
+  .manualQuoteFields {
+    grid-template-columns: 1fr;
+  }
+
   .header,
   .detailHeader,
   .cardHeader,

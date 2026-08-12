@@ -26,6 +26,7 @@ import {
 import {
   buildQuotePricingSourceCopyFromEstimate,
   buildQuotePricingSourceCopyFromQuoteVersion,
+  buildManualQuotePricingSource,
   protectedQuoteVersionRefreshReason,
   quotePricingSourceAuditPayload,
   quotePricingSourceDbColumns,
@@ -481,6 +482,78 @@ export async function createQuoteFromEstimate(
   return detail;
 }
 
+export async function createManualQuote(
+  projectId: string,
+  actor: string | null,
+  clientIntentId: string,
+  internalName: string | null,
+  lineItems: Array<{ description: string; qty: number; unitPriceIncGstCents: number }>,
+): Promise<QuoteVersionDetail> {
+  const projectUuid = uuidFromAppId(projectId, 'proj');
+  const normalizedItems = normalizeDraftLineItems(lineItems);
+  if (!normalizedItems.length) throw new Error('Add at least one quote item.');
+  if (normalizedItems.some((item) => !item.description.trim() || item.qty <= 0 || item.unitPriceIncGstCents <= 0)) {
+    throw new Error('Each quote item needs a description, quantity, and price greater than $0.');
+  }
+  const projectRes = await supabaseServiceRole.from('projects').select('id').eq('id', projectUuid).maybeSingle();
+  if (projectRes.error || !projectRes.data) throw new Error('Project not found');
+
+  // Manual quotes intentionally join the project's base quote family so its version history remains coherent.
+  const quote = await ensureQuote(projectUuid, actor, internalName, null);
+  const totals = totalsFromNormalizedLineItems(normalizedItems);
+  const paymentTerms = buildDefaultQuotePaymentSchedule({ quoteTotalIncGstCents: totals.totalIncGstCents });
+  const depositPercent = paymentScheduleCompatibilityDepositPercent(paymentTerms, totals.totalIncGstCents);
+  const pricingSourceCopy = buildManualQuotePricingSource({ copiedAt: nowIso(), copiedBy: actor });
+  const pricingColumns = quotePricingSourceDbColumns(pricingSourceCopy);
+  const termsText = applyPaymentScheduleToTerms(DEFAULT_QUOTE_TERMS, paymentTerms);
+  const createRes = await supabaseServiceRole.rpc('commercial_quote_create_draft', {
+    p_quote_id: quote.id,
+    p_source_estimate_version_id: null,
+    p_revised_from_quote_version_id: null,
+    p_client_intent_id: clientIntentId,
+    p_actor: actor,
+    p_customer_name: await loadProjectCustomerName(projectUuid),
+    p_reference: null,
+    p_intro_text: DEFAULT_QUOTE_INTRO,
+    p_terms_text: termsText,
+    p_deposit_percent: depositPercent,
+    p_payment_terms: paymentTerms,
+    p_expires_at: null,
+    p_total_inc_gst_cents: totals.totalIncGstCents,
+    p_total_ex_gst_cents: totals.totalExGstCents,
+    p_gst_cents: totals.gstCents,
+    p_pricing_source: pricingColumns.pricing_source,
+    p_pricing_source_metadata: pricingColumns.pricing_source_metadata,
+    p_line_items: quoteLineItemsRpcPayload(normalizedItems),
+  });
+  if (createRes.error) throw quotePersistenceError(createRes.error, 'Failed to create manual quote');
+  const createdRow = firstRpcRow(createRes.data);
+  const quoteVersionUuid = typeof createdRow?.id === 'string' ? createdRow.id : '';
+  if (!quoteVersionUuid) throw new Error('Failed to create manual quote');
+
+  await updateProjectStage(projectUuid, 'QUOTING', quoteVersionUuid);
+  await insertAuditEvent({
+    projectId: projectUuid,
+    type: 'quote.created',
+    payload: {
+      quoteVersionId: quoteVersionUuid,
+      estimateVersionId: null,
+      copiedBy: actor,
+      copyReason: 'manual_quote_created',
+      ...quotePricingSourceAuditPayload(pricingSourceCopy),
+    },
+  });
+  let detail = await getQuoteVersionDetail(appIdFromUuid('qv', quoteVersionUuid));
+  if (!detail) throw new Error('Failed to load manual quote');
+  try {
+    await refreshQuoteArtifactsAfterMutation(detail.id, actor);
+    detail = (await getQuoteVersionDetail(detail.id)) ?? detail;
+  } catch (error) {
+    console.error('[quote_artifacts] failed to refresh after manual create', { quoteVersionId: detail.id, error });
+  }
+  return detail;
+}
+
 export async function updateDraftQuoteVersion(
   quoteVersionId: string,
   patch: {
@@ -607,7 +680,7 @@ export async function refreshDraftQuoteVersionFromEstimate(
 
   const versionRes = await supabaseServiceRole
     .from('quote_versions')
-    .select('id, status, is_current_draft, quote_id, quotes!inner(project_id)')
+    .select('id, status, is_current_draft, quote_id, pricing_source, quotes!inner(project_id)')
     .eq('id', quoteVersionUuid)
     .single();
   if (versionRes.error) {
@@ -616,6 +689,9 @@ export async function refreshDraftQuoteVersionFromEstimate(
   }
   if (!versionRes.data) throw new Error('Quote not found');
   await assertQuoteVersionMutableDraftBoundary(quoteVersionUuid, versionRes.data.status);
+  if (String(versionRes.data.pricing_source ?? '') === 'manual') {
+    throw new Error('Manual quotes cannot be refreshed from an estimate.');
+  }
 
   const currentDetail = await getQuoteVersionDetail(quoteVersionId);
   if (!currentDetail) throw new Error('Quote not found');
@@ -753,7 +829,7 @@ export async function previewDraftQuoteRefreshFromEstimate(
 
   const versionRes = await supabaseServiceRole
     .from('quote_versions')
-    .select('id, status, quotes!inner(project_id)')
+    .select('id, status, pricing_source, quotes!inner(project_id)')
     .eq('id', quoteVersionUuid)
     .single();
   if (versionRes.error) {
@@ -762,6 +838,9 @@ export async function previewDraftQuoteRefreshFromEstimate(
   }
   if (!versionRes.data) throw new Error('Quote not found');
   if (String(versionRes.data.status ?? '').toUpperCase() !== 'DRAFT') throw new Error('Quote is locked');
+  if (String(versionRes.data.pricing_source ?? '') === 'manual') {
+    throw new Error('Manual quotes cannot be refreshed from an estimate.');
+  }
 
   const currentDetail = await getQuoteVersionDetail(quoteVersionId);
   if (!currentDetail) throw new Error('Quote not found');
@@ -923,9 +1002,11 @@ export async function reviseQuoteVersion(
     ? quotePricingSourceDbColumns(pricingSourceCopy)
     : {
         pricing_source:
-          String(versionRes.data.pricing_source ?? '') === 'workbench_solved'
-            ? 'workbench_solved'
-            : 'calculator_live',
+          String(versionRes.data.pricing_source ?? '') === 'manual'
+            ? 'manual'
+            : String(versionRes.data.pricing_source ?? '') === 'workbench_solved'
+              ? 'workbench_solved'
+              : 'calculator_live',
         pricing_source_metadata:
           versionRes.data.pricing_source_metadata &&
           typeof versionRes.data.pricing_source_metadata === 'object'

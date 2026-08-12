@@ -595,23 +595,27 @@ export default function QuoteDetailView({
             <div className={styles.metaBlock}>
               <div className={styles.metaLabel}>Provenance</div>
               <div className={styles.metaValue}>
-                <Link
-                  href={`/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(detail.sourceEstimateVersionId)}`}
-                >
-                  Built from design {detail.sourceEstimateVersionLabel}
-                </Link>
+                {detail.sourceEstimateVersionId ? (
+                  <Link
+                    href={`/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(detail.sourceEstimateVersionId)}`}
+                  >
+                    Built from design {detail.sourceEstimateVersionLabel}
+                  </Link>
+                ) : "Manual quote · no source estimate"}
               </div>
               <div className={styles.metaValueMuted}>
                 Pricing source:{" "}
-                {detail.pricingSource === "workbench_solved"
+                {detail.pricingSource === "manual"
+                  ? "Admin-entered line items"
+                  : detail.pricingSource === "workbench_solved"
                   ? "Solved design snapshot"
                   : "Calculator estimate snapshot"}
               </div>
               {editableDraft ? (
                 <div className={styles.metaNote}>
-                  Draft quotes are independent once created. Design edits do not
-                  overwrite quote wording, pricing, deposit, expiry, or
-                  reference unless you explicitly refresh from design.
+                  {detail.pricingSource === "manual"
+                    ? "This quote is edited directly and is not linked to calculator pricing."
+                    : "Draft quotes are independent once created. Design edits do not overwrite quote wording, pricing, deposit, expiry, or reference unless you explicitly refresh from design."}
                 </div>
               ) : null}
               {editableDraft && hasNewerEstimate ? (

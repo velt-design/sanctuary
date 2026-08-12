@@ -3,44 +3,40 @@ import type { Dispatch, SetStateAction } from 'react';
 import type {
   CalculatorAdditionalAluminiumRow,
   CalculatorInputs,
-  CalculatorModuleInputs,
 } from '@/lib/types/calculator';
 import {
   makeAdditionalAluminiumRow,
   normalizeAdditionalAluminiumState,
 } from './calculatorAdditionalAluminium';
-import { makeDefaultModule } from './calculatorInputs';
 
 type Args = {
-  activeModule: CalculatorModuleInputs;
-  activeModuleIndex: number;
-  activePergolaId: string;
+  values: CalculatorInputs;
   setValues: Dispatch<SetStateAction<CalculatorInputs>>;
 };
 
 export function useCalculatorAdditionalAluminiumController({
-  activeModule,
-  activeModuleIndex,
-  activePergolaId,
+  values,
   setValues,
 }: Args) {
-  const state = normalizeAdditionalAluminiumState(activeModule.additionalAluminium);
+  const state = normalizeAdditionalAluminiumState(values.additionalAluminium);
 
   const updateState = (updater: (rows: CalculatorAdditionalAluminiumRow[]) => CalculatorAdditionalAluminiumRow[]) => {
     setValues((current) => {
-      const modules = current.modules.slice();
-      const module = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
-      const rows = normalizeAdditionalAluminiumState(module.additionalAluminium).rows;
-      modules[activeModuleIndex] = {
-        ...module,
-        additionalAluminium: { rows: updater(rows) },
-      };
-      return { ...current, modules };
+      const additionalAluminium = normalizeAdditionalAluminiumState(current.additionalAluminium);
+      return { ...current, additionalAluminium: { ...additionalAluminium, rows: updater(additionalAluminium.rows) } };
     });
   };
 
   return {
     state,
+    updateFinish: (patch: Partial<Omit<ReturnType<typeof normalizeAdditionalAluminiumState>, 'rows'>>) =>
+      setValues((current) => ({
+        ...current,
+        additionalAluminium: {
+          ...normalizeAdditionalAluminiumState(current.additionalAluminium),
+          ...patch,
+        },
+      })),
     addRow: () => updateState((rows) => [...rows, makeAdditionalAluminiumRow()]),
     updateRow: (id: string, patch: Partial<Omit<CalculatorAdditionalAluminiumRow, 'id'>>) =>
       updateState((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row))),

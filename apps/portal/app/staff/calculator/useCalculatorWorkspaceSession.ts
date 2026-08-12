@@ -120,7 +120,8 @@ export function useCalculatorWorkspaceSession({
     draftEntityKey,
     draftSessionKey,
     awaitsExternalDraft: Boolean(activeEditEstimateId || fromEstimateId),
-    allowEmptyDesign: route.newEstimateCommercialScopeKind === 'add_on',
+    allowEmptyDesign: true,
+    startEmptyDesign: route.newEstimateCommercialScopeKind === 'add_on',
     ...(draftPersistence ? { persistence: draftPersistence } : null),
   });
   const [project, setProject] = useState<Project | null>(null);

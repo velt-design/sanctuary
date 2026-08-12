@@ -115,7 +115,7 @@ export default function CalculatorModuleNavigator({
         <div className={styles.groups}>
           {model.groups.length === 0 ? (
             <p className={styles.emptyGroup}>
-              No pergolas in this add-on. Add one only if this scope includes another pergola.
+              No pergolas in this estimate. Add one if this scope includes a pergola.
             </p>
           ) : null}
           {model.groups.map((group) => (

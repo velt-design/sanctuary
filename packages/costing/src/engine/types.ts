@@ -907,8 +907,24 @@ export type StandaloneInfillsOutputV1 = {
   infill_takeoff?: InfillTakeoffV1;
 };
 
+export type SiteAdditionalAluminiumInputV1 = {
+  rows: AdditionalAluminiumInputV1[];
+  extrusion_colour: ExtrusionColour;
+  powdercoat_standard_colour?: string;
+  powdercoat_is_custom?: boolean;
+  powdercoat_custom_colour?: string;
+};
+
+export type SiteAdditionalAluminiumOutputV1 = {
+  item_count: number;
+  materials: MaterialsV1;
+  totals: TotalsV1;
+};
+
 export type SiteInputsV1 = {
   pergolas: PergolaInputsV1[];
+  /** Odd full aluminium bars priced once for the job, independent of pergola geometry. */
+  additional_aluminium?: SiteAdditionalAluminiumInputV1;
   /** Infills added to an existing pergola that is not part of this estimate. */
   standalone_infills?: StandaloneInfillsInputV1;
   job_type?: JobType;
@@ -953,6 +969,7 @@ export type SiteOutputV1 = {
   };
   infill_takeoff?: InfillTakeoffV1;
   standalone_infills?: StandaloneInfillsOutputV1;
+  additional_aluminium?: SiteAdditionalAluminiumOutputV1;
 };
 
 // ============================================================================

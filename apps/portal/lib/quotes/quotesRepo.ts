@@ -100,6 +100,29 @@ export async function getQuoteVersion(quoteVersionId: string): Promise<QuoteVers
   return res.quoteVersion;
 }
 
+export async function createManualQuoteDraft(
+  projectId: string,
+  input: {
+    internalName?: string | null;
+    lineItems: Array<{ description: string; qty: number; unitPriceIncGstCents: number }>;
+  },
+): Promise<QuoteVersionDetail> {
+  const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(
+    `/api/projects/${encodeURIComponent(projectId)}/quotes`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        mode: 'manual',
+        clientIntentId: makeClientIntentId('manual-quote'),
+        internalName: input.internalName ?? null,
+        lineItems: input.lineItems,
+      }),
+    },
+  );
+  if (!res.quoteVersion) throw new Error('Failed to create manual quote');
+  return res.quoteVersion;
+}
+
 export async function refreshDraftQuoteFromEstimate(
   quoteVersionId: string,
   estimateVersionId: string,

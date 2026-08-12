@@ -121,6 +121,48 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.coreTotalIncCents).toBe(14_375);
   });
 
+  it('keeps additional aluminium and site costs as separate zero-pergola quote lines', () => {
+    const estimate = makeEstimate({
+      inputs: {
+        ...makeEstimate().inputs,
+        pergolas: [],
+        modules: [],
+        travelExGst: '50',
+        additionalAluminium: {
+          extrusionColour: 'Black',
+          rows: [{ id: 'extra-1', profileSku: 'POST-100', quantity: '1' }],
+        },
+      },
+      outputs: {
+        ...makeEstimate().outputs,
+        additional_aluminium: { item_count: 1, totals: { cost_ex_gst: 100 } },
+        siteShared: { totals: { cost_ex_gst: 50 } },
+      },
+    });
+
+    const result = buildQuoteLineItemsFromEstimate(estimate);
+
+    expect(result.items.map((item) => item.description.split('\n')[0])).toEqual([
+      'Additional aluminium',
+      'Site costs',
+    ]);
+    expect(result.blockingIssues).toEqual([]);
+  });
+
+  it('blocks quote handoff when an empty estimate has no priced items', () => {
+    const estimate = makeEstimate({
+      inputs: { ...makeEstimate().inputs, pergolas: [], modules: [] },
+    });
+
+    const result = buildQuoteLineItemsFromEstimate(estimate);
+
+    expect(result.items).toEqual([]);
+    expect(result.blockingIssues).toEqual([{
+      code: 'NO_PRICED_ITEMS',
+      message: 'Add at least one priced item before creating a quote from this estimate.',
+    }]);
+  });
+
   it('adds a frozen engineering allowance without markup or quote discount', () => {
     const estimate = makeEstimate({
       inputs: {

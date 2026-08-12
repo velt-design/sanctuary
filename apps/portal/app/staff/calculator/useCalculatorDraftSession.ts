@@ -27,6 +27,7 @@ type UseCalculatorDraftSessionOptions = {
   draftSessionKey: string;
   awaitsExternalDraft: boolean;
   allowEmptyDesign?: boolean;
+  startEmptyDesign?: boolean;
   persistence?: CalculatorDraftPersistence;
 };
 
@@ -55,6 +56,7 @@ export function useCalculatorDraftSession({
   draftSessionKey,
   awaitsExternalDraft,
   allowEmptyDesign = false,
+  startEmptyDesign = false,
   persistence = calculatorDraftPersistence,
 }: UseCalculatorDraftSessionOptions): UseCalculatorDraftSessionResult {
   const draftKey = `${draftEntityKey}\u0000${draftSessionKey}`;
@@ -110,7 +112,7 @@ export function useCalculatorDraftSession({
           fingerprint: draftFingerprint(normalized, nextActiveModuleIndex),
         };
       } else if (!awaitsExternalDraft) {
-        const initialValues = allowEmptyDesign
+        const initialValues = startEmptyDesign
           ? makeEmptyAddOnCalculatorInputs()
           : makeDefaultCalculatorInputs();
         setValues(initialValues);
@@ -124,7 +126,7 @@ export function useCalculatorDraftSession({
     return () => {
       cancelled = true;
     };
-  }, [allowEmptyDesign, awaitsExternalDraft, draftEntityKey, draftKey, draftSessionKey, persistence]);
+  }, [allowEmptyDesign, awaitsExternalDraft, draftEntityKey, draftKey, draftSessionKey, persistence, startEmptyDesign]);
 
   const acceptExternalDraft = useCallback(
     (externalValues: CalculatorInputs, externalActiveModuleIndex = 0) => {

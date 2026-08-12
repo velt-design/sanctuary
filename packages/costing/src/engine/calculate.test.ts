@@ -2994,6 +2994,25 @@ describe('downpipe allowances', () => {
   });
 });
 
+describe('calculateSiteCostV1 estimate-level aluminium', () => {
+  it('prices additional aluminium without a pergola or labour', () => {
+    const result = calculateSiteCostV1({
+      pergolas: [],
+      pricing_classification: 'bespoke',
+      additional_aluminium: {
+        extrusion_colour: 'Black',
+        rows: [{ id: 'extra-post', profile: '100x100', stock_length_m: 6, quantity: 1 }],
+      },
+    });
+
+    expect(result.pergola_count).toBe(0);
+    expect(result.additional_aluminium?.item_count).toBe(1);
+    expect(result.additional_aluminium?.materials.lines[0]).toMatchObject({ profile: '100x100', qty: 1, unit: 'bar' });
+    expect(result.install.totals.crew_hours).toBe(0);
+    expect(result.totals.cost_ex_gst).toBeGreaterThan(0);
+  });
+});
+
 describe('install day cycle', () => {
   const baseInputs = {
     length_m: 6,

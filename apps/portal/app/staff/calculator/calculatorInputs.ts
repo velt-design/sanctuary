@@ -200,7 +200,7 @@ export function makeDefaultModule(pergolaId = 'pergola-1'): CalculatorModuleInpu
     timberRoofAllowanceExGst: '0',
 
     flashings: { rows: [] },
-    additionalAluminium: { rows: [] },
+    additionalAluminium: { rows: [] }, // Legacy module snapshots are lifted to estimate level during normalization.
     overrides: {},
     infills: makeDefaultInfills(),
   };
@@ -224,6 +224,7 @@ export function makeDefaultCalculatorInputs(): CalculatorInputs {
     pergolas: [{ id: 'pergola-1', label: 'Pergola 1', lighting: makeDefaultCalculatorLightingInput() }],
     modules: [makeDefaultModule('pergola-1')],
     blinds: makeDefaultBlinds(),
+    additionalAluminium: normalizeAdditionalAluminiumState(null),
     standaloneInfills: makeDefaultStandaloneInfills(),
   };
 }
@@ -750,6 +751,22 @@ export function normalizeCalculatorInputsForUi(
   const allowEmpty = options.allowEmpty === true && Array.isArray(value.modules) && value.modules.length === 0;
   const pergolas = normalizePergolasForUi((value as any).pergolas, { allowEmpty });
   const normalizedModules = normalizeModulesForUi(value.modules, pergolas, { allowEmpty });
+  const explicitAdditionalAluminium = (value as any).additionalAluminium !== undefined;
+  const legacyAdditionalRows = normalizedModules.flatMap((module) => module.additionalAluminium?.rows ?? []);
+  const legacyFinishModule = normalizedModules.find((module) => (module.additionalAluminium?.rows.length ?? 0) > 0);
+  const additionalAluminium = explicitAdditionalAluminium
+    ? normalizeAdditionalAluminiumState((value as any).additionalAluminium)
+    : normalizeAdditionalAluminiumState({
+        rows: legacyAdditionalRows,
+        extrusionColour: legacyFinishModule?.extrusionColour ?? 'Black',
+        powdercoatStandardColour: legacyFinishModule?.powdercoatStandardColour,
+        powdercoatIsCustom: legacyFinishModule?.powdercoatIsCustom,
+        powdercoatCustomColour: legacyFinishModule?.powdercoatCustomColour,
+      });
+  const modulesWithoutLegacyAdditionalAluminium = normalizedModules.map((module) => ({
+    ...module,
+    additionalAluminium: { rows: [] },
+  }));
   if (allowEmpty) {
     return {
       ...value,
@@ -763,17 +780,18 @@ export function normalizeCalculatorInputsForUi(
       pergolas: [],
       modules: [],
       blinds: normalizeBlindsStateForUi((value as any).blinds),
+      additionalAluminium,
       standaloneInfills: normalizeStandaloneInfillsStateForUi((value as any).standaloneInfills),
     };
   }
-  const usedPergolaIds = new Set(normalizedModules.map((module) => module.pergolaId ?? pergolas[0]?.id ?? 'pergola-1'));
+  const usedPergolaIds = new Set(modulesWithoutLegacyAdditionalAluminium.map((module) => module.pergolaId ?? pergolas[0]?.id ?? 'pergola-1'));
   const filteredPergolas = pergolas.filter((pergola) => usedPergolaIds.has(pergola.id));
   const finalPergolas = filteredPergolas.length ? filteredPergolas : [{ id: 'pergola-1', label: 'Pergola 1' }];
   const finalPergolaIds = new Set(finalPergolas.map((pergola) => pergola.id));
   const fallbackPergolaId = finalPergolas[0]?.id ?? 'pergola-1';
   const modules =
-    normalizedModules.length > 0
-      ? normalizedModules.map((module) => ({
+    modulesWithoutLegacyAdditionalAluminium.length > 0
+      ? modulesWithoutLegacyAdditionalAluminium.map((module) => ({
           ...module,
           pergolaId: finalPergolaIds.has(String(module.pergolaId ?? '')) ? module.pergolaId : fallbackPergolaId,
         }))
@@ -791,13 +809,14 @@ export function normalizeCalculatorInputsForUi(
     pergolas: finalPergolas,
     modules,
     blinds: normalizeBlindsStateForUi((value as any).blinds),
+    additionalAluminium,
     standaloneInfills: normalizeStandaloneInfillsStateForUi((value as any).standaloneInfills),
   };
 }
 
 export function calculatorInputsFromEstimateDetail(detail: EstimateDetail): CalculatorInputs {
   const inputs = (detail.calculatorSnapshot as any)?.inputs;
-  const allowEmpty = detail.commercialScopeKind === 'add_on';
+  const allowEmpty = Array.isArray((inputs as any)?.modules) && (inputs as any).modules.length === 0;
   if (isCalculatorInputsV2(inputs)) return normalizeCalculatorInputsForUi(inputs, { allowEmpty });
   if (isLegacyCalculatorInputsV1(inputs)) return normalizeCalculatorInputsForUi(migrateLegacyCalculatorInputsToV2(inputs));
   throw new Error('Design inputs are not compatible with this calculator version.');

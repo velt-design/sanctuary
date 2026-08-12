@@ -78,6 +78,7 @@ describe('calculator input defaults and normalization', () => {
   it('preserves saved additional aluminium rows during calculator normalization', () => {
     const normalized = normalizeCalculatorInputsForUi({
       ...makeDefaultCalculatorInputs(),
+      additionalAluminium: undefined,
       modules: [{
         ...makeDefaultModule('pergola-1'),
         additionalAluminium: {
@@ -86,9 +87,10 @@ describe('calculator input defaults and normalization', () => {
       }],
     });
 
-    expect(normalized.modules[0].additionalAluminium?.rows).toEqual([
+    expect(normalized.additionalAluminium?.rows).toEqual([
       { id: 'extra-bar-1', profile: '100x50', stockLengthM: '5', quantity: '3' },
     ]);
+    expect(normalized.modules[0].additionalAluminium?.rows).toEqual([]);
   });
 
   it('normalizes saved open pergolas to the supported frame contract', () => {

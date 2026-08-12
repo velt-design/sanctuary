@@ -55,6 +55,7 @@ export type Estimate = {
     pricing_policy?: SiteOutputV1['pricing_policy'];
     customer_add_ons?: SiteOutputV1['customer_add_ons'];
     standalone_infills?: SiteOutputV1['standalone_infills'];
+    additional_aluminium?: SiteOutputV1['additional_aluminium'];
   };
 
   configVersions: {

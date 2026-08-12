@@ -29,7 +29,7 @@ export type QuoteVersion = {
   status: QuoteStatus;
   depositPercent: number;
   paymentTerms?: QuotePaymentTerm[];
-  sourceEstimateVersionId: string;
+  sourceEstimateVersionId: string | null;
   sourceEstimateVersionLabel: string;
   revisedFromQuoteVersionId?: string | null;
   createdAt: string;
@@ -50,7 +50,7 @@ export type QuoteVersion = {
   totals: QuoteTotals;
   pdfFileId?: string | null;
   renderHash?: string | null;
-  pricingSource: 'calculator_live' | 'workbench_solved';
+  pricingSource: 'calculator_live' | 'workbench_solved' | 'manual';
 };
 
 export type QuoteSendLog = {

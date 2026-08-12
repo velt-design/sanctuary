@@ -37,7 +37,7 @@ import {
   normalizeStandaloneInfillsStateForUi,
   toNumber,
 } from './calculatorInputs';
-import { buildCalculatorModuleErrors } from './calculatorValidation';
+import { buildCalculatorModuleErrors, calculatorAdditionalAluminiumError } from './calculatorValidation';
 import { applyCalculatorJobTemplate, type CalculatorJobTemplateKey } from './calculatorJobTemplates';
 import {
   addCalculatorModule,
@@ -145,7 +145,7 @@ export default function CalculatorGridClient({
     newEstimateCommercialScopeKind,
     projectId,
   } = workspaceRoute;
-  const allowEmptyDesign = newEstimateCommercialScopeKind === 'add_on';
+  const allowEmptyDesign = true;
   const projectEstimatesQuery = useQuery({
     ...estimateMetasByProjectQueryOptions(hostKey, projectId),
     enabled: Boolean(projectId),
@@ -255,6 +255,7 @@ export default function CalculatorGridClient({
   }, [activeModuleIndex, commitModuleMutation, values]);
 
   const handleRemoveModule = useCallback((moduleIndex: number) => {
+    if (values.modules.length === 1 && !window.confirm('Remove the final pergola from this estimate?')) return;
     commitModuleMutation(removeCalculatorModule(values, activeModuleIndex, moduleIndex, {
       allowEmpty: allowEmptyDesign,
     }));
@@ -262,6 +263,7 @@ export default function CalculatorGridClient({
 
   const errors = errorsByModule[activeModuleIndex] ?? {};
   const hasModuleErrors = errorsByModule.some((map) => Object.values(map).some(Boolean));
+  const additionalAluminiumError = calculatorAdditionalAluminiumError(values.additionalAluminium);
 
   const {
     state: flashingsState,
@@ -306,7 +308,7 @@ export default function CalculatorGridClient({
   const infillsState = useStandaloneInfills
     ? standaloneInfillsState
     : normalizeInfillsStateForUi(activeModule.infills);
-  const readyToCalculate = (hasActiveModule || allowEmptyDesign) && !hasModuleErrors;
+  const readyToCalculate = (hasActiveModule || allowEmptyDesign) && !hasModuleErrors && !additionalAluminiumError;
 
   const requestPayload = useMemo<SiteInputsV1>(() => buildSiteInputsFromCalculatorInputs(values), [values]);
 
@@ -386,9 +388,7 @@ export default function CalculatorGridClient({
   });
 
   const additionalAluminium = useCalculatorAdditionalAluminiumController({
-    activeModule,
-    activeModuleIndex,
-    activePergolaId,
+    values,
     setValues,
   });
 
@@ -803,6 +803,7 @@ export default function CalculatorGridClient({
       onAddRow={additionalAluminium.addRow}
       onUpdateRow={additionalAluminium.updateRow}
       onRemoveRow={additionalAluminium.removeRow}
+      onUpdateFinish={additionalAluminium.updateFinish}
     />
   );
 
@@ -825,11 +826,17 @@ export default function CalculatorGridClient({
       errors,
       resolvedDefaults,
       flashingTileContent,
-      additionalAluminiumTileContent,
       setValues,
       setModuleField,
       setModuleOverride,
     }) : []),
+    {
+      id: 'additionalAluminium',
+      label: 'Additional aluminium',
+      type: 'custom',
+      content: additionalAluminiumTileContent,
+      error: additionalAluminiumError,
+    },
     ...buildCalculatorSiteFields({
       activeModule,
       values,

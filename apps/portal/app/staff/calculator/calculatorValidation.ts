@@ -1,4 +1,4 @@
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { CalculatorAdditionalAluminiumState, CalculatorModuleInputs } from '@/lib/types/calculator';
 import {
   clampInt,
   computeBayCountsForModule,
@@ -10,6 +10,22 @@ import {
 } from './calculatorInputs';
 
 type CalculatorModuleErrors = Partial<Record<keyof CalculatorModuleInputs, string>>;
+
+export function calculatorAdditionalAluminiumError(state: CalculatorAdditionalAluminiumState | undefined): string | undefined {
+  const rows = state?.rows ?? [];
+  const hasInvalidRow = rows.some((row) => {
+    const stockLengthM = toNumber(row.stockLengthM);
+    const quantity = toNumber(row.quantity);
+    return !row.profile.trim() || !Number.isFinite(stockLengthM) || stockLengthM <= 0
+      || !Number.isInteger(quantity) || quantity <= 0 || quantity > 1000;
+  });
+  if (hasInvalidRow) return 'Select a profile and stock length, then enter a whole quantity from 1 to 1000.';
+  if (rows.length && state?.extrusionColour === 'Mill') {
+    if (state.powdercoatIsCustom && !state.powdercoatCustomColour?.trim()) return 'Enter the custom powdercoat colour.';
+    if (!state.powdercoatIsCustom && !state.powdercoatStandardColour?.trim()) return 'Select a powdercoat colour.';
+  }
+  return undefined;
+}
 
 export function buildCalculatorModuleErrors(
   modules: readonly CalculatorModuleInputs[],
@@ -152,16 +168,6 @@ export function buildCalculatorModuleErrors(
         return !Number.isFinite(length) || length < 0;
       });
       if (hasInvalidLength) next.flashings = 'Enter a flashing length of 0 or more.';
-    }
-
-    const hasInvalidAdditionalAluminium = (module.additionalAluminium?.rows ?? []).some((row) => {
-      const stockLengthM = toNumber(row.stockLengthM);
-      const quantity = toNumber(row.quantity);
-      return !row.profile.trim() || !Number.isFinite(stockLengthM) || stockLengthM <= 0 ||
-        !Number.isInteger(quantity) || quantity <= 0 || quantity > 1000;
-    });
-    if (hasInvalidAdditionalAluminium) {
-      next.additionalAluminium = 'Select a profile and stock length, then enter a whole quantity from 1 to 1000.';
     }
 
     return next;

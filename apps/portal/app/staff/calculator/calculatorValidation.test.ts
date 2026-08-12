@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { makeDefaultModule } from './calculatorInputs';
-import { buildCalculatorModuleErrors } from './calculatorValidation';
+import { buildCalculatorModuleErrors, calculatorAdditionalAluminiumError } from './calculatorValidation';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   return {
@@ -123,14 +123,10 @@ describe('buildCalculatorModuleErrors', () => {
   });
 
   it('requires complete additional aluminium rows with whole positive quantities', () => {
-    const errors = buildCalculatorModuleErrors([
-      makeModule({
-        additionalAluminium: {
-          rows: [{ id: 'extra-1', profile: '150x50', stockLengthM: '6', quantity: '1.5' }],
-        },
-      }),
-    ]);
+    const error = calculatorAdditionalAluminiumError({
+      rows: [{ id: 'extra-1', profile: '150x50', stockLengthM: '6', quantity: '1.5' }],
+    });
 
-    expect(errors[0].additionalAluminium).toContain('whole quantity');
+    expect(error).toContain('whole quantity');
   });
 });

@@ -23,7 +23,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-08-13 | Infill Labour Allowances         | Promoted | From manifest `v2.6`, charge one 60-minute productive setup allowance per infill job and 30 minutes per genuinely sloping/triangular opening. Deduplicate setup across modules and standalone infills, keep existing detailed actions unchanged, and preserve published `v2.5` semantics. |
 | 2026-08-12 | Existing-Pergola Infill Add-ons | Promoted | Store add-on infills outside `pergolas[]`, give them an independent finish, and reuse canonical infill takeoff/BOM/labour without emitting synthetic pergola geometry. Keep rafter matching unavailable when no referenced pergola geometry exists. |
-| 2026-08-12 | Add-on Estimates                 | Promoted | Start new add-on estimates with zero pergolas, keep Add pergola available, and let staff remove the final add-on pergola. Ordinary estimates still start with and retain one pergola. Empty add-ons may save and price standalone items without producing a synthetic pergola quote line. |
+| 2026-08-13 | Empty Estimates and Manual Quotes | Promoted | Ordinary estimates still start with one pergola but may remove the final pergola after confirmation; add-ons still start empty. Additional aluminium is estimate-level and prices without geometry. Admins may create manual priced-line quotes with null estimate provenance; these retain normal quote/invoice lifecycle but cannot refresh from an estimate or generate an estimate-backed job pack. |
+| 2026-08-12 | Add-on Estimates                 | Superseded | Start new add-on estimates with zero pergolas, keep Add pergola available, and let staff remove the final add-on pergola. Superseded on 2026-08-13 when final-pergola removal expanded to ordinary estimates. |
 | 2026-08-11 | Commercial Internal Identity     | Promoted | Keep optional estimate names on the estimate record and quote names on the quote family, not on customer-facing version artifacts. Show stable versions/references as secondary identity, let historical records be renamed without unlocking pricing, seed duplicates with `Copy of…`, and exclude names from PDFs, emails, public tokens, invoices, and job packs. |
 | 2026-08-11 | Project Commercial Add-ons       | Promoted | Keep later project work in a separate commercial scope: one stable UUID joins its estimate revisions and quote family, while null remains the original contract. Never supersede or reprice the base family implicitly. Aggregate accepted family totals for the job, but keep invoices, scheduled terms, and payment allocations bound to one exact accepted quote version. |
 | 2026-08-11 | Calculator Commercial Defaults | Promoted | Start attached jobs on facade, suggest editable posts at no more than four metres along each support beam, and raise manifest `v2.5` startup to `$1,000 ex GST` instead of changing the shared `1.3x` multiplier. Published `v2.4` retains its `$500` startup. |
@@ -5109,10 +5110,10 @@ Related docs/tests: `apps/portal/lib/commercial/scope.test.ts`; `apps/portal/lib
 
 Date: 2026-08-12
 Area: Calculator add-on estimate defaults and costing
-Status: Promoted
+Status: Superseded
 Decision or mistake: Add-on estimates inherited the base estimate's compulsory starter pergola even when the new scope contained only blinds, infills, posts, or standalone allowances.
 Why it mattered: A synthetic pergola creates misleading calculator structure, pricing and quote lines, while preventing staff from representing the real add-on scope.
-Current guardrail: New add-on estimates may start and remain at zero pergolas. Keep Add pergola available and allow the final add-on pergola to be removed, but retain the one-pergola default and final-module protection for ordinary estimates. Empty add-ons may cost and save standalone items without generating a fake pergola quote line.
+Current guardrail: New add-on estimates may start and remain at zero pergolas. Keep Add pergola available. Superseded on 2026-08-13 when final-pergola removal and empty-scope costing expanded to ordinary estimates.
 Promoted to: `docs/projects-contacts-estimates-calculator.md`; `docs/costing-and-geometry.md`; `docs/ui-foundation.md`
 Related docs/tests: `apps/portal/app/staff/calculator/calculatorInputs.test.ts`; `apps/portal/app/staff/calculator/calculatorModuleNavigation.test.ts`; `apps/portal/app/staff/calculator/CalculatorModuleNavigator.test.tsx`; `packages/costing/src/engine/calculate.test.ts`; `apps/portal/lib/quotes/mapping.test.ts`
 
@@ -5137,3 +5138,14 @@ Why it mattered: A generic minimum or a setup charge per opening would overprice
 Current guardrail: From manifest `v2.6`, charge one 60-minute productive setup allowance per job containing infills and 30 minutes per genuinely sloping or triangular opening. Assign setup to the first infill-bearing scope, deduplicate it across modules and standalone existing-pergola infills, keep all existing set-out/cutting/support/fitting/finish actions unchanged, and preserve published `v2.5` and earlier semantics.
 Promoted to: `docs/costing-and-geometry.md`; `docs/projects-contacts-estimates-calculator.md`
 Related docs/tests: `packages/costing/src/engine/infillLabourPolicy.test.ts`; `packages/costing/src/engine/infillCostAttribution.test.ts`
+
+### 2026-08-13 - Empty Estimates and Manual Quotes - Represent The Real Scope
+
+Date: 2026-08-13
+Area: Calculator empty scopes, additional aluminium, and manual quotes
+Status: Promoted
+Decision or mistake: Ordinary estimates could not remove their last pergola, additional aluminium belonged to a pergola module, and every quote required an estimate even when the commercial scope was known directly.
+Why it mattered: Those constraints forced staff to invent structure or estimate provenance, making the calculator and quote history less accurate than the real job.
+Current guardrail: Ordinary estimates still start with one pergola but may remove the final pergola after confirmation; add-ons start empty. Price additional aluminium once at estimate level, including with no geometry. Admin-created manual quotes must carry manual pricing provenance and null estimate provenance, retain the normal quote/invoice lifecycle, and remain ineligible for estimate refresh or estimate-backed job-pack generation.
+Promoted to: `docs/projects-contacts-estimates-calculator.md`; `docs/quotes-invoices-job-packs.md`
+Related docs/tests: `apps/portal/app/staff/calculator/useCalculatorDraftSession.test.tsx`; `packages/costing/src/engine/calculate.test.ts`; `apps/portal/lib/quotes/mapping.test.ts`; `apps/portal/app/api/projects/[projectId]/quotes/route.test.ts`; `test/manual-quote-migration.test.ts`

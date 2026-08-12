@@ -57,12 +57,14 @@ function Probe({
   sessionKey,
   awaitsExternalDraft,
   allowEmptyDesign = false,
+  startEmptyDesign = false,
   persistence,
 }: {
   entityKey: string;
   sessionKey: string;
   awaitsExternalDraft: boolean;
   allowEmptyDesign?: boolean;
+  startEmptyDesign?: boolean;
   persistence: CalculatorDraftPersistence;
 }) {
   latest = useCalculatorDraftSession({
@@ -70,6 +72,7 @@ function Probe({
     draftSessionKey: sessionKey,
     awaitsExternalDraft,
     allowEmptyDesign,
+    startEmptyDesign,
     persistence,
   });
   return (
@@ -108,6 +111,7 @@ describe('useCalculatorDraftSession', () => {
         sessionKey="session-add-on"
         awaitsExternalDraft={false}
         allowEmptyDesign
+        startEmptyDesign
         persistence={persistence}
       />,
     );

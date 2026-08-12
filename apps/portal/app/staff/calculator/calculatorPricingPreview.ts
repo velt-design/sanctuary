@@ -23,7 +23,7 @@ import { buildCalculatorModulePriceRows } from './calculatorModulePricing';
 
 type CalculatorPricingPreviewRow = {
   id: string;
-  kind: 'pergola' | 'module' | 'infill' | 'shared' | 'approval' | 'blind' | 'lighting';
+  kind: 'pergola' | 'module' | 'infill' | 'aluminium' | 'shared' | 'approval' | 'blind' | 'lighting';
   parentId?: string;
   label: string;
   detail: string;
@@ -97,6 +97,16 @@ function standaloneInfillDetail(inputs: CalculatorInputs, itemCount: number): st
       : state.powdercoatStandardColour?.trim() || 'Powdercoat'
     : state?.extrusionColour ?? 'Black';
   return `${itemCount} infill${itemCount === 1 ? '' : 's'} · ${finish} · Existing pergola`;
+}
+
+function additionalAluminiumDetail(inputs: CalculatorInputs, itemCount: number): string {
+  const state = inputs.additionalAluminium;
+  const finish = state?.extrusionColour === 'Mill'
+    ? state.powdercoatIsCustom
+      ? state.powdercoatCustomColour?.trim() || 'Custom powdercoat'
+      : state.powdercoatStandardColour?.trim() || 'Powdercoat'
+    : state?.extrusionColour ?? 'Black';
+  return `${itemCount} aluminium selection${itemCount === 1 ? '' : 's'} · ${finish} · Materials only`;
 }
 
 export function buildCalculatorPricingPreview({
@@ -183,6 +193,37 @@ export function buildCalculatorPricingPreview({
     });
     pricedAmounts.push(priceIncGstCents);
     undiscountedAmounts.push(customerPriceIncCents(sharedCostEx, 0, customerPriceUpliftPct, customerPriceMultiplier));
+  }
+
+  const additionalAluminium = result?.additional_aluminium;
+  if (additionalAluminium && Number.isFinite(additionalAluminium.totals.cost_ex_gst)) {
+    const priceIncGstCents = customerPriceIncCents(
+      additionalAluminium.totals.cost_ex_gst,
+      discountPct,
+      customerPriceUpliftPct,
+      customerPriceMultiplier,
+    );
+    rows.push({
+      id: 'additional-aluminium',
+      kind: 'aluminium',
+      label: 'Additional aluminium',
+      detail: additionalAluminiumDetail(inputs, additionalAluminium.item_count),
+      priceIncGstCents,
+      status: 'priced',
+      internalTrueCost: {
+        materialsExGstCents: toCents(additionalAluminium.materials.totals.materials_ex_gst),
+        labourExGstCents: 0,
+        overheadExGstCents: 0,
+        totalExGstCents: toCents(additionalAluminium.totals.cost_ex_gst),
+      },
+    });
+    pricedAmounts.push(priceIncGstCents);
+    undiscountedAmounts.push(customerPriceIncCents(
+      additionalAluminium.totals.cost_ex_gst,
+      0,
+      customerPriceUpliftPct,
+      customerPriceMultiplier,
+    ));
   }
 
 

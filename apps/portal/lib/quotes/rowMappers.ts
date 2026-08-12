@@ -29,8 +29,10 @@ export function mapQuoteVersionRow(
 ): QuoteVersion {
   const quoteRef = String(row?.quotes?.quote_ref ?? row?.quote_ref ?? '');
   const estimateId = String(row?.source_estimate_version_id ?? '');
-  const estimateLabelRaw = estimateLabelMap.get(estimateId) ?? 'V-';
-  const estimateLabel = estimateLabelRaw.startsWith('Estimate') ? estimateLabelRaw : `Estimate ${estimateLabelRaw}`;
+  const estimateLabelRaw = estimateId ? estimateLabelMap.get(estimateId) ?? 'V-' : 'Manual quote';
+  const estimateLabel = !estimateId || estimateLabelRaw.startsWith('Estimate') || estimateLabelRaw === 'Manual quote'
+    ? estimateLabelRaw
+    : `Estimate ${estimateLabelRaw}`;
 
   const depositPercent = normalizeDepositPercent(row?.deposit_percent, 50);
   const totalIncGstCents = Number(row?.total_inc_gst_cents ?? 0) || 0;
@@ -48,7 +50,7 @@ export function mapQuoteVersionRow(
     status: toStatus(row?.status),
     depositPercent,
     paymentTerms: normalizeStoredQuotePaymentSchedule(row?.payment_terms, totalIncGstCents, depositPercent),
-    sourceEstimateVersionId: appIdFromUuid('est', estimateId),
+    sourceEstimateVersionId: estimateId ? appIdFromUuid('est', estimateId) : null,
     sourceEstimateVersionLabel: estimateLabel,
     revisedFromQuoteVersionId: row?.revised_from_quote_version_id
       ? appIdFromUuid('qv', String(row.revised_from_quote_version_id))
@@ -84,8 +86,9 @@ export function mapQuoteVersionRow(
     },
     pdfFileId: row?.pdf_file_id ? appIdFromUuid('file', String(row.pdf_file_id)) : null,
     renderHash: typeof row?.render_hash === 'string' && row.render_hash.trim() ? row.render_hash.trim() : null,
-    pricingSource:
-      String(row?.pricing_source ?? '').trim() === 'workbench_solved'
+    pricingSource: String(row?.pricing_source ?? '').trim() === 'manual'
+      ? 'manual'
+      : String(row?.pricing_source ?? '').trim() === 'workbench_solved'
         ? 'workbench_solved'
         : 'calculator_live',
   };

@@ -287,6 +287,11 @@ export type CalculatorAdditionalAluminiumRow = {
 
 export type CalculatorAdditionalAluminiumState = {
   rows: CalculatorAdditionalAluminiumRow[];
+  /** Finish for job-level aluminium that is not owned by a pergola module. */
+  extrusionColour?: ExtrusionColour;
+  powdercoatStandardColour?: string;
+  powdercoatIsCustom?: boolean;
+  powdercoatCustomColour?: string;
 };
 
 export type CalculatorModuleInputs = {
@@ -400,6 +405,8 @@ export type CalculatorInputs = {
   pergolas?: CalculatorPergola[];
   modules: CalculatorModuleInputs[];
   blinds?: CalculatorBlindsState;
+  /** Odd aluminium bars priced once for the estimate, including pergola-free estimates. */
+  additionalAluminium?: CalculatorAdditionalAluminiumState;
   /** Add-on infills fitted to a pergola that is outside this estimate. */
   standaloneInfills?: CalculatorStandaloneInfillsState;
 };

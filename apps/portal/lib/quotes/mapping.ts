@@ -361,7 +361,7 @@ function buildLegacyCoreDescription(modules: CalculatorModuleInputs[]): string {
 }
 
 type QuoteMappingBlockingIssue = {
-  code: 'INVALID_BLIND' | 'INVALID_LIGHTING';
+  code: 'INVALID_BLIND' | 'INVALID_LIGHTING' | 'NO_PRICED_ITEMS';
   message: string;
 };
 
@@ -528,24 +528,54 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
     });
     coreTotalIncCents += lineTotalIncGstCents;
 
-    const sharedCostEx = toNumber(snapshotShared?.totals?.cost_ex_gst);
-    if (snapshotPergolas.length === 0 && Number.isFinite(sharedCostEx) && sharedCostEx > 0) {
-      const sharedUnitPrice = lineUnitPriceIncFromCostEx(
-        sharedCostEx,
-        quoteDiscountPct,
-        customerPriceUpliftPct,
-        customerPriceMultiplier,
-      );
-      const sharedTotal = lineTotalCents(1, sharedUnitPrice);
-      lineItems.push({
-        description: withQuoteDiscountDescription('Site costs\n- Travel and extras', quoteDiscountPct),
-        qty: 1,
-        unitPriceIncGstCents: sharedUnitPrice,
-        lineTotalIncGstCents: sharedTotal,
-        sortOrder: lineItems.length,
-      });
-      coreTotalIncCents += sharedTotal;
-    }
+  }
+
+  const additionalAluminium = outputs?.additional_aluminium;
+  const additionalAluminiumCostEx = toNumber(additionalAluminium?.totals?.cost_ex_gst);
+  if (additionalAluminium && Number.isFinite(additionalAluminiumCostEx) && additionalAluminiumCostEx > 0) {
+    const state = inputs?.additionalAluminium;
+    const itemCount = Number(additionalAluminium.item_count ?? state?.rows?.length ?? 0);
+    const finish = state?.extrusionColour === 'Mill'
+      ? state.powdercoatIsCustom
+        ? state.powdercoatCustomColour?.trim() || 'Custom powdercoat'
+        : state.powdercoatStandardColour?.trim() || 'Powdercoat'
+      : state?.extrusionColour ?? 'Black';
+    const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(
+      additionalAluminiumCostEx,
+      quoteDiscountPct,
+      customerPriceUpliftPct,
+      customerPriceMultiplier,
+    );
+    lineItems.push({
+      description: withQuoteDiscountDescription([
+        'Additional aluminium',
+        `- ${itemCount} aluminium selection${itemCount === 1 ? '' : 's'}; ${finish}; materials only`,
+      ].join('\n'), quoteDiscountPct),
+      qty: 1,
+      unitPriceIncGstCents,
+      lineTotalIncGstCents: unitPriceIncGstCents,
+      sortOrder: lineItems.length,
+    });
+    coreTotalIncCents += unitPriceIncGstCents;
+  }
+
+  const zeroPergolaSharedCostEx = toNumber(snapshotShared?.totals?.cost_ex_gst);
+  if (snapshotPergolas.length === 0 && Number.isFinite(zeroPergolaSharedCostEx) && zeroPergolaSharedCostEx > 0) {
+    const sharedUnitPrice = lineUnitPriceIncFromCostEx(
+      zeroPergolaSharedCostEx,
+      quoteDiscountPct,
+      customerPriceUpliftPct,
+      customerPriceMultiplier,
+    );
+    const sharedTotal = lineTotalCents(1, sharedUnitPrice);
+    lineItems.push({
+      description: withQuoteDiscountDescription('Site costs\n- Travel and extras', quoteDiscountPct),
+      qty: 1,
+      unitPriceIncGstCents: sharedUnitPrice,
+      lineTotalIncGstCents: sharedTotal,
+      sortOrder: lineItems.length,
+    });
+    coreTotalIncCents += sharedTotal;
   }
 
   if (lineItems.length === 0) {
@@ -685,6 +715,16 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
         lineTotalIncGstCents: lineTotalCents(qty, unitPrice),
         sortOrder: lineItems.length,
       });
+    });
+  }
+
+  if (
+    blockingIssues.length === 0
+    && !lineItems.some((item) => item.lineTotalIncGstCents > 0)
+  ) {
+    blockingIssues.push({
+      code: 'NO_PRICED_ITEMS',
+      message: 'Add at least one priced item before creating a quote from this estimate.',
     });
   }
 

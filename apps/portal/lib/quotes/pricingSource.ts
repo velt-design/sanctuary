@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 
-type QuotePricingSource = 'calculator_live' | 'workbench_solved';
+type QuotePricingSource = 'calculator_live' | 'workbench_solved' | 'manual';
 
 type QuotePricingSourceCopyReason =
   | 'quote_created'
@@ -77,7 +77,7 @@ function compactMetadataValue(key: (typeof ALLOWED_SOURCE_METADATA_KEYS)[number]
 }
 
 function normalizeQuotePricingSource(value: unknown): QuotePricingSource {
-  return value === 'workbench_solved' || value === 'calculator_live' ? value : DEFAULT_PRICING_SOURCE;
+  return value === 'workbench_solved' || value === 'calculator_live' || value === 'manual' ? value : DEFAULT_PRICING_SOURCE;
 }
 
 export function compactPricingSourceMetadata(value: unknown): SourceRecord {
@@ -127,6 +127,23 @@ export function buildQuotePricingSourceCopyFromEstimate(params: {
   };
 }
 
+export function buildManualQuotePricingSource(params: {
+  copiedAt: string;
+  copiedBy: string | null;
+}): QuotePricingSourceCopy {
+  const sourceMetadataHash = metadataHash({ pricingSource: 'manual', ...params });
+  return {
+    pricingSource: 'manual',
+    sourceMetadataHash,
+    pricingSourceMetadata: {
+      copiedAt: params.copiedAt,
+      copiedBy: params.copiedBy,
+      copyReason: 'manual_quote_created',
+      sourceMetadataHash,
+    },
+  };
+}
+
 export function buildQuotePricingSourceCopyFromQuoteVersion(params: {
   quoteVersion: {
     pricing_source?: unknown;
@@ -142,7 +159,7 @@ export function buildQuotePricingSourceCopyFromQuoteVersion(params: {
   revisedFromQuoteVersionId?: string | null;
 }): QuotePricingSourceCopy | null {
   const rawSource = params.quoteVersion.pricingSource ?? params.quoteVersion.pricing_source;
-  if (rawSource !== 'workbench_solved' && rawSource !== 'calculator_live') return null;
+  if (rawSource !== 'workbench_solved' && rawSource !== 'calculator_live' && rawSource !== 'manual') return null;
 
   const pricingSource = normalizeQuotePricingSource(rawSource);
   const sourceEstimateVersionId =

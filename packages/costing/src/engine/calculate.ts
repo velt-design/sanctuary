@@ -26,6 +26,7 @@ import {
 } from '../commercial/simpleRangePricing';
 import { allocateCommercialSiteOverheadV5 } from './commercialSiteOverhead';
 import { buildEmptySiteCostV1 } from './emptySite';
+import { calculateSiteAdditionalAluminiumV1, mergeSiteAdditionalAluminiumV1 } from './siteAdditionalAluminium';
 import { calculateStandaloneInfillsV1, mergeStandaloneInfillsIntoSiteV1 } from './standaloneInfills';
 import { addInfillJobSetupToInstallV1, INFILL_JOB_SETUP_ACTION_ID } from './infillLabourPolicy';
 import type {
@@ -891,7 +892,10 @@ function calculateSiteCostV1Internal(
     toWarnings,
     includeJobSetup: !hasModuleInfills,
   });
-  if (inputs.pergolas.length === 0) return buildEmptySiteCostV1(inputs, cfg, standaloneInfills);
+  const additionalAluminium = calculateSiteAdditionalAluminiumV1({ input: inputs.additional_aluminium, config: cfg, toWarnings });
+  if (inputs.pergolas.length === 0) {
+    return mergeSiteAdditionalAluminiumV1(buildEmptySiteCostV1(inputs, cfg, standaloneInfills), additionalAluminium);
+  }
 
   const jobType = normalizeJobType(inputs.job_type);
   const jobTravel = roundMoney(Number(inputs.travel_ex_gst ?? 0));
@@ -1386,12 +1390,14 @@ function calculateSiteCostV1Internal(
     toWarnings,
   });
 
+  const outputWithAdditionalAluminium = mergeSiteAdditionalAluminiumV1(outputWithStandaloneInfills, additionalAluminium);
+
   if (includeInfillBaseline && siteInfillTakeoff.items.length > 0) {
     const baseline = calculateSiteCostV1Internal(withoutSiteInfillsV1(inputs), cfg, false);
-    applySiteInfillIncrementalBaselineV2(outputWithStandaloneInfills, baseline);
+    applySiteInfillIncrementalBaselineV2(outputWithAdditionalAluminium, baseline);
   }
 
-  return outputWithStandaloneInfills;
+  return outputWithAdditionalAluminium;
 }
 
 export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfigV1): SiteOutputV1 {

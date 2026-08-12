@@ -630,6 +630,44 @@ export async function POST(req: Request) {
     quote_discount_pct,
   };
 
+  if (body.additional_aluminium !== undefined) {
+    const rawAdditional = body.additional_aluminium;
+    if (!rawAdditional || typeof rawAdditional !== 'object') return badRequest('additional_aluminium must be an object');
+    const rows = parseAdditionalAluminium(rawAdditional.rows);
+    if (rows && 'error' in rows) return badRequest(rows.error.replaceAll('modules[].additional_aluminium', 'additional_aluminium.rows'));
+    if (!rows?.length) return badRequest('additional_aluminium.rows must contain at least one item');
+    if (!isOneOf(EXTRUSION_COLOURS, rawAdditional.extrusion_colour)) return badRequest('Invalid additional_aluminium.extrusion_colour');
+    if (rawAdditional.powdercoat_standard_colour !== undefined
+      && !isOneOf(POWDERCOAT_STANDARD_COLOURS, rawAdditional.powdercoat_standard_colour)) {
+      return badRequest('Invalid additional_aluminium.powdercoat_standard_colour');
+    }
+    if (rawAdditional.powdercoat_is_custom !== undefined && typeof rawAdditional.powdercoat_is_custom !== 'boolean') {
+      return badRequest('additional_aluminium.powdercoat_is_custom must be a boolean');
+    }
+    if (rawAdditional.powdercoat_custom_colour !== undefined && typeof rawAdditional.powdercoat_custom_colour !== 'string') {
+      return badRequest('additional_aluminium.powdercoat_custom_colour must be a string');
+    }
+    if (rawAdditional.powdercoat_is_custom === true && !String(rawAdditional.powdercoat_custom_colour ?? '').trim()) {
+      return badRequest('additional_aluminium.powdercoat_custom_colour is required for custom powdercoat');
+    }
+    if (rawAdditional.extrusion_colour === 'Mill'
+      && rawAdditional.powdercoat_is_custom !== true
+      && !rawAdditional.powdercoat_standard_colour) {
+      return badRequest('additional_aluminium.powdercoat_standard_colour is required for powdercoat');
+    }
+    site.additional_aluminium = {
+      rows,
+      extrusion_colour: rawAdditional.extrusion_colour,
+      powdercoat_standard_colour: typeof rawAdditional.powdercoat_standard_colour === 'string'
+        ? rawAdditional.powdercoat_standard_colour
+        : undefined,
+      powdercoat_is_custom: rawAdditional.powdercoat_is_custom === true,
+      powdercoat_custom_colour: typeof rawAdditional.powdercoat_custom_colour === 'string'
+        ? rawAdditional.powdercoat_custom_colour
+        : undefined,
+    };
+  }
+
   if (body.standalone_infills !== undefined) {
     const rawStandalone = body.standalone_infills;
     if (!rawStandalone || typeof rawStandalone !== 'object') return badRequest('standalone_infills must be an object');

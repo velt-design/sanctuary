@@ -30,6 +30,7 @@ import {
 } from "@/lib/quotes/paymentSchedule";
 import {
   getPreparedQuoteDelivery,
+  createManualQuoteDraft,
   previewQuotePdf,
   resendQuote,
   retryPreparedQuoteDelivery,
@@ -186,6 +187,11 @@ export default function QuotesTab({
   const [createOpen, setCreateOpen] = useState(false);
   const [createEstimateId, setCreateEstimateId] = useState("");
   const [createInternalName, setCreateInternalName] = useState("");
+  const [createMode, setCreateMode] = useState<"estimate" | "manual">("estimate");
+  const [manualDescription, setManualDescription] = useState("");
+  const [manualQty, setManualQty] = useState("1");
+  const [manualPrice, setManualPrice] = useState("");
+  const [createBusy, setCreateBusy] = useState(false);
   const quoteInternalName = useQuoteInternalName({ hostKey, projectId, quotes });
 
   const [sendOpen, setSendOpen] = useState(false);
@@ -393,6 +399,7 @@ export default function QuotesTab({
     [detail, estimates],
   );
   const refreshEstimateTarget = useMemo(() => {
+    if (detail?.pricingSource === "manual") return null;
     if (!detail) return preferredQuoteSourceDesign ?? currentSourceEstimate;
     return selectEstimateForCommercialScope(estimates, detail.commercialScopeId ?? null) ?? currentSourceEstimate;
   }, [currentSourceEstimate, detail, estimates, preferredQuoteSourceDesign]);
@@ -509,11 +516,15 @@ export default function QuotesTab({
 
   const openCreateModal = () => {
     const defaultId = preferredQuoteSourceDesign?.id ?? "";
-    if (!defaultId) {
+    if (!defaultId && !isAdmin) {
       toast.error("Create a design first.");
       return;
     }
     setCreateEstimateId(defaultId);
+    setCreateMode(defaultId ? "estimate" : "manual");
+    setManualDescription("");
+    setManualQty("1");
+    setManualPrice("");
     const family = quotes.find((quote) =>
       (quote.commercialScopeId ?? null) === (preferredQuoteSourceDesign?.commercialScopeId ?? null),
     );
@@ -580,11 +591,34 @@ export default function QuotesTab({
   );
 
   const handleCreateQuote = async () => {
-    if (!createEstimateId) return;
-    await createDraftQuoteFromEstimate(createEstimateId, {
-      closeModal: true,
-      internalName: createInternalName.trim() || null,
-    });
+    if (createMode === "estimate") {
+      if (!createEstimateId) return;
+      await createDraftQuoteFromEstimate(createEstimateId, {
+        closeModal: true,
+        internalName: createInternalName.trim() || null,
+      });
+      return;
+    }
+    if (!isAdmin || !manualDescription.trim()) return;
+    setCreateBusy(true);
+    try {
+      const detail = await createManualQuoteDraft(projectId, {
+        internalName: createInternalName.trim() || null,
+        lineItems: [{
+          description: manualDescription.trim(),
+          qty: Number(manualQty),
+          unitPriceIncGstCents: Math.round(Number(manualPrice) * 100),
+        }],
+      });
+      upsertQuoteDetailCache(queryClient, hostKey, projectId, detail, { prepend: true });
+      setCreateOpen(false);
+      selectQuote(detail.id, { createFromEstimateId: null });
+      toast.success("Manual quote created.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create manual quote");
+    } finally {
+      setCreateBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -1101,6 +1135,7 @@ export default function QuotesTab({
         (jobPack) => jobPack.quoteVersionId === detail.id,
       ) ?? null;
     const canGenerateJobPack =
+      Boolean(detail.sourceEstimateVersionId) &&
       (detail.status === "SENT" ||
         detail.status === "ACCEPTED" ||
         detail.status === "DECLINED") &&
@@ -1267,6 +1302,15 @@ export default function QuotesTab({
       estimatesLoading={estimatesLoading}
       estimates={estimates}
       createQuote={() => void handleCreateQuote()}
+      createMode={createMode}
+      setCreateMode={setCreateMode}
+      manualDescription={manualDescription}
+      setManualDescription={setManualDescription}
+      manualQty={manualQty}
+      setManualQty={setManualQty}
+      manualPrice={manualPrice}
+      setManualPrice={setManualPrice}
+      createBusy={createBusy}
       isAdmin={isAdmin}
       deleteQuote={quoteDeletion.requestDelete}
       supersedeQuote={(quote) => void quoteSuperseding.supersedeQuote(quote)}

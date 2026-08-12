@@ -14,6 +14,7 @@ const TYPE_LABELS: Record<CalculatorPricingPreview['rows'][number]['kind'], stri
   pergola: 'Pergola',
   module: 'Module',
   infill: 'Infill',
+  aluminium: 'Aluminium',
   shared: 'Site',
   approval: 'Approval',
   blind: 'Blind',

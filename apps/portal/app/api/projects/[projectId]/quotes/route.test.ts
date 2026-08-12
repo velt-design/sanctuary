@@ -4,6 +4,7 @@ import { QuoteHandoffBlockedError } from '@/lib/quotes/mapping';
 const requireStaffSession = vi.fn();
 const parseJsonBody = vi.fn();
 const createQuoteFromEstimate = vi.fn();
+const createManualQuote = vi.fn();
 const listQuoteVersionsForProject = vi.fn();
 
 vi.mock('@/lib/api/staffApi', () => ({
@@ -15,6 +16,7 @@ vi.mock('@/lib/api/staffApi', () => ({
 
 vi.mock('@/lib/quotes/server', () => ({
   createQuoteFromEstimate,
+  createManualQuote,
   listQuoteVersionsForProject,
 }));
 
@@ -24,6 +26,7 @@ describe('POST /api/projects/[projectId]/quotes', () => {
     requireStaffSession.mockReset();
     parseJsonBody.mockReset();
     createQuoteFromEstimate.mockReset();
+    createManualQuote.mockReset();
     listQuoteVersionsForProject.mockReset();
   });
 
@@ -86,5 +89,48 @@ describe('POST /api/projects/[projectId]/quotes', () => {
 
     expect(res.status).toBe(422);
     await expect(res.json()).resolves.toEqual({ error: 'Quote handoff blocked: Pool blind needs valid dimensions.' });
+  });
+
+  it('allows admins to create a manual quote without an estimate', async () => {
+    requireStaffSession.mockResolvedValue({ user: { email: 'admin@example.com' }, role: 'admin' });
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: {
+        mode: 'manual',
+        clientIntentId: 'manual-quote:test-1',
+        internalName: 'Extra works',
+        lineItems: [{ description: 'Additional post', qty: 1, unitPriceIncGstCents: 120000 }],
+      },
+    });
+    createManualQuote.mockResolvedValue({ id: 'qv_manual', status: 'DRAFT' });
+
+    const mod = await import('./route');
+    const res = await mod.POST(new Request('http://localhost/api/projects/proj_1/quotes', { method: 'POST' }), {
+      params: Promise.resolve({ projectId: 'proj_1' }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(createManualQuote).toHaveBeenCalledWith(
+      'proj_1',
+      'admin@example.com',
+      'manual-quote:test-1',
+      'Extra works',
+      [{ description: 'Additional post', qty: 1, unitPriceIncGstCents: 120000 }],
+    );
+  });
+
+  it('rejects manual quote creation for non-admin staff', async () => {
+    requireStaffSession.mockResolvedValue({ user: { email: 'staff@example.com' }, role: 'staff' });
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: { mode: 'manual', clientIntentId: 'manual-quote:test-2', lineItems: [] },
+    });
+
+    const mod = await import('./route');
+    const res = await mod.POST(new Request('http://localhost/api/projects/proj_1/quotes', { method: 'POST' }), {
+      params: Promise.resolve({ projectId: 'proj_1' }),
+    });
+    expect(res.status).toBe(403);
+    expect(createManualQuote).not.toHaveBeenCalled();
   });
 });

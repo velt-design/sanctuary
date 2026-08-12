@@ -35,6 +35,7 @@ const COST_OUTPUT_KEYS = new Set([
   'pricing_policy',
   'customer_add_ons',
   'standalone_infills',
+  'additional_aluminium',
   ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY,
   ESTIMATE_PRICING_PRESERVE_REASON_OUTPUT_KEY,
 ]);
@@ -398,6 +399,17 @@ export function buildSiteInputsFromCalculatorInputs(inputs: CalculatorInputs): S
   const standaloneInfillItems = parseInfillItemsForPayload(standaloneInfills.items, {
     allowRafterMatching: false,
   });
+  const additionalAluminiumState = inputs.additionalAluminium;
+  const additionalAluminiumRows = (additionalAluminiumState?.rows ?? [])
+    .map((row) => ({
+      id: row.id,
+      profile: row.profile.trim(),
+      stock_length_m: toNumber(row.stockLengthM),
+      quantity: toNumber(row.quantity),
+    }))
+    .filter((row) => Boolean(row.id && row.profile)
+      && Number.isFinite(row.stock_length_m) && row.stock_length_m > 0
+      && Number.isInteger(row.quantity) && row.quantity > 0 && row.quantity <= 1000);
 
   for (const module of inputs.modules) {
     const moduleInput = buildModuleCostInputs(module, inputs.access, inputs.height);
@@ -411,6 +423,15 @@ export function buildSiteInputsFromCalculatorInputs(inputs: CalculatorInputs): S
 
   return {
     pergolas: groupedPergolas.filter((pergola) => pergola.modules.length > 0),
+    additional_aluminium: additionalAluminiumRows.length
+      ? {
+          rows: additionalAluminiumRows,
+          extrusion_colour: additionalAluminiumState?.extrusionColour ?? 'Black',
+          powdercoat_standard_colour: additionalAluminiumState?.powdercoatStandardColour?.trim() || undefined,
+          powdercoat_is_custom: additionalAluminiumState?.powdercoatIsCustom === true,
+          powdercoat_custom_colour: additionalAluminiumState?.powdercoatCustomColour?.trim() || undefined,
+        }
+      : undefined,
     standalone_infills: standaloneInfillItems?.length
       ? {
           infills: standaloneInfillItems,
@@ -544,6 +565,7 @@ export function buildEstimatePayloadFromSiteCosting(args: {
       pricing_policy: args.siteResult.pricing_policy,
       customer_add_ons: args.siteResult.customer_add_ons,
       standalone_infills: args.siteResult.standalone_infills,
+      additional_aluminium: args.siteResult.additional_aluminium,
       [ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY]: 'current' satisfies EstimatePricingSyncState,
     },
     configVersions: args.configVersions ?? args.basePayload.configVersions,

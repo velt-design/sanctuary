@@ -26,6 +26,7 @@ describe('CalculatorAdditionalAluminiumEditor', () => {
           onAddRow={onAddRow}
           onUpdateRow={onUpdateRow}
           onRemoveRow={onRemoveRow}
+          onUpdateFinish={vi.fn()}
         />
       </QueryClientProvider>,
     );
