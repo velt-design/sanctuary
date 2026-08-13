@@ -23,6 +23,7 @@ import {
 } from "./quotesTabModel";
 import CommercialInternalNameDialog from "./CommercialInternalNameDialog";
 import { COMMERCIAL_INTERNAL_NAME_MAX_LENGTH } from "@/lib/commercial/internalName";
+import { selectAuthoritativeAcceptedVersions } from "@/lib/commercial/authoritativeAcceptedVersions";
 
 type QuotesListViewProps = {
   quotes: QuoteVersion[];
@@ -108,6 +109,14 @@ export default function QuotesListView({
       quote.sourceEstimateVersionLabel,
     ].some((value) => String(value ?? "").toLocaleLowerCase().includes(needle)));
   }, [query, quotes]);
+  const currentAcceptedIds = useMemo(() => new Set(
+    selectAuthoritativeAcceptedVersions(quotes.map((quote) => ({
+      ...quote,
+      familyKey: quote.quoteId,
+      acceptedAt: quote.acceptedAt ?? null,
+      createdAt: quote.createdAt,
+    }))).map((quote) => quote.id),
+  ), [quotes]);
 
   return (
     <div
@@ -200,6 +209,7 @@ export default function QuotesListView({
                   ).pendingCount > 0;
                 const canDelete = quote.status === "DRAFT" && quote.isCurrentDraft;
                 const canSupersede = quote.status === "SENT" || quote.status === "ACCEPTED";
+                const isHistoricalAcceptance = quote.status === "ACCEPTED" && !currentAcceptedIds.has(quote.id);
                 const quoteRefLabel = quote.quoteRef || "Pending reference";
                 const quoteIdentity = quote.internalName
                   || (quote.commercialScopeKind === "add_on" ? "Add-on quote" : quoteRefLabel);
@@ -253,7 +263,9 @@ export default function QuotesListView({
                       <QuoteStatusBadge
                         status={quote.status}
                         detail={
-                          quote.status === "DRAFT" &&
+                          isHistoricalAcceptance
+                            ? "Historical acceptance"
+                            : quote.status === "DRAFT" &&
                           !quote.isCurrentDraft
                             ? quote.deliveryPreparedAt
                               ? "Delivery prepared"

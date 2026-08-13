@@ -44,7 +44,6 @@ import {
   renderExpiresLabel,
   type QuotePreviewBasePayload,
 } from './renderArtifacts';
-import { voidOpenDepositInvoiceForQuote } from '../invoices/server';
 import { acceptQuoteAndEnsureDepositInvoice } from '../commercial/acceptQuote';
 import { mapLineItemRow, mapQuoteVersionRow, mapSendLogRow } from './rowMappers';
 import {
@@ -1392,12 +1391,24 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
   });
 
   let updated = await getQuoteVersionDetail(quoteVersionId);
-  if (!updated) throw new Error('Failed to load quote');
-  try {
-    await refreshQuoteArtifactsAfterMutation(updated.id, actor);
-    updated = (await getQuoteVersionDetail(updated.id)) ?? updated;
-  } catch (error) {
-    console.error('[quote_artifacts] failed to refresh after accept', { quoteVersionId: updated.id, error });
+  if (!updated) {
+    // The acceptance command has already committed. Preserve that confirmed
+    // truth in the response even if a follow-up read is temporarily unavailable.
+    console.error('[quote_acceptance] committed quote could not be reloaded', {
+      quoteVersionId,
+    });
+    updated = {
+      ...before,
+      status: 'ACCEPTED',
+      isCurrentDraft: false,
+    };
+  } else {
+    try {
+      await refreshQuoteArtifactsAfterMutation(updated.id, actor);
+      updated = (await getQuoteVersionDetail(updated.id)) ?? updated;
+    } catch (error) {
+      console.error('[quote_artifacts] failed to refresh after accept', { quoteVersionId: updated.id, error });
+    }
   }
   return {
     quoteVersion: updated,
@@ -1414,59 +1425,22 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
 
 export async function markQuoteDeclined(quoteVersionId: string, actor: string | null): Promise<QuoteVersionDetail> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
-  const versionRes = await supabaseServiceRole
-    .from('quote_versions')
-    .select('id, status, quote_id')
-    .eq('id', quoteVersionUuid)
-    .single();
-  if (versionRes.error) {
-    if (missingTableError(versionRes.error)) throw schemaMissingError();
-    throw new Error(errorMessage(versionRes.error, 'Quote not found'));
+  const command = await supabaseServiceRole.rpc('commercial_mark_quote_declined', {
+    p_quote_version_id: quoteVersionUuid,
+    p_actor: actor,
+  } as any);
+  if (command.error) {
+    if (missingTableError(command.error)) throw schemaMissingError();
+    throw new Error(errorMessage(command.error, 'Failed to decline quote'));
   }
-  if (!versionRes.data) throw new Error('Quote not found');
-  const currentStatus = String(versionRes.data.status ?? '').toUpperCase();
-  const alreadyDeclined = currentStatus === 'DECLINED';
-  if (
-    currentStatus !== 'SENT' &&
-    currentStatus !== 'ACCEPTED' &&
-    !alreadyDeclined
-  ) {
-    throw new Error('Only sent or accepted quotes can be declined');
-  }
-
-  if (!alreadyDeclined) {
-    const updateRes = await supabaseServiceRole
-      .from('quote_versions')
-      .update({ status: 'DECLINED' } as any)
-      .eq('id', quoteVersionUuid);
-    if (updateRes.error) {
-      if (missingTableError(updateRes.error)) throw schemaMissingError();
-      throw new Error(errorMessage(updateRes.error, 'Failed to update quote'));
-    }
-  }
-
-  const quoteRes = await supabaseServiceRole.from('quotes').select('project_id').eq('id', versionRes.data.quote_id).single();
-  if (quoteRes.error) {
-    if (missingTableError(quoteRes.error)) throw schemaMissingError();
-    throw new Error(errorMessage(quoteRes.error, 'Quote not found'));
-  }
-  const projectUuid = String(quoteRes.data?.project_id ?? '');
+  const commandRow = Array.isArray(command.data) ? command.data[0] : command.data;
+  const projectUuid = String((commandRow as any)?.project_id ?? '');
   if (projectUuid) {
     await reconcileQuoteOutcomeCadence({
       serviceClient: supabaseServiceRole,
       projectId: projectUuid,
       quoteVersionId: quoteVersionUuid,
       outcome: 'DECLINED',
-    });
-    if (!alreadyDeclined) {
-      await insertAuditEvent({ projectId: projectUuid, type: 'quote.declined', payload: { quoteVersionId: quoteVersionUuid } });
-    }
-  }
-  if (currentStatus === 'ACCEPTED' || alreadyDeclined) {
-    await voidOpenDepositInvoiceForQuote({
-      quoteUuid: String(versionRes.data.quote_id ?? ''),
-      actor,
-      reason: 'quote_declined',
     });
   }
 

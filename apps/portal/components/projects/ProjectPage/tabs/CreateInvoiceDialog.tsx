@@ -97,19 +97,20 @@ export default function CreateInvoiceDialog({
       : [];
   const selectedQuote = acceptedQuotes.find((quote) => quote.quoteVersionId === quoteVersionId) ?? acceptedQuotes[0] ?? null;
   const selectedQuoteRemaining = selectedQuote?.remainingToInvoiceIncGstCents ?? 0;
+  const availableToInvoice = Math.min(selectedQuoteRemaining, schedule.remainingToInvoiceIncGstCents);
   const selectedTerm = schedule.terms.find((term) =>
     term.quoteVersionId === selectedQuote?.quoteVersionId && term.paymentTermId === termId,
   ) ?? null;
   const amount = useMemo(() => {
     if (mode === 'next_stage') return selectedTerm?.remainingAmountIncGstCents ?? 0;
-    if (mode === 'full_remaining') return selectedQuoteRemaining;
-    if (mode === 'split') return Math.floor(selectedQuoteRemaining / Math.max(2, Number(splitCount) || 2));
+    if (mode === 'full_remaining') return availableToInvoice;
+    if (mode === 'split') return Math.floor(availableToInvoice / Math.max(2, Number(splitCount) || 2));
     if (basis === 'percentage') {
-      return Math.round(selectedQuoteRemaining * (Number(customValue) || 0) / 100);
+      return Math.round(availableToInvoice * (Number(customValue) || 0) / 100);
     }
     return dollarsToCents(customValue);
-  }, [basis, customValue, mode, selectedQuoteRemaining, selectedTerm, splitCount]);
-  const exceedsRemaining = amount > selectedQuoteRemaining;
+  }, [availableToInvoice, basis, customValue, mode, selectedTerm, splitCount]);
+  const exceedsRemaining = amount > availableToInvoice;
   const valid = amount > 0
     && Boolean(selectedQuote)
     && label.trim().length >= 2
@@ -213,7 +214,7 @@ export default function CreateInvoiceDialog({
                 </Select>
               ) : null}
               <AlertBanner tone="info" title={`Invoice amount: ${money(amount)}`}>
-                {selectedQuote?.commercialScopeKind === 'add_on' ? 'Add-on' : 'Base quote'} available {money(selectedQuoteRemaining)}. Job paid {money(schedule.paidIncGstCents)} and open {money(schedule.outstandingIncGstCents)}.
+                {selectedQuote?.commercialScopeKind === 'add_on' ? 'Add-on' : 'Base quote'} has {money(selectedQuoteRemaining)} scope balance; {money(availableToInvoice)} remains available across the job. Job paid {money(schedule.paidIncGstCents)} and open {money(schedule.outstandingIncGstCents)}.
               </AlertBanner>
               <Input label="Invoice label" value={label} onChange={(event) => setLabel(event.target.value)} disabled={pending} required />
               <div className={styles.inlineFields}>

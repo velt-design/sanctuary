@@ -17,33 +17,39 @@ export async function POST(_req: Request, ctx: { params: Promise<{ projectId: st
     return jsonError('Invalid projectId', 400);
   }
 
-  const prev = await supabase.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
-  if (prev.error || !prev.data) return jsonError('Project not found', 404);
-  const fromStage = String(prev.data.pipeline_stage ?? '').toUpperCase();
-  if (fromStage !== 'COMPLETED') return jsonError('Invalid stage transition (expected COMPLETED)', 409);
-
-  const updateRes = await supabase
-    .from('projects')
-    .update({ pipeline_stage: 'PAID' } as any)
-    .eq('id', projectUuid)
-    .select('id, pipeline_stage')
-    .single();
-  if (updateRes.error) return jsonError(updateRes.error.message ?? 'Failed to update project', 500);
-
-  await automationRunner.runEvent({
-    type: 'pipeline.stage_changed',
-    projectId: projectUuid,
-    stage: 'PAID',
-    payload: { fromStage: 'COMPLETED', toStage: 'PAID' },
+  const command = await supabase.rpc('commercial_mark_project_paid', {
+    p_project_id: projectUuid,
   });
+  if (command.error) {
+    const status = String(command.error.message ?? '').includes('required')
+      || String(command.error.message ?? '').includes('not fully paid')
+      || String(command.error.message ?? '').includes('Invalid stage') ? 409 : 500;
+    return jsonError(command.error.message ?? 'Failed to verify commercial balance', status);
+  }
+  const commandRow = Array.isArray(command.data) ? command.data[0] : command.data;
+  const changed = (commandRow as any)?.changed === true;
 
-  await automationRunner.runEvent({
-    type: 'ui.action.mark_paid',
-    projectId: projectUuid,
-    stage: 'PAID',
-    payload: {},
-  });
+  if (changed) {
+    try {
+      await automationRunner.runEvent({
+        type: 'pipeline.stage_changed',
+        projectId: projectUuid,
+        stage: 'PAID',
+        payload: { fromStage: 'COMPLETED', toStage: 'PAID' },
+      });
+      await automationRunner.runEvent({
+        type: 'ui.action.mark_paid',
+        projectId: projectUuid,
+        stage: 'PAID',
+        payload: {},
+      });
+    } catch (error) {
+      // Settlement is already committed. Do not turn a follow-up automation
+      // failure into a retry prompt for the financial state change.
+      console.error('[mark_paid] automation follow-up failed', error);
+    }
+  }
 
-  return jsonOk({ ok: true });
+  return jsonOk({ ok: true, replayed: !changed });
 }
 

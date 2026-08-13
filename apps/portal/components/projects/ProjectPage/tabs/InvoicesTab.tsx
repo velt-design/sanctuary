@@ -395,6 +395,11 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
               { label: 'Remaining', value: formatMoneyFromCents(schedule.remainingToInvoiceIncGstCents), detail: 'Available to invoice' },
             ]}
           />
+          {schedule.overCommittedIncGstCents > 0 ? (
+            <AlertBanner tone="warning" title="Commercial total needs reconciliation">
+              Payments plus open invoices exceed the current accepted scope by {formatMoneyFromCents(schedule.overCommittedIncGstCents)}. Review historical invoices and payment allocations before creating another invoice.
+            </AlertBanner>
+          ) : null}
           <div className={styles.scheduleRows}>
             {schedule.terms.map((term) => {
               return (
@@ -425,6 +430,22 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
               </div>
             ) : null}
           </div>
+        </Card>
+      ) : null}
+
+      {schedule && !schedule.acceptedQuoteVersionId && (schedule.paidIncGstCents !== 0 || schedule.outstandingIncGstCents !== 0) ? (
+        <Card title="Historical commercial record" eyebrow="No current accepted quote" padding="none" headingLevel={4}>
+          <AlertBanner tone="warning" title="No current accepted commercial scope">
+            Historical payments and open invoices remain visible, but no new invoice can be created until a quote is accepted.
+          </AlertBanner>
+          <MetricGrid
+            ariaLabel="Historical project payment totals"
+            columns={2}
+            items={[
+              { label: 'Paid', value: formatMoneyFromCents(schedule.paidIncGstCents), detail: 'Net payment ledger' },
+              { label: 'Open', value: formatMoneyFromCents(schedule.outstandingIncGstCents), detail: 'Historical issued invoices' },
+            ]}
+          />
         </Card>
       ) : null}
 

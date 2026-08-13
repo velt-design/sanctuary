@@ -104,6 +104,7 @@ export type ProjectInvoiceSchedule = {
   paidIncGstCents: number;
   outstandingIncGstCents: number;
   remainingToInvoiceIncGstCents: number;
+  overCommittedIncGstCents: number;
   unallocatedCreditIncGstCents: number;
   acceptedQuotes?: InvoiceScheduleQuote[];
   terms: InvoiceScheduleTerm[];

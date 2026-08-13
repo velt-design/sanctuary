@@ -158,6 +158,7 @@ export type CommandCentreQuoteCandidate = {
   quoteRef: string | null;
   versionNumber: number | null;
   status: CommandCentreQuoteStatus;
+  acceptedAt?: string | null;
   sourceEstimateId: string | null;
   createdAt: string | null;
   sentAt: string | null;

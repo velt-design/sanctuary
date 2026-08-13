@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDefaultQuotePaymentSchedule,
   evaluateQuotePaymentSchedule,
+  normalizeStoredQuotePaymentSchedule,
   requireValidQuotePaymentSchedule,
 } from './paymentSchedule';
 
@@ -50,5 +51,17 @@ describe('quote payment schedules', () => {
       { ...valid[2]!, percentageOfRemainder: 60 },
     ], 1_000_000);
     expect(invalid.errors).toContain('Percentage payment terms must total exactly 100%.');
+  });
+
+  it('uses legacy 50/50 only when stored terms are genuinely absent', () => {
+    expect(normalizeStoredQuotePaymentSchedule(null, 100_001, 50)
+      .map((term) => term.resolvedAmountIncGstCents)).toEqual([50_001, 50_000]);
+  });
+
+  it('fails visibly instead of silently replacing malformed stored terms', () => {
+    expect(() => normalizeStoredQuotePaymentSchedule({ invalid: true }, 100_000, 50))
+      .toThrow('Stored quote payment schedule is malformed');
+    expect(() => normalizeStoredQuotePaymentSchedule([], 100_000, 50))
+      .toThrow('Stored quote payment schedule is invalid');
   });
 });

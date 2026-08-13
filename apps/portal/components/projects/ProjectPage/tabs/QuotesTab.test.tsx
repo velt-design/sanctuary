@@ -16,10 +16,12 @@ const fetchQuery = vi.fn();
 const removeQueries = vi.fn();
 const markQuoteVersionSuperseded = vi.hoisted(() => vi.fn());
 let portalIsAdmin = true;
+let searchParamsValue = 'quoteId=qv_1';
+let activeQuoteList: any[] = [];
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace, push }),
-  useSearchParams: () => new URLSearchParams('quoteId=qv_1'),
+  useSearchParams: () => new URLSearchParams(searchParamsValue),
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -195,6 +197,15 @@ describe('QuotesTab draft ownership UI', () => {
     useQueryMock.mockReset();
     activeQuoteDetail = quoteDetail;
     portalIsAdmin = true;
+    searchParamsValue = 'quoteId=qv_1';
+    activeQuoteList = [
+      {
+        id: 'qv_1', quoteId: 'qt_1', quoteRef: 'Q-1001', versionNumber: 1,
+        status: 'DRAFT', sourceEstimateVersionLabel: 'V1', sourceEstimateVersionId: 'est_v1',
+        sentAt: null, acceptedAt: null, expiresAt: null, createdAt: '2026-04-02T00:00:00Z',
+        totals: { totalIncGstCents: 10000 }, pdfFileId: null, isCurrentDraft: true,
+      },
+    ];
     markQuoteVersionSuperseded.mockResolvedValue({
       ...quoteDetail,
       status: 'SUPERSEDED',
@@ -203,20 +214,7 @@ describe('QuotesTab draft ownership UI', () => {
 
     const responses = [
       {
-        data: [
-          {
-            id: 'qv_1',
-            quoteRef: 'Q-1001',
-            versionNumber: 1,
-            status: 'DRAFT',
-            sourceEstimateVersionLabel: 'V1',
-            sourceEstimateVersionId: 'est_v1',
-            sentAt: null,
-            expiresAt: null,
-            totals: { totalIncGstCents: 10000 },
-            pdfFileId: null,
-          },
-        ],
+        data: activeQuoteList,
         isPending: false,
         error: null,
       },
@@ -243,7 +241,9 @@ describe('QuotesTab draft ownership UI', () => {
     useQueryMock.mockImplementation(() => {
       const responseIndex = callIndex % responses.length;
       const response =
-        responseIndex === 3
+        responseIndex === 0
+          ? { ...responses[responseIndex], data: activeQuoteList }
+          : responseIndex === 3
           ? { ...responses[responseIndex], data: activeQuoteDetail }
           : responses[responseIndex];
       callIndex += 1;
@@ -264,6 +264,26 @@ describe('QuotesTab draft ownership UI', () => {
     expect(rendered.container.textContent).toContain('Draft');
     expect(rendered.container.textContent).toContain('Internal');
 
+    rendered.unmount();
+  });
+
+  it('labels an older accepted version as historical acceptance', () => {
+    searchParamsValue = '';
+    activeQuoteList = [
+      {
+        ...quoteDetail,
+        id: 'qv_old', quoteId: 'qt_1', versionNumber: 1, status: 'ACCEPTED',
+        acceptedAt: '2026-07-01T00:00:00Z', createdAt: '2026-07-01T00:00:00Z',
+      },
+      {
+        ...quoteDetail,
+        id: 'qv_current', quoteId: 'qt_1', versionNumber: 2, status: 'ACCEPTED',
+        acceptedAt: '2026-08-01T00:00:00Z', createdAt: '2026-08-01T00:00:00Z',
+      },
+    ];
+    const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId={null} />);
+    expect(rendered.container.querySelector('[data-quotes-view="list"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Historical acceptance');
     rendered.unmount();
   });
 

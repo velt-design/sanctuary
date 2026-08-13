@@ -12,6 +12,7 @@ const schedule: ProjectInvoiceSchedule = {
   acceptedQuoteVersionId: 'qv-current', acceptedQuoteRef: 'Q-100', acceptedQuoteVersionNumber: 2,
   acceptedQuoteTotalIncGstCents: 100000, invoicedIncGstCents: 0, paidIncGstCents: 20000,
   outstandingIncGstCents: 0, remainingToInvoiceIncGstCents: 80000, unallocatedCreditIncGstCents: 0,
+  overCommittedIncGstCents: 0,
   terms: [{
     quoteVersionId: 'qv-current', quoteRef: 'Q-100', quoteVersionNumber: 2, paymentTermId: 'final',
     label: 'Final payment', position: 2, termCount: 2, amountIncGstCents: 50000,
@@ -73,6 +74,7 @@ describe('CreateInvoiceDialog', () => {
       ...schedule,
       acceptedQuoteTotalIncGstCents: 140000,
       remainingToInvoiceIncGstCents: 120000,
+      overCommittedIncGstCents: 0,
       acceptedQuotes: [
         { quoteVersionId: 'qv-current', quoteRef: 'Q-100', quoteVersionNumber: 2, commercialScopeKind: 'base', totalIncGstCents: 100000, remainingToInvoiceIncGstCents: 80000 },
         { quoteVersionId: 'qv-addon', quoteRef: 'Q-101', quoteVersionNumber: 1, commercialScopeKind: 'add_on', totalIncGstCents: 40000, remainingToInvoiceIncGstCents: 40000 },
@@ -100,6 +102,30 @@ describe('CreateInvoiceDialog', () => {
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
       mode: 'full_remaining', quoteVersionId: 'qv-addon', label: 'Add-on payment', sendNow: false,
     }));
+    rendered.unmount();
+  });
+
+  it('caps a scope invoice at the lower job-wide balance after historical credit', () => {
+    const onCreate = vi.fn();
+    const creditedSchedule: ProjectInvoiceSchedule = {
+      ...schedule,
+      paidIncGstCents: 70_000,
+      outstandingIncGstCents: 20_000,
+      remainingToInvoiceIncGstCents: 10_000,
+      acceptedQuotes: [{
+        quoteVersionId: 'qv-current', quoteRef: 'Q-100', quoteVersionNumber: 2,
+        commercialScopeKind: 'base', totalIncGstCents: 100_000, remainingToInvoiceIncGstCents: 50_000,
+      }],
+    };
+    const rendered = renderIntoDocument(
+      <CreateInvoiceDialog open projectId="proj-1" schedule={creditedSchedule} initialTerm={null} pending={false} result={null} onClose={() => {}} onCreate={onCreate} onPreview={() => {}} />,
+    );
+    change(rendered.container.querySelector('select') as HTMLSelectElement, 'full_remaining');
+    expect(rendered.container.textContent).toContain('Invoice amount: $100.00');
+    act(() => {
+      Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Create invoice')?.click();
+    });
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'full_remaining' }));
     rendered.unmount();
   });
 });

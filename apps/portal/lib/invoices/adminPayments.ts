@@ -27,45 +27,56 @@ function optionalText(value: unknown, maxLength: number): string | null {
 }
 
 async function latestAcceptedQuoteVersions(projectUuid: string) {
-  const quoteRes = await supabaseServiceRole
-    .from('quotes')
-    .select('id,quote_ref,commercial_scope_id')
-    .eq('project_id', projectUuid);
+  const [quoteRes, currentRes] = await Promise.all([
+    supabaseServiceRole
+      .from('quotes')
+      .select('id,quote_ref,commercial_scope_id')
+      .eq('project_id', projectUuid),
+    supabaseServiceRole.rpc('commercial_current_accepted_quote_versions', {
+      p_project_id: projectUuid,
+    } as any),
+  ]);
   if (quoteRes.error) throw new Error(errorMessage(quoteRes.error, 'Failed to load project quotes'));
+  if (currentRes.error) throw new Error(errorMessage(currentRes.error, 'Failed to load current accepted quote versions'));
   const quotes = Array.isArray(quoteRes.data) ? quoteRes.data : [];
-  const quoteIds = quotes.map((quote) => String(quote.id ?? '')).filter(Boolean);
-  if (!quoteIds.length) return [];
+  const currentIds = (Array.isArray(currentRes.data) ? currentRes.data : [])
+    .map((row: any) => String(row.quote_version_id ?? ''))
+    .filter(Boolean);
+  if (!currentIds.length) return [];
   const versionRes = await supabaseServiceRole.from('quote_versions').select('*')
-    .in('quote_id', quoteIds)
-    .eq('status', 'ACCEPTED')
+    .in('id', currentIds)
     .order('version_number', { ascending: false })
     .order('created_at', { ascending: false });
   if (versionRes.error) throw new Error(errorMessage(versionRes.error, 'Failed to load accepted quotes'));
   const quoteById = new Map(quotes.map((quote) => [String(quote.id), quote]));
-  const seen = new Set<string>();
   return (Array.isArray(versionRes.data) ? versionRes.data : []).flatMap((version) => {
     const quoteId = String((version as any).quote_id ?? '');
-    if (!quoteId || seen.has(quoteId)) return [];
+    if (!quoteId) return [];
     const quote = quoteById.get(quoteId);
     if (!quote) return [];
-    seen.add(quoteId);
     return [{ quote: quote as any, version: version as any }];
   });
 }
 
-function emptySchedule(): ProjectInvoiceSchedule {
+function requiredCents(value: unknown, label: string): number {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) throw new Error(`Commercial truth returned invalid ${label}`);
+  return parsed;
+}
+
+async function projectFinancialTruth(projectUuid: string) {
+  const result = await supabaseServiceRole.rpc('commercial_project_financial_truth', {
+    p_project_id: projectUuid,
+  } as any);
+  if (result.error) throw new Error(errorMessage(result.error, 'Failed to load authoritative commercial totals'));
+  const row = Array.isArray(result.data) ? result.data[0] : result.data;
+  if (!row || typeof row !== 'object') throw new Error('Commercial truth returned no project totals');
   return {
-    acceptedQuoteVersionId: null,
-    acceptedQuoteRef: null,
-    acceptedQuoteVersionNumber: null,
-    acceptedQuoteTotalIncGstCents: 0,
-    invoicedIncGstCents: 0,
-    paidIncGstCents: 0,
-    outstandingIncGstCents: 0,
-    remainingToInvoiceIncGstCents: 0,
-    unallocatedCreditIncGstCents: 0,
-    acceptedQuotes: [],
-    terms: [],
+    acceptedTotalIncGstCents: requiredCents((row as any).accepted_total_inc_gst_cents, 'accepted total'),
+    paidIncGstCents: requiredCents((row as any).paid_inc_gst_cents, 'paid total'),
+    outstandingIncGstCents: requiredCents((row as any).open_invoice_inc_gst_cents, 'open invoice total'),
+    remainingToInvoiceIncGstCents: requiredCents((row as any).remaining_to_invoice_inc_gst_cents, 'remaining total'),
+    overCommittedIncGstCents: requiredCents((row as any).over_committed_inc_gst_cents, 'over-committed total'),
   };
 }
 
@@ -74,15 +85,11 @@ export async function getProjectInvoiceSchedule(
   options: { includePaymentEntries?: boolean } = {},
 ): Promise<ProjectInvoiceSchedule> {
   const projectUuid = uuidFromAppId(projectId, 'proj');
-  const [acceptedQuotes, invoices] = await Promise.all([
+  const [acceptedQuotes, invoices, authoritativeTotals] = await Promise.all([
     latestAcceptedQuoteVersions(projectUuid),
     listDepositInvoicesForProject(projectId),
+    projectFinancialTruth(projectUuid),
   ]);
-  if (!acceptedQuotes.length) return emptySchedule();
-
-  const primary = acceptedQuotes.find((accepted) => !(accepted.quote as any).commercial_scope_id) ?? acceptedQuotes[0];
-  const versionUuid = String(primary.version.id);
-  const versionId = appIdFromUuid('qv', versionUuid);
   const invoiceRefsByUuid = new Map(
     invoices.map((invoice) => [uuidFromAppId(invoice.id, 'inv'), invoice.invoiceRef]),
   );
@@ -91,6 +98,26 @@ export async function getProjectInvoiceSchedule(
     quoteVersionUuids: acceptedQuotes.map((accepted) => String(accepted.version.id)),
     invoiceRefsByUuid,
   });
+  if (!acceptedQuotes.length) {
+    return projectInvoiceSchedule({
+      acceptedQuoteVersionId: null,
+      acceptedQuoteRef: null,
+      acceptedQuoteVersionNumber: null,
+      acceptedQuoteTotalIncGstCents: 0,
+      acceptedQuotes: [],
+      quoteTerms: [],
+      planItems: [],
+      invoices,
+      paymentEntries: ledger.entries,
+      allocations: ledger.allocations,
+      includePaymentEntries: options.includePaymentEntries === true,
+      authoritativeTotals,
+    });
+  }
+
+  const primary = acceptedQuotes.find((accepted) => !(accepted.quote as any).commercial_scope_id) ?? acceptedQuotes[0];
+  const versionUuid = String(primary.version.id);
+  const versionId = appIdFromUuid('qv', versionUuid);
   const acceptedScheduleQuotes = acceptedQuotes.map((accepted) => {
     const total = Number(accepted.version.total_inc_gst_cents ?? 0) || 0;
     const terms = normalizeStoredQuotePaymentSchedule(
@@ -124,6 +151,7 @@ export async function getProjectInvoiceSchedule(
     paymentEntries: ledger.entries,
     allocations: ledger.allocations,
     includePaymentEntries: options.includePaymentEntries === true,
+    authoritativeTotals,
   });
 }
 
@@ -213,7 +241,7 @@ export async function markInvoicePaid(params: {
   if (invoiceRes.error || !invoiceRes.data) throw new Error(errorMessage(invoiceRes.error, 'Invoice not found'));
   const paidAt = optionalText(params.paidAt, 40) ?? new Date().toISOString();
   if (!Number.isFinite(new Date(paidAt).getTime())) throw new Error('Paid date is invalid');
-  const rpc = await supabaseServiceRole.rpc('commercial_mark_invoice_paid_and_record_payment', {
+  const rpc = await supabaseServiceRole.rpc('commercial_mark_invoice_paid_with_project_lock', {
     p_invoice_id: invoiceUuid,
     p_actor: params.actor,
     p_paid_at: new Date(paidAt).toISOString(),
@@ -242,26 +270,15 @@ export async function voidInvoice(params: {
   const reason = optionalText(params.reason, 1000);
   if (!reason || reason.length < 3) throw new Error('A void reason is required');
   const invoiceUuid = uuidFromAppId(params.invoiceId, 'inv');
-  const invoiceRes = await supabaseServiceRole.from('deposit_invoices').select('*').eq('id', invoiceUuid).single();
+  const invoiceRes = await supabaseServiceRole.from('deposit_invoices').select('project_id').eq('id', invoiceUuid).single();
   if (invoiceRes.error || !invoiceRes.data) throw new Error(errorMessage(invoiceRes.error, 'Invoice not found'));
-  const current = invoiceRes.data as any;
-  if (String(current.status).toUpperCase() !== 'OPEN') throw new Error('Only open invoices can be voided');
-  const voidedAt = new Date().toISOString();
-  const updateRes = await supabaseServiceRole.from('deposit_invoices').update({
-    status: 'VOID',
-    voided_at: voidedAt,
-    voided_by: params.actor,
-    void_reason: reason,
-    portal_token_hash: null,
-    portal_token_expires_at: null,
-  } as any).eq('id', invoiceUuid).eq('status', 'OPEN').select('id').single();
-  if (updateRes.error || !updateRes.data) throw new Error(errorMessage(updateRes.error, 'Failed to void invoice'));
-  await insertCommercialAuditEvent({
-    projectId: String(current.project_id),
-    type: 'invoice.voided',
-    payload: { invoiceId: invoiceUuid, quoteVersionId: current.quote_version_id, reason, actor: params.actor, voidedAt },
-  });
-  const projectId = appIdFromUuid('proj', String(current.project_id));
+  const rpc = await supabaseServiceRole.rpc('commercial_void_open_invoice', {
+    p_invoice_id: invoiceUuid,
+    p_actor: params.actor,
+    p_reason: reason,
+  } as any);
+  if (rpc.error) throw new Error(errorMessage(rpc.error, 'Failed to void invoice'));
+  const projectId = appIdFromUuid('proj', String((invoiceRes.data as any).project_id));
   const updated = (await listDepositInvoicesForProject(projectId)).find((invoice) => invoice.id === params.invoiceId);
   if (!updated) throw new Error('Invoice voided but could not be reloaded');
   return updated;

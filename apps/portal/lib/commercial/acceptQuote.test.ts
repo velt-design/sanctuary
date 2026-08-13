@@ -6,9 +6,7 @@ const mocks = vi.hoisted(() => ({
   insertCommercialAuditEvent: vi.fn(),
   recordMarketingConversionEvent: vi.fn(),
   rpc: vi.fn(),
-  invoiceSingle: vi.fn(),
   supabaseServiceRole: {
-    from: vi.fn(),
     rpc: vi.fn(),
   },
 }));
@@ -61,6 +59,11 @@ function acceptanceRow(alreadyAccepted = false) {
     quote_version_id: QUOTE_VERSION_UUID,
     already_accepted: alreadyAccepted,
     invoice_id: INVOICE_UUID,
+    invoice_ref: 'INV-1001',
+    invoice_project_id: PROJECT_UUID,
+    invoice_quote_id: '44444444-4444-4444-8444-444444444444',
+    invoice_quote_total_inc_gst_cents: 120000,
+    invoice_created_at: INVOICE_CREATED_AT,
     invoice_created: !alreadyAccepted,
   }];
 }
@@ -74,27 +77,6 @@ describe('accepted quote project-work reconciliation', () => {
     mocks.rpc.mockResolvedValue({
       data: acceptanceRow(),
       error: null,
-    });
-    mocks.invoiceSingle.mockResolvedValue({
-      data: {
-        id: INVOICE_UUID,
-        invoice_ref: 'INV-1001',
-        project_id: PROJECT_UUID,
-        quote_id: '44444444-4444-4444-8444-444444444444',
-        quote_total_inc_gst_cents: 120000,
-        created_at: INVOICE_CREATED_AT,
-      },
-      error: null,
-    });
-    mocks.supabaseServiceRole.from.mockImplementation((table: string) => {
-      if (table === 'deposit_invoices') {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({ single: mocks.invoiceSingle })),
-          })),
-        };
-      }
-      throw new Error(`Unexpected table ${table}`);
     });
     mocks.deliverAcceptedDepositInvoiceById.mockResolvedValue({
       sent: true,
@@ -164,6 +146,36 @@ describe('accepted quote project-work reconciliation', () => {
     });
   });
 
+  it('uses the locked command snapshot without a follow-up financial read', async () => {
+    const result = await acceptQuoteAndEnsureDepositInvoice({
+      quoteVersionUuid: QUOTE_VERSION_UUID,
+      actor: 'staff@example.test',
+    });
+
+    expect(result.invoice.invoiceRef).toBe('INV-1001');
+    expect(mocks.supabaseServiceRole).not.toHaveProperty('from');
+  });
+
+  it('does not report acceptance as failed when a post-commit follow-up throws', async () => {
+    mocks.recordMarketingConversionEvent.mockRejectedValueOnce(
+      new Error('conversion unavailable'),
+    );
+    mocks.reconcileQuoteOutcomeCadence.mockRejectedValueOnce(
+      new Error('work reconciliation unavailable'),
+    );
+
+    await expect(
+      acceptQuoteAndEnsureDepositInvoice({
+        quoteVersionUuid: QUOTE_VERSION_UUID,
+        actor: 'staff@example.test',
+      }),
+    ).resolves.toMatchObject({
+      quoteVersionUuid: QUOTE_VERSION_UUID,
+      invoice: { id: INVOICE_UUID, sent: true },
+    });
+    expect(mocks.deliverAcceptedDepositInvoiceById).toHaveBeenCalledOnce();
+  });
+
   it('repairs reconciliation and the idempotent conversion on an authoritative acceptance replay', async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: acceptanceRow(true),
@@ -193,18 +205,10 @@ describe('accepted quote project-work reconciliation', () => {
 
   it('does not create a fresh conversion when an old acceptance is replayed', async () => {
     mocks.rpc.mockResolvedValueOnce({
-      data: acceptanceRow(true),
-      error: null,
-    });
-    mocks.invoiceSingle.mockResolvedValueOnce({
-      data: {
-        id: INVOICE_UUID,
-        invoice_ref: 'INV-1001',
-        project_id: PROJECT_UUID,
-        quote_id: '44444444-4444-4444-8444-444444444444',
-        quote_total_inc_gst_cents: 120000,
-        created_at: '2026-07-26T01:00:00.000Z',
-      },
+      data: [{
+        ...acceptanceRow(true)[0],
+        invoice_created_at: '2026-07-26T01:00:00.000Z',
+      }],
       error: null,
     });
 

@@ -19,6 +19,18 @@ const contractPath = path.join(
   repositoryRoot,
   "supabase/tests/commercial_workflow_trust.sql",
 );
+const truthBootstrapPath = path.join(
+  repositoryRoot,
+  "supabase/tests/commercial_truth_invariants_bootstrap.sql",
+);
+const truthMigrationPath = path.join(
+  repositoryRoot,
+  "supabase/migrations/20260813000003_commercial_truth_invariants.sql",
+);
+const truthContractPath = path.join(
+  repositoryRoot,
+  "supabase/tests/commercial_truth_invariants.sql",
+);
 
 const bootstrapSql = readFileSync(bootstrapPath, "utf8");
 const migrationSql = readFileSync(migrationPath, "utf8");
@@ -27,6 +39,9 @@ const staleConflictMigrationSql = readFileSync(
   "utf8",
 );
 const contractSql = readFileSync(contractPath, "utf8");
+const truthBootstrapSql = readFileSync(truthBootstrapPath, "utf8");
+const truthMigrationSql = readFileSync(truthMigrationPath, "utf8");
+const truthContractSql = readFileSync(truthContractPath, "utf8");
 
 function requireCondition(condition, message) {
   if (!condition) throw new Error(message);
@@ -53,6 +68,7 @@ async function applyTransaction(
 }
 
 const database = new PGlite();
+const truthDatabase = new PGlite();
 let executionError;
 
 try {
@@ -139,13 +155,49 @@ try {
   process.stdout.write(
     "commercial-workflow-db: quote, delivery, acceptance, invoice, and grant contracts passed\n",
   );
+
+  await truthDatabase.waitReady;
+  await truthDatabase.exec(truthBootstrapSql);
+  process.stdout.write("commercial-workflow-db: truth bootstrap applied\n");
+  await applyTransaction(
+    truthDatabase,
+    truthMigrationSql,
+    "Rollback truth migration",
+    { rollback: true },
+  );
+  const truthRollbackProbe = await truthDatabase.query(`
+    select to_regprocedure('public.commercial_project_financial_truth(uuid)') is null
+      as truth_function_absent;
+  `);
+  requireCondition(
+    truthRollbackProbe.rows[0]?.truth_function_absent === true,
+    "The commercial truth migration did not roll back cleanly.",
+  );
+  process.stdout.write("commercial-workflow-db: truth rollback contract passed\n");
+  await applyTransaction(
+    truthDatabase,
+    truthMigrationSql,
+    "Committed truth migration",
+  );
+  await applyTransaction(
+    truthDatabase,
+    truthMigrationSql,
+    "Idempotent truth migration replay",
+  );
+  process.stdout.write(
+    "commercial-workflow-db: truth migration applied and replayed\n",
+  );
+  await truthDatabase.exec(truthContractSql);
+  process.stdout.write(
+    "commercial-workflow-db: authoritative totals, lifecycle, invoice, payment, and completion contracts passed\n",
+  );
 } catch (error) {
   executionError = error;
 }
 
 let closeError;
 try {
-  await database.close();
+  await Promise.all([database.close(), truthDatabase.close()]);
 } catch (error) {
   closeError = error;
 }

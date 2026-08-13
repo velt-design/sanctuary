@@ -140,4 +140,18 @@ describe('resolveCommandCentreSelection', () => {
     expect(result.quote).toBeNull();
     expect(result.acceptedQuoteCount).toBe(0);
   });
+
+  it('does not revive an older accepted source after a newer accepted version is superseded', () => {
+    const source = estimate('estimate-1', '2026-07-01T00:00:00.000Z');
+    const older = quote('quote-v1', 'ACCEPTED', source.sourceId, '2026-07-02T00:00:00.000Z', {
+      acceptedAt: '2026-07-02T01:00:00.000Z', versionNumber: 1,
+    });
+    const terminal = quote('quote-v2', 'SUPERSEDED', source.sourceId, '2026-07-03T00:00:00.000Z', {
+      acceptedAt: '2026-07-03T01:00:00.000Z', versionNumber: 2,
+    });
+
+    const result = resolveCommandCentreSelection({ estimates: [source], quoteVersions: [older, terminal] });
+    expect(result.source).toBe('estimate');
+    expect(result.acceptedProjectTotalIncGstCents).toBe(0);
+  });
 });

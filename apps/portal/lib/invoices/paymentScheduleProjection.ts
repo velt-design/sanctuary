@@ -45,6 +45,13 @@ type ProjectionInput = {
   paymentEntries: SchedulePaymentEntry[];
   allocations: ScheduleAllocation[];
   includePaymentEntries: boolean;
+  authoritativeTotals?: {
+    acceptedTotalIncGstCents: number;
+    paidIncGstCents: number;
+    outstandingIncGstCents: number;
+    remainingToInvoiceIncGstCents: number;
+    overCommittedIncGstCents: number;
+  };
 };
 
 export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSchedule {
@@ -136,6 +143,8 @@ export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSc
   const outstandingIncGstCents = input.invoices
     .filter((invoice) => invoice.status === 'OPEN')
     .reduce((sum, invoice) => sum + invoice.totalIncGstCents, 0);
+  const acceptedTotalIncGstCents = acceptedQuotes.reduce((sum, quote) => sum + quote.totalIncGstCents, 0);
+  const committedIncGstCents = paidIncGstCents + outstandingIncGstCents;
   const currentAllocated = [...allocatedByCurrentTerm.values()].reduce((sum, amount) => sum + amount, 0);
   const paymentEntries = input.paymentEntries.map((entry) => {
     const entryAllocations = activeAllocations.filter((allocation) => allocation.paymentEntryId === entry.id);
@@ -159,18 +168,21 @@ export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSc
     };
   });
 
+  const totals = input.authoritativeTotals;
   return {
     acceptedQuoteVersionId: currentVersionId,
     acceptedQuoteRef: input.acceptedQuoteRef,
     acceptedQuoteVersionNumber: input.acceptedQuoteVersionNumber,
-    acceptedQuoteTotalIncGstCents: acceptedQuotes.reduce((sum, quote) => sum + quote.totalIncGstCents, 0),
+    acceptedQuoteTotalIncGstCents: totals?.acceptedTotalIncGstCents ?? acceptedTotalIncGstCents,
     invoicedIncGstCents: activeInvoices.reduce((sum, invoice) => sum + invoice.totalIncGstCents, 0),
-    paidIncGstCents,
-    outstandingIncGstCents,
-    remainingToInvoiceIncGstCents: Math.max(
+    paidIncGstCents: totals?.paidIncGstCents ?? paidIncGstCents,
+    outstandingIncGstCents: totals?.outstandingIncGstCents ?? outstandingIncGstCents,
+    remainingToInvoiceIncGstCents: totals?.remainingToInvoiceIncGstCents ?? Math.max(
       0,
-      acceptedQuotes.reduce((sum, quote) => sum + quote.totalIncGstCents, 0) - paidIncGstCents - outstandingIncGstCents,
+      acceptedTotalIncGstCents - committedIncGstCents,
     ),
+    overCommittedIncGstCents: totals?.overCommittedIncGstCents
+      ?? Math.max(0, committedIncGstCents - acceptedTotalIncGstCents),
     unallocatedCreditIncGstCents: Math.max(0, paidIncGstCents - currentAllocated),
     acceptedQuotes: acceptedQuotes.map((quote) => {
       const allocated = activeAllocations

@@ -21,6 +21,7 @@ export const COMMAND_CENTRE_COMMERCIAL_RELATIONS_SELECT = `
       source_estimate_version_id,
       created_at,
       sent_at,
+      accepted_at,
       total_inc_gst_cents,
       sendLogs:quote_send_logs(status,created_at,sent_at)
     )
@@ -123,6 +124,7 @@ function normalizeQuoteRows(projectRow: AnyRecord): CommandCentreQuoteCandidate[
         quoteRef,
         versionNumber: positiveInteger(version.version_number),
         status,
+        acceptedAt: isoTimestamp(version.accepted_at),
         sourceEstimateId: trimmedString(version.source_estimate_version_id),
         createdAt: isoTimestamp(version.created_at),
         sentAt: isoTimestamp(version.sent_at),

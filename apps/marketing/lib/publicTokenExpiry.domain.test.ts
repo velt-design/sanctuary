@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   getServiceSupabase: vi.fn(),
-  ensureDepositInvoiceForAcceptedQuote: vi.fn(),
+  deliverAcceptedDepositInvoiceById: vi.fn(),
 }));
 
 vi.mock('@/lib/supabaseService', () => ({
@@ -10,7 +10,7 @@ vi.mock('@/lib/supabaseService', () => ({
 }));
 
 vi.mock('../../portal/lib/invoices/server', () => ({
-  ensureDepositInvoiceForAcceptedQuote: h.ensureDepositInvoiceForAcceptedQuote,
+  deliverAcceptedDepositInvoiceById: h.deliverAcceptedDepositInvoiceById,
 }));
 
 const QUOTE_VERSION_ID = '11111111-1111-4111-8111-111111111111';
@@ -91,7 +91,7 @@ describe('expired public token domain boundaries', () => {
   beforeEach(() => {
     vi.resetModules();
     h.getServiceSupabase.mockReset();
-    h.ensureDepositInvoiceForAcceptedQuote.mockReset();
+    h.deliverAcceptedDepositInvoiceById.mockReset();
   });
 
   it('blocks quote viewing, attachment reads, and acceptance before downstream access', async () => {
@@ -111,7 +111,7 @@ describe('expired public token domain boundaries', () => {
     })).resolves.toMatchObject({ ok: false, code: 'expired' });
     await expect(acceptPublicQuoteByToken({ quoteId: QUOTE_VERSION_ID, token: 'expired' }))
       .resolves.toMatchObject({ ok: false, code: 'expired' });
-    expect(h.ensureDepositInvoiceForAcceptedQuote).not.toHaveBeenCalled();
+    expect(h.deliverAcceptedDepositInvoiceById).not.toHaveBeenCalled();
   });
 
   it('blocks invoice viewing and both document downloads before artifact access', async () => {

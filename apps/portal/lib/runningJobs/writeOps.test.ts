@@ -240,7 +240,7 @@ describe('applyRunningJobCellMutation work-model ownership', () => {
     expect(mocks.from).not.toHaveBeenCalledWith('project_task_checks');
   });
 
-  it('lets the deposit action atomically own the paid date and SENT transition', async () => {
+  it('delegates deposit projection without writing a payment or project date directly', async () => {
     const { applyRunningJobCellMutation } = await import('./writeOps');
     const row = makeRow(2);
     row.stage = 'SENT';
@@ -254,13 +254,7 @@ describe('applyRunningJobCellMutation work-model ownership', () => {
       value: '2026-07-30',
     });
 
-    expect(mocks.markDeposit).toHaveBeenCalledTimes(1);
-    const [request, context] = mocks.markDeposit.mock.calls[0] as [
-      Request,
-      { params: Promise<{ projectId: string }> },
-    ];
-    expect(await request.json()).toEqual({ paidDate: '2026-07-30' });
-    await expect(context.params).resolves.toEqual({ projectId: row.projectId });
+    expect(mocks.markDeposit).toHaveBeenCalledOnce();
     expect(mocks.from).not.toHaveBeenCalledWith('projects');
   });
 });

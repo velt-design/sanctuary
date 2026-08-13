@@ -34,7 +34,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400);
-  const paidDate = normalizePaidDate(parsed.body?.paidDate);
+  let paidDate = normalizePaidDate(parsed.body?.paidDate);
   if (!paidDate) return jsonError('paidDate must be a valid date in YYYY-MM-DD format', 400);
 
   let projectUuid: string;
@@ -45,94 +45,28 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     return jsonError('Invalid projectId', 400);
   }
 
-  const prev = await supabase
-    .from('projects')
-    .select('id, pipeline_stage, deposit_paid_date, deposit_received_at')
-    .eq('id', projectUuid)
-    .single();
-  if (prev.error || !prev.data) return jsonError('Project not found', 404);
-  const fromStage = String(prev.data.pipeline_stage ?? '').toUpperCase();
-  if (fromStage !== 'SENT' && fromStage !== 'DEPOSIT') {
-    return jsonError('Invalid stage transition (expected SENT)', 409);
+  const command = await supabase.rpc('commercial_mark_project_deposit_received', {
+    p_project_id: projectUuid,
+    p_expected_paid_date: paidDate,
+  });
+  if (command.error) {
+    const message = command.error.message ?? 'Failed to verify deposit payment';
+    return jsonError(message, /Mark the whole|unavailable|match|Invalid stage/.test(message) ? 409 : 500);
   }
-
-  const openInvoiceRes = await supabase
-    .from('deposit_invoices')
-    .select('id, quote_version_id, quote_total_inc_gst_cents, created_at')
-    .eq('project_id', projectUuid)
-    .eq('status', 'OPEN')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (openInvoiceRes.error) {
-    return jsonError(openInvoiceRes.error.message ?? 'Failed to load deposit invoice', 500);
-  }
-  if (!openInvoiceRes.data) return jsonError('No open deposit invoice found', 409);
-
-  const quoteVersionId =
-    typeof openInvoiceRes.data.quote_version_id === 'string'
-      ? openInvoiceRes.data.quote_version_id
-      : '';
-  if (!quoteVersionId) return jsonError('Deposit invoice is not linked to a quote version', 409);
-  const quoteValueIncGstCents = Number(
-    openInvoiceRes.data.quote_total_inc_gst_cents,
-  );
-
-  const quoteRes = await supabase
-    .from('quote_versions')
-    .select('id, status, accepted_at')
-    .eq('id', quoteVersionId)
-    .maybeSingle();
-  if (quoteRes.error) {
-    return jsonError(quoteRes.error.message ?? 'Failed to load accepted quote', 500);
-  }
-  if (!quoteRes.data || String(quoteRes.data.status ?? '').toUpperCase() !== 'ACCEPTED') {
-    return jsonError('The deposit invoice quote has not been accepted', 409);
-  }
-
-  let occurredAt: string | null = null;
-  let replayed = false;
-  if (fromStage === 'SENT') {
-    const observedStage = String(prev.data.pipeline_stage ?? '');
-    const updateRes = await supabase
-      .from('projects')
-      .update({
-        pipeline_stage: 'DEPOSIT',
-        deposit_paid_date: paidDate,
-      } as any)
-      .eq('id', projectUuid)
-      .eq('pipeline_stage', observedStage)
-      .select('id, pipeline_stage, deposit_paid_date, deposit_received_at')
-      .maybeSingle();
-    if (updateRes.error) {
-      return jsonError(updateRes.error.message ?? 'Failed to update project', 500);
-    }
-    if (!updateRes.data) {
-      return jsonError('Project changed before the deposit could be recorded', 409);
-    }
-    occurredAt = normalizeMarketingConversionOccurredAt(
-      updateRes.data.deposit_received_at,
-    );
-    if (!occurredAt) {
-      return jsonError('Deposit was recorded but its occurrence time is unavailable', 500);
-    }
-  } else {
-    replayed = true;
-    const existingPaidDate =
-      typeof prev.data.deposit_paid_date === 'string'
-        ? prev.data.deposit_paid_date
-        : '';
-    if (existingPaidDate !== paidDate) {
-      return jsonError(
-        existingPaidDate
-          ? `Deposit was already recorded on ${existingPaidDate}`
-          : 'Deposit stage is missing its received date',
-        409,
-      );
-    }
-    occurredAt = normalizeMarketingConversionOccurredAt(
-      prev.data.deposit_received_at,
-    );
+  const commandRow = Array.isArray(command.data) ? command.data[0] : command.data;
+  const replayed = (commandRow as any)?.changed !== true;
+  const fromStage = String((commandRow as any)?.previous_stage ?? '').toUpperCase();
+  const ledgerPaidDate = typeof (commandRow as any)?.paid_date === 'string'
+    ? String((commandRow as any).paid_date)
+    : null;
+  if (!ledgerPaidDate) return jsonError('The deposit payment date is unavailable', 409);
+  paidDate = ledgerPaidDate;
+  const quoteVersionId = String((commandRow as any)?.quote_version_id ?? '');
+  const quoteValueIncGstCents = Number((commandRow as any)?.quote_total_inc_gst_cents);
+  const depositInvoiceId = String((commandRow as any)?.invoice_id ?? '');
+  const occurredAt = normalizeMarketingConversionOccurredAt((commandRow as any)?.occurred_at);
+  if (!occurredAt && !replayed) {
+    return jsonError('Deposit was recorded but its occurrence time is unavailable', 500);
   }
 
   const shouldRepairSideEffects =
@@ -140,7 +74,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     && (!replayed || Boolean(recentMarketingConversionOccurrence(occurredAt)));
 
   if (!shouldRepairSideEffects) {
-    return jsonOk({ ok: true, paidDate, replayed: true });
+    return jsonOk({ ok: true, paidDate, replayed });
   }
 
   // The database-owned deposit_received_at value owns the occurrence time.
@@ -151,7 +85,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     occurredAt,
     payload: {
       paidDate,
-      depositInvoiceId: String(openInvoiceRes.data.id ?? ''),
+      depositInvoiceId,
       quoteVersionId,
       ...(Number.isSafeInteger(quoteValueIncGstCents)
         && quoteValueIncGstCents > 0
@@ -165,7 +99,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
       type: 'pipeline.stage_changed',
       projectId: projectUuid,
       stage: 'DEPOSIT',
-      payload: { fromStage: 'SENT', toStage: 'DEPOSIT' },
+      payload: { fromStage, toStage: 'DEPOSIT' },
     });
 
     await automationRunner.runEvent({
@@ -174,7 +108,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
       stage: 'DEPOSIT',
       payload: {
         paidDate,
-        depositInvoiceId: String(openInvoiceRes.data.id ?? ''),
+        depositInvoiceId,
         quoteVersionId,
       },
     });

@@ -40,6 +40,7 @@ export type QuoteVersion = {
   createdBy?: string | null;
   sentAt?: string | null;
   sentBy?: string | null;
+  acceptedAt?: string | null;
   supersededAt?: string | null;
   supersededBy?: string | null;
   expiresAt?: string | null;

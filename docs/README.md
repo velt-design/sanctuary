@@ -64,6 +64,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | `calculator-ui-ux-review.md` | Current evidence review | You need the observed Calculator usability, accessibility, hierarchy, density, language, or responsive findings. |
 | `calculator-ui-ux-refinement-plan.md` | Approval-gated implementation plan | You are planning or implementing the approved Calculator UI/UX refinement slices and regression matrix. |
 | `quotes-invoices-job-packs.md` | Current | You are touching quote, invoice, public-token, PDF/email, file-artifact, or job-pack side effects. |
+| `commercial-truth-audit.md` | Current evidence and invariant matrix | You are changing accepted commercial scope, invoice/payment truth, quote lifecycle, historical financial records, or completion eligibility. |
 | `parallel-work-guardrails.md` | Active guardrail | You are working in parallel across apps, packages, shared flows, docs, or design workbench migration lanes. |
 | `costing-and-geometry.md` | Current | You are touching costing inputs/outputs, geometry semantics, or pricing/shape assumptions. |
 | `local-first-sync.md` | Current | You are touching portal working copies, mutation queue, optimistic state, or conflict handling. |

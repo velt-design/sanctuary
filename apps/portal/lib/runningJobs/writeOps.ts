@@ -196,6 +196,13 @@ async function ensureCrewExists(crewId: string) {
   if (!crewRes.data) throw new Error('Crew not found.');
 }
 
+async function maybeAdvanceToScheduled(projectId: string, projectUuid: string) {
+  const nextRow = await refreshRow(projectUuid);
+  if (nextRow.stage === 'DEPOSIT' && nextRow.state.hasCrewAssigned && nextRow.state.hasEstimatedStartDate) {
+    await callRoute(confirmScheduleActionRoute, undefined, { params: Promise.resolve({ projectId }) });
+  }
+}
+
 async function persistDepositPaidDate(
   projectId: string,
   projectUuid: string,
@@ -203,28 +210,24 @@ async function persistDepositPaidDate(
   value: NormalizedRunningJobCellValue,
 ) {
   if (beforeRow.stage === 'SENT' && typeof value === 'string' && value) {
-    await callRoute(
-      markDepositReceivedActionRoute,
-      { paidDate: value },
-      { params: Promise.resolve({ projectId }) },
-    );
+    await callRoute(markDepositReceivedActionRoute, { paidDate: value }, {
+      params: Promise.resolve({ projectId }),
+    });
     return;
   }
-
-  await updateProjectField(projectUuid, { deposit_paid_date: value });
+  throw new Error('Mark the whole deposit invoice paid from the project Invoices tab first.');
 }
 
-async function maybeAdvanceToPaid(projectId: string, beforeRow: RunningJobRow, value: NormalizedRunningJobCellValue) {
+async function persistFinalPaidDate(
+  projectId: string,
+  beforeRow: RunningJobRow,
+  value: NormalizedRunningJobCellValue,
+) {
   if (beforeRow.stage === 'COMPLETED' && typeof value === 'string' && value) {
     await callRoute(markPaidActionRoute, undefined, { params: Promise.resolve({ projectId }) });
+    return;
   }
-}
-
-async function maybeAdvanceToScheduled(projectId: string, projectUuid: string) {
-  const nextRow = await refreshRow(projectUuid);
-  if (nextRow.stage === 'DEPOSIT' && nextRow.state.hasCrewAssigned && nextRow.state.hasEstimatedStartDate) {
-    await callRoute(confirmScheduleActionRoute, undefined, { params: Promise.resolve({ projectId }) });
-  }
+  throw new Error('Reconcile the full accepted balance from the project Invoices tab first.');
 }
 
 async function maybeAdvanceToCompleted(projectId: string, beforeRow: RunningJobRow) {
@@ -308,12 +311,7 @@ export async function applyRunningJobCellMutation(input: {
       await updateSiteVisitRep(input.projectUuid, typeof input.value === 'string' ? input.value : null);
       break;
     case 'deposit_paid_date':
-      await persistDepositPaidDate(
-        input.projectId,
-        input.projectUuid,
-        input.currentRow,
-        input.value,
-      );
+      await persistDepositPaidDate(input.projectId, input.projectUuid, input.currentRow, input.value);
       break;
     case 'materials_ordered':
       await setRunningJobFact({
@@ -324,8 +322,7 @@ export async function applyRunningJobCellMutation(input: {
       });
       break;
     case 'final_payment_date':
-      await updateProjectField(input.projectUuid, { final_payment_date: input.value });
-      await maybeAdvanceToPaid(input.projectId, input.currentRow, input.value);
+      await persistFinalPaidDate(input.projectId, input.currentRow, input.value);
       break;
     case 'lights_status':
       await upsertRunningJobMeta(input.projectUuid, { lights_status: input.value });

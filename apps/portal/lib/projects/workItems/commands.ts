@@ -72,10 +72,13 @@ export function runProjectOperationalStateCommand(
     payload: Record<string, unknown>;
   },
 ): Promise<ProjectWorkCommandResult> {
-  return callCommand(supabase, 'project_operational_state_command', {
+  const completesProject = input.command === 'CLOSE' && input.payload.outcome === 'COMPLETE';
+  return callCommand(supabase, completesProject
+    ? 'commercial_complete_project_operational_state_command'
+    : 'project_operational_state_command', {
     p_project_id: input.projectId,
     p_command_id: input.commandId,
-    p_command: input.command,
+    ...(completesProject ? {} : { p_command: input.command }),
     p_payload: input.payload,
   }, input.projectId);
 }

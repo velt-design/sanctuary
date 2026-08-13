@@ -27,6 +27,13 @@ export async function loadProjectPaymentLedger(params: {
   quoteVersionUuids: string[];
   invoiceRefsByUuid: Map<string, string>;
 }) {
+  const plansPromise = params.quoteVersionUuids.length
+    ? supabaseServiceRole.from('project_invoice_plan_items').select('*')
+        .in('quote_version_id', params.quoteVersionUuids)
+        .is('cancelled_at', null)
+        .order('created_at', { ascending: true })
+        .order('position', { ascending: true })
+    : Promise.resolve({ data: [], error: null });
   const [entriesRes, allocationsRes, plansRes] = await Promise.all([
     supabaseServiceRole.from('project_payment_entries').select('*')
       .eq('project_id', params.projectUuid)
@@ -35,11 +42,7 @@ export async function loadProjectPaymentLedger(params: {
     supabaseServiceRole.from('project_payment_allocations').select('*')
       .eq('project_id', params.projectUuid)
       .is('reversed_at', null),
-    supabaseServiceRole.from('project_invoice_plan_items').select('*')
-      .in('quote_version_id', params.quoteVersionUuids)
-      .is('cancelled_at', null)
-      .order('created_at', { ascending: true })
-      .order('position', { ascending: true }),
+    plansPromise,
   ]);
   if (entriesRes.error) throw new Error(errorMessage(entriesRes.error, 'Failed to load job payments'));
   if (allocationsRes.error) throw new Error(errorMessage(allocationsRes.error, 'Failed to load payment allocations'));
@@ -138,7 +141,7 @@ export async function replacePaymentAllocations(params: {
     payment_term_id: allocation.paymentTermId.trim(),
     amount_inc_gst_cents: Math.trunc(allocation.amountIncGstCents),
   }));
-  const rpc = await supabaseServiceRole.rpc('commercial_replace_payment_allocations', {
+  const rpc = await supabaseServiceRole.rpc('commercial_replace_payment_allocations_with_project_lock', {
     p_payment_entry_id: paymentUuid,
     p_allocations: allocations,
     p_reason: reason,
@@ -161,7 +164,7 @@ export async function reversePaymentEntry(params: {
   const reason = requiredReason(params.reason);
   const paymentRes = await supabaseServiceRole.from('project_payment_entries').select('project_id').eq('id', paymentUuid).single();
   if (paymentRes.error || !paymentRes.data) throw new Error(errorMessage(paymentRes.error, 'Payment entry not found'));
-  const rpc = await supabaseServiceRole.rpc('commercial_reverse_payment_entry', {
+  const rpc = await supabaseServiceRole.rpc('commercial_reverse_payment_entry_with_project_lock', {
     p_payment_entry_id: paymentUuid,
     p_reason: reason,
     p_actor: params.actor,

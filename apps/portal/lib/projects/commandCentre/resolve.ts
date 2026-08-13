@@ -5,6 +5,7 @@ import type {
   CommandCentreSelection,
   CommandCentreSource,
 } from './types';
+import { selectAuthoritativeAcceptedVersions } from '@/lib/commercial/authoritativeAcceptedVersions';
 
 const QUOTE_PRECEDENCE: Array<{
   status: Exclude<CommandCentreQuoteStatus, 'DECLINED' | 'SUPERSEDED'>;
@@ -65,14 +66,20 @@ export function resolveCommandCentreSelection(args: {
     acceptedByScope.set(key, bucket);
   }
   const acceptedQuoteCount = Math.max(0, ...[...acceptedByScope.values()].map((bucket) => bucket.length));
-  const acceptedScopeQuotes = [...acceptedByScope.values()].map((bucket) => bucket.slice().sort(compareTimestampDesc)[0]);
+  const acceptedScopeQuotes = selectAuthoritativeAcceptedVersions(quotes.map((quote) => ({
+    ...quote,
+    familyKey: quote.commercialScopeId ?? 'base',
+    acceptedAt: quote.acceptedAt ?? null,
+  })));
   const acceptedProjectTotalIncGstCents = acceptedScopeQuotes.some((quote) => quote?.totalIncGstCents === null)
     ? null
     : acceptedScopeQuotes.reduce((sum, quote) => sum + (quote?.totalIncGstCents ?? 0), 0);
 
   for (const precedence of QUOTE_PRECEDENCE) {
-    const quote = quotes
-      .filter((candidate) => candidate.status === precedence.status)
+    const candidates = precedence.status === 'ACCEPTED'
+      ? acceptedScopeQuotes
+      : quotes.filter((candidate) => candidate.status === precedence.status);
+    const quote = candidates
       .sort(compareTimestampDesc)[0];
     if (!quote) continue;
 

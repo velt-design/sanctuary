@@ -18,7 +18,6 @@ type DbState = Record<TableName, Row[]>;
 const h = vi.hoisted(() => ({
   acceptQuoteAndEnsureDepositInvoice: vi.fn(),
   reconcileQuoteOutcomeCadence: vi.fn(),
-  voidOpenDepositInvoiceForQuote: vi.fn(),
   supabaseServiceRole: {
     from: vi.fn(),
     rpc: vi.fn(),
@@ -44,11 +43,6 @@ vi.mock('@/lib/estimates/server', () => ({
 vi.mock('./pdf', () => ({
   generateQuotePdfBytes: vi.fn(async () => new Uint8Array([37, 80, 68, 70])),
   quotePdfFilename: (quoteRef: string, version: number) => `${quoteRef}-v${version}.pdf`,
-}));
-
-vi.mock('../invoices/server', () => ({
-  ensureDepositInvoiceForAcceptedQuote: vi.fn(),
-  voidOpenDepositInvoiceForQuote: h.voidOpenDepositInvoiceForQuote,
 }));
 
 const ids = {
@@ -189,11 +183,27 @@ function resetDb(seed: Partial<DbState> = {}, queuedIds: Partial<Record<TableNam
           }
           return { data: [row], error: null };
         }
+        if (name === 'commercial_mark_quote_declined') {
+          const row = db.quote_versions.find((item) => item.id === args.p_quote_version_id);
+          if (!row) return { data: null, error: { message: 'Quote not found' } };
+          const quote = db.quotes.find((item) => item.id === row.quote_id);
+          const previousStatus = row.status;
+          row.status = 'DECLINED';
+          if (previousStatus !== 'DECLINED') {
+            db.audit_events.push({
+              id: idForInsert('audit_events'), project_id: quote?.project_id,
+              type: 'quote.declined', idempotency_key: `quote.declined:${row.id}`,
+            });
+          }
+          for (const invoice of db.deposit_invoices) {
+            if (invoice.quote_id === row.quote_id && invoice.status === 'OPEN') invoice.status = 'VOID';
+          }
+          return { data: [{ changed: previousStatus !== 'DECLINED', previous_status: previousStatus, project_id: quote?.project_id }], error: null };
+        }
         return { data: null, error: null };
       },
     );
   h.acceptQuoteAndEnsureDepositInvoice.mockReset();
-  h.voidOpenDepositInvoiceForQuote.mockReset();
   h.reconcileQuoteOutcomeCadence.mockReset().mockResolvedValue({
     status: 'reconciled',
     workModel: 'v2',
@@ -748,6 +758,40 @@ describe('quote pricing source preservation in domain helpers', () => {
     });
   });
 
+  it('returns committed acceptance truth when its follow-up quote read is unavailable', async () => {
+    resetDb({
+      estimates: [],
+      projects: [makeProject()],
+      quotes: [makeQuote()],
+      quote_versions: [makeQuoteVersion({ id: ids.quoteVersionSent, status: 'SENT' })],
+      quote_line_items: [makeLine(ids.quoteVersionSent, 14375)],
+    });
+    h.acceptQuoteAndEnsureDepositInvoice.mockImplementationOnce(async () => {
+      db.quote_versions = [];
+      return {
+        quoteVersionUuid: ids.quoteVersionSent,
+        alreadyAccepted: false,
+        invoice: {
+          id: ids.invoice,
+          invoiceRef: '',
+          created: true,
+          sent: false,
+          sendError: 'follow-up needs attention',
+          deliveryState: 'needs_attention',
+        },
+      };
+    });
+
+    const { markQuoteAccepted } = await import('./serverCore');
+    const result = await markQuoteAccepted(
+      appId('qv', ids.quoteVersionSent),
+      'ops@example.com',
+    );
+
+    expect(result.quoteVersion.status).toBe('ACCEPTED');
+    expect(result.invoice?.deliveryState).toBe('needs_attention');
+  });
+
   it('keeps a durable decline successful when cadence reconciliation needs repair', async () => {
     resetDb({
       estimates: [
@@ -800,11 +844,9 @@ describe('quote pricing source preservation in domain helpers', () => {
     expect(
       db.audit_events.filter((row) => row.type === 'quote.declined'),
     ).toHaveLength(1);
-    expect(h.voidOpenDepositInvoiceForQuote).toHaveBeenCalledOnce();
-    expect(h.voidOpenDepositInvoiceForQuote).toHaveBeenCalledWith({
-      quoteUuid: ids.quote,
-      actor: 'ops@example.com',
-      reason: 'quote_declined',
+    expect(h.supabaseServiceRole.rpc).toHaveBeenCalledWith('commercial_mark_quote_declined', {
+      p_quote_version_id: ids.quoteVersionSent,
+      p_actor: 'ops@example.com',
     });
   });
 
@@ -860,11 +902,9 @@ describe('quote pricing source preservation in domain helpers', () => {
     expect(
       db.audit_events.filter((row) => row.type === 'quote.declined'),
     ).toHaveLength(1);
-    expect(h.voidOpenDepositInvoiceForQuote).toHaveBeenCalledOnce();
-    expect(h.voidOpenDepositInvoiceForQuote).toHaveBeenCalledWith({
-      quoteUuid: ids.quote,
-      actor: 'ops@example.com',
-      reason: 'quote_declined',
+    expect(h.supabaseServiceRole.rpc).toHaveBeenCalledWith('commercial_mark_quote_declined', {
+      p_quote_version_id: ids.quoteVersionSent,
+      p_actor: 'ops@example.com',
     });
   });
 

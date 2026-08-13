@@ -1,4 +1,4 @@
-export type QuotePaymentTermCalculation = 'fixed' | 'percentage';
+type QuotePaymentTermCalculation = 'fixed' | 'percentage';
 
 export type QuotePaymentTerm = {
   id: string;
@@ -9,7 +9,7 @@ export type QuotePaymentTerm = {
   resolvedAmountIncGstCents: number;
 };
 
-export type QuotePaymentScheduleEvaluation = {
+type QuotePaymentScheduleEvaluation = {
   terms: QuotePaymentTerm[];
   errors: string[];
   fixedTotalIncGstCents: number;
@@ -219,11 +219,17 @@ export function normalizeStoredQuotePaymentSchedule(
   quoteTotalIncGstCents: number,
   legacyDepositPercent = 50,
 ): QuotePaymentTerm[] {
-  if (Array.isArray(value)) {
-    const evaluation = evaluateQuotePaymentSchedule(value as QuotePaymentTerm[], quoteTotalIncGstCents);
-    if (!evaluation.errors.length) return evaluation.terms;
+  if (value === null || value === undefined) {
+    return buildLegacyQuotePaymentSchedule(quoteTotalIncGstCents, legacyDepositPercent);
   }
-  return buildLegacyQuotePaymentSchedule(quoteTotalIncGstCents, legacyDepositPercent);
+  if (!Array.isArray(value)) {
+    throw new Error('Stored quote payment schedule is malformed. Repair the quote terms before continuing.');
+  }
+  const evaluation = evaluateQuotePaymentSchedule(value as QuotePaymentTerm[], quoteTotalIncGstCents);
+  if (evaluation.errors.length) {
+    throw new Error(`Stored quote payment schedule is invalid: ${evaluation.errors.join(' ')}`);
+  }
+  return evaluation.terms;
 }
 
 export function paymentScheduleCompatibilityDepositPercent(
@@ -236,7 +242,7 @@ export function paymentScheduleCompatibilityDepositPercent(
   return Math.round(Math.max(0, Math.min(100, (firstAmount / total) * 100)) * 100) / 100;
 }
 
-export function paymentScheduleSummary(terms: readonly QuotePaymentTerm[]): string {
+function paymentScheduleSummary(terms: readonly QuotePaymentTerm[]): string {
   return terms.map((term) => {
     const basis = term.calculationType === 'fixed'
       ? `$${((term.fixedAmountIncGstCents ?? 0) / 100).toFixed(2)}`

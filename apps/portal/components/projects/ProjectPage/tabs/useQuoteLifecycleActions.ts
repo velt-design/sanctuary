@@ -325,7 +325,10 @@ export function useQuoteLifecycleActions({
           result.invoice.deliveryState === "needs_attention"
             ? "Delivery needs staff attention in the Invoices tab."
             : "Delivery is not confirmed; a safe retry is available in the Invoices tab.";
-        toast.error(`Quote accepted. Invoice ${result.invoice.invoiceRef} was prepared. ${action}`);
+        const invoiceLabel = result.invoice.invoiceRef
+          ? `Invoice ${result.invoice.invoiceRef}`
+          : "An invoice";
+        toast.error(`Quote accepted. ${invoiceLabel} was prepared. ${action}`);
       } else {
         toast.success("Quote accepted.");
       }

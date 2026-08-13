@@ -15,7 +15,7 @@ import {
   type CommercialEmailIntent,
 } from '../commercial/emailIntent';
 import { insertCommercialAuditEvent } from '../commercial/audit';
-import { paymentDetailsLines, paymentDetailsText } from '../payments/paymentDetails';
+import { paymentDetailsLines } from '../payments/paymentDetails';
 import { supabaseServiceRole } from '../supabaseClient';
 import { generateDepositInvoicePdfBytes, depositInvoicePdfFilename } from './pdf';
 import { resolveDepositInvoicePaymentLines } from './invoiceArtifactViewModel';
@@ -23,7 +23,7 @@ import { buildDepositInvoiceEmailInput } from './emailPresentation';
 import { parseFrozenInvoiceEmail, redactInvoiceToken, type FrozenInvoiceEmail, type InvoiceRecipientLists } from './deliveryIntent';
 import { preparedDepositInvoicePreview, prospectiveDepositInvoicePreview } from './staffPreview';
 import type { DepositInvoiceArtifactPreview, DepositInvoiceSummary } from './types';
-import { normalizeStoredQuotePaymentSchedule, paymentScheduleCompatibilityDepositPercent, type QuotePaymentTerm } from '../quotes/paymentSchedule';
+import { normalizeStoredQuotePaymentSchedule, type QuotePaymentTerm } from '../quotes/paymentSchedule';
 
 const REPLY_TO_EMAIL = 'info@sanctuarypergolas.co.nz';
 
@@ -116,53 +116,16 @@ type DepositInvoiceDeliveryResult = {
 function nowIso(): string {
   return new Date().toISOString();
 }
-
-function toDateOnly(value: string): string {
-  const parsed = new Date(value);
-  if (!Number.isFinite(parsed.getTime())) return value.slice(0, 10);
-  const year = parsed.getUTCFullYear();
-  const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(parsed.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function addDaysDateOnly(dateOnly: string, days: number): string {
-  const parsed = new Date(`${dateOnly}T00:00:00.000Z`);
-  if (!Number.isFinite(parsed.getTime())) return dateOnly;
-  parsed.setUTCDate(parsed.getUTCDate() + days);
-  return toDateOnly(parsed.toISOString());
-}
-
 function parseDateOnly(dateOnly: string): Date | null {
   const parsed = new Date(`${dateOnly}T23:59:59.999Z`);
   if (!Number.isFinite(parsed.getTime())) return null;
   return parsed;
 }
 
-function normalizeDateOnlyInput(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) throw new Error('Due date must be YYYY-MM-DD');
-  if (!parseDateOnly(trimmed)) throw new Error('Due date is invalid');
-  return trimmed;
-}
-
-function normalizeOptionalText(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed || null;
-}
-
 function parsePercent(value: unknown): number {
   const n = typeof value === 'number' ? value : Number(value ?? 0);
   if (!Number.isFinite(n)) return 50;
   return Math.max(0, Math.min(100, Math.round(n * 100) / 100));
-}
-
-function roundInt(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.round(value);
 }
 
 function normalizeRecipients(list: string[]): string[] {
@@ -197,33 +160,12 @@ function missingTableError(error: any): boolean {
   );
 }
 
-function isUniqueViolation(error: any): boolean {
-  const code = typeof error?.code === 'string' ? error.code.trim() : '';
-  const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
-  return code === '23505' || message.includes('duplicate key value') || message.includes('unique constraint');
-}
-
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;
   const message = typeof (error as any)?.message === 'string' ? String((error as any).message) : '';
   if (message) return message;
   const alt = typeof (error as any)?.error === 'string' ? String((error as any).error) : '';
   return alt || fallback;
-}
-
-function computeDepositAmounts(totalIncGstCents: number, depositPercent: number) {
-  const pct = parsePercent(depositPercent);
-  const total = roundInt(totalIncGstCents);
-  const depositInc = roundInt((total * pct) / 100);
-  const depositEx = roundInt(depositInc / 1.15);
-  const gst = depositInc - depositEx;
-  return {
-    depositPercent: pct,
-    quoteTotalIncGstCents: total,
-    totalIncGstCents: depositInc,
-    totalExGstCents: depositEx,
-    gstCents: gst,
-  };
 }
 
 function pickSiteUrl(): string {
@@ -245,10 +187,6 @@ function pickSiteUrl(): string {
 function invoiceLink(invoiceUuid: string, token: string): string {
   const base = pickSiteUrl();
   return `${base}/invoice/${encodeURIComponent(invoiceUuid)}?token=${encodeURIComponent(token)}`;
-}
-
-function paymentInstructions(): string {
-  return paymentDetailsText('invoice');
 }
 
 function invoicePaymentLines(invoice: DepositInvoiceRow): string[] {
@@ -476,114 +414,6 @@ async function loadInvoiceById(invoiceUuid: string): Promise<DepositInvoiceRow |
     return null;
   }
   return mapInvoiceRow(res.data);
-}
-
-async function allocateInvoiceRef(): Promise<string> {
-  const refRes = await supabaseServiceRole.rpc('next_deposit_invoice_ref');
-  if (refRes.error || !refRes.data) {
-    throw new Error(errorMessage(refRes.error, 'Failed to allocate invoice reference'));
-  }
-  const invoiceRef = String(refRes.data ?? '').trim();
-  if (!invoiceRef) throw new Error('Failed to allocate invoice reference');
-  return invoiceRef;
-}
-
-async function createOpenInvoice(
-  context: AcceptedQuoteContext,
-  actor: string | null,
-  overrides?: {
-    depositPercent?: number;
-    dueDate?: string | null;
-    reference?: string | null;
-  },
-): Promise<{ invoice: DepositInvoiceRow; created: boolean }> {
-  const firstTerm = context.paymentTerms[0];
-  if (!firstTerm) throw new Error('Quote payment schedule is missing');
-  const existingRes = await supabaseServiceRole.from('deposit_invoices').select('*')
-    .eq('quote_version_id', context.quoteVersionUuid)
-    .eq('payment_term_id', firstTerm.id)
-    .neq('status', 'VOID')
-    .maybeSingle();
-  const existing = existingRes.data ? mapInvoiceRow(existingRes.data) : null;
-  if (existing) return { invoice: existing, created: false };
-
-  const invoiceRef = await allocateInvoiceRef();
-  const depositPercent = paymentScheduleCompatibilityDepositPercent([firstTerm], context.quoteTotalIncGstCents);
-  const invoiceInc = firstTerm.resolvedAmountIncGstCents;
-  const invoiceEx = roundInt(invoiceInc / 1.15);
-  const amount = {
-    depositPercent,
-    quoteTotalIncGstCents: context.quoteTotalIncGstCents,
-    totalIncGstCents: invoiceInc,
-    totalExGstCents: invoiceEx,
-    gstCents: invoiceInc - invoiceEx,
-  };
-
-  const issueDate = toDateOnly(nowIso());
-  const dueDate = normalizeDateOnlyInput(overrides?.dueDate) ?? addDaysDateOnly(issueDate, 7);
-  const reference =
-    normalizeOptionalText(overrides?.reference) ??
-    `${firstTerm.label} for Quote ${context.quoteRef}${context.projectName ? ` - ${context.projectName}` : ''}`;
-
-  const insertRes = await supabaseServiceRole
-    .from('deposit_invoices')
-    .insert({
-      project_id: context.projectUuid,
-      quote_id: context.quoteUuid,
-      quote_version_id: context.quoteVersionUuid,
-      quote_ref: context.quoteRef,
-      quote_version_number: context.quoteVersionNumber,
-      invoice_ref: invoiceRef,
-      status: 'OPEN',
-      issue_date: issueDate,
-      due_date: dueDate,
-      reference,
-      customer_name: context.customerName,
-      project_name: context.projectName,
-      project_address: context.projectAddress,
-      deposit_percent: amount.depositPercent,
-      quote_total_inc_gst_cents: amount.quoteTotalIncGstCents,
-      total_inc_gst_cents: amount.totalIncGstCents,
-      total_ex_gst_cents: amount.totalExGstCents,
-      gst_cents: amount.gstCents,
-      payment_instructions: paymentInstructions(),
-      created_by: actor,
-      payment_term_id: firstTerm.id,
-      payment_term_label: firstTerm.label,
-      payment_term_position: 1,
-      payment_term_count: context.paymentTerms.length,
-      payment_term_calculation: firstTerm.calculationType,
-      payment_term_percentage: firstTerm.percentageOfRemainder,
-    } as any)
-    .select('*')
-    .single();
-
-  if (insertRes.error || !insertRes.data) {
-    if (isUniqueViolation(insertRes.error)) {
-      const racedRes = await supabaseServiceRole.from('deposit_invoices').select('*')
-        .eq('quote_version_id', context.quoteVersionUuid)
-        .eq('payment_term_id', firstTerm.id)
-        .neq('status', 'VOID')
-        .maybeSingle();
-      const raced = racedRes.data ? mapInvoiceRow(racedRes.data) : null;
-      if (raced) return { invoice: raced, created: false };
-    }
-    throw new Error(errorMessage(insertRes.error, 'Failed to create deposit invoice'));
-  }
-
-  const created = mapInvoiceRow(insertRes.data);
-
-  await insertAuditEvent({
-    projectId: context.projectUuid,
-    type: 'invoice.created',
-    payload: {
-      depositInvoiceId: created.id,
-      invoiceRef: created.invoice_ref,
-      quoteVersionId: context.quoteVersionUuid,
-    },
-  });
-
-  return { invoice: created, created: true };
 }
 
 async function loadRecipients(quoteVersionUuid: string, fallbackEmail: string | null): Promise<RecipientLists> {
@@ -1138,42 +968,6 @@ async function deliverInvoiceEmail(
   return deliverInvoiceEmailDurably(invoice, recipients, actor);
 }
 
-async function moveProjectToSent(projectUuid: string, quoteVersionUuid: string | null, reason: string) {
-  const prevRes = await supabaseServiceRole.from('projects').select('pipeline_stage').eq('id', projectUuid).single();
-  if (prevRes.error) throw new Error(errorMessage(prevRes.error, 'Failed to load project stage'));
-
-  const fromStage = typeof (prevRes.data as any)?.pipeline_stage === 'string' ? String((prevRes.data as any).pipeline_stage) : null;
-
-  const updateRes = await supabaseServiceRole.from('projects').update({ pipeline_stage: 'SENT' } as any).eq('id', projectUuid);
-  if (updateRes.error) throw new Error(errorMessage(updateRes.error, 'Failed to revert project stage'));
-
-  await insertAuditEvent({
-    projectId: projectUuid,
-    type: 'pipeline.stage_changed',
-    payload: { fromStage, toStage: 'SENT', quoteId: quoteVersionUuid, reason },
-  });
-}
-
-export async function ensureDepositInvoiceForAcceptedQuote(params: {
-  quoteVersionUuid: string;
-  actor: string | null;
-}): Promise<{ invoice: DepositInvoiceRow; sent: boolean; sendError: string | null }> {
-  const context = await loadAcceptedQuoteContext(params.quoteVersionUuid);
-  if (!context) throw new Error('Accepted quote context not found');
-  if (context.status !== 'ACCEPTED') throw new Error('Quote must be accepted to create a deposit invoice');
-
-  const { invoice } = await createOpenInvoice(context, params.actor);
-
-  const recipients = await loadRecipients(context.quoteVersionUuid, context.contactEmail);
-  const delivery = await deliverInvoiceEmail(invoice, recipients, params.actor);
-  if (delivery.delivered) return { invoice, sent: true, sendError: null };
-  return {
-    invoice,
-    sent: false,
-    sendError: delivery.error ?? 'Deposit invoice was created but not sent',
-  };
-}
-
 export async function deliverAcceptedDepositInvoiceById(params: {
   invoiceUuid: string;
   actor: string | null;
@@ -1325,112 +1119,4 @@ export async function sendDepositInvoiceNow(invoiceId: string, actor: string | n
   if (!refreshed) throw new Error('Invoice not found after send');
 
   return mapInvoiceSummary(refreshed, await loadLatestSendLogForInvoice(invoiceUuid));
-}
-
-export async function createDepositInvoiceFromQuote(params: {
-  quoteVersionId: string;
-  actor: string | null;
-  depositPercent?: number;
-  dueDate?: string | null;
-  reference?: string | null;
-  sendNow?: boolean;
-}): Promise<{
-  invoice: DepositInvoiceSummary;
-  created: boolean;
-  sent: boolean;
-  alreadySent: boolean;
-  sendError: string | null;
-}> {
-  const quoteVersionUuid = uuidFromAppId(params.quoteVersionId, 'qv');
-  const context = await loadAcceptedQuoteContext(quoteVersionUuid);
-  if (!context) throw new Error('Quote context not found');
-  if (context.status !== 'ACCEPTED') {
-    throw new Error('Only accepted quotes can create an invoice');
-  }
-
-  const createdInvoice = await createOpenInvoice(context, params.actor, {
-    depositPercent: params.depositPercent,
-    dueDate: params.dueDate,
-    reference: params.reference,
-  });
-
-  let sent = false;
-  let alreadySent = false;
-  let sendError: string | null = null;
-
-  if (params.sendNow) {
-    const recipients = await loadRecipients(context.quoteVersionUuid, context.contactEmail);
-    const delivery = await deliverInvoiceEmail(createdInvoice.invoice, recipients, params.actor);
-    sent = delivery.delivered && !delivery.alreadySent;
-    alreadySent = delivery.alreadySent;
-    if (!delivery.delivered) {
-      sendError = delivery.error ?? 'Invoice was created but not sent';
-    }
-  }
-
-  const latest = await loadLatestSendLogForInvoice(createdInvoice.invoice.id);
-  const refreshed = (await loadInvoiceById(createdInvoice.invoice.id)) ?? createdInvoice.invoice;
-
-  return {
-    invoice: mapInvoiceSummary(refreshed, latest),
-    created: createdInvoice.created,
-    sent,
-    alreadySent,
-    sendError,
-  };
-}
-
-export async function voidOpenDepositInvoiceForQuote(params: {
-  quoteUuid: string;
-  actor: string | null;
-  reason: string;
-}): Promise<void> {
-  const openRes = await supabaseServiceRole
-    .from('deposit_invoices')
-    .select('*')
-    .eq('quote_id', params.quoteUuid)
-    .eq('status', 'OPEN');
-  if (openRes.error) {
-    throw new Error(
-      errorMessage(openRes.error, 'Failed to load deposit invoices'),
-    );
-  }
-  const invoices = (Array.isArray(openRes.data) ? openRes.data : []).map(
-    mapInvoiceRow,
-  );
-  if (!invoices.length) return;
-  const updateRes = await supabaseServiceRole
-    .from('deposit_invoices')
-    .update({
-      status: 'VOID',
-      voided_at: nowIso(),
-      voided_by: params.actor,
-      void_reason: params.reason,
-      portal_token_hash: null,
-      portal_token_expires_at: null,
-    } as any)
-    .eq('quote_id', params.quoteUuid)
-    .eq('status', 'OPEN');
-
-  if (updateRes.error) throw new Error(errorMessage(updateRes.error, 'Failed to void deposit invoice'));
-
-  for (const invoice of invoices) {
-    await insertAuditEvent({
-      projectId: invoice.project_id,
-      type: 'invoice.voided',
-      payload: {
-        depositInvoiceId: invoice.id,
-        invoiceRef: invoice.invoice_ref,
-        quoteVersionId: invoice.quote_version_id,
-        reason: params.reason,
-      },
-    });
-  }
-
-  const first = invoices[0]!;
-  await moveProjectToSent(
-    first.project_id,
-    first.quote_version_id,
-    'quote_unaccepted_or_voided',
-  );
 }

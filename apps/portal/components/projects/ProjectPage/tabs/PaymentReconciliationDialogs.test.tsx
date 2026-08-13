@@ -29,6 +29,7 @@ describe('PaymentReconciliationDialogs', () => {
       acceptedQuoteVersionId: 'qv-base', acceptedQuoteRef: 'Q-100', acceptedQuoteVersionNumber: 1,
       acceptedQuoteTotalIncGstCents: 140000, invoicedIncGstCents: 0, paidIncGstCents: 40000,
       outstandingIncGstCents: 0, remainingToInvoiceIncGstCents: 100000, unallocatedCreditIncGstCents: 40000,
+      overCommittedIncGstCents: 0,
       terms: [{
         quoteVersionId: 'qv-addon', quoteRef: 'Q-101', quoteVersionNumber: 1, commercialScopeKind: 'add_on',
         paymentTermId: 'addon-payment', label: 'Add-on payment', position: 1, termCount: 1,

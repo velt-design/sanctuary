@@ -57,6 +57,8 @@ Use the domain write helpers in `apps/portal/lib/runningJobs/writeOps.ts`. Sched
 
 Materials/roofing edits use the versioned Running Jobs RPC and audit trail for every live project. A job-complete toggle invokes the Schedule owner and does not write a generic `job_complete` task; Schedule remains the authoritative completion source. The portfolio rollout migration performs the one-time materials/roofing facts backfill into Running Jobs metadata.
 
+Deposit paid and Final paid dates are compatibility projections. Staff record, correct, allocate, reverse, mark paid, or void commercial records from the project Invoices tab. Entering a Running Jobs date may request the matching operational transition only after the command verifies the whole invoice/payment ledger; the typed value cannot create payment truth or bypass it. Project completion and paid-state commands verify current accepted value, the net payment ledger, and whole open invoices.
+
 ## Legacy Import
 
 Legacy spreadsheet import is handled by:

@@ -291,18 +291,17 @@ async function renderQuoteReadyContent(params: {
 
 async function updateQuoteSendState(params: {
   quoteVersionUuid: string;
-  status?: 'SENT' | 'ACCEPTED' | 'DECLINED' | 'DRAFT';
+  status?: 'SENT';
   sentAt?: string | null;
   sentBy?: string | null;
   expiresAt?: string | null;
   acceptTokenHash?: string | null;
   acceptTokenExpiresAt?: string | null;
-  acceptedAt?: string | null;
 }) {
   const patch: Record<string, unknown> = {};
   if (params.status) {
     patch.status = params.status;
-    if (params.status !== 'DRAFT') patch.is_current_draft = false;
+    patch.is_current_draft = false;
   }
   if (typeof params.sentAt === 'string' || params.sentAt === null) patch.sent_at = params.sentAt;
   if (typeof params.sentBy === 'string' || params.sentBy === null) patch.sent_by = params.sentBy;
@@ -311,8 +310,6 @@ async function updateQuoteSendState(params: {
   if (typeof params.acceptTokenExpiresAt === 'string' || params.acceptTokenExpiresAt === null) {
     patch.accept_token_expires_at = params.acceptTokenExpiresAt;
   }
-  if (typeof params.acceptedAt === 'string' || params.acceptedAt === null) patch.accepted_at = params.acceptedAt;
-
   const res = await supabaseServiceRole.from('quote_versions').update(patch as any).eq('id', params.quoteVersionUuid);
   if (res.error) {
     throw new Error(res.error.message ?? 'Failed to update quote');

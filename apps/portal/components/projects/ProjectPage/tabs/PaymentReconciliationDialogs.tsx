@@ -127,7 +127,7 @@ export default function PaymentReconciliationDialogs({
                     : item));
                 }} disabled={pending}>
                   <option value="">Select stage</option>
-                  {schedule.terms.map((term) => (
+                  {schedule.terms.filter((term) => !term.invoice).map((term) => (
                     <option value={allocationTargetValue(term.quoteVersionId, term.paymentTermId)} key={allocationTargetValue(term.quoteVersionId, term.paymentTermId)}>
                       {term.commercialScopeKind === 'add_on' ? `Add-on ${term.quoteRef} · ` : ''}{term.label} — {money(term.remainingAmountIncGstCents)}
                     </option>

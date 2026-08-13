@@ -71,6 +71,7 @@ export function mapQuoteVersionRow(
     createdBy: typeof row?.created_by === 'string' ? row.created_by : null,
     sentAt: typeof row?.sent_at === 'string' ? row.sent_at : null,
     sentBy: typeof row?.sent_by === 'string' ? row.sent_by : null,
+    acceptedAt: typeof row?.accepted_at === 'string' ? row.accepted_at : null,
     supersededAt: typeof row?.superseded_at === 'string' ? row.superseded_at : null,
     supersededBy: typeof row?.superseded_by === 'string' ? row.superseded_by : null,
     expiresAt: typeof row?.expires_at === 'string' ? row.expires_at : null,

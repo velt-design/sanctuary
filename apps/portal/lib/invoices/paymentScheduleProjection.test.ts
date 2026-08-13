@@ -102,4 +102,73 @@ describe('projectInvoiceSchedule', () => {
       commercialScopeKind: 'add_on', remainingToInvoiceIncGstCents: 25000,
     });
   });
+
+  it('reconciles consent fees up front and odd-cent percentage stages exactly', () => {
+    const schedule = projectInvoiceSchedule({
+      acceptedQuoteVersionId: 'qv-consent', acceptedQuoteRef: 'Q-200', acceptedQuoteVersionNumber: 1,
+      acceptedQuoteTotalIncGstCents: 2_000_001,
+      quoteTerms: [
+        { id: 'fees', label: 'Consent and engineering', amountIncGstCents: 500_000 },
+        { id: 'construction', label: 'Construction', amountIncGstCents: 750_001 },
+        { id: 'final', label: 'Final', amountIncGstCents: 750_000 },
+      ],
+      planItems: [], invoices: [], paymentEntries: [], allocations: [], includePaymentEntries: false,
+    });
+    expect(schedule.terms.reduce((sum, term) => sum + term.amountIncGstCents, 0)).toBe(2_000_001);
+    expect(schedule.remainingToInvoiceIncGstCents).toBe(2_000_001);
+  });
+
+  it('keeps add-on and historical manually reconciled credit in one job balance', () => {
+    const schedule = projectInvoiceSchedule({
+      acceptedQuotes: [
+        { quoteVersionId: 'qv-base', quoteRef: 'Q-100', quoteVersionNumber: 2, commercialScopeKind: 'base', totalIncGstCents: 100_000, terms: [{ id: 'all', label: 'Base', amountIncGstCents: 100_000 }] },
+        { quoteVersionId: 'qv-addon', quoteRef: 'Q-101', quoteVersionNumber: 1, commercialScopeKind: 'add_on', totalIncGstCents: 25_000, terms: [{ id: 'all', label: 'Add-on', amountIncGstCents: 25_000 }] },
+      ],
+      acceptedQuoteVersionId: 'qv-base', acceptedQuoteRef: 'Q-100', acceptedQuoteVersionNumber: 2,
+      acceptedQuoteTotalIncGstCents: 100_000, quoteTerms: [], planItems: [],
+      invoices: [invoice({ quoteVersionId: 'qv-old', totalIncGstCents: 20_000 })],
+      paymentEntries: [{ id: 'pmt-old', entryType: 'PAYMENT', amountIncGstCents: 30_000, occurredAt: '2026-08-10', paymentMethod: null, reference: null, note: null, reason: null, sourceInvoiceId: null, sourceInvoiceRef: null, reversed: false }],
+      allocations: [], includePaymentEntries: true,
+    });
+    expect(schedule.acceptedQuoteTotalIncGstCents).toBe(125_000);
+    expect(schedule.remainingToInvoiceIncGstCents).toBe(75_000);
+    expect(schedule.unallocatedCreditIncGstCents).toBe(30_000);
+  });
+
+  it('preserves historical money and invoices when there is no current accepted scope', () => {
+    const schedule = projectInvoiceSchedule({
+      acceptedQuoteVersionId: null, acceptedQuoteRef: null, acceptedQuoteVersionNumber: null,
+      acceptedQuoteTotalIncGstCents: 0, quoteTerms: [], planItems: [],
+      invoices: [invoice({ quoteVersionId: 'qv-historical', totalIncGstCents: 40_000 })],
+      paymentEntries: [{
+        id: 'pmt-historical', entryType: 'PAYMENT', amountIncGstCents: 60_000,
+        occurredAt: '2026-08-10', paymentMethod: null, reference: null, note: null, reason: null,
+        sourceInvoiceId: null, sourceInvoiceRef: null, reversed: false,
+      }],
+      allocations: [], includePaymentEntries: true,
+    });
+
+    expect(schedule.acceptedQuoteVersionId).toBeNull();
+    expect(schedule.paidIncGstCents).toBe(60_000);
+    expect(schedule.outstandingIncGstCents).toBe(40_000);
+    expect(schedule.overCommittedIncGstCents).toBe(100_000);
+    expect(schedule.paymentEntries).toHaveLength(1);
+  });
+
+  it('surfaces an over-committed contract instead of hiding the variance at zero remaining', () => {
+    const schedule = projectInvoiceSchedule({
+      acceptedQuoteVersionId: 'qv-current', acceptedQuoteRef: 'Q-1', acceptedQuoteVersionNumber: 1,
+      acceptedQuoteTotalIncGstCents: 100_000,
+      quoteTerms: [{ id: 'all', label: 'All', amountIncGstCents: 100_000 }],
+      planItems: [], invoices: [invoice({ totalIncGstCents: 80_000 })],
+      paymentEntries: [{
+        id: 'pmt-1', entryType: 'PAYMENT', amountIncGstCents: 30_000,
+        occurredAt: '2026-08-10', paymentMethod: null, reference: null, note: null, reason: null,
+        sourceInvoiceId: null, sourceInvoiceRef: null, reversed: false,
+      }], allocations: [], includePaymentEntries: false,
+    });
+
+    expect(schedule.remainingToInvoiceIncGstCents).toBe(0);
+    expect(schedule.overCommittedIncGstCents).toBe(10_000);
+  });
 });
