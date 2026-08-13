@@ -124,6 +124,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   const [validationState, setValidationState] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
   const [draftDialog, setDraftDialog] = useState<DraftDialogState | null>(null);
   const publishPanelRef = useRef<HTMLDivElement>(null);
+  const initialOverviewSignatureRef = useRef(JSON.stringify(initialOverview));
 
   const versionById = useMemo(
     () => new Map(overview.versions.map((version) => [version.id, version])),
@@ -140,6 +141,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
     [editor],
   );
   const readOnly = editor?.version.status !== 'draft';
+  const controlsReadOnly = readOnly || busy;
   const baseline = editor?.comparison?.baselineConfig ?? editor?.version.config ?? null;
   const workflowStep = currentWorkflowStep(editor, section);
   const changedCounts = useMemo(
@@ -151,6 +153,14 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   const configMatchesBaseline = Boolean(
     config && baseline && JSON.stringify(config) === JSON.stringify(baseline),
   );
+
+  useEffect(() => {
+    const signature = JSON.stringify(initialOverview);
+    if (signature === initialOverviewSignatureRef.current) return;
+    if (dirty || busy) return;
+    initialOverviewSignatureRef.current = signature;
+    setOverview(initialOverview);
+  }, [busy, dirty, initialOverview]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -238,6 +248,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const openVersion = async (versionId: string, landing?: CostingControlSection) => {
+    if (busy) return;
     if (!confirmDiscard()) return;
     setBusy(true);
     setError(null);
@@ -252,6 +263,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const createDraft = (sourceVersionId?: string) => {
+    if (busy) return;
     if (!confirmDiscard()) return;
     const source = sourceVersionId ? versionById.get(sourceVersionId) : null;
     setDraftDialog({
@@ -262,7 +274,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const submitDraft = async () => {
-    if (!draftDialog) return;
+    if (!draftDialog || busy) return;
     const source = draftDialog.sourceVersionId
       ? versionById.get(draftDialog.sourceVersionId) ?? null
       : null;
@@ -303,7 +315,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const updateConfig = (mutate: (next: CostingControlConfigV1) => void) => {
-    if (!config || editor?.version.status !== 'draft') return;
+    if (busy || !config || editor?.version.status !== 'draft') return;
     const next = structuredClone(config);
     mutate(next);
     setConfig(next);
@@ -318,7 +330,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const updateMetadata = (field: 'name' | 'purpose', value: string) => {
-    if (!editor || !config || editor.version.status !== 'draft') return;
+    if (busy || !editor || !config || editor.version.status !== 'draft') return;
     const nextName = field === 'name' ? value : draftName;
     const nextPurpose = field === 'purpose' ? value : draftPurpose;
     if (field === 'name') setDraftName(value);
@@ -334,7 +346,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const saveDraft = async (landing?: CostingControlSection) => {
-    if (!editor || !config) return;
+    if (busy || !editor || !config) return;
     setBusy(true);
     setError(null);
     setIssues([]);
@@ -393,7 +405,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const publishDraft = async () => {
-    if (!editor || dirty || !confirmed) return;
+    if (busy || !editor || dirty || !confirmed) return;
     if (!window.confirm('Publish this pricing version? Future calculations will use it immediately.')) return;
     setBusy(true);
     setError(null);
@@ -423,6 +435,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const goToOverview = () => {
+    if (busy) return;
     if (!confirmDiscard()) return;
     setEditor(null);
     setConfig(null);
@@ -469,6 +482,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
         onEdit={() => setSection('materials')}
         onReview={reviewImpact}
         onPublish={() => setSection('publish')}
+        busy={busy}
       />
 
       <CostingStatusSummary
@@ -578,7 +592,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
           </div>
 
           <CostingDraftMetadataEditor
-            readOnly={readOnly}
+            readOnly={controlsReadOnly}
             persistedPurpose={editor.version.purpose}
             name={draftName}
             purpose={draftPurpose}
@@ -612,6 +626,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
                   role="tab"
                   aria-selected={section === key}
                   className={`${styles.tab} ${section === key ? styles.tabActive : ''}`}
+                  disabled={busy}
                   onClick={() => setSection(key)}
                 >
                   {label}
@@ -625,6 +640,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
                 className={`${styles.tab} ${
                   section === 'comparison' || section === 'publish' ? styles.tabActive : ''
                 }`}
+                disabled={busy}
                 onClick={reviewImpact}
               >
                 Review impact
@@ -635,6 +651,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
                 <input
                   type="checkbox"
                   checked={showChangedOnly}
+                  disabled={busy}
                   onChange={(event) => setShowChangedOnly(event.target.checked)}
                 />
                 Show changed only
@@ -647,7 +664,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
               materials={editor.catalog.materials}
               config={config}
               baseline={baseline}
-              readOnly={readOnly}
+              readOnly={controlsReadOnly}
               search={search}
               onSearchChange={setSearch}
               showChangedOnly={showChangedOnly}
@@ -659,7 +676,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
             <LabourEditor
               config={config}
               baseline={baseline}
-              readOnly={readOnly}
+              readOnly={controlsReadOnly}
               showChangedOnly={showChangedOnly}
               issues={issues}
               actionLabels={actionLabels}
@@ -670,7 +687,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
             <OverheadsEditor
               config={config}
               baseline={baseline}
-              readOnly={readOnly}
+              readOnly={controlsReadOnly}
               showChangedOnly={showChangedOnly}
               issues={issues}
               updateConfig={updateConfig}
@@ -680,7 +697,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
             <RulesEditor
               config={config}
               baseline={baseline}
-              readOnly={readOnly}
+              readOnly={controlsReadOnly}
               showChangedOnly={showChangedOnly}
               issues={issues}
               updateConfig={updateConfig}

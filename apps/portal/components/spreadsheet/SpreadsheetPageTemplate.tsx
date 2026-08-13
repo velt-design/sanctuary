@@ -86,6 +86,10 @@ export default function SpreadsheetPageTemplate<
 
   const allCellKeys = useMemo(() => adapter.columns.map((column) => column.key), [adapter.columns]);
   const rowsById = useMemo(() => new Map(adapter.allRows.map((row) => [adapter.getRowId(row), row])), [adapter.allRows, adapter.getRowId]);
+  const visibleRowIds = useMemo(
+    () => new Set(shell.visibleRows.map((row) => adapter.getRowId(row))),
+    [adapter.getRowId, shell.visibleRows],
+  );
   const activeEditingSessionKey = editingSessionKey(editing);
   const useViewportZoomDock = zoomDockPlacement === 'viewport';
   const savingCells = optimisticEditing?.savingCells ?? adapter.savingCells ?? {};
@@ -93,13 +97,14 @@ export default function SpreadsheetPageTemplate<
   const commitCellEdit = optimisticEditing?.commitEdit ?? adapter.commitEdit;
 
   useEffect(() => {
-    if (!shell.visibleRows.length) {
-      pendingPointerCellRef.current = null;
-      editingTriggerRef.current = null;
-      editingValueRef.current = undefined;
-      setEditing(null);
-    }
-  }, [shell.visibleRows.length]);
+    if (editing && visibleRowIds.has(editing.rowId)) return;
+    if (!editing && shell.visibleRows.length) return;
+    pendingPointerCellRef.current = null;
+    editingTriggerRef.current = null;
+    editingValueRef.current = undefined;
+    editingCellRef.current = null;
+    setEditing(null);
+  }, [editing, shell.visibleRows.length, visibleRowIds]);
 
   useEffect(() => {
     if (!useViewportZoomDock) {

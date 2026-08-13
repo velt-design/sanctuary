@@ -44,18 +44,32 @@ export default function CommercialTab({
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const quoteView: QuoteView = searchParams.get('quotePreview') === '1' ? 'preview' : 'edit';
+  const viewFromUrl = searchParams.get('tab');
+  const canonicalView: CommercialView = viewFromUrl === 'estimates'
+    || viewFromUrl === 'quotes'
+    || viewFromUrl === 'invoices'
+    ? viewFromUrl
+    : view;
   const quoteIdFromUrl = useMemo(() => searchParams.get('quoteId')?.trim() || null, [searchParams]);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(quoteIdFromUrl);
   const [optimisticView, setOptimisticView] = useState<CommercialView | null>(null);
-  const activeView = optimisticView ?? view;
+  const [pendingView, setPendingView] = useState<{
+    from: CommercialView;
+    target: CommercialView;
+  } | null>(null);
+  const activeView = optimisticView ?? canonicalView;
 
   useEffect(() => {
-    if (quoteIdFromUrl) setSelectedQuoteId(quoteIdFromUrl);
+    setSelectedQuoteId(quoteIdFromUrl);
   }, [quoteIdFromUrl]);
 
   useEffect(() => {
+    if (pendingView) {
+      if (canonicalView === pendingView.from) return;
+      setPendingView(null);
+    }
     setOptimisticView(null);
-  }, [view]);
+  }, [canonicalView, pendingView]);
 
   const replaceParams = (update: (query: URLSearchParams) => void) => {
     const query = new URLSearchParams(searchParams.toString());
@@ -64,6 +78,7 @@ export default function CommercialTab({
   };
 
   const setView = (nextView: CommercialView) => {
+    setPendingView({ from: canonicalView, target: nextView });
     setOptimisticView(nextView);
     setSelectedQuoteId(null);
     replaceParams((query) => {
@@ -147,15 +162,16 @@ export default function CommercialTab({
       </div> : null}
 
       {activeView === 'estimates' ? (
-        <EstimatesTab host={host} projectId={projectId} projectName={projectName} />
+        <EstimatesTab key={projectId} host={host} projectId={projectId} projectName={projectName} />
       ) : activeView === 'quotes' ? (
         <QuotesTab
+          key={projectId}
           projectId={projectId}
           selectedQuoteId={selectedQuoteId}
           onSelectedQuoteChange={setSelectedQuoteId}
         />
       ) : (
-        <InvoicesTab projectId={projectId} />
+        <InvoicesTab key={projectId} projectId={projectId} />
       )}
     </div>
   );

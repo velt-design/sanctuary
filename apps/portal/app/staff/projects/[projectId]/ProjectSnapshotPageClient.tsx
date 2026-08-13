@@ -256,6 +256,7 @@ export default function ProjectSnapshotPageClient({
         </AlertBanner>
       ) : null}
       <ProjectPageFrame
+        key={snapshot.project.id}
         snapshot={snapshot}
         host={host}
         snapshotContentReady={snapshotContentReady}

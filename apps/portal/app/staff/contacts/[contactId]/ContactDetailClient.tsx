@@ -247,6 +247,7 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
 
   return (
     <ContactDetailsView
+      key={contactQuery.data.id}
       contact={contactQuery.data}
       hostKey={host}
       loadError={contactQuery.error instanceof Error ? contactQuery.error.message : null}

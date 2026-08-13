@@ -148,7 +148,7 @@ describe('CalculatorModuleNavigator', () => {
     expect(rail.querySelector('button[aria-label="Add module to Pergola 2"]')).not.toBeNull();
   });
 
-  it('shows the optional-pergola empty state for a new add-on', () => {
+  it('shows the optional-pergola empty state for an estimate', () => {
     const emptyModel: CalculatorModuleNavigatorModel = {
       groups: [],
       items: [],
@@ -164,7 +164,7 @@ describe('CalculatorModuleNavigator', () => {
     const rail = document.querySelector('aside[aria-label="Module navigator"]') as HTMLElement;
 
     expect(rail.textContent).toContain('0 modules across 0 pergolas');
-    expect(rail.textContent).toContain('No pergolas in this add-on');
+    expect(rail.textContent).toContain('No pergolas in this estimate');
     act(() => findButton(rail, 'Add pergola').click());
     expect(props.onAddPergola).toHaveBeenCalledTimes(1);
   });

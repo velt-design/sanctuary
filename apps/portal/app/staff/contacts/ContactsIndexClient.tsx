@@ -51,6 +51,10 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
   }, [finishInstantRoute]);
 
   useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
+
+  useEffect(() => {
     setPage(1);
   }, [debouncedQuery, pageSize, sort]);
 

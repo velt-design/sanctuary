@@ -13,6 +13,7 @@ export function CostingWorkflow(props: {
   onEdit: () => void;
   onReview: () => void;
   onPublish: () => void;
+  busy?: boolean;
 }) {
   const steps: Array<{
     number: 1 | 2 | 3 | 4;
@@ -31,7 +32,7 @@ export function CostingWorkflow(props: {
         <button
           key={step.number}
           type="button"
-          disabled={!step.enabled}
+          disabled={props.busy || !step.enabled}
           aria-current={step.number === props.currentStep ? 'step' : undefined}
           className={`${styles.workflowStep} ${
             step.number === props.currentStep

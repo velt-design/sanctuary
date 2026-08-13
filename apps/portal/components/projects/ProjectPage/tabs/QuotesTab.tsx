@@ -1117,7 +1117,7 @@ export default function QuotesTab({
           className={styles.backButton}
           onClick={() => selectQuote(null)}
         >
-          &lt; Back
+          &larr; Back to quotes
         </button>
         <DataStatePanel
           state="error"

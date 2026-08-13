@@ -1,7 +1,7 @@
 'use client';
 
 import type { QueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { EstimateDetail } from '@/lib/estimates/types';
 import {
@@ -89,8 +89,17 @@ export function useCalculatorWorkspaceSession({
     fromEstimateId,
     shouldOpenActiveDraft,
   } = route;
-  const [editSessionEstimateId, setEditSessionEstimateId] = useState(() => editEstimateId.trim());
-  const activeEditEstimateId = editSessionEstimateId || editEstimateId.trim();
+  const routeEditEstimateId = editEstimateId.trim();
+  const [editSession, setEditSession] = useState(() => ({
+    routeEstimateId: routeEditEstimateId,
+    estimateId: routeEditEstimateId,
+  }));
+  const activeEditEstimateId = workspace || editSession.routeEstimateId !== routeEditEstimateId
+    ? routeEditEstimateId
+    : editSession.estimateId;
+  const setEditSessionEstimateId = useCallback((estimateId: string) => {
+    setEditSession({ routeEstimateId: routeEditEstimateId, estimateId });
+  }, [routeEditEstimateId]);
   const isEditingDesign = activeEditEstimateId.length > 0;
   const draftSessionKey = useMemo(
     () => calculatorDraftSessionKey(
@@ -139,27 +148,32 @@ export function useCalculatorWorkspaceSession({
       return;
     }
 
+    let cancelled = false;
     void (async () => {
-      const nextProject = await projectLoader(projectId);
-      setProject(nextProject);
-      if (!nextProject) {
-        setProjectError('Project not found (use Projects in the header to create/select one).');
-        return;
+      try {
+        const nextProject = await projectLoader(projectId);
+        if (cancelled) return;
+        setProject(nextProject);
+        if (!nextProject) {
+          setProjectError('Project not found (use Projects in the header to create/select one).');
+          return;
+        }
+        setProjectError(null);
+        setValues((previous) => ({
+          ...previous,
+          projectName: nextProject.projectName ?? nextProject.name ?? previous.projectName,
+          quoteRef: nextProject.quoteRef ?? previous.quoteRef,
+        }));
+      } catch (error) {
+        if (cancelled) return;
+        setProject(null);
+        setProjectError(error instanceof Error ? error.message : 'Project could not be loaded.');
       }
-      setProjectError(null);
-      setValues((previous) => ({
-        ...previous,
-        projectName: nextProject.projectName ?? nextProject.name ?? previous.projectName,
-        quoteRef: nextProject.quoteRef ?? previous.quoteRef,
-      }));
     })();
-  }, [projectId]);
-
-  useEffect(() => {
-    const nextEditEstimateId = editEstimateId.trim();
-    if (!nextEditEstimateId && !workspace) return;
-    setEditSessionEstimateId(nextEditEstimateId);
-  }, [editEstimateId, workspace]);
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, projectLoader, setValues]);
 
   useEffect(() => {
     if (workspace) return;
@@ -193,6 +207,7 @@ export function useCalculatorWorkspaceSession({
       return;
     }
 
+    let cancelled = false;
     void (async () => {
       try {
         if (activeEditEstimateId) {
@@ -209,6 +224,7 @@ export function useCalculatorWorkspaceSession({
 
           const estimate = cachedEstimate
             ?? await estimateLoader(resolvedEditEstimateId || activeEditEstimateId);
+          if (cancelled) return;
           if (!estimate) throw new Error('Design not found');
           setLoadedEstimateDetail(estimate);
           if (estimate.editability.isLocked) {
@@ -244,6 +260,7 @@ export function useCalculatorWorkspaceSession({
         if (restoredFromLocalDraft) return;
 
         const draft = await estimateDuplicator(fromEstimateId);
+        if (cancelled) return;
         const normalizedDraft = normalizeCalculatorInputsForUi({
           ...draft,
           schemaVersion: 'v2',
@@ -256,11 +273,15 @@ export function useCalculatorWorkspaceSession({
         setDraftNotice(message);
         toast.success(message);
       } catch (error) {
+        if (cancelled) return;
         const message = error instanceof Error ? error.message : 'Failed to start design revision';
         setDraftNotice(message);
         toast.error(message);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [
     acceptExternalDraft,
     activeEditEstimateId,

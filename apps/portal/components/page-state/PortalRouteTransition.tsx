@@ -121,6 +121,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
   const previousRouteKeyRef = useRef<string | null>(null);
   const maxTimerRef = useRef<number | null>(null);
   const instantRouteTimerRef = useRef<number | null>(null);
+  const instantRouteRef = useRef<PortalInstantRoute | null>(null);
   const busyControlRef = useRef<{ element: HTMLElement; previousAriaBusy: string | null } | null>(null);
   const activeRef = useRef(false);
   const [visible, setVisible] = useState(false);
@@ -172,7 +173,9 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
 
   const finishInstantRoute = useCallback(
     (route: PortalInstantRoute) => {
-      setInstantRoute((current) => (current === route ? null : current));
+      if (instantRouteRef.current !== route) return;
+      instantRouteRef.current = null;
+      setInstantRoute(null);
       setInstantRouteLabel(null);
       clearTimer(instantRouteTimerRef);
     },
@@ -182,11 +185,14 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
   const beginInstantRoute = useCallback(
     (route: PortalInstantRoute, options?: { label?: string | null }) => {
       clearTimer(instantRouteTimerRef);
+      instantRouteRef.current = route;
       setInstantRoute(route);
       setInstantRouteLabel(options?.label?.trim() || null);
       instantRouteTimerRef.current = window.setTimeout(() => {
+        if (instantRouteRef.current !== route) return;
         instantRouteTimerRef.current = null;
-        setInstantRoute((current) => (current === route ? null : current));
+        instantRouteRef.current = null;
+        setInstantRoute(null);
         setInstantRouteLabel(null);
       }, MAX_INSTANT_ROUTE_MS);
     },
@@ -241,12 +247,14 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
   useEffect(() => {
     const handlePopState = () => {
       clearTimer(instantRouteTimerRef);
+      instantRouteRef.current = null;
       setInstantRoute(null);
       setInstantRouteLabel(null);
+      finishRouteTransition();
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [clearTimer]);
+  }, [clearTimer, finishRouteTransition]);
 
   const value = useMemo(
     () => ({

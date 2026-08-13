@@ -17,6 +17,7 @@ import {
   PortalInstantRouteContent,
   PortalRouteTransitionProvider,
 } from '@/components/page-state/PortalRouteTransition';
+import { GlobalPortalSearchStateProvider } from './GlobalPortalSearchState';
 
 function cx(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
@@ -82,6 +83,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   const isPublicRoute = isPublicRoutePath(pathname, searchParams);
+  const shellRouteKey = `${pathname ?? ''}?${searchParams.toString()}`;
   const sidebarMode = isDesignWorkbenchRoutePath(pathname) ? 'railOnly' : 'pinned';
   const isViewportLockedPath =
     typeof pathname === 'string' &&
@@ -133,7 +135,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     setIsMobileNavOpen(false);
-  }, [pathname]);
+  }, [shellRouteKey]);
 
   if (isPublicRoute) return <>{children}</>;
 
@@ -147,11 +149,12 @@ export default function PortalShell({ children }: { children: React.ReactNode })
 
   return (
     <PortalRouteTransitionProvider>
-      <div
-        className={cx(styles.shell, isViewportLockedPath && styles.shellViewportLocked)}
-        data-portal-sidebar-mode={sidebarMode}
-        style={sidebarLayoutStyle}
-      >
+      <GlobalPortalSearchStateProvider>
+        <div
+          className={cx(styles.shell, isViewportLockedPath && styles.shellViewportLocked)}
+          data-portal-sidebar-mode={sidebarMode}
+          style={sidebarLayoutStyle}
+        >
         {sidebarMode === 'railOnly' || isSidebarCollapsed ? (
           <SidebarRail
             email={email ?? undefined}
@@ -192,7 +195,8 @@ export default function PortalShell({ children }: { children: React.ReactNode })
         >
           <PortalInstantRouteContent>{children}</PortalInstantRouteContent>
         </div>
-      </div>
+        </div>
+      </GlobalPortalSearchStateProvider>
     </PortalRouteTransitionProvider>
   );
 }

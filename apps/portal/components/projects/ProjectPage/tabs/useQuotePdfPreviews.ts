@@ -184,7 +184,12 @@ export function useQuotePdfPreviews({
   ]);
 
   useEffect(() => {
-    if (!sendOpen || sendEditorMode !== "review" || !reviewQuoteDetail) return;
+    if (!sendOpen || sendEditorMode !== "review" || !reviewQuoteDetail) {
+      setSendReviewPdfData(null);
+      setSendReviewPdfError(null);
+      setSendReviewPdfLoading(false);
+      return;
+    }
 
     const abortController = new AbortController();
     const cacheKey = [
@@ -213,26 +218,32 @@ export function useQuotePdfPreviews({
 
     setSendReviewPdfLoading(true);
     setSendReviewPdfError(null);
+    setSendReviewPdfData(null);
 
     void (async () => {
       try {
-        const bytes =
-          reviewQuoteDetail.status === "DRAFT"
-            ? await previewQuotePdf(reviewQuoteDetail, {
-                signal: abortController.signal,
-              })
-            : new Uint8Array(
-                await (
-                  await fetch(
-                    quotePdfUrl(reviewQuoteDetail.id, { inline: true }),
-                    {
-                      method: "GET",
-                      credentials: "same-origin",
-                      signal: abortController.signal,
-                    },
-                  )
-                ).arrayBuffer(),
-              );
+        let bytes: Uint8Array;
+        if (reviewQuoteDetail.status === "DRAFT") {
+          bytes = await previewQuotePdf(reviewQuoteDetail, {
+            signal: abortController.signal,
+          });
+        } else {
+          const response = await fetch(
+            quotePdfUrl(reviewQuoteDetail.id, { inline: true }),
+            {
+              method: "GET",
+              credentials: "same-origin",
+              signal: abortController.signal,
+            },
+          );
+          if (!response.ok) {
+            throw new Error(await readErrorMessage(
+              response,
+              `Failed to load quote PDF (${response.status})`,
+            ));
+          }
+          bytes = new Uint8Array(await response.arrayBuffer());
+        }
         if (abortController.signal.aborted) return;
         cacheRef.current.set(cacheKey, bytes);
         setSendReviewPdfData(bytes);

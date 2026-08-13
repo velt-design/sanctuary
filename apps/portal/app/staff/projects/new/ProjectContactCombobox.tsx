@@ -21,24 +21,40 @@ export default function ProjectContactCombobox({
 }) {
   const listboxId = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const normalizedInitialContactId = initialContactId?.trim() || null;
+  const previousInitialContactIdRef = useRef(normalizedInitialContactId);
+  const initialContactChanged = previousInitialContactIdRef.current !== normalizedInitialContactId;
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const debouncedQuery = useDebouncedValue(query, 180);
 
   const initialContact = useQuery({
-    queryKey: ['project-create-contact', initialContactId ?? 'none'],
+    queryKey: ['project-create-contact', normalizedInitialContactId ?? 'none'],
     queryFn: () => apiJson<{ contact: Contact }>(
-      `/api/contacts/${encodeURIComponent(initialContactId ?? '')}`,
+      `/api/contacts/${encodeURIComponent(normalizedInitialContactId ?? '')}`,
       { cache: 'no-store' },
     ),
-    enabled: Boolean(initialContactId && !selected),
+    enabled: Boolean(normalizedInitialContactId && (!selected || initialContactChanged)),
     retry: 1,
   });
 
   useEffect(() => {
-    if (!selected && initialContact.data?.contact) onChange(initialContact.data.contact);
-  }, [initialContact.data, onChange, selected]);
+    if (!initialContactChanged) return;
+    previousInitialContactIdRef.current = normalizedInitialContactId;
+    onChange(null);
+    setQuery('');
+  }, [initialContactChanged, normalizedInitialContactId, onChange]);
+
+  useEffect(() => {
+    if (
+      !selected
+      && normalizedInitialContactId
+      && initialContact.data?.contact.id === normalizedInitialContactId
+    ) {
+      onChange(initialContact.data.contact);
+    }
+  }, [initialContact.data, normalizedInitialContactId, onChange, selected]);
 
   useEffect(() => {
     if (selected) setQuery(selected.displayName);

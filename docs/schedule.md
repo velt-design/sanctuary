@@ -308,6 +308,11 @@ direct URL changes still synchronize the selected view. Only the active view's
 model is derived: Board does not build while Gantt is active, and Gantt builds
 only its lane items.
 
+The legacy fallback follows the same URL/prop authority instead of treating its
+first view as a permanent local default. Site Visit modal, popover, hover, and
+assignment state close when the active week, staff owner, or project scope
+changes so controls cannot retain a record from the previous scope.
+
 These changes retain the shared non-blocking portal progress bar and mark only
 the selected view button busy. They must not replace the usable Schedule
 surface with the full-page loading overlay; full-page loading remains a

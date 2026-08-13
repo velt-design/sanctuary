@@ -12,6 +12,8 @@ const toastInfoMock = vi.fn();
 const apiJsonMock = vi.fn();
 const invalidateProjectsIndexCachesMock = vi.fn();
 const queryClientMock = {};
+let searchParamsMock = new URLSearchParams();
+let initialContactQueryData: { contact: typeof savedContact } | undefined;
 
 const savedContact = {
   id: 'ct_22222222-2222-4222-8222-222222222222',
@@ -79,7 +81,7 @@ vi.mock('next/link', () => ({
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => searchParamsMock,
 }));
 
 vi.mock('@/components/ui/toast/ToastProvider', () => ({
@@ -94,8 +96,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
   return {
     ...actual,
-    useQuery: () => ({
-      data: undefined,
+    useQuery: (options: { queryKey?: readonly unknown[] }) => ({
+      data: options.queryKey?.[0] === 'project-create-contact' ? initialContactQueryData : undefined,
       isLoading: false,
       isError: false,
     }),
@@ -128,6 +130,8 @@ vi.mock('@/lib/supabase/browserClient', () => ({
 
 describe('ProjectCreateClient', () => {
   beforeEach(() => {
+    searchParamsMock = new URLSearchParams();
+    initialContactQueryData = undefined;
     pushMock.mockReset();
     toastErrorMock.mockReset();
     toastInfoMock.mockReset();
@@ -181,6 +185,29 @@ describe('ProjectCreateClient', () => {
       includeContacts: true,
     });
     expect(pushMock).toHaveBeenCalledWith(`/staff/projects/${savedProject.id}`);
+    rendered.unmount();
+  });
+
+  it('updates the preselected contact when browser URL state changes', async () => {
+    searchParamsMock = new URLSearchParams(`contactId=${savedContact.id}`);
+    initialContactQueryData = { contact: savedContact };
+    const rendered = renderIntoDocument(<ProjectCreateClient />);
+
+    await act(async () => { await Promise.resolve(); });
+    expect(rendered.container.textContent).toContain('Selected: Created Contact');
+
+    const secondContact = {
+      ...savedContact,
+      id: 'ct_44444444-4444-4444-8444-444444444444',
+      displayName: 'Second Contact',
+    };
+    searchParamsMock = new URLSearchParams(`contactId=${secondContact.id}`);
+    initialContactQueryData = { contact: secondContact };
+    rendered.rerender(<ProjectCreateClient />);
+    await act(async () => { await Promise.resolve(); });
+
+    expect(rendered.container.textContent).toContain('Selected: Second Contact');
+    expect(rendered.container.textContent).not.toContain('Selected: Created Contact');
     rendered.unmount();
   });
 

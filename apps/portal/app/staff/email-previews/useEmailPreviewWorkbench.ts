@@ -76,6 +76,9 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
 
     void loadEmailPreview(variant, controller.signal, previewEndpoint)
       .then((body) => {
+        if (body.variant !== variant) {
+          throw new Error('The preview response did not match the selected enquiry.');
+        }
         setPreview(body);
       })
       .catch((caught: unknown) => {

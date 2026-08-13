@@ -116,6 +116,7 @@ async function scheduleTelemetryPayloads() {
 function renderLegacyFallback(options?: {
   initialReason?: 'server-schema-not-ready' | 'client-schema-not-ready';
   seedCache?: boolean;
+  initialView?: 'board' | 'gantt';
 }) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -168,7 +169,7 @@ function renderLegacyFallback(options?: {
       <ScheduleLegacyFallbackClient
         initialReason={options?.initialReason ?? 'server-schema-not-ready'}
         today="2026-04-07"
-        initialView="board"
+        initialView={options?.initialView ?? 'board'}
       />
     </QueryClientProvider>,
   );
@@ -300,6 +301,27 @@ describe('ScheduleLegacyFallbackClient', () => {
       }),
     ]));
 
+    rendered.unmount();
+  });
+
+  it('reconciles Board and Gantt when browser navigation changes the server view prop', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const schedule = (initialView: 'board' | 'gantt') => (
+      <QueryClientProvider client={queryClient}>
+        <ScheduleLegacyFallbackClient
+          initialReason="server-schema-not-ready"
+          today="2026-04-07"
+          initialView={initialView}
+        />
+      </QueryClientProvider>
+    );
+    const rendered = renderIntoDocument(schedule('board'));
+    await act(async () => { await Promise.resolve(); });
+
+    rendered.rerender(schedule('gantt'));
+    const ganttButton = Array.from(rendered.container.querySelectorAll('button'))
+      .find((button) => button.textContent?.trim() === 'Gantt');
+    expect(ganttButton?.getAttribute('aria-pressed')).toBe('true');
     rendered.unmount();
   });
 

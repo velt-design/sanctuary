@@ -379,7 +379,9 @@ export default function SiteVisitsView() {
   useEffect(() => {
     setSlotPopover(null);
     setHoveredEvent(null);
-  }, [viewWeek, salesOwnerId]);
+    setModal({ kind: 'closed' });
+    setAssigning(null);
+  }, [projectTargetId, salesOwnerId, viewWeek]);
 
   const data = snapshot;
   const unscheduled = data?.unscheduled ?? [];

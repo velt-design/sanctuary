@@ -366,4 +366,17 @@ describe('PortalShell', () => {
     expect(document.activeElement).toBe(mobileTrigger);
     rendered.unmount();
   });
+
+  it('closes the mobile drawer when same-page query navigation commits', () => {
+    const rendered = renderIntoDocument(<PortalShell><div>Content</div></PortalShell>);
+    const mobileTrigger = rendered.container.querySelector('button[aria-label="Open portal navigation"]') as HTMLButtonElement;
+    act(() => mobileTrigger.click());
+    expect(document.body.querySelector('[data-drawer-panel]')).not.toBeNull();
+
+    mockSearchParams = new URLSearchParams('view=gantt');
+    rendered.rerender(<PortalShell><div>Updated content</div></PortalShell>);
+
+    expect(document.body.querySelector('[data-drawer-panel]')).toBeNull();
+    rendered.unmount();
+  });
 });

@@ -324,6 +324,22 @@ describe('EmailPreviewClient', () => {
     rendered.unmount();
   });
 
+  it('rejects a mismatched preview response instead of showing stale scenario content', async () => {
+    vi.mocked(fetch).mockImplementation(async () => Response.json(
+      previewResponse('professional'),
+    ));
+
+    const rendered = renderIntoDocument(<EmailPreviewClient />);
+    await flushEffects();
+
+    expect(rendered.container.textContent).toContain('Preview rendering failed');
+    expect(rendered.container.textContent).toContain(
+      'The preview response did not match the selected enquiry.',
+    );
+    expect(rendered.container.querySelectorAll('iframe')).toHaveLength(0);
+    rendered.unmount();
+  });
+
   it('requires confirmation and sends only the active layout', async () => {
     vi.mocked(fetch).mockImplementation(
       async (input: RequestInfo | URL, init?: RequestInit) => {

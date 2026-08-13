@@ -91,6 +91,7 @@ export default function ProjectsIndexClient({
   const { role } = usePortalSession();
   const isAdmin = role === 'admin';
   const initialFiltersRef = useRef(initialFilters ?? parseProjectsIndexFilters(searchParams));
+  const urlFilters = parseProjectsIndexFilters(searchParams);
   const [query, setQuery] = useState(initialFiltersRef.current.query);
   const [journeyFilter, setJourneyFilter] =
     useState<ProjectsIndexJourneyFilter>(initialFiltersRef.current.journeyFilter);
@@ -138,14 +139,20 @@ export default function ProjectsIndexClient({
   }, [finishInstantRoute, searchParams]);
 
   useEffect(() => {
-    const nextFilters = parseProjectsIndexFilters(searchParams);
-    setJourneyFilter(nextFilters.journeyFilter);
-    setStageFilter(nextFilters.stageFilter);
-    setStateFilter(nextFilters.stateFilter);
-    setOwnerFilter(nextFilters.ownerFilter);
-    setQuery(nextFilters.query);
-    setArchiveFilter(nextFilters.archiveFilter);
-  }, [searchParams]);
+    setJourneyFilter(urlFilters.journeyFilter);
+    setStageFilter(urlFilters.stageFilter);
+    setStateFilter(urlFilters.stateFilter);
+    setOwnerFilter(urlFilters.ownerFilter);
+    setQuery(urlFilters.query);
+    setArchiveFilter(urlFilters.archiveFilter);
+  }, [
+    urlFilters.archiveFilter,
+    urlFilters.journeyFilter,
+    urlFilters.ownerFilter,
+    urlFilters.query,
+    urlFilters.stageFilter,
+    urlFilters.stateFilter,
+  ]);
 
   useEffect(() => {
     setPage(1);

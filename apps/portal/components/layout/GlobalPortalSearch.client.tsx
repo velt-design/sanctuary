@@ -43,6 +43,7 @@ import {
   PORTAL_SEARCH_DEBOUNCE_MS,
 } from '@/lib/queries/portalSearch';
 import { useOptionalPortalQueryClient } from '@/lib/react-query/PortalQueryClientContext';
+import { useOptionalGlobalPortalSearchState } from './GlobalPortalSearchState';
 import styles from './GlobalPortalSearch.module.css';
 
 type SearchState = 'idle' | 'loading' | 'results' | 'empty' | 'error';
@@ -131,7 +132,13 @@ function ActiveGlobalPortalSearch({
   const navigationStartRouteKeyRef = useRef<string | null>(null);
   const prefetchedHrefRef = useRef(new Set<string>());
   const listboxId = useId();
-  const [query, setQuery] = useState('');
+  const sharedState = useOptionalGlobalPortalSearchState();
+  const [localQuery, setLocalQuery] = useState('');
+  const [localInteractionActive, setLocalInteractionActive] = useState(false);
+  const query = sharedState?.query ?? localQuery;
+  const setQuery = sharedState?.setQuery ?? setLocalQuery;
+  const interactionActive = sharedState?.interactionActive ?? localInteractionActive;
+  const setInteractionActive = sharedState?.setInteractionActive ?? setLocalInteractionActive;
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -177,10 +184,17 @@ function ActiveGlobalPortalSearch({
     setQuery('');
     setDebouncedQuery('');
     setOpen(false);
+    setInteractionActive(false);
     setActiveIndex(-1);
     setNavigatingHref(null);
     navigationStartRouteKeyRef.current = null;
-  }, []);
+  }, [setInteractionActive, setQuery]);
+
+  useLayoutEffect(() => {
+    if (!interactionActive) return;
+    inputRef.current?.focus({ preventScroll: true });
+    setOpen(true);
+  }, [interactionActive]);
 
   useEffect(() => {
     if (!navigatingHref || navigationStartRouteKeyRef.current === null) return;
@@ -201,11 +215,12 @@ function ActiveGlobalPortalSearch({
       if (!commandShortcut && (!slashShortcut || isEditableTarget(event.target))) return;
       event.preventDefault();
       inputRef.current?.focus();
+      setInteractionActive(true);
       setOpen(true);
     };
     window.addEventListener('keydown', onShortcut);
     return () => window.removeEventListener('keydown', onShortcut);
-  }, [shortcutEnabled]);
+  }, [setInteractionActive, shortcutEnabled]);
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
@@ -215,11 +230,12 @@ function ActiveGlobalPortalSearch({
         && !panelRef.current?.contains(target)
       ) {
         setOpen(false);
+        setInteractionActive(false);
       }
     };
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, []);
+  }, [setInteractionActive]);
 
   useLayoutEffect(() => {
     if (!open || !rootRef.current) {
@@ -262,6 +278,7 @@ function ActiveGlobalPortalSearch({
     if (event.key === 'Escape') {
       event.preventDefault();
       setOpen(false);
+      setInteractionActive(false);
       setActiveIndex(-1);
       return;
     }
@@ -290,6 +307,7 @@ function ActiveGlobalPortalSearch({
   ) => {
     if (!shouldHandleRouteTransitionClick(event, event.currentTarget)) {
       setOpen(false);
+      setInteractionActive(false);
       return;
     }
     if (!shouldStartRouteTransitionForHref(href)) {
@@ -400,9 +418,13 @@ function ActiveGlobalPortalSearch({
           aria-expanded={showPanel}
           aria-haspopup="listbox"
           role="combobox"
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setInteractionActive(true);
+            setOpen(true);
+          }}
           onChange={(event) => {
             setQuery(event.target.value);
+            setInteractionActive(true);
             setOpen(true);
             setNavigatingHref(null);
           }}

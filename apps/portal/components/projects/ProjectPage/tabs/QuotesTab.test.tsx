@@ -267,6 +267,20 @@ describe('QuotesTab draft ownership UI', () => {
     rendered.unmount();
   });
 
+  it('returns to the quote list on the first Back to quotes click while the URL commit is pending', () => {
+    const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
+    const back = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Back to quotes'));
+
+    act(() => back?.click());
+
+    expect(rendered.container.querySelector('[data-quotes-view="list"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-quotes-view="detail"]')).toBeNull();
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith('?');
+    rendered.unmount();
+  });
+
   it('shows draft deletion only to admins', () => {
     const admin = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
     const adminMore = Array.from(admin.container.querySelectorAll('button')).find((button) => button.textContent?.includes('More actions'));

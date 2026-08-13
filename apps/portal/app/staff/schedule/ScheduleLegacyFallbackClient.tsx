@@ -48,6 +48,7 @@ import {
   resolveScheduleCommitmentType as resolveCommitmentType,
   resolveScheduleFlexDays as resolvePlannedFlexDays,
 } from './ScheduleOperationalPresentation';
+import { useLegacyScheduleView } from './useLegacyScheduleView';
 
 const LazyScheduleBoardView = dynamic<ScheduleBoardViewProps>(
   () => import('./ScheduleBoardView'),
@@ -288,13 +289,7 @@ export default function ScheduleLegacyFallbackClient({
   } | null>(null);
   const [cleanupBusy, setCleanupBusy] = useState(false);
 
-  const [view, setView] = useState<'board' | 'gantt' | 'site_visits'>(() => {
-    if (initialView === 'board' || initialView === 'gantt') return initialView;
-    const raw = (searchParams.get('view') || '').trim().toLowerCase();
-    if (raw === 'site-visits') return 'site_visits';
-    if (raw === 'gantt') return 'gantt';
-    return 'board';
-  });
+  const { view, selectView } = useLegacyScheduleView(initialView, searchParams.get('view'));
   const [query, setQuery] = useState('');
   const [showCompleted, setShowCompleted] = useState(false);
   const [unscheduledCollapsed, setUnscheduledCollapsed] = useState<boolean>(true);
@@ -349,7 +344,7 @@ export default function ScheduleLegacyFallbackClient({
     beginRouteTransition({ href, label, source: 'schedule-view', control });
     startUiTransition(() => {
       router.replace(href);
-      if (next !== 'site_visits') setView(next);
+      selectView(next);
     });
   };
 

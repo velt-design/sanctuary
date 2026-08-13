@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ProjectNavigationTabKey } from "@/lib/projects/projectTabs";
+import { useSearchParams } from "next/navigation";
+import { coerceProjectTab, type ProjectNavigationTabKey } from "@/lib/projects/projectTabs";
 import type {
   ProjectPageSnapshot,
   ProjectSnapshotLoadState,
@@ -29,12 +30,36 @@ export default function ProjectPageFrame({
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const mastheadRef = useRef<HTMLDivElement | null>(null);
+  const searchParams = useSearchParams();
   const [optimisticTab, setOptimisticTab] =
     useState<ProjectNavigationTabKey | null>(null);
+  const canonicalTab = coerceProjectTab(
+    searchParams.get("tab") ?? tab,
+    Boolean(snapshot.project.hasJobPacks),
+  );
+  const pendingTabRef = useRef<{
+    from: typeof canonicalTab;
+    target: ProjectNavigationTabKey;
+  } | null>(null);
 
   useEffect(() => {
+    const pending = pendingTabRef.current;
+    if (pending) {
+      if (canonicalTab === pending.target) {
+        pendingTabRef.current = null;
+      } else if (canonicalTab === pending.from) {
+        return;
+      } else {
+        pendingTabRef.current = null;
+      }
+    }
     setOptimisticTab(null);
-  }, [tab]);
+  }, [canonicalTab]);
+
+  const selectTab = (nextTab: ProjectNavigationTabKey) => {
+    pendingTabRef.current = { from: canonicalTab, target: nextTab };
+    setOptimisticTab(nextTab);
+  };
 
   useEffect(() => {
     const frame = frameRef.current;
@@ -73,7 +98,7 @@ export default function ProjectPageFrame({
             tab={tab}
             ownerControlsPaused={snapshotState !== "fresh"}
             optimisticTab={optimisticTab}
-            onTabSelect={setOptimisticTab}
+            onTabSelect={selectTab}
           />
         </div>
       ) : null}

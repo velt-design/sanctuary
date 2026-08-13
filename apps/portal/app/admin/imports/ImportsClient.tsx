@@ -134,6 +134,7 @@ async function persistBulk(payload: BulkImportPayload): Promise<void> {
 export default function ImportsClient() {
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const parseSequenceRef = useRef(0);
   const [sources, setSources] = useState<ParsedImportSource[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -208,6 +209,7 @@ export default function ImportsClient() {
           e.target.value = '';
           if (!files.length) return;
 
+          const parseSequence = ++parseSequenceRef.current;
           setBusy(true);
           void (async () => {
             try {
@@ -233,9 +235,9 @@ export default function ImportsClient() {
                   parsed.push({ filename: file.name, kind: 'error', error: msg });
                 }
               }
-              setSources(parsed);
+              if (parseSequence === parseSequenceRef.current) setSources(parsed);
             } finally {
-              setBusy(false);
+              if (parseSequence === parseSequenceRef.current) setBusy(false);
             }
           })();
         }}

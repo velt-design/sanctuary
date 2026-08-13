@@ -5,6 +5,7 @@ import { renderIntoDocument } from '../../../../test/reactHarness';
 import { PORTAL_SEARCH_DEBOUNCE_MS } from '@/lib/queries/portalSearch';
 import { PortalQueryClientScope } from '@/lib/react-query/PortalQueryClientContext';
 import GlobalPortalSearch from './GlobalPortalSearch.client';
+import { GlobalPortalSearchStateProvider } from './GlobalPortalSearchState';
 
 const navigation = vi.hoisted(() => ({
   pathname: '/staff/dashboard',
@@ -64,6 +65,16 @@ function renderSearch() {
         <GlobalPortalSearch />
       </PortalQueryClientScope>
     </QueryClientProvider>,
+  );
+}
+
+function SearchHost({ pending }: { pending: boolean }) {
+  return (
+    <GlobalPortalSearchStateProvider>
+      {pending
+        ? <div key="pending" data-testid="pending-header"><GlobalPortalSearch /></div>
+        : <div key="loaded" data-testid="loaded-header"><GlobalPortalSearch /></div>}
+    </GlobalPortalSearchStateProvider>
   );
 }
 
@@ -269,6 +280,33 @@ describe('GlobalPortalSearch', () => {
     act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })));
     expect(input.value).toBe('deck');
     expect(document.querySelector('[role="listbox"]')).toBeNull();
+    rendered.unmount();
+  });
+
+  it('preserves live typing when a pending page header is replaced by the loaded header', () => {
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <PortalQueryClientScope client={queryClient}>
+          <SearchHost pending />
+        </PortalQueryClientScope>
+      </QueryClientProvider>,
+    );
+    const pendingInput = rendered.container.querySelector('input') as HTMLInputElement;
+    act(() => pendingInput.focus());
+    inputText(pendingInput, 'doreen');
+
+    rendered.rerender(
+      <QueryClientProvider client={queryClient}>
+        <PortalQueryClientScope client={queryClient}>
+          <SearchHost pending={false} />
+        </PortalQueryClientScope>
+      </QueryClientProvider>,
+    );
+
+    const loadedInput = rendered.container.querySelector('input') as HTMLInputElement;
+    expect(loadedInput).not.toBe(pendingInput);
+    expect(loadedInput.value).toBe('doreen');
+    expect(document.activeElement).toBe(loadedInput);
     rendered.unmount();
   });
 

@@ -57,6 +57,13 @@ function indexResult(
   };
 }
 
+function changeInputValue(target: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+  if (!setter) throw new Error('Missing input value setter');
+  setter.call(target, value);
+  target.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 describe('ContactsIndexClient', () => {
   beforeEach(() => {
     retry.mockReset();
@@ -128,6 +135,19 @@ describe('ContactsIndexClient', () => {
     expect(useContactsIndexData).toHaveBeenCalledWith(expect.objectContaining({ search: 'missing' }));
     expect(rendered.container.textContent).toContain('No contacts match your search.');
     expect(rendered.container.textContent).not.toContain('Alex Mason');
+    rendered.unmount();
+  });
+
+  it('reconciles a new URL query without overwriting typing on an unrelated rerender', () => {
+    const rendered = renderIntoDocument(<ContactsIndexClient initialQuery="doreen" />);
+    const input = rendered.container.querySelector('#contactSearch') as HTMLInputElement;
+
+    act(() => changeInputValue(input, 'doreen h'));
+    rendered.rerender(<ContactsIndexClient initialQuery="doreen" />);
+    expect(input.value).toBe('doreen h');
+
+    rendered.rerender(<ContactsIndexClient initialQuery="mark" />);
+    expect(input.value).toBe('mark');
     rendered.unmount();
   });
 });

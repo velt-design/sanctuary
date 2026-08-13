@@ -129,6 +129,21 @@ describe('CostingControlCentre', () => {
     rendered.unmount();
   });
 
+  it('adopts a refreshed server overview while no pricing draft is being edited', () => {
+    const rendered = renderIntoDocument(
+      <CostingControlCentre initialOverview={overview('published')} />,
+    );
+    expect(rendered.container.textContent).toContain('July pricing');
+
+    rendered.rerender(
+      <CostingControlCentre initialOverview={overview('draft')} />,
+    );
+
+    expect(rendered.container.textContent).toContain('August supplier update');
+    expect(rendered.container.textContent).toContain('Continue draft v1');
+    rendered.unmount();
+  });
+
   it('requires a durable name and purpose before creating a draft', async () => {
     const payload = editorPayload('draft');
     const fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {

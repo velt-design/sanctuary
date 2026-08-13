@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { DashboardPersonalTask } from '@/lib/dashboard/types';
 import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
@@ -22,7 +22,23 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
+  const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    setTasks((current) => {
+      const currentById = new Map(current.map((task) => [task.id, task]));
+      const refreshed = initialTasks.map((task) => pendingTaskIds.has(task.id)
+        ? currentById.get(task.id) ?? task
+        : task);
+      const refreshedIds = new Set(refreshed.map((task) => task.id));
+      return [
+        ...refreshed,
+        ...current.filter((task) => !refreshedIds.has(task.id)),
+      ];
+    });
+    // Pending task state is read only to preserve optimistic rows while a new
+    // server snapshot arrives; completing a mutation must not reapply an old prop.
+  }, [initialTasks]);
 
   async function createTask() {
     const nextTitle = title.trim();
@@ -51,13 +67,13 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
   }
 
   async function toggleTask(task: DashboardPersonalTask, completed: boolean) {
-    const previous = tasks;
+    const previousTask = task;
     const optimistic: DashboardPersonalTask = {
       ...task,
       completedAt: completed ? new Date().toISOString() : null,
       updatedAt: new Date().toISOString(),
     };
-    setPendingTaskId(task.id);
+    setPendingTaskIds((current) => new Set(current).add(task.id));
     setError(null);
     setTasks((current) => current.map((item) => (item.id === task.id ? optimistic : item)));
 
@@ -71,10 +87,16 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
       );
       setTasks((current) => current.map((item) => (item.id === task.id ? updated : item)));
     } catch (err) {
-      setTasks(previous);
+      setTasks((current) => current.map((item) => (
+        item.id === task.id ? previousTask : item
+      )));
       setError(err instanceof Error ? err.message : 'Failed to update task');
     } finally {
-      setPendingTaskId(null);
+      setPendingTaskIds((current) => {
+        const next = new Set(current);
+        next.delete(task.id);
+        return next;
+      });
     }
   }
 
@@ -124,7 +146,7 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
                   key={task.id}
                   className={dash.taskBubble}
                   checked={completed}
-                  disabled={pendingTaskId === task.id}
+                  disabled={pendingTaskIds.has(task.id)}
                   label={task.title}
                   controlAriaLabel={`Complete ${task.title}`}
                   onChange={(checked) => void toggleTask(task, checked)}

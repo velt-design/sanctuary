@@ -22,6 +22,7 @@ export default function DesignBookletWorkbenchPage({
   return (
     <div className={instrumentSans.variable}>
       <DesignBookletWorkbenchClient
+        key={projectId ?? 'standalone'}
         content={getDesignBookletContentCatalog()}
         pdfEndpoint={pdfEndpoint}
         projectId={projectId}

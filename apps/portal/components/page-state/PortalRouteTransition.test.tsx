@@ -52,6 +52,18 @@ function ContactsInstantRouteTrigger() {
   );
 }
 
+function CompetingInstantRouteTrigger() {
+  const { beginInstantRoute, finishInstantRoute } = usePortalRouteTransition();
+  return (
+    <div>
+      <button type="button" onClick={() => beginInstantRoute('projects-index')}>Open projects</button>
+      <button type="button" onClick={() => beginInstantRoute('contacts-index')}>Open contacts</button>
+      <button type="button" onClick={() => finishInstantRoute('projects-index')}>Stale projects mounted</button>
+      <button type="button" onClick={() => finishInstantRoute('contacts-index')}>Contacts mounted</button>
+    </div>
+  );
+}
+
 describe('PortalRouteTransitionProvider', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -114,6 +126,23 @@ describe('PortalRouteTransitionProvider', () => {
     expect(rendered.container.querySelector('[data-portal-route-progress="true"]')).toBeNull();
     expect(rendered.container.querySelector('button')?.getAttribute('aria-busy')).toBeNull();
 
+    rendered.unmount();
+  });
+
+  it('clears pending navigation immediately when browser history takes over', () => {
+    const rendered = renderIntoDocument(
+      <PortalRouteTransitionProvider>
+        <Trigger href="/staff/projects" />
+      </PortalRouteTransitionProvider>,
+    );
+
+    act(() => rendered.container.querySelector('button')?.click());
+    expect(rendered.container.querySelector('[data-portal-route-progress="true"]')).not.toBeNull();
+
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')));
+
+    expect(rendered.container.querySelector('[data-portal-route-progress="true"]')).toBeNull();
+    expect(rendered.container.querySelector('button')?.getAttribute('aria-busy')).toBeNull();
     rendered.unmount();
   });
 
@@ -186,6 +215,26 @@ describe('PortalRouteTransitionProvider', () => {
     act(() => buttons[1]?.click());
     expect(rendered.container.querySelector('[data-contacts-index-state="pending"]')).toBeNull();
     expect(rendered.container.textContent).toContain('Dashboard content');
+    rendered.unmount();
+  });
+
+  it('ignores a stale client-mounted completion after a newer instant route starts', () => {
+    const rendered = renderIntoDocument(
+      <PortalRouteTransitionProvider>
+        <CompetingInstantRouteTrigger />
+        <PortalInstantRouteContent><div>Current content</div></PortalInstantRouteContent>
+      </PortalRouteTransitionProvider>,
+    );
+    const buttons = rendered.container.querySelectorAll('button');
+
+    act(() => buttons[0]?.click());
+    act(() => buttons[1]?.click());
+    act(() => buttons[2]?.click());
+
+    expect(rendered.container.querySelector('[data-contacts-index-state="pending"]')).not.toBeNull();
+
+    act(() => buttons[3]?.click());
+    expect(rendered.container.querySelector('[data-contacts-index-state="pending"]')).toBeNull();
     rendered.unmount();
   });
 

@@ -3,12 +3,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../test/reactHarness";
 import ProjectPageFrame from "./ProjectPageFrame";
 
+let mockSearchParams = "tab=activity";
+
 vi.mock("@/components/navigation/ProjectsIndexLink", () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(mockSearchParams),
 }));
 
 vi.mock("@/components/auth/PortalAuthProvider", () => ({
@@ -73,6 +76,7 @@ const snapshot = {
 
 describe("ProjectPageFrame", () => {
   afterEach(() => {
+    mockSearchParams = "tab=activity";
     document.body.innerHTML = "";
   });
 
@@ -171,6 +175,33 @@ describe("ProjectPageFrame", () => {
         .querySelector('[data-testid="mock-project-shell"]')
         ?.getAttribute("data-optimistic-tab"),
     ).toBe("job-packs");
+    rendered.unmount();
+  });
+
+  it("clears optimistic tab intent when Back or Forward selects a different URL tab", () => {
+    const rendered = renderIntoDocument(
+      <ProjectPageFrame snapshot={snapshot} host="host" tab="activity" />,
+    );
+    const jobPacks = Array.from(
+      rendered.container.querySelectorAll<HTMLButtonElement>("button"),
+    ).find((button) => button.textContent === "Job Packs");
+
+    act(() => jobPacks?.click());
+    expect(
+      rendered.container
+        .querySelector('[data-testid="mock-project-shell"]')
+        ?.getAttribute("data-optimistic-tab"),
+    ).toBe("job-packs");
+
+    mockSearchParams = "tab=estimates";
+    rendered.rerender(
+      <ProjectPageFrame snapshot={snapshot} host="host" tab="activity" />,
+    );
+    expect(
+      rendered.container
+        .querySelector('[data-testid="mock-project-shell"]')
+        ?.getAttribute("data-optimistic-tab"),
+    ).toBe("");
     rendered.unmount();
   });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import styles from './access.module.css';
@@ -110,10 +110,12 @@ export default function AccessClient() {
   const [addingCrew, setAddingCrew] = useState(false);
   const [savingCrewId, setSavingCrewId] = useState<string | null>(null);
   const [reorderBusy, setReorderBusy] = useState(false);
+  const crewLoadSequenceRef = useRef(0);
 
   const trimmedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
 
-  const loadCrews = async () => {
+  const loadCrews = useCallback(async () => {
+    const sequence = ++crewLoadSequenceRef.current;
     setLoadingCrews(true);
     try {
       const res = await fetch('/api/admin/crews', {
@@ -126,20 +128,27 @@ export default function AccessClient() {
       }
 
       const rows = Array.isArray(json?.crews) ? json.crews.map(mapCrewRow) : [];
-      setCrews(sortCrews(rows));
-      setCrewsError(null);
+      if (sequence === crewLoadSequenceRef.current) {
+        setCrews(sortCrews(rows));
+        setCrewsError(null);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load crews.';
-      setCrewsError(message);
-      toast.error(message);
+      if (sequence === crewLoadSequenceRef.current) {
+        setCrewsError(message);
+        toast.error(message);
+      }
     } finally {
-      setLoadingCrews(false);
+      if (sequence === crewLoadSequenceRef.current) setLoadingCrews(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     void loadCrews();
-  }, []);
+    return () => {
+      crewLoadSequenceRef.current += 1;
+    };
+  }, [loadCrews]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -292,7 +301,7 @@ export default function AccessClient() {
     if (crew.is_active && crew.scheduled_item_count > 0) return;
 
     const nextActive = !crew.is_active;
-    const previous = crews;
+    const previousActive = crew.is_active;
     setCrews((prev) => prev.map((row) => (row.id === crew.id ? { ...row, is_active: nextActive } : row)));
     setSavingCrewId(crew.id);
 
@@ -311,7 +320,9 @@ export default function AccessClient() {
       setCrews((prev) => sortCrews(prev.map((row) => (row.id === crew.id ? updated : row))));
       setCrewsError(null);
     } catch (err) {
-      setCrews(previous);
+      setCrews((current) => current.map((row) => (
+        row.id === crew.id ? { ...row, is_active: previousActive } : row
+      )));
       const message = err instanceof Error ? err.message : 'Failed to update crew status.';
       toast.error(message);
     } finally {
@@ -325,7 +336,7 @@ export default function AccessClient() {
     const nextIndex = index + direction;
     if (nextIndex < 0 || nextIndex >= crews.length) return;
 
-    const previous = crews;
+    const previousOrderIds = crews.map((crew) => crew.id);
     const reordered = crews.slice();
     const current = reordered[index];
     reordered[index] = reordered[nextIndex];
@@ -346,7 +357,16 @@ export default function AccessClient() {
         throw new Error(String(json?.error ?? 'Failed to reorder crews.'));
       }
     } catch (err) {
-      setCrews(previous);
+      setCrews((current) => {
+        const rowById = new Map(current.map((crew) => [crew.id, crew]));
+        const restored = previousOrderIds.flatMap((id) => {
+          const row = rowById.get(id);
+          return row ? [row] : [];
+        });
+        const knownIds = new Set(previousOrderIds);
+        return [...restored, ...current.filter((row) => !knownIds.has(row.id))]
+          .map((row, orderIndex) => ({ ...row, sort_order: orderIndex + 1 }));
+      });
       const message = err instanceof Error ? err.message : 'Failed to reorder crews.';
       toast.error(message);
     } finally {
@@ -542,6 +562,7 @@ export default function AccessClient() {
                             className={styles.colorPicker}
                             type="color"
                             value={colorForInput(crew.color)}
+                            disabled={rowBusy}
                             onChange={(e) => updateCrewDraft(crew.id, { color: e.target.value })}
                             aria-label={`Pick color for ${crew.name}`}
                           />
@@ -549,6 +570,7 @@ export default function AccessClient() {
                             className={styles.colorHexInput}
                             type="text"
                             value={crew.color}
+                            disabled={rowBusy}
                             onChange={(e) => updateCrewDraft(crew.id, { color: e.target.value })}
                             onBlur={(e) => {
                               const normalized = normalizeHexColor(e.target.value);
@@ -563,6 +585,7 @@ export default function AccessClient() {
                           className={styles.input}
                           type="text"
                           value={crew.name}
+                          disabled={rowBusy}
                           onChange={(e) => updateCrewDraft(crew.id, { name: e.target.value })}
                         />
                       </td>
@@ -571,6 +594,7 @@ export default function AccessClient() {
                           className={styles.input}
                           type="text"
                           value={crew.calendar_region}
+                          disabled={rowBusy}
                           onChange={(e) => updateCrewDraft(crew.id, { calendar_region: e.target.value })}
                           placeholder="Auckland"
                         />
@@ -580,6 +604,7 @@ export default function AccessClient() {
                           className={styles.input}
                           type="date"
                           value={crew.base_available_date ?? ''}
+                          disabled={rowBusy}
                           onChange={(e) => updateCrewDraft(crew.id, { base_available_date: e.target.value || null })}
                         />
                       </td>

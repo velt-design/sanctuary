@@ -11,7 +11,13 @@ let search = 'tab=quotes';
 vi.mock('next/dynamic', () => ({
   default: () => {
     const kind = ['estimates', 'quotes', 'invoices'][dynamicState.callCount++] ?? 'unknown';
-    return (props: any) => <div data-testid={`${kind}-subview`} data-project-id={props.projectId} />;
+    return (props: any) => (
+      <div
+        data-testid={`${kind}-subview`}
+        data-project-id={props.projectId}
+        data-selected-quote-id={props.selectedQuoteId ?? ''}
+      />
+    );
   },
 }));
 
@@ -109,6 +115,36 @@ describe('CommercialTab', () => {
     expect(replace).toHaveBeenCalledWith(
       '/staff/projects/proj_1?tab=quotes&quoteId=q_1&campaign=winter&quotePreview=1',
     );
+    rendered.unmount();
+  });
+
+  it('clears the controlled quote selection when the canonical URL returns to the list', () => {
+    search = 'tab=quotes&quoteId=q_1';
+    const rendered = renderIntoDocument(<CommercialTab host="host" projectId="proj_1" view="quotes" />);
+    expect(rendered.container.querySelector('[data-testid="quotes-subview"]')?.getAttribute('data-selected-quote-id')).toBe('q_1');
+
+    search = 'tab=quotes';
+    rendered.rerender(<CommercialTab host="host" projectId="proj_1" view="quotes" />);
+
+    const quotesSubview = rendered.container.querySelector('[data-testid="quotes-subview"]');
+    expect(quotesSubview?.getAttribute('data-selected-quote-id')).toBe('');
+    rendered.unmount();
+  });
+
+  it('lets Back or Forward override a pending commercial subtab intent', () => {
+    search = 'tab=estimates';
+    const rendered = renderIntoDocument(
+      <CommercialTab host="host" projectId="proj_1" view="estimates" />,
+    );
+    const quotes = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
+      .find((tab) => tab.textContent === 'Quotes');
+
+    act(() => quotes?.click());
+    expect(rendered.container.querySelector('[data-project-commercial-view]')?.getAttribute('data-project-commercial-view')).toBe('quotes');
+
+    search = 'tab=invoices';
+    rendered.rerender(<CommercialTab host="host" projectId="proj_1" view="estimates" />);
+    expect(rendered.container.querySelector('[data-project-commercial-view]')?.getAttribute('data-project-commercial-view')).toBe('invoices');
     rendered.unmount();
   });
 });

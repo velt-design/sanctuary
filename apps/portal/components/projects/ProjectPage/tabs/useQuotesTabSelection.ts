@@ -43,6 +43,10 @@ export function useQuotesTabSelection({
   );
   const prefetchedQuoteDetailsRef = useRef(new Set<string>());
   const detailErrorNotifiedRef = useRef<string | null>(null);
+  const pendingUrlSelectionRef = useRef<{
+    from: string | null;
+    target: string | null;
+  } | null>(null);
 
   const selectedFromUrl = useMemo(() => {
     const raw = searchParams.get("quoteId") ?? "";
@@ -150,6 +154,10 @@ export function useQuotesTabSelection({
       quoteId: string | null,
       options?: { createFromEstimateId?: string | null },
     ) => {
+      pendingUrlSelectionRef.current = {
+        from: selectedFromUrl,
+        target: quoteId && !isLocalQuoteId(quoteId) ? quoteId : null,
+      };
       setSelectedId(quoteId);
       onSelectedQuoteChange?.(quoteId);
       updateParams({
@@ -157,7 +165,7 @@ export function useQuotesTabSelection({
         createFromEstimateId: options?.createFromEstimateId,
       });
     },
-    [onSelectedQuoteChange, updateParams],
+    [onSelectedQuoteChange, selectedFromUrl, updateParams],
   );
 
   useEffect(() => {
@@ -179,12 +187,21 @@ export function useQuotesTabSelection({
   }, [quoteDetailQuery.error, selectedId, toast]);
 
   useEffect(() => {
+    const pendingUrlSelection = pendingUrlSelectionRef.current;
+    if (pendingUrlSelection) {
+      if (selectedFromUrl === pendingUrlSelection.target) {
+        pendingUrlSelectionRef.current = null;
+      } else if (selectedFromUrl === pendingUrlSelection.from) {
+        return;
+      } else {
+        pendingUrlSelectionRef.current = null;
+      }
+    }
+
     let nextSelectedId: string | null | undefined;
     if (selectedFromUrl) {
       nextSelectedId = selectedFromUrl;
-    } else if (!quotes.length) {
-      nextSelectedId = quotesLoading ? undefined : null;
-    } else if (selectedId && quotes.some((quote) => quote.id === selectedId)) {
+    } else if (selectedId && isLocalQuoteId(selectedId)) {
       nextSelectedId = undefined;
     } else {
       nextSelectedId = null;
@@ -194,8 +211,6 @@ export function useQuotesTabSelection({
     onSelectedQuoteChange?.(nextSelectedId);
   }, [
     onSelectedQuoteChange,
-    quotes,
-    quotesLoading,
     selectedFromUrl,
     selectedId,
   ]);

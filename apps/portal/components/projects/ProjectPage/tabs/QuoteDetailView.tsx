@@ -212,7 +212,7 @@ export default function QuoteDetailView({
           className={styles.backButton}
           onClick={() => guardUnsavedDraft(() => selectQuote(null))}
         >
-          &lt; Back
+          &larr; Back to quotes
         </button>
       </div>
       <StickyActionBar

@@ -23,7 +23,7 @@ const toastSuccess = vi.fn();
 const toastInfo = vi.fn();
 const useQueryMock = vi.fn();
 const apiJsonMock = vi.fn();
-const mockSearchParams = new URLSearchParams(
+let mockSearchParams = new URLSearchParams(
   'q=deck&journey=proposal&stage=sent&state=waiting',
 );
 
@@ -165,6 +165,7 @@ const ALL_FILTERS = {
 
 describe('ProjectsIndexClient', () => {
   beforeEach(() => {
+    mockSearchParams = new URLSearchParams('q=deck&journey=proposal&stage=sent&state=waiting');
     replace.mockReset();
     prefetch.mockReset();
     openProject.mockReset();
@@ -245,6 +246,25 @@ describe('ProjectsIndexClient', () => {
     ]);
     expect(prefetchQuery).not.toHaveBeenCalled();
 
+    rendered.unmount();
+  });
+
+  it('does not overwrite live typing when unrelated URL state changes', () => {
+    const rendered = renderIntoDocument(<ProjectsIndexClient />);
+    const input = rendered.container.querySelector('#projectSearch') as HTMLInputElement;
+
+    act(() => changeInputValue(input, 'deck extension'));
+    mockSearchParams = new URLSearchParams(
+      'q=deck&journey=proposal&stage=sent&state=waiting&toast=saved',
+    );
+    rendered.rerender(<ProjectsIndexClient />);
+    expect(input.value).toBe('deck extension');
+
+    mockSearchParams = new URLSearchParams(
+      'q=roof&journey=proposal&stage=sent&state=waiting',
+    );
+    rendered.rerender(<ProjectsIndexClient />);
+    expect(input.value).toBe('roof');
     rendered.unmount();
   });
 
