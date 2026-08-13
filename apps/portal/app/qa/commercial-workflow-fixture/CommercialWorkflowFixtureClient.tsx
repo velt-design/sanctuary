@@ -211,6 +211,7 @@ export default function CommercialWorkflowFixtureClient({
       retryPreparedDelivery={() => setPreparedRetryOpen(true)}
       resend={() => undefined}
       revise={() => undefined}
+      reviseBusy={false}
       moreActionsOpen={moreActionsOpen}
       setMoreActionsOpen={setMoreActionsOpen}
       refreshEstimateTarget={null}
@@ -265,6 +266,7 @@ export default function CommercialWorkflowFixtureClient({
       accept={() => undefined}
       acceptBusy={false}
       decline={() => undefined}
+      declineBusy={false}
       dialogs={dialogs}
     />
   );

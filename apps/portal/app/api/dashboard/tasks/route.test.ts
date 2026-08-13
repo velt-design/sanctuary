@@ -62,10 +62,22 @@ describe('POST /api/dashboard/tasks', () => {
       }),
     );
 
-    expect(createDashboardTask).toHaveBeenCalledWith(expect.anything(), 'user_1', 'Call client');
+    expect(createDashboardTask).toHaveBeenCalledWith(expect.anything(), 'user_1', 'Call client', undefined);
     expect(res.status).toBe(201);
     await expect(res.json()).resolves.toEqual(
       expect.objectContaining({ task: expect.objectContaining({ title: 'Call client' }) }),
     );
+  });
+
+  it('passes a stable task id through for replay-safe creation', async () => {
+    const taskId = '11111111-1111-4111-8111-111111111111';
+    const mod = await import('./route');
+    const res = await mod.POST(new Request('http://localhost/api/dashboard/tasks', {
+      method: 'POST',
+      body: JSON.stringify({ title: 'Call client', taskId }),
+    }));
+
+    expect(createDashboardTask).toHaveBeenCalledWith(expect.anything(), 'user_1', 'Call client', taskId);
+    expect(res.status).toBe(201);
   });
 });

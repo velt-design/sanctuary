@@ -619,7 +619,11 @@ export default function ProjectsIndexClient({
               setDeleteConfirmText('');
               setDeleteReason('');
               removeProjectListItem(queryClient, host, target.id);
-              await invalidateProjectsIndexCaches(queryClient, host);
+              try {
+                await invalidateProjectsIndexCaches(queryClient, host);
+              } catch {
+                toast.error('The project was deleted, but the project list could not refresh. Refresh the page; do not repeat the deletion.');
+              }
             } catch (err) {
               toast.error(err instanceof Error ? err.message : 'Failed to delete project');
             } finally {

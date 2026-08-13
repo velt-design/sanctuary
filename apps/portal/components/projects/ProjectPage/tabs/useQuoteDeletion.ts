@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { isLocalQuoteId } from '@/lib/localFirst/portalEntities';
@@ -28,6 +28,7 @@ export function useQuoteDeletion({
   const queryClient = useQueryClient();
   const [target, setTarget] = useState<QuoteDeleteTarget | null>(null);
   const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
 
   const requestDelete = useCallback((quote: QuoteDeleteTarget) => {
     if (isLocalQuoteId(quote.id)) {
@@ -42,18 +43,24 @@ export function useQuoteDeletion({
   }, [pending]);
 
   const confirmDelete = useCallback(async () => {
-    if (!target || pending) return;
+    if (!target || pending || pendingRef.current) return;
+    pendingRef.current = true;
     setPending(true);
     try {
       await deleteDraftQuoteVersion(target.id);
       queryClient.removeQueries({ queryKey: qk.quotes.detail(hostKey, target.id) });
       if (selectedQuoteId === target.id) selectQuote(null);
-      await refreshQuotes();
       setTarget(null);
       toast.success(`${target.quoteRef} v${target.versionNumber} deleted.`);
+      try {
+        await refreshQuotes();
+      } catch {
+        toast.error('The draft quote was deleted, but the quote list could not refresh. Refresh before taking another action; do not repeat the deletion.');
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete draft quote');
     } finally {
+      pendingRef.current = false;
       setPending(false);
     }
   }, [hostKey, pending, queryClient, refreshQuotes, selectQuote, selectedQuoteId, target, toast]);

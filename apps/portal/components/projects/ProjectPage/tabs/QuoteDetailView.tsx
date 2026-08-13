@@ -43,6 +43,7 @@ type QuoteDetailViewProps = {
   retryPreparedDelivery: () => void;
   resend: () => void;
   revise: () => void;
+  reviseBusy: boolean;
   moreActionsOpen: boolean;
   setMoreActionsOpen: Setter<boolean>;
   refreshEstimateTarget: EstimateMeta | null;
@@ -112,6 +113,7 @@ type QuoteDetailViewProps = {
   accept: () => void;
   acceptBusy: boolean;
   decline: () => void;
+  declineBusy: boolean;
   dialogs: ReactNode;
 };
 
@@ -127,6 +129,7 @@ export default function QuoteDetailView({
   retryPreparedDelivery: handlePreparedDeliveryRetry,
   resend: handleResendClick,
   revise: handleRevise,
+  reviseBusy,
   moreActionsOpen,
   setMoreActionsOpen,
   refreshEstimateTarget,
@@ -181,6 +184,7 @@ export default function QuoteDetailView({
   accept: handleAccept,
   acceptBusy,
   decline: handleDecline,
+  declineBusy,
   dialogs,
 }: QuoteDetailViewProps) {
   const expired = isExpired(detail.expiresAt);
@@ -296,8 +300,9 @@ export default function QuoteDetailView({
               type="button"
               className={styles.primaryButton}
               onClick={handleRevise}
+              disabled={reviseBusy}
             >
-              Create revision
+              {reviseBusy ? "Creating revision..." : "Create revision"}
             </button>
           )}
 
@@ -389,8 +394,9 @@ export default function QuoteDetailView({
                         type="button"
                         className={styles.moreActionsItem}
                         onClick={handleRevise}
+                        disabled={reviseBusy}
                       >
-                        Create revision
+                        {reviseBusy ? "Creating revision..." : "Create revision"}
                       </button>
                     ) : null}
                     {detail.status === "ACCEPTED" ? (
@@ -745,9 +751,9 @@ export default function QuoteDetailView({
                     type="button"
                     className={styles.secondaryButton}
                     onClick={handleDecline}
-                    disabled={!commercialWorkflowReady}
+                    disabled={!commercialWorkflowReady || declineBusy || acceptBusy}
                   >
-                    Mark declined
+                    {declineBusy ? "Marking declined..." : "Mark declined"}
                   </button>
                 </div>
               </div>

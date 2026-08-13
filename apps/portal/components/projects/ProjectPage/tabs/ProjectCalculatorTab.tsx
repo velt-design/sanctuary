@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import CalculatorGridClient from '@/app/staff/calculator/CalculatorGridClient';
@@ -65,6 +65,8 @@ export default function ProjectCalculatorTab({
   const [createKind, setCreateKind] = useState<'base' | 'add_on'>('base');
   const [renameTarget, setRenameTarget] = useState<EstimateMeta | null>(null);
   const [renamePending, setRenamePending] = useState(false);
+  const renamePendingRef = useRef(false);
+  const [calculatorSaving, setCalculatorSaving] = useState(false);
   const estimatesQuery = useQuery(estimateMetasByProjectQueryOptions(host, projectId));
   const estimates = useMemo(
     () => [...(estimatesQuery.data ?? [])].sort((a, b) => versionNumber(b.versionLabel) - versionNumber(a.versionLabel)),
@@ -266,7 +268,8 @@ export default function ProjectCalculatorTab({
       }] : []),
     ],
     onChange: handleSelection,
-  }), [activeDrafts, estimates, handleSelection, newDesign, newEstimateInternalName, revisionSource, selectedEstimate, selectionValue]);
+    disabled: calculatorSaving,
+  }), [activeDrafts, calculatorSaving, estimates, handleSelection, newDesign, newEstimateInternalName, revisionSource, selectedEstimate, selectionValue]);
 
   const onEstimateSaved = useCallback((estimateId: string) => openDraft(estimateId), [openDraft]);
   const onOpenProject = useCallback(() => {
@@ -291,10 +294,12 @@ export default function ProjectCalculatorTab({
     designNavigation,
     onEstimateSaved,
     onOpenProject,
+    onSaveStateChange: setCalculatorSaving,
   }), [designNavigation, host, newDesign, newEstimateInternalName, onEstimateSaved, onOpenProject, projectId, requestedCommercialScopeId, requestedEstimateKind, revisionSource, selectedEstimate]);
 
   const renameEstimate = useCallback(async (internalName: string | null) => {
-    if (!renameTarget || renamePending) return;
+    if (!renameTarget || renamePending || renamePendingRef.current) return;
+    renamePendingRef.current = true;
     setRenamePending(true);
     try {
       const response = await apiJson<{ estimate: EstimateDetail }>(
@@ -312,6 +317,7 @@ export default function ProjectCalculatorTab({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to update estimate name');
     } finally {
+      renamePendingRef.current = false;
       setRenamePending(false);
     }
   }, [host, projectId, queryClient, renamePending, renameTarget, toast]);
@@ -366,7 +372,9 @@ export default function ProjectCalculatorTab({
       : selectedEstimate?.internalName || selectedEstimate?.versionLabel || 'Estimate workspace';
   const listReturn = (
     <div className={styles.workspaceBar} data-calculator-workspace-bar="true">
-      <Button type="button" variant="quiet" size="small" onClick={backToEstimates}>Back to estimates</Button>
+      <Button type="button" variant="quiet" size="small" disabled={calculatorSaving} onClick={backToEstimates}>
+        {calculatorSaving ? 'Saving estimate...' : 'Back to estimates'}
+      </Button>
       <div className={styles.workspaceContext}>
         <strong>{projectName}</strong>
         <span>{workspaceLabel}</span>

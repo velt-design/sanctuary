@@ -7,6 +7,13 @@ import type {
   QuoteInvoiceCreateResult,
 } from '@/lib/invoices/types';
 
+export function createInvoiceActionIntentId(prefix: string): string {
+  const token = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}:${token}`;
+}
+
 export async function listProjectDepositInvoices(projectId: string): Promise<DepositInvoiceSummary[]> {
   const res = await apiJson<{ invoices: DepositInvoiceSummary[] }>(`/api/staff/v1/projects/${encodeURIComponent(projectId)}/invoices`, {
     method: 'GET',
@@ -59,10 +66,13 @@ export async function recordProjectPayment(input: {
   reference?: string | null;
   note?: string | null;
   reason?: string | null;
-}): Promise<void> {
-  await apiJson(`/api/admin/projects/${encodeURIComponent(input.projectId)}/payments`, {
+  clientIntentId: string;
+}): Promise<string> {
+  const result = await apiJson<{ paymentEntryId: string }>(`/api/admin/projects/${encodeURIComponent(input.projectId)}/payments`, {
     method: 'POST', body: JSON.stringify(input),
   });
+  if (!result.paymentEntryId) throw new Error('Payment was recorded but no identifier was returned');
+  return result.paymentEntryId;
 }
 
 export async function updatePaymentAllocations(input: {

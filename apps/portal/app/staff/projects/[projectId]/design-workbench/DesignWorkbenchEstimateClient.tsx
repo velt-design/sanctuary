@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { buildDeckTransformPatch } from '@/lib/drawings/commits/commitDeckTransform';
 import { buildPergolaTransformPosition } from '@/lib/drawings/commits/commitPergolaTransform';
@@ -148,6 +148,7 @@ export default function DesignWorkbenchEstimateClient({
     status: 'idle',
     message: null,
   });
+  const draftSaveLockedRef = useRef(false);
   const [lastSavedDraftSignature, setLastSavedDraftSignature] = useState<string | null>(null);
   // Cross-viewport hover state (milestone 16). Driven by whichever viewport
   // currently has the user's pointer; consumed by the other(s) to render a
@@ -381,7 +382,7 @@ export default function DesignWorkbenchEstimateClient({
   });
 
   const handleSaveWorkbenchDraft = useCallback(async () => {
-    if (!effectiveDrawingDraft || isLocked || draftSaveState.status === 'saving') return;
+    if (!effectiveDrawingDraft || isLocked || draftSaveState.status === 'saving' || draftSaveLockedRef.current) return;
     const estimatePayload = buildWorkbenchDraftEstimateUpdatePayload({
       estimate,
       draft: effectiveDrawingDraft,
@@ -391,6 +392,7 @@ export default function DesignWorkbenchEstimateClient({
       return;
     }
 
+    draftSaveLockedRef.current = true;
     setDraftSaveState({ status: 'saving', message: 'Saving...' });
     try {
       await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(estimate.id)}`, {
@@ -403,6 +405,8 @@ export default function DesignWorkbenchEstimateClient({
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to save workbench draft.';
       setDraftSaveState({ status: 'error', message });
+    } finally {
+      draftSaveLockedRef.current = false;
     }
   }, [
     draftSaveState.status,

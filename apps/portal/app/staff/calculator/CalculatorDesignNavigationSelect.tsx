@@ -14,6 +14,7 @@ export default function CalculatorDesignNavigationSelect({
         className={className}
         aria-label="Design version"
         value={navigation.value}
+        disabled={navigation.disabled}
         onChange={(event) => navigation.onChange(event.target.value)}
       >
         {navigation.options.map((option) => (

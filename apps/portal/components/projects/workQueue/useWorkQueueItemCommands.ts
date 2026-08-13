@@ -11,7 +11,10 @@ import {
   projectCommandIntent,
   StableCommandAttempt,
 } from '@/lib/projects/workItems/stableCommandAttempt';
-import { invalidateProjectWorkReads } from '@/lib/queries/projectWorkCache';
+import {
+  invalidateProjectWorkReads,
+  patchProjectWorkProjectionCaches,
+} from '@/lib/queries/projectWorkCache';
 import type { WorkQueueEntryView } from './workQueuePresentation';
 
 type WorkItemCommand = 'COMPLETE' | 'RESCHEDULE' | 'REASSIGN' | 'BLOCK' | 'UNBLOCK';
@@ -27,6 +30,7 @@ export function useWorkQueueItemCommands({
 }) {
   const queryClient = useQueryClient();
   const attempts = useRef(new StableCommandAttempt()).current;
+  const inFlight = useRef(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,14 +45,26 @@ export function useWorkQueueItemCommands({
     payload: Record<string, unknown>,
     operation: (commandId: string) => Promise<ProjectWorkMutationResponse>,
   ) => {
-    if (pendingAction || !mutationsEnabled) return false;
+    if (inFlight.current || !mutationsEnabled) return false;
     const intent = projectCommandIntent(command, payload);
+    inFlight.current = true;
     setPendingAction(label);
     setMessage(null);
     setError(null);
     try {
       const result = await operation(attempts.commandIdFor(intent));
+      if (!result.command.committed) {
+        throw new Error('The server did not confirm this project-work command.');
+      }
       attempts.committed(intent);
+      if (result.projectWork) {
+        patchProjectWorkProjectionCaches(
+          queryClient,
+          host,
+          entry.projectId,
+          result.projectWork,
+        );
+      }
       await refreshReads();
       setMessage(result.command.replayed ? 'Already saved on the server.' : 'Saved on the server.');
       return true;
@@ -56,6 +72,7 @@ export function useWorkQueueItemCommands({
       setError(caught instanceof Error ? caught.message : 'The project work could not be saved.');
       return false;
     } finally {
+      inFlight.current = false;
       setPendingAction(null);
     }
   };

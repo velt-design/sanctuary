@@ -57,6 +57,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | `testing-and-qa.md` | Current | You need the canonical command catalog, Playwright auth, smoke checks, performance checks, or manual QA gates. |
 | `portal-route-catalog.md` | Current | You need portal route metadata, required roles, data requirements, owner docs, or browser-smoke status. |
 | `portal-state-synchronisation-audit.md` | Active evidence tracker | You are auditing portal loading, URL, cache, selection, optimistic-write, or browser-navigation state page by page. |
+| `portal-action-recovery-audit.md` | Current evidence tracker | You are auditing staff/admin commands, duplicate protection, truthful progress, ambiguous retries, reconciliation failure, or navigation during writes. |
 | `ui-foundation.md` | Current portal UI contract | You are changing current shared portal tokens, reusable UI primitives, page-header variants, status components, or `/staff/ui-foundation`. It is descriptive, not a migration mandate. |
 | `projects-contacts-estimates-calculator.md` | Current | You are touching contacts, projects, project snapshots/tasks, calculator estimates, estimate locks, or local-first estimate mutations. |
 | `calculator-trust-and-explainability-goal.md` | Active product goal | You are planning or implementing the Calculator Result Inspector, breakdowns, workings, trust cues, or explainability improvements. |

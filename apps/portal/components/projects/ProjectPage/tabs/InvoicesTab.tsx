@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
@@ -8,6 +8,7 @@ import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import styles from './InvoicesTab.module.css';
 import {
   Badge,
+  AlertBanner,
   Button,
   Card,
   DataStatePanel,
@@ -35,6 +36,7 @@ import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
 import { qk } from '@/lib/queries/keys';
 import {
   createProjectInvoice,
+  createInvoiceActionIntentId,
   loadProjectInvoiceSchedule,
   markProjectInvoicePaid,
   recordProjectPayment,
@@ -109,6 +111,12 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
   const [allocationTarget, setAllocationTarget] = useState<ProjectPaymentEntrySummary | null>(null);
   const [reversalTarget, setReversalTarget] = useState<ProjectPaymentEntrySummary | null>(null);
   const [paymentPending, setPaymentPending] = useState(false);
+  const actionPendingRef = useRef(false);
+  const invoiceCreateIntentRef = useRef<{ signature: string; intentId: string } | null>(null);
+  const paymentRecordIntentRef = useRef<{ signature: string; intentId: string } | null>(null);
+  const recoveryLockedRef = useRef(false);
+  const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null);
+  const [recoveryRefreshPending, setRecoveryRefreshPending] = useState(false);
 
   const invoicesQuery = useQuery(depositInvoicesByProjectQueryOptions(hostKey, projectId));
   const invoices = invoicesQuery.data ?? [];
@@ -123,40 +131,103 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
       ?? (schedule?.acceptedQuoteVersionId ? [schedule.acceptedQuoteVersionId] : []),
   ), [schedule]);
 
-  const refreshInvoiceData = async () => {
+  const refreshInvoiceData = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: qk.invoices.byProject(hostKey, projectId) }),
       queryClient.invalidateQueries({ queryKey: qk.invoices.scheduleByProject(hostKey, projectId) }),
     ]);
+  }, [hostKey, projectId, queryClient]);
+
+  const updateInvoiceCache = useCallback((updated: DepositInvoiceSummary) => {
+    queryClient.setQueryData<DepositInvoiceSummary[]>(
+      qk.invoices.byProject(hostKey, projectId),
+      (current) => {
+        const invoices = current ?? [];
+        const existingIndex = invoices.findIndex((invoice) => invoice.id === updated.id);
+        if (existingIndex < 0) return [updated, ...invoices];
+        return invoices.map((invoice) => invoice.id === updated.id ? updated : invoice);
+      },
+    );
+  }, [hostKey, projectId, queryClient]);
+
+  const reconcileConfirmedAction = useCallback(async (completedAction: string) => {
+    try {
+      await refreshInvoiceData();
+      recoveryLockedRef.current = false;
+      setRecoveryNotice(null);
+      return true;
+    } catch {
+      const message = `${completedAction} was completed, but the latest invoice data could not be loaded. Refresh the invoice data before another financial action; do not repeat the completed action.`;
+      recoveryLockedRef.current = true;
+      setRecoveryNotice(message);
+      toast.error(message);
+      return false;
+    }
+  }, [refreshInvoiceData, toast]);
+
+  const retryRecoveryRefresh = useCallback(async () => {
+    if (recoveryRefreshPending) return;
+    setRecoveryRefreshPending(true);
+    try {
+      await refreshInvoiceData();
+      recoveryLockedRef.current = false;
+      setRecoveryNotice(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Invoice data still could not be refreshed.');
+    } finally {
+      setRecoveryRefreshPending(false);
+    }
+  }, [recoveryRefreshPending, refreshInvoiceData, toast]);
+
+  const beginFinancialAction = () => {
+    if (actionPendingRef.current || recoveryLockedRef.current) return false;
+    actionPendingRef.current = true;
+    return true;
+  };
+
+  const finishFinancialAction = () => {
+    actionPendingRef.current = false;
   };
 
   const handleSendNow = async (invoiceId: string) => {
+    if (!beginFinancialAction()) return;
     setSendingInvoiceId(invoiceId);
     try {
       const invoice = await sendProjectDepositInvoice(invoiceId);
-      await queryClient.invalidateQueries({
-        queryKey: qk.invoices.byProject(hostKey, projectId),
-      });
+      updateInvoiceCache(invoice);
       toast.success(`Invoice ${invoice.invoiceRef} delivery confirmed by the email provider.`);
+      await reconcileConfirmedAction(`Invoice ${invoice.invoiceRef} delivery`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to send invoice';
       toast.error(message);
     } finally {
+      finishFinancialAction();
       setSendingInvoiceId(null);
     }
   };
 
   const handleCreateInvoice = async (input: AdminInvoiceCreateInput) => {
+    if (!beginFinancialAction()) return;
+    const signature = JSON.stringify({ ...input, projectId });
+    const clientIntentId = invoiceCreateIntentRef.current?.signature === signature
+      ? invoiceCreateIntentRef.current.intentId
+      : createInvoiceActionIntentId('admin-invoice');
+    invoiceCreateIntentRef.current = { signature, intentId: clientIntentId };
     setCreatingInvoice(true);
     try {
-      const result = await createProjectInvoice({ ...input, projectId });
-      await refreshInvoiceData();
+      const result = await createProjectInvoice({ ...input, projectId, clientIntentId });
+      invoiceCreateIntentRef.current = null;
+      updateInvoiceCache(result.invoice);
       setCreateResult(result);
-      toast.success(`Invoice ${result.invoice.invoiceRef} created${result.sent ? ' and sent' : ''}.`);
+      toast.success(result.created
+        ? `Invoice ${result.invoice.invoiceRef} created${result.sent ? ' and sent' : ''}.`
+        : `Invoice ${result.invoice.invoiceRef} was already created for this submission.`);
       if (result.sendError) toast.error(result.sendError);
+      await reconcileConfirmedAction(`Invoice ${result.invoice.invoiceRef} creation`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create invoice');
     } finally {
+      finishFinancialAction();
       setCreatingInvoice(false);
     }
   };
@@ -167,74 +238,90 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
     setReversalTarget(null);
   };
 
-  const handleRecordPayment = async (input: Omit<Parameters<typeof recordProjectPayment>[0], 'projectId'>) => {
+  const handleRecordPayment = async (input: Omit<Parameters<typeof recordProjectPayment>[0], 'projectId' | 'clientIntentId'>) => {
+    if (!beginFinancialAction()) return;
+    const signature = JSON.stringify({ ...input, projectId });
+    const clientIntentId = paymentRecordIntentRef.current?.signature === signature
+      ? paymentRecordIntentRef.current.intentId
+      : createInvoiceActionIntentId('project-payment');
+    paymentRecordIntentRef.current = { signature, intentId: clientIntentId };
     setPaymentPending(true);
     try {
-      await recordProjectPayment({ ...input, projectId });
-      await refreshInvoiceData();
+      await recordProjectPayment({ ...input, projectId, clientIntentId });
+      paymentRecordIntentRef.current = null;
       closePaymentDialogs();
       toast.success(input.entryType === 'PAYMENT' ? 'Payment recorded.' : 'Payment adjustment recorded.');
+      await reconcileConfirmedAction(input.entryType === 'PAYMENT' ? 'The payment record' : 'The payment adjustment');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to record payment');
     } finally {
+      finishFinancialAction();
       setPaymentPending(false);
     }
   };
 
   const handleAllocatePayment = async (input: { allocations: Array<{ quoteVersionId: string; paymentTermId: string; amountIncGstCents: number }>; reason: string }) => {
-    if (!allocationTarget) return;
+    if (!allocationTarget || !beginFinancialAction()) return;
     setPaymentPending(true);
     try {
       await updatePaymentAllocations({ paymentEntryId: allocationTarget.id, ...input });
-      await refreshInvoiceData();
       closePaymentDialogs();
       toast.success('Payment allocation updated.');
+      await reconcileConfirmedAction('The payment allocation update');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to update allocation');
     } finally {
+      finishFinancialAction();
       setPaymentPending(false);
     }
   };
 
   const handleReversePayment = async (reason: string) => {
-    if (!reversalTarget) return;
+    if (!reversalTarget || !beginFinancialAction()) return;
     setPaymentPending(true);
     try {
       await reverseProjectPayment(reversalTarget.id, reason);
-      await refreshInvoiceData();
       closePaymentDialogs();
       toast.success('Payment entry reversed.');
+      await reconcileConfirmedAction('The payment reversal');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to reverse payment');
     } finally {
+      finishFinancialAction();
       setPaymentPending(false);
     }
   };
 
   const handleMarkPaid = async (invoice: DepositInvoiceSummary, evidence: InvoicePaymentEvidence) => {
+    if (!beginFinancialAction()) return;
     setMarkingPaidId(invoice.id);
     try {
-      await markProjectInvoicePaid(invoice.id, evidence);
-      await refreshInvoiceData();
+      const updated = await markProjectInvoicePaid(invoice.id, evidence);
+      updateInvoiceCache(updated);
       setPaidTarget(null);
       toast.success(`Invoice ${invoice.invoiceRef} marked paid.`);
+      await reconcileConfirmedAction(`Invoice ${invoice.invoiceRef} payment status`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to mark invoice paid');
     } finally {
+      finishFinancialAction();
       setMarkingPaidId(null);
     }
   };
 
   const handleVoid = async (invoice: DepositInvoiceSummary, reason: string) => {
+    if (!beginFinancialAction()) return;
     setVoidingInvoiceId(invoice.id);
     try {
-      await voidProjectInvoice(invoice.id, reason);
-      await refreshInvoiceData();
+      const updated = await voidProjectInvoice(invoice.id, reason);
+      updateInvoiceCache(updated);
       setVoidTarget(null);
       toast.success(`Invoice ${invoice.invoiceRef} voided.`);
+      await reconcileConfirmedAction(`Invoice ${invoice.invoiceRef} voiding`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to void invoice');
     } finally {
+      finishFinancialAction();
       setVoidingInvoiceId(null);
     }
   };
@@ -242,6 +329,13 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
   if (invoicesQuery.isPending) {
     return <LoadingSkeleton rows={3} columns={6} label="Loading invoices" />;
   }
+
+  const financialActionPending = sendingInvoiceId !== null
+    || creatingInvoice
+    || markingPaidId !== null
+    || voidingInvoiceId !== null
+    || paymentPending;
+  const financialActionsLocked = financialActionPending || recoveryNotice !== null;
 
   if (invoicesQuery.isError) {
     return (
@@ -262,6 +356,20 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
           Invoices are created from the accepted quote payment schedule. Each invoice is either open, paid in full, or void.
         </p>
       </div>
+
+      {recoveryNotice ? (
+        <AlertBanner
+          tone="warning"
+          title="Action completed; refresh required"
+          action={(
+            <Button type="button" size="small" variant="secondary" loading={recoveryRefreshPending} onClick={() => void retryRecoveryRefresh()}>
+              Refresh invoice data
+            </Button>
+          )}
+        >
+          {recoveryNotice}
+        </AlertBanner>
+      ) : null}
 
       {scheduleQuery.isError ? (
         <DataStatePanel state="error" title="Could not load the job payment schedule" description={scheduleQuery.error instanceof Error ? scheduleQuery.error.message : 'Failed to load payment totals.'} onRetry={() => void scheduleQuery.refetch()} />
@@ -304,7 +412,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                   {term.invoice ? (
                     <Badge tone={invoiceStatusTone(term.invoice.status)}>{term.invoice.invoiceRef} - {term.invoice.status}</Badge>
                   ) : isAdmin && term.remainingAmountIncGstCents > 0 ? (
-                    <Button type="button" size="small" onClick={() => { setCreateResult(null); setCreateTarget(term); }}>
+                    <Button type="button" size="small" disabled={financialActionsLocked} onClick={() => { setCreateResult(null); setCreateTarget(term); }}>
                       Create invoice
                     </Button>
                   ) : <span className={styles.muted}>{term.remainingAmountIncGstCents === 0 ? 'Covered by payments' : 'Not invoiced'}</span>}
@@ -313,7 +421,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
             })}
             {isAdmin && schedule.remainingToInvoiceIncGstCents > 0 ? (
               <div className={styles.scheduleFooter}>
-                <Button type="button" variant="secondary" size="small" onClick={() => { setCreateResult(null); setCreateTarget(null); }}>Create invoice</Button>
+                <Button type="button" variant="secondary" size="small" disabled={financialActionsLocked} onClick={() => { setCreateResult(null); setCreateTarget(null); }}>Create invoice</Button>
               </div>
             ) : null}
           </div>
@@ -325,8 +433,8 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
           <div className={styles.paymentToolbar}>
             <p>Actual money received is recorded independently from whole invoices. Allocations apply credit to the current schedule.</p>
             <div className={styles.actions}>
-              <Button type="button" size="small" onClick={() => setPaymentEntryMode('PAYMENT')}>Record payment</Button>
-              <Button type="button" size="small" variant="secondary" onClick={() => setPaymentEntryMode('ADJUSTMENT')}>Add adjustment</Button>
+              <Button type="button" size="small" disabled={financialActionsLocked} onClick={() => setPaymentEntryMode('PAYMENT')}>Record payment</Button>
+              <Button type="button" size="small" variant="secondary" disabled={financialActionsLocked} onClick={() => setPaymentEntryMode('ADJUSTMENT')}>Add adjustment</Button>
             </div>
           </div>
           {schedule.paymentEntries.length ? (
@@ -349,8 +457,8 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                   </div>
                   {entry.entryType !== 'REVERSAL' && !entry.reversed ? (
                     <OverflowMenu label={`Manage payment from ${formatDate(entry.occurredAt)}`} menuLabel="Payment actions" items={[
-                      ...(entry.amountIncGstCents > 0 ? [{ label: 'Manage allocation', onSelect: () => setAllocationTarget(entry) }] : []),
-                      { label: 'Reverse entry', destructive: true, separatorBefore: true, onSelect: () => setReversalTarget(entry) },
+                      ...(entry.amountIncGstCents > 0 ? [{ label: 'Manage allocation', disabled: financialActionsLocked, onSelect: () => setAllocationTarget(entry) }] : []),
+                      { label: 'Reverse entry', disabled: financialActionsLocked, destructive: true, separatorBefore: true, onSelect: () => setReversalTarget(entry) },
                     ]} />
                   ) : null}
                 </div>
@@ -441,11 +549,11 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                 <TableCell>
                   <div className={styles.actions}>
                     {canSend ? (
-                      <Button type="button" size="small" onClick={() => handleSendNow(invoice.id)} loading={isSending}>
+                      <Button type="button" size="small" onClick={() => handleSendNow(invoice.id)} loading={isSending} disabled={financialActionsLocked && !isSending}>
                         {invoice.lastDeliveryStatus === 'FAILED' ? 'Retry delivery' : 'Send now'}
                       </Button>
                     ) : showMarkPaidPrimary ? (
-                      <Button type="button" size="small" onClick={() => setPaidTarget(invoice)} disabled={markingPaidId !== null || voidingInvoiceId !== null}>
+                      <Button type="button" size="small" onClick={() => setPaidTarget(invoice)} disabled={financialActionsLocked}>
                         Mark paid
                       </Button>
                     ) : null}
@@ -455,10 +563,10 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                       items={[
                         { label: 'Preview invoice', onSelect: () => setPreviewInvoice(invoice) },
                         ...((isAdmin && invoice.status === 'OPEN' && !showMarkPaidPrimary)
-                          ? [{ label: 'Mark paid', onSelect: () => setPaidTarget(invoice) }]
+                          ? [{ label: 'Mark paid', disabled: financialActionsLocked, onSelect: () => setPaidTarget(invoice) }]
                           : []),
                         ...((isAdmin && invoice.status === 'OPEN')
-                          ? [{ label: 'Void invoice', destructive: true, separatorBefore: true, onSelect: () => setVoidTarget(invoice) }]
+                          ? [{ label: 'Void invoice', disabled: financialActionsLocked, destructive: true, separatorBefore: true, onSelect: () => setVoidTarget(invoice) }]
                           : []),
                       ]}
                     />

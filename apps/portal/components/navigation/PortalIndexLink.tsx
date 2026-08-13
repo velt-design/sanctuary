@@ -13,6 +13,7 @@ type PortalIndexLinkProps = Omit<ComponentProps<typeof Link>, 'href'> & {
   href: string;
   variant?: ButtonVariant;
   size?: ControlSize;
+  disabled?: boolean;
 };
 
 export default function PortalIndexLink({
@@ -25,6 +26,7 @@ export default function PortalIndexLink({
   prefetch = false,
   variant,
   size,
+  disabled = false,
   ...props
 }: PortalIndexLinkProps) {
   const router = useRouter();
@@ -37,6 +39,10 @@ export default function PortalIndexLink({
     href,
     prefetch,
     onClick: (event: Parameters<NonNullable<ComponentProps<typeof Link>['onClick']>>[0]) => {
+        if (disabled) {
+          event.preventDefault();
+          return;
+        }
         onClick?.(event);
         if (event.defaultPrevented || !shouldHandleRouteTransitionClick(event)) return;
         const target = portalIndexTarget(href);
@@ -50,6 +56,6 @@ export default function PortalIndexLink({
     onTouchStart: (event: Parameters<NonNullable<ComponentProps<typeof Link>['onTouchStart']>>[0]) => { onTouchStart?.(event); if (!event.defaultPrevented) prepare(); },
   };
 
-  if (variant) return <ButtonLink {...linkProps} variant={variant} size={size} />;
-  return <Link {...linkProps} />;
+  if (variant) return <ButtonLink {...linkProps} variant={variant} size={size} disabled={disabled} />;
+  return <Link {...linkProps} aria-disabled={disabled || undefined} tabIndex={disabled ? -1 : props.tabIndex} />;
 }

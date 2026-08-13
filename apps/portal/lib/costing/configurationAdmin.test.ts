@@ -350,4 +350,33 @@ describe('costing configuration admin publication', () => {
     }));
     expect(eq).toHaveBeenCalledWith('updated_at', draft.updatedAt);
   });
+
+  it('treats an identical current draft as a replay after an uncertain save response', async () => {
+    const draft = draftVersion();
+    const saved = {
+      ...draft,
+      name: 'Clearer supplier update',
+      purpose: 'Clarify the intended August change.',
+      updatedAt: '2026-07-23T02:00:00.000Z',
+    };
+    const builder: Record<string, ReturnType<typeof vi.fn>> = {};
+    builder.update = vi.fn(() => builder);
+    builder.eq = vi.fn(() => builder);
+    builder.select = vi.fn(() => builder);
+    builder.maybeSingle = vi.fn(async () => ({ data: null, error: null }));
+    getCostingConfigurationVersionById.mockResolvedValue(saved);
+    const { saveCostingConfigurationDraft } = await import('./configurationAdmin');
+
+    const result = await saveCostingConfigurationDraft(
+      { from: vi.fn(() => builder) } as unknown as SupabaseClient,
+      { id: 'admin-1', email: 'admin@example.com' },
+      draft.id,
+      draft.contentHash,
+      draft.updatedAt,
+      draft.config,
+      { name: saved.name, purpose: saved.purpose },
+    );
+
+    expect(result).toEqual(saved);
+  });
 });

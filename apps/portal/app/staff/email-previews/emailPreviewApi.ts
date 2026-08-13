@@ -49,6 +49,7 @@ export async function loadEmailPreview(
 export async function sendEmailPreview(
   variant: PreviewVariant,
   layout: LayoutPreview | PreviewLayoutId,
+  clientIntentId: string,
   endpoint = STAFF_EMAIL_PREVIEW_ENDPOINT,
 ): Promise<PreviewSendResult> {
   const layoutId = typeof layout === 'string' ? layout : layout.id;
@@ -57,7 +58,7 @@ export async function sendEmailPreview(
     {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ variant, layout: layoutId }),
+      body: JSON.stringify({ variant, layout: layoutId, clientIntentId }),
     },
   );
   const body = await response.json().catch(() => null);

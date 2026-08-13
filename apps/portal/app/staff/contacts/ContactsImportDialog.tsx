@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { Button, IconButton, Switch } from '@/components/ui/foundation/FoundationControls';
@@ -21,6 +21,7 @@ import { upsertContactCaches } from '@/lib/localFirst/portalEntities';
 import { invalidateContactsIndexCaches } from '@/lib/queries/contactsIndex';
 import { apiJson } from '@/lib/repo/apiClient';
 import type { Contact } from '@/lib/types/contact';
+import { newId } from '@/lib/utils/id';
 import styles from './contacts.module.css';
 
 function upsertContact(list: Contact[], contact: Contact): Contact[] {
@@ -67,6 +68,11 @@ export default function ContactsImportDialog({
   const [error, setError] = useState<string | null>(null);
   const [mergeBlanks, setMergeBlanks] = useState(false);
   const [payload, setPayload] = useState<ReturnType<typeof parseContactsCsv> | null>(null);
+  const [completedCount, setCompletedCount] = useState(0);
+  const importLockedRef = useRef(false);
+  const completedRowsRef = useRef(new Set<string>());
+  const createIdsRef = useRef(new Map<string, string>());
+  const workingContactsRef = useRef(contacts.slice());
 
   useEffect(() => {
     let active = true;
@@ -135,7 +141,7 @@ export default function ContactsImportDialog({
               label="Merge blanks"
               description="Fill missing email, phone, or name without overwriting existing values."
               checked={mergeBlanks}
-              disabled={busy}
+              disabled={busy || completedCount > 0}
               onChange={(event) => setMergeBlanks(event.target.checked)}
             />
 
@@ -172,17 +178,25 @@ export default function ContactsImportDialog({
                 loading={busy}
                 disabled={busy || plan.stats.create + plan.stats.merge === 0}
                 onClick={async () => {
+                  if (importLockedRef.current) return;
+                  importLockedRef.current = true;
                   setBusy(true);
                   setError(null);
+                  const actionableCount = plan.stats.create + plan.stats.merge;
                   try {
                     let created = 0;
                     let merged = 0;
-                    let workingContacts = contacts.slice();
-                    for (const decision of plan.decisions) {
+                    let workingContacts = workingContactsRef.current;
+                    for (const [decisionIndex, decision] of plan.decisions.entries()) {
+                      const decisionKey = importDecisionKey(decision, decisionIndex);
+                      if (completedRowsRef.current.has(decisionKey)) continue;
                       if (decision.action === 'create') {
+                        const contactId = createIdsRef.current.get(decisionKey) ?? newId('ct');
+                        createIdsRef.current.set(decisionKey, contactId);
                         const response = await apiJson<{ contact: Contact }>('/api/contacts', {
                           method: 'POST',
                           body: JSON.stringify({
+                            contactId,
                             displayName: decision.row.displayName,
                             email: decision.row.email ?? '',
                             phone: decision.row.phone ?? '',
@@ -191,6 +205,8 @@ export default function ContactsImportDialog({
                         workingContacts = upsertContact(workingContacts, response.contact);
                         upsertContactCaches(queryClient, host, response.contact);
                         created += 1;
+                        completedRowsRef.current.add(decisionKey);
+                        setCompletedCount(completedRowsRef.current.size);
                       } else if (decision.action === 'merge' && decision.match) {
                         const existing = workingContacts.find((contact) => contact.id === decision.match!.existingId);
                         if (!existing) continue;
@@ -207,21 +223,34 @@ export default function ContactsImportDialog({
                           upsertContactCaches(queryClient, host, response.contact);
                           merged += 1;
                         }
+                        completedRowsRef.current.add(decisionKey);
+                        setCompletedCount(completedRowsRef.current.size);
                       }
+                      workingContactsRef.current = workingContacts;
                     }
-                    await invalidateContactsIndexCaches(queryClient, host);
-                    toast.success(`Imported contacts: ${created} created, ${merged} merged.`);
+                    let refreshFailed = false;
+                    try {
+                      await invalidateContactsIndexCaches(queryClient, host);
+                    } catch {
+                      refreshFailed = true;
+                      toast.error('Import completed, but the contacts list could not refresh. Reload the list to see the latest contacts; do not repeat the import.');
+                    }
+                    if (!refreshFailed) {
+                      toast.success(`Import complete: ${completedRowsRef.current.size} changes processed (${created} created, ${merged} merged in this run).`);
+                    }
                     onClose();
                   } catch (reason) {
-                    const message = reason instanceof Error ? reason.message : 'Import failed';
+                    const detail = reason instanceof Error ? reason.message : 'Import failed';
+                    const message = `Import paused after ${completedRowsRef.current.size} of ${actionableCount} changes. Completed rows are saved; retry resumes safely. ${detail}`;
                     setError(message);
                     toast.error(message);
                   } finally {
+                    importLockedRef.current = false;
                     setBusy(false);
                   }
                 }}
               >
-                {busy ? 'Importing...' : 'Confirm import'}
+                {busy ? `Importing ${completedCount} of ${plan.stats.create + plan.stats.merge}...` : completedCount > 0 ? 'Retry remaining' : 'Confirm import'}
               </Button>
             </div>
           </>

@@ -173,4 +173,54 @@ describe("InactiveEnquiryReview", () => {
       }),
     );
   });
+
+  it("suppresses a same-tick duplicate close command", async () => {
+    let resolveClose: ((value: unknown) => void) | undefined;
+    mocks.closeEnquiries.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveClose = resolve;
+        }),
+    );
+    const rendered = await renderReview();
+    act(() => button("Review exact list")?.click());
+    act(() =>
+      rendered.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click(),
+    );
+    act(() => button("Review selected (1)")?.click());
+
+    await act(async () => {
+      const submit = button("Close 1 as Lost - No response");
+      submit?.click();
+      submit?.click();
+      await Promise.resolve();
+    });
+
+    expect(mocks.closeEnquiries).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveClose?.({
+        command: {
+          id: "33333333-3333-4333-8333-333333333333",
+          committed: true,
+          replayed: false,
+        },
+        result: {
+          reportAsOf: report.reportAsOf,
+          revalidatedAt: "2026-08-01T00:01:00.000Z",
+          inactiveDays: 30,
+          closedCount: 1,
+          projects: [
+            {
+              projectId: candidate.projectId,
+              commandId: "44444444-4444-4444-8444-444444444444",
+              rowVersion: 2,
+              cancelledCount: 1,
+            },
+          ],
+        },
+      });
+      await Promise.resolve();
+    });
+  });
 });

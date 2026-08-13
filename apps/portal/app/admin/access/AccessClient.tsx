@@ -5,6 +5,7 @@ import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import styles from './access.module.css';
 import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
+import { newId } from '@/lib/utils/id';
 
 type Role = 'admin' | 'staff';
 
@@ -111,6 +112,11 @@ export default function AccessClient() {
   const [savingCrewId, setSavingCrewId] = useState<string | null>(null);
   const [reorderBusy, setReorderBusy] = useState(false);
   const crewLoadSequenceRef = useRef(0);
+  const submitLockedRef = useRef(false);
+  const addCrewLockedRef = useRef(false);
+  const crewActionLocksRef = useRef(new Set<string>());
+  const reorderLockedRef = useRef(false);
+  const newCrewIdRef = useRef(newId('crew'));
 
   const trimmedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
 
@@ -152,7 +158,7 @@ export default function AccessClient() {
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (submitting) return;
+    if (submitting || submitLockedRef.current) return;
 
     if (!trimmedEmail) {
       toast.error('Email is required.');
@@ -163,6 +169,7 @@ export default function AccessClient() {
       return;
     }
 
+    submitLockedRef.current = true;
     setSubmitting(true);
     setResult(null);
 
@@ -182,6 +189,7 @@ export default function AccessClient() {
       const message = err instanceof Error ? err.message : 'Failed to set temp password.';
       toast.error(message);
     } finally {
+      submitLockedRef.current = false;
       setSubmitting(false);
     }
   };
@@ -192,7 +200,7 @@ export default function AccessClient() {
 
   const addCrew = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (addingCrew) return;
+    if (addingCrew || addCrewLockedRef.current) return;
 
     const name = newCrewName.trim();
     if (!name) {
@@ -209,12 +217,14 @@ export default function AccessClient() {
       return;
     }
 
+    addCrewLockedRef.current = true;
     setAddingCrew(true);
     try {
       const res = await fetch('/api/admin/crews', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          crew_id: newCrewIdRef.current,
           name,
           color,
           calendar_region: region,
@@ -232,11 +242,13 @@ export default function AccessClient() {
       setNewCrewColor(DEFAULT_CREW_COLOR);
       setNewCrewRegion(DEFAULT_CREW_REGION);
       setNewCrewBaseDate('');
+      newCrewIdRef.current = newId('crew');
       setCrewsError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to add crew.';
       toast.error(message);
     } finally {
+      addCrewLockedRef.current = false;
       setAddingCrew(false);
     }
   };
@@ -247,7 +259,7 @@ export default function AccessClient() {
       toast.error('Crew not found. Refresh and try again.');
       return;
     }
-    if (savingCrewId || reorderBusy) return;
+    if (savingCrewId || reorderBusy || crewActionLocksRef.current.has(crewId)) return;
 
     const name = row.name.trim();
     if (!name) {
@@ -268,6 +280,7 @@ export default function AccessClient() {
       return;
     }
 
+    crewActionLocksRef.current.add(crewId);
     setSavingCrewId(crewId);
     try {
       const res = await fetch(`/api/admin/crews/${encodeURIComponent(crewId)}`, {
@@ -292,13 +305,15 @@ export default function AccessClient() {
       const message = err instanceof Error ? err.message : 'Failed to save crew.';
       toast.error(message);
     } finally {
+      crewActionLocksRef.current.delete(crewId);
       setSavingCrewId(null);
     }
   };
 
   const toggleCrewActive = async (crew: CrewRow) => {
-    if (savingCrewId || reorderBusy) return;
+    if (savingCrewId || reorderBusy || crewActionLocksRef.current.has(crew.id)) return;
     if (crew.is_active && crew.scheduled_item_count > 0) return;
+    crewActionLocksRef.current.add(crew.id);
 
     const nextActive = !crew.is_active;
     const previousActive = crew.is_active;
@@ -326,12 +341,13 @@ export default function AccessClient() {
       const message = err instanceof Error ? err.message : 'Failed to update crew status.';
       toast.error(message);
     } finally {
+      crewActionLocksRef.current.delete(crew.id);
       setSavingCrewId(null);
     }
   };
 
   const moveCrew = async (index: number, direction: -1 | 1) => {
-    if (reorderBusy || savingCrewId) return;
+    if (reorderBusy || savingCrewId || reorderLockedRef.current) return;
 
     const nextIndex = index + direction;
     if (nextIndex < 0 || nextIndex >= crews.length) return;
@@ -343,6 +359,7 @@ export default function AccessClient() {
     reordered[nextIndex] = current;
     const nextOrdered = sortCrews(reordered);
 
+    reorderLockedRef.current = true;
     setCrews(nextOrdered);
     setReorderBusy(true);
 
@@ -370,6 +387,7 @@ export default function AccessClient() {
       const message = err instanceof Error ? err.message : 'Failed to reorder crews.';
       toast.error(message);
     } finally {
+      reorderLockedRef.current = false;
       setReorderBusy(false);
     }
   };

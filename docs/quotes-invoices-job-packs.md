@@ -124,6 +124,10 @@ Before enabling or rolling back `workbench_solved`, run downstream immutability 
 
 ## Invoice Lifecycle
 
+### Action and recovery contract
+
+Quote create/revise commands and admin invoice/payment commands carry stable client intents across an ambiguous retry. Lifecycle, send, delete, supersede, job-pack and financial actions acquire synchronous locks before awaiting. A command response is applied immediately; list refresh is later reconciliation. If that refresh fails after the server committed, the UI reports that the action completed and offers Refresh instead of presenting a retry that could repeat the write. Invoice/payment reconciliation failure also locks further financial actions until an authoritative refresh succeeds. See `docs/portal-action-recovery-audit.md`.
+
 - Invoices are whole scheduled payments and are never part-paid. Status is `OPEN`, `PAID`, or `VOID`; payment evidence records paid time, admin actor, method, reference, and optional note against the whole invoice.
 - Quote acceptance creates or reuses only payment term one, prepares it, attempts delivery, and returns the actual delivery state. Acceptance remains committed when delivery fails. The accepted quote still freezes the default schedule, but administrators may later create the next stage, the full job balance, a custom dollar/percentage amount, or the first invoice in a planned split.
 - Paid value is job-level payment-ledger truth, not a sum scoped to one quote version. `project_payment_entries` records actual payments, adjustments and equal/opposite reversals; `project_payment_allocations` explains which exact base or add-on quote stage currently consumes a positive entry. Paid invoices from superseded versions are backfilled as unallocated job credit and can be manually reassigned without mutating their invoice or quote evidence.

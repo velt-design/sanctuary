@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiJson } from '@/lib/repo/apiClient';
 import type { EstimateActualCostInput, EstimateCostCalibrationComparison } from '@/lib/estimateActuals/types';
 import styles from './CalculatorActualCostReview.module.css';
@@ -67,6 +67,7 @@ export default function CalculatorActualCostReview({ estimateId }: { estimateId:
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [status, setStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState('');
+  const saveLockedRef = useRef(false);
   const canLoad = Boolean(estimateId && !estimateId.startsWith('local-'));
 
   useEffect(() => {
@@ -102,6 +103,8 @@ export default function CalculatorActualCostReview({ estimateId }: { estimateId:
   if (!estimateId) return null;
 
   const save = async () => {
+    if (saveLockedRef.current || status === 'saving') return;
+    saveLockedRef.current = true;
     setStatus('saving');
     setError('');
     try {
@@ -115,6 +118,8 @@ export default function CalculatorActualCostReview({ estimateId }: { estimateId:
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to save actual job costs');
       setStatus('error');
+    } finally {
+      saveLockedRef.current = false;
     }
   };
 
@@ -140,6 +145,7 @@ export default function CalculatorActualCostReview({ estimateId }: { estimateId:
                     min="0"
                     step="0.01"
                     value={draft[key]}
+                    disabled={status === 'loading' || status === 'saving'}
                     onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
                   /></span>
                   <small>
@@ -155,6 +161,7 @@ export default function CalculatorActualCostReview({ estimateId }: { estimateId:
                 rows={3}
                 maxLength={2000}
                 value={draft.notes}
+                disabled={status === 'loading' || status === 'saving'}
                 onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
                 placeholder="Explain major supplier, fabrication or site variances."
               />
@@ -163,6 +170,7 @@ export default function CalculatorActualCostReview({ estimateId }: { estimateId:
               <input
                 type="checkbox"
                 checked={draft.isComplete}
+                disabled={status === 'loading' || status === 'saving'}
                 onChange={(event) => setDraft((current) => ({ ...current, isComplete: event.target.checked }))}
               />
               <span>Actuals are complete and ready for pricing review</span>

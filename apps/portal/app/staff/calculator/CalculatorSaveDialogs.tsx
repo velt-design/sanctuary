@@ -144,7 +144,7 @@ export function SaveConfirmationContent({
               : 'This will save the current design draft for this project.'}
           </p>
         </div>
-        <button type="button" className={styles.modalClose} onClick={onCancel}>
+        <button type="button" className={styles.modalClose} onClick={onCancel} disabled={isGenerating}>
           Close
         </button>
       </div>
@@ -172,6 +172,7 @@ export function SaveConfirmationContent({
                   onChange={(event) => onPricingPreserveReasonChange(event.target.value)}
                   placeholder="Example: customer-approved historical price; manager approval recorded in project notes"
                   rows={3}
+                  disabled={isGenerating}
                 />
                 <small>Required only if you keep the older costing. Repricing is recommended.</small>
               </label>
@@ -224,6 +225,7 @@ export function SaveConfirmationContent({
               type="checkbox"
               checked={confirmAcknowledgeWarnings}
               onChange={(event) => onConfirmAcknowledgeWarningsChange(event.target.checked)}
+              disabled={isGenerating}
             />
             <span>I acknowledge the review warnings</span>
           </label>
@@ -236,6 +238,7 @@ export function SaveConfirmationContent({
                 type="checkbox"
                 checked={confirmRequestDesign}
                 onChange={(event) => onConfirmRequestDesignChange(event.target.checked)}
+                disabled={isGenerating}
               />
               <span>Request drafting after saving this design</span>
             </label>
@@ -248,6 +251,7 @@ export function SaveConfirmationContent({
                   className={styles.modalSelect}
                   value={confirmRequestDesignPriority}
                   onChange={(event) => onConfirmRequestDesignPriorityChange(event.target.value as DesignRequestPriorityTier)}
+                  disabled={isGenerating}
                 >
                   {(['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4', 'UNPRICED'] as const).map((tier) => (
                     <option key={tier} value={tier}>
@@ -412,6 +416,8 @@ export default function CalculatorSaveDialogs({
           open
           ariaLabel={saveConfirmation.isEditingDesign ? 'Save design confirmation' : 'Save design confirmation'}
           onClose={onCloseConfirm}
+          closeOnBackdrop={!saveConfirmation.isGenerating}
+          closeOnEsc={!saveConfirmation.isGenerating}
           overlayClassName={styles.modalOverlay}
           panelClassName={styles.modal}
           maxWidthPx={720}

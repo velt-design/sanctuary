@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { DashboardPersonalTask } from '@/lib/dashboard/types';
 import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import dash from '../dashboard.module.css';
 import { Button, Input } from '@/components/ui/foundation/FoundationControls';
 import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+import { newId } from '@/lib/utils/id';
 
 async function readTaskResponse(res: Response): Promise<DashboardPersonalTask> {
   const body = await res.json().catch(() => null);
@@ -23,6 +24,9 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
+  const submitLockedRef = useRef(false);
+  const createTaskIdRef = useRef(newId());
+  const pendingTaskIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     setTasks((current) => {
@@ -41,12 +45,14 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
   }, [initialTasks]);
 
   async function createTask() {
+    if (submitLockedRef.current) return;
     const nextTitle = title.trim();
     if (!nextTitle) {
       setError('Task title required');
       return;
     }
 
+    submitLockedRef.current = true;
     setSubmitting(true);
     setError(null);
     try {
@@ -54,19 +60,23 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
         await fetch('/api/dashboard/tasks', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ title: nextTitle }),
+          body: JSON.stringify({ title: nextTitle, taskId: createTaskIdRef.current }),
         }),
       );
       setTasks((current) => [...current, task]);
       setTitle('');
+      createTaskIdRef.current = newId();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create task');
     } finally {
+      submitLockedRef.current = false;
       setSubmitting(false);
     }
   }
 
   async function toggleTask(task: DashboardPersonalTask, completed: boolean) {
+    if (pendingTaskIdsRef.current.has(task.id)) return;
+    pendingTaskIdsRef.current.add(task.id);
     const previousTask = task;
     const optimistic: DashboardPersonalTask = {
       ...task,
@@ -92,6 +102,7 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
       )));
       setError(err instanceof Error ? err.message : 'Failed to update task');
     } finally {
+      pendingTaskIdsRef.current.delete(task.id);
       setPendingTaskIds((current) => {
         const next = new Set(current);
         next.delete(task.id);

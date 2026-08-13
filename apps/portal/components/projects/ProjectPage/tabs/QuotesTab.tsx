@@ -31,6 +31,7 @@ import {
 import {
   getPreparedQuoteDelivery,
   createManualQuoteDraft,
+  createQuoteClientIntentId,
   previewQuotePdf,
   resendQuote,
   retryPreparedQuoteDelivery,
@@ -158,6 +159,11 @@ export default function QuotesTab({
   const { isAdmin } = usePortalSession();
   const queryClient = useQueryClient();
   const autoCreateRef = useRef<string | null>(null);
+  const createPendingRef = useRef(false);
+  const manualCreateIntentRef = useRef<{ signature: string; intentId: string } | null>(null);
+  const savePendingRef = useRef(false);
+  const sendPendingRef = useRef(false);
+  const preparedRetryPendingRef = useRef(false);
   const {
     hostKey,
     selectedId,
@@ -534,7 +540,9 @@ export default function QuotesTab({
 
   const createDraftQuoteFromEstimate = useCallback(
     async (estimateId: string, opts?: { closeModal?: boolean; internalName?: string | null }) => {
-      if (!estimateId) return;
+      if (!estimateId || createPendingRef.current) return;
+      createPendingRef.current = true;
+      setCreateBusy(true);
       try {
         const estimateDetail =
           queryClient.getQueryData<EstimateDetail>(
@@ -585,12 +593,16 @@ export default function QuotesTab({
         const msg =
           err instanceof Error ? err.message : "Failed to create quote";
         toast.error(msg);
+      } finally {
+        createPendingRef.current = false;
+        setCreateBusy(false);
       }
     },
     [hostKey, projectId, queryClient, quotes, selectQuote, toast],
   );
 
   const handleCreateQuote = async () => {
+    if (createPendingRef.current) return;
     if (createMode === "estimate") {
       if (!createEstimateId) return;
       await createDraftQuoteFromEstimate(createEstimateId, {
@@ -600,9 +612,22 @@ export default function QuotesTab({
       return;
     }
     if (!isAdmin || !manualDescription.trim()) return;
+    const signature = JSON.stringify({
+      projectId,
+      internalName: createInternalName.trim() || null,
+      description: manualDescription.trim(),
+      qty: Number(manualQty),
+      priceCents: Math.round(Number(manualPrice) * 100),
+    });
+    const clientIntentId = manualCreateIntentRef.current?.signature === signature
+      ? manualCreateIntentRef.current.intentId
+      : createQuoteClientIntentId("manual-quote");
+    manualCreateIntentRef.current = { signature, intentId: clientIntentId };
+    createPendingRef.current = true;
     setCreateBusy(true);
     try {
       const detail = await createManualQuoteDraft(projectId, {
+        clientIntentId,
         internalName: createInternalName.trim() || null,
         lineItems: [{
           description: manualDescription.trim(),
@@ -610,6 +635,7 @@ export default function QuotesTab({
           unitPriceIncGstCents: Math.round(Number(manualPrice) * 100),
         }],
       });
+      manualCreateIntentRef.current = null;
       upsertQuoteDetailCache(queryClient, hostKey, projectId, detail, { prepend: true });
       setCreateOpen(false);
       selectQuote(detail.id, { createFromEstimateId: null });
@@ -617,6 +643,7 @@ export default function QuotesTab({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to create manual quote");
     } finally {
+      createPendingRef.current = false;
       setCreateBusy(false);
     }
   };
@@ -654,6 +681,7 @@ export default function QuotesTab({
 
   const persistDraft = useCallback(
     async (opts?: { silent?: boolean }) => {
+      if (savePendingRef.current) return detail;
       if (!detail || detail.status !== "DRAFT") return detail;
       if (!draftDirty) return detail;
       if (draftSyncPending) {
@@ -665,6 +693,7 @@ export default function QuotesTab({
         return detail;
       }
 
+      savePendingRef.current = true;
       setSavingDraft(true);
       try {
         if (paymentScheduleEvaluation.errors.length) {
@@ -717,6 +746,7 @@ export default function QuotesTab({
         toast.error(msg);
         return null;
       } finally {
+        savePendingRef.current = false;
         setSavingDraft(false);
       }
     },
@@ -762,7 +792,8 @@ export default function QuotesTab({
     [detail, resetSendReviewPdf],
   );
 
-  const closeSendModal = useCallback(() => {
+  const closeSendModal = useCallback((force = false) => {
+    if (!force && sendPendingRef.current) return;
     setSendAttachments([]);
     setSendEditorMode("compose");
     resetSendReviewPdf();
@@ -801,7 +832,7 @@ export default function QuotesTab({
   ]);
 
   const handleSend = async () => {
-    if (!detail || sendBusy) return;
+    if (!detail || sendBusy || sendPendingRef.current) return;
     if (!sendIntentId) {
       toast.error("Delivery review has expired. Close and reopen it.");
       return;
@@ -841,6 +872,7 @@ export default function QuotesTab({
       toast.error(message);
       return;
     }
+    sendPendingRef.current = true;
     setSendBusy(true);
     setSendError(null);
     rememberDeliveryIntentId(detail.id, sendMode, sendIntentId);
@@ -868,9 +900,13 @@ export default function QuotesTab({
       setUnitInputDrafts({});
       setActiveUnitInputId(null);
       forgetDeliveryIntentId(detail.id, sendMode);
-      closeSendModal();
-      await refreshQuotes();
+      closeSendModal(true);
       toast.success(sendMode === "send" ? "Quote sent." : "Quote resent.");
+      try {
+        await refreshQuotes();
+      } catch {
+        toast.error("The quote was sent, but the quote list could not refresh. Refresh before taking another delivery action; do not send it again.");
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to send quote";
       if (
@@ -883,7 +919,11 @@ export default function QuotesTab({
         forgetDeliveryIntentId(detail.id, sendMode);
         setSendIntentId("");
         setSendOpen(false);
-        await refreshQuotes();
+        try {
+          await refreshQuotes();
+        } catch {
+          toast.error("Delivery was cancelled and the latest quote could not be loaded. Refresh before taking another delivery action.");
+        }
         toast.error(
           msg.includes("already prepared") || msg.includes("prior delivery")
             ? "A prepared delivery already owns this quote. Review that exact delivery before retrying or resending."
@@ -894,6 +934,7 @@ export default function QuotesTab({
       setSendError(msg);
       toast.error(msg);
     } finally {
+      sendPendingRef.current = false;
       setSendBusy(false);
     }
   };
@@ -931,7 +972,8 @@ export default function QuotesTab({
   }, [preparedRetryBusy]);
 
   const handlePreparedDeliveryRetry = useCallback(async () => {
-    if (!detail || !preparedDelivery?.canRetry || preparedRetryBusy) return;
+    if (!detail || !preparedDelivery?.canRetry || preparedRetryBusy || preparedRetryPendingRef.current) return;
+    preparedRetryPendingRef.current = true;
     setPreparedRetryBusy(true);
     setPreparedRetryError(null);
     try {
@@ -944,8 +986,12 @@ export default function QuotesTab({
       forgetDeliveryIntentId(detail.id, preparedDelivery.mode);
       setPreparedRetryOpen(false);
       setPreparedDelivery(null);
-      await refreshQuotes();
       toast.success("Prepared quote delivery completed.");
+      try {
+        await refreshQuotes();
+      } catch {
+        toast.error("The prepared delivery completed, but the quote list could not refresh. Refresh before taking another delivery action; do not retry it again.");
+      }
     } catch (error) {
       const message =
         error instanceof Error
@@ -958,9 +1004,14 @@ export default function QuotesTab({
           await getPreparedQuoteDelivery(detail.id, preparedDelivery.mode),
         );
       } catch {
-        await refreshQuotes();
+        try {
+          await refreshQuotes();
+        } catch {
+          // The original retry error remains the actionable failure.
+        }
       }
     } finally {
+      preparedRetryPendingRef.current = false;
       setPreparedRetryBusy(false);
     }
   }, [
@@ -1012,7 +1063,9 @@ export default function QuotesTab({
     refreshFromEstimate: handleRefreshFromEstimate,
     accept: handleAccept,
     acceptBusy,
+    reviseBusy,
     decline: handleDecline,
+    declineBusy,
     generateJobPackForQuote: handleGenerateJobPack,
   } = useQuoteLifecycleActions({
     projectId,
@@ -1159,6 +1212,7 @@ export default function QuotesTab({
         retryPreparedDelivery={() => void openPreparedDeliveryRetry()}
         resend={handleResendClick}
         revise={() => void handleRevise()}
+        reviseBusy={reviseBusy}
         moreActionsOpen={moreActionsOpen}
         setMoreActionsOpen={setMoreActionsOpen}
         refreshEstimateTarget={refreshEstimateTarget}
@@ -1223,6 +1277,7 @@ export default function QuotesTab({
         accept={() => void handleAccept()}
         acceptBusy={acceptBusy}
         decline={() => void handleDecline()}
+        declineBusy={declineBusy}
         dialogs={
           <>
           <QuoteWorkflowDialogs
@@ -1294,7 +1349,9 @@ export default function QuotesTab({
       selectQuote={(quoteId) => selectQuote(quoteId)}
       prefetchQuoteDetail={prefetchQuoteDetail}
       createOpen={createOpen}
-      closeCreate={() => setCreateOpen(false)}
+      closeCreate={() => {
+        if (!createBusy) setCreateOpen(false);
+      }}
       createEstimateId={createEstimateId}
       setCreateEstimateId={setCreateEstimateId}
       createInternalName={createInternalName}

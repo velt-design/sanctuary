@@ -85,6 +85,7 @@ describe('/api/admin/costing/configurations', () => {
         name: 'August supplier update',
         purpose: 'Refresh supported material rates.',
       },
+      null,
     );
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { DesignRequestPriorityTier } from '@/lib/designPackages/types';
 import type { EstimateDetail } from '@/lib/estimates/types';
@@ -25,6 +25,7 @@ export function useCalculatorSaveController({
   setLoadedEstimateDetail,
   onError,
   onSaved,
+  onGeneratingChange,
   saveEstimate = saveCalculatorEstimate,
 }: {
   saveContext: CalculatorSaveContext;
@@ -39,6 +40,7 @@ export function useCalculatorSaveController({
   setLoadedEstimateDetail: (estimate: EstimateDetail) => void;
   onError: (message: string) => void;
   onSaved: (outcome: CalculatorEstimateSaveOutcome) => void;
+  onGeneratingChange?: (generating: boolean) => void;
   saveEstimate?: CalculatorSaveEstimate;
 }) {
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -50,6 +52,12 @@ export function useCalculatorSaveController({
   const [confirmRequestDesignPriority, setConfirmRequestDesignPriority] =
     useState<DesignRequestPriorityTier>('UNPRICED');
   const [saveOutcome, setSaveOutcome] = useState<CalculatorEstimateSaveOutcome | null>(null);
+  const savePendingRef = useRef(false);
+
+  const setGenerating = (generating: boolean) => {
+    setIsGenerating(generating);
+    onGeneratingChange?.(generating);
+  };
 
   const openSaveConfirmation = () => {
     setGenerateError(null);
@@ -65,6 +73,7 @@ export function useCalculatorSaveController({
   };
 
   const closeSaveConfirmation = () => {
+    if (savePendingRef.current) return;
     setConfirmOpen(false);
     setPricingPreserveReason('');
     setGenerateError(null);
@@ -80,27 +89,33 @@ export function useCalculatorSaveController({
     saveMode,
     preserveReason,
   }: Parameters<CalculatorSaveEstimate>[0]['request'] = {}) => {
+    if (savePendingRef.current) return;
+    savePendingRef.current = true;
     setGenerateError(null);
-    const outcome = await saveEstimate({
-      ...saveContext,
-      callbacks: {
-        fail: (message) => {
-          setGenerateError(message);
-          onError(message);
+    try {
+      const outcome = await saveEstimate({
+        ...saveContext,
+        callbacks: {
+          fail: (message) => {
+            setGenerateError(message);
+            onError(message);
+          },
+          setGenerating,
+          setLoadedEstimateDetail,
         },
-        setGenerating: setIsGenerating,
-        setLoadedEstimateDetail,
-      },
-      request: {
-        createDesignRequest,
-        saveMode,
-        preserveReason,
-      },
-    });
-    if (!outcome) return;
-    setConfirmOpen(false);
-    setSaveOutcome(outcome);
-    onSaved(outcome);
+        request: {
+          createDesignRequest,
+          saveMode,
+          preserveReason,
+        },
+      });
+      if (!outcome) return;
+      setConfirmOpen(false);
+      setSaveOutcome(outcome);
+      onSaved(outcome);
+    } finally {
+      savePendingRef.current = false;
+    }
   };
 
   const saveConfirmed = () =>

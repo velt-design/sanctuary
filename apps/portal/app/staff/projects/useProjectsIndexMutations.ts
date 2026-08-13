@@ -35,6 +35,7 @@ export function useProjectsIndexMutations(host: string) {
   const [pendingStages, setPendingStages] = useState<ReadonlySet<string>>(() => new Set());
   const [pendingArchives, setPendingArchives] = useState<ReadonlySet<string>>(() => new Set());
   const archiveAttempts = useRef(new StableCommandAttempt()).current;
+  const activeActionsRef = useRef(new Set<string>());
 
   const saveInlineEdit = useCallback(
     async (args: {
@@ -44,12 +45,15 @@ export function useProjectsIndexMutations(host: string) {
       value: string;
     }) => {
       const key = projectIndexCellKey(args.project.id, args.field);
+      if (activeActionsRef.current.has(key)) return;
+      activeActionsRef.current.add(key);
       setPendingCells((current) => withPendingKey(current, key, true));
       try {
         await saveProjectIndexInlineEdit({ queryClient, host, ...args });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to save change.');
       } finally {
+        activeActionsRef.current.delete(key);
         setPendingCells((current) => withPendingKey(current, key, false));
       }
     },
@@ -58,6 +62,9 @@ export function useProjectsIndexMutations(host: string) {
 
   const correctStage = useCallback(
     async (project: Project, correction: ProjectIndexStageCorrection, label: string) => {
+      const key = `stage:${project.id}`;
+      if (activeActionsRef.current.has(key)) return false;
+      activeActionsRef.current.add(key);
       setPendingStages((current) => withPendingKey(current, project.id, true));
       try {
         await correctProjectIndexStage({ queryClient, host, project, correction });
@@ -67,6 +74,7 @@ export function useProjectsIndexMutations(host: string) {
         toast.error(error instanceof Error ? error.message : 'Failed to update stage.');
         return false;
       } finally {
+        activeActionsRef.current.delete(key);
         setPendingStages((current) => withPendingKey(current, project.id, false));
       }
     },
@@ -75,6 +83,9 @@ export function useProjectsIndexMutations(host: string) {
 
   const setArchived = useCallback(
     async (project: Project, isArchived: boolean, reason: string) => {
+      const key = `archive:${project.id}`;
+      if (activeActionsRef.current.has(key)) return false;
+      activeActionsRef.current.add(key);
       setPendingArchives((current) => withPendingKey(current, project.id, true));
       const intent = projectCommandIntent('PROJECT_ARCHIVE', {
         projectId: project.id,
@@ -97,6 +108,7 @@ export function useProjectsIndexMutations(host: string) {
         toast.error(error instanceof Error ? error.message : 'Failed to update archive state');
         return false;
       } finally {
+        activeActionsRef.current.delete(key);
         setPendingArchives((current) => withPendingKey(current, project.id, false));
       }
     },

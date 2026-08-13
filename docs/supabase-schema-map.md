@@ -145,6 +145,7 @@ Tables/RPCs:
 - `commercial_replace_payment_allocations(...)`
 - `commercial_reverse_payment_entry(...)`
 - `commercial_create_admin_invoice(...)`
+- `commercial_create_admin_invoice_idempotent(...)`
 - `commercial_email_intent_prepare(...)` plus the bounded read/checkpoint/finalisation RPCs
 
 Primary write path:
@@ -162,6 +163,7 @@ Primary write path:
 - `quote_versions.pricing_source` and `quote_versions.pricing_source_metadata` store compact provenance only. Raw `estimates.commercial_design_input` must not be copied into quote versions, public token routes, invoices, PDFs, emails, or job-pack outputs.
 - `quote_versions.payment_terms` is the frozen default schedule of fixed-dollar and percentage-of-remainder terms, including resolved cents. `project_invoice_plan_items` stores future instalments created by an admin split; only the first is invoiced immediately. `deposit_invoices.payment_term_*` binds each non-void whole invoice to one base or add-on quote stage, while `creation_mode` and `creation_override_reason` preserve admin creation evidence. There is no partial-payment amount field.
 - `project_payment_entries` is the append-only job payment/adjustment/reversal ledger. `project_payment_allocations` is reversible allocation history from positive entries to quote-version payment stages. A paid invoice creates one job payment entry transactionally; backfilled paid historical invoices intentionally start unallocated. Paid/Open/Remaining projections use job-level ledger value plus all whole open project invoices, while allocation affects stage presentation rather than invoice identity.
+- Admin-created invoices and project payment entries carry nullable caller-generated client intent IDs with unique project-scoped indexes. Admin invoice rows also freeze the creation command's planned-item count and remaining-before/after values so a later replay returns the original result rather than reconstructing it from newer job state. The idempotent invoice wrapper and intent-aware payment RPC return the committed record for a replay, while preserving the original transaction, allocation and audit owners.
 - `quote_versions.status = 'SUPERSEDED'` is a manual admin retirement state for a previously `SENT` or `ACCEPTED` version. `superseded_at` and `superseded_by` record that transition; accepted, delivery, PDF, invoice, and payment evidence remain unchanged.
 
 Primary read path:
@@ -183,6 +185,7 @@ Access rule:
 Migration source:
 
 - Quote and invoice migrations under `supabase/migrations/20260209_*`, `20260216_*`, `20260220_*`, `20260314_*`, `20260318_000002_job_pack_sheet_overrides.sql`, `20260320_000001_job_pack_generations.sql`, `20260321_000001_job_pack_generations_schema_reload.sql`, `20260408_000001_portal_security_hardening.sql`, quote-version source metadata migration `20260504_000002_quote_version_pricing_source_metadata.sql`, commercial trust migration `20260728_000001_commercial_workflow_trust.sql`, payment schedule/whole-invoice payment migration `20260810_000002_quote_payment_schedules_and_invoice_payments.sql`, and manual quote retirement migration `20260810000003_manual_quote_superseded_status.sql`.
+- `supabase/migrations/20260813000002_commercial_admin_action_idempotency.sql` adds admin invoice/payment client intents, their uniqueness boundaries, the idempotent invoice wrapper, and the intent-aware payment RPC overload.
 - `supabase/migrations/20260811000001_commercial_internal_names.sql` adds bounded staff-only names to estimates and quote families without backfilling historical rows. It was exact-file applied to production on 2026-08-11; postflight verified both columns, constraints, PostgREST visibility, zero backfilled names, and the unique migration-ledger entry.
 - `supabase/portal_schema.sql` is a legacy baseline/snapshot reference for these tables.
 

@@ -2,7 +2,7 @@
 
 import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Contact } from '@/lib/types/contact';
 import styles from './ProjectCreateClient.module.css';
@@ -72,6 +72,7 @@ export default function ProjectCreateClient() {
   const [duplicateCandidates, setDuplicateCandidates] = useState<Contact[]>([]);
   const [submitError, setSubmitError] = useState<{ message: string; retrySafe: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
+  const submitPendingRef = useRef(false);
 
   const canSubmit = useMemo(() => {
     if (!draft.projectName.trim()) return false;
@@ -84,7 +85,8 @@ export default function ProjectCreateClient() {
   };
 
   const submitProject = useCallback(async (allowDuplicate: boolean) => {
-    if (busy || !canSubmit) return;
+    if (busy || !canSubmit || submitPendingRef.current) return;
+    submitPendingRef.current = true;
     setBusy(true);
     setSubmitError(null);
     setDuplicateCandidates([]);
@@ -140,6 +142,7 @@ export default function ProjectCreateClient() {
         toast.error(message);
       }
     } finally {
+      submitPendingRef.current = false;
       setBusy(false);
     }
   }, [
@@ -232,6 +235,7 @@ export default function ProjectCreateClient() {
                     id="newContactName"
                     label="Name *"
                     value={contactDraft.displayName}
+                    disabled={busy}
                     onChange={(event) => setContactDraft((current) => ({ ...current, displayName: event.target.value }))}
                     required
                   />
@@ -240,6 +244,7 @@ export default function ProjectCreateClient() {
                     label="Email"
                     type="email"
                     value={contactDraft.email}
+                    disabled={busy}
                     onChange={(event) => setContactDraft((current) => ({ ...current, email: event.target.value }))}
                     error={!isValidOptionalEmail(contactDraft.email) ? 'Email must include "@".' : undefined}
                   />
@@ -248,16 +253,17 @@ export default function ProjectCreateClient() {
                     label="Phone"
                     type="tel"
                     value={contactDraft.phone}
+                    disabled={busy}
                     onChange={(event) => setContactDraft((current) => ({ ...current, phone: event.target.value }))}
                   />
                 </div>
               </section>
             )}
 
-            <Input id="projectName" label="Project name *" value={draft.projectName} onChange={(event) => setField('projectName', event.target.value)} required />
-            <Input id="quoteRef" label="Quote ref" value={draft.quoteRef} onChange={(event) => setField('quoteRef', event.target.value)} />
-            <Input id="region" label="Region" value={draft.region} onChange={(event) => setField('region', event.target.value)} />
-            <Input id="siteAddress" label="Site address" fieldClassName={styles.fullWidth} value={draft.siteAddress} onChange={(event) => setField('siteAddress', event.target.value)} />
+            <Input id="projectName" label="Project name *" value={draft.projectName} disabled={busy} onChange={(event) => setField('projectName', event.target.value)} required />
+            <Input id="quoteRef" label="Quote ref" value={draft.quoteRef} disabled={busy} onChange={(event) => setField('quoteRef', event.target.value)} />
+            <Input id="region" label="Region" value={draft.region} disabled={busy} onChange={(event) => setField('region', event.target.value)} />
+            <Input id="siteAddress" label="Site address" fieldClassName={styles.fullWidth} value={draft.siteAddress} disabled={busy} onChange={(event) => setField('siteAddress', event.target.value)} />
 
             {duplicateCandidates.length ? (
               <div className={styles.status}>
@@ -306,7 +312,7 @@ export default function ProjectCreateClient() {
             <Button type="submit" disabled={busy || !canSubmit} loading={busy}>
               {busy ? 'Creating…' : 'Create project'}
             </Button>
-            <ProjectsIndexLink variant="secondary" href="/staff/projects">Cancel</ProjectsIndexLink>
+            <ProjectsIndexLink variant="secondary" href="/staff/projects" disabled={busy}>Cancel</ProjectsIndexLink>
           </div>
         </form>
       </Card>

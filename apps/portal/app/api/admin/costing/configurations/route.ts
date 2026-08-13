@@ -3,6 +3,7 @@ import {
   createCostingConfigurationDraft,
   listCostingConfigurationOverview,
 } from '@/lib/costing/configurationAdmin';
+import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
@@ -27,6 +28,14 @@ export async function POST(req: Request) {
   const sourceVersionId = typeof parsed.body?.sourceVersionId === 'string'
     ? parsed.body.sourceVersionId.trim()
     : null;
+  let versionId: string | null = null;
+  if (typeof parsed.body?.versionId === 'string' && parsed.body.versionId.trim()) {
+    try {
+      versionId = uuidFromAppId(parsed.body.versionId);
+    } catch {
+      return jsonError('versionId is invalid', 400);
+    }
+  }
   try {
     const version = await createCostingConfigurationDraft(
       auth.supabase,
@@ -39,6 +48,7 @@ export async function POST(req: Request) {
         name: parsed.body?.name,
         purpose: parsed.body?.purpose,
       },
+      versionId,
     );
     return jsonOk({ version }, 201);
   } catch (error) {

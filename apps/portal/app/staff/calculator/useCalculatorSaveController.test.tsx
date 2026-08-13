@@ -167,4 +167,27 @@ describe('useCalculatorSaveController', () => {
     expect(setup.onSaved).not.toHaveBeenCalled();
     rendered.unmount();
   });
+
+  it('submits only once when save is triggered twice before React can rerender', async () => {
+    let finishSave: ((value: CalculatorEstimateSaveOutcome) => void) | null = null;
+    const saveEstimate = vi.fn(() => new Promise<CalculatorEstimateSaveOutcome>((resolve) => {
+      finishSave = resolve;
+    })) as unknown as SaveEstimate;
+    const setup = makeArgs({ saveEstimate });
+    const rendered = renderIntoDocument(<Probe args={setup.args} />);
+
+    let first: Promise<void> | undefined;
+    let second: Promise<void> | undefined;
+    act(() => {
+      first = controller().saveConfirmed();
+      second = controller().saveConfirmed();
+    });
+
+    expect(saveEstimate).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finishSave?.(makeOutcome());
+      await Promise.all([first, second]);
+    });
+    rendered.unmount();
+  });
 });

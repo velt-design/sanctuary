@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PipelineModal } from "@/components/ui/PipelineModal";
 import {
@@ -14,7 +14,10 @@ import {
   fetchInactiveEnquiryReport,
   inactiveEnquiryReportQueryKey,
 } from "@/lib/projects/inactiveEnquiries/client";
-import type { InactiveEnquiryCandidate } from "@/lib/projects/inactiveEnquiries/types";
+import type {
+  InactiveEnquiryCandidate,
+  InactiveEnquiryReport,
+} from "@/lib/projects/inactiveEnquiries/types";
 import type { ProjectWorkQueueResponse } from "@/lib/queries/projectWorkQueue";
 import { qk } from "@/lib/queries/keys";
 import styles from "./InactiveEnquiryReview.module.css";
@@ -33,6 +36,7 @@ function sourceLabel(value: string): string {
 
 export default function InactiveEnquiryReview({ host }: { host: string }) {
   const queryClient = useQueryClient();
+  const inFlight = useRef(false);
   const report = useQuery({
     queryKey: inactiveEnquiryReportQueryKey(host),
     queryFn: fetchInactiveEnquiryReport,
@@ -74,9 +78,10 @@ export default function InactiveEnquiryReview({ host }: { host: string }) {
   }
 
   async function submit() {
-    if (!report.data || selectedRows.length === 0 || pending) return;
+    if (!report.data || selectedRows.length === 0 || inFlight.current) return;
     const stableCommandId = commandId ?? crypto.randomUUID();
     setCommandId(stableCommandId);
+    inFlight.current = true;
     setPending(true);
     setError(null);
     try {
@@ -86,7 +91,27 @@ export default function InactiveEnquiryReview({ host }: { host: string }) {
         inactiveDays: report.data.inactiveDays,
         candidates: selectedRows,
       });
+      if (!response.command.committed) {
+        throw new Error("The server did not confirm the stale-enquiry close command.");
+      }
       const closedIds = new Set(response.result.projects.map((item) => item.projectId));
+      queryClient.setQueryData<InactiveEnquiryReport | undefined>(
+        inactiveEnquiryReportQueryKey(host),
+        (current) =>
+          current
+            ? {
+                ...current,
+                candidateCount: current.candidates.filter(
+                  (candidate) =>
+                    !candidate.protectedByFutureWait &&
+                    !closedIds.has(candidate.projectId),
+                ).length,
+                candidates: current.candidates.filter(
+                  (candidate) => !closedIds.has(candidate.projectId),
+                ),
+              }
+            : current,
+      );
       queryClient.setQueryData<ProjectWorkQueueResponse | undefined>(
         qk.projectWork.queue(host),
         (current) =>
@@ -119,6 +144,7 @@ export default function InactiveEnquiryReview({ host }: { host: string }) {
           : "The close result is unknown. Retry with the same reviewed list.",
       );
     } finally {
+      inFlight.current = false;
       setPending(false);
     }
   }

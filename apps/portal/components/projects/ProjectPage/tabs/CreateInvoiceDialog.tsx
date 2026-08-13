@@ -143,7 +143,7 @@ export default function CreateInvoiceDialog({
         </header>
         {result ? (
           <>
-            <AlertBanner tone={result.sendError ? 'warning' : 'info'} title={`${result.invoice.invoiceRef} created`}>
+            <AlertBanner tone={result.sendError ? 'warning' : 'info'} title={result.created ? `${result.invoice.invoiceRef} created` : `${result.invoice.invoiceRef} already created`}>
               {result.sendError ?? `${money(result.remainingAfterIncGstCents ?? 0)} remains available to invoice.`}
             </AlertBanner>
             <div className={styles.summaryGrid}>

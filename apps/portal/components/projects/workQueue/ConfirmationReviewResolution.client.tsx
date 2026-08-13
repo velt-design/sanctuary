@@ -32,6 +32,7 @@ export default function ConfirmationReviewResolution({
   const { isAdmin } = usePortalSession();
   const queryClient = useQueryClient();
   const attempts = useRef(new StableCommandAttempt()).current;
+  const inFlight = useRef(false);
   const [reason, setReason] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
@@ -42,7 +43,7 @@ export default function ConfirmationReviewResolution({
 
   const submit = async () => {
     const reviewReason = reason.trim();
-    if (!reviewReason || pending || disabled) return;
+    if (!reviewReason || inFlight.current || disabled) return;
     const payload = {
       projectId,
       repairSignalId,
@@ -53,13 +54,17 @@ export default function ConfirmationReviewResolution({
       'CONFIRMATION_RETRACTION_REVIEW',
       payload,
     );
+    inFlight.current = true;
     setPending(true);
     setError(null);
     try {
-      await reconcileProjectConfirmationCorrection({
+      const response = await reconcileProjectConfirmationCorrection({
         ...payload,
         commandId: attempts.commandIdFor(intent),
       });
+      if (!response.command.committed) {
+        throw new Error('The server did not confirm this correction review.');
+      }
       attempts.committed(intent);
       setCompleted(true);
       setConfirming(false);
@@ -72,6 +77,7 @@ export default function ConfirmationReviewResolution({
       );
       setConfirming(false);
     } finally {
+      inFlight.current = false;
       setPending(false);
     }
   };

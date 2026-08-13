@@ -395,15 +395,12 @@ describe('EmailPreviewClient', () => {
     await flushEffects(8);
 
     expect(postCalls()).toHaveLength(1);
-    expect(postCalls()[0]?.[1]).toEqual(
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({
-          variant: 'residential-pitched-without-blinds',
-          layout: 'image-led',
-        }),
-      }),
-    );
+    expect(postCalls()[0]?.[1]).toEqual(expect.objectContaining({ method: 'POST' }));
+    expect(JSON.parse(String(postCalls()[0]?.[1]?.body))).toEqual({
+      variant: 'residential-pitched-without-blinds',
+      layout: 'image-led',
+      clientIntentId: expect.stringMatching(/^email-preview_/),
+    });
     expect(rendered.container.textContent).toContain('Image-led accepted');
     expect(rendered.container.textContent).toContain(
       'jordan@sanctuarypergolas.co.nz',

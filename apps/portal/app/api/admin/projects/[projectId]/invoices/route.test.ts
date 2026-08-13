@@ -35,12 +35,12 @@ describe('admin project invoices route', () => {
     mocks.createAdminInvoice.mockResolvedValue({ created: true, invoice: { invoiceRef: 'INV-1' } });
     const response = await POST(new Request('http://localhost', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ quoteVersionId: 'qv_1', mode: 'next_stage', paymentTermId: 'payment-2', label: 'Final payment' }),
+      body: JSON.stringify({ quoteVersionId: 'qv_1', mode: 'next_stage', paymentTermId: 'payment-2', label: 'Final payment', clientIntentId: 'admin-invoice:test-1' }),
     }), context);
     expect(response.status).toBe(201);
     expect(mocks.createAdminInvoice).toHaveBeenCalledWith(expect.objectContaining({
       projectId: 'proj_11111111-1111-4111-8111-111111111111',
-      quoteVersionId: 'qv_1', mode: 'next_stage', paymentTermId: 'payment-2', label: 'Final payment', actor: 'admin-1',
+      quoteVersionId: 'qv_1', mode: 'next_stage', paymentTermId: 'payment-2', label: 'Final payment', clientIntentId: 'admin-invoice:test-1', actor: 'admin-1',
     }));
   });
 });

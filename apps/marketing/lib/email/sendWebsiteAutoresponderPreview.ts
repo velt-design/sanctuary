@@ -135,6 +135,7 @@ function previewGateway(apiKey: string): ResendEmailGateway {
 export async function sendWebsiteAutoresponderPreview(
   variant: WebsiteAutoresponderPreviewVariant,
   layout: WebsiteAutoresponderPreviewLayout,
+  clientIntentId?: string,
 ) {
   const availability = getWebsiteAutoresponderPreviewAvailability();
   if (!availability.available) {
@@ -171,7 +172,7 @@ export async function sendWebsiteAutoresponderPreview(
       },
       {
         timeoutMs: EMAIL_TIMEOUT_MS,
-        idempotencyKey: `website-autoresponder-preview:${variant}:${layout}:${randomUUID()}`,
+        idempotencyKey: `website-autoresponder-preview:${variant}:${layout}:${clientIntentId?.trim() || randomUUID()}`,
       },
     );
   } catch {

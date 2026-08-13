@@ -106,6 +106,7 @@ export default function SiteVisitEventModal({
   onUnschedule?: () => Promise<void> | void;
 }) {
   const linkedSelectRef = useRef<HTMLSelectElement | null>(null);
+  const savingRef = useRef(false);
   const [form, setForm] = useState<SiteVisitEventFormValues>({
     linkMode: 'unscheduled',
     linkedUnscheduledId: null,
@@ -198,6 +199,7 @@ export default function SiteVisitEventModal({
     });
     setErrors({});
     setConfirmUnschedule(false);
+    savingRef.current = false;
   }, [defaultSalespersonId, initialLinkValue, isEditMode, item, open, preset, unscheduled]);
 
   useEffect(() => {
@@ -250,13 +252,14 @@ export default function SiteVisitEventModal({
   };
 
   const handleSave = async () => {
-    if (saving) return;
+    if (saving || savingRef.current) return;
     const nextErrors = validate();
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors);
       return;
     }
     setErrors({});
+    savingRef.current = true;
     setSaving(true);
     try {
       await onSave({
@@ -274,29 +277,33 @@ export default function SiteVisitEventModal({
       // The parent owns user-facing API error reporting and leaves this modal
       // open so the current values can be corrected or retried.
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
 
   const handleUnschedule = async () => {
-    if (!onUnschedule || saving) return;
+    if (!onUnschedule || saving || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
       await onUnschedule();
       onClose();
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
 
   const handleConfirm = async () => {
-    if (!onConfirm || saving) return;
+    if (!onConfirm || saving || savingRef.current) return;
     const nextErrors = validate();
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors);
       return;
     }
     setErrors({});
+    savingRef.current = true;
     setSaving(true);
     try {
       // Persist the exact values visible in the editable modal before the
@@ -318,6 +325,7 @@ export default function SiteVisitEventModal({
       // The parent owns user-facing API error reporting. Keep the editable
       // modal open and do not confirm when its save failed.
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -329,6 +337,8 @@ export default function SiteVisitEventModal({
       open={open}
       ariaLabel={heading}
       onClose={onClose}
+      closeOnBackdrop={!saving}
+      closeOnEsc={!saving}
       maxWidthPx={720}
       overlayClassName={styles.eventModalOverlay}
       panelClassName={styles.eventModalPanel}
@@ -389,6 +399,7 @@ export default function SiteVisitEventModal({
               ref={linkedSelectRef}
               className={styles.input}
               value={linkedValue}
+              disabled={saving}
               onChange={(e) => {
                 const value = e.target.value;
                 if (value === LINK_NONE) {
@@ -437,6 +448,7 @@ export default function SiteVisitEventModal({
             <select
               className={styles.input}
               value={form.salespersonId}
+              disabled={saving}
               onChange={(e) => setForm((prev) => ({ ...prev, salespersonId: e.target.value }))}
             >
               <option value="">Select…</option>
@@ -455,6 +467,7 @@ export default function SiteVisitEventModal({
               type="date"
               className={styles.input}
               value={form.date}
+              disabled={saving}
               onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
             />
             {errors.date ? <div className={styles.eventModalError}>{errors.date}</div> : null}
@@ -465,6 +478,7 @@ export default function SiteVisitEventModal({
             <select
               className={styles.input}
               value={form.startTime}
+              disabled={saving}
               onChange={(e) => {
                 const nextStart = e.target.value;
                 setForm((prev) => ({
@@ -489,6 +503,7 @@ export default function SiteVisitEventModal({
             <select
               className={styles.input}
               value={form.endTime}
+              disabled={saving}
               onChange={(e) => setForm((prev) => ({ ...prev, endTime: e.target.value }))}
             >
               <option value="">Select…</option>
@@ -510,7 +525,7 @@ export default function SiteVisitEventModal({
               value={form.address}
               onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
               placeholder={isLinkedProject ? '' : 'Address (optional)'}
-              disabled={isLinkedProject}
+              disabled={isLinkedProject || saving}
             />
           </div>
 
@@ -521,7 +536,7 @@ export default function SiteVisitEventModal({
               value={form.phone}
               onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
               placeholder={isLinkedProject ? '' : 'Phone (optional)'}
-              disabled={isLinkedProject}
+              disabled={isLinkedProject || saving}
             />
           </div>
         </div>
@@ -531,6 +546,7 @@ export default function SiteVisitEventModal({
           <textarea
             className={styles.input}
             value={form.notes}
+            disabled={saving}
             onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
             rows={3}
           />

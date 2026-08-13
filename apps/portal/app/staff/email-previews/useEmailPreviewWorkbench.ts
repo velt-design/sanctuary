@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   previewVariantForSelection,
   type PreviewBlindsOption,
@@ -19,6 +19,7 @@ import type {
   LayoutPreview,
   PreviewResponse,
 } from './emailPreviewTypes';
+import { newId } from '@/lib/utils/id';
 
 const DEFAULTS = {
   customerType: 'residential',
@@ -59,6 +60,8 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
     useState<DeliveryConfirmation | null>(null);
   const [delivery, setDelivery] =
     useState<DeliveryState>({ status: 'idle' });
+  const deliveryLockedRef = useRef(false);
+  const deliveryIntentIdsRef = useRef(new Map<PreviewLayoutId, string>());
 
   const variant = previewVariantForSelection(
     customerType,
@@ -127,6 +130,9 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
 
   function requestDelivery(layouts: readonly LayoutPreview[]) {
     if (!preview?.sendReady || isSending || layouts.length === 0) return;
+    deliveryIntentIdsRef.current = new Map(
+      layouts.map((layout) => [layout.id, newId('email-preview')]),
+    );
     setDelivery({ status: 'idle' });
     setDeliveryConfirmation({
       layoutIds: layouts.map((layout) => layout.id),
@@ -160,7 +166,9 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
         currentLayout: layoutId,
       });
       try {
-        await sendEmailPreview(variant, layoutId, previewEndpoint);
+        const clientIntentId = deliveryIntentIdsRef.current.get(layoutId) ?? newId('email-preview');
+        deliveryIntentIdsRef.current.set(layoutId, clientIntentId);
+        await sendEmailPreview(variant, layoutId, clientIntentId, previewEndpoint);
         acceptedLayoutIds.push(layoutId);
       } catch (caught) {
         setDelivery({
@@ -184,15 +192,25 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
   }
 
   async function confirmDelivery() {
-    if (!deliveryConfirmation || isSending) return;
+    if (!deliveryConfirmation || isSending || deliveryLockedRef.current) return;
+    deliveryLockedRef.current = true;
     const layoutIds = deliveryConfirmation.layoutIds;
     setDeliveryConfirmation(null);
-    await deliverLayouts(layoutIds);
+    try {
+      await deliverLayouts(layoutIds);
+    } finally {
+      deliveryLockedRef.current = false;
+    }
   }
 
   async function retryFailedDelivery() {
-    if (delivery.status !== 'error' || isSending) return;
-    await deliverLayouts([delivery.failedLayoutId]);
+    if (delivery.status !== 'error' || isSending || deliveryLockedRef.current) return;
+    deliveryLockedRef.current = true;
+    try {
+      await deliverLayouts([delivery.failedLayoutId]);
+    } finally {
+      deliveryLockedRef.current = false;
+    }
   }
 
   function dismissDeliveryFeedback() {

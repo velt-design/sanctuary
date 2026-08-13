@@ -89,6 +89,7 @@ export async function recordProjectPaymentEntry(params: {
   reference?: string | null;
   note?: string | null;
   reason?: string | null;
+  clientIntentId: string;
   actor: string | null;
 }): Promise<string> {
   const projectUuid = uuidFromAppId(params.projectId, 'proj');
@@ -98,6 +99,8 @@ export async function recordProjectPaymentEntry(params: {
   const reason = params.entryType === 'ADJUSTMENT' ? requiredReason(params.reason) : null;
   const occurredAt = params.occurredAt?.trim() || new Date().toISOString();
   if (!Number.isFinite(new Date(occurredAt).getTime())) throw new Error('Payment date is invalid');
+  const clientIntentId = params.clientIntentId.trim();
+  if (clientIntentId.length < 8 || clientIntentId.length > 128) throw new Error('Payment client intent is invalid');
   const result = await supabaseServiceRole.rpc('commercial_record_project_payment_entry', {
     p_project_id: projectUuid,
     p_entry_type: params.entryType,
@@ -108,6 +111,7 @@ export async function recordProjectPaymentEntry(params: {
     p_note: optionalText(params.note, 1000),
     p_reason: reason,
     p_actor: params.actor,
+    p_client_intent_id: clientIntentId,
   } as any);
   if (result.error || !result.data) throw new Error(errorMessage(result.error, 'Failed to record payment'));
   await insertCommercialAuditEvent({

@@ -62,7 +62,7 @@ describe('ContactsImportDialog', () => {
     expect(apiJson).toHaveBeenCalledWith('/api/contacts', expect.objectContaining({ method: 'POST' }));
     expect(upsertContactCaches).toHaveBeenCalledWith(queryClient, 'host', expect.objectContaining({ id: 'ct_2' }));
     expect(invalidateContactsIndexCaches).toHaveBeenCalledWith(queryClient, 'host');
-    expect(toastSuccess).toHaveBeenCalledWith('Imported contacts: 1 created, 0 merged.');
+    expect(toastSuccess).toHaveBeenCalledWith('Import complete: 1 changes processed (1 created, 0 merged in this run).');
     expect(onClose).toHaveBeenCalled();
     rendered.unmount();
   });
@@ -74,8 +74,48 @@ describe('ContactsImportDialog', () => {
     const confirm = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Confirm import');
     await act(async () => { confirm?.click(); await Promise.resolve(); await Promise.resolve(); });
     expect(rendered.container.textContent).toContain('Import exploded');
-    expect(toastError).toHaveBeenCalledWith('Import exploded');
+    expect(toastError).toHaveBeenCalledWith(expect.stringContaining('Completed rows are saved; retry resumes safely. Import exploded'));
     expect(onClose).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
+  it('resumes after a partial failure without repeating completed rows', async () => {
+    parseContactsCsv.mockReturnValue({
+      headerRowNumber: 1,
+      warnings: [],
+      rows: [
+        { sourceRowNumber: 2, displayName: 'First', email: 'first@example.com', phone: '' },
+        { sourceRowNumber: 3, displayName: 'Second', email: 'second@example.com', phone: '' },
+      ],
+    });
+    planContactsImport.mockReturnValue({
+      stats: { create: 2, merge: 0, skip: 0, invalid: 0 },
+      decisions: [
+        { action: 'create', row: { sourceRowNumber: 2, displayName: 'First', email: 'first@example.com', phone: '' } },
+        { action: 'create', row: { sourceRowNumber: 3, displayName: 'Second', email: 'second@example.com', phone: '' } },
+      ],
+    });
+    apiJson
+      .mockResolvedValueOnce({ contact: { id: 'ct_1', displayName: 'First', email: 'first@example.com', phone: '' } })
+      .mockRejectedValueOnce(new Error('network lost'))
+      .mockResolvedValueOnce({ contact: { id: 'ct_2', displayName: 'Second', email: 'second@example.com', phone: '' } });
+
+    const rendered = renderIntoDocument(<ContactsImportDialog file={file} contacts={[]} host="host" onClose={onClose} />);
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    const clickConfirm = async () => {
+      const button = Array.from(rendered.container.querySelectorAll('button')).find((item) => (
+        item.textContent === 'Confirm import' || item.textContent === 'Retry remaining'
+      ));
+      await act(async () => { button?.click(); await Promise.resolve(); await Promise.resolve(); });
+    };
+    await clickConfirm();
+    expect(rendered.container.textContent).toContain('Import paused after 1 of 2 changes');
+    await clickConfirm();
+
+    expect(apiJson).toHaveBeenCalledTimes(3);
+    const names = apiJson.mock.calls.map((call) => JSON.parse(String(call[1]?.body)).displayName);
+    expect(names).toEqual(['First', 'Second', 'Second']);
+    expect(onClose).toHaveBeenCalledTimes(1);
     rendered.unmount();
   });
 });

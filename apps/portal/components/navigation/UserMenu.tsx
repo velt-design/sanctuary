@@ -1,7 +1,7 @@
 'use client';
 
 import { CircleUser, LogOut, Palette, RotateCcw, Save, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './UserMenu.module.css';
 import {
   PortalPanelAction,
@@ -15,6 +15,7 @@ import { applyPortalThemeToDocument } from '@/lib/theme/client';
 import { PORTAL_THEME_PRESETS, PORTAL_DEFAULT_THEME_PRESET_ID } from '@/lib/theme/presets';
 import type { PortalResolvedTheme, PortalThemeOverrideKey, PortalThemePresetId, PortalThemeTokens } from '@/lib/theme/types';
 import { hexToRgbCsv, normalizeHexColor } from '@/lib/theme/utils';
+import { newId } from '@/lib/utils/id';
 
 type ThemeSystemPreset = {
   id: PortalThemePresetId;
@@ -195,6 +196,8 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
   const [selectedPresetKey, setSelectedPresetKey] = useState<string>(systemKey(PORTAL_DEFAULT_THEME_PRESET_ID));
   const [presetName, setPresetName] = useState('');
   const [draftTokens, setDraftTokens] = useState<PortalThemeTokens>(DEFAULT_THEME_SYSTEM_PRESET.tokens);
+  const themeActionLockedRef = useRef(false);
+  const presetCreateIdRef = useRef(newId());
 
   const options = useMemo(() => buildThemeOptions(systemPresets, userPresets), [systemPresets, userPresets]);
   const selectedPreset = useMemo(
@@ -274,6 +277,8 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
 
   const persistTheme = useCallback(
     async (payload: { mode: 'replace' | 'reset'; preset_id?: PortalThemePresetId; user_preset_id?: string; overrides?: Record<string, string> }) => {
+      if (themeActionLockedRef.current) return null;
+      themeActionLockedRef.current = true;
       setSavingTheme(true);
       try {
         const res = await fetch('/api/staff/v1/theme', {
@@ -291,6 +296,7 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
         toast.error(err instanceof Error ? err.message : 'Failed to save theme settings.');
         return null;
       } finally {
+        themeActionLockedRef.current = false;
         setSavingTheme(false);
       }
     },
@@ -339,6 +345,7 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
   }, [draftTokens, persistTheme, selectedPreset.tokens, selectorPayload, toast]);
 
   const saveAsPreset = useCallback(async () => {
+    if (themeActionLockedRef.current) return;
     const name = validatePresetName(presetName);
     if (name.length < 2) {
       toast.error('Preset name must be at least 2 characters.');
@@ -355,29 +362,37 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
       tokens[field.key] = normalized;
     }
 
+    themeActionLockedRef.current = true;
     setSavingPreset(true);
     try {
       const res = await fetch('/api/staff/v1/theme/presets', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name, tokens }),
+        body: JSON.stringify({ presetId: presetCreateIdRef.current, name, tokens }),
       });
       const json = (await res.json().catch(() => ({}))) as ThemePresetMutationPayload;
       if (!res.ok || !json.preset) {
         throw new Error(typeof json?.error === 'string' ? json.error : 'Failed to create preset.');
       }
 
-      await persistTheme({ mode: 'reset', user_preset_id: json.preset.id });
+      presetCreateIdRef.current = newId();
+      themeActionLockedRef.current = false;
+      const applied = await persistTheme({ mode: 'reset', user_preset_id: json.preset.id });
+      if (!applied) {
+        toast.error('Preset was created, but it could not be applied. Select it from My presets and try Use preset.');
+        return;
+      }
       toast.success('Preset created.');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create preset.');
     } finally {
+      themeActionLockedRef.current = false;
       setSavingPreset(false);
     }
   }, [draftTokens, persistTheme, presetName, toast]);
 
   const updateSelectedPreset = useCallback(async () => {
-    if (!isSelectedUserPreset) return;
+    if (!isSelectedUserPreset || themeActionLockedRef.current) return;
 
     const name = validatePresetName(presetName || selectedPreset.label);
     if (name.length < 2) {
@@ -395,6 +410,7 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
       tokens[field.key] = normalized;
     }
 
+    themeActionLockedRef.current = true;
     setSavingPreset(true);
     try {
       const res = await fetch(`/api/staff/v1/theme/presets/${encodeURIComponent(selectedPreset.id)}`, {
@@ -407,19 +423,26 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
         throw new Error(typeof json?.error === 'string' ? json.error : 'Failed to update preset.');
       }
 
-      await persistTheme({ mode: 'reset', user_preset_id: selectedPreset.id });
+      themeActionLockedRef.current = false;
+      const applied = await persistTheme({ mode: 'reset', user_preset_id: selectedPreset.id });
+      if (!applied) {
+        toast.error('Preset was updated, but the active theme could not refresh. Use the preset again to reconcile it.');
+        return;
+      }
       toast.success('Preset updated.');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update preset.');
     } finally {
+      themeActionLockedRef.current = false;
       setSavingPreset(false);
     }
   }, [draftTokens, isSelectedUserPreset, persistTheme, presetName, selectedPreset.id, selectedPreset.label, toast]);
 
   const deleteSelectedPreset = useCallback(async () => {
-    if (!isSelectedUserPreset) return;
+    if (!isSelectedUserPreset || themeActionLockedRef.current) return;
     if (!window.confirm(`Delete preset "${selectedPreset.label}"?`)) return;
 
+    themeActionLockedRef.current = true;
     setSavingPreset(true);
     try {
       const res = await fetch(`/api/staff/v1/theme/presets/${encodeURIComponent(selectedPreset.id)}`, {
@@ -430,11 +453,17 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
         throw new Error(typeof json?.error === 'string' ? json.error : 'Failed to delete preset.');
       }
 
-      await persistTheme({ mode: 'reset', preset_id: PORTAL_DEFAULT_THEME_PRESET_ID });
+      themeActionLockedRef.current = false;
+      const applied = await persistTheme({ mode: 'reset', preset_id: PORTAL_DEFAULT_THEME_PRESET_ID });
+      if (!applied) {
+        toast.error('Preset was deleted, but the default theme could not be applied. Choose a system preset to reconcile it.');
+        return;
+      }
       toast.success('Preset deleted.');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete preset.');
     } finally {
+      themeActionLockedRef.current = false;
       setSavingPreset(false);
     }
   }, [isSelectedUserPreset, persistTheme, selectedPreset.id, selectedPreset.label, toast]);
@@ -451,7 +480,10 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
   return (
     <PortalPopover
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && (savingTheme || savingPreset)) return;
+        setOpen(nextOpen);
+      }}
       label="User settings"
       trigger={<CircleUser aria-hidden="true" size={20} strokeWidth={2} className={styles.icon} />}
       triggerAriaLabel="User menu"

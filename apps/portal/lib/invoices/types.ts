@@ -127,6 +127,7 @@ export type AdminInvoiceCreateInput = {
   overrideReason?: string | null;
   calculationBasis?: 'fixed' | 'percentage';
   percentage?: number | null;
+  clientIntentId?: string;
 };
 
 export type QuoteInvoiceCreateResult = {

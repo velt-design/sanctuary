@@ -2,7 +2,7 @@
 
 Status: Active evolving tracker.
 
-Last updated: 2026-08-06.
+Last updated: 2026-08-13.
 
 Purpose: keep agents and maintainers aligned on the path to a first-class, production-grade internal portal. This doc is the dashboard for current readiness, blockers, priorities, parallel lanes, and next actions. Detailed behavior rules stay in the canonical docs linked below.
 
@@ -217,6 +217,7 @@ Wave 3 must keep queue durability, private input, worker fencing, external-effec
 - [ ] Heavy views are lazy-split by actual workflow boundaries.
 - [ ] Board, Gantt, Site Visits, design workbench, and spreadsheet surfaces remain responsive under realistic data volume.
 - [ ] Loading, empty, error, pending, retry, stale, and locked states are visible and useful.
+- [x] Operational staff/admin actions have a page-by-page duplicate, progress, ambiguous-retry, reconciliation-failure and navigation audit recorded in `docs/portal-action-recovery-audit.md`; focused and browser evidence is required at handoff.
 - [ ] Core workflows are manually checked at desktop and mobile/tablet widths where staff may use them.
 - [ ] Browser tests or manual screenshots confirm high-risk canvas/SVG/3D views are nonblank and correctly framed.
 
@@ -352,6 +353,10 @@ When updating this tracker:
 - Keep this file ASCII and link to repo-relative paths.
 
 ## Change Notes
+
+### 2026-08-13
+
+- Completed the portal action-and-recovery audit across commercial, projects/calculator, Schedule/Site Visits, contacts/dashboard, Project Work and admin/specialist surfaces. Non-idempotent creates and appends now use stable caller intent where needed, same-tick action locks close repeat-click gaps, committed commands are distinguished from failed follow-up reconciliation, and recovery remains domain-scoped. Typecheck, lint, the constrained full portal suite, focused tests, an isolated production build, architecture checks and authenticated read-only browser smoke passed. The normal build preflight correctly protected the user-owned dev process; the successful build used a separate temporary output and removed it afterward. The broad marketing run's unrelated flaky token test passed immediately in isolation. The evidence matrix and exact gate notes live in `docs/portal-action-recovery-audit.md`.
 
 ### 2026-08-06
 

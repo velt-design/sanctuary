@@ -39,6 +39,8 @@ Do not bypass these with direct browser writes.
 
 ### Mutation trust contract
 
+The directly addressable Site Visits compatibility view follows the same truth boundary: its modal acquires a synchronous whole-form lock for book/save/confirm/complete/reschedule/unschedule actions, freezes fields and close controls while pending, and treats a failed post-command reload as stale reconciliation after a completed command. Orphan cleanup and salesperson assignment use exact action locks. See `docs/portal-action-recovery-audit.md`.
+
 The V2 client previews a mutation with `force: false`. It asks for confirmation
 only when the server reports that other scheduled jobs will move, and the
 dialog identifies those projects and their before/after dates. After approval,

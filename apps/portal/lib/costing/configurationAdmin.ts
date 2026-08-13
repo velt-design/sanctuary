@@ -105,9 +105,27 @@ export async function createCostingConfigurationDraft(
   actor: CostingConfigurationActor,
   sourceVersionId?: string | null,
   metadata?: Partial<CostingConfigurationMetadata>,
+  versionId?: string | null,
 ): Promise<CostingConfigurationVersion> {
   const identity = actorFields(actor);
   const details = assertValidMetadata(metadata ?? {});
+  if (versionId) {
+    const existing = await supabase
+      .from('costing_configuration_versions')
+      .select('*')
+      .eq('id', versionId)
+      .maybeSingle();
+    if (existing.error) {
+      throw formatCostingDatabaseError('Failed to check costing configuration draft', existing.error);
+    }
+    if (existing.data) {
+      const replay = mapCostingConfigurationVersion(existing.data);
+      if (String((existing.data as { created_by?: unknown }).created_by ?? '') !== identity.id) {
+        throw new Error('Costing configuration draft identity is already in use.');
+      }
+      return replay;
+    }
+  }
   let config: CostingControlConfigV1;
   let basedOnVersionId: string | null;
 
@@ -127,6 +145,7 @@ export async function createCostingConfigurationDraft(
   const insertResult = await supabase
     .from('costing_configuration_versions')
     .insert({
+      ...(versionId ? { id: versionId } : {}),
       status: 'draft',
       name: details.name,
       purpose: details.purpose,
@@ -143,6 +162,9 @@ export async function createCostingConfigurationDraft(
     .select('*')
     .single();
   if (insertResult.error) {
+    if (versionId && insertResult.error.code === '23505') {
+      return getCostingConfigurationVersionById(versionId, supabase);
+    }
     throw formatCostingDatabaseError('Failed to create costing configuration draft', insertResult.error);
   }
   return mapCostingConfigurationVersion(insertResult.data);
@@ -181,6 +203,15 @@ export async function saveCostingConfigurationDraft(
     throw formatCostingDatabaseError('Failed to save costing configuration draft', updateResult.error);
   }
   if (!updateResult.data) {
+    const current = await getCostingConfigurationVersionById(versionId, supabase);
+    if (
+      current.status === 'draft'
+      && current.contentHash === hashCostingControlConfig(config)
+      && current.name === details.name
+      && current.purpose === details.purpose
+    ) {
+      return current;
+    }
     throw new Error('The draft changed or was published. Refresh before saving again.');
   }
   return mapCostingConfigurationVersion(updateResult.data);
@@ -231,6 +262,9 @@ export async function publishCostingConfigurationDraft(
   publishNote: string,
 ): Promise<CostingConfigurationVersion> {
   const version = await getCostingConfigurationVersionById(versionId, supabase);
+  if (version.status === 'published' && version.contentHash === expectedContentHash) {
+    return version;
+  }
   if (version.contentHash !== expectedContentHash) {
     throw new Error('The draft changed. Refresh its comparison before publishing.');
   }

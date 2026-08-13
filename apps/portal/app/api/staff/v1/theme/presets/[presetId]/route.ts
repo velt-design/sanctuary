@@ -94,7 +94,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ presetId: s
     return jsonError(deleteRes.error.message ?? 'Failed to delete preset', 500);
   }
 
-  if (!deleteRes.data) return jsonError('Preset not found', 404);
+  if (!deleteRes.data) return jsonOk({ ok: true, deleted_id: presetId, replayed: true });
 
-  return jsonOk({ ok: true, deleted_id: presetId });
+  return jsonOk({ ok: true, deleted_id: presetId, replayed: false });
 }

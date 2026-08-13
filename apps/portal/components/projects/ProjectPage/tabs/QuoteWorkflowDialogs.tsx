@@ -376,8 +376,9 @@ export default function QuoteWorkflowDialogs({
               </h4>
               <button
                 type="button"
-                className={styles.modalClose}
-                onClick={closeSend}
+            className={styles.modalClose}
+            onClick={closeSend}
+            disabled={sendBusy}
               >
                 Close
               </button>
@@ -393,6 +394,7 @@ export default function QuoteWorkflowDialogs({
                 aria-selected={sendEditorMode === "compose"}
                 className={`${styles.modalModeButton} ${sendEditorMode === "compose" ? styles.modalModeButtonActive : ""}`}
                 onClick={() => setSendEditorMode("compose")}
+                disabled={sendBusy}
               >
                 Edit email
               </button>
@@ -402,6 +404,7 @@ export default function QuoteWorkflowDialogs({
                 aria-selected={sendEditorMode === "review"}
                 className={`${styles.modalModeButton} ${sendEditorMode === "review" ? styles.modalModeButtonActive : ""}`}
                 onClick={() => setSendEditorMode("review")}
+                disabled={sendBusy}
               >
                 Review
               </button>
@@ -417,6 +420,7 @@ export default function QuoteWorkflowDialogs({
                 className={styles.metaInput}
                 value={sendTo}
                 onChange={(event) => setSendTo(event.target.value)}
+                disabled={sendBusy}
               />
               <label className={styles.metaLabel} htmlFor="sendSubject">
                 Subject
@@ -426,6 +430,7 @@ export default function QuoteWorkflowDialogs({
                 className={styles.metaInput}
                 value={sendSubject}
                 onChange={(event) => setSendSubject(event.target.value)}
+                disabled={sendBusy}
               />
               <label className={styles.metaLabel} htmlFor="sendBody">
                 Personal note (optional)
@@ -435,6 +440,7 @@ export default function QuoteWorkflowDialogs({
                 className={styles.textarea}
                 value={sendPersonalNote}
                 onChange={(event) => setSendPersonalNote(event.target.value)}
+                disabled={sendBusy}
                 rows={6}
                 placeholder="Optional custom note to include in the template."
               />
@@ -444,7 +450,8 @@ export default function QuoteWorkflowDialogs({
               <input
                 id="sendAttachments"
                 className={styles.fileInput}
-                type="file"
+                  type="file"
+                  disabled={sendBusy}
                 multiple
                 accept={ATTACHMENT_INPUT_ACCEPT}
                 onChange={(event) => {
@@ -500,7 +507,8 @@ export default function QuoteWorkflowDialogs({
                         </span>
                       </span>
                       <button
-                        type="button"
+                          type="button"
+                          disabled={sendBusy}
                         className={styles.attachmentRemove}
                         onClick={() =>
                           setSendAttachments((current) =>
@@ -611,6 +619,7 @@ export default function QuoteWorkflowDialogs({
               type="button"
               className={styles.secondaryButton}
               onClick={closeSend}
+              disabled={sendBusy}
             >
               Cancel
             </button>
@@ -619,6 +628,7 @@ export default function QuoteWorkflowDialogs({
                 type="button"
                 className={styles.primaryButton}
                 onClick={() => setSendEditorMode("review")}
+                disabled={sendBusy}
               >
                 Continue to review
               </button>
@@ -628,6 +638,7 @@ export default function QuoteWorkflowDialogs({
                   type="button"
                   className={styles.secondaryButton}
                   onClick={() => setSendEditorMode("compose")}
+                  disabled={sendBusy}
                 >
                   Back to edit
                 </button>

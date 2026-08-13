@@ -286,6 +286,10 @@ Local-first mutation keys for project notes (`portal.project.note.{create,update
 
 ## Local-First Mutations
 
+### Action and recovery contract
+
+Contact create supplies a stable caller-owned contact ID, so an ambiguous retry returns the committed contact instead of inserting another row. CSV import assigns one stable ID per reviewed row, checkpoints confirmed rows, and retries only unfinished rows; a failed post-import refresh is reported as stale reconciliation, not as a failed import. Project/contact creation and calculator Save acquire synchronous ref-backed locks before their first async boundary. Calculator design selection, Back navigation, confirmation fields, and the actual-cost editor remain fixed while their exact save is pending. These protections complement the existing local-first queue; they do not create a parallel persistence owner. See `docs/portal-action-recovery-audit.md` for the cross-portal contract.
+
 Project estimate and quote draft workflows use local-first mutations for responsive editing while server state remains authoritative.
 
 Current mutation keys used by this workflow:

@@ -117,9 +117,10 @@ export async function POST(req: Request) {
 
   const keys = Object.keys(parsed.body);
   if (
-    keys.length !== 2
+    (keys.length !== 2 && keys.length !== 3)
     || !keys.includes('variant')
     || !keys.includes('layout')
+    || keys.some((key) => !['variant', 'layout', 'clientIntentId'].includes(key))
   ) {
     return privateNoStore(
       jsonError('Only the fixture variant and preview layout may be supplied.', 400, null, {
@@ -141,6 +142,18 @@ export async function POST(req: Request) {
       }),
     );
   }
+  const clientIntentId = parsed.body.clientIntentId;
+  if (clientIntentId !== undefined && (
+    typeof clientIntentId !== 'string'
+    || clientIntentId.trim().length < 8
+    || clientIntentId.trim().length > 128
+  )) {
+    return privateNoStore(
+      jsonError('Invalid email preview client intent.', 400, null, {
+        code: 'EMAIL_PREVIEW_BODY_INVALID',
+      }),
+    );
+  }
   if (!access.availability.sendReady) {
     return privateNoStore(
       jsonError(
@@ -156,10 +169,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const sent = await sendWebsiteAutoresponderPreview(
-      parsed.body.variant,
-      parsed.body.layout,
-    );
+    const sent = typeof clientIntentId === 'string'
+      ? await sendWebsiteAutoresponderPreview(parsed.body.variant, parsed.body.layout, clientIntentId.trim())
+      : await sendWebsiteAutoresponderPreview(parsed.body.variant, parsed.body.layout);
     return privateNoStore(
       jsonOk({
         ok: true,

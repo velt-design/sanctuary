@@ -647,6 +647,7 @@ export default function CalculatorGridClient({
     },
     setLoadedEstimateDetail,
     onError: (message) => toast.error(message),
+    onGeneratingChange: workspace?.onSaveStateChange,
     onSaved: (outcome) => {
       setEditSessionEstimateId(outcome.estimateId);
       workspace?.onEstimateSaved(outcome.estimateId);

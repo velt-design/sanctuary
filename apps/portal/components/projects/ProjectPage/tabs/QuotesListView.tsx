@@ -322,6 +322,7 @@ export default function QuotesListView({
               type="button"
               className={styles.modalClose}
               onClick={closeCreate}
+              disabled={createBusy}
             >
               Close
             </button>
@@ -329,8 +330,8 @@ export default function QuotesListView({
           <div className={styles.modalBody}>
             {isAdmin ? (
               <div className={styles.modalModeSwitch} aria-label="Quote source">
-                <button type="button" className={createMode === "estimate" ? styles.modalModeButtonActive : styles.modalModeButton} onClick={() => setCreateMode("estimate")}>From estimate</button>
-                <button type="button" className={createMode === "manual" ? styles.modalModeButtonActive : styles.modalModeButton} onClick={() => setCreateMode("manual")}>Manual quote</button>
+                <button type="button" disabled={createBusy} className={createMode === "estimate" ? styles.modalModeButtonActive : styles.modalModeButton} onClick={() => setCreateMode("estimate")}>From estimate</button>
+                <button type="button" disabled={createBusy} className={createMode === "manual" ? styles.modalModeButtonActive : styles.modalModeButton} onClick={() => setCreateMode("manual")}>Manual quote</button>
               </div>
             ) : null}
             {createMode === "estimate" ? (
@@ -340,6 +341,7 @@ export default function QuotesListView({
                   id="estimateSelect"
                   className={styles.metaInput}
                   value={createEstimateId}
+                  disabled={createBusy || estimatesLoading}
                   onChange={(event) => {
                     setCreateEstimateId(event.target.value);
                     const estimate = estimates.find((item) => item.id === event.target.value);
@@ -348,7 +350,6 @@ export default function QuotesListView({
                     );
                     setCreateInternalName(family?.internalName ?? estimate?.internalName ?? "");
                   }}
-                  disabled={estimatesLoading}
                 >
                   {!estimates.length ? <option value="">No estimates available</option> : null}
                   {estimates.map((estimate) => (
@@ -362,14 +363,15 @@ export default function QuotesListView({
               </>
             ) : (
               <div className={styles.manualQuoteFields}>
-                <Input label="First line item" value={manualDescription} onChange={(event) => setManualDescription(event.target.value)} placeholder="e.g. Supply and install additional post" />
-                <Input label="Quantity" type="number" min="0.01" step="0.01" value={manualQty} onChange={(event) => setManualQty(event.target.value)} />
-                <Input label="Unit price (inc GST)" type="number" min="0.01" step="0.01" value={manualPrice} onChange={(event) => setManualPrice(event.target.value)} helperText="Add more lines and edit payment terms after creation." />
+                <Input label="First line item" disabled={createBusy} value={manualDescription} onChange={(event) => setManualDescription(event.target.value)} placeholder="e.g. Supply and install additional post" />
+                <Input label="Quantity" disabled={createBusy} type="number" min="0.01" step="0.01" value={manualQty} onChange={(event) => setManualQty(event.target.value)} />
+                <Input label="Unit price (inc GST)" disabled={createBusy} type="number" min="0.01" step="0.01" value={manualPrice} onChange={(event) => setManualPrice(event.target.value)} helperText="Add more lines and edit payment terms after creation." />
               </div>
             )}
             <Input
               label="Internal quote name (optional)"
               value={createInternalName}
+              disabled={createBusy}
               onChange={(event) => setCreateInternalName(event.target.value)}
               placeholder="e.g. Front deck pergola"
               maxLength={COMMERCIAL_INTERNAL_NAME_MAX_LENGTH}
@@ -381,6 +383,7 @@ export default function QuotesListView({
               type="button"
               className={styles.secondaryButton}
               onClick={closeCreate}
+              disabled={createBusy}
             >
               Cancel
             </button>

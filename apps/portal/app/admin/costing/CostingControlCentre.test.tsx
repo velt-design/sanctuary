@@ -176,6 +176,7 @@ describe('CostingControlCentre', () => {
 
     const createCall = fetch.mock.calls.find(([, init]) => init?.method === 'POST');
     expect(JSON.parse(String(createCall?.[1]?.body))).toEqual({
+      versionId: expect.stringMatching(/^[0-9a-f-]{36}$/i),
       sourceVersionId: null,
       name: 'August aluminium update',
       purpose: 'Refresh confirmed aluminium supplier costs for August.',

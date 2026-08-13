@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import HeaderActions from '@/components/layout/HeaderActions';
@@ -15,6 +15,7 @@ import { invalidateContactsIndexCaches } from '@/lib/queries/contactsIndex';
 import { apiJson } from '@/lib/repo/apiClient';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import type { Contact } from '@/lib/types/contact';
+import { newId } from '@/lib/utils/id';
 import styles from '../contacts.module.css';
 
 type Draft = {
@@ -34,6 +35,8 @@ export default function ContactCreateClient() {
   const [draft, setDraft] = useState<Draft>({ displayName: '', email: '', phone: '' });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const submitLockedRef = useRef(false);
+  const contactIdRef = useRef(newId('ct'));
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
   const canSubmit = useMemo(() => {
@@ -58,13 +61,15 @@ export default function ContactCreateClient() {
         <form
           onSubmit={async (event) => {
             event.preventDefault();
-            if (busy || !canSubmit) return;
+            if (submitLockedRef.current || busy || !canSubmit) return;
+            submitLockedRef.current = true;
             setError(null);
             setBusy(true);
             try {
               const response = await apiJson<{ contact: Contact }>('/api/contacts', {
                 method: 'POST',
                 body: JSON.stringify({
+                  contactId: contactIdRef.current,
                   displayName: draft.displayName.trim(),
                   email: draft.email.trim(),
                   phone: draft.phone.trim(),
@@ -76,6 +81,7 @@ export default function ContactCreateClient() {
             } catch (reason) {
               setError(reason instanceof Error ? reason.message : 'Failed to create contact');
             } finally {
+              submitLockedRef.current = false;
               setBusy(false);
             }
           }}
@@ -85,6 +91,7 @@ export default function ContactCreateClient() {
               id="displayName"
               label="Name *"
               value={draft.displayName}
+              disabled={busy}
               onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))}
               required
             />
@@ -93,6 +100,7 @@ export default function ContactCreateClient() {
               label="Email"
               type="email"
               value={draft.email}
+              disabled={busy}
               onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))}
               error={!isValidOptionalEmail(draft.email) ? 'Email must include "@".' : undefined}
             />
@@ -101,6 +109,7 @@ export default function ContactCreateClient() {
               label="Phone"
               type="tel"
               value={draft.phone}
+              disabled={busy}
               onChange={(event) => setDraft((current) => ({ ...current, phone: event.target.value }))}
             />
           </div>
@@ -109,7 +118,7 @@ export default function ContactCreateClient() {
 
           <div className={styles.formActions}>
             <Button type="submit" disabled={!canSubmit} loading={busy}>{busy ? 'Creating...' : 'Create Contact'}</Button>
-            <PortalIndexLink variant="secondary" href="/staff/contacts">Cancel</PortalIndexLink>
+            <PortalIndexLink variant="secondary" href="/staff/contacts" disabled={busy}>Cancel</PortalIndexLink>
           </div>
         </form>
 

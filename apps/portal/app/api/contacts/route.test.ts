@@ -112,4 +112,41 @@ describe('POST /api/contacts', () => {
     expect(res.headers.get('x-portal-request-id')).toBe('req_contacts_create_schema');
     expect(res.headers.get('server-timing')).toContain('total;dur=');
   });
+
+  it('returns the existing contact when a stable contact id is replayed', async () => {
+    const contactUuid = '11111111-1111-4111-8111-111111111111';
+    const singleMock = vi.fn().mockResolvedValue({ data: null, error: { code: '23505', message: 'duplicate key' } });
+    const maybeSingleMock = vi.fn().mockResolvedValue({
+      data: {
+        id: contactUuid,
+        name: 'Alex Mason',
+        email: 'alex@example.com',
+        phone: '021',
+        created_at: '2026-08-13T00:00:00.000Z',
+        updated_at: '2026-08-13T00:00:00.000Z',
+      },
+      error: null,
+    });
+    fromMock.mockImplementation(() => ({
+      insert: () => ({ select: () => ({ single: singleMock }) }),
+      select: () => ({ eq: () => ({ maybeSingle: maybeSingleMock }) }),
+    }));
+
+    const mod = await import('./route');
+    const res = await mod.POST(new Request('http://localhost/api/contacts', {
+      method: 'POST',
+      body: JSON.stringify({
+        contactId: `ct_${contactUuid}`,
+        displayName: 'Alex Mason',
+        email: 'alex@example.com',
+        phone: '021',
+      }),
+    }));
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual(expect.objectContaining({
+      replayed: true,
+      contact: expect.objectContaining({ id: `ct_${contactUuid}`, displayName: 'Alex Mason' }),
+    }));
+  });
 });

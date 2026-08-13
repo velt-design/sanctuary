@@ -135,6 +135,7 @@ export default function ImportsClient() {
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const parseSequenceRef = useRef(0);
+  const importLockedRef = useRef(false);
   const [sources, setSources] = useState<ParsedImportSource[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -252,7 +253,8 @@ export default function ImportsClient() {
               className={styles.button}
               disabled={!canImport}
               onClick={() => {
-                if (!canImport) return;
+                if (!canImport || importLockedRef.current) return;
+                importLockedRef.current = true;
                 setBusy(true);
                 void (async () => {
                   try {
@@ -265,8 +267,9 @@ export default function ImportsClient() {
                     );
                   } catch (err) {
                     const msg = err instanceof Error ? err.message : 'Import failed.';
-                    toast.error(msg);
+                    toast.error(`Import paused. Completed records are saved and retrying is safe because records are upserted by ID. ${msg}`);
                   } finally {
+                    importLockedRef.current = false;
                     setBusy(false);
                   }
                 })();

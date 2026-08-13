@@ -33,6 +33,8 @@ export async function POST(request: Request, context: { params: Promise<{ projec
   }
   const mode = body.mode as AdminInvoiceCreationMode;
   if (!['next_stage', 'full_remaining', 'custom', 'split'].includes(mode)) return jsonError('Invoice creation mode is invalid', 400);
+  const clientIntentId = typeof body.clientIntentId === 'string' ? body.clientIntentId.trim() : '';
+  if (clientIntentId.length < 8 || clientIntentId.length > 128) return jsonError('Invoice client intent is invalid', 400);
   try {
     const result = await createAdminInvoice({
       projectId: projectId.trim(),
@@ -49,6 +51,7 @@ export async function POST(request: Request, context: { params: Promise<{ projec
       overrideReason: typeof body.overrideReason === 'string' ? body.overrideReason : null,
       calculationBasis: body.calculationBasis === 'percentage' ? 'percentage' : 'fixed',
       percentage: typeof body.percentage === 'number' ? body.percentage : null,
+      clientIntentId,
       actor: auth.session.user.id,
     });
     return jsonOk({ result }, 201);

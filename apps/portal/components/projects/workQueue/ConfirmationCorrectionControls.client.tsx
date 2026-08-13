@@ -61,6 +61,7 @@ export default function ConfirmationCorrectionControls({
   const { isAdmin } = usePortalSession();
   const queryClient = useQueryClient();
   const attempts = useRef(new StableCommandAttempt()).current;
+  const inFlight = useRef(false);
   const [eventId, setEventId] = useState('');
   const [reason, setReason] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
@@ -72,13 +73,14 @@ export default function ConfirmationCorrectionControls({
 
   const submit = async () => {
     const correctionReason = reason.trim();
-    if (!eventId || !correctionReason || !acknowledged || pending || disabled) return;
+    if (!eventId || !correctionReason || !acknowledged || inFlight.current || disabled) return;
     const payload = {
       projectId,
       confirmationEventId: eventId,
       reason: correctionReason,
     };
     const intent = projectCommandIntent('CONFIRMATION_RETRACTION', payload);
+    inFlight.current = true;
     setPending(true);
     setMessage(null);
     setError(null);
@@ -87,6 +89,9 @@ export default function ConfirmationCorrectionControls({
         ...payload,
         commandId: attempts.commandIdFor(intent),
       });
+      if (!response.command.committed) {
+        throw new Error('The server did not confirm this correction.');
+      }
       attempts.committed(intent);
       setEventId('');
       setReason('');
@@ -105,6 +110,7 @@ export default function ConfirmationCorrectionControls({
           : 'The confirmation correction could not be recorded.',
       );
     } finally {
+      inFlight.current = false;
       setPending(false);
     }
   };

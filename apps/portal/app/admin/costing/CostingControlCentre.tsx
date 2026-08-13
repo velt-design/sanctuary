@@ -41,6 +41,7 @@ import {
   type ValidationIssue,
 } from './costingControlModel';
 import styles from './costingControl.module.css';
+import { newId } from '@/lib/utils/id';
 
 type Catalog = {
   materials: Array<{
@@ -125,6 +126,8 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   const [draftDialog, setDraftDialog] = useState<DraftDialogState | null>(null);
   const publishPanelRef = useRef<HTMLDivElement>(null);
   const initialOverviewSignatureRef = useRef(JSON.stringify(initialOverview));
+  const actionLockedRef = useRef(false);
+  const draftVersionIdRef = useRef(newId());
 
   const versionById = useMemo(
     () => new Map(overview.versions.map((version) => [version.id, version])),
@@ -248,8 +251,9 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const openVersion = async (versionId: string, landing?: CostingControlSection) => {
-    if (busy) return;
+    if (busy || actionLockedRef.current) return;
     if (!confirmDiscard()) return;
+    actionLockedRef.current = true;
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -258,6 +262,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to open pricing configuration');
     } finally {
+      actionLockedRef.current = false;
       setBusy(false);
     }
   };
@@ -265,6 +270,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   const createDraft = (sourceVersionId?: string) => {
     if (busy) return;
     if (!confirmDiscard()) return;
+    draftVersionIdRef.current = newId();
     const source = sourceVersionId ? versionById.get(sourceVersionId) : null;
     setDraftDialog({
       sourceVersionId: sourceVersionId ?? null,
@@ -274,7 +280,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const submitDraft = async () => {
-    if (!draftDialog || busy) return;
+    if (!draftDialog || busy || actionLockedRef.current) return;
     const source = draftDialog.sourceVersionId
       ? versionById.get(draftDialog.sourceVersionId) ?? null
       : null;
@@ -283,6 +289,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
       setMetadataIssues(metadata.issues);
       return;
     }
+    actionLockedRef.current = true;
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -293,23 +300,30 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
+            versionId: draftVersionIdRef.current,
             sourceVersionId: draftDialog.sourceVersionId,
             ...metadata.value,
           }),
         },
       );
+      draftVersionIdRef.current = newId();
       setDraftDialog(null);
       setMetadataIssues([]);
-      await refreshOverview();
-      await loadVersion(created.version.id);
       setMessage(
         `Draft v${created.version.versionNumber} created from ${
           source ? `${source.name} (v${source.versionNumber})` : 'the active pricing settings'
         }.`,
       );
+      try {
+        await loadVersion(created.version.id);
+        await refreshOverview();
+      } catch {
+        setError('The draft was created, but the latest pricing view could not load. Reload this page to continue; do not create the draft again.');
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to create pricing draft');
     } finally {
+      actionLockedRef.current = false;
       setBusy(false);
     }
   };
@@ -346,7 +360,8 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const saveDraft = async (landing?: CostingControlSection) => {
-    if (busy || !editor || !config) return;
+    if (busy || actionLockedRef.current || !editor || !config) return;
+    actionLockedRef.current = true;
     setBusy(true);
     setError(null);
     setIssues([]);
@@ -372,7 +387,11 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
       setDirty(false);
       setMessage('Draft saved and validated. The comparison and impact preview are up to date.');
       if (landing) setSection(landing);
-      await refreshOverview();
+      try {
+        await refreshOverview();
+      } catch {
+        setError('The draft was saved, but the version list could not refresh. Reload to see the latest list; do not repeat the save.');
+      }
     } catch (caught) {
       const value = caught as Error & {
         issues?: ValidationIssue[];
@@ -392,6 +411,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
       const firstSection = sectionForIssuePath(nextIssues[0]?.path);
       if (firstSection) setSection(firstSection);
     } finally {
+      actionLockedRef.current = false;
       setBusy(false);
     }
   };
@@ -405,8 +425,9 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const publishDraft = async () => {
-    if (busy || !editor || dirty || !confirmed) return;
+    if (busy || actionLockedRef.current || !editor || dirty || !confirmed) return;
     if (!window.confirm('Publish this pricing version? Future calculations will use it immediately.')) return;
+    actionLockedRef.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -425,11 +446,17 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
       setMessage(`Pricing version ${result.version.versionNumber} published.`);
       setConfirmed(false);
       setPublishNote('');
-      await refreshOverview();
-      await loadVersion(result.version.id, 'comparison');
+      setEditor((current) => current ? { ...current, version: result.version, comparison: null } : current);
+      try {
+        await refreshOverview();
+        await loadVersion(result.version.id, 'comparison');
+      } catch {
+        setError('Pricing was published, but the latest view could not refresh. Reload to reconcile it; do not publish again.');
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to publish pricing version');
     } finally {
+      actionLockedRef.current = false;
       setBusy(false);
     }
   };

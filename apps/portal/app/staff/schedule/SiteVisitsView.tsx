@@ -284,6 +284,9 @@ export default function SiteVisitsView() {
   const [slotPopover, setSlotPopover] = useState<SlotPopoverState | null>(null);
   const [hoveredEvent, setHoveredEvent] = useState<{ item: SiteVisitCalendarItem; anchorRect: DOMRect } | null>(null);
   const [localEvents, setLocalEvents] = useState<SiteVisitCalendarItem[]>([]);
+  const actionPendingRef = useRef(false);
+  const [assignPending, setAssignPending] = useState(false);
+  const [orphanRemovalPending, setOrphanRemovalPending] = useState(false);
 
   const calendarScrollRef = useRef<HTMLDivElement | null>(null);
   const didInitScroll = useRef(false);
@@ -373,7 +376,18 @@ export default function SiteVisitsView() {
   }, [snapshotError, snapshot, toast]);
 
   const fetchFresh = async () => {
-    await refetch();
+    const result = await refetch();
+    if (result.error) throw result.error;
+  };
+
+  const refreshAfterConfirmedSiteVisitAction = async (action: string) => {
+    try {
+      await fetchFresh();
+    } catch {
+      const message = `${action} was completed, but the latest site visits could not be loaded. Refresh before another action; do not repeat the completed action.`;
+      setActionError(message);
+      toast.error(message);
+    }
   };
 
   useEffect(() => {
@@ -479,14 +493,20 @@ export default function SiteVisitsView() {
   }, [assignedRenderableEvents]);
 
   const removeOrphans = async () => {
+    if (orphanRemovalPending || actionPendingRef.current) return;
+    actionPendingRef.current = true;
+    setOrphanRemovalPending(true);
     try {
       setActionError(null);
       const res = await apiJson<{ removed: number }>('/api/staff/v1/site-visits/remove-orphans', { method: 'POST' });
       toast.success(`Removed ${res.removed} orphaned site visit${res.removed === 1 ? '' : 's'}.`);
-      await fetchFresh();
+      await refreshAfterConfirmedSiteVisitAction('Orphan removal');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to remove orphaned site visits.';
       toast.error(msg);
+    } finally {
+      actionPendingRef.current = false;
+      setOrphanRemovalPending(false);
     }
   };
 
@@ -647,7 +667,7 @@ export default function SiteVisitsView() {
           applyOptimisticBooking({ base, fromUnscheduledId: fromUnscheduled.id, booked });
           toast.success('Booked.');
           closeModal();
-          await fetchFresh();
+          await refreshAfterConfirmedSiteVisitAction('The booking');
           return;
         }
 
@@ -754,7 +774,7 @@ export default function SiteVisitsView() {
 
         toast.success('Booked.');
         closeModal();
-        await fetchFresh();
+        await refreshAfterConfirmedSiteVisitAction('The booking');
         return;
       }
 
@@ -782,7 +802,7 @@ export default function SiteVisitsView() {
       toast.success('Booking updated.');
       if (!options?.keepOpen) {
         closeModal();
-        await fetchFresh();
+        await refreshAfterConfirmedSiteVisitAction('The booking update');
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save site visit.';
@@ -795,6 +815,9 @@ export default function SiteVisitsView() {
   };
 
   const assignSalesperson = async (item: SiteVisitCalendarItem, salespersonIdRaw: string) => {
+    if (assignPending || actionPendingRef.current) return;
+    actionPendingRef.current = true;
+    setAssignPending(true);
     try {
       setActionError(null);
       const salespersonId = salespersonIdRaw.trim();
@@ -822,13 +845,16 @@ export default function SiteVisitsView() {
 
       toast.success('Assigned.');
       setAssigning(null);
-      await fetchFresh();
+      await refreshAfterConfirmedSiteVisitAction('The salesperson assignment');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to assign salesperson.';
       const extra =
         err instanceof ApiError && err.body && typeof err.body === 'object' && 'error' in (err.body as any) ? String((err.body as any).error) : '';
       setActionError(extra && extra !== msg ? `${msg}\n${extra}` : msg);
       toast.error(msg);
+    } finally {
+      actionPendingRef.current = false;
+      setAssignPending(false);
     }
   };
 
@@ -861,7 +887,7 @@ export default function SiteVisitsView() {
       }
 
       toast.success('Unscheduled.');
-      await fetchFresh();
+      await refreshAfterConfirmedSiteVisitAction('The unschedule action');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to unschedule site visit.';
       const extra =
@@ -898,7 +924,7 @@ export default function SiteVisitsView() {
       }
 
       toast.success('Booking confirmed.');
-      await fetchFresh();
+      await refreshAfterConfirmedSiteVisitAction('The booking confirmation');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to confirm site visit.';
       const extra =
@@ -1003,8 +1029,8 @@ export default function SiteVisitsView() {
                         {orphanEventCandidates.length} site visit record{orphanEventCandidates.length === 1 ? '' : 's'} missing project details
                       </span>
                     </div>
-                    <button type="button" className={styles.buttonSecondary} onClick={() => void removeOrphans()}>
-                      Remove orphaned
+                    <button type="button" className={styles.buttonSecondary} disabled={orphanRemovalPending} onClick={() => void removeOrphans()}>
+                      {orphanRemovalPending ? 'Removing...' : 'Remove orphaned'}
                     </button>
                   </div>
                   <div className={styles.issuesBody}>
@@ -1219,11 +1245,11 @@ export default function SiteVisitsView() {
       />
 
       {assigning ? (
-        <Modal open ariaLabel="Assign salesperson" onClose={() => setAssigning(null)} maxWidthPx={560}>
+        <Modal open ariaLabel="Assign salesperson" onClose={() => { if (!assignPending) setAssigning(null); }} closeOnBackdrop={!assignPending} closeOnEsc={!assignPending} maxWidthPx={560}>
           <div className={styles.actionModalBody}>
             <div className={styles.actionModalHeader}>
               <h2 className={styles.actionModalTitle}>Assign</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setAssigning(null)}>
+              <button type="button" className={styles.buttonSecondary} disabled={assignPending} onClick={() => setAssigning(null)}>
                 Close
               </button>
             </div>
@@ -1240,6 +1266,7 @@ export default function SiteVisitsView() {
               <select
                 className={styles.input}
                 value={assigning.salespersonId}
+                disabled={assignPending}
                 onChange={(e) => setAssigning((p) => (p ? { ...p, salespersonId: e.target.value } : p))}
               >
                 {salesPeople.map((p) => (
@@ -1251,11 +1278,11 @@ export default function SiteVisitsView() {
             </div>
 
             <div className={styles.actionModalActions}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setAssigning(null)}>
+              <button type="button" className={styles.buttonSecondary} disabled={assignPending} onClick={() => setAssigning(null)}>
                 Cancel
               </button>
-              <button type="button" className={styles.buttonPrimary} onClick={() => void assignSalesperson(assigning.item, assigning.salespersonId)}>
-                Assign
+              <button type="button" className={styles.buttonPrimary} disabled={assignPending} onClick={() => void assignSalesperson(assigning.item, assigning.salespersonId)}>
+                {assignPending ? 'Assigning...' : 'Assign'}
               </button>
             </div>
           </div>

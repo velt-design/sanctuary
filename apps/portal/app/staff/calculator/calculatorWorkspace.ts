@@ -3,6 +3,7 @@ export type CalculatorDesignNavigation = {
   stateLabel: string;
   options: Array<{ value: string; label: string }>;
   onChange: (value: string) => void;
+  disabled?: boolean;
 };
 
 export type CalculatorProjectWorkspace = {
@@ -18,6 +19,7 @@ export type CalculatorProjectWorkspace = {
   designNavigation: CalculatorDesignNavigation;
   onEstimateSaved: (estimateId: string) => void;
   onOpenProject: () => void;
+  onSaveStateChange?: (saving: boolean) => void;
 };
 
 type CalculatorWorkspaceRoute = {

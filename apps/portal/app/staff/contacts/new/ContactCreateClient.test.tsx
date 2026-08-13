@@ -92,13 +92,15 @@ describe('ContactCreateClient', () => {
       '/api/contacts',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({
-          displayName: 'Alex Mason',
-          email: 'alex@example.com',
-          phone: '021',
-        }),
+        body: expect.any(String),
       }),
     );
+    expect(JSON.parse(String(apiJsonMock.mock.calls[0]?.[1]?.body))).toEqual({
+      contactId: expect.stringMatching(/^ct_[0-9a-f-]{36}$/i),
+      displayName: 'Alex Mason',
+      email: 'alex@example.com',
+      phone: '021',
+    });
     expect(upsertContactCachesMock).toHaveBeenCalledWith(
       queryClientMock,
       'host',

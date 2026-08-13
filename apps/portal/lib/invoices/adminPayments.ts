@@ -128,7 +128,7 @@ export async function getProjectInvoiceSchedule(
 }
 
 export async function createAdminInvoice(
-  params: AdminInvoiceCreateInput & { actor: string | null },
+  params: Omit<AdminInvoiceCreateInput, 'clientIntentId'> & { clientIntentId: string; actor: string | null },
 ): Promise<QuoteInvoiceCreateResult> {
   const projectUuid = uuidFromAppId(params.projectId, 'proj');
   const quoteVersionUuid = uuidFromAppId(params.quoteVersionId, 'qv');
@@ -136,7 +136,7 @@ export async function createAdminInvoice(
   if (label.length < 2) throw new Error('Invoice label is required');
   const dueDate = optionalText(params.dueDate, 10);
   if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) throw new Error('Due date must be YYYY-MM-DD');
-  const rpc = await supabaseServiceRole.rpc('commercial_create_admin_invoice', {
+  const rpc = await supabaseServiceRole.rpc('commercial_create_admin_invoice_idempotent', {
     p_project_id: projectUuid,
     p_quote_version_id: quoteVersionUuid,
     p_mode: params.mode,
@@ -150,6 +150,7 @@ export async function createAdminInvoice(
     p_allow_over_invoice: params.allowOverInvoice === true,
     p_override_reason: optionalText(params.overrideReason, 1000),
     p_actor: params.actor,
+    p_client_intent_id: params.clientIntentId,
   } as any);
   if (rpc.error) throw new Error(errorMessage(rpc.error, 'Failed to create invoice'));
   const row = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data;
@@ -189,7 +190,7 @@ export async function createAdminInvoice(
   if (!invoice) throw new Error('Invoice created but could not be reloaded');
   return {
     invoice,
-    created: true,
+    created: (row as any)?.replayed !== true,
     sent,
     alreadySent: false,
     sendError,

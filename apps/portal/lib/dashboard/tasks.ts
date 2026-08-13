@@ -103,11 +103,13 @@ export async function createDashboardTask(
   client: SupabaseClient,
   ownerId: string,
   title: string,
+  taskId?: string,
 ): Promise<DashboardPersonalTask> {
   const now = new Date().toISOString();
   const { data, error } = await client
     .from('portal_dashboard_tasks')
     .insert({
+      ...(taskId ? { id: taskId } : {}),
       owner_id: ownerId,
       title,
       sort_order: Date.now(),
@@ -117,6 +119,15 @@ export async function createDashboardTask(
     .select(TASK_COLUMNS)
     .single();
 
+  if (error?.code === '23505' && taskId) {
+    const existing = await client
+      .from('portal_dashboard_tasks')
+      .select(TASK_COLUMNS)
+      .eq('id', taskId)
+      .eq('owner_id', ownerId)
+      .maybeSingle();
+    if (!existing.error && existing.data) return mapDashboardTaskRow(existing.data as DashboardTaskRow);
+  }
   if (error) throw new Error(error.message ?? 'Failed to create dashboard task.');
   return mapDashboardTaskRow(data as DashboardTaskRow);
 }

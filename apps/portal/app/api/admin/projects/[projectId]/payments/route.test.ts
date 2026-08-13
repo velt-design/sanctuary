@@ -29,12 +29,12 @@ describe('admin project payments route', () => {
   it('records an actual payment as the admin actor', async () => {
     const response = await POST(new Request('http://localhost', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ entryType: 'PAYMENT', amountIncGstCents: 50000, reference: 'BANK-123' }),
+      body: JSON.stringify({ entryType: 'PAYMENT', amountIncGstCents: 50000, reference: 'BANK-123', clientIntentId: 'project-payment:test-1' }),
     }), context);
     expect(response.status).toBe(201);
     expect(mocks.recordProjectPaymentEntry).toHaveBeenCalledWith(expect.objectContaining({
       projectId: 'proj_11111111-1111-4111-8111-111111111111',
-      entryType: 'PAYMENT', amountIncGstCents: 50000, reference: 'BANK-123', actor: 'admin-1',
+      entryType: 'PAYMENT', amountIncGstCents: 50000, reference: 'BANK-123', clientIntentId: 'project-payment:test-1', actor: 'admin-1',
     }));
   });
 });

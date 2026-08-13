@@ -20,7 +20,7 @@ type QuoteSendPayload = {
   expectedCommercialRevision: number;
 };
 
-function makeClientIntentId(prefix: string): string {
+export function createQuoteClientIntentId(prefix: string): string {
   const token =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
@@ -105,6 +105,7 @@ export async function createManualQuoteDraft(
   input: {
     internalName?: string | null;
     lineItems: Array<{ description: string; qty: number; unitPriceIncGstCents: number }>;
+    clientIntentId?: string;
   },
 ): Promise<QuoteVersionDetail> {
   const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(
@@ -113,7 +114,7 @@ export async function createManualQuoteDraft(
       method: 'POST',
       body: JSON.stringify({
         mode: 'manual',
-        clientIntentId: makeClientIntentId('manual-quote'),
+        clientIntentId: input.clientIntentId ?? createQuoteClientIntentId('manual-quote'),
         internalName: input.internalName ?? null,
         lineItems: input.lineItems,
       }),
@@ -267,7 +268,7 @@ export async function previewQuotePdf(
 
 export async function reviseQuote(
   quoteVersionId: string,
-  clientIntentId = makeClientIntentId('quote-revise'),
+  clientIntentId = createQuoteClientIntentId('quote-revise'),
 ): Promise<QuoteVersionDetail> {
   const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/quotes/${encodeURIComponent(quoteVersionId)}/revise`, {
     method: 'POST',
