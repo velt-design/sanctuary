@@ -28,6 +28,8 @@ describe('pergolaDraft', () => {
 
     expect(parsed).toEqual({
       heading: 'Pergola 1',
+      included: '',
+      projectDelivery: '',
       configuration: 'Gable + Pitched modules',
       shared: {
         roof: 'Acrylic',
@@ -46,6 +48,7 @@ describe('pergolaDraft', () => {
           colour: '',
           houseConnection: '',
           postFixings: '',
+          includedInfills: [],
         },
         {
           title: 'Module 2',
@@ -57,8 +60,10 @@ describe('pergolaDraft', () => {
           colour: '',
           houseConnection: '',
           postFixings: '',
+          includedInfills: [],
         },
       ],
+      quoteDiscount: '',
     });
   });
 
@@ -98,10 +103,37 @@ describe('pergolaDraft', () => {
       ],
     });
 
-    expect(raw).toContain('Shared specification');
-    expect(raw).toContain('Module 1: Gable');
-    expect(raw).toContain('Module 2: Pitched');
-    expect(raw.match(/Roof: Acrylic/g)).toHaveLength(1);
+    expect(raw).toContain('Shared across all roof sections');
+    expect(raw).toContain('Roof section 1: Gable');
+    expect(raw).toContain('Roof section 2: Pitched');
+    expect(raw.match(/Roof covering: Acrylic/g)).toHaveLength(1);
+  });
+
+  it('round-trips value-led copy, included infills and discounts for a named pergola', () => {
+    const raw = [
+      'Courtyard cover',
+      '- Included: Custom-designed pergola, supplied and installed',
+      '- Roof form: Pitched',
+      '- Overall size: 6m x 3m',
+      '- Roof covering: Acrylic roofing — admits natural light while adding overhead shelter',
+      '- Frame finish: Black',
+      '- Roof pitch: 5°',
+      '- Support posts: 2',
+      '- Connection to home: Soffit brackets',
+      '- Post foundations and fixings: Deck brackets',
+      '',
+      'Included infills',
+      '- Side infill: 2.4m × 1.2m',
+      '- Quote discount: 10% included in this item',
+    ].join('\n');
+
+    const parsed = parsePergolaStructuredDescription(raw);
+
+    expect(parsed).not.toBeNull();
+    expect(parsed?.included).toBe('Custom-designed pergola, supplied and installed');
+    expect(parsed?.modules[0]?.includedInfills).toEqual(['Side infill: 2.4m × 1.2m']);
+    expect(parsed?.quoteDiscount).toBe('10% included in this item');
+    expect(parsed ? buildPergolaStructuredDescription(parsed) : null).toBe(raw);
   });
 
   it('preserves shared values when clearing a shared field', () => {

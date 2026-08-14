@@ -27,9 +27,9 @@ describe("public quote presentation", () => {
         customerName: "Taylor",
         projectName: "Warkworth Courtyard",
         projectAddress: "1 Example Road, Warkworth",
-        totalIncGstCents: 115000,
-        totalExGstCents: 100000,
-        gstCents: 15000,
+        totalIncGstCents: 230000,
+        totalExGstCents: 200000,
+        gstCents: 30000,
         createdAt: "2026-07-01T00:00:00.000Z",
         sentAt: "2026-07-01T00:00:00.000Z",
         expiresAt: "2026-07-31",
@@ -39,7 +39,27 @@ describe("public quote presentation", () => {
         lineItems: [
           {
             id: "line_1",
-            description: "Pergola 1\n- Roof: Acrylic",
+            description: [
+              "Pergola 1",
+              "- Included: Custom-designed pergola, supplied and installed",
+              "- Roof form: Pitched",
+              "- Overall size: 6m x 3m",
+              "- Roof covering: Acrylic roofing — admits natural light while adding overhead shelter",
+              "- Frame finish: Black",
+            ].join("\n"),
+            qty: 1,
+            lineTotalIncGstCents: 115000,
+          },
+          {
+            id: "line_2",
+            description: [
+              "Pool blind",
+              "- Included: Custom-sized blind system",
+              "- System: Omni",
+              "- Dimensions: 2,000mm wide × 2,400mm drop",
+              "- Fabric: Fine mesh",
+              "- Operation: Motorised",
+            ].join("\n"),
             qty: 1,
             lineTotalIncGstCents: 115000,
           },
@@ -87,13 +107,21 @@ describe("public quote presentation", () => {
     expect(
       rendered.container.querySelector('section[aria-label="Quote totals"]')
         ?.textContent,
-    ).toContain("$1,150.00");
+    ).toContain("$2,300.00");
     expect(
       rendered.container.querySelector("main > section")?.textContent,
-    ).not.toContain("$1,150.00");
+    ).not.toContain("$2,300.00");
     expect(
       rendered.container.querySelector('[data-label="Amount"]'),
     ).not.toBeNull();
+    expect(rendered.container.textContent).toContain(
+      "Custom-designed pergola, supplied and installed",
+    );
+    expect(rendered.container.textContent).toContain(
+      "Acrylic roofing — admits natural light while adding overhead shelter",
+    );
+    expect(rendered.container.textContent).toContain("Custom-sized blind system");
+    expect(rendered.container.textContent).toContain("2,000mm wide × 2,400mm drop");
 
     const form = rendered.container.querySelector("form");
     expect(form?.getAttribute("action")).toBe("/api/quotes/qv_1/accept");

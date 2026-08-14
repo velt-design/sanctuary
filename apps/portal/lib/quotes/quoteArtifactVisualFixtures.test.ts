@@ -71,10 +71,16 @@ function fixture(
       lineItem(
         "line-1",
         [
-          "Architectural pergola",
-          "- Size: 6m x 3m",
-          "- Roof: Clear acrylic",
-          "- Frame colour: Matt black",
+          "Courtyard pergola",
+          "- Included: Custom-designed pergola, supplied and installed",
+          "- Project delivery: Installation setup and project travel included in this item",
+          "- Roof form: Pitched",
+          "- Overall size: 6m x 3m",
+          "- Roof covering: Acrylic roofing — admits natural light while adding overhead shelter",
+          "- Frame finish: Matt black",
+          "- Support posts: 2",
+          "- Connection to home: Soffit brackets",
+          "- Post foundations and fixings: Deck brackets",
         ].join("\n"),
         575000,
       ),
@@ -111,7 +117,11 @@ const visualFixtures: Array<{ name: string; quote: QuoteVersionDetail }> = [
     name: "03-discount",
     quote: fixture("discount", {
       lineItems: [
-        lineItem("line-1", "Architectural pergola\n- Roof: Acrylic", 575000),
+        lineItem(
+          "line-1",
+          "Courtyard pergola\n- Included: Custom-designed pergola, supplied and installed\n- Roof covering: Acrylic roofing — admits natural light while adding overhead shelter",
+          575000,
+        ),
         lineItem("line-2", "Project discount", -57500),
       ],
       totals: {
@@ -171,6 +181,102 @@ const visualFixtures: Array<{ name: string; quote: QuoteVersionDetail }> = [
       ).join("\n"),
     }),
   },
+  {
+    name: "07-value-led-scope",
+    quote: fixture("value-led-scope", {
+      lineItems: [
+        lineItem(
+          "line-1",
+          [
+            "Courtyard pergola",
+            "- Included: Custom-designed pergola, supplied and installed",
+            "- Roof form: Pitched",
+            "- Overall size: 6m x 3m",
+            "- Roof covering: Acrylic roofing — admits natural light while adding overhead shelter",
+            "- Frame finish: Matt black",
+            "- Support posts: 2",
+            "- Connection to home: Soffit brackets",
+            "- Post foundations and fixings: Deck brackets",
+          ].join("\n"),
+          575000,
+        ),
+        lineItem(
+          "line-2",
+          [
+            "Pool blind",
+            "- Included: Custom-sized blind system",
+            "- System: Omni",
+            "- Dimensions: 2,000mm wide × 2,400mm drop",
+            "- Fabric: Fine mesh",
+            "- Operation: Motorised",
+            "- Roll cover: Flashing — 2m charged at $44/m; $88.00 incl GST",
+          ].join("\n"),
+          187050,
+        ),
+        lineItem(
+          "line-3",
+          [
+            "Courtyard integrated rafter lighting",
+            "- Included: Rafter-integrated lighting package and installation labour",
+            "- Lights: 8 rafter lights",
+            "- Drivers: 1",
+            "- Control: Dimming included",
+          ].join("\n"),
+          255000,
+        ),
+        lineItem(
+          "line-4",
+          [
+            "Design, engineering and consent documentation",
+            "- Included: Additional design and documentation allowance required to support the pergola through the building consent process",
+            "- Structural engineering calculations",
+            "- Engineer's PS1 documentation",
+            "- Full shop drawing set for the pergola structure",
+            "- Consent documentation support",
+            "- Responses to council RFIs relating to the pergola structure",
+            "- Builder's PS3 on completion",
+            "- Coordination with the engineer, as required",
+          ].join("\n"),
+          575000,
+        ),
+        lineItem(
+          "line-5",
+          [
+            "Custom infills for existing pergola",
+            "- Included: Custom-made acrylic infills, supplied and installed",
+            "- Frame finish: Matt black",
+            "- Side wall: 2.4m × 1.2m; quantity 2",
+            "- Scope boundary: Existing pergola structure excluded",
+          ].join("\n"),
+          230000,
+        ),
+        lineItem(
+          "line-6",
+          [
+            "Additional aluminium — supply only",
+            "- Frame finish: Matt black",
+            "- 2 × 6m lengths: 100 × 100 post",
+            "- Scope boundary: Materials supplied; installation excluded",
+          ].join("\n"),
+          86250,
+        ),
+        lineItem(
+          "line-7",
+          [
+            "Project delivery and site setup",
+            "- Installation setup for this project",
+            "- Travel to and from the project site",
+          ].join("\n"),
+          115000,
+        ),
+      ],
+      totals: {
+        totalIncGstCents: 2023300,
+        totalExGstCents: 1759391,
+        gstCents: 263909,
+      },
+    }),
+  },
 ];
 
 describe("quote artifact visual fixtures", () => {
@@ -189,7 +295,7 @@ describe("quote artifact visual fixtures", () => {
       }
     }
 
-    const emailQuote = visualFixtures[1]!.quote;
+    const emailQuote = visualFixtures.at(-1)!.quote;
     const base = buildQuotePreviewBasePayload({
       detail: emailQuote,
       quoteAcceptUrl:
@@ -206,15 +312,17 @@ describe("quote artifact visual fixtures", () => {
     });
 
     expect(email.html).toContain("Review and accept quote");
+    expect(email.html).toContain("$20,233.00");
+    expect(email.text).toContain("$20,233.00");
     expect(email.text).toContain("token=visual-fixture");
     if (outputDir) {
       await writeFile(
-        path.join(outputDir, "07-email.html"),
+        path.join(outputDir, "08-email.html"),
         email.html,
         "utf8",
       );
       await writeFile(
-        path.join(outputDir, "07-email.txt"),
+        path.join(outputDir, "08-email.txt"),
         email.text ?? "",
         "utf8",
       );

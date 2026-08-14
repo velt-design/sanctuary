@@ -59,6 +59,34 @@ describe('formatQuoteLineDescription', () => {
       { kind: 'bullet', text: 'Size: 4.2m × 2.6m' },
     ]);
   });
+
+  it('formats value-led roof sections and included infills without flattening their hierarchy', () => {
+    const raw = [
+      'Pergola 1',
+      '- Included: Custom-designed pergola, supplied and installed',
+      '- Configuration: 2 connected Gable roof sections',
+      'Shared across all roof sections',
+      '- Roof covering: Acrylic roofing — admits natural light while adding overhead shelter',
+      'Roof section 1: Gable',
+      '- Overall size: 6m x 3m',
+      'Included infills',
+      '- Front infill: 2.4m × 1.2m',
+    ].join('\n');
+
+    const result = formatQuoteLineDescription(raw, 0);
+
+    expect(result.heading).toBe('Pergola 1:');
+    expect(result.entries).toEqual([
+      { kind: 'bullet', text: 'Included: Custom-designed pergola, supplied and installed' },
+      { kind: 'bullet', text: 'Configuration: 2 connected Gable roof sections' },
+      { kind: 'section', text: 'Shared across all roof sections' },
+      { kind: 'bullet', text: 'Roof covering: Acrylic roofing — admits natural light while adding overhead shelter' },
+      { kind: 'section', text: 'Roof section 1: Gable' },
+      { kind: 'bullet', text: 'Overall size: 6m × 3m' },
+      { kind: 'section', text: 'Included infills' },
+      { kind: 'bullet', text: 'Front infill: 2.4m × 1.2m' },
+    ]);
+  });
 });
 
 describe('formatQuoteTermsText', () => {

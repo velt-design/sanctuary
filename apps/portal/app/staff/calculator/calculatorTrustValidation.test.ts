@@ -215,10 +215,10 @@ describe('Calculator trust validation scenarios', () => {
         priceIncGstCents: expect.any(Number),
       }),
     ]));
-    expect(result.quoteHandoff.lineItems[0]?.description).toContain('Quote discount: 7.5% applied');
-    expect(result.quoteHandoff.lineItems[2]?.description).toContain('Site costs');
+    expect(result.quoteHandoff.lineItems[0]?.description).toContain('Quote discount: 7.5% included in this item');
+    expect(result.quoteHandoff.lineItems[2]?.description).toContain('Project delivery and site setup');
     expect(result.quoteHandoff.lineItems.some((item) => item.description.includes('Pool blind'))).toBe(true);
-    expect(result.quoteHandoff.lineItems.some((item) => item.description.includes('Lighting'))).toBe(true);
+    expect(result.quoteHandoff.lineItems.some((item) => item.description.toLowerCase().includes('lighting'))).toBe(true);
   });
 
   it('keeps displayed infill contributions within the allocated module price', () => {
