@@ -37,8 +37,8 @@ describe('quote estimate loader', () => {
 
     expect(estimate.outputs.standalone_infills).toEqual({ totals: { cost_ex_gst: 100 } });
     expect(buildQuoteLineItemsFromEstimate(estimate).items.map((item) => item.description.split('\n')[0])).toEqual([
-      'Existing pergola infills',
-      'Site costs',
+      'Custom infills for existing pergola',
+      'Project delivery and site costs',
     ]);
   });
 

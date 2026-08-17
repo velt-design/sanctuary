@@ -33,22 +33,37 @@ const CONNECTION_VALUE_LABELS: Record<string, string> = {
 };
 
 const PERGOLA_BULLET_PRIORITY = [
+  'included',
+  'project delivery',
   'configuration',
+  'roof form',
   'style',
+  'overall size',
   'size',
-  'pitch',
+  'roof covering',
   'roof',
+  'frame finish',
   'colour',
+  'roof pitch',
+  'pitch',
+  'support posts',
   'posts',
+  'connection to home',
   'house connection',
+  'post foundations and fixings',
   'post fixings',
+  'quote discount',
 ] as const;
 const PERGOLA_BULLET_INDEX = new Map<string, number>(PERGOLA_BULLET_PRIORITY.map((key, idx) => [key, idx]));
 const DRAFT_TERMS_PATTERN = /this quote is valid for 30 days from the issue date\.?/i;
 const DESCRIPTION_SECTION_PATTERNS: RegExp[] = [
   /^shared specification$/i,
+  /^shared across all roof sections$/i,
   /^module\s+\d+(?:\s*:\s*.+)?$/i,
+  /^roof section\s+\d+(?:\s*:\s*.+)?$/i,
+  /^included infills$/i,
 ];
+const IDENTIFIER_TOKEN_PATTERN = /^[a-z0-9]+(?:[_-][a-z0-9]+)+$/i;
 
 function isPlaceholder(value: string): boolean {
   return PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(value));
@@ -90,14 +105,14 @@ function formatHeadingValue(value: string): string {
 function mapTokenValue(value: string): string {
   const lower = value.toLowerCase();
   if (CONNECTION_VALUE_LABELS[lower]) return CONNECTION_VALUE_LABELS[lower];
-  if (/[_-]/.test(value)) return toTitleCaseToken(value);
+  if (IDENTIFIER_TOKEN_PATTERN.test(value)) return toTitleCaseToken(value);
   return value;
 }
 
 function mapTokenKey(value: string): string {
   const lower = value.toLowerCase();
   if (CONNECTION_KEY_LABELS[lower]) return CONNECTION_KEY_LABELS[lower];
-  if (/[_-]/.test(value)) return toTitleCaseToken(value);
+  if (IDENTIFIER_TOKEN_PATTERN.test(value)) return toTitleCaseToken(value);
   return value;
 }
 
@@ -162,7 +177,7 @@ function sanitizeBulletLine(raw: string): string[] {
     if (!key || !value) return [];
     let valueLabel = mapTokenValue(value);
     if (!sanitizeText(valueLabel)) return [];
-    if (/^size$/i.test(key)) {
+    if (/^(?:size|overall size)$/i.test(key)) {
       valueLabel = normalizeSizeValue(valueLabel);
     }
     return [`${key}: ${valueLabel}`];
@@ -227,7 +242,7 @@ export function formatQuoteLineDescription(raw: string, index: number): QuoteLin
   entries.forEach((entry, idx) => {
     if (entry.kind !== 'bullet') return;
 
-    const styleMatch = entry.text.match(/^Style:\s*(.+)$/i);
+    const styleMatch = entry.text.match(/^(?:Style|Roof form):\s*(.+)$/i);
     if (styleMatch) {
       styleValues.push(styleMatch[1].trim());
       styleIndexes.add(idx);

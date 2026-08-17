@@ -115,7 +115,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     const result = buildQuoteLineItemsFromEstimate(estimate);
 
     expect(result.items).toHaveLength(1);
-    expect(result.items[0]?.description).toContain('Existing pergola infills');
+    expect(result.items[0]?.description).toContain('Custom infills for existing pergola');
     expect(result.items[0]?.description).toContain('Side wall: 2.4m × 1.2m');
     expect(result.items[0]?.description).not.toContain('Pergola works');
     expect(result.coreTotalIncCents).toBe(14_375);
@@ -143,8 +143,8 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     const result = buildQuoteLineItemsFromEstimate(estimate);
 
     expect(result.items.map((item) => item.description.split('\n')[0])).toEqual([
-      'Additional aluminium',
-      'Site costs',
+      'Additional aluminium — supply only',
+      'Project travel and site allowance',
     ]);
     expect(result.blockingIssues).toEqual([]);
   });
@@ -184,7 +184,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
       },
     });
     const result = buildQuoteLineItemsFromEstimate(estimate);
-    const engineering = result.items.find((item) => item.description.startsWith('Engineering'));
+    const engineering = result.items.find((item) => item.description.startsWith('Project engineering allowance'));
     expect(engineering?.unitPriceIncGstCents).toBe(575_000);
     expect(engineering?.description).not.toContain('20% applied');
   });
@@ -235,7 +235,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.items[0]?.unitPriceIncGstCents).toBe(
       Math.round((calculateStaffCustomerPriceFromCostEx(100)?.incGst ?? 0) * 100),
     );
-    expect(result.items[2]?.description).toContain('Site costs');
+    expect(result.items[2]?.description).toContain('Project-specific delivery, setup and site costs');
     expect(result.coreTotalIncCents).toBe(48875);
   });
 
@@ -272,6 +272,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.description).toContain('Pergola 1');
     expect(result.items[0]?.description).not.toContain('Site costs');
+    expect(result.items[0]?.description).toContain('Project delivery: Project-specific setup and site costs included in this item');
     expect(result.items[0]?.unitPriceIncGstCents).toBe(20125);
     expect(result.coreTotalIncCents).toBe(20125);
   });
@@ -297,7 +298,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.items[0]?.unitPriceIncGstCents).toBe(14_950);
   });
 
-  it('ignores explanatory infill attributions and keeps one pergola quote line', () => {
+  it('keeps configured infills visible inside their owning pergola quote line', () => {
     const estimate = makeEstimate({
       inputs: {
         schemaVersion: 'v2',
@@ -342,7 +343,8 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.unitPriceIncGstCents).toBe(14375);
     expect(result.items[0]?.description).toContain('Pergola 1');
-    expect(result.items[0]?.description).not.toContain('Front infill');
+    expect(result.items[0]?.description).toContain('Included infills');
+    expect(result.items[0]?.description).toContain('Front infill');
   });
 
   it('applies a non-zero quote discount to pergola and shared site lines', () => {
@@ -383,7 +385,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
 
     const result = buildQuoteLineItemsFromEstimate(estimate as any);
     expect(result.items.map((item) => item.unitPriceIncGstCents)).toEqual([12938, 12938, 5175]);
-    expect(result.items.every((item) => item.description.includes('Quote discount: 10% applied'))).toBe(true);
+    expect(result.items.every((item) => item.description.includes('Quote discount: 10% included in this item'))).toBe(true);
     expect(result.coreTotalIncCents).toBe(31051);
   });
 
@@ -441,10 +443,10 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     });
 
     const result = buildQuoteLineItemsFromEstimate(estimate);
-    const lighting = result.items.find((item) => item.description.startsWith('Courtyard lighting'));
+    const lighting = result.items.find((item) => item.description.startsWith('Courtyard integrated rafter lighting'));
     expect(lighting?.unitPriceIncGstCents).toBe(453_000);
     expect(lighting?.description).toContain('17 rafter lights');
-    expect(lighting?.description).toContain('2 drivers');
+    expect(lighting?.description).toContain('Drivers: 2');
     expect(lighting?.description).not.toContain('20% applied');
     expect(result.items.some((item) => item.unitPriceIncGstCents === 99_900)).toBe(false);
   });
@@ -497,7 +499,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     const blindLine = result.items.find((item) => item.description.includes('Pool blind'));
 
     expect(blindLine?.unitPriceIncGstCents).toBe(187050);
-    expect(blindLine?.description).toContain('Blind roll cover: Flashing (2m at $44/m incl GST; $88.00 incl GST)');
+    expect(blindLine?.description).toContain('Roll cover: Flashing — 2m charged at $44/m; $88.00 incl GST');
     expect(result.blockingIssues).toEqual([]);
   });
 
@@ -527,8 +529,9 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     const result = buildQuoteLineItemsFromEstimate(estimate as any);
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.unitPriceIncGstCents).toBe(43125);
-    expect(result.items[0]?.description).toContain('Legacy estimate');
-    expect(result.items[0]?.description).toContain('Regenerate estimate');
+    expect(result.items[0]?.description).toContain('Included: Custom-designed pergola, supplied and installed');
+    expect(result.items[0]?.description).not.toContain('Legacy estimate');
+    expect(result.items[0]?.description).not.toContain('Regenerate estimate');
     expect(result.coreTotalIncCents).toBe(43125);
   });
 
@@ -572,18 +575,19 @@ describe('buildQuoteLineItemsFromEstimate', () => {
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.description.startsWith('Pergola 1')).toBe(true);
-    expect(result.items[0]?.description).toContain('Configuration: Gable + Perimeter modules');
-    expect(result.items[0]?.description).toContain('Shared specification');
-    expect(result.items[0]?.description).toContain('Roof: Acrylic');
-    expect(result.items[0]?.description).toContain('Colour: Black');
-    expect(result.items[0]?.description).toContain('Module 1: Gable');
-    expect(result.items[0]?.description).toContain('Module 2: Perimeter');
-    expect(result.items[0]?.description).toContain('Size: 6m x 3m');
-    expect(result.items[0]?.description).toContain('Size: 4.2m x 2.6m');
-    expect(result.items[0]?.description).toContain('Pitch: 25°');
-    expect(result.items[0]?.description).toContain('Posts: 4');
-    expect(result.items[0]?.description).toContain('Posts: 3');
-    expect(result.items[0]?.description?.match(/Roof: Acrylic/g)).toHaveLength(1);
-    expect(result.items[0]?.description?.match(/Colour: Black/g)).toHaveLength(1);
+    expect(result.items[0]?.description).toContain('Included: Custom-designed pergola, supplied and installed');
+    expect(result.items[0]?.description).toContain('Configuration: Gable + Perimeter roof sections');
+    expect(result.items[0]?.description).toContain('Shared across all roof sections');
+    expect(result.items[0]?.description).toContain('Roof covering: Acrylic roofing — admits natural light while adding overhead shelter');
+    expect(result.items[0]?.description).toContain('Frame finish: Black');
+    expect(result.items[0]?.description).toContain('Roof section 1: Gable');
+    expect(result.items[0]?.description).toContain('Roof section 2: Perimeter');
+    expect(result.items[0]?.description).toContain('Overall size: 6m x 3m');
+    expect(result.items[0]?.description).toContain('Overall size: 4.2m x 2.6m');
+    expect(result.items[0]?.description).toContain('Roof pitch: 25°');
+    expect(result.items[0]?.description).toContain('Support posts: 4');
+    expect(result.items[0]?.description).toContain('Support posts: 3');
+    expect(result.items[0]?.description?.match(/Roof covering:/g)).toHaveLength(1);
+    expect(result.items[0]?.description?.match(/Frame finish: Black/g)).toHaveLength(1);
   });
 });

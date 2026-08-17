@@ -1,4 +1,4 @@
-import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { CalculatorInputs } from '@/lib/types/calculator';
 import {
   isCalculatorInputsV2,
   isLegacyCalculatorInputsV1,
@@ -7,11 +7,9 @@ import {
 } from '@/lib/types/calculator';
 import type { Estimate } from '@/lib/types/estimate';
 import {
-  getBlindRollCoverRateIncCents,
   normalizeBlindRollCover,
   priceAllBlinds,
   type BlindLineItemInput,
-  type BlindLineItemPricing,
 } from '@sp/costing';
 import type { QuoteLineItem } from './types';
 import { extractLightingTotalCents } from './estimateAddons';
@@ -28,15 +26,21 @@ import {
 } from './pricing';
 import { lineTotalCents, toCents } from './utils';
 import {
-  formatDimension,
-  formatModuleColour,
-  formatModulePitch,
-  formatModulePosts,
-  formatModuleRoof,
-  formatModuleSize,
-  formatModuleStyle,
-  toTitleCase,
-} from './moduleFormatters';
+  buildIncludedSiteCostsValue,
+  buildInputPergolaModules,
+  buildLegacyPergolaDescription,
+  buildPergolaDescription,
+  buildSiteCostsDescription,
+  normalizePergolaId,
+} from './estimateQuoteDescriptions';
+import {
+  buildAdditionalAluminiumDescription,
+  buildApprovalDescription,
+  buildBlindDescription,
+  buildHistoricalLightingDescription,
+  buildLightingDescription,
+  buildStandaloneInfillsDescription,
+} from './estimateQuoteAddonDescriptions';
 
 function toNumber(value: unknown): number {
   if (typeof value === 'number') return value;
@@ -49,92 +53,6 @@ function normaliseCalculatorInputs(inputs: unknown): CalculatorInputs | null {
   if (isCalculatorInputsV2(inputs)) return inputs;
   if (isLegacyCalculatorInputsV1(inputs)) return migrateLegacyCalculatorInputsToV2(inputs);
   return null;
-}
-
-function uniqueModuleStyles(modules: CalculatorModuleInputs[]): string[] {
-  const seen = new Set<string>();
-  const ordered: string[] = [];
-
-  modules.forEach((module) => {
-    const raw = typeof module?.pergolaStyle === 'string' ? module.pergolaStyle.trim() : '';
-    if (!raw) return;
-    const normalized = raw.toLowerCase();
-    if (seen.has(normalized)) return;
-    seen.add(normalized);
-    ordered.push(toTitleCase(normalized));
-  });
-
-  return ordered;
-}
-
-function joinStyleLabels(styles: string[]): string {
-  if (!styles.length) return 'Custom';
-  if (styles.length === 1) return styles[0]!;
-  if (styles.length === 2) return `${styles[0]} + ${styles[1]}`;
-  return `${styles.slice(0, -1).join(', ')} + ${styles[styles.length - 1]}`;
-}
-
-function buildModuleDescription(module: CalculatorModuleInputs, index: number): string {
-  const lines: string[] = [];
-  const style = toTitleCase(module.pergolaStyle);
-  const roof = formatModuleRoof(module) ?? '—';
-  const colour = module.powdercoatIsCustom
-    ? `${module.extrusionColour} (${module.powdercoatCustomColour?.trim() || 'custom'})`
-    : `${module.extrusionColour}${module.powdercoatStandardColour?.trim() ? ` (${module.powdercoatStandardColour.trim()})` : ''}`;
-
-  const length = formatDimension(module.lengthM);
-  const projection = formatDimension(module.projectionM);
-  const size = module.pergolaStyle === 'hip_corner'
-    ? `A ${length}m x ${projection}m, B ${formatDimension(module.hipCornerLengthBM)}m x ${formatDimension(module.hipCornerProjectionBM)}m`
-    : `${length}m x ${projection}m`;
-
-  const pitch = module.roofPitchDeg?.trim() ? `${module.roofPitchDeg.trim()}°` : 'default';
-
-  lines.push(`Pergola module ${index + 1}`);
-  lines.push(`- Style: ${style}`);
-  lines.push(`- Roof: ${roof}`);
-  lines.push(`- Size: ${size}`);
-  lines.push(`- Colour: ${colour}`);
-  lines.push(`- Pitch: ${pitch}`);
-  lines.push(`- Posts: ${module.postCount || '—'}`);
-  lines.push(`- Connections: house=${module.houseConnectionType}, posts=${module.postConnectionType}`);
-
-  return lines.join('\n');
-}
-
-function formatBlindWidthMetres(widthMm: number | null): string {
-  if (!Number.isFinite(widthMm ?? NaN)) return '—';
-  return (Number(widthMm) / 1000).toFixed(3).replace(/\.?0+$/, '');
-}
-
-function formatBlindRollCover(item: BlindLineItemInput, pricing?: BlindLineItemPricing): string {
-  const rollCover = normalizeBlindRollCover(item.rollCover);
-  if (rollCover === 'NONE') return 'No cover';
-  const label = rollCover === 'FLASHING' ? 'Flashing' : 'Pelmet';
-  const rate = getBlindRollCoverRateIncCents(rollCover) / 100;
-  const amount = (pricing?.rollCoverIncCents ?? 0) / 100;
-  return `${label} (${formatBlindWidthMetres(item.widthMm)}m at $${rate.toFixed(0)}/m incl GST; $${amount.toFixed(2)} incl GST)`;
-}
-
-function buildBlindDescription(
-  item: BlindLineItemInput,
-  idx: number,
-  label?: string,
-  errors?: string[],
-  pricing?: BlindLineItemPricing,
-): string {
-  const lines: string[] = [];
-  const title = label ? `Blind ${idx + 1} (${label})` : `Blind ${idx + 1}`;
-  lines.push(title);
-  lines.push(`- System: ${item.system}`);
-  lines.push(`- Size: ${Number.isFinite(item.widthMm ?? NaN) ? Math.round(item.widthMm ?? 0) : '—'}mm x ${
-    Number.isFinite(item.coverLengthMm ?? NaN) ? Math.round(item.coverLengthMm ?? 0) : '—'
-  }mm`);
-  lines.push(`- Fabric: ${item.fabric}`);
-  lines.push(`- Motorised: ${item.motorised ? 'Yes' : 'No'}`);
-  lines.push(`- Blind roll cover: ${formatBlindRollCover(item, pricing)}`);
-  if (errors && errors.length) lines.push(`- Note: ${errors.join(' ')}`);
-  return lines.join('\n');
 }
 
 function isMeaningfulBlindItem(item: {
@@ -165,27 +83,10 @@ function isMeaningfulBlindItem(item: {
   return hasLabel || hasWidth || hasCover || hasNonDefault;
 }
 
-function normalizePergolaId(value: unknown, fallback: string): string {
-  if (typeof value !== 'string') return fallback;
-  const trimmed = value.trim();
-  return trimmed || fallback;
-}
-
-function normalizePergolaLabel(value: unknown, fallbackIndex: number): string {
-  if (typeof value === 'string' && value.trim()) return value.trim();
-  return `Pergola ${fallbackIndex + 1}`;
-}
-
 type PricedPergola = {
   snapshotPergola: any;
   idx: number;
   pergolaCostEx: number;
-};
-
-type ModuleField = {
-  key: 'roof' | 'colour' | 'houseConnection' | 'postFixings';
-  label: string;
-  value: string | null;
 };
 
 function lineUnitPriceIncFromCostEx(
@@ -206,158 +107,7 @@ function lineUnitPriceIncFromCostEx(
 
 function withQuoteDiscountDescription(description: string, quoteDiscountPct: number): string {
   if (quoteDiscountPct <= 0) return description;
-  return `${description}\n- Quote discount: ${quoteDiscountPct}% applied`;
-}
-
-function normalizeComparisonValue(value: string | null): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  return trimmed ? trimmed.toLowerCase() : null;
-}
-
-function formatConnectionValue(value: string | null | undefined): string | null {
-  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  if (!normalized) return null;
-  if (normalized === 'deck_bracket') return 'Deck brackets';
-  if (normalized === 'soffit') return 'Soffit brackets';
-  return toTitleCase(normalized);
-}
-
-
-function buildSharedCandidateFields(module: CalculatorModuleInputs): ModuleField[] {
-  return [
-    { key: 'roof', label: 'Roof', value: formatModuleRoof(module) },
-    { key: 'colour', label: 'Colour', value: formatModuleColour(module) },
-    { key: 'houseConnection', label: 'House connection', value: formatConnectionValue(module.houseConnectionType) },
-    { key: 'postFixings', label: 'Post fixings', value: formatConnectionValue(module.postConnectionType) },
-  ];
-}
-
-function appendFieldLine(lines: string[], label: string, value: string | null) {
-  if (!value) return;
-  lines.push(`- ${label}: ${value}`);
-}
-
-function buildInputPergolaModules(
-  inputs: CalculatorInputs | null,
-): Array<{ id: string; label: string; modules: CalculatorModuleInputs[] }> {
-  const modules = Array.isArray(inputs?.modules) ? inputs.modules : [];
-  if (!modules.length) return [];
-
-  const rawPergolas = Array.isArray((inputs as any)?.pergolas) ? ((inputs as any).pergolas as Array<{ id?: unknown; label?: unknown }>) : [];
-  const pergolas = rawPergolas.length
-    ? rawPergolas.map((p, idx) => ({
-        id: normalizePergolaId(p?.id, `pergola-${idx + 1}`),
-        label: normalizePergolaLabel(p?.label, idx),
-      }))
-    : [{ id: 'pergola-1', label: 'Pergola 1' }];
-
-  const knownPergolaIds = new Set(pergolas.map((p) => p.id));
-  const fallbackPergolaId = pergolas[0]?.id ?? 'pergola-1';
-  const byPergola = new Map<string, CalculatorModuleInputs[]>();
-  pergolas.forEach((pergola) => byPergola.set(pergola.id, []));
-
-  for (const module of modules) {
-    const assignedId = typeof module?.pergolaId === 'string' && knownPergolaIds.has(module.pergolaId) ? module.pergolaId : fallbackPergolaId;
-    const bucket = byPergola.get(assignedId);
-    if (bucket) bucket.push(module);
-  }
-
-  return pergolas
-    .map((pergola) => ({
-      id: pergola.id,
-      label: pergola.label,
-      modules: byPergola.get(pergola.id) ?? [],
-    }))
-    .filter((pergola) => pergola.modules.length > 0);
-}
-
-function buildPergolaDescription(params: {
-  label?: unknown;
-  fallbackIndex: number;
-  modules: CalculatorModuleInputs[];
-}): string {
-  const lines: string[] = [];
-  const pergolaLabel = normalizePergolaLabel(params.label, params.fallbackIndex);
-  const styles = uniqueModuleStyles(params.modules);
-  lines.push(pergolaLabel);
-
-  if (!params.modules.length) {
-    lines.push('- Modules: snapshot-only breakdown');
-    return lines.join('\n');
-  }
-
-  if (params.modules.length === 1) {
-    const module = params.modules[0]!;
-    appendFieldLine(lines, 'Style', formatModuleStyle(module));
-    appendFieldLine(lines, 'Size', formatModuleSize(module));
-    appendFieldLine(lines, 'Roof', formatModuleRoof(module));
-    appendFieldLine(lines, 'Colour', formatModuleColour(module));
-    appendFieldLine(lines, 'Pitch', formatModulePitch(module));
-    appendFieldLine(lines, 'Posts', formatModulePosts(module));
-    appendFieldLine(lines, 'House connection', formatConnectionValue(module.houseConnectionType));
-    appendFieldLine(lines, 'Post fixings', formatConnectionValue(module.postConnectionType));
-    return lines.join('\n');
-  }
-
-  const configurationLabel = styles.length === 1
-    ? `${params.modules.length} ${styles[0]} modules`
-    : `${joinStyleLabels(styles)} modules`;
-  appendFieldLine(lines, 'Configuration', configurationLabel);
-
-  const sharedFieldKeys = new Set<ModuleField['key']>();
-  const sharedFields: Array<{ label: string; value: string }> = [];
-  const sharedFieldMeta: Array<Pick<ModuleField, 'key' | 'label'>> = [
-    { key: 'roof', label: 'Roof' },
-    { key: 'colour', label: 'Colour' },
-    { key: 'houseConnection', label: 'House connection' },
-    { key: 'postFixings', label: 'Post fixings' },
-  ];
-
-  sharedFieldMeta.forEach(({ key, label }) => {
-    const values = params.modules.map((module) => buildSharedCandidateFields(module).find((field) => field.key === key)?.value ?? null);
-    if (values.some((value) => !value)) return;
-    const normalized = values.map((value) => normalizeComparisonValue(value));
-    if (!normalized.length || normalized.some((value) => !value || value !== normalized[0])) return;
-    sharedFieldKeys.add(key);
-    sharedFields.push({ label, value: values[0]! });
-  });
-
-  if (sharedFields.length) {
-    lines.push('');
-    lines.push('Shared specification');
-    sharedFields.forEach((field) => appendFieldLine(lines, field.label, field.value));
-  }
-
-  params.modules.forEach((module, moduleIndex) => {
-    lines.push('');
-    const styleLabel = formatModuleStyle(module);
-    lines.push(styleLabel ? `Module ${moduleIndex + 1}: ${styleLabel}` : `Module ${moduleIndex + 1}`);
-    appendFieldLine(lines, 'Size', formatModuleSize(module));
-    appendFieldLine(lines, 'Pitch', formatModulePitch(module));
-    appendFieldLine(lines, 'Posts', formatModulePosts(module));
-
-    buildSharedCandidateFields(module)
-      .filter((field) => !sharedFieldKeys.has(field.key))
-      .forEach((field) => appendFieldLine(lines, field.label, field.value));
-  });
-
-  return lines.join('\n');
-}
-
-function buildLegacyCoreDescription(modules: CalculatorModuleInputs[]): string {
-  const lines: string[] = [
-    'Pergola works',
-    '- Legacy estimate: grouped total (no pergola split in snapshot).',
-    '- Regenerate estimate to split separate pergolas (overhead differs).',
-  ];
-
-  modules.forEach((module, idx) => {
-    lines.push('');
-    lines.push(buildModuleDescription(module, idx));
-  });
-
-  return lines.join('\n');
+  return `${description}\n- Quote discount: ${quoteDiscountPct}% included in this item`;
 }
 
 type QuoteMappingBlockingIssue = {
@@ -380,28 +130,6 @@ export class QuoteHandoffBlockedError extends Error {
     super(message);
     this.name = 'QuoteHandoffBlockedError';
   }
-}
-
-function buildStandaloneInfillsDescription(inputs: CalculatorInputs | null): string {
-  const state = inputs?.standaloneInfills;
-  const finish = state?.extrusionColour === 'Mill'
-    ? state.powdercoatIsCustom
-      ? state.powdercoatCustomColour?.trim() || 'Custom powdercoat'
-      : state.powdercoatStandardColour?.trim() || 'Powdercoat'
-    : state?.extrusionColour ?? 'Black';
-  const items = state?.items ?? [];
-  return [
-    'Existing pergola infills',
-    `- Finish: ${finish}`,
-    ...items.map((item, index) => {
-      const label = item.label?.trim() || `Infill ${index + 1}`;
-      const width = item.shape.widthM?.trim() || '—';
-      const height = item.shape.type === 'rect'
-        ? item.shape.heightM?.trim() || '—'
-        : `${item.shape.heightLowM?.trim() || '—'}–${item.shape.heightHighM?.trim() || '—'}`;
-      return `- ${label}: ${width}m × ${height}m${Number(item.qty) > 1 ? `; qty ${item.qty}` : ''}`;
-    }),
-  ].join('\n');
 }
 
 export function isQuoteHandoffBlockedError(error: unknown): error is QuoteHandoffBlockedError {
@@ -429,6 +157,13 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
   );
   const snapshotPergolas = Array.isArray(outputs?.pergolas) ? outputs.pergolas : [];
   const snapshotShared = outputs?.siteShared ?? outputs?.shared ?? null;
+  const siteCostCopyParams = {
+    pergolaCount: snapshotPergolas.length,
+    sharedInstallCostEx: toNumber(snapshotShared?.install?.totals?.install_ex_gst),
+    travelCostEx: toNumber(snapshotShared?.add_ons?.travel_ex_gst ?? inputs?.travelExGst),
+    extrasCostEx: toNumber(snapshotShared?.add_ons?.extras_allowance_ex_gst ?? inputs?.extrasAllowanceExGst),
+  };
+  const siteCostsDescription = buildSiteCostsDescription(siteCostCopyParams);
   const inputPergolas = buildInputPergolaModules(inputs);
   const lineItems: Omit<QuoteLineItem, 'id'>[] = [];
   const blockingIssues: QuoteMappingBlockingIssue[] = [];
@@ -461,6 +196,9 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
         label: snapshotPergola?.label ?? matchingInputPergola?.label,
         fallbackIndex: idx,
         modules: matchingInputPergola?.modules ?? [],
+        projectDelivery: !showSharedLine && hasSharedCost && sharedCostEx > 0 && pergolaIndex === 0
+          ? buildIncludedSiteCostsValue(siteCostCopyParams)
+          : undefined,
       });
 
       const lineCostEx = !showSharedLine && hasSharedCost && pergolaIndex === 0
@@ -496,7 +234,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
       const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
       lineItems.push({
         description: withQuoteDiscountDescription(
-          ['Site costs', '- Shared install, travel, and extras'].join('\n'),
+          siteCostsDescription,
           quoteDiscountPct,
         ),
         qty,
@@ -533,13 +271,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
   const additionalAluminium = outputs?.additional_aluminium;
   const additionalAluminiumCostEx = toNumber(additionalAluminium?.totals?.cost_ex_gst);
   if (additionalAluminium && Number.isFinite(additionalAluminiumCostEx) && additionalAluminiumCostEx > 0) {
-    const state = inputs?.additionalAluminium;
-    const itemCount = Number(additionalAluminium.item_count ?? state?.rows?.length ?? 0);
-    const finish = state?.extrusionColour === 'Mill'
-      ? state.powdercoatIsCustom
-        ? state.powdercoatCustomColour?.trim() || 'Custom powdercoat'
-        : state.powdercoatStandardColour?.trim() || 'Powdercoat'
-      : state?.extrusionColour ?? 'Black';
+    const itemCount = Number(additionalAluminium.item_count ?? inputs?.additionalAluminium?.rows?.length ?? 0);
     const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(
       additionalAluminiumCostEx,
       quoteDiscountPct,
@@ -547,10 +279,10 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
       customerPriceMultiplier,
     );
     lineItems.push({
-      description: withQuoteDiscountDescription([
-        'Additional aluminium',
-        `- ${itemCount} aluminium selection${itemCount === 1 ? '' : 's'}; ${finish}; materials only`,
-      ].join('\n'), quoteDiscountPct),
+      description: withQuoteDiscountDescription(
+        buildAdditionalAluminiumDescription(inputs, itemCount),
+        quoteDiscountPct,
+      ),
       qty: 1,
       unitPriceIncGstCents,
       lineTotalIncGstCents: unitPriceIncGstCents,
@@ -569,7 +301,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
     );
     const sharedTotal = lineTotalCents(1, sharedUnitPrice);
     lineItems.push({
-      description: withQuoteDiscountDescription('Site costs\n- Travel and extras', quoteDiscountPct),
+      description: withQuoteDiscountDescription(siteCostsDescription, quoteDiscountPct),
       qty: 1,
       unitPriceIncGstCents: sharedUnitPrice,
       lineTotalIncGstCents: sharedTotal,
@@ -592,8 +324,8 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
       lineItems.push({
         description: withQuoteDiscountDescription(
           modules.length > 0
-            ? buildLegacyCoreDescription(modules)
-            : ['Add-on works', '- Standalone travel and extras allowance'].join('\n'),
+            ? buildLegacyPergolaDescription(modules)
+            : siteCostsDescription,
           quoteDiscountPct,
         ),
         qty,
@@ -621,9 +353,11 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
     const qty = 1;
     const unitPriceIncGstCents = toCents(approvalIncGst);
     lineItems.push({
-      description: approval.requirement === 'full_building_consent'
-        ? 'Full building consent\n- Includes engineering; customer allowance, not discountable'
-        : 'Engineering\n- Customer allowance, not discountable',
+      description: buildApprovalDescription(
+        approval.requirement === 'full_building_consent'
+          ? 'full_building_consent'
+          : 'engineering_required',
+      ),
       qty,
       unitPriceIncGstCents,
       lineTotalIncGstCents: lineTotalCents(qty, unitPriceIncGstCents),
@@ -644,14 +378,8 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
 
       const qty = 1;
       const unitPriceIncGstCents = lighting.lightingSellIncCents;
-      const description = [
-        `${lighting.label?.trim() || 'Pergola'} lighting`,
-        `- ${lighting.lightCount} rafter light${lighting.lightCount === 1 ? '' : 's'}`,
-        `- ${lighting.driverCount} driver${lighting.driverCount === 1 ? '' : 's'}${lighting.dimmer ? '; includes dimmer' : ''}`,
-        '- Customer price includes GST; not discountable',
-      ].join('\n');
       lineItems.push({
-        description,
+        description: buildLightingDescription(lighting),
         qty,
         unitPriceIncGstCents,
         lineTotalIncGstCents: lineTotalCents(qty, unitPriceIncGstCents),
@@ -662,9 +390,8 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
     const lightingTotal = extractLightingTotalCents(estimate);
     if (lightingTotal !== null) {
       const qty = 1;
-      const description = ['Lighting', '- Preserved historical lighting allowance'].join('\n');
       lineItems.push({
-        description,
+        description: buildHistoricalLightingDescription(),
         qty,
         unitPriceIncGstCents: lightingTotal,
         lineTotalIncGstCents: lineTotalCents(qty, lightingTotal),

@@ -1,6 +1,9 @@
-const SHARED_SPEC_HEADING = 'Shared specification';
+const SHARED_SPEC_HEADING = 'Shared across all roof sections';
+const LEGACY_SHARED_SPEC_HEADING = 'Shared specification';
+const INCLUDED_INFILLS_HEADING = 'Included infills';
 
 type PergolaFieldKey =
+  | 'included'
   | 'configuration'
   | 'style'
   | 'size'
@@ -9,7 +12,14 @@ type PergolaFieldKey =
   | 'roof'
   | 'colour'
   | 'houseConnection'
-  | 'postFixings';
+  | 'postFixings'
+  | 'projectDelivery'
+  | 'quoteDiscount';
+
+type PergolaModuleFieldKey = Exclude<
+  PergolaFieldKey,
+  'included' | 'configuration' | 'projectDelivery' | 'quoteDiscount'
+>;
 
 export type PergolaFieldMap = {
   roof: string;
@@ -28,13 +38,17 @@ export type PergolaModuleDraft = {
   colour: string;
   houseConnection: string;
   postFixings: string;
+  includedInfills?: string[];
 };
 
 type PergolaStructuredDraft = {
   heading: string;
+  included?: string;
+  projectDelivery?: string;
   configuration: string;
   shared: PergolaFieldMap;
   modules: PergolaModuleDraft[];
+  quoteDiscount?: string;
 };
 
 type SharedFieldDefinition = {
@@ -43,22 +57,33 @@ type SharedFieldDefinition = {
 };
 
 const SHARED_FIELD_DEFINITIONS: SharedFieldDefinition[] = [
-  { key: 'roof', label: 'Roof' },
-  { key: 'colour', label: 'Colour' },
-  { key: 'houseConnection', label: 'House connection' },
-  { key: 'postFixings', label: 'Post fixings' },
+  { key: 'roof', label: 'Roof covering' },
+  { key: 'colour', label: 'Frame finish' },
+  { key: 'houseConnection', label: 'Connection to home' },
+  { key: 'postFixings', label: 'Post foundations and fixings' },
 ];
 
 const LINE_LABEL_TO_KEY: Record<string, PergolaFieldKey> = {
+  included: 'included',
   configuration: 'configuration',
   style: 'style',
+  'roof form': 'style',
   size: 'size',
+  'overall size': 'size',
   pitch: 'pitch',
+  'roof pitch': 'pitch',
   posts: 'posts',
+  'support posts': 'posts',
   roof: 'roof',
+  'roof covering': 'roof',
   colour: 'colour',
+  'frame finish': 'colour',
   'house connection': 'houseConnection',
+  'connection to home': 'houseConnection',
   'post fixings': 'postFixings',
+  'post foundations and fixings': 'postFixings',
+  'project delivery': 'projectDelivery',
+  'quote discount': 'quoteDiscount',
 };
 
 function emptySharedFields(): PergolaFieldMap {
@@ -72,7 +97,7 @@ function emptySharedFields(): PergolaFieldMap {
 
 function emptyModuleDraft(index: number): PergolaModuleDraft {
   return {
-    title: `Module ${index + 1}`,
+    title: `Roof section ${index + 1}`,
     style: '',
     size: '',
     pitch: '',
@@ -81,6 +106,7 @@ function emptyModuleDraft(index: number): PergolaModuleDraft {
     colour: '',
     houseConnection: '',
     postFixings: '',
+    includedInfills: [],
   };
 }
 
@@ -99,12 +125,35 @@ function parseKeyValueLine(raw: string): { key: PergolaFieldKey; value: string }
 
 function parseModuleHeading(raw: string): { title: string; style: string } | null {
   const stripped = raw.replace(/^[-•]\s*/, '').trim();
-  const match = stripped.match(/^(Module\s+\d+)(?:\s*:\s*(.+))?$/i);
+  const match = stripped.match(/^((?:Module|Roof section)\s+\d+)(?:\s*:\s*(.+))?$/i);
   if (!match) return null;
   return {
     title: match[1]!.trim(),
     style: match[2]?.trim() ?? '',
   };
+}
+
+function isPergolaModuleFieldKey(key: PergolaFieldKey): key is PergolaModuleFieldKey {
+  return key !== 'included'
+    && key !== 'configuration'
+    && key !== 'projectDelivery'
+    && key !== 'quoteDiscount';
+}
+
+function stripBullet(raw: string): string {
+  return raw.replace(/^[-•]\s*/, '').trim();
+}
+
+function canonicalRoofSectionTitle(value: string, index: number): string {
+  const trimmed = value.trim();
+  if (!trimmed) return `Roof section ${index + 1}`;
+  return trimmed.replace(/^Module\b/i, 'Roof section');
+}
+
+function appendIncludedInfills(lines: string[], module: PergolaModuleDraft) {
+  const details = (module.includedInfills ?? []).map((detail) => detail.trim()).filter(Boolean);
+  if (!details.length) return;
+  lines.push('', INCLUDED_INFILLS_HEADING, ...details.map((detail) => `- ${detail}`));
 }
 
 function appendLine(lines: string[], label: string, value: string) {
@@ -116,24 +165,31 @@ function appendLine(lines: string[], label: string, value: string) {
 export function parsePergolaStructuredDescription(raw: string): PergolaStructuredDraft | null {
   const lines = String(raw ?? '').split('\n').map((line) => line.trim());
   const heading = lines[0]?.trim() ?? '';
-  if (!heading || !isPergolaHeading(heading)) return null;
+  if (!heading) return null;
 
   const nonTitleLines = lines.slice(1);
   const draft: PergolaStructuredDraft = {
     heading,
+    included: '',
+    projectDelivery: '',
     configuration: '',
     shared: emptySharedFields(),
     modules: [],
+    quoteDiscount: '',
   };
 
-  let currentSection: 'root' | 'shared' | 'module' = 'root';
+  let currentSection: 'root' | 'shared' | 'module' | 'includedInfills' = 'root';
   let currentModule: PergolaModuleDraft | null = null;
+  let recognizedPergolaSpecification = false;
 
   for (const rawLine of nonTitleLines) {
     const line = rawLine.trim();
     if (!line) continue;
 
-    if (line.toLowerCase() === SHARED_SPEC_HEADING.toLowerCase()) {
+    if (
+      line.toLowerCase() === SHARED_SPEC_HEADING.toLowerCase()
+      || line.toLowerCase() === LEGACY_SHARED_SPEC_HEADING.toLowerCase()
+    ) {
       currentSection = 'shared';
       currentModule = null;
       continue;
@@ -150,7 +206,33 @@ export function parsePergolaStructuredDescription(raw: string): PergolaStructure
     }
 
     const parsed = parseKeyValueLine(line);
+    if (parsed?.key === 'included') {
+      draft.included = parsed.value;
+      continue;
+    }
+    if (parsed?.key === 'projectDelivery') {
+      draft.projectDelivery = parsed.value;
+      continue;
+    }
+    if (parsed?.key === 'quoteDiscount') {
+      draft.quoteDiscount = parsed.value;
+      continue;
+    }
+
+    if (line.toLowerCase() === INCLUDED_INFILLS_HEADING.toLowerCase()) {
+      if (!currentModule) return null;
+      currentSection = 'includedInfills';
+      continue;
+    }
+
+    if (currentSection === 'includedInfills') {
+      const detail = stripBullet(line);
+      if (detail && currentModule) currentModule.includedInfills?.push(detail);
+      continue;
+    }
+
     if (!parsed) return null;
+    if (parsed.key !== 'configuration') recognizedPergolaSpecification = true;
 
     if (currentSection === 'root') {
       if (parsed.key === 'configuration') {
@@ -162,7 +244,8 @@ export function parsePergolaStructuredDescription(raw: string): PergolaStructure
         currentModule = draft.modules[0]!;
       }
       if (!currentModule) currentModule = draft.modules[0]!;
-      currentModule[parsed.key as keyof PergolaModuleDraft] = parsed.value;
+      if (!isPergolaModuleFieldKey(parsed.key)) return null;
+      currentModule[parsed.key] = parsed.value;
       continue;
     }
 
@@ -175,10 +258,11 @@ export function parsePergolaStructuredDescription(raw: string): PergolaStructure
     }
 
     if (!currentModule) return null;
-    currentModule[parsed.key as keyof PergolaModuleDraft] = parsed.value;
+    if (!isPergolaModuleFieldKey(parsed.key)) return null;
+    currentModule[parsed.key] = parsed.value;
   }
 
-  if (!draft.modules.length) return null;
+  if (!draft.modules.length || (!isPergolaHeading(heading) && !recognizedPergolaSpecification)) return null;
   return draft;
 }
 
@@ -188,17 +272,21 @@ export function buildPergolaStructuredDescription(draft: PergolaStructuredDraft)
 
   const lines: string[] = [heading];
   const modules = draft.modules.length ? draft.modules : [emptyModuleDraft(0)];
+  appendLine(lines, 'Included', draft.included ?? '');
+  appendLine(lines, 'Project delivery', draft.projectDelivery ?? '');
 
   if (modules.length === 1) {
     const module = modules[0]!;
-    appendLine(lines, 'Style', module.style);
-    appendLine(lines, 'Size', module.size);
-    appendLine(lines, 'Roof', module.roof || draft.shared.roof);
-    appendLine(lines, 'Colour', module.colour || draft.shared.colour);
-    appendLine(lines, 'Pitch', module.pitch);
-    appendLine(lines, 'Posts', module.posts);
-    appendLine(lines, 'House connection', module.houseConnection || draft.shared.houseConnection);
-    appendLine(lines, 'Post fixings', module.postFixings || draft.shared.postFixings);
+    appendLine(lines, 'Roof form', module.style);
+    appendLine(lines, 'Overall size', module.size);
+    appendLine(lines, 'Roof covering', module.roof || draft.shared.roof);
+    appendLine(lines, 'Frame finish', module.colour || draft.shared.colour);
+    appendLine(lines, 'Roof pitch', module.pitch);
+    appendLine(lines, 'Support posts', module.posts);
+    appendLine(lines, 'Connection to home', module.houseConnection || draft.shared.houseConnection);
+    appendLine(lines, 'Post foundations and fixings', module.postFixings || draft.shared.postFixings);
+    appendIncludedInfills(lines, module);
+    appendLine(lines, 'Quote discount', draft.quoteDiscount ?? '');
     return lines.join('\n');
   }
 
@@ -214,18 +302,21 @@ export function buildPergolaStructuredDescription(draft: PergolaStructuredDraft)
 
   modules.forEach((module, index) => {
     lines.push('');
-    const title = module.title.trim() || `Module ${index + 1}`;
+    const title = canonicalRoofSectionTitle(module.title, index);
     const styleSuffix = module.style.trim() ? `: ${module.style.trim()}` : '';
     lines.push(`${title}${styleSuffix}`);
-    appendLine(lines, 'Size', module.size);
-    appendLine(lines, 'Pitch', module.pitch);
-    appendLine(lines, 'Posts', module.posts);
+    appendLine(lines, 'Overall size', module.size);
+    appendLine(lines, 'Roof pitch', module.pitch);
+    appendLine(lines, 'Support posts', module.posts);
 
-    if (!draft.shared.roof.trim()) appendLine(lines, 'Roof', module.roof);
-    if (!draft.shared.colour.trim()) appendLine(lines, 'Colour', module.colour);
-    if (!draft.shared.houseConnection.trim()) appendLine(lines, 'House connection', module.houseConnection);
-    if (!draft.shared.postFixings.trim()) appendLine(lines, 'Post fixings', module.postFixings);
+    if (!draft.shared.roof.trim()) appendLine(lines, 'Roof covering', module.roof);
+    if (!draft.shared.colour.trim()) appendLine(lines, 'Frame finish', module.colour);
+    if (!draft.shared.houseConnection.trim()) appendLine(lines, 'Connection to home', module.houseConnection);
+    if (!draft.shared.postFixings.trim()) appendLine(lines, 'Post foundations and fixings', module.postFixings);
+    appendIncludedInfills(lines, module);
   });
+
+  appendLine(lines, 'Quote discount', draft.quoteDiscount ?? '');
 
   return lines.join('\n');
 }
