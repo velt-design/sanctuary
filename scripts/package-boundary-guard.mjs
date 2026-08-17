@@ -125,6 +125,51 @@ function transpilePackages(configRelPath) {
 const localPackages = collectLocalPackages();
 const failures = [];
 
+for (const [packageName, packageDir] of localPackages) {
+  const packageFiles = walkFiles(packageDir);
+  for (const file of packageFiles) {
+    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    for (const pattern of IMPORT_PATTERNS) {
+      pattern.lastIndex = 0;
+      for (const match of source.matchAll(pattern)) {
+        const specifier = match[1];
+        const directAppImport = specifier.startsWith('@/') || /^apps(?:\/|$)/.test(specifier);
+        const resolvedImport = specifier.startsWith('.')
+          ? path.resolve(path.dirname(path.join(ROOT, file)), specifier)
+          : '';
+        const relativeToApps = resolvedImport ? path.relative(path.join(ROOT, 'apps'), resolvedImport) : '..';
+        const relativeAppImport = relativeToApps !== '..'
+          && !relativeToApps.startsWith(`..${path.sep}`)
+          && !path.isAbsolute(relativeToApps);
+        if (directAppImport || relativeAppImport) {
+          failures.push(`${packageName} must not import app-owned code. Found ${specifier} in ${file}.`);
+        }
+      }
+    }
+  }
+}
+
+const configuratorCoreDir = 'packages/configurator/src/core';
+if (isDirectory(path.join(ROOT, configuratorCoreDir))) {
+  const forbiddenCoreImports = ['react', 'next', '@supabase/supabase-js', '@sp/geometry', '@sp/costing'];
+  for (const file of walkFiles(configuratorCoreDir).filter((item) => !item.endsWith('.test.ts'))) {
+    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    for (const pattern of IMPORT_PATTERNS) {
+      pattern.lastIndex = 0;
+      for (const match of source.matchAll(pattern)) {
+        if (forbiddenCoreImports.some((specifier) => (
+          match[1] === specifier || match[1].startsWith(`${specifier}/`)
+        ))) {
+          failures.push(`${file} imports ${match[1]}; @sp/configurator/core must remain lightweight and universal.`);
+        }
+      }
+    }
+    if (/\b(?:window|document|localStorage|sessionStorage)\b/.test(source)) {
+      failures.push(`${file} uses a browser global; @sp/configurator/core must remain universal.`);
+    }
+  }
+}
+
 for (const appDir of workspaceDirs('apps')) {
   const pkg = readJson(`${appDir}/package.json`);
   const imports = importedLocalPackages(appDir, localPackages);
