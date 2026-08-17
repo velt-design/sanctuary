@@ -90,6 +90,9 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 - `docs/agent-playbook.md`: active protocol for non-trivial portal work.
 - `docs/change-routing.md`: path ownership, doc update triggers, common task cards, and docs bloat control.
 - `docs/portal-production-readiness.md`: active tracker for production-grade portal status, quality gates, blockers, priorities, and parallel lanes.
+- `docs/ai/README.md`: Sanctuary AI programme routing and status authority; proposed plans do not override current repository contracts.
+- `docs/ai/sanctuary-ai-master-plan.md`: proposed Sanctuary AI strategic and technical master plan; review target direction and phased PRs here, but do not treat it as current behavior or implementation approval.
+- `docs/customer-configurator-architecture.md`: strategic target and active implementation roadmap for the customer-facing Your Pergola configurator and `@sp/configurator`/`@sp/geometry-viewer` boundaries.
 - `docs/architecture.md`: repo structure and boundaries.
 - `docs/target-architecture.md`: target workspace shape, north-star data path, and migration direction.
 - `docs/maintainability-principles.md`: repo-specific maintainability rules, failure modes, and code-review heuristics.
