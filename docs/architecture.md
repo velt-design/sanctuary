@@ -9,6 +9,7 @@ For the north-star structure this repo is converging toward, read `docs/target-a
 - `apps/marketing`: public marketing site, enquiry form, public quote and invoice viewers, email templates, analytics runtime routes, consent handling, SEO.
 - `apps/portal`: authenticated staff portal, admin surfaces, project workflow, estimates, quotes, invoices, schedule, design list, running jobs, job packs, imports, and the Calculator Brain costing control centre.
 - `apps/worker`: Node 22 durable-job runtime, safe RPC adapter, lease/heartbeat/retry orchestration, bounded concurrency, health server, and CLI modes. It imports no Next.js app and defaults to dark mode.
+- `packages/configurator`: canonical versioned customer pergola intent contract, strict parser, normalization, deterministic serializer, migrations/future-version recovery, customer-safe defaults/summaries, and typed patch/seed contracts, imported through the lightweight `@sp/configurator/core` subpath.
 - `packages/costing`: canonical costing engine, base config, typed admin-configuration contract, validation, diff, and impact preview, imported as `@sp/costing`.
 - `packages/geometry`: canonical geometry solvers and viewer helpers, imported as `@sp/geometry`.
 - `packages/email-provider`: Node-only direct-`fetch` email provider boundary for canonical Resend request bytes, stable provider identity, typed outcomes, timeouts/abort handling, and Svix-signed webhook-envelope verification, imported as `@sp/email-provider`.
@@ -51,6 +52,7 @@ Shared packages own business logic that must not be forked into apps. If app cod
 ## Source Of Truth Rules
 
 - Costing formulas, supported configuration types, validation, application, diffing, preview calculation, and base config live in `packages/costing`. Supabase stores immutable published values and draft workflow state, not executable logic.
+- Customer-authored pergola intent, its controlled option catalogues, parser, canonical serialization, migration status and contextual patch/seed contracts live in `packages/configurator`. Core remains universal and does not own React, storage, geometry, pricing, Supabase, enquiry intake or portal continuation.
 - Geometry solving lives in `packages/geometry`; portal drawing code adapts it for UI and persistence.
 - Durable background-job kinds, worker response contracts, retry policy, and transition policy live in `packages/jobs`; the Supabase ledger, private payload store, logged PGMQ queue, and lease-fenced RPCs own persistence. `apps/worker` owns execution mechanics, while later workflow checkpoints must own their domain preparation/finalisation and command-boundary enqueue decisions.
 - Email-provider request normalization, exact wire-body hashing, stable Resend idempotency identity, typed delivery outcomes, timeout/abort behavior, and raw-body webhook verification live in `packages/email-provider`. Apps may provide server-only compatibility adapters, but they must not fork provider rules or log raw provider/customer content.

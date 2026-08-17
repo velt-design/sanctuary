@@ -1,0 +1,9 @@
+{
+  "name": "@sp/configurator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./core": "./src/core/index.ts"
+  }
+}
