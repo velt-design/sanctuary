@@ -21,7 +21,8 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 13. `file-decomposition-and-ownership.md`: large-file ownership and early split guardrail.
 14. `code-retirement-and-bloat-control.md`: dead-code and dependency cleanup guardrail.
 15. `platform-workflow.md`: business workflow from lead to install completion.
-16. The feature doc for the area you are changing.
+16. `ai/README.md`: Sanctuary AI programme routing and status authority.
+17. The feature doc for the area you are changing.
 
 ## Canonical Reference Docs
 
@@ -32,6 +33,9 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | `portal-production-readiness.md` | Active tracker | You need current portal production-readiness status, quality gates, blockers, priorities, or parallel work lanes. |
 | `agent-centric-portal-plan.md` | Active roadmap | You are improving agent access, portal fixture coverage, debug exports, browser evidence, route smoke coverage, or quality ratchets. |
 | `portal-ux-roadmap.md` | Active roadmap | You are planning or prioritising portal usability work, workflow polish, visual hierarchy, or staff UX improvements. |
+| `ai/README.md` | Active routing page | You need Sanctuary AI programme status, document authority, or the correct AI strategy/architecture entrypoint. |
+| `ai/sanctuary-ai-master-plan.md` | Proposed strategic plan | You are reviewing the proposed Sanctuary AI vision, target topology, phases, evaluation model, or initial PR sequence. It does not describe current behavior or authorize implementation by itself. |
+| `customer-configurator-architecture.md` | Strategic target and active implementation roadmap | You are implementing or reviewing the customer-facing Your Pergola configurator, its public contract, package boundaries, geometry/viewer path, persistence, enquiry handoff, or PR sequence. |
 | `sanctuary-mobile-production-closure-and-direct-manipulation-plan.md` | Authoritative next-phase brief | You are closing marketing production parity, adding controlled product-gallery direct manipulation, running physical mobile validation, or reconciling a production enquiry and analytics event. |
 | `mobile-ux-roadmap-v2.md` | Authoritative roadmap | You are planning or implementing the remaining public-site mobile conversion, enquiry continuity, or later mobile UX phases. |
 | `mobile-ux-phase-5-validation.md` | Active evidence record | You are running the final real-device, assistive-technology, analytics or performance validation phase. |
