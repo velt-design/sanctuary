@@ -9,6 +9,7 @@ This directory is the durable home for Sanctuary AI strategy, architecture, deci
 - `00-vision.md`: accepted Sanctuary AI constitution, business outcomes, boundaries, and initial autonomy rule.
 - `09-decisions/README.md`: accepted architectural decisions and ADR authoring template.
 - `sanctuary-ai-master-plan.md`: proposed 12-24+ month strategic and technical programme. It is a target, not authority to change current application behavior.
+- `operations/README.md`: Mac mini setup, secret, backup, rebuild, revocation, and incident-response routing.
 - `../target-architecture.md`: current repository target boundaries and migration direction.
 - `../portal-production-readiness.md`: current portal priorities and production-readiness evidence.
 - `../change-routing.md`: owner-doc and verification routing for implementation work.
@@ -35,6 +36,6 @@ Create detailed owner docs only when their implementation slice begins. Until th
 - PR-AI-006, authenticated read-only Portal AI activity: complete in the repository. The APIs expose only explicit public safe projections through the request's auth-bound client, and the gated QA route renders synthetic data only. There is no production navigation entry or write control.
 - PR-AI-007, deterministic synthetic execution through the existing jobs/worker spine: complete in the repository. The fixed `ai_synthetic_v1` handler records task/job linkage plus zero-cost usage and deterministic evaluation evidence; it has no provider, model, network, customer, project, communication, or external-effect path. Production migrations and worker rollout remain separate and unapplied.
 - PR-AI-008, private node registration and heartbeat: next. It owns service-only node identity, capability, health, revocation, and stale-heartbeat evidence; it does not activate OpenClaw or production execution.
-- Mac mini: hardware received; secure node baseline is the current operational priority.
+- Mac mini: hardware received. The secure-node operations packet is complete in the repository; physical setup, private account choices, and rehearsal evidence remain pending.
 - OpenClaw: not yet an active Sanctuary runtime; it remains dark until sandbox, tool policy, private networking, recovery, and synthetic-task evidence are complete.
 - Production effects: prohibited during the initial node deployment.
