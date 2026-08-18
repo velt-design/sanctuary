@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DESIGN_BOOKLET_PRESENTATION,
   designBookletCssBaselineOffset,
+  normalizeDesignBookletMultilinePresentationText,
   normalizeDesignBookletPresentationText,
 } from "./presentation";
 
@@ -90,5 +91,10 @@ describe("design booklet presentation", () => {
         "  Toni\u00a0\u2014\u00a0Sanctuary\u2019s concept  ",
       ),
     ).toBe("Toni - Sanctuary's concept");
+    expect(
+      normalizeDesignBookletMultilinePresentationText(
+        "  Outdoor   living\r\n  concept  ",
+      ),
+    ).toBe("Outdoor living\nconcept");
   });
 });

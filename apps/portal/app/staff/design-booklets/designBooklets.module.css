@@ -355,6 +355,11 @@
   line-height: 1.45;
 }
 
+.field textarea.titleTextarea {
+  min-height: 58px;
+  resize: none;
+}
+
 .field input:focus,
 .field select:focus,
 .field textarea:focus {

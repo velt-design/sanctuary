@@ -135,6 +135,45 @@ describe("design booklet PDF", () => {
     }
   }, 30_000);
 
+  it("prints intentional booklet-title line breaks as separate cover lines", async () => {
+    const draft = createToniDesignBookletDraft();
+    draft.projectTitle = "Outdoor living\nconcept";
+    const bytes = await generateToniPdf(draft);
+    const outputDirectory = process.env.DESIGN_BOOKLET_OUTPUT_DIR?.trim();
+    if (outputDirectory) {
+      await mkdir(outputDirectory, { recursive: true });
+      await writeFile(
+        path.join(outputDirectory, "toni-multiline-title-booklet.pdf"),
+        bytes,
+      );
+    }
+    const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const task = getDocument({ data: bytes.slice() });
+    const document = await task.promise;
+
+    try {
+      const cover = await document.getPage(1);
+      const content = await cover.getTextContent();
+      const firstLine = content.items.find(
+        (item) => "str" in item && item.str === "Outdoor living",
+      );
+      const secondLine = content.items.find(
+        (item) => "str" in item && item.str === "concept",
+      );
+      if (
+        !firstLine ||
+        !("str" in firstLine) ||
+        !secondLine ||
+        !("str" in secondLine)
+      ) {
+        throw new Error("Expected both explicit cover-title lines in the PDF.");
+      }
+      expect(firstLine.transform[5]).toBeGreaterThan(secondLine.transform[5]);
+    } finally {
+      await document.destroy();
+    }
+  }, 30_000);
+
   it("renders the fixed cover and review as a two-page minimum", async () => {
     const draft = createToniDesignBookletDraft();
     draft.contentPages = [];

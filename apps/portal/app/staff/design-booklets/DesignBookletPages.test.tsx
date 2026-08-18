@@ -93,6 +93,18 @@ describe("DesignBookletPages", () => {
     rendered.unmount();
   });
 
+  it("preserves an intentional booklet-title line break on the cover", () => {
+    const draft = createToniDesignBookletDraft();
+    draft.projectTitle = "Outdoor living\nconcept";
+    const rendered = renderPage(draft, "cover");
+    const title = rendered.container.querySelector(
+      '[data-page-kind="cover"] h1',
+    );
+
+    expect(title?.textContent).toBe("Outdoor living\nconcept");
+    rendered.unmount();
+  });
+
   it("renders an image page as one full-bleed image with header and footer chrome only", () => {
     const draft = createToniDesignBookletDraft();
     const imagePage = draft.contentPages.find((page) => page.kind === "image");

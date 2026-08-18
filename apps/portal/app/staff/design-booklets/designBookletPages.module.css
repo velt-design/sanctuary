@@ -191,6 +191,7 @@
   display: -webkit-box;
   overflow: hidden;
   overflow-wrap: anywhere;
+  white-space: pre-line;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }

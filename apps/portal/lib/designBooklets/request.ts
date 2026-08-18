@@ -109,6 +109,31 @@ function requiredText(
   return cleaned;
 }
 
+function requiredMultilineText(
+  value: unknown,
+  context: string,
+  maxLength: number,
+): string {
+  if (typeof value !== "string") {
+    throw new DesignBookletRequestError(`${context} is required.`);
+  }
+  const cleaned = value
+    .replace(/\r\n?/g, "\n")
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n");
+  if (!cleaned) {
+    throw new DesignBookletRequestError(`${context} is required.`);
+  }
+  if (cleaned.length > maxLength) {
+    throw new DesignBookletRequestError(
+      `${context} must be ${maxLength} characters or fewer.`,
+    );
+  }
+  return cleaned;
+}
+
 function optionalText(
   value: unknown,
   context: string,
@@ -579,7 +604,11 @@ export function parseDesignBookletDraft(raw: unknown): DesignBookletDraft {
   return {
     schemaVersion: DESIGN_BOOKLET_SCHEMA_VERSION,
     customerName: requiredText(value.customerName, "Customer name", 80),
-    projectTitle: requiredText(value.projectTitle, "Booklet title", 120),
+    projectTitle: requiredMultilineText(
+      value.projectTitle,
+      "Booklet title",
+      120,
+    ),
     roofFormId: value.roofFormId,
     materialId: value.materialId,
     cover: parseImagePlacement(value.cover, "Cover", ids),

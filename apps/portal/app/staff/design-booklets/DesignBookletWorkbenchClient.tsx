@@ -372,8 +372,10 @@ export default function DesignBookletWorkbenchClient({
                 </label>
                 <label className={styles.field}>
                   <span>Booklet title</span>
-                  <input
+                  <textarea
                     required
+                    className={styles.titleTextarea}
+                    rows={2}
                     value={draft.projectTitle}
                     onChange={(event) =>
                       setDraft((current) => ({
@@ -383,6 +385,7 @@ export default function DesignBookletWorkbenchClient({
                     }
                     maxLength={120}
                   />
+                  <small>Press Enter to start a new line on the cover.</small>
                 </label>
                 <label className={styles.field}>
                   <span>Roof form</span>

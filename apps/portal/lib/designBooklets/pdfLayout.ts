@@ -17,6 +17,7 @@ import {
 import { SANCTUARY_ARTIFACT_BRAND } from "@/lib/customerArtifacts/brand";
 import {
   DESIGN_BOOKLET_PRESENTATION,
+  normalizeDesignBookletMultilinePresentationText,
   normalizeDesignBookletPresentationText,
 } from "./presentation";
 
@@ -76,8 +77,13 @@ export function designBookletPdfTextLines(
   size: number,
   maxWidth: number,
   tracking = 0,
+  preserveLineBreaks = false,
 ): string[] {
-  const paragraphs = safeDesignBookletPdfText(text).split(/\n+/);
+  const paragraphs = (
+    preserveLineBreaks
+      ? normalizeDesignBookletMultilinePresentationText(text)
+      : safeDesignBookletPdfText(text)
+  ).split("\n");
   const lines: string[] = [];
 
   for (const paragraph of paragraphs) {
@@ -176,6 +182,7 @@ export function drawDesignBookletWrappedText(
     color?: Color;
     maxLines?: number;
     tracking?: number;
+    preserveLineBreaks?: boolean;
   },
 ): number {
   const lines = designBookletPdfTextLines(
@@ -184,6 +191,7 @@ export function drawDesignBookletWrappedText(
     options.size,
     options.width,
     options.tracking,
+    options.preserveLineBreaks,
   );
   const visible =
     options.maxLines && lines.length > options.maxLines

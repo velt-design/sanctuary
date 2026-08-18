@@ -34,7 +34,7 @@ Toni fixture behavior for safe standalone and QA use.
 
 The cover is always page one and the review page is always last. They cannot be removed or reordered. The middle `contentPages` sequence may contain any mix of curated content and drawing pages; staff can add, remove, and reorder either type. Page numbers and the total page count are derived from that sequence, so the booklet may contain only the two fixed pages or up to 24 middle pages.
 
-The fixed cover contains the customer name, booklet title, selected roof form, selected roofing choice, and a full-page image. Staff can replace and refocus the image. Middle content pages use a curated, controlled template system:
+The fixed cover contains the customer name, booklet title, selected roof form, selected roofing choice, and a full-page image. The booklet-title editor accepts intentional line breaks, which remain aligned between the live cover preview and downloaded PDF. Staff can replace and refocus the image. Middle content pages use a curated, controlled template system:
 
 - Visual: full bleed or framed hero;
 - Gallery: equal split, hero plus two details, or four-image grid;

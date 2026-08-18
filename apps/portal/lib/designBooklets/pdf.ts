@@ -56,6 +56,7 @@ import {
 import {
   DESIGN_BOOKLET_PRESENTATION,
   designBookletCssBaselineOffset,
+  normalizeDesignBookletMultilinePresentationText,
 } from "./presentation";
 import type {
   DesignBookletContentCatalog,
@@ -322,13 +323,16 @@ function renderCover(
   );
 
   const cover = presentation.cover;
-  const normalizedTitle = safePdfText(draft.projectTitle);
+  const normalizedTitle = normalizeDesignBookletMultilinePresentationText(
+    draft.projectTitle,
+  );
   const titleLines = designBookletPdfTextLines(
     normalizedTitle,
     fonts.display,
     cover.title.size,
     cover.title.width,
     -0.045,
+    true,
   ).slice(0, cover.title.maxLines);
   const direction = safePdfText(
     `${content.roofForms[draft.roofFormId].name} / ${content.materials[draft.materialId].label}`,
@@ -394,6 +398,7 @@ function renderCover(
     maxLines: cover.title.maxLines,
     color: white,
     tracking: -0.045,
+    preserveLineBreaks: true,
   });
 
   drawRule(

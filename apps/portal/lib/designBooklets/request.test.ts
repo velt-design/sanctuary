@@ -78,7 +78,7 @@ describe("design booklet request parsing", () => {
   it("strictly parses and normalizes a mixed dynamic draft", () => {
     const draft = createToniDesignBookletDraft();
     draft.customerName = "  Toni   Morgan  ";
-    draft.projectTitle = "  Pool   room concept ";
+    draft.projectTitle = "  Pool   room\r\n concept ";
     draft.contentPages = [
       draft.contentPages[2]!,
       draft.contentPages[0]!,
@@ -92,7 +92,7 @@ describe("design booklet request parsing", () => {
     const parsed = parseDesignBookletDraft(draft);
 
     expect(parsed.customerName).toBe("Toni Morgan");
-    expect(parsed.projectTitle).toBe("Pool room concept");
+    expect(parsed.projectTitle).toBe("Pool room\nconcept");
     expect(parsed.contentPages.map((page) => page.id)).toEqual([
       "drawing-page-1",
       "image-page-1",

@@ -144,6 +144,25 @@ describe("DesignBookletWorkbenchClient", () => {
     rendered.unmount();
   });
 
+  it("uses a multiline booklet-title field and updates the cover immediately", () => {
+    const rendered = renderWorkbench();
+    click(rendered.container.querySelector("#booklet-details > summary"));
+    const titleField = rendered.container.querySelector(
+      "#booklet-details textarea",
+    ) as HTMLTextAreaElement | null;
+    expect(titleField).not.toBeNull();
+    setTextareaValue(
+      titleField as HTMLTextAreaElement,
+      "Outdoor living\nconcept",
+    );
+
+    expect(
+      rendered.container.querySelector('[data-page-kind="cover"] h1')
+        ?.textContent,
+    ).toBe("Outdoor living\nconcept");
+    rendered.unmount();
+  });
+
   it("adds, reorders and removes mixed content pages while keeping fixed endpoints", () => {
     const rendered = renderWorkbench();
 

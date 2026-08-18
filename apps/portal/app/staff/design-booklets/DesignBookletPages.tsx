@@ -24,6 +24,7 @@ import {
 import {
   DESIGN_BOOKLET_PRESENTATION,
   designBookletCssBaselineOffset,
+  normalizeDesignBookletMultilinePresentationText,
   normalizeDesignBookletPresentationText,
   type DesignBookletPresentationFontRole,
 } from "@/lib/designBooklets/presentation";
@@ -255,7 +256,7 @@ function CoverPage({
             lineHeight: point(presentation.cover.title.lineHeight),
           }}
         >
-          {normalizeDesignBookletPresentationText(draft.projectTitle)}
+          {normalizeDesignBookletMultilinePresentationText(draft.projectTitle)}
         </h1>
         <div
           className={styles.coverDetails}

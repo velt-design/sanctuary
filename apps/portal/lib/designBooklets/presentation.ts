@@ -298,13 +298,28 @@ export const DESIGN_BOOKLET_PRESENTATION = {
   },
 } as const;
 
-export function normalizeDesignBookletPresentationText(value: string): string {
+function normalizeDesignBookletTypographyCharacters(value: string): string {
   return value
     .normalize("NFC")
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-")
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201c\u201d]/g, '"')
-    .replace(/\u00a0/g, " ")
+    .replace(/\u00a0/g, " ");
+}
+
+export function normalizeDesignBookletPresentationText(value: string): string {
+  return normalizeDesignBookletTypographyCharacters(value)
     .replace(/\s+/g, " ")
     .trim();
+}
+
+export function normalizeDesignBookletMultilinePresentationText(
+  value: string,
+): string {
+  return normalizeDesignBookletTypographyCharacters(value)
+    .replace(/\r\n?/g, "\n")
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n");
 }
