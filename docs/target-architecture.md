@@ -75,6 +75,11 @@ Marketing must not own staff workflow state or staff-only business process mutat
 
 Portal may adapt package output for UI and persistence. It must not fork package-owned costing, geometry, quote formatting, or shared theme truth.
 
+`packages/ai` owns provider-neutral Sanctuary AI contract truth:
+
+- versioned task/event, agent/capability, approval, source/evidence, artifact, usage/evaluation, and node-capability schemas and strict parsers.
+- it does not own provider SDKs or credentials, database persistence, UI, raw private payloads, prompts, or business-domain execution.
+
 `packages/configurator` owns customer-authored pergola intent truth:
 
 - `@sp/configurator/core` is the universal lightweight boundary for the exact versioned public contract, strict parsing, normalization, deterministic serialization, migrations, customer-safe defaults/summaries and typed contextual patches/seeds.
@@ -187,6 +192,8 @@ Portal drawing code may adapt `@sp/geometry` for workbench state, persistence, a
 Costing must come from `@sp/costing`. Marketing must not create a pricing fork. Public pricing may use only an active immutable published configuration and must fail closed rather than use legacy overrides or package defaults. Portal overrides may layer database-owned overrides on top of package base config through documented portal helpers.
 
 Durable background-job kinds and transition policy must come from `@sp/jobs`. Apps and workers may supply handlers and workflow adapters, but they must not fork the kind registry, queue-message schema, status machine, effect-state machine, or rollout vocabulary.
+
+Shared AI contracts must come from `@sp/ai`. Apps, workers, nodes, and provider adapters may map those contracts at explicit boundaries, but provider-specific wire shapes and business-domain behavior must not enter the shared package.
 
 Email provider behavior must come from `@sp/email-provider`. Apps must not recreate Resend request classification, signature verification, provider idempotency identity, or canonical payload hashing. The root npm lockfile is the only workspace lockfile; app-local lockfiles must not become separate dependency authorities.
 
@@ -321,7 +328,7 @@ How to use this map: pick the target area before editing, treat `Forbidden short
 
 - Lane label: `package-truth`.
 - North star: packages own reusable domain truth; apps orchestrate and adapt that truth for workflows and UI.
-- Source of truth: `packages/costing`, `packages/email-provider`, `packages/geometry`, `packages/jobs`, `packages/quote-format`, `packages/theme`, and package public exports.
+- Source of truth: `packages/ai`, `packages/costing`, `packages/email-provider`, `packages/geometry`, `packages/jobs`, `packages/quote-format`, `packages/theme`, and package public exports.
 - Allowed paths: behavior changes start in the owning package, then app adapters and integration tests are updated.
 - Forbidden shortcuts: TypeScript-only package aliases without declared dependencies, app-local forks of package rules, or private package internals used as stable APIs.
 - Primary gates: package tests, `npm run packages:guard`, app integration tests for changed adapters, and `npm run typecheck`.

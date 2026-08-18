@@ -52,6 +52,7 @@ Shared packages own business logic that must not be forked into apps. If app cod
 ## Source Of Truth Rules
 
 - Costing formulas, supported configuration types, validation, application, diffing, preview calculation, and base config live in `packages/costing`. Supabase stores immutable published values and draft workflow state, not executable logic.
+- Provider-neutral AI task, agent, capability, approval, provenance, artifact, usage, evaluation, and node contracts live in `packages/ai`. Provider adapters, database persistence, UI, secrets, raw private payloads, and business-domain execution stay outside the package.
 - Customer-authored pergola intent, its controlled option catalogues, parser, canonical serialization, migration status and contextual patch/seed contracts live in `packages/configurator`. Core remains universal and does not own React, storage, geometry, pricing, Supabase, enquiry intake or portal continuation.
 - Geometry solving lives in `packages/geometry`; portal drawing code adapts it for UI and persistence.
 - Durable background-job kinds, worker response contracts, retry policy, and transition policy live in `packages/jobs`; the Supabase ledger, private payload store, logged PGMQ queue, and lease-fenced RPCs own persistence. `apps/worker` owns execution mechanics, while later workflow checkpoints must own their domain preparation/finalisation and command-boundary enqueue decisions.
