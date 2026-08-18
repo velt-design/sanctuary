@@ -366,14 +366,19 @@ function verifyAiSyntheticExecutionRollback() {
   const remainingObjects = queryScalar(
     `select count(*)
      from (
-       values
-         (to_regclass('public.ai_task_jobs')::oid),
-         (to_regclass('public.ai_usage_records')::oid),
-         (to_regclass('public.ai_evaluations')::oid),
-         (to_regprocedure('public.ai_task_enqueue_synthetic(uuid)')::oid),
-         ((select oid from public.background_job_kinds where kind = 'ai_synthetic_v1'))
-     ) checked(object_oid)
-     where object_oid is not null;`,
+       select 'ai_task_jobs' where to_regclass('public.ai_task_jobs') is not null
+       union all
+       select 'ai_usage_records' where to_regclass('public.ai_usage_records') is not null
+       union all
+       select 'ai_evaluations' where to_regclass('public.ai_evaluations') is not null
+       union all
+       select 'ai_task_enqueue_synthetic'
+         where to_regprocedure('public.ai_task_enqueue_synthetic(uuid)') is not null
+       union all
+       select 'ai_synthetic_v1'
+         from public.background_job_kinds
+         where kind = 'ai_synthetic_v1'
+     ) checked;`,
     "AI synthetic rollback residue query",
   );
   if (remainingObjects !== "0") {

@@ -84,6 +84,8 @@ describe('PR-AI-007 synthetic execution migration', () => {
   it('rehearses exact rollback and proves adversarial completion and role boundaries', () => {
     expect(harness).toMatch(/20260818000004_ai_synthetic_execution\.sql/i);
     expect(harness).toMatch(/Transactional AI synthetic execution rollback rehearsal/i);
+    expect(harness).toMatch(/from public\.background_job_kinds\s+where kind = 'ai_synthetic_v1'/i);
+    expect(harness).not.toMatch(/select oid from public\.background_job_kinds/i);
     expect(executableContract).toMatch(/classification job accepted the echo fixture result/i);
     expect(executableContract).toMatch(/rejected synthetic result did not roll job completion back atomically/i);
     expect(executableContract).toMatch(/unrelated staff could read synthetic execution evidence/i);
