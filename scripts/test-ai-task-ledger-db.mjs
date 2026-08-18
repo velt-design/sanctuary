@@ -14,15 +14,26 @@ const bootstrap = readFileSync(
   path.join(repositoryRoot, "supabase/tests/ai_task_ledger_bootstrap.sql"),
   "utf8",
 );
-const migration = readFileSync(
+const taskLedgerMigration = readFileSync(
   path.join(
     repositoryRoot,
     "supabase/migrations/20260818000002_ai_task_ledger.sql",
   ),
   "utf8",
 );
-const contract = readFileSync(
+const taskLedgerContract = readFileSync(
   path.join(repositoryRoot, "supabase/tests/ai_task_ledger.sql"),
+  "utf8",
+);
+const approvalMigration = readFileSync(
+  path.join(
+    repositoryRoot,
+    "supabase/migrations/20260818000003_ai_approval_envelopes.sql",
+  ),
+  "utf8",
+);
+const approvalContract = readFileSync(
+  path.join(repositoryRoot, "supabase/tests/ai_approval_envelopes.sql"),
   "utf8",
 );
 
@@ -107,10 +118,10 @@ function verifyDatabaseIdentity() {
   process.stdout.write(`ai-task-ledger-db: PostgreSQL ${major}, image ${imageId}\n`);
 }
 
-function verifyRollbackRehearsal() {
+function verifyTaskLedgerRollbackRehearsal() {
   psql(
-    `begin;\n${migration}\nrollback;`,
-    "Transactional migration rollback rehearsal",
+    `begin;\n${taskLedgerMigration}\nrollback;`,
+    "Transactional task-ledger migration rollback rehearsal",
   );
   const remainingObjects = psql(
     `select count(*)
@@ -132,6 +143,33 @@ function verifyRollbackRehearsal() {
   process.stdout.write("ai-task-ledger-db: rollback rehearsal passed\n");
 }
 
+function verifyApprovalRollbackRehearsal() {
+  psql(
+    `begin;\n${approvalMigration}\nrollback;`,
+    "Transactional approval migration rollback rehearsal",
+  );
+  const remainingObjects = psql(
+    `select count(*)
+     from (
+       values
+         (to_regclass('public.ai_approvals')::oid),
+         (to_regclass('private.ai_approval_envelopes')::oid),
+         (to_regclass('private.ai_approval_command_receipts')::oid),
+         (to_regtype('public.ai_approval_status')::oid),
+         (to_regtype('public.ai_approval_decision')::oid)
+     ) checked(object_oid)
+     where object_oid is not null;`,
+    "Approval rollback residue query",
+    true,
+  );
+  if (remainingObjects !== "0") {
+    throw new Error(
+      `Rollback rehearsal left ${remainingObjects} AI approval objects.`,
+    );
+  }
+  process.stdout.write("ai-task-ledger-db: approval rollback rehearsal passed\n");
+}
+
 let started = false;
 try {
   requireSuccess(
@@ -151,10 +189,13 @@ try {
   await waitForDatabase();
   verifyDatabaseIdentity();
   psql(bootstrap, "AI ledger test bootstrap");
-  verifyRollbackRehearsal();
-  psql(migration, "AI ledger migration application");
-  psql(contract, "AI ledger executable contract");
-  process.stdout.write("ai-task-ledger-db: executable contract passed\n");
+  verifyTaskLedgerRollbackRehearsal();
+  psql(taskLedgerMigration, "AI ledger migration application");
+  psql(taskLedgerContract, "AI ledger executable contract");
+  verifyApprovalRollbackRehearsal();
+  psql(approvalMigration, "AI approval migration application");
+  psql(approvalContract, "AI approval executable contract");
+  process.stdout.write("ai-task-ledger-db: all executable contracts passed\n");
 } finally {
   if (started) {
     docker(["rm", "--force", containerName]);

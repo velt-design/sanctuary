@@ -133,6 +133,7 @@ const fixtures = {
     impact: ['Creates a synthetic audit record only.'],
     validations: [{ validationKey: 'synthetic.only', passed: true, evidenceId: null }],
     status: 'pending',
+    decision: null,
     decidedBy: null,
     decidedAt: null,
     consumedAt: null,
@@ -298,6 +299,51 @@ describe('@sp/ai V1 contracts', () => {
       expect(result.success).toBe(false);
       if (!result.success) expect(result.issues.some((entry) => entry.code === 'invariant')).toBe(true);
     }
+  });
+
+  it('preserves an exact prior decision when approval later expires or is invalidated', () => {
+    const approvedDecision = {
+      decision: 'approved' as const,
+      decidedBy: actor,
+      decidedAt: NOW,
+    };
+    const approved = AI_APPROVAL_SCHEMA_V1.safeParse({
+      ...fixtures.approval,
+      ...approvedDecision,
+      status: 'approved',
+    });
+    const expired = AI_APPROVAL_SCHEMA_V1.safeParse({
+      ...fixtures.approval,
+      ...approvedDecision,
+      status: 'expired',
+    });
+    const invalidated = AI_APPROVAL_SCHEMA_V1.safeParse({
+      ...fixtures.approval,
+      ...approvedDecision,
+      status: 'invalidated',
+      invalidationReasonCode: 'task_cancelled',
+    });
+    const erasedDecision = AI_APPROVAL_SCHEMA_V1.safeParse({
+      ...fixtures.approval,
+      status: 'approved',
+      decision: null,
+      decidedBy: actor,
+      decidedAt: NOW,
+    });
+    const rejectedThenInvalidated = AI_APPROVAL_SCHEMA_V1.safeParse({
+      ...fixtures.approval,
+      status: 'invalidated',
+      decision: 'rejected',
+      decidedBy: actor,
+      decidedAt: NOW,
+      invalidationReasonCode: 'task_cancelled',
+    });
+
+    expect(approved.success).toBe(true);
+    expect(expired.success).toBe(true);
+    expect(invalidated.success).toBe(true);
+    expect(erasedDecision.success).toBe(false);
+    expect(rejectedThenInvalidated.success).toBe(false);
   });
 
   it('checks evaluation threshold direction instead of trusting a claimed pass', () => {

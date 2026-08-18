@@ -222,6 +222,8 @@ The database, rather than a JavaScript caller, computes canonical JSONB SHA-256 
 
 Run `npm run test:ai` and the disposable `npm run test:ai:db` contract. The latter must prove exact-file rollback residue, application, RLS/grants, cross-user denial, admin visibility, idempotent replay, changed-input rejection, append-only history, and frozen private payload behavior before any production migration is considered.
 
+PR-AI-005 extends that boundary with exact approval envelopes. Public readers receive only safe action/target/hash/summary/role/impact/validation/status metadata; exact payloads and command receipts remain private. Requests derive their hash from immutable task input, decisions require the recorded role, approvals expire within 30 minutes, and consumption checks the exact public/private/task identity atomically. Every envelope is single-use. Same-command retry replays the receipt, while wrong role, changed hash, changed command identity, task cancellation, expiry, and duplicate consumption fail closed. Approval or consumption still performs no external effect.
+
 ## Security Rules
 
 - Never commit secrets or env files.
