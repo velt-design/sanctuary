@@ -2784,6 +2784,12 @@ The programme uses eleven bounded PRs. Each agent must read this document and th
 
 Create `@sp/configurator/core` as the canonical public design-intent boundary.
 
+### Implementation status
+
+Implemented and merged through PR #53 on 18 August 2026. Current code lives under `packages/configurator/src/core/**`, and later geometry, storage, UI, enquiry and portal work remains absent.
+
+Gate 0 record: legacy audit rows N/A; remove/build-on legacy N/A; Phase 2 costing-input or `inputs.modules` dependencies none; consolidated existing functions/types N/A. This PR introduces a new public intent boundary and imports no workbench, geometry or costing input contract.
+
 ### Scope
 
 - package scaffolding;
@@ -2848,6 +2854,8 @@ None beyond existing workspace conventions.
 ### Completion gate
 
 `npm run typecheck`, package tests, package-boundary guard and architecture review pass.
+
+Focused verification command: `npm run test:configurator`.
 
 ### Effort
 

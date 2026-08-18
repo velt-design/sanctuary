@@ -75,6 +75,11 @@ Marketing must not own staff workflow state or staff-only business process mutat
 
 Portal may adapt package output for UI and persistence. It must not fork package-owned costing, geometry, quote formatting, or shared theme truth.
 
+`packages/configurator` owns customer-authored pergola intent truth:
+
+- `@sp/configurator/core` is the universal lightweight boundary for the exact versioned public contract, strict parsing, normalization, deterministic serialization, migrations, customer-safe defaults/summaries and typed contextual patches/seeds.
+- core has no React, browser-global, storage, geometry, costing, Supabase or app dependency. Later geometry and handoff subpaths must remain explicit and must not widen the core barrel.
+
 `packages/costing` owns commercial truth:
 
 - costing engine behavior, base config, material/BOM logic, install/labour logic, overheads, accessories, customer-price sequencing, and pricing semantics.
@@ -168,6 +173,8 @@ The first service-role visibility gate is `npm run service-role:report`, with `n
 ## Package Boundary Target
 
 Apps should depend on packages through declared workspace dependencies and public package exports, not accidental TypeScript-only aliases.
+
+The public configurator must depend on `@sp/configurator/core` for customer intent rather than calculator, workbench or route-owned enums. Marketing owns presentation and browser persistence; geometry remains a later explicit adapter to `@sp/geometry`; portal continuation remains a later handoff boundary.
 
 When app code needs a domain behavior change:
 
