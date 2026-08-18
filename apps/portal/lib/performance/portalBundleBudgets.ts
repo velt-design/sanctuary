@@ -139,8 +139,11 @@ export const PORTAL_BUNDLE_ROUTES: readonly PortalBundleRouteConfig[] = [
     clientReferenceManifest: 'server/app/staff/calculator/page_client-reference-manifest.js',
     reactLoadableManifest: 'server/app/staff/calculator/page/react-loadable-manifest.json',
     budgets: {
-      initialRawBytes: 1_210_368,
-      initialGzipBytes: 319_488,
+      // 2026-08-18 fresh build after the calculator workflow, trust UI, and
+      // commercial handoff work landed: 1,233,342 raw / 322,008 gzip. Keep
+      // the established measured-size-plus-5% policy, rounded up to KiB.
+      initialRawBytes: 1_295_360,
+      initialGzipBytes: 338_944,
       lazyTotalRawBytes: 0,
       lazyTotalGzipBytes: 0,
       largestLazyRawBytes: 0,
