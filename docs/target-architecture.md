@@ -82,6 +82,8 @@ Portal may adapt package output for UI and persistence. It must not fork package
 
 Supabase owns hosted AI control state: staff-safe task/event rows, protected frozen input, exact command/approval receipts, RLS, and semantic command transactions. The initial ledger is structurally synthetic-only, effect-free, and zero-cost. A database row or package contract does not authorise a model call, provider adapter, worker handler, OpenClaw node, business mutation, external communication, or production rollout. Later deterministic execution must adapt into the existing `packages/jobs` and `apps/worker` spine rather than create a second queue/worker architecture.
 
+Portal AI activity reads follow the normal staff data path: the UI consumes bounded list/detail routes under `/api/staff/v1/ai/tasks`, those routes use the request's auth-bound Supabase client, and the server adapter selects and validates only explicit public safe columns. RLS owns requester/admin/project visibility. The browser never reads AI tables directly, and the read surface has no private-payload, service-role, mutation, execution, provider, or model boundary.
+
 `packages/configurator` owns customer-authored pergola intent truth:
 
 - `@sp/configurator/core` is the universal lightweight boundary for the exact versioned public contract, strict parsing, normalization, deterministic serialization, migrations, customer-safe defaults/summaries and typed contextual patches/seeds.

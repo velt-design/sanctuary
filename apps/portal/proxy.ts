@@ -23,6 +23,7 @@ const DESIGN_BOOKLET_WORKBENCH_FIXTURE_PATH = '/qa/design-booklet-workbench-fixt
 const INVOICE_ARTIFACT_PREVIEW_FIXTURE_PATH = '/qa/invoice-artifact-preview-fixture';
 const PROJECT_WORK_QUEUE_FIXTURE_PATH = '/qa/project-work-queue-fixture';
 const SCHEDULE_OPS_FIXTURE_PATH = '/qa/schedule-ops-fixture';
+const AI_ACTIVITY_FIXTURE_PATH = '/qa/ai-activity-fixture';
 
 type CookieToSet = {
   name: string;
@@ -65,7 +66,8 @@ function isPortalQaFixtureInternalPath(path: string): boolean {
     path === DESIGN_BOOKLET_WORKBENCH_FIXTURE_PATH ||
     path === INVOICE_ARTIFACT_PREVIEW_FIXTURE_PATH ||
     path === PROJECT_WORK_QUEUE_FIXTURE_PATH ||
-    path === SCHEDULE_OPS_FIXTURE_PATH
+    path === SCHEDULE_OPS_FIXTURE_PATH ||
+    path === AI_ACTIVITY_FIXTURE_PATH
   );
 }
 
