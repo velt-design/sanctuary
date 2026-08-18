@@ -249,6 +249,27 @@ backfilled names, successful PostgREST selects, and the unambiguous
 `20260811000001` migration-ledger entry. No customer or commercial row was
 changed.
 
+The final commercial idempotency and truth boundaries entered the same
+positively identified production project on 2026-08-18 through exact-file
+application of `20260813000002_commercial_admin_action_idempotency.sql` and
+`20260813000003_commercial_truth_invariants.sql`. Completed physical backup
+`1395554116` was confirmed first. The reviewed SHA-256 values were
+`a2fc31d070fece1c455895cadf65f31cffb1459fe7d038a1831336e2acac0626` and
+`5e1a5a84ade2298d164a9b712524d6bc01662754f53452f869569593260f4018`.
+Production preflight showed that the earlier commercial schema through
+`20260813000001` was already structurally present despite its sparse ledger, so
+those files were neither replayed nor repaired. The exact two-file transaction
+passed a rollback rehearsal, then committed atomically with unambiguous ledger
+entries whose stored bodies matched the reviewed files. Postflight verified the
+new columns and unique indexes, fourteen security-definer truth/locking
+functions, six enabled reconciliation/guard triggers, the service-role-only
+acceptance and admin-invoice grants, revocation of the unguarded internal
+acceptance function from `service_role`, zero long-running transactions, and
+unchanged counts of 488 quote versions, 31 invoices, 182 quote families, and
+1,168 estimates. No real quote was accepted and no invoice or email was sent
+during deployment; a controlled end-to-end acceptance journey remains separate
+release evidence.
+
 Marketing enquiry intake requires both `20260723_000001_marketing_enquiry_intake_security.sql` and the forward compatibility migration `20260724043000_marketing_enquiry_budget_columns.sql`. The latter adds nullable pricing snapshot columns to installations whose existing `enquiry_requests` table predates those fields.
 
 Project owner handoffs and the authoritative stale-Enquiry dry run require `20260801_000001_project_owner_handoffs_and_enquiry_inactivity.sql`. Apply it before running `npm run portal:enquiries:inactive`; that command is read-only and does not close or advance projects.
