@@ -35,6 +35,9 @@ export const AI_APPROVAL_STATUSES = [
 ] as const;
 export type AiApprovalStatus = (typeof AI_APPROVAL_STATUSES)[number];
 
+export const AI_APPROVAL_DECISIONS = ['approved', 'rejected'] as const;
+export type AiApprovalDecision = (typeof AI_APPROVAL_DECISIONS)[number];
+
 export const AI_SOURCE_AUTHORITIES = [
   'authoritative',
   'reference',
@@ -78,6 +81,7 @@ export type AiApprovalV1 = Readonly<{
   impact: readonly string[];
   validations: readonly AiApprovalValidationV1[];
   status: AiApprovalStatus;
+  decision: AiApprovalDecision | null;
   decidedBy: AiActorRefV1 | null;
   decidedAt: string | null;
   consumedAt: string | null;
@@ -180,6 +184,7 @@ function parseAiApprovalV1(
     'impact',
     'validations',
     'status',
+    'decision',
     'decidedBy',
     'decidedAt',
     'consumedAt',
@@ -200,6 +205,13 @@ function parseAiApprovalV1(
     { maximum: 50 },
   );
   const status = readAiEnum(record.status, AI_APPROVAL_STATUSES, `${path}.status`, issues);
+  const decision = readAiNullable(
+    record.decision,
+    `${path}.decision`,
+    issues,
+    (value, decisionPath, decisionIssues) =>
+      readAiEnum(value, AI_APPROVAL_DECISIONS, decisionPath, decisionIssues),
+  );
   const decidedBy = readAiNullable(
     record.decidedBy,
     `${path}.decidedBy`,
@@ -227,21 +239,54 @@ function parseAiApprovalV1(
     issues,
   );
 
-  const isDecided = status === 'approved' || status === 'rejected' || status === 'consumed';
-  if (isDecided && (decidedBy === null || decidedAt === null)) {
+  if (
+    (decision === null) !== (decidedBy === null)
+    || (decision === null) !== (decidedAt === null)
+  ) {
     addAiIssue(
       issues,
       'invariant',
-      `${path}.status`,
-      `${status} approvals require decision identity and time.`,
+      `${path}.decision`,
+      'Approval decision, identity, and time must be recorded together.',
     );
   }
-  if (!isDecided && (decidedBy !== null || decidedAt !== null)) {
+
+  if (
+    (status === 'approved' || status === 'consumed')
+    && decision !== 'approved'
+  ) {
     addAiIssue(
       issues,
       'invariant',
       `${path}.status`,
-      `${status} approvals cannot include decision identity or time.`,
+      `${status} approvals require an approved decision.`,
+    );
+  }
+  if (status === 'rejected' && decision !== 'rejected') {
+    addAiIssue(
+      issues,
+      'invariant',
+      `${path}.status`,
+      'Rejected approvals require a rejected decision.',
+    );
+  }
+  if (status === 'pending' && decision !== null) {
+    addAiIssue(
+      issues,
+      'invariant',
+      `${path}.decision`,
+      'Pending approvals cannot include a decision.',
+    );
+  }
+  if (
+    (status === 'expired' || status === 'invalidated')
+    && decision === 'rejected'
+  ) {
+    addAiIssue(
+      issues,
+      'invariant',
+      `${path}.decision`,
+      `${status} approvals may preserve only a prior approved decision.`,
     );
   }
   if ((status === 'consumed') !== (consumedAt !== null)) {
@@ -285,6 +330,7 @@ function parseAiApprovalV1(
     impact,
     validations,
     status,
+    decision,
     decidedBy,
     decidedAt,
     consumedAt,

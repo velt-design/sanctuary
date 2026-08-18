@@ -291,11 +291,20 @@ Current PR-AI-004 scope:
 - Authenticated staff may select only RLS-filtered safe task/event rows and invoke the two semantic commands. They have no direct mutation grant. Anonymous and service-role roles receive no AI task table access; private schema access is revoked from application roles.
 - This foundation has no portal route/UI, worker handler, model/provider integration, OpenClaw integration, customer/project mutation, external communication, or production effect. PR-AI-006 owns the later read-only staff surface; PR-AI-007 owns deterministic execution through the existing job spine.
 
+PR-AI-005 approval boundary:
+
+- Staff-safe exact-envelope metadata lives in `public.ai_approvals`; the exact frozen action payload lives only in `private.ai_approval_envelopes`; append-only request/approve/reject/consume/invalidate replay evidence lives in `private.ai_approval_command_receipts`.
+- `ai_approval_request_synthetic` derives the exact action payload and PostgreSQL hash from the immutable AI task input. It accepts only synthetic, effect-free tasks, fixes the required role to admin, bounds expiry to 30 minutes, and reuses an identical active envelope.
+- `ai_approval_decide_synthetic` requires current admin authority and records an immutable approved/rejected decision. `ai_approval_consume_synthetic` atomically checks the exact public/private/task hashes, expiry, prior decision role, task cancellation, and single-use status before recording a synthetic receipt with no external effect. `ai_approval_invalidate_synthetic` is exact-hash-bound and requester/admin-only.
+- Expiry and cancellation fail closed. Invalidation or expiry after approval preserves the original decision identity and time. Same-command replay is stable; changed command identity, wrong role/hash, and a second consumption fail closed.
+- Authenticated staff may select only approvals visible through the parent task RLS policy and invoke the semantic commands. They have no direct mutation grant. Anonymous and service-role roles receive no approval table/function capability, and application roles receive no private approval data access.
+
 Migration and test source:
 
 - `supabase/migrations/20260818000002_ai_task_ledger.sql`
-- `supabase/tests/ai_task_ledger_bootstrap.sql` and `supabase/tests/ai_task_ledger.sql`
-- `test/ai-task-ledger-migration.test.ts` and `scripts/test-ai-task-ledger-db.mjs`
+- `supabase/migrations/20260818000003_ai_approval_envelopes.sql`
+- `supabase/tests/ai_task_ledger_bootstrap.sql`, `supabase/tests/ai_task_ledger.sql`, and `supabase/tests/ai_approval_envelopes.sql`
+- `test/ai-task-ledger-migration.test.ts`, `test/ai-approval-migration.test.ts`, and `scripts/test-ai-task-ledger-db.mjs`
 - `npm run test:ai` is the package/static contract. `npm run test:ai:db` applies the exact forward file inside a transaction and rolls it back, proves no AI objects remain, then reapplies it and executes the RLS/replay/immutability contract in a disposable database.
 
 No shared local, staging, or production database receives this migration from the test harness. Production application remains a separate reviewed exact-file deployment after green disposable-database evidence.

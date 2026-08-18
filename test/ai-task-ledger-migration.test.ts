@@ -142,7 +142,7 @@ describe('PR-AI-004 AI task ledger migration', () => {
     expect(executableContract).toMatch(/same create intent did not replay/i);
     expect(executableContract).toMatch(/unrelated staff member cancelled/i);
     expect(executableContract).toMatch(/event history accepted an update/i);
-    expect(harness).toMatch(/begin;\\n\$\{migration\}\\nrollback;/i);
+    expect(harness).toMatch(/begin;\\n\$\{taskLedgerMigration\}\\nrollback;/i);
     expect(harness).toMatch(/Rollback residue query/i);
     expect(harness).toMatch(/supabase\/tests\/ai_task_ledger\.sql/i);
     expect(harness).not.toMatch(/SUPABASE_(URL|SERVICE_ROLE_KEY)/i);
