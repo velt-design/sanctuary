@@ -588,6 +588,65 @@ describe('quote pricing source preservation in domain helpers', () => {
     expect(db.quote_versions.filter((row) => row.quote_id === addOnQuote?.id)).toHaveLength(1);
   });
 
+  it('keeps an initial manual quote in the base family', async () => {
+    resetDb(
+      {
+        projects: [makeProject()],
+        quotes: [makeQuote()],
+      },
+      {
+        quote_versions: [ids.quoteVersionCreated],
+        file_artifacts: [nextUuid()],
+      },
+    );
+
+    const { createManualQuote } = await import('./serverCore');
+    await createManualQuote(
+      appId('proj', ids.project),
+      'ops@example.com',
+      'manual-base-intent',
+      'Original contract',
+      [{ description: 'Pergola', qty: 1, unitPriceIncGstCents: 14375 }],
+    );
+
+    expect(db.quotes).toHaveLength(1);
+    expect(db.quote_versions.find((row) => row.id === ids.quoteVersionCreated)?.quote_id).toBe(ids.quote);
+  });
+
+  it('creates a post-acceptance manual variation in an independent add-on family', async () => {
+    const addOnQuoteId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    resetDb(
+      {
+        projects: [makeProject()],
+        quotes: [makeQuote()],
+        quote_versions: [makeQuoteVersion({ status: 'ACCEPTED', accepted_at: '2026-05-03T00:00:00.000Z' })],
+      },
+      {
+        quotes: [addOnQuoteId],
+        quote_versions: [ids.quoteVersionCreated],
+        file_artifacts: [nextUuid()],
+      },
+    );
+
+    const { createManualQuote } = await import('./serverCore');
+    await createManualQuote(
+      appId('proj', ids.project),
+      'ops@example.com',
+      'manual-variation-intent',
+      'Pelmet variation',
+      [{ description: 'Change front flashing', qty: 1, unitPriceIncGstCents: 119877 }],
+    );
+
+    const addOnQuote = db.quotes.find((row) => row.id === addOnQuoteId);
+    expect(addOnQuote?.commercial_scope_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(db.quote_versions.find((row) => row.id === ids.quoteVersionCreated)?.quote_id).toBe(addOnQuoteId);
+    expect(db.quote_versions.find((row) => row.id === ids.quoteVersionSent)?.quote_id).toBe(ids.quote);
+    expect(db.audit_events.find((row) => row.type === 'quote.created')?.payload).toMatchObject({
+      commercialScopeId: addOnQuote?.commercial_scope_id,
+      commercialScopeKind: 'add_on',
+    });
+  });
+
   it('refreshes only draft quotes with calculator rollback metadata and leaves historical versions unchanged', async () => {
     const historical = makeQuoteVersion({ id: ids.quoteVersionSent, status: 'SENT', total_inc_gst_cents: 14375 });
     const draft = makeQuoteVersion({

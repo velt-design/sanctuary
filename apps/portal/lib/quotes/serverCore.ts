@@ -61,6 +61,7 @@ import {
   loadQuoteFamilyByCommercialScope,
 } from './serverLoaders';
 import { seedQuoteInternalName } from './internalName.server';
+import { resolveManualQuoteCommercialScopeId } from './manualQuoteScope.server';
 
 export async function insertAuditEvent(params: {
   projectId: string;
@@ -497,8 +498,11 @@ export async function createManualQuote(
   const projectRes = await supabaseServiceRole.from('projects').select('id').eq('id', projectUuid).maybeSingle();
   if (projectRes.error || !projectRes.data) throw new Error('Project not found');
 
-  // Manual quotes intentionally join the project's base quote family so its version history remains coherent.
-  const quote = await ensureQuote(projectUuid, actor, internalName, null);
+  // Before the base contract is accepted, a manual quote may establish or revise
+  // that family. Afterwards, a newly created manual scope is independent add-on
+  // work; joining it to the base family would replace accepted job value.
+  const commercialScopeId = await resolveManualQuoteCommercialScopeId(projectUuid, clientIntentId);
+  const quote = await ensureQuote(projectUuid, actor, internalName, commercialScopeId);
   const totals = totalsFromNormalizedLineItems(normalizedItems);
   const paymentTerms = buildDefaultQuotePaymentSchedule({ quoteTotalIncGstCents: totals.totalIncGstCents });
   const depositPercent = paymentScheduleCompatibilityDepositPercent(paymentTerms, totals.totalIncGstCents);
@@ -539,6 +543,8 @@ export async function createManualQuote(
       estimateVersionId: null,
       copiedBy: actor,
       copyReason: 'manual_quote_created',
+      commercialScopeId,
+      commercialScopeKind: commercialScopeId ? 'add_on' : 'base',
       ...quotePricingSourceAuditPayload(pricingSourceCopy),
     },
   });
