@@ -212,7 +212,7 @@ Security invariants:
 
 ## Repository Key Incident
 
-Commit `db20ed2e` removed tracked private-key material after the repository security test discovered it. Removal from the current tree does not revoke the credential and does not remove it from Git history. Treat the material as compromised until the owning credential is rotated or revoked and downstream use has been audited. History rewriting is explicitly out of scope and must not be attempted; remediation is rotation/revocation plus access review. A passing current-tree secret scan does not close this incident by itself.
+Commit `db20ed2e` removed tracked private-key material after the repository security test discovered it. The compromised fingerprint is absent from the known GitHub account, repository deploy-key, local SSH-key, and SSH-agent authorization surfaces, and the repository has no recorded SSH host inventory. The incident and exact audit evidence are closed in `docs/repository-key-incident.md`. The private key remains compromised and recoverable from Git history; history rewriting is explicitly out of scope. If its fingerprint is ever found on an unrecorded system, revoke that exact authorization immediately and extend the evidence record.
 
 ## Sanctuary AI Ledger Security Boundary
 

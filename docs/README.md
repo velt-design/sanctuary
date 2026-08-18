@@ -83,6 +83,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | `running-jobs.md` | Current | You are touching `/staff/projects/running-jobs` or running-job spreadsheet APIs. |
 | `schedule.md` | Current | You are touching `/staff/schedule`, Schedule V2 APIs, Gantt, Board, Site Visits, or legacy fallback. |
 | `security-privacy-quality.md` | Current | You are touching tracking, consent, CSP, Lighthouse, audits, or quality gates. |
+| `repository-key-incident.md` | Closed security evidence | You need the compromised Ed25519 fingerprint, removal evidence, audited authorization surfaces, or the continuing revocation rule. |
 | `marketing-ui-foundation.md` | Current marketing-only UI contract | You are changing the standalone internal marketing catalogue or an existing marketing consumer of its reusable primitives and patterns. It does not apply to the portal. |
 | `sanctuary-project-led-visual-finder-homepage-prototype.md` | Production homepage specification and promotion history | You are implementing or validating the production `/` visual finder, its retired `/home-project-finder` redirect, brief builder, project evidence, enquiry continuation, or analytics contract. |
 | `sanctuary-guided-design-conversation-homepage.md` | Active experimental-homepage specification | You are implementing or validating `/home-guided`, its five-result journey, or guided continuation on the five destination routes. |
