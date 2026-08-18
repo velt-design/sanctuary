@@ -1,7 +1,11 @@
 import type { BackgroundJobHandlerRegistry } from '../runtime/contracts';
 
+import { aiSyntheticHandler } from './aiSynthetic';
+
 /**
- * JOB-02 starts dark with no domain handlers. Later checkpoints add a handler
- * only when its producer, checkpoints, and finaliser migrate together.
+ * The synthetic AI handler has no network, provider, business mutation, or
+ * external-effect capability. All commercial kinds remain deliberately dark.
  */
-export const backgroundJobHandlers: BackgroundJobHandlerRegistry = Object.freeze({});
+export const backgroundJobHandlers: BackgroundJobHandlerRegistry = Object.freeze({
+  ai_synthetic_v1: aiSyntheticHandler,
+});

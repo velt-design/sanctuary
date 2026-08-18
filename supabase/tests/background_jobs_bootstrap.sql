@@ -18,6 +18,8 @@ end;
 $$;
 
 create schema if not exists auth;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 -- CREATE TABLE IF NOT EXISTS still checks CREATE on the schema before it can
 -- report that the Supabase image's protected relation already exists.

@@ -100,9 +100,9 @@ describe('worker application boundaries', () => {
     ).toEqual([]);
   });
 
-  it('starts JOB-02 with a frozen empty handler registry and dark default', () => {
+  it('registers only the effect-free synthetic handler and keeps the worker dark by default', () => {
     expect(Object.isFrozen(backgroundJobHandlers)).toBe(true);
-    expect(Object.keys(backgroundJobHandlers)).toEqual([]);
+    expect(Object.keys(backgroundJobHandlers)).toEqual(['ai_synthetic_v1']);
     expect(
       loadWorkerConfig({
         SUPABASE_URL: 'http://127.0.0.1:54321',

@@ -211,11 +211,20 @@ afterEach(() => {
 });
 
 describe('createBackgroundJobWorker', () => {
-  it.each(['active', 'once', 'drain'] as const)('refuses %s mode without complete handler coverage', (mode) => {
+  it.each(['active', 'once', 'drain'] as const)('refuses %s mode without worker-routed handler coverage', (mode) => {
     expect(() => createBackgroundJobWorker(workerOptions(config(mode), rpcFixture(), {}))).toThrow(
       'WORKER_HANDLER_COVERAGE_INCOMPLETE',
     );
   });
+
+  it.each(['active', 'once', 'drain'] as const)(
+    'allows %s mode when every worker-routed kind has a handler while legacy kinds stay dark',
+    (mode) => {
+      expect(() => createBackgroundJobWorker(workerOptions(config(mode), rpcFixture(), {
+        ai_synthetic_v1: async () => ({}),
+      }))).not.toThrow();
+    },
+  );
 
   it('runs dark without claiming or reconciling and shuts down idle without a grace timer', async () => {
     const rpc = rpcFixture();

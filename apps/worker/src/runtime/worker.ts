@@ -3,6 +3,7 @@ import {
   getBackgroundJobDefinition,
   type BackgroundJobClaim,
   type BackgroundJobKind,
+  type BackgroundJobRolloutMode,
   type BackgroundJobsRuntimeMetrics,
   type BackgroundJobWorkerLifecycleState,
 } from '@sp/jobs';
@@ -134,7 +135,11 @@ class BackgroundJobWorkerRuntime implements BackgroundJobWorker {
     this.#startedAt = new Date(this.#clock.now()).toISOString();
 
     if (['active', 'once', 'drain'].includes(this.#config.mode)) {
-      const missingKinds = BACKGROUND_JOB_KINDS.filter((kind) => !this.#handlers[kind]);
+      const missingKinds = BACKGROUND_JOB_KINDS.filter((kind) => {
+        const rollout = getBackgroundJobDefinition(kind).defaultRolloutMode;
+        return (['worker_cohort', 'worker_enabled'] as readonly BackgroundJobRolloutMode[]).includes(rollout)
+          && !this.#handlers[kind];
+      });
       if (missingKinds.length > 0) {
         throw new Error('WORKER_HANDLER_COVERAGE_INCOMPLETE');
       }

@@ -282,7 +282,7 @@ Migration source:
 
 Owner docs: `docs/ai/README.md` routes the programme, `docs/ai/sanctuary-ai-master-plan.md` owns the proposed long-term sequence, and accepted ADRs under `docs/ai/09-decisions/` own the hosted-control-state, provider-neutral, existing-jobs-spine, and exact-approval decisions.
 
-Current PR-AI-004 scope:
+Current PR-AI-004 through PR-AI-007 scope:
 
 - Safe staff-visible task state lives in `public.ai_tasks`; append-only safe history lives in `public.ai_task_events`.
 - Frozen objective and fixture input live only in `private.ai_task_payloads`. Exact command replay evidence lives only in append-only `private.ai_task_command_receipts`.
@@ -290,7 +290,9 @@ Current PR-AI-004 scope:
 - `ai_task_cancel_synthetic` is requester/admin-only, accepts only effect-free synthetic tasks, and uses an exact single-use command ID plus immutable receipt. Same-input replay is stable; changed-input command reuse fails closed.
 - Authenticated staff may select only RLS-filtered safe task/event rows and invoke the two semantic commands. They have no direct mutation grant. Anonymous and service-role roles receive no AI task table access; private schema access is revoked from application roles.
 - PR-AI-006 adds the read-only staff boundary at `GET /api/staff/v1/ai/tasks` and `GET /api/staff/v1/ai/tasks/[taskId]`. Both use the request's auth-bound client, select only explicit public safe columns, validate the projection before returning it, and are always `private, no-store`. RLS-hidden cross-project detail is indistinguishable from a missing task. The gated `/qa/ai-activity-fixture` renders checked-in synthetic data and never queries Supabase.
-- This foundation still has no worker handler, model/provider integration, OpenClaw integration, customer/project mutation, external communication, or production effect. PR-AI-007 owns deterministic execution through the existing job spine.
+- PR-AI-007 links an eligible synthetic task to exactly one `ai_synthetic_v1` durable job through the service-role-only `ai_task_enqueue_synthetic` RPC. Exact replay returns the existing link. Task state follows durable job state, and successful completion atomically validates the fixed result, records one zero-unit/zero-cost usage row plus one deterministic passing evaluation, and advances the task to evaluated.
+- `ai_task_jobs`, `ai_usage_records`, and `ai_evaluations` are append-only. Staff-safe reads inherit parent-task RLS visibility; raw job payload/hash/lease/queue identity remains private. Linked task-only cancellation is rejected so task and job state cannot diverge.
+- The synthetic handler and producer have no model/provider integration, OpenClaw integration, customer/project mutation, external communication, or production effect. The production migration and worker rollout remain separate and unapplied.
 
 PR-AI-005 approval boundary:
 
@@ -304,8 +306,9 @@ Migration and test source:
 
 - `supabase/migrations/20260818000002_ai_task_ledger.sql`
 - `supabase/migrations/20260818000003_ai_approval_envelopes.sql`
-- `supabase/tests/ai_task_ledger_bootstrap.sql`, `supabase/tests/ai_task_ledger.sql`, and `supabase/tests/ai_approval_envelopes.sql`
-- `test/ai-task-ledger-migration.test.ts`, `test/ai-approval-migration.test.ts`, and `scripts/test-ai-task-ledger-db.mjs`
+- `supabase/migrations/20260818000004_ai_synthetic_execution.sql`
+- `supabase/tests/ai_task_ledger_bootstrap.sql`, `supabase/tests/ai_task_ledger.sql`, `supabase/tests/ai_approval_envelopes.sql`, and `supabase/tests/ai_synthetic_execution.sql`
+- `test/ai-task-ledger-migration.test.ts`, `test/ai-approval-migration.test.ts`, `test/ai-synthetic-execution-migration.test.ts`, `scripts/test-ai-task-ledger-db.mjs`, and `scripts/test-background-jobs-db.mjs`
 - `npm run test:ai` is the package/static contract. `npm run test:ai:db` applies the exact forward file inside a transaction and rolls it back, proves no AI objects remain, then reapplies it and executes the RLS/replay/immutability contract in a disposable database.
 
 No shared local, staging, or production database receives this migration from the test harness. Production application remains a separate reviewed exact-file deployment after green disposable-database evidence.
@@ -322,7 +325,7 @@ Owner docs: this schema map owns the current database boundary; `docs/target-arc
 Current scope:
 
 - JOB-01 is the proven durable database foundation. JOB-02 adds an RPC-only worker runtime plus safe runtime-context, aggregate-metrics, and worker-health projections. JOB-03 adds the shared durable email-effect/provider contract, a signed provider-acceptance reconciliation boundary, and lease-fenced local acceptance conflict quarantine. No app producer or commercial workflow handler consumes the worker path yet. Quote/invoice delivery remains request-bound but now uses its own private commercial intent/checkpoint boundary; automation/outbox ownership remains unchanged until its named rollout.
-- The shared `@sp/jobs` registry declares versioned policy for `deposit_invoice_prepare_and_send`, `quote_send`, `quote_resend`, `job_pack_generate`, `automation_event`, and `email_outbox_deliver`, with every default rollout mode still `legacy`.
+- The shared `@sp/jobs` registry declares versioned policy for `deposit_invoice_prepare_and_send`, `quote_send`, `quote_resend`, `job_pack_generate`, `automation_event`, and `email_outbox_deliver`, with every commercial default rollout mode still `legacy`. PR-AI-007 adds `ai_synthetic_v1` as the only `worker_enabled` kind and the only registered handler; it is deterministic and has no external effect.
 - Registry policy keeps `requiredHandlerCheckpoints` for domain-owned freeze/stage/business-finalisation milestones separate from allowed and required external effects. The database snapshots `has_external_side_effect`, `allowed_effect_kinds`, `required_effect_kinds`, and cancellation policy onto each accepted job so a later registry edit cannot change policy beneath durable work. `background_job_complete` rejects success until every recorded worker effect is terminal and every required kind has a durable `finalised` checkpoint; shadow work may retain prepared checkpoints but cannot dispatch.
 - JOB-04 through JOB-08 remain pending. The presence of kinds, tables, RPCs, a provider gateway, or a dark worker artifact is not producer, handler, deployment, or rollout evidence.
 
@@ -374,8 +377,9 @@ Migration and test source:
 - `supabase/migrations/20260720_000005_background_job_contract_hardening.sql`: frozen allowed-effect/cancellation policy, context-safe summaries and explicit safe projections, exact queue-body validation and repair, restart-safe lease-fenced effect identity, provider-window/max-attempt uncertainty guards, and narrowed grants.
 - `supabase/migrations/20260720_000006_background_job_worker_runtime.sql`: lease-fenced runtime context, aggregate queue/job/worker lifecycle metrics, safe worker listing, and explicit service-role-only grants.
 - `supabase/migrations/20260720_000007_background_job_provider_reconciliation.sql`: bounded Resend idempotency expiry, append-only minimal provider receipts, verified acceptance reconciliation, lease-fenced local provider acceptance and message-ID conflict quarantine, late-terminal conflict attention, same-key uncertainty recovery, finalisation wake-up, and narrowed grants.
+- `supabase/migrations/20260818000004_ai_synthetic_execution.sql`: `ai_synthetic_v1` policy, immutable task/job linkage, zero-cost usage/evaluation evidence, service-only exact enqueue, linked lifecycle synchronisation, and atomic deterministic completion validation.
 - `supabase/tests/background_jobs_bootstrap.sql` creates only the disposable auth/projects/role prerequisites needed by the isolated contract; it is test support, not a production migration.
-- `supabase/tests/background_jobs.sql` is the rollback-wrapped executable database contract. `npm run test:jobs` covers TypeScript plus static SQL/security assertions; `npm run test:jobs:db` is the Docker-backed real-PGMQ harness.
+- `supabase/tests/background_jobs.sql` and `supabase/tests/ai_synthetic_execution.sql` are executable database contracts. `npm run test:jobs` covers TypeScript plus static SQL/security assertions; `npm run test:jobs:db` is the Docker-backed real-PGMQ harness and performs the exact PR-AI-007 rollback rehearsal before applying and testing it.
 
 Verification status:
 

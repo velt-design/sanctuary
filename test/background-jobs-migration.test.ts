@@ -129,9 +129,10 @@ describe('Wave 3 background-job migrations', () => {
       foundation.matchAll(/\('([a-z][a-z0-9_]+)',\s*1,\s*'[a-z0-9-]+'/g),
       (match) => match[1],
     );
-    expect(seededKinds).toEqual(BACKGROUND_JOB_KINDS);
+    const foundationKinds = BACKGROUND_JOB_KINDS.filter((kind) => kind !== 'ai_synthetic_v1');
+    expect(seededKinds).toEqual(foundationKinds);
 
-    for (const kind of BACKGROUND_JOB_KINDS) {
+    for (const kind of foundationKinds) {
       const definition = getBackgroundJobDefinition(kind, 1);
       const requiredEffects = definition.requiredEffectCheckpoints.length
         ? `array\\['${definition.requiredEffectCheckpoints.join("', '")}']`
