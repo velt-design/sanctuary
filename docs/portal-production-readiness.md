@@ -2,7 +2,7 @@
 
 Status: Active evolving tracker.
 
-Last updated: 2026-08-13.
+Last updated: 2026-08-18.
 
 Purpose: keep agents and maintainers aligned on the path to a first-class, production-grade internal portal. This doc is the dashboard for current readiness, blockers, priorities, parallel lanes, and next actions. Detailed behavior rules stay in the canonical docs linked below.
 
@@ -62,7 +62,7 @@ Status describes the last verified signal, not an implicit current-head result. 
 | Portal performance evidence | Green | On 2026-08-06, exactly five authenticated local production repetitions measured Projects-to-Dashboard and Dashboard-to-Schedule/Work Queue/Drafting Queue/Running Jobs useful-content p75 at 19/18/24/17/23 ms, down from 2,389/3,869/1,852/6,390/3,377 ms before the slice. Feedback p75 was 17/16/21/15/20 ms; every run had no blocking overlay or long task. The prior cold Project Detail evidence and its unchanged 2,699 ms guard remain recorded in `docs/testing-and-qa.md`. | Keep the new 100/500 ms ceilings enforced and retain separate feedback, useful-content, and background-settled markers so incomplete data is never relabelled as fast. |
 | Portal Web Vitals | Green | Identifier-free first-party ingestion, admin p75/p95 summaries, route sanitisation tests, RLS/grants, and the 30-day `pg_cron` migration are implemented. On staging, the named daily cron job was present, the cleanup removed a 31-day fixture, retained a recent fixture, and the remaining fixture was then removed. | Promote the verified forward migration through the normal production deployment path and keep the 30-day job monitored. |
 | Production security audit | Green | On 2026-07-28 both applications resolve the root PostCSS override at 8.5.18 and `npm audit --omit=dev` reports zero vulnerabilities on Next.js 16.2.11. | Keep `npm run audit:security` blocking and do not weaken the override without a fresh audit. |
-| Repository key incident | Red | Commit `db20ed2e` removed tracked private-key material discovered by the repository security test. The material remains in Git history and must be treated as compromised; no rotation/revocation evidence is recorded here. | Rotate or revoke the owning credential and audit downstream use. Do not rewrite Git history. A clean current-tree scan is not incident closure. |
+| Repository key incident | Green | On 2026-08-18 the compromised Ed25519 fingerprint was derived in memory and found absent from the current Git tree, the owner's public GitHub authentication/signing keys, repository deploy keys, local SSH files, and the SSH agent. The repository uses HTTPS and records no other SSH host inventory. `docs/repository-key-incident.md` preserves the exact audit evidence without key material. | Keep the historical private key treated as compromised and do not rewrite Git history. If the recorded fingerprint appears on an unrecorded system, revoke that exact authorization and extend the incident evidence. |
 | Security and data boundaries | Yellow | The 2026-07-28 commercial-trust worktree passes the audit, service-role inventory, browser-Supabase inventory, static and executable migration contracts, route tests, public-token tests, deterministic provider-adapter tests, and provider-free staging quote smoke. On 2026-08-18 the final missing production idempotency/truth migrations passed exact-file rollback rehearsal and atomic apply; postflight verified the service-role-only guarded acceptance/admin boundaries, revoked unguarded acceptance, enabled reconciliation triggers, exact stored migration bodies, and unchanged commercial row counts. | Complete separately approved controlled-recipient send/resend/public-acceptance/invoice-delivery QA; keep live provider side effects outside routine repository and production catalog checks. |
 | Portal build | Green | On 2026-07-28 an isolated Next.js 16.2.11 portal build compiled, completed TypeScript, and generated 77 pages while the existing port-3001 dev server remained untouched. The marketing build generated 65 pages. | Keep the build preflight and isolated-output technique; rerun after quote, invoice, PDF, fixture, or Next config changes. |
 | Typecheck | Green | `npm run typecheck` passed on 2026-07-28 across marketing, portal, the standalone Node worker, `@sp/costing`, `@sp/email-provider`, `@sp/geometry`, `@sp/jobs`, `@sp/quote-format`, and `@sp/theme`. | Keep typecheck in quick doctor and CI, including the dedicated Background Jobs workflow for changes to the durable-job foundation. |
@@ -156,7 +156,7 @@ Wave 3 must keep queue durability, private input, worker fencing, external-effec
 - [x] `npm run build:portal` passes.
 - [x] `npm run portal:bundle-budget` passes every unchanged route ceiling; the isolated 2026-07-30 route-optimization build records Contacts at 550.8/154.6 KiB and Calculator at 1158.5/302.4 KiB raw/gzip initial.
 - [x] `npm run audit:security` has no unresolved high or critical production vulnerabilities.
-- [ ] The private-key material removed in `db20ed2e` has been rotated or revoked and downstream use audited; Git history is not rewritten.
+- [x] The private-key material removed in `db20ed2e` is absent from all known authorization surfaces, downstream use has been audited in `docs/repository-key-incident.md`, and Git history is not rewritten.
 - [x] `npm run test:jobs` passes the JOB-03 TypeScript, provider, static-migration, and repository-security checks at 8 files/144 tests.
 - [x] `npm run test:worker`, `npm run typecheck:worker`, `npm run build:worker`, and the built CLI smoke pass; worker coverage is 12 files/134 tests.
 - [x] JOB-01's five migrations pass `npm run test:jobs:db` in the isolated logged-PGMQ CI harness on both supported database images.
@@ -281,7 +281,7 @@ Keep this ordered list current as work lands.
 2. Keep the unchanged Contacts/Calculator bundle ceilings and current green route-optimization evidence; retain the earlier Overview handoff exception as historical truth rather than authority to raise budgets.
 3. Keep the exact production target guard and pagination-aware GET-only browser proof as a release check; provision production-only credentials explicitly when dispatching it in CI rather than reusing staging credentials.
 4. Restore any quality gate that blocks the project-speed lane before adding an optimization; when the failure is in a hotspot, fix it at the owning layer rather than adding another caller workaround.
-5. Close the repository key incident in parallel by rotating or revoking the compromised credential and auditing downstream use; do not rewrite Git history.
+5. Preserve the closed repository-key incident evidence; revoke the recorded fingerprint immediately if an unrecorded authorization surface is discovered, and do not rewrite Git history.
 6. Preserve JOB-03's green seven-migration, contract/integration, and worker-container CI signal, then continue JOB-04 through JOB-08 in a separate backend worktree; require shared-environment deployment review before enabling any producer or active worker rollout.
 7. Keep manual quote/invoice/public-token/job-pack, Schedule V2, and Design Workbench edit/save/reload QA visible in release checks with staff credentials and compatible data.
 8. Advance the geometry/costing migration without switching live pricing: extend package-owned physical takeoff in `packages/geometry`, compare `calculator_compat` and `workbench_solved`, and keep compatibility retirement explicit.
@@ -353,6 +353,10 @@ When updating this tracker:
 - Keep this file ASCII and link to repo-relative paths.
 
 ## Change Notes
+
+### 2026-08-18
+
+- Closed the repository key incident after deriving only the public fingerprint in memory and verifying that it is absent from the owner's public GitHub authentication/signing keys, repository deploy keys, local SSH key files, and SSH agent. The repository uses HTTPS and contains no additional SSH host inventory. `docs/repository-key-incident.md` records the exact evidence and continuing revocation rule; no key material was restored and Git history was not rewritten.
 
 ### 2026-08-13
 
