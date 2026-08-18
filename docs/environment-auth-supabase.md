@@ -126,6 +126,8 @@ Commercial workflow trust requires `20260728_000001_commercial_workflow_trust.sq
 
 If a linked environment has a sparse or historically divergent migration ledger, do not use a blanket `db push` or repair unrelated versions. Positively classify the target, inspect prerequisites and collision counts, run the exact forward file in a rollback transaction, apply only that reviewed file, and verify the resulting schema/function body. Record the version only when it is unambiguous. Supabase CLI treats the digits before the first underscore as the version, so date-only siblings such as `20260729_000001` through `_000004` collide as remote version `20260729`; do not use `db push`, `migration up`, or `migration repair 20260729` for that group. Preserve exact-file hashes and deployment evidence separately until the naming/ledger convention is repaired. Production remains a separate reviewed deployment.
 
+The current staging identity, 2026-08-18 exact-file alignment, rollback/postflight evidence, sparse-ledger exceptions, and deterministic scenario controls are recorded in `docs/staging-supabase-readiness.md`. Start there before any further shared-staging migration or authenticated CI repair.
+
 Project Work V2 has a read-only staging readiness preflight:
 
 ```powershell

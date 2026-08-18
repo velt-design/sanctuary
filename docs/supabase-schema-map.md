@@ -12,6 +12,7 @@ Use this before changing schema, RLS, grants, route Supabase access, RPC command
 - Use the domain table sections to route changed tables/RPCs to owner docs and write paths.
 - Use `## Schedule, Site Visits, And Running Jobs` for Schedule V2 and running-job storage boundaries.
 - Use `## Durable Background Jobs` for the logged PGMQ queue, ledger, protected payload, provider receipts/reconciliation, worker RPCs, and rollout boundary.
+- Use `docs/staging-supabase-readiness.md` for the current staging identity, exact deployed hashes, ledger exceptions, dark durable-job/AI state, and deterministic QA-data controls.
 - Use `## Marketing, Automation, And Supporting Tables` for enquiry, email, audit, and support tables.
 - Finish with `## Verification` to choose migration, access, and route checks.
 
