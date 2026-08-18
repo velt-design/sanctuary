@@ -282,6 +282,16 @@ GET /api/staff/v1/schedule/readiness
 
 The route should return `200` before schedule changes are considered ready.
 
+## Sanctuary AI Task-Ledger Database Setup
+
+PR-AI-004 adds the ordered forward migration `20260818000002_ai_task_ledger.sql`. It requires the existing Supabase `auth.users`, `public.projects`, `public.has_portal_access()`, and `public.is_portal_admin()` boundaries plus `pgcrypto` in the protected `extensions` schema. The migration creates only synthetic, effect-free, zero-cost task state; it does not configure a model provider, worker, OpenClaw, customer/project mutation, external communication, or rollout.
+
+Run `npm run test:ai` for the package/static boundary and `npm run test:ai:db` for the live disposable-database contract. The database harness applies only `supabase/tests/ai_task_ledger_bootstrap.sql`, rehearses the exact migration inside `BEGIN`/`ROLLBACK`, asserts that no AI objects survive, applies the same exact file, then executes `supabase/tests/ai_task_ledger.sql`. It never reads Supabase URL or service-role environment variables and must never be redirected to a shared local, staging, or production database.
+
+As of 2026-08-18, this workstation still has no Docker, Podman, PostgreSQL, or Supabase CLI command. The local live attempt stopped at `spawnSync docker ENOENT` before a container or SQL execution. The dedicated `AI Foundation` workflow supplies the required Supabase PostgreSQL 17 and upstream PostgreSQL 18 rollback/application evidence before deployment review. Do not claim that evidence until the PR workflow is green.
+
+For a real Supabase target, first classify the target and verify prerequisites/collisions. Rehearse the exact file with a transaction on a disposable compatible database, then apply only the reviewed file. Do not use blanket `db push` or infer deployment from repository/CI state. Production requires a separate confirmation and post-apply privilege/function-body verification.
+
 ## Durable Background-Job Database Setup
 
 JOB-01 through JOB-03 add seven ordered forward migrations, `20260720_000001_background_job_foundation.sql` through `20260720_000007_background_job_provider_reconciliation.sql`. They require a Supabase-compatible Postgres target with `pgcrypto`, PGMQ extension support, `auth.users`, and the existing `public.projects` prerequisite. The sixth migration adds lease-fenced runtime timing plus aggregate queue/job and safe worker-health projections. The seventh adds the bounded provider-idempotency contract, private append-only minimal receipts, the service-role-only verified-webhook reconciliation RPC, and a separate lease-fenced local acceptance RPC that quarantines provider message conflicts. None enables a producer, commercial handler, or rollout. Applying files in the repository is not evidence that any local, staging, or production database has received them.

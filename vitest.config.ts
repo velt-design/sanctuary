@@ -7,6 +7,7 @@ export default defineConfig({
       { find: /^@sp\/geometry\/(.*)$/, replacement: path.resolve(__dirname, 'packages/geometry/src') + '/$1.ts' },
       { find: '@sp/geometry', replacement: path.resolve(__dirname, 'packages/geometry/src/index.ts') },
       { find: /^@sp\/email-provider$/, replacement: path.resolve(__dirname, 'packages/email-provider/src/index.ts') },
+      { find: /^@sp\/ai$/, replacement: path.resolve(__dirname, 'packages/ai/src/index.ts') },
       { find: /^@sp\/jobs$/, replacement: path.resolve(__dirname, 'packages/jobs/src/index.ts') },
       { find: /^@sp\/costing$/, replacement: path.resolve(__dirname, 'packages/costing/src/index.ts') },
       { find: /^@sp\/costing\/server$/, replacement: path.resolve(__dirname, 'packages/costing/src/server/index.ts') },

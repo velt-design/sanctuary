@@ -214,6 +214,14 @@ Security invariants:
 
 Commit `db20ed2e` removed tracked private-key material after the repository security test discovered it. Removal from the current tree does not revoke the credential and does not remove it from Git history. Treat the material as compromised until the owning credential is rotated or revoked and downstream use has been audited. History rewriting is explicitly out of scope and must not be attempted; remediation is rotation/revocation plus access review. A passing current-tree secret scan does not close this incident by itself.
 
+## Sanctuary AI Ledger Security Boundary
+
+PR-AI-004 stores bounded staff-safe metadata separately from frozen private input. `public.ai_tasks` and append-only `public.ai_task_events` contain no raw objective or payload. `private.ai_task_payloads` and `private.ai_task_command_receipts` have RLS with no policies and no application-role schema/table grants. Staff reads remain requester/admin/project scoped, direct table mutation is prohibited, and the only authenticated writes are the fixed synthetic create/cancel semantic commands.
+
+The database, rather than a JavaScript caller, computes canonical JSONB SHA-256 identity. Transaction advisory locks plus unique intent/command identity make same-input replay stable and changed-input reuse fail closed. The schema fixes execution to `synthetic`, effect class to `none`, and all cost fields to zero. No provider SDK/key, model/network call, OpenClaw path, customer/project mutation, or external communication belongs in this slice.
+
+Run `npm run test:ai` and the disposable `npm run test:ai:db` contract. The latter must prove exact-file rollback residue, application, RLS/grants, cross-user denial, admin visibility, idempotent replay, changed-input rejection, append-only history, and frozen private payload behavior before any production migration is considered.
+
 ## Security Rules
 
 - Never commit secrets or env files.

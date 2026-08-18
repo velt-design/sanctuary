@@ -278,6 +278,28 @@ Migration source:
 - `supabase/costing_overrides.sql`, `supabase/migrations/20260326_000001_install_driver_curve_overrides.sql`, and security hardening.
 - `supabase/migrations/20260723_000001_costing_configuration_versions.sql` adds versioning, immutable publication, publish audit, and estimate provenance. It is forward-only; legacy override rows remain for pre-first-publish compatibility and historical operational inspection.
 
+## Sanctuary AI Task Ledger
+
+Owner docs: `docs/ai/README.md` routes the programme, `docs/ai/sanctuary-ai-master-plan.md` owns the proposed long-term sequence, and accepted ADRs under `docs/ai/09-decisions/` own the hosted-control-state, provider-neutral, existing-jobs-spine, and exact-approval decisions.
+
+Current PR-AI-004 scope:
+
+- Safe staff-visible task state lives in `public.ai_tasks`; append-only safe history lives in `public.ai_task_events`.
+- Frozen objective and fixture input live only in `private.ai_task_payloads`. Exact command replay evidence lives only in append-only `private.ai_task_command_receipts`.
+- `ai_task_create_synthetic` accepts only the fixed `echo_v1` and `classification_v1` fixtures. It snapshots `execution_mode = synthetic`, `effect_class = none`, and zero maximum/actual cost; PostgreSQL computes the canonical JSONB SHA-256 and atomically creates the task, payload, and first event.
+- `ai_task_cancel_synthetic` is requester/admin-only, accepts only effect-free synthetic tasks, and uses an exact single-use command ID plus immutable receipt. Same-input replay is stable; changed-input command reuse fails closed.
+- Authenticated staff may select only RLS-filtered safe task/event rows and invoke the two semantic commands. They have no direct mutation grant. Anonymous and service-role roles receive no AI task table access; private schema access is revoked from application roles.
+- This foundation has no portal route/UI, worker handler, model/provider integration, OpenClaw integration, customer/project mutation, external communication, or production effect. PR-AI-006 owns the later read-only staff surface; PR-AI-007 owns deterministic execution through the existing job spine.
+
+Migration and test source:
+
+- `supabase/migrations/20260818000002_ai_task_ledger.sql`
+- `supabase/tests/ai_task_ledger_bootstrap.sql` and `supabase/tests/ai_task_ledger.sql`
+- `test/ai-task-ledger-migration.test.ts` and `scripts/test-ai-task-ledger-db.mjs`
+- `npm run test:ai` is the package/static contract. `npm run test:ai:db` applies the exact forward file inside a transaction and rolls it back, proves no AI objects remain, then reapplies it and executes the RLS/replay/immutability contract in a disposable database.
+
+No shared local, staging, or production database receives this migration from the test harness. Production application remains a separate reviewed exact-file deployment after green disposable-database evidence.
+
 ## Durable Background Jobs
 
 Owner docs: this schema map owns the current database boundary; `docs/target-architecture.md` owns the long-term worker path, while `docs/security-privacy-quality.md`, `docs/environment-auth-supabase.md`, and `docs/testing-and-qa.md` own security, setup, and verification. Each business job kind still belongs to its existing workflow doc until a later task migrates that producer and handler.

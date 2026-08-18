@@ -1,0 +1,88 @@
+name: AI Foundation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ai-foundation.yml"
+      - "packages/ai/**"
+      - "scripts/test-ai-task-ledger-db.mjs"
+      - "supabase/migrations/*ai_task*.sql"
+      - "supabase/tests/ai_task_ledger*.sql"
+      - "test/ai-task-ledger-migration.test.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ai-foundation.yml"
+      - "packages/ai/**"
+      - "scripts/test-ai-task-ledger-db.mjs"
+      - "supabase/migrations/*ai_task*.sql"
+      - "supabase/tests/ai_task_ledger*.sql"
+      - "test/ai-task-ledger-migration.test.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+  workflow_dispatch:
+
+jobs:
+  contracts:
+    name: Provider-neutral contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: AI package and migration contracts
+        run: npm run test:ai
+
+      - name: AI package typecheck
+        run: npx tsc -p packages/ai/tsconfig.typecheck.json --noEmit --incremental false
+
+      - name: Package boundary guard
+        run: npm run packages:guard
+
+  database-contract:
+    name: Database contract (${{ matrix.database }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - database: supabase-postgres-pg17
+            image: "public.ecr.aws/supabase/postgres:17.6.1.107"
+            postgres_major: "17"
+          - database: upstream-postgres-pg18
+            image: "postgres:18-alpine"
+            postgres_major: "18"
+    env:
+      AI_TASK_LEDGER_DB_IMAGE: ${{ matrix.image }}
+      AI_TASK_LEDGER_DB_EXPECTED_POSTGRES_MAJOR: ${{ matrix.postgres_major }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Exact-file rollback and executable database contract
+        run: npm run test:ai:db
