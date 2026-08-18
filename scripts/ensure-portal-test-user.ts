@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { validatePortalTestSupabaseTarget } from './portal-test-supabase-target';
 
 export type PortalTestProvisionTarget = 'local' | 'staging';
 export type PortalTestRole = 'staff' | 'admin';
@@ -76,12 +77,20 @@ export function readPortalTestUserConfig(env: PortalTestUserEnv = process.env): 
     throw new Error('PORTAL_TEST_ROLE must be "staff" or "admin" when set.');
   }
 
+  const supabaseUrl = readRequiredEnv(env, 'NEXT_PUBLIC_SUPABASE_URL');
+  validatePortalTestSupabaseTarget({
+    target: provisionTarget,
+    supabaseUrl,
+    stagingProjectRef: env.PORTAL_STAGING_SUPABASE_PROJECT_REF,
+    productionProjectRef: env.PORTAL_PRODUCTION_SUPABASE_PROJECT_REF,
+  });
+
   return {
     email: readRequiredEnv(env, 'PORTAL_TEST_EMAIL'),
     password: readRequiredEnv(env, 'PORTAL_TEST_PASSWORD'),
     provisionTarget,
     role,
-    supabaseUrl: readRequiredEnv(env, 'NEXT_PUBLIC_SUPABASE_URL'),
+    supabaseUrl,
     serviceRoleKey: readRequiredEnv(env, 'SUPABASE_SERVICE_ROLE_KEY'),
   };
 }

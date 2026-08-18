@@ -21,6 +21,7 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/projects/createProjectCommand.ts',
   'apps/portal/lib/quotes/adminLifecycle.ts',
   'apps/portal/lib/quotes/internalName.server.ts',
+  'apps/portal/lib/quotes/manualQuoteScope.server.ts',
   'apps/portal/lib/quotes/serverCore.ts',
   'apps/portal/lib/quotes/serverEmail.ts',
   'apps/portal/lib/quotes/serverLoaders.ts',

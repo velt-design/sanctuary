@@ -185,6 +185,19 @@ async function waitForPortal(child) {
 }
 
 const { projectRef, anonKey, serviceRoleKey } = readStagingCredentials();
+const productionProjectRef = String(
+  process.env.PORTAL_PRODUCTION_SUPABASE_PROJECT_REF ?? "",
+).trim();
+if (!/^[a-z0-9]{20}$/.test(productionProjectRef)) {
+  throw new Error(
+    "PORTAL_PRODUCTION_SUPABASE_PROJECT_REF must declare the exact production refusal target.",
+  );
+}
+if (productionProjectRef === projectRef) {
+  throw new Error(
+    "The linked staging project matches the declared production refusal target.",
+  );
+}
 const testPassword =
   createHash("sha256")
     .update(`commercial-qa|${serviceRoleKey}`)
@@ -200,6 +213,8 @@ const sharedEnvironment = {
   PORTAL_TEST_ROLE: "staff",
   PORTAL_TEST_PROVISION_TARGET: "staging",
   PORTAL_TEST_SCENARIO_TARGET: "staging",
+  PORTAL_STAGING_SUPABASE_PROJECT_REF: projectRef,
+  PORTAL_PRODUCTION_SUPABASE_PROJECT_REF: productionProjectRef,
   PORTAL_SCENARIOS: "quote-ready",
   PORTAL_SCENARIO_PREFIX: "commercialqa",
   PORTAL_BASE_URL: portalUrl,

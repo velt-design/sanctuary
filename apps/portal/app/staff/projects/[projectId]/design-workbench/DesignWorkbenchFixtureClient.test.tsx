@@ -1,6 +1,7 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DesignWorkbenchFixtureClient from './DesignWorkbenchFixtureClient';
+import { preloadWorkbenchViewport } from '@/components/drawings/workbench/workbenchViewportModules';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { installDomGeometryMock, renderIntoDocument } from '../../../../../../../test/reactHarness';
 
@@ -37,8 +38,9 @@ function planHitTargetCount(container: HTMLElement): number {
 describe('DesignWorkbenchFixtureClient', () => {
   let restoreGeometry: (() => void) | null = null;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     restoreGeometry = installDomGeometryMock();
+    await preloadWorkbenchViewport('geometry3d');
   });
 
   afterEach(() => {

@@ -19,6 +19,7 @@ import {
   type CalculatorModuleInputs,
   type LegacyCalculatorInputsV1,
 } from '../apps/portal/lib/types/calculator';
+import { validatePortalTestSupabaseTarget } from './portal-test-supabase-target';
 
 export type PortalScenarioTarget = 'local' | 'staging';
 
@@ -114,11 +115,19 @@ export function readPortalScenarioConfig(env: PortalScenarioEnv = process.env): 
     throw new Error('PORTAL_SCENARIO_PREFIX must contain only letters, numbers, underscores, or hyphens.');
   }
 
+  const supabaseUrl = readRequiredEnv(env, 'NEXT_PUBLIC_SUPABASE_URL');
+  validatePortalTestSupabaseTarget({
+    target: scenarioTarget,
+    supabaseUrl,
+    stagingProjectRef: env.PORTAL_STAGING_SUPABASE_PROJECT_REF,
+    productionProjectRef: env.PORTAL_PRODUCTION_SUPABASE_PROJECT_REF,
+  });
+
   return {
     email: readRequiredEnv(env, 'PORTAL_TEST_EMAIL'),
     password: readRequiredEnv(env, 'PORTAL_TEST_PASSWORD'),
     scenarioTarget,
-    supabaseUrl: readRequiredEnv(env, 'NEXT_PUBLIC_SUPABASE_URL'),
+    supabaseUrl,
     serviceRoleKey: readRequiredEnv(env, 'SUPABASE_SERVICE_ROLE_KEY'),
     scenarioPrefix,
     scenarios: parseScenarioList(env.PORTAL_SCENARIOS),
@@ -330,6 +339,15 @@ async function seedProjectScenario(
   const estimateUuid = stableScenarioUuid(config.scenarioPrefix, scenarioId, 'estimate');
   const contactName = `[Agent Scenario] ${title} Contact`;
   const projectName = `[Agent Scenario] ${title}`;
+  const isQuoteBacked = scenarioId === 'quote-ready' || scenarioId === 'job-pack-ready';
+  const quoteRef = scenarioId === 'job-pack-ready'
+    ? `${config.scenarioPrefix.toUpperCase()}-JOB-PACK-READY`
+    : `${config.scenarioPrefix.toUpperCase()}-Q-READY`;
+  const projectQuoteRef = scenarioId === 'quote-ready'
+    ? `${config.scenarioPrefix.toUpperCase()}-QUOTE-READY`
+    : isQuoteBacked
+      ? quoteRef
+      : null;
 
   await upsertOrThrow(supabase, 'contacts', {
     id: contactUuid,
@@ -344,7 +362,7 @@ async function seedProjectScenario(
     id: projectUuid,
     contact_id: contactUuid,
     name: projectName,
-    quote_ref: scenarioId === 'quote-ready' ? `${config.scenarioPrefix.toUpperCase()}-QUOTE-READY` : null,
+    quote_ref: projectQuoteRef,
     region: 'Auckland',
     site_address: '10 Agent Scenario Lane',
     pipeline_stage: 'NEW',
@@ -376,7 +394,7 @@ async function seedProjectScenario(
     inputs: buildPortalScenarioInputs(
       scenarioId,
       projectName,
-      scenarioId === 'quote-ready' ? `${config.scenarioPrefix.toUpperCase()}-QUOTE-READY` : '',
+      projectQuoteRef ?? '',
     ),
     outputs: buildEstimateOutputs(projectName, contactName),
     warnings: [],
@@ -393,13 +411,13 @@ async function seedProjectScenario(
     labels: { contactName, projectName },
   };
 
-  if (scenarioId !== 'quote-ready') return state;
+  if (!isQuoteBacked) return state;
 
   const quoteUuid = stableScenarioUuid(config.scenarioPrefix, scenarioId, 'quote');
   const quoteVersionUuid = stableScenarioUuid(config.scenarioPrefix, scenarioId, 'quote-version');
   const lineItemOneUuid = stableScenarioUuid(config.scenarioPrefix, scenarioId, 'quote-line-item-1');
   const lineItemTwoUuid = stableScenarioUuid(config.scenarioPrefix, scenarioId, 'quote-line-item-2');
-  const quoteRef = `${config.scenarioPrefix.toUpperCase()}-Q-READY`;
+  const isJobPackReady = scenarioId === 'job-pack-ready';
 
   await upsertOrThrow(supabase, 'quotes', {
     id: quoteUuid,
@@ -413,8 +431,8 @@ async function seedProjectScenario(
     quote_id: quoteUuid,
     client_intent_id: `${config.scenarioPrefix}:${scenarioId}:quote-v1`,
     version_number: 1,
-    status: 'DRAFT',
-    is_current_draft: true,
+    status: isJobPackReady ? 'SENT' : 'DRAFT',
+    is_current_draft: !isJobPackReady,
     commercial_revision: 1,
     delivery_prepared_at: null,
     source_estimate_version_id: estimateUuid,
@@ -423,10 +441,31 @@ async function seedProjectScenario(
     customer_name: contactName,
     intro_text: 'Seeded agent scenario quote.',
     terms_text: 'Seeded local/staging scenario only.',
+    deposit_percent: 50,
+    payment_terms: [
+      {
+        id: 'payment-1',
+        label: 'Initial payment',
+        calculationType: 'percentage',
+        fixedAmountIncGstCents: null,
+        percentageOfRemainder: 50,
+        resolvedAmountIncGstCents: 1150000,
+      },
+      {
+        id: 'payment-2',
+        label: 'Final payment',
+        calculationType: 'percentage',
+        fixedAmountIncGstCents: null,
+        percentageOfRemainder: 50,
+        resolvedAmountIncGstCents: 1150000,
+      },
+    ],
     total_inc_gst_cents: 2300000,
     total_ex_gst_cents: 2000000,
     gst_cents: 300000,
     updated_at: new Date().toISOString(),
+    sent_at: isJobPackReady ? new Date().toISOString() : null,
+    sent_by: isJobPackReady ? 'portal-agent-scenario' : null,
   });
 
   const deleteResult = await supabase.from('quote_line_items').delete().eq('quote_version_id', quoteVersionUuid);
@@ -454,10 +493,22 @@ async function seedProjectScenario(
   ] as any);
   if (insertResult.error) throw new Error(`quote_line_items insert: ${insertResult.error.message}`);
 
+  const jobPackGenerationUuid = stableScenarioUuid(config.scenarioPrefix, scenarioId, 'job-pack-generation');
+  if (isJobPackReady) {
+    await upsertOrThrow(supabase, 'job_pack_generations', {
+      id: jobPackGenerationUuid,
+      project_id: projectUuid,
+      estimate_id: estimateUuid,
+      quote_version_id: quoteVersionUuid,
+      created_by: 'portal-agent-scenario',
+    });
+  }
+
   return {
     ...state,
     quoteId: appId('qt', quoteUuid),
     quoteVersionId: appId('qv', quoteVersionUuid),
+    jobPackGenerationId: isJobPackReady ? appId('jpg', jobPackGenerationUuid) : undefined,
     labels: { ...state.labels, quoteRef },
   };
 }

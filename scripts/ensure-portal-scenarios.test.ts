@@ -70,6 +70,7 @@ describe('readPortalScenarioConfig', () => {
       'project-with-estimate',
       'calculator-multi-module',
       'quote-ready',
+      'job-pack-ready',
       'workbench-multi-object',
     ]);
   });
@@ -123,6 +124,7 @@ describe('stableScenarioUuid', () => {
     expect(stableScenarioUuid('staging', 'project-with-estimate', 'project')).not.toBe(base);
     expect(stableScenarioUuid('agent', 'quote-ready', 'project')).not.toBe(base);
     expect(stableScenarioUuid('agent', 'project-with-estimate', 'estimate')).not.toBe(base);
+    expect(stableScenarioUuid('agent', 'job-pack-ready', 'job-pack-generation')).not.toBe(base);
   });
 });
 

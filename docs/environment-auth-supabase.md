@@ -91,7 +91,9 @@ PORTAL_TEST_PROVISION_TARGET=staging PORTAL_TEST_SCENARIO_TARGET=staging npm run
 
 Provisioning requires `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`. `PORTAL_TEST_ROLE=staff|admin` is optional and defaults to `staff`. The command refuses missing targets and `production`; routine browser gates never provision or mutate users.
 
-Seeded scenario provisioning uses the same credential and service-role boundary with `PORTAL_TEST_SCENARIO_TARGET=local|staging`. It writes deterministic local/staging `[Agent Scenario]` contact, project, estimate, and quote records, then saves non-secret route IDs to `playwright/.auth/portal-scenarios.json`. Routine scenario browser gates read that file only.
+For a staging target, also set `PORTAL_STAGING_SUPABASE_PROJECT_REF` and `PORTAL_PRODUCTION_SUPABASE_PROJECT_REF`. They must be distinct exact 20-character refs, and `NEXT_PUBLIC_SUPABASE_URL` must resolve exactly to the declared staging project. A local target accepts only the local Supabase HTTP origin. Merely labelling a production URL as `staging` or `local` is therefore refused before a service-role write.
+
+Seeded scenario provisioning uses the same credential, exact-ref, and service-role boundary with `PORTAL_TEST_SCENARIO_TARGET=local|staging`. It writes deterministic local/staging `[Agent Scenario]` contact, project, estimate, quote, and opt-in job-pack records, then saves non-secret route IDs to `playwright/.auth/portal-scenarios.json`. Routine scenario browser gates read that file only.
 
 Controlled local/staging one-time sign-in uses
 `/login/callback?token_hash=...&callbackUrl=...`. The callback verifies only a

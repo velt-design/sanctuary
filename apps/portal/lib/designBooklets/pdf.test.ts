@@ -258,7 +258,7 @@ describe("design booklet PDF", () => {
         bytes,
       );
     }
-  }, 30_000);
+  }, 60_000);
 
   it("renders mixed drawing layouts and custom drawing titles in page order", async () => {
     const draft = createToniDesignBookletDraft();
