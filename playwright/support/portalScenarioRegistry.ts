@@ -7,6 +7,7 @@ export type PortalScenarioId =
   | 'project-with-estimate'
   | 'calculator-multi-module'
   | 'quote-ready'
+  | 'job-pack-ready'
   | 'workbench-multi-object'
   | 'schedule-board-basic'
   | 'design-list-basic'
@@ -31,6 +32,7 @@ export interface PortalScenarioStateRecord {
   estimateId?: string;
   quoteId?: string;
   quoteVersionId?: string;
+  jobPackGenerationId?: string;
   labels: {
     contactName?: string;
     projectName: string;
@@ -72,6 +74,22 @@ export const portalScenarioRegistry = [
     ownerDocs: ['docs/quotes-invoices-job-packs.md'],
     expectedRecords: ['contacts', 'projects', 'estimates', 'quotes', 'quote_versions', 'quote_line_items'],
     notes: 'Deterministic quote version with line items for quote route smoke.',
+  },
+  {
+    id: 'job-pack-ready',
+    status: 'seeded',
+    requiredRole: 'staff',
+    ownerDocs: ['docs/quotes-invoices-job-packs.md'],
+    expectedRecords: [
+      'contacts',
+      'projects',
+      'estimates',
+      'quotes',
+      'quote_versions',
+      'quote_line_items',
+      'job_pack_generations',
+    ],
+    notes: 'Deterministic sent quote and generated job pack for the authenticated Job Packs performance journey.',
   },
   {
     id: 'workbench-multi-object',

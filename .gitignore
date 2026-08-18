@@ -16,6 +16,8 @@ apps/**/node_modules
 /playwright-report
 /test-results
 /playwright/.auth/
+/artifacts/portal-project-mutation-performance.json
+/artifacts/portal-workbench-performance.json
 
 # next.js
 /.next/

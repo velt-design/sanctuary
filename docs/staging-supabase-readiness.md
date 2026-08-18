@@ -67,7 +67,9 @@ Postflight verified:
 
 No existing staging project, contact, estimate, quote, invoice, audit, or scenario row was created, updated, or deleted during this alignment. Scenario provisioning remains explicit through `PORTAL_TEST_SCENARIO_TARGET=staging`; the script rejects production and derives stable IDs from prefix, scenario ID, and entity type. The test-user and scenario target/refusal suites pass 21 tests.
 
-Use `npm run portal:scenarios:ensure` only when the staging credentials are intentionally available and a scenario revision requires reconciliation. Routine CI reads existing staging scenarios and must never provision production.
+The subsequent CI-baseline reconciliation added exactly one deterministic `[Agent Scenario] Job Pack Ready` contact/project/estimate/quote/job-pack chain. The first guarded attempt stopped at the current quote payment-term constraint after the deterministic shell upserts; the corrected rerun supplied a reconciling two-term schedule and completed idempotently. Postflight found exactly one `portal-agent-scenario` job-pack row and one matching project, and the expanded target/test-user/scenario suite passes 27 tests. No customer row or production target was read or changed.
+
+Use `npm run portal:scenarios:ensure` only when the staging credentials are intentionally available and a scenario revision requires reconciliation. Staging provisioning now requires distinct exact staging and production refs and an exact URL/ref match; local provisioning accepts only a local HTTP origin. Routine CI reads existing staging scenarios and must never provision production.
 
 ## Continuing Rule
 

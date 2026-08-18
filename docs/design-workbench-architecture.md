@@ -130,6 +130,8 @@ Both surfaces must read from the solved geometry spine. If Plan and 3D disagree,
 
 Plan and Sheet remain immediately available workbench surfaces. The Three-based 3D viewport is a separate loading boundary and preloads only from exact `3D Review` hover, focus, touch, or pointer intent; entering 3D without a completed preload shows a truthful local loading state. This changes code delivery only and does not create a second geometry source or alter either viewport's props.
 
+Component tests that assert the loaded 3D state must call `preloadWorkbenchViewport('geometry3d')` before rendering. This keeps the dynamic import boundary deterministic under the full parallel suite while preserving the production loading behavior.
+
 The live canvas Plan surface reports `data-plan-render-source="geometry-canvas"`. Fixture browser coverage treats that diagnostic value as the current canvas contract; `geometry` remains the separate SVG calculator-drawing value.
 
 Geometry-ready Plan body rendering may only draw committed body layers. Reference geometry, diagnostic outlines, context lines, hit targets, drag previews, and selection outlines must remain explicitly named and must not become normal filled bodies.

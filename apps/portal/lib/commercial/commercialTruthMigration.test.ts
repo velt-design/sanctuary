@@ -47,7 +47,7 @@ describe('commercial truth invariant migration', () => {
     expect(sql).toContain('commercial_reverse_payment_entry_with_project_lock');
     expect(sql).toContain('commercial_mark_project_deposit_received');
     expect(sql).toContain('commercial_mark_project_paid');
-    expect(sql).toContain("return query select true, v_paid_date;\n    return;");
+    expect(sql).toMatch(/return query select true, v_paid_date;\s+return;/);
     expect(sql).toContain('revoke execute on function public.commercial_accept_quote_and_ensure_invoice');
   });
 
