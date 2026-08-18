@@ -6,6 +6,8 @@ This directory is the durable home for Sanctuary AI strategy, architecture, deci
 
 ## Read First
 
+- `00-vision.md`: accepted Sanctuary AI constitution, business outcomes, boundaries, and initial autonomy rule.
+- `09-decisions/README.md`: accepted architectural decisions and ADR authoring template.
 - `sanctuary-ai-master-plan.md`: proposed 12-24+ month strategic and technical programme. It is a target, not authority to change current application behavior.
 - `../target-architecture.md`: current repository target boundaries and migration direction.
 - `../portal-production-readiness.md`: current portal priorities and production-readiness evidence.
@@ -22,3 +24,11 @@ This directory is the durable home for Sanctuary AI strategy, architecture, deci
 - **Historical:** retained context only.
 
 Create detailed owner docs only when their implementation slice begins. Until then, keep the master plan proposed and avoid duplicating current repository contracts here.
+
+## Current Programme State
+
+- PR-AI-001, master plan and routing: complete.
+- PR-AI-002, constitution and initial ADRs: active.
+- Mac mini: hardware received; secure node baseline is the current operational priority.
+- OpenClaw: not yet an active Sanctuary runtime; it remains dark until sandbox, tool policy, private networking, recovery, and synthetic-task evidence are complete.
+- Production effects: prohibited during the initial node deployment.
