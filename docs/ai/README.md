@@ -31,7 +31,9 @@ Create detailed owner docs only when their implementation slice begins. Until th
 - PR-AI-002, constitution and initial ADRs: complete.
 - PR-AI-003, provider-neutral `@sp/ai` contract package: complete.
 - PR-AI-004, hosted synthetic task ledger and private input boundary: complete in the repository; production migration remains separate and unapplied.
-- PR-AI-005, exact expiring single-use synthetic approval envelopes: active. It adds no model/provider call, worker handler, external effect, or production deployment.
+- PR-AI-005, exact expiring single-use synthetic approval envelopes: complete in the repository; production migration remains separate and unapplied.
+- PR-AI-006, authenticated read-only Portal AI activity: complete in the repository. The APIs expose only explicit public safe projections through the request's auth-bound client, and the gated QA route renders synthetic data only. There is no production navigation entry or write control.
+- PR-AI-007, deterministic synthetic execution through the existing jobs/worker spine: next. It must keep provider integrations, model calls, business mutations, communications, and production effects dark.
 - Mac mini: hardware received; secure node baseline is the current operational priority.
 - OpenClaw: not yet an active Sanctuary runtime; it remains dark until sandbox, tool policy, private networking, recovery, and synthetic-task evidence are complete.
 - Production effects: prohibited during the initial node deployment.

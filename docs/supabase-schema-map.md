@@ -289,7 +289,8 @@ Current PR-AI-004 scope:
 - `ai_task_create_synthetic` accepts only the fixed `echo_v1` and `classification_v1` fixtures. It snapshots `execution_mode = synthetic`, `effect_class = none`, and zero maximum/actual cost; PostgreSQL computes the canonical JSONB SHA-256 and atomically creates the task, payload, and first event.
 - `ai_task_cancel_synthetic` is requester/admin-only, accepts only effect-free synthetic tasks, and uses an exact single-use command ID plus immutable receipt. Same-input replay is stable; changed-input command reuse fails closed.
 - Authenticated staff may select only RLS-filtered safe task/event rows and invoke the two semantic commands. They have no direct mutation grant. Anonymous and service-role roles receive no AI task table access; private schema access is revoked from application roles.
-- This foundation has no portal route/UI, worker handler, model/provider integration, OpenClaw integration, customer/project mutation, external communication, or production effect. PR-AI-006 owns the later read-only staff surface; PR-AI-007 owns deterministic execution through the existing job spine.
+- PR-AI-006 adds the read-only staff boundary at `GET /api/staff/v1/ai/tasks` and `GET /api/staff/v1/ai/tasks/[taskId]`. Both use the request's auth-bound client, select only explicit public safe columns, validate the projection before returning it, and are always `private, no-store`. RLS-hidden cross-project detail is indistinguishable from a missing task. The gated `/qa/ai-activity-fixture` renders checked-in synthetic data and never queries Supabase.
+- This foundation still has no worker handler, model/provider integration, OpenClaw integration, customer/project mutation, external communication, or production effect. PR-AI-007 owns deterministic execution through the existing job spine.
 
 PR-AI-005 approval boundary:
 
@@ -308,6 +309,11 @@ Migration and test source:
 - `npm run test:ai` is the package/static contract. `npm run test:ai:db` applies the exact forward file inside a transaction and rolls it back, proves no AI objects remain, then reapplies it and executes the RLS/replay/immutability contract in a disposable database.
 
 No shared local, staging, or production database receives this migration from the test harness. Production application remains a separate reviewed exact-file deployment after green disposable-database evidence.
+
+Primary read path:
+
+- Portal consumers use the two staff API routes above and the server-only `apps/portal/lib/ai/serverActivity.ts` adapter. Browser code does not read the AI tables directly.
+- The detail response contains the RLS-visible task, safe append-only events, and safe approval/validation evidence. It omits private input/envelopes/receipts, requesting and deciding user IDs, input and idempotency identities, and every service-role capability.
 
 ## Durable Background Jobs
 

@@ -224,6 +224,8 @@ Run `npm run test:ai` and the disposable `npm run test:ai:db` contract. The latt
 
 PR-AI-005 extends that boundary with exact approval envelopes. Public readers receive only safe action/target/hash/summary/role/impact/validation/status metadata; exact payloads and command receipts remain private. Requests derive their hash from immutable task input, decisions require the recorded role, approvals expire within 30 minutes, and consumption checks the exact public/private/task identity atomically. Every envelope is single-use. Same-command retry replays the receipt, while wrong role, changed hash, changed command identity, task cancellation, expiry, and duplicate consumption fail closed. Approval or consumption still performs no external effect.
 
+PR-AI-006 exposes those public projections only through authenticated, `private, no-store` Portal reads. The server adapter uses the request's auth-bound client and an explicit column allowlist; it does not select requester/decider user IDs, task input and idempotency identities, private payloads/envelopes/receipts, or service-role data. RLS remains the visibility authority, and hidden cross-project task detail returns the same `404` as an absent task. The no-auth QA route is disabled by default and renders checked-in synthetic data only. The production view contains no form, mutation control, provider call, or task execution path.
+
 ## Security Rules
 
 - Never commit secrets or env files.

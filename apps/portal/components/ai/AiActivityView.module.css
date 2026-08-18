@@ -1,0 +1,246 @@
+.page {
+  gap: 20px;
+  padding-block: 24px 48px;
+}
+
+.safetyNote {
+  margin: 0;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-left: 3px solid var(--ui-accent, #596451);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-muted);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.5;
+  padding: 12px 14px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.28fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.taskCard {
+  position: sticky;
+  top: 16px;
+}
+
+.taskList {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.taskList li {
+  display: grid;
+  gap: 5px;
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+  padding: 14px 16px;
+}
+
+.taskList li:last-child {
+  border-bottom: 0;
+}
+
+.taskList li[data-selected='true'] {
+  box-shadow: inset 3px 0 0 var(--ui-accent, #596451);
+  background: var(--ui-surface-muted);
+}
+
+.taskList span,
+.taskList small,
+.muted {
+  color: var(--ui-text-muted);
+}
+
+.taskRowHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.taskRowHeader strong {
+  color: var(--ui-text-strong);
+  line-height: 1.35;
+}
+
+.detailColumn {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-border);
+}
+
+.summaryGrid > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  background: var(--ui-surface);
+  padding: 11px 12px;
+}
+
+.summaryGrid dt,
+.validations dt {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 600;
+  letter-spacing: var(--ui-letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.summaryGrid dd,
+.validations dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.summaryGrid code,
+.fingerprint code {
+  overflow-wrap: anywhere;
+  font-size: 0.9em;
+}
+
+.summaryWide {
+  grid-column: 1 / -1;
+}
+
+.failure {
+  margin: 12px 0 0;
+  border-left: 3px solid var(--ui-danger, #9a3a2a);
+  color: var(--ui-danger, #7b2d22);
+  padding-left: 12px;
+}
+
+.timeline {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timeline li {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  margin-left: 8px;
+  border-left: var(--ui-border-width) solid var(--ui-border);
+  padding: 0 0 18px 20px;
+}
+
+.timeline li:last-child {
+  border-left-color: transparent;
+  padding-bottom: 0;
+}
+
+.timelineMarker {
+  position: absolute;
+  top: 4px;
+  left: -5px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--ui-surface);
+  border-radius: 50%;
+  background: var(--ui-accent, #596451);
+  box-shadow: 0 0 0 1px var(--ui-border);
+}
+
+.timelineHeading,
+.approvals header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.timelineHeading time,
+.timeline small,
+.approvals small,
+.fingerprint {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+}
+
+.timeline p,
+.approvals p {
+  margin: 0;
+}
+
+.approvals {
+  display: grid;
+  gap: 12px;
+}
+
+.approvals article {
+  display: grid;
+  gap: 12px;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  padding: 14px;
+}
+
+.approvals header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.approvals ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.validations {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.validations > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .taskCard {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .page {
+    padding-block: 18px 32px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .summaryWide {
+    grid-column: auto;
+  }
+
+  .timelineHeading,
+  .approvals header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -47,6 +47,7 @@ authoritative.
 - Dashboard, index, and detail header variants: `apps/portal/components/layout/PageHeader.tsx`
 - Shared staff header/search composition: `apps/portal/components/layout/StaffPageHeader.tsx` and `GlobalPortalSearch.client.tsx`
 - Grouped portal-search contract and authenticated read owner: `apps/portal/lib/search/**` and `GET /api/staff/v1/search`
+- Read-only Sanctuary AI activity composition: `apps/portal/components/ai/AiActivityView.tsx`, with auth-bound safe reads under `apps/portal/lib/ai/**` and a gated synthetic mirror at `/qa/ai-activity-fixture`
 - Project Work Queue composition: `apps/portal/components/projects/workQueue/**`, route-owned layout under `apps/portal/app/staff/projects/work-queue/**`, and the server contract in `apps/portal/lib/projects/workItems/teamQueue.ts`
 - Catalogue route: `apps/portal/app/staff/ui-foundation/**`
 - Data-free visual QA mirror: `apps/portal/app/qa/ui-foundation-fixture/page.tsx` (404 unless `ENABLE_PORTAL_QA_FIXTURES=1`)
@@ -193,6 +194,7 @@ and has no implied completion sequence.
 | Calculator | specialist command, configuration, preview and save owners with current portal token/control integration | Do not flatten the specialist workspace into a generic page pattern or change costing/save behavior as UI cleanup. |
 | Schedule and Tasks | `ScheduleBoardCards`, shared crew visibility, `ScheduleGanttModel`, `ScheduleGanttToolbar`, `ScheduleGanttTimeline`, dormant Site Visits owner, shared feedback and dialogs | Preserve responsive Board wrap/mobile carousel boundaries, the 12-week Gantt data range, specialist internal scroll owners, optimistic commands and legacy fallback isolation. Crew visibility and Needs attention are presentation filters only; they must not become access, installer-state, or Schedule-truth ownership. Do not make Site Visits a project-work source or destination. |
 | Drafting Queue and Running Jobs | shared spreadsheet shell and route-owned spreadsheet presentation | Preserve zoom, local editing, internal scroll containment and field ownership. |
+| Sanctuary AI activity | `AiActivityView` plus the gated synthetic fixture | Read-only evidence presentation only. Keep private inputs, identities, execution, provider/model calls, mutations, and production navigation outside this slice. |
 | Design Workbench and theme editor | specialist presentation plus the active compatibility tokens declared in portal globals | Outside any general Foundation cleanup; follow their own architecture and visual-review guardrails. |
 | Public auth and page states | `PublicAuthShell`, semantic status edges, shared controls and reduced-motion states | Preserve credential-free routes, redirects, focus and responsive behavior. |
 | Foundation catalogue and QA mirror | `/staff/ui-foundation` and gated `/qa/ui-foundation-fixture` | Regression and discovery evidence only; never a blanket production migration target. |
@@ -210,7 +212,7 @@ and has no implied completion sequence.
 - `npx playwright test playwright/portal.dashboard-ui.spec.ts --project=portal-chromium --no-deps` for settled Dashboard data, responsive/zoom geometry, reduced motion, and read-only workflow links
 - `npx playwright test playwright/portal.header-search-ui.spec.ts --project=portal-chromium --no-deps` for the live authenticated search contract, Project-to-Project mouse/keyboard/mobile navigation, current/opening states, adopted-route coverage, responsive containment, and Dashboard fit
 - `npx playwright test playwright/portal.public-auth-ui.spec.ts --project=portal-chromium --no-deps` for credential-free Login, Access Status, `/staff/login` redirect, responsive/zoom geometry, and reduced motion
-- `npx vitest run playwright/support/portalRouteCatalog.test.ts` proves that the catalogue exactly matches all 36 `apps/portal/app/**/page.tsx` routes, including authenticated, public-auth, diagnostics, and redirect-only entries
+- `npx vitest run playwright/support/portalRouteCatalog.test.ts` proves that the catalogue exactly matches all 47 `apps/portal/app/**/page.tsx` routes, including authenticated, public-auth, diagnostics, and redirect-only entries
 - Browser matrix: 1440x1000, 1280x800, 1024x900, 768x1024, 390x844, and 720x500 with 200% zoom simulation. Assert document overflow, major-section overlap, cropped controls, heading semantics, focus return, reduced motion, and action/stage contrast.
 - Portal browser specs use `playwright/support/portalBrowserEvidence.ts`. Named screenshot capture keeps the real caret state so evidence collection cannot introduce a hydration mismatch.
 - `npx tsc -p apps/portal/tsconfig.json --noEmit --incremental false`
