@@ -6,6 +6,7 @@
 > **Original repository snapshot inspected:** `main` at `cec83a4279b05cd6267f937954e0c90a2888b3cf`
 > **Refinement reconciliation:** `main` at `99eb62c359c70e875301ef4f24655627d4248683` and production release `cec83a4279b05cd6267f937954e0c90a2888b3cf`, checked 27 July 2026
 > **PDR-01 closure:** PR #29 merged and production release `a9011d88e0d7f673dfa214b36211116f3c2826a8` passed the exact-release and three-width route matrices on 27 July 2026
+> **PDR-02 implementation:** Contained direct manipulation and focused component/browser contracts implemented 17 August 2026; protected-preview, merge and exact-release production gates remain open
 > **Live production inspected:** 27 July 2026  
 > **Target mobile widths:** approximately 430 px, 390 px and 360 px, plus short-height and zoomed mobile conditions  
 > **Programme model:** three required pull requests
@@ -54,13 +55,13 @@ A pull request that needs to change the programme sequence, protected architectu
 
 ## Start here
 
-PDR-01 is complete. The next permitted step is PDR-02 development and merge after its automated, protected-preview and exact-release gates pass. Physical-device testing is not required.
+PDR-01 is complete. PDR-02 implementation is complete in its bounded repository slice, but the phase is not closed until protected-preview, merge and exact-release gates pass. Physical-device testing is not required.
 
 ### Confirmed starting state
 
 - PDR-01 is merged and deployed. Its exact-release, route-semantic and three-width production matrices passed.
 - Custom, commercial and professional routes expose the approved structure and enquiry context without guide framing.
-- `ResponsiveGallery` still captures on pointer-down, renders one item and changes only on pointer-up after the 48 px threshold. PDR-02 remains valid.
+- `ResponsiveGallery` now defers capture until horizontal intent wins, follows the pointer through one rAF-batched transform, retains the 48 px commit threshold and activates no more than previous/current/next visual frames near the viewport or on first operation.
 - The retired metadata-only attachment expectation was removed from `playwright/marketing.contact.spec.ts` and `docs/testing-and-qa.md` during PDR-01. Current attachment code and tests require stored uploads or a visible failure.
 
 ### Phase readiness
@@ -68,7 +69,7 @@ PDR-01 is complete. The next permitted step is PDR-02 development and merge afte
 | Phase | State now | Start condition |
 |---|---|---|
 | PDR-01 | Complete | PR #29 merged; preview `947c701d514fc4c9c84ca3980d9dd4fdeeb754df` and production `a9011d88e0d7f673dfa214b36211116f3c2826a8` passed |
-| PDR-02 | Ready to develop and merge | PDR-01 established the production baseline; automated and protected-preview gates apply |
+| PDR-02 | Implemented; release gates open | Focused component, motion and three-width product browser contracts pass locally; protected preview, merge and exact-release production evidence remain |
 | PDR-04 test repair | Complete | Retired metadata-only fallback assertions and QA wording were aligned during PDR-01 |
 | PDR-04 live reconciliation | Blocked | Named approval, operator, analytics debug, received-record access and Storage readiness |
 
@@ -151,8 +152,8 @@ Authorised production outcome validation remains open. The existing Phase 5 evid
 | Retired homepages | Duplicate homepage implementations were a risk | `/home-v2` and `/home-experimental` permanently redirect to `/`; the canonical owner is `_home/Homepage.tsx` | Public root is the promoted homepage | Verified repository and verified production | Preserve redirects, sitemap exclusion and one homepage owner |
 | Shared tactile motion | Touch feedback was previously inconsistent | Shared tokens and TM-01/TM-02 consumer adoption are present; motion contract and touch-motion browser tests exist | Exact current-release deployment is proven by PDR-01 | Verified repository and production | Do not reimplement pressed states |
 | Native project gallery | Earlier versions lacked a visible non-swipe path | Current project gallery remains a native variable-height horizontal strip with Previous/Next controls, live position, keyboard support and reduced-motion handling | Representative public project route is available | Verified repository and production | Preserve architecture and do not include it in PDR-02 |
-| Controlled product gallery | Functional but less directly connected to touch | `ResponsiveGallery` renders one active Figure, records pointer origin, captures immediately and changes only on pointer-up after a 48 px horizontal threshold; product details use it with `swipe` | Representative public product route is available | Verified repository and production | PDR-02 owns the bounded direct-manipulation change |
-| Product-gallery tests | Existing controls and swipe threshold are covered | Unit tests assert one active image, buttons, keyboard and pointer-down/pointer-up swipe; product browser tests assert one gallery and keyboard navigation | No current evidence for finger-follow, deferred capture, adjacent readiness or cold-image continuity | Verified repository gap | PDR-02 must add component, request-timing, gesture-arbitration and performance evidence |
+| Controlled product gallery | Direct manipulation implemented in the bounded owner | `ResponsiveGallery` uses pending intent, deferred capture, rAF-batched finger follow, a 48 px commit threshold and bounded adjacent visual readiness; product details opt in with `swipe` | Production remains on the last verified release until this slice is merged and deployed | Verified repository; production verification required | Preserve the native project gallery and complete protected-preview/exact-release gates |
+| Product-gallery tests | Component and browser gesture contracts added | Component tests cover arbitration, capture, finger follow, commit/cancel cleanup, reduced motion and active-only adjacent frames; product browser tests exercise deliberate horizontal, vertical and short gestures at 430, 390 and 360 px | Protected-preview request timing and exact-release performance evidence remain open | Verified repository; deployment evidence required | Run the protected-preview and production evidence gates before closing PDR-02 |
 | Header and menu | Strong automated contract | Portalled menu, inert closed state, focus cycle, Escape return, body-fixed scroll lock, popstate close and breakpoint cleanup exist | Current automated contracts are green | Verified repository | Preserve owner; no speculative lock refactor |
 | Project navigator | Separate modal sheet contract | Detail sheet uses root/body classes, focus containment, Escape and focus restoration; its lock model differs from the header | Current automated contracts are green | Verified repository | Preserve its separate owner |
 | Scroll reset and history | Browser Back/Forward was a remaining risk | `ScrollReset` prefers valid fragments, otherwise resets route scroll immediately and on the next frame | Current automated contracts are green | Verified repository | Do not include speculative history work |

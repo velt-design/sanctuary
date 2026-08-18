@@ -1,7 +1,10 @@
 'use client';
 
 import {
+  type CSSProperties,
   type KeyboardEvent,
+  useCallback,
+  useEffect,
   useId,
   useRef,
   useState,
@@ -12,6 +15,7 @@ import {
   type MediaRatio,
 } from './Primitives';
 import styles from './Interactions.module.css';
+import { useGalleryDirectManipulation } from './useGalleryDirectManipulation';
 
 export type ResponsiveGalleryItem = {
   alt: string;
@@ -34,7 +38,7 @@ type ResponsiveGalleryProps = {
   swipe?: boolean;
 };
 
-const SWIPE_THRESHOLD_PX = 48;
+const ADJACENT_PRELOAD_ROOT_MARGIN = '160px 0px';
 
 function clampInitialIndex(index: number, itemCount: number) {
   return Math.min(Math.max(index, 0), Math.max(itemCount - 1, 0));
@@ -48,27 +52,57 @@ export function ResponsiveGallery({
   swipe = false,
 }: ResponsiveGalleryProps) {
   const statusId = `${useId()}-gallery-status`;
-  const pointerOrigin = useRef<{
-    id: number;
-    x: number;
-    y: number;
-  } | null>(null);
+  const galleryRef = useRef<HTMLElement>(null);
   const [activeIndex, setActiveIndex] = useState(() => (
     clampInitialIndex(initialIndex, items.length)
   ));
-
-  if (items.length === 0) return null;
+  const [adjacentReady, setAdjacentReady] = useState(false);
 
   const safeIndex = clampInitialIndex(activeIndex, items.length);
-  const activeItem = items[safeIndex];
   const positionLabel = `Image ${safeIndex + 1} of ${items.length}`;
   const hasMultipleItems = items.length > 1;
+  const itemSignature = items
+    .map((item) => item.id ?? item.image)
+    .join('|');
 
-  const showRelativeItem = (offset: -1 | 1) => {
+  const activateAdjacentFrames = useCallback(() => {
+    setAdjacentReady(true);
+  }, []);
+
+  const showRelativeItem = useCallback((offset: -1 | 1) => {
+    if (swipe) activateAdjacentFrames();
     setActiveIndex((current) => (
       (clampInitialIndex(current, items.length) + offset + items.length) % items.length
     ));
-  };
+  }, [activateAdjacentFrames, items.length, swipe]);
+
+  const { handlers: directManipulationHandlers, viewportRef } = useGalleryDirectManipulation({
+    activeIndex: safeIndex,
+    enabled: swipe && hasMultipleItems,
+    itemSignature,
+    onActivate: activateAdjacentFrames,
+    onCommit: showRelativeItem,
+  });
+
+  useEffect(() => {
+    const gallery = galleryRef.current;
+    if (!gallery || adjacentReady || !swipe || !hasMultipleItems) return;
+    if (!('IntersectionObserver' in window)) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      activateAdjacentFrames();
+      observer.disconnect();
+    }, { rootMargin: ADJACENT_PRELOAD_ROOT_MARGIN });
+    observer.observe(gallery);
+    return () => observer.disconnect();
+  }, [activateAdjacentFrames, adjacentReady, hasMultipleItems, swipe]);
+
+  useEffect(() => {
+    setActiveIndex((current) => clampInitialIndex(current, items.length));
+  }, [itemSignature, items.length]);
+
+  if (items.length === 0) return null;
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -81,47 +115,26 @@ export function ResponsiveGallery({
       showRelativeItem(1);
     } else if (event.key === 'Home') {
       event.preventDefault();
+      if (swipe) activateAdjacentFrames();
       setActiveIndex(0);
     } else if (event.key === 'End') {
       event.preventDefault();
+      if (swipe) activateAdjacentFrames();
       setActiveIndex(items.length - 1);
     }
   };
 
-  const clearPointerOrigin = () => {
-    pointerOrigin.current = null;
-  };
-
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!swipe || !hasMultipleItems || event.pointerType !== 'touch') return;
-
-    pointerOrigin.current = {
-      id: event.pointerId,
-      x: event.clientX,
-      y: event.clientY,
-    };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  };
-
-  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    const origin = pointerOrigin.current;
-    clearPointerOrigin();
-    if (!origin || origin.id !== event.pointerId) return;
-
-    const horizontalDistance = event.clientX - origin.x;
-    const verticalDistance = event.clientY - origin.y;
-    if (
-      Math.abs(horizontalDistance) < SWIPE_THRESHOLD_PX
-      || Math.abs(horizontalDistance) <= Math.abs(verticalDistance)
-    ) {
-      return;
-    }
-
-    showRelativeItem(horizontalDistance < 0 ? 1 : -1);
-  };
+  const frameIndexes = adjacentReady && hasMultipleItems
+    ? [
+      { index: (safeIndex - 1 + items.length) % items.length, offset: -1 },
+      { index: safeIndex, offset: 0 },
+      { index: (safeIndex + 1) % items.length, offset: 1 },
+    ]
+    : [{ index: safeIndex, offset: 0 }];
 
   return (
     <section
+      ref={galleryRef}
       className={cn(styles.gallery, className)}
       data-responsive-gallery
       data-gallery-position={`${safeIndex + 1}/${items.length}`}
@@ -134,27 +147,42 @@ export function ResponsiveGallery({
       onKeyDown={handleKeyDown}
     >
       <div
+        ref={viewportRef}
         className={styles.galleryViewport}
-        onPointerCancel={clearPointerOrigin}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
+        data-gallery-adjacent-ready={adjacentReady || undefined}
+        {...directManipulationHandlers}
       >
-        <div
-          className={styles.gallerySlide}
-          data-gallery-active-item={activeItem.id ?? activeItem.image}
-        >
-          <Figure
-            image={activeItem.image}
-            alt={activeItem.alt}
-            caption={activeItem.caption}
-            detail={activeItem.detail}
-            ratio={activeItem.ratio}
-            mobileRatio={activeItem.mobileRatio}
-            sizes={activeItem.sizes}
-            objectPosition={activeItem.objectPosition}
-            mobileObjectPosition={activeItem.mobileObjectPosition}
-          />
-        </div>
+        {frameIndexes.map(({ index, offset }) => {
+          const item = items[index];
+          const isActive = offset === 0;
+          const frameStyle = {
+            '--gallery-frame-offset': `${offset * 100}%`,
+          } as CSSProperties;
+
+          return (
+            <div
+              key={`${offset}:${item.id ?? item.image}`}
+              className={styles.gallerySlide}
+              data-gallery-active-item={isActive ? (item.id ?? item.image) : undefined}
+              data-gallery-frame={offset}
+              data-gallery-frame-active={isActive || undefined}
+              aria-hidden={isActive ? undefined : true}
+              style={frameStyle}
+            >
+              <Figure
+                image={item.image}
+                alt={isActive ? item.alt : ''}
+                caption={isActive ? item.caption : undefined}
+                detail={isActive ? item.detail : undefined}
+                ratio={item.ratio}
+                mobileRatio={item.mobileRatio}
+                sizes={item.sizes}
+                objectPosition={item.objectPosition}
+                mobileObjectPosition={item.mobileObjectPosition}
+              />
+            </div>
+          );
+        })}
       </div>
       <div className={styles.galleryControls} role="group" aria-label={`${label} controls`}>
         <button

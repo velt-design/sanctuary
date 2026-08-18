@@ -39,6 +39,9 @@ afterEach(async () => {
     root = null;
   }
   document.body.innerHTML = '';
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  Reflect.deleteProperty(globalThis, 'IntersectionObserver');
 });
 
 async function render(markup: ReactNode) {
@@ -193,6 +196,7 @@ describe('marketing foundation responsive gallery', () => {
     await act(async () => next.click());
     expect(gallery.dataset.galleryPosition).toBe('2/3');
     expect(gallery.querySelector('img')?.getAttribute('alt')).toBe('Second completed pergola');
+    expect(gallery.querySelectorAll('img')).toHaveLength(1);
     expect(document.activeElement).toBe(next);
 
     await act(async () => {
@@ -209,48 +213,252 @@ describe('marketing foundation responsive gallery', () => {
       gallery.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowLeft' }));
     });
     expect(gallery.dataset.galleryPosition).toBe('3/3');
+    expect(gallery.querySelector('img')?.getAttribute('alt')).toBe('Third completed pergola');
     expect(gallery.querySelectorAll('img')).toHaveLength(1);
     expect(document.activeElement).toBe(next);
   });
 
-  it('supports intentional horizontal touch swipes without treating vertical movement as navigation', async () => {
+  it('follows horizontal touch intent, defers capture and commits one adjacent item', async () => {
+    vi.useFakeTimers();
+    installMatchMedia(false);
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => (
+      window.setTimeout(() => callback(0), 1)
+    ));
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((frameId) => {
+      window.clearTimeout(frameId);
+    });
     const container = await render(
       <ResponsiveGallery label="Completed projects" items={galleryItems} swipe />,
     );
     const gallery = container.querySelector('[data-responsive-gallery]') as HTMLElement;
     const viewport = gallery.firstElementChild as HTMLElement;
+    const setPointerCapture = vi.fn();
+    const releasePointerCapture = vi.fn();
+    Object.defineProperties(viewport, {
+      clientWidth: { configurable: true, value: 320 },
+      hasPointerCapture: { configurable: true, value: vi.fn(() => true) },
+      releasePointerCapture: { configurable: true, value: releasePointerCapture },
+      setPointerCapture: { configurable: true, value: setPointerCapture },
+    });
     const dispatchPointer = (
-      type: 'pointerdown' | 'pointerup',
+      type: 'pointerdown' | 'pointermove' | 'pointerup',
       clientX: number,
       clientY: number,
     ) => {
-      const event = new Event(type, { bubbles: true });
+      const event = new Event(type, { bubbles: true, cancelable: true });
       Object.defineProperties(event, {
         clientX: { value: clientX },
         clientY: { value: clientY },
+        isPrimary: { value: true },
+        pointerId: { value: 1 },
+        pointerType: { value: 'touch' },
+      });
+      viewport.dispatchEvent(event);
+      return event;
+    };
+
+    expect(gallery.dataset.gallerySwipe).toBe('true');
+    await act(async () => {
+      dispatchPointer('pointerdown', 300, 200);
+      expect(setPointerCapture).not.toHaveBeenCalled();
+      dispatchPointer('pointermove', 296, 202);
+      expect(setPointerCapture).not.toHaveBeenCalled();
+      const move = dispatchPointer('pointermove', 276, 203);
+      expect(move.defaultPrevented).toBe(true);
+      vi.advanceTimersByTime(1);
+    });
+    expect(setPointerCapture).toHaveBeenCalledOnce();
+    expect(viewport.dataset.galleryGesture).toBe('dragging-horizontal');
+    expect(viewport.style.getPropertyValue('--gallery-drag-x')).toBe('-24px');
+    expect(gallery.dataset.galleryPosition).toBe('1/3');
+    expect(gallery.querySelector('[role="status"]')?.textContent).toBe('Image 1 of 3');
+    expect(gallery.querySelectorAll('img')).toHaveLength(3);
+
+    await act(async () => {
+      dispatchPointer('pointerup', 180, 205);
+      expect(gallery.dataset.galleryPosition).toBe('1/3');
+      vi.advanceTimersByTime(160);
+    });
+    expect(gallery.dataset.galleryPosition).toBe('2/3');
+    expect(gallery.querySelector('[role="status"]')?.textContent).toBe('Image 2 of 3');
+    expect(releasePointerCapture).toHaveBeenCalled();
+
+    await act(async () => {
+      dispatchPointer('pointerdown', 200, 100);
+      dispatchPointer('pointermove', 196, 122);
+      dispatchPointer('pointerup', 190, 220);
+    });
+    expect(gallery.dataset.galleryPosition).toBe('2/3');
+    expect(viewport.dataset.galleryGesture).toBe('idle');
+
+    await act(async () => {
+      dispatchPointer('pointerdown', 180, 200);
+      dispatchPointer('pointermove', 202, 203);
+      vi.advanceTimersByTime(1);
+      dispatchPointer('pointerup', 300, 205);
+      vi.advanceTimersByTime(160);
+    });
+    expect(gallery.dataset.galleryPosition).toBe('1/3');
+  });
+
+  it('cancels short, interrupted and resized drags without stale movement', async () => {
+    vi.useFakeTimers();
+    installMatchMedia(false);
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => (
+      window.setTimeout(() => callback(0), 1)
+    ));
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((frameId) => {
+      window.clearTimeout(frameId);
+    });
+    const container = await render(
+      <ResponsiveGallery label="Completed projects" items={galleryItems} swipe />,
+    );
+    const gallery = container.querySelector('[data-responsive-gallery]') as HTMLElement;
+    const viewport = gallery.firstElementChild as HTMLElement;
+    Object.defineProperties(viewport, {
+      clientWidth: { configurable: true, value: 320 },
+      hasPointerCapture: { configurable: true, value: vi.fn(() => true) },
+      releasePointerCapture: { configurable: true, value: vi.fn() },
+      setPointerCapture: { configurable: true, value: vi.fn() },
+    });
+    const dispatchPointer = (
+      type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel',
+      clientX: number,
+      clientY: number,
+      pointerId = 1,
+    ) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperties(event, {
+        clientX: { value: clientX },
+        clientY: { value: clientY },
+        isPrimary: { value: true },
+        pointerId: { value: pointerId },
+        pointerType: { value: 'touch' },
+      });
+      viewport.dispatchEvent(event);
+    };
+
+    await act(async () => {
+      dispatchPointer('pointerdown', 200, 100);
+      dispatchPointer('pointermove', 180, 102);
+      vi.advanceTimersByTime(1);
+      dispatchPointer('pointerup', 180, 102);
+      vi.advanceTimersByTime(160);
+    });
+    expect(gallery.dataset.galleryPosition).toBe('1/3');
+    expect(viewport.style.getPropertyValue('--gallery-drag-x')).toBe('0px');
+
+    await act(async () => {
+      dispatchPointer('pointerdown', 200, 100);
+      dispatchPointer('pointermove', 150, 102);
+      vi.advanceTimersByTime(1);
+      dispatchPointer('pointercancel', 150, 102);
+      vi.advanceTimersByTime(160);
+    });
+    expect(gallery.dataset.galleryPosition).toBe('1/3');
+    expect(viewport.dataset.galleryGesture).toBe('idle');
+
+    await act(async () => {
+      dispatchPointer('pointerdown', 200, 100);
+      dispatchPointer('pointermove', 150, 102);
+      vi.advanceTimersByTime(1);
+      window.dispatchEvent(new Event('resize'));
+    });
+    expect(viewport.dataset.galleryGesture).toBe('idle');
+    expect(viewport.style.getPropertyValue('--gallery-drag-x')).toBe('0px');
+
+    await act(async () => {
+      dispatchPointer('pointerdown', 200, 100);
+      dispatchPointer('pointerdown', 190, 100, 2);
+    });
+    expect(viewport.dataset.galleryGesture).toBe('idle');
+  });
+
+  it('mounts at most adjacent visual frames while exposing only the active item', async () => {
+    let observerCallback: IntersectionObserverCallback | null = null;
+    class IntersectionObserverStub {
+      disconnect = vi.fn();
+      observe = vi.fn();
+      unobserve = vi.fn();
+      root = null;
+      rootMargin = '160px 0px';
+      thresholds = [0];
+
+      constructor(callback: IntersectionObserverCallback) {
+        observerCallback = callback;
+      }
+
+      takeRecords() {
+        return [];
+      }
+    }
+    Object.defineProperty(globalThis, 'IntersectionObserver', {
+      configurable: true,
+      value: IntersectionObserverStub,
+    });
+
+    const container = await render(
+      <ResponsiveGallery label="Completed projects" items={galleryItems} swipe />,
+    );
+    const gallery = container.querySelector('[data-responsive-gallery]') as HTMLElement;
+    expect(gallery.querySelectorAll('img')).toHaveLength(1);
+
+    await act(async () => {
+      observerCallback?.([
+        { isIntersecting: true } as IntersectionObserverEntry,
+      ], {} as IntersectionObserver);
+    });
+
+    expect(gallery.querySelectorAll('[data-gallery-frame]')).toHaveLength(3);
+    expect(gallery.querySelectorAll('[data-gallery-frame-active]')).toHaveLength(1);
+    expect(gallery.querySelectorAll('[data-gallery-frame][aria-hidden="true"]')).toHaveLength(2);
+    expect([...gallery.querySelectorAll('[data-gallery-frame][aria-hidden="true"] img')]
+      .every((image) => image.getAttribute('alt') === '')).toBe(true);
+    expect(gallery.querySelectorAll('figcaption')).toHaveLength(1);
+    expect(gallery.querySelectorAll('[data-gallery-frame][aria-hidden="true"] a, [data-gallery-frame][aria-hidden="true"] button'))
+      .toHaveLength(0);
+  });
+
+  it('commits immediately after release when reduced motion is requested', async () => {
+    vi.useFakeTimers();
+    installMatchMedia(true);
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => (
+      window.setTimeout(() => callback(0), 1)
+    ));
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((frameId) => {
+      window.clearTimeout(frameId);
+    });
+    const container = await render(
+      <ResponsiveGallery label="Completed projects" items={galleryItems} swipe />,
+    );
+    const gallery = container.querySelector('[data-responsive-gallery]') as HTMLElement;
+    const viewport = gallery.firstElementChild as HTMLElement;
+    Object.defineProperties(viewport, {
+      clientWidth: { configurable: true, value: 320 },
+      hasPointerCapture: { configurable: true, value: vi.fn(() => true) },
+      releasePointerCapture: { configurable: true, value: vi.fn() },
+      setPointerCapture: { configurable: true, value: vi.fn() },
+    });
+    const dispatchPointer = (type: string, clientX: number) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperties(event, {
+        clientX: { value: clientX },
+        clientY: { value: 100 },
+        isPrimary: { value: true },
         pointerId: { value: 1 },
         pointerType: { value: 'touch' },
       });
       viewport.dispatchEvent(event);
     };
 
-    expect(gallery.dataset.gallerySwipe).toBe('true');
     await act(async () => {
-      dispatchPointer('pointerdown', 300, 200);
-      dispatchPointer('pointerup', 180, 205);
+      dispatchPointer('pointerdown', 200);
+      dispatchPointer('pointermove', 130);
+      vi.advanceTimersByTime(1);
+      dispatchPointer('pointerup', 120);
+      vi.advanceTimersByTime(0);
     });
     expect(gallery.dataset.galleryPosition).toBe('2/3');
-
-    await act(async () => {
-      dispatchPointer('pointerdown', 200, 100);
-      dispatchPointer('pointerup', 190, 220);
-    });
-    expect(gallery.dataset.galleryPosition).toBe('2/3');
-
-    await act(async () => {
-      dispatchPointer('pointerdown', 180, 200);
-      dispatchPointer('pointerup', 300, 205);
-    });
-    expect(gallery.dataset.galleryPosition).toBe('1/3');
+    expect(viewport.dataset.galleryGesture).toBe('idle');
   });
 });

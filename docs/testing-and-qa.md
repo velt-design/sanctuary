@@ -109,13 +109,19 @@ unpublished heater evidence. The hub has no responsive disclosure, retains all
 ten canonical product links and shows one governed project plus one guide.
 Details retain exactly three disclosure IDs and Product/Breadcrumb schema;
 retired product FAQ copy must not return through an invisible FAQ schema.
+The controlled product-gallery lane also runs deliberate horizontal, vertical
+and below-threshold pointer sequences at 430, 390 and 360 pixels. Before
+proximity the gallery retains one mounted image; after proximity or first
+operation it mounts no more than previous/current/next, exposes only the active
+frame to assistive technology and keeps the live status unchanged until commit.
 
 Phase 3 service/product changes should also run
 `npx playwright test playwright/marketing.phase-three.spec.ts --config=playwright.marketing.config.ts`.
 The suite visits the product hub, all ten product details, residential and
 custom at 430, 390 and 360 pixels. It enforces exact first-layer words and
-sections, three product disclosure IDs, one active controlled-gallery image,
-no duplicate product image requests, bounded HTML, six-region service
+sections, three product disclosure IDs, one active semantic controlled-gallery
+frame with no more than two hidden adjacent visual frames after full-page
+warmup, no duplicate product image requests, bounded HTML, six-region service
 structures, priority hero loading and cumulative layout shift at or below
 `0.1`. Set `MARKETING_PHASE_THREE_CAPTURE=1` to write the 39-record JSON and
 representative screenshots under `artifacts/mobile-ux-phase-3/`. Set

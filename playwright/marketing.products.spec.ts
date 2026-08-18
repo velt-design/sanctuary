@@ -465,17 +465,213 @@ test('product details render one controlled gallery sequence', async ({ page }) 
   const gallery = gallerySection.locator('[data-responsive-gallery]');
   await expect(gallerySection).toHaveCount(1);
   await expect(gallery).toHaveCount(1);
-  await expect(gallery.locator('img')).toHaveCount(1);
+  expect(await gallery.locator('img').count()).toBeGreaterThanOrEqual(1);
+  expect(await gallery.locator('img').count()).toBeLessThanOrEqual(3);
+  await expect(gallery.locator('[data-gallery-frame-active]')).toHaveCount(1);
   await expect(gallery).toHaveAttribute('data-gallery-position', `1/${product.gallery.length}`);
   await expect(gallery).toHaveAccessibleName(`${product.name} project gallery`);
 
   await gallery.focus();
   await page.keyboard.press('ArrowRight');
   await expect(gallery).toHaveAttribute('data-gallery-position', `2/${product.gallery.length}`);
-  await expect(gallery.locator('img')).toHaveAttribute(
+  await expect(gallery.locator('[data-gallery-frame-active] img')).toHaveAttribute(
     'alt',
     product.gallery[1].alt,
   );
+});
+
+test('product gallery keeps adjacent media cold until proximity activation', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await preparePage(page);
+  const product = products.find((item) => item.slug === 'gable');
+  if (!product) throw new Error('Missing representative gable product');
+  const galleryFileNames = product.gallery.map((item) => item.src.split('/').at(-1) ?? item.src);
+  const requestedGalleryFiles = new Set<string>();
+  page.on('request', (request) => {
+    if (request.resourceType() !== 'image') return;
+    const decodedUrl = decodeURIComponent(request.url());
+    const matchingFile = galleryFileNames.find((fileName) => decodedUrl.includes(fileName));
+    if (matchingFile) requestedGalleryFiles.add(matchingFile);
+  });
+
+  await page.goto(product.route, { waitUntil: 'networkidle' });
+  const gallery = page.locator('main[data-product-detail]:visible')
+    .last()
+    .locator('[data-responsive-gallery]');
+  const viewport = gallery.locator(':scope > div').first();
+  await expect(gallery.locator('[data-gallery-frame]')).toHaveCount(1);
+  await expect(viewport).not.toHaveAttribute('data-gallery-adjacent-ready', 'true');
+  expect(requestedGalleryFiles.size).toBeLessThanOrEqual(1);
+
+  await gallery.scrollIntoViewIfNeeded();
+  await expect(viewport).toHaveAttribute('data-gallery-adjacent-ready', 'true');
+  await expect(gallery.locator('[data-gallery-frame]')).toHaveCount(3);
+  await expect.poll(() => requestedGalleryFiles.size).toBe(product.gallery.length);
+  expect(requestedGalleryFiles.size).toBeLessThanOrEqual(3);
+});
+
+for (const width of [430, 390, 360] as const) {
+  test(`product gallery directly follows touch intent at ${width}px`, async ({ browser }) => {
+    const context = await browser.newContext({
+      hasTouch: true,
+      viewport: { width, height: width === 430 ? 932 : 844 },
+    });
+    const page = await context.newPage();
+    await preparePage(page);
+    const product = products.find((item) => item.slug === 'gable');
+    if (!product) throw new Error('Missing representative gable product');
+    await page.goto(product.route);
+
+    const gallery = page.locator('main[data-product-detail]:visible')
+      .last()
+      .locator('[data-responsive-gallery]');
+    const viewport = gallery.locator(':scope > div').first();
+    await gallery.scrollIntoViewIfNeeded();
+    await expect(viewport).toHaveAttribute('data-gallery-adjacent-ready', 'true');
+    await expect(gallery.locator('[data-gallery-frame]')).toHaveCount(3);
+    await expect(gallery.locator('[data-gallery-frame-active]')).toHaveCount(1);
+    await expect(gallery.locator('[data-gallery-frame][aria-hidden="true"]')).toHaveCount(2);
+    await expect(gallery.locator('[data-gallery-frame][aria-hidden="true"] img').first())
+      .toHaveAttribute('alt', '');
+
+    const dispatchPointer = async (
+      type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel',
+      clientX: number,
+      clientY: number,
+    ) => viewport.dispatchEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY,
+      isPrimary: true,
+      pointerId: 41,
+      pointerType: 'touch',
+    });
+
+    await dispatchPointer('pointerdown', width - 40, 200);
+    await dispatchPointer('pointermove', width - 64, 203);
+    await expect(viewport).toHaveAttribute('data-gallery-gesture', 'dragging-horizontal');
+    await expect.poll(() => viewport.evaluate((element) => (
+      element.style.getPropertyValue('--gallery-drag-x')
+    ))).not.toBe('0px');
+    await expect(gallery).toHaveAttribute('data-gallery-position', `1/${product.gallery.length}`);
+
+    await dispatchPointer('pointerup', width - 150, 205);
+    await expect(gallery).toHaveAttribute('data-gallery-position', `2/${product.gallery.length}`);
+    await expect(gallery.locator('[role="status"]'))
+      .toHaveText(`Image 2 of ${product.gallery.length}`);
+    await expect(gallery.locator('[data-gallery-frame-active] img'))
+      .toHaveAttribute('alt', product.gallery[1].alt);
+
+    await dispatchPointer('pointerdown', 200, 100);
+    await dispatchPointer('pointermove', 196, 132);
+    await dispatchPointer('pointerup', 190, 220);
+    await expect(gallery).toHaveAttribute('data-gallery-position', `2/${product.gallery.length}`);
+    await expect(viewport).toHaveAttribute('data-gallery-gesture', 'idle');
+
+    await dispatchPointer('pointerdown', 200, 100);
+    await dispatchPointer('pointermove', 180, 102);
+    await dispatchPointer('pointerup', 180, 102);
+    await expect(viewport).toHaveAttribute('data-gallery-gesture', 'idle');
+    await expect(gallery).toHaveAttribute('data-gallery-position', `2/${product.gallery.length}`);
+
+    await expectNoOverflowOrNestedScroll(
+      page,
+      page.locator('main[data-product-detail]:visible').last(),
+    );
+    await context.close();
+  });
+}
+
+test('product gallery recovers from reversal, cancellation, resize and reduced motion', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    hasTouch: true,
+    viewport: { width: 390, height: 844 },
+  });
+  const page = await context.newPage();
+  await preparePage(page);
+  const product = products.find((item) => item.slug === 'gable');
+  if (!product) throw new Error('Missing representative gable product');
+  await page.goto(product.route);
+
+  const gallery = page.locator('main[data-product-detail]:visible')
+    .last()
+    .locator('[data-responsive-gallery]');
+  const viewport = gallery.locator(':scope > div').first();
+  await gallery.scrollIntoViewIfNeeded();
+  const dispatchPointer = async (
+    type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel',
+    clientX: number,
+    clientY = 200,
+  ) => viewport.dispatchEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    clientX,
+    clientY,
+    isPrimary: true,
+    pointerId: 51,
+    pointerType: 'touch',
+  });
+
+  await dispatchPointer('pointerdown', 200);
+  await dispatchPointer('pointermove', 150, 202);
+  await expect.poll(() => viewport.evaluate((element) => (
+    Number.parseFloat(element.style.getPropertyValue('--gallery-drag-x'))
+  ))).toBeLessThan(0);
+  await dispatchPointer('pointermove', 250, 202);
+  await expect.poll(() => viewport.evaluate((element) => (
+    Number.parseFloat(element.style.getPropertyValue('--gallery-drag-x'))
+  ))).toBeGreaterThan(0);
+  await dispatchPointer('pointerup', 270, 202);
+  await expect(gallery).toHaveAttribute(
+    'data-gallery-position',
+    `${product.gallery.length}/${product.gallery.length}`,
+  );
+
+  await dispatchPointer('pointerdown', 200);
+  await dispatchPointer('pointermove', 140, 202);
+  await dispatchPointer('pointercancel', 140, 202);
+  await expect(viewport).toHaveAttribute('data-gallery-gesture', 'idle');
+  await expect(gallery).toHaveAttribute(
+    'data-gallery-position',
+    `${product.gallery.length}/${product.gallery.length}`,
+  );
+
+  await dispatchPointer('pointerdown', 200);
+  await dispatchPointer('pointermove', 140, 202);
+  await page.setViewportSize({ width: 360, height: 800 });
+  await expect(viewport).toHaveAttribute('data-gallery-gesture', 'idle');
+  await expect.poll(() => viewport.evaluate((element) => (
+    element.style.getPropertyValue('--gallery-drag-x')
+  ))).toBe('0px');
+
+  const next = gallery.getByRole('button', { name: `Next image in ${product.name} project gallery` });
+  await next.focus();
+  await next.click();
+  await expect(next).toBeFocused();
+  await expect(gallery).toHaveAttribute('data-gallery-position', `1/${product.gallery.length}`);
+  await gallery.focus();
+  await page.keyboard.press('End');
+  await expect(gallery).toHaveAttribute(
+    'data-gallery-position',
+    `${product.gallery.length}/${product.gallery.length}`,
+  );
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement)
+    .getPropertyValue('--motion-duration-short').trim())).toBe('0s');
+  await dispatchPointer('pointerdown', 200);
+  await dispatchPointer('pointermove', 280, 202);
+  await dispatchPointer('pointerup', 290, 202);
+  await expect(gallery).toHaveAttribute(
+    'data-gallery-position',
+    `${product.gallery.length - 1}/${product.gallery.length}`,
+  );
+  await expect(viewport).toHaveAttribute('data-gallery-gesture', 'idle');
+
+  await context.close();
 });
 
 test('unpublished heater evidence is labelled rather than inferred from context imagery', async ({ page }) => {

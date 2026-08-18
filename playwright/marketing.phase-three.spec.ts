@@ -35,6 +35,8 @@ type PageMetrics = {
   documentWidth: number;
   domNodes: number;
   firstLayerWords: number;
+  galleryActiveFrames: number;
+  galleryHiddenFrames: number;
   galleryImageElements: number;
   galleryUniqueImageSources: number;
   headingRegions: number;
@@ -196,6 +198,12 @@ async function measurePage(page: Page): Promise<PageMetrics> {
       documentWidth: document.documentElement.scrollWidth,
       domNodes: document.querySelectorAll("*").length,
       firstLayerWords: wordCount(firstLayerCopy),
+      galleryActiveFrames: main.querySelectorAll(
+        "[data-responsive-gallery] [data-gallery-frame-active]",
+      ).length,
+      galleryHiddenFrames: main.querySelectorAll(
+        '[data-responsive-gallery] [data-gallery-frame][aria-hidden="true"]',
+      ).length,
       galleryImageElements: galleryImages.length,
       galleryUniqueImageSources: new Set(
         galleryImages.map((image) => image.currentSrc || image.src),
@@ -255,10 +263,13 @@ function expectProductDetailMetrics(
     "related-support",
   ]);
   expect(metrics.responsiveGalleries, `${route} gallery count`).toBe(1);
-  expect(metrics.galleryImageElements, `${route} gallery image DOM`).toBe(1);
-  expect(metrics.galleryUniqueImageSources, `${route} gallery inventory`).toBe(
-    1,
-  );
+  expect(metrics.galleryImageElements, `${route} bounded gallery image DOM`).toBe(3);
+  expect(metrics.galleryActiveFrames, `${route} active gallery semantics`).toBe(1);
+  expect(metrics.galleryHiddenFrames, `${route} hidden adjacent frames`).toBe(2);
+  expect(metrics.galleryUniqueImageSources, `${route} bounded gallery inventory`)
+    .toBeLessThanOrEqual(3);
+  expect(metrics.galleryUniqueImageSources, `${route} adjacent gallery inventory`)
+    .toBeGreaterThanOrEqual(2);
   expect(
     metrics.visibleWords,
     `${route} mobile copy budget`,

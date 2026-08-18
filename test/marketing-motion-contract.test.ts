@@ -99,6 +99,12 @@ describe('marketing motion contract', () => {
     expect(governedSources[1].source).toContain('var(--motion-duration-instant)');
     expect(governedSources[1].source).toContain('var(--motion-duration-short)');
     expect(governedSources[1].source).toContain('.galleryButton:not(:disabled):active');
+    expect(governedSources[1].source).toContain(
+      '.galleryViewport[data-gallery-gesture="settling"] .gallerySlide',
+    );
+    expect(governedSources[1].source).toContain(
+      'transition: transform var(--motion-duration-short) var(--motion-ease-enter)',
+    );
   });
 
   it('governs the TM-02 active-state, panel, hover-capability and state-precedence contract', () => {

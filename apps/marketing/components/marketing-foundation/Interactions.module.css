@@ -98,6 +98,8 @@
 }
 
 .galleryViewport {
+  --gallery-drag-x: 0px;
+  position: relative;
   min-width: 0;
   overflow: hidden;
   background: var(--color-surface-neutral);
@@ -108,7 +110,23 @@
 }
 
 .gallerySlide {
+  width: 100%;
   min-width: 0;
+  transform: translate3d(calc(var(--gallery-frame-offset) + var(--gallery-drag-x)), 0, 0);
+}
+
+.gallerySlide:not([data-gallery-frame-active="true"]) {
+  position: absolute;
+  inset: 0 auto auto 0;
+}
+
+.galleryViewport[data-gallery-gesture="dragging-horizontal"] .gallerySlide,
+.galleryViewport[data-gallery-gesture="settling"] .gallerySlide {
+  will-change: transform;
+}
+
+.galleryViewport[data-gallery-gesture="settling"] .gallerySlide {
+  transition: transform var(--motion-duration-short) var(--motion-ease-enter);
 }
 
 .galleryControls {
@@ -186,6 +204,10 @@
   .disclosureIcon::before,
   .disclosureIcon::after,
   .galleryButton {
+    transition: none;
+  }
+
+  .galleryViewport[data-gallery-gesture="settling"] .gallerySlide {
     transition: none;
   }
 }
