@@ -2,7 +2,9 @@ import type {
   DesignBookletDefaultAssetId,
   DesignBookletDraft,
   DesignBookletDrawingPage,
+  DesignBookletImagePage,
 } from "./types";
+import { defaultDesignBookletContentVariant } from "./contentPresentation";
 import { currentDesignBookletIssueDate } from "./pageModel";
 
 export const TONI_DESIGN_BOOKLET_ASSETS: Record<
@@ -66,6 +68,43 @@ function defaultDrawingPage(): DesignBookletDrawingPage {
   };
 }
 
+function defaultImagePage(
+  id: string,
+  assetId: "render-1" | "render-2" | "render-3",
+  layout: DesignBookletImagePage["layout"] = "visual-full-bleed",
+): DesignBookletImagePage {
+  return {
+    id,
+    kind: "image",
+    layout,
+    variant: defaultDesignBookletContentVariant(layout),
+    images: Array.from({ length: 4 }, (_, index) => ({
+      assetId: index === 0 ? `${id}-image` : `${id}-image-${index + 1}`,
+      defaultAssetId: assetId,
+      altText: `${TONI_DESIGN_BOOKLET_ASSETS[assetId].alt}${
+        index === 0 ? "" : ` ${index + 1}`
+      }`,
+      focalPoint: "center" as const,
+      caption: "",
+    })) as DesignBookletImagePage["images"],
+    content: {
+      eyebrow: "",
+      headline: "",
+      body: "",
+      headlineSize: "standard",
+      bodySize: "standard",
+      headlineScale: 100,
+      bodyScale: 100,
+      eyebrowScale: 100,
+      captionScale: 100,
+      sections: [
+        { heading: "Section one", body: "" },
+        { heading: "Section two", body: "" },
+      ],
+    },
+  };
+}
+
 export function createToniDesignBookletDraft(): DesignBookletDraft {
   return {
     schemaVersion: 2,
@@ -80,26 +119,8 @@ export function createToniDesignBookletDraft(): DesignBookletDraft {
       focalPoint: "center",
     },
     contentPages: [
-      {
-        id: "image-page-1",
-        kind: "image",
-        image: {
-          assetId: "image-page-1-image",
-          defaultAssetId: "render-1",
-          altText: TONI_DESIGN_BOOKLET_ASSETS["render-1"].alt,
-          focalPoint: "center",
-        },
-      },
-      {
-        id: "image-page-2",
-        kind: "image",
-        image: {
-          assetId: "image-page-2-image",
-          defaultAssetId: "render-2",
-          altText: TONI_DESIGN_BOOKLET_ASSETS["render-2"].alt,
-          focalPoint: "center",
-        },
-      },
+      defaultImagePage("image-page-1", "render-1"),
+      defaultImagePage("image-page-2", "render-2"),
       defaultDrawingPage(),
     ],
     reviewPage: {
@@ -139,11 +160,11 @@ export function neutralizeProjectDesignBookletMedia(
       page.kind === "image"
         ? {
             ...page,
-            image: {
-              ...page.image,
+            images: page.images.map((image, imageIndex) => ({
+              ...image,
               useDefaultAsset: false,
-              altText: `Customer design image ${pageIndex + 1}`,
-            },
+              altText: `Customer design image ${pageIndex + 1}.${imageIndex + 1}`,
+            })) as DesignBookletImagePage["images"],
           }
         : {
             ...page,

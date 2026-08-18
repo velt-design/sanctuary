@@ -20,7 +20,12 @@ describe("design booklet defaults", () => {
     const sources = allDesignBookletAssetSources(draft);
 
     expect(draft.customerName).toBe("Customer");
-    expect(sources).toHaveLength(8);
+    expect(sources).toHaveLength(14);
+    expect(
+      draft.contentPages
+        .filter((page) => page.kind === "image")
+        .every((page) => page.images.length === 4),
+    ).toBe(true);
     expect(sources.every((source) => source.useDefaultAsset === false)).toBe(
       true,
     );

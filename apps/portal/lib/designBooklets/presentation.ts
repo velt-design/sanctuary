@@ -44,10 +44,6 @@ const ARTIFACT_INSET = PAGE_CQW * 3.8;
 const HEADER_TOP = PAGE_CQW * 3.4;
 const BRAND_PRIMARY_SIZE = PAGE_CQW * 1.35;
 const BRAND_PRIMARY_LINE_HEIGHT = BRAND_PRIMARY_SIZE;
-const BRAND_SECONDARY_SIZE = PAGE_CQW * 0.7;
-const BRAND_SECONDARY_LINE_HEIGHT = BRAND_SECONDARY_SIZE;
-const BRAND_SECONDARY_TOP =
-  HEADER_TOP + BRAND_PRIMARY_LINE_HEIGHT + PAGE_CQW * 0.45;
 const HEADER_LABEL_SIZE = PAGE_CQW * 0.7;
 const HEADER_LABEL_LINE_HEIGHT = HEADER_LABEL_SIZE;
 
@@ -105,11 +101,11 @@ const REVIEW_CALL_TO_ACTION_BASELINE = 520.28;
 const REVIEW_CALL_TO_ACTION_SIZE = 10;
 const REVIEW_CALL_TO_ACTION_LINE_HEIGHT = 12;
 
-const DRAWING_SHEET_INSET = 20;
+const DRAWING_SHEET_INSET = 12;
 const DRAWING_TITLE_BLOCK_WIDTH = PAGE_WIDTH - DRAWING_SHEET_INSET * 2;
-const DRAWING_TITLE_COLUMN_WIDTH = DRAWING_TITLE_BLOCK_WIDTH * 0.4;
-const DRAWING_PROJECT_COLUMN_WIDTH = DRAWING_TITLE_BLOCK_WIDTH * 0.22;
-const DRAWING_DESIGN_COLUMN_WIDTH = DRAWING_TITLE_BLOCK_WIDTH * 0.24;
+const DRAWING_TITLE_COLUMN_WIDTH = DRAWING_TITLE_BLOCK_WIDTH * 0.42;
+const DRAWING_PROJECT_COLUMN_WIDTH = DRAWING_TITLE_BLOCK_WIDTH * 0.21;
+const DRAWING_DESIGN_COLUMN_WIDTH = DRAWING_TITLE_BLOCK_WIDTH * 0.23;
 const DRAWING_META_COLUMN_WIDTH =
   DRAWING_TITLE_BLOCK_WIDTH -
   DRAWING_TITLE_COLUMN_WIDTH -
@@ -125,7 +121,6 @@ export const DESIGN_BOOKLET_PRESENTATION = {
   chrome: {
     insetLeft: ARTIFACT_INSET,
     insetRight: ARTIFACT_INSET,
-    topRuleHeight: PAGE_CQW * 0.45,
     header: {
       brandPrimaryBaseline: baselineFromTop(
         HEADER_TOP,
@@ -135,13 +130,6 @@ export const DESIGN_BOOKLET_PRESENTATION = {
       ),
       brandPrimarySize: BRAND_PRIMARY_SIZE,
       brandPrimaryLineHeight: BRAND_PRIMARY_LINE_HEIGHT,
-      brandSecondaryBaseline: baselineFromTop(
-        BRAND_SECONDARY_TOP,
-        BRAND_SECONDARY_SIZE,
-        BRAND_SECONDARY_LINE_HEIGHT,
-      ),
-      brandSecondarySize: BRAND_SECONDARY_SIZE,
-      brandSecondaryLineHeight: BRAND_SECONDARY_LINE_HEIGHT,
       labelBaseline: baselineFromTop(
         HEADER_TOP,
         HEADER_LABEL_SIZE,
@@ -214,45 +202,45 @@ export const DESIGN_BOOKLET_PRESENTATION = {
   drawing: {
     area: {
       x: DRAWING_SHEET_INSET,
-      top: 18,
+      top: 12,
       width: PAGE_WIDTH - DRAWING_SHEET_INSET * 2,
-      height: 447,
+      height: 488,
     },
     caption: {
-      reserveHeight: 22,
-      insetX: 4,
-      baselineFromBottom: 11.5,
-      size: 7.4,
-      lineHeight: 8.8,
+      reserveHeight: 18,
+      insetX: 3.5,
+      baselineFromBottom: 9.7,
+      size: 6.6,
+      lineHeight: 7.8,
       maxLines: 1,
     },
     imageBorderWidth: 0.45,
     titleBlock: {
       x: DRAWING_SHEET_INSET,
-      top: 482,
+      top: 512,
       width: DRAWING_TITLE_BLOCK_WIDTH,
-      height: 93,
+      height: 71,
       titleColumnWidth: DRAWING_TITLE_COLUMN_WIDTH,
       projectColumnWidth: DRAWING_PROJECT_COLUMN_WIDTH,
       designColumnWidth: DRAWING_DESIGN_COLUMN_WIDTH,
       metaColumnWidth: DRAWING_META_COLUMN_WIDTH,
-      paddingX: 9,
-      paddingTop: 8,
-      brandSize: 8.4,
-      brandLineHeight: 9,
-      brandDescriptorSize: 4.2,
-      brandDescriptorLineHeight: 5,
-      labelSize: 4.7,
-      labelLineHeight: 5.7,
-      valueSize: 6.7,
-      valueLineHeight: 8,
-      titleSize: 17.5,
-      titleLineHeight: 18.5,
-      statusSize: 5,
-      statusLineHeight: 6,
-      sheetSize: 20,
-      sheetLineHeight: 20,
-      outerRuleWidth: 0.8,
+      paddingX: 7,
+      paddingTop: 5.5,
+      brandSize: 7.2,
+      brandLineHeight: 7.8,
+      brandDescriptorSize: 4,
+      brandDescriptorLineHeight: 4.7,
+      labelSize: 4.1,
+      labelLineHeight: 5,
+      valueSize: 5.8,
+      valueLineHeight: 6.7,
+      titleSize: 14,
+      titleLineHeight: 14.5,
+      statusSize: 4.2,
+      statusLineHeight: 5,
+      sheetSize: 16,
+      sheetLineHeight: 16,
+      outerRuleWidth: 0.65,
       ruleWidth: 0.35,
     },
   },

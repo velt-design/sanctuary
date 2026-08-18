@@ -94,21 +94,21 @@ export function drawDesignBookletDrawingTitleBlock(
   }
 
   const titleX = block.x + block.paddingX;
-  const brand = "SANCTUARY";
+  const brand = "SANCTUARY PERGOLAS";
   drawTrackedText(pdfPage, brand, {
     x: titleX,
-    y: pdfYFromTopBaseline(block.top + 15),
+    y: pdfYFromTopBaseline(block.top + 11.5),
     font: fonts.brand,
     size: block.brandSize,
     color: colors.accent,
     tracking: 0.08,
   });
-  drawTrackedText(pdfPage, "PERGOLAS / ARCHITECTURAL CONCEPT", {
+  drawTrackedText(pdfPage, "ARCHITECTURAL CONCEPT", {
     x:
       titleX +
       designBookletPdfTextWidth(brand, fonts.brand, block.brandSize, 0.08) +
-      7,
-    y: pdfYFromTopBaseline(block.top + 15),
+      6,
+    y: pdfYFromTopBaseline(block.top + 11.5),
     font: fonts.semibold,
     size: block.brandDescriptorSize,
     color: colors.muted,
@@ -119,19 +119,19 @@ export function drawDesignBookletDrawingTitleBlock(
     normalizeDesignBookletSheetTitle(resolvedPage.page.pageTitle),
     {
       x: titleX,
-      y: pdfYFromTopBaseline(block.top + 45),
+      y: pdfYFromTopBaseline(block.top + 34),
       width: block.titleColumnWidth - block.paddingX * 2,
       font: fonts.display,
       size: block.titleSize,
       lineHeight: block.titleLineHeight,
-      maxLines: 2,
+      maxLines: 1,
       color: colors.ink,
       tracking: -0.025,
     },
   );
   drawTrackedText(pdfPage, DESIGN_BOOKLET_DRAWING_STATUS.toUpperCase(), {
     x: titleX,
-    y: pdfYFromTopBaseline(block.top + 84),
+    y: pdfYFromTopBaseline(block.top + 65),
     font: fonts.semibold,
     size: block.statusSize,
     color: colors.muted,
@@ -145,7 +145,7 @@ export function drawDesignBookletDrawingTitleBlock(
     width: number,
   ) {
     for (const [index, detail] of [first, second].entries()) {
-      const rowTop = block.top + 15 + index * 43;
+      const rowTop = block.top + 10 + index * 30;
       drawEyebrow(
         pdfPage,
         detail.label,
@@ -158,7 +158,7 @@ export function drawDesignBookletDrawingTitleBlock(
       );
       drawWrappedText(pdfPage, detail.value, {
         x,
-        y: pdfYFromTopBaseline(rowTop + 13),
+        y: pdfYFromTopBaseline(rowTop + 10),
         width,
         font: fonts.semibold,
         size: block.valueSize,
@@ -205,7 +205,7 @@ export function drawDesignBookletDrawingTitleBlock(
     pdfPage,
     "Sheet",
     metaX,
-    pdfYFromTopBaseline(block.top + 14),
+    pdfYFromTopBaseline(block.top + 10),
     fonts,
     colors.muted,
     block.labelSize,
@@ -213,7 +213,7 @@ export function drawDesignBookletDrawingTitleBlock(
   );
   drawTrackedText(pdfPage, resolvedPage.sheetNumber, {
     x: metaX,
-    y: pdfYFromTopBaseline(block.top + 39),
+    y: pdfYFromTopBaseline(block.top + 29),
     font: fonts.display,
     size: block.sheetSize,
     color: colors.ink,
@@ -231,7 +231,7 @@ export function drawDesignBookletDrawingTitleBlock(
     ],
   ] as const;
   metadata.forEach(([label, value], index) => {
-    const baseline = block.top + 61 + index * 11;
+    const baseline = block.top + 46 + index * 9.5;
     drawEyebrow(
       pdfPage,
       label,

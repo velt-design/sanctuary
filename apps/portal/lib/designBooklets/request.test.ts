@@ -11,6 +11,7 @@ import {
   DESIGN_BOOKLET_MAX_CONTENT_PAGES,
   DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH,
   DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH,
+  createDesignBookletImagePage,
 } from "./pageModel";
 import {
   DESIGN_BOOKLET_MAX_CUSTOM_TITLE_LENGTH,
@@ -44,15 +45,17 @@ function drawingPage(draft = createToniDesignBookletDraft()) {
 }
 
 function imagePage(index: number): DesignBookletImagePage {
+  const page = createDesignBookletImagePage([], {
+    id: "render-1",
+    alt: `Concept image ${index}`,
+  });
   return {
+    ...page,
     id: `content-${index}`,
-    kind: "image",
-    image: {
-      assetId: `content-${index}-image`,
-      defaultAssetId: "render-1",
-      altText: `Concept image ${index}`,
-      focalPoint: "center",
-    },
+    images: page.images.map((image, imageIndex) => ({
+      ...image,
+      assetId: `content-${index}-image-${imageIndex + 1}`,
+    })) as DesignBookletImagePage["images"],
   };
 }
 
@@ -201,6 +204,93 @@ describe("design booklet request parsing", () => {
       revision: "01",
     });
     expect(drawingPage(parsed).issueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("normalizes legacy single-image pages into reusable template slots", () => {
+    const legacyDraft = structuredClone(
+      createToniDesignBookletDraft(),
+    ) as unknown as {
+      contentPages: Array<Record<string, unknown>>;
+    };
+    const currentPage = legacyDraft.contentPages[0]!;
+    const images = currentPage.images as Array<Record<string, unknown>>;
+    legacyDraft.contentPages[0] = {
+      id: currentPage.id,
+      kind: "image",
+      image: images[0],
+    };
+
+    const parsed = parseDesignBookletDraft(legacyDraft);
+    const page = parsed.contentPages[0];
+    expect(page?.kind).toBe("image");
+    if (!page || page.kind !== "image") return;
+    expect(page.layout).toBe("visual-full-bleed");
+    expect(page.variant).toBe("edge");
+    expect(page.images).toHaveLength(4);
+    expect(page.images[0].assetId).toBe("image-page-1-image");
+    expect(page.images.slice(1).map((image) => image.useDefaultAsset)).toEqual([
+      false,
+      false,
+      false,
+    ]);
+    expect(page.content).toMatchObject({
+      headline: "",
+      body: "",
+      headlineSize: "standard",
+      bodySize: "standard",
+      headlineScale: 100,
+      bodyScale: 100,
+      eyebrowScale: 100,
+      captionScale: 100,
+    });
+  });
+
+  it("normalizes saved content pages created before variants and scale controls", () => {
+    const legacyDraft = structuredClone(
+      createToniDesignBookletDraft(),
+    ) as unknown as {
+      contentPages: Array<Record<string, unknown>>;
+    };
+    const page = legacyDraft.contentPages[0]!;
+    delete page.variant;
+    const content = page.content as Record<string, unknown>;
+    delete content.headlineScale;
+    delete content.bodyScale;
+    delete content.eyebrowScale;
+    delete content.captionScale;
+
+    const parsed = parseDesignBookletDraft(legacyDraft);
+    const parsedPage = parsed.contentPages[0];
+    expect(parsedPage?.kind).toBe("image");
+    if (!parsedPage || parsedPage.kind !== "image") return;
+    expect(parsedPage.variant).toBe("edge");
+    expect(parsedPage.content).toMatchObject({
+      headlineScale: 100,
+      bodyScale: 100,
+      eyebrowScale: 100,
+      captionScale: 100,
+    });
+  });
+
+  it.each([
+    ["variant", "freeform", /invalid content variant/i],
+    ["headlineScale", 401, /headline scale/i],
+    ["bodyScale", 176, /body scale/i],
+    ["eyebrowScale", 151, /eyebrow scale/i],
+    ["captionScale", 79, /caption scale/i],
+  ] as const)("rejects invalid content %s values", (field, value, error) => {
+    const invalidDraft = structuredClone(
+      createToniDesignBookletDraft(),
+    ) as unknown as {
+      contentPages: Array<Record<string, unknown>>;
+    };
+    const page = invalidDraft.contentPages[0]!;
+    if (field === "variant") {
+      page.variant = value;
+    } else {
+      (page.content as Record<string, unknown>)[field] = value;
+    }
+    expect(() => parseDesignBookletDraft(invalidDraft)).toThrow(error);
   });
 
   it("normalizes persisted drawing sheet titles to uppercase", () => {

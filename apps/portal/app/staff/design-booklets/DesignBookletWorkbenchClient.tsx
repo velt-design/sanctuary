@@ -5,6 +5,7 @@ import {
   DESIGN_BOOKLET_MATERIAL_IDS,
   DESIGN_BOOKLET_ROOF_FORM_IDS,
   type DesignBookletContentCatalog,
+  type DesignBookletContentLayoutId,
   type DesignBookletContentPage,
   type DesignBookletDraft,
   type DesignBookletImagePlacement,
@@ -98,7 +99,7 @@ export default function DesignBookletWorkbenchClient({
     void replaceAsset(assetId, file);
   }
 
-  function addPage(kind: "image" | "drawings") {
+  function addPage(kind: DesignBookletContentLayoutId | "drawings") {
     if (draft.contentPages.length >= DESIGN_BOOKLET_MAX_CONTENT_PAGES) {
       setDownloadError(
         `A booklet can contain up to ${DESIGN_BOOKLET_MAX_CONTENT_PAGES} content pages.`,
@@ -107,7 +108,7 @@ export default function DesignBookletWorkbenchClient({
     }
 
     const page =
-      kind === "image"
+      kind !== "drawings"
         ? createDesignBookletImagePage(
             draft.contentPages,
             (() => {
@@ -125,6 +126,7 @@ export default function DesignBookletWorkbenchClient({
                   }
                 : { id, alt: TONI_DESIGN_BOOKLET_ASSETS[id].alt };
             })(),
+            kind,
           )
         : createDesignBookletDrawingPage(
             draft.contentPages,
@@ -142,7 +144,7 @@ export default function DesignBookletWorkbenchClient({
 
     const pageSources =
       page.kind === "image"
-        ? [page.image]
+        ? page.images
         : page.drawings.map((drawing) => drawing.image);
     setDraft((current) => ({
       ...current,
@@ -158,7 +160,9 @@ export default function DesignBookletWorkbenchClient({
       ),
     }));
     setSelectedPageKey(page.id);
-    setStatusMessage(`${kind === "image" ? "Image" : "Drawing"} page added.`);
+    setStatusMessage(
+      `${kind === "drawings" ? "Drawing" : "Content"} page added.`,
+    );
   }
 
   function movePage(pageId: string, direction: -1 | 1) {
@@ -185,7 +189,7 @@ export default function DesignBookletWorkbenchClient({
       nextPages[pageIndex]?.id ?? nextPages[pageIndex - 1]?.id ?? "review";
     const removedAssetIds =
       page.kind === "image"
-        ? [page.image.assetId]
+        ? page.images.map((image) => image.assetId)
         : page.drawings.map((drawing) => drawing.image.assetId);
     for (const assetId of removedAssetIds) {
       revokeAssetUrl(assets[assetId]);

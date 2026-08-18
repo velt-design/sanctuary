@@ -39,21 +39,11 @@
   background: #fbfaf7;
 }
 
-.pageTopRule {
-  position: absolute;
-  z-index: 7;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: calc(var(--booklet-point) * 3.7885);
-  background: #4f5748;
-}
-
 .pageBrand {
   position: absolute;
   z-index: 8;
   top: 0;
-  width: calc(var(--booklet-point) * 180);
+  width: calc(var(--booklet-point) * 260);
   height: calc(var(--booklet-point) * 60);
   color: #20221f;
 }
@@ -247,6 +237,154 @@
     linear-gradient(0deg, rgb(17 20 17 / 42%) 0%, transparent 18%);
 }
 
+.contentPage {
+  background: #f4f1ea;
+}
+
+.contentImageFrame {
+  position: absolute;
+  z-index: 1;
+  overflow: hidden;
+  border: calc(var(--booklet-point) * 0.45) solid #bfc0b7;
+  background: #4f5748;
+}
+
+.contentImageFrame > img,
+.contentImageFrame > div:first-child,
+.contentImageFrame > div:first-child img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fullBleedContentPage .contentImageFrame {
+  border: 0;
+}
+
+.contentImageFrame figcaption {
+  position: absolute;
+  z-index: 3;
+  right: calc(var(--booklet-point) * 8);
+  bottom: calc(var(--booklet-point) * 8);
+  left: calc(var(--booklet-point) * 8);
+  width: fit-content;
+  max-width: calc(100% - var(--booklet-point) * 16);
+  padding: calc(var(--booklet-point) * 4) calc(var(--booklet-point) * 5);
+  overflow: hidden;
+  background: rgb(244 241 234 / 92%);
+  color: #20221f;
+  font-size: calc(var(--booklet-point) * 6.2);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  line-height: calc(var(--booklet-point) * 7.5);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.fullBleedContentPage .contentImageFrame figcaption {
+  bottom: calc(var(--booklet-point) * 48);
+  background: rgb(17 20 17 / 68%);
+  color: #fff;
+}
+
+.contentCopy {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.contentCopy .eyebrow {
+  flex: 0 0 auto;
+  font-size: calc(var(--booklet-point) * 6.4);
+  line-height: calc(var(--booklet-point) * 8);
+}
+
+.contentCopy h2 {
+  display: -webkit-box;
+  flex: 0 0 auto;
+  margin-top: calc(var(--booklet-point) * 11);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.contentBody {
+  display: -webkit-box;
+  margin-top: calc(var(--booklet-point) * 18) !important;
+  overflow: hidden;
+  color: #50534d;
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 16;
+}
+
+.contentCopy[data-content-copy-layout="story-image-top"] {
+  display: grid;
+  grid-template-columns: minmax(0, 0.42fr) minmax(0, 0.58fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: calc(var(--booklet-point) * 34);
+}
+
+.contentCopy[data-content-copy-layout="story-image-top"] .eyebrow {
+  grid-column: 1 / -1;
+}
+
+.contentCopy[data-content-copy-layout="story-image-top"] h2 {
+  grid-column: 1;
+  grid-row: 2;
+  margin-top: calc(var(--booklet-point) * 8);
+}
+
+.contentCopy[data-content-copy-layout="story-image-top"] .contentBody {
+  grid-column: 2;
+  grid-row: 2;
+  margin-top: calc(var(--booklet-point) * 8) !important;
+}
+
+.contentCopy[data-content-copy-layout="information-material-split"] h2 {
+  margin-top: calc(var(--booklet-point) * 5);
+  -webkit-line-clamp: 1;
+}
+
+.contentSection {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: calc(var(--booklet-point) * 25) minmax(0, 1fr);
+  gap: calc(var(--booklet-point) * 12);
+  padding-top: calc(var(--booklet-point) * 11);
+  overflow: hidden;
+  border-top: calc(var(--booklet-point) * 0.65) solid #a8a89f;
+}
+
+.contentSection > span {
+  color: #4f5748;
+  font-size: calc(var(--booklet-point) * 6);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: calc(var(--booklet-point) * 8);
+}
+
+.contentSection h3 {
+  font-size: calc(var(--booklet-point) * 13);
+  line-height: calc(var(--booklet-point) * 14);
+}
+
+.contentSection p {
+  display: -webkit-box;
+  margin-top: calc(var(--booklet-point) * 9) !important;
+  overflow: hidden;
+  color: #50534d;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 7;
+}
+
 .drawingCanvas {
   position: absolute;
 }
@@ -323,7 +461,7 @@
 
 .drawingTitleBlock > section {
   min-width: 0;
-  padding: calc(var(--booklet-point) * 8) calc(var(--booklet-point) * 9);
+  padding: calc(var(--booklet-point) * 5.5) calc(var(--booklet-point) * 7);
   border-right: calc(var(--booklet-point) * 0.35) solid #a8a89f;
 }
 
@@ -356,17 +494,17 @@
 .titleBlockMeta dt {
   color: #666960;
   font-family: var(--font-inter), Inter, Arial, sans-serif;
-  font-size: calc(var(--booklet-point) * 4.7);
+  font-size: calc(var(--booklet-point) * 4.1);
   font-weight: 700;
   letter-spacing: 0.12em;
-  line-height: calc(var(--booklet-point) * 5.7);
+  line-height: calc(var(--booklet-point) * 5);
   text-transform: uppercase;
 }
 
 .titleBlockIdentity {
   display: flex;
   align-items: baseline;
-  gap: calc(var(--booklet-point) * 5);
+  gap: calc(var(--booklet-point) * 4);
   min-width: 0;
   color: #4f5748;
   white-space: nowrap;
@@ -377,70 +515,70 @@
   font-family:
     var(--font-design-booklet-instrument), var(--font-inter), Inter, Arial,
     sans-serif;
-  font-size: calc(var(--booklet-point) * 8.4);
+  font-size: calc(var(--booklet-point) * 7.2);
   font-weight: 680;
   letter-spacing: 0.08em;
-  line-height: calc(var(--booklet-point) * 9);
+  line-height: calc(var(--booklet-point) * 7.8);
 }
 
 .titleBlockIdentity span {
   overflow: hidden;
   color: #666960;
-  font-size: calc(var(--booklet-point) * 4.2);
+  font-size: calc(var(--booklet-point) * 4);
   font-weight: 700;
   letter-spacing: 0.12em;
-  line-height: calc(var(--booklet-point) * 5);
+  line-height: calc(var(--booklet-point) * 4.7);
   text-overflow: ellipsis;
 }
 
 .titleBlockStory h2 {
   display: -webkit-box;
-  margin-top: calc(var(--booklet-point) * 8);
+  margin-top: calc(var(--booklet-point) * 4);
   overflow: hidden;
   font-family:
     var(--font-design-booklet-instrument), var(--font-inter), Inter, Arial,
     sans-serif;
-  font-size: calc(var(--booklet-point) * 17.5);
+  font-size: calc(var(--booklet-point) * 14);
   font-weight: 560;
   letter-spacing: -0.025em;
-  line-height: calc(var(--booklet-point) * 18.5);
+  line-height: calc(var(--booklet-point) * 14.5);
   text-transform: uppercase;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
 }
 
 .titleBlockStatus {
   position: absolute;
-  right: calc(var(--booklet-point) * 9);
-  bottom: calc(var(--booklet-point) * 7);
-  left: calc(var(--booklet-point) * 9);
+  right: calc(var(--booklet-point) * 7);
+  bottom: calc(var(--booklet-point) * 4.5);
+  left: calc(var(--booklet-point) * 7);
   color: #666960;
-  font-size: calc(var(--booklet-point) * 5);
+  font-size: calc(var(--booklet-point) * 4.2);
   font-weight: 650;
   letter-spacing: 0.08em;
-  line-height: calc(var(--booklet-point) * 6);
+  line-height: calc(var(--booklet-point) * 5);
   text-transform: uppercase;
 }
 
 .titleBlockDetails {
   display: grid;
   grid-template-rows: 1fr 1fr;
-  gap: calc(var(--booklet-point) * 4);
+  gap: calc(var(--booklet-point) * 2.5);
 }
 
 .titleBlockDetails div {
   display: grid;
   min-height: 0;
   align-content: start;
-  gap: calc(var(--booklet-point) * 2.5);
+  gap: calc(var(--booklet-point) * 1.6);
 }
 
 .titleBlockDetails strong {
   display: -webkit-box;
   overflow: hidden;
-  font-size: calc(var(--booklet-point) * 6.7);
+  font-size: calc(var(--booklet-point) * 5.8);
   font-weight: 600;
-  line-height: calc(var(--booklet-point) * 8);
+  line-height: calc(var(--booklet-point) * 6.7);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -448,28 +586,28 @@
 .titleBlockMeta {
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: calc(var(--booklet-point) * 5);
+  gap: calc(var(--booklet-point) * 3);
 }
 
 .titleBlockMeta > div {
   display: grid;
-  gap: calc(var(--booklet-point) * 2);
+  gap: calc(var(--booklet-point) * 1.4);
 }
 
 .titleBlockMeta > div strong {
   font-family:
     var(--font-design-booklet-instrument), var(--font-inter), Inter, Arial,
     sans-serif;
-  font-size: calc(var(--booklet-point) * 20);
+  font-size: calc(var(--booklet-point) * 16);
   font-weight: 520;
   letter-spacing: -0.04em;
-  line-height: calc(var(--booklet-point) * 20);
+  line-height: calc(var(--booklet-point) * 16);
 }
 
 .titleBlockMeta dl {
   display: grid;
   align-content: end;
-  gap: calc(var(--booklet-point) * 2.5);
+  gap: calc(var(--booklet-point) * 1.5);
 }
 
 .titleBlockMeta dl div {

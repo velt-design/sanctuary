@@ -27,6 +27,31 @@ export const DESIGN_BOOKLET_DRAWING_LAYOUT_IDS = [
   "four-grid",
 ] as const;
 
+export const DESIGN_BOOKLET_CONTENT_LAYOUT_IDS = [
+  "visual-full-bleed",
+  "visual-framed",
+  "visual-split",
+  "gallery-hero-two",
+  "gallery-grid-four",
+  "story-image-left",
+  "story-image-right",
+  "story-image-top",
+  "information-text",
+  "information-material-split",
+] as const;
+
+export const DESIGN_BOOKLET_CONTENT_VARIANT_IDS = [
+  "edge",
+  "balanced",
+  "gallery",
+] as const;
+
+export const DESIGN_BOOKLET_TEXT_SIZE_IDS = [
+  "small",
+  "standard",
+  "large",
+] as const;
+
 export const DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS = [
   "plan",
   "section",
@@ -54,6 +79,12 @@ export type DesignBookletDefaultAssetId =
   (typeof DESIGN_BOOKLET_DEFAULT_ASSET_IDS)[number];
 export type DesignBookletDrawingLayoutId =
   (typeof DESIGN_BOOKLET_DRAWING_LAYOUT_IDS)[number];
+export type DesignBookletContentLayoutId =
+  (typeof DESIGN_BOOKLET_CONTENT_LAYOUT_IDS)[number];
+export type DesignBookletContentVariantId =
+  (typeof DESIGN_BOOKLET_CONTENT_VARIANT_IDS)[number];
+export type DesignBookletTextSizeId =
+  (typeof DESIGN_BOOKLET_TEXT_SIZE_IDS)[number];
 export type DesignBookletDrawingTitlePresetId =
   (typeof DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS)[number];
 export type DesignBookletFocalPointId =
@@ -112,10 +143,38 @@ export type DesignBookletDrawingItem = {
   title: DesignBookletDrawingTitle;
 };
 
+export type DesignBookletContentImage = DesignBookletImagePlacement & {
+  caption: string;
+};
+
+type DesignBookletEditorialContent = {
+  eyebrow: string;
+  headline: string;
+  body: string;
+  headlineSize: DesignBookletTextSizeId;
+  bodySize: DesignBookletTextSizeId;
+  headlineScale: number;
+  bodyScale: number;
+  eyebrowScale: number;
+  captionScale: number;
+  sections: [
+    { heading: string; body: string },
+    { heading: string; body: string },
+  ];
+};
+
 export type DesignBookletImagePage = {
   id: string;
   kind: "image";
-  image: DesignBookletImagePlacement;
+  layout: DesignBookletContentLayoutId;
+  variant: DesignBookletContentVariantId;
+  images: [
+    DesignBookletContentImage,
+    DesignBookletContentImage,
+    DesignBookletContentImage,
+    DesignBookletContentImage,
+  ];
+  content: DesignBookletEditorialContent;
 };
 
 export type DesignBookletDrawingPage = {

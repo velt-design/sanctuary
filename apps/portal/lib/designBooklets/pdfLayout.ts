@@ -269,15 +269,6 @@ function drawPageBase(page: PDFPage) {
     height: DESIGN_BOOKLET_PDF_PAGE_SIZE.height,
     color: DESIGN_BOOKLET_PDF_COLORS.paper,
   });
-  page.drawRectangle({
-    x: 0,
-    y:
-      DESIGN_BOOKLET_PDF_PAGE_SIZE.height -
-      DESIGN_BOOKLET_PRESENTATION.chrome.topRuleHeight,
-    width: DESIGN_BOOKLET_PDF_PAGE_SIZE.width,
-    height: DESIGN_BOOKLET_PRESENTATION.chrome.topRuleHeight,
-    color: DESIGN_BOOKLET_PDF_COLORS.accent,
-  });
 }
 
 export function drawDesignBookletFooter(

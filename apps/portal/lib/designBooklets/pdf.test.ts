@@ -10,14 +10,22 @@ import {
   TONI_DESIGN_BOOKLET_ASSETS,
 } from "./defaults";
 import { getDesignBookletContentCatalog } from "./marketingContent";
-import { createDesignBookletDrawingPage } from "./pageModel";
+import {
+  createDesignBookletDrawingPage,
+  createDesignBookletImagePage,
+} from "./pageModel";
 import {
   DESIGN_BOOKLET_PDF_PAGE_SIZE,
   designBookletPdfFilename,
   generateDesignBookletPdf,
 } from "./pdf";
 import { loadToniDesignBookletImages } from "./request";
-import type { DesignBookletDraft, DesignBookletDrawingLayoutId } from "./types";
+import {
+  DESIGN_BOOKLET_CONTENT_LAYOUT_IDS,
+  DESIGN_BOOKLET_CONTENT_VARIANT_IDS,
+  type DesignBookletDraft,
+  type DesignBookletDrawingLayoutId,
+} from "./types";
 
 async function generateToniPdf(draft: DesignBookletDraft) {
   return generateDesignBookletPdf({
@@ -140,6 +148,77 @@ describe("design booklet PDF", () => {
     expect(pageText[0]).toContain("01 / 02");
     expect(pageText[1]).toContain("Review the concept");
     expect(pageText[1]).toContain("02 / 02");
+  }, 30_000);
+
+  it("renders all 30 curated layout and framing combinations from the shared page contract", async () => {
+    const draft = createToniDesignBookletDraft();
+    draft.contentPages = [];
+    const combinations = DESIGN_BOOKLET_CONTENT_LAYOUT_IDS.flatMap((layout) =>
+      DESIGN_BOOKLET_CONTENT_VARIANT_IDS.map((variant) => ({
+        layout,
+        variant,
+      })),
+    );
+    for (const [index, { layout, variant }] of combinations.entries()) {
+      const page = createDesignBookletImagePage(
+        draft.contentPages,
+        {
+          id: (["render-1", "render-2", "render-3"] as const)[index % 3],
+          alt: `Content layout ${index + 1}`,
+        },
+        layout,
+      );
+      page.variant = variant;
+      const demonstrateLargeType =
+        variant === "gallery" && layout === "information-text";
+      page.content = {
+        ...page.content,
+        eyebrow: "Design direction",
+        headline: demonstrateLargeType
+          ? "FORM"
+          : `Content template ${index + 1}`,
+        headlineScale: demonstrateLargeType ? 400 : 100,
+        body: "Editable customer copy remains attached to the page while the selected template changes.",
+        sections: [
+          { heading: "Acrylic roof", body: "First material section." },
+          {
+            heading: "COLORSTEEL roof + timber ceiling",
+            body: "Second material section.",
+          },
+        ],
+      };
+      page.images.forEach((image, imageIndex) => {
+        image.caption = `View ${imageIndex + 1}`;
+      });
+      draft.contentPages.push(page);
+    }
+
+    const bytes = await generateToniPdf(draft);
+    const document = await PDFDocument.load(bytes);
+    const pageText = await extractPdfPageText(bytes);
+    expect(document.getPageCount()).toBe(combinations.length + 2);
+    expectLandscapeA4Pages(document);
+    combinations.forEach(({ layout, variant }, index) => {
+      if (layout.includes("story") || layout.includes("information")) {
+        expect(pageText[index + 1]).toContain(
+          variant === "gallery" && layout === "information-text"
+            ? "FORM"
+            : `Content template ${index + 1}`,
+        );
+      }
+      expect(pageText[index + 1]).toContain("VIEW 1");
+    });
+    expect(pageText.at(-1)).toContain("Review the concept");
+
+    const outputDirectory = process.env.DESIGN_BOOKLET_OUTPUT_DIR?.trim();
+    if (outputDirectory) {
+      const absoluteDirectory = path.resolve(outputDirectory);
+      await mkdir(absoluteDirectory, { recursive: true });
+      await writeFile(
+        path.join(absoluteDirectory, "toni-content-variants.pdf"),
+        bytes,
+      );
+    }
   }, 30_000);
 
   it("renders mixed drawing layouts and custom drawing titles in page order", async () => {

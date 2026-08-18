@@ -4,14 +4,20 @@ import { PDFDocument } from "pdf-lib";
 import sharp, { type Metadata } from "sharp";
 import {
   DESIGN_BOOKLET_DEFAULT_ASSET_IDS,
+  DESIGN_BOOKLET_CONTENT_LAYOUT_IDS,
+  DESIGN_BOOKLET_CONTENT_VARIANT_IDS,
   DESIGN_BOOKLET_DRAWING_LAYOUT_IDS,
   DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS,
   DESIGN_BOOKLET_FOCAL_POINT_IDS,
   DESIGN_BOOKLET_MATERIAL_IDS,
   DESIGN_BOOKLET_ROOF_FORM_IDS,
   DESIGN_BOOKLET_SCHEMA_VERSION,
+  DESIGN_BOOKLET_TEXT_SIZE_IDS,
   type DesignBookletAssetSource,
   type DesignBookletContentPage,
+  type DesignBookletContentImage,
+  type DesignBookletContentLayoutId,
+  type DesignBookletContentVariantId,
   type DesignBookletDefaultAssetId,
   type DesignBookletDraft,
   type DesignBookletDrawingItem,
@@ -20,10 +26,12 @@ import {
   type DesignBookletDrawingTitle,
   type DesignBookletFocalPointId,
   type DesignBookletImage,
+  type DesignBookletImagePage,
   type DesignBookletImagePlacement,
   type DesignBookletImages,
   type DesignBookletMaterialId,
   type DesignBookletRoofFormId,
+  type DesignBookletTextSizeId,
   type DesignBookletPdfDocument,
   type DesignBookletPdfDocuments,
 } from "./types";
@@ -32,6 +40,12 @@ import {
   currentDesignBookletIssueDate,
   DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH,
   DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH,
+  DESIGN_BOOKLET_MAX_CONTENT_BODY_LENGTH,
+  DESIGN_BOOKLET_MAX_CONTENT_CAPTION_LENGTH,
+  DESIGN_BOOKLET_MAX_CONTENT_EYEBROW_LENGTH,
+  DESIGN_BOOKLET_MAX_CONTENT_HEADLINE_LENGTH,
+  DESIGN_BOOKLET_MAX_CONTENT_SECTION_BODY_LENGTH,
+  DESIGN_BOOKLET_MAX_CONTENT_SECTION_HEADING_LENGTH,
   DESIGN_BOOKLET_MAX_IMAGE_BYTES,
   DESIGN_BOOKLET_MAX_PDF_BYTES,
   DESIGN_BOOKLET_MAX_PDF_PAGES,
@@ -41,6 +55,11 @@ import {
   renderableDesignBookletAssetSources,
 } from "./pageModel";
 import { readDesignBookletDefaultImage } from "./pdfAssets";
+import {
+  defaultDesignBookletContentVariant,
+  isDesignBookletContentScale,
+  type DesignBookletContentScaleRole,
+} from "./contentPresentation";
 
 export { DESIGN_BOOKLET_MAX_IMAGE_BYTES } from "./pageModel";
 const DESIGN_BOOKLET_MAX_TOTAL_UPLOAD_BYTES = 120 * 1024 * 1024;
@@ -82,6 +101,24 @@ function requiredText(
   if (!cleaned) {
     throw new DesignBookletRequestError(`${context} is required.`);
   }
+  if (cleaned.length > maxLength) {
+    throw new DesignBookletRequestError(
+      `${context} must be ${maxLength} characters or fewer.`,
+    );
+  }
+  return cleaned;
+}
+
+function optionalText(
+  value: unknown,
+  context: string,
+  maxLength: number,
+): string {
+  if (value === undefined) return "";
+  if (typeof value !== "string") {
+    throw new DesignBookletRequestError(`${context} is invalid.`);
+  }
+  const cleaned = value.replace(/\s+/g, " ").trim();
   if (cleaned.length > maxLength) {
     throw new DesignBookletRequestError(
       `${context} must be ${maxLength} characters or fewer.`,
@@ -144,6 +181,42 @@ function isDrawingLayoutId(
   );
 }
 
+function isContentLayoutId(
+  value: unknown,
+): value is DesignBookletContentLayoutId {
+  return DESIGN_BOOKLET_CONTENT_LAYOUT_IDS.includes(
+    value as DesignBookletContentLayoutId,
+  );
+}
+
+function isContentVariantId(
+  value: unknown,
+): value is DesignBookletContentVariantId {
+  return DESIGN_BOOKLET_CONTENT_VARIANT_IDS.includes(
+    value as DesignBookletContentVariantId,
+  );
+}
+
+function isTextSizeId(value: unknown): value is DesignBookletTextSizeId {
+  return DESIGN_BOOKLET_TEXT_SIZE_IDS.includes(
+    value as DesignBookletTextSizeId,
+  );
+}
+
+function contentScale(
+  value: unknown,
+  role: DesignBookletContentScaleRole,
+  context: string,
+) {
+  if (value === undefined) return 100;
+  if (!isDesignBookletContentScale(role, value)) {
+    throw new DesignBookletRequestError(
+      `${context} has an invalid ${role} scale.`,
+    );
+  }
+  return value;
+}
+
 function parseAssetSource(
   raw: unknown,
   context: string,
@@ -186,6 +259,93 @@ function parseImagePlacement(
   return {
     ...parseAssetSource(value, context, ids),
     focalPoint: value.focalPoint,
+  };
+}
+
+function parseContentImage(
+  raw: unknown,
+  context: string,
+  ids: Set<string>,
+): DesignBookletContentImage {
+  const value = valueRecord(raw, context);
+  return {
+    ...parseImagePlacement(value, context, ids),
+    caption: optionalText(
+      value.caption,
+      `${context} caption`,
+      DESIGN_BOOKLET_MAX_CONTENT_CAPTION_LENGTH,
+    ),
+  };
+}
+
+function parseEditorialContent(raw: unknown, context: string) {
+  if (raw === undefined) {
+    return {
+      eyebrow: "",
+      headline: "",
+      body: "",
+      headlineSize: "standard" as const,
+      bodySize: "standard" as const,
+      headlineScale: 100,
+      bodyScale: 100,
+      eyebrowScale: 100,
+      captionScale: 100,
+      sections: [
+        { heading: "Section one", body: "" },
+        { heading: "Section two", body: "" },
+      ] as [
+        { heading: string; body: string },
+        { heading: string; body: string },
+      ],
+    };
+  }
+  const value = valueRecord(raw, context);
+  if (!isTextSizeId(value.headlineSize) || !isTextSizeId(value.bodySize)) {
+    throw new DesignBookletRequestError(`${context} has an invalid text size.`);
+  }
+  if (!Array.isArray(value.sections) || value.sections.length !== 2) {
+    throw new DesignBookletRequestError(
+      `${context} must provide two reusable sections.`,
+    );
+  }
+  const sections = value.sections.map((rawSection, index) => {
+    const section = valueRecord(rawSection, `${context}, section ${index + 1}`);
+    return {
+      heading: optionalText(
+        section.heading,
+        `${context}, section ${index + 1} heading`,
+        DESIGN_BOOKLET_MAX_CONTENT_SECTION_HEADING_LENGTH,
+      ),
+      body: optionalText(
+        section.body,
+        `${context}, section ${index + 1} copy`,
+        DESIGN_BOOKLET_MAX_CONTENT_SECTION_BODY_LENGTH,
+      ),
+    };
+  }) as [{ heading: string; body: string }, { heading: string; body: string }];
+  return {
+    eyebrow: optionalText(
+      value.eyebrow,
+      `${context} eyebrow`,
+      DESIGN_BOOKLET_MAX_CONTENT_EYEBROW_LENGTH,
+    ),
+    headline: optionalText(
+      value.headline,
+      `${context} headline`,
+      DESIGN_BOOKLET_MAX_CONTENT_HEADLINE_LENGTH,
+    ),
+    body: optionalText(
+      value.body,
+      `${context} body`,
+      DESIGN_BOOKLET_MAX_CONTENT_BODY_LENGTH,
+    ),
+    headlineSize: value.headlineSize,
+    bodySize: value.bodySize,
+    headlineScale: contentScale(value.headlineScale, "headline", context),
+    bodyScale: contentScale(value.bodyScale, "body", context),
+    eyebrowScale: contentScale(value.eyebrowScale, "eyebrow", context),
+    captionScale: contentScale(value.captionScale, "caption", context),
+    sections,
   };
 }
 
@@ -273,10 +433,66 @@ function parseContentPage(
   const id = stableId(value.id, context, ids);
 
   if (value.kind === "image") {
+    const layout =
+      value.layout === undefined
+        ? "visual-full-bleed"
+        : isContentLayoutId(value.layout)
+          ? value.layout
+          : null;
+    if (!layout) {
+      throw new DesignBookletRequestError(
+        `${context} has an invalid content layout.`,
+      );
+    }
+    const variant =
+      value.variant === undefined
+        ? defaultDesignBookletContentVariant(layout)
+        : isContentVariantId(value.variant)
+          ? value.variant
+          : null;
+    if (!variant) {
+      throw new DesignBookletRequestError(
+        `${context} has an invalid content variant.`,
+      );
+    }
+    let images: DesignBookletImagePage["images"];
+    if (Array.isArray(value.images)) {
+      if (value.images.length !== 4) {
+        throw new DesignBookletRequestError(
+          `${context} must provide four reusable image slots.`,
+        );
+      }
+      images = value.images.map((image, imageIndex) =>
+        parseContentImage(image, `${context}, image ${imageIndex + 1}`, ids),
+      ) as DesignBookletImagePage["images"];
+    } else {
+      const legacyImage = parseContentImage(value.image, context, ids);
+      images = [
+        legacyImage,
+        ...([2, 3, 4].map((slot) => {
+          const assetId = `${id}-image-${slot}`;
+          stableId(assetId, `${context}, image ${slot}`, ids);
+          return {
+            ...legacyImage,
+            assetId,
+            useDefaultAsset: false,
+            altText: `Additional customer image ${slot}`,
+            caption: "",
+          };
+        }) as [
+          DesignBookletContentImage,
+          DesignBookletContentImage,
+          DesignBookletContentImage,
+        ]),
+      ];
+    }
     return {
       id,
       kind: "image",
-      image: parseImagePlacement(value.image, context, ids),
+      layout,
+      variant,
+      images,
+      content: parseEditorialContent(value.content, `${context} copy`),
     };
   }
 

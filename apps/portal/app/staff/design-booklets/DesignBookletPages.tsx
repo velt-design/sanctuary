@@ -2,8 +2,14 @@ import type { CSSProperties } from "react";
 import type {
   DesignBookletContentCatalog,
   DesignBookletDraft,
+  DesignBookletImagePage,
   DesignBookletImagePlacement,
 } from "@/lib/designBooklets/types";
+import { visibleDesignBookletContentImages } from "@/lib/designBooklets/contentLayouts";
+import {
+  resolveDesignBookletContentLayout,
+  resolveDesignBookletContentTypography,
+} from "@/lib/designBooklets/contentPresentation";
 import {
   buildDesignBookletRenderModel,
   DESIGN_BOOKLET_DRAWING_LAYOUTS,
@@ -100,17 +106,8 @@ function BookletBrand({
           },
         )}
       >
-        SANCTUARY
+        SANCTUARY PERGOLAS
       </strong>
-      <span
-        style={baselineTextStyle(
-          header.brandSecondaryBaseline,
-          header.brandSecondarySize,
-          { lineHeight: header.brandSecondaryLineHeight },
-        )}
-      >
-        PERGOLAS
-      </span>
     </div>
   );
 }
@@ -325,43 +322,164 @@ function CoverPage({
   );
 }
 
-function ImagePage({
+function ContentPage({
   draft,
   pageNumber,
   pageCount,
-  placement,
-  asset,
+  page,
+  assets,
   onAssetDisplayState,
 }: {
   draft: DesignBookletDraft;
   pageNumber: number;
   pageCount: number;
-  placement: DesignBookletImagePlacement;
-  asset: DesignBookletPreviewAsset;
+  page: DesignBookletImagePage;
+  assets: Record<string, DesignBookletPreviewAsset>;
   onAssetDisplayState: DesignBookletAssetDisplayHandler;
 }) {
+  const layout = resolveDesignBookletContentLayout(page);
+  const images = visibleDesignBookletContentImages(page);
+  const typography = resolveDesignBookletContentTypography(page);
+  const isLight = layout.tone === "light";
   return (
     <article
-      className={`${styles.page} ${styles.imagePage}`}
+      className={`${styles.page} ${styles.standardPage} ${styles.contentPage} ${
+        layout.borderless ? styles.fullBleedContentPage : ""
+      }`}
       data-booklet-page={pageNumber}
       data-page-kind="image"
+      data-content-layout={page.layout}
+      data-content-variant={page.variant}
       aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
       style={BOOKLET_PAGE_STYLE}
     >
-      <DesignBookletPreviewImage
-        className={styles.fullBleedImage}
-        imageStyle={{ ...focalStyle(placement), objectFit: "cover" }}
-        asset={asset}
-        alt={placement.altText}
-        onDisplayState={onAssetDisplayState}
+      {images.map((image, index) => {
+        const frame = layout.imageFrames[index];
+        return (
+          <figure
+            className={styles.contentImageFrame}
+            data-content-image-slot={index + 1}
+            key={image.assetId}
+            style={{
+              left: point(frame.x),
+              top: point(frame.top),
+              width: point(frame.width),
+              height: point(frame.height),
+            }}
+          >
+            <DesignBookletPreviewImage
+              imageStyle={{ ...focalStyle(image), objectFit: "cover" }}
+              asset={assets[image.assetId]}
+              alt={image.altText}
+              showEmptyLabel
+              onDisplayState={onAssetDisplayState}
+            />
+            {image.caption ? (
+              <figcaption
+                style={{
+                  fontSize: point(typography.captionSize),
+                  lineHeight: point(typography.captionLineHeight),
+                }}
+              >
+                {image.caption}
+              </figcaption>
+            ) : null}
+          </figure>
+        );
+      })}
+      {isLight ? (
+        <div className={styles.imageChromeShade} aria-hidden="true" />
+      ) : null}
+      {layout.textFrame ? (
+        <main
+          className={styles.contentCopy}
+          data-content-copy-layout={page.layout}
+          style={{
+            left: point(layout.textFrame.x),
+            top: point(layout.textFrame.top),
+            width: point(layout.textFrame.width),
+            height: point(layout.textFrame.height),
+          }}
+        >
+          {page.content.eyebrow ? (
+            <p
+              className={styles.eyebrow}
+              style={{
+                fontSize: point(typography.eyebrowSize),
+                lineHeight: point(typography.eyebrowLineHeight),
+              }}
+            >
+              {page.content.eyebrow}
+            </p>
+          ) : null}
+          {page.content.headline ? (
+            <h2
+              style={{
+                fontSize: point(typography.headlineSize),
+                lineHeight: point(typography.headlineLineHeight),
+              }}
+            >
+              {page.content.headline}
+            </h2>
+          ) : null}
+          {page.content.body ? (
+            <p
+              className={styles.contentBody}
+              style={{
+                fontSize: point(typography.bodySize),
+                lineHeight: point(typography.bodyLineHeight),
+              }}
+            >
+              {page.content.body}
+            </p>
+          ) : null}
+        </main>
+      ) : null}
+      {layout.sectionFrames
+        ? page.content.sections.map((section, index) => {
+            const frame = layout.sectionFrames?.[index];
+            if (!frame) return null;
+            return (
+              <section
+                className={styles.contentSection}
+                data-content-section={index + 1}
+                key={index}
+                style={{
+                  left: point(frame.x),
+                  top: point(frame.top),
+                  width: point(frame.width),
+                  height: point(frame.height),
+                }}
+              >
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <h3>{section.heading}</h3>
+                  {section.body ? (
+                    <p
+                      style={{
+                        fontSize: point(typography.bodySize),
+                        lineHeight: point(typography.bodyLineHeight),
+                      }}
+                    >
+                      {section.body}
+                    </p>
+                  ) : null}
+                </div>
+              </section>
+            );
+          })
+        : null}
+      <PageHeader
+        pageNumber={pageNumber}
+        label={layout.category === "story" ? "Design story" : layout.category}
+        light={isLight}
+        muted={!isLight}
       />
-      <div className={styles.imageChromeShade} aria-hidden="true" />
-      <PageHeader pageNumber={pageNumber} label="Concept image" light />
       <PageFooter
         pageNumber={pageNumber}
         pageCount={pageCount}
         customerName={draft.customerName}
-        tone="light"
+        tone={isLight ? "light" : "dark"}
       />
     </article>
   );
@@ -401,7 +519,6 @@ function DrawingPage({
       aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
       style={BOOKLET_PAGE_STYLE}
     >
-      <div className={styles.pageTopRule} aria-hidden="true" />
       <main
         className={styles.drawingCanvas}
         style={{
@@ -491,8 +608,8 @@ function DrawingPage({
             className={styles.titleBlockIdentity}
             aria-label="Sanctuary Pergolas"
           >
-            <strong>SANCTUARY</strong>
-            <span>PERGOLAS · ARCHITECTURAL CONCEPT</span>
+            <strong>SANCTUARY PERGOLAS</strong>
+            <span>ARCHITECTURAL CONCEPT</span>
           </div>
           <h2>
             {normalizeDesignBookletSheetTitle(
@@ -573,7 +690,6 @@ function ReviewPage({
       aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
       style={BOOKLET_PAGE_STYLE}
     >
-      <div className={styles.pageTopRule} aria-hidden="true" />
       <figure
         className={styles.reviewImage}
         style={{
@@ -780,12 +896,12 @@ export default function DesignBookletPages({
 
   if (resolvedPage.kind === "image") {
     return (
-      <ImagePage
+      <ContentPage
         draft={draft}
         pageNumber={resolvedPage.pageNumber}
         pageCount={resolvedPage.pageCount}
-        placement={resolvedPage.page.image}
-        asset={assets[resolvedPage.page.image.assetId]}
+        page={resolvedPage.page}
+        assets={assets}
         onAssetDisplayState={onAssetDisplayState}
       />
     );

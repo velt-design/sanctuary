@@ -68,14 +68,14 @@ describe("design booklet page model", () => {
       {
         key: "image-page-2",
         kind: "image",
-        label: "Image 1",
+        label: "Visual 1",
         pageNumber: 3,
         pageCount: 5,
       },
       {
         key: "image-page-1",
         kind: "image",
-        label: "Image 2",
+        label: "Visual 2",
         pageNumber: 4,
         pageCount: 5,
       },
@@ -135,11 +135,17 @@ describe("design booklet page model", () => {
     expect(image).toMatchObject({
       id: "image-page-3",
       kind: "image",
-      image: {
-        assetId: "image-page-3-image",
-        defaultAssetId: "render-1",
-        focalPoint: "center",
-      },
+      layout: "visual-full-bleed",
+      images: [
+        {
+          assetId: "image-page-3-image",
+          defaultAssetId: "render-1",
+          focalPoint: "center",
+        },
+        { assetId: "image-page-3-image-2" },
+        { assetId: "image-page-3-image-3" },
+        { assetId: "image-page-3-image-4" },
+      ],
     });
     expect(drawings).toMatchObject({
       id: "drawing-page-2",
@@ -249,7 +255,7 @@ describe("design booklet page model", () => {
   it("loads only visible drawing slots while retaining reusable slot data", () => {
     const draft = createToniDesignBookletDraft();
 
-    expect(allDesignBookletAssetSources(draft)).toHaveLength(8);
+    expect(allDesignBookletAssetSources(draft)).toHaveLength(14);
     expect(
       renderableDesignBookletAssetSources(draft).map(
         (source) => source.assetId,

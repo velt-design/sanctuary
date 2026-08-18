@@ -1,25 +1,46 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  DESIGN_BOOKLET_CONTENT_LAYOUT_IDS,
+  DESIGN_BOOKLET_CONTENT_VARIANT_IDS,
   DESIGN_BOOKLET_DRAWING_LAYOUT_IDS,
   DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS,
   DESIGN_BOOKLET_FOCAL_POINT_IDS,
+  type DesignBookletContentImage,
+  type DesignBookletContentLayoutId,
   type DesignBookletContentPage,
   type DesignBookletDraft,
   type DesignBookletDrawingItem,
   type DesignBookletDrawingPage,
   type DesignBookletImagePlacement,
+  type DesignBookletImagePage,
 } from "@/lib/designBooklets/types";
+import {
+  DESIGN_BOOKLET_CONTENT_LAYOUTS,
+  visibleDesignBookletContentImages,
+} from "@/lib/designBooklets/contentLayouts";
+import {
+  DESIGN_BOOKLET_CONTENT_VARIANTS,
+  designBookletContentTextWarnings,
+  resolveDesignBookletContentLayout,
+} from "@/lib/designBooklets/contentPresentation";
 import {
   buildDesignBookletRenderModel,
   DESIGN_BOOKLET_DRAWING_LAYOUTS,
   DESIGN_BOOKLET_FOCAL_POINTS,
   DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH,
   DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH,
+  DESIGN_BOOKLET_MAX_CONTENT_BODY_LENGTH,
+  DESIGN_BOOKLET_MAX_CONTENT_CAPTION_LENGTH,
+  DESIGN_BOOKLET_MAX_CONTENT_EYEBROW_LENGTH,
+  DESIGN_BOOKLET_MAX_CONTENT_HEADLINE_LENGTH,
+  DESIGN_BOOKLET_MAX_CONTENT_SECTION_BODY_LENGTH,
+  DESIGN_BOOKLET_MAX_CONTENT_SECTION_HEADING_LENGTH,
   moveDesignBookletDrawing,
   normalizeDesignBookletSheetTitle,
   visibleDesignBookletDrawings,
 } from "@/lib/designBooklets/pageModel";
 import DesignBookletPreviewImage from "./DesignBookletPreviewImage";
+import ContentTypographyControls from "./ContentTypographyControls";
 import type {
   DesignBookletAssetDisplayHandler,
   DesignBookletPreviewAsset,
@@ -31,7 +52,7 @@ type Props = {
   selectedPageKey: string;
   assets: Record<string, DesignBookletPreviewAsset>;
   onSelectPage: (key: string) => void;
-  onAddPage: (kind: "image" | "drawings") => void;
+  onAddPage: (kind: DesignBookletContentLayoutId | "drawings") => void;
   onMovePage: (pageId: string, direction: -1 | 1) => void;
   onRemovePage: (page: DesignBookletContentPage) => void;
   onUpdatePage: (page: DesignBookletContentPage) => void;
@@ -82,6 +103,8 @@ function ImageEditor({
   onReplaceAsset,
   onUseAsCover,
   onAssetDisplayState,
+  caption,
+  onCaptionChange,
 }: {
   eyebrow: string;
   image: DesignBookletImagePlacement;
@@ -91,6 +114,8 @@ function ImageEditor({
   onReplaceAsset: (assetId: string, file: File | undefined) => void;
   onUseAsCover?: () => void;
   onAssetDisplayState: DesignBookletAssetDisplayHandler;
+  caption?: string;
+  onCaptionChange?: (value: string) => void;
 }) {
   return (
     <div className={styles.imageEditor}>
@@ -137,12 +162,65 @@ function ImageEditor({
           />
           <small>Preview accessibility only — not embedded in the PDF.</small>
         </label>
+        {onCaptionChange ? (
+          <label className={styles.field}>
+            <span>Visible caption</span>
+            <input
+              value={caption ?? ""}
+              maxLength={DESIGN_BOOKLET_MAX_CONTENT_CAPTION_LENGTH}
+              placeholder="Optional short caption"
+              onChange={(event) => onCaptionChange(event.target.value)}
+            />
+          </label>
+        ) : null}
         <FocalPointControl
           value={image.focalPoint}
           onChange={(focalPoint) => onChange({ ...image, focalPoint })}
         />
       </div>
     </div>
+  );
+}
+
+function ContentLayoutPreview({
+  page,
+  layoutId,
+  variant = page.variant,
+}: {
+  page: DesignBookletImagePage;
+  layoutId: DesignBookletContentLayoutId;
+  variant?: DesignBookletImagePage["variant"];
+}) {
+  const layout = resolveDesignBookletContentLayout({
+    ...page,
+    layout: layoutId,
+    variant,
+  });
+  return (
+    <span className={styles.layoutPreview} aria-hidden="true">
+      {layout.imageFrames.map((frame, index) => (
+        <span
+          key={index}
+          style={{
+            left: `${(frame.x / 841.89) * 100}%`,
+            top: `${(frame.top / 595.28) * 100}%`,
+            width: `${(frame.width / 841.89) * 100}%`,
+            height: `${(frame.height / 595.28) * 100}%`,
+          }}
+        />
+      ))}
+      {layout.textFrame ? (
+        <span
+          className={styles.layoutTextPreview}
+          style={{
+            left: `${(layout.textFrame.x / 841.89) * 100}%`,
+            top: `${(layout.textFrame.top / 595.28) * 100}%`,
+            width: `${(layout.textFrame.width / 841.89) * 100}%`,
+            height: `${(layout.textFrame.height / 595.28) * 100}%`,
+          }}
+        />
+      ) : null}
+    </span>
   );
 }
 
@@ -313,6 +391,236 @@ function DrawingSlotEditor({
   );
 }
 
+function ContentPageEditor({
+  page,
+  assets,
+  onChange,
+  onReplaceAsset,
+  onUseAsCover,
+  onAssetDisplayState,
+}: {
+  page: DesignBookletImagePage;
+  assets: Record<string, DesignBookletPreviewAsset>;
+  onChange: (page: DesignBookletImagePage) => void;
+  onReplaceAsset: (assetId: string, file: File | undefined) => void;
+  onUseAsCover: (image: DesignBookletImagePlacement) => void;
+  onAssetDisplayState: DesignBookletAssetDisplayHandler;
+}) {
+  const layout = DESIGN_BOOKLET_CONTENT_LAYOUTS[page.layout];
+  const visibleImages = visibleDesignBookletContentImages(page);
+  const warnings = designBookletContentTextWarnings(page);
+
+  function updateImage(index: number, image: DesignBookletContentImage) {
+    const images = page.images.map((candidate, candidateIndex) =>
+      candidateIndex === index ? image : candidate,
+    ) as DesignBookletImagePage["images"];
+    onChange({ ...page, images });
+  }
+
+  return (
+    <div className={styles.contentPageEditor}>
+      <fieldset className={styles.layoutFieldset}>
+        <legend>Page template</legend>
+        <div className={styles.layoutOptions}>
+          {DESIGN_BOOKLET_CONTENT_LAYOUT_IDS.map((layoutId) => {
+            const definition = DESIGN_BOOKLET_CONTENT_LAYOUTS[layoutId];
+            return (
+              <button
+                type="button"
+                key={layoutId}
+                aria-pressed={page.layout === layoutId}
+                onClick={() => onChange({ ...page, layout: layoutId })}
+              >
+                <ContentLayoutPreview page={page} layoutId={layoutId} />
+                <strong>{definition.label}</strong>
+                <span>{definition.description}</span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <fieldset className={styles.layoutFieldset}>
+        <legend>Page framing</legend>
+        <div className={styles.variantOptions}>
+          {DESIGN_BOOKLET_CONTENT_VARIANT_IDS.map((variantId) => {
+            const definition = DESIGN_BOOKLET_CONTENT_VARIANTS[variantId];
+            return (
+              <button
+                type="button"
+                key={variantId}
+                aria-pressed={page.variant === variantId}
+                onClick={() => onChange({ ...page, variant: variantId })}
+              >
+                <ContentLayoutPreview
+                  page={page}
+                  layoutId={page.layout}
+                  variant={variantId}
+                />
+                <span>
+                  <strong>{definition.label}</strong>
+                  <small>{definition.description}</small>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      {layout.textFrame ? (
+        <section className={styles.copyEditor}>
+          <div className={styles.copyEditorHeading}>
+            <strong>Page copy</strong>
+            <span>Text remains attached when you change templates.</span>
+          </div>
+          <label className={styles.field}>
+            <span>Eyebrow</span>
+            <input
+              value={page.content.eyebrow}
+              maxLength={DESIGN_BOOKLET_MAX_CONTENT_EYEBROW_LENGTH}
+              placeholder="Design direction"
+              onChange={(event) =>
+                onChange({
+                  ...page,
+                  content: { ...page.content, eyebrow: event.target.value },
+                })
+              }
+            />
+          </label>
+          <label className={styles.field}>
+            <span>Headline</span>
+            <textarea
+              value={page.content.headline}
+              maxLength={DESIGN_BOOKLET_MAX_CONTENT_HEADLINE_LENGTH}
+              rows={2}
+              placeholder="Add a concise page headline"
+              onChange={(event) =>
+                onChange({
+                  ...page,
+                  content: { ...page.content, headline: event.target.value },
+                })
+              }
+            />
+          </label>
+          <ContentTypographyControls
+            content={page.content}
+            onChange={(content) => onChange({ ...page, content })}
+          />
+          {page.layout !== "information-material-split" ? (
+            <label className={styles.field}>
+              <span>Body copy</span>
+              <textarea
+                value={page.content.body}
+                maxLength={DESIGN_BOOKLET_MAX_CONTENT_BODY_LENGTH}
+                rows={5}
+                placeholder="Add a short explanation of this part of the concept."
+                onChange={(event) =>
+                  onChange({
+                    ...page,
+                    content: { ...page.content, body: event.target.value },
+                  })
+                }
+              />
+            </label>
+          ) : (
+            <div className={styles.materialSectionEditors}>
+              {page.content.sections.map((section, index) => (
+                <section key={index}>
+                  <strong>Material section {index + 1}</strong>
+                  <label className={styles.field}>
+                    <span>Heading</span>
+                    <input
+                      value={section.heading}
+                      maxLength={
+                        DESIGN_BOOKLET_MAX_CONTENT_SECTION_HEADING_LENGTH
+                      }
+                      onChange={(event) => {
+                        const sections = page.content.sections.map(
+                          (candidate, candidateIndex) =>
+                            candidateIndex === index
+                              ? { ...candidate, heading: event.target.value }
+                              : candidate,
+                        ) as DesignBookletImagePage["content"]["sections"];
+                        onChange({
+                          ...page,
+                          content: { ...page.content, sections },
+                        });
+                      }}
+                    />
+                  </label>
+                  <label className={styles.field}>
+                    <span>Copy</span>
+                    <textarea
+                      value={section.body}
+                      maxLength={DESIGN_BOOKLET_MAX_CONTENT_SECTION_BODY_LENGTH}
+                      rows={3}
+                      onChange={(event) => {
+                        const sections = page.content.sections.map(
+                          (candidate, candidateIndex) =>
+                            candidateIndex === index
+                              ? { ...candidate, body: event.target.value }
+                              : candidate,
+                        ) as DesignBookletImagePage["content"]["sections"];
+                        onChange({
+                          ...page,
+                          content: { ...page.content, sections },
+                        });
+                      }}
+                    />
+                  </label>
+                </section>
+              ))}
+            </div>
+          )}
+          {warnings.length ? (
+            <div className={styles.overflowWarning} role="status">
+              <strong>Check the page preview</strong>
+              {warnings.map((warning) => (
+                <span key={warning}>{warning}</span>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : (
+        <p className={styles.retainedCopyNote}>
+          This visual template hides page copy. Your text remains saved if you
+          switch back to a story or information template.
+        </p>
+      )}
+
+      <div className={styles.contentImageEditors}>
+        {visibleImages.map((image, index) => (
+          <ImageEditor
+            key={image.assetId}
+            eyebrow={`Image ${index + 1}`}
+            image={image}
+            asset={assets[image.assetId]}
+            replaceLabel="Replace image"
+            caption={image.caption}
+            onCaptionChange={(caption) =>
+              updateImage(index, { ...image, caption })
+            }
+            onChange={(nextImage) =>
+              updateImage(index, { ...image, ...nextImage })
+            }
+            onReplaceAsset={onReplaceAsset}
+            onUseAsCover={() =>
+              onUseAsCover({
+                assetId: image.assetId,
+                defaultAssetId: image.defaultAssetId,
+                useDefaultAsset: image.useDefaultAsset,
+                altText: image.altText,
+                focalPoint: image.focalPoint,
+              })
+            }
+            onAssetDisplayState={onAssetDisplayState}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DrawingPageEditor({
   page,
   assets,
@@ -472,7 +780,7 @@ export default function BookletPageComposer({
     };
   }, [isAddMenuOpen]);
 
-  function addPage(kind: "image" | "drawings") {
+  function addPage(kind: DesignBookletContentLayoutId | "drawings") {
     onAddPage(kind);
     setIsAddMenuOpen(false);
   }
@@ -511,7 +819,7 @@ export default function BookletPageComposer({
                 <strong>{resolved.label}</strong>
                 <small>
                   {page.kind === "image"
-                    ? "Full-page image"
+                    ? DESIGN_BOOKLET_CONTENT_LAYOUTS[page.layout].label
                     : DESIGN_BOOKLET_DRAWING_LAYOUTS[page.layout].label}
                 </small>
               </button>
@@ -576,9 +884,21 @@ export default function BookletPageComposer({
             id="booklet-add-page-menu"
             aria-label="Choose page type"
           >
-            <button type="button" onClick={() => addPage("image")}>
-              <strong>Image page</strong>
-              <span>One full-page customer render</span>
+            <button type="button" onClick={() => addPage("visual-full-bleed")}>
+              <strong>Visual</strong>
+              <span>Full-bleed or framed customer imagery</span>
+            </button>
+            <button type="button" onClick={() => addPage("story-image-left")}>
+              <strong>Image + story</strong>
+              <span>One image with editable design intent</span>
+            </button>
+            <button type="button" onClick={() => addPage("gallery-hero-two")}>
+              <strong>Gallery</strong>
+              <span>Multiple renders or detail views</span>
+            </button>
+            <button type="button" onClick={() => addPage("information-text")}>
+              <strong>Information</strong>
+              <span>Text-led or two-section material pages</span>
             </button>
             <button type="button" onClick={() => addPage("drawings")}>
               <strong>Drawing page</strong>
@@ -613,14 +933,12 @@ export default function BookletPageComposer({
         ) : null}
 
         {selected.kind === "image" ? (
-          <ImageEditor
-            eyebrow="Full-page image"
-            image={selected.page.image}
-            asset={assets[selected.page.image.assetId]}
-            replaceLabel="Replace image"
-            onChange={(image) => onUpdatePage({ ...selected.page, image })}
+          <ContentPageEditor
+            page={selected.page}
+            assets={assets}
+            onChange={onUpdatePage}
             onReplaceAsset={onReplaceAsset}
-            onUseAsCover={() => onUseAsCover(selected.page.image)}
+            onUseAsCover={onUseAsCover}
             onAssetDisplayState={onAssetDisplayState}
           />
         ) : null}

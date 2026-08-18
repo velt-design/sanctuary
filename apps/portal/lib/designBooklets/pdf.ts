@@ -2,6 +2,11 @@ import "server-only";
 
 import {
   PDFDocument,
+  clip,
+  endPath,
+  popGraphicsState,
+  pushGraphicsState,
+  rectangle,
   type Color,
   type PDFEmbeddedPage,
   type PDFImage,
@@ -22,6 +27,14 @@ import {
   readDesignBookletPdfFont,
 } from "./pdfAssets";
 import { drawDesignBookletDrawingTitleBlock } from "./pdfDrawingTitleBlock";
+import {
+  visibleDesignBookletContentImages,
+  type DesignBookletContentFrame,
+} from "./contentLayouts";
+import {
+  resolveDesignBookletContentLayout,
+  resolveDesignBookletContentTypography,
+} from "./contentPresentation";
 import {
   addDesignBookletPage as addPage,
   DESIGN_BOOKLET_PDF_COLORS,
@@ -225,23 +238,11 @@ function drawBrandAt(
   color: Color = colors.ink,
 ) {
   const primarySize = presentation.chrome.header.brandPrimarySize;
-  const secondarySize = presentation.chrome.header.brandSecondarySize;
-  drawTrackedText(page, "SANCTUARY", {
+  drawTrackedText(page, "SANCTUARY PERGOLAS", {
     x,
     y,
     size: primarySize,
     font: fonts.brand,
-    color,
-    tracking: 0.08,
-  });
-  drawTrackedText(page, "PERGOLAS", {
-    x,
-    y:
-      y -
-      (presentation.chrome.header.brandSecondaryBaseline -
-        presentation.chrome.header.brandPrimaryBaseline),
-    size: secondarySize,
-    font: fonts.medium,
     color,
     tracking: 0.08,
   });
@@ -463,6 +464,268 @@ function renderCover(
   drawFooter(page, pageNumber, pageCount, draft.customerName, fonts, "light");
 }
 
+function contentFrameToPdf(frame: DesignBookletContentFrame) {
+  return {
+    x: frame.x,
+    y: pdfYFromTop(frame.top, frame.height),
+    width: frame.width,
+    height: frame.height,
+  };
+}
+
+function drawContentCaption(
+  page: PDFPage,
+  fonts: Fonts,
+  value: string,
+  frame: { x: number; y: number; width: number; height: number },
+  light: boolean,
+  size: number,
+  lineHeight: number,
+) {
+  const caption = safePdfText(value).toUpperCase();
+  if (!caption) return;
+  const paddingX = 5;
+  const height = lineHeight + 7.5;
+  const width = Math.min(
+    frame.width - 16,
+    designBookletPdfTextWidth(caption, fonts.semibold, size, 0.06) +
+      paddingX * 2,
+  );
+  const x = frame.x + 8;
+  const y = frame.y + (light ? 48 : 8);
+  page.drawRectangle({
+    x,
+    y,
+    width,
+    height,
+    color: light ? colors.ink : colors.canvas,
+    opacity: light ? 0.68 : 0.92,
+  });
+  drawTrackedText(page, caption, {
+    x: x + paddingX,
+    y: y + (height - size) / 2 + 0.9,
+    size,
+    font: fonts.semibold,
+    color: light ? white : colors.ink,
+    tracking: 0.06,
+  });
+}
+
+function withPdfClip(
+  page: PDFPage,
+  frame: { x: number; y: number; width: number; height: number },
+  draw: () => void,
+) {
+  page.pushOperators(
+    pushGraphicsState(),
+    rectangle(frame.x, frame.y, frame.width, frame.height),
+    clip(),
+    endPath(),
+  );
+  draw();
+  page.pushOperators(popGraphicsState());
+}
+
+function drawContentCopy(
+  page: PDFPage,
+  fonts: Fonts,
+  contentPage: DesignBookletImagePage,
+  frame: DesignBookletContentFrame,
+) {
+  const { content } = contentPage;
+  const typography = resolveDesignBookletContentTypography(contentPage);
+  const eyebrowSize = typography.eyebrowSize;
+  const eyebrowLineHeight = typography.eyebrowLineHeight;
+  const eyebrowBaseline =
+    frame.top + designBookletCssBaselineOffset(eyebrowSize, eyebrowLineHeight);
+  if (content.eyebrow) {
+    drawEyebrow(
+      page,
+      content.eyebrow,
+      frame.x,
+      pdfYFromTopBaseline(eyebrowBaseline),
+      fonts,
+      colors.accent,
+      eyebrowSize,
+      0.15,
+    );
+  }
+  const copyTop = frame.top + (content.eyebrow ? eyebrowLineHeight + 11 : 0);
+
+  if (contentPage.layout === "story-image-top") {
+    const gap = 34;
+    const headlineWidth = frame.width * 0.42 - gap / 2;
+    const bodyX = frame.x + frame.width * 0.42 + gap / 2;
+    const bodyWidth = frame.width * 0.58 - gap / 2;
+    if (content.headline) {
+      drawWrappedText(page, content.headline, {
+        x: frame.x,
+        y: pdfYFromTopBaseline(
+          copyTop +
+            designBookletCssBaselineOffset(
+              typography.headlineSize,
+              typography.headlineLineHeight,
+              "display",
+            ),
+        ),
+        width: headlineWidth,
+        font: fonts.display,
+        size: typography.headlineSize,
+        lineHeight: typography.headlineLineHeight,
+        maxLines: Math.max(
+          1,
+          Math.min(
+            3,
+            Math.floor(
+              (frame.top + frame.height - copyTop) /
+                typography.headlineLineHeight,
+            ),
+          ),
+        ),
+        tracking: -0.045,
+      });
+    }
+    if (content.body) {
+      drawWrappedText(page, content.body, {
+        x: bodyX,
+        y: pdfYFromTopBaseline(
+          copyTop +
+            designBookletCssBaselineOffset(
+              typography.bodySize,
+              typography.bodyLineHeight,
+            ),
+        ),
+        width: bodyWidth,
+        font: fonts.regular,
+        size: typography.bodySize,
+        lineHeight: typography.bodyLineHeight,
+        maxLines: Math.max(
+          1,
+          Math.floor(frame.height / typography.bodyLineHeight),
+        ),
+        color: colors.muted,
+      });
+    }
+    return;
+  }
+
+  let nextTop = copyTop;
+  if (content.headline) {
+    const headlineLines = designBookletPdfTextLines(
+      safePdfText(content.headline),
+      fonts.display,
+      typography.headlineSize,
+      frame.width,
+      -0.045,
+    ).slice(
+      0,
+      Math.max(
+        1,
+        Math.min(
+          3,
+          Math.floor(
+            (frame.top + frame.height - nextTop) /
+              typography.headlineLineHeight,
+          ),
+        ),
+      ),
+    );
+    drawWrappedText(page, content.headline, {
+      x: frame.x,
+      y: pdfYFromTopBaseline(
+        nextTop +
+          designBookletCssBaselineOffset(
+            typography.headlineSize,
+            typography.headlineLineHeight,
+            "display",
+          ),
+      ),
+      width: frame.width,
+      font: fonts.display,
+      size: typography.headlineSize,
+      lineHeight: typography.headlineLineHeight,
+      maxLines: Math.max(1, headlineLines.length),
+      tracking: -0.045,
+    });
+    nextTop +=
+      Math.max(1, headlineLines.length) * typography.headlineLineHeight + 18;
+  }
+  if (content.body && nextTop < frame.top + frame.height) {
+    drawWrappedText(page, content.body, {
+      x: frame.x,
+      y: pdfYFromTopBaseline(
+        nextTop +
+          designBookletCssBaselineOffset(
+            typography.bodySize,
+            typography.bodyLineHeight,
+          ),
+      ),
+      width: frame.width,
+      font: fonts.regular,
+      size: typography.bodySize,
+      lineHeight: typography.bodyLineHeight,
+      maxLines: Math.max(
+        1,
+        Math.floor(
+          (frame.top + frame.height - nextTop) / typography.bodyLineHeight,
+        ),
+      ),
+      color: colors.muted,
+    });
+  }
+}
+
+function drawContentSection(
+  page: PDFPage,
+  fonts: Fonts,
+  section: { heading: string; body: string },
+  frame: DesignBookletContentFrame,
+  index: number,
+  bodySize: number,
+  bodyLineHeight: number,
+) {
+  const topRuleY = PAGE_HEIGHT - frame.top;
+  drawRule(page, frame.x, topRuleY, frame.width, colors.ruleStrong, 0.65);
+  const top = frame.top + 11;
+  const textX = frame.x + 37;
+  drawEyebrow(
+    page,
+    String(index + 1).padStart(2, "0"),
+    frame.x,
+    pdfYFromTopBaseline(top + 6),
+    fonts,
+    colors.accent,
+    6,
+    0.12,
+  );
+  if (section.heading) {
+    drawWrappedText(page, section.heading, {
+      x: textX,
+      y: pdfYFromTopBaseline(top + 10),
+      width: frame.width - 37,
+      font: fonts.display,
+      size: 13,
+      lineHeight: 14,
+      maxLines: 2,
+      tracking: -0.045,
+    });
+  }
+  if (section.body) {
+    drawWrappedText(page, section.body, {
+      x: textX,
+      y: pdfYFromTopBaseline(
+        top + 31 + designBookletCssBaselineOffset(bodySize, bodyLineHeight),
+      ),
+      width: frame.width - 37,
+      font: fonts.regular,
+      size: bodySize,
+      lineHeight: bodyLineHeight,
+      maxLines: Math.max(1, Math.floor((frame.height - 42) / bodyLineHeight)),
+      color: colors.muted,
+    });
+  }
+}
+
 function renderImagePage(
   context: PdfRenderContext,
   resolvedPage: {
@@ -472,37 +735,90 @@ function renderImagePage(
   },
 ) {
   const { pdf, fonts, draft, images } = context;
-  const page = addPage(pdf);
-  const placement = resolvedPage.page.image;
-  drawFullBleedImage(page, optionalImage(images, placement.assetId), placement);
+  const pdfPage = addPage(pdf);
+  const contentPage = resolvedPage.page;
+  const layout = resolveDesignBookletContentLayout(contentPage);
+  const typography = resolveDesignBookletContentTypography(contentPage);
+  const isLight = layout.tone === "light";
 
-  page.drawImage(context.overlays.imagePage, {
-    x: 0,
-    y: 0,
-    width: PAGE_WIDTH,
-    height: PAGE_HEIGHT,
+  visibleDesignBookletContentImages(contentPage).forEach((placement, index) => {
+    const frame = contentFrameToPdf(layout.imageFrames[index]);
+    const image = optionalImage(images, placement.assetId);
+    if (image) {
+      drawImageCover(pdfPage, image, frame, placementFocus(placement));
+    } else {
+      pdfPage.drawRectangle({ ...frame, color: colors.accent });
+    }
+    if (!layout.borderless) {
+      pdfPage.drawRectangle({
+        ...frame,
+        borderColor: colors.ruleStrong,
+        borderWidth: 0.45,
+      });
+    }
+    drawContentCaption(
+      pdfPage,
+      fonts,
+      placement.caption,
+      frame,
+      isLight,
+      typography.captionSize,
+      typography.captionLineHeight,
+    );
   });
+
+  if (isLight) {
+    pdfPage.drawImage(context.overlays.imagePage, {
+      x: 0,
+      y: 0,
+      width: PAGE_WIDTH,
+      height: PAGE_HEIGHT,
+    });
+  }
+  if (layout.textFrame) {
+    withPdfClip(pdfPage, contentFrameToPdf(layout.textFrame), () =>
+      drawContentCopy(pdfPage, fonts, contentPage, layout.textFrame!),
+    );
+  }
+  if (layout.sectionFrames) {
+    contentPage.content.sections.forEach((section, index) => {
+      const sectionFrame = layout.sectionFrames![index];
+      withPdfClip(pdfPage, contentFrameToPdf(sectionFrame), () =>
+        drawContentSection(
+          pdfPage,
+          fonts,
+          section,
+          sectionFrame,
+          index,
+          typography.bodySize,
+          typography.bodyLineHeight,
+        ),
+      );
+    });
+  }
   drawBrandAt(
-    page,
+    pdfPage,
     fonts,
     DESIGN_BOOKLET_PDF_LEFT,
     pdfYFromTopBaseline(presentation.chrome.header.brandPrimaryBaseline),
-    white,
+    isLight ? white : colors.ink,
   );
   drawRightLabel(
-    page,
+    pdfPage,
     fonts,
-    `Concept image / ${String(resolvedPage.pageNumber).padStart(2, "0")}`,
+    `${layout.category === "story" ? "Design story" : layout.category} / ${String(
+      resolvedPage.pageNumber,
+    ).padStart(2, "0")}`,
     pdfYFromTopBaseline(presentation.chrome.header.labelBaseline),
-    white,
+    isLight ? white : colors.muted,
   );
   drawFooter(
-    page,
+    pdfPage,
     resolvedPage.pageNumber,
     resolvedPage.pageCount,
     draft.customerName,
     fonts,
-    "light",
+    isLight ? "light" : "dark",
   );
 }
 
@@ -676,14 +992,6 @@ function renderReview(
     height: PAGE_HEIGHT,
     color: colors.canvas,
   });
-  page.drawRectangle({
-    x: 0,
-    y: PAGE_HEIGHT - presentation.chrome.topRuleHeight,
-    width: PAGE_WIDTH,
-    height: presentation.chrome.topRuleHeight,
-    color: colors.accent,
-  });
-
   const copyX = presentation.review.copy.x;
   const copyWidth = presentation.review.copy.width;
   drawBrandAt(

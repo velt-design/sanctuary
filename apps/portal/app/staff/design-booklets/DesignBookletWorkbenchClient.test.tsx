@@ -62,6 +62,17 @@ function setInputValue(input: HTMLInputElement, value: string) {
   });
 }
 
+function setTextareaValue(textarea: HTMLTextAreaElement, value: string) {
+  act(() => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set?.call(textarea, value);
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    textarea.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
 function pageRailButtons(container: ParentNode): HTMLButtonElement[] {
   return Array.from(container.querySelectorAll("[data-booklet-page-select]"));
 }
@@ -93,8 +104,8 @@ describe("DesignBookletWorkbenchClient", () => {
     expect(railButtons).toHaveLength(5);
     expect(railButtons.map(compactText)).toEqual([
       "01 Cover",
-      "02 Image 1",
-      "03 Image 2",
+      "02 Visual 1",
+      "03 Visual 2",
       "04 PROPOSED ROOF PLAN",
       "05 Review",
     ]);
@@ -137,7 +148,7 @@ describe("DesignBookletWorkbenchClient", () => {
     const rendered = renderWorkbench();
 
     click(buttonContaining(rendered.container, "Add page"));
-    click(buttonContaining(rendered.container, "Image page"));
+    click(buttonContaining(rendered.container, "Full-bleed or framed"));
     expect(pageRailButtons(rendered.container)).toHaveLength(6);
     expect(
       rendered.container.querySelector('[data-page-kind="image"]'),
@@ -163,11 +174,11 @@ describe("DesignBookletWorkbenchClient", () => {
     );
     expect(pageRailButtons(rendered.container).map(compactText)).toEqual([
       "01 Cover",
-      "02 Image 1",
-      "03 Image 2",
+      "02 Visual 1",
+      "03 Visual 2",
       "04 PROPOSED ROOF PLAN",
       "05 CONCEPT DRAWINGS",
-      "06 Image 3",
+      "06 Visual 3",
       "07 Review",
     ]);
 
@@ -177,10 +188,10 @@ describe("DesignBookletWorkbenchClient", () => {
     click(secondImageCard?.querySelector('[aria-label^="Remove "]'));
     expect(pageRailButtons(rendered.container).map(compactText)).toEqual([
       "01 Cover",
-      "02 Image 1",
+      "02 Visual 1",
       "03 PROPOSED ROOF PLAN",
       "04 CONCEPT DRAWINGS",
-      "05 Image 2",
+      "05 Visual 2",
       "06 Review",
     ]);
     expect(
@@ -208,6 +219,80 @@ describe("DesignBookletWorkbenchClient", () => {
     ).toBeNull();
     expect(document.activeElement).toBe(addPageButton);
 
+    rendered.unmount();
+  });
+
+  it("keeps page copy and reusable image slots when switching templates", () => {
+    const rendered = renderWorkbench();
+    click(buttonContaining(rendered.container, "Add page"));
+    click(buttonContaining(rendered.container, "editable design intent"));
+
+    const headline = rendered.container.querySelector(
+      'textarea[placeholder="Add a concise page headline"]',
+    ) as HTMLTextAreaElement;
+    setTextareaValue(headline, "Living beneath the pitched form");
+    expect(
+      rendered.container.querySelector('[data-page-kind="image"] h2')
+        ?.textContent,
+    ).toBe("Living beneath the pitched form");
+
+    click(buttonContaining(rendered.container, "Story + image right"));
+    expect(
+      rendered.container
+        .querySelector('[data-page-kind="image"]')
+        ?.getAttribute("data-content-layout"),
+    ).toBe("story-image-right");
+    expect(
+      (
+        rendered.container.querySelector(
+          'textarea[placeholder="Add a concise page headline"]',
+        ) as HTMLTextAreaElement
+      ).value,
+    ).toBe("Living beneath the pitched form");
+    expect(
+      rendered.container.querySelectorAll("[data-content-image-slot]"),
+    ).toHaveLength(1);
+
+    click(buttonContaining(rendered.container, "Gallery margin"));
+    expect(
+      rendered.container
+        .querySelector('[data-page-kind="image"]')
+        ?.getAttribute("data-content-variant"),
+    ).toBe("gallery");
+    const headlineScale = rendered.container.querySelector(
+      'input[aria-label="Headline scale"]',
+    ) as HTMLInputElement;
+    setInputValue(headlineScale, "400");
+    expect(rendered.container.querySelector("output")?.textContent).toBe(
+      "400%",
+    );
+    expect(
+      (
+        rendered.container.querySelector(
+          '[data-page-kind="image"] h2',
+        ) as HTMLElement
+      ).style.fontSize,
+    ).toContain("124");
+
+    click(buttonContaining(rendered.container, "Two-section materials"));
+    expect(
+      rendered.container.querySelectorAll("[data-content-section]"),
+    ).toHaveLength(2);
+    expect(rendered.container.textContent).toContain(
+      "Living beneath the pitched form",
+    );
+    expect(
+      (
+        rendered.container.querySelector(
+          'input[aria-label="Headline scale"]',
+        ) as HTMLInputElement
+      ).value,
+    ).toBe("400");
+    expect(
+      rendered.container
+        .querySelector('[data-page-kind="image"]')
+        ?.getAttribute("data-content-variant"),
+    ).toBe("gallery");
     rendered.unmount();
   });
 

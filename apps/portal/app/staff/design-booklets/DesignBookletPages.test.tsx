@@ -10,9 +10,20 @@ import {
   DESIGN_BOOKLET_REVIEW_COPY,
 } from "@/lib/designBooklets/pageModel";
 import { DESIGN_BOOKLET_PRESENTATION } from "@/lib/designBooklets/presentation";
+import { DESIGN_BOOKLET_CONTENT_LAYOUTS } from "@/lib/designBooklets/contentLayouts";
+import {
+  resolveDesignBookletContentLayout,
+  resolveDesignBookletContentTypography,
+} from "@/lib/designBooklets/contentPresentation";
 import type {
+  DesignBookletContentLayoutId,
+  DesignBookletContentVariantId,
   DesignBookletDraft,
   DesignBookletDrawingLayoutId,
+} from "@/lib/designBooklets/types";
+import {
+  DESIGN_BOOKLET_CONTENT_LAYOUT_IDS,
+  DESIGN_BOOKLET_CONTENT_VARIANT_IDS,
 } from "@/lib/designBooklets/types";
 import DesignBookletPages from "./DesignBookletPages";
 import type { DesignBookletPreviewAsset } from "./previewAssets";
@@ -87,8 +98,8 @@ describe("DesignBookletPages", () => {
     const imagePage = draft.contentPages.find((page) => page.kind === "image");
     expect(imagePage?.kind).toBe("image");
     if (!imagePage || imagePage.kind !== "image") return;
-    imagePage.image = {
-      ...imagePage.image,
+    imagePage.images[0] = {
+      ...imagePage.images[0],
       focalPoint: "bottom-right",
     };
     const rendered = renderPage(draft, imagePage.id);
@@ -100,11 +111,102 @@ describe("DesignBookletPages", () => {
     expect(page?.querySelector("header")).not.toBeNull();
     expect(page?.querySelector("footer")).not.toBeNull();
     expect(page?.querySelector("main")).toBeNull();
-    expect(page?.querySelector("figure")).toBeNull();
+    expect(page?.querySelectorAll("figure")).toHaveLength(1);
     expect(page?.querySelector("h1, h2, h3, figcaption")).toBeNull();
-    expect(page?.textContent).toContain("CONCEPT IMAGE / 02");
+    expect(page?.textContent).toContain("VISUAL / 02");
     expect(page?.textContent).toContain("02 / 05");
 
+    rendered.unmount();
+  });
+
+  it.each(
+    DESIGN_BOOKLET_CONTENT_LAYOUT_IDS.flatMap((layout) =>
+      DESIGN_BOOKLET_CONTENT_VARIANT_IDS.map(
+        (variant) => [layout, variant] as const,
+      ),
+    ),
+  )(
+    "renders the %s content template with %s framing from the shared geometry",
+    (
+      layoutId: DesignBookletContentLayoutId,
+      variant: DesignBookletContentVariantId,
+    ) => {
+      const draft = createToniDesignBookletDraft();
+      const imagePage = draft.contentPages.find(
+        (page) => page.kind === "image",
+      );
+      if (!imagePage || imagePage.kind !== "image") {
+        throw new Error("The fixture requires an image page.");
+      }
+      imagePage.layout = layoutId;
+      imagePage.variant = variant;
+      imagePage.content = {
+        ...imagePage.content,
+        eyebrow: "Design direction",
+        headline: "A composed outdoor room",
+        body: "A concise explanation that remains with the page when its template changes.",
+        sections: [
+          { heading: "Acrylic roof", body: "Light roofing section copy." },
+          {
+            heading: "COLORSTEEL roof + timber ceiling",
+            body: "Lined roofing section copy.",
+          },
+        ],
+      };
+      imagePage.images.forEach((image, index) => {
+        image.caption = `View ${index + 1}`;
+      });
+
+      const rendered = renderPage(draft, imagePage.id);
+      const page = rendered.container.querySelector('[data-page-kind="image"]');
+      const definition = DESIGN_BOOKLET_CONTENT_LAYOUTS[layoutId];
+      expect(page?.getAttribute("data-content-layout")).toBe(layoutId);
+      expect(page?.getAttribute("data-content-variant")).toBe(variant);
+      expect(page?.querySelectorAll("[data-content-image-slot]")).toHaveLength(
+        definition.slotCount,
+      );
+      expect(page?.querySelectorAll("figcaption")).toHaveLength(
+        definition.slotCount,
+      );
+      expect(Boolean(page?.querySelector("main"))).toBe(
+        Boolean(definition.textFrame),
+      );
+      expect(page?.querySelectorAll("[data-content-section]")).toHaveLength(
+        definition.sectionFrames ? 2 : 0,
+      );
+      expect(page?.querySelector("header strong")?.textContent).toBe(
+        "SANCTUARY PERGOLAS",
+      );
+      expect(page?.querySelector('[class*="pageTopRule"]')).toBeNull();
+      rendered.unmount();
+    },
+  );
+
+  it("applies the same resolved geometry and 400% headline scale as the PDF contract", () => {
+    const draft = createToniDesignBookletDraft();
+    const imagePage = draft.contentPages.find((page) => page.kind === "image");
+    if (!imagePage || imagePage.kind !== "image") {
+      throw new Error("The fixture requires an image page.");
+    }
+    imagePage.layout = "story-image-left";
+    imagePage.variant = "gallery";
+    imagePage.content.headline = "FORM";
+    imagePage.content.headlineScale = 400;
+
+    const resolvedLayout = resolveDesignBookletContentLayout(imagePage);
+    const typography = resolveDesignBookletContentTypography(imagePage);
+    const rendered = renderPage(draft, imagePage.id);
+    const imageFrame = rendered.container.querySelector(
+      "[data-content-image-slot]",
+    ) as HTMLElement;
+    const headline = rendered.container.querySelector(
+      '[data-page-kind="image"] h2',
+    ) as HTMLElement;
+
+    expect(imageFrame.style.left).toBe(point(resolvedLayout.imageFrames[0].x));
+    expect(imageFrame.style.top).toBe(point(resolvedLayout.imageFrames[0].top));
+    expect(headline.style.fontSize).toBe(point(typography.headlineSize));
+    expect(typography.headlineSize).toBe(124);
     rendered.unmount();
   });
 

@@ -7,9 +7,15 @@ import type {
   DesignBookletDrawingLayoutId,
   DesignBookletDrawingPage,
   DesignBookletDrawingTitle,
+  DesignBookletContentLayoutId,
   DesignBookletFocalPointId,
   DesignBookletImagePage,
 } from "./types";
+import {
+  DESIGN_BOOKLET_CONTENT_LAYOUTS,
+  visibleDesignBookletContentImages,
+} from "./contentLayouts";
+import { defaultDesignBookletContentVariant } from "./contentPresentation";
 
 export const DESIGN_BOOKLET_MAX_CONTENT_PAGES = 24;
 export const DESIGN_BOOKLET_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
@@ -17,6 +23,12 @@ export const DESIGN_BOOKLET_MAX_PDF_BYTES = 20 * 1024 * 1024;
 export const DESIGN_BOOKLET_MAX_PDF_PAGES = 50;
 export const DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH = 80;
 export const DESIGN_BOOKLET_MAX_DRAWING_REVISION_LENGTH = 12;
+export const DESIGN_BOOKLET_MAX_CONTENT_EYEBROW_LENGTH = 60;
+export const DESIGN_BOOKLET_MAX_CONTENT_HEADLINE_LENGTH = 140;
+export const DESIGN_BOOKLET_MAX_CONTENT_BODY_LENGTH = 900;
+export const DESIGN_BOOKLET_MAX_CONTENT_CAPTION_LENGTH = 120;
+export const DESIGN_BOOKLET_MAX_CONTENT_SECTION_HEADING_LENGTH = 80;
+export const DESIGN_BOOKLET_MAX_CONTENT_SECTION_BODY_LENGTH = 420;
 export const DESIGN_BOOKLET_DRAWING_STATUS =
   "Concept design — not for construction";
 
@@ -206,15 +218,27 @@ export function buildDesignBookletRenderModel(
   draft: DesignBookletDraft,
 ): ResolvedDesignBookletPage[] {
   const pageCount = draft.contentPages.length + 2;
-  let imageNumber = 0;
   let drawingNumber = 0;
+  const categoryNumbers = {
+    visual: 0,
+    gallery: 0,
+    story: 0,
+    information: 0,
+  };
   const content = draft.contentPages.map((page, index) => {
     if (page.kind === "image") {
-      imageNumber += 1;
+      const definition = DESIGN_BOOKLET_CONTENT_LAYOUTS[page.layout];
+      categoryNumbers[definition.category] += 1;
+      const categoryLabel =
+        definition.category === "story"
+          ? "Story"
+          : definition.category[0].toUpperCase() + definition.category.slice(1);
       return {
         key: page.id,
         kind: "image",
-        label: `Image ${imageNumber}`,
+        label:
+          page.content.headline.trim() ||
+          `${categoryLabel} ${categoryNumbers[definition.category]}`,
         pageNumber: index + 2,
         pageCount,
         page,
@@ -258,7 +282,7 @@ export function allDesignBookletAssetSources(
     draft.cover,
     ...draft.contentPages.flatMap((page) =>
       page.kind === "image"
-        ? [page.image]
+        ? page.images
         : page.drawings.map((drawing) => drawing.image),
     ),
     draft.reviewPage.image,
@@ -272,7 +296,7 @@ export function renderableDesignBookletAssetSources(
     draft.cover,
     ...draft.contentPages.flatMap((page) =>
       page.kind === "image"
-        ? [page.image]
+        ? visibleDesignBookletContentImages(page)
         : visibleDesignBookletDrawings(page).map((drawing) => drawing.image),
     ),
     draft.reviewPage.image,
@@ -300,7 +324,7 @@ function existingPageAndAssetIds(
     ...pages.map((page) => page.id),
     ...pages.flatMap((page) =>
       page.kind === "image"
-        ? [page.image.assetId]
+        ? page.images.map((image) => image.assetId)
         : page.drawings.flatMap((drawing) => [
             drawing.id,
             drawing.image.assetId,
@@ -317,18 +341,62 @@ export function createDesignBookletImagePage(
     alt: string;
     useDefaultAsset?: boolean;
   },
+  layout: DesignBookletContentLayoutId = "visual-full-bleed",
 ): DesignBookletImagePage {
   const currentIds = existingPageAndAssetIds(pages);
   const id = nextAvailableId("image-page", currentIds);
+  const images = Array.from({ length: 4 }, (_, index) => ({
+    assetId: index === 0 ? `${id}-image` : `${id}-image-${index + 1}`,
+    defaultAssetId: defaultAsset.id,
+    useDefaultAsset: defaultAsset.useDefaultAsset,
+    altText: `${defaultAsset.alt}${index === 0 ? "" : ` ${index + 1}`}`,
+    focalPoint: "center" as const,
+    caption: "",
+  })) as DesignBookletImagePage["images"];
+  const isMaterialLayout = layout === "information-material-split";
+  const isInformationLayout = layout === "information-text";
+  const isStoryLayout =
+    DESIGN_BOOKLET_CONTENT_LAYOUTS[layout].category === "story";
   return {
     id,
     kind: "image",
-    image: {
-      assetId: `${id}-image`,
-      defaultAssetId: defaultAsset.id,
-      useDefaultAsset: defaultAsset.useDefaultAsset,
-      altText: defaultAsset.alt,
-      focalPoint: "center",
+    layout,
+    variant: defaultDesignBookletContentVariant(layout),
+    images,
+    content: {
+      eyebrow: isMaterialLayout
+        ? "Material palette"
+        : isInformationLayout
+          ? "Design notes"
+          : isStoryLayout
+            ? "Design direction"
+            : "",
+      headline: isMaterialLayout
+        ? "Roofing materials"
+        : isInformationLayout
+          ? "A considered outdoor space"
+          : isStoryLayout
+            ? "The design story"
+            : "",
+      body: "",
+      headlineSize: "standard",
+      bodySize: "standard",
+      headlineScale: 100,
+      bodyScale: 100,
+      eyebrowScale: 100,
+      captionScale: 100,
+      sections: [
+        {
+          heading: isMaterialLayout ? "Acrylic roof" : "Section one",
+          body: "",
+        },
+        {
+          heading: isMaterialLayout
+            ? "COLORSTEEL roof + timber ceiling"
+            : "Section two",
+          body: "",
+        },
+      ],
     },
   };
 }
