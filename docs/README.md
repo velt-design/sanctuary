@@ -56,6 +56,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | `code-retirement-and-bloat-control.md` | Active guardrail | You are deleting code, removing dependencies, retiring old compatibility paths, or triaging unused-code reports. |
 | `platform-workflow.md` | Current | You need to understand lead, project, estimate, quote, invoice, design, schedule, or running-job flow. |
 | `environment-auth-supabase.md` | Current | You need env vars, Supabase auth, role access, migrations, or schema readiness. |
+| `staging-supabase-readiness.md` | Current staging evidence | You need the staging project identity, exact applied migration hashes, rollback/postflight evidence, ledger exceptions, or deterministic QA-data controls. |
 | `supabase-schema-map.md` | Current | You are touching Supabase tables, RPCs, migrations, RLS/grants, route write paths, or schema ownership. |
 | `staff-api-auth-contracts.md` | Current | You are touching staff/admin/public-token API routes, route auth helpers, Supabase client boundaries, diagnostics, or response conventions. |
 | `automation-email-audit.md` | Current | You are touching automation events, project tasks, follow-ups, email outbox, email previews, audit events, or marketing enquiry email side effects. |
