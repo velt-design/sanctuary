@@ -34,6 +34,7 @@ Read this file first, then follow links into `docs/README.md`. For non-trivial o
 - `apps/marketing`: public site, enquiry flows, public quote and invoice routes, analytics and consent.
 - `apps/portal`: staff portal, authenticated project workflow, estimates, quotes, invoices, schedule, running jobs, design list, job packs, admin.
 - `apps/worker`: dedicated Node background worker; dark by default, RPC-only against the durable job boundary, and independent of Next.js/browser code.
+- `packages/ai`: only source of truth for provider-neutral AI task, registry, approval, provenance, artifact, usage, evaluation, and node contracts; no provider SDKs, persistence, UI, secrets, or business-domain implementation.
 - `packages/configurator`: only source of truth for the versioned customer pergola intent contract, strict parsing, normalization, deterministic serialization, migrations, customer-safe defaults/summaries, and typed patch/seed contracts.
 - `packages/costing`: only source of truth for costing engine and base config.
 - `packages/email-provider`: only source of truth for Resend transport, frozen-request hashing, provider idempotency, timeout, and webhook-signature verification.
@@ -55,6 +56,7 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 - Resend wire calls, provider idempotency keys, frozen-request hashes, and webhook signature verification must come from `@sp/email-provider`; application email modules stay thin adapters.
 - Geometry imports should use `@sp/geometry` or portal drawing adapters; keep compatibility paths explicit.
 - Durable background-job kinds, worker-safe runtime contracts, retry policy, and transition policy must come from `@sp/jobs`. The worker uses the explicit service-role RPC adapter only; do not infer an enabled producer, domain handler, or rollout from the worker package, registry, or migrations.
+- Shared AI contracts must come from `@sp/ai`. Apps, workers, nodes, and provider adapters may consume them but must not add provider credentials, database clients, UI, raw private payloads, or business-domain execution to the package.
 - Portal staff/admin APIs should use auth-bound server clients and `requireStaffSession` or `requireAdminSession`.
 - Service-role Supabase access is reserved for server-owned flows, admin tooling, imports, public token flows, and automation.
 - Browser UI should use API/query/local-first layers rather than direct Supabase table reads.

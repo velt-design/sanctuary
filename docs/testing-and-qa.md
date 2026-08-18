@@ -492,6 +492,8 @@ npm run schedule:bundle-budget
 
 Configurator contract changes should run `npm run test:configurator`, `npm run packages:guard` and `npm run typecheck`. The focused package suite covers the strict parser table, exact V1 invariants, canonical default and serialization, normalization, typed patches/seeds, customer-safe summary, migration/corrupt-data handling, unknown future-version preservation, and both Node and jsdom imports through `@sp/configurator/core`.
 
+Sanctuary AI contract changes should run `npm run test:ai`, `npm run packages:guard` and `npm run typecheck`. The focused package suite covers strict V1 task/event, registry, approval, provenance, artifact, usage/evaluation and node parsing; exact approval and node invariants; unknown-field rejection; and the no-runtime-dependency boundary. It performs no model call, database access, or production effect.
+
 `npm run worktree:status` is an advisory ownership report for dirty worktrees and parallel lanes. Use `WORKTREE_OWNER_PATTERNS` with comma-separated path globs to declare the current task's owned paths. `npm run worktree:changed` is the focused handoff form. `npm run worktree:changed:strict` fails when dirty files exist without declared owner patterns, when files are outside the declared lane, or when deleted/missing paths need explicit owner confirmation. These commands are not part of `npm run lint`.
 
 `npm run architecture:changed` is the recommended advisory handoff sweep for non-trivial work. It runs `worktree:changed` first, then `dead-code:changed`, `files:changed`, `root:compat:changed`, `browser:supabase:changed`, and `service-role:changed` with section headers, while leaving each focused report as the canonical source of its own handoff cues. It is not part of `npm run lint`.
