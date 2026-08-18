@@ -34,6 +34,8 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | `agent-centric-portal-plan.md` | Active roadmap | You are improving agent access, portal fixture coverage, debug exports, browser evidence, route smoke coverage, or quality ratchets. |
 | `portal-ux-roadmap.md` | Active roadmap | You are planning or prioritising portal usability work, workflow polish, visual hierarchy, or staff UX improvements. |
 | `ai/README.md` | Active routing page | You need Sanctuary AI programme status, document authority, or the correct AI strategy/architecture entrypoint. |
+| `ai/00-vision.md` | Accepted strategic target | You need the Sanctuary AI constitution, initial topology, capability boundary, or autonomy rule. |
+| `ai/09-decisions/README.md` | Decision record index | You need accepted Sanctuary AI architecture decisions, revisit conditions, or the ADR template. |
 | `ai/sanctuary-ai-master-plan.md` | Proposed strategic plan | You are reviewing the proposed Sanctuary AI vision, target topology, phases, evaluation model, or initial PR sequence. It does not describe current behavior or authorize implementation by itself. |
 | `customer-configurator-architecture.md` | Strategic target and active implementation roadmap | You are implementing or reviewing the customer-facing Your Pergola configurator, its public contract, package boundaries, geometry/viewer path, persistence, enquiry handoff, or PR sequence. |
 | `sanctuary-mobile-production-closure-and-direct-manipulation-plan.md` | Authoritative next-phase brief | You are closing marketing production parity, adding controlled product-gallery direct manipulation, running physical mobile validation, or reconciling a production enquiry and analytics event. |
