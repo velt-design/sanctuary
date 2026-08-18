@@ -6,7 +6,8 @@ export type BackgroundJobIdempotencyStrategy =
   | 'provider_and_effect_checkpoint'
   | 'input_hash_artifact_reuse'
   | 'event_intent'
-  | 'outbox_intent';
+  | 'outbox_intent'
+  | 'ai_task_input_snapshot';
 
 export type BackgroundJobRetryPolicy = Readonly<{
   maxAttempts: number;
@@ -109,6 +110,21 @@ const userFacingAutomationStatus = {
   permanent_failed: 'Permanently failed',
 } as const;
 
+const userFacingSyntheticAiStatus = {
+  queued: 'Queued',
+  claimed: 'Preparing synthetic check',
+  preparing: 'Preparing synthetic check',
+  running: 'Running synthetic check',
+  dispatching: 'Finalising synthetic check',
+  provider_accepted: 'Finalising synthetic check',
+  finalising: 'Finalising synthetic check',
+  retrying: 'Retrying synthetic check',
+  succeeded: 'Synthetic check complete',
+  cancelled: 'Cancelled',
+  needs_attention: 'Needs attention',
+  permanent_failed: 'Permanently failed',
+} as const;
+
 export const BACKGROUND_JOB_REGISTRY = {
   deposit_invoice_prepare_and_send: {
     kind: 'deposit_invoice_prepare_and_send',
@@ -205,6 +221,27 @@ export const BACKGROUND_JOB_REGISTRY = {
     userFacingStatus: userFacingEmailStatus,
     defaultRolloutMode: 'legacy',
     idempotencyStrategy: 'outbox_intent',
+  },
+  ai_synthetic_v1: {
+    kind: 'ai_synthetic_v1',
+    payloadContractVersion: 1,
+    handlerOwner: 'ai-synthetic-workflow',
+    retry: {
+      maxAttempts: 3,
+      baseDelayMs: 5_000,
+      maximumDelayMs: 60_000,
+      automaticRetryWindowMs: 5 * 60 * 1_000,
+    },
+    timeoutMs: 30_000,
+    concurrencyClass: 'orchestration',
+    hasExternalSideEffect: false,
+    cancellationAllowed: false,
+    requiredHandlerCheckpoints: ['input_validated', 'evaluation_recorded'],
+    allowedEffectCheckpoints: [],
+    requiredEffectCheckpoints: [],
+    userFacingStatus: userFacingSyntheticAiStatus,
+    defaultRolloutMode: 'worker_enabled',
+    idempotencyStrategy: 'ai_task_input_snapshot',
   },
 } as const satisfies Record<BackgroundJobKind, BackgroundJobKindDefinition>;
 

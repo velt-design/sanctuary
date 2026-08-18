@@ -9,6 +9,11 @@ const image = imageOverride || defaultImage;
 const containerName = `sanctuary-background-jobs-${process.pid}-${Date.now()}`;
 const bootstrapSqlFile = "supabase/tests/background_jobs_bootstrap.sql";
 const contractSqlFile = "supabase/tests/background_jobs.sql";
+const aiBootstrapSqlFile = "supabase/tests/ai_task_ledger_bootstrap.sql";
+const aiTaskLedgerMigrationFile = "supabase/migrations/20260818000002_ai_task_ledger.sql";
+const aiApprovalMigrationFile = "supabase/migrations/20260818000003_ai_approval_envelopes.sql";
+const aiSyntheticExecutionMigrationFile = "supabase/migrations/20260818000004_ai_synthetic_execution.sql";
+const aiSyntheticExecutionContractFile = "supabase/tests/ai_synthetic_execution.sql";
 const migrationsDirectory = "supabase/migrations";
 const waveThreeMigrationFilePattern =
   /^\d{8}_\d{6}_background_jobs?_[a-z0-9_]+\.sql$/;
@@ -342,6 +347,41 @@ function applySql(relativePath, { singleTransaction = false } = {}) {
       singleTransaction ? " atomically" : ""
     }\n`,
   );
+}
+
+function executeSql(sql, label) {
+  const result = docker(psqlDockerArgs(), { input: sql });
+  requireSuccess(result, label);
+}
+
+function verifyAiSyntheticExecutionRollback() {
+  const migration = readFileSync(
+    path.join(repositoryRoot, aiSyntheticExecutionMigrationFile),
+    "utf8",
+  );
+  executeSql(
+    `begin;\n${migration}\nrollback;`,
+    "Transactional AI synthetic execution rollback rehearsal",
+  );
+  const remainingObjects = queryScalar(
+    `select count(*)
+     from (
+       values
+         (to_regclass('public.ai_task_jobs')::oid),
+         (to_regclass('public.ai_usage_records')::oid),
+         (to_regclass('public.ai_evaluations')::oid),
+         (to_regprocedure('public.ai_task_enqueue_synthetic(uuid)')::oid),
+         ((select oid from public.background_job_kinds where kind = 'ai_synthetic_v1'))
+     ) checked(object_oid)
+     where object_oid is not null;`,
+    "AI synthetic rollback residue query",
+  );
+  if (remainingObjects !== "0") {
+    throw new Error(
+      `AI synthetic rollback rehearsal left ${remainingObjects} execution objects.`,
+    );
+  }
+  process.stdout.write("background-jobs-db: AI synthetic rollback rehearsal passed\n");
 }
 
 function concurrentEnqueueSql({ applicationName, waitForClientB }) {
@@ -929,6 +969,12 @@ async function run() {
   await verifyConcurrentEnqueue();
   await verifyConcurrentProviderMessageCollision();
   applySql(contractSqlFile);
+  applySql(aiBootstrapSqlFile, { singleTransaction: true });
+  applySql(aiTaskLedgerMigrationFile, { singleTransaction: true });
+  applySql(aiApprovalMigrationFile, { singleTransaction: true });
+  verifyAiSyntheticExecutionRollback();
+  applySql(aiSyntheticExecutionMigrationFile, { singleTransaction: true });
+  applySql(aiSyntheticExecutionContractFile);
   process.stdout.write(
     `background-jobs-db: isolated PGMQ contract passed (${image})\n`,
   );

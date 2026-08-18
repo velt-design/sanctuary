@@ -27,6 +27,7 @@ const EXPECTED_ALLOWED_EFFECTS = {
   job_pack_generate: [],
   automation_event: [],
   email_outbox_deliver: ['email_dispatch'],
+  ai_synthetic_v1: [],
 } as const satisfies Record<BackgroundJobKind, readonly string[]>;
 
 function effect(

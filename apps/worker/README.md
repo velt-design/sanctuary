@@ -2,9 +2,9 @@
 
 This Node 22 application is the server-owned runtime for durable technical background jobs. It communicates with Supabase only through the explicit background-job RPC allowlist. It does not import portal or marketing application code, and its logs and health responses contain safe operational metadata only.
 
-JOB-02 installs the runtime dark by default. JOB-03 adds the reusable durable-email effect coordinator and provider reconciliation boundary without registering a commercial handler. A repository build does not enable a producer, a handler, apply a shared database migration, send email, or enable a rollout.
+JOB-02 installs the runtime dark by default. JOB-03 adds the reusable durable-email effect coordinator and provider reconciliation boundary without registering a commercial handler. PR-AI-007 registers only the deterministic `ai_synthetic_v1` handler; it accepts two fixed fixtures, makes no network or provider call, performs no business mutation, and returns a bounded fixed result. A repository build does not apply a shared database migration, send email, activate OpenClaw, or enable a production rollout.
 
-The handler registry remains intentionally empty through JOB-03. `active`, `once`, and `drain` fail before claiming while handler coverage is incomplete; only `dark`, `reconcile`, and aggregate health inspection are runnable until later checkpoints migrate domain handlers and their producers together.
+`active`, `once`, and `drain` require handler coverage for every registry kind whose default rollout is explicitly worker-routed (`worker_cohort` or `worker_enabled`). All commercial kinds remain `legacy` and have no handler. An accidentally claimed unsupported kind is quarantined through the existing safe failure path instead of executing. `dark`, `reconcile`, and aggregate health inspection remain the production default until a separately reviewed deployment and rollout checkpoint.
 
 ## Commands
 
