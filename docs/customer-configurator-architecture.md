@@ -2786,7 +2786,7 @@ Create `@sp/configurator/core` as the canonical public design-intent boundary.
 
 ### Implementation status
 
-Implemented in the bounded `codex/configurator-pr1-public-contract` slice on 17 August 2026; review and merge remain open. Current code lives under `packages/configurator/src/core/**`, and later geometry, storage, UI, enquiry and portal work remains absent.
+Implemented and merged through PR #53 on 18 August 2026. Current code lives under `packages/configurator/src/core/**`, and later geometry, storage, UI, enquiry and portal work remains absent.
 
 Gate 0 record: legacy audit rows N/A; remove/build-on legacy N/A; Phase 2 costing-input or `inputs.modules` dependencies none; consolidated existing functions/types N/A. This PR introduces a new public intent boundary and imports no workbench, geometry or costing input contract.
 
