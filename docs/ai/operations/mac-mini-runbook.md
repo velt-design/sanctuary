@@ -247,6 +247,20 @@ Rules:
 6. Record backup time, restore sample, and outcome in the private asset register;
    do not record the backup password or device identifier.
 
+After restoring the non-secret sample to a temporary directory, run:
+
+```bash
+node scripts/ai/mac-backup-restore-gate.mjs \
+  --source /path/to/original-sample \
+  --restored /path/to/restored-sample
+```
+
+The command passes only when a Time Machine destination is configured, the
+mounted destination reports encryption, a completed backup exists, and the two
+sample files match exactly. Its output contains no destination name, mount path,
+file path, password, or content hash. Delete the temporary restored sample after
+recording the pass in the private asset register.
+
 References:
 
 - <https://support.apple.com/en-us/104984>
