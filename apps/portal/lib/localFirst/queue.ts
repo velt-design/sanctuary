@@ -39,9 +39,16 @@ function scheduleEntityRetry(entityKey: LocalFirstEntityKey, retryAt?: string) {
   if (typeof existing === 'number') {
     window.clearTimeout(existing);
   }
-  const delay = retryAt ? Math.max(0, new Date(retryAt).getTime() - Date.now()) : 0;
+  const retryTime = retryAt ? new Date(retryAt).getTime() : null;
+  const delay = retryTime === null ? 0 : Math.max(0, retryTime - Date.now());
   const handle = window.setTimeout(() => {
     retryTimers.delete(entityKey);
+    // A timer may wake on the millisecond boundary before the persisted ISO
+    // timestamp is eligible. Reschedule instead of stranding the queued item.
+    if (retryTime !== null && retryTime > Date.now()) {
+      scheduleEntityRetry(entityKey, retryAt);
+      return;
+    }
     void processLocalFirstEntityQueue(entityKey);
   }, delay);
   retryTimers.set(entityKey, handle);

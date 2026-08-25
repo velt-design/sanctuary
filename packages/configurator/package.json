@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./core": "./src/core/index.ts"
+    "./core": "./src/core/index.ts",
+    "./geometry": "./src/geometry/index.ts"
+  },
+  "dependencies": {
+    "@sp/geometry": "0.0.0"
   }
 }

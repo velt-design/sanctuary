@@ -1060,22 +1060,41 @@ export type ConfiguratorSolvedArtifactV1 =
         assembly: Assembly3D;
         viewerScene: ViewerSceneModel;
         topProjection: GeometryTopProjectionViewModel;
+        plan: GeometryPlanViewModel;
         section: GeometrySectionViewModel;
         validation: GeometryValidationReport;
       };
       interactionAnchors: CustomerInteractionAnchorsV1;
-      presentationScene: CustomerPresentationSceneV1;
       messages: CustomerSafeConfiguratorMessageV1[];
     }
   | {
-      status: 'incomplete' | 'invalid' | 'unsupported';
+      status: 'invalid' | 'unsupported';
       configuration: CustomerPergolaConfigurationV1;
       messages: CustomerSafeConfiguratorMessageV1[];
-      lastReadyArtifact?: ConfiguratorSolvedArtifactV1;
+      lastReadyArtifact?: ConfiguratorRenderableArtifactV1;
     };
 ```
 
-`review_required` means the concept can render but contains assumptions. It does not mean failed geometry.
+`solveCustomerConfigurationV1()` calls the normalizing adapter once, calls
+`solvePergolaGeometry()` once for a successful adapter result, and derives
+interaction anchors from that exact returned post-transform assembly. `ready`
+requires passing validation and no assumption notices. `review_required` means
+the same valid concept can render but contains adapter assumptions; it does not
+mean failed geometry. Adapter capability blocks and geometry-declared capability
+gaps are `unsupported`; failed solves, failed validation and failed anchor
+derivation are `invalid`. Customer messages use stable safe codes and never
+include raw solver or validation text.
+
+The sole narrow exception to the normal failed-validation rule is mono acrylic
+when `mono_acrylic.covering_inputs` is the only failed invariant: the
+already-solved concept remains `review_required` with a customer-safe
+acrylic-detailing assumption, while every other failed invariant remains
+`invalid`.
+
+The optional `lastReadyArtifact` is caller-provided fallback only. The package
+does not create persistence or solve state. `presentationScene`, accessories,
+materials and incomplete-input UI state remain later presentation/UI work and
+are not part of the current solved artifact.
 
 ## 6.4 Interaction anchors belong near geometry
 
@@ -1256,6 +1275,8 @@ V1 uses:
 - selected roof form.
 
 The exact house polygon and relationship can be refined in the portal. Customer house geometry is context, not a survey.
+
+PR 2 Slice 2 keeps runtime identity explicit: `customerConfigurationToPergolaGeometryInputV1()` requires caller-supplied `projectId` and `estimateId` context and never aliases public configuration/pergola IDs into those fields. `clearHeightMm` remains the representative minimum clearance and exact post-cut height; mono derives only its higher reference side from the representative pitch. Mixed roof returns `mixed_roof_placement_unavailable` until canonical bay placement exists. Attached intent without a present house returns `attached_house_required`; freestanding intent retains any site-house choice in customer intent but omits unplaceable host geometry and returns `freestanding_house_context_unplaced`. Current freestanding box intent returns `freestanding_box_unavailable` rather than reaching the attached-only solver.
 
 ## 7.7 Plan renderer
 
@@ -2868,6 +2889,23 @@ Focused verification command: `npm run test:configurator`.
 ### Objective
 
 Map public intent into `@sp/geometry` without duplicating physical logic.
+
+### Implementation status
+
+Implemented in bounded slices under `packages/configurator/src/geometry/**` and
+the package-owned `buildPergolaInteractionAnchors()` boundary. The adapter is
+the only public-intent mapping and normalization path; the solved artifact owns
+one geometry solve plus customer-semantic anchor mapping. Mixed roof remains an
+explicit stable capability block because V1 intent has no canonical placement.
+Presentation scenes, accessories, materials, viewer UI, pricing/takeoff, portal
+or marketing integration, deployment and production rollout remain deferred.
+
+Gate 0 record: legacy audit rows 5 and 8 reviewed and kept; remove/build-on legacy N/A; Phase 2
+costing-input or `inputs.modules` dependencies none; consolidated existing
+functions/types `solvePergolaGeometry()` and `buildPergolaInteractionAnchors()` reused. Consumers checked before the Slice 3 boundary change:
+`@sp/configurator/geometry` package tests and exports, the `@sp/geometry`
+solve/validation/interaction-anchor exports, and the configurator architecture
+and costing/geometry owner docs.
 
 ### Scope
 

@@ -514,6 +514,8 @@ describe('@sp/geometry contracts', () => {
     expect(geometryModule).toBeTypeOf('object');
     expect(typeof geometryModule.normalizeGeometryConfig).toBe('function');
     expect(typeof geometryModule.solveAssembly3D).toBe('function');
+    expect(typeof geometryModule.buildPergolaInteractionAnchors).toBe('function');
+    expect(typeof geometryModule.buildHouseFootprintPolygon).toBe('function');
     expect(typeof geometryModule.validateGeometrySolve).toBe('function');
     expect(typeof geometryModule.buildViewerSceneModel).toBe('function');
     expect(typeof geometryModule.buildTopProjectionViewModelFromScene).toBe('function');
