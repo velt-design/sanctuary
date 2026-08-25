@@ -1,7 +1,7 @@
 # Mac Mini Machine Credential Ceremony
 
-Status: Credential-free control-plane preparation completed; do not issue or
-place runtime credentials until the FileVault and backup gates pass.
+Status: Control-plane preparation completed; FileVault verified and runtime
+credential issuance authorised for the rebuildable development node.
 
 Owner: Jordan / Sanctuary Pergolas
 
@@ -14,17 +14,17 @@ production access.
 
 ## Credential-Free CLI Preparation
 
-The signed 1Password CLI may be installed for `sanctuary-runner` before the
-FileVault and backup gates pass because the binary itself contains no account or
-secret. Install it from the official 1Password release channel, verify the
+The signed 1Password CLI may be installed for `sanctuary-runner` before
+credential issuance because the binary itself contains no account or secret.
+Install it from the official 1Password release channel, verify the
 macOS code signature identifies Team ID `2BUA8C4S2C`, and confirm `op --version`
 is 2.18.0 or later. A non-admin installation may use `~/bin/op` when that
 directory is already in the runtime account's `PATH`.
 
-Do not connect the CLI to a person's 1Password desktop session. Do not place a
-service-account token, vault item, GitHub key, or other credential on the node
-until the FileVault and backup/restore gates pass. The headless runtime uses only
-the restricted service account described below.
+Do not connect the CLI to a person's 1Password desktop session. The headless
+runtime uses only the restricted service account described below. FileVault must
+pass before its token or the GitHub App key is placed on the node; a local backup
+disk is not required while the node remains rebuildable and development-only.
 
 ## One-Time Owner Actions
 
@@ -36,17 +36,17 @@ the restricted service account described below.
    `Metadata: read`, `Contents: read and write`, and `Pull requests: read and
    write`.
 3. Install that app only on `velt-design/sanctuary`. Do not grant all-repository
-   access. Registration and repository-scoped installation may be completed
-   before the recovery gates because they do not create a usable machine
-   credential.
-4. After the FileVault and backup/restore gates pass, generate one private key
+   access.
+4. After the FileVault gate passes, generate one private key
    and store its App ID, installation ID, and private key in
    `Sanctuary - Node Runtime`; then remove the downloaded key. If the repository
    later moves to a GitHub organisation, transfer or recreate the app under that
    organisation before the node uses it again.
 5. Create the 1Password service account `sanctuary-node-runtime`. Grant only
    `read_items` on `Sanctuary - Node Runtime`, no other vault or Environment,
-   and no create-vault permission. Set a named expiry/rotation date.
+   and no create-vault permission. Do not set an automatic expiry: unattended
+   operation must not stop on a date. Revoke and recreate it after suspected
+   exposure or a material access change.
 6. Save the one-time service-account token in `Sanctuary - Owners`. Do not paste
    it into Git, a task, chat, shell history, `.env`, or a launchd plist.
 7. During the controlled Mac ceremony, place the service-account token and the
@@ -63,9 +63,9 @@ Use Keychain account `sanctuary-runner` and these exact service names:
 - `sanctuary.github.private-key`.
 
 The Keychain insertion step is intentionally not a copy-paste command in Git:
-the values must be entered through a non-logging operator session after disk and
-backup recovery pass. Record only the item names, owners, and rotation dates in
-the private asset register.
+the values must be entered through a non-logging operator session after
+FileVault passes. Record only the item names and owner in the private asset
+register.
 
 ## Live Credential-Free Preparation Evidence
 
@@ -82,9 +82,9 @@ Verified on 2026-08-25:
 - private key and client secret: not generated.
 
 These identifiers are not credentials. The installation cannot authenticate as
-the app until a private key is generated after the recovery gates pass. Do not
-interpret this record as permission to create, download, or place that key on
-the unencrypted node.
+the app until a private key is generated. FileVault now passes, so the key may
+be created and placed on this development node without waiting for a backup
+disk.
 
 ## Verification
 
