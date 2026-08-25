@@ -212,12 +212,6 @@
             "enabled": true,
             "timeoutMs": 2500
           },
-          "sessionCatalog": {
-            "enabled": false
-          },
-          "supervision": {
-            "enabled": false
-          },
           "appServer": {
             "mode": "yolo",
             "homeScope": "agent",

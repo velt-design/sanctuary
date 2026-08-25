@@ -150,8 +150,6 @@ describe("isolated OpenClaw engineering runtime", () => {
         codex: {
           enabled: true,
           config: {
-            sessionCatalog: { enabled: false },
-            supervision: { enabled: false },
             appServer: {
               mode: "yolo",
               homeScope: "agent",
@@ -163,6 +161,12 @@ describe("isolated OpenClaw engineering runtime", () => {
         },
       },
     });
+    expect(config.plugins.entries.codex.config).not.toHaveProperty(
+      "sessionCatalog",
+    );
+    expect(config.plugins.entries.codex.config).not.toHaveProperty(
+      "supervision",
+    );
     expect(config).toMatchObject({
       browser: { enabled: false },
       channels: {},
