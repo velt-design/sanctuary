@@ -7,6 +7,8 @@ Public boundaries:
 
 - `@sp/geometry-viewer` — camera, bounds and scene renderability primitives.
 - `@sp/geometry-viewer/svg` — server-safe deterministic top-projection SVG.
+- `@sp/geometry-viewer/three` — app-independent buffer-geometry, line and
+  deck-presentation builders.
 - `@sp/geometry-viewer/react` — reserved for the later client-only renderer
   extraction; it is intentionally not exported until that slice lands.
 
