@@ -79,13 +79,17 @@ than overwrite an unclaimed or differently owned state directory. It then:
 3. writes the reviewed approvals before OpenClaw starts so its legacy migration
    cannot move the default instance's approvals, then imports them through the
    supported CLI;
-4. installs or verifies the exact official Codex plugin version and validates
-   its managed app-server binary; and
+4. installs or verifies the exact official Codex plugin version, plugin load,
+   install record and compatibility probes; and
 5. verifies the headless 1Password service account and exact GitHub App scope.
 
 Every isolated OpenClaw command fingerprints the default instance's config and
 approval authority before and after execution. Any cross-state mutation stops
 activation instead of being silently accepted.
+
+The gateway token remains a structured environment SecretRef in config; the
+protected wrapper reads the value only at runtime. The first worker rehearsal
+starts the managed Codex app-server and is the final binary/authentication proof.
 
 Complete one OpenAI login inside this isolated state:
 

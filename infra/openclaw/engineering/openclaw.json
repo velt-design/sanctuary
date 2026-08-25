@@ -8,7 +8,11 @@
     },
     "auth": {
       "mode": "token",
-      "token": "${OPENCLAW_GATEWAY_TOKEN}",
+      "token": {
+        "source": "env",
+        "provider": "default",
+        "id": "OPENCLAW_GATEWAY_TOKEN"
+      },
       "allowTailscale": false,
       "rateLimit": {
         "maxAttempts": 10,
@@ -104,6 +108,18 @@
         },
         "tools": {
           "profile": "coding",
+          "exec": {
+            "host": "gateway",
+            "mode": "full",
+            "strictInlineEval": false,
+            "timeoutSec": 3600,
+            "cleanupMs": 1800000,
+            "applyPatch": {
+              "enabled": true,
+              "workspaceOnly": true,
+              "allowModels": ["gpt-5.6-sol", "openai/gpt-5.6-sol"]
+            }
+          },
           "deny": [
             "cron",
             "memory_get",
@@ -146,15 +162,7 @@
     },
     "exec": {
       "host": "gateway",
-      "mode": "full",
-      "strictInlineEval": false,
-      "timeoutSec": 3600,
-      "cleanupMs": 1800000,
-      "applyPatch": {
-        "enabled": true,
-        "workspaceOnly": true,
-        "allowModels": ["gpt-5.6-sol", "openai/gpt-5.6-sol"]
-      }
+      "mode": "deny"
     },
     "web": {
       "search": {

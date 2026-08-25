@@ -173,8 +173,19 @@ export function activateEngineeringRuntime() {
     env,
     inherit: true,
   });
+  runOpenClaw(["plugins", "doctor"], { env, inherit: true });
+  runOpenClaw(["doctor", "--post-upgrade", "--json"], {
+    env,
+    inherit: true,
+  });
   runOpenClaw(
-    ["doctor", "--lint", "--only", "codex/managed-app-server", "--json"],
+    [
+      "doctor",
+      "--lint",
+      "--only",
+      "core/doctor/configured-plugin-installs",
+      "--json",
+    ],
     { env, inherit: true },
   );
   run(
