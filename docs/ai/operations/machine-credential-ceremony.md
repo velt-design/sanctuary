@@ -15,13 +15,16 @@ production access.
 
 1. Create a new 1Password vault named `Sanctuary - Node Runtime`. Put no owner,
    admin, FileVault, backup, production, customer, email, or payment secret in it.
-2. Create the GitHub App `Sanctuary Node PR Bot`, owned by the Sanctuary GitHub
-   organisation. Disable webhooks. Grant repository permissions only:
+2. Create the GitHub App `Sanctuary Node PR Bot`, owned by the business-controlled
+   GitHub account that owns `velt-design/sanctuary` (currently `velt-design`).
+   Disable webhooks. Grant repository permissions only:
    `Metadata: read`, `Contents: read and write`, and `Pull requests: read and
    write`.
 3. Install that app only on `velt-design/sanctuary`. Do not grant all-repository
    access. Generate one private key and store its App ID, installation ID, and
    private key in `Sanctuary - Node Runtime`; then remove the downloaded key.
+   If the repository later moves to a GitHub organisation, transfer or recreate
+   the app under that organisation before the node uses it again.
 4. Create the 1Password service account `sanctuary-node-runtime`. Grant only
    `read_items` on `Sanctuary - Node Runtime`, no other vault or Environment,
    and no create-vault permission. Set a named expiry/rotation date.

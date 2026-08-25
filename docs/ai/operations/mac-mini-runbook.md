@@ -222,8 +222,10 @@ store values only in the selected vault or machine Keychain.
 
 The first non-interactive machine identities follow
 `machine-credential-ceremony.md`. They are created only after the FileVault and
-backup/restore gates pass. The GitHub identity is an organisation-owned GitHub
-App installed only on Sanctuary; do not substitute a personal access token.
+backup/restore gates pass. The GitHub identity is a GitHub App owned by the same
+business-controlled account as the repository and installed only on
+`velt-design/sanctuary`; do not substitute a personal access token or other
+account-wide credential.
 
 Rules:
 
