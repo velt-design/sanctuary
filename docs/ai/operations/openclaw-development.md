@@ -63,6 +63,12 @@ headless launcher when the Mac is physically available in Australia.
 Verify the model and run one end-to-end coding task with `openclaw agent`.
 The first product proof is Marketing Configurator PR 1.
 
+## Live verification
+
+On 2026-08-25, the loopback gateway was healthy, OpenAI OAuth was valid,
+`gpt-5.6-sol` ran through the Codex harness, exec mode was `full` with prompts
+off, and GitHub App access was repository-scoped.
+
 References:
 
 - <https://docs.openclaw.ai/plugins/codex-harness>
