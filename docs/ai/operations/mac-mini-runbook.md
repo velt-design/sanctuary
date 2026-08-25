@@ -220,6 +220,11 @@ store values only in the selected vault or machine Keychain.
 | OpenClaw gateway token | Generate only at dark install | Machine Keychain/secret store | Node operator |
 | Model/provider or connector keys | Prohibited | Not applicable | Capability owner |
 
+The first non-interactive machine identities follow
+`machine-credential-ceremony.md`. They are created only after the FileVault and
+backup/restore gates pass. The GitHub identity is an organisation-owned GitHub
+App installed only on Sanctuary; do not substitute a personal access token.
+
 Rules:
 
 - Never use a CLI argument, committed `.env`, launchd plist, shell profile, or
