@@ -598,6 +598,9 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(fixtureUrl({ work: "v2-primary" }));
+  await expect(
+    page.locator('[data-command-centre-fixture-hydrated="true"]'),
+  ).toHaveCount(1);
   const layout = page.locator('[data-project-overview-layout="true"]');
   await expect(
     page.getByRole("heading", {
