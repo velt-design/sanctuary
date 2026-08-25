@@ -20,46 +20,14 @@ const release = JSON.parse(
     "utf8",
   ),
 );
-const DAY_MS = 24 * 60 * 60 * 1000;
-const MAX_BACKUP_DEFER_DAYS = 31;
-
-export function parseBackupDeferral(value, now = new Date()) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value ?? "")) {
-    throw new Error("--backup-deferred-until must use YYYY-MM-DD.");
-  }
-
-  const target = Date.parse(`${value}T00:00:00Z`);
-  const today = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-  );
-  const deferDays = (target - today) / DAY_MS;
-  if (!Number.isInteger(deferDays) || deferDays < 1) {
-    throw new Error("The backup deferral must expire after today.");
-  }
-  if (deferDays > MAX_BACKUP_DEFER_DAYS) {
-    throw new Error(
-      `The backup deferral cannot exceed ${MAX_BACKUP_DEFER_DAYS} days.`,
-    );
-  }
-  return value;
-}
-
-export function buildDarkPreparationRecord({
-  backupDeferredUntil = null,
-  preparedAt = new Date(),
-} = {}) {
+export function buildDarkPreparationRecord({ preparedAt = new Date() } = {}) {
   return {
     schemaVersion: 1,
     state: "prepared-dark",
     packageVersion: release.version,
     preparedAt: preparedAt.toISOString(),
     activationAllowed: false,
-    backupGate: backupDeferredUntil
-      ? "deferred-not-passed"
-      : "passed-at-verification",
-    backupDeferredUntil,
+    recoveryMode: "rebuild-from-git",
     prohibitions: [
       "gateway-start",
       "launch-agent",
@@ -136,9 +104,7 @@ function checkPreparationPrerequisites() {
   for (const [name, passed] of Object.entries(checks)) {
     console.log(`- ${name}: ${passed ? "PASS" : "FAIL"}`);
   }
-  console.log(
-    "- backupRestore: DEFERRED — not passed and not required for inert preparation",
-  );
+  console.log("- recoveryMode: PASS — rebuild from GitHub and reissue secrets");
   console.log("- activation: DENIED");
 
   return Object.values(checks).every(Boolean);
@@ -150,21 +116,11 @@ function checkPrerequisites() {
   }
 
   const runtimeUser = run("/usr/bin/id", ["-un"]).stdout.trim();
-  const source = readOption("--backup-source");
-  const restored = readOption("--backup-restored");
   const opAttested = process.argv.includes("--attest-op-read-only");
 
   const checks = {
     runtimeUser: runtimeUser === "sanctuary-runner",
     fileVault: runPrerequisiteGate("mac-filevault-gate.mjs"),
-    backupRestore:
-      Boolean(source && restored) &&
-      runPrerequisiteGate("mac-backup-restore-gate.mjs", [
-        "--source",
-        source,
-        "--restored",
-        restored,
-      ]),
     machineCredentials:
       opAttested &&
       runPrerequisiteGate("mac-machine-credential-gate.mjs", [
@@ -419,9 +375,6 @@ function main() {
     if (process.argv.includes("--install")) {
       throw new Error("Use --prepare-dark or --install, not both.");
     }
-    const backupDeferredUntil = parseBackupDeferral(
-      readOption("--backup-deferred-until"),
-    );
     if (!checkPreparationPrerequisites()) {
       console.error(
         "OpenClaw dark preparation: BLOCKED by failed prerequisites.",
@@ -433,11 +386,9 @@ function main() {
     const validationToken = randomBytes(32).toString("base64url");
     installDarkOpenClaw(
       validationToken,
-      buildDarkPreparationRecord({ backupDeferredUntil }),
+      buildDarkPreparationRecord(),
     );
-    console.log(
-      `Backup remains deferred, not passed, until ${backupDeferredUntil}.`,
-    );
+    console.log("Recovery mode is rebuild-from-Git; no local backup is required.");
     console.log("Activation remains blocked by the full prerequisite gate.");
     return;
   }

@@ -1,7 +1,8 @@
 # OpenClaw Dark Installation
 
-Status: Prepared and validation-tested; inert installation may precede recovery gates,
-but activation remains blocked by them.
+Status: Prepared and validation-tested on the Mac mini. Recovery uses the
+rebuild-from-Git model; activation requires FileVault and machine credentials,
+not a local backup disk.
 
 Owner: Jordan / Sanctuary Pergolas
 
@@ -20,19 +21,15 @@ integrity pin, schema validation, security audit, and this same checkpoint again
 ### Credential-free dark preparation
 
 The exact pinned binary, deny-all configuration, and sandbox image may be
-installed before the recovery and credential gates pass. This preparation uses
+installed before the credential gate passes. This preparation uses
 a random in-memory validation token only. It creates no Keychain item, starts no
 process, installs no service, and grants no capability.
 
-If an encrypted backup is temporarily unavailable, the owner must provide a
-dated deferral no more than 31 days in the future. The installer records that
-the backup gate is **deferred, not passed**, and records that activation is
-forbidden. As `sanctuary-runner`, run:
+The development node uses the owner-approved rebuild-from-Git recovery model.
+No backup deferral or expiry is required. As `sanctuary-runner`, run:
 
 ```bash
-node scripts/ai/mac-openclaw-dark-install.mjs \
-  --prepare-dark \
-  --backup-deferred-until YYYY-MM-DD
+node scripts/ai/mac-openclaw-dark-install.mjs --prepare-dark
 ```
 
 This path requires only the correct non-admin runtime account and rootless
@@ -43,20 +40,17 @@ for the later full verification.
 
 ### Full dark verification
 
-Before any activation, all three earlier gates must pass. In addition, generate
+Before activation, the FileVault and machine-credential gates must pass. In
+addition, generate
 a long random Gateway token during the controlled Keychain ceremony and store it
 for Keychain account `sanctuary-runner` under service name
 `sanctuary.openclaw.gateway-token`. Never print it or put it in Git, `.env`,
 shell history, a plist, or a task.
 
-Keep the original non-secret backup sample and its restored copy until this
-checkpoint completes. Then, as `sanctuary-runner`, run the readiness check:
+As `sanctuary-runner`, run the readiness check:
 
 ```bash
-node scripts/ai/mac-openclaw-dark-install.mjs \
-  --backup-source /path/to/original-sample \
-  --backup-restored /path/to/restored-sample \
-  --attest-op-read-only
+node scripts/ai/mac-openclaw-dark-install.mjs --attest-op-read-only
 ```
 
 Only after every line reports `PASS`, repeat the same command with `--install`.

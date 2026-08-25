@@ -2,10 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import {
-  buildDarkPreparationRecord,
-  parseBackupDeferral,
-} from "../scripts/ai/mac-openclaw-dark-install.mjs";
+import { buildDarkPreparationRecord } from "../scripts/ai/mac-openclaw-dark-install.mjs";
 
 const config = JSON.parse(
   readFileSync(resolve("infra/openclaw/dark/openclaw.json"), "utf8"),
@@ -96,28 +93,15 @@ describe("OpenClaw dark configuration", () => {
     expect(serialized).not.toContain("OPENAI_API_KEY");
   });
 
-  it("allows only a short, future backup deferral", () => {
-    const now = new Date("2026-08-25T03:00:00Z");
-
-    expect(parseBackupDeferral("2026-09-25", now)).toBe("2026-09-25");
-    expect(() => parseBackupDeferral("2026-08-25", now)).toThrow(/after today/);
-    expect(() => parseBackupDeferral("2026-09-26", now)).toThrow(
-      /cannot exceed 31 days/,
-    );
-    expect(() => parseBackupDeferral("25-09-2026", now)).toThrow(/YYYY-MM-DD/);
-  });
-
-  it("records preparation without pretending backup or activation passed", () => {
+  it("records the rebuildable recovery mode without pretending activation passed", () => {
     const record = buildDarkPreparationRecord({
-      backupDeferredUntil: "2026-09-25",
       preparedAt: new Date("2026-08-25T03:00:00Z"),
     });
 
     expect(record).toMatchObject({
       state: "prepared-dark",
       activationAllowed: false,
-      backupGate: "deferred-not-passed",
-      backupDeferredUntil: "2026-09-25",
+      recoveryMode: "rebuild-from-git",
     });
     expect(record.prohibitions).toEqual(
       expect.arrayContaining([
