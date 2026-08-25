@@ -5,10 +5,10 @@ import { evaluateMachineCredentialEvidence } from "../scripts/ai/mac-machine-cre
 const passingEvidence = {
   runtimeUser: "sanctuary-runner",
   onePasswordCliReady: true,
-  onePasswordKeychainItemPresent: true,
+  onePasswordTokenFileProtected: true,
   onePasswordVaults: ["Sanctuary - Node Runtime"],
   onePasswordReadOnlyAttested: true,
-  githubKeychainItemsPresent: true,
+  githubVaultItemPresent: true,
   githubRepository: "velt-design/sanctuary",
   githubPermissions: {
     contents: "write",

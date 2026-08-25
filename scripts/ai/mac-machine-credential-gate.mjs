@@ -1,10 +1,14 @@
 import { createSign } from "node:crypto";
+import { readFileSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const EXPECTED_USER = "sanctuary-runner";
 const EXPECTED_VAULT = "Sanctuary - Node Runtime";
+const EXPECTED_GITHUB_ITEM = "GitHub - Sanctuary Node PR Bot";
 const EXPECTED_REPOSITORY = "velt-design/sanctuary";
 const REQUIRED_GITHUB_PERMISSIONS = {
   contents: "write",
@@ -34,9 +38,9 @@ export function evaluateMachineCredentialEvidence(evidence) {
     onePasswordCli: evidence.onePasswordCliReady
       ? result("pass", "1Password CLI supports service accounts")
       : result("fail", "1Password CLI 2.18.0 or later is not available"),
-    onePasswordBootstrap: evidence.onePasswordKeychainItemPresent
-      ? result("pass", "The service-account bootstrap token is held in macOS Keychain")
-      : result("fail", "The service-account bootstrap token is not available from Keychain"),
+    onePasswordBootstrap: evidence.onePasswordTokenFileProtected
+      ? result("pass", "The unattended service-account token file is owner-readable only")
+      : result("fail", "The service-account token file is missing or has broad permissions"),
     onePasswordVaultScope:
       visibleVaults.length === 1 && visibleVaults[0] === EXPECTED_VAULT
         ? result("pass", "The service account can see only the node runtime vault")
@@ -44,9 +48,9 @@ export function evaluateMachineCredentialEvidence(evidence) {
     onePasswordReadOnly: evidence.onePasswordReadOnlyAttested
       ? result("pass", "Read-only service-account permissions were operator-attested")
       : result("fail", "Read-only service-account permissions need operator attestation"),
-    githubKeychain: evidence.githubKeychainItemsPresent
-      ? result("pass", "GitHub App identity material is held in macOS Keychain")
-      : result("fail", "GitHub App identity material is incomplete in Keychain"),
+    githubVaultItem: evidence.githubVaultItemPresent
+      ? result("pass", "GitHub App identity material is read from the restricted runtime vault")
+      : result("fail", "GitHub App identity material is incomplete in the runtime vault"),
     githubRepository:
       evidence.githubRepository === EXPECTED_REPOSITORY
         ? result("pass", "GitHub App installation is restricted to Sanctuary")
@@ -73,17 +77,22 @@ function run(command, args = [], env = process.env) {
   };
 }
 
-function readKeychainSecret(service) {
-  const lookup = run("/usr/bin/security", [
-    "find-generic-password",
-    "-a",
-    EXPECTED_USER,
-    "-s",
-    service,
-    "-w",
-    "/Library/Keychains/System.keychain",
-  ]);
-  return lookup.ok ? lookup.stdout : null;
+function readServiceAccountToken() {
+  const path = join(
+    homedir(),
+    ".openclaw",
+    "credentials",
+    "onepassword",
+    "service-account-token",
+  );
+  try {
+    const stats = statSync(path);
+    const protectedFile = stats.isFile() && (stats.mode & 0o077) === 0;
+    const token = protectedFile ? readFileSync(path, "utf8").trim() : null;
+    return { token, protectedFile: Boolean(token) && protectedFile };
+  } catch {
+    return { token: null, protectedFile: false };
+  }
 }
 
 function versionAtLeast(actual, minimum) {
@@ -149,7 +158,8 @@ async function collectMacEvidence() {
 
   const runtimeUser = run("/usr/bin/id", ["-un"]).stdout;
   const opVersion = run("op", ["--version"]);
-  const onePasswordToken = readKeychainSecret("sanctuary.1password.service-account");
+  const onePasswordBootstrap = readServiceAccountToken();
+  const onePasswordToken = onePasswordBootstrap.token;
   let onePasswordVaults = [];
   if (opVersion.ok && onePasswordToken) {
     const vaultList = run("op", ["vault", "list", "--format", "json"], {
@@ -165,23 +175,50 @@ async function collectMacEvidence() {
     }
   }
 
-  const githubAppId = readKeychainSecret("sanctuary.github.app-id");
-  const githubInstallationId = readKeychainSecret("sanctuary.github.installation-id");
-  const githubPrivateKey = readKeychainSecret("sanctuary.github.private-key");
-  const githubKeychainItemsPresent = Boolean(
+  let githubAppId = null;
+  let githubInstallationId = null;
+  let githubPrivateKey = null;
+  if (opVersion.ok && onePasswordToken) {
+    const githubItem = run(
+      "op",
+      [
+        "item",
+        "get",
+        EXPECTED_GITHUB_ITEM,
+        "--vault",
+        EXPECTED_VAULT,
+        "--format",
+        "json",
+      ],
+      { ...process.env, OP_SERVICE_ACCOUNT_TOKEN: onePasswordToken },
+    );
+    if (githubItem.ok) {
+      try {
+        const fields = JSON.parse(githubItem.stdout).fields ?? [];
+        const readField = (label) =>
+          fields.find((field) => field.label === label)?.value ?? null;
+        githubAppId = readField("app_id");
+        githubInstallationId = readField("installation_id");
+        githubPrivateKey = readField("private_key");
+      } catch {
+        // The public report below records only that the item was incomplete.
+      }
+    }
+  }
+  const githubVaultItemPresent = Boolean(
     githubAppId && githubInstallationId && githubPrivateKey,
   );
-  const github = githubKeychainItemsPresent
+  const github = githubVaultItemPresent
     ? await verifyGitHubInstallation(githubAppId, githubInstallationId, githubPrivateKey)
     : { repository: null, permissions: null };
 
   return {
     runtimeUser,
     onePasswordCliReady: opVersion.ok && versionAtLeast(opVersion.stdout, "2.18.0"),
-    onePasswordKeychainItemPresent: Boolean(onePasswordToken),
+    onePasswordTokenFileProtected: onePasswordBootstrap.protectedFile,
     onePasswordVaults,
     onePasswordReadOnlyAttested: process.argv.includes("--attest-op-read-only"),
-    githubKeychainItemsPresent,
+    githubVaultItemPresent,
     githubRepository: github.repository,
     githubPermissions: github.permissions,
   };

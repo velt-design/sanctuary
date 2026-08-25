@@ -49,23 +49,16 @@ disk is not required while the node remains rebuildable and development-only.
    exposure or a material access change.
 6. Save the one-time service-account token in `Sanctuary - Owners`. Do not paste
    it into Git, a task, chat, shell history, `.env`, or a launchd plist.
-7. During the controlled Mac ceremony, place the service-account token and the
-   three GitHub App values into macOS System Keychain under the exact service
-   names used by `scripts/ai/mac-machine-credential-gate.mjs`. The operator must
-   confirm that `sanctuary-runner` can read them without a prompt and that other
-   standard accounts cannot.
+7. Put the App ID, installation ID, and private key in one concealed-field item
+   named `GitHub - Sanctuary Node PR Bot` inside `Sanctuary - Node Runtime`.
+8. During the controlled Mac ceremony, place only the service-account token at
+   `~/.openclaw/credentials/onepassword/service-account-token` with file mode
+   `0600` and parent directories mode `0700`. This is the official unattended
+   OpenClaw integration path and does not use the 1Password desktop app.
 
-Use Keychain account `sanctuary-runner` and these exact service names:
-
-- `sanctuary.1password.service-account`;
-- `sanctuary.github.app-id`;
-- `sanctuary.github.installation-id`;
-- `sanctuary.github.private-key`.
-
-The Keychain insertion step is intentionally not a copy-paste command in Git:
-the values must be entered through a non-logging operator session after
-FileVault passes. Record only the item names and owner in the private asset
-register.
+The token insertion step is intentionally not a copy-paste command in Git. Enter
+it through a non-logging operator session after FileVault passes. Record only
+the item name and owner in the private asset register.
 
 ## Live Credential-Free Preparation Evidence
 
@@ -101,7 +94,8 @@ credential value. It passes only when:
 - 1Password CLI 2.18.0 or later is installed;
 - the service account can see exactly `Sanctuary - Node Runtime`;
 - the operator attests its immutable permission is `read_items` only;
-- all GitHub App identity values are retrieved from Keychain;
+- the local service-account token file is readable only by `sanctuary-runner`;
+- all GitHub App identity values are retrieved from the restricted runtime vault;
 - the installation token contains only the exact repository and permissions
   above.
 

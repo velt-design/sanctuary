@@ -215,7 +215,7 @@ store values only in the selected vault or machine Keychain.
 | Overlay enrolment key | One-time only; delete after enrolment | Never persist on node | Overlay admin |
 | Overlay device identity | Staging-node tag only | Overlay control plane/device key | Overlay admin |
 | SSH admin private key | Required on operator device only | Operator vault or hardware-backed store | Primary operator |
-| GitHub App identity | App registered and repository-scoped; runtime key ready to issue after FileVault passes | 1Password runtime vault plus machine Keychain | Repository admin |
+| GitHub App identity | App registered and repository-scoped; runtime key ready to issue after FileVault passes | Restricted 1Password runtime vault | Repository admin |
 | Staging Supabase credential | None until PR-AI-008 owns the exact contract | Future machine secret store | Supabase admin |
 | OpenClaw gateway token | Generate only at dark install | Machine Keychain/secret store | Node operator |
 | Model/provider or connector keys | Prohibited | Not applicable | Capability owner |
