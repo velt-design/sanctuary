@@ -1361,6 +1361,13 @@ Marketing-only:
 
 The extraction PR must preserve portal behavior before marketing consumes it.
 
+Current extraction state: `@sp/geometry-viewer` owns the app-independent camera,
+bounds and renderability primitives, plus the server-safe deterministic
+top-projection serializer under `@sp/geometry-viewer/svg`. The portal consumes
+those primitives through thin compatibility facades while its measurements,
+sections, diagnostics, selection semantics and React renderer remain portal-owned
+until their later byte-preserving extraction slices land.
+
 ## 7.10 Trust and messaging
 
 Map technical states to customer-safe states:

@@ -6,6 +6,9 @@ export default defineConfig({
     alias: [
       { find: /^@sp\/geometry\/(.*)$/, replacement: path.resolve(__dirname, 'packages/geometry/src') + '/$1.ts' },
       { find: '@sp/geometry', replacement: path.resolve(__dirname, 'packages/geometry/src/index.ts') },
+      { find: '@sp/geometry-viewer/svg', replacement: path.resolve(__dirname, 'packages/geometry-viewer/src/svg/index.ts') },
+      { find: /^@sp\/geometry-viewer\/(.*)$/, replacement: path.resolve(__dirname, 'packages/geometry-viewer/src') + '/$1.ts' },
+      { find: '@sp/geometry-viewer', replacement: path.resolve(__dirname, 'packages/geometry-viewer/src/index.ts') },
       { find: /^@sp\/email-provider$/, replacement: path.resolve(__dirname, 'packages/email-provider/src/index.ts') },
       { find: /^@sp\/ai$/, replacement: path.resolve(__dirname, 'packages/ai/src/index.ts') },
       { find: /^@sp\/jobs$/, replacement: path.resolve(__dirname, 'packages/jobs/src/index.ts') },

@@ -31,6 +31,12 @@
       "@sp/geometry/*": [
         "./packages/geometry/src/*"
       ],
+      "@sp/geometry-viewer": [
+        "./packages/geometry-viewer/src/index.ts"
+      ],
+      "@sp/geometry-viewer/*": [
+        "./packages/geometry-viewer/src/*"
+      ],
       "@sp/email-provider": [
         "./packages/email-provider/src/index.ts"
       ],

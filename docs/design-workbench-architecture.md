@@ -126,6 +126,8 @@ The workbench has two primary render surfaces:
 - `PlanViewport`: the 2D editor. It owns pointer presentation, selection chrome, drag previews, dimensions, and tool affordances.
 - `Geometry3DViewport`: the read/select 3D surface. It must not own drag handlers, gizmos, or commit paths.
 
+`Geometry3DViewport` keeps portal-only selection, diagnostics, measurements, section cuts, and labels, while its reusable camera state, scene bounds, and renderability primitives come from `@sp/geometry-viewer`. Portal compatibility files may re-export those shared primitives, but they must not become parallel implementations.
+
 Both surfaces must read from the solved geometry spine. If Plan and 3D disagree, investigate the first failing artifact/geometry/status stage before changing paint order or styling.
 
 Plan and Sheet remain immediately available workbench surfaces. The Three-based 3D viewport is a separate loading boundary and preloads only from exact `3D Review` hover, focus, touch, or pointer intent; entering 3D without a completed preload shows a truthful local loading state. This changes code delivery only and does not create a second geometry source or alter either viewport's props.

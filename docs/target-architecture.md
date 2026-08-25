@@ -332,7 +332,7 @@ How to use this map: pick the target area before editing, treat `Forbidden short
 
 - Lane label: `package-truth`.
 - North star: packages own reusable domain truth; apps orchestrate and adapt that truth for workflows and UI.
-- Source of truth: `packages/ai`, `packages/costing`, `packages/email-provider`, `packages/geometry`, `packages/jobs`, `packages/quote-format`, `packages/theme`, and package public exports.
+- Source of truth: `packages/ai`, `packages/costing`, `packages/email-provider`, `packages/geometry`, `packages/geometry-viewer`, `packages/jobs`, `packages/quote-format`, `packages/theme`, and package public exports.
 - Allowed paths: behavior changes start in the owning package, then app adapters and integration tests are updated.
 - Forbidden shortcuts: TypeScript-only package aliases without declared dependencies, app-local forks of package rules, or private package internals used as stable APIs.
 - Primary gates: package tests, `npm run packages:guard`, app integration tests for changed adapters, and `npm run typecheck`.

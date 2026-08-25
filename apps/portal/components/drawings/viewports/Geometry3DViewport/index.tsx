@@ -32,6 +32,7 @@ import {
   allSceneBoundsFinite,
   boundingSize,
   centroid,
+  computeSceneBoundsFromPoints,
   isFinitePoint,
   isRenderableLine,
   isRenderablePolygon,
@@ -185,33 +186,7 @@ function collectScenePoints(scene: ViewerSceneModel): Point3[] {
 }
 
 function computeSceneBounds(scene: ViewerSceneModel): SceneBounds {
-  const points = collectScenePoints(scene);
-  if (points.length === 0) {
-    return {
-      min: { x: -500, y: -500, z: 0 },
-      max: { x: 500, y: 500, z: 1000 },
-      center: { x: 0, y: 0, z: 500 },
-      size: 2000,
-    };
-  }
-
-  const xs = points.map((point) => point.x);
-  const ys = points.map((point) => point.y);
-  const zs = points.map((point) => point.z);
-  const min = { x: Math.min(...xs), y: Math.min(...ys), z: Math.min(...zs) };
-  const max = { x: Math.max(...xs), y: Math.max(...ys), z: Math.max(...zs) };
-  const center = {
-    x: (min.x + max.x) / 2,
-    y: (min.y + max.y) / 2,
-    z: (min.z + max.z) / 2,
-  };
-
-  return {
-    min,
-    max,
-    center,
-    size: Math.max(max.x - min.x, max.y - min.y, max.z - min.z, 1000),
-  };
+  return computeSceneBoundsFromPoints(collectScenePoints(scene));
 }
 
 
