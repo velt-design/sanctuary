@@ -236,6 +236,8 @@ Sheet and Plan routing packages drawing inputs as `WorkbenchDrawingSurfaceGeomet
 
 Top projection, wall edges, section cuts, sheet plans, dimensions, snap frames, hit targets, and interaction frames must be generated from the same solved geometry. App-local calculator plan models, object-workbench overlays, and sheet renderers may adapt or present that geometry, but they must not own separate view-specific geometry that can drift from 3D or from saved object intent.
 
+`buildPergolaInteractionAnchors()` derives the four semantic perimeter edges and rafter/perimeter lighting runs only from a post-transform `Assembly3D`; hosted state comes from `Assembly3D.attachmentEdge`. Anchor and lighting-run IDs are stable within one assembly only. Project/application consumers pair them with their own assembly identity rather than adding source-object identity to the geometry contract.
+
 Physical takeoff should also be derived from the solved geometry spine. Portal shadow adapters may read geometry quantities during migration, but long-term takeoff policy belongs with package-owned geometry contracts, not app-local drawing or pricing code.
 
 Host house identity is an object-id contract. Workbench callers resolve host relationships through object references and the solved project artifact, not through per-module house-context copies.

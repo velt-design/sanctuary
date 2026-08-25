@@ -22,6 +22,13 @@ export {
 } from "./houseRoofCapabilities";
 export { normalizeGeometryConfig } from "./normalize";
 export { solveAssembly3D } from "./solve";
+export { buildPergolaInteractionAnchors } from "./interactionAnchors";
+export type {
+  PergolaInteractionAnchors,
+  PergolaInteractionEdge,
+  PergolaInteractionEdgeId,
+  PergolaLightingRun,
+} from "./interactionAnchors";
 export { solveProject } from "./solveProject";
 export { solvePergolaGeometry } from "./solvePergolaGeometry";
 export type { PergolaGeometryInput } from "./solvePergolaGeometry";
