@@ -184,8 +184,14 @@ export function activateEngineeringRuntime() {
       "--lint",
       "--only",
       "core/doctor/configured-plugin-installs",
+      "--severity-min",
+      "error",
       "--json",
     ],
+    { env, inherit: true },
+  );
+  runOpenClaw(
+    ["doctor", "--lint", "--only", "core/doctor/security", "--json"],
     { env, inherit: true },
   );
   run(
