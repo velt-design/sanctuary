@@ -11,6 +11,20 @@ secrets and create Sanctuary branches and pull requests. This does not grant
 workflow, deployment, environment, secret-management, administration, or
 production access.
 
+## Credential-Free CLI Preparation
+
+The signed 1Password CLI may be installed for `sanctuary-runner` before the
+FileVault and backup gates pass because the binary itself contains no account or
+secret. Install it from the official 1Password release channel, verify the
+macOS code signature identifies Team ID `2BUA8C4S2C`, and confirm `op --version`
+is 2.18.0 or later. A non-admin installation may use `~/bin/op` when that
+directory is already in the runtime account's `PATH`.
+
+Do not connect the CLI to a person's 1Password desktop session. Do not place a
+service-account token, vault item, GitHub key, or other credential on the node
+until the FileVault and backup/restore gates pass. The headless runtime uses only
+the restricted service account described below.
+
 ## One-Time Owner Actions
 
 1. Create a new 1Password vault named `Sanctuary - Node Runtime`. Put no owner,
