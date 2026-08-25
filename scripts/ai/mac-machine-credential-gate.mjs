@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { createSign } from "node:crypto";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
