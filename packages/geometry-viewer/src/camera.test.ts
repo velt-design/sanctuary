@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  buildOrthographicFit,
   buildPresetCameraState,
   clampCameraStateToScene,
   fitDistanceForSize,
@@ -62,5 +63,23 @@ describe("geometry viewer camera primitives", () => {
 
     expect(clamped.distanceMm).toBe(1800);
     expect(clamped.position).toEqual({ x: target.x, y: target.y, z: 2100 });
+  });
+
+  it("fits front and side orthographic cameras without cropping", () => {
+    const bounds = {
+      min: { x: -2000, y: -1000, z: 0 },
+      max: { x: 2000, y: 1000, z: 3000 },
+      center: { x: 0, y: 0, z: 1500 },
+      size: 4000,
+    };
+    const front = buildOrthographicFit({ bounds, viewPreset: "front", aspect: 2 });
+    const side = buildOrthographicFit({ bounds, viewPreset: "right", aspect: 0.5 });
+
+    expect(front.position).toEqual({ x: 0, y: -8000, z: 1500 });
+    expect(front.right - front.left).toBeGreaterThanOrEqual(4000);
+    expect(front.top - front.bottom).toBeGreaterThanOrEqual(3000);
+    expect(side.position).toEqual({ x: 8000, y: 0, z: 1500 });
+    expect(side.right - side.left).toBeGreaterThanOrEqual(2000);
+    expect(side.top - side.bottom).toBeGreaterThanOrEqual(3000);
   });
 });

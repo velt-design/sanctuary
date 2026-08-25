@@ -1,7 +1,7 @@
 ﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneRoofFlashingObject } from "@sp/geometry";
-import { buildPolygonSlabGeometry } from "../geometry/buildGeometries";
+import { buildPolygonSlabGeometry } from "../../three";
 
 /**
  * Multi-wing roof flashing renderer. Each `wing` is a separate slab

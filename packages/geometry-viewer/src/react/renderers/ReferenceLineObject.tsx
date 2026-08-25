@@ -1,8 +1,8 @@
 ﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneReferenceLineObject } from "@sp/geometry";
-import { buildLineGeometry } from "../geometry/lineBuilders";
-import { linePoints } from "../geometry/scenePointHelpers";
+import { buildLineGeometry } from "../../three";
+import { linePoints } from "../../scene";
 
 /**
  * Reference line renderer — drawn for datum axes, fall-vector

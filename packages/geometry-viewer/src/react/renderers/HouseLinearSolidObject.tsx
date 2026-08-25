@@ -4,7 +4,7 @@ import type { ViewerSceneHouseLinearSolidObject } from "@sp/geometry";
 import {
   buildLinearSolidPlacement,
   buildRenderMeshGeometry,
-} from "../geometry/buildGeometries";
+} from "../../three";
 
 /**
  * House linear-solid renderer (gutters, fascia bars, etc.). Two render

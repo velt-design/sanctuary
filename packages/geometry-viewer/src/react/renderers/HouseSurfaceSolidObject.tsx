@@ -6,17 +6,17 @@ import {
   buildPolygonSlabGeometry,
   buildRenderMeshGeometry,
   offsetPolygon,
-} from "../geometry/buildGeometries";
+} from "../../three";
 import {
   buildDeckGrooveLines,
   resolveDeckMaterial,
   resolveDeckPalette,
-} from "../geometry/deckVisual";
+} from "../../three";
 import {
   buildClosedLineGeometry,
   buildLineGeometry,
   emptyGeometry,
-} from "../geometry/lineBuilders";
+} from "../../three";
 
 /**
  * Solid house-surface renderer — covers roofs, walls (including the

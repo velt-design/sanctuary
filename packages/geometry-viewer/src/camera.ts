@@ -16,6 +16,20 @@ export type GeometryCameraState = {
 
 export type GeometryViewportCamera = THREE.PerspectiveCamera | THREE.OrthographicCamera;
 
+export type GeometryOrthographicPreset = "front" | "right" | "top";
+
+export type GeometryOrthographicFit = {
+  position: Point3;
+  target: Point3;
+  up: Point3;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  near: number;
+  far: number;
+};
+
 export function pointToVector(point: Point3): THREE.Vector3 {
   return new THREE.Vector3(point.x, point.y, point.z);
 }
@@ -67,6 +81,50 @@ export function fitDistanceForSize(size: number, fovDeg = 40): number {
   const radius = Math.max(size, 1000) / 2;
   const fovRadians = THREE.MathUtils.degToRad(fovDeg / 2);
   return Math.max((radius / Math.tan(fovRadians)) * 1.25, 1200);
+}
+
+export function buildOrthographicFit({
+  bounds,
+  viewPreset,
+  aspect = 1,
+  padding = 1.15,
+}: {
+  bounds: SceneBounds;
+  viewPreset: GeometryOrthographicPreset;
+  aspect?: number;
+  padding?: number;
+}): GeometryOrthographicFit {
+  const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1;
+  const safePadding = Number.isFinite(padding) && padding >= 1 ? padding : 1.15;
+  const spanX = Math.max(bounds.max.x - bounds.min.x, 1);
+  const spanY = Math.max(bounds.max.y - bounds.min.y, 1);
+  const spanZ = Math.max(bounds.max.z - bounds.min.z, 1);
+  const viewWidth = viewPreset === "front" ? spanX : viewPreset === "right" ? spanY : spanX;
+  const viewHeight = viewPreset === "top" ? spanY : spanZ;
+  const halfHeight = Math.max(
+    (viewHeight * safePadding) / 2,
+    (viewWidth * safePadding) / (2 * safeAspect),
+    1,
+  );
+  const halfWidth = halfHeight * safeAspect;
+  const distance = Math.max(bounds.size * 2, 2000);
+  const direction = viewPreset === "front"
+    ? new THREE.Vector3(0, -1, 0)
+    : viewPreset === "right"
+      ? new THREE.Vector3(1, 0, 0)
+      : new THREE.Vector3(0, 0, 1);
+
+  return {
+    position: positionFromDirection(bounds.center, direction, distance),
+    target: bounds.center,
+    up: viewPreset === "top" ? { x: 0, y: -1, z: 0 } : { x: 0, y: 0, z: 1 },
+    left: -halfWidth,
+    right: halfWidth,
+    top: halfHeight,
+    bottom: -halfHeight,
+    near: 1,
+    far: Math.max(distance + bounds.size * 2, 40000),
+  };
 }
 
 function directionForPreset(viewPreset: GeometryCameraPreset): THREE.Vector3 {

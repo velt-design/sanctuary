@@ -1796,7 +1796,7 @@ Current guardrail: Plan render graph exposes `diagnosticFallbacks` separately fr
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts](../apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), [apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx).
+Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts](../apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), [packages/geometry-viewer/src/react/renderers/ReferenceLineObject.tsx](../packages/geometry-viewer/src/react/renderers/ReferenceLineObject.tsx).
 
 ### 2026-06-01 - Workbench Rendering - House Render Health By Form
 
@@ -2407,7 +2407,7 @@ Behavioural impact: the user's Graham–Oratia screenshot would now render with 
 
 Promoted to: None
 
-Related docs/tests: [docs/house-roof-stability-plan.md](house-roof-stability-plan.md), [packages/geometry/src/viewer.ts](../packages/geometry/src/viewer.ts), [packages/geometry/src/viewer.test.ts](../packages/geometry/src/viewer.test.ts), [apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/HouseSurfaceSolidObject.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/HouseSurfaceSolidObject.tsx).
+Related docs/tests: [docs/house-roof-stability-plan.md](house-roof-stability-plan.md), [packages/geometry/src/viewer.ts](../packages/geometry/src/viewer.ts), [packages/geometry/src/viewer.test.ts](../packages/geometry/src/viewer.test.ts), [packages/geometry-viewer/src/react/renderers/HouseSurfaceSolidObject.tsx](../packages/geometry-viewer/src/react/renderers/HouseSurfaceSolidObject.tsx).
 
 ### 2026-06-18 - Workbench House Forms - Quarantine Cleanup + Narrow-Return Coverage (PR-HR5)
 

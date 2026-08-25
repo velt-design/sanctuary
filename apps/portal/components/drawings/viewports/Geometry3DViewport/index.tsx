@@ -24,6 +24,11 @@ import {
   buildLinearSolidPlacement,
   isRenderableSlab,
 } from "./geometry/buildGeometries";
+import {
+  attachRendererContextLifecycle,
+  disposeRenderer,
+  resetRendererState,
+} from "./geometry/rendererLifecycle";
 import { ArrowOverlay } from "./overlays/ArrowOverlay";
 import { MeasurementProbeOverlay } from "./overlays/MeasurementProbeOverlay";
 import { SectionCutHint } from "./overlays/SectionCutHint";
@@ -126,21 +131,6 @@ function workbenchObjectIdForSceneObject(object: ViewerSceneObject): string | nu
       ? object.metadata.pergolaId
       : null;
   return pergolaId ?? sourceId;
-}
-
-function resetRendererState(renderer: THREE.WebGLRenderer | null): void {
-  if (!renderer) return;
-  renderer.localClippingEnabled = false;
-  renderer.setScissorTest(false);
-  renderer.clearDepth();
-  renderer.resetState();
-  (renderer as { renderLists?: { dispose?: () => void } }).renderLists?.dispose?.();
-}
-
-function disposeRenderer(renderer: THREE.WebGLRenderer | null): void {
-  if (!renderer) return;
-  resetRendererState(renderer);
-  renderer.dispose();
 }
 
 function collectScenePoints(scene: ViewerSceneModel): Point3[] {
@@ -305,6 +295,7 @@ export default function Geometry3DViewport({
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const cameraRef = useRef<GeometryViewportCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const rendererLifecycleCleanupRef = useRef<(() => void) | null>(null);
   const canvasShellRef = useRef<HTMLDivElement | null>(null);
   const viewportRestoreSignatureRef = useRef<string | null>(null);
   const [rectDiagnostic, setRectDiagnostic] = useState<ViewportRectDiagnostics>(
@@ -633,7 +624,9 @@ export default function Geometry3DViewport({
 
   const handleCanvasCreated = useCallback(
     ({ gl, camera }: { gl: THREE.WebGLRenderer; camera: THREE.Camera }) => {
+      rendererLifecycleCleanupRef.current?.();
       rendererRef.current = gl;
+      rendererLifecycleCleanupRef.current = attachRendererContextLifecycle(gl);
       resetRendererState(gl);
       cameraRef.current = camera as GeometryViewportCamera;
       cameraRef.current.up.set(0, cameraState.viewPreset === "top" ? -1 : 0, cameraState.viewPreset === "top" ? 0 : 1);
@@ -844,6 +837,8 @@ export default function Geometry3DViewport({
 
   useEffect(() => {
     return () => {
+      rendererLifecycleCleanupRef.current?.();
+      rendererLifecycleCleanupRef.current = null;
       disposeRenderer(rendererRef.current);
       rendererRef.current = null;
       cameraRef.current = null;

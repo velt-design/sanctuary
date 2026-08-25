@@ -1,7 +1,7 @@
 ﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneRoofCladdingPanelObject } from "@sp/geometry";
-import { buildPolygonSlabGeometry } from "../geometry/buildGeometries";
+import { buildPolygonSlabGeometry } from "../../three";
 
 /**
  * Roof cladding panel renderer — the per-panel slab geometry the

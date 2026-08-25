@@ -1,7 +1,7 @@
 ﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneHouseSurfaceObject } from "@sp/geometry";
-import { buildPolygonGeometry } from "../geometry/buildGeometries";
+import { buildPolygonGeometry } from "../../three";
 
 /**
  * Flat house-surface renderer (non-solid) — used for the diagnostic
