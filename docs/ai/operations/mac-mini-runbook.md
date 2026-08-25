@@ -9,9 +9,10 @@ after the node becomes operational.
 
 ## How To Use This Runbook
 
-Complete the phases in order for the first setup. Use `Routine Operations` after
-deployment and switch to `node-rebuild-and-revocation.md` or
-`ai-incident-response.md` when integrity, credentials, or recovery are in doubt.
+Complete Phases 1-5 before activation. Phase 6 is an optional resilience upgrade
+for the rebuildable development node. Use `Routine Operations` after deployment
+and switch to `node-rebuild-and-revocation.md` or `ai-incident-response.md` when
+integrity, credentials, or recovery are in doubt.
 
 ## Purpose
 
@@ -40,8 +41,8 @@ The operator must complete these private decisions outside the repository:
 - [ ] Select the private-overlay account and owner. Tailscale is recommended for
       the first node, but account creation is an owner action.
 - [ ] Select a business secret vault.
-- [ ] Obtain a dedicated encrypted-backup disk of at least 2 TB for the 1 TB Mac.
-- [ ] Obtain and identify the UPS, protected network equipment, and shutdown path.
+- [ ] Decide whether to add an encrypted backup disk and UPS now or defer them
+      while the node remains rebuildable and development-only.
 - [ ] Choose a maintained Docker- or Podman-compatible macOS runtime after
       confirming licensing and operational support.
 - [ ] Create a private asset-register entry. Store hardware identifiers there,
@@ -49,8 +50,9 @@ The operator must complete these private decisions outside the repository:
 
 ## Phase 1 - Physical And Account Baseline
 
-1. Connect the Mac mini, primary network equipment, and backup destination to
-   the UPS. Use wired Ethernet where practical.
+1. Connect the Mac mini to stable power and use wired Ethernet where practical.
+   Add the backup destination and UPS when those optional resilience upgrades
+   are introduced.
 2. Install the current supported macOS release and all security updates before
    adding developer tools.
 3. During Setup Assistant, create a local dedicated administrator account such
@@ -158,8 +160,8 @@ tagged server identity and access policy:
 The normal Tailscale macOS app does not currently run as an unattended system
 service before user login. FileVault also requires an unlock after power loss or
 restart. Therefore the first milestone requires physical/on-site unlock after a
-reboot and must not use auto-login. The UPS reduces avoidable restarts; it does
-not remove this recovery dependency.
+reboot and must not use auto-login. A future UPS may reduce avoidable restarts;
+it does not remove this recovery dependency.
 
 Do not adopt a standalone system `tailscaled`, pre-boot SSH unlock, or a remote
 management product merely to hide this limitation. Each is a later security
@@ -209,7 +211,7 @@ store values only in the selected vault or machine Keychain.
 | Secret or identity | Initial state | Storage | Rotation/revocation owner |
 | --- | --- | --- | --- |
 | FileVault personal recovery key | Required | Business vault plus offline copy | Primary operator and recovery custodian |
-| Backup encryption password | Required | Business vault, separate from backup disk | Primary operator and recovery custodian |
+| Backup encryption password | Not issued until a backup disk is added | Business vault, separate from backup disk | Primary operator |
 | Overlay enrolment key | One-time only; delete after enrolment | Never persist on node | Overlay admin |
 | Overlay device identity | Staging-node tag only | Overlay control plane/device key | Overlay admin |
 | SSH admin private key | Required on operator device only | Operator vault or hardware-backed store | Primary operator |
@@ -231,7 +233,16 @@ Rules:
 - Reissue machine credentials after a rebuild; do not restore them blindly from
   backup.
 
-## Phase 6 - Encrypted Backup And Restore Proof
+## Phase 6 - Optional Encrypted Backup And Restore Proof
+
+This phase is **not an activation gate** while the Mac is used as a rebuildable
+development node. GitHub holds the code and reviewed configuration, 1Password
+holds or can reissue secrets, and no canonical business state may exist only on
+the Mac. If the machine is lost, damaged, or wiped, rebuild it from those hosted
+sources and accept the resulting downtime.
+
+Complete this phase before allowing unique local business state, customer data
+that cannot be re-fetched, or production workloads to depend on the node.
 
 1. Configure the dedicated disk as an encrypted Time Machine destination. Apple
    recommends backup capacity of at least twice the Mac's storage; use at least
@@ -255,11 +266,12 @@ node scripts/ai/mac-backup-restore-gate.mjs \
   --restored /path/to/restored-sample
 ```
 
-The command passes only when a Time Machine destination is configured, the
-mounted destination reports encryption, a completed backup exists, and the two
-sample files match exactly. Its output contains no destination name, mount path,
-file path, password, or content hash. Delete the temporary restored sample after
-recording the pass in the private asset register.
+This optional readiness command passes only when a Time Machine destination is
+configured, the mounted destination reports encryption, a completed backup
+exists, and the two sample files match exactly. Its output contains no
+destination name, mount path, file path, password, or content hash. Delete the
+temporary restored sample after recording the pass in the private asset
+register.
 
 References:
 
@@ -268,7 +280,8 @@ References:
 
 ## Phase 7 - OpenClaw Dark Installation
 
-Do not install OpenClaw until Phases 1-6 pass. At first start:
+Do not activate OpenClaw until Phases 1-5 pass. Phase 6 may remain deferred while
+the node is rebuildable and development-only. At first start:
 
 - bind the Gateway to loopback only;
 - require a generated gateway token stored outside configuration files;
@@ -348,7 +361,7 @@ This phase waits for PR-AI-008 and a separate staging deployment checkpoint.
 Weekly while staging-only:
 
 - check macOS, overlay, container runtime, OpenClaw, and repository update status;
-- verify last encrypted backup and restore-test age;
+- when a backup is configured, verify its latest completion and restore-test age;
 - verify node last-seen and stale/revoked state once PR-AI-008 exists;
 - review failed logins, OpenClaw audit findings, sandbox inventory, disk use, and
   secret-rotation dates;
@@ -367,10 +380,12 @@ After every update or restart:
 ## Definition Of Done
 
 - All checklist items have dated, secret-free evidence in the private asset register.
-- FileVault and encrypted backup recovery material is held away from the Mac.
+- FileVault recovery material is held away from the Mac; backup material is
+  added when Phase 6 is adopted.
 - Only named private administration works; no public port exists.
 - Reboot behavior is truthfully documented and physically rehearsed.
 - OpenClaw is dark, loopback-only, sandboxed, networkless, and host-exec denied.
 - No production or broad connector credential exists on the node.
-- Backup sample restore, revocation, rebuild, and node-offline rehearsals pass.
+- Revocation, rebuild-from-Git, and node-offline rehearsals pass. A backup sample
+  restore is required only after Phase 6 is adopted.
 - Hosted Portal and canonical business workflows remain usable with the node off.
