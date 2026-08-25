@@ -1,6 +1,7 @@
 # OpenClaw Dark Installation
 
-Status: Prepared and validation-tested; machine execution blocked by recovery gates.
+Status: Prepared and validation-tested; inert installation may precede recovery gates,
+but activation remains blocked by them.
 
 Owner: Jordan / Sanctuary Pergolas
 
@@ -16,9 +17,35 @@ integrity pin, schema validation, security audit, and this same checkpoint again
 
 ## Prerequisites
 
-Do not install until all three earlier gates pass. In addition, generate a long
-random Gateway token during the controlled Keychain ceremony and store it for
-Keychain account `sanctuary-runner` under service name
+### Credential-free dark preparation
+
+The exact pinned binary, deny-all configuration, and sandbox image may be
+installed before the recovery and credential gates pass. This preparation uses
+a random in-memory validation token only. It creates no Keychain item, starts no
+process, installs no service, and grants no capability.
+
+If an encrypted backup is temporarily unavailable, the owner must provide a
+dated deferral no more than 31 days in the future. The installer records that
+the backup gate is **deferred, not passed**, and records that activation is
+forbidden. As `sanctuary-runner`, run:
+
+```bash
+node scripts/ai/mac-openclaw-dark-install.mjs \
+  --prepare-dark \
+  --backup-deferred-until YYYY-MM-DD
+```
+
+This path requires only the correct non-admin runtime account and rootless
+Podman. It remains prohibited to start the Gateway, install a LaunchAgent, add
+a model/provider/channel, grant a writable workspace, or introduce staging,
+production, or customer data. Delete-and-reinstall shortcuts are not a substitute
+for the later full verification.
+
+### Full dark verification
+
+Before any activation, all three earlier gates must pass. In addition, generate
+a long random Gateway token during the controlled Keychain ceremony and store it
+for Keychain account `sanctuary-runner` under service name
 `sanctuary.openclaw.gateway-token`. Never print it or put it in Git, `.env`,
 shell history, a plist, or a task.
 
@@ -33,11 +60,13 @@ node scripts/ai/mac-openclaw-dark-install.mjs \
 ```
 
 Only after every line reports `PASS`, repeat the same command with `--install`.
-The installer verifies the npm registry integrity pin, installs the exact
-package under `~/.local`, copies the reviewed config and deny-all approvals with
-restricted permissions, builds the pinned rootless Podman sandbox image,
-validates the effective config, and requires a clean static security audit. It
-does not onboard, install a daemon, start a Gateway, or add a model.
+If credential-free preparation already installed the files, this revalidates
+their exact content and effective policy rather than overwriting them. Otherwise,
+it installs the exact package under `~/.local`, copies the reviewed config and
+deny-all approvals with restricted permissions, and builds the pinned rootless
+Podman sandbox image. Both paths validate the effective config, require a clean
+static security audit, and confirm there is no process, listener, or LaunchAgent.
+They do not onboard, install a daemon, start a Gateway, or add a model.
 
 ## First Live Rehearsal
 

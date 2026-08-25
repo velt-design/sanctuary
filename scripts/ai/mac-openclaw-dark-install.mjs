@@ -6,7 +6,9 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  writeFileSync,
 } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
@@ -15,8 +17,63 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const release = JSON.parse(
-  readFileSync(join(repoRoot, "infra/openclaw/dark/openclaw-release.json"), "utf8"),
+  readFileSync(
+    join(repoRoot, "infra/openclaw/dark/openclaw-release.json"),
+    "utf8",
+  ),
 );
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_BACKUP_DEFER_DAYS = 31;
+
+export function parseBackupDeferral(value, now = new Date()) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value ?? "")) {
+    throw new Error("--backup-deferred-until must use YYYY-MM-DD.");
+  }
+
+  const target = Date.parse(`${value}T00:00:00Z`);
+  const today = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
+  const deferDays = (target - today) / DAY_MS;
+  if (!Number.isInteger(deferDays) || deferDays < 1) {
+    throw new Error("The backup deferral must expire after today.");
+  }
+  if (deferDays > MAX_BACKUP_DEFER_DAYS) {
+    throw new Error(
+      `The backup deferral cannot exceed ${MAX_BACKUP_DEFER_DAYS} days.`,
+    );
+  }
+  return value;
+}
+
+export function buildDarkPreparationRecord({
+  backupDeferredUntil = null,
+  preparedAt = new Date(),
+} = {}) {
+  return {
+    schemaVersion: 1,
+    state: "prepared-dark",
+    packageVersion: release.version,
+    preparedAt: preparedAt.toISOString(),
+    activationAllowed: false,
+    backupGate: backupDeferredUntil
+      ? "deferred-not-passed"
+      : "passed-at-verification",
+    backupDeferredUntil,
+    prohibitions: [
+      "gateway-start",
+      "launch-agent",
+      "model-provider",
+      "channel",
+      "writable-workspace",
+      "staging-access",
+      "production-access",
+      "customer-data",
+    ],
+  };
+}
 
 function run(command, args = [], options = {}) {
   return spawnSync(command, args, {
@@ -32,7 +89,8 @@ function readOption(name) {
   const index = process.argv.indexOf(name);
   if (index === -1) return null;
   const value = process.argv[index + 1];
-  if (!value || value.startsWith("--")) throw new Error(`${name} requires a value.`);
+  if (!value || value.startsWith("--"))
+    throw new Error(`${name} requires a value.`);
   return value;
 }
 
@@ -50,9 +108,42 @@ function readKeychainSecret(service) {
 }
 
 function runPrerequisiteGate(script, args = []) {
-  return run(process.execPath, [join(repoRoot, "scripts/ai", script), ...args], {
-    inherit: true,
-  }).status === 0;
+  return (
+    run(process.execPath, [join(repoRoot, "scripts/ai", script), ...args], {
+      inherit: true,
+    }).status === 0
+  );
+}
+
+function rootlessPodmanReady() {
+  return (
+    run("podman", ["info", "--format", "{{.Host.Security.Rootless}}"])
+      .stdout.trim()
+      .toLowerCase() === "true"
+  );
+}
+
+function checkPreparationPrerequisites() {
+  if (process.platform !== "darwin") {
+    throw new Error("This installer must run on the Mac mini.");
+  }
+
+  const checks = {
+    runtimeUser:
+      run("/usr/bin/id", ["-un"]).stdout.trim() === "sanctuary-runner",
+    rootlessPodman: rootlessPodmanReady(),
+  };
+
+  console.log("OpenClaw credential-free dark-preparation prerequisites:");
+  for (const [name, passed] of Object.entries(checks)) {
+    console.log(`- ${name}: ${passed ? "PASS" : "FAIL"}`);
+  }
+  console.log(
+    "- backupRestore: DEFERRED — not passed and not required for inert preparation",
+  );
+  console.log("- activation: DENIED");
+
+  return Object.values(checks).every(Boolean);
 }
 
 function checkPrerequisites() {
@@ -78,16 +169,15 @@ function checkPrerequisites() {
       ]),
     machineCredentials:
       opAttested &&
-      runPrerequisiteGate("mac-machine-credential-gate.mjs", ["--attest-op-read-only"]),
+      runPrerequisiteGate("mac-machine-credential-gate.mjs", [
+        "--attest-op-read-only",
+      ]),
   };
 
   const gatewayToken = readKeychainSecret("sanctuary.openclaw.gateway-token");
   checks.gatewayToken = Boolean(gatewayToken && gatewayToken.length >= 32);
 
-  const podman = run("podman", ["info", "--format", "{{.Host.Security.Rootless}}"]).stdout
-    .trim()
-    .toLowerCase();
-  checks.rootlessPodman = podman === "true";
+  checks.rootlessPodman = rootlessPodmanReady();
 
   console.log("OpenClaw dark-install prerequisites:");
   for (const [name, passed] of Object.entries(checks)) {
@@ -111,7 +201,10 @@ function verifyRegistryRelease() {
   if (lookup.status !== 0) return false;
   try {
     const observed = JSON.parse(lookup.stdout);
-    return observed.version === release.version && observed["dist.integrity"] === release.integrity;
+    return (
+      observed.version === release.version &&
+      observed["dist.integrity"] === release.integrity
+    );
   } catch {
     return false;
   }
@@ -130,7 +223,9 @@ function openClawEnvironment(configPath, stateDir, prefix, gatewayToken) {
 }
 
 function requireCleanAudit(openclaw, environment) {
-  const audit = run(openclaw, ["security", "audit", "--json"], { env: environment });
+  const audit = run(openclaw, ["security", "audit", "--json"], {
+    env: environment,
+  });
   if (audit.status !== 0) return false;
   try {
     const report = JSON.parse(audit.stdout);
@@ -158,19 +253,120 @@ function requireDeniedExec(openclaw, environment) {
   }
 }
 
-function installDarkOpenClaw(gatewayToken) {
+function darkPaths() {
   const home = homedir();
   const prefix = join(home, ".local");
   const stateDir = join(home, ".openclaw");
-  const configPath = join(stateDir, "openclaw.json");
-  const approvalsPath = join(stateDir, "exec-approvals.json");
-  const openclaw = join(prefix, "bin", "openclaw");
+  return {
+    prefix,
+    stateDir,
+    configPath: join(stateDir, "openclaw.json"),
+    approvalsPath: join(stateDir, "exec-approvals.json"),
+    preparationPath: join(stateDir, "sanctuary-dark-preparation.json"),
+    openclaw: join(prefix, "bin", "openclaw"),
+  };
+}
 
-  if (existsSync(openclaw) || existsSync(configPath) || existsSync(approvalsPath)) {
-    throw new Error("An OpenClaw install or state file already exists; review it before proceeding.");
+function darkRuntimeStopped() {
+  const processCheck = run("/usr/bin/pgrep", ["-x", "openclaw"]);
+  const listenerCheck = run("/usr/sbin/lsof", [
+    "-nP",
+    "-iTCP:18789",
+    "-sTCP:LISTEN",
+  ]);
+  const launchAgents = run("/bin/launchctl", ["list"]);
+  return (
+    processCheck.status !== 0 &&
+    listenerCheck.status !== 0 &&
+    !/openclaw/i.test(launchAgents.stdout)
+  );
+}
+
+function verifyDarkOpenClaw(gatewayToken) {
+  const { prefix, stateDir, configPath, approvalsPath, openclaw } = darkPaths();
+  if (
+    !existsSync(openclaw) ||
+    !existsSync(configPath) ||
+    !existsSync(approvalsPath)
+  ) {
+    return false;
+  }
+  if (
+    readFileSync(configPath, "utf8") !==
+      readFileSync(
+        join(repoRoot, "infra/openclaw/dark/openclaw.json"),
+        "utf8",
+      ) ||
+    readFileSync(approvalsPath, "utf8") !==
+      readFileSync(
+        join(repoRoot, "infra/openclaw/dark/exec-approvals.json"),
+        "utf8",
+      )
+  ) {
+    return false;
+  }
+  if (
+    run("podman", [
+      "image",
+      "exists",
+      "localhost/openclaw-sandbox:bookworm-slim-sanctuary",
+    ]).status !== 0
+  ) {
+    return false;
+  }
+
+  const environment = openClawEnvironment(
+    configPath,
+    stateDir,
+    prefix,
+    gatewayToken,
+  );
+  const version = run(openclaw, ["--version"], { env: environment });
+  const config = run(openclaw, ["config", "validate"], { env: environment });
+  return (
+    version.status === 0 &&
+    version.stdout.includes(release.version) &&
+    config.status === 0 &&
+    requireCleanAudit(openclaw, environment) &&
+    requireDeniedExec(openclaw, environment) &&
+    darkRuntimeStopped()
+  );
+}
+
+function writePreparationRecord(record) {
+  const { stateDir, preparationPath } = darkPaths();
+  mkdirSync(stateDir, { recursive: true, mode: 0o700 });
+  writeFileSync(preparationPath, `${JSON.stringify(record, null, 2)}\n`, {
+    encoding: "utf8",
+    mode: 0o600,
+  });
+  chmodSync(preparationPath, 0o600);
+}
+
+function installDarkOpenClaw(gatewayToken, preparationRecord) {
+  const {
+    prefix,
+    stateDir,
+    configPath,
+    approvalsPath,
+    preparationPath,
+    openclaw,
+  } = darkPaths();
+
+  if (
+    existsSync(openclaw) ||
+    existsSync(configPath) ||
+    existsSync(approvalsPath) ||
+    existsSync(preparationPath)
+  ) {
+    throw new Error(
+      "An OpenClaw install or state file already exists; review it before proceeding.",
+    );
   }
   if (!verifyRegistryRelease()) {
-    throw new Error("The npm package version or registry integrity does not match the pin.");
+    throw new Error(
+      "The npm package version or registry integrity does not match the pin.",
+    );
   }
 
   const installation = run("npm", [
@@ -186,7 +382,10 @@ function installDarkOpenClaw(gatewayToken) {
 
   mkdirSync(stateDir, { recursive: true, mode: 0o700 });
   copyFileSync(join(repoRoot, "infra/openclaw/dark/openclaw.json"), configPath);
-  copyFileSync(join(repoRoot, "infra/openclaw/dark/exec-approvals.json"), approvalsPath);
+  copyFileSync(
+    join(repoRoot, "infra/openclaw/dark/exec-approvals.json"),
+    approvalsPath,
+  );
   chmodSync(configPath, 0o600);
   chmodSync(approvalsPath, 0o600);
 
@@ -203,19 +402,14 @@ function installDarkOpenClaw(gatewayToken) {
     ],
     { inherit: true },
   );
-  if (imageBuild.status !== 0) throw new Error("OpenClaw sandbox image build failed.");
+  if (imageBuild.status !== 0)
+    throw new Error("OpenClaw sandbox image build failed.");
 
-  const environment = openClawEnvironment(configPath, stateDir, prefix, gatewayToken);
-  const version = run(openclaw, ["--version"], { env: environment });
-  const config = run(openclaw, ["config", "validate"], { env: environment });
-  if (
-    version.status !== 0 ||
-    !version.stdout.includes(release.version) ||
-    config.status !== 0 ||
-    !requireCleanAudit(openclaw, environment) ||
-    !requireDeniedExec(openclaw, environment)
-  ) {
-    throw new Error("OpenClaw installed, but one or more dark-state checks failed.");
+  writePreparationRecord(preparationRecord);
+  if (!verifyDarkOpenClaw(gatewayToken)) {
+    throw new Error(
+      "OpenClaw installed, but one or more dark-state checks failed.",
+    );
   }
 
   console.log("OpenClaw dark installation: PASS");
@@ -223,22 +417,68 @@ function installDarkOpenClaw(gatewayToken) {
 }
 
 function main() {
+  if (process.argv.includes("--prepare-dark")) {
+    if (process.argv.includes("--install")) {
+      throw new Error("Use --prepare-dark or --install, not both.");
+    }
+    const backupDeferredUntil = parseBackupDeferral(
+      readOption("--backup-deferred-until"),
+    );
+    if (!checkPreparationPrerequisites()) {
+      console.error(
+        "OpenClaw dark preparation: BLOCKED by failed prerequisites.",
+      );
+      process.exitCode = 1;
+      return;
+    }
+
+    const validationToken = randomBytes(32).toString("base64url");
+    installDarkOpenClaw(
+      validationToken,
+      buildDarkPreparationRecord({ backupDeferredUntil }),
+    );
+    console.log(
+      `Backup remains deferred, not passed, until ${backupDeferredUntil}.`,
+    );
+    console.log("Activation remains blocked by the full prerequisite gate.");
+    return;
+  }
+
   const prerequisites = checkPrerequisites();
   if (!prerequisites.passed) {
-    console.error("OpenClaw dark installation: BLOCKED by failed prerequisites.");
+    console.error(
+      "OpenClaw dark installation: BLOCKED by failed prerequisites.",
+    );
     process.exitCode = 1;
     return;
   }
   if (!process.argv.includes("--install")) {
-    console.log("OpenClaw dark installation: READY. Re-run with --install after review.");
+    console.log(
+      "OpenClaw dark installation: READY. Re-run with --install after review.",
+    );
     return;
   }
-  installDarkOpenClaw(prerequisites.gatewayToken);
+  if (existsSync(darkPaths().openclaw)) {
+    if (!verifyDarkOpenClaw(prerequisites.gatewayToken)) {
+      throw new Error(
+        "The existing dark preparation no longer matches the reviewed state.",
+      );
+    }
+    writePreparationRecord(buildDarkPreparationRecord());
+    console.log("OpenClaw dark installation: PASS");
+    console.log(
+      "The existing preparation was revalidated; activation was not performed.",
+    );
+    return;
+  }
+  installDarkOpenClaw(prerequisites.gatewayToken, buildDarkPreparationRecord());
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(`OpenClaw dark installation: ERROR — ${error.message}`);
-  process.exitCode = 2;
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  try {
+    main();
+  } catch (error) {
+    console.error(`OpenClaw dark installation: ERROR — ${error.message}`);
+    process.exitCode = 2;
+  }
 }

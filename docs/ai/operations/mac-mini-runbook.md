@@ -288,6 +288,9 @@ References:
 
 ## Phase 7 - OpenClaw Dark Installation
 
+Credential-free, inert preparation may install the exact pinned binary,
+deny-all configuration, and sandbox image before activation.
+
 Do not activate OpenClaw until Phases 1-5 pass. Phase 6 may remain deferred while
 the node is rebuildable and development-only. At first start:
 
