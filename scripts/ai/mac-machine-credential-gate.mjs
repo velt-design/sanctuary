@@ -121,7 +121,7 @@ function encodeJwtPart(value) {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
 }
 
-function createGitHubAppJwt(appId, privateKey) {
+export function createGitHubAppJwt(appId, privateKey) {
   const now = Math.floor(Date.now() / 1000);
   const unsigned = `${encodeJwtPart({ alg: "RS256", typ: "JWT" })}.${encodeJwtPart({
     iat: now - 60,

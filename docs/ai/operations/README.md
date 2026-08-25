@@ -16,14 +16,16 @@ prove that the Mac mini, private network, OpenClaw, or worker has been installed
 4. `mac-mini-runbook.md`: day-zero baseline, access, networking, secrets, backup, and routine operations.
 5. `machine-credential-ceremony.md`: least-privilege 1Password and GitHub machine identities.
 6. `openclaw-dark-install.md`: pinned, deny-all OpenClaw installation checkpoint.
-7. `node-rebuild-and-revocation.md`: planned rebuild, compromise rebuild, central revocation, and recovery proof.
-8. `ai-incident-response.md`: triage, containment, evidence, recovery, and notification protocol.
+7. `openclaw-development.md`: no-prompt repository-development activation contract.
+8. `node-rebuild-and-revocation.md`: planned rebuild, compromise rebuild, central revocation, and recovery proof.
+9. `ai-incident-response.md`: triage, containment, evidence, recovery, and notification protocol.
 
 ## Current Deployment Boundary
 
 - Target: existing staging Supabase only.
-- Workload: synthetic and effect-free only.
-- OpenClaw: dark, loopback-bound, sandboxed, and tool-denied until each control is verified.
+- Workload: repository development, tests, feature branches, and draft pull requests.
+- OpenClaw: Codex-backed coding mode with deliberate no-prompt execution under
+  the dedicated non-admin account.
 - Production: no credential, migration, worker activation, customer data, communication, or business mutation.
 - Canonical state: hosted Portal, Supabase/Postgres, GitHub, and governed document storage.
 - Local state: replaceable configuration, disposable workspaces, bounded caches, and operational logs.
