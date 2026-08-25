@@ -104,6 +104,24 @@ key. Separately confirm that the personal recovery key is readable in the
 business vault and in one controlled offline location. Do not paste the key into
 the command, a task, a PR, or an evidence log.
 
+### Live FileVault Evidence — 2026-08-25
+
+The remote, non-secret checks now prove:
+
+- Apple-silicon architecture and `FileVault is On` on the APFS startup volume;
+- the dedicated administrator retains its Secure Token and volume-owner role;
+- `sanctuary-runner` has no Secure Token and remains a standard, non-admin user;
+- a personal recovery user exists on the startup volume;
+- the generated personal recovery key was stored and read back successfully in
+  `Sanctuary - Owners` without being printed or written to the Mac; and
+- automatic update checks, the application firewall, and stealth mode are on,
+  while automatic login is off.
+
+The Mac was not restarted. A physical password entry will be required after its
+next restart or power loss before Tailscale and SSH return. The separate offline
+recovery-key copy remains pending, so the manual recovery-custody attestation is
+not yet complete even though the automated FileVault gate passes.
+
 Reference: Apple documents FileVault recovery-key custody at
 <https://support.apple.com/guide/mac-help/filevault-recovery-key-mh35880/mac>
 and recommends a personal recovery key for Apple silicon at
