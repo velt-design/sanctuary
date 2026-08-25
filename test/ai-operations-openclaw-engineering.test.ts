@@ -1,0 +1,214 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+
+import {
+  ENGINEERING_AGENT_IDS,
+  ENGINEERING_GATEWAY_PORT,
+  ENGINEERING_PROFILE,
+  buildActivationRecord,
+  buildGitHubWrapper,
+  buildOpenClawWrapper,
+  resolveEngineeringRuntimePaths,
+} from "../scripts/ai/openclaw-engineering-runtime.mjs";
+
+const config = JSON.parse(
+  readFileSync(resolve("infra/openclaw/engineering/openclaw.json"), "utf8"),
+);
+const approvals = JSON.parse(
+  readFileSync(
+    resolve("infra/openclaw/engineering/exec-approvals.json"),
+    "utf8",
+  ),
+);
+const activationSource = readFileSync(
+  resolve("scripts/ai/mac-openclaw-engineering-activate.mjs"),
+  "utf8",
+);
+const startSource = readFileSync(
+  resolve("scripts/ai/mac-openclaw-engineering-start.mjs"),
+  "utf8",
+);
+
+const portablePath = (value: string) => value.replaceAll("\\", "/");
+
+describe("isolated OpenClaw engineering runtime", () => {
+  it("uses an explicit fleet on a dedicated state, port, and workspace root", () => {
+    const paths = resolveEngineeringRuntimePaths({
+      home: "/Users/sanctuary-runner",
+      repoRoot: "/repo",
+    });
+
+    expect(ENGINEERING_PROFILE).toBe("sanctuary-engineering");
+    expect(ENGINEERING_GATEWAY_PORT).toBe(19011);
+    expect(portablePath(paths.stateDir)).toBe(
+      "/Users/sanctuary-runner/.openclaw-sanctuary-engineering",
+    );
+    expect(portablePath(paths.configPath)).not.toBe(
+      "/Users/sanctuary-runner/.openclaw/openclaw.json",
+    );
+    expect(config.gateway).toMatchObject({
+      port: ENGINEERING_GATEWAY_PORT,
+      bind: "loopback",
+      reload: { mode: "off" },
+    });
+    expect(config.agents.ownership).toBe("explicit");
+    expect(Object.keys(config.agents.entries)).toEqual(ENGINEERING_AGENT_IDS);
+  });
+
+  it("gives only the lead the bounded delegation surface", () => {
+    const lead = config.agents.entries["sanctuary-engineering-supervisor"];
+
+    expect(lead.tools.profile).toBe("minimal");
+    expect(lead.tools.alsoAllow).toEqual(
+      expect.arrayContaining([
+        "read",
+        "agents_list",
+        "sessions_spawn",
+        "sessions_yield",
+        "sessions_history",
+      ]),
+    );
+    expect(lead.tools.alsoAllow).not.toEqual(
+      expect.arrayContaining(["exec", "write", "edit", "apply_patch"]),
+    );
+    expect(lead.subagents).toMatchObject({
+      allowAgents: ["sanctuary-coding-worker", "sanctuary-code-reviewer"],
+      requireAgentId: true,
+    });
+    expect(config.agents.defaults.subagents).toMatchObject({
+      maxSpawnDepth: 1,
+      maxChildrenPerAgent: 1,
+      maxConcurrent: 1,
+      requireAgentId: true,
+    });
+  });
+
+  it("keeps no-prompt coding authority on the worker only", () => {
+    const worker = config.agents.entries["sanctuary-coding-worker"];
+    const reviewer = config.agents.entries["sanctuary-code-reviewer"];
+
+    expect(worker.tools.profile).toBe("coding");
+    expect(worker.subagents).toMatchObject({
+      allowAgents: [],
+      requireAgentId: true,
+    });
+    expect(reviewer.tools).toMatchObject({
+      profile: "minimal",
+      alsoAllow: ["read"],
+      elevated: { enabled: false },
+    });
+    expect(config.tools.exec).toMatchObject({
+      host: "gateway",
+      mode: "full",
+      applyPatch: { enabled: true, workspaceOnly: true },
+    });
+    expect(approvals.agents).toMatchObject({
+      "sanctuary-engineering-supervisor": {
+        security: "deny",
+        ask: "off",
+        askFallback: "deny",
+      },
+      "sanctuary-coding-worker": {
+        security: "full",
+        ask: "off",
+        askFallback: "full",
+      },
+      "sanctuary-code-reviewer": {
+        security: "deny",
+        ask: "off",
+        askFallback: "deny",
+      },
+    });
+  });
+
+  it("pins the isolated Codex harness and disables unrelated surfaces", () => {
+    expect(config.agents.defaults).toMatchObject({
+      model: "openai/gpt-5.6-sol",
+      modelPolicy: { allow: ["openai/gpt-5.6-sol"] },
+      maxConcurrent: 1,
+      sandbox: { mode: "off" },
+    });
+    expect(config.plugins).toMatchObject({
+      allow: ["codex"],
+      entries: {
+        codex: {
+          enabled: true,
+          config: {
+            sessionCatalog: { enabled: false },
+            supervision: { enabled: false },
+            appServer: {
+              mode: "yolo",
+              homeScope: "agent",
+              approvalPolicy: "never",
+              sandbox: "danger-full-access",
+              clearEnv: ["CODEX_API_KEY", "OPENAI_API_KEY"],
+            },
+          },
+        },
+      },
+    });
+    expect(config).toMatchObject({
+      browser: { enabled: false },
+      channels: {},
+      hooks: { enabled: false },
+      cron: { enabled: false, triggers: { enabled: false } },
+      acp: { enabled: false },
+      discovery: { mdns: { mode: "off" } },
+    });
+  });
+
+  it("builds isolated wrappers without embedding credentials", () => {
+    const paths = resolveEngineeringRuntimePaths({
+      home: "/Users/sanctuary-runner",
+      repoRoot: "/repo",
+    });
+    const openclawWrapper = buildOpenClawWrapper(paths);
+    const githubWrapper = buildGitHubWrapper(paths, "/usr/local/bin/node");
+
+    for (const wrapper of [openclawWrapper, githubWrapper]) {
+      expect(portablePath(wrapper)).toContain(
+        "OPENCLAW_STATE_DIR='/Users/sanctuary-runner/.openclaw-sanctuary-engineering'",
+      );
+      expect(wrapper).not.toMatch(
+        /(?:ghp_|github_pat_|sk-[A-Za-z0-9]|ops_[A-Za-z0-9])/,
+      );
+    }
+    expect(githubWrapper).toContain("GH_PROMPT_DISABLED=1");
+    expect(githubWrapper).toContain("GIT_TERMINAL_PROMPT=0");
+  });
+
+  it("records drift-detectable activation without claiming shared-state mutation", () => {
+    const paths = resolveEngineeringRuntimePaths({
+      home: "/Users/sanctuary-runner",
+      repoRoot: resolve("."),
+    });
+    const record = buildActivationRecord(
+      paths,
+      new Date("2026-08-26T00:00:00.000Z"),
+    );
+
+    expect(record).toMatchObject({
+      state: "engineering-runtime-configured",
+      profile: ENGINEERING_PROFILE,
+      gatewayPort: ENGINEERING_GATEWAY_PORT,
+      agents: ENGINEERING_AGENT_IDS,
+      maxWorkers: 1,
+      approvalMode: "worker-full-no-prompts",
+      sharedDefaultStateTouched: false,
+    });
+    expect(record.configHash).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(Object.values(record.agentInstructionHashes)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^sha256:[0-9a-f]{64}$/)]),
+    );
+  });
+
+  it("imports no plugin and starts a separate sleep-resistant gateway", () => {
+    expect(activationSource).toContain('["approvals", "set", "--file"');
+    expect(activationSource).toContain("codex/managed-app-server");
+    expect(activationSource).not.toContain('["plugins", "install"');
+    expect(startSource).toContain('"/usr/bin/caffeinate"');
+    expect(startSource).toContain('["gateway", "health"]');
+    expect(startSource).toContain("detached: true");
+  });
+});

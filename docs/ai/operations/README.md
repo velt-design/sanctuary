@@ -16,7 +16,7 @@ prove that the Mac mini, private network, OpenClaw, or worker has been installed
 4. `mac-mini-runbook.md`: day-zero baseline, access, networking, secrets, backup, and routine operations.
 5. `machine-credential-ceremony.md`: least-privilege 1Password and GitHub machine identities.
 6. `openclaw-dark-install.md`: pinned, deny-all OpenClaw installation checkpoint.
-7. `openclaw-development.md`: no-prompt repository-development activation contract.
+7. `openclaw-engineering-runtime.md`: isolated no-prompt supervisor, worker and reviewer runtime.
 8. `autonomous-engineering.md`: Engineering Lead/Codex worker roles, strict task and completion contracts, PR stack, and promotion rehearsals.
 9. `node-rebuild-and-revocation.md`: planned rebuild, compromise rebuild, central revocation, and recovery proof.
 10. `ai-incident-response.md`: triage, containment, evidence, recovery, and notification protocol.

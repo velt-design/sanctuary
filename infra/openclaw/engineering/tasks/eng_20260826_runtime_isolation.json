@@ -1,0 +1,81 @@
+{
+  "schema": "sanctuary-engineering-task-v1",
+  "taskId": "eng_20260826_runtime_isolation",
+  "goalId": "goal_20260826_autonomous_engineering",
+  "objective": "Replace the shared single-agent OpenClaw development activation with an isolated Sanctuary engineering runtime and explicit supervisor, coding-worker, and reviewer roles.",
+  "requestedBy": "Jordan / Sanctuary Pergolas",
+  "base": {
+    "ref": "ai/autonomy-foundation-contracts",
+    "sha": "e6784ec53403bb3a52956bdbb76b5fccb8e65bd5"
+  },
+  "branch": "ai/autonomy-foundation-runtime",
+  "risk": "medium",
+  "ownerLane": "ai-engineering-runtime",
+  "roles": {
+    "supervisor": "engineering_lead",
+    "worker": "coding_worker",
+    "reviewer": "code_reviewer"
+  },
+  "readFirst": [
+    "AGENTS.md",
+    "docs/ai/operations/autonomous-engineering.md",
+    "docs/ai/operations/mac-mini-runbook.md",
+    "docs/ai/operations/machine-credential-ceremony.md"
+  ],
+  "ownedPaths": [
+    "infra/openclaw/engineering/**",
+    "infra/openclaw/development/**",
+    "scripts/ai/**",
+    "test/ai-operations-*.test.ts",
+    "docs/ai/operations/**",
+    "docs/decision-log.md",
+    "scripts/dead-code-registry.json",
+    "package.json"
+  ],
+  "excludedPaths": ["apps/portal/**", "apps/marketing/**", "supabase/**"],
+  "dependencies": ["eng_20260826_foundation_contracts"],
+  "acceptanceCriteria": [
+    "The engineering gateway uses unique state, config, port, token, log, and workspace roots and does not write the default OpenClaw state.",
+    "Exactly three explicit named roles exist, with delegation on the supervisor, no-prompt coding on one leaf worker, and read-only review.",
+    "Channels, browser, hooks, ACP, cron, mDNS, extra plugins, elevated tools, and production credentials remain absent.",
+    "The headless 1Password service account and repository-scoped GitHub App work without desktop approval prompts.",
+    "The installed Mac OpenClaw build validates the configuration and a secret-free role-boundary rehearsal passes."
+  ],
+  "verification": {
+    "focusedCommands": [
+      "npm run test:ai:ops",
+      "npm run test:ai",
+      "npm run docs:guard",
+      "npm run dead-code:changed:strict",
+      "sanctuary-openclaw config validate",
+      "sanctuary-openclaw doctor --lint --only codex/managed-app-server --json"
+    ],
+    "ciChecks": ["Portal Quality", "AI operations tests"],
+    "visualEvidence": {
+      "required": false,
+      "scenarios": []
+    }
+  },
+  "limits": {
+    "maxWorkers": 1,
+    "maxAttempts": 3,
+    "workerTimeoutMinutes": 60,
+    "maxCostCents": 5000
+  },
+  "approvals": {
+    "planning": "approved",
+    "merge": "human_required",
+    "scopeExpansion": "human_required",
+    "production": "prohibited"
+  },
+  "outputs": {
+    "draftPullRequest": true,
+    "completionReport": true
+  },
+  "stopConditions": [
+    "The dedicated state directory is already owned by another runtime.",
+    "The bundled Codex harness or isolated OpenAI authentication cannot be validated.",
+    "A role receives broader authority than this manifest declares.",
+    "Validation would require changing or deleting the unrelated default OpenClaw runtime."
+  ]
+}

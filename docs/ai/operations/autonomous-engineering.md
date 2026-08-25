@@ -78,6 +78,9 @@ creates a different manifest hash and requires a new worker instruction.
   canonical business memory. The manifest, Git branch, draft PR, checks and
   completion report remain the durable engineering evidence.
 
+The concrete state, port, role and activation contract lives in
+`openclaw-engineering-runtime.md`.
+
 ## Completion definition
 
 A task may be reported as `succeeded` only when:

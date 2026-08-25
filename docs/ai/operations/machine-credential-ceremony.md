@@ -53,9 +53,11 @@ disk is not required while the node remains rebuildable and development-only.
    and the installation ID in a custom `installation_id` field on one item named
    `GitHub - Sanctuary Node PR Bot` inside `Sanctuary - Node Runtime`.
 8. During the controlled Mac ceremony, place only the service-account token at
-   `~/.openclaw/credentials/onepassword/service-account-token` with file mode
-   `0600` and parent directories mode `0700`. This is the official unattended
-   OpenClaw integration path and does not use the 1Password desktop app.
+   `~/.openclaw-sanctuary-engineering/credentials/onepassword/service-account-token`
+   with file mode `0600` and parent directories mode `0700`. The isolated
+   activation can migrate the same protected token once from the retired
+   `~/.openclaw` location without printing it. This headless path does not use
+   the 1Password desktop app.
 
 The token insertion step is intentionally not a copy-paste command in Git. Enter
 it through a non-logging operator session after FileVault passes. Record only
