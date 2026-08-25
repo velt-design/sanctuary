@@ -11,6 +11,10 @@ const approvals = JSON.parse(
     "utf8",
   ),
 );
+const headlessLauncher = readFileSync(
+  resolve("scripts/ai/mac-openclaw-headless-start.mjs"),
+  "utf8",
+);
 
 describe("OpenClaw development configuration", () => {
   it("selects the Codex coding runtime and Sanctuary workspace", () => {
@@ -22,7 +26,17 @@ describe("OpenClaw development configuration", () => {
     });
     expect(config.plugins).toMatchObject({
       allow: ["codex"],
-      entries: { codex: { enabled: true } },
+      entries: {
+        codex: {
+          enabled: true,
+          config: {
+            appServer: {
+              approvalPolicy: "never",
+              sandbox: "danger-full-access",
+            },
+          },
+        },
+      },
     });
   });
 
@@ -56,5 +70,11 @@ describe("OpenClaw development configuration", () => {
       hooks: { enabled: false },
       acp: { enabled: false },
     });
+  });
+
+  it("supports a headless, sleep-resistant gateway process", () => {
+    expect(headlessLauncher).toContain('"/usr/bin/caffeinate"');
+    expect(headlessLauncher).toContain("detached: true");
+    expect(headlessLauncher).toContain('["gateway", "health"]');
   });
 });

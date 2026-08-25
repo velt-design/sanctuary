@@ -49,8 +49,19 @@ Then complete the one-time ChatGPT/Codex OAuth sign-in:
 openclaw models auth login --provider openai
 ```
 
-Verify the model and run one end-to-end coding task with `openclaw agent exec`.
-The first proof is Marketing Configurator PR 1.
+Start the loopback-only gateway without requiring a logged-in macOS desktop:
+
+```bash
+node scripts/ai/mac-openclaw-headless-start.mjs
+```
+
+The launcher keeps the Mac awake and the gateway alive across SSH disconnects.
+It does not bypass FileVault: after a full restart, an operator must unlock the
+Mac once and rerun the launcher. A system LaunchDaemon can replace this temporary
+headless launcher when the Mac is physically available in Australia.
+
+Verify the model and run one end-to-end coding task with `openclaw agent`.
+The first product proof is Marketing Configurator PR 1.
 
 References:
 

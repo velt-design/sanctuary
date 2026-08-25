@@ -120,12 +120,23 @@ function main() {
   ]);
 
   const env = activationEnvironment();
+  const installedPlugins = JSON.parse(
+    run(openclawBinary, ["plugins", "list", "--json"], { env }),
+  );
+  if (!installedPlugins.plugins?.some((plugin) => plugin.id === "codex")) {
+    run(openclawBinary, ["plugins", "install", "@openclaw/codex"], {
+      env,
+      inherit: true,
+    });
+  }
   run(openclawBinary, ["config", "validate"], { env, inherit: true });
   run(process.execPath, [join(repoRoot, "scripts/ai/github-app-token.mjs"), "--verify"], {
     env,
     inherit: true,
   });
-  const plugins = JSON.parse(run(openclawBinary, ["plugins", "list", "--json"], { env }));
+  const plugins = JSON.parse(
+    run(openclawBinary, ["plugins", "list", "--json"], { env }),
+  );
   const codex = plugins.plugins?.find((plugin) => plugin.id === "codex");
   if (!codex || codex.status !== "loaded") {
     throw new Error("The bundled Codex harness is not loaded.");
@@ -150,7 +161,7 @@ function main() {
     )}\n`,
   );
   console.log("OpenClaw development activation: READY");
-  console.log("Model sign-in and one end-to-end coding task remain.");
+  console.log("Model sign-in, headless start, and one end-to-end coding task remain.");
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

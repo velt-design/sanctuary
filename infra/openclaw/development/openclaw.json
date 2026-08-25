@@ -81,7 +81,17 @@
     "allow": ["codex"],
     "entries": {
       "codex": {
-        "enabled": true
+        "enabled": true,
+        "config": {
+          "appServer": {
+            "mode": "yolo",
+            "homeScope": "agent",
+            "approvalPolicy": "never",
+            "sandbox": "danger-full-access",
+            "approvalsReviewer": "user",
+            "defaultWorkspaceDir": "/Users/sanctuary-runner/workspaces/sanctuary"
+          }
+        }
       }
     },
     "slots": {
