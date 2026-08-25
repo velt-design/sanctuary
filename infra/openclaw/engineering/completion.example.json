@@ -1,0 +1,55 @@
+{
+  "schema": "sanctuary-engineering-completion-v1",
+  "taskId": "eng_20260826_foundation_contracts",
+  "manifestHash": "sha256:3a5de0bcc30bc5877c72b8149c15a2ed5bda64e34c568dcd6d059dbbe2e7def4",
+  "outcome": "succeeded",
+  "branch": "ai/autonomy-foundation-contracts",
+  "baseSha": "0bace9e852becf0d5c8d4a49bb2f7f759f0bed75",
+  "headSha": "850dbac7c014cdd4da398ce885e64662ed223052",
+  "pullRequest": {
+    "number": 73,
+    "url": "https://github.com/velt-design/sanctuary/pull/73",
+    "draft": true
+  },
+  "changedPaths": ["packages/ai/src/engineering.ts"],
+  "acceptanceResults": [
+    {
+      "criterion": "Task and completion contracts reject unknown fields and unsafe terminal states.",
+      "status": "passed",
+      "evidence": "Focused contract tests passed."
+    }
+  ],
+  "verificationResults": [
+    {
+      "name": "Engineering contract tests",
+      "command": "npx vitest run packages/ai/src/engineering.test.ts",
+      "status": "passed",
+      "summary": "All focused tests passed."
+    }
+  ],
+  "ciChecks": [
+    {
+      "name": "AI Foundation / Provider-neutral contracts",
+      "status": "pending",
+      "url": null
+    }
+  ],
+  "worker": {
+    "agent": "sanctuary-coding-worker",
+    "model": "openai/gpt-5.6-sol",
+    "sessionIds": ["worker-session-1"],
+    "attempts": 1,
+    "costCents": 0,
+    "startedAt": "2026-08-26T00:00:00.000Z",
+    "completedAt": "2026-08-26T00:05:00.000Z"
+  },
+  "safety": {
+    "worktreeClean": true,
+    "branchPushed": true,
+    "merged": false,
+    "productionEffects": false,
+    "secretScan": "passed"
+  },
+  "limitations": ["CI remains pending at draft creation time."],
+  "nextAction": "Human review and merge after required checks pass."
+}
