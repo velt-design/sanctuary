@@ -15,8 +15,9 @@ prove that the Mac mini, private network, OpenClaw, or worker has been installed
 3. `../09-decisions/AI-ADR-003-mac-mini-private-node.md`: private-node role and recovery requirement.
 4. `mac-mini-runbook.md`: day-zero baseline, access, networking, secrets, backup, and routine operations.
 5. `machine-credential-ceremony.md`: least-privilege 1Password and GitHub machine identities.
-6. `node-rebuild-and-revocation.md`: planned rebuild, compromise rebuild, central revocation, and recovery proof.
-7. `ai-incident-response.md`: triage, containment, evidence, recovery, and notification protocol.
+6. `openclaw-dark-install.md`: pinned, deny-all OpenClaw installation checkpoint.
+7. `node-rebuild-and-revocation.md`: planned rebuild, compromise rebuild, central revocation, and recovery proof.
+8. `ai-incident-response.md`: triage, containment, evidence, recovery, and notification protocol.
 
 ## Current Deployment Boundary
 

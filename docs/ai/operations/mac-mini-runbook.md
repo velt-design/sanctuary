@@ -291,6 +291,10 @@ References:
 Do not activate OpenClaw until Phases 1-5 pass. Phase 6 may remain deferred while
 the node is rebuildable and development-only. At first start:
 
+Use `openclaw-dark-install.md` for the pinned package, executable prerequisite
+gate, reviewed deny-all config, and first live rehearsal. Do not replace that
+checkpoint with interactive onboarding.
+
 - bind the Gateway to loopback only;
 - require a generated gateway token stored outside configuration files;
 - enable no chat channel, public endpoint, connector, plugin, model/provider,

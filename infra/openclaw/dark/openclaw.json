@@ -1,0 +1,105 @@
+{
+  "gateway": {
+    "mode": "local",
+    "port": 18789,
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}",
+      "allowTailscale": false,
+      "rateLimit": {
+        "maxAttempts": 5,
+        "windowMs": 60000,
+        "lockoutMs": 300000,
+        "exemptLoopback": false
+      }
+    },
+    "tailscale": {
+      "mode": "off"
+    },
+    "controlUi": {
+      "enabled": false
+    },
+    "terminal": {
+      "enabled": false
+    },
+    "nodes": {
+      "pairing": {
+        "autoApproveCidrs": []
+      },
+      "allowCommands": [],
+      "denyCommands": ["system.run"]
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/Users/sanctuary-runner/workspaces/sanctuary",
+      "sandbox": {
+        "mode": "all",
+        "backend": "podman",
+        "scope": "session",
+        "workspaceAccess": "ro",
+        "docker": {
+          "image": "localhost/openclaw-sandbox:bookworm-slim-sanctuary",
+          "user": "1000:1000",
+          "readOnlyRoot": true,
+          "tmpfs": ["/tmp", "/var/tmp", "/run"],
+          "network": "none",
+          "capDrop": ["ALL"],
+          "binds": []
+        },
+        "browser": {
+          "enabled": false
+        }
+      }
+    }
+  },
+  "tools": {
+    "profile": "minimal",
+    "deny": ["*"],
+    "codeMode": {
+      "enabled": false
+    },
+    "exec": {
+      "host": "gateway",
+      "mode": "deny"
+    },
+    "elevated": {
+      "enabled": false
+    },
+    "agentToAgent": {
+      "enabled": false
+    }
+  },
+  "browser": {
+    "enabled": false
+  },
+  "models": {
+    "mode": "replace",
+    "providers": {}
+  },
+  "channels": {},
+  "hooks": {
+    "enabled": false
+  },
+  "plugins": {
+    "allow": [],
+    "entries": {},
+    "slots": {
+      "memory": "none"
+    }
+  },
+  "acp": {
+    "enabled": false,
+    "dispatch": {
+      "enabled": false
+    }
+  },
+  "update": {
+    "channel": "stable",
+    "checkOnStart": false,
+    "auto": {
+      "enabled": false
+    }
+  }
+}
