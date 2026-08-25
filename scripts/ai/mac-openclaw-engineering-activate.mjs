@@ -5,21 +5,25 @@ import process from "node:process";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
+  CODEX_PLUGIN_SPEC,
   ENGINEERING_AGENT_IDS,
   ENGINEERING_PROFILE,
   assertDedicatedStateOwnership,
+  assertDefaultAuthorityUnchanged,
   buildActivationRecord,
   buildEngineeringEnvironment,
   buildGitHubWrapper,
   buildOpenClawWrapper,
   copyProtected,
   ensurePrivateDirectory,
+  fingerprintDefaultAuthority,
   readProtected,
   resolveEngineeringRuntimePaths,
   writeProtectedAtomic,
 } from "./openclaw-engineering-runtime.mjs";
 
 const paths = resolveEngineeringRuntimePaths();
+const defaultAuthorityFingerprint = fingerprintDefaultAuthority(paths);
 
 function run(command, args = [], options = {}) {
   const execution = spawnSync(command, args, {
@@ -32,6 +36,14 @@ function run(command, args = [], options = {}) {
     throw new Error(`${command} ${args.join(" ")} failed.`);
   }
   return execution.stdout?.trim() ?? "";
+}
+
+function runOpenClaw(args, options = {}) {
+  try {
+    return run(paths.openclawBinary, args, options);
+  } finally {
+    assertDefaultAuthorityUnchanged(paths, defaultAuthorityFingerprint);
+  }
 }
 
 function prepareAgentWorkspaces() {
@@ -62,11 +74,41 @@ function prepareServiceToken() {
   );
 }
 
-function validateAgentRoster(rawPlugins) {
+function prepareApprovals() {
+  writeProtectedAtomic(
+    paths.approvalsPath,
+    readFileSync(paths.approvalsTemplatePath, "utf8"),
+  );
+}
+
+function readCodexPlugin(rawPlugins) {
   const plugins = JSON.parse(rawPlugins);
-  const codex = plugins.plugins?.find((plugin) => plugin.id === "codex");
+  return plugins.plugins?.find((plugin) => plugin.id === "codex");
+}
+
+function ensureCodexPlugin(env) {
+  let codex = readCodexPlugin(
+    runOpenClaw(["plugins", "list", "--json"], { env }),
+  );
   if (!codex || codex.status !== "loaded") {
-    throw new Error("The bundled Codex harness is not loaded.");
+    runOpenClaw(["plugins", "install", "--pin", CODEX_PLUGIN_SPEC], {
+      env,
+      inherit: true,
+    });
+    writeProtectedAtomic(
+      paths.configPath,
+      readFileSync(paths.configTemplatePath, "utf8"),
+    );
+    runOpenClaw(["config", "validate"], { env, inherit: true });
+    codex = readCodexPlugin(
+      runOpenClaw(["plugins", "list", "--json"], { env }),
+    );
+  }
+  const expectedVersion = CODEX_PLUGIN_SPEC.slice(
+    CODEX_PLUGIN_SPEC.lastIndexOf("@") + 1,
+  );
+  if (codex?.status !== "loaded" || codex.version !== expectedVersion) {
+    throw new Error("The pinned official Codex plugin is not loaded.");
   }
 }
 
@@ -96,6 +138,7 @@ export function activateEngineeringRuntime() {
     `${JSON.stringify({ schemaVersion: 1, profile: ENGINEERING_PROFILE }, null, 2)}\n`,
   );
   prepareServiceToken();
+  prepareApprovals();
   if (!existsSync(paths.gatewayTokenPath)) {
     writeProtectedAtomic(
       paths.gatewayTokenPath,
@@ -124,17 +167,13 @@ export function activateEngineeringRuntime() {
     paths,
     readProtected(paths.gatewayTokenPath, "Engineering gateway token"),
   );
-  run(paths.openclawBinary, ["config", "validate"], { env, inherit: true });
-  run(
-    paths.openclawBinary,
-    ["approvals", "set", "--file", paths.approvalsTemplatePath],
-    { env, inherit: true },
-  );
-  validateAgentRoster(
-    run(paths.openclawBinary, ["plugins", "list", "--json"], { env }),
-  );
-  run(
-    paths.openclawBinary,
+  runOpenClaw(["config", "validate"], { env, inherit: true });
+  ensureCodexPlugin(env);
+  runOpenClaw(["approvals", "set", "--file", paths.approvalsTemplatePath], {
+    env,
+    inherit: true,
+  });
+  runOpenClaw(
     ["doctor", "--lint", "--only", "codex/managed-app-server", "--json"],
     { env, inherit: true },
   );

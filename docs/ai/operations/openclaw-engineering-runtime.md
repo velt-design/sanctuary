@@ -24,7 +24,7 @@ The engineering runtime is a separate OpenClaw instance:
 | CLI                  | `~/bin/sanctuary-openclaw`                        |
 | Workspaces           | `~/.openclaw-sanctuary-engineering/workspaces/**` |
 | Channels and browser | disabled                                          |
-| Plugins              | bundled `codex` only                              |
+| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` only |
 
 Activation never writes the default `~/.openclaw/openclaw.json`, approvals,
 agents, sessions, gateway token or gateway process. An unrelated OpenClaw
@@ -76,9 +76,16 @@ than overwrite an unclaimed or differently owned state directory. It then:
 1. verifies FileVault and the non-admin runtime account;
 2. writes the reviewed config, role instructions and wrappers to the dedicated
    state;
-3. imports the reviewed per-agent approvals into that state's SQLite store;
-4. validates the config and bundled Codex app-server binary; and
+3. writes the reviewed approvals before OpenClaw starts so its legacy migration
+   cannot move the default instance's approvals, then imports them through the
+   supported CLI;
+4. installs or verifies the exact official Codex plugin version and validates
+   its managed app-server binary; and
 5. verifies the headless 1Password service account and exact GitHub App scope.
+
+Every isolated OpenClaw command fingerprints the default instance's config and
+approval authority before and after execution. Any cross-state mutation stops
+activation instead of being silently accepted.
 
 Complete one OpenAI login inside this isolated state:
 
