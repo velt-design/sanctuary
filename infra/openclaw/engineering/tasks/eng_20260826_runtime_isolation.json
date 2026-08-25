@@ -74,7 +74,7 @@
   },
   "stopConditions": [
     "The dedicated state directory is already owned by another runtime.",
-    "The bundled Codex harness or isolated OpenAI authentication cannot be validated.",
+    "The pinned official Codex plugin or isolated OpenAI authentication cannot be validated.",
     "A role receives broader authority than this manifest declares.",
     "Validation would require changing or deleting the unrelated default OpenClaw runtime."
   ]

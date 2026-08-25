@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  CODEX_PLUGIN_SPEC,
   ENGINEERING_AGENT_IDS,
   ENGINEERING_GATEWAY_PORT,
   ENGINEERING_PROFILE,
@@ -49,6 +50,9 @@ describe("isolated OpenClaw engineering runtime", () => {
     );
     expect(portablePath(paths.configPath)).not.toBe(
       "/Users/sanctuary-runner/.openclaw/openclaw.json",
+    );
+    expect(portablePath(paths.approvalsPath)).toBe(
+      "/Users/sanctuary-runner/.openclaw-sanctuary-engineering/exec-approvals.json",
     );
     expect(config.gateway).toMatchObject({
       port: ENGINEERING_GATEWAY_PORT,
@@ -214,10 +218,17 @@ describe("isolated OpenClaw engineering runtime", () => {
     );
   });
 
-  it("imports no plugin and starts a separate sleep-resistant gateway", () => {
+  it("preseeds approvals, pins the official plugin, and starts separately", () => {
+    expect(CODEX_PLUGIN_SPEC).toBe("@openclaw/codex@2026.7.1-1");
+    expect(activationSource.indexOf("prepareApprovals();")).toBeLessThan(
+      activationSource.lastIndexOf('runOpenClaw(["config", "validate"]'),
+    );
     expect(activationSource).toContain('["approvals", "set", "--file"');
+    expect(activationSource).toContain(
+      '["plugins", "install", "--pin", CODEX_PLUGIN_SPEC]',
+    );
     expect(activationSource).toContain("codex/managed-app-server");
-    expect(activationSource).not.toContain('["plugins", "install"');
+    expect(activationSource).toContain("assertDefaultAuthorityUnchanged");
     expect(startSource).toContain('"/usr/bin/caffeinate"');
     expect(startSource).toContain('["gateway", "health"]');
     expect(startSource).toContain("detached: true");

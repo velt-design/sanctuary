@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 
 export const ENGINEERING_PROFILE = "sanctuary-engineering";
 export const ENGINEERING_GATEWAY_PORT = 19011;
+export const CODEX_PLUGIN_SPEC = "@openclaw/codex@2026.7.1-1";
 export const ENGINEERING_AGENT_IDS = Object.freeze([
   "sanctuary-engineering-supervisor",
   "sanctuary-coding-worker",
@@ -40,6 +41,7 @@ export function resolveEngineeringRuntimePaths({
     configPath: join(stateDir, "openclaw.json"),
     ownerPath: join(stateDir, "sanctuary-engineering-owner.json"),
     activationPath: join(stateDir, "sanctuary-engineering-activation.json"),
+    approvalsPath: join(stateDir, "exec-approvals.json"),
     gatewayTokenPath: join(credentialsDir, "gateway-token"),
     serviceTokenPath: join(
       credentialsDir,
@@ -53,6 +55,8 @@ export function resolveEngineeringRuntimePaths({
       "onepassword",
       "service-account-token",
     ),
+    defaultConfigPath: join(home, ".openclaw", "openclaw.json"),
+    defaultApprovalsPath: join(home, ".openclaw", "exec-approvals.json"),
     configTemplatePath: join(
       repoRoot,
       "infra",
@@ -117,6 +121,24 @@ export function copyProtected(source, destination, label) {
 
 function hashFile(path) {
   return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
+}
+
+export function fingerprintDefaultAuthority(paths) {
+  return Object.fromEntries(
+    [paths.defaultConfigPath, paths.defaultApprovalsPath].map((path) => [
+      path,
+      existsSync(path) ? hashFile(path) : null,
+    ]),
+  );
+}
+
+export function assertDefaultAuthorityUnchanged(paths, expected) {
+  const actual = fingerprintDefaultAuthority(paths);
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(
+      "The default OpenClaw authority files changed during an isolated command.",
+    );
+  }
 }
 
 function shellQuote(value) {
