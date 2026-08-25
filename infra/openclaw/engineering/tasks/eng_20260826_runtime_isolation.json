@@ -48,7 +48,8 @@
       "npm run docs:guard",
       "npm run dead-code:changed:strict",
       "sanctuary-openclaw config validate",
-      "sanctuary-openclaw doctor --lint --only codex/managed-app-server --json"
+      "sanctuary-openclaw plugins doctor",
+      "sanctuary-openclaw doctor --post-upgrade --json"
     ],
     "ciChecks": ["Portal Quality", "AI operations tests"],
     "visualEvidence": {

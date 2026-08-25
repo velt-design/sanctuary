@@ -58,6 +58,13 @@ describe("isolated OpenClaw engineering runtime", () => {
       port: ENGINEERING_GATEWAY_PORT,
       bind: "loopback",
       reload: { mode: "off" },
+      auth: {
+        token: {
+          source: "env",
+          provider: "default",
+          id: "OPENCLAW_GATEWAY_TOKEN",
+        },
+      },
     });
     expect(config.agents.list.map((agent: { id: string }) => agent.id)).toEqual(
       ENGINEERING_AGENT_IDS,
@@ -102,6 +109,11 @@ describe("isolated OpenClaw engineering runtime", () => {
     const reviewer = agentsById["sanctuary-code-reviewer"];
 
     expect(worker.tools.profile).toBe("coding");
+    expect(worker.tools.exec).toMatchObject({
+      host: "gateway",
+      mode: "full",
+      applyPatch: { enabled: true, workspaceOnly: true },
+    });
     expect(worker.subagents).toMatchObject({
       allowAgents: [],
       requireAgentId: true,
@@ -113,8 +125,7 @@ describe("isolated OpenClaw engineering runtime", () => {
     });
     expect(config.tools.exec).toMatchObject({
       host: "gateway",
-      mode: "full",
-      applyPatch: { enabled: true, workspaceOnly: true },
+      mode: "deny",
     });
     expect(approvals.agents).toMatchObject({
       "sanctuary-engineering-supervisor": {
@@ -231,7 +242,11 @@ describe("isolated OpenClaw engineering runtime", () => {
     expect(activationSource).toContain(
       '["plugins", "install", "--pin", CODEX_PLUGIN_SPEC]',
     );
-    expect(activationSource).toContain("codex/managed-app-server");
+    expect(activationSource).toContain('["plugins", "doctor"]');
+    expect(activationSource).toContain('"--post-upgrade"');
+    expect(activationSource).toContain(
+      '"core/doctor/configured-plugin-installs"',
+    );
     expect(activationSource).toContain("assertDefaultAuthorityUnchanged");
     expect(startSource).toContain('"/usr/bin/caffeinate"');
     expect(startSource).toContain('["gateway", "health"]');
