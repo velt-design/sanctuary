@@ -91,6 +91,12 @@ The gateway token remains a structured environment SecretRef in config; the
 protected wrapper reads the value only at runtime. The first worker rehearsal
 starts the managed Codex app-server and is the final binary/authentication proof.
 
+The stable core currently reports its latest stable official Codex plugin as one
+package patch behind (`2026.7.1-2` versus `2026.7.1-1`). Activation independently
+pins and verifies that npm release, requires clean plugin compatibility probes,
+and fails configured-install lint on errors rather than that version-only warning.
+The full security lint must remain clean.
+
 Complete one OpenAI login inside this isolated state:
 
 ```bash

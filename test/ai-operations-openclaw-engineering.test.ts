@@ -247,6 +247,8 @@ describe("isolated OpenClaw engineering runtime", () => {
     expect(activationSource).toContain(
       '"core/doctor/configured-plugin-installs"',
     );
+    expect(activationSource).toContain('"core/doctor/security"');
+    expect(activationSource).toContain('"--severity-min"');
     expect(activationSource).toContain("assertDefaultAuthorityUnchanged");
     expect(startSource).toContain('"/usr/bin/caffeinate"');
     expect(startSource).toContain('["gateway", "health"]');
