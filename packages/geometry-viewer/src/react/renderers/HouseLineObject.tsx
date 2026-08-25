@@ -1,8 +1,8 @@
 ﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneHouseLineObject } from "@sp/geometry";
-import { buildLineGeometry } from "../geometry/lineBuilders";
-import { linePoints } from "../geometry/scenePointHelpers";
+import { buildLineGeometry } from "../../three";
+import { linePoints } from "../../scene";
 
 /**
  * House line renderer — single-segment lines emitted for opening

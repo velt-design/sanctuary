@@ -24,6 +24,11 @@ import {
   buildLinearSolidPlacement,
   isRenderableSlab,
 } from "./geometry/buildGeometries";
+import {
+  attachRendererContextLifecycle,
+  disposeRenderer,
+  resetRendererState,
+} from "./geometry/rendererLifecycle";
 import { ArrowOverlay } from "./overlays/ArrowOverlay";
 import { MeasurementProbeOverlay } from "./overlays/MeasurementProbeOverlay";
 import { SectionCutHint } from "./overlays/SectionCutHint";
@@ -32,6 +37,7 @@ import {
   allSceneBoundsFinite,
   boundingSize,
   centroid,
+  computeSceneBoundsFromPoints,
   isFinitePoint,
   isRenderableLine,
   isRenderablePolygon,
@@ -127,21 +133,6 @@ function workbenchObjectIdForSceneObject(object: ViewerSceneObject): string | nu
   return pergolaId ?? sourceId;
 }
 
-function resetRendererState(renderer: THREE.WebGLRenderer | null): void {
-  if (!renderer) return;
-  renderer.localClippingEnabled = false;
-  renderer.setScissorTest(false);
-  renderer.clearDepth();
-  renderer.resetState();
-  (renderer as { renderLists?: { dispose?: () => void } }).renderLists?.dispose?.();
-}
-
-function disposeRenderer(renderer: THREE.WebGLRenderer | null): void {
-  if (!renderer) return;
-  resetRendererState(renderer);
-  renderer.dispose();
-}
-
 function collectScenePoints(scene: ViewerSceneModel): Point3[] {
   return scene.layers.flatMap((layer) =>
     layer.objects.flatMap((object) => {
@@ -185,33 +176,7 @@ function collectScenePoints(scene: ViewerSceneModel): Point3[] {
 }
 
 function computeSceneBounds(scene: ViewerSceneModel): SceneBounds {
-  const points = collectScenePoints(scene);
-  if (points.length === 0) {
-    return {
-      min: { x: -500, y: -500, z: 0 },
-      max: { x: 500, y: 500, z: 1000 },
-      center: { x: 0, y: 0, z: 500 },
-      size: 2000,
-    };
-  }
-
-  const xs = points.map((point) => point.x);
-  const ys = points.map((point) => point.y);
-  const zs = points.map((point) => point.z);
-  const min = { x: Math.min(...xs), y: Math.min(...ys), z: Math.min(...zs) };
-  const max = { x: Math.max(...xs), y: Math.max(...ys), z: Math.max(...zs) };
-  const center = {
-    x: (min.x + max.x) / 2,
-    y: (min.y + max.y) / 2,
-    z: (min.z + max.z) / 2,
-  };
-
-  return {
-    min,
-    max,
-    center,
-    size: Math.max(max.x - min.x, max.y - min.y, max.z - min.z, 1000),
-  };
+  return computeSceneBoundsFromPoints(collectScenePoints(scene));
 }
 
 
@@ -330,6 +295,7 @@ export default function Geometry3DViewport({
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const cameraRef = useRef<GeometryViewportCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const rendererLifecycleCleanupRef = useRef<(() => void) | null>(null);
   const canvasShellRef = useRef<HTMLDivElement | null>(null);
   const viewportRestoreSignatureRef = useRef<string | null>(null);
   const [rectDiagnostic, setRectDiagnostic] = useState<ViewportRectDiagnostics>(
@@ -658,7 +624,9 @@ export default function Geometry3DViewport({
 
   const handleCanvasCreated = useCallback(
     ({ gl, camera }: { gl: THREE.WebGLRenderer; camera: THREE.Camera }) => {
+      rendererLifecycleCleanupRef.current?.();
       rendererRef.current = gl;
+      rendererLifecycleCleanupRef.current = attachRendererContextLifecycle(gl);
       resetRendererState(gl);
       cameraRef.current = camera as GeometryViewportCamera;
       cameraRef.current.up.set(0, cameraState.viewPreset === "top" ? -1 : 0, cameraState.viewPreset === "top" ? 0 : 1);
@@ -869,6 +837,8 @@ export default function Geometry3DViewport({
 
   useEffect(() => {
     return () => {
+      rendererLifecycleCleanupRef.current?.();
+      rendererLifecycleCleanupRef.current = null;
       disposeRenderer(rendererRef.current);
       rendererRef.current = null;
       cameraRef.current = null;

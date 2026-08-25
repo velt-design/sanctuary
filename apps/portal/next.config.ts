@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   ...(playwrightDistDir ? { distDir: playwrightDistDir } : {}),
   experimental: { externalDir: true },
   allowedDevOrigins: ['127.0.0.1'],
-  transpilePackages: ['@sp/ai', '@sp/costing', '@sp/email-provider', '@sp/geometry', '@sp/quote-format', '@sp/theme'],
+  transpilePackages: ['@sp/ai', '@sp/costing', '@sp/email-provider', '@sp/geometry', '@sp/geometry-viewer', '@sp/quote-format', '@sp/theme'],
   // Enforce TypeScript correctness during production builds.
   typescript: { ignoreBuildErrors: false },
   // Allow monorepo package resolution for workspace packages.

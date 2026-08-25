@@ -7,9 +7,9 @@ import {
   buildProfileExtrusionGeometry,
   buildRectangularCapGeometry,
   numericMetadataValue,
-} from "../geometry/buildGeometries";
-import { buildLineGeometry } from "../geometry/lineBuilders";
-import { linePoints } from "../geometry/scenePointHelpers";
+} from "../../three";
+import { buildLineGeometry } from "../../three";
+import { linePoints } from "../../scene";
 
 /**
  * Pergola member renderer (posts, beams, rafters, joiners, gutters).

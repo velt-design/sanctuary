@@ -34,6 +34,12 @@
       "@sp/geometry/*": [
         "../../packages/geometry/src/*"
       ],
+      "@sp/geometry-viewer": [
+        "../../packages/geometry-viewer/src/index.ts"
+      ],
+      "@sp/geometry-viewer/*": [
+        "../../packages/geometry-viewer/src/*"
+      ],
       "@sp/quote-format": [
         "../../packages/quote-format/src/index.ts"
       ],
