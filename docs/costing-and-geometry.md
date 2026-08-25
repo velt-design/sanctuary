@@ -242,6 +242,8 @@ Physical takeoff should also be derived from the solved geometry spine. Portal s
 
 Host house identity is an object-id contract. Workbench callers resolve host relationships through object references and the solved project artifact, not through per-module house-context copies.
 
+Package adapters that need representative house context use the stable `@sp/geometry` `buildHouseFootprintPolygon()` export so preset footprints stay geometry-owned. Adapter-owned geometry identifiers remain assembly-scoped and must not be promoted into project or estimate identity.
+
 Workbench project solving enters geometry from `WorkbenchProjectModel` and returns object-id-keyed solved artifacts. Houses solve as houses, pergolas solve as pergolas, decks/openings keep their own object contracts, and invalid objects return diagnostics/reference geometry without borrowing another object's committed body.
 
 `GeometryQuantityTakeoff` includes package-owned physical buckets for primary/secondary dimensions, roof planes, members, rafters, beams, gutters, roof cladding, joiners, flashings from `Assembly3D.roofFlashings`, and rafter layout facts such as bay count, projected run, cut length, and average spacing. Roof cladding takeoff may expose physical effective run and downslope length from solved panels. Low-level `QuantityHook` values remain compatibility data. Custom calculator flashing rows, downpipes, sheet rounding, BOM, labour, markup, and pricing policy remain outside geometry.

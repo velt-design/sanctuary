@@ -1257,6 +1257,8 @@ V1 uses:
 
 The exact house polygon and relationship can be refined in the portal. Customer house geometry is context, not a survey.
 
+PR 2 Slice 2 keeps runtime identity explicit: `customerConfigurationToPergolaGeometryInputV1()` requires caller-supplied `projectId` and `estimateId` context and never aliases public configuration/pergola IDs into those fields. `clearHeightMm` remains the representative minimum clearance and exact post-cut height; mono derives only its higher reference side from the representative pitch. Mixed roof returns `mixed_roof_placement_unavailable` until canonical bay placement exists. Attached intent without a present house returns `attached_house_required`; freestanding intent retains any site-house choice in customer intent but omits unplaceable host geometry and returns `freestanding_house_context_unplaced`. Current freestanding box intent returns `freestanding_box_unavailable` rather than reaching the attached-only solver.
+
 ## 7.7 Plan renderer
 
 Create a read-only `TopProjectionSvg` that consumes `GeometryTopProjectionViewModel`.

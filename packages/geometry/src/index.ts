@@ -1,5 +1,6 @@
 export * from "./contracts";
 export {
+  buildHouseFootprintPolygon,
   buildCustomHouseFootprintPolygon,
   buildHouseFootprintPresetSideLocalPoints,
   buildSideLocalPolygonFromWorld,
