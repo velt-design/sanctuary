@@ -215,17 +215,18 @@ store values only in the selected vault or machine Keychain.
 | Overlay enrolment key | One-time only; delete after enrolment | Never persist on node | Overlay admin |
 | Overlay device identity | Staging-node tag only | Overlay control plane/device key | Overlay admin |
 | SSH admin private key | Required on operator device only | Operator vault or hardware-backed store | Primary operator |
-| GitHub credential | None for first milestone | Not applicable | Repository admin |
+| GitHub App identity | App registered and repository-scoped; no private key or runtime credential | GitHub control plane only until recovery gates pass | Repository admin |
 | Staging Supabase credential | None until PR-AI-008 owns the exact contract | Future machine secret store | Supabase admin |
 | OpenClaw gateway token | Generate only at dark install | Machine Keychain/secret store | Node operator |
 | Model/provider or connector keys | Prohibited | Not applicable | Capability owner |
 
 The first non-interactive machine identities follow
-`machine-credential-ceremony.md`. They are created only after the FileVault and
-backup/restore gates pass. The GitHub identity is a GitHub App owned by the same
-business-controlled account as the repository and installed only on
-`velt-design/sanctuary`; do not substitute a personal access token or other
-account-wide credential.
+`machine-credential-ceremony.md`. Credential-free control-plane objects may be
+prepared earlier, but usable secrets are issued and placed on the node only
+after the FileVault and backup/restore gates pass. The GitHub identity is a
+GitHub App owned by the same business-controlled account as the repository and
+installed only on `velt-design/sanctuary`; do not substitute a personal access
+token or other account-wide credential.
 
 Rules:
 

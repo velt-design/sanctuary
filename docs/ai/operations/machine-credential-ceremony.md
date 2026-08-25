@@ -1,6 +1,7 @@
 # Mac Mini Machine Credential Ceremony
 
-Status: Prepared protocol; do not execute until the FileVault and backup gates pass.
+Status: Credential-free control-plane preparation completed; do not issue or
+place runtime credentials until the FileVault and backup gates pass.
 
 Owner: Jordan / Sanctuary Pergolas
 
@@ -35,16 +36,20 @@ the restricted service account described below.
    `Metadata: read`, `Contents: read and write`, and `Pull requests: read and
    write`.
 3. Install that app only on `velt-design/sanctuary`. Do not grant all-repository
-   access. Generate one private key and store its App ID, installation ID, and
-   private key in `Sanctuary - Node Runtime`; then remove the downloaded key.
-   If the repository later moves to a GitHub organisation, transfer or recreate
-   the app under that organisation before the node uses it again.
-4. Create the 1Password service account `sanctuary-node-runtime`. Grant only
+   access. Registration and repository-scoped installation may be completed
+   before the recovery gates because they do not create a usable machine
+   credential.
+4. After the FileVault and backup/restore gates pass, generate one private key
+   and store its App ID, installation ID, and private key in
+   `Sanctuary - Node Runtime`; then remove the downloaded key. If the repository
+   later moves to a GitHub organisation, transfer or recreate the app under that
+   organisation before the node uses it again.
+5. Create the 1Password service account `sanctuary-node-runtime`. Grant only
    `read_items` on `Sanctuary - Node Runtime`, no other vault or Environment,
    and no create-vault permission. Set a named expiry/rotation date.
-5. Save the one-time service-account token in `Sanctuary - Owners`. Do not paste
+6. Save the one-time service-account token in `Sanctuary - Owners`. Do not paste
    it into Git, a task, chat, shell history, `.env`, or a launchd plist.
-6. During the controlled Mac ceremony, place the service-account token and the
+7. During the controlled Mac ceremony, place the service-account token and the
    three GitHub App values into macOS System Keychain under the exact service
    names used by `scripts/ai/mac-machine-credential-gate.mjs`. The operator must
    confirm that `sanctuary-runner` can read them without a prompt and that other
@@ -61,6 +66,25 @@ The Keychain insertion step is intentionally not a copy-paste command in Git:
 the values must be entered through a non-logging operator session after disk and
 backup recovery pass. Record only the item names, owners, and rotation dates in
 the private asset register.
+
+## Live Credential-Free Preparation Evidence
+
+Verified on 2026-08-25:
+
+- GitHub App: `Sanctuary Node PR Bot` (`sanctuary-node-pr-bot`), owned by
+  `velt-design`;
+- App ID: `4710278`;
+- installation ID: `156382349`;
+- repository access: only `velt-design/sanctuary`;
+- permissions: metadata read-only, contents read/write, and pull requests
+  read/write;
+- webhooks, user OAuth, and Device Flow: disabled; and
+- private key and client secret: not generated.
+
+These identifiers are not credentials. The installation cannot authenticate as
+the app until a private key is generated after the recovery gates pass. Do not
+interpret this record as permission to create, download, or place that key on
+the unencrypted node.
 
 ## Verification
 
