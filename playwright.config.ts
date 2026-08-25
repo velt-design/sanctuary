@@ -9,6 +9,8 @@ const portalPlaywrightDistDir = process.env.PORTAL_PLAYWRIGHT_DIST_DIR?.trim() |
 const useProductionPortal = process.env.PORTAL_PLAYWRIGHT_PRODUCTION === '1';
 const portalStaffStorageState = process.env.PORTAL_STAFF_STORAGE_STATE?.trim() || 'playwright/.auth/portal-staff.json';
 const portalVercelProtectionBypass = process.env.PORTAL_VERCEL_PROTECTION_BYPASS?.trim();
+const fixtureSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || 'http://127.0.0.1:1';
+const fixtureSupabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || 'portal-fixture-anon-key';
 
 export default defineConfig({
   testDir: './playwright',
@@ -43,6 +45,8 @@ export default defineConfig({
         env: {
           ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: '1',
           ENABLE_PORTAL_QA_FIXTURES: '1',
+          NEXT_PUBLIC_SUPABASE_URL: fixtureSupabaseUrl,
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: fixtureSupabaseAnonKey,
           PORTAL_PLAYWRIGHT_DIST_DIR: portalPlaywrightDistDir,
         },
         url: baseURL,
