@@ -195,6 +195,7 @@ export function customerConfigurationToPergolaGeometryInputV1(
   if (pergola.roof.system === 'mixed') {
     return {
       ok: false,
+      configuration,
       identifiers: identifiersFor(configuration, false),
       code: CUSTOMER_GEOMETRY_CAPABILITY_CODES_V1.mixedRoofPlacementUnavailable,
       message: CAPABILITY_MESSAGES.mixedRoofPlacementUnavailable,
@@ -203,6 +204,7 @@ export function customerConfigurationToPergolaGeometryInputV1(
   if (pergola.placement.mode === 'attached' && !house.present) {
     return {
       ok: false,
+      configuration,
       identifiers: identifiersFor(configuration, false),
       code: CUSTOMER_GEOMETRY_CAPABILITY_CODES_V1.attachedHouseRequired,
       message: CAPABILITY_MESSAGES.attachedHouseRequired,
@@ -211,6 +213,7 @@ export function customerConfigurationToPergolaGeometryInputV1(
   if (pergola.family === 'box' && pergola.placement.mode === 'freestanding') {
     return {
       ok: false,
+      configuration,
       identifiers: identifiersFor(configuration, false),
       code: CUSTOMER_GEOMETRY_CAPABILITY_CODES_V1.freestandingBoxUnavailable,
       message: CAPABILITY_MESSAGES.freestandingBoxUnavailable,
@@ -220,6 +223,7 @@ export function customerConfigurationToPergolaGeometryInputV1(
   const hostHouse = pergola.placement.mode === 'attached' && house.present;
   return {
     ok: true,
+    configuration,
     identifiers: identifiersFor(configuration, hostHouse),
     geometryInput: buildGeometryInput(configuration, identity),
     notices: noticesFor(configuration),

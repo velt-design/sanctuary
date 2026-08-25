@@ -238,6 +238,22 @@ Top projection, wall edges, section cuts, sheet plans, dimensions, snap frames, 
 
 `buildPergolaInteractionAnchors()` derives the four semantic perimeter edges and rafter/perimeter lighting runs only from a post-transform `Assembly3D`; hosted state comes from `Assembly3D.attachmentEdge`. Anchor and lighting-run IDs are stable within one assembly only. Project/application consumers pair them with their own assembly identity rather than adding source-object identity to the geometry contract.
 
+`@sp/configurator/geometry` owns the customer solve wrapper. Its normalizing
+adapter is the single public-intent mapping path, `solveCustomerConfigurationV1()`
+calls `solvePergolaGeometry()` once for each adapter success, and scene, top
+projection, plan, section, validation and customer-semantic anchors all refer to
+that one returned assembly. Customer anchor IDs pair the stable public pergola
+ID with edge/run semantics; they never contain runtime project or estimate IDs.
+Raw solve and validation text is not a customer message contract.
+
+Mono acrylic remains a narrow Phase 2 boundary: when the known roof-detailing
+invariant is the only validation failure, the configurator preserves the solved
+artifact as `review_required` and emits a redacted acrylic-detailing assumption.
+It must not fabricate commercial inputs or extend that allowlist to any other
+validation failure. Presentation accessories/materials,
+viewer UI, quantity takeoff/pricing, portal/marketing integration and rollout
+remain downstream work.
+
 Physical takeoff should also be derived from the solved geometry spine. Portal shadow adapters may read geometry quantities during migration, but long-term takeoff policy belongs with package-owned geometry contracts, not app-local drawing or pricing code.
 
 Host house identity is an object-id contract. Workbench callers resolve host relationships through object references and the solved project artifact, not through per-module house-context copies.
