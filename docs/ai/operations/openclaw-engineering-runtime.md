@@ -97,11 +97,19 @@ pins and verifies that npm release, requires clean plugin compatibility probes,
 and fails configured-install lint on errors rather than that version-only warning.
 The full security lint must remain clean.
 
-Complete one OpenAI login inside this isolated state:
+Complete one device-code login on the bounded supervisor inside this isolated
+state:
 
 ```bash
-sanctuary-openclaw models auth login --provider openai
+sanctuary-openclaw models auth --agent sanctuary-engineering-supervisor login \
+  --provider openai --device-code
 ```
+
+OpenClaw resolves sub-agent authentication by agent id and additively merges the
+main supervisor's profile as a fallback for named children. One supervisor login
+therefore authenticates delegated worker and reviewer turns while their Codex
+homes, threads and workspaces remain separate. Do not log in the worker directly
+or copy credential databases between agents.
 
 Start the sleep-resistant, loopback-only instance:
 

@@ -250,6 +250,7 @@ describe("isolated OpenClaw engineering runtime", () => {
     expect(activationSource).toContain('"core/doctor/security"');
     expect(activationSource).toContain('"--severity-min"');
     expect(activationSource).toContain("assertDefaultAuthorityUnchanged");
+    expect(activationSource).toContain("One supervisor OpenAI sign-in");
     expect(startSource).toContain('"/usr/bin/caffeinate"');
     expect(startSource).toContain('["gateway", "health"]');
     expect(startSource).toContain("detached: true");

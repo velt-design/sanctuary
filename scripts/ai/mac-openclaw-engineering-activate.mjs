@@ -215,7 +215,7 @@ export function activateEngineeringRuntime() {
   console.log("Sanctuary engineering runtime: CONFIGURED");
   console.log(`Named agents: ${ENGINEERING_AGENT_IDS.join(", ")}`);
   console.log(
-    "OpenAI sign-in and the isolated role-boundary rehearsal remain.",
+    "One supervisor OpenAI sign-in and the isolated role-boundary rehearsal remain.",
   );
 }
 
