@@ -105,11 +105,23 @@ function versionAtLeast(actual, minimum) {
   return true;
 }
 
+export function readGitHubVaultFields(fields = []) {
+  const readField = (...names) =>
+    fields.find(
+      (field) => names.includes(field.id) || names.includes(field.label),
+    )?.value ?? null;
+  return {
+    appId: readField("app_id", "username"),
+    installationId: readField("installation_id"),
+    privateKey: readField("private_key", "password"),
+  };
+}
+
 function encodeJwtPart(value) {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
 }
 
-function createGitHubAppJwt(appId, privateKey) {
+export function createGitHubAppJwt(appId, privateKey) {
   const now = Math.floor(Date.now() / 1000);
   const unsigned = `${encodeJwtPart({ alg: "RS256", typ: "JWT" })}.${encodeJwtPart({
     iat: now - 60,
@@ -194,12 +206,12 @@ async function collectMacEvidence() {
     );
     if (githubItem.ok) {
       try {
-        const fields = JSON.parse(githubItem.stdout).fields ?? [];
-        const readField = (label) =>
-          fields.find((field) => field.label === label)?.value ?? null;
-        githubAppId = readField("app_id");
-        githubInstallationId = readField("installation_id");
-        githubPrivateKey = readField("private_key");
+        const fields = readGitHubVaultFields(
+          JSON.parse(githubItem.stdout).fields ?? [],
+        );
+        githubAppId = fields.appId;
+        githubInstallationId = fields.installationId;
+        githubPrivateKey = fields.privateKey;
       } catch {
         // The public report below records only that the item was incomplete.
       }

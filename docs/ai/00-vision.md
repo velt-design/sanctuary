@@ -36,7 +36,11 @@ Loss of any private node must not remove Portal access, canonical business recor
 
 ## Initial Capability Boundary
 
-The first node deployment is synthetic and read-only. It may prove private administration, repository inspection, task execution, structured evidence, health reporting, revocation, and recovery.
+The first node deployment may perform real repository development. It may
+inspect and edit Sanctuary code, run tests and builds, push feature branches,
+and open draft pull requests without per-command approval. GitHub branch
+protection and the absence of deployment and production credentials contain
+the initial authority.
 
 Until a later capability-specific approval, it must not have:
 

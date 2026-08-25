@@ -1,0 +1,76 @@
+# OpenClaw Development Mode
+
+Status: Owner-approved activation contract for the Mac mini.
+
+Owner: Jordan / Sanctuary Pergolas
+
+## Purpose
+
+Run real Sanctuary product-development tasks without per-command or per-task
+approval prompts. The dedicated non-admin `sanctuary-runner` account may edit
+the Sanctuary repository, run tests, push feature branches, and open draft pull
+requests. The Mac remains rebuildable from GitHub and 1Password.
+
+## Authority
+
+Allowed without further approval:
+
+- inspect the repository and current documentation;
+- edit code and documentation inside the Sanctuary checkout;
+- install ordinary repository dependencies;
+- run tests, linters, builds, and local development servers;
+- create and push non-protected feature branches; and
+- open or update draft pull requests.
+
+Not yet available to the node:
+
+- merge pull requests or push directly to `main`;
+- deploy Vercel or another production runtime;
+- read or mutate production Supabase data;
+- send customer, staff, email, advertising, or payment messages; or
+- use owner/admin credentials from other 1Password vaults.
+
+The no-prompt posture is deliberate. OpenClaw uses the `coding` tool profile,
+Codex's native harness, `tools.exec.mode: full`, and no OpenClaw sandbox. The OS
+account is non-admin, GitHub is repository-scoped, and no production credential
+exists on the node.
+
+## Activation
+
+From the reviewed activation branch on the Mac:
+
+```bash
+node scripts/ai/mac-openclaw-development-activate.mjs
+```
+
+Then complete the one-time ChatGPT/Codex OAuth sign-in:
+
+```bash
+openclaw models auth login --provider openai
+```
+
+Start the loopback-only gateway without requiring a logged-in macOS desktop:
+
+```bash
+node scripts/ai/mac-openclaw-headless-start.mjs
+```
+
+The launcher keeps the Mac awake and the gateway alive across SSH disconnects.
+It does not bypass FileVault: after a full restart, an operator must unlock the
+Mac once and rerun the launcher. A system LaunchDaemon can replace this temporary
+headless launcher when the Mac is physically available in Australia.
+
+Verify the model and run one end-to-end coding task with `openclaw agent`.
+The first product proof is Marketing Configurator PR 1.
+
+## Live verification
+
+On 2026-08-25, the loopback gateway was healthy, OpenAI OAuth was valid,
+`gpt-5.6-sol` ran through the Codex harness, exec mode was `full` with prompts
+off, and GitHub App access was repository-scoped.
+
+References:
+
+- <https://docs.openclaw.ai/plugins/codex-harness>
+- <https://docs.openclaw.ai/tools/permission-modes>
+- <https://docs.openclaw.ai/cli/agent>

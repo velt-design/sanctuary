@@ -49,8 +49,9 @@ disk is not required while the node remains rebuildable and development-only.
    exposure or a material access change.
 6. Save the one-time service-account token in `Sanctuary - Owners`. Do not paste
    it into Git, a task, chat, shell history, `.env`, or a launchd plist.
-7. Put the App ID, installation ID, and private key in one concealed-field item
-   named `GitHub - Sanctuary Node PR Bot` inside `Sanctuary - Node Runtime`.
+7. Put the App ID in the username field, the private key in the password field,
+   and the installation ID in a custom `installation_id` field on one item named
+   `GitHub - Sanctuary Node PR Bot` inside `Sanctuary - Node Runtime`.
 8. During the controlled Mac ceremony, place only the service-account token at
    `~/.openclaw/credentials/onepassword/service-account-token` with file mode
    `0600` and parent directories mode `0700`. This is the official unattended

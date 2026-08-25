@@ -1,0 +1,114 @@
+{
+  "gateway": {
+    "mode": "local",
+    "port": 18789,
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}",
+      "allowTailscale": false,
+      "rateLimit": {
+        "maxAttempts": 10,
+        "windowMs": 60000,
+        "lockoutMs": 300000,
+        "exemptLoopback": true
+      }
+    },
+    "tailscale": {
+      "mode": "off"
+    },
+    "controlUi": {
+      "enabled": false
+    },
+    "terminal": {
+      "enabled": false
+    },
+    "nodes": {
+      "pairing": {
+        "autoApproveCidrs": []
+      },
+      "allowCommands": [],
+      "denyCommands": ["system.run"]
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/Users/sanctuary-runner/workspaces/sanctuary",
+      "skipBootstrap": true,
+      "model": "openai/gpt-5.6-sol",
+      "models": {
+        "openai/gpt-5.6-sol": {
+          "agentRuntime": {
+            "id": "codex"
+          }
+        }
+      },
+      "sandbox": {
+        "mode": "off"
+      }
+    }
+  },
+  "tools": {
+    "profile": "coding",
+    "codeMode": {
+      "enabled": false
+    },
+    "exec": {
+      "host": "gateway",
+      "mode": "full",
+      "strictInlineEval": false,
+      "applyPatch": {
+        "enabled": true,
+        "workspaceOnly": true,
+        "allowModels": ["gpt-5.6-sol", "openai/gpt-5.6-sol"]
+      }
+    },
+    "elevated": {
+      "enabled": false
+    },
+    "agentToAgent": {
+      "enabled": false
+    }
+  },
+  "browser": {
+    "enabled": false
+  },
+  "channels": {},
+  "hooks": {
+    "enabled": false
+  },
+  "plugins": {
+    "allow": ["codex"],
+    "entries": {
+      "codex": {
+        "enabled": true,
+        "config": {
+          "appServer": {
+            "mode": "yolo",
+            "homeScope": "agent",
+            "approvalPolicy": "never",
+            "sandbox": "danger-full-access",
+            "approvalsReviewer": "user",
+            "defaultWorkspaceDir": "/Users/sanctuary-runner/workspaces/sanctuary"
+          }
+        }
+      }
+    },
+    "slots": {
+      "memory": "none"
+    }
+  },
+  "acp": {
+    "enabled": false,
+    "dispatch": {
+      "enabled": false
+    }
+  },
+  "update": {
+    "channel": "stable",
+    "checkOnStart": false,
+    "auto": {
+      "enabled": false
+    }
+  }
+}

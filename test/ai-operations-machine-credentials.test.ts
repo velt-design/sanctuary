@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { evaluateMachineCredentialEvidence } from "../scripts/ai/mac-machine-credential-gate.mjs";
+import {
+  evaluateMachineCredentialEvidence,
+  readGitHubVaultFields,
+} from "../scripts/ai/mac-machine-credential-gate.mjs";
 
 const passingEvidence = {
   runtimeUser: "sanctuary-runner",
@@ -57,5 +60,23 @@ describe("Mac machine credential gate", () => {
 
     expect(Object.keys(report)).toEqual(["schemaVersion", "gate", "passed", "checks"]);
     expect(report).not.toHaveProperty("credentials");
+  });
+
+  it("reads the standard 1Password login fields without exposing them", () => {
+    expect(
+      readGitHubVaultFields([
+        { id: "username", label: "username", value: "app" },
+        { id: "password", label: "password", value: "private" },
+        {
+          id: "installation_id",
+          label: "installation_id",
+          value: "installation",
+        },
+      ]),
+    ).toEqual({
+      appId: "app",
+      installationId: "installation",
+      privateKey: "private",
+    });
   });
 });
