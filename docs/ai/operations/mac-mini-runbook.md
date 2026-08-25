@@ -208,17 +208,17 @@ docker build -f apps/worker/Dockerfile -t sanctuary-background-worker:local .
 No secret is issued merely because software is installed. Use this inventory;
 store values only in the selected vault or machine Keychain.
 
-| Secret or identity | Initial state | Storage | Rotation/revocation owner |
-| --- | --- | --- | --- |
-| FileVault personal recovery key | Required | Business vault plus offline copy | Primary operator and recovery custodian |
-| Backup encryption password | Not issued until a backup disk is added | Business vault, separate from backup disk | Primary operator |
-| Overlay enrolment key | One-time only; delete after enrolment | Never persist on node | Overlay admin |
-| Overlay device identity | Staging-node tag only | Overlay control plane/device key | Overlay admin |
-| SSH admin private key | Required on operator device only | Operator vault or hardware-backed store | Primary operator |
-| GitHub App identity | App registered and repository-scoped; runtime key ready to issue after FileVault passes | Restricted 1Password runtime vault | Repository admin |
-| Staging Supabase credential | None until PR-AI-008 owns the exact contract | Future machine secret store | Supabase admin |
-| OpenClaw gateway token | Generate only at dark install | Machine Keychain/secret store | Node operator |
-| Model/provider or connector keys | Prohibited | Not applicable | Capability owner |
+| Secret or identity               | Initial state                                                                           | Storage                                   | Rotation/revocation owner               |
+| -------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------- | --------------------------------------- |
+| FileVault personal recovery key  | Required                                                                                | Business vault plus offline copy          | Primary operator and recovery custodian |
+| Backup encryption password       | Not issued until a backup disk is added                                                 | Business vault, separate from backup disk | Primary operator                        |
+| Overlay enrolment key            | One-time only; delete after enrolment                                                   | Never persist on node                     | Overlay admin                           |
+| Overlay device identity          | Staging-node tag only                                                                   | Overlay control plane/device key          | Overlay admin                           |
+| SSH admin private key            | Required on operator device only                                                        | Operator vault or hardware-backed store   | Primary operator                        |
+| GitHub App identity              | App registered and repository-scoped; runtime key ready to issue after FileVault passes | Restricted 1Password runtime vault        | Repository admin                        |
+| Staging Supabase credential      | None until PR-AI-008 owns the exact contract                                            | Future machine secret store               | Supabase admin                          |
+| OpenClaw gateway token           | Generate only at dark install                                                           | Machine Keychain/secret store             | Node operator                           |
+| Model/provider or connector keys | Prohibited                                                                              | Not applicable                            | Capability owner                        |
 
 The first non-interactive machine identities follow
 `machine-credential-ceremony.md`. Usable development credentials may be issued
@@ -291,6 +291,11 @@ References:
 Credential-free, inert preparation may install the exact pinned binary,
 deny-all configuration, and sandbox image before activation.
 
+After the dark-install and machine-credential controls pass, owner-approved
+repository development uses the separate instance in
+`openclaw-engineering-runtime.md`. It must not replace or mutate the default
+dark/shared state in place.
+
 Do not activate OpenClaw until Phases 1-5 pass. Phase 6 may remain deferred while
 the node is rebuildable and development-only. At first start:
 
@@ -327,16 +332,16 @@ The intended sandbox shape follows the official restricted example:
           readOnlyRoot: true,
           tmpfs: ["/tmp", "/var/tmp", "/run"],
           network: "none",
-          capDrop: ["ALL"]
-        }
-      }
-    }
+          capDrop: ["ALL"],
+        },
+      },
+    },
   },
   tools: {
     exec: {
-      mode: "deny"
-    }
-  }
+      mode: "deny",
+    },
+  },
 }
 ```
 

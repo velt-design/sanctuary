@@ -6,9 +6,7 @@
       "category": "dynamic-reference",
       "status": "current",
       "ownerArea": "Root npm workspace dependency policy",
-      "pathPatterns": [
-        "package.json"
-      ],
+      "pathPatterns": ["package.json"],
       "reason": "The root manifest owns shared workspace scripts and hoisted dependencies that can be consumed by app and package workspaces.",
       "retirementAction": "Remove root dependencies only after checking descendant workspaces, package scripts, builds, and focused tests.",
       "proofCommand": "npm run typecheck && npm run lint"
@@ -18,13 +16,8 @@
       "category": "dynamic-reference",
       "status": "current",
       "ownerArea": "Marketing build tooling",
-      "pathPatterns": [
-        "apps/marketing/package.json"
-      ],
-      "issueDetails": [
-        "sharp",
-        "tailwindcss"
-      ],
+      "pathPatterns": ["apps/marketing/package.json"],
+      "issueDetails": ["sharp", "tailwindcss"],
       "reason": "Marketing keeps build-sensitive dependencies that static import analysis may not see: Tailwind is loaded through CSS/PostCSS, and sharp supports production Next image optimization.",
       "retirementAction": "Remove only after checking marketing CSS/PostCSS config, Next image behavior, production build output, and focused marketing tests.",
       "proofCommand": "npm run test:marketing && npm run build:marketing"
@@ -34,13 +27,8 @@
       "category": "dynamic-reference",
       "status": "current",
       "ownerArea": "Portal build tooling",
-      "pathPatterns": [
-        "apps/portal/package.json"
-      ],
-      "issueDetails": [
-        "sharp",
-        "tailwindcss"
-      ],
+      "pathPatterns": ["apps/portal/package.json"],
+      "issueDetails": ["sharp", "tailwindcss"],
       "reason": "Portal keeps build-sensitive dependencies that static import analysis may not see: Tailwind is loaded through CSS/PostCSS, and sharp supports production Next image optimization.",
       "retirementAction": "Remove only after checking portal CSS/PostCSS config, Next image behavior, production build output, and focused portal tests.",
       "proofCommand": "npm run test:portal:shell && npm run build:portal"
@@ -97,9 +85,7 @@
       "category": "intentional-entrypoint",
       "status": "current",
       "ownerArea": "Portal browser gates",
-      "pathPatterns": [
-        "playwright/*.ts"
-      ],
+      "pathPatterns": ["playwright/*.ts"],
       "reason": "Playwright specs and setup files are invoked by Playwright projects and npm scripts rather than imported by source code.",
       "retirementAction": "Delete only when the matching npm script, Playwright project, and testing docs are removed or rerouted.",
       "proofCommand": "npm run test:portal:browser"
@@ -129,9 +115,7 @@
         "apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.ts",
         "apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts"
       ],
-      "issueDetails": [
-        "server-only"
-      ],
+      "issueDetails": ["server-only"],
       "reason": "Workbench QA fixture definitions are loaded by the server-only `/qa/design-workbench-fixture` route and intentionally guard against browser imports with Next's `server-only` marker.",
       "retirementAction": "Remove fixture modules only after checking the QA fixture route, Playwright portal fixture lane, fixture registry slugs, and workbench docs.",
       "proofCommand": "npx playwright test playwright/portal.workbench-fixture.spec.ts --project=portal-fixture --reporter=line"
@@ -141,26 +125,28 @@
       "category": "dynamic-reference",
       "status": "current",
       "ownerArea": "Operational tooling",
-      "pathPatterns": [
-        "scripts/*.js",
-        "scripts/*.mjs",
-        "scripts/*.ts"
-      ],
+      "pathPatterns": ["scripts/*.js", "scripts/*.mjs", "scripts/*.ts"],
       "reason": "Scripts are often invoked from package scripts, CI, docs, or manual operations rather than source imports.",
       "retirementAction": "Retire a script only after checking package scripts, CI workflows, docs, and operational owner docs.",
       "proofCommand": "npm run docs:guard"
+    },
+    {
+      "id": "ai-node-operational-scripts",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Sanctuary AI node operations",
+      "pathPatterns": ["scripts/ai/*.mjs"],
+      "reason": "Mac node gates, activation helpers and credential wrappers are invoked by reviewed npm commands, operator runbooks, generated runtime wrappers or child processes rather than ordinary application imports.",
+      "retirementAction": "Retire only after checking AI operation docs, package scripts, generated wrappers, live node activation and focused AI operations tests.",
+      "proofCommand": "npm run test:ai:ops && npm run docs:guard"
     },
     {
       "id": "portal-supabase-compat-helper-duplicate-dep",
       "category": "dynamic-reference",
       "status": "current",
       "ownerArea": "Portal Supabase compatibility helper",
-      "pathPatterns": [
-        "apps/portal/lib/supabaseClient.ts"
-      ],
-      "issueDetails": [
-        "unnamed finding"
-      ],
+      "pathPatterns": ["apps/portal/lib/supabaseClient.ts"],
+      "issueDetails": ["unnamed finding"],
       "reason": "The portal compatibility service-role helper imports @supabase/supabase-js directly while root operational scripts and app workspaces also declare Supabase dependencies for their own execution contexts.",
       "retirementAction": "Remove only after replacing the compatibility helper and confirming root scripts, portal runtime imports, service-role guards, and workspace package manifests still resolve correctly.",
       "proofCommand": "npx vitest run apps/portal/lib/supabaseClient.test.ts apps/portal/lib/supabaseClient.boundaries.test.ts && npm run service-role:changed"
@@ -170,12 +156,8 @@
       "category": "dynamic-reference",
       "status": "current",
       "ownerArea": "Portal legacy estimate viewer",
-      "pathPatterns": [
-        "apps/portal/lib/repo/estimatesRepo.ts"
-      ],
-      "issueDetails": [
-        "deleteEstimate"
-      ],
+      "pathPatterns": ["apps/portal/lib/repo/estimatesRepo.ts"],
+      "issueDetails": ["deleteEstimate"],
       "reason": "The legacy estimate viewer route imports this browser repo action through a dynamic Next route that Knip does not currently reach.",
       "retirementAction": "Remove only after retiring or replacing apps/portal/app/staff/projects/[projectId]/estimate/[estimateId]/EstimateViewerClient.tsx.",
       "proofCommand": "rg \"deleteEstimate\" apps/portal/app/staff/projects/[projectId] apps/portal/lib/repo && npx vitest run apps/portal/app/staff/projects/[projectId]/estimate/[estimateId] apps/portal/lib/repo"
@@ -202,9 +184,7 @@
       "category": "dynamic-reference",
       "status": "current",
       "ownerArea": "Portal legacy quote editor",
-      "pathPatterns": [
-        "apps/portal/lib/repo/quotesRepo.ts"
-      ],
+      "pathPatterns": ["apps/portal/lib/repo/quotesRepo.ts"],
       "issueDetails": [
         "getQuote",
         "deleteQuote",
@@ -220,9 +200,7 @@
       "category": "dynamic-reference",
       "status": "current",
       "ownerArea": "Portal legacy quote editor",
-      "pathPatterns": [
-        "apps/portal/lib/types/quote.ts"
-      ],
+      "pathPatterns": ["apps/portal/lib/types/quote.ts"],
       "issueDetails": [
         "quoteLabel",
         "quoteStatusLabel",
@@ -244,9 +222,7 @@
       "category": "dynamic-reference",
       "status": "current",
       "ownerArea": "Geometry generated profile assets",
-      "pathPatterns": [
-        "packages/geometry/src/generated/**"
-      ],
+      "pathPatterns": ["packages/geometry/src/generated/**"],
       "reason": "Generated profile assets are produced by repo tooling and may be referenced through geometry package internals.",
       "retirementAction": "Regenerate or remove only through the geometry asset generation workflow and package tests.",
       "proofCommand": "npm run geometry:generate-profile-assets && npm run typecheck"

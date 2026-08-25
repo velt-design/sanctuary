@@ -1,0 +1,251 @@
+{
+  "gateway": {
+    "mode": "local",
+    "port": 19011,
+    "bind": "loopback",
+    "reload": {
+      "mode": "off"
+    },
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}",
+      "allowTailscale": false,
+      "rateLimit": {
+        "maxAttempts": 10,
+        "windowMs": 60000,
+        "lockoutMs": 300000,
+        "exemptLoopback": true
+      }
+    },
+    "tailscale": {
+      "mode": "off"
+    },
+    "controlUi": {
+      "enabled": false
+    },
+    "terminal": {
+      "enabled": false
+    },
+    "nodes": {
+      "pairing": {
+        "autoApproveCidrs": []
+      },
+      "allowCommands": [],
+      "denyCommands": ["system.run"]
+    }
+  },
+  "agents": {
+    "ownership": "explicit",
+    "defaults": {
+      "workspace": "/Users/sanctuary-runner/.openclaw-sanctuary-engineering/workspaces",
+      "skipBootstrap": true,
+      "model": "openai/gpt-5.6-sol",
+      "models": {
+        "openai/gpt-5.6-sol": {
+          "agentRuntime": {
+            "id": "codex"
+          }
+        }
+      },
+      "modelPolicy": {
+        "allow": ["openai/gpt-5.6-sol"]
+      },
+      "utilityModel": "",
+      "thinkingDefault": "high",
+      "timeoutSeconds": 3900,
+      "maxConcurrent": 1,
+      "sandbox": {
+        "mode": "off"
+      },
+      "subagents": {
+        "maxSpawnDepth": 1,
+        "maxChildrenPerAgent": 1,
+        "maxConcurrent": 1,
+        "runTimeoutSeconds": 3600,
+        "announceTimeoutMs": 120000,
+        "archiveAfterMinutes": 1440,
+        "requireAgentId": true
+      }
+    },
+    "entries": {
+      "sanctuary-engineering-supervisor": {
+        "name": "Sanctuary Engineering Lead",
+        "workspace": "/Users/sanctuary-runner/.openclaw-sanctuary-engineering/workspaces/supervisor",
+        "skills": [],
+        "subagents": {
+          "allowAgents": ["sanctuary-coding-worker", "sanctuary-code-reviewer"],
+          "requireAgentId": true,
+          "delegationMode": "prefer"
+        },
+        "tools": {
+          "profile": "minimal",
+          "alsoAllow": [
+            "read",
+            "agents_list",
+            "sessions_spawn",
+            "sessions_yield",
+            "sessions_list",
+            "sessions_history",
+            "sessions_send",
+            "subagents",
+            "progress_card"
+          ],
+          "elevated": {
+            "enabled": false
+          }
+        }
+      },
+      "sanctuary-coding-worker": {
+        "name": "Sanctuary Coding Worker",
+        "workspace": "/Users/sanctuary-runner/.openclaw-sanctuary-engineering/workspaces/worker",
+        "skills": [],
+        "subagents": {
+          "allowAgents": [],
+          "requireAgentId": true,
+          "delegationMode": "suggest"
+        },
+        "tools": {
+          "profile": "coding",
+          "deny": [
+            "cron",
+            "memory_get",
+            "memory_search",
+            "web_fetch",
+            "x_search",
+            "image_generate",
+            "music_generate",
+            "video_generate"
+          ],
+          "elevated": {
+            "enabled": false
+          }
+        }
+      },
+      "sanctuary-code-reviewer": {
+        "name": "Sanctuary Code Reviewer",
+        "workspace": "/Users/sanctuary-runner/.openclaw-sanctuary-engineering/workspaces/reviewer",
+        "skills": [],
+        "subagents": {
+          "allowAgents": [],
+          "requireAgentId": true,
+          "delegationMode": "suggest"
+        },
+        "tools": {
+          "profile": "minimal",
+          "alsoAllow": ["read"],
+          "elevated": {
+            "enabled": false
+          }
+        }
+      }
+    }
+  },
+  "tools": {
+    "profile": "minimal",
+    "codeMode": {
+      "enabled": false
+    },
+    "exec": {
+      "host": "gateway",
+      "mode": "full",
+      "strictInlineEval": false,
+      "timeoutSeconds": 3600,
+      "cleanupMs": 1800000,
+      "applyPatch": {
+        "enabled": true,
+        "workspaceOnly": true,
+        "allowModels": ["gpt-5.6-sol", "openai/gpt-5.6-sol"]
+      }
+    },
+    "web": {
+      "search": {
+        "enabled": false
+      },
+      "fetch": {
+        "enabled": false
+      }
+    },
+    "elevated": {
+      "enabled": false
+    },
+    "agentToAgent": {
+      "enabled": true,
+      "allow": [
+        "sanctuary-engineering-supervisor",
+        "sanctuary-coding-worker",
+        "sanctuary-code-reviewer"
+      ]
+    },
+    "sessions": {
+      "visibility": "tree"
+    },
+    "sessions_spawn": {
+      "attachments": {
+        "enabled": false
+      }
+    }
+  },
+  "browser": {
+    "enabled": false
+  },
+  "channels": {},
+  "hooks": {
+    "enabled": false
+  },
+  "cron": {
+    "enabled": false,
+    "triggers": {
+      "enabled": false
+    }
+  },
+  "discovery": {
+    "mdns": {
+      "mode": "off"
+    }
+  },
+  "plugins": {
+    "allow": ["codex"],
+    "entries": {
+      "codex": {
+        "enabled": true,
+        "config": {
+          "discovery": {
+            "enabled": true,
+            "timeoutMs": 2500
+          },
+          "sessionCatalog": {
+            "enabled": false
+          },
+          "supervision": {
+            "enabled": false
+          },
+          "appServer": {
+            "mode": "yolo",
+            "homeScope": "agent",
+            "approvalPolicy": "never",
+            "sandbox": "danger-full-access",
+            "approvalsReviewer": "user",
+            "defaultWorkspaceDir": "/Users/sanctuary-runner/.openclaw-sanctuary-engineering/workspaces/worker",
+            "clearEnv": ["CODEX_API_KEY", "OPENAI_API_KEY"]
+          }
+        }
+      }
+    },
+    "slots": {
+      "memory": "none"
+    }
+  },
+  "acp": {
+    "enabled": false,
+    "dispatch": {
+      "enabled": false
+    }
+  },
+  "update": {
+    "channel": "stable",
+    "checkOnStart": false,
+    "auto": {
+      "enabled": false
+    }
+  }
+}

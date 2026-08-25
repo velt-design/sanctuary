@@ -1,24 +1,16 @@
 import { readFileSync, statSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
   createGitHubAppJwt,
   readGitHubVaultFields,
+  resolveMachineServiceTokenPath,
 } from "./mac-machine-credential-gate.mjs";
 
 const VAULT = "Sanctuary - Node Runtime";
 const ITEM = "GitHub - Sanctuary Node PR Bot";
 const REPOSITORY = "velt-design/sanctuary";
-const TOKEN_PATH = join(
-  homedir(),
-  ".openclaw",
-  "credentials",
-  "onepassword",
-  "service-account-token",
-);
 
 function run(command, args, env = process.env) {
   const execution = spawnSync(command, args, { encoding: "utf8", env });
@@ -29,11 +21,14 @@ function run(command, args, env = process.env) {
 }
 
 function readServiceToken() {
-  const stats = statSync(TOKEN_PATH);
+  const tokenPath = resolveMachineServiceTokenPath();
+  const stats = statSync(tokenPath);
   if (!stats.isFile() || (stats.mode & 0o077) !== 0) {
-    throw new Error("The 1Password service-account token file is not protected.");
+    throw new Error(
+      "The 1Password service-account token file is not protected.",
+    );
   }
-  const token = readFileSync(TOKEN_PATH, "utf8").trim();
+  const token = readFileSync(tokenPath, "utf8").trim();
   if (!token) throw new Error("The 1Password service-account token is empty.");
   return token;
 }
@@ -41,11 +36,10 @@ function readServiceToken() {
 function readGitHubIdentity() {
   const serviceToken = readServiceToken();
   const item = JSON.parse(
-    run(
-      "op",
-      ["item", "get", ITEM, "--vault", VAULT, "--format", "json"],
-      { ...process.env, OP_SERVICE_ACCOUNT_TOKEN: serviceToken },
-    ),
+    run("op", ["item", "get", ITEM, "--vault", VAULT, "--format", "json"], {
+      ...process.env,
+      OP_SERVICE_ACCOUNT_TOKEN: serviceToken,
+    }),
   );
   const identity = readGitHubVaultFields(item.fields);
   if (!identity.appId || !identity.installationId || !identity.privateKey) {
@@ -65,19 +59,22 @@ export async function requestInstallationToken(fetchImpl = fetch) {
         Authorization: `Bearer ${createGitHubAppJwt(identity.appId, identity.privateKey)}`,
         "Content-Type": "application/json",
         "User-Agent": "sanctuary-node-pr-bot",
-        "X-GitHub-Api-Version": "2022-11-28"
+        "X-GitHub-Api-Version": "2022-11-28",
       },
       body: JSON.stringify({
         repositories: ["sanctuary"],
-        permissions: { contents: "write", pull_requests: "write" }
-      })
+        permissions: { contents: "write", pull_requests: "write" },
+      }),
     },
   );
   if (!response.ok) {
-    throw new Error(`GitHub installation-token request failed (${response.status}).`);
+    throw new Error(
+      `GitHub installation-token request failed (${response.status}).`,
+    );
   }
   const payload = await response.json();
-  const repositories = payload.repositories?.map((repo) => repo.full_name) ?? [];
+  const repositories =
+    payload.repositories?.map((repo) => repo.full_name) ?? [];
   if (
     !payload.token ||
     repositories.length !== 1 ||
@@ -85,7 +82,9 @@ export async function requestInstallationToken(fetchImpl = fetch) {
     payload.permissions?.contents !== "write" ||
     payload.permissions?.pull_requests !== "write"
   ) {
-    throw new Error("GitHub returned a token outside the expected repository contract.");
+    throw new Error(
+      "GitHub returned a token outside the expected repository contract.",
+    );
   }
   return {
     token: payload.token,

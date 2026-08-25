@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "defaults": {
+    "security": "deny",
+    "ask": "off",
+    "askFallback": "deny",
+    "autoAllowSkills": false
+  },
+  "agents": {
+    "sanctuary-engineering-supervisor": {
+      "security": "deny",
+      "ask": "off",
+      "askFallback": "deny",
+      "autoAllowSkills": false
+    },
+    "sanctuary-coding-worker": {
+      "security": "full",
+      "ask": "off",
+      "askFallback": "full",
+      "autoAllowSkills": false
+    },
+    "sanctuary-code-reviewer": {
+      "security": "deny",
+      "ask": "off",
+      "askFallback": "deny",
+      "autoAllowSkills": false
+    }
+  }
+}
