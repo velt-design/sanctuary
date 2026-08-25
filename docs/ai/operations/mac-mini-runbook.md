@@ -92,6 +92,18 @@ Expected: supported macOS, `arm64`, and FileVault on after Phase 2.
    Remote Management, Internet Sharing, AirPlay Receiver, and Bluetooth Sharing.
 8. Leave guest access and automatic login off.
 
+Run the secret-free repository gate from the `sanctuary-runner` checkout:
+
+```bash
+node scripts/ai/mac-filevault-gate.mjs
+```
+
+The command must pass before Phase 2 is complete. It checks only observable
+machine state and deliberately does not read or print the FileVault recovery
+key. Separately confirm that the personal recovery key is readable in the
+business vault and in one controlled offline location. Do not paste the key into
+the command, a task, a PR, or an evidence log.
+
 Reference: Apple documents FileVault recovery-key custody at
 <https://support.apple.com/guide/mac-help/filevault-recovery-key-mh35880/mac>
 and recommends a personal recovery key for Apple silicon at
