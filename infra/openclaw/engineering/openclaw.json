@@ -35,7 +35,6 @@
     }
   },
   "agents": {
-    "ownership": "explicit",
     "defaults": {
       "workspace": "/Users/sanctuary-runner/.openclaw-sanctuary-engineering/workspaces",
       "skipBootstrap": true,
@@ -47,10 +46,6 @@
           }
         }
       },
-      "modelPolicy": {
-        "allow": ["openai/gpt-5.6-sol"]
-      },
-      "utilityModel": "",
       "thinkingDefault": "high",
       "timeoutSeconds": 3900,
       "maxConcurrent": 1,
@@ -67,8 +62,10 @@
         "requireAgentId": true
       }
     },
-    "entries": {
-      "sanctuary-engineering-supervisor": {
+    "list": [
+      {
+        "id": "sanctuary-engineering-supervisor",
+        "default": true,
         "name": "Sanctuary Engineering Lead",
         "workspace": "/Users/sanctuary-runner/.openclaw-sanctuary-engineering/workspaces/supervisor",
         "skills": [],
@@ -95,7 +92,8 @@
           }
         }
       },
-      "sanctuary-coding-worker": {
+      {
+        "id": "sanctuary-coding-worker",
         "name": "Sanctuary Coding Worker",
         "workspace": "/Users/sanctuary-runner/.openclaw-sanctuary-engineering/workspaces/worker",
         "skills": [],
@@ -121,7 +119,8 @@
           }
         }
       },
-      "sanctuary-code-reviewer": {
+      {
+        "id": "sanctuary-code-reviewer",
         "name": "Sanctuary Code Reviewer",
         "workspace": "/Users/sanctuary-runner/.openclaw-sanctuary-engineering/workspaces/reviewer",
         "skills": [],
@@ -138,7 +137,7 @@
           }
         }
       }
-    }
+    ]
   },
   "tools": {
     "profile": "minimal",
@@ -149,7 +148,7 @@
       "host": "gateway",
       "mode": "full",
       "strictInlineEval": false,
-      "timeoutSeconds": 3600,
+      "timeoutSec": 3600,
       "cleanupMs": 1800000,
       "applyPatch": {
         "enabled": true,

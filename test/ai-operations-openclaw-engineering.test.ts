@@ -29,6 +29,9 @@ const startSource = readFileSync(
   resolve("scripts/ai/mac-openclaw-engineering-start.mjs"),
   "utf8",
 );
+const agentsById = Object.fromEntries(
+  config.agents.list.map((agent: { id: string }) => [agent.id, agent]),
+);
 
 const portablePath = (value: string) => value.replaceAll("\\", "/");
 
@@ -52,12 +55,18 @@ describe("isolated OpenClaw engineering runtime", () => {
       bind: "loopback",
       reload: { mode: "off" },
     });
-    expect(config.agents.ownership).toBe("explicit");
-    expect(Object.keys(config.agents.entries)).toEqual(ENGINEERING_AGENT_IDS);
+    expect(config.agents.list.map((agent: { id: string }) => agent.id)).toEqual(
+      ENGINEERING_AGENT_IDS,
+    );
+    expect(
+      config.agents.list
+        .filter((agent: { default?: boolean }) => agent.default)
+        .map((agent: { id: string }) => agent.id),
+    ).toEqual(["sanctuary-engineering-supervisor"]);
   });
 
   it("gives only the lead the bounded delegation surface", () => {
-    const lead = config.agents.entries["sanctuary-engineering-supervisor"];
+    const lead = agentsById["sanctuary-engineering-supervisor"];
 
     expect(lead.tools.profile).toBe("minimal");
     expect(lead.tools.alsoAllow).toEqual(
@@ -85,8 +94,8 @@ describe("isolated OpenClaw engineering runtime", () => {
   });
 
   it("keeps no-prompt coding authority on the worker only", () => {
-    const worker = config.agents.entries["sanctuary-coding-worker"];
-    const reviewer = config.agents.entries["sanctuary-code-reviewer"];
+    const worker = agentsById["sanctuary-coding-worker"];
+    const reviewer = agentsById["sanctuary-code-reviewer"];
 
     expect(worker.tools.profile).toBe("coding");
     expect(worker.subagents).toMatchObject({
@@ -125,7 +134,9 @@ describe("isolated OpenClaw engineering runtime", () => {
   it("pins the isolated Codex harness and disables unrelated surfaces", () => {
     expect(config.agents.defaults).toMatchObject({
       model: "openai/gpt-5.6-sol",
-      modelPolicy: { allow: ["openai/gpt-5.6-sol"] },
+      models: {
+        "openai/gpt-5.6-sol": { agentRuntime: { id: "codex" } },
+      },
       maxConcurrent: 1,
       sandbox: { mode: "off" },
     });

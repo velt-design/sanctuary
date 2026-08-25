@@ -44,8 +44,10 @@ which must continue to hold no production credential.
 | `sanctuary-coding-worker`          | No-prompt coding inside the assigned worker root; focused checks, feature-branch push and draft PR only. One leaf worker cannot spawn another agent. |
 | `sanctuary-code-reviewer`          | Read-only independent evidence review. No shell, mutation, delegation or merge authority.                                                            |
 
-The fleet has explicit ownership and no implicit default agent. Operator commands
-must name the supervisor. Do not start the worker directly.
+The installed OpenClaw schema requires a deterministic default route, so only
+the bounded supervisor is marked default. The coding worker and reviewer remain
+explicit named children and cannot become an implicit execution route. Operator
+commands still name the supervisor; do not start the worker directly.
 
 ## Why routine prompts stop
 
