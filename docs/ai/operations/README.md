@@ -36,8 +36,8 @@ accounts or physical controls without the owner:
 | Private overlay | Tailscale with a tagged staging-node identity and least-privilege policy | Remote administration |
 | Container backend | Maintained Docker- or Podman-compatible macOS runtime; confirm licensing and support | OpenClaw sandbox verification |
 | Secret vault | Business-owned password/secret manager plus macOS Keychain for machine-local use | Issuing any non-disposable service credential |
-| Recovery custody | Jordan plus one named recovery custodian, stored away from the Mac | Enabling FileVault and encrypted backup |
-| UPS and backup disk | Managed UPS and dedicated encrypted Time Machine disk of at least 2 TB for the 1 TB Mac | Always-on claim or rebuild rehearsal |
+| Recovery custody | Jordan, with the FileVault recovery key stored away from the Mac | Enabling FileVault |
+| UPS and backup disk | Optional resilience upgrade when the node begins keeping unique local state or production workloads | Production promotion or a restore-based recovery claim |
 
 Record the selected products and owners in the private asset register. Do not
 commit serial numbers, recovery keys, device IDs, auth keys, internal addresses,
@@ -49,11 +49,18 @@ Complete and evidence each checkpoint independently:
 
 1. host baseline;
 2. private administration;
-3. encrypted backup and restore sample;
-4. dark OpenClaw security controls;
-5. staging node registration and stale/revocation behavior;
-6. one deterministic synthetic task;
-7. node-offline and rebuild rehearsals.
+3. dark OpenClaw security controls;
+4. staging node registration and stale/revocation behavior;
+5. one deterministic development task;
+6. node-offline and rebuild-from-Git rehearsal.
+
+The initial development node is intentionally rebuildable rather than
+restore-dependent: source and configuration live in GitHub, secrets remain in
+1Password or are reissued, and local workspaces are disposable. An encrypted
+Time Machine backup and UPS are recommended later, but they do not block
+repository work, tests, branches, or draft pull requests. They become required
+before the node is allowed to own unique local business state or claim
+restore-based production recovery.
 
 Failure at any checkpoint returns the node to dark state. Success never grants a
 production effect or expands another capability.

@@ -18,7 +18,7 @@ start `ai-incident-response.md` before rebuilding.
 
 | Trigger | Path | First action |
 | --- | --- | --- |
-| Planned OS or hardware maintenance | Planned rebuild | Drain work and prove the latest usable backup. |
+| Planned OS or hardware maintenance | Planned rebuild | Drain work; use a backup if configured, otherwise rebuild from hosted sources. |
 | Lost, stolen, or suspected-compromised Mac | Compromise rebuild | Isolate and revoke centrally before attempting recovery. |
 | One exposed or retired credential | Credential-only revocation | Revoke that credential and inspect its access history. |
 | Failed synthetic workload with no exposure | Normal repair | Keep execution dark, diagnose, then repeat the synthetic proof. |
@@ -59,15 +59,16 @@ device off does not complete these steps.
    OpenClaw are dark.
 3. Record safe versions and configuration references: macOS, Git SHA, Node,
    container runtime, OpenClaw, overlay client, and applicable policy version.
-4. Verify the latest encrypted backup and restore one non-secret sample to a
-   temporary location.
+4. If encrypted backup is configured, verify it and restore one non-secret
+   sample. Otherwise confirm that the intended Git SHA is hosted and all machine
+   credentials can be reissued before wiping the node.
 5. Revoke the old machine identities using the central order above. Treat the
    rebuilt Mac as a new node, even when the hardware is unchanged.
 6. Erase and install a current supported macOS release through Apple's supported
    recovery path.
 7. Repeat `mac-mini-runbook.md` from the account baseline: separate admin and
    runner accounts, FileVault, updates, firewall, private network, SSH, runtime,
-   encrypted backup, and dark OpenClaw controls.
+   the selected recovery mode, and OpenClaw controls.
 8. Clone a clean repository copy over HTTPS and build from a reviewed Git SHA.
    Do not restore a working tree, container disk, sandbox, shell profile, or
    machine secret from the old installation.
@@ -119,9 +120,11 @@ device off does not complete these steps.
 - [ ] Applicable hosted identities were revoked before local erasure.
 - [ ] The old node cannot heartbeat, claim a task, or recover authority.
 - [ ] The old overlay identity and SSH path no longer work.
-- [ ] The backup restore sample passed without restoring machine secrets.
+- [ ] The selected recovery proof passed: either a backup sample restore or a
+      clean rebuild from the hosted Git SHA with fresh machine credentials.
 - [ ] The rebuild used reviewed source and fresh identities.
-- [ ] FileVault, firewall, private access, backup, and OpenClaw deny policy passed.
+- [ ] FileVault, firewall, private access, the selected recovery mode, and the
+      applicable OpenClaw policy passed.
 - [ ] One fixed synthetic task passed with no customer, project, communication,
       payment, production, or external-network effect.
 - [ ] Disconnecting the node left the hosted Portal and manual workflow usable.
