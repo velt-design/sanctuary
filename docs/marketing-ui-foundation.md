@@ -469,10 +469,10 @@ journeys remain unchanged. The in-page `Send your brief` action appears only
 after the selected result and built work. Shared header and footer route
 attribution canonicalise Next's production `/index` alias to `/`.
 
-`/simple-pergolas-auckland` is the dedicated conversion continuation for the
-Simple cover choice. It is a new route-owned Foundation adoption rather than a
-second acrylic SEO page: it is self-canonical, `noindex,follow`, absent from the
-sitemap and directly accessible with or without JavaScript. Its split image-led
+`/simple-pergolas-auckland` is the dedicated product and conversion continuation
+for the Simple cover choice. It owns the focused Simple pitched acrylic intent:
+it is self-canonical, `index,follow`, included in the sitemap and directly
+accessible with or without JavaScript. Its split image-led
 hero leads with `Cover the space without losing light.` and the primary
 `Price your Simple cover` action. The complete governed calculator now appears
 immediately after that hero and absorbs the former long fit section. The
@@ -503,8 +503,9 @@ Redundant project-type, roof-form, attachment, dimensions, deck-level and
 connection questions remain removed from this focused form. It intentionally
 omits project detours and extended guide copy. Homepage direction and priority
 context continues through the page, embedded form and shared header.
-`/acrylic-roof-pergolas-auckland` remains unchanged as the only indexable
-acrylic landing-page and sitemap owner.
+`/acrylic-roof-pergolas-auckland` remains the broader acrylic-roof research
+owner. The two routes stay distinct through research-led acrylic comparison on
+that route and sales-first Simple cover fit and pricing on this route.
 
 `/simple-cover-calculator` remains the separate shareable calculator route. It
 is self-canonical and `noindex,follow`; both routes render the same component,

@@ -82,6 +82,14 @@ owner and is unchanged by this checkpoint. The new route uses only approved
 general claims and product-fit limits and preserves the existing
 consent and enquiry-attribution contracts.
 
+### 26 August 2026 Simple cover indexing checkpoint
+
+`/simple-pergolas-auckland` is now a self-canonical, `index,follow` product and
+conversion route included in the sitemap. It owns focused Simple pitched acrylic
+fit and pricing intent, while `/acrylic-roof-pergolas-auckland` remains the
+broader acrylic-roof research owner. The claims, consent and enquiry-attribution
+contracts remain unchanged.
+
 ## Operating protocol for coding agents
 
 For every goal:

@@ -105,8 +105,10 @@ for (const viewport of viewports) {
     await page.goto(route);
 
     await expect(page).toHaveTitle('Simple Pitched Acrylic Pergolas | Sanctuary Pergolas');
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/i);
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /follow/i);
+    const robots = page.locator('meta[name="robots"]');
+    await expect(robots).toHaveAttribute('content', /(?:^|,\s*)index(?:,|$)/i);
+    await expect(robots).not.toHaveAttribute('content', /noindex/i);
+    await expect(robots).toHaveAttribute('content', /follow/i);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       'href',
       `${publicOrigin}${route}`,
@@ -532,8 +534,8 @@ test('the page remains useful without JavaScript', async ({ browser }: { browser
   await context.close();
 });
 
-test('the noindex conversion page stays out of the sitemap', async ({ page }) => {
+test('the indexable Simple page is included in the sitemap', async ({ page }) => {
   await page.goto('/sitemap.xml');
-  await expect(page.locator('body')).not.toContainText('/simple-pergolas-auckland');
+  await expect(page.locator('body')).toContainText('/simple-pergolas-auckland');
   await expect(page.locator('body')).toContainText('/acrylic-roof-pergolas-auckland');
 });

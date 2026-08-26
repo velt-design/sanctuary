@@ -91,14 +91,13 @@ The current public site uses the following shorter decision path:
   `Brief`, one `Response`, `Facts`, `Gallery` and `Technical details`.
   Curated related projects remain; the redundant circular previous/next
   project navigation is removed.
-- `/acrylic-roof-pergolas-auckland` is the only acrylic landing-page owner.
-  The retired noindex v2 source now permanently redirects there in one hop and
-  is absent from internal navigation and the sitemap.
-- `/simple-pergolas-auckland` is a distinct noindex conversion route reached
-  from the homepage Simple cover pathway. It is not a second acrylic SEO owner,
-  is excluded from the sitemap and keeps its sales-first detail visible rather
-  than placing the core fit, blind or trade-off decision behind a mobile
-  disclosure.
+- `/acrylic-roof-pergolas-auckland` owns the broader acrylic-roof research
+  intent. The retired noindex v2 source now permanently redirects there in one
+  hop and is absent from internal navigation and the sitemap.
+- `/simple-pergolas-auckland` is a distinct indexable product and conversion
+  route reached from the homepage Simple cover pathway. It is included in the
+  sitemap and keeps its sales-first fit, pricing, blind and trade-off detail
+  visible rather than placing the core decision behind a mobile disclosure.
 
 The current cross-family mobile budgets in
 `playwright/marketing.mobile-content-density.spec.ts` are ceilings, not copy

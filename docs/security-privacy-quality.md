@@ -97,8 +97,8 @@ text, contact details, dimensions or uploaded content. The retired
 header and does not own a second analytics or rendering tree.
 
 The homepage Simple cover destination is `/simple-pergolas-auckland`. This
-conversion route is `noindex,follow`, excluded from the sitemap and distinct
-from the indexable `/acrylic-roof-pergolas-auckland` research owner. It accepts
+product and conversion route is `index,follow`, included in the sitemap and
+distinct from the broader `/acrylic-roof-pergolas-auckland` research owner. It accepts
 only the existing closed `project` and `priorities` URL values. Its embedded
 calculator stores a same-tab closed handoff only after a visitor chooses the
 result-continuation CTA. A priced result labels that request `Request a site

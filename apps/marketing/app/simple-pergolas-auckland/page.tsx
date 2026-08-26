@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   title: { absolute: 'Simple Pitched Acrylic Pergolas | Sanctuary Pergolas' },
   description:
     'A straightforward pitched acrylic pergola, finished to the Sanctuary standard. Check whether your Auckland deck fits the Simple cover range.',
-  robots: { index: false, follow: true },
+  robots: { index: true, follow: true },
   alternates: { canonical: route },
   openGraph: {
     type: 'website',
@@ -119,7 +119,7 @@ export default async function SimplePergolasPage({
     <MarketingPage
       className={styles.page}
       data-conversion-landing="simple-pergolas-auckland"
-      data-indexing="noindex"
+      data-indexing="index"
     >
       <section className={styles.hero} aria-labelledby="simple-pergola-title">
         <div className={styles.heroCopy}>
