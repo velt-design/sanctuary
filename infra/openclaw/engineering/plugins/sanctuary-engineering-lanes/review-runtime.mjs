@@ -119,7 +119,10 @@ export function findNativeReviewMatches(taskRuns, dispatch) {
         task.runtime === "subagent" &&
         task.agentId === dispatch.reviewerAgentId &&
         task.label === dispatch.reviewTaskName &&
-        task.title === dispatch.reviewPrompt,
+        task.title === dispatch.reviewPrompt &&
+        Number.isSafeInteger(task.createdAt) &&
+        task.createdAt >= dispatch.reviewStartedAt &&
+        task.createdAt <= dispatch.reviewDeadlineAt,
     );
 }
 

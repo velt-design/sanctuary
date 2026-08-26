@@ -645,6 +645,39 @@ describe("durable exact-head CI and independent review loop", () => {
     });
   });
 
+  it("ignores a historical matching reviewer outside the current review window", async () => {
+    const setup = fixture();
+    const reached = await reachCi(setup);
+    const reviewDispatch = setup.controller().inspectCi({
+      flowId: reached.ciPending.flowId,
+      expectedRevision: reached.ciPending.revision,
+    });
+    setup.tasks.add({
+      runId: "historical-reviewer",
+      agentId: reviewDispatch.reviewerAgentId,
+      label: reviewDispatch.reviewTaskName,
+      title: reviewDispatch.reviewPrompt,
+      createdAt: reviewDispatch.reviewStartedAt - 1,
+    });
+    const current = setup.tasks.add({
+      runId: "current-reviewer",
+      agentId: reviewDispatch.reviewerAgentId,
+      label: reviewDispatch.reviewTaskName,
+      title: reviewDispatch.reviewPrompt,
+      createdAt: reviewDispatch.reviewStartedAt,
+    });
+
+    const recovered = await setup.controller().recover();
+    expect(recovered).toMatchObject({
+      recoveredAttached: true,
+      phase: "reviewer_running",
+      reviewStatus: "running",
+    });
+    expect(
+      setup.flows.records.get(reviewDispatch.flowId)?.stateJson.review.runId,
+    ).toBe(current.runId);
+  });
+
   it("blocks a failed reviewer instead of silently replacing it", async () => {
     const setup = fixture();
     const reached = await reachCi(setup);

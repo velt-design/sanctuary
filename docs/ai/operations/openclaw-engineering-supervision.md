@@ -117,9 +117,10 @@ globally pinned worker deadline or `maxCostCents`. Repeated recovery while a
 dispatch is merely ready returns the same attempt and task name; it does not
 create a second worktree or worker. If the gateway stopped after spawn but
 before attachment, the controller finds the one native task with the exact
-stable label and bound prompt, attaches it, and refuses duplicates. An overdue
-running task must be cancelled through OpenClaw's native task runtime before a
-retry becomes eligible.
+stable task name, bound prompt and current attempt time window, attaches it,
+ignores historical runs outside that window, and refuses current duplicates.
+An overdue running task must be cancelled through OpenClaw's native task
+runtime before a retry becomes eligible.
 
 The remaining reported cost budget is divided across the remaining worker and
 review units and stored with each dispatch. This reserves a final independent

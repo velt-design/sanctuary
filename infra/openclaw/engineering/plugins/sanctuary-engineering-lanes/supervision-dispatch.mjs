@@ -67,7 +67,10 @@ export function findNativeDispatchMatches(taskRuns, workerDispatch) {
         task.runtime === "subagent" &&
         task.agentId === workerDispatch.workerAgentId &&
         task.label === workerDispatch.taskName &&
-        task.title === workerDispatch.workerPrompt,
+        task.title === workerDispatch.workerPrompt &&
+        Number.isSafeInteger(task.createdAt) &&
+        task.createdAt >= workerDispatch.attemptStartedAt &&
+        task.createdAt <= workerDispatch.attemptDeadlineAt,
     );
 }
 

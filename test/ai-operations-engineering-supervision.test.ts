@@ -402,6 +402,12 @@ describe("durable engineering supervision", () => {
     const task = manifest("spawn_attach_recovery");
     setup.controller().enqueue(task);
     const dispatch = setup.controller().claim();
+    setup.tasks.add({
+      runId: "run-historical-matching-worker",
+      label: dispatch.taskName,
+      title: dispatch.workerPrompt,
+      createdAt: dispatch.attemptStartedAt - 1,
+    });
     const native = setup.tasks.add({
       runId: "run-spawn-attach-recovery",
       label: dispatch.taskName,
@@ -417,7 +423,7 @@ describe("durable engineering supervision", () => {
       attempts: 1,
       activeRunId: native.runId,
     });
-    expect(setup.tasks.records.size).toBe(1);
+    expect(setup.tasks.records.size).toBe(2);
     expect(await setup.controller().recover()).toMatchObject({
       waiting: true,
       phase: "worker_running",

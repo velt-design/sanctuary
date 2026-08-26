@@ -17,7 +17,7 @@ export const ENGINEERING_PROFILE = "sanctuary-engineering";
 export const ENGINEERING_GATEWAY_PORT = 19011;
 export const CODEX_PLUGIN_SPEC = "@openclaw/codex@2026.7.1-1";
 export const LANE_PLUGIN_ID = "sanctuary-engineering-lanes";
-export const LANE_PLUGIN_VERSION = "1.2.3";
+export const LANE_PLUGIN_VERSION = "1.2.4";
 export const ENGINEERING_AGENT_IDS = Object.freeze([
   "sanctuary-engineering-supervisor",
   "sanctuary-coding-worker",
