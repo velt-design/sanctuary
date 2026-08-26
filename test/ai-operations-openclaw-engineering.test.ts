@@ -10,6 +10,7 @@ import {
   LANE_PLUGIN_ID,
   LANE_PLUGIN_VERSION,
   buildActivationRecord,
+  buildEngineeringLaneWrapper,
   buildGitHubWrapper,
   buildOpenClawWrapper,
   resolveEngineeringRuntimePaths,
@@ -251,9 +252,13 @@ describe("isolated OpenClaw engineering runtime", () => {
       repoRoot: "/repo",
     });
     const openclawWrapper = buildOpenClawWrapper(paths);
+    const laneWrapper = buildEngineeringLaneWrapper(
+      paths,
+      "/usr/local/bin/node",
+    );
     const githubWrapper = buildGitHubWrapper(paths, "/usr/local/bin/node");
 
-    for (const wrapper of [openclawWrapper, githubWrapper]) {
+    for (const wrapper of [openclawWrapper, laneWrapper, githubWrapper]) {
       expect(portablePath(wrapper)).toContain(
         "OPENCLAW_STATE_DIR='/Users/sanctuary-runner/.openclaw-sanctuary-engineering'",
       );
@@ -265,6 +270,13 @@ describe("isolated OpenClaw engineering runtime", () => {
     expect(githubWrapper).toContain("GIT_TERMINAL_PROMPT=0");
     expect(githubWrapper).toContain("--safe-gh");
     expect(githubWrapper).not.toContain("--raw");
+    expect(laneWrapper).toContain("SANCTUARY_ENGINEERING_REPO_ROOT='/repo'");
+    expect(portablePath(laneWrapper)).toContain(
+      "'/repo/scripts/ai/engineering-lane.mjs' \"$@\"",
+    );
+    expect(portablePath(laneWrapper)).toContain(
+      "'/Users/sanctuary-runner/bin'",
+    );
   });
 
   it("records drift-detectable activation without claiming shared-state mutation", () => {
@@ -306,6 +318,7 @@ describe("isolated OpenClaw engineering runtime", () => {
     expect(activationSource).toContain(
       '["plugins", "install", "--force", paths.lanePluginSource]',
     );
+    expect(activationSource).toContain("buildEngineeringLaneWrapper(paths)");
     expect(activationSource).toContain('["plugins", "doctor"]');
     expect(activationSource).toContain('"--post-upgrade"');
     expect(activationSource).toContain(

@@ -17,12 +17,12 @@ The lane runtime binds those facts to local state before a coding worker starts.
 The reviewed `sanctuary-engineering-lanes` OpenClaw plugin exposes four optional
 tools. Agent allowlists make their ownership explicit:
 
-| Tool | Allowed role | Effect |
-| --- | --- | --- |
-| `sanctuary_engineering_lane_provision` | Engineering Lead | Strictly validate the complete manifest; create or resume its exact worktree and return the bound worker prompt. |
-| `sanctuary_engineering_lane_status` | Lead, worker, reviewer | Report recorded branch, head, cleanliness, changed paths and draft PR without mutation. |
-| `sanctuary_engineering_lane_publish` | Coding Worker | Verify clean committed scope, push only the exact feature ref and create or confirm one open draft PR. |
-| `sanctuary_engineering_lane_cleanup` | Engineering Lead | Remove only the clean recorded worktree after its remote head and open draft PR still match. Retain local and remote branches. |
+| Tool                                   | Allowed role           | Effect                                                                                                                         |
+| -------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `sanctuary_engineering_lane_provision` | Engineering Lead       | Strictly validate the complete manifest; create or resume its exact worktree and return the bound worker prompt.               |
+| `sanctuary_engineering_lane_status`    | Lead, worker, reviewer | Report recorded branch, head, cleanliness, changed paths and draft PR without mutation.                                        |
+| `sanctuary_engineering_lane_publish`   | Coding Worker          | Verify clean committed scope, push only the exact feature ref and create or confirm one open draft PR.                         |
+| `sanctuary_engineering_lane_cleanup`   | Engineering Lead       | Remove only the clean recorded worktree after its remote head and open draft PR still match. Retain local and remote branches. |
 
 The lead and reviewer still have no shell. The worker has coding execution but
 does not need to retrieve a GitHub token or assemble a raw PR command. The
@@ -93,15 +93,16 @@ branch, commit, PR or remote ref.
 
 ## Operator CLI
 
-The same controller can be exercised outside a model turn. Environment comes
-from the isolated wrapper or gateway:
+The same controller can be exercised outside a model turn. Activation installs
+`~/bin/sanctuary-engineering-lane`, which supplies the exact isolated state,
+repository, GitHub helper and non-interactive environment:
 
 ```bash
-npm run ai:engineering:lane -- provision path/to/task.json
-npm run ai:engineering:lane -- status TASK_ID MANIFEST_HASH
-npm run ai:engineering:lane -- publish TASK_ID MANIFEST_HASH \
+sanctuary-engineering-lane provision path/to/task.json
+sanctuary-engineering-lane status TASK_ID MANIFEST_HASH
+sanctuary-engineering-lane publish TASK_ID MANIFEST_HASH \
   --title "feat: bounded change" --body-file /path/to/pr-body.md
-npm run ai:engineering:lane -- cleanup TASK_ID MANIFEST_HASH
+sanctuary-engineering-lane cleanup TASK_ID MANIFEST_HASH
 ```
 
 Routine OpenClaw operation should use the narrow tools, not this general CLI.

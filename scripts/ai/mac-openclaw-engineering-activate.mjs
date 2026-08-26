@@ -13,6 +13,7 @@ import {
   assertDedicatedStateOwnership,
   assertDefaultAuthorityUnchanged,
   buildActivationRecord,
+  buildEngineeringLaneWrapper,
   buildEngineeringEnvironment,
   buildGitHubWrapper,
   buildOpenClawWrapper,
@@ -189,6 +190,11 @@ export function activateEngineeringRuntime() {
   writeProtectedAtomic(
     paths.openclawWrapperPath,
     buildOpenClawWrapper(paths),
+    0o700,
+  );
+  writeProtectedAtomic(
+    paths.engineeringLaneWrapperPath,
+    buildEngineeringLaneWrapper(paths),
     0o700,
   );
 

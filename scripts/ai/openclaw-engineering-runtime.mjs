@@ -94,6 +94,7 @@ export function resolveEngineeringRuntimePaths({
     reviewerWorkspace: join(workspaceRoot, "reviewer"),
     runtimeBinDir: join(stateDir, "bin"),
     openclawWrapperPath: join(home, "bin", "sanctuary-openclaw"),
+    engineeringLaneWrapperPath: join(home, "bin", "sanctuary-engineering-lane"),
     openclawBinary: join(home, ".local", "bin", "openclaw"),
     ghBinary: join(home, ".local", "lib", "github-cli", "bin", "gh"),
     pidPath: join(stateDir, "run", "gateway-caffeinate.pid"),
@@ -166,6 +167,23 @@ export SANCTUARY_ENGINEERING_GIT_BINARY=/usr/bin/git
 export SANCTUARY_ENGINEERING_GH_BINARY=${shellQuote(paths.ghBinary)}
 export PATH=${shellQuote(paths.runtimeBinDir)}:${shellQuote(join(paths.home, ".local", "bin"))}:$PATH
 exec ${shellQuote(paths.openclawBinary)} "$@"
+`;
+}
+
+export function buildEngineeringLaneWrapper(
+  paths,
+  nodeBinary = process.execPath,
+) {
+  const laneCli = join(paths.repoRoot, "scripts", "ai", "engineering-lane.mjs");
+  return `#!/bin/zsh
+export OPENCLAW_STATE_DIR=${shellQuote(paths.stateDir)}
+export SANCTUARY_ENGINEERING_REPO_ROOT=${shellQuote(paths.repoRoot)}
+export SANCTUARY_ENGINEERING_GIT_BINARY=/usr/bin/git
+export SANCTUARY_ENGINEERING_GH_BINARY=${shellQuote(paths.ghBinary)}
+export GH_PROMPT_DISABLED=1
+export GIT_TERMINAL_PROMPT=0
+export PATH=${shellQuote(paths.runtimeBinDir)}:${shellQuote(join(paths.home, "bin"))}:${shellQuote(join(paths.home, ".local", "bin"))}:$PATH
+exec ${shellQuote(nodeBinary)} ${shellQuote(laneCli)} "$@"
 `;
 }
 
