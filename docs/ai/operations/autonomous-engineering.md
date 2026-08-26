@@ -37,7 +37,8 @@ contact customers or weaken a required check.
 
 `@sp/ai` owns two strict provider-neutral contracts:
 
-- `sanctuary-engineering-task-v1`: immutable objective, exact base, branch,
+- `sanctuary-engineering-task-v1`: immutable objective, exact base, short-form
+  feature branch (never `main`, `master` or a full `refs/...` alias),
   path lane, dependencies, acceptance criteria, verification, limits, approvals,
   outputs and stop conditions.
 - `sanctuary-engineering-completion-v1`: manifest hash, branch/commit/PR,

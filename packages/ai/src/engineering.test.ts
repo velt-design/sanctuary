@@ -151,6 +151,27 @@ describe("engineering task manifest contract", () => {
       "$.schema",
     ],
     ["direct main work", { ...manifest, branch: "main" }, "$.branch"],
+    ["direct master work", { ...manifest, branch: "master" }, "$.branch"],
+    [
+      "a full main ref alias",
+      { ...manifest, branch: "refs/heads/main" },
+      "$.branch",
+    ],
+    [
+      "a full master ref alias",
+      { ...manifest, branch: "refs/heads/master" },
+      "$.branch",
+    ],
+    [
+      "a non-branch ref",
+      { ...manifest, branch: "refs/tags/foundation" },
+      "$.branch",
+    ],
+    [
+      "a branch with parent traversal",
+      { ...manifest, branch: "ai/../main" },
+      "$.branch",
+    ],
     [
       "self dependencies",
       { ...manifest, dependencies: [manifest.taskId] },
