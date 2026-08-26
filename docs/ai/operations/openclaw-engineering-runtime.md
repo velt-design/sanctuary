@@ -57,7 +57,9 @@ The worker's two execution-policy layers both resolve to full execution with
 mode only so the managed Codex app-server can start. Their explicit denies for
 `exec`, `process`, `write`, `edit` and `apply_patch` force policy-restricted
 turns with no native Codex environment or Code Mode. They receive only their
-named narrow dynamic tools; any host execution miss fails closed.
+named narrow dynamic tools, loaded directly so an unattended turn does not
+depend on the model discovering an already approved tool through a searchable
+catalog. Any host execution miss fails closed.
 
 GitHub uses the repository-scoped Sanctuary GitHub App. The helper reads its
 identity with a headless, read-only 1Password service account and requests a

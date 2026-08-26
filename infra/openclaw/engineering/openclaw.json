@@ -241,6 +241,7 @@
       "codex": {
         "enabled": true,
         "config": {
+          "codexDynamicToolsLoading": "direct",
           "discovery": {
             "enabled": true,
             "timeoutMs": 2500

@@ -229,6 +229,7 @@ describe("isolated OpenClaw engineering runtime", () => {
         codex: {
           enabled: true,
           config: {
+            codexDynamicToolsLoading: "direct",
             appServer: {
               mode: "yolo",
               homeScope: "agent",
