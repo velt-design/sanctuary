@@ -72,10 +72,13 @@ export function createGitRuntime({
   authenticated = true,
   environment = process.env,
 } = {}) {
-  if (!repoRoot || !stateDir) {
+  const effectiveRepoRoot =
+    repoRoot ?? environment.SANCTUARY_ENGINEERING_REPO_ROOT;
+  const effectiveStateDir = stateDir ?? environment.OPENCLAW_STATE_DIR;
+  if (!effectiveRepoRoot || !effectiveStateDir) {
     throw new Error("Git runtime requires a repository root and state root.");
   }
-  const resolvedRepoRoot = normalizeExistingPath(repoRoot);
+  const resolvedRepoRoot = normalizeExistingPath(effectiveRepoRoot);
   const helperPath = join(
     resolvedRepoRoot,
     "scripts",

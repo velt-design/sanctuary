@@ -188,6 +188,21 @@ afterEach(() => {
 });
 
 describe("engineering lane provisioning", () => {
+  it("inherits the isolated repository and state roots for child tools", () => {
+    const lane = fixture();
+    const runtime = createGitRuntime({
+      expectedRemoteUrl: lane.origin,
+      authenticated: false,
+      environment: {
+        ...process.env,
+        SANCTUARY_ENGINEERING_REPO_ROOT: lane.repoRoot,
+        OPENCLAW_STATE_DIR: lane.stateDir,
+      },
+    });
+
+    expect(runtime.repoRoot).toBe(realpathSync(lane.repoRoot));
+  });
+
   it("creates one exact branch/worktree and resumes it idempotently", () => {
     const setup = fixture();
     const manifest = createManifest(setup.baseSha);
