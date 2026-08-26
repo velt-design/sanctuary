@@ -46,6 +46,8 @@ jobs:
         env:
           ARCHITECTURE_CHANGED_BASE: ${{ github.event.pull_request.base.sha }}
           ARCHITECTURE_CHANGED_HEAD: ${{ github.event.pull_request.head.sha }}
+          WORKTREE_BASE_REF: ${{ github.event.pull_request.base.sha }}
+          WORKTREE_HEAD_REF: ${{ github.event.pull_request.head.sha }}
           WORKTREE_OWNER_PATTERNS: ${{ steps.route.outputs.owner_patterns }}
         run: npm run architecture:changed:strict
 

@@ -1,6 +1,17 @@
 // @vitest-environment node
 
-import { readFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -103,6 +114,14 @@ function runtime(checks: Value[]) {
   };
 }
 
+function runGit(cwd: string, args: string[]) {
+  const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+  if (result.status !== 0) {
+    throw new Error(result.stderr || result.stdout || "git failed");
+  }
+  return result.stdout.trim();
+}
+
 describe("autonomous engineering CI routing", () => {
   it("installs the repository dependency graph before strict architecture analysis", () => {
     const workflow = readFileSync(
@@ -118,6 +137,71 @@ describe("autonomous engineering CI routing", () => {
     expect(
       workflow.indexOf("- name: Strict changed-architecture gate"),
     ).toBeGreaterThan(workflow.indexOf("- name: Install dependencies"));
+    expect(workflow).toContain(
+      "WORKTREE_BASE_REF: ${{ github.event.pull_request.base.sha }}",
+    );
+    expect(workflow).toContain(
+      "WORKTREE_HEAD_REF: ${{ github.event.pull_request.head.sha }}",
+    );
+  });
+
+  it("checks the exact committed range without mistaking install churn for PR changes", () => {
+    const repo = mkdtempSync(
+      join(realpathSync(tmpdir()), "sanctuary-ci-ownership-"),
+    );
+    try {
+      runGit(repo, ["init"]);
+      runGit(repo, ["config", "user.email", "fixture@example.com"]);
+      runGit(repo, ["config", "user.name", "Fixture"]);
+      mkdirSync(join(repo, "tmp", "ne"), { recursive: true });
+      writeFileSync(join(repo, "tmp", "ne", "version.txt"), "before\n");
+      writeFileSync(join(repo, "tracked-cache.json"), "{}\n");
+      runGit(repo, ["add", "."]);
+      runGit(repo, ["commit", "-m", "base"]);
+      const base = runGit(repo, ["rev-parse", "HEAD"]);
+
+      mkdirSync(join(repo, "packages", "ai", "src"), { recursive: true });
+      writeFileSync(
+        join(repo, "packages", "ai", "src", "review.ts"),
+        "export const reviewed = true;\n",
+      );
+      runGit(repo, ["add", "."]);
+      runGit(repo, ["commit", "-m", "feature"]);
+      const head = runGit(repo, ["rev-parse", "HEAD"]);
+
+      writeFileSync(join(repo, "tmp", "ne", "version.txt"), "after install\n");
+      rmSync(join(repo, "tracked-cache.json"));
+
+      const report = spawnSync(
+        process.execPath,
+        [
+          fileURLToPath(
+            new URL(
+              "../scripts/worktree-ownership-report.mjs",
+              import.meta.url,
+            ),
+          ),
+          "--changed",
+          "--strict",
+        ],
+        {
+          cwd: repo,
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            WORKTREE_BASE_REF: base,
+            WORKTREE_HEAD_REF: head,
+            WORKTREE_OWNER_PATTERNS: "packages/ai/**",
+          },
+        },
+      );
+      expect(report.status, report.stderr || report.stdout).toBe(0);
+      expect(report.stdout).toContain("1 owned, 0 unclaimed, 0 outside-lane");
+      expect(report.stdout).not.toContain("tmp/ne/version.txt");
+      expect(report.stdout).not.toContain("tracked-cache.json");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
   });
 
   it("keeps one stable check while running focused gates only for foundation paths", () => {
@@ -126,6 +210,7 @@ describe("autonomous engineering CI routing", () => {
         "apps/portal/app/page.tsx",
         "infra/openclaw/engineering/openclaw.json",
         "packages/ai/src/engineering.ts",
+        "scripts/worktree-ownership-report.mjs",
       ]),
     ).toMatchObject({
       mode: "foundation",
@@ -133,6 +218,7 @@ describe("autonomous engineering CI routing", () => {
       relevantPaths: [
         "infra/openclaw/engineering/openclaw.json",
         "packages/ai/src/engineering.ts",
+        "scripts/worktree-ownership-report.mjs",
       ],
     });
     expect(routeEngineeringCi(["apps/portal/app/page.tsx"])).toMatchObject({
