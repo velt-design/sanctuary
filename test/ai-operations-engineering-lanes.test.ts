@@ -8,6 +8,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -102,7 +103,9 @@ function createManifest(
 }
 
 function fixture() {
-  const root = mkdtempSync(join(tmpdir(), "sanctuary-engineering-lane-"));
+  const root = realpathSync(
+    mkdtempSync(join(tmpdir(), "sanctuary-engineering-lane-")),
+  );
   temporaryDirectories.push(root);
   const origin = join(root, "origin.git");
   const repoRoot = join(root, "controller");
