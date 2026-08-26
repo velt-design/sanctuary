@@ -237,6 +237,26 @@ export function assertSafeGitHubCommand(args) {
     }
     return;
   }
+  if (area === "workflow" && action === "run") {
+    if (
+      args.length !== 7 ||
+      args[2] !== "ai-foundation.yml" ||
+      args[3] !== "--repo" ||
+      args[4] !== REPOSITORY ||
+      args[5] !== "--ref"
+    ) {
+      throw new Error(
+        "Only the exact Sanctuary AI foundation workflow may be dispatched.",
+      );
+    }
+    assertSafeBranch(args[6], "Workflow ref");
+    if (!args[6].startsWith("ai/")) {
+      throw new Error(
+        "The AI foundation workflow requires one exact feature-branch ref.",
+      );
+    }
+    return;
+  }
   if (area === "pr" && action === "create") {
     const allowed = new Set([
       "--repo",

@@ -92,6 +92,7 @@ export function createCiReviewController(options) {
           headSha: state.completion.headSha,
           startedAt: at,
           deadlineAt: at + CI_TIMEOUT_MS,
+          missingDispatches: 0,
           transientReruns: 0,
           evidence: null,
         },
@@ -230,6 +231,30 @@ export function createCiReviewController(options) {
           "ci_timeout",
           "Required CI did not reach a safe terminal state within 90 minutes.",
         );
+      }
+      if (
+        (state.ci.missingDispatches ?? 0) < 1 &&
+        evidence.requiredChecks.length > 0 &&
+        evidence.requiredChecks.every((check) => check.kind === "missing")
+      ) {
+        const dispatch = ciRuntime.dispatchMissing({
+          manifest: state.manifest,
+          completion: state.completion,
+          evidence,
+        });
+        if (dispatch) {
+          return {
+            dispatchRequested: true,
+            dispatch,
+            ...persistCiWait(
+              flow,
+              state,
+              evidence,
+              "One exact-head workflow dispatch was requested for missing required CI.",
+              { missingDispatches: 1 },
+            ),
+          };
+        }
       }
       if (sameEvidence(state.ci.evidence, evidence)) {
         return { waiting: true, unchanged: true, ...publicSupervision(flow) };

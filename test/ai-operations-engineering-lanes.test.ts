@@ -444,6 +444,39 @@ describe("lane policy helpers", () => {
     ).not.toThrow();
     expect(() =>
       assertSafeGitHubCommand([
+        "workflow",
+        "run",
+        "ai-foundation.yml",
+        "--repo",
+        "velt-design/sanctuary",
+        "--ref",
+        "ai/test-safe-draft",
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertSafeGitHubCommand([
+        "workflow",
+        "run",
+        "other.yml",
+        "--repo",
+        "velt-design/sanctuary",
+        "--ref",
+        "ai/test-safe-draft",
+      ]),
+    ).toThrow(/exact Sanctuary AI foundation workflow/);
+    expect(() =>
+      assertSafeGitHubCommand([
+        "workflow",
+        "run",
+        "ai-foundation.yml",
+        "--repo",
+        "velt-design/sanctuary",
+        "--ref",
+        "main",
+      ]),
+    ).toThrow(/feature-branch ref/);
+    expect(() =>
+      assertSafeGitHubCommand([
         "pr",
         "create",
         "--repo",

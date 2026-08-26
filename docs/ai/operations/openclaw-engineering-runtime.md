@@ -16,15 +16,15 @@ pull requests and merge.
 
 The engineering runtime is a separate OpenClaw instance:
 
-| Surface              | Engineering value                                                                              |
-| -------------------- | ---------------------------------------------------------------------------------------------- |
-| State                | `~/.openclaw-sanctuary-engineering`                                                            |
-| Config               | `~/.openclaw-sanctuary-engineering/openclaw.json`                                              |
-| Gateway              | loopback port `19011`, token-authenticated                                                     |
-| CLI                  | `~/bin/sanctuary-openclaw`                                                                     |
-| Workspaces           | `~/.openclaw-sanctuary-engineering/workspaces/**`                                              |
-| Channels and browser | disabled                                                                                       |
-| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` plus reviewed `sanctuary-engineering-lanes@1.2.9` |
+| Surface              | Engineering value                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------------- |
+| State                | `~/.openclaw-sanctuary-engineering`                                                             |
+| Config               | `~/.openclaw-sanctuary-engineering/openclaw.json`                                               |
+| Gateway              | loopback port `19011`, token-authenticated                                                      |
+| CLI                  | `~/bin/sanctuary-openclaw`                                                                      |
+| Workspaces           | `~/.openclaw-sanctuary-engineering/workspaces/**`                                               |
+| Channels and browser | disabled                                                                                        |
+| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` plus reviewed `sanctuary-engineering-lanes@1.2.10` |
 
 Activation never writes the default `~/.openclaw/openclaw.json`, approvals,
 agents, sessions, gateway token or gateway process. An unrelated OpenClaw

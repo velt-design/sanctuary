@@ -102,6 +102,9 @@ class FakeGit {
     if (args[0] === "run" && args[1] === "rerun") {
       return { stdout: "" };
     }
+    if (args[0] === "workflow" && args[1] === "run") {
+      return { stdout: "" };
+    }
     throw new Error(`Unexpected gh call: ${args.join(" ")}`);
   };
 }
@@ -311,6 +314,44 @@ Received: 10`),
         }),
       ]).ci.inspect({ manifest: manifest(), completion: completion() }),
     ).toMatchObject({ classification: "pending" });
+  });
+
+  it("dispatches only the exact missing AI foundation workflow on its verified branch", () => {
+    const setup = runtime([]);
+    const task = manifest();
+    task.verification.ciChecks = ["AI Foundation / Provider-neutral contracts"];
+    const evidence = setup.ci.inspect({
+      manifest: task,
+      completion: completion(),
+    });
+    expect(
+      setup.ci.dispatchMissing({
+        manifest: task,
+        completion: completion(),
+        evidence,
+      }),
+    ).toEqual({
+      workflow: "ai-foundation.yml",
+      branch: task.branch,
+      headSha,
+    });
+    expect(setup.git.calls.at(-1)).toEqual([
+      "workflow",
+      "run",
+      "ai-foundation.yml",
+      "--repo",
+      "velt-design/sanctuary",
+      "--ref",
+      task.branch,
+    ]);
+    const unrelated = manifest();
+    expect(
+      setup.ci.dispatchMissing({
+        manifest: unrelated,
+        completion: completion(),
+        evidence,
+      }),
+    ).toBeNull();
   });
 
   it("classifies stable failures for repair and suspected flakes for one rerun", () => {

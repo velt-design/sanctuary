@@ -84,6 +84,10 @@ export function createEngineeringSupervisionController(options = {}) {
         defaultCiRuntime ??= createGitHubCiRuntime({ repoRoot, stateDir });
         return defaultCiRuntime.diff(input);
       },
+      dispatchMissing(input) {
+        defaultCiRuntime ??= createGitHubCiRuntime({ repoRoot, stateDir });
+        return defaultCiRuntime.dispatchMissing(input);
+      },
       rerunTransient(input) {
         defaultCiRuntime ??= createGitHubCiRuntime({ repoRoot, stateDir });
         return defaultCiRuntime.rerunTransient(input);

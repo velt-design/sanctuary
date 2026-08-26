@@ -36,13 +36,14 @@ The controller re-reads the open draft PR and requires its number, URL, base
 ref/SHA, feature branch and head SHA to match the manifest and worker report.
 Each named check must appear exactly once.
 
-| Result                                                                                                | Controller action                                                                    |
-| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Missing or running                                                                                    | Remain `ci_pending`; watch in bounded windows until the durable deadline.            |
-| Passed                                                                                                | Freeze the evidence hash and prepare the independent reviewer.                       |
-| Recognized runner/network interruption, or differing assertions between a test and its built-in retry | Rerun only the failed jobs of the exact workflow run, once per head.                 |
-| Stable test failure                                                                                   | Record the failed-check evidence and allocate one permitted same-lane coding repair. |
-| Duplicate, skipped, neutral, stale or unknown terminal state                                          | Block for an operator; never reinterpret it as success.                              |
+| Result                                                                                                | Controller action                                                                                              |
+| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Missing                                                                                               | Dispatch the exact AI foundation workflow once for the verified feature-branch head, then remain `ci_pending`. |
+| Running                                                                                               | Remain `ci_pending`; watch in bounded windows until the durable deadline.                                      |
+| Passed                                                                                                | Freeze the evidence hash and prepare the independent reviewer.                                                 |
+| Recognized runner/network interruption, or differing assertions between a test and its built-in retry | Rerun only the failed jobs of the exact workflow run, once per head.                                           |
+| Stable test failure                                                                                   | Record the failed-check evidence and allocate one permitted same-lane coding repair.                           |
+| Duplicate, skipped, neutral, stale or unknown terminal state                                          | Block for an operator; never reinterpret it as success.                                                        |
 
 The failed log is read only to classify the result. A rerun does not erase the
 first evidence: its hash and count remain in durable state. If the rerun has not

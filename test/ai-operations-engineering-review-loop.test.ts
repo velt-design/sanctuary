@@ -124,7 +124,7 @@ class Tasks {
   cancel = async () => ({ cancelled: false, reason: "not expected" });
 }
 
-function taskManifest(maxAttempts = 2) {
+function taskManifest(maxAttempts = 2, ciCheckName = "Fixture CI") {
   return {
     schema: "sanctuary-engineering-task-v1",
     taskId: "eng_20260826_review_loop",
@@ -149,7 +149,7 @@ function taskManifest(maxAttempts = 2) {
     ],
     verification: {
       focusedCommands: ["npm test"],
-      ciChecks: ["Fixture CI"],
+      ciChecks: [ciCheckName],
       visualEvidence: { required: false, scenarios: [] },
     },
     limits: {
@@ -196,7 +196,7 @@ function ciEvidence(
     },
     requiredChecks: [
       {
-        name: "Fixture CI",
+        name: manifest.verification.ciChecks[0],
         kind: "check_run",
         status: classification === "pending" ? "IN_PROGRESS" : "COMPLETED",
         conclusion: classification === "pending" ? null : "FAILURE",
@@ -221,8 +221,30 @@ function ciEvidence(
   return { ...evidence, evidenceHash: hash(evidence) };
 }
 
+function missingCiEvidence(manifest: Value, completion: Value) {
+  const evidence = ciEvidence(manifest, completion, "pending");
+  evidence.requiredChecks = [
+    {
+      name: manifest.verification.ciChecks[0],
+      kind: "missing",
+      status: null,
+      conclusion: null,
+      url: null,
+      workflowName: null,
+      runId: null,
+      startedAt: null,
+      completedAt: null,
+      disposition: "pending",
+      reason: "The required check has not appeared for this exact head.",
+    },
+  ];
+  const { evidenceHash: _evidenceHash, ...canonical } = evidence;
+  return { ...canonical, evidenceHash: hash(canonical) };
+}
+
 class CiRuntime {
   queue: Value[] = [];
+  dispatches: Value[] = [];
   inspections = 0;
   reruns: string[][] = [];
 
@@ -236,6 +258,23 @@ class CiRuntime {
 
   diff = () => "diff --git a/docs/result.md b/docs/result.md\n+reviewed\n";
 
+  dispatchMissing = (input: Value) => {
+    if (
+      input.evidence.requiredChecks.length !== 1 ||
+      input.evidence.requiredChecks[0].name !==
+        "AI Foundation / Provider-neutral contracts"
+    ) {
+      return null;
+    }
+    const result = {
+      workflow: "ai-foundation.yml",
+      branch: input.manifest.branch,
+      headSha: input.completion.headSha,
+    };
+    this.dispatches.push(result);
+    return result;
+  };
+
   rerunTransient = (evidence: Value) => {
     const ids = evidence.requiredChecks.map((entry: Value) => entry.runId);
     this.reruns.push(ids);
@@ -243,12 +282,12 @@ class CiRuntime {
   };
 }
 
-function fixture(maxAttempts = 2) {
+function fixture(maxAttempts = 2, ciCheckName = "Fixture CI") {
   const flows = new Flows();
   const tasks = new Tasks();
   const ci = new CiRuntime();
   const lanes = new Map<string, Value>();
-  const manifest = taskManifest(maxAttempts);
+  const manifest = taskManifest(maxAttempts, ciCheckName);
   let clock = 1_700_000_000_000;
   const manifestHash = hash(manifest);
   const contractAdapter = {
@@ -361,7 +400,13 @@ async function reachCi(setup: ReturnType<typeof fixture>) {
         summary: "Passed.",
       },
     ],
-    ciChecks: [{ name: "Fixture CI", status: "pending", url: null }],
+    ciChecks: [
+      {
+        name: setup.manifest.verification.ciChecks[0],
+        status: "pending",
+        url: null,
+      },
+    ],
     worker: {
       agent: "sanctuary-coding-worker",
       model: "openai/gpt-5.6-sol",
@@ -542,6 +587,43 @@ describe("durable exact-head CI and independent review loop", () => {
     });
     expect(second.workerPrompt).toContain("Required repair evidence");
     expect(second.workerPrompt).toContain("Fixture CI");
+  });
+
+  it("dispatches a missing exact-head foundation workflow only once", async () => {
+    const setup = fixture(2, "AI Foundation / Provider-neutral contracts");
+    const reached = await reachCi(setup);
+    const missing = missingCiEvidence(setup.manifest, reached.report);
+    setup.ci.queue = [missing, missing];
+    delete setup.flows.records.get(reached.ciPending.flowId)!.stateJson.ci
+      .missingDispatches;
+
+    const dispatched = setup.controller().inspectCi({
+      flowId: reached.ciPending.flowId,
+      expectedRevision: reached.ciPending.revision,
+    });
+    expect(dispatched).toMatchObject({
+      dispatchRequested: true,
+      ciMissingDispatches: 1,
+      phase: "ci_pending",
+    });
+    expect(setup.ci.dispatches).toEqual([
+      {
+        workflow: "ai-foundation.yml",
+        branch: setup.manifest.branch,
+        headSha: reached.report.headSha,
+      },
+    ]);
+
+    const unchanged = setup.controller().inspectCi({
+      flowId: dispatched.flowId,
+      expectedRevision: dispatched.revision,
+    });
+    expect(unchanged).toMatchObject({
+      unchanged: true,
+      ciMissingDispatches: 1,
+      phase: "ci_pending",
+    });
+    expect(setup.ci.dispatches).toHaveLength(1);
   });
 
   it("allows one transient rerun, waits for GitHub to update, then stops a second failure", async () => {

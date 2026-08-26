@@ -257,12 +257,16 @@ function assertCiEvidence(evidence, state, { current = true } = {}) {
 }
 
 function assertCiState(ci, state) {
+  const missingDispatches = ci?.missingDispatches ?? 0;
   if (
     !isRecord(ci) ||
     !SHA_PATTERN.test(ci.headSha) ||
     !Number.isSafeInteger(ci.startedAt) ||
     !Number.isSafeInteger(ci.deadlineAt) ||
     ci.deadlineAt < ci.startedAt ||
+    !Number.isSafeInteger(missingDispatches) ||
+    missingDispatches < 0 ||
+    missingDispatches > 1 ||
     !Number.isSafeInteger(ci.transientReruns) ||
     ci.transientReruns < 0 ||
     ci.transientReruns > 1 ||
@@ -537,6 +541,7 @@ export function publicSupervision(flow) {
     activeAttemptBudgetCents: attempt?.budgetCents ?? null,
     ciClassification: state.ci?.evidence?.classification ?? null,
     ciEvidenceHash: state.ci?.evidence?.evidenceHash ?? null,
+    ciMissingDispatches: state.ci?.missingDispatches ?? 0,
     ciTransientReruns: state.ci?.transientReruns ?? 0,
     reviewStatus: state.review?.status ?? null,
     reviewVerdict: state.review?.report?.verdict ?? null,

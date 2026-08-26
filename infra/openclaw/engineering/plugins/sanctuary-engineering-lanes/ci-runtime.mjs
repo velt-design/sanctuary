@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { createGitRuntime } from "./lane-git.mjs";
 
 const REPOSITORY = "velt-design/sanctuary";
+const AI_FOUNDATION_CHECK = "AI Foundation / Provider-neutral contracts";
+const AI_FOUNDATION_WORKFLOW = "ai-foundation.yml";
 const TRANSIENT_CONCLUSIONS = new Set([
   "ACTION_REQUIRED",
   "CANCELLED",
@@ -335,6 +337,35 @@ export function createGitHubCiRuntime(options = {}) {
     return output;
   }
 
+  function dispatchMissing({ manifest, completion, evidence }) {
+    if (
+      evidence?.classification !== "pending" ||
+      evidence.requiredChecks?.length !== 1 ||
+      evidence.requiredChecks[0]?.name !== AI_FOUNDATION_CHECK ||
+      evidence.requiredChecks[0]?.kind !== "missing" ||
+      manifest?.verification?.ciChecks?.length !== 1 ||
+      manifest.verification.ciChecks[0] !== AI_FOUNDATION_CHECK
+    ) {
+      return null;
+    }
+    const pr = pullRequest(completion.pullRequest.number);
+    assertPullRequestIdentity(pr, manifest, completion);
+    git.safeGh([
+      "workflow",
+      "run",
+      AI_FOUNDATION_WORKFLOW,
+      "--repo",
+      REPOSITORY,
+      "--ref",
+      manifest.branch,
+    ]);
+    return {
+      workflow: AI_FOUNDATION_WORKFLOW,
+      branch: manifest.branch,
+      headSha: completion.headSha,
+    };
+  }
+
   function rerunTransient(evidence) {
     if (evidence?.classification !== "transient") {
       throw new Error("Only transient CI evidence can request a rerun.");
@@ -358,5 +389,5 @@ export function createGitHubCiRuntime(options = {}) {
     return runIds;
   }
 
-  return Object.freeze({ inspect, diff, rerunTransient });
+  return Object.freeze({ inspect, diff, dispatchMissing, rerunTransient });
 }
