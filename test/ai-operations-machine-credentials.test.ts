@@ -15,6 +15,7 @@ const passingEvidence = {
   githubVaultItemPresent: true,
   githubRepository: "velt-design/sanctuary",
   githubPermissions: {
+    actions: "write",
     contents: "write",
     metadata: "read",
     pull_requests: "write",
@@ -43,7 +44,7 @@ describe("Mac machine credential gate", () => {
       ...passingEvidence,
       githubPermissions: {
         ...passingEvidence.githubPermissions,
-        workflows: "write",
+        administration: "write",
       },
     });
 

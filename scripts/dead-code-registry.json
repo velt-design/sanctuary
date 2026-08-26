@@ -153,6 +153,19 @@
       "proofCommand": "npm run test:ai:ops && sanctuary-openclaw plugins inspect sanctuary-engineering-lanes --runtime --json"
     },
     {
+      "id": "openclaw-engineering-supervision-tool-contract",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Sanctuary autonomous engineering supervision",
+      "pathPatterns": [
+        "infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-contract.mjs"
+      ],
+      "issueDetails": ["ENGINEERING_SUPERVISION_TOOL_NAMES"],
+      "reason": "The dynamically loaded OpenClaw plugin imports this exported tool-name contract to register its optional supervision, CI and reviewer tools, while the root application import graph cannot see that runtime edge.",
+      "retirementAction": "Remove only after retiring the durable OpenClaw supervision tools and proving their registration and state transition contracts are no longer live.",
+      "proofCommand": "npm run test:ai:ops && sanctuary-openclaw plugins inspect sanctuary-engineering-lanes --runtime --json"
+    },
+    {
       "id": "portal-supabase-compat-helper-duplicate-dep",
       "category": "dynamic-reference",
       "status": "current",

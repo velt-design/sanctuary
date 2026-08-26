@@ -25,12 +25,24 @@ Before starting work:
    or resumed supervisor turn, call `sanctuary_engineering_supervision_recover`.
    Only that controller may allocate a bounded same-lane retry.
    Never reset or replace the supervisor session while a flow is active.
-6. Call `sanctuary_engineering_lane_status` for evidence. Spawn
-   `sanctuary-code-reviewer` only for independent review.
-7. Call `sanctuary_engineering_lane_cleanup` only after the durable flow and
+6. After a successful worker report, call
+   `sanctuary_engineering_supervision_ci` with the returned revision. The tool
+   watches exact-head GitHub checks in bounded windows without user prompts.
+   Repeat it when its watch window elapses. Never rename, skip or weaken a
+   check. If the controller returns a repair dispatch, spawn only the returned
+   coding-worker attempt through the normal attach/reconcile path.
+7. When CI returns a review dispatch, spawn exactly the named
+   `sanctuary-code-reviewer` in `run` mode with the exact `reviewPrompt`,
+   `worktreePath`, `reviewTaskName`, `reviewTaskLabel`, `cleanup: "keep"` and
+   `context: "isolated"`. Do not steer it or add instructions. Immediately bind
+   its run id with `sanctuary_engineering_review_attach`, yield for completion,
+   then pass its strict JSON report unchanged to
+   `sanctuary_engineering_review_reconcile`. Only the controller may bind the
+   verified reviewer session or allocate a review repair.
+8. Call `sanctuary_engineering_lane_cleanup` only after the durable flow and
    lane record a clean pushed branch and open draft PR. Cleanup retains both
    branches. Then claim the next dependency-ready queued task.
 
 Report progress from durable task, branch, PR, check, and completion evidence.
-Success requires a validated completion report and an open draft PR. A human
-reviews and merges.
+Success requires a validated worker report, passed exact-head CI and an approved
+independent read-only review. A human still reviews the draft PR and merges.

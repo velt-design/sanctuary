@@ -13,7 +13,10 @@
       "sanctuary_engineering_supervision_attach",
       "sanctuary_engineering_supervision_reconcile",
       "sanctuary_engineering_supervision_recover",
-      "sanctuary_engineering_supervision_status"
+      "sanctuary_engineering_supervision_status",
+      "sanctuary_engineering_supervision_ci",
+      "sanctuary_engineering_review_attach",
+      "sanctuary_engineering_review_reconcile"
     ]
   },
   "toolMetadata": {
@@ -26,7 +29,10 @@
     "sanctuary_engineering_supervision_attach": { "optional": true },
     "sanctuary_engineering_supervision_reconcile": { "optional": true },
     "sanctuary_engineering_supervision_recover": { "optional": true },
-    "sanctuary_engineering_supervision_status": { "optional": true }
+    "sanctuary_engineering_supervision_status": { "optional": true },
+    "sanctuary_engineering_supervision_ci": { "optional": true },
+    "sanctuary_engineering_review_attach": { "optional": true },
+    "sanctuary_engineering_review_reconcile": { "optional": true }
   },
   "activation": {
     "onStartup": true

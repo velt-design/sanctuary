@@ -31,11 +31,18 @@ import {
   buildWorkerDispatch,
   findNativeDispatchMatches,
 } from "./supervision-dispatch.mjs";
+import { createGitHubCiRuntime } from "./ci-runtime.mjs";
+import {
+  POST_WORKER_ACTIVE_PHASES,
+  createCiReviewController,
+} from "./supervision-ci-review.mjs";
+import { createSupervisionFailureController } from "./supervision-failure.mjs";
 
 const ACTIVE_PHASES = new Set([
   "worker_ready",
   "worker_running",
   "awaiting_completion",
+  ...POST_WORKER_ACTIVE_PHASES,
 ]);
 export function createEngineeringSupervisionController(options = {}) {
   const flowRuntime = required(options.flowRuntime, "Task Flow runtime");
@@ -56,6 +63,25 @@ export function createEngineeringSupervisionController(options = {}) {
   const runtimeTimeoutSeconds =
     options.runtimeTimeoutSeconds ??
     runtimeConfig?.agents?.defaults?.subagents?.runTimeoutSeconds;
+  let defaultCiRuntime = null;
+  const ciRuntime =
+    options.ciRuntime ??
+    Object.freeze({
+      inspect(input) {
+        defaultCiRuntime ??= createGitHubCiRuntime({ repoRoot, stateDir });
+        return defaultCiRuntime.inspect(input);
+      },
+      diff(input) {
+        defaultCiRuntime ??= createGitHubCiRuntime({ repoRoot, stateDir });
+        return defaultCiRuntime.diff(input);
+      },
+      rerunTransient(input) {
+        defaultCiRuntime ??= createGitHubCiRuntime({ repoRoot, stateDir });
+        return defaultCiRuntime.rerunTransient(input);
+      },
+    });
+  const { block, scheduleRetry, scheduleWorkerRepair } =
+    createSupervisionFailureController({ flowRuntime, taskRuns, now });
 
   function resolveManifest(manifest) {
     const resolved = contractAdapter.resolve(manifest, { repoRoot, stateDir });
@@ -94,6 +120,19 @@ export function createEngineeringSupervisionController(options = {}) {
         throw new Error(
           "Durable completion evidence failed canonical validation.",
         );
+      }
+    }
+    const storedReviews = [
+      ...(state.review?.report ? [state.review.report] : []),
+      ...state.reviewHistory.map((entry) => entry.report),
+    ];
+    for (const storedReview of storedReviews) {
+      const review = contractAdapter.validateReview(storedReview, {
+        repoRoot,
+        stateDir,
+      });
+      if (JSON.stringify(review) !== JSON.stringify(storedReview)) {
+        throw new Error("Durable review evidence failed canonical validation.");
       }
     }
     return flow;
@@ -323,7 +362,7 @@ export function createEngineeringSupervisionController(options = {}) {
         taskName: `eng_${state.manifestHash.slice(7, 19)}_a${number}`,
         status: "ready",
         worktreePath: laneResult.worktreePath,
-        budgetCents: Math.floor(remainingBudget / remainingAttempts),
+        budgetCents: Math.floor(remainingBudget / (remainingAttempts * 2)),
         startedAt: at,
         deadlineAt: at + state.manifest.limits.workerTimeoutMinutes * 60_000,
         endedAt: null,
@@ -406,89 +445,21 @@ export function createEngineeringSupervisionController(options = {}) {
     return publicSupervision(flow);
   }
 
-  function scheduleRetry(flow, state, task, status, reason) {
-    const at = timestamp(now);
-    const attempt = activeAttempt(state);
-    const cumulativeCostCents = ["timed_out", "lost"].includes(status)
-      ? Math.min(
-          state.manifest.limits.maxCostCents,
-          state.cumulativeCostCents + attempt.budgetCents,
-        )
-      : state.cumulativeCostCents;
-    state = replaceActiveAttempt(state, attempt, {
-      status,
-      endedAt: task?.endedAt ?? at,
-      error: reason,
-      cumulativeCostCents,
-    });
-    state = { ...state, cumulativeCostCents };
-    const costBudgetExhausted =
-      state.cumulativeCostCents >= state.manifest.limits.maxCostCents;
-    if (
-      state.attempts.length >= state.manifest.limits.maxAttempts ||
-      costBudgetExhausted
-    ) {
-      const limit = costBudgetExhausted ? "cost budget" : "attempt limit";
-      state = checkpointState(
-        state,
-        costBudgetExhausted ? "cost_budget_exhausted" : "attempts_exhausted",
-        `The ${limit} was reached after ${status}.`,
-        at,
-        { phase: "failed" },
-      );
-      const failed = mutation(
-        flowRuntime.fail({
-          flowId: flow.flowId,
-          expectedRevision: flow.revision,
-          stateJson: state,
-          blockedTaskId: task?.id ?? null,
-          blockedSummary: reason,
-          updatedAt: at,
-          endedAt: at,
-        }),
-        "Attempt exhaustion",
-      );
-      return { retryReady: false, ...publicSupervision(failed) };
-    }
-    state = checkpointState(
-      state,
-      "retry_ready",
-      `Attempt ${attempt.number} ended ${status}; one bounded same-lane retry is ready.`,
-      at,
-      { phase: "retry_ready" },
-    );
-    const queued = mutation(
-      flowRuntime.resume({
-        flowId: flow.flowId,
-        expectedRevision: flow.revision,
-        status: "queued",
-        currentStep: "retry_ready",
-        stateJson: state,
-        updatedAt: at,
-      }),
-      "Retry checkpoint",
-    );
-    return { retryReady: true, ...publicSupervision(queued) };
-  }
-
-  function block(flow, state, task, kind, summary) {
-    const at = timestamp(now);
-    state = checkpointState(state, kind, summary, at, { phase: "blocked" });
-    const blocked = mutation(
-      flowRuntime.setWaiting({
-        flowId: flow.flowId,
-        expectedRevision: flow.revision,
-        currentStep: "blocked",
-        stateJson: state,
-        waitJson: { kind: "operator_attention" },
-        blockedTaskId: task?.id ?? null,
-        blockedSummary: summary,
-        updatedAt: at,
-      }),
-      "Blocked checkpoint",
-    );
-    return { retryReady: false, ...publicSupervision(blocked) };
-  }
+  const postWorker = createCiReviewController({
+    flowRuntime,
+    taskRuns,
+    ciRuntime,
+    contractAdapter,
+    lane,
+    repoRoot,
+    stateDir,
+    now,
+    runtimeTimeoutSeconds,
+    runtimeConfig,
+    getFlow,
+    block,
+    scheduleWorkerRepair,
+  });
 
   async function reconcile({ flowId, expectedRevision, completion }) {
     let flow = getFlow(flowId);
@@ -617,29 +588,7 @@ export function createEngineeringSupervisionController(options = {}) {
     };
 
     if (completion.outcome === "succeeded") {
-      const at = timestamp(now);
-      state = checkpointState(
-        state,
-        "completed",
-        "Strict completion and live published-lane evidence passed.",
-        at,
-        { phase: "succeeded" },
-      );
-      const finished = mutation(
-        flowRuntime.finish({
-          flowId,
-          expectedRevision,
-          stateJson: state,
-          updatedAt: at,
-          endedAt: at,
-        }),
-        "Flow completion",
-      );
-      return {
-        retryReady: false,
-        waiting: false,
-        ...publicSupervision(finished),
-      };
+      return postWorker.awaitCi(flow, state);
     }
     if (completion.outcome === "blocked") {
       return block(flow, state, task, "worker_blocked", completion.nextAction);
@@ -671,6 +620,9 @@ export function createEngineeringSupervisionController(options = {}) {
     }
     if (!active[0]) return claim();
     const state = readSupervisionState(active[0]);
+    if (POST_WORKER_ACTIVE_PHASES.has(state.phase)) {
+      return postWorker.recover(active[0]);
+    }
     if (state.phase === "worker_ready") {
       const resumed = resumeReadyFlow(active[0]);
       if (!resumed.recoveredAttached) return resumed;
@@ -691,5 +643,15 @@ export function createEngineeringSupervisionController(options = {}) {
     return publicSupervision(findTaskFlow(taskId, manifestHash));
   }
 
-  return Object.freeze({ enqueue, claim, attach, reconcile, recover, status });
+  return Object.freeze({
+    enqueue,
+    claim,
+    attach,
+    reconcile,
+    recover,
+    status,
+    inspectCi: postWorker.inspectCi,
+    attachReview: postWorker.attachReview,
+    reconcileReview: postWorker.reconcileReview,
+  });
 }

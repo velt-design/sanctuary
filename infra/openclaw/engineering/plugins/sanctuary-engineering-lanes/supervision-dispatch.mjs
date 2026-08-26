@@ -34,7 +34,10 @@ export function buildWorkerDispatch({
     attempt.number === 1
       ? ""
       : `\n\n# Recovery attempt\n\nThis is bounded attempt ${attempt.number} of ${state.manifest.limits.maxAttempts}. Resume the existing exact lane, inspect prior work and evidence first, and do not restart the task from scratch.\n`;
-  const attemptEnvelope = `\n\n# Attempt envelope\n\nThis is attempt ${attempt.number} of ${state.manifest.limits.maxAttempts}. The previously reported cumulative task cost is ${state.cumulativeCostCents} cents. This attempt may add at most ${attempt.budgetCents} cents. In the completion report, worker.costCents must be the new cumulative task total, not only this attempt's cost.\n`;
+  const attemptEnvelope = `\n\n# Attempt envelope\n\nThis is attempt ${attempt.number} of ${state.manifest.limits.maxAttempts}. The previously reported cumulative task cost is ${state.cumulativeCostCents} cents. This attempt may add at most ${attempt.budgetCents} cents. In the completion report, worker.costCents must be the new cumulative task total, not only this attempt's cost. Set worker.sessionIds to exactly ["controller_bound"] and both worker.startedAt and worker.completedAt to "controller_bound"; the controller replaces those sentinels with verified native evidence.\n`;
+  const repairContext = state.repairContext
+    ? `\n\n# Required repair evidence\n\nThis is a bounded ${state.repairContext.kind === "ci_failure" ? "CI repair" : "review repair"}. Diagnose and address only the evidence below in the existing lane. Do not suppress, skip, weaken or rename a check. If the evidence is not reproducible or cannot be safely repaired in scope, return a blocked completion instead of creating a meaningless commit.\n\n\`\`\`json\n${JSON.stringify(state.repairContext, null, 2)}\n\`\`\`\n`
+    : "";
   return {
     claimed: true,
     flowId: flow.flowId,
@@ -53,7 +56,7 @@ export function buildWorkerDispatch({
     attemptDeadlineAt: attempt.deadlineAt,
     priorCumulativeCostCents: state.cumulativeCostCents,
     attemptBudgetCents: attempt.budgetCents,
-    workerPrompt: `${laneResult.workerPrompt}${attemptEnvelope}${retryContext}`,
+    workerPrompt: `${laneResult.workerPrompt}${attemptEnvelope}${retryContext}${repairContext}`,
   };
 }
 

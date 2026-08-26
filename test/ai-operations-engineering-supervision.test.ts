@@ -315,11 +315,11 @@ function completion(
     worker: {
       agent: "sanctuary-coding-worker",
       model: "openai/gpt-5.6-sol",
-      sessionIds: [task.childSessionKey],
+      sessionIds: ["controller_bound"],
       attempts: dispatch.attempt,
       costCents: 100 * dispatch.attempt,
-      startedAt: "2026-08-26T00:00:00.000Z",
-      completedAt: "2026-08-26T00:10:00.000Z",
+      startedAt: "controller_bound",
+      completedAt: "controller_bound",
     },
     safety: {
       worktreeClean: true,
@@ -519,7 +519,7 @@ describe("durable engineering supervision", () => {
       retryReady: true,
       phase: "retry_ready",
       attempts: 1,
-      cumulativeCostCents: 450,
+      cumulativeCostCents: 225,
     });
 
     const second = await setup.controller().recover();
@@ -540,7 +540,7 @@ describe("durable engineering supervision", () => {
       phase: "failed",
       flowStatus: "failed",
       attempts: 2,
-      cumulativeCostCents: 900,
+      cumulativeCostCents: 562,
     });
   });
 
@@ -560,11 +560,11 @@ describe("durable engineering supervision", () => {
     expect(result).toMatchObject({
       retryReady: true,
       phase: "retry_ready",
-      cumulativeCostCents: 450,
+      cumulativeCostCents: 225,
     });
   });
 
-  it("requires strict completion plus exact published lane evidence", async () => {
+  it("requires strict completion and exact lane evidence before entering CI", async () => {
     const setup = fixture();
     const taskManifest = manifest("strict_completion");
     setup.controller().enqueue(taskManifest);
@@ -590,14 +590,14 @@ describe("durable engineering supervision", () => {
       changedPaths: report.changedPaths,
       pullRequest: report.pullRequest,
     });
-    const finished = await setup.controller().reconcile({
+    const ciPending = await setup.controller().reconcile({
       flowId: dispatch.flowId,
       expectedRevision: waiting.revision,
       completion: report,
     });
-    expect(finished).toMatchObject({
-      phase: "succeeded",
-      flowStatus: "succeeded",
+    expect(ciPending).toMatchObject({
+      phase: "ci_pending",
+      flowStatus: "waiting",
       cumulativeCostCents: 100,
     });
     expect(() =>
@@ -639,7 +639,7 @@ describe("durable engineering supervision", () => {
     const first = setup.controller().claim();
     expect(first).toMatchObject({
       priorCumulativeCostCents: 0,
-      attemptBudgetCents: 50,
+      attemptBudgetCents: 25,
     });
     const firstRun = attachRunning(setup, first);
     firstRun.task.status = "succeeded";
@@ -647,7 +647,7 @@ describe("durable engineering supervision", () => {
     const failedReport = completion(taskManifest, first, firstRun.task);
     failedReport.outcome = "failed";
     failedReport.nextAction = "Retry the clean lane.";
-    failedReport.worker.costCents = 51;
+    failedReport.worker.costCents = 26;
     await expect(
       setup.controller().reconcile({
         flowId: first.flowId,
@@ -655,26 +655,26 @@ describe("durable engineering supervision", () => {
         completion: failedReport,
       }),
     ).rejects.toThrow(/does not match its flow and attempt/);
-    failedReport.worker.costCents = 50;
+    failedReport.worker.costCents = 25;
 
     const retry = await setup.controller().reconcile({
       flowId: first.flowId,
       expectedRevision: firstRun.attached.revision,
       completion: failedReport,
     });
-    expect(retry).toMatchObject({ retryReady: true, cumulativeCostCents: 50 });
+    expect(retry).toMatchObject({ retryReady: true, cumulativeCostCents: 25 });
 
     const second = await setup.controller().recover();
     expect(second).toMatchObject({
       attempt: 2,
-      priorCumulativeCostCents: 50,
-      attemptBudgetCents: 50,
+      priorCumulativeCostCents: 25,
+      attemptBudgetCents: 37,
     });
     const secondRun = attachRunning(setup, second);
     secondRun.task.status = "succeeded";
     secondRun.task.endedAt = 1_700_000_020_000;
     const successReport = completion(taskManifest, second, secondRun.task);
-    successReport.worker.costCents = 100;
+    successReport.worker.costCents = 62;
     const lane = setup.lanes.get(second.manifestHash)!;
     Object.assign(lane, {
       state: "published",
@@ -683,14 +683,14 @@ describe("durable engineering supervision", () => {
       pullRequest: successReport.pullRequest,
     });
 
-    const finished = await setup.controller().reconcile({
+    const ciPending = await setup.controller().reconcile({
       flowId: second.flowId,
       expectedRevision: secondRun.attached.revision,
       completion: successReport,
     });
-    expect(finished).toMatchObject({
-      phase: "succeeded",
-      cumulativeCostCents: 100,
+    expect(ciPending).toMatchObject({
+      phase: "ci_pending",
+      cumulativeCostCents: 62,
     });
   });
 });

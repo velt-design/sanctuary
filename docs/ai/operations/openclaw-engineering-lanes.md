@@ -1,7 +1,7 @@
 # OpenClaw Engineering Lanes
 
-Status: Runtime and local contract implemented; live Mac plugin and branch-rule
-rehearsals remain before promotion.
+Status: Runtime/local contract and initial hosted branch protection implemented;
+the live Mac negative-push rehearsal remains before promotion.
 
 Owner: Jordan / Sanctuary Pergolas
 
@@ -15,7 +15,7 @@ The lane runtime binds those facts to local state before a coding worker starts.
 ## Narrow tool boundary
 
 The reviewed `sanctuary-engineering-lanes` OpenClaw plugin exposes four lane
-tools plus six durable-supervision tools. Agent allowlists make their ownership
+tools plus nine durable-supervision tools. Agent allowlists make their ownership
 explicit. The lane tools are:
 
 | Tool                                   | Allowed role                                 | Effect                                                                                                                         |
@@ -27,18 +27,19 @@ explicit. The lane tools are:
 
 The lead and reviewer still have no shell. The worker has coding execution but
 does not need to retrieve a GitHub token or assemble a raw PR command. The
-restricted `gh` wrapper permits Sanctuary reads and explicit draft creation;
-merge, ready-for-review, close, API mutation and other GitHub commands fail
-closed.
+restricted `gh` wrapper permits Sanctuary reads, explicit draft creation and
+only the exact `run rerun <id> --failed` mutation used by bounded transient-CI
+recovery; merge, ready-for-review, close, dispatch, cancellation, arbitrary API
+mutation and other GitHub commands fail closed.
 
-The Engineering Lead receives the six queue/checkpoint tools described in
+The Engineering Lead receives the nine queue/checkpoint, CI and review tools described in
 `openclaw-engineering-supervision.md`, not direct provisioning. This forces
 dependency checks, the one-worker lease, revision fencing and attempt limits to
 run before the lane runtime can create or resume a worktree.
 
 This is a trusted development boundary, not protection from malicious code
-running as `sanctuary-runner`. The separate GitHub branch rule described below
-is therefore mandatory before promotion.
+running as `sanctuary-runner`. The separate GitHub branch rule in
+`openclaw-engineering-ci-review.md` is therefore mandatory before promotion.
 
 ## Filesystem layout
 

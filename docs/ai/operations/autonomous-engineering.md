@@ -25,7 +25,9 @@ Codex Coding Worker
 GitHub Actions
   -> runs the broad verification matrix
 OpenClaw Engineering Lead
-  -> classifies failures, requests bounded repairs and returns evidence
+  -> classifies failures and requests bounded repairs
+Codex Code Reviewer
+  -> independently reviews the exact CI evidence and diff without write tools
 Human reviewer
   -> reviews and merges
 ```
@@ -36,7 +38,7 @@ contact customers or weaken a required check.
 
 ## Canonical contracts
 
-`@sp/ai` owns two strict provider-neutral contracts:
+`@sp/ai` owns three strict provider-neutral contracts:
 
 - `sanctuary-engineering-task-v1`: immutable objective, exact base, short-form
   feature branch (never `main`, `master` or a full `refs/...` alias),
@@ -45,6 +47,8 @@ contact customers or weaken a required check.
 - `sanctuary-engineering-completion-v1`: manifest hash, branch/commit/PR,
   acceptance and test evidence, CI state, worker attempts/cost, safety facts,
   limitations and the next human action.
+- `sanctuary-engineering-review-v1`: exact task, PR, base/head, CI evidence,
+  criterion results, findings, reviewer identity/cost and read-only safety facts.
 
 Validate or render a task from the repository root:
 
@@ -52,6 +56,7 @@ Validate or render a task from the repository root:
 npm run ai:engineering:validate-task -- path/to/task.json
 npm run ai:engineering:render-worker-prompt -- path/to/task.json
 npm run ai:engineering:validate-completion -- path/to/task.json path/to/completion.json
+npm run ai:engineering:validate-review -- path/to/review.json
 ```
 
 The validator canonicalizes the accepted task shape before producing its SHA-256
@@ -67,9 +72,9 @@ manifest limits.
 - Sanctuary uses its own OpenClaw state directory, config, logs, gateway token,
   task ledger and agents. Another OpenClaw channel or experiment must not be able
   to change Sanctuary's model, tools or approval posture.
-- The named Engineering Lead can inspect repository/GitHub/task state and spawn,
-  read, steer, interrupt and continue named workers. It does not receive product
-  coding tools.
+- The named Engineering Lead can inspect task state and spawn the exact named
+  worker or reviewer dispatch returned by the controller. It does not receive
+  product coding tools and must not steer the independent reviewer.
 - The named Coding Worker uses the Codex harness in one declared worktree. It can
   edit, test, commit, push a feature branch and open/update a draft PR without
   prompts. It cannot merge, deploy or access production credentials because
@@ -80,6 +85,9 @@ manifest limits.
 - Focused tests run on the Mac. Broad suites run in GitHub Actions. The supervisor
   may send a genuine CI failure back to a worker; it must not hide, weaken or
   relabel a failure merely to finish.
+- The stable foundation check is present on every pull request. Irrelevant paths
+  pass through a deterministic no-op route; relevant paths run the focused
+  operations, contract, type and documentation gates.
 - OpenClaw's durable task ledger and orphan recovery are runtime aids, not
   canonical business memory. The manifest, Git branch, draft PR, checks and
   completion report remain the durable engineering evidence.
@@ -88,6 +96,8 @@ The concrete state, port, role and activation contract lives in
 `openclaw-engineering-runtime.md`. Deterministic branch, worktree, publish and
 cleanup behavior lives in `openclaw-engineering-lanes.md`. Queue, checkpoint,
 retry and restart behavior lives in `openclaw-engineering-supervision.md`.
+Exact-head CI, independent review and hosted `main` protection live in
+`openclaw-engineering-ci-review.md`.
 
 ## Completion definition
 
@@ -100,10 +110,14 @@ A task may be reported as `succeeded` only when:
 - the worktree is clean;
 - the secret scan passes;
 - no merge or production effect occurred; and
-- a strict completion report validates.
+- the strict completion report validates;
+- every named exact-head CI check passes; and
+- the named independent reviewer approves every criterion with no blocking
+  finding and no write, merge or production effect.
 
 Otherwise the worker returns `blocked` or `failed` with the precise next action.
-Pending CI is allowed in a draft handoff but must remain visibly pending.
+Pending CI, a requested repair or pending review remains a visible durable phase,
+never a successful handoff.
 
 ## Ordered foundation PRs
 

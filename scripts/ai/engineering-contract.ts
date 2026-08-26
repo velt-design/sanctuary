@@ -4,6 +4,7 @@ import process from "node:process";
 import {
   ENGINEERING_TASK_MANIFEST_SCHEMA_V1,
   parseEngineeringTaskCompletionForManifestV1,
+  ENGINEERING_TASK_REVIEW_SCHEMA_V1,
   type EngineeringTaskManifestV1,
 } from "../../packages/ai/src/index";
 
@@ -11,6 +12,7 @@ type Command =
   | "validate-task"
   | "resolve-task"
   | "validate-completion"
+  | "validate-review"
   | "render-worker-prompt";
 
 function usage(): never {
@@ -19,6 +21,7 @@ function usage(): never {
       "  tsx scripts/ai/engineering-contract.ts validate-task <task-json>\n" +
       "  tsx scripts/ai/engineering-contract.ts resolve-task <task-json>\n" +
       "  tsx scripts/ai/engineering-contract.ts render-worker-prompt <task-json>\n" +
+      "  tsx scripts/ai/engineering-contract.ts validate-review <review-json>\n" +
       "  tsx scripts/ai/engineering-contract.ts validate-completion " +
       "<task-json> <completion-json>",
   );
@@ -127,6 +130,23 @@ function main(): void {
           taskId: completion.taskId,
           outcome: completion.outcome,
           pullRequest: completion.pullRequest?.url ?? null,
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+  if (command === "validate-review") {
+    const review = ENGINEERING_TASK_REVIEW_SCHEMA_V1.parse(readJson(taskPath));
+    console.log(
+      JSON.stringify(
+        {
+          valid: true,
+          schema: review.schema,
+          taskId: review.taskId,
+          verdict: review.verdict,
+          pullRequest: review.pullRequest.url,
         },
         null,
         2,

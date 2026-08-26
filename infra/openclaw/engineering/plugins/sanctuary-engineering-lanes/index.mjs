@@ -11,6 +11,7 @@ import {
   ENGINEERING_WORKER_AGENT,
 } from "./supervision-contract.mjs";
 import { createEngineeringSupervisionController } from "./supervision-runtime.mjs";
+import { watchEngineeringCi } from "./supervision-ci-watch.mjs";
 
 const taskIdentityProperties = {
   taskId: {
@@ -150,6 +151,66 @@ function supervisionTools(api, context) {
         return jsonToolResult(
           controller().status(params.taskId, params.manifestHash),
         );
+      },
+    },
+    {
+      name: "sanctuary_engineering_supervision_ci",
+      label: "Reconcile exact-head CI",
+      description:
+        "Read exact GitHub check evidence for the bound draft PR, request at most one transient failed-job rerun, dispatch a bounded repair, or prepare independent review.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["flowId", "expectedRevision"],
+        properties: flowIdentityProperties,
+      },
+      executionMode: "sequential",
+      async execute(_id, params) {
+        const activeController = controller();
+        return jsonToolResult(
+          await watchEngineeringCi({
+            inspect: (input) => activeController.inspectCi(input),
+            input: params,
+          }),
+        );
+      },
+    },
+    {
+      name: "sanctuary_engineering_review_attach",
+      label: "Attach native code reviewer",
+      description:
+        "Bind the exact independent read-only reviewer task returned by OpenClaw to its revision-fenced evidence packet.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["flowId", "expectedRevision", "runId"],
+        properties: {
+          ...flowIdentityProperties,
+          runId: { type: "string", minLength: 8, maxLength: 200 },
+        },
+      },
+      executionMode: "sequential",
+      async execute(_id, params) {
+        return jsonToolResult(controller().attachReview(params));
+      },
+    },
+    {
+      name: "sanctuary_engineering_review_reconcile",
+      label: "Reconcile independent review",
+      description:
+        "Reconcile the bound native reviewer and require one strict read-only review report before success or a bounded same-lane repair.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["flowId", "expectedRevision"],
+        properties: {
+          ...flowIdentityProperties,
+          report: { type: "object" },
+        },
+      },
+      executionMode: "sequential",
+      async execute(_id, params) {
+        return jsonToolResult(await controller().reconcileReview(params));
       },
     },
   ];

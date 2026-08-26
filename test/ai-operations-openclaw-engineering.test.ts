@@ -260,6 +260,9 @@ describe("isolated OpenClaw engineering runtime", () => {
           "sanctuary_engineering_supervision_reconcile",
           "sanctuary_engineering_supervision_recover",
           "sanctuary_engineering_supervision_status",
+          "sanctuary_engineering_supervision_ci",
+          "sanctuary_engineering_review_attach",
+          "sanctuary_engineering_review_reconcile",
         ],
       },
     });
@@ -331,7 +334,7 @@ describe("isolated OpenClaw engineering runtime", () => {
   it("preseeds approvals, pins the official plugin, and starts separately", () => {
     expect(CODEX_PLUGIN_SPEC).toBe("@openclaw/codex@2026.7.1-1");
     expect(LANE_PLUGIN_ID).toBe("sanctuary-engineering-lanes");
-    expect(LANE_PLUGIN_VERSION).toBe("1.1.0");
+    expect(LANE_PLUGIN_VERSION).toBe("1.2.0");
     expect(activationSource.indexOf("prepareApprovals();")).toBeLessThan(
       activationSource.lastIndexOf('runOpenClaw(["config", "validate"]'),
     );

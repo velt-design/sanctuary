@@ -34,7 +34,7 @@ disk is not required while the node remains rebuildable and development-only.
    GitHub account that owns `velt-design/sanctuary` (currently `velt-design`).
    Disable webhooks. Grant repository permissions only:
    `Metadata: read`, `Contents: read and write`, and `Pull requests: read and
-   write`.
+write`.
 3. Install that app only on `velt-design/sanctuary`. Do not grant all-repository
    access.
 4. After the FileVault gate passes, generate one private key
@@ -72,8 +72,11 @@ Verified on 2026-08-25:
 - App ID: `4710278`;
 - installation ID: `156382349`;
 - repository access: only `velt-design/sanctuary`;
-- permissions: metadata read-only, contents read/write, and pull requests
-  read/write;
+- permissions: metadata read-only, contents read/write, pull requests
+  read/write, and Actions read/write. Actions write is used only by the reviewed
+  wrapper to rerun failed jobs for one exact Sanctuary workflow run; cancel,
+  dispatch, workflow editing, merge, deployment and protected-branch bypass are
+  not exposed;
 - webhooks, user OAuth, and Device Flow: disabled; and
 - private key and client secret: not generated.
 

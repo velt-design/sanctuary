@@ -11,6 +11,7 @@ const EXPECTED_VAULT = "Sanctuary - Node Runtime";
 const EXPECTED_GITHUB_ITEM = "GitHub - Sanctuary Node PR Bot";
 const EXPECTED_REPOSITORY = "velt-design/sanctuary";
 const REQUIRED_GITHUB_PERMISSIONS = {
+  actions: "write",
   contents: "write",
   metadata: "read",
   pull_requests: "write",
@@ -96,7 +97,7 @@ export function evaluateMachineCredentialEvidence(evidence) {
       expectedPermissionSet && unexpectedPermissions.length === 0
         ? result(
             "pass",
-            "GitHub App has only contents and pull-request write access",
+            "GitHub App has only the actions, contents and pull-request access required by the engineering loop",
           )
         : result(
             "fail",
@@ -192,7 +193,11 @@ async function verifyGitHubInstallation(appId, installationId, privateKey) {
         },
         body: JSON.stringify({
           repositories: ["sanctuary"],
-          permissions: { contents: "write", pull_requests: "write" },
+          permissions: {
+            actions: "write",
+            contents: "write",
+            pull_requests: "write",
+          },
         }),
       },
     );

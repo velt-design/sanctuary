@@ -389,6 +389,25 @@ describe("lane policy helpers", () => {
     ).not.toThrow();
     expect(() =>
       assertSafeGitHubCommand([
+        "run",
+        "rerun",
+        "123456",
+        "--failed",
+        "--repo",
+        "velt-design/sanctuary",
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertSafeGitHubCommand([
+        "run",
+        "rerun",
+        "123456",
+        "--repo",
+        "velt-design/sanctuary",
+      ]),
+    ).toThrow(/exact failed-job workflow rerun/);
+    expect(() =>
+      assertSafeGitHubCommand([
         "pr",
         "merge",
         "99",

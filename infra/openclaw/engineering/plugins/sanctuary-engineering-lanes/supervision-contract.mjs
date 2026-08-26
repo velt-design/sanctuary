@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
+
 import { assertTaskIdentity } from "./lane-contract.mjs";
 
-const ENGINEERING_SUPERVISION_SCHEMA = "sanctuary-engineering-supervision-v1";
+const ENGINEERING_SUPERVISION_SCHEMA = "sanctuary-engineering-supervision-v2";
 export const ENGINEERING_SUPERVISION_CONTROLLER =
   "sanctuary-engineering/supervisor-v1";
 export const ENGINEERING_WORKER_AGENT = "sanctuary-coding-worker";
@@ -11,6 +13,9 @@ export const ENGINEERING_SUPERVISION_TOOL_NAMES = Object.freeze([
   "sanctuary_engineering_supervision_reconcile",
   "sanctuary_engineering_supervision_recover",
   "sanctuary_engineering_supervision_status",
+  "sanctuary_engineering_supervision_ci",
+  "sanctuary_engineering_review_attach",
+  "sanctuary_engineering_review_reconcile",
 ]);
 
 const SUPERVISION_PHASES = new Set([
@@ -19,6 +24,10 @@ const SUPERVISION_PHASES = new Set([
   "worker_ready",
   "worker_running",
   "awaiting_completion",
+  "ci_pending",
+  "reviewer_ready",
+  "reviewer_running",
+  "awaiting_review",
   "retry_ready",
   "succeeded",
   "blocked",
@@ -35,6 +44,34 @@ const ATTEMPT_STATUSES = new Set([
   "cancelled",
   "lost",
 ]);
+const CI_CLASSIFICATIONS = new Set([
+  "passed",
+  "pending",
+  "transient",
+  "repair_required",
+  "blocked",
+]);
+const CI_CHECK_DISPOSITIONS = new Set([
+  "passed",
+  "pending",
+  "transient",
+  "actionable",
+  "blocked",
+]);
+const REVIEW_STATUSES = new Set([
+  "ready",
+  "queued",
+  "running",
+  "succeeded",
+  "failed",
+  "timed_out",
+  "cancelled",
+  "lost",
+  "changes_requested",
+  "blocked",
+]);
+const SHA_PATTERN = /^[0-9a-f]{40}$/;
+const HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 
 function isRecord(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -120,6 +157,170 @@ function assertCheckpoint(checkpoint) {
   assertTimestamp(checkpoint.at, "Checkpoint");
 }
 
+function hashJson(value) {
+  return `sha256:${createHash("sha256")
+    .update(`${JSON.stringify(value, null, 2)}\n`)
+    .digest("hex")}`;
+}
+
+function expectedCiClassification(checks) {
+  if (checks.some((check) => check.disposition === "blocked")) {
+    return "blocked";
+  }
+  if (checks.some((check) => check.disposition === "pending")) {
+    return "pending";
+  }
+  if (checks.some((check) => check.disposition === "actionable")) {
+    return "repair_required";
+  }
+  if (checks.some((check) => check.disposition === "transient")) {
+    return "transient";
+  }
+  return "passed";
+}
+
+function validOptionalString(value, maxLength = 2_048) {
+  return (
+    value === null ||
+    (typeof value === "string" && value.length > 0 && value.length <= maxLength)
+  );
+}
+
+function validOptionalIsoTimestamp(value) {
+  return (
+    value === null ||
+    (typeof value === "string" &&
+      /^\d{4}-\d{2}-\d{2}T/.test(value) &&
+      Number.isFinite(Date.parse(value)))
+  );
+}
+
+function assertCiEvidence(evidence, state, { current = true } = {}) {
+  if (!isRecord(evidence)) throw new Error("The CI evidence is invalid.");
+  const { evidenceHash, ...canonical } = evidence;
+  if (
+    evidence.schema !== "sanctuary-engineering-ci-evidence-v1" ||
+    evidence.repository !== "velt-design/sanctuary" ||
+    !HASH_PATTERN.test(evidenceHash) ||
+    hashJson(canonical) !== evidenceHash ||
+    !CI_CLASSIFICATIONS.has(evidence.classification) ||
+    !isRecord(evidence.pullRequest) ||
+    !Number.isSafeInteger(evidence.pullRequest.number) ||
+    evidence.pullRequest.number < 1 ||
+    evidence.pullRequest.url !==
+      `https://github.com/velt-design/sanctuary/pull/${evidence.pullRequest.number}` ||
+    evidence.pullRequest.baseRef !== state.manifest.base.ref ||
+    evidence.pullRequest.baseSha !== state.manifest.base.sha ||
+    evidence.pullRequest.headRef !== state.manifest.branch ||
+    (current && evidence.pullRequest.headSha !== state.completion?.headSha) ||
+    (current &&
+      evidence.pullRequest.number !== state.completion?.pullRequest?.number) ||
+    (current &&
+      evidence.pullRequest.url !== state.completion?.pullRequest?.url) ||
+    evidence.pullRequest.draft !== true ||
+    !Array.isArray(evidence.requiredChecks) ||
+    evidence.requiredChecks.length !==
+      state.manifest.verification.ciChecks.length
+  ) {
+    throw new Error(
+      "The CI evidence does not match its durable engineering task.",
+    );
+  }
+  evidence.requiredChecks.forEach((check, index) => {
+    if (
+      !isRecord(check) ||
+      check.name !== state.manifest.verification.ciChecks[index] ||
+      !["check_run", "status_context", "missing"].includes(check.kind) ||
+      !validOptionalString(check.status, 100) ||
+      !validOptionalString(check.conclusion, 100) ||
+      !validOptionalString(check.url) ||
+      !validOptionalString(check.workflowName, 200) ||
+      (check.runId !== null && !/^[1-9][0-9]*$/.test(check.runId)) ||
+      !validOptionalIsoTimestamp(check.startedAt) ||
+      !validOptionalIsoTimestamp(check.completedAt) ||
+      !CI_CHECK_DISPOSITIONS.has(check.disposition) ||
+      typeof check.reason !== "string" ||
+      !check.reason
+    ) {
+      throw new Error("The required CI check evidence is invalid.");
+    }
+  });
+  if (
+    evidence.classification !==
+    expectedCiClassification(evidence.requiredChecks)
+  ) {
+    throw new Error(
+      "The CI classification does not match its required checks.",
+    );
+  }
+}
+
+function assertCiState(ci, state) {
+  if (
+    !isRecord(ci) ||
+    !SHA_PATTERN.test(ci.headSha) ||
+    !Number.isSafeInteger(ci.startedAt) ||
+    !Number.isSafeInteger(ci.deadlineAt) ||
+    ci.deadlineAt < ci.startedAt ||
+    !Number.isSafeInteger(ci.transientReruns) ||
+    ci.transientReruns < 0 ||
+    ci.transientReruns > 1 ||
+    (ci.evidence !== null && !isRecord(ci.evidence))
+  ) {
+    throw new Error("The current CI checkpoint is invalid.");
+  }
+  if (ci.headSha !== state.completion?.headSha) {
+    throw new Error("The current CI checkpoint is stale for the worker head.");
+  }
+  if (ci.evidence !== null) assertCiEvidence(ci.evidence, state);
+}
+
+function assertReviewState(review, state) {
+  if (
+    !isRecord(review) ||
+    !REVIEW_STATUSES.has(review.status) ||
+    !/^eng_[0-9a-f]{12}_r[0-9a-f]{12}$/.test(review.taskName) ||
+    !HASH_PATTERN.test(review.promptHash) ||
+    review.headSha !== state.completion?.headSha ||
+    review.ciEvidenceHash !== state.ci?.evidence?.evidenceHash ||
+    !Number.isSafeInteger(review.budgetCents) ||
+    review.budgetCents < 0 ||
+    !Number.isSafeInteger(review.startedAt) ||
+    !Number.isSafeInteger(review.deadlineAt) ||
+    review.deadlineAt < review.startedAt ||
+    (review.endedAt !== null &&
+      (!Number.isSafeInteger(review.endedAt) ||
+        review.endedAt < review.startedAt)) ||
+    (review.costCents !== null &&
+      (!Number.isSafeInteger(review.costCents) ||
+        review.costCents < 0 ||
+        review.costCents > review.budgetCents)) ||
+    (review.report !== null && !isRecord(review.report))
+  ) {
+    throw new Error("The independent review checkpoint is invalid.");
+  }
+  for (const field of ["runId", "taskRunId", "childSessionKey", "error"]) {
+    if (review[field] !== null && typeof review[field] !== "string") {
+      throw new Error(`Review ${field} is invalid.`);
+    }
+  }
+}
+
+function assertRepairContext(context) {
+  if (context === null) return;
+  if (
+    !isRecord(context) ||
+    !["ci_failure", "review_changes"].includes(context.kind) ||
+    !HASH_PATTERN.test(context.evidenceHash) ||
+    typeof context.summary !== "string" ||
+    !context.summary ||
+    !Array.isArray(context.findings) ||
+    context.findings.some((finding) => typeof finding !== "string" || !finding)
+  ) {
+    throw new Error("The worker repair context is invalid.");
+  }
+}
+
 export function createSupervisionState({ manifest, manifestHash, now }) {
   assertTaskIdentity(manifest.taskId, manifestHash);
   return {
@@ -132,6 +333,11 @@ export function createSupervisionState({ manifest, manifestHash, now }) {
     attempts: [],
     cumulativeCostCents: 0,
     completion: null,
+    ci: null,
+    ciHistory: [],
+    review: null,
+    reviewHistory: [],
+    repairContext: null,
     lastCheckpoint: {
       kind: "enqueued",
       at: now,
@@ -155,7 +361,9 @@ export function readSupervisionState(flow) {
     state.manifest.limits.maxAttempts < 1 ||
     !Number.isSafeInteger(state.manifest.limits.maxCostCents) ||
     state.manifest.limits.maxCostCents < 0 ||
-    !Array.isArray(state.attempts)
+    !Array.isArray(state.attempts) ||
+    !Array.isArray(state.ciHistory) ||
+    !Array.isArray(state.reviewHistory)
   ) {
     throw new Error("The managed flow is not a Sanctuary supervision flow.");
   }
@@ -167,7 +375,9 @@ export function readSupervisionState(flow) {
     state.cumulativeCostCents < 0 ||
     state.cumulativeCostCents > state.manifest.limits.maxCostCents ||
     !isRecord(state.lastCheckpoint) ||
-    (state.completion !== null && !isRecord(state.completion))
+    (state.completion !== null && !isRecord(state.completion)) ||
+    (state.ci !== null && !isRecord(state.ci)) ||
+    (state.review !== null && !isRecord(state.review))
   ) {
     throw new Error("The supervision state does not match its manifest.");
   }
@@ -191,6 +401,25 @@ export function readSupervisionState(flow) {
       "The supervision cumulative cost does not match its ledger.",
     );
   }
+  if (state.ci !== null) assertCiState(state.ci, state);
+  state.ciHistory.forEach((entry) =>
+    assertCiEvidence(entry, state, { current: false }),
+  );
+  if (state.review !== null) assertReviewState(state.review, state);
+  state.reviewHistory.forEach((entry) => {
+    if (!isRecord(entry) || !isRecord(entry.report)) {
+      throw new Error("The independent review history is invalid.");
+    }
+  });
+  assertRepairContext(state.repairContext);
+  const postWorkerPhases = new Set([
+    "ci_pending",
+    "reviewer_ready",
+    "reviewer_running",
+    "awaiting_review",
+    "succeeded",
+  ]);
+  const successfulCompletionPhases = new Set([...postWorkerPhases, "blocked"]);
   if (
     state.completion !== null &&
     (!isRecord(state.completion.worker) ||
@@ -204,9 +433,45 @@ export function readSupervisionState(flow) {
       state.completion.worker.costCents > state.cumulativeCostCents ||
       (state.phase === "succeeded" &&
         state.completion.outcome !== "succeeded") ||
-      (state.completion.outcome === "succeeded" && state.phase !== "succeeded"))
+      (state.completion.outcome === "succeeded" &&
+        !successfulCompletionPhases.has(state.phase)))
   ) {
     throw new Error("The supervision completion evidence is invalid.");
+  }
+  if (
+    postWorkerPhases.has(state.phase) &&
+    (state.completion?.outcome !== "succeeded" || state.ci === null)
+  ) {
+    throw new Error(
+      "Post-worker supervision lacks completion and CI evidence.",
+    );
+  }
+  if (
+    state.phase === "blocked" &&
+    state.completion?.outcome === "succeeded" &&
+    state.ci === null
+  ) {
+    throw new Error("Blocked post-worker supervision lacks its CI checkpoint.");
+  }
+  if (
+    [
+      "reviewer_ready",
+      "reviewer_running",
+      "awaiting_review",
+      "succeeded",
+    ].includes(state.phase) &&
+    (state.ci?.evidence?.classification !== "passed" || state.review === null)
+  ) {
+    throw new Error("Independent review started without passed exact-head CI.");
+  }
+  if (
+    state.phase === "succeeded" &&
+    (state.review?.status !== "succeeded" ||
+      state.review?.report?.verdict !== "approved")
+  ) {
+    throw new Error(
+      "Supervision succeeded without an approved independent review.",
+    );
   }
   assertCheckpoint(state.lastCheckpoint);
   return state;
@@ -269,6 +534,12 @@ export function publicSupervision(flow) {
     activeTaskRunId: attempt?.taskRunId ?? null,
     activeTaskStatus: attempt?.status ?? null,
     activeAttemptBudgetCents: attempt?.budgetCents ?? null,
+    ciClassification: state.ci?.evidence?.classification ?? null,
+    ciEvidenceHash: state.ci?.evidence?.evidenceHash ?? null,
+    ciTransientReruns: state.ci?.transientReruns ?? 0,
+    reviewStatus: state.review?.status ?? null,
+    reviewVerdict: state.review?.report?.verdict ?? null,
+    repairKind: state.repairContext?.kind ?? null,
     attemptHistory: state.attempts.map((entry) => ({
       number: entry.number,
       dispatchKey: entry.dispatchKey,
