@@ -116,6 +116,12 @@ clean worktree, passed secret scan, no merge and no production effect. Native
 or a failed cancellation blocks for an operator. A failed, timed-out or lost
 reviewer blocks rather than silently replacing the independent review.
 
+A blocked or failed flow also fences every manifest that was already queued when
+the terminal checkpoint was written. After reviewing that evidence, an operator
+acknowledges it by enqueueing a new approved manifest. The controller retains
+the failed flow unchanged and may claim only flows created after that checkpoint;
+it never replays older queued work as an accidental acknowledgement.
+
 Retries reuse the same manifest lane and cannot exceed `maxAttempts`, the
 globally pinned worker deadline or `maxCostCents`. Repeated recovery while a
 dispatch is merely ready returns the same attempt and task name; it does not

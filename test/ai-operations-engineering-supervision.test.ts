@@ -638,6 +638,48 @@ describe("durable engineering supervision", () => {
     });
   });
 
+  it("treats a new post-failure manifest as operator acknowledgement without replaying older queued work", async () => {
+    const setup = fixture();
+    const failedManifest = manifest("operator_attention", { maxAttempts: 1 });
+    setup.controller().enqueue(failedManifest);
+    setup.advance(1);
+    const olderQueued = manifest("queued_before_failure");
+    const olderFlow = setup.controller().enqueue(olderQueued);
+    const dispatch = setup.controller().claim();
+    const running = attachRunning(setup, dispatch);
+    running.task.status = "lost";
+    running.task.endedAt = 1_700_000_010_000;
+
+    const failed = await setup.controller().reconcile({
+      flowId: dispatch.flowId,
+      expectedRevision: running.attached.revision,
+    });
+    expect(failed).toMatchObject({
+      phase: "failed",
+      flowStatus: "failed",
+    });
+    expect(setup.controller().claim()).toMatchObject({
+      claimed: false,
+      reason: "A prior engineering flow requires operator attention.",
+      active: { flowId: failed.flowId, phase: "failed" },
+    });
+
+    setup.advance(1);
+    const replacement = manifest("approved_replacement");
+    setup.controller().enqueue(replacement);
+    const replacementDispatch = setup.controller().claim();
+
+    expect(replacementDispatch).toMatchObject({
+      claimed: true,
+      taskId: replacement.taskId,
+      attempt: 1,
+    });
+    expect(setup.flows.records.get(failed.flowId)?.stateJson.phase).toBe("failed");
+    expect(setup.flows.records.get(olderFlow.flowId)?.stateJson.phase).toBe(
+      "queued",
+    );
+  });
+
   it("cancels an overdue native run before allocating a bounded retry", async () => {
     const setup = fixture();
     const taskManifest = manifest("deadline_retry", { maxAttempts: 2 });

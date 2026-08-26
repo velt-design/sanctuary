@@ -324,20 +324,34 @@ export function createEngineeringSupervisionController(options = {}) {
       };
     }
 
-    const blocked = flows.find((flow) =>
+    const attentionFlows = flows.filter((flow) =>
       ["blocked", "failed"].includes(readSupervisionState(flow).phase),
     );
-    if (blocked) {
+    const latestAttention = attentionFlows.reduce(
+      (latest, flow) =>
+        latest === null || flow.updatedAt > latest.updatedAt ? flow : latest,
+      null,
+    );
+    const attentionCutoff = latestAttention?.updatedAt ?? -1;
+    const hasPostAttentionManifest = flows.some(
+      (flow) =>
+        flow.createdAt > attentionCutoff &&
+        ["queued", "dependency_wait", "retry_ready"].includes(
+          readSupervisionState(flow).phase,
+        ),
+    );
+    if (attentionFlows.length > 0 && !hasPostAttentionManifest) {
       return {
         claimed: false,
         reason: "A prior engineering flow requires operator attention.",
-        active: publicSupervision(blocked),
+        active: publicSupervision(latestAttention),
       };
     }
 
     for (const candidate of flows) {
       let flow = candidate;
       let state = readSupervisionState(flow);
+      if (flow.createdAt <= attentionCutoff) continue;
       if (!["queued", "dependency_wait", "retry_ready"].includes(state.phase)) {
         continue;
       }
