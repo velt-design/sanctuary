@@ -264,6 +264,8 @@ function requireSuccessfulEvidence(
   pullRequest: EngineeringTaskCompletionV1["pullRequest"],
   headSha: string | null,
   acceptanceResults: EngineeringTaskCompletionV1["acceptanceResults"],
+  verificationResults: EngineeringTaskCompletionV1["verificationResults"],
+  ciChecks: EngineeringTaskCompletionV1["ciChecks"],
   safety: EngineeringTaskCompletionV1["safety"],
   path: string,
   issues: AiContractParseIssue[],
@@ -293,6 +295,26 @@ function requireSuccessfulEvidence(
         "invariant",
         `${path}.acceptanceResults[${index}].status`,
         "Every acceptance criterion must pass before success.",
+      );
+    }
+  });
+  verificationResults.forEach((result, index) => {
+    if (result.status !== "passed") {
+      addAiIssue(
+        issues,
+        "invariant",
+        `${path}.verificationResults[${index}].status`,
+        "Every local verification must pass before success.",
+      );
+    }
+  });
+  ciChecks.forEach((check, index) => {
+    if (check.status === "failed") {
+      addAiIssue(
+        issues,
+        "invariant",
+        `${path}.ciChecks[${index}].status`,
+        "A failed CI check cannot be reported as success.",
       );
     }
   });
@@ -358,6 +380,20 @@ function parseEngineeringTaskCompletionV1(
     { minimum: 1, maximum: 100 },
   );
   const safety = parseSafety(record.safety, `${path}.safety`, issues);
+  const verificationResults = readAiArray(
+    record.verificationResults,
+    `${path}.verificationResults`,
+    issues,
+    parseVerificationResult,
+    { minimum: 1, maximum: 100 },
+  );
+  const ciChecks = readAiArray(
+    record.ciChecks,
+    `${path}.ciChecks`,
+    issues,
+    parseCiCheck,
+    { maximum: 100 },
+  );
   const headSha = readAiNullable(
     record.headSha,
     `${path}.headSha`,
@@ -377,6 +413,8 @@ function parseEngineeringTaskCompletionV1(
     pullRequest,
     headSha,
     acceptanceResults,
+    verificationResults,
+    ciChecks,
     safety,
     path,
     issues,
@@ -424,20 +462,8 @@ function parseEngineeringTaskCompletionV1(
       issues,
     ),
     acceptanceResults,
-    verificationResults: readAiArray(
-      record.verificationResults,
-      `${path}.verificationResults`,
-      issues,
-      parseVerificationResult,
-      { minimum: 1, maximum: 100 },
-    ),
-    ciChecks: readAiArray(
-      record.ciChecks,
-      `${path}.ciChecks`,
-      issues,
-      parseCiCheck,
-      { maximum: 100 },
-    ),
+    verificationResults,
+    ciChecks,
     worker: parseWorker(record.worker, `${path}.worker`, issues),
     safety,
     limitations: readEngineeringUniqueStrings(
