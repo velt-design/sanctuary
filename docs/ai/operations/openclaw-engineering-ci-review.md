@@ -52,11 +52,14 @@ second failure.
 
 ## Independent review
 
-After CI passes, the controller creates one deterministic packet containing the
-canonical task, worker completion, exact CI evidence and hash, and a bounded Git
-diff. Diff text is explicitly marked untrusted. The named
-`sanctuary-code-reviewer` has read-only tools, no shell, no delegation and no
-merge or production authority.
+After CI passes, the controller creates one deterministic compact packet
+containing the canonical task, worker completion, exact CI evidence and the
+exact Git diff hash. The named `sanctuary-code-reviewer` reads every diff chunk
+through `sanctuary_engineering_review_diff_chunk`; each call revalidates the
+open draft PR's base, head and full diff hash. Diff text is explicitly marked
+untrusted. The reviewer has no shell, mutation, delegation, merge or production
+authority. Bounded chunks prevent transport truncation without weakening or
+omitting review evidence.
 
 The reviewer returns one strict `sanctuary-engineering-review-v1` JSON object.
 It must cover every acceptance criterion once and in order. Approval requires

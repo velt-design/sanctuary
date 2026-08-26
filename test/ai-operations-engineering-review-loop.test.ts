@@ -4,6 +4,11 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import { createEngineeringSupervisionController } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-runtime.mjs";
+import {
+  REVIEW_DIFF_CHUNK_CHARACTERS,
+  buildLegacyReviewPrompt,
+  readReviewDiffChunk,
+} from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/review-runtime.mjs";
 import { ENGINEERING_TASK_REVIEW_SCHEMA_V1 } from "../packages/ai/src/index";
 
 type Value = Record<string, any>;
@@ -16,6 +21,10 @@ function hash(value: unknown) {
   return `sha256:${createHash("sha256")
     .update(`${JSON.stringify(value, null, 2)}\n`)
     .digest("hex")}`;
+}
+
+function textHash(value: string) {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
 }
 
 class Flows {
@@ -518,6 +527,48 @@ function reviewReport(
 }
 
 describe("durable exact-head CI and independent review loop", () => {
+  it("serves the complete exact review diff in bounded hash-verified chunks", () => {
+    const diff = `${"x".repeat(REVIEW_DIFF_CHUNK_CHARACTERS)}y`;
+    const input = {
+      flowId: "flow-review-loop",
+      pullRequestNumber: 123,
+      baseSha: "a".repeat(40),
+      headSha: "b".repeat(40),
+      diffHash: textHash(diff),
+      offset: 0,
+    };
+    const ciRuntime = { diff: () => diff };
+    const first = readReviewDiffChunk({ ciRuntime, input });
+    expect(first).toMatchObject({
+      offset: 0,
+      nextOffset: REVIEW_DIFF_CHUNK_CHARACTERS,
+      complete: false,
+      totalCharacters: diff.length,
+    });
+    expect(first.content).toHaveLength(REVIEW_DIFF_CHUNK_CHARACTERS);
+    expect(
+      readReviewDiffChunk({
+        ciRuntime,
+        input: { ...input, offset: first.nextOffset },
+      }),
+    ).toMatchObject({ content: "y", nextOffset: null, complete: true });
+    expect(() =>
+      readReviewDiffChunk({
+        ciRuntime,
+        input: { ...input, diffHash: `sha256:${"0".repeat(64)}` },
+      }),
+    ).toThrow(/no longer matches/);
+
+    const unicodeDiff = `${"x".repeat(REVIEW_DIFF_CHUNK_CHARACTERS - 1)}😀y`;
+    const unicodeFirst = readReviewDiffChunk({
+      ciRuntime: { diff: () => unicodeDiff },
+      input: { ...input, diffHash: textHash(unicodeDiff) },
+    });
+    expect(unicodeFirst.content.endsWith("x")).toBe(true);
+    expect(unicodeFirst.content).not.toContain("\ud83d");
+    expect(unicodeFirst.nextOffset).toBe(REVIEW_DIFF_CHUNK_CHARACTERS - 1);
+  });
+
   it("accepts an exact dispatched workflow job as durable CI evidence", async () => {
     const setup = fixture(2, "AI Foundation / Provider-neutral contracts");
     const reached = await reachCi(setup);
@@ -717,6 +768,10 @@ describe("durable exact-head CI and independent review loop", () => {
     expect(reviewDispatch.reviewPrompt).toBe(
       reviewDispatch.reviewPrompt.trim(),
     );
+    expect(reviewDispatch.reviewPrompt).toContain(
+      "sanctuary_engineering_review_diff_chunk",
+    );
+    expect(reviewDispatch.reviewPrompt).not.toContain("<untrusted_diff");
     const wrong = setup.tasks.add({
       runId: "wrong-reviewer",
       agentId: "sanctuary-coding-worker",
@@ -866,5 +921,34 @@ describe("durable exact-head CI and independent review loop", () => {
       claimed: false,
       reason: "A prior engineering flow requires operator attention.",
     });
+  });
+
+  it("upgrades a ready legacy embedded-diff dispatch without spawning twice", async () => {
+    const setup = fixture();
+    const reached = await reachCi(setup);
+    const dispatch = setup.controller().inspectCi({
+      flowId: reached.ciPending.flowId,
+      expectedRevision: reached.ciPending.revision,
+    });
+    const flow = setup.flows.records.get(dispatch.flowId)!;
+    const legacy = buildLegacyReviewPrompt({
+      state: flow.stateJson,
+      ciEvidence: flow.stateJson.ci.evidence,
+      diff: setup.ci.diff(),
+    });
+    flow.stateJson.review.promptHash = legacy.promptHash;
+    const beforeRevision = flow.revision;
+
+    const recovered = await setup.controller().recover();
+    expect(recovered).toMatchObject({
+      reviewReady: true,
+      expectedRevision: beforeRevision + 1,
+      reviewerAgentId: "sanctuary-code-reviewer",
+    });
+    expect(recovered.reviewPrompt).not.toContain("<untrusted_diff");
+    expect(recovered.reviewPrompt).toContain(
+      "sanctuary_engineering_review_diff_chunk",
+    );
+    expect(setup.tasks.records).toHaveLength(1);
   });
 });

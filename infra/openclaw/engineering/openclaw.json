@@ -200,14 +200,16 @@
           "alsoAllow": [
             "session_status",
             "read",
-            "sanctuary_engineering_lane_status"
+            "sanctuary_engineering_lane_status",
+            "sanctuary_engineering_review_diff_chunk"
           ],
           "byProvider": {
             "openai/gpt-5.6-sol": {
               "allow": [
                 "session_status",
                 "read",
-                "sanctuary_engineering_lane_status"
+                "sanctuary_engineering_lane_status",
+                "sanctuary_engineering_review_diff_chunk"
               ]
             }
           },

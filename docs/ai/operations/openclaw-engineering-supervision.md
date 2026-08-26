@@ -32,6 +32,7 @@ Only `sanctuary-engineering-supervisor` receives these optional tools:
 | `sanctuary_engineering_supervision_ci`        | Watch exact-head required checks, allow one classified transient rerun, or route one same-lane repair.      |
 | `sanctuary_engineering_review_attach`         | Revision-fence the exact native read-only reviewer to its deterministic evidence packet.                    |
 | `sanctuary_engineering_review_reconcile`      | Validate reviewer lifecycle and strict report before success or a bounded same-lane repair.                 |
+| `sanctuary_engineering_review_diff_chunk`     | Let only the named reviewer read every bounded chunk of the hash-bound exact PR diff.                       |
 
 The supervisor no longer receives direct lane provisioning. The supervision
 controller calls that reviewed runtime internally, preventing a lead turn from

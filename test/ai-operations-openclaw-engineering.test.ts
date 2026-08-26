@@ -204,6 +204,7 @@ describe("isolated OpenClaw engineering runtime", () => {
         "session_status",
         "read",
         "sanctuary_engineering_lane_status",
+        "sanctuary_engineering_review_diff_chunk",
       ],
       byProvider: {
         "openai/gpt-5.6-sol": {
@@ -211,6 +212,7 @@ describe("isolated OpenClaw engineering runtime", () => {
             "session_status",
             "read",
             "sanctuary_engineering_lane_status",
+            "sanctuary_engineering_review_diff_chunk",
           ],
         },
       },
@@ -281,6 +283,18 @@ describe("isolated OpenClaw engineering runtime", () => {
         { agentId: "sanctuary-code-reviewer" },
       ),
     ).toBeUndefined();
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "sanctuary_engineering_review_diff_chunk" },
+        { agentId: "sanctuary-code-reviewer" },
+      ),
+    ).toBeUndefined();
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "sanctuary_engineering_review_diff_chunk" },
+        { agentId: "sanctuary-engineering-supervisor" },
+      ),
+    ).toMatchObject({ block: true });
     expect(
       enforceOversightToolPolicy(
         { toolName: "bash" },
@@ -363,6 +377,7 @@ describe("isolated OpenClaw engineering runtime", () => {
           "sanctuary_engineering_supervision_ci",
           "sanctuary_engineering_review_attach",
           "sanctuary_engineering_review_reconcile",
+          "sanctuary_engineering_review_diff_chunk",
         ],
       },
     });
@@ -434,7 +449,7 @@ describe("isolated OpenClaw engineering runtime", () => {
   it("preseeds approvals, pins the official plugin, and starts separately", () => {
     expect(CODEX_PLUGIN_SPEC).toBe("@openclaw/codex@2026.7.1-1");
     expect(LANE_PLUGIN_ID).toBe("sanctuary-engineering-lanes");
-    expect(LANE_PLUGIN_VERSION).toBe("1.2.12");
+    expect(LANE_PLUGIN_VERSION).toBe("1.2.13");
     expect(activationSource.indexOf("prepareApprovals();")).toBeLessThan(
       activationSource.lastIndexOf('runOpenClaw(["config", "validate"]'),
     );

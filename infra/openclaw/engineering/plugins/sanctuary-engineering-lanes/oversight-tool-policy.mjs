@@ -26,6 +26,7 @@ export const OVERSIGHT_ALLOWED_TOOLS = Object.freeze({
     "session_status",
     "read",
     "sanctuary_engineering_lane_status",
+    "sanctuary_engineering_review_diff_chunk",
   ]),
 });
 

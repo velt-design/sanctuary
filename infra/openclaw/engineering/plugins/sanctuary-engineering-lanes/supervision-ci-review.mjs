@@ -14,6 +14,7 @@ import {
   assertAttachableReviewerTask,
   assertNativeReviewerIdentity,
   buildReviewDispatch,
+  buildLegacyReviewPrompt,
   buildReviewPrompt,
   findNativeReviewMatches,
   validateReviewReport,
@@ -165,6 +166,7 @@ export function createCiReviewController(options) {
       );
     }
     const prompt = buildReviewPrompt({
+      flowId: flow.flowId,
       state: { ...state, ci: { ...state.ci, evidence } },
       ciEvidence: evidence,
       diff: ciRuntime.diff(evidence),
@@ -568,7 +570,49 @@ export function createCiReviewController(options) {
   }
 
   function resumeReview(flow) {
-    const state = readSupervisionState(flow);
+    let state = readSupervisionState(flow);
+    const diff = ciRuntime.diff(state.ci.evidence);
+    const currentPrompt = buildReviewPrompt({
+      flowId: flow.flowId,
+      state,
+      ciEvidence: state.ci.evidence,
+      diff,
+    });
+    if (state.review.promptHash !== currentPrompt.promptHash) {
+      const legacyPrompt = buildLegacyReviewPrompt({
+        state,
+        ciEvidence: state.ci.evidence,
+        diff,
+      });
+      if (state.review.promptHash !== legacyPrompt.promptHash) {
+        throw new Error(
+          "The independent review prompt no longer matches its durable hash.",
+        );
+      }
+      const at = timestamp(now);
+      const nextState = checkpointState(
+        {
+          ...state,
+          review: { ...state.review, promptHash: currentPrompt.promptHash },
+        },
+        "reviewer_ready",
+        "The ready reviewer was upgraded to bounded exact diff delivery.",
+        at,
+        { phase: "reviewer_ready" },
+      );
+      flow = mutation(
+        flowRuntime.resume({
+          flowId: flow.flowId,
+          expectedRevision: flow.revision,
+          status: "running",
+          currentStep: "reviewer_ready",
+          stateJson: nextState,
+          updatedAt: at,
+        }),
+        "Reviewer packet upgrade",
+      );
+      state = readSupervisionState(flow);
+    }
     const dispatch = reviewDispatch(flow, state);
     const matches = findNativeReviewMatches(taskRuns, dispatch);
     if (matches.length === 0) return dispatch;
