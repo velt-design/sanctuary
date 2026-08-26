@@ -49,12 +49,16 @@ Validate or render a task from the repository root:
 ```bash
 npm run ai:engineering:validate-task -- path/to/task.json
 npm run ai:engineering:render-worker-prompt -- path/to/task.json
-npm run ai:engineering:validate-completion -- path/to/completion.json
+npm run ai:engineering:validate-completion -- path/to/task.json path/to/completion.json
 ```
 
 The validator canonicalizes the accepted task shape before producing its SHA-256
 identity. A changed objective, base, lane, test, limit or approval therefore
 creates a different manifest hash and requires a new worker instruction.
+Completion validation requires that same task file and rejects mismatched task,
+base, branch or hash identity; missing or substituted acceptance, local-check or
+CI evidence; out-of-lane changed paths; and attempt or cost totals above the
+manifest limits.
 
 ## Runtime rules
 

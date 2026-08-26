@@ -81,6 +81,23 @@ function readRepoPath(
   return result;
 }
 
+function readChangedRepoPath(
+  value: unknown,
+  path: string,
+  issues: AiContractParseIssue[],
+): string {
+  const result = readRepoPath(value, path, issues);
+  if (/[*?\[\]{}]/.test(result) || result.endsWith("/")) {
+    addAiIssue(
+      issues,
+      "invalid_value",
+      path,
+      "Expected an exact repository-relative file path, not a glob or directory.",
+    );
+  }
+  return result;
+}
+
 export function readEngineeringRepoPaths(
   value: unknown,
   path: string,
@@ -90,6 +107,18 @@ export function readEngineeringRepoPaths(
   const values = readAiArray(value, path, issues, readRepoPath, {
     minimum: options.minimum ?? 0,
     maximum: 200,
+  });
+  requireAiUniqueStrings(values, path, issues);
+  return values;
+}
+
+export function readEngineeringChangedPaths(
+  value: unknown,
+  path: string,
+  issues: AiContractParseIssue[],
+): readonly string[] {
+  const values = readAiArray(value, path, issues, readChangedRepoPath, {
+    maximum: 500,
   });
   requireAiUniqueStrings(values, path, issues);
   return values;

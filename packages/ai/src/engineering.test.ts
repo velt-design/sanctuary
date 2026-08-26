@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   ENGINEERING_TASK_COMPLETION_SCHEMA_V1,
   ENGINEERING_TASK_MANIFEST_SCHEMA_V1,
+  safeParseEngineeringTaskCompletionForManifestV1,
   type EngineeringTaskCompletionV1,
   type EngineeringTaskManifestV1,
 } from "./engineering";
@@ -34,6 +35,7 @@ const manifest: EngineeringTaskManifestV1 = {
   dependencies: [],
   acceptanceCriteria: [
     "Both contracts reject unknown fields and unsafe terminal states.",
+    "Completion evidence is bound to the validated task manifest.",
   ],
   verification: {
     focusedCommands: [
@@ -82,6 +84,11 @@ const completion: EngineeringTaskCompletionV1 = {
       status: "passed",
       evidence: "Focused contract tests passed.",
     },
+    {
+      criterion: manifest.acceptanceCriteria[1],
+      status: "passed",
+      evidence: "Manifest-binding tests passed.",
+    },
   ],
   verificationResults: [
     {
@@ -89,6 +96,12 @@ const completion: EngineeringTaskCompletionV1 = {
       command: manifest.verification.focusedCommands[0],
       status: "passed",
       summary: "All focused tests passed.",
+    },
+    {
+      name: "AI package typecheck",
+      command: manifest.verification.focusedCommands[1],
+      status: "passed",
+      summary: "The AI package typecheck passed.",
     },
   ],
   ciChecks: [
@@ -241,6 +254,11 @@ describe("engineering completion contract", () => {
       "$.safety.productionEffects",
     ],
     [
+      "a changed-path glob instead of an exact file",
+      { ...completion, changedPaths: ["packages/ai/**"] },
+      "$.changedPaths[0]",
+    ],
+    [
       "reversed worker timestamps",
       {
         ...completion,
@@ -281,5 +299,137 @@ describe("engineering completion contract", () => {
     expect(
       ENGINEERING_TASK_COMPLETION_SCHEMA_V1.safeParse(blocked).success,
     ).toBe(true);
+  });
+});
+
+describe("manifest-bound engineering completion", () => {
+  it("accepts exact task identity, evidence, path ownership, and worker limits", () => {
+    expect(
+      safeParseEngineeringTaskCompletionForManifestV1(
+        manifest,
+        MANIFEST_HASH,
+        completion,
+      ),
+    ).toEqual({ success: true, data: completion });
+  });
+
+  it.each([
+    [
+      "a mismatched manifest hash",
+      { ...completion, manifestHash: `sha256:${"b".repeat(64)}` },
+      "$.manifestHash",
+    ],
+    [
+      "a mismatched task id",
+      { ...completion, taskId: "eng_20260826_other_contracts" },
+      "$.taskId",
+    ],
+    [
+      "a mismatched base SHA",
+      { ...completion, baseSha: "b".repeat(40) },
+      "$.baseSha",
+    ],
+    [
+      "a mismatched branch",
+      { ...completion, branch: "ai/another-foundation-lane" },
+      "$.branch",
+    ],
+    [
+      "an omitted acceptance result",
+      { ...completion, acceptanceResults: [completion.acceptanceResults[0]] },
+      "$.acceptanceResults",
+    ],
+    [
+      "a mismatched acceptance result",
+      {
+        ...completion,
+        acceptanceResults: [
+          {
+            ...completion.acceptanceResults[0],
+            criterion: "A criterion that was not approved.",
+          },
+          completion.acceptanceResults[1],
+        ],
+      },
+      "$.acceptanceResults[0].criterion",
+    ],
+    [
+      "an omitted focused verification result",
+      {
+        ...completion,
+        verificationResults: [completion.verificationResults[0]],
+      },
+      "$.verificationResults",
+    ],
+    [
+      "a mismatched focused verification result",
+      {
+        ...completion,
+        verificationResults: [
+          {
+            ...completion.verificationResults[0],
+            command: "npm run weakened-check",
+          },
+          completion.verificationResults[1],
+        ],
+      },
+      "$.verificationResults[0].command",
+    ],
+    [
+      "an omitted CI check",
+      { ...completion, ciChecks: [] },
+      "$.ciChecks",
+    ],
+    [
+      "a mismatched CI check",
+      {
+        ...completion,
+        ciChecks: [
+          { ...completion.ciChecks[0], name: "A different CI check" },
+        ],
+      },
+      "$.ciChecks[0].name",
+    ],
+    [
+      "an out-of-lane changed path",
+      { ...completion, changedPaths: ["scripts/unowned.ts"] },
+      "$.changedPaths[0]",
+    ],
+    [
+      "an explicitly excluded changed path",
+      { ...completion, changedPaths: ["apps/portal/page.tsx"] },
+      "$.changedPaths[0]",
+    ],
+    [
+      "worker attempts above the manifest limit",
+      {
+        ...completion,
+        worker: {
+          ...completion.worker,
+          attempts: manifest.limits.maxAttempts + 1,
+        },
+      },
+      "$.worker.attempts",
+    ],
+    [
+      "worker cost above the manifest limit",
+      {
+        ...completion,
+        worker: {
+          ...completion.worker,
+          costCents: manifest.limits.maxCostCents + 1,
+        },
+      },
+      "$.worker.costCents",
+    ],
+  ])("rejects %s", (_name, value, expectedPath) => {
+    const result = safeParseEngineeringTaskCompletionForManifestV1(
+      manifest,
+      MANIFEST_HASH,
+      value,
+    );
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(result.issues.map((issue) => issue.path)).toContain(expectedPath);
   });
 });

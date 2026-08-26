@@ -20,8 +20,11 @@
   "ownedPaths": [
     "packages/ai/**",
     "docs/ai/**",
+    "docs/testing-and-qa.md",
     "infra/openclaw/engineering/**",
-    "scripts/ai/engineering-contract.ts"
+    "scripts/ai/engineering-contract.ts",
+    "test/ai-engineering-contract-cli.test.ts",
+    "package.json"
   ],
   "excludedPaths": ["apps/portal/**", "apps/marketing/**", "supabase/**"],
   "dependencies": [],

@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import process from "node:process";
 import {
-  ENGINEERING_TASK_COMPLETION_SCHEMA_V1,
   ENGINEERING_TASK_MANIFEST_SCHEMA_V1,
+  parseEngineeringTaskCompletionForManifestV1,
   type EngineeringTaskManifestV1,
 } from "../../packages/ai/src/index";
 
@@ -11,8 +11,11 @@ type Command = "validate-task" | "validate-completion" | "render-worker-prompt";
 
 function usage(): never {
   console.error(
-    "Usage: tsx scripts/ai/engineering-contract.ts " +
-      "<validate-task|validate-completion|render-worker-prompt> <json-file>",
+    "Usage:\n" +
+      "  tsx scripts/ai/engineering-contract.ts validate-task <task-json>\n" +
+      "  tsx scripts/ai/engineering-contract.ts render-worker-prompt <task-json>\n" +
+      "  tsx scripts/ai/engineering-contract.ts validate-completion " +
+      "<task-json> <completion-json>",
   );
   process.exit(2);
 }
@@ -62,12 +65,13 @@ ${canonicalTask(manifest).trimEnd()}
 
 function main(): void {
   const command = process.argv[2] as Command | undefined;
-  const path = process.argv[3];
-  if (!command || !path) usage();
+  const taskPath = process.argv[3];
+  if (!command || !taskPath) usage();
 
-  const value = readJson(path);
   if (command === "validate-task") {
-    const manifest = ENGINEERING_TASK_MANIFEST_SCHEMA_V1.parse(value);
+    const manifest = ENGINEERING_TASK_MANIFEST_SCHEMA_V1.parse(
+      readJson(taskPath),
+    );
     console.log(
       JSON.stringify(
         {
@@ -84,7 +88,16 @@ function main(): void {
     return;
   }
   if (command === "validate-completion") {
-    const completion = ENGINEERING_TASK_COMPLETION_SCHEMA_V1.parse(value);
+    const completionPath = process.argv[4];
+    if (!completionPath) usage();
+    const manifest = ENGINEERING_TASK_MANIFEST_SCHEMA_V1.parse(
+      readJson(taskPath),
+    );
+    const completion = parseEngineeringTaskCompletionForManifestV1(
+      manifest,
+      manifestHash(manifest),
+      readJson(completionPath),
+    );
     console.log(
       JSON.stringify(
         {
@@ -101,7 +114,9 @@ function main(): void {
     return;
   }
   if (command === "render-worker-prompt") {
-    const manifest = ENGINEERING_TASK_MANIFEST_SCHEMA_V1.parse(value);
+    const manifest = ENGINEERING_TASK_MANIFEST_SCHEMA_V1.parse(
+      readJson(taskPath),
+    );
     process.stdout.write(renderWorkerPrompt(manifest));
     return;
   }
