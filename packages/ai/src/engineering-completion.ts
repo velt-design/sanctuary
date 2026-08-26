@@ -8,9 +8,9 @@ import {
   ENGINEERING_BRANCH_PATTERN,
   ENGINEERING_COMMIT_PATTERN,
   ENGINEERING_TASK_ID_PATTERN,
+  readEngineeringChangedPaths,
   readEngineeringLiteral,
   readEngineeringPattern,
-  readEngineeringRepoPaths,
   readEngineeringUniqueStrings,
 } from "./engineering-schema";
 import {
@@ -456,7 +456,7 @@ function parseEngineeringTaskCompletionV1(
     ),
     headSha,
     pullRequest,
-    changedPaths: readEngineeringRepoPaths(
+    changedPaths: readEngineeringChangedPaths(
       record.changedPaths,
       `${path}.changedPaths`,
       issues,
