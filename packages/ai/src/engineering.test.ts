@@ -173,6 +173,11 @@ describe("engineering task manifest contract", () => {
       "$.branch",
     ],
     [
+      "a branch ending in a slash",
+      { ...manifest, branch: "ai/foundation/" },
+      "$.branch",
+    ],
+    [
       "self dependencies",
       { ...manifest, dependencies: [manifest.taskId] },
       "$.dependencies",

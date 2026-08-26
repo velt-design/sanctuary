@@ -12,7 +12,7 @@ export const ENGINEERING_GOAL_ID_PATTERN =
   /^goal_[0-9]{8}_[a-z0-9][a-z0-9_-]{2,63}$/;
 export const ENGINEERING_COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 export const ENGINEERING_BRANCH_PATTERN =
-  /^(?!refs\/)(?!.*\/\.)(?!.*\.\.)(?!.*\/\/)(?!.*\.lock(?:\/|$))(?!.*\.$)[a-z0-9][a-zA-Z0-9._/-]{1,199}$/;
+  /^(?!refs\/)(?!.*\/\.)(?!.*\.\.)(?!.*\/\/)(?!.*\.lock(?:\/|$))(?!.*[\/.]$)[a-z0-9][a-zA-Z0-9._/-]{1,199}$/;
 
 export function readEngineeringLiteral<T extends string>(
   value: unknown,
