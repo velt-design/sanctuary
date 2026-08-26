@@ -53,10 +53,11 @@ commands still name the supervisor; do not start the worker directly.
 
 The worker's two execution-policy layers both resolve to full execution with
 `ask: off`, and the managed Codex app-server uses `approvalPolicy: never` with
-`danger-full-access`. The supervisor and reviewer use OpenClaw `auto` execution
-mode only so the managed Codex app-server can start. Their exact finite tool
-allowlists are applied as a second, model-specific policy after the minimal
-profile is extended with the same named tools. Backed by explicit denies for
+`danger-full-access`. The supervisor and reviewer use OpenClaw `deny` execution
+mode, which keeps the managed Codex app-server available while blocking its
+native local shell. Their exact finite tool allowlists are applied as a second,
+model-specific policy after the minimal profile is extended with the same named
+tools. Backed by explicit denies for
 `exec`, `process`, `write`, `edit` and `apply_patch`, those finite allowlists
 force policy-restricted turns with no native Codex environment or Code Mode.
 They receive only their named narrow dynamic tools, loaded directly so an

@@ -132,7 +132,7 @@
           },
           "exec": {
             "host": "gateway",
-            "mode": "auto"
+            "mode": "deny"
           },
           "deny": ["exec", "process", "write", "edit", "apply_patch"],
           "elevated": {
@@ -211,7 +211,7 @@
           },
           "exec": {
             "host": "gateway",
-            "mode": "auto"
+            "mode": "deny"
           },
           "deny": ["exec", "process", "write", "edit", "apply_patch"],
           "elevated": {
