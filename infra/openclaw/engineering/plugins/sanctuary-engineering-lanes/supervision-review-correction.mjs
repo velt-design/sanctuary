@@ -11,6 +11,21 @@ import {
   buildReviewPrompt,
 } from "./review-runtime.mjs";
 
+const REVIEW_CORRECTIONS = Object.freeze({
+  invalid_dispatch_contract: Object.freeze({
+    number: 1,
+    priorReason: null,
+    error:
+      "The reviewer inherited an incomplete tool allowlist and returned evidence outside the strict review schema.",
+  }),
+  missing_registered_review_tool: Object.freeze({
+    number: 2,
+    priorReason: "invalid_dispatch_contract",
+    error:
+      "The strict reviewer output proved that the diff reader was configured but not registered on the spawning supervisor for child inheritance.",
+  }),
+});
+
 export function createReviewCorrectionController(options) {
   const {
     flowRuntime,
@@ -28,7 +43,8 @@ export function createReviewCorrectionController(options) {
     let flow = getFlow(flowId);
     assertExpectedRevision(flow, expectedRevision);
     let state = readSupervisionState(flow);
-    if (reason !== "invalid_dispatch_contract") {
+    const correction = REVIEW_CORRECTIONS[reason];
+    if (!correction) {
       throw new Error("The reviewer correction reason is invalid.");
     }
     if (!["reviewer_running", "awaiting_review"].includes(state.phase)) {
@@ -39,9 +55,7 @@ export function createReviewCorrectionController(options) {
     if (
       state.review.report !== null ||
       state.review.runId !== priorRunId ||
-      state.reviewHistory.some(
-        (entry) => entry.kind === "invalid_dispatch_contract",
-      )
+      state.reviewHistory.some((entry) => entry.kind === reason)
     ) {
       throw new Error(
         "The one recorded reviewer dispatch correction is not available.",
@@ -58,13 +72,33 @@ export function createReviewCorrectionController(options) {
       );
     }
     const diff = ciRuntime.diff(state.ci.evidence);
-    const invalidPrompt = buildLegacyChunkedReviewPrompt({
+    const baseTaskName = `eng_${state.manifestHash.slice(7, 19)}_r${state.completion.headSha.slice(0, 12)}`;
+    const expectedTaskName =
+      correction.number === 1
+        ? baseTaskName
+        : `${baseTaskName}_c${correction.number - 1}`;
+    if (
+      state.review.taskName !== expectedTaskName ||
+      (correction.priorReason !== null &&
+        !state.reviewHistory.some(
+          (entry) => entry.kind === correction.priorReason,
+        ))
+    ) {
+      throw new Error(
+        "The reviewer correction does not match the durable correction sequence.",
+      );
+    }
+    const recognizedPrompt = (
+      correction.number === 1
+        ? buildLegacyChunkedReviewPrompt
+        : buildReviewPrompt
+    )({
       flowId,
       state,
       ciEvidence: state.ci.evidence,
       diff,
     });
-    if (invalidPrompt.promptHash !== state.review.promptHash) {
+    if (recognizedPrompt.promptHash !== state.review.promptHash) {
       throw new Error(
         "The attached reviewer was not created from the recognized invalid dispatch contract.",
       );
@@ -91,8 +125,8 @@ export function createReviewCorrectionController(options) {
         reviewHistory: [
           ...state.reviewHistory,
           {
-            kind: "invalid_dispatch_contract",
-            correction: 1,
+            kind: reason,
+            correction: correction.number,
             taskName: priorReview.taskName,
             promptHash: priorReview.promptHash,
             headSha: priorReview.headSha,
@@ -105,13 +139,12 @@ export function createReviewCorrectionController(options) {
             runId: priorReview.runId,
             taskRunId: priorReview.taskRunId,
             childSessionKey: priorReview.childSessionKey,
-            error:
-              "The reviewer inherited an incomplete tool allowlist and returned evidence outside the strict review schema.",
+            error: correction.error,
           },
         ],
         review: {
           status: "ready",
-          taskName: `${priorReview.taskName}_c1`,
+          taskName: `${baseTaskName}_c${correction.number}`,
           promptHash: currentPrompt.promptHash,
           headSha: priorReview.headSha,
           ciEvidenceHash: priorReview.ciEvidenceHash,
@@ -128,7 +161,7 @@ export function createReviewCorrectionController(options) {
         },
       },
       "reviewer_correction_ready",
-      "One operator-authorized reviewer correction was recorded; a strict exact-diff review is ready.",
+      `Operator-authorized reviewer correction ${correction.number} was recorded; a strict exact-diff review is ready.`,
       at,
       { phase: "reviewer_ready" },
     );

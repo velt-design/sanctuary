@@ -932,7 +932,7 @@ describe("durable exact-head CI and independent review loop", () => {
     });
   });
 
-  it("records and charges the one operator-authorized invalid dispatch correction", async () => {
+  it("records, orders and charges the finite operator-authorized dispatch corrections", async () => {
     const setup = fixture();
     const reached = await reachCi(setup);
     const reviewDispatch = setup.controller().inspectCi({
@@ -951,6 +951,15 @@ describe("durable exact-head CI and independent review loop", () => {
     reviewer.title = legacy.prompt;
     reviewer.status = "succeeded";
     reviewer.endedAt = 1_700_000_020_000;
+
+    expect(() =>
+      setup.controller().redispatchReview({
+        flowId: reviewDispatch.flowId,
+        expectedRevision: attached.revision,
+        priorRunId: reviewer.runId,
+        reason: "missing_registered_review_tool",
+      }),
+    ).toThrow(/does not match the durable correction sequence/);
 
     const correction = setup.controller().redispatchReview({
       flowId: reviewDispatch.flowId,
@@ -1002,16 +1011,61 @@ describe("durable exact-head CI and independent review loop", () => {
     });
     correctedReviewer.status = "succeeded";
     correctedReviewer.endedAt = correction.reviewStartedAt + 1_000;
-    const finished = await setup.controller().reconcileReview({
+    const registrationCorrection = setup.controller().redispatchReview({
       flowId: correction.flowId,
       expectedRevision: correctionAttached.revision,
-      report: reviewReport(setup, correction),
+      priorRunId: correctedReviewer.runId,
+      reason: "missing_registered_review_tool",
+    });
+    expect(registrationCorrection).toMatchObject({
+      reviewReady: true,
+      expectedRevision: correctionAttached.revision + 1,
+      reviewerAgentId: "sanctuary-code-reviewer",
+    });
+    expect(registrationCorrection.reviewTaskName).toMatch(/_c2$/);
+    const secondCorrectedState = setup.flows.records.get(
+      registrationCorrection.flowId,
+    )!.stateJson;
+    expect(secondCorrectedState.cumulativeCostCents).toBe(544);
+    expect(secondCorrectedState.reviewHistory).toEqual([
+      expect.objectContaining({
+        kind: "invalid_dispatch_contract",
+        correction: 1,
+        costCents: 266,
+      }),
+      expect.objectContaining({
+        kind: "missing_registered_review_tool",
+        correction: 2,
+        runId: correctedReviewer.runId,
+        taskRunId: correctedReviewer.id,
+        costCents: 178,
+      }),
+    ]);
+
+    const finalReviewer = setup.tasks.add({
+      runId: "run-reviewer-final",
+      agentId: registrationCorrection.reviewerAgentId,
+      label: null,
+      title: registrationCorrection.reviewPrompt,
+      createdAt: registrationCorrection.reviewStartedAt,
+    });
+    const finalAttached = setup.controller().attachReview({
+      flowId: registrationCorrection.flowId,
+      expectedRevision: registrationCorrection.expectedRevision,
+      runId: finalReviewer.runId,
+    });
+    finalReviewer.status = "succeeded";
+    finalReviewer.endedAt = registrationCorrection.reviewStartedAt + 1_000;
+    const finished = await setup.controller().reconcileReview({
+      flowId: registrationCorrection.flowId,
+      expectedRevision: finalAttached.revision,
+      report: reviewReport(setup, registrationCorrection),
     });
     expect(finished).toMatchObject({
       phase: "succeeded",
       flowStatus: "succeeded",
       reviewVerdict: "approved",
-      cumulativeCostCents: 391,
+      cumulativeCostCents: 569,
     });
   });
 

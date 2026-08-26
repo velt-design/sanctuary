@@ -22,6 +22,7 @@ import {
 } from "../scripts/ai/mac-openclaw-engineering-stop.mjs";
 import {
   OVERSIGHT_ALLOWED_TOOLS,
+  REVIEW_DIFF_REGISTRATION_AGENTS,
   enforceOversightToolPolicy,
 } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/oversight-tool-policy.mjs";
 
@@ -260,6 +261,10 @@ describe("isolated OpenClaw engineering runtime", () => {
     expect(OVERSIGHT_ALLOWED_TOOLS["sanctuary-code-reviewer"]).toEqual(
       agentsById["sanctuary-code-reviewer"].tools.alsoAllow,
     );
+    expect(REVIEW_DIFF_REGISTRATION_AGENTS).toEqual([
+      "sanctuary-engineering-supervisor",
+      "sanctuary-code-reviewer",
+    ]);
     expect(
       enforceOversightToolPolicy(
         { toolName: "bash" },
@@ -451,7 +456,7 @@ describe("isolated OpenClaw engineering runtime", () => {
   it("preseeds approvals, pins the official plugin, and starts separately", () => {
     expect(CODEX_PLUGIN_SPEC).toBe("@openclaw/codex@2026.7.1-1");
     expect(LANE_PLUGIN_ID).toBe("sanctuary-engineering-lanes");
-    expect(LANE_PLUGIN_VERSION).toBe("1.2.14");
+    expect(LANE_PLUGIN_VERSION).toBe("1.2.15");
     expect(activationSource.indexOf("prepareApprovals();")).toBeLessThan(
       activationSource.lastIndexOf('runOpenClaw(["config", "validate"]'),
     );

@@ -31,6 +31,11 @@ export const OVERSIGHT_ALLOWED_TOOLS = Object.freeze({
   ]),
 });
 
+export const REVIEW_DIFF_REGISTRATION_AGENTS = Object.freeze([
+  "sanctuary-engineering-supervisor",
+  "sanctuary-code-reviewer",
+]);
+
 const allowedByAgent = new Map(
   Object.entries(OVERSIGHT_ALLOWED_TOOLS).map(([agentId, tools]) => [
     agentId,

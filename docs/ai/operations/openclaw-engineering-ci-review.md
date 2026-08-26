@@ -71,12 +71,13 @@ Blocking findings may create one remaining same-lane worker attempt; reviewer
 runtime failure is never replaced automatically.
 
 A reviewer is also never silently replaced for malformed output. The only
-exception is one explicit operator-authorized correction for the recognized
-historical dispatch-contract defect: the controller first verifies the exact
-completed native reviewer and old prompt hash, reserves its full review budget,
-records its run/task/session evidence in durable history, then returns one
-strict replacement dispatch. Repeating that correction or applying it to any
-other prompt fails closed.
+exceptions are the finite, ordered, operator-authorized corrections for the two
+recognized historical dispatch defects: the original prompt/allowlist contract,
+then the missing parent registration required for child tool inheritance. For
+each one, the controller verifies the exact completed native reviewer and prompt
+hash, reserves its full review budget, records its run/task/session evidence in
+durable history, then returns one strict replacement dispatch. Repeating,
+reordering or applying either correction to any other prompt fails closed.
 
 ## Hosted `main` authority
 

@@ -291,7 +291,7 @@ function assertReviewState(review, state) {
   if (
     !isRecord(review) ||
     !REVIEW_STATUSES.has(review.status) ||
-    !/^eng_[0-9a-f]{12}_r[0-9a-f]{12}(?:_c1)?$/.test(review.taskName) ||
+    !/^eng_[0-9a-f]{12}_r[0-9a-f]{12}(?:_c[12])?$/.test(review.taskName) ||
     !HASH_PATTERN.test(review.promptHash) ||
     review.headSha !== state.completion?.headSha ||
     review.ciEvidenceHash !== state.ci?.evidence?.evidenceHash ||
@@ -339,9 +339,14 @@ function assertReviewHistoryEntry(entry) {
   }
   if (isRecord(entry.report)) return;
   if (
-    entry.kind !== "invalid_dispatch_contract" ||
-    entry.correction !== 1 ||
-    !/^eng_[0-9a-f]{12}_r[0-9a-f]{12}$/.test(entry.taskName) ||
+    !(
+      (entry.kind === "invalid_dispatch_contract" &&
+        entry.correction === 1 &&
+        /^eng_[0-9a-f]{12}_r[0-9a-f]{12}$/.test(entry.taskName)) ||
+      (entry.kind === "missing_registered_review_tool" &&
+        entry.correction === 2 &&
+        /^eng_[0-9a-f]{12}_r[0-9a-f]{12}_c1$/.test(entry.taskName))
+    ) ||
     !HASH_PATTERN.test(entry.promptHash) ||
     !SHA_PATTERN.test(entry.headSha) ||
     !HASH_PATTERN.test(entry.ciEvidenceHash) ||

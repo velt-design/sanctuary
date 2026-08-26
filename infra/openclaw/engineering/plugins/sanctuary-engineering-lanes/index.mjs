@@ -20,7 +20,10 @@ import {
   ENGINEERING_REVIEW_DIFF_TOOL,
   readReviewDiffChunk,
 } from "./review-runtime.mjs";
-import { enforceOversightToolPolicy } from "./oversight-tool-policy.mjs";
+import {
+  REVIEW_DIFF_REGISTRATION_AGENTS,
+  enforceOversightToolPolicy,
+} from "./oversight-tool-policy.mjs";
 
 const taskIdentityProperties = {
   taskId: {
@@ -237,7 +240,7 @@ function supervisionTools(api, context) {
       name: "sanctuary_engineering_review_redispatch",
       label: "Correct invalid reviewer dispatch",
       description:
-        "Record and reserve the invalid reviewer dispatch, then prepare the one permitted operator-authorized strict reviewer correction without resetting the flow.",
+        "Record and reserve an exact recognized invalid reviewer dispatch, then prepare its finite operator-authorized strict correction without resetting the flow.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -245,7 +248,13 @@ function supervisionTools(api, context) {
         properties: {
           ...flowIdentityProperties,
           priorRunId: { type: "string", minLength: 8, maxLength: 200 },
-          reason: { type: "string", enum: ["invalid_dispatch_contract"] },
+          reason: {
+            type: "string",
+            enum: [
+              "invalid_dispatch_contract",
+              "missing_registered_review_tool",
+            ],
+          },
         },
       },
       executionMode: "sequential",
@@ -257,7 +266,9 @@ function supervisionTools(api, context) {
 }
 
 function reviewerEvidenceTools(context) {
-  if (context.agentId !== "sanctuary-code-reviewer") return null;
+  if (!REVIEW_DIFF_REGISTRATION_AGENTS.includes(context.agentId)) {
+    return null;
+  }
   return [
     {
       name: ENGINEERING_REVIEW_DIFF_TOOL,
