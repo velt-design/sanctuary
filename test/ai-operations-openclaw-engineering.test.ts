@@ -141,7 +141,7 @@ describe("isolated OpenClaw engineering runtime", () => {
     );
     expect(lead.tools.exec).toMatchObject({
       host: "gateway",
-      mode: "deny",
+      mode: "off",
     });
     expect(lead.tools.deny).toEqual(
       expect.arrayContaining([
@@ -204,7 +204,7 @@ describe("isolated OpenClaw engineering runtime", () => {
           ],
         },
       },
-      exec: { host: "gateway", mode: "deny" },
+      exec: { host: "gateway", mode: "off" },
       deny: ["exec", "process", "write", "edit", "apply_patch"],
       elevated: { enabled: false },
     });
