@@ -83,6 +83,7 @@ creates a different manifest hash and requires a new worker instruction.
 A task may be reported as `succeeded` only when:
 
 - every acceptance criterion is evidenced as passed;
+- every reported local verification has passed and no CI check has failed;
 - the expected branch is pushed and the exact head SHA is recorded;
 - an open draft PR exists;
 - the worktree is clean;

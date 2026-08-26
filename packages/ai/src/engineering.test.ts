@@ -205,6 +205,24 @@ describe("engineering completion contract", () => {
       "$.acceptanceResults[0].status",
     ],
     [
+      "a failed local verification reported as success",
+      {
+        ...completion,
+        verificationResults: [
+          { ...completion.verificationResults[0], status: "failed" },
+        ],
+      },
+      "$.verificationResults[0].status",
+    ],
+    [
+      "a failed CI check reported as success",
+      {
+        ...completion,
+        ciChecks: [{ ...completion.ciChecks[0], status: "failed" }],
+      },
+      "$.ciChecks[0].status",
+    ],
+    [
       "an unpushed successful branch",
       { ...completion, safety: { ...completion.safety, branchPushed: false } },
       "$.safety",
