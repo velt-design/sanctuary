@@ -422,6 +422,7 @@ export function createEngineeringSupervisionController(options = {}) {
       runId,
       expectedDispatch,
       attempt,
+      supervisorSessionKey: taskRuns.sessionKey,
     });
     const at = timestamp(now);
     state = replaceActiveAttempt(state, attempt, {
@@ -479,9 +480,10 @@ export function createEngineeringSupervisionController(options = {}) {
     }
     let attempt = activeAttempt(state);
     const task = assertNativeTaskIdentity(
-      taskRuns.resolve(attempt.runId),
+      taskRuns.get(attempt.taskRunId),
       attempt,
       ENGINEERING_WORKER_AGENT,
+      taskRuns.sessionKey,
     );
 
     if (["queued", "running"].includes(task.status)) {

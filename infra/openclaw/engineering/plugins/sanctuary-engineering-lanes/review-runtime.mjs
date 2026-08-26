@@ -115,14 +115,16 @@ export function buildReviewDispatch({
 }
 
 export function findNativeReviewMatches(taskRuns, dispatch) {
+  const supervisorSessionPrefix = `agent:${ENGINEERING_SUPERVISOR_AGENT}:`;
   return taskRuns
     .list()
     .filter(
       (task) =>
+        taskRuns.sessionKey.startsWith(supervisorSessionPrefix) &&
+        task.sessionKey === taskRuns.sessionKey &&
         task.runtime === "subagent" &&
         task.agentId === dispatch.reviewerAgentId &&
-        task.requesterAgentId === ENGINEERING_SUPERVISOR_AGENT &&
-        task.task === dispatch.reviewPrompt &&
+        task.title === dispatch.reviewPrompt &&
         Number.isSafeInteger(task.createdAt) &&
         task.createdAt >= dispatch.reviewStartedAt &&
         task.createdAt <= dispatch.reviewDeadlineAt,
@@ -134,14 +136,17 @@ export function assertAttachableReviewerTask({
   runId,
   expectedDispatch,
   review,
+  supervisorSessionKey,
 }) {
+  const supervisorSessionPrefix = `agent:${ENGINEERING_SUPERVISOR_AGENT}:`;
   if (
     !task ||
+    !supervisorSessionKey.startsWith(supervisorSessionPrefix) ||
+    task.sessionKey !== supervisorSessionKey ||
     task.runId !== runId ||
     task.runtime !== "subagent" ||
     task.agentId !== ENGINEERING_REVIEWER_AGENT ||
-    task.requesterAgentId !== ENGINEERING_SUPERVISOR_AGENT ||
-    task.task !== expectedDispatch.reviewPrompt ||
+    task.title !== expectedDispatch.reviewPrompt ||
     !task.childSessionKey ||
     !REVIEW_STATUSES.has(task.status) ||
     !Number.isSafeInteger(task.createdAt) ||
@@ -155,16 +160,23 @@ export function assertAttachableReviewerTask({
   return task;
 }
 
-export function assertNativeReviewerIdentity(task, review) {
+export function assertNativeReviewerIdentity(
+  task,
+  review,
+  supervisorSessionKey,
+) {
   if (
     !task ||
+    !supervisorSessionKey.startsWith(
+      `agent:${ENGINEERING_SUPERVISOR_AGENT}:`,
+    ) ||
+    task.sessionKey !== supervisorSessionKey ||
     task.runId !== review.runId ||
     task.id !== review.taskRunId ||
     task.runtime !== "subagent" ||
     task.agentId !== ENGINEERING_REVIEWER_AGENT ||
-    task.requesterAgentId !== ENGINEERING_SUPERVISOR_AGENT ||
     task.childSessionKey !== review.childSessionKey ||
-    hashText(task.task ?? "") !== review.promptHash
+    hashText(task.title ?? "") !== review.promptHash
   ) {
     throw new Error(
       "The native OpenClaw reviewer no longer matches its evidence packet.",

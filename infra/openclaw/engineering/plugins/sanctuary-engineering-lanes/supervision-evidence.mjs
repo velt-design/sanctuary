@@ -12,14 +12,22 @@ function sameStrings(left, right) {
   );
 }
 
-export function assertNativeTaskIdentity(task, attempt, workerAgentId) {
+export function assertNativeTaskIdentity(
+  task,
+  attempt,
+  workerAgentId,
+  supervisorSessionKey,
+) {
   if (
     !task ||
+    !supervisorSessionKey.startsWith(
+      `agent:${ENGINEERING_SUPERVISOR_AGENT}:`,
+    ) ||
+    task.sessionKey !== supervisorSessionKey ||
     task.runId !== attempt.runId ||
     task.id !== attempt.taskRunId ||
     task.runtime !== "subagent" ||
     task.agentId !== workerAgentId ||
-    task.requesterAgentId !== ENGINEERING_SUPERVISOR_AGENT ||
     task.childSessionKey !== attempt.childSessionKey
   ) {
     throw new Error("The native OpenClaw task no longer matches its attempt.");

@@ -116,9 +116,10 @@ Retries reuse the same manifest lane and cannot exceed `maxAttempts`, the
 globally pinned worker deadline or `maxCostCents`. Repeated recovery while a
 dispatch is merely ready returns the same attempt and task name; it does not
 create a second worktree or worker. If the gateway stopped after spawn but
-before attachment, the controller finds the one native task with the exact
-stable task name, bound prompt and current attempt time window, attaches it,
-ignores historical runs outside that window, and refuses current duplicates.
+before attachment, the controller finds the one native task from the exact
+supervisor session with the target agent, canonical prompt and current attempt
+time window, attaches it, ignores historical runs outside that window, and
+refuses current duplicates.
 An overdue running task must be cancelled through OpenClaw's native task
 runtime before a retry becomes eligible.
 

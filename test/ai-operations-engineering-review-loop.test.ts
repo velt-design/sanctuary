@@ -97,6 +97,7 @@ class Flows {
 }
 
 class Tasks {
+  sessionKey = "agent:sanctuary-engineering-supervisor:test";
   records = new Map<string, Value>();
 
   add(input: Value) {
@@ -107,7 +108,7 @@ class Tasks {
       runtime: "subagent",
       status: "running",
       agentId,
-      requesterAgentId: "sanctuary-engineering-supervisor",
+      sessionKey: this.sessionKey,
       childSessionKey: `agent:${agentId}:subagent:${number}`,
       ...input,
     };
@@ -118,6 +119,7 @@ class Tasks {
   resolve = (token: string) =>
     this.records.get(token) ??
     [...this.records.values()].find((task) => task.runId === token);
+  get = (taskId: string) => this.records.get(taskId);
   list = () => [...this.records.values()];
   cancel = async () => ({ cancelled: false, reason: "not expected" });
 }
@@ -320,7 +322,7 @@ async function reachCi(setup: ReturnType<typeof fixture>) {
   const worker = setup.tasks.add({
     runId: "run-worker-1",
     label: null,
-    task: dispatch.workerPrompt,
+    title: dispatch.workerPrompt,
     createdAt: dispatch.attemptStartedAt,
   });
   const attached = setup.controller().attach({
@@ -399,7 +401,7 @@ function attachReviewer(setup: ReturnType<typeof fixture>, dispatch: Value) {
     runId: "run-reviewer-1",
     agentId: dispatch.reviewerAgentId,
     label: null,
-    task: dispatch.reviewPrompt,
+    title: dispatch.reviewPrompt,
     createdAt: dispatch.reviewStartedAt,
   });
   const attached = setup.controller().attachReview({
@@ -611,7 +613,7 @@ describe("durable exact-head CI and independent review loop", () => {
       runId: "wrong-reviewer",
       agentId: "sanctuary-coding-worker",
       label: null,
-      task: reviewDispatch.reviewPrompt,
+      title: reviewDispatch.reviewPrompt,
       createdAt: reviewDispatch.reviewStartedAt,
     });
     expect(() =>
@@ -632,9 +634,9 @@ describe("durable exact-head CI and independent review loop", () => {
     const wrongRequester = setup.tasks.add({
       runId: "wrong-reviewer-requester",
       agentId: reviewDispatch.reviewerAgentId,
-      requesterAgentId: "other-supervisor",
+      sessionKey: "agent:other-supervisor:test",
       label: null,
-      task: reviewDispatch.reviewPrompt,
+      title: reviewDispatch.reviewPrompt,
       createdAt: reviewDispatch.reviewStartedAt,
     });
     expect(() =>
@@ -676,15 +678,15 @@ describe("durable exact-head CI and independent review loop", () => {
       runId: "shared-review-run-id",
       agentId: reviewDispatch.reviewerAgentId,
       label: null,
-      task: reviewDispatch.reviewPrompt,
+      title: reviewDispatch.reviewPrompt,
       createdAt: reviewDispatch.reviewStartedAt,
     });
     setup.tasks.add({
       runId: reviewer.runId,
       agentId: reviewDispatch.reviewerAgentId,
-      requesterAgentId: reviewDispatch.reviewerAgentId,
+      sessionKey: "agent:sanctuary-code-reviewer:inner",
       label: null,
-      task: `[Subagent Context]\n${reviewDispatch.reviewPrompt}`,
+      title: `[Subagent Context]\n${reviewDispatch.reviewPrompt}`,
       createdAt: reviewDispatch.reviewStartedAt + 1,
     });
 
@@ -711,14 +713,14 @@ describe("durable exact-head CI and independent review loop", () => {
       runId: "historical-reviewer",
       agentId: reviewDispatch.reviewerAgentId,
       label: null,
-      task: reviewDispatch.reviewPrompt,
+      title: reviewDispatch.reviewPrompt,
       createdAt: reviewDispatch.reviewStartedAt - 1,
     });
     const current = setup.tasks.add({
       runId: "current-reviewer",
       agentId: reviewDispatch.reviewerAgentId,
       label: null,
-      task: reviewDispatch.reviewPrompt,
+      title: reviewDispatch.reviewPrompt,
       createdAt: reviewDispatch.reviewStartedAt,
     });
 

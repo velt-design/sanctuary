@@ -107,6 +107,7 @@ class FakeFlows {
 }
 
 class FakeTasks {
+  sessionKey = "agent:sanctuary-engineering-supervisor:test";
   records = new Map<string, RecordValue>();
 
   add(input: RecordValue) {
@@ -115,7 +116,7 @@ class FakeTasks {
       runtime: "subagent",
       status: "running",
       agentId: "sanctuary-coding-worker",
-      requesterAgentId: "sanctuary-engineering-supervisor",
+      sessionKey: this.sessionKey,
       childSessionKey: `agent:sanctuary-coding-worker:subagent:${this.records.size + 1}`,
       ...input,
     };
@@ -126,6 +127,8 @@ class FakeTasks {
   resolve = (token: string) =>
     this.records.get(token) ??
     [...this.records.values()].find((task) => task.runId === token);
+
+  get = (taskId: string) => this.records.get(taskId);
 
   list = () => [...this.records.values()];
 
@@ -267,7 +270,7 @@ function attachRunning(
   const task = setup.tasks.add({
     runId: `run-${dispatch.taskId}-${dispatch.attempt}`,
     label: null,
-    task: dispatch.workerPrompt,
+    title: dispatch.workerPrompt,
     createdAt: dispatch.attemptStartedAt,
   });
   const attached = setup.controller().attach({
@@ -407,13 +410,13 @@ describe("durable engineering supervision", () => {
     setup.tasks.add({
       runId: "run-historical-matching-worker",
       label: null,
-      task: dispatch.workerPrompt,
+      title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt - 1,
     });
     const native = setup.tasks.add({
       runId: "run-spawn-attach-recovery",
       label: null,
-      task: dispatch.workerPrompt,
+      title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
 
@@ -441,14 +444,14 @@ describe("durable engineering supervision", () => {
     const native = setup.tasks.add({
       runId: "run-shared-native-id",
       label: null,
-      task: dispatch.workerPrompt,
+      title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
     setup.tasks.add({
       runId: native.runId,
-      requesterAgentId: "sanctuary-coding-worker",
+      sessionKey: "agent:sanctuary-coding-worker:inner",
       label: null,
-      task: `[Subagent Context]\n${dispatch.workerPrompt}`,
+      title: `[Subagent Context]\n${dispatch.workerPrompt}`,
       createdAt: dispatch.attemptStartedAt + 1,
     });
 
@@ -473,7 +476,7 @@ describe("durable engineering supervision", () => {
       setup.tasks.add({
         runId: `run-duplicate-${suffix}`,
         label: null,
-        task: dispatch.workerPrompt,
+        title: dispatch.workerPrompt,
         createdAt: dispatch.attemptStartedAt,
       });
     }
@@ -496,7 +499,7 @@ describe("durable engineering supervision", () => {
       runId: "run-wrong-agent",
       agentId: "other-agent",
       label: null,
-      task: dispatch.workerPrompt,
+      title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
 
@@ -517,9 +520,9 @@ describe("durable engineering supervision", () => {
 
     setup.tasks.add({
       runId: "run-wrong-requester",
-      requesterAgentId: "other-supervisor",
+      sessionKey: "agent:other-supervisor:test",
       label: null,
-      task: dispatch.workerPrompt,
+      title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
     expect(() =>
@@ -533,7 +536,7 @@ describe("durable engineering supervision", () => {
     setup.tasks.add({
       runId: "run-wrong-prompt",
       label: null,
-      task: `${dispatch.workerPrompt}\nwrong`,
+      title: `${dispatch.workerPrompt}\nwrong`,
       createdAt: dispatch.attemptStartedAt,
     });
     expect(() =>

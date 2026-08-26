@@ -65,14 +65,16 @@ export function buildWorkerDispatch({
 }
 
 export function findNativeDispatchMatches(taskRuns, workerDispatch) {
+  const supervisorSessionPrefix = `agent:${ENGINEERING_SUPERVISOR_AGENT}:`;
   return taskRuns
     .list()
     .filter(
       (task) =>
+        taskRuns.sessionKey.startsWith(supervisorSessionPrefix) &&
+        task.sessionKey === taskRuns.sessionKey &&
         task.runtime === "subagent" &&
         task.agentId === workerDispatch.workerAgentId &&
-        task.requesterAgentId === ENGINEERING_SUPERVISOR_AGENT &&
-        task.task === workerDispatch.workerPrompt &&
+        task.title === workerDispatch.workerPrompt &&
         Number.isSafeInteger(task.createdAt) &&
         task.createdAt >= workerDispatch.attemptStartedAt &&
         task.createdAt <= workerDispatch.attemptDeadlineAt,
@@ -84,14 +86,17 @@ export function assertAttachableNativeTask({
   runId,
   expectedDispatch,
   attempt,
+  supervisorSessionKey,
 }) {
+  const supervisorSessionPrefix = `agent:${ENGINEERING_SUPERVISOR_AGENT}:`;
   if (
     !task ||
+    !supervisorSessionKey.startsWith(supervisorSessionPrefix) ||
+    task.sessionKey !== supervisorSessionKey ||
     task.runId !== runId ||
     task.runtime !== "subagent" ||
     task.agentId !== expectedDispatch.workerAgentId ||
-    task.requesterAgentId !== ENGINEERING_SUPERVISOR_AGENT ||
-    task.task !== expectedDispatch.workerPrompt ||
+    task.title !== expectedDispatch.workerPrompt ||
     !task.childSessionKey ||
     !NATIVE_STATUSES.has(task.status) ||
     !Number.isSafeInteger(task.createdAt) ||

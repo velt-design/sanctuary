@@ -317,6 +317,7 @@ export function createCiReviewController(options) {
       runId,
       expectedDispatch: dispatch,
       review: state.review,
+      supervisorSessionKey: taskRuns.sessionKey,
     });
     const at = timestamp(now);
     state = checkpointState(
@@ -392,8 +393,9 @@ export function createCiReviewController(options) {
       );
     }
     const task = assertNativeReviewerIdentity(
-      taskRuns.resolve(state.review.runId),
+      taskRuns.get(state.review.taskRunId),
       state.review,
+      taskRuns.sessionKey,
     );
     if (["queued", "running"].includes(task.status)) {
       if (timestamp(now) <= state.review.deadlineAt) {
