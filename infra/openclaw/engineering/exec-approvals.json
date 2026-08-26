@@ -8,8 +8,8 @@
   },
   "agents": {
     "sanctuary-engineering-supervisor": {
-      "security": "deny",
-      "ask": "off",
+      "security": "allowlist",
+      "ask": "on-miss",
       "askFallback": "deny",
       "autoAllowSkills": false
     },
@@ -20,8 +20,8 @@
       "autoAllowSkills": false
     },
     "sanctuary-code-reviewer": {
-      "security": "deny",
-      "ask": "off",
+      "security": "allowlist",
+      "ask": "on-miss",
       "askFallback": "deny",
       "autoAllowSkills": false
     }

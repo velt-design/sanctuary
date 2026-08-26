@@ -1,7 +1,7 @@
 {
   "id": "sanctuary-engineering-lanes",
   "name": "Sanctuary Engineering Lanes",
-  "description": "Provides manifest-bound worktree, durable supervision, draft-PR, and cleanup tools for the isolated Sanctuary engineering runtime.",
+  "description": "Provides manifest-bound worktree, durable supervision, draft-PR, cleanup tools, and fail-closed oversight tool policy for the isolated Sanctuary engineering runtime.",
   "contracts": {
     "tools": [
       "sanctuary_engineering_lane_provision",

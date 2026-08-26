@@ -12,6 +12,7 @@ import {
 } from "./supervision-contract.mjs";
 import { createEngineeringSupervisionController } from "./supervision-runtime.mjs";
 import { watchEngineeringCi } from "./supervision-ci-watch.mjs";
+import { enforceOversightToolPolicy } from "./oversight-tool-policy.mjs";
 
 const taskIdentityProperties = {
   taskId: {
@@ -222,6 +223,8 @@ export default definePluginEntry({
   description:
     "Manifest-bound worktree, durable supervision, draft-PR, and cleanup operations for Sanctuary engineering.",
   register(api) {
+    api.on("before_tool_call", enforceOversightToolPolicy, { priority: 100 });
+
     api.registerTool((context) => supervisionTools(api, context), {
       optional: true,
       names: ENGINEERING_SUPERVISION_TOOL_NAMES,

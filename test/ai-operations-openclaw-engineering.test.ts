@@ -20,6 +20,10 @@ import {
   parseEngineeringGatewayPid,
   stopEngineeringGateway,
 } from "../scripts/ai/mac-openclaw-engineering-stop.mjs";
+import {
+  OVERSIGHT_ALLOWED_TOOLS,
+  enforceOversightToolPolicy,
+} from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/oversight-tool-policy.mjs";
 
 const config = JSON.parse(
   readFileSync(resolve("infra/openclaw/engineering/openclaw.json"), "utf8"),
@@ -141,7 +145,7 @@ describe("isolated OpenClaw engineering runtime", () => {
     );
     expect(lead.tools.exec).toMatchObject({
       host: "gateway",
-      mode: "deny",
+      mode: "auto",
     });
     expect(lead.tools.deny).toEqual(
       expect.arrayContaining([
@@ -204,7 +208,7 @@ describe("isolated OpenClaw engineering runtime", () => {
           ],
         },
       },
-      exec: { host: "gateway", mode: "deny" },
+      exec: { host: "gateway", mode: "auto" },
       deny: ["exec", "process", "write", "edit", "apply_patch"],
       elevated: { enabled: false },
     });
@@ -214,8 +218,8 @@ describe("isolated OpenClaw engineering runtime", () => {
     });
     expect(approvals.agents).toMatchObject({
       "sanctuary-engineering-supervisor": {
-        security: "deny",
-        ask: "off",
+        security: "allowlist",
+        ask: "on-miss",
         askFallback: "deny",
       },
       "sanctuary-coding-worker": {
@@ -224,11 +228,44 @@ describe("isolated OpenClaw engineering runtime", () => {
         askFallback: "full",
       },
       "sanctuary-code-reviewer": {
-        security: "deny",
-        ask: "off",
+        security: "allowlist",
+        ask: "on-miss",
         askFallback: "deny",
       },
     });
+  });
+
+  it("blocks every unlisted native tool for oversight roles", () => {
+    expect(OVERSIGHT_ALLOWED_TOOLS["sanctuary-engineering-supervisor"]).toEqual(
+      agentsById["sanctuary-engineering-supervisor"].tools.alsoAllow,
+    );
+    expect(OVERSIGHT_ALLOWED_TOOLS["sanctuary-code-reviewer"]).toEqual(
+      agentsById["sanctuary-code-reviewer"].tools.alsoAllow,
+    );
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "bash" },
+        { agentId: "sanctuary-code-reviewer" },
+      ),
+    ).toMatchObject({ block: true });
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "apply_patch" },
+        { agentId: "sanctuary-engineering-supervisor" },
+      ),
+    ).toMatchObject({ block: true });
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "sanctuary_engineering_lane_status" },
+        { agentId: "sanctuary-code-reviewer" },
+      ),
+    ).toBeUndefined();
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "bash" },
+        { agentId: "sanctuary-coding-worker" },
+      ),
+    ).toBeUndefined();
   });
 
   it("pins the isolated Codex harness and disables unrelated surfaces", () => {
@@ -376,7 +413,7 @@ describe("isolated OpenClaw engineering runtime", () => {
   it("preseeds approvals, pins the official plugin, and starts separately", () => {
     expect(CODEX_PLUGIN_SPEC).toBe("@openclaw/codex@2026.7.1-1");
     expect(LANE_PLUGIN_ID).toBe("sanctuary-engineering-lanes");
-    expect(LANE_PLUGIN_VERSION).toBe("1.2.0");
+    expect(LANE_PLUGIN_VERSION).toBe("1.2.1");
     expect(activationSource.indexOf("prepareApprovals();")).toBeLessThan(
       activationSource.lastIndexOf('runOpenClaw(["config", "validate"]'),
     );
