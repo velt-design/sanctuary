@@ -141,7 +141,7 @@ describe("isolated OpenClaw engineering runtime", () => {
     );
     expect(lead.tools.exec).toMatchObject({
       host: "gateway",
-      mode: "off",
+      mode: "deny",
     });
     expect(lead.tools.deny).toEqual(
       expect.arrayContaining([
@@ -204,7 +204,7 @@ describe("isolated OpenClaw engineering runtime", () => {
           ],
         },
       },
-      exec: { host: "gateway", mode: "off" },
+      exec: { host: "gateway", mode: "deny" },
       deny: ["exec", "process", "write", "edit", "apply_patch"],
       elevated: { enabled: false },
     });
@@ -214,8 +214,8 @@ describe("isolated OpenClaw engineering runtime", () => {
     });
     expect(approvals.agents).toMatchObject({
       "sanctuary-engineering-supervisor": {
-        security: "allowlist",
-        ask: "on-miss",
+        security: "deny",
+        ask: "off",
         askFallback: "deny",
       },
       "sanctuary-coding-worker": {
@@ -224,8 +224,8 @@ describe("isolated OpenClaw engineering runtime", () => {
         askFallback: "full",
       },
       "sanctuary-code-reviewer": {
-        security: "allowlist",
-        ask: "on-miss",
+        security: "deny",
+        ask: "off",
         askFallback: "deny",
       },
     });
