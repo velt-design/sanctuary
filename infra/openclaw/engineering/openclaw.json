@@ -252,7 +252,7 @@
       ]
     },
     "sessions": {
-      "visibility": "tree"
+      "visibility": "all"
     },
     "sessions_spawn": {
       "attachments": {

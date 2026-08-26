@@ -172,6 +172,11 @@ describe("isolated OpenClaw engineering runtime", () => {
       maxConcurrent: 1,
       requireAgentId: true,
     });
+    expect(config.tools.agentToAgent).toEqual({
+      enabled: true,
+      allow: ENGINEERING_AGENT_IDS,
+    });
+    expect(config.tools.sessions).toEqual({ visibility: "all" });
   });
 
   it("keeps no-prompt coding authority on the worker only", () => {

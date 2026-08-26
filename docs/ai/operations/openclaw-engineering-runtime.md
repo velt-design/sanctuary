@@ -49,6 +49,12 @@ the bounded supervisor is marked default. The coding worker and reviewer remain
 explicit named children and cannot become an implicit execution route. Operator
 commands still name the supervisor; do not start the worker directly.
 
+Session history is visible across this isolated three-agent fleet so the
+supervisor can validate a worker or reviewer report after a gateway restart.
+OpenClaw agent-to-agent access remains enabled only for the three exact
+engineering role IDs; the separate default OpenClaw instance and its sessions
+are outside this state and remain invisible.
+
 ## Why routine prompts stop
 
 The worker's two execution-policy layers both resolve to full execution with
