@@ -122,7 +122,7 @@ export function findNativeReviewMatches(taskRuns, dispatch) {
         task.runtime === "subagent" &&
         task.agentId === dispatch.reviewerAgentId &&
         task.requesterAgentId === ENGINEERING_SUPERVISOR_AGENT &&
-        task.title === dispatch.reviewPrompt &&
+        task.task === dispatch.reviewPrompt &&
         Number.isSafeInteger(task.createdAt) &&
         task.createdAt >= dispatch.reviewStartedAt &&
         task.createdAt <= dispatch.reviewDeadlineAt,
@@ -141,7 +141,7 @@ export function assertAttachableReviewerTask({
     task.runtime !== "subagent" ||
     task.agentId !== ENGINEERING_REVIEWER_AGENT ||
     task.requesterAgentId !== ENGINEERING_SUPERVISOR_AGENT ||
-    task.title !== expectedDispatch.reviewPrompt ||
+    task.task !== expectedDispatch.reviewPrompt ||
     !task.childSessionKey ||
     !REVIEW_STATUSES.has(task.status) ||
     !Number.isSafeInteger(task.createdAt) ||
@@ -164,7 +164,7 @@ export function assertNativeReviewerIdentity(task, review) {
     task.agentId !== ENGINEERING_REVIEWER_AGENT ||
     task.requesterAgentId !== ENGINEERING_SUPERVISOR_AGENT ||
     task.childSessionKey !== review.childSessionKey ||
-    hashText(task.title ?? "") !== review.promptHash
+    hashText(task.task ?? "") !== review.promptHash
   ) {
     throw new Error(
       "The native OpenClaw reviewer no longer matches its evidence packet.",

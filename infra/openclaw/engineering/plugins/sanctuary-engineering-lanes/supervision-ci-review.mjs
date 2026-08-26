@@ -304,8 +304,16 @@ export function createCiReviewController(options) {
       );
     }
     const dispatch = reviewDispatch(flow, state);
+    const nativeMatches = findNativeReviewMatches(taskRuns, dispatch).filter(
+      (task) => task.runId === runId,
+    );
+    if (nativeMatches.length !== 1) {
+      throw new Error(
+        "The run ID does not identify exactly one named Sanctuary code reviewer.",
+      );
+    }
     const task = assertAttachableReviewerTask({
-      task: taskRuns.resolve(runId),
+      task: nativeMatches[0],
       runId,
       expectedDispatch: dispatch,
       review: state.review,

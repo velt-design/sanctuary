@@ -408,8 +408,17 @@ export function createEngineeringSupervisionController(options = {}) {
     const attempt = activeAttempt(state);
     const laneResult = lane.provision(state.manifest);
     const expectedDispatch = dispatch(flow, laneResult);
+    const nativeMatches = findNativeDispatchMatches(
+      taskRuns,
+      expectedDispatch,
+    ).filter((task) => task.runId === runId);
+    if (nativeMatches.length !== 1) {
+      throw new Error(
+        "The run ID does not identify exactly one named Sanctuary coding worker.",
+      );
+    }
     const task = assertAttachableNativeTask({
-      task: taskRuns.resolve(runId),
+      task: nativeMatches[0],
       runId,
       expectedDispatch,
       attempt,

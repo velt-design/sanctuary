@@ -119,13 +119,13 @@ class FakeTasks {
       childSessionKey: `agent:sanctuary-coding-worker:subagent:${this.records.size + 1}`,
       ...input,
     };
-    this.records.set(task.runId, task);
+    this.records.set(task.id, task);
     return task;
   }
 
   resolve = (token: string) =>
     this.records.get(token) ??
-    [...this.records.values()].find((task) => task.id === token);
+    [...this.records.values()].find((task) => task.runId === token);
 
   list = () => [...this.records.values()];
 
@@ -267,7 +267,7 @@ function attachRunning(
   const task = setup.tasks.add({
     runId: `run-${dispatch.taskId}-${dispatch.attempt}`,
     label: null,
-    title: dispatch.workerPrompt,
+    task: dispatch.workerPrompt,
     createdAt: dispatch.attemptStartedAt,
   });
   const attached = setup.controller().attach({
@@ -406,13 +406,13 @@ describe("durable engineering supervision", () => {
     setup.tasks.add({
       runId: "run-historical-matching-worker",
       label: null,
-      title: dispatch.workerPrompt,
+      task: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt - 1,
     });
     const native = setup.tasks.add({
       runId: "run-spawn-attach-recovery",
       label: null,
-      title: dispatch.workerPrompt,
+      task: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
 
@@ -433,6 +433,36 @@ describe("durable engineering supervision", () => {
     });
   });
 
+  it("attaches the exact supervisor task when an inner task shares its run ID", () => {
+    const setup = fixture();
+    setup.controller().enqueue(manifest("shared_native_run_id"));
+    const dispatch = setup.controller().claim();
+    const native = setup.tasks.add({
+      runId: "run-shared-native-id",
+      label: null,
+      task: dispatch.workerPrompt,
+      createdAt: dispatch.attemptStartedAt,
+    });
+    setup.tasks.add({
+      runId: native.runId,
+      requesterAgentId: "sanctuary-coding-worker",
+      label: null,
+      task: `[Subagent Context]\n${dispatch.workerPrompt}`,
+      createdAt: dispatch.attemptStartedAt + 1,
+    });
+
+    expect(
+      setup.controller().attach({
+        flowId: dispatch.flowId,
+        expectedRevision: dispatch.expectedRevision,
+        runId: native.runId,
+      }),
+    ).toMatchObject({
+      phase: "worker_running",
+      activeRunId: native.runId,
+    });
+  });
+
   it("blocks instead of choosing between duplicate unbound native workers", async () => {
     const setup = fixture();
     const task = manifest("duplicate_spawn_recovery");
@@ -442,7 +472,7 @@ describe("durable engineering supervision", () => {
       setup.tasks.add({
         runId: `run-duplicate-${suffix}`,
         label: null,
-        title: dispatch.workerPrompt,
+        task: dispatch.workerPrompt,
         createdAt: dispatch.attemptStartedAt,
       });
     }
@@ -465,7 +495,7 @@ describe("durable engineering supervision", () => {
       runId: "run-wrong-agent",
       agentId: "other-agent",
       label: null,
-      title: dispatch.workerPrompt,
+      task: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
 
@@ -488,7 +518,7 @@ describe("durable engineering supervision", () => {
       runId: "run-wrong-requester",
       requesterAgentId: "other-supervisor",
       label: null,
-      title: dispatch.workerPrompt,
+      task: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
     expect(() =>
@@ -502,7 +532,7 @@ describe("durable engineering supervision", () => {
     setup.tasks.add({
       runId: "run-wrong-prompt",
       label: null,
-      title: `${dispatch.workerPrompt}\nwrong`,
+      task: `${dispatch.workerPrompt}\nwrong`,
       createdAt: dispatch.attemptStartedAt,
     });
     expect(() =>

@@ -70,7 +70,7 @@ export function findNativeDispatchMatches(taskRuns, workerDispatch) {
         task.runtime === "subagent" &&
         task.agentId === workerDispatch.workerAgentId &&
         task.requesterAgentId === ENGINEERING_SUPERVISOR_AGENT &&
-        task.title === workerDispatch.workerPrompt &&
+        task.task === workerDispatch.workerPrompt &&
         Number.isSafeInteger(task.createdAt) &&
         task.createdAt >= workerDispatch.attemptStartedAt &&
         task.createdAt <= workerDispatch.attemptDeadlineAt,
@@ -89,7 +89,7 @@ export function assertAttachableNativeTask({
     task.runtime !== "subagent" ||
     task.agentId !== expectedDispatch.workerAgentId ||
     task.requesterAgentId !== ENGINEERING_SUPERVISOR_AGENT ||
-    task.title !== expectedDispatch.workerPrompt ||
+    task.task !== expectedDispatch.workerPrompt ||
     !task.childSessionKey ||
     !NATIVE_STATUSES.has(task.status) ||
     !Number.isSafeInteger(task.createdAt) ||

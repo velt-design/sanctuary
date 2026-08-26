@@ -1,6 +1,6 @@
 {
   "name": "@sanctuary/openclaw-engineering-lanes",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "private": true,
   "type": "module",
   "peerDependencies": {
