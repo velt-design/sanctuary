@@ -17,8 +17,9 @@ prove that the Mac mini, private network, OpenClaw, or worker has been installed
 5. `machine-credential-ceremony.md`: least-privilege 1Password and GitHub machine identities.
 6. `openclaw-dark-install.md`: pinned, deny-all OpenClaw installation checkpoint.
 7. `openclaw-development.md`: no-prompt repository-development activation contract.
-8. `node-rebuild-and-revocation.md`: planned rebuild, compromise rebuild, central revocation, and recovery proof.
-9. `ai-incident-response.md`: triage, containment, evidence, recovery, and notification protocol.
+8. `autonomous-engineering.md`: Engineering Lead/Codex worker roles, strict task and completion contracts, PR stack, and promotion rehearsals.
+9. `node-rebuild-and-revocation.md`: planned rebuild, compromise rebuild, central revocation, and recovery proof.
+10. `ai-incident-response.md`: triage, containment, evidence, recovery, and notification protocol.
 
 ## Current Deployment Boundary
 
@@ -35,12 +36,12 @@ prove that the Mac mini, private network, OpenClaw, or worker has been installed
 The repository can define acceptance criteria but cannot create or choose these
 accounts or physical controls without the owner:
 
-| Decision | Recommended starting point | Required before |
-| --- | --- | --- |
-| Private overlay | Tailscale with a tagged staging-node identity and least-privilege policy | Remote administration |
-| Container backend | Maintained Docker- or Podman-compatible macOS runtime; confirm licensing and support | OpenClaw sandbox verification |
-| Secret vault | Business-owned password/secret manager plus macOS Keychain for machine-local use | Issuing any non-disposable service credential |
-| Recovery custody | Jordan, with the FileVault recovery key stored away from the Mac | Enabling FileVault |
+| Decision            | Recommended starting point                                                                          | Required before                                        |
+| ------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Private overlay     | Tailscale with a tagged staging-node identity and least-privilege policy                            | Remote administration                                  |
+| Container backend   | Maintained Docker- or Podman-compatible macOS runtime; confirm licensing and support                | OpenClaw sandbox verification                          |
+| Secret vault        | Business-owned password/secret manager plus macOS Keychain for machine-local use                    | Issuing any non-disposable service credential          |
+| Recovery custody    | Jordan, with the FileVault recovery key stored away from the Mac                                    | Enabling FileVault                                     |
 | UPS and backup disk | Optional resilience upgrade when the node begins keeping unique local state or production workloads | Production promotion or a restore-based recovery claim |
 
 Record the selected products and owners in the private asset register. Do not

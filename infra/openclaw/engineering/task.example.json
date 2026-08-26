@@ -1,0 +1,69 @@
+{
+  "schema": "sanctuary-engineering-task-v1",
+  "taskId": "eng_20260826_foundation_contracts",
+  "goalId": "goal_20260826_autonomous_engineering",
+  "objective": "Add the machine-checked engineering task and completion contracts.",
+  "requestedBy": "Jordan / Sanctuary Pergolas",
+  "base": {
+    "ref": "main",
+    "sha": "0bace9e852becf0d5c8d4a49bb2f7f759f0bed75"
+  },
+  "branch": "ai/autonomy-foundation-contracts",
+  "risk": "medium",
+  "ownerLane": "ai-engineering-contracts",
+  "roles": {
+    "supervisor": "engineering_lead",
+    "worker": "coding_worker",
+    "reviewer": "code_reviewer"
+  },
+  "readFirst": ["AGENTS.md", "docs/ai/sanctuary-ai-master-plan.md"],
+  "ownedPaths": [
+    "packages/ai/**",
+    "docs/ai/**",
+    "docs/testing-and-qa.md",
+    "infra/openclaw/engineering/**",
+    "scripts/ai/engineering-contract.ts",
+    "test/ai-engineering-contract-cli.test.ts",
+    "package.json"
+  ],
+  "excludedPaths": ["apps/portal/**", "apps/marketing/**", "supabase/**"],
+  "dependencies": [],
+  "acceptanceCriteria": [
+    "Task and completion contracts reject unknown fields and unsafe terminal states.",
+    "The worker prompt is generated from a validated immutable manifest.",
+    "Human-only merge and prohibited production effects are machine-enforced."
+  ],
+  "verification": {
+    "focusedCommands": [
+      "npx vitest run packages/ai/src/engineering.test.ts",
+      "npx tsc -p packages/ai/tsconfig.typecheck.json --noEmit --incremental false",
+      "npx eslint packages/ai/src/engineering.ts packages/ai/src/engineering-completion.ts packages/ai/src/engineering-contracts.ts packages/ai/src/engineering-schema.ts packages/ai/src/engineering-task.ts packages/ai/src/engineering.test.ts test/ai-engineering-contract-cli.test.ts"
+    ],
+    "ciChecks": ["AI Foundation / Provider-neutral contracts"],
+    "visualEvidence": {
+      "required": false,
+      "scenarios": []
+    }
+  },
+  "limits": {
+    "maxWorkers": 1,
+    "maxAttempts": 3,
+    "workerTimeoutMinutes": 60,
+    "maxCostCents": 5000
+  },
+  "approvals": {
+    "planning": "approved",
+    "merge": "human_required",
+    "scopeExpansion": "human_required",
+    "production": "prohibited"
+  },
+  "outputs": {
+    "draftPullRequest": true,
+    "completionReport": true
+  },
+  "stopConditions": [
+    "A source-of-truth owner is unclear.",
+    "Work requires an excluded path.",
+    "A required check would need to be weakened or skipped."
+  ]
+}

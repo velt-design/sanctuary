@@ -1,0 +1,77 @@
+{
+  "schema": "sanctuary-engineering-completion-v1",
+  "taskId": "eng_20260826_foundation_contracts",
+  "manifestHash": "sha256:dcbec982eb205b8ec2b5789c43df1f675c130a4e4a24735588b8cc4b31a662f4",
+  "outcome": "succeeded",
+  "branch": "ai/autonomy-foundation-contracts",
+  "baseSha": "0bace9e852becf0d5c8d4a49bb2f7f759f0bed75",
+  "headSha": "850dbac7c014cdd4da398ce885e64662ed223052",
+  "pullRequest": {
+    "number": 73,
+    "url": "https://github.com/velt-design/sanctuary/pull/73",
+    "draft": true
+  },
+  "changedPaths": ["packages/ai/src/engineering.ts"],
+  "acceptanceResults": [
+    {
+      "criterion": "Task and completion contracts reject unknown fields and unsafe terminal states.",
+      "status": "passed",
+      "evidence": "Focused contract tests passed."
+    },
+    {
+      "criterion": "The worker prompt is generated from a validated immutable manifest.",
+      "status": "passed",
+      "evidence": "The CLI prompt-rendering test passed."
+    },
+    {
+      "criterion": "Human-only merge and prohibited production effects are machine-enforced.",
+      "status": "passed",
+      "evidence": "Unsafe completion-state tests passed."
+    }
+  ],
+  "verificationResults": [
+    {
+      "name": "Engineering contract tests",
+      "command": "npx vitest run packages/ai/src/engineering.test.ts",
+      "status": "passed",
+      "summary": "All focused tests passed."
+    },
+    {
+      "name": "AI package typecheck",
+      "command": "npx tsc -p packages/ai/tsconfig.typecheck.json --noEmit --incremental false",
+      "status": "passed",
+      "summary": "The AI package typecheck passed."
+    },
+    {
+      "name": "Engineering contract lint",
+      "command": "npx eslint packages/ai/src/engineering.ts packages/ai/src/engineering-completion.ts packages/ai/src/engineering-contracts.ts packages/ai/src/engineering-schema.ts packages/ai/src/engineering-task.ts packages/ai/src/engineering.test.ts test/ai-engineering-contract-cli.test.ts",
+      "status": "passed",
+      "summary": "Focused engineering contract lint passed."
+    }
+  ],
+  "ciChecks": [
+    {
+      "name": "AI Foundation / Provider-neutral contracts",
+      "status": "pending",
+      "url": null
+    }
+  ],
+  "worker": {
+    "agent": "sanctuary-coding-worker",
+    "model": "openai/gpt-5.6-sol",
+    "sessionIds": ["worker-session-1"],
+    "attempts": 1,
+    "costCents": 0,
+    "startedAt": "2026-08-26T00:00:00.000Z",
+    "completedAt": "2026-08-26T00:05:00.000Z"
+  },
+  "safety": {
+    "worktreeClean": true,
+    "branchPushed": true,
+    "merged": false,
+    "productionEffects": false,
+    "secretScan": "passed"
+  },
+  "limitations": ["CI remains pending at draft creation time."],
+  "nextAction": "Human review and merge after required checks pass."
+}
