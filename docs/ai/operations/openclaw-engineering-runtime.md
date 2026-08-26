@@ -16,15 +16,15 @@ pull requests and merge.
 
 The engineering runtime is a separate OpenClaw instance:
 
-| Surface              | Engineering value                                 |
-| -------------------- | ------------------------------------------------- |
-| State                | `~/.openclaw-sanctuary-engineering`               |
-| Config               | `~/.openclaw-sanctuary-engineering/openclaw.json` |
-| Gateway              | loopback port `19011`, token-authenticated        |
-| CLI                  | `~/bin/sanctuary-openclaw`                        |
-| Workspaces           | `~/.openclaw-sanctuary-engineering/workspaces/**` |
-| Channels and browser | disabled                                          |
-| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` plus reviewed `sanctuary-engineering-lanes@1.0.0` |
+| Surface              | Engineering value                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
+| State                | `~/.openclaw-sanctuary-engineering`                                                            |
+| Config               | `~/.openclaw-sanctuary-engineering/openclaw.json`                                              |
+| Gateway              | loopback port `19011`, token-authenticated                                                     |
+| CLI                  | `~/bin/sanctuary-openclaw`                                                                     |
+| Workspaces           | `~/.openclaw-sanctuary-engineering/workspaces/**`                                              |
+| Channels and browser | disabled                                                                                       |
+| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` plus reviewed `sanctuary-engineering-lanes@1.1.0` |
 
 Activation never writes the default `~/.openclaw/openclaw.json`, approvals,
 agents, sessions, gateway token or gateway process. An unrelated OpenClaw
@@ -38,11 +38,11 @@ which must continue to hold no production credential.
 
 ## Named roles
 
-| Role                               | Authority                                                                                                                                            |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sanctuary-engineering-supervisor` | Read contracts/evidence; use narrow provision/status/cleanup tools; spawn, inspect, steer and wait for named children. No general shell or product-file mutation. |
-| `sanctuary-coding-worker`          | No-prompt coding inside the assigned worker root; focused checks and narrow status/publish tools. One leaf worker cannot spawn another agent. |
-| `sanctuary-code-reviewer`          | Read-only evidence and narrow lane-status review. No shell, mutation, delegation or merge authority. |
+| Role                               | Authority                                                                                                                                                                                                       |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sanctuary-engineering-supervisor` | Read contracts/evidence; use narrow durable-supervision plus lane status/cleanup tools; spawn, inspect, steer and wait for named children. No general shell, direct lane provisioning or product-file mutation. |
+| `sanctuary-coding-worker`          | No-prompt coding inside the assigned worker root; focused checks and narrow status/publish tools. One leaf worker cannot spawn another agent.                                                                   |
+| `sanctuary-code-reviewer`          | Read-only evidence and narrow lane-status review. No shell, mutation, delegation or merge authority.                                                                                                            |
 
 The installed OpenClaw schema requires a deterministic default route, so only
 the bounded supervisor is marked default. The coding worker and reviewer remain
@@ -103,7 +103,8 @@ and fails configured-install lint on errors rather than that version-only warnin
 The full security lint must remain clean.
 
 The lane lifecycle and hosted default-branch promotion block are defined in
-`openclaw-engineering-lanes.md`.
+`openclaw-engineering-lanes.md`. The managed Task Flow, dependency, retry and
+restart contract is defined in `openclaw-engineering-supervision.md`.
 
 Complete one device-code login on the bounded supervisor inside this isolated
 state:

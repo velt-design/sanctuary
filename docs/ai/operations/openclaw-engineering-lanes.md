@@ -14,21 +14,27 @@ The lane runtime binds those facts to local state before a coding worker starts.
 
 ## Narrow tool boundary
 
-The reviewed `sanctuary-engineering-lanes` OpenClaw plugin exposes four optional
-tools. Agent allowlists make their ownership explicit:
+The reviewed `sanctuary-engineering-lanes` OpenClaw plugin exposes four lane
+tools plus six durable-supervision tools. Agent allowlists make their ownership
+explicit. The lane tools are:
 
-| Tool                                   | Allowed role           | Effect                                                                                                                         |
-| -------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `sanctuary_engineering_lane_provision` | Engineering Lead       | Strictly validate the complete manifest; create or resume its exact worktree and return the bound worker prompt.               |
-| `sanctuary_engineering_lane_status`    | Lead, worker, reviewer | Report recorded branch, head, cleanliness, changed paths and draft PR without mutation.                                        |
-| `sanctuary_engineering_lane_publish`   | Coding Worker          | Verify clean committed scope, push only the exact feature ref and create or confirm one open draft PR.                         |
-| `sanctuary_engineering_lane_cleanup`   | Engineering Lead       | Remove only the clean recorded worktree after its remote head and open draft PR still match. Retain local and remote branches. |
+| Tool                                   | Allowed role                                 | Effect                                                                                                                         |
+| -------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `sanctuary_engineering_lane_provision` | Supervision controller and operator CLI only | Strictly validate the complete manifest; create or resume its exact worktree and return the bound worker prompt.               |
+| `sanctuary_engineering_lane_status`    | Lead, worker, reviewer                       | Report recorded branch, head, cleanliness, changed paths and draft PR without mutation.                                        |
+| `sanctuary_engineering_lane_publish`   | Coding Worker                                | Verify clean committed scope, push only the exact feature ref and create or confirm one open draft PR.                         |
+| `sanctuary_engineering_lane_cleanup`   | Engineering Lead                             | Remove only the clean recorded worktree after its remote head and open draft PR still match. Retain local and remote branches. |
 
 The lead and reviewer still have no shell. The worker has coding execution but
 does not need to retrieve a GitHub token or assemble a raw PR command. The
 restricted `gh` wrapper permits Sanctuary reads and explicit draft creation;
 merge, ready-for-review, close, API mutation and other GitHub commands fail
 closed.
+
+The Engineering Lead receives the six queue/checkpoint tools described in
+`openclaw-engineering-supervision.md`, not direct provisioning. This forces
+dependency checks, the one-worker lease, revision fencing and attempt limits to
+run before the lane runtime can create or resume a worktree.
 
 This is a trusted development boundary, not protection from malicious code
 running as `sanctuary-runner`. The separate GitHub branch rule described below

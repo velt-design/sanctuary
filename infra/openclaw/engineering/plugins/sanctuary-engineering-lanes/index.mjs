@@ -6,6 +6,11 @@ import {
   publishEngineeringLane,
   statusEngineeringLane,
 } from "./lane-runtime.mjs";
+import {
+  ENGINEERING_SUPERVISION_TOOL_NAMES,
+  ENGINEERING_WORKER_AGENT,
+} from "./supervision-contract.mjs";
+import { createEngineeringSupervisionController } from "./supervision-runtime.mjs";
 
 const taskIdentityProperties = {
   taskId: {
@@ -25,12 +30,142 @@ function jsonToolResult(value) {
   };
 }
 
+const flowIdentityProperties = {
+  flowId: { type: "string", minLength: 8, maxLength: 200 },
+  expectedRevision: { type: "integer", minimum: 0 },
+};
+
+function supervisionController(api, context) {
+  return createEngineeringSupervisionController({
+    flowRuntime: api.runtime.tasks.flow.fromToolContext(context),
+    taskRuns: api.runtime.tasks.runs.fromToolContext(context),
+    runtimeConfig:
+      context.getRuntimeConfig?.() ??
+      context.runtimeConfig ??
+      context.config ??
+      api.config,
+  });
+}
+
+function supervisionTools(api, context) {
+  if (context.agentId !== "sanctuary-engineering-supervisor") return null;
+  const controller = () => supervisionController(api, context);
+  return [
+    {
+      name: "sanctuary_engineering_supervision_enqueue",
+      label: "Enqueue engineering task",
+      description:
+        "Validate and idempotently enqueue one exact engineering manifest in a durable, revision-fenced OpenClaw Task Flow.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["manifest"],
+        properties: { manifest: { type: "object" } },
+      },
+      executionMode: "sequential",
+      async execute(_id, params) {
+        return jsonToolResult(controller().enqueue(params.manifest));
+      },
+    },
+    {
+      name: "sanctuary_engineering_supervision_claim",
+      label: "Claim next engineering task",
+      description:
+        "Claim the oldest dependency-ready task, provision or resume its exact lane, and return one bounded named-worker dispatch.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {},
+      },
+      executionMode: "sequential",
+      async execute() {
+        return jsonToolResult(controller().claim());
+      },
+    },
+    {
+      name: "sanctuary_engineering_supervision_attach",
+      label: "Attach native worker task",
+      description: `Bind the claimed attempt to the exact native OpenClaw subagent task for ${ENGINEERING_WORKER_AGENT}.`,
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["flowId", "expectedRevision", "runId"],
+        properties: {
+          ...flowIdentityProperties,
+          runId: { type: "string", minLength: 8, maxLength: 200 },
+        },
+      },
+      executionMode: "sequential",
+      async execute(_id, params) {
+        return jsonToolResult(controller().attach(params));
+      },
+    },
+    {
+      name: "sanctuary_engineering_supervision_reconcile",
+      label: "Reconcile worker checkpoint",
+      description:
+        "Reconcile the bound native task with its deadline, retry budget, optional strict completion report, and live lane evidence.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["flowId", "expectedRevision"],
+        properties: {
+          ...flowIdentityProperties,
+          completion: { type: "object" },
+        },
+      },
+      executionMode: "sequential",
+      async execute(_id, params) {
+        return jsonToolResult(await controller().reconcile(params));
+      },
+    },
+    {
+      name: "sanctuary_engineering_supervision_recover",
+      label: "Recover engineering supervision",
+      description:
+        "After a wake or gateway restart, recover the single active flow or claim the next eligible task without duplicating an attempt.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {},
+      },
+      executionMode: "sequential",
+      async execute() {
+        return jsonToolResult(await controller().recover());
+      },
+    },
+    {
+      name: "sanctuary_engineering_supervision_status",
+      label: "Read engineering supervision status",
+      description:
+        "Read one exact durable supervision flow, its revision, phase, attempts, native task, cost and last checkpoint.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["taskId", "manifestHash"],
+        properties: taskIdentityProperties,
+      },
+      executionMode: "sequential",
+      async execute(_id, params) {
+        return jsonToolResult(
+          controller().status(params.taskId, params.manifestHash),
+        );
+      },
+    },
+  ];
+}
+
 export default definePluginEntry({
   id: "sanctuary-engineering-lanes",
   name: "Sanctuary Engineering Lanes",
   description:
-    "Manifest-bound worktree, draft-PR, and cleanup operations for Sanctuary engineering.",
+    "Manifest-bound worktree, durable supervision, draft-PR, and cleanup operations for Sanctuary engineering.",
   register(api) {
+    api.registerTool((context) => supervisionTools(api, context), {
+      optional: true,
+      names: ENGINEERING_SUPERVISION_TOOL_NAMES,
+    });
+
     api.registerTool(
       {
         name: "sanctuary_engineering_lane_provision",

@@ -1,0 +1,93 @@
+{
+  "schema": "sanctuary-engineering-task-v1",
+  "taskId": "eng_20260826_durable_supervision",
+  "goalId": "goal_20260826_autonomous_engineering",
+  "objective": "Give the isolated OpenClaw Engineering Lead a durable one-worker task queue with dependency gates, revision-fenced checkpoints, bounded retries, native task-ledger reconciliation, and same-lane restart recovery.",
+  "requestedBy": "Jordan / Sanctuary Pergolas",
+  "base": {
+    "ref": "ai/autonomy-foundation-lanes",
+    "sha": "249cf0dcabc268b1f62e8bc95e4b32bb2397705b"
+  },
+  "branch": "ai/autonomy-foundation-supervision",
+  "risk": "medium",
+  "ownerLane": "ai-engineering-supervision",
+  "roles": {
+    "supervisor": "engineering_lead",
+    "worker": "coding_worker",
+    "reviewer": "code_reviewer"
+  },
+  "readFirst": [
+    "AGENTS.md",
+    "docs/ai/operations/autonomous-engineering.md",
+    "docs/ai/operations/openclaw-engineering-runtime.md",
+    "docs/ai/operations/openclaw-engineering-lanes.md",
+    "docs/parallel-work-guardrails.md",
+    "docs/target-architecture.md"
+  ],
+  "ownedPaths": [
+    "infra/openclaw/engineering/**",
+    "scripts/ai/**",
+    "test/ai-operations-engineering-supervision.test.ts",
+    "test/ai-operations-openclaw-engineering.test.ts",
+    "docs/ai/operations/**",
+    "docs/decision-log.md",
+    "scripts/dead-code-registry.json",
+    "package.json"
+  ],
+  "excludedPaths": [
+    "apps/portal/**",
+    "apps/marketing/**",
+    "supabase/**",
+    ".github/workflows/**"
+  ],
+  "dependencies": ["eng_20260826_lane_provisioning"],
+  "acceptanceCriteria": [
+    "Each exact manifest is enqueued once in a managed OpenClaw Task Flow whose state survives gateway restart and rejects stale revision writes.",
+    "The oldest eligible task is claimed only after every declared dependency has a succeeded supervision flow, and no second worker can be dispatched while one is ready or running.",
+    "A dispatch binds one attempt, deterministic dispatch key, stable OpenClaw task name and label, exact lane prompt, pinned worker timeout and native task-run identity without incrementing on repeated recovery.",
+    "Native succeeded, failed, timed-out, cancelled and lost task states reconcile deterministically; only retryable outcomes resume the same manifest lane and retries cannot exceed the manifest limit.",
+    "A succeeded worker must provide a strict completion report that matches the manifest, branch, base, attempt, cost and live lane evidence before the flow succeeds.",
+    "A gateway-restart recovery pass returns the existing dispatch, waits on an active native run, or creates one bounded same-lane retry without duplicating a branch, worktree, attempt or task flow.",
+    "The Engineering Lead has only the narrow supervision and lane tools; worker, reviewer, merge and production boundaries remain unchanged."
+  ],
+  "verification": {
+    "focusedCommands": [
+      "npm run test:ai:ops",
+      "npm run test:ai",
+      "npm run docs:guard",
+      "npm run packages:guard",
+      "npm run architecture:changed:strict",
+      "node --check infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/index.mjs",
+      "sanctuary-openclaw plugins inspect sanctuary-engineering-lanes --runtime --json",
+      "sanctuary-openclaw tasks flow list --json",
+      "sanctuary-openclaw tasks audit --json"
+    ],
+    "ciChecks": ["Portal Quality", "AI operations tests"],
+    "visualEvidence": {
+      "required": false,
+      "scenarios": []
+    }
+  },
+  "limits": {
+    "maxWorkers": 1,
+    "maxAttempts": 3,
+    "workerTimeoutMinutes": 60,
+    "maxCostCents": 5000
+  },
+  "approvals": {
+    "planning": "approved",
+    "merge": "human_required",
+    "scopeExpansion": "human_required",
+    "production": "prohibited"
+  },
+  "outputs": {
+    "draftPullRequest": true,
+    "completionReport": true
+  },
+  "stopConditions": [
+    "A manifest, dependency, flow owner, revision, lane, native task, worker identity or completion identity does not match exactly.",
+    "A retry would exceed the manifest attempt, time or cost limit or would follow a blocked, unsafe, cancelled or unclassified outcome.",
+    "Recovery would create a second active worker, branch, worktree, flow or attempt instead of resuming the existing owner evidence.",
+    "Implementation would enable merge, deployment, production access, customer contact, raw credentials, general supervisor shell access or an unrelated scheduler."
+  ]
+}

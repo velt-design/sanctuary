@@ -1,20 +1,32 @@
 {
   "id": "sanctuary-engineering-lanes",
   "name": "Sanctuary Engineering Lanes",
-  "description": "Provides manifest-bound worktree, draft-PR, and cleanup tools for the isolated Sanctuary engineering runtime.",
+  "description": "Provides manifest-bound worktree, durable supervision, draft-PR, and cleanup tools for the isolated Sanctuary engineering runtime.",
   "contracts": {
     "tools": [
       "sanctuary_engineering_lane_provision",
       "sanctuary_engineering_lane_status",
       "sanctuary_engineering_lane_publish",
-      "sanctuary_engineering_lane_cleanup"
+      "sanctuary_engineering_lane_cleanup",
+      "sanctuary_engineering_supervision_enqueue",
+      "sanctuary_engineering_supervision_claim",
+      "sanctuary_engineering_supervision_attach",
+      "sanctuary_engineering_supervision_reconcile",
+      "sanctuary_engineering_supervision_recover",
+      "sanctuary_engineering_supervision_status"
     ]
   },
   "toolMetadata": {
     "sanctuary_engineering_lane_provision": { "optional": true },
     "sanctuary_engineering_lane_status": { "optional": true },
     "sanctuary_engineering_lane_publish": { "optional": true },
-    "sanctuary_engineering_lane_cleanup": { "optional": true }
+    "sanctuary_engineering_lane_cleanup": { "optional": true },
+    "sanctuary_engineering_supervision_enqueue": { "optional": true },
+    "sanctuary_engineering_supervision_claim": { "optional": true },
+    "sanctuary_engineering_supervision_attach": { "optional": true },
+    "sanctuary_engineering_supervision_reconcile": { "optional": true },
+    "sanctuary_engineering_supervision_recover": { "optional": true },
+    "sanctuary_engineering_supervision_status": { "optional": true }
   },
   "activation": {
     "onStartup": true

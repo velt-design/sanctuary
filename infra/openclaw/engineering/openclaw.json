@@ -90,9 +90,14 @@
             "sessions_send",
             "subagents",
             "progress_card",
-            "sanctuary_engineering_lane_provision",
             "sanctuary_engineering_lane_status",
-            "sanctuary_engineering_lane_cleanup"
+            "sanctuary_engineering_lane_cleanup",
+            "sanctuary_engineering_supervision_enqueue",
+            "sanctuary_engineering_supervision_claim",
+            "sanctuary_engineering_supervision_attach",
+            "sanctuary_engineering_supervision_reconcile",
+            "sanctuary_engineering_supervision_recover",
+            "sanctuary_engineering_supervision_status"
           ],
           "elevated": {
             "enabled": false

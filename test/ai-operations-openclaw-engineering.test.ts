@@ -49,6 +49,10 @@ const startSource = readFileSync(
   resolve("scripts/ai/mac-openclaw-engineering-start.mjs"),
   "utf8",
 );
+const supervisorInstructions = readFileSync(
+  resolve("infra/openclaw/engineering/agents/supervisor/AGENTS.md"),
+  "utf8",
+);
 const agentsById = Object.fromEntries(
   config.agents.list.map((agent: { id: string }) => [agent.id, agent]),
 );
@@ -106,10 +110,18 @@ describe("isolated OpenClaw engineering runtime", () => {
         "sessions_spawn",
         "sessions_yield",
         "sessions_history",
-        "sanctuary_engineering_lane_provision",
         "sanctuary_engineering_lane_status",
         "sanctuary_engineering_lane_cleanup",
+        "sanctuary_engineering_supervision_enqueue",
+        "sanctuary_engineering_supervision_claim",
+        "sanctuary_engineering_supervision_attach",
+        "sanctuary_engineering_supervision_reconcile",
+        "sanctuary_engineering_supervision_recover",
+        "sanctuary_engineering_supervision_status",
       ]),
+    );
+    expect(lead.tools.alsoAllow).not.toContain(
+      "sanctuary_engineering_lane_provision",
     );
     expect(lead.tools.alsoAllow).not.toEqual(
       expect.arrayContaining(["exec", "write", "edit", "apply_patch"]),
@@ -118,6 +130,12 @@ describe("isolated OpenClaw engineering runtime", () => {
       allowAgents: ["sanctuary-coding-worker", "sanctuary-code-reviewer"],
       requireAgentId: true,
     });
+    expect(supervisorInstructions).toContain(
+      "its exact `taskLabel` as `label`",
+    );
+    expect(supervisorInstructions).toContain(
+      "sanctuary_engineering_supervision_recover",
+    );
     expect(config.agents.defaults.subagents).toMatchObject({
       maxSpawnDepth: 1,
       maxChildrenPerAgent: 1,
@@ -236,6 +254,12 @@ describe("isolated OpenClaw engineering runtime", () => {
           "sanctuary_engineering_lane_status",
           "sanctuary_engineering_lane_publish",
           "sanctuary_engineering_lane_cleanup",
+          "sanctuary_engineering_supervision_enqueue",
+          "sanctuary_engineering_supervision_claim",
+          "sanctuary_engineering_supervision_attach",
+          "sanctuary_engineering_supervision_reconcile",
+          "sanctuary_engineering_supervision_recover",
+          "sanctuary_engineering_supervision_status",
         ],
       },
     });
@@ -307,7 +331,7 @@ describe("isolated OpenClaw engineering runtime", () => {
   it("preseeds approvals, pins the official plugin, and starts separately", () => {
     expect(CODEX_PLUGIN_SPEC).toBe("@openclaw/codex@2026.7.1-1");
     expect(LANE_PLUGIN_ID).toBe("sanctuary-engineering-lanes");
-    expect(LANE_PLUGIN_VERSION).toBe("1.0.0");
+    expect(LANE_PLUGIN_VERSION).toBe("1.1.0");
     expect(activationSource.indexOf("prepareApprovals();")).toBeLessThan(
       activationSource.lastIndexOf('runOpenClaw(["config", "validate"]'),
     );
