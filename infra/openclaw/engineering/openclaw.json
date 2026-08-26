@@ -80,7 +80,7 @@
         },
         "tools": {
           "profile": "minimal",
-          "allow": [
+          "alsoAllow": [
             "session_status",
             "read",
             "agents_list",
@@ -103,6 +103,33 @@
             "sanctuary_engineering_review_attach",
             "sanctuary_engineering_review_reconcile"
           ],
+          "byProvider": {
+            "openai/gpt-5.6-sol": {
+              "allow": [
+                "session_status",
+                "read",
+                "agents_list",
+                "sessions_spawn",
+                "sessions_yield",
+                "sessions_list",
+                "sessions_history",
+                "sessions_send",
+                "subagents",
+                "progress_card",
+                "sanctuary_engineering_lane_status",
+                "sanctuary_engineering_lane_cleanup",
+                "sanctuary_engineering_supervision_enqueue",
+                "sanctuary_engineering_supervision_claim",
+                "sanctuary_engineering_supervision_attach",
+                "sanctuary_engineering_supervision_reconcile",
+                "sanctuary_engineering_supervision_recover",
+                "sanctuary_engineering_supervision_status",
+                "sanctuary_engineering_supervision_ci",
+                "sanctuary_engineering_review_attach",
+                "sanctuary_engineering_review_reconcile"
+              ]
+            }
+          },
           "exec": {
             "host": "gateway",
             "mode": "auto"
@@ -168,11 +195,20 @@
         },
         "tools": {
           "profile": "minimal",
-          "allow": [
+          "alsoAllow": [
             "session_status",
             "read",
             "sanctuary_engineering_lane_status"
           ],
+          "byProvider": {
+            "openai/gpt-5.6-sol": {
+              "allow": [
+                "session_status",
+                "read",
+                "sanctuary_engineering_lane_status"
+              ]
+            }
+          },
           "exec": {
             "host": "gateway",
             "mode": "auto"

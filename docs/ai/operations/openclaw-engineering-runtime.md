@@ -55,12 +55,13 @@ The worker's two execution-policy layers both resolve to full execution with
 `ask: off`, and the managed Codex app-server uses `approvalPolicy: never` with
 `danger-full-access`. The supervisor and reviewer use OpenClaw `auto` execution
 mode only so the managed Codex app-server can start. Their exact finite tool
-allowlists, backed by explicit denies for `exec`, `process`, `write`, `edit` and
-`apply_patch`, force policy-restricted turns with no native Codex environment or
-Code Mode. They receive only their named narrow dynamic tools, loaded directly
-so an unattended turn does not depend on the model discovering an already
-approved tool through a searchable catalog. Any host execution miss fails
-closed.
+allowlists are applied as a second, model-specific policy after the minimal
+profile is extended with the same named tools. Backed by explicit denies for
+`exec`, `process`, `write`, `edit` and `apply_patch`, those finite allowlists
+force policy-restricted turns with no native Codex environment or Code Mode.
+They receive only their named narrow dynamic tools, loaded directly so an
+unattended turn does not depend on the model discovering an already approved
+tool through a searchable catalog. Any host execution miss fails closed.
 
 GitHub uses the repository-scoped Sanctuary GitHub App. The helper reads its
 identity with a headless, read-only 1Password service account and requests a

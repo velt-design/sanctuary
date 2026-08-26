@@ -112,7 +112,7 @@ describe("isolated OpenClaw engineering runtime", () => {
     const lead = agentsById["sanctuary-engineering-supervisor"];
 
     expect(lead.tools.profile).toBe("minimal");
-    expect(lead.tools.allow).toEqual(
+    expect(lead.tools.alsoAllow).toEqual(
       expect.arrayContaining([
         "session_status",
         "read",
@@ -130,11 +130,14 @@ describe("isolated OpenClaw engineering runtime", () => {
         "sanctuary_engineering_supervision_status",
       ]),
     );
-    expect(lead.tools.allow).not.toContain(
+    expect(lead.tools.alsoAllow).not.toContain(
       "sanctuary_engineering_lane_provision",
     );
-    expect(lead.tools.allow).not.toEqual(
+    expect(lead.tools.alsoAllow).not.toEqual(
       expect.arrayContaining(["exec", "write", "edit", "apply_patch"]),
+    );
+    expect(lead.tools.byProvider["openai/gpt-5.6-sol"].allow).toEqual(
+      lead.tools.alsoAllow,
     );
     expect(lead.tools.exec).toMatchObject({
       host: "gateway",
@@ -187,7 +190,20 @@ describe("isolated OpenClaw engineering runtime", () => {
     });
     expect(reviewer.tools).toMatchObject({
       profile: "minimal",
-      allow: ["session_status", "read", "sanctuary_engineering_lane_status"],
+      alsoAllow: [
+        "session_status",
+        "read",
+        "sanctuary_engineering_lane_status",
+      ],
+      byProvider: {
+        "openai/gpt-5.6-sol": {
+          allow: [
+            "session_status",
+            "read",
+            "sanctuary_engineering_lane_status",
+          ],
+        },
+      },
       exec: { host: "gateway", mode: "auto" },
       deny: ["exec", "process", "write", "edit", "apply_patch"],
       elevated: { enabled: false },
