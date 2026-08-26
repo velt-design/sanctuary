@@ -161,7 +161,7 @@ describe("isolated OpenClaw engineering runtime", () => {
       requireAgentId: true,
     });
     expect(supervisorInstructions).toContain(
-      "its exact `taskLabel` as `label`",
+      "explicit session label can collide with a retained recovery session",
     );
     expect(supervisorInstructions).toContain(
       "sanctuary_engineering_supervision_recover",
@@ -236,8 +236,17 @@ describe("isolated OpenClaw engineering runtime", () => {
   });
 
   it("blocks every unlisted native tool for oversight roles", () => {
-    expect(OVERSIGHT_ALLOWED_TOOLS["sanctuary-engineering-supervisor"]).toEqual(
-      agentsById["sanctuary-engineering-supervisor"].tools.alsoAllow,
+    const configuredSupervisorTools =
+      agentsById["sanctuary-engineering-supervisor"].tools.alsoAllow;
+    const inheritedSupervisorTools = [
+      ...OVERSIGHT_ALLOWED_TOOLS["sanctuary-engineering-supervisor"],
+      "sanctuary_engineering_lane_publish",
+    ];
+    expect(new Set(configuredSupervisorTools)).toEqual(
+      new Set(inheritedSupervisorTools),
+    );
+    expect(configuredSupervisorTools).toHaveLength(
+      inheritedSupervisorTools.length,
     );
     expect(OVERSIGHT_ALLOWED_TOOLS["sanctuary-code-reviewer"]).toEqual(
       agentsById["sanctuary-code-reviewer"].tools.alsoAllow,
@@ -251,6 +260,12 @@ describe("isolated OpenClaw engineering runtime", () => {
     expect(
       enforceOversightToolPolicy(
         { toolName: "apply_patch" },
+        { agentId: "sanctuary-engineering-supervisor" },
+      ),
+    ).toMatchObject({ block: true });
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "sanctuary_engineering_lane_publish" },
         { agentId: "sanctuary-engineering-supervisor" },
       ),
     ).toMatchObject({ block: true });
@@ -413,7 +428,7 @@ describe("isolated OpenClaw engineering runtime", () => {
   it("preseeds approvals, pins the official plugin, and starts separately", () => {
     expect(CODEX_PLUGIN_SPEC).toBe("@openclaw/codex@2026.7.1-1");
     expect(LANE_PLUGIN_ID).toBe("sanctuary-engineering-lanes");
-    expect(LANE_PLUGIN_VERSION).toBe("1.2.2");
+    expect(LANE_PLUGIN_VERSION).toBe("1.2.3");
     expect(activationSource.indexOf("prepareApprovals();")).toBeLessThan(
       activationSource.lastIndexOf('runOpenClaw(["config", "validate"]'),
     );

@@ -14,8 +14,10 @@ Before starting work:
    queue by creating a branch, worktree or retry yourself.
 4. For a returned dispatch, spawn exactly the named `sanctuary-coding-worker`
    in `run` mode using its exact prompt as `task`, its `worktreePath` as `cwd`,
-   its stable `taskName`, its exact `taskLabel` as `label`, `cleanup: "keep"`
-   and `context: "isolated"`. Do not override the model. The returned timeout
+   its stable `taskName`, `cleanup: "keep"` and `context: "isolated"`. Omit
+   `label`: OpenClaw derives the durable task label from `taskName`, while an
+   explicit session label can collide with a retained recovery session. Do not
+   override the model. The returned timeout
    confirms the globally pinned runtime limit; it is not a `sessions_spawn`
    argument. Immediately bind the returned native run id with
    `sanctuary_engineering_supervision_attach` and the exact flow revision.
@@ -33,8 +35,9 @@ Before starting work:
    coding-worker attempt through the normal attach/reconcile path.
 7. When CI returns a review dispatch, spawn exactly the named
    `sanctuary-code-reviewer` in `run` mode with the exact `reviewPrompt`,
-   `worktreePath`, `reviewTaskName`, `reviewTaskLabel`, `cleanup: "keep"` and
-   `context: "isolated"`. Do not steer it or add instructions. Immediately bind
+   `worktreePath`, `reviewTaskName`, `cleanup: "keep"` and
+   `context: "isolated"`, again omitting `label`. Do not steer it or add
+   instructions. Immediately bind
    its run id with `sanctuary_engineering_review_attach`, yield for completion,
    then pass its strict JSON report unchanged to
    `sanctuary_engineering_review_reconcile`. Only the controller may bind the

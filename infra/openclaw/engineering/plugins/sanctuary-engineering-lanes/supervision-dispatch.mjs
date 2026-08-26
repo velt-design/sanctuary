@@ -49,7 +49,6 @@ export function buildWorkerDispatch({
     workerAgentId,
     dispatchKey: attempt.dispatchKey,
     taskName: attempt.taskName,
-    taskLabel: attempt.taskName,
     worktreePath: laneResult.worktreePath,
     runTimeoutSeconds: runtimeTimeoutSeconds,
     attemptStartedAt: attempt.startedAt,
@@ -67,7 +66,7 @@ export function findNativeDispatchMatches(taskRuns, workerDispatch) {
       (task) =>
         task.runtime === "subagent" &&
         task.agentId === workerDispatch.workerAgentId &&
-        task.label === workerDispatch.taskLabel &&
+        task.label === workerDispatch.taskName &&
         task.title === workerDispatch.workerPrompt,
     );
 }
@@ -83,7 +82,7 @@ export function assertAttachableNativeTask({
     task.runId !== runId ||
     task.runtime !== "subagent" ||
     task.agentId !== expectedDispatch.workerAgentId ||
-    task.label !== expectedDispatch.taskLabel ||
+    task.label !== expectedDispatch.taskName ||
     task.title !== expectedDispatch.workerPrompt ||
     !task.childSessionKey ||
     !NATIVE_STATUSES.has(task.status) ||

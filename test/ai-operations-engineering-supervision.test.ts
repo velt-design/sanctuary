@@ -265,7 +265,7 @@ function attachRunning(
 ) {
   const task = setup.tasks.add({
     runId: `run-${dispatch.taskId}-${dispatch.attempt}`,
-    label: dispatch.taskLabel,
+    label: dispatch.taskName,
     title: dispatch.workerPrompt,
     createdAt: dispatch.attemptStartedAt,
   });
@@ -404,7 +404,7 @@ describe("durable engineering supervision", () => {
     const dispatch = setup.controller().claim();
     const native = setup.tasks.add({
       runId: "run-spawn-attach-recovery",
-      label: dispatch.taskLabel,
+      label: dispatch.taskName,
       title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
@@ -434,7 +434,7 @@ describe("durable engineering supervision", () => {
     for (const suffix of ["one", "two"]) {
       setup.tasks.add({
         runId: `run-duplicate-${suffix}`,
-        label: dispatch.taskLabel,
+        label: dispatch.taskName,
         title: dispatch.workerPrompt,
         createdAt: dispatch.attemptStartedAt,
       });
@@ -457,7 +457,7 @@ describe("durable engineering supervision", () => {
     setup.tasks.add({
       runId: "run-wrong-agent",
       agentId: "other-agent",
-      label: dispatch.taskLabel,
+      label: dispatch.taskName,
       title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });

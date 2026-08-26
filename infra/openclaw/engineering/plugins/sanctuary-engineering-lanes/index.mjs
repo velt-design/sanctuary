@@ -271,25 +271,28 @@ export default definePluginEntry({
     );
 
     api.registerTool(
-      {
-        name: "sanctuary_engineering_lane_publish",
-        description:
-          "Push only the bound feature branch and create or confirm its exact open draft pull request after ownership and cleanliness checks pass.",
-        parameters: {
-          type: "object",
-          additionalProperties: false,
-          required: ["taskId", "manifestHash", "title", "body"],
-          properties: {
-            ...taskIdentityProperties,
-            title: { type: "string", minLength: 5, maxLength: 200 },
-            body: { type: "string", minLength: 20, maxLength: 30000 },
-          },
-        },
-        async execute(_id, params) {
-          return jsonToolResult(publishEngineeringLane(params));
-        },
-      },
-      { optional: true },
+      (context) =>
+        context.agentId === ENGINEERING_WORKER_AGENT
+          ? {
+              name: "sanctuary_engineering_lane_publish",
+              description:
+                "Push only the bound feature branch and create or confirm its exact open draft pull request after ownership and cleanliness checks pass.",
+              parameters: {
+                type: "object",
+                additionalProperties: false,
+                required: ["taskId", "manifestHash", "title", "body"],
+                properties: {
+                  ...taskIdentityProperties,
+                  title: { type: "string", minLength: 5, maxLength: 200 },
+                  body: { type: "string", minLength: 20, maxLength: 30000 },
+                },
+              },
+              async execute(_id, params) {
+                return jsonToolResult(publishEngineeringLane(params));
+              },
+            }
+          : null,
+      { optional: true, names: ["sanctuary_engineering_lane_publish"] },
     );
 
     api.registerTool(

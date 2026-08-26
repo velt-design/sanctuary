@@ -48,8 +48,9 @@ remain available to the lead; publish remains worker-only.
    running or awaiting completion.
 3. Spawn exactly one `sanctuary-coding-worker` with the returned `workerPrompt`,
    `worktreePath`, stable `taskName`, `mode: "run"`, `cleanup: "keep"` and
-   isolated context. Set `label` to the returned `taskLabel`. Do not override
-   its model.
+   isolated context. Do not pass `label`: OpenClaw derives the durable task
+   label from `taskName`, while a separate session label can collide with a
+   retained recovery session. Do not override its model.
 4. Attach the returned native run id using the dispatch's exact flow revision.
    A stale revision or different agent/session identity fails closed.
 5. Yield for OpenClaw's native completion event. Do not poll the child. Reconcile
@@ -95,6 +96,12 @@ The attempt ledger binds:
 
 The controller revalidates the stored manifest on every read. It does not adopt
 unknown flows, branches, worktrees, task runs or session identities.
+
+OpenClaw child runs inherit the supervisor's effective tool policy before the
+worker policy is applied. The supervisor policy therefore carries the
+worker-only lane-publish name through that inherited filter, but the plugin
+registers the callable tool only for `sanctuary-coding-worker`; the
+fail-closed oversight hook also rejects any supervisor attempt to invoke it.
 
 ## Retry and recovery policy
 

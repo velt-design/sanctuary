@@ -318,7 +318,7 @@ async function reachCi(setup: ReturnType<typeof fixture>) {
   const dispatch = setup.controller().claim();
   const worker = setup.tasks.add({
     runId: "run-worker-1",
-    label: dispatch.taskLabel,
+    label: dispatch.taskName,
     title: dispatch.workerPrompt,
     createdAt: dispatch.attemptStartedAt,
   });
@@ -397,7 +397,7 @@ function attachReviewer(setup: ReturnType<typeof fixture>, dispatch: Value) {
   const reviewer = setup.tasks.add({
     runId: "run-reviewer-1",
     agentId: dispatch.reviewerAgentId,
-    label: dispatch.reviewTaskLabel,
+    label: dispatch.reviewTaskName,
     title: dispatch.reviewPrompt,
     createdAt: dispatch.reviewStartedAt,
   });
@@ -606,7 +606,7 @@ describe("durable exact-head CI and independent review loop", () => {
     const wrong = setup.tasks.add({
       runId: "wrong-reviewer",
       agentId: "sanctuary-coding-worker",
-      label: reviewDispatch.reviewTaskLabel,
+      label: reviewDispatch.reviewTaskName,
       title: reviewDispatch.reviewPrompt,
       createdAt: reviewDispatch.reviewStartedAt,
     });

@@ -101,7 +101,6 @@ export function buildReviewDispatch({
     manifestHash: state.manifestHash,
     reviewerAgentId: ENGINEERING_REVIEWER_AGENT,
     reviewTaskName: review.taskName,
-    reviewTaskLabel: review.taskName,
     reviewPrompt: built.prompt,
     worktreePath: state.attempts.at(-1).worktreePath,
     runTimeoutSeconds: runtimeTimeoutSeconds,
@@ -119,7 +118,7 @@ export function findNativeReviewMatches(taskRuns, dispatch) {
       (task) =>
         task.runtime === "subagent" &&
         task.agentId === dispatch.reviewerAgentId &&
-        task.label === dispatch.reviewTaskLabel &&
+        task.label === dispatch.reviewTaskName &&
         task.title === dispatch.reviewPrompt,
     );
 }
@@ -135,7 +134,7 @@ export function assertAttachableReviewerTask({
     task.runId !== runId ||
     task.runtime !== "subagent" ||
     task.agentId !== ENGINEERING_REVIEWER_AGENT ||
-    task.label !== expectedDispatch.reviewTaskLabel ||
+    task.label !== expectedDispatch.reviewTaskName ||
     task.title !== expectedDispatch.reviewPrompt ||
     !task.childSessionKey ||
     !REVIEW_STATUSES.has(task.status) ||
