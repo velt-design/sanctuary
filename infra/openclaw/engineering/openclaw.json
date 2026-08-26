@@ -102,6 +102,11 @@
             "sanctuary_engineering_review_attach",
             "sanctuary_engineering_review_reconcile"
           ],
+          "exec": {
+            "host": "gateway",
+            "mode": "auto"
+          },
+          "deny": ["exec", "process", "write", "edit", "apply_patch"],
           "elevated": {
             "enabled": false
           }
@@ -163,6 +168,11 @@
         "tools": {
           "profile": "minimal",
           "alsoAllow": ["read", "sanctuary_engineering_lane_status"],
+          "exec": {
+            "host": "gateway",
+            "mode": "auto"
+          },
+          "deny": ["exec", "process", "write", "edit", "apply_patch"],
           "elevated": {
             "enabled": false
           }

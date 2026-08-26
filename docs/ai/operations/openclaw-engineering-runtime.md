@@ -38,11 +38,11 @@ which must continue to hold no production credential.
 
 ## Named roles
 
-| Role                               | Authority                                                                                                                                                                                                                  |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sanctuary-engineering-supervisor` | Read contracts/evidence; use narrow durable-supervision plus lane status/cleanup tools; spawn and wait for exact named dispatches. No general shell, reviewer steering, direct lane provisioning or product-file mutation. |
-| `sanctuary-coding-worker`          | No-prompt coding inside the assigned worker root; focused checks and narrow status/publish tools. One leaf worker cannot spawn another agent.                                                                              |
-| `sanctuary-code-reviewer`          | Read-only exact CI/diff evidence and narrow lane-status review. No shell, mutation, delegation, reviewer replacement or merge authority.                                                                                   |
+| Role                               | Authority                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sanctuary-engineering-supervisor` | Read contracts/evidence; use narrow durable-supervision plus lane status/cleanup tools; spawn and wait for exact named dispatches. Codex starts in Guardian mode, while explicit runtime and filesystem denies force a restricted tool-only turn with no general shell, reviewer steering, direct lane provisioning or product-file mutation. |
+| `sanctuary-coding-worker`          | No-prompt coding inside the assigned worker root; focused checks and narrow status/publish tools. One leaf worker cannot spawn another agent.                                                                                                                                                                                                 |
+| `sanctuary-code-reviewer`          | Read-only exact CI/diff evidence and narrow lane-status review. Codex starts in Guardian mode, while explicit runtime and filesystem denies force a restricted tool-only turn with no shell, mutation, delegation, reviewer replacement or merge authority.                                                                                   |
 
 The installed OpenClaw schema requires a deterministic default route, so only
 the bounded supervisor is marked default. The coding worker and reviewer remain
@@ -53,8 +53,11 @@ commands still name the supervisor; do not start the worker directly.
 
 The worker's two execution-policy layers both resolve to full execution with
 `ask: off`, and the managed Codex app-server uses `approvalPolicy: never` with
-`danger-full-access`. The supervisor and reviewer do not receive execution tools
-and their host approval policy is deny.
+`danger-full-access`. The supervisor and reviewer use OpenClaw `auto` execution
+mode only so the managed Codex app-server can start. Their explicit denies for
+`exec`, `process`, `write`, `edit` and `apply_patch` force policy-restricted
+turns with no native Codex environment or Code Mode. They receive only their
+named narrow dynamic tools; any host execution miss fails closed.
 
 GitHub uses the repository-scoped Sanctuary GitHub App. The helper reads its
 identity with a headless, read-only 1Password service account and requests a
