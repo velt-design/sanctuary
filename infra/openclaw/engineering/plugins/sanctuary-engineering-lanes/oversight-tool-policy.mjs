@@ -21,6 +21,7 @@ export const OVERSIGHT_ALLOWED_TOOLS = Object.freeze({
     "sanctuary_engineering_supervision_ci",
     "sanctuary_engineering_review_attach",
     "sanctuary_engineering_review_reconcile",
+    "sanctuary_engineering_review_redispatch",
   ]),
   "sanctuary-code-reviewer": Object.freeze([
     "session_status",

@@ -17,6 +17,7 @@
       "sanctuary_engineering_supervision_ci",
       "sanctuary_engineering_review_attach",
       "sanctuary_engineering_review_reconcile",
+      "sanctuary_engineering_review_redispatch",
       "sanctuary_engineering_review_diff_chunk"
     ]
   },
@@ -34,6 +35,7 @@
     "sanctuary_engineering_supervision_ci": { "optional": true },
     "sanctuary_engineering_review_attach": { "optional": true },
     "sanctuary_engineering_review_reconcile": { "optional": true },
+    "sanctuary_engineering_review_redispatch": { "optional": true },
     "sanctuary_engineering_review_diff_chunk": { "optional": true }
   },
   "activation": {

@@ -102,7 +102,9 @@
             "sanctuary_engineering_supervision_status",
             "sanctuary_engineering_supervision_ci",
             "sanctuary_engineering_review_attach",
-            "sanctuary_engineering_review_reconcile"
+            "sanctuary_engineering_review_reconcile",
+            "sanctuary_engineering_review_redispatch",
+            "sanctuary_engineering_review_diff_chunk"
           ],
           "byProvider": {
             "openai/gpt-5.6-sol": {
@@ -128,7 +130,9 @@
                 "sanctuary_engineering_supervision_status",
                 "sanctuary_engineering_supervision_ci",
                 "sanctuary_engineering_review_attach",
-                "sanctuary_engineering_review_reconcile"
+                "sanctuary_engineering_review_reconcile",
+                "sanctuary_engineering_review_redispatch",
+                "sanctuary_engineering_review_diff_chunk"
               ]
             }
           },

@@ -137,7 +137,9 @@ export function createEngineeringSupervisionController(options = {}) {
     }
     const storedReviews = [
       ...(state.review?.report ? [state.review.report] : []),
-      ...state.reviewHistory.map((entry) => entry.report),
+      ...state.reviewHistory
+        .filter((entry) => entry.report)
+        .map((entry) => entry.report),
     ];
     for (const storedReview of storedReviews) {
       const review = contractAdapter.validateReview(storedReview, {
@@ -697,5 +699,6 @@ export function createEngineeringSupervisionController(options = {}) {
     inspectCi: postWorker.inspectCi,
     attachReview: postWorker.attachReview,
     reconcileReview: postWorker.reconcileReview,
+    redispatchReview: postWorker.redispatchReview,
   });
 }

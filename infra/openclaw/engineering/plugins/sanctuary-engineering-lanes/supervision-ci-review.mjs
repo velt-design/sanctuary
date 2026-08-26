@@ -19,6 +19,7 @@ import {
   findNativeReviewMatches,
   validateReviewReport,
 } from "./review-runtime.mjs";
+import { createReviewCorrectionController } from "./supervision-review-correction.mjs";
 
 const CI_TIMEOUT_MS = 90 * 60 * 1_000;
 export const POST_WORKER_ACTIVE_PHASES = new Set([
@@ -394,6 +395,18 @@ export function createCiReviewController(options) {
     };
   }
 
+  const reviewCorrection = createReviewCorrectionController({
+    flowRuntime,
+    taskRuns,
+    ciRuntime,
+    now,
+    runtimeTimeoutSeconds,
+    getFlow,
+    reviewDispatch,
+    reviewerBudget,
+    chargeReview,
+  });
+
   function reserveAndBlock(flow, state, task, kind, summary) {
     const at = timestamp(now);
     state = chargeReview(state, state.review.budgetCents);
@@ -655,6 +668,7 @@ export function createCiReviewController(options) {
     inspectCi,
     attachReview,
     reconcileReview,
+    redispatchReview: reviewCorrection.redispatchReview,
     recover,
   });
 }

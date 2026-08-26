@@ -249,6 +249,7 @@ describe("isolated OpenClaw engineering runtime", () => {
     const inheritedSupervisorTools = [
       ...OVERSIGHT_ALLOWED_TOOLS["sanctuary-engineering-supervisor"],
       "sanctuary_engineering_lane_publish",
+      "sanctuary_engineering_review_diff_chunk",
     ];
     expect(new Set(configuredSupervisorTools)).toEqual(
       new Set(inheritedSupervisorTools),
@@ -377,6 +378,7 @@ describe("isolated OpenClaw engineering runtime", () => {
           "sanctuary_engineering_supervision_ci",
           "sanctuary_engineering_review_attach",
           "sanctuary_engineering_review_reconcile",
+          "sanctuary_engineering_review_redispatch",
           "sanctuary_engineering_review_diff_chunk",
         ],
       },
@@ -449,7 +451,7 @@ describe("isolated OpenClaw engineering runtime", () => {
   it("preseeds approvals, pins the official plugin, and starts separately", () => {
     expect(CODEX_PLUGIN_SPEC).toBe("@openclaw/codex@2026.7.1-1");
     expect(LANE_PLUGIN_ID).toBe("sanctuary-engineering-lanes");
-    expect(LANE_PLUGIN_VERSION).toBe("1.2.13");
+    expect(LANE_PLUGIN_VERSION).toBe("1.2.14");
     expect(activationSource.indexOf("prepareApprovals();")).toBeLessThan(
       activationSource.lastIndexOf('runOpenClaw(["config", "validate"]'),
     );

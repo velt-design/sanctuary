@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { createEngineeringSupervisionController } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-runtime.mjs";
 import {
   REVIEW_DIFF_CHUNK_CHARACTERS,
+  buildLegacyChunkedReviewPrompt,
   buildLegacyReviewPrompt,
   readReviewDiffChunk,
 } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/review-runtime.mjs";
@@ -771,6 +772,14 @@ describe("durable exact-head CI and independent review loop", () => {
     expect(reviewDispatch.reviewPrompt).toContain(
       "sanctuary_engineering_review_diff_chunk",
     );
+    expect(reviewDispatch.reviewPrompt).toContain('"verdict": "approved"');
+    expect(reviewDispatch.reviewPrompt).toContain(
+      '"model": "openai/gpt-5.6-sol"',
+    );
+    expect(reviewDispatch.reviewPrompt).toContain(
+      '"nextAction": "Human review and merge."',
+    );
+    expect(reviewDispatch.reviewPrompt).not.toContain('"decision":');
     expect(reviewDispatch.reviewPrompt).not.toContain("<untrusted_diff");
     const wrong = setup.tasks.add({
       runId: "wrong-reviewer",
@@ -920,6 +929,89 @@ describe("durable exact-head CI and independent review loop", () => {
     expect(await setup.controller().recover()).toMatchObject({
       claimed: false,
       reason: "A prior engineering flow requires operator attention.",
+    });
+  });
+
+  it("records and charges the one operator-authorized invalid dispatch correction", async () => {
+    const setup = fixture();
+    const reached = await reachCi(setup);
+    const reviewDispatch = setup.controller().inspectCi({
+      flowId: reached.ciPending.flowId,
+      expectedRevision: reached.ciPending.revision,
+    });
+    const { reviewer, attached } = attachReviewer(setup, reviewDispatch);
+    const attachedFlow = setup.flows.records.get(reviewDispatch.flowId)!;
+    const legacy = buildLegacyChunkedReviewPrompt({
+      flowId: reviewDispatch.flowId,
+      state: attachedFlow.stateJson,
+      ciEvidence: attachedFlow.stateJson.ci.evidence,
+      diff: setup.ci.diff(),
+    });
+    attachedFlow.stateJson.review.promptHash = legacy.promptHash;
+    reviewer.title = legacy.prompt;
+    reviewer.status = "succeeded";
+    reviewer.endedAt = 1_700_000_020_000;
+
+    const correction = setup.controller().redispatchReview({
+      flowId: reviewDispatch.flowId,
+      expectedRevision: attached.revision,
+      priorRunId: reviewer.runId,
+      reason: "invalid_dispatch_contract",
+    });
+    expect(correction).toMatchObject({
+      reviewReady: true,
+      expectedRevision: attached.revision + 1,
+      reviewerAgentId: "sanctuary-code-reviewer",
+    });
+    expect(correction.reviewTaskName).toMatch(/_c1$/);
+    expect(correction.reviewPrompt).toContain('"verdict": "approved"');
+    const correctedState = setup.flows.records.get(
+      correction.flowId,
+    )!.stateJson;
+    expect(correctedState.cumulativeCostCents).toBe(366);
+    expect(correctedState.reviewHistory).toEqual([
+      expect.objectContaining({
+        kind: "invalid_dispatch_contract",
+        correction: 1,
+        runId: reviewer.runId,
+        taskRunId: reviewer.id,
+        costCents: 266,
+      }),
+    ]);
+
+    expect(() =>
+      setup.controller().redispatchReview({
+        flowId: correction.flowId,
+        expectedRevision: correction.expectedRevision,
+        priorRunId: reviewer.runId,
+        reason: "invalid_dispatch_contract",
+      }),
+    ).toThrow(/Only an attached reviewer/);
+
+    const correctedReviewer = setup.tasks.add({
+      runId: "run-reviewer-correction",
+      agentId: correction.reviewerAgentId,
+      label: null,
+      title: correction.reviewPrompt,
+      createdAt: correction.reviewStartedAt,
+    });
+    const correctionAttached = setup.controller().attachReview({
+      flowId: correction.flowId,
+      expectedRevision: correction.expectedRevision,
+      runId: correctedReviewer.runId,
+    });
+    correctedReviewer.status = "succeeded";
+    correctedReviewer.endedAt = correction.reviewStartedAt + 1_000;
+    const finished = await setup.controller().reconcileReview({
+      flowId: correction.flowId,
+      expectedRevision: correctionAttached.revision,
+      report: reviewReport(setup, correction),
+    });
+    expect(finished).toMatchObject({
+      phase: "succeeded",
+      flowStatus: "succeeded",
+      reviewVerdict: "approved",
+      cumulativeCostCents: 391,
     });
   });
 

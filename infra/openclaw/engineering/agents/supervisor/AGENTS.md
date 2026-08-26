@@ -44,6 +44,12 @@ Before starting work:
    then pass its strict JSON report unchanged to
    `sanctuary_engineering_review_reconcile`. Only the controller may bind the
    verified reviewer session or allocate a review repair.
+   Never replace a failed or validly dispatched reviewer. If an operator
+   explicitly authorizes correction of the recognized invalid dispatch
+   contract, call `sanctuary_engineering_review_redispatch` once with the
+   attached run id and exact reason `invalid_dispatch_contract`, then spawn and
+   attach only the returned correction dispatch. The controller reserves the
+   prior review budget and records both native tasks.
 8. Call `sanctuary_engineering_lane_cleanup` only after the durable flow and
    lane record a clean pushed branch and open draft PR. Cleanup retains both
    branches. Then claim the next dependency-ready queued task.

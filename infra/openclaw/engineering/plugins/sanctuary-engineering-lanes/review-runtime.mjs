@@ -48,6 +48,39 @@ function buildReviewPacket({ state, ciEvidence, diff }) {
   };
 }
 
+function buildReviewOutputTemplate(packet) {
+  return {
+    schema: "sanctuary-engineering-review-v1",
+    taskId: packet.task.taskId,
+    manifestHash: packet.task.manifestHash,
+    verdict: "approved",
+    branch: packet.task.branch,
+    baseSha: packet.task.base.sha,
+    headSha: packet.completion.headSha,
+    pullRequest: {
+      number: packet.completion.pullRequest.number,
+      url: packet.completion.pullRequest.url,
+    },
+    ciEvidenceHash: packet.ciEvidence.evidenceHash,
+    acceptanceResults: packet.task.acceptanceCriteria.map((criterion) => ({
+      criterion,
+      status: "passed",
+      evidence: "Replace with specific reviewed evidence.",
+    })),
+    findings: [],
+    reviewer: {
+      agent: ENGINEERING_REVIEWER_AGENT,
+      model: "openai/gpt-5.6-sol",
+      sessionId: "controller_bound",
+      costCents: 0,
+      startedAt: "controller_bound",
+      completedAt: "controller_bound",
+    },
+    safety: { readOnly: true, merged: false, productionEffects: false },
+    nextAction: "Human review and merge.",
+  };
+}
+
 export function buildLegacyReviewPrompt({ state, ciEvidence, diff }) {
   const packet = {
     schema: "sanctuary-engineering-review-packet-v1",
@@ -101,11 +134,32 @@ ${diff}
   return { packet, prompt, promptHash: hashText(prompt) };
 }
 
-export function buildReviewPrompt({ flowId, state, ciEvidence, diff }) {
+function buildChunkedReviewPrompt({
+  flowId,
+  state,
+  ciEvidence,
+  diff,
+  includeOutputTemplate,
+}) {
   if (typeof flowId !== "string" || flowId.length < 8) {
     throw new Error("The independent review flow id is invalid.");
   }
   const packet = buildReviewPacket({ state, ciEvidence, diff });
+  const outputSection = includeOutputTemplate
+    ? `
+
+## Required output shape
+
+Use exactly these fields and no others. Replace the evidence and next action
+with your findings. If changes are required, set \`verdict\` to
+\`changes_requested\`, mark affected criteria \`failed\`, and add at least one
+blocking finding with exactly the fields \`id\`, \`severity\`, \`summary\`,
+\`evidence\`, \`path\` and \`line\`; path and line may be null.
+
+\`\`\`json
+${JSON.stringify(buildReviewOutputTemplate(packet), null, 2)}
+\`\`\``
+    : "";
   const prompt = `# Bound independent Sanctuary code review
 
 You are the named read-only reviewer, not the coding worker. Review only the
@@ -158,8 +212,20 @@ ${JSON.stringify(
 
 The exact diff contains ${diff.length} characters and is deliberately served in
 bounded verified chunks instead of being embedded in this dispatch.
+${outputSection}
 `.trim();
   return { packet, prompt, promptHash: hashText(prompt) };
+}
+
+export function buildLegacyChunkedReviewPrompt(input) {
+  return buildChunkedReviewPrompt({
+    ...input,
+    includeOutputTemplate: false,
+  });
+}
+
+export function buildReviewPrompt(input) {
+  return buildChunkedReviewPrompt({ ...input, includeOutputTemplate: true });
 }
 
 export function readReviewDiffChunk({ ciRuntime, input }) {

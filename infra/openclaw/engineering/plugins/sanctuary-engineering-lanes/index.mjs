@@ -233,6 +233,26 @@ function supervisionTools(api, context) {
         return jsonToolResult(await controller().reconcileReview(params));
       },
     },
+    {
+      name: "sanctuary_engineering_review_redispatch",
+      label: "Correct invalid reviewer dispatch",
+      description:
+        "Record and reserve the invalid reviewer dispatch, then prepare the one permitted operator-authorized strict reviewer correction without resetting the flow.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["flowId", "expectedRevision", "priorRunId", "reason"],
+        properties: {
+          ...flowIdentityProperties,
+          priorRunId: { type: "string", minLength: 8, maxLength: 200 },
+          reason: { type: "string", enum: ["invalid_dispatch_contract"] },
+        },
+      },
+      executionMode: "sequential",
+      async execute(_id, params) {
+        return jsonToolResult(controller().redispatchReview(params));
+      },
+    },
   ];
 }
 
