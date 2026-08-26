@@ -11,6 +11,10 @@ import {
 const VAULT = "Sanctuary - Node Runtime";
 const ITEM = "GitHub - Sanctuary Node PR Bot";
 const REPOSITORY = "velt-design/sanctuary";
+const REPOSITORY_PATHS = new Set([
+  "velt-design/sanctuary",
+  "velt-design/sanctuary.git",
+]);
 
 function run(command, args, env = process.env) {
   const execution = spawnSync(command, args, { encoding: "utf8", env });
@@ -48,7 +52,7 @@ function readGitHubIdentity() {
   return identity;
 }
 
-export async function requestInstallationToken(fetchImpl = fetch) {
+async function requestInstallationToken(fetchImpl = fetch) {
   const identity = readGitHubIdentity();
   const response = await fetchImpl(
     `https://api.github.com/app/installations/${identity.installationId}/access_tokens`,
@@ -106,21 +110,196 @@ function readCredentialRequest() {
   );
 }
 
+function readFlag(args, name) {
+  const indexes = args
+    .map((value, index) => (value === name ? index : -1))
+    .filter((index) => index !== -1);
+  if (
+    indexes.length !== 1 ||
+    !args[indexes[0] + 1] ||
+    args[indexes[0] + 1].startsWith("--")
+  ) {
+    throw new Error(`GitHub command requires ${name}.`);
+  }
+  return args[indexes[0] + 1];
+}
+
+function assertOnlyFlags(args, allowedFlags) {
+  for (let index = 0; index < args.length; index += 1) {
+    const value = args[index];
+    if (!value.startsWith("--")) continue;
+    if (!allowedFlags.has(value)) {
+      throw new Error(`GitHub command flag ${value} is not allowed.`);
+    }
+    index += 1;
+  }
+}
+
+function assertSafeBranch(value, label) {
+  if (
+    !/^[a-z0-9][a-zA-Z0-9._/-]{1,199}$/.test(value) ||
+    value.startsWith("-") ||
+    value.endsWith(".lock") ||
+    value.includes("..") ||
+    value.includes("@{")
+  ) {
+    throw new Error(`${label} is not a safe branch name.`);
+  }
+}
+
+export function assertSafeGitHubCommand(args) {
+  const [area, action] = args;
+  if (area === "version" && args.length === 1) return;
+  if (area === "repo" && action === "view") {
+    assertOnlyFlags(
+      args.slice(2),
+      new Set(["--repo", "--json", "--jq", "--template"]),
+    );
+    if (args.includes("--repo") && readFlag(args, "--repo") !== REPOSITORY) {
+      throw new Error(
+        "GitHub reads are restricted to the Sanctuary repository.",
+      );
+    }
+    return;
+  }
+  if (area === "pr" && ["list", "view", "checks"].includes(action)) {
+    assertOnlyFlags(
+      args.slice(2),
+      new Set([
+        "--repo",
+        "--head",
+        "--base",
+        "--state",
+        "--json",
+        "--jq",
+        "--template",
+        "--limit",
+        "--search",
+        "--watch",
+        "--interval",
+        "--required",
+        "--web",
+      ]),
+    );
+    if (readFlag(args, "--repo") !== REPOSITORY) {
+      throw new Error(
+        "GitHub reads are restricted to the Sanctuary repository.",
+      );
+    }
+    return;
+  }
+  if (area === "run" && ["list", "view"].includes(action)) {
+    assertOnlyFlags(
+      args.slice(2),
+      new Set([
+        "--repo",
+        "--branch",
+        "--commit",
+        "--event",
+        "--json",
+        "--jq",
+        "--limit",
+        "--status",
+        "--workflow",
+        "--job",
+        "--log",
+        "--log-failed",
+        "--verbose",
+        "--web",
+      ]),
+    );
+    if (readFlag(args, "--repo") !== REPOSITORY) {
+      throw new Error(
+        "GitHub reads are restricted to the Sanctuary repository.",
+      );
+    }
+    return;
+  }
+  if (area === "pr" && action === "create") {
+    const allowed = new Set([
+      "--repo",
+      "--draft",
+      "--base",
+      "--head",
+      "--title",
+      "--body",
+    ]);
+    for (let index = 2; index < args.length; index += 1) {
+      const value = args[index];
+      if (value === "--draft") continue;
+      if (!value.startsWith("--") || !allowed.has(value) || !args[index + 1]) {
+        throw new Error("Only an explicit draft pull request may be created.");
+      }
+      index += 1;
+    }
+    if (args.filter((value) => value === "--draft").length !== 1) {
+      throw new Error("Pull request creation requires --draft.");
+    }
+    if (readFlag(args, "--repo") !== REPOSITORY) {
+      throw new Error("Draft pull requests are restricted to Sanctuary.");
+    }
+    const head = readFlag(args, "--head");
+    const base = readFlag(args, "--base");
+    assertSafeBranch(head, "Draft head");
+    assertSafeBranch(base, "Draft base");
+    if (["main", "master"].includes(head)) {
+      throw new Error(
+        "A draft pull request head cannot be a protected branch.",
+      );
+    }
+    readFlag(args, "--title");
+    readFlag(args, "--body");
+    return;
+  }
+  throw new Error(
+    "The GitHub command is outside the engineering read/draft policy.",
+  );
+}
+
+async function runSafeGitHub(args) {
+  assertSafeGitHubCommand(args);
+  const result = await requestInstallationToken();
+  const ghBinary =
+    process.env.SANCTUARY_ENGINEERING_GH_BINARY ??
+    "/Users/sanctuary-runner/.local/lib/github-cli/bin/gh";
+  const execution = spawnSync(ghBinary, args, {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      GH_TOKEN: result.token,
+      GH_PROMPT_DISABLED: "1",
+    },
+  });
+  if (execution.status !== 0) {
+    if (execution.stderr) process.stderr.write(execution.stderr);
+    throw new Error("The restricted GitHub command failed.");
+  }
+  if (execution.stdout) process.stdout.write(execution.stdout);
+}
+
 async function main() {
   if (process.argv.includes("--git-credential")) {
     if (process.argv.at(-1) !== "get") return;
     const request = readCredentialRequest();
-    if (request.protocol !== "https" || request.host !== "github.com") return;
+    if (
+      request.protocol !== "https" ||
+      request.host !== "github.com" ||
+      !REPOSITORY_PATHS.has(request.path)
+    ) {
+      return;
+    }
     const result = await requestInstallationToken();
     process.stdout.write(`username=x-access-token\npassword=${result.token}\n`);
     return;
   }
 
-  const result = await requestInstallationToken();
-  if (process.argv.includes("--raw")) {
-    process.stdout.write(result.token);
+  const safeGhIndex = process.argv.indexOf("--safe-gh");
+  if (safeGhIndex !== -1) {
+    await runSafeGitHub(process.argv.slice(safeGhIndex + 1));
     return;
   }
+
+  const result = await requestInstallationToken();
   if (process.argv.includes("--verify")) {
     console.log(
       JSON.stringify({
@@ -131,7 +310,7 @@ async function main() {
     );
     return;
   }
-  throw new Error("Use --verify, --raw, or --git-credential.");
+  throw new Error("Use --verify, --safe-gh, or --git-credential.");
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

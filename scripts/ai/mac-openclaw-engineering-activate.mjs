@@ -8,6 +8,8 @@ import {
   CODEX_PLUGIN_SPEC,
   ENGINEERING_AGENT_IDS,
   ENGINEERING_PROFILE,
+  LANE_PLUGIN_ID,
+  LANE_PLUGIN_VERSION,
   assertDedicatedStateOwnership,
   assertDefaultAuthorityUnchanged,
   buildActivationRecord,
@@ -81,14 +83,15 @@ function prepareApprovals() {
   );
 }
 
-function readCodexPlugin(rawPlugins) {
+function readPlugin(rawPlugins, id) {
   const plugins = JSON.parse(rawPlugins);
-  return plugins.plugins?.find((plugin) => plugin.id === "codex");
+  return plugins.plugins?.find((plugin) => plugin.id === id);
 }
 
 function ensureCodexPlugin(env) {
-  let codex = readCodexPlugin(
+  let codex = readPlugin(
     runOpenClaw(["plugins", "list", "--json"], { env }),
+    "codex",
   );
   if (!codex || codex.status !== "loaded") {
     runOpenClaw(["plugins", "install", "--pin", CODEX_PLUGIN_SPEC], {
@@ -99,9 +102,9 @@ function ensureCodexPlugin(env) {
       paths.configPath,
       readFileSync(paths.configTemplatePath, "utf8"),
     );
-    runOpenClaw(["config", "validate"], { env, inherit: true });
-    codex = readCodexPlugin(
+    codex = readPlugin(
       runOpenClaw(["plugins", "list", "--json"], { env }),
+      "codex",
     );
   }
   const expectedVersion = CODEX_PLUGIN_SPEC.slice(
@@ -109,6 +112,32 @@ function ensureCodexPlugin(env) {
   );
   if (codex?.status !== "loaded" || codex.version !== expectedVersion) {
     throw new Error("The pinned official Codex plugin is not loaded.");
+  }
+}
+
+function ensureLanePlugin(env) {
+  let plugin = readPlugin(
+    runOpenClaw(["plugins", "list", "--json"], { env }),
+    LANE_PLUGIN_ID,
+  );
+  if (plugin?.status !== "loaded" || plugin.version !== LANE_PLUGIN_VERSION) {
+    runOpenClaw(["plugins", "install", "--force", paths.lanePluginSource], {
+      env,
+      inherit: true,
+    });
+    writeProtectedAtomic(
+      paths.configPath,
+      readFileSync(paths.configTemplatePath, "utf8"),
+    );
+    plugin = readPlugin(
+      runOpenClaw(["plugins", "list", "--json"], { env }),
+      LANE_PLUGIN_ID,
+    );
+  }
+  if (plugin?.status !== "loaded" || plugin.version !== LANE_PLUGIN_VERSION) {
+    throw new Error(
+      "The pinned Sanctuary engineering lane plugin is not loaded.",
+    );
   }
 }
 
@@ -167,8 +196,13 @@ export function activateEngineeringRuntime() {
     paths,
     readProtected(paths.gatewayTokenPath, "Engineering gateway token"),
   );
-  runOpenClaw(["config", "validate"], { env, inherit: true });
   ensureCodexPlugin(env);
+  ensureLanePlugin(env);
+  writeProtectedAtomic(
+    paths.configPath,
+    readFileSync(paths.configTemplatePath, "utf8"),
+  );
+  runOpenClaw(["config", "validate"], { env, inherit: true });
   runOpenClaw(["approvals", "set", "--file", paths.approvalsTemplatePath], {
     env,
     inherit: true,

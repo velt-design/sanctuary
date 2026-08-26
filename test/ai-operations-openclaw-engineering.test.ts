@@ -7,6 +7,8 @@ import {
   ENGINEERING_AGENT_IDS,
   ENGINEERING_GATEWAY_PORT,
   ENGINEERING_PROFILE,
+  LANE_PLUGIN_ID,
+  LANE_PLUGIN_VERSION,
   buildActivationRecord,
   buildGitHubWrapper,
   buildOpenClawWrapper,
@@ -19,6 +21,22 @@ const config = JSON.parse(
 const approvals = JSON.parse(
   readFileSync(
     resolve("infra/openclaw/engineering/exec-approvals.json"),
+    "utf8",
+  ),
+);
+const lanePluginPackage = JSON.parse(
+  readFileSync(
+    resolve(
+      "infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/package.json",
+    ),
+    "utf8",
+  ),
+);
+const lanePluginManifest = JSON.parse(
+  readFileSync(
+    resolve(
+      "infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/openclaw.plugin.json",
+    ),
     "utf8",
   ),
 );
@@ -87,6 +105,9 @@ describe("isolated OpenClaw engineering runtime", () => {
         "sessions_spawn",
         "sessions_yield",
         "sessions_history",
+        "sanctuary_engineering_lane_provision",
+        "sanctuary_engineering_lane_status",
+        "sanctuary_engineering_lane_cleanup",
       ]),
     );
     expect(lead.tools.alsoAllow).not.toEqual(
@@ -109,6 +130,10 @@ describe("isolated OpenClaw engineering runtime", () => {
     const reviewer = agentsById["sanctuary-code-reviewer"];
 
     expect(worker.tools.profile).toBe("coding");
+    expect(worker.tools.alsoAllow).toEqual([
+      "sanctuary_engineering_lane_status",
+      "sanctuary_engineering_lane_publish",
+    ]);
     expect(worker.tools.exec).toMatchObject({
       host: "gateway",
       mode: "full",
@@ -120,7 +145,7 @@ describe("isolated OpenClaw engineering runtime", () => {
     });
     expect(reviewer.tools).toMatchObject({
       profile: "minimal",
-      alsoAllow: ["read"],
+      alsoAllow: ["read", "sanctuary_engineering_lane_status"],
       elevated: { enabled: false },
     });
     expect(config.tools.exec).toMatchObject({
@@ -156,7 +181,7 @@ describe("isolated OpenClaw engineering runtime", () => {
       sandbox: { mode: "off" },
     });
     expect(config.plugins).toMatchObject({
-      allow: ["codex"],
+      allow: ["codex", LANE_PLUGIN_ID],
       entries: {
         codex: {
           enabled: true,
@@ -169,6 +194,10 @@ describe("isolated OpenClaw engineering runtime", () => {
               clearEnv: ["CODEX_API_KEY", "OPENAI_API_KEY"],
             },
           },
+        },
+        [LANE_PLUGIN_ID]: {
+          enabled: true,
+          config: {},
         },
       },
     });
@@ -186,6 +215,34 @@ describe("isolated OpenClaw engineering runtime", () => {
       acp: { enabled: false },
       discovery: { mdns: { mode: "off" } },
     });
+  });
+
+  it("declares the reviewed lane plugin as optional narrow tools", () => {
+    expect(lanePluginPackage).toMatchObject({
+      name: "@sanctuary/openclaw-engineering-lanes",
+      version: LANE_PLUGIN_VERSION,
+      type: "module",
+      openclaw: {
+        extensions: ["./index.mjs"],
+        compat: { minGatewayVersion: "2026.7.1-2" },
+      },
+    });
+    expect(lanePluginManifest).toMatchObject({
+      id: LANE_PLUGIN_ID,
+      contracts: {
+        tools: [
+          "sanctuary_engineering_lane_provision",
+          "sanctuary_engineering_lane_status",
+          "sanctuary_engineering_lane_publish",
+          "sanctuary_engineering_lane_cleanup",
+        ],
+      },
+    });
+    for (const tool of lanePluginManifest.contracts.tools) {
+      expect(lanePluginManifest.toolMetadata[tool]).toEqual({
+        optional: true,
+      });
+    }
   });
 
   it("builds isolated wrappers without embedding credentials", () => {
@@ -206,6 +263,8 @@ describe("isolated OpenClaw engineering runtime", () => {
     }
     expect(githubWrapper).toContain("GH_PROMPT_DISABLED=1");
     expect(githubWrapper).toContain("GIT_TERMINAL_PROMPT=0");
+    expect(githubWrapper).toContain("--safe-gh");
+    expect(githubWrapper).not.toContain("--raw");
   });
 
   it("records drift-detectable activation without claiming shared-state mutation", () => {
@@ -235,12 +294,17 @@ describe("isolated OpenClaw engineering runtime", () => {
 
   it("preseeds approvals, pins the official plugin, and starts separately", () => {
     expect(CODEX_PLUGIN_SPEC).toBe("@openclaw/codex@2026.7.1-1");
+    expect(LANE_PLUGIN_ID).toBe("sanctuary-engineering-lanes");
+    expect(LANE_PLUGIN_VERSION).toBe("1.0.0");
     expect(activationSource.indexOf("prepareApprovals();")).toBeLessThan(
       activationSource.lastIndexOf('runOpenClaw(["config", "validate"]'),
     );
     expect(activationSource).toContain('["approvals", "set", "--file"');
     expect(activationSource).toContain(
       '["plugins", "install", "--pin", CODEX_PLUGIN_SPEC]',
+    );
+    expect(activationSource).toContain(
+      '["plugins", "install", "--force", paths.lanePluginSource]',
     );
     expect(activationSource).toContain('["plugins", "doctor"]');
     expect(activationSource).toContain('"--post-upgrade"');

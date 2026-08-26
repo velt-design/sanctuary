@@ -52,6 +52,20 @@ describe("engineering contract CLI", () => {
     expect(result.stdout).toContain('"production": "prohibited"');
   });
 
+  it("returns the canonical manifest and identity for runtime binding", () => {
+    const result = run("resolve-task", TASK);
+    expect(result.status).toBe(0);
+    const resolved = JSON.parse(result.stdout);
+    expect(resolved.manifest).toMatchObject({
+      schema: "sanctuary-engineering-task-v1",
+      taskId: "eng_20260826_foundation_contracts",
+      branch: "ai/autonomy-foundation-contracts",
+    });
+    expect(resolved.manifestHash).toBe(
+      "sha256:3a5de0bcc30bc5877c72b8149c15a2ed5bda64e34c568dcd6d059dbbe2e7def4",
+    );
+  });
+
   it("validates the canonical completion report", () => {
     const result = run("validate-completion", COMPLETION);
     expect(result.status).toBe(0);
