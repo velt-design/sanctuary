@@ -166,6 +166,7 @@ describe("isolated OpenClaw engineering runtime", () => {
     expect(supervisorInstructions).toContain(
       "sanctuary_engineering_supervision_recover",
     );
+    expect(supervisorInstructions).toContain("timeoutMs: 180000");
     expect(config.agents.defaults.subagents).toMatchObject({
       maxSpawnDepth: 1,
       maxChildrenPerAgent: 1,
@@ -433,7 +434,7 @@ describe("isolated OpenClaw engineering runtime", () => {
   it("preseeds approvals, pins the official plugin, and starts separately", () => {
     expect(CODEX_PLUGIN_SPEC).toBe("@openclaw/codex@2026.7.1-1");
     expect(LANE_PLUGIN_ID).toBe("sanctuary-engineering-lanes");
-    expect(LANE_PLUGIN_VERSION).toBe("1.2.10");
+    expect(LANE_PLUGIN_VERSION).toBe("1.2.11");
     expect(activationSource.indexOf("prepareApprovals();")).toBeLessThan(
       activationSource.lastIndexOf('runOpenClaw(["config", "validate"]'),
     );

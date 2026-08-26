@@ -28,11 +28,13 @@ Before starting work:
    Only that controller may allocate a bounded same-lane retry.
    Never reset or replace the supervisor session while a flow is active.
 6. After a successful worker report, call
-   `sanctuary_engineering_supervision_ci` with the returned revision. The tool
-   watches exact-head GitHub checks in bounded windows without user prompts.
-   Repeat it when its watch window elapses. Never rename, skip or weaken a
-   check. If the controller returns a repair dispatch, spawn only the returned
-   coding-worker attempt through the normal attach/reconcile path.
+   `sanctuary_engineering_supervision_ci` with the returned revision and
+   `timeoutMs: 180000`. The fixed timeout is OpenClaw watchdog metadata, not a
+   mutable policy. The tool watches exact-head GitHub checks or dispatched
+   workflow jobs in bounded windows without user prompts. Repeat it when its
+   watch window elapses. Never rename, skip or weaken a check. If the controller
+   returns a repair dispatch, spawn only the returned coding-worker attempt
+   through the normal attach/reconcile path.
 7. When CI returns a review dispatch, spawn exactly the named
    `sanctuary-code-reviewer` in `run` mode with the exact `reviewPrompt`,
    `worktreePath`, `reviewTaskName`, `cleanup: "keep"` and

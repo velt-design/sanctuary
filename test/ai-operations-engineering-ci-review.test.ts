@@ -18,7 +18,11 @@ import {
   classifyFailureLog,
   createGitHubCiRuntime,
 } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/ci-runtime.mjs";
-import { watchEngineeringCi } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-ci-watch.mjs";
+import {
+  ENGINEERING_CI_TOOL_TIMEOUT_MS,
+  ENGINEERING_CI_WATCH_WINDOW_MS,
+  watchEngineeringCi,
+} from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-ci-watch.mjs";
 import {
   changedPathsForEvent,
   routeEngineeringCi,
@@ -83,6 +87,8 @@ class FakeGit {
   currentPullRequest: Value;
   failedLog = "stable assertion failure";
   diffOutput = "diff --git a/docs/a.md b/docs/a.md\n+safe change\n";
+  workflowRuns: Value[] = [];
+  workflowRunDetails = new Map<string, Value>();
 
   constructor(checks: Value[]) {
     this.currentPullRequest = pullRequest(checks);
@@ -94,7 +100,15 @@ class FakeGit {
       return { stdout: JSON.stringify(this.currentPullRequest) };
     }
     if (args[0] === "run" && args[1] === "view") {
+      if (args.includes("--json")) {
+        const detail = this.workflowRunDetails.get(args[2]);
+        if (!detail) throw new Error(`Unknown workflow run: ${args[2]}`);
+        return { stdout: JSON.stringify(detail) };
+      }
       return { stdout: this.failedLog };
+    }
+    if (args[0] === "run" && args[1] === "list") {
+      return { stdout: JSON.stringify(this.workflowRuns) };
     }
     if (args[0] === "pr" && args[1] === "diff") {
       return { stdout: this.diffOutput };
@@ -354,6 +368,86 @@ Received: 10`),
     ).toBeNull();
   });
 
+  it("adopts the exact required job from one manually dispatched workflow run", () => {
+    const setup = runtime([]);
+    const task = manifest();
+    task.verification.ciChecks = ["AI Foundation / Provider-neutral contracts"];
+    const runId = 789;
+    const runUrl = "https://github.com/velt-design/sanctuary/actions/runs/789";
+    setup.git.workflowRuns = [
+      {
+        databaseId: runId,
+        status: "completed",
+        conclusion: "success",
+        headSha,
+        headBranch: task.branch,
+        event: "workflow_dispatch",
+        url: runUrl,
+        createdAt: "2026-08-26T00:00:00Z",
+        updatedAt: "2026-08-26T00:01:00Z",
+        name: "AI Foundation",
+        workflowName: "AI Foundation",
+      },
+    ];
+    setup.git.workflowRunDetails.set(String(runId), {
+      ...setup.git.workflowRuns[0],
+      jobs: [
+        {
+          databaseId: 456,
+          name: "Provider-neutral contracts",
+          status: "completed",
+          conclusion: "success",
+          startedAt: "2026-08-26T00:00:05Z",
+          completedAt: "2026-08-26T00:00:55Z",
+          url: `${runUrl}/job/456`,
+        },
+      ],
+    });
+
+    expect(
+      setup.ci.inspect({ manifest: task, completion: completion() }),
+    ).toMatchObject({
+      classification: "passed",
+      requiredChecks: [
+        {
+          name: "AI Foundation / Provider-neutral contracts",
+          kind: "workflow_job",
+          disposition: "passed",
+          runId: "789",
+          url: `${runUrl}/job/456`,
+        },
+      ],
+    });
+  });
+
+  it("fails closed when multiple dispatched runs claim the same exact head", () => {
+    const setup = runtime([]);
+    const task = manifest();
+    task.verification.ciChecks = ["AI Foundation / Provider-neutral contracts"];
+    setup.git.workflowRuns = [789, 790].map((databaseId) => ({
+      databaseId,
+      status: "completed",
+      conclusion: "success",
+      headSha,
+      headBranch: task.branch,
+      event: "workflow_dispatch",
+      url: `https://github.com/velt-design/sanctuary/actions/runs/${databaseId}`,
+      workflowName: "AI Foundation",
+    }));
+
+    expect(
+      setup.ci.inspect({ manifest: task, completion: completion() }),
+    ).toMatchObject({
+      classification: "blocked",
+      requiredChecks: [
+        {
+          kind: "workflow_run_duplicate",
+          disposition: "blocked",
+        },
+      ],
+    });
+  });
+
   it("classifies stable failures for repair and suspected flakes for one rerun", () => {
     const actionable = runtime([check("FAILURE")]);
     expect(
@@ -411,6 +505,14 @@ Received: 10`),
 });
 
 describe("bounded autonomous CI watch", () => {
+  it("finishes its watch window before the fixed OpenClaw tool watchdog", () => {
+    expect(ENGINEERING_CI_WATCH_WINDOW_MS).toBe(120_000);
+    expect(ENGINEERING_CI_TOOL_TIMEOUT_MS).toBe(180_000);
+    expect(
+      ENGINEERING_CI_TOOL_TIMEOUT_MS - ENGINEERING_CI_WATCH_WINDOW_MS,
+    ).toBe(60_000);
+  });
+
   it("waits without user prompts and carries each durable revision forward", async () => {
     let clock = 0;
     const requests: Value[] = [];

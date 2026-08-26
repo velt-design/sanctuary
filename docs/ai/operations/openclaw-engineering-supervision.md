@@ -58,10 +58,13 @@ remain available to the lead; publish remains worker-only.
 6. A native success waits for a strict completion report. A valid successful
    report matching the clean pushed lane and exact open draft PR enters
    `ci_pending`; it does not finish the flow.
-7. The CI tool watches in ten-minute windows at a thirty-second interval, with a
-   durable ninety-minute deadline. It carries each new flow revision forward,
-   so no user prompt is required while GitHub checks run. A gateway restart
-   resumes from the stored checkpoint.
+7. The CI tool watches in two-minute windows at a thirty-second interval under
+   a fixed three-minute OpenClaw per-call watchdog, with a durable ninety-minute
+   deadline. It carries each new flow revision forward, so no user prompt is
+   required while GitHub checks run. If a bounded manual workflow dispatch is
+   needed, the controller reads its exact commit and exact required job because
+   GitHub does not add `workflow_dispatch` jobs to the pull request check list.
+   A gateway restart resumes from the stored checkpoint.
 8. Passed exact-head CI creates one deterministic dispatch for
    `sanctuary-code-reviewer`. Spawn and attach it exactly, yield for completion,
    then reconcile one strict `sanctuary-engineering-review-v1` report. The

@@ -11,7 +11,10 @@ import {
   ENGINEERING_WORKER_AGENT,
 } from "./supervision-contract.mjs";
 import { createEngineeringSupervisionController } from "./supervision-runtime.mjs";
-import { watchEngineeringCi } from "./supervision-ci-watch.mjs";
+import {
+  ENGINEERING_CI_TOOL_TIMEOUT_MS,
+  watchEngineeringCi,
+} from "./supervision-ci-watch.mjs";
 import { enforceOversightToolPolicy } from "./oversight-tool-policy.mjs";
 
 const taskIdentityProperties = {
@@ -158,12 +161,20 @@ function supervisionTools(api, context) {
       name: "sanctuary_engineering_supervision_ci",
       label: "Reconcile exact-head CI",
       description:
-        "Read exact GitHub check evidence for the bound draft PR, request at most one transient failed-job rerun, dispatch a bounded repair, or prepare independent review.",
+        "Read exact GitHub check or workflow-job evidence for the bound draft PR, request at most one transient failed-job rerun, dispatch a bounded repair, or prepare independent review. Always pass the fixed timeoutMs value declared by this tool.",
       parameters: {
         type: "object",
         additionalProperties: false,
-        required: ["flowId", "expectedRevision"],
-        properties: flowIdentityProperties,
+        required: ["flowId", "expectedRevision", "timeoutMs"],
+        properties: {
+          ...flowIdentityProperties,
+          timeoutMs: {
+            type: "integer",
+            enum: [ENGINEERING_CI_TOOL_TIMEOUT_MS],
+            description:
+              "OpenClaw per-call watchdog metadata; use exactly 180000.",
+          },
+        },
       },
       executionMode: "sequential",
       async execute(_id, params) {
@@ -171,7 +182,10 @@ function supervisionTools(api, context) {
         return jsonToolResult(
           await watchEngineeringCi({
             inspect: (input) => activeController.inspectCi(input),
-            input: params,
+            input: {
+              flowId: params.flowId,
+              expectedRevision: params.expectedRevision,
+            },
           }),
         );
       },

@@ -1,5 +1,6 @@
 const DEFAULT_POLL_INTERVAL_MS = 30_000;
-const DEFAULT_WATCH_WINDOW_MS = 10 * 60_000;
+export const ENGINEERING_CI_WATCH_WINDOW_MS = 2 * 60_000;
+export const ENGINEERING_CI_TOOL_TIMEOUT_MS = 3 * 60_000;
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -11,7 +12,7 @@ export async function watchEngineeringCi({
   now = () => Date.now(),
   wait = delay,
   pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
-  watchWindowMs = DEFAULT_WATCH_WINDOW_MS,
+  watchWindowMs = ENGINEERING_CI_WATCH_WINDOW_MS,
 }) {
   if (typeof inspect !== "function" || typeof wait !== "function") {
     throw new Error("The CI watch requires inspection and wait functions.");
