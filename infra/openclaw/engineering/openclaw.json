@@ -80,7 +80,8 @@
         },
         "tools": {
           "profile": "minimal",
-          "alsoAllow": [
+          "allow": [
+            "session_status",
             "read",
             "agents_list",
             "sessions_spawn",
@@ -167,7 +168,11 @@
         },
         "tools": {
           "profile": "minimal",
-          "alsoAllow": ["read", "sanctuary_engineering_lane_status"],
+          "allow": [
+            "session_status",
+            "read",
+            "sanctuary_engineering_lane_status"
+          ],
           "exec": {
             "host": "gateway",
             "mode": "auto"

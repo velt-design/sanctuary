@@ -112,8 +112,9 @@ describe("isolated OpenClaw engineering runtime", () => {
     const lead = agentsById["sanctuary-engineering-supervisor"];
 
     expect(lead.tools.profile).toBe("minimal");
-    expect(lead.tools.alsoAllow).toEqual(
+    expect(lead.tools.allow).toEqual(
       expect.arrayContaining([
+        "session_status",
         "read",
         "agents_list",
         "sessions_spawn",
@@ -129,10 +130,10 @@ describe("isolated OpenClaw engineering runtime", () => {
         "sanctuary_engineering_supervision_status",
       ]),
     );
-    expect(lead.tools.alsoAllow).not.toContain(
+    expect(lead.tools.allow).not.toContain(
       "sanctuary_engineering_lane_provision",
     );
-    expect(lead.tools.alsoAllow).not.toEqual(
+    expect(lead.tools.allow).not.toEqual(
       expect.arrayContaining(["exec", "write", "edit", "apply_patch"]),
     );
     expect(lead.tools.exec).toMatchObject({
@@ -186,7 +187,7 @@ describe("isolated OpenClaw engineering runtime", () => {
     });
     expect(reviewer.tools).toMatchObject({
       profile: "minimal",
-      alsoAllow: ["read", "sanctuary_engineering_lane_status"],
+      allow: ["session_status", "read", "sanctuary_engineering_lane_status"],
       exec: { host: "gateway", mode: "auto" },
       deny: ["exec", "process", "write", "edit", "apply_patch"],
       elevated: { enabled: false },
