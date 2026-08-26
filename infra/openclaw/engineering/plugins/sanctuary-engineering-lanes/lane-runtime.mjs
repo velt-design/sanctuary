@@ -405,6 +405,116 @@ export function provisionEngineeringLane(manifestInput, options = {}) {
   }
 }
 
+export function adoptPublishedEngineeringLane(manifestInput, options = {}) {
+  const controller = resolveController(options);
+  const { manifest, manifestHash } = resolveManifest(manifestInput, controller);
+  const paths = resolveLanePaths({
+    stateDir: controller.stateDir,
+    taskId: manifest.taskId,
+  });
+  assertRuntimeOwner(paths);
+  controller.git.assertSourceRepository();
+
+  if (existsSync(paths.ownerPath)) {
+    const owner = assertOwnerRecord(
+      readProtectedJson(paths.ownerPath, "Engineering lane owner"),
+      { manifest, manifestHash, paths, repoRoot: controller.repoRoot },
+    );
+    return resumeOwnedLane(controller, paths, manifest, manifestHash, owner);
+  }
+  if (existsSync(paths.laneRoot)) {
+    throw new Error("An unowned task lane already exists.");
+  }
+
+  const remoteHead = controller.git.remoteBranchHead(manifest.branch);
+  if (!remoteHead) {
+    throw new Error("The published feature branch does not exist remotely.");
+  }
+  const fetchedHead = controller.git.fetchRemoteBranch(manifest.branch);
+  if (fetchedHead !== remoteHead) {
+    throw new Error(
+      "The fetched feature branch does not match its remote head.",
+    );
+  }
+  if (!controller.git.isAncestor(manifest.base.sha, remoteHead)) {
+    throw new Error(
+      "The published branch does not descend from its manifest base.",
+    );
+  }
+  const changedPaths = controller.git.changedPathsBetween(
+    manifest.base.sha,
+    remoteHead,
+  );
+  if (changedPaths.length === 0) {
+    throw new Error("The published branch has no committed manifest change.");
+  }
+  assertChangedPathsOwned(changedPaths, manifest);
+
+  const pullRequest = controller.git.findOpenPullRequest(manifest.branch);
+  assertDraftPullRequest(pullRequest, manifest);
+  const localHead = controller.git.localBranchHead(manifest.branch);
+  if (localHead && localHead !== remoteHead) {
+    throw new Error("The local feature branch differs from the remote draft.");
+  }
+
+  acquireLease(paths, manifest, manifestHash, controller.now);
+  ensurePrivateDirectory(paths.laneRoot);
+  assertPrivateDirectory(paths.laneRoot, "Engineering task lane");
+  const workerPrompt = writeLaneFiles(
+    controller,
+    paths,
+    manifest,
+    manifestHash,
+  );
+  const initialOwner = {
+    ...buildOwner({
+      manifest,
+      manifestHash,
+      paths,
+      repoRoot: controller.repoRoot,
+      now: controller.now,
+    }),
+    headSha: remoteHead,
+  };
+  writeProtectedJson(paths.ownerPath, initialOwner);
+  if (localHead) {
+    controller.git.attachWorktree(paths.worktreePath, manifest.branch);
+  } else {
+    controller.git.addNewWorktree(
+      paths.worktreePath,
+      manifest.branch,
+      remoteHead,
+    );
+  }
+  const status = inspectOwnedWorktree(controller, paths, manifest);
+  if (
+    !status.clean ||
+    status.headSha !== remoteHead ||
+    JSON.stringify(status.changedPaths) !== JSON.stringify(changedPaths)
+  ) {
+    throw new Error("The adopted worktree does not match the reviewed draft.");
+  }
+  const owner = {
+    ...initialOwner,
+    state: "published",
+    updatedAt: timestamp(controller.now),
+    pullRequest: {
+      number: pullRequest.number,
+      url: pullRequest.url,
+      draft: true,
+    },
+  };
+  writeProtectedJson(paths.ownerPath, owner);
+  releaseLease(paths, manifest, manifestHash);
+  return laneResult({
+    owner,
+    status,
+    paths,
+    workerPrompt,
+    resumed: false,
+  });
+}
+
 function resolveOwnedLane(taskId, manifestHash, options) {
   assertTaskIdentity(taskId, manifestHash);
   const controller = resolveController(options);

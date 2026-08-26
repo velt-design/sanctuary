@@ -17,6 +17,7 @@ import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  adoptPublishedEngineeringLane,
   cleanupEngineeringLane,
   provisionEngineeringLane,
   publishEngineeringLane,
@@ -160,7 +161,17 @@ function fixture() {
     authenticatedGit: false,
     now: () => new Date("2026-08-26T00:00:00.000Z"),
   };
-  return { root, origin, repoRoot, stateDir, baseSha, options };
+  return {
+    root,
+    origin,
+    repoRoot,
+    stateDir,
+    baseSha,
+    options,
+    setPullRequest(value: Record<string, unknown> | null) {
+      pullRequest = value;
+    },
+  };
 }
 
 function commitOwnedChange(worktreePath: string) {
@@ -245,6 +256,38 @@ describe("engineering lane provisioning", () => {
     );
     expect(status.clean).toBe(false);
     expect(existsSync(join(lane.worktreePath, "untracked.txt"))).toBe(true);
+  });
+
+  it("adopts only an exact existing draft branch into protected ownership", () => {
+    const setup = fixture();
+    const manifest = createManifest(setup.baseSha, "adopt_published");
+    git(setup.repoRoot, ["checkout", "-b", manifest.branch]);
+    commitOwnedChange(setup.repoRoot);
+    const remoteHead = git(setup.repoRoot, ["rev-parse", "HEAD"]);
+    git(setup.repoRoot, ["push", "origin", manifest.branch]);
+    git(setup.repoRoot, ["checkout", "main"]);
+    git(setup.repoRoot, ["branch", "-D", manifest.branch]);
+    setup.setPullRequest({
+      number: 99,
+      url: "https://github.com/velt-design/sanctuary/pull/99",
+      isDraft: true,
+      headRefName: manifest.branch,
+      baseRefName: manifest.base.ref,
+    });
+
+    const adopted = adoptPublishedEngineeringLane(manifest, setup.options);
+    expect(adopted).toMatchObject({
+      state: "published",
+      headSha: remoteHead,
+      clean: true,
+      changedPaths: ["src/result.txt"],
+      pullRequest: { number: 99, draft: true },
+      resumed: false,
+    });
+    expect(adopted.workerPrompt).toContain(adopted.manifestHash);
+    expect(
+      adoptPublishedEngineeringLane(manifest, setup.options),
+    ).toMatchObject({ state: "published", resumed: true });
   });
 });
 

@@ -24,7 +24,7 @@ The engineering runtime is a separate OpenClaw instance:
 | CLI                  | `~/bin/sanctuary-openclaw`                                                                     |
 | Workspaces           | `~/.openclaw-sanctuary-engineering/workspaces/**`                                              |
 | Channels and browser | disabled                                                                                       |
-| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` plus reviewed `sanctuary-engineering-lanes@1.2.1` |
+| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` plus reviewed `sanctuary-engineering-lanes@1.2.2` |
 
 Activation never writes the default `~/.openclaw/openclaw.json`, approvals,
 agents, sessions, gateway token or gateway process. An unrelated OpenClaw

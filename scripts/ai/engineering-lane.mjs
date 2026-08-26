@@ -3,6 +3,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 import {
+  adoptPublishedEngineeringLane,
   cleanupEngineeringLane,
   provisionEngineeringLane,
   publishEngineeringLane,
@@ -13,6 +14,7 @@ function usage() {
   throw new Error(
     "Usage: node scripts/ai/engineering-lane.mjs " +
       "<provision MANIFEST_JSON | status TASK_ID MANIFEST_HASH | " +
+      "adopt-published MANIFEST_JSON | " +
       "publish TASK_ID MANIFEST_HASH --title TITLE --body-file PATH | " +
       "cleanup TASK_ID MANIFEST_HASH>",
   );
@@ -37,6 +39,8 @@ function main() {
   let result;
   if (command === "provision" && process.argv[3]) {
     result = provisionEngineeringLane(readJson(process.argv[3]));
+  } else if (command === "adopt-published" && process.argv[3]) {
+    result = adoptPublishedEngineeringLane(readJson(process.argv[3]));
   } else if (command === "status" && process.argv[3] && process.argv[4]) {
     result = statusEngineeringLane(process.argv[3], process.argv[4]);
   } else if (command === "publish" && process.argv[3] && process.argv[4]) {

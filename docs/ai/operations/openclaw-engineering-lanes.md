@@ -130,6 +130,18 @@ runtime remains staged, even if lane tests and draft creation pass.
 
 ## Verification
 
+For a draft branch created before the lane controller existed, the operator may
+run one explicit migration after reviewing the manifest and open draft PR:
+
+```bash
+sanctuary-engineering-lane adopt-published path/to/manifest.json
+```
+
+Adoption requires the exact remote branch, draft PR head/base, manifest base
+ancestry, clean worktree and owned changed paths. It writes the same protected
+owner record used by a newly provisioned lane. The supervisor cannot invoke
+this operator-only migration.
+
 ```bash
 npm run test:ai:ops
 npm run test:ai
