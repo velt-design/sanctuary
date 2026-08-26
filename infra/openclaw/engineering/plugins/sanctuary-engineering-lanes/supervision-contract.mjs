@@ -5,6 +5,7 @@ import { assertTaskIdentity } from "./lane-contract.mjs";
 const ENGINEERING_SUPERVISION_SCHEMA = "sanctuary-engineering-supervision-v2";
 export const ENGINEERING_SUPERVISION_CONTROLLER =
   "sanctuary-engineering/supervisor-v1";
+export const ENGINEERING_SUPERVISOR_AGENT = "sanctuary-engineering-supervisor";
 export const ENGINEERING_WORKER_AGENT = "sanctuary-coding-worker";
 export const ENGINEERING_SUPERVISION_TOOL_NAMES = Object.freeze([
   "sanctuary_engineering_supervision_enqueue",

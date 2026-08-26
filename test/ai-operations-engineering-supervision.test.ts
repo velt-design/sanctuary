@@ -115,6 +115,7 @@ class FakeTasks {
       runtime: "subagent",
       status: "running",
       agentId: "sanctuary-coding-worker",
+      requesterAgentId: "sanctuary-engineering-supervisor",
       childSessionKey: `agent:sanctuary-coding-worker:subagent:${this.records.size + 1}`,
       ...input,
     };
@@ -265,7 +266,7 @@ function attachRunning(
 ) {
   const task = setup.tasks.add({
     runId: `run-${dispatch.taskId}-${dispatch.attempt}`,
-    label: dispatch.taskName,
+    label: null,
     title: dispatch.workerPrompt,
     createdAt: dispatch.attemptStartedAt,
   });
@@ -404,13 +405,13 @@ describe("durable engineering supervision", () => {
     const dispatch = setup.controller().claim();
     setup.tasks.add({
       runId: "run-historical-matching-worker",
-      label: dispatch.taskName,
+      label: null,
       title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt - 1,
     });
     const native = setup.tasks.add({
       runId: "run-spawn-attach-recovery",
-      label: dispatch.taskName,
+      label: null,
       title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
@@ -440,7 +441,7 @@ describe("durable engineering supervision", () => {
     for (const suffix of ["one", "two"]) {
       setup.tasks.add({
         runId: `run-duplicate-${suffix}`,
-        label: dispatch.taskName,
+        label: null,
         title: dispatch.workerPrompt,
         createdAt: dispatch.attemptStartedAt,
       });
@@ -463,7 +464,7 @@ describe("durable engineering supervision", () => {
     setup.tasks.add({
       runId: "run-wrong-agent",
       agentId: "other-agent",
-      label: dispatch.taskName,
+      label: null,
       title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
@@ -484,8 +485,9 @@ describe("durable engineering supervision", () => {
     ).toThrow(/revision conflict/);
 
     setup.tasks.add({
-      runId: "run-wrong-label",
-      label: "eng_wrong_label_a1",
+      runId: "run-wrong-requester",
+      requesterAgentId: "other-supervisor",
+      label: null,
       title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
@@ -493,7 +495,21 @@ describe("durable engineering supervision", () => {
       setup.controller().attach({
         flowId: dispatch.flowId,
         expectedRevision: dispatch.expectedRevision,
-        runId: "run-wrong-label",
+        runId: "run-wrong-requester",
+      }),
+    ).toThrow(/named Sanctuary coding worker/);
+
+    setup.tasks.add({
+      runId: "run-wrong-prompt",
+      label: null,
+      title: `${dispatch.workerPrompt}\nwrong`,
+      createdAt: dispatch.attemptStartedAt,
+    });
+    expect(() =>
+      setup.controller().attach({
+        flowId: dispatch.flowId,
+        expectedRevision: dispatch.expectedRevision,
+        runId: "run-wrong-prompt",
       }),
     ).toThrow(/named Sanctuary coding worker/);
 

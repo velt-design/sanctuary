@@ -1,4 +1,7 @@
-import { activeAttempt } from "./supervision-contract.mjs";
+import {
+  ENGINEERING_SUPERVISOR_AGENT,
+  activeAttempt,
+} from "./supervision-contract.mjs";
 
 export const TERMINAL_NATIVE_STATUSES = new Set([
   "succeeded",
@@ -66,7 +69,7 @@ export function findNativeDispatchMatches(taskRuns, workerDispatch) {
       (task) =>
         task.runtime === "subagent" &&
         task.agentId === workerDispatch.workerAgentId &&
-        task.label === workerDispatch.taskName &&
+        task.requesterAgentId === ENGINEERING_SUPERVISOR_AGENT &&
         task.title === workerDispatch.workerPrompt &&
         Number.isSafeInteger(task.createdAt) &&
         task.createdAt >= workerDispatch.attemptStartedAt &&
@@ -85,7 +88,7 @@ export function assertAttachableNativeTask({
     task.runId !== runId ||
     task.runtime !== "subagent" ||
     task.agentId !== expectedDispatch.workerAgentId ||
-    task.label !== expectedDispatch.taskName ||
+    task.requesterAgentId !== ENGINEERING_SUPERVISOR_AGENT ||
     task.title !== expectedDispatch.workerPrompt ||
     !task.childSessionKey ||
     !NATIVE_STATUSES.has(task.status) ||

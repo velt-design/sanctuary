@@ -99,9 +99,9 @@ unknown flows, branches, worktrees, task runs or session identities.
 
 OpenClaw child runs inherit the supervisor's effective tool policy before the
 worker policy is applied. The supervisor policy therefore carries the
-worker-only lane-publish name through that inherited filter, but the plugin
-registers the callable tool only for `sanctuary-coding-worker`; the
-fail-closed oversight hook also rejects any supervisor attempt to invoke it.
+lane-publish name through that inherited filter. The fail-closed oversight hook
+rejects every supervisor invocation before execution, while the coding worker
+can call the same narrow manifest-bound publisher.
 
 ## Retry and recovery policy
 

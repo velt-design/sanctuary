@@ -390,6 +390,32 @@ describe("engineering lane publication and cleanup", () => {
       ]),
     ).toBe("");
   });
+
+  it("refuses to report a published lane after its local head moves without the remote", () => {
+    const setup = fixture();
+    const manifest = createManifest(setup.baseSha, "published_head_drift");
+    const lane = provisionEngineeringLane(manifest, setup.options);
+    commitOwnedChange(lane.worktreePath);
+    publishEngineeringLane(
+      {
+        taskId: manifest.taskId,
+        manifestHash: lane.manifestHash,
+        title: "test(ai): publish drift fixture",
+        body: "This draft pull request proves published head drift fails closed.",
+      },
+      setup.options,
+    );
+    writeFileSync(
+      join(lane.worktreePath, "src", "result.txt"),
+      "complete\nmoved\n",
+    );
+    git(lane.worktreePath, ["add", "src/result.txt"]);
+    git(lane.worktreePath, ["commit", "-m", "test: move local head"]);
+
+    expect(() =>
+      statusEngineeringLane(manifest.taskId, lane.manifestHash, setup.options),
+    ).toThrow(/published lane no longer matches/);
+  });
 });
 
 describe("lane policy helpers", () => {

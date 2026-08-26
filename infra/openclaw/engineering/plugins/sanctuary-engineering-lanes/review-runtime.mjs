@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 
-import { cloneJson } from "./supervision-contract.mjs";
+import {
+  ENGINEERING_SUPERVISOR_AGENT,
+  cloneJson,
+} from "./supervision-contract.mjs";
 
 export const ENGINEERING_REVIEWER_AGENT = "sanctuary-code-reviewer";
 export const TERMINAL_REVIEW_STATUSES = new Set([
@@ -118,7 +121,7 @@ export function findNativeReviewMatches(taskRuns, dispatch) {
       (task) =>
         task.runtime === "subagent" &&
         task.agentId === dispatch.reviewerAgentId &&
-        task.label === dispatch.reviewTaskName &&
+        task.requesterAgentId === ENGINEERING_SUPERVISOR_AGENT &&
         task.title === dispatch.reviewPrompt &&
         Number.isSafeInteger(task.createdAt) &&
         task.createdAt >= dispatch.reviewStartedAt &&
@@ -137,7 +140,7 @@ export function assertAttachableReviewerTask({
     task.runId !== runId ||
     task.runtime !== "subagent" ||
     task.agentId !== ENGINEERING_REVIEWER_AGENT ||
-    task.label !== expectedDispatch.reviewTaskName ||
+    task.requesterAgentId !== ENGINEERING_SUPERVISOR_AGENT ||
     task.title !== expectedDispatch.reviewPrompt ||
     !task.childSessionKey ||
     !REVIEW_STATUSES.has(task.status) ||
@@ -159,7 +162,7 @@ export function assertNativeReviewerIdentity(task, review) {
     task.id !== review.taskRunId ||
     task.runtime !== "subagent" ||
     task.agentId !== ENGINEERING_REVIEWER_AGENT ||
-    task.label !== review.taskName ||
+    task.requesterAgentId !== ENGINEERING_SUPERVISOR_AGENT ||
     task.childSessionKey !== review.childSessionKey ||
     hashText(task.title ?? "") !== review.promptHash
   ) {

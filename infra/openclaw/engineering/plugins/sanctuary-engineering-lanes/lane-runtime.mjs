@@ -552,6 +552,27 @@ export function statusEngineeringLane(taskId, manifestHash, options = {}) {
   const status = existsSync(paths.worktreePath)
     ? inspectOwnedWorktree(controller, paths, manifest)
     : null;
+  if (owner.state === "published") {
+    if (
+      !status ||
+      status.headSha !== owner.headSha ||
+      controller.git.remoteBranchHead(manifest.branch) !== owner.headSha
+    ) {
+      throw new Error(
+        "The published lane no longer matches its recorded local and remote head.",
+      );
+    }
+    const pullRequest = controller.git.findOpenPullRequest(manifest.branch);
+    assertDraftPullRequest(pullRequest, manifest);
+    if (
+      pullRequest.number !== owner.pullRequest?.number ||
+      pullRequest.url !== owner.pullRequest?.url
+    ) {
+      throw new Error(
+        "The published lane no longer matches its recorded draft pull request.",
+      );
+    }
+  }
   return laneResult({
     owner,
     status,

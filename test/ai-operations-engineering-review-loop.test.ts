@@ -107,6 +107,7 @@ class Tasks {
       runtime: "subagent",
       status: "running",
       agentId,
+      requesterAgentId: "sanctuary-engineering-supervisor",
       childSessionKey: `agent:${agentId}:subagent:${number}`,
       ...input,
     };
@@ -318,7 +319,7 @@ async function reachCi(setup: ReturnType<typeof fixture>) {
   const dispatch = setup.controller().claim();
   const worker = setup.tasks.add({
     runId: "run-worker-1",
-    label: dispatch.taskName,
+    label: null,
     title: dispatch.workerPrompt,
     createdAt: dispatch.attemptStartedAt,
   });
@@ -397,7 +398,7 @@ function attachReviewer(setup: ReturnType<typeof fixture>, dispatch: Value) {
   const reviewer = setup.tasks.add({
     runId: "run-reviewer-1",
     agentId: dispatch.reviewerAgentId,
-    label: dispatch.reviewTaskName,
+    label: null,
     title: dispatch.reviewPrompt,
     createdAt: dispatch.reviewStartedAt,
   });
@@ -606,7 +607,7 @@ describe("durable exact-head CI and independent review loop", () => {
     const wrong = setup.tasks.add({
       runId: "wrong-reviewer",
       agentId: "sanctuary-coding-worker",
-      label: reviewDispatch.reviewTaskName,
+      label: null,
       title: reviewDispatch.reviewPrompt,
       createdAt: reviewDispatch.reviewStartedAt,
     });
@@ -624,6 +625,22 @@ describe("durable exact-head CI and independent review loop", () => {
         runId: wrong.runId,
       }),
     ).toThrow(/revision conflict/);
+
+    const wrongRequester = setup.tasks.add({
+      runId: "wrong-reviewer-requester",
+      agentId: reviewDispatch.reviewerAgentId,
+      requesterAgentId: "other-supervisor",
+      label: null,
+      title: reviewDispatch.reviewPrompt,
+      createdAt: reviewDispatch.reviewStartedAt,
+    });
+    expect(() =>
+      setup.controller().attachReview({
+        flowId: reviewDispatch.flowId,
+        expectedRevision: reviewDispatch.expectedRevision,
+        runId: wrongRequester.runId,
+      }),
+    ).toThrow(/named Sanctuary code reviewer/);
 
     const { reviewer, attached } = attachReviewer(setup, reviewDispatch);
     reviewer.status = "succeeded";
@@ -655,14 +672,14 @@ describe("durable exact-head CI and independent review loop", () => {
     setup.tasks.add({
       runId: "historical-reviewer",
       agentId: reviewDispatch.reviewerAgentId,
-      label: reviewDispatch.reviewTaskName,
+      label: null,
       title: reviewDispatch.reviewPrompt,
       createdAt: reviewDispatch.reviewStartedAt - 1,
     });
     const current = setup.tasks.add({
       runId: "current-reviewer",
       agentId: reviewDispatch.reviewerAgentId,
-      label: reviewDispatch.reviewTaskName,
+      label: null,
       title: reviewDispatch.reviewPrompt,
       createdAt: reviewDispatch.reviewStartedAt,
     });
