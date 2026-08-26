@@ -126,6 +126,19 @@ Start the sleep-resistant, loopback-only instance:
 npm run ai:engineering:start-mac
 ```
 
+Stop only this isolated instance with the reviewed kill switch:
+
+```bash
+npm run ai:engineering:stop-mac
+```
+
+The stop command requires the protected PID to match the current runtime user,
+the `openclaw-gateway` process title and loopback port `19011`. It sends one
+graceful termination signal, removes only the isolated PID record after both the
+process and health check are down, and refuses `pkill`, `killall`, force kill or
+an unknown healthy gateway. It fingerprints the default OpenClaw authority
+before and after the stop.
+
 The launcher survives SSH disconnection. A FileVault restart still needs one
 physical unlock; this development node does not pretend otherwise. An external
 backup disk remains optional while Git, 1Password and reissuable credentials

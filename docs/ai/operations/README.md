@@ -1,8 +1,9 @@
 # Sanctuary AI Operations
 
 Status: Mac baseline and the repository contracts for isolated lanes, durable
-supervision, exact-head CI and independent review are implemented; live
-supervisor OAuth plus restart, safety and end-to-end promotion rehearsals remain.
+supervision, exact-head CI and independent review are implemented. The exact
+isolated-gateway kill switch is implemented; the supervisor credential plus
+live restart, safety and end-to-end promotion rehearsals remain.
 
 Owner: Jordan / Sanctuary Pergolas
 

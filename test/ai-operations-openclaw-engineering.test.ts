@@ -15,6 +15,11 @@ import {
   buildOpenClawWrapper,
   resolveEngineeringRuntimePaths,
 } from "../scripts/ai/openclaw-engineering-runtime.mjs";
+import {
+  inspectEngineeringGatewayProcess,
+  parseEngineeringGatewayPid,
+  stopEngineeringGateway,
+} from "../scripts/ai/mac-openclaw-engineering-stop.mjs";
 
 const config = JSON.parse(
   readFileSync(resolve("infra/openclaw/engineering/openclaw.json"), "utf8"),
@@ -47,6 +52,10 @@ const activationSource = readFileSync(
 );
 const startSource = readFileSync(
   resolve("scripts/ai/mac-openclaw-engineering-start.mjs"),
+  "utf8",
+);
+const stopSource = readFileSync(
+  resolve("scripts/ai/mac-openclaw-engineering-stop.mjs"),
   "utf8",
 );
 const supervisorInstructions = readFileSync(
@@ -358,5 +367,86 @@ describe("isolated OpenClaw engineering runtime", () => {
     expect(startSource).toContain('"/usr/bin/caffeinate"');
     expect(startSource).toContain('["gateway", "health"]');
     expect(startSource).toContain("detached: true");
+  });
+
+  it("stops only the exact owned gateway process and clears its PID", () => {
+    const paths = resolveEngineeringRuntimePaths({
+      home: "/Users/sanctuary-runner",
+      repoRoot: "/repo",
+    });
+    const signals: number[] = [];
+    const removed: string[] = [];
+    let inspected = 0;
+    let healthChecks = 0;
+    const result = stopEngineeringGateway({
+      platform: "darwin",
+      paths,
+      fileExists: () => true,
+      readFile: () => "1234\n",
+      readGatewayToken: () => "fixture-token",
+      fingerprintAuthority: () => ({ config: "before" }),
+      assertAuthorityUnchanged: (_runtimePaths, expected) => {
+        expect(expected).toEqual({ config: "before" });
+      },
+      inspectProcess: () => ({
+        running: inspected++ === 0,
+        pid: 1234,
+      }),
+      isHealthy: () => healthChecks++ === 0,
+      signal: (pid) => signals.push(pid),
+      pause: () => undefined,
+      removeFile: (path) => removed.push(path),
+    });
+    expect(result).toEqual({
+      stopped: true,
+      alreadyStopped: false,
+      pid: 1234,
+    });
+    expect(signals).toEqual([1234]);
+    expect(removed).toEqual([paths.pidPath]);
+  });
+
+  it("refuses an unowned live gateway and never uses broad process killing", () => {
+    const paths = resolveEngineeringRuntimePaths({
+      home: "/Users/sanctuary-runner",
+      repoRoot: "/repo",
+    });
+    expect(() =>
+      stopEngineeringGateway({
+        platform: "darwin",
+        paths,
+        fileExists: () => false,
+        readGatewayToken: () => "fixture-token",
+        fingerprintAuthority: () => ({}),
+        assertAuthorityUnchanged: () => undefined,
+        isHealthy: () => true,
+      }),
+    ).toThrow(/PID file is missing/);
+    expect(stopSource).not.toMatch(/pkill|killall|SIGKILL/);
+  });
+
+  it("validates the PID, owner, process title and isolated listener", () => {
+    expect(parseEngineeringGatewayPid("1234\n")).toBe(1234);
+    expect(() => parseEngineeringGatewayPid("0")).toThrow(/invalid/);
+    expect(() => parseEngineeringGatewayPid("12 other")).toThrow(/invalid/);
+
+    const calls: string[][] = [];
+    const state = inspectEngineeringGatewayProcess(1234, {
+      currentUser: "sanctuary-runner",
+      run: (_binary, args) => {
+        calls.push(args);
+        return calls.length === 1
+          ? { status: 0, stdout: "sanctuary-runner openclaw-gateway\n" }
+          : { status: 0, stdout: "listener\n" };
+      },
+    });
+    expect(state).toMatchObject({
+      running: true,
+      pid: 1234,
+      owner: "sanctuary-runner",
+      command: "openclaw-gateway",
+      port: ENGINEERING_GATEWAY_PORT,
+    });
+    expect(calls[1]).toContain(`-iTCP:${ENGINEERING_GATEWAY_PORT}`);
   });
 });
