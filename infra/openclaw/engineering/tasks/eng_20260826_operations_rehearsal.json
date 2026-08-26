@@ -25,13 +25,11 @@
     "docs/ai/operations/node-rebuild-and-revocation.md"
   ],
   "ownedPaths": [
-    "infra/openclaw/engineering/tasks/eng_20260826_operations_rehearsal.json",
-    "scripts/ai/mac-openclaw-engineering-stop.mjs",
-    "test/ai-operations-openclaw-engineering.test.ts",
+    "infra/openclaw/engineering/**",
+    "scripts/ai/**",
+    "test/ai-operations-*.test.ts",
     "docs/ai/README.md",
-    "docs/ai/operations/README.md",
-    "docs/ai/operations/autonomous-engineering.md",
-    "docs/ai/operations/openclaw-engineering-runtime.md",
+    "docs/ai/operations/**",
     "docs/decision-log.md",
     "scripts/dead-code-registry.json",
     "package.json"
