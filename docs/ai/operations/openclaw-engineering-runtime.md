@@ -24,7 +24,7 @@ The engineering runtime is a separate OpenClaw instance:
 | CLI                  | `~/bin/sanctuary-openclaw`                        |
 | Workspaces           | `~/.openclaw-sanctuary-engineering/workspaces/**` |
 | Channels and browser | disabled                                          |
-| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` only |
+| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` plus reviewed `sanctuary-engineering-lanes@1.0.0` |
 
 Activation never writes the default `~/.openclaw/openclaw.json`, approvals,
 agents, sessions, gateway token or gateway process. An unrelated OpenClaw
@@ -40,9 +40,9 @@ which must continue to hold no production credential.
 
 | Role                               | Authority                                                                                                                                            |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sanctuary-engineering-supervisor` | Read contracts and evidence; spawn, inspect, steer and wait for the two named child roles. No shell or file mutation.                                |
-| `sanctuary-coding-worker`          | No-prompt coding inside the assigned worker root; focused checks, feature-branch push and draft PR only. One leaf worker cannot spawn another agent. |
-| `sanctuary-code-reviewer`          | Read-only independent evidence review. No shell, mutation, delegation or merge authority.                                                            |
+| `sanctuary-engineering-supervisor` | Read contracts/evidence; use narrow provision/status/cleanup tools; spawn, inspect, steer and wait for named children. No general shell or product-file mutation. |
+| `sanctuary-coding-worker`          | No-prompt coding inside the assigned worker root; focused checks and narrow status/publish tools. One leaf worker cannot spawn another agent. |
+| `sanctuary-code-reviewer`          | Read-only evidence and narrow lane-status review. No shell, mutation, delegation or merge authority. |
 
 The installed OpenClaw schema requires a deterministic default route, so only
 the bounded supervisor is marked default. The coding worker and reviewer remain
@@ -59,7 +59,9 @@ and their host approval policy is deny.
 GitHub uses the repository-scoped Sanctuary GitHub App. The helper reads its
 identity with a headless, read-only 1Password service account and requests a
 short-lived installation token. It does not use the desktop app, so there is no
-approval pop-up for each command. The service-account token is copied once from
+approval pop-up for each command. The token is passed only to an exact Git
+credential request or the restricted Sanctuary read/draft wrapper; raw token,
+merge and ready-for-review modes are absent. The service-account token is copied once from
 the protected legacy location into the isolated state without printing it.
 
 ## Activation on the Mac
@@ -79,9 +81,12 @@ than overwrite an unclaimed or differently owned state directory. It then:
 3. writes the reviewed approvals before OpenClaw starts so its legacy migration
    cannot move the default instance's approvals, then imports them through the
    supported CLI;
-4. installs or verifies the exact official Codex plugin version, plugin load,
-   install record and compatibility probes; and
-5. verifies the headless 1Password service account and exact GitHub App scope.
+4. installs or verifies the exact official Codex plugin and reviewed lane-tool
+   plugin versions, load records and compatibility probes;
+5. verifies the headless 1Password service account and exact GitHub App scope;
+   and
+6. validates the lane tool allowlists without giving the lead or reviewer a
+   general execution surface.
 
 Every isolated OpenClaw command fingerprints the default instance's config and
 approval authority before and after execution. Any cross-state mutation stops
@@ -96,6 +101,9 @@ package patch behind (`2026.7.1-2` versus `2026.7.1-1`). Activation independentl
 pins and verifies that npm release, requires clean plugin compatibility probes,
 and fails configured-install lint on errors rather than that version-only warning.
 The full security lint must remain clean.
+
+The lane lifecycle and hosted default-branch promotion block are defined in
+`openclaw-engineering-lanes.md`.
 
 Complete one device-code login on the bounded supervisor inside this isolated
 state:
@@ -136,8 +144,10 @@ Expected evidence:
 
 - exactly the three named agents exist and none is implicit;
 - only the supervisor can target the worker and reviewer;
-- the supervisor and reviewer have no shell or mutation tools;
-- the worker has no-prompt coding authority and is capped at one active leaf;
+- the supervisor and reviewer have no shell, and only their named narrow lane
+  tools are present;
+- the worker has no-prompt coding plus status/publish authority and is capped
+  at one active leaf;
 - channels, browser, hooks, ACP, cron, mDNS and production credentials are
   absent; and
 - the default OpenClaw gateway remains unchanged and independently healthy.

@@ -1,0 +1,26 @@
+{
+  "id": "sanctuary-engineering-lanes",
+  "name": "Sanctuary Engineering Lanes",
+  "description": "Provides manifest-bound worktree, draft-PR, and cleanup tools for the isolated Sanctuary engineering runtime.",
+  "contracts": {
+    "tools": [
+      "sanctuary_engineering_lane_provision",
+      "sanctuary_engineering_lane_status",
+      "sanctuary_engineering_lane_publish",
+      "sanctuary_engineering_lane_cleanup"
+    ]
+  },
+  "toolMetadata": {
+    "sanctuary_engineering_lane_provision": { "optional": true },
+    "sanctuary_engineering_lane_status": { "optional": true },
+    "sanctuary_engineering_lane_publish": { "optional": true },
+    "sanctuary_engineering_lane_cleanup": { "optional": true }
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false
+  }
+}

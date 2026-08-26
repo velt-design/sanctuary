@@ -84,7 +84,8 @@ manifest limits.
   completion report remain the durable engineering evidence.
 
 The concrete state, port, role and activation contract lives in
-`openclaw-engineering-runtime.md`.
+`openclaw-engineering-runtime.md`. Deterministic branch, worktree, publish and
+cleanup behavior lives in `openclaw-engineering-lanes.md`.
 
 ## Completion definition
 

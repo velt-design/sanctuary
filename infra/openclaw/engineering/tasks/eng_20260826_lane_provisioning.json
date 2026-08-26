@@ -1,0 +1,93 @@
+{
+  "schema": "sanctuary-engineering-task-v1",
+  "taskId": "eng_20260826_lane_provisioning",
+  "goalId": "goal_20260826_autonomous_engineering",
+  "objective": "Give each approved engineering task one manifest-bound feature branch and isolated worktree with deterministic resume, narrow draft-PR publication, and owner-verified cleanup.",
+  "requestedBy": "Jordan / Sanctuary Pergolas",
+  "base": {
+    "ref": "ai/autonomy-foundation-runtime",
+    "sha": "9e1ff0459a785127825676b64ab1aed7a0e34cdd"
+  },
+  "branch": "ai/autonomy-foundation-lanes",
+  "risk": "medium",
+  "ownerLane": "ai-engineering-lanes",
+  "roles": {
+    "supervisor": "engineering_lead",
+    "worker": "coding_worker",
+    "reviewer": "code_reviewer"
+  },
+  "readFirst": [
+    "AGENTS.md",
+    "docs/ai/operations/autonomous-engineering.md",
+    "docs/ai/operations/openclaw-engineering-runtime.md",
+    "docs/parallel-work-guardrails.md",
+    "docs/target-architecture.md"
+  ],
+  "ownedPaths": [
+    "infra/openclaw/engineering/**",
+    "scripts/ai/**",
+    "test/ai-operations-engineering-lanes.test.ts",
+    "test/ai-operations-openclaw-engineering.test.ts",
+    "test/ai-engineering-contract-cli.test.ts",
+    "docs/ai/operations/**",
+    "docs/decision-log.md",
+    "scripts/dead-code-registry.json",
+    "package.json"
+  ],
+  "excludedPaths": [
+    "apps/portal/**",
+    "apps/marketing/**",
+    "supabase/**",
+    ".github/workflows/**"
+  ],
+  "dependencies": ["eng_20260826_runtime_isolation"],
+  "acceptanceCriteria": [
+    "A strict canonical manifest hash binds the exact base SHA, feature branch, owner record, worktree path, and worker prompt.",
+    "Provisioning is idempotent for an exact same-manifest lane and refuses base drift, unknown branches, unknown directories, ownership mismatch, or a second active worker.",
+    "The supervisor receives narrow provision, status, and cleanup tools without a general shell; the worker receives status and publish; the reviewer receives status only.",
+    "Publication refuses dirty, empty, divergent, excluded, or outside-lane changes and can only push the exact non-force feature ref and create or confirm an open draft pull request.",
+    "Cleanup revalidates the clean local head, remote head, and exact draft PR, removes only the owned worktree without force, and retains both branches.",
+    "The repository-scoped GitHub helper no longer prints raw tokens and rejects merge, ready-for-review, API mutation, and non-draft PR commands.",
+    "The installed Mac OpenClaw build loads the reviewed lane plugin and a secret-free provision/resume/refusal/publish/cleanup rehearsal passes."
+  ],
+  "verification": {
+    "focusedCommands": [
+      "npm run test:ai:ops",
+      "npm run test:ai",
+      "npm run docs:guard",
+      "npm run packages:guard",
+      "npm run architecture:changed:strict",
+      "node --check infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/index.mjs",
+      "sanctuary-openclaw plugins inspect sanctuary-engineering-lanes --runtime --json",
+      "sanctuary-openclaw plugins doctor",
+      "sanctuary-openclaw doctor --lint --only core/doctor/security --json"
+    ],
+    "ciChecks": ["Portal Quality", "AI operations tests"],
+    "visualEvidence": {
+      "required": false,
+      "scenarios": []
+    }
+  },
+  "limits": {
+    "maxWorkers": 1,
+    "maxAttempts": 3,
+    "workerTimeoutMinutes": 60,
+    "maxCostCents": 5000
+  },
+  "approvals": {
+    "planning": "approved",
+    "merge": "human_required",
+    "scopeExpansion": "human_required",
+    "production": "prohibited"
+  },
+  "outputs": {
+    "draftPullRequest": true,
+    "completionReport": true
+  },
+  "stopConditions": [
+    "A branch, worktree, owner record, manifest hash, remote URL, or base SHA does not match exactly.",
+    "A changed path is outside ownedPaths or inside excludedPaths.",
+    "A push would target main, use force, delete a ref, or create anything other than an open draft pull request.",
+    "Live validation would expose a GitHub or 1Password token, touch production, or mutate the unrelated default OpenClaw runtime."
+  ]
+}
