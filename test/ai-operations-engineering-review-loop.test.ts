@@ -242,6 +242,13 @@ function missingCiEvidence(manifest: Value, completion: Value) {
   return { ...canonical, evidenceHash: hash(canonical) };
 }
 
+function workflowJobCiEvidence(manifest: Value, completion: Value) {
+  const evidence = ciEvidence(manifest, completion);
+  evidence.requiredChecks[0].kind = "workflow_job";
+  const { evidenceHash: _evidenceHash, ...canonical } = evidence;
+  return { ...canonical, evidenceHash: hash(canonical) };
+}
+
 class CiRuntime {
   queue: Value[] = [];
   dispatches: Value[] = [];
@@ -511,6 +518,25 @@ function reviewReport(
 }
 
 describe("durable exact-head CI and independent review loop", () => {
+  it("accepts an exact dispatched workflow job as durable CI evidence", async () => {
+    const setup = fixture(2, "AI Foundation / Provider-neutral contracts");
+    const reached = await reachCi(setup);
+    setup.ci.queue = [workflowJobCiEvidence(setup.manifest, reached.report)];
+
+    expect(
+      setup.controller().inspectCi({
+        flowId: reached.ciPending.flowId,
+        expectedRevision: reached.ciPending.revision,
+      }),
+    ).toMatchObject({
+      reviewReady: true,
+      reviewerAgentId: "sanctuary-code-reviewer",
+    });
+    expect(
+      setup.controller().status(setup.manifest.taskId, setup.manifestHash),
+    ).toMatchObject({ phase: "reviewer_ready", ciClassification: "passed" });
+  });
+
   it("cannot finish until exact CI and the named reviewer both approve", async () => {
     const setup = fixture();
     const reached = await reachCi(setup);

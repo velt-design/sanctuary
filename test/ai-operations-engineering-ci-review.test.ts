@@ -441,7 +441,7 @@ Received: 10`),
       classification: "blocked",
       requiredChecks: [
         {
-          kind: "workflow_run_duplicate",
+          kind: "workflow_run",
           disposition: "blocked",
         },
       ],

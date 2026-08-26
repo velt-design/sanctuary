@@ -298,7 +298,7 @@ export function createGitHubCiRuntime(options = {}) {
     if (exactRuns.length > 1) {
       return {
         name: AI_FOUNDATION_CHECK,
-        kind: "workflow_run_duplicate",
+        kind: "workflow_run",
         status: null,
         conclusion: null,
         url: null,

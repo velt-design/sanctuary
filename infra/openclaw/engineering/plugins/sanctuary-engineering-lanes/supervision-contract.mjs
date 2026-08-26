@@ -231,7 +231,13 @@ function assertCiEvidence(evidence, state, { current = true } = {}) {
     if (
       !isRecord(check) ||
       check.name !== state.manifest.verification.ciChecks[index] ||
-      !["check_run", "status_context", "missing"].includes(check.kind) ||
+      ![
+        "check_run",
+        "status_context",
+        "workflow_job",
+        "workflow_run",
+        "missing",
+      ].includes(check.kind) ||
       !validOptionalString(check.status, 100) ||
       !validOptionalString(check.conclusion, 100) ||
       !validOptionalString(check.url) ||
