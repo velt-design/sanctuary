@@ -44,6 +44,15 @@ const ACTIVE_PHASES = new Set([
   "awaiting_completion",
   ...POST_WORKER_ACTIVE_PHASES,
 ]);
+
+function isRecoverableNativeDispatchBlock(state) {
+  return (
+    state.phase === "blocked" &&
+    state.lastCheckpoint?.kind === "duplicate_native_dispatch" &&
+    activeAttempt(state)?.status === "ready"
+  );
+}
+
 export function createEngineeringSupervisionController(options = {}) {
   const flowRuntime = required(options.flowRuntime, "Task Flow runtime");
   const taskRuns = required(options.taskRuns, "Task Run runtime");
@@ -234,9 +243,15 @@ export function createEngineeringSupervisionController(options = {}) {
       throw new Error("The lane result does not match the durable flow.");
     }
     const workerDispatch = dispatch(flow, laneResult);
-    const matches = findNativeDispatchMatches(taskRuns, workerDispatch);
+    const matches = findNativeDispatchMatches(taskRuns, workerDispatch).sort(
+      (left, right) =>
+        left.createdAt - right.createdAt || left.id.localeCompare(right.id),
+    );
     if (matches.length === 0) return workerDispatch;
-    if (matches.length > 1) {
+    if (
+      matches.length > 1 &&
+      matches.some((task) => !TERMINAL_NATIVE_STATUSES.has(task.status))
+    ) {
       return {
         claimed: false,
         recoveredAttached: false,
@@ -250,14 +265,18 @@ export function createEngineeringSupervisionController(options = {}) {
       };
     }
     try {
+      const recoveredTask = matches[0];
       return {
         claimed: false,
         recoveredAttached: true,
-        reason: "Recovered the existing native worker; do not spawn another.",
+        reason:
+          matches.length === 1
+            ? "Recovered the existing native worker; do not spawn another."
+            : `Recovered the original terminal native worker from ${matches.length} completed duplicate records; do not spawn another.`,
         ...attach({
           flowId: flow.flowId,
           expectedRevision: flow.revision,
-          runId: matches[0].runId,
+          runId: recoveredTask.runId,
         }),
       };
     } catch (error) {
@@ -402,7 +421,10 @@ export function createEngineeringSupervisionController(options = {}) {
     let flow = getFlow(flowId);
     assertExpectedRevision(flow, expectedRevision);
     let state = readSupervisionState(flow);
-    if (state.phase !== "worker_ready") {
+    if (
+      state.phase !== "worker_ready" &&
+      !isRecoverableNativeDispatchBlock(state)
+    ) {
       throw new Error("Only a ready worker attempt can attach a native task.");
     }
     const attempt = activeAttempt(state);
@@ -623,9 +645,13 @@ export function createEngineeringSupervisionController(options = {}) {
 
   async function recover() {
     const flows = supervisionFlows();
-    const active = flows.filter((flow) =>
-      ACTIVE_PHASES.has(readSupervisionState(flow).phase),
-    );
+    const active = flows.filter((flow) => {
+      const state = readSupervisionState(flow);
+      return (
+        ACTIVE_PHASES.has(state.phase) ||
+        isRecoverableNativeDispatchBlock(state)
+      );
+    });
     if (active.length > 1) {
       throw new Error("More than one engineering worker flow is active.");
     }
@@ -634,7 +660,10 @@ export function createEngineeringSupervisionController(options = {}) {
     if (POST_WORKER_ACTIVE_PHASES.has(state.phase)) {
       return postWorker.recover(active[0]);
     }
-    if (state.phase === "worker_ready") {
+    if (
+      state.phase === "worker_ready" ||
+      isRecoverableNativeDispatchBlock(state)
+    ) {
       const resumed = resumeReadyFlow(active[0]);
       if (!resumed.recoveredAttached) return resumed;
       const reconciled = await reconcile({

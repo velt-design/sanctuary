@@ -119,7 +119,10 @@ create a second worktree or worker. If the gateway stopped after spawn but
 before attachment, the controller finds the one native task from the exact
 supervisor session with the target agent, canonical prompt and current attempt
 time window, attaches it, ignores historical runs outside that window, and
-refuses current duplicates.
+refuses duplicates while any matching worker remains live. If every duplicate
+is terminal, recovery deterministically attaches the oldest original dispatch;
+this lets a corrected controller resume a prior duplicate-safety block without
+starting more work.
 An overdue running task must be cancelled through OpenClaw's native task
 runtime before a retry becomes eligible.
 

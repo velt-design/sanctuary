@@ -490,6 +490,44 @@ describe("durable engineering supervision", () => {
     });
   });
 
+  it("recovers the oldest original worker when every duplicate is terminal", async () => {
+    const setup = fixture();
+    const task = manifest("terminal_duplicate_recovery");
+    setup.controller().enqueue(task);
+    const dispatch = setup.controller().claim();
+    const original = setup.tasks.add({
+      runId: "run-terminal-original",
+      label: null,
+      title: dispatch.workerPrompt,
+      createdAt: dispatch.attemptStartedAt,
+    });
+    const duplicate = setup.tasks.add({
+      runId: "run-terminal-duplicate",
+      label: null,
+      title: dispatch.workerPrompt,
+      createdAt: dispatch.attemptStartedAt + 1,
+    });
+
+    expect(await setup.controller().recover()).toMatchObject({
+      recoveredAttached: false,
+      phase: "blocked",
+    });
+
+    original.status = "succeeded";
+    original.endedAt = dispatch.attemptStartedAt + 2;
+    duplicate.status = "failed";
+    duplicate.endedAt = dispatch.attemptStartedAt + 3;
+    duplicate.error = "Duplicate lost during restart.";
+
+    const recovered = await setup.controller().recover();
+    expect(recovered).toMatchObject({
+      recoveredAttached: true,
+      waiting: true,
+      phase: "awaiting_completion",
+      activeRunId: original.runId,
+    });
+  });
+
   it("rejects stale revisions and the wrong native worker identity", () => {
     const setup = fixture();
     const task = manifest("identity_fence");
