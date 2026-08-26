@@ -41,6 +41,8 @@ export function buildWorkerDispatch({
   const repairContext = state.repairContext
     ? `\n\n# Required repair evidence\n\nThis is a bounded ${state.repairContext.kind === "ci_failure" ? "CI repair" : "review repair"}. Diagnose and address only the evidence below in the existing lane. Do not suppress, skip, weaken or rename a check. If the evidence is not reproducible or cannot be safely repaired in scope, return a blocked completion instead of creating a meaningless commit.\n\n\`\`\`json\n${JSON.stringify(state.repairContext, null, 2)}\n\`\`\`\n`
     : "";
+  const workerPrompt =
+    `${laneResult.workerPrompt}${attemptEnvelope}${retryContext}${repairContext}`.trim();
   return {
     claimed: true,
     flowId: flow.flowId,
@@ -58,7 +60,7 @@ export function buildWorkerDispatch({
     attemptDeadlineAt: attempt.deadlineAt,
     priorCumulativeCostCents: state.cumulativeCostCents,
     attemptBudgetCents: attempt.budgetCents,
-    workerPrompt: `${laneResult.workerPrompt}${attemptEnvelope}${retryContext}${repairContext}`,
+    workerPrompt,
   };
 }
 

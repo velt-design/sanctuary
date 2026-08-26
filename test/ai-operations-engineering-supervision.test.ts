@@ -403,6 +403,7 @@ describe("durable engineering supervision", () => {
     const task = manifest("spawn_attach_recovery");
     setup.controller().enqueue(task);
     const dispatch = setup.controller().claim();
+    expect(dispatch.workerPrompt).toBe(dispatch.workerPrompt.trim());
     setup.tasks.add({
       runId: "run-historical-matching-worker",
       label: null,

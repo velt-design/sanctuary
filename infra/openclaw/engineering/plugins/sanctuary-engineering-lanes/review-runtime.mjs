@@ -72,7 +72,7 @@ ${JSON.stringify(packet, null, 2)}
 <untrusted_diff sha256="${packet.diffHash}">
 ${diff}
 </untrusted_diff>
-`;
+`.trim();
   return { packet, prompt, promptHash: hashText(prompt) };
 }
 

@@ -604,6 +604,9 @@ describe("durable exact-head CI and independent review loop", () => {
       flowId: reached.ciPending.flowId,
       expectedRevision: reached.ciPending.revision,
     });
+    expect(reviewDispatch.reviewPrompt).toBe(
+      reviewDispatch.reviewPrompt.trim(),
+    );
     const wrong = setup.tasks.add({
       runId: "wrong-reviewer",
       agentId: "sanctuary-coding-worker",
