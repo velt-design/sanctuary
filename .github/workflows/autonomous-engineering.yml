@@ -37,6 +37,10 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Install dependencies
+        if: steps.route.outputs.relevant == 'true'
+        run: npm ci
+
       - name: Strict changed-architecture gate
         if: steps.route.outputs.relevant == 'true' && github.event_name == 'pull_request'
         env:
@@ -44,10 +48,6 @@ jobs:
           ARCHITECTURE_CHANGED_HEAD: ${{ github.event.pull_request.head.sha }}
           WORKTREE_OWNER_PATTERNS: ${{ steps.route.outputs.owner_patterns }}
         run: npm run architecture:changed:strict
-
-      - name: Install dependencies
-        if: steps.route.outputs.relevant == 'true'
-        run: npm ci
 
       - name: AI operations contracts
         if: steps.route.outputs.relevant == 'true'

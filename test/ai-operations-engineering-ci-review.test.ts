@@ -1,5 +1,6 @@
 // @vitest-environment node
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -103,6 +104,22 @@ function runtime(checks: Value[]) {
 }
 
 describe("autonomous engineering CI routing", () => {
+  it("installs the repository dependency graph before strict architecture analysis", () => {
+    const workflow = readFileSync(
+      new URL(
+        "../.github/workflows/autonomous-engineering.yml",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    expect(workflow.indexOf("- name: Install dependencies")).toBeGreaterThan(
+      workflow.indexOf("- name: Setup Node"),
+    );
+    expect(
+      workflow.indexOf("- name: Strict changed-architecture gate"),
+    ).toBeGreaterThan(workflow.indexOf("- name: Install dependencies"));
+  });
+
   it("keeps one stable check while running focused gates only for foundation paths", () => {
     expect(
       routeEngineeringCi([
