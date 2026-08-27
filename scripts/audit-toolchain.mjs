@@ -31,10 +31,10 @@ const SKIP_DIRECTORIES = new Set([
   'vendor',
 ]);
 const XLSX_IMPORT_PATTERNS = [
-  /\bimport\s*['"]xlsx['"]/,
-  /\b(?:import|export)\s+(?:type\s+)?[^;'"]{1,400}\sfrom\s*['"]xlsx['"]/,
-  /\bimport\s*\(\s*['"]xlsx['"]\s*\)/,
-  /\brequire\s*\(\s*['"]xlsx['"]\s*\)/,
+  /\bimport\s*['"]xlsx(?:\/[^'"]+)?['"]/,
+  /\b(?:import|export)\s+(?:type\s+)?[^;'"]{1,400}\sfrom\s*['"]xlsx(?:\/[^'"]+)?['"]/,
+  /\bimport\s*\(\s*['"]xlsx(?:\/[^'"]+)?['"]\s*\)/,
+  /\brequire\s*\(\s*['"]xlsx(?:\/[^'"]+)?['"]\s*\)/,
 ];
 
 function readJson(absolutePath) {

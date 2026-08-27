@@ -153,7 +153,7 @@ describe('xlsx dependency and import boundaries', () => {
     );
   });
 
-  it('permits the legacy Running Jobs importer and rejects another executable import', () => {
+  it('permits the legacy importer and rejects bare or subpath imports elsewhere', () => {
     const directory = temporaryDirectory();
     const moduleName = ['xl', 'sx'].join('');
     mkdirSync(path.join(directory, 'scripts'), { recursive: true });
@@ -172,9 +172,21 @@ describe('xlsx dependency and import boundaries', () => {
       path.join(directory, 'apps', 'portal', 'unexpected.ts'),
       `import {\n  read,\n} from '${moduleName}';`,
     );
+    writeFileSync(
+      path.join(directory, 'apps', 'portal', 'unexpected-subpath-static.ts'),
+      `import { read } from '${moduleName}/xlsx.mjs';`,
+    );
+    writeFileSync(
+      path.join(directory, 'apps', 'portal', 'unexpected-subpath-dynamic.ts'),
+      `export const loader = () => import('${moduleName}/dist/cpexcel.full.mjs');`,
+    );
+    writeFileSync(
+      path.join(directory, 'apps', 'portal', 'unexpected-subpath-require.cjs'),
+      `module.exports = require('${moduleName}/xlsx.js');`,
+    );
 
     expect(validateXlsxImportPolicy(directory)).toEqual([
-      'xlsx executable imports must be exactly scripts/import-running-jobs-legacy.ts; found apps/portal/unexpected.ts, scripts/import-running-jobs-legacy.ts.',
+      'xlsx executable imports must be exactly scripts/import-running-jobs-legacy.ts; found apps/portal/unexpected-subpath-dynamic.ts, apps/portal/unexpected-subpath-require.cjs, apps/portal/unexpected-subpath-static.ts, apps/portal/unexpected.ts, scripts/import-running-jobs-legacy.ts.',
     ]);
   });
 });
