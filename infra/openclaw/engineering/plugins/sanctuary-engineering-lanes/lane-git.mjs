@@ -72,10 +72,13 @@ export function createGitRuntime({
   authenticated = true,
   environment = process.env,
 } = {}) {
-  if (!repoRoot || !stateDir) {
+  const effectiveRepoRoot =
+    repoRoot ?? environment.SANCTUARY_ENGINEERING_REPO_ROOT;
+  const effectiveStateDir = stateDir ?? environment.OPENCLAW_STATE_DIR;
+  if (!effectiveRepoRoot || !effectiveStateDir) {
     throw new Error("Git runtime requires a repository root and state root.");
   }
-  const resolvedRepoRoot = normalizeExistingPath(repoRoot);
+  const resolvedRepoRoot = normalizeExistingPath(effectiveRepoRoot);
   const helperPath = join(
     resolvedRepoRoot,
     "scripts",
@@ -207,6 +210,21 @@ export function createGitRuntime({
     return rows[0].split(/\s+/)[0];
   }
 
+  function fetchRemoteBranch(branch) {
+    assertBranchName(branch, "Feature branch");
+    git(
+      [
+        "fetch",
+        "--quiet",
+        "--no-tags",
+        expectedRemoteUrl,
+        `refs/heads/${branch}`,
+      ],
+      { authenticate: true },
+    );
+    return git(["rev-parse", "FETCH_HEAD"]).stdout;
+  }
+
   function localBranchHead(branch) {
     assertBranchName(branch, "Feature branch");
     const result = git(["show-ref", "--verify", `refs/heads/${branch}`], {
@@ -279,6 +297,17 @@ export function createGitRuntime({
     };
   }
 
+  function changedPathsBetween(baseSha, headSha) {
+    return outputLines(
+      git([
+        "diff",
+        "--name-only",
+        "--diff-filter=ACDMRTUXB",
+        `${baseSha}...${headSha}`,
+      ]).stdout,
+    );
+  }
+
   function pushBranch(worktreePath, branch) {
     assertBranchName(branch, "Feature branch");
     git(
@@ -342,6 +371,7 @@ export function createGitRuntime({
     assertBranchName,
     fetchExactBase,
     remoteBranchHead,
+    fetchRemoteBranch,
     localBranchHead,
     worktrees,
     findWorktree,
@@ -349,6 +379,7 @@ export function createGitRuntime({
     attachWorktree,
     removeWorktree,
     inspectWorktree,
+    changedPathsBetween,
     pushBranch,
     isAncestor,
     findOpenPullRequest,

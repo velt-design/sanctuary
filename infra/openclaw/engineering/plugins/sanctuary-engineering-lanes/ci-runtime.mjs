@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 import { createGitRuntime } from "./lane-git.mjs";
 
 const REPOSITORY = "velt-design/sanctuary";
+const AI_FOUNDATION_CHECK = "AI Foundation / Provider-neutral contracts";
+const AI_FOUNDATION_WORKFLOW = "ai-foundation.yml";
+const AI_FOUNDATION_WORKFLOW_NAME = "AI Foundation";
+const AI_FOUNDATION_JOB = "Provider-neutral contracts";
 const TRANSIENT_CONCLUSIONS = new Set([
   "ACTION_REQUIRED",
   "CANCELLED",
@@ -78,6 +82,35 @@ function normalizeCheck(raw) {
   throw new Error("GitHub returned an unknown status-check shape.");
 }
 
+function normalizeLifecycleValue(value) {
+  return typeof value === "string" ? value.toUpperCase() : null;
+}
+
+function normalizeWorkflowJob(run, raw) {
+  if (
+    !Number.isSafeInteger(run?.databaseId) ||
+    run.databaseId < 1 ||
+    runIdFromUrl(run.url) !== String(run.databaseId) ||
+    raw?.name !== AI_FOUNDATION_JOB ||
+    !Number.isSafeInteger(raw.databaseId) ||
+    raw.databaseId < 1 ||
+    runIdFromUrl(raw.url) !== String(run.databaseId)
+  ) {
+    throw new Error("GitHub returned invalid exact workflow-job evidence.");
+  }
+  return {
+    name: AI_FOUNDATION_CHECK,
+    kind: "workflow_job",
+    status: normalizeLifecycleValue(raw.status),
+    conclusion: normalizeLifecycleValue(raw.conclusion),
+    url: raw.url,
+    workflowName: AI_FOUNDATION_WORKFLOW_NAME,
+    runId: String(run.databaseId),
+    startedAt: raw.startedAt ?? null,
+    completedAt: raw.completedAt ?? null,
+  };
+}
+
 function signaturePairs(log) {
   const expected = [...log.matchAll(/Expected:\s*([^\r\n]+)/g)].map((match) =>
     match[1].trim(),
@@ -120,7 +153,10 @@ export function classifyFailureLog(log) {
 }
 
 function checkLifecycle(check) {
-  if (check.kind === "check_run" && check.status !== "COMPLETED") {
+  if (
+    ["check_run", "workflow_job", "workflow_run"].includes(check.kind) &&
+    check.status !== "COMPLETED"
+  ) {
     return {
       disposition: "pending",
       reason: "The required check is still running.",
@@ -224,6 +260,122 @@ export function createGitHubCiRuntime(options = {}) {
     ]).stdout;
   }
 
+  function exactFoundationWorkflowCheck(manifest, completion) {
+    if (
+      manifest?.verification?.ciChecks?.length !== 1 ||
+      manifest.verification.ciChecks[0] !== AI_FOUNDATION_CHECK
+    ) {
+      return null;
+    }
+    const listed = parseJson(
+      git.safeGh([
+        "run",
+        "list",
+        "--repo",
+        REPOSITORY,
+        "--workflow",
+        AI_FOUNDATION_WORKFLOW,
+        "--branch",
+        manifest.branch,
+        "--limit",
+        "20",
+        "--json",
+        "databaseId,status,conclusion,headSha,headBranch,event,url,createdAt,updatedAt,name,workflowName",
+      ]).stdout,
+      "GitHub workflow-run evidence",
+    );
+    if (!Array.isArray(listed) || listed.length > 20) {
+      throw new Error("GitHub returned invalid bounded workflow-run evidence.");
+    }
+    const exactRuns = listed.filter(
+      (run) =>
+        run?.headSha === completion.headSha &&
+        run?.headBranch === manifest.branch &&
+        run?.workflowName === AI_FOUNDATION_WORKFLOW_NAME &&
+        ["pull_request", "workflow_dispatch"].includes(run?.event),
+    );
+    if (exactRuns.length === 0) return null;
+    if (exactRuns.length > 1) {
+      return {
+        name: AI_FOUNDATION_CHECK,
+        kind: "workflow_run",
+        status: null,
+        conclusion: null,
+        url: null,
+        workflowName: AI_FOUNDATION_WORKFLOW_NAME,
+        runId: null,
+        startedAt: null,
+        completedAt: null,
+        disposition: "blocked",
+        reason:
+          "GitHub returned multiple exact-head AI Foundation workflow runs.",
+      };
+    }
+    const listedRun = exactRuns[0];
+    if (
+      !Number.isSafeInteger(listedRun.databaseId) ||
+      listedRun.databaseId < 1 ||
+      runIdFromUrl(listedRun.url) !== String(listedRun.databaseId)
+    ) {
+      throw new Error("GitHub returned an invalid exact workflow run.");
+    }
+    const run = parseJson(
+      git.safeGh([
+        "run",
+        "view",
+        String(listedRun.databaseId),
+        "--repo",
+        REPOSITORY,
+        "--json",
+        "databaseId,status,conclusion,headSha,headBranch,event,url,createdAt,updatedAt,name,workflowName,jobs",
+      ]).stdout,
+      "GitHub exact workflow-run evidence",
+    );
+    if (
+      run?.databaseId !== listedRun.databaseId ||
+      run?.headSha !== completion.headSha ||
+      run?.headBranch !== manifest.branch ||
+      run?.workflowName !== AI_FOUNDATION_WORKFLOW_NAME ||
+      !["pull_request", "workflow_dispatch"].includes(run?.event) ||
+      runIdFromUrl(run?.url) !== String(listedRun.databaseId) ||
+      !Array.isArray(run?.jobs)
+    ) {
+      throw new Error(
+        "GitHub workflow details do not match the exact dispatched head.",
+      );
+    }
+    const jobs = run.jobs.filter((job) => job?.name === AI_FOUNDATION_JOB);
+    if (jobs.length > 1) {
+      throw new Error(
+        "GitHub returned duplicate exact provider-neutral workflow jobs.",
+      );
+    }
+    if (jobs.length === 1) {
+      const check = normalizeWorkflowJob(run, jobs[0]);
+      return { ...check, ...checkLifecycle(check) };
+    }
+    const check = {
+      name: AI_FOUNDATION_CHECK,
+      kind: "workflow_run",
+      status: normalizeLifecycleValue(run.status),
+      conclusion: normalizeLifecycleValue(run.conclusion),
+      url: run.url,
+      workflowName: AI_FOUNDATION_WORKFLOW_NAME,
+      runId: String(run.databaseId),
+      startedAt: run.createdAt ?? null,
+      completedAt: run.updatedAt ?? null,
+    };
+    if (check.status !== "COMPLETED") {
+      return { ...check, ...checkLifecycle(check) };
+    }
+    return {
+      ...check,
+      disposition: "blocked",
+      reason:
+        "The exact AI Foundation workflow completed without its provider-neutral job.",
+    };
+  }
+
   function inspect({ manifest, completion }) {
     if (!completion?.pullRequest || !completion.headSha) {
       throw new Error(
@@ -242,6 +394,11 @@ export function createGitHubCiRuntime(options = {}) {
         );
       }
       if (matches.length === 0) {
+        const workflowCheck = exactFoundationWorkflowCheck(
+          manifest,
+          completion,
+        );
+        if (workflowCheck) return workflowCheck;
         return {
           name,
           kind: "missing",
@@ -335,6 +492,35 @@ export function createGitHubCiRuntime(options = {}) {
     return output;
   }
 
+  function dispatchMissing({ manifest, completion, evidence }) {
+    if (
+      evidence?.classification !== "pending" ||
+      evidence.requiredChecks?.length !== 1 ||
+      evidence.requiredChecks[0]?.name !== AI_FOUNDATION_CHECK ||
+      evidence.requiredChecks[0]?.kind !== "missing" ||
+      manifest?.verification?.ciChecks?.length !== 1 ||
+      manifest.verification.ciChecks[0] !== AI_FOUNDATION_CHECK
+    ) {
+      return null;
+    }
+    const pr = pullRequest(completion.pullRequest.number);
+    assertPullRequestIdentity(pr, manifest, completion);
+    git.safeGh([
+      "workflow",
+      "run",
+      AI_FOUNDATION_WORKFLOW,
+      "--repo",
+      REPOSITORY,
+      "--ref",
+      manifest.branch,
+    ]);
+    return {
+      workflow: AI_FOUNDATION_WORKFLOW,
+      branch: manifest.branch,
+      headSha: completion.headSha,
+    };
+  }
+
   function rerunTransient(evidence) {
     if (evidence?.classification !== "transient") {
       throw new Error("Only transient CI evidence can request a rerun.");
@@ -358,5 +544,5 @@ export function createGitHubCiRuntime(options = {}) {
     return runIds;
   }
 
-  return Object.freeze({ inspect, diff, rerunTransient });
+  return Object.freeze({ inspect, diff, dispatchMissing, rerunTransient });
 }

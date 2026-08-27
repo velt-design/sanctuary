@@ -1,4 +1,7 @@
-import { activeAttempt } from "./supervision-contract.mjs";
+import {
+  ENGINEERING_SUPERVISOR_AGENT,
+  activeAttempt,
+} from "./supervision-contract.mjs";
 
 export const TERMINAL_NATIVE_STATUSES = new Set([
   "succeeded",
@@ -38,6 +41,8 @@ export function buildWorkerDispatch({
   const repairContext = state.repairContext
     ? `\n\n# Required repair evidence\n\nThis is a bounded ${state.repairContext.kind === "ci_failure" ? "CI repair" : "review repair"}. Diagnose and address only the evidence below in the existing lane. Do not suppress, skip, weaken or rename a check. If the evidence is not reproducible or cannot be safely repaired in scope, return a blocked completion instead of creating a meaningless commit.\n\n\`\`\`json\n${JSON.stringify(state.repairContext, null, 2)}\n\`\`\`\n`
     : "";
+  const workerPrompt =
+    `${laneResult.workerPrompt}${attemptEnvelope}${retryContext}${repairContext}`.trim();
   return {
     claimed: true,
     flowId: flow.flowId,
@@ -49,26 +54,30 @@ export function buildWorkerDispatch({
     workerAgentId,
     dispatchKey: attempt.dispatchKey,
     taskName: attempt.taskName,
-    taskLabel: attempt.taskName,
     worktreePath: laneResult.worktreePath,
     runTimeoutSeconds: runtimeTimeoutSeconds,
     attemptStartedAt: attempt.startedAt,
     attemptDeadlineAt: attempt.deadlineAt,
     priorCumulativeCostCents: state.cumulativeCostCents,
     attemptBudgetCents: attempt.budgetCents,
-    workerPrompt: `${laneResult.workerPrompt}${attemptEnvelope}${retryContext}${repairContext}`,
+    workerPrompt,
   };
 }
 
 export function findNativeDispatchMatches(taskRuns, workerDispatch) {
+  const supervisorSessionPrefix = `agent:${ENGINEERING_SUPERVISOR_AGENT}:`;
   return taskRuns
     .list()
     .filter(
       (task) =>
+        taskRuns.sessionKey.startsWith(supervisorSessionPrefix) &&
+        task.sessionKey === taskRuns.sessionKey &&
         task.runtime === "subagent" &&
         task.agentId === workerDispatch.workerAgentId &&
-        task.label === workerDispatch.taskLabel &&
-        task.title === workerDispatch.workerPrompt,
+        task.title === workerDispatch.workerPrompt &&
+        Number.isSafeInteger(task.createdAt) &&
+        task.createdAt >= workerDispatch.attemptStartedAt &&
+        task.createdAt <= workerDispatch.attemptDeadlineAt,
     );
 }
 
@@ -77,13 +86,16 @@ export function assertAttachableNativeTask({
   runId,
   expectedDispatch,
   attempt,
+  supervisorSessionKey,
 }) {
+  const supervisorSessionPrefix = `agent:${ENGINEERING_SUPERVISOR_AGENT}:`;
   if (
     !task ||
+    !supervisorSessionKey.startsWith(supervisorSessionPrefix) ||
+    task.sessionKey !== supervisorSessionKey ||
     task.runId !== runId ||
     task.runtime !== "subagent" ||
     task.agentId !== expectedDispatch.workerAgentId ||
-    task.label !== expectedDispatch.taskLabel ||
     task.title !== expectedDispatch.workerPrompt ||
     !task.childSessionKey ||
     !NATIVE_STATUSES.has(task.status) ||

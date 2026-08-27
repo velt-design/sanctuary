@@ -15,6 +15,16 @@ import {
   buildOpenClawWrapper,
   resolveEngineeringRuntimePaths,
 } from "../scripts/ai/openclaw-engineering-runtime.mjs";
+import {
+  inspectEngineeringGatewayProcess,
+  parseEngineeringGatewayPid,
+  stopEngineeringGateway,
+} from "../scripts/ai/mac-openclaw-engineering-stop.mjs";
+import {
+  OVERSIGHT_ALLOWED_TOOLS,
+  REVIEW_DIFF_REGISTRATION_AGENTS,
+  enforceOversightToolPolicy,
+} from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/oversight-tool-policy.mjs";
 
 const config = JSON.parse(
   readFileSync(resolve("infra/openclaw/engineering/openclaw.json"), "utf8"),
@@ -47,6 +57,10 @@ const activationSource = readFileSync(
 );
 const startSource = readFileSync(
   resolve("scripts/ai/mac-openclaw-engineering-start.mjs"),
+  "utf8",
+);
+const stopSource = readFileSync(
+  resolve("scripts/ai/mac-openclaw-engineering-stop.mjs"),
   "utf8",
 );
 const supervisorInstructions = readFileSync(
@@ -105,6 +119,7 @@ describe("isolated OpenClaw engineering runtime", () => {
     expect(lead.tools.profile).toBe("minimal");
     expect(lead.tools.alsoAllow).toEqual(
       expect.arrayContaining([
+        "session_status",
         "read",
         "agents_list",
         "sessions_spawn",
@@ -126,22 +141,44 @@ describe("isolated OpenClaw engineering runtime", () => {
     expect(lead.tools.alsoAllow).not.toEqual(
       expect.arrayContaining(["exec", "write", "edit", "apply_patch"]),
     );
+    expect(lead.tools.byProvider["openai/gpt-5.6-sol"].allow).toEqual(
+      lead.tools.alsoAllow,
+    );
+    expect(lead.tools.exec).toMatchObject({
+      host: "gateway",
+      mode: "auto",
+    });
+    expect(lead.tools.deny).toEqual(
+      expect.arrayContaining([
+        "exec",
+        "process",
+        "write",
+        "edit",
+        "apply_patch",
+      ]),
+    );
     expect(lead.subagents).toMatchObject({
       allowAgents: ["sanctuary-coding-worker", "sanctuary-code-reviewer"],
       requireAgentId: true,
     });
     expect(supervisorInstructions).toContain(
-      "its exact `taskLabel` as `label`",
+      "explicit session label can collide with a retained recovery session",
     );
     expect(supervisorInstructions).toContain(
       "sanctuary_engineering_supervision_recover",
     );
+    expect(supervisorInstructions).toContain("timeoutMs: 180000");
     expect(config.agents.defaults.subagents).toMatchObject({
       maxSpawnDepth: 1,
       maxChildrenPerAgent: 1,
       maxConcurrent: 1,
       requireAgentId: true,
     });
+    expect(config.tools.agentToAgent).toEqual({
+      enabled: true,
+      allow: ENGINEERING_AGENT_IDS,
+    });
+    expect(config.tools.sessions).toEqual({ visibility: "all" });
   });
 
   it("keeps no-prompt coding authority on the worker only", () => {
@@ -164,7 +201,24 @@ describe("isolated OpenClaw engineering runtime", () => {
     });
     expect(reviewer.tools).toMatchObject({
       profile: "minimal",
-      alsoAllow: ["read", "sanctuary_engineering_lane_status"],
+      alsoAllow: [
+        "session_status",
+        "read",
+        "sanctuary_engineering_lane_status",
+        "sanctuary_engineering_review_diff_chunk",
+      ],
+      byProvider: {
+        "openai/gpt-5.6-sol": {
+          allow: [
+            "session_status",
+            "read",
+            "sanctuary_engineering_lane_status",
+            "sanctuary_engineering_review_diff_chunk",
+          ],
+        },
+      },
+      exec: { host: "gateway", mode: "auto" },
+      deny: ["exec", "process", "write", "edit", "apply_patch"],
       elevated: { enabled: false },
     });
     expect(config.tools.exec).toMatchObject({
@@ -173,8 +227,8 @@ describe("isolated OpenClaw engineering runtime", () => {
     });
     expect(approvals.agents).toMatchObject({
       "sanctuary-engineering-supervisor": {
-        security: "deny",
-        ask: "off",
+        security: "allowlist",
+        ask: "on-miss",
         askFallback: "deny",
       },
       "sanctuary-coding-worker": {
@@ -183,11 +237,76 @@ describe("isolated OpenClaw engineering runtime", () => {
         askFallback: "full",
       },
       "sanctuary-code-reviewer": {
-        security: "deny",
-        ask: "off",
+        security: "allowlist",
+        ask: "on-miss",
         askFallback: "deny",
       },
     });
+  });
+
+  it("blocks every unlisted native tool for oversight roles", () => {
+    const configuredSupervisorTools =
+      agentsById["sanctuary-engineering-supervisor"].tools.alsoAllow;
+    const inheritedSupervisorTools = [
+      ...OVERSIGHT_ALLOWED_TOOLS["sanctuary-engineering-supervisor"],
+      "sanctuary_engineering_lane_publish",
+      "sanctuary_engineering_review_diff_chunk",
+    ];
+    expect(new Set(configuredSupervisorTools)).toEqual(
+      new Set(inheritedSupervisorTools),
+    );
+    expect(configuredSupervisorTools).toHaveLength(
+      inheritedSupervisorTools.length,
+    );
+    expect(OVERSIGHT_ALLOWED_TOOLS["sanctuary-code-reviewer"]).toEqual(
+      agentsById["sanctuary-code-reviewer"].tools.alsoAllow,
+    );
+    expect(REVIEW_DIFF_REGISTRATION_AGENTS).toEqual([
+      "sanctuary-engineering-supervisor",
+      "sanctuary-code-reviewer",
+    ]);
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "bash" },
+        { agentId: "sanctuary-code-reviewer" },
+      ),
+    ).toMatchObject({ block: true });
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "apply_patch" },
+        { agentId: "sanctuary-engineering-supervisor" },
+      ),
+    ).toMatchObject({ block: true });
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "sanctuary_engineering_lane_publish" },
+        { agentId: "sanctuary-engineering-supervisor" },
+      ),
+    ).toMatchObject({ block: true });
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "sanctuary_engineering_lane_status" },
+        { agentId: "sanctuary-code-reviewer" },
+      ),
+    ).toBeUndefined();
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "sanctuary_engineering_review_diff_chunk" },
+        { agentId: "sanctuary-code-reviewer" },
+      ),
+    ).toBeUndefined();
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "sanctuary_engineering_review_diff_chunk" },
+        { agentId: "sanctuary-engineering-supervisor" },
+      ),
+    ).toMatchObject({ block: true });
+    expect(
+      enforceOversightToolPolicy(
+        { toolName: "bash" },
+        { agentId: "sanctuary-coding-worker" },
+      ),
+    ).toBeUndefined();
   });
 
   it("pins the isolated Codex harness and disables unrelated surfaces", () => {
@@ -205,6 +324,7 @@ describe("isolated OpenClaw engineering runtime", () => {
         codex: {
           enabled: true,
           config: {
+            codexDynamicToolsLoading: "direct",
             appServer: {
               mode: "yolo",
               homeScope: "agent",
@@ -263,6 +383,8 @@ describe("isolated OpenClaw engineering runtime", () => {
           "sanctuary_engineering_supervision_ci",
           "sanctuary_engineering_review_attach",
           "sanctuary_engineering_review_reconcile",
+          "sanctuary_engineering_review_redispatch",
+          "sanctuary_engineering_review_diff_chunk",
         ],
       },
     });
@@ -334,7 +456,7 @@ describe("isolated OpenClaw engineering runtime", () => {
   it("preseeds approvals, pins the official plugin, and starts separately", () => {
     expect(CODEX_PLUGIN_SPEC).toBe("@openclaw/codex@2026.7.1-1");
     expect(LANE_PLUGIN_ID).toBe("sanctuary-engineering-lanes");
-    expect(LANE_PLUGIN_VERSION).toBe("1.2.0");
+    expect(LANE_PLUGIN_VERSION).toBe("1.2.17");
     expect(activationSource.indexOf("prepareApprovals();")).toBeLessThan(
       activationSource.lastIndexOf('runOpenClaw(["config", "validate"]'),
     );
@@ -358,5 +480,86 @@ describe("isolated OpenClaw engineering runtime", () => {
     expect(startSource).toContain('"/usr/bin/caffeinate"');
     expect(startSource).toContain('["gateway", "health"]');
     expect(startSource).toContain("detached: true");
+  });
+
+  it("stops only the exact owned gateway process and clears its PID", () => {
+    const paths = resolveEngineeringRuntimePaths({
+      home: "/Users/sanctuary-runner",
+      repoRoot: "/repo",
+    });
+    const signals: number[] = [];
+    const removed: string[] = [];
+    let inspected = 0;
+    let healthChecks = 0;
+    const result = stopEngineeringGateway({
+      platform: "darwin",
+      paths,
+      fileExists: () => true,
+      readFile: () => "1234\n",
+      readGatewayToken: () => "fixture-token",
+      fingerprintAuthority: () => ({ config: "before" }),
+      assertAuthorityUnchanged: (_runtimePaths, expected) => {
+        expect(expected).toEqual({ config: "before" });
+      },
+      inspectProcess: () => ({
+        running: inspected++ === 0,
+        pid: 1234,
+      }),
+      isHealthy: () => healthChecks++ === 0,
+      signal: (pid) => signals.push(pid),
+      pause: () => undefined,
+      removeFile: (path) => removed.push(path),
+    });
+    expect(result).toEqual({
+      stopped: true,
+      alreadyStopped: false,
+      pid: 1234,
+    });
+    expect(signals).toEqual([1234]);
+    expect(removed).toEqual([paths.pidPath]);
+  });
+
+  it("refuses an unowned live gateway and never uses broad process killing", () => {
+    const paths = resolveEngineeringRuntimePaths({
+      home: "/Users/sanctuary-runner",
+      repoRoot: "/repo",
+    });
+    expect(() =>
+      stopEngineeringGateway({
+        platform: "darwin",
+        paths,
+        fileExists: () => false,
+        readGatewayToken: () => "fixture-token",
+        fingerprintAuthority: () => ({}),
+        assertAuthorityUnchanged: () => undefined,
+        isHealthy: () => true,
+      }),
+    ).toThrow(/PID file is missing/);
+    expect(stopSource).not.toMatch(/pkill|killall|SIGKILL/);
+  });
+
+  it("validates the PID, owner, process title and isolated listener", () => {
+    expect(parseEngineeringGatewayPid("1234\n")).toBe(1234);
+    expect(() => parseEngineeringGatewayPid("0")).toThrow(/invalid/);
+    expect(() => parseEngineeringGatewayPid("12 other")).toThrow(/invalid/);
+
+    const calls: string[][] = [];
+    const state = inspectEngineeringGatewayProcess(1234, {
+      currentUser: "sanctuary-runner",
+      run: (_binary, args) => {
+        calls.push(args);
+        return calls.length === 1
+          ? { status: 0, stdout: "sanctuary-runner openclaw-gateway\n" }
+          : { status: 0, stdout: "listener\n" };
+      },
+    });
+    expect(state).toMatchObject({
+      running: true,
+      pid: 1234,
+      owner: "sanctuary-runner",
+      command: "openclaw-gateway",
+      port: ENGINEERING_GATEWAY_PORT,
+    });
+    expect(calls[1]).toContain(`-iTCP:${ENGINEERING_GATEWAY_PORT}`);
   });
 });

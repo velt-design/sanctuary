@@ -14,10 +14,12 @@ import {
   assertAttachableReviewerTask,
   assertNativeReviewerIdentity,
   buildReviewDispatch,
+  buildLegacyReviewPrompt,
   buildReviewPrompt,
   findNativeReviewMatches,
   validateReviewReport,
 } from "./review-runtime.mjs";
+import { createReviewCorrectionController } from "./supervision-review-correction.mjs";
 
 const CI_TIMEOUT_MS = 90 * 60 * 1_000;
 export const POST_WORKER_ACTIVE_PHASES = new Set([
@@ -92,6 +94,7 @@ export function createCiReviewController(options) {
           headSha: state.completion.headSha,
           startedAt: at,
           deadlineAt: at + CI_TIMEOUT_MS,
+          missingDispatches: 0,
           transientReruns: 0,
           evidence: null,
         },
@@ -164,6 +167,7 @@ export function createCiReviewController(options) {
       );
     }
     const prompt = buildReviewPrompt({
+      flowId: flow.flowId,
       state: { ...state, ci: { ...state.ci, evidence } },
       ciEvidence: evidence,
       diff: ciRuntime.diff(evidence),
@@ -230,6 +234,30 @@ export function createCiReviewController(options) {
           "ci_timeout",
           "Required CI did not reach a safe terminal state within 90 minutes.",
         );
+      }
+      if (
+        (state.ci.missingDispatches ?? 0) < 1 &&
+        evidence.requiredChecks.length > 0 &&
+        evidence.requiredChecks.every((check) => check.kind === "missing")
+      ) {
+        const dispatch = ciRuntime.dispatchMissing({
+          manifest: state.manifest,
+          completion: state.completion,
+          evidence,
+        });
+        if (dispatch) {
+          return {
+            dispatchRequested: true,
+            dispatch,
+            ...persistCiWait(
+              flow,
+              state,
+              evidence,
+              "One exact-head workflow dispatch was requested for missing required CI.",
+              { missingDispatches: 1 },
+            ),
+          };
+        }
       }
       if (sameEvidence(state.ci.evidence, evidence)) {
         return { waiting: true, unchanged: true, ...publicSupervision(flow) };
@@ -304,11 +332,20 @@ export function createCiReviewController(options) {
       );
     }
     const dispatch = reviewDispatch(flow, state);
+    const nativeMatches = findNativeReviewMatches(taskRuns, dispatch).filter(
+      (task) => task.runId === runId,
+    );
+    if (nativeMatches.length !== 1) {
+      throw new Error(
+        "The run ID does not identify exactly one named Sanctuary code reviewer.",
+      );
+    }
     const task = assertAttachableReviewerTask({
-      task: taskRuns.resolve(runId),
+      task: nativeMatches[0],
       runId,
       expectedDispatch: dispatch,
       review: state.review,
+      supervisorSessionKey: taskRuns.sessionKey,
     });
     const at = timestamp(now);
     state = checkpointState(
@@ -358,6 +395,18 @@ export function createCiReviewController(options) {
     };
   }
 
+  const reviewCorrection = createReviewCorrectionController({
+    flowRuntime,
+    taskRuns,
+    ciRuntime,
+    now,
+    runtimeTimeoutSeconds,
+    getFlow,
+    reviewDispatch,
+    reviewerBudget,
+    chargeReview,
+  });
+
   function reserveAndBlock(flow, state, task, kind, summary) {
     const at = timestamp(now);
     state = chargeReview(state, state.review.budgetCents);
@@ -384,8 +433,9 @@ export function createCiReviewController(options) {
       );
     }
     const task = assertNativeReviewerIdentity(
-      taskRuns.resolve(state.review.runId),
+      taskRuns.get(state.review.taskRunId),
       state.review,
+      taskRuns.sessionKey,
     );
     if (["queued", "running"].includes(task.status)) {
       if (timestamp(now) <= state.review.deadlineAt) {
@@ -533,7 +583,49 @@ export function createCiReviewController(options) {
   }
 
   function resumeReview(flow) {
-    const state = readSupervisionState(flow);
+    let state = readSupervisionState(flow);
+    const diff = ciRuntime.diff(state.ci.evidence);
+    const currentPrompt = buildReviewPrompt({
+      flowId: flow.flowId,
+      state,
+      ciEvidence: state.ci.evidence,
+      diff,
+    });
+    if (state.review.promptHash !== currentPrompt.promptHash) {
+      const legacyPrompt = buildLegacyReviewPrompt({
+        state,
+        ciEvidence: state.ci.evidence,
+        diff,
+      });
+      if (state.review.promptHash !== legacyPrompt.promptHash) {
+        throw new Error(
+          "The independent review prompt no longer matches its durable hash.",
+        );
+      }
+      const at = timestamp(now);
+      const nextState = checkpointState(
+        {
+          ...state,
+          review: { ...state.review, promptHash: currentPrompt.promptHash },
+        },
+        "reviewer_ready",
+        "The ready reviewer was upgraded to bounded exact diff delivery.",
+        at,
+        { phase: "reviewer_ready" },
+      );
+      flow = mutation(
+        flowRuntime.resume({
+          flowId: flow.flowId,
+          expectedRevision: flow.revision,
+          status: "running",
+          currentStep: "reviewer_ready",
+          stateJson: nextState,
+          updatedAt: at,
+        }),
+        "Reviewer packet upgrade",
+      );
+      state = readSupervisionState(flow);
+    }
     const dispatch = reviewDispatch(flow, state);
     const matches = findNativeReviewMatches(taskRuns, dispatch);
     if (matches.length === 0) return dispatch;
@@ -576,6 +668,7 @@ export function createCiReviewController(options) {
     inspectCi,
     attachReview,
     reconcileReview,
+    redispatchReview: reviewCorrection.redispatchReview,
     recover,
   });
 }

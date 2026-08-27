@@ -134,6 +134,11 @@ never a successful handoff.
    kill switch, timeout/restart/failure/unsafe-request rehearsals and a real
    low-risk end-to-end proof.
 
+The operations PR begins with an exact isolated-gateway kill switch. It may
+gracefully stop only the protected Sanctuary PID owned by the runtime user and
+listening on port `19011`; broad or forced process termination is prohibited.
+Restart and active-flow recovery then reuse the same isolated state.
+
 All PRs stop at draft review. Dependent PRs may be stacked, but each manifest
 names its exact base and dependency so review and merge order stay explicit.
 

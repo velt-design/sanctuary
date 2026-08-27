@@ -107,6 +107,7 @@ class FakeFlows {
 }
 
 class FakeTasks {
+  sessionKey = "agent:sanctuary-engineering-supervisor:test";
   records = new Map<string, RecordValue>();
 
   add(input: RecordValue) {
@@ -115,16 +116,19 @@ class FakeTasks {
       runtime: "subagent",
       status: "running",
       agentId: "sanctuary-coding-worker",
+      sessionKey: this.sessionKey,
       childSessionKey: `agent:sanctuary-coding-worker:subagent:${this.records.size + 1}`,
       ...input,
     };
-    this.records.set(task.runId, task);
+    this.records.set(task.id, task);
     return task;
   }
 
   resolve = (token: string) =>
     this.records.get(token) ??
-    [...this.records.values()].find((task) => task.id === token);
+    [...this.records.values()].find((task) => task.runId === token);
+
+  get = (taskId: string) => this.records.get(taskId);
 
   list = () => [...this.records.values()];
 
@@ -265,7 +269,7 @@ function attachRunning(
 ) {
   const task = setup.tasks.add({
     runId: `run-${dispatch.taskId}-${dispatch.attempt}`,
-    label: dispatch.taskLabel,
+    label: null,
     title: dispatch.workerPrompt,
     createdAt: dispatch.attemptStartedAt,
   });
@@ -402,9 +406,16 @@ describe("durable engineering supervision", () => {
     const task = manifest("spawn_attach_recovery");
     setup.controller().enqueue(task);
     const dispatch = setup.controller().claim();
+    expect(dispatch.workerPrompt).toBe(dispatch.workerPrompt.trim());
+    setup.tasks.add({
+      runId: "run-historical-matching-worker",
+      label: null,
+      title: dispatch.workerPrompt,
+      createdAt: dispatch.attemptStartedAt - 1,
+    });
     const native = setup.tasks.add({
       runId: "run-spawn-attach-recovery",
-      label: dispatch.taskLabel,
+      label: null,
       title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
@@ -417,11 +428,41 @@ describe("durable engineering supervision", () => {
       attempts: 1,
       activeRunId: native.runId,
     });
-    expect(setup.tasks.records.size).toBe(1);
+    expect(setup.tasks.records.size).toBe(2);
     expect(await setup.controller().recover()).toMatchObject({
       waiting: true,
       phase: "worker_running",
       attempts: 1,
+      activeRunId: native.runId,
+    });
+  });
+
+  it("attaches the exact supervisor task when an inner task shares its run ID", () => {
+    const setup = fixture();
+    setup.controller().enqueue(manifest("shared_native_run_id"));
+    const dispatch = setup.controller().claim();
+    const native = setup.tasks.add({
+      runId: "run-shared-native-id",
+      label: null,
+      title: dispatch.workerPrompt,
+      createdAt: dispatch.attemptStartedAt,
+    });
+    setup.tasks.add({
+      runId: native.runId,
+      sessionKey: "agent:sanctuary-coding-worker:inner",
+      label: null,
+      title: `[Subagent Context]\n${dispatch.workerPrompt}`,
+      createdAt: dispatch.attemptStartedAt + 1,
+    });
+
+    expect(
+      setup.controller().attach({
+        flowId: dispatch.flowId,
+        expectedRevision: dispatch.expectedRevision,
+        runId: native.runId,
+      }),
+    ).toMatchObject({
+      phase: "worker_running",
       activeRunId: native.runId,
     });
   });
@@ -434,7 +475,7 @@ describe("durable engineering supervision", () => {
     for (const suffix of ["one", "two"]) {
       setup.tasks.add({
         runId: `run-duplicate-${suffix}`,
-        label: dispatch.taskLabel,
+        label: null,
         title: dispatch.workerPrompt,
         createdAt: dispatch.attemptStartedAt,
       });
@@ -449,6 +490,44 @@ describe("durable engineering supervision", () => {
     });
   });
 
+  it("recovers the oldest original worker when every duplicate is terminal", async () => {
+    const setup = fixture();
+    const task = manifest("terminal_duplicate_recovery");
+    setup.controller().enqueue(task);
+    const dispatch = setup.controller().claim();
+    const original = setup.tasks.add({
+      runId: "run-terminal-original",
+      label: null,
+      title: dispatch.workerPrompt,
+      createdAt: dispatch.attemptStartedAt,
+    });
+    const duplicate = setup.tasks.add({
+      runId: "run-terminal-duplicate",
+      label: null,
+      title: dispatch.workerPrompt,
+      createdAt: dispatch.attemptStartedAt + 1,
+    });
+
+    expect(await setup.controller().recover()).toMatchObject({
+      recoveredAttached: false,
+      phase: "blocked",
+    });
+
+    original.status = "succeeded";
+    original.endedAt = dispatch.attemptStartedAt + 2;
+    duplicate.status = "failed";
+    duplicate.endedAt = dispatch.attemptStartedAt + 3;
+    duplicate.error = "Duplicate lost during restart.";
+
+    const recovered = await setup.controller().recover();
+    expect(recovered).toMatchObject({
+      recoveredAttached: true,
+      waiting: true,
+      phase: "awaiting_completion",
+      activeRunId: original.runId,
+    });
+  });
+
   it("rejects stale revisions and the wrong native worker identity", () => {
     const setup = fixture();
     const task = manifest("identity_fence");
@@ -457,7 +536,7 @@ describe("durable engineering supervision", () => {
     setup.tasks.add({
       runId: "run-wrong-agent",
       agentId: "other-agent",
-      label: dispatch.taskLabel,
+      label: null,
       title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
@@ -478,8 +557,9 @@ describe("durable engineering supervision", () => {
     ).toThrow(/revision conflict/);
 
     setup.tasks.add({
-      runId: "run-wrong-label",
-      label: "eng_wrong_label_a1",
+      runId: "run-wrong-requester",
+      sessionKey: "agent:other-supervisor:test",
+      label: null,
       title: dispatch.workerPrompt,
       createdAt: dispatch.attemptStartedAt,
     });
@@ -487,7 +567,21 @@ describe("durable engineering supervision", () => {
       setup.controller().attach({
         flowId: dispatch.flowId,
         expectedRevision: dispatch.expectedRevision,
-        runId: "run-wrong-label",
+        runId: "run-wrong-requester",
+      }),
+    ).toThrow(/named Sanctuary coding worker/);
+
+    setup.tasks.add({
+      runId: "run-wrong-prompt",
+      label: null,
+      title: `${dispatch.workerPrompt}\nwrong`,
+      createdAt: dispatch.attemptStartedAt,
+    });
+    expect(() =>
+      setup.controller().attach({
+        flowId: dispatch.flowId,
+        expectedRevision: dispatch.expectedRevision,
+        runId: "run-wrong-prompt",
       }),
     ).toThrow(/named Sanctuary coding worker/);
 
@@ -542,6 +636,48 @@ describe("durable engineering supervision", () => {
       attempts: 2,
       cumulativeCostCents: 562,
     });
+  });
+
+  it("treats a new post-failure manifest as operator acknowledgement without replaying older queued work", async () => {
+    const setup = fixture();
+    const failedManifest = manifest("operator_attention", { maxAttempts: 1 });
+    setup.controller().enqueue(failedManifest);
+    setup.advance(1);
+    const olderQueued = manifest("queued_before_failure");
+    const olderFlow = setup.controller().enqueue(olderQueued);
+    const dispatch = setup.controller().claim();
+    const running = attachRunning(setup, dispatch);
+    running.task.status = "lost";
+    running.task.endedAt = 1_700_000_010_000;
+
+    const failed = await setup.controller().reconcile({
+      flowId: dispatch.flowId,
+      expectedRevision: running.attached.revision,
+    });
+    expect(failed).toMatchObject({
+      phase: "failed",
+      flowStatus: "failed",
+    });
+    expect(setup.controller().claim()).toMatchObject({
+      claimed: false,
+      reason: "A prior engineering flow requires operator attention.",
+      active: { flowId: failed.flowId, phase: "failed" },
+    });
+
+    setup.advance(1);
+    const replacement = manifest("approved_replacement");
+    setup.controller().enqueue(replacement);
+    const replacementDispatch = setup.controller().claim();
+
+    expect(replacementDispatch).toMatchObject({
+      claimed: true,
+      taskId: replacement.taskId,
+      attempt: 1,
+    });
+    expect(setup.flows.records.get(failed.flowId)?.stateJson.phase).toBe("failed");
+    expect(setup.flows.records.get(olderFlow.flowId)?.stateJson.phase).toBe(
+      "queued",
+    );
   });
 
   it("cancels an overdue native run before allocating a bounded retry", async () => {

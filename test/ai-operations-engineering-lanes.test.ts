@@ -17,6 +17,7 @@ import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  adoptPublishedEngineeringLane,
   cleanupEngineeringLane,
   provisionEngineeringLane,
   publishEngineeringLane,
@@ -160,7 +161,17 @@ function fixture() {
     authenticatedGit: false,
     now: () => new Date("2026-08-26T00:00:00.000Z"),
   };
-  return { root, origin, repoRoot, stateDir, baseSha, options };
+  return {
+    root,
+    origin,
+    repoRoot,
+    stateDir,
+    baseSha,
+    options,
+    setPullRequest(value: Record<string, unknown> | null) {
+      pullRequest = value;
+    },
+  };
 }
 
 function commitOwnedChange(worktreePath: string) {
@@ -177,6 +188,21 @@ afterEach(() => {
 });
 
 describe("engineering lane provisioning", () => {
+  it("inherits the isolated repository and state roots for child tools", () => {
+    const lane = fixture();
+    const runtime = createGitRuntime({
+      expectedRemoteUrl: lane.origin,
+      authenticated: false,
+      environment: {
+        ...process.env,
+        SANCTUARY_ENGINEERING_REPO_ROOT: lane.repoRoot,
+        OPENCLAW_STATE_DIR: lane.stateDir,
+      },
+    });
+
+    expect(runtime.repoRoot).toBe(realpathSync(lane.repoRoot));
+  });
+
   it("creates one exact branch/worktree and resumes it idempotently", () => {
     const setup = fixture();
     const manifest = createManifest(setup.baseSha);
@@ -245,6 +271,38 @@ describe("engineering lane provisioning", () => {
     );
     expect(status.clean).toBe(false);
     expect(existsSync(join(lane.worktreePath, "untracked.txt"))).toBe(true);
+  });
+
+  it("adopts only an exact existing draft branch into protected ownership", () => {
+    const setup = fixture();
+    const manifest = createManifest(setup.baseSha, "adopt_published");
+    git(setup.repoRoot, ["checkout", "-b", manifest.branch]);
+    commitOwnedChange(setup.repoRoot);
+    const remoteHead = git(setup.repoRoot, ["rev-parse", "HEAD"]);
+    git(setup.repoRoot, ["push", "origin", manifest.branch]);
+    git(setup.repoRoot, ["checkout", "main"]);
+    git(setup.repoRoot, ["branch", "-D", manifest.branch]);
+    setup.setPullRequest({
+      number: 99,
+      url: "https://github.com/velt-design/sanctuary/pull/99",
+      isDraft: true,
+      headRefName: manifest.branch,
+      baseRefName: manifest.base.ref,
+    });
+
+    const adopted = adoptPublishedEngineeringLane(manifest, setup.options);
+    expect(adopted).toMatchObject({
+      state: "published",
+      headSha: remoteHead,
+      clean: true,
+      changedPaths: ["src/result.txt"],
+      pullRequest: { number: 99, draft: true },
+      resumed: false,
+    });
+    expect(adopted.workerPrompt).toContain(adopted.manifestHash);
+    expect(
+      adoptPublishedEngineeringLane(manifest, setup.options),
+    ).toMatchObject({ state: "published", resumed: true });
   });
 });
 
@@ -347,6 +405,32 @@ describe("engineering lane publication and cleanup", () => {
       ]),
     ).toBe("");
   });
+
+  it("refuses to report a published lane after its local head moves without the remote", () => {
+    const setup = fixture();
+    const manifest = createManifest(setup.baseSha, "published_head_drift");
+    const lane = provisionEngineeringLane(manifest, setup.options);
+    commitOwnedChange(lane.worktreePath);
+    publishEngineeringLane(
+      {
+        taskId: manifest.taskId,
+        manifestHash: lane.manifestHash,
+        title: "test(ai): publish drift fixture",
+        body: "This draft pull request proves published head drift fails closed.",
+      },
+      setup.options,
+    );
+    writeFileSync(
+      join(lane.worktreePath, "src", "result.txt"),
+      "complete\nmoved\n",
+    );
+    git(lane.worktreePath, ["add", "src/result.txt"]);
+    git(lane.worktreePath, ["commit", "-m", "test: move local head"]);
+
+    expect(() =>
+      statusEngineeringLane(manifest.taskId, lane.manifestHash, setup.options),
+    ).toThrow(/published lane no longer matches/);
+  });
 });
 
 describe("lane policy helpers", () => {
@@ -373,6 +457,39 @@ describe("lane policy helpers", () => {
         "open",
       ]),
     ).not.toThrow();
+    expect(() =>
+      assertSafeGitHubCommand([
+        "workflow",
+        "run",
+        "ai-foundation.yml",
+        "--repo",
+        "velt-design/sanctuary",
+        "--ref",
+        "ai/test-safe-draft",
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertSafeGitHubCommand([
+        "workflow",
+        "run",
+        "other.yml",
+        "--repo",
+        "velt-design/sanctuary",
+        "--ref",
+        "ai/test-safe-draft",
+      ]),
+    ).toThrow(/exact Sanctuary AI foundation workflow/);
+    expect(() =>
+      assertSafeGitHubCommand([
+        "workflow",
+        "run",
+        "ai-foundation.yml",
+        "--repo",
+        "velt-design/sanctuary",
+        "--ref",
+        "main",
+      ]),
+    ).toThrow(/feature-branch ref/);
     expect(() =>
       assertSafeGitHubCommand([
         "pr",

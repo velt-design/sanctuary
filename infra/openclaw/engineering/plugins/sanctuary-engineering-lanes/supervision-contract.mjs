@@ -5,6 +5,7 @@ import { assertTaskIdentity } from "./lane-contract.mjs";
 const ENGINEERING_SUPERVISION_SCHEMA = "sanctuary-engineering-supervision-v2";
 export const ENGINEERING_SUPERVISION_CONTROLLER =
   "sanctuary-engineering/supervisor-v1";
+export const ENGINEERING_SUPERVISOR_AGENT = "sanctuary-engineering-supervisor";
 export const ENGINEERING_WORKER_AGENT = "sanctuary-coding-worker";
 export const ENGINEERING_SUPERVISION_TOOL_NAMES = Object.freeze([
   "sanctuary_engineering_supervision_enqueue",
@@ -16,6 +17,7 @@ export const ENGINEERING_SUPERVISION_TOOL_NAMES = Object.freeze([
   "sanctuary_engineering_supervision_ci",
   "sanctuary_engineering_review_attach",
   "sanctuary_engineering_review_reconcile",
+  "sanctuary_engineering_review_redispatch",
 ]);
 
 const SUPERVISION_PHASES = new Set([
@@ -230,7 +232,13 @@ function assertCiEvidence(evidence, state, { current = true } = {}) {
     if (
       !isRecord(check) ||
       check.name !== state.manifest.verification.ciChecks[index] ||
-      !["check_run", "status_context", "missing"].includes(check.kind) ||
+      ![
+        "check_run",
+        "status_context",
+        "workflow_job",
+        "workflow_run",
+        "missing",
+      ].includes(check.kind) ||
       !validOptionalString(check.status, 100) ||
       !validOptionalString(check.conclusion, 100) ||
       !validOptionalString(check.url) ||
@@ -256,12 +264,16 @@ function assertCiEvidence(evidence, state, { current = true } = {}) {
 }
 
 function assertCiState(ci, state) {
+  const missingDispatches = ci?.missingDispatches ?? 0;
   if (
     !isRecord(ci) ||
     !SHA_PATTERN.test(ci.headSha) ||
     !Number.isSafeInteger(ci.startedAt) ||
     !Number.isSafeInteger(ci.deadlineAt) ||
     ci.deadlineAt < ci.startedAt ||
+    !Number.isSafeInteger(missingDispatches) ||
+    missingDispatches < 0 ||
+    missingDispatches > 1 ||
     !Number.isSafeInteger(ci.transientReruns) ||
     ci.transientReruns < 0 ||
     ci.transientReruns > 1 ||
@@ -279,7 +291,7 @@ function assertReviewState(review, state) {
   if (
     !isRecord(review) ||
     !REVIEW_STATUSES.has(review.status) ||
-    !/^eng_[0-9a-f]{12}_r[0-9a-f]{12}$/.test(review.taskName) ||
+    !/^eng_[0-9a-f]{12}_r[0-9a-f]{12}(?:_c[12])?$/.test(review.taskName) ||
     !HASH_PATTERN.test(review.promptHash) ||
     review.headSha !== state.completion?.headSha ||
     review.ciEvidenceHash !== state.ci?.evidence?.evidenceHash ||
@@ -318,6 +330,41 @@ function assertRepairContext(context) {
     context.findings.some((finding) => typeof finding !== "string" || !finding)
   ) {
     throw new Error("The worker repair context is invalid.");
+  }
+}
+
+function assertReviewHistoryEntry(entry) {
+  if (!isRecord(entry)) {
+    throw new Error("The independent review history is invalid.");
+  }
+  if (isRecord(entry.report)) return;
+  if (
+    !(
+      (entry.kind === "invalid_dispatch_contract" &&
+        entry.correction === 1 &&
+        /^eng_[0-9a-f]{12}_r[0-9a-f]{12}$/.test(entry.taskName)) ||
+      (entry.kind === "missing_registered_review_tool" &&
+        entry.correction === 2 &&
+        /^eng_[0-9a-f]{12}_r[0-9a-f]{12}_c1$/.test(entry.taskName))
+    ) ||
+    !HASH_PATTERN.test(entry.promptHash) ||
+    !SHA_PATTERN.test(entry.headSha) ||
+    !HASH_PATTERN.test(entry.ciEvidenceHash) ||
+    !Number.isSafeInteger(entry.budgetCents) ||
+    entry.budgetCents < 0 ||
+    entry.costCents !== entry.budgetCents ||
+    !Number.isSafeInteger(entry.startedAt) ||
+    !Number.isSafeInteger(entry.deadlineAt) ||
+    entry.deadlineAt < entry.startedAt ||
+    !Number.isSafeInteger(entry.endedAt) ||
+    entry.endedAt < entry.startedAt ||
+    typeof entry.runId !== "string" ||
+    typeof entry.taskRunId !== "string" ||
+    typeof entry.childSessionKey !== "string" ||
+    typeof entry.error !== "string" ||
+    !entry.error
+  ) {
+    throw new Error("The independent review correction history is invalid.");
   }
 }
 
@@ -406,11 +453,7 @@ export function readSupervisionState(flow) {
     assertCiEvidence(entry, state, { current: false }),
   );
   if (state.review !== null) assertReviewState(state.review, state);
-  state.reviewHistory.forEach((entry) => {
-    if (!isRecord(entry) || !isRecord(entry.report)) {
-      throw new Error("The independent review history is invalid.");
-    }
-  });
+  state.reviewHistory.forEach(assertReviewHistoryEntry);
   assertRepairContext(state.repairContext);
   const postWorkerPhases = new Set([
     "ci_pending",
@@ -536,6 +579,7 @@ export function publicSupervision(flow) {
     activeAttemptBudgetCents: attempt?.budgetCents ?? null,
     ciClassification: state.ci?.evidence?.classification ?? null,
     ciEvidenceHash: state.ci?.evidence?.evidenceHash ?? null,
+    ciMissingDispatches: state.ci?.missingDispatches ?? 0,
     ciTransientReruns: state.ci?.transientReruns ?? 0,
     reviewStatus: state.review?.status ?? null,
     reviewVerdict: state.review?.report?.verdict ?? null,

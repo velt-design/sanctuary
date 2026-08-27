@@ -1,4 +1,8 @@
-import { activeAttempt, cloneJson } from "./supervision-contract.mjs";
+import {
+  ENGINEERING_SUPERVISOR_AGENT,
+  activeAttempt,
+  cloneJson,
+} from "./supervision-contract.mjs";
 
 function sameStrings(left, right) {
   return (
@@ -8,14 +12,22 @@ function sameStrings(left, right) {
   );
 }
 
-export function assertNativeTaskIdentity(task, attempt, workerAgentId) {
+export function assertNativeTaskIdentity(
+  task,
+  attempt,
+  workerAgentId,
+  supervisorSessionKey,
+) {
   if (
     !task ||
+    !supervisorSessionKey.startsWith(
+      `agent:${ENGINEERING_SUPERVISOR_AGENT}:`,
+    ) ||
+    task.sessionKey !== supervisorSessionKey ||
     task.runId !== attempt.runId ||
     task.id !== attempt.taskRunId ||
     task.runtime !== "subagent" ||
     task.agentId !== workerAgentId ||
-    task.label !== attempt.taskName ||
     task.childSessionKey !== attempt.childSessionKey
   ) {
     throw new Error("The native OpenClaw task no longer matches its attempt.");

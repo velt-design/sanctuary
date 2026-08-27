@@ -1,0 +1,88 @@
+{
+  "schema": "sanctuary-engineering-task-v1",
+  "taskId": "eng_20260826_operations_rehearsal",
+  "goalId": "goal_20260826_autonomous_engineering",
+  "objective": "Add an exact isolated-gateway kill switch and prove controlled stop, restart, audit and recovery behavior before the first autonomous product task.",
+  "requestedBy": "Jordan / Sanctuary Pergolas",
+  "base": {
+    "ref": "ai/autonomy-foundation-ci-review",
+    "sha": "de8359b1673bfe1695e1381bdc03eefd2fbde549"
+  },
+  "branch": "ai/autonomy-foundation-recovery",
+  "risk": "medium",
+  "ownerLane": "ai-engineering-operations-rehearsal",
+  "roles": {
+    "supervisor": "engineering_lead",
+    "worker": "coding_worker",
+    "reviewer": "code_reviewer"
+  },
+  "readFirst": [
+    "AGENTS.md",
+    "docs/ai/operations/autonomous-engineering.md",
+    "docs/ai/operations/openclaw-engineering-runtime.md",
+    "docs/ai/operations/openclaw-engineering-supervision.md",
+    "docs/ai/operations/openclaw-engineering-ci-review.md",
+    "docs/ai/operations/node-rebuild-and-revocation.md"
+  ],
+  "ownedPaths": [
+    "infra/openclaw/engineering/**",
+    "scripts/ai/**",
+    "test/ai-operations-*.test.ts",
+    "docs/ai/README.md",
+    "docs/ai/operations/**",
+    "docs/decision-log.md",
+    "scripts/dead-code-registry.json",
+    "package.json"
+  ],
+  "excludedPaths": ["apps/portal/**", "apps/marketing/**", "supabase/**"],
+  "dependencies": ["eng_20260826_ci_review_loop"],
+  "acceptanceCriteria": [
+    "The operator can stop only the isolated Sanctuary engineering gateway by its protected PID, exact runtime user, process title and loopback port without broad process matching or a force-kill fallback.",
+    "A missing, stale, malformed, reused or unowned PID fails closed or is cleared only when the isolated gateway is already confirmed offline.",
+    "A clean stop preserves the default OpenClaw authority files, removes only the isolated PID record and leaves GitHub, Portal access and manual development untouched.",
+    "The isolated gateway can restart from the same reviewed state and its plugin and durable task audit return clean without creating a duplicate flow, lane or worker.",
+    "Deterministic tests cover timeout, CI failure, transient rerun, reviewer rejection, unsafe identity and restart recovery boundaries before live model work is promoted.",
+    "The live role-boundary rehearsal and first low-risk product proof remain blocked until the isolated supervisor credential succeeds through the gateway."
+  ],
+  "verification": {
+    "focusedCommands": [
+      "npm run test:ai:ops",
+      "npm run test:ai",
+      "npm run docs:guard",
+      "npm run packages:guard",
+      "npm run architecture:changed:strict",
+      "node --check scripts/ai/mac-openclaw-engineering-stop.mjs",
+      "npm run ai:engineering:stop-mac",
+      "npm run ai:engineering:start-mac",
+      "sanctuary-openclaw gateway health",
+      "sanctuary-openclaw tasks audit --json"
+    ],
+    "ciChecks": ["Autonomous Engineering Foundation"],
+    "visualEvidence": {
+      "required": false,
+      "scenarios": []
+    }
+  },
+  "limits": {
+    "maxWorkers": 1,
+    "maxAttempts": 3,
+    "workerTimeoutMinutes": 60,
+    "maxCostCents": 5000
+  },
+  "approvals": {
+    "planning": "approved",
+    "merge": "human_required",
+    "scopeExpansion": "human_required",
+    "production": "prohibited"
+  },
+  "outputs": {
+    "draftPullRequest": true,
+    "completionReport": true
+  },
+  "stopConditions": [
+    "The PID, runtime user, process title, loopback port, default authority fingerprint or isolated state does not match exactly.",
+    "Stopping or recovery would require a broad process match, force kill, state deletion, duplicate flow, duplicate lane or second active worker.",
+    "A live model turn lacks the isolated supervisor credential or crosses the reviewed supervisor, worker or reviewer tool boundary.",
+    "The rehearsal would merge, deploy, access production, contact a customer or staff member, or expose a token or private task payload."
+  ]
+}

@@ -36,13 +36,14 @@ The controller re-reads the open draft PR and requires its number, URL, base
 ref/SHA, feature branch and head SHA to match the manifest and worker report.
 Each named check must appear exactly once.
 
-| Result                                                                                                | Controller action                                                                    |
-| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Missing or running                                                                                    | Remain `ci_pending`; watch in bounded windows until the durable deadline.            |
-| Passed                                                                                                | Freeze the evidence hash and prepare the independent reviewer.                       |
-| Recognized runner/network interruption, or differing assertions between a test and its built-in retry | Rerun only the failed jobs of the exact workflow run, once per head.                 |
-| Stable test failure                                                                                   | Record the failed-check evidence and allocate one permitted same-lane coding repair. |
-| Duplicate, skipped, neutral, stale or unknown terminal state                                          | Block for an operator; never reinterpret it as success.                              |
+| Result                                                                                                | Controller action                                                                                              |
+| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Missing                                                                                               | Dispatch the exact AI foundation workflow once for the verified feature-branch head, then remain `ci_pending`. |
+| Running                                                                                               | Remain `ci_pending`; watch in bounded windows until the durable deadline.                                      |
+| Passed                                                                                                | Freeze the evidence hash and prepare the independent reviewer.                                                 |
+| Recognized runner/network interruption, or differing assertions between a test and its built-in retry | Rerun only the failed jobs of the exact workflow run, once per head.                                           |
+| Stable test failure                                                                                   | Record the failed-check evidence and allocate one permitted same-lane coding repair.                           |
+| Duplicate, skipped, neutral, stale or unknown terminal state                                          | Block for an operator; never reinterpret it as success.                                                        |
 
 The failed log is read only to classify the result. A rerun does not erase the
 first evidence: its hash and count remain in durable state. If the rerun has not
@@ -51,11 +52,14 @@ second failure.
 
 ## Independent review
 
-After CI passes, the controller creates one deterministic packet containing the
-canonical task, worker completion, exact CI evidence and hash, and a bounded Git
-diff. Diff text is explicitly marked untrusted. The named
-`sanctuary-code-reviewer` has read-only tools, no shell, no delegation and no
-merge or production authority.
+After CI passes, the controller creates one deterministic compact packet
+containing the canonical task, worker completion, exact CI evidence and the
+exact Git diff hash. The named `sanctuary-code-reviewer` reads every diff chunk
+through `sanctuary_engineering_review_diff_chunk`; each call revalidates the
+open draft PR's base, head and full diff hash. Diff text is explicitly marked
+untrusted. The reviewer has no shell, mutation, delegation, merge or production
+authority. Bounded chunks prevent transport truncation without weakening or
+omitting review evidence.
 
 The reviewer returns one strict `sanctuary-engineering-review-v1` JSON object.
 It must cover every acceptance criterion once and in order. Approval requires
@@ -65,6 +69,15 @@ replaces those sentinels with the child-session and task times it already
 verified. A stale head, CI hash, PR, session, lane or budget fails closed.
 Blocking findings may create one remaining same-lane worker attempt; reviewer
 runtime failure is never replaced automatically.
+
+A reviewer is also never silently replaced for malformed output. The only
+exceptions are the finite, ordered, operator-authorized corrections for the two
+recognized historical dispatch defects: the original prompt/allowlist contract,
+then the missing parent registration required for child tool inheritance. For
+each one, the controller verifies the exact completed native reviewer and prompt
+hash, reserves its full review budget, records its run/task/session evidence in
+durable history, then returns one strict replacement dispatch. Repeating,
+reordering or applying either correction to any other prompt fails closed.
 
 ## Hosted `main` authority
 

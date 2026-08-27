@@ -32,6 +32,7 @@ Only `sanctuary-engineering-supervisor` receives these optional tools:
 | `sanctuary_engineering_supervision_ci`        | Watch exact-head required checks, allow one classified transient rerun, or route one same-lane repair.      |
 | `sanctuary_engineering_review_attach`         | Revision-fence the exact native read-only reviewer to its deterministic evidence packet.                    |
 | `sanctuary_engineering_review_reconcile`      | Validate reviewer lifecycle and strict report before success or a bounded same-lane repair.                 |
+| `sanctuary_engineering_review_diff_chunk`     | Let only the named reviewer read every bounded chunk of the hash-bound exact PR diff.                       |
 
 The supervisor no longer receives direct lane provisioning. The supervision
 controller calls that reviewed runtime internally, preventing a lead turn from
@@ -48,8 +49,9 @@ remain available to the lead; publish remains worker-only.
    running or awaiting completion.
 3. Spawn exactly one `sanctuary-coding-worker` with the returned `workerPrompt`,
    `worktreePath`, stable `taskName`, `mode: "run"`, `cleanup: "keep"` and
-   isolated context. Set `label` to the returned `taskLabel`. Do not override
-   its model.
+   isolated context. Do not pass `label`: OpenClaw derives the durable task
+   label from `taskName`, while a separate session label can collide with a
+   retained recovery session. Do not override its model.
 4. Attach the returned native run id using the dispatch's exact flow revision.
    A stale revision or different agent/session identity fails closed.
 5. Yield for OpenClaw's native completion event. Do not poll the child. Reconcile
@@ -57,10 +59,13 @@ remain available to the lead; publish remains worker-only.
 6. A native success waits for a strict completion report. A valid successful
    report matching the clean pushed lane and exact open draft PR enters
    `ci_pending`; it does not finish the flow.
-7. The CI tool watches in ten-minute windows at a thirty-second interval, with a
-   durable ninety-minute deadline. It carries each new flow revision forward,
-   so no user prompt is required while GitHub checks run. A gateway restart
-   resumes from the stored checkpoint.
+7. The CI tool watches in two-minute windows at a thirty-second interval under
+   a fixed three-minute OpenClaw per-call watchdog, with a durable ninety-minute
+   deadline. It carries each new flow revision forward, so no user prompt is
+   required while GitHub checks run. If a bounded manual workflow dispatch is
+   needed, the controller reads its exact commit and exact required job because
+   GitHub does not add `workflow_dispatch` jobs to the pull request check list.
+   A gateway restart resumes from the stored checkpoint.
 8. Passed exact-head CI creates one deterministic dispatch for
    `sanctuary-code-reviewer`. Spawn and attach it exactly, yield for completion,
    then reconcile one strict `sanctuary-engineering-review-v1` report. The
@@ -96,6 +101,12 @@ The attempt ledger binds:
 The controller revalidates the stored manifest on every read. It does not adopt
 unknown flows, branches, worktrees, task runs or session identities.
 
+OpenClaw child runs inherit the supervisor's effective tool policy before the
+worker policy is applied. The supervisor policy therefore carries the
+lane-publish name through that inherited filter. The fail-closed oversight hook
+rejects every supervisor invocation before execution, while the coding worker
+can call the same narrow manifest-bound publisher.
+
 ## Retry and recovery policy
 
 Only `timed_out` and `lost` native worker outcomes are automatically retryable. A
@@ -105,14 +116,25 @@ clean worktree, passed secret scan, no merge and no production effect. Native
 or a failed cancellation blocks for an operator. A failed, timed-out or lost
 reviewer blocks rather than silently replacing the independent review.
 
+A blocked or failed flow also fences every manifest that was already queued when
+the terminal checkpoint was written. After reviewing that evidence, an operator
+acknowledges it by enqueueing a new approved manifest. The controller retains
+the failed flow unchanged and may claim only flows created after that checkpoint;
+it never replays older queued work as an accidental acknowledgement.
+
 Retries reuse the same manifest lane and cannot exceed `maxAttempts`, the
 globally pinned worker deadline or `maxCostCents`. Repeated recovery while a
 dispatch is merely ready returns the same attempt and task name; it does not
 create a second worktree or worker. If the gateway stopped after spawn but
-before attachment, the controller finds the one native task with the exact
-stable label and bound prompt, attaches it, and refuses duplicates. An overdue
-running task must be cancelled through OpenClaw's native task runtime before a
-retry becomes eligible.
+before attachment, the controller finds the one native task from the exact
+supervisor session with the target agent, canonical prompt and current attempt
+time window, attaches it, ignores historical runs outside that window, and
+refuses duplicates while any matching worker remains live. If every duplicate
+is terminal, recovery deterministically attaches the oldest original dispatch;
+this lets a corrected controller resume a prior duplicate-safety block without
+starting more work.
+An overdue running task must be cancelled through OpenClaw's native task
+runtime before a retry becomes eligible.
 
 The remaining reported cost budget is divided across the remaining worker and
 review units and stored with each dispatch. This reserves a final independent

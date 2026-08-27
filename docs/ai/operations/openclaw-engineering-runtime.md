@@ -16,15 +16,15 @@ pull requests and merge.
 
 The engineering runtime is a separate OpenClaw instance:
 
-| Surface              | Engineering value                                                                              |
-| -------------------- | ---------------------------------------------------------------------------------------------- |
-| State                | `~/.openclaw-sanctuary-engineering`                                                            |
-| Config               | `~/.openclaw-sanctuary-engineering/openclaw.json`                                              |
-| Gateway              | loopback port `19011`, token-authenticated                                                     |
-| CLI                  | `~/bin/sanctuary-openclaw`                                                                     |
-| Workspaces           | `~/.openclaw-sanctuary-engineering/workspaces/**`                                              |
-| Channels and browser | disabled                                                                                       |
-| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` plus reviewed `sanctuary-engineering-lanes@1.2.0` |
+| Surface              | Engineering value                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------------- |
+| State                | `~/.openclaw-sanctuary-engineering`                                                             |
+| Config               | `~/.openclaw-sanctuary-engineering/openclaw.json`                                               |
+| Gateway              | loopback port `19011`, token-authenticated                                                      |
+| CLI                  | `~/bin/sanctuary-openclaw`                                                                      |
+| Workspaces           | `~/.openclaw-sanctuary-engineering/workspaces/**`                                               |
+| Channels and browser | disabled                                                                                        |
+| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` plus reviewed `sanctuary-engineering-lanes@1.2.17` |
 
 Activation never writes the default `~/.openclaw/openclaw.json`, approvals,
 agents, sessions, gateway token or gateway process. An unrelated OpenClaw
@@ -38,23 +38,41 @@ which must continue to hold no production credential.
 
 ## Named roles
 
-| Role                               | Authority                                                                                                                                                                                                                  |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sanctuary-engineering-supervisor` | Read contracts/evidence; use narrow durable-supervision plus lane status/cleanup tools; spawn and wait for exact named dispatches. No general shell, reviewer steering, direct lane provisioning or product-file mutation. |
-| `sanctuary-coding-worker`          | No-prompt coding inside the assigned worker root; focused checks and narrow status/publish tools. One leaf worker cannot spawn another agent.                                                                              |
-| `sanctuary-code-reviewer`          | Read-only exact CI/diff evidence and narrow lane-status review. No shell, mutation, delegation, reviewer replacement or merge authority.                                                                                   |
+| Role                               | Authority                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sanctuary-engineering-supervisor` | Read contracts/evidence; use narrow durable-supervision plus lane status/cleanup tools; spawn and wait for exact named dispatches. It can request only the finite ordered, recorded, operator-authorized corrections for recognized historical reviewer-dispatch defects, but cannot silently replace or steer reviewers. An exact finite tool allowlist and fail-closed native-tool hook permit only those named operations, with no general shell, direct lane provisioning or product-file mutation. |
+| `sanctuary-coding-worker`          | No-prompt coding inside the assigned worker root; focused checks and narrow status/publish tools. One leaf worker cannot spawn another agent.                                                                                                                                                                                                                                                                                                                                                           |
+| `sanctuary-code-reviewer`          | Read-only exact CI/diff evidence and narrow lane-status review. An exact finite tool allowlist and fail-closed native-tool hook permit only those named operations, with no shell, mutation, delegation, reviewer replacement or merge authority.                                                                                                                                                                                                                                                       |
 
 The installed OpenClaw schema requires a deterministic default route, so only
 the bounded supervisor is marked default. The coding worker and reviewer remain
 explicit named children and cannot become an implicit execution route. Operator
 commands still name the supervisor; do not start the worker directly.
 
+Session history is visible across this isolated three-agent fleet so the
+supervisor can validate a worker or reviewer report after a gateway restart.
+OpenClaw agent-to-agent access remains enabled only for the three exact
+engineering role IDs; the separate default OpenClaw instance and its sessions
+are outside this state and remain invisible.
+
 ## Why routine prompts stop
 
 The worker's two execution-policy layers both resolve to full execution with
 `ask: off`, and the managed Codex app-server uses `approvalPolicy: never` with
-`danger-full-access`. The supervisor and reviewer do not receive execution tools
-and their host approval policy is deny.
+`danger-full-access`. The supervisor and reviewer use OpenClaw `auto` execution
+mode so the managed local Codex app-server can run. Their exact finite tool
+allowlists are applied as a second,
+model-specific policy after the minimal profile is extended with the same named
+tools. Backed by explicit denies for
+`exec`, `process`, `write`, `edit` and `apply_patch`, those finite allowlists
+restrict their OpenClaw dynamic surface. The installed Sanctuary lane plugin
+also registers a fail-closed native `before_tool_call` hook: for either oversight
+agent, every tool name outside the same exact role allowlist is blocked before
+execution. This closes the Codex-native shell and patch boundary while leaving
+the coding worker unchanged. They receive their named narrow dynamic tools,
+loaded directly so an
+unattended turn does not depend on the model discovering an already approved
+tool through a searchable catalog. Any host execution miss fails closed.
 
 GitHub uses the repository-scoped Sanctuary GitHub App. The helper reads its
 identity with a headless, read-only 1Password service account and requests a
@@ -125,6 +143,19 @@ Start the sleep-resistant, loopback-only instance:
 ```bash
 npm run ai:engineering:start-mac
 ```
+
+Stop only this isolated instance with the reviewed kill switch:
+
+```bash
+npm run ai:engineering:stop-mac
+```
+
+The stop command requires the protected PID to match the current runtime user,
+the `openclaw-gateway` process title and loopback port `19011`. It sends one
+graceful termination signal, removes only the isolated PID record after both the
+process and health check are down, and refuses `pkill`, `killall`, force kill or
+an unknown healthy gateway. It fingerprints the default OpenClaw authority
+before and after the stop.
 
 The launcher survives SSH disconnection. A FileVault restart still needs one
 physical unlock; this development node does not pretend otherwise. An external

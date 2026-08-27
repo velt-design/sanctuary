@@ -4,6 +4,12 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import { createEngineeringSupervisionController } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-runtime.mjs";
+import {
+  REVIEW_DIFF_CHUNK_CHARACTERS,
+  buildLegacyChunkedReviewPrompt,
+  buildLegacyReviewPrompt,
+  readReviewDiffChunk,
+} from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/review-runtime.mjs";
 import { ENGINEERING_TASK_REVIEW_SCHEMA_V1 } from "../packages/ai/src/index";
 
 type Value = Record<string, any>;
@@ -16,6 +22,10 @@ function hash(value: unknown) {
   return `sha256:${createHash("sha256")
     .update(`${JSON.stringify(value, null, 2)}\n`)
     .digest("hex")}`;
+}
+
+function textHash(value: string) {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
 }
 
 class Flows {
@@ -97,6 +107,7 @@ class Flows {
 }
 
 class Tasks {
+  sessionKey = "agent:sanctuary-engineering-supervisor:test";
   records = new Map<string, Value>();
 
   add(input: Value) {
@@ -107,21 +118,23 @@ class Tasks {
       runtime: "subagent",
       status: "running",
       agentId,
+      sessionKey: this.sessionKey,
       childSessionKey: `agent:${agentId}:subagent:${number}`,
       ...input,
     };
-    this.records.set(task.runId, task);
+    this.records.set(task.id, task);
     return task;
   }
 
   resolve = (token: string) =>
     this.records.get(token) ??
-    [...this.records.values()].find((task) => task.id === token);
+    [...this.records.values()].find((task) => task.runId === token);
+  get = (taskId: string) => this.records.get(taskId);
   list = () => [...this.records.values()];
   cancel = async () => ({ cancelled: false, reason: "not expected" });
 }
 
-function taskManifest(maxAttempts = 2) {
+function taskManifest(maxAttempts = 2, ciCheckName = "Fixture CI") {
   return {
     schema: "sanctuary-engineering-task-v1",
     taskId: "eng_20260826_review_loop",
@@ -146,7 +159,7 @@ function taskManifest(maxAttempts = 2) {
     ],
     verification: {
       focusedCommands: ["npm test"],
-      ciChecks: ["Fixture CI"],
+      ciChecks: [ciCheckName],
       visualEvidence: { required: false, scenarios: [] },
     },
     limits: {
@@ -193,7 +206,7 @@ function ciEvidence(
     },
     requiredChecks: [
       {
-        name: "Fixture CI",
+        name: manifest.verification.ciChecks[0],
         kind: "check_run",
         status: classification === "pending" ? "IN_PROGRESS" : "COMPLETED",
         conclusion: classification === "pending" ? null : "FAILURE",
@@ -218,8 +231,37 @@ function ciEvidence(
   return { ...evidence, evidenceHash: hash(evidence) };
 }
 
+function missingCiEvidence(manifest: Value, completion: Value) {
+  const evidence = ciEvidence(manifest, completion, "pending");
+  evidence.requiredChecks = [
+    {
+      name: manifest.verification.ciChecks[0],
+      kind: "missing",
+      status: null,
+      conclusion: null,
+      url: null,
+      workflowName: null,
+      runId: null,
+      startedAt: null,
+      completedAt: null,
+      disposition: "pending",
+      reason: "The required check has not appeared for this exact head.",
+    },
+  ];
+  const { evidenceHash: _evidenceHash, ...canonical } = evidence;
+  return { ...canonical, evidenceHash: hash(canonical) };
+}
+
+function workflowJobCiEvidence(manifest: Value, completion: Value) {
+  const evidence = ciEvidence(manifest, completion);
+  evidence.requiredChecks[0].kind = "workflow_job";
+  const { evidenceHash: _evidenceHash, ...canonical } = evidence;
+  return { ...canonical, evidenceHash: hash(canonical) };
+}
+
 class CiRuntime {
   queue: Value[] = [];
+  dispatches: Value[] = [];
   inspections = 0;
   reruns: string[][] = [];
 
@@ -233,6 +275,23 @@ class CiRuntime {
 
   diff = () => "diff --git a/docs/result.md b/docs/result.md\n+reviewed\n";
 
+  dispatchMissing = (input: Value) => {
+    if (
+      input.evidence.requiredChecks.length !== 1 ||
+      input.evidence.requiredChecks[0].name !==
+        "AI Foundation / Provider-neutral contracts"
+    ) {
+      return null;
+    }
+    const result = {
+      workflow: "ai-foundation.yml",
+      branch: input.manifest.branch,
+      headSha: input.completion.headSha,
+    };
+    this.dispatches.push(result);
+    return result;
+  };
+
   rerunTransient = (evidence: Value) => {
     const ids = evidence.requiredChecks.map((entry: Value) => entry.runId);
     this.reruns.push(ids);
@@ -240,12 +299,12 @@ class CiRuntime {
   };
 }
 
-function fixture(maxAttempts = 2) {
+function fixture(maxAttempts = 2, ciCheckName = "Fixture CI") {
   const flows = new Flows();
   const tasks = new Tasks();
   const ci = new CiRuntime();
   const lanes = new Map<string, Value>();
-  const manifest = taskManifest(maxAttempts);
+  const manifest = taskManifest(maxAttempts, ciCheckName);
   let clock = 1_700_000_000_000;
   const manifestHash = hash(manifest);
   const contractAdapter = {
@@ -318,7 +377,7 @@ async function reachCi(setup: ReturnType<typeof fixture>) {
   const dispatch = setup.controller().claim();
   const worker = setup.tasks.add({
     runId: "run-worker-1",
-    label: dispatch.taskLabel,
+    label: null,
     title: dispatch.workerPrompt,
     createdAt: dispatch.attemptStartedAt,
   });
@@ -358,7 +417,13 @@ async function reachCi(setup: ReturnType<typeof fixture>) {
         summary: "Passed.",
       },
     ],
-    ciChecks: [{ name: "Fixture CI", status: "pending", url: null }],
+    ciChecks: [
+      {
+        name: setup.manifest.verification.ciChecks[0],
+        status: "pending",
+        url: null,
+      },
+    ],
     worker: {
       agent: "sanctuary-coding-worker",
       model: "openai/gpt-5.6-sol",
@@ -397,7 +462,7 @@ function attachReviewer(setup: ReturnType<typeof fixture>, dispatch: Value) {
   const reviewer = setup.tasks.add({
     runId: "run-reviewer-1",
     agentId: dispatch.reviewerAgentId,
-    label: dispatch.reviewTaskLabel,
+    label: null,
     title: dispatch.reviewPrompt,
     createdAt: dispatch.reviewStartedAt,
   });
@@ -463,6 +528,67 @@ function reviewReport(
 }
 
 describe("durable exact-head CI and independent review loop", () => {
+  it("serves the complete exact review diff in bounded hash-verified chunks", () => {
+    const diff = `${"x".repeat(REVIEW_DIFF_CHUNK_CHARACTERS)}y`;
+    const input = {
+      flowId: "flow-review-loop",
+      pullRequestNumber: 123,
+      baseSha: "a".repeat(40),
+      headSha: "b".repeat(40),
+      diffHash: textHash(diff),
+      offset: 0,
+    };
+    const ciRuntime = { diff: () => diff };
+    const first = readReviewDiffChunk({ ciRuntime, input });
+    expect(first).toMatchObject({
+      offset: 0,
+      nextOffset: REVIEW_DIFF_CHUNK_CHARACTERS,
+      complete: false,
+      totalCharacters: diff.length,
+    });
+    expect(first.content).toHaveLength(REVIEW_DIFF_CHUNK_CHARACTERS);
+    expect(
+      readReviewDiffChunk({
+        ciRuntime,
+        input: { ...input, offset: first.nextOffset },
+      }),
+    ).toMatchObject({ content: "y", nextOffset: null, complete: true });
+    expect(() =>
+      readReviewDiffChunk({
+        ciRuntime,
+        input: { ...input, diffHash: `sha256:${"0".repeat(64)}` },
+      }),
+    ).toThrow(/no longer matches/);
+
+    const unicodeDiff = `${"x".repeat(REVIEW_DIFF_CHUNK_CHARACTERS - 1)}😀y`;
+    const unicodeFirst = readReviewDiffChunk({
+      ciRuntime: { diff: () => unicodeDiff },
+      input: { ...input, diffHash: textHash(unicodeDiff) },
+    });
+    expect(unicodeFirst.content.endsWith("x")).toBe(true);
+    expect(unicodeFirst.content).not.toContain("\ud83d");
+    expect(unicodeFirst.nextOffset).toBe(REVIEW_DIFF_CHUNK_CHARACTERS - 1);
+  });
+
+  it("accepts an exact dispatched workflow job as durable CI evidence", async () => {
+    const setup = fixture(2, "AI Foundation / Provider-neutral contracts");
+    const reached = await reachCi(setup);
+    setup.ci.queue = [workflowJobCiEvidence(setup.manifest, reached.report)];
+
+    expect(
+      setup.controller().inspectCi({
+        flowId: reached.ciPending.flowId,
+        expectedRevision: reached.ciPending.revision,
+      }),
+    ).toMatchObject({
+      reviewReady: true,
+      reviewerAgentId: "sanctuary-code-reviewer",
+    });
+    expect(
+      setup.controller().status(setup.manifest.taskId, setup.manifestHash),
+    ).toMatchObject({ phase: "reviewer_ready", ciClassification: "passed" });
+  });
+
   it("cannot finish until exact CI and the named reviewer both approve", async () => {
     const setup = fixture();
     const reached = await reachCi(setup);
@@ -541,6 +667,43 @@ describe("durable exact-head CI and independent review loop", () => {
     expect(second.workerPrompt).toContain("Fixture CI");
   });
 
+  it("dispatches a missing exact-head foundation workflow only once", async () => {
+    const setup = fixture(2, "AI Foundation / Provider-neutral contracts");
+    const reached = await reachCi(setup);
+    const missing = missingCiEvidence(setup.manifest, reached.report);
+    setup.ci.queue = [missing, missing];
+    delete setup.flows.records.get(reached.ciPending.flowId)!.stateJson.ci
+      .missingDispatches;
+
+    const dispatched = setup.controller().inspectCi({
+      flowId: reached.ciPending.flowId,
+      expectedRevision: reached.ciPending.revision,
+    });
+    expect(dispatched).toMatchObject({
+      dispatchRequested: true,
+      ciMissingDispatches: 1,
+      phase: "ci_pending",
+    });
+    expect(setup.ci.dispatches).toEqual([
+      {
+        workflow: "ai-foundation.yml",
+        branch: setup.manifest.branch,
+        headSha: reached.report.headSha,
+      },
+    ]);
+
+    const unchanged = setup.controller().inspectCi({
+      flowId: dispatched.flowId,
+      expectedRevision: dispatched.revision,
+    });
+    expect(unchanged).toMatchObject({
+      unchanged: true,
+      ciMissingDispatches: 1,
+      phase: "ci_pending",
+    });
+    expect(setup.ci.dispatches).toHaveLength(1);
+  });
+
   it("allows one transient rerun, waits for GitHub to update, then stops a second failure", async () => {
     const setup = fixture();
     const reached = await reachCi(setup);
@@ -603,10 +766,25 @@ describe("durable exact-head CI and independent review loop", () => {
       flowId: reached.ciPending.flowId,
       expectedRevision: reached.ciPending.revision,
     });
+    expect(reviewDispatch.reviewPrompt).toBe(
+      reviewDispatch.reviewPrompt.trim(),
+    );
+    expect(reviewDispatch.reviewPrompt).toContain(
+      "sanctuary_engineering_review_diff_chunk",
+    );
+    expect(reviewDispatch.reviewPrompt).toContain('"verdict": "approved"');
+    expect(reviewDispatch.reviewPrompt).toContain(
+      '"model": "openai/gpt-5.6-sol"',
+    );
+    expect(reviewDispatch.reviewPrompt).toContain(
+      '"nextAction": "Human review and merge."',
+    );
+    expect(reviewDispatch.reviewPrompt).not.toContain('"decision":');
+    expect(reviewDispatch.reviewPrompt).not.toContain("<untrusted_diff");
     const wrong = setup.tasks.add({
       runId: "wrong-reviewer",
       agentId: "sanctuary-coding-worker",
-      label: reviewDispatch.reviewTaskLabel,
+      label: null,
       title: reviewDispatch.reviewPrompt,
       createdAt: reviewDispatch.reviewStartedAt,
     });
@@ -624,6 +802,22 @@ describe("durable exact-head CI and independent review loop", () => {
         runId: wrong.runId,
       }),
     ).toThrow(/revision conflict/);
+
+    const wrongRequester = setup.tasks.add({
+      runId: "wrong-reviewer-requester",
+      agentId: reviewDispatch.reviewerAgentId,
+      sessionKey: "agent:other-supervisor:test",
+      label: null,
+      title: reviewDispatch.reviewPrompt,
+      createdAt: reviewDispatch.reviewStartedAt,
+    });
+    expect(() =>
+      setup.controller().attachReview({
+        flowId: reviewDispatch.flowId,
+        expectedRevision: reviewDispatch.expectedRevision,
+        runId: wrongRequester.runId,
+      }),
+    ).toThrow(/named Sanctuary code reviewer/);
 
     const { reviewer, attached } = attachReviewer(setup, reviewDispatch);
     reviewer.status = "succeeded";
@@ -643,6 +837,74 @@ describe("durable exact-head CI and independent review loop", () => {
       phase: "reviewer_running",
       flowStatus: "running",
     });
+  });
+
+  it("attaches the exact reviewer task when an inner task shares its run ID", async () => {
+    const setup = fixture();
+    const reached = await reachCi(setup);
+    const reviewDispatch = setup.controller().inspectCi({
+      flowId: reached.ciPending.flowId,
+      expectedRevision: reached.ciPending.revision,
+    });
+    const reviewer = setup.tasks.add({
+      runId: "shared-review-run-id",
+      agentId: reviewDispatch.reviewerAgentId,
+      label: null,
+      title: reviewDispatch.reviewPrompt,
+      createdAt: reviewDispatch.reviewStartedAt,
+    });
+    setup.tasks.add({
+      runId: reviewer.runId,
+      agentId: reviewDispatch.reviewerAgentId,
+      sessionKey: "agent:sanctuary-code-reviewer:inner",
+      label: null,
+      title: `[Subagent Context]\n${reviewDispatch.reviewPrompt}`,
+      createdAt: reviewDispatch.reviewStartedAt + 1,
+    });
+
+    expect(
+      setup.controller().attachReview({
+        flowId: reviewDispatch.flowId,
+        expectedRevision: reviewDispatch.expectedRevision,
+        runId: reviewer.runId,
+      }),
+    ).toMatchObject({
+      phase: "reviewer_running",
+      reviewStatus: "running",
+    });
+  });
+
+  it("ignores a historical matching reviewer outside the current review window", async () => {
+    const setup = fixture();
+    const reached = await reachCi(setup);
+    const reviewDispatch = setup.controller().inspectCi({
+      flowId: reached.ciPending.flowId,
+      expectedRevision: reached.ciPending.revision,
+    });
+    setup.tasks.add({
+      runId: "historical-reviewer",
+      agentId: reviewDispatch.reviewerAgentId,
+      label: null,
+      title: reviewDispatch.reviewPrompt,
+      createdAt: reviewDispatch.reviewStartedAt - 1,
+    });
+    const current = setup.tasks.add({
+      runId: "current-reviewer",
+      agentId: reviewDispatch.reviewerAgentId,
+      label: null,
+      title: reviewDispatch.reviewPrompt,
+      createdAt: reviewDispatch.reviewStartedAt,
+    });
+
+    const recovered = await setup.controller().recover();
+    expect(recovered).toMatchObject({
+      recoveredAttached: true,
+      phase: "reviewer_running",
+      reviewStatus: "running",
+    });
+    expect(
+      setup.flows.records.get(reviewDispatch.flowId)?.stateJson.review.runId,
+    ).toBe(current.runId);
   });
 
   it("blocks a failed reviewer instead of silently replacing it", async () => {
@@ -668,5 +930,171 @@ describe("durable exact-head CI and independent review loop", () => {
       claimed: false,
       reason: "A prior engineering flow requires operator attention.",
     });
+  });
+
+  it("records, orders and charges the finite operator-authorized dispatch corrections", async () => {
+    const setup = fixture();
+    const reached = await reachCi(setup);
+    const reviewDispatch = setup.controller().inspectCi({
+      flowId: reached.ciPending.flowId,
+      expectedRevision: reached.ciPending.revision,
+    });
+    const { reviewer, attached } = attachReviewer(setup, reviewDispatch);
+    const attachedFlow = setup.flows.records.get(reviewDispatch.flowId)!;
+    const legacy = buildLegacyChunkedReviewPrompt({
+      flowId: reviewDispatch.flowId,
+      state: attachedFlow.stateJson,
+      ciEvidence: attachedFlow.stateJson.ci.evidence,
+      diff: setup.ci.diff(),
+    });
+    attachedFlow.stateJson.review.promptHash = legacy.promptHash;
+    reviewer.title = legacy.prompt;
+    reviewer.status = "succeeded";
+    reviewer.endedAt = 1_700_000_020_000;
+
+    expect(() =>
+      setup.controller().redispatchReview({
+        flowId: reviewDispatch.flowId,
+        expectedRevision: attached.revision,
+        priorRunId: reviewer.runId,
+        reason: "missing_registered_review_tool",
+      }),
+    ).toThrow(/does not match the durable correction sequence/);
+
+    const correction = setup.controller().redispatchReview({
+      flowId: reviewDispatch.flowId,
+      expectedRevision: attached.revision,
+      priorRunId: reviewer.runId,
+      reason: "invalid_dispatch_contract",
+    });
+    expect(correction).toMatchObject({
+      reviewReady: true,
+      expectedRevision: attached.revision + 1,
+      reviewerAgentId: "sanctuary-code-reviewer",
+    });
+    expect(correction.reviewTaskName).toMatch(/_c1$/);
+    expect(correction.reviewPrompt).toContain('"verdict": "approved"');
+    const correctedState = setup.flows.records.get(
+      correction.flowId,
+    )!.stateJson;
+    expect(correctedState.cumulativeCostCents).toBe(366);
+    expect(correctedState.reviewHistory).toEqual([
+      expect.objectContaining({
+        kind: "invalid_dispatch_contract",
+        correction: 1,
+        runId: reviewer.runId,
+        taskRunId: reviewer.id,
+        costCents: 266,
+      }),
+    ]);
+
+    expect(() =>
+      setup.controller().redispatchReview({
+        flowId: correction.flowId,
+        expectedRevision: correction.expectedRevision,
+        priorRunId: reviewer.runId,
+        reason: "invalid_dispatch_contract",
+      }),
+    ).toThrow(/Only an attached reviewer/);
+
+    const correctedReviewer = setup.tasks.add({
+      runId: "run-reviewer-correction",
+      agentId: correction.reviewerAgentId,
+      label: null,
+      title: correction.reviewPrompt,
+      createdAt: correction.reviewStartedAt,
+    });
+    const correctionAttached = setup.controller().attachReview({
+      flowId: correction.flowId,
+      expectedRevision: correction.expectedRevision,
+      runId: correctedReviewer.runId,
+    });
+    correctedReviewer.status = "succeeded";
+    correctedReviewer.endedAt = correction.reviewStartedAt + 1_000;
+    const registrationCorrection = setup.controller().redispatchReview({
+      flowId: correction.flowId,
+      expectedRevision: correctionAttached.revision,
+      priorRunId: correctedReviewer.runId,
+      reason: "missing_registered_review_tool",
+    });
+    expect(registrationCorrection).toMatchObject({
+      reviewReady: true,
+      expectedRevision: correctionAttached.revision + 1,
+      reviewerAgentId: "sanctuary-code-reviewer",
+    });
+    expect(registrationCorrection.reviewTaskName).toMatch(/_c2$/);
+    const secondCorrectedState = setup.flows.records.get(
+      registrationCorrection.flowId,
+    )!.stateJson;
+    expect(secondCorrectedState.cumulativeCostCents).toBe(544);
+    expect(secondCorrectedState.reviewHistory).toEqual([
+      expect.objectContaining({
+        kind: "invalid_dispatch_contract",
+        correction: 1,
+        costCents: 266,
+      }),
+      expect.objectContaining({
+        kind: "missing_registered_review_tool",
+        correction: 2,
+        runId: correctedReviewer.runId,
+        taskRunId: correctedReviewer.id,
+        costCents: 178,
+      }),
+    ]);
+
+    const finalReviewer = setup.tasks.add({
+      runId: "run-reviewer-final",
+      agentId: registrationCorrection.reviewerAgentId,
+      label: null,
+      title: registrationCorrection.reviewPrompt,
+      createdAt: registrationCorrection.reviewStartedAt,
+    });
+    const finalAttached = setup.controller().attachReview({
+      flowId: registrationCorrection.flowId,
+      expectedRevision: registrationCorrection.expectedRevision,
+      runId: finalReviewer.runId,
+    });
+    finalReviewer.status = "succeeded";
+    finalReviewer.endedAt = registrationCorrection.reviewStartedAt + 1_000;
+    const finished = await setup.controller().reconcileReview({
+      flowId: registrationCorrection.flowId,
+      expectedRevision: finalAttached.revision,
+      report: reviewReport(setup, registrationCorrection),
+    });
+    expect(finished).toMatchObject({
+      phase: "succeeded",
+      flowStatus: "succeeded",
+      reviewVerdict: "approved",
+      cumulativeCostCents: 569,
+    });
+  });
+
+  it("upgrades a ready legacy embedded-diff dispatch without spawning twice", async () => {
+    const setup = fixture();
+    const reached = await reachCi(setup);
+    const dispatch = setup.controller().inspectCi({
+      flowId: reached.ciPending.flowId,
+      expectedRevision: reached.ciPending.revision,
+    });
+    const flow = setup.flows.records.get(dispatch.flowId)!;
+    const legacy = buildLegacyReviewPrompt({
+      state: flow.stateJson,
+      ciEvidence: flow.stateJson.ci.evidence,
+      diff: setup.ci.diff(),
+    });
+    flow.stateJson.review.promptHash = legacy.promptHash;
+    const beforeRevision = flow.revision;
+
+    const recovered = await setup.controller().recover();
+    expect(recovered).toMatchObject({
+      reviewReady: true,
+      expectedRevision: beforeRevision + 1,
+      reviewerAgentId: "sanctuary-code-reviewer",
+    });
+    expect(recovered.reviewPrompt).not.toContain("<untrusted_diff");
+    expect(recovered.reviewPrompt).toContain(
+      "sanctuary_engineering_review_diff_chunk",
+    );
+    expect(setup.tasks.records).toHaveLength(1);
   });
 });

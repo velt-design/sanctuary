@@ -30,6 +30,7 @@
     "infra/openclaw/engineering/**",
     "packages/ai/**",
     "scripts/ai/**",
+    "scripts/worktree-ownership-report.mjs",
     "test/ai-engineering-contract-cli.test.ts",
     "test/ai-engineering-review-contract.test.ts",
     "test/ai-operations-engineering-lanes.test.ts",
