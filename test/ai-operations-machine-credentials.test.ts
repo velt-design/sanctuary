@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   evaluateMachineCredentialEvidence,
   readGitHubVaultFields,
+  resolveMachineServiceTokenPath,
 } from "../scripts/ai/mac-machine-credential-gate.mjs";
 
 const passingEvidence = {
@@ -22,7 +23,9 @@ const passingEvidence = {
 
 describe("Mac machine credential gate", () => {
   it("passes the exact least-privilege contract", () => {
-    expect(evaluateMachineCredentialEvidence(passingEvidence).passed).toBe(true);
+    expect(evaluateMachineCredentialEvidence(passingEvidence).passed).toBe(
+      true,
+    );
   });
 
   it("fails access to an additional 1Password vault", () => {
@@ -38,7 +41,10 @@ describe("Mac machine credential gate", () => {
   it("fails a broader GitHub App permission", () => {
     const report = evaluateMachineCredentialEvidence({
       ...passingEvidence,
-      githubPermissions: { ...passingEvidence.githubPermissions, workflows: "write" },
+      githubPermissions: {
+        ...passingEvidence.githubPermissions,
+        workflows: "write",
+      },
     });
 
     expect(report.passed).toBe(false);
@@ -58,7 +64,12 @@ describe("Mac machine credential gate", () => {
   it("returns only the public gate shape", () => {
     const report = evaluateMachineCredentialEvidence(passingEvidence);
 
-    expect(Object.keys(report)).toEqual(["schemaVersion", "gate", "passed", "checks"]);
+    expect(Object.keys(report)).toEqual([
+      "schemaVersion",
+      "gate",
+      "passed",
+      "checks",
+    ]);
     expect(report).not.toHaveProperty("credentials");
   });
 
@@ -78,5 +89,24 @@ describe("Mac machine credential gate", () => {
       installationId: "installation",
       privateKey: "private",
     });
+  });
+
+  it("keeps the service token inside the selected OpenClaw state", () => {
+    expect(
+      resolveMachineServiceTokenPath(
+        { OPENCLAW_STATE_DIR: "/tmp/sanctuary-engineering" },
+        "/Users/example",
+      ).replaceAll("\\", "/"),
+    ).toBe(
+      "/tmp/sanctuary-engineering/credentials/onepassword/service-account-token",
+    );
+    expect(
+      resolveMachineServiceTokenPath({}, "/Users/example").replaceAll(
+        "\\",
+        "/",
+      ),
+    ).toBe(
+      "/Users/example/.openclaw/credentials/onepassword/service-account-token",
+    );
   });
 });

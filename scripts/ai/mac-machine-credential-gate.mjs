@@ -16,6 +16,15 @@ const REQUIRED_GITHUB_PERMISSIONS = {
   pull_requests: "write",
 };
 
+export function resolveMachineServiceTokenPath(
+  environment = process.env,
+  home = homedir(),
+) {
+  const stateDir =
+    environment.OPENCLAW_STATE_DIR?.trim() || join(home, ".openclaw");
+  return join(stateDir, "credentials", "onepassword", "service-account-token");
+}
+
 function result(status, detail) {
   return { status, detail };
 }
@@ -23,42 +32,76 @@ function result(status, detail) {
 export function evaluateMachineCredentialEvidence(evidence) {
   const visibleVaults = evidence.onePasswordVaults ?? [];
   const githubPermissions = evidence.githubPermissions ?? {};
-  const expectedPermissionSet = Object.entries(REQUIRED_GITHUB_PERMISSIONS).every(
-    ([name, level]) => githubPermissions[name] === level,
-  );
+  const expectedPermissionSet = Object.entries(
+    REQUIRED_GITHUB_PERMISSIONS,
+  ).every(([name, level]) => githubPermissions[name] === level);
   const unexpectedPermissions = Object.entries(githubPermissions).filter(
-    ([name, level]) => !(name in REQUIRED_GITHUB_PERMISSIONS) && level !== "none",
+    ([name, level]) =>
+      !(name in REQUIRED_GITHUB_PERMISSIONS) && level !== "none",
   );
 
   const checks = {
     runtimeUser:
       evidence.runtimeUser === EXPECTED_USER
-        ? result("pass", "Credentials are scoped to the non-admin runtime account")
+        ? result(
+            "pass",
+            "Credentials are scoped to the non-admin runtime account",
+          )
         : result("fail", "Gate is not running as the expected runtime account"),
     onePasswordCli: evidence.onePasswordCliReady
       ? result("pass", "1Password CLI supports service accounts")
       : result("fail", "1Password CLI 2.18.0 or later is not available"),
     onePasswordBootstrap: evidence.onePasswordTokenFileProtected
-      ? result("pass", "The unattended service-account token file is owner-readable only")
-      : result("fail", "The service-account token file is missing or has broad permissions"),
+      ? result(
+          "pass",
+          "The unattended service-account token file is owner-readable only",
+        )
+      : result(
+          "fail",
+          "The service-account token file is missing or has broad permissions",
+        ),
     onePasswordVaultScope:
       visibleVaults.length === 1 && visibleVaults[0] === EXPECTED_VAULT
-        ? result("pass", "The service account can see only the node runtime vault")
-        : result("fail", "The service account is not restricted to the node runtime vault"),
+        ? result(
+            "pass",
+            "The service account can see only the node runtime vault",
+          )
+        : result(
+            "fail",
+            "The service account is not restricted to the node runtime vault",
+          ),
     onePasswordReadOnly: evidence.onePasswordReadOnlyAttested
-      ? result("pass", "Read-only service-account permissions were operator-attested")
-      : result("fail", "Read-only service-account permissions need operator attestation"),
+      ? result(
+          "pass",
+          "Read-only service-account permissions were operator-attested",
+        )
+      : result(
+          "fail",
+          "Read-only service-account permissions need operator attestation",
+        ),
     githubVaultItem: evidence.githubVaultItemPresent
-      ? result("pass", "GitHub App identity material is read from the restricted runtime vault")
-      : result("fail", "GitHub App identity material is incomplete in the runtime vault"),
+      ? result(
+          "pass",
+          "GitHub App identity material is read from the restricted runtime vault",
+        )
+      : result(
+          "fail",
+          "GitHub App identity material is incomplete in the runtime vault",
+        ),
     githubRepository:
       evidence.githubRepository === EXPECTED_REPOSITORY
         ? result("pass", "GitHub App installation is restricted to Sanctuary")
         : result("fail", "GitHub App repository scope is not verified"),
     githubPermissions:
       expectedPermissionSet && unexpectedPermissions.length === 0
-        ? result("pass", "GitHub App has only contents and pull-request write access")
-        : result("fail", "GitHub App permissions are missing or broader than the contract"),
+        ? result(
+            "pass",
+            "GitHub App has only contents and pull-request write access",
+          )
+        : result(
+            "fail",
+            "GitHub App permissions are missing or broader than the contract",
+          ),
   };
 
   return {
@@ -78,13 +121,7 @@ function run(command, args = [], env = process.env) {
 }
 
 function readServiceAccountToken() {
-  const path = join(
-    homedir(),
-    ".openclaw",
-    "credentials",
-    "onepassword",
-    "service-account-token",
-  );
+  const path = resolveMachineServiceTokenPath();
   try {
     const stats = statSync(path);
     const protectedFile = stats.isFile() && (stats.mode & 0o077) === 0;
@@ -98,7 +135,11 @@ function readServiceAccountToken() {
 function versionAtLeast(actual, minimum) {
   const actualParts = actual.split(".").map(Number);
   const minimumParts = minimum.split(".").map(Number);
-  for (let index = 0; index < Math.max(actualParts.length, minimumParts.length); index += 1) {
+  for (
+    let index = 0;
+    index < Math.max(actualParts.length, minimumParts.length);
+    index += 1
+  ) {
     const difference = (actualParts[index] ?? 0) - (minimumParts[index] ?? 0);
     if (difference !== 0) return difference > 0;
   }
@@ -123,11 +164,13 @@ function encodeJwtPart(value) {
 
 export function createGitHubAppJwt(appId, privateKey) {
   const now = Math.floor(Date.now() / 1000);
-  const unsigned = `${encodeJwtPart({ alg: "RS256", typ: "JWT" })}.${encodeJwtPart({
-    iat: now - 60,
-    exp: now + 540,
-    iss: appId,
-  })}`;
+  const unsigned = `${encodeJwtPart({ alg: "RS256", typ: "JWT" })}.${encodeJwtPart(
+    {
+      iat: now - 60,
+      exp: now + 540,
+      iss: appId,
+    },
+  )}`;
   const signer = createSign("RSA-SHA256");
   signer.update(unsigned);
   signer.end();
@@ -180,7 +223,9 @@ async function collectMacEvidence() {
     });
     if (vaultList.ok) {
       try {
-        onePasswordVaults = JSON.parse(vaultList.stdout).map((vault) => vault.name).sort();
+        onePasswordVaults = JSON.parse(vaultList.stdout)
+          .map((vault) => vault.name)
+          .sort();
       } catch {
         onePasswordVaults = [];
       }
@@ -221,12 +266,17 @@ async function collectMacEvidence() {
     githubAppId && githubInstallationId && githubPrivateKey,
   );
   const github = githubVaultItemPresent
-    ? await verifyGitHubInstallation(githubAppId, githubInstallationId, githubPrivateKey)
+    ? await verifyGitHubInstallation(
+        githubAppId,
+        githubInstallationId,
+        githubPrivateKey,
+      )
     : { repository: null, permissions: null };
 
   return {
     runtimeUser,
-    onePasswordCliReady: opVersion.ok && versionAtLeast(opVersion.stdout, "2.18.0"),
+    onePasswordCliReady:
+      opVersion.ok && versionAtLeast(opVersion.stdout, "2.18.0"),
     onePasswordTokenFileProtected: onePasswordBootstrap.protectedFile,
     onePasswordVaults,
     onePasswordReadOnlyAttested: process.argv.includes("--attest-op-read-only"),
@@ -237,7 +287,9 @@ async function collectMacEvidence() {
 }
 
 function printHuman(report) {
-  console.log(`Mac machine credential gate: ${report.passed ? "PASS" : "FAIL"}`);
+  console.log(
+    `Mac machine credential gate: ${report.passed ? "PASS" : "FAIL"}`,
+  );
   for (const [name, check] of Object.entries(report.checks)) {
     console.log(`- ${name}: ${check.status.toUpperCase()} — ${check.detail}`);
   }
