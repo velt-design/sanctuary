@@ -1,7 +1,7 @@
 import "server-only";
 
 import { PDFDocument } from "pdf-lib";
-import sharp, { type Metadata } from "sharp";
+import type { Metadata } from "sharp";
 import {
   DESIGN_BOOKLET_DEFAULT_ASSET_IDS,
   DESIGN_BOOKLET_CONTENT_LAYOUT_IDS,
@@ -55,6 +55,7 @@ import {
   renderableDesignBookletAssetSources,
 } from "./pageModel";
 import { readDesignBookletDefaultImage } from "./pdfAssets";
+import { loadDesignBookletSharp } from "./sharpRuntime";
 import {
   defaultDesignBookletContentVariant,
   isDesignBookletContentScale,
@@ -73,9 +74,9 @@ const SAFE_ID = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const supportedMediaTypes = new Set(["image/png", "image/jpeg"]);
 
 export class DesignBookletRequestError extends Error {
-  readonly status: 400 | 413;
+  readonly status: 400 | 413 | 503;
 
-  constructor(message: string, status: 400 | 413 = 400) {
+  constructor(message: string, status: 400 | 413 | 503 = 400) {
     super(message);
     this.name = "DesignBookletRequestError";
     this.status = status;
@@ -654,6 +655,15 @@ async function readUploadedImage(
   }
 
   const bytes = new Uint8Array(await entry.arrayBuffer());
+  let sharp: Awaited<ReturnType<typeof loadDesignBookletSharp>>;
+  try {
+    sharp = await loadDesignBookletSharp();
+  } catch {
+    throw new DesignBookletRequestError(
+      "Image processing is temporarily unavailable.",
+      503,
+    );
+  }
   let metadata: Metadata;
   try {
     metadata = await sharp(bytes, {
