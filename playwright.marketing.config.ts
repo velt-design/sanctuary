@@ -8,7 +8,7 @@ const vercelAutomationBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim
 
 export default defineConfig({
   testDir: './playwright',
-  testMatch: /marketing\.(?:consent|contact|foundation|acrylic-foundation|acrylic-copy-variant|guide-cluster-final-refinement|guide-hub|hero-navigation|home-guided|home-project-finder|homepage|mobile-content-density|phase-(?:three|four|five)|products|projects(?:-phase-two|-switching)?|seo-copy-hygiene|seo-landing|seo-programme|shared-header|simple-cover-calculator|simple-pergolas|touch-motion)\.spec\.ts/,
+  testMatch: /marketing\.(?:configurator|consent|contact|foundation|acrylic-foundation|acrylic-copy-variant|guide-cluster-final-refinement|guide-hub|hero-navigation|home-guided|home-project-finder|homepage|mobile-content-density|phase-(?:three|four|five)|products|projects(?:-phase-two|-switching)?|seo-copy-hygiene|seo-landing|seo-programme|shared-header|simple-cover-calculator|simple-pergolas|touch-motion)\.spec\.ts/,
   timeout: 90_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,

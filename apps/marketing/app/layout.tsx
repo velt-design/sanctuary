@@ -24,6 +24,8 @@ import RouteProgress from '@/components/RouteProgress';
 import { ConsentProvider } from '@/components/ConsentProvider';
 import { getGoogleRating } from '@/lib/googleReviews';
 import { BRAND_ACCENT_HEX, BRAND_ACCENT_RGB_CSV } from '@sp/theme';
+import { ConfiguratorProvider } from '@/components/pergola-configurator/ConfiguratorProvider';
+import ConfiguratorDock from '@/components/pergola-configurator/ConfiguratorDock';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.sanctuarypergolas.co.nz'),
@@ -119,42 +121,47 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <ConsentProvider>
-          <a
-            className="skip-link"
-            href="#main-content"
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: '1rem',
-              transform: 'translateY(calc(-100% - 8px))',
-            }}
-          >
-            Skip to main content
-          </a>
-          <ConsentBanner />
-          <GoogleTagManager />
-          <PortalMode />
-          <WebVitals />
-          <FooterHeaderSync />
-          <ScrollReset />
-          <Suspense fallback={null}>
-            <RouteProgress />
-          </Suspense>
-          <HeaderVisibilityGate>
-            <Header />
-          </HeaderVisibilityGate>
-          {/* Wrap searchParams-based subheader to satisfy CSR bailout rules */}
-          <Suspense fallback={null}>
-            <ProductSubHeader />
-          </Suspense>
-          <div id="main-content" className="page-viewport" tabIndex={-1}>
-            <div className="page-layer">{children}</div>
-          </div>
-          <FooterVisibilityGate>
-            <SiteFooter reviewRating={review.rating} reviewCount={review.count} />
-          </FooterVisibilityGate>
-          <MetaPixel />
-          <ArchiproPixel />
+          <ConfiguratorProvider>
+            <a
+              className="skip-link"
+              href="#main-content"
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: '1rem',
+                transform: 'translateY(calc(-100% - 8px))',
+              }}
+            >
+              Skip to main content
+            </a>
+            <ConsentBanner />
+            <GoogleTagManager />
+            <PortalMode />
+            <WebVitals />
+            <FooterHeaderSync />
+            <ScrollReset />
+            <Suspense fallback={null}>
+              <RouteProgress />
+            </Suspense>
+            <HeaderVisibilityGate>
+              <Header />
+            </HeaderVisibilityGate>
+            {/* Wrap searchParams-based subheader to satisfy CSR bailout rules */}
+            <Suspense fallback={null}>
+              <ProductSubHeader />
+            </Suspense>
+            <div id="main-content" className="page-viewport" tabIndex={-1}>
+              <div className="page-layer">{children}</div>
+            </div>
+            <FooterVisibilityGate>
+              <SiteFooter reviewRating={review.rating} reviewCount={review.count} />
+            </FooterVisibilityGate>
+            <Suspense fallback={null}>
+              <ConfiguratorDock />
+            </Suspense>
+            <MetaPixel />
+            <ArchiproPixel />
+          </ConfiguratorProvider>
         </ConsentProvider>
       </body>
     </html>

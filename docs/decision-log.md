@@ -30,6 +30,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-08-26 | Autonomous Engineering Proof     | Promoted | Treat a coding worker's draft PR as a candidate, not completion. Bind exact-head checks, one classified transient rerun, same-lane repair and a separately identified read-only reviewer into durable state; finish only after CI and strict review pass. Keep hosted `main` protection app-bypass-free and human-merged. |
 | 2026-08-26 | Autonomous Engineering Lanes     | Promoted | Bind every coding run to one strict manifest hash, exact base SHA, feature branch and owner-recorded worktree. Expose narrow provision/status/publish/cleanup tools instead of lead shell access, refuse unknown or outside-lane state, and require hosted default-branch protection before promotion because repository content-write credentials cannot themselves exclude `main`. |
 | 2026-08-26 | OpenClaw Engineering Isolation  | Promoted | Run autonomous engineering as a dedicated OpenClaw instance with unique state, config, port and workspace roots; explicit supervisor, worker and reviewer roles; and per-agent execution approvals. Never activate engineering by overwriting a shared OpenClaw state. |
+| 2026-08-26 | Configurator Browser State       | Promoted | A persistent root external store must return a constant empty server snapshot to `useSyncExternalStore`; restored browser state belongs to the client snapshot after hydration. Preserve corrupt/future storage and suppress write-back until explicit recovery. |
 | 2026-08-18 | Synthetic AI Execution           | Promoted | Route deterministic AI work through the existing durable job spine, keep its worker payload exact and private, and make job completion plus task/usage/evaluation evidence one database transaction. Worker startup coverage follows only explicitly worker-routed registry kinds; legacy commercial kinds stay dark. |
 | 2026-08-18 | Manual Quote Variations          | Promoted | Before base acceptance, a manual quote may establish the base family. After the base enters the accepted lifecycle, every new manual quote must use a deterministic independent add-on scope; never weaken financial truth or replace accepted base value to make a variation acceptable. |
 | 2026-08-14 | Customer Quote Descriptions      | Promoted | Lead every automatically generated quote line with verified customer scope, translate saved selections into practical language, state material boundaries, and keep internal compatibility or pricing-policy notes out of customer artifacts. Preserve cents, quantities, line structure, lifecycle immutability, and structured-editor round trips. |
@@ -5341,3 +5342,14 @@ Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
 Related docs/tests: `scripts/ai/engineering-ci-route.mjs`;
 `.github/workflows/autonomous-engineering.yml`;
 `test/ai-operations-engineering-ci-review.test.ts`; `npm run test:ai:ops`
+
+### 2026-08-26 - Configurator Browser State - Keep Server Snapshot Empty And Future Storage Opaque
+
+Date: 2026-08-26
+Area: Marketing configurator persistence and hydration
+Status: Promoted
+Decision or mistake: A root `useSyncExternalStore` initially returned its live client snapshot as the server snapshot. After a configuration was restored, a client route navigation hydrated new route payload against that configured snapshot even though the server had rendered no dock, producing a hydration mismatch. A future-version storage event could also be protected initially but overwritten by a later ordinary patch unless protection was enforced at every commit entrypoint.
+Why it mattered: The provider must persist across App Router navigation without turning browser-only state into server markup, and an older client must never destroy opaque state written by a newer one.
+Current guardrail: Return one constant empty server snapshot and expose restored state only through the live client snapshot after hydration. Treat corrupt/current-unreadable and unknown-future values as opaque protected storage; cancel pending writes and block normal commits until an explicit reset or recovery confirmation authorizes replacement. Apply cross-tab state without scheduling write-back.
+Promoted to: `docs/customer-configurator-architecture.md`
+Related docs/tests: `docs/customer-configurator-architecture.md`; `apps/marketing/lib/pergola-configurator/store.test.ts`; `playwright/marketing.configurator.spec.ts`
