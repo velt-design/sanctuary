@@ -16,6 +16,13 @@ const executableMigration = migration.replace(
   /^create extension if not exists pgcrypto with schema extensions;\r?\n/m,
   "",
 );
+const signingBoundaryMigration = readFileSync(
+  path.join(
+    process.cwd(),
+    "supabase/migrations/20260827000003_project_enquiry_attachment_signing_boundary.sql",
+  ),
+  "utf8",
+);
 
 const bootstrap = String.raw`
 create role anon;
@@ -240,8 +247,9 @@ describe("project enquiry attachment migration", () => {
     }
   });
 
-  it("keeps the bucket private and limits browser reads to staff plus the service-only backfill", () => {
+  it("keeps the bucket private and removes direct browser signing access", async () => {
     const normalized = migration.toLowerCase();
+    const signingBoundaryNormalized = signingBoundaryMigration.toLowerCase();
     expect(normalized).not.toContain("public = true");
     expect(normalized).not.toMatch(/to\s+anon/);
     expect(normalized).toContain(
@@ -253,6 +261,25 @@ describe("project enquiry attachment migration", () => {
     expect(normalized).toMatch(
       /grant execute on function public\.project_enquiry_attachment_backfill_apply\(uuid,jsonb\)\s+to service_role/,
     );
-    expect(normalized).toContain("enquiry_attachments_staff_signed_read");
+    expect(signingBoundaryNormalized).toContain(
+      "drop policy if exists enquiry_attachments_staff_signed_read on storage.objects",
+    );
+
+    const database = new PGlite();
+    try {
+      await database.exec(bootstrap);
+      await database.exec(executableMigration);
+      await database.exec(signingBoundaryMigration);
+      const policies = await database.query<{ count: number }>(`
+        select count(*)::integer as count
+        from pg_policies
+        where schemaname = 'storage'
+          and tablename = 'objects'
+          and policyname = 'enquiry_attachments_staff_signed_read'
+      `);
+      expect(policies.rows).toEqual([{ count: 0 }]);
+    } finally {
+      await database.close();
+    }
   });
 });

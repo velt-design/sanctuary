@@ -7,6 +7,7 @@ import type { ProjectEnquiryAttachment } from "./types";
 
 const BUCKET = "enquiry-attachments";
 const SIGNED_URL_SECONDS = 60;
+const MAX_AUDIT_REQUEST_ID_LENGTH = 160;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type AttachmentRow = {
@@ -110,6 +111,7 @@ export async function listProjectEnquiryAttachments(
 
 export async function createProjectEnquiryAttachmentSignedUrl(
   supabase: SupabaseClient,
+  signingSupabase: SupabaseClient,
   input: {
     projectId: string;
     attachmentId: string;
@@ -157,7 +159,7 @@ export async function createProjectEnquiryAttachmentSignedUrl(
     );
   }
 
-  const signed = await supabase.storage.from(BUCKET).createSignedUrl(
+  const signed = await signingSupabase.storage.from(BUCKET).createSignedUrl(
     row.storage_path,
     SIGNED_URL_SECONDS,
     input.disposition === "download"
@@ -182,7 +184,7 @@ export async function createProjectEnquiryAttachmentSignedUrl(
     previous_project_id: null,
     project_id: uuid,
     actor_user_id: input.actorUserId,
-    request_id: input.requestId,
+    request_id: input.requestId.trim().slice(0, MAX_AUDIT_REQUEST_ID_LENGTH),
     link_origin: null,
   });
   if (audit.error) {

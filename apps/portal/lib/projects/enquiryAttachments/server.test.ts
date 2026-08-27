@@ -58,9 +58,11 @@ function makeSupabase(options: { row?: Record<string, unknown> | null; auditErro
       if (table === "project_enquiry_attachment_events") return { insert: auditInsert };
       throw new Error(`Unexpected table ${table}`);
     }),
+  } as unknown as SupabaseClient;
+  const signingSupabase = {
     storage: { from: vi.fn(() => ({ createSignedUrl })) },
   } as unknown as SupabaseClient;
-  return { supabase, filters, projectFilters, createSignedUrl, auditInsert };
+  return { supabase, signingSupabase, filters, projectFilters, createSignedUrl, auditInsert };
 }
 
 describe("createProjectEnquiryAttachmentSignedUrl", () => {
@@ -68,7 +70,7 @@ describe("createProjectEnquiryAttachmentSignedUrl", () => {
 
   it("requires the exact attachment and project before generating a 60-second URL", async () => {
     const fake = makeSupabase();
-    const result = await createProjectEnquiryAttachmentSignedUrl(fake.supabase, {
+    const result = await createProjectEnquiryAttachmentSignedUrl(fake.supabase, fake.signingSupabase, {
       projectId,
       attachmentId,
       disposition: "view",
@@ -88,7 +90,7 @@ describe("createProjectEnquiryAttachmentSignedUrl", () => {
 
   it("does not generate a URL for a file outside the requested project", async () => {
     const fake = makeSupabase({ row: null });
-    await expect(createProjectEnquiryAttachmentSignedUrl(fake.supabase, {
+    await expect(createProjectEnquiryAttachmentSignedUrl(fake.supabase, fake.signingSupabase, {
       projectId,
       attachmentId,
       disposition: "view",
@@ -100,7 +102,7 @@ describe("createProjectEnquiryAttachmentSignedUrl", () => {
 
   it("uses the original filename for downloads and fails closed if auditing fails", async () => {
     const fake = makeSupabase({ auditError: { message: "write failed" } });
-    await expect(createProjectEnquiryAttachmentSignedUrl(fake.supabase, {
+    await expect(createProjectEnquiryAttachmentSignedUrl(fake.supabase, fake.signingSupabase, {
       projectId,
       attachmentId,
       disposition: "download",
@@ -108,5 +110,21 @@ describe("createProjectEnquiryAttachmentSignedUrl", () => {
       requestId: "req-3",
     })).rejects.toMatchObject({ status: 503, code: "attachment_audit_failed" });
     expect(fake.createSignedUrl).toHaveBeenCalledWith(path, 60, { download: "plan.pdf" });
+  });
+
+  it("bounds request IDs before writing the access audit", async () => {
+    const fake = makeSupabase();
+    await createProjectEnquiryAttachmentSignedUrl(fake.supabase, fake.signingSupabase, {
+      projectId,
+      attachmentId,
+      disposition: "view",
+      actorUserId: "55555555-5555-4555-8555-555555555555",
+      requestId: `request-${"x".repeat(200)}`,
+    });
+    expect(fake.auditInsert).toHaveBeenCalledWith(expect.objectContaining({
+      request_id: expect.stringMatching(/^request-x+$/),
+    }));
+    const auditRow = fake.auditInsert.mock.calls[0]?.[0] as { request_id: string };
+    expect(auditRow.request_id).toHaveLength(160);
   });
 });

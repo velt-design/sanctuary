@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireStaffContext: vi.fn(),
   createSignedUrl: vi.fn(),
+  serviceRole: { storage: { from: vi.fn() } },
+}));
+
+vi.mock("@/lib/supabaseClient", () => ({
+  supabaseServiceRole: mocks.serviceRole,
 }));
 
 vi.mock("@/lib/api/staffApi", async () => {
@@ -71,7 +76,7 @@ describe("GET project enquiry attachment open", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
     expect(response.headers.get("x-attachment-url-expires-in")).toBe("60");
-    expect(mocks.createSignedUrl).toHaveBeenCalledWith(supabase, {
+    expect(mocks.createSignedUrl).toHaveBeenCalledWith(supabase, mocks.serviceRole, {
       projectId,
       attachmentId,
       disposition: "download",

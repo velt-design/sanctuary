@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 const COMPATIBILITY_CLIENT_FILE = 'apps/portal/lib/supabaseClient.ts';
 const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/app/api/admin/access/route.ts',
+  'apps/portal/app/api/staff/v1/projects/[projectId]/enquiry-attachments/[attachmentId]/open/route.ts',
   'apps/portal/lib/automation/AutomationRunner.ts',
   'apps/portal/lib/backgroundJobs/providerWebhookRepository.ts',
   'apps/portal/lib/commercial/acceptQuote.ts',

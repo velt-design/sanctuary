@@ -5,6 +5,7 @@ import {
   createProjectEnquiryAttachmentSignedUrl,
   ProjectEnquiryAttachmentError,
 } from "@/lib/projects/enquiryAttachments/server";
+import { supabaseServiceRole } from "@/lib/supabaseClient";
 
 export const runtime = "nodejs";
 
@@ -36,6 +37,7 @@ export async function GET(
   try {
     const signed = await createProjectEnquiryAttachmentSignedUrl(
       auth.supabase,
+      supabaseServiceRole,
       {
         projectId,
         attachmentId,

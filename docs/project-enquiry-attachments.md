@@ -6,7 +6,7 @@ Status: implementation approved. The exact schema migrations are applied and led
 
 Project Overview keeps **Work** as the default secondary tab inside the existing **Project Work** card. **Files** is the adjacent tab. It lists the original filename, submitted date, size, and separate View and Download actions. There is no upload, rename, move, or delete control in this slice.
 
-The list response contains metadata only. A View or Download click calls a staff-authenticated portal route, proves that the exact attachment belongs to the exact project through the caller's auth-bound Supabase client, writes an access audit event, and redirects to a newly generated 60-second Storage URL. Responses are `private, no-store` and use `Referrer-Policy: no-referrer`. The private `enquiry-attachments` bucket is unchanged.
+The list response contains metadata only. A View or Download click calls a staff-authenticated portal route and proves that the exact attachment belongs to the exact project through the caller's auth-bound Supabase client. Only then does the server-owned Supabase client sign the private object, the route writes an access audit event, and the response redirects to the newly generated 60-second Storage URL. Authenticated browser sessions have no `storage.objects` select policy for this bucket and therefore cannot bypass the audited route. Responses are `private, no-store` and use `Referrer-Policy: no-referrer`. The private `enquiry-attachments` bucket is unchanged.
 
 ## Data contract
 
@@ -28,12 +28,13 @@ Migration sources:
 
 - `supabase/migrations/20260827000001_project_enquiry_attachments.sql`
 - `supabase/migrations/20260827000002_project_enquiry_attachments_schema_cache.sql`
+- `supabase/migrations/20260827000003_project_enquiry_attachment_signing_boundary.sql`
 
 ## Deployment evidence
 
-On 2026-08-27 the exact migrations were rollback-rehearsed, then applied individually to positively identified staging `tnsiprehuldksnuowubv` and production `iytanftukulcnavossmd`. Blanket `db push` was not used. Completed physical backups were confirmed first: staging backup `1489369286` and production backup `1491102067`. The canonical-LF SHA-256 values were `daaffed16756a84608ef12da039dfce139325c217e6211341bc57993f55925f4` for `20260827000001` and `a977270fe5892e98f033598bc66678466ebb39e6da5dfd0c9594d992ef7e7f32` for `20260827000002`.
+On 2026-08-27 the exact migrations were rollback-rehearsed, then applied individually to positively identified staging `tnsiprehuldksnuowubv` and production `iytanftukulcnavossmd`. Blanket `db push` was not used. Completed physical backups were confirmed first: staging backup `1489369286` and production backup `1491102067`. The canonical-LF SHA-256 values were `daaffed16756a84608ef12da039dfce139325c217e6211341bc57993f55925f4` for `20260827000001`, `a977270fe5892e98f033598bc66678466ebb39e6da5dfd0c9594d992ef7e7f32` for `20260827000002`, and `a30875a29b713ccf7dd6f410dde41145f6fcc66ea26fc69a0921dfaa50932f70` for the reviewed signing-boundary correction `20260827000003`.
 
-Both postflights found three RLS-enabled tables, four policies, four triggers, five functions, no anonymous table grants, service-role-only backfill execution, the private Storage bucket, both unique migration-ledger versions, and zero deployment-created attachment, event, or backfill-run rows.
+Final postflight found three RLS-enabled tables, three feature policies, four triggers, five functions, no anonymous table grants, service-role-only backfill execution, the private Storage bucket, all three unique migration-ledger versions, and zero deployment-created attachment, event, or backfill-run rows. The signing-boundary postflight separately proved the removed Storage policy count is zero in both environments.
 
 The staging dry run was empty. Its report SHA-256 is `b89e1f3220357156b271a1344b0a78cbeaa1da572569fbe45496a8bf3a327ef2`. The production report SHA-256 is `7a5ee65b62449b71ec5af8028275a4ee64c8d730cde71a6ca64c699bbafba322`; it reports 59 exact linkable files, 22 ambiguous declarations, nine projects whose current link changed, zero missing Storage objects, and zero unmatched Storage objects. No historical rows were linked and no Storage object was moved, renamed, or deleted.
 
