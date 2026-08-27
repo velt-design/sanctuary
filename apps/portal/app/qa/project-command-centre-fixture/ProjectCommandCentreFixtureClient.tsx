@@ -14,12 +14,30 @@ import ProjectOrientationBand from "@/components/projects/ProjectPage/tabs/overv
 import ProjectOverviewLayout from "@/components/projects/ProjectPage/tabs/overview/ProjectOverviewLayout";
 import ProjectRecentNotesEvents from "@/components/projects/ProjectPage/tabs/overview/ProjectRecentNotesEvents";
 import ProjectWorkSection from "@/components/projects/ProjectPage/tabs/overview/ProjectWorkSection";
+import type { ProjectEnquiryAttachment } from "@/lib/projects/enquiryAttachments/types";
 import {
   commandCentreFixtureStaff,
   commandCentreOverviewFixtureProject,
   type CommandCentreViewFixtureState,
   type CommandCentreWorkFixture,
 } from "./fixtures";
+
+const FIXTURE_ENQUIRY_ATTACHMENTS: ProjectEnquiryAttachment[] = [
+  {
+    id: "attachment-fixture-site-plan",
+    filename: "matakana-site-plan.pdf",
+    contentType: "application/pdf",
+    sizeBytes: 1_572_864,
+    submittedAt: "2026-08-26T23:42:00.000Z",
+  },
+  {
+    id: "attachment-fixture-inspiration",
+    filename: "outdoor-area-inspiration.jpg",
+    contentType: "image/jpeg",
+    sizeBytes: 9_437_184,
+    submittedAt: "2026-08-26T23:42:00.000Z",
+  },
+];
 
 const FIXTURE_NOTES = [
   {
@@ -212,6 +230,8 @@ export default function ProjectCommandCentreFixtureClient({
         stale={stale}
         onRefresh={() => undefined}
         initialStaff={commandCentreFixtureStaff}
+        initialEnquiryAttachments={FIXTURE_ENQUIRY_ATTACHMENTS}
+        disableFileActions
       />
     );
 

@@ -39,6 +39,30 @@ async function renderPanel() {
   return mounted.container;
 }
 
+async function renderFixturePanel() {
+  const mounted = renderIntoDocument(
+    <QueryClientProvider client={queryClient}>
+      <ProjectEnquiryFilesPanel
+        projectId={projectId}
+        host="fixture"
+        initialAttachments={[{
+          id: "attachment-fixture",
+          filename: "large-inspiration.jpg",
+          contentType: "image/jpeg",
+          sizeBytes: 9_437_184,
+          submittedAt: "2026-08-27T00:00:00Z",
+        }]}
+        disableActions
+      />
+    </QueryClientProvider>,
+  );
+  unmount = mounted.unmount;
+  await act(async () => {
+    await Promise.resolve();
+  });
+  return mounted.container;
+}
+
 describe("ProjectEnquiryFilesPanel", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -77,5 +101,16 @@ describe("ProjectEnquiryFilesPanel", () => {
     expect(container.querySelector<HTMLAnchorElement>('a[href*="disposition=view"]')?.target).toBe("_blank");
     expect(container.querySelector<HTMLAnchorElement>('a[href*="disposition=download"]')?.getAttribute("href"))
       .toBe(`/api/staff/v1/projects/${projectId}/enquiry-attachments/${attachmentId}/open?disposition=download`);
+  });
+
+  it("renders synthetic fixture files without an API read or live actions", async () => {
+    const container = await renderFixturePanel();
+    expect(container.textContent).toContain("large-inspiration.jpg");
+    expect(container.textContent).toContain("9.0 MB");
+    expect(mocks.fetchProjectEnquiryAttachments).not.toHaveBeenCalled();
+    expect(container.querySelectorAll("a")).toHaveLength(0);
+    const buttons = Array.from(container.querySelectorAll("button"));
+    expect(buttons).toHaveLength(2);
+    expect(buttons.every((button) => button.disabled)).toBe(true);
   });
 });

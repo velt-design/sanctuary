@@ -7,6 +7,7 @@ import {
 } from "@/lib/projects/enquiryAttachments/client";
 import { qk } from "@/lib/queries/keys";
 import {
+  Button,
   ButtonLink,
   DataStatePanel,
   LoadingSkeleton,
@@ -17,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/foundation";
+import type { ProjectEnquiryAttachment } from "@/lib/projects/enquiryAttachments/types";
 import styles from "./ProjectEnquiryFilesPanel.module.css";
 
 const submittedDate = new Intl.DateTimeFormat("en-NZ", {
@@ -39,15 +41,28 @@ function formatSubmittedAt(value: string): string {
 export default function ProjectEnquiryFilesPanel({
   projectId,
   host,
+  initialAttachments,
+  disableActions = false,
 }: {
   projectId: string;
   host: string;
+  initialAttachments?: ProjectEnquiryAttachment[];
+  disableActions?: boolean;
 }) {
   const query = useQuery({
     queryKey: qk.projects.enquiryAttachments(host, projectId),
     queryFn: () => fetchProjectEnquiryAttachments(projectId),
     staleTime: 60_000,
     retry: false,
+    enabled: initialAttachments === undefined,
+    ...(initialAttachments !== undefined
+      ? {
+          initialData: {
+            attachments: initialAttachments,
+            generatedAt: "2026-08-27T00:00:00.000Z",
+          },
+        }
+      : null),
   });
 
   if (query.isPending) {
@@ -99,34 +114,47 @@ export default function ProjectEnquiryFilesPanel({
               <TableCell>{formatBytes(attachment.sizeBytes)}</TableCell>
               <TableCell>
                 <div className={styles.actions}>
-                  <ButtonLink
-                    href={projectEnquiryAttachmentOpenHref(
-                      projectId,
-                      attachment.id,
-                      "view",
-                    )}
-                    variant="secondary"
-                    size="small"
-                    prefetch={false}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    View
-                  </ButtonLink>
-                  <ButtonLink
-                    href={projectEnquiryAttachmentOpenHref(
-                      projectId,
-                      attachment.id,
-                      "download",
-                    )}
-                    variant="tertiary"
-                    size="small"
-                    prefetch={false}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Download
-                  </ButtonLink>
+                  {disableActions ? (
+                    <>
+                      <Button variant="secondary" size="small" disabled>
+                        View
+                      </Button>
+                      <Button variant="tertiary" size="small" disabled>
+                        Download
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <ButtonLink
+                        href={projectEnquiryAttachmentOpenHref(
+                          projectId,
+                          attachment.id,
+                          "view",
+                        )}
+                        variant="secondary"
+                        size="small"
+                        prefetch={false}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        View
+                      </ButtonLink>
+                      <ButtonLink
+                        href={projectEnquiryAttachmentOpenHref(
+                          projectId,
+                          attachment.id,
+                          "download",
+                        )}
+                        variant="tertiary"
+                        size="small"
+                        prefetch={false}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Download
+                      </ButtonLink>
+                    </>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

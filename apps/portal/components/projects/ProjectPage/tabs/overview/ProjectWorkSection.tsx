@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchProjectStaffDirectory } from "@/lib/projects/commandCentre/client";
 import type { ProjectCommandStaffSummary } from "@/lib/projects/commandCentre/types";
+import type { ProjectEnquiryAttachment } from "@/lib/projects/enquiryAttachments/types";
 import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type { ProjectWorkProjection } from "@/lib/projects/workItems/types";
 import { isApprovedSiteVisitSpecialistIdentity } from "@/lib/projects/workItems/prohibitedWork";
@@ -45,6 +46,8 @@ type SharedProps = {
   stale: boolean;
   onRefresh: () => void;
   initialStaff?: ProjectCommandStaffSummary[];
+  initialEnquiryAttachments?: ProjectEnquiryAttachment[];
+  disableFileActions?: boolean;
 };
 
 export type ProjectWorkSectionProps = SharedProps & {
@@ -148,6 +151,8 @@ export default function ProjectWorkSection({
   stale,
   onRefresh,
   initialStaff,
+  initialEnquiryAttachments,
+  disableFileActions,
 }: ProjectWorkSectionProps) {
   const prohibitedServerPrimary = isProhibitedProjectWorkPrimary(
     projectWork.primaryAction,
@@ -226,6 +231,8 @@ export default function ProjectWorkSection({
       className={styles.card}
       projectId={projectId}
       host={host}
+      initialAttachments={initialEnquiryAttachments}
+      disableFileActions={disableFileActions}
     >
       <div
       data-project-work-section="true"
