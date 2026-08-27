@@ -3,10 +3,13 @@ import path from 'node:path';
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 import {
   beginPortalJourney,
+  beginPortalVisualFeedback,
   elapsedJourneyMs,
   finishPortalJourney,
   installPortalPerformanceProbe,
+  PORTAL_PROJECT_TAB_USEFUL_CONTENT_SELECTORS,
   portalPerformanceBuildId,
+  portalVisualFeedbackMs,
   waitForBackgroundSettled,
   type PortalPerformanceJourney,
   type PortalPerformanceRun,
@@ -249,14 +252,23 @@ async function measureInteraction(
   action: () => Promise<unknown>,
   feedbackReady: () => Promise<unknown>,
   usefulContentReady: () => Promise<unknown> = feedbackReady,
+  usefulContentSelector?: string,
 ) {
   const budget = interactionBudget(name);
   const probe = await beginPortalJourney(page);
+  if (usefulContentSelector) {
+    await beginPortalVisualFeedback(page, {
+      selector: usefulContentSelector,
+      state: 'visible',
+    });
+  }
   await action();
   await feedbackReady();
   const feedbackMs = elapsedJourneyMs(probe);
   await usefulContentReady();
-  const usefulContentMs = elapsedJourneyMs(probe);
+  const usefulContentMs = usefulContentSelector
+    ? await portalVisualFeedbackMs(page)
+    : elapsedJourneyMs(probe);
   const backgroundSettledMs = await waitForBackgroundSettled(page, probe);
   const regressionBudgetMet =
     feedbackMs <= budget.feedbackMsMax && usefulContentMs <= budget.usefulContentMsMax;
@@ -290,7 +302,8 @@ async function measureProjectTab(
   page: Page,
   name: string,
   tab: Locator,
-  usefulContentReady: () => Promise<unknown>,
+  usefulContentSelector: string,
+  usefulContentReady: () => Promise<unknown> = async () => undefined,
 ) {
   await expect(tab).toBeVisible({ timeout: 60_000 });
   await tab.hover();
@@ -299,7 +312,11 @@ async function measureProjectTab(
     name,
     () => tab.click(),
     () => expect(tab).toHaveAttribute('aria-selected', 'true'),
-    usefulContentReady,
+    async () => {
+      await usefulContentReady();
+      await expect(page.locator(usefulContentSelector).first()).toBeVisible();
+    },
+    usefulContentSelector,
   );
 }
 
@@ -427,11 +444,9 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     page,
     'project-tab-commercial-estimates',
     commercialTab,
+    PORTAL_PROJECT_TAB_USEFUL_CONTENT_SELECTORS.estimates,
     async () => {
       await expect(page.locator('[data-project-tab-body="estimates"]')).toBeVisible();
-      await expect(
-        page.locator('[data-estimates-view="list"], [data-project-tab-loading="commercial"]').first(),
-      ).toBeVisible();
     },
   );
 
@@ -440,11 +455,9 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     page,
     'project-tab-commercial-quotes',
     quotesTab,
+    PORTAL_PROJECT_TAB_USEFUL_CONTENT_SELECTORS.quotes,
     async () => {
       await expect(page.locator('[data-project-tab-body="quotes"]')).toBeVisible();
-      await expect(
-        page.locator('[data-project-commercial-view="quotes"], [data-project-tab-loading="quotes"]').first(),
-      ).toBeVisible();
     },
   );
 
@@ -453,9 +466,7 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     page,
     'project-tab-commercial-invoices',
     invoicesTab,
-    async () => {
-      await expect(page.locator('[data-project-commercial-view="invoices"]')).toBeVisible();
-    },
+    PORTAL_PROJECT_TAB_USEFUL_CONTENT_SELECTORS.invoices,
   );
 
   const overviewTab = page.getByRole('tab', { name: 'Overview', exact: true });
@@ -463,6 +474,7 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     page,
     'project-tab-overview',
     overviewTab,
+    PORTAL_PROJECT_TAB_USEFUL_CONTENT_SELECTORS.activity,
     async () => {
       await expect(page.locator('[data-project-tab-body="activity"]')).toBeVisible();
       await expect(page.locator('[data-project-overview="true"]')).toBeVisible();
@@ -484,11 +496,9 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     page,
     'project-tab-job-packs',
     jobPacksTab,
+    PORTAL_PROJECT_TAB_USEFUL_CONTENT_SELECTORS.jobPacks,
     async () => {
       await expect(page.locator('[data-project-tab-body="job-packs"]')).toBeVisible();
-      await expect(
-        page.locator('[data-project-tab-loading="job-packs"], [data-project-tab-body="job-packs"] h3').first(),
-      ).toBeVisible();
     },
   );
 });
