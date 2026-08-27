@@ -193,6 +193,7 @@ function fixture() {
   const flows = new FakeFlows();
   const tasks = new FakeTasks();
   const lanes = new Map<string, RecordValue>();
+  const retiredLanes: string[] = [];
   let clock = 1_700_000_000_000;
   const hash = (value: unknown) =>
     `sha256:${createHash("sha256")
@@ -237,6 +238,13 @@ function fixture() {
       if (!lane || lane.taskId !== taskId) throw new Error("missing lane");
       return clone(lane);
     },
+    retireUnchanged(taskId: string, identity: string) {
+      const lane = lanes.get(identity);
+      if (!lane || lane.taskId !== taskId) throw new Error("missing lane");
+      lane.state = "worktree_removed";
+      retiredLanes.push(taskId);
+      return clone(lane);
+    },
   };
   const controller = () =>
     createEngineeringSupervisionController({
@@ -256,6 +264,7 @@ function fixture() {
     flows,
     tasks,
     lanes,
+    retiredLanes,
     controller,
     advance: (milliseconds: number) => {
       clock += milliseconds;
@@ -674,7 +683,9 @@ describe("durable engineering supervision", () => {
       taskId: replacement.taskId,
       attempt: 1,
     });
-    expect(setup.flows.records.get(failed.flowId)?.stateJson.phase).toBe("failed");
+    expect(setup.flows.records.get(failed.flowId)?.stateJson.phase).toBe(
+      "failed",
+    );
     expect(setup.flows.records.get(olderFlow.flowId)?.stateJson.phase).toBe(
       "queued",
     );
@@ -744,6 +755,43 @@ describe("durable engineering supervision", () => {
     expect(() =>
       setup.controller().status(taskManifest.taskId, dispatch.manifestHash),
     ).toThrow(/completion evidence/);
+  });
+
+  it("retires a clean unchanged lane when its worker reports blocked", async () => {
+    const setup = fixture();
+    const taskManifest = manifest("blocked_unchanged");
+    setup.controller().enqueue(taskManifest);
+    const dispatch = setup.controller().claim();
+    const running = attachRunning(setup, dispatch);
+    running.task.status = "succeeded";
+    running.task.endedAt = 1_700_000_010_000;
+    const report = completion(taskManifest, dispatch, running.task);
+    report.outcome = "blocked";
+    report.headSha = null;
+    report.pullRequest = null;
+    report.changedPaths = [];
+    report.acceptanceResults[0].status = "not_run";
+    report.verificationResults[0].status = "not_run";
+    report.ciChecks[0].status = "not_run";
+    report.worker.costCents = 0;
+    report.safety.branchPushed = false;
+    report.limitations = ["A required read-first document was unavailable."];
+    report.nextAction = "Correct the manifest before starting another task.";
+
+    const blocked = await setup.controller().reconcile({
+      flowId: dispatch.flowId,
+      expectedRevision: running.attached.revision,
+      completion: report,
+    });
+
+    expect(blocked).toMatchObject({
+      phase: "blocked",
+      flowStatus: "blocked",
+    });
+    expect(setup.retiredLanes).toEqual([taskManifest.taskId]);
+    expect(setup.lanes.get(dispatch.manifestHash)).toMatchObject({
+      state: "worktree_removed",
+    });
   });
 
   it("blocks unclassified native failure instead of retrying it", async () => {

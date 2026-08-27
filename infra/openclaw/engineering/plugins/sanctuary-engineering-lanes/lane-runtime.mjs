@@ -695,6 +695,61 @@ export function publishEngineeringLane(
   });
 }
 
+export function retireUnchangedEngineeringLane(
+  taskId,
+  manifestHash,
+  options = {},
+) {
+  const { controller, paths, manifest, owner } = resolveOwnedLane(
+    taskId,
+    manifestHash,
+    options,
+  );
+  if (owner.state === "worktree_removed") {
+    return laneResult({
+      owner,
+      status: null,
+      paths,
+      workerPrompt: null,
+      resumed: true,
+    });
+  }
+  if (owner.state !== "active" || owner.pullRequest !== null) {
+    throw new Error(
+      "Only an unpublished active lane can be retired unchanged.",
+    );
+  }
+  const status = inspectOwnedWorktree(controller, paths, manifest);
+  if (
+    !status.clean ||
+    status.headSha !== manifest.base.sha ||
+    status.changedPaths.length !== 0
+  ) {
+    throw new Error(
+      "Only a clean lane unchanged from its base can be retired.",
+    );
+  }
+  assertPathInside(paths.tasksRoot, paths.worktreePath, "Retired worktree");
+  controller.git.removeWorktree(paths.worktreePath);
+  if (existsSync(paths.worktreePath)) {
+    throw new Error("Git did not remove the unchanged owned worktree.");
+  }
+  const nextOwner = {
+    ...owner,
+    state: "worktree_removed",
+    updatedAt: timestamp(controller.now),
+  };
+  writeProtectedJson(paths.ownerPath, nextOwner);
+  releaseLease(paths, manifest, manifestHash);
+  return laneResult({
+    owner: nextOwner,
+    status: null,
+    paths,
+    workerPrompt: null,
+    resumed: false,
+  });
+}
+
 export function cleanupEngineeringLane(taskId, manifestHash, options = {}) {
   const { controller, paths, manifest, owner } = resolveOwnedLane(
     taskId,

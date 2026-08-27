@@ -21,6 +21,7 @@ import {
   cleanupEngineeringLane,
   provisionEngineeringLane,
   publishEngineeringLane,
+  retireUnchangedEngineeringLane,
   statusEngineeringLane,
 } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/lane-runtime.mjs";
 import { createGitRuntime } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/lane-git.mjs";
@@ -338,6 +339,36 @@ describe("engineering lane provisioning", () => {
 });
 
 describe("engineering lane publication and cleanup", () => {
+  it("retires an unchanged blocked lane and releases the single-lane lease", () => {
+    const setup = fixture();
+    const blockedManifest = createManifest(setup.baseSha, "blocked_unchanged");
+    const blockedLane = provisionEngineeringLane(
+      blockedManifest,
+      setup.options,
+    );
+
+    const retired = retireUnchangedEngineeringLane(
+      blockedManifest.taskId,
+      blockedLane.manifestHash,
+      setup.options,
+    );
+
+    expect(retired).toMatchObject({
+      state: "worktree_removed",
+      clean: null,
+      changedPaths: [],
+    });
+    expect(existsSync(blockedLane.worktreePath)).toBe(false);
+
+    const nextManifest = createManifest(setup.baseSha, "after_blocked");
+    expect(provisionEngineeringLane(nextManifest, setup.options)).toMatchObject(
+      {
+        state: "active",
+        taskId: nextManifest.taskId,
+      },
+    );
+  });
+
   it("pushes only the owned feature branch, records a draft PR, and safely removes only its worktree", () => {
     const setup = fixture();
     const manifest = createManifest(setup.baseSha, "publish_cleanup");
