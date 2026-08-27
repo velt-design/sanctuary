@@ -3,8 +3,12 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { portalScenarioRegistry, seededPortalScenarios } from './portalScenarioRegistry';
-import { agentAccessSmokeRoutes, agentScenarioSmokeRoutes, portalRouteCatalog } from './portalRouteCatalog';
+import { portalScenarioRegistry, seededPortalScenarios } from '../../playwright/support/portalScenarioRegistry';
+import {
+  agentAccessSmokeRoutes,
+  agentScenarioSmokeRoutes,
+  portalRouteCatalog,
+} from '../../playwright/support/portalRouteCatalog';
 
 const categories = new Set(['core', 'project', 'commercial', 'schedule', 'workbench', 'admin', 'diagnostic']);
 const roles = new Set(['public', 'staff', 'admin', 'fixture']);

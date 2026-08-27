@@ -374,7 +374,7 @@ Current guardrail: portal route coverage is catalog-driven through `playwright/s
 
 Promoted to: None
 
-Related docs/tests: `playwright/support/portalRouteCatalog.ts`, `playwright/support/portalRouteCatalog.test.ts`, `playwright/portal.agent-access.spec.ts`, `docs/portal-route-catalog.md`, `docs/testing-and-qa.md`.
+Related docs/tests: `playwright/support/portalRouteCatalog.ts`, `test/playwright-support/portalRouteCatalog.test.ts`, `playwright/portal.agent-access.spec.ts`, `docs/portal-route-catalog.md`, `docs/testing-and-qa.md`.
 
 ### 2026-06-02 - Portal Browser Coverage - Explicit Seeded Scenario Registry
 
@@ -1910,7 +1910,7 @@ Current guardrail: bake captured live failures through `sanctuaryWorkbenchCaptur
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [apps/portal/lib/drawings/exportRoofFailureRepro.ts](../apps/portal/lib/drawings/exportRoofFailureRepro.ts), [playwright/support/workbenchCapturedRepro.test.ts](../playwright/support/workbenchCapturedRepro.test.ts).
+Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [apps/portal/lib/drawings/exportRoofFailureRepro.ts](../apps/portal/lib/drawings/exportRoofFailureRepro.ts), [test/playwright-support/workbenchCapturedRepro.test.ts](../test/playwright-support/workbenchCapturedRepro.test.ts).
 
 ### 2026-06-02 - Workbench Geometry - Roof Stage Diagnostics Must Be Render-Critical
 
@@ -1926,7 +1926,7 @@ Current guardrail: package roof-stage diagnostics may classify eave construction
 
 Promoted to: None
 
-Related docs/tests: [packages/geometry/src/houseRoofDiagnostics.ts](../packages/geometry/src/houseRoofDiagnostics.ts), [packages/geometry/src/house/roofModelPipeline.test.ts](../packages/geometry/src/house/roofModelPipeline.test.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [playwright/support/workbenchCapturedRepro.test.ts](../playwright/support/workbenchCapturedRepro.test.ts).
+Related docs/tests: [packages/geometry/src/houseRoofDiagnostics.ts](../packages/geometry/src/houseRoofDiagnostics.ts), [packages/geometry/src/house/roofModelPipeline.test.ts](../packages/geometry/src/house/roofModelPipeline.test.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [test/playwright-support/workbenchCapturedRepro.test.ts](../test/playwright-support/workbenchCapturedRepro.test.ts).
 
 ### 2026-06-02 - Workbench Debugging - Multi-House Capture Verifier
 
@@ -1974,7 +1974,7 @@ Current guardrail: use `npm run portal:agent-scorecard` before choosing agent-re
 
 Promoted to: None
 
-Related docs/tests: [docs/portal-agent-scorecard.md](portal-agent-scorecard.md), [playwright/support/portalAgentScorecard.ts](../playwright/support/portalAgentScorecard.ts), [scripts/portal-agent-scorecard.ts](../scripts/portal-agent-scorecard.ts), [playwright/support/portalAgentScorecard.test.ts](../playwright/support/portalAgentScorecard.test.ts).
+Related docs/tests: [docs/portal-agent-scorecard.md](portal-agent-scorecard.md), [playwright/support/portalAgentScorecard.ts](../playwright/support/portalAgentScorecard.ts), [scripts/portal-agent-scorecard.ts](../scripts/portal-agent-scorecard.ts), [test/playwright-support/portalAgentScorecard.test.ts](../test/playwright-support/portalAgentScorecard.test.ts).
 
 ### 2026-06-02 - Agent Tooling - Portal Agent Strictness Ratchet
 
@@ -1990,7 +1990,7 @@ Current guardrail: use `npm run portal:agent-scorecard:strict` to protect route 
 
 Promoted to: None
 
-Related docs/tests: [docs/portal-agent-scorecard.md](portal-agent-scorecard.md), [playwright/support/portalAgentScorecard.ts](../playwright/support/portalAgentScorecard.ts), [scripts/portal-agent-scorecard.ts](../scripts/portal-agent-scorecard.ts), [playwright/support/portalAgentScorecard.test.ts](../playwright/support/portalAgentScorecard.test.ts).
+Related docs/tests: [docs/portal-agent-scorecard.md](portal-agent-scorecard.md), [playwright/support/portalAgentScorecard.ts](../playwright/support/portalAgentScorecard.ts), [scripts/portal-agent-scorecard.ts](../scripts/portal-agent-scorecard.ts), [test/playwright-support/portalAgentScorecard.test.ts](../test/playwright-support/portalAgentScorecard.test.ts).
 
 ### 2026-06-02 - Workbench Debugging - Captured Repro Workflow
 
@@ -2006,7 +2006,7 @@ Current guardrail: use `readWorkbenchCapturedReproPayload(page)` / `attachWorkbe
 
 Promoted to: None
 
-Related docs/tests: [docs/workbench-captured-repro-workflow.md](workbench-captured-repro-workflow.md), [playwright/support/workbenchCapturedRepro.ts](../playwright/support/workbenchCapturedRepro.ts), [playwright/support/workbenchCapturedRepro.test.ts](../playwright/support/workbenchCapturedRepro.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts).
+Related docs/tests: [docs/workbench-captured-repro-workflow.md](workbench-captured-repro-workflow.md), [playwright/support/workbenchCapturedRepro.ts](../playwright/support/workbenchCapturedRepro.ts), [test/playwright-support/workbenchCapturedRepro.test.ts](../test/playwright-support/workbenchCapturedRepro.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts).
 
 ### 2026-06-03 - Design Workbench - Durable Object-First Draft Save
 
