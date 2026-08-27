@@ -79,7 +79,7 @@ describe("engineering contract CLI", () => {
       branch: "ai/autonomy-foundation-contracts",
     });
     expect(resolved.manifestHash).toBe(
-      "sha256:3a5de0bcc30bc5877c72b8149c15a2ed5bda64e34c568dcd6d059dbbe2e7def4",
+      "sha256:dcbec982eb205b8ec2b5789c43df1f675c130a4e4a24735588b8cc4b31a662f4",
     );
   });
 
