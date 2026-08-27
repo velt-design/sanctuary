@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   ...(marketingPlaywrightDistDir ? { distDir: marketingPlaywrightDistDir } : {}),
   experimental: { externalDir: true },
   allowedDevOrigins: ['127.0.0.1'],
-  transpilePackages: ['@sp/costing', '@sp/email-provider', '@sp/quote-format', '@sp/theme'],
+  transpilePackages: ['@sp/configurator', '@sp/costing', '@sp/email-provider', '@sp/quote-format', '@sp/theme'],
   // Enforce TypeScript correctness during production builds.
   typescript: { ignoreBuildErrors: false },
   // Allow monorepo package resolution for workspace packages.
