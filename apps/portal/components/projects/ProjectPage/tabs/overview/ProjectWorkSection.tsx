@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchProjectStaffDirectory } from "@/lib/projects/commandCentre/client";
 import type { ProjectCommandStaffSummary } from "@/lib/projects/commandCentre/types";
+import type { ProjectEnquiryAttachment } from "@/lib/projects/enquiryAttachments/types";
 import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type { ProjectWorkProjection } from "@/lib/projects/workItems/types";
 import { isApprovedSiteVisitSpecialistIdentity } from "@/lib/projects/workItems/prohibitedWork";
@@ -18,9 +19,9 @@ import {
   Badge,
   Button,
   ButtonLink,
-  Card,
   KeyValueGrid,
 } from "@/components/ui/foundation";
+import ProjectWorkFilesCard from "./ProjectWorkFilesCard";
 import ProjectWorkControls from "./ProjectWorkControls";
 import ProjectWorkList from "./ProjectWorkList";
 import {
@@ -45,6 +46,8 @@ type SharedProps = {
   stale: boolean;
   onRefresh: () => void;
   initialStaff?: ProjectCommandStaffSummary[];
+  initialEnquiryAttachments?: ProjectEnquiryAttachment[];
+  disableFileActions?: boolean;
 };
 
 export type ProjectWorkSectionProps = SharedProps & {
@@ -148,6 +151,8 @@ export default function ProjectWorkSection({
   stale,
   onRefresh,
   initialStaff,
+  initialEnquiryAttachments,
+  disableFileActions,
 }: ProjectWorkSectionProps) {
   const prohibitedServerPrimary = isProhibitedProjectWorkPrimary(
     projectWork.primaryAction,
@@ -222,16 +227,18 @@ export default function ProjectWorkSection({
   ];
 
   return (
-    <Card
+    <ProjectWorkFilesCard
       className={styles.card}
+      projectId={projectId}
+      host={host}
+      initialAttachments={initialEnquiryAttachments}
+      disableFileActions={disableFileActions}
+    >
+      <div
       data-project-work-section="true"
       data-project-work-model="v2"
-      aria-label="Project Work"
-      title="Project Work"
-      eyebrow="Next project action"
-      padding="compact"
-    >
-      <div className={styles.stack}>
+        className={styles.stack}
+      >
         {stateItems.length ? (
           <KeyValueGrid
             columns={stateItems.length === 1 ? 1 : 2}
@@ -448,6 +455,6 @@ export default function ProjectWorkSection({
           </AlertBanner>
         ) : null}
       </div>
-    </Card>
+    </ProjectWorkFilesCard>
   );
 }

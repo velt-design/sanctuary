@@ -1,4 +1,4 @@
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../../test/reactHarness";
 import { ApiError } from "@/lib/repo/apiClient";
@@ -59,6 +59,12 @@ vi.mock("./overview/ProjectWorkSection", () => ({
     >
       Project Work
     </section>
+  ),
+}));
+
+vi.mock("./overview/ProjectWorkFilesCard", () => ({
+  default: ({ children }: { children: ReactNode }) => (
+    <div data-project-work-files-card="true">{children}</div>
   ),
 }));
 
@@ -151,6 +157,7 @@ async function settleLazyComponents() {
       import("./overview/ProjectOrientationBand"),
       import("./overview/ProjectRecentNotesEvents"),
       import("./overview/ProjectWorkSection"),
+      import("./overview/ProjectWorkFilesCard"),
     ]);
     await Promise.resolve();
   });
@@ -438,10 +445,40 @@ describe("OverviewTab", () => {
       rendered.container.querySelector('[data-testid="mock-project-work"]'),
     ).toBeNull();
     expect(
+      rendered.container.querySelector('[data-project-work-files-card="true"]'),
+    ).not.toBeNull();
+    expect(
       Array.from(rendered.container.querySelectorAll("button")).filter(
         (button) => button.textContent === "Retry",
       ),
     ).toHaveLength(1);
+    rendered.unmount();
+  });
+
+  it("keeps the Files card available when Project Work is not ready", async () => {
+    useQueryMock.mockReturnValue(queryState({
+      data: {
+        workModel: "legacy",
+        currentDesign: { source: "draft_quote" },
+        legacyWork: { status: "retired" },
+        owner: {},
+        generatedAt: "2026-07-30T00:00:00.000Z",
+      },
+    }));
+    const rendered = renderIntoDocument(
+      <OverviewTab
+        snapshot={{ ...snapshot, workModel: "legacy" } as any}
+        snapshotContentReady
+        snapshotState="fresh"
+        host="host"
+      />,
+    );
+    await settleLazyComponents();
+
+    expect(rendered.container.textContent).toContain("Project Work is not ready");
+    expect(
+      rendered.container.querySelector('[data-project-work-files-card="true"]'),
+    ).not.toBeNull();
     rendered.unmount();
   });
 

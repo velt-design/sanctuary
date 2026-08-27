@@ -29,6 +29,9 @@ const ProjectRecentNotesEvents = lazy(
   () => import("./overview/ProjectRecentNotesEvents"),
 );
 const ProjectWorkSection = lazy(() => import("./overview/ProjectWorkSection"));
+const ProjectWorkFilesCard = lazy(
+  () => import("./overview/ProjectWorkFilesCard"),
+);
 
 type CommandCentreState =
   | "unavailable"
@@ -234,12 +237,14 @@ export default function OverviewTab({
     if (workModelMismatch) {
       projectWork = (
         <ProjectWorkState model="mismatch">
-          <DataStatePanel
-            state="error"
-            title="Project work is updating"
-            description="No project-work action is available until the latest server reads agree."
-            onRetry={refreshProjectWorkModel}
-          />
+          <ProjectWorkFilesCard projectId={snapshot.project.id} host={host}>
+            <DataStatePanel
+              state="error"
+              title="Project work is updating"
+              description="No project-work action is available until the latest server reads agree."
+              onRetry={refreshProjectWorkModel}
+            />
+          </ProjectWorkFilesCard>
         </ProjectWorkState>
       );
     } else {
@@ -265,11 +270,13 @@ export default function OverviewTab({
             />
           ) : (
             <ProjectWorkState model="unavailable">
-              <DataStatePanel
-                state="unavailable"
-                title="Project Work is not ready"
-                description="No project-work action is available until the portfolio rollout is complete."
-              />
+              <ProjectWorkFilesCard projectId={snapshot.project.id} host={host}>
+                <DataStatePanel
+                  state="unavailable"
+                  title="Project Work is not ready"
+                  description="No project-work action is available until the portfolio rollout is complete."
+                />
+              </ProjectWorkFilesCard>
             </ProjectWorkState>
           )}
         </Suspense>
@@ -278,9 +285,9 @@ export default function OverviewTab({
   } else if (commandQuery.isPending) {
     projectWork = (
       <ProjectWorkState model="pending">
-        <Card padding="compact">
+        <ProjectWorkFilesCard projectId={snapshot.project.id} host={host}>
           <LoadingSkeleton rows={5} label="Loading Project Work" />
-        </Card>
+        </ProjectWorkFilesCard>
       </ProjectWorkState>
     );
     commercial = (
@@ -295,12 +302,14 @@ export default function OverviewTab({
   } else {
     projectWork = (
       <ProjectWorkState model="failed">
-        <DataStatePanel
-          state="error"
-          title="Could not load the Project Overview"
-          description="No next action or commercial position is available until the server view loads."
-          onRetry={() => void commandQuery.refetch()}
-        />
+        <ProjectWorkFilesCard projectId={snapshot.project.id} host={host}>
+          <DataStatePanel
+            state="error"
+            title="Could not load the Project Overview"
+            description="No next action or commercial position is available until the server view loads."
+            onRetry={() => void commandQuery.refetch()}
+          />
+        </ProjectWorkFilesCard>
       </ProjectWorkState>
     );
     commercial = null;

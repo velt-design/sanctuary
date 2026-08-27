@@ -28,6 +28,10 @@ vi.mock(
   }),
 );
 
+vi.mock("./ProjectEnquiryFilesPanel", () => ({
+  default: () => <div data-project-enquiry-files="true">Enquiry files</div>,
+}));
+
 const PROJECT_ID = "proj_22222222-2222-4222-8222-222222222222";
 const WORK_PROJECT_ID = "22222222-2222-4222-8222-222222222222";
 const mounted: Array<() => void> = [];
@@ -142,6 +146,28 @@ describe("ProjectWorkSection", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
     mocks.fetchProjectStaffDirectory.mockReset().mockResolvedValue(staff);
+  });
+
+  it("keeps Work selected by default and opens Files inside the same card", () => {
+    const rendered = renderV2(projection());
+    const workTab = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
+      (tab) => tab.textContent === "Work",
+    ) as HTMLButtonElement;
+    const filesTab = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
+      (tab) => tab.textContent === "Files",
+    ) as HTMLButtonElement;
+
+    expect(workTab.getAttribute("aria-selected")).toBe("true");
+    expect(rendered.container.querySelector("#project-work-panel")).not.toBeNull();
+    expect(rendered.container.querySelector('[data-project-enquiry-files="true"]')).toBeNull();
+
+    act(() => filesTab.click());
+
+    expect(filesTab.getAttribute("aria-selected")).toBe("true");
+    expect(rendered.container.querySelector("#project-work-panel")).toBeNull();
+    expect(rendered.container.querySelector('[data-project-enquiry-files="true"]')?.textContent).toBe(
+      "Enquiry files",
+    );
   });
 
   afterEach(() => {
@@ -409,7 +435,7 @@ describe("ProjectWorkSection", () => {
       rendered.container.querySelector('[data-primary-project-work="true"]'),
     ).toBeNull();
     expect(
-      Array.from(rendered.container.querySelectorAll("button")).every(
+      Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button:not([role="tab"])')).every(
         (button) => button.disabled,
       ),
     ).toBe(true);
@@ -626,7 +652,7 @@ describe("ProjectWorkSection", () => {
         }
       } else {
         expect(manage).toBeUndefined();
-        expect(rendered.container.querySelectorAll("button")).toHaveLength(0);
+        expect(rendered.container.querySelectorAll('button:not([role="tab"])')).toHaveLength(0);
       }
     },
   );
