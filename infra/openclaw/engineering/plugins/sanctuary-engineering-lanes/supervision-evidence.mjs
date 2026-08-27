@@ -32,10 +32,39 @@ export function validateSupervisionCompletion({
   task,
   completionInput,
 }) {
-  const completion = contractAdapter.validateCompletion(completionInput, {
-    repoRoot,
-    stateDir,
-  });
+  if (
+    !Array.isArray(completionInput?.worker?.sessionIds) ||
+    completionInput.worker.sessionIds.length !== 1 ||
+    completionInput.worker.sessionIds[0] !== "controller_bound" ||
+    completionInput.worker.startedAt !== "controller_bound" ||
+    completionInput.worker.completedAt !== "controller_bound"
+  ) {
+    throw new Error(
+      "The completion report did not request controller-bound native evidence.",
+    );
+  }
+  if (
+    !Number.isSafeInteger(task.createdAt) ||
+    !Number.isSafeInteger(task.endedAt) ||
+    task.endedAt < task.createdAt
+  ) {
+    throw new Error("The native worker timestamps are incomplete or invalid.");
+  }
+  const completion = contractAdapter.validateCompletion(
+    {
+      ...completionInput,
+      worker: {
+        ...completionInput.worker,
+        sessionIds: [task.childSessionKey],
+        startedAt: new Date(task.createdAt).toISOString(),
+        completedAt: new Date(task.endedAt).toISOString(),
+      },
+    },
+    {
+      repoRoot,
+      stateDir,
+    },
+  );
   const attempt = activeAttempt(state);
   if (
     completion.taskId !== state.taskId ||
@@ -47,7 +76,11 @@ export function validateSupervisionCompletion({
     completion.worker.costCents - state.cumulativeCostCents >
       attempt.budgetCents ||
     completion.worker.costCents > state.manifest.limits.maxCostCents ||
-    !completion.worker.sessionIds.includes(task.childSessionKey)
+    !completion.worker.sessionIds.includes(task.childSessionKey) ||
+    !sameStrings(
+      completion.ciChecks.map((check) => check.name),
+      state.manifest.verification.ciChecks,
+    )
   ) {
     throw new Error(
       "The completion report does not match its flow and attempt.",

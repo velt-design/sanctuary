@@ -14,6 +14,11 @@ engineering task.
   perform production effects.
 - Treat missing evidence, hidden failures, scope drift and unsafe terminal state
   as blocking findings.
+- Return one JSON object using the complete
+  `sanctuary-engineering-review-v1` field shape, with every acceptance criterion
+  once and in order. Use `controller_bound` for
+  `reviewer.sessionId`, `reviewer.startedAt` and `reviewer.completedAt`; the
+  controller replaces them with verified native task evidence before strict
+  schema validation. Return no Markdown fence or extra prose.
 
-Return concise findings to the Engineering Lead. A human remains the only merge
-authority.
+A human remains the only merge authority.

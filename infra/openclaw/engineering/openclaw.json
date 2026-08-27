@@ -97,7 +97,10 @@
             "sanctuary_engineering_supervision_attach",
             "sanctuary_engineering_supervision_reconcile",
             "sanctuary_engineering_supervision_recover",
-            "sanctuary_engineering_supervision_status"
+            "sanctuary_engineering_supervision_status",
+            "sanctuary_engineering_supervision_ci",
+            "sanctuary_engineering_review_attach",
+            "sanctuary_engineering_review_reconcile"
           ],
           "elevated": {
             "enabled": false

@@ -1,0 +1,99 @@
+{
+  "schema": "sanctuary-engineering-task-v1",
+  "taskId": "eng_20260826_ci_review_loop",
+  "goalId": "goal_20260826_autonomous_engineering",
+  "objective": "Route each manifest through a stable foundation CI gate, exact-head GitHub evidence, bounded failure handling, and an independent read-only reviewer before durable supervision can succeed.",
+  "requestedBy": "Jordan / Sanctuary Pergolas",
+  "base": {
+    "ref": "ai/autonomy-foundation-supervision",
+    "sha": "0ba2c1e5eedac268be4f2940ff5ce9e9fa4e2032"
+  },
+  "branch": "ai/autonomy-foundation-ci-review",
+  "risk": "medium",
+  "ownerLane": "ai-engineering-ci-review",
+  "roles": {
+    "supervisor": "engineering_lead",
+    "worker": "coding_worker",
+    "reviewer": "code_reviewer"
+  },
+  "readFirst": [
+    "AGENTS.md",
+    "docs/change-routing.md",
+    "docs/testing-and-qa.md",
+    "docs/portal-production-readiness.md",
+    "docs/target-architecture.md",
+    "docs/ai/operations/autonomous-engineering.md",
+    "docs/ai/operations/openclaw-engineering-supervision.md"
+  ],
+  "ownedPaths": [
+    ".github/workflows/autonomous-engineering.yml",
+    "infra/openclaw/engineering/**",
+    "packages/ai/**",
+    "scripts/ai/**",
+    "test/ai-engineering-contract-cli.test.ts",
+    "test/ai-engineering-review-contract.test.ts",
+    "test/ai-operations-engineering-lanes.test.ts",
+    "test/ai-operations-engineering-ci-review.test.ts",
+    "test/ai-operations-engineering-review-loop.test.ts",
+    "test/ai-operations-engineering-main-protection.test.ts",
+    "test/ai-operations-engineering-supervision.test.ts",
+    "test/ai-operations-machine-credentials.test.ts",
+    "test/ai-operations-openclaw-engineering.test.ts",
+    "docs/ai/README.md",
+    "docs/ai/operations/**",
+    "docs/decision-log.md",
+    "scripts/dead-code-registry.json",
+    "package.json"
+  ],
+  "excludedPaths": ["apps/portal/**", "apps/marketing/**", "supabase/**"],
+  "dependencies": ["eng_20260826_durable_supervision"],
+  "acceptanceCriteria": [
+    "A stable Autonomous Engineering Foundation check runs on every pull request, performs the focused AI/operations gates only when relevant, and never disappears behind a path filter when configured as a required main check.",
+    "GitHub evidence is bound to the exact open draft pull request, branch, base and head SHA; missing, duplicate, stale, skipped, cancelled or unknown required checks cannot be treated as success.",
+    "Required check results are normalized into pending, passed, bounded transient rerun, repair-required or blocked outcomes; no failure is hidden, relabelled or bypassed.",
+    "An actionable CI failure can allocate only one bounded same-lane coding-worker repair attempt, while a transient workflow rerun is exact, recorded and limited to one per head SHA.",
+    "After exact-head CI passes, one named read-only code reviewer receives a deterministic evidence packet and its native task identity is revision-fenced independently from the coding worker.",
+    "Durable supervision succeeds only after a strict reviewer report approves every acceptance criterion with no blocking finding and reports no mutation, merge or production effect.",
+    "The GitHub App remains unable to merge or bypass protected main, and the hosted main policy blocks deletion and direct pushes while allowing only the Sanctuary human owner to complete a pull-request merge."
+  ],
+  "verification": {
+    "focusedCommands": [
+      "npm run test:ai:ops",
+      "npm run test:ai",
+      "npm run docs:guard",
+      "npm run packages:guard",
+      "npm run architecture:changed:strict",
+      "node --check scripts/ai/engineering-ci-route.mjs",
+      "node --check scripts/ai/github-main-protection.mjs",
+      "node --check infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/ci-runtime.mjs",
+      "node --check infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/review-runtime.mjs"
+    ],
+    "ciChecks": ["Autonomous Engineering Foundation"],
+    "visualEvidence": {
+      "required": false,
+      "scenarios": []
+    }
+  },
+  "limits": {
+    "maxWorkers": 1,
+    "maxAttempts": 3,
+    "workerTimeoutMinutes": 60,
+    "maxCostCents": 5000
+  },
+  "approvals": {
+    "planning": "approved",
+    "merge": "human_required",
+    "scopeExpansion": "human_required",
+    "production": "prohibited"
+  },
+  "outputs": {
+    "draftPullRequest": true,
+    "completionReport": true
+  },
+  "stopConditions": [
+    "The pull request, base, head, required check, workflow run, reviewer identity, evidence hash or durable flow revision does not match exactly.",
+    "A CI or reviewer retry would exceed its one-rerun rule or the manifest attempt, time or cost limits.",
+    "A required check is missing, skipped, neutral, cancelled, stale, duplicated or unknown and cannot be safely classified from exact GitHub evidence.",
+    "Implementation would grant merge, deployment, production, customer-contact, unrestricted GitHub Actions or protected-branch bypass authority to OpenClaw, Codex or the GitHub App."
+  ]
+}

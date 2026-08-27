@@ -33,8 +33,10 @@ disk is not required while the node remains rebuildable and development-only.
 2. Create the GitHub App `Sanctuary Node PR Bot`, owned by the business-controlled
    GitHub account that owns `velt-design/sanctuary` (currently `velt-design`).
    Disable webhooks. Grant repository permissions only:
-   `Metadata: read`, `Contents: read and write`, and `Pull requests: read and
-   write`.
+   `Metadata: read`, `Actions: read and write`, `Contents: read and write`, and
+   `Pull requests: read and write`. The reviewed wrapper exposes Actions write
+   only for one exact failed-job rerun; it does not expose cancel, dispatch or
+   workflow-edit commands.
 3. Install that app only on `velt-design/sanctuary`. Do not grant all-repository
    access.
 4. After the FileVault gate passes, generate one private key
@@ -72,8 +74,11 @@ Verified on 2026-08-25:
 - App ID: `4710278`;
 - installation ID: `156382349`;
 - repository access: only `velt-design/sanctuary`;
-- permissions: metadata read-only, contents read/write, and pull requests
-  read/write;
+- permissions: metadata read-only, contents read/write, pull requests
+  read/write, and Actions read/write. Actions write is used only by the reviewed
+  wrapper to rerun failed jobs for one exact Sanctuary workflow run; cancel,
+  dispatch, workflow editing, merge, deployment and protected-branch bypass are
+  not exposed;
 - webhooks, user OAuth, and Device Flow: disabled; and
 - private key and client secret: not generated.
 

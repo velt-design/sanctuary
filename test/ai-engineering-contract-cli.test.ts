@@ -12,6 +12,7 @@ const TASK = resolve("infra/openclaw/engineering/task.example.json");
 const COMPLETION = resolve(
   "infra/openclaw/engineering/completion.example.json",
 );
+const REVIEW = resolve("infra/openclaw/engineering/review.example.json");
 const temporaryDirectories: string[] = [];
 
 function run(command: string, ...paths: string[]) {
@@ -181,6 +182,18 @@ describe("engineering contract CLI", () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("Invalid Sanctuary AI contract");
     expect(result.stdout).toBe("");
+  });
+
+  it("validates the canonical independent review report", () => {
+    const result = run("validate-review", REVIEW);
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      valid: true,
+      schema: "sanctuary-engineering-review-v1",
+      taskId: "eng_20260826_foundation_contracts",
+      verdict: "approved",
+      pullRequest: "https://github.com/velt-design/sanctuary/pull/73",
+    });
   });
 
   it("fails closed when task authority changes to main", () => {

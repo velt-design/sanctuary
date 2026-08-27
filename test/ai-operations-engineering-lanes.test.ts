@@ -8,6 +8,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -102,7 +103,9 @@ function createManifest(
 }
 
 function fixture() {
-  const root = mkdtempSync(join(tmpdir(), "sanctuary-engineering-lane-"));
+  const root = realpathSync(
+    mkdtempSync(join(tmpdir(), "sanctuary-engineering-lane-")),
+  );
   temporaryDirectories.push(root);
   const origin = join(root, "origin.git");
   const repoRoot = join(root, "controller");
@@ -387,6 +390,25 @@ describe("lane policy helpers", () => {
         "Draft evidence only.",
       ]),
     ).not.toThrow();
+    expect(() =>
+      assertSafeGitHubCommand([
+        "run",
+        "rerun",
+        "123456",
+        "--failed",
+        "--repo",
+        "velt-design/sanctuary",
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertSafeGitHubCommand([
+        "run",
+        "rerun",
+        "123456",
+        "--repo",
+        "velt-design/sanctuary",
+      ]),
+    ).toThrow(/exact failed-job workflow rerun/);
     expect(() =>
       assertSafeGitHubCommand([
         "pr",

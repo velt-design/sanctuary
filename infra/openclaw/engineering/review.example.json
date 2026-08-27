@@ -1,0 +1,46 @@
+{
+  "schema": "sanctuary-engineering-review-v1",
+  "taskId": "eng_20260826_foundation_contracts",
+  "manifestHash": "sha256:3a5de0bcc30bc5877c72b8149c15a2ed5bda64e34c568dcd6d059dbbe2e7def4",
+  "verdict": "approved",
+  "branch": "ai/autonomy-foundation-contracts",
+  "baseSha": "0bace9e852becf0d5c8d4a49bb2f7f759f0bed75",
+  "headSha": "1111111111111111111111111111111111111111",
+  "pullRequest": {
+    "number": 73,
+    "url": "https://github.com/velt-design/sanctuary/pull/73"
+  },
+  "ciEvidenceHash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "acceptanceResults": [
+    {
+      "criterion": "Task and completion contracts reject unknown fields and unsafe terminal states.",
+      "status": "passed",
+      "evidence": "The supplied contract test evidence passed."
+    },
+    {
+      "criterion": "The worker prompt is generated from a validated immutable manifest.",
+      "status": "passed",
+      "evidence": "The canonical manifest hash and rendered prompt match."
+    },
+    {
+      "criterion": "Human-only merge and prohibited production effects are machine-enforced.",
+      "status": "passed",
+      "evidence": "The evidence records a draft PR and no merge or production effect."
+    }
+  ],
+  "findings": [],
+  "reviewer": {
+    "agent": "sanctuary-code-reviewer",
+    "model": "openai/gpt-5.6-sol",
+    "sessionId": "agent:sanctuary-code-reviewer:subagent:example",
+    "costCents": 25,
+    "startedAt": "2026-08-26T00:10:00.000Z",
+    "completedAt": "2026-08-26T00:12:00.000Z"
+  },
+  "safety": {
+    "readOnly": true,
+    "merged": false,
+    "productionEffects": false
+  },
+  "nextAction": "Human review and merge."
+}

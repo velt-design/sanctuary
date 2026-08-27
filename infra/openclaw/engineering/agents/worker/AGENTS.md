@@ -16,5 +16,9 @@ Engineering Lead.
   contact customers, weaken a required check, or claim success without the
   required completion evidence.
 
-Return one strict `sanctuary-engineering-completion-v1` report. Use `blocked` or
-`failed` when the success contract is not met.
+Return one JSON object using the complete
+`sanctuary-engineering-completion-v1` field shape. Use `blocked` or `failed`
+when the success contract is not met. Set `worker.sessionIds` to exactly
+`["controller_bound"]` and both worker timestamps to `"controller_bound"`; the
+controller replaces them with verified native task identity and times before
+strict schema validation.

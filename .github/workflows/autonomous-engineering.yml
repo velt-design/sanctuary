@@ -1,0 +1,72 @@
+name: Autonomous Engineering
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: autonomous-engineering-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  foundation:
+    name: Autonomous Engineering Foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact event revision
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Route changed paths
+        id: route
+        run: node scripts/ai/engineering-ci-route.mjs
+
+      - name: Setup Node
+        if: steps.route.outputs.relevant == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.route.outputs.relevant == 'true'
+        run: npm ci
+
+      - name: Strict changed-architecture gate
+        if: steps.route.outputs.relevant == 'true' && github.event_name == 'pull_request'
+        env:
+          ARCHITECTURE_CHANGED_BASE: ${{ github.event.pull_request.base.sha }}
+          ARCHITECTURE_CHANGED_HEAD: ${{ github.event.pull_request.head.sha }}
+          WORKTREE_BASE_REF: ${{ github.event.pull_request.base.sha }}
+          WORKTREE_HEAD_REF: ${{ github.event.pull_request.head.sha }}
+          WORKTREE_OWNER_PATTERNS: ${{ steps.route.outputs.owner_patterns }}
+        run: npm run architecture:changed:strict
+
+      - name: AI operations contracts
+        if: steps.route.outputs.relevant == 'true'
+        run: npm run test:ai:ops
+
+      - name: Provider-neutral AI contracts
+        if: steps.route.outputs.relevant == 'true'
+        run: npm run test:ai
+
+      - name: AI package typecheck
+        if: steps.route.outputs.relevant == 'true'
+        run: npx tsc -p packages/ai/tsconfig.typecheck.json --noEmit --incremental false
+
+      - name: Documentation and package boundaries
+        if: steps.route.outputs.relevant == 'true'
+        run: npm run docs:guard && npm run packages:guard
+
+      - name: Record non-foundation route
+        if: steps.route.outputs.relevant != 'true'
+        run: echo "No autonomous-engineering foundation paths changed; the stable required check remains present and passes without running the focused suite."

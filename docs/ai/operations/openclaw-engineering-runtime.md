@@ -24,7 +24,7 @@ The engineering runtime is a separate OpenClaw instance:
 | CLI                  | `~/bin/sanctuary-openclaw`                                                                     |
 | Workspaces           | `~/.openclaw-sanctuary-engineering/workspaces/**`                                              |
 | Channels and browser | disabled                                                                                       |
-| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` plus reviewed `sanctuary-engineering-lanes@1.1.0` |
+| Plugins              | pinned official `@openclaw/codex@2026.7.1-1` plus reviewed `sanctuary-engineering-lanes@1.2.0` |
 
 Activation never writes the default `~/.openclaw/openclaw.json`, approvals,
 agents, sessions, gateway token or gateway process. An unrelated OpenClaw
@@ -38,11 +38,11 @@ which must continue to hold no production credential.
 
 ## Named roles
 
-| Role                               | Authority                                                                                                                                                                                                       |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sanctuary-engineering-supervisor` | Read contracts/evidence; use narrow durable-supervision plus lane status/cleanup tools; spawn, inspect, steer and wait for named children. No general shell, direct lane provisioning or product-file mutation. |
-| `sanctuary-coding-worker`          | No-prompt coding inside the assigned worker root; focused checks and narrow status/publish tools. One leaf worker cannot spawn another agent.                                                                   |
-| `sanctuary-code-reviewer`          | Read-only evidence and narrow lane-status review. No shell, mutation, delegation or merge authority.                                                                                                            |
+| Role                               | Authority                                                                                                                                                                                                                  |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sanctuary-engineering-supervisor` | Read contracts/evidence; use narrow durable-supervision plus lane status/cleanup tools; spawn and wait for exact named dispatches. No general shell, reviewer steering, direct lane provisioning or product-file mutation. |
+| `sanctuary-coding-worker`          | No-prompt coding inside the assigned worker root; focused checks and narrow status/publish tools. One leaf worker cannot spawn another agent.                                                                              |
+| `sanctuary-code-reviewer`          | Read-only exact CI/diff evidence and narrow lane-status review. No shell, mutation, delegation, reviewer replacement or merge authority.                                                                                   |
 
 The installed OpenClaw schema requires a deterministic default route, so only
 the bounded supervisor is marked default. The coding worker and reviewer remain

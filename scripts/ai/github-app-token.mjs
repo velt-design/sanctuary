@@ -67,7 +67,11 @@ async function requestInstallationToken(fetchImpl = fetch) {
       },
       body: JSON.stringify({
         repositories: ["sanctuary"],
-        permissions: { contents: "write", pull_requests: "write" },
+        permissions: {
+          actions: "write",
+          contents: "write",
+          pull_requests: "write",
+        },
       }),
     },
   );
@@ -83,6 +87,7 @@ async function requestInstallationToken(fetchImpl = fetch) {
     !payload.token ||
     repositories.length !== 1 ||
     repositories[0] !== REPOSITORY ||
+    payload.permissions?.actions !== "write" ||
     payload.permissions?.contents !== "write" ||
     payload.permissions?.pull_requests !== "write"
   ) {
@@ -162,7 +167,7 @@ export function assertSafeGitHubCommand(args) {
     }
     return;
   }
-  if (area === "pr" && ["list", "view", "checks"].includes(action)) {
+  if (area === "pr" && ["list", "view", "checks", "diff"].includes(action)) {
     assertOnlyFlags(
       args.slice(2),
       new Set([
@@ -178,6 +183,9 @@ export function assertSafeGitHubCommand(args) {
         "--watch",
         "--interval",
         "--required",
+        "--color",
+        "--name-only",
+        "--patch",
         "--web",
       ]),
     );
@@ -211,6 +219,20 @@ export function assertSafeGitHubCommand(args) {
     if (readFlag(args, "--repo") !== REPOSITORY) {
       throw new Error(
         "GitHub reads are restricted to the Sanctuary repository.",
+      );
+    }
+    return;
+  }
+  if (area === "run" && action === "rerun") {
+    if (
+      args.length !== 6 ||
+      !/^[1-9][0-9]*$/.test(args[2]) ||
+      args[3] !== "--failed" ||
+      args[4] !== "--repo" ||
+      args[5] !== REPOSITORY
+    ) {
+      throw new Error(
+        "Only an exact failed-job workflow rerun is allowed for Sanctuary.",
       );
     }
     return;

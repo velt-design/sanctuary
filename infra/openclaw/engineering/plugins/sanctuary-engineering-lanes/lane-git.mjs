@@ -353,5 +353,6 @@ export function createGitRuntime({
     isAncestor,
     findOpenPullRequest,
     createDraftPullRequest,
+    safeGh,
   });
 }

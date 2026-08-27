@@ -182,6 +182,12 @@ export const defaultContractAdapter = Object.freeze({
       return completion;
     });
   },
+  validateReview(review, { repoRoot, stateDir }) {
+    return withTemporaryManifest(stateDir, review, (path) => {
+      runContractCommand(repoRoot, "validate-review", path);
+      return review;
+    });
+  },
 });
 
 export function buildBoundWorkerPrompt({

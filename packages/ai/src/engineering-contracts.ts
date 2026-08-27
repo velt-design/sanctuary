@@ -2,6 +2,8 @@ export const ENGINEERING_TASK_SCHEMA_V1 =
   "sanctuary-engineering-task-v1" as const;
 export const ENGINEERING_COMPLETION_SCHEMA_V1 =
   "sanctuary-engineering-completion-v1" as const;
+export const ENGINEERING_REVIEW_SCHEMA_V1 =
+  "sanctuary-engineering-review-v1" as const;
 
 export const ENGINEERING_TASK_RISKS = [
   "low",
@@ -18,6 +20,14 @@ export const ENGINEERING_COMPLETION_OUTCOMES = [
 ] as const;
 export type EngineeringCompletionOutcome =
   (typeof ENGINEERING_COMPLETION_OUTCOMES)[number];
+
+export const ENGINEERING_REVIEW_VERDICTS = [
+  "approved",
+  "changes_requested",
+  "blocked",
+] as const;
+export type EngineeringReviewVerdict =
+  (typeof ENGINEERING_REVIEW_VERDICTS)[number];
 
 export const ENGINEERING_CHECK_STATUSES = [
   "passed",
@@ -123,5 +133,47 @@ export type EngineeringTaskCompletionV1 = Readonly<{
     secretScan: "passed" | "failed";
   }>;
   limitations: readonly string[];
+  nextAction: string;
+}>;
+
+export type EngineeringTaskReviewV1 = Readonly<{
+  schema: typeof ENGINEERING_REVIEW_SCHEMA_V1;
+  taskId: string;
+  manifestHash: string;
+  verdict: EngineeringReviewVerdict;
+  branch: string;
+  baseSha: string;
+  headSha: string;
+  pullRequest: Readonly<{
+    number: number;
+    url: string;
+  }>;
+  ciEvidenceHash: string;
+  acceptanceResults: readonly Readonly<{
+    criterion: string;
+    status: "passed" | "failed";
+    evidence: string;
+  }>[];
+  findings: readonly Readonly<{
+    id: string;
+    severity: "blocking" | "advisory";
+    summary: string;
+    evidence: string;
+    path: string | null;
+    line: number | null;
+  }>[];
+  reviewer: Readonly<{
+    agent: string;
+    model: string;
+    sessionId: string;
+    costCents: number;
+    startedAt: string;
+    completedAt: string;
+  }>;
+  safety: Readonly<{
+    readOnly: true;
+    merged: false;
+    productionEffects: false;
+  }>;
   nextAction: string;
 }>;

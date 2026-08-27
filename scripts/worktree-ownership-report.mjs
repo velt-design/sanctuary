@@ -6,6 +6,7 @@ const ROOT = process.cwd();
 const CHANGED_ONLY = process.argv.includes('--changed');
 const STRICT = process.argv.includes('--strict');
 const BASE_REF = process.env.WORKTREE_BASE_REF?.trim() || 'HEAD';
+const HEAD_REF = process.env.WORKTREE_HEAD_REF?.trim() || '';
 const OWNER_PATTERNS = (process.env.WORKTREE_OWNER_PATTERNS || '')
   .split(',')
   .map((pattern) => pattern.trim())
@@ -77,12 +78,14 @@ function stateFromNameStatus(status) {
 }
 
 function trackedChanges() {
-  return runGitLines(['diff', '--name-status', '--diff-filter=ACMRTUXBD', BASE_REF])
+  const refs = HEAD_REF ? [`${BASE_REF}...${HEAD_REF}`] : [BASE_REF];
+  return runGitLines(['diff', '--name-status', '--diff-filter=ACMRTUXBD', ...refs])
     .map(parseNameStatus)
     .filter(Boolean);
 }
 
 function untrackedChanges(existingFiles) {
+  if (HEAD_REF) return [];
   return runGitLines(['ls-files', '--others', '--exclude-standard'])
     .map(toPosix)
     .filter((file) => !existingFiles.has(file))
@@ -226,7 +229,7 @@ function main() {
       STRICT ? 'strict report' : 'advisory report'
     }`,
   );
-  console.log(`Base ref: ${BASE_REF}`);
+  console.log(HEAD_REF ? `Compared refs: ${BASE_REF}...${HEAD_REF}` : `Base ref: ${BASE_REF}`);
   console.log(`Owner patterns: ${OWNER_PATTERNS.length > 0 ? OWNER_PATTERNS.join(', ') : 'none declared'}`);
   console.log(STRICT ? 'Strict mode fails on undeclared lanes, outside-lane files, and deleted/missing paths.' : 'This report is advisory and does not modify the worktree.');
   console.log('');
