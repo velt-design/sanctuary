@@ -23,6 +23,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-08-27 | Commercial Tab Intent Preload    | Promoted | When a route tab owns a second lazy subview, intent preload must include both module boundaries and the target query. Do not call the outer shell warm while its default useful-content module still starts only after selection. |
 | 2026-08-27 | Design Booklet Native Runtime    | Promoted | Keep `sharp` in the Portal production dependency graph and load it only at the image-normalization boundary. Lightweight booklet reads and signed-upload preparation must not import a native image processor during route startup. |
+| 2026-08-27 | Required CI Routing              | Promoted | Keep dependency/test-impact routing separate from domain ownership. Shared manifests and root tooling still run affected AI contracts and strict non-ownership guards, but only genuinely AI-owned paths activate the fixed AI lane. Any AI-owned path in a mixed PR restores strict ownership for the complete change set. |
 | 2026-08-26 | Autonomous Engineering Kill Switch | Promoted | Stop only the protected Sanctuary gateway PID after matching the runtime user, exact process title and isolated loopback port. Use one graceful signal, prove process and health are down, remove only the PID record, preserve default OpenClaw authority, and refuse broad matching or force kill. |
 | 2026-08-26 | Autonomous Engineering Proof     | Promoted | Treat a coding worker's draft PR as a candidate, not completion. Bind exact-head checks, one classified transient rerun, same-lane repair and a separately identified read-only reviewer into durable state; finish only after CI and strict review pass. Keep hosted `main` protection app-bypass-free and human-merged. |
 | 2026-08-26 | Autonomous Engineering Lanes     | Promoted | Bind every coding run to one strict manifest hash, exact base SHA, feature branch and owner-recorded worktree. Expose narrow provision/status/publish/cleanup tools instead of lead shell access, refuse unknown or outside-lane state, and require hosted default-branch protection before promotion because repository content-write credentials cannot themselves exclude `main`. |
@@ -5293,3 +5294,26 @@ Why it mattered: A warm-tab performance contract must describe the complete usef
 Current guardrail: If a tab contains another lazy view, preload every module boundary needed for the signalled destination plus its query data from the same pointer, focus, touch, or pointer-down intent. Give a shared loading shell the stable owner it actually represents, not one nested compatibility route, and let the performance journey accept that truthful owned shell. Keep the 100 ms feedback and 500 ms useful-content targets unchanged; do not hide missing work by relaxing budgets or waiting inside the measured assertion.
 Promoted to: `docs/portal-production-readiness.md`
 Related docs/tests: `apps/portal/components/projects/ProjectPage/projectTabModules.tsx`; `apps/portal/components/projects/ProjectPage/tabs/CommercialTab.tsx`; `apps/portal/components/projects/ProjectPage/projectTabModules.test.tsx`; `playwright/portal.performance.spec.ts`
+
+### 2026-08-27 - Required CI Routing - Test Impact Is Not Domain Ownership
+
+Date: 2026-08-27
+Area: Autonomous engineering required-check routing
+Status: Promoted
+Decision or mistake: The required foundation check used one pattern list both to
+decide whether shared manifests could affect AI contracts and to claim ownership
+of the pull request. A product PR that added a root script therefore ran the
+right focused AI checks but failed because its legitimate product files were not
+inside the hard-coded AI lane.
+Why it mattered: Removing shared manifests from the route would hide real
+dependency and test-runner impact, while broadening the AI owner patterns would
+silently grant an autonomous engineering lane unrelated product scope.
+Current guardrail: Route genuinely foundation-owned paths separately from shared
+impact triggers. Shared-impact-only pull requests run the AI contract, type and
+boundary checks plus all strict changed-file guards except worktree ownership.
+If any genuinely foundation-owned path changes, require strict AI-lane ownership
+for the complete pull request, including any shared manifests.
+Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
+Related docs/tests: `scripts/ai/engineering-ci-route.mjs`;
+`.github/workflows/autonomous-engineering.yml`;
+`test/ai-operations-engineering-ci-review.test.ts`; `npm run test:ai:ops`
