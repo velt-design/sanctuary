@@ -255,8 +255,9 @@ Marketing Lighthouse thresholds:
 Security:
 
 - No unresolved critical/high production vulnerabilities from `npm audit --omit=dev`.
+- `npm run audit:toolchain` fails closed on every development/toolchain vulnerability except the two no-fix `xlsx` advisories `GHSA-4r6h-8v6p-xvw6` and `GHSA-5pgg-2g8v-p4x9`. The exception is valid only while `xlsx` is a direct root development dependency, is locked development-only, has no fix, and is imported only by `scripts/import-running-jobs-legacy.ts`.
 - The workspace, Portal, and Marketing PostCSS overrides must resolve to the same patched version; verify with `npm ls postcss` after dependency changes.
-- Portal Quality runs `npm run audit:security` as a blocking pull-request gate; Governance Monthly also runs the production dependency audit as part of the broader marketing/governance sweep.
+- Portal Quality runs both `npm run audit:security` and `npm run audit:toolchain` as blocking pull-request gates; Governance Monthly also runs the production dependency audit as part of the broader marketing/governance sweep.
 - Run `npm run test:email-provider` for provider normalization/transport/webhook contracts, `npm run test:jobs` for durable contract, migration, and repository-security checks, and `npm run test:worker` for the Node runtime and hard-crash effect recovery. These are static/unit checks and do not replace live isolated-database or container execution.
 
 Privacy:
@@ -268,6 +269,7 @@ Privacy:
 
 ```bash
 npm run audit:security
+npm run audit:toolchain
 npm run audit:lighthouse
 npm run audit:governance
 npm run text:mojibake

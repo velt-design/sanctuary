@@ -126,6 +126,9 @@ jobs:
       - name: Production security audit
         run: npm run audit:security
 
+      - name: Toolchain security audit
+        run: npm run audit:toolchain
+
       - name: Portal fixture browser smoke
         run: npm run test:portal:browser
 
