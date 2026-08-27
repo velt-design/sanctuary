@@ -15,6 +15,17 @@ const loaders = {
   'job-packs': () => import('./tabs/JobPacksTab'),
 } satisfies Record<ProjectTabModuleKey, () => Promise<unknown>>;
 
+export async function preloadNestedProjectTab(
+  tab: ProjectTabModuleKey,
+  preloadCommercialView: (view: 'estimates' | 'quotes' | 'invoices') => Promise<unknown> = async (view) => {
+    const { preloadCommercialViewModule } = await import('./tabs/CommercialTab');
+    return preloadCommercialViewModule(view);
+  },
+): Promise<void> {
+  if (tab !== 'estimates' && tab !== 'quotes' && tab !== 'invoices') return;
+  await preloadCommercialView(tab);
+}
+
 function loadingState(label: string, key: ProjectTabModuleKey) {
   return function ProjectTabLoadingState() {
     return (
@@ -35,6 +46,7 @@ export async function preloadProjectTab(
 ): Promise<void> {
   await Promise.all([
     loaders[tab](),
+    preloadNestedProjectTab(tab),
     import('./projectTabDataPreload').then(({ preloadProjectTabData }) =>
       preloadProjectTabData(tab, context),
     ),

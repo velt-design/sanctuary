@@ -26,6 +26,12 @@ const InvoicesTab = dynamic(loadInvoicesTab, {
   loading: () => <LoadingSkeleton rows={4} columns={6} label="Loading invoices" />,
 });
 
+export function preloadCommercialViewModule(view: CommercialView): Promise<unknown> {
+  if (view === 'estimates') return loadEstimatesTab();
+  if (view === 'quotes') return loadQuotesTab();
+  return loadInvoicesTab();
+}
+
 export default function CommercialTab({
   host,
   projectId,
@@ -102,20 +108,18 @@ export default function CommercialTab({
   };
 
   const preload = (nextView: CommercialView) => {
+    void preloadCommercialViewModule(nextView);
     if (nextView === 'estimates') {
-      void loadEstimatesTab();
       void queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(host, projectId));
       return;
     }
     if (nextView === 'quotes') {
-      void loadQuotesTab();
       void Promise.all([
         queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(host, projectId)),
         queryClient.prefetchQuery(quoteVersionsByProjectQueryOptions(host, projectId)),
       ]);
       return;
     }
-    void loadInvoicesTab();
     void queryClient.prefetchQuery(depositInvoicesByProjectQueryOptions(host, projectId));
   };
 
