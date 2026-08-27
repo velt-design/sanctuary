@@ -128,6 +128,7 @@ export function createEngineeringSupervisionController(options = {}) {
       const completion = contractAdapter.validateCompletion(state.completion, {
         repoRoot,
         stateDir,
+        manifest: state.manifest,
       });
       if (JSON.stringify(completion) !== JSON.stringify(state.completion)) {
         throw new Error(
