@@ -240,7 +240,7 @@ describe('buildPlanViewModel', () => {
     const roofFeatures = plan.house.lines?.filter((line) => line.kind === 'roof_feature') ?? [];
 
     expect(solved.value.house.model?.metadata?.roofGeometry).toBe('rectilinear_joined_hipped');
-    expect(solved.value.house.model?.metadata?.roofFacetMergeMode).toBe('active_rectilinear_wavefront');
+    expect(solved.value.house.model?.metadata?.roofFacetMergeMode).toBe('source_edge_envelope');
     expect(solved.value.house.model?.roofPlanes.every((plane) => !plane.id.includes('house-roof-wing'))).toBe(true);
     expect(roofSurfaces.length).toBeGreaterThan(0);
     expect(roofSurfaces.every((surface) => !surface.id.includes('house-roof-wing'))).toBe(true);

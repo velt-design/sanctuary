@@ -111,6 +111,9 @@ jobs:
       - name: Portal Vitest suite
         run: npm run test:portal
 
+      - name: Geometry Vitest suite
+        run: npm run test:geometry
+
       - name: Portal Project Work V2 contract gate
         run: npm run test:portal:project-work
 
