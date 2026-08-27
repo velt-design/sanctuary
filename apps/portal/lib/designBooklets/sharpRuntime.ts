@@ -5,6 +5,13 @@ type DesignBookletSharpFactory =
 
 let sharpFactoryPromise: Promise<DesignBookletSharpFactory> | null = null;
 
+export class DesignBookletImageProcessorUnavailableError extends Error {
+  constructor(cause?: unknown) {
+    super("Image processing is temporarily unavailable.", { cause });
+    this.name = "DesignBookletImageProcessorUnavailableError";
+  }
+}
+
 export async function loadDesignBookletSharp(): Promise<DesignBookletSharpFactory> {
   try {
     sharpFactoryPromise ??= import("sharp").then(
@@ -13,6 +20,9 @@ export async function loadDesignBookletSharp(): Promise<DesignBookletSharpFactor
     return await sharpFactoryPromise;
   } catch (error) {
     sharpFactoryPromise = null;
-    throw error;
+    if (error instanceof DesignBookletImageProcessorUnavailableError) {
+      throw error;
+    }
+    throw new DesignBookletImageProcessorUnavailableError(error);
   }
 }
