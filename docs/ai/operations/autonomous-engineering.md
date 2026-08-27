@@ -18,7 +18,8 @@ implement. Humans continue to own scope expansion, merge and production.
 Jordan
   -> approves the goal and material scope
 OpenClaw Engineering Lead
-  -> validates manifests, provisions lanes, starts and monitors workers
+  -> validates and queues manifests, provisions lanes through the durable
+     controller, starts and monitors workers
 Codex Coding Worker
   -> edits one isolated worktree, runs focused checks and opens a draft PR
 GitHub Actions
@@ -85,7 +86,8 @@ manifest limits.
 
 The concrete state, port, role and activation contract lives in
 `openclaw-engineering-runtime.md`. Deterministic branch, worktree, publish and
-cleanup behavior lives in `openclaw-engineering-lanes.md`.
+cleanup behavior lives in `openclaw-engineering-lanes.md`. Queue, checkpoint,
+retry and restart behavior lives in `openclaw-engineering-supervision.md`.
 
 ## Completion definition
 

@@ -176,6 +176,12 @@ export const defaultContractAdapter = Object.freeze({
       runContractCommand(repoRoot, "render-worker-prompt", path),
     );
   },
+  validateCompletion(completion, { repoRoot, stateDir }) {
+    return withTemporaryManifest(stateDir, completion, (path) => {
+      runContractCommand(repoRoot, "validate-completion", path);
+      return completion;
+    });
+  },
 });
 
 export function buildBoundWorkerPrompt({

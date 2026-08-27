@@ -1,7 +1,8 @@
 # Sanctuary AI Operations
 
-Status: Mac baseline and isolated engineering runtime configured; supervisor
-OAuth, lane-plugin rehearsal and final promotion rehearsals remain.
+Status: Mac baseline, isolated engineering runtime and lane rehearsal complete;
+supervisor OAuth/role rehearsal, durable supervision, CI/review and final
+promotion rehearsals remain.
 
 Owner: Jordan / Sanctuary Pergolas
 
@@ -19,9 +20,10 @@ prove that the Mac mini, private network, OpenClaw, or worker has been installed
 6. `openclaw-dark-install.md`: pinned, deny-all OpenClaw installation checkpoint.
 7. `openclaw-engineering-runtime.md`: isolated no-prompt supervisor, worker and reviewer runtime.
 8. `openclaw-engineering-lanes.md`: manifest-bound branch/worktree, draft-PR and safe cleanup contract.
-9. `autonomous-engineering.md`: Engineering Lead/Codex worker roles, strict task and completion contracts, PR stack, and promotion rehearsals.
-10. `node-rebuild-and-revocation.md`: planned rebuild, compromise rebuild, central revocation, and recovery proof.
-11. `ai-incident-response.md`: triage, containment, evidence, recovery, and notification protocol.
+9. `openclaw-engineering-supervision.md`: managed task queue, dependency gates, revision checkpoints, bounded retries and restart recovery.
+10. `autonomous-engineering.md`: Engineering Lead/Codex worker roles, strict task and completion contracts, PR stack, and promotion rehearsals.
+11. `node-rebuild-and-revocation.md`: planned rebuild, compromise rebuild, central revocation, and recovery proof.
+12. `ai-incident-response.md`: triage, containment, evidence, recovery, and notification protocol.
 
 ## Current Deployment Boundary
 
