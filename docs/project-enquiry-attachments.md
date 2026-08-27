@@ -42,7 +42,7 @@ The staging dry run was empty. Its report SHA-256 is `b89e1f3220357156b271a1344b
 The tool is dry-run by default and requires the intended environment plus exact Supabase project ref. Its JSON report must be written outside the repository with create-only semantics:
 
 ```bash
-npm run portal:enquiry-attachments:backfill -- --target=staging --confirm-project-ref=<exact-ref> --output=<absolute-path-outside-repo>
+npx tsx scripts/project-enquiry-attachments-backfill.ts --target=staging --confirm-project-ref=<exact-ref> --output=<absolute-path-outside-repo>
 ```
 
 The report contains exact linkable candidates, already-linked files, referenced paths with missing objects, Storage objects unmatched to any enquiry JSON path, ambiguous/conflicting evidence, and known current project-link changes. The repository has no historical project-merge ledger, so the report states that limitation and never infers a merge from project names, contacts, filenames, or similar metadata.
