@@ -26,7 +26,7 @@ export async function preloadNestedProjectTab(
   await preloadCommercialView(tab);
 }
 
-function loadingState(label: string, key: ProjectTabModuleKey) {
+function loadingState(label: string, key: ProjectTabModuleKey | 'commercial') {
   return function ProjectTabLoadingState() {
     return (
       <div className={styles.tabLoadingState} data-project-tab-loading={key} role="status">
@@ -37,7 +37,7 @@ function loadingState(label: string, key: ProjectTabModuleKey) {
 }
 
 export const OverviewTab = dynamic(loaders.activity, { loading: loadingState('overview', 'activity') });
-export const CommercialTab = dynamic(loaders.quotes, { loading: loadingState('commercial', 'quotes') });
+export const CommercialTab = dynamic(loaders.quotes, { loading: loadingState('commercial', 'commercial') });
 export const JobPacksTab = dynamic(loaders['job-packs'], { loading: loadingState('job packs', 'job-packs') });
 
 export async function preloadProjectTab(

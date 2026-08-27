@@ -430,7 +430,7 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     async () => {
       await expect(page.locator('[data-project-tab-body="estimates"]')).toBeVisible();
       await expect(
-        page.locator('[data-estimates-view="list"], [data-project-tab-loading="estimates"]').first(),
+        page.locator('[data-estimates-view="list"], [data-project-tab-loading="commercial"]').first(),
       ).toBeVisible();
     },
   );
