@@ -27,6 +27,7 @@ npm run dev:worker
 npm run test
 npm run test:marketing
 npm run test:marketing:browser
+npm run test:geometry
 npm run test:email-provider
 npm run test:jobs
 npm run test:jobs:db-contract

@@ -152,6 +152,7 @@ Wave 3 must keep queue durability, private input, worker fencing, external-effec
 - [x] `npm run docs:guard` passes.
 - [x] `npm run text:mojibake` passes.
 - [x] `npm run lint` passes.
+- [x] `npm run test:geometry` passes and is a blocking Portal Quality step.
 - [x] `npm run test:portal` passes.
 - [x] `npm run build:portal` passes.
 - [x] `npm run portal:bundle-budget` passes every unchanged route ceiling; the isolated 2026-07-30 route-optimization build records Contacts at 550.8/154.6 KiB and Calculator at 1158.5/302.4 KiB raw/gzip initial.
