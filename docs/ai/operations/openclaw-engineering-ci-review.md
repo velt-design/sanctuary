@@ -21,14 +21,21 @@ filter that could make a required check disappear:
 
 - non-foundation changes take a deterministic no-op route and pass the named
   check;
-- foundation changes run strict changed-architecture reporting, AI operations
-  and provider-neutral contract tests, the AI package typecheck, and docs/package
-  boundary guards; and
+- foundation-owned changes run strict worktree ownership plus every strict
+  changed-file architecture guard, AI operations and provider-neutral contract
+  tests, the AI package typecheck, and docs/package boundary guards;
+- shared manifests and repository-level tooling that can affect the AI
+  foundation run the same focused AI checks and every strict changed-file guard
+  except worktree ownership, because their presence does not make unrelated
+  product files part of an AI-owned lane; and
 - checkout is read-only with persisted credentials disabled. No OpenAI or
   production secret is supplied to the workflow.
 
 The route is derived from the event's exact base and head SHAs. Unsafe paths or
-an unbounded change set fail the job.
+an unbounded change set fail the job. A pull request that changes any genuinely
+foundation-owned path still takes the strict ownership route, even when shared
+manifests or non-foundation files are present, so a mixed change cannot use a
+shared-impact trigger to broaden the AI lane.
 
 ## Exact-head evidence and failure policy
 

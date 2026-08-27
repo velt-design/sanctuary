@@ -24,8 +24,10 @@ import {
   watchEngineeringCi,
 } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-ci-watch.mjs";
 import {
+  FOUNDATION_OWNER_PATTERNS,
   changedPathsForEvent,
   routeEngineeringCi,
+  writeOutputs,
 } from "../scripts/ai/engineering-ci-route.mjs";
 
 type Value = Record<string, any>;
@@ -231,18 +233,152 @@ describe("autonomous engineering CI routing", () => {
       ]),
     ).toMatchObject({
       mode: "foundation",
+      routeKind: "foundation_owned",
       relevant: true,
+      ownershipRequired: true,
+      sharedImpactOnly: false,
       relevantPaths: [
         "infra/openclaw/engineering/openclaw.json",
         "packages/ai/src/engineering.ts",
         "scripts/worktree-ownership-report.mjs",
       ],
+      ownedPaths: [
+        "infra/openclaw/engineering/openclaw.json",
+        "packages/ai/src/engineering.ts",
+      ],
+      sharedImpactPaths: ["scripts/worktree-ownership-report.mjs"],
     });
     expect(routeEngineeringCi(["apps/portal/app/page.tsx"])).toMatchObject({
       mode: "not_applicable",
+      routeKind: "not_applicable",
       relevant: false,
+      ownershipRequired: false,
+      sharedImpactOnly: false,
       relevantPaths: [],
     });
+  });
+
+  it("runs AI impact checks without claiming a mixed shared-manifest PR as an AI-owned lane", () => {
+    expect(
+      routeEngineeringCi([
+        ".github/workflows/portal-quality.yml",
+        "docs/portal-production-readiness.md",
+        "docs/testing-and-qa.md",
+        "package.json",
+        "packages/geometry/src/plan.test.ts",
+        "packages/geometry/src/section.test.ts",
+      ]),
+    ).toMatchObject({
+      mode: "foundation",
+      routeKind: "shared_impact",
+      relevant: true,
+      ownershipRequired: false,
+      sharedImpactOnly: true,
+      relevantPaths: ["package.json"],
+      ownedPaths: [],
+      sharedImpactPaths: ["package.json"],
+    });
+
+    expect(
+      routeEngineeringCi(["apps/portal/app/page.test.tsx", "vitest.config.ts"]),
+    ).toMatchObject({
+      routeKind: "shared_impact",
+      relevant: true,
+      ownershipRequired: false,
+      sharedImpactOnly: true,
+      relevantPaths: ["vitest.config.ts"],
+    });
+  });
+
+  it("retains strict foundation ownership when a mixed PR changes AI-owned files", () => {
+    expect(
+      routeEngineeringCi([
+        "package-lock.json",
+        "package.json",
+        "packages/ai/src/engineering.ts",
+        "packages/geometry/src/plan.test.ts",
+      ]),
+    ).toMatchObject({
+      routeKind: "foundation_owned",
+      relevant: true,
+      ownershipRequired: true,
+      sharedImpactOnly: false,
+      relevantPaths: [
+        "package-lock.json",
+        "package.json",
+        "packages/ai/src/engineering.ts",
+      ],
+      ownedPaths: ["packages/ai/src/engineering.ts"],
+      sharedImpactPaths: ["package-lock.json", "package.json"],
+    });
+  });
+
+  it("keeps non-ownership strict guards on shared-impact routes", () => {
+    const workflow = readFileSync(
+      new URL(
+        "../.github/workflows/autonomous-engineering.yml",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    expect(workflow).toContain(
+      "if: steps.route.outputs.ownership_required == 'true' && github.event_name == 'pull_request'",
+    );
+    expect(workflow).toContain(
+      "if: steps.route.outputs.shared_impact_only == 'true' && github.event_name == 'pull_request'",
+    );
+    const sharedGateStart = workflow.indexOf(
+      "- name: Strict shared-impact architecture gates",
+    );
+    const sharedGateEnd = workflow.indexOf(
+      "- name: AI operations contracts",
+      sharedGateStart,
+    );
+    const sharedGate = workflow.slice(sharedGateStart, sharedGateEnd);
+    for (const command of [
+      "npm run files:changed:strict",
+      "npm run dead-code:changed:strict",
+      "npm run root:compat:changed:strict",
+      "npm run browser:supabase:changed:strict",
+      "npm run service-role:changed:strict",
+    ]) {
+      expect(sharedGate).toContain(command);
+    }
+    expect(sharedGate).not.toContain("worktree:changed:strict");
+    expect(sharedGate).not.toContain("architecture:changed:strict");
+    expect(workflow).toContain("run: npm run architecture:changed:strict");
+    expect(
+      workflow.match(/if: steps\.route\.outputs\.relevant == 'true'/g),
+    ).toHaveLength(6);
+  });
+
+  it("writes explicit workflow outputs for shared-impact routing", () => {
+    const dir = mkdtempSync(
+      join(realpathSync(tmpdir()), "sanctuary-ci-route-output-"),
+    );
+    try {
+      const outputPath = join(dir, "github-output.txt");
+      writeFileSync(outputPath, "");
+      writeOutputs(
+        routeEngineeringCi(["apps/portal/app/page.tsx", "package.json"]),
+        outputPath,
+      );
+      expect(readFileSync(outputPath, "utf8")).toBe(
+        [
+          "mode=foundation",
+          "route_kind=shared_impact",
+          "relevant=true",
+          "ownership_required=false",
+          "shared_impact_only=true",
+          `owner_patterns=${FOUNDATION_OWNER_PATTERNS.join(",")}`,
+          "changed_count=2",
+          "",
+        ].join("\n"),
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("rejects unsafe paths and binds pull-request diffs to exact SHAs", () => {
@@ -258,10 +394,62 @@ describe("autonomous engineering CI routing", () => {
     expect(paths).toEqual(["packages/ai/src/engineering.ts"]);
     expect(args).toEqual([
       "diff",
+      "--no-renames",
       "--name-only",
       "--diff-filter=ACDMRTUXB",
       `${baseSha}...${headSha}`,
     ]);
+  });
+
+  it("treats a rename out of an AI-owned path as strict ownership on every event route", () => {
+    const repo = mkdtempSync(
+      join(realpathSync(tmpdir()), "sanctuary-ci-rename-route-"),
+    );
+    try {
+      runGit(repo, ["init"]);
+      runGit(repo, ["config", "user.email", "fixture@example.com"]);
+      runGit(repo, ["config", "user.name", "Fixture"]);
+      mkdirSync(join(repo, "packages", "ai", "src"), { recursive: true });
+      writeFileSync(
+        join(repo, "packages", "ai", "src", "contract.ts"),
+        "export const contract = true;\n",
+      );
+      runGit(repo, ["add", "."]);
+      runGit(repo, ["commit", "-m", "base"]);
+      const base = runGit(repo, ["rev-parse", "HEAD"]);
+
+      mkdirSync(join(repo, "packages", "geometry", "src"), {
+        recursive: true,
+      });
+      runGit(repo, [
+        "mv",
+        "packages/ai/src/contract.ts",
+        "packages/geometry/src/contract.ts",
+      ]);
+      runGit(repo, ["commit", "-m", "rename out"]);
+      const head = runGit(repo, ["rev-parse", "HEAD"]);
+      const git = (args: string[]) =>
+        runGit(repo, args).split(/\r?\n/).filter(Boolean);
+
+      for (const event of [
+        { pull_request: { base: { sha: base }, head: { sha: head } } },
+        { before: base, after: head },
+        {},
+      ]) {
+        const changedPaths = changedPathsForEvent(event, git);
+        expect(changedPaths).toEqual([
+          "packages/ai/src/contract.ts",
+          "packages/geometry/src/contract.ts",
+        ]);
+        expect(routeEngineeringCi(changedPaths)).toMatchObject({
+          routeKind: "foundation_owned",
+          ownershipRequired: true,
+          ownedPaths: ["packages/ai/src/contract.ts"],
+        });
+      }
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
   });
 });
 

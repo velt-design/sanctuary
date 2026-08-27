@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-27 | Required CI Routing              | Promoted | Keep dependency/test-impact routing separate from domain ownership. Shared manifests and root tooling still run affected AI contracts and strict non-ownership guards, but only genuinely AI-owned paths activate the fixed AI lane. Any AI-owned path in a mixed PR restores strict ownership for the complete change set. |
 | 2026-08-26 | Autonomous Engineering Kill Switch | Promoted | Stop only the protected Sanctuary gateway PID after matching the runtime user, exact process title and isolated loopback port. Use one graceful signal, prove process and health are down, remove only the PID record, preserve default OpenClaw authority, and refuse broad matching or force kill. |
 | 2026-08-26 | Autonomous Engineering Proof     | Promoted | Treat a coding worker's draft PR as a candidate, not completion. Bind exact-head checks, one classified transient rerun, same-lane repair and a separately identified read-only reviewer into durable state; finish only after CI and strict review pass. Keep hosted `main` protection app-bypass-free and human-merged. |
 | 2026-08-26 | Autonomous Engineering Lanes     | Promoted | Bind every coding run to one strict manifest hash, exact base SHA, feature branch and owner-recorded worktree. Expose narrow provision/status/publish/cleanup tools instead of lead shell access, refuse unknown or outside-lane state, and require hosted default-branch protection before promotion because repository content-write credentials cannot themselves exclude `main`. |
@@ -5269,3 +5270,26 @@ Why it mattered: Autonomous work needs a dependable kill switch, but the switch 
 Current guardrail: Stop only the protected Sanctuary PID after matching the runtime user, exact gateway process title and isolated loopback port. Send one graceful signal, prove both process and gateway health are down, remove only the isolated PID record, and fingerprint the default OpenClaw authority around the operation. Refuse missing ownership evidence, broad matching, force kill and unrelated state cleanup.
 Promoted to: `docs/ai/operations/openclaw-engineering-runtime.md`; `docs/ai/operations/autonomous-engineering.md`
 Related docs/tests: `scripts/ai/mac-openclaw-engineering-stop.mjs`; `test/ai-operations-openclaw-engineering.test.ts`; `npm run test:ai:ops`
+
+### 2026-08-27 - Required CI Routing - Test Impact Is Not Domain Ownership
+
+Date: 2026-08-27
+Area: Autonomous engineering required-check routing
+Status: Promoted
+Decision or mistake: The required foundation check used one pattern list both to
+decide whether shared manifests could affect AI contracts and to claim ownership
+of the pull request. A product PR that added a root script therefore ran the
+right focused AI checks but failed because its legitimate product files were not
+inside the hard-coded AI lane.
+Why it mattered: Removing shared manifests from the route would hide real
+dependency and test-runner impact, while broadening the AI owner patterns would
+silently grant an autonomous engineering lane unrelated product scope.
+Current guardrail: Route genuinely foundation-owned paths separately from shared
+impact triggers. Shared-impact-only pull requests run the AI contract, type and
+boundary checks plus all strict changed-file guards except worktree ownership.
+If any genuinely foundation-owned path changes, require strict AI-lane ownership
+for the complete pull request, including any shared manifests.
+Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
+Related docs/tests: `scripts/ai/engineering-ci-route.mjs`;
+`.github/workflows/autonomous-engineering.yml`;
+`test/ai-operations-engineering-ci-review.test.ts`; `npm run test:ai:ops`
