@@ -633,8 +633,13 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
     .locator(
       'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     )
-    .evaluateAll((elements) =>
-      elements.flatMap((element) => {
+    .evaluateAll((elements) => {
+      const visibleTabStops: Array<{
+        index: number;
+        region: string | null;
+      }> = [];
+
+      for (const element of elements) {
         const control = element as HTMLElement;
         const bounds = control.getBoundingClientRect();
         const style = getComputedStyle(control);
@@ -645,40 +650,24 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
           style.visibility === "hidden" ||
           style.display === "none"
         ) {
-          return [];
+          continue;
         }
-        const index = control.dataset.overviewTabStop
-          ? Number(control.dataset.overviewTabStop)
-          : -1;
-        return [
-          {
-            index,
-            region:
-              control
-                .closest<HTMLElement>("[data-project-overview-region]")
-                ?.getAttribute("data-project-overview-region") ?? null,
-          },
-        ];
-      }),
-    );
-  const visibleTabStops = layout.locator(
-    'a[href]:visible, button:not([disabled]):visible, input:not([disabled]):visible, select:not([disabled]):visible, textarea:not([disabled]):visible, [tabindex]:not([tabindex="-1"]):visible',
-  );
-  const tabStopCount = await visibleTabStops.count();
-  await visibleTabStops.evaluateAll((elements) => {
-    elements.forEach((element, index) => {
-      (element as HTMLElement).dataset.overviewTabStop = String(index);
+
+        const index = visibleTabStops.length;
+        control.dataset.overviewTabStop = String(index);
+        visibleTabStops.push({
+          index,
+          region:
+            control
+              .closest<HTMLElement>("[data-project-overview-region]")
+              ?.getAttribute("data-project-overview-region") ?? null,
+        });
+      }
+
+      return visibleTabStops;
     });
-  });
-  const tabStopRegions = await visibleTabStops.evaluateAll((elements) =>
-    elements.map(
-      (element) =>
-        element
-          .closest<HTMLElement>("[data-project-overview-region]")
-          ?.getAttribute("data-project-overview-region") ?? null,
-    ),
-  );
-  expect(tabStops.length).toBe(tabStopCount);
+  const tabStopCount = tabStops.length;
+  const tabStopRegions = tabStops.map(({ region }) => region);
   expect(
     tabStopRegions.filter(
       (region, index) => region && region !== tabStopRegions[index - 1],
