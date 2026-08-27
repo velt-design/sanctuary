@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-27 | Design Booklet Native Runtime    | Promoted | Keep `sharp` in the Portal production dependency graph and load it only at the image-normalization boundary. Lightweight booklet reads and signed-upload preparation must not import a native image processor during route startup. |
 | 2026-08-26 | Autonomous Engineering Kill Switch | Promoted | Stop only the protected Sanctuary gateway PID after matching the runtime user, exact process title and isolated loopback port. Use one graceful signal, prove process and health are down, remove only the PID record, preserve default OpenClaw authority, and refuse broad matching or force kill. |
 | 2026-08-26 | Autonomous Engineering Proof     | Promoted | Treat a coding worker's draft PR as a candidate, not completion. Bind exact-head checks, one classified transient rerun, same-lane repair and a separately identified read-only reviewer into durable state; finish only after CI and strict review pass. Keep hosted `main` protection app-bypass-free and human-merged. |
 | 2026-08-26 | Autonomous Engineering Lanes     | Promoted | Bind every coding run to one strict manifest hash, exact base SHA, feature branch and owner-recorded worktree. Expose narrow provision/status/publish/cleanup tools instead of lead shell access, refuse unknown or outside-lane state, and require hosted default-branch protection before promotion because repository content-write credentials cannot themselves exclude `main`. |
@@ -329,6 +330,17 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 
 ## Entries
+
+### 2026-08-27 - Design Booklet Native Runtime - Keep Heavy Processing Off Lightweight Route Startup
+
+Date: 2026-08-27
+Area: Project Design Booklet image uploads and PDF delivery
+Status: Promoted
+Decision or mistake: `sharp` was declared only as a Portal development dependency and imported when the shared project-persistence module started. A clean Vercel production deployment externalized the JavaScript package without its Linux `libvips` runtime, so booklet reads and signed-upload preparation returned an HTML `500` before authentication or route error handling could run.
+Why it mattered: The client reported a generic asset-preparation failure, every replacement remained unsaved, and PDF download correctly waited forever on the failed persistence boundary even though the booklet content and browser preview were valid.
+Current guardrail: Keep `sharp` in `apps/portal` production dependencies, keep its Linux native optional packages outside the development-only lockfile graph, and load the processor only inside the image-normalization owner. Lightweight reads and signed-upload preparation must remain independent of native image processing. Guard the manifest, lockfile and lazy boundary with a focused test, then verify a clean Portal production build and the deployed API response shape.
+Promoted to: `docs/design-booklets.md`; `docs/portal-production-readiness.md`
+Related docs/tests: `apps/portal/lib/designBooklets/projectRuntimeDependencies.test.ts`; `apps/portal/lib/designBooklets/projectPersistence.ts`; `npm run build:portal`
 
 ### 2026-06-02 - Portal Test Auth - Explicit Test User Provisioning
 

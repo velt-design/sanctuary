@@ -38,6 +38,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "server-only": "^0.0.1",
+    "sharp": "0.35.3",
     "three": "^0.183.2",
     "three-stdlib": "^2.36.1"
   },
@@ -51,7 +52,6 @@
     "eslint": "^9.33.0",
     "jsdom": "^27.4.0",
     "postcss": "8.5.26",
-    "sharp": "0.35.3",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.0.16"

@@ -2,7 +2,7 @@
 
 Status: Active evolving tracker.
 
-Last updated: 2026-08-18.
+Last updated: 2026-08-27.
 
 Purpose: keep agents and maintainers aligned on the path to a first-class, production-grade internal portal. This doc is the dashboard for current readiness, blockers, priorities, parallel lanes, and next actions. Detailed behavior rules stay in the canonical docs linked below.
 
@@ -353,6 +353,10 @@ When updating this tracker:
 - Keep this file ASCII and link to repo-relative paths.
 
 ## Change Notes
+
+### 2026-08-27
+
+- Corrected a Design Booklet production-startup regression where Vercel externalized the Portal's development-only `sharp` package without its Linux `libvips` runtime. `sharp` is now a Portal production dependency, its Linux native packages remain in the production lockfile graph, and project persistence loads it only when image bytes require normalization. Lightweight booklet reads and upload-signing no longer import native image processing at route startup; a focused dependency/lazy-boundary test guards the deployment contract.
 
 ### 2026-08-18
 
