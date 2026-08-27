@@ -1,6 +1,6 @@
 # Project-linked website enquiry files
 
-Status: implementation complete in the repository; migrations and historical backfill are not applied. Production migration, backfill, push, and deployment require a separate reviewed approval.
+Status: implementation approved. The exact schema migrations are applied and ledgered in staging and production. The production historical dry run is complete, but its backfill is not applied because ambiguous declarations and changed-project evidence require separate review.
 
 ## User experience
 
@@ -29,6 +29,14 @@ Migration sources:
 - `supabase/migrations/20260827000001_project_enquiry_attachments.sql`
 - `supabase/migrations/20260827000002_project_enquiry_attachments_schema_cache.sql`
 
+## Deployment evidence
+
+On 2026-08-27 the exact migrations were rollback-rehearsed, then applied individually to positively identified staging `tnsiprehuldksnuowubv` and production `iytanftukulcnavossmd`. Blanket `db push` was not used. Completed physical backups were confirmed first: staging backup `1489369286` and production backup `1491102067`. The canonical-LF SHA-256 values were `daaffed16756a84608ef12da039dfce139325c217e6211341bc57993f55925f4` for `20260827000001` and `a977270fe5892e98f033598bc66678466ebb39e6da5dfd0c9594d992ef7e7f32` for `20260827000002`.
+
+Both postflights found three RLS-enabled tables, four policies, four triggers, five functions, no anonymous table grants, service-role-only backfill execution, the private Storage bucket, both unique migration-ledger versions, and zero deployment-created attachment, event, or backfill-run rows.
+
+The staging dry run was empty. Its report SHA-256 is `b89e1f3220357156b271a1344b0a78cbeaa1da572569fbe45496a8bf3a327ef2`. The production report SHA-256 is `7a5ee65b62449b71ec5af8028275a4ee64c8d730cde71a6ca64c699bbafba322`; it reports 59 exact linkable files, 22 ambiguous declarations, nine projects whose current link changed, zero missing Storage objects, and zero unmatched Storage objects. No historical rows were linked and no Storage object was moved, renamed, or deleted.
+
 ## Historical dry run and reviewed apply
 
 The tool is dry-run by default and requires the intended environment plus exact Supabase project ref. Its JSON report must be written outside the repository with create-only semantics:
@@ -41,15 +49,12 @@ The report contains exact linkable candidates, already-linked files, referenced 
 
 The read phase never writes database rows and never moves, renames, or deletes Storage objects. Applying a report is intentionally separate and is not authorized by implementing this feature. After the report and migration plan are reviewed, an operator must use a new UUID, the matching report/environment/ref, `--apply`, and the exact confirmation environment value documented by the script. A report containing missing, unmatched, ambiguous, or changed-project evidence also requires the explicit `--accept-reviewed-exceptions` acknowledgement; this does not add those exceptions to the candidate set. The service-only RPC rechecks every candidate against current `enquiry_requests.project_id`, `submission_id`, the exact `files[ordinal]` metadata, and `storage.objects` in one transaction. Any changed or ambiguous source rejects the complete run. Replaying the same run UUID and identical payload is safe; using that UUID with different candidates is rejected. A reviewed report with zero candidates is a no-op and creates no run row.
 
-## Review and rollout sequence
+## Remaining rollout sequence
 
-1. Review this implementation, migration SQL, focused tests, and the dry-run report format. Do not run against a live environment during implementation review.
-2. Back up and positively identify the target database and private bucket using the normal migration-readiness process.
-3. Apply the ordered schema migrations to staging only after approval. Do not run the backfill yet.
-4. Run the staging dry run, review every category and every ambiguous/project-history limitation, then explicitly approve or reject the exact report.
-5. If approved, apply only that report UUID/payload in staging and rerun the dry run. Expected linkable count is zero; all applied candidates are already linked.
-6. Verify staff and non-staff authorization, exact-project denial, View/Download audit events, 60-second redirects, Work-default/Files-tab UI, and both sides of the 8 MB email boundary.
-7. Present staging evidence and a production migration/dry-run plan for separate approval. No production migration, live backfill, push, or deployment is implied by these steps.
+1. Review the exact production dry-run report, especially every ambiguous declaration and changed-project entry. Never infer the intended project.
+2. If the exact 59-candidate subset is approved, apply only that immutable report with a new run UUID and the explicit reviewed-exceptions acknowledgement. Do not include any ambiguous or changed-project evidence.
+3. Rerun the production dry run. The applied candidates must move to `alreadyLinkedFiles`; all exceptions must remain visible for separate resolution.
+4. Verify staff and non-staff authorization, exact-project denial, View/Download audit events, 60-second redirects, Work-default/Files-tab UI, and both sides of the 8 MB email boundary.
 
 ## Focused verification
 
