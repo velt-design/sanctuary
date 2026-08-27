@@ -1,6 +1,6 @@
 import React, { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { renderIntoDocument } from "../../../../../../../test/reactHarness";
 import ProjectCloseDialog from "./ProjectCloseDialog";
 
 vi.mock("@/components/ui/PipelineModal", () => ({
@@ -16,40 +16,35 @@ vi.mock("@/components/ui/PipelineModal", () => ({
     ) : null,
 }));
 
-let root: Root | null = null;
-let container: HTMLDivElement | null = null;
+let rendered: ReturnType<typeof renderIntoDocument> | null = null;
 
-function renderDialog(onConfirm = vi.fn().mockResolvedValue(true)) {
-  container = document.createElement("div");
-  document.body.appendChild(container);
-  root = createRoot(container);
-  act(() => {
-    root!.render(
-      <ProjectCloseDialog
-        open
-        stage="contacted"
-        openWorkCount={2}
-        busy={false}
-        onClose={vi.fn()}
-        onConfirm={onConfirm}
-      />,
-    );
-  });
-  return { container, onConfirm };
+function renderDialog(
+  onConfirm = vi.fn().mockResolvedValue(true),
+  onClose = vi.fn(),
+) {
+  rendered = renderIntoDocument(
+    <ProjectCloseDialog
+      open
+      stage="contacted"
+      openWorkCount={2}
+      busy={false}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />,
+  );
+  return { container: rendered.container, onClose, onConfirm };
 }
 
 function chooseRadio(value: string) {
-  const radio = container!.querySelector<HTMLInputElement>(
+  const radio = rendered!.container.querySelector<HTMLInputElement>(
     `input[type="radio"][value="${value}"]`,
   )!;
   act(() => radio.click());
 }
 
 afterEach(() => {
-  act(() => root?.unmount());
-  container?.remove();
-  root = null;
-  container = null;
+  rendered?.unmount();
+  rendered = null;
 });
 
 describe("ProjectCloseDialog", () => {
@@ -71,7 +66,7 @@ describe("ProjectCloseDialog", () => {
   });
 
   it("uses a structured Lost outcome with only an optional note", async () => {
-    const { container, onConfirm } = renderDialog();
+    const { container, onClose, onConfirm } = renderDialog();
     chooseRadio("LOST");
     const select = container.querySelector<HTMLSelectElement>(
       "#project-lost-outcome",
@@ -89,7 +84,10 @@ describe("ProjectCloseDialog", () => {
     const action = Array.from(container.querySelectorAll("button")).find(
       (button) => button.textContent === "Close as Lost - Budget or price",
     )!;
-    await act(async () => action.click());
+    await act(async () => {
+      action.click();
+      await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    });
     expect(onConfirm).toHaveBeenCalledWith({
       outcome: "LOST_BUDGET_PRICE",
       note: undefined,

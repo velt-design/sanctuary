@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-27 | Vitest Stability                 | Promoted | Keep one validated worker policy across root and Worker configs: four workers in CI, eight locally, with only a positive-safe-integer `VITEST_MAX_WORKERS` override. Await React state-producing events and async milestones inside `act(...)`; never hide warnings globally or suppress intentional negative-route logging. |
 | 2026-08-27 | Toolchain Dependency Audit       | Promoted | Keep the full dependency audit fail-closed. Permit only the two named no-fix `xlsx` advisories while the package remains a root-only development dependency used solely by the legacy Running Jobs importer; a new advisory, available fix, production/workspace placement, or another executable import must fail CI. |
 | 2026-08-27 | Commercial Tab Intent Preload    | Promoted | When a route tab owns a second lazy subview, intent preload must include both module boundaries and the target query. Do not call the outer shell warm while its default useful-content module still starts only after selection. |
 | 2026-08-27 | Design Booklet Native Runtime    | Promoted | Keep `sharp` in the Portal production graph, lazy-load every product consumer, and explicitly trace its Linux addon plus libvips package into the narrow booklet routes. A lockfile entry alone does not prove a native runtime reached the deployed function. |
@@ -333,6 +334,17 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 
 ## Entries
+
+### 2026-08-27 - Vitest Stability - Bound Concurrency And Await React Work
+
+Date: 2026-08-27
+Area: Repository test execution
+Status: Promoted
+Decision or mistake: Unbounded Vitest concurrency exhausted worker processes during broad suites, while several component tests allowed history events, promise-driven persistence, or completion polling to settle outside React `act(...)`. The assertions could pass while the run still emitted worker-exit or React warnings.
+Why it mattered: A passing assertion count is not a reliable quality signal when the runner loses workers or component state continues after the test boundary. Globally filtering console output would also hide real regressions and intentional route-error evidence.
+Current guardrail: Resolve Vitest concurrency through `test/vitestWorkerPolicy.ts`: four workers for CI, eight locally, or a validated positive-safe-integer `VITEST_MAX_WORKERS` override. Keep root Playwright exclusion intact. Component tests must await the exact state-producing event or mock milestone within `act(...)`; do not suppress `console.error`, React warnings, or intentional negative-route logging.
+Promoted to: `docs/testing-and-qa.md`; `docs/portal-production-readiness.md`
+Related docs/tests: `test/vitest-worker-policy.test.ts`; `apps/portal/app/staff/design-booklets/DesignBookletProjectPersistence.test.tsx`; `apps/portal/components/projects/ProjectPage/tabs/overview/ProjectCloseDialog.test.tsx`; `apps/marketing/components/Header.test.tsx`; `npm run test:portal`
 
 ### 2026-08-27 - Toolchain Dependency Audit - Isolate Exceptions Instead Of Ignoring Development Findings
 
