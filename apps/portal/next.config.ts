@@ -2,10 +2,23 @@ import path from 'node:path';
 import type { NextConfig } from 'next';
 
 const playwrightDistDir = process.env.PORTAL_PLAYWRIGHT_DIST_DIR?.trim();
+const designBookletSharpRuntimeFiles = [
+  '../../node_modules/sharp/**/*',
+  '../../node_modules/@img/sharp-linux-x64/**/*',
+  '../../node_modules/@img/sharp-libvips-linux-x64/**/*',
+];
 
 const nextConfig: NextConfig = {
   ...(playwrightDistDir ? { distDir: playwrightDistDir } : {}),
   experimental: { externalDir: true },
+  outputFileTracingRoot: path.resolve(__dirname, '../..'),
+  outputFileTracingIncludes: {
+    '/api/qa/design-booklet-workbench/pdf': designBookletSharpRuntimeFiles,
+    '/api/staff/v1/design-booklets/pdf': designBookletSharpRuntimeFiles,
+    '/api/staff/v1/projects/*/design-booklet/assets/complete': designBookletSharpRuntimeFiles,
+    '/api/staff/v1/projects/*/design-booklet/assets/copy': designBookletSharpRuntimeFiles,
+    '/api/staff/v1/projects/*/design-booklet/pdf': designBookletSharpRuntimeFiles,
+  },
   allowedDevOrigins: ['127.0.0.1'],
   transpilePackages: ['@sp/ai', '@sp/costing', '@sp/email-provider', '@sp/geometry', '@sp/geometry-viewer', '@sp/quote-format', '@sp/theme'],
   // Enforce TypeScript correctness during production builds.

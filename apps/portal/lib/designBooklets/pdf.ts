@@ -12,7 +12,6 @@ import {
   type PDFImage,
   type PDFPage,
 } from "pdf-lib";
-import sharp from "sharp";
 import fontkit from "@/lib/quotes/fontkit";
 import {
   buildDesignBookletRenderModel,
@@ -58,6 +57,7 @@ import {
   designBookletCssBaselineOffset,
   normalizeDesignBookletMultilinePresentationText,
 } from "./presentation";
+import { loadDesignBookletSharp } from "./sharpRuntime";
 import type {
   DesignBookletContentCatalog,
   DesignBookletDraft,
@@ -166,6 +166,7 @@ function combinedOpacity(...values: number[]): number {
 async function createShadeOverlay(
   kind: "image-page" | "review-edge",
 ): Promise<Uint8Array> {
+  const sharp = await loadDesignBookletSharp();
   const pixels = new Uint8Array(OVERLAY_WIDTH * OVERLAY_HEIGHT * 4);
 
   for (let y = 0; y < OVERLAY_HEIGHT; y += 1) {

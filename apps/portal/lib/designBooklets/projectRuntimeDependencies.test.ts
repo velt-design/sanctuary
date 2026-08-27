@@ -38,13 +38,7 @@ describe("project design booklet runtime dependencies", () => {
   });
 
   it("keeps lightweight project booklet routes independent of Sharp startup", () => {
-    const persistenceSource = readFileSync(
-      path.join(
-        process.cwd(),
-        "apps/portal/lib/designBooklets/projectPersistence.ts",
-      ),
-      "utf8",
-    );
+    const runtimeConsumers = ["projectPersistence.ts", "request.ts", "pdf.ts"];
     const runtimeSource = readFileSync(
       path.join(
         process.cwd(),
@@ -53,9 +47,49 @@ describe("project design booklet runtime dependencies", () => {
       "utf8",
     );
 
-    expect(persistenceSource).not.toMatch(/^import sharp\b/m);
-    expect(persistenceSource).not.toContain('import("sharp")');
+    for (const filename of runtimeConsumers) {
+      const source = readFileSync(
+        path.join(
+          process.cwd(),
+          "apps/portal/lib/designBooklets",
+          filename,
+        ),
+        "utf8",
+      );
+      expect(source).not.toMatch(/^import sharp\b/m);
+      expect(source).not.toContain('import("sharp")');
+      expect(source).toContain("loadDesignBookletSharp");
+    }
     expect(runtimeSource).toContain('import("sharp")');
+  });
+
+  it("traces the Linux Sharp and libvips runtime into booklet functions", () => {
+    const nextConfigSource = readFileSync(
+      path.join(process.cwd(), "apps/portal/next.config.ts"),
+      "utf8",
+    );
+
+    expect(nextConfigSource).toContain(
+      "outputFileTracingRoot: path.resolve(__dirname, '../..')",
+    );
+    expect(nextConfigSource).toContain(
+      "'../../node_modules/@img/sharp-linux-x64/**/*'",
+    );
+    expect(nextConfigSource).toContain(
+      "'../../node_modules/@img/sharp-libvips-linux-x64/**/*'",
+    );
+    expect(nextConfigSource).toContain(
+      "'/api/staff/v1/design-booklets/pdf'",
+    );
+    expect(nextConfigSource).toContain(
+      "'/api/staff/v1/projects/*/design-booklet/assets/complete'",
+    );
+    expect(nextConfigSource).toContain(
+      "'/api/staff/v1/projects/*/design-booklet/assets/copy'",
+    );
+    expect(nextConfigSource).toContain(
+      "'/api/staff/v1/projects/*/design-booklet/pdf'",
+    );
   });
 
   it("loads the native image processor through the runtime adapter", async () => {

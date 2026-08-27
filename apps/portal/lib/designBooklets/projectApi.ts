@@ -3,6 +3,7 @@ import "server-only";
 import { jsonError } from "@/lib/api/staffApi";
 import { DesignBookletRequestError } from "./request";
 import { ProjectDesignBookletError } from "./projectPersistence";
+import { DesignBookletImageProcessorUnavailableError } from "./sharpRuntime";
 
 export function privateProjectDesignBookletResponse(
   response: Response,
@@ -24,6 +25,13 @@ export function projectDesignBookletErrorResponse(
     return privateProjectDesignBookletResponse(
       jsonError(error.message, error.status, null, {
         code: "invalid_booklet_draft",
+      }),
+    );
+  }
+  if (error instanceof DesignBookletImageProcessorUnavailableError) {
+    return privateProjectDesignBookletResponse(
+      jsonError(error.message, 503, null, {
+        code: "image_processor_unavailable",
       }),
     );
   }

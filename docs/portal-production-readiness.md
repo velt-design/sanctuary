@@ -357,7 +357,7 @@ When updating this tracker:
 
 ### 2026-08-27
 
-- Corrected a Design Booklet production-startup regression where Vercel externalized the Portal's development-only `sharp` package without its Linux `libvips` runtime. `sharp` is now a Portal production dependency, its Linux native packages remain in the production lockfile graph, and project persistence loads it only when image bytes require normalization. Lightweight booklet reads and upload-signing no longer import native image processing at route startup; a focused dependency/lazy-boundary test guards the deployment contract.
+- Corrected a Design Booklet production-startup regression where Vercel externalized `sharp` without copying its separate Linux `libvips` runtime into booklet functions. `sharp` remains a Portal production dependency, all production consumers load it through one lazy adapter, and the Portal Next config explicitly traces Sharp plus its Linux addon/libvips packages into only the booklet PDF and project-booklet API routes. Lightweight booklet reads and upload signing stay independent of native processing; the focused runtime contract now guards the manifest, lazy imports, and route-level Vercel trace includes.
 
 ### 2026-08-18
 
