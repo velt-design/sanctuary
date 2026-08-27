@@ -7,12 +7,17 @@ import {
   type EngineeringTaskManifestV1,
 } from "../../packages/ai/src/index";
 
-type Command = "validate-task" | "validate-completion" | "render-worker-prompt";
+type Command =
+  | "validate-task"
+  | "resolve-task"
+  | "validate-completion"
+  | "render-worker-prompt";
 
 function usage(): never {
   console.error(
     "Usage:\n" +
       "  tsx scripts/ai/engineering-contract.ts validate-task <task-json>\n" +
+      "  tsx scripts/ai/engineering-contract.ts resolve-task <task-json>\n" +
       "  tsx scripts/ai/engineering-contract.ts render-worker-prompt <task-json>\n" +
       "  tsx scripts/ai/engineering-contract.ts validate-completion " +
       "<task-json> <completion-json>",
@@ -79,6 +84,22 @@ function main(): void {
           schema: manifest.schema,
           taskId: manifest.taskId,
           branch: manifest.branch,
+          manifestHash: manifestHash(manifest),
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+  if (command === "resolve-task") {
+    const manifest = ENGINEERING_TASK_MANIFEST_SCHEMA_V1.parse(
+      readJson(taskPath),
+    );
+    console.log(
+      JSON.stringify(
+        {
+          manifest,
           manifestHash: manifestHash(manifest),
         },
         null,

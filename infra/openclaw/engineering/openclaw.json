@@ -89,7 +89,10 @@
             "sessions_history",
             "sessions_send",
             "subagents",
-            "progress_card"
+            "progress_card",
+            "sanctuary_engineering_lane_provision",
+            "sanctuary_engineering_lane_status",
+            "sanctuary_engineering_lane_cleanup"
           ],
           "elevated": {
             "enabled": false
@@ -108,6 +111,10 @@
         },
         "tools": {
           "profile": "coding",
+          "alsoAllow": [
+            "sanctuary_engineering_lane_status",
+            "sanctuary_engineering_lane_publish"
+          ],
           "exec": {
             "host": "gateway",
             "mode": "full",
@@ -147,7 +154,7 @@
         },
         "tools": {
           "profile": "minimal",
-          "alsoAllow": ["read"],
+          "alsoAllow": ["read", "sanctuary_engineering_lane_status"],
           "elevated": {
             "enabled": false
           }
@@ -211,7 +218,7 @@
     }
   },
   "plugins": {
-    "allow": ["codex"],
+    "allow": ["codex", "sanctuary-engineering-lanes"],
     "entries": {
       "codex": {
         "enabled": true,
@@ -230,6 +237,10 @@
             "clearEnv": ["CODEX_API_KEY", "OPENAI_API_KEY"]
           }
         }
+      },
+      "sanctuary-engineering-lanes": {
+        "enabled": true,
+        "config": {}
       }
     },
     "slots": {

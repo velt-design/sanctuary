@@ -141,6 +141,18 @@
       "proofCommand": "npm run test:ai:ops && npm run docs:guard"
     },
     {
+      "id": "openclaw-engineering-lane-plugin-entry",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Sanctuary autonomous engineering lanes",
+      "pathPatterns": [
+        "infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/index.mjs"
+      ],
+      "reason": "OpenClaw loads this reviewed native plugin entry from package metadata at gateway startup; the root application import graph does not import it.",
+      "retirementAction": "Remove only after retiring the manifest-bound lane tools from the isolated OpenClaw runtime and proving another controller owns provision, status, draft publication and cleanup.",
+      "proofCommand": "npm run test:ai:ops && sanctuary-openclaw plugins inspect sanctuary-engineering-lanes --runtime --json"
+    },
+    {
       "id": "portal-supabase-compat-helper-duplicate-dep",
       "category": "dynamic-reference",
       "status": "current",

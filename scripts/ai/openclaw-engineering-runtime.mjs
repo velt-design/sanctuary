@@ -16,6 +16,8 @@ import { fileURLToPath } from "node:url";
 export const ENGINEERING_PROFILE = "sanctuary-engineering";
 export const ENGINEERING_GATEWAY_PORT = 19011;
 export const CODEX_PLUGIN_SPEC = "@openclaw/codex@2026.7.1-1";
+export const LANE_PLUGIN_ID = "sanctuary-engineering-lanes";
+export const LANE_PLUGIN_VERSION = "1.0.0";
 export const ENGINEERING_AGENT_IDS = Object.freeze([
   "sanctuary-engineering-supervisor",
   "sanctuary-coding-worker",
@@ -78,12 +80,21 @@ export function resolveEngineeringRuntimePaths({
       "engineering",
       "agents",
     ),
+    lanePluginSource: join(
+      repoRoot,
+      "infra",
+      "openclaw",
+      "engineering",
+      "plugins",
+      LANE_PLUGIN_ID,
+    ),
     workspaceRoot,
     supervisorWorkspace: join(workspaceRoot, "supervisor"),
     workerWorkspace: join(workspaceRoot, "worker"),
     reviewerWorkspace: join(workspaceRoot, "reviewer"),
     runtimeBinDir: join(stateDir, "bin"),
     openclawWrapperPath: join(home, "bin", "sanctuary-openclaw"),
+    engineeringLaneWrapperPath: join(home, "bin", "sanctuary-engineering-lane"),
     openclawBinary: join(home, ".local", "bin", "openclaw"),
     ghBinary: join(home, ".local", "lib", "github-cli", "bin", "gh"),
     pidPath: join(stateDir, "run", "gateway-caffeinate.pid"),
@@ -151,8 +162,28 @@ export OPENCLAW_CONFIG_PATH=${shellQuote(paths.configPath)}
 export OPENCLAW_STATE_DIR=${shellQuote(paths.stateDir)}
 export OPENCLAW_GATEWAY_TOKEN="$(/bin/cat ${shellQuote(paths.gatewayTokenPath)})"
 export OPENCLAW_ALLOW_MULTI_GATEWAY=1
+export SANCTUARY_ENGINEERING_REPO_ROOT=${shellQuote(paths.repoRoot)}
+export SANCTUARY_ENGINEERING_GIT_BINARY=/usr/bin/git
+export SANCTUARY_ENGINEERING_GH_BINARY=${shellQuote(paths.ghBinary)}
 export PATH=${shellQuote(paths.runtimeBinDir)}:${shellQuote(join(paths.home, ".local", "bin"))}:$PATH
 exec ${shellQuote(paths.openclawBinary)} "$@"
+`;
+}
+
+export function buildEngineeringLaneWrapper(
+  paths,
+  nodeBinary = process.execPath,
+) {
+  const laneCli = join(paths.repoRoot, "scripts", "ai", "engineering-lane.mjs");
+  return `#!/bin/zsh
+export OPENCLAW_STATE_DIR=${shellQuote(paths.stateDir)}
+export SANCTUARY_ENGINEERING_REPO_ROOT=${shellQuote(paths.repoRoot)}
+export SANCTUARY_ENGINEERING_GIT_BINARY=/usr/bin/git
+export SANCTUARY_ENGINEERING_GH_BINARY=${shellQuote(paths.ghBinary)}
+export GH_PROMPT_DISABLED=1
+export GIT_TERMINAL_PROMPT=0
+export PATH=${shellQuote(paths.runtimeBinDir)}:${shellQuote(join(paths.home, "bin"))}:${shellQuote(join(paths.home, ".local", "bin"))}:$PATH
+exec ${shellQuote(nodeBinary)} ${shellQuote(laneCli)} "$@"
 `;
 }
 
@@ -164,9 +195,8 @@ export OPENCLAW_STATE_DIR=${shellQuote(paths.stateDir)}
 export OPENCLAW_GATEWAY_TOKEN="$(/bin/cat ${shellQuote(paths.gatewayTokenPath)})"
 export GH_PROMPT_DISABLED=1
 export GIT_TERMINAL_PROMPT=0
-TOKEN="$(${shellQuote(nodeBinary)} ${shellQuote(helper)} --raw)" || exit 1
-export GH_TOKEN="$TOKEN"
-exec ${shellQuote(paths.ghBinary)} "$@"
+export SANCTUARY_ENGINEERING_GH_BINARY=${shellQuote(paths.ghBinary)}
+exec ${shellQuote(nodeBinary)} ${shellQuote(helper)} --safe-gh "$@"
 `;
 }
 
@@ -181,6 +211,9 @@ export function buildEngineeringEnvironment(
     OPENCLAW_STATE_DIR: paths.stateDir,
     OPENCLAW_GATEWAY_TOKEN: gatewayToken,
     OPENCLAW_ALLOW_MULTI_GATEWAY: "1",
+    SANCTUARY_ENGINEERING_REPO_ROOT: paths.repoRoot,
+    SANCTUARY_ENGINEERING_GIT_BINARY: "/usr/bin/git",
+    SANCTUARY_ENGINEERING_GH_BINARY: paths.ghBinary,
     PATH: `${paths.runtimeBinDir}:${join(paths.home, ".local", "bin")}:${baseEnvironment.PATH ?? ""}`,
   };
 }
@@ -226,12 +259,14 @@ export function buildActivationRecord(paths, activatedAt = new Date()) {
     recoveryMode: "rebuild-from-git-and-reissue-credentials",
     sharedDefaultStateTouched: false,
     allowedEffects: [
+      "provision-manifest-bound-worktree",
       "edit-assigned-worktree",
       "run-focused-checks",
       "push-feature-branch",
       "open-or-update-draft-pr",
     ],
     prohibitedEffects: [
+      "force-push",
       "push-main",
       "merge-pr",
       "deploy",
