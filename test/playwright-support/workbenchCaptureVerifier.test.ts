@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractWorkbenchCapturedReproPayload } from './workbenchCapturedRepro';
-import { verifyWorkbenchMultiHouseRoofFailureCapture } from './workbenchCaptureVerifier';
+import { extractWorkbenchCapturedReproPayload } from '../../playwright/support/workbenchCapturedRepro';
+import { verifyWorkbenchMultiHouseRoofFailureCapture } from '../../playwright/support/workbenchCaptureVerifier';
 
 function buildPayload({
   objectFirstHouseIds,

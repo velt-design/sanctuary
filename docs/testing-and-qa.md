@@ -42,6 +42,14 @@ npm run typecheck:worker
 npm run lint
 ```
 
+The root Vitest configuration discovers ordinary unit files using Vitest's
+standard `.test` and `.spec` patterns, but explicitly excludes `playwright/**`.
+Browser specs remain owned by the existing Playwright configurations and the
+browser commands documented below; `npm test` must never invoke them through
+the Vitest runner. Unit coverage for Playwright support helpers lives under
+`test/playwright-support/` so those suites remain part of the root Vitest gate
+without broadening browser-spec discovery.
+
 Marketing public-boundary changes should run the unit/domain suite, marketing
 TypeScript and ESLint, the production build, and the relevant browser specs.
 `apps/marketing/lib/publicTokenExpiry.domain.test.ts` proves expired quote and
@@ -721,7 +729,7 @@ Slices 6 and 7 add focused component/contract coverage for native Materials/Labo
 
 `npm run portal:agent-scorecard:strict` runs the same read-only scorecard plus the current portal-agent strictness ratchet. It fails only when route catalog, scenario, debug-export, seeded-scenario, or shared browser evidence coverage drops below the documented baseline; repo-health metrics remain advisory.
 
-The portal route catalog is documented in `docs/portal-route-catalog.md`. `playwright/support/portalRouteCatalog.test.ts` recursively inventories every `apps/portal/app/**/page.tsx` file and requires an exact match with the catalog, including authenticated, public-auth, diagnostics, and redirect-only entries. Add route metadata there first, then let browser specs consume the relevant catalog subset instead of adding local hardcoded route lists.
+The portal route catalog is documented in `docs/portal-route-catalog.md`. `test/playwright-support/portalRouteCatalog.test.ts` recursively inventories every `apps/portal/app/**/page.tsx` file and requires an exact match with the catalog, including authenticated, public-auth, diagnostics, and redirect-only entries. Add route metadata there first, then let browser specs consume the relevant catalog subset instead of adding local hardcoded route lists.
 
 Shared page debug exports are enabled only outside production and only with `ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1`, `NEXT_PUBLIC_ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1`, `PORTAL_PAGE_DEBUG_EXPORTS=1`, or `NEXT_PUBLIC_PORTAL_PAGE_DEBUG_EXPORTS=1`. Project detail, redirected estimate detail, quote detail, and design workbench routes expose `data-portal-debug-export="true"` in the scenario lane. Browser specs should use `readPortalPageDebugExport(page)` / `expectPortalDebugExport(page, pageId)` from `playwright/support/portalAgent.ts`; bug reports for complex pages should include this payload when available.
 

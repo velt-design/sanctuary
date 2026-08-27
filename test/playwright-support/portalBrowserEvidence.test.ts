@@ -6,7 +6,7 @@ import {
   resolvePortalEvidenceMode,
   sanitizeUrlForEvidence,
   shouldAttachRichPortalEvidence,
-} from './portalBrowserEvidence';
+} from '../../playwright/support/portalBrowserEvidence';
 
 describe('portalBrowserEvidence', () => {
   it('defaults to lightweight evidence mode unless explicitly set to full', () => {

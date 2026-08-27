@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractWorkbenchCapturedReproPayload } from './workbenchCapturedRepro';
+import { extractWorkbenchCapturedReproPayload } from '../../playwright/support/workbenchCapturedRepro';
 
 const rawWorkbenchPayload = {
   snapshot: {

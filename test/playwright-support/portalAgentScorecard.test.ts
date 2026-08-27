@@ -6,9 +6,9 @@ import {
   parseRepoHealthForScorecard,
   type PortalAgentScorecard,
   validatePortalAgentScorecardStrict,
-} from './portalAgentScorecard';
-import { portalRouteCatalog } from './portalRouteCatalog';
-import { portalScenarioRegistry } from './portalScenarioRegistry';
+} from '../../playwright/support/portalAgentScorecard';
+import { portalRouteCatalog } from '../../playwright/support/portalRouteCatalog';
+import { portalScenarioRegistry } from '../../playwright/support/portalScenarioRegistry';
 
 const REPO_HEALTH_SAMPLE = `repo-health-trends: current advisory snapshot
 Date: 2026-06-02
