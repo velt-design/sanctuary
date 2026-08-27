@@ -1,0 +1,31 @@
+.panel {
+  display: grid;
+  gap: var(--ui-space-3);
+  min-width: 0;
+}
+.intro {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+  line-height: var(--ui-line-height-body);
+}
+
+.filename {
+  display: block;
+  max-width: 42ch;
+  color: var(--ui-text-strong);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+}
+
+@media (max-width: 767px) {
+  .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
