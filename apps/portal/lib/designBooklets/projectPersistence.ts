@@ -3,7 +3,6 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PDFDocument } from "pdf-lib";
-import sharp from "sharp";
 import { uuidFromAppId } from "@/lib/supabase/mappers";
 import {
   createProjectDesignBookletDraft,
@@ -17,6 +16,7 @@ import {
 } from "./pageModel";
 import { readDesignBookletDefaultImage } from "./pdfAssets";
 import { parseDesignBookletDraft } from "./request";
+import { loadDesignBookletSharp } from "./sharpRuntime";
 import {
   DESIGN_BOOKLET_DEFAULT_ASSET_IDS,
   type DesignBookletDefaultAssetId,
@@ -424,6 +424,16 @@ async function normalizeImageBytes(source: Uint8Array): Promise<{
   width: number;
   height: number;
 }> {
+  let sharp: Awaited<ReturnType<typeof loadDesignBookletSharp>>;
+  try {
+    sharp = await loadDesignBookletSharp();
+  } catch {
+    throw new ProjectDesignBookletError(
+      "Booklet image processing is temporarily unavailable.",
+      503,
+      "asset_processor_unavailable",
+    );
+  }
   let output: Buffer;
   try {
     output = await sharp(source, { limitInputPixels: MAX_IMAGE_PIXELS })

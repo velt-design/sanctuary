@@ -2,7 +2,7 @@
 
 Status: Active evolving tracker.
 
-Last updated: 2026-08-18.
+Last updated: 2026-08-27.
 
 Purpose: keep agents and maintainers aligned on the path to a first-class, production-grade internal portal. This doc is the dashboard for current readiness, blockers, priorities, parallel lanes, and next actions. Detailed behavior rules stay in the canonical docs linked below.
 
@@ -106,7 +106,7 @@ The product contract remains 100 ms visible feedback and 500 ms useful content f
 | --------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PPS-01 | Green | The 2026-08-06 local optimized production build completed exactly five authenticated performance repetitions against one integrated state. It recorded Projects Index, Projects-to-project, browser Back, cold Project Detail, and current project-tab feedback, useful-content, and background-settlement evidence. Preserve this as last-known evidence and re-run after a performance-relevant approved change; do not rebaseline from development compilation or a dirty mixed lane. |
 | PPS-02 | Green | Current Projects Index and routine project opening pass the locked 100/500 ms gate. The pre-change current-ref Projects-to-project useful p75 was 1,329 ms; reading the freshest matching combined Projects-index response at the project-shell boundary reduced exactly-five-run feedback/useful p75 to 14/19 ms. Sidebar route prefetch is no longer viewport-wide and starts from hover, focus, touch, or pointer-down. The current-user QueryClient, immediate canonical URL feedback, truthful updating frame, quiet authoritative snapshot refresh, access-ending data hiding, and reversible browser Back remain intact. |
-| PPS-03 | Yellow | The production journey now covers Overview, Commercial Estimates/Quotes/Invoices, and conditional Job Packs. The project frame renders selected-tab state and the matching owned shell optimistically while `router.replace()` and specialist data settle in the background; Commercial applies the same rule to all three subviews. The previous exactly-five-run evidence remains historical for the former Calculator/Commercial registry (36/40 ms Calculator, 38/41 ms Quotes, 38/41 ms Invoices, 39/44 ms Overview, and 37/41 ms Job Packs p75 feedback/useful). Re-run the renamed `project-tab-commercial-estimates` journey in a production build before claiming the new registry is current-green. |
+| PPS-03 | Yellow | The production journey now covers Overview, Commercial Estimates/Quotes/Invoices, and conditional Job Packs. The project frame renders selected-tab state and the matching owned shell optimistically while `router.replace()` and specialist data settle in the background; Commercial applies the same rule to all three subviews. Exact Commercial intent now preloads the nested target module as well as its outer shell and query data. The shared immediate loading shell is identified as Commercial rather than one nested compatibility route, so the journey measures that truthful owner while specialist content settles separately. The previous exactly-five-run evidence remains historical for the former Calculator/Commercial registry (36/40 ms Calculator, 38/41 ms Quotes, 38/41 ms Invoices, 39/44 ms Overview, and 37/41 ms Job Packs p75 feedback/useful). Re-run the renamed `project-tab-commercial-estimates` journey in a production build before claiming the new registry is current-green. |
 | PPS-04 | Yellow | Measure project and contact creation only after index, opening, Back, and tab journeys are green. Prefer immediate truthful submitted/pending feedback and an idempotent staff-API creation contract before adding persisted provisional entities. Add canonical client-generated IDs or local-first aliases only if measured latency or an explicit offline requirement justifies their reload, retry, discard, and dependent-action complexity. |
 
 Execution order:
@@ -353,6 +353,10 @@ When updating this tracker:
 - Keep this file ASCII and link to repo-relative paths.
 
 ## Change Notes
+
+### 2026-08-27
+
+- Corrected a Design Booklet production-startup regression where Vercel externalized the Portal's development-only `sharp` package without its Linux `libvips` runtime. `sharp` is now a Portal production dependency, its Linux native packages remain in the production lockfile graph, and project persistence loads it only when image bytes require normalization. Lightweight booklet reads and upload-signing no longer import native image processing at route startup; a focused dependency/lazy-boundary test guards the deployment contract.
 
 ### 2026-08-18
 

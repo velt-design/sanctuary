@@ -91,6 +91,14 @@ until the returned signed source has itself preloaded, then swaps atomically.
 Upload or saved-source display failures remain visible and are never presented
 as saved success.
 
+Server image normalization uses `sharp` as a Portal production dependency so
+its Linux native runtime is included in Vercel functions. A focused native
+runtime adapter loads that processor only when image bytes actually need
+normalizing; loading a saved booklet and preparing a signed upload remain
+independent of native image-module startup. The lockfile keeps `sharp`,
+`@img/sharp-linux-x64`, and `@img/sharp-libvips-linux-x64` in the production
+dependency graph, and a focused contract test guards that deployment boundary.
+
 Drawing replacements accept PDF only. PDF.js renders the selected page locally
 to a bounded JPEG preview before persistence begins. The original PDF and that
 preview are uploaded independently through the same signed private-Storage

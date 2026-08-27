@@ -21,6 +21,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-27 | Commercial Tab Intent Preload    | Promoted | When a route tab owns a second lazy subview, intent preload must include both module boundaries and the target query. Do not call the outer shell warm while its default useful-content module still starts only after selection. |
+| 2026-08-27 | Design Booklet Native Runtime    | Promoted | Keep `sharp` in the Portal production dependency graph and load it only at the image-normalization boundary. Lightweight booklet reads and signed-upload preparation must not import a native image processor during route startup. |
 | 2026-08-27 | Required CI Routing              | Promoted | Keep dependency/test-impact routing separate from domain ownership. Shared manifests and root tooling still run affected AI contracts and strict non-ownership guards, but only genuinely AI-owned paths activate the fixed AI lane. Any AI-owned path in a mixed PR restores strict ownership for the complete change set. |
 | 2026-08-26 | Autonomous Engineering Kill Switch | Promoted | Stop only the protected Sanctuary gateway PID after matching the runtime user, exact process title and isolated loopback port. Use one graceful signal, prove process and health are down, remove only the PID record, preserve default OpenClaw authority, and refuse broad matching or force kill. |
 | 2026-08-26 | Autonomous Engineering Proof     | Promoted | Treat a coding worker's draft PR as a candidate, not completion. Bind exact-head checks, one classified transient rerun, same-lane repair and a separately identified read-only reviewer into durable state; finish only after CI and strict review pass. Keep hosted `main` protection app-bypass-free and human-merged. |
@@ -330,6 +332,17 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 
 ## Entries
+
+### 2026-08-27 - Design Booklet Native Runtime - Keep Heavy Processing Off Lightweight Route Startup
+
+Date: 2026-08-27
+Area: Project Design Booklet image uploads and PDF delivery
+Status: Promoted
+Decision or mistake: `sharp` was declared only as a Portal development dependency and imported when the shared project-persistence module started. A clean Vercel production deployment externalized the JavaScript package without its Linux `libvips` runtime, so booklet reads and signed-upload preparation returned an HTML `500` before authentication or route error handling could run.
+Why it mattered: The client reported a generic asset-preparation failure, every replacement remained unsaved, and PDF download correctly waited forever on the failed persistence boundary even though the booklet content and browser preview were valid.
+Current guardrail: Keep `sharp` in `apps/portal` production dependencies, keep its Linux native optional packages outside the development-only lockfile graph, and load the processor only inside the image-normalization owner. Lightweight reads and signed-upload preparation must remain independent of native image processing. Guard the manifest, lockfile and lazy boundary with a focused test, then verify a clean Portal production build and the deployed API response shape.
+Promoted to: `docs/design-booklets.md`; `docs/portal-production-readiness.md`
+Related docs/tests: `apps/portal/lib/designBooklets/projectRuntimeDependencies.test.ts`; `apps/portal/lib/designBooklets/projectPersistence.ts`; `npm run build:portal`
 
 ### 2026-06-02 - Portal Test Auth - Explicit Test User Provisioning
 
@@ -5270,6 +5283,17 @@ Why it mattered: Autonomous work needs a dependable kill switch, but the switch 
 Current guardrail: Stop only the protected Sanctuary PID after matching the runtime user, exact gateway process title and isolated loopback port. Send one graceful signal, prove both process and gateway health are down, remove only the isolated PID record, and fingerprint the default OpenClaw authority around the operation. Refuse missing ownership evidence, broad matching, force kill and unrelated state cleanup.
 Promoted to: `docs/ai/operations/openclaw-engineering-runtime.md`; `docs/ai/operations/autonomous-engineering.md`
 Related docs/tests: `scripts/ai/mac-openclaw-engineering-stop.mjs`; `test/ai-operations-openclaw-engineering.test.ts`; `npm run test:ai:ops`
+
+### 2026-08-27 - Commercial Tab Intent Preload - Warm Every Lazy Boundary
+
+Date: 2026-08-27
+Area: Project Commercial navigation performance
+Status: Promoted
+Decision or mistake: Project-tab intent loaded the Commercial shell and Estimates data, but the nested Estimates module did not begin loading until after selection. The shared Commercial loading shell was also mislabeled as the retired Quotes route owner, so the performance journey ignored truthful immediate Commercial feedback and waited for the nested module. Commercial intent now preloads the nested target module alongside the shell and data, and the shared shell exposes its actual Commercial ownership.
+Why it mattered: A warm-tab performance contract must describe the complete useful-content path. Warming only an outer lazy shell leaves a hidden second network boundary on the measured click and produces avoidable customer wait as well as nondeterministic release evidence.
+Current guardrail: If a tab contains another lazy view, preload every module boundary needed for the signalled destination plus its query data from the same pointer, focus, touch, or pointer-down intent. Give a shared loading shell the stable owner it actually represents, not one nested compatibility route, and let the performance journey accept that truthful owned shell. Keep the 100 ms feedback and 500 ms useful-content targets unchanged; do not hide missing work by relaxing budgets or waiting inside the measured assertion.
+Promoted to: `docs/portal-production-readiness.md`
+Related docs/tests: `apps/portal/components/projects/ProjectPage/projectTabModules.tsx`; `apps/portal/components/projects/ProjectPage/tabs/CommercialTab.tsx`; `apps/portal/components/projects/ProjectPage/projectTabModules.test.tsx`; `playwright/portal.performance.spec.ts`
 
 ### 2026-08-27 - Required CI Routing - Test Impact Is Not Domain Ownership
 
