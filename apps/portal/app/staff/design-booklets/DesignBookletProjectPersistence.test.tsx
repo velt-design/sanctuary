@@ -67,6 +67,12 @@ async function flushEffects() {
   });
 }
 
+async function waitForReact(assertion: () => void, timeout?: number) {
+  await act(async () => {
+    await vi.waitFor(assertion, timeout === undefined ? undefined : { timeout });
+  });
+}
+
 describe("project-linked Design Booklet Workbench", () => {
   beforeEach(() => {
     const draft = createProjectDesignBookletDraft("Client AAA");
@@ -241,7 +247,7 @@ describe("project-linked Design Booklet Workbench", () => {
       "https://storage.example.test/booklet.pdf?token=short",
       { cache: "no-store", credentials: "omit" },
     );
-    await vi.waitFor(() => {
+    await waitForReact(() => {
       if (!anchorClick.mock.calls.length) {
         throw new Error(
           rendered.container.querySelector('[role="alert"]')?.textContent ||
@@ -295,7 +301,7 @@ describe("project-linked Design Booklet Workbench", () => {
       rendered.container.querySelectorAll("button"),
     ).find((button) => button.textContent?.trim() === "Download PDF");
     act(() => downloadButton?.click());
-    await vi.waitFor(() => expect(anchorClick).toHaveBeenCalled());
+    await waitForReact(() => expect(anchorClick).toHaveBeenCalled());
 
     expect(mocks.publishPdf).toHaveBeenCalledTimes(1);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -422,11 +428,8 @@ describe("project-linked Design Booklet Workbench", () => {
         ?.getAttribute("src"),
     ).toBe("https://storage.example.test/saved-roof-plan.jpg");
     expect(revokeObjectUrl).toHaveBeenCalledWith("blob:instant-drawing");
-    await vi.waitFor(
-      () =>
-        expect(rendered.container.textContent).toContain("Saved to project"),
-      { timeout: 1500 },
-    );
+    await waitForReact(() => expect(mocks.save).toHaveBeenCalled(), 1500);
+    expect(rendered.container.textContent).toContain("Saved to project");
     rendered.unmount();
   });
 
@@ -490,10 +493,9 @@ describe("project-linked Design Booklet Workbench", () => {
       value: [original],
     });
     act(() => input.dispatchEvent(new Event("change", { bubbles: true })));
-    await vi.waitFor(() => expect(mocks.upload).toHaveBeenCalledTimes(2));
-    await vi.waitFor(() =>
-      expect(rendered.container.textContent).toContain("Saved to project"),
-    );
+    await waitForReact(() => expect(mocks.upload).toHaveBeenCalledTimes(2));
+    await waitForReact(() => expect(mocks.save).toHaveBeenCalled());
+    expect(rendered.container.textContent).toContain("Saved to project");
 
     const pageSelect = Array.from(
       rendered.container.querySelectorAll("select"),
@@ -505,14 +507,14 @@ describe("project-linked Design Booklet Workbench", () => {
       pageSelect.dispatchEvent(new Event("change", { bubbles: true }));
     });
 
-    await vi.waitFor(() =>
+    await waitForReact(() =>
       expect(mocks.renderPdfPreview).toHaveBeenLastCalledWith(
         "https://storage.example.test/roof-set.pdf",
         "roof-set.pdf",
         2,
       ),
     );
-    await vi.waitFor(() => expect(mocks.upload).toHaveBeenCalledTimes(3));
+    await waitForReact(() => expect(mocks.upload).toHaveBeenCalledTimes(3));
     expect(mocks.upload.mock.calls[2]?.[1]).toBe("drawing-page-1-drawing-1");
     expect(mocks.upload.mock.calls[2]?.[2]?.type).toBe("image/jpeg");
     expect(
@@ -640,13 +642,16 @@ describe("project-linked Design Booklet Workbench", () => {
       await Promise.resolve();
       await Promise.resolve();
     });
-    await vi.waitFor(() =>
-      expect(
-        rendered.container
-          .querySelector('[data-page-kind="drawings"] img')
-          ?.getAttribute("src"),
-      ).toBe("https://storage.example.test/second.jpg"),
+    await waitForReact(() =>
+      expect(mocks.preload).toHaveBeenCalledWith(
+        "https://storage.example.test/second.jpg",
+      ),
     );
+    expect(
+      rendered.container
+        .querySelector('[data-page-kind="drawings"] img')
+        ?.getAttribute("src"),
+    ).toBe("https://storage.example.test/second.jpg");
     rendered.unmount();
   });
 });

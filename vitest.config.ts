@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { configDefaults, defineConfig } from 'vitest/config';
+import { resolveVitestMaxWorkers } from './test/vitestWorkerPolicy';
 
 export default defineConfig({
   resolve: {
@@ -72,6 +73,7 @@ export default defineConfig({
     },
   },
   test: {
+    maxWorkers: resolveVitestMaxWorkers(),
     exclude: [...configDefaults.exclude, 'playwright/**'],
     environment: 'jsdom',
     environmentOptions: {

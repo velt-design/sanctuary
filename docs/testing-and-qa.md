@@ -50,6 +50,20 @@ the Vitest runner. Unit coverage for Playwright support helpers lives under
 `test/playwright-support/` so those suites remain part of the root Vitest gate
 without broadening browser-spec discovery.
 
+Vitest concurrency is owned by `test/vitestWorkerPolicy.ts`: root, Marketing,
+Portal, and package tests use at most four workers when `CI=true` or `CI=1` and
+eight workers locally; the standalone Worker config uses the same policy. Set
+`VITEST_MAX_WORKERS` to a positive safe integer for an explicit one-run
+override. Invalid values fail while loading the config, before test discovery.
+The worker policy does not change ordinary unit or Playwright exclusions.
+
+React component tests must wrap the event or asynchronous milestone that can
+commit state in `act(...)`, including promise-driven persistence and history or
+media-query events. Do not suppress `console.error`, filter React warnings
+globally, or use Vitest logging hooks to hide them. Intentional negative-route
+error logging remains visible; unexpected React warnings and worker exits are
+test failures to investigate.
+
 Marketing public-boundary changes should run the unit/domain suite, marketing
 TypeScript and ESLint, the production build, and the relevant browser specs.
 `apps/marketing/lib/publicTokenExpiry.domain.test.ts` proves expired quote and

@@ -233,8 +233,9 @@ describe('shared mobile header interaction', () => {
       '',
       '/architects-designers-builders?project=commercial-professional',
     );
-    window.dispatchEvent(new PopStateEvent('popstate'));
-    await act(async () => undefined);
+    await act(async () => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
 
     expect(desktopCta?.getAttribute('href')).toBe(buildEnquiryHref({
       ...getEnquiryRouteContext(currentPathname),
