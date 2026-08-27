@@ -82,6 +82,7 @@
     "ai:engineering:start-mac": "node scripts/ai/mac-openclaw-engineering-start.mjs",
     "ai:engineering:stop-mac": "node scripts/ai/mac-openclaw-engineering-stop.mjs",
     "test:configurator": "vitest run packages/configurator",
+    "test:geometry": "vitest run packages/geometry/src",
     "test:geometry-viewer": "vitest run packages/geometry-viewer",
     "test:jobs": "vitest run packages/jobs packages/email-provider test/background-jobs-migration.test.ts test/repo-security.test.ts",
     "test:email-provider": "vitest run packages/email-provider",
