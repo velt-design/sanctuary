@@ -69,7 +69,7 @@ vi.mock('@/lib/email/sendCustomerAutoresponder', () => ({
   sendCustomerAutoresponder: vi.fn(),
 }));
 
-function makeDb() {
+function makeDb(options: { downloadBytes?: Uint8Array } = {}) {
   const db: Record<TableName, Row[]> = {
     audit_events: [],
     contacts: [],
@@ -215,7 +215,11 @@ function makeDb() {
     storage: {
       from: vi.fn(() => ({
         download: vi.fn(async () => ({
-          data: { arrayBuffer: async () => new TextEncoder().encode('%PDF-test').buffer },
+          data: {
+            arrayBuffer: async () => (
+              options.downloadBytes ?? new TextEncoder().encode('%PDF-test')
+            ).buffer,
+          },
           error: null,
         })),
         createSignedUrl: vi.fn(async (path: string) => ({
@@ -644,6 +648,47 @@ describe('POST /api/enquiry attribution', () => {
       );
     },
   );
+
+  it('preserves signed email links above the 8 MB inline threshold', async () => {
+    const largeBytes = new Uint8Array(8 * 1024 * 1024 + 1);
+    largeBytes.set(new TextEncoder().encode('%PDF-'));
+    const { client } = makeDb({ downloadBytes: largeBytes });
+    h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    (sendCustomerAutoresponder as any).mockClear();
+
+    const response = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        submissionId: SUBMISSION_ID,
+        uploadSessionToken: UPLOAD_SESSION_TOKEN,
+        enquiryType: 'residential',
+        name: 'Pat',
+        email: 'pat@example.com',
+        phone: '021000000',
+        suburb: 'Ponsonby',
+        files: [{
+          path: `pending/${SUBMISSION_ID}/0-large-plan.pdf`,
+          name: 'large-plan.pdf',
+          size: largeBytes.byteLength,
+          type: 'application/pdf',
+        }],
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    const [enquiry, sendOptions] = (sendCustomerAutoresponder as any).mock.calls[0];
+    expect(enquiry).toMatchObject({
+      filesReceivedCount: 1,
+      attachmentLinks: [{
+        name: 'large-plan.pdf',
+        url: `https://signed.test/pending/${SUBMISSION_ID}/0-large-plan.pdf`,
+      }],
+    });
+    expect(sendOptions).toEqual({ idempotencyKey: 'website:autoresponder:enquiry-1' });
+  });
 
   it('sends the residential confirmation without an estimate when dimensions are omitted', async () => {
     const { client, db } = makeDb();

@@ -33,6 +33,7 @@ export const qk = {
     summary: (host: string, id: string) => ['projects', host, 'summary', id] as const,
     snapshot: (host: string, id: string) => ['projects', host, 'snapshot', id] as const,
     commandCentre: (host: string, id: string) => ['projects', host, 'commandCentre', id] as const,
+    enquiryAttachments: (host: string, id: string) => ['projects', host, 'enquiryAttachments', id] as const,
     byContact: (host: string, contactId: string) => ['projects', host, 'byContact', contactId] as const,
     tooltipSummary: (host: string, id: string) => ['projects', host, 'tooltipSummary', id] as const,
   },

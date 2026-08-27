@@ -18,9 +18,9 @@ import {
   Badge,
   Button,
   ButtonLink,
-  Card,
   KeyValueGrid,
 } from "@/components/ui/foundation";
+import ProjectWorkFilesCard from "./ProjectWorkFilesCard";
 import ProjectWorkControls from "./ProjectWorkControls";
 import ProjectWorkList from "./ProjectWorkList";
 import {
@@ -222,16 +222,16 @@ export default function ProjectWorkSection({
   ];
 
   return (
-    <Card
+    <ProjectWorkFilesCard
       className={styles.card}
+      projectId={projectId}
+      host={host}
+    >
+      <div
       data-project-work-section="true"
       data-project-work-model="v2"
-      aria-label="Project Work"
-      title="Project Work"
-      eyebrow="Next project action"
-      padding="compact"
-    >
-      <div className={styles.stack}>
+        className={styles.stack}
+      >
         {stateItems.length ? (
           <KeyValueGrid
             columns={stateItems.length === 1 ? 1 : 2}
@@ -448,6 +448,6 @@ export default function ProjectWorkSection({
           </AlertBanner>
         ) : null}
       </div>
-    </Card>
+    </ProjectWorkFilesCard>
   );
 }

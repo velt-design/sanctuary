@@ -59,6 +59,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | `supabase-schema-map.md` | Current | You are touching Supabase tables, RPCs, migrations, RLS/grants, route write paths, or schema ownership. |
 | `staff-api-auth-contracts.md` | Current | You are touching staff/admin/public-token API routes, route auth helpers, Supabase client boundaries, diagnostics, or response conventions. |
 | `automation-email-audit.md` | Current | You are touching automation events, project tasks, follow-ups, email outbox, email previews, audit events, or marketing enquiry email side effects. |
+| `project-enquiry-attachments.md` | Current implementation and unexecuted rollout plan | You are changing website enquiry files, their project links, private Storage access, the Project Work Files tab, or the historical attachment dry run/backfill. |
 | `design-booklets.md` | Current | You are changing the standalone Design Booklet Workbench, its A4 preview/PDF, Toni assets, or the read-only marketing-content adapter. |
 | `testing-and-qa.md` | Current | You need the canonical command catalog, Playwright auth, smoke checks, performance checks, or manual QA gates. |
 | `portal-route-catalog.md` | Current | You need portal route metadata, required roles, data requirements, owner docs, or browser-smoke status. |
