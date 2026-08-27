@@ -125,6 +125,7 @@
     "audit:lighthouse:desktop": "npx @lhci/cli autorun --config=.lighthouserc.desktop.json",
     "audit:lighthouse": "npm run audit:lighthouse:mobile && npm run audit:lighthouse:desktop",
     "audit:security": "npm audit --omit=dev",
+    "audit:toolchain": "node scripts/audit-toolchain.mjs",
     "audit:governance": "npm run test:marketing && npm run audit:security && npm run audit:lighthouse",
     "portal:doctor:quick": "npm run docs:guard && npm run text:mojibake && npm run typecheck && npm run lint && npm run test:portal",
     "portal:doctor:quick:log": "node scripts/run-logged-command.mjs portal:doctor:quick",
@@ -169,7 +170,7 @@
     "sharp": "0.35.3",
     "tsx": "^4.21.0",
     "typescript": "^5",
-    "vitest": "^4.0.16",
+    "vitest": "^4.1.11",
     "xlsx": "^0.18.5"
   },
   "overrides": {
@@ -177,6 +178,7 @@
     "sharp": "0.35.3",
     "uuid": "14.0.0",
     "svix": "1.92.2",
+    "vite": "7.3.6",
     "ws": "8.21.1"
   }
 }

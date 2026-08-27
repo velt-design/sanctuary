@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-27 | Toolchain Dependency Audit       | Promoted | Keep the full dependency audit fail-closed. Permit only the two named no-fix `xlsx` advisories while the package remains a root-only development dependency used solely by the legacy Running Jobs importer; a new advisory, available fix, production/workspace placement, or another executable import must fail CI. |
 | 2026-08-27 | Commercial Tab Intent Preload    | Promoted | When a route tab owns a second lazy subview, intent preload must include both module boundaries and the target query. Do not call the outer shell warm while its default useful-content module still starts only after selection. |
 | 2026-08-27 | Design Booklet Native Runtime    | Promoted | Keep `sharp` in the Portal production graph, lazy-load every product consumer, and explicitly trace its Linux addon plus libvips package into the narrow booklet routes. A lockfile entry alone does not prove a native runtime reached the deployed function. |
 | 2026-08-27 | Required CI Routing              | Promoted | Keep dependency/test-impact routing separate from domain ownership. Shared manifests and root tooling still run affected AI contracts and strict non-ownership guards, but only genuinely AI-owned paths activate the fixed AI lane. Any AI-owned path in a mixed PR restores strict ownership for the complete change set. |
@@ -332,6 +333,17 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 
 ## Entries
+
+### 2026-08-27 - Toolchain Dependency Audit - Isolate Exceptions Instead Of Ignoring Development Findings
+
+Date: 2026-08-27
+Area: Toolchain dependency security
+Status: Promoted
+Decision or mistake: The production-only audit was green while the full dependency graph still contained fixable critical and high findings. The remaining no-fix `xlsx` findings belong to one legacy operational import, so a blanket development-dependency exclusion would hide unrelated regressions.
+Why it mattered: Test runners, bundlers, linters, and build tools execute privileged repository code even when they do not ship to customers. Treating all development dependencies as harmless would let fixable vulnerabilities return without a blocking signal.
+Current guardrail: Run the full audit and reject every finding except `GHSA-4r6h-8v6p-xvw6` and `GHSA-5pgg-2g8v-p4x9`. The exception remains valid only while `xlsx` is a direct root development dependency, the lock marks it development-only, no fix is available, and its sole executable import is `scripts/import-running-jobs-legacy.ts`. Fail CI if any part of that boundary changes.
+Promoted to: `docs/security-privacy-quality.md`; `docs/testing-and-qa.md`; `docs/portal-production-readiness.md`
+Related docs/tests: `scripts/audit-toolchain.mjs`; `test/toolchain-audit.test.ts`; `npm run audit:toolchain`
 
 ### 2026-08-27 - Design Booklet Native Runtime - Keep Heavy Processing Off Lightweight Route Startup
 
