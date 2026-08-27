@@ -42,7 +42,7 @@ jobs:
         run: npm ci
 
       - name: Strict changed-architecture gate
-        if: steps.route.outputs.relevant == 'true' && github.event_name == 'pull_request'
+        if: steps.route.outputs.ownership_required == 'true' && github.event_name == 'pull_request'
         env:
           ARCHITECTURE_CHANGED_BASE: ${{ github.event.pull_request.base.sha }}
           ARCHITECTURE_CHANGED_HEAD: ${{ github.event.pull_request.head.sha }}
@@ -50,6 +50,18 @@ jobs:
           WORKTREE_HEAD_REF: ${{ github.event.pull_request.head.sha }}
           WORKTREE_OWNER_PATTERNS: ${{ steps.route.outputs.owner_patterns }}
         run: npm run architecture:changed:strict
+
+      - name: Strict shared-impact architecture gates
+        if: steps.route.outputs.shared_impact_only == 'true' && github.event_name == 'pull_request'
+        env:
+          ARCHITECTURE_CHANGED_BASE: ${{ github.event.pull_request.base.sha }}
+          ARCHITECTURE_CHANGED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          npm run files:changed:strict
+          npm run dead-code:changed:strict
+          npm run root:compat:changed:strict
+          npm run browser:supabase:changed:strict
+          npm run service-role:changed:strict
 
       - name: AI operations contracts
         if: steps.route.outputs.relevant == 'true'
