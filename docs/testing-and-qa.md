@@ -27,6 +27,7 @@ npm run dev:worker
 npm run test
 npm run test:marketing
 npm run test:marketing:browser
+npm run test:marketing:accessibility
 npm run test:geometry
 npm run test:email-provider
 npm run test:jobs
@@ -1101,4 +1102,5 @@ This doc remains the canonical command catalog. When readiness work changes comm
 - Portal Performance Report runs five authenticated journey repetitions as a separate blocking job, rejects missing schema-v2 journeys, publishes p50/p75/p95, and uploads the `portal-performance-baseline` artifacts. It also writes the authenticated runtime prerequisites to the GitHub step summary before timing routes.
 - Docs Health runs weekly and on demand, with blocking docs guard and mojibake checks plus advisory docs impact, navigation, and readiness reports.
 - Lighthouse Guardrails run mobile and desktop Lighthouse profiles against the live marketing site on a weekly schedule or explicit dispatch. They are deliberately not attached to pull requests because a PR cannot change the live production target; PR correctness remains covered by repository build, test, and bundle gates, while live Lighthouse drift stays visible in its own scheduled workflow.
+- Marketing Accessibility runs axe-core against the homepage, contact page, and product hub at mobile and desktop sizes. It blocks serious or critical WCAG 2.0/2.1 A/AA violations on relevant pull requests without sending page data to an external service.
 - Governance Monthly still runs the broader marketing/governance sweep with marketing tests, production dependency audit, and Lighthouse.
