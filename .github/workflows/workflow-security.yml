@@ -39,7 +39,7 @@ jobs:
         run: |
           curl --fail --location --silent --show-error \
             --output /tmp/actionlint.tar.gz \
-            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_x86_64.tar.gz
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
           echo "$ACTIONLINT_SHA256  /tmp/actionlint.tar.gz" | sha256sum --check --strict
           tar --extract --gzip --file /tmp/actionlint.tar.gz --directory /tmp actionlint
           /tmp/actionlint -version

@@ -19,7 +19,6 @@ const passingEvidence = {
     contents: "write",
     metadata: "read",
     pull_requests: "write",
-    workflows: "write",
   },
 };
 

@@ -71,7 +71,6 @@ async function requestInstallationToken(fetchImpl = fetch) {
           actions: "write",
           contents: "write",
           pull_requests: "write",
-          workflows: "write",
         },
       }),
     },
@@ -90,8 +89,7 @@ async function requestInstallationToken(fetchImpl = fetch) {
     repositories[0] !== REPOSITORY ||
     payload.permissions?.actions !== "write" ||
     payload.permissions?.contents !== "write" ||
-    payload.permissions?.pull_requests !== "write" ||
-    payload.permissions?.workflows !== "write"
+    payload.permissions?.pull_requests !== "write"
   ) {
     throw new Error(
       "GitHub returned a token outside the expected repository contract.",

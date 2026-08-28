@@ -15,7 +15,6 @@ const REQUIRED_GITHUB_PERMISSIONS = {
   contents: "write",
   metadata: "read",
   pull_requests: "write",
-  workflows: "write",
 };
 
 export function resolveMachineServiceTokenPath(
@@ -98,7 +97,7 @@ export function evaluateMachineCredentialEvidence(evidence) {
       expectedPermissionSet && unexpectedPermissions.length === 0
         ? result(
             "pass",
-            "GitHub App has only the actions, contents, pull-request and workflow access required by the engineering loop",
+            "GitHub App has only the actions, contents and pull-request access required by the engineering loop",
           )
         : result(
             "fail",
@@ -198,7 +197,6 @@ async function verifyGitHubInstallation(appId, installationId, privateKey) {
             actions: "write",
             contents: "write",
             pull_requests: "write",
-            workflows: "write",
           },
         }),
       },
