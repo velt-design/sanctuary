@@ -49,6 +49,12 @@ empty conclusion to `null`, records the check as pending, and re-reads the exact
 PR head on the next reconciliation. Empty pending fields are not malformed
 terminal evidence and must not strand an otherwise healthy flow.
 
+Durable checkpoints written before that normalization may contain a blank
+status or conclusion. Recovery accepts that legacy value only when the same
+check is classified as pending, then immediately replaces it with freshly
+normalized exact-head evidence. Blank lifecycle values remain invalid for
+passed, failed, actionable, transient, or blocked evidence.
+
 | Result                                                                                                | Controller action                                                                                              |
 | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | Missing                                                                                               | Dispatch the exact AI foundation workflow once for the verified feature-branch head, then remain `ci_pending`. |

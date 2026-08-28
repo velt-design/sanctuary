@@ -589,6 +589,31 @@ describe("durable exact-head CI and independent review loop", () => {
     ).toMatchObject({ phase: "reviewer_ready", ciClassification: "passed" });
   });
 
+  it("recovers legacy blank pending CI evidence and refreshes it", async () => {
+    const setup = fixture();
+    const reached = await reachCi(setup);
+    const legacy = ciEvidence(setup.manifest, reached.report, "pending");
+    legacy.requiredChecks[0].conclusion = "";
+    const { evidenceHash: _evidenceHash, ...canonical } = legacy;
+    const stored = setup.flows.records.get(reached.ciPending.flowId)!;
+    stored.stateJson.ci.evidence = {
+      ...canonical,
+      evidenceHash: hash(canonical),
+    };
+    setup.ci.queue = [ciEvidence(setup.manifest, reached.report)];
+
+    const recovered = await setup.controller().recover();
+
+    expect(recovered).toMatchObject({ reviewReady: true });
+    expect(
+      setup.flows.records.get(reached.ciPending.flowId)!.stateJson.ci.evidence
+        .requiredChecks[0],
+    ).toMatchObject({
+      conclusion: "SUCCESS",
+      disposition: "passed",
+    });
+  });
+
   it("cannot finish until exact CI and the named reviewer both approve", async () => {
     const setup = fixture();
     const reached = await reachCi(setup);
