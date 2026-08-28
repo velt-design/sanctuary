@@ -53,8 +53,8 @@ function normalizeCheck(raw) {
     return {
       name,
       kind: "check_run",
-      status: raw.status ?? null,
-      conclusion: raw.conclusion ?? null,
+      status: normalizeLifecycleValue(raw.status),
+      conclusion: normalizeLifecycleValue(raw.conclusion),
       url: raw.detailsUrl || null,
       workflowName: raw.workflowName || null,
       runId: runIdFromUrl(raw.detailsUrl),
@@ -70,8 +70,8 @@ function normalizeCheck(raw) {
     return {
       name,
       kind: "status_context",
-      status: raw.state ?? null,
-      conclusion: raw.state ?? null,
+      status: normalizeLifecycleValue(raw.state),
+      conclusion: normalizeLifecycleValue(raw.state),
       url: raw.targetUrl || null,
       workflowName: null,
       runId: runIdFromUrl(raw.targetUrl),
@@ -83,7 +83,10 @@ function normalizeCheck(raw) {
 }
 
 function normalizeLifecycleValue(value) {
-  return typeof value === "string" ? value.toUpperCase() : null;
+  const normalized = typeof value === "string"
+    ? value.trim().toUpperCase()
+    : "";
+  return normalized || null;
 }
 
 function normalizeWorkflowJob(run, raw) {

@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-29 | Exact-Head CI                    | Promoted | Normalize GitHub lifecycle fields at the CI adapter boundary: trim and uppercase non-empty values and convert empty pending conclusions to `null`, then keep re-reading the exact PR head instead of rejecting or bypassing valid pending evidence. |
 | 2026-08-27 | Vitest Stability                 | Promoted | Keep one validated worker policy across root and Worker configs: four workers in CI, eight locally, with only a positive-safe-integer `VITEST_MAX_WORKERS` override. Await React state-producing events and async milestones inside `act(...)`; never hide warnings globally or suppress intentional negative-route logging. |
 | 2026-08-27 | Toolchain Dependency Audit       | Promoted | Keep the full dependency audit fail-closed. Permit only the two named no-fix `xlsx` advisories while the package remains a root-only development dependency used solely by the legacy Running Jobs importer; a new advisory, available fix, production/workspace placement, or another executable import must fail CI. |
 | 2026-08-27 | Commercial Tab Intent Preload    | Promoted | When a route tab owns a second lazy subview, intent preload must include both module boundaries and the target query. Do not call the outer shell warm while its default useful-content module still starts only after selection. |
@@ -5340,4 +5341,24 @@ for the complete pull request, including any shared manifests.
 Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
 Related docs/tests: `scripts/ai/engineering-ci-route.mjs`;
 `.github/workflows/autonomous-engineering.yml`;
+`test/ai-operations-engineering-ci-review.test.ts`; `npm run test:ai:ops`
+
+### 2026-08-29 - Exact-Head CI - Normalize GitHub's Empty Pending Conclusion
+
+Date: 2026-08-29
+Area: OpenClaw autonomous engineering CI reconciliation
+Status: Promoted
+Decision or mistake: GitHub returns an empty conclusion while a check run is
+still in progress. The controller preserved that empty string, while its durable
+evidence contract accepted only a non-empty string or `null`, so reconciliation
+failed before it could re-read the same exact head after the checks passed.
+Why it mattered: Valid Configurator work and all hosted checks completed, but
+the durable flow remained stuck on stale pending evidence and Velt OS reported
+an automation failure instead of a review-ready result.
+Current guardrail: Normalize GitHub lifecycle strings at the CI adapter boundary;
+trim and uppercase non-empty values and convert empty values to `null`. Keep the
+exact PR head fence, persist pending evidence, and re-read rather than weakening
+or bypassing a required check.
+Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
+Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/ci-runtime.mjs`;
 `test/ai-operations-engineering-ci-review.test.ts`; `npm run test:ai:ops`
