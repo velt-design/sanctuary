@@ -43,6 +43,12 @@ The controller re-reads the open draft PR and requires its number, URL, base
 ref/SHA, feature branch and head SHA to match the manifest and worker report.
 Each named check must appear exactly once.
 
+GitHub's live check rollup may represent an unfinished check with an empty
+conclusion and a zero-value completion timestamp. The CI adapter normalizes the
+empty conclusion to `null`, records the check as pending, and re-reads the exact
+PR head on the next reconciliation. Empty pending fields are not malformed
+terminal evidence and must not strand an otherwise healthy flow.
+
 | Result                                                                                                | Controller action                                                                                              |
 | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | Missing                                                                                               | Dispatch the exact AI foundation workflow once for the verified feature-branch head, then remain `ci_pending`. |

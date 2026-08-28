@@ -510,12 +510,19 @@ Received: 10`),
     ).toMatchObject({ classification: "pending" });
     expect(
       runtime([
-        check(null as unknown as string, {
+        check("", {
           status: "IN_PROGRESS",
-          completedAt: null,
+          completedAt: "0001-01-01T00:00:00Z",
         }),
       ]).ci.inspect({ manifest: manifest(), completion: completion() }),
-    ).toMatchObject({ classification: "pending" });
+    ).toMatchObject({
+      classification: "pending",
+      requiredChecks: [{
+        status: "IN_PROGRESS",
+        conclusion: null,
+        disposition: "pending",
+      }],
+    });
   });
 
   it("dispatches only the exact missing AI foundation workflow on its verified branch", () => {
