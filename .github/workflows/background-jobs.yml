@@ -136,7 +136,7 @@ jobs:
           scan-type: image
           image-ref: sanctuary-worker:ci
           scanners: vuln,secret
-          pkg-types: os
+          vuln-type: os
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           format: table
