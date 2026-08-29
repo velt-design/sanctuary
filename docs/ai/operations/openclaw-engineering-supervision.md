@@ -103,6 +103,9 @@ The attempt ledger binds:
 
 The controller revalidates the stored manifest on every read. It does not adopt
 unknown flows, branches, worktrees, task runs or session identities.
+Completion validation always supplies both the canonical task manifest and the
+worker report to the shared contract checker; a report is never validated as a
+standalone document.
 
 OpenClaw child runs inherit the supervisor's effective tool policy before the
 worker policy is applied. The supervisor policy therefore carries the

@@ -120,7 +120,7 @@ export function resolveLanePaths({ stateDir, taskId }) {
   };
 }
 
-function runContractCommand(repoRoot, command, path) {
+function runContractCommand(repoRoot, command, ...paths) {
   const tsxCli = join(repoRoot, "node_modules", "tsx", "dist", "cli.mjs");
   const contractCli = join(
     repoRoot,
@@ -135,7 +135,7 @@ function runContractCommand(repoRoot, command, path) {
   }
   const execution = spawnSync(
     process.execPath,
-    [tsxCli, contractCli, command, path],
+    [tsxCli, contractCli, command, ...paths],
     { cwd: repoRoot, encoding: "utf8" },
   );
   if (execution.status !== 0) {
@@ -176,11 +176,18 @@ export const defaultContractAdapter = Object.freeze({
       runContractCommand(repoRoot, "render-worker-prompt", path),
     );
   },
-  validateCompletion(completion, { repoRoot, stateDir }) {
-    return withTemporaryManifest(stateDir, completion, (path) => {
-      runContractCommand(repoRoot, "validate-completion", path);
-      return completion;
-    });
+  validateCompletion(completion, { repoRoot, stateDir, manifest }) {
+    return withTemporaryManifest(stateDir, manifest, (manifestPath) =>
+      withTemporaryManifest(stateDir, completion, (completionPath) => {
+        runContractCommand(
+          repoRoot,
+          "validate-completion",
+          manifestPath,
+          completionPath,
+        );
+        return completion;
+      }),
+    );
   },
   validateReview(review, { repoRoot, stateDir }) {
     return withTemporaryManifest(stateDir, review, (path) => {
