@@ -1150,9 +1150,8 @@ describe("durable exact-head CI and independent review loop", () => {
     expect(recovered.reviewPrompt).toContain('"criterionIndex":0');
     const productionLikeState = clone(flow.stateJson);
     productionLikeState.manifest.acceptanceCriteria = Array.from(
-      { length: 6 },
-      (_, index) =>
-        `Criterion ${index + 1}: ${"bounded exact review evidence ".repeat(15)}`.trim(),
+      { length: 50 },
+      (_, index) => `Criterion ${index + 1}`,
     );
     productionLikeState.completion.acceptanceResults =
       productionLikeState.manifest.acceptanceCriteria.map(
@@ -1179,6 +1178,11 @@ describe("durable exact-head CI and independent review loop", () => {
     expect(JSON.stringify(dispatchFor(productionLikeState), null, 2).length).toBeLessThanOrEqual(
       REVIEW_DISPATCH_MAX_CHARACTERS,
     );
+    expect(
+      bounded.prompt.match(
+        /COPY each task\.acceptanceCriteria item exactly/g,
+      ),
+    ).toHaveLength(1);
     productionLikeState.manifest.objective = "oversized ".repeat(2_000);
     const oversized = buildReviewPrompt({
       flowId: flow.flowId,
