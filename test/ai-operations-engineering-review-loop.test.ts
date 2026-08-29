@@ -1144,7 +1144,10 @@ describe("durable exact-head CI and independent review loop", () => {
       "path and line may be null.\n\n\n```json",
     );
     flow.stateJson.review.promptHash = legacy.promptHash;
-    const staleWindow = { ...flow.stateJson.review };
+    const staleWindow = {
+      startedAt: flow.stateJson.review.startedAt,
+      deadlineAt: flow.stateJson.review.deadlineAt,
+    };
     setup.advance(3_600_001);
     const beforeRevision = flow.revision;
     const recovered = await setup.controller().recover();
@@ -1164,14 +1167,18 @@ describe("durable exact-head CI and independent review loop", () => {
       title: recovered.reviewPrompt,
       createdAt: recovered.reviewStartedAt + 1,
     });
+    setup.advance(3_600_001);
     const resumed = await setup.controller().recover();
     expect(resumed).toMatchObject({
       recoveredAttached: true,
       phase: "reviewer_running",
     });
-    expect(
-      setup.flows.records.get(dispatch.flowId)!.stateJson.review.taskRunId,
-    ).toBe(reviewer.id);
+    const attachedReview = setup.flows.records.get(dispatch.flowId)!.stateJson
+      .review;
+    expect(attachedReview.taskRunId).toBe(reviewer.id);
+    expect(attachedReview.deadlineAt).toBe(
+      recovered.reviewDeadlineAt + 3_600_001,
+    );
     const productionLikeState = clone(flow.stateJson);
     productionLikeState.manifest.acceptanceCriteria = Array.from(
       { length: 50 },

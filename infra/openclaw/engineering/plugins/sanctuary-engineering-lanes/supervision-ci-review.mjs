@@ -657,7 +657,7 @@ export function createCiReviewController(options) {
           review: {
             ...state.review,
             startedAt,
-            deadlineAt: startedAt + runtimeTimeoutSeconds * 1_000,
+            deadlineAt: at + runtimeTimeoutSeconds * 1_000,
           },
         },
         "reviewer_ready",
