@@ -14,9 +14,7 @@ import {
   assertAttachableReviewerTask,
   assertNativeReviewerIdentity,
   buildReviewDispatch,
-  buildLegacyChunkedReviewPrompt,
-  buildLegacyReviewPrompt,
-  buildLegacyTemplatedChunkedReviewPrompt,
+  buildLegacyReviewPrompts,
   buildReviewPrompt,
   findNativeReviewMatches,
   validateReviewReport,
@@ -594,25 +592,12 @@ export function createCiReviewController(options) {
       diff,
     });
     if (state.review.promptHash !== currentPrompt.promptHash) {
-      const legacyPrompts = [
-        buildLegacyTemplatedChunkedReviewPrompt({
-          flowId: flow.flowId,
-          state,
-          ciEvidence: state.ci.evidence,
-          diff,
-        }),
-        buildLegacyChunkedReviewPrompt({
-          flowId: flow.flowId,
-          state,
-          ciEvidence: state.ci.evidence,
-          diff,
-        }),
-        buildLegacyReviewPrompt({
-          state,
-          ciEvidence: state.ci.evidence,
-          diff,
-        }),
-      ];
+      const legacyPrompts = buildLegacyReviewPrompts({
+        flowId: flow.flowId,
+        state,
+        ciEvidence: state.ci.evidence,
+        diff,
+      });
       if (
         !legacyPrompts.some(
           (legacyPrompt) =>
