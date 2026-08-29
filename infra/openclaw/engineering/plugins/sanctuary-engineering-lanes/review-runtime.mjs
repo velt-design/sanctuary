@@ -187,6 +187,9 @@ function buildChunkedReviewPrompt({
     : buildReviewPacket)({ state, ciEvidence, diff });
   const json = (value) =>
     compactJson ? JSON.stringify(value) : JSON.stringify(value, null, 2);
+  const compactAcceptanceInstruction = compactAcceptanceCriteria
+    ? "\nThe acceptanceResults entry shown below is one compact instruction, not a literal result. Expand it into exactly one result for each task.acceptanceCriteria item, copied exactly and kept in order."
+    : "";
   const outputSection = includeOutputTemplate
     ? `
 
@@ -196,12 +199,7 @@ Use exactly these fields and no others. Replace the evidence and next action
 with your findings. If changes are required, set \`verdict\` to
 \`changes_requested\`, mark affected criteria \`failed\`, and add at least one
 blocking finding with exactly the fields \`id\`, \`severity\`, \`summary\`,
-\`evidence\`, \`path\` and \`line\`; path and line may be null.
-${
-  compactAcceptanceCriteria
-    ? "The acceptanceResults entry shown below is one compact instruction, not a literal result. Expand it into exactly one result for each task.acceptanceCriteria item, copied exactly and kept in order."
-    : ""
-}
+\`evidence\`, \`path\` and \`line\`; path and line may be null.${compactAcceptanceInstruction}
 
 \`\`\`json
 ${json(
