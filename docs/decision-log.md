@@ -5399,7 +5399,9 @@ the proof could not reach a durable reviewed result. Accepting a near-match
 would have weakened the identity fence that prevents the wrong native task from
 being treated as the named reviewer.
 Current guardrail: Build a compact v2 review packet, deduplicate acceptance
-evidence by criterion index, compact its JSON and reject any dispatch above
+evidence by criterion index, reference canonical criteria from the output
+skeleton instead of copying them again, compact its JSON and reject any
+dispatch above
 15,000 characters before spawning. During recovery, recognize the prior prompt
 formats by their exact hashes, upgrade a still-ready review to the bounded
 packet, and continue only with an exact native-title match.

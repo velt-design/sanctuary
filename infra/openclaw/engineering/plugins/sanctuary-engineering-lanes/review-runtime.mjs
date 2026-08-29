@@ -84,7 +84,10 @@ function buildReviewPacket({ state, ciEvidence, diff }) {
   };
 }
 
-function buildReviewOutputTemplate(packet) {
+function buildReviewOutputTemplate(
+  packet,
+  { compactAcceptanceCriteria = false } = {},
+) {
   return {
     schema: "sanctuary-engineering-review-v1",
     taskId: packet.task.taskId,
@@ -98,11 +101,15 @@ function buildReviewOutputTemplate(packet) {
       url: packet.completion.pullRequest.url,
     },
     ciEvidenceHash: packet.ciEvidence.evidenceHash,
-    acceptanceResults: packet.task.acceptanceCriteria.map((criterion) => ({
-      criterion,
-      status: "passed",
-      evidence: "Replace with specific reviewed evidence.",
-    })),
+    acceptanceResults: packet.task.acceptanceCriteria.map(
+      (criterion, index) => ({
+        criterion: compactAcceptanceCriteria
+          ? `COPY task.acceptanceCriteria[${index}] exactly`
+          : criterion,
+        status: "passed",
+        evidence: "Replace with specific reviewed evidence.",
+      }),
+    ),
     findings: [],
     reviewer: {
       agent: ENGINEERING_REVIEWER_AGENT,
@@ -163,6 +170,7 @@ function buildChunkedReviewPrompt({
   includeOutputTemplate,
   legacyPacket = false,
   compactJson = false,
+  compactAcceptanceCriteria = false,
 }) {
   if (typeof flowId !== "string" || flowId.length < 8) {
     throw new Error("The independent review flow id is invalid.");
@@ -184,7 +192,9 @@ blocking finding with exactly the fields \`id\`, \`severity\`, \`summary\`,
 \`evidence\`, \`path\` and \`line\`; path and line may be null.
 
 \`\`\`json
-${json(buildReviewOutputTemplate(packet))}
+${json(
+  buildReviewOutputTemplate(packet, { compactAcceptanceCriteria }),
+)}
 \`\`\``
     : "";
   const prompt = `# Bound independent Sanctuary code review
@@ -250,7 +260,7 @@ export function buildLegacyChunkedReviewPrompt(input) {
   });
 }
 
-export function buildLegacyTemplatedChunkedReviewPrompt(input) {
+function buildLegacyTemplatedChunkedReviewPrompt(input) {
   return buildChunkedReviewPrompt({
     ...input,
     includeOutputTemplate: true,
@@ -258,11 +268,29 @@ export function buildLegacyTemplatedChunkedReviewPrompt(input) {
   });
 }
 
+export function buildLegacyBoundedReviewPrompt(input) {
+  return buildChunkedReviewPrompt({
+    ...input,
+    includeOutputTemplate: true,
+    compactJson: true,
+  });
+}
+
+export function buildLegacyReviewPrompts(input) {
+  return [
+    buildLegacyBoundedReviewPrompt(input),
+    buildLegacyTemplatedChunkedReviewPrompt(input),
+    buildLegacyChunkedReviewPrompt(input),
+    buildLegacyReviewPrompt(input),
+  ];
+}
+
 export function buildReviewPrompt(input) {
   return buildChunkedReviewPrompt({
     ...input,
     includeOutputTemplate: true,
     compactJson: true,
+    compactAcceptanceCriteria: true,
   });
 }
 

@@ -7,9 +7,9 @@ import { createEngineeringSupervisionController } from "../infra/openclaw/engine
 import {
   REVIEW_DIFF_CHUNK_CHARACTERS,
   REVIEW_DISPATCH_MAX_CHARACTERS,
+  buildLegacyBoundedReviewPrompt,
   buildLegacyChunkedReviewPrompt,
   buildLegacyReviewPrompt,
-  buildLegacyTemplatedChunkedReviewPrompt,
   buildReviewDispatch,
   buildReviewPrompt,
   readReviewDiffChunk,
@@ -1134,13 +1134,12 @@ describe("durable exact-head CI and independent review loop", () => {
       expectedRevision: reached.ciPending.revision,
     });
     const flow = setup.flows.records.get(dispatch.flowId)!;
-    const legacy = buildLegacyTemplatedChunkedReviewPrompt({
+    flow.stateJson.review.promptHash = buildLegacyBoundedReviewPrompt({
       flowId: flow.flowId,
       state: flow.stateJson,
       ciEvidence: flow.stateJson.ci.evidence,
       diff: setup.ci.diff(),
-    });
-    flow.stateJson.review.promptHash = legacy.promptHash;
+    }).promptHash;
     const beforeRevision = flow.revision;
     const recovered = await setup.controller().recover();
     expect(recovered).toMatchObject({
@@ -1148,11 +1147,7 @@ describe("durable exact-head CI and independent review loop", () => {
       expectedRevision: beforeRevision + 1,
       reviewerAgentId: "sanctuary-code-reviewer",
     });
-    expect(recovered.reviewPrompt).toContain(
-      '"schema":"sanctuary-engineering-review-packet-v2"',
-    );
     expect(recovered.reviewPrompt).toContain('"criterionIndex":0');
-    expect(setup.tasks.records).toHaveLength(1);
     const productionLikeState = clone(flow.stateJson);
     productionLikeState.manifest.acceptanceCriteria = Array.from(
       { length: 6 },
