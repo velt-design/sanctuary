@@ -71,8 +71,9 @@ before spawning the independent reviewer. Keep that dispatch at or below
 15,000 characters so OpenClaw cannot truncate the immutable prompt between the
 controller and the supervisor. The current packet uses compact JSON, records
 acceptance evidence by criterion index instead of repeating every criterion,
-and still includes the exact task, completion, CI and diff hashes needed for a
-read-only review.
+uses indexed copy instructions in the output skeleton instead of repeating the
+same criteria there, and still includes the exact task, completion, CI and diff
+hashes needed for a read-only review.
 
 Recovery recognizes the prior embedded, chunked and templated-chunked prompt
 hashes, upgrades a still-ready review to the bounded packet, and only then
