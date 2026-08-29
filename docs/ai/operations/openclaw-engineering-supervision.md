@@ -51,7 +51,10 @@ remain available to the lead; publish remains worker-only.
    `worktreePath`, stable `taskName`, `mode: "run"`, `cleanup: "keep"` and
    isolated context. Do not pass `label`: OpenClaw derives the durable task
    label from `taskName`, while a separate session label can collide with a
-   retained recovery session. Do not override its model.
+   retained recovery session. Do not override its model. The controller
+   canonicalizes section boundaries before returning the prompt. Pass that
+   complete string unchanged; do not rebuild it from the manifest or normalize
+   its whitespace in the supervisor turn.
 4. Attach the returned native run id using the dispatch's exact flow revision.
    A stale revision or different agent/session identity fails closed.
 5. Yield for OpenClaw's native completion event. Do not poll the child. Reconcile
@@ -133,6 +136,10 @@ refuses duplicates while any matching worker remains live. If every duplicate
 is terminal, recovery deterministically attaches the oldest original dispatch;
 this lets a corrected controller resume a prior duplicate-safety block without
 starting more work.
+Canonical prompt construction trims only each controller-owned section and joins
+sections with one blank line. This keeps the exact-title fence stable across the
+lane prompt, attempt envelope and repair context while preserving every byte
+inside each section.
 An overdue running task must be cancelled through OpenClaw's native task
 runtime before a retry becomes eligible.
 

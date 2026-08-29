@@ -226,7 +226,7 @@ function fixture() {
           clean: true,
           changedPaths: [],
           pullRequest: null,
-          workerPrompt: `Bound prompt for ${value.taskId}.`,
+          workerPrompt: `Bound prompt for ${value.taskId}.\n`,
         };
         lanes.set(identity, lane);
       }
@@ -407,6 +407,10 @@ describe("durable engineering supervision", () => {
     setup.controller().enqueue(task);
     const dispatch = setup.controller().claim();
     expect(dispatch.workerPrompt).toBe(dispatch.workerPrompt.trim());
+    expect(dispatch.workerPrompt).toContain(
+      `.\n\n# Attempt envelope\n\nThis is attempt 1 of 3.`,
+    );
+    expect(dispatch.workerPrompt).not.toContain("\n\n\n# Attempt envelope");
     setup.tasks.add({
       runId: "run-historical-matching-worker",
       label: null,
