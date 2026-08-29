@@ -640,6 +640,7 @@ export function createCiReviewController(options) {
       );
       state = readSupervisionState(flow);
     }
+    const recoveryAt = timestamp(now);
     if (
       state.review.promptHash === currentPrompt.promptHash &&
       state.review.status === "ready" &&
@@ -647,10 +648,10 @@ export function createCiReviewController(options) {
       state.lastCheckpoint?.kind === "reviewer_ready" &&
       state.lastCheckpoint.summary === REVIEW_PACKET_UPGRADE_SUMMARY &&
       Number.isSafeInteger(state.lastCheckpoint.at) &&
-      state.review.deadlineAt <= state.lastCheckpoint.at
+      state.review.deadlineAt <= recoveryAt
     ) {
       const startedAt = state.lastCheckpoint.at;
-      const at = timestamp(now);
+      const at = recoveryAt;
       const nextState = checkpointState(
         {
           ...state,

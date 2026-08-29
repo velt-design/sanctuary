@@ -1162,13 +1162,13 @@ describe("durable exact-head CI and independent review loop", () => {
     const upgradedFlow = setup.flows.records.get(dispatch.flowId)!;
     Object.assign(upgradedFlow.stateJson.review, {
       ...staleWindow,
-      deadlineAt: upgradedFlow.stateJson.lastCheckpoint.at,
+      deadlineAt: upgradedFlow.stateJson.lastCheckpoint.at + 1_000,
     });
     const reviewer = setup.tasks.add({
       runId: "run-reviewer-after-upgrade",
       agentId: recovered.reviewerAgentId,
       title: recovered.reviewPrompt,
-      createdAt: recovered.reviewStartedAt + 1,
+      createdAt: recovered.reviewStartedAt + 1_001,
     });
     setup.advance(3_600_001);
     const resumed = await setup.controller().recover();
