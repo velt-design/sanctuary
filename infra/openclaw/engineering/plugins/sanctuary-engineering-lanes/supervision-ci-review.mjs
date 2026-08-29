@@ -22,6 +22,10 @@ import {
 import { createReviewCorrectionController } from "./supervision-review-correction.mjs";
 
 const CI_TIMEOUT_MS = 90 * 60 * 1_000;
+const REVIEW_PACKET_UPGRADE_SUMMARY =
+  "The ready reviewer was upgraded to a bounded exact-diff dispatch envelope.";
+const REVIEW_WINDOW_RESTORED_SUMMARY =
+  "The upgraded reviewer dispatch window was restored.";
 export const POST_WORKER_ACTIVE_PHASES = new Set([
   "ci_pending",
   "reviewer_ready",
@@ -600,8 +604,7 @@ export function createCiReviewController(options) {
       });
       if (
         !legacyPrompts.some(
-          (legacyPrompt) =>
-            state.review.promptHash === legacyPrompt.promptHash,
+          (legacyPrompt) => state.review.promptHash === legacyPrompt.promptHash,
         )
       ) {
         throw new Error(
@@ -612,10 +615,15 @@ export function createCiReviewController(options) {
       const nextState = checkpointState(
         {
           ...state,
-          review: { ...state.review, promptHash: currentPrompt.promptHash },
+          review: {
+            ...state.review,
+            promptHash: currentPrompt.promptHash,
+            startedAt: at,
+            deadlineAt: at + runtimeTimeoutSeconds * 1_000,
+          },
         },
         "reviewer_ready",
-        "The ready reviewer was upgraded to a bounded exact-diff dispatch envelope.",
+        REVIEW_PACKET_UPGRADE_SUMMARY,
         at,
         { phase: "reviewer_ready" },
       );
@@ -629,6 +637,44 @@ export function createCiReviewController(options) {
           updatedAt: at,
         }),
         "Reviewer packet upgrade",
+      );
+      state = readSupervisionState(flow);
+    }
+    if (
+      state.review.promptHash === currentPrompt.promptHash &&
+      state.review.status === "ready" &&
+      state.review.runId === null &&
+      state.lastCheckpoint?.kind === "reviewer_ready" &&
+      state.lastCheckpoint.summary === REVIEW_PACKET_UPGRADE_SUMMARY &&
+      Number.isSafeInteger(state.lastCheckpoint.at) &&
+      state.review.deadlineAt < state.lastCheckpoint.at
+    ) {
+      const startedAt = state.lastCheckpoint.at;
+      const at = timestamp(now);
+      const nextState = checkpointState(
+        {
+          ...state,
+          review: {
+            ...state.review,
+            startedAt,
+            deadlineAt: startedAt + runtimeTimeoutSeconds * 1_000,
+          },
+        },
+        "reviewer_ready",
+        REVIEW_WINDOW_RESTORED_SUMMARY,
+        at,
+        { phase: "reviewer_ready" },
+      );
+      flow = mutation(
+        flowRuntime.resume({
+          flowId: flow.flowId,
+          expectedRevision: flow.revision,
+          status: "running",
+          currentStep: "reviewer_ready",
+          stateJson: nextState,
+          updatedAt: at,
+        }),
+        "Reviewer dispatch window restoration",
       );
       state = readSupervisionState(flow);
     }
