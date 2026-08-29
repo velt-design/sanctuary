@@ -24,6 +24,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-08-29 | Exact-Head CI                    | Promoted | Normalize GitHub lifecycle fields at the CI adapter boundary: trim and uppercase non-empty values and convert empty pending conclusions to `null`, then keep re-reading the exact PR head instead of rejecting or bypassing valid pending evidence. |
 | 2026-08-29 | Durable CI Recovery              | Promoted | Adapter normalization does not rewrite existing durable checkpoints. Accept a legacy blank lifecycle field only on pending CI evidence, preserve its stored hash for validation, then refresh it from the exact PR head before continuing. |
 | 2026-08-29 | Reviewer Dispatch Envelope       | Promoted | Keep immutable reviewer dispatches at or below 15,000 characters, compact duplicated packet evidence, and upgrade recognized ready legacy prompt hashes before spawning. Never attach a truncated or reconstructed native reviewer title. |
+| 2026-08-29 | Worker Dispatch Identity          | Promoted | Build worker prompts from trimmed controller-owned sections joined by exactly one blank line, then keep byte-exact native title matching. Recover only the one exact canonical prompt in the existing supervisor session and attempt window; never use semantic matching or start a replacement worker. |
 | 2026-08-27 | Vitest Stability                 | Promoted | Keep one validated worker policy across root and Worker configs: four workers in CI, eight locally, with only a positive-safe-integer `VITEST_MAX_WORKERS` override. Await React state-producing events and async milestones inside `act(...)`; never hide warnings globally or suppress intentional negative-route logging. |
 | 2026-08-27 | Toolchain Dependency Audit       | Promoted | Keep the full dependency audit fail-closed. Permit only the two named no-fix `xlsx` advisories while the package remains a root-only development dependency used solely by the legacy Running Jobs importer; a new advisory, available fix, production/workspace placement, or another executable import must fail CI. |
 | 2026-08-27 | Commercial Tab Intent Preload    | Promoted | When a route tab owns a second lazy subview, intent preload must include both module boundaries and the target query. Do not call the outer shell warm while its default useful-content module still starts only after selection. |
@@ -5409,3 +5410,28 @@ Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
 Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/review-runtime.mjs`;
 `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-ci-review.mjs`;
 `test/ai-operations-engineering-review-loop.test.ts`; `npm run test:ai:ops`
+
+### 2026-08-29 - Worker Dispatch Identity - Canonicalize Section Boundaries
+
+Date: 2026-08-29
+Area: OpenClaw autonomous engineering worker supervision
+Status: Promoted
+Decision or mistake: Worker prompt assembly concatenated a lane prompt that
+ended in a newline with an attempt envelope that began with two more. The
+supervisor passed a semantically identical prompt with that redundant blank line
+normalized away, so the named worker completed safely but exact native-task
+attachment failed by one character.
+Why it mattered: Accepting an approximate prompt would weaken the identity fence,
+while starting another worker would duplicate completed work. The durable flow
+therefore remained correctly ready even though its exact branch and draft PR
+were complete.
+Current guardrail: Build worker prompts from trimmed controller-owned sections
+joined by exactly one blank line, then retain byte-exact native title matching.
+New dispatches return only that canonical prompt. During the 1.2.17 to 1.2.18
+transition, recovery may also attach the one exactly reconstructed legacy
+section-boundary form in the existing supervisor session and attempt window; it
+must not use semantic matching, ignore identity fields, expose the legacy alias
+for new spawns, or start a replacement worker.
+Promoted to: `docs/ai/operations/openclaw-engineering-supervision.md`
+Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-dispatch.mjs`;
+`test/ai-operations-engineering-supervision.test.ts`; `npm run test:ai:ops`
