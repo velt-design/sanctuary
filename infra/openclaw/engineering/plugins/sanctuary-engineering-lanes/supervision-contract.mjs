@@ -188,6 +188,13 @@ function validOptionalString(value, maxLength = 2_048) {
   );
 }
 
+function validCiLifecycleValue(value, disposition) {
+  return (
+    validOptionalString(value, 100) ||
+    (value === "" && disposition === "pending")
+  );
+}
+
 function validOptionalIsoTimestamp(value) {
   return (
     value === null ||
@@ -239,8 +246,8 @@ function assertCiEvidence(evidence, state, { current = true } = {}) {
         "workflow_run",
         "missing",
       ].includes(check.kind) ||
-      !validOptionalString(check.status, 100) ||
-      !validOptionalString(check.conclusion, 100) ||
+      !validCiLifecycleValue(check.status, check.disposition) ||
+      !validCiLifecycleValue(check.conclusion, check.disposition) ||
       !validOptionalString(check.url) ||
       !validOptionalString(check.workflowName, 200) ||
       (check.runId !== null && !/^[1-9][0-9]*$/.test(check.runId)) ||
