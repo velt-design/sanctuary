@@ -43,6 +43,18 @@ The controller re-reads the open draft PR and requires its number, URL, base
 ref/SHA, feature branch and head SHA to match the manifest and worker report.
 Each named check must appear exactly once.
 
+GitHub's live check rollup may represent an unfinished check with an empty
+conclusion and a zero-value completion timestamp. The CI adapter normalizes the
+empty conclusion to `null`, records the check as pending, and re-reads the exact
+PR head on the next reconciliation. Empty pending fields are not malformed
+terminal evidence and must not strand an otherwise healthy flow.
+
+Durable checkpoints written before that normalization may contain a blank
+status or conclusion. Recovery accepts that legacy value only when the same
+check is classified as pending, then immediately replaces it with freshly
+normalized exact-head evidence. Blank lifecycle values remain invalid for
+passed, failed, actionable, transient, or blocked evidence.
+
 | Result                                                                                                | Controller action                                                                                              |
 | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | Missing                                                                                               | Dispatch the exact AI foundation workflow once for the verified feature-branch head, then remain `ci_pending`. |
@@ -51,6 +63,23 @@ Each named check must appear exactly once.
 | Recognized runner/network interruption, or differing assertions between a test and its built-in retry | Rerun only the failed jobs of the exact workflow run, once per head.                                           |
 | Stable test failure                                                                                   | Record the failed-check evidence and allocate one permitted same-lane coding repair.                           |
 | Duplicate, skipped, neutral, stale or unknown terminal state                                          | Block for an operator; never reinterpret it as success.                                                        |
+
+## Bounded reviewer dispatch
+
+The supervisor returns the trusted review packet through an OpenClaw tool
+before spawning the independent reviewer. Keep that dispatch at or below
+15,000 characters so OpenClaw cannot truncate the immutable prompt between the
+controller and the supervisor. The current packet uses compact JSON, records
+acceptance evidence by criterion index instead of repeating every criterion,
+uses indexed copy instructions in the output skeleton instead of repeating the
+same criteria there, and still includes the exact task, completion, CI and diff
+hashes needed for a read-only review.
+
+Recovery recognizes the prior embedded, chunked and templated-chunked prompt
+hashes, upgrades a still-ready review to the bounded packet, and only then
+allows a matching reviewer to be attached. A packet that cannot fit the bound
+fails before dispatch; truncated or reconstructed text never qualifies as the
+named reviewer.
 
 The failed log is read only to classify the result. A rerun does not erase the
 first evidence: its hash and count remain in durable state. If the rerun has not

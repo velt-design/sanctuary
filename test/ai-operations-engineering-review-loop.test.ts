@@ -6,8 +6,12 @@ import { describe, expect, it } from "vitest";
 import { createEngineeringSupervisionController } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-runtime.mjs";
 import {
   REVIEW_DIFF_CHUNK_CHARACTERS,
+  REVIEW_DISPATCH_MAX_CHARACTERS,
+  buildLegacyBoundedReviewPrompt,
   buildLegacyChunkedReviewPrompt,
   buildLegacyReviewPrompt,
+  buildReviewDispatch,
+  buildReviewPrompt,
   readReviewDiffChunk,
 } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/review-runtime.mjs";
 import { ENGINEERING_TASK_REVIEW_SCHEMA_V1 } from "../packages/ai/src/index";
@@ -589,6 +593,31 @@ describe("durable exact-head CI and independent review loop", () => {
     ).toMatchObject({ phase: "reviewer_ready", ciClassification: "passed" });
   });
 
+  it("recovers legacy blank pending CI evidence and refreshes it", async () => {
+    const setup = fixture();
+    const reached = await reachCi(setup);
+    const legacy = ciEvidence(setup.manifest, reached.report, "pending");
+    legacy.requiredChecks[0].conclusion = "";
+    const { evidenceHash: _evidenceHash, ...canonical } = legacy;
+    const stored = setup.flows.records.get(reached.ciPending.flowId)!;
+    stored.stateJson.ci.evidence = {
+      ...canonical,
+      evidenceHash: hash(canonical),
+    };
+    setup.ci.queue = [ciEvidence(setup.manifest, reached.report)];
+
+    const recovered = await setup.controller().recover();
+
+    expect(recovered).toMatchObject({ reviewReady: true });
+    expect(
+      setup.flows.records.get(reached.ciPending.flowId)!.stateJson.ci.evidence
+        .requiredChecks[0],
+    ).toMatchObject({
+      conclusion: "SUCCESS",
+      disposition: "passed",
+    });
+  });
+
   it("cannot finish until exact CI and the named reviewer both approve", async () => {
     const setup = fixture();
     const reached = await reachCi(setup);
@@ -772,12 +801,12 @@ describe("durable exact-head CI and independent review loop", () => {
     expect(reviewDispatch.reviewPrompt).toContain(
       "sanctuary_engineering_review_diff_chunk",
     );
-    expect(reviewDispatch.reviewPrompt).toContain('"verdict": "approved"');
+    expect(reviewDispatch.reviewPrompt).toContain('"verdict":"approved"');
     expect(reviewDispatch.reviewPrompt).toContain(
-      '"model": "openai/gpt-5.6-sol"',
+      '"model":"openai/gpt-5.6-sol"',
     );
     expect(reviewDispatch.reviewPrompt).toContain(
-      '"nextAction": "Human review and merge."',
+      '"nextAction":"Human review and merge."',
     );
     expect(reviewDispatch.reviewPrompt).not.toContain('"decision":');
     expect(reviewDispatch.reviewPrompt).not.toContain("<untrusted_diff");
@@ -973,7 +1002,7 @@ describe("durable exact-head CI and independent review loop", () => {
       reviewerAgentId: "sanctuary-code-reviewer",
     });
     expect(correction.reviewTaskName).toMatch(/_c1$/);
-    expect(correction.reviewPrompt).toContain('"verdict": "approved"');
+    expect(correction.reviewPrompt).toContain('"verdict":"approved"');
     const correctedState = setup.flows.records.get(
       correction.flowId,
     )!.stateJson;
@@ -1096,5 +1125,74 @@ describe("durable exact-head CI and independent review loop", () => {
       "sanctuary_engineering_review_diff_chunk",
     );
     expect(setup.tasks.records).toHaveLength(1);
+  });
+  it("upgrades a ready pre-bound legacy chunked dispatch before spawning", async () => {
+    const setup = fixture();
+    const reached = await reachCi(setup);
+    const dispatch = setup.controller().inspectCi({
+      flowId: reached.ciPending.flowId,
+      expectedRevision: reached.ciPending.revision,
+    });
+    const flow = setup.flows.records.get(dispatch.flowId)!;
+    const legacy = buildLegacyBoundedReviewPrompt({
+      flowId: flow.flowId,
+      state: flow.stateJson,
+      ciEvidence: flow.stateJson.ci.evidence,
+      diff: setup.ci.diff(),
+    });
+    expect(legacy.prompt).not.toContain("path and line may be null.\n\n\n```json");
+    flow.stateJson.review.promptHash = legacy.promptHash;
+    const beforeRevision = flow.revision;
+    const recovered = await setup.controller().recover();
+    expect(recovered).toMatchObject({
+      reviewReady: true,
+      expectedRevision: beforeRevision + 1,
+      reviewerAgentId: "sanctuary-code-reviewer",
+    });
+    expect(recovered.reviewPrompt).toContain('"criterionIndex":0');
+    const productionLikeState = clone(flow.stateJson);
+    productionLikeState.manifest.acceptanceCriteria = Array.from(
+      { length: 50 },
+      (_, index) => `Criterion ${index + 1}`,
+    );
+    productionLikeState.completion.acceptanceResults =
+      productionLikeState.manifest.acceptanceCriteria.map(
+        (criterion: string, index: number) => ({
+          criterion,
+          status: "passed",
+          evidence: `Specific worker evidence ${index + 1}.`,
+        }),
+      );
+    const bounded = buildReviewPrompt({
+      flowId: flow.flowId,
+      state: productionLikeState,
+      ciEvidence: productionLikeState.ci.evidence,
+      diff: setup.ci.diff(),
+    });
+    productionLikeState.review.promptHash = bounded.promptHash;
+    const dispatchFor = (state: Value) =>
+      buildReviewDispatch({
+        flow: { ...flow, stateJson: state },
+        state,
+        ciRuntime: setup.ci,
+        runtimeTimeoutSeconds: 3_600,
+      });
+    expect(JSON.stringify(dispatchFor(productionLikeState), null, 2).length).toBeLessThanOrEqual(
+      REVIEW_DISPATCH_MAX_CHARACTERS,
+    );
+    expect(
+      bounded.prompt.match(
+        /COPY each task\.acceptanceCriteria item exactly/g,
+      ),
+    ).toHaveLength(1);
+    productionLikeState.manifest.objective = "oversized ".repeat(2_000);
+    const oversized = buildReviewPrompt({
+      flowId: flow.flowId,
+      state: productionLikeState,
+      ciEvidence: productionLikeState.ci.evidence,
+      diff: setup.ci.diff(),
+    });
+    productionLikeState.review.promptHash = oversized.promptHash;
+    expect(() => dispatchFor(productionLikeState)).toThrow("serialized independent review dispatch");
   });
 });

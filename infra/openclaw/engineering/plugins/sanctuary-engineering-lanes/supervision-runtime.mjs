@@ -31,6 +31,7 @@ import {
   assertAttachableNativeTask,
   buildWorkerDispatch,
   findNativeDispatchMatches,
+  publicWorkerDispatch,
 } from "./supervision-dispatch.mjs";
 import { createGitHubCiRuntime } from "./ci-runtime.mjs";
 import {
@@ -257,7 +258,7 @@ export function createEngineeringSupervisionController(options = {}) {
       (left, right) =>
         left.createdAt - right.createdAt || left.id.localeCompare(right.id),
     );
-    if (matches.length === 0) return workerDispatch;
+    if (matches.length === 0) return publicWorkerDispatch(workerDispatch);
     if (
       matches.length > 1 &&
       matches.some((task) => !TERMINAL_NATIVE_STATUSES.has(task.status))
@@ -433,7 +434,7 @@ export function createEngineeringSupervisionController(options = {}) {
         }),
         "Worker claim",
       );
-      return dispatch(flow, laneResult);
+      return publicWorkerDispatch(dispatch(flow, laneResult));
     }
     return {
       claimed: false,
