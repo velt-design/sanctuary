@@ -77,9 +77,13 @@ hashes needed for a read-only review.
 
 Recovery recognizes the prior embedded, chunked and templated-chunked prompt
 hashes, upgrades a still-ready review to the bounded packet, and only then
-allows a matching reviewer to be attached. A packet that cannot fit the bound
-fails before dispatch; truncated or reconstructed text never qualifies as the
-named reviewer.
+allows a matching reviewer to be attached. If that historical dispatch window
+has expired before recovery, recovery reopens it once: the start remains the
+packet-upgrade checkpoint so an existing exact reviewer stays eligible, while
+the deadline extends from the actual recovery time. The restoration changes the
+checkpoint summary, so the same window cannot be reopened repeatedly. A packet
+that cannot fit the bound fails before dispatch; truncated or reconstructed text
+never qualifies as the named reviewer.
 
 The failed log is read only to classify the result. A rerun does not erase the
 first evidence: its hash and count remain in durable state. If the rerun has not

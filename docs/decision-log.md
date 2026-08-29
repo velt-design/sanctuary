@@ -5405,7 +5405,10 @@ skeleton instead of copying them again, compact its JSON and reject any
 dispatch above
 15,000 characters before spawning. During recovery, recognize the prior prompt
 formats by their exact hashes, upgrade a still-ready review to the bounded
-packet, and continue only with an exact native-title match.
+packet, and continue only with an exact native-title match. If the upgraded
+historical window expires before recovery, reopen it once from the original
+upgrade checkpoint and extend its deadline from recovery time. Change the
+checkpoint summary during that repair so later recovery cannot reopen it again.
 Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
 Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/review-runtime.mjs`;
 `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-ci-review.mjs`;

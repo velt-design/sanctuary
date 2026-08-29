@@ -1140,16 +1140,48 @@ describe("durable exact-head CI and independent review loop", () => {
       ciEvidence: flow.stateJson.ci.evidence,
       diff: setup.ci.diff(),
     });
-    expect(legacy.prompt).not.toContain("path and line may be null.\n\n\n```json");
+    expect(legacy.prompt).not.toContain(
+      "path and line may be null.\n\n\n```json",
+    );
     flow.stateJson.review.promptHash = legacy.promptHash;
+    const staleWindow = {
+      startedAt: flow.stateJson.review.startedAt,
+      deadlineAt: flow.stateJson.review.deadlineAt,
+    };
+    setup.advance(3_600_001);
     const beforeRevision = flow.revision;
     const recovered = await setup.controller().recover();
     expect(recovered).toMatchObject({
       reviewReady: true,
       expectedRevision: beforeRevision + 1,
       reviewerAgentId: "sanctuary-code-reviewer",
+      reviewStartedAt: staleWindow.deadlineAt + 1,
+      reviewDeadlineAt: staleWindow.deadlineAt + 3_600_001,
     });
     expect(recovered.reviewPrompt).toContain('"criterionIndex":0');
+    const upgradedFlow = setup.flows.records.get(dispatch.flowId)!;
+    Object.assign(upgradedFlow.stateJson.review, {
+      ...staleWindow,
+      deadlineAt: upgradedFlow.stateJson.lastCheckpoint.at + 1_000,
+    });
+    const reviewer = setup.tasks.add({
+      runId: "run-reviewer-after-upgrade",
+      agentId: recovered.reviewerAgentId,
+      title: recovered.reviewPrompt,
+      createdAt: recovered.reviewStartedAt + 1_001,
+    });
+    setup.advance(3_600_001);
+    const resumed = await setup.controller().recover();
+    expect(resumed).toMatchObject({
+      recoveredAttached: true,
+      phase: "reviewer_running",
+    });
+    const attachedReview = setup.flows.records.get(dispatch.flowId)!.stateJson
+      .review;
+    expect(attachedReview.taskRunId).toBe(reviewer.id);
+    expect(attachedReview.deadlineAt).toBe(
+      recovered.reviewDeadlineAt + 3_600_001,
+    );
     const productionLikeState = clone(flow.stateJson);
     productionLikeState.manifest.acceptanceCriteria = Array.from(
       { length: 50 },
@@ -1177,13 +1209,11 @@ describe("durable exact-head CI and independent review loop", () => {
         ciRuntime: setup.ci,
         runtimeTimeoutSeconds: 3_600,
       });
-    expect(JSON.stringify(dispatchFor(productionLikeState), null, 2).length).toBeLessThanOrEqual(
-      REVIEW_DISPATCH_MAX_CHARACTERS,
-    );
     expect(
-      bounded.prompt.match(
-        /COPY each task\.acceptanceCriteria item exactly/g,
-      ),
+      JSON.stringify(dispatchFor(productionLikeState), null, 2).length,
+    ).toBeLessThanOrEqual(REVIEW_DISPATCH_MAX_CHARACTERS);
+    expect(
+      bounded.prompt.match(/COPY each task\.acceptanceCriteria item exactly/g),
     ).toHaveLength(1);
     productionLikeState.manifest.objective = "oversized ".repeat(2_000);
     const oversized = buildReviewPrompt({
@@ -1193,6 +1223,8 @@ describe("durable exact-head CI and independent review loop", () => {
       diff: setup.ci.diff(),
     });
     productionLikeState.review.promptHash = oversized.promptHash;
-    expect(() => dispatchFor(productionLikeState)).toThrow("serialized independent review dispatch");
+    expect(() => dispatchFor(productionLikeState)).toThrow(
+      "serialized independent review dispatch",
+    );
   });
 });
