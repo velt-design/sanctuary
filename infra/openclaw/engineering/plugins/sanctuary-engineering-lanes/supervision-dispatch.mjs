@@ -17,6 +17,25 @@ const NATIVE_STATUSES = new Set([
   ...TERMINAL_NATIVE_STATUSES,
 ]);
 
+function buildLegacyWorkerPrompt({
+  lanePrompt,
+  attemptEnvelope,
+  retryContext,
+  repairContext,
+}) {
+  // Plugin 1.2.17 placed separators around controller sections instead of
+  // canonicalizing their boundaries. Keep this exact reconstruction only for
+  // attaching a worker that may already exist during the 1.2.18 transition.
+  const legacyAttemptEnvelope = `\n\n${attemptEnvelope}\n`;
+  const legacyRetryContext = retryContext
+    ? `\n\n${retryContext}\n`
+    : "";
+  const legacyRepairContext = repairContext
+    ? `\n\n${repairContext}\n`
+    : "";
+  return `${lanePrompt}${legacyAttemptEnvelope}${legacyRetryContext}${legacyRepairContext}`.trim();
+}
+
 export function buildWorkerDispatch({
   flow,
   state,
@@ -52,6 +71,12 @@ export function buildWorkerDispatch({
     .filter(Boolean)
     .map((section) => section.trim())
     .join("\n\n");
+  const legacyWorkerPrompt = buildLegacyWorkerPrompt({
+    lanePrompt: laneResult.workerPrompt,
+    attemptEnvelope,
+    retryContext,
+    repairContext,
+  });
   return {
     claimed: true,
     flowId: flow.flowId,
@@ -70,7 +95,16 @@ export function buildWorkerDispatch({
     priorCumulativeCostCents: state.cumulativeCostCents,
     attemptBudgetCents: attempt.budgetCents,
     workerPrompt,
+    nativeWorkerPrompts: [workerPrompt, legacyWorkerPrompt].filter(
+      (prompt, index, prompts) => prompts.indexOf(prompt) === index,
+    ),
   };
+}
+
+export function publicWorkerDispatch(workerDispatch) {
+  const { nativeWorkerPrompts: _nativeWorkerPrompts, ...publicDispatch } =
+    workerDispatch;
+  return publicDispatch;
 }
 
 export function findNativeDispatchMatches(taskRuns, workerDispatch) {
@@ -83,7 +117,7 @@ export function findNativeDispatchMatches(taskRuns, workerDispatch) {
         task.sessionKey === taskRuns.sessionKey &&
         task.runtime === "subagent" &&
         task.agentId === workerDispatch.workerAgentId &&
-        task.title === workerDispatch.workerPrompt &&
+        workerDispatch.nativeWorkerPrompts.includes(task.title) &&
         Number.isSafeInteger(task.createdAt) &&
         task.createdAt >= workerDispatch.attemptStartedAt &&
         task.createdAt <= workerDispatch.attemptDeadlineAt,
@@ -105,7 +139,7 @@ export function assertAttachableNativeTask({
     task.runId !== runId ||
     task.runtime !== "subagent" ||
     task.agentId !== expectedDispatch.workerAgentId ||
-    task.title !== expectedDispatch.workerPrompt ||
+    !expectedDispatch.nativeWorkerPrompts.includes(task.title) ||
     !task.childSessionKey ||
     !NATIVE_STATUSES.has(task.status) ||
     !Number.isSafeInteger(task.createdAt) ||

@@ -5427,9 +5427,11 @@ therefore remained correctly ready even though its exact branch and draft PR
 were complete.
 Current guardrail: Build worker prompts from trimmed controller-owned sections
 joined by exactly one blank line, then retain byte-exact native title matching.
-Recovery may attach the one exact canonical prompt in the existing supervisor
-session and attempt window; it must not use semantic matching, ignore identity
-fields, or start a replacement worker.
+New dispatches return only that canonical prompt. During the 1.2.17 to 1.2.18
+transition, recovery may also attach the one exactly reconstructed legacy
+section-boundary form in the existing supervisor session and attempt window; it
+must not use semantic matching, ignore identity fields, expose the legacy alias
+for new spawns, or start a replacement worker.
 Promoted to: `docs/ai/operations/openclaw-engineering-supervision.md`
 Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-dispatch.mjs`;
 `test/ai-operations-engineering-supervision.test.ts`; `npm run test:ai:ops`

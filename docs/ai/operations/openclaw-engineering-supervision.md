@@ -139,7 +139,11 @@ starting more work.
 Canonical prompt construction trims only each controller-owned section and joins
 sections with one blank line. This keeps the exact-title fence stable across the
 lane prompt, attempt envelope and repair context while preserving every byte
-inside each section.
+inside each section. During the 1.2.17 to 1.2.18 transition, recovery also
+recognizes the one exactly reconstructed legacy section-boundary form. New
+dispatches never return that legacy form, and recovery still requires an exact
+title plus the same supervisor session, named worker, and attempt time window;
+it does not normalize or semantically compare native task titles.
 An overdue running task must be cancelled through OpenClaw's native task
 runtime before a retry becomes eligible.
 

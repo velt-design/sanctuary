@@ -406,6 +406,7 @@ describe("durable engineering supervision", () => {
     const task = manifest("spawn_attach_recovery");
     setup.controller().enqueue(task);
     const dispatch = setup.controller().claim();
+    expect(dispatch).not.toHaveProperty("nativeWorkerPrompts");
     expect(dispatch.workerPrompt).toBe(dispatch.workerPrompt.trim());
     expect(dispatch.workerPrompt).toContain(
       `.\n\n# Attempt envelope\n\nThis is attempt 1 of 3.`,
@@ -439,6 +440,32 @@ describe("durable engineering supervision", () => {
       attempts: 1,
       activeRunId: native.runId,
     });
+  });
+
+  it("recovers an exact pre-1.2.18 worker prompt without spawning a duplicate", async () => {
+    const setup = fixture();
+    setup.controller().enqueue(manifest("legacy_prompt_recovery"));
+    const dispatch = setup.controller().claim();
+    const legacyWorkerPrompt = dispatch.workerPrompt.replace(
+      "\n\n# Attempt envelope",
+      "\n\n\n# Attempt envelope",
+    );
+    expect(legacyWorkerPrompt).not.toBe(dispatch.workerPrompt);
+    const native = setup.tasks.add({
+      runId: "run-legacy-prompt-recovery",
+      label: null,
+      title: legacyWorkerPrompt,
+      createdAt: dispatch.attemptStartedAt,
+    });
+
+    expect(await setup.controller().recover()).toMatchObject({
+      recoveredAttached: true,
+      waiting: true,
+      phase: "worker_running",
+      attempts: 1,
+      activeRunId: native.runId,
+    });
+    expect(setup.tasks.records.size).toBe(1);
   });
 
   it("attaches the exact supervisor task when an inner task shares its run ID", () => {
