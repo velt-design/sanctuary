@@ -14,7 +14,9 @@ import {
   assertAttachableReviewerTask,
   assertNativeReviewerIdentity,
   buildReviewDispatch,
+  buildLegacyChunkedReviewPrompt,
   buildLegacyReviewPrompt,
+  buildLegacyTemplatedChunkedReviewPrompt,
   buildReviewPrompt,
   findNativeReviewMatches,
   validateReviewReport,
@@ -592,12 +594,31 @@ export function createCiReviewController(options) {
       diff,
     });
     if (state.review.promptHash !== currentPrompt.promptHash) {
-      const legacyPrompt = buildLegacyReviewPrompt({
-        state,
-        ciEvidence: state.ci.evidence,
-        diff,
-      });
-      if (state.review.promptHash !== legacyPrompt.promptHash) {
+      const legacyPrompts = [
+        buildLegacyTemplatedChunkedReviewPrompt({
+          flowId: flow.flowId,
+          state,
+          ciEvidence: state.ci.evidence,
+          diff,
+        }),
+        buildLegacyChunkedReviewPrompt({
+          flowId: flow.flowId,
+          state,
+          ciEvidence: state.ci.evidence,
+          diff,
+        }),
+        buildLegacyReviewPrompt({
+          state,
+          ciEvidence: state.ci.evidence,
+          diff,
+        }),
+      ];
+      if (
+        !legacyPrompts.some(
+          (legacyPrompt) =>
+            state.review.promptHash === legacyPrompt.promptHash,
+        )
+      ) {
         throw new Error(
           "The independent review prompt no longer matches its durable hash.",
         );
@@ -609,7 +630,7 @@ export function createCiReviewController(options) {
           review: { ...state.review, promptHash: currentPrompt.promptHash },
         },
         "reviewer_ready",
-        "The ready reviewer was upgraded to bounded exact diff delivery.",
+        "The ready reviewer was upgraded to a bounded exact-diff dispatch envelope.",
         at,
         { phase: "reviewer_ready" },
       );
