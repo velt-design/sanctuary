@@ -652,8 +652,7 @@ export function createEngineeringSupervisionController(options = {}) {
       if (
         completion.safety.worktreeClean &&
         !completion.safety.branchPushed &&
-        (completion.headSha === null ||
-          completion.headSha === completion.baseSha) &&
+        completion.headSha === null &&
         completion.changedPaths.length === 0
       ) {
         lane.retireUnchanged(state.taskId, state.manifestHash);
