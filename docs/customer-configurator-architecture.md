@@ -3066,6 +3066,44 @@ Portal workbench suite, fixture Playwright, portal build, package typecheck and 
 
 Establish website-wide state without loading geometry or Three.js.
 
+### Implementation status
+
+Reconciled onto current main on 2026-08-29 by
+`eng_20260828_4cdd5c79f02f`, preserving the audited PR 72 behavior while
+retaining the newer engineering-history entries already on the base branch.
+
+- `apps/marketing/app/layout.tsx` mounts one root `ConfiguratorProvider`; its
+  external store is created once per provider, exposes a stable
+  `useSyncExternalStore` contract, and returns a constant empty server snapshot
+  so restored browser state cannot cause a route-navigation hydration mismatch.
+- `apps/marketing/lib/pergola-configurator/storage.ts` is the sole browser
+  owner of the exact `sanctuary.pergola-config.v1` envelope. It strictly checks
+  the envelope, delegates document parsing, normalization and canonical
+  serialization to `@sp/configurator/core`, rewrites a valid non-canonical
+  current value once, and preserves corrupt or unknown future values behind an
+  explicit recovery/reset decision.
+- The store debounces committed writes, flushes a pending commit on `pagehide`,
+  keeps state in memory with visible status when storage is unavailable, and
+  accepts a cross-tab document only when `updatedAt` and then `revision` make it
+  newer. Storage-event application does not schedule another write.
+- The one-way Simple compatibility adapter reads only the allowlisted
+  `simple-cover-handoff.v1` design fields. It maps width, projection, pitched
+  acrylic form, attachment intent and level into the core document, while price,
+  `calculationRef` and costing version never enter general configurator state.
+- `getConfiguratorRoutePolicy` owns the tested allow/deny classes. The closed
+  dock is text-only, uses the marketing typography, rule and olive-action
+  vocabulary, and has empty/configured, save-status and explicit reset states.
+
+Residual limitations are intentional PR 4 boundaries. The dock's Edit/Start
+action emits `sanctuary:configurator-open-requested`, but there is no dialog or
+geometry/viewer import until later PRs. Before PR 5's shared overlay coordinator,
+the dock fails safe by hiding while consent, mobile navigation, portal mode, a
+focused editable control or a software-keyboard-sized visual viewport is active;
+route-local overlay migration and measured bottom-inset sharing remain deferred.
+Legal pages remain route-policy-hidden because PR 4 adds no independent reopen
+control there. Persistence is device-local and contains no PII, analytics,
+enquiry delivery, Supabase or account synchronization.
+
 ### Scope
 
 - root configurator provider;
