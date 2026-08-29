@@ -1160,7 +1160,10 @@ describe("durable exact-head CI and independent review loop", () => {
     });
     expect(recovered.reviewPrompt).toContain('"criterionIndex":0');
     const upgradedFlow = setup.flows.records.get(dispatch.flowId)!;
-    Object.assign(upgradedFlow.stateJson.review, staleWindow);
+    Object.assign(upgradedFlow.stateJson.review, {
+      ...staleWindow,
+      deadlineAt: upgradedFlow.stateJson.lastCheckpoint.at,
+    });
     const reviewer = setup.tasks.add({
       runId: "run-reviewer-after-upgrade",
       agentId: recovered.reviewerAgentId,

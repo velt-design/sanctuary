@@ -647,7 +647,7 @@ export function createCiReviewController(options) {
       state.lastCheckpoint?.kind === "reviewer_ready" &&
       state.lastCheckpoint.summary === REVIEW_PACKET_UPGRADE_SUMMARY &&
       Number.isSafeInteger(state.lastCheckpoint.at) &&
-      state.review.deadlineAt < state.lastCheckpoint.at
+      state.review.deadlineAt <= state.lastCheckpoint.at
     ) {
       const startedAt = state.lastCheckpoint.at;
       const at = timestamp(now);
