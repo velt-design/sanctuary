@@ -1134,12 +1134,14 @@ describe("durable exact-head CI and independent review loop", () => {
       expectedRevision: reached.ciPending.revision,
     });
     const flow = setup.flows.records.get(dispatch.flowId)!;
-    flow.stateJson.review.promptHash = buildLegacyBoundedReviewPrompt({
+    const legacy = buildLegacyBoundedReviewPrompt({
       flowId: flow.flowId,
       state: flow.stateJson,
       ciEvidence: flow.stateJson.ci.evidence,
       diff: setup.ci.diff(),
-    }).promptHash;
+    });
+    expect(legacy.prompt).not.toContain("path and line may be null.\n\n\n```json");
+    flow.stateJson.review.promptHash = legacy.promptHash;
     const beforeRevision = flow.revision;
     const recovered = await setup.controller().recover();
     expect(recovered).toMatchObject({
