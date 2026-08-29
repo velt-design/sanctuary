@@ -80,11 +80,6 @@ remain available to the lead; publish remains worker-only.
 10. After success, safely clean the lane worktree and claim the next eligible
     task. Branches and the draft PR remain for human review.
 
-A blocked worker report also retires its lane automatically when native
-evidence proves the worktree is clean, unchanged from the exact base, unpushed
-and unpublished. Any blocked lane with changes or publication evidence remains
-owned for operator review rather than releasing the single-lane lease.
-
 The `runTimeoutSeconds` in a dispatch confirms the manifest timeout matches the
 globally pinned OpenClaw subagent timeout. It is evidence, not a supported
 `sessions_spawn` parameter.

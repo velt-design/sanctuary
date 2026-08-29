@@ -4,7 +4,6 @@ import {
 } from "./lane-contract.mjs";
 import {
   provisionEngineeringLane,
-  retireUnchangedEngineeringLane,
   statusEngineeringLane,
 } from "./lane-runtime.mjs";
 import {
@@ -68,8 +67,6 @@ export function createEngineeringSupervisionController(options = {}) {
     provision: (manifest) => provisionEngineeringLane(manifest),
     status: (taskId, manifestHash) =>
       statusEngineeringLane(taskId, manifestHash),
-    retireUnchanged: (taskId, manifestHash) =>
-      retireUnchangedEngineeringLane(taskId, manifestHash),
   };
   const now = options.now ?? (() => Date.now());
   const runtimeConfig = options.runtimeConfig;
@@ -649,14 +646,6 @@ export function createEngineeringSupervisionController(options = {}) {
       return postWorker.awaitCi(flow, state);
     }
     if (completion.outcome === "blocked") {
-      if (
-        completion.safety.worktreeClean &&
-        !completion.safety.branchPushed &&
-        completion.headSha === null &&
-        completion.changedPaths.length === 0
-      ) {
-        lane.retireUnchanged(state.taskId, state.manifestHash);
-      }
       return block(flow, state, task, "worker_blocked", completion.nextAction);
     }
     if (
