@@ -23,6 +23,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-08-29 | Exact-Head CI                    | Promoted | Normalize GitHub lifecycle fields at the CI adapter boundary: trim and uppercase non-empty values and convert empty pending conclusions to `null`, then keep re-reading the exact PR head instead of rejecting or bypassing valid pending evidence. |
 | 2026-08-29 | Durable CI Recovery              | Promoted | Adapter normalization does not rewrite existing durable checkpoints. Accept a legacy blank lifecycle field only on pending CI evidence, preserve its stored hash for validation, then refresh it from the exact PR head before continuing. |
+| 2026-08-29 | Reviewer Dispatch Envelope       | Promoted | Keep immutable reviewer dispatches at or below 15,000 characters, compact duplicated packet evidence, and upgrade recognized ready legacy prompt hashes before spawning. Never attach a truncated or reconstructed native reviewer title. |
 | 2026-08-27 | Vitest Stability                 | Promoted | Keep one validated worker policy across root and Worker configs: four workers in CI, eight locally, with only a positive-safe-integer `VITEST_MAX_WORKERS` override. Await React state-producing events and async milestones inside `act(...)`; never hide warnings globally or suppress intentional negative-route logging. |
 | 2026-08-27 | Toolchain Dependency Audit       | Promoted | Keep the full dependency audit fail-closed. Permit only the two named no-fix `xlsx` advisories while the package remains a root-only development dependency used solely by the legacy Running Jobs importer; a new advisory, available fix, production/workspace placement, or another executable import must fail CI. |
 | 2026-08-27 | Commercial Tab Intent Preload    | Promoted | When a route tab owns a second lazy subview, intent preload must include both module boundaries and the target query. Do not call the outer shell warm while its default useful-content module still starts only after selection. |
@@ -5381,4 +5382,28 @@ from the exact pull-request head. Never accept blank lifecycle values for
 passed, failed, actionable, transient, or blocked evidence.
 Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
 Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-contract.mjs`;
+`test/ai-operations-engineering-review-loop.test.ts`; `npm run test:ai:ops`
+
+### 2026-08-29 - Reviewer Dispatch Envelope - Bound Immutable Review Prompts
+
+Date: 2026-08-29
+Area: OpenClaw autonomous engineering independent review
+Status: Promoted
+Decision or mistake: The Configurator review dispatch was larger than the
+16,000-character supervisor tool-result bridge. OpenClaw exposed a truncated
+prompt to the supervisor, which reconstructed the missing output template with
+slightly different wording. The native reviewer ran, but its task title no
+longer matched the controller's immutable prompt hash and attachment failed.
+Why it mattered: Exact-head CI passed and the reviewer stayed read-only, but
+the proof could not reach a durable reviewed result. Accepting a near-match
+would have weakened the identity fence that prevents the wrong native task from
+being treated as the named reviewer.
+Current guardrail: Build a compact v2 review packet, deduplicate acceptance
+evidence by criterion index, compact its JSON and reject any dispatch above
+15,000 characters before spawning. During recovery, recognize the prior prompt
+formats by their exact hashes, upgrade a still-ready review to the bounded
+packet, and continue only with an exact native-title match.
+Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
+Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/review-runtime.mjs`;
+`infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-ci-review.mjs`;
 `test/ai-operations-engineering-review-loop.test.ts`; `npm run test:ai:ops`

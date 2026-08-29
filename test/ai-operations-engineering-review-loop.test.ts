@@ -6,8 +6,12 @@ import { describe, expect, it } from "vitest";
 import { createEngineeringSupervisionController } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-runtime.mjs";
 import {
   REVIEW_DIFF_CHUNK_CHARACTERS,
+  REVIEW_DISPATCH_MAX_CHARACTERS,
   buildLegacyChunkedReviewPrompt,
   buildLegacyReviewPrompt,
+  buildLegacyTemplatedChunkedReviewPrompt,
+  buildReviewDispatch,
+  buildReviewPrompt,
   readReviewDiffChunk,
 } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/review-runtime.mjs";
 import { ENGINEERING_TASK_REVIEW_SCHEMA_V1 } from "../packages/ai/src/index";
@@ -797,12 +801,12 @@ describe("durable exact-head CI and independent review loop", () => {
     expect(reviewDispatch.reviewPrompt).toContain(
       "sanctuary_engineering_review_diff_chunk",
     );
-    expect(reviewDispatch.reviewPrompt).toContain('"verdict": "approved"');
+    expect(reviewDispatch.reviewPrompt).toContain('"verdict":"approved"');
     expect(reviewDispatch.reviewPrompt).toContain(
-      '"model": "openai/gpt-5.6-sol"',
+      '"model":"openai/gpt-5.6-sol"',
     );
     expect(reviewDispatch.reviewPrompt).toContain(
-      '"nextAction": "Human review and merge."',
+      '"nextAction":"Human review and merge."',
     );
     expect(reviewDispatch.reviewPrompt).not.toContain('"decision":');
     expect(reviewDispatch.reviewPrompt).not.toContain("<untrusted_diff");
@@ -998,7 +1002,7 @@ describe("durable exact-head CI and independent review loop", () => {
       reviewerAgentId: "sanctuary-code-reviewer",
     });
     expect(correction.reviewTaskName).toMatch(/_c1$/);
-    expect(correction.reviewPrompt).toContain('"verdict": "approved"');
+    expect(correction.reviewPrompt).toContain('"verdict":"approved"');
     const correctedState = setup.flows.records.get(
       correction.flowId,
     )!.stateJson;
@@ -1121,5 +1125,73 @@ describe("durable exact-head CI and independent review loop", () => {
       "sanctuary_engineering_review_diff_chunk",
     );
     expect(setup.tasks.records).toHaveLength(1);
+  });
+  it("upgrades a ready pre-bound legacy chunked dispatch before spawning", async () => {
+    const setup = fixture();
+    const reached = await reachCi(setup);
+    const dispatch = setup.controller().inspectCi({
+      flowId: reached.ciPending.flowId,
+      expectedRevision: reached.ciPending.revision,
+    });
+    const flow = setup.flows.records.get(dispatch.flowId)!;
+    const legacy = buildLegacyTemplatedChunkedReviewPrompt({
+      flowId: flow.flowId,
+      state: flow.stateJson,
+      ciEvidence: flow.stateJson.ci.evidence,
+      diff: setup.ci.diff(),
+    });
+    flow.stateJson.review.promptHash = legacy.promptHash;
+    const beforeRevision = flow.revision;
+    const recovered = await setup.controller().recover();
+    expect(recovered).toMatchObject({
+      reviewReady: true,
+      expectedRevision: beforeRevision + 1,
+      reviewerAgentId: "sanctuary-code-reviewer",
+    });
+    expect(recovered.reviewPrompt).toContain(
+      '"schema":"sanctuary-engineering-review-packet-v2"',
+    );
+    expect(recovered.reviewPrompt).toContain('"criterionIndex":0');
+    expect(setup.tasks.records).toHaveLength(1);
+    const productionLikeState = clone(flow.stateJson);
+    productionLikeState.manifest.acceptanceCriteria = Array.from(
+      { length: 6 },
+      (_, index) =>
+        `Criterion ${index + 1}: ${"bounded exact review evidence ".repeat(15)}`.trim(),
+    );
+    productionLikeState.completion.acceptanceResults =
+      productionLikeState.manifest.acceptanceCriteria.map(
+        (criterion: string, index: number) => ({
+          criterion,
+          status: "passed",
+          evidence: `Specific worker evidence ${index + 1}.`,
+        }),
+      );
+    const bounded = buildReviewPrompt({
+      flowId: flow.flowId,
+      state: productionLikeState,
+      ciEvidence: productionLikeState.ci.evidence,
+      diff: setup.ci.diff(),
+    });
+    productionLikeState.review.promptHash = bounded.promptHash;
+    const dispatchFor = (state: Value) =>
+      buildReviewDispatch({
+        flow: { ...flow, stateJson: state },
+        state,
+        ciRuntime: setup.ci,
+        runtimeTimeoutSeconds: 3_600,
+      });
+    expect(JSON.stringify(dispatchFor(productionLikeState), null, 2).length).toBeLessThanOrEqual(
+      REVIEW_DISPATCH_MAX_CHARACTERS,
+    );
+    productionLikeState.manifest.objective = "oversized ".repeat(2_000);
+    const oversized = buildReviewPrompt({
+      flowId: flow.flowId,
+      state: productionLikeState,
+      ciEvidence: productionLikeState.ci.evidence,
+      diff: setup.ci.diff(),
+    });
+    productionLikeState.review.promptHash = oversized.promptHash;
+    expect(() => dispatchFor(productionLikeState)).toThrow("serialized independent review dispatch");
   });
 });

@@ -64,6 +64,22 @@ passed, failed, actionable, transient, or blocked evidence.
 | Stable test failure                                                                                   | Record the failed-check evidence and allocate one permitted same-lane coding repair.                           |
 | Duplicate, skipped, neutral, stale or unknown terminal state                                          | Block for an operator; never reinterpret it as success.                                                        |
 
+## Bounded reviewer dispatch
+
+The supervisor returns the trusted review packet through an OpenClaw tool
+before spawning the independent reviewer. Keep that dispatch at or below
+15,000 characters so OpenClaw cannot truncate the immutable prompt between the
+controller and the supervisor. The current packet uses compact JSON, records
+acceptance evidence by criterion index instead of repeating every criterion,
+and still includes the exact task, completion, CI and diff hashes needed for a
+read-only review.
+
+Recovery recognizes the prior embedded, chunked and templated-chunked prompt
+hashes, upgrades a still-ready review to the bounded packet, and only then
+allows a matching reviewer to be attached. A packet that cannot fit the bound
+fails before dispatch; truncated or reconstructed text never qualifies as the
+named reviewer.
+
 The failed log is read only to classify the result. A rerun does not erase the
 first evidence: its hash and count remain in durable state. If the rerun has not
 yet appeared, identical evidence stays pending instead of being mistaken for a
