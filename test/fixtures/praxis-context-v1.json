@@ -3,7 +3,7 @@
     "schemaVersion": "sanctuary.praxis.context.v1",
     "requestId": "90000000-0000-4000-8000-000000000001",
     "source": { "sourceKey": "sanctuary", "connectionId": "a0000000-0000-4000-8000-000000000001", "environment": "test", "authority": "canonical", "projectionVersion": "sanctuary.praxis.core.v1", "retrievedAt": "2026-09-03T00:13:00.000Z", "asOf": "2026-09-03T00:13:00.000Z" },
-    "query": { "resource": "all", "projectId": "10000000-0000-4000-8000-000000000001", "changedAfter": null, "limit": 12 },
+    "query": { "resource": "all", "projectId": null, "changedAfter": null, "limit": 12 },
     "page": { "hasMore": false, "nextCursor": null },
     "records": [
       {
