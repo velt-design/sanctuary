@@ -130,7 +130,7 @@ try {
       not has_function_privilege('sanctuary_praxis_reader', 'public.commercial_record_project_payment_entry()', 'EXECUTE')
     ) from pg_roles where rolname = 'sanctuary_praxis_reader';
   `, 'Role/grant contract', { quiet: true });
-  if (roleContract !== Array(14).fill('true').join(',')) throw new Error(`Reader role contract failed: ${roleContract}`);
+  if (roleContract !== Array(14).fill('t').join(',')) throw new Error(`Reader role contract failed: ${roleContract}`);
 
   const readerPosture = psql(`
     select concat_ws(',',
@@ -143,7 +143,7 @@ try {
       not has_sequence_privilege(current_user, 'public.praxis_probe_sequence', 'USAGE,SELECT,UPDATE')
     );
   `, 'Concrete LOGIN posture', { reader: true, quiet: true });
-  if (readerPosture !== Array(7).fill('true').join(',')) throw new Error(`Reader LOGIN posture failed: ${readerPosture}`);
+  if (readerPosture !== Array(7).fill('t').join(',')) throw new Error(`Reader LOGIN posture failed: ${readerPosture}`);
 
   const projection = psql(`
     begin read only;
