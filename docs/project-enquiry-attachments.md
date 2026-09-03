@@ -1,6 +1,6 @@
 # Project-linked website enquiry files
 
-Status: implementation approved. The exact schema migrations are applied and ledgered in staging and production. The production historical dry run is complete, but its backfill is not applied because ambiguous declarations and changed-project evidence require separate review.
+Status: implementation approved and deployed. The exact schema migrations are applied and ledgered in staging and production. The reviewed 59-file production backfill is applied; ambiguous declarations and changed-project evidence remain excluded pending separate evidence-based resolution.
 
 ## User experience
 
@@ -36,7 +36,9 @@ On 2026-08-27 the exact migrations were rollback-rehearsed, then applied individ
 
 Final postflight found three RLS-enabled tables, three feature policies, four triggers, five functions, no anonymous table grants, service-role-only backfill execution, the private Storage bucket, all three unique migration-ledger versions, and zero deployment-created attachment, event, or backfill-run rows. The signing-boundary postflight separately proved the removed Storage policy count is zero in both environments.
 
-The staging dry run was empty. Its report SHA-256 is `b89e1f3220357156b271a1344b0a78cbeaa1da572569fbe45496a8bf3a327ef2`. The production report SHA-256 is `7a5ee65b62449b71ec5af8028275a4ee64c8d730cde71a6ca64c699bbafba322`; it reports 59 exact linkable files, 22 ambiguous declarations, nine projects whose current link changed, zero missing Storage objects, and zero unmatched Storage objects. No historical rows were linked and no Storage object was moved, renamed, or deleted.
+The staging dry run was empty. Its report SHA-256 is `b89e1f3220357156b271a1344b0a78cbeaa1da572569fbe45496a8bf3a327ef2`. The approved production report SHA-256 is `7a5ee65b62449b71ec5af8028275a4ee64c8d730cde71a6ca64c699bbafba322`; it reported 59 exact linkable files, 22 ambiguous declarations, nine projects whose current link changed, zero missing Storage objects, and zero unmatched Storage objects.
+
+The exact 59-candidate subset was applied on 2026-08-27 with immutable run ID `81401386-ed04-44be-8047-cd7008d4cb32` and payload hash `d4724478426a1c4f215f3695d4d0e43abca5d6582264e01c6a76fc94e5836777`. The receipt records 59 inserted and zero existing rows. Postflight found 59 historical attachment rows, 59 matching link events, the private bucket and 60 original Storage objects unchanged, and zero direct browser Storage policies. The create-only post-apply report SHA-256 is `180ddea300fb62522d7f40749a6f38501040955dd39fc3a31243539fe241b88d`; it reports zero linkable files, 59 already linked files, the same 22 ambiguous declarations and nine changed-project entries, and zero missing or unmatched objects.
 
 ## Historical dry run and reviewed apply
 
@@ -50,12 +52,11 @@ The report contains exact linkable candidates, already-linked files, referenced 
 
 The read phase never writes database rows and never moves, renames, or deletes Storage objects. Applying a report is intentionally separate and is not authorized by implementing this feature. After the report and migration plan are reviewed, an operator must use a new UUID, the matching report/environment/ref, `--apply`, and the exact confirmation environment value documented by the script. A report containing missing, unmatched, ambiguous, or changed-project evidence also requires the explicit `--accept-reviewed-exceptions` acknowledgement; this does not add those exceptions to the candidate set. The service-only RPC rechecks every candidate against current `enquiry_requests.project_id`, `submission_id`, the exact `files[ordinal]` metadata, and `storage.objects` in one transaction. Any changed or ambiguous source rejects the complete run. Replaying the same run UUID and identical payload is safe; using that UUID with different candidates is rejected. A reviewed report with zero candidates is a no-op and creates no run row.
 
-## Remaining rollout sequence
+## Remaining reconciliation sequence
 
-1. Review the exact production dry-run report, especially every ambiguous declaration and changed-project entry. Never infer the intended project.
-2. If the exact 59-candidate subset is approved, apply only that immutable report with a new run UUID and the explicit reviewed-exceptions acknowledgement. Do not include any ambiguous or changed-project evidence.
-3. Rerun the production dry run. The applied candidates must move to `alreadyLinkedFiles`; all exceptions must remain visible for separate resolution.
-4. Verify staff and non-staff authorization, exact-project denial, View/Download audit events, 60-second redirects, Work-default/Files-tab UI, and both sides of the 8 MB email boundary.
+1. Keep the 22 ambiguous declarations and nine changed-project entries excluded until authoritative project evidence is reviewed. Never infer the intended project.
+2. If an exception is resolved, use a new reviewed reconciliation report/run rather than altering or replaying the completed 59-file payload.
+3. Continue monitoring staff/non-staff authorization, exact-project denial, View/Download audit events, 60-second redirects, Work-default/Files-tab UI, and both sides of the 8 MB email boundary.
 
 ## Focused verification
 
