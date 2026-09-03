@@ -10,6 +10,10 @@ import {
   DESIGN_BOOKLET_REVIEW_COPY,
 } from "@/lib/designBooklets/pageModel";
 import { DESIGN_BOOKLET_PRESENTATION } from "@/lib/designBooklets/presentation";
+import {
+  DESIGN_BOOKLET_BASE_PAGE_SIZE,
+  DESIGN_BOOKLET_PAPER_SIZES,
+} from "@/lib/designBooklets/paperGeometry";
 import { DESIGN_BOOKLET_CONTENT_LAYOUTS } from "@/lib/designBooklets/contentLayouts";
 import {
   resolveDesignBookletContentLayout,
@@ -92,6 +96,49 @@ describe("DesignBookletPages", () => {
 
     rendered.unmount();
   });
+
+  it.each(["a4", "a3"] as const)(
+    "uses exact %s page geometry for every preview page category",
+    (paperSize) => {
+      const cases = [
+        { key: "cover", layout: undefined },
+        { key: "image-page-1", layout: "visual-framed" },
+        { key: "image-page-1", layout: "story-image-left" },
+        { key: "image-page-1", layout: "gallery-grid-four" },
+        { key: "image-page-1", layout: "information-text" },
+        { key: "drawing-page-1", layout: undefined },
+        { key: "review", layout: undefined },
+      ] as const;
+
+      for (const previewCase of cases) {
+        const draft = createToniDesignBookletDraft();
+        draft.paperSize = paperSize;
+        const imagePage = draft.contentPages.find(
+          (page) => page.kind === "image",
+        );
+        if (previewCase.layout && imagePage?.kind === "image") {
+          imagePage.layout = previewCase.layout;
+        }
+        const rendered = renderPage(draft, previewCase.key);
+        const page = rendered.container.querySelector(
+          `[data-paper-size="${paperSize}"]`,
+        ) as HTMLElement;
+        const geometry = DESIGN_BOOKLET_PAPER_SIZES[paperSize];
+
+        expect(page).not.toBeNull();
+        expect(page.style.getPropertyValue("--booklet-page-width")).toBe(
+          String(geometry.width),
+        );
+        expect(page.style.getPropertyValue("--booklet-page-height")).toBe(
+          String(geometry.height),
+        );
+        expect(page.style.getPropertyValue("--booklet-layout-width")).toBe(
+          String(DESIGN_BOOKLET_BASE_PAGE_SIZE.width),
+        );
+        rendered.unmount();
+      }
+    },
+  );
 
   it("preserves an intentional booklet-title line break on the cover", () => {
     const draft = createToniDesignBookletDraft();

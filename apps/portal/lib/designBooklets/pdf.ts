@@ -36,6 +36,7 @@ import {
 } from "./contentPresentation";
 import {
   addDesignBookletPage as addPage,
+  applyDesignBookletPdfPaperSize,
   DESIGN_BOOKLET_PDF_COLORS,
   DESIGN_BOOKLET_PDF_LEFT,
   DESIGN_BOOKLET_PDF_PAGE_SIZE,
@@ -1184,6 +1185,8 @@ export async function generateDesignBookletPdf(input: {
         break;
     }
   }
+
+  applyDesignBookletPdfPaperSize(pdf, input.draft.paperSize);
 
   return pdf.save({ useObjectStreams: false });
 }

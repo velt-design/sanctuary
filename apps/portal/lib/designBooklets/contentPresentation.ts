@@ -8,9 +8,10 @@ import type {
   DesignBookletContentVariantId,
   DesignBookletImagePage,
 } from "./types";
+import { DESIGN_BOOKLET_BASE_PAGE_SIZE } from "./paperGeometry";
 
-const PAGE_WIDTH = 841.89;
-const PAGE_HEIGHT = 595.28;
+const PAGE_WIDTH = DESIGN_BOOKLET_BASE_PAGE_SIZE.width;
+const PAGE_HEIGHT = DESIGN_BOOKLET_BASE_PAGE_SIZE.height;
 const FRAME_EPSILON = 0.1;
 
 export const DESIGN_BOOKLET_CONTENT_VARIANTS: Record<

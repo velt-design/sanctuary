@@ -69,7 +69,10 @@ async function flushEffects() {
 
 async function waitForReact(assertion: () => void, timeout?: number) {
   await act(async () => {
-    await vi.waitFor(assertion, timeout === undefined ? undefined : { timeout });
+    await vi.waitFor(
+      assertion,
+      timeout === undefined ? undefined : { timeout },
+    );
   });
 }
 
@@ -192,6 +195,13 @@ describe("project-linked Design Booklet Workbench", () => {
         input.closest("label")?.querySelector("span")?.textContent ===
         "Customer name",
     ) as HTMLInputElement;
+    const paperSizeSelect = Array.from(
+      rendered.container.querySelectorAll("select"),
+    ).find(
+      (select) =>
+        select.closest("label")?.querySelector("span")?.textContent ===
+        "Paper size",
+    ) as HTMLSelectElement;
 
     act(() => {
       Object.getOwnPropertyDescriptor(
@@ -200,6 +210,11 @@ describe("project-linked Design Booklet Workbench", () => {
       )?.set?.call(customerInput, "Client AAA updated");
       customerInput.dispatchEvent(new Event("input", { bubbles: true }));
       customerInput.dispatchEvent(new Event("change", { bubbles: true }));
+      Object.getOwnPropertyDescriptor(
+        HTMLSelectElement.prototype,
+        "value",
+      )?.set?.call(paperSizeSelect, "a3");
+      paperSizeSelect.dispatchEvent(new Event("change", { bubbles: true }));
     });
     await act(async () => {
       vi.advanceTimersByTime(701);
@@ -209,7 +224,10 @@ describe("project-linked Design Booklet Workbench", () => {
 
     expect(mocks.save).toHaveBeenCalledWith(
       "proj_project-1",
-      expect.objectContaining({ customerName: "Client AAA updated" }),
+      expect.objectContaining({
+        customerName: "Client AAA updated",
+        paperSize: "a3",
+      }),
       3,
     );
     rendered.unmount();

@@ -10,6 +10,7 @@ import {
   DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS,
   DESIGN_BOOKLET_FOCAL_POINT_IDS,
   DESIGN_BOOKLET_MATERIAL_IDS,
+  DESIGN_BOOKLET_PAPER_SIZE_IDS,
   DESIGN_BOOKLET_ROOF_FORM_IDS,
   DESIGN_BOOKLET_SCHEMA_VERSION,
   DESIGN_BOOKLET_TEXT_SIZE_IDS,
@@ -30,12 +31,14 @@ import {
   type DesignBookletImagePlacement,
   type DesignBookletImages,
   type DesignBookletMaterialId,
+  type DesignBookletPaperSizeId,
   type DesignBookletRoofFormId,
   type DesignBookletTextSizeId,
   type DesignBookletPdfDocument,
   type DesignBookletPdfDocuments,
 } from "./types";
 import { TONI_DESIGN_BOOKLET_ASSETS } from "./defaults";
+import { DESIGN_BOOKLET_DEFAULT_PAPER_SIZE } from "./paperGeometry";
 import {
   currentDesignBookletIssueDate,
   DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH,
@@ -183,6 +186,12 @@ function isRoofFormId(value: unknown): value is DesignBookletRoofFormId {
 
 function isMaterialId(value: unknown): value is DesignBookletMaterialId {
   return DESIGN_BOOKLET_MATERIAL_IDS.includes(value as DesignBookletMaterialId);
+}
+
+function isPaperSizeId(value: unknown): value is DesignBookletPaperSizeId {
+  return DESIGN_BOOKLET_PAPER_SIZE_IDS.includes(
+    value as DesignBookletPaperSizeId,
+  );
 }
 
 function isDefaultAssetId(
@@ -591,6 +600,10 @@ export function parseDesignBookletDraft(raw: unknown): DesignBookletDraft {
   if (!isMaterialId(value.materialId)) {
     throw new DesignBookletRequestError("Roofing choice is invalid.");
   }
+  const paperSize = value.paperSize ?? DESIGN_BOOKLET_DEFAULT_PAPER_SIZE;
+  if (!isPaperSizeId(paperSize)) {
+    throw new DesignBookletRequestError("Paper size is invalid.");
+  }
   if (!Array.isArray(value.contentPages)) {
     throw new DesignBookletRequestError("Content pages are invalid.");
   }
@@ -604,6 +617,7 @@ export function parseDesignBookletDraft(raw: unknown): DesignBookletDraft {
   const reviewPage = valueRecord(value.reviewPage, "Review page");
   return {
     schemaVersion: DESIGN_BOOKLET_SCHEMA_VERSION,
+    paperSize,
     customerName: requiredText(value.customerName, "Customer name", 80),
     projectTitle: requiredMultilineText(
       value.projectTitle,
