@@ -153,6 +153,27 @@ try {
   requireCondition(bound.bytes_over.payload.a?._praxisOmitted === 'source_bounds_v1' && bound.bytes_over.omission_count === 1, 'UTF-8 byte boundary+1 was not omitted.');
   requireCondition(!JSON.stringify(bound.depth_exact.payload).includes('_praxisOmitted'), 'Depth boundary was omitted early.');
   requireCondition(JSON.stringify(bound.depth_over.payload).includes('source_bounds_v1') && bound.depth_over.omission_count === 1, 'Depth boundary+1 was not omitted.');
+
+  const replacementEvidence = await database.query(`
+    select payload, redaction_count, omission_count, categories
+    from praxis_reporting.safe_payload_v1(jsonb_build_object(
+      'a', jsonb_build_object(
+        'accessToken', 'nested-secret',
+        'items', (select jsonb_agg(value) from generate_series(1, 256) value),
+        'padding', repeat('x', 40000)
+      ),
+      'b', repeat('y', 30000)
+    ))
+  `);
+  const replacement = replacementEvidence.rows[0];
+  requireCondition(
+    replacement.payload.a?._praxisOmitted === 'source_bounds_v1' &&
+      replacement.payload.b.length === 30000 &&
+      replacement.redaction_count === 0 &&
+      replacement.omission_count === 1 &&
+      JSON.stringify(replacement.categories) === JSON.stringify(['source_bounds']),
+    'Final size replacement retained stale nested projection evidence.',
+  );
   process.stdout.write('praxis-context-db: source JSON boundary and evidence contract passed\n');
 
   await expectDenied(database, "select * from public.projects", 'base-table SELECT');

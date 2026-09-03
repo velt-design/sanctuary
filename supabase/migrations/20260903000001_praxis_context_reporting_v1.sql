@@ -313,6 +313,8 @@ declare
   item record;
   child record;
   largest record;
+  evidence jsonb := '{}'::jsonb;
+  root_redactions integer := 0;
   used_entries integer := 0;
   redactions integer := 0;
   omissions integer := 0;
@@ -326,8 +328,7 @@ begin
 
   for item in select entry.key, entry.value from jsonb_each(p_payload) entry order by entry.key loop
     if praxis_reporting.forbidden_nested_key_v1(item.key) then
-      redactions := redactions + 1;
-      found_categories := array_append(found_categories, 'credential_key');
+      root_redactions := root_redactions + 1;
       continue;
     end if;
     select * into child from praxis_reporting.sanitize_json_internal_v1(
@@ -343,10 +344,12 @@ begin
       child.categories := array['source_bounds']::text[];
     end if;
     result := result || jsonb_build_object(item.key, child.sanitized);
+    evidence := evidence || jsonb_build_object(item.key, jsonb_build_object(
+      'redactionCount', child.redaction_count,
+      'omissionCount', child.omission_count,
+      'categories', to_jsonb(child.categories)
+    ));
     used_entries := used_entries + 1 + child.child_entries;
-    redactions := redactions + child.redaction_count;
-    omissions := omissions + child.omission_count;
-    found_categories := found_categories || child.categories;
   end loop;
 
   while octet_length(convert_to(result::text, 'UTF8')) > 65536 loop
@@ -359,8 +362,25 @@ begin
       raise exception 'Praxis payload cannot fit the v1 byte bound' using errcode = '54000';
     end if;
     result := jsonb_set(result, array[largest.key], marker, false);
-    omissions := omissions + 1;
-    found_categories := array_append(found_categories, 'source_bounds');
+    evidence := jsonb_set(evidence, array[largest.key], jsonb_build_object(
+      'redactionCount', 0,
+      'omissionCount', 1,
+      'categories', jsonb_build_array('source_bounds')
+    ), false);
+  end loop;
+
+  redactions := root_redactions;
+  omissions := 0;
+  found_categories := case
+    when root_redactions > 0 then array['credential_key']::text[]
+    else array[]::text[]
+  end;
+  for item in select entry.value from jsonb_each(evidence) entry loop
+    redactions := redactions + (item.value ->> 'redactionCount')::integer;
+    omissions := omissions + (item.value ->> 'omissionCount')::integer;
+    found_categories := found_categories || array(
+      select jsonb_array_elements_text(item.value -> 'categories')
+    );
   end loop;
 
   return query select

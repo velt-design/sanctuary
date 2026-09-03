@@ -31,6 +31,8 @@ const SOURCE_VALUE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,127}$/i;
 const MIN_TOKEN_LENGTH = 32;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
+const MAX_QUERY_VALUE_LENGTH = 256;
+const CONTEXT_QUERY_KEYS = new Set(['resource', 'projectId', 'limit', 'changedAfter', 'cursor']);
 const SANITIZER_POLICY_VERSION = 'sanctuary.praxis.sanitizer.v1' as const;
 const PROJECTION_CATEGORIES = ['credential_key', 'credential_value', 'source_bounds'] as const;
 
@@ -41,21 +43,6 @@ type ConnectorConfig = {
   sourceKey: string;
   connectionId: string;
   environment: string;
-};
-
-type CursorPayload = {
-  v: 1;
-  source: {
-    sourceKey: string;
-    connectionId: string;
-    environment: string;
-    projectionVersion: typeof PRAXIS_PROJECTION_VERSION;
-  };
-  resource: PraxisResource;
-  projectId: string | null;
-  changedAfter: string | null;
-  asOf: string;
-  after: { recordedAt: string; resource: PraxisRecordResource; id: string };
 };
 
 type ProjectionRow = {
@@ -199,6 +186,19 @@ function parseResource(value: string | null): PraxisResource {
 }
 
 export function parsePraxisContextQuery(url: URL): PraxisContextQuery & { cursor: string | null } {
+  for (const key of new Set(url.searchParams.keys())) {
+    const values = url.searchParams.getAll(key);
+    if (!CONTEXT_QUERY_KEYS.has(key) || values.length !== 1 || values[0]!.length > MAX_QUERY_VALUE_LENGTH) {
+      throw new PraxisConnectorError(400, 'INVALID_QUERY', 'Query parameters are invalid.');
+    }
+  }
+  if (url.searchParams.has('cursor')) {
+    throw new PraxisConnectorError(
+      400,
+      'INVALID_QUERY',
+      'cursor is not supported; Praxis v1 returns one terminal snapshot per request.',
+    );
+  }
   const resource = parseResource(url.searchParams.get('resource'));
   const projectId = url.searchParams.get('projectId');
   if (projectId !== null && !UUID_PATTERN.test(projectId)) {
@@ -217,53 +217,7 @@ export function parsePraxisContextQuery(url: URL): PraxisContextQuery & { cursor
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT) {
     throw new PraxisConnectorError(400, 'INVALID_QUERY', `limit must be between 1 and ${MAX_LIMIT}.`);
   }
-  return { resource, projectId, changedAfter, limit, cursor: url.searchParams.get('cursor') };
-}
-
-function signCursor(encodedPayload: string, token: string): string {
-  return createHmac('sha256', token).update(encodedPayload).digest('base64url');
-}
-
-function encodeCursor(payload: CursorPayload, token: string): string {
-  const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
-  return `${encodedPayload}.${signCursor(encodedPayload, token)}`;
-}
-
-function decodeCursor(
-  value: string,
-  query: PraxisContextQuery,
-  config: ConnectorConfig,
-): CursorPayload {
-  try {
-    const [encodedPayload, signature, extra] = value.split('.');
-    if (!encodedPayload || !signature || extra || !constantTimeEqual(signature, signCursor(encodedPayload, config.token))) {
-      throw new Error('invalid signature');
-    }
-    const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')) as Partial<CursorPayload>;
-    if (
-      payload.v !== 1 ||
-      payload.source?.sourceKey !== config.sourceKey ||
-      payload.source?.connectionId !== config.connectionId ||
-      payload.source?.environment !== config.environment ||
-      payload.source?.projectionVersion !== PRAXIS_PROJECTION_VERSION ||
-      payload.resource !== query.resource ||
-      payload.projectId !== query.projectId ||
-      payload.changedAfter !== query.changedAfter ||
-      typeof payload.asOf !== 'string' ||
-      Number.isNaN(new Date(payload.asOf).getTime()) ||
-      !payload.after ||
-      typeof payload.after.recordedAt !== 'string' ||
-      Number.isNaN(new Date(payload.after.recordedAt).getTime()) ||
-      !(PRAXIS_RESOURCES as readonly string[]).includes(payload.after.resource) ||
-      (payload.after.resource as string) === 'all' ||
-      !UUID_PATTERN.test(payload.after.id)
-    ) {
-      throw new Error('invalid cursor payload');
-    }
-    return payload as CursorPayload;
-  } catch {
-    throw new PraxisConnectorError(400, 'INVALID_CURSOR', 'cursor is invalid or does not match this query.');
-  }
+  return { resource, projectId, changedAfter, limit, cursor: null };
 }
 
 function createDatabase(config: ConnectorConfig): Sql {
@@ -461,17 +415,26 @@ export async function readPraxisContext(
   requestId: string,
   dependencies: PraxisServerDependencies = DEFAULT_DEPENDENCIES,
 ): Promise<PraxisContextResponse> {
-  const { cursor: cursorValue, ...query } = queryWithCursor;
-  const cursor = cursorValue ? decodeCursor(cursorValue, query, config) : null;
-  const asOf = cursor?.asOf ?? new Date().toISOString();
+  const { cursor, ...query } = queryWithCursor;
+  if (cursor !== null) {
+    throw new PraxisConnectorError(
+      400,
+      'INVALID_QUERY',
+      'cursor is not supported; Praxis v1 returns one terminal snapshot per request.',
+    );
+  }
   const limitWithSentinel = query.limit + 1;
-  let rows: ProjectionRow[];
+  let snapshot: { asOf: string; rows: ProjectionRow[] };
   const client = dependencies.createDatabase(config);
   try {
-    rows = await client.begin('read only', async (transaction) => {
+    snapshot = await client.begin('read only isolation level repeatable read', async (transaction) => {
       await setReadBudgets(transaction);
+      const timestampRows = await transaction<{ as_of: Date | string }[]>`
+        select transaction_timestamp() as as_of
+      `;
+      const asOf = new Date(timestampRows[0]!.as_of).toISOString();
       await verifyDatabaseIdentity(transaction, config);
-      return transaction<ProjectionRow[]>`
+      const rows = await transaction<ProjectionRow[]>`
         select resource, id, project_id, parent_id, recorded_at, record_version, payload,
           policy_version, redaction_count, omission_count, redaction_categories
         from praxis_reporting.context_page_v1(
@@ -479,12 +442,13 @@ export async function readPraxisContext(
           ${query.projectId},
           ${query.changedAfter},
           ${asOf},
-          ${cursor?.after.recordedAt ?? null},
-          ${cursor?.after.resource ?? null},
-          ${cursor?.after.id ?? null},
+          ${null},
+          ${null},
+          ${null},
           ${limitWithSentinel}
         )
       `;
+      return { asOf, rows };
     });
   } catch (error) {
     const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
@@ -497,25 +461,14 @@ export async function readPraxisContext(
     await client.end({ timeout: 1 }).catch(() => undefined);
   }
 
-  const hasMore = rows.length > query.limit;
-  const records = rows.slice(0, query.limit).map(mapProjectionRow);
-  const last = records.at(-1);
-  const nextCursor = hasMore && last
-    ? encodeCursor({
-        v: 1,
-        source: {
-          sourceKey: config.sourceKey,
-          connectionId: config.connectionId,
-          environment: config.environment,
-          projectionVersion: PRAXIS_PROJECTION_VERSION,
-        },
-        resource: query.resource,
-        projectId: query.projectId,
-        changedAfter: query.changedAfter,
-        asOf,
-        after: { recordedAt: last.recordedAt, resource: last.resource, id: last.id },
-      }, config.token)
-    : null;
+  if (snapshot.rows.length > query.limit) {
+    throw new PraxisConnectorError(
+      400,
+      'SNAPSHOT_TOO_LARGE',
+      'The snapshot exceeds the requested limit; narrow projectId or resource.',
+    );
+  }
+  const records = snapshot.rows.map(mapProjectionRow);
   const retrievedAt = new Date().toISOString();
   const pageProjection = records.reduce<PraxisProjectionEvidence>((evidence, record) => ({
     policyVersion: SANITIZER_POLICY_VERSION,
@@ -528,13 +481,13 @@ export async function readPraxisContext(
     omissionCount: 0,
     categories: [],
   });
-  logPraxisDiagnostic('context_read', { requestId, resource: query.resource, count: records.length, hasMore });
+  logPraxisDiagnostic('context_read', { requestId, resource: query.resource, count: records.length, hasMore: false });
   return {
     schemaVersion: PRAXIS_CONTEXT_SCHEMA_VERSION,
     requestId,
-    source: sourceEvidence(config, retrievedAt, asOf),
+    source: sourceEvidence(config, retrievedAt, snapshot.asOf),
     query,
-    page: { hasMore, nextCursor, projection: pageProjection },
+    page: { hasMore: false, nextCursor: null, projection: pageProjection },
     records,
   };
 }

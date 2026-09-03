@@ -78,6 +78,12 @@ describe('Praxis context migration source contract', () => {
     expect(JSON.stringify(estimate?.payload)).toContain('"_praxisOmitted":"source_bounds_v1"');
     expect(JSON.stringify(estimate?.payload)).toContain('"[redacted]"');
     expect(fixture.contextSuccess.page.projection).toEqual(estimate?.projection);
+    expect(fixture.contextSuccess.page).toMatchObject({ hasMore: false, nextCursor: null });
+    expect(fixture.errors.snapshotTooLarge.error).toEqual({
+      code: 'SNAPSHOT_TOO_LARGE',
+      message: 'The snapshot exceeds the requested limit; narrow projectId or resource.',
+      retryable: false,
+    });
     expect(JSON.stringify(records)).not.toMatch(/rawPayload|commercialDesignInput|accessToken|password|filePath|providerError/);
     const keys = records.map((record) => `${record.recordedAt}|${record.resource}|${record.id}`);
     expect(keys).toEqual([...keys].sort());
@@ -92,7 +98,8 @@ describe('Praxis context migration source contract', () => {
   });
 
   it('makes runtime reads bounded and read-only', () => {
-    expect(server).toContain("begin('read only'");
+    expect(server).toContain("begin('read only isolation level repeatable read'");
+    expect(server).toContain('select transaction_timestamp() as as_of');
     expect(server).toContain("set local statement_timeout = '8s'");
     expect(server).toContain("set local lock_timeout = '2s'");
     expect(server).not.toMatch(/SUPABASE_SERVICE_ROLE|serviceRoleKey|createClient\(/);
@@ -103,6 +110,8 @@ describe('Praxis context migration source contract', () => {
     expect(server).toContain("procedure.prorettype not in ('pg_catalog.trigger'::regtype, 'pg_catalog.event_trigger'::regtype)");
     expect(server).toContain("from praxis_reporting.context_page_v1(");
     expect(server).toContain('changedAfter is not supported; Praxis v1 reads are full authoritative replacement snapshots.');
+    expect(server).toContain('cursor is not supported; Praxis v1 returns one terminal snapshot per request.');
+    expect(server).toContain("'SNAPSHOT_TOO_LARGE'");
     expect(server).toContain("sslMode !== 'verify-full'");
   });
 

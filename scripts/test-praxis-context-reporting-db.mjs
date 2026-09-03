@@ -262,6 +262,22 @@ try {
   if (preservedRows.some((line) => line.includes('source_bounds_v1') || !line.includes('|0|'))) {
     throw new Error('Boundary values were omitted early.');
   }
+  const replacementEvidence = psql(`
+    select payload::text || '|' || redaction_count || '|' || omission_count || '|' || categories::text
+    from praxis_reporting.safe_payload_v1(jsonb_build_object(
+      'a', jsonb_build_object(
+        'accessToken', 'nested-secret',
+        'items', (select jsonb_agg(value) from generate_series(1, 256) value),
+        'padding', repeat('x', 40000)
+      ),
+      'b', repeat('y', 30000)
+    ));
+  `, 'Final size-fit evidence recomputation', { reader: true, quiet: true });
+  if (!replacementEvidence.includes('"a": {"_praxisOmitted": "source_bounds_v1"}') ||
+      replacementEvidence.includes('accessToken') ||
+      !replacementEvidence.endsWith('|0|1|{source_bounds}')) {
+    throw new Error('Final size replacement retained stale nested projection evidence.');
+  }
   process.stdout.write('praxis-reporting-db: source JSON boundary and evidence contract passed\n');
 
   const beforeAssignment = psql(`

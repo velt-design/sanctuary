@@ -83,7 +83,7 @@ export type PraxisHealthResponse = {
 
 export type PraxisErrorCode =
   | 'INVALID_QUERY'
-  | 'INVALID_CURSOR'
+  | 'SNAPSHOT_TOO_LARGE'
   | 'UNAUTHORIZED'
   | 'SOURCE_BINDING_MISMATCH'
   | 'CONNECTOR_NOT_CONFIGURED'

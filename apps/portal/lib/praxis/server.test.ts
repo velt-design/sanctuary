@@ -83,6 +83,7 @@ function mockDatabase(options: {
     const sql = strings.join('?');
     if (options.failure && sql.includes('source_identity_v1')) throw options.failure;
     if (sql.startsWith('set local')) return [];
+    if (sql.includes('transaction_timestamp()')) return [{ as_of: '2026-09-03T00:00:00.000Z' }];
     if (sql.includes('from praxis_reporting.source_identity_v1')) return [options.identity ?? IDENTITY];
     if (sql.includes('has_schema_privilege')) return [{ ready: options.ready ?? true }];
     if (sql.includes('from praxis_reporting.context_page_v1')) {
@@ -158,6 +159,17 @@ describe('Praxis connector trust boundary', () => {
     expect(() => parsePraxisContextQuery(new URL('https://portal.example.test/context?changedAfter=2026-09-03T00:00:00Z'))).toThrowError(
       expect.objectContaining({ code: 'INVALID_QUERY', status: 400 }),
     );
+    for (const query of [
+      '?cursor=anything',
+      '?resource=quote&resource=invoice',
+      '?limit=10&limit=20',
+      '?unknown=value',
+      `?resource=${'x'.repeat(257)}`,
+    ]) {
+      expect(() => parsePraxisContextQuery(new URL(`https://portal.example.test/context${query}`))).toThrowError(
+        expect.objectContaining({ code: 'INVALID_QUERY', status: 400 }),
+      );
+    }
   });
 
   it('uses the shared recursive canonical JSON SHA-256 algorithm', () => {
@@ -190,20 +202,14 @@ describe('Praxis connector trust boundary', () => {
     expect(console.info).toHaveBeenCalledWith(expect.not.stringContaining(TOKEN));
   });
 
-  it('reads a sentinel page, maps canonical evidence, and preserves asOf through a source-bound cursor', async () => {
+  it('returns one terminal single-transaction snapshot with canonical evidence', async () => {
     const payload = { z: 2, a: { d: 4, c: 3 } };
-    const firstDb = mockDatabase({ rows: [
+    const database = mockDatabase({ rows: [
       {
         resource: 'quote', id: '20000000-0000-4000-8000-000000000001',
         project_id: '10000000-0000-4000-8000-000000000001',
         parent_id: '10000000-0000-4000-8000-000000000001',
         recorded_at: '2026-09-03T00:01:00.000Z', record_version: 'a'.repeat(64), payload,
-      },
-      {
-        resource: 'project_financial_truth', id: '10000000-0000-4000-8000-000000000001',
-        project_id: '10000000-0000-4000-8000-000000000001',
-        parent_id: '10000000-0000-4000-8000-000000000001',
-        recorded_at: '2026-09-03T00:02:00.000Z', record_version: 'b'.repeat(64), payload: { projectId: '10000000-0000-4000-8000-000000000001' },
       },
     ] });
     const config = loadPraxisConnectorConfig();
@@ -214,54 +220,62 @@ describe('Praxis connector trust boundary', () => {
       limit: 1,
       cursor: null,
     };
-    const first = await readPraxisContext(query, config, 'request-1', firstDb.dependencies);
-    expect(first.records).toHaveLength(1);
-    expect(first.records[0]?.recordVersion).toBe(canonicalRecordVersion(payload));
-    expect(first.records[0]?.projection).toEqual({
+    const response = await readPraxisContext(query, config, 'request-1', database.dependencies);
+    expect(response.records).toHaveLength(1);
+    expect(response.records[0]?.recordVersion).toBe(canonicalRecordVersion(payload));
+    expect(response.records[0]?.projection).toEqual({
       policyVersion: 'sanctuary.praxis.sanitizer.v1',
       redactionCount: 0,
       omissionCount: 0,
       categories: [],
     });
-    expect(first.page.projection).toEqual({
-      policyVersion: 'sanctuary.praxis.sanitizer.v1',
-      redactionCount: 0,
-      omissionCount: 0,
-      categories: [],
+    expect(response.page).toEqual({
+      hasMore: false,
+      nextCursor: null,
+      projection: {
+        policyVersion: 'sanctuary.praxis.sanitizer.v1',
+        redactionCount: 0,
+        omissionCount: 0,
+        categories: [],
+      },
     });
-    expect(first.page.hasMore).toBe(true);
-    expect(first.page.nextCursor).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
-    expect(first.source.asOf).toBeTruthy();
-    expect(firstDb.client.begin).toHaveBeenCalledWith('read only', expect.any(Function));
-    expect(firstDb.end).toHaveBeenCalledOnce();
-    expect(firstDb.transaction.mock.calls.filter(([strings]) => String(strings[0]).startsWith('set local'))).toHaveLength(2);
-    const pageCall = firstDb.transaction.mock.calls.find(([strings]) => String(strings).includes('context_page_v1'));
+    expect(response.source.asOf).toBeTruthy();
+    expect(database.client.begin).toHaveBeenCalledWith('read only isolation level repeatable read', expect.any(Function));
+    expect(database.end).toHaveBeenCalledOnce();
+    expect(database.transaction.mock.calls.filter(([strings]) => String(strings[0]).startsWith('set local'))).toHaveLength(2);
+    const pageCall = database.transaction.mock.calls.find(([strings]) => String(strings).includes('context_page_v1'));
     expect(pageCall?.at(-1)).toBe(2);
+  });
 
-    const secondDb = mockDatabase();
-    const second = await readPraxisContext(
-      { ...query, cursor: first.page.nextCursor },
-      config,
-      'request-2',
-      secondDb.dependencies,
-    );
-    expect(second.source.asOf).toBe(first.source.asOf);
-    expect(second.page.hasMore).toBe(false);
+  it('returns no partial records when a snapshot exceeds the requested bound', async () => {
+    const rows = [1, 2].map((suffix) => ({
+      resource: 'quote',
+      id: `20000000-0000-4000-8000-00000000000${suffix}`,
+      project_id: null,
+      parent_id: null,
+      recorded_at: `2026-09-03T00:0${suffix}:00.000Z`,
+      record_version: 'a'.repeat(64),
+      payload: { suffix },
+    }));
+    const database = mockDatabase({ rows });
+    await expect(readPraxisContext(
+      { resource: 'all', projectId: null, changedAfter: null, limit: 1, cursor: null },
+      loadPraxisConnectorConfig(),
+      'request-too-large',
+      database.dependencies,
+    )).rejects.toMatchObject({
+      code: 'SNAPSHOT_TOO_LARGE',
+      status: 400,
+      message: 'The snapshot exceeds the requested limit; narrow projectId or resource.',
+    });
+    expect(database.end).toHaveBeenCalledOnce();
 
     await expect(readPraxisContext(
-      { ...query, resource: 'quote', cursor: first.page.nextCursor },
-      config,
-      'request-3',
+      { resource: 'all', projectId: null, changedAfter: null, limit: 1, cursor: 'rejected-before-read' },
+      loadPraxisConnectorConfig(),
+      'request-cursor',
       mockDatabase().dependencies,
-    )).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
-    process.env.PRAXIS_SANCTUARY_CONNECTION_ID = 'a0000000-0000-4000-8000-000000000002';
-    const changedConfig = loadPraxisConnectorConfig();
-    await expect(readPraxisContext(
-      { ...query, cursor: first.page.nextCursor },
-      changedConfig,
-      'request-4',
-      mockDatabase().dependencies,
-    )).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
+    )).rejects.toMatchObject({ code: 'INVALID_QUERY' });
   });
 
   it('requires an exact DB-owned source identity and cleans up failures without leaking details', async () => {

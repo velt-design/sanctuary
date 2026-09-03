@@ -75,10 +75,10 @@
   },
   "errors": {
     "400": { "schemaVersion": "sanctuary.praxis.error.v1", "requestId": "90000000-0000-4000-8000-000000000400", "error": { "code": "INVALID_QUERY", "message": "resource is not supported.", "retryable": false } },
+    "snapshotTooLarge": { "schemaVersion": "sanctuary.praxis.error.v1", "requestId": "90000000-0000-4000-8000-000000000413", "error": { "code": "SNAPSHOT_TOO_LARGE", "message": "The snapshot exceeds the requested limit; narrow projectId or resource.", "retryable": false } },
     "401": { "schemaVersion": "sanctuary.praxis.error.v1", "requestId": "90000000-0000-4000-8000-000000000401", "error": { "code": "UNAUTHORIZED", "message": "Authentication failed.", "retryable": false } },
     "403": { "schemaVersion": "sanctuary.praxis.error.v1", "requestId": "90000000-0000-4000-8000-000000000403", "error": { "code": "SOURCE_BINDING_MISMATCH", "message": "The requested source binding is not allowed.", "retryable": false } },
     "503": { "schemaVersion": "sanctuary.praxis.error.v1", "requestId": "90000000-0000-4000-8000-000000000503", "error": { "code": "PROJECTION_NOT_READY", "message": "The Praxis reporting identity is not ready.", "retryable": true } }
   },
-  "headers": { "cache-control": "private, no-store", "x-content-type-options": "nosniff", "x-praxis-projection-version": "sanctuary.praxis.core.v1" },
-  "cursorPattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+  "headers": { "cache-control": "private, no-store", "x-content-type-options": "nosniff", "x-praxis-projection-version": "sanctuary.praxis.core.v1" }
 }
