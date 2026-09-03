@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -9,6 +10,16 @@ const migration = readFileSync(
 );
 const server = readFileSync(path.join(root, 'apps/portal/lib/praxis/server.ts'), 'utf8');
 const dockerProof = readFileSync(path.join(root, 'scripts/test-praxis-context-reporting-db.mjs'), 'utf8');
+const fixture = JSON.parse(readFileSync(path.join(root, 'test/fixtures/praxis-context-v1.json'), 'utf8'));
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return Object.fromEntries(Object.keys(record).sort().map((key) => [key, canonicalize(record[key])]));
+  }
+  return value;
+}
 
 describe('Praxis context migration source contract', () => {
   it('defines every approved resource as an explicit versioned projection', () => {
@@ -34,6 +45,27 @@ describe('Praxis context migration source contract', () => {
     ]) {
       expect(projectionSection).not.toMatch(new RegExp(`\\b${forbidden}\\b`));
     }
+    expect(migration).toContain('praxis_reporting.safe_nested_json_v1(estimate.inputs)');
+    expect(migration).toContain('praxis_reporting.safe_nested_json_v1(estimate.outputs)');
+    expect(migration).toContain("or value ~ 'hash$'");
+  });
+
+  it('shares all 12 representative, ordered, canonically hashed resource shapes', () => {
+    const records = fixture.contextSuccess.records as Array<Record<string, unknown>>;
+    expect(records.map((record) => record.resource)).toEqual([
+      'enquiry_request', 'contact', 'project', 'estimate', 'quote', 'quote_version',
+      'quote_line_item', 'invoice', 'invoice_plan_item', 'payment',
+      'payment_allocation', 'project_financial_truth',
+    ]);
+    for (const record of records) {
+      const hash = createHash('sha256').update(JSON.stringify(canonicalize(record.payload))).digest('hex');
+      expect(record.recordVersion).toBe(hash);
+    }
+    const estimate = records.find((record) => record.resource === 'estimate');
+    expect(JSON.stringify(estimate?.payload)).toContain('"attachmentSide":"rear"');
+    expect(JSON.stringify(records)).not.toMatch(/rawPayload|commercialDesignInput|accessToken|password|filePath|providerError/);
+    const keys = records.map((record) => `${record.recordedAt}|${record.resource}|${record.id}`);
+    expect(keys).toEqual([...keys].sort());
   });
 
   it('creates no LOGIN and grants no application or service role', () => {
@@ -51,6 +83,15 @@ describe('Praxis context migration source contract', () => {
     expect(server).not.toMatch(/SUPABASE_SERVICE_ROLE|serviceRoleKey|createClient\(/);
     expect(server).toContain("!pgRoleHasServiceRole(identity.runtime_role)");
     expect(server).toContain("'cache-control': 'private, no-store'");
+    expect(server).toContain("current_setting('default_transaction_read_only') = 'on'");
+    expect(server).toContain("procedure.prosecdef");
+    expect(server).toContain("from praxis_reporting.context_page_v1(");
+  });
+
+  it('tracks invoice-plan assignment freshness', () => {
+    expect(migration).toContain('project_invoice_plan_items_set_updated_at');
+    expect(migration).toContain("'updatedAt', item.updated_at");
+    expect(dockerProof).toContain('Invoice-plan changedAfter query');
   });
 
   it('provides a real Docker PostgreSQL LOGIN denial proof', () => {

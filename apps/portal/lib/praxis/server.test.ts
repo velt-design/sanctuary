@@ -57,6 +57,8 @@ const IDENTITY = {
   runtime_role: 'sanctuary_praxis_reader_test',
   group_member: true,
   transaction_read_only: true,
+  default_transaction_read_only: true,
+  service_role_member: false,
   can_login: true,
   is_superuser: false,
   can_create_database: false,
@@ -67,6 +69,7 @@ const IDENTITY = {
   forbidden_schema_create: false,
   forbidden_table_privilege: false,
   forbidden_sequence_privilege: false,
+  forbidden_definer_function_privilege: false,
 };
 
 function mockDatabase(options: {
@@ -74,6 +77,7 @@ function mockDatabase(options: {
   identity?: Record<string, unknown>;
   ready?: boolean;
   failure?: Error;
+  projectionFailure?: Error;
 } = {}) {
   const transaction = vi.fn(async (strings: TemplateStringsArray) => {
     const sql = strings.join('?');
@@ -81,7 +85,10 @@ function mockDatabase(options: {
     if (sql.startsWith('set local')) return [];
     if (sql.includes('from praxis_reporting.source_identity_v1')) return [options.identity ?? IDENTITY];
     if (sql.includes('has_schema_privilege')) return [{ ready: options.ready ?? true }];
-    if (sql.includes('from praxis_reporting.context_page_v1')) return options.rows ?? [];
+    if (sql.includes('from praxis_reporting.context_page_v1')) {
+      if (options.projectionFailure) throw options.projectionFailure;
+      return options.rows ?? [];
+    }
     throw new Error(`Unexpected SQL in test: ${sql}`);
   });
   const end = vi.fn(async () => undefined);
@@ -263,5 +270,11 @@ describe('Praxis connector trust boundary', () => {
     await expect(readPraxisHealth(loadPraxisConnectorConfig(), 'health-bad', overGranted.dependencies))
       .rejects.toMatchObject({ code: 'PROJECTION_NOT_READY' });
     expect(overGranted.end).toHaveBeenCalledOnce();
+
+    const missingGrant = Object.assign(new Error('permission denied for view invoices_v1'), { code: '42501' });
+    const drifted = mockDatabase({ projectionFailure: missingGrant });
+    await expect(readPraxisHealth(loadPraxisConnectorConfig(), 'health-drift', drifted.dependencies))
+      .rejects.toMatchObject({ code: 'PROJECTION_NOT_READY' });
+    expect(drifted.end).toHaveBeenCalledOnce();
   });
 });

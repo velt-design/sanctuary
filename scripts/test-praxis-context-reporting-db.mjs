@@ -127,23 +127,51 @@ try {
       not has_table_privilege('sanctuary_praxis_reader', 'auth.users', 'SELECT'),
       not has_table_privilege('sanctuary_praxis_reader', 'storage.objects', 'SELECT'),
       not has_sequence_privilege('sanctuary_praxis_reader', 'public.praxis_probe_sequence', 'USAGE'),
-      not has_function_privilege('sanctuary_praxis_reader', 'public.commercial_record_project_payment_entry()', 'EXECUTE')
+      not has_function_privilege('sanctuary_praxis_reader', 'public.commercial_record_project_payment_entry()', 'EXECUTE'),
+      not exists (
+        select 1 from pg_proc procedure
+        join pg_namespace namespace on namespace.oid = procedure.pronamespace
+        where namespace.nspname in ('public', 'private', 'auth', 'storage', 'extensions', 'praxis_reporting')
+          and procedure.prosecdef
+          and has_function_privilege('sanctuary_praxis_reader', procedure.oid, 'EXECUTE')
+          and procedure.oid not in (
+            'praxis_reporting.version_v1(jsonb)'::regprocedure,
+            'praxis_reporting.project_financial_truth_for_v1(uuid)'::regprocedure
+          )
+      )
     ) from pg_roles where rolname = 'sanctuary_praxis_reader';
   `, 'Role/grant contract', { quiet: true });
-  if (roleContract !== Array(14).fill('t').join(',')) throw new Error(`Reader role contract failed: ${roleContract}`);
+  if (roleContract !== Array(15).fill('t').join(',')) throw new Error(`Reader role contract failed: ${roleContract}`);
 
   const readerPosture = psql(`
     select concat_ws(',',
       current_user = 'sanctuary_praxis_reader_probe',
+      current_setting('transaction_read_only') = 'on',
       current_setting('default_transaction_read_only') = 'on',
       pg_has_role(current_user, 'sanctuary_praxis_reader', 'member'),
       not pg_has_role(current_user, 'service_role', 'member'),
+      not exists (
+        select 1 from pg_roles granted_role
+        where granted_role.rolname not in (current_user::text, 'sanctuary_praxis_reader')
+          and pg_has_role(current_user, granted_role.oid, 'member')
+      ),
       not has_schema_privilege(current_user, 'public', 'CREATE'),
       not has_table_privilege(current_user, 'public.projects', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE'),
-      not has_sequence_privilege(current_user, 'public.praxis_probe_sequence', 'USAGE,SELECT,UPDATE')
+      not has_sequence_privilege(current_user, 'public.praxis_probe_sequence', 'USAGE,SELECT,UPDATE'),
+      not exists (
+        select 1 from pg_proc procedure
+        join pg_namespace namespace on namespace.oid = procedure.pronamespace
+        where namespace.nspname in ('public', 'private', 'auth', 'storage', 'extensions', 'praxis_reporting')
+          and procedure.prosecdef
+          and has_function_privilege(current_user, procedure.oid, 'EXECUTE')
+          and procedure.oid not in (
+            'praxis_reporting.version_v1(jsonb)'::regprocedure,
+            'praxis_reporting.project_financial_truth_for_v1(uuid)'::regprocedure
+          )
+      )
     );
   `, 'Concrete LOGIN posture', { reader: true, quiet: true });
-  if (readerPosture !== Array(7).fill('t').join(',')) throw new Error(`Reader LOGIN posture failed: ${readerPosture}`);
+  if (readerPosture !== Array(10).fill('t').join(',')) throw new Error(`Reader LOGIN posture failed: ${readerPosture}`);
 
   const projection = psql(`
     begin read only;
@@ -157,10 +185,50 @@ try {
   if (!projection.includes('project_financial_truth') || !projection.includes('Test Project') || !projection.includes('Ada Customer')) {
     throw new Error('Canonical financial truth and safe fixture payloads were not returned.');
   }
-  for (const forbidden of ['secret-token-hash', 'raw_payload', 'commercial_design_input', 'protected_payload', 'encrypted_password', 'path_tokens']) {
+  for (const resource of [
+    'enquiry_request', 'contact', 'project', 'estimate', 'quote', 'quote_version',
+    'quote_line_item', 'invoice', 'invoice_plan_item', 'payment',
+    'payment_allocation', 'project_financial_truth',
+  ]) {
+    if (!projection.includes(`${resource}|`)) throw new Error(`Projection omitted resource: ${resource}`);
+  }
+  if (!projection.includes('attachmentSide') || !projection.includes('rear')) {
+    throw new Error('Projection omitted the safe nested estimate shape.');
+  }
+  for (const forbidden of [
+    'secret-token-hash', 'raw_payload', 'commercial_design_input', 'protected_payload',
+    'encrypted_password', 'path_tokens', 'nested-enquiry-secret', 'private/enquiry.pdf',
+    'nested-utm-secret', 'private-provider-id', 'nested-summary-secret',
+    'nested-input-secret', 'private/design.pdf', 'nested-output-secret',
+    'nested-warning-secret', 'nested-metadata-secret', 'private-commercial-design',
+    'private-invoice-token-hash',
+  ]) {
     if (projection.includes(forbidden)) throw new Error(`Projection exposed forbidden material: ${forbidden}`);
   }
   process.stdout.write('praxis-reporting-db: canonical bounded projection passed\n');
+
+  const beforeAssignment = psql(`
+    select to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
+    from public.project_invoice_plan_items
+    where id = '80000000-0000-4000-8000-000000000001';
+  `, 'Invoice-plan pre-assignment freshness', { quiet: true });
+  psql(`
+    select pg_sleep(0.01);
+    update public.project_invoice_plan_items
+    set invoice_id = '70000000-0000-4000-8000-000000000001'
+    where id = '80000000-0000-4000-8000-000000000001';
+  `, 'Invoice-plan assignment');
+  const assigned = psql(`
+    select payload->>'invoiceId'
+    from praxis_reporting.context_page_v1(
+      'invoice_plan_item', '10000000-0000-4000-8000-000000000001',
+      '${beforeAssignment}', now() + interval '1 minute', null, null, null, 2
+    );
+  `, 'Invoice-plan changedAfter query', { reader: true, quiet: true });
+  if (assigned !== '70000000-0000-4000-8000-000000000001') {
+    throw new Error('changedAfter missed the later invoice-plan assignment.');
+  }
+  process.stdout.write('praxis-reporting-db: invoice-plan assignment freshness passed\n');
 
   expectReaderDenied('select * from public.projects;', 'base-table SELECT');
   expectReaderDenied('select * from private.commercial_email_intents;', 'private-table SELECT');

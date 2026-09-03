@@ -72,6 +72,8 @@ type DatabaseIdentityRow = {
   runtime_role: string;
   group_member: boolean;
   transaction_read_only: boolean;
+  default_transaction_read_only: boolean;
+  service_role_member: boolean;
   can_login: boolean;
   is_superuser: boolean;
   can_create_database: boolean;
@@ -82,6 +84,7 @@ type DatabaseIdentityRow = {
   forbidden_schema_create: boolean;
   forbidden_table_privilege: boolean;
   forbidden_sequence_privilege: boolean;
+  forbidden_definer_function_privilege: boolean;
 };
 
 export type PraxisServerDependencies = {
@@ -258,6 +261,8 @@ async function verifyDatabaseIdentity(
       current_user::text as runtime_role,
       pg_has_role(current_user, 'sanctuary_praxis_reader', 'member') as group_member,
       current_setting('transaction_read_only') = 'on' as transaction_read_only,
+      current_setting('default_transaction_read_only') = 'on' as default_transaction_read_only,
+      pg_has_role(current_user, 'service_role', 'member') as service_role_member,
       role.rolcanlogin as can_login,
       role.rolsuper as is_superuser,
       role.rolcreatedb as can_create_database,
@@ -265,11 +270,9 @@ async function verifyDatabaseIdentity(
       role.rolreplication as can_replicate,
       role.rolbypassrls as can_bypass_rls,
       not exists (
-        select 1
-        from pg_auth_members membership
-        join pg_roles granted_role on granted_role.oid = membership.roleid
-        where membership.member = role.oid
-          and granted_role.rolname <> 'sanctuary_praxis_reader'
+        select 1 from pg_roles granted_role
+        where granted_role.rolname not in (current_user::text, 'sanctuary_praxis_reader')
+          and pg_has_role(current_user, granted_role.oid, 'member')
       ) as only_reporting_membership,
       exists (
         select 1 from pg_namespace namespace
@@ -295,7 +298,19 @@ async function verifyDatabaseIdentity(
         where namespace.nspname in ('public', 'private', 'auth', 'storage')
           and object.relkind = 'S'
           and has_sequence_privilege(current_user, object.oid, 'USAGE,SELECT,UPDATE')
-      ) as forbidden_sequence_privilege
+      ) as forbidden_sequence_privilege,
+      exists (
+        select 1
+        from pg_proc procedure
+        join pg_namespace namespace on namespace.oid = procedure.pronamespace
+        where namespace.nspname in ('public', 'private', 'auth', 'storage', 'extensions', 'praxis_reporting')
+          and procedure.prosecdef
+          and has_function_privilege(current_user, procedure.oid, 'EXECUTE')
+          and procedure.oid not in (
+            'praxis_reporting.version_v1(jsonb)'::regprocedure,
+            'praxis_reporting.project_financial_truth_for_v1(uuid)'::regprocedure
+          )
+      ) as forbidden_definer_function_privilege
     from praxis_reporting.source_identity_v1 identity
     join pg_roles role on role.rolname = current_user::text
     where identity.singleton = true
@@ -311,6 +326,8 @@ async function verifyDatabaseIdentity(
     identity?.can_login === true &&
     identity.group_member === true &&
     identity.transaction_read_only === true &&
+    identity.default_transaction_read_only === true &&
+    identity.service_role_member === false &&
     identity.is_superuser === false &&
     identity.can_create_database === false &&
     identity.can_create_role === false &&
@@ -320,6 +337,7 @@ async function verifyDatabaseIdentity(
     identity.forbidden_schema_create === false &&
     identity.forbidden_table_privilege === false &&
     identity.forbidden_sequence_privilege === false &&
+    identity.forbidden_definer_function_privilege === false &&
     !pgRoleHasServiceRole(identity.runtime_role);
   if (!exactSource || !exactPosture) {
     throw new PraxisConnectorError(
@@ -481,8 +499,19 @@ export async function readPraxisHealth(
       if (rows[0]?.ready !== true) {
         throw new PraxisConnectorError(503, 'PROJECTION_NOT_READY', 'The Praxis reporting projection is not ready.', true);
       }
+      await transaction`
+        select resource
+        from praxis_reporting.context_page_v1(
+          'all', null, null, now(), null, null, null, 1
+        )
+        limit 1
+      `;
     });
   } catch (error) {
+    const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+    if (code === '42P01' || code === '42883' || code === '42501') {
+      throw new PraxisConnectorError(503, 'PROJECTION_NOT_READY', 'The Praxis reporting projection is not ready.', true);
+    }
     if (error instanceof PraxisConnectorError) throw error;
     throw new PraxisConnectorError(503, 'SOURCE_UNAVAILABLE', 'The Sanctuary source is unavailable.', true);
   } finally {

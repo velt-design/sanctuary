@@ -196,3 +196,93 @@ insert into public.quote_versions values (
   null, null, null, 'Test reference', 'Ada Customer', 'Hello', 'Terms', 11500, 10000,
   1500, null, 50, '[]', 'manual', '{}', 1, false, null, now(), now()
 );
+
+insert into public.enquiry_requests (
+  id, contact_id, project_id, enquiry_type, suburb, message, add_ons,
+  files, source, page, utm, raw_payload, created_at, updated_at
+) values (
+  '40000000-0000-4000-8000-000000000001',
+  '00000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  'residential', 'Test suburb', 'Test enquiry',
+  '{"blindCount":2,"nested":{"accessToken":"nested-enquiry-secret"}}',
+  '[{"path":"private/enquiry.pdf"}]', 'website', '/contact',
+  '{"campaign":"spring","password":"nested-utm-secret"}',
+  '{"providerMessageId":"private-provider-id"}', now(), now()
+);
+
+insert into public.estimates (
+  id, project_id, internal_name, status, version, created_by, summary_json,
+  internal_notes, summary, inputs, outputs, warnings, pricing_source,
+  pricing_source_metadata, commercial_design_input, created_at, updated_at
+) values (
+  '50000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  'Real-shape estimate', 'DRAFT', 1, 'fixture',
+  '{"label":"Current estimate","acceptTokenHash":"nested-summary-secret"}',
+  'Internal estimating note', 'Pergola estimate',
+  '{"schemaVersion":"v2","modules":[{"attachmentSide":"rear","lengthM":6,"apiToken":"nested-input-secret","attachment":{"filePath":"private/design.pdf"}}]}',
+  '{"totalTrueCostIncGst":11500,"details":{"crewHours":24,"password":"nested-output-secret"}}',
+  '[{"code":"CHECK_ACCESS","message":"Confirm access","providerError":"nested-warning-secret"}]',
+  'calculator',
+  '{"version":"v2.6","credentials":{"secret":"nested-metadata-secret"}}',
+  '{"raw":"private-commercial-design"}', now(), now()
+);
+
+insert into public.quote_line_items (
+  id, quote_version_id, sort_order, description, qty,
+  unit_price_inc_gst_cents, line_total_inc_gst_cents, created_at, updated_at
+) values (
+  '60000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001', 1, 'Pergola structure', 1,
+  11500, 11500, now(), now()
+);
+
+insert into public.deposit_invoices (
+  id, project_id, quote_id, quote_version_id, quote_ref, quote_version_number,
+  invoice_ref, status, issue_date, due_date, customer_name, project_name,
+  currency, deposit_percent, quote_total_inc_gst_cents, total_inc_gst_cents,
+  total_ex_gst_cents, gst_cents, portal_token_hash, invoice_plan_item_id,
+  created_at, updated_at
+) values (
+  '70000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001',
+  'Q-TEST', 1, 'INV-TEST', 'OPEN', current_date, current_date + 7,
+  'Ada Customer', 'Test Project', 'NZD', 50, 11500, 5750, 5000, 750,
+  'private-invoice-token-hash', '80000000-0000-4000-8000-000000000001',
+  now(), now()
+);
+
+insert into public.project_invoice_plan_items (
+  id, project_id, quote_version_id, plan_group_id, payment_term_id, label,
+  position, item_count, amount_inc_gst_cents, invoice_id, created_at, created_by
+) values (
+  '80000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001',
+  '81000000-0000-4000-8000-000000000001', 'deposit', 'Deposit',
+  1, 2, 5750, null, now(), 'fixture'
+);
+
+insert into public.project_payment_entries (
+  id, project_id, source_invoice_id, entry_type, amount_inc_gst_cents,
+  occurred_at, payment_method, reference, note, created_by, created_at
+) values (
+  '90000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  '70000000-0000-4000-8000-000000000001', 'PAYMENT', 5750,
+  now(), 'bank_transfer', 'PAY-TEST', 'Deposit received', 'fixture', now()
+);
+
+insert into public.project_payment_allocations (
+  id, project_id, payment_entry_id, quote_version_id, payment_term_id,
+  amount_inc_gst_cents, change_reason, created_by, created_at
+) values (
+  'a1000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  '90000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000001', 'deposit', 5750,
+  'Initial allocation', 'fixture', now()
+);

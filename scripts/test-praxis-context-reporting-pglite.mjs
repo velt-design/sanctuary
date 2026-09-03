@@ -69,6 +69,29 @@ try {
   requireCondition([role.base_select, role.private_select, role.auth_select, role.storage_select, role.sequence_usage, role.write_execute].every((value) => value === false), 'A forbidden grant is present.');
   process.stdout.write('praxis-context-db: exact role/grant contract passed\n');
 
+  const beforeAssignment = await database.query(`
+    select updated_at from public.project_invoice_plan_items
+    where id = '80000000-0000-4000-8000-000000000001'
+  `);
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  await database.exec(`
+    update public.project_invoice_plan_items
+    set invoice_id = '70000000-0000-4000-8000-000000000001'
+    where id = '80000000-0000-4000-8000-000000000001';
+  `);
+  const assigned = await database.query(`
+    select payload from praxis_reporting.context_page_v1(
+      'invoice_plan_item', '10000000-0000-4000-8000-000000000001',
+      '${new Date(beforeAssignment.rows[0].updated_at).toISOString()}', now() + interval '1 minute',
+      null, null, null, 2
+    )
+  `);
+  requireCondition(
+    assigned.rows[0]?.payload?.invoiceId === '70000000-0000-4000-8000-000000000001',
+    'changedAfter missed the later invoice-plan assignment.',
+  );
+  process.stdout.write('praxis-context-db: invoice-plan assignment freshness passed\n');
+
   await database.exec(`
     create role sanctuary_praxis_reader_probe login inherit
       nosuperuser nocreatedb nocreaterole noreplication nobypassrls;
@@ -85,8 +108,22 @@ try {
     )
   `);
   requireCondition(page.rows.some((row) => row.resource === 'project_financial_truth'), 'Canonical financial truth is not readable.');
+  const resources = [...new Set(page.rows.map((row) => row.resource))].sort();
+  requireCondition(JSON.stringify(resources) === JSON.stringify([
+    'contact', 'enquiry_request', 'estimate', 'invoice', 'invoice_plan_item',
+    'payment', 'payment_allocation', 'project', 'project_financial_truth',
+    'quote', 'quote_line_item', 'quote_version',
+  ]), `Expected all 12 resources, received ${resources.join(', ')}.`);
   const serialized = JSON.stringify(page.rows);
-  for (const forbidden of ['secret-token-hash', 'raw_payload', 'commercial_design_input', 'protected_payload', 'encrypted_password', 'path_tokens']) {
+  requireCondition(serialized.includes('attachmentSide') && serialized.includes('rear'), 'Safe nested estimate shape was not preserved.');
+  for (const forbidden of [
+    'secret-token-hash', 'raw_payload', 'commercial_design_input', 'protected_payload',
+    'encrypted_password', 'path_tokens', 'nested-enquiry-secret', 'private/enquiry.pdf',
+    'nested-utm-secret', 'private-provider-id', 'nested-summary-secret',
+    'nested-input-secret', 'private/design.pdf', 'nested-output-secret',
+    'nested-warning-secret', 'nested-metadata-secret', 'private-commercial-design',
+    'private-invoice-token-hash',
+  ]) {
     requireCondition(!serialized.includes(forbidden), `Projection exposed forbidden material: ${forbidden}`);
   }
   process.stdout.write('praxis-context-db: bounded projection and exclusion contract passed\n');
