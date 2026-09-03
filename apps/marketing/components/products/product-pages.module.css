@@ -751,7 +751,7 @@
 }
 
 .guideFeature a {
-  color: var(--color-inverse-text);
+  color: var(--color-text-primary);
 }
 
 .productCardLink:focus-visible,

@@ -68,6 +68,7 @@
     "test": "vitest run",
     "test:marketing": "vitest run apps/marketing",
     "test:marketing:browser": "playwright test --config=playwright.marketing.config.ts",
+    "test:marketing:accessibility": "playwright test --config=playwright.marketing.config.ts playwright/marketing.accessibility.spec.ts",
     "test:ai": "vitest run packages/ai test/ai-engineering-contract-cli.test.ts test/ai-engineering-review-contract.test.ts test/ai-task-ledger-migration.test.ts test/ai-approval-migration.test.ts test/ai-synthetic-execution-migration.test.ts",
     "test:ai:ops": "vitest run test/ai-operations-backup-restore.test.ts test/ai-operations-filevault.test.ts test/ai-operations-machine-credentials.test.ts test/ai-operations-openclaw-dark.test.ts test/ai-operations-openclaw-engineering.test.ts test/ai-operations-engineering-lanes.test.ts test/ai-operations-engineering-supervision.test.ts test/ai-operations-engineering-ci-review.test.ts test/ai-operations-engineering-review-loop.test.ts test/ai-operations-engineering-main-protection.test.ts",
     "test:ai:db": "node scripts/test-ai-task-ledger-db.mjs",
@@ -153,6 +154,7 @@
     "react-dom": "19.1.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@electric-sql/pglite": "0.5.4",
     "@eslint/js": "^9.13.0",
     "@playwright/test": "^1.58.2",
