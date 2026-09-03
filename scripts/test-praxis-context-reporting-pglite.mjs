@@ -101,7 +101,8 @@ try {
     set default_transaction_read_only = on;
   `);
   const page = await database.query(`
-    select resource, payload, record_version
+    select resource, payload, record_version, policy_version,
+      redaction_count, omission_count, redaction_categories
     from praxis_reporting.context_page_v1(
       'all', '10000000-0000-4000-8000-000000000001', null, now() + interval '1 minute',
       null, null, null, 100
@@ -116,17 +117,43 @@ try {
   ]), `Expected all 12 resources, received ${resources.join(', ')}.`);
   const serialized = JSON.stringify(page.rows);
   requireCondition(serialized.includes('attachmentSide') && serialized.includes('rear'), 'Safe nested estimate shape was not preserved.');
+  requireCondition(serialized.includes('commercialInputHash') && serialized.includes('d'.repeat(64)), 'Approved commercial integrity hash was not preserved.');
+  requireCondition(serialized.includes('[redacted]'), 'Free-text credential values were not redacted.');
+  requireCondition(page.rows.some((row) => row.redaction_count > 0 && JSON.stringify(row.redaction_categories).includes('credential_value')), 'Redaction evidence was not emitted.');
   for (const forbidden of [
     'secret-token-hash', 'raw_payload', 'commercial_design_input', 'protected_payload',
     'encrypted_password', 'path_tokens', 'nested-enquiry-secret', 'private/enquiry.pdf',
     'nested-utm-secret', 'private-provider-id', 'nested-summary-secret',
     'nested-input-secret', 'private/design.pdf', 'nested-output-secret',
-    'nested-warning-secret', 'nested-metadata-secret', 'private-commercial-design',
+    'nested-warning-secret', 'nested-metadata-secret', 'nested-token-hash', 'private-commercial-design',
     'private-invoice-token-hash',
   ]) {
     requireCondition(!serialized.includes(forbidden), `Projection exposed forbidden material: ${forbidden}`);
   }
   process.stdout.write('praxis-context-db: bounded projection and exclusion contract passed\n');
+
+  const bounds = await database.query(`
+    with cases(label, input) as (values
+      ('entries_exact', jsonb_build_object('items', (select jsonb_agg(value) from generate_series(1, 255) value))),
+      ('entries_over', jsonb_build_object('items', (select jsonb_agg(value) from generate_series(1, 256) value))),
+      ('bytes_exact', jsonb_build_object('a', repeat('x', 65527))),
+      ('bytes_over', jsonb_build_object('a', repeat('x', 65528))),
+      ('depth_exact', '{"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":"ok"}}}}}}}}'::jsonb),
+      ('depth_over', '{"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":{"i":"too-deep"}}}}}}}}}'::jsonb)
+    )
+    select label, payload, octet_length(convert_to(payload::text, 'UTF8')) as payload_bytes,
+      omission_count, categories
+    from cases cross join lateral praxis_reporting.safe_payload_v1(input)
+    order by label
+  `);
+  const bound = Object.fromEntries(bounds.rows.map((row) => [row.label, row]));
+  requireCondition(bound.entries_exact.payload.items.length === 255 && bound.entries_exact.omission_count === 0, 'Aggregate child-entry boundary failed.');
+  requireCondition(bound.entries_over.payload.items?._praxisOmitted === 'source_bounds_v1' && bound.entries_over.omission_count === 1, 'Aggregate child-entry boundary+1 was not omitted.');
+  requireCondition(bound.bytes_exact.payload_bytes === 65536 && bound.bytes_exact.omission_count === 0, 'UTF-8 byte boundary failed.');
+  requireCondition(bound.bytes_over.payload.a?._praxisOmitted === 'source_bounds_v1' && bound.bytes_over.omission_count === 1, 'UTF-8 byte boundary+1 was not omitted.');
+  requireCondition(!JSON.stringify(bound.depth_exact.payload).includes('_praxisOmitted'), 'Depth boundary was omitted early.');
+  requireCondition(JSON.stringify(bound.depth_over.payload).includes('source_bounds_v1') && bound.depth_over.omission_count === 1, 'Depth boundary+1 was not omitted.');
+  process.stdout.write('praxis-context-db: source JSON boundary and evidence contract passed\n');
 
   await expectDenied(database, "select * from public.projects", 'base-table SELECT');
   await expectDenied(database, "select * from private.commercial_email_intents", 'private-table SELECT');

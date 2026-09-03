@@ -22,6 +22,13 @@ export const PRAXIS_RESOURCES = [
 export type PraxisResource = (typeof PRAXIS_RESOURCES)[number];
 export type PraxisRecordResource = Exclude<PraxisResource, 'all'>;
 
+export type PraxisProjectionEvidence = {
+  policyVersion: 'sanctuary.praxis.sanitizer.v1';
+  redactionCount: number;
+  omissionCount: number;
+  categories: Array<'credential_key' | 'credential_value' | 'source_bounds'>;
+};
+
 export type PraxisContextRecord = {
   resource: PraxisRecordResource;
   id: string;
@@ -30,6 +37,7 @@ export type PraxisContextRecord = {
   recordedAt: string;
   recordVersion: string;
   payload: Record<string, unknown>;
+  projection: PraxisProjectionEvidence;
 };
 
 export type PraxisContextQuery = {
@@ -54,7 +62,11 @@ export type PraxisContextResponse = {
   requestId: string;
   source: PraxisSourceEvidence;
   query: PraxisContextQuery;
-  page: { hasMore: boolean; nextCursor: string | null };
+  page: {
+    hasMore: boolean;
+    nextCursor: string | null;
+    projection: PraxisProjectionEvidence;
+  };
   records: PraxisContextRecord[];
 };
 

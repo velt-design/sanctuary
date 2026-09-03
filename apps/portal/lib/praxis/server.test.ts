@@ -23,7 +23,7 @@ const TOKEN = 'test-token-with-at-least-thirty-two-characters';
 beforeEach(() => {
   process.env = {
     ...ORIGINAL_ENV,
-    PRAXIS_SANCTUARY_DATABASE_URL: 'postgres://reader:secret@db.example.test/postgres',
+    PRAXIS_SANCTUARY_DATABASE_URL: 'postgres://reader:secret@db.example.test/postgres?sslmode=verify-full',
     PRAXIS_SANCTUARY_READ_TOKEN: TOKEN,
     PRAXIS_SANCTUARY_SOURCE_KEY: 'sanctuary',
     PRAXIS_SANCTUARY_CONNECTION_ID: 'a0000000-0000-4000-8000-000000000001',
@@ -87,7 +87,13 @@ function mockDatabase(options: {
     if (sql.includes('has_schema_privilege')) return [{ ready: options.ready ?? true }];
     if (sql.includes('from praxis_reporting.context_page_v1')) {
       if (options.projectionFailure) throw options.projectionFailure;
-      return options.rows ?? [];
+      return (options.rows ?? []).map((row) => ({
+        policy_version: 'sanctuary.praxis.sanitizer.v1',
+        redaction_count: 0,
+        omission_count: 0,
+        redaction_categories: [],
+        ...row,
+      }));
     }
     throw new Error(`Unexpected SQL in test: ${sql}`);
   });
@@ -106,6 +112,26 @@ describe('Praxis connector trust boundary', () => {
     expect(() => loadPraxisConnectorConfig()).toThrowError(
       expect.objectContaining({ code: 'CONNECTOR_NOT_CONFIGURED', status: 503 }),
     );
+  });
+
+  it('requires verified TLS for every non-loopback database target', () => {
+    for (const unsafeUrl of [
+      'postgres://reader:secret@db.example.test/postgres',
+      'postgres://reader:secret@db.example.test/postgres?sslmode=disable',
+      'postgres://reader:secret@db.example.test/postgres?sslmode=allow',
+      'postgres://reader:secret@db.example.test/postgres?sslmode=prefer',
+      'https://db.example.test/postgres?sslmode=verify-full',
+    ]) {
+      process.env.PRAXIS_SANCTUARY_DATABASE_URL = unsafeUrl;
+      expect(() => loadPraxisConnectorConfig()).toThrowError(
+        expect.objectContaining({ code: 'CONNECTOR_NOT_CONFIGURED', status: 503 }),
+      );
+    }
+
+    process.env.PRAXIS_SANCTUARY_DATABASE_URL = 'postgres://reader:secret@db.example.test/postgres?sslmode=verify-full';
+    expect(loadPraxisConnectorConfig()).toMatchObject({ databaseSsl: 'verify-full' });
+    process.env.PRAXIS_SANCTUARY_DATABASE_URL = 'postgres://reader:secret@127.0.0.1:5432/postgres';
+    expect(loadPraxisConnectorConfig()).toMatchObject({ databaseSsl: false });
   });
 
   it('accepts only the exact bearer and source binding', () => {
@@ -127,6 +153,9 @@ describe('Praxis connector trust boundary', () => {
       expect.objectContaining({ code: 'INVALID_QUERY', status: 400 }),
     );
     expect(() => parsePraxisContextQuery(new URL('https://portal.example.test/context?resource=secret'))).toThrowError(
+      expect.objectContaining({ code: 'INVALID_QUERY', status: 400 }),
+    );
+    expect(() => parsePraxisContextQuery(new URL('https://portal.example.test/context?changedAfter=2026-09-03T00:00:00Z'))).toThrowError(
       expect.objectContaining({ code: 'INVALID_QUERY', status: 400 }),
     );
   });
@@ -188,6 +217,18 @@ describe('Praxis connector trust boundary', () => {
     const first = await readPraxisContext(query, config, 'request-1', firstDb.dependencies);
     expect(first.records).toHaveLength(1);
     expect(first.records[0]?.recordVersion).toBe(canonicalRecordVersion(payload));
+    expect(first.records[0]?.projection).toEqual({
+      policyVersion: 'sanctuary.praxis.sanitizer.v1',
+      redactionCount: 0,
+      omissionCount: 0,
+      categories: [],
+    });
+    expect(first.page.projection).toEqual({
+      policyVersion: 'sanctuary.praxis.sanitizer.v1',
+      redactionCount: 0,
+      omissionCount: 0,
+      categories: [],
+    });
     expect(first.page.hasMore).toBe(true);
     expect(first.page.nextCursor).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
     expect(first.source.asOf).toBeTruthy();

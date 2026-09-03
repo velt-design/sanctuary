@@ -177,12 +177,22 @@ as $$
     ])
     or value ~ '^(raw|privateexecution)'
     or value ~ '(secret|credential|password|passphrase|token|cookie|authorization|privatekey|apikey|accesskey)'
-    or value ~ 'hash$'
+    or (value ~ 'hash$' and value <> 'commercialinputhash')
   from normalized;
 $$;
 
-create or replace function praxis_reporting.safe_nested_json_v1(p_value jsonb)
-returns jsonb
+create or replace function praxis_reporting.sanitize_json_internal_v1(
+  p_value jsonb,
+  p_depth integer,
+  p_remaining_entries integer
+)
+returns table (
+  sanitized jsonb,
+  child_entries integer,
+  redaction_count integer,
+  omission_count integer,
+  categories text[]
+)
 language plpgsql
 immutable
 strict
@@ -191,31 +201,175 @@ set search_path = pg_catalog, pg_temp
 as $$
 declare
   result jsonb;
+  item record;
+  child record;
+  used_entries integer := 0;
+  redactions integer := 0;
+  omissions integer := 0;
+  found_categories text[] := array[]::text[];
+  marker constant jsonb := '{"_praxisOmitted":"source_bounds_v1"}'::jsonb;
 begin
+  if p_depth > 8
+     or p_remaining_entries < 0
+     or octet_length(convert_to(p_value::text, 'UTF8')) > 65536 then
+    return query select marker, 1, 0, 1, array['source_bounds']::text[];
+    return;
+  end if;
+
   case jsonb_typeof(p_value)
     when 'object' then
-      select coalesce(
-        jsonb_object_agg(item.key, praxis_reporting.safe_nested_json_v1(item.value)),
-        '{}'::jsonb
-      ) into result
-      from jsonb_each(p_value) item
-      where not praxis_reporting.forbidden_nested_key_v1(item.key);
-      return result;
+      if p_depth >= 8 and p_value <> '{}'::jsonb then
+        return query select marker, 1, 0, 1, array['source_bounds']::text[];
+        return;
+      end if;
+      result := '{}'::jsonb;
+      for item in select entry.key, entry.value from jsonb_each(p_value) entry order by entry.key loop
+        if praxis_reporting.forbidden_nested_key_v1(item.key)
+           or (
+             lower(regexp_replace(item.key, '[^a-zA-Z0-9]', '', 'g')) = 'commercialinputhash'
+             and (
+               jsonb_typeof(item.value) <> 'string'
+               or (item.value #>> '{}') !~ '^[0-9a-f]{64}$'
+             )
+           ) then
+          redactions := redactions + 1;
+          found_categories := array_append(found_categories, 'credential_key');
+          continue;
+        end if;
+        if used_entries + 1 > p_remaining_entries then
+          return query select marker, 1, 0, 1, array['source_bounds']::text[];
+          return;
+        end if;
+        select * into child from praxis_reporting.sanitize_json_internal_v1(
+          item.value,
+          p_depth + 1,
+          p_remaining_entries - used_entries - 1
+        );
+        if used_entries + 1 + child.child_entries > p_remaining_entries then
+          return query select marker, 1, 0, 1, array['source_bounds']::text[];
+          return;
+        end if;
+        result := result || jsonb_build_object(item.key, child.sanitized);
+        used_entries := used_entries + 1 + child.child_entries;
+        redactions := redactions + child.redaction_count;
+        omissions := omissions + child.omission_count;
+        found_categories := found_categories || child.categories;
+      end loop;
     when 'array' then
-      select coalesce(
-        jsonb_agg(praxis_reporting.safe_nested_json_v1(item.value) order by item.ordinality),
-        '[]'::jsonb
-      ) into result
-      from jsonb_array_elements(p_value) with ordinality item(value, ordinality);
-      return result;
+      if (p_depth >= 8 and p_value <> '[]'::jsonb)
+         or jsonb_array_length(p_value) > p_remaining_entries then
+        return query select marker, 1, 0, 1, array['source_bounds']::text[];
+        return;
+      end if;
+      result := '[]'::jsonb;
+      for item in select entry.value from jsonb_array_elements(p_value) with ordinality entry(value, ordinality) order by entry.ordinality loop
+        select * into child from praxis_reporting.sanitize_json_internal_v1(
+          item.value,
+          p_depth + 1,
+          p_remaining_entries - used_entries - 1
+        );
+        if used_entries + 1 + child.child_entries > p_remaining_entries then
+          return query select marker, 1, 0, 1, array['source_bounds']::text[];
+          return;
+        end if;
+        result := result || jsonb_build_array(child.sanitized);
+        used_entries := used_entries + 1 + child.child_entries;
+        redactions := redactions + child.redaction_count;
+        omissions := omissions + child.omission_count;
+        found_categories := found_categories || child.categories;
+      end loop;
     when 'string' then
       if (p_value #>> '{}') ~* '(bearer[[:space:]]+[a-z0-9._~+/-]{16,}|-----begin [a-z ]*private key-----|sk-[a-z0-9_-]{16,})' then
-        return to_jsonb('[redacted]'::text);
+        return query select to_jsonb('[redacted]'::text), 0, 1, 0, array['credential_value']::text[];
+        return;
       end if;
-      return p_value;
+      result := p_value;
     else
-      return p_value;
+      result := p_value;
   end case;
+  return query select result, used_entries, redactions, omissions, (
+    select coalesce(array_agg(distinct category order by category), array[]::text[])
+    from unnest(found_categories) category
+  );
+end;
+$$;
+
+create or replace function praxis_reporting.safe_payload_v1(p_payload jsonb)
+returns table (
+  payload jsonb,
+  policy_version text,
+  redaction_count integer,
+  omission_count integer,
+  categories text[]
+)
+language plpgsql
+immutable
+strict
+security invoker
+set search_path = pg_catalog, pg_temp
+as $$
+declare
+  result jsonb := '{}'::jsonb;
+  item record;
+  child record;
+  largest record;
+  used_entries integer := 0;
+  redactions integer := 0;
+  omissions integer := 0;
+  found_categories text[] := array[]::text[];
+  marker constant jsonb := '{"_praxisOmitted":"source_bounds_v1"}'::jsonb;
+begin
+  if jsonb_typeof(p_payload) <> 'object'
+     or (select count(*) from jsonb_each(p_payload)) > 256 then
+    raise exception 'Praxis payload root exceeds the v1 schema bounds' using errcode = '54000';
+  end if;
+
+  for item in select entry.key, entry.value from jsonb_each(p_payload) entry order by entry.key loop
+    if praxis_reporting.forbidden_nested_key_v1(item.key) then
+      redactions := redactions + 1;
+      found_categories := array_append(found_categories, 'credential_key');
+      continue;
+    end if;
+    select * into child from praxis_reporting.sanitize_json_internal_v1(
+      item.value,
+      1,
+      256 - used_entries - 1
+    );
+    if used_entries + 1 + child.child_entries > 256 then
+      child.sanitized := marker;
+      child.child_entries := 1;
+      child.redaction_count := 0;
+      child.omission_count := 1;
+      child.categories := array['source_bounds']::text[];
+    end if;
+    result := result || jsonb_build_object(item.key, child.sanitized);
+    used_entries := used_entries + 1 + child.child_entries;
+    redactions := redactions + child.redaction_count;
+    omissions := omissions + child.omission_count;
+    found_categories := found_categories || child.categories;
+  end loop;
+
+  while octet_length(convert_to(result::text, 'UTF8')) > 65536 loop
+    select entry.key, entry.value into largest
+    from jsonb_each(result) entry
+    where entry.value <> marker
+    order by octet_length(convert_to(entry.value::text, 'UTF8')) desc, entry.key
+    limit 1;
+    if largest.key is null then
+      raise exception 'Praxis payload cannot fit the v1 byte bound' using errcode = '54000';
+    end if;
+    result := jsonb_set(result, array[largest.key], marker, false);
+    omissions := omissions + 1;
+    found_categories := array_append(found_categories, 'source_bounds');
+  end loop;
+
+  return query select
+    result,
+    'sanctuary.praxis.sanitizer.v1'::text,
+    redactions,
+    omissions,
+    (select coalesce(array_agg(distinct category order by category), array[]::text[])
+     from unnest(found_categories) category);
 end;
 $$;
 
@@ -228,8 +382,12 @@ select
   enquiry.project_id,
   coalesce(enquiry.project_id, enquiry.contact_id) as parent_id,
   enquiry.updated_at as recorded_at,
-  praxis_reporting.version_v1(payload.value) as record_version,
-  payload.value as payload
+  praxis_reporting.version_v1(payload.payload) as record_version,
+  payload.payload,
+  payload.policy_version,
+  payload.redaction_count,
+  payload.omission_count,
+  payload.categories as redaction_categories
 from public.enquiry_requests enquiry
 cross join lateral (values (jsonb_build_object(
   'contactId', enquiry.contact_id,
@@ -242,7 +400,7 @@ cross join lateral (values (jsonb_build_object(
   'heightM', enquiry.height_m,
   'style', enquiry.style,
   'roofMaterials', enquiry.roof_materials,
-  'addOns', praxis_reporting.safe_nested_json_v1(enquiry.add_ons),
+  'addOns', enquiry.add_ons,
   'baseBudgetLowIncGst', enquiry.base_budget_low_inc_gst,
   'baseBudgetHighIncGst', enquiry.base_budget_high_inc_gst,
   'blindsBudgetLowIncGst', enquiry.blinds_budget_low_inc_gst,
@@ -251,10 +409,11 @@ cross join lateral (values (jsonb_build_object(
   'company', enquiry.company,
   'source', enquiry.source,
   'page', enquiry.page,
-  'utm', praxis_reporting.safe_nested_json_v1(enquiry.utm),
+  'utm', enquiry.utm,
   'createdAt', enquiry.created_at,
   'updatedAt', enquiry.updated_at
-))) payload(value);
+))) assembled(value)
+cross join lateral praxis_reporting.safe_payload_v1(assembled.value) payload;
 
 create or replace view praxis_reporting.contacts_v1
 with (security_barrier = true)
@@ -265,8 +424,12 @@ select
   null::uuid as project_id,
   null::uuid as parent_id,
   contact.updated_at as recorded_at,
-  praxis_reporting.version_v1(payload.value) as record_version,
-  payload.value as payload
+  praxis_reporting.version_v1(payload.payload) as record_version,
+  payload.payload,
+  payload.policy_version,
+  payload.redaction_count,
+  payload.omission_count,
+  payload.categories as redaction_categories
 from public.contacts contact
 cross join lateral (values (jsonb_build_object(
   'name', contact.name,
@@ -275,7 +438,8 @@ cross join lateral (values (jsonb_build_object(
   'address', contact.address,
   'createdAt', contact.created_at,
   'updatedAt', contact.updated_at
-))) payload(value);
+))) assembled(value)
+cross join lateral praxis_reporting.safe_payload_v1(assembled.value) payload;
 
 create or replace view praxis_reporting.projects_v1
 with (security_barrier = true)
@@ -286,8 +450,12 @@ select
   project.id as project_id,
   project.contact_id as parent_id,
   project.updated_at as recorded_at,
-  praxis_reporting.version_v1(payload.value) as record_version,
-  payload.value as payload
+  praxis_reporting.version_v1(payload.payload) as record_version,
+  payload.payload,
+  payload.policy_version,
+  payload.redaction_count,
+  payload.omission_count,
+  payload.categories as redaction_categories
 from public.projects project
 cross join lateral (values (jsonb_build_object(
   'contactId', project.contact_id,
@@ -311,7 +479,8 @@ cross join lateral (values (jsonb_build_object(
   'version', project.version,
   'createdAt', project.created_at,
   'updatedAt', project.updated_at
-))) payload(value);
+))) assembled(value)
+cross join lateral praxis_reporting.safe_payload_v1(assembled.value) payload;
 
 create or replace view praxis_reporting.estimates_v1
 with (security_barrier = true)
@@ -322,8 +491,12 @@ select
   estimate.project_id,
   estimate.project_id as parent_id,
   estimate.updated_at as recorded_at,
-  praxis_reporting.version_v1(payload.value) as record_version,
-  payload.value as payload
+  praxis_reporting.version_v1(payload.payload) as record_version,
+  payload.payload,
+  payload.policy_version,
+  payload.redaction_count,
+  payload.omission_count,
+  payload.categories as redaction_categories
 from public.estimates estimate
 cross join lateral (values (jsonb_build_object(
   'projectId', estimate.project_id,
@@ -332,7 +505,7 @@ cross join lateral (values (jsonb_build_object(
   'status', estimate.status,
   'version', estimate.version,
   'createdBy', estimate.created_by,
-  'summaryJson', praxis_reporting.safe_nested_json_v1(estimate.summary_json),
+  'summaryJson', estimate.summary_json,
   'internalNotes', estimate.internal_notes,
   'summary', estimate.summary,
   'crewHours', estimate.crew_hours,
@@ -342,17 +515,18 @@ cross join lateral (values (jsonb_build_object(
   'overheadExGst', estimate.overhead_ex_gst,
   'totalTrueCostExGst', estimate.total_true_cost_ex_gst,
   'totalTrueCostIncGst', estimate.total_true_cost_inc_gst,
-  'inputs', praxis_reporting.safe_nested_json_v1(estimate.inputs),
-  'outputs', praxis_reporting.safe_nested_json_v1(estimate.outputs),
-  'warnings', praxis_reporting.safe_nested_json_v1(estimate.warnings),
+  'inputs', estimate.inputs,
+  'outputs', estimate.outputs,
+  'warnings', estimate.warnings,
   'costingManifest', estimate.costing_manifest,
   'costingRules', estimate.costing_rules,
   'costingConfigVersionId', estimate.costing_config_version_id,
   'pricingSource', estimate.pricing_source,
-  'pricingSourceMetadata', praxis_reporting.safe_nested_json_v1(estimate.pricing_source_metadata),
+  'pricingSourceMetadata', estimate.pricing_source_metadata,
   'createdAt', estimate.created_at,
   'updatedAt', estimate.updated_at
-))) payload(value);
+))) assembled(value)
+cross join lateral praxis_reporting.safe_payload_v1(assembled.value) payload;
 
 create or replace view praxis_reporting.quotes_v1
 with (security_barrier = true)
@@ -363,8 +537,12 @@ select
   quote.project_id,
   quote.project_id as parent_id,
   quote.updated_at as recorded_at,
-  praxis_reporting.version_v1(payload.value) as record_version,
-  payload.value as payload
+  praxis_reporting.version_v1(payload.payload) as record_version,
+  payload.payload,
+  payload.policy_version,
+  payload.redaction_count,
+  payload.omission_count,
+  payload.categories as redaction_categories
 from public.quotes quote
 cross join lateral (values (jsonb_build_object(
   'projectId', quote.project_id,
@@ -374,7 +552,8 @@ cross join lateral (values (jsonb_build_object(
   'createdBy', quote.created_by,
   'createdAt', quote.created_at,
   'updatedAt', quote.updated_at
-))) payload(value);
+))) assembled(value)
+cross join lateral praxis_reporting.safe_payload_v1(assembled.value) payload;
 
 create or replace view praxis_reporting.quote_versions_v1
 with (security_barrier = true)
@@ -385,8 +564,12 @@ select
   quote.project_id,
   version.quote_id as parent_id,
   version.updated_at as recorded_at,
-  praxis_reporting.version_v1(payload.value) as record_version,
-  payload.value as payload
+  praxis_reporting.version_v1(payload.payload) as record_version,
+  payload.payload,
+  payload.policy_version,
+  payload.redaction_count,
+  payload.omission_count,
+  payload.categories as redaction_categories
 from public.quote_versions version
 join public.quotes quote on quote.id = version.quote_id
 cross join lateral (values (jsonb_build_object(
@@ -411,15 +594,16 @@ cross join lateral (values (jsonb_build_object(
   'gstCents', version.gst_cents,
   'hasPdf', version.pdf_file_id is not null,
   'depositPercent', version.deposit_percent,
-  'paymentTerms', praxis_reporting.safe_nested_json_v1(version.payment_terms),
+  'paymentTerms', version.payment_terms,
   'pricingSource', version.pricing_source,
-  'pricingSourceMetadata', praxis_reporting.safe_nested_json_v1(version.pricing_source_metadata),
+  'pricingSourceMetadata', version.pricing_source_metadata,
   'commercialRevision', version.commercial_revision,
   'isCurrentDraft', version.is_current_draft,
   'deliveryPreparedAt', version.delivery_prepared_at,
   'createdAt', version.created_at,
   'updatedAt', version.updated_at
-))) payload(value);
+))) assembled(value)
+cross join lateral praxis_reporting.safe_payload_v1(assembled.value) payload;
 
 create or replace view praxis_reporting.quote_line_items_v1
 with (security_barrier = true)
@@ -430,8 +614,12 @@ select
   quote.project_id,
   item.quote_version_id as parent_id,
   item.updated_at as recorded_at,
-  praxis_reporting.version_v1(payload.value) as record_version,
-  payload.value as payload
+  praxis_reporting.version_v1(payload.payload) as record_version,
+  payload.payload,
+  payload.policy_version,
+  payload.redaction_count,
+  payload.omission_count,
+  payload.categories as redaction_categories
 from public.quote_line_items item
 join public.quote_versions version on version.id = item.quote_version_id
 join public.quotes quote on quote.id = version.quote_id
@@ -444,7 +632,8 @@ cross join lateral (values (jsonb_build_object(
   'lineTotalIncGstCents', item.line_total_inc_gst_cents,
   'createdAt', item.created_at,
   'updatedAt', item.updated_at
-))) payload(value);
+))) assembled(value)
+cross join lateral praxis_reporting.safe_payload_v1(assembled.value) payload;
 
 create or replace view praxis_reporting.invoices_v1
 with (security_barrier = true)
@@ -455,8 +644,12 @@ select
   invoice.project_id,
   invoice.quote_version_id as parent_id,
   invoice.updated_at as recorded_at,
-  praxis_reporting.version_v1(payload.value) as record_version,
-  payload.value as payload
+  praxis_reporting.version_v1(payload.payload) as record_version,
+  payload.payload,
+  payload.policy_version,
+  payload.redaction_count,
+  payload.omission_count,
+  payload.categories as redaction_categories
 from public.deposit_invoices invoice
 cross join lateral (values (jsonb_build_object(
   'projectId', invoice.project_id,
@@ -503,7 +696,8 @@ cross join lateral (values (jsonb_build_object(
   'paymentNote', invoice.payment_note,
   'createdAt', invoice.created_at,
   'updatedAt', invoice.updated_at
-))) payload(value);
+))) assembled(value)
+cross join lateral praxis_reporting.safe_payload_v1(assembled.value) payload;
 
 create or replace view praxis_reporting.invoice_plan_items_v1
 with (security_barrier = true)
@@ -514,8 +708,12 @@ select
   item.project_id,
   item.quote_version_id as parent_id,
   item.updated_at as recorded_at,
-  praxis_reporting.version_v1(payload.value) as record_version,
-  payload.value as payload
+  praxis_reporting.version_v1(payload.payload) as record_version,
+  payload.payload,
+  payload.policy_version,
+  payload.redaction_count,
+  payload.omission_count,
+  payload.categories as redaction_categories
 from public.project_invoice_plan_items item
 cross join lateral (values (jsonb_build_object(
   'projectId', item.project_id,
@@ -533,7 +731,8 @@ cross join lateral (values (jsonb_build_object(
   'cancellationReason', item.cancellation_reason,
   'createdAt', item.created_at,
   'updatedAt', item.updated_at
-))) payload(value);
+))) assembled(value)
+cross join lateral praxis_reporting.safe_payload_v1(assembled.value) payload;
 
 create or replace view praxis_reporting.payments_v1
 with (security_barrier = true)
@@ -544,8 +743,12 @@ select
   entry.project_id,
   entry.project_id as parent_id,
   greatest(entry.created_at, entry.occurred_at) as recorded_at,
-  praxis_reporting.version_v1(payload.value) as record_version,
-  payload.value as payload
+  praxis_reporting.version_v1(payload.payload) as record_version,
+  payload.payload,
+  payload.policy_version,
+  payload.redaction_count,
+  payload.omission_count,
+  payload.categories as redaction_categories
 from public.project_payment_entries entry
 cross join lateral (values (jsonb_build_object(
   'projectId', entry.project_id,
@@ -560,7 +763,8 @@ cross join lateral (values (jsonb_build_object(
   'reversesEntryId', entry.reverses_entry_id,
   'createdBy', entry.created_by,
   'createdAt', entry.created_at
-))) payload(value);
+))) assembled(value)
+cross join lateral praxis_reporting.safe_payload_v1(assembled.value) payload;
 
 create or replace view praxis_reporting.payment_allocations_v1
 with (security_barrier = true)
@@ -571,8 +775,12 @@ select
   allocation.project_id,
   allocation.payment_entry_id as parent_id,
   greatest(allocation.created_at, coalesce(allocation.reversed_at, allocation.created_at)) as recorded_at,
-  praxis_reporting.version_v1(payload.value) as record_version,
-  payload.value as payload
+  praxis_reporting.version_v1(payload.payload) as record_version,
+  payload.payload,
+  payload.policy_version,
+  payload.redaction_count,
+  payload.omission_count,
+  payload.categories as redaction_categories
 from public.project_payment_allocations allocation
 cross join lateral (values (jsonb_build_object(
   'projectId', allocation.project_id,
@@ -586,7 +794,8 @@ cross join lateral (values (jsonb_build_object(
   'reversedBy', allocation.reversed_by,
   'reversalReason', allocation.reversal_reason,
   'createdAt', allocation.created_at
-))) payload(value);
+))) assembled(value)
+cross join lateral praxis_reporting.safe_payload_v1(assembled.value) payload;
 
 create or replace function praxis_reporting.project_financial_truth_for_v1(
   p_project_id uuid
@@ -632,8 +841,12 @@ select
   project.id as project_id,
   project.id as parent_id,
   freshness.recorded_at,
-  praxis_reporting.version_v1(payload.value) as record_version,
-  payload.value as payload
+  praxis_reporting.version_v1(payload.payload) as record_version,
+  payload.payload,
+  payload.policy_version,
+  payload.redaction_count,
+  payload.omission_count,
+  payload.categories as redaction_categories
 from public.projects project
 cross join lateral praxis_reporting.project_financial_truth_for_v1(project.id) truth
 cross join lateral (
@@ -655,7 +868,8 @@ cross join lateral (values (jsonb_build_object(
   'remainingToInvoiceIncGstCents', truth.remaining_to_invoice_inc_gst_cents,
   'overCommittedIncGstCents', truth.over_committed_inc_gst_cents,
   'latestPaymentAt', truth.latest_payment_at
-))) payload(value);
+))) assembled(value)
+cross join lateral praxis_reporting.safe_payload_v1(assembled.value) payload;
 
 create or replace function praxis_reporting.context_page_v1(
   p_resource text,
@@ -674,7 +888,11 @@ returns table (
   parent_id uuid,
   recorded_at timestamptz,
   record_version text,
-  payload jsonb
+  payload jsonb,
+  policy_version text,
+  redaction_count integer,
+  omission_count integer,
+  redaction_categories text[]
 )
 language plpgsql
 stable
@@ -715,7 +933,8 @@ begin
     union all select * from praxis_reporting.project_financial_truth_v1
   )
   select row.resource, row.id, row.project_id, row.parent_id,
-    row.recorded_at, row.record_version, row.payload
+    row.recorded_at, row.record_version, row.payload, row.policy_version,
+    row.redaction_count, row.omission_count, row.redaction_categories
   from records row
   where (p_resource = 'all' or row.resource = p_resource)
     and row.recorded_at <= p_as_of
@@ -750,7 +969,9 @@ revoke all on function praxis_reporting.version_v1(jsonb)
   from public, anon, authenticated, service_role;
 revoke all on function praxis_reporting.forbidden_nested_key_v1(text)
   from public, anon, authenticated, service_role;
-revoke all on function praxis_reporting.safe_nested_json_v1(jsonb)
+revoke all on function praxis_reporting.sanitize_json_internal_v1(jsonb, integer, integer)
+  from public, anon, authenticated, service_role;
+revoke all on function praxis_reporting.safe_payload_v1(jsonb)
   from public, anon, authenticated, service_role;
 revoke all on function praxis_reporting.project_financial_truth_for_v1(uuid)
   from public, anon, authenticated, service_role;
@@ -764,7 +985,9 @@ grant execute on function praxis_reporting.version_v1(jsonb)
   to sanctuary_praxis_reader;
 grant execute on function praxis_reporting.forbidden_nested_key_v1(text)
   to sanctuary_praxis_reader;
-grant execute on function praxis_reporting.safe_nested_json_v1(jsonb)
+grant execute on function praxis_reporting.sanitize_json_internal_v1(jsonb, integer, integer)
+  to sanctuary_praxis_reader;
+grant execute on function praxis_reporting.safe_payload_v1(jsonb)
   to sanctuary_praxis_reader;
 grant execute on function praxis_reporting.project_financial_truth_for_v1(uuid)
   to sanctuary_praxis_reader;

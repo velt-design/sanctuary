@@ -45,9 +45,14 @@ describe('Praxis context migration source contract', () => {
     ]) {
       expect(projectionSection).not.toMatch(new RegExp(`\\b${forbidden}\\b`));
     }
-    expect(migration).toContain('praxis_reporting.safe_nested_json_v1(estimate.inputs)');
-    expect(migration).toContain('praxis_reporting.safe_nested_json_v1(estimate.outputs)');
-    expect(migration).toContain("or value ~ 'hash$'");
+    expect(migration).toContain('praxis_reporting.safe_payload_v1(assembled.value)');
+    expect(migration).toContain('praxis_reporting.sanitize_json_internal_v1(');
+    expect(migration).toContain('{"_praxisOmitted":"source_bounds_v1"}');
+    expect(migration).toContain("octet_length(convert_to(result::text, 'UTF8')) > 65536");
+    expect(migration).toContain('p_depth > 8');
+    expect(migration).toContain('256 - used_entries - 1');
+    expect(migration).toContain("or (value ~ 'hash$' and value <> 'commercialinputhash')");
+    expect(migration).toContain("lower(regexp_replace(item.key, '[^a-zA-Z0-9]', '', 'g')) = 'commercialinputhash'");
   });
 
   it('shares all 12 representative, ordered, canonically hashed resource shapes', () => {
@@ -63,6 +68,16 @@ describe('Praxis context migration source contract', () => {
     }
     const estimate = records.find((record) => record.resource === 'estimate');
     expect(JSON.stringify(estimate?.payload)).toContain('"attachmentSide":"rear"');
+    expect(JSON.stringify(estimate?.payload)).toMatch(/"commercialInputHash":"[0-9a-f]{64}"/);
+    expect(estimate?.projection).toEqual({
+      policyVersion: 'sanctuary.praxis.sanitizer.v1',
+      redactionCount: 2,
+      omissionCount: 1,
+      categories: ['credential_key', 'credential_value', 'source_bounds'],
+    });
+    expect(JSON.stringify(estimate?.payload)).toContain('"_praxisOmitted":"source_bounds_v1"');
+    expect(JSON.stringify(estimate?.payload)).toContain('"[redacted]"');
+    expect(fixture.contextSuccess.page.projection).toEqual(estimate?.projection);
     expect(JSON.stringify(records)).not.toMatch(/rawPayload|commercialDesignInput|accessToken|password|filePath|providerError/);
     const keys = records.map((record) => `${record.recordedAt}|${record.resource}|${record.id}`);
     expect(keys).toEqual([...keys].sort());
@@ -85,7 +100,10 @@ describe('Praxis context migration source contract', () => {
     expect(server).toContain("'cache-control': 'private, no-store'");
     expect(server).toContain("current_setting('default_transaction_read_only') = 'on'");
     expect(server).toContain("procedure.prosecdef");
+    expect(server).toContain("procedure.prorettype not in ('pg_catalog.trigger'::regtype, 'pg_catalog.event_trigger'::regtype)");
     expect(server).toContain("from praxis_reporting.context_page_v1(");
+    expect(server).toContain('changedAfter is not supported; Praxis v1 reads are full authoritative replacement snapshots.');
+    expect(server).toContain("sslMode !== 'verify-full'");
   });
 
   it('tracks invoice-plan assignment freshness', () => {
@@ -96,6 +114,7 @@ describe('Praxis context migration source contract', () => {
 
   it('provides a real Docker PostgreSQL LOGIN denial proof', () => {
     expect(dockerProof).toContain("'postgres:17-alpine'");
+    expect(dockerProof).toContain('Callable security-definer escalation detection');
     for (const proof of [
       'base-table SELECT', 'private-table SELECT', 'auth-table SELECT', 'storage-table SELECT',
       'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'COPY', 'sequence use', 'write RPC execution',

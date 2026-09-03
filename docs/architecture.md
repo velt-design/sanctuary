@@ -21,7 +21,7 @@ For the north-star structure this repo is converging toward, read `docs/target-a
 - `playwright`: portal browser test harness.
 - `.github`: CI workflows for portal quality, Background Jobs contracts, docs health, Lighthouse, and governance.
 
-The Portal also owns the default-dark Sanctuary side of the Praxis V1 reporting connector. Its server-only routes authenticate one Velt connector binding, verify the database-owned target identity and exact low-privilege LOGIN posture, and read only explicit `praxis_reporting` projections. Canonical enquiry, customer, project, quote, invoice, payment, allocation, and financial rules stay in Sanctuary; Velt receives versioned facts and must not recalculate Sanctuary commercial truth. No browser, worker, or service-role path is part of this connector.
+The Portal also owns the default-dark Sanctuary side of the Praxis V1 reporting connector. Its server-only routes authenticate one Velt connector binding, verify the database-owned target identity and exact low-privilege LOGIN posture, and read only explicit `praxis_reporting` projections over verified remote database transport. Canonical enquiry, customer, project, quote, invoice, payment, allocation, and financial rules stay in Sanctuary; Velt receives bounded versioned facts, explicit sanitisation evidence, and full authoritative replacement snapshots, and must not recalculate Sanctuary commercial truth. Incremental reads are disabled until the source can represent deletion tombstones. No browser, worker, or service-role path is part of this connector.
 
 Root-level directories outside `apps` and `packages` are still active unless proven otherwise:
 

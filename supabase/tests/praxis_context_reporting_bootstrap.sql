@@ -171,9 +171,18 @@ create function public.commercial_change_payment_allocation()
 returns void language plpgsql security definer set search_path = pg_catalog, pg_temp as $$
 begin update public.project_payment_allocations set change_reason = 'changed'; end
 $$;
+create function public.praxis_probe_audit_trigger()
+returns trigger language plpgsql security definer set search_path = pg_catalog, pg_temp as $$
+begin return new; end
+$$;
+create function public.praxis_probe_callable_definer()
+returns void language plpgsql security definer set search_path = pg_catalog, pg_temp as $$
+begin update public.projects set name = 'escalated'; end
+$$;
 revoke all on function public.commercial_quote_update_draft() from public, anon, authenticated;
 revoke all on function public.commercial_create_admin_invoice() from public, anon, authenticated;
 revoke all on function public.commercial_change_payment_allocation() from public, anon, authenticated;
+revoke all on function public.praxis_probe_callable_definer() from public, anon, authenticated;
 grant execute on function public.commercial_quote_update_draft() to service_role;
 grant execute on function public.commercial_create_admin_invoice() to service_role;
 grant execute on function public.commercial_change_payment_allocation() to service_role;
@@ -184,7 +193,8 @@ insert into public.contacts values (
 insert into public.projects values (
   '10000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001',
   'Test Project', 'Q-TEST', 'Auckland', 'Test site', 'SENT', null, null, null, null,
-  null, null, null, null, null, null, null, null, 1, now(), now()
+  null, null, null, null, null, null,
+  'Bearer abcdefghijklmnopqrstuvwxyz0123456789', null, 1, now(), now()
 );
 insert into public.quotes values (
   '20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001',
@@ -204,7 +214,7 @@ insert into public.enquiry_requests (
   '40000000-0000-4000-8000-000000000001',
   '00000000-0000-4000-8000-000000000001',
   '10000000-0000-4000-8000-000000000001',
-  'residential', 'Test suburb', 'Test enquiry',
+  'residential', 'Test suburb', 'sk-abcdefghijklmnopqrstuvwxyz0123456789',
   '{"blindCount":2,"nested":{"accessToken":"nested-enquiry-secret"}}',
   '[{"path":"private/enquiry.pdf"}]', 'website', '/contact',
   '{"campaign":"spring","password":"nested-utm-secret"}',
@@ -220,12 +230,12 @@ insert into public.estimates (
   '10000000-0000-4000-8000-000000000001',
   'Real-shape estimate', 'DRAFT', 1, 'fixture',
   '{"label":"Current estimate","acceptTokenHash":"nested-summary-secret"}',
-  'Internal estimating note', 'Pergola estimate',
-  '{"schemaVersion":"v2","modules":[{"attachmentSide":"rear","lengthM":6,"apiToken":"nested-input-secret","attachment":{"filePath":"private/design.pdf"}}]}',
-  '{"totalTrueCostIncGst":11500,"details":{"crewHours":24,"password":"nested-output-secret"}}',
+  '-----BEGIN PRIVATE KEY----- pasted by mistake', 'Pergola estimate',
+  '{"schemaVersion":"v2","site":{"windZone":"high","region":"Auckland"},"modules":[{"id":"pergola-1","kind":"pergola","attachmentSide":"rear","lengthM":6,"projectionM":4,"roof":{"material":"acrylic","pitchDegrees":5},"connection":{"houseConnectionType":"soffit"},"posts":[{"position":"front-left"},{"position":"front-right"}],"addOns":{"blinds":[{"side":"left","count":2}]},"apiToken":"nested-input-secret","attachment":{"filePath":"private/design.pdf"}},{"id":"pergola-2","kind":"pergola","attachmentSide":"left","lengthM":3.6,"projectionM":3,"roof":{"material":"clearspan","pitchDegrees":4}}]}',
+  '{"totalTrueCostIncGst":11500,"details":{"crewHours":24,"materials":[{"sku":"POST-100","quantity":4},{"sku":"RAFTER-6000","quantity":8}],"labour":{"installers":2,"days":3},"password":"nested-output-secret"}}',
   '[{"code":"CHECK_ACCESS","message":"Confirm access","providerError":"nested-warning-secret"}]',
   'calculator',
-  '{"version":"v2.6","credentials":{"secret":"nested-metadata-secret"}}',
+  '{"version":"v2.6","commercialInputHash":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","credentials":{"secret":"nested-metadata-secret"},"tokenHash":"nested-token-hash"}',
   '{"raw":"private-commercial-design"}', now(), now()
 );
 

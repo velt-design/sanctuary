@@ -116,6 +116,25 @@ try {
     alter role sanctuary_praxis_reader_probe set default_transaction_read_only = on;
   `, 'Synthetic reader provisioning');
 
+  psql('grant execute on function public.praxis_probe_callable_definer() to sanctuary_praxis_reader_probe;', 'Synthetic callable definer over-grant');
+  const callableDefinerDetected = psql(`
+    select exists (
+      select 1
+      from pg_proc procedure
+      join pg_namespace namespace on namespace.oid = procedure.pronamespace
+      where namespace.nspname in ('public', 'private', 'auth', 'storage', 'extensions', 'praxis_reporting')
+        and procedure.prosecdef
+        and procedure.prorettype not in ('pg_catalog.trigger'::regtype, 'pg_catalog.event_trigger'::regtype)
+        and has_function_privilege(current_user, procedure.oid, 'EXECUTE')
+        and procedure.oid not in (
+          'praxis_reporting.version_v1(jsonb)'::regprocedure,
+          'praxis_reporting.project_financial_truth_for_v1(uuid)'::regprocedure
+        )
+    );
+  `, 'Callable security-definer escalation detection', { reader: true, quiet: true });
+  if (callableDefinerDetected !== 't') throw new Error('Callable SECURITY DEFINER escalation was not detected.');
+  psql('revoke execute on function public.praxis_probe_callable_definer() from sanctuary_praxis_reader_probe;', 'Synthetic callable definer over-grant removal');
+
   const roleContract = psql(`
     select concat_ws(',',
       not rolcanlogin, not rolsuper, not rolcreatedb, not rolcreaterole,
@@ -133,6 +152,7 @@ try {
         join pg_namespace namespace on namespace.oid = procedure.pronamespace
         where namespace.nspname in ('public', 'private', 'auth', 'storage', 'extensions', 'praxis_reporting')
           and procedure.prosecdef
+          and procedure.prorettype not in ('pg_catalog.trigger'::regtype, 'pg_catalog.event_trigger'::regtype)
           and has_function_privilege('sanctuary_praxis_reader', procedure.oid, 'EXECUTE')
           and procedure.oid not in (
             'praxis_reporting.version_v1(jsonb)'::regprocedure,
@@ -163,6 +183,7 @@ try {
         join pg_namespace namespace on namespace.oid = procedure.pronamespace
         where namespace.nspname in ('public', 'private', 'auth', 'storage', 'extensions', 'praxis_reporting')
           and procedure.prosecdef
+          and procedure.prorettype not in ('pg_catalog.trigger'::regtype, 'pg_catalog.event_trigger'::regtype)
           and has_function_privilege(current_user, procedure.oid, 'EXECUTE')
           and procedure.oid not in (
             'praxis_reporting.version_v1(jsonb)'::regprocedure,
@@ -195,17 +216,52 @@ try {
   if (!projection.includes('attachmentSide') || !projection.includes('rear')) {
     throw new Error('Projection omitted the safe nested estimate shape.');
   }
+  if (!projection.includes('commercialInputHash') || !projection.includes('d'.repeat(64))) {
+    throw new Error('Projection omitted the approved commercial integrity hash.');
+  }
+  if (!projection.includes('[redacted]') || !projection.includes('credential_value')) {
+    throw new Error('Projection omitted free-text redaction or its evidence.');
+  }
   for (const forbidden of [
     'secret-token-hash', 'raw_payload', 'commercial_design_input', 'protected_payload',
     'encrypted_password', 'path_tokens', 'nested-enquiry-secret', 'private/enquiry.pdf',
     'nested-utm-secret', 'private-provider-id', 'nested-summary-secret',
     'nested-input-secret', 'private/design.pdf', 'nested-output-secret',
-    'nested-warning-secret', 'nested-metadata-secret', 'private-commercial-design',
-    'private-invoice-token-hash',
+    'nested-warning-secret', 'nested-metadata-secret', 'nested-token-hash', 'private-commercial-design',
+    'nested-token-hash', 'private-invoice-token-hash',
   ]) {
     if (projection.includes(forbidden)) throw new Error(`Projection exposed forbidden material: ${forbidden}`);
   }
   process.stdout.write('praxis-reporting-db: canonical bounded projection passed\n');
+
+  const bounds = psql(`
+    with cases(label, input) as (values
+      ('entries_exact', jsonb_build_object('items', (select jsonb_agg(value) from generate_series(1, 255) value))),
+      ('entries_over', jsonb_build_object('items', (select jsonb_agg(value) from generate_series(1, 256) value))),
+      ('bytes_exact', jsonb_build_object('a', repeat('x', 65527))),
+      ('bytes_over', jsonb_build_object('a', repeat('x', 65528))),
+      ('depth_exact', '{"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":"ok"}}}}}}}}'::jsonb),
+      ('depth_over', '{"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":{"i":"too-deep"}}}}}}}}}'::jsonb)
+    )
+    select label || '|' || octet_length(convert_to(payload::text, 'UTF8')) || '|' ||
+      omission_count || '|' || payload::text
+    from cases cross join lateral praxis_reporting.safe_payload_v1(input)
+    order by label;
+  `, 'Source JSON boundary corpus', { reader: true, quiet: true });
+  if (!bounds.includes('bytes_exact|65536|0|') || !bounds.includes('bytes_over|') ||
+      !bounds.includes('entries_exact|') || !bounds.includes('entries_over|') ||
+      !bounds.includes('depth_exact|') || !bounds.includes('depth_over|')) {
+    throw new Error('Source JSON boundary corpus was incomplete.');
+  }
+  const omittedRows = bounds.split(/\r?\n/).filter((line) => /^(bytes_over|entries_over|depth_over)\|/.test(line));
+  if (omittedRows.length !== 3 || omittedRows.some((line) => !line.includes('source_bounds_v1') || !line.includes('|1|'))) {
+    throw new Error('Boundary+1 values were not deterministically omitted.');
+  }
+  const preservedRows = bounds.split(/\r?\n/).filter((line) => /^(bytes_exact|entries_exact|depth_exact)\|/.test(line));
+  if (preservedRows.some((line) => line.includes('source_bounds_v1') || !line.includes('|0|'))) {
+    throw new Error('Boundary values were omitted early.');
+  }
+  process.stdout.write('praxis-reporting-db: source JSON boundary and evidence contract passed\n');
 
   const beforeAssignment = psql(`
     select to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')

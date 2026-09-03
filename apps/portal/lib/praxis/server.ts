@@ -19,6 +19,7 @@ import {
   type PraxisErrorCode,
   type PraxisErrorResponse,
   type PraxisHealthResponse,
+  type PraxisProjectionEvidence,
   type PraxisRecordResource,
   type PraxisResource,
   type PraxisSourceEvidence,
@@ -30,9 +31,12 @@ const SOURCE_VALUE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,127}$/i;
 const MIN_TOKEN_LENGTH = 32;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
+const SANITIZER_POLICY_VERSION = 'sanctuary.praxis.sanitizer.v1' as const;
+const PROJECTION_CATEGORIES = ['credential_key', 'credential_value', 'source_bounds'] as const;
 
 type ConnectorConfig = {
   databaseUrl: string;
+  databaseSsl: false | 'verify-full';
   token: string;
   sourceKey: string;
   connectionId: string;
@@ -62,6 +66,10 @@ type ProjectionRow = {
   recorded_at: Date | string;
   record_version: string;
   payload: unknown;
+  policy_version: string;
+  redaction_count: number;
+  omission_count: number;
+  redaction_categories: unknown;
 };
 
 type DatabaseIdentityRow = {
@@ -116,8 +124,32 @@ function requiredEnvironmentValue(name: string): string {
 }
 
 export function loadPraxisConnectorConfig(): ConnectorConfig {
+  const databaseUrl = requiredEnvironmentValue('PRAXIS_SANCTUARY_DATABASE_URL');
+  let parsedDatabaseUrl: URL;
+  try {
+    parsedDatabaseUrl = new URL(databaseUrl);
+  } catch {
+    throw new PraxisConnectorError(503, 'CONNECTOR_NOT_CONFIGURED', 'The Praxis connector is not configured.');
+  }
+  if (!['postgres:', 'postgresql:'].includes(parsedDatabaseUrl.protocol)) {
+    throw new PraxisConnectorError(503, 'CONNECTOR_NOT_CONFIGURED', 'The Praxis connector is not configured.');
+  }
+  const loopbackHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
+  const isLoopback = loopbackHosts.has(parsedDatabaseUrl.hostname.toLowerCase());
+  const sslMode = parsedDatabaseUrl.searchParams.get('sslmode')?.toLowerCase() ?? null;
+  if (!isLoopback && sslMode !== 'verify-full') {
+    throw new PraxisConnectorError(503, 'CONNECTOR_NOT_CONFIGURED', 'The Praxis connector is not configured.');
+  }
+  if (isLoopback && sslMode && sslMode !== 'disable' && sslMode !== 'verify-full') {
+    throw new PraxisConnectorError(503, 'CONNECTOR_NOT_CONFIGURED', 'The Praxis connector is not configured.');
+  }
+
+  const databaseSsl: ConnectorConfig['databaseSsl'] = isLoopback && sslMode !== 'verify-full'
+    ? false
+    : 'verify-full';
   const config = {
-    databaseUrl: requiredEnvironmentValue('PRAXIS_SANCTUARY_DATABASE_URL'),
+    databaseUrl,
+    databaseSsl,
     token: requiredEnvironmentValue('PRAXIS_SANCTUARY_READ_TOKEN'),
     sourceKey: requiredEnvironmentValue('PRAXIS_SANCTUARY_SOURCE_KEY'),
     connectionId: requiredEnvironmentValue('PRAXIS_SANCTUARY_CONNECTION_ID'),
@@ -158,15 +190,6 @@ export function authorizePraxisRequest(request: Request, config: ConnectorConfig
   }
 }
 
-function parseTimestamp(value: string | null, label: string): string | null {
-  if (value === null) return null;
-  const date = new Date(value);
-  if (!value || Number.isNaN(date.getTime())) {
-    throw new PraxisConnectorError(400, 'INVALID_QUERY', `${label} must be an RFC3339 timestamp.`);
-  }
-  return date.toISOString();
-}
-
 function parseResource(value: string | null): PraxisResource {
   const candidate = value ?? 'all';
   if (!(PRAXIS_RESOURCES as readonly string[]).includes(candidate)) {
@@ -181,7 +204,14 @@ export function parsePraxisContextQuery(url: URL): PraxisContextQuery & { cursor
   if (projectId !== null && !UUID_PATTERN.test(projectId)) {
     throw new PraxisConnectorError(400, 'INVALID_QUERY', 'projectId must be a UUID.');
   }
-  const changedAfter = parseTimestamp(url.searchParams.get('changedAfter'), 'changedAfter');
+  if (url.searchParams.has('changedAfter')) {
+    throw new PraxisConnectorError(
+      400,
+      'INVALID_QUERY',
+      'changedAfter is not supported; Praxis v1 reads are full authoritative replacement snapshots.',
+    );
+  }
+  const changedAfter = null;
   const rawLimit = url.searchParams.get('limit');
   const limit = rawLimit === null ? DEFAULT_LIMIT : Number(rawLimit);
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT) {
@@ -238,6 +268,7 @@ function decodeCursor(
 
 function createDatabase(config: ConnectorConfig): Sql {
   return postgres(config.databaseUrl, {
+    ssl: config.databaseSsl,
     max: 1,
     idle_timeout: 5,
     connect_timeout: 5,
@@ -305,6 +336,7 @@ async function verifyDatabaseIdentity(
         join pg_namespace namespace on namespace.oid = procedure.pronamespace
         where namespace.nspname in ('public', 'private', 'auth', 'storage', 'extensions', 'praxis_reporting')
           and procedure.prosecdef
+          and procedure.prorettype not in ('pg_catalog.trigger'::regtype, 'pg_catalog.event_trigger'::regtype)
           and has_function_privilege(current_user, procedure.oid, 'EXECUTE')
           and procedure.oid not in (
             'praxis_reporting.version_v1(jsonb)'::regprocedure,
@@ -375,6 +407,18 @@ function mapProjectionRow(row: ProjectionRow): PraxisContextRecord {
   if (!row.payload || typeof row.payload !== 'object' || Array.isArray(row.payload)) {
     throw new PraxisConnectorError(503, 'PROJECTION_NOT_READY', 'The Praxis projection returned an invalid payload.');
   }
+  const categories = row.redaction_categories;
+  if (
+    row.policy_version !== SANITIZER_POLICY_VERSION ||
+    !Number.isInteger(row.redaction_count) || row.redaction_count < 0 ||
+    !Number.isInteger(row.omission_count) || row.omission_count < 0 ||
+    !Array.isArray(categories) ||
+    categories.some((category) => !(PROJECTION_CATEGORIES as readonly unknown[]).includes(category)) ||
+    JSON.stringify(categories) !== JSON.stringify([...categories].sort()) ||
+    new Set(categories).size !== categories.length
+  ) {
+    throw new PraxisConnectorError(503, 'PROJECTION_NOT_READY', 'The Praxis projection returned invalid sanitisation evidence.');
+  }
   return {
     resource: row.resource as PraxisRecordResource,
     id: row.id,
@@ -385,6 +429,12 @@ function mapProjectionRow(row: ProjectionRow): PraxisContextRecord {
     // version uses this cross-runtime canonical form, shared with Velt.
     recordVersion: canonicalRecordVersion(row.payload as Record<string, unknown>),
     payload: row.payload as Record<string, unknown>,
+    projection: {
+      policyVersion: SANITIZER_POLICY_VERSION,
+      redactionCount: row.redaction_count,
+      omissionCount: row.omission_count,
+      categories: categories as PraxisProjectionEvidence['categories'],
+    },
   };
 }
 
@@ -422,7 +472,8 @@ export async function readPraxisContext(
       await setReadBudgets(transaction);
       await verifyDatabaseIdentity(transaction, config);
       return transaction<ProjectionRow[]>`
-        select resource, id, project_id, parent_id, recorded_at, record_version, payload
+        select resource, id, project_id, parent_id, recorded_at, record_version, payload,
+          policy_version, redaction_count, omission_count, redaction_categories
         from praxis_reporting.context_page_v1(
           ${query.resource},
           ${query.projectId},
@@ -466,13 +517,24 @@ export async function readPraxisContext(
       }, config.token)
     : null;
   const retrievedAt = new Date().toISOString();
+  const pageProjection = records.reduce<PraxisProjectionEvidence>((evidence, record) => ({
+    policyVersion: SANITIZER_POLICY_VERSION,
+    redactionCount: evidence.redactionCount + record.projection.redactionCount,
+    omissionCount: evidence.omissionCount + record.projection.omissionCount,
+    categories: [...new Set([...evidence.categories, ...record.projection.categories])].sort() as PraxisProjectionEvidence['categories'],
+  }), {
+    policyVersion: SANITIZER_POLICY_VERSION,
+    redactionCount: 0,
+    omissionCount: 0,
+    categories: [],
+  });
   logPraxisDiagnostic('context_read', { requestId, resource: query.resource, count: records.length, hasMore });
   return {
     schemaVersion: PRAXIS_CONTEXT_SCHEMA_VERSION,
     requestId,
     source: sourceEvidence(config, retrievedAt, asOf),
     query,
-    page: { hasMore, nextCursor },
+    page: { hasMore, nextCursor, projection: pageProjection },
     records,
   };
 }
