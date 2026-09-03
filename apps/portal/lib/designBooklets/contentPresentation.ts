@@ -9,6 +9,7 @@ import type {
   DesignBookletImagePage,
 } from "./types";
 import { DESIGN_BOOKLET_BASE_PAGE_SIZE } from "./paperGeometry";
+import { designBookletEditorialTextWeight } from "./editorialText";
 
 const PAGE_WIDTH = DESIGN_BOOKLET_BASE_PAGE_SIZE.width;
 const PAGE_HEIGHT = DESIGN_BOOKLET_BASE_PAGE_SIZE.height;
@@ -130,8 +131,7 @@ function galleryFrame(
 
 function mappedSectionFrames(
   frames:
-    | readonly [DesignBookletContentFrame, DesignBookletContentFrame]
-    | undefined,
+    readonly [DesignBookletContentFrame, DesignBookletContentFrame] | undefined,
   mapper: (frame: DesignBookletContentFrame) => DesignBookletContentFrame,
 ): [DesignBookletContentFrame, DesignBookletContentFrame] | undefined {
   return frames ? [mapper(frames[0]), mapper(frames[1])] : undefined;
@@ -248,11 +248,17 @@ export function designBookletContentTextWarnings(
   ) {
     warnings.push("Headline may overflow this layout at the selected size.");
   }
-  if (bodyLimit > 0 && page.content.body.trim().length > bodyLimit) {
+  if (
+    bodyLimit > 0 &&
+    designBookletEditorialTextWeight(page.content.body) > bodyLimit
+  ) {
     warnings.push("Body copy may overflow this layout at the selected size.");
   }
   page.content.sections.forEach((section, index) => {
-    if (sectionLimit > 0 && section.body.trim().length > sectionLimit) {
+    if (
+      sectionLimit > 0 &&
+      designBookletEditorialTextWeight(section.body) > sectionLimit
+    ) {
       warnings.push(`Section ${index + 1} copy may overflow this layout.`);
     }
   });

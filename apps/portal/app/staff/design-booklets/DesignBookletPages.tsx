@@ -34,6 +34,7 @@ import {
   type DesignBookletPresentationFontRole,
 } from "@/lib/designBooklets/presentation";
 import DesignBookletPreviewImage from "./DesignBookletPreviewImage";
+import DesignBookletEditorialText from "./DesignBookletEditorialText";
 import type {
   DesignBookletAssetDisplayHandler,
   DesignBookletPreviewAsset,
@@ -439,15 +440,14 @@ function ContentPage({
             </h2>
           ) : null}
           {page.content.body ? (
-            <p
+            <DesignBookletEditorialText
+              text={page.content.body}
               className={styles.contentBody}
               style={{
                 fontSize: point(typography.bodySize),
                 lineHeight: point(typography.bodyLineHeight),
               }}
-            >
-              {page.content.body}
-            </p>
+            />
           ) : null}
         </main>
       ) : null}
@@ -471,14 +471,14 @@ function ContentPage({
                 <div>
                   <h3>{section.heading}</h3>
                   {section.body ? (
-                    <p
+                    <DesignBookletEditorialText
+                      text={section.body}
+                      className={styles.contentSectionBody}
                       style={{
                         fontSize: point(typography.bodySize),
                         lineHeight: point(typography.bodyLineHeight),
                       }}
-                    >
-                      {section.body}
-                    </p>
+                    />
                   ) : null}
                 </div>
               </section>

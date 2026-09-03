@@ -364,6 +364,44 @@ describe("DesignBookletWorkbenchClient", () => {
     rendered.unmount();
   });
 
+  it("keeps bullet copy when switching paper sizes", () => {
+    const rendered = renderWorkbench();
+    click(buttonContaining(rendered.container, "Add page"));
+    click(buttonContaining(rendered.container, "editable design intent"));
+    const body = rendered.container.querySelector(
+      'textarea[id$="-body-copy"]',
+    ) as HTMLTextAreaElement;
+    setTextareaValue(body, "Shade through summer\nShelter in winter");
+
+    act(() => {
+      body.focus();
+      body.setSelectionRange(0, body.value.length);
+      body.dispatchEvent(new Event("select", { bubbles: true }));
+    });
+    click(
+      rendered.container.querySelector(
+        'button[aria-label="Toggle bullets in Body copy"]',
+      ),
+    );
+
+    expect(body.value).toBe("- Shade through summer\n- Shelter in winter");
+    expect(
+      rendered.container.querySelectorAll("[data-booklet-bullet-list] li"),
+    ).toHaveLength(2);
+
+    click(rendered.container.querySelector("#booklet-details > summary"));
+    const paperSize = selectForField(rendered.container, "Paper size");
+    setSelectValue(paperSize, "a3");
+    expect(body.value).toBe("- Shade through summer\n- Shelter in winter");
+    expect(
+      rendered.container.querySelectorAll("[data-booklet-bullet-list] li"),
+    ).toHaveLength(2);
+
+    setSelectValue(paperSize, "a4");
+    expect(body.value).toBe("- Shade through summer\n- Shelter in winter");
+    rendered.unmount();
+  });
+
   it("updates focal position and cover, then supports drawing layouts and custom titles", () => {
     const rendered = renderWorkbench();
 

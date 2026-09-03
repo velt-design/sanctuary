@@ -156,6 +156,29 @@ function optionalText(
   return cleaned;
 }
 
+function optionalMultilineText(
+  value: unknown,
+  context: string,
+  maxLength: number,
+): string {
+  if (value === undefined) return "";
+  if (typeof value !== "string") {
+    throw new DesignBookletRequestError(`${context} is invalid.`);
+  }
+  const cleaned = value
+    .replace(/\r\n?/g, "\n")
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n");
+  if (cleaned.length > maxLength) {
+    throw new DesignBookletRequestError(
+      `${context} must be ${maxLength} characters or fewer.`,
+    );
+  }
+  return cleaned;
+}
+
 function isIsoCalendarDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00.000Z`);
@@ -351,7 +374,7 @@ function parseEditorialContent(raw: unknown, context: string) {
         `${context}, section ${index + 1} heading`,
         DESIGN_BOOKLET_MAX_CONTENT_SECTION_HEADING_LENGTH,
       ),
-      body: optionalText(
+      body: optionalMultilineText(
         section.body,
         `${context}, section ${index + 1} copy`,
         DESIGN_BOOKLET_MAX_CONTENT_SECTION_BODY_LENGTH,
@@ -369,7 +392,7 @@ function parseEditorialContent(raw: unknown, context: string) {
       `${context} headline`,
       DESIGN_BOOKLET_MAX_CONTENT_HEADLINE_LENGTH,
     ),
-    body: optionalText(
+    body: optionalMultilineText(
       value.body,
       `${context} body`,
       DESIGN_BOOKLET_MAX_CONTENT_BODY_LENGTH,

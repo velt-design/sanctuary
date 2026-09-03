@@ -96,6 +96,30 @@ describe("design booklet request parsing", () => {
     expect(() => parseDesignBookletDraft(draft)).toThrow(/paper size/i);
   });
 
+  it("preserves bullet lines in body and reusable section copy", () => {
+    const draft = createToniDesignBookletDraft();
+    const page = draft.contentPages.find(
+      (candidate): candidate is DesignBookletImagePage =>
+        candidate.kind === "image",
+    );
+    if (!page) throw new Error("Expected an image page.");
+    page.content.body = "Intro\r\n - Shade   control\r\n- Rain cover";
+    page.content.sections[0].body = "- Hardwood lining\n- Warm finish";
+
+    const parsed = parseDesignBookletDraft(draft);
+    const parsedPage = parsed.contentPages.find(
+      (candidate): candidate is DesignBookletImagePage =>
+        candidate.kind === "image",
+    );
+
+    expect(parsedPage?.content.body).toBe(
+      "Intro\n- Shade control\n- Rain cover",
+    );
+    expect(parsedPage?.content.sections[0].body).toBe(
+      "- Hardwood lining\n- Warm finish",
+    );
+  });
+
   it("strictly parses and normalizes a mixed dynamic draft", () => {
     const draft = createToniDesignBookletDraft();
     draft.customerName = "  Toni   Morgan  ";

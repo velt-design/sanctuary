@@ -221,6 +221,58 @@ test.describe("design booklet workbench fixture", () => {
     expect(unexpectedRequests).toEqual([]);
   });
 
+  test("edits bullet copy and preserves it across A4/A3 preview and PDF output", async ({
+    page,
+  }, testInfo) => {
+    let pdfRequestCount = 0;
+    page.on("request", (request) => {
+      if (/\/api\/qa\/design-booklet-workbench\/pdf/.test(request.url())) {
+        pdfRequestCount += 1;
+      }
+    });
+
+    await page.goto(FIXTURE_PATH);
+    await page.getByRole("button", { name: "Add page" }).click();
+    await page.getByRole("button", { name: /editable design intent/ }).click();
+    const body = page.getByRole("textbox", { name: "Body copy" });
+    await body.fill("Shade through summer\nShelter in winter");
+    await body.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
+    await page
+      .getByRole("button", { name: "Toggle bullets in Body copy" })
+      .click();
+
+    await expect(body).toHaveValue(
+      "- Shade through summer\n- Shelter in winter",
+    );
+    const preview = page.locator('[data-page-kind="image"]:visible');
+    await expect(preview.locator("[data-booklet-bullet-list] li")).toHaveCount(
+      2,
+    );
+    await preview.screenshot({ path: testInfo.outputPath("bullets-a4.png") });
+    expect(pdfRequestCount).toBe(0);
+
+    await page.locator("#booklet-details > summary").click();
+    await page.getByLabel("Paper size").selectOption("a3");
+    await expect(body).toHaveValue(
+      "- Shade through summer\n- Shelter in winter",
+    );
+    await expect(preview).toHaveAttribute("data-paper-size", "a3");
+    await preview.screenshot({ path: testInfo.outputPath("bullets-a3.png") });
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download PDF" }).click();
+    const download = await downloadPromise;
+    const downloadPath = testInfo.outputPath("bullet-copy-booklet.pdf");
+    await download.saveAs(downloadPath);
+    const bytes = new Uint8Array(await readFile(downloadPath));
+    const booklet = await PDFDocument.load(bytes);
+    expect(booklet.getPages()[4].getWidth()).toBe(
+      DESIGN_BOOKLET_PAPER_SIZES.a3.width,
+    );
+    expect(await extractPageText(bytes, 5)).toContain("Shade through summer");
+    expect(pdfRequestCount).toBe(1);
+  });
+
   test("previews a multi-page drawing PDF immediately and exports the selected source page", async ({
     page,
   }) => {

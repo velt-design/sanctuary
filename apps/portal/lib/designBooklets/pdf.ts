@@ -42,6 +42,7 @@ import {
   DESIGN_BOOKLET_PDF_PAGE_SIZE,
   DESIGN_BOOKLET_PDF_RIGHT,
   drawDesignBookletEyebrow as drawEyebrow,
+  drawDesignBookletEditorialText as drawEditorialText,
   drawDesignBookletFooter as drawFooter,
   drawDesignBookletImageContain as drawImageContain,
   drawDesignBookletImageCover as drawImageCover,
@@ -593,7 +594,7 @@ function drawContentCopy(
       });
     }
     if (content.body) {
-      drawWrappedText(page, content.body, {
+      drawEditorialText(page, content.body, {
         x: bodyX,
         y: pdfYFromTopBaseline(
           copyTop +
@@ -658,7 +659,7 @@ function drawContentCopy(
       Math.max(1, headlineLines.length) * typography.headlineLineHeight + 18;
   }
   if (content.body && nextTop < frame.top + frame.height) {
-    drawWrappedText(page, content.body, {
+    drawEditorialText(page, content.body, {
       x: frame.x,
       y: pdfYFromTopBaseline(
         nextTop +
@@ -718,7 +719,7 @@ function drawContentSection(
     });
   }
   if (section.body) {
-    drawWrappedText(page, section.body, {
+    drawEditorialText(page, section.body, {
       x: textX,
       y: pdfYFromTopBaseline(
         top + 31 + designBookletCssBaselineOffset(bodySize, bodyLineHeight),

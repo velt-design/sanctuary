@@ -316,13 +316,39 @@
 }
 
 .contentBody {
-  display: -webkit-box;
   margin-top: calc(var(--booklet-point) * 18) !important;
   overflow: hidden;
   color: #50534d;
+}
+
+.editorialText {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.editorialText p,
+.editorialText ul {
+  padding: 0;
+  margin: 0;
+}
+
+.editorialText p {
   white-space: pre-line;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 16;
+}
+
+.editorialBullets {
+  list-style: none;
+}
+
+.editorialBullets li {
+  display: grid;
+  min-width: 0;
+  align-items: start;
+}
+
+.editorialBullets li > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .contentCopy[data-content-copy-layout="story-image-top"] {
@@ -377,13 +403,10 @@
   line-height: calc(var(--booklet-point) * 14);
 }
 
-.contentSection p {
-  display: -webkit-box;
+.contentSectionBody {
   margin-top: calc(var(--booklet-point) * 9) !important;
   overflow: hidden;
   color: #50534d;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 7;
 }
 
 .drawingCanvas {

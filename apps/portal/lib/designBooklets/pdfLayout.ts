@@ -22,6 +22,11 @@ import {
 } from "./presentation";
 import { designBookletPageGeometry } from "./paperGeometry";
 import type { DesignBookletPaperSizeId } from "./types";
+import {
+  DESIGN_BOOKLET_BULLET_GEOMETRY,
+  DESIGN_BOOKLET_BULLET_GLYPH,
+  parseDesignBookletEditorialText,
+} from "./editorialText";
 
 export const DESIGN_BOOKLET_PDF_PAGE_SIZE = DESIGN_BOOKLET_PRESENTATION.page;
 
@@ -239,6 +244,104 @@ export function drawDesignBookletWrappedText(
       color: options.color ?? DESIGN_BOOKLET_PDF_COLORS.ink,
       tracking: options.tracking,
     });
+    y -= options.lineHeight;
+  }
+  return y;
+}
+
+export function drawDesignBookletEditorialText(
+  page: PDFPage,
+  text: string,
+  options: {
+    x: number;
+    y: number;
+    width: number;
+    font: PDFFont;
+    size: number;
+    lineHeight: number;
+    color?: Color;
+    maxLines?: number;
+  },
+): number {
+  const lines: Array<{
+    text: string;
+    x: number;
+    width: number;
+    marker: boolean;
+  }> = [];
+
+  for (const block of parseDesignBookletEditorialText(text)) {
+    if (block.kind === "paragraph") {
+      lines.push(
+        ...designBookletPdfTextLines(
+          block.text,
+          options.font,
+          options.size,
+          options.width,
+          0,
+          true,
+        ).map((line) => ({
+          text: line,
+          x: options.x,
+          width: options.width,
+          marker: false,
+        })),
+      );
+      continue;
+    }
+
+    for (const item of block.items) {
+      const itemLines = designBookletPdfTextLines(
+        item,
+        options.font,
+        options.size,
+        options.width - DESIGN_BOOKLET_BULLET_GEOMETRY.textInset,
+      );
+      (itemLines.length ? itemLines : [""]).forEach((line, index) => {
+        lines.push({
+          text: line,
+          x: options.x + DESIGN_BOOKLET_BULLET_GEOMETRY.textInset,
+          width: options.width - DESIGN_BOOKLET_BULLET_GEOMETRY.textInset,
+          marker: index === 0,
+        });
+      });
+    }
+  }
+
+  const visible = lines.slice(0, options.maxLines ?? lines.length);
+  if (visible.length < lines.length && visible.length) {
+    const last = visible.at(-1)!;
+    let finalLine = last.text.trimEnd();
+    while (
+      finalLine &&
+      designBookletPdfTextWidth(`${finalLine}...`, options.font, options.size) >
+        last.width
+    ) {
+      finalLine = finalLine.slice(0, -1).trimEnd();
+    }
+    last.text = `${finalLine}...`;
+  }
+
+  let y = options.y;
+  for (const line of visible) {
+    if (line.marker) {
+      drawDesignBookletTrackedText(page, DESIGN_BOOKLET_BULLET_GLYPH, {
+        x: options.x,
+        y,
+        font: options.font,
+        size: options.size,
+        color: options.color ?? DESIGN_BOOKLET_PDF_COLORS.ink,
+      });
+    }
+    if (line.text) {
+      drawDesignBookletTrackedText(page, line.text, {
+        x: line.x,
+        y,
+        font: options.font,
+        size: options.size,
+        color: options.color ?? DESIGN_BOOKLET_PDF_COLORS.ink,
+      });
+    }
     y -= options.lineHeight;
   }
   return y;

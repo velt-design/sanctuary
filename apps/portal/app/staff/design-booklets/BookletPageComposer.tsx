@@ -41,6 +41,7 @@ import {
   visibleDesignBookletDrawings,
 } from "@/lib/designBooklets/pageModel";
 import DesignBookletPreviewImage from "./DesignBookletPreviewImage";
+import BookletBulletTextArea from "./BookletBulletTextArea";
 import ContentTypographyControls from "./ContentTypographyControls";
 import type {
   DesignBookletAssetDisplayHandler,
@@ -508,21 +509,20 @@ function ContentPageEditor({
             onChange={(content) => onChange({ ...page, content })}
           />
           {page.layout !== "information-material-split" ? (
-            <label className={styles.field}>
-              <span>Body copy</span>
-              <textarea
-                value={page.content.body}
-                maxLength={DESIGN_BOOKLET_MAX_CONTENT_BODY_LENGTH}
-                rows={5}
-                placeholder="Add a short explanation of this part of the concept."
-                onChange={(event) =>
-                  onChange({
-                    ...page,
-                    content: { ...page.content, body: event.target.value },
-                  })
-                }
-              />
-            </label>
+            <BookletBulletTextArea
+              id={`${page.id}-body-copy`}
+              label="Body copy"
+              value={page.content.body}
+              maxLength={DESIGN_BOOKLET_MAX_CONTENT_BODY_LENGTH}
+              rows={5}
+              placeholder="Add a short explanation of this part of the concept."
+              onChange={(body) =>
+                onChange({
+                  ...page,
+                  content: { ...page.content, body },
+                })
+              }
+            />
           ) : (
             <div className={styles.materialSectionEditors}>
               {page.content.sections.map((section, index) => (
@@ -549,26 +549,25 @@ function ContentPageEditor({
                       }}
                     />
                   </label>
-                  <label className={styles.field}>
-                    <span>Copy</span>
-                    <textarea
-                      value={section.body}
-                      maxLength={DESIGN_BOOKLET_MAX_CONTENT_SECTION_BODY_LENGTH}
-                      rows={3}
-                      onChange={(event) => {
-                        const sections = page.content.sections.map(
-                          (candidate, candidateIndex) =>
-                            candidateIndex === index
-                              ? { ...candidate, body: event.target.value }
-                              : candidate,
-                        ) as DesignBookletImagePage["content"]["sections"];
-                        onChange({
-                          ...page,
-                          content: { ...page.content, sections },
-                        });
-                      }}
-                    />
-                  </label>
+                  <BookletBulletTextArea
+                    id={`${page.id}-section-${index + 1}-copy`}
+                    label="Copy"
+                    value={section.body}
+                    maxLength={DESIGN_BOOKLET_MAX_CONTENT_SECTION_BODY_LENGTH}
+                    rows={3}
+                    onChange={(body) => {
+                      const sections = page.content.sections.map(
+                        (candidate, candidateIndex) =>
+                          candidateIndex === index
+                            ? { ...candidate, body }
+                            : candidate,
+                      ) as DesignBookletImagePage["content"]["sections"];
+                      onChange({
+                        ...page,
+                        content: { ...page.content, sections },
+                      });
+                    }}
+                  />
                 </section>
               ))}
             </div>

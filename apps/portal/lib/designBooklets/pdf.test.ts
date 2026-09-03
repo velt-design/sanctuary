@@ -21,6 +21,7 @@ import {
 } from "./pdf";
 import { loadToniDesignBookletImages } from "./request";
 import { DESIGN_BOOKLET_PAPER_SIZES } from "./paperGeometry";
+import { DESIGN_BOOKLET_BULLET_GEOMETRY } from "./editorialText";
 import {
   DESIGN_BOOKLET_CONTENT_LAYOUT_IDS,
   DESIGN_BOOKLET_CONTENT_VARIANT_IDS,
@@ -62,6 +63,26 @@ async function extractPdfPageText(bytes: Uint8Array): Promise<string[]> {
   return pages;
 }
 
+async function extractPdfPageTextPositions(
+  bytes: Uint8Array,
+  pageNumber: number,
+) {
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const task = getDocument({ data: bytes.slice() });
+  const document = await task.promise;
+  try {
+    const page = await document.getPage(pageNumber);
+    const content = await page.getTextContent();
+    return content.items.flatMap((item) =>
+      "str" in item
+        ? [{ text: item.str, x: item.transform[4], y: item.transform[5] }]
+        : [],
+    );
+  } finally {
+    await document.destroy();
+  }
+}
+
 function expectLandscapeA4Pages(document: PDFDocument) {
   for (const page of document.getPages()) {
     expect(page.getWidth()).toBeCloseTo(DESIGN_BOOKLET_PDF_PAGE_SIZE.width, 1);
@@ -99,7 +120,8 @@ function representativeDraft(paperSize: DesignBookletPaperSizeId) {
       layout as (typeof DESIGN_BOOKLET_CONTENT_LAYOUT_IDS)[number],
     );
     page.content.headline = `Representative ${layout}`;
-    page.content.body = "Shared booklet geometry preserves this page content.";
+    page.content.body =
+      "Shared booklet geometry preserves this page content.\n- Clear customer priorities\n- Consistent printed detail";
     page.images.forEach((image, imageIndex) => {
       image.caption = `View ${imageIndex + 1}`;
     });
@@ -144,6 +166,61 @@ describe("design booklet PDF", () => {
           bytes,
         );
       }
+    },
+    60_000,
+  );
+
+  it.each(["a4", "a3"] as const)(
+    "renders %s bullet copy with the shared scaled hanging indent",
+    async (paperSize) => {
+      const draft = representativeDraft(paperSize);
+      const storyPage = draft.contentPages.find(
+        (page) => page.kind === "image" && page.layout === "story-image-left",
+      );
+      if (!storyPage || storyPage.kind !== "image") {
+        throw new Error("Expected a representative story page.");
+      }
+      storyPage.content.body =
+        "A short introduction\n- Shade through summer\n- Shelter in winter";
+      const informationPage = draft.contentPages.find(
+        (page) => page.kind === "image" && page.layout === "information-text",
+      );
+      if (!informationPage || informationPage.kind !== "image") {
+        throw new Error("Expected a representative information page.");
+      }
+      informationPage.layout = "information-material-split";
+      informationPage.content.sections[0].body =
+        "- Hardwood lining\n- Warm natural finish";
+
+      const bytes = await generateToniPdf(draft);
+      const positions = await extractPdfPageTextPositions(bytes, 3);
+      const sectionPositions = await extractPdfPageTextPositions(bytes, 5);
+      const marker = positions.find((item) => item.text.includes("\u2022"));
+      const firstItem = positions.find((item) =>
+        item.text.includes("Shade through summer"),
+      );
+      const scale =
+        DESIGN_BOOKLET_PAPER_SIZES[paperSize].width /
+        DESIGN_BOOKLET_PDF_PAGE_SIZE.width;
+
+      expect(marker).toBeDefined();
+      expect(firstItem).toBeDefined();
+      expect((firstItem?.x ?? 0) - (marker?.x ?? 0)).toBeCloseTo(
+        DESIGN_BOOKLET_BULLET_GEOMETRY.textInset * scale,
+        1,
+      );
+      expect(firstItem?.y).toBeCloseTo(marker?.y ?? 0, 1);
+      const sectionMarker = sectionPositions.find((item) =>
+        item.text.includes("\u2022"),
+      );
+      const sectionItem = sectionPositions.find((item) =>
+        item.text.includes("Hardwood lining"),
+      );
+      expect(sectionMarker).toBeDefined();
+      expect((sectionItem?.x ?? 0) - (sectionMarker?.x ?? 0)).toBeCloseTo(
+        DESIGN_BOOKLET_BULLET_GEOMETRY.textInset * scale,
+        1,
+      );
     },
     60_000,
   );
