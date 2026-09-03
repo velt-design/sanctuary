@@ -83,4 +83,3 @@ export type PraxisErrorResponse = {
   requestId: string;
   error: { code: PraxisErrorCode; message: string; retryable: boolean };
 };
-

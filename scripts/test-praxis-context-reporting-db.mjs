@@ -13,10 +13,10 @@ const pgliteBootstrap = readFileSync(
   path.join(root, 'supabase/tests/praxis_context_reporting_bootstrap.sql'),
   'utf8',
 );
-const stubStart = pgliteBootstrap.indexOf('create schema extensions;');
+const stubStart = pgliteBootstrap.indexOf('-- PGlite test double for Supabase');
 const stubEnd = pgliteBootstrap.indexOf('\n\ncreate table public.contacts', stubStart);
 if (stubStart < 0 || stubEnd < 0) throw new Error('Could not locate the PGlite digest stub.');
-const bootstrap = `${pgliteBootstrap.slice(0, stubStart)}create schema extensions;\ncreate extension pgcrypto with schema extensions;${pgliteBootstrap.slice(stubEnd)}`;
+const bootstrap = `${pgliteBootstrap.slice(0, stubStart)}create extension pgcrypto with schema extensions;${pgliteBootstrap.slice(stubEnd)}`;
 const migration = readFileSync(
   path.join(root, 'supabase/migrations/20260903000001_praxis_context_reporting_v1.sql'),
   'utf8',
