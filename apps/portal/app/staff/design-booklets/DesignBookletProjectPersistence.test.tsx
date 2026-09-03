@@ -233,6 +233,74 @@ describe("project-linked Design Booklet Workbench", () => {
     rendered.unmount();
   });
 
+  it("autosaves bullet markers in the existing draft body string", async () => {
+    vi.useFakeTimers();
+    const draft = createProjectDesignBookletDraft("Client AAA");
+    const imagePage = draft.contentPages.find((page) => page.kind === "image");
+    if (!imagePage || imagePage.kind !== "image") {
+      throw new Error("Expected an image page.");
+    }
+    imagePage.layout = "story-image-left";
+    imagePage.content.body = "Shade through summer\nShelter in winter";
+    mocks.load.mockResolvedValueOnce({
+      project: {
+        id: "proj_project-1",
+        name: "AAA courtyard",
+        customerName: "Client AAA",
+        returnHref: "/staff/projects/proj_project-1",
+      },
+      draft,
+      revision: 3,
+      saved: true,
+      updatedAt: "2026-07-31T00:00:00.000Z",
+      assets: [],
+    });
+
+    const rendered = renderProjectWorkbench();
+    await flushEffects();
+    act(() => {
+      (
+        rendered.container.querySelector(
+          '[data-booklet-page-select="image-page-1"]',
+        ) as HTMLButtonElement
+      ).click();
+    });
+    const body = rendered.container.querySelector(
+      'textarea[id$="-body-copy"]',
+    ) as HTMLTextAreaElement;
+    act(() => {
+      body.focus();
+      body.setSelectionRange(0, body.value.length);
+      body.dispatchEvent(new Event("select", { bubbles: true }));
+      (
+        rendered.container.querySelector(
+          'button[aria-label="Toggle bullets in Body copy"]',
+        ) as HTMLButtonElement
+      ).click();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(701);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.save).toHaveBeenCalledWith(
+      "proj_project-1",
+      expect.objectContaining({
+        contentPages: expect.arrayContaining([
+          expect.objectContaining({
+            id: "image-page-1",
+            content: expect.objectContaining({
+              body: "- Shade through summer\n- Shelter in winter",
+            }),
+          }),
+        ]),
+      }),
+      3,
+    );
+    rendered.unmount();
+  });
+
   it("downloads through the project PDF publisher instead of the legacy multipart endpoint", async () => {
     const anchorClick = vi
       .spyOn(HTMLAnchorElement.prototype, "click")

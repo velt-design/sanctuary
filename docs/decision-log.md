@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-03 | Design Booklet Editorial Lists   | Promoted | Keep booklet lists deliberately lightweight and one level deep: store canonical `- ` markers inside existing draft body strings, preserve normalized line breaks through project/PDF parsing, and let one shared editorial owner drive selection toggling, Enter continuation, overflow weighting, semantic browser lists, and PDF hanging indents. Do not introduce rich-text JSON, duplicate A3 geometry, or a database migration for bullets. |
 | 2026-09-03 | Design Booklet Paper Geometry    | Promoted | Keep A4 as the one canonical booklet coordinate system, own exact A4/A3 landscape page boxes in one module, and proportionally transform the complete preview/PDF composition at the output boundary. Store the choice in schema-v2 draft JSON, default missing values to A4, and do not fork layouts or migrate the database. |
 | 2026-08-29 | Exact-Head CI                    | Promoted | Normalize GitHub lifecycle fields at the CI adapter boundary: trim and uppercase non-empty values and convert empty pending conclusions to `null`, then keep re-reading the exact PR head instead of rejecting or bypassing valid pending evidence. |
 | 2026-08-29 | Durable CI Recovery              | Promoted | Adapter normalization does not rewrite existing durable checkpoints. Accept a legacy blank lifecycle field only on pending CI evidence, preserve its stored hash for validation, then refresh it from the exact PR head before continuing. |
@@ -339,6 +340,17 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 
 ## Entries
+
+### 2026-09-03 - Design Booklet Editorial Lists - Keep Draft Text Lightweight
+
+Date: 2026-09-03
+Area: Design Booklet Editorial Lists
+Status: Promoted
+Decision or mistake: Add one-level bullets to body and material-section copy without introducing rich-text state. Store canonical `- ` markers inside the existing draft strings, preserve normalized line boundaries at the parser, and translate those markers into semantic browser lists and PDF bullet glyphs.
+Why it mattered: A parallel rich-text JSON model or database field would add migration and synchronization risk to a deliberately bounded document editor. Independent browser and PDF list layout would also drift across A4/A3 scaling and wrapped lines.
+Current guardrail: Keep selection toggling, Enter continuation, marker parsing, overflow weighting, and hanging-indent geometry in `editorialText.ts`; consume the same canonical geometry in preview and PDF; preserve existing prose and hidden copy when switching templates or paper size; require parser, autosave, A4/A3 coordinate, and browser/PDF tests.
+Promoted to: `docs/design-booklets.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/portal/lib/designBooklets/editorialText.test.ts`; `apps/portal/lib/designBooklets/request.test.ts`; `apps/portal/lib/designBooklets/pdf.test.ts`; `apps/portal/app/staff/design-booklets/BookletBulletTextArea.test.tsx`; `apps/portal/app/staff/design-booklets/DesignBookletPages.test.tsx`; `apps/portal/app/staff/design-booklets/DesignBookletProjectPersistence.test.tsx`; `playwright/portal.design-booklet-workbench.spec.ts`
 
 ### 2026-09-03 - Design Booklet Paper Geometry - Scale One Canonical Composition
 
