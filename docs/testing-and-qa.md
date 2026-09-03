@@ -573,6 +573,12 @@ When `docs:impact` prints an advisory, update the suggested owner doc if the cod
 
 `npm run docs:readiness` is an advisory report for `docs/portal-production-readiness.md`. It summarizes tracker age, status counts, at-risk rows, and unchecked checklist counts, but it does not verify readiness by itself.
 
+## Praxis Reporting Tests
+
+- `npm run test:praxis:db:fast` applies the exact migration and production-shaped synthetic bootstrap in PGlite, checks rollback/replay, all 12 resource projections, whole-record secret exclusion/redaction evidence, exact and boundary+1 byte/depth/aggregate-entry handling, invoice-plan assignment freshness, and broad denial cases quickly. It is useful local feedback but is not role/grant security evidence.
+- `npm run test:praxis:db` starts a disposable PostgreSQL 17 container, applies the exact forward migration, creates an exact synthetic reporting LOGIN and database identity, and proves all 12 projections plus whole-record sanitisation/bounds, final size-fit evidence recomputation, `changedAfter` source freshness diagnostics, trigger-function compatibility, callable security-definer escalation detection, the LOGIN's default/transitive-role posture, and base/private/auth/storage/sequence and customer/financial mutation denial. It explicitly turns the LOGIN's read-only default off before mutation probes so grants, rather than the default setting, enforce the denial. The HTTP contract separately rejects `changedAfter` because incremental deletion completeness is not yet representable; it also rejects cursors and proves one bounded terminal snapshot or a no-record `SNAPSHOT_TOO_LARGE` failure.
+- `.github/workflows/praxis-context.yml` runs the real PostgreSQL proof, fast contract, focused adapter/route/migration tests, typecheck, lint, and boundary guards. The harness removes its container and never connects to a shared or production database. Migration application, LOGIN/identity provisioning, credentials, Velt connection, live reads, model use, and deployment remain separate reviewed operations.
+
 ## Background-Job And Worker Tests
 
 The durable job foundation plus PR-AI-007 has six distinct verification layers:

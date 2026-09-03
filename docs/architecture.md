@@ -21,6 +21,8 @@ For the north-star structure this repo is converging toward, read `docs/target-a
 - `playwright`: portal browser test harness.
 - `.github`: CI workflows for portal quality, Background Jobs contracts, docs health, Lighthouse, and governance.
 
+The Portal also owns the default-dark Sanctuary side of the Praxis V1 reporting connector. Its server-only routes authenticate one Velt connector binding, verify the database-owned target identity and exact low-privilege LOGIN posture, and read only explicit `praxis_reporting` projections over verified remote database transport. Canonical enquiry, customer, project, quote, invoice, payment, allocation, and financial rules stay in Sanctuary; Velt receives bounded versioned facts, explicit sanitisation evidence, and one terminal authoritative replacement snapshot from one read-only database transaction, and must not recalculate Sanctuary commercial truth. Oversized scopes fail without partial records and must be narrowed by project or resource. Incremental reads are disabled until the source can represent deletion tombstones. No browser, worker, or service-role path is part of this connector.
+
 Root-level directories outside `apps` and `packages` are still active unless proven otherwise:
 
 - `lib`: shared/root legacy application helpers and tests that current suites still reference.
@@ -71,6 +73,7 @@ Shared packages own business logic that must not be forked into apps. If app cod
 
 - `.github/workflows/portal-quality.yml`: repository typecheck, portal Vitest, portal build, authenticated smoke, and performance report.
 - `.github/workflows/background-jobs.yml`: `@sp/jobs`, `@sp/email-provider`, and worker typecheck/tests/build, built-CLI and container smoke, service-role boundary verification, plus isolated seven-migration logged-PGMQ contracts against upstream PostgreSQL 18 and the supported Supabase PostgreSQL 17 image.
+- `.github/workflows/praxis-context.yml`: focused connector tests and guards plus the exact reporting migration/role-denial contract against a disposable PostgreSQL 17 container. It proves repository behavior only, not migration application, credential provisioning, live-source connection, or deployment.
 - `.github/workflows/docs-health.yml`: scheduled and manual docs guard, mojibake, docs impact advisory, and readiness aging report.
 - `.github/workflows/lighthouse.yml`: scheduled and PR Lighthouse guardrails for marketing.
 - `.github/workflows/governance-monthly.yml`: marketing tests, production dependency audit, Lighthouse mobile and desktop.

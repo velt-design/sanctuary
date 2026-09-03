@@ -88,6 +88,8 @@
     "test:email-provider": "vitest run packages/email-provider",
     "test:email-integrations": "vitest run apps/portal/lib/emails/sendTransactionalEmail.test.ts apps/portal/lib/backgroundJobs apps/portal/app/api/webhooks/resend apps/portal/app/api/staff/v1/email-previews apps/marketing/lib/email apps/marketing/app/api/contact apps/marketing/app/api/enquiry",
     "test:commercial:db": "node scripts/test-commercial-workflow-db.mjs",
+    "test:praxis:db:fast": "node scripts/test-praxis-context-reporting-pglite.mjs",
+    "test:praxis:db": "node scripts/test-praxis-context-reporting-db.mjs",
     "test:jobs:db": "node scripts/test-background-jobs-db.mjs",
     "test:jobs:db-contract": "vitest run test/background-jobs-migration.test.ts",
     "test:worker": "npm --prefix apps/worker run test",

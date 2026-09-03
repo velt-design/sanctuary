@@ -47,8 +47,23 @@ Common optional or feature-specific variables:
 - `PORTAL_BASE_URL`
 - `PORTAL_DRAWING_URL`
 - `NEXTAUTH_SECRET` or `AUTH_SECRET` for legacy NextAuth-backed paths.
+- `PRAXIS_SANCTUARY_DATABASE_URL` (server-only connection string for the dedicated Praxis reporting LOGIN; every non-loopback target must declare `sslmode=verify-full`, which uses the Node platform trust store and verifies the database hostname; never use a service-role or owner connection)
+- `PRAXIS_SANCTUARY_READ_TOKEN` (server-only bearer secret for the Velt connector instance)
+- `PRAXIS_SANCTUARY_SOURCE_KEY` (stable source key; must match the database-owned identity row)
+- `PRAXIS_SANCTUARY_CONNECTION_ID` (connector-instance UUID; must match the database-owned identity row and Velt registry binding)
+- `PRAXIS_SANCTUARY_ENVIRONMENT` (exact environment name; must match the database-owned identity row)
 
 Never commit real env files. `.env*` is ignored.
+
+## Praxis Read Connector Setup
+
+Migration `20260903000001_praxis_context_reporting_v1.sql` creates the dark reporting schema and non-login `sanctuary_praxis_reader` group role. Applying it, creating an environment LOGIN, inserting the database-owned source identity, storing secrets, configuring Velt, and enabling traffic are separate reviewed operations; this repository change performs none of them.
+
+For each environment, create one revocable LOGIN with no superuser, database creation, role creation, replication, or RLS-bypass capability. It may inherit only `sanctuary_praxis_reader`, must default to read-only transactions, should have a bounded connection limit, and must receive no direct grants on base tables, `private`, `auth`, `storage`, sequences, or write RPCs. Store its connection string and independent bearer token in the approved secret manager and expose them only to the Portal server. Provision the identity row with the exact source key, connection ID, environment, and projection version registered in Velt. The connector fails closed when either the identity or concrete LOGIN posture differs.
+
+Non-loopback database URLs are rejected unless they use `sslmode=verify-full`; `disable`, `allow`, `prefer`, `require`, and an omitted mode are not accepted for remote targets. The runtime also explicitly selects the driver's `verify-full` mode so certificate-chain and hostname verification cannot be weakened by a connection-string default. Only `localhost`, `127.0.0.1`, and `::1` are exempt for disposable local/synthetic testing, where TLS may be disabled. A private CA is not configured through the URL in V1: install it into the server runtime's trusted CA store before enabling the connector.
+
+Before activation, run the real PostgreSQL 17 denial harness with `npm run test:praxis:db`, configure the binding variables and secrets, and require the health route to report the exact database-owned identity. Rotation means issuing a new LOGIN password and/or bearer token, updating the server secret, and revoking the old value; there is no service-role fallback.
 
 Authenticated staff can render and compare the marketing autoresponder workbench in production, but production is deliberately read-only. Inbox delivery is available only when the portal runs in a Vercel Preview environment, or locally in development/test, and `EMAIL_PREVIEW_ENABLED=true`. Configure all three preview variables on the `sanctuary-portal` Vercel project for Preview only. `RESEND_API_KEY_PREVIEW` must contain the actual Resend secret value (normally beginning `re_`), not the display name assigned to that key in Resend. Redeploy the branch after adding or changing any preview variable because an already-built deployment does not receive the new value. The current review recipient is `jordan@sanctuarypergolas.co.nz`. The staff preview page reports the exact safe configuration reason when sending is not ready. Each alternative is sent with a distinct `[Preview: <layout>]` subject; the browser cannot override the recipient or email content.
 

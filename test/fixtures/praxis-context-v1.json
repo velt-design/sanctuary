@@ -1,0 +1,84 @@
+{
+  "contextSuccess": {
+    "schemaVersion": "sanctuary.praxis.context.v1",
+    "requestId": "90000000-0000-4000-8000-000000000001",
+    "source": { "sourceKey": "sanctuary", "connectionId": "a0000000-0000-4000-8000-000000000001", "environment": "test", "authority": "canonical", "projectionVersion": "sanctuary.praxis.core.v1", "retrievedAt": "2026-09-03T00:13:00.000Z", "asOf": "2026-09-03T00:13:00.000Z" },
+    "query": { "resource": "all", "projectId": null, "changedAfter": null, "limit": 12 },
+    "page": { "hasMore": false, "nextCursor": null, "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 2, "omissionCount": 1, "categories": ["credential_key", "credential_value", "source_bounds"] } },
+    "records": [
+      {
+        "resource": "enquiry_request", "id": "40000000-0000-4000-8000-000000000001", "projectId": "10000000-0000-4000-8000-000000000001", "parentId": "10000000-0000-4000-8000-000000000001", "recordedAt": "2026-09-03T00:01:00.000Z", "recordVersion": "b91e9a651b90ac980437636c7bdc62bd5a312b0f085b96c85e584c348c5b8347",
+        "payload": { "contactId": "00000000-0000-4000-8000-000000000001", "projectId": "10000000-0000-4000-8000-000000000001", "enquiryType": "residential", "suburb": "Oratia", "message": "Six metre attached pergola enquiry", "widthM": 6, "depthM": 4, "heightM": 2.7, "style": "flat", "roofMaterials": ["acrylic"], "addOns": { "blindCount": 2 }, "baseBudgetLowIncGst": 25000, "baseBudgetHighIncGst": 35000, "blindsBudgetLowIncGst": 3000, "blindsBudgetHighIncGst": 5000, "budgetBasis": "indicative", "company": null, "source": "website", "page": "/contact", "utm": { "campaign": "spring", "medium": "paid_social" }, "createdAt": "2026-09-03T00:00:00.000Z", "updatedAt": "2026-09-03T00:01:00.000Z" },
+        "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 0, "omissionCount": 0, "categories": [] }
+      },
+      {
+        "resource": "contact", "id": "00000000-0000-4000-8000-000000000001", "projectId": null, "parentId": null, "recordedAt": "2026-09-03T00:02:00.000Z", "recordVersion": "4186a1fb7c5ae08308d4f2b63c56b78768d1b37f53e90bee1ffd80b12e88a281",
+        "payload": { "name": "Ada Customer", "email": "ada@example.test", "phone": "+6400000000", "address": "1 Test Road, Oratia", "createdAt": "2026-09-03T00:00:00.000Z", "updatedAt": "2026-09-03T00:02:00.000Z" },
+        "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 0, "omissionCount": 0, "categories": [] }
+      },
+      {
+        "resource": "project", "id": "10000000-0000-4000-8000-000000000001", "projectId": "10000000-0000-4000-8000-000000000001", "parentId": "00000000-0000-4000-8000-000000000001", "recordedAt": "2026-09-03T00:03:00.000Z", "recordVersion": "77c6901417ac782b3b73a6c87e40342792ec7a2c0a4ad011a3ce35aed9071e33",
+        "payload": { "contactId": "00000000-0000-4000-8000-000000000001", "name": "Oratia pergola", "quoteRef": "Q-0042", "region": "Auckland", "siteAddress": "1 Test Road, Oratia", "pipelineStage": "SENT", "siteVisitPriorityTier": 1, "followUpDate": "2026-09-10", "archivedAt": null, "notes": "Customer prefers a rear attachment.", "depositAmountCents": 575000, "depositPaidDate": "2026-09-02", "depositReceivedAt": "2026-09-02T01:00:00.000Z", "finalPaymentDate": null, "nextActionAt": "2026-09-10T00:00:00.000Z", "nextActionType": "follow_up", "nextAction": "Confirm colour", "nextActionDate": "2026-09-10", "version": 4, "createdAt": "2026-09-01T00:00:00.000Z", "updatedAt": "2026-09-03T00:03:00.000Z" },
+        "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 0, "omissionCount": 0, "categories": [] }
+      },
+      {
+        "resource": "estimate", "id": "50000000-0000-4000-8000-000000000001", "projectId": "10000000-0000-4000-8000-000000000001", "parentId": "10000000-0000-4000-8000-000000000001", "recordedAt": "2026-09-03T00:04:00.000Z", "recordVersion": "4c447c1abf6388f36539393dc75410baeaf1c547c1aff13d5f89b3a1c7fe94e4",
+        "payload": { "projectId": "10000000-0000-4000-8000-000000000001", "commercialScopeId": null, "internalName": "Rear attached option", "status": "DRAFT", "version": 3, "createdBy": "staff@example.test", "summaryJson": { "_praxisOmitted": "source_bounds_v1" }, "internalNotes": "[redacted]", "summary": "Six by four metre acrylic pergola", "crewHours": 24, "durationDays": 3, "materialsExGst": 12000, "installPayoutExGst": 4200, "overheadExGst": 1800, "totalTrueCostExGst": 18000, "totalTrueCostIncGst": 20700, "inputs": { "schemaVersion": "v2", "modules": [{ "id": "module-1", "attachmentSide": "rear", "lengthM": 6, "projectionM": 4 }] }, "outputs": { "totalTrueCostIncGst": 20700, "details": { "crewHours": 24 } }, "warnings": [{ "code": "CHECK_ACCESS", "message": "Confirm access before final quote" }], "costingManifest": "costing_manifest_v2.6_2026-08-13.json", "costingRules": "costing_rules_v1.3_2026-01-08.json", "costingConfigVersionId": null, "pricingSource": "calculator", "pricingSourceMetadata": { "version": "v2.6", "mode": "saved_snapshot", "commercialInputHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" }, "createdAt": "2026-09-03T00:00:00.000Z", "updatedAt": "2026-09-03T00:04:00.000Z" },
+        "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 2, "omissionCount": 1, "categories": ["credential_key", "credential_value", "source_bounds"] }
+      },
+      {
+        "resource": "quote", "id": "20000000-0000-4000-8000-000000000001", "projectId": "10000000-0000-4000-8000-000000000001", "parentId": "10000000-0000-4000-8000-000000000001", "recordedAt": "2026-09-03T00:05:00.000Z", "recordVersion": "d805759a72139ea0406205e98fb79d3f4b3d98975997e57e03d6b13eece8868b",
+        "payload": { "projectId": "10000000-0000-4000-8000-000000000001", "commercialScopeId": null, "quoteRef": "Q-0042", "internalName": "Base build", "createdBy": "staff@example.test", "createdAt": "2026-09-03T00:00:00.000Z", "updatedAt": "2026-09-03T00:05:00.000Z" },
+        "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 0, "omissionCount": 0, "categories": [] }
+      },
+      {
+        "resource": "quote_version", "id": "30000000-0000-4000-8000-000000000001", "projectId": "10000000-0000-4000-8000-000000000001", "parentId": "20000000-0000-4000-8000-000000000001", "recordedAt": "2026-09-03T00:06:00.000Z", "recordVersion": "64e71777dfc7ebd1c8d440bdd55df678b492135daaaa770e5364a05868b0653e",
+        "payload": { "quoteId": "20000000-0000-4000-8000-000000000001", "versionNumber": 1, "status": "ACCEPTED", "sourceEstimateVersionId": "50000000-0000-4000-8000-000000000001", "revisedFromQuoteVersionId": null, "createdBy": "staff@example.test", "sentAt": "2026-09-03T00:05:30.000Z", "sentBy": "staff@example.test", "acceptedAt": "2026-09-03T00:06:00.000Z", "supersededAt": null, "supersededBy": null, "expiresAt": "2026-09-17", "reference": "Q-0042-v1", "customerName": "Ada Customer", "introText": "Thank you for the opportunity to quote.", "termsText": "Standard Sanctuary terms apply.", "totalIncGstCents": 1150000, "totalExGstCents": 1000000, "gstCents": 150000, "hasPdf": true, "depositPercent": 50, "paymentTerms": [{ "id": "deposit", "label": "Deposit", "percentage": 50 }], "pricingSource": "estimate_snapshot", "pricingSourceMetadata": { "estimateVersion": 3 }, "commercialRevision": 1, "isCurrentDraft": false, "deliveryPreparedAt": "2026-09-03T00:05:20.000Z", "createdAt": "2026-09-03T00:00:00.000Z", "updatedAt": "2026-09-03T00:06:00.000Z" },
+        "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 0, "omissionCount": 0, "categories": [] }
+      },
+      {
+        "resource": "quote_line_item", "id": "60000000-0000-4000-8000-000000000001", "projectId": "10000000-0000-4000-8000-000000000001", "parentId": "30000000-0000-4000-8000-000000000001", "recordedAt": "2026-09-03T00:07:00.000Z", "recordVersion": "d79dcc6d03f0e700bb69fa5a2a43bd6b09ed7bf90aff965fb1718e4d959a5a45",
+        "payload": { "quoteVersionId": "30000000-0000-4000-8000-000000000001", "sortOrder": 1, "description": "Pergola structure and installation", "quantity": 1, "unitPriceIncGstCents": 1150000, "lineTotalIncGstCents": 1150000, "createdAt": "2026-09-03T00:00:00.000Z", "updatedAt": "2026-09-03T00:07:00.000Z" },
+        "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 0, "omissionCount": 0, "categories": [] }
+      },
+      {
+        "resource": "invoice", "id": "70000000-0000-4000-8000-000000000001", "projectId": "10000000-0000-4000-8000-000000000001", "parentId": "30000000-0000-4000-8000-000000000001", "recordedAt": "2026-09-03T00:08:00.000Z", "recordVersion": "0f7f5fdcae722252ea52dedb73a1adb2181faacbeaf2e26b82b0b689aa101ac3",
+        "payload": { "projectId": "10000000-0000-4000-8000-000000000001", "quoteId": "20000000-0000-4000-8000-000000000001", "quoteVersionId": "30000000-0000-4000-8000-000000000001", "quoteRef": "Q-0042", "quoteVersionNumber": 1, "invoiceRef": "INV-0042-1", "status": "OPEN", "issueDate": "2026-09-03", "dueDate": "2026-09-10", "reference": "Deposit invoice", "customerName": "Ada Customer", "projectName": "Oratia pergola", "projectAddress": "1 Test Road, Oratia", "currency": "NZD", "depositPercent": 50, "quoteTotalIncGstCents": 1150000, "totalIncGstCents": 575000, "totalExGstCents": 500000, "gstCents": 75000, "paymentInstructions": "Pay by bank transfer using the invoice reference.", "hasPdf": true, "sentAt": "2026-09-03T00:08:00.000Z", "sentBy": "staff@example.test", "createdBy": "staff@example.test", "voidedAt": null, "voidedBy": null, "voidReason": null, "replacedByInvoiceId": null, "paymentTermId": "deposit", "paymentTermLabel": "Deposit", "paymentTermPosition": 1, "paymentTermCount": 2, "paymentTermCalculation": "percentage", "paymentTermPercentage": 50, "creationMode": "quote_acceptance", "creationOverrideReason": null, "invoicePlanItemId": "80000000-0000-4000-8000-000000000001", "paidAt": null, "paidBy": null, "paymentMethod": null, "paymentReference": null, "paymentNote": null, "createdAt": "2026-09-03T00:00:00.000Z", "updatedAt": "2026-09-03T00:08:00.000Z" },
+        "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 0, "omissionCount": 0, "categories": [] }
+      },
+      {
+        "resource": "invoice_plan_item", "id": "80000000-0000-4000-8000-000000000001", "projectId": "10000000-0000-4000-8000-000000000001", "parentId": "30000000-0000-4000-8000-000000000001", "recordedAt": "2026-09-03T00:09:00.000Z", "recordVersion": "85d29cd0caeb8c53ca509723d510cea23f8123094ce43346b9bfb0f3b97804f3",
+        "payload": { "projectId": "10000000-0000-4000-8000-000000000001", "quoteVersionId": "30000000-0000-4000-8000-000000000001", "planGroupId": "81000000-0000-4000-8000-000000000001", "paymentTermId": "deposit", "label": "Deposit", "position": 1, "itemCount": 2, "amountIncGstCents": 575000, "invoiceId": "70000000-0000-4000-8000-000000000001", "createdBy": "staff@example.test", "cancelledAt": null, "cancelledBy": null, "cancellationReason": null, "createdAt": "2026-09-03T00:00:00.000Z", "updatedAt": "2026-09-03T00:09:00.000Z" },
+        "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 0, "omissionCount": 0, "categories": [] }
+      },
+      {
+        "resource": "payment", "id": "90000000-0000-4000-8000-000000000001", "projectId": "10000000-0000-4000-8000-000000000001", "parentId": "10000000-0000-4000-8000-000000000001", "recordedAt": "2026-09-03T00:10:00.000Z", "recordVersion": "53f661a7c16cf1e7357bbfe107f0d58899f3f32b4b6a8a83abe580cf93fc0db4",
+        "payload": { "projectId": "10000000-0000-4000-8000-000000000001", "sourceInvoiceId": "70000000-0000-4000-8000-000000000001", "entryType": "PAYMENT", "amountIncGstCents": 575000, "occurredAt": "2026-09-02T01:00:00.000Z", "paymentMethod": "bank_transfer", "reference": "PAY-0042", "note": "Deposit received", "reason": null, "reversesEntryId": null, "createdBy": "staff@example.test", "createdAt": "2026-09-03T00:10:00.000Z" },
+        "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 0, "omissionCount": 0, "categories": [] }
+      },
+      {
+        "resource": "payment_allocation", "id": "a1000000-0000-4000-8000-000000000001", "projectId": "10000000-0000-4000-8000-000000000001", "parentId": "90000000-0000-4000-8000-000000000001", "recordedAt": "2026-09-03T00:11:00.000Z", "recordVersion": "c2c0f80b451e7f8de6eb8c2a7f2c0361922d4c0abd232f54da5c19ca3c7744e9",
+        "payload": { "projectId": "10000000-0000-4000-8000-000000000001", "paymentEntryId": "90000000-0000-4000-8000-000000000001", "quoteVersionId": "30000000-0000-4000-8000-000000000001", "paymentTermId": "deposit", "amountIncGstCents": 575000, "changeReason": "Initial allocation", "createdBy": "staff@example.test", "reversedAt": null, "reversedBy": null, "reversalReason": null, "createdAt": "2026-09-03T00:11:00.000Z" },
+        "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 0, "omissionCount": 0, "categories": [] }
+      },
+      {
+        "resource": "project_financial_truth", "id": "10000000-0000-4000-8000-000000000001", "projectId": "10000000-0000-4000-8000-000000000001", "parentId": "10000000-0000-4000-8000-000000000001", "recordedAt": "2026-09-03T00:12:00.000Z", "recordVersion": "f2306150c0331a6c20fa651acb5b9ff95917a5f3dc860ee43f72da049ea5a4d6",
+        "payload": { "projectId": "10000000-0000-4000-8000-000000000001", "acceptedQuoteVersions": [{ "quoteVersionId": "30000000-0000-4000-8000-000000000001", "quoteId": "20000000-0000-4000-8000-000000000001", "totalIncGstCents": 1150000 }], "acceptedTotalIncGstCents": 1150000, "paidIncGstCents": 575000, "openInvoiceIncGstCents": 287500, "remainingToInvoiceIncGstCents": 287500, "overCommittedIncGstCents": 0, "latestPaymentAt": "2026-09-02T01:00:00.000Z" },
+        "projection": { "policyVersion": "sanctuary.praxis.sanitizer.v1", "redactionCount": 0, "omissionCount": 0, "categories": [] }
+      }
+    ]
+  },
+  "healthSuccess": {
+    "schemaVersion": "sanctuary.praxis.health.v1", "requestId": "90000000-0000-4000-8000-000000000002",
+    "source": { "sourceKey": "sanctuary", "connectionId": "a0000000-0000-4000-8000-000000000001", "environment": "test", "authority": "canonical", "projectionVersion": "sanctuary.praxis.core.v1", "retrievedAt": "2026-09-03T00:13:00.000Z" },
+    "status": { "connector": "ready", "database": "reachable", "projection": "ready" }
+  },
+  "errors": {
+    "400": { "schemaVersion": "sanctuary.praxis.error.v1", "requestId": "90000000-0000-4000-8000-000000000400", "error": { "code": "INVALID_QUERY", "message": "resource is not supported.", "retryable": false } },
+    "snapshotTooLarge": { "schemaVersion": "sanctuary.praxis.error.v1", "requestId": "90000000-0000-4000-8000-000000000413", "error": { "code": "SNAPSHOT_TOO_LARGE", "message": "The snapshot exceeds the requested limit; narrow projectId or resource.", "retryable": false } },
+    "401": { "schemaVersion": "sanctuary.praxis.error.v1", "requestId": "90000000-0000-4000-8000-000000000401", "error": { "code": "UNAUTHORIZED", "message": "Authentication failed.", "retryable": false } },
+    "403": { "schemaVersion": "sanctuary.praxis.error.v1", "requestId": "90000000-0000-4000-8000-000000000403", "error": { "code": "SOURCE_BINDING_MISMATCH", "message": "The requested source binding is not allowed.", "retryable": false } },
+    "503": { "schemaVersion": "sanctuary.praxis.error.v1", "requestId": "90000000-0000-4000-8000-000000000503", "error": { "code": "PROJECTION_NOT_READY", "message": "The Praxis reporting identity is not ready.", "retryable": true } }
+  },
+  "headers": { "cache-control": "private, no-store", "x-content-type-options": "nosniff", "x-praxis-projection-version": "sanctuary.praxis.core.v1" }
+}

@@ -1,0 +1,63 @@
+name: Praxis Context Boundary
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/praxis-context.yml"
+      - "apps/portal/app/api/integrations/praxis/**"
+      - "apps/portal/lib/praxis/**"
+      - "scripts/test-praxis-context-reporting-*.mjs"
+      - "supabase/migrations/*praxis_context*.sql"
+      - "supabase/tests/praxis_context*.sql"
+      - "test/praxis-context*.test.ts"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/praxis-context.yml"
+      - "apps/portal/app/api/integrations/praxis/**"
+      - "apps/portal/lib/praxis/**"
+      - "scripts/test-praxis-context-reporting-*.mjs"
+      - "supabase/migrations/*praxis_context*.sql"
+      - "supabase/tests/praxis_context*.sql"
+      - "test/praxis-context*.test.ts"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+
+jobs:
+  postgres-denial-contract:
+    name: PostgreSQL 17 reader denial contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PRAXIS_REPORTING_DB_IMAGE: postgres:17-alpine
+      PRAXIS_REPORTING_DB_EXPECTED_POSTGRES_MAJOR: "17"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Real PostgreSQL role and denial proof
+        run: npm run test:praxis:db
+
+      - name: Fast projection and rollback proof
+        run: npm run test:praxis:db:fast
+
+      - name: Endpoint and contract tests
+        run: npx vitest run apps/portal/lib/praxis test/praxis-context-migration.test.ts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint and boundary guards
+        run: npm run lint && npm run service-role:changed:strict && npm run browser:supabase:changed:strict
