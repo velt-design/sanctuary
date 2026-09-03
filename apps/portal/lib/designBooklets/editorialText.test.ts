@@ -67,6 +67,14 @@ describe("design booklet editorial text", () => {
     });
   });
 
+  it("continues a bullet when Enter replaces selected text", () => {
+    expect(continueDesignBookletBullet("- Alpha", 2, 5)).toEqual({
+      value: "- \n- ha",
+      selectionStart: 5,
+      selectionEnd: 5,
+    });
+  });
+
   it("weights bullet indentation in overflow estimates", () => {
     expect(designBookletEditorialTextWeight("Alpha\n- Beta")).toBe(
       "Alpha\n- Beta".length + 10,

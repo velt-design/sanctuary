@@ -149,7 +149,6 @@ export function continueDesignBookletBullet(
   selectionEnd: number,
   maxLength?: number,
 ): DesignBookletTextSelection | null {
-  if (selectionStart !== selectionEnd) return null;
   const range = selectedLineRange(value, selectionStart, selectionEnd);
   const line = value.slice(range.start, range.end);
   const item = designBookletBulletItem(line);
