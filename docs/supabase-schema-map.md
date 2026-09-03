@@ -319,6 +319,16 @@ Primary read path:
 - Portal consumers use the two staff API routes above and the server-only `apps/portal/lib/ai/serverActivity.ts` adapter. Browser code does not read the AI tables directly.
 - The detail response contains the RLS-visible task, safe append-only events, and safe approval/validation evidence. It omits private input/envelopes/receipts, requesting and deciding user IDs, input and idempotency identities, and every service-role capability.
 
+## Praxis Reporting Projection V1
+
+Migration `20260903000001_praxis_context_reporting_v1.sql` owns the server-only Praxis read boundary. It creates the `praxis_reporting` schema, a non-login `sanctuary_praxis_reader` group role, one environment-provisioned database identity row, 12 explicit versioned projections, and the bounded `context_page_v1` keyset function. The resources are enquiry request, contact, project, estimate, quote, quote version, quote line item, invoice, invoice plan item, payment, payment allocation, and canonical project financial truth.
+
+The financial projection wraps `commercial_current_accepted_quote_versions` and `commercial_project_financial_truth`; it does not reimplement pricing, acceptance, GST, invoice, payment, or allocation rules in the connector or Velt. `quotes.updated_at` and its trigger provide freshness evidence for current quote metadata changes. Published record versions are recomputed by the server from recursively key-sorted compact JSON so the hash is stable across PostgreSQL and TypeScript runtimes.
+
+The allowlist keeps customer identity, contact, project, commercial, and financial facts while excluding raw enquiry payloads, attachments and storage paths, raw commercial design input, token hashes, PDF/email bodies and recipients, provider identifiers/errors, credentials, private execution data, and unrestricted audit JSON. The reader receives only schema/function/view access needed for these projections. It receives no base-table, private/auth/storage, sequence, or write-RPC access. A separate per-environment LOGIN and exact identity row are deliberately not created by the migration and remain deployment work.
+
+`npm run test:praxis:db:fast` is a fast PGlite contract check. `npm run test:praxis:db` is the authoritative disposable PostgreSQL 17 role/grant denial proof, including an exact LOGIN with read-only default, writes attempted again after disabling that default, and representative commercial write-RPC denial. Neither command targets a shared database.
+
 ## Durable Background Jobs
 
 Owner docs: this schema map owns the current database boundary; `docs/target-architecture.md` owns the long-term worker path, while `docs/security-privacy-quality.md`, `docs/environment-auth-supabase.md`, and `docs/testing-and-qa.md` own security, setup, and verification. Each business job kind still belongs to its existing workflow doc until a later task migrates that producer and handler.

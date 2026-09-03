@@ -230,6 +230,7 @@ PR-AI-007 links each eligible task to exactly one durable `ai_synthetic_v1` job.
 
 ## Security Rules
 
+- Praxis business reads use a dedicated, individually revocable database LOGIN whose only membership is the non-login `sanctuary_praxis_reader` role. The HTTP bearer and exact source binding are independent of that database credential. Runtime checks prove the database-owned source identity and concrete LOGIN's least-privilege posture before every read; there is no service-role fallback. Signed cursors bind the same source identity and query, reads are bounded and read-only with timeouts, and logs contain only body-free diagnostics. The projections deliberately expose approved customer and financial facts while excluding credentials, hashes, raw payloads, files, communication content/provider detail, private execution data, and unrestricted audit JSON.
 - Never commit secrets or env files.
 - Keep service-role Supabase access server-only.
 - Use portal auth helpers for staff/admin API routes.

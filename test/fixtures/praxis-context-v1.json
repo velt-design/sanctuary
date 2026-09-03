@@ -1,0 +1,113 @@
+{
+  "contextSuccess": {
+    "schemaVersion": "sanctuary.praxis.context.v1",
+    "requestId": "90000000-0000-4000-8000-000000000001",
+    "source": {
+      "sourceKey": "sanctuary",
+      "connectionId": "a0000000-0000-4000-8000-000000000001",
+      "environment": "test",
+      "authority": "canonical",
+      "projectionVersion": "sanctuary.praxis.core.v1",
+      "retrievedAt": "2026-09-03T00:02:00.000Z",
+      "asOf": "2026-09-03T00:02:00.000Z"
+    },
+    "query": {
+      "resource": "all",
+      "projectId": "10000000-0000-4000-8000-000000000001",
+      "changedAfter": null,
+      "limit": 2
+    },
+    "page": {
+      "hasMore": true,
+      "nextCursor": "eyJ2IjoxLCJzb3VyY2UiOnsic291cmNlS2V5Ijoic2FuY3R1YXJ5In19.YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo"
+    },
+    "records": [
+      {
+        "resource": "quote",
+        "id": "20000000-0000-4000-8000-000000000001",
+        "projectId": "10000000-0000-4000-8000-000000000001",
+        "parentId": "10000000-0000-4000-8000-000000000001",
+        "recordedAt": "2026-09-03T00:01:01.000Z",
+        "recordVersion": "1223860c8ddef186d82ed290fec8eb69f1e821f8345b26591f199cfd210abeb7",
+        "payload": {
+          "projectId": "10000000-0000-4000-8000-000000000001",
+          "commercialScopeId": null,
+          "quoteRef": "Q-0042",
+          "internalName": "Base build",
+          "createdBy": "staff@example.test",
+          "createdAt": "2026-09-03T00:00:00.000Z",
+          "updatedAt": "2026-09-03T00:01:00.000Z"
+        }
+      },
+      {
+        "resource": "project_financial_truth",
+        "id": "10000000-0000-4000-8000-000000000001",
+        "projectId": "10000000-0000-4000-8000-000000000001",
+        "parentId": "10000000-0000-4000-8000-000000000001",
+        "recordedAt": "2026-09-03T00:01:02.000Z",
+        "recordVersion": "f2306150c0331a6c20fa651acb5b9ff95917a5f3dc860ee43f72da049ea5a4d6",
+        "payload": {
+          "projectId": "10000000-0000-4000-8000-000000000001",
+          "acceptedQuoteVersions": [
+            {
+              "quoteVersionId": "30000000-0000-4000-8000-000000000001",
+              "quoteId": "20000000-0000-4000-8000-000000000001",
+              "totalIncGstCents": 1150000
+            }
+          ],
+          "acceptedTotalIncGstCents": 1150000,
+          "paidIncGstCents": 575000,
+          "openInvoiceIncGstCents": 287500,
+          "remainingToInvoiceIncGstCents": 287500,
+          "overCommittedIncGstCents": 0,
+          "latestPaymentAt": "2026-09-02T01:00:00.000Z"
+        }
+      }
+    ]
+  },
+  "healthSuccess": {
+    "schemaVersion": "sanctuary.praxis.health.v1",
+    "requestId": "90000000-0000-4000-8000-000000000002",
+    "source": {
+      "sourceKey": "sanctuary",
+      "connectionId": "a0000000-0000-4000-8000-000000000001",
+      "environment": "test",
+      "authority": "canonical",
+      "projectionVersion": "sanctuary.praxis.core.v1",
+      "retrievedAt": "2026-09-03T00:02:00.000Z"
+    },
+    "status": {
+      "connector": "ready",
+      "database": "reachable",
+      "projection": "ready"
+    }
+  },
+  "errors": {
+    "400": {
+      "schemaVersion": "sanctuary.praxis.error.v1",
+      "requestId": "90000000-0000-4000-8000-000000000400",
+      "error": { "code": "INVALID_QUERY", "message": "resource is not supported.", "retryable": false }
+    },
+    "401": {
+      "schemaVersion": "sanctuary.praxis.error.v1",
+      "requestId": "90000000-0000-4000-8000-000000000401",
+      "error": { "code": "UNAUTHORIZED", "message": "Authentication failed.", "retryable": false }
+    },
+    "403": {
+      "schemaVersion": "sanctuary.praxis.error.v1",
+      "requestId": "90000000-0000-4000-8000-000000000403",
+      "error": { "code": "SOURCE_BINDING_MISMATCH", "message": "The requested source binding is not allowed.", "retryable": false }
+    },
+    "503": {
+      "schemaVersion": "sanctuary.praxis.error.v1",
+      "requestId": "90000000-0000-4000-8000-000000000503",
+      "error": { "code": "PROJECTION_NOT_READY", "message": "The Praxis reporting identity is not ready.", "retryable": true }
+    }
+  },
+  "headers": {
+    "cache-control": "private, no-store",
+    "x-content-type-options": "nosniff",
+    "x-praxis-projection-version": "sanctuary.praxis.core.v1"
+  },
+  "cursorPattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+}
