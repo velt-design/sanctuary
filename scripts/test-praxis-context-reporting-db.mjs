@@ -196,7 +196,8 @@ try {
 
   const projection = psql(`
     begin read only;
-    select resource || '|' || payload::text
+    select resource || '|' || payload::text || '|' || policy_version || '|' ||
+      redaction_count || '|' || omission_count || '|' || redaction_categories::text
     from praxis_reporting.context_page_v1(
       'all', '10000000-0000-4000-8000-000000000001', null,
       now() + interval '1 minute', null, null, null, 100
@@ -227,8 +228,8 @@ try {
     'encrypted_password', 'path_tokens', 'nested-enquiry-secret', 'private/enquiry.pdf',
     'nested-utm-secret', 'private-provider-id', 'nested-summary-secret',
     'nested-input-secret', 'private/design.pdf', 'nested-output-secret',
-    'nested-warning-secret', 'nested-metadata-secret', 'nested-token-hash', 'private-commercial-design',
-    'nested-token-hash', 'private-invoice-token-hash',
+    'nested-warning-secret', 'nested-metadata-secret', 'nested-token-hash',
+    'private-commercial-design', 'private-invoice-token-hash',
   ]) {
     if (projection.includes(forbidden)) throw new Error(`Projection exposed forbidden material: ${forbidden}`);
   }

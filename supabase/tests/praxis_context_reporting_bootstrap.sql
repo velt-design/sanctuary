@@ -230,7 +230,7 @@ insert into public.estimates (
   '10000000-0000-4000-8000-000000000001',
   'Real-shape estimate', 'DRAFT', 1, 'fixture',
   '{"label":"Current estimate","acceptTokenHash":"nested-summary-secret"}',
-  '-----BEGIN PRIVATE KEY----- pasted by mistake', 'Pergola estimate',
+  'Bearer estimatecredential0123456789abcdef', 'Pergola estimate',
   '{"schemaVersion":"v2","site":{"windZone":"high","region":"Auckland"},"modules":[{"id":"pergola-1","kind":"pergola","attachmentSide":"rear","lengthM":6,"projectionM":4,"roof":{"material":"acrylic","pitchDegrees":5},"connection":{"houseConnectionType":"soffit"},"posts":[{"position":"front-left"},{"position":"front-right"}],"addOns":{"blinds":[{"side":"left","count":2}]},"apiToken":"nested-input-secret","attachment":{"filePath":"private/design.pdf"}},{"id":"pergola-2","kind":"pergola","attachmentSide":"left","lengthM":3.6,"projectionM":3,"roof":{"material":"clearspan","pitchDegrees":4}}]}',
   '{"totalTrueCostIncGst":11500,"details":{"crewHours":24,"materials":[{"sku":"POST-100","quantity":4},{"sku":"RAFTER-6000","quantity":8}],"labour":{"installers":2,"days":3},"password":"nested-output-secret"}}',
   '[{"code":"CHECK_ACCESS","message":"Confirm access","providerError":"nested-warning-secret"}]',
