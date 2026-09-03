@@ -255,6 +255,7 @@ Marketing Lighthouse thresholds:
 Security:
 
 - No unresolved critical/high production vulnerabilities from `npm audit --omit=dev`.
+- Renovate proposes dependency, container, and GitHub Actions updates on a low-noise weekend schedule. It never automerges; major upgrades require an explicit Dependency Dashboard choice, while vulnerability alerts may run immediately.
 - `npm run audit:toolchain` fails closed on every development/toolchain vulnerability except the two no-fix `xlsx` advisories `GHSA-4r6h-8v6p-xvw6` and `GHSA-5pgg-2g8v-p4x9`. The exception is valid only while `xlsx` is a direct root development dependency, is locked development-only, has no fix, and is imported only by `scripts/import-running-jobs-legacy.ts`.
 - The workspace, Portal, and Marketing PostCSS overrides must resolve to the same patched version; verify with `npm ls postcss` after dependency changes.
 - Portal Quality runs both `npm run audit:security` and `npm run audit:toolchain` as blocking pull-request gates; Governance Monthly also runs the production dependency audit as part of the broader marketing/governance sweep.
