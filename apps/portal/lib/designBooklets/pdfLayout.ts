@@ -20,8 +20,23 @@ import {
   normalizeDesignBookletMultilinePresentationText,
   normalizeDesignBookletPresentationText,
 } from "./presentation";
+import { designBookletPageGeometry } from "./paperGeometry";
+import type { DesignBookletPaperSizeId } from "./types";
 
 export const DESIGN_BOOKLET_PDF_PAGE_SIZE = DESIGN_BOOKLET_PRESENTATION.page;
+
+export function applyDesignBookletPdfPaperSize(
+  pdf: PDFDocument,
+  paperSize: DesignBookletPaperSizeId,
+) {
+  const geometry = designBookletPageGeometry(paperSize);
+  for (const page of pdf.getPages()) {
+    if (geometry.scaleX !== 1 || geometry.scaleY !== 1) {
+      page.scaleContent(geometry.scaleX, geometry.scaleY);
+    }
+    page.setSize(geometry.width, geometry.height);
+  }
+}
 
 export const DESIGN_BOOKLET_PDF_LEFT =
   DESIGN_BOOKLET_PRESENTATION.chrome.insetLeft;

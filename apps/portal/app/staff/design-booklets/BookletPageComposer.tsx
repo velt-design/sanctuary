@@ -23,6 +23,7 @@ import {
   designBookletContentTextWarnings,
   resolveDesignBookletContentLayout,
 } from "@/lib/designBooklets/contentPresentation";
+import { DESIGN_BOOKLET_BASE_PAGE_SIZE } from "@/lib/designBooklets/paperGeometry";
 import {
   buildDesignBookletRenderModel,
   DESIGN_BOOKLET_DRAWING_LAYOUTS,
@@ -202,10 +203,10 @@ function ContentLayoutPreview({
         <span
           key={index}
           style={{
-            left: `${(frame.x / 841.89) * 100}%`,
-            top: `${(frame.top / 595.28) * 100}%`,
-            width: `${(frame.width / 841.89) * 100}%`,
-            height: `${(frame.height / 595.28) * 100}%`,
+            left: `${(frame.x / DESIGN_BOOKLET_BASE_PAGE_SIZE.width) * 100}%`,
+            top: `${(frame.top / DESIGN_BOOKLET_BASE_PAGE_SIZE.height) * 100}%`,
+            width: `${(frame.width / DESIGN_BOOKLET_BASE_PAGE_SIZE.width) * 100}%`,
+            height: `${(frame.height / DESIGN_BOOKLET_BASE_PAGE_SIZE.height) * 100}%`,
           }}
         />
       ))}
@@ -213,10 +214,10 @@ function ContentLayoutPreview({
         <span
           className={styles.layoutTextPreview}
           style={{
-            left: `${(layout.textFrame.x / 841.89) * 100}%`,
-            top: `${(layout.textFrame.top / 595.28) * 100}%`,
-            width: `${(layout.textFrame.width / 841.89) * 100}%`,
-            height: `${(layout.textFrame.height / 595.28) * 100}%`,
+            left: `${(layout.textFrame.x / DESIGN_BOOKLET_BASE_PAGE_SIZE.width) * 100}%`,
+            top: `${(layout.textFrame.top / DESIGN_BOOKLET_BASE_PAGE_SIZE.height) * 100}%`,
+            width: `${(layout.textFrame.width / DESIGN_BOOKLET_BASE_PAGE_SIZE.width) * 100}%`,
+            height: `${(layout.textFrame.height / DESIGN_BOOKLET_BASE_PAGE_SIZE.height) * 100}%`,
           }}
         />
       ) : null}

@@ -1,5 +1,5 @@
 .page {
-  --booklet-point: calc(100cqw / var(--booklet-page-width));
+  --booklet-point: calc(100cqw / var(--booklet-layout-width));
   position: relative;
   isolation: isolate;
   width: 100%;

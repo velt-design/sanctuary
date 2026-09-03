@@ -6,6 +6,7 @@ import type {
 } from "./types";
 import { defaultDesignBookletContentVariant } from "./contentPresentation";
 import { currentDesignBookletIssueDate } from "./pageModel";
+import { DESIGN_BOOKLET_DEFAULT_PAPER_SIZE } from "./paperGeometry";
 
 export const TONI_DESIGN_BOOKLET_ASSETS: Record<
   DesignBookletDefaultAssetId,
@@ -108,6 +109,7 @@ function defaultImagePage(
 export function createToniDesignBookletDraft(): DesignBookletDraft {
   return {
     schemaVersion: 2,
+    paperSize: DESIGN_BOOKLET_DEFAULT_PAPER_SIZE,
     customerName: "Toni",
     projectTitle: "Outdoor living concept",
     roofFormId: "pitched",

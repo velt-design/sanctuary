@@ -20,11 +20,13 @@ import {
   generateDesignBookletPdf,
 } from "./pdf";
 import { loadToniDesignBookletImages } from "./request";
+import { DESIGN_BOOKLET_PAPER_SIZES } from "./paperGeometry";
 import {
   DESIGN_BOOKLET_CONTENT_LAYOUT_IDS,
   DESIGN_BOOKLET_CONTENT_VARIANT_IDS,
   type DesignBookletDraft,
   type DesignBookletDrawingLayoutId,
+  type DesignBookletPaperSizeId,
 } from "./types";
 
 async function generateToniPdf(draft: DesignBookletDraft) {
@@ -70,7 +72,82 @@ function expectLandscapeA4Pages(document: PDFDocument) {
   }
 }
 
+function expectExactPaperSizePages(
+  document: PDFDocument,
+  paperSize: DesignBookletPaperSizeId,
+) {
+  const expected = DESIGN_BOOKLET_PAPER_SIZES[paperSize];
+  for (const page of document.getPages()) {
+    expect(page.getWidth()).toBe(expected.width);
+    expect(page.getHeight()).toBe(expected.height);
+  }
+}
+
+function representativeDraft(paperSize: DesignBookletPaperSizeId) {
+  const draft = createToniDesignBookletDraft();
+  draft.paperSize = paperSize;
+  draft.contentPages = [];
+  for (const [index, layout] of [
+    "visual-framed",
+    "story-image-left",
+    "gallery-grid-four",
+    "information-text",
+  ].entries()) {
+    const page = createDesignBookletImagePage(
+      draft.contentPages,
+      { id: "render-1", alt: `Representative image ${index + 1}` },
+      layout as (typeof DESIGN_BOOKLET_CONTENT_LAYOUT_IDS)[number],
+    );
+    page.content.headline = `Representative ${layout}`;
+    page.content.body = "Shared booklet geometry preserves this page content.";
+    page.images.forEach((image, imageIndex) => {
+      image.caption = `View ${imageIndex + 1}`;
+    });
+    draft.contentPages.push(page);
+  }
+  draft.contentPages.push(
+    createDesignBookletDrawingPage(draft.contentPages, {
+      id: "plan",
+      alt: TONI_DESIGN_BOOKLET_ASSETS.plan.alt,
+    }),
+  );
+  return draft;
+}
+
 describe("design booklet PDF", () => {
+  it.each(["a4", "a3"] as const)(
+    "renders representative %s Cover, Visual, Story, Gallery, Information, Drawing and Review pages at exact dimensions",
+    async (paperSize) => {
+      const draft = representativeDraft(paperSize);
+      const bytes = await generateToniPdf(draft);
+      const document = await PDFDocument.load(bytes);
+      const pageText = await extractPdfPageText(bytes);
+
+      expect(document.getPageCount()).toBe(7);
+      expectExactPaperSizePages(document, paperSize);
+      expect(pageText[0]).toContain("Outdoor living concept");
+      expect(pageText[2]).toContain("Representative story-image-left");
+      expect(pageText[3]).toContain("VIEW 4");
+      expect(pageText[4]).toContain("Representative information-text");
+      expect(pageText[5]).toContain("CONCEPT DRAWINGS");
+      expect(pageText[6]).toContain("Review the concept");
+
+      const outputDirectory = process.env.DESIGN_BOOKLET_OUTPUT_DIR?.trim();
+      if (outputDirectory) {
+        const absoluteDirectory = path.resolve(outputDirectory);
+        await mkdir(absoluteDirectory, { recursive: true });
+        await writeFile(
+          path.join(
+            absoluteDirectory,
+            `sanctuary-design-booklet-${paperSize}.pdf`,
+          ),
+          bytes,
+        );
+      }
+    },
+    60_000,
+  );
+
   it("renders neutral placeholders when a new project has no images", async () => {
     const draft = createProjectDesignBookletDraft("Client AAA");
     const bytes = await generateDesignBookletPdf({

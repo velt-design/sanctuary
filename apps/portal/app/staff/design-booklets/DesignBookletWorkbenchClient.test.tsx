@@ -73,6 +73,16 @@ function setTextareaValue(textarea: HTMLTextAreaElement, value: string) {
   });
 }
 
+function selectForField(container: ParentNode, labelText: string) {
+  const label = Array.from(container.querySelectorAll("label")).find(
+    (candidate) =>
+      candidate.querySelector(":scope > span")?.textContent?.trim() ===
+      labelText,
+  );
+  expect(label, `Expected field labelled "${labelText}"`).toBeDefined();
+  return label?.querySelector("select") as HTMLSelectElement;
+}
+
 function pageRailButtons(container: ParentNode): HTMLButtonElement[] {
   return Array.from(container.querySelectorAll("[data-booklet-page-select]"));
 }
@@ -160,6 +170,45 @@ describe("DesignBookletWorkbenchClient", () => {
       rendered.container.querySelector('[data-page-kind="cover"] h1')
         ?.textContent,
     ).toBe("Outdoor living\nconcept");
+    rendered.unmount();
+  });
+
+  it("switches A4 and A3 without losing booklet content or its selected page", () => {
+    const rendered = renderWorkbench();
+    click(rendered.container.querySelector("#booklet-details > summary"));
+    const titleField = rendered.container.querySelector(
+      "#booklet-details textarea",
+    ) as HTMLTextAreaElement;
+    setTextareaValue(titleField, "A retained booklet title");
+    click(pageRailButtons(rendered.container)[1]);
+
+    const paperSize = selectForField(rendered.container, "Paper size");
+    expect(paperSize.value).toBe("a4");
+    setSelectValue(paperSize, "a3");
+
+    expect(
+      rendered.container.querySelector(
+        'section[aria-label="Landscape A3 booklet preview"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector('[data-page-kind="image"]'),
+    ).not.toBeNull();
+    expect(
+      (
+        rendered.container.querySelector(
+          "#booklet-details textarea",
+        ) as HTMLTextAreaElement
+      ).value,
+    ).toBe("A retained booklet title");
+
+    setSelectValue(paperSize, "a4");
+    expect(
+      rendered.container.querySelector(
+        'section[aria-label="Landscape A4 booklet preview"]',
+      ),
+    ).not.toBeNull();
+    expect(pageRailButtons(rendered.container)).toHaveLength(5);
     rendered.unmount();
   });
 
@@ -421,6 +470,14 @@ describe("DesignBookletWorkbenchClient", () => {
     act(() => fileInput.dispatchEvent(new Event("change", { bubbles: true })));
 
     expect(createObjectUrl).toHaveBeenCalledOnce();
+    expect(
+      rendered.container
+        .querySelector('[data-page-kind="image"] img')
+        ?.getAttribute("src"),
+    ).toBe("blob:image-page");
+
+    click(rendered.container.querySelector("#booklet-details > summary"));
+    setSelectValue(selectForField(rendered.container, "Paper size"), "a3");
     expect(
       rendered.container
         .querySelector('[data-page-kind="image"] img')

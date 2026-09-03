@@ -6,6 +6,7 @@ import {
   resolveDesignBookletContentLayout,
   resolveDesignBookletContentTypography,
 } from "./contentPresentation";
+import { DESIGN_BOOKLET_BASE_PAGE_SIZE } from "./paperGeometry";
 import {
   DESIGN_BOOKLET_CONTENT_LAYOUT_IDS,
   DESIGN_BOOKLET_CONTENT_VARIANT_IDS,
@@ -32,8 +33,12 @@ describe("design booklet content layouts", () => {
         ]) {
           expect(frame.x).toBeGreaterThanOrEqual(0);
           expect(frame.top).toBeGreaterThanOrEqual(0);
-          expect(frame.x + frame.width).toBeLessThanOrEqual(841.89);
-          expect(frame.top + frame.height).toBeLessThanOrEqual(595.28);
+          expect(frame.x + frame.width).toBeLessThanOrEqual(
+            DESIGN_BOOKLET_BASE_PAGE_SIZE.width,
+          );
+          expect(frame.top + frame.height).toBeLessThanOrEqual(
+            DESIGN_BOOKLET_BASE_PAGE_SIZE.height,
+          );
         }
       }
     }
@@ -50,16 +55,20 @@ describe("design booklet content layouts", () => {
     expect(resolveDesignBookletContentLayout(page).imageFrames[0]).toEqual({
       x: 0,
       top: 0,
-      width: 841.89,
-      height: 595.28,
+      width: DESIGN_BOOKLET_BASE_PAGE_SIZE.width,
+      height: DESIGN_BOOKLET_BASE_PAGE_SIZE.height,
     });
 
     page.variant = "gallery";
     const galleryFrame = resolveDesignBookletContentLayout(page).imageFrames[0];
     expect(galleryFrame.x).toBeGreaterThan(0);
     expect(galleryFrame.top).toBeGreaterThan(0);
-    expect(galleryFrame.x + galleryFrame.width).toBeLessThan(841.89);
-    expect(galleryFrame.top + galleryFrame.height).toBeLessThan(595.28);
+    expect(galleryFrame.x + galleryFrame.width).toBeLessThan(
+      DESIGN_BOOKLET_BASE_PAGE_SIZE.width,
+    );
+    expect(galleryFrame.top + galleryFrame.height).toBeLessThan(
+      DESIGN_BOOKLET_BASE_PAGE_SIZE.height,
+    );
   });
 
   it("changes visible slots without discarding page images or copy", () => {

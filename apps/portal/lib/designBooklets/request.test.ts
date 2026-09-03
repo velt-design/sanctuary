@@ -75,6 +75,27 @@ function pngFile(
 }
 
 describe("design booklet request parsing", () => {
+  it("accepts A3 and treats a missing saved paper size as A4", () => {
+    const a3Draft = createToniDesignBookletDraft();
+    a3Draft.paperSize = "a3";
+    expect(parseDesignBookletDraft(a3Draft).paperSize).toBe("a3");
+
+    const legacyDraft = structuredClone(
+      createToniDesignBookletDraft(),
+    ) as Partial<ReturnType<typeof createToniDesignBookletDraft>>;
+    delete legacyDraft.paperSize;
+    expect(parseDesignBookletDraft(legacyDraft).paperSize).toBe("a4");
+  });
+
+  it("rejects an unknown paper size", () => {
+    const draft = {
+      ...createToniDesignBookletDraft(),
+      paperSize: "letter",
+    };
+
+    expect(() => parseDesignBookletDraft(draft)).toThrow(/paper size/i);
+  });
+
   it("strictly parses and normalizes a mixed dynamic draft", () => {
     const draft = createToniDesignBookletDraft();
     draft.customerName = "  Toni   Morgan  ";

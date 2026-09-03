@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-03 | Design Booklet Paper Geometry    | Promoted | Keep A4 as the one canonical booklet coordinate system, own exact A4/A3 landscape page boxes in one module, and proportionally transform the complete preview/PDF composition at the output boundary. Store the choice in schema-v2 draft JSON, default missing values to A4, and do not fork layouts or migrate the database. |
 | 2026-08-29 | Exact-Head CI                    | Promoted | Normalize GitHub lifecycle fields at the CI adapter boundary: trim and uppercase non-empty values and convert empty pending conclusions to `null`, then keep re-reading the exact PR head instead of rejecting or bypassing valid pending evidence. |
 | 2026-08-29 | Durable CI Recovery              | Promoted | Adapter normalization does not rewrite existing durable checkpoints. Accept a legacy blank lifecycle field only on pending CI evidence, preserve its stored hash for validation, then refresh it from the exact PR head before continuing. |
 | 2026-08-29 | Reviewer Dispatch Envelope       | Promoted | Keep immutable reviewer dispatches at or below 15,000 characters, compact duplicated packet evidence, and upgrade recognized ready legacy prompt hashes before spawning. Never attach a truncated or reconstructed native reviewer title. |
@@ -338,6 +339,17 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 
 ## Entries
+
+### 2026-09-03 - Design Booklet Paper Geometry - Scale One Canonical Composition
+
+Date: 2026-09-03
+Area: Design Booklet Paper Geometry
+Status: Promoted
+Decision or mistake: Keep the established landscape A4 design as the canonical coordinate system. A shared paper-geometry owner supplies exact A4 and A3 page boxes plus scale factors to the browser preview and PDF output. Persist the selection in schema-v2 draft JSON and normalize a missing value to A4.
+Why it mattered: Duplicated A3 layouts would drift from A4 across typography, rules, title blocks, focal images, drawing placement, and future edits. A database column would duplicate the existing draft persistence boundary.
+Current guardrail: Add paper sizes only through `paperGeometry.ts`; transform the complete composition and original embedded drawing page together; keep content and assets independent of size; require exact PDF page-box and representative preview/PDF tests.
+Promoted to: `docs/design-booklets.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/portal/lib/designBooklets/paperGeometry.test.ts`; `apps/portal/lib/designBooklets/pdf.test.ts`; `apps/portal/app/staff/design-booklets/DesignBookletPages.test.tsx`; `playwright/portal.design-booklet-workbench.spec.ts`
 
 ### 2026-08-27 - Vitest Stability - Bound Concurrency And Await React Work
 
