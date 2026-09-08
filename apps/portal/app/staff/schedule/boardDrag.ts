@@ -46,6 +46,7 @@ type ResolveBoardDropInput = {
   lanes: BoardDragLane[];
   unscheduledRect?: BoardDragRect | null;
   allowedLaneIds?: ReadonlySet<string> | null;
+  previousTarget?: BoardDropTarget | null;
 };
 
 function right(rect: BoardDragRect): number {
@@ -131,12 +132,25 @@ export function resolveBoardDropTarget(input: ResolveBoardDropInput): BoardDropT
     return { valid: false, kind: 'none', overId, reason: 'restricted' };
   }
 
-  const insertion = insertionForLane({
+  let insertion = insertionForLane({
     activeId: input.activeId,
     lane,
     overId: pointLane ? null : overId,
     point: input.point,
   });
+
+  const previous = input.previousTarget;
+  if (input.point && previous?.valid && previous.kind === 'lane' && previous.laneId === lane.id
+    && Math.abs(previous.insertionIndex - insertion.insertionIndex) === 1) {
+    const ids = lane.itemIds.filter((id) => id !== input.activeId);
+    const boundary = lane.itemRects[ids[Math.min(previous.insertionIndex, insertion.insertionIndex)]];
+    // A small dead band prevents hand jitter from alternating two destinations.
+    // The same rule is applied to freshly measured geometry at release.
+    if (boundary && Math.abs(input.point.y - verticalMidpoint(boundary)) <= 6) {
+      const overId = ids[previous.insertionIndex] ?? `lane:${lane.id}`;
+      insertion = { insertionIndex: previous.insertionIndex, placement: previous.insertionIndex < ids.length ? 'before' : 'end', overId };
+    }
+  }
 
   if (input.sourceLaneId === lane.id) {
     const currentIndex = lane.itemIds.indexOf(input.activeId);

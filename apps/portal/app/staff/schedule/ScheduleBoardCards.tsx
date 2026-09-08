@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import type { CSSProperties } from 'react';
 import JobCardShell from './ScheduleBoardCard';
 import { useDraggable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
@@ -12,7 +11,6 @@ import type { SchedulableJob } from './ScheduleClientModel';
 import { ScheduleBoardActions, type ScheduleBoardMenuAction } from './ScheduleBoardActions';
 import type { ScheduleBoardMutationNotice } from './useScheduleBoardMutationNotice';
 import type { ScheduleAttentionPresentation } from './ScheduleOperationalPresentation';
-import styles from './scheduleBoard.module.css';
 
 export type { ScheduleBoardMenuAction } from './ScheduleBoardActions';
 
@@ -33,7 +31,7 @@ function formatHours(hours: number): string {
   return `${h}h`;
 }
 
-export function formatScheduleBoardStatusLabel(status: string): string {
+function formatScheduleBoardStatusLabel(status: string): string {
   if (!status) return '—';
   if (status.toUpperCase() === 'DOWNTIME') return 'Downtime';
   const normalized = normalizeProjectStatus(status);
@@ -70,9 +68,6 @@ export function UnscheduledJobCard({
     data: { kind: 'job' },
     disabled: interactionDisabled,
   });
-  const style = {
-    opacity: isDragging ? 0.35 : 1,
-  } as CSSProperties;
 
   return (
     <JobCardShell
@@ -93,7 +88,6 @@ export function UnscheduledJobCard({
       mutationNotice={mutationNotice}
       cardRef={(node) => setNodeRef(node as any)}
       dragHandleRef={setActivatorNodeRef}
-      style={style}
     />
   );
 }
@@ -145,9 +139,6 @@ export function ScheduledJobCard({
     id,
     disabled: locked || interactionDisabled,
   });
-  const style = {
-    opacity: isDragging ? 0.35 : 1,
-  } as CSSProperties;
 
   return (
     <JobCardShell
@@ -188,7 +179,6 @@ export function ScheduledJobCard({
         onMount?.(node);
       }}
       dragHandleRef={setActivatorNodeRef}
-      style={style}
       dropTarget={dropTarget}
     />
   );
@@ -222,9 +212,6 @@ export function DowntimeCard({
   sequencePosition?: number;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useSortable({ id, disabled: interactionDisabled });
-  const style = {
-    opacity: isDragging ? 0.35 : 1,
-  } as CSSProperties;
 
   const durationHours =
     typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
@@ -263,7 +250,6 @@ export function DowntimeCard({
         onMount?.(node);
       }}
       dragHandleRef={setActivatorNodeRef}
-      style={style}
       dropTarget={dropTarget}
       sequencePosition={sequencePosition}
     />

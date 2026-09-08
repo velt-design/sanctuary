@@ -178,7 +178,7 @@ export default function ScheduleOpsFixtureClient({
           <h1>Schedule operational context</h1>
           <p>
             {fixture.installers.length} crews · {fixture.scheduleBars.length} scheduled jobs ·{' '}
-            {unscheduledJobs.length} unscheduled jobs. Drag a bar to move it; drag its right edge to change duration. Release to apply. Changes reset on refresh and never affect live jobs.
+            {unscheduledJobs.length} unscheduled jobs. {view === 'board' ? 'Use Move to place a card at the insertion line.' : 'Drag a bar to move it; drag its right edge to change duration.'} Release to apply. Changes reset on refresh and never affect live jobs.
           </p>
         </div>
         <div className={styles.headerActions}>

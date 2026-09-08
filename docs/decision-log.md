@@ -5478,3 +5478,7 @@ The owner found the mandatory Save timing modal disruptive after every move and 
 ## 2026-09-08 — Preview pin lifecycle
 
 The sample Gantt's Unpin callback remained inert after move/resize was connected. It now changes the sample row to floating and uses the shared engine to reflow its queue. The browser gesture test covers moving, resizing and then unpinning back to flexible dates with no staff writes; a pin icon alone is not proof of the complete pin lifecycle.
+
+## 2026-09-08 — Calm Board drag ownership
+
+Board replaced a full card with a different compact overlay, faded the original, changed multiple target highlights and removed the overlay instantly on release. The card surface was extracted byte-for-byte before behavior changes. A dedicated drag overlay now owns an inert visual snapshot and 160 ms landing, while the source retains its size and keyboard focus. One insertion line and six-pixel midpoint tolerance stabilize the cue; unchanged targets no longer rerender the Board. Real keyboard QA also exposed stale translated-rectangle targeting, so keyboard placement now uses the current key delta. Fresh release geometry, reduced motion, exact queue placement and existing save/recovery boundaries remain required checks.

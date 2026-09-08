@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { boardEdgeScrollDelta, dragPointerFromEvent } from './useScheduleBoardDragController';
 
 describe('Schedule Board drag controller geometry', () => {
+  it('uses the current keyboard delta when the translated rectangle still describes the previous frame', () => {
+    const initial = { left: 100, top: 200, width: 240, height: 120 };
+    expect(dragPointerFromEvent({
+      activatorEvent: {}, delta: { x: 0, y: 160 },
+      active: { id: 'job', rect: { current: { initial, translated: initial } } }, over: null,
+    } as any)).toEqual({ x: 220, y: 420 });
+  });
   it('tracks the pointer from its activation point instead of the dragged card centre', () => {
     const point = dragPointerFromEvent({
       activatorEvent: { clientX: 118, clientY: 246 },

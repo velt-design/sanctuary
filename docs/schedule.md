@@ -176,13 +176,21 @@ Foundation layout.
 Board job cards keep project-open, move, and actions as separate sibling
 controls. Pointer and keyboard drag activation belongs only to the labelled
 Move control; the card container is not a nested interactive surface. Board
-drag targeting is pointer-owned, keeps the source card anchored, renders one
-overlay and a non-layout-shifting insertion cue, and names the exact one-based
-queue position. Release remeasures current geometry and commits that valid
+drag targeting is pointer-owned, keeps a quiet source placeholder at the same
+size, and lifts a visual copy of the complete card without changing its dimensions
+or content. One thin insertion line replaces destination-card outlines and
+repeating labels; the live region still names the exact one-based queue position.
+Six pixels of midpoint tolerance prevent tiny pointer reversals from alternating
+adjacent slots. Release remeasures current geometry using the same tolerance and commits that valid
 destination, falling back to the last visible valid cue only when end-event
 collision data disappears. The zero-based Schedule V2 command position is
 derived by the pure `scheduleBoardOrder.ts` owner after removing the moving
-card from its source lane. Same-position/unscheduled drops, hidden crews, and
+card from its source lane. The floating copy lands over the accepted card in
+160 ms while that card is hidden, then hands visibility back without a fade.
+Reduced-motion preferences remove landing and keyboard-overlay animation.
+Keyboard coordinates use the current key delta rather than a potentially stale
+translated rectangle, and the source keeps focus throughout the gesture.
+Same-position/unscheduled drops, hidden crews, and
 cross-crew downtime moves are rejected before a command. Mounted Board
 placement gestures remain available while earlier placements persist:
 disjoint crew resources run concurrently and overlapping lane/project work
@@ -268,7 +276,7 @@ scroll anchoring, focus return, and client-owned command callbacks.
 Gantt exposes an explicit **View unscheduled jobs** route back to Board with
 the queue expanded. Releasing a pointer drag or resize invokes the existing
 command immediately, without a routine confirmation modal. The live drag
-preview shows the requested timing and “Release to save”. Crew calendars,
+preview shows the requested timing and "Release to save". Crew calendars,
 holidays, closures and affected-job dates remain server-calculated. Only a
 server response identifying affected client commitments opens the existing
 review, re-preview and confirmation flow. Stale gestures are cancelled before

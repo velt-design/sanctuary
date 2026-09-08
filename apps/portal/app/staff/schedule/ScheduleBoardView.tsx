@@ -8,7 +8,6 @@ import {
   closestCenter,
   DndContext,
   type CollisionDetection,
-  DragOverlay,
   pointerWithin,
   useDroppable,
 } from '@dnd-kit/core';
@@ -23,12 +22,12 @@ import timelineStyles from './scheduleTimeline.module.css';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
 import {
   DowntimeCard,
-  formatScheduleBoardStatusLabel,
   ScheduledJobCard,
   type ScheduleBoardMenuAction,
   UnscheduledJobCard,
 } from './ScheduleBoardCards';
 import ScheduleCrewFilter from './ScheduleCrewFilter';
+import ScheduleBoardDragOverlay from './ScheduleBoardDragOverlay';
 import type { BoardDropTarget } from './boardDrag';
 import { useScheduleCrewVisibility } from './useScheduleCrewVisibility';
 import {
@@ -296,10 +295,6 @@ export default function ScheduleBoardView({
     onDrop,
   });
   const overLaneId = boardDropTarget?.valid && boardDropTarget.kind === 'lane' ? boardDropTarget.laneId : null;
-  const overlayJob = activeDragId ? schedulable.jobsById.get(activeDragId) ?? null : null;
-  const overlayScheduleItem = activeDragId ? scheduleItemById.get(activeDragId) ?? null : null;
-  const overlayTitle = overlayJob?.projectName ?? (overlayScheduleItem?.itemType === 'downtime' ? 'Downtime' : 'Schedule item');
-  const overlayDescriptor = overlayJob?.descriptor ?? (overlayScheduleItem?.downtimeNote || 'Crew unavailable');
   const dropDescription = activeDragId
     ? describeDropTarget({
         target: boardDropTarget,
@@ -628,12 +623,12 @@ export default function ScheduleBoardView({
                         <div
                           className={styles.cardList}
                           data-drop-end={insertionAtEnd ? 'true' : undefined}
-                          data-drop-end-position={insertionAtEnd ? ids.length + 1 : undefined}
+                          data-drop-end-position={insertionAtEnd && laneDropTarget ? laneDropTarget.insertionIndex + 1 : undefined}
                         >
                           {cards}
                         </div>
                       ) : (
-                        <div className={styles.emptyLane}>
+                        <div className={styles.emptyLane} data-drop-end={insertionAtEnd ? 'true' : undefined}>
                           <div className={styles.emptyLaneIcon} aria-hidden="true">
                             ↓
                           </div>
@@ -650,25 +645,7 @@ export default function ScheduleBoardView({
         </section>
       </div>
 
-      <DragOverlay dropAnimation={null}>
-        {activeDragId ? (
-          <div
-            className={styles.dragOverlay}
-            data-board-drag-overlay="true"
-            data-valid={boardDropTarget?.valid ? 'true' : 'false'}
-          >
-            <div className={styles.jobTitle}>{overlayTitle}</div>
-            <div className={styles.jobDescriptor}>{overlayDescriptor}</div>
-            {overlayJob ? (
-              <div className={styles.badgesRow}>
-                <span className={styles.statusPill}>{formatScheduleBoardStatusLabel(overlayJob.status)}</span>
-                <span className={styles.durationPill}>{overlayJob.durationLabel}</span>
-              </div>
-            ) : null}
-            <div className={styles.dragDestination}>{dropDescription}</div>
-          </div>
-        ) : null}
-      </DragOverlay>
+      <ScheduleBoardDragOverlay activeId={activeDragId} target={boardDropTarget} />
     </DndContext>
   );
 }
