@@ -388,6 +388,7 @@ unscheduled jobs, and an optional 108-bar large schedule. Use
 responsive and performance evidence without creating or mutating shared
 Schedule records. Board drops and Gantt move/resize releases update only
 in-memory sample rows and reflow them through the shared scheduling engine.
+Unpin also updates the sample row and returns the job to flexible queue placement.
 Bars derive from those rows, so switching views retains the requested dates;
 refresh resets the sample. Other project/customer commands remain inert.
 Sample dates are sequential working days per crew. The browser gate verifies

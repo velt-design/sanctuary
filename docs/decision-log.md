@@ -5474,3 +5474,7 @@ The owner preview originally passed layout checks but used inert Gantt callbacks
 ## 2026-09-08 — Routine Gantt gestures save on release
 
 The owner found the mandatory Save timing modal disruptive after every move and resize. Pointer release now sends the checked gesture directly to the existing mutation owner. The server-owned affected-client-commitment review remains; stale gesture cancellation, optimistic intent, ambiguous-save recovery and revision guards are unchanged. The unused local review component/hook and preview-only button were removed after consumer and dead-code checks.
+
+## 2026-09-08 — Preview pin lifecycle
+
+The sample Gantt's Unpin callback remained inert after move/resize was connected. It now changes the sample row to floating and uses the shared engine to reflow its queue. The browser gesture test covers moving, resizing and then unpinning back to flexible dates with no staff writes; a pin icon alone is not proof of the complete pin lifecycle.

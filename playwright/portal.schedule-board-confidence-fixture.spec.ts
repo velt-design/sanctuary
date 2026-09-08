@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 const FIXTURE_PATH = '/qa/schedule-ops-fixture?view=board&scale=standard';
 const GANTT_FIXTURE_PATH = '/qa/schedule-ops-fixture?view=gantt&scale=standard';
 
-test('moves a sample Gantt bar in both directions and extends it without staff writes', async ({ page }) => {
+test('moves, extends and unpins a sample Gantt bar without staff writes', async ({ page }) => {
   const writes: string[] = [];
   page.on('request', (request) => {
     if (request.url().includes('/api/staff/') && request.method() !== 'GET') writes.push(request.url());
@@ -51,6 +51,13 @@ test('moves a sample Gantt bar in both directions and extends it without staff w
   await page.getByRole('button', { name: 'Board', exact: true }).click();
   await page.getByRole('button', { name: 'Gantt', exact: true }).click();
   await expect(bar).toHaveAttribute('aria-label', /7d/);
+  await gesture(dayWidth * 5);
+  await expect(bar).toHaveAttribute('data-pinned', 'true');
+  await expect(bar).toHaveAttribute('aria-label', /Forecast 10 Aug/);
+  await bar.press('Enter');
+  await page.getByRole('button', { name: /^Unpin/ }).click();
+  await expect(bar).not.toHaveAttribute('data-pinned', 'true');
+  await expect(bar).toHaveAttribute('aria-label', /Forecast 03 Aug.*7d/);
   await page.reload();
   await expect(bar).toHaveAttribute('aria-label', originalLabel!);
   expect(writes).toEqual([]);

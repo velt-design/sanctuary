@@ -99,6 +99,15 @@ export default function ScheduleOpsFixtureClient({
       : row));
     applyPreviewLanes(next);
   };
+  const handleUnpin = (id: string) => {
+    const item = scheduleItemById.get(id);
+    if (!item || item.actualStartDate || item.jobStatus !== 'not_started') return;
+    const next = new Map(laneItems);
+    next.set(item.installerId, (next.get(item.installerId) ?? []).map((row) => row.id === id
+      ? { ...row, mode: 'floating', updatedAt: new Date().toISOString() }
+      : row));
+    applyPreviewLanes(next);
+  };
 
   const handleFixtureDrop = (activeId: string, drop: ScheduleBoardDrop) => {
     if (drop.kind === 'unscheduled') return;
@@ -245,7 +254,7 @@ export default function ScheduleOpsFixtureClient({
           onOpenProjectPack={noMutation}
           onOpenCommitmentEdit={noMutation}
           onOpenPinEdit={noMutation}
-          onUnpinScheduleItem={noMutation}
+          onUnpinScheduleItem={handleUnpin}
           onAckClientUpdate={noMutation}
           onMovePin={handleTimingChange}
           onResizePin={handleTimingChange}
