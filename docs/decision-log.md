@@ -5496,3 +5496,5 @@ PR #114's required production audit detected GHSA-px8p-9vwx-vf98 in existing ffl
 ## 2026-09-08 — Guarded writes include legacy permissions
 
 PR #114 review found that guarding the new server command did not revoke older browser table/RPC grants. A forward permission migration now closes direct job/queue/downtime writes, every browser Schedule RPC, crew revision/anchor edits and cascading crew deletion, preserving metadata fields needed by the existing admin API. Reproduce historical grants in the database harness and prove real authenticated denial as well as successful guarded saves. Inspect unresolved review threads before announcing merge readiness; green CI alone does not resolve review findings.
+
+Permission review must also cover FK cascades: a browser-authorized parent-project DELETE does not require DELETE permission on its scheduled child. The revision trigger now denies browser SET ROLE callers, including cascades; current_user alone would identify the definer rather than the caller. Prove this with an authenticated-role parent deletion inside a rollback-wrapped staging fixture, not against a staff project.

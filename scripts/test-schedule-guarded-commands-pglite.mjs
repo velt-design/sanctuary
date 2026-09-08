@@ -40,6 +40,11 @@ try {
   assert.equal((await database.query("select has_table_privilege('authenticated','public.scheduled_jobs','update') as allowed")).rows[0].allowed, true);
   await database.exec(boundaryMigration);
   await database.exec(boundaryMigration);
+  const cascadeMigration = readFileSync(new URL('../supabase/migrations/20260908000003_schedule_cascade_write_boundary.sql', import.meta.url), 'utf8');
+  await database.exec('begin;');
+  await database.exec(cascadeMigration);
+  await database.exec('rollback;');
+  await database.exec(cascadeMigration);
   await database.exec(`
     insert into public.schedule_crews(id,name) values ('${crew}','First'), ('${otherCrew}','Other');
     insert into public.projects(id) values ('${project}');
@@ -80,6 +85,8 @@ try {
   await assert.rejects(database.query('update public.schedule_crews set schedule_revision=0 where id=$1', [crew]), { code: '42501' });
   await assert.rejects(database.query('update public.schedule_crews set queue_anchor_date=null where id=$1', [crew]), { code: '42501' });
   await assert.rejects(database.query('delete from public.schedule_crews where id=$1', [crew]), { code: '42501' });
+  await assert.rejects(database.query('delete from public.projects where id=$1', [project]), { code: '42501' });
+  assert.equal((await database.query('select count(*) as n from public.scheduled_jobs where id=$1', [job])).rows[0].n, 1, 'parent deletion must not cascade around Schedule write protection');
   await database.query('update public.schedule_crews set name=$1 where id=$2', ['Crew metadata remains editable', crew]);
   const beforeSettings = await revision();
   await database.query('update public.schedule_crews set base_available_date=$1 where id=$2', ['2026-10-01', crew]);
