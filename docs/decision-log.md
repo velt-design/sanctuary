@@ -5488,3 +5488,7 @@ Owner feedback found the thin insertion line too subtle. The destination now has
 ## 2026-09-08 — Release comparison query grouping
 
 The first production Schedule migration attempt rolled back because its extra data-preservation assertion combined EXCEPT and UNION ALL without grouping the current snapshot, causing a false mismatch. The schema and ledger were verified absent after rollback. Group the full compared snapshot as a derived table, rehearse the entire apply wrapper in rollback, then apply. The corrected wrapper passed and proved existing operational schedule fields unchanged.
+
+## 2026-09-08 — Schedule release dependency audit
+
+PR #114's required production audit detected GHSA-px8p-9vwx-vf98 in existing fflate dependencies. The lockfile updates only the compatible patched releases 0.8.2 to 0.8.3 and 0.6.10 to 0.6.11. Production audit now reports zero vulnerabilities; the toolchain audit retains only the two approved xlsx exceptions. Keep the security gate blocking and rerun current-revision CI after a dependency correction.
