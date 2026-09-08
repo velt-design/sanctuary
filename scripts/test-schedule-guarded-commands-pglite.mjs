@@ -30,6 +30,16 @@ try {
   await database.exec('rollback;');
   await database.exec(migration);
   await database.exec(migration);
+  // Reproduce the older authenticated table/RPC grants before applying the
+  // forward correction; default-empty grants would hide this bypass.
+  await database.exec('grant select, insert, update, delete on all tables in schema public to authenticated;');
+  const boundaryMigration = readFileSync(new URL('../supabase/migrations/20260908000002_schedule_browser_write_boundary.sql', import.meta.url), 'utf8');
+  await database.exec('begin;');
+  await database.exec(boundaryMigration);
+  await database.exec('rollback;');
+  assert.equal((await database.query("select has_table_privilege('authenticated','public.scheduled_jobs','update') as allowed")).rows[0].allowed, true);
+  await database.exec(boundaryMigration);
+  await database.exec(boundaryMigration);
   await database.exec(`
     insert into public.schedule_crews(id,name) values ('${crew}','First'), ('${otherCrew}','Other');
     insert into public.projects(id) values ('${project}');
@@ -62,6 +72,18 @@ try {
   await assert.rejects(command(patch('2026-09-28','2026-10-06',6), { [crew]: beforeCalendar }), { code: 'PT409' });
   await assert.rejects(command(patch('2026-09-28','2026-10-06',6), {}), { code: 'PT409' });
   await database.exec('set role authenticated;');
+  for (const table of ['scheduled_jobs', 'crew_schedule_items', 'crew_downtimes']) {
+    assert.equal((await database.query(`select has_any_column_privilege(current_user,'public.${table}','update') as allowed`)).rows[0].allowed, false);
+    await assert.rejects(database.query(`update public.${table} set id=id where false`), { code: '42501' });
+  }
+  await assert.rejects(database.query('select public.schedule_v2_apply_job_patch($1,$2::jsonb,$3::jsonb)', [job, JSON.stringify({ forecast_start: '2026-10-01' }), '[]']), { code: '42501' });
+  await assert.rejects(database.query('update public.schedule_crews set schedule_revision=0 where id=$1', [crew]), { code: '42501' });
+  await assert.rejects(database.query('update public.schedule_crews set queue_anchor_date=null where id=$1', [crew]), { code: '42501' });
+  await assert.rejects(database.query('delete from public.schedule_crews where id=$1', [crew]), { code: '42501' });
+  await database.query('update public.schedule_crews set name=$1 where id=$2', ['Crew metadata remains editable', crew]);
+  const beforeSettings = await revision();
+  await database.query('update public.schedule_crews set base_available_date=$1 where id=$2', ['2026-10-01', crew]);
+  assert.ok(await revision() > beforeSettings, 'permitted crew settings must still invalidate old snapshots');
   await assert.rejects(command(patch('2026-09-28','2026-10-06',6), { [crew]: current }), { code: '42501' });
   await database.exec('reset role;');
   await database.exec('grant all on all tables in schema public to service_role; set role service_role;');
@@ -70,7 +92,7 @@ try {
   const itemId = (await database.query('select id from public.crew_schedule_items where job_id = $1', [job])).rows[0].id;
   await database.query('select public.schedule_v2_guarded_command($1,$2::jsonb,$3::jsonb)', ['schedule_v2_unassign_job', JSON.stringify({ p_scheduled_job_id: job, p_job_item_id: itemId, p_positions: [], p_forecast_updates: [] }), JSON.stringify(guardPayload({ [crew]: await revision() }))]);
   assert.equal((await database.query('select queue_anchor_date from public.schedule_crews where id = $1', [crew])).rows[0].queue_anchor_date, null);
-  console.log('schedule-db: migration rollback/replay, persisted forward/inverse dates, stale writer rejection, crew scope rollback and RPC access passed');
+  console.log('schedule-db: migration rollback/replay, persisted dates, stale writer rejection, crew scope rollback, browser write denial, protected revisions and service-role RPC access passed');
 } finally {
   await database.close();
 }
