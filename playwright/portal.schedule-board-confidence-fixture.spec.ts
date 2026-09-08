@@ -39,8 +39,6 @@ test('moves a sample Gantt bar in both directions and extends it without staff w
     await page.mouse.move(x + delta, y, { steps: 12 });
     await page.mouse.up();
     const review = page.getByRole('dialog', { name: 'Review Gantt timing change' });
-    await expect(review).toBeVisible();
-    await review.getByRole('button', { name: 'Save timing', exact: true }).click();
     await expect(review).toHaveCount(0);
   };
   await gesture(dayWidth * 5);

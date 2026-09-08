@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import ScheduleBoardView, { type ScheduleBoardMenuAction } from '@/app/staff/schedule/ScheduleBoardView';
 import ScheduleGanttView from '@/app/staff/schedule/ScheduleGanttView';
-import ScheduleGanttTimingReview from '@/app/staff/schedule/ScheduleGanttTimingReview';
 import type { ScheduleBoardMutationNotice } from '@/app/staff/schedule/useScheduleBoardMutationNotice';
 import { addDaysYmd } from '@/lib/scheduling/date';
 import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
@@ -29,7 +28,6 @@ export default function ScheduleOpsFixtureClient({
   const [query, setQuery] = useState('');
   const [unscheduledCollapsed, setUnscheduledCollapsed] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [reviewOpen, setReviewOpen] = useState(false);
   const [laneItems, setLaneItems] = useState(() => new Map(
     Array.from(fixture.laneItems, ([crewId, items]) => [crewId, items.map((item) => ({ ...item }))]),
   ));
@@ -171,15 +169,10 @@ export default function ScheduleOpsFixtureClient({
           <h1>Schedule operational context</h1>
           <p>
             {fixture.installers.length} crews · {fixture.scheduleBars.length} scheduled jobs ·{' '}
-            {unscheduledJobs.length} unscheduled jobs. Drag a bar to move it; drag its right edge to change duration, then choose Save timing. Changes reset on refresh and never affect live jobs.
+            {unscheduledJobs.length} unscheduled jobs. Drag a bar to move it; drag its right edge to change duration. Release to apply. Changes reset on refresh and never affect live jobs.
           </p>
         </div>
         <div className={styles.headerActions}>
-          {view === 'gantt' ? (
-            <button type="button" className={styles.reviewButton} onClick={() => setReviewOpen(true)}>
-              Preview change review
-            </button>
-          ) : null}
           <div className={styles.viewControls} role="group" aria-label="Schedule fixture view">
             <button type="button" aria-pressed={view === 'board'} onClick={() => setView('board')}>
               Board
@@ -258,26 +251,6 @@ export default function ScheduleOpsFixtureClient({
           onResizePin={handleTimingChange}
         />
       )}
-      {reviewOpen ? (
-        <ScheduleGanttTimingReview
-          change={{
-            mode: 'move',
-            scheduleItemId: 'fixture-schedule-0',
-            itemUpdatedAt: '2026-07-31T00:00:00.000Z',
-            projectName: fixture.jobsById.get('fixture-schedule-0')?.projectName ?? 'Fixture job',
-            identityDetail: fixture.jobsById.get('fixture-schedule-0')?.identityDetail ?? null,
-            crewName: fixture.installers[0]?.name ?? 'Fixture crew',
-            currentStart: fixture.today,
-            currentEnd: fixture.today,
-            currentDurationDays: 1,
-            requestedStart: addDaysYmd(fixture.today, 3),
-            requestedDurationDays: 1,
-          }}
-          stale={false}
-          onCancel={() => setReviewOpen(false)}
-          onConfirm={() => setReviewOpen(false)}
-        />
-      ) : null}
     </div>
   );
 }

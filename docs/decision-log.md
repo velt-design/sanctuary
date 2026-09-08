@@ -4260,7 +4260,7 @@ agenda from the same Gantt model, retain essential view context, and route
 schedule changes to Board; do not create another read model or phone write path.
 Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`
 Related docs/tests:
-`apps/portal/app/staff/schedule/useScheduleGanttTimingReview.ts`;
+`apps/portal/app/staff/schedule/useScheduleGanttTimingReview.ts` (retired on 2026-09-08 when routine drag confirmation was removed);
 `apps/portal/app/staff/schedule/ScheduleGanttCompactView.tsx`;
 `apps/portal/app/staff/schedule/ScheduleGanttView.test.tsx`;
 `playwright/portal.schedule-tasks-ui.spec.ts`;
@@ -5470,3 +5470,7 @@ Read-time recomputation moved overdue work and extended started jobs from an unc
 ## 2026-09-08 — Schedule previews must exercise the requested gestures
 
 The owner preview originally passed layout checks but used inert Gantt callbacks and stale sample bars after Board moves. Preview move/resize now applies to in-memory rows with the shared reflow engine; browser checks confirm both drag directions, exact duration, view switching and reload reset with zero staff writes. This exposed a shared resize bug: a saved Sunday end used the Monday boundary even though its visible handle ended on Friday. Resize snapping now counts from the last visible day. A rendered fixture alone is not evidence that its editing journey works.
+
+## 2026-09-08 — Routine Gantt gestures save on release
+
+The owner found the mandatory Save timing modal disruptive after every move and resize. Pointer release now sends the checked gesture directly to the existing mutation owner. The server-owned affected-client-commitment review remains; stale gesture cancellation, optimistic intent, ambiguous-save recovery and revision guards are unchanged. The unused local review component/hook and preview-only button were removed after consumer and dead-code checks.

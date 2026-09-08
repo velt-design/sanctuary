@@ -28,7 +28,7 @@ A deliberate start-date edit or Gantt move fixes that start. Flexible queue work
 
 The Gantt range includes four complete weeks before the current Monday and twelve weeks forward (112 calendar days). It initially scrolls around today and preserves the user's position on refresh. Hidden weekends do not change the target weekday of an inverse drag.
 
-Conflicts appear in a collapsible review panel naming both jobs. Staff can change either date, change crew, or keep the exact overlap. Acceptance is stored in `scheduled_jobs.accepted_overlaps` using crew, job IDs and both date intervals; a changed interval produces a new issue. Flexible work without a client commitment reflows without a redundant confirmation. The timing review uses **Save timing**, because a command with no affected commitment saves immediately.
+Conflicts appear in a collapsible review panel naming both jobs. Staff can change either date, change crew, or keep the exact overlap. Acceptance is stored in `scheduled_jobs.accepted_overlaps` using crew, job IDs and both date intervals; a changed interval produces a new issue. Flexible work without a client commitment reflows without a redundant confirmation. Gantt moves and resizes save on release; only affected client commitments require a review.
 
 Apply `20260908000001_schedule_guarded_commands.sql` before deploying these APIs, then verify the Schedule readiness endpoint. Browser recovery records retain intent, not a server commit receipt; an ambiguous request requires review against refreshed saved data. Production rollout and migrated authenticated QA remain release gates.
 
@@ -266,15 +266,13 @@ grouped controls, and `ScheduleGanttTimeline.tsx` owns timeline presentation.
 scroll anchoring, focus return, and client-owned command callbacks.
 
 Gantt exposes an explicit **View unscheduled jobs** route back to Board with
-the queue expanded. A pointer drag or resize ends in a local review dialog
-that names the project, customer/site, crew, authoritative current timing, and
-the requested start and duration before invoking the existing command
-callback. The browser does not claim an exact proposed finish: crew calendars,
-holidays, closures, and affected-job dates remain server-calculated. **Check
-impact** enters the unchanged server-owned affected-job preview, immediate
-re-preview, explicit confirmation, optimistic rollback, and reconciliation
-lifecycle. If the underlying item changes while the local review is open,
-impact checking is disabled and staff must preview again.
+the queue expanded. Releasing a pointer drag or resize invokes the existing
+command immediately, without a routine confirmation modal. The live drag
+preview shows the requested timing and “Release to save”. Crew calendars,
+holidays, closures and affected-job dates remain server-calculated. Only a
+server response identifying affected client commitments opens the existing
+review, re-preview and confirmation flow. Stale gestures are cancelled before
+dispatch; uncertain-save recovery and database revision guards still apply.
 
 At narrow widths the Unscheduled queue stacks above one horizontally focused
 crew lane; collapsing it reclaims the queue body so the first crew lane can
@@ -365,7 +363,7 @@ concurrency, out-of-order response replay, proportional
 auto-scroll, blocked uncommittable gestures, grouped actions, silent normal
 Board persistence, resource-scoped action-required recovery, exact snapshot placement
 matching, Board control semantics, shared job
-identity/search presentation, server-authoritative Gantt timing review,
+identity/search presentation, Gantt save-on-release and affected-commitment review,
 stale-impact disabling, bounded Gantt project loading, phone/zoom agenda mode,
 and Gantt keyboard/responsive behavior. With current staff test credentials,
 also run the authenticated non-mutating browser review:
@@ -388,7 +386,7 @@ presenters with long customer/site identity, nine crews, conflicts, 12
 unscheduled jobs, and an optional 108-bar large schedule. Use
 `?view=board|gantt&scale=standard|large` for deterministic
 responsive and performance evidence without creating or mutating shared
-Schedule records. Board drops and Gantt move/resize confirmation update only
+Schedule records. Board drops and Gantt move/resize releases update only
 in-memory sample rows and reflow them through the shared scheduling engine.
 Bars derive from those rows, so switching views retains the requested dates;
 refresh resets the sample. Other project/customer commands remain inert.

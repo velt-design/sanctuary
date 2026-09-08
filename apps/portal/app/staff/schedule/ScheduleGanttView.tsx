@@ -42,11 +42,9 @@ import {
 } from './ScheduleGanttModel';
 import ScheduleGanttTimeline, { type GanttEmptyState } from './ScheduleGanttTimeline';
 import ScheduleGanttCompactView from './ScheduleGanttCompactView';
-import ScheduleGanttTimingReview from './ScheduleGanttTimingReview';
 import ScheduleGanttToolbar, { type GanttAttentionMode } from './ScheduleGanttToolbar';
 import { useScheduleCrewVisibility } from './useScheduleCrewVisibility';
 import { useScheduleGanttLayoutMode } from './useScheduleGanttLayoutMode';
-import { useScheduleGanttTimingReview } from './useScheduleGanttTimingReview';
 import { useScheduleGanttInitialScroll } from './useScheduleGanttInitialScroll';
 import sharedStyles from './schedule.module.css';
 import ganttStyles from './scheduleGantt.module.css';
@@ -221,12 +219,8 @@ export default function ScheduleGanttView({
     [scheduleBars],
   );
   const scheduleBarByIdRef = useRef(scheduleBarById);
-  const timingReview = useScheduleGanttTimingReview({
-    scheduleItemById,
-    scheduleBarById,
-    onMovePin,
-    onResizePin,
-  });
+  const timingCallbacksRef = useRef({ onMovePin, onResizePin });
+  useEffect(() => { timingCallbacksRef.current = { onMovePin, onResizePin }; }, [onMovePin, onResizePin]);
 
   const [zoomWeeks, setZoomWeeks] = useState<GanttZoomWeeks>(GANTT_DEFAULT_ZOOM_WEEKS);
   const [ganttDensity, setGanttDensity] = useState<GanttDensity>(() => readGanttDensityPreference());
@@ -636,19 +630,7 @@ export default function ScheduleGanttView({
       if (ganttDrag.mode === 'move') {
         const requested = addDaysYmd(ganttDrag.startDate, deltaDays);
         const snapped = snapToWeekdayYmdDirectional(requested, deltaDays);
-        timingReview.open({
-          mode: 'move',
-          scheduleItemId: ganttDrag.id,
-          itemUpdatedAt: ganttDrag.itemUpdatedAt,
-          projectName: activeGanttDragRow?.projectName ?? currentBar.projectName,
-          identityDetail: activeGanttDragRow?.identityDetail ?? null,
-          crewName: activeGanttDragRow?.crewName ?? '',
-          currentStart: ganttDrag.startDate,
-          currentEnd: ganttDrag.endDate,
-          currentDurationDays: Math.max(1, ganttDrag.durationDays),
-          requestedStart: snapped,
-          requestedDurationDays: Math.max(1, ganttDrag.durationDays),
-        });
+        timingCallbacksRef.current.onMovePin(ganttDrag.id, snapped, Math.max(1, ganttDrag.durationDays));
         return;
       }
       const baseStart = item.forecastStart ?? ganttDrag.startDate;
@@ -656,19 +638,7 @@ export default function ScheduleGanttView({
       const requestedEnd = addDaysYmd(ganttDrag.endDate, deltaDays);
       const snappedEnd = snapToWeekdayYmdDirectional(requestedEnd, deltaDays);
       const nextDuration = Math.max(1, workingDaysInclusive(snappedStart, snappedEnd));
-      timingReview.open({
-        mode: 'resize',
-        scheduleItemId: ganttDrag.id,
-        itemUpdatedAt: ganttDrag.itemUpdatedAt,
-        projectName: activeGanttDragRow?.projectName ?? currentBar.projectName,
-        identityDetail: activeGanttDragRow?.identityDetail ?? null,
-        crewName: activeGanttDragRow?.crewName ?? '',
-        currentStart: ganttDrag.startDate,
-        currentEnd: ganttDrag.endDate,
-        currentDurationDays: Math.max(1, ganttDrag.durationDays),
-        requestedStart: snappedStart,
-        requestedDurationDays: nextDuration,
-      });
+      timingCallbacksRef.current.onResizePin(ganttDrag.id, snappedStart, nextDuration);
     };
     const onCancel = () => {
       const moved = ganttDragMovedRef.current;
@@ -690,7 +660,7 @@ export default function ScheduleGanttView({
       window.removeEventListener('pointercancel', onCancel);
       window.removeEventListener('blur', onCancel);
     };
-  }, [activeGanttDragRow, gantt.axis.baseDayPx, gantt.rangeDays, ganttDrag, scheduleMode, timingReview.open]);
+  }, [gantt.axis.baseDayPx, gantt.rangeDays, ganttDrag, scheduleMode]);
 
   useEffect(() => {
     if (!ganttLabelResize) return;
@@ -815,7 +785,7 @@ export default function ScheduleGanttView({
 
   const shouldBlockGanttClick = () => typeof window !== 'undefined' && Date.now() < ganttClickBlockUntilRef.current;
   const toggleCrewCollapsed = (installerId: string) => setCollapsedCrews((prev) => ({ ...prev, [installerId]: !prev[installerId] }));
-  const controlsDisabled = Boolean(ganttDrag || ganttLabelResize || timingReview.request);
+  const controlsDisabled = Boolean(ganttDrag || ganttLabelResize);
   const handleAttentionModeChange = (next: GanttAttentionMode) => {
     if (controlsDisabled) return;
     setGanttPopover(null);
@@ -960,7 +930,7 @@ export default function ScheduleGanttView({
         <div className={styles.ganttDragTooltip} style={{ left: ganttDragPointer.x + 14, top: ganttDragPointer.y + 14 }}>
           {ganttDragFeedback.mode === 'move' ? <div>Requested start: {formatShortDate(ganttDragFeedback.startDate)}</div> : null}
           <div>Requested duration: {ganttDragFeedback.durationDays}d</div>
-          <div>Server checks finish and impact</div>
+          <div>Release to save</div>
         </div>
       ) : null}
       {ganttPopover && ganttPopoverDetails ? (
@@ -971,14 +941,6 @@ export default function ScheduleGanttView({
           onClose={closeGanttPopover}
           onKeyDown={handleGanttPopoverKeyDown}
           focusRef={ganttPopoverRef}
-        />
-      ) : null}
-      {timingReview.request ? (
-        <ScheduleGanttTimingReview
-          change={timingReview.request}
-          stale={timingReview.stale}
-          onCancel={timingReview.cancel}
-          onConfirm={timingReview.confirm}
         />
       ) : null}
     </div>
