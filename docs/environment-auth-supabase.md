@@ -301,6 +301,8 @@ GET /api/staff/v1/schedule/readiness
 
 The route should return `200` before schedule changes are considered ready.
 
+On 2026-09-08, `20260908000001_schedule_guarded_commands.sql` was rollback-rehearsed and applied to staging `tnsiprehuldksnuowubv` and production `iytanftukulcnavossmd`. The canonical-LF SHA-256 is `b1f10de448f0c2d58d8fa3816a6fe0113c425d9a06c61529a4f8acdf9ff91a3e`; both exact-body ledger entries have MD5 `91ee11fc5626ad713b37534bfa27846f`. Completed production physical backup `1609484164` was confirmed first. The production transaction compared all existing crew, job, queue-item and downtime fields before/after under table locks, excluding only the newly introduced fields, and proved the migration did not change operational schedule data. Production's five guarded/revision function bodies and grants match migrated staging. The matching application release still requires green CI and authenticated production readiness postflight; schema application alone is not app deployment.
+
 ## Sanctuary AI Task-Ledger Database Setup
 
 PR-AI-004 and PR-AI-005 add the ordered forward migrations `20260818000002_ai_task_ledger.sql` and `20260818000003_ai_approval_envelopes.sql`. They require the existing Supabase `auth.users`, `public.projects`, `public.has_portal_access()`, and `public.is_portal_admin()` boundaries plus `pgcrypto` in the protected `extensions` schema. The migrations create only synthetic, effect-free, zero-cost task and exact-approval state; they do not configure a model provider, worker, OpenClaw, customer/project mutation, external communication, or rollout.

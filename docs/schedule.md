@@ -30,7 +30,7 @@ The Gantt range includes four complete weeks before the current Monday and twelv
 
 Conflicts appear in a collapsible review panel naming both jobs. Staff can change either date, change crew, or keep the exact overlap. Acceptance is stored in `scheduled_jobs.accepted_overlaps` using crew, job IDs and both date intervals; a changed interval produces a new issue. Flexible work without a client commitment reflows without a redundant confirmation. Gantt moves and resizes save on release; only affected client commitments require a review.
 
-Apply `20260908000001_schedule_guarded_commands.sql` before deploying these APIs, then verify the Schedule readiness endpoint. Browser recovery records retain intent, not a server commit receipt; an ambiguous request requires review against refreshed saved data. Production rollout and migrated authenticated QA remain release gates.
+Apply `20260908000001_schedule_guarded_commands.sql` before deploying these APIs, then verify the Schedule readiness endpoint. On 2026-09-08 the exact migration was applied and verified on staging and production; migrated staging passed authenticated Board reorder, Gantt dates across reload, Unpin, and two-session concurrent-write rejection. See `docs/environment-auth-supabase.md` for deployment evidence. Browser recovery records retain intent, not a server commit receipt; an ambiguous request requires review against refreshed saved data. Matching application CI, promotion and production readiness postflight remain release gates.
 
 ## V2 Write Model
 
