@@ -178,8 +178,10 @@ controls. Pointer and keyboard drag activation belongs only to the labelled
 Move control; the card container is not a nested interactive surface. Board
 drag targeting is pointer-owned, keeps a quiet source placeholder at the same
 size, and lifts a visual copy of the complete card without changing its dimensions
-or content. One thin insertion line replaces destination-card outlines and
-repeating labels; the live region still names the exact one-based queue position.
+or content. A strong insertion line with a compact "Place here" marker identifies
+the exact gap without shifting surrounding cards. A label above the floating card
+names the destination crew and one-based queue position, remaining readable when
+the card covers the gap. The live region also names the exact queue position.
 Six pixels of midpoint tolerance prevent tiny pointer reversals from alternating
 adjacent slots. Release remeasures current geometry using the same tolerance and commits that valid
 destination, falling back to the last visible valid cue only when end-event

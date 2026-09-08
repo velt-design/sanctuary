@@ -25,17 +25,20 @@ const landingAnimation: DropAnimation = {
   },
 };
 
-function SnapshotCard({ snapshot, target }: { snapshot: BoardDragSnapshot; target: BoardDropTarget | null }) {
+function SnapshotCard({ snapshot, target, destination }: { snapshot: BoardDragSnapshot; target: BoardDropTarget | null; destination: string }) {
   const host = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     host.current?.replaceChildren(snapshot.node.cloneNode(true));
   }, [snapshot]);
-  return <div ref={host} className={styles.snapshot} style={{ width: snapshot.width, height: snapshot.height }}
+  return <div className={styles.snapshot} style={{ width: snapshot.width, height: snapshot.height }}
     aria-hidden="true" data-board-drag-overlay="true" data-valid={target?.valid ? 'true' : 'false'}
-    data-position={target?.valid && target.kind === 'lane' ? target.insertionIndex + 1 : undefined} />;
+    data-position={target?.valid && target.kind === 'lane' ? target.insertionIndex + 1 : undefined}>
+    <div className={styles.destination} data-board-drag-destination="true">{destination}</div>
+    <div ref={host} className={styles.card} />
+  </div>;
 }
 
-export default function ScheduleBoardDragOverlay({ activeId, target }: { activeId: string | null; target: BoardDropTarget | null }) {
+export default function ScheduleBoardDragOverlay({ activeId, target, crewName }: { activeId: string | null; target: BoardDropTarget | null; crewName?: string }) {
   const { activeNode } = useDndContext();
   const [snapshot, setSnapshot] = useState<BoardDragSnapshot | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -50,7 +53,10 @@ export default function ScheduleBoardDragOverlay({ activeId, target }: { activeI
   useLayoutEffect(() => {
     if (activeId && activeNode) setSnapshot(captureBoardDragSnapshot(activeId, activeNode));
   }, [activeId, activeNode]);
+  const destination = target?.valid
+    ? target.kind === 'lane' ? `${crewName ?? 'Crew'} · Position ${target.insertionIndex + 1}` : 'Move to Unscheduled'
+    : target?.reason === 'same-position' ? 'Keep current position' : 'Choose a drop position';
   return <DragOverlay dropAnimation={reducedMotion ? null : landingAnimation} transition={reducedMotion ? 'none' : undefined}>
-    {activeId && snapshot?.id === activeId ? <SnapshotCard snapshot={snapshot} target={target} /> : null}
+    {activeId && snapshot?.id === activeId ? <SnapshotCard snapshot={snapshot} target={target} destination={destination} /> : null}
   </DragOverlay>;
 }

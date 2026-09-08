@@ -270,13 +270,20 @@ for (const reducedMotion of [false, true]) {
     await page.mouse.down();
     await page.mouse.move(x, boundary - 10, { steps: 12 });
     const overlay = page.locator('[data-board-drag-overlay]');
+    const destination = page.locator('[data-board-drag-destination]');
     await expect(overlay).toHaveAttribute('data-position', '1');
+    await expect(destination).toHaveText('Install Crew 2 · Position 1');
+    const marker = page.locator('[data-schedule-card-id="fixture-schedule-1"]');
+    expect(await marker.evaluate((node) => getComputedStyle(node, '::after').content)).toBe('"Place here"');
+    expect(await marker.evaluate((node) => getComputedStyle(node, '::before').height)).toBe('4px');
+    expect((await marker.boundingBox())?.y).toBeCloseTo(target.y, 0);
     for (const offset of [2, -2, 4, -4]) {
       await page.mouse.move(x, boundary + offset);
       await expect(overlay).toHaveAttribute('data-position', '1');
     }
     await page.mouse.move(x, boundary + 10);
     await expect(overlay).toHaveAttribute('data-position', '2');
+    await expect(destination).toHaveText('Install Crew 2 · Position 2');
     await page.mouse.move(x, boundary + 2);
     await expect(overlay).toHaveAttribute('data-position', '2');
     await page.evaluate((cardId) => {
@@ -297,6 +304,7 @@ for (const reducedMotion of [false, true]) {
     }, id);
     await page.mouse.up();
     await expect(overlay).toHaveCount(0);
+    await expect(destination).toHaveCount(0);
     expect(await cardOrder(page, 'fixture-crew-2')).toEqual(['fixture-schedule-1', id, 'fixture-schedule-10']);
     await expect(card).toHaveCSS('opacity', '1');
     const frames = await page.evaluate(() => (window as any).__boardLandingFrames as Array<{ overlay: boolean; landing: boolean; opacity: string }>);

@@ -181,7 +181,7 @@
   right: 0;
   bottom: -7px;
   left: 0;
-  height: 2px;
+  height: 4px;
   border-radius: 1px;
   background: var(--ui-action);
   pointer-events: none;
@@ -209,11 +209,39 @@
   top: -7px;
   right: 0;
   left: 0;
-  height: 2px;
+  height: 4px;
   border-radius: 1px;
   background: var(--ui-action);
   pointer-events: none;
   z-index: 2;
+}
+
+.jobCard[data-drop-target='true']::after,
+.cardList[data-drop-end='true']::before,
+.emptyLane[data-drop-end='true']::after {
+  content: 'Place here';
+  position: absolute;
+  right: 0;
+  top: -18px;
+  padding: 3px 9px;
+  border: 2px solid var(--ui-action);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-inverse);
+  color: var(--ui-text-inverse);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.cardList[data-drop-end='true']::before {
+  top: auto;
+  bottom: -20px;
+}
+
+.emptyLane[data-drop-end='true']::after {
+  top: -11px;
 }
 
 .jobCard[data-issue-level='warning'] {
@@ -671,7 +699,7 @@
   top: 0;
   right: 0;
   left: 0;
-  height: 2px;
+  height: 4px;
   background: var(--ui-action);
 }
 

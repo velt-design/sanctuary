@@ -645,7 +645,7 @@ export default function ScheduleBoardView({
         </section>
       </div>
 
-      <ScheduleBoardDragOverlay activeId={activeDragId} target={boardDropTarget} />
+      <ScheduleBoardDragOverlay activeId={activeDragId} target={boardDropTarget} crewName={installers.find((crew) => crew.id === overLaneId)?.name} />
     </DndContext>
   );
 }
