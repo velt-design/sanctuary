@@ -8,6 +8,14 @@ Production ref `iytanftukulcnavossmd` is a refusal value in this workflow. Nothi
 
 ## 2026-08-18 Alignment
 
+### 2026-09-08 Schedule Guarded Commands
+
+The exact `20260908000001_schedule_guarded_commands.sql` file passed rollback rehearsal and application on this staging project. Canonical-LF SHA-256: `b1f10de448f0c2d58d8fa3816a6fe0113c425d9a06c61529a4f8acdf9ff91a3e`. The unambiguous ledger version stores the exact body; MD5 `91ee11fc5626ad713b37534bfa27846f`. Postflight verified all five function bodies, six revision triggers, denied anonymous/authenticated command execution and service-role command access.
+
+Two distinct existing staff identities used separate authenticated sessions against the branch app and migrated staging. Board order and atomic Gantt start/duration persisted; dates survived reload and a second-session read; Unpin persisted. Simultaneous changes returned one 200 and one 409 without a mixed final date/duration. Reusing a stale RPC snapshot returned PT409 and did not overwrite the accepted state. The two test jobs/items and test crew were removed; staging returned to its initial zero scheduled jobs and one crew. No production job was used for this check.
+
+The review correction `20260908000002_schedule_browser_write_boundary.sql` was also rollback-rehearsed and applied. SHA-256: `34978f3d2826b97662cf5c15b9cff63c8ab8b5a7bb7935e4498d74c1ce20b865`; ledger-body MD5: `53307df9bb13682e9bf9cfbd4ece11e2`. The authenticated persistence/concurrency check passed again after real staff direct table writes, legacy RPC calls and revision resets were denied. Temporary schedule rows were again removed.
+
 The staging project had current Project Work tables and 11 projects, but its durable-job, Design Booklet, commercial reconciliation/scope, and Sanctuary AI schema was behind current `main`. The exact missing files were rehearsed in rollback transactions before application. A structurally present payment-schedule migration was not replayed after the rehearsal correctly detected its existing `commercial_quote_create_draft` function. The production-only `20260818000001_rehome_sent_manual_variation.sql` data correction was excluded.
 
 Preflight application counts were 11 projects, 11 contacts, 6 estimates, 3 quotes, 3 quote versions, 0 deposit invoices, and 4 audit events. Six projects use the deterministic `[Agent Scenario]` prefix and five are other staging records.

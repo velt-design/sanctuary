@@ -1,5 +1,7 @@
 import 'server-only';
 
+import type { ScheduleWriteGuard } from './scheduleWriteGuard';
+
 import { isMissingSchemaError } from '@/lib/scheduling/scheduleV2Server';
 import { logPortalServerError, logPortalServerWarn, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
@@ -15,7 +17,7 @@ type ScheduleCommandOk<T> = {
 
 type ScheduleCommandFailure = {
   ok: false;
-  status: 500 | 501;
+  status: 409 | 500 | 501;
   responseMessage: string;
   error?: unknown;
 };
@@ -24,6 +26,7 @@ type ScheduleCommandResult<T> = ScheduleCommandOk<T> | ScheduleCommandFailure;
 
 type RunScheduleRpcCommandInput<T> = {
   diagnostics: PortalServerLogContext;
+  writeGuard: ScheduleWriteGuard;
   fn: string;
   args: Record<string, unknown>;
   failureMessage: string;
@@ -121,7 +124,7 @@ type UpdateDowntimeCommandResult = {
 };
 
 function commandFailure(input: {
-  status: 500 | 501;
+  status: 409 | 500 | 501;
   responseMessage: string;
   error: unknown;
 }): ScheduleCommandFailure {
@@ -165,9 +168,10 @@ function isOldAssignRepairRpcError(fn: string, error: unknown): boolean {
 }
 
 async function runScheduleRpcCommand<T>(input: RunScheduleRpcCommandInput<T>): Promise<ScheduleCommandResult<T>> {
-  const rpcRes = await supabaseServiceRole.rpc(input.fn, input.args as any);
+  const rpcRes = await supabaseServiceRole.rpc('schedule_v2_guarded_command', { p_command: input.fn, p_args: input.args, p_expected_revisions: input.writeGuard } as any);
 
   if (rpcRes.error) {
+    if (rpcRes.error.code === 'PT409') return commandFailure({ status: 409, responseMessage: 'This crew was changed by another staff member. Your requested change has not been saved. Refresh the crew and retry.', error: rpcRes.error });
     if (isMissingScheduleRpcError(rpcRes.error)) {
       logPortalServerWarn(input.diagnostics, {
         status: 501,
@@ -215,14 +219,20 @@ async function runScheduleRpcCommand<T>(input: RunScheduleRpcCommandInput<T>): P
   };
 }
 
+export async function commitKeepOverlap(input: { diagnostics: PortalServerLogContext; writeGuard: ScheduleWriteGuard; scheduledJobId: string; overlapKey: string }) {
+  return runScheduleRpcCommand({ diagnostics: input.diagnostics, writeGuard: input.writeGuard, fn: 'schedule_v2_keep_overlap', args: { p_scheduled_job_id: input.scheduledJobId, p_overlap_key: input.overlapKey }, failureMessage: 'Failed to keep overlap' });
+}
+
 export async function commitScheduleReorder(input: {
   diagnostics: PortalServerLogContext;
+  writeGuard: ScheduleWriteGuard;
   crewId: string;
   positions: PositionInput[];
   forecastUpdates: ForecastUpdateInput[];
 }): Promise<ScheduleCommandResult<{ updated_items: number; updated_forecasts: number }>> {
   return runScheduleRpcCommand({
     diagnostics: input.diagnostics,
+    writeGuard: input.writeGuard,
     fn: 'schedule_v2_reorder_queue',
     args: {
       p_crew_id: input.crewId,
@@ -235,6 +245,7 @@ export async function commitScheduleReorder(input: {
 
 export async function commitAssignJob(input: {
   diagnostics: PortalServerLogContext;
+  writeGuard: ScheduleWriteGuard;
   targetCrewId: string;
   targetInsertPosition: number;
   targetPositions: PositionInput[];
@@ -248,6 +259,7 @@ export async function commitAssignJob(input: {
 }): Promise<ScheduleCommandResult<AssignJobCommandResult>> {
   return runScheduleRpcCommand({
     diagnostics: input.diagnostics,
+    writeGuard: input.writeGuard,
     fn: 'schedule_v2_assign_job',
     args: {
       p_target_crew_id: input.targetCrewId,
@@ -276,6 +288,7 @@ export async function commitAssignJob(input: {
 
 export async function commitCreateDowntime(input: {
   diagnostics: PortalServerLogContext;
+  writeGuard: ScheduleWriteGuard;
   crewId: string;
   durationDays: number;
   reason: string;
@@ -286,6 +299,7 @@ export async function commitCreateDowntime(input: {
 }): Promise<ScheduleCommandResult<CreateDowntimeCommandResult>> {
   return runScheduleRpcCommand({
     diagnostics: input.diagnostics,
+    writeGuard: input.writeGuard,
     fn: 'schedule_v2_create_downtime',
     args: {
       p_crew_id: input.crewId,
@@ -302,6 +316,7 @@ export async function commitCreateDowntime(input: {
 
 export async function commitUpdateDowntime(input: {
   diagnostics: PortalServerLogContext;
+  writeGuard: ScheduleWriteGuard;
   downtimeId: string;
   patch: {
     duration_days: number;
@@ -312,6 +327,7 @@ export async function commitUpdateDowntime(input: {
 }): Promise<ScheduleCommandResult<UpdateDowntimeCommandResult>> {
   return runScheduleRpcCommand({
     diagnostics: input.diagnostics,
+    writeGuard: input.writeGuard,
     fn: 'schedule_v2_update_downtime',
     args: {
       p_downtime_id: input.downtimeId,
@@ -324,12 +340,14 @@ export async function commitUpdateDowntime(input: {
 
 export async function commitSetDaysRemaining(input: {
   diagnostics: PortalServerLogContext;
+  writeGuard: ScheduleWriteGuard;
   scheduledJobId: string;
   daysRemaining: number;
   forecastUpdates: ForecastUpdateInput[];
 }): Promise<ScheduleCommandResult<{ updated_job: string; updated_forecasts: number }>> {
   return runScheduleRpcCommand({
     diagnostics: input.diagnostics,
+    writeGuard: input.writeGuard,
     fn: 'schedule_v2_set_days_remaining',
     args: {
       p_scheduled_job_id: input.scheduledJobId,
@@ -342,6 +360,7 @@ export async function commitSetDaysRemaining(input: {
 
 export async function commitScheduleJobPatch(input: {
   diagnostics: PortalServerLogContext;
+  writeGuard: ScheduleWriteGuard;
   scheduledJobId: string;
   jobPatch: JobPatchInput;
   forecastUpdates: ForecastUpdateInput[];
@@ -349,6 +368,7 @@ export async function commitScheduleJobPatch(input: {
 }): Promise<ScheduleCommandResult<{ updated_job: string; updated_forecasts: number }>> {
   return runScheduleRpcCommand({
     diagnostics: input.diagnostics,
+    writeGuard: input.writeGuard,
     fn: 'schedule_v2_apply_job_patch',
     args: {
       p_scheduled_job_id: input.scheduledJobId,
@@ -361,6 +381,7 @@ export async function commitScheduleJobPatch(input: {
 
 export async function commitPlannedCommitment(input: {
   diagnostics: PortalServerLogContext;
+  writeGuard: ScheduleWriteGuard;
   scheduledJobId: string;
   jobPatch: PlannedCommitmentPatchInput;
   history: PlannedCommitmentHistoryInput;
@@ -368,6 +389,7 @@ export async function commitPlannedCommitment(input: {
 }): Promise<ScheduleCommandResult<{ updated_job: string; history_inserted: boolean; updated_forecasts: number }>> {
   return runScheduleRpcCommand({
     diagnostics: input.diagnostics,
+    writeGuard: input.writeGuard,
     fn: 'schedule_v2_apply_commitment',
     args: {
       p_scheduled_job_id: input.scheduledJobId,
@@ -390,12 +412,14 @@ export async function commitPlannedCommitment(input: {
 
 export async function commitClientUpdateAck(input: {
   diagnostics: PortalServerLogContext;
+  writeGuard: ScheduleWriteGuard;
   scheduledJobId: string;
   ackAt: string;
   ackBy: string | null;
 }): Promise<ScheduleCommandResult<{ updated_job: string; acknowledged: boolean }>> {
   return runScheduleRpcCommand({
     diagnostics: input.diagnostics,
+    writeGuard: input.writeGuard,
     fn: 'schedule_v2_ack_client_update',
     args: {
       p_scheduled_job_id: input.scheduledJobId,
@@ -408,6 +432,7 @@ export async function commitClientUpdateAck(input: {
 
 export async function commitScheduleUnassign(input: {
   diagnostics: PortalServerLogContext;
+  writeGuard: ScheduleWriteGuard;
   scheduledJobId: string;
   jobItemId: string;
   positions: PositionInput[];
@@ -415,6 +440,7 @@ export async function commitScheduleUnassign(input: {
 }): Promise<ScheduleCommandResult<{ deleted_job: string; deleted_item: string; updated_items: number; updated_forecasts: number }>> {
   return runScheduleRpcCommand({
     diagnostics: input.diagnostics,
+    writeGuard: input.writeGuard,
     fn: 'schedule_v2_unassign_job',
     args: {
       p_scheduled_job_id: input.scheduledJobId,
@@ -428,6 +454,7 @@ export async function commitScheduleUnassign(input: {
 
 export async function commitDeleteDowntime(input: {
   diagnostics: PortalServerLogContext;
+  writeGuard: ScheduleWriteGuard;
   downtimeId: string;
   downtimeItemId: string;
   positions: PositionInput[];
@@ -435,6 +462,7 @@ export async function commitDeleteDowntime(input: {
 }): Promise<ScheduleCommandResult<{ deleted_downtime: string; deleted_item: string; updated_items: number; updated_forecasts: number }>> {
   return runScheduleRpcCommand({
     diagnostics: input.diagnostics,
+    writeGuard: input.writeGuard,
     fn: 'schedule_v2_delete_downtime',
     args: {
       p_downtime_id: input.downtimeId,
@@ -448,6 +476,7 @@ export async function commitDeleteDowntime(input: {
 
 export async function commitMarkDone(input: {
   diagnostics: PortalServerLogContext;
+  writeGuard: ScheduleWriteGuard;
   scheduledJobId: string;
   actualStart: string;
   actualFinish: string;
@@ -456,6 +485,7 @@ export async function commitMarkDone(input: {
 }): Promise<ScheduleCommandResult<MarkDoneCommandResult>> {
   return runScheduleRpcCommand({
     diagnostics: input.diagnostics,
+    writeGuard: input.writeGuard,
     fn: 'schedule_v2_mark_done',
     args: {
       p_scheduled_job_id: input.scheduledJobId,

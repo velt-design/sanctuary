@@ -4260,7 +4260,7 @@ agenda from the same Gantt model, retain essential view context, and route
 schedule changes to Board; do not create another read model or phone write path.
 Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`
 Related docs/tests:
-`apps/portal/app/staff/schedule/useScheduleGanttTimingReview.ts`;
+`apps/portal/app/staff/schedule/useScheduleGanttTimingReview.ts` (retired on 2026-09-08 when routine drag confirmation was removed);
 `apps/portal/app/staff/schedule/ScheduleGanttCompactView.tsx`;
 `apps/portal/app/staff/schedule/ScheduleGanttView.test.tsx`;
 `playwright/portal.schedule-tasks-ui.spec.ts`;
@@ -5462,3 +5462,39 @@ for new spawns, or start a replacement worker.
 Promoted to: `docs/ai/operations/openclaw-engineering-supervision.md`
 Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-dispatch.mjs`;
 `test/ai-operations-engineering-supervision.test.ts`; `npm run test:ai:ops`
+
+## 2026-09-08 — Schedule authored dates and save trust
+
+Read-time recomputation moved overdue work and extended started jobs from an unchanged days-remaining value; zero-width weekend ties also made an inverse Gantt drag land on the wrong weekday. Reads now preserve saved/actual dates, explicit progress commands measure remaining days once, and flexible planning reserves fixed intervals. Checkpoint and confirmation owners separate accepted writes from later UI failures. Per-crew revision guards prevent stale calculated writes, and exact-date overlap acceptance plus owner-scoped retained intent makes conflicts and uncertainty reviewable. Four full past weeks remain scrollable while twelve forward weeks are retained. The new migration must precede API deployment; browser recovery never blindly replays ambiguous writes.
+
+## 2026-09-08 — Schedule previews must exercise the requested gestures
+
+The owner preview originally passed layout checks but used inert Gantt callbacks and stale sample bars after Board moves. Preview move/resize now applies to in-memory rows with the shared reflow engine; browser checks confirm both drag directions, exact duration, view switching and reload reset with zero staff writes. This exposed a shared resize bug: a saved Sunday end used the Monday boundary even though its visible handle ended on Friday. Resize snapping now counts from the last visible day. A rendered fixture alone is not evidence that its editing journey works.
+
+## 2026-09-08 — Routine Gantt gestures save on release
+
+The owner found the mandatory Save timing modal disruptive after every move and resize. Pointer release now sends the checked gesture directly to the existing mutation owner. The server-owned affected-client-commitment review remains; stale gesture cancellation, optimistic intent, ambiguous-save recovery and revision guards are unchanged. The unused local review component/hook and preview-only button were removed after consumer and dead-code checks.
+
+## 2026-09-08 — Preview pin lifecycle
+
+The sample Gantt's Unpin callback remained inert after move/resize was connected. It now changes the sample row to floating and uses the shared engine to reflow its queue. The browser gesture test covers moving, resizing and then unpinning back to flexible dates with no staff writes; a pin icon alone is not proof of the complete pin lifecycle.
+
+## 2026-09-08 — Calm Board drag ownership
+
+Board replaced a full card with a different compact overlay, faded the original, changed multiple target highlights and removed the overlay instantly on release. The card surface was extracted byte-for-byte before behavior changes. A dedicated drag overlay now owns an inert visual snapshot and 160 ms landing, while the source retains its size and keyboard focus. One insertion line and six-pixel midpoint tolerance stabilize the cue; unchanged targets no longer rerender the Board. Real keyboard QA also exposed stale translated-rectangle targeting, so keyboard placement now uses the current key delta. Fresh release geometry, reduced motion, exact queue placement and existing save/recovery boundaries remain required checks.
+
+Owner feedback found the thin insertion line too subtle. The destination now has a stronger line and a compact "Place here" marker, with crew and queue position shown above the floating card. These cues do not change card dimensions or target geometry; quiet movement must still communicate the exact destination visibly.
+
+## 2026-09-08 — Release comparison query grouping
+
+The first production Schedule migration attempt rolled back because its extra data-preservation assertion combined EXCEPT and UNION ALL without grouping the current snapshot, causing a false mismatch. The schema and ledger were verified absent after rollback. Group the full compared snapshot as a derived table, rehearse the entire apply wrapper in rollback, then apply. The corrected wrapper passed and proved existing operational schedule fields unchanged.
+
+## 2026-09-08 — Schedule release dependency audit
+
+PR #114's required production audit detected GHSA-px8p-9vwx-vf98 in existing fflate dependencies. The lockfile updates only the compatible patched releases 0.8.2 to 0.8.3 and 0.6.10 to 0.6.11. Production audit now reports zero vulnerabilities; the toolchain audit retains only the two approved xlsx exceptions. Keep the security gate blocking and rerun current-revision CI after a dependency correction.
+
+## 2026-09-08 — Guarded writes include legacy permissions
+
+PR #114 review found that guarding the new server command did not revoke older browser table/RPC grants. A forward permission migration now closes direct job/queue/downtime writes, every browser Schedule RPC, crew revision/anchor edits and cascading crew deletion, preserving metadata fields needed by the existing admin API. Reproduce historical grants in the database harness and prove real authenticated denial as well as successful guarded saves. Inspect unresolved review threads before announcing merge readiness; green CI alone does not resolve review findings.
+
+Permission review must also cover FK cascades: a browser-authorized parent-project DELETE does not require DELETE permission on its scheduled child. The revision trigger now denies browser SET ROLE callers, including cascades; current_user alone would identify the definer rather than the caller. Prove this with an authenticated-role parent deletion inside a rollback-wrapped staging fixture, not against a staff project.

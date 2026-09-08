@@ -5,6 +5,7 @@ import type { ScheduleProjectSummary } from '@/lib/queries/schedule';
 import { addDaysYmd, diffDaysYmd, isYmd } from '@/lib/scheduling/date';
 import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 import { SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
+import { resolveDefaultScheduleGanttRange, SCHEDULE_GANTT_RANGE_DAYS } from '@/lib/scheduling/scheduleGanttRange';
 import { axisSpanPx, axisXForDayIndex, buildGanttAxis, GANTT_WEEKEND_WEIGHT } from './ganttAxis';
 import { buildScheduleJobIdentity } from './ScheduleJobPresentation';
 import {
@@ -120,7 +121,7 @@ export type GanttDragPreview = {
 
 const GANTT_DAY_PX = 18;
 const GANTT_TIMELINE_WEEKS = 12;
-export const GANTT_TIMELINE_DAYS = GANTT_TIMELINE_WEEKS * 7;
+export const GANTT_TIMELINE_DAYS = SCHEDULE_GANTT_RANGE_DAYS;
 export const GANTT_ZOOM_WEEK_OPTIONS = [4, 8, 12] as const;
 export const GANTT_DEFAULT_ZOOM_WEEKS: GanttZoomWeeks = 8;
 const GANTT_LABEL_MIN_PX = 220;
@@ -536,7 +537,7 @@ export function buildScheduleGanttModel({
     });
   }
 
-  const rangeStart = startOfWeekMonday(today);
+  const { rangeStart } = resolveDefaultScheduleGanttRange(today);
   const rangeDays = GANTT_TIMELINE_DAYS;
   const rangeEnd = addDaysYmd(rangeStart, rangeDays - 1);
   const baseDayPx = ganttBaseDayPxForZoomWeeks(zoomWeeks);
@@ -546,7 +547,8 @@ export function buildScheduleGanttModel({
   const todayIndex = diffDaysYmd(rangeStart, displayToday);
   const todayLinePx = axisXForDayIndex(axis, todayIndex);
   const todayColumn = todayIndex >= 0 && todayIndex < axis.days.length ? axis.days[todayIndex] : null;
-  const currentWeekSpan = axisSpanPx(axis, rangeStart, addDaysYmd(rangeStart, 6));
+  const currentWeekStart = startOfWeekMonday(today);
+  const currentWeekSpan = axisSpanPx(axis, currentWeekStart, addDaysYmd(currentWeekStart, 6));
 
   const holidayNamesByDate = new Map<string, string[]>();
   for (const holiday of holidays) {

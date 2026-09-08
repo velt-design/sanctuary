@@ -153,6 +153,7 @@ export async function loadScheduleBoardResponse(options?: { today?: string; diag
       downtimes: crewDowntimes,
       calendar: ctx.calendar,
       today: ctx.today,
+      preserveSaved: true,
     });
     recomputeMs += elapsedMs(recomputeStartedAt);
 

@@ -80,7 +80,7 @@ describe('POST /api/staff/v1/schedule/downtime/delete', () => {
     parseJsonBody.mockResolvedValue({ ok: true, body: { downtime_id: 'dt-1' } });
     isMissingSchemaError.mockReturnValue(false);
     downtimeMaybeSingle.mockResolvedValue({ data: { id: 'dt-1', crew_id: 'crew-1' }, error: null });
-    loadScheduleContext.mockResolvedValue({ today: '2026-04-10', calendar: {} });
+    loadScheduleContext.mockResolvedValue({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }], today: '2026-04-10', calendar: {} });
     buildCrewContext.mockReturnValue({
       crewRow: { id: 'crew-1', calendar_region: 'Auckland' },
       items: [
@@ -116,14 +116,14 @@ describe('POST /api/staff/v1/schedule/downtime/delete', () => {
     );
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_delete_downtime', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_delete_downtime', p_expected_revisions: expect.any(Object), p_args: {
       p_downtime_id: 'dt-1',
       p_downtime_item_id: 'item-dt-1',
       p_positions: [{ id: 'item-job-1', position: 0 }],
       p_forecast_updates: [
         { id: 'scheduled-job-1', forecast_start: '2026-04-11', forecast_end_exclusive: '2026-04-12', forecast_duration_days: 1 },
       ],
-    });
+    } });
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       ok: true,

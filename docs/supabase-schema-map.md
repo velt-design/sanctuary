@@ -200,6 +200,7 @@ Tables/RPCs:
 
 - Legacy schedule: `schedule_crews`, `schedule_items`
 - Schedule V2: `scheduled_jobs`, `crew_schedule_items`, `crew_downtimes`, `planned_commitment_history`, `nz_holidays`, `company_closures`
+- Schedule concurrency: `schedule_crews.schedule_revision`, `schedule_crews.queue_anchor_date`, `scheduled_jobs.accepted_overlaps`, `schedule_v2_guarded_command`, `schedule_v2_keep_overlap` and revision triggers are owned by `20260908000001_schedule_guarded_commands.sql`. The wrapper is service-role-only; API calculation snapshots guard all involved crews.
 - Schedule V2 RPCs: `schedule_v2_reorder_queue`, `schedule_v2_set_days_remaining`, `schedule_v2_unassign_job`, `schedule_v2_delete_downtime`, `schedule_v2_mark_done`, `schedule_v2_apply_job_patch`, `schedule_v2_apply_commitment`, `schedule_v2_ack_client_update`, `schedule_v2_assign_job`, `schedule_v2_create_downtime`, `schedule_v2_update_downtime`
 - Site visits: `site_visit_events`
 - Lifecycle occurrence fields: immutable, database-owned `site_visit_events.confirmed_at` and `projects.deposit_received_at`; existing terminal rows remain null and fail closed rather than being backfilled from mutable `updated_at`

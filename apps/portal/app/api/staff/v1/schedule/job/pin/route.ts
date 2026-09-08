@@ -1,3 +1,4 @@
+import { scheduleWriteGuard } from '@/lib/scheduling/scheduleWriteGuard';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
@@ -57,6 +58,9 @@ export async function POST(req: Request) {
     jobRow = byIdRes.data;
   }
   if (!jobRow) return jsonError('Scheduled job not found', 404, diagnostics);
+  if (jobRow.actual_start || ['in_progress', 'paused', 'done'].includes(jobRow.status)) {
+    return jsonError('The actual start is recorded. Update remaining days or mark the job done instead.', 422, diagnostics);
+  }
 
   const crewId = String(jobRow.crew_id);
 
@@ -113,6 +117,7 @@ export async function POST(req: Request) {
 
   const pinnedStart = snapToday(requestedStart, crewCtx.crewRow.calendar_region || 'Auckland', ctx.calendar);
   const commitRes = await commitScheduleJobPatch({
+    writeGuard: scheduleWriteGuard(ctx, [crewId]),
     diagnostics,
     scheduledJobId: String(jobRow.id),
     jobPatch: { mode: 'pinned', forecast_start: pinnedStart },

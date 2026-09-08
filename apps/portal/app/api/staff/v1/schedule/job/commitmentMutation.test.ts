@@ -68,7 +68,7 @@ describe('runCommitmentMutation', () => {
     defaultHardLockForCommitment.mockReturnValue(true);
     isMissingSchemaError.mockReturnValue(false);
     loadScheduledJobRow.mockResolvedValue({ id: 'scheduled-job-1', crew_id: 'crew-1' });
-    loadScheduleContext.mockResolvedValue({ today: '2026-04-10', calendar: {} });
+    loadScheduleContext.mockResolvedValue({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }], today: '2026-04-10', calendar: {} });
     buildCrewContext.mockReturnValue({
       crewRow: { id: 'crew-1', calendar_region: 'Auckland' },
       items: [],
@@ -128,8 +128,9 @@ describe('runCommitmentMutation', () => {
     const res = await mod.runCommitmentMutation(new Request('http://localhost/api/staff/v1/schedule/job/lock', { method: 'POST', headers: { 'x-request-id': 'req_lock_ok' } }), 'lock');
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc.mock.calls[0]?.[0]).toBe('schedule_v2_apply_commitment');
-    expect(rpc.mock.calls[0]?.[1]).toEqual({
+    expect(rpc.mock.calls[0]?.[0]).toBe('schedule_v2_guarded_command');
+    expect(rpc.mock.calls[0]?.[1]?.p_command).toBe('schedule_v2_apply_commitment');
+    expect(rpc.mock.calls[0]?.[1]?.p_args).toEqual({
       p_scheduled_job_id: 'scheduled-job-1',
       p_job_patch: {
         mode: 'pinned',
@@ -180,7 +181,7 @@ describe('runCommitmentMutation', () => {
     const res = await mod.runCommitmentMutation(new Request('http://localhost/api/staff/v1/schedule/job/reschedule', { method: 'POST', headers: { 'x-request-id': 'req_reschedule_ok' } }), 'reschedule');
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc.mock.calls[0]?.[1]).toEqual({
+    expect(rpc.mock.calls[0]?.[1]?.p_args).toEqual({
       p_scheduled_job_id: 'scheduled-job-1',
       p_job_patch: {
         mode: 'floating',

@@ -39,6 +39,12 @@ vi.mock('@/lib/supabaseClient', () => ({
 }));
 
 describe('POST /api/staff/v1/schedule/job/pin', () => {
+  it('does not replace a recorded actual start with a requested pin', async () => {
+    scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({ data: { id: 'scheduled-job-1', crew_id: 'crew-1', status: 'in_progress', actual_start: '2026-04-08' }, error: null });
+    const mod = await import('./route');
+    expect((await mod.POST(new Request('http://localhost/api/staff/v1/schedule/job/pin', { method: 'POST' }))).status).toBe(422);
+    expect(rpc).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.resetModules();
     requireStaffContext.mockReset();
@@ -76,7 +82,7 @@ describe('POST /api/staff/v1/schedule/job/pin', () => {
     parseJsonBody.mockResolvedValue({ ok: true, body: { job_id: 'job-1', requested_start_date: '2026-04-15' } });
     isMissingSchemaError.mockReturnValue(false);
     scheduledJobsByProjectMaybeSingle.mockResolvedValue({ data: { id: 'scheduled-job-1', crew_id: 'crew-1' }, error: null });
-    loadScheduleContext.mockResolvedValue({ today: '2026-04-10', calendar: {} });
+    loadScheduleContext.mockResolvedValue({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }], today: '2026-04-10', calendar: {} });
     buildCrewContext.mockReturnValue({
       crewRow: { id: 'crew-1', calendar_region: 'Auckland' },
       items: [],
@@ -97,11 +103,11 @@ describe('POST /api/staff/v1/schedule/job/pin', () => {
     const mod = await import('./route');
     const res = await mod.POST(new Request('http://localhost/api/staff/v1/schedule/job/pin', { method: 'POST', headers: { 'x-request-id': 'req_pin_ok' } }));
 
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_apply_job_patch', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_apply_job_patch', p_expected_revisions: expect.any(Object), p_args: {
       p_scheduled_job_id: 'scheduled-job-1',
       p_job_patch: { mode: 'pinned', forecast_start: '2026-04-15' },
       p_forecast_updates: [{ id: 'scheduled-job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
-    });
+    } });
     expect(res.status).toBe(200);
     expect(res.headers.get('x-portal-request-id')).toBe('req_pin_ok');
   });
