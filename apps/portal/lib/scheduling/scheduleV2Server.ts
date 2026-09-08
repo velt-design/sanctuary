@@ -70,6 +70,8 @@ type CrewRow = {
   is_active: boolean | null;
   calendar_region: string | null;
   base_available_date: string | null;
+  schedule_revision?: number;
+  queue_anchor_date?: string | null;
 };
 
 type ScheduleContext = {
@@ -119,6 +121,7 @@ function crewRowToScheduleCrew(row: CrewRow): ScheduleCrew {
     id: row.id,
     region: (row.calendar_region || 'Auckland').trim() || 'Auckland',
     baseAvailableDate: row.base_available_date,
+    anchorDate: row.queue_anchor_date,
   };
 }
 
@@ -263,40 +266,6 @@ export function computeJobsWithDriftStatus(input: {
   });
 }
 
-export async function applyDriftStatusPatches(input: {
-  jobs: ScheduledJob[];
-  recompute: RecomputeResult;
-  region: string;
-  calendar: WorkingDayIndex;
-  nowIso?: string;
-}): Promise<ScheduledJob[]> {
-  const previousByJobId = new Map(input.jobs.map((job) => [job.id, job]));
-  const nextJobs = computeJobsWithDriftStatus(input);
-
-  for (const job of nextJobs) {
-    const prev = previousByJobId.get(job.id);
-    if (!prev) continue;
-
-    const prevStatus = normalizeClientUpdateStatus(prev.clientUpdateStatus);
-    const nextStatus = normalizeClientUpdateStatus(job.clientUpdateStatus);
-    const prevNeededAt = typeof prev.clientUpdateNeededAt === 'string' && prev.clientUpdateNeededAt ? prev.clientUpdateNeededAt : null;
-    const nextNeededAt = typeof job.clientUpdateNeededAt === 'string' && job.clientUpdateNeededAt ? job.clientUpdateNeededAt : null;
-
-    if (prevStatus === nextStatus && prevNeededAt === nextNeededAt) continue;
-
-    const updateRes = await supabaseServiceRole
-      .from('scheduled_jobs')
-      .update({
-        client_update_status: nextStatus,
-        client_update_needed_at: nextStatus === 'needed' ? nextNeededAt : null,
-      } as any)
-      .eq('id', job.id);
-    if (updateRes.error) throw updateRes.error;
-  }
-
-  return nextJobs;
-}
-
 function mapJobRow(row: any): ScheduledJob {
   const plannedStart = typeof row.planned_start === 'string' ? row.planned_start : null;
   const plannedCommitmentType = normalizePlannedCommitmentType(row.planned_commitment_type) ?? (plannedStart ? 'fixed_date' : null);
@@ -323,6 +292,7 @@ function mapJobRow(row: any): ScheduledJob {
     actualFinish: typeof row.actual_finish === 'string' ? row.actual_finish : null,
     status: typeof row.status === 'string' ? (row.status as any) : null,
     daysRemaining: typeof row.days_remaining === 'number' ? row.days_remaining : null,
+    acceptedOverlaps: Array.isArray(row.accepted_overlaps) ? row.accepted_overlaps.filter((key: unknown): key is string => typeof key === 'string') : [],
     driftDays: typeof row.drift_days === 'number' && Number.isFinite(row.drift_days) ? Math.max(0, Math.trunc(row.drift_days)) : null,
     clientUpdateStatus,
     clientUpdateNeededAt: typeof row.client_update_needed_at === 'string' ? row.client_update_needed_at : null,
@@ -338,6 +308,7 @@ function mapDowntimeRow(row: any): CrewDowntime {
     durationDays: typeof row.duration_days === 'number' ? Math.max(1, Math.trunc(row.duration_days)) : 1,
     reason: typeof row.reason === 'string' ? row.reason : undefined,
     note: typeof row.note === 'string' ? row.note : null,
+    createdAt: typeof row.created_at === 'string' ? row.created_at : null,
   };
 }
 
@@ -415,7 +386,7 @@ export async function loadScheduleContext(options?: { crewId?: string; today?: s
 
   let crewsQuery = supabaseServiceRole
     .from('schedule_crews')
-    .select('id, name, color, sort_order, is_active, calendar_region, base_available_date')
+    .select('id, name, color, sort_order, is_active, calendar_region, base_available_date, schedule_revision, queue_anchor_date')
     .order('sort_order', { ascending: true });
   let itemsQuery = supabaseServiceRole.from('crew_schedule_items').select('id, crew_id, item_type, job_id, downtime_id, position').order('position', { ascending: true });
   let jobsQuery = supabaseServiceRole.from('scheduled_jobs').select(
@@ -438,13 +409,14 @@ export async function loadScheduleContext(options?: { crewId?: string; today?: s
       'actual_finish',
       'status',
       'days_remaining',
+      'accepted_overlaps',
       'client_update_status',
       'client_update_needed_at',
       'client_update_ack_at',
       'client_update_ack_by',
     ].join(','),
   );
-  let downtimesQuery = supabaseServiceRole.from('crew_downtimes').select('id, crew_id, duration_days, reason, note');
+  let downtimesQuery = supabaseServiceRole.from('crew_downtimes').select('id, crew_id, duration_days, reason, note, created_at');
 
   if (crewId) {
     crewsQuery = crewsQuery.eq('id', crewId);
@@ -453,7 +425,10 @@ export async function loadScheduleContext(options?: { crewId?: string; today?: s
     downtimesQuery = downtimesQuery.eq('crew_id', crewId);
   }
 
-  const [crewsRes, itemsRes, jobsRes, downtimesRes, calendarRes] = await Promise.all([crewsQuery, itemsQuery, jobsQuery, downtimesQuery, loadCalendar()]);
+  // Capture the version before reading the rows used to calculate a write.
+  // Any intervening change is rejected atomically by the command RPC.
+  const crewsRes = await crewsQuery;
+  const [itemsRes, jobsRes, downtimesRes, calendarRes] = await Promise.all([itemsQuery, jobsQuery, downtimesQuery, loadCalendar()]);
 
   if (crewsRes.error) throw crewsRes.error;
   if (itemsRes.error) throw itemsRes.error;
@@ -510,6 +485,7 @@ export function recomputeForCrew(input: {
   downtimes: CrewDowntime[];
   calendar: WorkingDayIndex;
   today: string;
+  preserveSaved?: boolean;
 }): RecomputeResult {
   const crew = crewRowToScheduleCrew(input.crewRow);
   const jobsById = new Map(input.jobs.map((job) => [job.id, job]));
@@ -522,6 +498,7 @@ export function recomputeForCrew(input: {
     downtimesById,
     today: input.today,
     calendar: input.calendar,
+    preserveSaved: input.preserveSaved,
   });
 }
 
@@ -533,10 +510,10 @@ export function buildCrewContext(ctx: ScheduleContext, crewId: string): CrewSche
   const downtimes = ctx.downtimes.filter((dt) => dt.crewId === crewId);
   const jobsById = new Map(jobs.map((job) => [job.id, job]));
   const downtimesById = new Map(downtimes.map((dt) => [dt.id, dt]));
-  const recompute = recomputeForCrew({ crewRow, items, jobs, downtimes, calendar: ctx.calendar, today: ctx.today });
+  const recompute = recomputeForCrew({ crewRow, items, jobs, downtimes, calendar: ctx.calendar, today: ctx.today, preserveSaved: true });
 
   return {
-    crewRow,
+    crewRow: { ...crewRow, queue_anchor_date: recompute.anchor_date },
     items,
     jobs,
     downtimes,
@@ -575,6 +552,7 @@ export function computeCommitImpacts(input: {
     if (!inRange(beforeStart, input.today, horizonEnd) && !inRange(afterStart, input.today, horizonEnd)) continue;
 
     const meta = input.jobMetaById.get(jobId);
+    if (meta?.mode === 'floating' && !meta.plannedCommitmentType && !meta.plannedStart && !meta.plannedWeekStart) continue;
     impacts.push({
       job_id: meta?.jobId ?? jobId,
       scheduled_job_id: jobId,

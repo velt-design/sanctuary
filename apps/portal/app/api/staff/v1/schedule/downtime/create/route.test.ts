@@ -67,7 +67,7 @@ describe('POST /api/staff/v1/schedule/downtime/create', () => {
       body: { crew_id: 'crew-1', position: 1, duration_days: 2, reason: 'weather', note: 'Storm delay' },
     });
     isMissingSchemaError.mockReturnValue(false);
-    loadScheduleContext.mockResolvedValue({ today: '2026-04-10', calendar: {} });
+    loadScheduleContext.mockResolvedValue({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }], today: '2026-04-10', calendar: {} });
     buildCrewContext.mockReturnValue({
       crewRow: { id: 'crew-1', calendar_region: 'Auckland' },
       items: [{ id: 'item-1', crewId: 'crew-1', itemType: 'job', jobId: 'job-1', downtimeId: null, position: 0 }],
@@ -156,7 +156,7 @@ describe('POST /api/staff/v1/schedule/downtime/create', () => {
     );
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_create_downtime', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_create_downtime', p_expected_revisions: expect.any(Object), p_args: {
       p_crew_id: 'crew-1',
       p_duration_days: 2,
       p_reason: 'weather',
@@ -171,7 +171,7 @@ describe('POST /api/staff/v1/schedule/downtime/create', () => {
           forecast_duration_days: 2,
         },
       ],
-    });
+    } });
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       ok: true,

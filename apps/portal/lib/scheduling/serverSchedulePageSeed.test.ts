@@ -199,7 +199,7 @@ describe('loadSchedulePageSeed', () => {
     expect(loadScheduleBoardResponse).not.toHaveBeenCalled();
     expect(loadScheduleGanttResponse).toHaveBeenCalledWith({
       today: '2026-04-07',
-      rangeStart: '2026-04-06',
+      rangeStart: '2026-03-09',
       rangeEnd: '2026-06-28',
     });
   });

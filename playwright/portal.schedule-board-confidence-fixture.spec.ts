@@ -117,6 +117,16 @@ test('keeps shared workload, attention, timing, and purposeful Gantt modes reada
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(GANTT_FIXTURE_PATH);
   await expect(page.locator('[data-gantt-schedule-item-id="fixture-schedule-9"] [role="button"]')).toContainText('Louvre 010');
+  const timeline = page.getByRole('region', { name: 'Gantt timeline', exact: true });
+  await expect.poll(() => timeline.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  await timeline.evaluate((element) => { element.scrollLeft = 0; });
+  await expect.poll(() => timeline.evaluate((element) => element.scrollLeft)).toBe(0);
+  const historyWidth = await timeline.locator('[data-gantt-current-week]').evaluate((element) => {
+    const table = element.parentElement!;
+    const styles = getComputedStyle(table);
+    return (parseFloat((element as HTMLElement).style.left) - parseFloat(styles.getPropertyValue('--ganttLabelW'))) / parseFloat(styles.getPropertyValue('--ganttDayW'));
+  });
+  expect(historyWidth).toBe(20); // Four full past weeks, with hidden weekends.
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(GANTT_FIXTURE_PATH);

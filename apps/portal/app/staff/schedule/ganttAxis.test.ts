@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { addDaysYmd, isWorkday } from '@/lib/scheduling/date';
 
 import {
   axisSpanPx,
@@ -9,6 +10,20 @@ import {
 } from './ganttAxis';
 
 describe('ganttAxis', () => {
+  it.each([18, 27, 54])('round trips displayed working-day positions in both directions at %ipx', (baseDayPx) => {
+    const axis = buildGanttAxis({ rangeStart: '2026-09-07', rangeDays: 28, baseDayPx, weekendWeight: 0 });
+    for (let from = 0; from < 28; from += 1) {
+      const startDate = addDaysYmd('2026-09-07', from);
+      if (!isWorkday(startDate)) continue;
+      for (let to = 0; to < 28; to += 1) {
+        const targetDate = addDaysYmd('2026-09-07', to);
+        if (!isWorkday(targetDate)) continue;
+        const deltaPx = axis.boundaryPx[to] - axis.boundaryPx[from];
+        const delta = snapAxisDayDeltaForPixelDelta({ startDate, deltaPx, baseDayPx, weekendWeight: 0 });
+        expect(addDaysYmd(startDate, delta), `${startDate} to ${targetDate}`).toBe(targetDate);
+      }
+    }
+  });
   it('formats same-month and cross-month week labels', () => {
     expect(formatGanttWeekRangeLabel('2026-02-09')).toBe('09–15 Feb');
     expect(formatGanttWeekRangeLabel('2026-02-23')).toBe('23 Feb–01 Mar');

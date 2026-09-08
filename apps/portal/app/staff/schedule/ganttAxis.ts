@@ -278,7 +278,11 @@ export function snapAxisDayDeltaForPixelDelta(input: {
     const date = direction > 0 ? addDaysYmd(input.startDate, step - 1) : addDaysYmd(input.startDate, -step);
     acc += dayWidthPxForDate(date, input.baseDayPx, weekendWeight);
     const diff = Math.abs(acc - target);
-    if (diff <= bestDiff) {
+    // Hidden weekends share the Monday boundary. Select a visible date rather
+    // than walking an equal-distance tie back into Saturday on leftward drags.
+    const candidateDate = addDaysYmd(input.startDate, direction * step);
+    const hiddenCandidate = weekendWeight === 0 && dayWeightForDate(candidateDate, weekendWeight) === 0;
+    if (diff <= bestDiff && !hiddenCandidate) {
       bestDiff = diff;
       bestDays = step;
     } else if (acc > target) {

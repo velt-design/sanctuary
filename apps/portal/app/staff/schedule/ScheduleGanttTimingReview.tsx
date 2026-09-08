@@ -62,12 +62,12 @@ export default function ScheduleGanttTimingReview({
         <p className={`${styles.hint} ${styles.actionModalIntro}`}>
           {stale
             ? 'The schedule changed while this review was open. Close and preview the timing again.'
-            : 'The server will calculate the finish against the crew calendar, holidays and closures, then preview every affected job. Nothing is committed until that impact is confirmed.'}
+            : 'Save these dates using the crew calendar, holidays and closures. Any other affected commitments will be shown for review.'}
         </p>
 
         <div className={styles.actionModalActions}>
           <button type="button" className={styles.buttonSecondary} onClick={onCancel}>Cancel</button>
-          <button type="button" className={styles.buttonPrimary} disabled={stale} onClick={onConfirm}>Check impact</button>
+          <button type="button" className={styles.buttonPrimary} disabled={stale} onClick={onConfirm}>Save timing</button>
         </div>
       </div>
     </Modal>

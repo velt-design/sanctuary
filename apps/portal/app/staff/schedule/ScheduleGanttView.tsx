@@ -47,6 +47,7 @@ import ScheduleGanttToolbar, { type GanttAttentionMode } from './ScheduleGanttTo
 import { useScheduleCrewVisibility } from './useScheduleCrewVisibility';
 import { useScheduleGanttLayoutMode } from './useScheduleGanttLayoutMode';
 import { useScheduleGanttTimingReview } from './useScheduleGanttTimingReview';
+import { useScheduleGanttInitialScroll } from './useScheduleGanttInitialScroll';
 import sharedStyles from './schedule.module.css';
 import ganttStyles from './scheduleGantt.module.css';
 import timelineStyles from './scheduleTimeline.module.css';
@@ -444,6 +445,8 @@ export default function ScheduleGanttView({
     }, 0);
   }, []);
 
+  useScheduleGanttInitialScroll(ganttScrollRef, gantt.todayLinePx, labelWidthPx);
+
   const ganttPopoverDetails = useMemo(() => {
     if (!ganttPopover || !activeGanttPopoverRow) return null;
     const row = activeGanttPopoverRow;
@@ -528,6 +531,10 @@ export default function ScheduleGanttView({
       actions.push({ label: 'Client contacted', onClick: () => {}, disabled: true });
     }
     if (pinAction) {
+      if (isPinned) actions.push({
+        label: 'Edit fixed date...',
+        onClick: () => closeAndRun(() => onOpenPinEdit(row.scheduleItemId, row.startDate)),
+      });
       actions.push({ label: isPinned ? 'Unpin' : 'Pin...', shortcut: 'P', onClick: pinAction });
     }
 

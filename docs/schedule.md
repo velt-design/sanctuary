@@ -22,9 +22,19 @@ Schedule has two normal staff views:
 
 The existing Site Visits route/data owner remains directly addressable as a bounded specialist workflow but is not shown in the Schedule tabs or portal navigation. Project work items do not link to it; the shared server ranking may expose **Arrange the site visit** at `Contacted` and **Book or confirm site visit** at `Site Visit`. Its `project` deep link resolves the project's active booking independently of the currently displayed week and salesperson filter: an existing visit switches to its week, highlights it, and opens the edit dialog, while a project with no visit opens the create dialog already linked to that project. In that direct compatibility surface, booking creates a tentative visit and the edit dialog saves its current date, time, salesperson, and notes before an explicit **Confirm booking** action. Confirmation is a compare-and-swap from `TENTATIVE` to `CONFIRMED`; only a verified affected row emits qualified-lead analytics, using the immutable database-owned `confirmed_at`. A recent confirmed replay may repair the idempotent event with that original time, while an old replay cannot create a fresh conversion; legacy confirmed rows with no `confirmed_at` fail closed. Confirmation does not mark the customer notified because this path sends no email. Staff may also record the separate bounded manual `SITE_VISIT_COMPLETED` confirmation; that fact removes the visit specialist candidate but does not create work, mutate Schedule, or advance pipeline stage.
 
+## Authored dates and conflict resolution
+
+A deliberate start-date edit or Gantt move fixes that start. Flexible queue work makes room around fixed intervals; Board order does not itself create a collision. Only overlapping working-day intervals create conflicts. Reading Board or Gantt preserves saved dates and gaps, including overdue work. Passing time does not extend started jobs or move followers: staff explicitly marks completion or updates remaining days. Recorded actual dates remain unchanged on reads. Gantt derives client-update presentation without writing flags.
+
+The Gantt range includes four complete weeks before the current Monday and twelve weeks forward (112 calendar days). It initially scrolls around today and preserves the user's position on refresh. Hidden weekends do not change the target weekday of an inverse drag.
+
+Conflicts appear in a collapsible review panel naming both jobs. Staff can change either date, change crew, or keep the exact overlap. Acceptance is stored in `scheduled_jobs.accepted_overlaps` using crew, job IDs and both date intervals; a changed interval produces a new issue. Flexible work without a client commitment reflows without a redundant confirmation. The timing review uses **Save timing**, because a command with no affected commitment saves immediately.
+
+Apply `20260908000001_schedule_guarded_commands.sql` before deploying these APIs, then verify the Schedule readiness endpoint. Browser recovery records retain intent, not a server commit receipt; an ambiguous request requires review against refreshed saved data. Production rollout and migrated authenticated QA remain release gates.
+
 ## V2 Write Model
 
-Schedule mutations go through staff API routes and Schedule V2 RPC commands. Important command areas include:
+Schedule mutations go through staff API routes and the service-role-only `schedule_v2_guarded_command` wrapper around the existing Schedule V2 RPC commands. The API captures each involved crew revision before reading calculation rows; the wrapper locks those crews in ID order, checks their revisions, and rejects a stale or out-of-scope write atomically with HTTP 409. Row triggers increment crew revisions for job, queue and downtime writes; crew planning settings and calendar changes also invalidate earlier calculations. The guarded command retains an authored `queue_anchor_date`, clears it when a queue becomes empty, and keeps leading/downtime-only queues stable across refreshes. New assignments are never backdated into an old empty queue. Cross-crew moves guard both crews. Important command areas include:
 
 - Assign/unassign jobs.
 - Reorder queue.
@@ -63,9 +73,7 @@ controller:
   intent over confirmed truth. A commit-ambiguous Board command retains its
   placement through two bounded reads; an unverifiable result blocks only its
   project and affected lane resources while unrelated crews remain movable.
-- A separately mounted/remounted Schedule client has no component-local intent
-  layer, so it remains read-only while another owner is saving and reconciles
-  after that owner settles.
+- A separately mounted Schedule client remains read-only while another in-process owner is saving and reconciles after that owner settles. Owner-scoped browser records retain queued Board placement and sent command intent across a reload. The collapsible recovery panel shows unconfirmed/rejected requests for review; it never blindly replays an ambiguous create or destructive command.
 - Acquire that mutation owner and cancel active Board/Gantt reads before
   persistence starts. Board optimism is already visible before a queued command
   starts; Gantt and non-placement commands retain their checkpoint lifecycle.
@@ -90,7 +98,7 @@ controller:
 - Claim success only after the staff API explicitly returns `ok: true`.
 - Keep failed/stale state visible until a successful save or explicit refresh
   reconciles the server snapshot. Board placement recovery is card/lane scoped;
-  Gantt and other Schedule recovery may remain page scoped.
+  Gantt and other Schedule recovery may remain page scoped. Ambiguous Gantt timing keeps the requested preview visible until an authoritative read settles it; the UI distinguishes an unconfirmed preview from an accepted save.
 - Treat network failures, HTTP 408/5xx responses, and malformed success
   responses as commit-ambiguous. Board retains and verifies its latest visual
   placement; other mutations refresh authoritative state rather than claiming
@@ -241,7 +249,7 @@ Gantt separates planning controls (range, scale, today, All jobs/Needs
 attention, and crews) from secondary view options (planned dates, completed
 jobs, density, and legend). Its default visual scale is eight weeks, while the
 Monday-aligned query, cache, and authoritative refresh range remains twelve
-weeks/84 days. Needs attention is a presentation filter over existing facts
+weeks forward plus four weeks of history/112 days. Needs attention is a presentation filter over existing facts
 only: an attached Schedule warning/error, a required client update, or planned
 drift beyond the stored flex allowance. It does not create a new priority or
 Schedule state.

@@ -4,6 +4,7 @@ const requireStaffSession = vi.fn();
 const parseJsonBody = vi.fn();
 const isMissingSchemaError = vi.fn();
 const loadScheduledJobRow = vi.fn();
+const loadScheduleContext = vi.fn();
 const normalizeClientUpdateStatus = vi.fn();
 const rpc = vi.fn();
 
@@ -15,6 +16,8 @@ vi.mock('@/lib/api/staffApi', async () => {
 vi.mock('@/lib/scheduling/scheduleV2Server', () => ({
   isMissingSchemaError,
   loadScheduledJobRow,
+  loadScheduleContext,
+  buildCrewContext: () => ({ recompute: { anchor_date: '2026-04-10' } }),
   normalizeClientUpdateStatus,
 }));
 
@@ -30,13 +33,14 @@ describe('POST /api/staff/v1/schedule/job/client-update/ack', () => {
     parseJsonBody.mockReset();
     isMissingSchemaError.mockReset();
     loadScheduledJobRow.mockReset();
+    loadScheduleContext.mockResolvedValue({ crews: [{ id: 'crew-1', schedule_revision: 7 }] });
     normalizeClientUpdateStatus.mockReset();
     rpc.mockReset();
 
     requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
     parseJsonBody.mockResolvedValue({ ok: true, body: { job_id: 'job-1' } });
     isMissingSchemaError.mockReturnValue(false);
-    loadScheduledJobRow.mockResolvedValue({ id: 'scheduled-job-1', client_update_status: 'needed' });
+    loadScheduledJobRow.mockResolvedValue({ id: 'scheduled-job-1', crew_id: 'crew-1', client_update_status: 'needed' });
     normalizeClientUpdateStatus.mockReturnValue('needed');
     rpc.mockResolvedValue({ data: { updated_job: 'scheduled-job-1', acknowledged: true }, error: null });
   });
@@ -45,7 +49,8 @@ describe('POST /api/staff/v1/schedule/job/client-update/ack', () => {
     const mod = await import('./route');
     const res = await mod.POST(new Request('http://localhost/api/staff/v1/schedule/job/client-update/ack', { method: 'POST', headers: { 'x-request-id': 'req_ack_ok' } }));
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc.mock.calls[0]?.[0]).toBe('schedule_v2_ack_client_update');
+    expect(rpc.mock.calls[0]?.[0]).toBe('schedule_v2_guarded_command');
+    expect(rpc.mock.calls[0]?.[1]).toMatchObject({ p_command: 'schedule_v2_ack_client_update', p_expected_revisions: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } } });
     expect(res.status).toBe(200);
     expect(res.headers.get('x-portal-request-id')).toBe('req_ack_ok');
   });

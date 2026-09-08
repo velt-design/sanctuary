@@ -814,7 +814,7 @@ describe('ScheduleClient', () => {
       queryClient.getQueryData(
         qk.schedule.gantt(
           'example.supabase.co',
-          '2026-04-06',
+          '2026-03-09',
           '2026-06-28',
           '2026-04-07',
         ),
@@ -926,7 +926,7 @@ describe('ScheduleClient', () => {
     queryClient.setQueryData(
       qk.schedule.gantt(
         'example.supabase.co',
-        '2026-04-06',
+        '2026-03-09',
         '2026-06-28',
         '2026-04-07',
       ),
@@ -1000,7 +1000,7 @@ describe('ScheduleClient', () => {
     expect(scheduleSnapshotQueryFn).not.toHaveBeenCalled();
     expect(scheduleGanttSnapshotQueryFn).not.toHaveBeenCalled();
     expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toBeUndefined();
-    expect(queryClient.getQueryData(qk.schedule.gantt('example.supabase.co', '2026-04-06', '2026-06-28', '2026-04-07'))).toEqual(snapshot);
+    expect(queryClient.getQueryData(qk.schedule.gantt('example.supabase.co', '2026-03-09', '2026-06-28', '2026-04-07'))).toEqual(snapshot);
     expect(rendered.container.textContent).toContain('Gantt');
     expect(rendered.container.querySelector('[aria-label="Regional Day (10 Apr)"]')).not.toBeNull();
     expect(rendered.container.querySelector('[aria-label="National Day (13 Apr)"]')).not.toBeNull();
@@ -1059,7 +1059,7 @@ describe('ScheduleClient', () => {
     expect(scheduleGanttSnapshotQueryFn).toHaveBeenCalled();
     expect(fetchScheduleGantt).not.toHaveBeenCalled();
     expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toBeUndefined();
-    expect(queryClient.getQueryData(qk.schedule.gantt('example.supabase.co', '2026-04-06', '2026-06-28', '2026-04-07'))).toEqual(refreshedSnapshot);
+    expect(queryClient.getQueryData(qk.schedule.gantt('example.supabase.co', '2026-03-09', '2026-06-28', '2026-04-07'))).toEqual(refreshedSnapshot);
 
     rendered.unmount();
   });
@@ -1404,7 +1404,7 @@ describe('ScheduleClient', () => {
     expect(renderedItem?.forecastEndExclusive).toBe('2026-04-08');
 
     const cached = queryClient.getQueryData<ScheduleV2Snapshot>(
-      qk.schedule.gantt('example.supabase.co', '2026-04-06', '2026-06-28', '2026-04-07'),
+      qk.schedule.gantt('example.supabase.co', '2026-03-09', '2026-06-28', '2026-04-07'),
     );
     expect(cached?.scheduleItems.find((item) => item.id === scheduleItemId)?.forecastEndExclusive).toBe('2026-04-08');
 
@@ -1449,6 +1449,47 @@ describe('ScheduleClient', () => {
     expect(rendered.container.textContent).toContain('Schedule may be out of date');
     expect(rendered.container.textContent).toContain('Refresh needed');
     expect(rendered.container.textContent).toContain('The saved preview remains visible');
+    rendered.unmount();
+  });
+
+  it('retains the requested Gantt dates when both the save and its verification are uncertain', async () => {
+    vi.useFakeTimers();
+    searchParamsString = 'view=gantt';
+    const snapshot = { ...boardMutationSnapshot(), unscheduledJobs: [] };
+    scheduleGanttSnapshotQueryOptions.mockImplementation((host: string, today: string, range: { rangeStart: string; rangeEnd: string }) => ({
+      queryKey: qk.schedule.gantt(host, range.rangeStart, range.rangeEnd, today),
+      queryFn: scheduleGanttSnapshotQueryFn.mockRejectedValue(new Error('Authoritative range refresh failed')),
+      staleTime: 30_000,
+    }));
+    vi.mocked(adjustJob).mockRejectedValue(new ApiError('Save response lost', { status: 500, body: null }));
+
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ScheduleClient initialScheduleMode="v2" initialSeedKind="gantt" initialV2Snapshot={snapshot} />
+      </QueryClientProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      ganttMocks.latestProps.onResizePin(scheduleItemId, '2026-04-13', 3);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+      vi.runOnlyPendingTimers();
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    });
+
+    const renderedItem = ganttMocks.latestProps.visibleScheduleItems.find(
+      (item: { id: string }) => item.id === scheduleItemId,
+    );
+    expect(renderedItem?.forecastStart).toBe('2026-04-13');
+    expect(renderedItem?.forecastEndExclusive).toBe('2026-04-16');
+    expect(rendered.container.textContent).toContain('Schedule may be out of date');
+    expect(rendered.container.textContent).toContain('Refresh needed');
+    expect(rendered.container.textContent).toContain('Your unconfirmed preview remains visible');
     rendered.unmount();
   });
 
@@ -2905,7 +2946,7 @@ describe('ScheduleClient', () => {
     const { queryClient, rendered } = renderSchedule(snapshot);
     const ganttCacheKey = qk.schedule.gantt(
       'example.supabase.co',
-      '2026-04-06',
+      '2026-03-09',
       '2026-06-28',
       '2026-04-07',
     );

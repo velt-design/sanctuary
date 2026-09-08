@@ -609,9 +609,9 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
     expect(document.body.textContent).toContain('Current07 Apr to 08 Apr · 2d');
     expect(document.body.textContent).toContain('RequestedStart 09 Apr · 2d duration');
     expect(document.body.textContent).not.toContain('Proposed09 Apr to 10 Apr');
-    expect(document.body.textContent).toContain('server will calculate the finish against the crew calendar, holidays and closures');
+    expect(document.body.textContent).toContain('Save these dates using the crew calendar, holidays and closures');
     const applyMove = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent === 'Check impact');
+      .find((button) => button.textContent === 'Save timing');
     act(() => applyMove?.click());
     expect(props.onMovePin).toHaveBeenCalledWith(scheduleItem.id, '2026-04-09', 2);
 
@@ -626,7 +626,7 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
 
     expect(props.onResizePin).not.toHaveBeenCalled();
     const applyResize = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent === 'Check impact');
+      .find((button) => button.textContent === 'Save timing');
     act(() => applyResize?.click());
     expect(props.onResizePin).toHaveBeenCalledWith(scheduleItem.id, '2026-04-07', 4);
     rendered.unmount();
@@ -656,7 +656,7 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
     await flushEffects();
 
     const checkImpact = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent === 'Check impact');
+      .find((button) => button.textContent === 'Save timing');
     expect(checkImpact?.disabled).toBe(true);
     expect(document.body.textContent).toContain('The schedule changed while this review was open');
     act(() => checkImpact?.click());
@@ -709,7 +709,7 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
       expect(rendered.container.querySelector('[data-layout-mode="compact-short"]')).not.toBeNull();
       expect(rendered.container.querySelector('[aria-label="Gantt timeline"]')).toBeNull();
       expect(rendered.container.querySelector('[aria-label="Crew schedule agenda"]')).not.toBeNull();
-      expect(rendered.container.textContent).toContain('Plan 06 Apr to 28 Jun');
+      expect(rendered.container.textContent).toContain('Plan 09 Mar to 28 Jun');
       expect(rendered.container.textContent).toContain('Open Board and unscheduled work');
       rendered.unmount();
     } finally {

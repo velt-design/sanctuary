@@ -5462,3 +5462,7 @@ for new spawns, or start a replacement worker.
 Promoted to: `docs/ai/operations/openclaw-engineering-supervision.md`
 Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-dispatch.mjs`;
 `test/ai-operations-engineering-supervision.test.ts`; `npm run test:ai:ops`
+
+## 2026-09-08 — Schedule authored dates and save trust
+
+Read-time recomputation moved overdue work and extended started jobs from an unchanged days-remaining value; zero-width weekend ties also made an inverse Gantt drag land on the wrong weekday. Reads now preserve saved/actual dates, explicit progress commands measure remaining days once, and flexible planning reserves fixed intervals. Checkpoint and confirmation owners separate accepted writes from later UI failures. Per-crew revision guards prevent stale calculated writes, and exact-date overlap acceptance plus owner-scoped retained intent makes conflicts and uncertainty reviewable. Four full past weeks remain scrollable while twelve forward weeks are retained. The new migration must precede API deployment; browser recovery never blindly replays ambiguous writes.

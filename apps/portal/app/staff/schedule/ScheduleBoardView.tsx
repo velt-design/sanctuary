@@ -1,5 +1,7 @@
 'use client';
 
+import { deriveScheduleStatus } from './scheduleItemStatus';
+
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import {
@@ -123,22 +125,6 @@ function formatShortDate(ymd: string): string {
 
 function formatDateRange(startYmd: string, endYmd: string): string {
   return `${formatShortDate(startYmd)} → ${formatShortDate(endYmd)}`;
-}
-
-function normalizeScheduleStatus(value: unknown): ScheduleItemStatus {
-  const s = typeof value === 'string' ? value.trim().toUpperCase() : '';
-  if (s === 'CONFIRMED' || s === 'IN_PROGRESS' || s === 'COMPLETED') return s as ScheduleItemStatus;
-  return 'TENTATIVE';
-}
-
-function deriveScheduleStatus(item: ScheduleItem, today: string): ScheduleItemStatus {
-  const raw = normalizeScheduleStatus(item.scheduleStatus);
-  if (raw === 'COMPLETED') return 'COMPLETED';
-  const planned = typeof item.startDateOverride === 'string' ? item.startDateOverride : '';
-  const started = Boolean(item.actualStartDate) || (planned && planned <= today);
-  if (started) return 'IN_PROGRESS';
-  if (raw === 'CONFIRMED' || item.locked) return 'CONFIRMED';
-  return 'TENTATIVE';
 }
 
 function LaneDropZone({

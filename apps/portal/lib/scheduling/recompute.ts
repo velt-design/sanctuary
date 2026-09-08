@@ -1,5 +1,5 @@
-import { diffDaysYmd, isYmd } from './date';
-import { addWorkingDays, nextWorkingDay, snapToWorkingDay, workingDaysBetween, type WorkingDayIndex } from './workingDays';
+import { addDaysYmd, diffDaysYmd, isYmd } from './date';
+import { addWorkingDays, isWorkingDay, nextWorkingDay, snapToWorkingDay, workingDaysBetween, type WorkingDayIndex } from './workingDays';
 
 type JobMode = 'floating' | 'pinned';
 type JobStatus = 'not_started' | 'in_progress' | 'paused' | 'done';
@@ -10,6 +10,7 @@ export type ScheduleCrew = {
   id: string;
   region: string;
   baseAvailableDate?: string | null;
+  anchorDate?: string | null;
 };
 
 export type ScheduledJob = {
@@ -31,6 +32,7 @@ export type ScheduledJob = {
   actualFinish?: string | null;
   status?: JobStatus | null;
   daysRemaining?: number | null;
+  acceptedOverlaps?: string[];
   driftDays?: number | null;
   clientUpdateStatus?: ClientUpdateStatus | null;
   clientUpdateNeededAt?: string | null;
@@ -44,6 +46,7 @@ export type CrewDowntime = {
   durationDays: number;
   reason?: string;
   note?: string | null;
+  createdAt?: string | null;
 };
 
 export type CrewScheduleItem = {
@@ -57,6 +60,8 @@ export type CrewScheduleItem = {
 
 export type PinnedConflict = {
   job_id: string;
+  conflicting_job_id?: string;
+  overlap_key?: string;
   type: 'pinned_collision';
   expected_cursor_start: string;
   pinned_start: string;
@@ -85,6 +90,7 @@ type JobForecastUpdate = {
 };
 
 export type RecomputeResult = {
+  anchor_date?: string;
   blocks: ComputedScheduleBlock[];
   job_updates: JobForecastUpdate[];
   conflicts: PinnedConflict[];
@@ -95,11 +101,6 @@ export type RecomputeResult = {
 function normalizeDurationDays(value: unknown, fallback = 1): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
   return Math.max(1, Math.trunc(value));
-}
-
-function normalizeNonNegativeInt(value: unknown): number | null {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
-  return Math.max(0, Math.trunc(value));
 }
 
 function maxDate(a: string, b: string): string {
@@ -124,6 +125,39 @@ function buildBlockDuration(start: string, endExclusive: string, region: string,
   return Math.max(1, duration);
 }
 
+type ReservedInterval = { jobId: string; start: string; end: string };
+
+function reservedJobInterval(job: ScheduledJob, region: string, calendar: WorkingDayIndex, preserveSaved: boolean): ReservedInterval | null {
+  if (job.status === 'done' && isYmd(job.actualStart ?? '') && isYmd(job.actualFinish ?? '')) {
+    return { jobId: job.id, start: job.actualStart!, end: addDaysYmd(job.actualFinish!, 1) };
+  }
+  const started = (job.status === 'in_progress' || job.status === 'paused') && isYmd(job.actualStart ?? '');
+  if (!started && job.mode !== 'pinned' && !preserveSaved) return null;
+  const start = started ? job.actualStart! : isYmd(job.forecastStart ?? '') ? snapToWorkingDay(job.forecastStart!, region, calendar) : null;
+  if (!start) return null;
+  const end = preserveSaved && isYmd(job.forecastEndExclusive ?? '') && job.forecastEndExclusive! > start
+    ? job.forecastEndExclusive!
+    : addWorkingDays(start, normalizeDurationDays(job.forecastDurationDays, 1), region, calendar);
+  return { jobId: job.id, start, end };
+}
+
+function placeAroundReserved(start: string, duration: number, reserved: ReservedInterval[], region: string, calendar: WorkingDayIndex): string {
+  let candidate = start;
+  for (const interval of reserved) {
+    if (candidate < interval.end && addWorkingDays(candidate, duration, region, calendar) > interval.start) {
+      candidate = nextWorkingDay(interval.end, region, calendar);
+    }
+  }
+  return candidate;
+}
+
+// Remaining days are measured once by an explicit progress command. Reads must
+// not add another elapsed day to the same retained "two days remaining" fact.
+export function durationAfterProgressUpdate(job: ScheduledJob, today: string, remaining: number, region: string, calendar: WorkingDayIndex): number {
+  const elapsed = isYmd(job.actualStart ?? '') ? workingDaysBetween(job.actualStart!, today, region, calendar) : 0;
+  return Math.max(1, elapsed + Math.max(0, Math.trunc(remaining)));
+}
+
 export function recomputeCrewSchedule(input: {
   crew: ScheduleCrew;
   items: CrewScheduleItem[];
@@ -131,13 +165,34 @@ export function recomputeCrewSchedule(input: {
   downtimesById: Map<string, CrewDowntime>;
   today: string;
   calendar: WorkingDayIndex;
+  preserveSaved?: boolean;
 }): RecomputeResult {
   const { crew, jobsById, downtimesById, today, calendar } = input;
   const items = input.items.slice().sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
   const region = crew.region;
 
-  const base = maxDate(today, crew.baseAvailableDate ?? today);
+  const scheduledJobs = items.flatMap((item) => item.itemType === 'job' && item.jobId && jobsById.has(item.jobId) ? [jobsById.get(item.jobId)!] : []);
+  const savedStarts = scheduledJobs.map((job) => job.forecastStart).filter((date): date is string => typeof date === 'string' && isYmd(date)).sort();
+  let inferredAnchor = savedStarts[0];
+  // Old queues have no authored anchor. Recover leading downtime before the
+  // first saved work without shifting it again on every read.
+  if (inferredAnchor && !crew.anchorDate) {
+    let leadingDays = 0;
+    for (const item of items) {
+      if (item.itemType === 'job') break;
+      leadingDays += normalizeDurationDays(downtimesById.get(item.downtimeId ?? '')?.durationDays, 0);
+    }
+    while (leadingDays > 0) {
+      inferredAnchor = addDaysYmd(inferredAnchor, -1);
+      if (isWorkingDay(inferredAnchor, region, calendar)) leadingDays -= 1;
+    }
+  }
+  const downtimeCreated = [...downtimesById.values()].map((row) => row.createdAt?.slice(0, 10)).filter((date): date is string => typeof date === 'string' && isYmd(date)).sort()[0];
+  const anchor = items.length ? crew.anchorDate ?? inferredAnchor ?? downtimeCreated ?? today : today;
+  const base = maxDate(anchor, crew.baseAvailableDate ?? anchor);
   let cursor = nextWorkingDay(base, region, calendar);
+  const reservedByJobId = new Map(scheduledJobs.map((job) => reservedJobInterval(job, region, calendar, input.preserveSaved === true)).filter((interval): interval is ReservedInterval => interval !== null).map((interval) => [interval.jobId, interval]));
+  const reserved = [...reservedByJobId.values()].sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
 
   const blocks: ComputedScheduleBlock[] = [];
   const jobUpdates: JobForecastUpdate[] = [];
@@ -153,7 +208,7 @@ export function recomputeCrewSchedule(input: {
         continue;
       }
       const durationDays = normalizeDurationDays(downtime.durationDays, 1);
-      const start = cursor;
+      const start = placeAroundReserved(downtime.createdAt ? cursor : maxDate(cursor, today), durationDays, reserved, region, calendar);
       const endExclusive = addWorkingDays(start, durationDays, region, calendar);
       blocks.push({
         item_id: item.id,
@@ -178,18 +233,17 @@ export function recomputeCrewSchedule(input: {
 
     const status: JobStatus | null = job.status ?? null;
     const isDone = status === 'done';
-    const isInProgress = status === 'in_progress';
-    const isPinned = job.mode === 'pinned';
+    const fixed = reservedByJobId.get(job.id);
 
     let start: string | null = null;
     let durationDays = normalizeDurationDays(job.forecastDurationDays, 1);
 
     if (isDone) {
-      if (job.actualStart && job.actualFinish && isYmd(job.actualStart) && isYmd(job.actualFinish)) {
-        const actualStart = snapToWorkingDay(job.actualStart, region, calendar);
-        const actualFinish = snapToWorkingDay(job.actualFinish, region, calendar);
+      if (job.actualStart && job.actualFinish && isYmd(job.actualStart ?? '') && isYmd(job.actualFinish ?? '')) {
+        const actualStart = job.actualStart;
+        const actualFinish = job.actualFinish;
         start = actualStart;
-        const endExclusive = addWorkingDays(actualFinish, 1, region, calendar);
+        const endExclusive = addDaysYmd(actualFinish, 1);
         durationDays = buildBlockDuration(actualStart, endExclusive, region, calendar);
         blocks.push({
           item_id: item.id,
@@ -214,21 +268,10 @@ export function recomputeCrewSchedule(input: {
       }
     }
 
-    if (isInProgress && job.actualStart && isYmd(job.actualStart)) {
-      start = snapToWorkingDay(job.actualStart, region, calendar);
-      const remaining = normalizeNonNegativeInt(job.daysRemaining);
-      if (remaining !== null) {
-        const elapsed = workingDaysBetween(start, today, region, calendar);
-        durationDays = Math.max(1, elapsed + remaining);
-      }
-    } else if (isPinned) {
-      if (job.forecastStart && isYmd(job.forecastStart)) {
-        start = snapToWorkingDay(job.forecastStart, region, calendar);
-      } else {
-        start = cursor;
-      }
+    if (fixed) {
+      start = fixed.start;
     } else {
-      start = cursor;
+      start = placeAroundReserved(job.forecastStart ? cursor : maxDate(cursor, today), durationDays, reserved, region, calendar);
     }
 
     if (!start) {
@@ -236,16 +279,17 @@ export function recomputeCrewSchedule(input: {
       continue;
     }
 
-    const endExclusive = addWorkingDays(start, durationDays, region, calendar);
+    const endExclusive = fixed?.end ?? addWorkingDays(start, durationDays, region, calendar);
 
-    if (isPinned && isBefore(start, cursor)) {
-      const overlapDays = workingDaysBetween(start, cursor, region, calendar);
-      conflicts.push({
-        job_id: job.id,
-        type: 'pinned_collision',
-        expected_cursor_start: cursor,
-        pinned_start: start,
-        overlap_days: overlapDays,
+    for (const previous of blocks) {
+      if (!fixed || !previous.job_id || start >= previous.end_exclusive || endExclusive <= previous.start) continue;
+      const overlapDays = workingDaysBetween(start > previous.start ? start : previous.start, endExclusive < previous.end_exclusive ? endExclusive : previous.end_exclusive, region, calendar);
+      const overlapKey = `${crew.id}|${[`${job.id}:${start}:${endExclusive}`, `${previous.job_id}:${previous.start}:${previous.end_exclusive}`].sort().join('|')}`;
+      if (job.acceptedOverlaps?.includes(overlapKey) || jobsById.get(previous.job_id)?.acceptedOverlaps?.includes(overlapKey)) continue;
+      if (overlapDays > 0) conflicts.push({
+        overlap_key: overlapKey,
+        job_id: job.id, conflicting_job_id: previous.job_id, type: 'pinned_collision',
+        expected_cursor_start: previous.end_exclusive, pinned_start: start, overlap_days: overlapDays,
       });
     }
 
@@ -256,7 +300,7 @@ export function recomputeCrewSchedule(input: {
       position: item.position,
       start,
       end_exclusive: endExclusive,
-      duration_days: buildBlockDuration(start, endExclusive, region, calendar),
+      duration_days: durationDays,
       job_id: job.id,
       job_mode: job.mode,
       job_status: status,
@@ -273,6 +317,7 @@ export function recomputeCrewSchedule(input: {
   }
 
   return {
+    anchor_date: base,
     blocks,
     job_updates: jobUpdates,
     conflicts,

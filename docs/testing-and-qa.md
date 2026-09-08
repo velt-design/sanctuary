@@ -950,6 +950,8 @@ run, Preview protection was reverified, and production was not changed.
 
 Before shipping schedule changes:
 
+Run `npm run test:schedule:db:fast` for disposable PostgreSQL migration rollback/replay, persisted forward/inverse dates, stale staff write rejection, crew scope rollback, stored overlap acceptance and RPC permissions. This uses the real schema and command migrations and never connects to staff data.
+
 1. Confirm migrations are applied through current Schedule V2 command/repair migrations.
 2. Confirm `GET /api/staff/v1/schedule/readiness` returns `200`.
 3. Run relevant schedule unit and route tests.
