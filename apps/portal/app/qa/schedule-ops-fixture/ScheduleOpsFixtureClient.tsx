@@ -11,6 +11,7 @@ import type { ScheduleItem } from '@/lib/types/scheduling';
 import type { ScheduleBoardDrop } from '@/app/staff/schedule/ScheduleBoardView';
 import { resolveScheduleBoardOrderChange } from '@/app/staff/schedule/scheduleBoardOrder';
 import { boardModelForFixture, createScheduleOpsFixture } from './fixtures';
+import { recomputePreviewSchedule } from './previewSchedule';
 import styles from './scheduleOpsFixture.module.css';
 
 export default function ScheduleOpsFixtureClient({
@@ -38,6 +39,15 @@ export default function ScheduleOpsFixtureClient({
   const [unscheduledJobs, setUnscheduledJobs] = useState(() => fixture.unscheduledJobs.slice());
   const [noticeState, setNoticeState] = useState(initialState);
   const [hydrated, setHydrated] = useState(false);
+  const scheduleBars = useMemo(() => Array.from(scheduleItemById.values()).flatMap((item) => {
+    const job = fixture.jobsById.get(item.id);
+    if (!job || !item.forecastStart || !item.forecastEndExclusive) return [];
+    return [{ scheduleItemId: item.id, installerId: item.installerId, projectId: item.projectId,
+      estimateId: item.estimateId, projectName: job.projectName, status: job.status,
+      startDate: item.forecastStart, endDate: addDaysYmd(item.forecastEndExclusive, -1),
+      durationHours: (item.forecastDurationDays ?? 1) * WORK_HOURS_PER_DAY }];
+  }), [fixture, scheduleItemById]);
+  const barsByScheduleId = useMemo(() => new Map(scheduleBars.map((bar) => [bar.scheduleItemId, bar])), [scheduleBars]);
   useEffect(() => setHydrated(true), []);
   const visibleUnscheduled = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -75,6 +85,22 @@ export default function ScheduleOpsFixtureClient({
   if (!hydrated) {
     return <div className={styles.loading} role="status">Loading synthetic Schedule fixture…</div>;
   }
+
+  const applyPreviewLanes = (lanes: Map<string, ScheduleItem[]>) => {
+    const next = recomputePreviewSchedule(lanes, fixture.installers, fixture.today);
+    setLaneItems(next.laneItems);
+    setScheduleItemById(next.scheduleItemById);
+  };
+  const handleTimingChange = (id: string, start: string, duration: number) => {
+    const item = scheduleItemById.get(id);
+    if (!item || item.actualStartDate || item.jobStatus !== 'not_started') return;
+    const next = new Map(laneItems);
+    next.set(item.installerId, (next.get(item.installerId) ?? []).map((row) => row.id === id
+      ? { ...row, mode: 'pinned', forecastStart: start, forecastDurationDays: duration,
+          durationHoursOverride: duration * WORK_HOURS_PER_DAY, updatedAt: new Date().toISOString() }
+      : row));
+    applyPreviewLanes(next);
+  };
 
   const handleFixtureDrop = (activeId: string, drop: ScheduleBoardDrop) => {
     if (drop.kind === 'unscheduled') return;
@@ -132,8 +158,7 @@ export default function ScheduleOpsFixtureClient({
       nextItemById.set(id, updated);
       return updated;
     }));
-    setLaneItems(nextLanes);
-    setScheduleItemById(nextItemById);
+    applyPreviewLanes(nextLanes);
     setUnscheduledJobs((jobs) => jobs.filter((candidate) => candidate.id !== activeId));
     setNoticeState(null);
   };
@@ -142,11 +167,11 @@ export default function ScheduleOpsFixtureClient({
     <div className={styles.fixture} data-schedule-ops-view={view} data-schedule-ops-scale={scale}>
       <header className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>Synthetic read-only QA fixture</p>
+          <p className={styles.eyebrow}>Interactive sample schedule</p>
           <h1>Schedule operational context</h1>
           <p>
             {fixture.installers.length} crews · {fixture.scheduleBars.length} scheduled jobs ·{' '}
-            {fixture.unscheduledJobs.length} unscheduled jobs. Controls cannot persist changes.
+            {unscheduledJobs.length} unscheduled jobs. Drag a bar to move it; drag its right edge to change duration, then choose Save timing. Changes reset on refresh and never affect live jobs.
           </p>
         </div>
         <div className={styles.headerActions}>
@@ -176,7 +201,7 @@ export default function ScheduleOpsFixtureClient({
           unscheduledJobsAll={unscheduledJobs}
           laneItems={laneItems}
           scheduleItemById={scheduleItemById}
-          barsByScheduleId={fixture.barsByScheduleId}
+          barsByScheduleId={barsByScheduleId}
           issueLevelByScheduleId={new Map(
             fixture.scheduleIssues.flatMap((issue) =>
               issue.scheduleItemId ? [[issue.scheduleItemId, issue.level] as const] : [],
@@ -214,7 +239,7 @@ export default function ScheduleOpsFixtureClient({
           visibleScheduleItems={Array.from(scheduleItemById.values())}
           projectsById={fixture.projectsById}
           estimatesById={new Map()}
-          scheduleBars={fixture.scheduleBars}
+          scheduleBars={scheduleBars}
           scheduleIssues={fixture.scheduleIssues}
           holidays={[]}
           showCompleted={showCompleted}
@@ -229,8 +254,8 @@ export default function ScheduleOpsFixtureClient({
           onOpenPinEdit={noMutation}
           onUnpinScheduleItem={noMutation}
           onAckClientUpdate={noMutation}
-          onMovePin={noMutation}
-          onResizePin={noMutation}
+          onMovePin={handleTimingChange}
+          onResizePin={handleTimingChange}
         />
       )}
       {reviewOpen ? (

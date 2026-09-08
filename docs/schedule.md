@@ -385,11 +385,16 @@ accommodate presentation work.
 The data-free `/qa/schedule-ops-fixture` route is gated by
 `ENABLE_PORTAL_QA_FIXTURES=1`. It renders the production Board/Gantt
 presenters with long customer/site identity, nine crews, conflicts, 12
-unscheduled jobs, and an optional 108-bar large schedule. Every command
-callback is inert. Use `?view=board|gantt&scale=standard|large` for deterministic
+unscheduled jobs, and an optional 108-bar large schedule. Use
+`?view=board|gantt&scale=standard|large` for deterministic
 responsive and performance evidence without creating or mutating shared
-Schedule records. Board drops update fixture-only in-memory arrays so the
-rendered committed position can be asserted without any API/RPC call. Board
+Schedule records. Board drops and Gantt move/resize confirmation update only
+in-memory sample rows and reflow them through the shared scheduling engine.
+Bars derive from those rows, so switching views retains the requested dates;
+refresh resets the sample. Other project/customer commands remain inert.
+Sample dates are sequential working days per crew. The browser gate verifies
+forward/inverse bar movement and exact duration extension, including a stored
+end on a hidden weekend, without any API/RPC call. Board
 additionally accepts `&state=failed|stale|slow` to render exceptional Retry and
 Refresh notices or silent background persistence without a command; normal
 drops stay silent. Run

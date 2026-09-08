@@ -10,6 +10,15 @@ import {
 } from './ganttAxis';
 
 describe('ganttAxis', () => {
+  it.each([18, 27, 54])('resizes from the visible Friday edge when the stored end is a hidden weekend at %ipx', (baseDayPx) => {
+    for (const startDate of ['2026-08-07', '2026-08-08', '2026-08-09']) {
+      for (const [days, target] of [[1, '2026-08-10'], [2, '2026-08-11'], [-1, '2026-08-06'], [-2, '2026-08-05']] as const) {
+        const delta = snapAxisDayDeltaForPixelDelta({ startDate, edge: 'end', deltaPx: days * baseDayPx, baseDayPx, weekendWeight: 0 });
+        expect(addDaysYmd(startDate, delta)).toBe(target);
+      }
+      expect(snapAxisDayDeltaForPixelDelta({ startDate, edge: 'end', deltaPx: 0, baseDayPx, weekendWeight: 0 })).toBe(0);
+    }
+  });
   it.each([18, 27, 54])('round trips displayed working-day positions in both directions at %ipx', (baseDayPx) => {
     const axis = buildGanttAxis({ rangeStart: '2026-09-07', rangeDays: 28, baseDayPx, weekendWeight: 0 });
     for (let from = 0; from < 28; from += 1) {

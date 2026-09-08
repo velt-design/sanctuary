@@ -256,6 +256,7 @@ export function axisSpanPx(
 
 export function snapAxisDayDeltaForPixelDelta(input: {
   startDate: string;
+  edge?: 'start' | 'end';
   deltaPx: number;
   baseDayPx: number;
   weekendWeight?: number;
@@ -268,6 +269,12 @@ export function snapAxisDayDeltaForPixelDelta(input: {
   const direction = deltaPx >= 0 ? 1 : -1;
   const target = Math.abs(deltaPx);
   const weekendWeight = typeof input.weekendWeight === 'number' && Number.isFinite(input.weekendWeight) ? input.weekendWeight : GANTT_WEEKEND_WEIGHT;
+  // A resize handle is on the last visible day, even if the saved inclusive
+  // end is Saturday/Sunday. Count visible-day movement from that edge.
+  let anchorDate = input.startDate;
+  if (input.edge === 'end' && weekendWeight === 0) {
+    while (isWeekendYmd(anchorDate)) anchorDate = addDaysYmd(anchorDate, -1);
+  }
   const maxSteps = Math.max(1, Math.trunc(input.maxSteps ?? 730));
 
   let bestDays = 0;
@@ -275,12 +282,12 @@ export function snapAxisDayDeltaForPixelDelta(input: {
   let acc = 0;
 
   for (let step = 1; step <= maxSteps; step += 1) {
-    const date = direction > 0 ? addDaysYmd(input.startDate, step - 1) : addDaysYmd(input.startDate, -step);
+    const date = direction > 0 ? addDaysYmd(anchorDate, step - 1) : addDaysYmd(anchorDate, -step);
     acc += dayWidthPxForDate(date, input.baseDayPx, weekendWeight);
     const diff = Math.abs(acc - target);
     // Hidden weekends share the Monday boundary. Select a visible date rather
     // than walking an equal-distance tie back into Saturday on leftward drags.
-    const candidateDate = addDaysYmd(input.startDate, direction * step);
+    const candidateDate = addDaysYmd(anchorDate, direction * step);
     const hiddenCandidate = weekendWeight === 0 && dayWeightForDate(candidateDate, weekendWeight) === 0;
     if (diff <= bestDiff && !hiddenCandidate) {
       bestDiff = diff;
@@ -290,7 +297,7 @@ export function snapAxisDayDeltaForPixelDelta(input: {
     }
   }
 
-  return direction * bestDays;
+  return bestDays === 0 ? 0 : diffDaysYmd(input.startDate, addDaysYmd(anchorDate, direction * bestDays));
 }
 
 export function todayYmdInTimeZone(timeZone: string, now: Date = new Date()): string {

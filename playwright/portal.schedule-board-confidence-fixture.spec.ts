@@ -3,6 +3,61 @@ import { expect, test, type Page } from '@playwright/test';
 const FIXTURE_PATH = '/qa/schedule-ops-fixture?view=board&scale=standard';
 const GANTT_FIXTURE_PATH = '/qa/schedule-ops-fixture?view=gantt&scale=standard';
 
+test('moves a sample Gantt bar in both directions and extends it without staff writes', async ({ page }) => {
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/staff/') && request.method() !== 'GET') writes.push(request.url());
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(GANTT_FIXTURE_PATH);
+  const row = page.locator('[data-gantt-schedule-item-id="fixture-schedule-9"]');
+  const bar = row.locator('[role="button"]');
+  await expect(bar).toBeVisible();
+  const originalLabel = await bar.getAttribute('aria-label');
+  const resizeBox = await row.locator('[data-gantt-resize-handle]').boundingBox();
+  expect(resizeBox).toBeTruthy();
+  if (resizeBox) {
+    const x = resizeBox.x + resizeBox.width / 2;
+    const y = resizeBox.y + resizeBox.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 4, y, { steps: 2 });
+    await page.mouse.up();
+    await expect(page.getByRole('dialog', { name: 'Review Gantt timing change' })).toHaveCount(0);
+  }
+  const dayWidth = await page.locator('[data-gantt-current-week]').evaluate((element) => parseFloat(getComputedStyle(element.parentElement!).getPropertyValue('--ganttDayW')));
+  const gesture = async (delta: number, resize = false) => {
+    const target = resize ? row.locator('[data-gantt-resize-handle]') : bar;
+    await target.scrollIntoViewIfNeeded();
+    const box = await target.boundingBox();
+    expect(box).toBeTruthy();
+    if (!box) return;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + delta, y, { steps: 12 });
+    await page.mouse.up();
+    const review = page.getByRole('dialog', { name: 'Review Gantt timing change' });
+    await expect(review).toBeVisible();
+    await review.getByRole('button', { name: 'Save timing', exact: true }).click();
+    await expect(review).toHaveCount(0);
+  };
+  await gesture(dayWidth * 5);
+  await expect(bar).not.toHaveAttribute('aria-label', originalLabel!);
+  await expect(bar).toHaveAttribute('aria-label', /Forecast 10 Aug to 16 Aug/);
+  await gesture(-dayWidth * 5);
+  await expect(bar).toHaveAttribute('aria-label', /Forecast 03 Aug to 09 Aug/);
+  await gesture(dayWidth * 2, true);
+  await expect(bar).toHaveAttribute('aria-label', /7d/);
+  await page.getByRole('button', { name: 'Board', exact: true }).click();
+  await page.getByRole('button', { name: 'Gantt', exact: true }).click();
+  await expect(bar).toHaveAttribute('aria-label', /7d/);
+  await page.reload();
+  await expect(bar).toHaveAttribute('aria-label', originalLabel!);
+  expect(writes).toEqual([]);
+});
+
 async function expectNoDocumentOverflow(page: Page) {
   const width = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,

@@ -5466,3 +5466,7 @@ Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-la
 ## 2026-09-08 — Schedule authored dates and save trust
 
 Read-time recomputation moved overdue work and extended started jobs from an unchanged days-remaining value; zero-width weekend ties also made an inverse Gantt drag land on the wrong weekday. Reads now preserve saved/actual dates, explicit progress commands measure remaining days once, and flexible planning reserves fixed intervals. Checkpoint and confirmation owners separate accepted writes from later UI failures. Per-crew revision guards prevent stale calculated writes, and exact-date overlap acceptance plus owner-scoped retained intent makes conflicts and uncertainty reviewable. Four full past weeks remain scrollable while twelve forward weeks are retained. The new migration must precede API deployment; browser recovery never blindly replays ambiguous writes.
+
+## 2026-09-08 — Schedule previews must exercise the requested gestures
+
+The owner preview originally passed layout checks but used inert Gantt callbacks and stale sample bars after Board moves. Preview move/resize now applies to in-memory rows with the shared reflow engine; browser checks confirm both drag directions, exact duration, view switching and reload reset with zero staff writes. This exposed a shared resize bug: a saved Sunday end used the Monday boundary even though its visible handle ended on Friday. Resize snapping now counts from the last visible day. A rendered fixture alone is not evidence that its editing journey works.

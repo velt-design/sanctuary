@@ -594,6 +594,7 @@ export default function ScheduleGanttView({
       const anchorDate = ganttDrag.mode === 'resize' ? ganttDrag.endDate : ganttDrag.startDate;
       const rawDelta = snapAxisDayDeltaForPixelDelta({
         startDate: anchorDate,
+        edge: ganttDrag.mode === 'resize' ? 'end' : 'start',
         deltaPx,
         baseDayPx: gantt.axis.baseDayPx,
         weekendWeight: GANTT_WEEKEND_WEIGHT,
@@ -601,7 +602,7 @@ export default function ScheduleGanttView({
       });
       const requested = addDaysYmd(anchorDate, rawDelta);
       const snapped = snapToWeekdayYmdDirectional(requested, rawDelta);
-      const nextDelta = diffDaysYmd(anchorDate, snapped);
+      const nextDelta = rawDelta === 0 ? 0 : diffDaysYmd(anchorDate, snapped);
       if (nextDelta !== ganttDragDeltaRef.current) {
         ganttDragDeltaRef.current = nextDelta;
         setGanttDragDelta(nextDelta);
