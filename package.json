@@ -151,7 +151,7 @@
   "dependencies": {
     "@react-email/render": "^2.0.4",
     "@supabase/supabase-js": "^2.90.1",
-    "next": "^16.2.11",
+    "next": "^16.3.4",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
@@ -170,7 +170,7 @@
     "husky": "^9.1.7",
     "jsdom": "^27.4.0",
     "knip": "^6.11.0",
-    "sharp": "0.35.3",
+    "sharp": "0.35.4",
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^4.1.11",
@@ -178,7 +178,7 @@
   },
   "overrides": {
     "postcss": "8.5.26",
-    "sharp": "0.35.3",
+    "sharp": "0.35.4",
     "uuid": "14.0.0",
     "svix": "1.92.2",
     "vite": "7.3.6",
