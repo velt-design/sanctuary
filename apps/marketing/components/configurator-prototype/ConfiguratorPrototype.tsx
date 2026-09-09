@@ -1,16 +1,17 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import Link from 'next/link';
 import type { SimpleCoverInput, SimpleCoverPublicResult } from '../../lib/simpleCoverCalculator';
 import type { PreviewRoofChoices } from './GableChoices';
 import { simpleCoverAreaM2 } from '../../lib/simpleCoverCalculator';
-import { INITIAL_INPUT, metres, constrainPreviewConnection } from './model';
+import { metres } from './model';
 import PreviewControls from './PreviewControls';
 import { usePreviewPrice } from './usePreviewPrice';
 import { usePreviewDimension } from './usePreviewDimension';
 import styles from './prototype.module.css';
-import { INITIAL_ROOF } from './GableChoices';
+import { usePreviewDraft } from './usePreviewDraft';
 
 const PreviewViews = dynamic(() => import('./PreviewViews'), {
   ssr: false, loading: () => <div className={styles.loading} role="status">Preparing your pergola…</div>,
@@ -21,10 +22,10 @@ export type PreviewSelection = { input: SimpleCoverInput; roof: PreviewRoofChoic
 export default function ConfiguratorPrototype({ expanded, onToggleExpanded, renderEnquiry }: {
   expanded: boolean; onToggleExpanded: () => void; renderEnquiry?: (selection: PreviewSelection) => ReactNode;
 }) {
-  const [input, setInput] = useState(INITIAL_INPUT);
-  const [roof, setRoof] = useState(INITIAL_ROOF);
-  const { result, retry } = usePreviewPrice(input, roof.family === 'mono');
+  const { input, roof, setInput, setRoof, ready, storageAvailable } = usePreviewDraft();
+  const { result, retry } = usePreviewPrice(input, ready && roof.family === 'mono');
   const { activeDimension, showDimension } = usePreviewDimension();
+  if (!ready) return <div className={styles.loading} role="status">Preparing your design…</div>;
   return <div className={styles.page} data-layout={renderEnquiry ? 'project' : 'popup'}>
     <div className={styles.workspace}>
       <div className={styles.visualSlot}>
@@ -35,7 +36,7 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded, rend
       </div>
       <aside className={styles.sidebar} aria-label="Your pergola choices">
         {renderEnquiry && <div id="project-design" />}
-        <PreviewControls input={input} roof={roof} onRoofChange={next => {setInput(current => constrainPreviewConnection(current,next.family));setRoof(next);}} onChange={setInput} onDimensionActivity={showDimension} />
+        <PreviewControls input={input} roof={roof} onRoofChange={setRoof} onChange={setInput} onDimensionActivity={showDimension} />
         <section className={styles.price} aria-label="Estimated price" aria-live="polite" aria-atomic="true">
           <p className={styles.eyebrow}>{roof.family === 'gable' ? 'YOUR GABLE PERGOLA' : roof.family === 'box' ? 'YOUR BOX PERIMETER PERGOLA' : 'YOUR SIMPLE PERGOLA'}</p>
           {roof.family !== 'mono' ? <><p className={styles.priceValue}>{roof.family === 'gable' ? 'Your gable, taking shape.' : 'Your box perimeter, taking shape.'}</p><p className={styles.small}>Explore the design here. {roof.family === 'gable' ? 'Gable' : 'Box perimeter'} pricing will be confirmed by Sanctuary.</p></> : !result ? <p className={styles.priceValue}>Updating estimate…</p> : result.status === 'priced'
@@ -43,7 +44,11 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded, rend
             : result.status === 'custom' ? <><p className={styles.priceValue}>A custom fit.</p><p className={styles.small}>{result.reason}</p></>
             : <><p>Estimate unavailable. Keep exploring your design.</p><button className={styles.textButton} onClick={retry}>Retry estimate ↗</button></>}
         </section>
-        {renderEnquiry?.({ input, roof, result })}
+        {!storageAvailable && <p className={styles.storageNotice} role="status">Your design is available as you move between these previews, but cannot be saved for a page refresh in this browser.</p>}
+        {renderEnquiry ? renderEnquiry({ input, roof, result }) : <div className={styles.continuation}>
+          <Link href="/contact?configurator=preview" prefetch={false}>Continue with this design ↗</Link>
+          <p>Your selections carry through to your project enquiry.</p>
+        </div>}
         <footer className={styles.footnote}><span>CONCEPT PREVIEW</span><p>Frame dimensions follow your selections. Framing and supports are representative. Sanctuary will confirm roof detailing, structural suitability and site connections.</p></footer>
       </aside>
     </div>

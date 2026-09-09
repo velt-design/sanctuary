@@ -2,18 +2,22 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import ConfiguratorPrototype from './ConfiguratorPrototype';
 import { usePreviewExpansion } from './usePreviewExpansion';
 import styles from './previewShell.module.css';
 import foundation from '../marketing-foundation/foundation.module.css';
 
-export default function ConfiguratorPreviewShell() {
+export default function ConfiguratorPreviewShell({ initiallyOpen = false }: { initiallyOpen?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [opened, setOpened] = useState(false);
-  const [visited, setVisited] = useState(false);
+  const [visited, setVisited] = useState(initiallyOpen);
   const [launcherHost, setLauncherHost] = useState<HTMLElement | null>(null);
   const { expanded, toggleExpanded, collapse } = usePreviewExpansion();
   useEffect(() => { setLauncherHost(document.body); }, []);
+  useEffect(() => {
+    if (initiallyOpen) { dialog.current?.showModal(); setOpened(true); setVisited(true); }
+  }, [initiallyOpen]);
 
   // One scroll-lock owner for both normal and expanded inspection.
   useEffect(() => {
@@ -38,7 +42,7 @@ export default function ConfiguratorPreviewShell() {
     <section className={styles.context} aria-label="Design possibilities">
       <p>A little shelter.<br />A whole new way to live outside.</p>
       <span>Find your proportions. Choose your roof. See it take shape.</span>
-      <a className={styles.projectLink} href="/contact?configurator=preview">Start your project ↗</a>
+      <Link className={styles.projectLink} href="/contact?configurator=preview" prefetch={false}>Start your project ↗</Link>
     </section>
     {launcherHost && createPortal(<div className={`${foundation.marketingPage} ${styles.launcherHost}`}><button type="button" className={styles.launcher} onClick={open} aria-haspopup="dialog" aria-expanded={opened}>
       <span>{visited ? 'Your pergola' : 'Design your pergola'}</span><span>{visited ? 'Continue designing' : 'Explore in 3D'} <span aria-hidden="true">↗</span></span>

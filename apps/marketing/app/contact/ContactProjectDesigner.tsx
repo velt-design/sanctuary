@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import ConfiguratorPrototype from '@/components/configurator-prototype/ConfiguratorPrototype';
 import { usePreviewExpansion } from '@/components/configurator-prototype/usePreviewExpansion';
 import ContactEnquiryForm, { type ContactEnquiryFormProps } from './ContactEnquiryForm';
@@ -28,6 +29,7 @@ export default function ContactProjectDesigner(props: ContactEnquiryFormProps) {
         </div>
         <div className={styles.enquiry}>
           <ContactEnquiryForm {...props} configuredDesign={buildContactDesignBrief(selection)} />
+          <p className={styles.other}><Link href="/configurator-preview?open=1" prefetch={false}>Back to exploring ↗</Link> — your design comes with you.</p>
           <p className={styles.other}>Planning something different? <a href="/contact">Send a custom or business brief ↗</a></p>
         </div>
       </>} />

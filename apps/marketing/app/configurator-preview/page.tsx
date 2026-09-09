@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function ConfiguratorPreviewPage() {
-  return <MarketingPage><ConfiguratorPreviewShell /></MarketingPage>;
+export default async function ConfiguratorPreviewPage({ searchParams }: { searchParams: Promise<{ open?: string }> }) {
+  const params = await searchParams;
+  return <MarketingPage><ConfiguratorPreviewShell initiallyOpen={params.open === '1'} /></MarketingPage>;
 }

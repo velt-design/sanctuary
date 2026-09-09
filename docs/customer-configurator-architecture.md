@@ -1,6 +1,32 @@
 # Sanctuary "Your Pergola" Customer Configurator
 ## Master Architecture and Implementation Specification
 
+### Marketing preview: shared design loop (2026-09-09)
+
+The popup's **Continue with this design** action opens the project preview with
+the same roof, dimensions, attachment, site level and gable choices. The project
+preview's **Back to exploring** link reopens the popup directly. Both use one
+client draft store and Next navigation; design changes survive same-tab route
+changes, refresh and browser back. Camera/view state stays local to each viewer.
+
+`previewDraft.ts` validates the version, supported choices, stepped dimension
+bounds and attachment restrictions. `usePreviewDraft.ts` stores only those
+allowlisted design choices in `sessionStorage` under
+`sanctuary.configurator-preview.v1`. It restores before requesting a price or
+mounting the viewer, writes synchronously with each committed choice, and
+refreshes on a back/forward-cache return. Invalid saved data uses the defaults.
+Blocked storage keeps editing and client navigation working in memory with a
+short refresh limitation notice. No contact fields, uploads, prices or signed
+calculation references are persisted. Pitched pricing is requested afresh after
+mount/refresh; the existing enquiry server remains the price authority.
+
+This is isolated representative-preview persistence, not the future canonical
+customer-intent document described below. Cross-tab/device sharing, long-term
+saved projects and sitewide launcher placement remain deferred. Focused browser
+coverage checks mobile/desktop handover in both directions, back, refresh,
+immediate size-edit navigation, fresh enquiry pricing and unavailable/corrupt
+storage. Gate 0: no geometry/costing changes or legacy retirement in this loop.
+
 ### Marketing preview: Start your project loop (2026-09-09)
 
 `/contact?configurator=preview` is the opt-in, non-indexed Start your project
@@ -29,7 +55,7 @@ safe extraction from the large form is its submission controller; that shared
 network behavior is intentionally unchanged in this UI loop. Browser coverage
 checks same-page payloads for all three roofs, error/retry, retained fields,
 fixed views at mobile/desktop/landscape sizes, and the full existing contact suite.
-Cross-route design sharing with the sticky popup remains deferred.
+Cross-route design sharing is implemented by the shared design loop above.
 
 ### Marketing preview: popup loop (2026-09-09)
 
@@ -48,8 +74,8 @@ launcher is portaled above the route animation/footer with marketing tokens;
 the native dialog supplies the popup's top layer. The
 configurator mounts on first open and stays mounted on close, preserving
 selections, view, camera and the choices' scroll position on reopening.
-This popup is preview-only; sitewide placement and cross-route design sharing
-remain deferred. The embedded Start your project preview is described above.
+This popup is preview-only; sitewide placement remains deferred. Shared design
+and the embedded Start your project preview are described above.
 
 ### Marketing preview: box perimeter loop (2026-09-09)
 
@@ -263,7 +289,8 @@ The lower drawing margin reserves screen space between the front label and width
 badge, including narrow/tall plans; elevated stairs remain clear of dimensions.
 Pure regressions check annotation spans against solved dimensions; browser checks
 cover edit feedback, direct rotation and touch scrolling/pinch zoom. Attachment
-context was added in the third loop described below. Browser persistence remains deferred.
+context was added in the third loop described below. Same-tab browser persistence
+is now implemented by the shared design loop above.
 
 The third preview loop adds `buildRepresentativeSurroundings()` in `@sp/geometry`.
 It reads the untransformed, +Y-projecting mono assembly and derives a separate
