@@ -9,10 +9,17 @@ import {
 import ContactEnquiryForm from './ContactEnquiryForm';
 import { getEnquiryTypeFromRouteValue } from './enquiryRoute';
 import './contact.css';
+import type { Metadata } from 'next';
+import ContactProjectDesigner from './ContactProjectDesigner';
 
 type ContactPageProps = {
   searchParams?: Promise<EnquiryContextSearchParams>;
 };
+
+export async function generateMetadata({ searchParams }: ContactPageProps): Promise<Metadata> {
+  const params = searchParams ? await searchParams : {};
+  return params.configurator === 'preview' ? { robots: { index: false, follow: false } } : {};
+}
 
 const warkworthProject = projects.find(
   (project) => project.slug === 'warkworth-outdoor-room',
@@ -42,6 +49,14 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
     enquiryContext.projectDirection,
     enquiryContext.projectPriorities?.join(','),
   ].filter(Boolean).join('-');
+
+  if (params.configurator === 'preview') return <ContactProjectDesigner
+    key={formContextKey}
+    initialEnquiryType={initialEnquiryType}
+    initialContext={enquiryContext}
+    sourceProjectLabel={sourceProject?.title}
+    sourceProductLabel={sourceProduct?.name}
+  />;
 
   return (
     <main className="contact-page" data-contact-page>

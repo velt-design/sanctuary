@@ -1,6 +1,36 @@
 # Sanctuary "Your Pergola" Customer Configurator
 ## Master Architecture and Implementation Specification
 
+### Marketing preview: Start your project loop (2026-09-09)
+
+`/contact?configurator=preview` is the opt-in, non-indexed Start your project
+experience. The existing `/contact` pathways and no-JavaScript form remain
+available. `ContactProjectDesigner.tsx` embeds the same configurator immediately;
+its viewer stays fixed above the scrolling choices and enquiry fields on mobile,
+and beside them on desktop/short landscape. Root overflow uses clip so fragment
+links and field focus cannot programmatically move the entire page. Expand/Done
+fills the design workspace and Escape returns to editing.
+
+`ConfiguratorPrototype` accepts an enquiry render slot without duplicating
+geometry, pricing, camera or control state. `contactDesignBrief.ts` adapts the
+current selection into a same-page brief. Pitched uses the existing opaque
+Simple calculation reference and payload builder; pending/unavailable results
+remain reviewable without a price. Gable/box never carry a Simple reference.
+Their dimensions and form use existing intake fields. All forms include a
+readable design description in the enquiry message, including attachment,
+level and applicable gable direction/infills. No design or contact values enter
+the URL or analytics. Editing the design keeps the enquiry fields mounted.
+
+`ContactEnquiryForm` retains validation, uploads, consent, attribution, submission
+locking, retry identity and response handling. Its introduction moved into
+`ContactFormIntro`; a small opt-in configured presentation hides the duplicate
+pathway/calculator/technical inputs and shows `ContactDesignSummary`. The next
+safe extraction from the large form is its submission controller; that shared
+network behavior is intentionally unchanged in this UI loop. Browser coverage
+checks same-page payloads for all three roofs, error/retry, retained fields,
+fixed views at mobile/desktop/landscape sizes, and the full existing contact suite.
+Cross-route design sharing with the sticky popup remains deferred.
+
 ### Marketing preview: popup loop (2026-09-09)
 
 The isolated, non-indexed preview now demonstrates a fixed bottom launcher
@@ -18,8 +48,8 @@ launcher is portaled above the route animation/footer with marketing tokens;
 the native dialog supplies the popup's top layer. The
 configurator mounts on first open and stays mounted on close, preserving
 selections, view, camera and the choices' scroll position on reopening.
-This loop is preview-only; sitewide placement, Start your project integration
-and cross-route enquiry handoff are deferred.
+This popup is preview-only; sitewide placement and cross-route design sharing
+remain deferred. The embedded Start your project preview is described above.
 
 ### Marketing preview: box perimeter loop (2026-09-09)
 

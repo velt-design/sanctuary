@@ -1,7 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import type { SimpleCoverInput, SimpleCoverPublicResult } from '../../lib/simpleCoverCalculator';
+import type { PreviewRoofChoices } from './GableChoices';
 import { simpleCoverAreaM2 } from '../../lib/simpleCoverCalculator';
 import { INITIAL_INPUT, metres, constrainPreviewConnection } from './model';
 import PreviewControls from './PreviewControls';
@@ -14,12 +16,16 @@ const PreviewViews = dynamic(() => import('./PreviewViews'), {
   ssr: false, loading: () => <div className={styles.loading} role="status">Preparing your pergola…</div>,
 });
 
-export default function ConfiguratorPrototype({ expanded, onToggleExpanded }: { expanded: boolean; onToggleExpanded: () => void }) {
+export type PreviewSelection = { input: SimpleCoverInput; roof: PreviewRoofChoices; result: SimpleCoverPublicResult | null };
+
+export default function ConfiguratorPrototype({ expanded, onToggleExpanded, renderEnquiry }: {
+  expanded: boolean; onToggleExpanded: () => void; renderEnquiry?: (selection: PreviewSelection) => ReactNode;
+}) {
   const [input, setInput] = useState(INITIAL_INPUT);
   const [roof, setRoof] = useState(INITIAL_ROOF);
   const { result, retry } = usePreviewPrice(input, roof.family === 'mono');
   const { activeDimension, showDimension } = usePreviewDimension();
-  return <div className={styles.page}>
+  return <div className={styles.page} data-layout={renderEnquiry ? 'project' : 'popup'}>
     <div className={styles.workspace}>
       <div className={styles.visualSlot}>
       <section className={styles.visual} aria-label="Pergola views" data-expanded={expanded}>
@@ -28,6 +34,7 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded }: { 
       </section>
       </div>
       <aside className={styles.sidebar} aria-label="Your pergola choices">
+        {renderEnquiry && <div id="project-design" />}
         <PreviewControls input={input} roof={roof} onRoofChange={next => {setInput(current => constrainPreviewConnection(current,next.family));setRoof(next);}} onChange={setInput} onDimensionActivity={showDimension} />
         <section className={styles.price} aria-label="Estimated price" aria-live="polite" aria-atomic="true">
           <p className={styles.eyebrow}>{roof.family === 'gable' ? 'YOUR GABLE PERGOLA' : roof.family === 'box' ? 'YOUR BOX PERIMETER PERGOLA' : 'YOUR SIMPLE PERGOLA'}</p>
@@ -36,6 +43,7 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded }: { 
             : result.status === 'custom' ? <><p className={styles.priceValue}>A custom fit.</p><p className={styles.small}>{result.reason}</p></>
             : <><p>Estimate unavailable. Keep exploring your design.</p><button className={styles.textButton} onClick={retry}>Retry estimate ↗</button></>}
         </section>
+        {renderEnquiry?.({ input, roof, result })}
         <footer className={styles.footnote}><span>CONCEPT PREVIEW</span><p>Frame dimensions follow your selections. Framing and supports are representative. Sanctuary will confirm roof detailing, structural suitability and site connections.</p></footer>
       </aside>
     </div>

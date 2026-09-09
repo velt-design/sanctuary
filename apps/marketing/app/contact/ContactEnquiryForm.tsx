@@ -21,7 +21,6 @@ import {
 import {
   ENQUIRY_ATTACHMENT_HELP_TEXT,
   ENQUIRY_FORM_FIELD_ORDER,
-  ENQUIRY_FORM_REQUIRED_NOTE,
   getEnquiryContextDisplay,
 } from '@/lib/enquiryFormContract';
 import {
@@ -40,6 +39,9 @@ import SimpleCoverEnquirySummary from '../acrylic-roof-pergolas-auckland/SimpleC
 import ContactCommercialFields from './ContactCommercialFields';
 import ContactPathwaySelector from './ContactPathwaySelector';
 import ContactTechnicalFields from './ContactTechnicalFields';
+import ContactFormIntro from './ContactFormIntro';
+import ContactDesignSummary from './ContactDesignSummary';
+import type { ContactDesignBrief } from './contactDesignBrief';
 import {
   getContactEnquiryAudience,
   getInitialBusinessAudience,
@@ -52,7 +54,8 @@ import {
   type ContactFieldErrors,
 } from './contactFormModel';
 
-type ContactEnquiryFormProps = {
+export type ContactEnquiryFormProps = {
+  configuredDesign?: ContactDesignBrief;
   initialEnquiryType: EnquiryAudience | null;
   initialContext: EnquiryContext;
   sourceProjectLabel?: string;
@@ -97,6 +100,7 @@ export default function ContactEnquiryForm({
   initialContext,
   sourceProjectLabel,
   sourceProductLabel,
+  configuredDesign,
 }: ContactEnquiryFormProps) {
   const {
     consent,
@@ -105,13 +109,13 @@ export default function ContactEnquiryForm({
     trackingRegionPolicy,
   } = useConsent();
   const [isEnhanced, setIsEnhanced] = useState(false);
-  const [pathway, setPathway] = useState<ContactPathway | null>(() => (
+  const [selectedPathway, setPathway] = useState<ContactPathway | null>(() => (
     getInitialContactPathway(initialEnquiryType, initialContext)
   ));
   const [businessAudience, setBusinessAudience] = useState<BusinessAudience | null>(() => (
     getInitialBusinessAudience(initialEnquiryType, initialContext)
   ));
-  const [simpleCoverEstimate, setSimpleCoverEstimate] = useState<SimpleCoverHandoff | null>(null);
+  const [selectedEstimate, setSimpleCoverEstimate] = useState<SimpleCoverHandoff | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [fieldErrors, setFieldErrors] = useState<ContactFieldErrors>({});
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
@@ -127,6 +131,8 @@ export default function ContactEnquiryForm({
   const simpleCalculatorRef = useRef<HTMLDivElement | null>(null);
   const simpleFormStartRef = useRef(false);
 
+  const pathway = configuredDesign ? (configuredDesign.estimate ? 'simple' : 'custom') : selectedPathway;
+  const simpleCoverEstimate = configuredDesign ? configuredDesign.estimate : selectedEstimate;
   const enquiryType = getContactEnquiryAudience(pathway, businessAudience);
   const showEnquiryFields = !isEnhanced || Boolean(
     pathway && (pathway !== 'simple' || simpleCoverEstimate),
@@ -386,8 +392,8 @@ export default function ContactEnquiryForm({
           email: String(formData.get('email') ?? '').trim(),
           phone: String(formData.get('phone') ?? '').trim(),
           suburb: String(formData.get('suburb') ?? '').trim(),
-          message: String(formData.get('message') ?? '').trim(),
-          dimensions: isSimpleCover ? simpleCoverPayload.dimensions : {
+          message: [String(formData.get('message') ?? '').trim(), configuredDesign ? `Design preview: ${configuredDesign.description}` : ''].filter(Boolean).join('\n\n'),
+          dimensions: isSimpleCover ? simpleCoverPayload.dimensions : configuredDesign?.dimensions ?? {
             widthM: String(formData.get('widthM') ?? '').trim() || null,
             depthM: String(formData.get('depthM') ?? '').trim() || null,
             heightM: String(formData.get('heightM') ?? '').trim() || null,
@@ -480,20 +486,9 @@ export default function ContactEnquiryForm({
       <input type="hidden" name="page" value="/contact" readOnly />
       <input type="hidden" name="source" value="website" readOnly />
       <input type="hidden" name="enquiryContext" value={JSON.stringify(contextProperties)} readOnly />
-      <input type="hidden" name="enquiryType" value={enquiryType ?? ''} disabled={!isEnhanced} readOnly />
+      <input type="hidden" name="enquiryType" value={enquiryType ?? ''} disabled={!isEnhanced && !configuredDesign} readOnly />
 
-      <header className="contact-form__intro">
-        <p className="contact-eyebrow">Start here</p>
-        <h2 id="contact-form-title">Choose the right starting point.</h2>
-        <p>We’ll ask only for the details that fit your project.</p>
-        <p className="contact-form__required-note">{ENQUIRY_FORM_REQUIRED_NOTE}</p>
-        {hasSourceContext && contextDisplay.isVisible ? (
-          <div className="contact-form__context" aria-label="Enquiry context">
-            <strong>{contextDisplay.heading}</strong>
-            {contextDisplay.audience ? <span>{contextDisplay.audience}</span> : null}
-          </div>
-        ) : null}
-      </header>
+      <ContactFormIntro configured={Boolean(configuredDesign)} hasSourceContext={hasSourceContext} contextDisplay={contextDisplay} />
 
       <EnquiryErrorSummary
         className="contact-form__error-summary"
@@ -502,21 +497,21 @@ export default function ContactEnquiryForm({
         ref={errorSummaryRef}
       />
 
-      <ContactPathwaySelector
+      {!configuredDesign && <ContactPathwaySelector
         isEnhanced={isEnhanced}
         pathway={pathway}
         hasError={Boolean(fieldErrors.enquiryType)}
         errorId={errorId('enquiryType')}
         initialAudience={initialEnquiryType}
         onChange={handlePathway}
-      />
+      />}
       {fieldErrors.enquiryType ? (
         <p className="contact-form__error contact-form__pathway-error" id={errorId('enquiryType')}>
           {fieldErrors.enquiryType}
         </p>
       ) : null}
 
-      {isEnhanced && pathway === 'simple' ? (
+      {!configuredDesign && isEnhanced && pathway === 'simple' ? (
         <div
           className="contact-form__calculator"
           id="contact-simple-calculator"
@@ -543,13 +538,13 @@ export default function ContactEnquiryForm({
               <span>02</span>
               <div>
                 <h3 id="contact-project-details-title">
-                  {pathway === 'simple' && isEnhanced ? 'Your priced cover' : 'Your project'}
+                  {configuredDesign ? 'Your design' : pathway === 'simple' && isEnhanced ? 'Your priced cover' : 'Your project'}
                 </h3>
               </div>
             </div>
 
             <div className="contact-form__grid">
-              {pathway === 'simple' && isEnhanced ? (
+              {configuredDesign ? <ContactDesignSummary design={configuredDesign} /> : pathway === 'simple' && isEnhanced ? (
                 <SimpleCoverEnquirySummary
                   estimate={simpleCoverEstimate}
                   changeHref="#contact-simple-calculator"
@@ -672,7 +667,7 @@ export default function ContactEnquiryForm({
             </div>
           </section>
 
-          {!isEnhanced || pathway !== 'simple' ? (
+          {!configuredDesign && (!isEnhanced || pathway !== 'simple') ? (
             <details className="contact-form__section contact-form__optional">
               <summary>
                 <span className="contact-form__optional-step">04</span>

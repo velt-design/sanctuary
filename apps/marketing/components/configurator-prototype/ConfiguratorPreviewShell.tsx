@@ -38,6 +38,7 @@ export default function ConfiguratorPreviewShell() {
     <section className={styles.context} aria-label="Design possibilities">
       <p>A little shelter.<br />A whole new way to live outside.</p>
       <span>Find your proportions. Choose your roof. See it take shape.</span>
+      <a className={styles.projectLink} href="/contact?configurator=preview">Start your project ↗</a>
     </section>
     {launcherHost && createPortal(<div className={`${foundation.marketingPage} ${styles.launcherHost}`}><button type="button" className={styles.launcher} onClick={open} aria-haspopup="dialog" aria-expanded={opened}>
       <span>{visited ? 'Your pergola' : 'Design your pergola'}</span><span>{visited ? 'Continue designing' : 'Explore in 3D'} <span aria-hidden="true">↗</span></span>

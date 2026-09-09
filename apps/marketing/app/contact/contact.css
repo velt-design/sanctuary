@@ -32,8 +32,8 @@ body:has([data-contact-page]) {
   background: #e9eae6;
 }
 
-html:has([data-contact-page]):not(.scroll-locked),
-body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
+html:has([data-contact-page]):not(:has([data-project-preview])):not(.scroll-locked),
+body:has([data-contact-page]):not(:has([data-project-preview])):not(.no-scroll):not(.scroll-locked) {
   height: auto !important;
   overflow-x: clip !important;
   overflow-y: visible !important;
