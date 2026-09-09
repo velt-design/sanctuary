@@ -10,8 +10,8 @@
 .continue p, .other { font-size: 11px; line-height: 1.6; margin-top: 12px; color: var(--color-text-secondary); }
 .enquiry { padding: 26px; }
 .enquiry :global(.contact-form) { scroll-margin-top: 16px; }
-.enquiry :global(.contact-form__intro) { padding: 0 0 20px; gap: 10px; }
-.enquiry :global(.contact-form__intro h2) { font-size: 26px; }
+.enquiry :global(.contact-form__intro) { padding: 0 0 12px; gap: 6px; }
+.enquiry :global(.contact-form__intro h2) { font-size: 23px; max-width: none; }
 .enquiry :global(.contact-form__intro > p:not(.contact-eyebrow)) { font-size: 13px; }
 .enquiry :global(.contact-form__section) { padding: 22px 0; scroll-margin-top: 16px; }
 .enquiry :global(.contact-form__grid) { grid-template-columns: minmax(0, 1fr); gap: 18px; padding-left: 0; }
@@ -19,9 +19,14 @@
 .enquiry :global(.contact-form__submit) { display: flex; flex-direction: column; align-items: stretch; }
 .enquiry :global(.contact-form__submit button) { width: 100%; }
 .enquiry :global(.contact-form__error-summary) { scroll-margin-top: 12px; }
-.enquiry :global([aria-label="Design included with your enquiry"]) { font-size: 12px; line-height: 1.7; padding: 14px; border: 1px solid var(--color-rule); background: var(--color-surface-warm); }
+.enquiry :global([aria-label="Design included with your enquiry"]) { font-size: 12px; line-height: 1.7; padding: 10px 12px; border: 1px solid var(--color-rule); background: var(--color-surface-warm); }
 .enquiry :global([aria-label="Design included with your enquiry"]) a { display: inline-block; margin-top: 10px; text-decoration: underline; }
 .other a { text-decoration: underline; }
+.enquiry :global(#contact-project-details) { padding-top: 0; border-top: 0; }
+.enquiry :global(#contact-project-details > .contact-form__section-heading) { display: none; }
+.enquiry :global([aria-label="Design included with your enquiry"] summary) { cursor: pointer; font-size: 12px; line-height: 1.5; }
+.enquiry :global([aria-label="Design included with your enquiry"] summary span) { float: right; text-decoration: underline; }
+.enquiry :global([aria-label="Design included with your enquiry"] details > p) { margin-top: 12px; }
 @media (max-width: 720px) {
   .frame { grid-template-rows: 44px minmax(0, 1fr); }
   .header { padding-inline: 12px; }

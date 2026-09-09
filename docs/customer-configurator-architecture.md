@@ -1,6 +1,41 @@
 # Sanctuary "Your Pergola" Customer Configurator
 ## Master Architecture and Implementation Specification
 
+### Marketing preview: enquiry and share journey (2026-09-09)
+
+`PreviewNextAction.tsx` keeps the popup's current estimate and Continue action
+outside the scrolling choices, in a fixed footer inside the panel. The viewer
+retains its 48% mobile allocation; expansion still covers the full workspace.
+Roof options have small profile illustrations and a sentence explaining the
+selected style. The configured enquiry introduction is compact and its design
+summary expands on demand, putting the first site field in view sooner. Normal
+contact pathways and submission behavior are unchanged.
+
+`ShareDesign.tsx` offers Copy design link and native Share where supported. Copy
+failure reveals a selectable read-only link; native cancellation is quiet.
+`previewShare.ts` serializes only the versioned, allowlisted preview choices into
+the URL fragment (`#design=…`), with no prices, signed references, contact fields
+or uploads. A link represents the design at the time it was copied, not a live
+collaborative document. It opens the popup directly, takes precedence over a
+saved tab draft, passes the existing dimension/attachment validation, and is
+consumed once so later edits survive refresh. Invalid links retain the current
+draft/defaults with a short notice. Pitched estimates are requested fresh after
+restoration. URL import and hash/back-forward handling share the existing draft
+store; geometry and enquiry contracts are not duplicated.
+
+The optional public `NEXT_PUBLIC_CONFIGURATOR_PREVIEW_SHARE` build setting carries
+the existing Vercel share-link token in copied URLs on `.vercel.app` hosts only.
+It is configured only for the `configurator/ui-views-prototype` preview branch;
+never put an automation bypass secret in this public setting. This lets another
+browser open the protected preview. Normal public-domain links omit it. Durable
+hosted design records/accounts remain deferred; the copied link itself is the
+save/share mechanism. Gate 0: no geometry/costing changes or legacy retirement.
+
+Coverage includes fixed-action visibility, compact enquiry layout, design-link
+round trips in an independent browser, fresh pricing, edit/refresh behavior,
+invalid versions/choices, clipboard failure and native share cancellation, plus
+the existing popup gesture, project enquiry and normal contact regressions.
+
 ### Marketing preview: shared design loop (2026-09-09)
 
 The popup's **Continue with this design** action opens the project preview with
@@ -21,8 +56,9 @@ calculation references are persisted. Pitched pricing is requested afresh after
 mount/refresh; the existing enquiry server remains the price authority.
 
 This is isolated representative-preview persistence, not the future canonical
-customer-intent document described below. Cross-tab/device sharing, long-term
-saved projects and sitewide launcher placement remain deferred. Focused browser
+customer-intent document described below. Cross-device links are implemented by
+the journey loop above; hosted saved projects and sitewide launcher placement
+remain deferred. Focused browser
 coverage checks mobile/desktop handover in both directions, back, refresh,
 immediate size-edit navigation, fresh enquiry pricing and unavailable/corrupt
 storage. Gate 0: no geometry/costing changes or legacy retirement in this loop.
@@ -44,8 +80,9 @@ Simple calculation reference and payload builder; pending/unavailable results
 remain reviewable without a price. Gable/box never carry a Simple reference.
 Their dimensions and form use existing intake fields. All forms include a
 readable design description in the enquiry message, including attachment,
-level and applicable gable direction/infills. No design or contact values enter
-the URL or analytics. Editing the design keeps the enquiry fields mounted.
+level and applicable gable direction/infills. Enquiry navigation keeps design and
+contact values out of the URL and analytics; explicit design-share fragments are
+described above. Editing the design keeps the enquiry fields mounted.
 
 `ContactEnquiryForm` retains validation, uploads, consent, attribution, submission
 locking, retry identity and response handling. Its introduction moved into
