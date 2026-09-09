@@ -131,6 +131,18 @@
       "proofCommand": "npm run docs:guard"
     },
     {
+      "id": "enquiry-native-postgres-test-support",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Enquiry correlation and Praxis database tests",
+      "pathPatterns": [
+        "scripts/test-support/disposable-postgres17.mjs"
+      ],
+      "reason": "Imported by the documented manually invoked native PostgreSQL17 correlation and enquiry-identity harnesses; static entrypoint discovery does not reach those operator-run test commands.",
+      "retirementAction": "Remove only after replacing both native harness imports and their disposable database proof commands in docs/testing-and-qa.md.",
+      "proofCommand": "node scripts/test-marketing-enquiry-email-pg.mjs && node scripts/test-praxis-enquiry-identity-pg.mjs"
+    },
+    {
       "id": "ai-node-operational-scripts",
       "category": "dynamic-reference",
       "status": "current",
