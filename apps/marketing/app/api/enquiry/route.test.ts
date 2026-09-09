@@ -66,7 +66,15 @@ vi.mock('../../../../../apps/portal/lib/estimates/persistence', () => ({
 }));
 
 vi.mock('@/lib/email/sendCustomerAutoresponder', () => ({
-  sendCustomerAutoresponder: vi.fn(),
+  prepareCustomerAutoresponder: vi.fn(async (_enquiry, options) => {
+    const { prepareResendEmailMessage } = await import('@sp/email-provider');
+    return prepareResendEmailMessage({ from: 'info@example.test', to: 'test@example.test', subject: 'Test', text: 'Test', enquiryReference: options.enquiryReference });
+  }),
+}));
+
+vi.mock('@/lib/email/sendEmail', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/email/sendEmail')>(),
+  sendEmail: vi.fn(async () => ({ provider: 'resend', providerMessageId: 'provider-message-1' })),
 }));
 
 function makeDb(options: { downloadBytes?: Uint8Array } = {}) {
@@ -172,6 +180,8 @@ function makeDb(options: { downloadBytes?: Uint8Array } = {}) {
 
   const client = {
     rpc: vi.fn(async (name: string, args: Record<string, any>) => {
+      if (name === 'marketing_enquiry_email_begin') return { data: true, error: null };
+      if (name === 'marketing_enquiry_email_record') return { data: null, error: null };
       if (name === 'marketing_public_rate_limit_take') {
         return { data: [{ allowed: true, retry_after_seconds: 0 }], error: null };
       }
@@ -463,8 +473,8 @@ describe('POST /api/enquiry attribution', () => {
     });
     h.calculateFrozenSimpleCoverPricingWithConfiguration.mockReturnValue(frozen);
     const { POST } = await import('./route');
-    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
-    (sendCustomerAutoresponder as any).mockClear();
+    const { prepareCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    (prepareCustomerAutoresponder as any).mockClear();
     const calculationRef = 'sc1.secret-opaque-reference';
 
     const response = await POST(new Request('http://localhost/api/enquiry', {
@@ -523,7 +533,7 @@ describe('POST /api/enquiry attribution', () => {
     expect(db.estimates[0]?.derived).toMatchObject({
       pricingSource: 'simple_cover_calculator_verified',
     });
-    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[0]).toMatchObject({
+    expect((prepareCustomerAutoresponder as any).mock.calls[0]?.[0]).toMatchObject({
       widthM: 6,
       depthM: 3,
       heightM: 0,
@@ -546,8 +556,8 @@ describe('POST /api/enquiry attribution', () => {
     const { client, db } = makeDb();
     h.createClient.mockReturnValue(client);
     const { POST } = await import('./route');
-    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
-    (sendCustomerAutoresponder as any).mockClear();
+    const { prepareCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    (prepareCustomerAutoresponder as any).mockClear();
 
     const response = await POST(new Request('http://localhost/api/enquiry', {
       method: 'POST',
@@ -586,8 +596,8 @@ describe('POST /api/enquiry attribution', () => {
     expect(db.estimates[0]?.derived).toMatchObject({
       pricingSource: 'simple_cover_unpriced',
     });
-    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[0]).not.toHaveProperty('baseRange');
-    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[0]).not.toHaveProperty('simpleCoverEstimate');
+    expect((prepareCustomerAutoresponder as any).mock.calls[0]?.[0]).not.toHaveProperty('baseRange');
+    expect((prepareCustomerAutoresponder as any).mock.calls[0]?.[0]).not.toHaveProperty('simpleCoverEstimate');
   });
 
   it.each(['residential', 'commercial', 'professional'] as const)(
@@ -596,8 +606,8 @@ describe('POST /api/enquiry attribution', () => {
       const { client } = makeDb();
       h.createClient.mockReturnValue(client);
       const { POST } = await import('./route');
-      const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
-      (sendCustomerAutoresponder as any).mockClear();
+      const { prepareCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+      (prepareCustomerAutoresponder as any).mockClear();
 
       const response = await POST(
         new Request('http://localhost/api/enquiry', {
@@ -633,15 +643,15 @@ describe('POST /api/enquiry attribution', () => {
       );
 
       expect(response.status).toBe(200);
-      expect(sendCustomerAutoresponder).toHaveBeenCalledTimes(1);
-      const [enquiry, options] = (sendCustomerAutoresponder as any).mock.calls[0];
+      expect(prepareCustomerAutoresponder).toHaveBeenCalledTimes(1);
+      const [enquiry, options] = (prepareCustomerAutoresponder as any).mock.calls[0];
       expect(enquiry).toMatchObject({
         enquiryType,
         filesReceivedCount: 1,
       });
       expect(options).toEqual({
         attachments: [{ filename: 'plan.pdf', content: Buffer.from('%PDF-test').toString('base64') }],
-        idempotencyKey: 'website:autoresponder:enquiry-1',
+        enquiryReference: expect.stringMatching(/^sp_enq_/),
       });
       expect(h.calculateCostV1).toHaveBeenCalledTimes(
         enquiryType === 'professional' ? 0 : 1,
@@ -655,8 +665,8 @@ describe('POST /api/enquiry attribution', () => {
     const { client } = makeDb({ downloadBytes: largeBytes });
     h.createClient.mockReturnValue(client);
     const { POST } = await import('./route');
-    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
-    (sendCustomerAutoresponder as any).mockClear();
+    const { prepareCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    (prepareCustomerAutoresponder as any).mockClear();
 
     const response = await POST(new Request('http://localhost/api/enquiry', {
       method: 'POST',
@@ -679,7 +689,7 @@ describe('POST /api/enquiry attribution', () => {
     }));
 
     expect(response.status).toBe(200);
-    const [enquiry, sendOptions] = (sendCustomerAutoresponder as any).mock.calls[0];
+    const [enquiry, sendOptions] = (prepareCustomerAutoresponder as any).mock.calls[0];
     expect(enquiry).toMatchObject({
       filesReceivedCount: 1,
       attachmentLinks: [{
@@ -687,15 +697,15 @@ describe('POST /api/enquiry attribution', () => {
         url: `https://signed.test/pending/${SUBMISSION_ID}/0-large-plan.pdf`,
       }],
     });
-    expect(sendOptions).toEqual({ idempotencyKey: 'website:autoresponder:enquiry-1' });
+    expect(sendOptions).toEqual({ attachments: undefined, enquiryReference: expect.stringMatching(/^sp_enq_/) });
   });
 
   it('sends the residential confirmation without an estimate when dimensions are omitted', async () => {
     const { client, db } = makeDb();
     h.createClient.mockReturnValue(client);
     const { POST } = await import('./route');
-    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
-    (sendCustomerAutoresponder as any).mockClear();
+    const { prepareCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    (prepareCustomerAutoresponder as any).mockClear();
 
     const response = await POST(
       new Request('http://localhost/api/enquiry', {
@@ -724,22 +734,22 @@ describe('POST /api/enquiry attribution', () => {
 
     expect(response.status).toBe(200);
     expect(h.calculateCostV1).not.toHaveBeenCalled();
-    expect(sendCustomerAutoresponder).toHaveBeenCalledTimes(1);
-    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[0]).toMatchObject({
+    expect(prepareCustomerAutoresponder).toHaveBeenCalledTimes(1);
+    expect((prepareCustomerAutoresponder as any).mock.calls[0]?.[0]).toMatchObject({
       enquiryType: 'residential',
       widthM: 0,
       depthM: 0,
       heightM: 0,
     });
-    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[0]).not.toHaveProperty(
+    expect((prepareCustomerAutoresponder as any).mock.calls[0]?.[0]).not.toHaveProperty(
       'baseRange',
     );
-    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[1]).toEqual({
+    expect((prepareCustomerAutoresponder as any).mock.calls[0]?.[1]).toEqual({
       attachments: [{
         filename: 'plan.pdf',
         content: Buffer.from('%PDF-test').toString('base64'),
       }],
-      idempotencyKey: 'website:autoresponder:enquiry-1',
+      enquiryReference: expect.stringMatching(/^sp_enq_/),
     });
     expect((db as Record<string, Row[]>).email_outbox).toEqual([
       expect.objectContaining({
@@ -950,6 +960,35 @@ describe('POST /api/enquiry attribution', () => {
     expect(response.status).toBe(422);
     expect(await response.json()).toEqual({ ok: false, error });
     expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each(['missing_intent', 'lost_receipt'])('preserves intake success and replay without resend for %s', async (fault) => {
+    const { client, db } = makeDb();
+    const originalRpc = client.rpc;
+    client.rpc = vi.fn(async (name, args) => {
+      if (name === (fault === 'missing_intent' ? 'marketing_enquiry_email_begin' : 'marketing_enquiry_email_record')) {
+        return { data: null, error: new Error('synthetic persistence failure') };
+      }
+      return originalRpc(name, args);
+    });
+    h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+    const { sendEmail } = await import('@/lib/email/sendEmail');
+    vi.mocked(sendEmail).mockClear();
+    const request = () => new Request('http://localhost/api/enquiry', {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ submissionId: SUBMISSION_ID, enquiryType: 'residential',
+        name: 'Taylor', email: 'taylor@example.test', phone: '+61 2 9374 4000', suburb: 'Auckland' }),
+    });
+    const response = await POST(request());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, enquiryRequestId: 'enquiry-1' });
+    const replay = await POST(request());
+    expect(await replay.json()).toMatchObject({ ok: true, enquiryRequestId: 'enquiry-1', idempotentReplay: true });
+    expect(sendEmail).toHaveBeenCalledTimes(fault === 'missing_intent' ? 0 : 1);
+    expect((db as Record<string, Row[]>).email_outbox).toBeUndefined();
+    expect(db.audit_events).toContainEqual(expect.objectContaining({ type: 'email_outcome_unknown' }));
+    expect(db.enquiry_requests).toHaveLength(1);
   });
 
   it('accepts a direct form-encoded fallback with a stable submission UUID', async () => {

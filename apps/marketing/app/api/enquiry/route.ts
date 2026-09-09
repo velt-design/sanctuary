@@ -10,7 +10,8 @@ import {
   normalizeMarketingAttributionInput,
   recordMarketingConversionEvent,
 } from '../../../../../apps/portal/lib/marketingAttribution/server';
-import { sendCustomerAutoresponder } from '@/lib/email/sendCustomerAutoresponder';
+import { dispatchEnquiryAutoresponder } from '@/lib/email/enquiryEmailDelivery';
+import { recordEnquiryEmailAudit } from '@/lib/email/enquiryEmailAudit';
 import { getEmailDeliveryFailureSummary } from '@/lib/email/sendEmail';
 import {
   EMAIL_WEBSITE_AUTORESPONDER_RES_V1,
@@ -676,147 +677,14 @@ export async function POST(req: Request) {
         enquiryType === 'professional' ? 'WEBSITE_PROFESSIONAL_AUTORESPONDER' : 'WEBSITE_ESTIMATE_AUTORESPONDER';
 
       const idempotencyKey = `website:autoresponder:${enquiryRow.id}`;
-      const supabaseHost = (() => {
-        try {
-          const url =
-            process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-            || process.env.SUPABASE_URL?.trim()
-            || '';
-          return new URL(url).host;
-        } catch {
-          return 'unknown';
-        }
-      })();
-
-      // Store only variables; HTML is rendered from repo code in the portal preview endpoint.
       const variables = safeJsonPayload({ ...(emailPayload as any), callWindowText });
-
-      let sendError: Error | null = null;
-      try {
-        await sendCustomerAutoresponder(
-          emailPayload,
-          {
-            ...(resolvedAttachments.attachments.length
-              ? { attachments: resolvedAttachments.attachments }
-              : {}),
-            idempotencyKey,
-          },
-        );
-      } catch (err) {
-        const failure = getEmailDeliveryFailureSummary(err);
-        sendError = new Error(failure.code);
-        console.error('Autoresponder send failed', failure);
-      }
-
-      // Best-effort log (do not block submission)
-      try {
-        const nowIso = new Date().toISOString();
-
-        const templateSeedRes = await supabase
-          .from('email_templates')
-          .upsert(
-            {
-              id: templateId,
-              subject,
-              body_html: '<p>(Rendered in app code)</p>',
-              body_text: null,
-              variables: [],
-            } as any,
-            { onConflict: 'id' } as any,
-          );
-
-        if (templateSeedRes.error) {
-          throw templateSeedRes.error;
-        }
-
-        const outboxRes = await supabase
-          .from('email_outbox')
-          .upsert(
-            {
-              project_id: projectId,
-              contact_id: contactId,
-              email_type: emailType,
-              to_email: email,
-              subject,
-              template_id: templateId,
-              variables,
-              status: sendError ? 'FAILED' : 'SENT',
-              error: sendError ? sendError.message : null,
-              idempotency_key: idempotencyKey,
-              sent_at: sendError ? null : nowIso,
-            } as any,
-            { onConflict: 'idempotency_key' } as any,
-          );
-
-        if (outboxRes.error) {
-          const outboxError = outboxRes.error;
-          await supabase
-            .from('audit_events')
-            .upsert(
-              {
-                project_id: projectId,
-                type: 'email_failed',
-                idempotency_key: `audit:${idempotencyKey}:outbox_failed`,
-                payload: {
-                  to: email,
-                  subject,
-                  templateId,
-                  kind: emailType,
-                  supabaseHost,
-                  error: outboxError.message ?? 'email_outbox upsert failed',
-                },
-                created_at: nowIso,
-              } as any,
-              { onConflict: 'idempotency_key' } as any,
-            );
-          throw outboxError;
-        }
-
-        await supabase
-          .from('audit_events')
-          .upsert(
-            {
-              project_id: projectId,
-              type: sendError ? 'email_failed' : 'email_sent',
-              idempotency_key: `audit:${idempotencyKey}`,
-              payload: { to: email, subject, templateId, kind: emailType, supabaseHost },
-              created_at: nowIso,
-            } as any,
-            { onConflict: 'idempotency_key' } as any,
-          );
-      } catch (e) {
-        console.error('Failed to log autoresponder in email_outbox/audit_events', {
-          code: 'EMAIL_OUTBOX_AUDIT_WRITE_FAILED',
-        });
-        try {
-          const fallbackIso = new Date().toISOString();
-          const errorMessage = e instanceof Error ? e.message : 'email_outbox logging failed';
-          await supabase
-            .from('audit_events')
-            .upsert(
-              {
-                project_id: projectId,
-                type: 'email_failed',
-                idempotency_key: `audit:${idempotencyKey}:log_failed`,
-                payload: {
-                  to: email,
-                  subject,
-                  templateId,
-                  kind: emailType,
-                  supabaseHost,
-                  error: errorMessage,
-                },
-                created_at: fallbackIso,
-              } as any,
-              { onConflict: 'idempotency_key' } as any,
-            );
-        } catch {
-          console.error('Failed to log email_outbox error to audit_events', {
-            code: 'EMAIL_AUDIT_FALLBACK_WRITE_FAILED',
-          });
-        }
-        throw e;
-      }
+      const delivery = await dispatchEnquiryAutoresponder(supabase, emailPayload, {
+        submissionId,
+        ...(resolvedAttachments.attachments.length ? { attachments: resolvedAttachments.attachments } : {}),
+      });
+      await recordEnquiryEmailAudit(supabase, {
+        projectId, contactId, email, subject, templateId, emailType, idempotencyKey, variables, delivery,
+      });
     } catch (err) {
       console.error('Autoresponder send failed', getEmailDeliveryFailureSummary(err));
     }

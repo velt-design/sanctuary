@@ -20,6 +20,10 @@ The root `npm run dev`, `build`, and `start` scripts only print the app-specific
 
 ## Common Commands
 
+For enquiry email correlation, run `npm run test:email-provider` and `npm run test:email-integrations`. The latter includes `test/marketing-enquiry-email-db.test.ts`, which applies the exact forward migration to disposable PGlite using the synthetic `supabase/tests/marketing_enquiry_email_bootstrap.sql` fixture. It checks migration rollback, role grants/denials, canonical identity, single-claim semantics, unknown crash state, append-only receipts and provider-ID conflicts. This in-process database serializes submitted queries; it does not prove independent-session concurrency. Run a separate disposable PostgreSQL race before release. Never apply the synthetic bootstrap to a shared database. Mocked transport and active HTML/plaintext rendering tests establish request/header/hash binding, not delivery; a separately commissioned real delivered-header/RFC Message-ID inspection remains necessary.
+
+For the independent-session check, set `SANCTUARY_TEST_PG_BIN` to an absolute local PostgreSQL 17 binary directory and run `node scripts/test-marketing-enquiry-email-pg.mjs`. The harness creates its own synthetic temporary cluster, listens only on loopback, races two service-role claims in separate sessions, verifies receipt conflicts and role denials, then stops that cluster. It accepts no database URL and uses no shared data or provider connection. The stopped cluster/log directory is printed for inspection.
+
 ```bash
 npm run dev:marketing
 npm run dev:portal

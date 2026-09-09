@@ -23,7 +23,11 @@ export type EmailMessageInput = Readonly<{
   html?: string;
   text?: string;
   attachments?: readonly EmailAttachmentInput[];
+  enquiryReference?: EmailEnquiryReference;
 }>;
+
+/** Opaque lookup evidence only; never authentication or proof of delivery. */
+export type EmailEnquiryReference = string & { readonly __emailEnquiryReference: unique symbol };
 
 export type NormalizedEmailAttachment = Readonly<{
   filename: string;
@@ -41,6 +45,7 @@ export type NormalizedEmailMessage = Readonly<{
   html?: string;
   text?: string;
   attachments?: readonly NormalizedEmailAttachment[];
+  enquiryReference?: EmailEnquiryReference;
 }>;
 
 export type NormalizedEmailTag =

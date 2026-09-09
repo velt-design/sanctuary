@@ -3,6 +3,7 @@ import 'server-only';
 import {
   createResendEmailGateway,
   type EmailMessageInput,
+  type NormalizedEmailMessage,
   type ResendDispatchOutcome,
   type ResendEmailGateway,
 } from '@sp/email-provider';
@@ -78,7 +79,7 @@ export function getEmailDeliveryFailureSummary(error: unknown): EmailDeliveryFai
   };
 }
 
-type SendEmailArgs = EmailMessageInput &
+type SendEmailArgs = (EmailMessageInput | NormalizedEmailMessage) &
   Readonly<{
     idempotencyKey?: string;
     signal?: AbortSignal;

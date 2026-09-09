@@ -215,8 +215,8 @@
       "status": "current",
       "ownerArea": "Public enquiry intake and conversion workflow",
       "pathPatterns": ["apps/marketing/app/api/enquiry/route.ts"],
-      "whyLarge": "Request validation, indicative estimate preparation, project/contact/enquiry persistence, attachment staging, autoresponder delivery, outbox recording, attribution, and audit fallback still meet in one public route.",
-      "nextSafeExtraction": "Move enquiry persistence and autoresponder/outbox audit orchestration behind named domain owners before JOB-07 migrates accepted delivery work; keep authentication-independent request validation and truthful response shaping in the route.",
+      "whyLarge": "Request validation, indicative estimate preparation, attachment staging, attribution and response shaping remain in the route. Canonical intake, request-bound correlation delivery and compatibility outbox/audit logging have named owners.",
+      "nextSafeExtraction": "Extract email payload/estimate composition before adding new enquiry behavior; retain the single-claim private intent/receipt boundary and early intake replay return. JOB-07 remains separate.",
       "focusedTests": [
         "npm run test:marketing -- apps/marketing/app/api/enquiry/route.test.ts apps/marketing/lib/email",
         "npm run typecheck",

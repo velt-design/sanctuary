@@ -3,6 +3,7 @@ export {
   DurableResendDispatchError,
   assertDurableResendEmailDispatchIntegrity,
   createDurableResendEmailDispatch,
+  prepareResendEmailMessage,
   createResendIdempotencyExpiresAt,
   deriveResendEffectRef,
   deriveResendIdempotencyKey,
@@ -11,6 +12,7 @@ export {
 export {
   EmailProviderContractError,
   normalizeEmailMessage,
+  parseEmailEnquiryReference,
   type EmailProviderContractErrorCode,
 } from './normalization';
 export {
