@@ -5493,6 +5493,10 @@ The first production Schedule migration attempt rolled back because its extra da
 
 PR #114's required production audit detected GHSA-px8p-9vwx-vf98 in existing fflate dependencies. The lockfile updates only the compatible patched releases 0.8.2 to 0.8.3 and 0.6.10 to 0.6.11. Production audit now reports zero vulnerabilities; the toolchain audit retains only the two approved xlsx exceptions. Keep the security gate blocking and rerun current-revision CI after a dependency correction.
 
+## 2026-09-09 — AI database image-pull throttling
+
+Status: Promoted. PRs #115 and #116 independently failed before SQL when the pinned public ECR image pull returned `toomanyrequests: Rate exceeded`. AI Foundation now gives only that exact pull failure three attempts with 30/60-second backoff. Other failures stop immediately, and the existing database harness runs once after a successful pull. Preserve the original failures as evidence; never rerun database assertions to hide setup or contract failures. Promoted to `docs/testing-and-qa.md`; synthetic coverage is `test/ai-db-image-pull.test.ts`.
+
 ## 2026-09-08 — Guarded writes include legacy permissions
 
 PR #114 review found that guarding the new server command did not revoke older browser table/RPC grants. A forward permission migration now closes direct job/queue/downtime writes, every browser Schedule RPC, crew revision/anchor edits and cascading crew deletion, preserving metadata fields needed by the existing admin API. Reproduce historical grants in the database harness and prove real authenticated denial as well as successful guarded saves. Inspect unresolved review threads before announcing merge readiness; green CI alone does not resolve review findings.
