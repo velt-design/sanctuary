@@ -1,6 +1,8 @@
 # Project-linked website enquiry files
 
-Status: implementation approved and deployed. The exact schema migrations are applied and ledgered in staging and production. The reviewed 59-file production backfill is applied; ambiguous declarations and changed-project evidence remain excluded pending separate evidence-based resolution.
+Recorded rollout (2026-08-27): implementation approved and deployed. The exact schema migrations are applied and ledgered in staging and production. The reviewed 59-file production backfill is applied; ambiguous declarations and changed-project evidence remain excluded pending separate evidence-based resolution.
+
+This is dated operational evidence, not a fresh check of the current deployment or any individual project's file access. Schema deployment, the reviewed historical subset, unresolved exceptions and current access verification are separate claims.
 
 ## User experience
 
@@ -56,7 +58,7 @@ The read phase never writes database rows and never moves, renames, or deletes S
 
 1. Keep the 22 ambiguous declarations and nine changed-project entries excluded until authoritative project evidence is reviewed. Never infer the intended project.
 2. If an exception is resolved, use a new reviewed reconciliation report/run rather than altering or replaying the completed 59-file payload.
-3. Continue monitoring staff/non-staff authorization, exact-project denial, View/Download audit events, 60-second redirects, Work-default/Files-tab UI, and both sides of the 8 MB email boundary.
+3. Verify current staff/non-staff authorization, exact-project denial, View/Download audit events, 60-second redirects, Work-default/Files-tab UI, and both sides of the 8 MB email boundary before claiming current live behavior. The backfill receipt alone does not prove these checks.
 
 ## Focused verification
 
