@@ -848,6 +848,10 @@ npx vitest run test/project-work-portfolio-rollout-migration.test.ts
 The named non-network gate covers the Project Work domain, creation boundary,
 staff/admin routes, Work Queue/Overview/Dashboard presenters, static source
 boundaries, foundation migration contracts, and readiness-checker unit tests.
+The owner-handoff database case has a local ten-second integration budget for
+cold PGlite startup, bootstrap, migration, all policy/report assertions, and
+cleanup. It is not a query-latency benchmark. Other tests retain their existing
+limits; the gate keeps its normal concurrency and does not retry failed cases.
 The focused PGlite test then applies the foundation, schema-cache repair, queue,
 `20260731000002_project_work_portfolio_rollout.sql`, and the read-only
 `20260731000003_project_pipeline_accountability_reads.sql`. It proves an independent
