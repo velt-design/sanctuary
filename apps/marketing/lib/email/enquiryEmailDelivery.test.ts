@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { prepareResendEmailMessage } from '@sp/email-provider';
 import type { EnquiryPayload } from '@/emails/types';
 import { dispatchEnquiryAutoresponder } from './enquiryEmailDelivery';
+import { recordEnquiryEmailAudit } from './enquiryEmailAudit';
 import { EmailDeliveryError } from './sendEmail';
 
 const h = vi.hoisted(() => ({ prepare: vi.fn(), send: vi.fn() }));
@@ -45,12 +46,45 @@ describe('request-bound enquiry dispatch', () => {
     expect(result).not.toHaveProperty('rfcMessageId');
   });
 
-  it.each([false, null, 'true'])('never sends when intent was not freshly claimed (%j)', async (begin) => {
-    const db = database(begin);
-    expect(await dispatchEnquiryAutoresponder(db.client, enquiry, options)).toMatchObject({ outcome: 'unknown' });
+  it('omits the fresh reference for a confirmed duplicate and never sends', async () => {
+    const db = database(false);
+    const result = await dispatchEnquiryAutoresponder(db.client, enquiry, options);
+    expect(result).toMatchObject({ outcome: 'unknown' });
+    expect(result).not.toHaveProperty('enquiryReference');
     expect(h.send).not.toHaveBeenCalled();
     expect(db.rpc).toHaveBeenCalledTimes(1);
   });
+
+  it.each(['thrown', 'returned-error', 'null', 'malformed'] as const)(
+    'retains the attempted lookup reference after %s uncertainty without sending', async (failure) => {
+      const db = database();
+      db.rpc.mockImplementationOnce(async () => {
+        if (failure === 'thrown') throw new Error('lost intent response');
+        return { data: failure === 'malformed' ? 'true' : null,
+          error: failure === 'returned-error' ? { message: 'lost intent response' } : null };
+      });
+      const result = await dispatchEnquiryAutoresponder(db.client, enquiry, options);
+      const attempted = `sp_enq_${db.rpc.mock.calls[0]?.[1].p_reference}`;
+      expect(result).toEqual({ outcome: 'unknown', code: 'ENQUIRY_EMAIL_INTENT_NOT_CLAIMED',
+        enquiryReference: attempted, providerApiMessageId: null });
+      expect(h.send).not.toHaveBeenCalled();
+      expect(db.rpc).toHaveBeenCalledTimes(1);
+
+      const upsert = vi.fn().mockResolvedValue({ error: null });
+      const from = vi.fn().mockReturnValue({ upsert });
+      await recordEnquiryEmailAudit({ from } as unknown as SupabaseClient, {
+        projectId: 'project', contactId: 'contact', email: 'customer@example.test', subject: 'Test',
+        templateId: 'template', emailType: 'WEBSITE_ESTIMATE_AUTORESPONDER',
+        idempotencyKey: `website:autoresponder:${enquiry.leadId}`, variables: {}, delivery: result,
+      });
+      expect(from).toHaveBeenCalledExactlyOnceWith('audit_events');
+      expect(upsert).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+        type: 'email_outcome_unknown', payload: expect.objectContaining({
+          outcome: 'unknown', enquiryReference: attempted, providerApiMessageId: null,
+        }),
+      }), { onConflict: 'idempotency_key' });
+    },
+  );
 
   it('does not send after preparation or intent persistence failure', async () => {
     const db = database();

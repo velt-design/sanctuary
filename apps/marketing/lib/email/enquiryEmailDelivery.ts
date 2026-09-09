@@ -39,10 +39,13 @@ export async function dispatchEnquiryAutoresponder(
       p_payload_hash: prepared.payloadHash,
     });
     if (result.error || result.data !== true) {
-      return { outcome: 'unknown', code: 'ENQUIRY_EMAIL_INTENT_NOT_CLAIMED', providerApiMessageId: null };
+      // Only an explicit false proves this fresh reference did not claim the intent.
+      // Otherwise preserve the attempted lookup key without claiming it committed.
+      return { outcome: 'unknown', code: 'ENQUIRY_EMAIL_INTENT_NOT_CLAIMED',
+        ...(!result.error && result.data === false ? {} : { enquiryReference }), providerApiMessageId: null };
     }
   } catch {
-    return { outcome: 'unknown', code: 'ENQUIRY_EMAIL_INTENT_NOT_CLAIMED', providerApiMessageId: null };
+    return { outcome: 'unknown', code: 'ENQUIRY_EMAIL_INTENT_NOT_CLAIMED', enquiryReference, providerApiMessageId: null };
   }
 
   let delivery: EnquiryEmailDelivery;
