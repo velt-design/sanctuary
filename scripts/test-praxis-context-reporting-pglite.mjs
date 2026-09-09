@@ -49,6 +49,11 @@ try {
   `);
   process.stdout.write('praxis-context-db: migration and idempotent replay passed\n');
 
+  await database.exec(readFileSync(path.join(root, 'supabase/migrations/20260909000001_marketing_enquiry_email_correlation.sql'), 'utf8'));
+  await database.exec(readFileSync(path.join(root, 'supabase/migrations/20260909000002_praxis_enquiry_identity_v1.sql'), 'utf8'));
+  await database.exec(readFileSync(path.join(root, 'supabase/tests/praxis_enquiry_identity.sql'), 'utf8'));
+  process.stdout.write('praxis-enquiry-identity: bounded projection contract passed\n');
+
   const grants = await database.query(`
     select
       rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls,

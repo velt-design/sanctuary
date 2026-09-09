@@ -1,36 +1,14 @@
 // Disposable PostgreSQL only. No environment URL or shared database is accepted.
 import assert from 'node:assert/strict';
-import { execFile, execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { execFile } from 'node:child_process';
 import path from 'node:path';
-import net from 'node:net';
 import { promisify } from 'node:util';
+import { startDisposablePostgres17 } from './test-support/disposable-postgres17.mjs';
 
-const bin = process.env.SANCTUARY_TEST_PG_BIN;
-if (!bin || !path.isAbsolute(bin)) throw new Error('Set SANCTUARY_TEST_PG_BIN to an absolute local PostgreSQL bin directory.');
 const root = path.resolve(import.meta.dirname, '..');
-const directory = mkdtempSync(path.join(tmpdir(), 'sanctuary-enquiry-email-pg-'));
-const data = path.join(directory, 'data');
-const executable = (name) => path.join(bin, `${name}${process.platform === 'win32' ? '.exe' : ''}`);
-const run = (name, args) => execFileSync(executable(name), args, {
-  windowsHide: true, encoding: 'utf8', timeout: 30_000,
-  // A detached PostgreSQL child must not inherit Node's output pipes on Windows.
-  ...(name === 'pg_ctl' ? { stdio: 'ignore' } : {}),
-});
-const version = run('postgres', ['--version']).trim();
-assert.match(version, /PostgreSQL\) 17\./);
-const listener = net.createServer();
-await new Promise((resolve, reject) => { listener.once('error', reject); listener.listen(0, '127.0.0.1', resolve); });
-const port = listener.address().port;
-await new Promise((resolve) => listener.close(resolve));
-run('initdb', ['-D', data, '-U', 'postgres', '-A', 'trust', '--no-locale', '-E', 'UTF8']);
-const args = ['-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', 'postgres', '-X', '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1'];
-const sql = (statement) => run('psql', [...args, '-c', statement]).trim();
-let started = false;
+const local = await startDisposablePostgres17('sanctuary-enquiry-email-pg-');
+const { directory, version, run, executable, args, sql } = local;
 try {
-  run('pg_ctl', ['-D', data, '-l', path.join(directory, 'postgres.log'), '-o', `-h 127.0.0.1 -p ${port}`, '-w', 'start']);
-  started = true;
   for (const file of ['supabase/tests/marketing_enquiry_email_bootstrap.sql', 'supabase/migrations/20260909000001_marketing_enquiry_email_correlation.sql']) {
     run('psql', [...args, '-1', '-f', path.join(root, file)]);
   }
@@ -55,5 +33,5 @@ try {
   assert.throws(() => sql('delete from private.marketing_enquiry_email_receipts;'), /ENQUIRY_EMAIL_IMMUTABLE/);
   console.log(`${version}: independent-session claim race, crash/unknown, replay, receipt conflict and role denials passed. Synthetic cluster stopped on exit: ${directory}`);
 } finally {
-  if (started) run('pg_ctl', ['-D', data, '-m', 'immediate', '-w', 'stop']);
+  local.stop();
 }

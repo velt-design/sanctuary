@@ -44,7 +44,8 @@ create table public.projects (
   created_at timestamptz not null, updated_at timestamptz not null
 );
 create table public.enquiry_requests (
-  id uuid primary key, contact_id uuid references public.contacts(id), project_id uuid references public.projects(id),
+  id uuid primary key, submission_id uuid not null unique default gen_random_uuid(),
+  contact_id uuid references public.contacts(id), project_id uuid references public.projects(id),
   enquiry_type text not null, suburb text, message text, width_m numeric, depth_m numeric,
   height_m numeric, style text, roof_materials text[], add_ons jsonb not null,
   base_budget_low_inc_gst integer, base_budget_high_inc_gst integer,

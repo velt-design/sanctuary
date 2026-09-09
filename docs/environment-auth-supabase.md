@@ -67,6 +67,12 @@ Before activation, run the real PostgreSQL 17 denial harness with `npm run test:
 
 Authenticated staff can render and compare the marketing autoresponder workbench in production, but production is deliberately read-only. Inbox delivery is available only when the portal runs in a Vercel Preview environment, or locally in development/test, and `EMAIL_PREVIEW_ENABLED=true`. Configure all three preview variables on the `sanctuary-portal` Vercel project for Preview only. `RESEND_API_KEY_PREVIEW` must contain the actual Resend secret value (normally beginning `re_`), not the display name assigned to that key in Resend. Redeploy the branch after adding or changing any preview variable because an already-built deployment does not receive the new value. The current review recipient is `jordan@sanctuarypergolas.co.nz`. The staff preview page reports the exact safe configuration reason when sending is not ready. Each alternative is sent with a distinct `[Preview: <layout>]` subject; the browser cannot override the recipient or email content.
 
+## Praxis Enquiry Identity Reads
+
+The additive GET-only route `/api/integrations/praxis/v1/enquiry-identities` reuses the same dedicated LOGIN, bearer secret, source/connection/environment binding, verified database transport and privilege checks. It introduces no credential or service-role fallback. Migration `20260909000002_praxis_enquiry_identity_v1.sql` requires the enquiry email correlation migration and grants only a narrow reporting view and invoker function to the existing reader group. The route probes that projection on every request; missing objects/grants fail unavailable even when the older core health route is ready.
+
+Supply one exact UTC half-open `submittedFrom`/`submittedBefore` interval, positive and at most 31 days, ending no later than the database snapshot, plus zero to 100 repeated `reference=sp_enq_<UUIDv4>` parameters. References are deduplicated; unsupported query keys, offsets, invalid dates and excess precision are rejected. Six fractional timestamp digits are preserved. This source increment does not activate a Velt broker or widen the existing core v1 GET contract; a separately reviewed consumer and root-owned credential/migration activation remain prerequisites.
+
 ## Staff Portal Auth
 
 The portal uses Supabase Auth plus `public.portal_users`.
