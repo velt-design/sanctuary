@@ -177,3 +177,26 @@ test.describe('expanded touch gestures', () => {
     await expect.poll(() => page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
   });
 });
+
+for (const width of [390, 1440]) {
+  test('dimension entry selects on first click and uses the Simple pergola range at ' + width, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    const number = page.getByRole('textbox', { name: 'Width in metres', exact: true });
+    await number.click();
+    expect(await number.evaluate((input: HTMLInputElement) => input.selectionEnd! - input.selectionStart!)).toBe(3);
+    await page.keyboard.type('7.2');
+    await number.press('Enter');
+    await expect(number).toHaveValue('7.2');
+    const range = page.getByRole('slider', { name: 'Width', exact: true });
+    await expect(range).toHaveValue('7200');
+    expect((await range.boundingBox())!.height).toBeGreaterThanOrEqual(width < 600 ? 72 : 44);
+    await range.focus();
+    await range.press('ArrowRight');
+    await expect(number).toHaveValue('7.3');
+    await page.getByRole('radio', { name: 'Elevated', exact: true }).check();
+    await expect(page.getByText('First-floor deck · shown 2.7 m above ground.')).toBeVisible();
+    await expect(page.locator('fieldset').filter({has: page.getByText('Roof style', {exact:true})}).locator('svg')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Fit view', exact: true }).click();
+    await page.screenshot({ path: 'artifacts/configurator-preview/controls-' + width + '.png' });
+  });
+}

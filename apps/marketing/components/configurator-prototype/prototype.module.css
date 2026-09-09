@@ -41,12 +41,6 @@
 .muted { font-size: 11px; line-height: 1.6; color: var(--color-text-secondary); margin: 12px 0 25px; }
 .dimension { margin: 22px 0; }
 .dimensions { min-width: 0; }
-.dimensionHeading { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
-.number { display: flex; align-items: center; gap: 8px; border: 1px solid var(--color-rule); padding: 0 10px; height: 42px; background: #fff; }
-.number input { width: 44px; border: 0; background: transparent; font: 500 16px var(--font-body); text-align: right; color: inherit; }
-.number span { color: var(--color-text-secondary); font-size: 11px; }
-.dimension > input { width: 100%; accent-color: var(--color-accent-olive); cursor: pointer; height: 32px; margin: 6px 0 0; }
-.rangeEnds { display: flex; justify-content: space-between; font-size: 9px; color: var(--color-text-subtle); }
 .inputNotice { font-size: 11px; line-height: 1.5; margin: 8px 0 0; color: var(--color-text-secondary); }
 .choices { padding: 0; border: 0; margin: 18px 0 20px; display: flex; flex-wrap: wrap; gap: 6px; }
 .choices legend { padding: 0; margin-bottom: 10px; font-size: 11px; color: var(--color-text-secondary); }
@@ -95,10 +89,8 @@
   .desktopNote { display: none; }
   .plan { padding: 4px; }
   .controls { padding: 20px; }
-  .dimensions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .dimensions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
   .dimension { margin: 0 0 22px; min-width: 0; }
-  .dimensionHeading { flex-direction: column; align-items: stretch; gap: 8px; }
-  .number { justify-content: flex-end; }
   .controls input, .controls button { scroll-margin-top: 16px; scroll-margin-bottom: 20px; }
   .muted { margin: 10px 0 18px; }
   .choices label { min-height: 44px; font-size: 12px; padding-inline: 10px; }

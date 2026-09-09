@@ -1,9 +1,8 @@
 .choices { border: 0; margin: 0 0 24px; padding: 0; min-width: 0; }
 .choices legend { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 10px; }
 .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.card { display: flex; flex-direction: column; gap: 8px; align-items: center; padding: 10px 3px; border: 1px solid var(--color-rule); cursor: pointer; min-width: 0; }
+.card { display: flex; flex-direction: column; gap: 8px; align-items: center; padding: 12px 3px; min-height: 44px; justify-content: center; box-sizing: border-box; border: 1px solid var(--color-rule); cursor: pointer; min-width: 0; }
 .card[data-selected="true"] { background: var(--color-accent-olive-soft, #e8ebe2); border-color: var(--color-accent-olive); }
-.card svg { width: 58px; height: 32px; color: var(--color-accent-olive); }
 .card span { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 10px; }
 .card input { width: 12px; height: 12px; margin: 0; accent-color: var(--color-accent-olive); }
 .description { font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); margin: 10px 0 0; min-height: 36px; }

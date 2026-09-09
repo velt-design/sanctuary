@@ -46,6 +46,10 @@ export default function PreviewScene({ scene, plan, context, activeDimension, in
     ? [object.centerline.start, object.centerline.end]
     : object.type === 'roof_plane' || object.type === 'roof_cladding_panel' ? object.boundary : []), [objects]);
   const bounds = useMemo(() => computeSceneBoundsFromPoints(fitPoints), [fitPoints]);
+  // Fit first-floor supports without zooming out to fit the entire house.
+  const cameraPoints = useMemo(() => context?.elevated ? [...fitPoints,
+    ...context.architecture.supports.flatMap(support => [support.min, support.max])] : fitPoints, [fitPoints, context]);
+  const cameraBounds = useMemo(() => computeSceneBoundsFromPoints(cameraPoints), [cameraPoints]);
   const roof = useMemo(() => scene.layers.flatMap((layer) => layer.objects).flatMap(object => object.type === 'roof_plane' ? object.boundary : []), [scene]);
   if (unavailable) return fallback;
   return <SceneBoundary fallback={fallback}>
@@ -55,7 +59,7 @@ export default function PreviewScene({ scene, plan, context, activeDimension, in
       <ContextWatch onFallback={() => { setUnavailable(true); onFallback(); }} />
       <PreviewLighting />
       {context && <PreviewSurroundings context={context} bounds={bounds} productPoints={fitPoints} />}
-      <PreviewCamera bounds={bounds} fitPoints={fitPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} />
+      <PreviewCamera bounds={cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} />
       <group>{objects.map((object) => object.type === 'roof_plane' || object.type === 'roof_cladding_panel'
         ? <PreviewRoof key={object.id} object={object} />
         : <SceneObjectNode key={object.id} object={object} color="#242824" memberAppearance={{ roughness: .38, metalness: .2, envMapIntensity: .8 }}

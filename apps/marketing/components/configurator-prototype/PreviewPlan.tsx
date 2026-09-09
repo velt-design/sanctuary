@@ -51,8 +51,6 @@ export default function PreviewPlan({ plan, flashings = [], context, activeDimen
         width={context.architecture.opening.max.x - context.architecture.opening.min.x} height={100} fill="#becbc2" stroke="#7c8578" strokeWidth={8} />
       <line x1={(context.architecture.opening.min.x + context.architecture.opening.max.x) / 2}
         x2={(context.architecture.opening.min.x + context.architecture.opening.max.x) / 2} y1={context.wall.max.y - 75} y2={context.wall.max.y + 25} stroke="#7c8578" strokeWidth={8} />
-      {context.architecture.steps.map(step => <rect key={step.id} x={step.min.x} y={step.min.y}
-        width={step.max.x - step.min.x} height={step.max.y - step.min.y} fill="#eeece5" stroke="#a5aa9e" strokeWidth={8} />)}
       {context.brackets.map(bracket => <rect key={bracket.id} data-bracket-id={bracket.id}
         x={bracket.startX} y={Math.min(...bracket.section.map(point => point.y))}
         width={bracket.endX - bracket.startX}

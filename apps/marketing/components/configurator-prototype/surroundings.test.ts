@@ -26,26 +26,25 @@ describe('representative house connections', () => {
       });
     });
   });
-  it.each(['soffit', 'fascia', 'facade'] as const)('keeps the %s slider below the connection and terrace stairs clear of posts', (connection) => {
+  it.each(['soffit', 'fascia', 'facade'] as const)('keeps the %s slider below the connection and first-floor deck supported down to ground', (connection) => {
     for (const widthMm of [1500, 6000, 10000]) {
       const { context: c } = solve(connection, true, widthMm);
-      const { opening, terrace, base, steps } = c.architecture;
+      const { opening, terrace, supports } = c.architecture;
       expect(opening.min.z).toBe(c.patio.max.z);
       expect(opening.max.z).toBeLessThan(c.ledger.bottomZ);
       expect(opening.min.x).toBeGreaterThan(c.wall.min.x);
       expect(opening.max.x).toBeLessThan(c.wall.max.x);
       expect(opening.max.z).toBeLessThan(c.wall.max.z);
       expect(terrace.max.z).toBe(c.patio.max.z);
-      expect(base!.max.z).toBe(terrace.min.z);
-      expect(steps).toHaveLength(3);
-      for (const step of steps) {
-        expect(step.max.x).toBeGreaterThan(step.min.x);
-        expect(step.min.y).toBeGreaterThanOrEqual(c.patio.max.y);
-        expect(c.postFeet.every(p => p.x < step.min.x || p.x > step.max.x)).toBe(true);
-        expect(step.min.z).toBe(c.ground.max.z);
+      expect(terrace.max.z - terrace.min.z).toBe(160);
+      expect(supports).toHaveLength(c.postFeet.length);
+      for (const support of supports) {
+        expect(support.min.z).toBe(c.ground.max.z);
+        expect(support.max.z).toBe(terrace.min.z);
+        expect(c.postFeet.some(p => (support.min.x + support.max.x) / 2 === p.x && (support.min.y + support.max.y) / 2 === p.y)).toBe(true);
       }
     }
-    expect(solve(connection).context.architecture.steps).toEqual([]);
+    expect(solve(connection).context.architecture.supports).toEqual([]);
   });
   it.each(['soffit', 'fascia', 'facade'] as const)('closes %s roof edges between wall and roof without a gap', (connection) => {
     const { context: c } = solve(connection);
@@ -92,7 +91,7 @@ describe('representative house connections', () => {
     const { context: low } = solve(connection);
     const { context: high, assembly } = solve(connection, true);
     expect(high.patio.max.z).toBe(low.patio.max.z);
-    expect(high.patio.max.z - high.ground.max.z).toBe(800);
+    expect(high.patio.max.z - high.ground.max.z).toBe(2700);
     for (const post of assembly.members.filter(m => m.role === 'post')) expect(post.centerline.start.z).toBe(high.patio.max.z);
     expect(high.ledger).toEqual(low.ledger);
   });

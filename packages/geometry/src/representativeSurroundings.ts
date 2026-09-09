@@ -49,7 +49,7 @@ export function buildRepresentativeSurroundings(
   const gutterTop = connection === 'soffit' ? topZ : connection === 'fascia' ? topZ + 135 : topZ + 3200;
   const eaveZ = gutterTop - 40;
   const fasciaBottom = connection === 'soffit' ? gutterTop - 240 : connection === 'fascia' ? bottomZ - 50 : eaveZ - 200;
-  const groundZ = floorZ - (elevated ? 800 : 120);
+  const groundZ = floorZ - (elevated ? 2700 : 120);
   const box = (id: string, x1: number, y1: number, z1: number, x2: number, y2: number, z2: number): ContextBox =>
     ({ id, min: { x: x1, y: y1, z: z1 }, max: { x: x2, y: y2, z: z2 } });
   const roofBackY = wallY - 1400;

@@ -43,8 +43,7 @@ export default function PreviewSurroundings({ context, bounds, productPoints }: 
   return <group name="representative-surroundings">
     <Box box={ground} color="#d1d6c8" />
     <Box box={architecture.terrace} color="#cbc8bd" />
-    {architecture.base && <Box box={architecture.base} color="#a5aa9e" />}
-    {architecture.steps.map(step => <Box key={step.id} box={step} color="#c6c6b9" />)}
+    {architecture.supports.map(support => <Box key={support.id} box={support} color="#a5aa9e" />)}
     <PreviewLandscape context={context} bounds={bounds} productPoints={productPoints} />
     {/* Soft contact cues from solved feet, without treating clear acrylic as an opaque shadow caster. */}
     {context.postFeet.map((point, index) => <mesh key={index} position={[point.x, point.y, point.z + 1]} renderOrder={1}>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { CUSTOMER_DIMENSION_BOUNDS } from '@sp/configurator/core';
 import {
   SIMPLE_COVER_WIDTH_MIN_MM, SIMPLE_COVER_WIDTH_MAX_MM,
@@ -11,6 +11,7 @@ import { constrainPreviewConnection, metres, PREVIEW_SOFFIT_MAX_PROJECTION_MM } 
 import type { PreviewDimensionAxis } from './usePreviewDimension';
 import AttachmentChoices from './AttachmentChoices';
 import styles from './prototype.module.css';
+import slider from '../simple-cover-calculator/SimpleCoverCalculator.module.css';
 import GableChoices, { RoofTypeChoice, type PreviewRoofChoices } from './GableChoices';
 
 function Dimension({ axis, label, value, min, max, onChange, onActivity }: {
@@ -19,6 +20,7 @@ function Dimension({ axis, label, value, min, max, onChange, onActivity }: {
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
+  const marks = [min, ...Array.from({ length: Math.ceil(max / 1000) }, (_, i) => i * 1000).filter(mark => mark >= min + 750 && mark <= max - 750), max];
   function commit() {
     const text = draft ?? (value / 1000).toFixed(1);
     const number = Number(text);
@@ -35,15 +37,20 @@ function Dimension({ axis, label, value, min, max, onChange, onActivity }: {
     onPointerEnter={(event) => { if (event.pointerType === 'mouse') onActivity(axis); }}
     onPointerDown={() => onActivity(axis)}
     onPointerLeave={(event) => { if (!event.currentTarget.contains(document.activeElement)) onActivity(null); }}>
-    <div className={styles.dimensionHeading}>
+    <div className={slider.dimensionHeading}>
       <label htmlFor={`range-${label}`}>{label}</label>
-      <label className={styles.number}><input aria-label={`${label} in metres`} inputMode="decimal" value={draft ?? (value / 1000).toFixed(1)}
+      <label className={slider.dimensionValue}><input aria-label={`${label} in metres`} inputMode="decimal" value={draft ?? (value / 1000).toFixed(1)}
+        onFocus={(event) => event.currentTarget.select()}
         onChange={(event) => { setDraft(event.target.value); setNotice(''); }} onBlur={commit}
         onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }} /><span>m</span></label>
     </div>
-    <input id={`range-${label}`} type="range" min={min} max={max} step={100} value={value}
+    <div className={slider.rangeControl} style={{ '--range-progress': `${(value - min) / (max - min) * 100}%` } as CSSProperties}>
+    <input className={slider.range} id={`range-${label}`} type="range" min={min} max={max} step={100} value={value}
       aria-valuetext={metres(value)} onChange={(event) => { setDraft(null); setNotice(''); onChange(Number(event.target.value)); }} />
-    <div className={styles.rangeEnds}><span>{metres(min)}</span><span>{metres(max)}</span></div>
+    <div className={slider.rangeRail} aria-hidden="true">{marks.map((mark, index) => <span key={mark} className={slider.rangeStop}
+      data-terminal={index === 0 || index === marks.length - 1 ? 'true' : undefined}
+      style={{ left: `${(mark - min) / (max - min) * 100}%` }}>{mark / 1000}</span>)}</div>
+    </div>
     {notice && <p className={styles.inputNotice}>{notice}</p>}
   </div>;
 }
@@ -82,6 +89,7 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
           onChange={() => update({ ...input, level })} />{level === 'ground' ? 'Ground level' : 'Elevated'}
       </label>)}
     </fieldset>
+    {input.level === 'elevated' && <p className={styles.small}>First-floor deck · shown 2.7 m above ground.</p>}
       <p className={styles.small}>{roof.family === 'gable' ? '25° symmetrical gable' : roof.family === 'box' ? 'Acrylic roof within a level perimeter' : 'Pitched acrylic roof'} · Black aluminium frame<br />Representative house, ground, heights and connection details.</p>
   </div>;
 }

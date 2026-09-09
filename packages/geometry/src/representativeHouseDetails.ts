@@ -24,15 +24,9 @@ export function buildRepresentativeHouseDetails(wall: ContextBox, patio: Context
     box('slider-pane-right', centre + 25, face - 48, floor + 35, right - 45, face - 42, top - 45),
   ];
   const terrace = { ...patio, min: { ...patio.min, z: elevated ? floor - 160 : patio.min.z } };
-  const base = elevated ? box('terrace-recessed-base', patio.min.x + 65, patio.min.y, patio.min.z,
-    patio.max.x - 65, patio.max.y - 65, floor - 160) : null;
-  const posts = [...feet].sort((a, b) => a.x - b.x);
-  const bayLeft = posts[0]?.x ?? patio.min.x + 300;
-  const bayRight = posts[1]?.x ?? patio.max.x - 300;
-  const stairWidth = Math.min(1600, bayRight - bayLeft - 220);
-  const stairCentre = (bayLeft + bayRight) / 2;
-  const rise = (floor - patio.min.z) / 4;
-  const steps = elevated ? [1, 2, 3].map(i => box(`terrace-step-${i}`, stairCentre - stairWidth / 2,
-    patio.max.y + (3 - i) * 300, patio.min.z, stairCentre + stairWidth / 2, patio.max.y + (4 - i) * 300, patio.min.z + rise * i)) : [];
-  return { opening, frame, glazing, terrace, base, steps };
+  // First-floor deck: open space below, with supports at the pergola feet.
+  // Representative context only, not a deck structural design or takeoff.
+  const supports = elevated ? feet.map((foot, i) => box('deck-support-' + i, foot.x - 75, foot.y - 75,
+    patio.min.z, foot.x + 75, foot.y + 75, terrace.min.z)) : [];
+  return { opening, frame, glazing, terrace, supports };
 }

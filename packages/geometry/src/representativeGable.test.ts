@@ -56,7 +56,8 @@ describe('representative attached acrylic gables', () => {
       expect(assembly.roofCladdingPanels.filter(p=>p.metadata?.representativeGableInfill).length).toBeGreaterThan(0);
       const context=buildRepresentativeGableContext(assembly,{...options,elevated:true,soffitBracketCount:5});
       expect(context).not.toBeNull();
-      expect(context!.architecture.steps).toHaveLength(3);
+      expect(context!.architecture.supports).toHaveLength(context!.postFeet.length);
+      expect(context!.patio.max.z - context!.ground.max.z).toBe(2700);
       expect(context!.roof.extrusionAxis).toBe(orientation==='away'?'y':undefined);
     });
   }

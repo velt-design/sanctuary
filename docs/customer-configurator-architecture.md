@@ -6,8 +6,10 @@
 `PreviewNextAction.tsx` keeps the popup's current estimate and Continue action
 outside the scrolling choices, in a fixed footer inside the panel. The viewer
 retains its 48% mobile allocation; expansion still covers the full workspace.
-Roof options have small profile illustrations and a sentence explaining the
-selected style. The configured enquiry introduction is compact and its design
+Roof options use text-only selectors and a sentence explaining the
+selected style. Dimension controls reuse the Simple pergola calculator range and
+number-field styles: 72 px mobile tracks, 44 px thumb hit boxes and select-all
+on focus. Mobile dimensions use full-width rows to keep the ruler marks legible. The configured enquiry introduction is compact and its design
 summary expands on demand, putting the first site field in view sooner. Normal
 contact pathways and submission behavior are unchanged.
 
@@ -404,11 +406,15 @@ The house/acrylic refinement adds a representative two-panel slider from
 `representativeHouseDetails.ts`. Its opening is cut from one continuous wall mesh,
 avoiding internal box seams during the upper-wall fade. Frame and muted glazing
 fade with the house. The opening stays below the ledger and within the wall at
-all supported widths. Elevated context uses a 160 mm terrace edge, recessed base
-and three illustrative steps in a clear post bay; floor and post-foot heights do
-not change. Plan draws the same opening and stair footprint, with its width
-dimension moved clear of the stairs. These reference details are not selectable
+all supported widths. Elevated means a first-floor deck, shown 2700 mm above
+ground with a 160 mm deck edge and visible supports reaching the ground; it
+replaces the former 800 mm solid platform and three steps. Pergola floor and
+post-foot heights do not change. Camera Fit includes the deck supports, while
+Plan keeps the deck footprint. These reference details are not selectable
 products, construction specifications, authored house inputs or priced additions.
+Gate 0: legacy audit rows N/A; no legacy removal/build-on, authored house-form
+change, Phase 2 costing dependency or function/type consolidation. Consumers
+checked: mono, gable and box context builders; preview Plan/3D and their tests.
 
 Acrylic uses a stronger subdued tint, grazing-angle opacity and a soft, world-space
 studio reflection cue continuous across panels. It keeps the original solved roof
