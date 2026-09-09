@@ -1,5 +1,6 @@
 import type {
   EmailAttachmentInput,
+  EmailEnquiryReference,
   EmailMessageInput,
   NormalizedEmailAttachment,
   NormalizedEmailMessage,
@@ -33,6 +34,13 @@ export class EmailProviderContractError extends Error {
 
 function contractError(code: EmailProviderContractErrorCode): never {
   throw new EmailProviderContractError(code);
+}
+
+export function parseEmailEnquiryReference(value: unknown): EmailEnquiryReference {
+  if (typeof value !== 'string' || !/^sp_enq_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)) {
+    contractError('EMAIL_FIELD_INVALID');
+  }
+  return value as EmailEnquiryReference;
 }
 
 function normalizedString(value: unknown, maximumLength: number): string {
@@ -148,6 +156,9 @@ export function normalizeEmailMessage(
     ...(html !== undefined ? { html } : {}),
     ...(text !== undefined ? { text } : {}),
     ...(attachments ? { attachments } : {}),
+    ...(input.enquiryReference !== undefined
+      ? { enquiryReference: parseEmailEnquiryReference(input.enquiryReference) }
+      : {}),
   });
 }
 

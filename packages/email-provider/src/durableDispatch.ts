@@ -106,6 +106,7 @@ type ResendWirePayload = Readonly<{
   reply_to?: readonly string[];
   attachments?: readonly ResendWireAttachment[];
   tags?: readonly NormalizedEmailTag[];
+  headers?: Readonly<{ 'X-Sanctuary-Enquiry-Reference': string }>;
 }>;
 
 export function createCanonicalResendRequestBody(
@@ -131,8 +132,18 @@ export function createCanonicalResendRequestBody(
         }
       : {}),
     ...(tags ? { tags } : {}),
+    ...(message.enquiryReference
+      ? { headers: { 'X-Sanctuary-Enquiry-Reference': message.enquiryReference } }
+      : {}),
   };
   return JSON.stringify(payload);
+}
+
+/** Hash the same normalized wire representation used by dispatchLegacy. No retry authority. */
+export function prepareResendEmailMessage(input: EmailMessageInput | NormalizedEmailMessage) {
+  const message = normalizeEmailMessage(input);
+  const canonicalRequestBody = createCanonicalResendRequestBody(message);
+  return Object.freeze({ message, canonicalRequestBody, payloadHash: sha256(canonicalRequestBody) });
 }
 
 export function createDurableResendEmailDispatch(input: Readonly<{

@@ -86,7 +86,7 @@
     "test:geometry-viewer": "vitest run packages/geometry-viewer",
     "test:jobs": "vitest run packages/jobs packages/email-provider test/background-jobs-migration.test.ts test/repo-security.test.ts",
     "test:email-provider": "vitest run packages/email-provider",
-    "test:email-integrations": "vitest run apps/portal/lib/emails/sendTransactionalEmail.test.ts apps/portal/lib/backgroundJobs apps/portal/app/api/webhooks/resend apps/portal/app/api/staff/v1/email-previews apps/marketing/lib/email apps/marketing/app/api/contact apps/marketing/app/api/enquiry",
+    "test:email-integrations": "vitest run apps/portal/lib/emails/sendTransactionalEmail.test.ts apps/portal/lib/backgroundJobs apps/portal/app/api/webhooks/resend apps/portal/app/api/staff/v1/email-previews apps/marketing/lib/email apps/marketing/app/api/contact apps/marketing/app/api/enquiry test/marketing-enquiry-email-db.test.ts",
     "test:commercial:db": "node scripts/test-commercial-workflow-db.mjs",
     "test:schedule:db:fast": "node scripts/test-schedule-guarded-commands-pglite.mjs",
     "test:praxis:db:fast": "node scripts/test-praxis-context-reporting-pglite.mjs",

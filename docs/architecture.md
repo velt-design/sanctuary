@@ -37,6 +37,8 @@ Inspect these root-level paths before creating new app or package logic. Do not 
 
 Marketing owns public lead capture and public document viewing. It may call Supabase through server-side service clients for lead persistence and public token flows, but it should not own staff workflow state.
 
+New website autoresponders pass through `apps/marketing/lib/email/enquiryEmailDelivery.ts`: the shared provider package freezes normalized message bytes/hash, a service-only RPC claims an immutable canonical-enquiry intent, then one request-bound dispatch records an append-only outcome receipt. `enquiryEmailAudit.ts` owns legacy outbox/audit display records. Intake success and replay remain independent of email outcomes. This correlation path adds no scheduler, callback reconciliation, worker tags or retry authority; see `docs/automation-email-audit.md` for the schema-first rollout and unknown-state limits.
+
 Portal owns staff workflow state and staff APIs. Staff routes live under `apps/portal/app/staff`, admin routes under `apps/portal/app/admin`, and staff API routes under `apps/portal/app/api/staff/v1`.
 
 Marketing and Portal also own separate UI systems. Marketing UI primitives and editorial patterns live under `apps/marketing/components/marketing-foundation` and are documented in `docs/marketing-ui-foundation.md`. Portal shared UI primitives, tokens, operational patterns, and active specialist/compatibility boundaries live under `apps/portal` and are documented in `docs/ui-foundation.md`. There is no cross-app design-system migration target: current checked-in and rendered behavior is canonical for each app, and a broad restyle or token migration requires explicit user approval.

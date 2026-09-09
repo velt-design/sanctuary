@@ -26,6 +26,7 @@ Scheduled invoice creation and whole-invoice payment recording append `invoice.c
 - Email preview route: `apps/portal/app/api/staff/v1/projects/[projectId]/emails/[emailId]/preview/route.ts`.
 - Marketing enquiry/contact routes: `apps/marketing/app/api/contact` and `apps/marketing/app/api/enquiry`.
 - Marketing autoresponder helpers/templates: `apps/marketing/lib/email` and `apps/marketing/emails`.
+- Request-bound enquiry correlation: `enquiryEmailDelivery.ts` owns intent/dispatch/receipt ordering; `enquiryEmailAudit.ts` owns compatibility outbox/audit logging.
 - Schema ownership map: `docs/supabase-schema-map.md`.
 
 ## Tables
@@ -137,6 +138,22 @@ On send, `apps/marketing/app/api/enquiry` either inlines verified files as autor
 Portal file visibility is now a separate durable contract from email delivery. The unchanged 8 MB inline/seven-day-link decision affects only the autoresponder. On a successful new intake, an atomic database trigger links every verified `enquiry_requests.files` entry to the created project; a missing object rolls the intake back. Staff see metadata under Project Overview > Project Work > Files and receive a fresh 60-second private Storage URL only after the exact project/file access check. See `docs/project-enquiry-attachments.md` for the schema, audit, dry-run, and unexecuted rollout plan.
 
 The legacy JSON-only `/api/contact` compatibility send also uses the durable database limiter. It rejects multipart bodies; all public file intake belongs to the signed, submission-bound `/api/enquiry` path.
+
+## Request-Bound Enquiry Email Correlation
+
+Migration `20260909000001_marketing_enquiry_email_correlation.sql` adds private immutable intents and append-only receipts for new website autoresponders. The active route preserves the existing `submission_id`, canonical `enquiry_requests.id`, intake transaction and early replay return. The server generates an independent random UUID reference, renders it once into the active Editorial Refined HTML/plaintext footer, and sends it through the fixed `X-Sanctuary-Enquiry-Reference` header. The shared provider package validates the typed `sp_enq_<uuid-v4>` value and includes it in the exact normalized request hash; messages without a reference retain their previous wire bytes. Resend documents [custom email headers](https://resend.com/docs/api-reference/emails/send-email), but source and mocked transport checks do not prove a delivered mailbox retains the header.
+
+`marketing_enquiry_email_begin` binds the reference to the saved enquiry/submission, fixed purpose, existing provider idempotency key and final message hash before dispatch. Only a new unique intent returns dispatch authority. A duplicate, lost RPC response, missing migration or persistence failure prevents sending; intake still succeeds. No request replay, retry worker or repair endpoint resends the email. A crash after intent creation remains `unknown` with `ENQUIRY_EMAIL_RECEIPT_MISSING`.
+
+An uncertain claim response retains the attempted reference in compatibility audit evidence so a possibly committed intent can be looked up. That reference does not prove the intent committed. An error-free explicit `false` omits the fresh reference because it does not identify the pre-existing intent. If all audit writes also fail, that recovery evidence is unavailable; no claim or send retry is introduced.
+
+`marketing_enquiry_email_record` records exactly one compatible receipt. Definite rejection/not-dispatched outcomes are `failed`; provider acceptance is `accepted`; timeout, network/server errors, malformed response, concurrent idempotency and payload conflict remain `unknown`. Acceptance is not delivery. Exact receipt replay is harmless; conflicting outcomes, message IDs or hashes fail closed. A lost receipt response is reported as unknown without overwriting possible committed acceptance or retrying. `provider_api_message_id` is the Resend API identifier; `rfc_message_id` remains unobserved/null and is never inferred from it.
+
+Private intent/receipt lookup is service-only and returns no body, address, attachment or signed URL. A visible/header reference is lookup evidence, never authentication, a conversion, or proof of receipt. Missing or unrecorded references do not establish a match; even a recorded reference copied into a forged message requires separately authenticated source evidence. Existing webhook behavior and JOB-07 remain unchanged; no worker tags are fabricated.
+
+Legacy outbox `SENT` means provider acceptance only. Definite failures retain `FAILED`. Because the outbox has no unknown status, uncertain attempts create `email_outcome_unknown` audit evidence without a misleading outbox row. Logging errors use `email_log_failed`, preserve the known outcome and do not overwrite private receipt evidence. If all persistence fails, only the canonical intake and safe server diagnostics may remain. Staff UI for unknown outcomes and authenticated mailbox reconciliation are separate unimplemented work.
+
+Rollout requires the exact migration before the application; deploying the application first suppresses new autoresponder sends while preserving enquiries. This PR does not apply the migration, enable connections or send email. Recovery must inspect existing receipts and mailbox evidence; rolling back application code cannot safely resend unresolved intents. No new message bodies or recipient copies are retained; minimal correlation evidence has no automatic purge and restricts deletion of linked enquiries. A governed retention/deletion change must handle that evidence explicitly rather than silently cascading it away.
 
 ## Access Boundaries
 

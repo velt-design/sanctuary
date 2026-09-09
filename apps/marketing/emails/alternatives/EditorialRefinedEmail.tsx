@@ -1,4 +1,5 @@
 import * as React from 'react';
+import type { EmailEnquiryReference } from '@sp/email-provider';
 import { Heading, Section, Text } from '@react-email/components';
 import { THEME } from '../theme';
 import type { AlternativePreviewTheme } from './AlternativeEmailShell';
@@ -18,6 +19,7 @@ import {
 export function EditorialRefinedEmail(props: {
   model: AlternativeEmailModel;
   preheader: string;
+  enquiryReference?: EmailEnquiryReference;
   previewTheme?: AlternativePreviewTheme;
 }) {
   const { model } = props;
@@ -90,6 +92,11 @@ export function EditorialRefinedEmail(props: {
 
         <AttachmentList links={model.attachmentLinks} />
         <ReplyPanel model={model} />
+        {props.enquiryReference ? (
+          <Text style={{ color: THEME.subtle, fontSize: 10, overflowWrap: 'anywhere' }}>
+            Enquiry reference: {props.enquiryReference}
+          </Text>
+        ) : null}
       </Section>
     </AlternativeEmailShell>
   );

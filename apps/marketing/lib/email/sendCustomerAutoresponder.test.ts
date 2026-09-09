@@ -52,13 +52,13 @@ describe('sendCustomerAutoresponder', () => {
 
     expect(h.sendEmail).toHaveBeenCalledWith({
       from: 'Sanctuary Pergolas <info@sanctuarypergolas.co.nz>',
-      to: 'taylor@example.test',
+      to: ['taylor@example.test'],
       bcc: ['info@sanctuarypergolas.co.nz'],
-      replyTo: 'info@sanctuarypergolas.co.nz',
+      replyTo: ['info@sanctuarypergolas.co.nz'],
       subject: "Taylor, we've received your pergola enquiry",
       html: '<p>Rendered HTML</p>',
       text: 'Rendered plain text',
-      attachments: [{ filename: 'plan.pdf', content: 'UERGREFUQQ==', contentType: 'application/pdf' }],
+      attachments: [{ filename: 'plan.pdf', contentBase64: 'UERGREFUQQ==', contentType: 'application/pdf' }],
       idempotencyKey: 'website:autoresponder:enquiry-1',
     });
     expect(providerMessageId).toBe('provider-message-3');

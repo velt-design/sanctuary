@@ -1,4 +1,5 @@
 import type { EnquiryPayload } from '@/emails/types';
+import { prepareResendEmailMessage, type EmailEnquiryReference } from '@sp/email-provider';
 import {
   renderWebsiteAutoresponder,
   websiteAutoresponderTemplateIdFor,
@@ -19,14 +20,28 @@ export async function sendCustomerAutoresponder(
     signal?: AbortSignal;
   },
 ): Promise<string> {
+  const prepared = await prepareCustomerAutoresponder(enquiry, options);
+  const result = await sendEmail({
+    ...prepared.message,
+    ...(options?.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
+    ...(options?.signal ? { signal: options.signal } : {}),
+  });
+  return result.providerMessageId;
+}
+
+export async function prepareCustomerAutoresponder(
+  enquiry: EnquiryPayload,
+  options?: { attachments?: AutoresponderAttachment[]; enquiryReference?: EmailEnquiryReference },
+) {
   const rendered = await renderWebsiteAutoresponder(
     websiteAutoresponderTemplateIdFor(enquiry.enquiryType),
     { ...enquiry },
+    { enquiryReference: options?.enquiryReference },
   );
 
   const attachments = options?.attachments?.length ? options.attachments : undefined;
 
-  const result = await sendEmail({
+  return prepareResendEmailMessage({
     from: FROM,
     to: enquiry.email,
     bcc: [BCC_INBOX],
@@ -35,9 +50,6 @@ export async function sendCustomerAutoresponder(
     html: rendered.html,
     text: rendered.text,
     ...(attachments ? { attachments } : {}),
-    ...(options?.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
-    ...(options?.signal ? { signal: options.signal } : {}),
+    ...(options?.enquiryReference ? { enquiryReference: options.enquiryReference } : {}),
   });
-
-  return result.providerMessageId;
 }

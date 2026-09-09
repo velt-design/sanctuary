@@ -1,4 +1,5 @@
 import { render } from '@react-email/render';
+import { parseEmailEnquiryReference, type EmailEnquiryReference } from '@sp/email-provider';
 import { EditorialRefinedEmail } from '../emails/alternatives/EditorialRefinedEmail';
 import { buildAlternativeEmailModel } from '../emails/alternatives/alternativeEmailModel';
 import {
@@ -22,12 +23,15 @@ export {
 export async function renderWebsiteAutoresponder(
   templateId: WebsiteAutoresponderTemplateId,
   variables: Record<string, unknown>,
+  options?: { enquiryReference?: EmailEnquiryReference },
 ) {
   const subject = websiteAutoresponderSubject(templateId, variables);
   const preheader = websiteAutoresponderPreheader(templateId, variables);
   const reactEmail = EditorialRefinedEmail({
     model: buildAlternativeEmailModel(templateId, variables),
     preheader,
+    enquiryReference: options?.enquiryReference ?? (variables.enquiryReference === undefined
+      ? undefined : parseEmailEnquiryReference(variables.enquiryReference)),
   });
 
   const html = await render(reactEmail);

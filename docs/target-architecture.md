@@ -67,6 +67,8 @@ Workbench must not own pricing policy. Costing must not solve geometry. Portal m
 
 Marketing must not own staff workflow state or staff-only business process mutations.
 
+Request-bound website email correlation stays in Marketing's `enquiryEmailDelivery` and `enquiryEmailAudit` owners, using the shared provider package for normalized message/hash/header contracts and service-only Supabase RPCs for immutable intent/receipt evidence. This one-attempt path preserves canonical enquiry identity and intake success; it does not add a scheduler, worker producer, webhook reconciler or automatic retry. Missing receipts remain unknown. Detailed behavior and rollout limits live in `docs/automation-email-audit.md`.
+
 `apps/portal` owns staff and admin workflow orchestration:
 
 - staff/admin pages, route handlers, and workflow UI.

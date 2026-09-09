@@ -241,6 +241,7 @@ PR-AI-007 links each eligible task to exactly one durable `ai_synthetic_v1` job.
 - Keep automation, email outbox, and audit side effects aligned with `docs/automation-email-audit.md`.
 - Keep durable background-job messages minimal and payloads private; keep all worker access behind service-role RPCs and every worker-owned payload read/mutation lease-fenced.
 - Keep provider transport and webhook verification in `@sp/email-provider`; app adapters and routes may expose only typed safe failures and verified correlation fields.
+- New website autoresponders use private immutable correlation intents and append-only accepted/failed/unknown receipts through three service-only RPCs. No app role has direct table access. The fixed opaque enquiry header/footer is non-authorizing lookup evidence: it must never authenticate a message, count a second conversion, or substitute for delivered-header proof. Only identity, hash, bounded outcome and provider API ID are added to private storage; no bodies, attachments, addresses or signed links. There is no automatic resend or purge; linked enquiry deletion is restricted pending an explicit evidence-retention decision. See `docs/automation-email-audit.md` for schema-first rollout and unknown-outcome limits.
 - Run production dependency audits for governance checks.
 - Preserve CSP reporting and review unexpected report volume.
 
