@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-09 | Optional Legacy Reporting Fields | Active | Prove target installation state before correcting historical migration source; preserve missing legacy facts as required null keys instead of inventing columns or replaying unrelated effects. |
 | 2026-09-03 | Design Booklet Editorial Lists   | Promoted | Keep booklet lists deliberately lightweight and one level deep: store canonical `- ` markers inside existing draft body strings, preserve normalized line breaks through project/PDF parsing, and let one shared editorial owner drive selection toggling, Enter continuation, overflow weighting, semantic browser lists, and PDF hanging indents. Do not introduce rich-text JSON, duplicate A3 geometry, or a database migration for bullets. |
 | 2026-09-03 | Design Booklet Paper Geometry    | Promoted | Keep A4 as the one canonical booklet coordinate system, own exact A4/A3 landscape page boxes in one module, and proportionally transform the complete preview/PDF composition at the output boundary. Store the choice in schema-v2 draft JSON, default missing values to A4, and do not fork layouts or migrate the database. |
 | 2026-08-29 | Exact-Head CI                    | Promoted | Normalize GitHub lifecycle fields at the CI adapter boundary: trim and uppercase non-empty values and convert empty pending conclusions to `null`, then keep re-reading the exact PR head instead of rejecting or bypassing valid pending evidence. |
@@ -340,6 +341,18 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 
 ## Entries
+
+### 2026-09-09 - Optional Legacy Reporting Fields - Preserve Unknown Facts
+
+Date: 2026-09-09
+Area: Optional Legacy Reporting Fields
+Status: Active
+Decision or mistake: The core reporting fixture contained two legacy project columns that were absent on an observed target, causing first installation to fail despite passing fixture tests.
+Why it mattered: Adding a synthetic revision or replaying the broader conversion-outbox migration would invent history or trigger unrelated effects merely to prepare a reader.
+Current guardrail: Compare actual catalog prerequisites with exact source. Correct historical source only with explicit authority and positive evidence it is unapplied on the observed targets; preserve its original blob/hash. Keep required response keys with truthful nulls for missing optional facts, test absent and present variants, and retain the exact consumer allowlist and canonical hash contract.
+Promoted to: None
+Related docs/tests: docs/environment-auth-supabase.md, docs/supabase-schema-map.md, docs/testing-and-qa.md, scripts/test-support/praxis-project-legacy-compatibility.mjs
+
 
 ### 2026-09-03 - Design Booklet Editorial Lists - Keep Draft Text Lightweight
 

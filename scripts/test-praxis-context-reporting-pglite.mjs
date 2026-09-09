@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
+import { verifyProjectLegacyCompatibility } from './test-support/praxis-project-legacy-compatibility.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const bootstrap = readFileSync(path.join(root, 'supabase/tests/praxis_context_reporting_bootstrap.sql'), 'utf8');
@@ -29,6 +30,7 @@ const database = new PGlite();
 try {
   await database.waitReady;
   await database.exec(bootstrap);
+  await verifyProjectLegacyCompatibility((sql) => database.exec(sql), migration);
 
   await database.exec('begin;');
   await database.exec(migration);
