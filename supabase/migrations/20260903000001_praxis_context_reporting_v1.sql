@@ -953,7 +953,10 @@ begin
     union all select * from praxis_reporting.payment_allocations_v1
     union all select * from praxis_reporting.project_financial_truth_v1
   )
-  select row.resource, row.id, row.project_id, row.parent_id,
+  select row.resource, row.id,
+    -- A shared contact belongs to this requested context, not to one canonical project.
+    case when row.resource = 'contact' and p_project_id is not null then p_project_id else row.project_id end,
+    row.parent_id,
     row.recorded_at, row.record_version, row.payload, row.policy_version,
     row.redaction_count, row.omission_count, row.redaction_categories
   from records row

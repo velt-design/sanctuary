@@ -332,6 +332,8 @@ The allowlist keeps customer identity, contact, project, commercial, and financi
 
 The HTTP boundary permits only full authoritative replacement snapshots. `changedAfter` is rejected because Sanctuary's permitted hard-delete paths do not yet emit reporting tombstones, and cursors are rejected because separate transactions cannot preserve a fixed mutable-source snapshot. One request reads `limit + 1` rows in one read-only transaction. If the scoped snapshot is too large it returns no records and tells Velt to narrow by project or resource; Velt may replace a scoped snapshot only after that terminal success. The internal SQL filter remains covered for freshness diagnostics but is not an externally supported synchronisation contract.
 
+For a project-filtered response, a linked contact's record `projectId` denotes membership in the requested context, not contact ownership. The existing exact `projects.contact_id` relationship predicate admits that contact; unrelated contacts remain excluded. Contact `id`, `parentId`, payload and canonical hash are unchanged, including when two projects share one contact. Unfiltered contact records keep null `projectId` and appear once. This also applies to contact-only project queries and satisfies Velt's unchanged strict item-scope check without a new envelope version.
+
 `npm run test:praxis:db:fast` is a fast PGlite contract check. `npm run test:praxis:db` is the authoritative disposable PostgreSQL 17 role/grant denial proof, including an exact LOGIN with read-only default, writes attempted again after disabling that default, and representative commercial write-RPC denial. Neither command targets a shared database.
 
 ## Durable Background Jobs

@@ -583,6 +583,8 @@ When `docs:impact` prints an advisory, update the suggested owner doc if the cod
 
 Both database harnesses also run the shared project legacy-compatibility matrix before the ordinary core suite: both optional columns present, both absent, either one absent, and both present with null values. Each case applies the exact core source in a rollback transaction and verifies genuine values or required null keys, unchanged project source history, private-column exclusion, all 12 resources and record-hash changes after source edits. Native PostgreSQL remains the role/grant proof; PGlite alone is not that evidence. Cross-repository handoff must also verify required null keys and canonical hashes against the exact current Velt consumer contract.
 
+The shared `supabase/tests/praxis_contact_context.sql` proof runs under the reader role in both harnesses. It covers linked contacts in all-resource and contact-only queries, two projects sharing one canonical contact, unrelated/nonexistent-project exclusion, unchanged global null scope, all 12 resources, as-of filtering and row limits. Cross-consumer proof must accept scoped linked contacts while the unchanged Velt validator denies malformed, wrong and null project metadata; contact identity, payload and hash must remain stable across contexts and repeatable-read snapshots.
+
 ## Background-Job And Worker Tests
 
 The durable job foundation plus PR-AI-007 has six distinct verification layers:

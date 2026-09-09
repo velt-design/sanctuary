@@ -41,6 +41,7 @@ try {
 
   await database.exec(migration);
   await database.exec(migration);
+  await database.exec(readFileSync(path.join(root, 'supabase/tests/praxis_contact_context.sql'), 'utf8'));
   await database.exec(`
     insert into praxis_reporting.source_identity_v1 (
       source_key, connection_id, environment, projection_version, configured_by
