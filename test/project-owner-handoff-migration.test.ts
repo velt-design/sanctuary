@@ -193,6 +193,7 @@ describe('Project owner handoff and Enquiry inactivity migration', () => {
     expect(migration).toContain("notify pgrst, 'reload schema'");
   });
 
+  // This integration budget includes cold PGlite startup, migration, and cleanup.
   it('executes the owner policy and read-only report against a database', async () => {
     const database = new PGlite();
     const staleProjectId = '11111111-1111-4111-8111-111111111111';
@@ -287,5 +288,5 @@ describe('Project owner handoff and Enquiry inactivity migration', () => {
     } finally {
       await database.close();
     }
-  });
+  }, 20_000);
 });
