@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-10 | Nonsuperuser Reader Installation | Active | Prove migrations through the actual operator capability and ownership boundary; assert safe existing roles and account for PostgreSQL creator ADMIN membership explicitly. |
 | 2026-09-09 | Linked Contact Context Scope | Active | Preserve shared contact identity while labeling requested-context membership; prove producer relationships and strict consumer scope together. |
 | 2026-09-09 | Optional Legacy Reporting Fields | Active | Prove target installation state before correcting historical migration source; preserve missing legacy facts as required null keys instead of inventing columns or replaying unrelated effects. |
 | 2026-09-03 | Design Booklet Editorial Lists   | Promoted | Keep booklet lists deliberately lightweight and one level deep: store canonical `- ` markers inside existing draft body strings, preserve normalized line breaks through project/PDF parsing, and let one shared editorial owner drive selection toggling, Enter continuation, overflow weighting, semantic browser lists, and PDF hanging indents. Do not introduce rich-text JSON, duplicate A3 geometry, or a database migration for bullets. |
@@ -342,6 +343,17 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 
 ## Entries
+
+### 2026-09-10 - Nonsuperuser Reader Installation - Assert Existing Posture
+
+Date: 2026-09-10
+Area: Nonsuperuser Reader Installation
+Status: Active
+Decision or mistake: A superuser-only disposable harness missed PostgreSQL 17 rejecting a redundant NOSUPERUSER alteration by the hosted non-superuser migration operator.
+Why it mattered: Passing projection and reader-denial tests did not prove the installer could apply the source; role creation also adds a bootstrap-granted creator ADMIN membership that a zero-membership assumption misses.
+Current guardrail: Test full installation and replay through an actual nonsuperuser LOGIN with representative ownership. Create safe missing roles, reject incompatible existing attributes, outgoing memberships or ownership without repair, preserve existing edges, and admit only the exact initial creator ADMIN-only edge. Reject automatic SET/INHERIT self-grants and retain a separate exact hosted rollback rehearsal.
+Promoted to: None
+Related docs/tests: docs/environment-auth-supabase.md, docs/testing-and-qa.md, scripts/test-praxis-context-reporting-operator.mjs
 
 ### 2026-09-09 - Linked Contact Context Scope - Preserve Canonical Identity
 

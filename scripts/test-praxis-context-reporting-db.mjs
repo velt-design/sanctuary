@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { verifyProjectLegacyCompatibility } from './test-support/praxis-project-legacy-compatibility.mjs';
+import { verifyMigrationOperator } from './test-praxis-context-reporting-operator.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const image = process.env.PRAXIS_REPORTING_DB_IMAGE?.trim() || 'postgres:17-alpine';
@@ -39,16 +40,17 @@ function requireSuccess(result, label) {
   throw new Error(`${label} failed${detail ? `:\n${detail}` : '.'}`);
 }
 
-function psql(sql, label, { reader = false, quiet = false } = {}) {
+function psql(sql, label, { reader = false, quiet = false, user = 'postgres', database = 'postgres' } = {}) {
   const args = ['exec', '--interactive'];
   if (reader) args.push('--env', `PGPASSWORD=${readerPassword}`);
+  else if (user !== 'postgres') args.push('--env', `PGPASSWORD=${adminPassword}`);
   args.push(
     container,
     'psql',
     '--no-psqlrc',
     '--set=ON_ERROR_STOP=1',
-    ...(reader ? ['--host=127.0.0.1', '--username=sanctuary_praxis_reader_probe'] : ['--username=postgres']),
-    '--dbname=postgres',
+    ...(reader ? ['--host=127.0.0.1', '--username=sanctuary_praxis_reader_probe'] : [...(user === 'postgres' ? [] : ['--host=127.0.0.1']), `--username=${user}`]),
+    `--dbname=${database}`,
   );
   if (quiet) args.push('--quiet', '--tuples-only', '--no-align');
   return requireSuccess(docker(args, { input: sql }), label);
@@ -99,6 +101,7 @@ try {
   process.stdout.write(`praxis-reporting-db: PostgreSQL ${major}, image ${imageId}\n`);
 
   psql(bootstrap, 'Praxis reporting bootstrap');
+  verifyMigrationOperator((sql, options) => psql(sql, 'Nonsuperuser migration operator proof', options), bootstrap, migration);
   await verifyProjectLegacyCompatibility((sql) => psql(sql, 'Legacy project compatibility'), migration);
   psql(`begin;\n${migration}\nrollback;`, 'Migration rollback rehearsal');
   const rollbackClean = psql("select to_regnamespace('praxis_reporting') is null;", 'Rollback residue check', { quiet: true });

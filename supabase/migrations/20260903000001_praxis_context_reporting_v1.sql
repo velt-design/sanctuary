@@ -16,8 +16,19 @@ revoke all on table praxis_reporting.source_identity_v1
   from public, anon, authenticated, service_role;
 
 do $$
+declare
+  reader_oid oid;
+  creator_oid oid;
+  creator_superuser boolean;
 begin
+  select oid, rolsuper into creator_oid, creator_superuser
+  from pg_roles where rolname = current_user;
   if not exists (select 1 from pg_roles where rolname = 'sanctuary_praxis_reader') then
+    -- PG17's optional self-grant must not add SET/INHERIT access to the creator.
+    if not creator_superuser and current_setting('createrole_self_grant') <> '' then
+      raise exception 'unsafe sanctuary_praxis_reader creation: createrole_self_grant must be empty'
+        using errcode = '42501';
+    end if;
     create role sanctuary_praxis_reader
       nologin
       nosuperuser
@@ -26,18 +37,43 @@ begin
       noinherit
       noreplication
       nobypassrls;
+    select oid into reader_oid from pg_roles where rolname = 'sanctuary_praxis_reader';
+    -- Non-superuser CREATEROLE receives one unavoidable ADMIN-only grant from
+    -- the bootstrap superuser (catalog OID 10). It cannot revoke that grant.
+    -- This grants the reader TO its creator, never creator privileges TO it.
+    if (select count(*) from pg_auth_members where roleid = reader_oid)
+         <> (case when creator_superuser then 0 else 1 end)
+       or exists (
+         select 1 from pg_auth_members
+         where roleid = reader_oid and not (
+           member = creator_oid and grantor = 10 and admin_option
+           and not inherit_option and not set_option
+         )
+       ) then
+      raise exception 'unsafe sanctuary_praxis_reader membership after creation'
+        using errcode = '42501';
+    end if;
+  end if;
+  -- ALTER ... NOSUPERUSER requires superuser even when the flag is false.
+  -- Never silently repair an existing role or mutate its legitimate members.
+  select oid into reader_oid from pg_roles where rolname = 'sanctuary_praxis_reader';
+  if exists (
+    select 1 from pg_roles where oid = reader_oid and (
+      rolcanlogin or rolsuper or rolcreatedb or rolcreaterole or rolinherit
+      or rolreplication or rolbypassrls
+    )
+  ) then
+    raise exception 'unsafe sanctuary_praxis_reader posture' using errcode = '42501';
+  end if;
+  if exists (select 1 from pg_auth_members where member = reader_oid) then
+    raise exception 'unsafe sanctuary_praxis_reader membership' using errcode = '42501';
+  end if;
+  if exists (select 1 from pg_shdepend where refclassid = 'pg_authid'::regclass
+             and refobjid = reader_oid and deptype = 'o') then
+    raise exception 'unsafe sanctuary_praxis_reader ownership' using errcode = '42501';
   end if;
 end
 $$;
-
-alter role sanctuary_praxis_reader
-  nologin
-  nosuperuser
-  nocreatedb
-  nocreaterole
-  noinherit
-  noreplication
-  nobypassrls;
 
 -- The group role starts dark. The eventual LOGIN is created out of band, is
 -- granted only this role, and has default_transaction_read_only enabled.
