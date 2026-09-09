@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
 const FOUNDATION_OWNED_PATTERNS = [
   /^\.github\/workflows\/autonomous-engineering\.yml$/,
+  /^\.github\/workflows\/ai-foundation\.yml$/,
+  /^evals\/ai\//,
   /^infra\/openclaw\/engineering\//,
   /^packages\/ai\//,
   /^scripts\/ai\//,
@@ -25,6 +27,8 @@ const FOUNDATION_SHARED_IMPACT_PATTERNS = [
 
 export const FOUNDATION_OWNER_PATTERNS = [
   ".github/workflows/autonomous-engineering.yml",
+  ".github/workflows/ai-foundation.yml",
+  "evals/ai/**",
   "infra/openclaw/engineering/**",
   "packages/ai/**",
   "scripts/ai/**",
