@@ -288,5 +288,5 @@ describe('Project owner handoff and Enquiry inactivity migration', () => {
     } finally {
       await database.close();
     }
-  }, 10_000);
+  }, 20_000);
 });

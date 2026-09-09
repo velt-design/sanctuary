@@ -5507,6 +5507,6 @@ Permission review must also cover FK cascades: a browser-authorized parent-proje
 
 - Status: Promoted
 - Decision or mistake: The owner-handoff integration case included cold PGlite startup and the complete migration contract inside Vitest's default five-second budget; two CI attempts hit that limit while the other 380 Project Work tests passed.
-- Current guardrail: Use a bounded ten-second limit on that case only. Preserve every assertion and cleanup step, and verify both the isolated case and the normal concurrent Project Work gate. Do not hide failures with retries or a global timeout increase.
+- Current guardrail: Use a bounded twenty-second limit on that case only. Subsequent exact-revision review reported isolated runtimes of 9.606 and 9.064 seconds, showing the initial ten-second allowance had too little headroom. Preserve every assertion and cleanup step, and verify both the isolated case and the normal concurrent Project Work gate. Do not hide failures with retries or a global timeout increase.
 - Promoted to: `docs/testing-and-qa.md`, Project Work Items V2 Gate.
 - Related docs/tests: `test/project-owner-handoff-migration.test.ts`; `npm run test:portal:project-work`.
