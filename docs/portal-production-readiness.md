@@ -26,6 +26,8 @@ Production grade means:
 - Unused code, stale exports, and old dependencies follow `docs/code-retirement-and-bloat-control.md` so cleanup is systematic and proof-driven.
 - Docs match the implementation and are updated as part of the work.
 
+Praxis reporting remains inactive. The parent-owned 2026-09-09 core rollback rehearsal exposed a non-superuser role-installation defect and left the core absent; the source correction and disposable operator proof are review work. Exact hosted rehearsal, provisioning and activation remain separate gates under `docs/environment-auth-supabase.md`.
+
 ## How To Use This Doc
 
 Agents must use this doc as a living checklist, not a static plan.
