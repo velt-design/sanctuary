@@ -160,9 +160,11 @@ current angle, while Reset view deliberately restores the starting view. Framing
 uses solved member endpoints and roof boundaries. The second polish loop removes
 the Explore/Lock activation step: rotation is immediate, and quiet Fit/Reset
 actions sit beside the view tabs. Touch gestures allow sideways rotation and pinch
-zoom while vertical swipes scroll the page. Both the canvas and its event wrapper
-must retain `touch-action: pan-y`; the orbit control otherwise sets the wrapper to
-`none` and blocks page scrolling.
+zoom while vertical swipes scroll the page in the compact viewer. Both the canvas
+and its event wrapper retain `touch-action: pan-y` there. Expanded view overrides
+both to `none` so diagonal/vertical orbit gestures and pinch zoom cannot turn into
+page scrolling; both document roots also lock overflow and overscroll until Done,
+Escape, unmount or a desktop breakpoint transition restores their prior styles.
 
 `PreviewRoof` is an app-owned material presenter using the shared polygon/slab
 builders. The captured Simple preview emits a roof reference plane and no detailed

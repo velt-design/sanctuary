@@ -5,8 +5,14 @@ export function usePreviewExpansion() {
   const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     if (!expanded) return;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    // Mobile browsers can scroll either root. Lock both, and restore their
+    // previous styles when returning to the compact, page-scrollable preview.
+    const roots = [document.documentElement, document.body];
+    const previous = roots.map(root => ({ overflow: root.style.overflow, overscrollBehavior: root.style.overscrollBehavior }));
+    roots.forEach(root => {
+      root.style.overflow = 'hidden';
+      root.style.overscrollBehavior = 'none';
+    });
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setExpanded(false);
     };
@@ -15,7 +21,10 @@ export function usePreviewExpansion() {
     window.addEventListener('keydown', closeOnEscape);
     desktop.addEventListener('change', closeOnDesktop);
     return () => {
-      document.body.style.overflow = overflow;
+      roots.forEach((root, index) => {
+        root.style.overflow = previous[index].overflow;
+        root.style.overscrollBehavior = previous[index].overscrollBehavior;
+      });
       window.removeEventListener('keydown', closeOnEscape);
       desktop.removeEventListener('change', closeOnDesktop);
     };
