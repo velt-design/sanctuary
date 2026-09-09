@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { verifyProjectLegacyCompatibility } from './test-support/praxis-project-legacy-compatibility.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const image = process.env.PRAXIS_REPORTING_DB_IMAGE?.trim() || 'postgres:17-alpine';
@@ -98,6 +99,7 @@ try {
   process.stdout.write(`praxis-reporting-db: PostgreSQL ${major}, image ${imageId}\n`);
 
   psql(bootstrap, 'Praxis reporting bootstrap');
+  await verifyProjectLegacyCompatibility((sql) => psql(sql, 'Legacy project compatibility'), migration);
   psql(`begin;\n${migration}\nrollback;`, 'Migration rollback rehearsal');
   const rollbackClean = psql("select to_regnamespace('praxis_reporting') is null;", 'Rollback residue check', { quiet: true });
   if (rollbackClean !== 't') throw new Error('Migration rollback left reporting objects.');

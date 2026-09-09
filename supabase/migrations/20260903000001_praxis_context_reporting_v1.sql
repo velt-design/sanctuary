@@ -490,13 +490,14 @@ cross join lateral (values (jsonb_build_object(
   'notes', project.notes,
   'depositAmountCents', project.deposit_amount_cents,
   'depositPaidDate', project.deposit_paid_date,
-  'depositReceivedAt', project.deposit_received_at,
+  -- Optional legacy columns may be absent; retain each key as null without inventing history.
+  'depositReceivedAt', to_jsonb(project) -> 'deposit_received_at',
   'finalPaymentDate', project.final_payment_date,
   'nextActionAt', project.next_action_at,
   'nextActionType', project.next_action_type,
   'nextAction', project.next_action,
   'nextActionDate', project.next_action_date,
-  'version', project.version,
+  'version', to_jsonb(project) -> 'version',
   'createdAt', project.created_at,
   'updatedAt', project.updated_at
 ))) assembled(value)
