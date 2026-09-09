@@ -10,13 +10,14 @@ import type { Point3 } from '@sp/geometry';
 // Front posts face +Y; this three-quarter angle follows the customer's reference.
 const FRONT_DIRECTION = new Vector3(1, 1.7, 1.25).normalize();
 
-export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, surroundings }: {
-  bounds: SceneBounds; fitPoints: Point3[]; enabled: boolean; reset: number; fit: number; surroundings: boolean;
+export default function PreviewCamera({ under = 0, bounds, fitPoints, enabled, reset, fit, surroundings }: {
+  under?: number; bounds: SceneBounds; fitPoints: Point3[]; enabled: boolean; reset: number; fit: number; surroundings: boolean;
 }) {
   const { camera, size, gl, invalidate } = useThree();
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
-  const previous = useRef<{ reset: number; fit: number; width: number; height: number } | null>(null);
+  const previous = useRef<{ reset: number; under: number; fit: number; width: number; height: number } | null>(null);
   const touched = useRef(false);
+  const ceilingMode = useRef(false);
 
   const recordCamera = useCallback(() => {
     if (!(camera instanceof OrthographicCamera) || !controls.current) return;
@@ -30,7 +31,14 @@ export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, 
     if (!(camera instanceof OrthographicCamera) || !orbit || !size.width || !size.height) return;
     const initialise = !previous.current || previous.current.reset !== reset;
     const centre = new Vector3(bounds.center.x, bounds.center.y, bounds.center.z);
-    if (initialise) {
+    const showUnder = under > 0 && previous.current?.under !== under;
+    if (showUnder) ceilingMode.current = true;
+    else if (initialise) ceilingMode.current = false;
+    if (ceilingMode.current) centre.z = Math.max(...fitPoints.map(p => p.z)) - 350;
+    if (showUnder) {
+      touched.current = false;
+      camera.position.set(centre.x, Math.max(...fitPoints.map(p => p.y)) + 1000, 1200);
+    } else if (initialise) {
       touched.current = false;
       camera.position.copy(centre).addScaledVector(FRONT_DIRECTION, bounds.size * 3);
     } else {
@@ -62,12 +70,12 @@ export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, 
     camera.setViewOffset(size.width, size.height, 0, 0, size.width, size.height);
     camera.updateProjectionMatrix();
     orbit.update();
-    previous.current = { reset, fit, width: size.width, height: size.height };
+    previous.current = { reset, under, fit, width: size.width, height: size.height };
     recordCamera();
     invalidate();
-  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, invalidate, recordCamera]);
+  }, [under, bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, invalidate, recordCamera]);
 
   return <OrbitControls ref={controls} makeDefault enabled={enabled} enablePan={false}
-    enableDamping={false} minZoom={.005} maxZoom={1} minPolarAngle={.15} maxPolarAngle={Math.PI * .48}
+    enableDamping={false} minZoom={.005} maxZoom={1} minPolarAngle={.15} maxPolarAngle={Math.PI * .75}
     onStart={() => { touched.current = true; }} onChange={recordCamera} />;
 }

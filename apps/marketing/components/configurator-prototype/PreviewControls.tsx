@@ -1,5 +1,8 @@
 'use client';
 
+import RoofFinishChoices from "./RoofFinishChoices";
+import { roofFinishDescription } from "./roofFinish";
+
 import { useState, type CSSProperties } from 'react';
 import { CUSTOMER_DIMENSION_BOUNDS } from '@sp/configurator/core';
 import {
@@ -78,6 +81,7 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
       onChange={(projectionMm) => update({ ...input, projectionMm })} />
     </div>
     <GableChoices value={roof} onChange={onRoofChange} />
+    <RoofFinishChoices roof={roof} input={input} onChange={onRoofChange} />
     {roof.family === 'box' && <div className={styles.gableChoices}><p className={styles.small}>A level frame with the roof tucked inside. The roof changes to a shallow gable when needed to maintain drainage.</p></div>}
     <div className={styles.sectionLabel}><span>02</span><h2>Connect to your home.</h2></div>
     {roof.family === 'gable' && roof.orientation === 'away' ? <p className={styles.small}>Fascia attachment · Dutch-gable roof</p>
@@ -90,6 +94,6 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
       </label>)}
     </fieldset>
     {input.level === 'elevated' && <p className={styles.small}>First-floor deck · shown 2.7 m above ground.</p>}
-      <p className={styles.small}>{roof.family === 'gable' ? '25° symmetrical gable' : roof.family === 'box' ? 'Acrylic roof within a level perimeter' : 'Pitched acrylic roof'} · Black aluminium frame<br />Representative house, ground, heights and connection details.</p>
+      <p className={styles.small}>{roofFinishDescription(roof)} · Black aluminium frame<br />Representative house, ground, heights and connection details.</p>
   </div>;
 }

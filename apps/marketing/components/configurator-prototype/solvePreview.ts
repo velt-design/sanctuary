@@ -1,11 +1,13 @@
+import { buildRepresentativeRoofFinish } from "@sp/geometry";
+import { getRoofFinish } from "./roofFinish";
 import { solveCustomerConfigurationV1 } from '@sp/configurator/geometry';
 import { calculateSoffitBracketCountV1 } from '@sp/costing';
-import { buildRepresentativeSurroundings, buildRepresentativeGable, buildRepresentativeGableContext, buildRepresentativeBox, buildRepresentativeBoxContext, type Assembly3D } from '@sp/geometry';
+import { buildRepresentativeSurroundings, buildRepresentativeGable, buildRepresentativeGableContext, buildRepresentativeBox, buildRepresentativeBoxContext, type Assembly3D, type GeometryPlanViewModel, type ViewerSceneModel, type RoofFinishGeometry } from '@sp/geometry';
 import { simpleCoverPostCount, simpleCoverRafterLayout, type SimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import { configurationForSimpleCover } from './model';
 import { INITIAL_ROOF, type PreviewRoofChoices } from './GableChoices';
 
-export function solvePergolaPreview(input: SimpleCoverInput, roof: PreviewRoofChoices = INITIAL_ROOF) {
+function solveBasePreview(input: SimpleCoverInput, roof: PreviewRoofChoices = INITIAL_ROOF) {
   if (roof.family === 'mono') return solveSimpleCoverPreview(input);
   try {
     if (roof.family === 'box') {
@@ -15,6 +17,17 @@ export function solvePergolaPreview(input: SimpleCoverInput, roof: PreviewRoofCh
     return { status: 'review_required' as const, geometry: buildRepresentativeGable({ ...input, ...roof }), messages: [] };
   } catch {
     return { status: 'invalid' as const, messages: [{ message: 'This design needs a closer look. Adjust your dimensions to continue.' }] };
+  }
+}
+
+export function solvePergolaPreview(input: SimpleCoverInput, roof: PreviewRoofChoices = INITIAL_ROOF): { status: string; messages: { message: string }[]; geometry?: { assembly: Assembly3D; plan: GeometryPlanViewModel; viewerScene: ViewerSceneModel; covering?: RoofFinishGeometry } } {
+  const source = solveBasePreview(input, roof);
+  const finish = getRoofFinish(roof);
+  if (finish.material === 'acrylic' || !('geometry' in source) || !source.geometry) return source;
+  try {
+    return { status: 'review_required' as const, messages: [], geometry: buildRepresentativeRoofFinish(source.geometry.assembly, finish, { ...input, ...roof }) };
+  } catch (error) {
+    return { status: 'invalid' as const, messages: [{ message: error instanceof Error ? error.message : 'This roof needs a closer look. Adjust your dimensions to continue.' }] };
   }
 }
 

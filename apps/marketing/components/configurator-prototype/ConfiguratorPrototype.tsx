@@ -1,5 +1,6 @@
 'use client';
 
+import { hasSimpleRoofPrice } from './roofFinish';
 import dynamic from 'next/dynamic';
 import { type ReactNode } from 'react';
 import type { SimpleCoverInput, SimpleCoverPublicResult } from '../../lib/simpleCoverCalculator';
@@ -25,7 +26,7 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded, rend
   expanded: boolean; onToggleExpanded: () => void; renderEnquiry?: (selection: PreviewSelection) => ReactNode;
 }) {
   const { input, roof, setInput, setRoof, ready, storageAvailable, linkNotice } = usePreviewDraft();
-  const { result, retry } = usePreviewPrice(input, ready && roof.family === 'mono');
+  const { result, retry } = usePreviewPrice(input, ready && hasSimpleRoofPrice(roof));
   const { activeDimension, showDimension } = usePreviewDimension();
   if (!ready) return <div className={styles.loading} role="status">Preparing your design…</div>;
   return <div className={styles.page} data-layout={renderEnquiry ? 'project' : 'popup'}>
@@ -43,7 +44,7 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded, rend
         <PreviewControls input={input} roof={roof} onRoofChange={setRoof} onChange={setInput} onDimensionActivity={showDimension} />
         <section className={styles.price} aria-label="Estimated price" aria-live="polite" aria-atomic="true">
           <p className={styles.eyebrow}>{roof.family === 'gable' ? 'YOUR GABLE PERGOLA' : roof.family === 'box' ? 'YOUR BOX PERIMETER PERGOLA' : 'YOUR SIMPLE PERGOLA'}</p>
-          {roof.family !== 'mono' ? <><p className={styles.priceValue}>{roof.family === 'gable' ? 'Your gable, taking shape.' : 'Your box perimeter, taking shape.'}</p><p className={styles.small}>Explore the design here. {roof.family === 'gable' ? 'Gable' : 'Box perimeter'} pricing will be confirmed by Sanctuary.</p></> : !result ? <p className={styles.priceValue}>Updating estimate…</p> : result.status === 'priced'
+          {!hasSimpleRoofPrice(roof) ? <><p className={styles.priceValue}>Your pergola, taking shape.</p><p className={styles.small}>Explore the design here. Your selected roof pricing will be confirmed by Sanctuary.</p></> : !result ? <p className={styles.priceValue}>Updating estimate…</p> : result.status === 'priced'
             ? <><p className={styles.priceValue}><span>From </span>{new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD', maximumFractionDigits: 0 }).format(result.price.fromIncGst)}</p><p className={styles.small}>Including GST · Subject to site confirmation</p></>
             : result.status === 'custom' ? <><p className={styles.priceValue}>A custom fit.</p><p className={styles.small}>{result.reason}</p></>
             : <><p>Estimate unavailable. Keep exploring your design.</p><button className={styles.textButton} onClick={retry}>Retry estimate ↗</button></>}

@@ -1,6 +1,55 @@
 # Sanctuary "Your Pergola" Customer Configurator
 ## Master Architecture and Implementation Specification
 
+
+### Marketing preview: solid and combination roofs (2026-09-10)
+
+The preview offers acrylic, solid, and combination roofs. Solid regions include
+Colorsteel over a cedar ceiling. Central skylight bands stay centred as complete
+620 mm nominal bays are added; house-side bands grow from the house and are
+available **only for gables with their ridge running away from the house**.
+Parallel gables, pitched and box roofs offer central bands only. Changing family
+normalizes incompatible arrangements and clamps the bay count to the available run.
+Gable bands continue across both slopes. The box ceiling is level; other ceilings
+follow their roof slopes. Cedar is shown with 12 mm boards and 6 mm negative joints;
+board width and supporting build-up remain representative.
+
+Package owners are representativeRoofFinish.ts (framing and regions),
+representativeRoofProfiles.ts (actual repeating cross-sections),
+representativeRoofFinishMesh.ts (mesh construction), and
+representativeRoofBoxFinish.ts (level box ceiling and envelope fit). These are
+isolated visual references, not authored workbench objects or quantity takeoffs.
+Corrugated uses 76.2 mm repeat / 17 mm depth; simplified trapezoidal uses 154 mm
+repeat / 21 mm depth / 18 mm rib top, omitting pan stiffeners; tray uses 39 mm
+seams with nominal 300/400/500 mm repeat choices and omitted concealed locks.
+The same region boundaries drive Plan and 3D. Solid regions replace acrylic
+panels/joiners, carry purlins, cedar and closed edges; transitions have doubled
+framing and flashing. Original gable-end infills remain independently selectable.
+
+The 300 mm box checks space for the build-up using the preview's existing 3-degree
+layout convention (not a manufacturer minimum-pitch approval). It switches to an
+internal gable when necessary. If the profile, layers and fall cannot fit, it
+shows a deeper-perimeter message rather than intersecting the ceiling or silently
+changing the 300 mm frame. Profile-specific installation/pitch approval and
+commercial pricing remain Sanctuary review items.
+
+RoofFinishChoices.tsx owns the controls. PreviewRoofFinish.tsx renders bounded
+meshes and procedural cedar grain, disposing resources on updates. Under roof
+focuses on the ceiling and temporarily omits ground/landscape context; Reset
+returns to the normal framing. Ordinary sizing retains the explored angle.
+Preview links with roof finishes use a version-2 fragment; old version-1 links
+and saved acrylic drafts remain supported. Only validated finish fields are
+stored/shared. Solid/combination selections use the custom enquiry pathway,
+include the finish/profile/layout/bay description and existing timber/acrylic
+material fields, and never attach an acrylic-only price or calculation reference.
+
+Gate 0: legacy audit rows N/A; no legacy build-on/removal, authored house-form
+change, Phase 2 cost-input dependency or function/type consolidation. Consumers
+checked: preview solve, 3D, Plan, roof controls, draft/share boundaries, price
+footer, contact brief/summary and their tests. Verification includes profile and
+region geometry, level ceiling/envelope limits, parser/link/enquiry tests,
+360/390/1440 px browser journeys, existing workspace gestures and production build.
+
 ### Marketing preview: enquiry and share journey (2026-09-09)
 
 `PreviewNextAction.tsx` keeps the popup's current estimate and Continue action

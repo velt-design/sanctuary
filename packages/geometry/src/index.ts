@@ -103,3 +103,8 @@ export type {
   HouseComposition,
   RectangleRoofIntent,
 } from "./house/composition";
+
+export { buildRepresentativeRoofFinish } from "./representativeRoofFinish";
+export { DEFAULT_ROOF_FINISH, roofFinishBayLimit } from "./representativeRoofFinishTypes";
+export type { RepresentativeRoofFinish, RoofFinishGeometry, RoofFinishMesh } from "./representativeRoofFinishTypes";
+export { representativeRoofProfile } from "./representativeRoofProfiles";

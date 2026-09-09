@@ -1,3 +1,4 @@
+import { hasSimpleRoofPrice } from "./roofFinish";
 import Link from 'next/link';
 import type { PreviewSelection } from './ConfiguratorPrototype';
 import ShareDesign from './ShareDesign';
@@ -5,8 +6,8 @@ import styles from './journey.module.css';
 
 export default function PreviewNextAction({ selection }: { selection: PreviewSelection }) {
   const { roof, input, result } = selection;
-  const priced = roof.family === 'mono' && result?.status === 'priced' ? result : null;
-  const label = roof.family !== 'mono' || result?.status === 'custom' ? 'Pricing confirmed by Sanctuary'
+  const priced = hasSimpleRoofPrice(roof) && result?.status === 'priced' ? result : null;
+  const label = !hasSimpleRoofPrice(roof) || result?.status === 'custom' ? 'Pricing confirmed by Sanctuary'
     : !result ? 'Updating estimate…' : 'Estimate unavailable';
   return <footer className={styles.next} aria-label="Continue your design">
     <div className={styles.nextRow}>

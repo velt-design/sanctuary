@@ -4,6 +4,8 @@ import { Component, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import PreviewCamera from './PreviewCamera';
 import PreviewRoof from './PreviewRoof';
+import PreviewRoofFinish from './PreviewRoofFinish';
+import type { RoofFinishGeometry } from '@sp/geometry';
 import PreviewLighting from './PreviewLighting';
 import PreviewDimensionGuide from './PreviewDimensionGuide';
 import PreviewSurroundings from './PreviewSurroundings';
@@ -31,8 +33,8 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-export default function PreviewScene({ scene, plan, context, activeDimension, interactive, reset, fit, onFallback }: {
-  context: RepresentativeSurroundings | null;
+export default function PreviewScene({ ceilingView = false, under = 0, covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback }: {
+  ceilingView?: boolean; under?: number; covering?: RoofFinishGeometry; context: RepresentativeSurroundings | null;
   scene: ViewerSceneModel; plan: GeometryPlanViewModel; activeDimension: PreviewDimensionAxis | null;
   interactive: boolean; reset: number; fit: number; onFallback: () => void;
 }) {
@@ -41,14 +43,14 @@ export default function PreviewScene({ scene, plan, context, activeDimension, in
   // Context is a separate package-owned visual reference. Camera framing stays
   // centred on the pergola rather than zooming out to fit a two-storey house.
   const objects = useMemo(() => scene.layers.filter((layer) => layer.visibleByDefault).flatMap((layer) => layer.objects)
-    .filter((object) => !object.type.startsWith('house_') && !object.type.startsWith('reference_') && (object.type !== 'roof_flashing' || object.metadata?.representativeGableRidge)), [scene]);
+    .filter((object) => !(covering && object.type === 'roof_plane') && !object.type.startsWith('house_') && !object.type.startsWith('reference_') && (object.type !== 'roof_flashing' || object.metadata?.representativeGableRidge)), [scene, covering]);
   const fitPoints = useMemo(() => objects.flatMap((object) => object.type === 'member_prism'
     ? [object.centerline.start, object.centerline.end]
     : object.type === 'roof_plane' || object.type === 'roof_cladding_panel' ? object.boundary : []), [objects]);
   const bounds = useMemo(() => computeSceneBoundsFromPoints(fitPoints), [fitPoints]);
   // Fit first-floor supports without zooming out to fit the entire house.
-  const cameraPoints = useMemo(() => context?.elevated ? [...fitPoints,
-    ...context.architecture.supports.flatMap(support => [support.min, support.max])] : fitPoints, [fitPoints, context]);
+  const cameraPoints = useMemo(() => ceilingView ? fitPoints.filter(p => p.z >= 2000) : context?.elevated ? [...fitPoints,
+    ...context.architecture.supports.flatMap(support => [support.min, support.max])] : fitPoints, [fitPoints, context, ceilingView]);
   const cameraBounds = useMemo(() => computeSceneBoundsFromPoints(cameraPoints), [cameraPoints]);
   const roof = useMemo(() => scene.layers.flatMap((layer) => layer.objects).flatMap(object => object.type === 'roof_plane' ? object.boundary : []), [scene]);
   if (unavailable) return fallback;
@@ -58,8 +60,9 @@ export default function PreviewScene({ scene, plan, context, activeDimension, in
       fallback={fallback}>
       <ContextWatch onFallback={() => { setUnavailable(true); onFallback(); }} />
       <PreviewLighting />
-      {context && <PreviewSurroundings context={context} bounds={bounds} productPoints={fitPoints} />}
-      <PreviewCamera bounds={cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} />
+      {covering && <PreviewRoofFinish covering={covering} />}
+      {context && <PreviewSurroundings hideGround={ceilingView} context={context} bounds={bounds} productPoints={fitPoints} />}
+      <PreviewCamera under={under} bounds={cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} />
       <group>{objects.map((object) => object.type === 'roof_plane' || object.type === 'roof_cladding_panel'
         ? <PreviewRoof key={object.id} object={object} />
         : <SceneObjectNode key={object.id} object={object} color="#242824" memberAppearance={{ roughness: .38, metalness: .2, envMapIntensity: .8 }}

@@ -1,3 +1,4 @@
+import { constrainRoofFinish, parseRoofFinish } from "./roofFinish";
 import { CUSTOMER_DIMENSION_BOUNDS } from '@sp/configurator/core';
 import { parseSimpleCoverInput, type SimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import { constrainPreviewConnection, INITIAL_INPUT } from './model';
@@ -18,9 +19,11 @@ export function parsePreviewDraft(value: unknown): PreviewDraft | null {
     || input.projectionMm < CUSTOMER_DIMENSION_BOUNDS.projectionMm.minimum
     || (roof.family !== 'mono' && roof.family !== 'gable' && roof.family !== 'box')
     || (roof.orientation !== 'parallel' && roof.orientation !== 'away') || typeof roof.infills !== 'boolean') return null;
+  const finish = roof.finish === undefined ? undefined : parseRoofFinish(roof.finish);
+  if (finish === null) return null;
   return {
     version: 1,
     input: constrainPreviewConnection(input, roof.family),
-    roof: { family: roof.family, orientation: roof.orientation, infills: roof.infills },
+    roof: constrainRoofFinish({ family: roof.family, orientation: roof.orientation, infills: roof.infills, ...(finish ? { finish } : {}) }, input),
   };
 }

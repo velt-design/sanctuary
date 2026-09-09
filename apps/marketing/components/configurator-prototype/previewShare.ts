@@ -5,18 +5,23 @@ export function serializePreviewDesign(draft: PreviewDraft): string {
   const safe = parsePreviewDraft(draft);
   if (!safe) throw new Error('Invalid preview design');
   const { input, roof } = safe;
-  return [1, roof.family, input.widthMm, input.projectionMm, input.level, input.connection,
-    roof.orientation, roof.infills ? 1 : 0].join('.');
+  const parts: (string | number)[] = [roof.finish ? 2 : 1, roof.family, input.widthMm, input.projectionMm, input.level, input.connection,
+    roof.orientation, roof.infills ? 1 : 0];
+  if (roof.finish) parts.push(roof.finish.material, roof.finish.layout, roof.finish.acrylicBays, roof.finish.profile, roof.finish.trayWidth);
+  return parts.join('.');
 }
 
 export function parsePreviewDesign(value: string): PreviewDraft | null {
   if (value.length > 100) return null;
   const parts = value.split('.');
-  if (parts.length !== 8 || parts[0] !== '1' || !/^\d{4,5}$/.test(parts[2])
+  const extended = parts[0] === '2' && parts.length === 13;
+  if (extended && !/^(300|400|500)$/.test(parts[12])) return null;
+  if ((!extended && (parts.length !== 8 || parts[0] !== '1')) || !/^\d{4,5}$/.test(parts[2])
     || !/^\d{4,5}$/.test(parts[3]) || !/^[01]$/.test(parts[7])) return null;
   return parsePreviewDraft({ version: 1,
     input: { widthMm: Number(parts[2]), projectionMm: Number(parts[3]), level: parts[4], connection: parts[5] },
-    roof: { family: parts[1], orientation: parts[6], infills: parts[7] === '1' },
+    roof: { family: parts[1], orientation: parts[6], infills: parts[7] === '1',
+      ...(extended ? { finish: { material: parts[8], layout: parts[9], acrylicBays: /^\d+$/.test(parts[10]) ? Number(parts[10]) : null, profile: parts[11], trayWidth: Number(parts[12]) } } : {}) },
   });
 }
 

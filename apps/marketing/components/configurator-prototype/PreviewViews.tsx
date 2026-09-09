@@ -17,42 +17,47 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
   const [view, setView] = useState<'3D' | 'Plan'>('3D');
   const [reset, setReset] = useState(0);
   const [fit, setFit] = useState(0);
+  const [under, setUnder] = useState(0);
+  const [ceilingView, setCeilingView] = useState(false);
   const [surroundings, setSurroundings] = useState(true);
   const artifact = useMemo(() => solvePergolaPreview(input, roof), [input, roof]);
-  const renderable = 'geometry' in artifact && artifact.geometry !== undefined;
-  const context = useMemo(() => 'geometry' in artifact && artifact.geometry ? solveSimpleCoverSurroundings(input, artifact.geometry.assembly, roof) : null, [artifact, input, roof]);
+  const geometry = artifact.geometry;
+  const covering = geometry?.covering;
+  const renderable = geometry !== undefined;
+  const context = useMemo(() => geometry ? solveSimpleCoverSurroundings(input, geometry.assembly, roof) : null, [geometry, input, roof]);
   return <>
     <div className={styles.viewToolbar}>
       <div className={styles.viewTabs} role="group" aria-label="Choose view">{(['3D', 'Plan'] as const).map((name) =>
         <button key={name} aria-pressed={view === name} onClick={() => setView(name)}>{name}</button>)}</div>
       <div className={styles.viewActions}>
       {view === '3D' && renderable && <>
+        {covering && <button aria-label="Under roof view" aria-pressed={ceilingView} onClick={() => { setCeilingView(true); setUnder(under + 1); }}>Under roof</button>}
         <button aria-label="Fit view" title="Fit the pergola at your current angle" onClick={() => setFit(fit + 1)}>Fit</button>
-        <button aria-label="Reset view" title="Return to the starting view" onClick={() => setReset(reset + 1)}>Reset</button>
+        <button aria-label="Reset view" title="Return to the starting view" onClick={() => { setCeilingView(false); setReset(reset + 1); }}>Reset</button>
       </>}
         <button className={styles.expandView} aria-label={expanded ? 'Close expanded view' : 'Expand view'} aria-expanded={expanded} onClick={onToggleExpanded}>{expanded ? 'Done' : 'Expand'} <span aria-hidden="true">{expanded ? '×' : '↗'}</span></button>
       </div>
     </div>
     <div className={styles.viewport} data-view={view} data-geometry-status={artifact.status}
-      data-family={roof.family} data-ridge-direction={roof.family === 'box' ? 'parallel' : roof.orientation} data-gable-infills={roof.family === 'gable' && roof.infills}
-      data-box-roof-mode={renderable && roof.family === 'box' ? artifact.geometry!.assembly.roofPlanes[0]?.metadata?.roofMode : undefined}
-      data-infill-support-count={renderable ? artifact.geometry.assembly.members.filter(m => m.metadata?.frameRole === 'infill_support').length : 0}
+      data-roof-material={roof.finish?.material ?? "acrylic"} data-roof-profile={roof.finish?.profile} data-acrylic-bays={covering?.acrylicBays} data-family={roof.family} data-ridge-direction={roof.family === 'box' ? 'parallel' : roof.orientation} data-gable-infills={roof.family === 'gable' && roof.infills}
+      data-box-roof-mode={renderable && roof.family === 'box' ? geometry!.assembly.roofPlanes[0]?.metadata?.roofMode : undefined}
+      data-infill-support-count={renderable ? geometry.assembly.members.filter(m => m.metadata?.frameRole === 'infill_support').length : 0}
       data-surroundings={surroundings} data-connection={input.connection} data-level={input.level}
       data-bracket-count={context?.brackets.length ?? 0}
-      data-rafter-count={renderable ? artifact.geometry.plan.members.rafters.length : undefined}
-      data-post-count={renderable ? artifact.geometry.plan.members.posts.length : undefined}>
+      data-rafter-count={renderable ? geometry.plan.members.rafters.length : undefined}
+      data-post-count={renderable ? geometry.plan.members.posts.length : undefined}>
       {renderable ? <>
         <div className={styles.sceneLayer} aria-hidden={view !== '3D'} style={{ visibility: view === '3D' ? 'visible' : 'hidden' }}>
-          <PreviewScene scene={artifact.geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D'} activeDimension={activeDimension} plan={artifact.geometry.plan} reset={reset} fit={fit} onFallback={() => setView('Plan')} />
+          <PreviewScene ceilingView={ceilingView} under={under} covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D'} activeDimension={activeDimension} plan={geometry.plan} reset={reset} fit={fit} onFallback={() => setView('Plan')} />
         </div>
-        {view === 'Plan' && <PreviewPlan plan={artifact.geometry.plan} flashings={artifact.geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
+        {view === 'Plan' && <PreviewPlan covering={covering} plan={geometry.plan} flashings={geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
       </>
         : <div className={styles.loading} role="status">{artifact.messages[0]?.message || 'This design needs a closer look. Adjust your dimensions to continue.'}</div>}
     </div>
     <div className={styles.viewerFooter}><p className={styles.viewNote}>{view === '3D' ? <><span className={styles.mouseHint}>Drag to rotate · Scroll to zoom</span><span className={styles.touchHint}>Drag ↔ · Pinch to zoom</span></> : renderable
-      ? <>{artifact.geometry.plan.members.rafters.length} rafters · {artifact.geometry.plan.members.posts.length} posts<span className={styles.desktopNote}> · Sized to your selections</span></>
+      ? <>{geometry.plan.members.rafters.length} rafters · {geometry.plan.members.posts.length} posts<span className={styles.desktopNote}> · Sized to your selections</span></>
       : 'Adjust your selections to preview the frame.'}
-      {renderable && roof.family === 'box' && <span> · Internal {artifact.geometry.assembly.roofPlanes.length === 2 ? 'gable' : 'pitched'} roof</span>}</p>
+      {renderable && roof.family === 'box' && <span> · Internal {geometry.assembly.roofPlanes.length === 2 ? 'gable' : 'pitched'} roof</span>}</p>
       {renderable && <label className={styles.contextToggle}><input type="checkbox" checked={surroundings} onChange={(event) => setSurroundings(event.target.checked)} />Show surroundings</label>}
     </div>
   </>;

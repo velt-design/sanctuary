@@ -1,3 +1,4 @@
+import type { RoofFinishGeometry } from "@sp/geometry";
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { GeometryPlanViewModel, RepresentativeSurroundings, RoofFlashing3D } from '@sp/geometry';
 import { metres } from './model';
@@ -5,7 +6,7 @@ import styles from './prototype.module.css';
 import PlanDimension from './PlanDimension';
 import type { PreviewDimensionAxis } from './usePreviewDimension';
 
-export default function PreviewPlan({ plan, flashings = [], context, activeDimension }: { plan: GeometryPlanViewModel; flashings?: RoofFlashing3D[]; context: RepresentativeSurroundings | null; activeDimension: PreviewDimensionAxis | null }) {
+export default function PreviewPlan({ covering, plan, flashings = [], context, activeDimension }: { covering?: RoofFinishGeometry; plan: GeometryPlanViewModel; flashings?: RoofFlashing3D[]; context: RepresentativeSurroundings | null; activeDimension: PreviewDimensionAxis | null }) {
   const svg = useRef<SVGSVGElement>(null);
   const [available, setAvailable] = useState({ width: 600, height: 400 });
   useLayoutEffect(() => {
@@ -61,6 +62,7 @@ export default function PreviewPlan({ plan, flashings = [], context, activeDimen
     {members.map((member) => <line key={member.id} data-member-id={member.id}
       x1={member.centerline.start.x} y1={member.centerline.start.y} x2={member.centerline.end.x} y2={member.centerline.end.y}
       stroke={plan.members.rafters.includes(member) ? '#858e7f' : '#4c5546'} strokeWidth={member.profile.widthMm} />)}
+    {covering?.regions.map(region => <polygon key={region.id} data-roof-region={region.material} points={polygons(region.boundary)} fill={region.material === "solid" ? "#535d58" : "#c4dfdc"} fillOpacity={region.material === "solid" ? 1 : .6} stroke="#343c35" strokeWidth={1} vectorEffect="non-scaling-stroke" />)}
     {flashings.filter(flashing => flashing.metadata?.representativeGableRidge).map(flashing => <g key={flashing.id} data-ridge-flashing={flashing.metadata?.wingLengthMm}>
       {flashing.wings.map(wing => <polygon key={wing.id} points={polygons(wing.boundary)} fill="#586150" stroke="#343d2e" strokeWidth={.6} vectorEffect="non-scaling-stroke" />)}
     </g>)}
