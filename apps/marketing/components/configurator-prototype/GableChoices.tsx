@@ -1,0 +1,28 @@
+import styles from './prototype.module.css';
+
+export type PreviewRoofChoices = { family: 'mono' | 'gable' | 'box'; orientation: 'parallel' | 'away'; infills: boolean };
+export const INITIAL_ROOF: PreviewRoofChoices = { family: 'mono', orientation: 'parallel', infills: false };
+
+export function RoofTypeChoice({ value, onChange }: { value: PreviewRoofChoices; onChange: (next: PreviewRoofChoices) => void }) {
+  return <fieldset className={`${styles.choices} ${styles.roofTypes}`}><legend>Roof style</legend>
+    {(['mono', 'gable', 'box'] as const).map(family => <label key={family} data-selected={value.family === family}>
+      <input type="radio" name="roof-style" checked={value.family === family} onChange={() => onChange({ ...value, family })} />
+      {family === 'mono' ? 'Pitched' : family === 'gable' ? 'Gable' : 'Box perimeter'}
+    </label>)}
+  </fieldset>;
+}
+
+export default function GableChoices({ value, onChange }: { value: PreviewRoofChoices; onChange: (next: PreviewRoofChoices) => void }) {
+  if (value.family !== 'gable') return null;
+  return <div className={styles.gableChoices}>
+    <fieldset className={styles.choices}><legend>Ridge direction</legend>
+      {(['parallel', 'away'] as const).map(orientation => <label key={orientation} data-selected={value.orientation === orientation}>
+        <input type="radio" name="ridge-direction" checked={value.orientation === orientation} onChange={() => onChange({ ...value, orientation })} />
+        {orientation === 'parallel' ? 'Parallel to house' : 'Away from house'}
+      </label>)}
+    </fieldset>
+    <p className={styles.small}>{value.orientation === 'parallel' ? 'Along the house, with a gutter on each side.' : 'Connects into the Dutch-gable roof fascia.'}</p>
+    <label className={styles.infillChoice}><input type="checkbox" checked={value.infills} onChange={event => onChange({ ...value, infills: event.target.checked })} />Gable infills</label>
+    <p className={styles.small}>Clear acrylic {value.orientation === 'parallel' ? 'at both ends' : 'at the front end'}, with slim support members.</p>
+  </div>;
+}

@@ -109,6 +109,14 @@ const objects: ViewerSceneObject[] = [
 ];
 
 describe("shared scene-object dispatch", () => {
+  it("keeps member material defaults unless a presenter supplies an appearance", () => {
+    const props = { object: objects[0]!, color: '#222222', selected: false, hovered: false,
+      onSelect: () => undefined, onHoverEnter: () => undefined, onHoverLeave: () => undefined,
+      onFocus: () => undefined, clippingPlanes: [] };
+    expect(SceneObjectNode(props)?.props.appearance).toBeUndefined();
+    const appearance = { roughness: .38, metalness: .2, envMapIntensity: .8 };
+    expect(SceneObjectNode({ ...props, memberAppearance: appearance })?.props.appearance).toEqual(appearance);
+  });
   it("dispatches every current viewer scene object type", () => {
     const renderedTypes = objects.map((object) => {
       const element = SceneObjectNode({

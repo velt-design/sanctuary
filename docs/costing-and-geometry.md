@@ -169,6 +169,18 @@ apps/marketing/app/api/enquiry/route.ts
 
 `calculateAcrylicRafterLayoutV1` in `@sp/costing` owns the acrylic rafter count, clear centre spacing and normalized plan positions used by both costing derivation and customer-safe concept plans. Its first and last 50 mm rafter faces align to the overall cover width. Marketing may style those positions independently but must not duplicate the 642 mm spacing derivation.
 
+The isolated `/configurator-preview` now consumes those same layout helpers via
+`solvePreview.ts`, supplying count/spacing and the canonical post suggestion as
+physical layout context to `solveCustomerConfigurationV1`. The geometry package
+does not import costing. `structural.framing.widthReference: 'outside_faces'`
+opts mono inputs into an overall outside-face width: first/last rafter and post
+centres are inset by their own half-profile widths, while ledger ends stay at
+0/width. The package-owned `memberLayout.ts` supplies equal centre positions to
+the mono solver. Inputs without this optional field retain existing centreline
+placement and rounding, so saved portal designs are not reinterpreted. Regression
+tests assert calculator-count agreement, face alignment and Plan/3D parity;
+these checks do not certify spans, roof detailing or site-specific engineering.
+
 The public pricing path is:
 
 ```text
@@ -218,6 +230,24 @@ The `v1.8` labour calibration keeps the `$75/h ex-GST` single-installer crew bas
 Blocked or untraceable takeoff returns a blocked attribution and must not be presented as a separately priced customer breakdown. The Calculator allocates already-finalized pergola sell cents across physical modules in proportion to each package-produced module true cost, using the shared deterministic cent allocator so the module children reconcile exactly to the pergola parent. Ready infill contributions sit beneath their owning module and remain contained within its allocation. Neither module allocations nor infill contributions are additive quote items.
 
 ## Geometry Source Of Truth
+
+The marketing preview's `buildRepresentativeSurroundings()` is a package-owned
+visual reference derived from an untransformed mono assembly. It implements the
+owner-confirmed soffit/fascia/facade relationships recorded in
+`customer-configurator-architecture.md`. It does not mutate solved members,
+persist house intent, supply a fixing schedule, enter takeoff, or change pricing.
+Its wall and patio reference geometry is shared by the preview's Plan and 3D.
+Its soffit bracket quantity comes from the same `calculateSoffitBracketCountV1`
+helper as costing derive: one more bracket than the ceiling of attachment length
+divided by 1,500 mm. Geometry receives the count and owns positions; front-post
+count is not a proxy for house support quantity.
+
+The isolated marketing preview uses the shared member renderer with optional
+presentation-only roughness, metalness and environment-intensity overrides.
+Existing callers retain their defaults. Its active 3D dimension annotations read
+solved Plan extents and roof boundaries; horizontal projection remains distinct
+from pitched member length. These materials and annotations do not alter the
+assembly, takeoff or Simple cover pricing inputs.
 
 Canonical geometry solving lives in `packages/geometry`. There is one physical geometry truth:
 

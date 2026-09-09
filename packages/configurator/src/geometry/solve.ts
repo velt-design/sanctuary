@@ -91,6 +91,7 @@ export function solveCustomerConfigurationV1(
   const adapterResult = customerConfigurationToPergolaGeometryInputV1(
     sourceConfiguration,
     identity,
+    options.layout,
   );
   if (!adapterResult.ok) {
     return unavailableArtifact(

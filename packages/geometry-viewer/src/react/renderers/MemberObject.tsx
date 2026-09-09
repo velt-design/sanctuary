@@ -1,4 +1,4 @@
-﻿import { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneMemberPrismObject } from "@sp/geometry";
 import {
@@ -10,6 +10,13 @@ import {
 } from "../../three";
 import { buildLineGeometry } from "../../three";
 import { linePoints } from "../../scene";
+
+/** Presentation-only overrides; omission preserves the shared renderer defaults. */
+export type MemberMaterialAppearance = {
+  roughness?: number;
+  metalness?: number;
+  envMapIntensity?: number;
+};
 
 /**
  * Pergola member renderer (posts, beams, rafters, joiners, gutters).
@@ -40,12 +47,14 @@ import { linePoints } from "../../scene";
 export function MemberObject({
   object,
   color,
+  appearance,
   onSelect,
   onFocus,
   clippingPlanes,
 }: {
   object: ViewerSceneMemberPrismObject;
   color: string;
+  appearance?: MemberMaterialAppearance;
   onSelect: (id: string) => void;
   onFocus: (id: string) => void;
   clippingPlanes: THREE.Plane[];
@@ -244,7 +253,7 @@ export function MemberObject({
   if (object.renderMode === "line_fallback") {
     return (
       <line
-        data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
+        name={`scene-object-${object.sourceId ?? object.id}`}
         onClick={handleSelect}
         onDoubleClick={handleFocus}
       >
@@ -263,7 +272,7 @@ export function MemberObject({
   ) {
     return (
       <group
-        data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
+        name={`scene-object-${object.sourceId ?? object.id}`}
         matrixAutoUpdate={false}
         matrix={matrix}
         onClick={handleSelect}
@@ -271,15 +280,15 @@ export function MemberObject({
       >
         <mesh position={[outlineComposite.bodyOffsetX, 0, 0]}>
           <primitive attach="geometry" object={insetExtrusionGeometry} />
-          <meshStandardMaterial color={color} clippingPlanes={clippingPlanes} />
+          <meshStandardMaterial {...appearance} color={color} clippingPlanes={clippingPlanes} />
         </mesh>
         <mesh position={[outlineComposite.startCapOffsetX, 0, 0]}>
           <primitive attach="geometry" object={startCapGeometry} />
-          <meshStandardMaterial color={color} clippingPlanes={clippingPlanes} />
+          <meshStandardMaterial {...appearance} color={color} clippingPlanes={clippingPlanes} />
         </mesh>
         <mesh position={[outlineComposite.endCapOffsetX, 0, 0]}>
           <primitive attach="geometry" object={endCapGeometry} />
-          <meshStandardMaterial color={color} clippingPlanes={clippingPlanes} />
+          <meshStandardMaterial {...appearance} color={color} clippingPlanes={clippingPlanes} />
         </mesh>
       </group>
     );
@@ -288,7 +297,7 @@ export function MemberObject({
   if (object.renderMode === "outline_extrusion") {
     return (
       <mesh
-        data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
+        name={`scene-object-${object.sourceId ?? object.id}`}
         matrixAutoUpdate={false}
         matrix={matrix}
         onClick={handleSelect}
@@ -298,7 +307,7 @@ export function MemberObject({
           attach="geometry"
           object={clippedProfileExtrusionGeometry ?? extrusionGeometry}
         />
-        <meshStandardMaterial
+        <meshStandardMaterial {...appearance}
           color={color}
           clippingPlanes={clippingPlanes}
           side={
@@ -311,7 +320,7 @@ export function MemberObject({
 
   return (
     <mesh
-      data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
+      name={`scene-object-${object.sourceId ?? object.id}`}
       matrixAutoUpdate={false}
       matrix={matrix}
       onClick={handleSelect}
@@ -328,7 +337,7 @@ export function MemberObject({
           ]}
         />
       )}
-      <meshStandardMaterial
+      <meshStandardMaterial {...appearance}
         color={color}
         clippingPlanes={clippingPlanes}
         side={clippedBoxGeometry ? THREE.DoubleSide : THREE.FrontSide}

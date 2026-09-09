@@ -131,7 +131,17 @@ export type ConfiguratorSolvedArtifactV1 =
   | ConfiguratorRenderableArtifactV1
   | ConfiguratorUnavailableArtifactV1;
 
+/** Caller-resolved physical layout; contains no pricing, costs or geometry positions. */
+export type CustomerGeometryLayoutV1 = {
+  postCount: number;
+  rafterCount: number;
+  rafterSpacingMm: number;
+  /** Outside-face placement is supported by the mono solver. */
+  widthReference?: 'outside_faces';
+};
+
 export type SolveCustomerConfigurationOptionsV1 = {
+  layout?: CustomerGeometryLayoutV1;
   /** Caller-owned fallback only. The configurator package stores no solve state. */
   lastReadyArtifact?: ConfiguratorRenderableArtifactV1;
 };

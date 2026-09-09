@@ -14,6 +14,7 @@ import { crossProduct, lineDirection, lineLength, magnitude, normalizeVector, pl
 import { parseAssemblyMemberProfile, resolveAssemblyMemberProfileAnchors } from './profiles';
 import { buildHouseReferenceGeometry } from './houseModel';
 import type { SolveAssembly3DErrorCode, SolveAssembly3DResult } from './solve.types';
+import { equalMemberCentrePositions } from './memberLayout';
 
 type SolveAssembly3DFailure = Extract<SolveAssembly3DResult, { ok: false }>;
 
@@ -79,12 +80,6 @@ function frameForRafter(memberLine: Line3, roofNormal: Vector3): DatumFrame3 {
 
 function frameForJoiner(memberLine: Line3, roofNormal: Vector3): DatumFrame3 {
   return frameFromXAxisZAxis(memberLine.start, lineDirection(memberLine), roofNormal);
-}
-
-function equalSpacingPositions(lengthMm: number, count: number): number[] {
-  if (count < 2) return [0, lengthMm];
-  const spacingMm = lengthMm / Math.max(1, count - 1);
-  return Array.from({ length: count }, (_, index) => Math.round(spacingMm * index));
 }
 
 function requireProfile(profile: AssemblyMemberProfile | null): AssemblyMemberProfile | null {
@@ -281,7 +276,10 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
   const outerBeamCenterlineY = outerGutterCenterlineY + gutterBackFaceY - supportBeamFrontFaceY;
   const outerBeamCenterlineZ = input.outerUndersideMm - supportBeamUndersideZ;
   const outerPostCount = config.connection.type === 'freestanding' ? totalPostCount / 2 : totalPostCount;
-  const outerPostXPositions = equalSpacingPositions(lengthMm, outerPostCount);
+  const flushOutsideFaces = config.structural.framing.widthReference === 'outside_faces';
+  const postEdgeInsetMm = flushOutsideFaces ? input.postProfile.widthMm / 2 : 0;
+  const rafterEdgeInsetMm = flushOutsideFaces ? input.rafterProfile.widthMm / 2 : 0;
+  const outerPostXPositions = equalMemberCentrePositions(lengthMm, outerPostCount, postEdgeInsetMm);
   const outerPostHalfWidthMm = input.postProfile.widthMm / 2;
   const outerPostLeftOutsideFaceX = (outerPostXPositions[0] ?? 0) - outerPostHalfWidthMm;
   const outerPostRightOutsideFaceX = (outerPostXPositions[outerPostXPositions.length - 1] ?? lengthMm) + outerPostHalfWidthMm;
@@ -325,7 +323,7 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
         y: endBearingY - startBearingY,
         z: outerGutterTopMm - houseBeamTopMm,
       });
-  const rafterXPositions = equalSpacingPositions(lengthMm, input.rafterCount);
+  const rafterXPositions = equalMemberCentrePositions(lengthMm, input.rafterCount, rafterEdgeInsetMm);
 
   const monoAcrylicCovering = resolveMonoAcrylicCoveringInput(config);
   const roofCladdingPanels: RoofCladdingPanel3D[] = [];
@@ -559,7 +557,7 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
 
   if (config.connection.type === 'freestanding') {
     const postsPerLine = totalPostCount / 2;
-    const housePostXPositions = equalSpacingPositions(lengthMm, postsPerLine);
+    const housePostXPositions = equalMemberCentrePositions(lengthMm, postsPerLine, postEdgeInsetMm);
     generatePosts('house-post', referenceBeamCenterlineY, input.referenceUndersideMm, housePostXPositions);
     generatePosts('outer-post', outerGutterCenterlineY, input.outerUndersideMm, outerPostXPositions);
   } else {

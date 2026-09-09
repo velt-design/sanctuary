@@ -936,6 +936,7 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
       framing: {
         rafterCount: resolveRafterCount(input.structural?.framing?.rafterCount),
         rafterSpacingMm: resolveRafterSpacingMm(input.structural?.framing?.rafterSpacingMm),
+        ...(input.structural?.framing?.widthReference === 'outside_faces' ? { widthReference: 'outside_faces' as const } : {}),
       },
       drainage: {
         gutterType: input.structural?.drainage?.gutterType ?? null,

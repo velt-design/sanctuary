@@ -6,6 +6,13 @@ This document owns the Architectural Editorial UI system demonstrated at the sta
 
 ## Source Of Truth
 
+The owner-approved `/configurator-preview` route is an isolated UI experiment
+using this marketing system. It adds fixed 3D, plan views and Simple
+cover controls without changing existing public routes. It has no navigation or
+sitemap entry and emits `noindex, nofollow`; its direct URL remains public.
+Scope and technical boundaries are recorded in
+`customer-configurator-architecture.md` under “Isolated UI preview”.
+
 - Shared semantic colour, type, layout, and responsive tokens: `MarketingPage` and `foundation.module.css` in `apps/marketing/components/marketing-foundation/`.
 - Shared marketing motion durations, easing curves and pressed-state values: `apps/marketing/styles/tokens.css`.
 - Catalogue-only presentation and token overrides: `apps/marketing/app/%5F%5Ffoundation/marketing/catalogue.module.css`.

@@ -21,6 +21,9 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-08 | Customer Preview Touch Gestures | Active | Removing an orbit activation step requires native touch tests: both canvas and event wrapper must permit vertical scrolling while preserving horizontal rotation and pinch zoom. |
+| 2026-09-08 | Customer Preview Interaction | Active | Preserve camera state separately from solved geometry; honour layer visibility and resolve coplanar reference surfaces in rendering without altering physical dimensions. |
+| 2026-09-08 | Customer Preview Framing | Promoted | Derive counts from the product layout owner and opt into an outside-face width datum; verify counts and shared Plan/3D member faces without reinterpreting existing portal designs. |
 | 2026-09-03 | Design Booklet Editorial Lists   | Promoted | Keep booklet lists deliberately lightweight and one level deep: store canonical `- ` markers inside existing draft body strings, preserve normalized line breaks through project/PDF parsing, and let one shared editorial owner drive selection toggling, Enter continuation, overflow weighting, semantic browser lists, and PDF hanging indents. Do not introduce rich-text JSON, duplicate A3 geometry, or a database migration for bullets. |
 | 2026-09-03 | Design Booklet Paper Geometry    | Promoted | Keep A4 as the one canonical booklet coordinate system, own exact A4/A3 landscape page boxes in one module, and proportionally transform the complete preview/PDF composition at the output boundary. Store the choice in schema-v2 draft JSON, default missing values to A4, and do not fork layouts or migrate the database. |
 | 2026-08-29 | Exact-Head CI                    | Promoted | Normalize GitHub lifecycle fields at the CI adapter boundary: trim and uppercase non-empty values and convert empty pending conclusions to `null`, then keep re-reading the exact PR head instead of rejecting or bypassing valid pending evidence. |
@@ -340,6 +343,48 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 
 ## Entries
+
+### 2026-09-08 — Immediate orbit and native touch scrolling
+
+Date: 2026-09-08
+Area: Marketing configurator preview
+Status: Active
+Decision or mistake: Styling only the canvas with pan-y left scrolling blocked because OrbitControls connected to the canvas wrapper and set its touch-action to none.
+Why it mattered: Removing the Explore/Lock step otherwise trapped vertical swipes on the pinned mobile viewer.
+Current guardrail: Set the gesture policy on both canvas and event wrapper, and use native browser touch events to verify horizontal rotation, vertical page scrolling and pinch zoom together. Keep dimension annotations as projections of solved extents and preserve the camera when feedback appears.
+Promoted to: None
+Related docs/tests: docs/customer-configurator-architecture.md; playwright/marketing.configurator-preview.spec.ts
+
+
+### 2026-09-08 — Customer preview interaction and roof rendering
+
+Date: 2026-09-08
+Area: Marketing configurator preview
+Status: Active
+Decision or mistake: Re-fitting the camera on every solve and remounting it between views erased the user’s chosen angle and zoom. A coplanar roof reference surface also competed with aluminium faces.
+Why it mattered: Correct dimensions alone did not produce a stable, trustworthy interactive preview.
+Current guardrail: Keep the 3D canvas alive between views, preserve explored pose and scale, distinguish Fit from Reset, and use actual browser camera assertions. Honour scene visibility and resolve reference-surface depth in the material presenter without moving solved members. Check phone control reachability visually, including short landscape screens.
+Promoted to: None
+Related docs/tests: docs/customer-configurator-architecture.md; playwright/marketing.configurator-preview.spec.ts
+
+
+### 2026-09-08 — Customer preview framing datum
+
+Date: 2026-09-08
+Area: Customer configurator geometry
+Status: Promoted
+Decision or mistake: The first preview allowed width changes while retaining
+representative rafter/post counts, and shared centreline placement left the
+different-width members and ledger ends out of flush alignment.
+Why it mattered: Matching overall dimensions alone did not prove the visual
+frame matched the customer calculator's layout.
+Current guardrail: Source count/spacing from the existing product layout owner;
+pass physical values through the configurator solve context. Use an explicit
+outside-face width datum for this preview and retain legacy placement for
+callers without the opt-in. Test counts, outside faces and the assembly consumed
+by both Plan and 3D, not just labels or screenshots.
+Promoted to: `docs/costing-and-geometry.md`; `docs/customer-configurator-architecture.md`
+Related docs/tests: `apps/marketing/components/configurator-prototype/framing.test.ts`
 
 ### 2026-09-03 - Design Booklet Editorial Lists - Keep Draft Text Lightweight
 

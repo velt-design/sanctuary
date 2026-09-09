@@ -1,6 +1,113 @@
 # Sanctuary "Your Pergola" Customer Configurator
 ## Master Architecture and Implementation Specification
 
+### Marketing preview: box perimeter loop (2026-09-09)
+
+Approved scope: an acrylic-only level 300x50 perimeter with 80x50 rafters,
+100x100 internal gutters flush at the perimeter underside, and facade/soffit
+connections (no fascia; soffit retains the 4m projection limit). The roof
+automatically changes from pitched to an equal internal gable when available
+single-slope fall drops below 3 degrees. The internal ridge runs parallel to
+the house and is 100x50 through 3m ridge length, then 150x50. Both internal
+gable gutters drain at the front/rear. No cedar battens in this loop.
+
+Gate 0: legacy audit rows N/A. This is a new opt-in representative geometry
+builder using package contracts/profile assets, not a legacy calculator or
+workbench extension. No Phase 2 cost-input dependencies or consolidation of
+existing solvers. The canonical box solver is unchanged; it currently follows
+roof fall with its perimeter, which differs from this approved level frame.
+Consumers checked: marketing prototype model/controls/views/attachments and
+their tests; new box exports have no existing consumers. Pricing remains
+limited to Pitched via the existing Simple cover service.
+
+Implementation owners: `representativeBoxRules.ts` sets the available fall,
+automatic roof mode and member sizes; `representativeBoxMembers.ts` constructs
+member frames and the open 100x100 gutter section; `representativeBoxRoof.ts`
+builds both internal roof forms and reuses the equal-slope flashing clearance
+helper; `representativeBox.ts` derives Plan and viewer scene from that single
+assembly. `representativeBoxContext.ts` adapts the illustrative soffit L arm
+below the deeper perimeter. Attachment hover sections use the same box context.
+
+Representative defaults: perimeter underside 2400mm; roof peak reserves the
+actual joiner depth plus 8mm below the 300mm frame top. Low roof bearing is at
+the 100mm gutter top. The pitched clear run is projection minus 200mm, from
+the rear perimeter's inside face to the front gutter. The internal gable has
+two gutters and halves projection minus 300mm. Ridge length means its actual length between
+the side perimeters (width minus 100mm). The 150mm-per-side ridge flashing
+keeps 2mm joiner clearance. Front posts follow the existing 4m maximum bay
+display rule and are 150x150 at every box-perimeter size, terminating
+at the perimeter underside. These are visual concept defaults for owner
+review, not an engineering schedule. The cedar example's 2.5-degree roof and
+50x50 timber-support rafters are not used for this acrylic-only version.
+
+### Marketing preview: representative gable loop (2026-09-09)
+
+The isolated, non-indexed `/configurator-preview` offers Pitched and Gable.
+Gable uses equal 25-degree slopes, a gutter at each eave, and two ridge
+directions. Parallel keeps fascia/facade/soffit choices and the existing 4m
+soffit projection limit. Away shows the sloping Dutch-gable fascia connection;
+the house-end rafters and ridge meet that fascia. Width always means along the
+house, projection always means away, regardless of ridge direction.
+
+Owner-corrected end detail: a 150x50 upright tie section at the front and a
+100x50 laid-flat section projecting inward, with both tops flush (an L section).
+Below 4m gutter-to-gutter, that inward section becomes 50x50 and the king
+strut becomes 100x50. From 4m to below 5m the king is 150x50, quarter-turned
+in Plan with its larger dimension perpendicular to the gable end. At 5m
+gutter-to-gutter and above, it retains the 150x50 section and extends from
+ground to the ridge underside. Plan projects that same rectangular section
+in the selected ridge direction. Other gable posts are 150x150 strictly above 20m²
+footprint area; at or below 20m² they retain the existing 90x90 profile. Larger
+posts move inward to preserve the outside footprint without changing the roof.
+Finished gable-end faces share one vertical plane: end rafters, ridge and
+gutter-beam ends, posts and the 150x50 upright face of the L tie. Post tops
+follow the top face of their respective solved gutter beam. The king strut
+shares the end face and sits on the complete L top unless extended to ground.
+`representativeGableEnds.ts`
+resolves profile face offsets before the orientation transform and before
+deriving either view. The ridge-away house fascia finishes at the rear plane.
+Gable infills starts off;
+when selected it adds clear acrylic and 50x50 vertical supports at both
+parallel ends, or only the exposed front end for the away arrangement.
+The 700mm maximum representative infill bay spacing and 4m representative
+support spacing require project-specific confirmation; they are display defaults,
+not asserted engineering rules. Roof rafter pairs follow a maximum 600mm
+representative spacing along the ridge run.
+
+The canonical ridge flashing is shown as two wings meeting at a single fold,
+150mm down each roof slope at every size. Its underside is 2mm above the
+actual joiner top surfaces, measured normal to each slope. Both wings move
+together to preserve the single ridge fold.
+`representativeGableRules.ts` owns these span/run/area thresholds;
+`representativeGableFlashing.ts` sizes the shared flashing before deriving
+either view. Plan uses the same wing boundaries as the 3D scene.
+
+`packages/geometry/src/representativeGable.ts` owns this concept assembly. It
+reuses the canonical two-gutter gable chassis, then applies the agreed attached
+supports and end detail before deriving Plan and viewer scene from one
+assembly. It uses the existing complete assembly transform for ridge-away.
+`representativeGableDetails.ts` owns the composite tie and optional infill;
+`representativeGableContext.ts` owns illustrative house/ground context. The
+house context is not an authored HouseForm. Roof sheets stop at joiner faces
+to avoid coplanar aluminium/acrylic surfaces in this simplified presentation.
+
+This is a `review_required` visual concept, not a validated authored
+gable or a commercial solve. Chassis support conditions and quantity hooks
+are cleared rather than exposing stale quantities. Gable never requests or
+displays the Simple cover price. Switching back to Pitched resumes that service.
+Customer V1 intent, persisted designs, workbench output and costing are unchanged.
+
+Gate 0: legacy audit rows N/A; this adds an opt-in representative package
+consumer of existing geometry, not a legacy workbench feature or compatibility
+carrier. No Phase 2 cost-input/modules dependency and no function/type
+consolidation. Consumers inspected: preview solve/views, attachment detail
+preview, representative surroundings/ContextSection renderer, Plan, viewer and
+assembly position boundary. Existing callers retain the original defaults.
+
+Verification: representative geometry matrix for both orientations, min/max
+dimensions, infill topology and shared-view identity; browser checks for type
+switching, camera persistence, the soffit boundary, mobile and price isolation.
+
 > **Status:** Strategic target and active implementation roadmap. Not current behavior.
 > **Repository:** `velt-design/sanctuary`
 > **Reviewed branch:** `main`
@@ -11,6 +118,265 @@
 > **Product name in the interface:** **Your pergola**
 
 This document is the source of truth for the customer-facing persistent pergola configurator. It defines the product experience, package boundaries, data contract, geometry pipeline, persistence, website integration, enquiry handoff, portal continuation, implementation sequence and release gates.
+
+### Isolated UI preview — 8 September 2026
+
+The owner requested a standalone non-indexed page to work on the UI and fixed
+3D/plan views, reusing Simple cover's existing estimate connection. The scoped
+implementation is `/configurator-preview`, owned by
+`apps/marketing/components/configurator-prototype/**`. It is excluded from the
+sitemap and navigation and emits `noindex, nofollow`. This is an unlisted public
+route, not an authenticated private page.
+
+Width, projection, attachment and site level share one Simple cover input state.
+Preview dimensions use the intersection of the existing customer geometry and
+Simple cover ranges: width 1.5–10 m and projection 1.5–6 m. This prevents the
+geometry normalizer silently enlarging a 1 m pricing input to its 1.5 m minimum.
+The page calls the unchanged `/api/simple-cover-price` endpoint, which already
+uses `@sp/costing` and the published costing configuration. It introduces no
+calculator, pricing policy, staff API, estimate persistence or workbench pricing
+integration. Unsupported Simple cover areas retain the existing custom-result
+behavior; unavailable pricing does not disable the visual controls.
+
+An app-owned adapter maps only these design choices to `@sp/configurator/core`.
+The configurator geometry package solves once for Plan and the shared read-only
+3D renderer. Customer fields do not contain prices or calculation references.
+The view is representative: roof pitch, height, roof detailing and house context
+are not a surveyed or priced construction takeoff. The solver's representative house and
+roof-flashing details are omitted from the customer scene; a separate package-owned
+context reference now supplies the owner-confirmed house relationships below. The existing acrylic
+solve reports detailing review, and the flashing primitives currently show
+protruding geometry in this public adapter. This prototype deliberately presents
+the structural concept; it does not fix or certify that detail boundary. The preview supports
+interactive 3D, dimensioned plan and Fit/Reset actions. Elevation is deferred
+at the owner's request; current polish prioritises camera continuity, the front
+three-quarter starting view, roof rendering and mobile usability over accessibility polish.
+
+The preview polish loop keeps the 3D canvas mounted while Plan is visible.
+`PreviewCamera` owns the front three-quarter default, translates the orbit target
+with changed geometry, and retains an explored angle and zoom through dimension
+and view changes. Untouched views fit automatically; Fit view reframes at the
+current angle, while Reset view deliberately restores the starting view. Framing
+uses solved member endpoints and roof boundaries. The second polish loop removes
+the Explore/Lock activation step: rotation is immediate, and quiet Fit/Reset
+actions sit beside the view tabs. Touch gestures allow sideways rotation and pinch
+zoom while vertical swipes scroll the page. Both the canvas and its event wrapper
+must retain `touch-action: pan-y`; the orbit control otherwise sets the wrapper to
+`none` and blocks page scrolling.
+
+`PreviewRoof` is an app-owned material presenter using the shared polygon/slab
+builders. The captured Simple preview emits a roof reference plane and no detailed
+acrylic panels. Its surface coincides with the aluminium roof datum. Transparent
+surfaces do not write depth; a positive polygon depth offset makes opaque framing
+win along that shared boundary without moving physical geometry. A procedural
+studio environment, acrylic clearcoat and a restrained frame finish improve
+surface contrast without external texture requests. The shared member renderer
+accepts optional roughness/metalness/environment appearance values; omitted values
+retain the existing portal defaults. No new physical connection or cladding detail
+is inferred by these material changes. Scene layer
+visibility is respected, including hiding reference roof planes when detailed
+cladding is present. This is a rendering correction, not completed roof detailing.
+
+The responsive workspace loop (9 September 2026) fits the desktop viewer to the
+screen height and scrolls the choices panel independently. The preview's site
+header has an opaque background. Portrait phones use a 260-300 px pinned viewer,
+a compact dimension summary and a single row of roof choices at 360 px. Plan
+uses 300 px, fits the pergola footprint rather than the patio/steps, and reserves
+fixed screen-space gutters for readable dimension values and orientation labels.
+The dimensions still measure the pergola, independently of surroundings.
+
+Expand/Done opens the same mounted viewer across the phone screen, temporarily
+hides the site header and locks background scrolling. Closing returns to the same
+controls and selections; Escape also closes it, and crossing the desktop
+breakpoint releases expansion. Viewport resizing scales an explored camera's zoom
+proportionally while retaining its angle; changing dimensions still keeps the
+exact chosen zoom. Short landscape screens retain the side-by-side layout.
+Browser regressions cover the desktop scroll boundary, both 360/390 px mobile
+layouts, expanded Plan bounds, selection retention, actual camera pose/zoom,
+Fit/Reset, view switching, touch gestures and graphics failure recovery. Physical
+phone keyboard behavior and hardware performance remain separate device checks.
+
+Using a size control now highlights its corresponding roof edge and projects a
+dimension label into the 3D viewport. Annotation measurements come from solved
+Plan extents: projection is horizontal, not the pitched rafter length. The guide
+tracks the existing camera without moving it and clears after leaving the control.
+Its HTML overlay invalidates the demand-rendered scene after DOM mount so first
+focus positions the guide without needing a subsequent size change.
+Plan now uses the same active-dimension state: a labelled width or projection
+badge and its dimension line highlight in olive during edits. `PlanDimension`
+owns screen-sized badges and drafting ticks. Member widths remain physical;
+lighter rafter strokes and fine, non-scaling context/dimension lines improve the
+drawing hierarchy. House connection and front edge labels clarify orientation.
+The lower drawing margin reserves screen space between the front label and width
+badge, including narrow/tall plans; elevated stairs remain clear of dimensions.
+Pure regressions check annotation spans against solved dimensions; browser checks
+cover edit feedback, direct rotation and touch scrolling/pinch zoom. Attachment
+context was added in the third loop described below. Browser persistence remains deferred.
+
+The third preview loop adds `buildRepresentativeSurroundings()` in `@sp/geometry`.
+It reads the untransformed, +Y-projecting mono assembly and derives a separate
+visual reference without moving members, changing takeoff, or authoring a house.
+The owner confirmed these attachment relationships in the 8 September interview:
+
+- Soffit: ledger top level with gutter top, 5 mm clear of the gutter; 40 mm SHS
+  aluminium L brackets with a 90-degree mitred envelope. Their horizontal leg
+  returns to the wall across a typical 500 mm eave. The upright bears against the
+  ledger underside; its inside edge is flush with the ledger back. It does not
+  extend up behind the ledger. The complete exposed bracket is rendered.
+- Fascia: ledger directly against the fascia, below the retained gutter.
+- Facade: ledger directly against a two-storey wall at a lower-storey height.
+
+The owner subsequently limited soffit availability to projections through 4,000 mm.
+Above that, the preview disables the option. Extending a selected soffit design
+switches to fascia with an explanation, in the shared input update before either
+geometry or pricing receives it. Returning to 4 m re-enables soffit without silently
+switching back. This is a preview selection constraint, not a change to the pricing API.
+The roof context now has a closed volume connecting wall top, soffit and roof
+underside, including the exposed side and back faces; adjoining solids share faces
+without overlapping exterior wall panels.
+
+Soffit bracket counts follow `calculateSoffitBracketCountV1()` in `@sp/costing`:
+`ceil(attachmentLengthMm / 1500) + 1`. This is the extracted existing engine rule,
+also retained by the engine's A/B attachment calculations; old 1,200 mm config
+references are historical. The preview supplies the quantity to package geometry,
+which spaces brackets equally with their end faces inside the solved ledger ends.
+Plan and 3D consume those same positions. Brackets must never borrow front-post
+count or spacing. A 6 m width has five brackets; 7.5 m has six.
+House roof pitch, gutter/fascia sizes, floor height and platform depth are visual
+defaults, not owner-approved fabrication dimensions. The neutral patio meets the
+solved post feet. Elevated lowers the surrounding ground by a representative
+800 mm while keeping the occupied platform and pergola together; it is independent
+of attachment and house storeys. No hidden fixings, stairs, rails or foundations
+are inferred. Soft post contact cues are presentation effects from solved feet.
+
+Surroundings are on by default and share one checkbox across 3D and Plan. Plan
+uses the same wall boundary and patio footprint. The house fades when orbiting
+behind it; support brackets remain visible. Camera fitting continues to prioritise
+the pergola, so the upper part of the tall facade backdrop may be cropped.
+The context renderer owns materials and visibility only; package geometry owns
+all reference positions. Browser regressions cover switching, toggle continuity,
+independent ground choice, rear fade and recovery, alongside existing mobile gestures.
+
+The next presentation loop adds attachment detail cards: hover an option on desktop
+or tap its information button on touch devices. They use side-section illustrations
+from the same package-owned representative connection geometry. Inspecting a card
+does not select the option, move the main camera, or request a different estimate.
+Disabled soffit options retain access to their explanation and 4 m limit. Cards
+close on Escape, their close control or an outside press; they stay within the
+viewport and above the site header after device rotation.
+
+House materials are lighter, and the upper part of the two-storey facade fades
+softly into the background. Two airy, olive-toned reference trees sit outside the
+patio, replacing the rejected ellipsoid trees. A taller upright specimen is paired
+with a smaller, lower-branching companion on the opposite side. `referenceTree.ts`
+owns two stable branching specimens, each with 5,720 individually oriented folded leaves;
+`representativeLandscape.ts` owns its placement, separate from pergola members
+and quantity takeoff. The renderer uses one merged branch mesh and one instanced
+foliage mesh, plus a soft ground-shadow cue. No downloaded asset, alpha-cutout
+texture, animation loop or extra dependency is required. The ground extends
+under the specimen. These are decorative context, not site survey objects, and
+appear only in 3D. The presenter fades foliage smoothly when
+it is in front of, and overlaps, the convex envelope of projected solved member
+and roof points. The crown envelope comes from the specimen's leaves. Empty corners
+of the enclosing product box do not trigger fading. Initial framing and
+explicit Fit/Reset leave 10% more room with surroundings on; explored camera angle
+and zoom remain retained. Furniture remains out of scope. Hover/touch regression
+checks cover selection/camera continuity, unavailable options and rotated-phone
+dismissal; geometry tests keep foliage envelopes clear of the patio.
+
+The house/acrylic refinement adds a representative two-panel slider from
+`representativeHouseDetails.ts`. Its opening is cut from one continuous wall mesh,
+avoiding internal box seams during the upper-wall fade. Frame and muted glazing
+fade with the house. The opening stays below the ledger and within the wall at
+all supported widths. Elevated context uses a 160 mm terrace edge, recessed base
+and three illustrative steps in a clear post bay; floor and post-foot heights do
+not change. Plan draws the same opening and stair footprint, with its width
+dimension moved clear of the stairs. These reference details are not selectable
+products, construction specifications, authored house inputs or priced additions.
+
+Acrylic uses a stronger subdued tint, grazing-angle opacity and a soft, world-space
+studio reflection cue continuous across panels. It keeps the original solved roof
+surface, disabled depth writing and positive polygon offset against aluminium.
+The reflection cue is illustrative, not a daylight simulation. No extra transparent
+roof mesh or offscreen transmission pass is added. Review covers attachment and
+level changes, extreme sizes, mobile layout, orbit views and shader errors.
+Gate 0 for this pass: legacy rows N/A; no legacy build-on, Phase 2 dependency or
+function/type consolidation. Consumers searched: surroundings builder, landscape,
+3D/Plan presenters, side-detail illustration and geometry tests. Only the preview
+consumes the additive architecture reference; workbench house composition and
+Simple pergola pricing remain unchanged.
+
+The upright natural-tree study was accepted before adding its spreading companion.
+Ground shadows render after the transparent context surfaces so those surfaces
+cannot paint over their contact cues. Gate 0: legacy rows N/A, no legacy build-on, no Phase 2 dependency and no
+type/function consolidation. Consumers checked across the repository: landscape
+builder, representative surroundings, marketing landscape presenter and its tests.
+No authored house, workbench, pricing or pergola geometry contract changes.
+
+Gate 0 for the context loop: legacy audit rows N/A. This adds a separate visual
+reference derived from solved members, without extending a legacy house input,
+calculator geometry carrier or workbench runtime. Authored house forms retain the
+composition contract. No Phase 2 commercial dependency or function/type consolidation
+is introduced. Existing consumers of the unchanged solve/render boundaries were
+checked; only the marketing preview consumes the new additive export.
+
+The subsequent bracket-count correction extracts the existing arithmetic from
+costing `derive.ts` into a shared quantity helper, removing duplicate expressions
+without changing pricing behavior. Both prior expressions take positive mm;
+connection and hip-corner conditions stay in their callers. Legacy rows N/A, no
+Phase 2 dependency, and no workbench input or house authoring boundary changes.
+Consumers checked: engine calculate paths and derive/materials tests; preview
+surroundings adapter and tests. This small extraction is the maintainability change
+for the large costing derive module; unrelated derivation rules remain deferred.
+
+The owner-requested framing accuracy pass resolves the original fixed-layout
+limitation. `solvePreview.ts` gets rafter count/spacing and post count from the
+existing Simple cover helpers, whose authority remains `@sp/costing`. It passes
+only physical layout values through the optional configurator solve `layout`
+context. This context does not change persisted customer intent or introduce a
+pricing dependency into the geometry/configurator packages.
+
+The preview opts into the mono solver's `outside_faces` width reference. End
+rafters are inset by half their profile width and end posts by half theirs;
+their outside faces and the ledger ends therefore share the 0/width boundaries.
+Internal spacing is equal and derived from those end centres. Existing callers
+that omit the opt-in retain their historical centreline placement and defaults.
+Plan and 3D consume the same corrected assembly. The UI shows the
+solved member counts. Nine width regressions cover count changes, exact rafter
+positions, flush post/rafter/ledger faces and Plan/scene parity. This closes the
+two previously pending alignment checks, but is not structural certification.
+
+This page does not claim PRs 4–11 of the full rollout are complete. Site-wide
+persistence, dock/dialog coordination, expanded product options, enquiry handoff
+and staff continuation remain separate work.
+
+Gate 0 for the framing accuracy pass: legacy audit rows N/A (rows 2 and 8 were
+reviewed; deck/house normalization and singular assembly semantics are untouched).
+This repairs the retained physical solver rather than extending retired legacy.
+There is no costing-input or `inputs.modules` migration and no Phase 2 dependency.
+No functions/types are consolidated. The mono spacing helper moves to
+`memberLayout.ts`; its existing parameters and rounding are preserved, with an
+optional edge inset for the explicit outside-face datum. Consumers checked:
+configurator adapter/solve and tests, the preview, geometry normalization/solver
+and fixtures, and portal geometry adapters. Verification: `framing.test.ts`,
+existing geometry/configurator/viewer and Simple pricing tests, marketing build, and
+`playwright/marketing.configurator-preview.spec.ts`. Browser tests stub public
+pricing for deterministic UI evidence; they are not live-price verification.
+
+Size handoff: the geometry package owns the touched large `contracts.ts` and
+`normalize.ts`. They gain only the optional datum and its normalization; broader
+extraction is deferred. The next safe extraction is structural framing types
+and their normalizer. Spacing behavior is extracted into `memberLayout.ts`, and
+the machine-readable decomposition registry records this boundary.
+
+Local verification on 8 September: marketing production build/typecheck passed;
+712 tests passed across 64 files (three pre-existing expected failures). Both
+browser checks passed, including live rafter/post count changes,
+including view changes, minimum-dimension clamping, WebGL-loss Plan fallback,
+mobile containment and unavailable-price behavior. This is local evidence, not
+a deployed release or physical-device sign-off. The isolated checkout has no
+live pricing credentials; the interactive local preview displays the truthful
+unavailable state and remains usable for UI review.
 
 ## Read First
 

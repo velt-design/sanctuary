@@ -1,0 +1,141 @@
+.page { max-width: 1640px; margin: 0 auto; padding: 96px 4vw 28px; }
+:global(body):has(.page) :global(header.site) { background: #e9eae6; }
+:global(body):has(.visual[data-expanded="true"]) :global(header.site) { visibility: hidden; }
+.intro { display: flex; justify-content: space-between; align-items: flex-end; gap: 30px; padding-bottom: 20px; }
+.eyebrow { font-size: 10px; font-weight: 600; letter-spacing: .16em; line-height: 1.6; }
+.intro h1 { font-family: var(--font-display); font-size: clamp(36px, 3vw, 44px); font-weight: 450; line-height: .98; letter-spacing: -.055em; margin: 8px 0 0; }
+.intro > p { color: var(--color-text-secondary); font-size: 13px; line-height: 1.7; margin-bottom: 2px; }
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr) 340px; height: clamp(430px, calc(100svh - 240px), 820px); border: 1px solid var(--color-rule); }
+.visualSlot { min-width: 0; min-height: 0; }
+.visual { min-width: 0; height: 100%; background: var(--color-surface-warm); display: flex; flex-direction: column; }
+.viewToolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 22px 24px 0; }
+.viewTabs { display: flex; border: 1px solid var(--color-rule-strong); padding: 3px; }
+.viewTabs button { border: 0; background: transparent; min-height: 40px; padding: 0 18px; font: 500 12px var(--font-body); cursor: pointer; color: var(--color-text-secondary); }
+.viewTabs button[aria-pressed="true"] { background: var(--color-accent-olive); color: white; }
+.viewCaption { font-size: 9px; letter-spacing: .14em; color: var(--color-text-secondary); }
+.viewport { position: relative; min-height: 0; flex: 1; overflow: hidden; background: radial-gradient(ellipse at 50% 65%, #dce0d5 0, transparent 64%); }
+.sceneLayer { position: absolute; inset: 0; isolation: isolate; }
+.sceneLayer canvas { touch-action: pan-y !important; cursor: grab; }
+.sceneLayer canvas:active { cursor: grabbing; }
+.dimensionOverlay { width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.viewActions { display: flex; gap: 4px; }
+.viewActions button { padding: 8px 10px; min-height: 36px; border: 1px solid transparent; background: transparent; color: var(--color-text-secondary); font: 500 12px var(--font-body); cursor: pointer; }
+.viewActions button:hover { border-color: var(--color-rule); color: var(--color-text-primary); }
+.viewActions .expandView { display: none; }
+.touchHint { display: none; }
+.sceneLayer > div:has(canvas) { position: absolute !important; inset: 0; touch-action: pan-y !important; }
+.sceneLayer .loading { min-height: 0; height: 100%; }
+.plan { width: 100%; height: 100%; position: absolute; inset: 0; padding: 24px; }
+.loading button { min-height: 42px; padding: 10px 14px; border: 1px solid var(--color-rule-strong); background: var(--color-surface-warm); font: 500 11px var(--font-body); cursor: pointer; }
+.viewNote { margin: 0; padding: 0 24px 18px; color: var(--color-text-secondary); font-size: 11px; }
+.viewerFooter { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 24px 16px; }
+.viewerFooter .viewNote { padding: 0; }
+.contextToggle { display: flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer; color: var(--color-text-secondary); font-size: 11px; }
+.contextToggle input { margin: 0; accent-color: var(--color-accent-olive); width: 13px; height: 13px; }
+.specStrip { border-top: 1px solid var(--color-rule); display: grid; grid-template-columns: repeat(3, 1fr); padding: 22px 24px; gap: 16px; }
+.specStrip span { color: var(--color-text-secondary); font-size: 10px; }
+.specStrip strong { display: block; color: var(--color-text-primary); font: 450 24px var(--font-display); letter-spacing: -.035em; margin-bottom: 6px; }
+.sidebar { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; border-left: 1px solid var(--color-rule); background: var(--color-surface-elevated); }
+.controls { padding: 28px 26px 12px; }
+.sectionLabel { display: flex; align-items: baseline; gap: 12px; }
+.sectionLabel > span { font-size: 9px; color: var(--color-text-subtle); }
+.sectionLabel h2 { font: 500 18px var(--font-display); letter-spacing: -.03em; margin: 0; }
+.muted { font-size: 11px; line-height: 1.6; color: var(--color-text-secondary); margin: 12px 0 25px; }
+.dimension { margin: 22px 0; }
+.dimensions { min-width: 0; }
+.dimensionHeading { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.number { display: flex; align-items: center; gap: 8px; border: 1px solid var(--color-rule); padding: 0 10px; height: 42px; background: #fff; }
+.number input { width: 44px; border: 0; background: transparent; font: 500 16px var(--font-body); text-align: right; color: inherit; }
+.number span { color: var(--color-text-secondary); font-size: 11px; }
+.dimension > input { width: 100%; accent-color: var(--color-accent-olive); cursor: pointer; height: 32px; margin: 6px 0 0; }
+.rangeEnds { display: flex; justify-content: space-between; font-size: 9px; color: var(--color-text-subtle); }
+.inputNotice { font-size: 11px; line-height: 1.5; margin: 8px 0 0; color: var(--color-text-secondary); }
+.choices { padding: 0; border: 0; margin: 18px 0 20px; display: flex; flex-wrap: wrap; gap: 6px; }
+.choices legend { padding: 0; margin-bottom: 10px; font-size: 11px; color: var(--color-text-secondary); }
+.choices label { min-height: 42px; padding: 8px 9px; border: 1px solid var(--color-rule); display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; }
+.choices label[data-selected="true"] { border-color: var(--color-accent-olive); background: #edf0e8; }
+.choices input { accent-color: var(--color-accent-olive); margin: 0; }
+.small { font-size: 11px; line-height: 1.7; color: var(--color-text-secondary); }
+.price { border-top: 1px solid var(--color-rule); padding: 20px 26px; background: #e4e8dc; min-height: 138px; }
+.priceValue { font: 450 30px var(--font-display); letter-spacing: -.04em; margin: 9px 0 2px; }
+.priceValue span { font-size: 14px; letter-spacing: 0; }
+.textButton { border: 0; padding: 6px 0; background: transparent; text-decoration: underline; cursor: pointer; min-height: 44px; }
+.footnote { display: flex; align-items: baseline; justify-content: space-between; gap: 30px; padding: 20px 0; color: var(--color-text-secondary); }
+.footnote span { font-size: 9px; letter-spacing: .15em; flex-shrink: 0; }
+.footnote p { font-size: 10px; line-height: 1.7; margin: 0; }
+.loading { min-height: 0; flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; padding: 24px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
+.page button:focus-visible, .page input:focus-visible, .choices label:focus-within { outline: 2px solid var(--color-accent-olive); outline-offset: 3px; }
+@media (max-width: 1000px) {
+  .page { padding: 106px 24px 20px; }
+  .workspace { grid-template-columns: minmax(0, 1fr) 310px; }
+  .viewToolbar { margin-inline: 16px; }
+  .viewCaption { display: none; }
+  .controls { padding-inline: 20px; }
+}
+@media (max-width: 720px) {
+  .page { padding: 84px 16px 12px; --preview-mobile-height: clamp(260px, 35svh, 300px); }
+  .page:has(.viewport[data-view="Plan"]) { --preview-mobile-height: 300px; }
+  .intro { display: block; padding-bottom: 14px; }
+  .intro .eyebrow, .intro h1 span, .intro h1 br, .intro > p span, .intro > p br { display: none; }
+  .intro h1 { font-size: 32px; margin-top: 0; }
+  .intro > p { font-size: 12px; margin-top: 7px; }
+  .workspace { display: block; height: auto; }
+  .visualSlot { position: sticky; top: 64px; z-index: 2; height: var(--preview-mobile-height); }
+  .visual { border-bottom: 1px solid var(--color-rule-strong); }
+  .visualSlot:has([data-expanded="true"]) { z-index: 5000; }
+  .visual[data-expanded="true"] { position: fixed; inset: 0; height: 100dvh; padding: env(safe-area-inset-top) 8px env(safe-area-inset-bottom); }
+  .viewport { height: auto; min-height: 0; }
+  .sidebar { border-left: 0; border-top: 1px solid var(--color-rule); overflow: visible; }
+  .viewToolbar { margin: 8px 8px 0; gap: 4px; }
+  .viewTabs { width: auto; }
+  .viewTabs button { flex: 1; min-height: 34px; padding-inline: 13px; }
+  .viewActions { gap: 0; }
+  .viewActions button { padding-inline: 7px; min-height: 40px; font-size: 11px; }
+  .viewActions .expandView { display: block; color: var(--color-accent-olive); font-weight: 600; }
+  .specStrip { padding: 8px 10px; gap: 6px; }
+  .specStrip > span { font-size: 9px; white-space: nowrap; }
+  .specStrip strong { display: inline; font-size: 14px; margin: 0 3px 0 0; }
+  .viewNote { display: block; padding: 2px 12px 9px; text-align: center; font-size: 10px; }
+  .viewerFooter { flex-direction: row; gap: 8px; padding: 0 8px 7px; }
+  .viewerFooter .viewNote { text-align: left; font-size: 10px; }
+  .contextToggle { font-size: 10px; }
+  .desktopNote { display: none; }
+  .plan { padding: 4px; }
+  .controls { padding: 20px; }
+  .dimensions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .dimension { margin: 0 0 22px; min-width: 0; }
+  .dimensionHeading { flex-direction: column; align-items: stretch; gap: 8px; }
+  .number { justify-content: flex-end; }
+  .controls input, .controls button { scroll-margin-top: calc(84px + var(--preview-mobile-height)); scroll-margin-bottom: 20px; }
+  .muted { margin: 10px 0 18px; }
+  .choices label { min-height: 44px; font-size: 12px; padding-inline: 10px; }
+  .choices.roofTypes { margin-top: 0; gap: 4px; }
+  .roofTypes label { font-size: 11px; padding-inline: 7px; gap: 5px; }
+  .footnote { display: block; padding-top: 18px; }
+  .footnote p { margin-top: 10px; }
+}
+
+@media (max-width: 1000px) and (max-height: 500px) and (orientation: landscape) {
+  .page { padding: 76px 16px 12px; }
+  .intro { display: none; }
+  .workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .workspace { height: calc(100svh - 84px); }
+  .visualSlot { position: static; height: 100%; }
+  .visual { height: 100%; }
+  .viewport { height: auto; min-height: 0; }
+  .sidebar { border-top: 0; border-left: 1px solid var(--color-rule); overflow-y: auto; }
+  .controls { padding: 16px; }
+  .controls input { scroll-margin-top: 84px; }
+  .viewToolbar { margin: 8px 10px 0; }
+  .viewCaption, .viewNote { display: none; }
+  .viewerFooter { padding-bottom: 6px; }
+  .specStrip { padding: 8px 10px; gap: 6px; }
+  .specStrip strong { font-size: 16px; }
+}
+@media (pointer: coarse) {
+  .mouseHint { display: none; }
+  .touchHint { display: inline; }
+}
+.gableChoices { margin: 18px 0 28px; }
+.infillChoice { display: flex; align-items: center; gap: 10px; margin-top: 18px; font-size: 14px; }
+.infillChoice input { width: 17px; height: 17px; accent-color: #505a49; }

@@ -1,4 +1,11 @@
 export * from "./contracts";
+export { buildRepresentativeGable } from './representativeGable';
+export { buildRepresentativeBox } from './representativeBox';
+export { buildRepresentativeBoxContext } from './representativeBoxContext';
+export type { RepresentativeGableOptions } from './representativeGable';
+export { buildRepresentativeGableContext } from './representativeGableContext';
+export { buildRepresentativeSurroundings } from './representativeSurroundings';
+export type { RepresentativeSurroundings, ContextBox, ContextSection } from './representativeSurroundings';
 export {
   buildHouseFootprintPolygon,
   buildCustomHouseFootprintPolygon,

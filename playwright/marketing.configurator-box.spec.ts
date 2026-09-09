@@ -1,0 +1,50 @@
+import {expect,test} from '@playwright/test';
+
+test('box roof switches internally while the camera, connection and pricing stay consistent',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/api/simple-cover-price',r=>r.fulfill({json:{ok:false,status:'unavailable'}}));
+ await page.goto('/configurator-preview');await page.getByRole('button',{name:'Essential only',exact:true}).click();
+ await page.getByRole('radio',{name:'Fascia',exact:true}).check();
+ await page.getByRole('radio',{name:'Box perimeter',exact:true}).check();
+ const viewport=page.locator('[data-family]');
+ await expect(viewport).toHaveAttribute('data-family','box');
+ await expect(viewport).toHaveAttribute('data-box-roof-mode','pitched');
+ await expect(page.getByRole('radio',{name:'Fascia',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('radio',{name:'Facade',exact:true})).toBeChecked();
+ await expect(page.getByRole('checkbox',{name:'Gable infills',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('region',{name:'Estimated price'})).toContainText('Box perimeter pricing will be confirmed');
+ let priceCalls=0;page.on('request',r=>{if(r.url().includes('/api/simple-cover-price'))priceCalls++;});
+ const canvas=page.locator('canvas');await expect(canvas).toHaveAttribute('data-camera',/position/);
+ const box=(await canvas.boundingBox())!;
+ await page.mouse.move(box.x+box.width*.4,box.y+box.height*.5);await page.mouse.down();
+ await page.mouse.move(box.x+box.width*.6,box.y+box.height*.5,{steps:12});await page.mouse.up();
+ const before=JSON.parse((await canvas.getAttribute('data-camera'))!);
+ const setProjection=async(value:string)=>{const input=page.getByRole('textbox',{name:'Projection in metres'});await input.fill(value);await input.press('Enter');};
+ await page.getByRole('radio',{name:'Soffit brackets',exact:true}).check();
+ await setProjection('6.0');
+ await expect(viewport).toHaveAttribute('data-box-roof-mode','gable');
+ await expect(page.getByRole('radio',{name:'Facade',exact:true})).toBeChecked();
+ await expect(page.getByRole('radio',{name:'Soffit brackets',exact:true})).toBeDisabled();
+ const after=JSON.parse((await canvas.getAttribute('data-camera'))!);
+ before.position.forEach((v:number,i:number)=>expect(after.position[i]-after.target[i]).toBeCloseTo(v-before.target[i],4));
+ await page.getByRole('button',{name:'Plan',exact:true}).click();
+ const ridge=page.locator('svg [data-member-id="ridge"]');await expect(ridge).toHaveCount(1);
+ expect(await ridge.getAttribute('y1')).toBe(await ridge.getAttribute('y2'));
+ await expect(page.locator('svg [data-member-id^="box-gutter-"]')).toHaveCount(2);
+ await setProjection('3.0');await expect(viewport).toHaveAttribute('data-box-roof-mode','pitched');
+ await expect(ridge).toHaveCount(0);await expect(page.locator('svg [data-member-id^="box-gutter-"]')).toHaveCount(1);
+ await page.getByRole('button',{name:'3D',exact:true}).click();await expect(canvas).toBeVisible();
+ expect(priceCalls).toBe(0);expect(errors).toEqual([]);
+ await page.getByRole('radio',{name:'Gable',exact:true}).check();await expect(viewport).toHaveAttribute('data-family','gable');
+ await page.getByRole('radio',{name:'Pitched',exact:true}).check();await expect(page.getByRole('radio',{name:'Fascia',exact:true})).toBeVisible();
+});
+
+test('mobile box options and attachment details fit the screen',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto('/configurator-preview');
+ await page.getByRole('button',{name:'Essential only',exact:true}).click();
+ await page.getByRole('radio',{name:'Box perimeter',exact:true}).check();
+ await page.getByRole('button',{name:'About Soffit brackets attachment',exact:true}).click();
+ await expect(page.getByRole('dialog')).toBeVisible();await page.getByRole('button',{name:'Close attachment detail',exact:true}).click();
+ await page.getByRole('button',{name:'Plan',exact:true}).click();await expect(page.getByRole('img',{name:/Pergola plan/})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
+});

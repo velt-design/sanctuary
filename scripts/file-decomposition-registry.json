@@ -140,7 +140,7 @@
       "ownerArea": "packages/geometry physical model truth",
       "pathPatterns": ["packages/geometry/**"],
       "whyLarge": "Solvers, house model contracts, projections, and fixtures are central package truth with broad consumers.",
-      "nextSafeExtraction": "Split solver phases, normalized model contracts, and projection helpers by physical responsibility while preserving public package exports.",
+      "nextSafeExtraction": "Split solver phases, normalized model contracts, and projection helpers by physical responsibility while preserving public package exports. The customer-preview width datum adds only an optional field to contracts.ts and normalization; its spacing behavior is extracted into memberLayout.ts. Broader contract/normalizer extraction is deferred to avoid unrelated churn; the next cohesive owner is structural framing input/config types and their normalization.",
       "focusedTests": [
         "geometry package tests",
         "affected portal drawing tests",

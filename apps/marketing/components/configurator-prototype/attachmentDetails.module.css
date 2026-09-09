@@ -1,0 +1,22 @@
+.options { padding: 0; border: 0; margin: 18px 0 20px; display: flex; flex-wrap: wrap; gap: 6px; }
+.options legend { padding: 0; margin-bottom: 10px; font-size: 11px; color: var(--color-text-secondary); }
+.option { position: relative; display: flex; align-items: stretch; border: 1px solid var(--color-rule); }
+.option[data-selected="true"] { border-color: var(--color-accent-olive); background: #edf0e8; }
+.option label { display: flex; align-items: center; gap: 6px; min-height: 42px; padding: 8px 9px; cursor: pointer; font-size: 10px; }
+.option input { accent-color: var(--color-accent-olive); margin: 0; }
+.option label:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+.option button { align-self: center; display: grid; place-items: center; width: 24px; height: 40px; margin-right: 4px; padding: 0; border: 0; background: transparent; color: #77816e; cursor: pointer; font: 500 10px Georgia, serif; }
+.option button span { width: 14px; height: 14px; display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; }
+.option button:hover, .option button[aria-expanded="true"] { color: #303d2b; }
+.option button:focus-visible { outline: 2px solid var(--color-accent-olive); }
+.card { position: fixed; z-index: 4000; width: min(324px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; padding: 16px; border: 1px solid #bdc5b4; background: #f7f7f0; color: #30372d; box-shadow: 0 12px 40px #28352020; font-family: var(--font-body, Arial), sans-serif; }
+.heading { display: flex; justify-content: space-between; align-items: center; }
+.heading strong { font: 500 17px var(--font-display, Arial), sans-serif; letter-spacing: -.025em; }
+.heading button { border: 0; background: transparent; color: #68725f; font-size: 22px; width: 28px; height: 28px; cursor: pointer; }
+.card svg { display: block; width: 100%; margin-top: 8px; background: #efefe6; }
+.card p { font-size: 12px; line-height: 1.6; margin: 12px 0 0; }
+.card small { display: block; color: #74806a; font-size: 10px; margin-top: 9px; }
+@media (max-width: 720px) {
+  .option label { font-size: 12px; min-height: 44px; }
+  .option button { width: 30px; height: 44px; margin-right: 4px; }
+}

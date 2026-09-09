@@ -105,6 +105,7 @@ export type PergolaGeometryInput = {
     framing?: {
       rafterCount?: string | number | null;
       rafterSpacingMm?: string | number | null;
+      widthReference?: 'outside_faces';
     } | null;
     drainage?: {
       gutterType?: string | null;
