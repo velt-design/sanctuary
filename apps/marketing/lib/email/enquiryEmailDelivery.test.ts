@@ -60,8 +60,8 @@ describe('request-bound enquiry dispatch', () => {
       const db = database();
       db.rpc.mockImplementationOnce(async () => {
         if (failure === 'thrown') throw new Error('lost intent response');
-        return { data: failure === 'malformed' ? 'true' : null,
-          error: failure === 'returned-error' ? { message: 'lost intent response' } : null };
+        if (failure === 'returned-error') return { data: null, error: { message: 'lost intent response' } };
+        return { data: failure === 'malformed' ? 'true' : null, error: null };
       });
       const result = await dispatchEnquiryAutoresponder(db.client, enquiry, options);
       const attempted = `sp_enq_${db.rpc.mock.calls[0]?.[1].p_reference}`;
