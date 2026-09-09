@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import postgres from 'postgres';
+import { verifyEnquiryIdentitySnapshot } from './test-support/enquiry-identity-snapshot.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const image = process.env.PRAXIS_REPORTING_DB_IMAGE?.trim() || 'postgres:17-alpine';
@@ -84,7 +86,7 @@ async function waitForDatabase() {
 let started = false;
 try {
   requireSuccess(docker([
-    'run', '--detach', '--rm', '--name', container,
+    'run', '--detach', '--rm', '--name', container, '--publish', '127.0.0.1::5432',
     '--env', `POSTGRES_PASSWORD=${adminPassword}`, image,
   ]), 'Disposable Praxis reporting database start');
   started = true;
@@ -319,6 +321,23 @@ try {
   expectReaderDenied('select public.commercial_change_payment_allocation();', 'allocation write RPC execution');
   expectReaderDenied("select * from public.commercial_project_financial_truth('10000000-0000-4000-8000-000000000001');", 'direct canonical function execution');
   process.stdout.write('praxis-reporting-db: real PostgreSQL denial contract passed\n');
+  psql(readFileSync(path.join(root, 'supabase/migrations/20260909000001_marketing_enquiry_email_correlation.sql'), 'utf8'), 'Enquiry identity contract: supabase/migrations/20260909000001_marketing_enquiry_email_correlation.sql');
+  psql(readFileSync(path.join(root, 'supabase/migrations/20260909000002_praxis_enquiry_identity_v1.sql'), 'utf8'), 'Enquiry identity contract: supabase/migrations/20260909000002_praxis_enquiry_identity_v1.sql');
+  psql(readFileSync(path.join(root, 'supabase/tests/praxis_enquiry_identity.sql'), 'utf8'), 'Enquiry identity contract: supabase/tests/praxis_enquiry_identity.sql');
+  process.stdout.write('praxis-enquiry-identity: bounded projection contract passed\n');
+  const published = requireSuccess(docker(['port', container, '5432/tcp']), 'Disposable database port');
+  const matchedPort = /^127\.0\.0\.1:(\d{1,5})$/.exec(published);
+  if (!matchedPort || Number(matchedPort[1]) < 1 || Number(matchedPort[1]) > 65535) throw new Error('Invalid disposable port binding.');
+  const connection = { host: '127.0.0.1', port: Number(matchedPort[1]), database: 'postgres', max: 1, connect_timeout: 5, idle_timeout: 1 };
+  const admin = postgres({ ...connection, username: 'postgres', password: adminPassword });
+  const reader = postgres({ ...connection, username: 'sanctuary_praxis_reader_probe', password: readerPassword });
+  try {
+    await verifyEnquiryIdentitySnapshot(admin, reader);
+    process.stdout.write('praxis-enquiry-identity: independent-session snapshot and next-read receipt visibility passed\n');
+  } finally {
+    await Promise.all([admin.end({ timeout: 1 }), reader.end({ timeout: 1 })]);
+  }
+
 } finally {
   if (started) docker(['rm', '--force', container]);
 }

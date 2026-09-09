@@ -8,8 +8,14 @@ on:
       - "apps/portal/app/api/integrations/praxis/**"
       - "apps/portal/lib/praxis/**"
       - "scripts/test-praxis-context-reporting-*.mjs"
+      - "scripts/test-praxis-enquiry-identity-pg.mjs"
+      - "scripts/test-support/enquiry-identity-snapshot.mjs"
+      - "scripts/test-support/disposable-postgres17.mjs"
       - "supabase/migrations/*praxis_context*.sql"
+      - "supabase/migrations/*praxis_enquiry*.sql"
+      - "supabase/migrations/*marketing_enquiry_email*.sql"
       - "supabase/tests/praxis_context*.sql"
+      - "supabase/tests/praxis_enquiry*.sql"
       - "test/praxis-context*.test.ts"
       - "package.json"
       - "package-lock.json"
@@ -20,8 +26,14 @@ on:
       - "apps/portal/app/api/integrations/praxis/**"
       - "apps/portal/lib/praxis/**"
       - "scripts/test-praxis-context-reporting-*.mjs"
+      - "scripts/test-praxis-enquiry-identity-pg.mjs"
+      - "scripts/test-support/enquiry-identity-snapshot.mjs"
+      - "scripts/test-support/disposable-postgres17.mjs"
       - "supabase/migrations/*praxis_context*.sql"
+      - "supabase/migrations/*praxis_enquiry*.sql"
+      - "supabase/migrations/*marketing_enquiry_email*.sql"
       - "supabase/tests/praxis_context*.sql"
+      - "supabase/tests/praxis_enquiry*.sql"
       - "test/praxis-context*.test.ts"
       - "package.json"
       - "package-lock.json"
@@ -54,7 +66,7 @@ jobs:
         run: npm run test:praxis:db:fast
 
       - name: Endpoint and contract tests
-        run: npx vitest run apps/portal/lib/praxis test/praxis-context-migration.test.ts
+        run: npx vitest run apps/portal/lib/praxis apps/portal/app/api/integrations/praxis test/praxis-context-migration.test.ts
 
       - name: Typecheck
         run: npm run typecheck

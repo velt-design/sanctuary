@@ -220,7 +220,7 @@ export function parsePraxisContextQuery(url: URL): PraxisContextQuery & { cursor
   return { resource, projectId, changedAfter, limit, cursor: null };
 }
 
-function createDatabase(config: ConnectorConfig): Sql {
+export function createDatabase(config: ConnectorConfig): Sql {
   return postgres(config.databaseUrl, {
     ssl: config.databaseSsl,
     max: 1,
@@ -233,7 +233,7 @@ function createDatabase(config: ConnectorConfig): Sql {
 
 const DEFAULT_DEPENDENCIES: PraxisServerDependencies = { createDatabase };
 
-async function verifyDatabaseIdentity(
+export async function verifyDatabaseIdentity(
   transaction: TransactionSql,
   config: ConnectorConfig,
 ): Promise<void> {
@@ -549,7 +549,7 @@ export async function readPraxisHealth(
   };
 }
 
-async function setReadBudgets(transaction: TransactionSql): Promise<void> {
+export async function setReadBudgets(transaction: TransactionSql): Promise<void> {
   await transaction`set local statement_timeout = '8s'`;
   await transaction`set local lock_timeout = '2s'`;
 }
