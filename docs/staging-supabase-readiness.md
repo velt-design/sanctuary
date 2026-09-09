@@ -6,6 +6,23 @@ Target project ref: `tnsiprehuldksnuowubv`.
 
 Production ref `iytanftukulcnavossmd` is a refusal value in this workflow. Nothing in this record authorises a production query, migration, deployment, or data change.
 
+## 2026-09-09 Enquiry Correlation And Reader Prerequisites
+
+The parent-controlled staging operation rollback-rehearsed and applied `20260909000001_marketing_enquiry_email_correlation.sql` from PR #115 revision `896c8b5874a23c0349763097abd3d71bfc5e2b5a` at 12:50:55 UTC. Canonical-LF SHA-256: `8327a593058e472c2e811c666f1add8ad38239ce16ef318d2f7919cd69a338e2`; exact ledger-body MD5: `40b095f7396b41d2009b471db1eb2c34`. The corrected rehearsal wrapper aligned catalog comparison collations; the migration source did not change.
+
+Independent postflight at 12:51:30 UTC preserved all 92 existing tables and 41,906 rows, 100 existing relations, 227 existing functions and all 23 prior ledger entries. It verified two new empty correlation tables, three service-role-only RPCs and the private immutable-row trigger function, with direct table access denied. The ledger now contains 24 entries. The parent receipt `sanctuary-pr115-stage-verified-20260909.json` was recorded at 12:53:01 UTC. This proves staging schema preservation only: no send, mailbox match, delivery, identity-reader activation or production result was established. PR #115 remains unmerged with production rollout held.
+
+The parent's catalog-only preflight at 12:53:52 UTC, recorded in `sanctuary-core-stage-catalog-preflight-20260909.json`, found 208 of 210 prerequisite columns for `20260903000001_praxis_context_reporting_v1.sql`. All six prerequisite helper signatures existed, but presence alone does not establish compatible definitions or grants. The `praxis_reporting` schema, reader role and source-identity table were absent. These gaps block foundation readiness:
+
+| Missing column | Source owner and effects |
+| --- | --- |
+| `projects.deposit_received_at` | `20260730_000001_marketing_conversion_delivery.sql` adds the nullable timestamp and a database-owned first-transition trigger, deliberately leaving legacy transition times unknown. The same migration adds site-visit confirmation capture, a consent-aware GA4 delivery outbox, audit-event enqueue trigger, qualifying 72-hour event seed, and service-role claim/complete RPCs. It is not an isolated reader-column change. |
+| `projects.version` | The legacy snapshot `supabase/contacts_projects.sql` adds `int NOT NULL DEFAULT 1`. No ordered migration introduces this column, and `supabase/portal_schema.sql` does not add it. This is an unresolved baseline/migration gap; the snapshot is not an approved repair to replay. |
+
+The already-recorded `20260813000003_commercial_truth_invariants.sql` references `deposit_received_at` but does not create it; its ledger entry does not resolve the observed structural gap. The two additional absent columns, `quotes.updated_at` and `project_invoice_plan_items.updated_at`, are owned by the core reader migration itself, which adds/backfills them and installs freshness triggers. That migration also replaces the commercial financial-truth function and changes reader grants, so it requires its own scoped rehearsal and recovery evidence.
+
+The additive enquiry-identity migration `20260909000002_praxis_enquiry_identity_v1.sql` requires both the core foundation and PR #115's correlation schema. Neither the core nor the additive reader migration was applied by this operation. LOGIN/identity provisioning, credentials, server binding, consumer activation and live reader proof remain separate work. Do not invent missing columns or use a blanket migration replay to satisfy these prerequisites.
+
 ## 2026-08-18 Alignment
 
 ### 2026-09-08 Schedule Guarded Commands
