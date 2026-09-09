@@ -4,6 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/simple-cover-price', route => route.fulfill({ json: { ok: false, status: 'unavailable' } }));
   await page.goto('/configurator-preview');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   await page.getByRole('radio', { name: 'Gable', exact: true }).check();
   await expect(page.locator('[data-family]')).toHaveAttribute('data-geometry-status', 'review_required');
 });

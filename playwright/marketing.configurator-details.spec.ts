@@ -6,6 +6,7 @@ test('hover details explain connections without changing the selected design or 
   page.on('console', message => { if (message.type() === 'error' && /THREE|shader|WebGL/i.test(message.text())) errors.push(message.text()); });
   await page.goto('/configurator-preview');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   const canvas = page.locator('canvas');
   await expect(canvas).toHaveAttribute('data-camera', /position/);
   const box = (await canvas.boundingBox())!;
@@ -36,6 +37,7 @@ test.describe('touch attachment details', () => {
   test('tap opens a bounded card without selecting, including an unavailable attachment', async ({ page }) => {
     await page.goto('/configurator-preview');
     await page.getByRole('button', { name: 'Essential only', exact: true }).tap();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
     const details = page.getByRole('button', { name: 'About Soffit brackets attachment', exact: true });
     await details.tap();
     const card = page.getByRole('dialog', { name: 'Soffit brackets attachment detail' });

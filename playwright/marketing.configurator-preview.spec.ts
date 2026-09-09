@@ -10,6 +10,7 @@ test.beforeEach(async ({ page }) => {
 test('views, controls and shared pricing request; no indexing', async ({ page }) => {
   await page.goto('/configurator-preview');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
   await expect(page.locator('[data-geometry-status]')).toHaveAttribute('data-geometry-status', /ready|review_required/);
   await expect(page.locator('[data-rafter-count]')).toHaveAttribute('data-rafter-count', '11');
@@ -47,6 +48,7 @@ test('mobile layout and pricing failure keep plan usable', async ({ page }) => {
   await page.route('**/api/simple-cover-price', (route) => route.fulfill({ status: 503, json: { ok: false, status: 'unavailable' } }));
   await page.goto('/configurator-preview');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   await expect(page.getByRole('region', { name: 'Estimated price' })).toContainText('Estimate unavailable');
   await page.getByRole('button', { name: 'Plan', exact: true }).click();
   await expect(page.getByRole('img', { name: /Pergola plan/ })).toBeVisible();
@@ -63,6 +65,7 @@ test('mobile layout and pricing failure keep plan usable', async ({ page }) => {
 test('camera continuity, intentional fit and reset, and front starting angle', async ({ page }) => {
   await page.goto('/configurator-preview');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   const canvas = page.locator('canvas');
   await expect(canvas).toHaveAttribute('data-camera', /position/);
   const camera = async () => JSON.parse((await canvas.getAttribute('data-camera'))!) as {position: number[]; target: number[]; zoom: number};
@@ -111,11 +114,13 @@ test('mobile size controls remain usable beside the pinned model', async ({ page
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/configurator-preview');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   await expect(page.locator('canvas')).toHaveAttribute('data-camera', /position/);
   const initialModel = (await page.locator('canvas').boundingBox())!;
   expect(initialModel.y).toBeLessThan(220);
   expect(initialModel.height).toBeGreaterThan(140);
-  expect((await page.getByRole('region', { name: 'Pergola views' }).boundingBox())!.height).toBeLessThanOrEqual(310);
+  expect((await page.getByRole('region', { name: 'Pergola views' }).boundingBox())!.height).toBeGreaterThan(350);
+  expect((await page.getByRole('region', { name: 'Pergola views' }).boundingBox())!.height).toBeLessThan(410);
   const initialSize = (await page.getByRole('textbox', { name: 'Width in metres' }).boundingBox())!;
   expect(initialSize.y + initialSize.height).toBeLessThan(844);
   for (const name of ['Width', 'Projection']) {
@@ -139,6 +144,7 @@ test('mobile size controls remain usable beside the pinned model', async ({ page
 test('Plan labels follow the active size control and clear after leaving it', async ({ page }) => {
   await page.goto('/configurator-preview');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   await page.getByRole('button', { name: 'Plan', exact: true }).click();
   const plan = page.getByRole('img', { name: /Pergola plan/ });
   await expect(plan.getByText('HOUSE CONNECTION', { exact: true })).toBeVisible();
@@ -162,6 +168,7 @@ test('Plan labels follow the active size control and clear after leaving it', as
 test('3D dimension feedback tracks edits and clears after leaving a size control', async ({ page }) => {
   await page.goto('/configurator-preview');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   await expect(page.locator('canvas')).toHaveAttribute('data-camera', /position/);
   const initialCamera = await page.locator('canvas').getAttribute('data-camera');
   const width = page.getByRole('slider', { name: 'Width', exact: true });
@@ -189,11 +196,12 @@ test('3D dimension feedback tracks edits and clears after leaving a size control
 
 test.describe('direct touch exploration', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  test('sideways rotation, vertical page scrolling and pinch zoom need no activation', async ({ page }) => {
+  test('rotation in both directions and pinch zoom stay within the fixed viewer', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/configurator-preview');
     await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
     const canvas = page.locator('canvas');
     await expect(canvas).toHaveAttribute('data-camera', /position/);
     const client = await page.context().newCDPSession(page);
@@ -213,7 +221,7 @@ test.describe('direct touch exploration', () => {
     await expect.poll(async () => (await camera()).position).not.toEqual(initial.position);
     const scrollBefore = await page.evaluate(() => document.body.scrollTop + window.scrollY);
     await swipe(0, -120);
-    await expect.poll(() => page.evaluate(() => document.body.scrollTop + window.scrollY)).toBeGreaterThan(scrollBefore + 40);
+    expect(await page.evaluate(() => document.body.scrollTop + window.scrollY)).toBeCloseTo(scrollBefore, 0);
     const box = (await canvas.boundingBox())!;
     const x = box.x + box.width / 2, y = box.y + box.height / 2;
     const zoom = (await camera()).zoom;

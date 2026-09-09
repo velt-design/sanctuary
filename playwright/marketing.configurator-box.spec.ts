@@ -4,6 +4,7 @@ test('box roof switches internally while the camera, connection and pricing stay
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/api/simple-cover-price',r=>r.fulfill({json:{ok:false,status:'unavailable'}}));
  await page.goto('/configurator-preview');await page.getByRole('button',{name:'Essential only',exact:true}).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
  await page.getByRole('radio',{name:'Fascia',exact:true}).check();
  await page.getByRole('radio',{name:'Box perimeter',exact:true}).check();
  const viewport=page.locator('[data-family]');
@@ -42,9 +43,10 @@ test('box roof switches internally while the camera, connection and pricing stay
 test('mobile box options and attachment details fit the screen',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/configurator-preview');
  await page.getByRole('button',{name:'Essential only',exact:true}).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
  await page.getByRole('radio',{name:'Box perimeter',exact:true}).check();
  await page.getByRole('button',{name:'About Soffit brackets attachment',exact:true}).click();
- await expect(page.getByRole('dialog')).toBeVisible();await page.getByRole('button',{name:'Close attachment detail',exact:true}).click();
+ await expect(page.getByRole('dialog', {name:'Soffit brackets attachment detail',exact:true})).toBeVisible();await page.getByRole('button',{name:'Close attachment detail',exact:true}).click();
  await page.getByRole('button',{name:'Plan',exact:true}).click();await expect(page.getByRole('img',{name:/Pergola plan/})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
 });

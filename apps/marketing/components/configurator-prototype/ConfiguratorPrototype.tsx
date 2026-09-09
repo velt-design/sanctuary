@@ -9,27 +9,21 @@ import { usePreviewPrice } from './usePreviewPrice';
 import { usePreviewDimension } from './usePreviewDimension';
 import styles from './prototype.module.css';
 import { INITIAL_ROOF } from './GableChoices';
-import { usePreviewExpansion } from './usePreviewExpansion';
 
 const PreviewViews = dynamic(() => import('./PreviewViews'), {
   ssr: false, loading: () => <div className={styles.loading} role="status">Preparing your pergola…</div>,
 });
 
-export default function ConfiguratorPrototype() {
+export default function ConfiguratorPrototype({ expanded, onToggleExpanded }: { expanded: boolean; onToggleExpanded: () => void }) {
   const [input, setInput] = useState(INITIAL_INPUT);
   const [roof, setRoof] = useState(INITIAL_ROOF);
   const { result, retry } = usePreviewPrice(input, roof.family === 'mono');
   const { activeDimension, showDimension } = usePreviewDimension();
-  const { expanded, toggleExpanded } = usePreviewExpansion();
   return <div className={styles.page}>
-    <header className={styles.intro}>
-      <div><p className={styles.eyebrow}>YOUR PERGOLA / DESIGN PREVIEW</p><h1><span>Your space.</span><br />Your pergola.</h1></div>
-      <p><span>Shape a little more room for everyday life.</span><br />Explore your design from every angle.</p>
-    </header>
     <div className={styles.workspace}>
       <div className={styles.visualSlot}>
       <section className={styles.visual} aria-label="Pergola views" data-expanded={expanded}>
-        <PreviewViews input={input} roof={roof} activeDimension={activeDimension} expanded={expanded} onToggleExpanded={toggleExpanded} />
+        <PreviewViews input={input} roof={roof} activeDimension={activeDimension} expanded={expanded} onToggleExpanded={onToggleExpanded} />
         <div className={styles.specStrip}><span><strong>{metres(input.widthMm)}</strong> width</span><span><strong>{metres(input.projectionMm)}</strong> projection</span><span><strong>{simpleCoverAreaM2(input).toFixed(1)} m²</strong> covered space</span></div>
       </section>
       </div>
@@ -42,8 +36,8 @@ export default function ConfiguratorPrototype() {
             : result.status === 'custom' ? <><p className={styles.priceValue}>A custom fit.</p><p className={styles.small}>{result.reason}</p></>
             : <><p>Estimate unavailable. Keep exploring your design.</p><button className={styles.textButton} onClick={retry}>Retry estimate ↗</button></>}
         </section>
+        <footer className={styles.footnote}><span>CONCEPT PREVIEW</span><p>Frame dimensions follow your selections. Framing and supports are representative. Sanctuary will confirm roof detailing, structural suitability and site connections.</p></footer>
       </aside>
     </div>
-    <footer className={styles.footnote}><span>CONCEPT PREVIEW</span><p>Frame dimensions follow your selections. Framing and supports are representative. Sanctuary will confirm roof detailing, structural suitability and site connections.</p></footer>
   </div>;
 }

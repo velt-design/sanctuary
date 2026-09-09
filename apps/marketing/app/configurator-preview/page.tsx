@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { MarketingPage } from '../../components/marketing-foundation';
-import ConfiguratorPrototype from '../../components/configurator-prototype/ConfiguratorPrototype';
+import ConfiguratorPreviewShell from '../../components/configurator-prototype/ConfiguratorPreviewShell';
 
 export const metadata: Metadata = {
   title: 'Your pergola — design preview | Sanctuary',
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function ConfiguratorPreviewPage() {
-  return <MarketingPage><ConfiguratorPrototype /></MarketingPage>;
+  return <MarketingPage><ConfiguratorPreviewShell /></MarketingPage>;
 }

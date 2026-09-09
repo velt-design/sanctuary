@@ -37,7 +37,7 @@ export default function AttachmentChoices({ value, soffitUnavailable, onChange, 
     const outside = (event: PointerEvent) => {
       if (event.target instanceof Node && !card.current?.contains(event.target) && !anchors.current[active]?.contains(event.target)) setActive(null);
     };
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { setActive(null); anchors.current[active]?.querySelector('button')?.focus(); } };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); setActive(null); anchors.current[active]?.querySelector('button')?.focus(); } };
     window.addEventListener('resize', place);
     window.addEventListener('scroll', place, true);
     document.addEventListener('pointerdown', outside);
@@ -64,6 +64,6 @@ export default function AttachmentChoices({ value, soffitUnavailable, onChange, 
       <AttachmentSection connection={active} boxPerimeter={!allowFascia} />
       <p>{DESCRIPTIONS[active]}</p>
       {active === 'soffit' && <small>Available up to 4.0 m projection.</small>}
-    </div>, document.body)}
+    </div>, anchors.current[active]?.closest('dialog') ?? document.body)}
   </fieldset>;
 }

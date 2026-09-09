@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 test('soffit quantities update with width and share the Plan positions', async ({ page }) => {
   await page.goto('/configurator-preview');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   await page.getByRole('radio', { name: 'Soffit brackets', exact: true }).check();
   const viewport = page.locator('[data-bracket-count]');
   await expect(viewport).toHaveAttribute('data-bracket-count', '5');
@@ -24,6 +25,7 @@ test('soffit is available through 4m, then changes to fascia with consistent pri
   });
   await page.goto('/configurator-preview');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   const projection = page.getByRole('textbox', { name: 'Projection in metres' });
   await projection.fill('4.0'); await projection.press('Enter');
   const soffit = page.getByRole('radio', { name: 'Soffit brackets', exact: true });
@@ -48,6 +50,7 @@ test('surroundings, connections and ground remain independent of camera and pric
   await page.route('**/api/simple-cover-price', route => route.fulfill({ status: 503, json: { ok: false, status: 'unavailable' } }));
   await page.goto('/configurator-preview');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   const canvas = page.locator('canvas');
   const viewport = page.locator('[data-surroundings]');
   await expect(canvas).toHaveAttribute('data-camera', /position/);
@@ -89,6 +92,7 @@ test('surroundings, connections and ground remain independent of camera and pric
 test('the house fades behind the pergola and returns at the front', async ({ page }) => {
   await page.goto('/configurator-preview');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   const canvas = page.locator('canvas');
   await expect(canvas).toHaveAttribute('data-house-opacity', '1.00');
   const box = (await canvas.boundingBox())!;

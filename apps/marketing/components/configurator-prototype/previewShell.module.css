@@ -1,0 +1,29 @@
+.page { padding: 140px 6vw 120px; min-height: 130svh; background: var(--color-surface-warm); }
+.intro { max-width: 1000px; margin: 0 auto; }
+.eyebrow { font-size: 10px; letter-spacing: .16em; }
+.intro h1 { font: 450 clamp(60px, 8vw, 110px)/.98 var(--font-display); letter-spacing: -.06em; margin: 32px 0; }
+.intro > p:last-of-type { color: var(--color-text-secondary); font-size: 16px; line-height: 1.7; }
+.start { margin-top: 24px; padding: 14px 0; border: 0; border-bottom: 1px solid var(--color-accent-olive); background: transparent; font: 500 14px var(--font-body); cursor: pointer; }
+.start span { margin-left: 28px; }
+.context { max-width: 1000px; margin: 100px auto 0; padding-top: 32px; border-top: 1px solid var(--color-rule); }
+.context p { font: 450 clamp(28px, 3vw, 42px)/1.15 var(--font-display); letter-spacing: -.03em; }
+.context > span { color: var(--color-text-secondary); font-size: 13px; }
+.launcherHost { min-height: 0; background: transparent; }
+.launcher { position: fixed; z-index: 3900; bottom: max(16px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(640px, calc(100% - 32px)); min-height: 56px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid var(--color-accent-olive); background: var(--color-accent-olive); color: white; font: 500 14px var(--font-body); cursor: pointer; box-shadow: 0 6px 24px #28352020; }
+.launcher > span:last-child { font-size: 12px; font-weight: 400; }
+.panel { position: fixed; inset: 12px; margin: 0; padding: 0; width: calc(100% - 24px); height: calc(100dvh - 24px); max-width: none; max-height: none; border: 1px solid var(--color-rule-strong); background: var(--color-surface-warm); color: var(--color-text-primary); overflow: hidden; overscroll-behavior: none; }
+.panel[open] { display: grid; grid-template-rows: 48px minmax(0, 1fr); }
+.panel::backdrop { background: #28352042; }
+.panelHeader { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--color-rule); }
+.panelHeader > span { font: 500 20px var(--font-display); letter-spacing: -.04em; }
+.panelHeader button { min-height: 44px; padding: 0 4px 0 16px; border: 0; background: transparent; color: var(--color-text-secondary); font: 500 12px var(--font-body); cursor: pointer; }
+.panelHeader button span { margin-left: 10px; font-size: 20px; vertical-align: middle; }
+@media (max-width: 720px) {
+  .page { padding: 110px 24px 100px; }
+  .intro h1 { font-size: clamp(48px, 13vw, 72px); }
+  .context { margin-top: 72px; }
+  .launcher { padding-inline: 16px; }
+  .panel { inset: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); width: calc(100% - 16px); height: calc(100dvh - max(8px, env(safe-area-inset-top)) - max(8px, env(safe-area-inset-bottom))); }
+  .panel[open] { grid-template-rows: 44px minmax(0, 1fr); }
+  .panelHeader { padding-inline: 12px; }
+}
