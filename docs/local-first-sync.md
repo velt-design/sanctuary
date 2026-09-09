@@ -79,6 +79,8 @@ Server-authoritative actions include:
 - Admin access and cost configuration writes.
 - Public token flows.
 
+Schedule retains pending request bodies and queued Board placement intent under `sanctuary-schedule-pending:v1:<authenticated owner>:<request id>`. Each request has its own key so simultaneous tabs cannot replace a shared queue array. Active in-process requests stay quiet; unconfirmed/rejected records appear for manual review after failure or reload. Recovery never automatically replays ambiguous commands. A successful API response cannot be undone by a later cache/callback failure.
+
 Quote delivery is deliberately outside the mutation queue. Review/send first requires a durable quote ID, no dirty form state, no pending draft mutation, and the expected server revision. The browser retains only a stable delivery-intent hint; the server freezes the complete request, permits only one unfinished intent per action/quote version, exposes a redacted authenticated recovery review, and owns duplicate protection, provider checkpoints, finalisation, and delivery status.
 
 For table/RPC ownership, write paths, access boundaries, and migration sources used by these server actions, see `docs/supabase-schema-map.md`.

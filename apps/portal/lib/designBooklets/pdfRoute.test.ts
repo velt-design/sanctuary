@@ -1,8 +1,19 @@
 // @vitest-environment node
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createToniDesignBookletDraft } from "./defaults";
 import { DESIGN_BOOKLET_MAX_REQUEST_BODY_BYTES } from "./request";
 import { handleDesignBookletPdfRequest } from "./pdfRoute";
+import { DesignBookletImageProcessorUnavailableError } from "./sharpRuntime";
+
+const { generateDesignBookletPdfMock } = vi.hoisted(() => ({
+  generateDesignBookletPdfMock: vi.fn(),
+}));
+
+vi.mock("./pdf", () => ({
+  designBookletPdfFilename: vi.fn(() => "design-booklet.pdf"),
+  generateDesignBookletPdf: generateDesignBookletPdfMock,
+}));
 
 function declaredSizeRequest(contentLength: string): {
   formData: ReturnType<typeof vi.fn>;
@@ -19,6 +30,10 @@ function declaredSizeRequest(contentLength: string): {
 }
 
 describe("design booklet PDF request boundary", () => {
+  beforeEach(() => {
+    generateDesignBookletPdfMock.mockReset();
+  });
+
   it("returns 413 before parsing multipart data when Content-Length exceeds the request ceiling", async () => {
     const { formData, request } = declaredSizeRequest(
       String(DESIGN_BOOKLET_MAX_REQUEST_BODY_BYTES + 1),
@@ -54,5 +69,25 @@ describe("design booklet PDF request boundary", () => {
       error: "The design booklet request size is invalid.",
     });
     expect(formData).not.toHaveBeenCalled();
+  });
+
+  it("returns a controlled 503 when the native image processor is unavailable", async () => {
+    const formData = new FormData();
+    formData.set("draft", JSON.stringify(createToniDesignBookletDraft()));
+    generateDesignBookletPdfMock.mockRejectedValueOnce(
+      new DesignBookletImageProcessorUnavailableError(),
+    );
+
+    const response = await handleDesignBookletPdfRequest(
+      new Request("http://localhost/api/design-booklet", {
+        method: "POST",
+        body: formData,
+      }),
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: "Image processing is temporarily unavailable.",
+    });
   });
 });

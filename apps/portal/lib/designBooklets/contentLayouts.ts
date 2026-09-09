@@ -3,6 +3,7 @@ import type {
   DesignBookletImagePage,
   DesignBookletTextSizeId,
 } from "./types";
+import { DESIGN_BOOKLET_BASE_PAGE_SIZE } from "./paperGeometry";
 
 type DesignBookletContentPageCategory =
   | "visual"
@@ -46,7 +47,14 @@ export const DESIGN_BOOKLET_CONTENT_LAYOUTS: Record<
     category: "visual",
     slotCount: 1,
     tone: "light",
-    imageFrames: [{ x: 0, top: 0, width: 841.89, height: 595.28 }],
+    imageFrames: [
+      {
+        x: 0,
+        top: 0,
+        width: DESIGN_BOOKLET_BASE_PAGE_SIZE.width,
+        height: DESIGN_BOOKLET_BASE_PAGE_SIZE.height,
+      },
+    ],
     textCapacity: { headline: 0, body: 0, sectionBody: 0 },
   },
   "visual-framed": {

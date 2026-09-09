@@ -1,6 +1,7 @@
 import type { ScheduleProjectSummary } from '@/lib/queries/schedule';
 import { addDaysYmd } from '@/lib/scheduling/date';
 import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
+import { addWorkingDays, buildWorkingDayIndex, nextWorkingDay } from '@/lib/scheduling/workingDays';
 import type { Installer, ScheduleItem, SchedulingIssue } from '@/lib/types/scheduling';
 import type { ScheduleBoardModel, SchedulableJob } from '@/app/staff/schedule/ScheduleClientModel';
 import type { ScheduleGanttBar } from '@/app/staff/schedule/ScheduleGanttModel';
@@ -106,15 +107,18 @@ export function createScheduleOpsFixture(scale: 'standard' | 'large'): ScheduleO
   const projectsById = new Map<string, ScheduleProjectSummary>();
   const scheduleBars: ScheduleGanttBar[] = [];
   const scheduleIssues: SchedulingIssue[] = [];
+  const calendar = buildWorkingDayIndex();
+  const crewCursors = new Map(installers.map((crew, index) => [crew.id, nextWorkingDay(addDaysYmd(today, index), 'Auckland', calendar)]));
 
   for (let index = 0; index < scheduledCount; index += 1) {
     const job = makeJob(index, true);
     const crew = installers[index % installers.length];
     const lanePosition = Math.floor(index / installers.length);
     const durationDays = 1 + (index % 5);
-    const startDate = addDaysYmd(today, lanePosition * 3 + (index % 4 === 0 ? 0 : 1));
-    const endDate = addDaysYmd(startDate, durationDays - 1);
-    const endExclusive = addDaysYmd(endDate, 1);
+    const startDate = crewCursors.get(crew.id)!;
+    const endExclusive = addWorkingDays(startDate, durationDays, 'Auckland', calendar);
+    const endDate = addDaysYmd(endExclusive, -1);
+    crewCursors.set(crew.id, nextWorkingDay(endExclusive, 'Auckland', calendar));
     const item: ScheduleItem = {
       id: job.id,
       projectId: job.projectId,
@@ -130,6 +134,7 @@ export function createScheduleOpsFixture(scale: 'standard' | 'large'): ScheduleO
       durationHoursOverride: durationDays * WORK_HOURS_PER_DAY,
       mode: index % 6 === 0 ? 'pinned' : 'floating',
       jobStatus: index % 11 === 0 ? 'in_progress' : 'not_started',
+      actualStartDate: index % 11 === 0 ? startDate : null,
       plannedCommitmentType: index % 8 === 0 ? 'fixed_date' : null,
       plannedStart: index % 8 === 0 ? addDaysYmd(startDate, -3) : null,
       plannedDurationDays: index % 8 === 0 ? durationDays : null,

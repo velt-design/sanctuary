@@ -5,6 +5,7 @@ import {
   DESIGN_BOOKLET_PRESENTATION,
   designBookletCssBaselineOffset,
 } from "../apps/portal/lib/designBooklets/presentation";
+import { DESIGN_BOOKLET_PAPER_SIZES } from "../apps/portal/lib/designBooklets/paperGeometry";
 
 const FIXTURE_PATH = "/qa/design-booklet-workbench-fixture";
 const presentation = DESIGN_BOOKLET_PRESENTATION;
@@ -84,22 +85,32 @@ test.describe("design booklet workbench fixture", () => {
     ).toHaveCount(0);
     const details = page.locator("#booklet-details");
     await expect(details).not.toHaveAttribute("open", "");
-    await expect(details.getByText("Outdoor living concept")).toBeVisible();
+    await expect(
+      details.locator("summary").getByText("Outdoor living concept"),
+    ).toBeVisible();
     await details.locator("summary").click();
     await expect(page.getByLabel("Roof form")).toHaveValue("pitched");
     await expect(page.getByLabel("Roofing choice")).toHaveValue("combination");
+    await expect(page.getByLabel("Paper size")).toHaveValue("a4");
+    await page.getByLabel("Paper size").selectOption("a3");
+    await expect(
+      page.getByRole("region", { name: "Landscape A3 booklet preview" }),
+    ).toHaveAttribute("data-paper-size", "a3");
+    await expect(
+      details.locator("summary").getByText("Outdoor living concept"),
+    ).toBeVisible();
     await details.locator("summary").click();
     await expect(railButtons).toHaveCount(5);
     await expect(railButtons.first()).toContainText("Cover");
     await expect(railButtons.last()).toContainText("Review");
 
     await page.getByRole("button", { name: "Add page" }).click();
-    await page.getByRole("button", { name: "Image page" }).click();
+    await page.getByRole("button", { name: /^Visual/ }).click();
     await expect(railButtons).toHaveCount(6);
     await expect(page.locator('[data-page-kind="image"]')).toBeVisible();
 
     await page.getByRole("button", { name: "Add page" }).click();
-    await page.getByRole("button", { name: "Drawing page" }).click();
+    await page.getByRole("button", { name: /^Drawing page/ }).click();
     await expect(railButtons).toHaveCount(7);
     await expect(page.locator('[data-page-kind="drawings"]')).toBeVisible();
 
@@ -166,6 +177,7 @@ test.describe("design booklet workbench fixture", () => {
         `[data-booklet-page="${pageIndex + 1}"]`,
       );
       await expect(bookletPage).toBeVisible();
+      await expect(bookletPage).toHaveAttribute("data-paper-size", "a3");
       if ((await bookletPage.getAttribute("data-page-kind")) === "drawings") {
         await expect(bookletPage).toHaveAttribute(
           "data-drawing-preview",
@@ -195,8 +207,8 @@ test.describe("design booklet workbench fixture", () => {
     const pdf = await PDFDocument.load(bytes);
     expect(pdf.getPageCount()).toBe(finalPageCount);
     for (const pdfPage of pdf.getPages()) {
-      expect(pdfPage.getWidth()).toBeCloseTo(841.89, 1);
-      expect(pdfPage.getHeight()).toBeCloseTo(595.28, 1);
+      expect(pdfPage.getWidth()).toBe(DESIGN_BOOKLET_PAPER_SIZES.a3.width);
+      expect(pdfPage.getHeight()).toBe(DESIGN_BOOKLET_PAPER_SIZES.a3.height);
     }
     const pageTexts = await Promise.all(
       Array.from({ length: finalPageCount }, (_, index) =>
@@ -207,6 +219,58 @@ test.describe("design booklet workbench fixture", () => {
     expect(pageTexts.some((text) => text.includes("ROOF SECTION"))).toBe(true);
     expect(pdfRequestCount).toBe(1);
     expect(unexpectedRequests).toEqual([]);
+  });
+
+  test("edits bullet copy and preserves it across A4/A3 preview and PDF output", async ({
+    page,
+  }, testInfo) => {
+    let pdfRequestCount = 0;
+    page.on("request", (request) => {
+      if (/\/api\/qa\/design-booklet-workbench\/pdf/.test(request.url())) {
+        pdfRequestCount += 1;
+      }
+    });
+
+    await page.goto(FIXTURE_PATH);
+    await page.getByRole("button", { name: "Add page" }).click();
+    await page.getByRole("button", { name: /editable design intent/ }).click();
+    const body = page.getByRole("textbox", { name: "Body copy" });
+    await body.fill("Shade through summer\nShelter in winter");
+    await body.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
+    await page
+      .getByRole("button", { name: "Toggle bullets in Body copy" })
+      .click();
+
+    await expect(body).toHaveValue(
+      "- Shade through summer\n- Shelter in winter",
+    );
+    const preview = page.locator('[data-page-kind="image"]:visible');
+    await expect(preview.locator("[data-booklet-bullet-list] li")).toHaveCount(
+      2,
+    );
+    await preview.screenshot({ path: testInfo.outputPath("bullets-a4.png") });
+    expect(pdfRequestCount).toBe(0);
+
+    await page.locator("#booklet-details > summary").click();
+    await page.getByLabel("Paper size").selectOption("a3");
+    await expect(body).toHaveValue(
+      "- Shade through summer\n- Shelter in winter",
+    );
+    await expect(preview).toHaveAttribute("data-paper-size", "a3");
+    await preview.screenshot({ path: testInfo.outputPath("bullets-a3.png") });
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download PDF" }).click();
+    const download = await downloadPromise;
+    const downloadPath = testInfo.outputPath("bullet-copy-booklet.pdf");
+    await download.saveAs(downloadPath);
+    const bytes = new Uint8Array(await readFile(downloadPath));
+    const booklet = await PDFDocument.load(bytes);
+    expect(booklet.getPages()[4].getWidth()).toBe(
+      DESIGN_BOOKLET_PAPER_SIZES.a3.width,
+    );
+    expect(await extractPageText(bytes, 5)).toContain("Shade through summer");
+    expect(pdfRequestCount).toBe(1);
   });
 
   test("previews a multi-page drawing PDF immediately and exports the selected source page", async ({
@@ -239,6 +303,8 @@ test.describe("design booklet workbench fixture", () => {
     const sourceBytes = await source.save({ useObjectStreams: false });
 
     await page.goto(FIXTURE_PATH);
+    await page.locator("#booklet-details > summary").click();
+    await page.getByLabel("Paper size").selectOption("a3");
     await page.locator('[data-booklet-page-select="drawing-page-1"]').click();
     const firstDrawingEditor = page.locator('[data-drawing-editor-slot="1"]');
     await firstDrawingEditor.locator('input[type="file"]').setInputFiles({
@@ -276,6 +342,10 @@ test.describe("design booklet workbench fixture", () => {
     await download.saveAs(downloadPath);
     const bytes = new Uint8Array(await readFile(downloadPath));
     const booklet = await PDFDocument.load(bytes);
+    for (const pdfPage of booklet.getPages()) {
+      expect(pdfPage.getWidth()).toBe(DESIGN_BOOKLET_PAPER_SIZES.a3.width);
+      expect(pdfPage.getHeight()).toBe(DESIGN_BOOKLET_PAPER_SIZES.a3.height);
+    }
     const texts = await Promise.all(
       Array.from({ length: booklet.getPageCount() }, (_, index) =>
         extractPageText(bytes, index + 1),
@@ -389,11 +459,13 @@ test.describe("design booklet workbench fixture", () => {
     expect(hasHorizontalDocumentOverflow).toBe(false);
   });
 
-  test("renders drawing sheets instantly from the shared A4 geometry", async ({
+  test("renders drawing sheets instantly from the shared A4/A3 geometry", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
     await page.goto(FIXTURE_PATH);
+    await page.locator("#booklet-details > summary").click();
+    await page.getByLabel("Paper size").selectOption("a3");
 
     const pageRail = page.getByRole("navigation", {
       name: "Booklet pages",
@@ -404,6 +476,7 @@ test.describe("design booklet workbench fixture", () => {
 
     const drawingPage = page.locator('[data-page-kind="drawings"]');
     await expect(drawingPage).toBeVisible();
+    await expect(drawingPage).toHaveAttribute("data-paper-size", "a3");
     await expect(drawingPage).toHaveAttribute(
       "data-drawing-preview",
       "instant-html",

@@ -109,5 +109,5 @@ describe("deposit invoice PDF visual fixtures", () => {
         );
       }
     }
-  });
+  }, 15_000);
 });

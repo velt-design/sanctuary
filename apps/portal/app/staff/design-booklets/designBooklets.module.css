@@ -324,6 +324,7 @@
 }
 
 .field > span,
+.textareaToolbar > label,
 .focalFieldset legend,
 .layoutFieldset legend {
   margin-bottom: 7px;
@@ -332,6 +333,48 @@
   font-weight: 750;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.textareaToolbar {
+  display: flex;
+  min-width: 0;
+  margin-bottom: 7px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.textareaToolbar > label {
+  margin: 0;
+}
+
+.textareaToolbar button {
+  display: inline-flex;
+  min-height: 27px;
+  padding: 0 8px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--booklet-rule-strong);
+  background: transparent;
+  color: var(--booklet-ink);
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.textareaToolbar button > span {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.textareaToolbar button:hover,
+.textareaToolbar button:focus-visible,
+.textareaToolbar button[aria-pressed="true"] {
+  border-color: var(--booklet-ink);
+  background: var(--booklet-ink);
+  color: var(--booklet-paper-strong);
 }
 
 .field input,

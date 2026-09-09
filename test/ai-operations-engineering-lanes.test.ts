@@ -26,6 +26,7 @@ import {
 import { createGitRuntime } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/lane-git.mjs";
 import {
   assertChangedPathsOwned,
+  defaultContractAdapter,
   matchesRepoPattern,
 } from "../infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/lane-contract.mjs";
 import { assertSafeGitHubCommand } from "../scripts/ai/github-app-token.mjs";
@@ -185,6 +186,36 @@ afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+describe("engineering contract adapter", () => {
+  it("validates completion evidence against its task manifest", () => {
+    const stateDir = realpathSync(
+      mkdtempSync(join(tmpdir(), "sanctuary-engineering-contract-adapter-")),
+    );
+    temporaryDirectories.push(stateDir);
+    chmodSync(stateDir, 0o700);
+    const manifest = JSON.parse(
+      readFileSync(
+        resolve("infra/openclaw/engineering/task.example.json"),
+        "utf8",
+      ),
+    );
+    const completion = JSON.parse(
+      readFileSync(
+        resolve("infra/openclaw/engineering/completion.example.json"),
+        "utf8",
+      ),
+    );
+
+    expect(
+      defaultContractAdapter.validateCompletion(completion, {
+        repoRoot: process.cwd(),
+        stateDir,
+        manifest,
+      }),
+    ).toEqual(completion);
+  });
 });
 
 describe("engineering lane provisioning", () => {

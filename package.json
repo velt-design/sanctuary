@@ -82,11 +82,15 @@
     "ai:engineering:start-mac": "node scripts/ai/mac-openclaw-engineering-start.mjs",
     "ai:engineering:stop-mac": "node scripts/ai/mac-openclaw-engineering-stop.mjs",
     "test:configurator": "vitest run packages/configurator",
+    "test:geometry": "vitest run packages/geometry/src",
     "test:geometry-viewer": "vitest run packages/geometry-viewer",
     "test:jobs": "vitest run packages/jobs packages/email-provider test/background-jobs-migration.test.ts test/repo-security.test.ts",
     "test:email-provider": "vitest run packages/email-provider",
     "test:email-integrations": "vitest run apps/portal/lib/emails/sendTransactionalEmail.test.ts apps/portal/lib/backgroundJobs apps/portal/app/api/webhooks/resend apps/portal/app/api/staff/v1/email-previews apps/marketing/lib/email apps/marketing/app/api/contact apps/marketing/app/api/enquiry",
     "test:commercial:db": "node scripts/test-commercial-workflow-db.mjs",
+    "test:schedule:db:fast": "node scripts/test-schedule-guarded-commands-pglite.mjs",
+    "test:praxis:db:fast": "node scripts/test-praxis-context-reporting-pglite.mjs",
+    "test:praxis:db": "node scripts/test-praxis-context-reporting-db.mjs",
     "test:jobs:db": "node scripts/test-background-jobs-db.mjs",
     "test:jobs:db-contract": "vitest run test/background-jobs-migration.test.ts",
     "test:worker": "npm --prefix apps/worker run test",
@@ -124,6 +128,7 @@
     "audit:lighthouse:desktop": "npx @lhci/cli autorun --config=.lighthouserc.desktop.json",
     "audit:lighthouse": "npm run audit:lighthouse:mobile && npm run audit:lighthouse:desktop",
     "audit:security": "npm audit --omit=dev",
+    "audit:toolchain": "node scripts/audit-toolchain.mjs",
     "audit:governance": "npm run test:marketing && npm run audit:security && npm run audit:lighthouse",
     "portal:doctor:quick": "npm run docs:guard && npm run text:mojibake && npm run typecheck && npm run lint && npm run test:portal",
     "portal:doctor:quick:log": "node scripts/run-logged-command.mjs portal:doctor:quick",
@@ -168,7 +173,7 @@
     "sharp": "0.35.3",
     "tsx": "^4.21.0",
     "typescript": "^5",
-    "vitest": "^4.0.16",
+    "vitest": "^4.1.11",
     "xlsx": "^0.18.5"
   },
   "overrides": {
@@ -176,6 +181,7 @@
     "sharp": "0.35.3",
     "uuid": "14.0.0",
     "svix": "1.92.2",
+    "vite": "7.3.6",
     "ws": "8.21.1"
   }
 }

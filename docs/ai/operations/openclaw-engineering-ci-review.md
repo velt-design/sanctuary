@@ -21,20 +21,39 @@ filter that could make a required check disappear:
 
 - non-foundation changes take a deterministic no-op route and pass the named
   check;
-- foundation changes run strict changed-architecture reporting, AI operations
-  and provider-neutral contract tests, the AI package typecheck, and docs/package
-  boundary guards; and
+- foundation-owned changes run strict worktree ownership plus every strict
+  changed-file architecture guard, AI operations and provider-neutral contract
+  tests, the AI package typecheck, and docs/package boundary guards;
+- shared manifests and repository-level tooling that can affect the AI
+  foundation run the same focused AI checks and every strict changed-file guard
+  except worktree ownership, because their presence does not make unrelated
+  product files part of an AI-owned lane; and
 - checkout is read-only with persisted credentials disabled. No OpenAI or
   production secret is supplied to the workflow.
 
 The route is derived from the event's exact base and head SHAs. Unsafe paths or
-an unbounded change set fail the job.
+an unbounded change set fail the job. A pull request that changes any genuinely
+foundation-owned path still takes the strict ownership route, even when shared
+manifests or non-foundation files are present, so a mixed change cannot use a
+shared-impact trigger to broaden the AI lane.
 
 ## Exact-head evidence and failure policy
 
 The controller re-reads the open draft PR and requires its number, URL, base
 ref/SHA, feature branch and head SHA to match the manifest and worker report.
 Each named check must appear exactly once.
+
+GitHub's live check rollup may represent an unfinished check with an empty
+conclusion and a zero-value completion timestamp. The CI adapter normalizes the
+empty conclusion to `null`, records the check as pending, and re-reads the exact
+PR head on the next reconciliation. Empty pending fields are not malformed
+terminal evidence and must not strand an otherwise healthy flow.
+
+Durable checkpoints written before that normalization may contain a blank
+status or conclusion. Recovery accepts that legacy value only when the same
+check is classified as pending, then immediately replaces it with freshly
+normalized exact-head evidence. Blank lifecycle values remain invalid for
+passed, failed, actionable, transient, or blocked evidence.
 
 | Result                                                                                                | Controller action                                                                                              |
 | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -44,6 +63,27 @@ Each named check must appear exactly once.
 | Recognized runner/network interruption, or differing assertions between a test and its built-in retry | Rerun only the failed jobs of the exact workflow run, once per head.                                           |
 | Stable test failure                                                                                   | Record the failed-check evidence and allocate one permitted same-lane coding repair.                           |
 | Duplicate, skipped, neutral, stale or unknown terminal state                                          | Block for an operator; never reinterpret it as success.                                                        |
+
+## Bounded reviewer dispatch
+
+The supervisor returns the trusted review packet through an OpenClaw tool
+before spawning the independent reviewer. Keep that dispatch at or below
+15,000 characters so OpenClaw cannot truncate the immutable prompt between the
+controller and the supervisor. The current packet uses compact JSON, records
+acceptance evidence by criterion index instead of repeating every criterion,
+uses indexed copy instructions in the output skeleton instead of repeating the
+same criteria there, and still includes the exact task, completion, CI and diff
+hashes needed for a read-only review.
+
+Recovery recognizes the prior embedded, chunked and templated-chunked prompt
+hashes, upgrades a still-ready review to the bounded packet, and only then
+allows a matching reviewer to be attached. If that historical dispatch window
+has expired before recovery, recovery reopens it once: the start remains the
+packet-upgrade checkpoint so an existing exact reviewer stays eligible, while
+the deadline extends from the actual recovery time. The restoration changes the
+checkpoint summary, so the same window cannot be reopened repeatedly. A packet
+that cannot fit the bound fails before dispatch; truncated or reconstructed text
+never qualifies as the named reviewer.
 
 The failed log is read only to classify the result. A rerun does not erase the
 first evidence: its hash and count remain in durable state. If the rerun has not

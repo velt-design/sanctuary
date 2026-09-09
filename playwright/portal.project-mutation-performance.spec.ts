@@ -7,6 +7,7 @@ import {
   elapsedJourneyMs,
   finishPortalJourney,
   installPortalPerformanceProbe,
+  PORTAL_PROJECT_TAB_USEFUL_CONTENT_SELECTORS,
   portalPerformanceBuildId,
   portalVisualFeedbackMs,
   type PortalPerformanceJourney,
@@ -24,6 +25,32 @@ function delay(ms: number): Promise<void> {
 
 test.beforeEach(async ({ page }) => {
   await installPortalPerformanceProbe(page);
+});
+
+test('captures the scoped commercial loading shell before later driver validation', async ({ page }) => {
+  await page.setContent(
+    '<main aria-label="Browser timing fixture" data-project-tab-body="estimates"></main>',
+  );
+  await beginPortalVisualFeedback(page, {
+    selector: PORTAL_PROJECT_TAB_USEFUL_CONTENT_SELECTORS.estimates,
+    state: 'visible',
+  });
+  const driverStartedAt = Date.now();
+
+  await page.evaluate(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const marker = document.createElement('div');
+    marker.dataset.projectTabLoading = 'commercial';
+    marker.textContent = 'Loading commercial in the background…';
+    document.querySelector('[data-project-tab-body="estimates"]')?.appendChild(marker);
+  });
+  await page.waitForTimeout(700);
+  await expect(page.locator(PORTAL_PROJECT_TAB_USEFUL_CONTENT_SELECTORS.estimates)).toBeVisible();
+
+  const usefulContentMs = await portalVisualFeedbackMs(page);
+  const driverElapsedMs = Date.now() - driverStartedAt;
+  expect(usefulContentMs).toBeGreaterThan(0);
+  expect(driverElapsedMs - usefulContentMs).toBeGreaterThan(500);
 });
 
 test('records immediate project feedback separately from deliberately slow persistence', async ({ page }) => {

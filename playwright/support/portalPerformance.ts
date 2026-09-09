@@ -38,6 +38,15 @@ type PortalVisualFeedbackCondition = {
   state: PortalVisualFeedbackState;
 };
 
+export const PORTAL_PROJECT_TAB_USEFUL_CONTENT_SELECTORS = {
+  estimates:
+    '[data-estimates-view="list"], [data-project-tab-body="estimates"] [data-project-tab-loading="commercial"]',
+  quotes: '[data-project-commercial-view="quotes"], [data-project-tab-loading="quotes"]',
+  invoices: '[data-project-commercial-view="invoices"]',
+  activity: '[data-project-overview="true"]',
+  jobPacks: '[data-project-tab-loading="job-packs"], [data-project-tab-body="job-packs"] h3',
+} as const;
+
 declare global {
   interface Window {
     __portalPerformanceProbe?: {

@@ -3,20 +3,24 @@ import { readFileSync, appendFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
-const FOUNDATION_PATTERNS = [
+const FOUNDATION_OWNED_PATTERNS = [
   /^\.github\/workflows\/autonomous-engineering\.yml$/,
   /^infra\/openclaw\/engineering\//,
   /^packages\/ai\//,
   /^scripts\/ai\//,
-  /^scripts\/worktree-ownership-report\.mjs$/,
   /^test\/ai-engineering-/,
   /^test\/ai-operations-/,
   /^docs\/ai\/README\.md$/,
   /^docs\/ai\/operations\//,
+];
+
+const FOUNDATION_SHARED_IMPACT_PATTERNS = [
+  /^scripts\/worktree-ownership-report\.mjs$/,
   /^docs\/decision-log\.md$/,
   /^scripts\/(?:dead-code|file-decomposition)-registry\.json$/,
   /^(?:package|package-lock)\.json$/,
-  /^(?:tsconfig|vitest\.config)\.json$/,
+  /^tsconfig\.json$/,
+  /^vitest\.config\.ts$/,
 ];
 
 export const FOUNDATION_OWNER_PATTERNS = [
@@ -68,15 +72,31 @@ export function routeEngineeringCi(changedPaths) {
       throw new Error("The CI change set contains an unsafe repository path.");
     }
   }
-  const relevantPaths = unique.filter((path) =>
-    FOUNDATION_PATTERNS.some((pattern) => pattern.test(path)),
+  const ownedPaths = unique.filter((path) =>
+    FOUNDATION_OWNED_PATTERNS.some((pattern) => pattern.test(path)),
   );
+  const sharedImpactPaths = unique.filter((path) =>
+    FOUNDATION_SHARED_IMPACT_PATTERNS.some((pattern) => pattern.test(path)),
+  );
+  const relevantPaths = [...ownedPaths, ...sharedImpactPaths].sort();
+  const relevant = relevantPaths.length > 0;
+  const ownershipRequired = ownedPaths.length > 0;
+  const sharedImpactOnly = relevant && !ownershipRequired;
   return {
     schema: "sanctuary-engineering-ci-route-v1",
-    mode: relevantPaths.length > 0 ? "foundation" : "not_applicable",
-    relevant: relevantPaths.length > 0,
+    mode: relevant ? "foundation" : "not_applicable",
+    routeKind: ownershipRequired
+      ? "foundation_owned"
+      : sharedImpactOnly
+        ? "shared_impact"
+        : "not_applicable",
+    relevant,
+    ownershipRequired,
+    sharedImpactOnly,
     changedPaths: unique,
     relevantPaths,
+    ownedPaths,
+    sharedImpactPaths,
     ownerPatterns: FOUNDATION_OWNER_PATTERNS,
   };
 }
@@ -87,6 +107,7 @@ export function changedPathsForEvent(event, git = gitLines) {
     const head = assertSha(event.pull_request.head?.sha, "Pull request head");
     return git([
       "diff",
+      "--no-renames",
       "--name-only",
       "--diff-filter=ACDMRTUXB",
       `${base}...${head}`,
@@ -97,6 +118,7 @@ export function changedPathsForEvent(event, git = gitLines) {
     const after = assertSha(event.after, "Push head");
     return git([
       "diff",
+      "--no-renames",
       "--name-only",
       "--diff-filter=ACDMRTUXB",
       before,
@@ -105,6 +127,7 @@ export function changedPathsForEvent(event, git = gitLines) {
   }
   return git([
     "diff",
+    "--no-renames",
     "--name-only",
     "--diff-filter=ACDMRTUXB",
     "HEAD^",
@@ -112,13 +135,16 @@ export function changedPathsForEvent(event, git = gitLines) {
   ]);
 }
 
-function writeOutputs(route, outputPath) {
+export function writeOutputs(route, outputPath) {
   if (!outputPath) return;
   appendFileSync(
     outputPath,
     [
       `mode=${route.mode}`,
+      `route_kind=${route.routeKind}`,
       `relevant=${route.relevant}`,
+      `ownership_required=${route.ownershipRequired}`,
+      `shared_impact_only=${route.sharedImpactOnly}`,
       `owner_patterns=${route.ownerPatterns.join(",")}`,
       `changed_count=${route.changedPaths.length}`,
       "",

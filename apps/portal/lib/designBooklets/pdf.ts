@@ -12,7 +12,6 @@ import {
   type PDFImage,
   type PDFPage,
 } from "pdf-lib";
-import sharp from "sharp";
 import fontkit from "@/lib/quotes/fontkit";
 import {
   buildDesignBookletRenderModel,
@@ -37,11 +36,13 @@ import {
 } from "./contentPresentation";
 import {
   addDesignBookletPage as addPage,
+  applyDesignBookletPdfPaperSize,
   DESIGN_BOOKLET_PDF_COLORS,
   DESIGN_BOOKLET_PDF_LEFT,
   DESIGN_BOOKLET_PDF_PAGE_SIZE,
   DESIGN_BOOKLET_PDF_RIGHT,
   drawDesignBookletEyebrow as drawEyebrow,
+  drawDesignBookletEditorialText as drawEditorialText,
   drawDesignBookletFooter as drawFooter,
   drawDesignBookletImageContain as drawImageContain,
   drawDesignBookletImageCover as drawImageCover,
@@ -58,6 +59,7 @@ import {
   designBookletCssBaselineOffset,
   normalizeDesignBookletMultilinePresentationText,
 } from "./presentation";
+import { loadDesignBookletSharp } from "./sharpRuntime";
 import type {
   DesignBookletContentCatalog,
   DesignBookletDraft,
@@ -166,6 +168,7 @@ function combinedOpacity(...values: number[]): number {
 async function createShadeOverlay(
   kind: "image-page" | "review-edge",
 ): Promise<Uint8Array> {
+  const sharp = await loadDesignBookletSharp();
   const pixels = new Uint8Array(OVERLAY_WIDTH * OVERLAY_HEIGHT * 4);
 
   for (let y = 0; y < OVERLAY_HEIGHT; y += 1) {
@@ -591,7 +594,7 @@ function drawContentCopy(
       });
     }
     if (content.body) {
-      drawWrappedText(page, content.body, {
+      drawEditorialText(page, content.body, {
         x: bodyX,
         y: pdfYFromTopBaseline(
           copyTop +
@@ -656,7 +659,7 @@ function drawContentCopy(
       Math.max(1, headlineLines.length) * typography.headlineLineHeight + 18;
   }
   if (content.body && nextTop < frame.top + frame.height) {
-    drawWrappedText(page, content.body, {
+    drawEditorialText(page, content.body, {
       x: frame.x,
       y: pdfYFromTopBaseline(
         nextTop +
@@ -716,7 +719,7 @@ function drawContentSection(
     });
   }
   if (section.body) {
-    drawWrappedText(page, section.body, {
+    drawEditorialText(page, section.body, {
       x: textX,
       y: pdfYFromTopBaseline(
         top + 31 + designBookletCssBaselineOffset(bodySize, bodyLineHeight),
@@ -1183,6 +1186,8 @@ export async function generateDesignBookletPdf(input: {
         break;
     }
   }
+
+  applyDesignBookletPdfPaperSize(pdf, input.draft.paperSize);
 
   return pdf.save({ useObjectStreams: false });
 }

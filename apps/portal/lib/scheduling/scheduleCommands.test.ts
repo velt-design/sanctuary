@@ -38,6 +38,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitScheduleJobPatch({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-1', route: '/api/staff/v1/schedule/job/pin', method: 'POST', startedAt: 1 },
       scheduledJobId: 'job-1',
       jobPatch: { mode: 'pinned', forecast_start: '2026-04-15' },
@@ -46,11 +47,11 @@ describe('scheduleCommands', () => {
     });
 
     expect(res).toEqual({ ok: true, data: { updated_job: 'job-1', updated_forecasts: 1 } });
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_apply_job_patch', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_apply_job_patch', p_expected_revisions: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } }, p_args: {
       p_scheduled_job_id: 'job-1',
       p_job_patch: { mode: 'pinned', forecast_start: '2026-04-15' },
       p_forecast_updates: [{ id: 'job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
-    });
+    } });
   });
 
   it('passes assign payloads through to the RPC, including move state', async () => {
@@ -68,6 +69,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitAssignJob({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-assign', route: '/api/staff/v1/schedule/job/assign', method: 'POST', startedAt: 1 },
       targetCrewId: 'crew-new',
       targetInsertPosition: 1,
@@ -93,7 +95,7 @@ describe('scheduleCommands', () => {
         updated_forecasts: 2,
       },
     });
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_assign_job', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_assign_job', p_expected_revisions: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } }, p_args: {
       p_target_crew_id: 'crew-new',
       p_target_insert_position: 1,
       p_target_positions: [{ id: 'item-1', position: 0 }],
@@ -105,7 +107,7 @@ describe('scheduleCommands', () => {
         source_positions: [{ id: 'old-1', position: 0 }],
         source_forecast_updates: [{ id: 'job-2', forecast_start: '2026-04-18', forecast_end_exclusive: '2026-04-20', forecast_duration_days: 2 }],
       },
-    });
+    } });
   });
 
   it('passes new assignment initial forecast fields through to the assign RPC', async () => {
@@ -123,6 +125,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitAssignJob({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-assign-new', route: '/api/staff/v1/schedule/job/assign', method: 'POST', startedAt: 1 },
       targetCrewId: 'crew-new',
       targetInsertPosition: 1,
@@ -145,7 +148,7 @@ describe('scheduleCommands', () => {
         updated_forecasts: 1,
       },
     });
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_assign_job', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_assign_job', p_expected_revisions: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } }, p_args: {
       p_target_crew_id: 'crew-new',
       p_target_insert_position: 1,
       p_target_positions: [{ id: 'item-1', position: 0 }],
@@ -157,7 +160,7 @@ describe('scheduleCommands', () => {
         forecast_end_exclusive: '2026-04-18',
       },
       p_move: null,
-    });
+    } });
   });
 
   it('passes existing scheduled job repair payloads through to the assign RPC without move state', async () => {
@@ -175,6 +178,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitAssignJob({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-assign-repair', route: '/api/staff/v1/schedule/job/assign', method: 'POST', startedAt: 1 },
       targetCrewId: 'crew-new',
       targetInsertPosition: 1,
@@ -194,14 +198,14 @@ describe('scheduleCommands', () => {
         updated_forecasts: 1,
       },
     });
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_assign_job', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_assign_job', p_expected_revisions: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } }, p_args: {
       p_target_crew_id: 'crew-new',
       p_target_insert_position: 1,
       p_target_positions: [{ id: 'item-1', position: 0 }],
       p_target_forecast_updates: [{ id: 'job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
       p_assignment: { scheduled_job_id: 'job-1' },
       p_move: null,
-    });
+    } });
   });
 
   it('passes downtime create payloads through to the RPC', async () => {
@@ -217,6 +221,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitCreateDowntime({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-dt-create', route: '/api/staff/v1/schedule/downtime/create', method: 'POST', startedAt: 1 },
       crewId: 'crew-1',
       durationDays: 2,
@@ -236,7 +241,7 @@ describe('scheduleCommands', () => {
         updated_forecasts: 1,
       },
     });
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_create_downtime', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_create_downtime', p_expected_revisions: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } }, p_args: {
       p_crew_id: 'crew-1',
       p_duration_days: 2,
       p_reason: 'weather',
@@ -244,7 +249,7 @@ describe('scheduleCommands', () => {
       p_insert_position: 1,
       p_positions: [{ id: 'item-1', position: 0 }],
       p_forecast_updates: [{ id: 'job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
-    });
+    } });
   });
 
   it('passes downtime update payloads through to the RPC', async () => {
@@ -258,6 +263,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitUpdateDowntime({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-dt-update', route: '/api/staff/v1/schedule/downtime/update', method: 'POST', startedAt: 1 },
       downtimeId: 'dt-1',
       patch: {
@@ -275,7 +281,7 @@ describe('scheduleCommands', () => {
         updated_forecasts: 1,
       },
     });
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_update_downtime', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_update_downtime', p_expected_revisions: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } }, p_args: {
       p_downtime_id: 'dt-1',
       p_patch: {
         duration_days: 3,
@@ -283,7 +289,7 @@ describe('scheduleCommands', () => {
         note: 'Buffer',
       },
       p_forecast_updates: [{ id: 'job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
-    });
+    } });
   });
 
   it('passes planned commitment payloads through to the RPC', async () => {
@@ -291,6 +297,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitPlannedCommitment({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-2', route: '/api/staff/v1/schedule/job/lock', method: 'POST', startedAt: 1 },
       scheduledJobId: 'job-1',
       jobPatch: {
@@ -322,7 +329,7 @@ describe('scheduleCommands', () => {
     });
 
     expect(res).toEqual({ ok: true, data: { updated_job: 'job-1', history_inserted: true, updated_forecasts: 1 } });
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_apply_commitment', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_apply_commitment', p_expected_revisions: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } }, p_args: {
       p_scheduled_job_id: 'job-1',
       p_job_patch: {
         mode: 'pinned',
@@ -350,7 +357,7 @@ describe('scheduleCommands', () => {
         changed_by: 'ops@example.com',
       },
       p_forecast_updates: [{ id: 'job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
-    });
+    } });
   });
 
   it('passes client update ack payloads through to the RPC', async () => {
@@ -358,6 +365,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitClientUpdateAck({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-3', route: '/api/staff/v1/schedule/job/client-update/ack', method: 'POST', startedAt: 1 },
       scheduledJobId: 'job-1',
       ackAt: '2026-04-01T00:00:00.000Z',
@@ -365,11 +373,11 @@ describe('scheduleCommands', () => {
     });
 
     expect(res).toEqual({ ok: true, data: { updated_job: 'job-1', acknowledged: true } });
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_ack_client_update', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_ack_client_update', p_expected_revisions: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } }, p_args: {
       p_scheduled_job_id: 'job-1',
       p_ack_at: '2026-04-01T00:00:00.000Z',
       p_ack_by: 'ops@example.com',
-    });
+    } });
   });
 
   it('maps missing RPC functions to schema-not-ready', async () => {
@@ -377,6 +385,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitScheduleJobPatch({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-4', route: '/api/staff/v1/schedule/job/pin', method: 'POST', startedAt: 1 },
       scheduledJobId: 'job-1',
       jobPatch: { mode: 'pinned' },
@@ -397,6 +406,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitScheduleJobPatch({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-5', route: '/api/staff/v1/schedule/job/unpin', method: 'POST', startedAt: 1 },
       scheduledJobId: 'job-1',
       jobPatch: { mode: 'floating' },
@@ -416,6 +426,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitPlannedCommitment({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-6', route: '/api/staff/v1/schedule/job/lock', method: 'POST', startedAt: 1 },
       scheduledJobId: 'job-1',
       jobPatch: { mode: 'pinned', planned_commitment_type: 'fixed_date' },
@@ -444,6 +455,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitClientUpdateAck({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-7', route: '/api/staff/v1/schedule/job/client-update/ack', method: 'POST', startedAt: 1 },
       scheduledJobId: 'job-1',
       ackAt: '2026-04-01T00:00:00.000Z',
@@ -462,6 +474,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitAssignJob({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-assign-schema', route: '/api/staff/v1/schedule/job/assign', method: 'POST', startedAt: 1 },
       targetCrewId: 'crew-1',
       targetInsertPosition: 0,
@@ -483,6 +496,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitAssignJob({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-assign-old-revision', route: '/api/staff/v1/schedule/job/assign', method: 'POST', startedAt: 1 },
       targetCrewId: 'crew-1',
       targetInsertPosition: 0,
@@ -518,6 +532,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitAssignJob({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-assign-fail', route: '/api/staff/v1/schedule/job/assign', method: 'POST', startedAt: 1 },
       targetCrewId: 'crew-1',
       targetInsertPosition: 0,
@@ -539,6 +554,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitCreateDowntime({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-dt-create-schema', route: '/api/staff/v1/schedule/downtime/create', method: 'POST', startedAt: 1 },
       crewId: 'crew-1',
       durationDays: 1,
@@ -561,6 +577,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitUpdateDowntime({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-dt-update-schema', route: '/api/staff/v1/schedule/downtime/update', method: 'POST', startedAt: 1 },
       downtimeId: 'dt-1',
       patch: { duration_days: 2 },
@@ -579,6 +596,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitCreateDowntime({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-dt-create-fail', route: '/api/staff/v1/schedule/downtime/create', method: 'POST', startedAt: 1 },
       crewId: 'crew-1',
       durationDays: 1,
@@ -601,6 +619,7 @@ describe('scheduleCommands', () => {
 
     const mod = await import('./scheduleCommands');
     const res = await mod.commitUpdateDowntime({
+      writeGuard: { 'crew-1': { revision: 7, anchor_date: '2026-04-10' } },
       diagnostics: { requestId: 'req-dt-update-fail', route: '/api/staff/v1/schedule/downtime/update', method: 'POST', startedAt: 1 },
       downtimeId: 'dt-1',
       patch: { duration_days: 2 },

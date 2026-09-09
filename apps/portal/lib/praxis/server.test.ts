@@ -1,0 +1,335 @@
+import { createHash } from 'node:crypto';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('server-only', () => ({}));
+
+import {
+  PraxisConnectorError,
+  authorizePraxisRequest,
+  canonicalRecordVersion,
+  createPraxisErrorResponse,
+  loadPraxisConnectorConfig,
+  parsePraxisContextQuery,
+  praxisResponseHeaders,
+  readPraxisContext,
+  readPraxisHealth,
+  type PraxisServerDependencies,
+} from './server';
+import type { Sql, TransactionSql } from 'postgres';
+
+const ORIGINAL_ENV = process.env;
+const TOKEN = 'test-token-with-at-least-thirty-two-characters';
+
+beforeEach(() => {
+  process.env = {
+    ...ORIGINAL_ENV,
+    PRAXIS_SANCTUARY_DATABASE_URL: 'postgres://reader:secret@db.example.test/postgres?sslmode=verify-full',
+    PRAXIS_SANCTUARY_READ_TOKEN: TOKEN,
+    PRAXIS_SANCTUARY_SOURCE_KEY: 'sanctuary',
+    PRAXIS_SANCTUARY_CONNECTION_ID: 'a0000000-0000-4000-8000-000000000001',
+    PRAXIS_SANCTUARY_ENVIRONMENT: 'test',
+  };
+  vi.spyOn(console, 'info').mockImplementation(() => undefined);
+});
+
+afterEach(() => {
+  process.env = ORIGINAL_ENV;
+  vi.restoreAllMocks();
+});
+
+function request(headers: Record<string, string> = {}): Request {
+  return new Request('https://portal.example.test/api/integrations/praxis/v1/context', {
+    headers: {
+      authorization: `Bearer ${TOKEN}`,
+      'x-praxis-source-key': 'sanctuary',
+      'x-praxis-connection-id': 'a0000000-0000-4000-8000-000000000001',
+      'x-praxis-environment': 'test',
+      ...headers,
+    },
+  });
+}
+
+const IDENTITY = {
+  source_key: 'sanctuary',
+  connection_id: 'a0000000-0000-4000-8000-000000000001',
+  environment: 'test',
+  projection_version: 'sanctuary.praxis.core.v1',
+  runtime_role: 'sanctuary_praxis_reader_test',
+  group_member: true,
+  transaction_read_only: true,
+  default_transaction_read_only: true,
+  service_role_member: false,
+  can_login: true,
+  is_superuser: false,
+  can_create_database: false,
+  can_create_role: false,
+  can_replicate: false,
+  can_bypass_rls: false,
+  only_reporting_membership: true,
+  forbidden_schema_create: false,
+  forbidden_table_privilege: false,
+  forbidden_sequence_privilege: false,
+  forbidden_definer_function_privilege: false,
+};
+
+function mockDatabase(options: {
+  rows?: Array<Record<string, unknown>>;
+  identity?: Record<string, unknown>;
+  ready?: boolean;
+  failure?: Error;
+  projectionFailure?: Error;
+} = {}) {
+  const transaction = vi.fn(async (strings: TemplateStringsArray) => {
+    const sql = strings.join('?');
+    if (options.failure && sql.includes('source_identity_v1')) throw options.failure;
+    if (sql.startsWith('set local')) return [];
+    if (sql.includes('transaction_timestamp()')) return [{ as_of: '2026-09-03T00:00:00.000Z' }];
+    if (sql.includes('from praxis_reporting.source_identity_v1')) return [options.identity ?? IDENTITY];
+    if (sql.includes('has_schema_privilege')) return [{ ready: options.ready ?? true }];
+    if (sql.includes('from praxis_reporting.context_page_v1')) {
+      if (options.projectionFailure) throw options.projectionFailure;
+      return (options.rows ?? []).map((row) => ({
+        policy_version: 'sanctuary.praxis.sanitizer.v1',
+        redaction_count: 0,
+        omission_count: 0,
+        redaction_categories: [],
+        ...row,
+      }));
+    }
+    throw new Error(`Unexpected SQL in test: ${sql}`);
+  });
+  const end = vi.fn(async () => undefined);
+  const client = {
+    begin: vi.fn(async (_mode: string, callback: (sql: TransactionSql) => unknown) => callback(transaction as unknown as TransactionSql)),
+    end,
+  } as unknown as Sql;
+  const dependencies: PraxisServerDependencies = { createDatabase: vi.fn(() => client) };
+  return { dependencies, transaction, client, end };
+}
+
+describe('Praxis connector trust boundary', () => {
+  it('fails dark when any dedicated credential or binding is absent', () => {
+    delete process.env.PRAXIS_SANCTUARY_DATABASE_URL;
+    expect(() => loadPraxisConnectorConfig()).toThrowError(
+      expect.objectContaining({ code: 'CONNECTOR_NOT_CONFIGURED', status: 503 }),
+    );
+  });
+
+  it('requires verified TLS for every non-loopback database target', () => {
+    for (const unsafeUrl of [
+      'postgres://reader:secret@db.example.test/postgres',
+      'postgres://reader:secret@db.example.test/postgres?sslmode=disable',
+      'postgres://reader:secret@db.example.test/postgres?sslmode=allow',
+      'postgres://reader:secret@db.example.test/postgres?sslmode=prefer',
+      'https://db.example.test/postgres?sslmode=verify-full',
+    ]) {
+      process.env.PRAXIS_SANCTUARY_DATABASE_URL = unsafeUrl;
+      expect(() => loadPraxisConnectorConfig()).toThrowError(
+        expect.objectContaining({ code: 'CONNECTOR_NOT_CONFIGURED', status: 503 }),
+      );
+    }
+
+    process.env.PRAXIS_SANCTUARY_DATABASE_URL = 'postgres://reader:secret@db.example.test/postgres?sslmode=verify-full';
+    expect(loadPraxisConnectorConfig()).toMatchObject({ databaseSsl: 'verify-full' });
+    process.env.PRAXIS_SANCTUARY_DATABASE_URL = 'postgres://reader:secret@127.0.0.1:5432/postgres';
+    expect(loadPraxisConnectorConfig()).toMatchObject({ databaseSsl: false });
+  });
+
+  it('accepts only the exact bearer and source binding', () => {
+    const config = loadPraxisConnectorConfig();
+    expect(() => authorizePraxisRequest(request(), config)).not.toThrow();
+    expect(() => authorizePraxisRequest(request({ authorization: 'Bearer wrong' }), config)).toThrowError(
+      expect.objectContaining({ code: 'UNAUTHORIZED', status: 401 }),
+    );
+    expect(() => authorizePraxisRequest(request({ 'x-praxis-environment': 'production' }), config)).toThrowError(
+      expect.objectContaining({ code: 'SOURCE_BINDING_MISMATCH', status: 403 }),
+    );
+  });
+
+  it('bounds and normalizes context queries', () => {
+    expect(parsePraxisContextQuery(new URL('https://portal.example.test/context'))).toEqual({
+      resource: 'all', projectId: null, changedAfter: null, limit: 50, cursor: null,
+    });
+    expect(() => parsePraxisContextQuery(new URL('https://portal.example.test/context?limit=101'))).toThrowError(
+      expect.objectContaining({ code: 'INVALID_QUERY', status: 400 }),
+    );
+    expect(() => parsePraxisContextQuery(new URL('https://portal.example.test/context?resource=secret'))).toThrowError(
+      expect.objectContaining({ code: 'INVALID_QUERY', status: 400 }),
+    );
+    expect(() => parsePraxisContextQuery(new URL('https://portal.example.test/context?changedAfter=2026-09-03T00:00:00Z'))).toThrowError(
+      expect.objectContaining({ code: 'INVALID_QUERY', status: 400 }),
+    );
+    for (const query of [
+      '?cursor=anything',
+      '?resource=quote&resource=invoice',
+      '?limit=10&limit=20',
+      '?unknown=value',
+      `?resource=${'x'.repeat(257)}`,
+    ]) {
+      expect(() => parsePraxisContextQuery(new URL(`https://portal.example.test/context${query}`))).toThrowError(
+        expect.objectContaining({ code: 'INVALID_QUERY', status: 400 }),
+      );
+    }
+  });
+
+  it('uses the shared recursive canonical JSON SHA-256 algorithm', () => {
+    const payload = { z: [{ b: 2, a: 1 }], a: { y: true, x: null } };
+    const canonical = '{"a":{"x":null,"y":true},"z":[{"a":1,"b":2}]}';
+    expect(canonicalRecordVersion(payload)).toBe(createHash('sha256').update(canonical).digest('hex'));
+    expect(canonicalRecordVersion(payload)).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('keeps response caching disabled with the exact shared header', () => {
+    expect(new Headers(praxisResponseHeaders('request-id')).get('cache-control')).toBe('private, no-store');
+    expect(new Headers(praxisResponseHeaders('request-id')).get('x-content-type-options')).toBe('nosniff');
+  });
+
+  it('returns stable body-free error metadata', async () => {
+    const response = createPraxisErrorResponse(
+      new PraxisConnectorError(403, 'SOURCE_BINDING_MISMATCH', 'The requested source binding is not allowed.'),
+      '90000000-0000-4000-8000-000000000403',
+    );
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      schemaVersion: 'sanctuary.praxis.error.v1',
+      requestId: '90000000-0000-4000-8000-000000000403',
+      error: {
+        code: 'SOURCE_BINDING_MISMATCH',
+        message: 'The requested source binding is not allowed.',
+        retryable: false,
+      },
+    });
+    expect(console.info).toHaveBeenCalledWith(expect.not.stringContaining(TOKEN));
+  });
+
+  it('returns one terminal single-transaction snapshot with canonical evidence', async () => {
+    const payload = { z: 2, a: { d: 4, c: 3 } };
+    const database = mockDatabase({ rows: [
+      {
+        resource: 'quote', id: '20000000-0000-4000-8000-000000000001',
+        project_id: '10000000-0000-4000-8000-000000000001',
+        parent_id: '10000000-0000-4000-8000-000000000001',
+        recorded_at: '2026-09-03T00:01:00.000Z', record_version: 'a'.repeat(64), payload,
+      },
+    ] });
+    const config = loadPraxisConnectorConfig();
+    const query = {
+      resource: 'all' as const,
+      projectId: '10000000-0000-4000-8000-000000000001',
+      changedAfter: null,
+      limit: 1,
+      cursor: null,
+    };
+    const response = await readPraxisContext(query, config, 'request-1', database.dependencies);
+    expect(response.records).toHaveLength(1);
+    expect(response.records[0]?.recordVersion).toBe(canonicalRecordVersion(payload));
+    expect(response.records[0]?.projection).toEqual({
+      policyVersion: 'sanctuary.praxis.sanitizer.v1',
+      redactionCount: 0,
+      omissionCount: 0,
+      categories: [],
+    });
+    expect(response.page).toEqual({
+      hasMore: false,
+      nextCursor: null,
+      projection: {
+        policyVersion: 'sanctuary.praxis.sanitizer.v1',
+        redactionCount: 0,
+        omissionCount: 0,
+        categories: [],
+      },
+    });
+    expect(response.source.asOf).toBeTruthy();
+    expect(database.client.begin).toHaveBeenCalledWith('read only isolation level repeatable read', expect.any(Function));
+    expect(database.end).toHaveBeenCalledOnce();
+    expect(database.transaction.mock.calls.filter(([strings]) => String(strings[0]).startsWith('set local'))).toHaveLength(2);
+    const pageCall = database.transaction.mock.calls.find(([strings]) => String(strings).includes('context_page_v1'));
+    expect(pageCall?.at(-1)).toBe(2);
+  });
+
+  it('returns no partial records when a snapshot exceeds the requested bound', async () => {
+    const rows = [1, 2].map((suffix) => ({
+      resource: 'quote',
+      id: `20000000-0000-4000-8000-00000000000${suffix}`,
+      project_id: null,
+      parent_id: null,
+      recorded_at: `2026-09-03T00:0${suffix}:00.000Z`,
+      record_version: 'a'.repeat(64),
+      payload: { suffix },
+    }));
+    const database = mockDatabase({ rows });
+    await expect(readPraxisContext(
+      { resource: 'all', projectId: null, changedAfter: null, limit: 1, cursor: null },
+      loadPraxisConnectorConfig(),
+      'request-too-large',
+      database.dependencies,
+    )).rejects.toMatchObject({
+      code: 'SNAPSHOT_TOO_LARGE',
+      status: 400,
+      message: 'The snapshot exceeds the requested limit; narrow projectId or resource.',
+    });
+    expect(database.end).toHaveBeenCalledOnce();
+
+    await expect(readPraxisContext(
+      { resource: 'all', projectId: null, changedAfter: null, limit: 1, cursor: 'rejected-before-read' },
+      loadPraxisConnectorConfig(),
+      'request-cursor',
+      mockDatabase().dependencies,
+    )).rejects.toMatchObject({ code: 'INVALID_QUERY' });
+  });
+
+  it('requires an exact DB-owned source identity and cleans up failures without leaking details', async () => {
+    const mismatch = mockDatabase({ identity: { ...IDENTITY, environment: 'production' } });
+    await expect(readPraxisContext(
+      { resource: 'all', projectId: null, changedAfter: null, limit: 1, cursor: null },
+      loadPraxisConnectorConfig(),
+      'request-mismatch',
+      mismatch.dependencies,
+    )).rejects.toMatchObject({ code: 'PROJECTION_NOT_READY' });
+    expect(mismatch.end).toHaveBeenCalledOnce();
+
+    const secret = 'postgres://reader:password-that-must-not-leak@db.example.test/postgres';
+    const failed = mockDatabase({ failure: new Error(secret) });
+    let caught: unknown;
+    try {
+      await readPraxisContext(
+        { resource: 'all', projectId: null, changedAfter: null, limit: 1, cursor: null },
+        loadPraxisConnectorConfig(),
+        'request-failed',
+        failed.dependencies,
+      );
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toMatchObject({ code: 'SOURCE_UNAVAILABLE', message: 'The Sanctuary source is unavailable.' });
+    expect(String(caught)).not.toContain(secret);
+    expect(failed.end).toHaveBeenCalledOnce();
+  });
+
+  it('reports healthy only after exact DB identity, posture, and projection checks', async () => {
+    const healthyDb = mockDatabase();
+    const health = await readPraxisHealth(loadPraxisConnectorConfig(), 'health-request', healthyDb.dependencies);
+    expect(health).toMatchObject({
+      schemaVersion: 'sanctuary.praxis.health.v1',
+      source: {
+        sourceKey: 'sanctuary',
+        connectionId: 'a0000000-0000-4000-8000-000000000001',
+        environment: 'test',
+        projectionVersion: 'sanctuary.praxis.core.v1',
+      },
+      status: { connector: 'ready', database: 'reachable', projection: 'ready' },
+    });
+    expect(healthyDb.end).toHaveBeenCalledOnce();
+
+    const overGranted = mockDatabase({ identity: { ...IDENTITY, forbidden_table_privilege: true } });
+    await expect(readPraxisHealth(loadPraxisConnectorConfig(), 'health-bad', overGranted.dependencies))
+      .rejects.toMatchObject({ code: 'PROJECTION_NOT_READY' });
+    expect(overGranted.end).toHaveBeenCalledOnce();
+
+    const missingGrant = Object.assign(new Error('permission denied for view invoices_v1'), { code: '42501' });
+    const drifted = mockDatabase({ projectionFailure: missingGrant });
+    await expect(readPraxisHealth(loadPraxisConnectorConfig(), 'health-drift', drifted.dependencies))
+      .rejects.toMatchObject({ code: 'PROJECTION_NOT_READY' });
+    expect(drifted.end).toHaveBeenCalledOnce();
+  });
+});

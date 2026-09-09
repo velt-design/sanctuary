@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   DESIGN_BOOKLET_MATERIAL_IDS,
+  DESIGN_BOOKLET_PAPER_SIZE_IDS,
   DESIGN_BOOKLET_ROOF_FORM_IDS,
   type DesignBookletContentCatalog,
   type DesignBookletContentLayoutId,
@@ -10,6 +11,7 @@ import {
   type DesignBookletDraft,
   type DesignBookletImagePlacement,
 } from "@/lib/designBooklets/types";
+import { DESIGN_BOOKLET_PAPER_SIZES } from "@/lib/designBooklets/paperGeometry";
 import { TONI_DESIGN_BOOKLET_ASSETS } from "@/lib/designBooklets/defaults";
 import {
   buildDesignBookletRenderModel,
@@ -90,8 +92,8 @@ export default function DesignBookletWorkbenchClient({
   const selectionSummary = useMemo(() => {
     const roofForm = content.roofForms[draft.roofFormId];
     const material = content.materials[draft.materialId];
-    return `${roofForm.shortName} / ${material.label}`;
-  }, [content, draft.materialId, draft.roofFormId]);
+    return `${DESIGN_BOOKLET_PAPER_SIZES[draft.paperSize].label} / ${roofForm.shortName} / ${material.label}`;
+  }, [content, draft.materialId, draft.paperSize, draft.roofFormId]);
 
   function updateAsset(assetId: string, file: File | undefined) {
     setDownloadError("");
@@ -407,6 +409,25 @@ export default function DesignBookletWorkbenchClient({
                   </select>
                 </label>
                 <label className={styles.field}>
+                  <span>Paper size</span>
+                  <select
+                    value={draft.paperSize}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        paperSize: event.target
+                          .value as DesignBookletDraft["paperSize"],
+                      }))
+                    }
+                  >
+                    {DESIGN_BOOKLET_PAPER_SIZE_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {DESIGN_BOOKLET_PAPER_SIZES[id].label} - landscape
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className={styles.field}>
                   <span>Roofing choice</span>
                   <select
                     value={draft.materialId}
@@ -470,7 +491,8 @@ export default function DesignBookletWorkbenchClient({
         <section
           className={styles.previewWorkspace}
           id="booklet-preview"
-          aria-label="Landscape A4 booklet preview"
+          aria-label={`Landscape ${DESIGN_BOOKLET_PAPER_SIZES[draft.paperSize].label} booklet preview`}
+          data-paper-size={draft.paperSize}
         >
           <header className={styles.previewToolbar}>
             <div>

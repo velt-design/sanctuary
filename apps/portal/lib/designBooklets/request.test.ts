@@ -75,6 +75,51 @@ function pngFile(
 }
 
 describe("design booklet request parsing", () => {
+  it("accepts A3 and treats a missing saved paper size as A4", () => {
+    const a3Draft = createToniDesignBookletDraft();
+    a3Draft.paperSize = "a3";
+    expect(parseDesignBookletDraft(a3Draft).paperSize).toBe("a3");
+
+    const legacyDraft = structuredClone(
+      createToniDesignBookletDraft(),
+    ) as Partial<ReturnType<typeof createToniDesignBookletDraft>>;
+    delete legacyDraft.paperSize;
+    expect(parseDesignBookletDraft(legacyDraft).paperSize).toBe("a4");
+  });
+
+  it("rejects an unknown paper size", () => {
+    const draft = {
+      ...createToniDesignBookletDraft(),
+      paperSize: "letter",
+    };
+
+    expect(() => parseDesignBookletDraft(draft)).toThrow(/paper size/i);
+  });
+
+  it("preserves bullet lines in body and reusable section copy", () => {
+    const draft = createToniDesignBookletDraft();
+    const page = draft.contentPages.find(
+      (candidate): candidate is DesignBookletImagePage =>
+        candidate.kind === "image",
+    );
+    if (!page) throw new Error("Expected an image page.");
+    page.content.body = "Intro\r\n - Shade   control\r\n- Rain cover";
+    page.content.sections[0].body = "- Hardwood lining\n- Warm finish";
+
+    const parsed = parseDesignBookletDraft(draft);
+    const parsedPage = parsed.contentPages.find(
+      (candidate): candidate is DesignBookletImagePage =>
+        candidate.kind === "image",
+    );
+
+    expect(parsedPage?.content.body).toBe(
+      "Intro\n- Shade control\n- Rain cover",
+    );
+    expect(parsedPage?.content.sections[0].body).toBe(
+      "- Hardwood lining\n- Warm finish",
+    );
+  });
+
   it("strictly parses and normalizes a mixed dynamic draft", () => {
     const draft = createToniDesignBookletDraft();
     draft.customerName = "  Toni   Morgan  ";

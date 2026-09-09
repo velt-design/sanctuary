@@ -20,6 +20,7 @@ describe("design booklet defaults", () => {
     const sources = allDesignBookletAssetSources(draft);
 
     expect(draft.customerName).toBe("Customer");
+    expect(draft.paperSize).toBe("a4");
     expect(sources).toHaveLength(14);
     expect(
       draft.contentPages

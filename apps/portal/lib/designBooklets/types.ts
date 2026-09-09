@@ -1,5 +1,7 @@
 export const DESIGN_BOOKLET_SCHEMA_VERSION = 2 as const;
 
+export const DESIGN_BOOKLET_PAPER_SIZE_IDS = ["a4", "a3"] as const;
+
 export const DESIGN_BOOKLET_ROOF_FORM_IDS = [
   "pitched",
   "gable",
@@ -73,6 +75,8 @@ export const DESIGN_BOOKLET_FOCAL_POINT_IDS = [
 
 export type DesignBookletRoofFormId =
   (typeof DESIGN_BOOKLET_ROOF_FORM_IDS)[number];
+export type DesignBookletPaperSizeId =
+  (typeof DESIGN_BOOKLET_PAPER_SIZE_IDS)[number];
 export type DesignBookletMaterialId =
   (typeof DESIGN_BOOKLET_MATERIAL_IDS)[number];
 export type DesignBookletDefaultAssetId =
@@ -198,6 +202,7 @@ export type DesignBookletContentPage =
 
 export type DesignBookletDraft = {
   schemaVersion: typeof DESIGN_BOOKLET_SCHEMA_VERSION;
+  paperSize: DesignBookletPaperSizeId;
   customerName: string;
   projectTitle: string;
   roofFormId: DesignBookletRoofFormId;

@@ -75,6 +75,7 @@ export function validateSupervisionCompletion({
     {
       repoRoot,
       stateDir,
+      manifest: state.manifest,
     },
   );
   const attempt = activeAttempt(state);

@@ -4,7 +4,12 @@ import type {
   DesignBookletDraft,
   DesignBookletImagePage,
   DesignBookletImagePlacement,
+  DesignBookletPaperSizeId,
 } from "@/lib/designBooklets/types";
+import {
+  DESIGN_BOOKLET_BASE_PAGE_SIZE,
+  designBookletPageGeometry,
+} from "@/lib/designBooklets/paperGeometry";
 import { visibleDesignBookletContentImages } from "@/lib/designBooklets/contentLayouts";
 import {
   resolveDesignBookletContentLayout,
@@ -29,6 +34,7 @@ import {
   type DesignBookletPresentationFontRole,
 } from "@/lib/designBooklets/presentation";
 import DesignBookletPreviewImage from "./DesignBookletPreviewImage";
+import DesignBookletEditorialText from "./DesignBookletEditorialText";
 import type {
   DesignBookletAssetDisplayHandler,
   DesignBookletPreviewAsset,
@@ -44,15 +50,23 @@ type Props = {
 };
 
 type BookletPageStyle = CSSProperties & {
+  "--booklet-layout-width": string;
   "--booklet-page-height": string;
   "--booklet-page-width": string;
 };
 
 const presentation = DESIGN_BOOKLET_PRESENTATION;
-const BOOKLET_PAGE_STYLE: BookletPageStyle = {
-  "--booklet-page-height": String(presentation.page.height),
-  "--booklet-page-width": String(presentation.page.width),
-};
+
+function bookletPageStyle(
+  paperSize: DesignBookletPaperSizeId,
+): BookletPageStyle {
+  const page = designBookletPageGeometry(paperSize);
+  return {
+    "--booklet-layout-width": String(DESIGN_BOOKLET_BASE_PAGE_SIZE.width),
+    "--booklet-page-height": String(page.height),
+    "--booklet-page-width": String(page.width),
+  };
+}
 
 function point(value: number): string {
   return `calc(var(--booklet-point) * ${value})`;
@@ -220,8 +234,9 @@ function CoverPage({
       data-booklet-page="1"
       data-page-key="cover"
       data-page-kind="cover"
+      data-paper-size={draft.paperSize}
       aria-label={`Booklet page 1 of ${pageCount}`}
-      style={BOOKLET_PAGE_STYLE}
+      style={bookletPageStyle(draft.paperSize)}
     >
       <DesignBookletPreviewImage
         className={styles.fullBleedImage}
@@ -351,8 +366,9 @@ function ContentPage({
       data-page-kind="image"
       data-content-layout={page.layout}
       data-content-variant={page.variant}
+      data-paper-size={draft.paperSize}
       aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
-      style={BOOKLET_PAGE_STYLE}
+      style={bookletPageStyle(draft.paperSize)}
     >
       {images.map((image, index) => {
         const frame = layout.imageFrames[index];
@@ -424,15 +440,14 @@ function ContentPage({
             </h2>
           ) : null}
           {page.content.body ? (
-            <p
+            <DesignBookletEditorialText
+              text={page.content.body}
               className={styles.contentBody}
               style={{
                 fontSize: point(typography.bodySize),
                 lineHeight: point(typography.bodyLineHeight),
               }}
-            >
-              {page.content.body}
-            </p>
+            />
           ) : null}
         </main>
       ) : null}
@@ -456,14 +471,14 @@ function ContentPage({
                 <div>
                   <h3>{section.heading}</h3>
                   {section.body ? (
-                    <p
+                    <DesignBookletEditorialText
+                      text={section.body}
+                      className={styles.contentSectionBody}
                       style={{
                         fontSize: point(typography.bodySize),
                         lineHeight: point(typography.bodyLineHeight),
                       }}
-                    >
-                      {section.body}
-                    </p>
+                    />
                   ) : null}
                 </div>
               </section>
@@ -517,8 +532,9 @@ function DrawingPage({
       data-page-kind="drawings"
       data-drawing-layout={page.layout}
       data-drawing-preview="instant-html"
+      data-paper-size={draft.paperSize}
       aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
-      style={BOOKLET_PAGE_STYLE}
+      style={bookletPageStyle(draft.paperSize)}
     >
       <main
         className={styles.drawingCanvas}
@@ -688,8 +704,9 @@ function ReviewPage({
       data-booklet-page={pageNumber}
       data-page-key="review"
       data-page-kind="review"
+      data-paper-size={draft.paperSize}
       aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
-      style={BOOKLET_PAGE_STYLE}
+      style={bookletPageStyle(draft.paperSize)}
     >
       <figure
         className={styles.reviewImage}

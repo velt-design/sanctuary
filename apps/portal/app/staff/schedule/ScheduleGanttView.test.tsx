@@ -587,7 +587,7 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
     rendered.unmount();
   });
 
-  it('reviews pointer move and resize timing before forwarding callbacks across the extracted timeline boundary', () => {
+  it('saves pointer moves and resizes on release without a routine timing dialog', () => {
     const props = ganttProps();
     const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
     const itemRow = rendered.container.querySelector<HTMLElement>(
@@ -603,16 +603,9 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
       window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 154, clientY: 100 }));
     });
 
-    expect(props.onMovePin).not.toHaveBeenCalled();
     expect(props.onResizePin).not.toHaveBeenCalled();
-    expect(document.body.textContent).toContain('Review timing change');
-    expect(document.body.textContent).toContain('Current07 Apr to 08 Apr · 2d');
-    expect(document.body.textContent).toContain('RequestedStart 09 Apr · 2d duration');
-    expect(document.body.textContent).not.toContain('Proposed09 Apr to 10 Apr');
-    expect(document.body.textContent).toContain('server will calculate the finish against the crew calendar, holidays and closures');
-    const applyMove = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent === 'Check impact');
-    act(() => applyMove?.click());
+    expect(document.body.textContent).not.toContain('Review timing change');
+    expect(props.onMovePin).toHaveBeenCalledTimes(1);
     expect(props.onMovePin).toHaveBeenCalledWith(scheduleItem.id, '2026-04-09', 2);
 
     const resizeHandle = itemRow?.querySelector<HTMLElement>('[data-gantt-resize-handle="true"]');
@@ -624,15 +617,13 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
       window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 154, clientY: 100 }));
     });
 
-    expect(props.onResizePin).not.toHaveBeenCalled();
-    const applyResize = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent === 'Check impact');
-    act(() => applyResize?.click());
+    expect(document.body.textContent).not.toContain('Review timing change');
+    expect(props.onResizePin).toHaveBeenCalledTimes(1);
     expect(props.onResizePin).toHaveBeenCalledWith(scheduleItem.id, '2026-04-07', 4);
     rendered.unmount();
   });
 
-  it('disables impact checking when authoritative timing changes during an open review', async () => {
+  it('uses the latest save callback if the parent rerenders during a drag', async () => {
     const props = ganttProps();
     const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
     const bar = rendered.container.querySelector<HTMLElement>('[role="button"][aria-haspopup="dialog"]');
@@ -642,25 +633,22 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
     });
     act(() => {
       window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 154, clientY: 100 }));
-      window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 154, clientY: 100 }));
     });
 
-    const changedItem = { ...scheduleItem, updatedAt: '2026-04-01T01:00:00.000Z' };
+    const latestSave = vi.fn();
     rendered.rerender(
       <ScheduleGanttView
         {...props}
-        visibleScheduleItems={[changedItem]}
-        laneItems={new Map([[installer.id, [changedItem]]])}
+        onMovePin={latestSave}
       />,
     );
     await flushEffects();
 
-    const checkImpact = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent === 'Check impact');
-    expect(checkImpact?.disabled).toBe(true);
-    expect(document.body.textContent).toContain('The schedule changed while this review was open');
-    act(() => checkImpact?.click());
+    act(() => {
+      window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 154, clientY: 100 }));
+    });
     expect(props.onMovePin).not.toHaveBeenCalled();
+    expect(latestSave).toHaveBeenCalledWith(scheduleItem.id, '2026-04-09', 2);
     rendered.unmount();
   });
 
@@ -709,7 +697,7 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
       expect(rendered.container.querySelector('[data-layout-mode="compact-short"]')).not.toBeNull();
       expect(rendered.container.querySelector('[aria-label="Gantt timeline"]')).toBeNull();
       expect(rendered.container.querySelector('[aria-label="Crew schedule agenda"]')).not.toBeNull();
-      expect(rendered.container.textContent).toContain('Plan 06 Apr to 28 Jun');
+      expect(rendered.container.textContent).toContain('Plan 09 Mar to 28 Jun');
       expect(rendered.container.textContent).toContain('Open Board and unscheduled work');
       rendered.unmount();
     } finally {

@@ -2,6 +2,8 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { parseRootCompatibilityReport } from './repo-health-parsers.mjs';
+
 const ROOT = process.cwd();
 const DASHBOARD_PATH = path.join(ROOT, 'docs', 'repo-health-trends.md');
 const UPDATE = process.argv.includes('--update');
@@ -85,11 +87,7 @@ function collectSnapshot() {
 
   const { criticalFiles, warningFiles } = parseFilesReport(files);
 
-  const [, , rootCompatFiles] = parseRequired(
-    rootCompat,
-    /(\d+) new-growth file\(s\),\s+(\d+) changed file\(s\),\s+(\d+) legacy-compatible file\(s\)\./,
-    'root compatibility',
-  );
+  const { legacyCompatibleFiles: rootCompatFiles } = parseRootCompatibilityReport(rootCompat);
 
   const [, , browserDirectSupabase, browserApprovedAdapters] = parseRequired(
     browserSupabase,

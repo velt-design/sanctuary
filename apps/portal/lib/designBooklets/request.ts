@@ -1,7 +1,7 @@
 import "server-only";
 
 import { PDFDocument } from "pdf-lib";
-import sharp, { type Metadata } from "sharp";
+import type { Metadata } from "sharp";
 import {
   DESIGN_BOOKLET_DEFAULT_ASSET_IDS,
   DESIGN_BOOKLET_CONTENT_LAYOUT_IDS,
@@ -10,6 +10,7 @@ import {
   DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS,
   DESIGN_BOOKLET_FOCAL_POINT_IDS,
   DESIGN_BOOKLET_MATERIAL_IDS,
+  DESIGN_BOOKLET_PAPER_SIZE_IDS,
   DESIGN_BOOKLET_ROOF_FORM_IDS,
   DESIGN_BOOKLET_SCHEMA_VERSION,
   DESIGN_BOOKLET_TEXT_SIZE_IDS,
@@ -30,12 +31,14 @@ import {
   type DesignBookletImagePlacement,
   type DesignBookletImages,
   type DesignBookletMaterialId,
+  type DesignBookletPaperSizeId,
   type DesignBookletRoofFormId,
   type DesignBookletTextSizeId,
   type DesignBookletPdfDocument,
   type DesignBookletPdfDocuments,
 } from "./types";
 import { TONI_DESIGN_BOOKLET_ASSETS } from "./defaults";
+import { DESIGN_BOOKLET_DEFAULT_PAPER_SIZE } from "./paperGeometry";
 import {
   currentDesignBookletIssueDate,
   DESIGN_BOOKLET_MAX_DRAWING_PAGE_TITLE_LENGTH,
@@ -55,6 +58,7 @@ import {
   renderableDesignBookletAssetSources,
 } from "./pageModel";
 import { readDesignBookletDefaultImage } from "./pdfAssets";
+import { loadDesignBookletSharp } from "./sharpRuntime";
 import {
   defaultDesignBookletContentVariant,
   isDesignBookletContentScale,
@@ -73,9 +77,9 @@ const SAFE_ID = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const supportedMediaTypes = new Set(["image/png", "image/jpeg"]);
 
 export class DesignBookletRequestError extends Error {
-  readonly status: 400 | 413;
+  readonly status: 400 | 413 | 503;
 
-  constructor(message: string, status: 400 | 413 = 400) {
+  constructor(message: string, status: 400 | 413 | 503 = 400) {
     super(message);
     this.name = "DesignBookletRequestError";
     this.status = status;
@@ -152,6 +156,29 @@ function optionalText(
   return cleaned;
 }
 
+function optionalMultilineText(
+  value: unknown,
+  context: string,
+  maxLength: number,
+): string {
+  if (value === undefined) return "";
+  if (typeof value !== "string") {
+    throw new DesignBookletRequestError(`${context} is invalid.`);
+  }
+  const cleaned = value
+    .replace(/\r\n?/g, "\n")
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n");
+  if (cleaned.length > maxLength) {
+    throw new DesignBookletRequestError(
+      `${context} must be ${maxLength} characters or fewer.`,
+    );
+  }
+  return cleaned;
+}
+
 function isIsoCalendarDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00.000Z`);
@@ -182,6 +209,12 @@ function isRoofFormId(value: unknown): value is DesignBookletRoofFormId {
 
 function isMaterialId(value: unknown): value is DesignBookletMaterialId {
   return DESIGN_BOOKLET_MATERIAL_IDS.includes(value as DesignBookletMaterialId);
+}
+
+function isPaperSizeId(value: unknown): value is DesignBookletPaperSizeId {
+  return DESIGN_BOOKLET_PAPER_SIZE_IDS.includes(
+    value as DesignBookletPaperSizeId,
+  );
 }
 
 function isDefaultAssetId(
@@ -341,7 +374,7 @@ function parseEditorialContent(raw: unknown, context: string) {
         `${context}, section ${index + 1} heading`,
         DESIGN_BOOKLET_MAX_CONTENT_SECTION_HEADING_LENGTH,
       ),
-      body: optionalText(
+      body: optionalMultilineText(
         section.body,
         `${context}, section ${index + 1} copy`,
         DESIGN_BOOKLET_MAX_CONTENT_SECTION_BODY_LENGTH,
@@ -359,7 +392,7 @@ function parseEditorialContent(raw: unknown, context: string) {
       `${context} headline`,
       DESIGN_BOOKLET_MAX_CONTENT_HEADLINE_LENGTH,
     ),
-    body: optionalText(
+    body: optionalMultilineText(
       value.body,
       `${context} body`,
       DESIGN_BOOKLET_MAX_CONTENT_BODY_LENGTH,
@@ -590,6 +623,10 @@ export function parseDesignBookletDraft(raw: unknown): DesignBookletDraft {
   if (!isMaterialId(value.materialId)) {
     throw new DesignBookletRequestError("Roofing choice is invalid.");
   }
+  const paperSize = value.paperSize ?? DESIGN_BOOKLET_DEFAULT_PAPER_SIZE;
+  if (!isPaperSizeId(paperSize)) {
+    throw new DesignBookletRequestError("Paper size is invalid.");
+  }
   if (!Array.isArray(value.contentPages)) {
     throw new DesignBookletRequestError("Content pages are invalid.");
   }
@@ -603,6 +640,7 @@ export function parseDesignBookletDraft(raw: unknown): DesignBookletDraft {
   const reviewPage = valueRecord(value.reviewPage, "Review page");
   return {
     schemaVersion: DESIGN_BOOKLET_SCHEMA_VERSION,
+    paperSize,
     customerName: requiredText(value.customerName, "Customer name", 80),
     projectTitle: requiredMultilineText(
       value.projectTitle,
@@ -654,6 +692,15 @@ async function readUploadedImage(
   }
 
   const bytes = new Uint8Array(await entry.arrayBuffer());
+  let sharp: Awaited<ReturnType<typeof loadDesignBookletSharp>>;
+  try {
+    sharp = await loadDesignBookletSharp();
+  } catch {
+    throw new DesignBookletRequestError(
+      "Image processing is temporarily unavailable.",
+      503,
+    );
+  }
   let metadata: Metadata;
   try {
     metadata = await sharp(bytes, {

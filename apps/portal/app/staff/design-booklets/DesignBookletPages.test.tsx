@@ -10,11 +10,16 @@ import {
   DESIGN_BOOKLET_REVIEW_COPY,
 } from "@/lib/designBooklets/pageModel";
 import { DESIGN_BOOKLET_PRESENTATION } from "@/lib/designBooklets/presentation";
+import {
+  DESIGN_BOOKLET_BASE_PAGE_SIZE,
+  DESIGN_BOOKLET_PAPER_SIZES,
+} from "@/lib/designBooklets/paperGeometry";
 import { DESIGN_BOOKLET_CONTENT_LAYOUTS } from "@/lib/designBooklets/contentLayouts";
 import {
   resolveDesignBookletContentLayout,
   resolveDesignBookletContentTypography,
 } from "@/lib/designBooklets/contentPresentation";
+import { DESIGN_BOOKLET_BULLET_GEOMETRY } from "@/lib/designBooklets/editorialText";
 import type {
   DesignBookletContentLayoutId,
   DesignBookletContentVariantId,
@@ -92,6 +97,49 @@ describe("DesignBookletPages", () => {
 
     rendered.unmount();
   });
+
+  it.each(["a4", "a3"] as const)(
+    "uses exact %s page geometry for every preview page category",
+    (paperSize) => {
+      const cases = [
+        { key: "cover", layout: undefined },
+        { key: "image-page-1", layout: "visual-framed" },
+        { key: "image-page-1", layout: "story-image-left" },
+        { key: "image-page-1", layout: "gallery-grid-four" },
+        { key: "image-page-1", layout: "information-text" },
+        { key: "drawing-page-1", layout: undefined },
+        { key: "review", layout: undefined },
+      ] as const;
+
+      for (const previewCase of cases) {
+        const draft = createToniDesignBookletDraft();
+        draft.paperSize = paperSize;
+        const imagePage = draft.contentPages.find(
+          (page) => page.kind === "image",
+        );
+        if (previewCase.layout && imagePage?.kind === "image") {
+          imagePage.layout = previewCase.layout;
+        }
+        const rendered = renderPage(draft, previewCase.key);
+        const page = rendered.container.querySelector(
+          `[data-paper-size="${paperSize}"]`,
+        ) as HTMLElement;
+        const geometry = DESIGN_BOOKLET_PAPER_SIZES[paperSize];
+
+        expect(page).not.toBeNull();
+        expect(page.style.getPropertyValue("--booklet-page-width")).toBe(
+          String(geometry.width),
+        );
+        expect(page.style.getPropertyValue("--booklet-page-height")).toBe(
+          String(geometry.height),
+        );
+        expect(page.style.getPropertyValue("--booklet-layout-width")).toBe(
+          String(DESIGN_BOOKLET_BASE_PAGE_SIZE.width),
+        );
+        rendered.unmount();
+      }
+    },
+  );
 
   it("preserves an intentional booklet-title line break on the cover", () => {
     const draft = createToniDesignBookletDraft();
@@ -221,6 +269,54 @@ describe("DesignBookletPages", () => {
     expect(typography.headlineSize).toBe(124);
     rendered.unmount();
   });
+
+  it.each(["a4", "a3"] as const)(
+    "renders semantic bullets with shared hanging-indent geometry at %s",
+    (paperSize) => {
+      const draft = createToniDesignBookletDraft();
+      draft.paperSize = paperSize;
+      const imagePage = draft.contentPages.find(
+        (page) => page.kind === "image",
+      );
+      if (!imagePage || imagePage.kind !== "image") {
+        throw new Error("The fixture requires an image page.");
+      }
+      imagePage.layout = "story-image-left";
+      imagePage.content.body =
+        "A simple introduction\n- Shade through summer\n- Shelter in winter";
+
+      const rendered = renderPage(draft, imagePage.id);
+      const list = rendered.container.querySelector(
+        "[data-booklet-bullet-list]",
+      );
+      const firstItem = list?.querySelector("li") as HTMLElement;
+
+      expect(list?.querySelectorAll("li")).toHaveLength(2);
+      expect(firstItem.textContent).toContain("Shade through summer");
+      expect(firstItem.style.gridTemplateColumns).toBe(
+        `${point(DESIGN_BOOKLET_BULLET_GEOMETRY.markerWidth)} minmax(0, 1fr)`,
+      );
+      expect(firstItem.style.columnGap).toBe(
+        point(DESIGN_BOOKLET_BULLET_GEOMETRY.markerGap),
+      );
+      rendered.unmount();
+
+      imagePage.layout = "information-material-split";
+      imagePage.content.sections[0].body =
+        "- Hardwood lining\n- Warm natural finish";
+      imagePage.content.sections[1].body = "- Clear roofing\n- Filtered light";
+      const sectionRender = renderPage(draft, imagePage.id);
+      const sectionLists = sectionRender.container.querySelectorAll(
+        "[data-content-section] [data-booklet-bullet-list]",
+      );
+      expect(sectionLists).toHaveLength(2);
+      expect(sectionLists[0].querySelectorAll("li")).toHaveLength(2);
+      expect(
+        (sectionLists[0].querySelector("li") as HTMLElement).style.columnGap,
+      ).toBe(point(DESIGN_BOOKLET_BULLET_GEOMETRY.markerGap));
+      sectionRender.unmount();
+    },
+  );
 
   it.each([
     ["one-large", 1, ["PLAN"]],

@@ -21,6 +21,17 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-03 | Design Booklet Editorial Lists   | Promoted | Keep booklet lists deliberately lightweight and one level deep: store canonical `- ` markers inside existing draft body strings, preserve normalized line breaks through project/PDF parsing, and let one shared editorial owner drive selection toggling, Enter continuation, overflow weighting, semantic browser lists, and PDF hanging indents. Do not introduce rich-text JSON, duplicate A3 geometry, or a database migration for bullets. |
+| 2026-09-03 | Design Booklet Paper Geometry    | Promoted | Keep A4 as the one canonical booklet coordinate system, own exact A4/A3 landscape page boxes in one module, and proportionally transform the complete preview/PDF composition at the output boundary. Store the choice in schema-v2 draft JSON, default missing values to A4, and do not fork layouts or migrate the database. |
+| 2026-08-29 | Exact-Head CI                    | Promoted | Normalize GitHub lifecycle fields at the CI adapter boundary: trim and uppercase non-empty values and convert empty pending conclusions to `null`, then keep re-reading the exact PR head instead of rejecting or bypassing valid pending evidence. |
+| 2026-08-29 | Durable CI Recovery              | Promoted | Adapter normalization does not rewrite existing durable checkpoints. Accept a legacy blank lifecycle field only on pending CI evidence, preserve its stored hash for validation, then refresh it from the exact PR head before continuing. |
+| 2026-08-29 | Reviewer Dispatch Envelope       | Promoted | Keep immutable reviewer dispatches at or below 15,000 characters, compact duplicated packet evidence, and upgrade recognized ready legacy prompt hashes before spawning. Never attach a truncated or reconstructed native reviewer title. |
+| 2026-08-29 | Worker Dispatch Identity          | Promoted | Build worker prompts from trimmed controller-owned sections joined by exactly one blank line, then keep byte-exact native title matching. Recover only the one exact canonical prompt in the existing supervisor session and attempt window; never use semantic matching or start a replacement worker. |
+| 2026-08-27 | Vitest Stability                 | Promoted | Keep one validated worker policy across root and Worker configs: four workers in CI, eight locally, with only a positive-safe-integer `VITEST_MAX_WORKERS` override. Await React state-producing events and async milestones inside `act(...)`; never hide warnings globally or suppress intentional negative-route logging. |
+| 2026-08-27 | Toolchain Dependency Audit       | Promoted | Keep the full dependency audit fail-closed. Permit only the two named no-fix `xlsx` advisories while the package remains a root-only development dependency used solely by the legacy Running Jobs importer; a new advisory, available fix, production/workspace placement, or another executable import must fail CI. |
+| 2026-08-27 | Commercial Tab Intent Preload    | Promoted | When a route tab owns a second lazy subview, intent preload must include both module boundaries and the target query. Do not call the outer shell warm while its default useful-content module still starts only after selection. |
+| 2026-08-27 | Design Booklet Native Runtime    | Promoted | Keep `sharp` in the Portal production graph, lazy-load every product consumer, and explicitly trace its Linux addon plus libvips package into the narrow booklet routes. A lockfile entry alone does not prove a native runtime reached the deployed function. |
+| 2026-08-27 | Required CI Routing              | Promoted | Keep dependency/test-impact routing separate from domain ownership. Shared manifests and root tooling still run affected AI contracts and strict non-ownership guards, but only genuinely AI-owned paths activate the fixed AI lane. Any AI-owned path in a mixed PR restores strict ownership for the complete change set. |
 | 2026-08-26 | Autonomous Engineering Kill Switch | Promoted | Stop only the protected Sanctuary gateway PID after matching the runtime user, exact process title and isolated loopback port. Use one graceful signal, prove process and health are down, remove only the PID record, preserve default OpenClaw authority, and refuse broad matching or force kill. |
 | 2026-08-26 | Autonomous Engineering Proof     | Promoted | Treat a coding worker's draft PR as a candidate, not completion. Bind exact-head checks, one classified transient rerun, same-lane repair and a separately identified read-only reviewer into durable state; finish only after CI and strict review pass. Keep hosted `main` protection app-bypass-free and human-merged. |
 | 2026-08-26 | Autonomous Engineering Lanes     | Promoted | Bind every coding run to one strict manifest hash, exact base SHA, feature branch and owner-recorded worktree. Expose narrow provision/status/publish/cleanup tools instead of lead shell access, refuse unknown or outside-lane state, and require hosted default-branch protection before promotion because repository content-write credentials cannot themselves exclude `main`. |
@@ -174,7 +185,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-07-20 | Portal Contact Details           | Promoted | Contact Detail uses the same authenticated local-first save contract as Project Details: immediate Done feedback, ordered full drafts, coherent cache updates, durable retry, and confirmed-value rollback with the rejected draft retained.                                                                                                                                                                                                                                                                                                                                                                                                             |
 | 2026-07-20 | Portal Project Task Mutations    | Promoted | Manual task feedback is immediate, but overlapping writes own rollback by task key and auto-advance side effects remain server-confirmed; rejected tasks refresh server truth and expose task-specific Retry.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 2026-07-20 | Portal Project Index Mutations   | Promoted | Reversible index writes update only the authenticated user's query caches immediately, retain background-sync feedback, and roll back the affected field/scope on rejection; server-confirmed success and destructive actions stay separate.                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| 2026-07-20 | Portal Performance Measurement   | Promoted | Fixture interaction feedback is timestamped inside Chromium when the real visual DOM state changes; Playwright driver round trips must not be counted as user-visible latency.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 2026-07-20 | Portal Performance Measurement   | Promoted | Fixture visual feedback and the five authenticated project-tab useful-content markers are timestamped inside Chromium when the real DOM state changes; Playwright driver polling and round trips must not be counted as user-visible latency.                                                                                                                                                                                                                                                                                                                                                                                                           |
 | 2026-07-20 | Infill Explicit Selections       | Promoted | Panel material and joiner direction are explicit two-option selections on Existing supports; physical edges use only Yes/No, with new items defaulting to conservative No and legacy auto/Unsure values resolved without changing their current purchasing result.                                                                                                                                                                                                                                                                                                                                                                                        |
 | 2026-07-19 | Workbench Solve Lifecycle        | Promoted | Memoize the solved base by draft/project identity and derive selection, visibility, and viewport UI from it; UI-only changes must not rebuild solved geometry.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | 2026-07-19 | Calculator Request Lifecycle     | Promoted | Keep debouncing, abort ownership, newest-result protection, and last-valid continuity in the dedicated request controller; costing inputs and results remain server/package authoritative.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -330,6 +341,61 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 ## Entries
 
+### 2026-09-03 - Design Booklet Editorial Lists - Keep Draft Text Lightweight
+
+Date: 2026-09-03
+Area: Design Booklet Editorial Lists
+Status: Promoted
+Decision or mistake: Add one-level bullets to body and material-section copy without introducing rich-text state. Store canonical `- ` markers inside the existing draft strings, preserve normalized line boundaries at the parser, and translate those markers into semantic browser lists and PDF bullet glyphs.
+Why it mattered: A parallel rich-text JSON model or database field would add migration and synchronization risk to a deliberately bounded document editor. Independent browser and PDF list layout would also drift across A4/A3 scaling and wrapped lines.
+Current guardrail: Keep selection toggling, Enter continuation, marker parsing, overflow weighting, and hanging-indent geometry in `editorialText.ts`; consume the same canonical geometry in preview and PDF; preserve existing prose and hidden copy when switching templates or paper size; require parser, autosave, A4/A3 coordinate, and browser/PDF tests.
+Promoted to: `docs/design-booklets.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/portal/lib/designBooklets/editorialText.test.ts`; `apps/portal/lib/designBooklets/request.test.ts`; `apps/portal/lib/designBooklets/pdf.test.ts`; `apps/portal/app/staff/design-booklets/BookletBulletTextArea.test.tsx`; `apps/portal/app/staff/design-booklets/DesignBookletPages.test.tsx`; `apps/portal/app/staff/design-booklets/DesignBookletProjectPersistence.test.tsx`; `playwright/portal.design-booklet-workbench.spec.ts`
+
+### 2026-09-03 - Design Booklet Paper Geometry - Scale One Canonical Composition
+
+Date: 2026-09-03
+Area: Design Booklet Paper Geometry
+Status: Promoted
+Decision or mistake: Keep the established landscape A4 design as the canonical coordinate system. A shared paper-geometry owner supplies exact A4 and A3 page boxes plus scale factors to the browser preview and PDF output. Persist the selection in schema-v2 draft JSON and normalize a missing value to A4.
+Why it mattered: Duplicated A3 layouts would drift from A4 across typography, rules, title blocks, focal images, drawing placement, and future edits. A database column would duplicate the existing draft persistence boundary.
+Current guardrail: Add paper sizes only through `paperGeometry.ts`; transform the complete composition and original embedded drawing page together; keep content and assets independent of size; require exact PDF page-box and representative preview/PDF tests.
+Promoted to: `docs/design-booklets.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/portal/lib/designBooklets/paperGeometry.test.ts`; `apps/portal/lib/designBooklets/pdf.test.ts`; `apps/portal/app/staff/design-booklets/DesignBookletPages.test.tsx`; `playwright/portal.design-booklet-workbench.spec.ts`
+
+### 2026-08-27 - Vitest Stability - Bound Concurrency And Await React Work
+
+Date: 2026-08-27
+Area: Repository test execution
+Status: Promoted
+Decision or mistake: Unbounded Vitest concurrency exhausted worker processes during broad suites, while several component tests allowed history events, promise-driven persistence, or completion polling to settle outside React `act(...)`. The assertions could pass while the run still emitted worker-exit or React warnings.
+Why it mattered: A passing assertion count is not a reliable quality signal when the runner loses workers or component state continues after the test boundary. Globally filtering console output would also hide real regressions and intentional route-error evidence.
+Current guardrail: Resolve Vitest concurrency through `test/vitestWorkerPolicy.ts`: four workers for CI, eight locally, or a validated positive-safe-integer `VITEST_MAX_WORKERS` override. Keep root Playwright exclusion intact. Component tests must await the exact state-producing event or mock milestone within `act(...)`; do not suppress `console.error`, React warnings, or intentional negative-route logging.
+Promoted to: `docs/testing-and-qa.md`; `docs/portal-production-readiness.md`
+Related docs/tests: `test/vitest-worker-policy.test.ts`; `apps/portal/app/staff/design-booklets/DesignBookletProjectPersistence.test.tsx`; `apps/portal/components/projects/ProjectPage/tabs/overview/ProjectCloseDialog.test.tsx`; `apps/marketing/components/Header.test.tsx`; `npm run test:portal`
+
+### 2026-08-27 - Toolchain Dependency Audit - Isolate Exceptions Instead Of Ignoring Development Findings
+
+Date: 2026-08-27
+Area: Toolchain dependency security
+Status: Promoted
+Decision or mistake: The production-only audit was green while the full dependency graph still contained fixable critical and high findings. The remaining no-fix `xlsx` findings belong to one legacy operational import, so a blanket development-dependency exclusion would hide unrelated regressions.
+Why it mattered: Test runners, bundlers, linters, and build tools execute privileged repository code even when they do not ship to customers. Treating all development dependencies as harmless would let fixable vulnerabilities return without a blocking signal.
+Current guardrail: Run the full audit and reject every finding except `GHSA-4r6h-8v6p-xvw6` and `GHSA-5pgg-2g8v-p4x9`. The exception remains valid only while `xlsx` is a direct root development dependency, the lock marks it development-only, no fix is available, and its sole executable import is `scripts/import-running-jobs-legacy.ts`. Fail CI if any part of that boundary changes.
+Promoted to: `docs/security-privacy-quality.md`; `docs/testing-and-qa.md`; `docs/portal-production-readiness.md`
+Related docs/tests: `scripts/audit-toolchain.mjs`; `test/toolchain-audit.test.ts`; `npm run audit:toolchain`
+
+### 2026-08-27 - Design Booklet Native Runtime - Keep Heavy Processing Off Lightweight Route Startup
+
+Date: 2026-08-27
+Area: Project Design Booklet image uploads and PDF delivery
+Status: Promoted
+Decision or mistake: `sharp` was declared only as a Portal development dependency and imported when shared booklet modules started. Moving it into production dependencies made the Linux optional packages installable, but Vercel's Next.js output tracer still copied the externalized addon without its separate `libvips` package. Booklet routes therefore continued returning an HTML `500` before authentication or route error handling could run.
+Why it mattered: The client reported a generic asset-preparation failure, every replacement remained unsaved, and PDF download correctly waited forever on the failed persistence boundary even though the booklet content and browser preview were valid.
+Current guardrail: Keep `sharp` in `apps/portal` production dependencies, keep its Linux native optional packages outside the development-only lockfile graph, and load every product consumer through the focused runtime adapter. Explicitly include Sharp, `@img/sharp-linux-x64`, and `@img/sharp-libvips-linux-x64` in Next.js output tracing for only the booklet API routes. Guard the manifest, lazy imports, and trace patterns with a focused test, then verify both the deployed API response shape and a real deployed PDF render; a successful build or lockfile entry alone is insufficient.
+Promoted to: `docs/design-booklets.md`; `docs/portal-production-readiness.md`
+Related docs/tests: `apps/portal/lib/designBooklets/projectRuntimeDependencies.test.ts`; `apps/portal/lib/designBooklets/sharpRuntime.ts`; `apps/portal/next.config.ts`; `npm run build:portal`
+
 ### 2026-06-02 - Portal Test Auth - Explicit Test User Provisioning
 
 Area: Portal Test Auth
@@ -360,7 +426,7 @@ Current guardrail: portal route coverage is catalog-driven through `playwright/s
 
 Promoted to: None
 
-Related docs/tests: `playwright/support/portalRouteCatalog.ts`, `playwright/support/portalRouteCatalog.test.ts`, `playwright/portal.agent-access.spec.ts`, `docs/portal-route-catalog.md`, `docs/testing-and-qa.md`.
+Related docs/tests: `playwright/support/portalRouteCatalog.ts`, `test/playwright-support/portalRouteCatalog.test.ts`, `playwright/portal.agent-access.spec.ts`, `docs/portal-route-catalog.md`, `docs/testing-and-qa.md`.
 
 ### 2026-06-02 - Portal Browser Coverage - Explicit Seeded Scenario Registry
 
@@ -1896,7 +1962,7 @@ Current guardrail: bake captured live failures through `sanctuaryWorkbenchCaptur
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [apps/portal/lib/drawings/exportRoofFailureRepro.ts](../apps/portal/lib/drawings/exportRoofFailureRepro.ts), [playwright/support/workbenchCapturedRepro.test.ts](../playwright/support/workbenchCapturedRepro.test.ts).
+Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [apps/portal/lib/drawings/exportRoofFailureRepro.ts](../apps/portal/lib/drawings/exportRoofFailureRepro.ts), [test/playwright-support/workbenchCapturedRepro.test.ts](../test/playwright-support/workbenchCapturedRepro.test.ts).
 
 ### 2026-06-02 - Workbench Geometry - Roof Stage Diagnostics Must Be Render-Critical
 
@@ -1912,7 +1978,7 @@ Current guardrail: package roof-stage diagnostics may classify eave construction
 
 Promoted to: None
 
-Related docs/tests: [packages/geometry/src/houseRoofDiagnostics.ts](../packages/geometry/src/houseRoofDiagnostics.ts), [packages/geometry/src/house/roofModelPipeline.test.ts](../packages/geometry/src/house/roofModelPipeline.test.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [playwright/support/workbenchCapturedRepro.test.ts](../playwright/support/workbenchCapturedRepro.test.ts).
+Related docs/tests: [packages/geometry/src/houseRoofDiagnostics.ts](../packages/geometry/src/houseRoofDiagnostics.ts), [packages/geometry/src/house/roofModelPipeline.test.ts](../packages/geometry/src/house/roofModelPipeline.test.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [test/playwright-support/workbenchCapturedRepro.test.ts](../test/playwright-support/workbenchCapturedRepro.test.ts).
 
 ### 2026-06-02 - Workbench Debugging - Multi-House Capture Verifier
 
@@ -1960,7 +2026,7 @@ Current guardrail: use `npm run portal:agent-scorecard` before choosing agent-re
 
 Promoted to: None
 
-Related docs/tests: [docs/portal-agent-scorecard.md](portal-agent-scorecard.md), [playwright/support/portalAgentScorecard.ts](../playwright/support/portalAgentScorecard.ts), [scripts/portal-agent-scorecard.ts](../scripts/portal-agent-scorecard.ts), [playwright/support/portalAgentScorecard.test.ts](../playwright/support/portalAgentScorecard.test.ts).
+Related docs/tests: [docs/portal-agent-scorecard.md](portal-agent-scorecard.md), [playwright/support/portalAgentScorecard.ts](../playwright/support/portalAgentScorecard.ts), [scripts/portal-agent-scorecard.ts](../scripts/portal-agent-scorecard.ts), [test/playwright-support/portalAgentScorecard.test.ts](../test/playwright-support/portalAgentScorecard.test.ts).
 
 ### 2026-06-02 - Agent Tooling - Portal Agent Strictness Ratchet
 
@@ -1976,7 +2042,7 @@ Current guardrail: use `npm run portal:agent-scorecard:strict` to protect route 
 
 Promoted to: None
 
-Related docs/tests: [docs/portal-agent-scorecard.md](portal-agent-scorecard.md), [playwright/support/portalAgentScorecard.ts](../playwright/support/portalAgentScorecard.ts), [scripts/portal-agent-scorecard.ts](../scripts/portal-agent-scorecard.ts), [playwright/support/portalAgentScorecard.test.ts](../playwright/support/portalAgentScorecard.test.ts).
+Related docs/tests: [docs/portal-agent-scorecard.md](portal-agent-scorecard.md), [playwright/support/portalAgentScorecard.ts](../playwright/support/portalAgentScorecard.ts), [scripts/portal-agent-scorecard.ts](../scripts/portal-agent-scorecard.ts), [test/playwright-support/portalAgentScorecard.test.ts](../test/playwright-support/portalAgentScorecard.test.ts).
 
 ### 2026-06-02 - Workbench Debugging - Captured Repro Workflow
 
@@ -1992,7 +2058,7 @@ Current guardrail: use `readWorkbenchCapturedReproPayload(page)` / `attachWorkbe
 
 Promoted to: None
 
-Related docs/tests: [docs/workbench-captured-repro-workflow.md](workbench-captured-repro-workflow.md), [playwright/support/workbenchCapturedRepro.ts](../playwright/support/workbenchCapturedRepro.ts), [playwright/support/workbenchCapturedRepro.test.ts](../playwright/support/workbenchCapturedRepro.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts).
+Related docs/tests: [docs/workbench-captured-repro-workflow.md](workbench-captured-repro-workflow.md), [playwright/support/workbenchCapturedRepro.ts](../playwright/support/workbenchCapturedRepro.ts), [test/playwright-support/workbenchCapturedRepro.test.ts](../test/playwright-support/workbenchCapturedRepro.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts).
 
 ### 2026-06-03 - Design Workbench - Durable Object-First Draft Save
 
@@ -3042,11 +3108,11 @@ Browser evidence: With the task checkbox already in view, the fixture-safe Chrom
 Date: 2026-07-20
 Area: Portal Performance Measurement
 Status: Promoted
-Decision or mistake: The first mutation fixture measured visual feedback with the Node test driver's wall clock, so Playwright command and assertion round trips could make an already-rendered update look slower than 100 ms on a busy CI runner. Fixture interaction feedback now starts and stops inside Chromium when the target DOM state actually changes; request/background settlement remains separate.
+Decision or mistake: The first mutation fixture measured visual feedback with the Node test driver's wall clock, so Playwright command and assertion round trips could make an already-rendered update look slower than 100 ms on a busy CI runner. The authenticated project-tab gate later repeated that mistake for useful content: Playwright's locator polling could add a large discrete delay after the target DOM state was already visible. Its first browser-side correction also named a nonexistent Estimates-specific loading key even though Estimates, Quotes, and Invoices share one Commercial module and loading shell. Fixture visual feedback and the five authenticated project-tab useful-content markers now start and stop inside Chromium when the target DOM state actually changes; the shared Commercial shell is matched only inside the active Estimates tab body, and request/background settlement remains separate.
 Why it mattered: A performance gate must measure the user's wait, not automation transport noise. Loosening the 100 ms target would have hidden the measurement error and weakened the product contract.
-Current guardrail: For fixture interaction feedback, install the browser-side visual observer before the action and end feedback at the first truthful visible state. Keep the 100 ms product target, long-task check, blocking-overlay check, request accounting, and delayed background completion unchanged. Async loading tests must hold mocked requests with controlled promises when they assert the pending state.
+Current guardrail: For fixture visual feedback and the five authenticated project-tab useful-content markers, install the browser-side visual observer before the action and end timing at the first truthful visible state. Keep shared loading selectors aligned with their owning module and scoped to the active tab body; never invent a per-route marker that the rendered owner does not emit. Keep the following Playwright assertions as semantic checks without using their completion time as product latency. Keep the 100 ms feedback and 500 ms project-tab useful-content targets, p75 aggregation, long-task check, blocking-overlay check, request accounting, and delayed background completion unchanged. Async loading tests must hold mocked requests with controlled promises when they assert the pending state.
 Promoted to: `docs/testing-and-qa.md`; `docs/portal-production-readiness.md`
-Related docs/tests: `playwright/support/portalPerformance.ts`; `playwright/portal.project-mutation-performance.spec.ts`; `apps/portal/app/staff/schedule/ScheduleClient.test.tsx`
+Related docs/tests: `playwright/support/portalPerformance.ts`; `playwright/portal.project-mutation-performance.spec.ts`; `playwright/portal.performance.spec.ts`; `apps/portal/app/staff/schedule/ScheduleClient.test.tsx`
 
 ### 2026-07-20 - Infill Explicit Selections - Put Decisions Where Supports Are Confirmed
 
@@ -4194,7 +4260,7 @@ agenda from the same Gantt model, retain essential view context, and route
 schedule changes to Board; do not create another read model or phone write path.
 Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`
 Related docs/tests:
-`apps/portal/app/staff/schedule/useScheduleGanttTimingReview.ts`;
+`apps/portal/app/staff/schedule/useScheduleGanttTimingReview.ts` (retired on 2026-09-08 when routine drag confirmation was removed);
 `apps/portal/app/staff/schedule/ScheduleGanttCompactView.tsx`;
 `apps/portal/app/staff/schedule/ScheduleGanttView.test.tsx`;
 `playwright/portal.schedule-tasks-ui.spec.ts`;
@@ -5269,3 +5335,166 @@ Why it mattered: Autonomous work needs a dependable kill switch, but the switch 
 Current guardrail: Stop only the protected Sanctuary PID after matching the runtime user, exact gateway process title and isolated loopback port. Send one graceful signal, prove both process and gateway health are down, remove only the isolated PID record, and fingerprint the default OpenClaw authority around the operation. Refuse missing ownership evidence, broad matching, force kill and unrelated state cleanup.
 Promoted to: `docs/ai/operations/openclaw-engineering-runtime.md`; `docs/ai/operations/autonomous-engineering.md`
 Related docs/tests: `scripts/ai/mac-openclaw-engineering-stop.mjs`; `test/ai-operations-openclaw-engineering.test.ts`; `npm run test:ai:ops`
+
+### 2026-08-27 - Commercial Tab Intent Preload - Warm Every Lazy Boundary
+
+Date: 2026-08-27
+Area: Project Commercial navigation performance
+Status: Promoted
+Decision or mistake: Project-tab intent loaded the Commercial shell and Estimates data, but the nested Estimates module did not begin loading until after selection. The shared Commercial loading shell was also mislabeled as the retired Quotes route owner, so the performance journey ignored truthful immediate Commercial feedback and waited for the nested module. Commercial intent now preloads the nested target module alongside the shell and data, and the shared shell exposes its actual Commercial ownership.
+Why it mattered: A warm-tab performance contract must describe the complete useful-content path. Warming only an outer lazy shell leaves a hidden second network boundary on the measured click and produces avoidable customer wait as well as nondeterministic release evidence.
+Current guardrail: If a tab contains another lazy view, preload every module boundary needed for the signalled destination plus its query data from the same pointer, focus, touch, or pointer-down intent. Give a shared loading shell the stable owner it actually represents, not one nested compatibility route, and let the performance journey accept that truthful owned shell. Keep the 100 ms feedback and 500 ms useful-content targets unchanged; do not hide missing work by relaxing budgets or waiting inside the measured assertion.
+Promoted to: `docs/portal-production-readiness.md`
+Related docs/tests: `apps/portal/components/projects/ProjectPage/projectTabModules.tsx`; `apps/portal/components/projects/ProjectPage/tabs/CommercialTab.tsx`; `apps/portal/components/projects/ProjectPage/projectTabModules.test.tsx`; `playwright/portal.performance.spec.ts`
+
+### 2026-08-27 - Required CI Routing - Test Impact Is Not Domain Ownership
+
+Date: 2026-08-27
+Area: Autonomous engineering required-check routing
+Status: Promoted
+Decision or mistake: The required foundation check used one pattern list both to
+decide whether shared manifests could affect AI contracts and to claim ownership
+of the pull request. A product PR that added a root script therefore ran the
+right focused AI checks but failed because its legitimate product files were not
+inside the hard-coded AI lane.
+Why it mattered: Removing shared manifests from the route would hide real
+dependency and test-runner impact, while broadening the AI owner patterns would
+silently grant an autonomous engineering lane unrelated product scope.
+Current guardrail: Route genuinely foundation-owned paths separately from shared
+impact triggers. Shared-impact-only pull requests run the AI contract, type and
+boundary checks plus all strict changed-file guards except worktree ownership.
+If any genuinely foundation-owned path changes, require strict AI-lane ownership
+for the complete pull request, including any shared manifests.
+Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
+Related docs/tests: `scripts/ai/engineering-ci-route.mjs`;
+`.github/workflows/autonomous-engineering.yml`;
+`test/ai-operations-engineering-ci-review.test.ts`; `npm run test:ai:ops`
+
+### 2026-08-29 - Exact-Head CI - Normalize GitHub's Empty Pending Conclusion
+
+Date: 2026-08-29
+Area: OpenClaw autonomous engineering CI reconciliation
+Status: Promoted
+Decision or mistake: GitHub returns an empty conclusion while a check run is
+still in progress. The controller preserved that empty string, while its durable
+evidence contract accepted only a non-empty string or `null`, so reconciliation
+failed before it could re-read the same exact head after the checks passed.
+Why it mattered: Valid Configurator work and all hosted checks completed, but
+the durable flow remained stuck on stale pending evidence and Velt OS reported
+an automation failure instead of a review-ready result.
+Current guardrail: Normalize GitHub lifecycle strings at the CI adapter boundary;
+trim and uppercase non-empty values and convert empty values to `null`. Keep the
+exact PR head fence, persist pending evidence, and re-read rather than weakening
+or bypassing a required check.
+Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
+Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/ci-runtime.mjs`;
+`test/ai-operations-engineering-ci-review.test.ts`; `npm run test:ai:ops`
+
+### 2026-08-29 - Durable CI Recovery - Refresh Legacy Pending Evidence
+
+Date: 2026-08-29
+Area: OpenClaw autonomous engineering CI recovery
+Status: Promoted
+Decision or mistake: Normalizing new GitHub responses did not rewrite pending
+CI evidence already stored before the adapter fix. Recovery therefore rejected
+the legacy checkpoint before it could fetch the now-complete exact-head checks.
+Why it mattered: The Configurator proof remained stranded even after the
+adapter fix was merged and installed, despite its required checks being green.
+Current guardrail: Accept a blank lifecycle value only when its hashed durable
+check is classified as pending. Preserve that checkpoint long enough to validate
+its original hash, then immediately replace it with freshly normalized evidence
+from the exact pull-request head. Never accept blank lifecycle values for
+passed, failed, actionable, transient, or blocked evidence.
+Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
+Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-contract.mjs`;
+`test/ai-operations-engineering-review-loop.test.ts`; `npm run test:ai:ops`
+
+### 2026-08-29 - Reviewer Dispatch Envelope - Bound Immutable Review Prompts
+
+Date: 2026-08-29
+Area: OpenClaw autonomous engineering independent review
+Status: Promoted
+Decision or mistake: The Configurator review dispatch was larger than the
+16,000-character supervisor tool-result bridge. OpenClaw exposed a truncated
+prompt to the supervisor, which reconstructed the missing output template with
+slightly different wording. The native reviewer ran, but its task title no
+longer matched the controller's immutable prompt hash and attachment failed.
+Why it mattered: Exact-head CI passed and the reviewer stayed read-only, but
+the proof could not reach a durable reviewed result. Accepting a near-match
+would have weakened the identity fence that prevents the wrong native task from
+being treated as the named reviewer.
+Current guardrail: Build a compact v2 review packet, deduplicate acceptance
+evidence by criterion index, reference canonical criteria from the output
+skeleton instead of copying them again, compact its JSON and reject any
+dispatch above
+15,000 characters before spawning. During recovery, recognize the prior prompt
+formats by their exact hashes, upgrade a still-ready review to the bounded
+packet, and continue only with an exact native-title match. If the upgraded
+historical window expires before recovery, reopen it once from the original
+upgrade checkpoint and extend its deadline from recovery time. Change the
+checkpoint summary during that repair so later recovery cannot reopen it again.
+Promoted to: `docs/ai/operations/openclaw-engineering-ci-review.md`
+Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/review-runtime.mjs`;
+`infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-ci-review.mjs`;
+`test/ai-operations-engineering-review-loop.test.ts`; `npm run test:ai:ops`
+
+### 2026-08-29 - Worker Dispatch Identity - Canonicalize Section Boundaries
+
+Date: 2026-08-29
+Area: OpenClaw autonomous engineering worker supervision
+Status: Promoted
+Decision or mistake: Worker prompt assembly concatenated a lane prompt that
+ended in a newline with an attempt envelope that began with two more. The
+supervisor passed a semantically identical prompt with that redundant blank line
+normalized away, so the named worker completed safely but exact native-task
+attachment failed by one character.
+Why it mattered: Accepting an approximate prompt would weaken the identity fence,
+while starting another worker would duplicate completed work. The durable flow
+therefore remained correctly ready even though its exact branch and draft PR
+were complete.
+Current guardrail: Build worker prompts from trimmed controller-owned sections
+joined by exactly one blank line, then retain byte-exact native title matching.
+New dispatches return only that canonical prompt. During the 1.2.17 to 1.2.18
+transition, recovery may also attach the one exactly reconstructed legacy
+section-boundary form in the existing supervisor session and attempt window; it
+must not use semantic matching, ignore identity fields, expose the legacy alias
+for new spawns, or start a replacement worker.
+Promoted to: `docs/ai/operations/openclaw-engineering-supervision.md`
+Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-dispatch.mjs`;
+`test/ai-operations-engineering-supervision.test.ts`; `npm run test:ai:ops`
+
+## 2026-09-08 — Schedule authored dates and save trust
+
+Read-time recomputation moved overdue work and extended started jobs from an unchanged days-remaining value; zero-width weekend ties also made an inverse Gantt drag land on the wrong weekday. Reads now preserve saved/actual dates, explicit progress commands measure remaining days once, and flexible planning reserves fixed intervals. Checkpoint and confirmation owners separate accepted writes from later UI failures. Per-crew revision guards prevent stale calculated writes, and exact-date overlap acceptance plus owner-scoped retained intent makes conflicts and uncertainty reviewable. Four full past weeks remain scrollable while twelve forward weeks are retained. The new migration must precede API deployment; browser recovery never blindly replays ambiguous writes.
+
+## 2026-09-08 — Schedule previews must exercise the requested gestures
+
+The owner preview originally passed layout checks but used inert Gantt callbacks and stale sample bars after Board moves. Preview move/resize now applies to in-memory rows with the shared reflow engine; browser checks confirm both drag directions, exact duration, view switching and reload reset with zero staff writes. This exposed a shared resize bug: a saved Sunday end used the Monday boundary even though its visible handle ended on Friday. Resize snapping now counts from the last visible day. A rendered fixture alone is not evidence that its editing journey works.
+
+## 2026-09-08 — Routine Gantt gestures save on release
+
+The owner found the mandatory Save timing modal disruptive after every move and resize. Pointer release now sends the checked gesture directly to the existing mutation owner. The server-owned affected-client-commitment review remains; stale gesture cancellation, optimistic intent, ambiguous-save recovery and revision guards are unchanged. The unused local review component/hook and preview-only button were removed after consumer and dead-code checks.
+
+## 2026-09-08 — Preview pin lifecycle
+
+The sample Gantt's Unpin callback remained inert after move/resize was connected. It now changes the sample row to floating and uses the shared engine to reflow its queue. The browser gesture test covers moving, resizing and then unpinning back to flexible dates with no staff writes; a pin icon alone is not proof of the complete pin lifecycle.
+
+## 2026-09-08 — Calm Board drag ownership
+
+Board replaced a full card with a different compact overlay, faded the original, changed multiple target highlights and removed the overlay instantly on release. The card surface was extracted byte-for-byte before behavior changes. A dedicated drag overlay now owns an inert visual snapshot and 160 ms landing, while the source retains its size and keyboard focus. One insertion line and six-pixel midpoint tolerance stabilize the cue; unchanged targets no longer rerender the Board. Real keyboard QA also exposed stale translated-rectangle targeting, so keyboard placement now uses the current key delta. Fresh release geometry, reduced motion, exact queue placement and existing save/recovery boundaries remain required checks.
+
+Owner feedback found the thin insertion line too subtle. The destination now has a stronger line and a compact "Place here" marker, with crew and queue position shown above the floating card. These cues do not change card dimensions or target geometry; quiet movement must still communicate the exact destination visibly.
+
+## 2026-09-08 — Release comparison query grouping
+
+The first production Schedule migration attempt rolled back because its extra data-preservation assertion combined EXCEPT and UNION ALL without grouping the current snapshot, causing a false mismatch. The schema and ledger were verified absent after rollback. Group the full compared snapshot as a derived table, rehearse the entire apply wrapper in rollback, then apply. The corrected wrapper passed and proved existing operational schedule fields unchanged.
+
+## 2026-09-08 — Schedule release dependency audit
+
+PR #114's required production audit detected GHSA-px8p-9vwx-vf98 in existing fflate dependencies. The lockfile updates only the compatible patched releases 0.8.2 to 0.8.3 and 0.6.10 to 0.6.11. Production audit now reports zero vulnerabilities; the toolchain audit retains only the two approved xlsx exceptions. Keep the security gate blocking and rerun current-revision CI after a dependency correction.
+
+## 2026-09-08 — Guarded writes include legacy permissions
+
+PR #114 review found that guarding the new server command did not revoke older browser table/RPC grants. A forward permission migration now closes direct job/queue/downtime writes, every browser Schedule RPC, crew revision/anchor edits and cascading crew deletion, preserving metadata fields needed by the existing admin API. Reproduce historical grants in the database harness and prove real authenticated denial as well as successful guarded saves. Inspect unresolved review threads before announcing merge readiness; green CI alone does not resolve review findings.
+
+Permission review must also cover FK cascades: a browser-authorized parent-project DELETE does not require DELETE permission on its scheduled child. The revision trigger now denies browser SET ROLE callers, including cascades; current_user alone would identify the definer rather than the caller. Prove this with an authenticated-role parent deletion inside a rollback-wrapped staging fixture, not against a staff project.

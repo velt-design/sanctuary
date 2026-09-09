@@ -134,7 +134,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     scheduledJobsByProjectMaybeSingle.mockResolvedValue({ data: null, error: null });
     projectsMaybeSingle.mockResolvedValue({ data: { id: 'project-1', pipeline_stage: 'DEPOSIT' }, error: null });
     estimatesEq.mockResolvedValue({ data: [{ id: 'est-1', project_id: 'project-1', duration_days: 2, crew_hours: 16 }], error: null });
-    loadScheduleContext.mockResolvedValue({
+    loadScheduleContext.mockResolvedValue({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }],
       today: '2026-04-10',
       calendar: {},
       jobs: [],
@@ -261,7 +261,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     );
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_assign_job', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_assign_job', p_expected_revisions: expect.any(Object), p_args: {
       p_target_crew_id: 'crew-new',
       p_target_insert_position: 1,
       p_target_positions: [{ id: 'target-item-1', position: 0 }],
@@ -278,7 +278,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
         forecast_duration_days: 3,
       },
       p_move: null,
-    });
+    } });
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       ok: true,
@@ -320,7 +320,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
         crew_hours: 13.71,
       }),
     );
-    const [, rpcArgs] = rpc.mock.calls[0];
+    const rpcArgs = rpc.mock.calls[0][1].p_args;
     expect(rpcArgs.p_assignment).toEqual({
       job_id: 'project-1',
       forecast_duration_days: 2,
@@ -358,7 +358,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     );
 
     expect(res.status).toBe(200);
-    const [, rpcArgs] = rpc.mock.calls[0];
+    const rpcArgs = rpc.mock.calls[0][1].p_args;
     expect(rpcArgs.p_target_forecast_updates).toEqual([
       {
         id: '00000000-0000-4000-8000-000000000402',
@@ -400,7 +400,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       status: 'not_started',
       daysRemaining: null,
     };
-    loadScheduleContext.mockResolvedValueOnce({
+    loadScheduleContext.mockResolvedValueOnce({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }],
       today: '2026-04-10',
       calendar: {},
       jobs: [movedJob],
@@ -483,7 +483,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       }),
     );
 
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_assign_job', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_assign_job', p_expected_revisions: expect.any(Object), p_args: {
       p_target_crew_id: 'crew-new',
       p_target_insert_position: 1,
       p_target_positions: [{ id: 'target-item-1', position: 0 }],
@@ -511,7 +511,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
           },
         ],
       },
-    });
+    } });
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       '[portal]',
       expect.objectContaining({
@@ -602,7 +602,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       data: { id: '00000000-0000-4000-8000-000000000401', crew_id: 'crew-new', forecast_duration_days: 2 },
       error: null,
     });
-    loadScheduleContext.mockResolvedValueOnce({
+    loadScheduleContext.mockResolvedValueOnce({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }],
       today: '2026-04-10',
       calendar: {},
       jobs: [{ id: '00000000-0000-4000-8000-000000000401', jobId: 'project-1', crewId: 'crew-new', forecastDurationDays: 2 }],
@@ -616,7 +616,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       }),
     );
 
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_assign_job', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_assign_job', p_expected_revisions: expect.any(Object), p_args: {
       p_target_crew_id: 'crew-new',
       p_target_insert_position: 1,
       p_target_positions: [{ id: 'target-item-1', position: 0 }],
@@ -630,7 +630,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       ],
       p_assignment: { scheduled_job_id: '00000000-0000-4000-8000-000000000401' },
       p_move: null,
-    });
+    } });
     expect(res.status).toBe(200);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       '[portal]',
@@ -685,7 +685,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       data: { id: '00000000-0000-4000-8000-000000000401', crew_id: 'crew-old', forecast_duration_days: 2 },
       error: null,
     });
-    loadScheduleContext.mockResolvedValueOnce({
+    loadScheduleContext.mockResolvedValueOnce({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }],
       today: '2026-04-10',
       calendar: {},
       jobs: [{ id: '00000000-0000-4000-8000-000000000401', jobId: 'project-1', crewId: 'crew-old', forecastDurationDays: 2 }],
@@ -722,7 +722,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       }),
     );
 
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_assign_job', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_assign_job', p_expected_revisions: expect.any(Object), p_args: {
       p_target_crew_id: 'crew-new',
       p_target_insert_position: 1,
       p_target_positions: [{ id: 'target-item-1', position: 0 }],
@@ -736,7 +736,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       ],
       p_assignment: { scheduled_job_id: '00000000-0000-4000-8000-000000000401' },
       p_move: null,
-    });
+    } });
     expect(res.status).toBe(200);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       '[portal]',

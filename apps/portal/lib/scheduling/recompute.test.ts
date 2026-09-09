@@ -49,7 +49,7 @@ describe('scheduling.recompute', () => {
     expect(job2b.forecast_start).toBe('2026-02-05');
   });
 
-  it('flags pinned collisions', () => {
+  it('moves flexible work around a pinned interval', () => {
     const items: CrewScheduleItem[] = [
       { id: 'item_1', crewId: crew.id, itemType: 'job', jobId: 'sj_1', position: 0 },
       { id: 'item_2', crewId: crew.id, itemType: 'job', jobId: 'sj_2', position: 1 },
@@ -69,14 +69,8 @@ describe('scheduling.recompute', () => {
       calendar,
     });
 
-    expect(res.conflicts).toHaveLength(1);
-    expect(res.conflicts[0]).toMatchObject({
-      job_id: 'sj_2',
-      type: 'pinned_collision',
-      expected_cursor_start: '2026-02-04',
-      pinned_start: '2026-02-02',
-      overlap_days: 2,
-    });
+    expect(res.conflicts).toEqual([]);
+    expect(res.blocks.map((block) => block.start)).toEqual(['2026-02-03', '2026-02-02']);
   });
 
   it('shifts downstream jobs when downtimes are inserted', () => {

@@ -7,6 +7,7 @@ import {
   DesignBookletRequestError,
   parseDesignBookletFormData,
 } from "./request";
+import { DesignBookletImageProcessorUnavailableError } from "./sharpRuntime";
 
 function assertRequestBodySize(request: Request): void {
   const contentLength = request.headers.get("content-length");
@@ -55,14 +56,17 @@ export async function handleDesignBookletPdfRequest(
     });
   } catch (error) {
     const isRequestError = error instanceof DesignBookletRequestError;
+    const isProcessorUnavailable =
+      error instanceof DesignBookletImageProcessorUnavailableError;
     return Response.json(
       {
-        error: isRequestError
-          ? error.message
-          : "The design booklet PDF could not be generated.",
+        error:
+          isRequestError || isProcessorUnavailable
+            ? error.message
+            : "The design booklet PDF could not be generated.",
       },
       {
-        status: isRequestError ? error.status : 500,
+        status: isRequestError ? error.status : isProcessorUnavailable ? 503 : 500,
         headers: { "Cache-Control": "private, no-store, max-age=0" },
       },
     );

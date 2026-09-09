@@ -28,8 +28,9 @@ const HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 export const ENGINEERING_REVIEW_DIFF_TOOL =
   "sanctuary_engineering_review_diff_chunk";
 export const REVIEW_DIFF_CHUNK_CHARACTERS = 12_000;
+export const REVIEW_DISPATCH_MAX_CHARACTERS = 15_000;
 
-function buildReviewPacket({ state, ciEvidence, diff }) {
+function buildLegacyReviewPacket({ state, ciEvidence, diff }) {
   return {
     schema: "sanctuary-engineering-review-packet-v1",
     task: {
@@ -48,7 +49,60 @@ function buildReviewPacket({ state, ciEvidence, diff }) {
   };
 }
 
-function buildReviewOutputTemplate(packet) {
+function buildReviewPacket({ state, ciEvidence, diff }) {
+  const completion = state.completion;
+  return {
+    schema: "sanctuary-engineering-review-packet-v2",
+    task: {
+      taskId: state.taskId,
+      manifestHash: state.manifestHash,
+      objective: state.manifest.objective,
+      base: state.manifest.base,
+      branch: state.manifest.branch,
+      acceptanceCriteria: state.manifest.acceptanceCriteria,
+      approvals: state.manifest.approvals,
+      stopConditions: state.manifest.stopConditions,
+    },
+    completion: {
+      outcome: completion.outcome,
+      headSha: completion.headSha,
+      pullRequest: completion.pullRequest,
+      changedPaths: completion.changedPaths,
+      acceptanceResults: completion.acceptanceResults.map((result, index) => ({
+        criterionIndex: index,
+        status: result.status,
+        evidence: result.evidence,
+      })),
+      verificationResults: completion.verificationResults,
+      ciChecks: completion.ciChecks,
+      safety: completion.safety,
+      limitations: completion.limitations,
+      nextAction: completion.nextAction,
+    },
+    ciEvidence,
+    diffHash: hashText(diff),
+  };
+}
+
+function buildReviewOutputTemplate(
+  packet,
+  { compactAcceptanceCriteria = false } = {},
+) {
+  const acceptanceResults = compactAcceptanceCriteria
+    ? [
+        {
+          criterion:
+            "COPY each task.acceptanceCriteria item exactly, once and in order.",
+          status: "passed",
+          evidence:
+            "Return one result per criterion with specific reviewed evidence.",
+        },
+      ]
+    : packet.task.acceptanceCriteria.map((criterion) => ({
+        criterion,
+        status: "passed",
+        evidence: "Replace with specific reviewed evidence.",
+      }));
   return {
     schema: "sanctuary-engineering-review-v1",
     taskId: packet.task.taskId,
@@ -62,11 +116,7 @@ function buildReviewOutputTemplate(packet) {
       url: packet.completion.pullRequest.url,
     },
     ciEvidenceHash: packet.ciEvidence.evidenceHash,
-    acceptanceResults: packet.task.acceptanceCriteria.map((criterion) => ({
-      criterion,
-      status: "passed",
-      evidence: "Replace with specific reviewed evidence.",
-    })),
+    acceptanceResults,
     findings: [],
     reviewer: {
       agent: ENGINEERING_REVIEWER_AGENT,
@@ -82,22 +132,7 @@ function buildReviewOutputTemplate(packet) {
 }
 
 export function buildLegacyReviewPrompt({ state, ciEvidence, diff }) {
-  const packet = {
-    schema: "sanctuary-engineering-review-packet-v1",
-    task: {
-      taskId: state.taskId,
-      manifestHash: state.manifestHash,
-      objective: state.manifest.objective,
-      base: state.manifest.base,
-      branch: state.manifest.branch,
-      acceptanceCriteria: state.manifest.acceptanceCriteria,
-      approvals: state.manifest.approvals,
-      stopConditions: state.manifest.stopConditions,
-    },
-    completion: state.completion,
-    ciEvidence,
-    diffHash: hashText(diff),
-  };
+  const packet = buildLegacyReviewPacket({ state, ciEvidence, diff });
   const prompt = `# Bound independent Sanctuary code review
 
 You are the named read-only reviewer, not the coding worker. Review only the
@@ -140,11 +175,21 @@ function buildChunkedReviewPrompt({
   ciEvidence,
   diff,
   includeOutputTemplate,
+  legacyPacket = false,
+  compactJson = false,
+  compactAcceptanceCriteria = false,
 }) {
   if (typeof flowId !== "string" || flowId.length < 8) {
     throw new Error("The independent review flow id is invalid.");
   }
-  const packet = buildReviewPacket({ state, ciEvidence, diff });
+  const packet = (legacyPacket
+    ? buildLegacyReviewPacket
+    : buildReviewPacket)({ state, ciEvidence, diff });
+  const json = (value) =>
+    compactJson ? JSON.stringify(value) : JSON.stringify(value, null, 2);
+  const compactAcceptanceInstruction = compactAcceptanceCriteria
+    ? "\nThe acceptanceResults entry shown below is one compact instruction, not a literal result. Expand it into exactly one result for each task.acceptanceCriteria item, copied exactly and kept in order."
+    : "";
   const outputSection = includeOutputTemplate
     ? `
 
@@ -154,10 +199,12 @@ Use exactly these fields and no others. Replace the evidence and next action
 with your findings. If changes are required, set \`verdict\` to
 \`changes_requested\`, mark affected criteria \`failed\`, and add at least one
 blocking finding with exactly the fields \`id\`, \`severity\`, \`summary\`,
-\`evidence\`, \`path\` and \`line\`; path and line may be null.
+\`evidence\`, \`path\` and \`line\`; path and line may be null.${compactAcceptanceInstruction}
 
 \`\`\`json
-${JSON.stringify(buildReviewOutputTemplate(packet), null, 2)}
+${json(
+  buildReviewOutputTemplate(packet, { compactAcceptanceCriteria }),
+)}
 \`\`\``
     : "";
   const prompt = `# Bound independent Sanctuary code review
@@ -190,13 +237,13 @@ production effect.
 ## Trusted review packet
 
 \`\`\`json
-${JSON.stringify(packet, null, 2)}
+${json(packet)}
 \`\`\`
 
 ## Exact diff reader arguments
 
 \`\`\`json
-${JSON.stringify(
+${json(
   {
     flowId,
     pullRequestNumber: packet.completion.pullRequest.number,
@@ -205,8 +252,6 @@ ${JSON.stringify(
     diffHash: packet.diffHash,
     offset: 0,
   },
-  null,
-  2,
 )}
 \`\`\`
 
@@ -221,11 +266,42 @@ export function buildLegacyChunkedReviewPrompt(input) {
   return buildChunkedReviewPrompt({
     ...input,
     includeOutputTemplate: false,
+    legacyPacket: true,
   });
 }
 
+function buildLegacyTemplatedChunkedReviewPrompt(input) {
+  return buildChunkedReviewPrompt({
+    ...input,
+    includeOutputTemplate: true,
+    legacyPacket: true,
+  });
+}
+
+export function buildLegacyBoundedReviewPrompt(input) {
+  return buildChunkedReviewPrompt({
+    ...input,
+    includeOutputTemplate: true,
+    compactJson: true,
+  });
+}
+
+export function buildLegacyReviewPrompts(input) {
+  return [
+    buildLegacyBoundedReviewPrompt(input),
+    buildLegacyTemplatedChunkedReviewPrompt(input),
+    buildLegacyChunkedReviewPrompt(input),
+    buildLegacyReviewPrompt(input),
+  ];
+}
+
 export function buildReviewPrompt(input) {
-  return buildChunkedReviewPrompt({ ...input, includeOutputTemplate: true });
+  return buildChunkedReviewPrompt({
+    ...input,
+    includeOutputTemplate: true,
+    compactJson: true,
+    compactAcceptanceCriteria: true,
+  });
 }
 
 export function readReviewDiffChunk({ ciRuntime, input }) {
@@ -302,7 +378,7 @@ export function buildReviewDispatch({
       "The independent review prompt no longer matches its durable hash.",
     );
   }
-  return {
+  const dispatch = {
     reviewReady: true,
     flowId: flow.flowId,
     expectedRevision: flow.revision,
@@ -318,6 +394,12 @@ export function buildReviewDispatch({
     reviewBudgetCents: review.budgetCents,
     ciEvidenceHash: state.ci.evidence.evidenceHash,
   };
+  if (JSON.stringify(dispatch, null, 2).length > REVIEW_DISPATCH_MAX_CHARACTERS) {
+    throw new Error(
+      "The serialized independent review dispatch exceeds the bounded OpenClaw envelope.",
+    );
+  }
+  return dispatch;
 }
 
 export function findNativeReviewMatches(taskRuns, dispatch) {

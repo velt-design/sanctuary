@@ -53,6 +53,16 @@ Until a later capability-specific approval, it must not have:
 - unsandboxed general host execution;
 - arbitrary third-party plugins or skills.
 
+Those restrictions still govern the first execution node and its effect capabilities. The accepted Velt Praxis read boundary below separately governs data that Jordan deliberately connects; read access does not grant the node a browser profile, credential access, or any write/effect authority.
+
+## Velt Praxis Operating Boundary
+
+Anything deliberately connected to Velt grants Praxis complete read access to that connected source and processing by the relevant approved cloud models. The source system remains canonical. Credentials stay hidden from models and browser clients, narrowly scoped, audited, revocable, and covered by a connector kill switch.
+
+Praxis may autonomously create internal tasks, plans, analyses, test work, branches, pull requests, and previews inside the permissions captured for the run. It must stop before external sending or publishing, spending, live customer or financial changes, merge or deployment, production changes, credential changes, or destructive actions. Connecting a source does not grant any of those effect permissions.
+
+The first Sanctuary connector implements only this governed read side. It does not provision credentials, connect live data, call a model, or change production. Those remain separately reviewed activation steps.
+
 ## Promotion Rule
 
 Promotion follows suggestion, then exact approval, then supervised autonomy only after representative evaluation. A capability is promoted independently; success in one action class does not expand another.

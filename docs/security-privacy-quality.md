@@ -230,6 +230,7 @@ PR-AI-007 links each eligible task to exactly one durable `ai_synthetic_v1` job.
 
 ## Security Rules
 
+- Praxis business reads use a dedicated, individually revocable database LOGIN whose only direct or transitive membership is the non-login `sanctuary_praxis_reader` role. The HTTP bearer and exact source binding are independent of that database credential. Runtime checks prove the database-owned source identity, the LOGIN's own read-only default, no service-role membership, no forbidden object grants, and no callable security-definer routine outside the two named reporting helpers before every read; non-callable trigger routines are ignored. There is no service-role fallback. Remote database transport fails dark unless the URL and driver both require certificate-chain and hostname verification (`sslmode=verify-full`); only loopback synthetic tests may omit TLS. Health also performs a bounded real projection probe, so a missing view grant cannot report ready. Context reads are one bounded, read-only transaction with timeouts: cursors and incremental reads are rejected, and a `limit + 1` sentinel returns `SNAPSHOT_TOO_LARGE` without partial records. Logs contain only body-free diagnostics. The whole assembled payload is recursively sanitized and bounded to 65,536 UTF-8 bytes, depth 8, and 256 aggregate child entries. It deliberately exposes approved customer and financial facts, including the lowercase 64-hex `commercialInputHash` integrity field, while excluding credential/token hashes, raw payloads, files, communication content/provider detail, private execution data, and unrestricted audit JSON. Each record/page reports redaction and omission evidence; oversize or overdeep values use the exact `source_bounds_v1` marker, and evidence is recomputed after final size fitting so it describes the published body exactly. Incremental reads fail closed until source deletion tombstones exist.
 - Never commit secrets or env files.
 - Keep service-role Supabase access server-only.
 - Use portal auth helpers for staff/admin API routes.
@@ -255,8 +256,9 @@ Marketing Lighthouse thresholds:
 Security:
 
 - No unresolved critical/high production vulnerabilities from `npm audit --omit=dev`.
+- `npm run audit:toolchain` fails closed on every development/toolchain vulnerability except the two no-fix `xlsx` advisories `GHSA-4r6h-8v6p-xvw6` and `GHSA-5pgg-2g8v-p4x9`. The exception is valid only while `xlsx` is a direct root development dependency, is locked development-only, has no fix, and is imported only by `scripts/import-running-jobs-legacy.ts`.
 - The workspace, Portal, and Marketing PostCSS overrides must resolve to the same patched version; verify with `npm ls postcss` after dependency changes.
-- Portal Quality runs `npm run audit:security` as a blocking pull-request gate; Governance Monthly also runs the production dependency audit as part of the broader marketing/governance sweep.
+- Portal Quality runs both `npm run audit:security` and `npm run audit:toolchain` as blocking pull-request gates; Governance Monthly also runs the production dependency audit as part of the broader marketing/governance sweep.
 - Run `npm run test:email-provider` for provider normalization/transport/webhook contracts, `npm run test:jobs` for durable contract, migration, and repository-security checks, and `npm run test:worker` for the Node runtime and hard-crash effect recovery. These are static/unit checks and do not replace live isolated-database or container execution.
 
 Privacy:
@@ -268,6 +270,7 @@ Privacy:
 
 ```bash
 npm run audit:security
+npm run audit:toolchain
 npm run audit:lighthouse
 npm run audit:governance
 npm run text:mojibake

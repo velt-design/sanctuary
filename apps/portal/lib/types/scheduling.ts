@@ -74,6 +74,8 @@ export type ScheduledBar = {
 };
 
 export type SchedulingIssue = {
+  relatedScheduleItemId?: string;
+  overlapKey?: string;
   scheduleItemId?: string;
   projectId?: string;
   estimateId?: string;

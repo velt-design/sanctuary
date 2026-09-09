@@ -79,7 +79,7 @@ function buildModel(
 }
 
 describe('ScheduleGanttModel', () => {
-  it('defaults visual zoom to eight weeks while retaining the 84-day planning model', () => {
+  it('defaults zoom to eight weeks with four weeks of history and twelve forward weeks', () => {
     const model = buildModel([]);
 
     expect(GANTT_DEFAULT_ZOOM_WEEKS).toBe(8);
@@ -87,11 +87,12 @@ describe('ScheduleGanttModel', () => {
     expect(normalizeGanttZoomWeeks(999)).toBe(8);
     expect(ganttBaseDayPxForZoomWeeks(4)).toBeGreaterThan(ganttBaseDayPxForZoomWeeks(8));
     expect(ganttBaseDayPxForZoomWeeks(8)).toBeGreaterThan(ganttBaseDayPxForZoomWeeks(12));
-    expect(GANTT_TIMELINE_DAYS).toBe(84);
-    expect(model.rangeDays).toBe(84);
-    expect(model.axis.days).toHaveLength(84);
-    expect(model.rangeStart).toBe('2026-04-06');
+    expect(GANTT_TIMELINE_DAYS).toBe(112);
+    expect(model.rangeDays).toBe(112);
+    expect(model.axis.days).toHaveLength(112);
+    expect(model.rangeStart).toBe('2026-03-09');
     expect(model.rangeEnd).toBe('2026-06-28');
+    expect(model.currentWeekLeftPx).toBe(20 * model.axis.baseDayPx);
   });
 
   it('derives attention only from attached issues, required client updates, and drift beyond flex', () => {

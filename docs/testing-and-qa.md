@@ -27,6 +27,7 @@ npm run dev:worker
 npm run test
 npm run test:marketing
 npm run test:marketing:browser
+npm run test:geometry
 npm run test:email-provider
 npm run test:jobs
 npm run test:jobs:db-contract
@@ -40,6 +41,28 @@ npm run typecheck
 npm run typecheck:worker
 npm run lint
 ```
+
+The root Vitest configuration discovers ordinary unit files using Vitest's
+standard `.test` and `.spec` patterns, but explicitly excludes `playwright/**`.
+Browser specs remain owned by the existing Playwright configurations and the
+browser commands documented below; `npm test` must never invoke them through
+the Vitest runner. Unit coverage for Playwright support helpers lives under
+`test/playwright-support/` so those suites remain part of the root Vitest gate
+without broadening browser-spec discovery.
+
+Vitest concurrency is owned by `test/vitestWorkerPolicy.ts`: root, Marketing,
+Portal, and package tests use at most four workers when `CI=true` or `CI=1` and
+eight workers locally; the standalone Worker config uses the same policy. Set
+`VITEST_MAX_WORKERS` to a positive safe integer for an explicit one-run
+override. Invalid values fail while loading the config, before test discovery.
+The worker policy does not change ordinary unit or Playwright exclusions.
+
+React component tests must wrap the event or asynchronous milestone that can
+commit state in `act(...)`, including promise-driven persistence and history or
+media-query events. Do not suppress `console.error`, filter React warnings
+globally, or use Vitest logging hooks to hide them. Intentional negative-route
+error logging remains visible; unexpected React warnings and worker exits are
+test failures to investigate.
 
 Marketing public-boundary changes should run the unit/domain suite, marketing
 TypeScript and ESLint, the production build, and the relevant browser specs.
@@ -550,6 +573,12 @@ When `docs:impact` prints an advisory, update the suggested owner doc if the cod
 
 `npm run docs:readiness` is an advisory report for `docs/portal-production-readiness.md`. It summarizes tracker age, status counts, at-risk rows, and unchecked checklist counts, but it does not verify readiness by itself.
 
+## Praxis Reporting Tests
+
+- `npm run test:praxis:db:fast` applies the exact migration and production-shaped synthetic bootstrap in PGlite, checks rollback/replay, all 12 resource projections, whole-record secret exclusion/redaction evidence, exact and boundary+1 byte/depth/aggregate-entry handling, invoice-plan assignment freshness, and broad denial cases quickly. It is useful local feedback but is not role/grant security evidence.
+- `npm run test:praxis:db` starts a disposable PostgreSQL 17 container, applies the exact forward migration, creates an exact synthetic reporting LOGIN and database identity, and proves all 12 projections plus whole-record sanitisation/bounds, final size-fit evidence recomputation, `changedAfter` source freshness diagnostics, trigger-function compatibility, callable security-definer escalation detection, the LOGIN's default/transitive-role posture, and base/private/auth/storage/sequence and customer/financial mutation denial. It explicitly turns the LOGIN's read-only default off before mutation probes so grants, rather than the default setting, enforce the denial. The HTTP contract separately rejects `changedAfter` because incremental deletion completeness is not yet representable; it also rejects cursors and proves one bounded terminal snapshot or a no-record `SNAPSHOT_TOO_LARGE` failure.
+- `.github/workflows/praxis-context.yml` runs the real PostgreSQL proof, fast contract, focused adapter/route/migration tests, typecheck, lint, and boundary guards. The harness removes its container and never connects to a shared or production database. Migration application, LOGIN/identity provisioning, credentials, Velt connection, live reads, model use, and deployment remain separate reviewed operations.
+
 ## Background-Job And Worker Tests
 
 The durable job foundation plus PR-AI-007 has six distinct verification layers:
@@ -639,7 +668,7 @@ For a protected Vercel Preview, set `PORTAL_VERCEL_PROTECTION_BYPASS` only in th
 
 `npm run test:portal:work-queue:read-only-auth` is the matching authenticated gate for the real Work Queue route. It reuses the Overview gate's exact staging/ref validation, Web Vitals suppression, and request guard; requires the queue API to return `200` with `private, no-store`; waits for the page's fresh state; rejects the not-ready presentation; and accepts only rendered queue rows or the canonical `No current project work` empty state. It never selects a queue command or permits an application request outside `GET`, `HEAD`, or `OPTIONS`.
 
-`npm run test:portal:performance` writes a schema-version-2 journey artifact. It measures cold Dashboard, Projects, Project Detail, Contacts, and Schedule; warm Dashboard to Projects/Contacts/Schedule/Work Queue/Drafting Queue/Running Jobs, Projects to project/Dashboard, browser back, and the current Overview, Commercial Estimates/Quotes/Invoices, and conditional Job Packs project tabs; and Schedule/Calculator interactions. The cold Project Detail journey discovers a real project in a separate authenticated context, then opens the canonical detail URL in a new context with no project-list or persisted-query cache so PROJECT-01 has a truthful cold-read signal. Each tab's feedback marker is its immediate selected state; useful content is the new tab's owned workflow or truthful local loading shell, while its URL, specialist bundle, and data may continue in the background. Each journey separates visible feedback, useful content, and background-settled time, and records same-origin requests/transfer, long tasks, and blocking overlays. Dashboard-to-Projects and Dashboard-to-Contacts feedback ends when the canonical index URL reaches the browser, useful content requires that index's heading, controls, truthful list region, and state marker, and background completion requires its fresh authenticated index response. Project-opening background completion still requires both the fresh snapshot and active tab workflow. Portal Performance CI builds once and runs all five authenticated repetitions against `next start`; development compilation time must never be recorded as product latency. CI rejects missing journeys and publishes p50/p75/p95. Product targets stay visible separately from regression ceilings so noisy baselines cannot redefine the product goal.
+`npm run test:portal:performance` writes a schema-version-2 journey artifact. It measures cold Dashboard, Projects, Project Detail, Contacts, and Schedule; warm Dashboard to Projects/Contacts/Schedule/Work Queue/Drafting Queue/Running Jobs, Projects to project/Dashboard, browser back, and the current Overview, Commercial Estimates/Quotes/Invoices, and conditional Job Packs project tabs; and Schedule/Calculator interactions. The cold Project Detail journey discovers a real project in a separate authenticated context, then opens the canonical detail URL in a new context with no project-list or persisted-query cache so PROJECT-01 has a truthful cold-read signal. Each tab's feedback marker is its immediate selected state; useful content is the new tab's owned workflow or truthful local loading shell, while its URL, specialist bundle, and data may continue in the background. Project-tab useful-content conditions are installed before the click and timestamped inside Chromium when the matching DOM state first becomes visible. The shared Commercial module's loading shell is scoped to the active tab body so Estimates can accept that truthful shell without matching stale content elsewhere. The following Playwright assertions still verify the semantic state, but driver polling and command round trips do not define the recorded elapsed time. Each journey separates visible feedback, useful content, and background-settled time, and records same-origin requests/transfer, long tasks, and blocking overlays. Dashboard-to-Projects and Dashboard-to-Contacts feedback ends when the canonical index URL reaches the browser, useful content requires that index's heading, controls, truthful list region, and state marker, and background completion requires its fresh authenticated index response. Project-opening background completion still requires both the fresh snapshot and active tab workflow. Portal Performance CI builds once and runs all five authenticated repetitions against `next start`; development compilation time must never be recorded as product latency. CI rejects missing journeys and publishes p50/p75/p95. Product targets stay visible separately from regression ceilings so noisy baselines cannot redefine the product goal.
 
 `npm run portal:search-readiness` safely probes `portal_search_v1()` and the `portal_search_bigrams()` helper with the anonymous role, then makes a zero-row schema probe for the materialized Projects search document. A ready database must report that anonymous function execution is denied and that the generated column exists; missing function/column responses fail immediately with the exact migration path. The preflight never uses the service-role key, returns search data, or treats anonymous function execution as success. The authenticated performance gate remains the deployment proof for the policy-only init-plan migration because the anonymous preflight cannot inspect `pg_policies`.
 
@@ -720,7 +749,7 @@ Slices 6 and 7 add focused component/contract coverage for native Materials/Labo
 
 `npm run portal:agent-scorecard:strict` runs the same read-only scorecard plus the current portal-agent strictness ratchet. It fails only when route catalog, scenario, debug-export, seeded-scenario, or shared browser evidence coverage drops below the documented baseline; repo-health metrics remain advisory.
 
-The portal route catalog is documented in `docs/portal-route-catalog.md`. `playwright/support/portalRouteCatalog.test.ts` recursively inventories every `apps/portal/app/**/page.tsx` file and requires an exact match with the catalog, including authenticated, public-auth, diagnostics, and redirect-only entries. Add route metadata there first, then let browser specs consume the relevant catalog subset instead of adding local hardcoded route lists.
+The portal route catalog is documented in `docs/portal-route-catalog.md`. `test/playwright-support/portalRouteCatalog.test.ts` recursively inventories every `apps/portal/app/**/page.tsx` file and requires an exact match with the catalog, including authenticated, public-auth, diagnostics, and redirect-only entries. Add route metadata there first, then let browser specs consume the relevant catalog subset instead of adding local hardcoded route lists.
 
 Shared page debug exports are enabled only outside production and only with `ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1`, `NEXT_PUBLIC_ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1`, `PORTAL_PAGE_DEBUG_EXPORTS=1`, or `NEXT_PUBLIC_PORTAL_PAGE_DEBUG_EXPORTS=1`. Project detail, redirected estimate detail, quote detail, and design workbench routes expose `data-portal-debug-export="true"` in the scenario lane. Browser specs should use `readPortalPageDebugExport(page)` / `expectPortalDebugExport(page, pageId)` from `playwright/support/portalAgent.ts`; bug reports for complex pages should include this payload when available.
 
@@ -745,9 +774,9 @@ node node_modules/vitest/vitest.mjs run apps/marketing/lib/designBookletContent.
 node node_modules/@playwright/test/cli.js test playwright/portal.design-booklet-workbench.spec.ts --project=portal-fixture --workers=1
 ```
 
-The browser spec starts from the fixed cover, two image pages, one drawing page, and fixed review page. It adds both middle-page types, selects a three-drawing layout, enters a custom title, reorders and removes pages, captures every remaining browser page, downloads the matching landscape A4 PDF, and asserts its dynamic page count. It also checks a 390px layout and rejects unexpected auth, storage, database, project, task, estimate, or quote requests.
+The browser spec starts from the fixed cover, two image pages, one drawing page, and fixed review page. It proves the A4 default, switches to A3 without losing content, adds both middle-page types, selects a three-drawing layout, enters a custom title, reorders and removes pages, captures every remaining browser page, downloads the matching exact-size landscape A3 PDF, and asserts its dynamic page count. A focused editorial case selects body-copy lines, applies the one-level bullet control, verifies the semantic preview list at A4 and A3, confirms the draft text survives the size switch, and checks the same copy reaches the exact-size PDF. It separately uploads and selects a source page from a multi-page drawing PDF, then verifies the vector source reaches the A3 export. It also checks a 390px layout and rejects unexpected auth, storage, database, project, task, estimate, or quote requests.
 
-For deterministic PDF evidence, set `DESIGN_BOOKLET_OUTPUT_DIR=output/pdf` while running `apps/portal/lib/designBooklets/pdf.test.ts`. Render the emitted default Toni booklet and four-layout drawing booklet with Poppler, then inspect every page rather than relying on text extraction or page dimensions alone.
+For deterministic PDF evidence, set `DESIGN_BOOKLET_OUTPUT_DIR=output/pdf` while running `apps/portal/lib/designBooklets/pdf.test.ts`. The focused representative outputs are `sanctuary-design-booklet-a4.pdf` and `sanctuary-design-booklet-a3.pdf`; each contains Cover, Visual, Story, Gallery, Information, Drawing, and Review pages, with representative bullet copy on Story and Information pages. Render both with Poppler and inspect every page rather than relying on text extraction or exact page-dimension assertions alone.
 
 Manual browser review should exercise all four drawing layouts, drawing reordering, every title preset plus a custom title, PNG/JPEG replacement, the nine focal positions on the cover/image/review pages, `Use as cover`, mixed page ordering, removal down to the two fixed pages, and reload back to Toni's session defaults. Inspect the downloaded PDF after the same edits and confirm page order, numbering, focus/crop, captions, fixed review copy, and desktop/narrow containment match the preview.
 
@@ -921,6 +950,8 @@ run, Preview protection was reverified, and production was not changed.
 
 Before shipping schedule changes:
 
+Run `npm run test:schedule:db:fast` for disposable PostgreSQL migration rollback/replay, persisted forward/inverse dates, stale staff write rejection, crew scope rollback, stored overlap acceptance and RPC permissions. This uses the real schema and command migrations and never connects to staff data.
+
 1. Confirm migrations are applied through current Schedule V2 command/repair migrations.
 2. Confirm `GET /api/staff/v1/schedule/readiness` returns `200`.
 3. Run relevant schedule unit and route tests.
@@ -1074,7 +1105,7 @@ This doc remains the canonical command catalog. When readiness work changes comm
 ## CI
 
 - Background Jobs runs `npm run test:jobs` (including `@sp/email-provider`), provider-package typecheck, the worker typecheck/tests/build/CLI/container checks, the strict service-role boundary, and `npm run test:jobs:db` in a dedicated workflow when provider/job packages, provider adapters/webhook/repository, worker, migration, SQL harness, repository-security test, package manifest, container context, privileged-access report, or workflow configuration files change. A configured workflow without a successful run is not a green signal; this doc does not claim the check is required by branch protection.
-- Portal Quality runs docs guard, architecture changed advisory reporting, architecture strict new-growth advisory reporting, a blocking `files:changed:strict` decomposition gate, dead-code changed advisory reporting, repository typecheck, lint, portal Vitest, portal build, general route bundle budgets, production security audit, fixture browser/performance smoke, and authenticated smoke. The decomposition gate blocks touched critical code files without registry coverage. Authenticated smoke is blocking and writes the required credential, role, schedule-readiness, and project-data prerequisites to the GitHub step summary.
+- Portal Quality runs docs guard, architecture changed advisory reporting, architecture strict new-growth advisory reporting, a blocking `files:changed:strict` decomposition gate, dead-code changed advisory reporting, repository typecheck, lint, portal Vitest, the blocking geometry Vitest suite (`npm run test:geometry`), portal build, general route bundle budgets, production and full-toolchain security audits, fixture browser/performance smoke, and authenticated smoke. `npm run audit:toolchain` permits only the two named no-fix `xlsx` advisories while that package remains root-only, development-only, and isolated to the legacy Running Jobs importer. The decomposition gate blocks touched critical code files without registry coverage. Authenticated smoke is blocking and writes the required credential, role, schedule-readiness, and project-data prerequisites to the GitHub step summary.
 - Portal Performance Report runs five authenticated journey repetitions as a separate blocking job, rejects missing schema-v2 journeys, publishes p50/p75/p95, and uploads the `portal-performance-baseline` artifacts. It also writes the authenticated runtime prerequisites to the GitHub step summary before timing routes.
 - Docs Health runs weekly and on demand, with blocking docs guard and mojibake checks plus advisory docs impact, navigation, and readiness reports.
 - Lighthouse Guardrails run mobile and desktop Lighthouse profiles against the live marketing site on a weekly schedule or explicit dispatch. They are deliberately not attached to pull requests because a PR cannot change the live production target; PR correctness remains covered by repository build, test, and bundle gates, while live Lighthouse drift stays visible in its own scheduled workflow.

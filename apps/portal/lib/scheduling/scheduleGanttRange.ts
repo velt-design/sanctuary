@@ -1,7 +1,8 @@
 import { addDaysYmd } from '@/lib/scheduling/date';
 
-const SCHEDULE_GANTT_TIMELINE_WEEKS = 12;
-const SCHEDULE_GANTT_TIMELINE_DAYS = SCHEDULE_GANTT_TIMELINE_WEEKS * 7;
+const SCHEDULE_GANTT_HISTORY_WEEKS = 4;
+const SCHEDULE_GANTT_FORWARD_WEEKS = 12;
+export const SCHEDULE_GANTT_RANGE_DAYS = (SCHEDULE_GANTT_HISTORY_WEEKS + SCHEDULE_GANTT_FORWARD_WEEKS) * 7;
 
 function parseYmd(ymd: string): Date | null {
   const match = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -17,9 +18,9 @@ function startOfWeekMonday(ymd: string): string {
 }
 
 export function resolveDefaultScheduleGanttRange(today: string): { rangeStart: string; rangeEnd: string } {
-  const rangeStart = startOfWeekMonday(today);
+  const rangeStart = addDaysYmd(startOfWeekMonday(today), -SCHEDULE_GANTT_HISTORY_WEEKS * 7);
   return {
     rangeStart,
-    rangeEnd: addDaysYmd(rangeStart, SCHEDULE_GANTT_TIMELINE_DAYS - 1),
+    rangeEnd: addDaysYmd(rangeStart, SCHEDULE_GANTT_RANGE_DAYS - 1),
   };
 }

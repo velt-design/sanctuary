@@ -1,5 +1,7 @@
-const PAGE_WIDTH = 841.89;
-const PAGE_HEIGHT = 595.28;
+import { DESIGN_BOOKLET_BASE_PAGE_SIZE } from "./paperGeometry";
+
+const PAGE_WIDTH = DESIGN_BOOKLET_BASE_PAGE_SIZE.width;
+const PAGE_HEIGHT = DESIGN_BOOKLET_BASE_PAGE_SIZE.height;
 const PAGE_CQW = PAGE_WIDTH / 100;
 
 const BODY_FONT_METRICS = {
