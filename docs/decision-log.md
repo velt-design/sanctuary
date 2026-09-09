@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-09 | Linked Contact Context Scope | Active | Preserve shared contact identity while labeling requested-context membership; prove producer relationships and strict consumer scope together. |
 | 2026-09-09 | Optional Legacy Reporting Fields | Active | Prove target installation state before correcting historical migration source; preserve missing legacy facts as required null keys instead of inventing columns or replaying unrelated effects. |
 | 2026-09-03 | Design Booklet Editorial Lists   | Promoted | Keep booklet lists deliberately lightweight and one level deep: store canonical `- ` markers inside existing draft body strings, preserve normalized line breaks through project/PDF parsing, and let one shared editorial owner drive selection toggling, Enter continuation, overflow weighting, semantic browser lists, and PDF hanging indents. Do not introduce rich-text JSON, duplicate A3 geometry, or a database migration for bullets. |
 | 2026-09-03 | Design Booklet Paper Geometry    | Promoted | Keep A4 as the one canonical booklet coordinate system, own exact A4/A3 landscape page boxes in one module, and proportionally transform the complete preview/PDF composition at the output boundary. Store the choice in schema-v2 draft JSON, default missing values to A4, and do not fork layouts or migrate the database. |
@@ -341,6 +342,18 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 
 ## Entries
+
+### 2026-09-09 - Linked Contact Context Scope - Preserve Canonical Identity
+
+Date: 2026-09-09
+Area: Linked Contact Context Scope
+Status: Active
+Decision or mistake: Project-filtered SQL intentionally included the linked contact but emitted null project metadata, which the strict Velt consumer correctly rejected for a scoped request.
+Why it mattered: Dropping the contact would lose useful context; weakening the consumer check could admit unrelated records; assigning permanent contact ownership would misrepresent shared contacts.
+Current guardrail: Keep the exact producer relationship predicate and label the returned contact with requested-context membership only. Preserve canonical identity, parent, payload and hash, global null scope, and strict consumer validation. Test shared contacts, contact-only reads and unrelated-record denial across both contracts.
+Promoted to: None
+Related docs/tests: docs/supabase-schema-map.md, docs/testing-and-qa.md, supabase/tests/praxis_contact_context.sql
+
 
 ### 2026-09-09 - Optional Legacy Reporting Fields - Preserve Unknown Facts
 

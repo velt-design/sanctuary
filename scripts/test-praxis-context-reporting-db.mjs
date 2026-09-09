@@ -105,6 +105,7 @@ try {
   if (rollbackClean !== 't') throw new Error('Migration rollback left reporting objects.');
   psql(migration, 'Migration application');
   psql(migration, 'Idempotent migration replay');
+  psql(readFileSync(path.join(root, 'supabase/tests/praxis_contact_context.sql'), 'utf8'), 'Linked/shared contact context proof');
   psql(`
     insert into praxis_reporting.source_identity_v1 (
       source_key, connection_id, environment, projection_version, configured_by
