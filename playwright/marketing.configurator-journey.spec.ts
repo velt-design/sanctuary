@@ -45,7 +45,7 @@ test('copy link opens the exact design in an independent browser and edits survi
   await page.getByLabel('Gable infills', { exact: true }).check();
   await page.getByRole('textbox', { name: 'Width in metres' }).fill('7.2');
   await page.getByRole('button', { name: 'Copy design link', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Link copied');
+  await expect(page.getByRole('status').filter({ hasText: 'Link copied' })).toBeVisible();
   const url = await page.evaluate(() => (window as unknown as { copiedDesign: string }).copiedDesign);
   expect(url).toContain('#design=1.gable.7200.3000.ground.facade.away.1');
   const recipient = await browser.newContext();
