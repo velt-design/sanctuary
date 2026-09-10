@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {pergolaLightSites,layoutRafterLights,layoutLights} from '@sp/geometry';
+import {pergolaLightSites,layoutCedarLights,layoutRafterLights,layoutLights} from '@sp/geometry';
 import {solvePergolaPreview} from './solvePreview';
 import {INITIAL_INPUT} from './model';
 import {INITIAL_ROOF} from './GableChoices';
@@ -73,4 +73,35 @@ it('excludes pitched edge rafters from spots but keeps them selectable for LED s
  const edges=rafters.filter(m=>m.centerline.start.x===Math.min(...xs)||m.centerline.start.x===Math.max(...xs));
  expect(edges).toHaveLength(2);
  for(const edge of edges){expect(sites.rafters.some(s=>s.id.startsWith(edge.id+'-'))).toBe(false);expect(sites.strips.some(s=>s.id===edge.id)).toBe(true);}
+});
+
+for(const orientation of ['parallel','away'] as const)it('cedar gable grids mirror across the ridge: '+orientation,()=>{
+ const g=solvePergolaPreview({...INITIAL_INPUT,widthMm:6000,projectionMm:4000},{...INITIAL_ROOF,family:'gable',orientation,finish:{material:'solid',profile:'corrugated',layout:'central',acrylicBays:2,trayWidth:400}}).geometry!;
+ const sites=pergolaLightSites(g.assembly,g.covering);const axis=orientation==='parallel'?'y':'x',along=axis==='x'?'y':'x';const ridge=g.assembly.members.find(m=>m.role==='ridge')!.centerline.start[axis];
+ for(const count of [2,4,6]){
+  const lights=layoutCedarLights(sites.cedar,count);expect(lights).toHaveLength(count);
+  for(const light of lights)expect(lights.some(other=>other!==light&&Math.abs(other.point[axis]-(2*ridge-light.point[axis]))<1&&Math.abs(other.point[along]-light.point[along])<1)).toBe(true);
+ }
+ expect(layoutCedarLights(sites.cedar,9,'rows3')).toEqual([]);
+});
+it('cedar dice grids use actual bay centres and regular rows',()=>{
+ const g=solvePergolaPreview({...INITIAL_INPUT,widthMm:8000,projectionMm:4000},{...INITIAL_ROOF,finish:{material:'solid',profile:'corrugated',layout:'central',acrylicBays:2,trayWidth:400}}).geometry!;
+ const sites=pergolaLightSites(g.assembly,g.covering),stations=[...new Set(g.assembly.members.filter(m=>m.role==='rafter').map(m=>Math.round(m.centerline.start.x)))].sort((a,b)=>a-b),centres=stations.slice(1).map((s,i)=>(s+stations[i])/2);
+ for(const [count,pattern,columns,rows] of [[2,'rows2',2,1],[4,'rows2',2,2],[6,'rows2',2,3],[6,'rows3',3,2],[9,'rows3',3,3]] as const){
+  const lights=layoutCedarLights(sites.cedar,count,pattern);expect(lights).toHaveLength(count);
+  const xs=[...new Set(lights.map(s=>s.point.x))],ys=[...new Set(lights.map(s=>s.point.y))].sort((a,b)=>a-b);
+  expect(xs).toHaveLength(columns);expect(ys).toHaveLength(rows);
+  expect(xs.every(x=>centres.some(c=>Math.abs(x-c)<1))).toBe(true);
+  if(rows===3)expect(ys[1]-ys[0]).toBeCloseTo(ys[2]-ys[1],3);
+ }
+});
+it('cedar grids avoid acrylic and preserve selection through share links',()=>{
+ const roof={...INITIAL_ROOF,finish:{material:'combination' as const,profile:'corrugated' as const,layout:'central' as const,acrylicBays:2,trayWidth:400 as const}};
+ const g=solvePergolaPreview(INITIAL_INPUT,roof).geometry!,sites=pergolaLightSites(g.assembly,g.covering);
+ for(const site of sites.cedar)for(const region of g.covering!.regions.filter(r=>r.material==='acrylic')){
+  const xs=region.boundary.map(p=>p.x);expect(site.point.x<Math.min(...xs)||site.point.x>Math.max(...xs)).toBe(true);
+ }
+ const draft=parsePreviewDraft({version:1,input:INITIAL_INPUT,roof:{...roof,lighting:{...DEFAULT_LIGHTING,cedarCount:4,cedarPattern:'rows2'}}})!;
+ expect(draft.roof.lighting!.cedarCount).toBe(4);expect(parsePreviewDesign(serializePreviewDesign(draft))).toEqual(draft);
+ expect(parseLighting({...DEFAULT_LIGHTING,cedarPattern:'random'})).toBeNull();
 });

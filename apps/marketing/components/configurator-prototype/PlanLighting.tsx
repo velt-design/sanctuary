@@ -1,9 +1,9 @@
-import {layoutRafterLights,layoutLights} from '@sp/geometry';
+import {layoutRafterLights,layoutCedarLights} from '@sp/geometry';
 import {useLighting} from './LightingProvider';
 export default function PlanLighting({scale=1}:{scale?:number}){
  const w=useLighting();if(!w)return null;
  const selecting=w.editing&&w.tool==='strip';
- const lights=[...layoutRafterLights(w.sites.rafters,w.value.rafterAmount??'off'),...layoutLights(w.sites.cedar,w.value.cedarCount,w.value.cedarLayout)];
+ const lights=[...layoutRafterLights(w.sites.rafters,w.value.rafterAmount??'off'),...layoutCedarLights(w.sites.cedar,w.value.cedarCount,w.value.cedarPattern)];
  return <g data-plan-lighting>
  {w.sites.strips.filter(s=>selecting||w.value.strips.includes(s.id)).map(s=>{
   const selected=w.value.strips.includes(s.id);

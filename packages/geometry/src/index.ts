@@ -1,3 +1,4 @@
+export {layoutCedarLights} from './representativeCedarLights';
 export * from "./contracts";
 export {pergolaLightSites,layoutLights,layoutRafterLights,type RafterLightAmount,type PergolaLighting,type LightLayout,type LightSite,type StripSite} from './representativePergolaLighting';
 export {addRepresentativeRoofBattens,type RepresentativeRoofBattens} from './representativeRoofBattens';

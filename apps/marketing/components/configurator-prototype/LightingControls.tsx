@@ -1,6 +1,6 @@
 'use client';
 import {useLayoutEffect,useRef} from 'react';
-import {layoutRafterLights,layoutLights,type LightLayout} from '@sp/geometry';
+import {layoutRafterLights,layoutCedarLights} from '@sp/geometry';
 import {useLighting} from './LightingProvider';
 import styles from './prototype.module.css';
 import css from './lighting.module.css';
@@ -23,16 +23,11 @@ export default function LightingControls(){
  <div className={css.tools} role="group" aria-label="Rafter light amount">{(['off','low','medium','high'] as const).map(amount=><button key={amount} aria-pressed={(w.value.rafterAmount??'off')===amount} onClick={()=>w.change({...w.value,rafterAmount:amount})}>{amount[0].toUpperCase()+amount.slice(1)}<span>{amount==='off'?'No rafter lights':amount==='low'?'1 centred light · alternate rafters':amount==='medium'?'2 lights · alternate rafters':'2 lights · every eligible rafter'}</span></button>)}</div>
  <p>{w.value.rafterCount} lights across {new Set(layoutRafterLights(w.sites.rafters,w.value.rafterAmount??'off').map(s=>s.id.slice(0,s.id.lastIndexOf('-')))).size} rafters.</p>
  <p>One light sits in the middle. Two sit a quarter of the way in from each end. Placement is automatic; obstructed or strip-lit rafters are skipped.</p></div>}
- {w.tool==='cedar'&&(['cedar'] as const).map(kind=>{
-  const pool=w.sites.cedar,countKey='cedarCount',layoutKey='cedarLayout',count=w.value[countKey];
-  if(!pool.length)return null;
-  const seen=new Set<string>();const layouts=(['even','perimeter','central'] as LightLayout[]).filter(l=>{const key=layoutLights(pool,count,l).map(p=>p.id).sort().join();if(seen.has(key))return false;seen.add(key);return true;});
-  return <div key={kind}><h3>Cedar downlights · 110 mm</h3><div className={css.row}>
-  <button aria-label={'Remove '+kind+' light'} disabled={!count} onClick={()=>w.change({...w.value,[countKey]:count-1})}>−</button>
-  <label>Quantity <input aria-label={kind+' light quantity'} type="number" min={0} max={Math.min(24,pool.length)} value={count} onFocus={e=>e.currentTarget.select()} onChange={e=>w.change({...w.value,[countKey]:Math.min(24,pool.length,Math.max(0,Math.round(Number(e.target.value))))})}/></label>
-  <button aria-label={'Add '+kind+' light'} disabled={count>=Math.min(24,pool.length)} onClick={()=>w.change({...w.value,[countKey]:count+1})}>+</button></div>
-  {count>0&&<fieldset className={styles.choices}><legend>Downlight layout</legend>{layouts.map(l=><label key={l} data-selected={w.value[layoutKey]===l}><input type="radio" name={kind+'-light-layout'} checked={w.value[layoutKey]===l} onChange={()=>w.change({...w.value,[layoutKey]:l})}/>{l==='even'?'Even coverage':l==='perimeter'?'Perimeter':'Central'}</label>)}</fieldset>}</div>;
- })}
+ {w.tool==='cedar'&&<div><h3>2. Choose a downlight grid</h3>
+ <div className={css.tools} role="group" aria-label="Cedar downlight grid">
+ <button aria-pressed={w.value.cedarCount===0} onClick={()=>w.change({...w.value,cedarCount:0})}>Off</button>
+ {[2,4,6,9].flatMap(count=>(['rows2','rows3'] as const).filter(pattern=>layoutCedarLights(w.sites.cedar,count,pattern).length===count).map(pattern=><button key={count+pattern} aria-pressed={w.value.cedarCount===count&&w.value.cedarPattern===pattern} onClick={()=>w.change({...w.value,cedarCount:count,cedarPattern:pattern})}>{count} lights<span>{count===2?'Centred pair':count===4?'2 × 2 grid':count===9?'3 × 3 grid':pattern==='rows2'?'Rows of 2':'Rows of 3'}</span></button>))}
+ </div><p>Centred between rafters, in matching rows. Only grids that fit the cedar areas are shown; acrylic stays clear. Gable grids mirror across the ridge.</p></div>}
  {w.tool==='strip'&&<><h3>2. Select LED strips in the plan</h3><p>Tap a rafter or beam in the plan to switch its full-length strip on or off. Gold lines show your selected strips.</p>
  <div className={css.presets}>{['Outer perimeter','Alternate rafters','All rafters','Clear strips'].map((label,i)=><button key={label} onClick={()=>w.change({...w.value,strips:i===0?w.sites.strips.filter(s=>s.perimeter).map(s=>s.id):i===1?w.sites.strips.filter(s=>s.rafter).filter((_,i)=>i%2===0).map(s=>s.id):i===2?w.sites.strips.filter(s=>s.rafter).map(s=>s.id):[]})}>{label}</button>)}</div>
  <p>{w.value.strips.length} members lit · Perimeter excludes the house connection.</p>

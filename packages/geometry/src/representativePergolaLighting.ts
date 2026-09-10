@@ -1,10 +1,10 @@
 import type {Assembly3D,Point3,AssemblyMember3D} from './contracts';
 import type {RoofFinishGeometry} from './representativeRoofFinishTypes';
-import {roofCoordinates,dotRoof} from './representativeRoofFinishMesh';
+import {cedarGridSites} from './representativeCedarLights';
 export type LightLayout='even'|'perimeter'|'central';
 export type RafterLightAmount='off'|'low'|'medium'|'high';
-export type PergolaLighting={rafterAmount?:RafterLightAmount;rafterCount:number;cedarCount:number;rafterLayout:LightLayout;cedarLayout:LightLayout;strips:string[]};
-export type LightSite={rafterRow?:number;rafterRows?:number;id:string;point:Point3;normal:Point3;diameter:number};
+export type PergolaLighting={cedarPattern?:'rows2'|'rows3';rafterAmount?:RafterLightAmount;rafterCount:number;cedarCount:number;rafterLayout:LightLayout;cedarLayout:LightLayout;strips:string[]};
+export type LightSite={cedarGrid?:string;rafterRow?:number;rafterRows?:number;id:string;point:Point3;normal:Point3;diameter:number};
 export type StripSite={id:string;label:string;start:Point3;end:Point3;normal:Point3;perimeter:boolean;rafter:boolean};
 const add=(p:Point3,n:Point3,k:number)=>({x:p.x+n.x*k,y:p.y+n.y*k,z:p.z+n.z*k});
 const within=(p:Point3,points:Point3[],margin=0)=>p.x>=Math.min(...points.map(v=>v.x))+margin&&p.x<=Math.max(...points.map(v=>v.x))-margin&&p.y>=Math.min(...points.map(v=>v.y))+margin&&p.y<=Math.max(...points.map(v=>v.y))-margin;
@@ -37,21 +37,7 @@ export function pergolaLightSites(assembly:Assembly3D,covering?:RoofFinishGeomet
    if(!roofSolid(p)&&!timber(p))rafters.push({...(paired?{rafterRow:rows.indexOf(station(m))-1,rafterRows:Math.max(0,rows.length-2)}:{}),id:m.id+'-'+i,point:add(p,m.localFrame.zAxis,-2),normal:m.localFrame.zAxis,diameter:40});
   }
  }
- for(const [i,roof] of assembly.roofPlanes.entries()){
-  const f=roofCoordinates(roof),datum=dotRoof(roof.boundary[0],f.n);
-  const regions=covering?.regions.filter(r=>r.material==='solid'&&r.boundary.every(p=>Math.abs(dotRoof(p,f.n)-datum)<1))??[];
-  for(const [j,region] of regions.entries()){
-   const us=region.boundary.map(p=>dotRoof(p,f.u)),vs=region.boundary.map(p=>dotRoof(p,f.v));
-   const a=Math.min(...us),b=Math.max(...us),c=Math.min(...vs),d=Math.max(...vs);
-   if(b-a<220||d-c<220)continue;
-   const nx=Math.max(1,Math.floor((b-a)/400)),ny=Math.max(1,Math.floor((d-c)/500));
-   for(let x=0;x<nx;x++)for(let y=0;y<ny;y++){
-    let p=f.point(a+(b-a)*(x+.5)/nx,c+(d-c)*(y+.5)/ny,-189),normal=f.n;
-    if(assembly.family==='box'){const mesh=covering?.meshes.find(m=>m.kind==='cedar');if(mesh){p={...p,z:Math.min(...mesh.positions.filter((_,k)=>k%3===2))-2};normal={x:0,y:0,z:1};}}
-    cedar.push({id:'cedar-'+i+'-'+j+'-'+x+'-'+y,point:p,normal,diameter:110});
-   }
-  }
- }
+ cedar.push(...cedarGridSites(assembly,covering));
  return {strips,rafters,cedar};
 }
 export function layoutLights(sites:LightSite[],count:number,layout:LightLayout):LightSite[]{
