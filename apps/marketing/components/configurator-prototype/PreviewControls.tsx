@@ -1,5 +1,6 @@
 'use client';
 
+import BlindControls from './BlindControls';
 import RoofFinishChoices from "./RoofFinishChoices";
 import { roofFinishDescription, previewProjectionMax } from "./roofFinish";
 
@@ -104,6 +105,7 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
       </label>)}
     </fieldset>
     {input.level === 'elevated' && <p className={styles.small}>First-floor deck · shown 2.7 m above ground.</p>}
+    <BlindControls />
       <p className={styles.small}>{roofFinishDescription(roof)} · Black aluminium frame<br />Representative house, ground, heights and connection details.</p>
   </div>;
 }

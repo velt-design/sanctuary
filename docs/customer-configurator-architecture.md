@@ -2,6 +2,48 @@
 ## Master Architecture and Implementation Specification
 
 
+### Marketing preview: Ziptrak sides (2026-09-10)
+
+The first sides loop offers under-beam Ziptrak blinds on front and side openings,
+derived from solved supports in representativeBlindOpenings.ts. Existing post bays
+remain separate. The house end of a side blind has a representative 50 mm jamb.
+Pitched sides receive a level header (up to 2 m: 50x50; up to 4 m: 100x50;
+up to 6 m: 150x50) and optional clear acrylic above it. Existing gable-end framing
+and its roof-level infill control remain authoritative where already present.
+
+representativeBlind.ts owns roll, tracks, bottom rail, header and infill geometry.
+Cover identifiers NONE / FLASHING / PELMET match the costing calculator; the owner's
+PELMET option includes outward flashing plus an inside enclosure. Hardware sizes
+are representative from the Shade Elements Ziptrak sheet (135/165 mm enclosures,
+30 mm tracks, 52 mm bottom rail), not fabrication cut lengths. Face fixing and
+motorisation selection are deferred. Rails remain visible when the fabric is raised.
+
+blindCatalog.ts lists the supplier's compatible Shadeview, Soltis Horizon 86,
+Soltis Lounge 96 and clear/tinted PVC ranges with their named colours. Swatches and
+rendered transparency are illustrative, not measured fabric samples. The manufacturer
+catalogue is https://shadeelements.co.nz/fabric-collection/ and the applicable system
+page is https://shadeelements.co.nz/screen/ziptrak/ . Mesh limit is read from
+getBlindSystemLimits('ZIPTRAK'); PVC additionally caps width at 5500 mm. An oversized
+opening stays open and explains the constraint without changing the pergola size.
+
+PreviewBlindProvider owns selection/editing state shared by controls, 3D and Plan.
+Plan uses 24px tap targets; 3D opening targets ignore orbit drags. The current fabric,
+colour and cover can be applied to all compatible selected blinds. Position is a
+visual raise/lower slider. Topology-dependent opening IDs prevent silently moving
+blinds across changed post bays: invalid selections are removed with a notice.
+
+Blinds are validated on draft restoration and every update. Version-3 share fragments
+carry only the validated draft; versions 1 and 2 remain supported. The contact brief
+includes each opening, fabric, colour and cover. Any selected blinds move the preview
+to Sanctuary-confirmed pricing and suppress the bare-pergola estimate reference.
+No costing rates, commercial input adapters or portal runtime behavior are changed.
+
+Gate 0: legacy audit rows N/A; no legacy build-on/removal or house authoring change;
+no Phase 2 dependencies or function/type consolidation. Consumers checked: preview
+solve, controls, views, draft/share boundary, price guard, contact brief and tests.
+Focused checks: blinds.test.ts; marketing.configurator-blinds.spec.ts; existing
+roof/draft/share tests and workspace/gesture browser checks; marketing production build.
+
 ### Marketing preview: solid and combination roofs (2026-09-10)
 
 The preview offers acrylic, solid, and combination roofs. Solid regions include

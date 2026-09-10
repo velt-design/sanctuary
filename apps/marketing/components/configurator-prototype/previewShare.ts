@@ -5,6 +5,7 @@ export function serializePreviewDesign(draft: PreviewDraft): string {
   const safe = parsePreviewDraft(draft);
   if (!safe) throw new Error('Invalid preview design');
   const { input, roof } = safe;
+  if(roof.blinds?.length) return '3~'+encodeURIComponent(JSON.stringify(safe));
   const parts: (string | number)[] = [roof.finish ? 2 : 1, roof.family, input.widthMm, input.projectionMm, input.level, input.connection,
     roof.orientation, roof.infills ? 1 : 0];
   if (roof.finish) parts.push(roof.finish.material, roof.finish.layout, roof.finish.acrylicBays, roof.finish.profile, roof.finish.trayWidth);
@@ -12,6 +13,10 @@ export function serializePreviewDesign(draft: PreviewDraft): string {
 }
 
 export function parsePreviewDesign(value: string): PreviewDraft | null {
+  if(value.startsWith('3~')) {
+    if(value.length>12000) return null;
+    try { return parsePreviewDraft(JSON.parse(decodeURIComponent(value.slice(2)))); } catch { return null; }
+  }
   if (value.length > 100) return null;
   const parts = value.split('.');
   const extended = parts[0] === '2' && parts.length === 13;

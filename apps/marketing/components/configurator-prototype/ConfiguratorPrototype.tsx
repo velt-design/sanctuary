@@ -14,6 +14,7 @@ import styles from './prototype.module.css';
 import { usePreviewDraft } from './usePreviewDraft';
 import PreviewNextAction from './PreviewNextAction';
 import ShareDesign from './ShareDesign';
+import PreviewBlindProvider from './PreviewBlindProvider';
 import journey from './journey.module.css';
 
 const PreviewViews = dynamic(() => import('./PreviewViews'), {
@@ -25,11 +26,11 @@ export type PreviewSelection = { input: SimpleCoverInput; roof: PreviewRoofChoic
 export default function ConfiguratorPrototype({ expanded, onToggleExpanded, renderEnquiry }: {
   expanded: boolean; onToggleExpanded: () => void; renderEnquiry?: (selection: PreviewSelection) => ReactNode;
 }) {
-  const { input, roof, setInput, setRoof, ready, storageAvailable, linkNotice } = usePreviewDraft();
+  const { input, roof, setInput, setRoof, ready, storageAvailable, linkNotice, selectionNotice } = usePreviewDraft();
   const { result, retry } = usePreviewPrice(input, ready && hasSimpleRoofPrice(roof));
   const { activeDimension, showDimension } = usePreviewDimension();
   if (!ready) return <div className={styles.loading} role="status">Preparing your design…</div>;
-  return <div className={styles.page} data-layout={renderEnquiry ? 'project' : 'popup'}>
+  return <PreviewBlindProvider input={input} roof={roof} onChange={setRoof}><div className={styles.page} data-layout={renderEnquiry ? 'project' : 'popup'}>
     <div className={styles.workspace}>
       <div className={styles.visualSlot}>
       <section className={styles.visual} aria-label="Pergola views" data-expanded={expanded}>
@@ -42,6 +43,7 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded, rend
         {renderEnquiry && <div id="project-design" />}
         {linkNotice && <p className={styles.storageNotice} role="status">{linkNotice === 'loaded' ? 'Shared design opened. Make it your own.' : 'This design link could not be opened. You can continue designing below.'}</p>}
         <PreviewControls input={input} roof={roof} onRoofChange={setRoof} onChange={setInput} onDimensionActivity={showDimension} />
+        {selectionNotice && <p className={styles.inputNotice} role="status">{selectionNotice}</p>}
         <section className={styles.price} aria-label="Estimated price" aria-live="polite" aria-atomic="true">
           <p className={styles.eyebrow}>{roof.family === 'gable' ? 'YOUR GABLE PERGOLA' : roof.family === 'box' ? 'YOUR BOX PERIMETER PERGOLA' : 'YOUR SIMPLE PERGOLA'}</p>
           {!hasSimpleRoofPrice(roof) ? <><p className={styles.priceValue}>Your pergola, taking shape.</p><p className={styles.small}>Explore the design here. Your selected roof pricing will be confirmed by Sanctuary.</p></> : !result ? <p className={styles.priceValue}>Updating estimate…</p> : result.status === 'priced'
@@ -57,5 +59,5 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded, rend
       {!renderEnquiry && <PreviewNextAction selection={{ input, roof, result }} />}
       </div>
     </div>
-  </div>;
+  </div></PreviewBlindProvider>;
 }

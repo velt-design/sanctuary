@@ -6,7 +6,7 @@ import type { SimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import type { PreviewRoofChoices } from './GableChoices';
 import { parsePreviewDesign } from './previewShare';
 
-type Snapshot = { draft: PreviewDraft; storageAvailable: boolean; linkNotice?: 'loaded' | 'invalid' };
+type Snapshot = { draft: PreviewDraft; storageAvailable: boolean; linkNotice?: 'loaded' | 'invalid'; selectionNotice?:string };
 let snapshot: Snapshot | null = null;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach(listener => listener());
@@ -69,10 +69,12 @@ function subscribe(listener: () => void) {
 }
 
 function update(patch: { input?: SimpleCoverInput; roof?: PreviewRoofChoices }) {
-  const draft = parsePreviewDraft({ ...(getSnapshot()?.draft ?? DEFAULT_PREVIEW_DRAFT), ...patch });
+  const requested={ ...(getSnapshot()?.draft ?? DEFAULT_PREVIEW_DRAFT), ...patch };
+  const draft = parsePreviewDraft(requested);
   if (!draft) return;
   // Publish and save synchronously so immediate navigation cannot lose the last edit.
   save(draft);
+  if(snapshot && (requested.roof.blinds?.length??0)>(draft.roof.blinds?.length??0)) snapshot.selectionNotice='Some blinds no longer fit the updated openings and were removed. Choose the new openings under Outdoor blinds.';
   emit();
 }
 
@@ -82,5 +84,5 @@ const setRoof = (roof: PreviewRoofChoices) => update({ roof });
 export function usePreviewDraft() {
   const current = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   return { ...(current?.draft ?? DEFAULT_PREVIEW_DRAFT), ready: current !== null,
-    storageAvailable: current?.storageAvailable ?? true, linkNotice: current?.linkNotice, setInput, setRoof };
+    storageAvailable: current?.storageAvailable ?? true, linkNotice: current?.linkNotice, selectionNotice:current?.selectionNotice, setInput, setRoof };
 }

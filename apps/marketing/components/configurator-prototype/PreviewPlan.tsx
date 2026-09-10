@@ -4,6 +4,7 @@ import type { GeometryPlanViewModel, RepresentativeSurroundings, RoofFlashing3D 
 import { metres } from './model';
 import styles from './prototype.module.css';
 import PlanDimension from './PlanDimension';
+import BlindPlan from './BlindPlan';
 import type { PreviewDimensionAxis } from './usePreviewDimension';
 
 export default function PreviewPlan({ covering, plan, flashings = [], context, activeDimension }: { covering?: RoofFinishGeometry; plan: GeometryPlanViewModel; flashings?: RoofFlashing3D[]; context: RepresentativeSurroundings | null; activeDimension: PreviewDimensionAxis | null }) {
@@ -73,6 +74,7 @@ export default function PreviewPlan({ covering, plan, flashings = [], context, a
         x={member.centerline.start.x - width / 2} y={member.centerline.start.y - height / 2}
         width={width} height={height} fill="#252b25" />;
     })}
+    <BlindPlan scale={scale} />
     <g fill="none" stroke="#aeb6a5" strokeWidth={.6} vectorEffect="non-scaling-stroke">
       <path vectorEffect="non-scaling-stroke" d={`M ${minX} ${maxY + 4 / scale} V ${widthLine + font * .5} M ${maxX} ${maxY + 4 / scale} V ${widthLine + font * .5}`} />
       <path vectorEffect="non-scaling-stroke" d={`M ${maxX + 4 / scale} ${minY} H ${projectionLine + font * .5} M ${maxX + 4 / scale} ${maxY} H ${projectionLine + font * .5}`} />

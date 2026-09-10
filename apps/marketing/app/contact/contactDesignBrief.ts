@@ -1,6 +1,7 @@
 import { getRoofFinish, hasSimpleRoofPrice, roofFinishDescription } from "../../components/configurator-prototype/roofFinish";
 import type { PreviewSelection } from '@/components/configurator-prototype/ConfiguratorPrototype';
 import type { SimpleCoverHandoff } from '@/lib/simpleCoverHandoff';
+import { describeBlinds } from '../../components/configurator-prototype/blindCatalog';
 
 export type ContactDesignBrief = {
   roofMaterials: ('acrylic' | 'timber')[];
@@ -24,6 +25,7 @@ export function buildContactDesignBrief({ input, roof, result }: PreviewSelectio
     `${(input.widthMm / 1000).toFixed(1)} m wide × ${(input.projectionMm / 1000).toFixed(1)} m projection`,
     ...(finish.material === "acrylic" ? [] : [roofFinishDescription(roof)]),
     connection,
+    ...(roof.blinds?.length?[describeBlinds(roof.blinds)]:[]),
     input.level === 'ground' ? 'Ground level' : 'Elevated',
     ...(roof.family === 'gable' ? [roof.orientation === 'parallel' ? 'Ridge parallel to house' : 'Ridge away from house', roof.infills ? 'Gable infills included' : 'Open gable ends'] : []),
   ].join(' · ');

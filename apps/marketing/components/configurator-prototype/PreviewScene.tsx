@@ -3,6 +3,8 @@
 import { Component, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import PreviewCamera from './PreviewCamera';
+import PreviewBlinds from './PreviewBlinds';
+import { usePreviewBlinds } from './PreviewBlindProvider';
 import PreviewRoof from './PreviewRoof';
 import PreviewRoofFinish from './PreviewRoofFinish';
 import type { RoofFinishGeometry } from '@sp/geometry';
@@ -38,6 +40,7 @@ export default function PreviewScene({ covering, scene, plan, context, activeDim
   scene: ViewerSceneModel; plan: GeometryPlanViewModel; activeDimension: PreviewDimensionAxis | null;
   interactive: boolean; reset: number; fit: number; onFallback: () => void;
 }) {
+  const blindWorkspace=usePreviewBlinds();
   const [unavailable, setUnavailable] = useState(false);
   const fallback = <div className={styles.loading}><p>3D is unavailable on this device.</p><button onClick={onFallback}>View your plan</button></div>;
   // Context is a separate package-owned visual reference. Camera framing stays
@@ -60,6 +63,7 @@ export default function PreviewScene({ covering, scene, plan, context, activeDim
       fallback={fallback}>
       <ContextWatch onFallback={() => { setUnavailable(true); onFallback(); }} />
       <PreviewLighting />
+      {blindWorkspace && <PreviewBlinds workspace={blindWorkspace} />}
       {covering && <PreviewRoofFinish covering={covering} />}
       {context && <PreviewSurroundings context={context} bounds={bounds} productPoints={fitPoints} />}
       <PreviewCamera bounds={cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} />

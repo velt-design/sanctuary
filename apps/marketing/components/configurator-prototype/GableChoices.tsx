@@ -1,8 +1,9 @@
 import type { RepresentativeRoofFinish } from "@sp/geometry";
+import type { PreviewBlind } from './blindCatalog';
 import styles from './prototype.module.css';
 import guide from './roofGuide.module.css';
 
-export type PreviewRoofChoices = { family: 'mono' | 'gable' | 'box'; orientation: 'parallel' | 'away'; infills: boolean; finish?: RepresentativeRoofFinish };
+export type PreviewRoofChoices = { family: 'mono' | 'gable' | 'box'; orientation: 'parallel' | 'away'; infills: boolean; finish?: RepresentativeRoofFinish; blinds?: PreviewBlind[] };
 export const INITIAL_ROOF: PreviewRoofChoices = { family: 'mono', orientation: 'parallel', infills: false };
 
 export function RoofTypeChoice({ value, onChange }: { value: PreviewRoofChoices; onChange: (next: PreviewRoofChoices) => void }) {

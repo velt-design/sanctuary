@@ -109,3 +109,7 @@ export { DEFAULT_ROOF_FINISH, roofFinishBayLimit } from "./representativeRoofFin
 export type { RepresentativeRoofFinish, RoofFinishGeometry, RoofFinishMesh } from "./representativeRoofFinishTypes";
 export { representativeRoofProfile } from "./representativeRoofProfiles";
 export { representativeBoxRoofMaxProjection } from "./representativeRoofBoxFinish";
+export { representativeBlindOpenings, blindHeaderDepth } from './representativeBlindOpenings';
+export type { BlindOpening } from './representativeBlindOpenings';
+export { buildRepresentativeBlind } from './representativeBlind';
+export type { BlindMesh } from './representativeBlind';

@@ -3,6 +3,8 @@ import { CUSTOMER_DIMENSION_BOUNDS } from '@sp/configurator/core';
 import { parseSimpleCoverInput, type SimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import { constrainPreviewConnection, INITIAL_INPUT } from './model';
 import { INITIAL_ROOF, type PreviewRoofChoices } from './GableChoices';
+import { parseBlinds } from './blindCatalog';
+import { validPreviewBlinds } from './blindSelection';
 
 // Isolated representative preview; deliberately separate from the future customer intent document.
 export const PREVIEW_DRAFT_KEY = 'sanctuary.configurator-preview.v1';
@@ -21,11 +23,15 @@ export function parsePreviewDraft(value: unknown): PreviewDraft | null {
     || (roof.orientation !== 'parallel' && roof.orientation !== 'away') || typeof roof.infills !== 'boolean') return null;
   const finish = roof.finish === undefined ? undefined : parseRoofFinish(roof.finish);
   if (finish === null) return null;
+  const blinds=roof.blinds===undefined?undefined:parseBlinds(roof.blinds);
+  if(blinds===null) return null;
   const selectedRoof: PreviewRoofChoices = { family: roof.family, orientation: roof.orientation, infills: roof.infills, ...(finish ? { finish } : {}) };
   const sizedInput = { ...input, projectionMm: Math.min(input.projectionMm, previewProjectionMax(selectedRoof)) };
+  const validInput=constrainPreviewConnection(sizedInput, roof.family);
+  if(blinds) selectedRoof.blinds=validPreviewBlinds(validInput,selectedRoof,blinds);
   return {
     version: 1,
-    input: constrainPreviewConnection(sizedInput, roof.family),
+    input: validInput,
     roof: constrainRoofFinish(selectedRoof, sizedInput),
   };
 }
