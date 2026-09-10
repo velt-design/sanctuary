@@ -52,3 +52,25 @@ it('retains amount through sharing and recalculates totals after resizing',()=>{
  expect(parsePreviewDesign(serializePreviewDesign(b))).toEqual(b);
  expect(parseLighting({...DEFAULT_LIGHTING,rafterAmount:'invalid'})).toBeNull();
 });
+
+for(const orientation of ['parallel','away'] as const)for(const widthMm of [4200,4800,6000])it(`mirrors gable spot patterns across the ridge: ${orientation} ${widthMm}`,()=>{
+ const g=solvePergolaPreview({...INITIAL_INPUT,widthMm},{...INITIAL_ROOF,family:'gable',orientation}).geometry!;
+ const sites=pergolaLightSites(g.assembly,g.covering);
+ const along=orientation==='parallel'?'x':'y';const members=g.assembly.members.filter(m=>m.role==='rafter');const coords=members.map(m=>m.centerline.start[along]);
+ for(const m of members.filter(m=>m.centerline.start[along]===Math.min(...coords)||m.centerline.start[along]===Math.max(...coords)))expect(sites.rafters.some(s=>s.id.startsWith(m.id+'-'))).toBe(false);
+ for(const amount of ['low','medium','high'] as const){
+  const lights=layoutRafterLights(sites.rafters,amount);expect(lights.length).toBeGreaterThan(0);
+  const rows=new Map<number,number>();for(const s of lights)rows.set(s.rafterRow!,(rows.get(s.rafterRow!)??0)+1);
+  expect([...rows.values()].every(n=>n===(amount==='low'?2:4))).toBe(true);
+  const reflectedAxis=orientation==='parallel'?'y':'x';
+  const ridge=g.assembly.members.find(m=>m.role==='ridge')!.centerline.start[reflectedAxis];
+  for(const light of lights)expect(lights.some(other=>other!==light&&Math.abs(other.point[reflectedAxis]-(2*ridge-light.point[reflectedAxis]))<1&&Math.abs(other.point[reflectedAxis==='x'?'y':'x']-light.point[reflectedAxis==='x'?'y':'x'])<1)).toBe(true);
+ }
+});
+it('excludes pitched edge rafters from spots but keeps them selectable for LED strips',()=>{
+ const g=solvePergolaPreview(INITIAL_INPUT).geometry!,sites=pergolaLightSites(g.assembly,g.covering);
+ const rafters=g.assembly.members.filter(m=>m.role==='rafter');const xs=rafters.map(m=>m.centerline.start.x);
+ const edges=rafters.filter(m=>m.centerline.start.x===Math.min(...xs)||m.centerline.start.x===Math.max(...xs));
+ expect(edges).toHaveLength(2);
+ for(const edge of edges){expect(sites.rafters.some(s=>s.id.startsWith(edge.id+'-'))).toBe(false);expect(sites.strips.some(s=>s.id===edge.id)).toBe(true);}
+});
