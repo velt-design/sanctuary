@@ -5,6 +5,9 @@ import { constrainPreviewConnection, INITIAL_INPUT } from './model';
 import { INITIAL_ROOF, type PreviewRoofChoices } from './GableChoices';
 import { parseBlinds } from './blindCatalog';
 import { validPreviewBlinds } from './blindSelection';
+import { previewBlindOpenings } from './blindSelection';
+import { parseSidePanels } from './sidePanelCatalog';
+import { sidePanelSupports } from './sidePanelLayout';
 
 // Isolated representative preview; deliberately separate from the future customer intent document.
 export const PREVIEW_DRAFT_KEY = 'sanctuary.configurator-preview.v1';
@@ -25,10 +28,13 @@ export function parsePreviewDraft(value: unknown): PreviewDraft | null {
   if (finish === null) return null;
   const blinds=roof.blinds===undefined?undefined:parseBlinds(roof.blinds);
   if(blinds===null) return null;
+  const panels=roof.sidePanels===undefined?undefined:parseSidePanels(roof.sidePanels);
+  if(panels===null || panels?.some(p=>blinds?.some(b=>b.opening===p.opening)))return null;
   const selectedRoof: PreviewRoofChoices = { family: roof.family, orientation: roof.orientation, infills: roof.infills, ...(finish ? { finish } : {}) };
   const sizedInput = { ...input, projectionMm: Math.min(input.projectionMm, previewProjectionMax(selectedRoof)) };
   const validInput=constrainPreviewConnection(sizedInput, roof.family);
   if(blinds) selectedRoof.blinds=validPreviewBlinds(validInput,selectedRoof,blinds);
+  if(panels){const openings=previewBlindOpenings(validInput,selectedRoof);selectedRoof.sidePanels=panels.filter(p=>{const o=openings.find(o=>o.id===p.opening);return o&&sidePanelSupports(o,p).length>1;});}
   return {
     version: 1,
     input: validInput,

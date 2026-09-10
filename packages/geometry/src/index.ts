@@ -1,4 +1,6 @@
 export * from "./contracts";
+export { buildRepresentativeSidePanel } from './representativeSidePanel';
+export type { SidePanelMesh } from './representativeSidePanel';
 export { fitRepresentativeBlindPosts } from './representativeBlindPosts';
 export { buildRepresentativeGable } from './representativeGable';
 export { buildRepresentativeBox } from './representativeBox';

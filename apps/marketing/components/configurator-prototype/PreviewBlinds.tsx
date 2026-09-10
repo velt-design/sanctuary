@@ -4,6 +4,7 @@ import { BufferGeometry, DoubleSide, Float32BufferAttribute } from 'three';
 import { buildRepresentativeBlind, type BlindMesh, type BlindOpening } from '@sp/geometry';
 import { usePreviewBlinds } from './PreviewBlindProvider';
 import { blindColour, blindFabric, type PreviewBlind } from './blindCatalog';
+import PreviewSidePanel from './PreviewSidePanel';
 function Part({data,blind}:{data:BlindMesh;blind:PreviewBlind}) {
   const geometry=useMemo(()=>{const g=new BufferGeometry();g.setAttribute('position',new Float32BufferAttribute(data.positions,3));g.setIndex(data.indices);g.computeVertexNormals();return g;},[data]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
@@ -21,5 +22,5 @@ function OpeningTarget({opening,active,editing,onSelect}:{opening:BlindOpening;a
   return <mesh geometry={geometry} onClick={event=>{if(event.delta<6){event.stopPropagation();onSelect();}}}><meshBasicMaterial side={DoubleSide} color={active?'#a7bc87':'#afbab0'} transparent opacity={editing?(active?.24:.07):0} depthWrite={false}/></mesh>;
 }
 export default function PreviewBlinds({workspace}:{workspace:NonNullable<ReturnType<typeof usePreviewBlinds>>}) {
-  return <group>{workspace.openings.map(o=>{const blind=workspace.blinds.find(b=>b.opening===o.id);return <group key={o.id}>{blind&&<Blind opening={o} blind={blind} onSelect={()=>workspace.select(o.id)}/>} {(workspace.editing||blind)&&<OpeningTarget opening={o} active={o.id===workspace.selected} editing={workspace.editing} onSelect={()=>workspace.select(o.id)}/>}</group>;})}</group>;
+  return <group>{workspace.openings.map(o=>{const blind=workspace.blinds.find(b=>b.opening===o.id),panel=workspace.panels.find(p=>p.opening===o.id);return <group key={o.id}>{panel&&<PreviewSidePanel opening={o} panel={panel} onSelect={()=>workspace.select(o.id)}/>} {blind&&<Blind opening={o} blind={blind} onSelect={()=>workspace.select(o.id)}/>} {(workspace.editing||blind||panel)&&<OpeningTarget opening={o} active={o.id===workspace.selected} editing={workspace.editing} onSelect={()=>workspace.select(o.id)}/>}</group>;})}</group>;
 }

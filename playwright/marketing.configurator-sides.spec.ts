@@ -1,0 +1,34 @@
+import {test,expect} from '@playwright/test';
+import {PerspectiveCamera,Vector3} from 'three';
+test.use({hasTouch:true});
+for(const width of [390,1440])test('fixed sides, profile gaps, selection and handoff at '+width,async({page,browser})=>{
+  await page.setViewportSize({width,height:844});await page.goto('/configurator-preview');
+  await page.getByRole('button',{name:'Essential only',exact:true}).click();await page.getByRole('button',{name:'Design your pergola',exact:false}).click();
+  const c=page.getByRole('region',{name:'Outdoor blinds',exact:true});
+  await c.getByRole('button',{name:/Front 1/}).click();await c.getByRole('radio',{name:'Acrylic panels',exact:true}).check();
+  await c.getByRole('radio',{name:'100 × 50 mm',exact:true}).check();await c.getByRole('checkbox',{name:'Add horizontal timber battens'}).check();
+  const profile=c.getByRole('combobox',{name:'Side slat profile'}),gap=c.getByRole('slider',{name:'Side slat clear gap'});
+  await profile.selectOption('90x39');await expect(gap).toHaveValue('90');await c.getByRole('radio',{name:'On edge',exact:true}).check();await expect(gap).toHaveValue('39');
+  await gap.focus();await gap.press('ArrowRight');await expect(gap).toHaveValue('40');await profile.selectOption('65x39');await expect(gap).toHaveValue('40');
+  await c.getByRole('button',{name:'Use profile default'}).click();await expect(gap).toHaveValue('39');
+  await c.getByRole('button',{name:/Left 1/}).click();await c.getByRole('radio',{name:'Timber slats',exact:true}).check();await profile.selectOption('90x39');
+  await c.getByRole('button',{name:/Right 1/}).click();await c.getByRole('radio',{name:'Aluminium slats',exact:true}).check();await profile.selectOption('65x16');await c.getByRole('radio',{name:'On edge',exact:true}).check();await expect(gap).toHaveValue('16');
+  await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','3');
+  await page.getByRole('button',{name:'Edit sides',exact:true}).click();
+  const canvas=page.locator('canvas');await expect(canvas).toHaveAttribute('data-camera',/perspective/);
+  const state=JSON.parse((await canvas.getAttribute('data-camera'))!),r=(await canvas.boundingBox())!,camera=new PerspectiveCamera(state.fov,r.width/r.height,10,200000);
+  camera.position.fromArray(state.position);camera.up.set(0,0,1);camera.lookAt(new Vector3().fromArray(state.target));camera.updateMatrixWorld();
+  const v=new Vector3(1500,2920,1000).project(camera),x=r.x+(v.x+1)*r.width/2,y=r.y+(1-v.y)*r.height/2;
+  if(width===390)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);
+  await expect(c.getByRole('button',{name:/Front 1/})).toHaveAttribute('aria-pressed','true');await expect(c.getByRole('checkbox',{name:'Add horizontal timber battens'})).toBeChecked();
+  await page.getByRole('button',{name:'Plan',exact:true}).click();await page.getByRole('button',{name:'Select Right 1 opening',exact:true}).click();await expect(profile).toHaveValue('65x16');
+  await c.getByRole('radio',{name:'Ziptrak blind',exact:true}).check();await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','2');await expect(page.locator('[data-blind-count]')).toHaveAttribute('data-blind-count','1');
+  await c.getByRole('radio',{name:'Aluminium slats',exact:true}).check();await expect(page.locator('[data-blind-count]')).toHaveAttribute('data-blind-count','0');
+  await page.getByRole('button',{name:'3D',exact:true}).click();await page.getByRole('button',{name:'Edit sides',exact:true}).click();
+  await page.screenshot({path:'artifacts/configurator-preview/sides-'+width+'.png'});
+  await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(s:string)=>{(window as unknown as {design:string}).design=s;}}}));
+  await page.getByRole('button',{name:'Copy design link',exact:true}).click();const url=await page.evaluate(()=>(window as unknown as {design:string}).design);
+  const recipient=await browser.newContext();try{const q=await recipient.newPage();await q.goto(url);await expect(q.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','3');}finally{await recipient.close();}
+  await page.getByRole('link',{name:'Continue with this design',exact:true}).click();await page.getByText('Details',{exact:true}).click();await expect(page.getByText(/horizontal timber battens/).last()).toBeVisible();
+  await page.reload();await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','3');expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(width);
+});

@@ -4,6 +4,28 @@
 
 ### Marketing preview: Ziptrak sides (2026-09-10)
 
+Fixed sides loop: each opening exclusively selects Open, Ziptrak, full-height Acrylic,
+horizontal Timber or horizontal Aluminium. Acrylic alone can add horizontal timber.
+Timber profiles 39x39/65x39/90x39; rectangular timber and aluminium 65x16 support
+flat/on-edge; aluminium 50x10 is flat only. Default clear gap follows the visible
+face until manually changed; custom gaps (5–200mm UI range) persist across profile
+changes, with an explicit reset. Acrylic framing is 50x50 or 100x50 (50mm face,
+extra depth inward/outward). Standalone sides have representative 50x50x3 perimeter
+angles and 50x50 intermediate supports matching the frame colour. Timber supports
+are at most 1200mm centres; aluminium at most 600mm. Acrylic boundaries come from
+calculateInfillsTakeoffV1, trying sheets then strips for longer panels; timber over
+acrylic follows those boundaries. These are representative screens, not fabrication
+or structural output. Roof battens, lighting, heaters and fireplaces are deferred.
+
+sidePanelCatalog.ts owns validated selection fields; sidePanelLayout.ts adapts portal
+infill rules; representativeSidePanel.ts owns mesh generation; PreviewSidePanel and
+SidePanelControls own rendering/editing. Opening identity and selection reuse the
+existing provider. Plan/3D, version-3 links, draft restoration and enquiry summaries
+carry fixed sides. Any fixed side disables bare-pergola pricing. Gate 0: legacy rows
+N/A, no legacy build-on/removal, Phase 2 or house-authoring dependency, no function
+consolidation. Consumers checked: preview controls/provider, opening generation,
+views, draft/share, price guard, contact brief and browser tests. No portal changes.
+
 Existing blinds remain selectable by click/tap when Sides highlighting is off, including their opening when raised; Sides reveals targets for adding blinds to empty openings. Dragging retains camera orbit rather than selecting a blind.
 
 Roll/cover correction: the screen meets the underside of the exposed roll. Housing outside faces sit 5mm inside the exterior post face, with the inner pelmet projecting inward. `representativeBlindPosts.ts` detects overlapping perpendicular pelmet envelopes and upgrades small square perimeter posts to 150x150 before deriving Plan, 3D and clear opening widths; rectangular king-strut posts remain unchanged. Removing the conflicting selection restores the base post rules. Gate 0: audit rows N/A; no legacy or Phase 2 changes, no function consolidation. Consumers checked: preview solve, opening validation, view meshes, Plan, share/enquiry and focused tests.

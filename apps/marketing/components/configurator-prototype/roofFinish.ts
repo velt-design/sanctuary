@@ -10,7 +10,7 @@ export function previewProjectionMax(roof: PreviewRoofChoices) {
 }
 
 export const getRoofFinish = (roof: PreviewRoofChoices) => roof.finish ?? DEFAULT_ROOF_FINISH;
-export const hasSimpleRoofPrice = (roof: PreviewRoofChoices) => roof.family === 'mono' && getRoofFinish(roof).material === 'acrylic' && !roof.blinds?.length;
+export const hasSimpleRoofPrice = (roof: PreviewRoofChoices) => roof.family === 'mono' && getRoofFinish(roof).material === 'acrylic' && !roof.blinds?.length && !roof.sidePanels?.length;
 export const allowsHouseBand = (roof: PreviewRoofChoices) => roof.family === 'gable' && roof.orientation === 'away';
 export function constrainRoofFinish(roof: PreviewRoofChoices, input: SimpleCoverInput): PreviewRoofChoices {
   if (!roof.finish) return roof;

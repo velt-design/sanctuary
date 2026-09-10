@@ -38,7 +38,7 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
         <button className={styles.expandView} aria-label={expanded ? 'Close expanded view' : 'Expand view'} aria-expanded={expanded} onClick={onToggleExpanded}>{expanded ? 'Done' : 'Expand'} <span aria-hidden="true">{expanded ? '×' : '↗'}</span></button>
       </div>
     </div>
-    <div className={styles.viewport} data-view={view} data-blind-count={blinds?.blinds.length??0} data-geometry-status={artifact.status}
+    <div className={styles.viewport} data-view={view} data-blind-count={blinds?.blinds.length??0} data-side-panel-count={blinds?.panels.length??0} data-geometry-status={artifact.status}
       data-roof-material={roof.finish?.material ?? "acrylic"} data-roof-profile={roof.finish?.profile} data-acrylic-bays={covering?.acrylicBays} data-family={roof.family} data-ridge-direction={roof.family === 'box' ? 'parallel' : roof.orientation} data-gable-infills={roof.family === 'gable' && roof.infills}
       data-box-roof-mode={renderable && roof.family === 'box' ? geometry!.assembly.roofPlanes[0]?.metadata?.roofMode : undefined}
       data-infill-support-count={renderable ? geometry.assembly.members.filter(m => m.metadata?.frameRole === 'infill_support').length : 0}

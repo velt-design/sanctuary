@@ -75,6 +75,7 @@ function update(patch: { input?: SimpleCoverInput; roof?: PreviewRoofChoices }) 
   // Publish and save synchronously so immediate navigation cannot lose the last edit.
   save(draft);
   if(snapshot && (requested.roof.blinds?.length??0)>(draft.roof.blinds?.length??0)) snapshot.selectionNotice='Some blinds no longer fit the updated openings and were removed. Choose the new openings under Outdoor blinds.';
+  if(snapshot && (requested.roof.sidePanels?.length??0)>(draft.roof.sidePanels?.length??0)) snapshot.selectionNotice='Some fixed sides no longer fit the updated openings and were removed. Choose a new opening under sides.';
   emit();
 }
 
