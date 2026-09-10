@@ -28,7 +28,8 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: h.createClient,
 }));
 
-vi.mock('@sp/costing', () => ({
+vi.mock('@sp/costing', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@sp/costing')>(),
   calculateCostV1: h.calculateCostV1,
   calculateSiteCostV1: vi.fn(),
   isCommercialPolicyV2Enabled: vi.fn(() => false),
@@ -261,6 +262,42 @@ describe('POST /api/enquiry attribution', () => {
     h.getPublishedCostingConfigurationByProvenance.mockResolvedValue(resolved);
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://supabase.test';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
+  });
+
+  it.each(['residential', 'commercial', 'professional'] as const)('saves a configured %s brief separately from its note and sends the matching V2 confirmation', async enquiryType => {
+    const { client, db } = makeDb(); h.createClient.mockReturnValue(client);
+    const { parsePreviewDraft, DEFAULT_PREVIEW_DRAFT } = await import('../../../components/configurator-prototype/previewDraft');
+    const design = parsePreviewDraft({ ...DEFAULT_PREVIEW_DRAFT, roof: { family: 'gable', orientation: 'parallel', infills: true } });
+    const { POST } = await import('./route');
+    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    vi.mocked(sendCustomerAutoresponder).mockClear();
+    const oldFlag = process.env.WEBSITE_ENQUIRY_EXPERIENCE_V2;
+    process.env.WEBSITE_ENQUIRY_EXPERIENCE_V2 = 'true';
+    try {
+      const response = await POST(new Request('http://localhost/api/enquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        submissionId: SUBMISSION_ID, enquiryType, name: 'Taylor', email: 'taylor@example.test', phone: '021000000', suburb: 'Auckland',
+        message: 'Please check our site.', customerDesign: design, customerBrief: { audience: 'attacker', reopenPath: 'https://evil.test' },
+        dimensions: { widthM: 99, depthM: 99 }, style: 'pitched', roofMaterials: ['timber'],
+      }) }));
+      expect(response.status).toBe(200);
+      expect(db.enquiry_requests[0].raw_payload.customerBrief).toMatchObject({ audience: enquiryType, designStatus: 'configured', design });
+      expect(db.enquiry_requests[0].raw_payload).not.toHaveProperty('customerDesign');
+      expect(JSON.stringify(db.enquiry_requests[0].raw_payload.customerBrief)).not.toContain('evil.test');
+      const [email, options] = vi.mocked(sendCustomerAutoresponder).mock.calls[0];
+      expect(email.message).toBe('Please check our site.');
+      expect(email.customerBrief?.design).toEqual(design);
+      expect(email).not.toHaveProperty('baseRange');
+      expect(options?.templateId).toBe(`EMAIL_WEBSITE_ENQUIRY_${enquiryType === 'residential' ? 'configured' : enquiryType}_V2`);
+      expect(h.calculateCostV1).not.toHaveBeenCalled();
+    } finally { if (oldFlag === undefined) delete process.env.WEBSITE_ENQUIRY_EXPERIENCE_V2; else process.env.WEBSITE_ENQUIRY_EXPERIENCE_V2 = oldFlag; }
+  });
+
+  it('rejects an invalid design before any database writes', async () => {
+    const { POST } = await import('./route');
+    const response = await POST(new Request('http://localhost/api/enquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      submissionId: SUBMISSION_ID, enquiryType: 'residential', name: 'Taylor', email: 'taylor@example.test', phone: '021000000', suburb: 'Auckland', customerDesign: { version: 999 },
+    }) }));
+    expect(response.status).toBe(422); expect(h.createClient).not.toHaveBeenCalled();
   });
 
   it('persists Google click attribution and records one lead-submitted audit event', async () => {
@@ -540,6 +577,15 @@ describe('POST /api/enquiry attribution', () => {
     expect(JSON.stringify(leadEvents)).not.toContain(calculationRef);
     expect(JSON.stringify(leadEvents)).not.toContain('24500');
     expect(JSON.stringify(leadEvents)).not.toContain('widthM');
+    const mismatch = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        submissionId: SUBMISSION_ID, enquiryType: 'residential', name: 'Taylor', email: 'taylor@example.test', phone: '021000000', suburb: 'Auckland', calculationRef,
+        customerDesign: { version: 1, input: { ...input, widthMm: 5000 }, roof: { family: 'mono', orientation: 'parallel', infills: false } },
+      }),
+    }));
+    expect(mismatch.status).toBe(422);
+    expect(db.enquiry_requests).toHaveLength(1);
+
   });
 
   it('submits an invalid Simple calculation reference without synthesizing a replacement price', async () => {
@@ -640,6 +686,7 @@ describe('POST /api/enquiry attribution', () => {
         filesReceivedCount: 1,
       });
       expect(options).toEqual({
+        templateId: `EMAIL_WEBSITE_AUTORESPONDER_${enquiryType === 'residential' ? 'RES' : enquiryType === 'commercial' ? 'COM' : 'PRO'}_V1`,
         attachments: [{ filename: 'plan.pdf', content: Buffer.from('%PDF-test').toString('base64') }],
         idempotencyKey: 'website:autoresponder:enquiry-1',
       });
@@ -687,7 +734,7 @@ describe('POST /api/enquiry attribution', () => {
         url: `https://signed.test/pending/${SUBMISSION_ID}/0-large-plan.pdf`,
       }],
     });
-    expect(sendOptions).toEqual({ idempotencyKey: 'website:autoresponder:enquiry-1' });
+    expect(sendOptions).toEqual({ idempotencyKey: 'website:autoresponder:enquiry-1', templateId: 'EMAIL_WEBSITE_AUTORESPONDER_RES_V1' });
   });
 
   it('sends the residential confirmation without an estimate when dimensions are omitted', async () => {
@@ -734,7 +781,7 @@ describe('POST /api/enquiry attribution', () => {
     expect((sendCustomerAutoresponder as any).mock.calls[0]?.[0]).not.toHaveProperty(
       'baseRange',
     );
-    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[1]).toEqual({
+    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[1]).toMatchObject({
       attachments: [{
         filename: 'plan.pdf',
         content: Buffer.from('%PDF-test').toString('base64'),

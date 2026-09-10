@@ -1,3 +1,4 @@
+import { parsePreviewDraft, type PreviewDraft } from '../../components/configurator-prototype/previewDraft';
 import { getRoofFinish, hasSimpleRoofPrice, roofFinishDescription } from "../../components/configurator-prototype/roofFinish";
 import type { PreviewSelection } from '@/components/configurator-prototype/ConfiguratorPrototype';
 import type { SimpleCoverHandoff } from '@/lib/simpleCoverHandoff';
@@ -13,6 +14,7 @@ export type ContactDesignBrief = {
   dimensions: { widthM: number; depthM: number; heightM: null };
   style: 'pitched' | 'gable' | 'perimeter';
   estimate: SimpleCoverHandoff | null;
+  snapshot: PreviewDraft;
 };
 
 /** Same-page presentation handoff; commercial prices still require the server's signed reference. */
@@ -39,6 +41,7 @@ export function buildContactDesignBrief({ input, roof, result }: PreviewSelectio
   return {
     roofMaterials: finish.material === "acrylic" ? ["acrylic"] : finish.material === "solid" ? ["timber"] : ["acrylic", "timber"],
     label, description,
+    snapshot: parsePreviewDraft({ version: 1, input, roof })!,
     dimensions: { widthM: input.widthMm / 1000, depthM: input.projectionMm / 1000, heightM: null },
     style: roof.family === 'mono' ? 'pitched' : roof.family === 'gable' ? 'gable' : 'perimeter',
     estimate: !hasSimpleRoofPrice(roof) ? null : {

@@ -1,0 +1,29 @@
+import type { WebsiteAutoresponderPreviewFixture } from './websiteAutoresponderPreviewFixtures';
+import { ENQUIRY_EXPERIENCES, type EnquiryExperience } from './enquiryExperience';
+import { buildCustomerBrief } from './enquiryDesign';
+import { DEFAULT_PREVIEW_DRAFT, parsePreviewDraft } from '../components/configurator-prototype/previewDraft';
+
+export type EnquiryExperienceVariant = `experience-${EnquiryExperience}`;
+export function enquiryExperienceFixtures(): WebsiteAutoresponderPreviewFixture[] {
+  return (Object.keys(ENQUIRY_EXPERIENCES) as EnquiryExperience[]).map(experience => {
+    const audience = experience === 'configured' || experience === 'bespoke' ? 'residential' : experience;
+    const design = experience === 'configured' || experience === 'commercial'
+      ? parsePreviewDraft({ ...DEFAULT_PREVIEW_DRAFT, input: { ...DEFAULT_PREVIEW_DRAFT.input, widthMm: 5400, projectionMm: 3200 } })! : undefined;
+    return {
+      variant: `experience-${experience}`, label: ENQUIRY_EXPERIENCES[experience].label,
+      fileBaseName: `enquiry-${experience}`, templateId: `EMAIL_WEBSITE_ENQUIRY_${experience}_V2`,
+      selection: audience === 'professional' ? { customerType: 'professional' } : { customerType: audience, roofForm: 'pitched', blinds: 'without-blinds' },
+      variables: {
+        leadId: `preview-${experience}`, submittedAt: new Date('2026-09-11T02:00:00Z'),
+        enquiryType: audience, name: 'Alex Morgan', email: 'alex@example.test', phone: '021 555 0199', suburb: 'Auckland',
+        company: audience === 'commercial' ? 'Harbour Café' : audience === 'professional' ? 'Studio North Architects' : undefined,
+        message: experience === 'configured' ? 'We’d like to cover our outdoor dining area. Please check the connection to our house.'
+          : experience === 'bespoke' ? 'Our courtyard is an unusual shape. We would like your help choosing a design that keeps the kitchen light.'
+          : experience === 'commercial' ? 'We are planning a covered dining area for our café. We’d like to discuss access and the installation programme.'
+          : 'We are at developed design and would like to discuss the roof interface and what information you need for a proposal.',
+        widthM: 5.4, depthM: 3.2, heightM: 0, style: 'Pitched', roof: 'Acrylic', addons: [], blindsSelected: false,
+        customerBrief: buildCustomerBrief(audience, design), filesReceivedCount: audience === 'professional' ? 2 : 0,
+      },
+    };
+  });
+}

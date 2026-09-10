@@ -1,3 +1,6 @@
+import { legacyEnquiryEmailVariables } from './legacyEnquiryEmailVariables';
+import { EnquiryExperienceEmail } from '../emails/EnquiryExperienceEmail';
+import { experienceFromTemplate } from './enquiryExperience';
 import { render } from '@react-email/render';
 import { EditorialRefinedEmail } from '../emails/alternatives/EditorialRefinedEmail';
 import { buildAlternativeEmailModel } from '../emails/alternatives/alternativeEmailModel';
@@ -25,8 +28,9 @@ export async function renderWebsiteAutoresponder(
 ) {
   const subject = websiteAutoresponderSubject(templateId, variables);
   const preheader = websiteAutoresponderPreheader(templateId, variables);
-  const reactEmail = EditorialRefinedEmail({
-    model: buildAlternativeEmailModel(templateId, variables),
+  const experience = experienceFromTemplate(templateId);
+  const reactEmail = experience ? EnquiryExperienceEmail({ experience, variables }) : EditorialRefinedEmail({
+    model: buildAlternativeEmailModel(templateId, legacyEnquiryEmailVariables(variables)),
     preheader,
   });
 

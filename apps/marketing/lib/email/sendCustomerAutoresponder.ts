@@ -2,6 +2,7 @@ import type { EnquiryPayload } from '@/emails/types';
 import {
   renderWebsiteAutoresponder,
   websiteAutoresponderTemplateIdFor,
+  type WebsiteAutoresponderTemplateId,
 } from '../websiteAutoresponder';
 import { sendEmail } from '@/lib/email/sendEmail';
 
@@ -14,13 +15,14 @@ type AutoresponderAttachment = { filename: string; content: string; contentType?
 export async function sendCustomerAutoresponder(
   enquiry: EnquiryPayload,
   options?: {
+    templateId?: WebsiteAutoresponderTemplateId;
     attachments?: AutoresponderAttachment[];
     idempotencyKey?: string;
     signal?: AbortSignal;
   },
 ): Promise<string> {
   const rendered = await renderWebsiteAutoresponder(
-    websiteAutoresponderTemplateIdFor(enquiry.enquiryType),
+    options?.templateId ?? websiteAutoresponderTemplateIdFor(enquiry.enquiryType),
     { ...enquiry },
   );
 

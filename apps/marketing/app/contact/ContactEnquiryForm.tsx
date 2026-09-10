@@ -392,7 +392,8 @@ export default function ContactEnquiryForm({
           email: String(formData.get('email') ?? '').trim(),
           phone: String(formData.get('phone') ?? '').trim(),
           suburb: String(formData.get('suburb') ?? '').trim(),
-          message: [String(formData.get('message') ?? '').trim(), configuredDesign ? `Design preview: ${configuredDesign.description}` : ''].filter(Boolean).join('\n\n'),
+          message: String(formData.get('message') ?? '').trim(),
+          ...(configuredDesign ? { customerDesign: configuredDesign.snapshot } : isSimpleCover && simpleCoverEstimate ? { customerDesign: { version: 1, input: simpleCoverEstimate.input, roof: { family: 'mono', orientation: 'parallel', infills: false } } } : {}),
           dimensions: isSimpleCover ? simpleCoverPayload.dimensions : configuredDesign?.dimensions ?? {
             widthM: String(formData.get('widthM') ?? '').trim() || null,
             depthM: String(formData.get('depthM') ?? '').trim() || null,

@@ -1,3 +1,4 @@
+import { ENQUIRY_EXPERIENCES, experienceFromTemplate, type EnquiryExperienceTemplateId } from './enquiryExperience';
 import {
   PROFESSIONAL_ENQUIRY_PREHEADER,
   customerEstimatePreheader,
@@ -13,6 +14,7 @@ export const EMAIL_WEBSITE_AUTORESPONDER_PRO_V1 =
   'EMAIL_WEBSITE_AUTORESPONDER_PRO_V1' as const;
 
 export type WebsiteAutoresponderTemplateId =
+  | EnquiryExperienceTemplateId
   | typeof EMAIL_WEBSITE_AUTORESPONDER_RES_V1
   | typeof EMAIL_WEBSITE_AUTORESPONDER_COM_V1
   | typeof EMAIL_WEBSITE_AUTORESPONDER_PRO_V1;
@@ -21,6 +23,7 @@ export function isWebsiteAutoresponderTemplateId(
   value: string,
 ): value is WebsiteAutoresponderTemplateId {
   return (
+    experienceFromTemplate(value) !== null ||
     value === EMAIL_WEBSITE_AUTORESPONDER_RES_V1 ||
     value === EMAIL_WEBSITE_AUTORESPONDER_COM_V1 ||
     value === EMAIL_WEBSITE_AUTORESPONDER_PRO_V1
@@ -39,6 +42,8 @@ export function websiteAutoresponderSubject(
   templateId: WebsiteAutoresponderTemplateId,
   variables: Record<string, unknown>,
 ): string {
+  const experience = experienceFromTemplate(templateId);
+  if (experience) return ENQUIRY_EXPERIENCES[experience].subject;
   if (templateId === EMAIL_WEBSITE_AUTORESPONDER_COM_V1) {
     return customerEstimateSubject(variables.name, 'commercial');
   }
@@ -66,6 +71,8 @@ export function websiteAutoresponderPreheader(
   templateId: WebsiteAutoresponderTemplateId,
   variables: Record<string, unknown>,
 ): string {
+  const experience = experienceFromTemplate(templateId);
+  if (experience) return ENQUIRY_EXPERIENCES[experience].preheader;
   if (templateId === EMAIL_WEBSITE_AUTORESPONDER_PRO_V1) {
     return PROFESSIONAL_ENQUIRY_PREHEADER;
   }

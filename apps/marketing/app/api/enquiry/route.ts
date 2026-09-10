@@ -1,3 +1,7 @@
+import { buildCustomerBrief, customerDesignUrl, type CustomerBrief } from '../../../lib/enquiryDesign';
+import { getRoofFinish, hasSimpleRoofPrice } from '../../../components/configurator-prototype/roofFinish';
+import { INITIAL_ROOF } from '../../../components/configurator-prototype/GableChoices';
+import { selectEnquiryEmailTemplate } from '../../../lib/enquiryEmailPolicy';
 import 'server-only';
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -13,9 +17,6 @@ import {
 import { sendCustomerAutoresponder } from '@/lib/email/sendCustomerAutoresponder';
 import { getEmailDeliveryFailureSummary } from '@/lib/email/sendEmail';
 import {
-  EMAIL_WEBSITE_AUTORESPONDER_RES_V1,
-  EMAIL_WEBSITE_AUTORESPONDER_COM_V1,
-  EMAIL_WEBSITE_AUTORESPONDER_PRO_V1,
   websiteAutoresponderSubject,
 } from '@/lib/sharedEmails';
 import { getCallWindowText } from '@/emails/utils/callWindow';
@@ -362,7 +363,15 @@ export async function POST(req: Request) {
     source,
   });
   const utm = attribution.utm;
+  let customerBrief: CustomerBrief;
+  try {
+    customerBrief = buildCustomerBrief(enquiryType as EnquiryAudience, payload.customerDesign);
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Please reopen your design and try again. Its saved selections could not be verified.' }, { status: 422 });
+  }
   const {
+    customerDesign: _untrustedDesign,
+    customerBrief: _untrustedBrief,
     uploadSessionToken: _uploadSessionToken,
     enquiryContext: _untrustedEnquiryContext,
     calculationRef: _opaqueCalculationRef,
@@ -373,6 +382,7 @@ export async function POST(req: Request) {
     utm,
     attribution,
     enquiryContext,
+    customerBrief,
   });
 
   const filesRaw = maybeParseJson(payload.files);
@@ -441,16 +451,25 @@ export async function POST(req: Request) {
     roofMaterials,
     addOns,
   }, {
-    calculationRef: calculationRef || null,
-    suppressGenericPricing: Boolean(simpleCoverStatus || calculationRef),
+    calculationRef: customerBrief.design && !hasSimpleRoofPrice(customerBrief.design.roof) ? null : calculationRef || null,
+    suppressGenericPricing: Boolean(customerBrief.design || simpleCoverStatus || calculationRef),
   });
   const budgets = pricing.budgets;
   const verifiedSimpleCover = pricing.verifiedSimpleCover;
-  const effectiveWidthM = verifiedSimpleCover?.widthM ?? widthM;
-  const effectiveDepthM = verifiedSimpleCover?.depthM ?? depthM;
-  const effectiveHeightM = verifiedSimpleCover ? null : heightM;
-  const effectiveStyle = verifiedSimpleCover ? 'pitched' : style;
-  const effectiveRoofMaterials = verifiedSimpleCover ? ['acrylic'] : roofMaterials;
+  if (customerBrief.design && verifiedSimpleCover && Object.entries(verifiedSimpleCover.input).some(([key, value]) => customerBrief.design!.input[key as keyof typeof verifiedSimpleCover.input] !== value)) {
+    return NextResponse.json({ ok: false, error: 'Your estimate and design differ. Please refresh the estimate.' }, { status: 422 });
+  }
+  if (!customerBrief.design && verifiedSimpleCover) {
+    customerBrief = buildCustomerBrief(enquiryType as EnquiryAudience, { version: 1, input: verifiedSimpleCover.input, roof: INITIAL_ROOF });
+  }
+  rawPayload.customerBrief = customerBrief;
+  const submittedDesign = customerBrief.design;
+  const effectiveWidthM = submittedDesign ? submittedDesign.input.widthMm / 1000 : verifiedSimpleCover?.widthM ?? widthM;
+  const effectiveDepthM = submittedDesign ? submittedDesign.input.projectionMm / 1000 : verifiedSimpleCover?.depthM ?? depthM;
+  const effectiveHeightM = submittedDesign || verifiedSimpleCover ? null : heightM;
+  const effectiveStyle = submittedDesign ? ({ mono: 'pitched', gable: 'gable', box: 'perimeter' }[submittedDesign.roof.family]) : verifiedSimpleCover ? 'pitched' : style;
+  const finishMaterial = submittedDesign ? getRoofFinish(submittedDesign.roof).material : null;
+  const effectiveRoofMaterials = finishMaterial ? (finishMaterial === 'acrylic' ? ['acrylic'] : finishMaterial === 'solid' ? ['timber'] : ['acrylic', 'timber']) : verifiedSimpleCover ? ['acrylic'] : roofMaterials;
 
   let intake;
   try {
@@ -598,6 +617,11 @@ export async function POST(req: Request) {
         verifiedStoredAttachments,
       );
       const attachmentContext = {
+        customerBrief,
+        submittedDesignUrl: customerDesignUrl(customerBrief),
+        company: company || undefined,
+        projectRole: isPlainObject(payload.projectDetails) ? sanitizeSingleLine(String(payload.projectDetails.projectRole ?? ''), 200) : undefined,
+        projectStage: isPlainObject(payload.projectDetails) ? sanitizeSingleLine(String(payload.projectDetails.projectStage ?? ''), 200) : undefined,
         filesReceivedCount: filesCount,
         ...(resolvedAttachments.attachmentLinks.length
           ? { attachmentLinks: resolvedAttachments.attachmentLinks }
@@ -618,7 +642,6 @@ export async function POST(req: Request) {
           utmMedium,
           utmCampaign,
           landingUrl: page || undefined,
-          company: company || undefined,
           ...attachmentContext,
         } satisfies Professional;
       } else {
@@ -660,12 +683,7 @@ export async function POST(req: Request) {
 
       const callWindowText = getCallWindowText(submittedAt);
 
-      const templateId =
-        enquiryType === 'commercial'
-          ? EMAIL_WEBSITE_AUTORESPONDER_COM_V1
-          : enquiryType === 'professional'
-            ? EMAIL_WEBSITE_AUTORESPONDER_PRO_V1
-            : EMAIL_WEBSITE_AUTORESPONDER_RES_V1;
+      const templateId = selectEnquiryEmailTemplate(enquiryType as EnquiryAudience, customerBrief);
 
       const subject = websiteAutoresponderSubject(
         templateId,
@@ -700,6 +718,7 @@ export async function POST(req: Request) {
               ? { attachments: resolvedAttachments.attachments }
               : {}),
             idempotencyKey,
+            templateId,
           },
         );
       } catch (err) {

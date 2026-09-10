@@ -67,9 +67,9 @@ for (const family of ['Pitched', 'Gable', 'Box perimeter']) test(`${family}: cur
     style: family === 'Pitched' ? 'pitched' : family === 'Gable' ? 'gable' : 'perimeter',
     calculationRef: family === 'Pitched' ? 'sc1.preview-7000-3000' : null,
     dimensions: { widthM: family === 'Pitched' ? null : 7, depthM: family === 'Pitched' ? null : 3, heightM: null } });
-  expect(payload.message).toContain('Keep the garden view open.');
-  expect(payload.message).toContain('7.0 m wide');
-  if (family === 'Gable') { expect(payload.message).toContain('Dutch-gable fascia'); expect(payload.message).toContain('Gable infills included'); }
+  expect(payload.message).toBe('Keep the garden view open.');
+  expect(payload.customerDesign).toMatchObject({ version: 1, input: { widthMm: 7000, projectionMm: 3000 }, roof: { family: family === 'Pitched' ? 'mono' : family === 'Gable' ? 'gable' : 'box' } });
+  if (family === 'Gable') expect(payload.customerDesign).toMatchObject({ roof: { orientation: 'away', infills: true } });
   expect(page.url()).not.toMatch(/preview@example|7000|sc1\./);
 });
 

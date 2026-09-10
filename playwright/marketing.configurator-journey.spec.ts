@@ -21,8 +21,8 @@ for (const width of [360, 390, 1440]) test(`reachable action, roof guidance and 
   await expect(next).toBeInViewport();
   const before = (await next.boundingBox())!;
   await page.getByRole('radio', { name: 'Gable', exact: true }).check();
-  await expect(page.getByRole('radio', { name: 'Gable', exact: true })).toHaveAccessibleDescription(/raised centre/);
-  await expect(page.getByText('A raised centre brings extra height and an airy feel.')).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'Gable', exact: true })).toHaveAccessibleDescription(/raised ridge/);
+  await expect(page.getByText('Two slopes meet at a raised ridge.')).toBeVisible();
   await page.getByRole('radio', { name: 'Elevated', exact: true }).check();
   expect((await next.boundingBox())!.y).toBeCloseTo(before.y, 0);
   await expect(next).toBeInViewport();

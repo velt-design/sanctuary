@@ -1,3 +1,4 @@
+import { enquiryExperienceFixtures, type EnquiryExperienceVariant } from './enquiryExperienceFixtures';
 import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '../emails/types';
 import {
   EMAIL_WEBSITE_AUTORESPONDER_COM_V1,
@@ -28,6 +29,7 @@ export type WebsiteAutoresponderPreviewRoofForm =
 export type WebsiteAutoresponderPreviewBlindsOption =
   (typeof WEBSITE_AUTORESPONDER_PREVIEW_BLINDS_OPTIONS)[number];
 export type WebsiteAutoresponderPreviewVariant =
+  | EnquiryExperienceVariant
   | `${WebsiteAutoresponderPreviewCustomerType}-${WebsiteAutoresponderPreviewRoofForm}-${WebsiteAutoresponderPreviewBlindsOption}`
   | 'professional';
 
@@ -317,10 +319,12 @@ const fixtures = new Map<WebsiteAutoresponderPreviewVariant, WebsiteAutoresponde
   }),
 );
 
+for (const fixture of enquiryExperienceFixtures()) { fixtures.set(fixture.variant, fixture); }
+
 export function isWebsiteAutoresponderPreviewVariant(
   value: unknown,
 ): value is WebsiteAutoresponderPreviewVariant {
-  return typeof value === 'string' && variantSet.has(value);
+  return typeof value === 'string' && (variantSet.has(value) || fixtures.has(value as WebsiteAutoresponderPreviewVariant));
 }
 
 export function getWebsiteAutoresponderPreviewFixture(

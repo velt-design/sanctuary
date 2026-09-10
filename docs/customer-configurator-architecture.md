@@ -4903,3 +4903,39 @@ package.json
 - [ ] Does portal work create a derivative rather than mutate the original?
 - [ ] Are focused tests and explicit evidence included?
 - [ ] Has the agent stayed within the named PR scope?
+
+
+## Enquiry handoff and email preview loop — 2026-09-11
+
+The current preview now submits `customerDesign` separately from the customer's
+message. `lib/enquiryDesign.ts` reparses the version-1 preview selection and rejects
+changes introduced by normalization, unknown fields, and oversized share payloads.
+This is a bounded bridge for the existing preview, not a replacement for the future
+canonical customer-intent contract described above.
+
+The intake RPC stores the original validated selection, readable summary and reopen
+path under `enquiry_requests.raw_payload.customerBrief`. Audience (residential,
+commercial, professional) is independent of `designStatus` (configured or bespoke).
+Neither client classification, client URLs nor client prices are authoritative.
+The normal enquiry retry/idempotency and attachment verification paths are retained.
+Rich configurations suppress generic pricing; Simple pricing still needs its frozen
+reference and must match the submitted selection. Without a price the email makes
+no numerical estimate. The server freezes the marketing reopen URL in email
+variables, so staff-side re-rendering does not point at the portal's domain.
+
+Four V2 email journeys are available in the existing staff email workbench under
+"Proposed enquiry journeys". Existing V1 template IDs and historical variables
+retain their renderer. With V2 disabled, new saved-design details are still included
+in the V1 project note for the customer's and staff BCC's reference.
+
+`WEBSITE_ENQUIRY_EXPERIENCE_V2=true` explicitly enables the new customer emails.
+Preview deployments enable them by default; `false` disables them there too.
+Production stays on V1 unless explicitly enabled after copy review. The staff
+preview remains behind the existing staff session and preview availability checks;
+local QA uses the existing fixture gate and does not send email.
+
+Review evidence for this slice: enquiry boundary/intake/render tests, existing
+attachment and retry tests, the four workbench journeys, desktop/mobile email
+rendering, and browser checks for the three roof families' enquiry payloads.
+Remaining production work includes actual email-client proofs, physical phone QA,
+the broader website rollout and the future canonical configurator contract.
