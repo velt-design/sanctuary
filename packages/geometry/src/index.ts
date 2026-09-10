@@ -1,4 +1,5 @@
 export * from "./contracts";
+export {addRepresentativeRoofBattens,type RepresentativeRoofBattens} from './representativeRoofBattens';
 export {matchRepresentativePitchedLedger} from './representativePitchedLedger';
 export { buildRepresentativeSidePanel } from './representativeSidePanel';
 export type { SidePanelMesh } from './representativeSidePanel';

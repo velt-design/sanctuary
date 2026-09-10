@@ -2,6 +2,19 @@
 ## Master Architecture and Implementation Specification
 
 
+### Marketing preview: under-rafter timber battens (2026-09-10)
+
+Optional timber battens follow roof slopes perpendicular to rafters, in acrylic areas
+only. 39x39, 65x39 and 90x39 profiles reuse side gap defaults and the same gap control;
+flat/on-edge sections change both visible face and depth. Ends reach outside end-rafter
+faces or the inside of a box perimeter. The geometry package returns merged cedar
+meshes and plan boundaries; drafts, v3 links and enquiry descriptions retain selections.
+Solid roofs clear the option. Batten designs use confirmed pricing, not the bare-frame
+estimate. Gate 0: legacy audit N/A, no legacy build-on/removal, no Phase 2 dependencies,
+no function/type consolidation. Consumers checked: solve, roof finish rendering, Plan,
+controls, draft/share validation and contact brief. Shared gap control gains an optional
+roof label/id scope while preserving all existing side behavior.
+
 ### Marketing preview: Ziptrak sides (2026-09-10)
 
 Ledger ends extend to the actual outside faces of both end rafters, including after

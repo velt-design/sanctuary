@@ -1,4 +1,4 @@
-import { buildRepresentativeRoofFinish, fitRepresentativeBlindPosts, matchRepresentativePitchedLedger } from "@sp/geometry";
+import { addRepresentativeRoofBattens, buildRepresentativeRoofFinish, fitRepresentativeBlindPosts, matchRepresentativePitchedLedger } from "@sp/geometry";
 import { getRoofFinish } from "./roofFinish";
 import { solveCustomerConfigurationV1 } from '@sp/configurator/geometry';
 import { calculateSoffitBracketCountV1 } from '@sp/costing';
@@ -28,9 +28,11 @@ export function solvePergolaPreview(input: SimpleCoverInput, roof: PreviewRoofCh
     if(fitted) source={...source,geometry:fitted};
   }
   const finish = getRoofFinish(roof);
-  if (finish.material === 'acrylic' || !('geometry' in source) || !source.geometry) return source;
+  if(!source.geometry)return source;
+  if(finish.material==='acrylic')return roof.roofBattens?{...source,geometry:{...source.geometry,covering:addRepresentativeRoofBattens(source.geometry.assembly,roof.roofBattens)}}:source;
   try {
     const geometry=buildRepresentativeRoofFinish(source.geometry.assembly, finish, { ...input, ...roof });
+    if(roof.roofBattens&&finish.material==='combination')geometry.covering=addRepresentativeRoofBattens(geometry.assembly,roof.roofBattens,geometry.covering);
     const matched=roof.family==='mono'?matchRepresentativePitchedLedger(geometry.assembly):null;
     return { status: 'review_required' as const, messages: [], geometry: matched?{...geometry,...matched}:geometry };
   } catch (error) {

@@ -7,6 +7,7 @@ import { parseBlinds } from './blindCatalog';
 import { validPreviewBlinds } from './blindSelection';
 import { previewBlindOpenings } from './blindSelection';
 import { parseSidePanels } from './sidePanelCatalog';
+import {parseRoofBattens} from './roofBattenSelection';
 import { sidePanelSupports } from './sidePanelLayout';
 
 // Isolated representative preview; deliberately separate from the future customer intent document.
@@ -31,6 +32,7 @@ export function parsePreviewDraft(value: unknown): PreviewDraft | null {
   const panels=roof.sidePanels===undefined?undefined:parseSidePanels(roof.sidePanels);
   if(panels===null || panels?.some(p=>blinds?.some(b=>b.opening===p.opening)))return null;
   const selectedRoof: PreviewRoofChoices = { family: roof.family, orientation: roof.orientation, infills: roof.infills, ...(finish ? { finish } : {}) };
+  if(roof.roofBattens!==undefined){const battens=parseRoofBattens(roof.roofBattens);if(!battens)return null;if(finish?.material!=='solid')selectedRoof.roofBattens=battens;}
   const sizedInput = { ...input, projectionMm: Math.min(input.projectionMm, previewProjectionMax(selectedRoof)) };
   const validInput=constrainPreviewConnection(sizedInput, roof.family);
   if(blinds) selectedRoof.blinds=validPreviewBlinds(validInput,selectedRoof,blinds);

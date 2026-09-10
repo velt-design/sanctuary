@@ -11,7 +11,7 @@ export const DEFAULT_ROOF_FINISH: RepresentativeRoofFinish = {
 };
 export type RoofFinishMesh = { id: string; kind: 'steel' | 'cedar' | 'flashing'; positions: number[]; indices: number[]; grainAcross?: Point3; grainAlong?: Point3 };
 export type RoofFinishRegion = { id: string; material: 'acrylic' | 'solid'; boundary: Point3[] };
-export type RoofFinishGeometry = { meshes: RoofFinishMesh[]; regions: RoofFinishRegion[]; acrylicBays: number; maxAcrylicBays: number };
+export type RoofFinishGeometry = { meshes: RoofFinishMesh[]; battenBoundaries?:Point3[][]; regions: RoofFinishRegion[]; acrylicBays: number; maxAcrylicBays: number };
 
 export function roofFinishBayLimit(widthMm: number, projectionMm: number, family: string, orientation: string) {
   const run = family === 'gable' && orientation === 'away' ? projectionMm : widthMm;

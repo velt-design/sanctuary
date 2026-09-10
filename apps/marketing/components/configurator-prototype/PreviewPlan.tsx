@@ -64,6 +64,7 @@ export default function PreviewPlan({ covering, plan, flashings = [], context, a
       x1={member.centerline.start.x} y1={member.centerline.start.y} x2={member.centerline.end.x} y2={member.centerline.end.y}
       stroke={plan.members.rafters.includes(member) ? '#858e7f' : '#4c5546'} strokeWidth={member.profile.widthMm} />)}
     {covering?.regions.map(region => <polygon key={region.id} data-roof-region={region.material} points={polygons(region.boundary)} fill={region.material === "solid" ? "#535d58" : "#c4dfdc"} fillOpacity={region.material === "solid" ? 1 : .6} stroke="#343c35" strokeWidth={1} vectorEffect="non-scaling-stroke" />)}
+    {covering?.battenBoundaries?.map((boundary,i)=><polygon key={'batten-'+i} data-roof-batten points={polygons(boundary)} fill="#95633f" fillOpacity={.8}/>)}
     {flashings.filter(flashing => flashing.metadata?.representativeGableRidge).map(flashing => <g key={flashing.id} data-ridge-flashing={flashing.metadata?.wingLengthMm}>
       {flashing.wings.map(wing => <polygon key={wing.id} points={polygons(wing.boundary)} fill="#586150" stroke="#343d2e" strokeWidth={.6} vectorEffect="non-scaling-stroke" />)}
     </g>)}

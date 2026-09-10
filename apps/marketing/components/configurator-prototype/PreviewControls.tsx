@@ -1,6 +1,7 @@
 'use client';
 
 import BlindControls from './BlindControls';
+import RoofBattenControls from './RoofBattenControls';
 import RoofFinishChoices from "./RoofFinishChoices";
 import { roofFinishDescription, previewProjectionMax } from "./roofFinish";
 
@@ -93,6 +94,7 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
     {projectionNotice && <p className={styles.inputNotice} role="status">{projectionNotice}</p>}
     <GableChoices value={roof} onChange={updateRoof} />
     <RoofFinishChoices roof={roof} input={input} onChange={updateRoof} />
+    <RoofBattenControls roof={roof} onChange={updateRoof} />
     {roof.family === 'box' && <div className={styles.gableChoices}><p className={styles.small}>A level frame with the roof tucked inside. The roof changes to a shallow gable when needed to maintain drainage.</p></div>}
     <div className={styles.sectionLabel}><span>02</span><h2>Connect to your home.</h2></div>
     {roof.family === 'gable' && roof.orientation === 'away' ? <p className={styles.small}>Fascia attachment · Dutch-gable roof</p>
