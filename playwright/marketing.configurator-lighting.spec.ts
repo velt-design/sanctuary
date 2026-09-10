@@ -34,3 +34,20 @@ function expectCameraAngle(before:{position:number[];target:number[]},after:{pos
  const direction=(c:typeof before)=>{const v=c.position.map((p,i)=>p-c.target[i]),length=Math.hypot(...v);return v.map(p=>p/length);};
  direction(before).forEach((v,i)=>expect(direction(after)[i]).toBeCloseTo(v,6));
 }
+
+for(const width of [390,1440])test('cedar section defaults and individual mirrored settings at '+width,async({page})=>{
+ await page.setViewportSize({width,height:1000});await page.goto('/configurator-preview');await page.getByRole('button',{name:'Essential only',exact:true}).click();await page.getByRole('button',{name:'Design your pergola',exact:false}).click();
+ await page.getByRole('radio',{name:'Gable',exact:true}).check();
+ await page.getByRole('radio',{name:'Combination',exact:true}).check();
+ // A wide parallel gable with two substantial cedar sections either side of acrylic.
+ await page.getByRole('textbox',{name:'Width in metres'}).fill('8.3');await page.getByRole('textbox',{name:'Width in metres'}).press('Tab');
+ await page.getByRole('textbox',{name:'Projection in metres'}).fill('3.2');await page.getByRole('textbox',{name:'Projection in metres'}).press('Tab');
+ await page.getByRole('button',{name:'Lighting · Set the mood ↗'}).click();const c=page.getByRole('region',{name:'Lighting editor'});await c.getByRole('button',{name:/^Cedar downlights/}).click();
+ await c.getByRole('group',{name:'All cedar sections',exact:true}).getByRole('button',{name:/^4 lights/}).click();
+ await expect(page.locator('[data-light-cedar-count]')).toHaveAttribute('data-light-cedar-count','16');
+ await c.getByRole('checkbox',{name:'Adjust sections individually'}).check();
+ await c.getByRole('group',{name:'Section 2 lighting',exact:true}).getByRole('button',{name:/^2 lights/}).click();
+ await expect(page.locator('[data-light-cedar-count]')).toHaveAttribute('data-light-cedar-count','12');await expect(page.locator('[data-plan-lighting] circle')).toHaveCount(12);
+ await page.screenshot({path:'artifacts/configurator-preview/cedar-sections-'+width+'.png'});
+ await page.reload();await page.getByRole('button',{name:'Design your pergola',exact:false}).click();await page.getByRole('button',{name:'Lighting · Set the mood ↗'}).click();await c.getByRole('button',{name:/^Cedar downlights/}).click();await expect(c.getByRole('checkbox',{name:'Adjust sections individually'})).toBeChecked();await expect(page.locator('[data-light-cedar-count]')).toHaveAttribute('data-light-cedar-count','12');
+});

@@ -1,10 +1,15 @@
-import {layoutRafterLights,layoutCedarLights} from '@sp/geometry';
+import {cedarSections,selectedCedarLights} from './cedarSelection';
+import {layoutRafterLights} from '@sp/geometry';
 import {useLighting} from './LightingProvider';
 export default function PlanLighting({scale=1}:{scale?:number}){
  const w=useLighting();if(!w)return null;
  const selecting=w.editing&&w.tool==='strip';
- const lights=[...layoutRafterLights(w.sites.rafters,w.value.rafterAmount??'off'),...layoutCedarLights(w.sites.cedar,w.value.cedarCount,w.value.cedarPattern)];
+ const lights=[...layoutRafterLights(w.sites.rafters,w.value.rafterAmount??'off'),...selectedCedarLights(w.sites.cedar,w.value)];
  return <g data-plan-lighting>
+ {w.editing&&w.tool==='cedar'&&cedarSections(w.sites.cedar).map(section=>{
+  const pool=w.sites.cedar.filter(s=>s.cedarSection===section),xs=pool.map(s=>s.point.x),ys=pool.map(s=>s.point.y);
+  return <text key={section} x={(Math.min(...xs)+Math.max(...xs))/2} y={(Math.min(...ys)+Math.max(...ys))/2} textAnchor="middle" fontSize={12/scale} fill="#4c5546" stroke="#f3f2ed" strokeWidth={5/scale} paintOrder="stroke" pointerEvents="none">{section.replace('section-','Section ')}</text>;
+ })}
  {w.sites.strips.filter(s=>selecting||w.value.strips.includes(s.id)).map(s=>{
   const selected=w.value.strips.includes(s.id);
   return <g key={s.id}>

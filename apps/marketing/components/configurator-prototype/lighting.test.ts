@@ -1,3 +1,4 @@
+import {cedarSections,selectedCedarLights} from './cedarSelection';
 import {it,expect} from 'vitest';
 import {pergolaLightSites,layoutCedarLights,layoutRafterLights,layoutLights} from '@sp/geometry';
 import {solvePergolaPreview} from './solvePreview';
@@ -79,10 +80,11 @@ for(const orientation of ['parallel','away'] as const)it('cedar gable grids mirr
  const g=solvePergolaPreview({...INITIAL_INPUT,widthMm:6000,projectionMm:4000},{...INITIAL_ROOF,family:'gable',orientation,finish:{material:'solid',profile:'corrugated',layout:'central',acrylicBays:2,trayWidth:400}}).geometry!;
  const sites=pergolaLightSites(g.assembly,g.covering);const axis=orientation==='parallel'?'y':'x',along=axis==='x'?'y':'x';const ridge=g.assembly.members.find(m=>m.role==='ridge')!.centerline.start[axis];
  for(const count of [2,4,6]){
-  const lights=layoutCedarLights(sites.cedar,count);expect(lights).toHaveLength(count);
+  const lights=layoutCedarLights(sites.cedar,count);expect(lights).toHaveLength(count*2);
   for(const light of lights)expect(lights.some(other=>other!==light&&Math.abs(other.point[axis]-(2*ridge-light.point[axis]))<1&&Math.abs(other.point[along]-light.point[along])<1)).toBe(true);
  }
- expect(layoutCedarLights(sites.cedar,9,'rows3')).toEqual([]);
+ // Nine is now per section per slope, and available only where the section has room.
+ const nine=layoutCedarLights(sites.cedar,9,'rows3');expect([0,18]).toContain(nine.length);
 });
 it('cedar dice grids use actual bay centres and regular rows',()=>{
  const g=solvePergolaPreview({...INITIAL_INPUT,widthMm:8000,projectionMm:4000},{...INITIAL_ROOF,finish:{material:'solid',profile:'corrugated',layout:'central',acrylicBays:2,trayWidth:400}}).geometry!;
@@ -104,4 +106,23 @@ it('cedar grids avoid acrylic and preserve selection through share links',()=>{
  const draft=parsePreviewDraft({version:1,input:INITIAL_INPUT,roof:{...roof,lighting:{...DEFAULT_LIGHTING,cedarCount:4,cedarPattern:'rows2'}}})!;
  expect(draft.roof.lighting!.cedarCount).toBe(4);expect(parsePreviewDesign(serializePreviewDesign(draft))).toEqual(draft);
  expect(parseLighting({...DEFAULT_LIGHTING,cedarPattern:'random'})).toBeNull();
+});
+
+it('applies each cedar section grid independently and mirrors gables, including overrides',()=>{
+ const input={...INITIAL_INPUT,widthMm:8300,projectionMm:3200};
+ const roof={...INITIAL_ROOF,family:'gable' as const,orientation:'parallel' as const,finish:{material:'combination' as const,profile:'corrugated' as const,layout:'central' as const,acrylicBays:3,trayWidth:400 as const}};
+ const base={...DEFAULT_LIGHTING,cedarPerSection:4,cedarPattern:'rows2' as const};
+ const shared=parsePreviewDraft({version:1,input,roof:{...roof,lighting:base}})!;
+ expect(shared.roof.lighting!.cedarCount).toBe(16);
+ const custom=parsePreviewDraft({version:1,input,roof:{...roof,lighting:{...base,cedarIndividual:true,cedarOverrides:{'section-1':{count:4,pattern:'rows2'},'section-2':{count:2,pattern:'rows2'}}}}})!;
+ expect(custom.roof.lighting!.cedarCount).toBe(12);
+ const g=solvePergolaPreview(input,roof).geometry!,sites=pergolaLightSites(g.assembly,g.covering);
+ expect(cedarSections(sites.cedar)).toEqual(['section-1','section-2']);
+ const lights=selectedCedarLights(sites.cedar,custom.roof.lighting!);
+ expect(lights.filter(s=>s.cedarSection==='section-1')).toHaveLength(8);expect(lights.filter(s=>s.cedarSection==='section-2')).toHaveLength(4);
+ for(const s of lights){const ridge=g.assembly.members.find(m=>m.role==='ridge')!.centerline.start.y;expect(lights.some(other=>other!==s&&other.cedarSection===s.cedarSection&&Math.abs(other.point.x-s.point.x)<1&&Math.abs(other.point.y-(2*ridge-s.point.y))<1)).toBe(true);}
+ expect(parsePreviewDesign(serializePreviewDesign(custom))).toEqual(custom);
+ const reset=parsePreviewDraft({...custom,roof:{...custom.roof,lighting:{...custom.roof.lighting!,cedarIndividual:false,cedarPerSection:2}}})!;
+ expect(reset.roof.lighting!.cedarCount).toBe(8);expect(reset.roof.lighting!.cedarOverrides).toBeUndefined();
+ expect(parseLighting({...base,cedarOverrides:{bad:{count:4,pattern:'rows2'}}})).toBeNull();
 });

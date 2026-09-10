@@ -9,7 +9,8 @@ import { previewBlindOpenings } from './blindSelection';
 import { parseSidePanels } from './sidePanelCatalog';
 import {parseRoofBattens} from './roofBattenSelection';
 import {availableRafterSpots,parseLighting} from './lightingSelection';
-import {pergolaLightSites,layoutRafterLights,layoutCedarLights} from '@sp/geometry';
+import {normalizeCedarLighting} from './cedarSelection';
+import {pergolaLightSites,layoutRafterLights} from '@sp/geometry';
 import {solvePergolaPreview} from './solvePreview';
 import { sidePanelSupports } from './sidePanelLayout';
 
@@ -46,9 +47,7 @@ export function parsePreviewDraft(value: unknown): PreviewDraft | null {
     if(g){const sites=pergolaLightSites(g.assembly,g.covering);
     const pool=availableRafterSpots(sites.rafters,lighting.strips);
     const amount=lighting.rafterAmount??(lighting.rafterCount===0?'off':(['low','medium','high'] as const).reduce((best,a)=>Math.abs(layoutRafterLights(pool,a).length-lighting.rafterCount)<Math.abs(layoutRafterLights(pool,best).length-lighting.rafterCount)?a:best,'low'));
-    const grids=([2,4,6,9] as const).flatMap(count=>(['rows2','rows3'] as const).filter(pattern=>layoutCedarLights(sites.cedar,count,pattern).length===count).map(pattern=>({count,pattern})));
-    const grid=lighting.cedarCount?grids.sort((a,b)=>Math.abs(a.count-lighting.cedarCount)-Math.abs(b.count-lighting.cedarCount)||Number(b.pattern===lighting.cedarPattern)-Number(a.pattern===lighting.cedarPattern))[0]:undefined;
-selectedRoof.lighting={...lighting,strips:lighting.strips.filter(id=>sites.strips.some(s=>s.id===id)),rafterAmount:amount,rafterCount:layoutRafterLights(pool,amount).length,cedarCount:grid?.count??0,cedarPattern:grid?.pattern??'rows2'};}
+selectedRoof.lighting=normalizeCedarLighting(sites.cedar,{...lighting,strips:lighting.strips.filter(id=>sites.strips.some(s=>s.id===id)),rafterAmount:amount,rafterCount:layoutRafterLights(pool,amount).length,});}
   }
   return {
     version: 1,

@@ -1,6 +1,7 @@
+import {selectedCedarLights} from './cedarSelection';
 import {useMemo} from 'react';
 import {Matrix4,Object3D,Quaternion,Vector3} from 'three';
-import {layoutRafterLights,layoutCedarLights,type StripSite,type LightSite} from '@sp/geometry';
+import {layoutRafterLights,type StripSite,type LightSite} from '@sp/geometry';
 import {useLighting} from './LightingProvider';
 const vec=(p:{x:number;y:number;z:number})=>new Vector3(p.x,p.y,p.z);
 function Strip({site,night}:{site:StripSite;night:boolean}){
@@ -17,7 +18,7 @@ function WarmLight({position,normal,intensity}:{position:Vector3;normal:Vector3;
 }
 export default function PergolaLightFixtures(){
  const w=useLighting()!;
- const spots=useMemo(()=>[...layoutRafterLights(w.sites.rafters,w.value.rafterAmount??'off'),...layoutCedarLights(w.sites.cedar,w.value.cedarCount,w.value.cedarPattern)],[w.sites,w.value]);
+ const spots=useMemo(()=>[...layoutRafterLights(w.sites.rafters,w.value.rafterAmount??'off'),...selectedCedarLights(w.sites.cedar,w.value)],[w.sites,w.value]);
  const strips=w.sites.strips.filter(s=>w.value.strips.includes(s.id));
  const sources=[...spots.map(s=>({position:vec(s.point).addScaledVector(vec(s.normal),-40),normal:vec(s.normal)})),...strips.flatMap(s=>[.25,.75].map(t=>({position:vec(s.start).lerp(vec(s.end),t).addScaledVector(vec(s.normal),-40),normal:vec(s.normal)})))];
  const lightCount=Math.min(12,sources.length);
