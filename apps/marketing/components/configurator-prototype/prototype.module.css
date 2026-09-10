@@ -127,3 +127,16 @@
 .page[data-night="true"] .viewport { background:radial-gradient(ellipse at 50% 80%,#30362f,#191e1c); }
 .page[data-night="true"] .choices label[data-selected="true"] { background:#444e43; }
 .page[data-lighting-edit="true"] .sidebar { scroll-behavior:auto; }
+
+.timeTabs { display:flex; border:1px solid var(--color-rule-strong); padding:3px; margin-left:auto; }
+.timeTabs button { border:0; background:transparent; color:var(--color-text-secondary); min-height:36px; padding:0 12px; cursor:pointer; }
+.timeTabs button[aria-pressed=true] { background:var(--color-accent-olive); color:white; }
+.timeTabs button:disabled { opacity:.45; cursor:default; }
+.nightPrompt { padding:8px 16px; font-size:12px; color:var(--color-text-secondary); }
+.nightPrompt button { background:transparent; color:inherit; text-decoration:underline; border:0; min-height:36px; cursor:pointer; }
+@media(max-width:720px) {
+ .viewToolbar { flex-wrap:wrap; }
+ .timeTabs { order:3; margin-left:0; padding:1px; }
+ .timeTabs button { min-height:30px; }
+ .viewActions { margin-left:auto; }
+}

@@ -6,3 +6,5 @@
 .presets { display:grid; grid-template-columns:1fr 1fr; gap:8px; }.members { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:12px; }.members label { padding:8px; }.editor summary { cursor:pointer; padding:12px 0; }
 
 .tools { display:grid; gap:8px; margin:12px 0; }.tools button { text-align:left; font-weight:600; }.tools button span { display:block; font-weight:400; font-size:12px; margin-top:3px; }
+
+.editor .preview { display:block; width:100%; margin-top:20px; background:var(--color-accent-olive); color:white; font-weight:600; }

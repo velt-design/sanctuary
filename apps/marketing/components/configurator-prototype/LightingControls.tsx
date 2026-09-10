@@ -11,7 +11,6 @@ export default function LightingControls(){
  return <section ref={section} className={css.editor} aria-label="Lighting editor">
  <button onClick={w.close}>← Done with lighting</button><h2>Set the mood.</h2>
  <p>Warm-white lighting for your evenings outside.</p>
- {w.view==='3D'&&<div className={css.row} role="group" aria-label="Lighting preview">{[false,true].map(n=><button key={String(n)} aria-pressed={w.night===n} onClick={()=>w.setNight(n)}>{n?'Night':'Day'}</button>)}</div>}
  {w.view==='3D'?<p>Rotate to see how the lighting affects your space. Return to Lighting plan to make changes.</p>:<>
  <h3>1. Choose what to edit</h3>
  <div className={css.tools} role="group" aria-label="Lighting type">
@@ -39,7 +38,7 @@ export default function LightingControls(){
  <p>{w.value.strips.length} members lit · Perimeter excludes the house connection.</p>
  <details><summary>Choose members from a list</summary><div className={css.members}>{w.sites.strips.map(s=><label key={s.id}><input type="checkbox" checked={w.value.strips.includes(s.id)} onChange={()=>w.toggle(s.id)}/>{s.label}</label>)}</div></details></>}
  </>}
- <button onClick={()=>w.setView(w.view==='Plan'?'3D':'Plan')}>{w.view==='Plan'?'Preview lighting in 3D':'Edit lighting in plan'}</button>
+ <button className={css.preview} onClick={()=>w.setView(w.view==='Plan'?'3D':'Plan')}>{w.view==='Plan'?'See your lights at night':'Edit lighting in plan'}</button>
  <p className={styles.small}>Only exposed mounting surfaces are selectable. Strip-lit rafters use strips instead of spots. Preview lighting is illustrative; final fitting positions are confirmed with your design.</p>
  </section>;
 }
