@@ -1,3 +1,4 @@
+import type { CustomerBrief, EnquiryAudience } from './enquiryDesignContract';
 import { parsePreviewDraft, type PreviewDraft } from '../components/configurator-prototype/previewDraft';
 import { serializePreviewDesign } from '../components/configurator-prototype/previewShare';
 import { roofFinishDescription } from '../components/configurator-prototype/roofFinish';
@@ -6,15 +7,7 @@ import { describeSidePanels } from '../components/configurator-prototype/sidePan
 import { describeLighting, hasLighting } from '../components/configurator-prototype/lightingSelection';
 import { describeRoofBattens } from '../components/configurator-prototype/roofBattenSelection';
 
-export type EnquiryAudience = 'residential' | 'commercial' | 'professional';
-export type CustomerBrief = {
-  version: 1;
-  audience: EnquiryAudience;
-  designStatus: 'configured' | 'bespoke';
-  design?: PreviewDraft;
-  summary?: string;
-  reopenPath?: string;
-};
+export type { CustomerBrief, EnquiryAudience } from './enquiryDesignContract';
 
 function stable(value: unknown): string {
   return JSON.stringify(value, (_key, item: unknown) => {
@@ -46,4 +39,3 @@ export function buildCustomerBrief(audience: EnquiryAudience, value?: unknown): 
   if (!code || code.length > 12000) throw new Error('Design cannot be shared');
   return { version: 1, audience, designStatus: 'configured', design, summary, reopenPath: `/configurator-preview?open=1#design=${code}` };
 }
-

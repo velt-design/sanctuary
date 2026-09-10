@@ -1,4 +1,4 @@
-import type { CustomerBrief } from '../lib/enquiryDesign';
+import type { CustomerBrief } from '../lib/enquiryDesignContract';
 type EnquiryType = 'residential' | 'commercial' | 'professional';
 
 type PergolaStyle = 'Pitched' | 'Gable' | 'Hip' | 'Perimeter' | string;

@@ -1,4 +1,4 @@
-import type { CustomerBrief, EnquiryAudience } from './enquiryDesign';
+import type { CustomerBrief, EnquiryAudience } from './enquiryDesignContract';
 import type { EnquiryExperienceTemplateId } from './enquiryExperience';
 import { websiteAutoresponderTemplateIdFor } from './websiteAutoresponderContract';
 export function selectEnquiryEmailTemplate(audience: EnquiryAudience, brief: CustomerBrief) {

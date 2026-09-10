@@ -1,4 +1,4 @@
-import type { CustomerBrief } from './enquiryDesign';
+import type { CustomerBrief } from './enquiryDesignContract';
 
 /** Deployment-owned origin; customer input must never control links in an email. */
 export function customerDesignUrl(brief: CustomerBrief): string | undefined {

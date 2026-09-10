@@ -1,7 +1,7 @@
 import type { WebsiteAutoresponderPreviewFixture } from './websiteAutoresponderPreviewFixtures';
 import { ENQUIRY_EXPERIENCES, type EnquiryExperience } from './enquiryExperience';
-import type { CustomerBrief } from './enquiryDesign';
-import type { PreviewDraft } from '../components/configurator-prototype/previewDraft';
+import type { CustomerBrief } from './enquiryDesignContract';
+import type { PreviewDraft } from '../components/configurator-prototype/previewDraft.types';
 
 export type EnquiryExperienceVariant = `experience-${EnquiryExperience}`;
 export function enquiryExperienceFixtures(): WebsiteAutoresponderPreviewFixture[] {

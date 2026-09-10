@@ -1,6 +1,7 @@
+import type { PreviewDraft } from './previewDraft.types';
 import { constrainRoofFinish, parseRoofFinish, previewProjectionMax } from "./roofFinish";
 import { CUSTOMER_DIMENSION_BOUNDS } from '@sp/configurator/core';
-import { parseSimpleCoverInput, type SimpleCoverInput } from '../../lib/simpleCoverCalculator';
+import { parseSimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import { constrainPreviewConnection, INITIAL_INPUT } from './model';
 import { INITIAL_ROOF, type PreviewRoofChoices } from './GableChoices';
 import { parseBlinds } from './blindCatalog';
@@ -16,7 +17,7 @@ import { sidePanelSupports } from './sidePanelLayout';
 
 // Isolated representative preview; deliberately separate from the future customer intent document.
 export const PREVIEW_DRAFT_KEY = 'sanctuary.configurator-preview.v1';
-export type PreviewDraft = { version: 1; input: SimpleCoverInput; roof: PreviewRoofChoices };
+export type { PreviewDraft } from './previewDraft.types';
 export const DEFAULT_PREVIEW_DRAFT: PreviewDraft = { version: 1, input: INITIAL_INPUT, roof: INITIAL_ROOF };
 
 export function parsePreviewDraft(value: unknown): PreviewDraft | null {
