@@ -4,6 +4,8 @@
 
 ### Marketing preview: Ziptrak sides (2026-09-10)
 
+Existing blinds remain selectable by click/tap when Sides highlighting is off, including their opening when raised; Sides reveals targets for adding blinds to empty openings. Dragging retains camera orbit rather than selecting a blind.
+
 Roll/cover correction: the screen meets the underside of the exposed roll. Housing outside faces sit 5mm inside the exterior post face, with the inner pelmet projecting inward. `representativeBlindPosts.ts` detects overlapping perpendicular pelmet envelopes and upgrades small square perimeter posts to 150x150 before deriving Plan, 3D and clear opening widths; rectangular king-strut posts remain unchanged. Removing the conflicting selection restores the base post rules. Gate 0: audit rows N/A; no legacy or Phase 2 changes, no function consolidation. Consumers checked: preview solve, opening validation, view meshes, Plan, share/enquiry and focused tests.
 
 The first sides loop offers under-beam Ziptrak blinds on front and side openings,

@@ -1,5 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {PerspectiveCamera,Vector3} from 'three';
+test.use({hasTouch:true});
 for(const width of [390,1440]) test('Ziptrak openings, finishes, position and enquiry at '+width,async({page,browser})=>{
   await page.setViewportSize({width,height:844});
   await page.goto('/configurator-preview');
@@ -38,6 +39,24 @@ for(const width of [390,1440]) test('Ziptrak openings, finishes, position and en
   await controls.getByRole('button',{name:'Apply finish to all blinds'}).click();
   await expect(page.locator('[data-blind-count]')).toHaveAttribute('data-blind-count','2');
   await page.getByRole('button',{name:'3D',exact:true}).click();
+  await page.getByRole('button',{name:'Edit sides',exact:true}).click();
+  // Existing blinds remain directly selectable when Sides highlighting is off.
+  const current=JSON.parse((await canvas.getAttribute('data-camera'))!);
+  const area=(await canvas.boundingBox())!;
+  camera.aspect=area.width/area.height;camera.fov=current.fov;camera.updateProjectionMatrix();
+  camera.position.fromArray(current.position);camera.lookAt(new Vector3().fromArray(current.target));camera.updateMatrixWorld();
+  const front=new Vector3(1500,2950,1000).project(camera);
+  const point={x:area.x+(front.x+1)*area.width/2,y:area.y+(1-front.y)*area.height/2};
+  if(width===390) {await page.touchscreen.tap(point.x,point.y);} else {await page.mouse.click(point.x,point.y);}
+  await expect(controls.getByRole('button',{name:/Front 1/})).toHaveAttribute('aria-pressed','true');
+  await controls.getByRole('slider',{name:'Blind lowered percentage'}).focus();
+  await controls.getByRole('slider',{name:'Blind lowered percentage'}).press('Home');
+  await controls.getByRole('button',{name:/Left 1/}).click();
+  await page.getByRole('button',{name:'Edit sides',exact:true}).click();
+  await page.mouse.click(point.x,point.y);
+  await expect(controls.getByRole('button',{name:/Front 1/})).toHaveAttribute('aria-pressed','true');
+  await controls.getByRole('slider',{name:'Blind lowered percentage'}).focus();
+  await controls.getByRole('slider',{name:'Blind lowered percentage'}).press('End');
   await page.getByRole('button',{name:'Edit sides',exact:true}).click();
   await expect(page.locator('canvas')).toHaveAttribute('data-camera',/perspective/);
   await page.screenshot({path:'artifacts/configurator-preview/blinds-'+width+'.png'});
