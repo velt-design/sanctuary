@@ -1,4 +1,4 @@
-.controls { margin: 24px 0; border-top: 1px solid var(--color-rule); padding-top: 20px; }
+.controls { margin: 16px 0 24px; }
 .bays { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin: 16px 0 8px; }
 .bays > div { display: flex; align-items: center; border: 1px solid var(--color-rule); }
 .bays button { width: 44px; height: 44px; border: 0; background: transparent; color: inherit; font-size: 20px; cursor: pointer; }

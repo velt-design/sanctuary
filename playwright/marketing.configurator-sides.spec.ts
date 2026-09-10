@@ -4,6 +4,7 @@ test.use({hasTouch:true});
 for(const width of [390,1440])test('fixed sides, profile gaps, selection and handoff at '+width,async({page,browser})=>{
   await page.setViewportSize({width,height:844});await page.goto('/configurator-preview');
   await page.getByRole('button',{name:'Essential only',exact:true}).click();await page.getByRole('button',{name:'Design your pergola',exact:false}).click();
+  await page.getByRole('button',{name:'Sides',exact:true}).click();
   const c=page.getByRole('region',{name:'Outdoor blinds',exact:true});
   await c.getByRole('button',{name:/Front 1/}).click();await c.getByRole('radio',{name:'Acrylic panels',exact:true}).check();
   await c.getByRole('radio',{name:'100 × 50 mm',exact:true}).check();await c.getByRole('checkbox',{name:'Add horizontal timber battens'}).check();
@@ -21,7 +22,6 @@ for(const width of [390,1440])test('fixed sides, profile gaps, selection and han
   await c.getByRole('button',{name:/Right 1/}).click();await c.getByRole('radio',{name:'Aluminium slats',exact:true}).check();await profile.selectOption('65x16');await c.getByRole('radio',{name:'On edge',exact:true}).check();await expect(gap).toHaveValue('100');
   await c.getByRole('radio',{name:'Vertical',exact:true}).check();
   await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','3');
-  await page.getByRole('button',{name:'Edit sides',exact:true}).click();
   const canvas=page.locator('canvas');await expect(canvas).toHaveAttribute('data-camera',/perspective/);
   const state=JSON.parse((await canvas.getAttribute('data-camera'))!),r=(await canvas.boundingBox())!,camera=new PerspectiveCamera(state.fov,r.width/r.height,10,200000);
   camera.position.fromArray(state.position);camera.up.set(0,0,1);camera.lookAt(new Vector3().fromArray(state.target));camera.updateMatrixWorld();

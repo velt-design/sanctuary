@@ -1,5 +1,7 @@
 'use client';
 
+import RailProvider from './RailProvider';
+import ConfiguratorRail from './ConfiguratorRail';
 import LightingProvider,{useLighting} from './LightingProvider';
 import LightingControls from './LightingControls';
 import { hasSimpleRoofPrice } from './roofFinish';
@@ -29,7 +31,7 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded, rend
   expanded: boolean; onToggleExpanded: () => void; renderEnquiry?: (selection: PreviewSelection) => ReactNode;
 }) {
   const { input, roof, setInput, setRoof, ready, storageAvailable, linkNotice, selectionNotice } = usePreviewDraft();
-  return <LightingProvider input={input} roof={roof} onChange={setRoof}><ConfiguratorWorkspace draft={{version:1,input,roof,setInput,setRoof,ready,storageAvailable,linkNotice,selectionNotice}} expanded={expanded} onToggleExpanded={onToggleExpanded} renderEnquiry={renderEnquiry}/></LightingProvider>;
+  return <LightingProvider input={input} roof={roof} onChange={setRoof}><RailProvider><ConfiguratorWorkspace draft={{version:1,input,roof,setInput,setRoof,ready,storageAvailable,linkNotice,selectionNotice}} expanded={expanded} onToggleExpanded={onToggleExpanded} renderEnquiry={renderEnquiry}/></RailProvider></LightingProvider>;
 }
 function ConfiguratorWorkspace({draft,expanded,onToggleExpanded,renderEnquiry}:{draft:ReturnType<typeof usePreviewDraft>;expanded:boolean;onToggleExpanded:()=>void;renderEnquiry?:(selection:PreviewSelection)=>ReactNode}){
   const {input,roof,setInput,setRoof,ready,storageAvailable,linkNotice,selectionNotice}=draft;
@@ -47,10 +49,11 @@ function ConfiguratorWorkspace({draft,expanded,onToggleExpanded,renderEnquiry}:{
       </div>
       <div className={styles.choicesColumn}>
       <aside className={styles.sidebar} aria-label="Your pergola choices">
+        <ConfiguratorRail input={input} roof={roof}/>
         {renderEnquiry && <div id="project-design" />}
         {linkNotice && <p className={styles.storageNotice} role="status">{linkNotice === 'loaded' ? 'Shared design opened. Make it your own.' : 'This design link could not be opened. You can continue designing below.'}</p>}
         {lighting.editing?<LightingControls/>:<><PreviewControls input={input} roof={roof} onRoofChange={setRoof} onChange={setInput} onDimensionActivity={showDimension} />
-        <button className={styles.lightingEntry} onClick={lighting.open}>Lighting · Set the mood ↗</button></>}
+        </>}
         <div hidden={lighting.editing}>
         {selectionNotice && <p className={styles.inputNotice} role="status">{selectionNotice}</p>}
         <section className={styles.price} aria-label="Estimated price" aria-live="polite" aria-atomic="true">
@@ -66,7 +69,7 @@ function ConfiguratorWorkspace({draft,expanded,onToggleExpanded,renderEnquiry}:{
         <footer className={styles.footnote}><span>CONCEPT PREVIEW</span><p>Frame dimensions follow your selections. Framing and supports are representative. Sanctuary will confirm roof detailing, structural suitability and site connections.</p></footer>
         </div>
       </aside>
-      {!renderEnquiry && !lighting.editing && <PreviewNextAction selection={{ input, roof, result }} />}
+      {!renderEnquiry && <PreviewNextAction selection={{ input, roof, result }} />}
       </div>
     </div>
   </div></PreviewBlindProvider>;

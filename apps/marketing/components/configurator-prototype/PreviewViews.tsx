@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import {useRail} from './RailProvider';
 import {useLighting} from './LightingProvider';
 import {hasLighting} from './lightingSelection';
 import { useMemo, useState } from 'react';
@@ -18,6 +19,7 @@ const PreviewScene = dynamic(() => import('./PreviewScene'), {
 
 export default function PreviewViews({ input, roof, activeDimension, expanded, onToggleExpanded }: { input: SimpleCoverInput; roof: PreviewRoofChoices; activeDimension: PreviewDimensionAxis | null; expanded: boolean; onToggleExpanded: () => void }) {
   const blinds=usePreviewBlinds();
+  const rail=useRail();
   const lighting=useLighting();
   const [selectedView, setView] = useState<'3D' | 'Plan'>('3D');
   const view=lighting?.view??selectedView;
@@ -36,7 +38,7 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
         <button key={name} aria-pressed={view === name} onClick={() => changeView(name)}>{lighting?.editing ? name==='Plan'?'Lighting plan':'Preview in 3D' : name}</button>)}</div>
       {lighting&&<div className={styles.timeTabs} role="group" aria-label="Time of day">{[false,true].map(n=><button key={String(n)} disabled={view==='Plan'} title={view==='Plan'?'Plan stays light; switch to 3D to preview lighting':undefined} aria-pressed={lighting.night===n} onClick={()=>lighting.setNight(n)}>{n?'Night':'Day'}</button>)}</div>}
       <div className={styles.viewActions}>
-      {blinds && !lighting?.editing && <button aria-label="Edit sides" aria-pressed={blinds.editing} onClick={()=>blinds.setEditing(!blinds.editing)}>Sides</button>}
+      {blinds && !lighting?.editing && <button aria-label="Edit sides" aria-pressed={blinds.editing} onClick={()=>rail.choose(rail.section==='sides'?'structure':'sides')}>Sides</button>}
       {view === '3D' && renderable && <>
         <button aria-label="Fit view" title="Fit the pergola at your current angle" onClick={() => setFit(fit + 1)}>Fit</button>
         <button aria-label="Reset view" title="Return to the starting view" onClick={() => { setReset(reset + 1); }}>Reset</button>

@@ -6,6 +6,7 @@ for(const width of [390,1440]) test('Ziptrak openings, finishes, position and en
   await page.goto('/configurator-preview');
   await page.getByRole('button',{name:'Essential only',exact:true}).click();
   await page.getByRole('button',{name:'Design your pergola',exact:false}).click();
+  await page.getByRole('button',{name:'Sides',exact:true}).click();
   const controls=page.getByRole('region',{name:'Outdoor blinds',exact:true});
   await controls.getByRole('button',{name:/Front 1/}).click();
   await controls.getByRole('radio',{name:'Ziptrak blind',exact:true}).check();

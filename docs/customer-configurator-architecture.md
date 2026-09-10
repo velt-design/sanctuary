@@ -188,6 +188,16 @@ region geometry, level ceiling/envelope limits, parser/link/enquiry tests,
 
 ### Marketing preview: enquiry and share journey (2026-09-09)
 
+The preview right rail uses `RailProvider.tsx` for one active editing section
+(Structure, Roof & ceiling, Sides, Lighting). `ConfiguratorRail.tsx` presents
+selection summaries and restores each section's scroll position. Entering Sides
+enables model opening selection; leaving it clears that editing mode. Entering
+Lighting opens its plan editor, while the 3D remains a lighting preview. The
+section navigation is compact on mobile, preserving the fixed half-height viewer.
+Selection state stays in the existing draft providers, independent of navigation.
+The popup Continue/share footer remains available in every section, including
+Lighting. Day/night controls and selected choices share the same theme tokens.
+
 `PreviewNextAction.tsx` keeps the popup's current estimate and Continue action
 outside the scrolling choices, in a fixed footer inside the panel. The viewer
 retains its 48% mobile allocation; expansion still covers the full workspace.

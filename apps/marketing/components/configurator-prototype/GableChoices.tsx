@@ -13,7 +13,7 @@ export function RoofTypeChoice({ value, onChange }: { value: PreviewRoofChoices;
       <span><input type="radio" name="roof-style" aria-describedby={value.family === family ? 'roof-style-description' : undefined} checked={value.family === family} onChange={() => onChange({ ...value, family })} />
       {family === 'mono' ? 'Pitched' : family === 'gable' ? 'Gable' : 'Box perimeter'}</span>
     </label>)}</div>
-    <p className={guide.description} id="roof-style-description">{value.family === 'mono' ? 'A simple slope for a light, open connection to your home.' : value.family === 'gable' ? 'A raised centre brings extra height and an airy feel.' : 'A deep, level frame conceals the roof slope for a clean outline.'}</p>
+    <p className={guide.description} id="roof-style-description">{value.family === 'mono' ? 'A single slope away from your home.' : value.family === 'gable' ? 'Two slopes meet at a raised ridge.' : 'A level frame conceals the roof slope.'}</p>
   </fieldset>;
 }
 

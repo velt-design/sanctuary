@@ -1,9 +1,10 @@
 'use client';
 
+import {useRail} from './RailProvider';
 import BlindControls from './BlindControls';
 import RoofBattenControls from './RoofBattenControls';
 import RoofFinishChoices from "./RoofFinishChoices";
-import { roofFinishDescription, previewProjectionMax } from "./roofFinish";
+import { previewProjectionMax } from "./roofFinish";
 
 import { useState, type CSSProperties } from 'react';
 import { CUSTOMER_DIMENSION_BOUNDS } from '@sp/configurator/core';
@@ -65,6 +66,7 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
   input: SimpleCoverInput; onChange: (input: SimpleCoverInput) => void;
   onDimensionActivity: (axis: PreviewDimensionAxis | null) => void;
 }) {
+  const {section}=useRail();
   const [connectionNotice, setConnectionNotice] = useState('');
   const [projectionNotice, setProjectionNotice] = useState('');
   const projectionMax = previewProjectionMax(roof);
@@ -81,9 +83,9 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
     onChange(valid);
   }
   return <div className={styles.controls}>
+    <div hidden={section!=='structure'}>
+    <div className={styles.sectionLabel}><h2>Size & shape</h2></div>
     <RoofTypeChoice value={roof} onChange={updateRoof} />
-    <div className={styles.sectionLabel}><span>01</span><h2>Make room for living.</h2></div>
-    <p className={styles.muted}>Width runs along your home. Projection extends out.</p>
     <div className={styles.dimensions}>
     <Dimension axis="width" onActivity={onDimensionActivity} label="Width" value={input.widthMm} min={Math.max(SIMPLE_COVER_WIDTH_MIN_MM, CUSTOMER_DIMENSION_BOUNDS.lengthMm.minimum)} max={SIMPLE_COVER_WIDTH_MAX_MM}
       onChange={(widthMm) => update({ ...input, widthMm })} />
@@ -93,10 +95,7 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
     {projectionMax < SIMPLE_COVER_PROJECTION_MAX_MM && <p className={styles.inputNotice}>Maximum projection for this roof: {metres(projectionMax)}.</p>}
     {projectionNotice && <p className={styles.inputNotice} role="status">{projectionNotice}</p>}
     <GableChoices value={roof} onChange={updateRoof} />
-    <RoofFinishChoices roof={roof} input={input} onChange={updateRoof} />
-    <RoofBattenControls roof={roof} onChange={updateRoof} />
-    {roof.family === 'box' && <div className={styles.gableChoices}><p className={styles.small}>A level frame with the roof tucked inside. The roof changes to a shallow gable when needed to maintain drainage.</p></div>}
-    <div className={styles.sectionLabel}><span>02</span><h2>Connect to your home.</h2></div>
+    <div className={styles.sectionLabel}><h2>House connection</h2></div>
     {roof.family === 'gable' && roof.orientation === 'away' ? <p className={styles.small}>Fascia attachment · Dutch-gable roof</p>
       : <><AttachmentChoices key={roof.family} allowFascia={roof.family !== 'box'} value={input.connection} soffitUnavailable={soffitUnavailable} onChange={connection => update({ ...input, connection })} />
     {soffitUnavailable && <p className={styles.inputNotice} role="status">{connectionNotice}Soffit brackets are available up to 4.0 m projection.</p>}</>}
@@ -107,7 +106,13 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
       </label>)}
     </fieldset>
     {input.level === 'elevated' && <p className={styles.small}>First-floor deck · shown 2.7 m above ground.</p>}
-    <BlindControls />
-      <p className={styles.small}>{roofFinishDescription(roof)} · Black aluminium frame<br />Representative house, ground, heights and connection details.</p>
+    </div>
+    <div hidden={section!=='roof'}><div className={styles.sectionLabel}><h2>Roof & ceiling</h2></div>
+    <RoofFinishChoices roof={roof} input={input} onChange={updateRoof} />
+    <RoofBattenControls roof={roof} onChange={updateRoof} />
+    {roof.family === 'box' && <div className={styles.gableChoices}><p className={styles.small}>A level frame with the roof tucked inside. The roof changes to a shallow gable when needed to maintain drainage.</p></div>}
+</div>
+    <div hidden={section!=='sides'}><BlindControls /></div>
+
   </div>;
 }

@@ -13,7 +13,7 @@ export default function CedarLightControls(){
    {options.map(o=><button key={o.count+o.pattern} aria-pressed={value?.count===o.count&&value.pattern===o.pattern} onClick={()=>choose(o.count,o.pattern)}>{o.count} lights<span>{o.count===2?'Centred pair':o.count===4?'2 × 2 grid':o.count===9?'3 × 3 grid':o.pattern==='rows2'?'Rows of 2':'Rows of 3'}</span></button>)}
   </div>;
  };
- return <div><h3>2. Lights per cedar section, per slope</h3>
+ return <div><h3>Lights per section, per slope</h3>
  <p>Each section gets its own centred grid.{slopes===2?' The opposite gable slope mirrors it.':''}</p>
  {sections.length>1&&<label className={css.individual}><input type="checkbox" checked={!!w.value.cedarIndividual} onChange={e=>w.change({...w.value,cedarIndividual:e.target.checked})}/> Adjust sections individually</label>}
  {w.value.cedarIndividual?sections.map(section=><div key={section}><h3>{section.replace('section-','Section ')}</h3>{settings(section)}</div>):settings()}

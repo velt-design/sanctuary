@@ -200,3 +200,34 @@ for (const width of [390, 1440]) {
     await page.screenshot({ path: 'artifacts/configurator-preview/controls-' + width + '.png' });
   });
 }
+
+for (const width of [390, 1440]) test(`section navigation preserves controls and scrolling at ${width}`, async ({page}) => {
+ await page.setViewportSize({width,height:900});
+ const nav=page.getByRole('navigation',{name:'Design sections'});
+ const aside=page.getByRole('complementary',{name:'Your pergola choices'});
+ const viewer=page.getByRole('region',{name:'Pergola views'}), bounds=(await viewer.boundingBox())!;
+ await expect(nav.getByRole('button',{name:'Structure',exact:true})).toHaveAttribute('aria-current','step');
+ const size=page.getByRole('textbox',{name:'Width in metres'});
+ await size.fill('5.7');await size.press('Enter');
+ await aside.evaluate(el=>{el.scrollTop=200;});await expect.poll(()=>aside.evaluate(el=>el.scrollTop)).toBe(200);
+ await page.waitForTimeout(50);
+ await nav.getByRole('button',{name:'Roof & ceiling',exact:true}).click();
+ await expect(size).not.toBeVisible();await expect.poll(()=>aside.evaluate(el=>el.scrollTop)).toBe(0);
+ await page.getByRole('radio',{name:'Combination',exact:true}).check();
+ await nav.getByRole('button',{name:'Structure',exact:true}).click();
+ await expect.poll(()=>aside.evaluate(el=>el.scrollTop)).toBe(200);await expect(size).toHaveValue('5.7');
+ await nav.getByRole('button',{name:'Sides',exact:true}).click();
+ await expect(page.getByRole('region',{name:'Outdoor blinds'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Edit sides',exact:true})).toHaveAttribute('aria-pressed','true');
+ await nav.getByRole('button',{name:'Lighting',exact:true}).click();
+ await expect(page.getByRole('region',{name:'Lighting editor'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Continue with this design'})).toBeInViewport();
+ await page.getByRole('button',{name:'See your lights at night',exact:true}).click();
+ await nav.getByRole('button',{name:'Roof & ceiling',exact:true}).click();
+ await expect(page.locator('[data-night]')).toHaveAttribute('data-night','true');
+ await expect(page.getByRole('radio',{name:'Combination',exact:true})).toBeChecked();
+ expect((await viewer.boundingBox())!.y).toBeCloseTo(bounds.y,0);
+ expect((await viewer.boundingBox())!.height).toBeCloseTo(bounds.height,0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(width);
+ await page.screenshot({path:`artifacts/configurator-preview/rail-night-${width}.png`});
+});
