@@ -26,7 +26,7 @@ export function buildRepresentativeSidePanel(o:BlindOpening,p:{kind:'acrylic'|'t
     if(Math.max(za,zb)<z+25)continue;
     if(za<z+25)a+=(b-a)*(z+25-za)/(zb-za);
     else if(zb<z+25)b=a+(b-a)*(za-z-25)/(za-zb);
-    if(b>a)prism(frame,a,b,-75,-25,z-25,z+25);
+    if(b>a)prism(frame,a,b,p.kind==='timber'?-25:-75,p.kind==='timber'?-22:-25,z-25,z+25);
   }
   prism(frame,0,o.width,-depth/2,depth/2,0,acrylic?50:3);
   if(!acrylic)prism(frame,0,o.width,-25,-22,0,50);
@@ -35,6 +35,11 @@ export function buildRepresentativeSidePanel(o:BlindOpening,p:{kind:'acrylic'|'t
     const a=o.width*i/2,b=o.width*(i+1)/2,zA=top(a),zB=top(b),thickness=acrylic?50:3;
     const v=[point(a,-depth/2,zA-thickness),point(b,-depth/2,zB-thickness),point(b,depth/2,zB-thickness),point(a,depth/2,zA-thickness),point(a,-depth/2,zA),point(b,-depth/2,zB),point(b,depth/2,zB),point(a,depth/2,zA)];
     for(const f of [[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]])quad(frame,f.map(j=>v[j]));
+    if(!acrylic){
+      // The upright leg of the sloping angle catches every shortened slat end.
+      const leg=[point(a,-25,zA-50),point(b,-25,zB-50),point(b,-22,zB-50),point(a,-22,zA-50),point(a,-25,zA-3),point(b,-25,zB-3),point(b,-22,zB-3),point(a,-22,zA-3)];
+      for(const f of [[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]])quad(frame,f.map(j=>leg[j]));
+    }
   }
   if(acrylic){const glass=make('acrylic');for(let i=1;i<supports.length;i++){
     const a=supports[i-1]+25,b=supports[i]-25;if(b<=a)continue;
@@ -55,11 +60,14 @@ export function buildRepresentativeSidePanel(o:BlindOpening,p:{kind:'acrylic'|'t
     for(let i=0;i<count;i++){
       const z=offset+i*(height+p.gap);
       for(let segment=0;segment<2;segment++){
-        let a=segment*o.width/2,b=(segment+1)*o.width/2;const za=top(a)-50,zb=top(b)-50;
+        let a=segment*o.width/2,b=(segment+1)*o.width/2;const za=top(a)-(acrylic?50:10),zb=top(b)-(acrylic?50:10);
         if(Math.max(za,zb)<z+height)continue;
         if(za<z+height)a+=(b-a)*(z+height-za)/(zb-za);
         else if(zb<z+height)b=a+(b-a)*(za-z-height)/(za-zb);
-        a=Math.max(3,a);b=Math.min(o.width-3,b);if(b>a)prism(m,a,b,y,y+thick,z,z+height);
+        a=Math.max(3,a);b=Math.min(o.width-3,b);
+        // Omit an isolated stub that cannot span the jamb and sloping angle.
+        if(b-a<50&&(a>segment*o.width/2+.01||b<(segment+1)*o.width/2-.01))continue;
+        if(b>a)prism(m,a,b,y,y+thick,z,z+height);
       }
     }
   }

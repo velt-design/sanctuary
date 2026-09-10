@@ -4,6 +4,17 @@
 
 ### Marketing preview: Ziptrak sides (2026-09-10)
 
+Pitched corrections: representativePitchedLedger matches the ledger to the rafter
+section while preserving its top datum. Side-opening roof heights derive from actual
+rafter undersides where available. Blind headers align their outside face to the end
+rafter and receive a 50x50 house-side strut regardless of triangular infill selection.
+Roll/cover setback remains independently post-relative. Vertical timber uses 50x3
+horizontal support plates; aluminium retains box supports. Standalone horizontal
+slats meet the 50mm upright leg of the sloping perimeter angle, with isolated short
+stubs omitted. Gate 0: N/A audit rows, no legacy build-on/removal or Phase 2 changes;
+no consolidation; consumers checked in preview solve, opening/layout/mesh generation,
+views, validation and tests. Existing authored/workbench geometry is unchanged.
+
 Standalone timber/aluminium sides now support horizontal or vertical direction;
 acrylic overlays remain horizontal. Old saved selections without direction retain
 horizontal behavior. Vertical slats receive horizontal rails using the same 1200/600mm

@@ -1,5 +1,5 @@
 import type { Assembly3D, Point3 } from './contracts';
-export type BlindOpening = { id:string; label:string; side:'front'|'left'|'right'; start:Point3; end:Point3; width:number; top:number; roofLine:Point3[]; headerDepth:number; needsJamb:boolean };
+export type BlindOpening = { id:string; label:string; side:'front'|'left'|'right'; start:Point3; end:Point3; width:number; top:number; roofLine:Point3[]; headerDepth:number; needsJamb:boolean;headerOffset?:number };
 export const blindHeaderDepth = (span:number) => span <= 2000 ? 50 : span <= 4000 ? 100 : 150;
 
 /** Exterior openings follow solved posts. IDs include bay count so topology changes cannot move a blind silently. */
@@ -29,14 +29,22 @@ export function representativeBlindOpenings(assembly:Assembly3D):BlindOpening[] 
       const a=edgePosts[i-1].p[axis]+edgePosts[i-1].half,b=edgePosts[i].p[axis]-edgePosts[i].half;
       if(b-a<650) continue;
       const start=point(side,a),end=point(side,b),mid=point(side,(a+b)/2);
-      const line=[start,mid,end].map(p=>({...p,z:roofZ(p)}));
+      const rafters=assembly.members.filter(m=>m.role==='rafter'&&Math.abs(m.centerline.end.y-m.centerline.start.y)>100&&Math.abs(m.centerline.end.x-m.centerline.start.x)<1);
+      const rafter=side==='front'?undefined:rafters.sort((a,b)=>side==='left'?a.centerline.start.x-b.centerline.start.x:b.centerline.start.x-a.centerline.start.x)[0];
+      const line=[start,mid,end].map(p=>{
+        if(!rafter)return {...p,z:roofZ(p)};
+        const a=rafter.centerline.start,b=rafter.centerline.end,halfDepth=Math.abs(rafter.localFrame.zAxis.z)*rafter.profile.depthMm/2+Math.abs(rafter.localFrame.yAxis.z)*rafter.profile.widthMm/2;
+        return {...p,z:a.z+(b.z-a.z)*(p.y-a.y)/(b.y-a.y)-halfDepth};
+      });
+      const halfWidth=rafter?(Math.abs(rafter.localFrame.yAxis.x)*rafter.profile.widthMm+Math.abs(rafter.localFrame.zAxis.x)*rafter.profile.depthMm)/2:25;
+      const headerOffset=rafter?(side==='left'?start.x-rafter.centerline.start.x+halfWidth-25:rafter.centerline.start.x-start.x+halfWidth-25):0;
       const level=Math.min(...line.map(p=>p.z));
       const sloped=Math.max(...line.map(p=>p.z))-level>30;
       // Actual horizontal boundary beams take precedence over roof-plane depth.
       const beams=assembly.members.filter(m=>['beam','gutter','ledger'].includes(m.role) && Math.abs(m.centerline.start.z-m.centerline.end.z)<1 && (side==='front'?Math.abs(m.centerline.start.y-start.y)<150 && Math.abs(m.centerline.end.y-start.y)<150:Math.abs(m.centerline.start.x-start.x)<150 && Math.abs(m.centerline.end.x-start.x)<150));
       const underside=beams.length?Math.min(...beams.map(m=>m.centerline.start.z-m.profile.depthMm/2)):level;
       const headerDepth=sloped && !beams.length?blindHeaderDepth(b-a):0;
-      result.push({id:side+'-'+i+'of'+(edgePosts.length-1),label:(side==='front'?'Front':side==='left'?'Left':'Right')+' '+i,side,start,end,width:b-a,top:headerDepth?level-headerDepth:underside,roofLine:line,headerDepth,needsJamb:side!=='front' && i===1});
+      result.push({id:side+'-'+i+'of'+(edgePosts.length-1),label:(side==='front'?'Front':side==='left'?'Left':'Right')+' '+i,side,start,end,width:b-a,top:headerDepth?level-headerDepth:underside,roofLine:line,headerDepth,headerOffset,needsJamb:side!=='front' && i===1});
     }
   }
   return result;

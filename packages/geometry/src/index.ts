@@ -1,4 +1,5 @@
 export * from "./contracts";
+export {matchRepresentativePitchedLedger} from './representativePitchedLedger';
 export { buildRepresentativeSidePanel } from './representativeSidePanel';
 export type { SidePanelMesh } from './representativeSidePanel';
 export { fitRepresentativeBlindPosts } from './representativeBlindPosts';

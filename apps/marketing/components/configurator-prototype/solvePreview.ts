@@ -1,4 +1,4 @@
-import { buildRepresentativeRoofFinish, fitRepresentativeBlindPosts } from "@sp/geometry";
+import { buildRepresentativeRoofFinish, fitRepresentativeBlindPosts, matchRepresentativePitchedLedger } from "@sp/geometry";
 import { getRoofFinish } from "./roofFinish";
 import { solveCustomerConfigurationV1 } from '@sp/configurator/geometry';
 import { calculateSoffitBracketCountV1 } from '@sp/costing';
@@ -22,6 +22,7 @@ function solveBasePreview(input: SimpleCoverInput, roof: PreviewRoofChoices = IN
 
 export function solvePergolaPreview(input: SimpleCoverInput, roof: PreviewRoofChoices = INITIAL_ROOF): { status: string; messages: { message: string }[]; geometry?: { assembly: Assembly3D; plan: GeometryPlanViewModel; viewerScene: ViewerSceneModel; covering?: RoofFinishGeometry } } {
   let source: ReturnType<typeof solvePergolaPreview> = solveBasePreview(input, roof);
+  if(roof.family==='mono'&&source.geometry){const matched=matchRepresentativePitchedLedger(source.geometry.assembly);if(matched)source={...source,geometry:matched};}
   if ('geometry' in source && source.geometry && roof.blinds?.length) {
     const fitted=fitRepresentativeBlindPosts(source.geometry.assembly,roof.blinds);
     if(fitted) source={...source,geometry:fitted};

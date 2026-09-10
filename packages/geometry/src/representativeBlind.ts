@@ -32,11 +32,13 @@ export function buildRepresentativeBlind(opening:BlindOpening, options:{cover:'N
   }
   if(options.lowered>0) quad(mesh('screen','fabric'),[point(30,0,blindTop),point(width-30,0,blindTop),point(width-30,0,bottom+52),point(30,0,bottom+52)]);
   if(opening.headerDepth) {
-    box(frame,0,width,-25,25,top,top+opening.headerDepth);
+    const offset=opening.headerOffset??0;
+    box(frame,opening.needsJamb?-50:0,width,offset-25,offset+25,top,top+opening.headerDepth);
+    if(opening.needsJamb)box(frame,-50,0,offset-25,offset+25,top+opening.headerDepth,opening.roofLine[0].z);
     if(options.infill) {
       const m=mesh('triangle','infill');
       for(let i=1;i<opening.roofLine.length;i++) {
-        const a=opening.roofLine[i-1],b=opening.roofLine[i];
+        const a={...opening.roofLine[i-1],x:opening.roofLine[i-1].x+n.x*offset,y:opening.roofLine[i-1].y+n.y*offset},b={...opening.roofLine[i],x:opening.roofLine[i].x+n.x*offset,y:opening.roofLine[i].y+n.y*offset};
         quad(m,[{...a,z:top+opening.headerDepth+2},{...b,z:top+opening.headerDepth+2},{...b,z:Math.max(b.z,top+opening.headerDepth+2)},{...a,z:Math.max(a.z,top+opening.headerDepth+2)}]);
       }
     }
