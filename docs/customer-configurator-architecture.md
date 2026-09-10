@@ -16,7 +16,8 @@ board width and supporting build-up remain representative.
 
 Package owners are representativeRoofFinish.ts (framing and regions),
 representativeRoofProfiles.ts (actual repeating cross-sections),
-representativeRoofFinishMesh.ts (mesh construction), and
+representativeRoofFinishMesh.ts (mesh construction), representativeRoofEdgeFlashings.ts
+(edge and transition covers), and
 representativeRoofBoxFinish.ts (level box ceiling and envelope fit). These are
 isolated visual references, not authored workbench objects or quantity takeoffs.
 Corrugated uses 76.2 mm repeat / 17 mm depth; simplified trapezoidal uses 154 mm
@@ -34,9 +35,12 @@ changing the 300 mm frame. Profile-specific installation/pitch approval and
 commercial pricing remain Sanctuary review items.
 
 RoofFinishChoices.tsx owns the controls. PreviewRoofFinish.tsx renders bounded
-meshes and procedural cedar grain, disposing resources on updates. Under roof
-focuses on the ceiling and temporarily omits ground/landscape context; Reset
-returns to the normal framing. Ordinary sizing retains the explored angle.
+meshes and procedural cedar grain, disposing resources on updates. Exposed steel
+edges and acrylic transitions receive folded covers. Tray sections have equal
+edge cuts; each side cover laps the first complete upstand with 10 mm beyond its
+foot. The Under roof control and its special context mode are removed. A 24-degree
+perspective camera provides subtle depth, retaining the explored angle and distance
+during sizing; Fit reframes at that angle and Reset restores the default.
 Preview links with roof finishes use a version-2 fragment; old version-1 links
 and saved acrylic drafts remain supported. Only validated finish fields are
 stored/shared. Solid/combination selections use the custom enquiry pathway,

@@ -22,13 +22,10 @@ for (const width of [360, 390, 1440]) test('roof profiles, bays and enquiry stay
   await page.getByRole('radio',{name:'House-side band',exact:true}).check();
   await page.getByRole('button',{name:'Remove acrylic bay',exact:true}).click();
   await expect(viewport).toHaveAttribute('data-acrylic-bays','1');
-  const underside = page.getByRole('button',{name:'Under roof view',exact:true});
-  expect((await underside.boundingBox())!.x).toBeGreaterThanOrEqual(0);
-  const expand = page.getByRole('button',{name:'Expand view',exact:true});
-  if(width < 600) { const box = (await expand.boundingBox())!; expect(box.x + box.width).toBeLessThanOrEqual(width); }
-  await underside.click();
-  const camera=await page.locator('canvas').getAttribute('data-camera');
-  await page.screenshot({path:'artifacts/configurator-preview/roof-under-'+width+'.png'});
+  await expect(page.getByRole('button',{name:'Under roof view',exact:true})).toHaveCount(0);
+  const camera=JSON.parse((await page.locator('canvas').getAttribute('data-camera'))!);
+  expect(camera.projection).toBe('perspective');
+  expect(camera.fov).toBe(24);
   await page.getByRole('button',{name:'Add acrylic bay',exact:true}).click();
   await expect(viewport).toHaveAttribute('data-acrylic-bays','2');
   expect(await page.locator('canvas').getAttribute('data-camera')).not.toBeNull();

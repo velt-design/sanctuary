@@ -3,6 +3,14 @@
 export type RepresentativeRoofProfile = 'corrugated' | 'trapezoidal' | 'tray';
 export type RoofProfilePoint = { across: number; height: number };
 
+/** Equal edge cuts, with whole seam crowns inside the region. */
+export function centredTrayLayout(start: number, end: number, pitch: number) {
+  const intervals = Math.max(0, Math.floor((end - start - 23) / pitch));
+  const firstSeam = (start + end - intervals * pitch) / 2;
+  return { origin: firstSeam - pitch + 11.5, firstSeam, lastSeam: firstSeam + intervals * pitch,
+    sideCover: firstSeam - start + 21.5 };
+}
+
 export function representativeRoofProfile(profile: RepresentativeRoofProfile, trayWidth: 300 | 400 | 500 = 400) {
   if (profile === 'corrugated') return { pitch: 76.2, height: 17,
     points: Array.from({ length: 13 }, (_, i) => ({ across: 76.2 * i / 12, height: 8.5 * (1 - Math.cos(i / 12 * Math.PI * 2)) })) };
@@ -19,11 +27,12 @@ export function representativeRoofProfile(profile: RepresentativeRoofProfile, tr
 /** Cut the repeated profile at real region edges; no overlapping full sheets. */
 export function roofProfileSection(profile: RepresentativeRoofProfile, start: number, end: number, trayWidth: 300 | 400 | 500): RoofProfilePoint[] {
   const { pitch, points } = representativeRoofProfile(profile, trayWidth);
+  const origin = profile === 'tray' ? centredTrayLayout(start, end, trayWidth).origin : 0;
   const samples: RoofProfilePoint[] = [];
-  for (let repeat = Math.floor(start / pitch); repeat <= Math.floor(end / pitch); repeat++) {
+  for (let repeat = Math.floor((start - origin) / pitch); repeat <= Math.floor((end - origin) / pitch); repeat++) {
     for (let i = 0; i < points.length - 1; i++) {
-      const a = { across: repeat * pitch + points[i].across, height: points[i].height };
-      const b = { across: repeat * pitch + points[i + 1].across, height: points[i + 1].height };
+      const a = { across: origin + repeat * pitch + points[i].across, height: points[i].height };
+      const b = { across: origin + repeat * pitch + points[i + 1].across, height: points[i + 1].height };
       if (b.across <= start || a.across >= end) continue;
       const at = (x: number) => ({ across: x, height: a.height + (b.height - a.height) * (x - a.across) / (b.across - a.across) });
       if (!samples.length) samples.push(at(Math.max(a.across, start)));

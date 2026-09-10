@@ -17,8 +17,6 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
   const [view, setView] = useState<'3D' | 'Plan'>('3D');
   const [reset, setReset] = useState(0);
   const [fit, setFit] = useState(0);
-  const [under, setUnder] = useState(0);
-  const [ceilingView, setCeilingView] = useState(false);
   const [surroundings, setSurroundings] = useState(true);
   const artifact = useMemo(() => solvePergolaPreview(input, roof), [input, roof]);
   const geometry = artifact.geometry;
@@ -31,9 +29,8 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
         <button key={name} aria-pressed={view === name} onClick={() => setView(name)}>{name}</button>)}</div>
       <div className={styles.viewActions}>
       {view === '3D' && renderable && <>
-        {covering && <button aria-label="Under roof view" aria-pressed={ceilingView} onClick={() => { setCeilingView(true); setUnder(under + 1); }}>Under roof</button>}
         <button aria-label="Fit view" title="Fit the pergola at your current angle" onClick={() => setFit(fit + 1)}>Fit</button>
-        <button aria-label="Reset view" title="Return to the starting view" onClick={() => { setCeilingView(false); setReset(reset + 1); }}>Reset</button>
+        <button aria-label="Reset view" title="Return to the starting view" onClick={() => { setReset(reset + 1); }}>Reset</button>
       </>}
         <button className={styles.expandView} aria-label={expanded ? 'Close expanded view' : 'Expand view'} aria-expanded={expanded} onClick={onToggleExpanded}>{expanded ? 'Done' : 'Expand'} <span aria-hidden="true">{expanded ? '×' : '↗'}</span></button>
       </div>
@@ -48,7 +45,7 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
       data-post-count={renderable ? geometry.plan.members.posts.length : undefined}>
       {renderable ? <>
         <div className={styles.sceneLayer} aria-hidden={view !== '3D'} style={{ visibility: view === '3D' ? 'visible' : 'hidden' }}>
-          <PreviewScene ceilingView={ceilingView} under={under} covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D'} activeDimension={activeDimension} plan={geometry.plan} reset={reset} fit={fit} onFallback={() => setView('Plan')} />
+          <PreviewScene covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D'} activeDimension={activeDimension} plan={geometry.plan} reset={reset} fit={fit} onFallback={() => setView('Plan')} />
         </div>
         {view === 'Plan' && <PreviewPlan covering={covering} plan={geometry.plan} flashings={geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
       </>

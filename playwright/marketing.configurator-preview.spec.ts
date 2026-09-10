@@ -68,8 +68,8 @@ test('camera continuity, intentional fit and reset, and front starting angle', a
   await page.getByRole('button', { name: 'Design your pergola', exact: false }).click();
   const canvas = page.locator('canvas');
   await expect(canvas).toHaveAttribute('data-camera', /position/);
-  const camera = async () => JSON.parse((await canvas.getAttribute('data-camera'))!) as {position: number[]; target: number[]; zoom: number};
-  const direction = (value: Awaited<ReturnType<typeof camera>>) => value.position.map((n, i) => n - value.target[i]!);
+  const camera = async () => JSON.parse((await canvas.getAttribute('data-camera'))!) as {position: number[]; target: number[]; distance: number};
+  const direction = (value: Awaited<ReturnType<typeof camera>>) => value.position.map((n, i) => (n - value.target[i]!) / value.distance);
   const initial = await camera();
   expect(direction(initial)[0]).toBeGreaterThan(0);
   expect(direction(initial)[1]).toBeGreaterThan(0);
@@ -81,7 +81,7 @@ test('camera continuity, intentional fit and reset, and front starting angle', a
   await page.mouse.move(box.x + box.width * .7, box.y + box.height * .5, { steps: 15 });
   await page.mouse.up();
   await page.mouse.wheel(0, -120);
-  await expect.poll(async () => (await camera()).zoom).not.toBe(initial.zoom);
+  await expect.poll(async () => (await camera()).distance).not.toBe(initial.distance);
   const chosen = await camera();
   expect(direction(chosen)).not.toEqual(direction(initial));
   for (const [name, value] of [['Width in metres', '5.1'], ['Projection in metres', '4.2']]) {
@@ -91,7 +91,7 @@ test('camera continuity, intentional fit and reset, and front starting angle', a
   }
   const resized = await camera();
   direction(resized).forEach((n, i) => expect(n).toBeCloseTo(direction(chosen)[i]!, 5));
-  expect(resized.zoom).toBeCloseTo(chosen.zoom, 8);
+  expect(resized.distance).toBeCloseTo(chosen.distance, 8);
   await page.getByRole('button', { name: 'Plan', exact: true }).click();
   await expect(canvas).toBeHidden();
   await page.getByRole('textbox', { name: 'Width in metres' }).fill('5.9');
@@ -99,7 +99,7 @@ test('camera continuity, intentional fit and reset, and front starting angle', a
   await page.getByRole('button', { name: '3D', exact: true }).click();
   const returned = await camera();
   direction(returned).forEach((n, i) => expect(n).toBeCloseTo(direction(chosen)[i]!, 5));
-  expect(returned.zoom).toBeCloseTo(chosen.zoom, 8);
+  expect(returned.distance).toBeCloseTo(chosen.distance, 8);
   await expect(page.getByRole('button', { name: /Explore 3D|Lock view/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Fit view', exact: true }).click();
   const fitted = await camera();

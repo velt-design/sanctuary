@@ -38,7 +38,7 @@ for (const width of [360, 390]) {
     expect((await outline.boundingBox())!.width).toBeGreaterThan(115);
     await page.getByRole('button', { name: 'Expand view', exact: true }).click();
     expect((await viewer.boundingBox())!.height).toBeGreaterThanOrEqual(720);
-    expect((await outline.boundingBox())!.width).toBeGreaterThan(280);
+    await expect.poll(async () => (await outline.boundingBox())!.width).toBeGreaterThan(280);
     await expect(page.getByRole('button', { name: 'Close expanded view', exact: true })).toBeInViewport();
     await expect(page.getByRole('dialog', { name: 'Design your pergola', exact: true })).toBeVisible();
     for (const axis of ['width', 'projection']) {
@@ -117,7 +117,7 @@ test.describe('expanded touch gestures', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   test('orbit and pinch stay with the viewer; only the choices scroll', async ({ page }) => {
     const canvas = page.locator('canvas');
-    const camera = async () => JSON.parse((await canvas.getAttribute('data-camera'))!) as { position: number[]; zoom: number };
+    const camera = async () => JSON.parse((await canvas.getAttribute('data-camera'))!) as { position: number[]; zoom: number; distance: number };
     const scroll = () => page.evaluate(() => document.body.scrollTop + window.scrollY);
     const client = await page.context().newCDPSession(page);
     const swipe = async (dx: number, dy: number, target = canvas) => {
@@ -151,14 +151,14 @@ test.describe('expanded touch gestures', () => {
     }
     const box = (await canvas.boundingBox())!;
     const x = box.x + box.width / 2, y = box.y + box.height / 2;
-    const zoom = (await camera()).zoom;
+    const distance = (await camera()).distance;
     await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x - 30, y, id: 0 }, { x: x + 30, y, id: 1 }] });
     for (let i = 1; i <= 10; i++) {
       await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - 30 - i * 3, y, id: 0 }, { x: x + 30 + i * 3, y, id: 1 }] });
       await page.waitForTimeout(16);
     }
     await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await expect.poll(async () => (await camera()).zoom).toBeGreaterThan(zoom);
+    await expect.poll(async () => (await camera()).distance).toBeLessThan(distance);
     expect(await scroll()).toBeCloseTo(expandedScroll, 0);
     await page.getByRole('button', { name: 'Close expanded view', exact: true }).click();
     expect(await scroll()).toBeCloseTo(positionBefore, 0);

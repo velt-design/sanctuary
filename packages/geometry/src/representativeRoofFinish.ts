@@ -1,4 +1,5 @@
 import { prepareBoxRoofFinish } from "./representativeRoofBoxFinish";
+import { addRoofEdgeFlashings } from './representativeRoofEdgeFlashings';
 import type { Assembly3D, RoofCladdingPanel3D } from './contracts';
 import { boxMember } from './representativeBoxMembers';
 import { buildPlanViewModel } from './plan';
@@ -72,14 +73,15 @@ export function buildRepresentativeRoofFinish(source: Assembly3D, finish: Repres
         const startPoint = point(cut + (cut === light.a ? -25 : 25), near, -75);
         const endPoint = point(cut + (cut === light.a ? -25 : 25), far, -75);
         assembly.members.push(boxMember(`finish-transition-${index}-${i}`, 'beam', startPoint, endPoint, '150x50', n));
-        const flashing = { a: cut - 45, b: cut + 45, c: near, d: far };
-        roofSlab(edges, frame, flashing, profileHeight + 3, profileHeight + 4);
       }
     }
     for (const [rIndex, r] of solid.entries()) {
       if (r.b - r.a < 1 || r.d - r.c < 1) continue;
       covering.regions.push({ id: `solid-${index}-${rIndex}`, material: 'solid', boundary: roofRectangleBoundary(frame, r) });
       addProfiledRoof(steel, frame, r, finish.profile, finish.trayWidth);
+      const flashings = roofMesh(`edge-flashings-${index}-${rIndex}`, 'flashing');
+      addRoofEdgeFlashings(flashings, frame, r, finish.profile, finish.trayWidth);
+      covering.meshes.push(flashings);
       // A board module with a 6mm negative joint. Boards run in the roof fall direction.
       const ceilingFrame = box ? { ...frame, point: (a: number, b: number, offset = 0) => ({ ...point(a, b), z: box.ceilingZ + offset }) } : frame;
       for (let a = r.a; a < r.b; a += 135) roofSlab(cedar, ceilingFrame, { ...r, a, b: Math.min(a + 129, r.b) }, box ? 0 : -187, box ? 12 : -175);

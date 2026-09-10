@@ -23,7 +23,7 @@ function Section({ section, color, fadeAbove }: { section: ContextSection; color
   </mesh>;
 }
 
-export default function PreviewSurroundings({ hideGround = false, context, bounds, productPoints }: { hideGround?: boolean; context: RepresentativeSurroundings; bounds: SceneBounds; productPoints: { x: number; y: number; z: number }[] }) {
+export default function PreviewSurroundings({ context, bounds, productPoints }: { context: RepresentativeSurroundings; bounds: SceneBounds; productPoints: { x: number; y: number; z: number }[] }) {
   const house = useRef<Group>(null);
   const direction = useMemo(() => new Vector3(), []);
   const { architecture, ground, roof, roofEnclosure, gutter, brackets } = context;
@@ -41,7 +41,7 @@ export default function PreviewSurroundings({ hideGround = false, context, bound
     gl.domElement.dataset.houseOpacity = (1 - fade * .95).toFixed(2);
   });
   return <group name="representative-surroundings">
-    {!hideGround && <>
+
     <Box box={ground} color="#d1d6c8" />
     <Box box={architecture.terrace} color="#cbc8bd" />
     {architecture.supports.map(support => <Box key={support.id} box={support} color="#a5aa9e" />)}
@@ -53,7 +53,7 @@ export default function PreviewSurroundings({ hideGround = false, context, bound
         vertexShader="varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }"
         fragmentShader="varying vec2 vUv; void main() { vec2 p = vUv - 0.5; float a = exp(-dot(p,p) * 38.0) * 0.3; gl_FragColor = vec4(0.22, 0.24, 0.2, a); }" />
     </mesh>)}
-    </>}
+
     <group ref={house} name="house-context">
       <ContextWall wall={context.wall} opening={architecture.opening} fadeAbove={fadeAbove} />
       {architecture.glazing.map((pane, index) => <Box key={pane.id} box={pane} color={index ? '#a6b5ad' : '#b4c0b7'} glazing />)}
