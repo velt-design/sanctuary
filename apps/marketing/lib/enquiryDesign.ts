@@ -47,12 +47,3 @@ export function buildCustomerBrief(audience: EnquiryAudience, value?: unknown): 
   return { version: 1, audience, designStatus: 'configured', design, summary, reopenPath: `/configurator-preview?open=1#design=${code}` };
 }
 
-/** Deployment-owned origin; customer input must never control links in an email. */
-export function customerDesignUrl(brief: CustomerBrief): string | undefined {
-  if (!brief.design) return undefined;
-  const canonical = buildCustomerBrief(brief.audience, brief.design);
-  const branch = process.env.VERCEL_BRANCH_URL;
-  const origin = process.env.VERCEL_ENV === 'preview' && branch && /^[a-z0-9.-]+\.vercel\.app$/i.test(branch)
-    ? `https://${branch}` : 'https://www.sanctuarypergolas.co.nz';
-  return `${origin}${canonical.reopenPath}`;
-}

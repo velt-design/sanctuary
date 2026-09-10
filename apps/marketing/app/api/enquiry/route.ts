@@ -1,4 +1,5 @@
-import { buildCustomerBrief, customerDesignUrl, type CustomerBrief } from '../../../lib/enquiryDesign';
+import { customerDesignUrl } from '../../../lib/enquiryDesignLink';
+import { buildCustomerBrief, type CustomerBrief } from '../../../lib/enquiryDesign';
 import { getRoofFinish, hasSimpleRoofPrice } from '../../../components/configurator-prototype/roofFinish';
 import { INITIAL_ROOF } from '../../../components/configurator-prototype/GableChoices';
 import { selectEnquiryEmailTemplate } from '../../../lib/enquiryEmailPolicy';

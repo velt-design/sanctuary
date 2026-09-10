@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildCustomerBrief, customerDesignUrl } from './enquiryDesign';
+import { buildCustomerBrief } from './enquiryDesign';
+import { customerDesignUrl } from './enquiryDesignLink';
 import { DEFAULT_PREVIEW_DRAFT, parsePreviewDraft } from '../components/configurator-prototype/previewDraft';
 import { parsePreviewDesign } from '../components/configurator-prototype/previewShare';
 import { selectEnquiryEmailTemplate } from './enquiryEmailPolicy';
@@ -29,7 +30,8 @@ describe('submitted design boundary', () => {
     const design = parsePreviewDraft({ ...DEFAULT_PREVIEW_DRAFT, roof: { family: 'gable', orientation: 'parallel', infills: true, finish: { material: 'combination', layout: 'central', acrylicBays: 2, profile: 'tray', trayWidth: 400 } } });
     expect(design).not.toBeNull();
     const brief = buildCustomerBrief('professional', JSON.parse(JSON.stringify(design)));
-    expect(customerDesignUrl({ ...brief, reopenPath: 'https://evil.test' })).toMatch(/^https:\/\/www.sanctuarypergolas.co.nz\/configurator-preview/);
+    expect(customerDesignUrl({ ...brief, reopenPath: 'https://evil.test' })).toBeUndefined();
+    expect(customerDesignUrl(brief)).toMatch(/^https:\/\/www.sanctuarypergolas.co.nz\/configurator-preview/);
   });
   it('keeps production on existing emails until explicitly activated', () => {
     vi.stubEnv('VERCEL_ENV', 'production'); vi.stubEnv('WEBSITE_ENQUIRY_EXPERIENCE_V2', '');

@@ -1,14 +1,19 @@
 import type { WebsiteAutoresponderPreviewFixture } from './websiteAutoresponderPreviewFixtures';
 import { ENQUIRY_EXPERIENCES, type EnquiryExperience } from './enquiryExperience';
-import { buildCustomerBrief } from './enquiryDesign';
-import { DEFAULT_PREVIEW_DRAFT, parsePreviewDraft } from '../components/configurator-prototype/previewDraft';
+import type { CustomerBrief } from './enquiryDesign';
+import type { PreviewDraft } from '../components/configurator-prototype/previewDraft';
 
 export type EnquiryExperienceVariant = `experience-${EnquiryExperience}`;
 export function enquiryExperienceFixtures(): WebsiteAutoresponderPreviewFixture[] {
   return (Object.keys(ENQUIRY_EXPERIENCES) as EnquiryExperience[]).map(experience => {
     const audience = experience === 'configured' || experience === 'bespoke' ? 'residential' : experience;
-    const design = experience === 'configured' || experience === 'commercial'
-      ? parsePreviewDraft({ ...DEFAULT_PREVIEW_DRAFT, input: { ...DEFAULT_PREVIEW_DRAFT.input, widthMm: 5400, projectionMm: 3200 } })! : undefined;
+    const design: PreviewDraft | undefined = experience === 'configured' || experience === 'commercial'
+      ? { version: 1, input: { widthMm: 5400, projectionMm: 3200, level: 'ground', connection: 'facade' }, roof: { family: 'mono', orientation: 'parallel', infills: false } } : undefined;
+    // Static, synthetic fixture: portal email previews must not import the marketing geometry solver.
+    const customerBrief: CustomerBrief = {
+      version: 1, audience, designStatus: design ? 'configured' : 'bespoke',
+      ...(design ? { design, summary: 'Pitched pergola · 5.4 m wide × 3.2 m projection · Acrylic roof · Facade attachment · Ground level', reopenPath: '/configurator-preview?open=1#design=1.mono.5400.3200.ground.facade.parallel.0' } : {}),
+    };
     return {
       variant: `experience-${experience}`, label: ENQUIRY_EXPERIENCES[experience].label,
       fileBaseName: `enquiry-${experience}`, templateId: `EMAIL_WEBSITE_ENQUIRY_${experience}_V2`,
@@ -22,7 +27,7 @@ export function enquiryExperienceFixtures(): WebsiteAutoresponderPreviewFixture[
           : experience === 'commercial' ? 'We are planning a covered dining area for our café. We’d like to discuss access and the installation programme.'
           : 'We are at developed design and would like to discuss the roof interface and what information you need for a proposal.',
         widthM: 5.4, depthM: 3.2, heightM: 0, style: 'Pitched', roof: 'Acrylic', addons: [], blindsSelected: false,
-        customerBrief: buildCustomerBrief(audience, design), filesReceivedCount: audience === 'professional' ? 2 : 0,
+        customerBrief, filesReceivedCount: audience === 'professional' ? 2 : 0,
       },
     };
   });

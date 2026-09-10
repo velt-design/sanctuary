@@ -5,7 +5,8 @@ import { AttachmentList, DetailRows, Eyebrow, InvestmentBlock, EstimateNote, Rep
 import { buildAlternativeEmailModel } from './alternatives/alternativeEmailModel';
 import { websiteAutoresponderTemplateIdFor } from '../lib/websiteAutoresponderContract';
 import { ENQUIRY_EXPERIENCES, ENQUIRY_NEXT_STEPS, type EnquiryExperience } from '../lib/enquiryExperience';
-import { customerDesignUrl, type CustomerBrief } from '../lib/enquiryDesign';
+import type { CustomerBrief } from '../lib/enquiryDesign';
+import { customerDesignUrl } from '../lib/enquiryDesignLink';
 import { THEME } from './theme';
 
 export function EnquiryExperienceEmail({ experience, variables, previewTheme }: {
