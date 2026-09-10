@@ -9,6 +9,18 @@ import {parsePreviewDraft} from './previewDraft';
 import {parsePreviewDesign,serializePreviewDesign} from './previewShare';
 import {buildContactDesignBrief} from '../../app/contact/contactDesignBrief';
 describe('fixed side panels',()=>{
+  it.each(['timber','aluminium'] as const)('supports vertical %s slats and preserves their direction',kind=>{
+    const o=previewBlindOpenings(INITIAL_INPUT,INITIAL_ROOF)[0],p={...defaultSidePanel(o.id,kind),direction:'vertical' as const};
+    const supports=sidePanelSupports(o,p);
+    expect(supports.at(-1)).toBe(o.top);
+    expect(supports.slice(1).every((v,i)=>v-supports[i]<=(kind==='timber'?1200:600))).toBe(true);
+    const meshes=buildRepresentativeSidePanel(o,p,supports);
+    expect(meshes.every(m=>m.positions.every(Number.isFinite))).toBe(true);
+    const draft=parsePreviewDraft({version:1,input:INITIAL_INPUT,roof:{...INITIAL_ROOF,sidePanels:[p]}})!;
+    expect(parsePreviewDesign(serializePreviewDesign(draft))!.roof.sidePanels![0].direction).toBe('vertical');
+    expect(buildContactDesignBrief({...draft,result:null}).description).toContain('vertical '+kind);
+    expect(parseSidePanels([{...p,kind:'acrylic'}])).toBeNull();
+  });
   it('preserves custom gaps and rejects invalid or overlapping sides',()=>{
     const p=defaultSidePanel('front-1of2','aluminium');
     expect(parseSidePanels([{...p,profile:'65x16',edge:true}])![0].gap).toBe(16);

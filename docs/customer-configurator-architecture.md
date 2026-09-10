@@ -4,6 +4,13 @@
 
 ### Marketing preview: Ziptrak sides (2026-09-10)
 
+Standalone timber/aluminium sides now support horizontal or vertical direction;
+acrylic overlays remain horizontal. Old saved selections without direction retain
+horizontal behavior. Vertical slats receive horizontal rails using the same 1200/600mm
+support limits, and follow the sloping top of the opening. Plan footprints and enquiry
+descriptions preserve direction. SideGapControl uses the SimpleCoverCalculator slider
+and number-field styles, select-on-focus, mm entry, integer commit and 5–200mm limits.
+
 Fixed sides loop: each opening exclusively selects Open, Ziptrak, full-height Acrylic,
 horizontal Timber or horizontal Aluminium. Acrylic alone can add horizontal timber.
 Timber profiles 39x39/65x39/90x39; rectangular timber and aluminium 65x16 support

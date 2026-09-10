@@ -1,7 +1,7 @@
 import type { BlindOpening } from './representativeBlindOpenings';
 export type SidePanelMesh={kind:'frame'|'timber'|'acrylic';positions:number[];indices:number[]};
 /** Fixed sides are visual assemblies; support positions are supplied by the owning rules. */
-export function buildRepresentativeSidePanel(o:BlindOpening,p:{kind:'acrylic'|'timber'|'aluminium';profile:string;edge:boolean;gap:number;frame:number;battens:boolean},supports:number[]):SidePanelMesh[]{
+export function buildRepresentativeSidePanel(o:BlindOpening,p:{kind:'acrylic'|'timber'|'aluminium';profile:string;edge:boolean;gap:number;frame:number;battens:boolean;direction?:'horizontal'|'vertical'},supports:number[]):SidePanelMesh[]{
   const meshes:SidePanelMesh[]=[];
   const make=(kind:SidePanelMesh['kind'])=>{const m={kind,positions:[] as number[],indices:[] as number[]};meshes.push(m);return m;};
   const frame=make('frame'),u={x:(o.end.x-o.start.x)/o.width,y:(o.end.y-o.start.y)/o.width};
@@ -17,8 +17,17 @@ export function buildRepresentativeSidePanel(o:BlindOpening,p:{kind:'acrylic'|'t
     for(const f of [[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]])quad(m,f.map(i=>v[i]));
   }
   const acrylic=p.kind==='acrylic',face=50,depth=acrylic?p.frame:50;
+  const vertical=!acrylic&&p.direction==='vertical';
+  const jambs=vertical?[0,o.width]:supports;
   // Supports behind slats; a 50x50x3 angle forms the standalone perimeter.
-  for(const x of supports){const a=Math.max(0,x-face/2),b=Math.min(o.width,x+face/2),edge=x===0||x===o.width;prism(frame,a,b,!acrylic&&!edge?-75:-depth/2,acrylic?depth/2:!edge?-25:-depth/2+3,25,top(a),top(b));if(!acrylic&&edge)prism(frame,x===0?0:o.width-3,x===0?3:o.width,-25,25,0,top(a),top(b));}
+  for(const x of jambs){const a=Math.max(0,x-face/2),b=Math.min(o.width,x+face/2),edge=x===0||x===o.width;prism(frame,a,b,!acrylic&&!edge?-75:-depth/2,acrylic?depth/2:!edge?-25:-depth/2+3,25,top(a),top(b));if(!acrylic&&edge)prism(frame,x===0?0:o.width-3,x===0?3:o.width,-25,25,0,top(a),top(b));}
+  if(vertical)for(const z of supports.slice(1,-1))for(let segment=0;segment<2;segment++){
+    let a=segment*o.width/2,b=(segment+1)*o.width/2;const za=top(a),zb=top(b);
+    if(Math.max(za,zb)<z+25)continue;
+    if(za<z+25)a+=(b-a)*(z+25-za)/(zb-za);
+    else if(zb<z+25)b=a+(b-a)*(za-z-25)/(za-zb);
+    if(b>a)prism(frame,a,b,-75,-25,z-25,z+25);
+  }
   prism(frame,0,o.width,-depth/2,depth/2,0,acrylic?50:3);
   if(!acrylic)prism(frame,0,o.width,-25,-22,0,50);
   // Top cap follows both segments of a pitched/triangular opening.
@@ -35,6 +44,11 @@ export function buildRepresentativeSidePanel(o:BlindOpening,p:{kind:'acrylic'|'t
   if(!acrylic||p.battens){
     const timber=p.kind!=='aluminium',m=timber?make('timber'):frame;
     const dims=p.profile.split('x').map(Number),height=dims[p.edge?1:0],thick=dims[p.edge?0:1];
+    if(vertical){
+      const count=Math.max(1,Math.floor((o.width-6+p.gap)/(height+p.gap))),offset=(o.width-(count*height+(count-1)*p.gap))/2;
+      for(let i=0;i<count;i++){const a=offset+i*(height+p.gap),b=a+height;prism(m,a,b,-22,-22+thick,3,top(a)-3,top(b)-3);}
+      return meshes.filter(m=>m.positions.length);
+    }
     const max=Math.max(top(0),top(o.width/2),top(o.width))-50,min=50;
     const count=Math.max(1,Math.floor((max-min+p.gap)/(height+p.gap))),offset=min+(max-min-(count*height+(count-1)*p.gap))/2;
     const y=acrylic?depth/2+2:-22;

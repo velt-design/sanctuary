@@ -11,8 +11,15 @@ for(const width of [390,1440])test('fixed sides, profile gaps, selection and han
   await profile.selectOption('90x39');await expect(gap).toHaveValue('90');await c.getByRole('radio',{name:'On edge',exact:true}).check();await expect(gap).toHaveValue('39');
   await gap.focus();await gap.press('ArrowRight');await expect(gap).toHaveValue('40');await profile.selectOption('65x39');await expect(gap).toHaveValue('40');
   await c.getByRole('button',{name:'Use profile default'}).click();await expect(gap).toHaveValue('39');
+  const gapBox=c.getByRole('textbox',{name:'Clear gap in millimetres'});
+  await gapBox.click();expect(await gapBox.evaluate(e=>(e as HTMLInputElement).selectionEnd!-(e as HTMLInputElement).selectionStart!)).toBe(2);
+  await gapBox.fill('24');await gapBox.press('Enter');await expect(gap).toHaveValue('24');
+  await gapBox.fill('999');await gapBox.press('Enter');await expect(gap).toHaveValue('200');
+  await gapBox.fill('24');await gapBox.press('Enter');
   await c.getByRole('button',{name:/Left 1/}).click();await c.getByRole('radio',{name:'Timber slats',exact:true}).check();await profile.selectOption('90x39');
+  await c.getByRole('radio',{name:'Vertical',exact:true}).check();
   await c.getByRole('button',{name:/Right 1/}).click();await c.getByRole('radio',{name:'Aluminium slats',exact:true}).check();await profile.selectOption('65x16');await c.getByRole('radio',{name:'On edge',exact:true}).check();await expect(gap).toHaveValue('16');
+  await c.getByRole('radio',{name:'Vertical',exact:true}).check();
   await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','3');
   await page.getByRole('button',{name:'Edit sides',exact:true}).click();
   const canvas=page.locator('canvas');await expect(canvas).toHaveAttribute('data-camera',/perspective/);

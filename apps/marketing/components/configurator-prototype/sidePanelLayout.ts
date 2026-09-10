@@ -5,8 +5,9 @@ import type { SidePanel } from './sidePanelCatalog';
 /** Reuse the portal's canonical infill subdivision, without exposing a price. */
 export function sidePanelSupports(opening:BlindOpening,panel:SidePanel):number[] {
   if(panel.kind!=='acrylic'){
-    const bays=Math.ceil(opening.width/(panel.kind==='timber'?1200:600));
-    return Array.from({length:bays+1},(_,i)=>opening.width*i/bays);
+    const span=panel.direction==='vertical'?(opening.headerDepth?Math.max(...opening.roofLine.map(p=>p.z)):opening.top):opening.width;
+    const bays=Math.ceil(span/(panel.kind==='timber'?1200:600));
+    return Array.from({length:bays+1},(_,i)=>span*i/bays);
   }
   const height=opening.headerDepth?Math.max(...opening.roofLine.map(p=>p.z)):opening.top;
   for(const source of ['sheet_panels','strip_620'] as const){
