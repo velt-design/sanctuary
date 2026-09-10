@@ -7,8 +7,23 @@ import { INITIAL_ROOF, type PreviewRoofChoices } from './GableChoices';
 import { parsePreviewDraft } from './previewDraft';
 import { parsePreviewDesign, serializePreviewDesign } from './previewShare';
 import { buildContactDesignBrief } from '../../app/contact/contactDesignBrief';
+import { previewProjectionMax } from './roofFinish';
 
 describe('solid and combination roof preview', () => {
+  it.each(['corrugated', 'trapezoidal', 'tray'] as const)('clamps %s box drafts to the last valid slider step, including shared designs', profile => {
+    const roof: PreviewRoofChoices = { ...INITIAL_ROOF, family: 'box', finish: { ...DEFAULT_ROOF_FINISH, material: 'combination', profile } };
+    const max = previewProjectionMax(roof);
+    expect(max).toBe(profile === 'corrugated' ? 4100 : profile === 'trapezoidal' ? 3900 : 3200);
+    const draft = parsePreviewDraft({ version: 1, input: { ...INITIAL_INPUT, widthMm: 4400, projectionMm: 6000 }, roof })!;
+    expect(draft.input.widthMm).toBe(4400);
+    expect(draft.input.projectionMm).toBe(max);
+    expect(solvePergolaPreview(draft.input, draft.roof).geometry).toBeDefined();
+    expect(solvePergolaPreview({ ...draft.input, projectionMm: max + 100 }, roof).geometry).toBeUndefined();
+    expect(parsePreviewDesign(serializePreviewDesign(draft))).toEqual(draft);
+    const unlocked = parsePreviewDraft({ ...draft, roof: { ...roof, family: 'mono' } })!;
+    expect(unlocked.input.projectionMm).toBe(max);
+    expect(previewProjectionMax(unlocked.roof)).toBe(6000);
+  });
   it.each(['corrugated', 'trapezoidal', 'tray'] as const)('uses the supplied %s profile proportions', profile => {
     const shape = representativeRoofProfile(profile, 300);
     expect(shape.pitch).toBe(profile === 'corrugated' ? 76.2 : profile === 'trapezoidal' ? 154 : 300);

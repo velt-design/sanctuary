@@ -1,6 +1,13 @@
-import { DEFAULT_ROOF_FINISH, roofFinishBayLimit, type RepresentativeRoofFinish } from '@sp/geometry';
+import { DEFAULT_ROOF_FINISH, roofFinishBayLimit, representativeBoxRoofMaxProjection, type RepresentativeRoofFinish } from '@sp/geometry';
 import type { PreviewRoofChoices } from './GableChoices';
 import type { SimpleCoverInput } from '../../lib/simpleCoverCalculator';
+import { SIMPLE_COVER_PROJECTION_MAX_MM } from '../../lib/simpleCoverCalculator';
+
+export function previewProjectionMax(roof: PreviewRoofChoices) {
+  const finish = getRoofFinish(roof);
+  return roof.family === 'box' && finish.material !== 'acrylic'
+    ? Math.min(SIMPLE_COVER_PROJECTION_MAX_MM, representativeBoxRoofMaxProjection(finish)) : SIMPLE_COVER_PROJECTION_MAX_MM;
+}
 
 export const getRoofFinish = (roof: PreviewRoofChoices) => roof.finish ?? DEFAULT_ROOF_FINISH;
 export const hasSimpleRoofPrice = (roof: PreviewRoofChoices) => roof.family === 'mono' && getRoofFinish(roof).material === 'acrylic';

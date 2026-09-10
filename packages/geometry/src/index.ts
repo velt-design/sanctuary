@@ -108,3 +108,4 @@ export { buildRepresentativeRoofFinish } from "./representativeRoofFinish";
 export { DEFAULT_ROOF_FINISH, roofFinishBayLimit } from "./representativeRoofFinishTypes";
 export type { RepresentativeRoofFinish, RoofFinishGeometry, RoofFinishMesh } from "./representativeRoofFinishTypes";
 export { representativeRoofProfile } from "./representativeRoofProfiles";
+export { representativeBoxRoofMaxProjection } from "./representativeRoofBoxFinish";

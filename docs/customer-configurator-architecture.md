@@ -32,8 +32,12 @@ cross-lines through shallow steel pans. Construction and takeoff models are unaf
 The 300 mm box checks space for the build-up using the preview's existing 3-degree
 layout convention (not a manufacturer minimum-pitch approval). It switches to an
 internal gable when necessary. If the profile, layers and fall cannot fit, it
-shows a deeper-perimeter message rather than intersecting the ceiling or silently
-changing the 300 mm frame. Profile-specific installation/pitch approval and
+retains a defensive geometry error. The UI and draft/share parser use the same
+envelope to clamp projection to its last valid 100 mm step (4.1 m corrugated,
+3.9 m trapezoidal, 3.2 m tray). Sliders and typed entry share that maximum.
+Roof/profile changes reduce projection only when necessary and show an inline
+adjustment note; unlocking a larger range does not enlarge the design. This
+keeps the model visible without changing width or the 300 mm frame. Profile-specific installation/pitch approval and
 commercial pricing remain Sanctuary review items.
 
 RoofFinishChoices.tsx owns the controls. PreviewRoofFinish.tsx renders bounded

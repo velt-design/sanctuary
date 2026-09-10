@@ -46,3 +46,35 @@ for (const width of [360, 390, 1440]) test('roof profiles, bays and enquiry stay
   await expect(page.getByRole('radio',{name:'Combination',exact:true})).toBeChecked();
   await expect(page.getByRole('radio',{name:'500 mm',exact:true})).toBeChecked();
 });
+
+for (const width of [390, 1440]) test('box projection limits keep the model visible at ' + width, async ({page}) => {
+  await page.setViewportSize({width,height:844});
+  await page.goto('/configurator-preview');
+  await page.getByRole('button',{name:'Essential only',exact:true}).click();
+  await page.getByRole('button',{name:'Design your pergola',exact:false}).click();
+  const projection = page.getByRole('textbox',{name:'Projection in metres',exact:true});
+  const range = page.getByRole('slider',{name:'Projection',exact:true});
+  await projection.fill('6.0'); await projection.press('Enter');
+  await page.getByRole('radio',{name:'Solid',exact:true}).check();
+  await page.getByRole('radio',{name:'Box perimeter',exact:true}).check();
+  for (const [profile, metres, mm] of [['Corrugated','4.1','4100'],['Trapezoidal','3.9','3900'],['Tray','3.2','3200']]) {
+    await page.getByRole('radio',{name:profile,exact:true}).check();
+    await expect(projection).toHaveValue(metres);
+    await expect(range).toHaveAttribute('max',mm);
+    await expect(page.getByText('Projection adjusted to ' + metres + ' m for this roof.',{exact:true})).toBeVisible();
+    await expect(page.locator('[data-geometry-status]')).toHaveAttribute('data-geometry-status','review_required');
+    await expect(page.locator('canvas')).toHaveAttribute('data-camera',/perspective/);
+  }
+  await projection.fill('5.0'); await projection.press('Enter');
+  await expect(projection).toHaveValue('3.2');
+  await range.focus(); await range.press('End'); await range.press('ArrowRight');
+  await expect(range).toHaveValue('3200');
+  await page.getByRole('radio',{name:'Acrylic',exact:true}).check();
+  await expect(range).toHaveAttribute('max','6000');
+  await expect(projection).toHaveValue('3.2');
+  await page.getByRole('radio',{name:'Solid',exact:true}).check();
+  await page.reload();
+  await page.getByRole('button',{name:'Design your pergola',exact:false}).click();
+  await expect(projection).toHaveValue('3.2');
+  await expect(range).toHaveAttribute('max','3200');
+});

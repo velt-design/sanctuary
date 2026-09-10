@@ -1,7 +1,7 @@
 'use client';
 
 import RoofFinishChoices from "./RoofFinishChoices";
-import { roofFinishDescription } from "./roofFinish";
+import { roofFinishDescription, previewProjectionMax } from "./roofFinish";
 
 import { useState, type CSSProperties } from 'react';
 import { CUSTOMER_DIMENSION_BOUNDS } from '@sp/configurator/core';
@@ -64,24 +64,34 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
   onDimensionActivity: (axis: PreviewDimensionAxis | null) => void;
 }) {
   const [connectionNotice, setConnectionNotice] = useState('');
+  const [projectionNotice, setProjectionNotice] = useState('');
+  const projectionMax = previewProjectionMax(roof);
+  function updateRoof(next: PreviewRoofChoices) {
+    const max = previewProjectionMax(next);
+    setProjectionNotice(input.projectionMm > max ? `Projection adjusted to ${metres(max)} for this roof.` : '');
+    onRoofChange(next);
+  }
   const soffitUnavailable = input.projectionMm > PREVIEW_SOFFIT_MAX_PROJECTION_MM;
   function update(next: SimpleCoverInput) {
+    setProjectionNotice('');
     const valid = constrainPreviewConnection(next, roof.family);
     setConnectionNotice(valid.connection !== next.connection ? `Switched to ${valid.connection}. ` : '');
     onChange(valid);
   }
   return <div className={styles.controls}>
-    <RoofTypeChoice value={roof} onChange={onRoofChange} />
+    <RoofTypeChoice value={roof} onChange={updateRoof} />
     <div className={styles.sectionLabel}><span>01</span><h2>Make room for living.</h2></div>
     <p className={styles.muted}>Width runs along your home. Projection extends out.</p>
     <div className={styles.dimensions}>
     <Dimension axis="width" onActivity={onDimensionActivity} label="Width" value={input.widthMm} min={Math.max(SIMPLE_COVER_WIDTH_MIN_MM, CUSTOMER_DIMENSION_BOUNDS.lengthMm.minimum)} max={SIMPLE_COVER_WIDTH_MAX_MM}
       onChange={(widthMm) => update({ ...input, widthMm })} />
-    <Dimension axis="projection" onActivity={onDimensionActivity} label="Projection" value={input.projectionMm} min={Math.max(SIMPLE_COVER_PROJECTION_MIN_MM, CUSTOMER_DIMENSION_BOUNDS.projectionMm.minimum)} max={SIMPLE_COVER_PROJECTION_MAX_MM}
+    <Dimension key={projectionMax} axis="projection" onActivity={onDimensionActivity} label="Projection" value={input.projectionMm} min={Math.max(SIMPLE_COVER_PROJECTION_MIN_MM, CUSTOMER_DIMENSION_BOUNDS.projectionMm.minimum)} max={projectionMax}
       onChange={(projectionMm) => update({ ...input, projectionMm })} />
     </div>
-    <GableChoices value={roof} onChange={onRoofChange} />
-    <RoofFinishChoices roof={roof} input={input} onChange={onRoofChange} />
+    {projectionMax < SIMPLE_COVER_PROJECTION_MAX_MM && <p className={styles.inputNotice}>Maximum projection for this roof: {metres(projectionMax)}.</p>}
+    {projectionNotice && <p className={styles.inputNotice} role="status">{projectionNotice}</p>}
+    <GableChoices value={roof} onChange={updateRoof} />
+    <RoofFinishChoices roof={roof} input={input} onChange={updateRoof} />
     {roof.family === 'box' && <div className={styles.gableChoices}><p className={styles.small}>A level frame with the roof tucked inside. The roof changes to a shallow gable when needed to maintain drainage.</p></div>}
     <div className={styles.sectionLabel}><span>02</span><h2>Connect to your home.</h2></div>
     {roof.family === 'gable' && roof.orientation === 'away' ? <p className={styles.small}>Fascia attachment · Dutch-gable roof</p>

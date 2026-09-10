@@ -3,18 +3,28 @@ import { boxGutterProfile, boxMember } from './representativeBoxMembers';
 import { representativeRoofProfile } from './representativeRoofProfiles';
 import type { RepresentativeRoofFinish } from './representativeRoofFinishTypes';
 
+function boxRoofEnvelope(finish: RepresentativeRoofFinish) {
+  const eaveOffset = 175;
+  const peakOffset = 300 - representativeRoofProfile(finish.profile, finish.trayWidth).height - 8;
+  return { eaveOffset, peakOffset, maxProjection: 300 + 2 * (peakOffset - eaveOffset) / Math.tan(3 * Math.PI / 180) };
+}
+
+/** Largest 100mm slider step within the envelope used by the builder. */
+export function representativeBoxRoofMaxProjection(finish: RepresentativeRoofFinish) {
+  return Math.floor(boxRoofEnvelope(finish).maxProjection / 100) * 100;
+}
+
 /** Fit a level ceiling and the representative roof layers inside the 300mm box.
  * Retains the preview's 3-degree layout rule; not a manufacturer suitability check. */
 export function prepareBoxRoofFinish(assembly: Assembly3D, finish: RepresentativeRoofFinish, projection: number) {
   const perimeter = assembly.members.find(m => m.role === 'ledger')!;
   const bottom = perimeter.centerline.start.z - 150;
-  const height = representativeRoofProfile(finish.profile, finish.trayWidth).height;
-  const eave = bottom + 175;
-  const peak = bottom + 300 - height - 8;
+  const envelope = boxRoofEnvelope(finish);
+  const eave = bottom + envelope.eaveOffset;
+  const peak = bottom + envelope.peakOffset;
   const run = projection - 200;
   const gable = Math.atan((peak - eave) / run) * 180 / Math.PI < 3;
-  const half = (projection - 300) / 2;
-  if (gable && Math.atan((peak - eave) / half) * 180 / Math.PI < 3)
+  if (projection > envelope.maxProjection)
     throw new Error('This solid box roof needs a deeper perimeter. Reduce the projection or choose acrylic.');
   const original = assembly.roofPlanes;
   const template = original[0];
