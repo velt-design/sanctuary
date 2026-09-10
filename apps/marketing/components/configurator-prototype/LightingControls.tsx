@@ -11,7 +11,8 @@ export default function LightingControls(){
  return <section ref={section} className={css.editor} aria-label="Lighting editor">
  <button onClick={w.close}>← Done with lighting</button><h2>Set the mood.</h2>
  <p>Warm-white lighting for your evenings outside.</p>
- <div className={css.row} role="group" aria-label="Lighting preview">{[false,true].map(n=><button key={String(n)} aria-pressed={w.night===n} onClick={()=>w.setNight(n)}>{n?'Night':'Day'}</button>)}</div>
+ {w.view==='3D'&&<div className={css.row} role="group" aria-label="Lighting preview">{[false,true].map(n=><button key={String(n)} aria-pressed={w.night===n} onClick={()=>w.setNight(n)}>{n?'Night':'Day'}</button>)}</div>}
+ {w.view==='3D'?<p>Rotate to see how the lighting affects your space. Return to Lighting plan to make changes.</p>:<>
  {(['rafter','cedar'] as const).map(kind=>{
   const pool=kind==='rafter'?w.sites.rafters:w.sites.cedar,countKey=kind==='rafter'?'rafterCount':'cedarCount',layoutKey=kind==='rafter'?'rafterLayout':'cedarLayout',count=w.value[countKey];
   if(!pool.length)return null;
@@ -22,10 +23,12 @@ export default function LightingControls(){
   <button aria-label={'Add '+kind+' light'} disabled={count>=Math.min(24,pool.length)} onClick={()=>w.change({...w.value,[countKey]:count+1})}>+</button></div>
   {count>0&&<fieldset className={styles.choices}><legend>{kind==='rafter'?'Spot':'Downlight'} layout</legend>{layouts.map(l=><label key={l} data-selected={w.value[layoutKey]===l}><input type="radio" name={kind+'-light-layout'} checked={w.value[layoutKey]===l} onChange={()=>w.change({...w.value,[layoutKey]:l})}/>{l==='even'?'Even coverage':l==='perimeter'?'Perimeter':'Central'}</label>)}</fieldset>}</div>;
  })}
- <h3>LED strips · 16 × 16 mm channel</h3><p>Tap a highlighted rafter or beam to switch its full-length strip on or off. Rotate below the roof to see the fittings.</p>
+ <h3>LED strips · 16 × 16 mm channel</h3><p>Tap a rafter or beam in the plan to switch its full-length strip on or off. Gold lines show your selected strips.</p>
  <div className={css.presets}>{['Outer perimeter','Alternate rafters','All rafters','Clear strips'].map((label,i)=><button key={label} onClick={()=>w.change({...w.value,strips:i===0?w.sites.strips.filter(s=>s.perimeter).map(s=>s.id):i===1?w.sites.strips.filter(s=>s.rafter).filter((_,i)=>i%2===0).map(s=>s.id):i===2?w.sites.strips.filter(s=>s.rafter).map(s=>s.id):[]})}>{label}</button>)}</div>
  <p>{w.value.strips.length} members lit · Perimeter excludes the house connection.</p>
  <details><summary>Choose members from a list</summary><div className={css.members}>{w.sites.strips.map(s=><label key={s.id}><input type="checkbox" checked={w.value.strips.includes(s.id)} onChange={()=>w.toggle(s.id)}/>{s.label}</label>)}</div></details>
+ </>}
+ <button onClick={()=>w.setView(w.view==='Plan'?'3D':'Plan')}>{w.view==='Plan'?'Preview lighting in 3D':'Edit lighting in plan'}</button>
  <p className={styles.small}>Only exposed mounting surfaces are selectable. Strip-lit rafters use strips instead of spots. Preview lighting is illustrative; final fitting positions are confirmed with your design.</p>
  </section>;
 }

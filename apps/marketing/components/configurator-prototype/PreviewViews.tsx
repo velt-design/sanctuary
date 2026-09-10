@@ -19,7 +19,8 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
   const blinds=usePreviewBlinds();
   const lighting=useLighting();
   const [selectedView, setView] = useState<'3D' | 'Plan'>('3D');
-  const view=lighting?.editing?'3D':selectedView;
+  const view=lighting?.editing?lighting.view:selectedView;
+  const changeView=(v:'3D'|'Plan')=>lighting?.editing?lighting.setView(v):setView(v);
   const [reset, setReset] = useState(0);
   const [fit, setFit] = useState(0);
   const [surroundings, setSurroundings] = useState(true);
@@ -30,8 +31,8 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
   const context = useMemo(() => geometry ? solveSimpleCoverSurroundings(input, geometry.assembly, roof) : null, [geometry, input, roof]);
   return <>
     <div className={styles.viewToolbar}>
-      <div className={styles.viewTabs} role="group" aria-label="Choose view">{(['3D', 'Plan'] as const).map((name) =>
-        <button disabled={lighting?.editing&&name==='Plan'} key={name} aria-pressed={view === name} onClick={() => setView(name)}>{name}</button>)}</div>
+      <div className={styles.viewTabs} role="group" aria-label="Choose view">{(lighting?.editing ? ['Plan', '3D'] as const : ['3D', 'Plan'] as const).map((name) =>
+        <button key={name} aria-pressed={view === name} onClick={() => changeView(name)}>{lighting?.editing ? name==='Plan'?'Lighting plan':'Preview in 3D' : name}</button>)}</div>
       <div className={styles.viewActions}>
       {blinds && !lighting?.editing && <button aria-label="Edit sides" aria-pressed={blinds.editing} onClick={()=>blinds.setEditing(!blinds.editing)}>Sides</button>}
       {view === '3D' && renderable && <>
@@ -51,17 +52,17 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
       data-post-count={renderable ? geometry.plan.members.posts.length : undefined}>
       {renderable ? <>
         <div className={styles.sceneLayer} aria-hidden={view !== '3D'} style={{ visibility: view === '3D' ? 'visible' : 'hidden' }}>
-          <PreviewScene covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D'} activeDimension={activeDimension} plan={geometry.plan} reset={reset} fit={fit} onFallback={() => setView('Plan')} />
+          <PreviewScene covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D'} activeDimension={activeDimension} plan={geometry.plan} reset={reset} fit={fit} onFallback={() => changeView('Plan')} />
         </div>
         {view === 'Plan' && <PreviewPlan covering={covering} plan={geometry.plan} flashings={geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
       </>
         : <div className={styles.loading} role="status">{artifact.messages[0]?.message || 'This design needs a closer look. Adjust your dimensions to continue.'}</div>}
     </div>
     <div className={styles.viewerFooter}><p className={styles.viewNote}>{view === '3D' ? <><span className={styles.mouseHint}>Drag to rotate · Scroll to zoom</span><span className={styles.touchHint}>Drag ↔ · Pinch to zoom</span></> : renderable
-      ? <>{geometry.plan.members.rafters.length} rafters · {geometry.plan.members.posts.length} posts<span className={styles.desktopNote}> · Sized to your selections</span></>
+      ? lighting?.editing ? <>Tap a beam or rafter to toggle its LED strip · Gold means selected</> : <>{geometry.plan.members.rafters.length} rafters · {geometry.plan.members.posts.length} posts<span className={styles.desktopNote}> · Sized to your selections</span></>
       : 'Adjust your selections to preview the frame.'}
       {renderable && roof.family === 'box' && <span> · Internal {geometry.assembly.roofPlanes.length === 2 ? 'gable' : 'pitched'} roof</span>}</p>
-      {renderable && <label className={styles.contextToggle}><input type="checkbox" checked={surroundings} onChange={(event) => setSurroundings(event.target.checked)} />Show surroundings</label>}
+      {renderable && !(lighting?.editing&&view==='Plan') && <label className={styles.contextToggle}><input type="checkbox" checked={surroundings} onChange={(event) => setSurroundings(event.target.checked)} />Show surroundings</label>}
     </div>
   </>;
 }

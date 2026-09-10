@@ -1,4 +1,5 @@
 import PlanLighting from './PlanLighting';
+import {useLighting} from './LightingProvider';
 import type { RoofFinishGeometry } from "@sp/geometry";
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { GeometryPlanViewModel, RepresentativeSurroundings, RoofFlashing3D } from '@sp/geometry';
@@ -9,6 +10,8 @@ import BlindPlan from './BlindPlan';
 import type { PreviewDimensionAxis } from './usePreviewDimension';
 
 export default function PreviewPlan({ covering, plan, flashings = [], context, activeDimension }: { covering?: RoofFinishGeometry; plan: GeometryPlanViewModel; flashings?: RoofFlashing3D[]; context: RepresentativeSurroundings | null; activeDimension: PreviewDimensionAxis | null }) {
+  const lighting=useLighting();
+  const lightingPlan=!!lighting?.editing;
   const svg = useRef<SVGSVGElement>(null);
   const [available, setAvailable] = useState({ width: 600, height: 400 });
   useLayoutEffect(() => {
@@ -42,9 +45,9 @@ export default function PreviewPlan({ covering, plan, flashings = [], context, a
   const polygons = (points: { x: number; y: number }[]) => points.map((point) => `${point.x},${point.y}`).join(' ');
   const members = [...plan.members.rafters, ...plan.members.beams, ...plan.members.ledgers, ...plan.members.gutters, ...plan.members.joiners, ...plan.members.ridge];
   const projectionLine = maxX + (compact ? 23 : 30) / scale;
-  return <svg ref={svg} className={styles.plan} role="img" aria-label={`Pergola plan, ${metres(lengthMm)} wide by ${metres(projectionMm)} projection`}
+  return <svg ref={svg} className={styles.plan} role={lightingPlan?"group":"img"} aria-label={`Pergola plan, ${metres(lengthMm)} wide by ${metres(projectionMm)} projection`}
     viewBox={`${left} ${top} ${right - left} ${bottom - top}`}>
-    {context && <g data-context="plan-surroundings">
+    {context && !lightingPlan && <g data-context="plan-surroundings">
       <rect x={context.patio.min.x} y={context.patio.min.y} width={context.patio.max.x - context.patio.min.x}
         height={context.patio.max.y - context.patio.min.y} fill="#eeece5" stroke="#c4c6bb" strokeWidth={.7} vectorEffect="non-scaling-stroke" />
       <rect x={context.wall.min.x} y={top} width={context.wall.max.x - context.wall.min.x}
@@ -64,9 +67,9 @@ export default function PreviewPlan({ covering, plan, flashings = [], context, a
     {members.map((member) => <line key={member.id} data-member-id={member.id}
       x1={member.centerline.start.x} y1={member.centerline.start.y} x2={member.centerline.end.x} y2={member.centerline.end.y}
       stroke={plan.members.rafters.includes(member) ? '#858e7f' : '#4c5546'} strokeWidth={member.profile.widthMm} />)}
-    {covering?.regions.map(region => <polygon key={region.id} data-roof-region={region.material} points={polygons(region.boundary)} fill={region.material === "solid" ? "#535d58" : "#c4dfdc"} fillOpacity={region.material === "solid" ? 1 : .6} stroke="#343c35" strokeWidth={1} vectorEffect="non-scaling-stroke" />)}
-    {covering?.battenBoundaries?.map((boundary,i)=><polygon key={'batten-'+i} data-roof-batten points={polygons(boundary)} fill="#95633f" fillOpacity={.8}/>)}
-    {flashings.filter(flashing => flashing.metadata?.representativeGableRidge).map(flashing => <g key={flashing.id} data-ridge-flashing={flashing.metadata?.wingLengthMm}>
+    {!lightingPlan && covering?.regions.map(region => <polygon key={region.id} data-roof-region={region.material} points={polygons(region.boundary)} fill={region.material === "solid" ? "#535d58" : "#c4dfdc"} fillOpacity={region.material === "solid" ? 1 : .6} stroke="#343c35" strokeWidth={1} vectorEffect="non-scaling-stroke" />)}
+    {!lightingPlan && covering?.battenBoundaries?.map((boundary,i)=><polygon key={'batten-'+i} data-roof-batten points={polygons(boundary)} fill="#95633f" fillOpacity={.8}/>)}
+    {!lightingPlan && flashings.filter(flashing => flashing.metadata?.representativeGableRidge).map(flashing => <g key={flashing.id} data-ridge-flashing={flashing.metadata?.wingLengthMm}>
       {flashing.wings.map(wing => <polygon key={wing.id} points={polygons(wing.boundary)} fill="#586150" stroke="#343d2e" strokeWidth={.6} vectorEffect="non-scaling-stroke" />)}
     </g>)}
     {plan.members.posts.map((member) => {
@@ -76,8 +79,8 @@ export default function PreviewPlan({ covering, plan, flashings = [], context, a
         x={member.centerline.start.x - width / 2} y={member.centerline.start.y - height / 2}
         width={width} height={height} fill="#252b25" />;
     })}
-    <BlindPlan scale={scale} />
-    <PlanLighting/>
+    {!lightingPlan && <BlindPlan scale={scale} />}
+    <PlanLighting scale={scale}/>
     <g fill="none" stroke="#aeb6a5" strokeWidth={.6} vectorEffect="non-scaling-stroke">
       <path vectorEffect="non-scaling-stroke" d={`M ${minX} ${maxY + 4 / scale} V ${widthLine + font * .5} M ${maxX} ${maxY + 4 / scale} V ${widthLine + font * .5}`} />
       <path vectorEffect="non-scaling-stroke" d={`M ${maxX + 4 / scale} ${minY} H ${projectionLine + font * .5} M ${maxX + 4 / scale} ${maxY} H ${projectionLine + font * .5}`} />

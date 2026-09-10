@@ -4,12 +4,15 @@
 
 ### Marketing preview: lighting editor (2026-09-10)
 
-Lighting opens a focused right-panel editor and automatically enters night mode;
+Lighting opens a focused right-panel editor and a light-background lighting plan.
+The main plan hides roof finishes and surroundings, labels the house edge and offers
+24px member hit areas. Only the plan/editor changes selections. Preview in 3D hides
+editing controls and selection overlays and automatically uses night on first entry;
 Day/Night is temporary presentation state, and Done restores day without resetting
 the camera. Warm-white spots are 40mm in rafters and 110mm in cedar; up to 24 each,
 with distinct even/perimeter/central layouts fitted to exposed mounting surfaces.
 Selected members receive full-length 16x16 channels and diffusers on their undersides.
-Presets omit the house ledger from the outer perimeter; member taps and a checklist
+Presets omit the house ledger from the outer perimeter; plan member taps and a checklist
 allow individual changes. Roof battens exclude obstructed rafter channels and spots.
 The geometry package owns mounting sites and layouts. Drafts and v3 links retain
 lighting; invalidated sites are removed with a notice and enquiry summaries include

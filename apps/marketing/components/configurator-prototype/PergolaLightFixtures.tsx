@@ -1,4 +1,3 @@
-import {Line} from '@react-three/drei';
 import {useMemo} from 'react';
 import {Matrix4,Object3D,Quaternion,Vector3} from 'three';
 import {layoutLights,type StripSite,type LightSite} from '@sp/geometry';
@@ -23,7 +22,6 @@ export default function PergolaLightFixtures(){
  const sources=[...spots.map(s=>({position:vec(s.point).addScaledVector(vec(s.normal),-40),normal:vec(s.normal)})),...strips.flatMap(s=>[.25,.75].map(t=>({position:vec(s.start).lerp(vec(s.end),t).addScaledVector(vec(s.normal),-40),normal:vec(s.normal)})))];
  const lightCount=Math.min(12,sources.length);
  return <group name="pergola-lighting">
- {w.editing&&w.sites.strips.map(s=><Line key={'select-'+s.id} points={[vec(s.start),vec(s.end)]} color={w.value.strips.includes(s.id)?'#e2bd78':'#809987'} lineWidth={w.value.strips.includes(s.id)?2.5:1.2} transparent opacity={.75} depthTest={false} onClick={e=>{if(e.delta<6){e.stopPropagation();w.toggle(s.id);}}}/>)}
  <>{spots.map(s=><Spot key={s.id} site={s} night={w.night}/>)}{strips.map(s=><Strip key={s.id} site={s} night={w.night}/>)}</>
  {w.night&&Array.from({length:lightCount},(_,i)=>{const p=sources[Math.floor((i+.5)*sources.length/lightCount)];return <WarmLight key={i} position={p.position} normal={p.normal} intensity={2400000*Math.min(2,sources.length/lightCount)}/>;})}
  </group>;
