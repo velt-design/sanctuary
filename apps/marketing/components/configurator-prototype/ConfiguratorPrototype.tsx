@@ -1,5 +1,7 @@
 'use client';
 
+import LightingProvider,{useLighting} from './LightingProvider';
+import LightingControls from './LightingControls';
 import { hasSimpleRoofPrice } from './roofFinish';
 import dynamic from 'next/dynamic';
 import { type ReactNode } from 'react';
@@ -27,10 +29,15 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded, rend
   expanded: boolean; onToggleExpanded: () => void; renderEnquiry?: (selection: PreviewSelection) => ReactNode;
 }) {
   const { input, roof, setInput, setRoof, ready, storageAvailable, linkNotice, selectionNotice } = usePreviewDraft();
+  return <LightingProvider input={input} roof={roof} onChange={setRoof}><ConfiguratorWorkspace draft={{version:1,input,roof,setInput,setRoof,ready,storageAvailable,linkNotice,selectionNotice}} expanded={expanded} onToggleExpanded={onToggleExpanded} renderEnquiry={renderEnquiry}/></LightingProvider>;
+}
+function ConfiguratorWorkspace({draft,expanded,onToggleExpanded,renderEnquiry}:{draft:ReturnType<typeof usePreviewDraft>;expanded:boolean;onToggleExpanded:()=>void;renderEnquiry?:(selection:PreviewSelection)=>ReactNode}){
+  const {input,roof,setInput,setRoof,ready,storageAvailable,linkNotice,selectionNotice}=draft;
+  const lighting=useLighting()!;
   const { result, retry } = usePreviewPrice(input, ready && hasSimpleRoofPrice(roof));
   const { activeDimension, showDimension } = usePreviewDimension();
   if (!ready) return <div className={styles.loading} role="status">Preparing your design…</div>;
-  return <PreviewBlindProvider input={input} roof={roof} onChange={setRoof}><div className={styles.page} data-layout={renderEnquiry ? 'project' : 'popup'}>
+  return <PreviewBlindProvider input={input} roof={roof} onChange={setRoof}><div className={styles.page} data-lighting-edit={lighting.editing} data-night={lighting.night} data-layout={renderEnquiry ? 'project' : 'popup'}>
     <div className={styles.workspace}>
       <div className={styles.visualSlot}>
       <section className={styles.visual} aria-label="Pergola views" data-expanded={expanded}>
@@ -42,7 +49,9 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded, rend
       <aside className={styles.sidebar} aria-label="Your pergola choices">
         {renderEnquiry && <div id="project-design" />}
         {linkNotice && <p className={styles.storageNotice} role="status">{linkNotice === 'loaded' ? 'Shared design opened. Make it your own.' : 'This design link could not be opened. You can continue designing below.'}</p>}
-        <PreviewControls input={input} roof={roof} onRoofChange={setRoof} onChange={setInput} onDimensionActivity={showDimension} />
+        {lighting.editing?<LightingControls/>:<><PreviewControls input={input} roof={roof} onRoofChange={setRoof} onChange={setInput} onDimensionActivity={showDimension} />
+        <button className={styles.lightingEntry} onClick={lighting.open}>Lighting · Set the mood ↗</button></>}
+        <div hidden={lighting.editing}>
         {selectionNotice && <p className={styles.inputNotice} role="status">{selectionNotice}</p>}
         <section className={styles.price} aria-label="Estimated price" aria-live="polite" aria-atomic="true">
           <p className={styles.eyebrow}>{roof.family === 'gable' ? 'YOUR GABLE PERGOLA' : roof.family === 'box' ? 'YOUR BOX PERIMETER PERGOLA' : 'YOUR SIMPLE PERGOLA'}</p>
@@ -55,8 +64,9 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded, rend
         {renderEnquiry && <div className={journey.projectShare}><ShareDesign draft={{ version: 1, input, roof }} /></div>}
         {renderEnquiry?.({ input, roof, result })}
         <footer className={styles.footnote}><span>CONCEPT PREVIEW</span><p>Frame dimensions follow your selections. Framing and supports are representative. Sanctuary will confirm roof detailing, structural suitability and site connections.</p></footer>
+        </div>
       </aside>
-      {!renderEnquiry && <PreviewNextAction selection={{ input, roof, result }} />}
+      {!renderEnquiry && !lighting.editing && <PreviewNextAction selection={{ input, roof, result }} />}
       </div>
     </div>
   </div></PreviewBlindProvider>;

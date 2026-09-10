@@ -1,6 +1,7 @@
 import { Environment, Lightformer } from '@react-three/drei';
 
-export default function PreviewLighting() {
+export default function PreviewLighting({night=false}:{night?:boolean}) {
+  if(night)return <><ambientLight intensity={.1}/><directionalLight position={[3000,-2000,8000]} intensity={.12} color="#adc2dc"/></>;
   return <>
     <ambientLight intensity={.65} />
     <directionalLight position={[3500, 4500, 8000]} intensity={2.2} color="#fff8ed" />

@@ -8,6 +8,9 @@ import { validPreviewBlinds } from './blindSelection';
 import { previewBlindOpenings } from './blindSelection';
 import { parseSidePanels } from './sidePanelCatalog';
 import {parseRoofBattens} from './roofBattenSelection';
+import {availableRafterSpots,parseLighting} from './lightingSelection';
+import {pergolaLightSites} from '@sp/geometry';
+import {solvePergolaPreview} from './solvePreview';
 import { sidePanelSupports } from './sidePanelLayout';
 
 // Isolated representative preview; deliberately separate from the future customer intent document.
@@ -37,6 +40,11 @@ export function parsePreviewDraft(value: unknown): PreviewDraft | null {
   const validInput=constrainPreviewConnection(sizedInput, roof.family);
   if(blinds) selectedRoof.blinds=validPreviewBlinds(validInput,selectedRoof,blinds);
   if(panels){const openings=previewBlindOpenings(validInput,selectedRoof);selectedRoof.sidePanels=panels.filter(p=>{const o=openings.find(o=>o.id===p.opening);return o&&sidePanelSupports(o,p).length>1;});}
+  if(roof.lighting!==undefined){
+    const lighting=parseLighting(roof.lighting);if(!lighting)return null;
+    const g=solvePergolaPreview(validInput,selectedRoof).geometry;
+    if(g){const sites=pergolaLightSites(g.assembly,g.covering);selectedRoof.lighting={...lighting,strips:lighting.strips.filter(id=>sites.strips.some(s=>s.id===id)),rafterCount:Math.min(lighting.rafterCount,availableRafterSpots(sites.rafters,lighting.strips).length),cedarCount:Math.min(lighting.cedarCount,sites.cedar.length)};}
+  }
   return {
     version: 1,
     input: validInput,

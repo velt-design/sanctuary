@@ -28,3 +28,5 @@
   .panel[open] { grid-template-rows: 44px minmax(0, 1fr); }
   .panelHeader { padding-inline: 12px; }
 }
+
+.panel:has([data-night="true"]) { background:#202523; color:#f3eee4; border-color:#566157; }.panel:has([data-night="true"]) .panelHeader { border-color:#515b54; }.panel:has([data-night="true"]) .panelHeader button { color:#d3d6cf; }

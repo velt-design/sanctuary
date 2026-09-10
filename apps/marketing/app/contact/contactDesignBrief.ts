@@ -2,6 +2,7 @@ import { getRoofFinish, hasSimpleRoofPrice, roofFinishDescription } from "../../
 import type { PreviewSelection } from '@/components/configurator-prototype/ConfiguratorPrototype';
 import type { SimpleCoverHandoff } from '@/lib/simpleCoverHandoff';
 import { describeBlinds } from '../../components/configurator-prototype/blindCatalog';
+import {describeLighting,hasLighting} from '../../components/configurator-prototype/lightingSelection';
 import {describeRoofBattens} from '../../components/configurator-prototype/roofBattenSelection';
 import { describeSidePanels } from '../../components/configurator-prototype/sidePanelCatalog';
 
@@ -28,6 +29,7 @@ export function buildContactDesignBrief({ input, roof, result }: PreviewSelectio
     ...(finish.material === "acrylic" ? [] : [roofFinishDescription(roof)]),
     connection,
     ...(roof.blinds?.length?[describeBlinds(roof.blinds)]:[]),
+    ...(hasLighting(roof.lighting)?[describeLighting(roof.lighting!)]:[]),
     ...(roof.roofBattens?[describeRoofBattens(roof.roofBattens)]:[]),
     ...(roof.sidePanels?.length?[describeSidePanels(roof.sidePanels)]:[]),
     input.level === 'ground' ? 'Ground level' : 'Elevated',

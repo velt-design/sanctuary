@@ -1,6 +1,6 @@
 'use client';
 
-import { Component, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Component, useEffect, useMemo, useState, useRef, type ReactNode } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import PreviewCamera from './PreviewCamera';
 import PreviewBlinds from './PreviewBlinds';
@@ -8,6 +8,8 @@ import { usePreviewBlinds } from './PreviewBlindProvider';
 import PreviewRoof from './PreviewRoof';
 import PreviewRoofFinish from './PreviewRoofFinish';
 import type { RoofFinishGeometry } from '@sp/geometry';
+import {useLighting} from './LightingProvider';
+import PergolaLightFixtures from './PergolaLightFixtures';
 import PreviewLighting from './PreviewLighting';
 import PreviewDimensionGuide from './PreviewDimensionGuide';
 import PreviewSurroundings from './PreviewSurroundings';
@@ -40,6 +42,8 @@ export default function PreviewScene({ covering, scene, plan, context, activeDim
   scene: ViewerSceneModel; plan: GeometryPlanViewModel; activeDimension: PreviewDimensionAxis | null;
   interactive: boolean; reset: number; fit: number; onFallback: () => void;
 }) {
+  const lighting=useLighting();
+  const gesture=useRef({x:0,y:0,distance:0});
   const blindWorkspace=usePreviewBlinds();
   const [unavailable, setUnavailable] = useState(false);
   const fallback = <div className={styles.loading}><p>3D is unavailable on this device.</p><button onClick={onFallback}>View your plan</button></div>;
@@ -58,19 +62,20 @@ export default function PreviewScene({ covering, scene, plan, context, activeDim
   const roof = useMemo(() => scene.layers.flatMap((layer) => layer.objects).flatMap(object => object.type === 'roof_plane' ? object.boundary : []), [scene]);
   if (unavailable) return fallback;
   return <SceneBoundary fallback={fallback}>
-    <Canvas frameloop="demand" dpr={[1, 1.75]} style={{ touchAction: 'pan-y' }}
+    <Canvas onPointerDownCapture={e=>{gesture.current={x:e.clientX,y:e.clientY,distance:0};}} onPointerUpCapture={e=>{gesture.current.distance=Math.hypot(e.clientX-gesture.current.x,e.clientY-gesture.current.y);}} frameloop="demand" dpr={[1, 1.75]} style={{ touchAction: 'pan-y' }}
       camera={{ position: [12000, -18000, 12000], up: [0, 0, 1], fov: 24, near: 10, far: 200000 }}
       fallback={fallback}>
       <ContextWatch onFallback={() => { setUnavailable(true); onFallback(); }} />
-      <PreviewLighting />
-      {blindWorkspace && <PreviewBlinds workspace={blindWorkspace} />}
+      <PreviewLighting night={lighting?.night}/>
+      {lighting&&<PergolaLightFixtures/>}
+      {blindWorkspace && <PreviewBlinds workspace={lighting?.editing?{...blindWorkspace,editing:false,select:noop}:blindWorkspace} />}
       {covering && <PreviewRoofFinish covering={covering} />}
       {context && <PreviewSurroundings context={context} bounds={bounds} productPoints={fitPoints} />}
       <PreviewCamera bounds={cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} />
       <group>{objects.map((object) => object.type === 'roof_plane' || object.type === 'roof_cladding_panel'
         ? <PreviewRoof key={object.id} object={object} />
-        : <SceneObjectNode key={object.id} object={object} color="#242824" memberAppearance={{ roughness: .38, metalness: .2, envMapIntensity: .8 }}
-          selected={false} hovered={false} onSelect={noop} onHoverEnter={noop} onHoverLeave={noop} onFocus={noop} clippingPlanes={[]} />)}</group>
+        : <SceneObjectNode key={object.id} object={object} color={lighting?.editing&&lighting.sites.strips.some(s=>s.id===object.id)?lighting.value.strips.includes(object.id)?"#c9a66c":"#637568":"#242824"} memberAppearance={{ roughness: .38, metalness: .2, envMapIntensity: .8 }}
+          selected={!!lighting?.editing&&!!lighting.value.strips.includes(object.id)} hovered={!!lighting?.editing&&lighting.sites.strips.some(s=>s.id===object.id)} onSelect={id=>{if(lighting?.editing&&gesture.current.distance<6&&lighting.sites.strips.some(s=>s.id===id))lighting.toggle(id);}} onHoverEnter={noop} onHoverLeave={noop} onFocus={noop} clippingPlanes={[]} />)}</group>
       {interactive && activeDimension && roof.length > 0 && <PreviewDimensionGuide axis={activeDimension} plan={plan} roof={roof} />}
     </Canvas>
   </SceneBoundary>;

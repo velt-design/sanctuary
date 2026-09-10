@@ -121,3 +121,9 @@
 .gableChoices { margin: 18px 0 28px; }
 .infillChoice { display: flex; align-items: center; gap: 10px; margin-top: 18px; font-size: 14px; }
 .infillChoice input { width: 17px; height: 17px; accent-color: #505a49; }
+
+.lightingEntry { margin:12px 26px 24px; padding:16px; width:calc(100% - 52px); border:1px solid var(--color-rule); background:transparent; color:inherit; cursor:pointer; text-align:left; }
+.page[data-night="true"] { --color-surface-warm:#202523; --color-surface-elevated:#282d2b; --color-text-primary:#f3eee4; --color-text-secondary:#d3d6cf; --color-text-subtle:#aeb6ad; --color-rule:#515b54; --color-rule-strong:#697469; --color-accent-olive:#a8b6a1; background:#202523; color:#f3eee4; }
+.page[data-night="true"] .viewport { background:radial-gradient(ellipse at 50% 80%,#30362f,#191e1c); }
+.page[data-night="true"] .choices label[data-selected="true"] { background:#444e43; }
+.page[data-lighting-edit="true"] .sidebar { scroll-behavior:auto; }

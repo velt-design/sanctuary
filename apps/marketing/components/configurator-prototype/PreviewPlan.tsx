@@ -1,3 +1,4 @@
+import PlanLighting from './PlanLighting';
 import type { RoofFinishGeometry } from "@sp/geometry";
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { GeometryPlanViewModel, RepresentativeSurroundings, RoofFlashing3D } from '@sp/geometry';
@@ -76,6 +77,7 @@ export default function PreviewPlan({ covering, plan, flashings = [], context, a
         width={width} height={height} fill="#252b25" />;
     })}
     <BlindPlan scale={scale} />
+    <PlanLighting/>
     <g fill="none" stroke="#aeb6a5" strokeWidth={.6} vectorEffect="non-scaling-stroke">
       <path vectorEffect="non-scaling-stroke" d={`M ${minX} ${maxY + 4 / scale} V ${widthLine + font * .5} M ${maxX} ${maxY + 4 / scale} V ${widthLine + font * .5}`} />
       <path vectorEffect="non-scaling-stroke" d={`M ${maxX + 4 / scale} ${minY} H ${projectionLine + font * .5} M ${maxX + 4 / scale} ${maxY} H ${projectionLine + font * .5}`} />

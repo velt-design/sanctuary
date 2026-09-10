@@ -2,6 +2,23 @@
 ## Master Architecture and Implementation Specification
 
 
+### Marketing preview: lighting editor (2026-09-10)
+
+Lighting opens a focused right-panel editor and automatically enters night mode;
+Day/Night is temporary presentation state, and Done restores day without resetting
+the camera. Warm-white spots are 40mm in rafters and 110mm in cedar; up to 24 each,
+with distinct even/perimeter/central layouts fitted to exposed mounting surfaces.
+Selected members receive full-length 16x16 channels and diffusers on their undersides.
+Presets omit the house ledger from the outer perimeter; member taps and a checklist
+allow individual changes. Roof battens exclude obstructed rafter channels and spots.
+The geometry package owns mounting sites and layouts. Drafts and v3 links retain
+lighting; invalidated sites are removed with a notice and enquiry summaries include
+lighting. Pricing uses confirmation, not the simple roof estimate. Night illumination
+uses a restrained ambient fill and at most 12 sampled warm light sources, with no
+shadow maps or remote assets. It is a visual reference, not a lighting calculation.
+Gate 0: legacy audit N/A; no legacy build-on/removal, Phase 2 or consolidation. Consumers
+checked: geometry exports, solve, draft/share, scene and controls, pricing and enquiry.
+
 ### Marketing preview: under-rafter timber battens (2026-09-10)
 
 Optional timber battens follow roof slopes perpendicular to rafters, in acrylic areas

@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import {useLighting} from './LightingProvider';
 import { useMemo, useState } from 'react';
 import type { SimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import { solvePergolaPreview, solveSimpleCoverSurroundings } from './solvePreview';
@@ -16,7 +17,9 @@ const PreviewScene = dynamic(() => import('./PreviewScene'), {
 
 export default function PreviewViews({ input, roof, activeDimension, expanded, onToggleExpanded }: { input: SimpleCoverInput; roof: PreviewRoofChoices; activeDimension: PreviewDimensionAxis | null; expanded: boolean; onToggleExpanded: () => void }) {
   const blinds=usePreviewBlinds();
-  const [view, setView] = useState<'3D' | 'Plan'>('3D');
+  const lighting=useLighting();
+  const [selectedView, setView] = useState<'3D' | 'Plan'>('3D');
+  const view=lighting?.editing?'3D':selectedView;
   const [reset, setReset] = useState(0);
   const [fit, setFit] = useState(0);
   const [surroundings, setSurroundings] = useState(true);
@@ -28,9 +31,9 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
   return <>
     <div className={styles.viewToolbar}>
       <div className={styles.viewTabs} role="group" aria-label="Choose view">{(['3D', 'Plan'] as const).map((name) =>
-        <button key={name} aria-pressed={view === name} onClick={() => setView(name)}>{name}</button>)}</div>
+        <button disabled={lighting?.editing&&name==='Plan'} key={name} aria-pressed={view === name} onClick={() => setView(name)}>{name}</button>)}</div>
       <div className={styles.viewActions}>
-      {blinds && <button aria-label="Edit sides" aria-pressed={blinds.editing} onClick={()=>blinds.setEditing(!blinds.editing)}>Sides</button>}
+      {blinds && !lighting?.editing && <button aria-label="Edit sides" aria-pressed={blinds.editing} onClick={()=>blinds.setEditing(!blinds.editing)}>Sides</button>}
       {view === '3D' && renderable && <>
         <button aria-label="Fit view" title="Fit the pergola at your current angle" onClick={() => setFit(fit + 1)}>Fit</button>
         <button aria-label="Reset view" title="Return to the starting view" onClick={() => { setReset(reset + 1); }}>Reset</button>
@@ -38,7 +41,7 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
         <button className={styles.expandView} aria-label={expanded ? 'Close expanded view' : 'Expand view'} aria-expanded={expanded} onClick={onToggleExpanded}>{expanded ? 'Done' : 'Expand'} <span aria-hidden="true">{expanded ? '×' : '↗'}</span></button>
       </div>
     </div>
-    <div className={styles.viewport} data-view={view} data-blind-count={blinds?.blinds.length??0} data-side-panel-count={blinds?.panels.length??0} data-geometry-status={artifact.status}
+    <div className={styles.viewport} data-view={view} data-light-strip-count={lighting?.value.strips.length??0} data-light-rafter-count={lighting?.value.rafterCount??0} data-light-cedar-count={lighting?.value.cedarCount??0} data-blind-count={blinds?.blinds.length??0} data-side-panel-count={blinds?.panels.length??0} data-geometry-status={artifact.status}
       data-roof-material={roof.finish?.material ?? "acrylic"} data-roof-profile={roof.finish?.profile} data-acrylic-bays={covering?.acrylicBays} data-family={roof.family} data-ridge-direction={roof.family === 'box' ? 'parallel' : roof.orientation} data-gable-infills={roof.family === 'gable' && roof.infills}
       data-box-roof-mode={renderable && roof.family === 'box' ? geometry!.assembly.roofPlanes[0]?.metadata?.roofMode : undefined}
       data-infill-support-count={renderable ? geometry.assembly.members.filter(m => m.metadata?.frameRole === 'infill_support').length : 0}
