@@ -24,8 +24,10 @@ Corrugated uses 76.2 mm repeat / 17 mm depth; simplified trapezoidal uses 154 mm
 repeat / 21 mm depth / 18 mm rib top, omitting pan stiffeners; tray uses 39 mm
 seams with nominal 300/400/500 mm repeat choices and omitted concealed locks.
 The same region boundaries drive Plan and 3D. Solid regions replace acrylic
-panels/joiners, carry purlins, cedar and closed edges; transitions have doubled
+panels/joiners, carry cedar and closed edges; transitions have doubled
 framing and flashing. Original gable-end infills remain independently selectable.
+Concealed purlins are omitted from this marketing-only reference to avoid visible
+cross-lines through shallow steel pans. Construction and takeoff models are unaffected.
 
 The 300 mm box checks space for the build-up using the preview's existing 3-degree
 layout convention (not a manufacturer minimum-pitch approval). It switches to an

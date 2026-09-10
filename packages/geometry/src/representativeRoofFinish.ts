@@ -90,7 +90,8 @@ export function buildRepresentativeRoofFinish(source: Assembly3D, finish: Repres
       // Close the roof build-up at material boundaries and exposed roof edges.
       const lower = roofRectangleBoundary(ceilingFrame, r, box ? 0 : -187), upper = roofRectangleBoundary(frame, r, profileHeight + 2);
       for (let edge = 0; edge < 4; edge++) roofQuad(edges, [lower[edge], lower[(edge + 1) % 4], upper[(edge + 1) % 4], upper[edge]]);
-      for (let v = r.c + 25, i = 0; v < r.d; v += 860, i++) assembly.members.push(boxMember(`finish-purlin-${index}-${rIndex}-${i}`, 'beam', point(r.a, v, -25), point(r.b, v, -25), '50x50', n));
+      // Concealed purlins are omitted from this visual reference: their faces can
+      // bleed through the shallow steel pans and add no visible product detail.
     }
     if (box?.gable) {
       const offset = profileHeight + 3;

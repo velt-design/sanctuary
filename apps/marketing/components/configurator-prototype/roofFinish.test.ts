@@ -26,6 +26,7 @@ describe('solid and combination roof preview', () => {
       expect(covering!.meshes.every(m => m.positions.every(Number.isFinite))).toBe(true);
       expect(covering!.meshes.reduce((sum, m) => sum + m.indices.length / 3, 0)).toBeLessThan(12000);
       expect(assembly.quantityHooks).toEqual([]);
+      expect(assembly.members.some(member => member.id.startsWith('finish-purlin-'))).toBe(false);
       const glazing = covering!.regions.filter(r => r.material === 'acrylic');
       for (const region of glazing) {
         const xs = region.boundary.map(p => p.x);
