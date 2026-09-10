@@ -35,3 +35,23 @@ it('provides a 50mm sloping angle leg behind shortened horizontal timber ends',(
   const frame=buildRepresentativeSidePanel(o,p,sidePanelSupports(o,p))[0];
   expect(frame.positions.filter((_,i)=>i%3===2)).toContain(o.roofLine[0].z-50);
 });
+
+it('keeps the pitched house jamb, header and strut flush for acrylic and combination roofs',()=>{
+  const input={...INITIAL_INPUT,widthMm:4300,projectionMm:3200};
+  for(const material of ['acrylic','combination'] as const){
+    const roof={...INITIAL_ROOF,finish:{material,profile:'tray' as const,trayWidth:500 as const,layout:'central' as const,acrylicBays:4}};
+    const a=solvePergolaPreview(input,roof).geometry!.assembly;
+    expect(a.members.find(m=>m.role==='ledger')!.profile).toEqual(a.members.find(m=>m.role==='rafter')!.profile);
+    for(const side of ['left','right']){
+      const o=previewBlindOpenings(input,roof).find(o=>o.side===side)!;
+      const pts=buildRepresentativeBlind(o,{cover:'PELMET',lowered:100,infill:true})[0].positions;
+      const expected=o.start.x+(side==='left'?-1:1)*(o.headerOffset??0);
+      // House framing is behind the opening start; hardware is entirely within the opening.
+      const xs=[];for(let i=0;i<pts.length;i+=3)if(pts[i+1]<o.start.y-.01)xs.push(pts[i]);
+      expect(Math.min(...xs)).toBeCloseTo(expected-25);expect(Math.max(...xs)).toBeCloseTo(expected+25);
+      const slope=(o.roofLine[1].z-o.roofLine[0].z)/(o.width/2);
+      const topAtHouse=[];for(let i=0;i<pts.length;i+=3)if(pts[i+1]<o.start.y-.01)topAtHouse.push(pts[i+2]);
+      expect(Math.max(...topAtHouse)).toBeCloseTo(o.roofLine[0].z-50*slope);
+    }
+  }
+});

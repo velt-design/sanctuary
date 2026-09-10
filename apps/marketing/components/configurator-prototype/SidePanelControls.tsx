@@ -1,10 +1,10 @@
 'use client';
-import { ALUMINIUM_PROFILES,TIMBER_PROFILES,faceWidth,type SidePanel } from './sidePanelCatalog';
+import { ALUMINIUM_PROFILES,TIMBER_PROFILES,defaultSideGap,type SidePanel } from './sidePanelCatalog';
 import css from './blinds.module.css';
 import styles from './prototype.module.css';
 import SideGapControl from './SideGapControl';
 export default function SidePanelControls({panel,onChange}:{panel:SidePanel;onChange:(p:SidePanel)=>void}){
-  const change=(patch:Partial<SidePanel>)=>{const next={...panel,...patch};if(!next.customGap)next.gap=faceWidth(next.profile,next.edge);onChange(next);};
+  const change=(patch:Partial<SidePanel>)=>{const next={...panel,...patch};if(!next.customGap)next.gap=defaultSideGap(next.profile,next.edge);onChange(next);};
   const slats=panel.kind!=='acrylic'||panel.battens;
   return <div>
     {panel.kind==='acrylic'&&<>

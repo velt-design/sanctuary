@@ -4,6 +4,11 @@
 
 ### Marketing preview: Ziptrak sides (2026-09-10)
 
+Junction follow-up: the house jamb shares the header/strut offset, and the strut
+top follows the rafter slope. Solid/combination finishes rematch the ledger after
+replacement rafters are generated. Default on-edge clear gaps are 100mm for 65x16
+aluminium and 80mm for 65x39 timber; explicit custom gaps are preserved.
+
 Pitched corrections: representativePitchedLedger matches the ledger to the rafter
 section while preserving its top datum. Side-opening roof heights derive from actual
 rafter undersides where available. Blind headers align their outside face to the end

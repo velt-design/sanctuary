@@ -30,7 +30,9 @@ export function solvePergolaPreview(input: SimpleCoverInput, roof: PreviewRoofCh
   const finish = getRoofFinish(roof);
   if (finish.material === 'acrylic' || !('geometry' in source) || !source.geometry) return source;
   try {
-    return { status: 'review_required' as const, messages: [], geometry: buildRepresentativeRoofFinish(source.geometry.assembly, finish, { ...input, ...roof }) };
+    const geometry=buildRepresentativeRoofFinish(source.geometry.assembly, finish, { ...input, ...roof });
+    const matched=roof.family==='mono'?matchRepresentativePitchedLedger(geometry.assembly):null;
+    return { status: 'review_required' as const, messages: [], geometry: matched?{...geometry,...matched}:geometry };
   } catch (error) {
     return { status: 'invalid' as const, messages: [{ message: error instanceof Error ? error.message : 'This roof needs a closer look. Adjust your dimensions to continue.' }] };
   }

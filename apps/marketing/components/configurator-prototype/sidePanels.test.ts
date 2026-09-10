@@ -23,7 +23,7 @@ describe('fixed side panels',()=>{
   });
   it('preserves custom gaps and rejects invalid or overlapping sides',()=>{
     const p=defaultSidePanel('front-1of2','aluminium');
-    expect(parseSidePanels([{...p,profile:'65x16',edge:true}])![0].gap).toBe(16);
+    expect(parseSidePanels([{...p,profile:'65x16',edge:true}])![0].gap).toBe(100);
     expect(parseSidePanels([{...p,profile:'65x16',edge:true,customGap:true,gap:32}])![0].gap).toBe(32);
     expect(parseSidePanels([{...p,edge:true}])).toBeNull();expect(parseSidePanels([p,p])).toBeNull();
     expect(parseSidePanels([{...p,gap:0}])).toBeNull();
@@ -49,4 +49,12 @@ describe('fixed side panels',()=>{
     expect(parsePreviewDesign(serializePreviewDesign(draft))).toEqual(draft);
     const brief=buildContactDesignBrief({...draft,result:null});expect(brief.description).toContain('horizontal timber battens');expect(brief.estimate).toBeNull();
   });
+});
+
+it('uses wider on-edge defaults while preserving explicitly entered gaps',()=>{
+  for(const [kind,profile,gap] of [['timber','65x39',80],['aluminium','65x16',100]] as const){
+    const p={...defaultSidePanel('left-1of1',kind),profile,edge:true};
+    expect(parseSidePanels([p])![0].gap).toBe(gap);
+    expect(parseSidePanels([{...p,customGap:true,gap:42}])![0].gap).toBe(42);
+  }
 });

@@ -9,8 +9,8 @@ export function buildRepresentativeBlind(opening:BlindOpening, options:{cover:'N
   const meshes:BlindMesh[]=[];
   const mesh=(id:string,kind:BlindMesh['kind'])=>{const m={id:opening.id+'-'+id,kind,positions:[] as number[],indices:[] as number[]};meshes.push(m);return m;};
   const quad=(m:BlindMesh,p:Point3[])=>{const i=m.positions.length/3;p.forEach(v=>m.positions.push(v.x,v.y,v.z));m.indices.push(i,i+1,i+2,i,i+2,i+3);};
-  function box(m:BlindMesh,x1:number,x2:number,y1:number,y2:number,z1:number,z2:number) {
-    const p=[point(x1,y1,z1),point(x2,y1,z1),point(x2,y2,z1),point(x1,y2,z1),point(x1,y1,z2),point(x2,y1,z2),point(x2,y2,z2),point(x1,y2,z2)];
+  function box(m:BlindMesh,x1:number,x2:number,y1:number,y2:number,z1:number,z2:number,topSlope=0) {
+    const p=[point(x1,y1,z1),point(x2,y1,z1),point(x2,y2,z1),point(x1,y2,z1),point(x1,y1,z2+x1*topSlope),point(x2,y1,z2+x2*topSlope),point(x2,y2,z2+x2*topSlope),point(x1,y2,z2+x1*topSlope)];
     for(const face of [[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]]) quad(m,face.map(i=>p[i]));
   }
   const frame=mesh('hardware','frame');
@@ -34,7 +34,7 @@ export function buildRepresentativeBlind(opening:BlindOpening, options:{cover:'N
   if(opening.headerDepth) {
     const offset=opening.headerOffset??0;
     box(frame,opening.needsJamb?-50:0,width,offset-25,offset+25,top,top+opening.headerDepth);
-    if(opening.needsJamb)box(frame,-50,0,offset-25,offset+25,top+opening.headerDepth,opening.roofLine[0].z);
+    if(opening.needsJamb)box(frame,-50,0,offset-25,offset+25,top+opening.headerDepth,opening.roofLine[0].z,(opening.roofLine[1].z-opening.roofLine[0].z)/(width/2));
     if(options.infill) {
       const m=mesh('triangle','infill');
       for(let i=1;i<opening.roofLine.length;i++) {
@@ -43,6 +43,10 @@ export function buildRepresentativeBlind(opening:BlindOpening, options:{cover:'N
       }
     }
   }
-  if(opening.needsJamb) box(frame,-50,0,-25,25,0,top+opening.headerDepth);
+  // Continue the house jamb on the header/strut line; roll hardware keeps its own setback.
+  if(opening.needsJamb) {
+    const offset=opening.headerDepth?(opening.headerOffset??0):0;
+    box(frame,-50,0,offset-25,offset+25,0,top);
+  }
   return meshes;
 }
