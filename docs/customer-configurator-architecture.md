@@ -4,6 +4,9 @@
 
 ### Marketing preview: Ziptrak sides (2026-09-10)
 
+Ledger ends extend to the actual outside faces of both end rafters, including after
+solid/combination rafter replacement; the local frame follows the extended start.
+
 Junction follow-up: the house jamb shares the header/strut offset, and the strut
 top follows the rafter slope. Solid/combination finishes rematch the ledger after
 replacement rafters are generated. Default on-edge clear gaps are 100mm for 65x16

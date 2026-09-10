@@ -55,3 +55,17 @@ it('keeps the pitched house jamb, header and strut flush for acrylic and combina
     }
   }
 });
+
+it('extends pitched ledgers to both outside rafter faces across roof finishes and sizes',()=>{
+  for(const material of ['acrylic','solid','combination'] as const)for(const widthMm of [1500,4300,7500]){
+    const roof={...INITIAL_ROOF,finish:{material,profile:'tray' as const,trayWidth:500 as const,layout:'central' as const,acrylicBays:4}};
+    const geometry=solvePergolaPreview({...INITIAL_INPUT,widthMm,projectionMm:3200},roof).geometry!;
+    const rafters=geometry.assembly.members.filter(m=>m.role==='rafter');
+    const ledger=geometry.assembly.members.find(m=>m.role==='ledger')!;
+    const left=Math.min(...rafters.map(m=>m.centerline.start.x-m.profile.widthMm/2));
+    const right=Math.max(...rafters.map(m=>m.centerline.start.x+m.profile.widthMm/2));
+    expect(Math.min(ledger.centerline.start.x,ledger.centerline.end.x)).toBeCloseTo(left);
+    expect(Math.max(ledger.centerline.start.x,ledger.centerline.end.x)).toBeCloseTo(right);
+    expect(ledger.localFrame.origin).toEqual(ledger.centerline.start);
+  }
+});
