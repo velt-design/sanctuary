@@ -1,14 +1,15 @@
-import {layoutLights} from '@sp/geometry';
+import {layoutRafterLights,layoutLights} from '@sp/geometry';
 import {useLighting} from './LightingProvider';
 export default function PlanLighting({scale=1}:{scale?:number}){
  const w=useLighting();if(!w)return null;
- const lights=[...layoutLights(w.sites.rafters,w.value.rafterCount,w.value.rafterLayout),...layoutLights(w.sites.cedar,w.value.cedarCount,w.value.cedarLayout)];
+ const selecting=w.editing&&w.tool==='strip';
+ const lights=[...layoutRafterLights(w.sites.rafters,w.value.rafterAmount??'off'),...layoutLights(w.sites.cedar,w.value.cedarCount,w.value.cedarLayout)];
  return <g data-plan-lighting>
- {w.sites.strips.filter(s=>w.editing||w.value.strips.includes(s.id)).map(s=>{
+ {w.sites.strips.filter(s=>selecting||w.value.strips.includes(s.id)).map(s=>{
   const selected=w.value.strips.includes(s.id);
   return <g key={s.id}>
    <line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={selected?'#b78843':'#657566'} strokeWidth={w.editing?(selected?5:2)/scale:16} pointerEvents="none"/>
-   {w.editing&&<line role="button" tabIndex={0} aria-label={'LED strip: '+s.label} aria-pressed={selected} data-light-member={s.id}
+   {selecting&&<line role="button" tabIndex={0} aria-label={'LED strip: '+s.label} aria-pressed={selected} data-light-member={s.id}
     x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke="transparent" strokeWidth={24/scale} style={{cursor:'pointer'}}
     onClick={()=>w.toggle(s.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();w.toggle(s.id);}}}/>}
   </g>;

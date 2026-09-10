@@ -9,8 +9,8 @@ The main plan hides roof finishes and surroundings, labels the house edge and of
 24px member hit areas. Only the plan/editor changes selections. Preview in 3D hides
 editing controls and selection overlays and automatically uses night on first entry;
 Day/Night is temporary presentation state, and Done restores day without resetting
-the camera. Warm-white spots are 40mm in rafters and 110mm in cedar; up to 24 each,
-with distinct even/perimeter/central layouts fitted to exposed mounting surfaces.
+the camera. Warm-white spots are 40mm in rafters and 110mm in cedar; up to 24 cedar downlights,
+Cedar retains even/perimeter/central layouts. Rafter lights use Off/Low/Medium/High: low is one centred light on mirrored alternate rafters, medium two at 25/75% on those rafters, high two on every eligible rafter. Counts are derived and update with dimensions. Old quantity selections migrate to the closest preset. Editing opens with no tool selected; only explicit LED strips mode enables member taps.
 Selected members receive full-length 16x16 channels and diffusers on their undersides.
 Presets omit the house ledger from the outer perimeter; plan member taps and a checklist
 allow individual changes. Roof battens exclude obstructed rafter channels and spots.

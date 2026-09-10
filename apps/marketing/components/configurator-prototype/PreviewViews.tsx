@@ -59,7 +59,7 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
         : <div className={styles.loading} role="status">{artifact.messages[0]?.message || 'This design needs a closer look. Adjust your dimensions to continue.'}</div>}
     </div>
     <div className={styles.viewerFooter}><p className={styles.viewNote}>{view === '3D' ? <><span className={styles.mouseHint}>Drag to rotate · Scroll to zoom</span><span className={styles.touchHint}>Drag ↔ · Pinch to zoom</span></> : renderable
-      ? lighting?.editing ? <>Tap a beam or rafter to toggle its LED strip · Gold means selected</> : <>{geometry.plan.members.rafters.length} rafters · {geometry.plan.members.posts.length} posts<span className={styles.desktopNote}> · Sized to your selections</span></>
+      ? lighting?.editing ? <>{lighting.tool==='strip'?'Tap beams or rafters to add LED strips · Gold means selected':lighting.tool==='rafter'?'Rafter lights are placed automatically':'Choose a lighting type to begin'}</> : <>{geometry.plan.members.rafters.length} rafters · {geometry.plan.members.posts.length} posts<span className={styles.desktopNote}> · Sized to your selections</span></>
       : 'Adjust your selections to preview the frame.'}
       {renderable && roof.family === 'box' && <span> · Internal {geometry.assembly.roofPlanes.length === 2 ? 'gable' : 'pitched'} roof</span>}</p>
       {renderable && !(lighting?.editing&&view==='Plan') && <label className={styles.contextToggle}><input type="checkbox" checked={surroundings} onChange={(event) => setSurroundings(event.target.checked)} />Show surroundings</label>}

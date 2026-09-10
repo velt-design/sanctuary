@@ -1,5 +1,5 @@
 export * from "./contracts";
-export {pergolaLightSites,layoutLights,type PergolaLighting,type LightLayout,type LightSite,type StripSite} from './representativePergolaLighting';
+export {pergolaLightSites,layoutLights,layoutRafterLights,type RafterLightAmount,type PergolaLighting,type LightLayout,type LightSite,type StripSite} from './representativePergolaLighting';
 export {addRepresentativeRoofBattens,type RepresentativeRoofBattens} from './representativeRoofBattens';
 export {matchRepresentativePitchedLedger} from './representativePitchedLedger';
 export { buildRepresentativeSidePanel } from './representativeSidePanel';

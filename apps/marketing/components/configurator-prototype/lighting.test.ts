@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {pergolaLightSites,layoutLights} from '@sp/geometry';
+import {pergolaLightSites,layoutRafterLights,layoutLights} from '@sp/geometry';
 import {solvePergolaPreview} from './solvePreview';
 import {INITIAL_INPUT} from './model';
 import {INITIAL_ROOF} from './GableChoices';
@@ -19,7 +19,7 @@ it('preserves lighting in links, rejects invalid values and excludes it from sim
  const g=solvePergolaPreview(INITIAL_INPUT,INITIAL_ROOF).geometry!,id=pergolaLightSites(g.assembly,g.covering).strips[0].id;
  const draft=parsePreviewDraft({version:1,input:INITIAL_INPUT,roof:{...INITIAL_ROOF,lighting:{...DEFAULT_LIGHTING,rafterCount:6,strips:[id,'missing-member']}}})!;
  expect(draft.roof.lighting!.strips).toEqual([id]);expect(parsePreviewDesign(serializePreviewDesign(draft))).toEqual(draft);expect(hasSimpleRoofPrice(draft.roof)).toBe(false);
- expect(parseLighting({...DEFAULT_LIGHTING,rafterCount:25})).toBeNull();expect(parseLighting({...DEFAULT_LIGHTING,strips:['<script>']})).toBeNull();
+ expect(parseLighting({...DEFAULT_LIGHTING,rafterCount:201})).toBeNull();expect(parseLighting({...DEFAULT_LIGHTING,strips:['<script>']})).toBeNull();
 });
 
 it('avoids strip/spot overlap and does not double the front perimeter',()=>{
@@ -28,4 +28,27 @@ it('avoids strip/spot overlap and does not double the front perimeter',()=>{
  const strips=sites.strips.filter(s=>s.rafter).map(s=>s.id);
  const draft=parsePreviewDraft({version:1,input:INITIAL_INPUT,roof:{...INITIAL_ROOF,lighting:{...DEFAULT_LIGHTING,rafterCount:6,strips}}})!;
  expect(draft.roof.lighting!.rafterCount).toBe(0);
+});
+
+it('uses fixed centred and quarter-point rafter positions and a balanced alternate pattern',()=>{
+ const g=solvePergolaPreview(INITIAL_INPUT).geometry!,sites=pergolaLightSites(g.assembly,g.covering);
+ const low=layoutRafterLights(sites.rafters,'low'),medium=layoutRafterLights(sites.rafters,'medium'),high=layoutRafterLights(sites.rafters,'high');
+ expect(low.length).toBeGreaterThan(0);expect(medium.length).toBe(low.length*2);expect(high.length).toBeGreaterThan(medium.length);
+ for(const [lights,fractions] of [[low,[.5]],[high,[.25,.75]]] as const)for(const site of lights){
+  const id=site.id.slice(0,site.id.lastIndexOf('-')),member=g.assembly.members.find(m=>m.id===id)!;
+  const a=member.centerline.start,b=member.centerline.end;
+  const t=Math.abs(b.y-a.y)>1?(site.point.y-a.y)/(b.y-a.y):(site.point.x-a.x)/(b.x-a.x);
+  // Mounting offset follows the roof normal; use suffix to check the exact member parameter.
+  expect(fractions).toContain(Number(site.id.split('-').at(-1))/100);expect(t).toBeGreaterThan(.2);expect(t).toBeLessThan(.8);
+ }
+ const ids=[...new Set(sites.rafters.map(s=>s.id.slice(0,s.id.lastIndexOf('-'))))];
+ const selected=new Set(low.map(s=>s.id.slice(0,s.id.lastIndexOf('-'))));
+ ids.forEach((id,i)=>expect(selected.has(id)).toBe(selected.has(ids[ids.length-1-i])));
+ expect(layoutRafterLights(sites.rafters,'off')).toEqual([]);
+});
+it('retains amount through sharing and recalculates totals after resizing',()=>{
+ const make=(widthMm:number)=>parsePreviewDraft({version:1,input:{...INITIAL_INPUT,widthMm},roof:{...INITIAL_ROOF,lighting:{...DEFAULT_LIGHTING,rafterAmount:'high'}}})!;
+ const a=make(3000),b=make(8000);expect(b.roof.lighting!.rafterCount).toBeGreaterThan(a.roof.lighting!.rafterCount);
+ expect(parsePreviewDesign(serializePreviewDesign(b))).toEqual(b);
+ expect(parseLighting({...DEFAULT_LIGHTING,rafterAmount:'invalid'})).toBeNull();
 });
