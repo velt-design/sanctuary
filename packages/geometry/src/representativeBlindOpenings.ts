@@ -8,7 +8,12 @@ export function representativeBlindOpenings(assembly:Assembly3D):BlindOpening[] 
   const posts=assembly.members.filter(m=>m.role==='post');
   const postPoint=(m:typeof posts[number],axis:'x'|'y')=>({p:m.centerline.start,
     half:Number(m.metadata?.[axis==='x'?'footprintWidthMm':'footprintProjectionMm']??Math.max(m.profile.widthMm,m.profile.depthMm))/2});
-  const point=(side:string,t:number):Point3=>side==='front'?{x:t,y:d-50,z:0}:{x:side==='left'?50:w-50,y:t,z:0};
+  const xPosts=posts.map(m=>postPoint(m,'x')),yPosts=posts.map(m=>postPoint(m,'y'));
+  const left=Math.min(...xPosts.map(m=>m.p.x-m.half)),right=Math.max(...xPosts.map(m=>m.p.x+m.half));
+  const front=Math.max(...yPosts.map(m=>m.p.y+m.half));
+  // Anchor to actual exterior post faces, including the existing frame inset.
+  // The housing extends 68mm outward, leaving a 5mm setback.
+  const point=(side:string,t:number):Point3=>side==='front'?{x:t,y:front-73,z:0}:{x:side==='left'?left+73:right-73,y:t,z:0};
   function roofZ(p:Point3) {
     const values=assembly.roofPlanes.filter(r=>p.x>=Math.min(...r.boundary.map(v=>v.x))-100 && p.x<=Math.max(...r.boundary.map(v=>v.x))+100 && p.y>=Math.min(...r.boundary.map(v=>v.y))-100 && p.y<=Math.max(...r.boundary.map(v=>v.y))+100)
       .map(r=>{const n=r.plane.normal,o=r.plane.origin;return o.z-(n.x*(p.x-o.x)+n.y*(p.y-o.y))/n.z-150;});

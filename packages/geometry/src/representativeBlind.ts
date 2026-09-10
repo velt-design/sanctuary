@@ -15,11 +15,11 @@ export function buildRepresentativeBlind(opening:BlindOpening, options:{cover:'N
   }
   const frame=mesh('hardware','frame');
   const pelmet=top>2800?165:135;
-  const blindTop=top-pelmet, bottom=30+(blindTop-82)*(1-options.lowered/100);
+  const radius=options.lowered===100?34:50;
+  const blindTop=top-65-radius, bottom=30+(top-pelmet-82)*(1-options.lowered/100);
   box(frame,0,30,-12,12,0,top-40);box(frame,width-30,width,-12,12,0,top-40);
   box(frame,25,width-25,-25,25,bottom,bottom+52);
   // The uncovered roll stays visible; covered versions have the same underlying roll.
-  const radius=options.lowered===100?34:50;
   for(let i=0;i<24;i++) {
     const a=i*Math.PI/12,b=(i+1)*Math.PI/12;
     quad(frame,[point(20,Math.cos(a)*radius,top-65+Math.sin(a)*radius),point(width-20,Math.cos(a)*radius,top-65+Math.sin(a)*radius),point(width-20,Math.cos(b)*radius,top-65+Math.sin(b)*radius),point(20,Math.cos(b)*radius,top-65+Math.sin(b)*radius)]);

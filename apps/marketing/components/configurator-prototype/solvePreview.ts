@@ -1,4 +1,4 @@
-import { buildRepresentativeRoofFinish } from "@sp/geometry";
+import { buildRepresentativeRoofFinish, fitRepresentativeBlindPosts } from "@sp/geometry";
 import { getRoofFinish } from "./roofFinish";
 import { solveCustomerConfigurationV1 } from '@sp/configurator/geometry';
 import { calculateSoffitBracketCountV1 } from '@sp/costing';
@@ -21,7 +21,11 @@ function solveBasePreview(input: SimpleCoverInput, roof: PreviewRoofChoices = IN
 }
 
 export function solvePergolaPreview(input: SimpleCoverInput, roof: PreviewRoofChoices = INITIAL_ROOF): { status: string; messages: { message: string }[]; geometry?: { assembly: Assembly3D; plan: GeometryPlanViewModel; viewerScene: ViewerSceneModel; covering?: RoofFinishGeometry } } {
-  const source = solveBasePreview(input, roof);
+  let source: ReturnType<typeof solvePergolaPreview> = solveBasePreview(input, roof);
+  if ('geometry' in source && source.geometry && roof.blinds?.length) {
+    const fitted=fitRepresentativeBlindPosts(source.geometry.assembly,roof.blinds);
+    if(fitted) source={...source,geometry:fitted};
+  }
   const finish = getRoofFinish(roof);
   if (finish.material === 'acrylic' || !('geometry' in source) || !source.geometry) return source;
   try {

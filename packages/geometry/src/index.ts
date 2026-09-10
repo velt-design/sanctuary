@@ -1,4 +1,5 @@
 export * from "./contracts";
+export { fitRepresentativeBlindPosts } from './representativeBlindPosts';
 export { buildRepresentativeGable } from './representativeGable';
 export { buildRepresentativeBox } from './representativeBox';
 export { buildRepresentativeBoxContext } from './representativeBoxContext';
