@@ -6,6 +6,12 @@ Target project ref: `tnsiprehuldksnuowubv`.
 
 Production ref `iytanftukulcnavossmd` is a refusal value in this workflow. Nothing in this record authorises a production query, migration, deployment, or data change.
 
+## 2026-09-11 Delivery And Invoice Rollout
+
+The eight 20260911 delivery/invoice migrations passed a combined rollback rehearsal and were applied with exact canonical-LF bodies recorded under their unambiguous versions. Postflight matched every stored body to source. Existing commercial row counts were unchanged by migration. Authenticated browser verification then created a labelled synthetic project and verified delivery completion, persistent draft editing, standalone issue/value and audited void. See quotes-invoices-job-packs.md for the retained QA record and deployment evidence.
+
+The apparent missing 20260724/20260728/20260731 versions are the existing underscore-named repository families; their stored SQL matches after statement/line-ending normalization. The separate marketing email-correlation entry 20260909000001 is retained without alteration. No historical ledger repair or blanket push was performed.
+
 ## 2026-08-18 Alignment
 
 ### 2026-09-08 Schedule Guarded Commands
