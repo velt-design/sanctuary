@@ -2,6 +2,10 @@
 
 This doc describes the current business workflow as represented in the codebase. Use it to understand which feature owns a piece of state before editing.
 
+## Delivery and settlement
+
+Mark delivery completed records physical delivery independently from payment. A scheduled job uses the existing Schedule completion command; an unscheduled job needs a date and note. The project remains visible with its separate invoice/payment state. Close settled project is the later operational closure, and completed projects are not automatically archived.
+
 ## Lead Capture
 
 Public enquiries start in `apps/marketing`.

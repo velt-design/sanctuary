@@ -2,6 +2,8 @@
 
 Status: Current.
 
+Delivery completion: 20260911000001_project_delivery_completion.sql extends project_confirmation_events with DELIVERY_COMPLETED and delivery_details, adds the authenticated project_record_delivery_completion command, and projects existing Schedule/confirmation evidence into the project stage. The command uses Project Work receipts and append-only evidence; no browser schedule writes or payment writes are introduced. project_has_delivery_completion is internal; project_confirm_delivery_stage is the evidence-checked compatibility adapter.
+
 This doc maps active Supabase tables and RPCs to the portal workflow that owns them. Feature docs own behavior; this schema map owns table/RPC routing, write-path boundaries, access rules, and migration sources.
 
 Use this before changing schema, RLS, grants, route Supabase access, RPC commands, or table-backed workflow behavior.

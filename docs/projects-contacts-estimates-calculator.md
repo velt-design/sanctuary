@@ -4,6 +4,8 @@ This doc is the current-state reference for the core staff portal workflow befor
 
 ## Read First
 
+Delivery completion is a separate action on Overview and the project index. Scheduled installations use Schedule V2 and its early-finish/conflict controls. Unscheduled jobs record an audited DELIVERY_COMPLETED confirmation with a date and note. Both project the existing COMPLETED stage without recording payment or archiving the project. Admin confirmation correction retracts manual evidence and restores its previous stage; scheduled reopening remains Schedule-owned. Financial closure is labelled Close settled project and still requires delivery and reconciled billing. The forward migration is 20260911000001_project_delivery_completion.sql; migration deployment is required before enabling these controls.
+
 - Use `## Ownership` to route pages, APIs, helpers, tables, and local-first keys.
 - Use `## Contact And Project Flow` and `## Project Snapshot, Pipeline, And Project Work` for project workflow behavior.
 - Use `## Calculator And Estimate Versions` for estimate creation, versioning, summaries, and warnings.

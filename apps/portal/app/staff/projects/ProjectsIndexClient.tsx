@@ -38,6 +38,7 @@ import { useProjectsIndexMutations } from './useProjectsIndexMutations';
 import ProjectIndexLifecycleCells from './ProjectIndexLifecycleCells';
 import ProjectIndexAccountabilityCells from './ProjectIndexAccountabilityCells';
 import ProjectStageCorrectionDialog from '@/components/projects/ProjectStageCorrectionDialog';
+import ProjectDeliveryAction from '@/components/projects/ProjectDeliveryAction';
 import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
@@ -444,6 +445,8 @@ export default function ProjectsIndexClient({
                           <ProjectIndexAccountabilityCells project={p} />
                           <TableCell data-column="Actions">
                             <div className={styles.rowActions}>
+                              {!p.isArchived && p.effectiveState !== 'CLOSED' ? <ProjectDeliveryAction projectId={p.id} host={host}
+                                completed={p.status === 'COMPLETED' || p.status === 'PAID'} disabled={isStatusBusyRow} /> : null}
                               <ButtonLink
                                 variant="quiet"
                                 size="small"

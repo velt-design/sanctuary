@@ -20,14 +20,10 @@ export async function POST(_req: Request, ctx: { params: Promise<{ projectId: st
   const prev = await supabase.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
   if (prev.error || !prev.data) return jsonError('Project not found', 404);
   const fromStage = String(prev.data.pipeline_stage ?? '').toUpperCase();
+  if (fromStage === 'COMPLETED' || fromStage === 'PAID') return jsonOk({ ok: true });
   if (fromStage !== 'SCHEDULED') return jsonError('Invalid stage transition (expected SCHEDULED)', 409);
 
-  const updateRes = await supabase
-    .from('projects')
-    .update({ pipeline_stage: 'COMPLETED' } as any)
-    .eq('id', projectUuid)
-    .select('id, pipeline_stage')
-    .single();
+  const updateRes = await supabase.rpc('project_confirm_delivery_stage', { p_project_id: projectUuid });
   if (updateRes.error) return jsonError(updateRes.error.message ?? 'Failed to update project', 500);
 
   await automationRunner.runEvent({
