@@ -4,6 +4,12 @@ This repo is optimized for coding agents. OpenAI Codex uses this `AGENTS.md` fil
 
 Read this file first, then follow links into `docs/README.md`. For non-trivial or risky portal work, read `docs/agent-playbook.md` and scan relevant `docs/decision-log.md` entries before editing.
 
+For customer-facing PDF presentations, proposals, partnerships or booklet output,
+read [docs/customer-presentation-standard.md](docs/customer-presentation-standard.md)
+and inspect the relevant approved reference pages before authoring or reviewing.
+This governs customer-document quality; existing portal and marketing UI owners
+still govern their own application surfaces.
+
 ## First Moves
 
 **Gate 0 - design workbench / geometry / costing work.** If the task touches `apps/portal/lib/drawings/**`, `apps/portal/components/drawings/**`, `apps/portal/app/staff/projects/[projectId]/design-workbench/**`, `packages/geometry/**`, or the costing engine's input layer, you MUST read [docs/design-workbench-architecture.md section "Product North Star (READ FIRST)"](docs/design-workbench-architecture.md) before writing code or proposing a next task. Every PR proposal in these paths must answer, in writing: (a) which legacy audit row(s) does this touch (cite by number from `docs/design-workbench-legacy-cull.md` or "N/A"), (b) does this REMOVE legacy or BUILD ON legacy? Build-on PRs require explicit user approval BEFORE coding (documenting a workaround in `decision-log.md` is not a substitute), (c) does this PR have Phase 2 dependencies (cost engine input migration, `inputs.modules` consumer changes)? If yes, split into a Phase 1 chunk and a deferred Phase 2 chunk, and (d) if this PR consolidates two or more functions/types, list their parameter/field differences explicitly - each difference must be equivalent, pluggable, added as a parameter in the consolidation, or explicitly acceptable to lose given Phase 1's "workbench can break temporarily" permission. Before answering: grep for ALL consumers of the file/function/type being changed - discovering a missed consumer mid-PR means the scope is wrong and needs resurfacing. **Phase 1 only requires the marketing-site enquiry -> estimate email path to keep working; workbench UX can break temporarily.**

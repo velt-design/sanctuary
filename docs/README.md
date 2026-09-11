@@ -29,6 +29,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | Doc | Status | Use When |
 | --- | --- | --- |
 | `agent-playbook.md` | Active protocol | You are doing non-trivial portal implementation, investigation, bugfix, or verification work. |
+| `customer-presentation-standard.md` | Owner-approved quality benchmark | You are creating or reviewing a customer PDF, proposal, partnership booklet or booklet output; inspect the linked approved references before authoring. |
 | `change-routing.md` | Active protocol | You need path ownership, doc update triggers, common task cards, or docs bloat control before editing. |
 | `portal-production-readiness.md` | Active tracker | You need current portal production-readiness status, quality gates, blockers, priorities, or parallel work lanes. |
 | `agent-centric-portal-plan.md` | Active roadmap | You are improving agent access, portal fixture coverage, debug exports, browser evidence, route smoke coverage, or quality ratchets. |
