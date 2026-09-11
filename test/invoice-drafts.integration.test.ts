@@ -49,6 +49,8 @@ describe('invoice drafts against production SQL owners', () => {
       create function public.project_work_items_refresh_projection(uuid) returns void language sql as $$ select $$;
       create function public.project_work_items_cancel_active(uuid,uuid,text,uuid,text) returns integer language sql as $$ select 0 $$;
       alter table public.deposit_invoices add column pdf_file_id uuid, add column sent_at timestamptz;
+      grant select,insert,update,delete on public.deposit_invoices to authenticated;
+      create policy portal_access_all on public.deposit_invoices for all using (public.has_portal_access()) with check (public.has_portal_access());
       alter index public.deposit_invoices_active_term_unique rename to deposit_invoices_quote_version_term_active_unique;
       create table public.quote_line_items(id uuid primary key,quote_version_id uuid,sort_order integer,description text,qty numeric,unit_price_inc_gst_cents integer,line_total_inc_gst_cents integer);
     `);
@@ -61,7 +63,8 @@ describe('invoice drafts against production SQL owners', () => {
     }
     for (const name of ['20260911000001_project_delivery_completion.sql','20260911000002_invoice_draft_storage.sql','20260911000003_invoice_draft_commands.sql',
       '20260911000004_invoice_draft_issuance.sql','20260911000005_standalone_invoice_balances.sql',
-      '20260911000006_financial_followup_reopening.sql','20260911000007_invoice_payment_reapplication.sql']) {
+      '20260911000006_financial_followup_reopening.sql','20260911000007_invoice_payment_reapplication.sql',
+      '20260911000008_invoice_command_access.sql']) {
       // Exercise Windows checkouts too: textual owner patches must normalize
       // their anchors as well as PostgreSQL's stored function definitions.
       await db.exec(read(`migrations/${name}`).replace(/\n/g, '\r\n'));
@@ -211,5 +214,20 @@ describe('invoice drafts against production SQL owners', () => {
     await expect(issueDraft()).rejects.toThrow(/Admin authentication/);
     await db.exec('rollback to savepoint denied');
     await expect(db.query('select public.commercial_invoice_delete_draft($1,1)', [draft])).rejects.toThrow(/Admin authentication/);
+  });
+
+  it('denies direct table writes and hides drafts from staff while allowing admin issue commands', async () => {
+    await save();
+    await db.exec('set local role authenticated');
+    expect((await db.query('select count(*)::int as count from public.deposit_invoices')).rows[0].count).toBe(1);
+    await db.exec("select set_config('test.admin','no',true)");
+    expect((await db.query('select count(*)::int as count from public.deposit_invoices')).rows[0].count).toBe(0);
+    await db.exec('savepoint direct_write');
+    await expect(db.query("update public.deposit_invoices set draft_revision=99 where id=$1", [draft])).rejects.toThrow(/permission denied/);
+    await db.exec('rollback to savepoint direct_write');
+    await db.exec("select set_config('test.admin','yes',true)");
+    await issueDraft();
+    await db.exec("select set_config('test.admin','no',true)");
+    expect((await db.query('select status from public.deposit_invoices')).rows[0].status).toBe('OPEN');
   });
 });

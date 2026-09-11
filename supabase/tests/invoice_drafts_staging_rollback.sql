@@ -1,4 +1,4 @@
--- STAGING ONLY: run after the seven 20260911 migrations in a rollback transaction.
+-- STAGING ONLY: run after the eight 20260911 migrations in a rollback transaction.
 -- Creates only synthetic identities/projects; sends no email; retains no fixture records.
 -- The caller must positively identify staging and refuse production before execution.
 begin;
@@ -14,6 +14,7 @@ begin
  perform set_config('request.jwt.claim.role','authenticated',true);
  insert into public.projects(id,name,pipeline_stage) values(project,'Codex rollback-only invoice QA','NEW');
  perform public.project_work_items_initialize_project_v2(project,now(),actor,'NEW_PROJECT');
+ if has_table_privilege('authenticated','public.deposit_invoices','INSERT,UPDATE,DELETE') then raise exception 'Direct invoice mutation grant remains'; end if;
  row:=public.commercial_invoice_save_draft(invoice,project,0,null,
  '{"version":1,"items":[{"id":"qa-line","description":"Rollback-only work","qty":1.5,"unitPriceIncGstCents":101,"lineTotalIncGstCents":152}],"billingName":"Synthetic QA","billingEmail":"qa@example.invalid","billingAddress":"","notes":"Rollback only"}'::jsonb,
  '{"mode":"custom","label":"QA invoice","dueDate":"2026-09-30","amountIncGstCents":152}'::jsonb);

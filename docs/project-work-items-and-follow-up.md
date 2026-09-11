@@ -4,7 +4,7 @@
 
 Delivery completion uses Schedule V2 for scheduled installations and an audited `DELIVERY_COMPLETED` confirmation with a date and note for unscheduled work. It projects `COMPLETED` without requiring payment. `Close settled project` additionally requires delivery evidence, positive billable value, no open invoices, and reconciled receipts. Billable value includes issued non-void standalone invoices. Reversal and correction of delivery evidence reopen only settled operational closures through the existing Project Work command; cancellation and loss remain separate. Completed work retains the existing list inclusion rules.
 
-The delivery API and invoice mutations refresh the established project-work/index/Running Jobs cache owners, including Work Queue and Dashboard consumers. Forward migrations `20260911000001` through `20260911000007` contain these changes; production rollout is not recorded as complete.
+The delivery API and invoice mutations refresh the established project-work/index/Running Jobs cache owners, including Work Queue and Dashboard consumers. Forward migrations `20260911000001` through `20260911000008` contain these changes; production rollout is not recorded as complete.
 
 Status: Approved product contract. The Project Work foundation and portfolio rollout migration `20260731000002_project_work_portfolio_rollout.sql` are deployed. Application consumers and authenticated read-only production verification are complete through postflight `6832a9dd`.
 
