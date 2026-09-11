@@ -45,6 +45,7 @@ declare v_definition text; v_anchor text := '  else
     update public.projects set pipeline_stage = v_previous_stage';
 begin
   v_definition := replace(pg_get_functiondef('public.project_delivery_stage_projection()'::regprocedure),chr(13),'');
+  v_anchor := replace(v_anchor,chr(13),'');
   if strpos(v_definition,v_anchor) = 0 then raise exception 'Delivery projection owner changed'; end if;
   execute replace(v_definition,v_anchor,'  else
     perform public.project_reopen_financial_followup(v_project_id,''Delivery completion was corrected'');

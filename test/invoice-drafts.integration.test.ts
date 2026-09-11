@@ -62,7 +62,9 @@ describe('invoice drafts against production SQL owners', () => {
     for (const name of ['20260911000001_project_delivery_completion.sql','20260911000002_invoice_draft_storage.sql','20260911000003_invoice_draft_commands.sql',
       '20260911000004_invoice_draft_issuance.sql','20260911000005_standalone_invoice_balances.sql',
       '20260911000006_financial_followup_reopening.sql','20260911000007_invoice_payment_reapplication.sql']) {
-      await db.exec(read(`migrations/${name}`));
+      // Exercise Windows checkouts too: textual owner patches must normalize
+      // their anchors as well as PostgreSQL's stored function definitions.
+      await db.exec(read(`migrations/${name}`).replace(/\n/g, '\r\n'));
     }
   }, 30_000);
   beforeEach(async () => {

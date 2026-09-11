@@ -128,6 +128,7 @@ declare
           and scheduled.actual_finish is not null
       ) then$predicate$;
 begin
+  v_old := replace(v_old, chr(13), '');
   if position(v_old in v_definition) = 0 then raise exception 'Operational completion predicate changed; review migration'; end if;
   execute replace(replace(v_definition, v_old, 'if not public.project_has_delivery_completion(p_project_id) then'),
     'PROJECT_NOT_COMPLETE: Schedule V2 has not confirmed completion', 'PROJECT_NOT_COMPLETE: delivery has not been confirmed');
