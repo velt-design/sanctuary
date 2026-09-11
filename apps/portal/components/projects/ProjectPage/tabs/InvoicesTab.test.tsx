@@ -61,7 +61,7 @@ describe('InvoicesTab reconciliation visibility', () => {
     };
     const rendered = renderIntoDocument(<InvoicesTab projectId="proj-1" />);
     expect(rendered.container.textContent).toContain('Commercial total needs reconciliation');
-    expect(rendered.container.textContent).toContain('exceed the current accepted scope by $200.00');
+    expect(rendered.container.textContent).toContain('exceed the current billable project value by $200.00');
     rendered.unmount();
   });
 
@@ -80,7 +80,7 @@ describe('InvoicesTab reconciliation visibility', () => {
     const rendered = renderIntoDocument(<InvoicesTab projectId="proj-1" />);
     expect(rendered.container.textContent).toContain('Historical commercial record');
     expect(rendered.container.textContent).toContain('No current accepted commercial scope');
-    expect(rendered.container.textContent).toContain('no new invoice can be created until a quote is accepted');
+    expect(rendered.container.textContent).toContain('admins can create standalone invoice drafts separately');
     rendered.unmount();
   });
 });

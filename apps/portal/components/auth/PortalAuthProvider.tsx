@@ -3,7 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
-import { getSupabaseBrowser } from '@/lib/supabase/browserClient';
+import { getSupabaseBrowser, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import { setProjectIndexSession } from '@/lib/projects/projectIndexSession';
 import { fetchPortalRole } from '@/lib/queries/auth';
 import type { PortalRole } from '@/lib/authTypes';
 import { type PortalAuthInitialState, type PortalAuthStatus, type PortalAuthUser, toPortalAuthUser } from '@/lib/portalAccess';
@@ -249,6 +250,10 @@ export default function PortalAuthProvider({
   }, [applySession, supabase]);
 
   const email = state.user?.email ?? null;
+  useEffect(() => {
+    setProjectIndexSession(state.user?.id ?? null, supabaseRuntimeUrl());
+    return () => setProjectIndexSession(null, '');
+  }, [state.user?.id]);
   const isAdmin = state.role === 'admin';
 
   return (

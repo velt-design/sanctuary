@@ -17,6 +17,17 @@ Related docs/tests: paths or commands
 
 Use `Status: Active` when the entry is still only a decision-log guardrail. New reusable lessons should remain `Active` until a later pass promotes them into a canonical doc, so this log continues to show live risks that have not yet become standing rules. Use `Status: Promoted` when the durable behavior is now represented in `docs/agent-playbook.md`, `AGENTS.md`, `docs/README.md`, or another canonical doc. Use `Status: Superseded` only when a newer entry or canonical doc replaces the rule.
 
+## Project delivery and commercial lifecycle
+
+Date: 2026-09-11
+Area: Project delivery and commercial lifecycle
+Status: Active
+Decision or mistake: Delivery, settled closure and invoice payment status had been conflated. Reversal reopened the payment stage while an operational closure could remain hidden; the invoice receipt uniqueness rule also prevented a new receipt after reversal.
+Why it mattered: Unpaid work could disappear from follow-up, or repayment could reuse a reversed receipt without restoring the ledger balance.
+Current guardrail: Keep delivery evidence independent. Test closure/reversal/reopening/repayment as one transaction sequence against the production SQL owners, retaining all historical receipts and explicit invoice allocation targets. Test draft statuses at every financial and public-reader boundary before enabling creation.
+Promoted to: None
+Related docs/tests: `docs/commercial-truth-audit.md`, `docs/quotes-invoices-job-packs.md`, `test/invoice-drafts.integration.test.ts`.
+
 ## Index
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |

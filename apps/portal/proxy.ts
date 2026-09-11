@@ -21,6 +21,7 @@ const UI_FOUNDATION_FIXTURE_PATH = '/qa/ui-foundation-fixture';
 const EMAIL_PREVIEW_WORKBENCH_FIXTURE_PATH = '/qa/email-preview-workbench-fixture';
 const DESIGN_BOOKLET_WORKBENCH_FIXTURE_PATH = '/qa/design-booklet-workbench-fixture';
 const INVOICE_ARTIFACT_PREVIEW_FIXTURE_PATH = '/qa/invoice-artifact-preview-fixture';
+const INVOICE_DRAFT_EDITOR_FIXTURE_PATH = '/qa/invoice-draft-editor-fixture';
 const PROJECT_WORK_QUEUE_FIXTURE_PATH = '/qa/project-work-queue-fixture';
 const SCHEDULE_OPS_FIXTURE_PATH = '/qa/schedule-ops-fixture';
 const AI_ACTIVITY_FIXTURE_PATH = '/qa/ai-activity-fixture';
@@ -65,6 +66,7 @@ function isPortalQaFixtureInternalPath(path: string): boolean {
     path === EMAIL_PREVIEW_WORKBENCH_FIXTURE_PATH ||
     path === DESIGN_BOOKLET_WORKBENCH_FIXTURE_PATH ||
     path === INVOICE_ARTIFACT_PREVIEW_FIXTURE_PATH ||
+    path === INVOICE_DRAFT_EDITOR_FIXTURE_PATH ||
     path === PROJECT_WORK_QUEUE_FIXTURE_PATH ||
     path === SCHEDULE_OPS_FIXTURE_PATH ||
     path === AI_ACTIVITY_FIXTURE_PATH

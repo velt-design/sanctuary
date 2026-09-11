@@ -16,6 +16,7 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/dashboard/getDashboardSnapshotCached.ts',
   'apps/portal/lib/estimates/server.ts',
   'apps/portal/lib/invoices/adminPayments.ts',
+  'apps/portal/lib/invoices/drafts.ts', // Admin-gated invoice reads/previews; mutations use auth-bound RPCs.
   'apps/portal/lib/invoices/paymentLedger.ts',
   'apps/portal/lib/invoices/server.ts',
   'apps/portal/lib/marketingAttribution/server.ts',

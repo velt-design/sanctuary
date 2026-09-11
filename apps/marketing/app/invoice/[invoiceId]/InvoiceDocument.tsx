@@ -1,4 +1,5 @@
 import Link from "next/link";
+import InvoiceItemisedScope from "./InvoiceItemisedScope";
 import type { ReactNode } from "react";
 import type { PublicDepositInvoice } from "@/lib/invoices/publicInvoice";
 import styles from "./invoiceEditorial.module.css";
@@ -132,6 +133,7 @@ function PaymentSummary({ invoice }: { invoice: PublicDepositInvoice }) {
 
 function InvoiceIntroduction({ invoice }: { invoice: PublicDepositInvoice }) {
   const projectName = invoice.projectName?.trim() || "your Sanctuary project";
+  if (invoice.invoiceKind === 'STANDALONE') return <section className={styles.introSection}><p>{invoice.paymentTermLabel} for {projectName}.</p></section>;
 
   return (
     <section className={styles.introSection} aria-label="About this invoice">
@@ -148,16 +150,13 @@ function InvoiceIntroduction({ invoice }: { invoice: PublicDepositInvoice }) {
 
 function InvoiceDetails({ invoice }: { invoice: PublicDepositInvoice }) {
   const fields = [
-    { label: "Prepared for", value: invoice.customerName || "Customer" },
+    { label: "Prepared for", value: invoice.contentSnapshot?.billingName || invoice.customerName || "Customer" },
     {
       label: "Project",
       value: invoice.projectName || "Your Sanctuary project",
     },
     { label: "Site", value: invoice.projectAddress || "Not provided" },
-    {
-      label: "Related quote",
-      value: `${invoice.quoteRef} v${invoice.quoteVersionNumber}`,
-    },
+    ...(invoice.quoteVersionId ? [{ label: 'Related quote', value: `${invoice.quoteRef} v${invoice.quoteVersionNumber}` }] : []),
     { label: "Issued", value: formatDate(invoice.issueDate) },
     {
       label: "Link available until",
@@ -333,9 +332,11 @@ function DocumentAction({
 function InvoiceDocuments({
   pdfHref,
   quoteHref,
+  includeSource = true,
 }: {
   pdfHref: string | null;
   quoteHref: string | null;
+  includeSource?: boolean;
 }) {
   return (
     <section
@@ -355,12 +356,12 @@ function InvoiceDocuments({
           unavailableLabel="Invoice PDF unavailable"
           description="Download a print-ready copy of this invoice."
         />
-        <DocumentAction
+        {includeSource ? <DocumentAction
           href={quoteHref}
           label="Source quote PDF"
           unavailableLabel="Source quote PDF unavailable"
           description="Review the accepted quote this invoice relates to."
-        />
+        /> : null}
       </div>
     </section>
   );
@@ -398,9 +399,9 @@ export function InvoiceDocument({
         <PaymentSummary invoice={invoice} />
         <InvoiceIntroduction invoice={invoice} />
         <InvoiceDetails invoice={invoice} />
-        <InvoiceCalculation invoice={invoice} />
+        {invoice.contentSnapshot ? <InvoiceItemisedScope invoice={invoice} /> : <InvoiceCalculation invoice={invoice} />}
         <PaymentInstructions invoice={invoice} />
-        <InvoiceDocuments pdfHref={pdfHref} quoteHref={quoteHref} />
+        <InvoiceDocuments pdfHref={pdfHref} quoteHref={quoteHref} includeSource={invoice.invoiceKind !== 'STANDALONE'} />
         <InvoiceHelp />
       </article>
     </InvoiceShell>

@@ -1,4 +1,5 @@
 import 'server-only';
+import { parseInvoiceContent, type InvoiceContentSnapshot } from '@sp/quote-format';
 
 import { appIdFromUuid, uuidFromAppId } from '../supabase/mappers';
 import { generateAcceptToken } from '../quotes/acceptToken';
@@ -35,7 +36,9 @@ type DepositInvoiceRow = {
   quote_ref: string;
   quote_version_number: number;
   invoice_ref: string;
-  status: 'OPEN' | 'PAID' | 'VOID';
+  status: 'DRAFT' | 'OPEN' | 'PAID' | 'VOID';
+  invoice_kind: 'QUOTE_LINKED' | 'STANDALONE';
+  content_snapshot: InvoiceContentSnapshot | null;
   payment_term_id: string;
   payment_term_label: string;
   payment_term_position: number;
@@ -142,9 +145,9 @@ function normalizeRecipients(list: string[]): string[] {
   return out;
 }
 
-function normalizeStatus(value: unknown): 'OPEN' | 'PAID' | 'VOID' {
+function normalizeStatus(value: unknown): DepositInvoiceRow['status'] {
   const normalized = String(value ?? '').toUpperCase();
-  if (normalized === 'VOID' || normalized === 'PAID') return normalized;
+  if (normalized === 'VOID' || normalized === 'PAID' || normalized === 'DRAFT') return normalized;
   return 'OPEN';
 }
 
@@ -212,6 +215,8 @@ function mapInvoiceRow(row: any): DepositInvoiceRow {
     quote_version_number: Number(row?.quote_version_number ?? 0) || 0,
     invoice_ref: String(row?.invoice_ref ?? ''),
     status: normalizeStatus(row?.status),
+    invoice_kind: row?.invoice_kind === 'STANDALONE' ? 'STANDALONE' : 'QUOTE_LINKED',
+    content_snapshot: parseInvoiceContent(row?.content_snapshot),
     payment_term_id: String(row?.payment_term_id ?? 'payment-1'),
     payment_term_label: String(row?.payment_term_label ?? 'Initial payment'),
     payment_term_position: Number(row?.payment_term_position ?? 1) || 1,
@@ -269,12 +274,13 @@ function mapInvoiceSummary(invoice: DepositInvoiceRow, latestAttempt: DepositInv
   return {
     id: appIdFromUuid('inv', invoice.id),
     projectId: appIdFromUuid('proj', invoice.project_id),
-    quoteId: appIdFromUuid('qt', invoice.quote_id),
-    quoteVersionId: appIdFromUuid('qv', invoice.quote_version_id),
+    quoteId: invoice.quote_id ? appIdFromUuid('qt', invoice.quote_id) : null,
+    quoteVersionId: invoice.quote_version_id ? appIdFromUuid('qv', invoice.quote_version_id) : null,
     quoteRef: invoice.quote_ref,
     quoteVersionNumber: invoice.quote_version_number,
     invoiceRef: invoice.invoice_ref,
     status: invoice.status,
+    invoiceKind: invoice.invoice_kind,
     paymentTermId: invoice.payment_term_id,
     paymentTermLabel: invoice.payment_term_label,
     paymentTermPosition: invoice.payment_term_position,
@@ -466,6 +472,8 @@ async function loadPreviewAttachmentNames(fileIds: readonly string[]): Promise<s
 
 function invoiceArtifactInput(invoice: DepositInvoiceRow) {
   return {
+    contentSnapshot: invoice.content_snapshot,
+    invoiceKind: invoice.invoice_kind,
     invoiceRef: invoice.invoice_ref,
     quoteRef: invoice.quote_ref,
     quoteVersionNumber: invoice.quote_version_number,
@@ -706,6 +714,8 @@ async function prepareInvoiceEmailIntent(
   const subject = `${invoice.payment_term_label} invoice - ${invoice.invoice_ref}`;
   const rendered = await renderDepositInvoiceEmail(
     buildDepositInvoiceEmailInput({
+      contentSnapshot: invoice.content_snapshot,
+      invoiceKind: invoice.invoice_kind,
       invoiceRef: invoice.invoice_ref,
       quoteRef: invoice.quote_ref,
       quoteVersionNumber: invoice.quote_version_number,
@@ -1043,7 +1053,7 @@ export async function listDepositInvoicesForProject(projectId: string): Promise<
     latestByInvoiceId.set(mapped.deposit_invoice_id, mapped);
   }
 
-  return (Array.isArray(invoiceRes.data) ? invoiceRes.data : []).map((row) => {
+  return (Array.isArray(invoiceRes.data) ? invoiceRes.data : []).filter((row) => row.status !== 'DRAFT').map((row) => {
     const invoice = mapInvoiceRow(row);
     return mapInvoiceSummary(invoice, latestByInvoiceId.get(invoice.id) ?? null);
   });
@@ -1052,7 +1062,7 @@ export async function listDepositInvoicesForProject(projectId: string): Promise<
 export async function getDepositInvoiceArtifactPreview(invoiceId: string): Promise<DepositInvoiceArtifactPreview | null> {
   const invoiceUuid = uuidFromAppId(invoiceId, 'inv');
   const invoice = await loadInvoiceById(invoiceUuid);
-  if (!invoice) return null;
+  if (!invoice || invoice.status === 'DRAFT') return null;
 
   const intent = await findCommercialEmailIntentByKey(`deposit-invoice-send:${invoice.id}`);
   if (intent) {
@@ -1082,7 +1092,7 @@ export async function getDepositInvoiceArtifactPreview(invoiceId: string): Promi
 export async function getDepositInvoicePdfPreview(invoiceId: string): Promise<{ filename: string; bytes: Uint8Array } | null> {
   const invoiceUuid = uuidFromAppId(invoiceId, 'inv');
   const invoice = await loadInvoiceById(invoiceUuid);
-  if (!invoice) return null;
+  if (!invoice || invoice.status === 'DRAFT') return null;
 
   const existing = invoice.pdf_file_id ? await loadFileContent(invoice.pdf_file_id) : null;
   if (existing) {
@@ -1106,10 +1116,13 @@ export async function sendDepositInvoiceNow(invoiceId: string, actor: string | n
   if (!invoice) throw new Error('Invoice not found');
   if (invoice.status !== 'OPEN') throw new Error('Only open invoices can be sent');
 
-  const context = await loadAcceptedQuoteContext(invoice.quote_version_id);
-  if (!context) throw new Error('Accepted quote context not found');
-
-  const recipients = await loadRecipients(invoice.quote_version_id, context.contactEmail);
+  const billingEmail = invoice.content_snapshot?.billingEmail.trim();
+  const recipients = billingEmail
+    ? { to: normalizeRecipients([billingEmail]), cc: [], bcc: [] }
+    : invoice.quote_version_id
+      ? await loadRecipients(invoice.quote_version_id, (await loadAcceptedQuoteContext(invoice.quote_version_id))?.contactEmail ?? null)
+      : { to: [], cc: [], bcc: [] };
+  if (!recipients.to.length) throw new Error('No billing email is available for this invoice');
   const delivery = await deliverInvoiceEmail(invoice, recipients, actor);
   if (!delivery.delivered) {
     throw new Error(delivery.error ?? 'Invoice was created but email delivery did not complete');

@@ -1,3 +1,4 @@
+import { invoiceContentBlocks } from './invoiceContentBlocks';
 import type { DepositInvoiceEmailInput } from "../emails/invoice";
 import {
   buildDepositInvoiceArtifactViewModel,
@@ -31,6 +32,7 @@ export function buildDepositInvoiceEmailInput(
   );
 
   return {
+    invoice_scope_blocks: invoiceContentBlocks(input),
     to: input.recipients.to,
     cc: input.recipients.cc,
     bcc: input.recipients.bcc,
@@ -39,10 +41,10 @@ export function buildDepositInvoiceEmailInput(
     invoice_number: viewModel.header.invoiceRef,
     project_name: input.projectName?.trim() || undefined,
     project_address: input.projectAddress ?? undefined,
-    quote_number: `${viewModel.header.quoteRef} v${viewModel.header.quoteVersionNumber}`,
+    quote_number: input.invoiceKind === 'STANDALONE' ? '' : `${viewModel.header.quoteRef} v${viewModel.header.quoteVersionNumber}`,
     deposit_percent: `${viewModel.deposit.percent}%`,
     payment_stage: input.paymentTermLabel?.trim() || 'Initial payment',
-    source_quote_total_inc_gst: viewModel.totals.quoteTotalIncGst,
+    source_quote_total_inc_gst: input.invoiceKind === 'STANDALONE' ? undefined : viewModel.totals.quoteTotalIncGst,
     invoice_subtotal_ex_gst: viewModel.totals.totalExGst,
     invoice_gst: viewModel.totals.gst,
     invoice_total_inc_gst: viewModel.totals.totalIncGst,

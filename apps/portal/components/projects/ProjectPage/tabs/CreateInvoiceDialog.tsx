@@ -37,8 +37,10 @@ export default function CreateInvoiceDialog({
   onClose,
   onCreate,
   onPreview,
+  draftMode = false,
 }: {
   open: boolean;
+  draftMode?: boolean;
   projectId: string;
   schedule: ProjectInvoiceSchedule;
   initialTerm: InvoiceScheduleTerm | null;
@@ -123,7 +125,7 @@ export default function CreateInvoiceDialog({
     quoteVersionId: selectedQuote?.quoteVersionId ?? '',
     mode,
     paymentTermId: mode === 'next_stage' ? termId : null,
-    amountIncGstCents: mode === 'custom' ? amount : null,
+    amountIncGstCents: draftMode || mode === 'custom' ? amount : null,
     splitCount: mode === 'split' ? Number(splitCount) : null,
     label: label.trim(),
     dueDate,
@@ -221,7 +223,7 @@ export default function CreateInvoiceDialog({
                 <Input label="Due date" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} disabled={pending} />
                 <Input label="Reference (optional)" value={reference} onChange={(event) => setReference(event.target.value)} disabled={pending} />
               </div>
-              <Checkbox label="Create and send now" description="Leave unchecked to save the invoice without sending." checked={sendNow} onChange={(event) => setSendNow(event.target.checked)} disabled={pending} />
+              {!draftMode ? <Checkbox label="Create and send now" description="Leave unchecked to save the invoice without sending." checked={sendNow} onChange={(event) => setSendNow(event.target.checked)} disabled={pending} /> : null}
               {exceedsRemaining ? (
                 <AlertBanner tone="blocking" title="This exceeds the remaining job balance">
                   <Checkbox label="Allow over-invoicing" checked={allowOverInvoice} onChange={(event) => setAllowOverInvoice(event.target.checked)} disabled={pending} />
@@ -231,7 +233,7 @@ export default function CreateInvoiceDialog({
             </div>
             <footer>
               <Button variant="tertiary" onClick={onClose} disabled={pending}>Cancel</Button>
-              <Button onClick={submit} disabled={!valid} loading={pending}>{sendNow ? 'Create and send' : 'Create invoice'}</Button>
+              <Button onClick={submit} disabled={!valid} loading={pending}>{draftMode ? 'Save draft and edit' : sendNow ? 'Create and send' : 'Create invoice'}</Button>
             </footer>
           </>
         )}

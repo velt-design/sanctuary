@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import type { Project } from '@/lib/types/project';
 import { projectStatusLabel } from '@/lib/types/project';
 import styles from './ProjectsIndexClient.module.css';
@@ -26,18 +26,19 @@ import { preloadProjectOpen, projectDetailHref } from '@/lib/queries/projectOpen
 import { useProjectInstantOpen } from './ProjectInstantOpen';
 import {
   buildContactsById,
-  parseProjectsIndexFilters,
   PROJECT_JOURNEY_FILTER_OPTIONS,
   PROJECT_STAGE_FILTER_OPTIONS,
   PROJECT_STATE_FILTER_OPTIONS,
-  type ArchiveFilter,
   type ProjectsIndexFilters,
 } from './projectIndexFilters';
+import { useProjectIndexView } from './useProjectIndexView';
+import { projectIndexSessionKey } from '@/lib/projects/projectIndexSession';
 import { useProjectsIndexData } from './useProjectsIndexData';
 import { useProjectsIndexMutations } from './useProjectsIndexMutations';
 import ProjectIndexLifecycleCells from './ProjectIndexLifecycleCells';
 import ProjectIndexAccountabilityCells from './ProjectIndexAccountabilityCells';
 import ProjectStageCorrectionDialog from '@/components/projects/ProjectStageCorrectionDialog';
+import ProjectDeliveryAction from '@/components/projects/ProjectDeliveryAction';
 import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
@@ -88,23 +89,19 @@ export default function ProjectsIndexClient({
   const { openProject } = useProjectInstantOpen();
   const searchParams = useSearchParams();
   const toast = useToast();
-  const { role } = usePortalSession();
+  const { role, user } = usePortalSession();
   const isAdmin = role === 'admin';
-  const initialFiltersRef = useRef(initialFilters ?? parseProjectsIndexFilters(searchParams));
-  const urlFilters = parseProjectsIndexFilters(searchParams);
-  const [query, setQuery] = useState(initialFiltersRef.current.query);
-  const [journeyFilter, setJourneyFilter] =
-    useState<ProjectsIndexJourneyFilter>(initialFiltersRef.current.journeyFilter);
-  const [stageFilter, setStageFilter] =
-    useState<NonNullable<Project['status']> | 'all'>(initialFiltersRef.current.stageFilter);
-  const [stateFilter, setStateFilter] =
-    useState<ProjectsIndexStateFilter>(initialFiltersRef.current.stateFilter);
-  const [ownerFilter, setOwnerFilter] =
-    useState<ProjectsIndexOwnerFilter>(initialFiltersRef.current.ownerFilter);
-  const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>(initialFiltersRef.current.archiveFilter);
-  const [sort, setSort] = useState<ProjectsIndexSort>('newest');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<ProjectsIndexPageSize>(50);
+  const { view, update: updateView, reset: resetView, restoreScroll } = useProjectIndexView(
+    initialFilters, projectIndexSessionKey(user?.id ?? null, supabaseRuntimeUrl()),
+  );
+  const { query, journeyFilter, stageFilter, stateFilter, ownerFilter, archiveFilter, sort, page, pageSize } = view;
+  const setQuery = (query: string) => updateView({ query });
+  const setJourneyFilter = (journeyFilter: ProjectsIndexJourneyFilter) => updateView({ journeyFilter });
+  const setStageFilter = (stageFilter: NonNullable<Project['status']> | 'all') => updateView({ stageFilter });
+  const setOwnerFilter = (ownerFilter: ProjectsIndexOwnerFilter) => updateView({ ownerFilter });
+  const setSort = (sort: ProjectsIndexSort) => updateView({ sort });
+  const setPage = (page: number) => updateView({ page }, false);
+  const setPageSize = (pageSize: ProjectsIndexPageSize) => updateView({ pageSize });
   const debouncedQuery = useDebouncedValue(query, 180);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -139,29 +136,11 @@ export default function ProjectsIndexClient({
   }, [finishInstantRoute, searchParams]);
 
   useEffect(() => {
-    setJourneyFilter(urlFilters.journeyFilter);
-    setStageFilter(urlFilters.stageFilter);
-    setStateFilter(urlFilters.stateFilter);
-    setOwnerFilter(urlFilters.ownerFilter);
-    setQuery(urlFilters.query);
-    setArchiveFilter(urlFilters.archiveFilter);
-  }, [
-    urlFilters.archiveFilter,
-    urlFilters.journeyFilter,
-    urlFilters.ownerFilter,
-    urlFilters.query,
-    urlFilters.stageFilter,
-    urlFilters.stateFilter,
-  ]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [archiveFilter, debouncedQuery, journeyFilter, ownerFilter, pageSize, sort, stageFilter, stateFilter]);
-
-  useEffect(() => {
-    const totalPages = projectsIndex.data?.projects.totalPages;
-    if (totalPages && page > totalPages) setPage(totalPages);
-  }, [page, projectsIndex.data?.projects.totalPages]);
+    if (projectsIndex.state !== 'fresh' || debouncedQuery !== query) return;
+    const totalPages = Math.max(1, projectsIndex.data?.projects.totalPages ?? 1);
+    if (page > totalPages) setPage(totalPages);
+    else restoreScroll(true);
+  }, [projectsIndex.state, projectsIndex.data, page, debouncedQuery, query, restoreScroll]);
 
   useEffect(() => {
     const t = searchParams.get('toast');
@@ -315,23 +294,13 @@ export default function ProjectsIndexClient({
                 { id: 'projectStageFilter', label: 'Stage', value: stageFilter, onChange: (value) => setStageFilter(value as NonNullable<Project['status']> | 'all'), options: [...PROJECT_STAGE_FILTER_OPTIONS] },
                 { id: 'projectStateFilter', label: 'State', value: stateFilter, onChange: (value) => {
                   const nextState = value as ProjectsIndexStateFilter;
-                  setStateFilter(nextState);
-                  setArchiveFilter(nextState === 'ARCHIVED' ? 'archived' : 'active');
+                  updateView({ stateFilter: nextState, archiveFilter: nextState === 'ARCHIVED' ? 'archived' : 'active' });
                 }, options: [...PROJECT_STATE_FILTER_OPTIONS] },
                 { id: 'projectOwnerFilter', label: 'Owner', value: ownerFilter, onChange: (value) => setOwnerFilter(value as ProjectsIndexOwnerFilter), options: [...PROJECTS_INDEX_OWNER_OPTIONS] },
                 { id: 'projectSort', label: 'Sort', value: sort, onChange: (value) => setSort(value as ProjectsIndexSort), options: [{ value: 'newest', label: 'Newest first' }, { value: 'oldest', label: 'Oldest first' }, { value: 'name_asc', label: 'Name A–Z' }, { value: 'name_desc', label: 'Name Z–A' }] },
                 { id: 'projectPageSize', label: 'Rows', value: String(pageSize), onChange: (value) => setPageSize(Number(value) as ProjectsIndexPageSize), options: [{ value: '50', label: '50 rows' }, { value: '25', label: '25 rows' }, { value: '100', label: '100 rows' }] },
               ]}
-              onClearAll={() => {
-                setQuery('');
-                setJourneyFilter('all');
-                setStageFilter('all');
-                setStateFilter('all');
-                setOwnerFilter('all');
-                setArchiveFilter('active');
-                setSort('newest');
-                setPage(1);
-              }}
+              onClearAll={resetView}
             />
         </Card>
 
@@ -434,6 +403,7 @@ export default function ProjectsIndexClient({
                       const rowEl = (
                         <TableRow
                           key={p.id}
+                          data-project-index-anchor={p.id}
                           className={styles.rowClickable}
                           tabIndex={0}
                           onClick={() => {
@@ -475,6 +445,8 @@ export default function ProjectsIndexClient({
                           <ProjectIndexAccountabilityCells project={p} />
                           <TableCell data-column="Actions">
                             <div className={styles.rowActions}>
+                              {!p.isArchived && p.effectiveState !== 'CLOSED' ? <ProjectDeliveryAction projectId={p.id} host={host}
+                                completed={p.status === 'COMPLETED' || p.status === 'PAID'} disabled={isStatusBusyRow} /> : null}
                               <ButtonLink
                                 variant="quiet"
                                 size="small"
@@ -568,16 +540,7 @@ export default function ProjectsIndexClient({
                   || stageFilter !== 'all'
                   || stateFilter !== 'all'
                   || ownerFilter !== 'all'
-                    ? () => {
-                        setQuery('');
-                        setJourneyFilter('all');
-                        setStageFilter('all');
-                        setStateFilter('all');
-                        setOwnerFilter('all');
-                        setArchiveFilter('active');
-                        setSort('newest');
-                        setPage(1);
-                      }
+                    ? resetView
                     : undefined
                 }
               />

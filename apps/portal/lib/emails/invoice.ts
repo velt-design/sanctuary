@@ -4,6 +4,7 @@ import { sendTransactionalEmail } from './sendTransactionalEmail';
 const DEFAULT_CONTACT_EMAIL = 'info@sanctuarypergolas.co.nz';
 
 export type DepositInvoiceEmailInput = {
+  invoice_scope_blocks?: Array<{ text: string; heading?: boolean }>;
   to: string | string[];
   cc?: string[];
   bcc?: string[];

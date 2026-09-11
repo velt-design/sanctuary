@@ -3,6 +3,7 @@ import { shouldHandleRouteTransitionClick } from '@/components/page-state/Portal
 import type { PortalInstantRoute } from '@/components/page-state/PortalRouteTransition';
 import { contactsIndexQueryOptions } from './contactsIndex';
 import { projectsIndexQueryOptions, type ProjectsIndexArchiveFilter } from './projectsIndex';
+import { resolveProjectIndexReturnHref } from '@/lib/projects/projectIndexSession';
 
 const PORTAL_INDEX_OPENING_PARAM = '__portal_opening';
 
@@ -54,6 +55,7 @@ export function preloadPortalIndex(
   router: Pick<PortalIndexRouter, 'prefetch'>,
   href: string,
 ): PortalInstantRoute | null {
+  href = resolveProjectIndexReturnHref(href);
   const target = portalIndexTarget(href);
   if (!target) return null;
   router.prefetch(href);
@@ -70,6 +72,7 @@ export function openPortalIndexInstantly(
   router: Pick<PortalIndexRouter, 'replace'>,
   href: string,
 ): PortalInstantRoute | null {
+  href = resolveProjectIndexReturnHref(href);
   const target = portalIndexTarget(href);
   const openingHref = portalIndexOpeningHref(href);
   if (!target || !openingHref || !shouldHandleRouteTransitionClick(event)) return null;
