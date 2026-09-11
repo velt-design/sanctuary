@@ -186,12 +186,21 @@ async function loadInvoiceByToken(params: { invoiceId: string; token: string }):
   const invoiceUuid = invoiceUuidFromParam(params.invoiceId);
   const tokenHash = hashAcceptToken(params.token);
 
-  const invoiceRes = await supabase
+  const legacyFields = 'id, status, invoice_ref, quote_ref, quote_version_id, quote_version_number, issue_date, due_date, reference, customer_name, project_name, project_address, payment_instructions, deposit_percent, payment_term_label, payment_term_position, payment_term_count, paid_at, quote_total_inc_gst_cents, total_inc_gst_cents, total_ex_gst_cents, gst_cents, portal_token_expires_at, pdf_file_id';
+  const read = (fields: string) => supabase
     .from('deposit_invoices')
-    .select('*')
+    .select(fields)
     .eq('id', invoiceUuid)
     .eq('portal_token_hash', tokenHash)
     .maybeSingle();
+
+  let invoiceRes = await read(legacyFields + ', invoice_kind, content_snapshot');
+  // Compatible readers deploy before the storage expansion. Retry only the
+  // known absent expansion columns, keeping both reads explicitly allowlisted.
+  if (invoiceRes.error && ['42703', 'PGRST204'].includes(invoiceRes.error.code)
+    && /invoice_kind|content_snapshot/.test(invoiceRes.error.message)) {
+    invoiceRes = await read(legacyFields);
+  }
 
   if (invoiceRes.error || !invoiceRes.data) return null;
   return mapInvoiceRow(invoiceRes.data);

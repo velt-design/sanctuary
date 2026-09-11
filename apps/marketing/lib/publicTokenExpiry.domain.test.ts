@@ -109,6 +109,19 @@ describe('expired public token domain boundaries', () => {
     expect(result.invoice?.contentSnapshot).toBeNull();
     expect(from).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps explicit field selection when readers precede the invoice storage migration', async () => {
+    const query = queryResult({ id: INVOICE_ID, status: 'OPEN' });
+    query.maybeSingle.mockResolvedValueOnce({ data: null, error: { code: '42703', message: 'column content_snapshot does not exist' } } as never);
+    h.getServiceSupabase.mockReturnValue({ from: vi.fn(() => query) });
+    const domain = await import('./invoices/publicInvoice');
+    const result = await domain.loadPublicDepositInvoiceByToken({ invoiceId: INVOICE_ID, token: 'test-only' });
+    expect(result.invoice?.status).toBe('OPEN');
+    expect(query.select.mock.calls).toHaveLength(2);
+    expect(query.select.mock.calls[0][0]).toContain('content_snapshot');
+    expect(query.select.mock.calls[1][0]).not.toContain('content_snapshot');
+    expect(query.select.mock.calls.flat()).not.toContain('*');
+  });
   beforeEach(() => {
     vi.resetModules();
     h.getServiceSupabase.mockReset();
