@@ -1,5 +1,19 @@
 # Quotes, Invoices, And Job Packs
 
+## Invoice drafts and standalone work
+
+The invoice expansion is gated by `INVOICE_DRAFTS_ENABLED=true` on the portal server. Deploy compatible portal and public readers first, apply the forward invoice migrations `20260911000002` through `20260911000007`, then enable creation after staging verification. Disabling the flag stops draft commands through the application; issued invoices remain readable, payable, previewable and sendable. It does not remove administrator database command privileges. Do not roll back the storage expansion or rewrite issued records.
+
+Admins save, edit, delete and issue drafts from the project Invoices tab. Drafts live in `deposit_invoices`, have no number/token/artifact and reserve no balance. Save uses an expected revision; issue uses a stable UUID command, assigns the number in the transaction and checks current quote/scope availability again. A send failure after issue returns an issued result with a separate delivery error: retry sending from history, never create a replacement for a transport failure.
+
+Quote-linked drafts copy the exact accepted version's items. Only their descriptions, billing details, notes, due date, reference and requested payment can change. Stage, custom, remaining and split modes continue through the existing commercial invoice owner. The full quoted scope is labelled **Quoted scope — reference**, separately from **This invoice — amount due**. Standalone drafts have editable/reorderable items and bill their whole rounded item total. Their issued, non-void value is additional project value, separately identified from accepted quotes.
+
+The versioned invoice content plus immutable issued invoice fields supply PDF, email and public content. Draft PDFs are watermarked and never persisted as customer artifacts. Null content is explicit legacy compatibility; historical issued snapshots and existing PDF/email artifacts are not backfilled. Staff retain issued viewing/preview/sending. Corrections use void-and-recreate or the payment reversal owner.
+
+Verification owners: `test/invoice-drafts.integration.test.ts` executes production draft, billing, delivery and operational commands in disposable PostgreSQL; `InvoiceDraftEditor.test.tsx` and the admin route tests cover conflicts and permissions. `portal.invoice-draft-editor-fixture.spec.ts` intercepts every command against synthetic data. The existing PDF/public visual fixture tests now include deposits, standalone work, long item scope and draft preview. Fixture evidence does not substitute for authenticated staging verification.
+
+Staging evidence (2026-09-11): the exact seven forward migrations and `supabase/tests/invoice_drafts_staging_rollback.sql` passed in one transaction against positively identified `SP-Staff-Portal-Staging`; all schema and synthetic data changes were rolled back. This exercised admin draft/issue/retry, manual delivery, standalone payment, settled closure, reversal and repayment under the real production SQL owners. No production writes or customer sends were made. Persistent staging rollout remains pending: its migration ledger contains four historical versions missing from this checkout (`20260724`, `20260728`, `20260731`, `20260909000001`), so ordinary CLI push correctly refuses. Reconcile that historical record from its source before rollout; do not mark unrelated migrations reverted or reset the database. Release persistence first, then delivery with migration `20260911000001`, then deploy compatible invoice readers and the remaining expansion with creation disabled; enable drafts only after the staging application smoke.
+
 This doc is the current-state reference for quote, invoice, public-token, PDF/email, and job-pack flows. These workflows have side effects, public access surfaces, file artifacts, and project-stage implications, so verify behavior at the domain boundary, not only in the UI.
 
 ## Read First

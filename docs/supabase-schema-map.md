@@ -2,6 +2,8 @@
 
 Status: Current.
 
+Invoice expansion (`20260911000002`–`20260911000007`): `deposit_invoices` adds `invoice_kind`, versioned `content_snapshot`, `draft_revision`, `draft_options`, `issue_command_id` and `issued_from_revision`. Quote identity is nullable only for standalone records. Draft shape constraints forbid invoice numbers, public tokens, paid/sent timestamps and customer PDF artifacts. Issued content is immutable. Admin-authenticated save/delete/issue RPCs extend this table and the current commercial billing functions. `project_payment_allocations.standalone_invoice_id` is an exclusive alternative to quote/stage identity. The payment ledger retains reversed receipts and guards against multiple live receipts per invoice. See [the invoice workflow](quotes-invoices-job-packs.md#invoice-drafts-and-standalone-work) for ordered rollout and compatibility.
+
 Delivery completion: 20260911000001_project_delivery_completion.sql extends project_confirmation_events with DELIVERY_COMPLETED and delivery_details, adds the authenticated project_record_delivery_completion command, and projects existing Schedule/confirmation evidence into the project stage. The command uses Project Work receipts and append-only evidence; no browser schedule writes or payment writes are introduced. project_has_delivery_completion is internal; project_confirm_delivery_stage is the evidence-checked compatibility adapter.
 
 This doc maps active Supabase tables and RPCs to the portal workflow that owns them. Feature docs own behavior; this schema map owns table/RPC routing, write-path boundaries, access rules, and migration sources.

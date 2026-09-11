@@ -82,6 +82,23 @@ const visualFixtures: Array<{
   },
 ];
 
+const content = {
+  version: 1 as const, billingName: 'Synthetic customer', billingEmail: 'customer@example.invalid',
+  billingAddress: '18 Example Lane\nAuckland', notes: 'Synthetic fixture. No payment should be made.',
+  items: [
+    { id: 'structure', description: 'Pergola structure\nPowder coated frame, posts and roof.', qty: 1, unitPriceIncGstCents: 460000, lineTotalIncGstCents: 460000 },
+    { id: 'installation', description: 'Installation and site finishing', qty: 2, unitPriceIncGstCents: 57500, lineTotalIncGstCents: 115000 },
+  ],
+};
+visualFixtures.push(
+  { name: '05-itemised-deposit', invoice: fixture({ contentSnapshot: content, invoiceKind: 'QUOTE_LINKED', paymentTermLabel: 'Initial payment', paymentTermCalculation: 'fixed' }), paymentLines: SYNTHETIC_PAYMENT_LINES },
+  { name: '06-standalone', invoice: fixture({ contentSnapshot: content, invoiceKind: 'STANDALONE', quoteRef: '', quoteVersionNumber: 0, quoteTotalIncGstCents: 0,
+    paymentTermLabel: 'Project work', paymentTermCalculation: 'fixed', totalIncGstCents: 575000, totalExGstCents: 500000, gstCents: 75000 }), paymentLines: SYNTHETIC_PAYMENT_LINES },
+  { name: '07-long-itemised-scope', invoice: fixture({ invoiceKind: 'QUOTE_LINKED', contentSnapshot: { ...content,
+    items: content.items.map((item) => ({ ...item, description: Array.from({ length: 20 }, (_, i) => `Specification ${i + 1}: ${item.description}`).join('\n') })) } }), paymentLines: SYNTHETIC_PAYMENT_LINES },
+  { name: '08-draft-preview', invoice: fixture({ draft: true, invoiceRef: 'DRAFT', contentSnapshot: content, invoiceKind: 'QUOTE_LINKED' }), paymentLines: ['DRAFT — PREVIEW ONLY. Do not pay.'] },
+);
+
 describe("deposit invoice PDF visual fixtures", () => {
   it("renders deterministic, non-persistent invoice scenarios", async () => {
     const outputDir = process.env.INVOICE_ARTIFACT_OUTPUT_DIR?.trim();

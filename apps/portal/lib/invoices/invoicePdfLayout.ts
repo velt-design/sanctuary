@@ -322,7 +322,7 @@ export function drawContinuationHeader(
   });
   drawLogo(page, logo, CONTENT_X1, topY + 4, 20);
 
-  const referenceText = `DEPOSIT INVOICE / ${vm.header.invoiceRef}`;
+  const referenceText = `${vm.header.title.toUpperCase()} / ${vm.header.invoiceRef}`;
   const referenceSize = fitTextSize(
     fonts.medium,
     referenceText,
@@ -423,8 +423,8 @@ export function prepareMetaLines(
   }
 
   const invoiceDetails = [
-    `Issued ${vm.dates.issue}`,
-    `Quote ${vm.header.quoteRef} v${vm.header.quoteVersionNumber}`,
+    vm.header.draft ? 'Not issued — draft preview' : `Issued ${vm.dates.issue}`,
+    ...(vm.header.quoteRef ? [`Quote ${vm.header.quoteRef} v${vm.header.quoteVersionNumber}`] : []),
     `${vm.deposit.label} ${vm.deposit.basis}`,
     "Currency NZD",
   ].flatMap((value) =>

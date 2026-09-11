@@ -137,6 +137,16 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
+  it('leaves the data-free invoice editor fixture behind its server flag', () => {
+    mockPathname = '/qa/invoice-draft-editor-fixture';
+    mockSearchParams = new URLSearchParams();
+    mockSession = { status: 'unauthenticated', email: null, role: null } as any;
+    const rendered = renderIntoDocument(<PortalShell><div data-testid="child">Invoice fixture</div></PortalShell>);
+    expect(rendered.container.textContent).toContain('Invoice fixture');
+    expect(replaceMock).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
   it('renders the project page shell QA fixture without auth redirects or portal chrome', () => {
     mockPathname = '/qa/project-page-shell-fixture';
     mockSearchParams = new URLSearchParams('tab=activity');

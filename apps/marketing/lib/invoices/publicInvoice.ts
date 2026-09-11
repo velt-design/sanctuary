@@ -1,4 +1,5 @@
 import 'server-only';
+import { parseInvoiceContent, type InvoiceContentSnapshot } from '@sp/quote-format';
 
 import { hashAcceptToken } from '@/lib/quotes/acceptToken';
 import { publicTokenAccessState } from '@/lib/publicTokenAccess';
@@ -6,11 +7,13 @@ import { getServiceSupabase } from '@/lib/supabaseService';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type InvoiceStatus = 'OPEN' | 'PAID' | 'VOID';
+type InvoiceStatus = 'DRAFT' | 'OPEN' | 'PAID' | 'VOID';
 
 type InvoiceRow = {
   id: string;
   status: InvoiceStatus;
+  contentSnapshot?: InvoiceContentSnapshot | null;
+  invoiceKind?: 'QUOTE_LINKED' | 'STANDALONE';
   invoice_ref: string;
   quote_ref: string;
   quote_version_id: string;
@@ -36,12 +39,14 @@ type InvoiceRow = {
 };
 
 export type PublicDepositInvoice = {
+  contentSnapshot?: InvoiceContentSnapshot | null;
+  invoiceKind?: 'QUOTE_LINKED' | 'STANDALONE';
   id: string;
   status: InvoiceStatus;
   invoiceRef: string;
-  quoteRef: string;
-  quoteVersionId: string;
-  quoteVersionNumber: number;
+  quoteRef?: string;
+  quoteVersionId?: string;
+  quoteVersionNumber?: number;
   issueDate: string;
   dueDate: string;
   reference: string | null;
@@ -83,14 +88,16 @@ function invoiceUuidFromParam(value: string): string {
 
 function toStatus(value: unknown): InvoiceStatus {
   const status = String(value ?? '').toUpperCase();
-  if (status === 'VOID' || status === 'PAID') return status;
-  return 'OPEN';
+  if (status === 'VOID' || status === 'PAID' || status === 'DRAFT') return status;
+  return status === 'OPEN' ? 'OPEN' : 'DRAFT';
 }
 
 function mapInvoiceRow(row: any): InvoiceRow {
   return {
     id: String(row?.id ?? ''),
     status: toStatus(row?.status),
+    contentSnapshot: parseInvoiceContent(row?.content_snapshot),
+    invoiceKind: row?.invoice_kind === 'STANDALONE' ? 'STANDALONE' : 'QUOTE_LINKED',
     invoice_ref: String(row?.invoice_ref ?? ''),
     quote_ref: String(row?.quote_ref ?? ''),
     quote_version_id: String(row?.quote_version_id ?? ''),
@@ -120,10 +127,10 @@ function toPublicInvoice(row: InvoiceRow, quotePdfFileId: string | null): Public
   return {
     id: row.id,
     status: row.status,
+    contentSnapshot: row.contentSnapshot,
+    invoiceKind: row.invoiceKind,
     invoiceRef: row.invoice_ref,
-    quoteRef: row.quote_ref,
-    quoteVersionId: row.quote_version_id,
-    quoteVersionNumber: row.quote_version_number,
+    ...(row.quote_version_id ? { quoteRef: row.quote_ref, quoteVersionId: row.quote_version_id, quoteVersionNumber: row.quote_version_number } : {}),
     issueDate: row.issue_date,
     dueDate: row.due_date,
     reference: row.reference,
@@ -181,9 +188,7 @@ async function loadInvoiceByToken(params: { invoiceId: string; token: string }):
 
   const invoiceRes = await supabase
     .from('deposit_invoices')
-    .select(
-      'id, status, invoice_ref, quote_ref, quote_version_id, quote_version_number, issue_date, due_date, reference, customer_name, project_name, project_address, payment_instructions, deposit_percent, payment_term_label, payment_term_position, payment_term_count, paid_at, quote_total_inc_gst_cents, total_inc_gst_cents, total_ex_gst_cents, gst_cents, portal_token_expires_at, pdf_file_id',
-    )
+    .select('*')
     .eq('id', invoiceUuid)
     .eq('portal_token_hash', tokenHash)
     .maybeSingle();
@@ -199,7 +204,7 @@ async function loadActiveInvoiceByToken(
   | { row: null; reason: 'invalid' | 'expired' }
 > {
   const row = await loadInvoiceByToken(params);
-  if (!row) return { row: null, reason: 'invalid' };
+  if (!row || row.status === 'DRAFT') return { row: null, reason: 'invalid' };
   if (publicTokenAccessState(row.portal_token_expires_at) === 'expired') {
     return { row: null, reason: 'expired' };
   }

@@ -1,4 +1,5 @@
 import 'server-only';
+import { invoiceDraftCreationEnabled } from './draftFeature';
 
 import { insertCommercialAuditEvent } from '../commercial/audit';
 import { paymentDetailsText } from '../payments/paymentDetails';
@@ -158,6 +159,7 @@ export async function getProjectInvoiceSchedule(
 export async function createAdminInvoice(
   params: Omit<AdminInvoiceCreateInput, 'clientIntentId'> & { clientIntentId: string; actor: string | null },
 ): Promise<QuoteInvoiceCreateResult> {
+  if (invoiceDraftCreationEnabled()) throw new Error('Create and issue an invoice draft from the project Invoices tab.');
   const projectUuid = uuidFromAppId(params.projectId, 'proj');
   const quoteVersionUuid = uuidFromAppId(params.quoteVersionId, 'qv');
   const label = params.label.trim().slice(0, 240);

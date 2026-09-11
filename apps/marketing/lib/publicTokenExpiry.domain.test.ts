@@ -88,6 +88,27 @@ function expiredInvoiceClient() {
 }
 
 describe('expired public token domain boundaries', () => {
+  it.each(['DRAFT', 'UNRECOGNISED'])('blocks %s invoices before any artifact or source-quote access', async (status) => {
+    const from = vi.fn((_table: string) => queryResult({ id: INVOICE_ID, status, pdf_file_id: 'test-file', quote_version_id: QUOTE_VERSION_ID }));
+    h.getServiceSupabase.mockReturnValue({ from });
+    const domain = await import('./invoices/publicInvoice');
+    const input = { invoiceId: INVOICE_ID, token: 'test-only' };
+    expect(await domain.loadPublicDepositInvoiceByToken(input)).toEqual({ invoice: null, reason: 'invalid' });
+    expect(await domain.loadPublicDepositInvoicePdfByToken(input)).toBeNull();
+    expect(await domain.loadPublicSourceQuotePdfByInvoiceToken(input)).toBeNull();
+    expect(from.mock.calls.every(([table]) => table === 'deposit_invoices')).toBe(true);
+  });
+
+  it('reads a legacy standalone invoice without querying or exposing a source quote', async () => {
+    const from = vi.fn((_table: string) => queryResult({ id: INVOICE_ID, status: 'OPEN', invoice_kind: 'STANDALONE' }));
+    h.getServiceSupabase.mockReturnValue({ from });
+    const domain = await import('./invoices/publicInvoice');
+    const result = await domain.loadPublicDepositInvoiceByToken({ invoiceId: INVOICE_ID, token: 'test-only' });
+    expect(result.invoice?.invoiceKind).toBe('STANDALONE');
+    expect(result.invoice).not.toHaveProperty('quoteVersionId');
+    expect(result.invoice?.contentSnapshot).toBeNull();
+    expect(from).toHaveBeenCalledTimes(1);
+  });
   beforeEach(() => {
     vi.resetModules();
     h.getServiceSupabase.mockReset();

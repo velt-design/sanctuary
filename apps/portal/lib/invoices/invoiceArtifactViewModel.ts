@@ -1,4 +1,9 @@
+import type { InvoiceContentSnapshot } from '@sp/quote-format';
+
 export type DepositInvoiceArtifactInput = {
+  contentSnapshot?: InvoiceContentSnapshot | null;
+  invoiceKind?: 'QUOTE_LINKED' | 'STANDALONE';
+  draft?: boolean;
   invoiceRef: string;
   quoteRef: string;
   quoteVersionNumber: number;
@@ -19,6 +24,7 @@ export type DepositInvoiceArtifactInput = {
 
 export type DepositInvoiceArtifactViewModel = {
   header: {
+    draft?: boolean;
     title: string;
     invoiceRef: string;
     quoteRef: string;
@@ -138,13 +144,14 @@ export function buildDepositInvoiceArtifactViewModel(
 
   return {
     header: {
-      title: input.paymentTermLabel ? "Invoice" : "Deposit invoice",
+      ...(input.draft ? { draft: true } : {}),
+      title: input.draft ? 'Draft invoice' : input.paymentTermLabel ? "Invoice" : "Deposit invoice",
       invoiceRef: input.invoiceRef,
       quoteRef: input.quoteRef,
       quoteVersionNumber: input.quoteVersionNumber,
     },
     customer: {
-      name: input.customerName?.trim() || "Customer",
+      name: input.contentSnapshot?.billingName.trim() || input.customerName?.trim() || "Customer",
     },
     project: {
       name: input.projectName?.trim() || "Project",
@@ -158,8 +165,10 @@ export function buildDepositInvoiceArtifactViewModel(
       percent: depositPercent,
       label: paymentLabel,
       basis: paymentBasis,
-      explanation: input.paymentTermLabel?.trim()
-        ? `This invoice requests the ${input.paymentTermLabel.trim().toLowerCase()} payment for quote ${quoteIdentity}.`
+      explanation: input.invoiceKind === 'STANDALONE'
+        ? `This invoice requests payment for ${input.paymentTermLabel?.trim() || 'the itemised project work'}.`
+        : input.paymentTermLabel?.trim()
+        ? `This invoice requests the ${input.paymentTermLabel.trim().toLowerCase()}${/payment$/i.test(input.paymentTermLabel.trim()) ? '' : ' payment'} for quote ${quoteIdentity}.`
         : `This invoice requests the ${depositPercent}% initial payment for quote ${quoteIdentity}.`,
     },
     totals: {
