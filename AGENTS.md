@@ -6,7 +6,9 @@ Read this file first, then follow links into `docs/README.md`. For non-trivial o
 
 For customer-facing PDF presentations, proposals, partnerships or booklet output,
 read [docs/customer-presentation-standard.md](docs/customer-presentation-standard.md)
-and inspect the relevant approved reference pages before authoring or reviewing.
+and inspect the relevant approved reference pages when available. If unavailable,
+use the written standard and follow its reference access guide; do not block
+otherwise valid work or claim to have inspected inaccessible examples.
 This governs customer-document quality; existing portal and marketing UI owners
 still govern their own application surfaces.
 

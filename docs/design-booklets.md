@@ -41,8 +41,10 @@ Toni fixture behavior for safe standalone and QA use.
 
 Customer-document quality is governed by the
 [Sanctuary Customer Presentation Standard](customer-presentation-standard.md),
-with approved design/feasibility and partnership examples retained privately. Read that standard
-and the relevant reference pages before refining booklet composition or copy.
+with approved design/feasibility and partnership examples retained privately.
+Read that standard and inspect relevant reference pages when available before
+refining booklet composition or copy. When examples are unavailable, use the
+written standard and its reference access guide without claiming visual inspection.
 The technical behavior below remains the current implementation contract.
 
 The cover is always page one and the review page is always last. They cannot be removed or reordered. The middle `contentPages` sequence may contain any mix of curated content and drawing pages; staff can add, remove, and reorder either type. Page numbers and the total page count are derived from that sequence, so the booklet may contain only the two fixed pages or up to 24 middle pages.
