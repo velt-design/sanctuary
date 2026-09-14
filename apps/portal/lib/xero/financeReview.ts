@@ -21,6 +21,7 @@ export function financeOutcome(row: FinanceInvoice, now = Date.now()) {
   const observation = row.observation;
   const stale = observation && now - Date.parse(observation.checkedAt) > 24 * 60 * 60 * 1000;
   if (row.correctionRequired && (observation?.state !== 'correction_complete' || stale)) return { remainingCents, attention: true, label: 'Check Xero after portal correction' };
+  if (row.correctionRequired && observation?.state === 'correction_complete') return { remainingCents, attention: false, label: 'Void confirmed in both systems' };
   if (observation?.state === 'conflict') return { remainingCents, attention: true, label: 'Xero differs from the portal — investigate' };
   if (row.unassignedReceipts) return { remainingCents, attention: true, label: 'Assign existing project receipts before chasing payment' };
   if (balanceNeedsReview) return { remainingCents, attention: true, label: 'Check payment history' };
