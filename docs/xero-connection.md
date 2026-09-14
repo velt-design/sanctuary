@@ -79,7 +79,7 @@ Preview `dpl_9NLZ7ZfwtBrkmcprq2DiYMZ3YHPv` is Ready at exact application revisio
 
 ## Next stage: everyday finance
 
-Status: owner-agreed next-stage scope (2026-09-14); implementation not started. This section does not claim implementation or change the released pilot's read-only Xero permissions and Jordan-only approval grant.
+Status: active owner-approved delivery goal (2026-09-14). Discovery is underway; the finance expansion is not implemented or released. The released pilot retains read-only Xero permissions and its Jordan-only approval grant until the separately tested activation.
 
 The intended outcome is that the person responsible for finance can use the portal to see issued invoices, their corresponding Xero records, received and outstanding amounts, suggested payment matches and unresolved exceptions. They can approve an evidenced match or record an investigation/correction without needing developer controls or this chat.
 
@@ -98,6 +98,17 @@ Start with one newly issued portal invoice becoming one traceable Xero draft. Pr
 Acceptance means Ellen can identify what needs attention, follow an invoice to its Xero draft, review a receipt with evidence, approve a safe match, see the correct remaining balance/customer-win outcome and investigate or correct an exception without developer controls. The test set must include a failed/retried transfer, an existing Xero invoice, partial and full deposits, an ambiguous/duplicate receipt, an invoice correction and an independent Xero change. Staging proof precedes a bounded live rollout; finish with Ellen demonstrating the workflow rather than relying only on code checks. These are acceptance requirements, not completed evidence.
 
 New Xero writes require a separately reviewed connector scope and activation; the current read-only connection does not permit invoice creation. Automated payment-match approval, historical bulk imports, supplier purchasing, marketing feedback and wider Velt ingestion are not included in this first finance rollout. Those remain governed by the [owner delivery priorities](ai/00-vision.md#owner-outcomes-and-delivery-order).
+
+### First-slice implementation findings
+
+- Invoice issuance is the accounting trigger, independently of email delivery. `commercial_invoice_issue_draft` commits before the application attempts sending; legacy quote acceptance and administrator invoice commands also create issued invoices. The durable transfer must cover those authoritative issuance paths without depending on a successful email or a browser remaining open. Do not export unissued portal drafts or historical invoices merely because the feature becomes enabled.
+- Quote-linked invoice content describes the full quoted scope while the invoice total can be only one scheduled payment. Never export the full quoted line total as the deposit amount. Standalone invoices bill their own item total. Use immutable issued amounts and content; verify exact subtotal, tax and total against the returned Xero record.
+- The existing correction contract is void-and-recreate for an incorrect issued invoice. Preserve that contract. Correcting a portal draft before issue produces no Xero change; voiding an issued invoice with a linked Xero draft requires a tracked finance action. A posted or independently changed Xero invoice is an exception, not permission to overwrite accounting history.
+- Xero's [idempotency contract](https://developer.xero.com/documentation/guides/idempotent-requests/idempotency/) retains keys for only six minutes. Persist the request identity, exact payload and first dispatch time before writing. Retry uncertainty only within a conservative bounded window using the same request; after expiry, reconcile or require attention rather than issuing another blind create. The existing email provider's longer retry window is not applicable to Xero.
+- Xero's [invoice contract](https://developer.xero.com/documentation/api/accounting/invoices) provides a unique sales-invoice number and DRAFT status. Use the portal invoice identity, an explicit DRAFT status and verified contact/account/tax mapping. Existing records require comparison and a visible conflict path; a matching number alone does not authorize adoption or changes.
+- The current OAuth boundary deliberately rejects extra scopes. Review its start, callback and token-renewal paths together when adding invoice writes and settings reads; retain read-only payment/bank-transaction permissions. Xero [scope consent is additive](https://developer.xero.com/documentation/guides/oauth2/scopes/), so disabling transfer must stop application writes without breaking renewal of an already expanded connection. No expanded consent has been requested yet.
+
+The prior proof PR #129 remains blocked by its shared staging calculator check: the published costing manifest is v2.7 while that application's engine is v2.6. Both latest finance-independent quality checks passed; the performance capture failed on incompatible pricing configuration. Resolve environment compatibility through the costing owner before rerunning that check. Do not roll back another task's publication, change live prices or weaken checks to release finance documentation.
 
 ## Configuration
 
