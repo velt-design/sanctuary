@@ -4,6 +4,7 @@ import path from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { getBackgroundJobDefinition } from '@sp/jobs';
+import { mapIssuedInvoiceToXeroDraft, type IssuedInvoiceForXero, type XeroInvoiceMapping } from '../apps/portal/lib/xero/invoiceDraftMapping';
 
 let db: PGlite;
 const project = '11111111-1111-4111-8111-111111111111';
@@ -20,24 +21,39 @@ describe('Xero issuance capture boundary', () => {
     await db.exec(`
       create schema private; create schema auth;
       create role anon; create role authenticated; create role service_role;
+      create table auth.users(id uuid primary key);
+      insert into auth.users values ('${tenant}');
       create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
       create type public.background_job_rollout_mode as enum ('disabled','legacy','shadow','worker_cohort','worker_enabled');
       create type public.background_job_execution_owner as enum ('legacy','shadow','worker');
-      create table public.projects(id uuid primary key);
-      insert into public.projects values ('${project}');
-      create table public.deposit_invoices(id uuid primary key default gen_random_uuid(), project_id uuid not null references public.projects(id), status text);
+      create table public.contacts(id uuid primary key);
+      insert into public.contacts values ('${project}');
+      create table public.projects(id uuid primary key,contact_id uuid references public.contacts(id));
+      insert into public.projects values ('${project}','${project}');
+      create table public.deposit_invoices(id uuid primary key default gen_random_uuid(), project_id uuid not null references public.projects(id), status text,
+        invoice_ref text default 'INV-TEST',currency text default 'NZD',invoice_kind text default 'QUOTE_LINKED',
+        issue_date date default '2026-09-14',due_date date default '2026-09-21',quote_ref text default 'Q-TEST',payment_term_label text default 'Deposit',
+        total_inc_gst_cents int default 115,total_ex_gst_cents int default 100,gst_cents int default 15,content_snapshot jsonb);
       create table public.background_job_kinds(kind text primary key,contract_version int,handler_owner text,max_attempts int,
         timeout_seconds int,concurrency_class text,has_external_side_effect boolean,required_effect_kinds text[],
         cancellation_allowed boolean,default_rollout_mode public.background_job_rollout_mode,active boolean,allowed_effect_kinds text[]);
-      create table public.background_jobs(id uuid primary key default gen_random_uuid(),kind text,intent_key text unique,payload jsonb);
+      create table public.background_jobs(id uuid primary key default gen_random_uuid(),kind text,intent_key text unique,payload jsonb,
+        lease_owner text default 'test-worker',lease_token uuid default '${tenant}',lease_expires_at timestamptz default now()+interval '1 hour',
+        status text default 'running',contract_version int default 1,execution_owner text default 'worker',cancellation_requested_at timestamptz,
+        subject_type text,subject_id text,project_id uuid);
       create function private.background_job_enqueue_core(text,int,text,text,uuid,uuid,text,smallint,text,jsonb,timestamptz,
         public.background_job_rollout_mode,public.background_job_execution_owner,text)
       returns public.background_jobs language plpgsql as $$ declare r public.background_jobs; begin
         if current_setting('test.enqueue_failure',true) = 'yes' then raise exception 'Synthetic enqueue failure'; end if;
-        insert into public.background_jobs(kind,intent_key,payload) values ($1,$9,$10) returning * into r; return r;
+        insert into public.background_jobs(kind,intent_key,payload,subject_type,subject_id,project_id) values ($1,$9,$10,$3,$4,$5) returning * into r; return r;
       end $$;
     `);
     await db.exec(readFileSync(path.resolve('supabase/migrations/20260914000005_xero_invoice_transfer_intents.sql'), 'utf8'));
+    const lifecycle = readFileSync(path.resolve('supabase/migrations/20260720_000003_background_job_lifecycle.sql'), 'utf8');
+    await db.exec(lifecycle.slice(lifecycle.indexOf('create or replace function private.background_job_lock_owned('),
+      lifecycle.indexOf('create or replace function private.background_job_archive_canonical(')));
+    await db.exec(readFileSync(path.resolve('supabase/migrations/20260914000006_xero_invoice_context.sql'), 'utf8'));
+    await db.exec(readFileSync(path.resolve('supabase/migrations/20260914000007_xero_invoice_frozen_requests.sql'), 'utf8'));
   });
   afterAll(async () => { await db?.close(); });
 
@@ -97,5 +113,60 @@ describe('Xero issuance capture boundary', () => {
         or has_table_privilege($1,'private.xero_invoice_transfer_control','UPDATE') as allowed`, [role]);
       expect(result.rows[0].allowed).toBe(false);
     }
+  });
+
+  it('requires verified mappings and uses the contact frozen at issuance', async () => {
+    const job = (await db.query<{ id: string }>('select id from public.background_jobs limit 1')).rows[0].id;
+    await expect(db.query('select public.xero_invoice_transfer_context($1,$2)', [job, tenant])).rejects.toThrow('XERO_MAPPING_REQUIRED');
+    await db.exec(`update private.xero_invoice_transfer_control set account_code='200',tax_type='OUTPUT2',mapping_verified_at=now();
+      insert into private.xero_customer_mappings values ('${tenant}','${project}','${tenant}',now(),'${tenant}',null);
+      update public.projects set contact_id=null;`);
+    const value = (await db.query<{ result: { mapping: { contactId: string }; invoice: { totalIncGstCents: number } } }>(
+      'select public.xero_invoice_transfer_context($1,$2) as result', [job, tenant])).rows[0].result;
+    expect(value.mapping.contactId).toBe(tenant);
+    expect(value.invoice.totalIncGstCents).toBe(115);
+  });
+
+  it('refuses stale leases, disabled transfers, wrong subjects and revoked customer mappings', async () => {
+    const job = (await db.query<{ id: string }>('select id from public.background_jobs limit 1')).rows[0].id;
+    await expect(db.query('select public.xero_invoice_transfer_context($1,$2)', [job, project])).rejects.toThrow(/lease/);
+    await db.exec(`update public.background_jobs set lease_expires_at=now()-interval '1 second' where id='${job}'`);
+    await expect(db.query('select public.xero_invoice_transfer_context($1,$2)', [job, tenant])).rejects.toThrow(/lease/);
+    await db.exec(`update public.background_jobs set lease_expires_at=now()+interval '1 hour' where id='${job}';
+      update private.xero_invoice_transfer_control set enabled=false;`);
+    await expect(db.query('select public.xero_invoice_transfer_context($1,$2)', [job, tenant])).rejects.toThrow('XERO_TRANSFER_DISABLED');
+    await db.exec(`update private.xero_invoice_transfer_control set enabled=true;
+      update public.background_jobs set subject_type='quote' where id='${job}'`);
+    await expect(db.query('select public.xero_invoice_transfer_context($1,$2)', [job, tenant])).rejects.toThrow('XERO_JOB_NOT_AUTHORISED');
+    await db.exec(`update public.background_jobs set subject_type='invoice' where id='${job}';
+      update private.xero_customer_mappings set revoked_at=now()`);
+    await expect(db.query('select public.xero_invoice_transfer_context($1,$2)', [job, tenant])).rejects.toThrow('XERO_MAPPING_REQUIRED');
+  });
+
+  it('freezes the mapped issued request once and refuses changed amounts or accounting identity', async () => {
+    await db.exec('update private.xero_customer_mappings set revoked_at=null');
+    const job = (await db.query<{ id: string }>('select id from public.background_jobs limit 1')).rows[0].id;
+    const context = (await db.query<{ result: { invoice: IssuedInvoiceForXero; mapping: XeroInvoiceMapping } }>(
+      'select public.xero_invoice_transfer_context($1,$2) as result', [job, tenant])).rows[0].result;
+    const draft = mapIssuedInvoiceToXeroDraft(context.invoice, context.mapping);
+    const prepare = (value: unknown) => db.query<{ result: Record<string, unknown> }>(
+      'select public.xero_invoice_prepare_request($1,$2,$3,$4) as result', [job, tenant, tenant, JSON.stringify({ Invoices: [value] })]);
+    await expect(prepare({ ...draft, Status: 'AUTHORISED' })).rejects.toThrow('XERO_REQUEST_INVALID');
+    await expect(prepare({ ...draft, Contact: { ContactID: project } })).rejects.toThrow('XERO_REQUEST_INVALID');
+    await expect(prepare({ ...draft, LineItems: [{ ...draft.LineItems[0], UnitAmount: 2, LineAmount: 2 }] }))
+      .rejects.toThrow('XERO_REQUEST_TOTAL_MISMATCH');
+    const first = (await prepare(draft)).rows[0].result;
+    const retry = (await prepare(draft)).rows[0].result;
+    expect(retry).toEqual(first);
+    expect(first.body).toBe(JSON.stringify({ Invoices: [draft] }));
+    expect(first.bodyHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(first.idempotencyKey).toMatch(/^sp-xero:/);
+    expect(first.dispatchStarted).toBe(false);
+    await expect(prepare({ ...draft, Reference: 'Changed' })).rejects.toThrow('XERO_REQUEST_CHANGED');
+    expect((await db.query('select count(*) from private.xero_invoice_requests')).rows[0].count).toBe(1);
+    await expect(db.exec("update private.xero_invoice_requests set body='{}'")).rejects.toThrow('XERO_REQUEST_IMMUTABLE');
+    await expect(db.exec("update private.xero_invoice_requests set expires_at=expires_at+interval '1 minute'"))
+      .rejects.toThrow('XERO_REQUEST_IMMUTABLE');
+    await expect(db.exec('delete from private.xero_invoice_requests')).rejects.toThrow('XERO_REQUEST_IMMUTABLE');
   });
 });
