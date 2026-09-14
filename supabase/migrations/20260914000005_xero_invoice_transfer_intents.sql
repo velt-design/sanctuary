@@ -54,7 +54,7 @@ begin
 
   v_job := private.background_job_enqueue_core(
     'xero_invoice_draft_v1', 1, 'invoice', v_invoice.id::text, v_invoice.project_id,
-    auth.uid(), 'invoice_issuance', 100::smallint,
+    auth.uid(), case when auth.uid() is null then 'system' else 'staff' end, 100::smallint,
     'xero-invoice-draft:' || v_control.tenant_id::text || ':' || v_invoice.id::text,
     jsonb_build_object('contractVersion',1,'transferId',v_transfer_id,
       'invoiceId',v_invoice.id,'tenantId',v_control.tenant_id),
