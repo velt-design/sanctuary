@@ -17,6 +17,17 @@ Related docs/tests: paths or commands
 
 Use `Status: Active` when the entry is still only a decision-log guardrail. New reusable lessons should remain `Active` until a later pass promotes them into a canonical doc, so this log continues to show live risks that have not yet become standing rules. Use `Status: Promoted` when the durable behavior is now represented in `docs/agent-playbook.md`, `AGENTS.md`, `docs/README.md`, or another canonical doc. Use `Status: Superseded` only when a newer entry or canonical doc replaces the rule.
 
+## Browser SQL editor replacement
+
+Date: 2026-09-14
+Area: Hosted SQL verification
+Status: Active
+Decision or mistake: Filling Monaco's active textbox replaced only part of the editor model during a staging lock test; the resulting SQL was rejected with a syntax error.
+Why it mattered: The visible input range is not necessarily the complete query. A successful fill call does not establish what Run will execute.
+Current guardrail: Select all within the editor, clear and paste the complete query, then inspect the rendered query before execution. Treat timed-out execution as uncertain and inspect the existing result before retrying. Do not read tokens or credentials to prove storage.
+Promoted to: None
+Related docs/tests: `docs/xero-connection.md`
+
 ## Project delivery and commercial lifecycle
 
 Date: 2026-09-11
