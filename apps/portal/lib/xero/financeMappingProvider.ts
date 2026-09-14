@@ -15,7 +15,7 @@ async function read(tenantId: string, resource: 'Contacts' | 'Accounts' | 'TaxRa
   if (name !== undefined && (!name.trim() || name.length > 240 || /[\u0000-\u001f]/.test(name))) throw new XeroError('INVALID_QUERY');
   const tokens = await access();
   const scope = resource === 'Contacts' ? 'accounting.contacts.read' : 'accounting.settings.read';
-  if (!tokens.scopes?.includes(scope)) throw new XeroError('INSUFFICIENT_SCOPE');
+  if (!tokens.scopes?.includes(scope) && !(resource === 'Contacts' && tokens.scopes?.includes('accounting.contacts'))) throw new XeroError('INSUFFICIENT_SCOPE');
   const url = new URL(`https://api.xero.com/api.xro/2.0/${resource}${recordId ? `/${recordId}` : ''}`);
   if (name !== undefined) {
     url.searchParams.set('where', `Name=="${name.replaceAll('"', '""')}"`);

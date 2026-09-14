@@ -2,7 +2,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import type { XeroFinanceContact, XeroRevenueAccount, XeroRevenueTax } from '@/lib/xero/financeMappingProvider';
 type Review = { context: { sourceContactId: string; invoiceRef: string; customerName: string }; contacts: XeroFinanceContact[];
-  accounts: XeroRevenueAccount[]; taxes: XeroRevenueTax[]; limited: boolean; checkedAt: string };
+  accounts: XeroRevenueAccount[]; taxes: XeroRevenueTax[]; limited: boolean; checkedAt: string; customerCreationEnabled?: boolean };
 export default function MappingReview({ invoiceId }: { invoiceId: string }) {
   const [review, setReview] = useState<Review | null>(null); const [message, setMessage] = useState('');
   const [pending, setPending] = useState(false); const busy = useRef(false);
@@ -32,6 +32,18 @@ export default function MappingReview({ invoiceId }: { invoiceId: string }) {
       setSaved(true);
       setMessage('Mapping saved. No invoice was posted or payment approved. Transfer activation and any stopped transfer still require a separate check.'); });
   }
+  function createCustomer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!review) return;
+    const form = new FormData(event.currentTarget); if (form.get('confirmed') !== 'on') return;
+    const name = String(form.get('name') ?? '').trim(); const current = review;
+    void run(async () => {
+      const response = await fetch('/api/payments/xero/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceId, sourceContactId: current.context.sourceContactId, name, confirmed: true }) });
+      const data = await response.json(); if (!response.ok) throw new Error(data.error ?? 'The customer result could not be verified. Retry with the same name.');
+      setSaved(false); setReview({ ...current, contacts: [data.contact], checkedAt: new Date().toISOString() });
+      setMessage('Xero customer verified. Select that customer, sales account and tax below to finish the invoice mapping.');
+    });
+  }
   return <div>
     <form onSubmit={inspect}><label>Xero customer name, if different <input name="contactName" maxLength={240} /></label>{' '}
       <button disabled={pending}>Check Xero records</button></form>
@@ -43,7 +55,13 @@ export default function MappingReview({ invoiceId }: { invoiceId: string }) {
     {review && <section><h2>{review.context.invoiceRef} — {review.context.customerName}</h2>
       <p>Compare the customer identity before saving. Matching names alone do not prove they are the same customer.</p>
       {review.limited && <p>More customer results exist. Refine the exact Xero name before choosing.</p>}
-      {!review.contacts.length && <p>No active Xero customer matched. Check the name or create the customer in Xero before continuing.</p>}
+      {!review.contacts.length && <p>No active Xero customer matched. Check for another name before creating a new customer.</p>}
+      {!review.contacts.length && !review.limited && review.customerCreationEnabled && <form onSubmit={createCustomer}>
+        <label>New Xero customer name <input name="name" required maxLength={240} defaultValue={review.context.customerName} /></label>
+        <p>This creates a customer record in Xero. It does not send an email or issue an invoice. If interrupted, retry with the same name.</p>
+        <label><input type="checkbox" name="confirmed" required /> I checked for an existing Xero customer and want to create this customer.</label>{' '}
+        <button disabled={pending}>Create Xero customer</button>
+      </form>}
       <form onSubmit={save} key={review.checkedAt} style={{ display: 'grid', gap: 16, maxWidth: 640 }}>
         <label>Xero customer <select name="contactId" required defaultValue=""><option value="" disabled>Select customer</option>{review.contacts.map(item => <option key={item.id} value={item.id}>{item.name}{item.email ? ` — ${item.email}` : ''}</option>)}</select></label>
         <label>Sales account <select name="accountCode" required defaultValue=""><option value="" disabled>Select sales account</option>{review.accounts.map(item => <option key={item.id} value={item.code}>{item.code} — {item.name}</option>)}</select></label>

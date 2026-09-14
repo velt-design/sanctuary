@@ -88,7 +88,7 @@
     "test:jobs": "vitest run packages/jobs packages/email-provider test/background-jobs-migration.test.ts test/repo-security.test.ts",
     "test:email-provider": "vitest run packages/email-provider",
     "test:email-integrations": "vitest run apps/portal/lib/emails/sendTransactionalEmail.test.ts apps/portal/lib/backgroundJobs apps/portal/app/api/webhooks/resend apps/portal/app/api/staff/v1/email-previews apps/marketing/lib/email apps/marketing/app/api/contact apps/marketing/app/api/enquiry",
-    "test:commercial:db": "node scripts/test-commercial-workflow-db.mjs && vitest run test/invoice-drafts.integration.test.ts test/project-delivery-completion.integration.test.ts test/xero-deposit-commands.integration.test.ts test/xero-deposit-matching.integration.test.ts test/xero-finance-review.test.ts",
+    "test:commercial:db": "node scripts/test-commercial-workflow-db.mjs && vitest run test/invoice-drafts.integration.test.ts test/project-delivery-completion.integration.test.ts test/xero-deposit-commands.integration.test.ts test/xero-deposit-matching.integration.test.ts test/xero-finance-review.test.ts test/xero-customer-creation.test.ts",
     "test:schedule:db:fast": "node scripts/test-schedule-guarded-commands-pglite.mjs",
     "test:praxis:db:fast": "node scripts/test-praxis-context-reporting-pglite.mjs",
     "test:praxis:db": "node scripts/test-praxis-context-reporting-db.mjs",

@@ -2,6 +2,7 @@ import 'server-only';
 import { z } from 'zod';
 import { supabaseServiceRole } from '../supabaseClient';
 import type { XeroFinanceContact, XeroRevenueAccount, XeroRevenueTax } from '../xero/financeMappingProvider';
+import { validateCustomerRequest, type CustomerCreationRepository } from '../xero/customerCreation';
 const contextSchema = z.object({ invoiceId: z.string().uuid(), invoiceRef: z.string(), customerName: z.string(),
   sourceContactId: z.string().uuid(), subtotalCents: z.number().int().nonnegative(), taxCents: z.number().int().nonnegative() });
 export async function financeMappingContext(actor: string, invoiceId: string) {
@@ -26,4 +27,32 @@ export async function resumeFinanceTransfer(actor: string, invoiceId: string, te
   const parsed = z.object({ state: z.enum(['queued', 'already_running']) }).safeParse(result.data);
   if (!parsed.success) throw new Error('XERO_RESUME_UNAVAILABLE');
   return parsed.data;
+}
+
+const customerRequestSchema = z.object({ tenantId: z.string().uuid(), sourceContactId: z.string().uuid(),
+  customer: z.object({ Name: z.string(), ContactNumber: z.string() }).strict(), body: z.string(), bodyHash: z.string(),
+  idempotencyKey: z.string(), preparedAt: z.number().int(), expiresAt: z.number().int(),
+  dispatchStarted: z.boolean(), providerContactId: z.string().uuid().nullable() }).strict();
+export function customerCreationRepository(actor: string, invoiceId: string): CustomerCreationRepository {
+  async function command(action: string, tenantId: string, sourceContactId: string, body: string, contactId: string | null = null) {
+    const result = await supabaseServiceRole.rpc('xero_customer_creation_command', { p_actor: actor, p_invoice_id: invoiceId,
+      p_tenant_id: tenantId, p_source_contact_id: sourceContactId, p_action: action, p_body: body, p_provider_contact_id: contactId });
+    if (result.error) {
+      if (['XERO_CUSTOMER_INTENT_CONFLICT', 'XERO_EXISTING_CUSTOMER_REVIEW', 'CUSTOMER_IDEMPOTENCY_WINDOW_EXPIRED'].includes(result.error.message)) throw new Error(result.error.message);
+      throw new Error('XERO_CUSTOMER_SAVE_UNAVAILABLE');
+    }
+    const parsed = customerRequestSchema.safeParse(result.data);
+    if (!parsed.success || parsed.data.tenantId !== tenantId || parsed.data.sourceContactId !== sourceContactId
+      || parsed.data.body !== body) throw new Error('INVALID_FROZEN_CUSTOMER_REQUEST');
+    validateCustomerRequest(parsed.data);
+    return parsed.data;
+  }
+  return {
+    prepare: (input, customer) => command('prepare', input.tenantId, input.sourceContactId, JSON.stringify({ Contacts: [customer] })),
+    beginDispatch: request => command('dispatch', request.tenantId, request.sourceContactId, request.body),
+    async finalise(request, contactId) {
+      const result = await command('finalise', request.tenantId, request.sourceContactId, request.body, contactId);
+      if (result.providerContactId !== contactId) throw new Error('XERO_CUSTOMER_SAVE_UNAVAILABLE');
+    },
+  };
 }

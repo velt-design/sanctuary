@@ -30,7 +30,8 @@ export async function POST(request: Request) {
     const accounting = await financeMappingProvider.accounting(tenantId);
     if (body.action === 'inspect') {
       const contacts = await financeMappingProvider.contacts(tenantId, body.contactName ?? context.customerName);
-      return json({ context, ...accounting, ...contacts, checkedAt: new Date().toISOString() });
+      return json({ context, ...accounting, ...contacts, customerCreationEnabled: process.env.XERO_CUSTOMER_CREATION_ENABLED === 'true',
+        checkedAt: new Date().toISOString() });
     }
     if (body.sourceContactId !== context.sourceContactId) return json({ error: 'The portal customer changed. Review again.' }, 409);
     const account = accounting.accounts.find(row => row.code === body.accountCode);

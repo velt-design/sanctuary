@@ -1,6 +1,7 @@
 import { XERO_SCOPES } from './security';
 
-export const XERO_INVOICE_SCOPES = XERO_SCOPES.replace('accounting.invoices.read', 'accounting.invoices') + ' accounting.settings.read';
+export const XERO_INVOICE_SCOPES = XERO_SCOPES.replace('accounting.invoices.read', 'accounting.invoices')
+  .replace('accounting.contacts.read', 'accounting.contacts') + ' accounting.settings.read';
 const identityScopes = ['openid', 'profile', 'email'];
 const allowed = new Set([...XERO_SCOPES.split(' '), ...XERO_INVOICE_SCOPES.split(' '), ...identityScopes]);
 
@@ -19,6 +20,7 @@ export function validateTokenScopes(value: unknown, expected: readonly string[])
   const permitted = new Set([...expected, ...identityScopes]);
   // Xero can retain the narrower read grant when adding invoice write consent.
   if (expected.includes('accounting.invoices')) permitted.add('accounting.invoices.read');
+  if (expected.includes('accounting.contacts')) permitted.add('accounting.contacts.read');
   if (scopes.some(scope => !allowed.has(scope) || !permitted.has(scope))) throw new Error('EXCESS_SCOPE');
   return scopes;
 }

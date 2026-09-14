@@ -238,4 +238,6 @@ Finance queue owner: `lib/invoices/financeReviewRepository.ts` reads migration10
 
 `lib/invoices/financeMappingRepository.ts` is the server-only owner for the grant-scoped mapping context and confirmed mapping command. It accepts provider-verified evidence from the mapping route; it is not browser-callable and does not change issued invoice contents.
 
-`invoiceObservationRepository.ts` owns bound-invoice observation context/save and scheduler reads. `financeReviewRepository.ts` adds a second bounded observation RPC to finance rows; failed reads display unavailable rather than an empty success. No source invoice or payment state is overwritten.
+`invoiceObservationRepository.ts` owns bound-invoice observation context/save and scheduler reads. Migration18 includes the latest observation within the same finance-list statement so exception ordering and displayed evidence agree. Failed reads display unavailable rather than an empty success. No source invoice or payment state is overwritten.
+
+The mapping screen has a separately gated, explicitly confirmed new-Xero-customer command. `financeMappingRepository.ts` binds the current actor/invoice to migration19's immutable request and verified customer mapping. The provider creates only a customer record; the existing account/tax confirmation and invoice transfer remain separate. See `docs/xero-connection.md` for duplicate/recovery rules, expanded consent and the unactivated rollout status.

@@ -24,5 +24,9 @@ describe('Xero grant boundaries', () => {
     expect(() => validateTokenScopes(XERO_INVOICE_SCOPES + ' accounting.payments', finance)).toThrow('EXCESS_SCOPE');
     expect(() => validateTokenScopes(XERO_SCOPES + ' accounting.invoices', XERO_SCOPES.split(' '))).toThrow('EXCESS_SCOPE');
     expect(() => validateTokenScopes(XERO_SCOPES, finance)).toThrow('INSUFFICIENT_SCOPE');
+    expect(validateTokenScopes(XERO_INVOICE_SCOPES + ' accounting.contacts.read', finance)).toContain('accounting.contacts.read');
+    expect(() => validateTokenScopes(XERO_SCOPES + ' accounting.contacts', XERO_SCOPES.split(' '))).toThrow('EXCESS_SCOPE');
+    const previousInvoiceGrant = XERO_INVOICE_SCOPES.replace('accounting.contacts', 'accounting.contacts.read');
+    expect(validateTokenScopes(previousInvoiceGrant, previousInvoiceGrant.split(' '))).toContain('accounting.contacts.read');
   });
 });

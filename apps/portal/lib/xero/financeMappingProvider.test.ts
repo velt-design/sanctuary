@@ -43,3 +43,8 @@ it('refuses wrong tenants and missing settings consent before provider requests'
   await expect(financeMappingProvider.accounting(id)).rejects.toThrow('INSUFFICIENT_SCOPE');
   expect(fetcher).not.toHaveBeenCalled();
 });
+it('retains contact lookup with expanded customer-write consent', async () => {
+  mocks.access.mockResolvedValue({ accessToken: 'synthetic', scopes: ['accounting.contacts'] });
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ Contacts: [{ ContactID: id, Name: 'Example', ContactStatus: 'ACTIVE' }] })));
+  expect(await financeMappingProvider.contact(id, id)).toEqual({ id, name: 'Example', email: '' });
+});
