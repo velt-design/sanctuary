@@ -1,12 +1,13 @@
-import { beforeEach, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ session: vi.fn(), origin: vi.fn(), context: vi.fn(), save: vi.fn(), accounting: vi.fn(), contact: vi.fn(), contacts: vi.fn() }));
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+const mocks = vi.hoisted(() => ({ session: vi.fn(), origin: vi.fn(), context: vi.fn(), save: vi.fn(), resume: vi.fn(), accounting: vi.fn(), contact: vi.fn(), contacts: vi.fn() }));
 vi.mock('./pilotAccess', () => ({ getPaymentPilotSession: mocks.session }));
 vi.mock('./http', () => ({ sameOrigin: mocks.origin, json: (body: unknown, status = 200) => Response.json(body, { status }) }));
 vi.mock('./security', () => ({ config: () => ({ tenantId: '11111111-1111-4111-8111-111111111111' }) }));
-vi.mock('../invoices/financeMappingRepository', () => ({ financeMappingContext: mocks.context, saveFinanceMapping: mocks.save }));
+vi.mock('../invoices/financeMappingRepository', () => ({ financeMappingContext: mocks.context, saveFinanceMapping: mocks.save, resumeFinanceTransfer: mocks.resume }));
 vi.mock('./financeMappingProvider', () => ({ financeMappingProvider: { accounting: mocks.accounting, contact: mocks.contact, contacts: mocks.contacts } }));
 import { POST } from '../../app/api/payments/xero/mapping/route';
 const id = '11111111-1111-4111-8111-111111111111';
+afterEach(() => vi.unstubAllEnvs());
 const confirmation = { action: 'confirm', commandId: id, invoiceId: id, sourceContactId: id, contactId: id, accountCode: '475', taxType: 'TAX001', confirmed: true };
 const request = (body: unknown) => new Request('https://portal.example.test/api/payments/xero/mapping', { method: 'POST', body: JSON.stringify(body) });
 beforeEach(() => {
@@ -39,4 +40,14 @@ it('refuses tax mismatch and changed portal identity without saving', async () =
   mocks.context.mockResolvedValue({ sourceContactId: 'different' });
   expect((await POST(request(confirmation))).status).toBe(409);
   expect(mocks.save).not.toHaveBeenCalled(); expect(mocks.contact).not.toHaveBeenCalled();
+});
+it('requires activation and explicit confirmation before resuming only the server-pinned invoice transfer', async () => {
+  const body = { action: 'resume', invoiceId: id, confirmed: true };
+  vi.stubEnv('XERO_INVOICE_TRANSFERS_ENABLED', 'false');
+  expect((await POST(request(body))).status).toBe(409); expect(mocks.resume).not.toHaveBeenCalled();
+  vi.stubEnv('XERO_INVOICE_TRANSFERS_ENABLED', 'true');
+  mocks.resume.mockResolvedValue({ state: 'queued' });
+  expect((await POST(request(body))).status).toBe(200);
+  expect(mocks.resume).toHaveBeenCalledWith(id, id, id);
+  expect(mocks.accounting).not.toHaveBeenCalled();
 });

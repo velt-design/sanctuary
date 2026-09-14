@@ -6,6 +6,7 @@ type Review = { context: { sourceContactId: string; invoiceRef: string; customer
 export default function MappingReview({ invoiceId }: { invoiceId: string }) {
   const [review, setReview] = useState<Review | null>(null); const [message, setMessage] = useState('');
   const [pending, setPending] = useState(false); const busy = useRef(false);
+  const [saved, setSaved] = useState(false);
   const attempt = useRef<{ selection: string; commandId: string } | null>(null);
   async function command(body: object) {
     const response = await fetch('/api/payments/xero/mapping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -18,7 +19,7 @@ export default function MappingReview({ invoiceId }: { invoiceId: string }) {
   }
   function inspect(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const name = String(new FormData(event.currentTarget).get('contactName') ?? '').trim();
-    void run(async () => { setReview(null); setReview(await command({ action: 'inspect', invoiceId, ...(name ? { contactName: name } : {}) })); });
+    void run(async () => { setSaved(false); setReview(null); setReview(await command({ action: 'inspect', invoiceId, ...(name ? { contactName: name } : {}) })); });
   }
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!review) return;
@@ -28,12 +29,17 @@ export default function MappingReview({ invoiceId }: { invoiceId: string }) {
     if (attempt.current?.selection !== key) attempt.current = { selection: key, commandId: crypto.randomUUID() };
     const commandId = attempt.current.commandId;
     void run(async () => { await command({ action: 'confirm', ...selection, commandId, confirmed: true });
+      setSaved(true);
       setMessage('Mapping saved. No invoice was posted or payment approved. Transfer activation and any stopped transfer still require a separate check.'); });
   }
   return <div>
     <form onSubmit={inspect}><label>Xero customer name, if different <input name="contactName" maxLength={240} /></label>{' '}
       <button disabled={pending}>Check Xero records</button></form>
     {message && <p role="status">{message}</p>}
+    {saved && <button disabled={pending} onClick={() => void run(async () => {
+      const result = await command({ action: 'resume', invoiceId, confirmed: true });
+      setMessage(result.state === 'queued' ? 'The existing draft transfer is queued. Check finance review for its result.' : 'This transfer is already queued or running. Check finance review for its result.');
+    })}>Resume existing draft transfer</button>}
     {review && <section><h2>{review.context.invoiceRef} — {review.context.customerName}</h2>
       <p>Compare the customer identity before saving. Matching names alone do not prove they are the same customer.</p>
       {review.limited && <p>More customer results exist. Refine the exact Xero name before choosing.</p>}

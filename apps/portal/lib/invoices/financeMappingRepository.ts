@@ -16,3 +16,14 @@ export async function saveFinanceMapping(input: { commandId: string; actor: stri
     p_invoice_id: input.invoiceId, p_tenant_id: input.tenantId, p_source_contact_id: input.sourceContactId, p_proof: input.proof });
   if (result.error) throw new Error('XERO_MAPPING_SAVE_UNAVAILABLE');
 }
+
+export async function resumeFinanceTransfer(actor: string, invoiceId: string, tenantId: string) {
+  const result = await supabaseServiceRole.rpc('xero_finance_resume', { p_actor: actor, p_invoice_id: invoiceId, p_tenant_id: tenantId });
+  if (result.error) {
+    if (['XERO_RECONCILIATION_REQUIRED', 'XERO_TRANSFER_DISABLED', 'XERO_MAPPING_REQUIRED', 'XERO_TRANSFER_NOT_FOUND'].includes(result.error.message)) throw new Error(result.error.message);
+    throw new Error('XERO_RESUME_UNAVAILABLE');
+  }
+  const parsed = z.object({ state: z.enum(['queued', 'already_running']) }).safeParse(result.data);
+  if (!parsed.success) throw new Error('XERO_RESUME_UNAVAILABLE');
+  return parsed.data;
+}
