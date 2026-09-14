@@ -42,4 +42,11 @@ describe('exact deposit approval envelope', () => {
   it('fingerprints selected snapshots independently of property insertion order', () => {
     expect(evidenceFingerprint({ b: 2, a: { d: 4, c: 3 } })).toBe(evidenceFingerprint({ a: { c: 3, d: 4 }, b: 2 }));
   });
+  it('binds invoice-payment provenance inside the same encrypted review contract', () => {
+    const value = { ...evidence, invoicePayment: { providerInvoiceId: other, invoiceEvidenceFingerprint: 'd'.repeat(64) } };
+    const approval = readDepositApproval(prepareDepositApproval(value, id, key, now), id, id, key, now);
+    expect(approval.evidence).toEqual(value);
+    expect(() => assertApprovalEvidenceUnchanged(approval, evidence)).toThrow('APPROVAL_EVIDENCE_CHANGED');
+    expect(() => prepareDepositApproval({ ...value, invoicePayment: { ...value.invoicePayment, providerInvoiceId: 'bad' } }, id, key, now)).toThrow('INVALID_APPROVAL_EVIDENCE');
+  });
 });

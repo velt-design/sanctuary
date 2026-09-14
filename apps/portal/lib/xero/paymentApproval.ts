@@ -18,6 +18,7 @@ export type DepositEvidence = {
   invoiceFingerprint: string;
   ledgerFingerprint: string;
   receiptFingerprint: string;
+  invoicePayment?: { providerInvoiceId: string; invoiceEvidenceFingerprint: string };
 };
 export type DepositApproval = {
   purpose: 'sanctuary.deposit-approval.v1';
@@ -37,6 +38,10 @@ function validEvidence(value: DepositEvidence): boolean {
   if (!value || typeof value !== 'object') return false;
   const day = typeof value.receiptDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.receiptDate)
     ? new Date(`${value.receiptDate}T00:00:00Z`) : null;
+  const source = value.invoicePayment;
+  if (source !== undefined && (!source || typeof source !== 'object' || Array.isArray(source)
+    || Object.keys(source).length !== 2 || typeof source.providerInvoiceId !== 'string' || !uuid.test(source.providerInvoiceId)
+    || typeof source.invoiceEvidenceFingerprint !== 'string' || !fingerprint.test(source.invoiceEvidenceFingerprint))) return false;
   return [value.tenantId, value.receiptId, value.contactId, value.projectId, value.invoiceId].every(id => typeof id === 'string' && uuid.test(id))
     && Number.isSafeInteger(value.amountCents) && value.amountCents > 0 && value.amountCents <= 2147483647
     && Number.isSafeInteger(value.invoiceTotalCents) && value.invoiceTotalCents >= value.amountCents && value.invoiceTotalCents <= 2147483647

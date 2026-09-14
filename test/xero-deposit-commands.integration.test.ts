@@ -57,6 +57,7 @@ describe('approved deposits use actual commercial SQL owners',()=>{
       create table private.xero_invoice_transfers(id uuid primary key,invoice_id uuid,project_id uuid,tenant_id uuid,provider_invoice_id uuid);
       create table private.xero_invoice_requests(transfer_id uuid,body text);`);
     await db.exec(read('migrations/20260914000014_xero_invoice_payment_commands.sql'));
+    await db.exec(read('migrations/20260914000015_xero_invoice_payment_review.sql'));
   },20000);
   beforeEach(async()=>{
     await db.exec(`truncate private.xero_invoice_transfer_control,private.xero_invoice_transfers,private.xero_invoice_requests,
@@ -218,5 +219,16 @@ describe('approved deposits use actual commercial SQL owners',()=>{
       [role,`private.xero_commit_payment_match(${signature},text,uuid)`,`public.xero_approve_invoice_payment(${signature},uuid)`])).rows[0];
       expect(access).toEqual({internal:false,approval:role==='service_role'});
     }
+  });
+  it('loads bound review context only for the current finance approver and pinned tenant',async()=>{
+    await bindInvoice();
+    const load=(actor=99,tenant=98)=>db.query<{context:{providerInvoiceId:string;hasOtherSourceHistory:boolean}}>(
+      'select public.xero_invoice_payment_review_context($1,$2,$3) context',[id(actor),id(1),id(tenant)]);
+    expect((await load()).rows[0].context).toMatchObject({providerInvoiceId:id(81),hasOtherSourceHistory:false});
+    await approve(); expect((await load()).rows[0].context.hasOtherSourceHistory).toBe(true);
+    await expect(load(96)).rejects.toThrow(/permission/);
+    await expect(load(99,97)).rejects.toThrow(/UNAVAILABLE/);
+    await db.exec('update public.xero_payment_approvers set revoked_at=now()');
+    await expect(load()).rejects.toThrow(/permission/);
   });
 });

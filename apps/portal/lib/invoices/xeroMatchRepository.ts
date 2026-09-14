@@ -3,12 +3,13 @@ import { supabaseServiceRole } from '../supabaseClient';
 import type { DepositApproval } from '../xero/paymentApproval';
 import type { PilotContext, PilotMatch, PilotReviewNote } from '../xero/pilotTypes';
 
-const columns='id,tenant_id,receipt_id,invoice_id,project_id,payment_entry_id,amount_inc_gst_cents,receipt_date,approved_by,approved_at,reversed_at,evidence_fingerprint';
+const columns='id,tenant_id,receipt_id,invoice_id,project_id,payment_entry_id,amount_inc_gst_cents,receipt_date,approved_by,approved_at,reversed_at,evidence_fingerprint,source_kind,provider_invoice_id';
 type Row = Record<string, unknown>;
 function match(row: Row): PilotMatch {
   return { id:String(row.id),tenantId:String(row.tenant_id),receiptId:String(row.receipt_id),invoiceId:String(row.invoice_id),projectId:String(row.project_id),
     paymentEntryId:String(row.payment_entry_id),amountCents:Number(row.amount_inc_gst_cents),receiptDate:String(row.receipt_date),
-    approvedBy:String(row.approved_by),approvedAt:String(row.approved_at),reversedAt:row.reversed_at ? String(row.reversed_at) : null,evidenceFingerprint:String(row.evidence_fingerprint) };
+    approvedBy:String(row.approved_by),approvedAt:String(row.approved_at),reversedAt:row.reversed_at ? String(row.reversed_at) : null,evidenceFingerprint:String(row.evidence_fingerprint),
+    sourceKind:row.source_kind as PilotMatch['sourceKind'],providerInvoiceId:row.provider_invoice_id ? String(row.provider_invoice_id) : null };
 }
 function unavailable(error: unknown): never {
   const message=(error as {message?:string})?.message??'';
