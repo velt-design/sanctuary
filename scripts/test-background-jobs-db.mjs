@@ -133,12 +133,12 @@ function requireSuccess(result, label) {
   );
 }
 
-function psqlDockerArgs({ quiet = false, singleTransaction = false } = {}) {
+function psqlDockerArgs({ quiet = false, singleTransaction = false, username = 'postgres' } = {}) {
   const psqlArgs = [
     "psql",
     "--no-psqlrc",
     "--set=ON_ERROR_STOP=1",
-    "--username=postgres",
+    `--username=${username}`,
     "--dbname=postgres",
   ];
   if (quiet) psqlArgs.push("--quiet", "--tuples-only", "--no-align");
@@ -339,9 +339,9 @@ function verifyPgmqVersion() {
   process.stdout.write(`background-jobs-db: PGMQ ${pgmqVersion}\n`);
 }
 
-function applySql(relativePath, { singleTransaction = false } = {}) {
+function applySql(relativePath, { singleTransaction = false, username = 'postgres' } = {}) {
   const sql = readFileSync(path.join(repositoryRoot, relativePath), "utf8");
-  const result = docker(psqlDockerArgs({ singleTransaction }), { input: sql });
+  const result = docker(psqlDockerArgs({ singleTransaction, username }), { input: sql });
   requireSuccess(result, relativePath);
   process.stdout.write(
     `background-jobs-db: applied ${relativePath}${
@@ -981,6 +981,14 @@ async function run() {
   verifyAiSyntheticExecutionRollback();
   applySql(aiSyntheticExecutionMigrationFile, { singleTransaction: true });
   applySql(aiSyntheticExecutionContractFile);
+  // The Supabase image pre-creates a protected Storage schema without its API
+  // tables. Provision only the disposable metadata stub as the image admin;
+  // all application migrations and denial contracts still run as postgres.
+  const storageBootstrapUser = queryScalar(
+    "select case when exists (select 1 from pg_roles where rolname = 'supabase_admin' and rolsuper) then 'supabase_admin' else 'postgres' end;",
+    'disposable Storage fixture owner',
+  );
+  applySql('supabase/tests/marketing_enquiry_storage_bootstrap.sql', { singleTransaction: true, username: storageBootstrapUser });
   applySql('supabase/tests/marketing_enquiry_delivery_bootstrap.sql', { singleTransaction: true });
   applySql('supabase/enquiry_requests.sql', { singleTransaction: true });
   executeSql(`begin;\n${marketingEnquiryTestIntakeSql(repositoryRoot)}\ncommit;`, 'exact marketing intake prerequisites');
