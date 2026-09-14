@@ -12,8 +12,9 @@ describe('exact Xero review queries', () => {
   it.each(['Peter"||true', 'Quote " and \\ slash', 'Line\nBreak', 'Tab\tName'])('keeps %s inside one literal', name => {
     const { where } = reviewQuery('receipt', name);
     const literal = where.slice('Type=="RECEIVE"&&Contact.Name=='.length);
-    expect(JSON.parse(literal)).toBe(name);
-    expect(literal).not.toMatch(/[\n\t]/);
+    // Xero's where parser escapes embedded quotes by doubling them.
+    expect(literal).toMatch(/^"(?:[^"]|"")*"$/u);
+    expect(literal.slice(1, -1).replaceAll('""', '"')).toBe(name);
   });
   it('trims search padding and rejects empty, oversized or unsupported queries', () => {
     expect(reviewQuery('receipt', ' Li ').where).toContain('Contact.Name=="Li"');
