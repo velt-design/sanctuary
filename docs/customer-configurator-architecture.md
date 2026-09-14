@@ -5274,3 +5274,22 @@ and $12,225 respectively, with no blocking issues or private installer top-up
 in the mapped customer output. Evidence: `launch-persisted-quote-handoff.json`
 and `launch-persisted-quote-handoff-tests.txt` in the same artifact directory.
 This verifies saved-price mapping; no quote record was created or email sent.
+
+### 2026-09-15 — Hosted revision and scheduling investigation
+
+The hosted revision calculation's 401 was Vercel deployment protection on the
+server-to-server marketing request, not an expired staff session. The relay now
+supports a server-only, preview-only marketing automation credential and reports
+deployment authentication separately from staff authentication. See
+`staff-api-auth-contracts.md`. Protected branch URLs should point to each other
+so the current marketing return link and portal pricing relay use the same release.
+
+Read-only infrastructure inspection confirms Vercel Pro with active marketing
+conversion/attachment cron jobs and the portal Xero cron; production Supabase has
+pg_cron and its daily security-retention job, but no pg_net or PGMQ. Existing cron
+jobs do not consume the enquiry queue. A bounded Vercel Node runner could reuse
+the frozen Resend effects and lease-fenced queue; the current process-oriented
+worker is not a drop-in Next route. Safe adaptation must preserve hard-deadline
+recovery, unique invocation ownership, accepted-effect finalisation, idempotency
+expiry quarantine and overlap handling. No paid host is established as necessary.
+Production migrations, runner activation and further email sends remain unapproved.

@@ -18,6 +18,32 @@ it('requires staff authentication before reading or forwarding',async()=>{
   expect((await post({action:'prepare'})).status).toBe(401);
   expect(mocks.fetch).not.toHaveBeenCalled();expect(mocks.from).not.toHaveBeenCalled();
 });
+it('authenticates only the fixed protected preview and keeps its credential out of responses',async()=>{
+  vi.stubEnv('VERCEL_ENV','preview');
+  vi.stubEnv('CONFIGURATOR_MARKETING_PREVIEW_SECRET','private-machine-credential');
+  vi.stubEnv('NEXT_PUBLIC_MARKETING_SITE_URL','https://marketing-preview.vercel.app');
+  mocks.fetch.mockResolvedValue(Response.json({status:'saved',estimateId:'est-new',revisionId:'rev',alreadyExisted:true}));
+  const response=await post({action:'save',url:'https://attacker.invalid'});
+  expect(mocks.fetch.mock.calls[0][1].headers).toMatchObject({Authorization:'Bearer server-only-test-token','x-vercel-protection-bypass':'private-machine-credential'});
+  expect(await response.text()).not.toContain('private-machine-credential');
+  vi.stubEnv('VERCEL_ENV','production');
+  await post({action:'prepare'});
+  expect(mocks.fetch.mock.calls[1][1].headers).not.toHaveProperty('x-vercel-protection-bypass');
+});
+it('refuses to send a preview credential to a non-Vercel origin',async()=>{
+  vi.stubEnv('VERCEL_ENV','preview');
+  vi.stubEnv('CONFIGURATOR_MARKETING_PREVIEW_SECRET','private-machine-credential');
+  expect((await post({action:'prepare'})).status).toBe(503);
+  expect(mocks.fetch).not.toHaveBeenCalled();
+});
+it('distinguishes deployment protection from staff sign-in failures',async()=>{
+  mocks.fetch.mockResolvedValueOnce(Response.json({error:{code:'401',message:'Protected deployment'}},{status:401}));
+  const blocked=await post({action:'prepare'});
+  expect(blocked.status).toBe(503);
+  expect(await blocked.json()).toMatchObject({code:'CONFIGURATOR_PREVIEW_AUTH_REQUIRED'});
+  mocks.fetch.mockResolvedValueOnce(Response.json({error:'Staff sign-in required.'},{status:401}));
+  expect((await post({action:'prepare'})).status).toBe(401);
+});
 it('forwards only design inputs to a fixed origin and returns only selling data',async()=>{
   mocks.fetch.mockResolvedValue(Response.json({status:'prepared',preparationHash:'abc',estimate:{privateCost:123},actorId:'secret',frozen:{customerPrice:{currency:'NZD',includesGst:true,amountIncGst:100,breakdown:[{label:'Pergola',amountIncGst:100,privateMargin:30}]}}}));
   const response=await post({action:'prepare',projectId:'wrong',sourceEstimateId:'source',design:{roof:'test'},price:1,url:'https://attacker.invalid'});

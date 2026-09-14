@@ -43,6 +43,15 @@ Route behavior belongs to the feature owner doc. This doc owns the cross-cutting
 
 ## Auth Helpers
 
+The configurator revision relay authenticates staff first and forwards their
+session only to the configured marketing origin. In Vercel Preview only,
+`CONFIGURATOR_MARKETING_PREVIEW_SECRET` carries the marketing project's existing
+automation credential in a server-to-server header to an HTTPS `*.vercel.app`
+origin. It is never returned to the browser, accepted from request input, added
+to a URL, or sent in production. Redirects remain forbidden. Deployment-protection
+rejection returns `503 CONFIGURATOR_PREVIEW_AUTH_REQUIRED`; an actual staff-session
+rejection remains `401`. Neither preview's protection needs to be disabled.
+
 Staff routes should use helpers from `apps/portal/lib/api/staffApi.ts`:
 
 - `requireStaffSession()` when the route only needs the authenticated staff session.

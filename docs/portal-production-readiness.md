@@ -51,6 +51,16 @@ Do not duplicate detailed rules from canonical docs here. Link to them, then kee
 
 ## Current Readiness Snapshot
 
+Configurator continuation (2026-09-15): the protected staff calculation failure is
+Vercel machine authentication, with a preview-only server credential fix and
+focused route tests. The ScheduleClient CI failure was a timing-dependent query
+assertion with observer leakage; all 40 focused tests pass after correction.
+Fresh hosted CI and staff save/quote verification remain required. Existing Vercel
+Pro scheduling is a viable candidate for a bounded queue runner, but the existing
+persistent-worker runtime cannot be mounted directly as a cron route. No hosting
+purchase is justified yet. Physical-device and production activation gates remain
+open; see `customer-configurator-architecture.md` for the current boundary.
+
 Security refresh (2026-09-14): the isolated launch candidate resolves Next
 16.3.5, Sharp 0.35.4, baseline-browser-mapping 2.11.23, patched fflate 0.8.3/
 0.6.11 and smol-toml 1.8.0. Production audit reports zero vulnerabilities;

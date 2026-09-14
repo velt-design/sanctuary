@@ -1,6 +1,7 @@
 import { requireStaffContext } from '@/lib/api/staffApi';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { configuratorMarketingOrigin } from '@/lib/projects/configuratorRevisionNavigation';
+import { configuratorRevisionHeaders } from '@/lib/projects/configuratorRevisionTransport.server';
 
 export const runtime = 'nodejs';
 const record = (value: unknown): Record<string, any> | null =>
@@ -54,14 +55,20 @@ export async function POST(request: Request, context: Context) {
     const session = await auth.supabase.auth.getSession();
     const token = session.data.session?.access_token;
     if (!token) return json({error: 'Please sign in again.'}, 401);
-    const upstream = await fetch(`${configuratorMarketingOrigin()}/api/staff/configurator-revisions/${body.action}`, {
+    const marketingOrigin = configuratorMarketingOrigin();
+    const upstream = await fetch(`${marketingOrigin}/api/staff/configurator-revisions/${body.action}`, {
       method: 'POST', redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(20000),
-      headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token}`},
+      headers: configuratorRevisionHeaders(marketingOrigin, token),
       body: JSON.stringify({projectId, sourceEstimateId: body.sourceEstimateId, design: body.design,
         requestId: body.requestId, preparationHash: body.preparationHash}),
     });
     const result = record(await upstream.json());
-    if (!upstream.ok) return json({error: result?.error ?? result?.reason ?? 'The revision could not be prepared.', code: result?.code}, upstream.status);
+    if (!upstream.ok) {
+      if (record(result?.error)?.message === 'Protected deployment') {
+        return json({error: 'The protected pricing preview is not connected. Please contact an administrator.', code: 'CONFIGURATOR_PREVIEW_AUTH_REQUIRED'}, 503);
+      }
+      return json({error: typeof result?.error === 'string' ? result.error : typeof result?.reason === 'string' ? result.reason : 'The revision could not be prepared.', code: result?.code}, upstream.status);
+    }
     if (body.action === 'prepare') {
       const price = record(record(result?.frozen)?.customerPrice);
       if (result?.status !== 'prepared' || !price) return json({error: 'The revised price could not be confirmed.'}, 503);

@@ -2,6 +2,13 @@
 
 Schedule V2 owns install planning. Its Site Visits capability is retained but hidden from normal staff navigation.
 
+CI verification (2026-09-15): the Gantt-to-Board test now waits for the resolved
+query notification before asserting the returned Board, and ScheduleClient test
+roots unmount even after assertion failures. This fixes a timing-dependent stale
+loading assertion and downstream observer contamination. All 40 focused tests
+pass. The ScheduleClient test owner remains Schedule; splitting its Board/cache
+fixtures is deferred to a dedicated test-maintenance change.
+
 ## Ownership
 
 - Page route: `/staff/schedule`.

@@ -1,5 +1,20 @@
 # Decision Log
 
+## 2026-09-15 — Protected pricing relays and deterministic query tests
+
+The hosted configurator revision relay received Vercel's structured "Protected
+deployment" 401 before the marketing staff-auth handler. A fresh staging staff
+session prepared the same $12,225 design successfully when accompanied by the
+existing marketing automation credential. Keep this credential server-only,
+preview-only and bound to the configured HTTPS Vercel origin; preserve staff
+authentication, redirect refusal and deployment protection.
+
+Portal Quality also exposed a Schedule test that expected loading after resolving
+the Board query. Assert loading while unresolved, flush the query notification,
+then assert the returned Board. Always unmount test roots after failed assertions
+so live observers cannot contaminate later mutation tests. Schedule behavior is
+unchanged; focused coverage passes all 40 cases.
+
 Compact indexed lessons and guardrails for future agents. Scan relevant entries before non-trivial or risky work, especially when the task touches a known source-of-truth boundary, migration, auth path, data flow, or quality gate.
 
 ## Entry Template
