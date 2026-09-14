@@ -24,6 +24,8 @@ The three reviewed pilot migrations were installed atomically in production. The
 
 Jordan's existing production session opened `/staff/payments/review` and completed a live proposed-match review at 08:54:40 UTC. The expected reconciled receipt and exact receipt identity were returned; the screen showed a full-deposit proposal, customer-win consequence and zero remaining deposit if approved. The explicit confirmation remained unchecked and no payment was recorded. Xero did not supply an invoice reference, so human ownership confirmation remains required. Private customer identifiers stay in ignored operator evidence. An unauthenticated production command returned 403 with private/no-store caching.
 
+The owner subsequently explicitly approved that exact receipt-to-invoice match. A fresh production review revalidated the receipt identity, amount, date and open invoice before the single approval submission at 09:14:33 UTC. The portal returned success. A new review at 09:14:53 UTC showed the deposit invoice PAID, no remaining deposit and customer won, with the existing receipt blocked from another approval. Independent SQL confirmed exactly one payment, one active source match, an equal full allocation, one match-approval audit event and one invoice-paid audit event. Receipt date remained the original received date; approval time records when the portal match was confirmed. Xero remained read-only. Exact customer amounts and identifiers remain in private operator evidence.
+
 ## First slice
 
 The portal owns the read-only accounting connection. Staff and ordinary admins
@@ -41,7 +43,7 @@ ID. The registered callback is
 
 ## Ownership and limits
 
-### Deposit approval pilot (released; first real approval pending)
+### Deposit approval pilot (released; first real approval verified)
 
 The developer page adds an exact portal invoice lookup and a live Xero receipt comparison through `POST /api/integrations/xero/payment-suggestions`. The invoice customer name supplies the default exact Xero contact search; an alternate name can be entered, but a differing name blocks the proposed outcome pending identity review. Searches accept 1–240 characters, including short and punctuated customer names; query values are escaped as Xero string literals using doubled quotation marks, never supplied as expressions. The dedicated Xero identity remains read-only and receives no portal business-table grants.
 
@@ -59,7 +61,7 @@ Approved partial receipts use the existing append-only payment ledger with no in
 
 Investigation and rejection notes do not alter money or prove an accounting match. They are shown on subsequent reviews, and approval requires the reviewer to confirm that earlier concerns have been resolved. The pilot uses exact customer-name searches and requires a human to establish project ownership; matching name and amount alone never approves a receipt.
 
-Focused tests cover positive partial deposits down to one cent, blocked evidence, existing history, identity ambiguity, failed reads, actor/origin denial, changed provider records, stale ledger snapshots, lost-response recovery, duplicate identity, canonical settlement, reversal and transaction rollback. The PGlite command suite loads the actual commercial SQL owners. Authenticated hosted pilot browser proof is recorded above. The pilot is now released; Peter's exact-match approval remains pending.
+Focused tests cover positive partial deposits down to one cent, blocked evidence, existing history, identity ambiguity, failed reads, actor/origin denial, changed provider records, stale ledger snapshots, lost-response recovery, duplicate identity, canonical settlement, reversal and transaction rollback. The PGlite command suite loads the actual commercial SQL owners. Authenticated hosted pilot browser proof is recorded above. The pilot is released, and the first owner-approved live match is independently verified in the production evidence above.
 
 On 2026-09-14, staging `tnsiprehuldksnuowubv` installed the three pilot migrations atomically, with zero approvers and zero matches. The stored migration source MD5 values match the local bytes: `20260914000002` = `85ad54d762094ff0f570b4e3905102ff`; `20260914000003` = `b462acc72f953b632a6c3fb64a3bbacd`; `20260914000004` = `6064bd0b57f7c9e02bca469e81e755f8`. A hosted transaction created synthetic invoice/quote/project records, proved partial win, same-ID retry, duplicate refusal, two-receipt settlement, allocations, successive reversals, review note and approval audit, then rolled back. Independent final counts were zero pilot approvers, matches, notes and synthetic projects. No production payment was touched. Local focused verification passed 136 tests, portal TypeScript, scoped ESLint, architecture/docs checks and a production build with synthetic build-only credentials.
 

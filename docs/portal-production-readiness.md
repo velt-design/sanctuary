@@ -2,7 +2,7 @@
 
 Status: Active evolving tracker.
 
-Xero deposit pilot (2026-09-14): PR #128 is released after required CI and review. Hosted staging SQL proves partial/full deposits, concurrent duplicate refusal and audited reversal; authenticated browser checks prove blocked evidence and persistent review notes. The production pilot and separate Jordan-only approval grant are enabled. Production review returned the first exact receipt/invoice proposal; its confirmation remains unchecked and no real payment has been approved. Current evidence and rollout boundaries are owned by `docs/xero-connection.md`.
+Xero deposit pilot (2026-09-14): PR #128 is released after required CI and review. Hosted staging SQL proves partial/full deposits, concurrent duplicate refusal and audited reversal; authenticated browser checks prove blocked evidence and persistent review notes. The production pilot and separate Jordan-only approval grant are enabled. The owner approved the first exact receipt/invoice match after a fresh review. Production UI and independent SQL verified one payment, full deposit settlement, customer won, allocations and audit; a subsequent review blocks recording that receipt again. Current evidence and rollout boundaries are owned by `docs/xero-connection.md`.
 
 Last updated: 2026-08-27.
 
