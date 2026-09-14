@@ -34,13 +34,13 @@ export type InvoiceTransferProvider = {
   createDraft(request: FrozenInvoiceTransfer): Promise<{ invoiceId: string }>;
 };
 
-export class InvoiceTransferError extends Error {
+class InvoiceTransferError extends Error {
   constructor(readonly code: 'INVALID_FROZEN_REQUEST' | 'EXISTING_INVOICE_REVIEW' | 'XERO_INVOICE_CONFLICT'
     | 'IDEMPOTENCY_WINDOW_EXPIRED' | 'PROVIDER_OUTCOME_UNCERTAIN') { super(code); }
 }
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
-function validateFrozen(request: FrozenInvoiceTransfer): void {
+export function validateFrozen(request: FrozenInvoiceTransfer): void {
   if (request.draft.Status !== 'DRAFT' || request.draft.Type !== 'ACCREC'
     || request.body !== JSON.stringify({ Invoices: [request.draft] })
     || sha256(request.body) !== request.bodyHash

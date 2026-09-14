@@ -241,3 +241,6 @@ Finance queue owner: `lib/invoices/financeReviewRepository.ts` reads migration10
 `invoiceObservationRepository.ts` owns bound-invoice observation context/save and scheduler reads. Migration18 includes the latest observation within the same finance-list statement so exception ordering and displayed evidence agree. Failed reads display unavailable rather than an empty success. No source invoice or payment state is overwritten.
 
 The mapping screen has a separately gated, explicitly confirmed new-Xero-customer command. `financeMappingRepository.ts` binds the current actor/invoice to migration19's immutable request and verified customer mapping. The provider creates only a customer record; the existing account/tax confirmation and invoice transfer remain separate. See `docs/xero-connection.md` for duplicate/recovery rules, expanded consent and the unactivated rollout status.
+
+
+`xeroInvoiceTransferRepository.ts` also owns actor-bound stopped-transfer recovery. Finance review can explicitly check the original request against Xero; exact verified DRAFT recovery uses migration20 and never sends another invoice. Existing worker ownership, changed/missing provider records and cancellations remain explicit exceptions. Details and pending rollout evidence live in `docs/xero-connection.md`.

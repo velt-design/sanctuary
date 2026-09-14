@@ -2,11 +2,13 @@ import 'server-only';
 import { supabaseServiceRole } from '../supabaseClient';
 import type { FrozenInvoiceTransfer, InvoiceTransferLease, InvoiceTransferRepository } from '../xero/invoiceTransfer';
 import { reconcileXeroDraft } from '../xero/invoiceDraftReconciliation';
+import type { InvoiceRecoveryRepository } from '../xero/invoiceRecovery';
 
 const knownErrors = new Set(['XERO_JOB_NOT_AUTHORISED', 'XERO_TRANSFER_DISABLED', 'XERO_INVOICE_CHANGED',
   'XERO_MAPPING_REQUIRED', 'XERO_MAPPING_CHANGED', 'XERO_REQUEST_INVALID', 'XERO_REQUEST_CHANGED',
   'XERO_REQUEST_TOTAL_MISMATCH', 'XERO_REQUEST_ALREADY_ACCEPTED', 'XERO_IDEMPOTENCY_EXPIRED',
-  'XERO_VERIFICATION_MISMATCH', 'XERO_INVOICE_ID_CONFLICT', 'XERO_EFFECT_IDENTITY_MISMATCH', 'XERO_TAX_MAPPING_REVIEW_REQUIRED']);
+  'XERO_VERIFICATION_MISMATCH', 'XERO_INVOICE_ID_CONFLICT', 'XERO_EFFECT_IDENTITY_MISMATCH', 'XERO_TAX_MAPPING_REVIEW_REQUIRED',
+  'XERO_NO_DISPATCH_TO_RECOVER', 'XERO_TRANSFER_STILL_RUNNING', 'XERO_CANCELLED_TRANSFER_REVIEW', 'XERO_ALREADY_BOUND_REVIEW', 'XERO_TRANSFER_NOT_FOUND']);
 
 async function command(name: string, params: Record<string, unknown>): Promise<unknown> {
   const result = await supabaseServiceRole.rpc(name, params);
@@ -57,3 +59,23 @@ export const xeroInvoiceTransferRepository: InvoiceTransferRepository = {
         taxCents: Math.round(evidence.TotalTax * 100), subtotalCents: Math.round(evidence.SubTotal * 100) } });
   },
 };
+
+export function invoiceRecoveryRepository(actor: string, invoiceId: string, tenantId: string): InvoiceRecoveryRepository {
+  const params = { p_actor: actor, p_invoice_id: invoiceId, p_tenant_id: tenantId };
+  return {
+    async load() {
+      const request = frozen(await command('xero_finance_recover_invoice', params));
+      if (request.tenantId !== tenantId) throw new Error('XERO_REQUEST_INVALID');
+      return request;
+    },
+    async finalise(request, providerInvoiceId, evidence) {
+      const match = reconcileXeroDraft(request.draft, evidence);
+      if (match.outcome !== 'MATCHED_DRAFT' || match.invoiceId !== providerInvoiceId) throw new Error('XERO_VERIFICATION_MISMATCH');
+      const totals = evidence as { Total: number; TotalTax: number; SubTotal: number };
+      const saved = frozen(await command('xero_finance_recover_invoice', { ...params, p_body_hash: request.bodyHash,
+        p_proof: { invoiceId: providerInvoiceId, draft: request.draft, totalCents: Math.round(totals.Total * 100),
+          taxCents: Math.round(totals.TotalTax * 100), subtotalCents: Math.round(totals.SubTotal * 100) } }));
+      if (!saved.finalised || saved.providerInvoiceId !== providerInvoiceId || saved.tenantId !== tenantId || saved.bodyHash !== request.bodyHash) throw new Error('XERO_VERIFICATION_MISMATCH');
+    },
+  };
+}

@@ -996,7 +996,9 @@ async function run() {
   }
   applySql('supabase/migrations/20260914000013_xero_invoice_observations.sql', { singleTransaction: true });
   applySql('supabase/migrations/20260914000018_xero_finance_queue.sql', { singleTransaction: true });
+  applySql('supabase/migrations/20260914000020_xero_invoice_recovery.sql', { singleTransaction: true });
   applySql('supabase/tests/xero_finance_workflow.sql');
+  applySql('supabase/tests/xero_invoice_recovery.sql');
   process.stdout.write(
     `background-jobs-db: isolated PGMQ contract passed (${image})\n`,
   );

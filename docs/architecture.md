@@ -100,3 +100,6 @@ The separately gated deposit pilot adds `/staff/payments/review` and `/api/payme
 ### Finance customer creation (unreleased)
 
 The invoice mapping screen can request explicit new-customer creation through `/api/payments/xero/customers`. `lib/xero/customerCreation.ts` owns read-first recovery and verification, its provider owns create-only Xero transport, and the existing server-only finance mapping repository owns the actor-bound RPC. Migration19 owns immutable request bytes, the conservative retry window and append-only creation/mapping evidence. The restricted connector login remains separate from business-table commands. Expanded OAuth and a default-dark customer-creation gate are required before any provider write; no shared activation is implied. See `docs/xero-connection.md` for rollout and evidence limits.
+
+
+Stopped Xero invoice recovery uses a finance-grant command rather than worker impersonation or manual requeue. The service-only RPC shares the existing binding implementation with the lease-protected worker entry point, then archives/completes only its stopped, verified invoice job. Application recovery reads Xero but has no provider write method. See `docs/xero-connection.md` for the unreleased migration20 boundary.

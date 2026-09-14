@@ -6,6 +6,7 @@ import { getPaymentPilotSession } from '@/lib/xero/pilotAccess';
 import { loadFinanceReview } from '@/lib/invoices/financeReviewRepository';
 import { financeOutcome } from '@/lib/xero/financeReview';
 import CheckXero from './CheckXero';
+import RecoverTransfer from './RecoverTransfer';
 
 export const dynamic = 'force-dynamic';
 export default async function FinancePage({ searchParams }: { searchParams: Promise<{ search?: string; offset?: string }> }) {
@@ -36,6 +37,8 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           <TableCell>{outcome.label}{row.lastVerifiedAt && <><br /><small>Transfer verified {new Date(row.lastVerifiedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
             {row.observation && <><br /><small>Xero checked {new Date(row.observation.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
             {row.xeroInvoiceId && <><br /><CheckXero invoiceId={row.invoiceId} invoiceRef={row.invoiceRef} /></>}
+            {!row.xeroInvoiceId && row.captured && row.status !== 'VOID' && ['needs_attention', 'permanent_failed'].includes(row.transferStatus ?? '')
+              && <RecoverTransfer invoiceId={row.invoiceId} />}
             {row.xeroInvoiceId && process.env.XERO_INVOICE_PAYMENTS_ENABLED === 'true' && <><br /><Link href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</Link></>}
             {row.status !== 'VOID' && <><br /><Link href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Confirm customer and accounting details</Link></>}
           </TableCell>
