@@ -20,6 +20,7 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/invoices/paymentLedger.ts',
   'apps/portal/lib/invoices/paymentMatchReview.ts',
   'apps/portal/lib/invoices/server.ts',
+  'apps/portal/lib/invoices/xeroMatchRepository.ts',
   'apps/portal/lib/marketingAttribution/server.ts',
   'apps/portal/lib/projects/createProjectCommand.ts',
   'apps/portal/lib/quotes/adminLifecycle.ts',

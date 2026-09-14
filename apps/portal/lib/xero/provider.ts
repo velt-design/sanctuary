@@ -30,9 +30,10 @@ export async function connections(accessToken: string): Promise<Array<{ tenantId
   return data.map(({ tenantId, tenantName }) => ({ tenantId, tenantName }));
 }
 
-export async function accountingRead(tokens: Tokens, tenantId: string, resource: 'Invoices' | 'BankTransactions', where: string) {
-  const url = new URL(`https://api.xero.com/api.xro/2.0/${resource}`);
-  url.searchParams.set('where', where); url.searchParams.set('page', '1'); url.searchParams.set('pageSize', '20');
+export async function accountingRead(tokens: Tokens, tenantId: string, resource: 'Invoices' | 'BankTransactions', where: string, recordId?: string) {
+  if (recordId !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recordId)) throw new XeroError('INVALID_RECORD_ID');
+  const url = new URL(`https://api.xero.com/api.xro/2.0/${resource}${recordId ? `/${recordId}` : ''}`);
+  if (!recordId) { url.searchParams.set('where', where); url.searchParams.set('page', '1'); url.searchParams.set('pageSize', '20'); }
   const response = await fetch(url, { cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000),
     headers: { Authorization: `Bearer ${tokens.accessToken}`, 'Xero-tenant-id': tenantId, Accept: 'application/json' } });
   if (!response.ok) throw new XeroError(response.status === 401 ? 'RECONNECT_REQUIRED' : 'READ_FAILED');
@@ -46,6 +47,7 @@ export async function accountingRead(tokens: Tokens, tenantId: string, resource:
     return {
       id: text(row.InvoiceID ?? row.BankTransactionID), reference: text(row.InvoiceNumber ?? row.Reference),
       contact: text((row.Contact as { Name?: string } | undefined)?.Name), status: text(row.Status),
+      contactId: text((row.Contact as { ContactID?: string } | undefined)?.ContactID), transactionType: text(row.Type), updatedAt: text(row.UpdatedDateUTC),
       date: text(row.DateString ?? row.Date), total: amount(row.Total), paid: amount(row.AmountPaid),
       currency: text(row.CurrencyCode), reconciled: typeof row.IsReconciled === 'boolean' ? row.IsReconciled : null,
     };

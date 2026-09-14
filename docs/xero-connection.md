@@ -33,24 +33,32 @@ ID. The registered callback is
 
 ## Ownership and limits
 
-### Deposit match review (implementation; not yet released)
+### Deposit approval pilot (implementation; not yet released)
 
 The developer page adds an exact portal invoice lookup and a live Xero receipt comparison through `POST /api/integrations/xero/payment-suggestions`. The invoice customer name supplies the default exact Xero contact search; an alternate name can be entered, but a differing name blocks the proposed outcome pending identity review. The dedicated Xero identity remains read-only and receives no portal business-table grants.
 
-The owner rule confirmed on 2026-09-14 is: **any verified deposit counts as a customer win**, including a partial deposit. The review shows this only as a conditional outcome alongside the remaining requested deposit. It does not label the invoice paid, set a project stage, or publish a conversion. Whole-invoice and append-only ledger contracts remain authoritative.
+The owner rule confirmed on 2026-09-14 is: **any verified positive deposit counts as a customer win**, including a partial deposit. The pilot at `/staff/payments/review` separates this outcome from remaining deposit and whole-invoice status. No project stage or marketing conversion is changed. Jordan is the sole pilot approver; automatic approval is excluded.
 
 `apps/portal/lib/invoices/paymentMatchReview.ts` is a server-only, developer-gated service-role read adapter for the exact invoice and existence of project payment history. It reads explicit bounded columns and fails closed on missing/duplicate invoices or failed ledger reads. The pure `paymentSuggestions.ts` owner blocks non-open/non-first-stage invoices, standalone invoices, invalid/nonpositive/over-invoice amounts, missing dates, non-NZD currency, unreconciled/unauthorised receipts, differing customer names and existing project payment history. Multiple receipts remain separate; twenty results is explicitly incomplete. Names and amounts are evidence, never proof of ownership or global duplicate exclusion.
 
-This slice is a read-only review screen, with no approval or payment mutation endpoint. Applying an approved match still requires an atomic source-identity-to-ledger command, cross-project duplicate protection, fresh provider evidence, reversal handling and a concrete owner-reviewed match. Do not use a generic manual-payment command as an automatic substitute. Candidate searches do not persist customer accounting payloads.
+The pilot uses `POST /api/payments/xero` and the server-only service-role adapter `lib/invoices/xeroMatchRepository.ts`. Access requires the default-dark `XERO_PAYMENT_MATCHING_ENABLED=true`, an active verified Jordan session, a separate nonrevoked `xero_payment_approvers` grant, and same-origin requests. A generic admin role does not grant approval. Migrations `20260914000002` through `20260914000004` create the empty grant store, receipt provenance, atomic commands and append-only investigation/rejection notes; they do not provision an approver.
 
-Focused tests cover positive partial deposits down to one cent, blocked evidence, existing history, identity ambiguity, failed reads, developer/origin denial and truthful UI recovery. Production connection evidence above applies to the released connection; it does not claim this new review surface is deployed.
+Review creates a ten-minute encrypted approval envelope bound to the actor, tenant, exact receipt, invoice, amount and server-owned evidence fingerprints. Its key is purpose-derived from the connector encryption key. Approval re-reads the exact Xero receipt ID and compares its evidence, then the database command rechecks invoice and ledger snapshots under the canonical project lock. The global source lock and unique active tenant/receipt key prevent a receipt being recorded twice across projects. Lost-response retries recover the same approval ID; a separate status action remains usable after envelope expiry. Browser recovery storage contains only the approval ID.
+
+Approved partial receipts use the existing append-only payment ledger with no invoice allocation. At the exact whole-invoice total, the same entries are allocated and the invoice becomes PAID atomically; no extra full-invoice payment is created. Manual mark-paid commands are guarded against duplicate import or premature settlement. An explicit correction with a reason uses the canonical equal/opposite reversal, releases invoice allocations and reopens a previously paid invoice. Match provenance and review notes remain available. A reversed receipt can be assigned again only through a fresh approval. Xero remains read-only throughout.
+
+Investigation and rejection notes do not alter money or prove an accounting match. They are shown on subsequent reviews, and approval requires the reviewer to confirm that earlier concerns have been resolved. The pilot uses exact customer-name searches and requires a human to establish project ownership; matching name and amount alone never approves a receipt.
+
+Focused tests cover positive partial deposits down to one cent, blocked evidence, existing history, identity ambiguity, failed reads, actor/origin denial, changed provider records, stale ledger snapshots, lost-response recovery, duplicate identity, canonical settlement, reversal and transaction rollback. The PGlite command suite loads the actual commercial SQL owners; it is not hosted concurrency proof. Browser proof, competing hosted transactions, release and Peter's exact-match approval are still pending. Production connection evidence above applies only to the released connection.
+
+On 2026-09-14, staging `tnsiprehuldksnuowubv` installed the three pilot migrations atomically, with zero approvers and zero matches. The stored migration source MD5 values match the local bytes: `20260914000002` = `85ad54d762094ff0f570b4e3905102ff`; `20260914000003` = `b462acc72f953b632a6c3fb64a3bbacd`; `20260914000004` = `6064bd0b57f7c9e02bca469e81e755f8`. A hosted transaction created synthetic invoice/quote/project records, proved partial win, same-ID retry, duplicate refusal, two-receipt settlement, allocations, successive reversals, review note and approval audit, then rolled back. Independent final counts were zero pilot approvers, matches, notes and synthetic projects. No production payment was touched. Local focused verification passed 136 tests, portal TypeScript, scoped ESLint, architecture/docs checks and a production build with synthetic build-only credentials.
 
 - `apps/portal/lib/xero` owns configuration, encryption, provider reads and connection storage.
 - `apps/portal/app/api/integrations/xero` owns developer OAuth, candidate review and scheduled maintenance.
 - `xero_private` stores encrypted tokens, single-use authorisation attempts and append-only connection audit. No customer accounting data is mirrored here.
 - Daily maintenance renews access and verifies the pinned tenant; reads renew on demand. This is continuous authorisation, not yet automatic invoice/payment synchronisation.
-- Candidate inspection reads an exact invoice number or exact Xero contact name for RECEIVE bank transactions, at most 20 records. Empty results do not prove absence of payment. No fuzzy matching, allocation, backfill or payment mutation occurs.
-- No staff UI, commercial ledger, invoice issue flow, marketing event, Praxis projection or Velt connector changes in this slice.
+- Candidate inspection reads an exact invoice number or exact Xero contact name for RECEIVE bank transactions, at most 20 records. Empty results do not prove absence of payment. Approval fetches the exact selected receipt independently of search pagination.
+- Invoice issue flow, accounting writes, backfills, marketing events, Praxis projections and Velt connectors remain outside the pilot.
 - Xero API data is not used to train/fine-tune/adapt models. Praxis or Meta reuse requires separate review of Xero's current terms and permitted use case.
 
 ## Configuration
@@ -60,6 +68,7 @@ All variables are portal-server-only, never browser-prefixed:
 | Variable | Purpose |
 | --- | --- |
 | `XERO_ENABLED` | Exactly `true` enables routes; absent/false remains dark. |
+| `XERO_PAYMENT_MATCHING_ENABLED` | Exactly `true` enables the separately authorized deposit pilot after migrations and Jordan's grant are verified. Default dark; independent of connection enablement. |
 | `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET` | Web-app credentials from Xero, held in the deployment secret manager. |
 | `XERO_PORTAL_ORIGIN` | Explicit HTTPS origin; no path, credentials, query or fragment. |
 | `XERO_TENANT_ID` | Exact approved Xero organisation UUID; never the developer app ID. Callback refuses any other tenant. |

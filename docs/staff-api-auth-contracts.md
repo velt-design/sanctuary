@@ -156,3 +156,7 @@ Manual or browser checks should cover:
 ### Xero payment review reads
 
 `apps/portal/lib/invoices/paymentMatchReview.ts` is a server-only service-role read exception behind verified developer access and same-origin POST checks. It selects an exact invoice reference with a two-row ambiguity limit and checks for any existing project payment entry. It has no mutation, delivery or artifact call. The dedicated Xero database login remains restricted to connection storage.
+
+### Xero deposit approval pilot
+
+`/api/payments/xero` is default-dark and uses `getPaymentPilotSession`, requiring active verified Jordan identity plus a nonrevoked `xero_payment_approvers` grant. Every action also checks origin. Approval and reversal require explicit confirmation; the server supplies the actor, never a browser actor field. Approval evidence is encrypted, time-limited and actor/tenant-bound; receipt and ledger evidence are revalidated before the transaction. Recovery returns only the current approver's match. Investigation/rejection notes require a reason and use an idempotent append-only command. The allowlisted service-role adapter `lib/invoices/xeroMatchRepository.ts` owns these bounded reads/RPCs. Generic admin access does not grant pilot approval; technical connection controls remain developer-only.

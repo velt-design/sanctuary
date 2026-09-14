@@ -93,3 +93,5 @@ The default-dark portal Xero integration owns private encrypted connection stora
 ### Xero deposit review boundary
 
 The developer-only payment suggestion route uses `apps/portal/lib/invoices/paymentMatchReview.ts` for bounded service-role invoice and payment-history reads, after the same verified developer and origin checks as the Xero review route. It never writes payment records; the restricted Xero login is not granted business-table access. See `docs/xero-connection.md` for the conditional customer-win rule and review limitations.
+
+The separately gated deposit pilot adds `/staff/payments/review` and `/api/payments/xero`. `lib/xero/paymentPilot.ts` owns exact provider revalidation and actor-bound approval envelopes; `lib/invoices/xeroMatchRepository.ts` is the service-role RPC adapter for the canonical ledger transaction and restricted review history. Approval requires a separate nonrevoked database grant as well as the active verified pilot identity. Xero credentials retain no business-table or accounting write access. See `docs/xero-connection.md` for default-dark rollout, provenance, retry and reversal contracts.
