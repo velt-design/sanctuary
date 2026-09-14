@@ -24,6 +24,6 @@ describe('developer page',()=>{
     mocks.status.mockResolvedValue({connected:true,organisation:'Demo company',lastVerifiedAt:'2026-09-14T00:00:00Z',error:null});
     const html=renderToStaticMarkup(await Page({searchParams:Promise.resolve({})}));
     expect(html).toContain('Last verified with Xero');expect(html).toContain('Receipt contact name');
-    expect(html).toContain('portal payment records remain unchanged');
+    expect(html).toContain('Connecting does not record portal payments or post Xero invoices');
   });
 });

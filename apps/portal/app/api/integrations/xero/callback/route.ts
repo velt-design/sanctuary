@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { developer, json, privateHeaders } from '@/lib/xero/http';
-import { config, equalSecret, hash, seal, unseal, XERO_CALLBACK, XERO_PAGE } from '@/lib/xero/security';
+import { config, equalSecret, hash, seal, unseal, XERO_CALLBACK, XERO_PAGE, XERO_SCOPES } from '@/lib/xero/security';
+import { consentScopes, XERO_INVOICE_SCOPES } from '@/lib/xero/oauthScopes';
 import { connect, consumeAttempt } from '@/lib/xero/store';
 import { connections, tokenRequest } from '@/lib/xero/provider';
 
@@ -18,12 +19,14 @@ export async function GET(request: NextRequest) {
   try { origin = config().origin; } catch { return json({ error: 'Connection not configured' }, 503); }
   try {
     const cfg = config();
-    const state = unseal<{ state: string; userId: string; expires: number }>(request.cookies.get('__Host-xero-state')?.value ?? '',cfg.key);
+    const state = unseal<{ state: string; userId: string; expires: number; scopes?: string }>(request.cookies.get('__Host-xero-state')?.value ?? '',cfg.key);
     if (state.userId !== session.user.id || !Number.isFinite(state.expires) || state.expires < Date.now() || !equalSecret(state.state,request.nextUrl.searchParams.get('state') ?? '')) throw new Error('INVALID_STATE');
     if (!await consumeAttempt(hash(state.state),session.user.id)) throw new Error('REPLAYED_STATE');
     const code = request.nextUrl.searchParams.get('code');
     if (request.nextUrl.searchParams.has('error') || !code || code.length > 4096) return result(origin,'cancelled');
-    const tokens = await tokenRequest(cfg.clientId,cfg.clientSecret,new URLSearchParams({ grant_type:'authorization_code',code,redirect_uri: cfg.origin+XERO_CALLBACK }));
+    const scopes = state.scopes ?? XERO_SCOPES;
+    if (scopes !== XERO_SCOPES && (scopes !== XERO_INVOICE_SCOPES || consentScopes() !== XERO_INVOICE_SCOPES)) throw new Error('INVALID_SCOPE_ATTEMPT');
+    const tokens = await tokenRequest(cfg.clientId,cfg.clientSecret,new URLSearchParams({ grant_type:'authorization_code',code,redirect_uri: cfg.origin+XERO_CALLBACK }),scopes.split(' '));
     if (!cfg.tenantId) {
       const organisations = await connections(tokens.accessToken);
       if (!organisations.length || organisations.length > 5 || organisations.some(item =>

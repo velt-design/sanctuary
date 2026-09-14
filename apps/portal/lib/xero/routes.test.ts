@@ -1,6 +1,7 @@
 import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { seal,unseal,XERO_SCOPES } from './security';
+import { XERO_INVOICE_SCOPES } from './oauthScopes';
 const mocks=vi.hoisted(()=>({session:vi.fn(),attempt:vi.fn(),consume:vi.fn(),connect:vi.fn(),access:vi.fn(),verify:vi.fn(),read:vi.fn()}));
 vi.mock('@/lib/auth',()=>({getPortalSession:mocks.session}));
 vi.mock('./store',()=>({saveAttempt:mocks.attempt,consumeAttempt:mocks.consume,connect:mocks.connect,access:mocks.access,verifyConnection:mocks.verify,readAccounting:mocks.read}));
@@ -18,6 +19,28 @@ beforeEach(()=>{
 });
 afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();});
 describe('Xero HTTP integration',()=>{
+  it('binds expanded consent to the initiating attempt and refuses it after consent is disabled',async()=>{
+    vi.stubEnv('XERO_INVOICE_CONSENT_ENABLED','true');
+    const response=await start(new Request(origin,{method:'POST',headers:{origin}}));
+    const url=new URL((await response.json()).authorizationUrl);
+    expect(url.searchParams.get('scope')).toBe(XERO_INVOICE_SCOPES);
+    const cookie=response.headers.get('set-cookie')!.match(/__Host-xero-state=([^;, ]+)/)![1];
+    const bound=unseal<{scopes:string}>(cookie,key);
+    expect(bound.scopes).toBe(XERO_INVOICE_SCOPES);
+    vi.stubEnv('XERO_INVOICE_CONSENT_ENABLED','false');
+    const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+    const returned=await callback(new NextRequest(`${origin}?state=${url.searchParams.get('state')}&code=c`,{headers:{cookie:`__Host-xero-state=${cookie}`}}));
+    expect(returned.headers.get('location')).toContain('connection=failed');
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it('accepts expanded consent only for the bound finance attempt',async()=>{
+    vi.stubEnv('XERO_INVOICE_CONSENT_ENABLED','true');
+    const fetcher=vi.fn().mockResolvedValue(Response.json({access_token:'a',refresh_token:'r',expires_in:1800,scope:XERO_INVOICE_SCOPES}));vi.stubGlobal('fetch',fetcher);
+    const cookie=seal({state:'s',userId:'user-1',expires:Date.now()+600000,scopes:XERO_INVOICE_SCOPES},key);
+    const response=await callback(new NextRequest(`${origin}?state=s&code=c`,{headers:{cookie:`__Host-xero-state=${cookie}`}}));
+    expect(response.headers.get('location')).toContain('connection=connected');
+    expect(mocks.connect.mock.calls[0][0].scopes).toContain('accounting.invoices');
+  });
   it.each(['{','null','[]','"search"','{"kind":123,"value":"Peter"}'])('rejects invalid search bodies before connection access: %s',async body=>{
     const response=await review(new Request(origin,{method:'POST',headers:{origin,'content-type':'application/json'},body}));
     expect(response.status).toBe(400);expect(mocks.read).not.toHaveBeenCalled();expect(mocks.access).not.toHaveBeenCalled();

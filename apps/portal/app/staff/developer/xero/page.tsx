@@ -22,7 +22,8 @@ export default async function XeroDeveloperPage({ searchParams }: { searchParams
   const date = (value: unknown) => value ? new Date(String(value)).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland'}) : 'Not yet';
   return <main style={{maxWidth:900,margin:'32px auto',padding:24}}>
     <h1>Xero developer connection</h1>
-    <p>Private connection controls. Xero access is read-only; portal payment records remain unchanged.</p>
+    <p>Private connection controls. Connecting does not record portal payments or post Xero invoices.</p>
+    {process.env.XERO_INVOICE_CONSENT_ENABLED === 'true' && <p>Connecting now requests permission to create invoice drafts and read accounting settings. Automatic transfers require separate activation; finance reviews drafts before posting.</p>}
     {organisations.length>0 && <section aria-label="Discovered Xero organisations">
       <h2>Verify the organisation binding</h2>
       <p>These organisations were returned by Xero after authorisation. No connection tokens were retained and no accounting records were read. Configure the approved organisation ID, then connect again.</p>

@@ -5,7 +5,7 @@ import type { FrozenInvoiceTransfer } from './invoiceTransfer';
 
 const mocks = vi.hoisted(() => ({ access: vi.fn(), config: vi.fn() }));
 vi.mock('./store', () => ({ access: mocks.access }));
-vi.mock('./security', () => ({ config: mocks.config }));
+vi.mock('./security', async importOriginal => ({ ...await importOriginal<typeof import('./security')>(), config: mocks.config }));
 const tenantId = '11111111-1111-4111-8111-111111111111';
 const invoiceId = '22222222-2222-4222-8222-222222222222';
 function setup(): FrozenInvoiceTransfer {
