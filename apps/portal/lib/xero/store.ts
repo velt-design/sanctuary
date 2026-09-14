@@ -34,6 +34,7 @@ export async function consumeAttempt(stateHash: string, userId: string) {
 
 export async function connect(tokens: Tokens, userId: string) {
   const cfg = config();
+  if (!cfg.tenantId) throw new Error('XERO_ORGANISATION_NOT_PINNED');
   const organisations = await connections(tokens.accessToken);
   const tenant = organisations.find(item => item.tenantId === cfg.tenantId);
   if (!tenant) throw new Error('XERO_WRONG_ORGANISATION');
@@ -58,6 +59,7 @@ export async function status() {
 
 export async function access(): Promise<Tokens> {
   const cfg = config();
+  if (!cfg.tenantId) throw new Error('XERO_ORGANISATION_NOT_PINNED');
   // A database row lock serialises rotation across cron, reads and reconnects.
   // Commit rotated tokens before any subsequent provider reads can fail.
   const result = await withDatabase(async db => db.begin(async tx => {

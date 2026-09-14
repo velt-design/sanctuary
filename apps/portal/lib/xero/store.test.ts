@@ -25,6 +25,12 @@ beforeEach(()=>{
 });
 afterEach(()=>vi.unstubAllEnvs());
 describe('durable Xero renewal',()=>{
+  it('discovery cannot retain tokens or use an existing accounting connection',async()=>{
+    vi.stubEnv('XERO_TENANT_ID','');vi.stubEnv('XERO_DISCOVERY','true');
+    await expect(access()).rejects.toThrow('XERO_ORGANISATION_NOT_PINNED');
+    await expect(connect({accessToken:'a',refreshToken:'r',expiresAt:1},'user')).rejects.toThrow('XERO_ORGANISATION_NOT_PINNED');
+    expect(mocks.postgres).not.toHaveBeenCalled();expect(mocks.connections).not.toHaveBeenCalled();expect(mocks.token).not.toHaveBeenCalled();
+  });
   it('locks the connection and saves rotated credentials before returning access',async()=>{
     mocks.token.mockResolvedValue({accessToken:'new',refreshToken:'rotated',expiresAt:Date.now()+1800000});
     expect((await access()).accessToken).toBe('new');

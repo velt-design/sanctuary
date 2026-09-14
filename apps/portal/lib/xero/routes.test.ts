@@ -1,6 +1,6 @@
 import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { seal,XERO_SCOPES } from './security';
+import { seal,unseal,XERO_SCOPES } from './security';
 const mocks=vi.hoisted(()=>({session:vi.fn(),attempt:vi.fn(),consume:vi.fn(),connect:vi.fn(),access:vi.fn(),verify:vi.fn()}));
 vi.mock('@/lib/auth',()=>({getPortalSession:mocks.session}));
 vi.mock('./store',()=>({saveAttempt:mocks.attempt,consumeAttempt:mocks.consume,connect:mocks.connect,access:mocks.access,verifyConnection:mocks.verify}));
@@ -50,6 +50,22 @@ describe('Xero HTTP integration',()=>{
       expect((await callback(req)).headers.get('location')).toContain('connection=failed');
     }
     expect(fetcher).not.toHaveBeenCalled();expect(mocks.consume).not.toHaveBeenCalled();
+  });
+  it('discovers organisation IDs without storing tokens or making accounting reads',async()=>{
+    vi.stubEnv('XERO_TENANT_ID','');vi.stubEnv('XERO_DISCOVERY','true');
+    const organisations=[{tenantId:'22222222-2222-4222-8222-222222222222',tenantName:'Demo Company'}];
+    const fetcher=vi.fn().mockResolvedValueOnce(Response.json({access_token:'access-secret',refresh_token:'refresh-secret',expires_in:1800,scope:XERO_SCOPES}))
+      .mockResolvedValueOnce(Response.json(organisations));vi.stubGlobal('fetch',fetcher);
+    const cookie=seal({state:'bound-state',userId:'user-1',expires:Date.now()+600000},key);
+    const response=await callback(new NextRequest(`${origin}/api/integrations/xero/callback?state=bound-state&code=private-code`,{headers:{cookie:`__Host-xero-state=${cookie}`}}));
+    expect(response.headers.get('location')).toContain('connection=discovered');
+    expect(mocks.connect).not.toHaveBeenCalled();expect(mocks.access).not.toHaveBeenCalled();
+    expect(fetcher).toHaveBeenCalledTimes(2);expect(fetcher.mock.calls[1][0]).toBe('https://api.xero.com/connections');
+    const metadataCookie=response.headers.get('set-cookie')!.match(/__Host-xero-organisations=([^;, ]+)/)![1];
+    const metadata=unseal<Record<string,unknown>>(metadataCookie,key);
+    expect(metadata).toMatchObject({userId:'user-1',organisations});
+    expect(JSON.stringify(metadata)).not.toContain('secret');
+    expect(response.headers.get('set-cookie')).toMatch(/HttpOnly/i);
   });
   it('requires the scheduler secret and stays dark when disabled',async()=>{
     vi.stubEnv('CRON_SECRET','x'.repeat(32));

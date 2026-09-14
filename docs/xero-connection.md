@@ -1,6 +1,6 @@
 # Xero connection
 
-Status: deployed to a disabled preview; staging storage installed; connector password, live authorisation and production release outstanding.
+Status: disabled preview and staging storage configured; first-connection discovery under verification. Live authorisation, hosted renewal proof and production release remain outstanding.
 
 ## First slice
 
@@ -37,6 +37,7 @@ All variables are portal-server-only, never browser-prefixed:
 | `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET` | Web-app credentials from Xero, held in the deployment secret manager. |
 | `XERO_PORTAL_ORIGIN` | Explicit HTTPS origin; no path, credentials, query or fragment. |
 | `XERO_TENANT_ID` | Exact approved Xero organisation UUID; never the developer app ID. Callback refuses any other tenant. |
+| `XERO_DISCOVERY` | Temporary setup only: exactly `true` permits authorisation without a tenant pin to discover organisation names/IDs. No tokens are retained or accounting reads allowed. Remove after setting the approved tenant UUID. |
 | `XERO_TOKEN_ENCRYPTION_KEY` | Base64 encoding of 32 random bytes; AES-256-GCM key outside the database. |
 | `XERO_DATABASE_URL` | Dedicated connector LOGIN only; remote URLs must use `sslmode=verify-full`. |
 | `CRON_SECRET` | At least 32 characters; authenticates maintenance. |
@@ -73,7 +74,7 @@ must verify the project's scheduler supports and actually invokes that route.
 1. Apply the forward migration to a disposable database, then approved staging.
 2. Provision an environment-specific LOGIN inheriting only `sanctuary_xero_connector`, with no superuser, role/database creation, replication or RLS bypass, no extra direct grants and no portal business-table access. The runtime rejects elevated/group-contaminated identities. Never use the existing service-role or database-owner connection.
 3. Put credentials/key in the secret manager; do not paste them into chat or commit them. Re-encrypt stored tokens before rotating the encryption key, or explicitly reconnect; simply replacing the key makes stored tokens unreadable.
-4. Configure the exact tenant UUID and callback for the target environment. Use Xero's demo organisation for first live proof; do not substitute a guessed UUID or silently use the first tenant returned.
+4. Register the callback for the target environment. If the tenant UUID is unknown, temporarily set `XERO_DISCOVERY=true`, authorise, and verify the returned organisation name/UUID on the developer page. Discovery discards tokens and retains only encrypted, user-bound organisation metadata in a ten-minute cookie. Set the explicitly approved `XERO_TENANT_ID`, remove discovery mode, redeploy and connect again. Use Xero's demo organisation for first live proof; never guess or silently select the first tenant returned. Storage and accounting access reject an absent pin even in discovery mode.
 5. Verify Jordan has normal active portal access and a verified email. Provisioning that user remains a separate authorised operation.
 6. Test allowed/denied users, OAuth cancellation/replay, renewal/reconnect, provider failure, and candidate reads on staging. Capture secret-free evidence.
 7. Production release, database provisioning and accounting authorisation require explicit approval after review. No production mutations or live Xero calls were made by building this code.
@@ -102,3 +103,5 @@ Manual business-case proof (2026-09-14): authenticated Xero and portal browser i
 Credential handoff update (2026-09-14): the owner reported successful execution of the guarded staging password statement. Vercel subsequently showed `XERO_DATABASE_URL` saved as a Secret for Preview branch `codex/xero-read-connection`, alongside the existing client secret. Neither saved value was inspected. This is configuration-presence evidence only; database login/TLS and the remaining OAuth configuration still need verification.
 
 Additional setup (2026-09-14): draft PR #126 is open, and its disabled preview deployed successfully. `XERO_CLIENT_ID` is configured for the same branch. A random 32-byte `XERO_TOKEN_ENCRYPTION_KEY` was initially imported as Config; before use, it was replaced with a fresh random value and saved as Secret. No token was encrypted with the discarded value. No `CRON_SECRET` was present in the portal project's environment-variable listing. Exact tenant, callback/origin, renewal authentication and enabled hosted proof remain outstanding. CI results for other database contracts must not be counted as Xero hosted proof.
+
+Latest setup (2026-09-14): Vercel confirms branch-only Secret entries for `CRON_SECRET` and `XERO_PORTAL_ORIGIN` alongside the database URL, client secret and encryption key. The stable preview callback is registered with Xero. The first-connection discovery change passes 22 focused tests, portal TypeScript, scoped lint, documentation and changed-architecture guards, and a production build using synthetic configuration. The first build process crashed on Windows; a sequential retry passed. Branch-only `XERO_ENABLED=true` and `XERO_DISCOVERY=true` are saved for the next preview deployment. This does not establish live connectivity; the preview requires a separate authenticated Jordan session before hosted validation. Production is unchanged.

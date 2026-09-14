@@ -1,11 +1,14 @@
 import { notFound } from 'next/navigation';
 import { developer } from '@/lib/xero/http';
 import { status } from '@/lib/xero/store';
+import { discoveredOrganisations } from '@/lib/xero/discovery';
 import Review from './Review';
 
 export const dynamic = 'force-dynamic';
 export default async function XeroDeveloperPage({ searchParams }: { searchParams: Promise<{ connection?: string }> }) {
-  if (!await developer()) notFound();
+  const session=await developer();
+  if (!session) notFound();
+  const organisations=await discoveredOrganisations(session.user.id);
   const params = await searchParams;
   let connection: Awaited<ReturnType<typeof status>> | null = null;
   try { connection = await status(); } catch { /* Credentials/schema stay dark until configured. */ }
@@ -13,6 +16,11 @@ export default async function XeroDeveloperPage({ searchParams }: { searchParams
   return <main style={{maxWidth:900,margin:'32px auto',padding:24}}>
     <h1>Xero developer connection</h1>
     <p>Private connection controls. Xero access is read-only; portal payment records remain unchanged.</p>
+    {organisations.length>0 && <section aria-label="Discovered Xero organisations">
+      <h2>Verify the organisation binding</h2>
+      <p>These organisations were returned by Xero after authorisation. No connection tokens were retained and no accounting records were read. Configure the approved organisation ID, then connect again.</p>
+      <ul>{organisations.map(item=><li key={item.tenantId}>{item.tenantName}: <code>{item.tenantId}</code></li>)}</ul>
+    </section>}
     {params.connection === 'failed' && <p role="alert">Authorisation did not complete. Check the configured organisation and retry connection.</p>}
     {params.connection === 'cancelled' && <p role="status">Authorisation cancelled.</p>}
     {!connection ? <p role="status">Setup unavailable. Configure the dedicated database, client credentials, encryption key and organisation binding before connecting.</p> : <>

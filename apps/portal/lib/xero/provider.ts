@@ -26,8 +26,8 @@ export async function connections(accessToken: string): Promise<Array<{ tenantId
   });
   if (!response.ok) throw new XeroError('PROVIDER_UNAVAILABLE');
   const data: unknown = await response.json();
-  if (!Array.isArray(data) || !data.every(item => typeof item.tenantId === 'string' && typeof item.tenantName === 'string')) throw new XeroError('INVALID_PROVIDER_RESPONSE');
-  return data;
+  if (!Array.isArray(data) || !data.every(item => item && typeof item.tenantId === 'string' && typeof item.tenantName === 'string')) throw new XeroError('INVALID_PROVIDER_RESPONSE');
+  return data.map(({ tenantId, tenantName }) => ({ tenantId, tenantName }));
 }
 
 export async function accountingRead(tokens: Tokens, tenantId: string, resource: 'Invoices' | 'BankTransactions', where: string) {

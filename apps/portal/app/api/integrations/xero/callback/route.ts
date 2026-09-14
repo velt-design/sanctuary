@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { developer, json, privateHeaders } from '@/lib/xero/http';
-import { config, equalSecret, hash, unseal, XERO_CALLBACK, XERO_PAGE } from '@/lib/xero/security';
+import { config, equalSecret, hash, seal, unseal, XERO_CALLBACK, XERO_PAGE } from '@/lib/xero/security';
 import { connect, consumeAttempt } from '@/lib/xero/store';
-import { tokenRequest } from '@/lib/xero/provider';
+import { connections, tokenRequest } from '@/lib/xero/provider';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -24,7 +24,19 @@ export async function GET(request: NextRequest) {
     const code = request.nextUrl.searchParams.get('code');
     if (request.nextUrl.searchParams.has('error') || !code || code.length > 4096) return result(origin,'cancelled');
     const tokens = await tokenRequest(cfg.clientId,cfg.clientSecret,new URLSearchParams({ grant_type:'authorization_code',code,redirect_uri: cfg.origin+XERO_CALLBACK }));
+    if (!cfg.tenantId) {
+      const organisations = await connections(tokens.accessToken);
+      if (!organisations.length || organisations.length > 5 || organisations.some(item =>
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.tenantId) || item.tenantName.length > 150)) throw new Error('INVALID_ORGANISATIONS');
+      const response = result(origin,'discovered');
+      // Only organisation metadata survives this setup request. Never persist discovery tokens.
+      response.cookies.set('__Host-xero-organisations',seal({userId:session.user.id,expires:Date.now()+600000,organisations},cfg.key),
+        {secure:true,httpOnly:true,sameSite:'lax',path:'/',maxAge:600});
+      return response;
+    }
     await connect(tokens,session.user.id);
-    return result(origin,'connected');
+    const response = result(origin,'connected');
+    response.cookies.set('__Host-xero-organisations','',{secure:true,httpOnly:true,sameSite:'lax',path:'/',maxAge:0});
+    return response;
   } catch { return result(origin,'failed'); }
 }

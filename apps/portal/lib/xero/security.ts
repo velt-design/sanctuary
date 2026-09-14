@@ -43,8 +43,10 @@ export function config() {
   if (origin.protocol !== 'https:' || origin.pathname !== '/' || origin.search || origin.hash || origin.username || origin.password) throw new Error('XERO_INVALID_ORIGIN');
   const key = Buffer.from(required('XERO_TOKEN_ENCRYPTION_KEY'), 'base64');
   if (key.length !== 32) throw new Error('XERO_INVALID_KEY');
-  const tenantId = required('XERO_TENANT_ID');
-  if (!/^[0-9a-f-]{36}$/i.test(tenantId)) throw new Error('XERO_INVALID_TENANT');
+  // Discovery is an explicit, temporary setup mode. It cannot persist tokens or read accounting data.
+  const tenantId = process.env.XERO_TENANT_ID?.trim() ?? '';
+  if (!tenantId && process.env.XERO_DISCOVERY !== 'true') throw new Error('XERO_NOT_CONFIGURED');
+  if (tenantId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId)) throw new Error('XERO_INVALID_TENANT');
   const databaseUrl = required('XERO_DATABASE_URL');
   const database = new URL(databaseUrl);
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(database.hostname);
