@@ -123,3 +123,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 - If a doc lists commands, keep them runnable from the repo root unless it states otherwise.
 - Keep one canonical owner doc for each behavior; link to it instead of repeating the full rule set across many docs.
 - Dense docs should include a routing, index, or read-first section. Do not split a doc only because it is long if one canonical owner doc is still clearer.
+
+## Xero accounting connection
+
+See [Xero connection](xero-connection.md) for the developer-only, default-dark read integration, configuration, provisioning and release gates.

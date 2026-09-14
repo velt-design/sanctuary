@@ -253,6 +253,7 @@ async function measureInteraction(
   feedbackReady: () => Promise<unknown>,
   usefulContentReady: () => Promise<unknown> = feedbackReady,
   usefulContentSelector?: string,
+  selectedTabText?: string,
 ) {
   const budget = interactionBudget(name);
   const probe = await beginPortalJourney(page);
@@ -262,9 +263,16 @@ async function measureInteraction(
       state: 'visible',
     });
   }
+  if (selectedTabText) {
+    await beginPortalVisualFeedback(page, {
+      selector: '[role="tab"]', state: 'selected', text: selectedTabText,
+    }, 'tab-selection');
+  }
   await action();
   await feedbackReady();
-  const feedbackMs = elapsedJourneyMs(probe);
+  const feedbackMs = selectedTabText
+    ? await portalVisualFeedbackMs(page, 5_000, 'tab-selection')
+    : elapsedJourneyMs(probe);
   await usefulContentReady();
   const usefulContentMs = usefulContentSelector
     ? await portalVisualFeedbackMs(page)
@@ -317,6 +325,7 @@ async function measureProjectTab(
       await expect(page.locator(usefulContentSelector).first()).toBeVisible();
     },
     usefulContentSelector,
+    (await tab.textContent())?.trim(),
   );
 }
 

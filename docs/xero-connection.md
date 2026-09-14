@@ -1,0 +1,132 @@
+# Xero connection
+
+Status: staging connected and live accounting reads verified on 2026-09-14. Hosted refresh rotation, cancellation recovery and ordinary-admin denial are verified. Production storage and dedicated login are verified. Production credentials are configured; release, connection and scheduled-run proof remain outstanding.
+
+## Current verification
+
+Preview revision `c7a2bfe`, deployment `GMB4N8hFbruBjhT9VGQZrkHtBCsA`, is Ready with the approved tenant pinned and temporary discovery disabled. Owner consent completed; the saved connection identifies Sanctuary Pergolas Limited. An exact-contact receipt lookup returned the previously inspected reconciled deposit through the new API connection. Current private customer evidence stays in ignored `.codex-tmp/xero-evidence/`, outside Playwright output cleanup.
+
+Hosted staging checks confirmed token ciphertext is present, the OAuth attempt is consumed, one connection event exists, anonymous/authenticated schema access is denied, and the connector cannot delete audit events. A bounded competing `FOR UPDATE` transaction caused a safe unavailable response; a read succeeded after rollback. This proves hosted lock contention and recovery. After natural access-token expiry, two reads submitted together succeeded at 04:36:14 UTC. The stored ciphertext fingerprint changed, last_error remained null, and the original connection timestamp and single connected event were unchanged. This proves live renewal without another sign-in; paired browser submissions do not establish exact server-side overlap.
+
+Hosted access checks used an existing staging QA identity temporarily assigned admin, then restored to its original staff role. Its fresh developer-page request returned 404; a receipt request from an already-open page returned Forbidden, and reconnect initiation failed without leaving the portal. Independent SQL confirmed role restoration, and Jordan's session was restored. Cancelling a reconnect at Xero also preserved the existing connection and a subsequent receipt read succeeded. Direct callback navigation was blocked by the browser; callback-specific denial/replay remains covered by route tests, not claimed as hosted proof.
+
+After explicit owner approval, production migration `20260914000001` and restricted `sanctuary_xero_production` role were installed. Initial independent postflight confirmed login disabled, only connector membership, no elevated capabilities, no business-table access, denied anonymous/staff schema access and denied audit deletion. The ledger body exactly matches the LF migration (`ca3eaf263854e362262755220ae2d27a`); project/contact counts were unchanged. Token storage is empty. The owner subsequently enabled the restricted login; a real credentialed connection passed certificate and hostname verification. Production database URL, separate encryption/maintenance secrets, tenant, client ID and origin are configured; Xero remains disabled. The production app secret is configured; release, connection and scheduler proof remain pending. The dashboard reported resource pressure; no compute change was made.
+
+## First slice
+
+The portal owns the read-only accounting connection. Staff and ordinary admins
+receive no integration navigation, status or controls. The direct developer page
+is `/staff/developer/xero`. Its server page and every interactive endpoint require
+an active portal membership plus the server-verified, confirmed email
+`jordan@sanctuarypergolas.co.nz`. This is a separate developer capability, not a
+new broadly assignable admin role. It does not provision or elevate any account.
+The Xero authorising account may be Sanctuary's existing info account.
+
+Initial app registration: Sanctuary Portal, standard web app, app identifier
+`27d2260e-308a-4100-9b37-9946f06205c6`. This is not a client secret or organisation
+ID. The registered callback is
+`https://portal.sanctuarypergolas.co.nz/api/integrations/xero/callback`.
+
+## Ownership and limits
+
+- `apps/portal/lib/xero` owns configuration, encryption, provider reads and connection storage.
+- `apps/portal/app/api/integrations/xero` owns developer OAuth, candidate review and scheduled maintenance.
+- `xero_private` stores encrypted tokens, single-use authorisation attempts and append-only connection audit. No customer accounting data is mirrored here.
+- Daily maintenance renews access and verifies the pinned tenant; reads renew on demand. This is continuous authorisation, not yet automatic invoice/payment synchronisation.
+- Candidate inspection reads an exact invoice number or exact Xero contact name for RECEIVE bank transactions, at most 20 records. Empty results do not prove absence of payment. No fuzzy matching, allocation, backfill or payment mutation occurs.
+- No staff UI, commercial ledger, invoice issue flow, marketing event, Praxis projection or Velt connector changes in this slice.
+- Xero API data is not used to train/fine-tune/adapt models. Praxis or Meta reuse requires separate review of Xero's current terms and permitted use case.
+
+## Configuration
+
+All variables are portal-server-only, never browser-prefixed:
+
+| Variable | Purpose |
+| --- | --- |
+| `XERO_ENABLED` | Exactly `true` enables routes; absent/false remains dark. |
+| `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET` | Web-app credentials from Xero, held in the deployment secret manager. |
+| `XERO_PORTAL_ORIGIN` | Explicit HTTPS origin; no path, credentials, query or fragment. |
+| `XERO_TENANT_ID` | Exact approved Xero organisation UUID; never the developer app ID. Callback refuses any other tenant. |
+| `XERO_DISCOVERY` | Temporary setup only: exactly `true` permits authorisation without a tenant pin to discover organisation names/IDs. No tokens are retained or accounting reads allowed. Remove after setting the approved tenant UUID. |
+| `XERO_TOKEN_ENCRYPTION_KEY` | Base64 encoding of 32 random bytes; AES-256-GCM key outside the database. |
+| `XERO_DATABASE_URL` | Dedicated connector LOGIN only; remote URLs must use `sslmode=verify-full`. |
+| `CRON_SECRET` | At least 32 characters; authenticates maintenance. |
+
+Requested scopes: `offline_access`, `accounting.contacts.read`,
+`accounting.invoices.read`, `accounting.payments.read`,
+`accounting.banktransactions.read`. No accounting write permission.
+
+## Security and recovery
+
+The verified developer page reports fixed setup-error categories for configuration,
+database authentication, permissions and TLS. It never reflects raw database or
+provider exception text, connection strings or credentials. Ordinary admins still
+cannot access this page.
+
+Managed Supabase pooler/direct hosts additionally trust the public Supabase Root
+2021 CA downloaded from the dashboard's SSL configuration, as required by
+[Supabase's verify-full setup](https://supabase.com/docs/guides/platform/ssl-enforcement).
+The checked-in public certificate expires 2031-04-26;
+SHA-256 fingerprint `807025AD50D4ED219D2C9C7D299C004F824EB00CF7F65AFEF607D07B72E6CAFA`.
+It supplements Node's public roots only for explicit Supabase hostname patterns.
+Certificate-chain and hostname verification remain enabled; other remote hosts
+use their normal public trust roots. Update the CA before expiry or provider rotation.
+
+OAuth starts only from a same-origin POST. A Secure/HttpOnly/SameSite=Lax host
+cookie binds encrypted state to the current user for ten minutes. A database
+attempt is created before the POST returns an allowlisted Xero authorisation URL;
+the client then navigates there. This preserves the portal's `form-action 'self'`
+policy instead of permitting external form submissions. A database
+attempt is consumed before code exchange to reject replay. Callback redirects
+only to the configured origin and removes its cookie. Tokens and provider error
+bodies never appear in responses or logs. Private responses are no-store and
+no-referrer. Developer access is rechecked on callback and candidate reads.
+
+A singleton row lock serialises token refresh and reconnect writes across
+instances. Rotated tokens commit before subsequent accounting reads. A failed
+refresh is recorded with a fixed error code; invalid authorisation requires
+reconnection. Accounting-read 401 responses also persist reconnect-required state under the row lock, only if the rejected token still matches the stored token; a concurrent newer connection is preserved. Malformed search bodies return 400 before touching credentials or Xero. Transient failures may be retried by maintenance. If a refresh
+response was lost, Xero's existing-token grace period supports retry; prolonged
+failure may require reconnecting. Last verification is not an accounting sync
+timestamp and must not be presented as proof that all business data is current.
+
+Monitor the maintenance route's non-2xx responses and a verification age over
+48 hours in existing hosting monitoring, directed to the developer. This slice
+does not send notifications or expose technical alerts to ordinary admins.
+The daily cron runs at 03:17 UTC via the portal's Vercel configuration. Deployment
+must verify the project's scheduler supports and actually invokes that route.
+
+## Provisioning and release gates
+
+1. Apply the forward migration to a disposable database, then approved staging.
+2. Provision an environment-specific LOGIN inheriting only `sanctuary_xero_connector`, with no superuser, role/database creation, replication or RLS bypass, no extra direct grants and no portal business-table access. The runtime rejects elevated/group-contaminated identities. Never use the existing service-role or database-owner connection.
+3. Put credentials/key in the secret manager; do not paste them into chat or commit them. Re-encrypt stored tokens before rotating the encryption key, or explicitly reconnect; simply replacing the key makes stored tokens unreadable.
+4. Register the callback for the target environment. If the tenant UUID is unknown, temporarily set `XERO_DISCOVERY=true`, authorise, and verify the returned organisation name/UUID on the developer page. Discovery discards tokens and retains only encrypted, user-bound organisation metadata in a ten-minute cookie. Set the explicitly approved `XERO_TENANT_ID`, remove discovery mode, redeploy and connect again. Use Xero's demo organisation for first live proof; never guess or silently select the first tenant returned. Storage and accounting access reject an absent pin even in discovery mode.
+5. Verify Jordan has normal active portal access and a verified email. Provisioning that user remains a separate authorised operation.
+6. Test allowed/denied users, OAuth cancellation/replay, renewal/reconnect, provider failure, and candidate reads on staging. Capture secret-free evidence.
+7. Production release, database provisioning and accounting authorisation require explicit approval after review. No production mutations or live Xero calls were made by building this code.
+
+## Operator tooling
+
+Prefer authenticated provider CLIs/APIs for supported setup and verification. Supabase CLI `db query --linked --file <reviewed-sql-file>` supports the Management API; verify the linked project reference before use. This operator capability must never replace the restricted connector identity used by the portal. Vercel CLI supports scoped environment metadata, secret submission through stdin and deployment inspection. Never print credentials, pass secret values in command arguments or save them to temporary files.
+
+For Windows 1Password desktop integration, reuse one persistent parent process and group necessary reads. Separate shells and helper processes require separate approvals; do not disable vault locking to compensate. Transfer only the requested credential to its approved destination, in memory. A branch-specific Vercel variable cannot also target production; provide a separate production entry while preserving staging scope.
+
+## Verification
+
+Run `npx vitest run apps/portal/lib/xero`,
+`node scripts/test-xero-connection-db.mjs`, portal TypeScript, lint and build.
+The disposable PGlite harness proves migration rollback/application, staff denial,
+connector grants, one-use state and audit deletion denial. It does not prove
+multi-connection locking, hosted TLS, Xero consent/refresh or Vercel scheduling;
+these remain required staging release gates.
+
+Local validation at revision `c7a2bfe` passed 25 focused tests, disposable database contracts, portal TypeScript, lint, architecture/documentation guards and a production build using synthetic configuration. The automated route tests cover developer denial, CSRF, state binding/replay, scope validation and maintenance authentication. They do not replace hosted browser or scheduler evidence.
+
+Staging migration `20260914000001` is installed with the restricted `sanctuary_xero_staging` login. Browser paste introduced CRLF and two extra blank lines in the ledger body; its stored MD5 is `6ce09cedb64fb3ac30b2e522dca8c1b2`. Normalising those differences gives `ca3eaf263854e362262755220ae2d27a`, matching the checked-in LF migration. The historical ledger was not rewritten. Hosted status and accounting reads prove the dedicated login, role check and verified TLS work together.
+
+The owner saved staging credentials in Vercel Secrets restricted to Preview branch `codex/xero-read-connection`. The stable preview callback is registered, the approved organisation is pinned, and discovery is disabled. Credential values were not inspected. The production installer has passed a local rollback, privilege-contamination refusal, disabled-login and duplicate-install rehearsal; its production application and independent permission postflight subsequently passed.
+
+The current hosted results are summarised above. Still required: production release and connection, and evidence that the production scheduler invokes maintenance. The Vercel Cron Jobs feature is enabled, but no production Xero job is registered yet. Unauthenticated external preview requests were intercepted by Vercel deployment protection, so those responses do not prove the application's own denial behaviour.
+
+The owner authorised completion through tested read-only production release and deposit investigation. Accounting writes and automatic portal payment updates are excluded. Credential entry and consent follow applicable browser handoff rules. Current private customer records and execution evidence are in ignored `.codex-tmp/xero-evidence/`. Earlier local test-results artifacts were removed by Playwright output cleanup; the continuation record explicitly distinguishes reconstructed history from newly captured evidence.

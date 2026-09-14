@@ -7,6 +7,7 @@
     "packages/*"
   ],
   "scripts": {
+    "test:xero:db": "node scripts/test-xero-connection-db.mjs",
     "dev": "node -e \"console.log('Use: npm run dev:marketing, npm run dev:portal, or npm run dev:worker')\"",
     "dev:marketing": "npm --prefix apps/marketing run dev",
     "dev:portal": "npm --prefix apps/portal run dev",
