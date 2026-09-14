@@ -1,6 +1,6 @@
 # Xero connection
 
-Status: staging connected and live accounting reads verified on 2026-09-14. Hosted refresh rotation, cancellation recovery and ordinary-admin denial are verified. Production provisioning, connection and scheduled-run proof remain outstanding.
+Status: staging connected and live accounting reads verified on 2026-09-14. Hosted refresh rotation, cancellation recovery and ordinary-admin denial are verified. Production storage and dedicated login are verified. Production app secret, release, connection and scheduled-run proof remain outstanding.
 
 ## Current verification
 
@@ -10,7 +10,7 @@ Hosted staging checks confirmed token ciphertext is present, the OAuth attempt i
 
 Hosted access checks used an existing staging QA identity temporarily assigned admin, then restored to its original staff role. Its fresh developer-page request returned 404; a receipt request from an already-open page returned Forbidden, and reconnect initiation failed without leaving the portal. Independent SQL confirmed role restoration, and Jordan's session was restored. Cancelling a reconnect at Xero also preserved the existing connection and a subsequent receipt read succeeded. Direct callback navigation was blocked by the browser; callback-specific denial/replay remains covered by route tests, not claimed as hosted proof.
 
-Production preflight found no Xero schema, connector group, dedicated production login or migration. Its dashboard reported resource pressure; no compute change or production mutation was made. Production remains unmodified.
+After explicit owner approval, production migration `20260914000001` and restricted `sanctuary_xero_production` role were installed. Initial independent postflight confirmed login disabled, only connector membership, no elevated capabilities, no business-table access, denied anonymous/staff schema access and denied audit deletion. The ledger body exactly matches the LF migration (`ca3eaf263854e362262755220ae2d27a`); project/contact counts were unchanged. Token storage is empty. The owner subsequently enabled the restricted login; a real credentialed connection passed certificate and hostname verification. Production database URL, separate encryption/maintenance secrets, tenant, client ID and origin are configured; Xero remains disabled. The production app secret, release, connection and scheduler proof remain pending. The dashboard reported resource pressure; no compute change was made.
 
 ## First slice
 
@@ -106,6 +106,12 @@ must verify the project's scheduler supports and actually invokes that route.
 6. Test allowed/denied users, OAuth cancellation/replay, renewal/reconnect, provider failure, and candidate reads on staging. Capture secret-free evidence.
 7. Production release, database provisioning and accounting authorisation require explicit approval after review. No production mutations or live Xero calls were made by building this code.
 
+## Operator tooling
+
+Prefer authenticated provider CLIs/APIs for supported setup and verification. Supabase CLI `db query --linked --file <reviewed-sql-file>` supports the Management API; verify the linked project reference before use. This operator capability must never replace the restricted connector identity used by the portal. Vercel CLI supports scoped environment metadata, secret submission through stdin and deployment inspection. Never print credentials, pass secret values in command arguments or save them to temporary files.
+
+For Windows 1Password desktop integration, reuse one persistent parent process and group necessary reads. Separate shells and helper processes require separate approvals; do not disable vault locking to compensate. Transfer only the requested credential to its approved destination, in memory. A branch-specific Vercel variable cannot also target production; provide a separate production entry while preserving staging scope.
+
 ## Verification
 
 Run `npx vitest run apps/portal/lib/xero`,
@@ -119,8 +125,8 @@ Local validation at revision `c7a2bfe` passed 25 focused tests, disposable datab
 
 Staging migration `20260914000001` is installed with the restricted `sanctuary_xero_staging` login. Browser paste introduced CRLF and two extra blank lines in the ledger body; its stored MD5 is `6ce09cedb64fb3ac30b2e522dca8c1b2`. Normalising those differences gives `ca3eaf263854e362262755220ae2d27a`, matching the checked-in LF migration. The historical ledger was not rewritten. Hosted status and accounting reads prove the dedicated login, role check and verified TLS work together.
 
-The owner saved staging credentials in Vercel Secrets restricted to Preview branch `codex/xero-read-connection`. The stable preview callback is registered, the approved organisation is pinned, and discovery is disabled. Credential values were not inspected. The production installer has passed a local rollback, privilege-contamination refusal, disabled-login and duplicate-install rehearsal; it has not been executed on production.
+The owner saved staging credentials in Vercel Secrets restricted to Preview branch `codex/xero-read-connection`. The stable preview callback is registered, the approved organisation is pinned, and discovery is disabled. Credential values were not inspected. The production installer has passed a local rollback, privilege-contamination refusal, disabled-login and duplicate-install rehearsal; its production application and independent permission postflight subsequently passed.
 
-The current hosted results are summarised above. Still required: production provisioning and connection, and evidence that the production scheduler invokes maintenance. The Vercel Cron Jobs feature is enabled, but no production Xero job is registered yet. Unauthenticated external preview requests were intercepted by Vercel deployment protection, so those responses do not prove the application's own denial behaviour.
+The current hosted results are summarised above. Still required: production credentials, release and connection, and evidence that the production scheduler invokes maintenance. The Vercel Cron Jobs feature is enabled, but no production Xero job is registered yet. Unauthenticated external preview requests were intercepted by Vercel deployment protection, so those responses do not prove the application's own denial behaviour.
 
 The owner authorised completion through tested read-only production release and deposit investigation. Accounting writes and automatic portal payment updates are excluded. Credential entry and consent follow applicable browser handoff rules. Private customer records and detailed execution evidence remain in ignored `test-results/xero/peter-deposit-evidence.md` and `test-results/xero/live-validation.md`.
