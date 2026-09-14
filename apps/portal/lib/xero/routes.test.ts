@@ -1,9 +1,9 @@
 import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { seal,unseal,XERO_SCOPES } from './security';
-const mocks=vi.hoisted(()=>({session:vi.fn(),attempt:vi.fn(),consume:vi.fn(),connect:vi.fn(),access:vi.fn(),verify:vi.fn()}));
+const mocks=vi.hoisted(()=>({session:vi.fn(),attempt:vi.fn(),consume:vi.fn(),connect:vi.fn(),access:vi.fn(),verify:vi.fn(),read:vi.fn()}));
 vi.mock('@/lib/auth',()=>({getPortalSession:mocks.session}));
-vi.mock('./store',()=>({saveAttempt:mocks.attempt,consumeAttempt:mocks.consume,connect:mocks.connect,access:mocks.access,verifyConnection:mocks.verify}));
+vi.mock('./store',()=>({saveAttempt:mocks.attempt,consumeAttempt:mocks.consume,connect:mocks.connect,access:mocks.access,verifyConnection:mocks.verify,readAccounting:mocks.read}));
 import { POST as start } from '../../app/api/integrations/xero/start/route';
 import { GET as callback } from '../../app/api/integrations/xero/callback/route';
 import { POST as review } from '../../app/api/integrations/xero/review/route';
@@ -18,6 +18,15 @@ beforeEach(()=>{
 });
 afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();});
 describe('Xero HTTP integration',()=>{
+  it.each(['{','null','[]','"search"','{"kind":123,"value":"Peter"}'])('rejects invalid search bodies before connection access: %s',async body=>{
+    const response=await review(new Request(origin,{method:'POST',headers:{origin,'content-type':'application/json'},body}));
+    expect(response.status).toBe(400);expect(mocks.read).not.toHaveBeenCalled();expect(mocks.access).not.toHaveBeenCalled();
+  });
+  it('passes valid exact searches through the durable accounting read owner',async()=>{
+    mocks.read.mockResolvedValue([]);
+    const response=await review(new Request(origin,{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify({kind:'invoice',value:'INV-0033'})}));
+    expect(response.status).toBe(200);expect(mocks.read).toHaveBeenCalledOnce();
+  });
   it('denies normal admins before accessing the store or provider',async()=>{
     mocks.session.mockResolvedValue({user:{email:'info@sanctuarypergolas.co.nz',email_confirmed_at:'today'},role:'admin'});
     expect((await start(new Request(origin,{method:'POST'}))).status).toBe(403);

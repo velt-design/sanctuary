@@ -4,7 +4,7 @@ Status: staging connected and live accounting reads verified on 2026-09-14. Host
 
 ## Current verification
 
-Preview revision `c7a2bfe`, deployment `GMB4N8hFbruBjhT9VGQZrkHtBCsA`, is Ready with the approved tenant pinned and temporary discovery disabled. Owner consent completed; the saved connection identifies Sanctuary Pergolas Limited. An exact-contact receipt lookup returned the previously inspected reconciled deposit through the new API connection. Private customer evidence stays in ignored `test-results/xero/`.
+Preview revision `c7a2bfe`, deployment `GMB4N8hFbruBjhT9VGQZrkHtBCsA`, is Ready with the approved tenant pinned and temporary discovery disabled. Owner consent completed; the saved connection identifies Sanctuary Pergolas Limited. An exact-contact receipt lookup returned the previously inspected reconciled deposit through the new API connection. Current private customer evidence stays in ignored `.codex-tmp/xero-evidence/`, outside Playwright output cleanup.
 
 Hosted staging checks confirmed token ciphertext is present, the OAuth attempt is consumed, one connection event exists, anonymous/authenticated schema access is denied, and the connector cannot delete audit events. A bounded competing `FOR UPDATE` transaction caused a safe unavailable response; a read succeeded after rollback. This proves hosted lock contention and recovery. After natural access-token expiry, two reads submitted together succeeded at 04:36:14 UTC. The stored ciphertext fingerprint changed, last_error remained null, and the original connection timestamp and single connected event were unchanged. This proves live renewal without another sign-in; paired browser submissions do not establish exact server-side overlap.
 
@@ -85,7 +85,7 @@ no-referrer. Developer access is rechecked on callback and candidate reads.
 A singleton row lock serialises token refresh and reconnect writes across
 instances. Rotated tokens commit before subsequent accounting reads. A failed
 refresh is recorded with a fixed error code; invalid authorisation requires
-reconnection. Transient failures may be retried by maintenance. If a refresh
+reconnection. Accounting-read 401 responses also persist reconnect-required state under the row lock, only if the rejected token still matches the stored token; a concurrent newer connection is preserved. Malformed search bodies return 400 before touching credentials or Xero. Transient failures may be retried by maintenance. If a refresh
 response was lost, Xero's existing-token grace period supports retry; prolonged
 failure may require reconnecting. Last verification is not an accounting sync
 timestamp and must not be presented as proof that all business data is current.
@@ -129,4 +129,4 @@ The owner saved staging credentials in Vercel Secrets restricted to Preview bran
 
 The current hosted results are summarised above. Still required: production release and connection, and evidence that the production scheduler invokes maintenance. The Vercel Cron Jobs feature is enabled, but no production Xero job is registered yet. Unauthenticated external preview requests were intercepted by Vercel deployment protection, so those responses do not prove the application's own denial behaviour.
 
-The owner authorised completion through tested read-only production release and deposit investigation. Accounting writes and automatic portal payment updates are excluded. Credential entry and consent follow applicable browser handoff rules. Private customer records and detailed execution evidence remain in ignored `test-results/xero/peter-deposit-evidence.md` and `test-results/xero/live-validation.md`.
+The owner authorised completion through tested read-only production release and deposit investigation. Accounting writes and automatic portal payment updates are excluded. Credential entry and consent follow applicable browser handoff rules. Current private customer records and execution evidence are in ignored `.codex-tmp/xero-evidence/`. Earlier local test-results artifacts were removed by Playwright output cleanup; the continuation record explicitly distinguishes reconstructed history from newly captured evidence.

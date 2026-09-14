@@ -1,9 +1,9 @@
 import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest';
 import { seal,unseal } from './security';
-const mocks=vi.hoisted(()=>({postgres:vi.fn(),token:vi.fn(),connections:vi.fn()}));
+const mocks=vi.hoisted(()=>({postgres:vi.fn(),token:vi.fn(),connections:vi.fn(),read:vi.fn()}));
 vi.mock('postgres',()=>({default:mocks.postgres}));
-vi.mock('./provider',async importOriginal=>({...await importOriginal<typeof import('./provider')>(),tokenRequest:mocks.token,connections:mocks.connections}));
-import { access,connect } from './store';
+vi.mock('./provider',async importOriginal=>({...await importOriginal<typeof import('./provider')>(),tokenRequest:mocks.token,connections:mocks.connections,accountingRead:mocks.read}));
+import { access,connect,readAccounting } from './store';
 import { XeroError } from './provider';
 import { supabaseCa } from './supabaseCa';
 
@@ -26,6 +26,31 @@ beforeEach(()=>{
 });
 afterEach(()=>vi.unstubAllEnvs());
 describe('durable Xero renewal',()=>{
+  it('persists a rejected unexpired access token and prevents repeated reads',async()=>{
+    row.encrypted_tokens=seal({accessToken:'rejected',refreshToken:'r',expiresAt:Date.now()+1800000},key);
+    mocks.read.mockRejectedValue(new XeroError('RECONNECT_REQUIRED'));
+    await expect(readAccounting('Invoices','InvoiceNumber=="INV-0033"')).rejects.toThrow('RECONNECT_REQUIRED');
+    expect(row.last_error).toBe('RECONNECT_REQUIRED');
+    await expect(readAccounting('Invoices','InvoiceNumber=="INV-0033"')).rejects.toThrow('RECONNECT_REQUIRED');
+    expect(mocks.read).toHaveBeenCalledOnce();expect(mocks.token).not.toHaveBeenCalled();
+    expect(writes.some(s=>s.includes('insert into xero_private.events'))).toBe(true);
+  });
+  it('does not invalidate a newer connection after an older read is rejected',async()=>{
+    row.encrypted_tokens=seal({accessToken:'old',refreshToken:'r',expiresAt:Date.now()+1800000},key);
+    mocks.read.mockImplementation(async()=>{
+      row.encrypted_tokens=seal({accessToken:'new',refreshToken:'new-r',expiresAt:Date.now()+1800000},key);
+      throw new XeroError('RECONNECT_REQUIRED');
+    });
+    await expect(readAccounting('Invoices','InvoiceNumber=="INV-0033"')).rejects.toThrow('RECONNECT_REQUIRED');
+    expect(row.last_error).toBeNull();expect((await access()).accessToken).toBe('new');
+  });
+  it('keeps a connection usable after a transient accounting failure',async()=>{
+    row.encrypted_tokens=seal({accessToken:'valid',refreshToken:'r',expiresAt:Date.now()+1800000},key);
+    mocks.read.mockRejectedValueOnce(new XeroError('READ_FAILED')).mockResolvedValueOnce([]);
+    await expect(readAccounting('Invoices','InvoiceNumber=="INV-0033"')).rejects.toThrow('READ_FAILED');
+    expect(row.last_error).toBeNull();
+    await expect(readAccounting('Invoices','InvoiceNumber=="INV-0033"')).resolves.toEqual([]);
+  });
   it('adds the official Supabase CA only for managed hosts and keeps certificate verification enabled',async()=>{
     mocks.token.mockResolvedValue({accessToken:'new',refreshToken:'rotated',expiresAt:Date.now()+1800000});
     vi.stubEnv('XERO_DATABASE_URL','postgres://test@aws-0-ap-northeast-1.pooler.supabase.com/test?sslmode=verify-full');

@@ -3,7 +3,7 @@ import postgres from 'postgres';
 import { rootCertificates } from 'node:tls';
 import { supabaseCa } from './supabaseCa';
 import { config, seal, unseal } from './security';
-import { connections, tokenRequest, type Tokens, XeroError } from './provider';
+import { accountingRead, connections, tokenRequest, type Tokens, XeroError } from './provider';
 
 async function withDatabase<T>(work: (db: ReturnType<typeof postgres>) => Promise<T>): Promise<T> {
   const cfg = config();
@@ -90,6 +90,27 @@ export async function access(): Promise<Tokens> {
   }));
   if (!result.tokens) throw new XeroError(result.error ?? 'CONNECTION_UNAVAILABLE');
   return result.tokens;
+}
+
+export async function readAccounting(resource: 'Invoices' | 'BankTransactions', where: string) {
+  const cfg = config();
+  const tokens = await access();
+  try {
+    return await accountingRead(tokens, cfg.tenantId, resource, where);
+  } catch (error) {
+    if (error instanceof XeroError && error.code === 'RECONNECT_REQUIRED') {
+      await withDatabase(async db => db.begin(async tx => {
+        await tx`set local lock_timeout='3s'`;
+        const [row] = await tx`select * from xero_private.connection where singleton for update`;
+        // A late rejection must not invalidate credentials rotated or reconnected during the read.
+        if (row?.tenant_id !== cfg.tenantId || !row.encrypted_tokens ||
+          unseal<Tokens>(row.encrypted_tokens, cfg.key).accessToken !== tokens.accessToken) return;
+        await tx`update xero_private.connection set last_error=${'RECONNECT_REQUIRED'} where singleton`;
+        await tx`insert into xero_private.events(event,tenant_id,detail) values ('connection_error',${cfg.tenantId},${'RECONNECT_REQUIRED'})`;
+      }));
+    }
+    throw error;
+  }
 }
 
 export async function verifyConnection() {
