@@ -980,6 +980,11 @@ async function run() {
   verifyAiSyntheticExecutionRollback();
   applySql(aiSyntheticExecutionMigrationFile, { singleTransaction: true });
   applySql(aiSyntheticExecutionContractFile);
+  applySql('supabase/tests/xero_invoice_bootstrap.sql', { singleTransaction: true });
+  for (const migration of readdirSync(path.join(repositoryRoot, migrationsDirectory)).filter(name => /^2026091400000[5-8]_xero_invoice_.*\.sql$/.test(name)).sort()) {
+    applySql(path.posix.join(migrationsDirectory, migration), { singleTransaction: true });
+  }
+  applySql('supabase/tests/xero_invoice.sql');
   process.stdout.write(
     `background-jobs-db: isolated PGMQ contract passed (${image})\n`,
   );
