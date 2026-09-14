@@ -6,7 +6,7 @@ import { reconcileXeroDraft } from '../xero/invoiceDraftReconciliation';
 const knownErrors = new Set(['XERO_JOB_NOT_AUTHORISED', 'XERO_TRANSFER_DISABLED', 'XERO_INVOICE_CHANGED',
   'XERO_MAPPING_REQUIRED', 'XERO_MAPPING_CHANGED', 'XERO_REQUEST_INVALID', 'XERO_REQUEST_CHANGED',
   'XERO_REQUEST_TOTAL_MISMATCH', 'XERO_REQUEST_ALREADY_ACCEPTED', 'XERO_IDEMPOTENCY_EXPIRED',
-  'XERO_VERIFICATION_MISMATCH', 'XERO_INVOICE_ID_CONFLICT', 'XERO_EFFECT_IDENTITY_MISMATCH']);
+  'XERO_VERIFICATION_MISMATCH', 'XERO_INVOICE_ID_CONFLICT', 'XERO_EFFECT_IDENTITY_MISMATCH', 'XERO_TAX_MAPPING_REVIEW_REQUIRED']);
 
 async function command(name: string, params: Record<string, unknown>): Promise<unknown> {
   const result = await supabaseServiceRole.rpc(name, params);

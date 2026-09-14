@@ -537,3 +537,5 @@ Migrations `20260914000002` through `20260914000004` add the separately gated pa
 `20260914000009_xero_finance_access_audit.sql` owns `private.xero_finance_access_events` and the grant-table audit trigger. It records future grant changes and revocations, blocks history updates/deletion, and grants no browser/service table access. Existing pilot approver rows remain unchanged. This is unapplied finance rollout work.
 
 `20260914000010_xero_finance_review.sql` adds the bounded service-only `xero_finance_review(actor,search,offset)` read model. It rechecks payment-approver capability, joins issued invoice/transfer data with active allocations and unmatched pilot receipts, and exposes unassigned-receipt warnings. No accounting or payment writes. Unapplied; isolated contract tests cover payment double counting, reversal and revocation.
+
+Unapplied migration11 adds finance mapping context/save RPCs, private append-only mapping evidence and per-invoice tax-rate verification before request preparation. It grants no finance capability, enables no producer and triggers no provider write. Context locks the invoice/project and preserves captured contact identity.

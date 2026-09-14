@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 const headers = { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const reviewErrors = new Set(['XERO_MAPPING_REQUIRED', 'XERO_MAPPING_CHANGED', 'XERO_INVOICE_CHANGED',
+const reviewErrors = new Set(['XERO_TAX_MAPPING_REVIEW_REQUIRED', 'XERO_MAPPING_REQUIRED', 'XERO_MAPPING_CHANGED', 'XERO_INVOICE_CHANGED',
   'XERO_TRANSFER_DISABLED', 'XERO_LEASE_LOST', 'XERO_JOB_NOT_AUTHORISED', 'XERO_REQUEST_CHANGED',
   'XERO_REQUEST_ALREADY_ACCEPTED', 'XERO_IDEMPOTENCY_EXPIRED', 'XERO_VERIFICATION_MISMATCH',
   'XERO_INVOICE_ID_CONFLICT', 'XERO_EFFECT_IDENTITY_MISMATCH', 'EXISTING_INVOICE_REVIEW',

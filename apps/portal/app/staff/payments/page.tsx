@@ -32,7 +32,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           <TableCell>{row.invoiceRef}<br />{row.customerName}<br /><small>{row.projectName}</small></TableCell>
           <TableCell>{row.status === 'VOID' ? 'Voided' : row.status === 'PAID' ? 'Recorded paid' : 'Open'}{row.dueDate && <><br /><small>Due {row.dueDate}</small></>}</TableCell>
           <TableCell>{money(row.totalCents)}</TableCell><TableCell>{outcome.remainingCents === null ? 'Needs review' : money(outcome.remainingCents)}</TableCell>
-          <TableCell>{outcome.label}{row.lastVerifiedAt && <><br /><small>Transfer verified {new Date(row.lastVerifiedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}</TableCell>
+          <TableCell>{outcome.label}{row.lastVerifiedAt && <><br /><small>Transfer verified {new Date(row.lastVerifiedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
+            {row.status !== 'VOID' && <><br /><Link href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Confirm customer and accounting details</Link></>}
+          </TableCell>
         </TableRow>;
       })}</TableBody></Table></div>
       {!data.rows.length && <p>No issued invoices match this search.</p>}
