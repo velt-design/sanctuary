@@ -1,7 +1,7 @@
 import 'server-only';
 import { XERO_SCOPES } from './security';
 
-export type Tokens = { accessToken: string; refreshToken: string; expiresAt: number };
+export type Tokens = { accessToken: string; refreshToken: string; expiresAt: number; scopes?: string[] };
 export class XeroError extends Error {
   constructor(readonly code: string) { super(code); }
 }
@@ -17,7 +17,8 @@ export async function tokenRequest(clientId: string, clientSecret: string, body:
   if (typeof data.scope !== 'string' || XERO_SCOPES.split(' ').some(scope => !data.scope.split(' ').includes(scope))) throw new XeroError('INSUFFICIENT_SCOPE');
   const allowed = new Set([...XERO_SCOPES.split(' '), 'openid', 'profile', 'email']);
   if (data.scope.split(' ').some((scope: string) => !allowed.has(scope))) throw new XeroError('EXCESS_SCOPE');
-  return { accessToken: data.access_token, refreshToken: data.refresh_token, expiresAt: Date.now() + data.expires_in * 1000 };
+  return { accessToken: data.access_token, refreshToken: data.refresh_token, expiresAt: Date.now() + data.expires_in * 1000,
+    scopes: data.scope.split(' ').filter(Boolean) };
 }
 
 export async function connections(accessToken: string): Promise<Array<{ tenantId: string; tenantName: string }>> {
