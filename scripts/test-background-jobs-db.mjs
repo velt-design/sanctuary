@@ -143,7 +143,9 @@ function psqlDockerArgs({ quiet = false, singleTransaction = false, username = '
   ];
   if (quiet) psqlArgs.push("--quiet", "--tuples-only", "--no-align");
   if (singleTransaction) psqlArgs.push("--single-transaction");
-  return ["exec", "--interactive", containerName, ...psqlArgs];
+  // Matches POSTGRES_PASSWORD on this disposable container, never a live secret.
+  const setupAuth = username === 'supabase_admin' ? ['--env', 'PGPASSWORD=postgres'] : [];
+  return ["exec", "--interactive", ...setupAuth, containerName, ...psqlArgs];
 }
 
 function psqlAsync(sql, label) {
