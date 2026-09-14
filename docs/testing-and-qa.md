@@ -1122,3 +1122,5 @@ This doc remains the canonical command catalog. When readiness work changes comm
 ## Xero connection checks
 
 Run `npx vitest run apps/portal/lib/xero` and `node scripts/test-xero-connection-db.mjs`, followed by portal typecheck, lint and build. The database harness uses disposable PGlite only. Hosted authorisation, concurrent refresh, verified TLS, scheduler invocation and live candidate reads require separate staging evidence before release. See [Xero connection](xero-connection.md).
+
+PGlite bulk-close migration correctness cases use a bounded 20-second timeout, matching the neighbouring owner-handoff integration test, because the case includes database startup and migration application under CI contention. This does not change portal performance budgets or remove assertions.
