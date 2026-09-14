@@ -30,3 +30,7 @@ tmp/ne/ne_10m_admin_0_countries.VERSION.txt text eol=lf
 *.shx binary
 *.webp binary
 *.zip binary
+
+# Preserve exact bytes of these already staging-applied migration files.
+supabase/migrations/20260914062003_marketing_enquiry_delivery_status.sql -text
+supabase/migrations/20260914173001_configurator_estimate_revisions.sql -text
