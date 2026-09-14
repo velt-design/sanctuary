@@ -27,6 +27,6 @@ it('shows partial balance and transfer freshness without claiming a live Xero ch
   }] });
   const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({ search: 'Example' }) }));
   expect(html).toContain('$6.00'); expect(html).toContain('Waiting for Xero transfer');
-  expect(html).toContain('not a live account check');
+  expect(html).toContain('Xero check dates show when their status was last verified');
   expect(mocks.review).toHaveBeenCalledWith('ellen', 'Example', 0);
 });

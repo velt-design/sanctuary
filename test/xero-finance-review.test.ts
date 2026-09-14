@@ -26,6 +26,8 @@ it('reads partial receipts without double counting allocations and refuses revok
     const commands = readFileSync('supabase/migrations/20260914000003_xero_deposit_commands.sql', 'utf8');
     await db.exec(commands.slice(commands.indexOf('create function public.xero_require_payment_approver'), commands.indexOf('create function public.xero_approve_deposit_match')));
     await db.exec(readFileSync('supabase/migrations/20260914000010_xero_finance_review.sql', 'utf8'));
+    await db.exec('create table private.xero_invoice_observations(transfer_id uuid,generation bigint,portal_status text,result jsonb,checked_at timestamptz)');
+    await db.exec(readFileSync('supabase/migrations/20260914000018_xero_finance_queue.sql', 'utf8'));
     const review = async () => financeReviewSchema.parse((await db.query<{ data: unknown }>('select public.xero_finance_review($1) data', [actor])).rows[0].data);
     await db.exec(`insert into public.xero_deposit_matches values('${actor}','${invoice}',400,null)`);
     expect(financeOutcome((await review()).rows[0]).remainingCents).toBe(600);
@@ -39,6 +41,28 @@ it('reads partial receipts without double counting allocations and refuses revok
     await db.exec(`update public.deposit_invoices set status='OPEN';
       insert into public.project_payment_entries values('${actor}','${actor}',500,'PAYMENT',null)`);
     expect(financeOutcome((await review()).rows[0])).toMatchObject({ remainingCents: null, label: 'Assign existing project receipts before chasing payment' });
+    await db.exec(`delete from public.project_payment_entries;
+      insert into public.deposit_invoices(id,project_id,status,invoice_ref,total_inc_gst_cents,due_date)
+        select gen_random_uuid(),'${actor}','OPEN','QUEUE-'||n,1000,'2020-01-01' from generate_series(1,60) n;
+      insert into public.deposit_invoices(id,project_id,status,invoice_ref,total_inc_gst_cents,due_date) values
+        ('33333333-3333-4333-8333-333333333333','${actor}','OPEN','QUEUE-CONFLICT',1000,'2030-01-01'),
+        ('44444444-4444-4444-8444-444444444444','${actor}','PAID','QUEUE-PAID',1000,'1990-01-01');
+      insert into private.xero_invoice_transfers(id,invoice_id,provider_invoice_id)
+        select id,id,id from public.deposit_invoices where invoice_ref in ('QUEUE-CONFLICT','QUEUE-PAID');
+      insert into private.xero_invoice_observations
+        select id,1,status,jsonb_build_object('state',case when status='PAID' then 'payment_recorded' else 'conflict' end,
+          'reason','TEST_EVIDENCE','amountPaidCents',case when status='PAID' then 1000 else 0 end),now()
+        from public.deposit_invoices where invoice_ref in ('QUEUE-CONFLICT','QUEUE-PAID');
+      insert into public.xero_deposit_matches values('${actor}','44444444-4444-4444-8444-444444444444',1000,null);`);
+    const page = async (offset: number) => financeReviewSchema.parse((await db.query<{ data: unknown }>(
+      'select public.xero_finance_review($1,$2,$3) data', [actor, 'QUEUE-', offset])).rows[0].data);
+    const firstPage = await page(0);
+    expect(firstPage.rows).toHaveLength(51);
+    expect(firstPage.rows[0].invoiceRef).toBe('QUEUE-CONFLICT');
+    expect(firstPage.rows[0].observation?.state).toBe('conflict');
+    const settled = (await page(61)).rows[0];
+    expect(settled.invoiceRef).toBe('QUEUE-PAID');
+    expect(financeOutcome(settled).label).toBe('Paid — portal and Xero agree');
     await db.exec('update public.xero_payment_approvers set revoked_at=now()');
     await expect(review()).rejects.toThrow('Payment approval permission is required');
   } finally { await db.close(); }

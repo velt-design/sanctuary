@@ -20,3 +20,18 @@ it('keeps a portal correction open until both systems are verified voided', () =
 it('does not turn Xero paid evidence into a portal balance change', () => {
   expect(financeOutcome({ ...row, observation: { ...row.observation!, state: 'payment_recorded', amountPaidCents: 100 } }, now)).toMatchObject({ remainingCents: 100, label: 'Review Xero payment against portal records' });
 });
+it('distinguishes agreed partial payments from fully settled invoices', () => {
+  const partial = { ...row, recordedCents: 40, observation: { ...row.observation!, state: 'payment_recorded' as const, amountPaidCents: 40 } };
+  expect(financeOutcome(partial, now)).toEqual({ remainingCents: 60, attention: false, label: 'Payments agree — balance outstanding' });
+  expect(financeOutcome({ ...partial, status: 'PAID', recordedCents: 100, observation: { ...partial.observation, amountPaidCents: 100 } }, now))
+    .toEqual({ remainingCents: 0, attention: false, label: 'Paid — portal and Xero agree' });
+});
+it('keeps voids with recorded money and reduced Xero payments in the exception queue', () => {
+  expect(financeOutcome({ ...row, status: 'VOID', correctionRequired: true, recordedCents: 40,
+    observation: { ...row.observation!, state: 'correction_complete' } }, now).label).toContain('still has payments');
+  expect(financeOutcome({ ...row, recordedCents: 40 }, now).label).toContain('exceed Xero');
+});
+it('does not call an open fully covered invoice settled or hide a draft review', () => {
+  expect(financeOutcome({ ...row, recordedCents: 100 }, now).attention).toBe(true);
+  expect(financeOutcome({ ...row, observation: { ...row.observation!, state: 'draft' } }, now).attention).toBe(true);
+});

@@ -23,7 +23,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     <p><Link href="/staff/payments/review">Review and approve a deposit</Link></p>
     <form method="get"><label>Invoice, customer or project <input name="search" defaultValue={search} maxLength={120} /></label> <button type="submit">Search</button></form>
     {!data ? <p role="alert">Finance information could not be loaded. Refresh to try again. No records have changed.</p> : <>
-      <p>Portal information checked {new Date(data.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}. Xero dates below show the last verified transfer, not a live account check.</p>
+      <p>Portal information checked {new Date(data.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}. Transfer dates show when invoices were sent; Xero check dates show when their status was last verified.</p>
       <div style={{ overflowX: 'auto' }}><Table><TableHeader><TableRow>
         <TableHead>Invoice / customer</TableHead><TableHead>Portal status</TableHead><TableHead>Invoice amount</TableHead><TableHead>Still owing</TableHead><TableHead>Next action</TableHead>
       </TableRow></TableHeader><TableBody>{data.rows.map(row => {
