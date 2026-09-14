@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type TableName = 'audit_events' | 'contacts' | 'enquiry_requests' | 'estimates' | 'projects';
 type Row = Record<string, any>;
@@ -243,6 +243,9 @@ function makeDb(options: { downloadBytes?: Uint8Array } = {}) {
 }
 
 describe('POST /api/enquiry attribution', () => {
+  // Compile the route's package graph in setup, outside the request assertion
+  // timeout. Each test still resets modules and exercises its own environment.
+  beforeAll(async () => { await import('./route'); });
   it.each([false, true])('uses atomic delivery without direct send; queue failure=%s', async fails => {
     const previous = process.env.WEBSITE_ENQUIRY_DURABLE_DELIVERY;
     process.env.WEBSITE_ENQUIRY_DURABLE_DELIVERY = 'true';

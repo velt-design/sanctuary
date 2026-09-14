@@ -123,11 +123,12 @@
         "packages/costing/src/engine/calculate.ts",
         "packages/costing/src/engine/calculate.test.ts",
         "packages/costing/src/engine/bom.ts",
+        "packages/costing/src/engine/derive.ts",
         "packages/costing/src/engine/emptySite.ts",
         "packages/costing/src/engine/standaloneInfills.ts"
       ],
       "whyLarge": "calculate.ts retains the historical module and multi-pergola orchestration boundary, while bom.ts still assembles all material families and their takeoff-derived install drivers. Standalone add-on costing, empty-site output, and the versioned infill labour policy now live in focused owners. The large calculate.test.ts remains the broad regression contract for that public engine entrypoint.",
-      "nextSafeExtraction": "Move site rollup aggregation and infill-baseline orchestration out of calculate.ts before adding another site-level accessory family. Extract the canonical infill material/takeoff projection from bom.ts before adding another infill-derived material or labour driver. Give each extracted owner focused tests while retaining entrypoint parity coverage.",
+      "nextSafeExtraction": "Move site rollup aggregation and infill-baseline orchestration out of calculate.ts before adding another site-level accessory family. Extract the canonical infill material/takeoff projection from bom.ts before adding another infill-derived material or labour driver. Give each extracted owner focused tests while retaining entrypoint parity coverage. derive.ts retains input normalization and roof-family derivation; this release delegates soffit bracket layout to soffitBracketLayout.ts and ceiling validation to ceilingCatalogue.ts. Broader extraction is deferred to avoid changing established pricing during release verification. Before extending another roof family, extract its dimension derivation with entrypoint parity tests.",
       "focusedTests": [
         "npx vitest run packages/costing",
         "npx tsc -p packages/costing/tsconfig.typecheck.json --noEmit --incremental false"

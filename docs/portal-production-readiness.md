@@ -559,3 +559,7 @@ When updating this tracker:
 - Initial review identified quality gates as the highest leverage priority before broad feature expansion.
 - Known review findings to re-verify: portal tests failing, lint guard failing, schedule bundle budget failing, and production audit reporting vulnerabilities.
 - Parallel lanes identified: quality gate repair, security/deps, contacts/projects env boundaries, schedule performance, design workbench behavior, quote/invoice/job-pack side effects, style isolation, CI/typecheck/tooling, and large-file decomposition after gates are green.
+
+### Configurator protected-preview checks (2026-09-14)
+
+Draft PR #132 is approved for protected previews only; production release remains on hold. Initial hosted checks exposed a missing derive.ts decomposition record, unregistered explicit server-only revision/token owners, a cold route-import test timeout, and a PostgreSQL 17 fixture attempting to recreate Supabase-owned storage.objects. The follow-up records the deferred normalization split, narrowly documents the existing privileged owners, compiles the route in test setup, and creates Storage stubs only on plain PostgreSQL. Applied migrations and pricing behavior are unchanged. Both initial Vercel preview builds succeeded; rerun hosted contracts before declaring the candidate green.
