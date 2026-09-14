@@ -378,3 +378,7 @@ For JOB-01/JOB-02/JOB-03, the public job tables have RLS enabled with browser-ro
   `PortalAuthProvider` session-read boundary before treating it as a sign-out or
   a route failure.
 - Schedule fallback activation means Schedule V2 schema or client readiness failed and should be investigated before release.
+
+## Xero developer capability
+
+The separate developer capability requires an active portal session and the verified email jordan@sanctuarypergolas.co.nz. Ordinary admin membership does not grant it. Xero uses a dedicated restricted database LOGIN and encrypted tokens; see [Xero connection](xero-connection.md) for all server variables and provisioning.

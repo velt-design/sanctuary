@@ -1118,3 +1118,7 @@ This doc remains the canonical command catalog. When readiness work changes comm
 - Docs Health runs weekly and on demand, with blocking docs guard and mojibake checks plus advisory docs impact, navigation, and readiness reports.
 - Lighthouse Guardrails run mobile and desktop Lighthouse profiles against the live marketing site on a weekly schedule or explicit dispatch. They are deliberately not attached to pull requests because a PR cannot change the live production target; PR correctness remains covered by repository build, test, and bundle gates, while live Lighthouse drift stays visible in its own scheduled workflow.
 - Governance Monthly still runs the broader marketing/governance sweep with marketing tests, production dependency audit, and Lighthouse.
+
+## Xero connection checks
+
+Run `npx vitest run apps/portal/lib/xero` and `node scripts/test-xero-connection-db.mjs`, followed by portal typecheck, lint and build. The database harness uses disposable PGlite only. Hosted authorisation, concurrent refresh, verified TLS, scheduler invocation and live candidate reads require separate staging evidence before release. See [Xero connection](xero-connection.md).

@@ -1,0 +1,3 @@
+{
+  "crons": [{ "path": "/api/integrations/xero/maintain", "schedule": "17 3 * * *" }]
+}

@@ -521,3 +521,7 @@ npm run text:mojibake
 `npm run test:jobs:db` requires Docker and creates/removes its own disposable logged-PGMQ Postgres container. It applies only the test bootstrap plus the seven JOB-01/JOB-02/JOB-03 migrations because the historical migration chain is not independently bootstrappable; a static pass or missing local Docker must never be reported as a live database pass.
 
 When changing auth, RLS, grants, or API access, also use `docs/staff-api-auth-contracts.md` and `docs/environment-auth-supabase.md` for route/auth verification. When changing Schedule V2 tables or RPCs, run the readiness checks in `docs/schedule.md`.
+
+## Xero private connection storage
+
+Migration `20260914000001_xero_connection.sql` adds xero_private.connection, oauth_attempts and events. Only a separately provisioned restricted connector LOGIN receives access; anon/authenticated receive none. Audit grants are insert-only. No business or payment tables are changed. See [Xero connection](xero-connection.md).

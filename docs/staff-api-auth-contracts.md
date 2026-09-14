@@ -148,3 +148,7 @@ Manual or browser checks should cover:
 - Invalid JSON returns a stable `400` response.
 - Public quote/invoice links reject missing, invalid, expired, and void/declined states as appropriate.
 - Public PDF/attachment routes require the matching token-bound access.
+
+## Xero developer routes
+
+`/api/integrations/xero/start`, `/callback`, and `/review` recheck the developer capability through `apps/portal/lib/xero/http.ts`. Start/review are same-origin POSTs; callback requires a bound single-use state. `/maintain` requires CRON_SECRET and remains dark unless XERO_ENABLED is true. Responses are private/no-store. See [Xero connection](xero-connection.md).

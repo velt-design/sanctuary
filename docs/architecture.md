@@ -85,3 +85,7 @@ Shared packages own business logic that must not be forked into apps. If app cod
 - Prefer changing the smallest owning layer.
 - Keep docs and implementation aligned when behavior changes.
 - Do not edit old applied migrations unless the user explicitly asks for migration-history repair.
+
+## Xero developer connection
+
+The default-dark portal Xero integration owns private encrypted connection storage, a restricted database LOGIN, developer-only OAuth and candidate reads, and daily access maintenance. It requests accounting read scopes only and does not update business records. See [Xero connection](xero-connection.md) for runtime boundaries and deployment gates.
