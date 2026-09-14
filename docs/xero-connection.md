@@ -8,6 +8,10 @@ Demo rehearsal update (2026-09-15): the branch preview now connects to Demo Comp
 
 The approved worker passed a zero-job once-mode rehearsal against staging. An authenticated gateway preflight then found Vercel deployment protection blocking server-to-server calls before the portal gateway. The worker now accepts an optional project automation credential only for its configured Vercel preview origin, as documented in `apps/worker/README.md`. Do not disable preview protection or claim an invoice transfer from worker/database unit evidence. The subsequent end-to-end demo proof below uses that protected gateway.
 
+### Customer reminders disabled — 2026-09-15
+
+Jordan requires that Xero not send automatic invoice payment reminders to customers. In the live Sanctuary Pergolas Limited organisation, the global invoice-reminder switch was turned off and saved. A fresh invoice-list navigation confirmed "Invoice Reminders: Off". This disables the configured reminders one day before due, seven days overdue and fourteen days overdue. Keep this setting off during the invoice-transfer rollout; do not enable it as part of Xero onboarding or draft approval. The setting does not remove Xero's manual email actions, so the operator workflow must use approval without sending when the portal handles customer delivery.
+
 ### Live forward numbering alignment — 2026-09-15
 
 Jordan confirmed alignment applies only to future invoices. Read-only inspection of Sanctuary Pergolas Limited in Xero showed latest invoice INV-0677 and default prefix INV- / next number 0678. Production portal sequence was58, with maximum existing invoice INV-0058. The authorised operational change transactionally restarted the production portal sequence at678 while holding the invoice table lock and refusing any changed sequence/overlap. Independent postflight found last_value678/is_called=false; invoice count/reference/status digest was unchanged. No invoice was generated, renumbered, sent or backfilled, and Xero settings were not changed. Evidence lives in ignored live-numbering-align.sql/log and live-numbering-postflight.log.
