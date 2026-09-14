@@ -15,7 +15,7 @@ function docker(args,input) {
   if(r.error || r.status!==0) throw new Error(r.error?.message || r.stderr || r.stdout);
   return r.stdout.trim();
 }
-const args=['exec','-i',container,'psql','-X','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-Atq'];
+const args=['exec','-i','--env','PGPASSWORD=disposable-test-only',container,'psql','-X','-h','127.0.0.1','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-Atq'];
 const sql=q=>docker(args,q);
 function client(q) {
   const child=spawn('docker',args,{stdio:['pipe','pipe','pipe']});
@@ -94,6 +94,10 @@ let started=false;
 try {
   docker(['run','--detach','--rm','--name',container,'--env','POSTGRES_PASSWORD=disposable-test-only',image]);started=true;
   await waitFor(()=>{try{return sql('select 1;')==='1';}catch{return false;}},'isolated PostgreSQL startup');
+  // TCP excludes the entrypoint's temporary socket-only initialization server.
+  // template0 excludes Supabase image-owned auth tables from our scoped fixture.
+  sql('create database finance_race template template0;');
+  args[args.indexOf('-d')+1]='finance_race';
   const version=sql("select current_setting('server_version_num')::int/10000;");
   if(process.env.BACKGROUND_JOBS_DB_EXPECTED_POSTGRES_MAJOR && version!==process.env.BACKGROUND_JOBS_DB_EXPECTED_POSTGRES_MAJOR) throw new Error('Wrong PostgreSQL major');
   await prepareXeroPaymentDatabase(q=>sql(q),name=>readFileSync(path.join(root,'supabase',name),'utf8').replace(/\r/g,''));
