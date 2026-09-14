@@ -5,6 +5,7 @@ import { PageLayout, Table, TableHeader, TableBody, TableRow, TableHead, TableCe
 import { getPaymentPilotSession } from '@/lib/xero/pilotAccess';
 import { loadFinanceReview } from '@/lib/invoices/financeReviewRepository';
 import { financeOutcome } from '@/lib/xero/financeReview';
+import CheckXero from './CheckXero';
 
 export const dynamic = 'force-dynamic';
 export default async function FinancePage({ searchParams }: { searchParams: Promise<{ search?: string; offset?: string }> }) {
@@ -31,8 +32,10 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         return <TableRow key={row.invoiceId}>
           <TableCell>{row.invoiceRef}<br />{row.customerName}<br /><small>{row.projectName}</small></TableCell>
           <TableCell>{row.status === 'VOID' ? 'Voided' : row.status === 'PAID' ? 'Recorded paid' : 'Open'}{row.dueDate && <><br /><small>Due {row.dueDate}</small></>}</TableCell>
-          <TableCell>{money(row.totalCents)}</TableCell><TableCell>{outcome.remainingCents === null ? 'Needs review' : money(outcome.remainingCents)}</TableCell>
+          <TableCell>{money(row.totalCents)}</TableCell><TableCell>{row.status === 'VOID' ? 'Not payable' : outcome.remainingCents === null ? 'Needs review' : money(outcome.remainingCents)}</TableCell>
           <TableCell>{outcome.label}{row.lastVerifiedAt && <><br /><small>Transfer verified {new Date(row.lastVerifiedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
+            {row.observation && <><br /><small>Xero checked {new Date(row.observation.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
+            {row.xeroInvoiceId && <><br /><CheckXero invoiceId={row.invoiceId} invoiceRef={row.invoiceRef} /></>}
             {row.status !== 'VOID' && <><br /><Link href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Confirm customer and accounting details</Link></>}
           </TableCell>
         </TableRow>;

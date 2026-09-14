@@ -237,3 +237,5 @@ The developer-only suggested-match screen compares a portal invoice with Xero re
 Finance queue owner: `lib/invoices/financeReviewRepository.ts` reads migration10's bounded finance projection for `/staff/payments`. Invoice balances count active allocations and pilot receipt matches once, while unassigned project receipts require review before a balance is presented. This does not replace the project schedule owner or change payment commands.
 
 `lib/invoices/financeMappingRepository.ts` is the server-only owner for the grant-scoped mapping context and confirmed mapping command. It accepts provider-verified evidence from the mapping route; it is not browser-callable and does not change issued invoice contents.
+
+`invoiceObservationRepository.ts` owns bound-invoice observation context/save and scheduler reads. `financeReviewRepository.ts` adds a second bounded observation RPC to finance rows; failed reads display unavailable rather than an empty success. No source invoice or payment state is overwritten.

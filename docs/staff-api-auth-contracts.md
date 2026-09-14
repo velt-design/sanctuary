@@ -166,3 +166,5 @@ Manual or browser checks should cover:
 `/staff/payments` requires `getPaymentPilotSession` before reads; `lib/invoices/financeReviewRepository.ts` owns the bounded service-role RPC and validates its returned shape. The SQL function rechecks the server-supplied actor grant. Searches accept at most120 characters and bounded pagination; failures render an unavailable state, not an empty queue.
 
 `POST /api/payments/xero/mapping` requires active finance grant and same-origin request. Strict inspect/confirm bodies reject actor/tenant overrides; confirm requires explicit owner confirmation. Fresh provider reads and SQL context checks precede saving. `financeMappingRepository.ts` owns private mapping RPCs; diagnostics stay server-side.
+
+`POST /api/payments/xero/observe` requires the finance grant, same origin and observation flag; browser input is only an invoice UUID. The scheduler `GET /api/integrations/xero/observe` requires the existing CRON_SECRET and flag. InvoiceObservationRepository owns bounded service RPCs; provider responses are reduced to fixed states/reasons and amounts before persistence.
