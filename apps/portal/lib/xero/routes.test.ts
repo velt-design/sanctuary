@@ -28,10 +28,12 @@ describe('Xero HTTP integration',()=>{
   it('rejects cross-site initiation and sets a secure bound cookie for valid starts',async()=>{
     expect((await start(new Request(origin,{method:'POST',headers:{origin:'https://other.test'}}))).status).toBe(403);
     const response=await start(new Request(origin,{method:'POST',headers:{origin}}));
-    expect(response.status).toBe(303);
+    expect(response.status).toBe(200);
     expect(response.headers.get('set-cookie')).toMatch(/HttpOnly/i);
     expect(response.headers.get('set-cookie')).toMatch(/Secure/i);
-    expect(new URL(response.headers.get('location')!).searchParams.get('scope')).toBe(XERO_SCOPES);
+    const destination=new URL((await response.json()).authorizationUrl);
+    expect(destination.origin).toBe('https://login.xero.com');
+    expect(destination.searchParams.get('scope')).toBe(XERO_SCOPES);
     expect(mocks.attempt).toHaveBeenCalledOnce();
   });
   it('consumes one-use state before exchanging and rejects replay',async()=>{

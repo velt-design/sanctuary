@@ -64,6 +64,9 @@ use their normal public trust roots. Update the CA before expiry or provider rot
 
 OAuth starts only from a same-origin POST. A Secure/HttpOnly/SameSite=Lax host
 cookie binds encrypted state to the current user for ten minutes. A database
+attempt is created before the POST returns an allowlisted Xero authorisation URL;
+the client then navigates there. This preserves the portal's `form-action 'self'`
+policy instead of permitting external form submissions. A database
 attempt is consumed before code exchange to reject replay. Callback redirects
 only to the configured origin and removes its cookie. Tokens and provider error
 bodies never appear in responses or logs. Private responses are no-store and
