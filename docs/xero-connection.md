@@ -48,6 +48,11 @@ Requested scopes: `offline_access`, `accounting.contacts.read`,
 
 ## Security and recovery
 
+The verified developer page reports fixed setup-error categories for configuration,
+database authentication, permissions and TLS. It never reflects raw database or
+provider exception text, connection strings or credentials. Ordinary admins still
+cannot access this page.
+
 OAuth starts only from a same-origin POST. A Secure/HttpOnly/SameSite=Lax host
 cookie binds encrypted state to the current user for ten minutes. A database
 attempt is consumed before code exchange to reject replay. Callback redirects
