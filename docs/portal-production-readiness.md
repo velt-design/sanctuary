@@ -2,6 +2,8 @@
 
 Status: Active evolving tracker.
 
+Xero deposit pilot (2026-09-14): implementation and focused/local build checks pass; hosted staging SQL proves partial/full deposits, concurrent duplicate refusal and audited reversal. The separate Jordan-only capability and preview are provisioned. Hosted authenticated browser verification and production pilot release remain pending; no real payment has been approved. Current evidence and rollout boundaries are owned by `docs/xero-connection.md`.
+
 Last updated: 2026-08-27.
 
 Purpose: keep agents and maintainers aligned on the path to a first-class, production-grade internal portal. This doc is the dashboard for current readiness, blockers, priorities, parallel lanes, and next actions. Detailed behavior rules stay in the canonical docs linked below.
