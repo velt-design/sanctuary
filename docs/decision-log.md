@@ -17,6 +17,16 @@ Related docs/tests: paths or commands
 
 Use `Status: Active` when the entry is still only a decision-log guardrail. New reusable lessons should remain `Active` until a later pass promotes them into a canonical doc, so this log continues to show live risks that have not yet become standing rules. Use `Status: Promoted` when the durable behavior is now represented in `docs/agent-playbook.md`, `AGENTS.md`, `docs/README.md`, or another canonical doc. Use `Status: Superseded` only when a newer entry or canonical doc replaces the rule.
 
+## Hosted staff revision return destination
+
+Date: 2026-09-15
+Area: Configurator staff revision
+Status: Active
+Decision or mistake: Hosted staging revisions returned to the production portal because the navigation helper only supported production and local development.
+Why it mattered: A staged project cannot be reviewed or saved in the production database.
+Current guardrail: Use the deployment-configured NEXT_PUBLIC_STAFF_PORTAL_ORIGIN for hosted previews, never an arbitrary URL supplied in query parameters. Verify the actual browser return link before saving a staged revision.
+Related docs/tests: docs/environment-auth-supabase.md; StaffRevisionReturn.test.ts
+
 ## Configured dashboard prices and email activity
 
 Date: 2026-09-15

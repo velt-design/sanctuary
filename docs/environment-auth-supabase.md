@@ -20,6 +20,8 @@ Most local portal work needs:
 
 Common optional or feature-specific variables:
 
+- `NEXT_PUBLIC_STAFF_PORTAL_ORIGIN` (marketing build only): trusted HTTPS origin for the staff configurator return link. Set this to the matching staging portal for protected-preview review; unset defaults to the production portal. Query-string return origins cannot override it. Paths, credentials, query strings, and fragments are rejected. Local HTTP returns remain development-only.
+
 - `RESEND_API_KEY`
 - `RESEND_API_KEY_PREVIEW` (server-only, sending-only Resend key used only by the authenticated website-autoresponder review flow in Vercel Preview deployments)
 - `EMAIL_PREVIEW_ENABLED` (must be exactly `true` for the fixture-only review route; keep unset or false in Production)
