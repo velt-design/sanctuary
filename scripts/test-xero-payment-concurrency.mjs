@@ -66,6 +66,7 @@ async function race(name,approval,source,expected) {
     select ${approve(context,20,20)};
     do $$ declare deadline timestamptz:=clock_timestamp()+interval '60 seconds';begin
       loop
+        perform pg_stat_clear_snapshot();
         exit when exists(select 1 from pg_stat_activity where application_name='finance_race_b'
           and pg_backend_pid()=any(pg_blocking_pids(pid)));
         if clock_timestamp()>deadline then raise exception 'Second approval never blocked on the first';end if;
