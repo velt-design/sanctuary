@@ -31,7 +31,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         const outcome = financeOutcome(row);
         const money = (value: number) => new Intl.NumberFormat('en-NZ', { style: 'currency', currency: row.currency }).format(value / 100);
         return <TableRow key={row.invoiceId}>
-          <TableCell>{row.invoiceRef}<br />{row.customerName}<br /><small>{row.projectName}</small></TableCell>
+          <TableCell><Link href={`/staff/projects/${row.projectId}?tab=invoices`}>{row.invoiceRef}</Link><br />{row.customerName}<br /><small>{row.projectName}</small></TableCell>
           <TableCell>{row.status === 'VOID' ? 'Voided' : row.status === 'PAID' ? 'Recorded paid' : 'Open'}{row.dueDate && <><br /><small>Due {row.dueDate}</small></>}</TableCell>
           <TableCell>{money(row.totalCents)}</TableCell><TableCell>{row.status === 'VOID' ? 'Not payable' : outcome.remainingCents === null ? 'Needs review' : money(outcome.remainingCents)}</TableCell>
           <TableCell>{outcome.label}{row.lastVerifiedAt && <><br /><small>Transfer verified {new Date(row.lastVerifiedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
