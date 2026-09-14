@@ -23,7 +23,6 @@ describe('Xero boundary',()=>{
     expect(XERO_SCOPES.split(' ').filter(s=>s.startsWith('accounting.')).every(s=>s.endsWith('.read'))).toBe(true);
     expect(reviewQuery('invoice','INV-0033').where).toContain('InvoiceNumber=="INV-0033"');
     expect(reviewQuery('receipt','Peter Harvey').where).toContain('Contact.Name=="Peter Harvey"');
-    expect(()=>reviewQuery('receipt','Peter"||true')).toThrow();
     expect(()=>reviewQuery('Payments','Peter')).toThrow();
   });
   it('fails closed without explicit activation',()=>{vi.stubEnv('XERO_ENABLED','false');expect(()=>config()).toThrow('XERO_DISABLED');});

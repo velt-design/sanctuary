@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const code = error instanceof Error ? error.message : '';
     if (code === 'INVOICE_NOT_FOUND') return json({ error: 'Portal invoice not found. Check its exact number.' }, 404);
     if (code === 'AMBIGUOUS_INVOICE') return json({ error: 'More than one invoice has this number. Resolve the duplicate before matching.' }, 409);
-    if (code === 'INVALID_QUERY') return json({ error: 'Enter the exact Xero contact name (3–100 characters).' }, 400);
+    if (code === 'INVALID_QUERY') return json({ error: 'Enter the exact Xero contact name (1–240 characters).' }, 400);
     return json({ error: 'Payment review is unavailable. Nothing was changed. Check the connection and retry.' }, 503);
   }
 }

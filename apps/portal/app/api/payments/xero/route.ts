@@ -15,7 +15,7 @@ export async function POST(request:Request) {
     const body=await request.json().catch(()=>null);
     if(!body||typeof body!=='object') return json({error:'Invalid payment request.'},400);
     if(body.action==='review'&&typeof body.invoiceRef==='string'&&/^INV-\d{1,12}$/.test(body.invoiceRef.trim())
-      &&(body.contactName===undefined||typeof body.contactName==='string'&&body.contactName.length<=100))
+      &&(body.contactName===undefined||typeof body.contactName==='string'&&body.contactName.trim().length<=240))
       return json(await reviewPilotDeposit(body.invoiceRef.trim(),body.contactName??'',session.user.id));
     if(body.action==='approve'&&body.confirmed===true&&typeof body.approvalToken==='string'&&body.approvalToken.length<=10000)
       return json(await approvePilotDeposit(body.approvalToken,session.user.id));
@@ -42,7 +42,7 @@ export async function POST(request:Request) {
       PAYMENT_APPROVAL_FORBIDDEN:[403,'Payment approval permission is required.'],
       INVOICE_NOT_FOUND:[404,'Invoice not found. Check its exact number.'],
       AMBIGUOUS_INVOICE:[409,'Multiple invoices have this number. Resolve the duplicate first.'],
-      INVALID_QUERY:[400,'Use the exact Xero customer name (3–100 characters).'],
+      INVALID_QUERY:[400,'Use the exact Xero customer name (1–240 characters).'],
       APPROVAL_REVIEW_REQUIRED:[409,'This approval expired or is invalid. Check its status before starting a fresh review.'],
       APPROVAL_EVIDENCE_CHANGED:[409,'The evidence changed. Check payment history and review again.'],
       RECEIPT_ALREADY_RECORDED:[409,'This receipt is already recorded. Check the existing match.'],

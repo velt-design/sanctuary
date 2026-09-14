@@ -31,7 +31,7 @@ export default function PaymentSuggestions() {
     <p>Any verified deposit counts as a customer win. Paying the full requested deposit is a separate milestone.</p>
     <form onSubmit={submit} style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'end' }}>
       <label>Portal invoice number<br /><input name="invoiceRef" placeholder="INV-0033" required pattern="INV-[0-9]{1,12}" disabled={pending} /></label>
-      <label>Xero contact name (optional)<br /><input name="contactName" placeholder="Use invoice customer name" maxLength={100} disabled={pending} /></label>
+      <label>Xero contact name (optional)<br /><input name="contactName" placeholder="Use invoice customer name" maxLength={240} disabled={pending} /></label>
       <button disabled={pending} style={{ minHeight: 44 }}>{pending ? 'Comparing records…' : 'Find suggested matches'}</button>
     </form>
     {pending && <p role="status">Reading the portal invoice, payment history and Xero receipts…</p>}

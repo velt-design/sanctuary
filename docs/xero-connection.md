@@ -35,7 +35,9 @@ ID. The registered callback is
 
 ### Deposit approval pilot (implementation; not yet released)
 
-The developer page adds an exact portal invoice lookup and a live Xero receipt comparison through `POST /api/integrations/xero/payment-suggestions`. The invoice customer name supplies the default exact Xero contact search; an alternate name can be entered, but a differing name blocks the proposed outcome pending identity review. The dedicated Xero identity remains read-only and receives no portal business-table grants.
+The developer page adds an exact portal invoice lookup and a live Xero receipt comparison through `POST /api/integrations/xero/payment-suggestions`. The invoice customer name supplies the default exact Xero contact search; an alternate name can be entered, but a differing name blocks the proposed outcome pending identity review. Searches accept 1–240 characters, including short and punctuated customer names; query values are escaped as string literals, never supplied as expressions. The dedicated Xero identity remains read-only and receives no portal business-table grants.
+
+Authenticated staging browser verification on 2026-09-14 confirmed the synthetic invoice's outstanding balance and reversed history, blocked a real customer's receipt against that unrelated synthetic project, and saved an investigation note that persisted after a fresh provider review. No real payment was approved. Final exact-head CI/review and production provisioning remain release gates.
 
 The owner rule confirmed on 2026-09-14 is: **any verified positive deposit counts as a customer win**, including a partial deposit. The pilot at `/staff/payments/review` separates this outcome from remaining deposit and whole-invoice status. No project stage or marketing conversion is changed. Jordan is the sole pilot approver; automatic approval is excluded.
 

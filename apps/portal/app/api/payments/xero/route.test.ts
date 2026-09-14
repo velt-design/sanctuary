@@ -9,6 +9,15 @@ const id='11111111-1111-4111-8111-111111111111';
 const post=(body:unknown)=>POST(new Request('https://portal.example/api/payments/xero',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}));
 beforeEach(()=>{vi.resetAllMocks();mocks.enabled.mockReturnValue(true);mocks.origin.mockReturnValue(true);mocks.session.mockResolvedValue({user:{id}});mocks.approve.mockResolvedValue({matchId:id});});
 describe('payment pilot command authorization',()=>{
+  it.each(['Li', 'ABC (NZ) Ltd', 'A'.repeat(240)])('passes valid contact names to review: %s',async contactName=>{
+    mocks.review.mockResolvedValue({suggestions:[]});
+    expect((await post({action:'review',invoiceRef:'INV-0033',contactName})).status).toBe(200);
+    expect(mocks.review).toHaveBeenCalledWith('INV-0033',contactName,id);
+  });
+  it('rejects oversized contact searches before provider access',async()=>{
+    expect((await post({action:'review',invoiceRef:'INV-0033',contactName:'A'.repeat(241)})).status).toBe(400);
+    expect(mocks.review).not.toHaveBeenCalled();
+  });
   it('stays dark without touching credentials or accounting',async()=>{
     mocks.enabled.mockReturnValue(false);expect((await post({action:'review',invoiceRef:'INV-0033'})).status).toBe(404);
     expect(mocks.session).not.toHaveBeenCalled();expect(mocks.review).not.toHaveBeenCalled();

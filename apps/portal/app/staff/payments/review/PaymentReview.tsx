@@ -74,7 +74,7 @@ export default function PaymentReview() {
     <Card title="Find a deposit">
       <form onSubmit={review} style={{display:'flex',flexWrap:'wrap',gap:16,alignItems:'end'}}>
         <label>Portal invoice number<br/><input name="invoiceRef" placeholder="INV-0033" required pattern="INV-[0-9]{1,12}" disabled={pending}/></label>
-        <label>Xero customer name (optional)<br/><input name="contactName" placeholder="Use invoice customer name" maxLength={100} disabled={pending}/></label>
+        <label>Xero customer name (optional)<br/><input name="contactName" placeholder="Use invoice customer name" maxLength={240} disabled={pending}/></label>
         <Button type="submit" disabled={pending}>Find receipts</Button>
       </form>
     </Card>
