@@ -1,11 +1,18 @@
 import 'server-only';
 import postgres from 'postgres';
+import { rootCertificates } from 'node:tls';
+import { supabaseCa } from './supabaseCa';
 import { config, seal, unseal } from './security';
 import { connections, tokenRequest, type Tokens, XeroError } from './provider';
 
 async function withDatabase<T>(work: (db: ReturnType<typeof postgres>) => Promise<T>): Promise<T> {
   const cfg = config();
-  const db = postgres(cfg.databaseUrl, { ssl: cfg.local ? false : 'verify-full', max: 1, prepare: false, connect_timeout: 10, onnotice: () => {} });
+  const hostname = new URL(cfg.databaseUrl).hostname;
+  const managedSupabase = /^[a-z0-9-]+\.pooler\.supabase\.com$|^db\.[a-z0-9]{20}\.supabase\.co$/.test(hostname);
+  const ssl = cfg.local ? false : managedSupabase
+    ? { rejectUnauthorized: true, ca: [...rootCertificates, supabaseCa] }
+    : 'verify-full';
+  const db = postgres(cfg.databaseUrl, { ssl, max: 1, prepare: false, connect_timeout: 10, onnotice: () => {} });
   try {
     const [identity] = await db`select current_user as name, rolsuper, rolcreaterole, rolcreatedb, rolreplication, rolbypassrls,
       pg_has_role(current_user, 'sanctuary_xero_connector', 'member') as connector,

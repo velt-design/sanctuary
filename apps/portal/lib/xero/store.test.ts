@@ -5,6 +5,7 @@ vi.mock('postgres',()=>({default:mocks.postgres}));
 vi.mock('./provider',async importOriginal=>({...await importOriginal<typeof import('./provider')>(),tokenRequest:mocks.token,connections:mocks.connections}));
 import { access,connect } from './store';
 import { XeroError } from './provider';
+import { supabaseCa } from './supabaseCa';
 
 const tenant='11111111-1111-4111-8111-111111111111';const key=Buffer.alloc(32,1);
 let row: {tenant_id:string;encrypted_tokens:string;last_error:string|null};
@@ -25,6 +26,15 @@ beforeEach(()=>{
 });
 afterEach(()=>vi.unstubAllEnvs());
 describe('durable Xero renewal',()=>{
+  it('adds the official Supabase CA only for managed hosts and keeps certificate verification enabled',async()=>{
+    mocks.token.mockResolvedValue({accessToken:'new',refreshToken:'rotated',expiresAt:Date.now()+1800000});
+    vi.stubEnv('XERO_DATABASE_URL','postgres://test@aws-0-ap-northeast-1.pooler.supabase.com/test?sslmode=verify-full');
+    await access();
+    expect(mocks.postgres.mock.calls[0][1].ssl).toMatchObject({rejectUnauthorized:true,ca:expect.arrayContaining([supabaseCa])});
+    vi.stubEnv('XERO_DATABASE_URL','postgres://test@aws-0.pooler.supabase.com.example.test/test?sslmode=verify-full');
+    await access();
+    expect(mocks.postgres.mock.calls[1][1].ssl).toBe('verify-full');
+  });
   it('discovery cannot retain tokens or use an existing accounting connection',async()=>{
     vi.stubEnv('XERO_TENANT_ID','');vi.stubEnv('XERO_DISCOVERY','true');
     await expect(access()).rejects.toThrow('XERO_ORGANISATION_NOT_PINNED');

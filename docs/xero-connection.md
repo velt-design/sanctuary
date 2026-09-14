@@ -53,6 +53,15 @@ database authentication, permissions and TLS. It never reflects raw database or
 provider exception text, connection strings or credentials. Ordinary admins still
 cannot access this page.
 
+Managed Supabase pooler/direct hosts additionally trust the public Supabase Root
+2021 CA downloaded from the dashboard's SSL configuration, as required by
+[Supabase's verify-full setup](https://supabase.com/docs/guides/platform/ssl-enforcement).
+The checked-in public certificate expires 2031-04-26;
+SHA-256 fingerprint `807025AD50D4ED219D2C9C7D299C004F824EB00CF7F65AFEF607D07B72E6CAFA`.
+It supplements Node's public roots only for explicit Supabase hostname patterns.
+Certificate-chain and hostname verification remain enabled; other remote hosts
+use their normal public trust roots. Update the CA before expiry or provider rotation.
+
 OAuth starts only from a same-origin POST. A Secure/HttpOnly/SameSite=Lax host
 cookie binds encrypted state to the current user for ten minutes. A database
 attempt is consumed before code exchange to reject replay. Callback redirects
