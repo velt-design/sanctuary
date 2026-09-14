@@ -1,0 +1,101 @@
+// @vitest-environment node
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { PGlite } from '@electric-sql/pglite';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { getBackgroundJobDefinition } from '@sp/jobs';
+
+let db: PGlite;
+const project = '11111111-1111-4111-8111-111111111111';
+const tenant = '22222222-2222-4222-8222-222222222222';
+async function count() {
+  return Number((await db.query<{ count: string }>('select count(*) from private.xero_invoice_transfers')).rows[0].count);
+}
+
+describe('Xero issuance capture boundary', () => {
+  beforeAll(async () => {
+    db = new PGlite();
+    // Test the production trigger and transaction semantics. The enqueue adapter
+    // records its arguments; real PGMQ and lease behaviour require the jobs DB suite.
+    await db.exec(`
+      create schema private; create schema auth;
+      create role anon; create role authenticated; create role service_role;
+      create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
+      create type public.background_job_rollout_mode as enum ('disabled','legacy','shadow','worker_cohort','worker_enabled');
+      create type public.background_job_execution_owner as enum ('legacy','shadow','worker');
+      create table public.projects(id uuid primary key);
+      insert into public.projects values ('${project}');
+      create table public.deposit_invoices(id uuid primary key default gen_random_uuid(), project_id uuid not null references public.projects(id), status text);
+      create table public.background_job_kinds(kind text primary key,contract_version int,handler_owner text,max_attempts int,
+        timeout_seconds int,concurrency_class text,has_external_side_effect boolean,required_effect_kinds text[],
+        cancellation_allowed boolean,default_rollout_mode public.background_job_rollout_mode,active boolean,allowed_effect_kinds text[]);
+      create table public.background_jobs(id uuid primary key default gen_random_uuid(),kind text,intent_key text unique,payload jsonb);
+      create function private.background_job_enqueue_core(text,int,text,text,uuid,uuid,text,smallint,text,jsonb,timestamptz,
+        public.background_job_rollout_mode,public.background_job_execution_owner,text)
+      returns public.background_jobs language plpgsql as $$ declare r public.background_jobs; begin
+        if current_setting('test.enqueue_failure',true) = 'yes' then raise exception 'Synthetic enqueue failure'; end if;
+        insert into public.background_jobs(kind,intent_key,payload) values ($1,$9,$10) returning * into r; return r;
+      end $$;
+    `);
+    await db.exec(readFileSync(path.resolve('supabase/migrations/20260914000005_xero_invoice_transfer_intents.sql'), 'utf8'));
+  });
+  afterAll(async () => { await db?.close(); });
+
+  it('aligns the new database kind with package policy and remains disabled', async () => {
+    const row = (await db.query('select * from public.background_job_kinds')).rows[0];
+    const definition = getBackgroundJobDefinition('xero_invoice_draft_v1');
+    expect(row).toMatchObject({ kind: definition.kind, contract_version: definition.payloadContractVersion,
+      handler_owner: definition.handlerOwner, max_attempts: definition.retry.maxAttempts,
+      timeout_seconds: definition.timeoutMs / 1000, concurrency_class: definition.concurrencyClass,
+      has_external_side_effect: true, allowed_effect_kinds: [...definition.allowedEffectCheckpoints],
+      required_effect_kinds: [...definition.requiredEffectCheckpoints], cancellation_allowed: false,
+      default_rollout_mode: 'disabled' });
+    expect((await db.query('select enabled from private.xero_invoice_transfer_control')).rows[0].enabled).toBe(false);
+  });
+
+  it('does not capture history when activated, nor unissued drafts or payment changes', async () => {
+    await db.exec(`insert into public.deposit_invoices(project_id,status) values ('${project}','OPEN')`);
+    await db.exec(`update private.xero_invoice_transfer_control set enabled=true,tenant_id='${tenant}';
+      update public.deposit_invoices set status='PAID';
+      insert into public.deposit_invoices(project_id,status) values ('${project}','DRAFT');`);
+    expect(await count()).toBe(0);
+  });
+
+  it('captures draft issuance once and uses only bounded job identity', async () => {
+    await db.exec(`begin; update public.deposit_invoices set status='OPEN' where status='DRAFT';`);
+    expect(await count()).toBe(0);
+    await db.exec('commit');
+    expect(await count()).toBe(1);
+    const row = (await db.query<{ payload: Record<string, unknown> }>('select payload from public.background_jobs')).rows[0];
+    expect(Object.keys(row.payload).sort()).toEqual(['contractVersion', 'invoiceId', 'tenantId', 'transferId']);
+    expect(row.payload).toMatchObject({ contractVersion: 1, tenantId: tenant });
+    await db.exec("update public.deposit_invoices set status='PAID'");
+    expect(await count()).toBe(1);
+  });
+
+  it('captures direct legacy issuance but skips an invoice voided before commit', async () => {
+    await db.exec(`begin; insert into public.deposit_invoices(project_id,status) values ('${project}','OPEN');
+      update public.deposit_invoices set status='VOID' where status='OPEN'; commit;`);
+    expect(await count()).toBe(1);
+    await db.exec(`insert into public.deposit_invoices(project_id,status) values ('${project}','OPEN')`);
+    expect(await count()).toBe(2);
+  });
+
+  it('rolls issuance back if its durable enqueue cannot commit', async () => {
+    const before = (await db.query('select count(*) from public.deposit_invoices')).rows[0].count;
+    await db.exec("begin; select set_config('test.enqueue_failure','yes',true)");
+    await db.exec(`insert into public.deposit_invoices(project_id,status) values ('${project}','OPEN')`);
+    await expect(db.exec('commit')).rejects.toThrow('Synthetic enqueue failure');
+    await db.exec('rollback');
+    expect((await db.query('select count(*) from public.deposit_invoices')).rows[0].count).toBe(before);
+    expect(await count()).toBe(2);
+  });
+
+  it('denies browser and service-role direct access to control and transfer rows', async () => {
+    for (const role of ['anon', 'authenticated', 'service_role']) {
+      const result = await db.query<{ allowed: boolean }>(`select has_table_privilege($1,'private.xero_invoice_transfers','SELECT')
+        or has_table_privilege($1,'private.xero_invoice_transfer_control','UPDATE') as allowed`, [role]);
+      expect(result.rows[0].allowed).toBe(false);
+    }
+  });
+});

@@ -338,6 +338,8 @@ The HTTP boundary permits only full authoritative replacement snapshots. `change
 
 ## Durable Background Jobs
 
+In-progress Xero finance expansion: migration `20260914000005_xero_invoice_transfer_intents.sql` registers default-disabled `xero_invoice_draft_v1`. `private.xero_invoice_transfer_control` holds the developer-operated gate and pinned tenant; `private.xero_invoice_transfers` holds one invoice/job identity. Both deny direct browser and service-role access. A deferred invoice trigger calls the existing private enqueue core in the issuing transaction only when the gate is enabled. Job payloads contain transfer/invoice/tenant IDs, not accounting content. The migration is unapplied to shared environments and no handler or writes are activated. See `docs/xero-connection.md` for verification gaps and rollout conditions.
+
 Owner docs: this schema map owns the current database boundary; `docs/target-architecture.md` owns the long-term worker path, while `docs/security-privacy-quality.md`, `docs/environment-auth-supabase.md`, and `docs/testing-and-qa.md` own security, setup, and verification. Each business job kind still belongs to its existing workflow doc until a later task migrates that producer and handler.
 
 Current scope:

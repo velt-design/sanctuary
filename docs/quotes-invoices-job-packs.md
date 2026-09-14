@@ -139,6 +139,8 @@ Before enabling or rolling back `workbench_solved`, run downstream immutability 
 
 ## Invoice Lifecycle
 
+The in-progress Xero draft transfer captures future issuance through a deferred, default-disabled database trigger, independently of email delivery. It uses the existing jobs owner and preserves issued content and void-and-recreate corrections. No shared activation has occurred; see `docs/xero-connection.md#next-stage-everyday-finance` for state and release gates.
+
 ### Action and recovery contract
 
 Quote create/revise commands and admin invoice/payment commands carry stable client intents across an ambiguous retry. Lifecycle, send, delete, supersede, job-pack and financial actions acquire synchronous locks before awaiting. A command response is applied immediately; list refresh is later reconciliation. If that refresh fails after the server committed, the UI reports that the action completed and offers Refresh instead of presenting a retry that could repeat the write. Invoice/payment reconciliation failure also locks further financial actions until an authoritative refresh succeeds. See `docs/portal-action-recovery-audit.md`.
