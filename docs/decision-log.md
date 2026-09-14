@@ -17,6 +17,39 @@ Related docs/tests: paths or commands
 
 Use `Status: Active` when the entry is still only a decision-log guardrail. New reusable lessons should remain `Active` until a later pass promotes them into a canonical doc, so this log continues to show live risks that have not yet become standing rules. Use `Status: Promoted` when the durable behavior is now represented in `docs/agent-playbook.md`, `AGENTS.md`, `docs/README.md`, or another canonical doc. Use `Status: Superseded` only when a newer entry or canonical doc replaces the rule.
 
+## Xero customer search literals
+
+Date: 2026-09-14
+Area: Xero deposit review
+Status: Active
+Decision or mistake: A defensive character allowlist rejected valid invoice customer names. Generic JSON/backslash escaping then passed local string tests but failed against Xero.
+Why it mattered: Short or punctuated customer names could not be reviewed, and unverified query escaping risks changing filter meaning.
+Current guardrail: Match search bounds to the customer domain, retain an exact fixed query shape, double embedded quotation marks for Xero's parser, and verify provider behavior with harmless synthetic names before release.
+Promoted to: None
+Related docs/tests: docs/xero-connection.md; apps/portal/lib/xero/review.test.ts
+
+## Browser SQL editor replacement
+
+Date: 2026-09-14
+Area: Hosted SQL verification
+Status: Active
+Decision or mistake: Filling Monaco's active textbox replaced only part of the editor model during a staging lock test; the resulting SQL was rejected with a syntax error.
+Why it mattered: The visible input range is not necessarily the complete query. A successful fill call does not establish what Run will execute.
+Current guardrail: Select all within the editor, clear and paste the complete query, then inspect the rendered query before execution. Treat timed-out execution as uncertain and inspect the existing result before retrying. Do not read tokens or credentials to prove storage.
+Promoted to: None
+Related docs/tests: `docs/xero-connection.md`
+
+## Project delivery and commercial lifecycle
+
+Date: 2026-09-11
+Area: Project delivery and commercial lifecycle
+Status: Active
+Decision or mistake: Delivery, settled closure and invoice payment status had been conflated. Reversal reopened the payment stage while an operational closure could remain hidden; the invoice receipt uniqueness rule also prevented a new receipt after reversal.
+Why it mattered: Unpaid work could disappear from follow-up, or repayment could reuse a reversed receipt without restoring the ledger balance.
+Current guardrail: Keep delivery evidence independent. Test closure/reversal/reopening/repayment as one transaction sequence against the production SQL owners, retaining all historical receipts and explicit invoice allocation targets. Test draft statuses at every financial and public-reader boundary before enabling creation.
+Promoted to: None
+Related docs/tests: `docs/commercial-truth-audit.md`, `docs/quotes-invoices-job-packs.md`, `test/invoice-drafts.integration.test.ts`.
+
 ## Index
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -188,7 +221,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-07-20 | Portal Contact Details           | Promoted | Contact Detail uses the same authenticated local-first save contract as Project Details: immediate Done feedback, ordered full drafts, coherent cache updates, durable retry, and confirmed-value rollback with the rejected draft retained.                                                                                                                                                                                                                                                                                                                                                                                                             |
 | 2026-07-20 | Portal Project Task Mutations    | Promoted | Manual task feedback is immediate, but overlapping writes own rollback by task key and auto-advance side effects remain server-confirmed; rejected tasks refresh server truth and expose task-specific Retry.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 2026-07-20 | Portal Project Index Mutations   | Promoted | Reversible index writes update only the authenticated user's query caches immediately, retain background-sync feedback, and roll back the affected field/scope on rejection; server-confirmed success and destructive actions stay separate.                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| 2026-07-20 | Portal Performance Measurement   | Promoted | Fixture visual feedback and the five authenticated project-tab useful-content markers are timestamped inside Chromium when the real DOM state changes; Playwright driver polling and round trips must not be counted as user-visible latency.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 2026-07-20 | Portal Performance Measurement   | Promoted | Fixture visual feedback and the five authenticated project-tab selected-state and useful-content markers are timestamped inside Chromium when the real DOM state changes; Playwright driver polling and round trips must not be counted as user-visible latency.                                                                                                                                                                                                                                                                                                                                                                                                           |
 | 2026-07-20 | Infill Explicit Selections       | Promoted | Panel material and joiner direction are explicit two-option selections on Existing supports; physical edges use only Yes/No, with new items defaulting to conservative No and legacy auto/Unsure values resolved without changing their current purchasing result.                                                                                                                                                                                                                                                                                                                                                                                        |
 | 2026-07-19 | Workbench Solve Lifecycle        | Promoted | Memoize the solved base by draft/project identity and derive selection, visibility, and viewport UI from it; UI-only changes must not rebuild solved geometry.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | 2026-07-19 | Calculator Request Lifecycle     | Promoted | Keep debouncing, abort ownership, newest-result protection, and last-valid continuity in the dedicated request controller; costing inputs and results remain server/package authoritative.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -3153,9 +3186,10 @@ Browser evidence: With the task checkbox already in view, the fixture-safe Chrom
 Date: 2026-07-20
 Area: Portal Performance Measurement
 Status: Promoted
-Decision or mistake: The first mutation fixture measured visual feedback with the Node test driver's wall clock, so Playwright command and assertion round trips could make an already-rendered update look slower than 100 ms on a busy CI runner. The authenticated project-tab gate later repeated that mistake for useful content: Playwright's locator polling could add a large discrete delay after the target DOM state was already visible. Its first browser-side correction also named a nonexistent Estimates-specific loading key even though Estimates, Quotes, and Invoices share one Commercial module and loading shell. Fixture visual feedback and the five authenticated project-tab useful-content markers now start and stop inside Chromium when the target DOM state actually changes; the shared Commercial shell is matched only inside the active Estimates tab body, and request/background settlement remains separate.
+Decision or mistake: The first mutation fixture measured visual feedback with the Node test driver's wall clock, so Playwright command and assertion round trips could make an already-rendered update look slower than 100 ms on a busy CI runner. The authenticated project-tab gate later repeated that mistake for useful content: Playwright's locator polling could add a large discrete delay after the target DOM state was already visible. Its first browser-side correction also named a nonexistent Estimates-specific loading key even though Estimates, Quotes, and Invoices share one Commercial module and loading shell. Fixture visual feedback and the five authenticated project-tab selected-state and useful-content markers now start and stop inside Chromium when the target DOM state actually changes; the shared Commercial shell is matched only inside the active Estimates tab body, and request/background settlement remains separate.
+Follow-up (2026-09-14): The selected-tab timer still included driver round trips and failed the release gate twice despite content appearing earlier. It now uses an independent named browser observer alongside the content observer; a delayed-content/driver-read regression proves the measurements remain independent. No performance ceiling changed.
 Why it mattered: A performance gate must measure the user's wait, not automation transport noise. Loosening the 100 ms target would have hidden the measurement error and weakened the product contract.
-Current guardrail: For fixture visual feedback and the five authenticated project-tab useful-content markers, install the browser-side visual observer before the action and end timing at the first truthful visible state. Keep shared loading selectors aligned with their owning module and scoped to the active tab body; never invent a per-route marker that the rendered owner does not emit. Keep the following Playwright assertions as semantic checks without using their completion time as product latency. Keep the 100 ms feedback and 500 ms project-tab useful-content targets, p75 aggregation, long-task check, blocking-overlay check, request accounting, and delayed background completion unchanged. Async loading tests must hold mocked requests with controlled promises when they assert the pending state.
+Current guardrail: For fixture visual feedback and the five authenticated project-tab selected-state and useful-content markers, install the browser-side visual observer before the action and end timing at the first truthful visible state. Keep shared loading selectors aligned with their owning module and scoped to the active tab body; never invent a per-route marker that the rendered owner does not emit. Keep the following Playwright assertions as semantic checks without using their completion time as product latency. Keep the 100 ms feedback and 500 ms project-tab useful-content targets, p75 aggregation, long-task check, blocking-overlay check, request accounting, and delayed background completion unchanged. Async loading tests must hold mocked requests with controlled promises when they assert the pending state.
 Promoted to: `docs/testing-and-qa.md`; `docs/portal-production-readiness.md`
 Related docs/tests: `playwright/support/portalPerformance.ts`; `playwright/portal.project-mutation-performance.spec.ts`; `playwright/portal.performance.spec.ts`; `apps/portal/app/staff/schedule/ScheduleClient.test.tsx`
 
@@ -4305,7 +4339,7 @@ agenda from the same Gantt model, retain essential view context, and route
 schedule changes to Board; do not create another read model or phone write path.
 Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`
 Related docs/tests:
-`apps/portal/app/staff/schedule/useScheduleGanttTimingReview.ts`;
+`apps/portal/app/staff/schedule/useScheduleGanttTimingReview.ts` (retired on 2026-09-08 when routine drag confirmation was removed);
 `apps/portal/app/staff/schedule/ScheduleGanttCompactView.tsx`;
 `apps/portal/app/staff/schedule/ScheduleGanttView.test.tsx`;
 `playwright/portal.schedule-tasks-ui.spec.ts`;
@@ -5541,3 +5575,51 @@ a repeated V1 label. The unapplied migration was corrected before installation
 to advance the real column, and the stub/contract now assert it. For migrations
 that reuse legacy table stubs, inspect actual relevant columns/defaults and
 verify the consuming staff representation during the rollback rehearsal.
+
+## 2026-09-08 — Schedule authored dates and save trust
+
+Read-time recomputation moved overdue work and extended started jobs from an unchanged days-remaining value; zero-width weekend ties also made an inverse Gantt drag land on the wrong weekday. Reads now preserve saved/actual dates, explicit progress commands measure remaining days once, and flexible planning reserves fixed intervals. Checkpoint and confirmation owners separate accepted writes from later UI failures. Per-crew revision guards prevent stale calculated writes, and exact-date overlap acceptance plus owner-scoped retained intent makes conflicts and uncertainty reviewable. Four full past weeks remain scrollable while twelve forward weeks are retained. The new migration must precede API deployment; browser recovery never blindly replays ambiguous writes.
+
+## 2026-09-08 — Schedule previews must exercise the requested gestures
+
+The owner preview originally passed layout checks but used inert Gantt callbacks and stale sample bars after Board moves. Preview move/resize now applies to in-memory rows with the shared reflow engine; browser checks confirm both drag directions, exact duration, view switching and reload reset with zero staff writes. This exposed a shared resize bug: a saved Sunday end used the Monday boundary even though its visible handle ended on Friday. Resize snapping now counts from the last visible day. A rendered fixture alone is not evidence that its editing journey works.
+
+## 2026-09-08 — Routine Gantt gestures save on release
+
+The owner found the mandatory Save timing modal disruptive after every move and resize. Pointer release now sends the checked gesture directly to the existing mutation owner. The server-owned affected-client-commitment review remains; stale gesture cancellation, optimistic intent, ambiguous-save recovery and revision guards are unchanged. The unused local review component/hook and preview-only button were removed after consumer and dead-code checks.
+
+## 2026-09-08 — Preview pin lifecycle
+
+The sample Gantt's Unpin callback remained inert after move/resize was connected. It now changes the sample row to floating and uses the shared engine to reflow its queue. The browser gesture test covers moving, resizing and then unpinning back to flexible dates with no staff writes; a pin icon alone is not proof of the complete pin lifecycle.
+
+## 2026-09-08 — Calm Board drag ownership
+
+Board replaced a full card with a different compact overlay, faded the original, changed multiple target highlights and removed the overlay instantly on release. The card surface was extracted byte-for-byte before behavior changes. A dedicated drag overlay now owns an inert visual snapshot and 160 ms landing, while the source retains its size and keyboard focus. One insertion line and six-pixel midpoint tolerance stabilize the cue; unchanged targets no longer rerender the Board. Real keyboard QA also exposed stale translated-rectangle targeting, so keyboard placement now uses the current key delta. Fresh release geometry, reduced motion, exact queue placement and existing save/recovery boundaries remain required checks.
+
+Owner feedback found the thin insertion line too subtle. The destination now has a stronger line and a compact "Place here" marker, with crew and queue position shown above the floating card. These cues do not change card dimensions or target geometry; quiet movement must still communicate the exact destination visibly.
+
+## 2026-09-08 — Release comparison query grouping
+
+The first production Schedule migration attempt rolled back because its extra data-preservation assertion combined EXCEPT and UNION ALL without grouping the current snapshot, causing a false mismatch. The schema and ledger were verified absent after rollback. Group the full compared snapshot as a derived table, rehearse the entire apply wrapper in rollback, then apply. The corrected wrapper passed and proved existing operational schedule fields unchanged.
+
+## 2026-09-08 — Schedule release dependency audit
+
+PR #114's required production audit detected GHSA-px8p-9vwx-vf98 in existing fflate dependencies. The lockfile updates only the compatible patched releases 0.8.2 to 0.8.3 and 0.6.10 to 0.6.11. Production audit now reports zero vulnerabilities; the toolchain audit retains only the two approved xlsx exceptions. Keep the security gate blocking and rerun current-revision CI after a dependency correction.
+
+## 2026-09-09 — AI database image-pull throttling
+
+Status: Promoted. PRs #115 and #116 independently failed before SQL when the pinned public ECR image pull returned `toomanyrequests: Rate exceeded`. AI Foundation now gives only that exact pull failure three attempts with 30/60-second backoff. Other failures stop immediately, and the existing database harness runs once after a successful pull. Preserve the original failures as evidence; never rerun database assertions to hide setup or contract failures. Promoted to `docs/testing-and-qa.md`; synthetic coverage is `test/ai-db-image-pull.test.ts`.
+
+## 2026-09-08 — Guarded writes include legacy permissions
+
+PR #114 review found that guarding the new server command did not revoke older browser table/RPC grants. A forward permission migration now closes direct job/queue/downtime writes, every browser Schedule RPC, crew revision/anchor edits and cascading crew deletion, preserving metadata fields needed by the existing admin API. Reproduce historical grants in the database harness and prove real authenticated denial as well as successful guarded saves. Inspect unresolved review threads before announcing merge readiness; green CI alone does not resolve review findings.
+
+Permission review must also cover FK cascades: a browser-authorized parent-project DELETE does not require DELETE permission on its scheduled child. The revision trigger now denies browser SET ROLE callers, including cascades; current_user alone would identify the definer rather than the caller. Prove this with an authenticated-role parent deletion inside a rollback-wrapped staging fixture, not against a staff project.
+
+## 2026-09-09 — Owner-handoff database test budget
+
+- Status: Promoted
+- Decision or mistake: The owner-handoff integration case included cold PGlite startup and the complete migration contract inside Vitest's default five-second budget; two CI attempts hit that limit while the other 380 Project Work tests passed.
+- Current guardrail: Use a bounded twenty-second limit on that case only. Subsequent exact-revision review reported isolated runtimes of 9.606 and 9.064 seconds, showing the initial ten-second allowance had too little headroom. Preserve every assertion and cleanup step, and verify both the isolated case and the normal concurrent Project Work gate. Do not hide failures with retries or a global timeout increase.
+- Promoted to: `docs/testing-and-qa.md`, Project Work Items V2 Gate.
+- Related docs/tests: `test/project-owner-handoff-migration.test.ts`; `npm run test:portal:project-work`.

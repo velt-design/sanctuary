@@ -61,23 +61,6 @@
   gap: 8px;
 }
 
-.reviewButton {
-  min-height: 46px;
-  padding: 8px 14px;
-  border: 1px solid var(--border, #d9dee5);
-  border-radius: 8px;
-  color: inherit;
-  background: var(--surface, #fff);
-  font: inherit;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.reviewButton:focus-visible {
-  outline: 3px solid #2563eb;
-  outline-offset: 2px;
-}
-
 .viewControls button {
   min-height: 36px;
   padding: 6px 14px;

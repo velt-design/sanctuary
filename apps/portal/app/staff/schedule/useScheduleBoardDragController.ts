@@ -85,6 +85,13 @@ export function dragPointerFromEvent(event: BoardDragEvent): BoardDragPoint | nu
     return { x: clientX + deltaX, y: clientY + deltaY };
   }
 
+  const initial = event.active.rect?.current?.initial;
+  if (initial) {
+    // Keyboard movement supplies a delta before the translated DOM rect has
+    // necessarily caught up. Resolve the current key, not the previous frame.
+    return { x: initial.left + deltaX + initial.width / 2, y: initial.top + deltaY + initial.height / 2 };
+  }
+
   const rect = dragRectFromEvent(event);
   return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null;
 }
@@ -179,6 +186,7 @@ export function useScheduleBoardDragController(input: {
       lanes: geometry.lanes,
       unscheduledRect: geometry.unscheduledRect,
       allowedLaneIds,
+      previousTarget: event.activatorEvent && 'clientX' in event.activatorEvent ? renderedTargetRef.current?.target : null,
     });
     const scopedTarget = target.valid && target.kind === 'lane' && input.blockedLaneIds?.has(target.laneId)
       ? { valid: false, kind: 'none', overId: target.overId, reason: 'restricted' } as const
@@ -212,8 +220,8 @@ export function useScheduleBoardDragController(input: {
     if (lastDropTargetSignatureRef.current !== signature) {
       lastDropTargetSignatureRef.current = signature;
       logScheduleDebug('board.drop.target', { phase, ...debug });
+      setBoardDropTarget(target);
     }
-    setBoardDropTarget(target);
   }, []);
 
   const clearDragState = useCallback(() => {

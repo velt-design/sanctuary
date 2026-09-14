@@ -1,7 +1,8 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { commitClientUpdateAck } from '@/lib/scheduling/scheduleCommands';
-import { isMissingSchemaError, loadScheduledJobRow, normalizeClientUpdateStatus } from '@/lib/scheduling/scheduleV2Server';
+import { isMissingSchemaError, loadScheduleContext, loadScheduledJobRow, normalizeClientUpdateStatus } from '@/lib/scheduling/scheduleV2Server';
+import { scheduleWriteGuard } from '@/lib/scheduling/scheduleWriteGuard';
 
 export const runtime = 'nodejs';
 
@@ -18,8 +19,10 @@ export async function POST(req: Request) {
   if (!jobId) return jsonError('job_id is required', 400, diagnostics);
 
   let jobRow: any = null;
+  let context;
   try {
     jobRow = await loadScheduledJobRow(jobId);
+    if (jobRow) context = await loadScheduleContext({ crewId: String(jobRow.crew_id) });
   } catch (err) {
     if (isMissingSchemaError(err)) {
       logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: err });
@@ -29,7 +32,7 @@ export async function POST(req: Request) {
     return jsonError('Failed to load scheduled job', 500, diagnostics);
   }
 
-  if (!jobRow) return jsonError('Scheduled job not found', 404, diagnostics);
+  if (!jobRow || !context) return jsonError('Scheduled job not found', 404, diagnostics);
 
   const nowIso = new Date().toISOString();
   const actor = (session.user?.email || '').trim() || null;
@@ -40,6 +43,7 @@ export async function POST(req: Request) {
   }
 
   const commitRes = await commitClientUpdateAck({
+    writeGuard: scheduleWriteGuard(context, [String(jobRow.crew_id)]),
     diagnostics,
     scheduledJobId: String(jobRow.id),
     ackAt: nowIso,

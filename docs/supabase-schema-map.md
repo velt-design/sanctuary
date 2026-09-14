@@ -2,6 +2,10 @@
 
 Status: Current.
 
+Invoice expansion (`20260911000002`–`20260911000008`): `deposit_invoices` adds `invoice_kind`, versioned `content_snapshot`, `draft_revision`, `draft_options`, `issue_command_id` and `issued_from_revision`. Quote identity is nullable only for standalone records. Draft shape constraints forbid invoice numbers, public tokens, paid/sent timestamps and customer PDF artifacts. Issued content is immutable. Admin-authenticated save/delete/issue RPCs extend this table and the current commercial billing functions. `project_payment_allocations.standalone_invoice_id` is an exclusive alternative to quote/stage identity. The payment ledger retains reversed receipts and guards against multiple live receipts per invoice. See [the invoice workflow](quotes-invoices-job-packs.md#invoice-drafts-and-standalone-work) for ordered rollout and compatibility.
+
+Delivery completion: 20260911000001_project_delivery_completion.sql extends project_confirmation_events with DELIVERY_COMPLETED and delivery_details, adds the authenticated project_record_delivery_completion command, and projects existing Schedule/confirmation evidence into the project stage. The command uses Project Work receipts and append-only evidence; no browser schedule writes or payment writes are introduced. project_has_delivery_completion is internal; project_confirm_delivery_stage is the evidence-checked compatibility adapter.
+
 This doc maps active Supabase tables and RPCs to the portal workflow that owns them. Feature docs own behavior; this schema map owns table/RPC routing, write-path boundaries, access rules, and migration sources.
 
 Use this before changing schema, RLS, grants, route Supabase access, RPC commands, or table-backed workflow behavior.
@@ -204,6 +208,7 @@ Tables/RPCs:
 
 - Legacy schedule: `schedule_crews`, `schedule_items`
 - Schedule V2: `scheduled_jobs`, `crew_schedule_items`, `crew_downtimes`, `planned_commitment_history`, `nz_holidays`, `company_closures`
+- Schedule concurrency: `schedule_crews.schedule_revision`, `schedule_crews.queue_anchor_date`, `scheduled_jobs.accepted_overlaps`, `schedule_v2_guarded_command`, `schedule_v2_keep_overlap` and revision triggers are owned by `20260908000001_schedule_guarded_commands.sql`. The wrapper is service-role-only; API calculation snapshots guard all involved crews.
 - Schedule V2 RPCs: `schedule_v2_reorder_queue`, `schedule_v2_set_days_remaining`, `schedule_v2_unassign_job`, `schedule_v2_delete_downtime`, `schedule_v2_mark_done`, `schedule_v2_apply_job_patch`, `schedule_v2_apply_commitment`, `schedule_v2_ack_client_update`, `schedule_v2_assign_job`, `schedule_v2_create_downtime`, `schedule_v2_update_downtime`
 - Site visits: `site_visit_events`
 - Lifecycle occurrence fields: immutable, database-owned `site_visit_events.confirmed_at` and `projects.deposit_received_at`; existing terminal rows remain null and fail closed rather than being backfilled from mutable `updated_at`
@@ -554,3 +559,9 @@ npm run text:mojibake
 When changing auth, RLS, grants, or API access, also use `docs/staff-api-auth-contracts.md` and `docs/environment-auth-supabase.md` for route/auth verification. When changing Schedule V2 tables or RPCs, run the readiness checks in `docs/schedule.md`.
 
 The install-only 20260914062002 migration adds marketing_enquiry_staff_receipts(uuid), an authenticated portal-access read projection over enquiry_requests and the private immutable delivery receipt. It never reads current estimates or returns provider payloads/internal cost fields. This follows 20260914062001; 20260914062003 adds safe delivery status. All three are installed and ledgered in staging only after rollback rehearsal. Production application and delivery activation remain pending; see docs/staging-supabase-readiness.md.
+
+## Xero private connection storage
+
+Migration `20260914000001_xero_connection.sql` adds xero_private.connection, oauth_attempts and events. Only a separately provisioned restricted connector LOGIN receives access; anon/authenticated receive none. Audit grants are insert-only. No business or payment tables are changed. See [Xero connection](xero-connection.md).
+
+Migrations `20260914000002` through `20260914000004` add the separately gated payment pilot: `xero_payment_approvers`, immutable `xero_deposit_matches`, append-only `xero_deposit_review_notes`, `xero_deposit_review_context`, `xero_approve_deposit_match` and `xero_record_deposit_review_note`. Service-role receives bounded reads and command execution, not direct table writes; anon/authenticated receive no access. Approval uses the existing payment ledger and allocation commands under the canonical project lock, plus a global receipt lock and unique active source constraint. Existing ledger reversal synchronizes match history and invoice reopening. Grants start empty. These migrations are implementation artifacts until hosted rollout evidence is recorded in `docs/xero-connection.md`.

@@ -14,6 +14,7 @@ import {
 import ConfirmationCorrectionControls from "@/components/projects/workQueue/ConfirmationCorrectionControls.client";
 import { isDecisionReviewWorkItem } from "./projectWorkPresentation";
 import ProjectCloseDialog from "./ProjectCloseDialog";
+import ProjectDeliveryAction from "@/components/projects/ProjectDeliveryAction";
 import type { ProjectWorkCommandController } from "./useProjectWorkCommandController";
 import styles from "./ProjectWorkSection.module.css";
 
@@ -61,6 +62,9 @@ export default function ProjectWorkControls({
   return (
     <div className={styles.controlsSection}>
       <div className={styles.lifecycleActions} aria-label="Project lifecycle actions">
+        {!closed ? <ProjectDeliveryAction projectId={projectId} host={host} onRefresh={onRefresh}
+          completed={pipelineStage === 'completed' || pipelineStage === 'paid'}
+          disabled={controller.pending || controller.stale} /> : null}
         {active || waiting ? (
           <Button
             type="button"
@@ -245,6 +249,7 @@ export default function ProjectWorkControls({
       ) : null}
 
       <ProjectCloseDialog
+        projectId={projectId}
         open={closeDialogOpen}
         stage={pipelineStage}
         openWorkCount={

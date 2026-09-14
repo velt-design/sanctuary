@@ -22,9 +22,23 @@ Schedule has two normal staff views:
 
 The existing Site Visits route/data owner remains directly addressable as a bounded specialist workflow but is not shown in the Schedule tabs or portal navigation. Project work items do not link to it; the shared server ranking may expose **Arrange the site visit** at `Contacted` and **Book or confirm site visit** at `Site Visit`. Its `project` deep link resolves the project's active booking independently of the currently displayed week and salesperson filter: an existing visit switches to its week, highlights it, and opens the edit dialog, while a project with no visit opens the create dialog already linked to that project. In that direct compatibility surface, booking creates a tentative visit and the edit dialog saves its current date, time, salesperson, and notes before an explicit **Confirm booking** action. Confirmation is a compare-and-swap from `TENTATIVE` to `CONFIRMED`; only a verified affected row emits qualified-lead analytics, using the immutable database-owned `confirmed_at`. A recent confirmed replay may repair the idempotent event with that original time, while an old replay cannot create a fresh conversion; legacy confirmed rows with no `confirmed_at` fail closed. Confirmation does not mark the customer notified because this path sends no email. Staff may also record the separate bounded manual `SITE_VISIT_COMPLETED` confirmation; that fact removes the visit specialist candidate but does not create work, mutate Schedule, or advance pipeline stage.
 
+## Authored dates and conflict resolution
+
+A deliberate start-date edit or Gantt move fixes that start. Flexible queue work makes room around fixed intervals; Board order does not itself create a collision. Only overlapping working-day intervals create conflicts. Reading Board or Gantt preserves saved dates and gaps, including overdue work. Passing time does not extend started jobs or move followers: staff explicitly marks completion or updates remaining days. Recorded actual dates remain unchanged on reads. Gantt derives client-update presentation without writing flags.
+
+The Gantt range includes four complete weeks before the current Monday and twelve weeks forward (112 calendar days). It initially scrolls around today and preserves the user's position on refresh. Hidden weekends do not change the target weekday of an inverse drag.
+
+Conflicts appear in a collapsible review panel naming both jobs. Staff can change either date, change crew, or keep the exact overlap. Acceptance is stored in `scheduled_jobs.accepted_overlaps` using crew, job IDs and both date intervals; a changed interval produces a new issue. Flexible work without a client commitment reflows without a redundant confirmation. Gantt moves and resizes save on release; only affected client commitments require a review.
+
+Apply `20260908000001_schedule_guarded_commands.sql` before deploying these APIs, then verify the Schedule readiness endpoint. On 2026-09-08 the exact migration was applied and verified on staging and production; migrated staging passed authenticated Board reorder, Gantt dates across reload, Unpin, and two-session concurrent-write rejection. See `docs/environment-auth-supabase.md` for deployment evidence. Browser recovery records retain intent, not a server commit receipt; an ambiguous request requires review against refreshed saved data. Matching application CI, promotion and production readiness postflight remain release gates.
+
+The release also requires `20260908000002_schedule_browser_write_boundary.sql`. It revokes direct browser DML on jobs, queue items and downtime, all browser Schedule V2 RPC execution, crew deletion, and edits to server-owned crew revisions/anchors. Existing crew metadata fields remain writable under their existing RLS and revision trigger. Both migrations are applied on staging and production. Real staging staff requests verified direct table/RPC/revision denial while the authenticated staff API continued to save correctly.
+
+`20260908000003_schedule_cascade_write_boundary.sql` also rejects browser-role writes inside the revision trigger, covering foreign-key cascades from parent projects that table grants alone cannot stop. It is applied on staging and production; a rollback-wrapped staging staff deletion of a synthetic parent project raised the expected permission error and preserved its scheduled job.
+
 ## V2 Write Model
 
-Schedule mutations go through staff API routes and Schedule V2 RPC commands. Important command areas include:
+Schedule mutations go through staff API routes and the service-role-only `schedule_v2_guarded_command` wrapper around the existing Schedule V2 RPC commands. The API captures each involved crew revision before reading calculation rows; the wrapper locks those crews in ID order, checks their revisions, and rejects a stale or out-of-scope write atomically with HTTP 409. Row triggers increment crew revisions for job, queue and downtime writes; crew planning settings and calendar changes also invalidate earlier calculations. The guarded command retains an authored `queue_anchor_date`, clears it when a queue becomes empty, and keeps leading/downtime-only queues stable across refreshes. New assignments are never backdated into an old empty queue. Cross-crew moves guard both crews. Important command areas include:
 
 - Assign/unassign jobs.
 - Reorder queue.
@@ -63,9 +77,7 @@ controller:
   intent over confirmed truth. A commit-ambiguous Board command retains its
   placement through two bounded reads; an unverifiable result blocks only its
   project and affected lane resources while unrelated crews remain movable.
-- A separately mounted/remounted Schedule client has no component-local intent
-  layer, so it remains read-only while another owner is saving and reconciles
-  after that owner settles.
+- A separately mounted Schedule client remains read-only while another in-process owner is saving and reconciles after that owner settles. Owner-scoped browser records retain queued Board placement and sent command intent across a reload. The collapsible recovery panel shows unconfirmed/rejected requests for review; it never blindly replays an ambiguous create or destructive command.
 - Acquire that mutation owner and cancel active Board/Gantt reads before
   persistence starts. Board optimism is already visible before a queued command
   starts; Gantt and non-placement commands retain their checkpoint lifecycle.
@@ -90,7 +102,7 @@ controller:
 - Claim success only after the staff API explicitly returns `ok: true`.
 - Keep failed/stale state visible until a successful save or explicit refresh
   reconciles the server snapshot. Board placement recovery is card/lane scoped;
-  Gantt and other Schedule recovery may remain page scoped.
+  Gantt and other Schedule recovery may remain page scoped. Ambiguous Gantt timing keeps the requested preview visible until an authoritative read settles it; the UI distinguishes an unconfirmed preview from an accepted save.
 - Treat network failures, HTTP 408/5xx responses, and malformed success
   responses as commit-ambiguous. Board retains and verifies its latest visual
   placement; other mutations refresh authoritative state rather than claiming
@@ -168,13 +180,23 @@ Foundation layout.
 Board job cards keep project-open, move, and actions as separate sibling
 controls. Pointer and keyboard drag activation belongs only to the labelled
 Move control; the card container is not a nested interactive surface. Board
-drag targeting is pointer-owned, keeps the source card anchored, renders one
-overlay and a non-layout-shifting insertion cue, and names the exact one-based
-queue position. Release remeasures current geometry and commits that valid
+drag targeting is pointer-owned, keeps a quiet source placeholder at the same
+size, and lifts a visual copy of the complete card without changing its dimensions
+or content. A strong insertion line with a compact "Place here" marker identifies
+the exact gap without shifting surrounding cards. A label above the floating card
+names the destination crew and one-based queue position, remaining readable when
+the card covers the gap. The live region also names the exact queue position.
+Six pixels of midpoint tolerance prevent tiny pointer reversals from alternating
+adjacent slots. Release remeasures current geometry using the same tolerance and commits that valid
 destination, falling back to the last visible valid cue only when end-event
 collision data disappears. The zero-based Schedule V2 command position is
 derived by the pure `scheduleBoardOrder.ts` owner after removing the moving
-card from its source lane. Same-position/unscheduled drops, hidden crews, and
+card from its source lane. The floating copy lands over the accepted card in
+160 ms while that card is hidden, then hands visibility back without a fade.
+Reduced-motion preferences remove landing and keyboard-overlay animation.
+Keyboard coordinates use the current key delta rather than a potentially stale
+translated rectangle, and the source keeps focus throughout the gesture.
+Same-position/unscheduled drops, hidden crews, and
 cross-crew downtime moves are rejected before a command. Mounted Board
 placement gestures remain available while earlier placements persist:
 disjoint crew resources run concurrently and overlapping lane/project work
@@ -241,7 +263,7 @@ Gantt separates planning controls (range, scale, today, All jobs/Needs
 attention, and crews) from secondary view options (planned dates, completed
 jobs, density, and legend). Its default visual scale is eight weeks, while the
 Monday-aligned query, cache, and authoritative refresh range remains twelve
-weeks/84 days. Needs attention is a presentation filter over existing facts
+weeks forward plus four weeks of history/112 days. Needs attention is a presentation filter over existing facts
 only: an attached Schedule warning/error, a required client update, or planned
 drift beyond the stored flex allowance. It does not create a new priority or
 Schedule state.
@@ -258,15 +280,13 @@ grouped controls, and `ScheduleGanttTimeline.tsx` owns timeline presentation.
 scroll anchoring, focus return, and client-owned command callbacks.
 
 Gantt exposes an explicit **View unscheduled jobs** route back to Board with
-the queue expanded. A pointer drag or resize ends in a local review dialog
-that names the project, customer/site, crew, authoritative current timing, and
-the requested start and duration before invoking the existing command
-callback. The browser does not claim an exact proposed finish: crew calendars,
-holidays, closures, and affected-job dates remain server-calculated. **Check
-impact** enters the unchanged server-owned affected-job preview, immediate
-re-preview, explicit confirmation, optimistic rollback, and reconciliation
-lifecycle. If the underlying item changes while the local review is open,
-impact checking is disabled and staff must preview again.
+the queue expanded. Releasing a pointer drag or resize invokes the existing
+command immediately, without a routine confirmation modal. The live drag
+preview shows the requested timing and "Release to save". Crew calendars,
+holidays, closures and affected-job dates remain server-calculated. Only a
+server response identifying affected client commitments opens the existing
+review, re-preview and confirmation flow. Stale gestures are cancelled before
+dispatch; uncertain-save recovery and database revision guards still apply.
 
 At narrow widths the Unscheduled queue stacks above one horizontally focused
 crew lane; collapsing it reclaims the queue body so the first crew lane can
@@ -357,7 +377,7 @@ concurrency, out-of-order response replay, proportional
 auto-scroll, blocked uncommittable gestures, grouped actions, silent normal
 Board persistence, resource-scoped action-required recovery, exact snapshot placement
 matching, Board control semantics, shared job
-identity/search presentation, server-authoritative Gantt timing review,
+identity/search presentation, Gantt save-on-release and affected-commitment review,
 stale-impact disabling, bounded Gantt project loading, phone/zoom agenda mode,
 and Gantt keyboard/responsive behavior. With current staff test credentials,
 also run the authenticated non-mutating browser review:
@@ -377,11 +397,17 @@ accommodate presentation work.
 The data-free `/qa/schedule-ops-fixture` route is gated by
 `ENABLE_PORTAL_QA_FIXTURES=1`. It renders the production Board/Gantt
 presenters with long customer/site identity, nine crews, conflicts, 12
-unscheduled jobs, and an optional 108-bar large schedule. Every command
-callback is inert. Use `?view=board|gantt&scale=standard|large` for deterministic
+unscheduled jobs, and an optional 108-bar large schedule. Use
+`?view=board|gantt&scale=standard|large` for deterministic
 responsive and performance evidence without creating or mutating shared
-Schedule records. Board drops update fixture-only in-memory arrays so the
-rendered committed position can be asserted without any API/RPC call. Board
+Schedule records. Board drops and Gantt move/resize releases update only
+in-memory sample rows and reflow them through the shared scheduling engine.
+Unpin also updates the sample row and returns the job to flexible queue placement.
+Bars derive from those rows, so switching views retains the requested dates;
+refresh resets the sample. Other project/customer commands remain inert.
+Sample dates are sequential working days per crew. The browser gate verifies
+forward/inverse bar movement and exact duration extension, including a stored
+end on a hidden weekend, without any API/RPC call. Board
 additionally accepts `&state=failed|stale|slow` to render exceptional Retry and
 Refresh notices or silent background persistence without a command; normal
 drops stay silent. Run

@@ -8,6 +8,8 @@ on:
       - ".github/workflows/ai-foundation.yml"
       - "packages/ai/**"
       - "scripts/test-ai-task-ledger-db.mjs"
+      - "scripts/ci/pull-ai-db-image.mjs"
+      - "test/ai-db-image-pull.test.ts"
       - "supabase/migrations/*ai_task*.sql"
       - "supabase/migrations/*ai_approval*.sql"
       - "supabase/migrations/*ai_synthetic*.sql"
@@ -28,6 +30,8 @@ on:
       - ".github/workflows/ai-foundation.yml"
       - "packages/ai/**"
       - "scripts/test-ai-task-ledger-db.mjs"
+      - "scripts/ci/pull-ai-db-image.mjs"
+      - "test/ai-db-image-pull.test.ts"
       - "supabase/migrations/*ai_task*.sql"
       - "supabase/migrations/*ai_approval*.sql"
       - "supabase/migrations/*ai_synthetic*.sql"
@@ -67,6 +71,9 @@ jobs:
       - name: AI package typecheck
         run: npx tsc -p packages/ai/tsconfig.typecheck.json --noEmit --incremental false
 
+      - name: Database image pull retry contracts
+        run: npx vitest run test/ai-db-image-pull.test.ts
+
       - name: Package boundary guard
         run: npm run packages:guard
 
@@ -95,6 +102,9 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
+
+      - name: Pull database image with bounded throttle recovery
+        run: node scripts/ci/pull-ai-db-image.mjs
 
       - name: Exact-file rollback and executable database contract
         run: npm run test:ai:db

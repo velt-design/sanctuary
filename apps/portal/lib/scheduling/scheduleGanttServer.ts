@@ -4,7 +4,7 @@ import type { ScheduleGanttResponse } from '@/lib/repo/scheduleV2Repo';
 import { isYmd } from '@/lib/scheduling/date';
 import { ScheduleSchemaNotReadyError } from '@/lib/scheduling/scheduleBoardServer';
 import {
-  applyDriftStatusPatches,
+  computeJobsWithDriftStatus,
   computeRangeHolidays,
   computeRangeIntersection,
   formatCrewScheduleBlocks,
@@ -92,11 +92,12 @@ export async function loadScheduleGanttResponse(input: {
       downtimes: crewDowntimes,
       calendar: ctx.calendar,
       today: ctx.today,
+      preserveSaved: true,
     });
 
     let jobsWithDrift;
     try {
-      jobsWithDrift = await applyDriftStatusPatches({
+      jobsWithDrift = computeJobsWithDriftStatus({
         jobs: crewJobs,
         recompute,
         region: crewRow.calendar_region || 'Auckland',
@@ -119,9 +120,8 @@ export async function loadScheduleGanttResponse(input: {
       }
     }
 
-    conflicts.push(
-      ...formatted.conflicts.filter((conflict) => isYmd(conflict.pinned_start) && conflict.pinned_start >= input.rangeStart && conflict.pinned_start <= input.rangeEnd),
-    );
+    const visibleJobIds = new Set(items.filter((item) => item.crew_id === crewRow.id).map((item) => item.job?.id));
+    conflicts.push(...formatted.conflicts.filter((conflict) => visibleJobIds.has(conflict.job_id) || visibleJobIds.has(conflict.conflicting_job_id)));
   }
 
   let projectIndex: NonNullable<ScheduleGanttResponse['project_index']> = [];

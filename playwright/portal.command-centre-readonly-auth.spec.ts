@@ -228,7 +228,7 @@ test("authenticated Project Overview is one read-only command-centre surface", a
           closeDialog.getByRole("radio", { name: /^Cancelled/ }),
         ).not.toBeChecked();
         await expect(
-          closeDialog.getByRole("radio", { name: /^Complete/ }),
+          closeDialog.getByRole("radio", { name: /^Close settled project/ }),
         ).not.toBeChecked();
         await expect(closeDialog.getByText("What will happen")).toBeVisible();
         await expect(

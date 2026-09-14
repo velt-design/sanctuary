@@ -121,8 +121,7 @@
   scrollbar-gutter: stable;
 }
 
-.unscheduledBody[data-over='true'],
-.laneBody[data-over='true'] {
+.unscheduledBody[data-over='true'] {
   box-shadow: inset 0 0 0 var(--ui-border-width-emphasis) var(--ui-action);
   border-radius: var(--ui-radius-panel);
   background: color-mix(in srgb, var(--ui-action) 5%, var(--ui-surface-primary));
@@ -177,20 +176,15 @@
 }
 
 .cardList[data-drop-end='true']::after {
-  content: 'Drop here · position ' attr(data-drop-end-position);
+  content: '';
   position: absolute;
   right: 0;
-  bottom: -38px;
+  bottom: -7px;
   left: 0;
-  min-height: 30px;
-  display: grid;
-  place-items: center;
-  border: var(--ui-border-width-emphasis) dashed var(--ui-action);
-  border-radius: var(--ui-radius-control);
-  background: color-mix(in srgb, var(--ui-action) 8%, var(--ui-surface-primary));
-  color: var(--ui-text-strong);
-  font-size: 11px;
-  font-weight: 800;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--ui-action);
+  pointer-events: none;
 }
 
 .jobCard {
@@ -201,7 +195,7 @@
   background: var(--ui-surface-elevated);
   padding: 11px 12px 12px;
   box-shadow: none;
-  transition: opacity 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .jobCard:hover {
@@ -209,28 +203,45 @@
   border-color: var(--ui-border-strong);
 }
 
-.jobCard[data-drop-target='true'] {
-  box-shadow: inset 0 0 0 var(--ui-border-width-emphasis) var(--ui-action);
-  border-color: var(--ui-action);
+.jobCard[data-drop-target='true']::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  right: 0;
+  left: 0;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--ui-action);
+  pointer-events: none;
+  z-index: 2;
 }
 
-.jobCard[data-drop-target='true']::before {
-  content: 'Insert here';
+.jobCard[data-drop-target='true']::after,
+.cardList[data-drop-end='true']::before,
+.emptyLane[data-drop-end='true']::after {
+  content: 'Place here';
   position: absolute;
-  top: -15px;
-  right: 8px;
-  min-height: 20px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 7px;
+  right: 0;
+  top: -18px;
+  padding: 3px 9px;
+  border: 2px solid var(--ui-action);
   border-radius: var(--ui-radius-control);
-  background: var(--ui-action);
+  background: var(--ui-surface-inverse);
   color: var(--ui-text-inverse);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  z-index: 2;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.cardList[data-drop-end='true']::before {
+  top: auto;
+  bottom: -20px;
+}
+
+.emptyLane[data-drop-end='true']::after {
+  top: -11px;
 }
 
 .jobCard[data-issue-level='warning'] {
@@ -668,27 +679,28 @@
   letter-spacing: 0.01em;
 }
 
-.dragOverlay {
-  width: min(300px, calc(100vw - 24px));
-  border: var(--ui-border-width) solid var(--ui-border-strong);
-  border-radius: var(--ui-radius-panel);
-  background: var(--ui-surface-elevated);
-  padding: 10px 12px;
-  pointer-events: none;
+.jobCard[data-dragging='true'] {
+  border: var(--ui-border-width) dashed var(--ui-border);
+  background: var(--ui-surface-secondary);
+  box-shadow: none;
 }
 
-.dragOverlay[data-valid='false'] {
-  border-color: var(--ui-status-error-border);
+.jobCard[data-dragging='true'] > * {
+  opacity: 0;
 }
 
-.dragDestination {
-  margin-top: 9px;
-  padding-top: 8px;
-  border-top: var(--ui-border-width) solid var(--ui-border);
-  color: var(--ui-text-strong);
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.35;
+.emptyLane[data-drop-end='true'] {
+  position: relative;
+}
+
+.emptyLane[data-drop-end='true']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  background: var(--ui-action);
 }
 
 .dragLiveRegion {

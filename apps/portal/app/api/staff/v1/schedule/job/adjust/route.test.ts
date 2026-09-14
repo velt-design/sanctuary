@@ -86,7 +86,7 @@ describe('POST /api/staff/v1/schedule/job/adjust', () => {
       error: null,
     });
     scheduledJobsByIdMaybeSingle.mockResolvedValue({ data: null, error: null });
-    loadScheduleContext.mockResolvedValue({ today: '2026-04-10', calendar: {} });
+    loadScheduleContext.mockResolvedValue({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }], today: '2026-04-10', calendar: {} });
     buildCrewContext.mockReturnValue({
       crewRow: { id: 'crew-1', calendar_region: 'Auckland' },
       items: [],
@@ -281,7 +281,7 @@ describe('POST /api/staff/v1/schedule/job/adjust', () => {
     );
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_apply_job_patch', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_apply_job_patch', p_expected_revisions: expect.any(Object), p_args: {
       p_scheduled_job_id: 'scheduled-job-1',
       p_job_patch: {
         mode: 'pinned',
@@ -302,7 +302,7 @@ describe('POST /api/staff/v1/schedule/job/adjust', () => {
           forecast_duration_days: 2,
         },
       ],
-    });
+    } });
     expect(response.status).toBe(200);
     expect(response.headers.get('x-portal-request-id')).toBe('req_adjust_ok');
     await expect(response.json()).resolves.toEqual({

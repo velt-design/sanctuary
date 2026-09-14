@@ -1,3 +1,4 @@
+import { scheduleWriteGuard } from '@/lib/scheduling/scheduleWriteGuard';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn, type RouteDiagnostics } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
@@ -539,6 +540,7 @@ export async function POST(req: Request) {
   }
 
   const commitRes = await commitAssignJob({
+    writeGuard: scheduleWriteGuard(ctx, [crewId, sourceCrewId, existingCrewId]),
     diagnostics,
     targetCrewId: crewId,
     targetInsertPosition: position,

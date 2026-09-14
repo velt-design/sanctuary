@@ -10,6 +10,7 @@ import {
 import { projectClosedOutcomeLabel } from "@/lib/projects/workItems/presentation";
 import type { ProjectClosedOutcome } from "@/lib/projects/workItems/types";
 import styles from "./ProjectCloseDialog.module.css";
+import { apiJson } from "@/lib/repo/apiClient";
 
 const LOST_OUTCOMES = [
   "LOST_NO_RESPONSE",
@@ -35,7 +36,7 @@ function finalActionLabel(
     return `Close as ${projectClosedOutcomeLabel(lostOutcome)}`;
   }
   if (path === "CANCELLED") return "Close as Cancelled";
-  if (path === "COMPLETE") return "Close as Complete";
+  if (path === "COMPLETE") return "Close settled project";
   return "Choose a close outcome";
 }
 
@@ -46,7 +47,9 @@ export default function ProjectCloseDialog({
   busy,
   onClose,
   onConfirm,
+  projectId,
 }: {
+  projectId?: string;
   open: boolean;
   stage: PipelineStageKey;
   openWorkCount: number;
@@ -58,6 +61,17 @@ export default function ProjectCloseDialog({
   const [lostOutcome, setLostOutcome] = useState<ProjectClosedOutcome | "">("");
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
+  const [closureBlockers, setClosureBlockers] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (!open || !projectId) return;
+    let active = true;
+    setClosureBlockers(null);
+    void apiJson<{ closureBlockers: string[] }>(`/api/staff/v1/projects/${encodeURIComponent(projectId)}/delivery`)
+      .then((result) => { if (active) setClosureBlockers(result.closureBlockers); })
+      .catch(() => { if (active) setClosureBlockers(['Unable to verify settlement. Close and reopen this dialog to retry.']); });
+    return () => { active = false; };
+  }, [open, projectId]);
 
   useEffect(() => {
     if (!open) return;
@@ -75,7 +89,8 @@ export default function ProjectCloseDialog({
     return null;
   }, [lostOutcome, path]);
   const canConfirm = Boolean(
-    !busy && outcome && (!requiresReason || reason.trim()),
+    !busy && outcome && (!requiresReason || reason.trim()) &&
+      (path !== 'COMPLETE' || !projectId || closureBlockers?.length === 0),
   );
   const stageLabel = PIPELINE_STAGE_LABELS[stage] ?? stage;
 
@@ -128,6 +143,13 @@ export default function ProjectCloseDialog({
       hint="Closing can be reversed later with Reopen project."
     >
       <div className={styles.content}>
+        {path === 'COMPLETE' && projectId ? (
+          <div role="status">
+            {closureBlockers === null ? 'Checking delivery and settlement…' : closureBlockers.length
+              ? <ul>{closureBlockers.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+              : 'Delivery is confirmed and billing is reconciled.'}
+          </div>
+        ) : null}
         <fieldset className={styles.outcomes}>
           <legend>Why is this project closing?</legend>
           <Radio
@@ -159,8 +181,8 @@ export default function ProjectCloseDialog({
             value="COMPLETE"
             checked={path === "COMPLETE"}
             disabled={busy}
-            label="Complete"
-            description="All expected project delivery is finished."
+            label="Close settled project"
+            description="Delivery is confirmed and all billing is reconciled. Use Mark delivery completed to record delivery before payment."
             onChange={() => {
               setPath("COMPLETE");
               setLostOutcome("");

@@ -19,6 +19,17 @@ function lane(id: string, itemIds: string[], top = 100): BoardDragLane {
 }
 
 describe('resolveBoardDropTarget', () => {
+  it('holds the indicated slot through small midpoint jitter, but follows a deliberate crossing', () => {
+    const input = { activeId: 'moving', sourceLaneId: null, overId: 'first', lanes: [lane('crew', ['first', 'second'])] };
+    const previousTarget = resolveBoardDropTarget({ ...input, point: { x: 120, y: 114 } });
+    const held = resolveBoardDropTarget({ ...input, point: { x: 120, y: 127 }, previousTarget });
+    expect(held).toMatchObject({ valid: true, insertionIndex: 0 });
+    const crossed = resolveBoardDropTarget({ ...input, point: { x: 120, y: 132 }, previousTarget });
+    expect(crossed).toMatchObject({ valid: true, insertionIndex: 1 });
+    expect(resolveBoardDropTarget({ ...input, point: { x: 120, y: 121 }, previousTarget: crossed })).toMatchObject({ valid: true, insertionIndex: 1 });
+    // Fresh release geometry can invalidate the previous boundary and must win.
+    expect(resolveBoardDropTarget({ ...input, lanes: [lane('crew', ['first', 'second'], 150)], point: { x: 120, y: 132 }, previousTarget: crossed })).toMatchObject({ valid: true, insertionIndex: 0 });
+  });
   it('resolves an unscheduled job dropped into an empty lane to index 0', () => {
     const target = resolveBoardDropTarget({
       activeId: 'job-a',

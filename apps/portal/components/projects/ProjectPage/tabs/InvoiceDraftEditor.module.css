@@ -1,0 +1,5 @@
+.editor, .fields { display: grid; gap: 16px; }
+.fields { margin: 0; padding: 0; border: 0; min-width: 0; }
+.item { border: 1px solid var(--border-subtle, #ddd); border-radius: 8px; padding: 12px; display: grid; gap: 12px; }
+.numbers { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+.numbers > * { flex: 1 1 130px; min-width: 0; }

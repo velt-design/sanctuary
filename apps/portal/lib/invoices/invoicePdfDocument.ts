@@ -1,4 +1,5 @@
 import "server-only";
+import { invoiceContentBlocks } from './invoiceContentBlocks';
 
 import { PDFDocument, type PDFImage, type PDFPage } from "pdf-lib";
 import { paymentDetailsLines } from "../payments/paymentDetails";
@@ -133,6 +134,9 @@ export async function renderDepositInvoicePdfDocument(
     cursorY = first
       ? drawFirstPageHeader(page, vm, fonts, logo)
       : drawContinuationHeader(page, vm, fonts, logo);
+    if (data.draft) {
+      drawText(page, 'DRAFT — PREVIEW ONLY', { x: CONTENT_X0, y: PAGE_HEIGHT - 22, size: 10, font: fonts.semibold, color: brandColors.accent });
+    }
   };
 
   const ensureSpace = (height: number) => {
@@ -334,15 +338,27 @@ export async function renderDepositInvoicePdfDocument(
   recordBottom(cursorY);
   cursorY -= 18;
 
+  for (const block of invoiceContentBlocks(data)) {
+    const lines = block.text.split(/\r?\n/).flatMap((line) => wrapText(fonts.regular, line, FONT_SIZES.bodySmall, CONTENT_W));
+    ensureSpace(Math.min(lines.length, 3) * LINE_HEIGHTS.body + 12);
+    for (const line of lines) {
+      ensureSpace(LINE_HEIGHTS.body);
+      drawText(page, line, { x: CONTENT_X0, y: cursorY, size: FONT_SIZES.bodySmall,
+        font: block.heading ? fonts.semibold : fonts.regular, color: block.heading ? brandColors.accent : brandColors.muted });
+      cursorY -= LINE_HEIGHTS.body;
+    }
+    recordBottom(cursorY); cursorY -= 10;
+  }
+
   const calculationRows = [
-    ["Source quote total (incl. GST)", vm.totals.quoteTotalIncGst],
+    ...(!data.contentSnapshot ? [["Source quote total (incl. GST)", vm.totals.quoteTotalIncGst]] : []),
     [vm.deposit.label, vm.deposit.basis],
     ["Subtotal (excl. GST)", vm.totals.totalExGst],
     ["GST (15%)", vm.totals.gst],
   ] as const;
   const calculationHeight = 20 + calculationRows.length * 22 + 40;
   ensureSpace(calculationHeight + 22);
-  drawSectionLabel("Calculation");
+  drawSectionLabel(data.contentSnapshot ? 'This invoice — amount due' : 'Calculation');
   const calculationTopY = cursorY;
   page.drawLine({
     start: { x: CONTENT_X0, y: calculationTopY },

@@ -23,6 +23,7 @@ export type SchedulePlanItem = {
   amountIncGstCents: number;
 };
 export type ScheduleAllocation = {
+  standaloneInvoiceId?: string | null;
   id: string;
   paymentEntryId: string;
   quoteVersionId: string;
@@ -69,7 +70,7 @@ export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSc
       : [];
   const currentVersionId = input.acceptedQuoteVersionId ?? acceptedQuotes[0]?.quoteVersionId ?? null;
   const acceptedVersionIds = new Set(acceptedQuotes.map((quote) => quote.quoteVersionId));
-  const activeInvoices = input.invoices.filter((invoice) => invoice.status !== 'VOID');
+  const activeInvoices = input.invoices.filter((invoice) => invoice.status === 'OPEN' || invoice.status === 'PAID');
   const invoiceByTerm = new Map(activeInvoices.map((invoice) => [`${invoice.quoteVersionId}:${invoice.paymentTermId}`, invoice]));
   const activeAllocations = input.allocations;
   const allocatedByCurrentTerm = new Map<string, number>();
@@ -145,14 +146,16 @@ export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSc
     .reduce((sum, invoice) => sum + invoice.totalIncGstCents, 0);
   const acceptedTotalIncGstCents = acceptedQuotes.reduce((sum, quote) => sum + quote.totalIncGstCents, 0);
   const committedIncGstCents = paidIncGstCents + outstandingIncGstCents;
-  const currentAllocated = [...allocatedByCurrentTerm.values()].reduce((sum, amount) => sum + amount, 0);
+  const currentAllocated = [...allocatedByCurrentTerm.values()].reduce((sum, amount) => sum + amount, 0)
+    + activeAllocations.filter((allocation) => allocation.standaloneInvoiceId).reduce((sum, allocation) => sum + allocation.amountIncGstCents, 0);
   const paymentEntries = input.paymentEntries.map((entry) => {
     const entryAllocations = activeAllocations.filter((allocation) => allocation.paymentEntryId === entry.id);
     const allocations = entryAllocations.map((allocation) => ({
       id: allocation.id,
+      standaloneInvoiceId: allocation.standaloneInvoiceId,
       quoteVersionId: allocation.quoteVersionId,
       paymentTermId: allocation.paymentTermId,
-      stageLabel: terms.find((term) => (
+      stageLabel: allocation.standaloneInvoiceId ? 'Standalone invoice' : terms.find((term) => (
         term.quoteVersionId === allocation.quoteVersionId && term.paymentTermId === allocation.paymentTermId
       ))?.label ?? 'Historical payment stage',
       amountIncGstCents: allocation.amountIncGstCents,
@@ -173,7 +176,9 @@ export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSc
     acceptedQuoteVersionId: currentVersionId,
     acceptedQuoteRef: input.acceptedQuoteRef,
     acceptedQuoteVersionNumber: input.acceptedQuoteVersionNumber,
-    acceptedQuoteTotalIncGstCents: totals?.acceptedTotalIncGstCents ?? acceptedTotalIncGstCents,
+    acceptedQuoteTotalIncGstCents: acceptedTotalIncGstCents,
+    standaloneTotalIncGstCents: activeInvoices.filter((invoice) => invoice.invoiceKind === 'STANDALONE').reduce((sum, invoice) => sum + invoice.totalIncGstCents, 0),
+    billableTotalIncGstCents: totals?.acceptedTotalIncGstCents ?? acceptedTotalIncGstCents + activeInvoices.filter((invoice) => invoice.invoiceKind === 'STANDALONE').reduce((sum, invoice) => sum + invoice.totalIncGstCents, 0),
     invoicedIncGstCents: activeInvoices.reduce((sum, invoice) => sum + invoice.totalIncGstCents, 0),
     paidIncGstCents: totals?.paidIncGstCents ?? paidIncGstCents,
     outstandingIncGstCents: totals?.outstandingIncGstCents ?? outstandingIncGstCents,

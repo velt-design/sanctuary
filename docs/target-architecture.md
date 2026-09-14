@@ -428,3 +428,7 @@ The first package-boundary gate is `npm run packages:guard`, which checks app im
 The first large-file visibility gate is `npm run files:report`, which is advisory and reports files that need owner-aware decomposition before major feature expansion.
 
 Docs name the destination. Tests, lint, CI, and package boundaries should increasingly make the destination hard to miss.
+
+## Xero connection boundary
+
+The default-dark Xero adapter is portal-owned, with a dedicated database role, encrypted connection state and read-only provider scopes. It does not widen Praxis reporting or change invoice/payment ownership. See [Xero connection](xero-connection.md).

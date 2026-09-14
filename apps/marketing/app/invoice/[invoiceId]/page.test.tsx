@@ -95,6 +95,25 @@ async function renderOpenInvoice(
 }
 
 describe("public invoice presentation", () => {
+  it('separates itemised reference scope from the deposit and omits quote identity for standalone work', async () => {
+    const contentSnapshot = { version: 1 as const, billingName: 'Synthetic customer', billingEmail: 'customer@example.invalid',
+      billingAddress: '18 Example Lane\nAuckland', notes: 'Invoice-specific note',
+      items: [{ id: 'item-1', description: 'Pergola structure\nPowder coated frame and roof', qty: 2, unitPriceIncGstCents: 57500, lineTotalIncGstCents: 115000 }] };
+    const linked = await renderOpenInvoice({ contentSnapshot, invoiceKind: 'QUOTE_LINKED', quoteTotalIncGstCents: 115000, totalIncGstCents: 57500, totalExGstCents: 50000, gstCents: 7500 });
+    const linkedHtml = renderToStaticMarkup(linked);
+    expect(linkedHtml).toContain('Quoted scope — reference');
+    expect(linkedHtml).toContain('This invoice —');
+    expect(linkedHtml).toContain('Invoice-specific note');
+    await writeVisualFixture(linked, 'itemised-deposit');
+    const standalone = await renderOpenInvoice({ contentSnapshot, invoiceKind: 'STANDALONE', quoteRef: undefined,
+      quoteVersionId: undefined, quoteVersionNumber: undefined, quotePdfFileId: null,
+      totalIncGstCents: 115000, totalExGstCents: 100000, gstCents: 15000, quoteTotalIncGstCents: 0 });
+    const standaloneHtml = renderToStaticMarkup(standalone);
+    expect(standaloneHtml).toContain('Itemised invoice');
+    expect(standaloneHtml).not.toContain('Source quote PDF');
+    expect(standaloneHtml).not.toContain('undefined');
+    await writeVisualFixture(standalone, 'standalone');
+  });
   beforeEach(() => {
     loadPublicDepositInvoiceByToken.mockReset();
   });

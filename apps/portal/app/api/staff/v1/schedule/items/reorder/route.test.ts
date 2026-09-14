@@ -76,7 +76,7 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
       body: { crew_id: CREW_UUID, item_id: ITEM_2_UUID, new_position: 0 },
     });
     isMissingSchemaError.mockReturnValue(false);
-    loadScheduleContext.mockResolvedValue({ today: '2026-04-10', calendar: {} });
+    loadScheduleContext.mockResolvedValue({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }], today: '2026-04-10', calendar: {} });
     buildCrewContext.mockReturnValue({
       crewRow: { id: CREW_UUID, calendar_region: 'Auckland' },
       items: [
@@ -124,7 +124,7 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
     );
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_reorder_queue', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_reorder_queue', p_expected_revisions: expect.any(Object), p_args: {
       p_crew_id: CREW_UUID,
       p_positions: [
         { id: ITEM_2_UUID, position: 0 },
@@ -138,7 +138,7 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
           forecast_duration_days: 2,
         },
       ],
-    });
+    } });
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       ok: true,

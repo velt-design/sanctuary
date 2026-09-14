@@ -1,3 +1,4 @@
+import { scheduleWriteGuard } from '@/lib/scheduling/scheduleWriteGuard';
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
@@ -217,6 +218,7 @@ export async function runCommitmentMutation(req: Request, eventType: CommitmentE
   if (input.hardLock) updatePayload.forecast_start = plannedStart;
 
   const commitRes = await commitPlannedCommitment({
+    writeGuard: scheduleWriteGuard(ctx, [crewId]),
     diagnostics,
     scheduledJobId: String(jobRow.id),
     jobPatch: updatePayload,

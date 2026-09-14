@@ -1,5 +1,15 @@
 'use client';
 
+import { deriveScheduleStatus } from './scheduleItemStatus';
+
+import { checkAndCommitScheduleMutation } from './scheduleMutationConfirmation';
+import { retainScheduleBoardIntent } from '@/lib/scheduling/schedulePendingRequests';
+import ScheduleIssuesPanel from './ScheduleIssuesPanel';
+import { buildScheduleConflictIssues } from './scheduleConflictIssues';
+import { keepScheduleOverlap } from '@/lib/repo/scheduleV2Repo';
+import SchedulePendingChanges from './SchedulePendingChanges';
+import { createScheduleMutationCheckpoint, schedulePreviewRecoveryMessage, type SchedulePreviewKind } from './scheduleMutationCheckpoint';
+
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from 'react';
@@ -70,6 +80,7 @@ import { logScheduleDebug } from './scheduleDebug';
 import { resolveScheduleBoardOrderChange } from './scheduleBoardOrder';
 import {
   isValidScheduleMutationEnvelope,
+  isDefinitiveScheduleMutationFailure,
   parseScheduleConfirmationEnvelope,
   parseScheduleFinishEarlyPreview,
   scheduleCommitImpactFingerprint,
@@ -210,27 +221,11 @@ function formatStatusLabel(status: string): string {
   return projectStatusLabel(normalized.status);
 }
 
-function normalizeScheduleStatus(value: unknown): ScheduleItemStatus {
-  const s = typeof value === 'string' ? value.trim().toUpperCase() : '';
-  if (s === 'CONFIRMED' || s === 'IN_PROGRESS' || s === 'COMPLETED') return s as ScheduleItemStatus;
-  return 'TENTATIVE';
-}
-
 function scheduleStatusLabel(status: ScheduleItemStatus): string {
   if (status === 'CONFIRMED') return 'Confirmed';
   if (status === 'IN_PROGRESS') return 'In progress';
   if (status === 'COMPLETED') return 'Completed';
   return 'Tentative';
-}
-
-function deriveScheduleStatus(item: ScheduleItem, today: string): ScheduleItemStatus {
-  const raw = normalizeScheduleStatus(item.scheduleStatus);
-  if (raw === 'COMPLETED') return 'COMPLETED';
-  const planned = typeof item.startDateOverride === 'string' ? item.startDateOverride : '';
-  const started = Boolean(item.actualStartDate) || (planned && planned <= today);
-  if (started) return 'IN_PROGRESS';
-  if (raw === 'CONFIRMED' || item.locked) return 'CONFIRMED';
-  return 'TENTATIVE';
 }
 
 function isLockedScheduleStatus(status: ScheduleItemStatus): boolean {
@@ -527,7 +522,7 @@ export default function ScheduleClient({
   const v2ReconciliationRunRef = useRef(0);
   const v2SnapshotIgnoredDuringMutationRef = useRef(false);
   const v2ObservedForeignMutationRef = useRef(false);
-  const v2CommittedPreviewPendingRef = useRef(false);
+  const v2PreservedPreviewRef = useRef<SchedulePreviewKind>(false);
   const v2BoardMutationErrorOwnedRef = useRef(false);
   const v2BoardScopedRecoveryIdsRef = useRef<Set<number>>(new Set());
   const requestedScheduleViewRef = useRef<ScheduleView | null>(null);
@@ -608,7 +603,6 @@ export default function ScheduleClient({
     reason: string;
     note: string;
   } | null>(null);
-  const [cleanupBusy, setCleanupBusy] = useState(false);
 
   const [view, setView] = useState<'board' | 'gantt' | 'site_visits'>(initialView);
   const [query, setQuery] = useState('');
@@ -1441,7 +1435,7 @@ export default function ScheduleClient({
     v2StateKindRef.current = kind;
     if (!foreignMutationPending && (options?.authoritative || !locallyWritten)) {
       v2ReconciliationPendingRef.current = false;
-      v2CommittedPreviewPendingRef.current = false;
+      v2PreservedPreviewRef.current = false;
     }
     v2SnapshotIgnoredDuringMutationRef.current = false;
     hydratedFromCacheRef.current = true;
@@ -1668,15 +1662,17 @@ export default function ScheduleClient({
     const showingCached = hydratedFromCacheRef.current || installers.length > 0 || scheduleItems.length > 0 || projects.length > 0;
     if (showingCached) {
       toast.error(
-        v2CommittedPreviewPendingRef.current
+        v2PreservedPreviewRef.current === 'pending'
+          ? "Couldn't verify this change. The requested dates remain visible."
+          : v2PreservedPreviewRef.current
           ? "Saved, but couldn't verify the latest crew schedule."
           : "Couldn't refresh schedule (showing last saved).",
       );
       updateScheduleTrust({
         status: 'stale',
         savedAt: scheduleTrustRef.current.savedAt,
-        message: v2CommittedPreviewPendingRef.current
-          ? 'The change was saved, but the latest schedule could not be loaded. The saved preview remains visible; refresh to verify the full crew schedule.'
+        message: v2PreservedPreviewRef.current
+          ? schedulePreviewRecoveryMessage(v2PreservedPreviewRef.current)
           : "Couldn't check for newer schedule changes. You are seeing the last saved version.",
         requestId: err instanceof ApiError ? err.requestId ?? null : null,
       });
@@ -1800,21 +1796,7 @@ export default function ScheduleClient({
 
   const schedule = useMemo(() => {
     const base = buildScheduleBarsFromForecast({ scheduleItems: visibleScheduleItems, projectsById });
-    const scheduleItemByJobId = new Map<string, string>();
-    for (const item of visibleScheduleItems) {
-      if (item.scheduledJobId) scheduleItemByJobId.set(item.scheduledJobId, item.id);
-    }
-    const conflictIssues: SchedulingIssue[] = (scheduleConflicts ?? [])
-      .map((c: any) => {
-        const scheduleItemId = scheduleItemByJobId.get(String(c.job_id));
-        if (!scheduleItemId) return null;
-        const pinned = typeof c.pinned_start === 'string' ? c.pinned_start : '';
-        const expected = typeof c.expected_cursor_start === 'string' ? c.expected_cursor_start : '';
-        const overlap = typeof c.overlap_days === 'number' ? c.overlap_days : null;
-        const message = `Pinned start ${pinned || '—'} overlaps crew availability (${expected || '—'})${overlap ? ` by ${overlap} day(s)` : ''}.`;
-        return { level: 'error' as const, scheduleItemId, message };
-      })
-      .filter(Boolean) as SchedulingIssue[];
+    const conflictIssues = buildScheduleConflictIssues(scheduleConflicts ?? [], visibleScheduleItems, projectsById);
     return { bars: base.bars, issues: [...base.issues, ...conflictIssues] };
   }, [projectsById, scheduleConflicts, visibleScheduleItems]);
 
@@ -1838,6 +1820,7 @@ export default function ScheduleClient({
       if (!id) continue;
       if (issue.level === 'error') {
         map.set(id, 'error');
+        if (issue.relatedScheduleItemId) map.set(issue.relatedScheduleItemId, 'error');
         continue;
       }
       if (!map.has(id)) map.set(id, 'warning');
@@ -1915,8 +1898,10 @@ export default function ScheduleClient({
   async function refreshSchedule(options?: {
     authoritative?: boolean;
     preserveCommittedPreview?: boolean;
+    preservePendingPreview?: boolean;
   }): Promise<void> {
-    if (options?.preserveCommittedPreview) v2CommittedPreviewPendingRef.current = true;
+    if (options?.preservePendingPreview) v2PreservedPreviewRef.current = 'pending';
+    else if (options?.preserveCommittedPreview) v2PreservedPreviewRef.current = 'committed';
     setLoadError(null);
     setSyncing(true);
     updateScheduleTrust({
@@ -1954,9 +1939,7 @@ export default function ScheduleClient({
           updateScheduleTrust({
             status: 'stale',
             savedAt: scheduleTrustRef.current.savedAt,
-            message: options?.preserveCommittedPreview
-              ? 'The change was saved, but the latest schedule could not be loaded. The saved preview remains visible; refresh to verify the full crew schedule.'
-              : 'The latest saved schedule could not be loaded. The last trusted copy remains visible; refresh to try again.',
+            message: schedulePreviewRecoveryMessage(v2PreservedPreviewRef.current),
           });
         }
       }
@@ -2090,15 +2073,10 @@ export default function ScheduleClient({
   ): Promise<boolean> {
     if (scheduleMode === 'v2') {
       const isBoardCommand = typeof opts?.boardCommandId === 'number';
-      let rollbackOptimistic: (() => void) | undefined;
-      let rolledBack = false;
+      const checkpoint = createScheduleMutationCheckpoint();
+      const rollback = checkpoint.rollback;
       let reconcileAfterFailure = false;
       let reconciliationHandled = false;
-      const rollback = () => {
-        if (rolledBack) return;
-        rolledBack = true;
-        rollbackOptimistic?.();
-      };
 
       if (!isBoardCommand && (
         v2PendingMutationsRef.current > 0 ||
@@ -2138,35 +2116,11 @@ export default function ScheduleClient({
           queryClient.cancelQueries({ queryKey: ['schedule', hostKey, 'gantt'] }),
         ]);
         const preparedRollback = opts?.optimistic?.();
-        if (typeof preparedRollback === 'function') rollbackOptimistic = preparedRollback;
+        checkpoint.prepare(preparedRollback);
 
-        opts?.onPhase?.('checking');
-        let res = await run(false);
-
-        if (res && typeof res === 'object' && Object.prototype.hasOwnProperty.call(res, 'requires_confirmation')) {
-          const reportedImpacts = parseScheduleConfirmationEnvelope(res);
-          if (!reportedImpacts) {
-            throw new Error('The server returned an invalid schedule confirmation. Refreshing the saved schedule now.');
-          }
-          const impacts = commitImpactsExcludingTargets(
-            reportedImpacts,
-            opts?.targetJobIds,
-          );
-          if (!impacts.length) {
-            throw new Error('The server returned an invalid schedule confirmation. Refreshing the saved schedule now.');
-          }
-          if (impacts.length) {
-            opts?.onPhase?.('reviewing');
-            const count = impacts.length;
-            const confirmed = await confirmScheduleAction({
-              title: opts?.confirmationTitle ?? 'Move other scheduled jobs?',
-              description:
-                opts?.confirmationDescription ??
-                `This change will move ${count} other scheduled job${count === 1 ? '' : 's'}. Review the dates before saving.`,
-              confirmLabel: opts?.confirmationLabel ?? 'Save change',
-              details: formatCommitImpactDetails(impacts),
-            });
-            if (!confirmed) {
+        const outcome = await checkAndCommitScheduleMutation(run, opts, {
+          confirmScheduleAction, commitImpactsExcludingTargets, formatCommitImpactDetails,
+          onCancel: () => {
               opts?.onPhase?.('cancelled');
               opts?.onSettlement?.({ status: 'cancelled' });
               sealV2SnapshotRequestEpochs();
@@ -2179,53 +2133,14 @@ export default function ScheduleClient({
                   savedAt: trustBeforeMutation.savedAt,
                 });
               }
-              return false;
-            }
-          }
-          const confirmedFingerprint = scheduleCommitImpactFingerprint(impacts);
-          opts?.onPhase?.('checking');
-          const verification = await run(false);
-          if (
-            !verification ||
-            typeof verification !== 'object' ||
-            !Object.prototype.hasOwnProperty.call(verification, 'requires_confirmation')
-          ) {
-            res = verification;
-          } else {
-            const parsedVerifiedImpacts = parseScheduleConfirmationEnvelope(verification);
-            if (!parsedVerifiedImpacts) {
-              throw new Error('The affected jobs changed before the schedule could be saved. Refresh and try again.');
-            }
-            const verifiedImpacts = commitImpactsExcludingTargets(
-              parsedVerifiedImpacts,
-              opts?.targetJobIds,
-            );
-            if (!verifiedImpacts.length || scheduleCommitImpactFingerprint(verifiedImpacts) !== confirmedFingerprint) {
-              throw new Error('The affected jobs changed before the schedule could be saved. Refresh and try again.');
-            }
-            opts?.onPhase?.('saving');
-            res = await run(true);
-            if (
-              res &&
-              typeof res === 'object' &&
-              Object.prototype.hasOwnProperty.call(res, 'requires_confirmation')
-            ) {
-              throw new Error('The affected jobs changed before the schedule could be saved. Refresh and try again.');
-            }
-          }
-        }
-        if (
-          !isValidScheduleMutationEnvelope(res, {
-            allowMissingSchedule: opts?.allowMissingSchedule,
-            requireSourceSchedule: opts?.requireSourceSchedule,
-            expectedCrewId: opts?.expectedCrewId,
-            expectedSourceCrewId: opts?.expectedSourceCrewId,
-          })
-        ) {
-          throw new Error('The server returned an invalid saved schedule. Refreshing the authoritative schedule now.');
-        }
+
+          },
+        });
+        if (outcome.cancelled) return false;
+        const res = outcome.response;
 
         sealV2SnapshotRequestEpochs();
+        checkpoint.accept();
         const shouldApplyResponseNow = v2PendingMutationsRef.current <= 1;
         let applied = isBoardCommand
           ? commitBoardCommandResponse(opts.boardCommandId!, res as ScheduleMutationResult)
@@ -2271,6 +2186,14 @@ export default function ScheduleClient({
         return true;
       } catch (err) {
         sealV2SnapshotRequestEpochs();
+        if (checkpoint.accepted) {
+          opts?.onSettlement?.({ status: 'saved' });
+          v2ReconciliationPendingRef.current = true;
+          reconciliationHandled = true;
+          updateScheduleTrust({ status: 'refreshing', savedAt: nowIso(), message: 'Saved. Checking the latest crew schedule now.' });
+          await refreshSchedule({ authoritative: true, preserveCommittedPreview: true });
+          return true;
+        }
         const msg = err instanceof Error ? err.message : 'Failed to update schedule.';
         const fallback = opts?.errorToast ?? msg;
         const userMessage = opts?.formatErrorToast ? opts.formatErrorToast(err, fallback) : fallback;
@@ -2343,6 +2266,12 @@ export default function ScheduleClient({
           return false;
         }
 
+        if (reconcileAfterFailure && !isDefinitiveScheduleMutationFailure(err) && !isBoardCommand) {
+          reconciliationHandled = true;
+          opts?.onSettlement?.({ status: 'stale', message: userMessage });
+          await refreshSchedule({ authoritative: true, preservePendingPreview: true });
+          return false;
+        }
         rollback();
         if (!opts?.boardPlacementIntent) toast.error(userMessage);
         if (!isBoardCommand) {
@@ -2412,6 +2341,13 @@ export default function ScheduleClient({
     run: (force: boolean) => Promise<any>,
     opts?: ScheduleMutationOptions,
   ): Promise<boolean> {
+    let retainedIntent: ReturnType<typeof retainScheduleBoardIntent>;
+    try {
+      retainedIntent = retainScheduleBoardIntent({ job_id: change.projectId, destination: change.destination, position: change.operation.insertionIndex, operation: change.operation });
+    } catch {
+      toast.error('This browser could not retain your move. Free browser storage and try again. Nothing was sent.');
+      return false;
+    }
     const commandId = boardCommandSequenceRef.current + 1;
     boardCommandSequenceRef.current = commandId;
     if (boardCommandRecordsRef.current.size === 0) {
@@ -2441,6 +2377,8 @@ export default function ScheduleClient({
             opts?.onError?.(error);
           },
           onSettlement: (settlement) => {
+            if (settlement.status === 'saved' || settlement.status === 'cancelled') retainedIntent?.clear();
+            else retainedIntent?.needsReview();
             opts?.onSettlement?.(settlement);
             if (settlement.status === 'saved') {
               boardMutationNotice.clear(change.projectId);
@@ -2888,13 +2826,6 @@ export default function ScheduleClient({
   }
   handleUnscheduleRef.current = handleUnschedule;
 
-  async function handleRemoveOrphanedScheduleItems() {
-    if (scheduleMode === 'v2') {
-      toast.info('Orphan cleanup is not available in Schedule V2 yet.');
-      return;
-    }
-  }
-
   const openQuickEdit = (id: string) => {
     if (scheduleMode === 'v2') {
       toast.info('Use the actions menu to update duration or pinning in Schedule V2.');
@@ -2986,13 +2917,17 @@ export default function ScheduleClient({
     setDurationEdit({ id, durationDays: String(Math.max(1, Math.round(durationDays))) });
   };
 
-  const openPinEdit = (id: string) => {
+  const openPinEdit = (id: string, requestedStart?: string) => {
     const item = scheduleItemById.get(id) ?? null;
     if (!item || item.itemType === 'downtime') {
       toast.error('Pinning is only available for scheduled jobs.');
       return;
     }
-    const startCandidate = item.forecastStart ?? item.startDateOverride ?? today;
+    if (item.actualStartDate || ['in_progress', 'paused', 'done'].includes(item.jobStatus ?? '')) {
+      toast.info('The actual start is recorded. Update remaining days or mark the job done instead.');
+      return;
+    }
+    const startCandidate = requestedStart ?? item.forecastStart ?? item.startDateOverride ?? today;
     setPinEdit({ id, requestedStart: isYmd(startCandidate) ? startCandidate : '' });
   };
 
@@ -3005,11 +2940,7 @@ export default function ScheduleClient({
   };
 
   const handleGanttOpenPinEdit = (id: string, requestedStart: string) => {
-    if (isYmd(requestedStart)) {
-      setPinEdit({ id, requestedStart });
-      return;
-    }
-    openPinEdit(id);
+    openPinEdit(id, isYmd(requestedStart) ? requestedStart : undefined);
   };
 
   const handleGanttUnpinScheduleItem = (id: string) => {
@@ -4418,37 +4349,23 @@ export default function ScheduleClient({
           </AlertBanner>
         ) : null}
 
-        {schedulingIssues.length ? (
-          <AlertBanner
-            tone="warning"
-            title={`${schedulingIssues.length} scheduling issue${schedulingIssues.length === 1 ? '' : 's'}`}
-            action={
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                disabled={cleanupBusy || !orphanedScheduleItems.length}
-                onClick={() => void handleRemoveOrphanedScheduleItems()}
-                title={
-                  orphanedScheduleItems.length
-                    ? `Remove ${orphanedScheduleItems.length} orphaned schedule item(s)`
-                    : 'No orphaned schedule items found'
-                }
-              >
-                {cleanupBusy ? 'Removing orphaned schedule items…' : orphanedScheduleItems.length ? 'Remove orphaned schedule items' : 'No orphaned items'}
-              </button>
-            }
-          >
-            <ul className={styles.issueList} aria-label="Scheduling issues">
-              {schedulingIssues.slice(0, 10).map((issue, index) => (
-                <li key={`${index}-${issue.message}`} className={styles.issueItem}>
-                  <span className={styles.warnBadge}>{issue.level}</span>
-                  <span>{issue.message}</span>
-                </li>
-              ))}
-            </ul>
-            {schedulingIssues.length > 10 ? <p className={styles.hint}>Showing first 10 issues.</p> : null}
-          </AlertBanner>
-        ) : null}
+        <SchedulePendingChanges items={scheduleItems} installers={installers} projectsById={projectsById} onReview={(id, request) => {
+          const item = scheduleItems.find((row) => row.id === id);
+          if (!item) return;
+          if (request.path.endsWith('/set-duration') && typeof request.input.forecast_duration_days === 'number') setDurationEdit({ id, durationDays: String(request.input.forecast_duration_days) });
+          else if (request.path.endsWith('/set-days-remaining') && typeof request.input.days_remaining === 'number') setDaysRemainingEdit({ id, daysRemaining: String(request.input.days_remaining) });
+          else if (typeof request.input.requested_start_date === 'string') handleGanttOpenPinEdit(id, request.input.requested_start_date);
+          else handleGanttOpenProject(item.projectId);
+        }} onRefresh={() => { void refreshSchedule({ authoritative: true }); }} />
+
+        <ScheduleIssuesPanel issues={schedulingIssues} items={scheduleItems} installers={installers} disabled={boardActionDisabled}
+          onEdit={openPinEdit}
+          onMove={(id, crewId) => handleBoardDrop(id, { kind: 'lane', laneId: crewId, insertionIndex: 0, placement: 'before', overId: null })}
+          onKeep={(id, overlapKey) => {
+            const item = scheduleItemById.get(id);
+            const crewId = item ? safeUuidFromAppId('crew', item.installerId) : null;
+            if (crewId) void runWithCommitConfirmation(() => keepScheduleOverlap({ crew_id: crewId, overlap_key: overlapKey }), { expectedCrewId: crewId, successToast: 'Overlap kept for these dates.' });
+          }} />
 
         {diagnosticsPanel}
 

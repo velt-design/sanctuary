@@ -109,7 +109,7 @@ describe('POST /api/staff/v1/schedule/job/mark-done', () => {
       },
       error: null,
     });
-    loadScheduleContext.mockResolvedValue({ today: '2026-04-10', calendar: {} });
+    loadScheduleContext.mockResolvedValue({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }], today: '2026-04-10', calendar: {} });
     buildCrewContext.mockReturnValue({
       crewRow: { id: 'crew-1', calendar_region: 'Auckland' },
       items: [
@@ -167,7 +167,7 @@ describe('POST /api/staff/v1/schedule/job/mark-done', () => {
     );
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_mark_done', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_mark_done', p_expected_revisions: expect.any(Object), p_args: {
       p_scheduled_job_id: 'scheduled-job-1',
       p_actual_start: '2026-04-09',
       p_actual_finish: '2026-04-10',
@@ -180,7 +180,7 @@ describe('POST /api/staff/v1/schedule/job/mark-done', () => {
         },
       ],
       p_finish_early: null,
-    });
+    } });
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       ok: true,
@@ -262,7 +262,7 @@ describe('POST /api/staff/v1/schedule/job/mark-done', () => {
     );
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_mark_done', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_mark_done', p_expected_revisions: expect.any(Object), p_args: {
       p_scheduled_job_id: 'scheduled-job-1',
       p_actual_start: '2026-04-09',
       p_actual_finish: '2026-04-10',
@@ -284,7 +284,7 @@ describe('POST /api/staff/v1/schedule/job/mark-done', () => {
           { id: 'item-job-2', position: 2 },
         ],
       },
-    });
+    } });
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       ok: true,

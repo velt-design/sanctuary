@@ -26,6 +26,8 @@ vi.mock('@dnd-kit/core', () => ({
     return props.children;
   },
   DragOverlay: (props: any) => props.children,
+  useDndContext: () => ({ activeNode: null }),
+  defaultDropAnimationSideEffects: () => () => undefined,
   KeyboardSensor: vi.fn(),
   PointerSensor: vi.fn(),
   pointerWithin: vi.fn(() => []),

@@ -97,7 +97,7 @@ describe("ProjectCloseDialog", () => {
 
   it.each([
     ["CANCELLED", "Close as Cancelled"],
-    ["COMPLETE", "Close as Complete"],
+    ["COMPLETE", "Close settled project"],
   ])("requires a reason for the %s path", (path, actionLabel) => {
     const { container } = renderDialog();
     chooseRadio(path);

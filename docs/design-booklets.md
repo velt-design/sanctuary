@@ -4,6 +4,13 @@ Status: Current project-linked implementation, with a session-only standalone fa
 
 Owner surface: authenticated standalone Portal route at `/staff/design-booklets`.
 
+## Read First
+
+- For customer-document quality, read the [presentation standard](customer-presentation-standard.md).
+- For implemented behavior, start with [Page Model](#page-model) and [Project Persistence And Render Ownership](#project-persistence-and-render-ownership).
+- For the next booklet improvements, read [Presentation Refinement](#presentation-refinement).
+- For code ownership and checks, use [Runtime Owners](#runtime-owners) and [Verification](#verification).
+
 ## Purpose
 
 The Design Booklet Workbench assembles a customer-facing landscape concept booklet from a fixed cover and review page plus a user-composed sequence of image and drawing pages. New project booklets start with the approved page structure and neutral empty media surfaces; Toni's plan and renders are isolated to the standalone and QA fixture.
@@ -31,6 +38,14 @@ Opening `/staff/design-booklets` without a project ID preserves the session-only
 Toni fixture behavior for safe standalone and QA use.
 
 ## Page Model
+
+Customer-document quality is governed by the
+[Sanctuary Customer Presentation Standard](customer-presentation-standard.md),
+with approved design/feasibility and partnership examples retained privately.
+Read that standard and inspect relevant reference pages when available before
+refining booklet composition or copy. When examples are unavailable, use the
+written standard and its reference access guide without claiming visual inspection.
+The technical behavior below remains the current implementation contract.
 
 The cover is always page one and the review page is always last. They cannot be removed or reordered. The middle `contentPages` sequence may contain any mix of curated content and drawing pages; staff can add, remove, and reorder either type. Page numbers and the total page count are derived from that sequence, so the booklet may contain only the two fixed pages or up to 24 middle pages.
 
@@ -158,6 +173,42 @@ Postflight retained all 82 asset rows, backfilled every existing row to
 the live PostgREST schema accepted a `page_count` select. The colliding
 `20260810_000002` payment migration and date-only migration ledger remained
 untouched. Shared staging was not changed by this production operation.
+
+## Presentation Refinement
+
+The owner approved retaining the final customer PDFs and their lessons
+on 2026-09-11. The [presentation standard](customer-presentation-standard.md) and
+private reference access guidance are now recorded. Client PDFs and page images
+remain outside the public repository. This documentation pass does not change
+the live workbench, saved schema, fixed review copy, pricing or delivery behavior.
+
+The next focused booklet implementation should apply that standard through
+curated page patterns. Current main already supports A4/A3 landscape; retain
+`paperGeometry.ts` as its owner and the current A4 default for existing drafts.
+
+| Pattern | Current foundation | Refinement target |
+| --- | --- | --- |
+| Hero / proposition | Fixed cover with image, identity and concept metadata | Preserve the strong hero; a future document-purpose choice should supply appropriate fields for concept, proposal or partnership work. |
+| Design rationale | Image + Story and Information layouts | Add useful starter structures for direction, why it suits this project, preliminary materials and image status without inventing project claims. |
+| Scope / deliverables | Text-led Information layouts | Provide a clear deliverables/revisions structure with project-owned inclusions and boundaries. |
+| Option comparison | Generic content layouts; no structured commercial option model | Use equal comparison rows and explicit client involvement. Keep option data shared with the pricing page rather than duplicated in free text. |
+| Pricing | No quote integration in this workbench | Define quote/version provenance, tax basis, adjustments, included packages and extra costs under existing quote owners before adding calculated tables. The benchmark prices are reference data only. |
+| Next step | Fixed, approved concept-review page | Retain that closing behavior for concept booklets; proposal and partnership purposes need their own authorised action/copy rather than rewriting every existing draft's closing page. |
+
+Keep the saved draft and resolved page model as the shared preview/export input.
+Extend the route-owned composer and layout/presentation owners instead of
+importing the one-off ReportLab builders or creating a second PDF engine. Inspect
+schema normalization and hidden-slot preservation before adding page kinds.
+Customer data and commercial terms from the references must never become
+new-project defaults or public fixture assets.
+
+Acceptance evidence for that implementation should include a neutral concept
+booklet plus neutral proposal and partnership examples; A3 and A4 preview/export
+agreement; readable long-copy cases; and, when pricing is introduced, exact
+arithmetic, consistent repeated totals and explicit inclusion/extra-cost labels.
+Use the standard's completion check and the existing PDF/browser verification
+workflow below. The targets in this section describe remaining implementation,
+not capabilities already delivered by this documentation change.
 
 ## Content Ownership
 

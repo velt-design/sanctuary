@@ -1,3 +1,4 @@
+import { scheduleWriteGuard } from '@/lib/scheduling/scheduleWriteGuard';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { commitScheduleJobPatch } from '@/lib/scheduling/scheduleCommands';
@@ -144,6 +145,7 @@ export async function POST(req: Request) {
 
   const pinnedStart = snapToday(requestedStart, crewContext.crewRow.calendar_region || 'Auckland', context.calendar);
   const commitResult = await commitScheduleJobPatch({
+    writeGuard: scheduleWriteGuard(context, [crewId]),
     diagnostics,
     scheduledJobId,
     jobPatch: {

@@ -1,16 +1,17 @@
-type DepositInvoiceStatus = 'OPEN' | 'PAID' | 'VOID';
+type DepositInvoiceStatus = 'DRAFT' | 'OPEN' | 'PAID' | 'VOID';
 
 export type DepositInvoiceDeliveryStatus = 'NOT_SENT' | 'SENT' | 'FAILED';
 
 export type DepositInvoiceSummary = {
   id: string;
   projectId: string;
-  quoteId: string;
-  quoteVersionId: string;
+  quoteId: string | null;
+  quoteVersionId: string | null;
   quoteRef: string;
   quoteVersionNumber: number;
   invoiceRef: string;
   status: DepositInvoiceStatus;
+  invoiceKind?: 'QUOTE_LINKED' | 'STANDALONE';
   paymentTermId: string;
   paymentTermLabel: string;
   paymentTermPosition: number;
@@ -71,6 +72,7 @@ type InvoiceScheduleQuote = {
 };
 
 type ProjectPaymentAllocationSummary = {
+  standaloneInvoiceId?: string | null;
   id: string;
   quoteVersionId: string;
   paymentTermId: string;
@@ -96,6 +98,8 @@ export type ProjectPaymentEntrySummary = {
 };
 
 export type ProjectInvoiceSchedule = {
+  billableTotalIncGstCents?: number;
+  standaloneTotalIncGstCents?: number;
   acceptedQuoteVersionId: string | null;
   acceptedQuoteRef: string | null;
   acceptedQuoteVersionNumber: number | null;

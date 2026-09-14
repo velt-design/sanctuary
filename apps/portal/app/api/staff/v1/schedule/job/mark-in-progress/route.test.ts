@@ -77,7 +77,7 @@ describe('POST /api/staff/v1/schedule/job/mark-in-progress', () => {
     parseJsonBody.mockResolvedValue({ ok: true, body: { job_id: 'job-1' } });
     isMissingSchemaError.mockReturnValue(false);
     scheduledJobsByProjectMaybeSingle.mockResolvedValue({ data: { id: 'scheduled-job-1', crew_id: 'crew-1', actual_start: null }, error: null });
-    loadScheduleContext.mockResolvedValue({ today: '2026-04-10', calendar: {} });
+    loadScheduleContext.mockResolvedValue({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }], today: '2026-04-10', calendar: {} });
     buildCrewContext.mockReturnValue({ crewRow: { id: 'crew-1', calendar_region: 'Auckland' }, items: [], jobs: [{ id: 'scheduled-job-1', actualStart: null }], downtimes: [], recompute: { before: true }, downtimesById: new Map() });
     snapToday.mockReturnValue('2026-04-10');
     ensureActualStart.mockReturnValue('2026-04-10');
@@ -91,11 +91,11 @@ describe('POST /api/staff/v1/schedule/job/mark-in-progress', () => {
   it('commits mark-in-progress through one RPC call on success', async () => {
     const mod = await import('./route');
     const res = await mod.POST(new Request('http://localhost/api/staff/v1/schedule/job/mark-in-progress', { method: 'POST', headers: { 'x-request-id': 'req_progress_ok' } }));
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_apply_job_patch', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_apply_job_patch', p_expected_revisions: expect.any(Object), p_args: {
       p_scheduled_job_id: 'scheduled-job-1',
       p_job_patch: { status: 'in_progress', actual_start: '2026-04-10' },
       p_forecast_updates: [{ id: 'scheduled-job-1', forecast_start: '2026-04-10', forecast_end_exclusive: '2026-04-12', forecast_duration_days: 2 }],
-    });
+    } });
     expect(res.status).toBe(200);
     expect(res.headers.get('x-portal-request-id')).toBe('req_progress_ok');
   });

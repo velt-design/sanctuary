@@ -67,7 +67,8 @@ export async function loadProjectPaymentLedger(params: {
   const allocations: ScheduleAllocation[] = (allocationsRes.data ?? []).map((row: any) => ({
     id: appIdFromUuid('pma', String(row.id)),
     paymentEntryId: appIdFromUuid('pmt', String(row.payment_entry_id)),
-    quoteVersionId: appIdFromUuid('qv', String(row.quote_version_id)),
+    quoteVersionId: row.quote_version_id ? appIdFromUuid('qv', String(row.quote_version_id)) : '',
+    standaloneInvoiceId: row.standalone_invoice_id ? appIdFromUuid('inv', String(row.standalone_invoice_id)) : null,
     paymentTermId: String(row.payment_term_id),
     amountIncGstCents: Number(row.amount_inc_gst_cents ?? 0) || 0,
   }));

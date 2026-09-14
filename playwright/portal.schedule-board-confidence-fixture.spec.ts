@@ -3,6 +3,66 @@ import { expect, test, type Page } from '@playwright/test';
 const FIXTURE_PATH = '/qa/schedule-ops-fixture?view=board&scale=standard';
 const GANTT_FIXTURE_PATH = '/qa/schedule-ops-fixture?view=gantt&scale=standard';
 
+test('moves, extends and unpins a sample Gantt bar without staff writes', async ({ page }) => {
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/staff/') && request.method() !== 'GET') writes.push(request.url());
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(GANTT_FIXTURE_PATH);
+  const row = page.locator('[data-gantt-schedule-item-id="fixture-schedule-9"]');
+  const bar = row.locator('[role="button"]');
+  await expect(bar).toBeVisible();
+  const originalLabel = await bar.getAttribute('aria-label');
+  const resizeBox = await row.locator('[data-gantt-resize-handle]').boundingBox();
+  expect(resizeBox).toBeTruthy();
+  if (resizeBox) {
+    const x = resizeBox.x + resizeBox.width / 2;
+    const y = resizeBox.y + resizeBox.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 4, y, { steps: 2 });
+    await page.mouse.up();
+    await expect(page.getByRole('dialog', { name: 'Review Gantt timing change' })).toHaveCount(0);
+  }
+  const dayWidth = await page.locator('[data-gantt-current-week]').evaluate((element) => parseFloat(getComputedStyle(element.parentElement!).getPropertyValue('--ganttDayW')));
+  const gesture = async (delta: number, resize = false) => {
+    const target = resize ? row.locator('[data-gantt-resize-handle]') : bar;
+    await target.scrollIntoViewIfNeeded();
+    const box = await target.boundingBox();
+    expect(box).toBeTruthy();
+    if (!box) return;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + delta, y, { steps: 12 });
+    await page.mouse.up();
+    const review = page.getByRole('dialog', { name: 'Review Gantt timing change' });
+    await expect(review).toHaveCount(0);
+  };
+  await gesture(dayWidth * 5);
+  await expect(bar).not.toHaveAttribute('aria-label', originalLabel!);
+  await expect(bar).toHaveAttribute('aria-label', /Forecast 10 Aug to 16 Aug/);
+  await gesture(-dayWidth * 5);
+  await expect(bar).toHaveAttribute('aria-label', /Forecast 03 Aug to 09 Aug/);
+  await gesture(dayWidth * 2, true);
+  await expect(bar).toHaveAttribute('aria-label', /7d/);
+  await page.getByRole('button', { name: 'Board', exact: true }).click();
+  await page.getByRole('button', { name: 'Gantt', exact: true }).click();
+  await expect(bar).toHaveAttribute('aria-label', /7d/);
+  await gesture(dayWidth * 5);
+  await expect(bar).toHaveAttribute('data-pinned', 'true');
+  await expect(bar).toHaveAttribute('aria-label', /Forecast 10 Aug/);
+  await bar.press('Enter');
+  await page.getByRole('button', { name: /^Unpin/ }).click();
+  await expect(bar).not.toHaveAttribute('data-pinned', 'true');
+  await expect(bar).toHaveAttribute('aria-label', /Forecast 03 Aug.*7d/);
+  await page.reload();
+  await expect(bar).toHaveAttribute('aria-label', originalLabel!);
+  expect(writes).toEqual([]);
+});
+
 async function expectNoDocumentOverflow(page: Page) {
   const width = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,
@@ -43,7 +103,7 @@ async function dragCardToIndex(page: Page, activeId: string, crewId: string, ins
   await page.mouse.down();
   await page.mouse.move(handleBox.x + handleBox.width / 2 + 12, handleBox.y + handleBox.height / 2, { steps: 3 });
   await page.mouse.move(laneBox.x + laneBox.width / 2, targetY, { steps: 12 });
-  await expect(page.locator('[data-board-drag-overlay="true"]')).toContainText(`position ${insertionIndex + 1}`);
+  await expect(page.locator('[data-board-drag-overlay="true"]')).toHaveAttribute('data-position', String(insertionIndex + 1));
   await page.mouse.up();
   await expect(page.locator('[data-board-drag-overlay="true"]')).toHaveCount(0);
 }
@@ -117,6 +177,16 @@ test('keeps shared workload, attention, timing, and purposeful Gantt modes reada
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(GANTT_FIXTURE_PATH);
   await expect(page.locator('[data-gantt-schedule-item-id="fixture-schedule-9"] [role="button"]')).toContainText('Louvre 010');
+  const timeline = page.getByRole('region', { name: 'Gantt timeline', exact: true });
+  await expect.poll(() => timeline.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  await timeline.evaluate((element) => { element.scrollLeft = 0; });
+  await expect.poll(() => timeline.evaluate((element) => element.scrollLeft)).toBe(0);
+  const historyWidth = await timeline.locator('[data-gantt-current-week]').evaluate((element) => {
+    const table = element.parentElement!;
+    const styles = getComputedStyle(table);
+    return (parseFloat((element as HTMLElement).style.left) - parseFloat(styles.getPropertyValue('--ganttLabelW'))) / parseFloat(styles.getPropertyValue('--ganttDayW'));
+  });
+  expect(historyWidth).toBe(20); // Four full past weeks, with hidden weekends.
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(GANTT_FIXTURE_PATH);
@@ -152,7 +222,8 @@ test('shows a stable pointer destination while the source card stays anchored', 
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(FIXTURE_PATH);
   const sourceHandle = page.getByRole('complementary', { name: 'Unscheduled jobs' }).getByRole('button', { name: /^Move / }).first();
-  const sourceCard = sourceHandle.locator('xpath=ancestor::*[@data-schedule-card-id][1]');
+  const sourceId = await sourceHandle.locator('xpath=ancestor::*[@data-schedule-card-id][1]').getAttribute('data-schedule-card-id');
+  const sourceCard = page.locator(`[data-schedule-card-id="${sourceId}"]`);
   const targetLane = page.locator('[data-board-lane-body]').nth(1);
   const before = await sourceCard.boundingBox();
   const handleBox = await sourceHandle.boundingBox();
@@ -167,13 +238,101 @@ test('shows a stable pointer destination while the source card stays anchored', 
 
   const overlay = page.locator('[data-board-drag-overlay="true"]');
   await expect(overlay).toBeVisible();
-  await expect(overlay).toContainText(/Drop (at the end of|in) /);
+  await expect(overlay).toContainText((await sourceCard.locator('[class*="jobTitle"]').textContent())!);
   await expect(overlay).toHaveAttribute('data-valid', 'true');
   const during = await sourceCard.boundingBox();
   expect(during?.x).toBeCloseTo(before.x, 0);
   expect(during?.y).toBeCloseTo(before.y, 0);
+  const floating = await overlay.boundingBox();
+  expect(floating?.width).toBeCloseTo(before.width, 0);
+  expect(floating?.height).toBeCloseTo(before.height, 0);
+  await expect(sourceCard.locator(':scope > *').first()).toHaveCSS('opacity', '0');
   await page.mouse.up();
   await expect(overlay).toHaveCount(0);
+});
+
+for (const reducedMotion of [false, true]) {
+  test(`keeps boundary targeting and landing calm with reduced motion ${reducedMotion}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: reducedMotion ? 'reduce' : 'no-preference' });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto(FIXTURE_PATH);
+    const id = 'fixture-unscheduled-18';
+    const card = page.locator(`[data-schedule-card-id="${id}"]`);
+    const handle = card.getByRole('button', { name: /^Move / });
+    await expect(handle).toBeVisible();
+    const source = await handle.boundingBox();
+    const target = await page.locator('[data-schedule-card-id="fixture-schedule-1"]').boundingBox();
+    expect(source && target).toBeTruthy();
+    if (!source || !target) return;
+    const x = target.x + target.width / 2;
+    const boundary = target.y + target.height / 2;
+    await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(x, boundary - 10, { steps: 12 });
+    const overlay = page.locator('[data-board-drag-overlay]');
+    const destination = page.locator('[data-board-drag-destination]');
+    await expect(overlay).toHaveAttribute('data-position', '1');
+    await expect(destination).toHaveText('Install Crew 2 · Position 1');
+    const marker = page.locator('[data-schedule-card-id="fixture-schedule-1"]');
+    expect(await marker.evaluate((node) => getComputedStyle(node, '::after').content)).toBe('"Place here"');
+    expect(await marker.evaluate((node) => getComputedStyle(node, '::before').height)).toBe('4px');
+    expect((await marker.boundingBox())?.y).toBeCloseTo(target.y, 0);
+    for (const offset of [2, -2, 4, -4]) {
+      await page.mouse.move(x, boundary + offset);
+      await expect(overlay).toHaveAttribute('data-position', '1');
+    }
+    await page.mouse.move(x, boundary + 10);
+    await expect(overlay).toHaveAttribute('data-position', '2');
+    await expect(destination).toHaveText('Install Crew 2 · Position 2');
+    await page.mouse.move(x, boundary + 2);
+    await expect(overlay).toHaveAttribute('data-position', '2');
+    await page.evaluate((cardId) => {
+      (window as any).__boardLandingFrames = [];
+      document.addEventListener('pointerup', () => {
+        const started = performance.now();
+        const sample = () => {
+          const card = document.querySelector<HTMLElement>(`[data-schedule-card-id="${cardId}"]`);
+          (window as any).__boardLandingFrames.push({
+            overlay: Boolean(document.querySelector('[data-board-drag-overlay]')),
+            landing: card?.dataset.boardLanding === 'true',
+            opacity: card ? getComputedStyle(card).opacity : null,
+          });
+          if (performance.now() - started < 260) requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      }, { once: true, capture: true });
+    }, id);
+    await page.mouse.up();
+    await expect(overlay).toHaveCount(0);
+    await expect(destination).toHaveCount(0);
+    expect(await cardOrder(page, 'fixture-crew-2')).toEqual(['fixture-schedule-1', id, 'fixture-schedule-10']);
+    await expect(card).toHaveCSS('opacity', '1');
+    const frames = await page.evaluate(() => (window as any).__boardLandingFrames as Array<{ overlay: boolean; landing: boolean; opacity: string }>);
+    if (reducedMotion) {
+      expect(frames.every((frame) => !frame.landing)).toBe(true);
+    } else {
+      expect(frames.some((frame) => frame.overlay && frame.landing)).toBe(true);
+      expect(frames.filter((frame) => frame.landing).every((frame) => frame.opacity === '0')).toBe(true);
+    }
+  });
+}
+
+test('keeps keyboard reorder and focus working with the quiet source placeholder', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(FIXTURE_PATH);
+  const handle = page.locator('[data-schedule-card-id="fixture-schedule-1"]').getByRole('button', { name: /^Move / });
+  await handle.focus();
+  await page.keyboard.press('Space');
+  await expect(page.locator('[data-board-drag-overlay]')).toBeVisible();
+  // dnd-kit attaches the keyboard listener on the next event-loop turn.
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-board-drag-overlay]')).toHaveAttribute('data-position', '2');
+  await page.keyboard.press('Space');
+  await expect(page.locator('[data-board-drag-overlay]')).toHaveCount(0);
+  expect(await cardOrder(page, 'fixture-crew-2')).toEqual(['fixture-schedule-10', 'fixture-schedule-1']);
+  await expect(handle).toBeFocused();
 });
 
 test('commits the exact indicated beginning, middle, end, and cross-crew order in memory only', async ({ page }) => {

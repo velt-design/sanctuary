@@ -30,6 +30,7 @@ const ASSIGN_REPAIR_MIGRATION_MESSAGE =
   'Schedule assign repair migration is not applied. Apply supabase/migrations/20260414_000001_schedule_v2_assign_existing_job_repair.sql, then refresh.';
 
 export const REQUIRED_SCHEDULE_RPC_FUNCTIONS = [
+  'schedule_v2_guarded_command',
   'schedule_v2_reorder_queue',
   'schedule_v2_set_days_remaining',
   'schedule_v2_unassign_job',
@@ -44,6 +45,11 @@ export const REQUIRED_SCHEDULE_RPC_FUNCTIONS = [
 ] as const;
 
 const REQUIRED_SCHEDULE_RPC_PROBES: RpcProbe[] = [
+  {
+    fn: 'schedule_v2_guarded_command',
+    args: { p_command: 'readiness_probe', p_args: {}, p_expected_revisions: {} },
+    expectedMessages: ['A checked crew snapshot is required'],
+  },
   {
     fn: 'schedule_v2_reorder_queue',
     args: { p_crew_id: NIL_UUID, p_positions: [], p_forecast_updates: [] },

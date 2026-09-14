@@ -49,6 +49,11 @@ import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserC
 import CommercialFinalFailureGuidance from '@/components/commercial/CommercialFinalFailureGuidance';
 import InvoiceActionDialogs, { type InvoicePaymentEvidence } from './InvoiceActionDialogs';
 import CreateInvoiceDialog from './CreateInvoiceDialog';
+import InvoiceDraftEditor from './InvoiceDraftEditor';
+import type { InvoiceDraft, InvoiceDraftList } from '@/lib/invoices/draftTypes';
+import { apiJson } from '@/lib/repo/apiClient';
+import { invalidateProjectWorkReads } from '@/lib/queries/projectWorkCache';
+import { invalidateProjectsIndexCaches } from '@/lib/queries/projectCache';
 import PaymentReconciliationDialogs from './PaymentReconciliationDialogs';
 
 const InvoiceArtifactPreviewDialog = dynamic(() => import('./InvoiceArtifactPreviewDialog'));
@@ -101,6 +106,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
   const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
   const [previewInvoice, setPreviewInvoice] = useState<DepositInvoiceSummary | null>(null);
   const [createTarget, setCreateTarget] = useState<InvoiceScheduleTerm | null | undefined>(undefined);
+  const [editingDraft, setEditingDraft] = useState<InvoiceDraft | null>(null);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
   const [createResult, setCreateResult] = useState<QuoteInvoiceCreateResult | null>(null);
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
@@ -126,6 +132,17 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
     enabled: true,
   });
   const schedule = scheduleQuery.data ?? null;
+  const draftPath = '/api/admin/projects/' + encodeURIComponent(projectId) + '/invoice-drafts';
+  const draftsQuery = useQuery({ queryKey: ['invoiceDrafts', hostKey, projectId],
+    queryFn: () => apiJson<InvoiceDraftList>(draftPath), enabled: isAdmin });
+  const draftsEnabled = draftsQuery.data?.enabled === true;
+  function newStandaloneDraft() {
+    setEditingDraft({ id: 'inv_' + crypto.randomUUID(), projectId, quoteVersionId: null, revision: 0,
+      content: { version: 1, billingName: '', billingEmail: '', billingAddress: '', notes: '',
+        items: [{ id: crypto.randomUUID(), description: '', qty: 1, unitPriceIncGstCents: 0, lineTotalIncGstCents: 0 }] },
+      options: { mode: 'custom', label: 'Project work', dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0,10) },
+      scopeTotalIncGstCents: 0, amountIncGstCents: 0 });
+  }
   const currentAcceptedQuoteVersionIds = useMemo(() => new Set(
     schedule?.acceptedQuotes?.map((quote) => quote.quoteVersionId)
       ?? (schedule?.acceptedQuoteVersionId ? [schedule.acceptedQuoteVersionId] : []),
@@ -135,6 +152,9 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: qk.invoices.byProject(hostKey, projectId) }),
       queryClient.invalidateQueries({ queryKey: qk.invoices.scheduleByProject(hostKey, projectId) }),
+      invalidateProjectWorkReads(queryClient, hostKey, projectId),
+      invalidateProjectsIndexCaches(queryClient, hostKey),
+      queryClient.invalidateQueries({ queryKey: ['runningJobs', hostKey] }),
     ]);
   }, [hostKey, projectId, queryClient]);
 
@@ -215,6 +235,16 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
     invoiceCreateIntentRef.current = { signature, intentId: clientIntentId };
     setCreatingInvoice(true);
     try {
+      if (draftsEnabled) {
+        const result = await apiJson<{ draft: InvoiceDraft }>(draftPath, { method: 'POST', body: JSON.stringify({
+          action: 'save', invoiceId: 'inv_' + crypto.randomUUID(), expectedRevision: 0,
+          quoteVersionId: input.quoteVersionId, options: input,
+        }) });
+        setEditingDraft(result.draft); setCreateTarget(undefined);
+        invoiceCreateIntentRef.current = null;
+        await draftsQuery.refetch();
+        return;
+      }
       const result = await createProjectInvoice({ ...input, projectId, clientIntentId });
       invoiceCreateIntentRef.current = null;
       updateInvoiceCache(result.invoice);
@@ -375,12 +405,12 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
         <DataStatePanel state="error" title="Could not load the job payment schedule" description={scheduleQuery.error instanceof Error ? scheduleQuery.error.message : 'Failed to load payment totals.'} onRetry={() => void scheduleQuery.refetch()} />
       ) : null}
 
-      {schedule?.acceptedQuoteVersionId ? (
+      {schedule && (schedule.acceptedQuoteVersionId || (schedule.standaloneTotalIncGstCents ?? 0) > 0) ? (
         <Card
           title="Job payment schedule"
           eyebrow={(schedule.acceptedQuotes?.length ?? 0) > 1
             ? `${schedule.acceptedQuotes?.length} accepted quote scopes`
-            : `Quote ${schedule.acceptedQuoteRef} v${schedule.acceptedQuoteVersionNumber}`}
+            : schedule.acceptedQuoteVersionId ? `Quote ${schedule.acceptedQuoteRef} v${schedule.acceptedQuoteVersionNumber}` : 'Standalone project billing'}
           padding="none"
           headingLevel={4}
           aria-label="Invoice schedule"
@@ -389,7 +419,9 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
             ariaLabel="Accepted project quote payment totals"
             columns={4}
             items={[
-              { label: 'Job total', value: formatMoneyFromCents(schedule.acceptedQuoteTotalIncGstCents), detail: (schedule.acceptedQuotes?.length ?? 0) > 1 ? 'Base contract and accepted add-ons' : 'Accepted quote' },
+              { label: 'Job total', value: formatMoneyFromCents(schedule.billableTotalIncGstCents ?? schedule.acceptedQuoteTotalIncGstCents), detail: 'Accepted quotes and issued standalone work' },
+              { label: 'Accepted quote value', value: formatMoneyFromCents(schedule.acceptedQuoteTotalIncGstCents), detail: 'Base contract and accepted add-ons' },
+              { label: 'Standalone invoice value', value: formatMoneyFromCents(schedule.standaloneTotalIncGstCents ?? 0), detail: 'Issued, non-void standalone work' },
               { label: 'Paid', value: formatMoneyFromCents(schedule.paidIncGstCents), detail: schedule.unallocatedCreditIncGstCents > 0 ? `${formatMoneyFromCents(schedule.unallocatedCreditIncGstCents)} unallocated credit` : 'Actual job payments' },
               { label: 'Open', value: formatMoneyFromCents(schedule.outstandingIncGstCents), detail: 'Issued and unpaid' },
               { label: 'Remaining', value: formatMoneyFromCents(schedule.remainingToInvoiceIncGstCents), detail: 'Available to invoice' },
@@ -397,7 +429,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
           />
           {schedule.overCommittedIncGstCents > 0 ? (
             <AlertBanner tone="warning" title="Commercial total needs reconciliation">
-              Payments plus open invoices exceed the current accepted scope by {formatMoneyFromCents(schedule.overCommittedIncGstCents)}. Review historical invoices and payment allocations before creating another invoice.
+              Payments plus open invoices exceed the current billable project value by {formatMoneyFromCents(schedule.overCommittedIncGstCents)}. Review historical invoices and payment allocations before creating another invoice.
             </AlertBanner>
           ) : null}
           <div className={styles.scheduleRows}>
@@ -424,7 +456,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                 </div>
               );
             })}
-            {isAdmin && schedule.remainingToInvoiceIncGstCents > 0 ? (
+            {isAdmin && schedule.acceptedQuoteVersionId && schedule.remainingToInvoiceIncGstCents > 0 ? (
               <div className={styles.scheduleFooter}>
                 <Button type="button" variant="secondary" size="small" disabled={financialActionsLocked} onClick={() => { setCreateResult(null); setCreateTarget(null); }}>Create invoice</Button>
               </div>
@@ -433,10 +465,10 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
         </Card>
       ) : null}
 
-      {schedule && !schedule.acceptedQuoteVersionId && (schedule.paidIncGstCents !== 0 || schedule.outstandingIncGstCents !== 0) ? (
+      {schedule && !schedule.acceptedQuoteVersionId && !schedule.standaloneTotalIncGstCents && (schedule.paidIncGstCents !== 0 || schedule.outstandingIncGstCents !== 0) ? (
         <Card title="Historical commercial record" eyebrow="No current accepted quote" padding="none" headingLevel={4}>
           <AlertBanner tone="warning" title="No current accepted commercial scope">
-            Historical payments and open invoices remain visible, but no new invoice can be created until a quote is accepted.
+            Historical payments and open invoices remain visible. Quote-linked invoices require an accepted quote; admins can create standalone invoice drafts separately.
           </AlertBanner>
           <MetricGrid
             ariaLabel="Historical project payment totals"
@@ -473,12 +505,12 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                   </div>
                   <div className={styles.allocationCopy}>
                     {entry.allocations.length ? entry.allocations.map((allocation) => (
-                      <span key={allocation.id}>{allocation.stageLabel}: {formatMoneyFromCents(allocation.amountIncGstCents)}{allocation.isCurrentSchedule ? '' : ' (historical)'}</span>
+                      <span key={allocation.id}>{allocation.stageLabel}: {formatMoneyFromCents(allocation.amountIncGstCents)}{allocation.isCurrentSchedule || allocation.standaloneInvoiceId ? '' : ' (historical)'}</span>
                     )) : <span>Unallocated credit: {formatMoneyFromCents(entry.unallocatedIncGstCents)}</span>}
                   </div>
                   {entry.entryType !== 'REVERSAL' && !entry.reversed ? (
                     <OverflowMenu label={`Manage payment from ${formatDate(entry.occurredAt)}`} menuLabel="Payment actions" items={[
-                      ...(entry.amountIncGstCents > 0 ? [{ label: 'Manage allocation', disabled: financialActionsLocked, onSelect: () => setAllocationTarget(entry) }] : []),
+                      ...(entry.amountIncGstCents > 0 && !entry.allocations.some((allocation) => allocation.standaloneInvoiceId) ? [{ label: 'Manage allocation', disabled: financialActionsLocked, onSelect: () => setAllocationTarget(entry) }] : []),
                       { label: 'Reverse entry', disabled: financialActionsLocked, destructive: true, separatorBefore: true, onSelect: () => setReversalTarget(entry) },
                     ]} />
                   ) : null}
@@ -508,8 +540,8 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
           {invoices.map((invoice) => {
             const canSend = invoice.status === 'OPEN' && invoice.lastDeliveryStatus !== 'SENT' && !invoice.finalFailure;
             const isSending = sendingInvoiceId === invoice.id;
-            const isHistorical = currentAcceptedQuoteVersionIds.size > 0
-              && !currentAcceptedQuoteVersionIds.has(invoice.quoteVersionId);
+            const isHistorical = Boolean(invoice.quoteVersionId) && currentAcceptedQuoteVersionIds.size > 0
+              && !currentAcceptedQuoteVersionIds.has(invoice.quoteVersionId ?? '');
             const showMarkPaidPrimary = isAdmin && invoice.status === 'OPEN' && !canSend;
             return (
               <TableRow key={invoice.id}>
@@ -527,7 +559,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                 <TableCell>
                   <div className={styles.meta}>
                     <strong>
-                      {invoice.quoteRef} v{invoice.quoteVersionNumber}
+                      {invoice.quoteVersionId ? `${invoice.quoteRef} v${invoice.quoteVersionNumber}` : 'Standalone invoice'}
                     </strong>
                     <span className={styles.muted}>{invoice.reference || invoice.projectName || '-'}</span>
                   </div>
@@ -616,8 +648,21 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
         onConfirmPaid={(evidence) => { if (paidTarget) void handleMarkPaid(paidTarget, evidence); }}
         onConfirmVoid={(reason) => { if (voidTarget) void handleVoid(voidTarget, reason); }}
       />
+      {isAdmin && draftsEnabled ? <Card title="Invoice drafts"><p>Editable drafts have no balance impact until issued.</p>
+        <Button onClick={newStandaloneDraft} disabled={financialActionsLocked}>New standalone invoice</Button>
+        {(draftsQuery.data?.drafts ?? []).map((draft) => <Button key={draft.id} variant="secondary" onClick={() => setEditingDraft(draft)}>
+          Edit draft — {draft.options.label} · {draft.quoteVersionId ? 'Quote-linked' : 'Standalone'}
+        </Button>)}
+      </Card> : null}
+      {isAdmin && draftsEnabled && editingDraft ? <InvoiceDraftEditor key={editingDraft.id} initial={editingDraft}
+        onClose={() => setEditingDraft(null)} onSaved={() => { void draftsQuery.refetch(); }}
+        onIssued={async (message, sendError) => {
+          toast.success(message); if (sendError) toast.error('Invoice issued. Sending failed: ' + sendError + '. Retry sending from invoice history.');
+          await Promise.all([draftsQuery.refetch(), reconcileConfirmedAction(message)]);
+        }} /> : null}
       {schedule ? (
         <CreateInvoiceDialog
+          draftMode={draftsEnabled}
           open={createTarget !== undefined}
           projectId={projectId}
           schedule={schedule}

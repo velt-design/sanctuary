@@ -28,6 +28,7 @@ vi.mock('@/lib/api/routeDiagnostics', () => ({
 }));
 
 const expectedProbeFailures = new Map<string, string>([
+  ['schedule_v2_guarded_command', 'A checked crew snapshot is required'],
   ['schedule_v2_reorder_queue', 'p_positions must be a non-empty array'],
   ['schedule_v2_set_days_remaining', 'p_days_remaining must be zero or greater'],
   ['schedule_v2_unassign_job', 'scheduled job not found'],

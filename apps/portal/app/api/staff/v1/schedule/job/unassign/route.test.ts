@@ -83,7 +83,7 @@ describe('POST /api/staff/v1/schedule/job/unassign', () => {
     parseJsonBody.mockResolvedValue({ ok: true, body: { job_id: 'job-1' } });
     isMissingSchemaError.mockReturnValue(false);
     scheduledJobsByProjectMaybeSingle.mockResolvedValue({ data: { id: 'scheduled-job-1', crew_id: 'crew-1' }, error: null });
-    loadScheduleContext.mockResolvedValue({ today: '2026-04-10', calendar: {} });
+    loadScheduleContext.mockResolvedValue({ crews: [{ id: 'crew-1', schedule_revision: 7 }, { id: 'crew-new', schedule_revision: 9 }, { id: 'crew-old', schedule_revision: 4 }], today: '2026-04-10', calendar: {} });
     buildCrewContext.mockReturnValue({
       crewRow: { id: 'crew-1', calendar_region: 'Auckland' },
       items: [
@@ -119,14 +119,14 @@ describe('POST /api/staff/v1/schedule/job/unassign', () => {
     );
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_unassign_job', {
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_guarded_command', { p_command: 'schedule_v2_unassign_job', p_expected_revisions: expect.any(Object), p_args: {
       p_scheduled_job_id: 'scheduled-job-1',
       p_job_item_id: 'item-job-1',
       p_positions: [{ id: 'item-job-2', position: 0 }],
       p_forecast_updates: [
         { id: 'scheduled-job-2', forecast_start: '2026-04-11', forecast_end_exclusive: '2026-04-12', forecast_duration_days: 1 },
       ],
-    });
+    } });
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       ok: true,

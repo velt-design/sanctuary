@@ -1,6 +1,8 @@
+import { scheduleWriteGuard } from '@/lib/scheduling/scheduleWriteGuard';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
+import { durationAfterProgressUpdate } from '@/lib/scheduling/recompute';
 import { commitSetDaysRemaining } from '@/lib/scheduling/scheduleCommands';
 import { parseScheduleForce } from '@/lib/scheduling/scheduleMutationRequest';
 import {
@@ -93,7 +95,10 @@ export async function POST(req: Request) {
   const crewCtx = buildCrewContext(ctx, crewId);
   if (!crewCtx) return jsonError('Crew not found', 404, diagnostics);
 
-  const jobs = crewCtx.jobs.map((job) => (job.id === jobRow.id ? { ...job, daysRemaining } : job));
+  const jobs = crewCtx.jobs.map((job) => (job.id === jobRow.id ? {
+    ...job, daysRemaining,
+    forecastDurationDays: durationAfterProgressUpdate(job, ctx.today, daysRemaining, crewCtx.crewRow.calendar_region || 'Auckland', ctx.calendar),
+  } : job));
 
   const afterRecompute = recomputeForCrew({
     crewRow: crewCtx.crewRow,
@@ -119,6 +124,7 @@ export async function POST(req: Request) {
   }
 
   const commitRes = await commitSetDaysRemaining({
+    writeGuard: scheduleWriteGuard(ctx, [crewId]),
     diagnostics,
     scheduledJobId: String(jobRow.id),
     daysRemaining,

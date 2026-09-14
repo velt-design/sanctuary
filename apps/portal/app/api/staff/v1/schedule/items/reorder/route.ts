@@ -1,3 +1,4 @@
+import { scheduleWriteGuard } from '@/lib/scheduling/scheduleWriteGuard';
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { commitScheduleReorder } from '@/lib/scheduling/scheduleCommands';
@@ -197,6 +198,7 @@ export async function POST(req: Request) {
   }
 
   const commitRes = await commitScheduleReorder({
+    writeGuard: scheduleWriteGuard(ctx, [crewId]),
     diagnostics,
     crewId,
     positions: applyScheduleItemPositions(nextItems),

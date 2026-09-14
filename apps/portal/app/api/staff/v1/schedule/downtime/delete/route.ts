@@ -1,3 +1,4 @@
+import { scheduleWriteGuard } from '@/lib/scheduling/scheduleWriteGuard';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
@@ -116,6 +117,7 @@ export async function POST(req: Request) {
   }
 
   const commitRes = await commitDeleteDowntime({
+    writeGuard: scheduleWriteGuard(ctx, [crewId]),
     diagnostics,
     downtimeId,
     downtimeItemId: removedItem.id,

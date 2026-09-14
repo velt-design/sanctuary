@@ -315,3 +315,4 @@ export function formatQuoteTermsText(raw: string | null | undefined, options: Fo
 export function formatQuoteIntroText(raw: string | null | undefined): string | null {
   return sanitizeText(raw);
 }
+export { parseInvoiceContent, type InvoiceContentSnapshot } from './invoiceContent';

@@ -211,6 +211,13 @@ describe('portal proxy', () => {
     expect(createServerClientMock).not.toHaveBeenCalled();
   });
 
+  it('allows only the invoice editor fixture page to enforce its own QA flag', async () => {
+    process.env.ENABLE_PORTAL_QA_FIXTURES = '1';
+    const response = await proxy(new NextRequest('https://example.com/qa/invoice-draft-editor-fixture'));
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(createServerClientMock).not.toHaveBeenCalled();
+  });
+
   it('allows the email preview workbench fixture to enforce its own server flag without auth', async () => {
     process.env.ENABLE_PORTAL_QA_FIXTURES = '1';
 

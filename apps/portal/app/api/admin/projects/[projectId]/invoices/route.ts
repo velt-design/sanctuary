@@ -57,7 +57,7 @@ export async function POST(request: Request, context: { params: Promise<{ projec
     return jsonOk({ result }, 201);
   } catch (error) {
     const detail = message(error);
-    const status = /not found/i.test(detail) ? 404 : /only accepted|does not belong|required|must be|invalid|exceeds|already|no remaining/i.test(detail) ? 400 : 500;
+    const status = /not found/i.test(detail) ? 404 : /invoice draft|only accepted|does not belong|required|must be|invalid|exceeds|already|no remaining/i.test(detail) ? 400 : 500;
     return jsonError(detail, status);
   }
 }
