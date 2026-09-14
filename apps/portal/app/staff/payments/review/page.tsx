@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export default async function PaymentReviewPage() {
   if (!await getPaymentPilotSession()) notFound();
   return <PageLayout>
-    <PageHeader variant="index" title="Deposit review" description="Confirm which project received a customer deposit. Jordan is the pilot approver." />
+    <PageHeader variant="index" title="Deposit review" description="Review the receipt and project before approving a customer deposit. Each approval records who checked it." />
     <PaymentReview />
   </PageLayout>;
 }

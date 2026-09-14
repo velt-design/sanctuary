@@ -1,9 +1,9 @@
 import { createHash, hkdfSync, randomUUID } from 'node:crypto';
 import { seal, unseal } from './security';
 
-/** Separate pilot capability. An admin role or connection permission is not an approval grant. */
-export function isPaymentApprover(user: { email?: string; email_confirmed_at?: string } | null): boolean {
-  return Boolean(user?.email_confirmed_at && user.email?.toLowerCase() === 'jordan@sanctuarypergolas.co.nz');
+/** A confirmed portal identity still needs its separate, current database grant. */
+export function isPaymentApprover(user: { email?: string; email_confirmed_at?: string } | null, hasGrant = false): boolean {
+  return Boolean(user?.email_confirmed_at && user.email && hasGrant);
 }
 
 export type DepositEvidence = {

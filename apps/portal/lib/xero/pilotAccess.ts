@@ -7,6 +7,6 @@ export function paymentPilotEnabled() { return process.env.XERO_PAYMENT_MATCHING
 export async function getPaymentPilotSession() {
   if(!paymentPilotEnabled()) return null;
   const session=await getPortalSession();
-  if(!session || !isPaymentApprover(session.user) || !await hasPaymentApprovalGrant(session.user.id)) return null;
+  if(!session?.user.email_confirmed_at || !isPaymentApprover(session.user, await hasPaymentApprovalGrant(session.user.id))) return null;
   return session;
 }

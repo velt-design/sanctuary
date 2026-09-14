@@ -8,8 +8,9 @@ const now = Date.parse('2026-09-14T00:00:00Z');
 const evidence: DepositEvidence = { tenantId: id, receiptId: id, contactId: id, projectId: id, invoiceId: id, amountCents: 1, receiptDate: '2026-09-13', invoiceTotalCents: 10000,
   invoiceFingerprint: 'a'.repeat(64), ledgerFingerprint: 'b'.repeat(64), receiptFingerprint: 'c'.repeat(64) };
 describe('exact deposit approval envelope', () => {
-  it('grants only the confirmed pilot identity, independent of general admin status', () => {
-    expect(isPaymentApprover({ email: 'jordan@sanctuarypergolas.co.nz', email_confirmed_at: 'today' })).toBe(true);
+  it('requires a separate grant and a confirmed identity for every approver', () => {
+    expect(isPaymentApprover({ email: 'jordan@sanctuarypergolas.co.nz', email_confirmed_at: 'today' }, true)).toBe(true);
+    expect(isPaymentApprover({ email: 'ellen@sanctuarypergolas.co.nz', email_confirmed_at: 'today' }, true)).toBe(true);
     expect(isPaymentApprover({ email: 'info@sanctuarypergolas.co.nz', email_confirmed_at: 'today' })).toBe(false);
     expect(isPaymentApprover({ email: 'jordan@sanctuarypergolas.co.nz' })).toBe(false);
     expect(isPaymentApprover(null)).toBe(false);

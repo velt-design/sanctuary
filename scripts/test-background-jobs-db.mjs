@@ -985,6 +985,8 @@ async function run() {
     applySql(path.posix.join(migrationsDirectory, migration), { singleTransaction: true });
   }
   applySql('supabase/tests/xero_invoice.sql');
+  applySql('supabase/migrations/20260914000009_xero_finance_access_audit.sql', { singleTransaction: true });
+  applySql('supabase/tests/xero_finance_access.sql');
   process.stdout.write(
     `background-jobs-db: isolated PGMQ contract passed (${image})\n`,
   );
