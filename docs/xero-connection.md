@@ -1,6 +1,6 @@
 # Xero connection
 
-Status: deployed to a disabled preview; not provisioned, live-authorised or released to production.
+Status: deployed to a disabled preview; staging storage installed; connector password, live authorisation and production release outstanding.
 
 ## First slice
 
@@ -92,3 +92,7 @@ Local evidence (2026-09-14): 18 focused tests passed; disposable PostgreSQL cont
 Setup evidence (2026-09-14): commit `e558475` deployed successfully to Vercel Preview (GitHub deployment `6428756662`). The owner saved `XERO_CLIENT_SECRET` as a Secret restricted to `codex/xero-read-connection`; its value was not inspected. A new deployment will be needed after configuration is complete. No other Xero variables were present at the initial configuration check.
 
 On staging `tnsiprehuldksnuowubv`, read-only preflight found one confirmed Jordan auth identity and no Xero schema or connector role. An equivalent, reformatted migration rehearsal inside a rolled-back transaction passed: authenticated schema usage was denied and connector update access allowed. Independent postflight confirmed both schema and role absent, with project/contact counts unchanged at 13 each. This is not an exact-file migration application or full hosted permission/concurrency proof. Persistent storage, dedicated LOGIN, remaining secrets, tenant pinning, callback configuration and live authorisation remain outstanding.
+
+Subsequent authorised staging installation (2026-09-14): the migration SQL passed another rollback rehearsal, then was applied with ledger version `20260914000001`. The browser paste introduced CRLF and two extra blank lines; stored-body MD5 is `6ce09cedb64fb3ac30b2e522dca8c1b2`. Removing CR and doubled newlines yields `ca3eaf263854e362262755220ae2d27a`, matching the checked-in LF body. No historical ledger was repaired. A dedicated `sanctuary_xero_staging` identity was created with only connector membership, connection limit 4, no elevated capabilities, and login disabled pending owner password entry. Its creation transaction refused any table privilege in public/auth/storage/private and passed. Postflight: 13 projects, 13 contacts, one empty connection row, zero events, denied anon/authenticated schema usage, allowed connector connection update, denied connector audit deletion, login disabled. Hosted TLS, login and concurrency remain unverified.
+
+The owner explicitly authorised completion through tested read-only production release and Peter Harvey deposit investigation and requested an active goal. Accounting writes and automatic portal payment updates are excluded. Credential entry and consent handoffs still follow the browser's applicable rules. The staging password handoff prepares `XERO_DATABASE_URL` as a branch-only Secret using the displayed IPv4 session pooler `aws-0-ap-northeast-1.pooler.supabase.com:5432`, user `sanctuary_xero_staging.tnsiprehuldksnuowubv`, database `postgres`, and `sslmode=verify-full`; the pending form contains only a placeholder and has not been saved.
