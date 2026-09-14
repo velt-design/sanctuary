@@ -225,3 +225,7 @@ Manual or browser checks should cover:
 - Powdercoating override save conflict and successful override persistence.
 
 If changing schema or access policy for these flows, also verify the ordered migrations, RLS/service-role boundary, and public token behavior.
+
+## Xero deposit review
+
+The developer-only suggested-match screen compares a portal invoice with Xero receipts. The separately gated approval pilot records only the verified receipt amount through the canonical ledger after explicit Jordan approval. Any positive verified deposit counts as customer won; partial deposits leave the whole invoice OPEN. Reaching the exact invoice total allocates those same receipts and marks it PAID without an additional payment. Unrecognized existing history blocks import. Audited reversal removes the match and releases allocations, reopening a paid invoice where necessary. See `docs/xero-connection.md` for approval, retry, access and rollout evidence; the pilot is not yet released.

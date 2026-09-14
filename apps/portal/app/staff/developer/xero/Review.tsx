@@ -22,7 +22,7 @@ export default function Review() {
     <p>Search the exact invoice number, or the exact Xero contact name for money recorded directly as received. A matching amount or name alone is not proof of payment for a portal job.</p>
     <form onSubmit={submit}>
       <label>Record type <select name="kind"><option value="invoice">Invoice number</option><option value="receipt">Receipt contact name</option></select></label>{' '}
-      <label>Search <input name="value" required minLength={3} maxLength={100} /></label>{' '}
+      <label>Search <input name="value" required minLength={1} maxLength={240} /></label>{' '}
       <button disabled={pending}>{pending ? 'Checking…' : 'Inspect'}</button>
     </form>
     <p role="status">{message}</p>

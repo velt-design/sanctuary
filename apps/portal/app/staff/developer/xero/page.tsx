@@ -5,6 +5,8 @@ import { discoveredOrganisations } from '@/lib/xero/discovery';
 import { setupError } from '@/lib/xero/setupError';
 import Review from './Review';
 import Connect from './Connect';
+import PaymentSuggestions from './PaymentSuggestions';
+import { getPaymentPilotSession } from '@/lib/xero/pilotAccess';
 
 export const dynamic = 'force-dynamic';
 export default async function XeroDeveloperPage({ searchParams }: { searchParams: Promise<{ connection?: string }> }) {
@@ -15,6 +17,8 @@ export default async function XeroDeveloperPage({ searchParams }: { searchParams
   let connection: Awaited<ReturnType<typeof status>> | null = null;
   let setupFailure = '';
   try { connection = await status(); } catch (error) { setupFailure = setupError(error); }
+  let paymentPilot = false;
+  try { paymentPilot = Boolean(await getPaymentPilotSession()); } catch { /* Connection diagnostics must remain usable if the pilot store is unavailable. */ }
   const date = (value: unknown) => value ? new Date(String(value)).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland'}) : 'Not yet';
   return <main style={{maxWidth:900,margin:'32px auto',padding:24}}>
     <h1>Xero developer connection</h1>
@@ -32,7 +36,8 @@ export default async function XeroDeveloperPage({ searchParams }: { searchParams
         <dt>Connection status</dt><dd>{connection.error ?? (connection.connected ? 'Connected' : 'Not connected')}</dd></dl>
       <p>Renewal runs daily and before reads. A stale verification date needs developer investigation.</p>
       <Connect connected={connection.connected} />
-      {connection.connected && <Review />}
+      {paymentPilot && <p><a href="/staff/payments/review">Open deposit approvals</a> — review and record verified receipts in the portal.</p>}
+      {connection.connected && <><PaymentSuggestions /><Review /></>}
     </>}
   </main>;
 }

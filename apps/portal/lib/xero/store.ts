@@ -92,11 +92,11 @@ export async function access(): Promise<Tokens> {
   return result.tokens;
 }
 
-export async function readAccounting(resource: 'Invoices' | 'BankTransactions', where: string) {
+export async function readAccounting(resource: 'Invoices' | 'BankTransactions', where: string, recordId?: string) {
   const cfg = config();
   const tokens = await access();
   try {
-    return await accountingRead(tokens, cfg.tenantId, resource, where);
+    return await accountingRead(tokens, cfg.tenantId, resource, where, recordId);
   } catch (error) {
     if (error instanceof XeroError && error.code === 'RECONNECT_REQUIRED') {
       await withDatabase(async db => db.begin(async tx => {

@@ -17,6 +17,17 @@ Related docs/tests: paths or commands
 
 Use `Status: Active` when the entry is still only a decision-log guardrail. New reusable lessons should remain `Active` until a later pass promotes them into a canonical doc, so this log continues to show live risks that have not yet become standing rules. Use `Status: Promoted` when the durable behavior is now represented in `docs/agent-playbook.md`, `AGENTS.md`, `docs/README.md`, or another canonical doc. Use `Status: Superseded` only when a newer entry or canonical doc replaces the rule.
 
+## Xero customer search literals
+
+Date: 2026-09-14
+Area: Xero deposit review
+Status: Active
+Decision or mistake: A defensive character allowlist rejected valid invoice customer names. Generic JSON/backslash escaping then passed local string tests but failed against Xero.
+Why it mattered: Short or punctuated customer names could not be reviewed, and unverified query escaping risks changing filter meaning.
+Current guardrail: Match search bounds to the customer domain, retain an exact fixed query shape, double embedded quotation marks for Xero's parser, and verify provider behavior with harmless synthetic names before release.
+Promoted to: None
+Related docs/tests: docs/xero-connection.md; apps/portal/lib/xero/review.test.ts
+
 ## Browser SQL editor replacement
 
 Date: 2026-09-14

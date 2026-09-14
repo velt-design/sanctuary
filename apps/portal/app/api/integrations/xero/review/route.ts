@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return json({ records, checkedAt: new Date().toISOString(), limited: records.length === 20,
       note: 'Candidate records only. No payment or project status has been changed. No result does not prove no payment exists.' });
   } catch (error) {
-    if (error instanceof Error && error.message === 'INVALID_QUERY') return json({ error:'Use an exact invoice number or customer name (3-100 characters).' },400);
+    if (error instanceof Error && error.message === 'INVALID_QUERY') return json({ error:'Use an exact invoice number or customer name (1-240 characters).' },400);
     return json({ error:'Read unavailable. Check the connection and try again. No accounting records were changed.' },503);
   }
 }
