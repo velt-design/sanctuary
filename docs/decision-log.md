@@ -5544,3 +5544,13 @@ Permission review must also cover FK cascades: a browser-authorized parent-proje
 - Current guardrail: Use a bounded twenty-second limit on that case only. Subsequent exact-revision review reported isolated runtimes of 9.606 and 9.064 seconds, showing the initial ten-second allowance had too little headroom. Preserve every assertion and cleanup step, and verify both the isolated case and the normal concurrent Project Work gate. Do not hide failures with retries or a global timeout increase.
 - Promoted to: `docs/testing-and-qa.md`, Project Work Items V2 Gate.
 - Related docs/tests: `test/project-owner-handoff-migration.test.ts`; `npm run test:portal:project-work`.
+
+
+Date: 2026-09-15
+Area: Xero protected-preview worker rehearsal
+Status: Active
+Decision or mistake: The worker database probe passed, but Vercel rejected the gateway request before application authentication.
+Why it mattered: Issuing first would have stranded a test transfer behind hosting authentication.
+Current guardrail: Before enabling issuance, verify both hosting and portal gateway authentication. Use the existing project automation credential only in a header to the configured Vercel preview; retain secret/lease checks, redirect refusal and preview protection. Pin both connector and finance control tenant before customer preparation.
+Promoted to: apps/worker/README.md and docs/xero-connection.md
+Related docs/tests: apps/worker/src/handlers/xeroInvoice.test.ts

@@ -24,8 +24,31 @@ describe('Xero worker gateway', () => {
     expect(await createXeroInvoiceHandler(config, fetcher)(ctx)).toEqual({ safeResult: { resultCode: 'XERO_DRAFT_VERIFIED', processedCount: 1 } });
     expect(fetcher).toHaveBeenCalledWith(config.origin + '/api/integrations/xero/worker', expect.objectContaining({
       body: JSON.stringify({ jobId: id, leaseToken: id }), redirect: 'error',
+      headers: { Authorization: 'Bearer ' + config.secret, 'Content-Type': 'application/json' },
     }));
     expect(ctx.rpc.refreshEffects).toHaveBeenCalledTimes(1);
+  });
+  it('uses a separate protection header only for an explicitly configured Vercel origin', async () => {
+    const protectedConfig = loadXeroInvoiceGatewayConfig({ XERO_INVOICE_WORKER_ENABLED: 'true',
+      XERO_INVOICE_GATEWAY_SECRET: config.secret, XERO_INVOICE_PORTAL_ORIGIN: 'https://finance-demo.vercel.app',
+      XERO_INVOICE_VERCEL_AUTOMATION_BYPASS_SECRET: 'synthetic-vercel-protection-credential' })!;
+    const fetcher = vi.fn(async () => Response.json({ resultCode: 'XERO_DRAFT_VERIFIED', processedCount: 1 }));
+    await createXeroInvoiceHandler(protectedConfig, fetcher)(context());
+    expect(fetcher).toHaveBeenCalledWith('https://finance-demo.vercel.app/api/integrations/xero/worker', expect.objectContaining({
+      redirect: 'error', headers: { Authorization: 'Bearer ' + config.secret, 'Content-Type': 'application/json',
+        'x-vercel-protection-bypass': 'synthetic-vercel-protection-credential' },
+      body: JSON.stringify({ jobId: id, leaseToken: id }),
+    }));
+    for (const origin of ['https://portal.example.test', 'https://finance.vercel.app.example.test']) {
+      expect(() => loadXeroInvoiceGatewayConfig({ XERO_INVOICE_WORKER_ENABLED: 'true',
+        XERO_INVOICE_GATEWAY_SECRET: config.secret, XERO_INVOICE_PORTAL_ORIGIN: origin,
+        XERO_INVOICE_VERCEL_AUTOMATION_BYPASS_SECRET: 'synthetic-vercel-protection-credential' }))
+        .toThrow('XERO_GATEWAY_INVALID_PROTECTION_CREDENTIAL');
+    }
+    expect(() => loadXeroInvoiceGatewayConfig({ XERO_INVOICE_WORKER_ENABLED: 'true',
+      XERO_INVOICE_GATEWAY_SECRET: config.secret, XERO_INVOICE_PORTAL_ORIGIN: 'https://finance-demo.vercel.app',
+      XERO_INVOICE_VERCEL_AUTOMATION_BYPASS_SECRET: 'invalid\r\nheader-value' }))
+      .toThrow('XERO_GATEWAY_INVALID_PROTECTION_CREDENTIAL');
   });
   it('does not move a resumed finalisation backwards into running', async () => {
     const ctx = context();

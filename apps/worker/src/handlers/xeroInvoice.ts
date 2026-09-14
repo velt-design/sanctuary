@@ -1,8 +1,9 @@
 import { parseXeroInvoiceJobPayloadV1 } from '@sp/jobs';
+import type { XeroInvoiceGatewayConfig } from '../config';
 import { BackgroundJobHandlerError } from '../runtime/errors';
 import type { BackgroundJobHandler } from '../runtime/contracts';
 
-export function createXeroInvoiceHandler(config: { origin: string; secret: string }, fetcher: typeof fetch = fetch): BackgroundJobHandler {
+export function createXeroInvoiceHandler(config: XeroInvoiceGatewayConfig, fetcher: typeof fetch = fetch): BackgroundJobHandler {
   return async ({ claim, payload, signal, rpc }) => {
     if (signal.aborted) throw signal.reason;
     try { parseXeroInvoiceJobPayloadV1(payload.payload); } catch {
@@ -16,7 +17,8 @@ export function createXeroInvoiceHandler(config: { origin: string; secret: strin
     try {
       response = await fetcher(`${config.origin}/api/integrations/xero/worker`, {
         method: 'POST', redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(50000)]),
-        headers: { Authorization: `Bearer ${config.secret}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${config.secret}`, 'Content-Type': 'application/json',
+          ...(config.protectionBypassSecret ? { 'x-vercel-protection-bypass': config.protectionBypassSecret } : {}) },
         body: JSON.stringify({ jobId: claim.jobId, leaseToken: claim.leaseToken }),
       });
     } catch {
