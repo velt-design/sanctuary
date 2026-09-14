@@ -548,3 +548,6 @@ Unapplied migration19 owns private customer creation intents/events and the serv
 
 
 Unapplied migration20 introduces private `xero_invoice_finalise_verified`, retaining the existing public worker lease guard, and service-only `xero_finance_recover_invoice`. The latter checks the current finance grant, locks the stopped canonical job, validates the immutable dispatched request/effect, and atomically records verified binding and queue completion. No worker lease is invented and no provider intent is requeued. See `docs/xero-connection.md` for proof and activation limits.
+
+
+Unapplied migration21 adds request window_started_at and private append-only xero_unused_window_renewals. The finance resume RPC may renew only a stopped request with no dispatch, provider identity/effect or lease, retaining its original creation time, body/hash and key. The immutable trigger requires matching renewal provenance and refuses any possibly dispatched window change. See docs/xero-connection.md for guards and proof limits.

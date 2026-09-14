@@ -21,6 +21,8 @@ on:
       - "packages/jobs/**"
       - "scripts/service-role-access-report.mjs"
       - "scripts/test-background-jobs-db.mjs"
+      - "scripts/xero-finance-db-contract.mjs"
+      - "test/xero-*.test.ts"
       - "supabase/migrations/*background_job*.sql"
       - "supabase/migrations/*ai_synthetic*.sql"
       - "supabase/tests/background_jobs*.sql"
@@ -55,6 +57,8 @@ on:
       - "packages/jobs/**"
       - "scripts/service-role-access-report.mjs"
       - "scripts/test-background-jobs-db.mjs"
+      - "scripts/xero-finance-db-contract.mjs"
+      - "test/xero-*.test.ts"
       - "supabase/migrations/*background_job*.sql"
       - "supabase/migrations/*ai_synthetic*.sql"
       - "supabase/tests/background_jobs*.sql"
@@ -97,6 +101,9 @@ jobs:
 
       - name: Job contracts and security boundaries
         run: npm run test:jobs
+
+      - name: Xero finance recovery contracts
+        run: npx vitest run test/xero-finance-db-contract.test.ts test/xero-finance-resume.test.ts test/xero-invoice-recovery.test.ts
 
       - name: Email provider application integrations
         run: npm run test:email-integrations

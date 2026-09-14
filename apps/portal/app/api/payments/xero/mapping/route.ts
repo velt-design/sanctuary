@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       sourceContactId: context.sourceContactId, proof: { contact, account, tax } });
     return json({ saved: true });
   } catch (error) {
-    if (error instanceof Error && error.message === 'XERO_RECONCILIATION_REQUIRED') return json({ error: 'This transfer already prepared or contacted Xero. Check its existing outcome before attempting another transfer.' }, 409);
+    if (error instanceof Error && error.message === 'XERO_RECONCILIATION_REQUIRED') return json({ error: 'This transfer may already have reached Xero. Check its outcome in finance review before another transfer.' }, 409);
     if (error instanceof Error && error.message === 'XERO_TRANSFER_NOT_FOUND') return json({ error: 'This invoice was not captured for automatic transfer. Resuming does not import historical invoices.' }, 409);
     if (error instanceof Error && error.message === 'INSUFFICIENT_SCOPE') return json({ error: 'Xero needs the additional finance connection permission before these details can be checked.' }, 409);
     return json({ error: 'Mapping could not be confirmed. Review the current details before retrying.' }, 503);

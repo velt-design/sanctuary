@@ -244,3 +244,6 @@ The mapping screen has a separately gated, explicitly confirmed new-Xero-custome
 
 
 `xeroInvoiceTransferRepository.ts` also owns actor-bound stopped-transfer recovery. Finance review can explicitly check the original request against Xero; exact verified DRAFT recovery uses migration20 and never sends another invoice. Existing worker ownership, changed/missing provider records and cancellations remain explicit exceptions. Details and pending rollout evidence live in `docs/xero-connection.md`.
+
+
+Finance resume can reuse an unused prepared invoice request through migration21. Only an expired unused window is renewed, with audit; the invoice, request key and job identity remain the same. Possibly dispatched requests still require the separate recovery check. This remains unactivated rollout work; see docs/xero-connection.md.
