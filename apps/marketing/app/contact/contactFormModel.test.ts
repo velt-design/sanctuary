@@ -8,6 +8,12 @@ function formData(values: Record<string, string>): FormData {
 }
 
 describe('contact form model', () => {
+  it('requires a site address for measures but permits an early discussion without one', () => {
+    const values = { enquiryType: 'residential', name: 'Alex', phone: '0211234567', email: 'alex@example.test' };
+    expect(validateContactForm(formData({ ...values, requestType: 'site-measure', suburb: '  ' }), [])).toEqual({ suburb: 'Enter the site address for your measure request.' });
+    expect(validateContactForm(formData({ ...values, requestType: 'project-discussion' }), [])).toEqual({});
+    expect(validateContactForm(formData({ ...values, requestType: 'site-measure', suburb: '12 Example Street, Auckland' }), [])).toEqual({});
+  });
   it('requires both contact methods alongside the project type and name', () => {
     expect(validateContactForm(formData({}), [])).toEqual({
       enquiryType: 'Choose a project type.',

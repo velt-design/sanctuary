@@ -53,6 +53,12 @@ function buildFields(
 }
 
 describe('calculator structure fields', () => {
+  it('offers all four ceiling choices while preserving the historical default', () => {
+    const {fields} = buildFields({roofMaterial:'timber',ceilingOption:'thermopine-150'});
+    const field=fieldById(fields,'ceilingOption');
+    expect(field).toMatchObject({value:'thermopine-150'});
+    expect('options' in field && field.options).toEqual(expect.arrayContaining([{label:'Existing cedar specification',value:''}]));
+  });
   it('builds the established core structure and override fields', () => {
     const { fields } = buildFields();
     const ids = fields.map((field) => field.id);

@@ -25,7 +25,7 @@ describe('fixed side panels',()=>{
     const p=defaultSidePanel('front-1of2','aluminium');
     expect(parseSidePanels([{...p,profile:'65x16',edge:true}])![0].gap).toBe(100);
     expect(parseSidePanels([{...p,profile:'65x16',edge:true,customGap:true,gap:32}])![0].gap).toBe(32);
-    expect(parseSidePanels([{...p,edge:true}])).toBeNull();expect(parseSidePanels([p,p])).toBeNull();
+    expect(parseSidePanels([{...p,profile:'50x10',edge:true}])).toBeNull();expect(parseSidePanels([p,p])).toBeNull();
     expect(parseSidePanels([{...p,gap:0}])).toBeNull();
     expect(faceWidth('90x39',true)).toBe(39);
   });

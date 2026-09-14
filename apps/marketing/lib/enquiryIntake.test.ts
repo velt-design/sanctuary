@@ -9,6 +9,7 @@ const ORIGINAL_IDS = {
   contact_id: 'contact-original',
   project_id: 'project-original',
   enquiry_request_id: 'enquiry-original',
+  estimate_id: 'estimate-original',
 };
 
 function callWith(rpc: ReturnType<typeof vi.fn>) {
@@ -20,6 +21,15 @@ function callWith(rpc: ReturnType<typeof vi.fn>) {
 }
 
 describe('createMarketingEnquiryIntake', () => {
+  it('passes the prepared message to the atomic delivery RPC without fallback', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [{ ...ORIGINAL_IDS, already_existed: false }], error: null });
+    const delivery = { draftEstimate: { inputs: {}, outputs: {} }, message: { from: 'info@example.test', to: 'customer@example.test', subject: 'Received', html: '<p>Saved</p>' }, templateId: 'TEST', emailType: 'WEBSITE_ESTIMATE_AUTORESPONDER', variables: {} };
+    await createMarketingEnquiryIntake({ rpc } as any, { submissionId: SUBMISSION_ID, uploadSessionToken: '', payload: {}, delivery });
+    expect(rpc).toHaveBeenCalledWith('marketing_enquiry_intake_with_delivery', expect.objectContaining({ p_delivery: delivery }));
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'queue unavailable' } });
+    await expect(createMarketingEnquiryIntake({ rpc } as any, { submissionId: SUBMISSION_ID, uploadSessionToken: '', payload: {}, delivery })).rejects.toThrow('ENQUIRY_INTAKE_FAILED');
+    expect(rpc).toHaveBeenCalledTimes(2);
+  });
   it('returns the original records on a retry', async () => {
     const rpc = vi.fn()
       .mockResolvedValueOnce({ data: [{ ...ORIGINAL_IDS, already_existed: false }], error: null })

@@ -13,6 +13,6 @@ export function parseLighting(value:unknown):PergolaLighting|null{
  return {...(v.cedarPerSection!==undefined?{cedarPerSection:v.cedarPerSection}:{}),...(v.cedarIndividual!==undefined?{cedarIndividual:v.cedarIndividual}:{}),...(v.cedarOverrides?{cedarOverrides:v.cedarOverrides}:{}),...(v.cedarPattern?{cedarPattern:v.cedarPattern}:{}),...(v.rafterAmount?{rafterAmount:v.rafterAmount}:{}),rafterCount:v.rafterCount,cedarCount:v.cedarCount,rafterLayout:v.rafterLayout,cedarLayout:v.cedarLayout,strips:[...new Set(v.strips)]};
 }
 export const hasLighting=(v?:PergolaLighting)=>!!v&&(v.rafterCount>0||v.cedarCount>0||v.strips.length>0);
-export const describeLighting=(v:PergolaLighting)=>'Warm-white lighting: '+v.rafterCount+' rafter spots ('+(v.rafterAmount??v.rafterLayout)+'), '+v.cedarCount+' cedar downlights ('+(v.cedarIndividual?'individual sections':String(v.cedarPerSection??v.cedarCount)+' per section per slope')+'), '+v.strips.length+' full-length LED channels';
+export const describeLighting=(v:PergolaLighting)=>'Warm-white lighting: '+v.rafterCount+' rafter spots ('+(v.rafterAmount??v.rafterLayout)+'), '+v.cedarCount+' ceiling downlights ('+(v.cedarIndividual?'individual sections':String(v.cedarPerSection??v.cedarCount)+' per section per slope')+'), '+v.strips.length+' full-length LED channels';
 
 export const availableRafterSpots=(sites:LightSite[],strips:string[])=>sites.filter(s=>!strips.includes(s.id.slice(0,s.id.lastIndexOf('-'))));

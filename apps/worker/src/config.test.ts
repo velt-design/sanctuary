@@ -14,6 +14,12 @@ const identity = {
 };
 
 describe('loadWorkerConfig', () => {
+  it('requires explicit enquiry email opt-in and a provider key', () => {
+    expect(loadWorkerConfig(requiredEnvironment).enquiryEmailEnabled).toBe(false);
+    expect(loadWorkerConfig(requiredEnvironment).resendApiKey).toBeNull();
+    expect(() => loadWorkerConfig({ ...requiredEnvironment, BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED: 'true' })).toThrow('RESEND_API_KEY');
+    expect(loadWorkerConfig({ ...requiredEnvironment, BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED: 'true', RESEND_API_KEY: 'test-key' }).enquiryEmailEnabled).toBe(true);
+  });
   it('defaults to a dark worker with a generated safe identity', () => {
     const config = loadWorkerConfig(requiredEnvironment, { identity });
 

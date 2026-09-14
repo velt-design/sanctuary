@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { normalizeEmailMessage, type EmailMessageInput } from '@sp/email-provider';
 import {
   parseBackgroundJobClaims,
   parseBackgroundJobProtectedPayload,
@@ -24,6 +25,8 @@ import {
 import type { RuntimeBackgroundJobsRpc } from './runtime/contracts';
 
 export const BACKGROUND_JOBS_RPC_NAMES = {
+  readEnquiryDelivery: 'marketing_enquiry_delivery_read',
+  finaliseEnquiryDelivery: 'marketing_enquiry_delivery_finalise',
   claim: 'background_jobs_claim',
   readPayload: 'background_job_read_payload',
   readEffects: 'background_job_read_effects',
@@ -200,6 +203,18 @@ function parseResponse<T>(rpcName: BackgroundJobsRpcName, parse: () => T): T {
 
 class SupabaseBackgroundJobsRpc implements RuntimeBackgroundJobsRpc {
   constructor(private readonly transport: BackgroundJobsRpcTransport) {}
+
+  async readEnquiryDelivery(input: { jobId: string; workerId: string; leaseToken: string }) {
+    const name = BACKGROUND_JOBS_RPC_NAMES.readEnquiryDelivery;
+    const data = await this.call(name, ownedParameters(input));
+    return parseResponse(name, () => normalizeEmailMessage(data as EmailMessageInput));
+  }
+
+  async finaliseEnquiryDelivery(input: { jobId: string; workerId: string; leaseToken: string; providerMessageId: string }) {
+    await this.call(BACKGROUND_JOBS_RPC_NAMES.finaliseEnquiryDelivery, {
+      ...ownedParameters(input), p_provider_message_id: input.providerMessageId,
+    });
+  }
 
   private async call(
     rpcName: BackgroundJobsRpcName,

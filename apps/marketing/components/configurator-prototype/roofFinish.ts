@@ -1,3 +1,4 @@
+import { isCeilingOption } from '@sp/costing';
 import {hasLighting} from './lightingSelection';
 import { DEFAULT_ROOF_FINISH, roofFinishBayLimit, representativeBoxRoofMaxProjection, type RepresentativeRoofFinish } from '@sp/geometry';
 import type { PreviewRoofChoices } from './GableChoices';
@@ -26,12 +27,13 @@ export function parseRoofFinish(value: unknown): RepresentativeRoofFinish | null
   if (!['acrylic', 'solid', 'combination'].includes(String(f.material)) || !['central', 'house'].includes(String(f.layout))
     || !['corrugated', 'trapezoidal', 'tray'].includes(String(f.profile)) || ![300, 400, 500].includes(f.trayWidth as number)
     || typeof f.acrylicBays !== 'number' || !Number.isInteger(f.acrylicBays) || f.acrylicBays < 1 || f.acrylicBays > 16) return null;
-  return { material: f.material as RepresentativeRoofFinish['material'], layout: f.layout as RepresentativeRoofFinish['layout'],
+  if (f.ceiling !== undefined && !isCeilingOption(f.ceiling)) return null;
+  return { ...(f.ceiling ? { ceiling: f.ceiling as RepresentativeRoofFinish['ceiling'] } : {}), material: f.material as RepresentativeRoofFinish['material'], layout: f.layout as RepresentativeRoofFinish['layout'],
     profile: f.profile as RepresentativeRoofFinish['profile'], acrylicBays: f.acrylicBays, trayWidth: f.trayWidth as RepresentativeRoofFinish['trayWidth'] };
 }
 export function roofFinishDescription(roof: PreviewRoofChoices) {
   const f = getRoofFinish(roof);
   if (f.material === 'acrylic') return 'Acrylic roof';
-  return `${f.profile === 'tray' ? `Tray ${f.trayWidth} mm` : f.profile === 'trapezoidal' ? 'Trapezoidal' : 'Corrugated'} Colorsteel · Cedar ceiling`
+  return `${f.profile === 'tray' ? `Tray ${f.trayWidth} mm` : f.profile === 'trapezoidal' ? 'Trapezoidal' : 'Corrugated'} Colorsteel · ${f.ceiling?.startsWith('thermopine') ? 'ThermoPine' : 'Cedar'} ceiling${f.ceiling ? ' · ' + f.ceiling.split('-')[1] + ' mm boards' : ''}`
     + (f.material === 'combination' ? ` · ${f.layout === 'central' ? 'Central' : 'House-side'} skylight · ${f.acrylicBays} acrylic ${f.acrylicBays === 1 ? 'bay' : 'bays'}` : '');
 }

@@ -11,7 +11,7 @@ function FinishMesh({ data }: { data: RoofFinishMesh }) {
   }, [data]);
   const material = useMemo(() => {
     const cedar = data.kind === 'cedar';
-    const value = new MeshStandardMaterial({ color: cedar ? '#95633f' : '#343b39', roughness: cedar ? .82 : .4, metalness: cedar ? 0 : .45, side: DoubleSide });
+    const value = new MeshStandardMaterial({ color: cedar ? (data.timberSpecies === 'thermopine' ? '#9a7952' : '#95633f') : '#343b39', roughness: cedar ? .82 : .4, metalness: cedar ? 0 : .45, side: DoubleSide });
     if (cedar) {
       value.onBeforeCompile = shader => {
         shader.uniforms.uWoodAcross = { value: new Vector3(data.grainAcross?.x ?? 1, data.grainAcross?.y ?? 0, data.grainAcross?.z ?? 0) };
@@ -24,7 +24,7 @@ function FinishMesh({ data }: { data: RoofFinishMesh }) {
       value.customProgramCacheKey = () => 'representative-cedar-v2';
     }
     return value;
-  }, [data.kind, data.grainAcross, data.grainAlong]);
+  }, [data.kind, data.timberSpecies, data.grainAcross, data.grainAlong]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => () => material.dispose(), [material]);
   return <mesh name={data.id} geometry={geometry} material={material} />;

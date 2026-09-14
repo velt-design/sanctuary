@@ -25,7 +25,7 @@ describe('marketing Ziptrak blinds',()=>{
     const input={...INITIAL_INPUT,widthMm:3900,projectionMm:3000,connection:'facade' as const};
     const roof={...INITIAL_ROOF,family,orientation:'away' as const};
     const bare=solvePergolaPreview(input,roof).geometry!.assembly;
-    const blinds=previewBlindOpenings(input,roof).map(o=>defaultBlind(o.id));
+    const blinds=previewBlindOpenings(input,roof).map(o=>({...defaultBlind(o.id),cover:'PELMET' as const}));
     const fitted=solvePergolaPreview(input,{...roof,blinds}).geometry!.assembly;
     const posts=fitted.members.filter(m=>m.role==='post' && m.profile.widthMm===m.profile.depthMm);
     expect(fitRepresentativeBlindPosts(fitted,blinds)).toBeNull();

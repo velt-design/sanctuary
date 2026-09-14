@@ -9,6 +9,14 @@ import { renderWebsiteAutoresponder } from './websiteAutoresponder';
 
 afterEach(() => vi.unstubAllEnvs());
 describe('submitted design boundary', () => {
+  it('keeps help separate from bespoke and preserves a started bespoke design', () => {
+    expect(buildCustomerBrief('residential', undefined, 'help').designStatus).toBe('help');
+    const bespoke = buildCustomerBrief('residential', DEFAULT_PREVIEW_DRAFT, 'bespoke');
+    expect(bespoke.designStatus).toBe('bespoke');
+    expect(bespoke.design).toEqual(DEFAULT_PREVIEW_DRAFT);
+    expect(bespoke.reopenPath).toContain('#design=');
+    expect(buildCustomerBrief('residential', DEFAULT_PREVIEW_DRAFT, 'arbitrary').designStatus).toBe('configured');
+  });
   it('freezes a reopenable design independently of audience and later editing', () => {
     const source = structuredClone(DEFAULT_PREVIEW_DRAFT);
     const brief = buildCustomerBrief('commercial', source);
@@ -42,7 +50,7 @@ describe('submitted design boundary', () => {
   });
 });
 
-it('renders all four journeys with distinct subjects, separated notes and no invented estimate', async () => {
+it('renders all five journeys with distinct subjects, separated notes and no invented estimate', async () => {
   const subjects = new Set<string>();
   for (const fixture of enquiryExperienceFixtures()) {
     const rendered = await renderWebsiteAutoresponder(fixture.templateId, { ...fixture.variables });
@@ -56,5 +64,5 @@ it('renders all four journeys with distinct subjects, separated notes and no inv
       writeFileSync(`artifacts/configurator-preview/${fixture.fileBaseName}.html`, rendered.html);
     }
   }
-  expect(subjects.size).toBe(4);
+  expect(subjects.size).toBe(5);
 });

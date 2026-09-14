@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Card, TabNavigation } from "@/components/ui/foundation";
 import type { ProjectEnquiryAttachment } from "@/lib/projects/enquiryAttachments/types";
 import ProjectEnquiryFilesPanel from "./ProjectEnquiryFilesPanel";
+import ProjectEnquiryReceiptPanel from "./ProjectEnquiryReceiptPanel";
 
 export default function ProjectWorkFilesCard({
   projectId,
@@ -20,7 +21,7 @@ export default function ProjectWorkFilesCard({
   initialAttachments?: ProjectEnquiryAttachment[];
   disableFileActions?: boolean;
 }) {
-  const [selectedPanel, setSelectedPanel] = useState<"work" | "files">("work");
+  const [selectedPanel, setSelectedPanel] = useState<"work" | "files" | "enquiry">("work");
   return (
     <Card
       className={className}
@@ -33,6 +34,7 @@ export default function ProjectWorkFilesCard({
           items={[
             { key: "work", label: "Work", controls: "project-work-panel" },
             { key: "files", label: "Files", controls: "project-files-panel" },
+            { key: "enquiry", label: "Original enquiry", controls: "project-enquiry-panel" },
           ]}
           selectedKey={selectedPanel}
           onSelect={setSelectedPanel}
@@ -48,6 +50,10 @@ export default function ProjectWorkFilesCard({
             initialAttachments={initialAttachments}
             disableActions={disableFileActions}
           />
+        </div>
+      ) : selectedPanel === "enquiry" ? (
+        <div id="project-enquiry-panel" role="tabpanel" aria-label="Original enquiry">
+          <ProjectEnquiryReceiptPanel projectId={projectId} host={host} />
         </div>
       ) : (
         <div id="project-work-panel" role="tabpanel" aria-label="Work">

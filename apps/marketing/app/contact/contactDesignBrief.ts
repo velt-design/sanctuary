@@ -6,6 +6,7 @@ import { describeBlinds } from '../../components/configurator-prototype/blindCat
 import {describeLighting,hasLighting} from '../../components/configurator-prototype/lightingSelection';
 import {describeRoofBattens} from '../../components/configurator-prototype/roofBattenSelection';
 import { describeSidePanels } from '../../components/configurator-prototype/sidePanelCatalog';
+import type { ConfiguratorPublicPrice } from '../../lib/configuratorPublicPrice';
 
 export type ContactDesignBrief = {
   roofMaterials: ('acrylic' | 'timber')[];
@@ -15,10 +16,11 @@ export type ContactDesignBrief = {
   style: 'pitched' | 'gable' | 'perimeter';
   estimate: SimpleCoverHandoff | null;
   snapshot: PreviewDraft;
+  configuredPrice?: Extract<ConfiguratorPublicPrice, { status: 'priced' }>;
 };
 
 /** Same-page presentation handoff; commercial prices still require the server's signed reference. */
-export function buildContactDesignBrief({ input, roof, result }: PreviewSelection): ContactDesignBrief {
+export function buildContactDesignBrief({ input, roof, result, configuratorPrice }: PreviewSelection): ContactDesignBrief {
   const finish = getRoofFinish(roof);
   const material = finish.material === 'acrylic' ? 'acrylic' : finish.material === 'solid' ? 'solid' : 'combination';
   const label = (roof.family === 'mono' ? 'Pitched acrylic pergola' : roof.family === 'gable' ? 'Gable acrylic pergola' : 'Box perimeter acrylic pergola').replace('acrylic', material);
@@ -41,10 +43,11 @@ export function buildContactDesignBrief({ input, roof, result }: PreviewSelectio
   return {
     roofMaterials: finish.material === "acrylic" ? ["acrylic"] : finish.material === "solid" ? ["timber"] : ["acrylic", "timber"],
     label, description,
+    ...(configuratorPrice?.status === 'priced' ? { configuredPrice: configuratorPrice } : {}),
     snapshot: parsePreviewDraft({ version: 1, input, roof })!,
     dimensions: { widthM: input.widthMm / 1000, depthM: input.projectionMm / 1000, heightM: null },
     style: roof.family === 'mono' ? 'pitched' : roof.family === 'gable' ? 'gable' : 'perimeter',
-    estimate: !hasSimpleRoofPrice(roof) ? null : {
+    estimate: (configuratorPrice !== undefined && configuratorPrice?.status !== 'disabled') || !hasSimpleRoofPrice(roof) ? null : {
       schemaVersion: 'simple-cover-handoff.v1', input,
       status: priced ? 'priced' : result?.status === 'custom' ? 'custom' : 'unavailable',
       calculationRef: priced?.calculationRef ?? null,

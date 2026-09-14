@@ -34,9 +34,9 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
   const context = useMemo(() => geometry ? solveSimpleCoverSurroundings(input, geometry.assembly, roof) : null, [geometry, input, roof]);
   return <>
     <div className={styles.viewToolbar}>
-      <div className={styles.viewTabs} role="group" aria-label="Choose view">{(lighting?.editing ? ['Plan', '3D'] as const : ['3D', 'Plan'] as const).map((name) =>
-        <button key={name} aria-pressed={view === name} onClick={() => changeView(name)}>{lighting?.editing ? name==='Plan'?'Lighting plan':'Preview in 3D' : name}</button>)}</div>
-      {lighting&&<div className={styles.timeTabs} role="group" aria-label="Time of day">{[false,true].map(n=><button key={String(n)} disabled={view==='Plan'} title={view==='Plan'?'Plan stays light; switch to 3D to preview lighting':undefined} aria-pressed={lighting.night===n} onClick={()=>lighting.setNight(n)}>{n?'Night':'Day'}</button>)}</div>}
+      <div className={styles.viewTabs} role="group" aria-label="Choose view">{(['3D', 'Plan'] as const).map((name) =>
+        <button key={name} aria-pressed={view === name} onClick={() => changeView(name)}>{name}</button>)}</div>
+      {lighting && (view === 'Plan' ? <div className={styles.timeTabs}><button onClick={() => { lighting.setNight(hasLighting(lighting.value)); changeView('3D'); }}>{hasLighting(lighting.value) ? 'Preview lighting in 3D' : 'Preview in 3D'} ↗</button></div> : <div className={styles.timeTabs} role="group" aria-label="Time of day">{[false,true].map(n => <button key={String(n)} aria-pressed={lighting.night===n} onClick={()=>lighting.setNight(n)}>{n?'Night':'Day'}</button>)}</div>)}
       <div className={styles.viewActions}>
       {blinds && !lighting?.editing && <button aria-label="Edit sides" aria-pressed={blinds.editing} onClick={()=>rail.choose(rail.section==='sides'?'structure':'sides')}>Sides</button>}
       {view === '3D' && renderable && <>
@@ -58,13 +58,13 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
         <div className={styles.sceneLayer} aria-hidden={view !== '3D'} style={{ visibility: view === '3D' ? 'visible' : 'hidden' }}>
           <PreviewScene covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D'} activeDimension={activeDimension} plan={geometry.plan} reset={reset} fit={fit} onFallback={() => changeView('Plan')} />
         </div>
-        {view === 'Plan' && <PreviewPlan covering={covering} plan={geometry.plan} flashings={geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
+        {view === 'Plan' && <PreviewPlan profile={roof.finish?.profile} trayWidth={roof.finish?.trayWidth} roofPlanes={geometry.assembly.roofPlanes} covering={covering} plan={geometry.plan} flashings={geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
       </>
         : <div className={styles.loading} role="status">{artifact.messages[0]?.message || 'This design needs a closer look. Adjust your dimensions to continue.'}</div>}
     </div>
     {lighting?.night&&!hasLighting(lighting.value)&&<div className={styles.nightPrompt}>Your design has no lights yet. <button onClick={lighting.open}>Add lighting</button></div>}
     <div className={styles.viewerFooter}><p className={styles.viewNote}>{view === '3D' ? <><span className={styles.mouseHint}>Drag to rotate · Scroll to zoom</span><span className={styles.touchHint}>Drag ↔ · Pinch to zoom</span></> : renderable
-      ? lighting?.editing ? <>{lighting.tool==='strip'?'Tap beams or rafters to add LED strips · Gold means selected':lighting.tool==='rafter'?'Rafter lights are placed automatically':lighting.tool==='cedar'?'Cedar lights are centred between rafters':'Choose a lighting type to begin'}</> : <>{geometry.plan.members.rafters.length} rafters · {geometry.plan.members.posts.length} posts<span className={styles.desktopNote}> · Sized to your selections</span></>
+      ? lighting?.editing ? <>{lighting.tool==='strip'?'Tap beams or rafters to add LED strips · Gold means selected':lighting.tool==='rafter'?'Rafter lights are placed automatically':lighting.tool==='cedar'?'Cedar lights are centred between rafters':'Choose a lighting type to begin'}</> : <>Hover or tap a side to edit<span className={styles.desktopNote}> · {geometry.plan.members.posts.length} posts</span></>
       : 'Adjust your selections to preview the frame.'}
       {renderable && roof.family === 'box' && <span> · Internal {geometry.assembly.roofPlanes.length === 2 ? 'gable' : 'pitched'} roof</span>}</p>
       {renderable && !(lighting?.editing&&view==='Plan') && <label className={styles.contextToggle}><input type="checkbox" checked={surroundings} onChange={(event) => setSurroundings(event.target.checked)} />Show surroundings</label>}

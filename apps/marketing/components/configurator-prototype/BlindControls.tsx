@@ -24,6 +24,7 @@ export default function BlindControls() {
     <div className={styles.sectionLabel}><h2>Sides & blinds</h2></div>
     <p className={styles.small}>Choose an opening below or tap it in the view. Then choose how to enclose it.</p>
     <div className={css.openings}>{openings.map(o=><button key={o.id} aria-pressed={selected===o.id} onClick={()=>{select(o.id);setNotice('');}}>{o.label}<small>{(o.width/1000).toFixed(2)} m · {panels.find(p=>p.opening===o.id)?.kind??(blinds.some(b=>b.opening===o.id)?'Blind':'Open')}</small></button>)}</div>
+    {!opening && <p className={styles.small} role="status">Choose an opening to edit its sides or blinds.</p>}
     {opening && <>
       <fieldset className={styles.choices}><legend>{opening.label}</legend>{([['open','Open'],['blind','Ziptrak blind'],['acrylic','Acrylic panels'],['timber','Timber slats'],['aluminium','Aluminium slats']] as const).map(([value,name])=><label key={value} data-selected={kind===value}>
         <input type="radio" name="blind-enabled" checked={kind===value} disabled={value==='blind'&&Boolean(blindUnavailable(opening))} onChange={()=>{setNotice('');workspace.setKind(value);}}/>{name}</label>)}</fieldset>

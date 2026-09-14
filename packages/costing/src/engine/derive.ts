@@ -1,3 +1,4 @@
+import { isCeilingOption } from '../ceilingCatalogue';
 import {
   type BoxGutterEdge,
   type CostInputsV1,
@@ -647,6 +648,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     roofType === 'hip_corner' ? Math.max(projectionM, hipCornerProjectionBM) : roofType === 'pitched' ? projectionM : projectionM / 2;
   const roofSurfaceAreaM2 = areaM2 / effectiveCos;
 
+  if (inputs.ceiling && !isCeilingOption(inputs.ceiling.option)) throw new Error('Ceiling selection requires a valid option and a published v2.7 costing configuration.');
   const timberRoofAboveTypeRaw = String(inputs.timber_roof_above_type ?? '');
   const timberRoofAboveType =
     timberRoofAboveTypeRaw === 'steel_corrugated' || timberRoofAboveTypeRaw === 'steel_tray' || timberRoofAboveTypeRaw === 'insulated_panels'
@@ -1345,6 +1347,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     travel_ex_gst: travel,
     extras_allowance_ex_gst: extras,
     timber_roof_allowance_ex_gst: 0,
+    ...(inputs.ceiling ? { ceiling: inputs.ceiling } : {}),
     timber_roof_above_type: timberRoofAboveType,
     timber_insulated_panel_thickness_mm: timberInsulatedPanelThicknessMm,
     timber_tray_width_mm: timberTrayWidthMm,

@@ -29,6 +29,7 @@ import {
   simpleCoverStandard,
 } from './content';
 import SimplePergolaJourney from './SimplePergolaJourney';
+import { buildConfiguratorEnquiryHref } from '../../lib/configuratorEntry';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import styles from './simple-pergolas-auckland.module.css';
 
@@ -98,6 +99,7 @@ export default async function SimplePergolasPage({
       sourceComponent: 'embedded_form',
     };
   const googleReview = await getGoogleRating();
+  const designHref = buildConfiguratorEnquiryHref(enquiryContext);
   const mobileHero = getImageProps({
     alt: 'Pitched acrylic pergola preserving daylight over an outdoor living space',
     fetchPriority: 'high',
@@ -139,7 +141,7 @@ export default async function SimplePergolasPage({
             Sanctuary standard.
           </Text>
           <ActionGroup className={styles.heroActions}>
-            <Button href="#price-your-cover">Price your Simple cover</Button>
+            <Button href={designHref}>Design your pergola</Button>
           </ActionGroup>
           <dl className={styles.heroFacts} aria-label="Simple cover highlights">
             <div><dt>Live estimate</dt><dd>Plan + initial estimate</dd></div>
@@ -275,20 +277,21 @@ export default async function SimplePergolasPage({
             <div>
               <Eyebrow>Choose the right path</Eyebrow>
               <Heading id="simple-boundary-title">
-                Simple or Custom?
+                Design online or start a bespoke brief?
               </Heading>
             </div>
             <Text size="large">
-              Simple is a fixed roof with open sides, so wind-driven rain can
-              still enter. More involved architecture belongs in Custom.
+              Start online if the designer represents your space. If it cannot,
+              we can develop a bespoke design. Exceeding the instant-pricing limits
+              simply means we need to prepare your quote.
             </Text>
           </header>
           <div className={styles.boundaryGrid}>
             <article>
-              <Eyebrow>Simple cover</Eyebrow>
-              <h3>Choose Simple when</h3>
+              <Eyebrow>Design online</Eyebrow>
+              <h3>Explore your options</h3>
               <ul>{simpleCoverBoundary.simple.map((item) => <li key={item}>{item}</li>)}</ul>
-              <Button href="#price-your-cover">Price your Simple cover</Button>
+              <Button href={designHref}>Design your pergola</Button>
             </article>
             <article>
               <Eyebrow>Custom design</Eyebrow>

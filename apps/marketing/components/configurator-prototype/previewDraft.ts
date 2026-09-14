@@ -48,7 +48,11 @@ export function parsePreviewDraft(value: unknown): PreviewDraft | null {
     if(g){const sites=pergolaLightSites(g.assembly,g.covering);
     const pool=availableRafterSpots(sites.rafters,lighting.strips);
     const amount=lighting.rafterAmount??(lighting.rafterCount===0?'off':(['low','medium','high'] as const).reduce((best,a)=>Math.abs(layoutRafterLights(pool,a).length-lighting.rafterCount)<Math.abs(layoutRafterLights(pool,best).length-lighting.rafterCount)?a:best,'low'));
-selectedRoof.lighting=normalizeCedarLighting(sites.cedar,{...lighting,strips:lighting.strips.filter(id=>sites.strips.some(s=>s.id===id)),rafterAmount:amount,rafterCount:layoutRafterLights(pool,amount).length,});}
+    const count=layoutRafterLights(pool,amount).length;
+    // Remove a blocked selection, rather than retaining a hidden preset that
+    // silently returns (and adds cost) after the batten gap is widened again.
+    const blockedByBattens=!!selectedRoof.roofBattens&&count===0;
+selectedRoof.lighting=normalizeCedarLighting(sites.cedar,{...lighting,strips:lighting.strips.filter(id=>sites.strips.some(s=>s.id===id)),rafterAmount:blockedByBattens?'off':amount,rafterCount:count,});}
   }
   return {
     version: 1,

@@ -68,6 +68,9 @@ vi.mock('../../../../../apps/portal/lib/estimates/persistence', () => ({
 
 vi.mock('@/lib/email/sendCustomerAutoresponder', () => ({
   sendCustomerAutoresponder: vi.fn(),
+  prepareCustomerAutoresponder: vi.fn(async enquiry => ({
+    from: 'info@example.test', to: enquiry.email, subject: 'Received', html: '<p>Frozen confirmation</p>', text: 'Frozen confirmation',
+  })),
 }));
 
 function makeDb(options: { downloadBytes?: Uint8Array } = {}) {
@@ -89,6 +92,7 @@ function makeDb(options: { downloadBytes?: Uint8Array } = {}) {
     contact_id: string;
     project_id: string;
     enquiry_request_id: string;
+    estimate_id?: string;
   }>();
 
   class Query {
@@ -176,7 +180,7 @@ function makeDb(options: { downloadBytes?: Uint8Array } = {}) {
       if (name === 'marketing_public_rate_limit_take') {
         return { data: [{ allowed: true, retry_after_seconds: 0 }], error: null };
       }
-      if (name === 'marketing_enquiry_intake') {
+      if (name === 'marketing_enquiry_intake' || name === 'marketing_enquiry_intake_with_delivery') {
         const existing = intakeBySubmission.get(args.p_submission_id);
         if (existing) return { data: [{ ...existing, already_existed: true }], error: null };
         const input = args.p_payload;
@@ -202,10 +206,14 @@ function makeDb(options: { downloadBytes?: Uint8Array } = {}) {
         db.contacts.push(contact);
         db.projects.push(project);
         db.enquiry_requests.push(enquiry);
+        if (name === 'marketing_enquiry_intake_with_delivery') {
+          db.estimates.push({ ...args.p_delivery.draftEstimate, id: 'estimate-atomic', project_id: project.id });
+        }
         const result = {
           contact_id: contact.id,
           project_id: project.id,
           enquiry_request_id: enquiry.id,
+          ...(name === 'marketing_enquiry_intake_with_delivery' ? { estimate_id: 'estimate-atomic' } : {}),
         };
         intakeBySubmission.set(args.p_submission_id, result);
         return { data: [{ ...result, already_existed: false }], error: null };
@@ -235,6 +243,47 @@ function makeDb(options: { downloadBytes?: Uint8Array } = {}) {
 }
 
 describe('POST /api/enquiry attribution', () => {
+  it.each([false, true])('uses atomic delivery without direct send; queue failure=%s', async fails => {
+    const previous = process.env.WEBSITE_ENQUIRY_DURABLE_DELIVERY;
+    process.env.WEBSITE_ENQUIRY_DURABLE_DELIVERY = 'true';
+    try {
+      const { client, db } = makeDb();
+      if (fails) {
+        const original = client.rpc;
+        client.rpc = vi.fn(async (name, args) => name === 'marketing_enquiry_intake_with_delivery'
+          ? { data: null, error: new Error('queue unavailable') } : original(name, args));
+      }
+      h.createClient.mockReturnValue(client);
+      const { POST } = await import('./route');
+      const { sendCustomerAutoresponder, prepareCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+      vi.mocked(sendCustomerAutoresponder).mockClear();
+      vi.mocked(prepareCustomerAutoresponder).mockClear();
+      const request = () => new Request('http://localhost/api/enquiry', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+          submissionId: SUBMISSION_ID, enquiryType: 'residential', enquiryIntent: 'help',
+          name: 'Alex', email: 'alex@example.test', phone: '021000000',
+        }),
+      });
+      expect((await POST(request())).status).toBe(fails ? 503 : 200);
+      expect(prepareCustomerAutoresponder).toHaveBeenCalledTimes(1);
+      expect(client.rpc).toHaveBeenCalledWith('marketing_enquiry_intake_with_delivery', expect.objectContaining({
+        p_delivery: expect.objectContaining({ message: expect.objectContaining({ to: 'alex@example.test', html: '<p>Frozen confirmation</p>' }) }),
+      }));
+      expect(sendCustomerAutoresponder).not.toHaveBeenCalled();
+      expect(client.rpc.mock.calls.some(([name]) => name === 'marketing_enquiry_intake')).toBe(false);
+      expect(db.enquiry_requests).toHaveLength(fails ? 0 : 1);
+      if (!fails) {
+        expect(await (await POST(request())).json()).toMatchObject({ idempotentReplay: true, designId: 'est_estimate-atomic' });
+        expect(db.enquiry_requests).toHaveLength(1);
+        expect(db.estimates).toHaveLength(1);
+        expect(client.from).not.toHaveBeenCalledWith('estimates');
+        expect(sendCustomerAutoresponder).not.toHaveBeenCalled();
+      }
+    } finally {
+      if (previous === undefined) delete process.env.WEBSITE_ENQUIRY_DURABLE_DELIVERY;
+      else process.env.WEBSITE_ENQUIRY_DURABLE_DELIVERY = previous;
+    }
+  });
   beforeEach(() => {
     vi.resetModules();
     h.createClient.mockReset();
@@ -290,6 +339,43 @@ describe('POST /api/enquiry attribution', () => {
       expect(options?.templateId).toBe(`EMAIL_WEBSITE_ENQUIRY_${enquiryType === 'residential' ? 'configured' : enquiryType}_V2`);
       expect(h.calculateCostV1).not.toHaveBeenCalled();
     } finally { if (oldFlag === undefined) delete process.env.WEBSITE_ENQUIRY_EXPERIENCE_V2; else process.env.WEBSITE_ENQUIRY_EXPERIENCE_V2 = oldFlag; }
+  });
+
+  it.each(['help', 'bespoke'] as const)('retains %s intent and selects its confirmation without inventing a price', async enquiryIntent => {
+    const { client, db } = makeDb(); h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    vi.mocked(sendCustomerAutoresponder).mockClear();
+    const oldFlag = process.env.WEBSITE_ENQUIRY_EXPERIENCE_V2;
+    process.env.WEBSITE_ENQUIRY_EXPERIENCE_V2 = 'true';
+    try {
+      const response = await POST(new Request('http://localhost/api/enquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        submissionId: SUBMISSION_ID, enquiryType: 'residential', enquiryIntent,
+        projectDetails: { preferredTiming: 'Summer', budgetPreference: 'provided', budgetHint: '$20,000' },
+        name: 'Taylor', email: 'taylor@example.test', phone: '021000000',
+        dimensions: { widthM: 6, depthM: 3 }, style: 'pitched', roofMaterials: ['acrylic'],
+      }) }));
+      expect(response.status).toBe(200);
+      expect(db.enquiry_requests[0].raw_payload.customerBrief.designStatus).toBe(enquiryIntent);
+      const preferences = { preferredTiming: 'Summer', budgetPreference: 'provided', budgetHint: '$20,000' };
+      expect(db.enquiry_requests[0].raw_payload.projectPreferences).toEqual(preferences);
+      // This route test stubs the persistence adapter with its input; the snapshot test covers its DB shape.
+      expect(db.estimates[0].snapshot.projectPreferences).toEqual(preferences);
+      const [email, options] = vi.mocked(sendCustomerAutoresponder).mock.calls[0];
+      expect(email.projectPreferences).toEqual(preferences);
+      expect(email).not.toHaveProperty('baseRange');
+      expect(options?.templateId).toBe(`EMAIL_WEBSITE_ENQUIRY_${enquiryIntent}_V2`);
+      expect(h.calculateCostV1).not.toHaveBeenCalled();
+    } finally { if (oldFlag === undefined) delete process.env.WEBSITE_ENQUIRY_EXPERIENCE_V2; else process.env.WEBSITE_ENQUIRY_EXPERIENCE_V2 = oldFlag; }
+  });
+
+  it('requires a site address before accepting a site-measure request', async () => {
+    const { POST } = await import('./route');
+    const response = await POST(new Request('http://localhost/api/enquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      submissionId: SUBMISSION_ID, enquiryType: 'residential', name: 'Taylor', email: 'taylor@example.test', phone: '021000000', requestType: 'site-measure', suburb: '  ',
+    }) }));
+    expect(response.status).toBe(422);
+    expect(h.createClient).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid design before any database writes', async () => {
@@ -862,6 +948,25 @@ describe('POST /api/enquiry attribution', () => {
       }),
     );
     expect(db.estimates[0]?.configVersions).toBeNull();
+  });
+
+  it('preserves the enquiry and records provider failure for staff when confirmation sending fails', async () => {
+    const { client, db } = makeDb();
+    h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    vi.mocked(sendCustomerAutoresponder).mockRejectedValueOnce(new Error('provider unavailable'));
+    const response = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        submissionId: SUBMISSION_ID, enquiryType: 'residential', enquiryIntent: 'help',
+        name: 'Alex', email: 'alex@example.test', phone: '021000000',
+      }),
+    }));
+    expect(response.status).toBe(200);
+    expect(db.enquiry_requests).toHaveLength(1);
+    expect(db.projects).toHaveLength(1);
+    expect(db.audit_events.some(event => event.type === 'email_failed')).toBe(true);
+    expect(db.audit_events.some(event => event.type === 'email_sent')).toBe(false);
   });
 
   it('returns the original result on a retry without duplicating side effects', async () => {

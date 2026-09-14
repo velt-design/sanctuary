@@ -207,7 +207,7 @@ test('project finder is the indexable live homepage and the prototype URL redire
     '/contact?enquiry_type=residential&source_path=%2F&source_component=footer&source_experience=project-finder-home-v1#contact-form',
   );
   await expect(page.locator('[data-project-direction]')).toHaveCount(3);
-  await expect(page.getByRole('radio', { name: /Simple cover/ })).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Design your pergola/ })).toBeVisible();
   await expect(page.getByRole('radio', { name: /Custom design/ })).toBeVisible();
   await expect(page.getByRole('radio', { name: /Commercial \/ Professional/ }))
     .toBeVisible();
@@ -443,7 +443,7 @@ test('mobile art direction and native scrolling follow the automatic story revea
   expect(await primaryDirections.locator('img').evaluateAll((images) => (
     images.every((image) => image.getClientRects().length === 0)
   ))).toBe(true);
-  const simpleCoverTitle = page.getByRole('radio', { name: /Simple cover/ })
+  const simpleCoverTitle = page.getByRole('radio', { name: /Design your pergola/ })
     .locator('strong');
   const optionTitleSize = await simpleCoverTitle.evaluate((element) => (
     Number.parseFloat(getComputedStyle(element).fontSize)
@@ -632,7 +632,7 @@ test('the two residential directions give one useful pathway and two governed re
 }) => {
   await setAnalyticsConsent(page, false);
   const paths = [
-    ['cover', 'A simple acrylic pergola', 'Explore simple pergolas', '/simple-pergolas-auckland?project=cover', 'View all projects', '/projects', ['Dairy Flat Estate', 'St Heliers Townhouse']],
+    ['cover', 'Your pergola, designed online', 'Design your pergola', '/contact?enquiry_type=residential&source_path=%2F&source_component=project_finder&source_experience=project-finder-home-v1&project_direction=cover&configurator=preview', 'View all projects', '/projects', ['Dairy Flat Estate', 'St Heliers Townhouse']],
     ['bespoke', 'Custom pergola design', 'Explore projects', '/projects', 'Explore custom pergolas', '/custom-pergolas-auckland?project=bespoke', ['Tindalls Bay - Patio & Carport', 'Warkworth Outdoor Room']],
   ] as const;
 
@@ -662,13 +662,15 @@ test('the two residential directions give one useful pathway and two governed re
   }
 });
 
-test('Simple cover opens the dedicated simple acrylic pergola page directly', async ({
+test('Design your pergola opens the full designer directly', async ({
   page,
 }) => {
   await setAnalyticsConsent(page, false);
   await page.goto('/');
   await page.locator('[data-project-direction="cover"]').click();
-  await expect(page).toHaveURL(/\/simple-pergolas-auckland$/);
+  await expect(page).toHaveURL(/\/contact\?.*configurator=preview$/);
+  expect(new URL(page.url()).searchParams.get('source_component')).toBe('project_finder');
+  await expect(page.getByRole('button', {name:'Roof & ceiling', exact:true})).toBeVisible();
 });
 
 test('commercial and professional choices reveal tailored results and evidence', async ({

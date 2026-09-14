@@ -417,6 +417,7 @@ export function AttachmentList(props: {
 }
 
 export function ReplyPanel(props: {
+  heading?: string;
   model: AlternativeEmailModel;
   tone?: 'warm' | 'inverse';
   compact?: boolean;
@@ -447,7 +448,7 @@ export function ReplyPanel(props: {
           lineHeight: 1.2,
         }}
       >
-        Have something useful to add?
+        {props.heading ?? 'Have something useful to add?'}
       </Text>
       <Text
         className={inverse ? undefined : 'spx-muted'}

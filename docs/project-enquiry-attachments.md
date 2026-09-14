@@ -24,6 +24,13 @@ An `AFTER INSERT` enquiry trigger expands the already-verified `enquiry_requests
 
 This does not alter autoresponder delivery. Verified files totalling 8 MB or less remain inline attachments; larger totals retain the existing seven-day email links. Portal visibility is independent of that email threshold.
 
+Preparation tests cover exactly 8 MiB inline and 8 MiB plus one byte using a
+seven-day signed link. Storage signing errors and exceptions leave the enquiry
+file count intact without exposing error details or blocking email preparation;
+the private portal file link remains the independent staff retrieval path.
+The preparation/template suite passed 12 tests on 14 September 2026. These are
+local controlled tests, not evidence of a large-file provider delivery.
+
 Migration sources:
 
 - `supabase/migrations/20260827000001_project_enquiry_attachments.sql`
@@ -58,6 +65,30 @@ The read phase never writes database rows and never moves, renames, or deletes S
 4. Verify staff and non-staff authorization, exact-project denial, View/Download audit events, 60-second redirects, Work-default/Files-tab UI, and both sides of the 8 MB email boundary.
 
 ## Focused verification
+
+Staging browser-to-Storage check (14 September 2026): the Help me choose form
+uploaded a generated 99-byte PNG and completed intake. Through an existing staff
+test session, the real portal API listed the attachment, denied anonymous and
+wrong-project reads, and returned a 60-second private download redirect. Fetching
+that URL returned byte-identical PNG content. The database recorded one link and
+two download-URL audit events (the initial header check and successful rerun).
+No email was dispatched; the synthetic delivery is stopped in `needs_attention`.
+See `docs/staging-supabase-readiness.md` for fixture identifiers and evidence.
+
+This integration check caught Next's catch-all `Referrer-Policy` overriding the
+route handler's `no-referrer`. `apps/portal/next.config.ts` now explicitly places
+the attachment-open exception after the catch-all, alongside the existing login
+callback exception. The real redirect now retains `private, no-store` and
+`no-referrer`; route-only tests cannot prove global response-header composition.
+
+The Docker database harness also tests the attachment trigger together with
+durable marketing intake: `node scripts/test-background-jobs-db.mjs`. On
+14 September 2026 this passed with the actual three 27 August attachment
+migrations, verifying missing-object rejection, queue-failure rollback of links
+and session consumption, and replay without duplicate links or confirmation jobs.
+Evidence: `artifacts/pricing-review-2026-09-11/launch-docker-attachments-db.txt`.
+Storage metadata is a local fixture; this does not verify Storage HTTP operations,
+historical backfill or deployment compatibility.
 
 ```bash
 npm test -- --run test/project-enquiry-attachments-migration.test.ts

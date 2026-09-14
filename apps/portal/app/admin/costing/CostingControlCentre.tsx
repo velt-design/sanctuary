@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import AccessoryRatesEditor from './AccessoryRatesEditor';
+import InstalledSellingRatesEditor from './InstalledSellingRatesEditor';
 import type { CostingControlConfigV1 } from '@sp/costing';
 import type { CostingConfigurationVersion } from '@/lib/costing/configurationTypes';
 import type {
@@ -65,6 +67,7 @@ type EditorPayload = {
 
 const SETTING_SECTIONS: Array<[Exclude<CostingControlSection, 'comparison' | 'publish'>, string]> = [
   ['materials', 'Materials'],
+  ['accessories', 'Accessories'],
   ['labour', 'Labour & time'],
   ['overheads', 'Overheads'],
   ['rules', 'Supported rules'],
@@ -150,7 +153,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   const changedCounts = useMemo(
     () => config && baseline
       ? countCostingChangesBySection(config, baseline)
-      : { materials: 0, labour: 0, overheads: 0, rules: 0 },
+      : { materials: 0, accessories: 0, labour: 0, overheads: 0, rules: 0 },
     [baseline, config],
   );
   const configMatchesBaseline = Boolean(
@@ -480,6 +483,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
         <div>
           <div className={styles.eyebrow}>Pricebook</div>
           <h1 className={styles.title}>Costing control centre</h1>
+          <a className={styles.textButton} href="/admin/costing/accessory-review">Review accessory allowances and supplier evidence</a>
           <p className={styles.lede}>
             Refine supported rates and allowances, see the likely pricing impact, then publish a fully
             audited version for future estimates.
@@ -710,6 +714,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
               updateConfig={updateConfig}
             />
           ) : null}
+          {section === 'accessories' ? <><AccessoryRatesEditor config={config} baseline={baseline} readOnly={controlsReadOnly} showChangedOnly={showChangedOnly} issues={issues} updateConfig={updateConfig} /><InstalledSellingRatesEditor config={config} baseline={baseline} readOnly={controlsReadOnly} showChangedOnly={showChangedOnly} issues={issues} updateConfig={updateConfig} /></> : null}
           {section === 'overheads' ? (
             <OverheadsEditor
               config={config}
@@ -792,6 +797,10 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
                       next.labour = structuredClone(baseline.labour);
                       next.overheads = structuredClone(baseline.overheads);
                       next.rules = structuredClone(baseline.rules);
+                      if (baseline.accessoryRates) next.accessoryRates = structuredClone(baseline.accessoryRates);
+                      else delete next.accessoryRates;
+                      if (baseline.installedSellingRates) next.installedSellingRates = structuredClone(baseline.installedSellingRates);
+                      else delete next.installedSellingRates;
                     })}
                   >
                     Reset all to active

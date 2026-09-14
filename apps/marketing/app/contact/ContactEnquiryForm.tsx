@@ -1,4 +1,5 @@
 'use client';
+import ContactProjectPreferences from './ContactProjectPreferences';
 
 import Link from 'next/link';
 import {
@@ -42,8 +43,10 @@ import ContactTechnicalFields from './ContactTechnicalFields';
 import ContactFormIntro from './ContactFormIntro';
 import ContactDesignSummary from './ContactDesignSummary';
 import type { ContactDesignBrief } from './contactDesignBrief';
+import { buildContactDesignSubmission } from './contactDesignSubmission';
 import {
   getContactEnquiryAudience,
+  resolveContactPathway,
   getInitialBusinessAudience,
   getInitialContactPathway,
   type ContactPathway,
@@ -58,6 +61,7 @@ export type ContactEnquiryFormProps = {
   configuredDesign?: ContactDesignBrief;
   initialEnquiryType: EnquiryAudience | null;
   initialContext: EnquiryContext;
+  initialIntent?: 'help' | 'bespoke';
   sourceProjectLabel?: string;
   sourceProductLabel?: string;
 };
@@ -86,18 +90,23 @@ function submitLabel(
   estimate: SimpleCoverHandoff | null,
   state: SubmitState,
 ): string {
+  if (pathway === 'configured') {
+    return state === 'sending' ? 'Sending request' : state === 'success' ? 'Request sent' : 'Request a site measure';
+  }
   if (state === 'sending') return pathway === 'simple' ? 'Sending request' : 'Sending brief';
   if (state === 'success') return pathway === 'simple' ? 'Request sent' : 'Project brief sent';
   if (pathway === 'simple') {
     return estimate?.status === 'priced' ? 'Request a site measure' : 'Send for Sanctuary review';
   }
   if (pathway === 'custom') return 'Send custom project brief';
+  if (pathway === 'help') return 'Help me choose';
   return 'Send project brief';
 }
 
 export default function ContactEnquiryForm({
   initialEnquiryType,
   initialContext,
+  initialIntent,
   sourceProjectLabel,
   sourceProductLabel,
   configuredDesign,
@@ -110,7 +119,7 @@ export default function ContactEnquiryForm({
   } = useConsent();
   const [isEnhanced, setIsEnhanced] = useState(false);
   const [selectedPathway, setPathway] = useState<ContactPathway | null>(() => (
-    getInitialContactPathway(initialEnquiryType, initialContext)
+    getInitialContactPathway(initialEnquiryType, initialContext, initialIntent)
   ));
   const [businessAudience, setBusinessAudience] = useState<BusinessAudience | null>(() => (
     getInitialBusinessAudience(initialEnquiryType, initialContext)
@@ -131,9 +140,10 @@ export default function ContactEnquiryForm({
   const simpleCalculatorRef = useRef<HTMLDivElement | null>(null);
   const simpleFormStartRef = useRef(false);
 
-  const pathway = configuredDesign ? (configuredDesign.estimate ? 'simple' : 'custom') : selectedPathway;
+  const pathway = resolveContactPathway(selectedPathway, Boolean(configuredDesign));
   const simpleCoverEstimate = configuredDesign ? configuredDesign.estimate : selectedEstimate;
   const enquiryType = getContactEnquiryAudience(pathway, businessAudience);
+  const requestsMeasure = pathway === 'configured' || pathway === 'simple';
   const showEnquiryFields = !isEnhanced || Boolean(
     pathway && (pathway !== 'simple' || simpleCoverEstimate),
   );
@@ -363,7 +373,8 @@ export default function ContactEnquiryForm({
     const simpleCoverPayload = buildSimpleCoverEnquiryPayload(
       isSimpleCover ? simpleCoverEstimate : null,
     );
-    const selectedRoofs = isSimpleCover
+    const configuredPayload = configuredDesign ? buildContactDesignSubmission(configuredDesign) : null;
+    const selectedRoofs = configuredPayload ? configuredPayload.roofMaterials : isSimpleCover
       ? simpleCoverPayload.roofMaterials
       : formData.getAll('roofMaterials').map(String);
     const selectedAddOns = formData.getAll('addOns').map(String);
@@ -388,18 +399,20 @@ export default function ContactEnquiryForm({
           submissionId,
           uploadSessionToken: attachmentUpload.uploadSessionToken,
           enquiryType: enquiryType ?? '',
+          enquiryIntent: pathway === 'help' ? 'help' : pathway === 'custom' ? 'bespoke' : undefined,
+          requestType: requestsMeasure ? 'site-measure' : 'project-discussion',
           name: String(formData.get('name') ?? '').trim(),
           email: String(formData.get('email') ?? '').trim(),
           phone: String(formData.get('phone') ?? '').trim(),
           suburb: String(formData.get('suburb') ?? '').trim(),
           message: String(formData.get('message') ?? '').trim(),
           ...(configuredDesign ? { customerDesign: configuredDesign.snapshot } : isSimpleCover && simpleCoverEstimate ? { customerDesign: { version: 1, input: simpleCoverEstimate.input, roof: { family: 'mono', orientation: 'parallel', infills: false } } } : {}),
-          dimensions: isSimpleCover ? simpleCoverPayload.dimensions : configuredDesign?.dimensions ?? {
+          dimensions: configuredPayload?.dimensions ?? (isSimpleCover ? simpleCoverPayload.dimensions : {
             widthM: String(formData.get('widthM') ?? '').trim() || null,
             depthM: String(formData.get('depthM') ?? '').trim() || null,
             heightM: String(formData.get('heightM') ?? '').trim() || null,
-          },
-          style: isSimpleCover
+          }),
+          style: configuredPayload ? configuredPayload.style : isSimpleCover
             ? simpleCoverPayload.style
             : String(formData.get('style') ?? '').trim(),
           roofMaterials: selectedRoofs,
@@ -412,16 +425,22 @@ export default function ContactEnquiryForm({
           company: pathway === 'commercial-professional'
             ? String(formData.get('company') ?? '').trim() || null
             : null,
-          calculationRef: isSimpleCover ? simpleCoverPayload.calculationRef : null,
-          simpleCoverStatus: isSimpleCover ? simpleCoverPayload.simpleCoverStatus : null,
+          calculationRef: configuredPayload ? configuredPayload.calculationRef : isSimpleCover ? simpleCoverPayload.calculationRef : null,
+          simpleCoverStatus: configuredPayload ? configuredPayload.simpleCoverStatus : isSimpleCover ? simpleCoverPayload.simpleCoverStatus : null,
           files: attachmentUpload.files,
           projectDetails: {
             contactPathway: pathway,
+            preferredTiming: String(formData.get('preferredTiming') ?? '').trim() || null,
+            ...((pathway === 'help' || pathway === 'custom') ? {
+              budgetPreference: String(formData.get('budgetPreference') ?? 'not-sure'),
+              budgetHint: String(formData.get('budgetHint') ?? '').trim() || null,
+            } : {}),
             ...(pathway === 'commercial-professional' ? {
               projectRole: String(formData.get('projectRole') ?? '').trim() || null,
               projectStage: String(formData.get('projectStage') ?? '').trim() || null,
             } : {}),
             ...(isSimpleCover ? simpleCoverPayload.projectDetails : {}),
+            ...configuredPayload?.projectDetails,
           },
           utm: attribution.utm,
           attribution,
@@ -489,7 +508,7 @@ export default function ContactEnquiryForm({
       <input type="hidden" name="enquiryContext" value={JSON.stringify(contextProperties)} readOnly />
       <input type="hidden" name="enquiryType" value={enquiryType ?? ''} disabled={!isEnhanced && !configuredDesign} readOnly />
 
-      <ContactFormIntro configured={Boolean(configuredDesign)} hasSourceContext={hasSourceContext} contextDisplay={contextDisplay} />
+      <ContactFormIntro configured={Boolean(configuredDesign)} bespoke={pathway === 'custom'} business={pathway === 'commercial-professional'} hasSourceContext={hasSourceContext} contextDisplay={contextDisplay} />
 
       <EnquiryErrorSummary
         className="contact-form__error-summary"
@@ -504,6 +523,7 @@ export default function ContactEnquiryForm({
         hasError={Boolean(fieldErrors.enquiryType)}
         errorId={errorId('enquiryType')}
         initialAudience={initialEnquiryType}
+        sourceContext={currentContext}
         onChange={handlePathway}
       />}
       {fieldErrors.enquiryType ? (
@@ -511,6 +531,13 @@ export default function ContactEnquiryForm({
           {fieldErrors.enquiryType}
         </p>
       ) : null}
+
+      {configuredDesign && pathway !== 'commercial-professional' ? <p>
+        <button type="button" className="contact-action" onClick={() => handlePathway(pathway === 'custom' ? 'configured' : 'custom')}>
+          {pathway === 'custom' ? 'Use this configured design' : 'Need a different shape or something bespoke?'}
+        </button>
+        {pathway === 'custom' ? <span> Your design stays attached as a starting point. Tell us what needs to change below.</span> : null}
+      </p> : null}
 
       {!configuredDesign && isEnhanced && pathway === 'simple' ? (
         <div
@@ -562,9 +589,13 @@ export default function ContactEnquiryForm({
 
               <div className="contact-form__field contact-form__field--wide">
                 <label htmlFor="contact-suburb">
-                  Project suburb <span>Optional</span>
+                  {requestsMeasure ? 'Site address' : 'Project location'} <span>{requestsMeasure ? 'Required' : 'Optional'}</span>
                 </label>
-                <input id="contact-suburb" name="suburb" autoComplete="address-level2" placeholder="For example, Warkworth" />
+                <input type="hidden" name="requestType" value={requestsMeasure ? 'site-measure' : 'project-discussion'} />
+                <input id="contact-suburb" name="suburb" autoComplete={requestsMeasure ? 'street-address' : 'address-level2'} required={requestsMeasure}
+                  placeholder={requestsMeasure ? 'Street address, suburb and town or city' : 'Suburb and town or city'}
+                  aria-invalid={Boolean(fieldErrors.suburb)} aria-describedby={fieldErrors.suburb ? errorId('suburb') : undefined} />
+                {fieldErrors.suburb ? <p className="contact-form__error" id={errorId('suburb')}>{fieldErrors.suburb}</p> : null}
               </div>
 
               <div className="contact-form__field contact-form__field--wide">
@@ -573,6 +604,8 @@ export default function ContactEnquiryForm({
                 </label>
                 <textarea id="contact-message" name="message" rows={6} placeholder={messagePlaceholder} />
               </div>
+
+              <ContactProjectPreferences showBudget={pathway === 'help' || pathway === 'custom'} />
 
               <div className="contact-form__field contact-form__field--wide">
                 <label htmlFor="contact-files">
@@ -693,7 +726,7 @@ export default function ContactEnquiryForm({
               </p>
               <div className="contact-form__live" aria-live="polite" aria-atomic="true">
                 {submitState === 'sending'
-                  ? pathway === 'simple' ? 'Sending your request.' : 'Sending project brief.'
+                  ? pathway === 'simple' || pathway === 'configured' ? 'Sending your request.' : 'Sending project brief.'
                   : ''}
               </div>
             </div>
@@ -717,10 +750,10 @@ export default function ContactEnquiryForm({
           {submitState === 'success' ? (
             <section className="contact-success" ref={successRef} role="status" aria-live="polite" tabIndex={-1}>
               <p className="contact-eyebrow">Sent</p>
-              <h2>{pathway === 'simple' ? 'Request received.' : 'Project brief sent.'}</h2>
+              <h2>{pathway === 'simple' || pathway === 'configured' ? 'Request received.' : 'Project brief sent.'}</h2>
               <p>
-                {pathway === 'simple'
-                  ? 'We’ll review the configuration and site details, then contact you about whether a site measure is the right next step.'
+                {pathway === 'simple' || pathway === 'configured'
+                  ? 'We’ll review your design and site details, then contact you to arrange the next step. We typically respond within the working day. Your visit is not booked yet.'
                   : 'We’ll review it and contact you about the next step.'}
               </p>
             </section>

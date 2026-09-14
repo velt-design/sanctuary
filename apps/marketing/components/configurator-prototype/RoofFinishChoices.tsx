@@ -12,7 +12,7 @@ export default function RoofFinishChoices({ roof, input, onChange }: { roof: Pre
   return <div className={finishStyles.controls}>
     <fieldset className={styles.choices}><legend>Roof material</legend>
       {(['acrylic', 'solid', 'combination'] as const).map(material => <label key={material} data-selected={finish.material === material}>
-        <input type="radio" name="roof-material" checked={finish.material === material} onChange={() => change({ material })} />
+        <input type="radio" name="roof-material" checked={finish.material === material} onChange={() => change({ material, ...(material !== 'acrylic' && !finish.ceiling ? {ceiling: 'thermopine-150'} : {}) })} />
         {material === 'acrylic' ? 'Acrylic' : material === 'solid' ? 'Solid' : 'Combination'}</label>)}
     </fieldset>
     {finish.material !== 'acrylic' && <>
@@ -25,7 +25,15 @@ export default function RoofFinishChoices({ roof, input, onChange }: { roof: Pre
         {([300, 400, 500] as const).map(trayWidth => <label key={trayWidth} data-selected={finish.trayWidth === trayWidth}>
           <input type="radio" name="tray-width" checked={finish.trayWidth === trayWidth} onChange={() => change({ trayWidth })} />{trayWidth} mm</label>)}
       </fieldset>}
-      <p className={styles.small}>{roof.family === "box" ? "Level cedar ceiling" : "Cedar ceiling"} included beneath every solid section.</p>
+      <fieldset className={styles.choices}><legend>Ceiling timber</legend>
+        {(['thermopine', 'cedar'] as const).map(species => <label key={species} data-selected={!!finish.ceiling?.startsWith(species)}>
+          <input type="radio" name="ceiling-timber" checked={!!finish.ceiling?.startsWith(species)} onChange={() => change({ceiling: `${species}-${finish.ceiling?.endsWith('150') ? 150 : 100}`})} />{species === 'cedar' ? 'Cedar' : 'ThermoPine'}</label>)}
+      </fieldset>
+      <fieldset className={styles.choices}><legend>Ceiling board width</legend>
+        {([150,100] as const).map(width => <label key={width} data-selected={!!finish.ceiling?.endsWith(String(width))}>
+          <input type="radio" name="ceiling-width" checked={!!finish.ceiling?.endsWith(String(width))} onChange={() => change({ceiling: `${finish.ceiling?.startsWith('thermopine') ? 'thermopine' : 'cedar'}-${width}`})} />{width === 100 ? 'Narrow' : 'Wide'} · {width} mm</label>)}
+      </fieldset>
+      <p className={styles.small}>Factory-coated timber {roof.family === 'box' ? 'level ' : ''}ceiling beneath every solid section.</p>
     </>}
     {finish.material === 'combination' && <>
       <fieldset className={styles.choices}><legend>Skylight arrangement</legend>

@@ -25,7 +25,7 @@ describe("project design booklet runtime dependencies", () => {
       path.join(process.cwd(), "package-lock.json"),
     );
 
-    expect(portalPackage.dependencies?.sharp).toBe("0.35.3");
+    expect(portalPackage.dependencies?.sharp).toBe("0.35.4");
     expect(portalPackage.devDependencies?.sharp).toBeUndefined();
     expect(packageLock.packages?.["node_modules/sharp"]?.dev).not.toBe(true);
     expect(

@@ -26,6 +26,8 @@ export const BACKGROUND_JOB_WORKER_ENV = {
   serviceRoleKey: 'SUPABASE_SERVICE_ROLE_KEY',
   mode: 'BACKGROUND_JOBS_WORKER_MODE',
   activeExecutionEnabled: 'BACKGROUND_JOBS_WORKER_ACTIVE_ENABLED',
+  enquiryEmailEnabled: 'BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED',
+  resendApiKey: 'RESEND_API_KEY',
   workerId: 'BACKGROUND_JOBS_WORKER_ID',
   buildVersion: 'BACKGROUND_JOBS_WORKER_BUILD_VERSION',
   globalConcurrency: 'BACKGROUND_JOBS_WORKER_GLOBAL_CONCURRENCY',
@@ -54,6 +56,8 @@ type WorkerAppConfig = Readonly<{
   buildVersion: string;
   mode: BackgroundJobWorkerMode;
   activeExecutionEnabled: boolean;
+  enquiryEmailEnabled: boolean;
+  resendApiKey: string | null;
   globalConcurrency: number;
   concurrencyByClass: Readonly<Partial<Record<BackgroundJobConcurrencyClass, number>>>;
   concurrencyByKind: Readonly<Partial<Record<BackgroundJobKind, number>>>;
@@ -211,6 +215,8 @@ export function loadWorkerConfig(
   options: LoadWorkerConfigOptions = {},
 ): WorkerAppConfig {
   const mode = options.modeOverride ?? parseMode(environment[BACKGROUND_JOB_WORKER_ENV.mode]);
+  const enquiryEmailEnabled = parseBooleanGate(environment, BACKGROUND_JOB_WORKER_ENV.enquiryEmailEnabled);
+  const resendApiKey = enquiryEmailEnabled ? requiredValue(environment, BACKGROUND_JOB_WORKER_ENV.resendApiKey) : null;
   const activeExecutionEnabled = parseBooleanGate(
     environment,
     BACKGROUND_JOB_WORKER_ENV.activeExecutionEnabled,
@@ -340,6 +346,8 @@ export function loadWorkerConfig(
     buildVersion,
     mode,
     activeExecutionEnabled,
+    enquiryEmailEnabled,
+    resendApiKey,
     globalConcurrency,
     concurrencyByClass: parseConcurrencyMap(
       environment,

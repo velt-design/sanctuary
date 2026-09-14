@@ -15,10 +15,10 @@ export default function PreviewBlindProvider({input,roof,onChange,children}:{inp
   const rail=useRail();
   const openings=useMemo(()=>previewBlindOpenings(input,roof),[input,roof]);
   const [selected,setSelected]=useState(''),[editing,setEditing]=useState(false);
-  const current=openings.some(o=>o.id===selected)?selected:openings[0]?.id??'';
+  const current=editing&&openings.some(o=>o.id===selected)?selected:'';
   const value:BlindWorkspace={openings,blinds:roof.blinds??[],panels:roof.sidePanels??[],selected:current,
-    setPanel:panel=>onChange({...roof,sidePanels:[...(roof.sidePanels??[]).filter(p=>p.opening!==current),panel]}),
-    setKind:kind=>onChange({...roof,blinds:[...(roof.blinds??[]).filter(b=>b.opening!==current),...(kind==='blind'?[defaultBlind(current)]:[])],sidePanels:[...(roof.sidePanels??[]).filter(p=>p.opening!==current),...(['acrylic','timber','aluminium'].includes(kind)?[defaultSidePanel(current,kind as SidePanel['kind'])]:[])]}),
+    setPanel:panel=>current&&onChange({...roof,sidePanels:[...(roof.sidePanels??[]).filter(p=>p.opening!==current),panel]}),
+    setKind:kind=>current&&onChange({...roof,blinds:[...(roof.blinds??[]).filter(b=>b.opening!==current),...(kind==='blind'?[defaultBlind(current)]:[])],sidePanels:[...(roof.sidePanels??[]).filter(p=>p.opening!==current),...(['acrylic','timber','aluminium'].includes(kind)?[defaultSidePanel(current,kind as SidePanel['kind'])]:[])]}),
     select:id=>{setSelected(id);setEditing(true);rail.choose('sides');},editing,setEditing,update:blinds=>onChange({...roof,blinds})};
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

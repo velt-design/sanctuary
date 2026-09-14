@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/foundation';
 import styles from './enquiry-journeys.module.css';
 
-const journeys = [['configured', 'Configured pergola'], ['bespoke', 'Bespoke residential'], ['commercial', 'Commercial'], ['professional', 'Professional']] as const;
+const journeys = [['configured', 'Configured pergola'], ['help', 'Help me choose'], ['bespoke', 'Bespoke residential'], ['commercial', 'Commercial'], ['professional', 'Professional']] as const;
 export default function EnquiryJourneysPreview({ endpoint = '/api/staff/v1/email-previews/website-autoresponder' }: { endpoint?: string }) {
   const [journey, setJourney] = useState<string>('configured');
   const [mobile, setMobile] = useState(false);
@@ -20,7 +20,7 @@ export default function EnquiryJourneysPreview({ endpoint = '/api/staff/v1/email
   }, [endpoint, journey]);
   return <section className={styles.panel} aria-label="Proposed enquiry journeys">
     <h2 >Proposed enquiry journeys</h2>
-    <p className={styles.description}>Four distinct confirmations. Preview only until the production email switch is enabled.</p>
+    <p className={styles.description}>Five distinct confirmations. Preview only until the production email switch is enabled.</p>
     <div className={styles.choices}>{journeys.map(([key, label]) => <Button type="button" key={key} variant={journey === key ? 'primary' : 'secondary'} aria-pressed={journey === key} onClick={() => setJourney(key)}>{label}</Button>)}</div>
     <label className={styles.size}><input type="checkbox" checked={mobile} onChange={e => setMobile(e.target.checked)} />Mobile email width</label>
     {error ? <p role="alert">The email preview could not load. Choose a journey to try again.</p> : !preview ? <p role="status">Loading preview…</p> : <>

@@ -12,6 +12,7 @@ import {
   type BlindLineItemInput,
 } from '@sp/costing';
 import type { QuoteLineItem } from './types';
+import { configuredQuoteSnapshotItems, requiresConfiguredQuoteSnapshot } from './configuredQuoteSnapshot';
 import { extractLightingTotalCents } from './estimateAddons';
 import {
   hasStructuredCalculatorLighting,
@@ -111,7 +112,7 @@ function withQuoteDiscountDescription(description: string, quoteDiscountPct: num
 }
 
 type QuoteMappingBlockingIssue = {
-  code: 'INVALID_BLIND' | 'INVALID_LIGHTING' | 'NO_PRICED_ITEMS';
+  code: 'INVALID_BLIND' | 'INVALID_LIGHTING' | 'NO_PRICED_ITEMS' | 'CONFIGURED_COSTING_REVIEW_REQUIRED';
   message: string;
 };
 
@@ -145,6 +146,16 @@ export function assertQuoteEstimateMappingReady(mapping: QuoteEstimateMapping): 
 }
 
 export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstimateMapping {
+  if (requiresConfiguredQuoteSnapshot(estimate)) {
+    const items = configuredQuoteSnapshotItems(estimate);
+    if (items) return { items, coreTotalIncCents: items.reduce((sum, item) => sum + item.lineTotalIncGstCents, 0),
+      blockingIssues: [], approvalRequirement: 'neither', approvalIncGstCents: 0 };
+    return {
+      items: [], coreTotalIncCents: 0, approvalRequirement: null, approvalIncGstCents: 0,
+      blockingIssues: [{ code: 'CONFIGURED_COSTING_REVIEW_REQUIRED', message:
+        'This website design includes a separately saved customer estimate. Its imported base costs are not a complete quote. Review the original design and price breakdown, then prepare complete staff costing before creating a quote.' }],
+    };
+  }
   const inputs = normaliseCalculatorInputs((estimate as any).inputs);
   const quoteDiscountPct = normalizeStaffQuoteDiscountPct(inputs?.quoteDiscountPct);
   const modules = inputs?.modules ?? [];

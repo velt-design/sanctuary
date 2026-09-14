@@ -34,6 +34,7 @@ export function buildRepresentativeRoofFinish(source: Assembly3D, finish: Repres
     const light: RoofRectangle = { ...whole, a: bandStart, b: bandEnd };
     const solid: RoofRectangle[] = finish.material === 'solid' ? [whole] : [{ ...whole, b: bandStart }, { ...whole, a: bandEnd }];
     const steel = roofMesh(`steel-${index}`, 'steel'), cedar = roofMesh(`cedar-${index}`, 'cedar'), edges = roofMesh(`roof-edges-${index}`, 'flashing');
+    cedar.timberSpecies = finish.ceiling?.startsWith('thermopine') ? 'thermopine' : 'cedar';
     cedar.grainAcross = frame.u; cedar.grainAlong = frame.v;
     const isLight = (a: number, b: number) => finish.material === 'combination'
       && a >= light.a - .01 && a <= light.b + .01 && b >= light.c - .01 && b <= light.d + .01;
@@ -84,7 +85,8 @@ export function buildRepresentativeRoofFinish(source: Assembly3D, finish: Repres
       covering.meshes.push(flashings);
       // A board module with a 6mm negative joint. Boards run in the roof fall direction.
       const ceilingFrame = box ? { ...frame, point: (a: number, b: number, offset = 0) => ({ ...point(a, b), z: box.ceilingZ + offset }) } : frame;
-      for (let a = r.a; a < r.b; a += 135) roofSlab(cedar, ceilingFrame, { ...r, a, b: Math.min(a + 129, r.b) }, box ? 0 : -187, box ? 12 : -175);
+      const boardCover = finish.ceiling ? Number(finish.ceiling.split('-')[1]) : 135;
+      for (let a = r.a; a < r.b; a += boardCover) roofSlab(cedar, ceilingFrame, { ...r, a, b: Math.min(a + boardCover - (finish.ceiling ? 2 : 6), r.b) }, box ? 0 : -187, box ? 12 : -175);
       // Dark backing closes the negative joints without faking gaps through the roof.
       roofQuad(edges, roofRectangleBoundary(ceilingFrame, r, box ? 14 : -173));
       // Close the roof build-up at material boundaries and exposed roof edges.

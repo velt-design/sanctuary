@@ -211,3 +211,85 @@ Manual or browser checks should cover:
 - Powdercoating override save conflict and successful override persistence.
 
 If changing schema or access policy for these flows, also verify the ordered migrations, RLS/service-role boundary, and public token behavior.
+
+### Configured enquiry quote handoff (14 September 2026)
+
+An imported website estimate with `derived.pricingMode = configured_customer_snapshot` carries complete customer selling evidence separately from its incomplete legacy base costing. New verified intake records freeze `configuredQuoteInputs` alongside `frozenConfiguratorPrice`. `configuredQuoteSnapshotItems` maps the exact GST-inclusive selling breakdown only when that input basis matches the current saved inputs and currency, whole-dollar amounts and total reconciliation all validate. It adds neither a new multiplier nor GST. Zero-value rows are omitted without changing the total; private base costs never enter quote line output.
+
+Database quote loading preserves the snapshot, as do the existing local-first and repository estimate loaders. Shared mapping drives previews and explicit draft create/refresh/revise. Missing legacy basis, altered inputs, incomplete or malformed prices retain the `CONFIGURED_COSTING_REVIEW_REQUIRED` blocker with no partial quote lines. The original customer receipt remains separate and immutable. This enables an unchanged submitted-design draft, not automatic sending or approval of the site or pricebook.
+
+A later calculator reprice can replace imported derived data. Quote classification also checks retained marketing snapshot provenance, so losing the derived pricing-mode flag cannot fall through to a partial base-cost quote. A repriced configured estimate blocks handoff even when its inputs are unchanged; the original frozen amount must not masquerade as the new calculation. Integration coverage passes an actual `buildEstimatePayloadFromSiteCosting` result into quote mapping for unchanged and changed inputs. Ensuring every configured accessory survives the complete editing/repricing workflow remains a launch requirement; this guard does not establish calculator parity. No sent records or publication flags were changed.
+
+Maintenance: the new configured snapshot mapper is extracted from the existing large `mapping.ts`; broader financial mapping decomposition is deferred. A root integration test crosses marketing persistence and portal loading without introducing portal aliases into the marketing app's TypeScript graph. It verifies a gable plus Ziptrak retains exact selling lines/cents. Malformed evidence and changed-input regressions retain the blocker.
+
+Owner decision (14 September 2026): staff revisions of configured enquiries must
+reopen the same customer configurator and save a new priced revision against the
+existing project, preserving the original submission. Do not implement this as
+an extension of the legacy portal calculator. The local workflow now has staff UI, a server relay, complete repricing and
+immutable revision persistence. The revision migration is installed in staging. Release still requires an
+approved pricebook followed by a real priced save and production release checks.
+
+The first implemented boundary is marketing's bearer-authenticated
+`POST /api/staff/configurator-revisions/prepare`. It validates the current user
+with Supabase, requires staff/admin, reads the exact source estimate/project
+through that user's auth-bound client, and runs the existing complete frozen
+configurator calculation against the explicitly approved published version.
+Browser-supplied totals are ignored. Its private/no-store response contains the
+server-prepared frozen result for the portal server; it must never be exposed
+through a public proxy. Missing approval, unsupported designs and unavailable
+pricing cannot produce a prepared price. Preparation neither saves nor sends.
+Portal relay and configurator return interaction are implemented below;
+a real priced staging save remains to be verified. Gate 0: N/A legacy audit rows; this orchestrates
+the existing protected marketing calculation and does not extend calculator
+inputs, migrate cost inputs, or change workbench/geometry runtime.
+
+Staging verification used the existing synthetic staff identity without sending
+a login email. The running local marketing endpoint denied anonymous access,
+verified the real source estimate, denied a different project and withheld price
+preparation because no approved version is pinned. Session credentials remained
+in memory and were signed out. No revision was saved or provider called.
+Evidence: `launch-staging-staff-revision-prepare.json`; six focused route tests
+and marketing TypeScript passed. Priced preparation remains covered by controlled
+tests until an actual pricebook is approved.
+
+Revision persistence follow-up: the local save endpoint now reruns preparation,
+requires the hash of the reviewed prepared estimate, and submits only server-built
+data to `configurator_estimate_revision_create`. Migration
+`20260914173001_configurator_estimate_revisions.sql` creates a service-only atomic
+save RPC and a private frozen revision table. Exact retries return the same ids;
+changed request content conflicts. The original estimate is never updated. The
+private revision record survives changes to its working estimate, and saves do
+not enqueue customer email. This migration passed disposable Docker and staging rollback checks and is
+installed in staging only. The real version column and outputs version both
+advance; retries preserve the same version and original submission.
+
+The revision estimate builder reuses the complete marketing snapshot adapter.
+A cross-app integration test recalculates a gable plus Ziptrak from 5 m to 6 m,
+persists the new payload shape and maps it into exact selling quote lines while
+proving the original payload is unchanged. Twenty-three focused endpoint/pricing/integration
+tests and the full disposable database contract passed. Evidence:
+`launch-configurator-revision-save-tests.txt`, `launch-configurator-revisions-db.txt`.
+
+
+Staff UI follow-up: `/staff/projects/[projectId]/configurator-revision` opens the
+saved design in the same marketing configurator. The staff-context footer returns
+an edited draft in the URL fragment to the same project/source; production return
+navigation is restricted to the portal origin. Staff then calculate, review and
+save a new estimate. The project enquiry receipt exposes this action.
+The auth-bound portal relay forwards credentials server-to-server only, restricts
+its target to the configured marketing origin, refuses redirects, bounds JSON
+requests, and returns selling lines only. The save identity is derived from the
+reviewed preparation hash, retaining exact retry identity after refresh. Invalid
+returned JSON blocks calculation instead of silently saving the original design;
+a failed recalculation removes the stale save action.
+
+Verification: both app TypeScript checks passed; focused navigation, relay and
+React interaction tests passed, including lost-response/refresh retry. The actual
+staging staff API loaded the synthetic saved design, rendered the authenticated
+staff page and relayed preparation through both servers to the expected missing
+pricebook approval gate (`launch-staging-staff-revision-relay.json`). Browser QA
+changed a gable from 6.0 m to 6.5 m and confirmed the visible return link retained
+6,500 mm, the exact project and source estimate, and the local staging portal
+origin. No priced staging revision, real email or production change was made.
+The staging portal launcher explicitly sets marketing origin to localhost:3065;
+never forward a staging session to the production marketing origin.

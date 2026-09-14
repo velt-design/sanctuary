@@ -49,6 +49,9 @@ export function validateEnquiryForm(formData: FormData, files: File[]): EnquiryF
   const name = String(formData.get('name') ?? '').trim();
   const phone = String(formData.get('phone') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim();
+  if (formData.get('requestType') === 'site-measure' && !String(formData.get('suburb') ?? '').trim()) {
+    errors.suburb = 'Enter the site address for your measure request.';
+  }
 
   if (!enquiryType) errors.enquiryType = 'Choose a project type.';
   if (!name) errors.name = 'Enter your name.';

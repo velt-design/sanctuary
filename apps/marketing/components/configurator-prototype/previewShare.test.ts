@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PREVIEW_DRAFT } from './previewDraft';
-import { buildPreviewShareUrl, parsePreviewDesign, serializePreviewDesign } from './previewShare';
+import { buildPreviewShareUrl, parsePreviewDesign, parsePreviewShareHash, serializePreviewDesign } from './previewShare';
 
 describe('shareable preview design', () => {
   it.each(['mono', 'gable', 'box'] as const)('round-trips %s design choices', family => {
@@ -26,4 +26,22 @@ describe('shareable preview design', () => {
     expect(buildPreviewShareUrl('https://preview.vercel.app', DEFAULT_PREVIEW_DRAFT, 'public-preview')).toContain('_vercel_share=public-preview');
     expect(buildPreviewShareUrl('https://example.com', DEFAULT_PREVIEW_DRAFT, 'public-preview')).not.toContain('_vercel_share');
   });
+  it('keeps display history separate from the design and accepts old links', () => {
+    const draft = DEFAULT_PREVIEW_DRAFT;
+    const url = new URL(buildPreviewShareUrl('https://example.com', draft, undefined, { basis: 'published', amountIncGst: 12000 }));
+    expect(parsePreviewShareHash(url.hash)).toEqual({ draft, estimate: { basis: 'published', amountIncGst: 12000 } });
+    expect(parsePreviewShareHash(`#design=${serializePreviewDesign(draft)}`)).toEqual({ draft, estimate: null });
+    expect(parsePreviewShareHash(url.hash + '&estimate=published:1')).toEqual({ draft, estimate: null });
+    expect(parsePreviewShareHash('#design=invalid&estimate=published:1')).toBeNull();
+    expect(parsePreviewShareHash(`#design=${serializePreviewDesign(draft)}&estimate=<script>`)).toEqual({ draft, estimate: null });
+  });
+  it('round trips encoded v3 designs without double decoding when price history is present', () => {
+    const draft = { ...DEFAULT_PREVIEW_DRAFT, roof: { ...DEFAULT_PREVIEW_DRAFT.roof, finish: { material: 'solid' as const, layout: 'central' as const, acrylicBays: 2, profile: 'corrugated' as const, trayWidth: 400 as const, ceiling: 'thermopine-150' as const } } };
+    const url = new URL(buildPreviewShareUrl('https://example.com', draft, undefined, { basis: 'draft', amountIncGst: 21000 }));
+    expect(parsePreviewShareHash(url.hash)?.draft).toEqual(parsePreviewDraftForTest(draft));
+  });
 });
+
+function parsePreviewDraftForTest(draft: Parameters<typeof serializePreviewDesign>[0]) {
+  return parsePreviewDesign(serializePreviewDesign(draft));
+}

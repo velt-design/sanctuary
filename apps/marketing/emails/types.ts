@@ -1,4 +1,5 @@
 import type { CustomerBrief } from '../lib/enquiryDesignContract';
+import type { EnquiryProjectPreferences } from '../lib/enquiryProjectPreferences';
 type EnquiryType = 'residential' | 'commercial' | 'professional';
 
 type PergolaStyle = 'Pitched' | 'Gable' | 'Hip' | 'Perimeter' | string;
@@ -22,6 +23,7 @@ interface EnquiryBase {
 
   message?: string;
   customerBrief?: CustomerBrief;
+  projectPreferences?: EnquiryProjectPreferences;
   submittedDesignUrl?: string;
   projectRole?: string;
   projectStage?: string;

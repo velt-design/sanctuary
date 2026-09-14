@@ -17,8 +17,9 @@ function stable(value: unknown): string {
 }
 
 /** Reject changed selections rather than silently saving a different pergola. Never accepts prices or URLs. */
-export function buildCustomerBrief(audience: EnquiryAudience, value?: unknown): CustomerBrief {
-  if (value === undefined || value === null) return { version: 1, audience, designStatus: 'bespoke' };
+export function buildCustomerBrief(audience: EnquiryAudience, value?: unknown, intent?: unknown): CustomerBrief {
+  const requestedStatus = intent === 'help' ? 'help' : intent === 'bespoke' ? 'bespoke' : null;
+  if (value === undefined || value === null) return { version: 1, audience, designStatus: requestedStatus ?? 'bespoke' };
   if (JSON.stringify(value).length > 12000) throw new Error('Design is too large');
   const parsed = parsePreviewDraft(value);
   const design: PreviewDraft | null = parsed ? JSON.parse(JSON.stringify(parsed)) : null;
@@ -37,5 +38,5 @@ export function buildCustomerBrief(audience: EnquiryAudience, value?: unknown): 
   ].join(' · ');
   const code = serializePreviewDesign(design);
   if (!code || code.length > 12000) throw new Error('Design cannot be shared');
-  return { version: 1, audience, designStatus: 'configured', design, summary, reopenPath: `/configurator-preview?open=1#design=${code}` };
+  return { version: 1, audience, designStatus: requestedStatus ?? 'configured', design, summary, reopenPath: `/configurator-preview?open=1#design=${code}` };
 }

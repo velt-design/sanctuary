@@ -4,11 +4,13 @@
 
 ### Marketing preview: lighting editor (2026-09-10)
 
+Plan visual refinement (2026-09-14): plans use a dedicated SVG drawing with the Simple Cover calculator's pale drawing paper, faint grid, outlined members and hatched house connection. Finish surfaces use existing geometry for board/profile positions. Dimensions and lighting hit targets remain SVG. No additional WebGL canvas, realistic scene shadows, furniture or external textures are used.
+
 Lighting opens a focused right-panel editor and a light-background lighting plan.
-The main plan hides roof finishes and surroundings, labels the house edge and offers
+The lighting plan is a reflected ceiling view: projected ceiling boards cover hidden rafters, while acrylic keeps exposed framing visible. The roof plan projects the existing roofing profiles and flashings. Both use a pale drawing-paper background, plain dimension labels and a stable 3D | Plan toggle. No furniture is included. The lighting plan hides surroundings, labels the house edge and offers
 24px member hit areas. Only the plan/editor changes selections. Preview in 3D hides
 editing controls and selection overlays and automatically uses night on first entry;
-Day/Night is presentation state available throughout the 3D configurator. Day is the initial view; Done retains the chosen lighting mood without resetting the camera. Plan remains light, with time-of-day controls disabled. A prominent “See your lights at night” action opens the night preview; an unlit night scene offers Add lighting. Warm-white spots are 40mm in rafters and 110mm in cedar; up to 24 cedar downlights,
+Day/Night is presentation state available throughout the 3D configurator. Day is the initial view; Done retains the chosen lighting mood without resetting the camera. Plan remains light, with time-of-day controls disabled. A prominent "See your lights at night" action opens the night preview; an unlit night scene offers Add lighting. Warm-white spots are 40mm in rafters and 110mm in cedar; up to 24 cedar downlights,
 Cedar grids are selected per contiguous cedar section per slope, never across the whole roof. A shared 2/4/6/9 setting is the default; optional per-section overrides retain one setting for both gable slopes. Plan labels identify sections, and the total includes every section and slope. Each section's grid is centred within its own rafter bays; acrylic remains clear. Complete grids require 600mm spacing (1000mm for nine). Shared options must fit all sections; individual mode exposes the options for each section. Draft/share normalization retains settings, prunes vanished sections and derives totals. Existing whole-roof quantities migrate to the nearest per-section setting. Rafter lights use Off/Low/Medium/High: low is one centred light on mirrored alternate rafters, medium two at 25/75% on those rafters, high two on every eligible rafter. Gable patterns select paired rafter rows along the ridge, mirrored onto both slopes. Pitched and gable edge rafters are excluded from spots but remain available for LED strips. Counts are derived and update with dimensions. Old quantity selections migrate to the closest preset. Editing opens with no tool selected; only explicit LED strips mode enables member taps.
 Selected members receive full-length 16x16 channels and diffusers on their undersides.
 Presets omit the house ledger from the outer perimeter; plan member taps and a checklist
@@ -4923,7 +4925,7 @@ reference and must match the submitted selection. Without a price the email make
 no numerical estimate. The server freezes the marketing reopen URL in email
 variables, so staff-side re-rendering does not point at the portal's domain.
 
-Four V2 email journeys are available in the existing staff email workbench under
+Five V2 email journeys are available in the existing staff email workbench under
 "Proposed enquiry journeys". Existing V1 template IDs and historical variables
 retain their renderer. With V2 disabled, new saved-design details are still included
 in the V1 project note for the customer's and staff BCC's reference.
@@ -4935,7 +4937,340 @@ preview remains behind the existing staff session and preview availability check
 local QA uses the existing fixture gate and does not send email.
 
 Review evidence for this slice: enquiry boundary/intake/render tests, existing
-attachment and retry tests, the four workbench journeys, desktop/mobile email
+attachment and retry tests, the five workbench journeys, desktop/mobile email
 rendering, and browser checks for the three roof families' enquiry payloads.
-Remaining production work includes actual email-client proofs, physical phone QA,
+All five owner-authorized synthetic email proofs were confirmed delivered by Resend
+on 2026-09-14; see `automation-email-audit.md`. Recipient-side email-client appearance
+and the durable worker integration remain separate checks.
+Remaining production work includes physical phone QA,
 the broader website rollout and the future canonical configurator contract.
+
+### Value defaults and batten species (2026-09-11)
+
+New blinds use uncovered rolls and no optional acrylic above. Gable infills, roof battens and timber-over-acrylic remain opt-in. New timber selections use provisional ThermoPine 90x39 flat with a 90mm clear gap; aluminium sides use 65x16 flat with a 65mm gap. The smaller 50x50 acrylic frame remains the default. Existing roof/side batten payloads without species remain cedar; explicit saved profiles, gaps, covers and infills are preserved. Roof and side controls expose ThermoPine/Cedar, descriptions retain species, and roof/side rendering distinguishes the timber finish. Share links retain the additive optional species field.
+
+Gate 0: legacy audit N/A; no legacy build-on/removal, no Phase 2 dependencies, no function/type consolidation. Consumers checked: geometry exports/roof batten builder, marketing solver, controls, parser/share, side renderer, enquiry descriptions and accessory price adapter. Geometry receives appearance only; draft costing remains package-owned. Supplier profile availability and price confirmation remain outstanding; see costing-and-geometry.md.
+
+Plan drawing hierarchy follows the workbench sheet reference (`apps/portal/lib/theme/moduleDrawing.ts` and `EstimateDrawingSheet`): strong perimeter, secondary member outlines, quiet annotations and a compact material/lighting legend. This is a marketing-owned presentation adaptation; it does not import portal UI. Plan offers a direct night-preview action in place of disabled Day/Night controls. Lighting symbols have a minimum screen size; physical fitting sizes and quantities are unchanged.
+
+Plan acrylic hatching is drawn beneath framing, so transparent areas do not wash out member outlines. The legend lists only selected materials and lighting. The plan preview action opens night only when lights are configured, otherwise day.
+
+The roof plan includes an indicative house footprint and hatched external wall when surroundings are enabled. Reflected ceiling plans retain only the connection marker. Side editing shows clickable opening labels, olive selection emphasis and a contextual open-side/selection legend; posts use stronger filled symbols. No house doors or windows are inferred.
+
+Entering Lighting opens Plan; leaving Lighting preserves the current view. Roof-plan fall arrows follow assembly roof-plane fall vectors and are hidden during side editing and reflected-ceiling editing. House context extends beyond the pergola with a lighter outer edge.
+
+Plan openings remain keyboard/touch accessible at rest while their labels and highlight appear only on hover, focus or selection. Installed panels/blinds remain visible. Empty-space clicks clear the side highlight and lighting placement tool; Escape clears a focused opening. The SVG is top-aligned within tall viewports and retains its aspect ratio. No separate saved-drawing mode is introduced.
+
+The full drawing composition is centred in the viewport. Clearing an opening removes both the plan highlight and the rail selection; the rail prompts for an opening instead of retaining active controls. Roof-fall annotations are placed at nearby rafter-bay centres using existing member positions.
+
+Solid roof plans use crisp schematic rib patterns oriented with roof fall, with a minimum screen spacing to avoid moire. Steel mesh triangles are not shaded in plan; flashing meshes remain visible. Reflected timber ceilings and 3D roof profiles are unchanged.
+
+### Launch journey agreement and active closure (2026-09-14)
+
+Accessory pricebook draft preparation: optional versioned accessory rates can now be explicitly seeded, edited, validated and compared in the existing staff pricebook workflow. Historical versions remain unchanged. The marketing accessory calculator consumes rates supplied in its configuration; the development endpoint still uses repository configuration, and public expanded pricing is not activated. Supplier approval, published configuration selection and complete submitted-price validation remain outstanding. See `costing-and-geometry.md`, Versioned accessory draft rates.
+
+Owner-approved target: Design your pergola is the main residential entry, with
+Help me choose, Bespoke, and Commercial / Professional alternatives. Undecided
+customers are not automatically bespoke. Configurable designs remain configured
+even when their size needs an individual quote. A started design must survive a
+switch to the bespoke route. Fireplaces and further discretionary plan redesign
+are deferred.
+
+Public prices must be approved installed selling estimates including GST, visible
+without contact details, with customer-facing structure, roof/ceiling, sides/blinds
+and lighting breakdowns. Ground-level eligibility is at most 30 m²; first-level is
+at most 20 m². Unapproved accessories prevent a complete numeric estimate, rather
+than presenting a partial total. Current repository accessory allowances and the
+owner-review API are not approved public prices.
+
+The residential next step is Request a site measure. Staff review and typically
+respond within the working day; a request is not a booking. Auckland measures and
+evaluations are free. Outside Auckland, availability and travel cost are confirmed
+before a visit. Name, email, phone and site address are required at request time;
+photos and timing are optional. Help/bespoke may offer an optional budget with Not
+sure yet; configured customers are not asked their budget again. Commercial and
+professional enquiries begin a project discussion, with optional plans.
+
+Account-free save/share must reopen with the current estimate and identify price
+changes. Submitted design and displayed-price/version evidence must be immutable.
+Launch gates include portal record, attachments, customer email and staff
+notification reconciliation, safe retries without duplicate leads, and recoverable
+submission failures. No payment or instant appointment booking is in scope.
+
+Verified closure so far: configured contact handoffs no longer derive their sales
+pathway from estimate availability. `contactDesignSubmission` preserves actual
+roof type, materials and dimensions; only an existing signed Simple reference is
+forwarded as pricing evidence. The form offers a site-measure request for priced
+and unpriced configured designs, and explains the Auckland/out-of-area policy.
+Focused routing/submission/intake tests pass (27 tests) and marketing typecheck
+passes. Local browser verification confirms an unpriced gable retains the request
+action. No live enquiry or email was sent.
+
+Help is now a separate enquiry status and V2 email experience. Explicit bespoke
+intent may retain a started design; it no longer loses that design when switching
+from the configured form. Unknown intent values cannot become arbitrary statuses.
+Help/bespoke enquiries suppress generic dimension-derived estimates. Browser checks
+confirm Help opens without a calculator and the bespoke switch retains its design.
+The existing production email activation flag is unchanged; release must enable
+the reviewed V2 experiences to expose these distinctions in customer emails.
+
+Site-measure submissions now declare `requestType: site-measure`; client and API
+reject an empty site address. The existing `suburb` intake field carries the full
+address into the existing project/location and email pipeline, avoiding a second
+unused location field. Help/bespoke/business discussions keep location optional.
+Existing older intake callers remain compatible when they do not request a measure.
+
+Still open:
+website entry-point rollout; approved full-catalogue pricing and frozen price
+handoff; current-price notice on reopen; end-to-end production reconciliation and
+release approval. Existing saved design snapshots and retry tests are useful
+evidence, but do not prove these remaining gates. The local preview server was
+restored on port 3062. Browser 3D reported unavailable in the review environment;
+Plan remains the fallback and production WebGL support needs verification.
+
+Maintainability: ContactEnquiryForm owns the marketing form. Configured submission
+mapping is in a focused helper; broad extraction of the existing upload/submit
+controller is deferred to avoid mixing that refactor with this handoff correction.
+
+Pricing audit: `/api/configurator-review-price` is development-only and loads
+repository review rates. `ACCESSORY_REVIEW_RATES` includes provisional ThermoPine
+batten prices based on a cedar ratio, so this is not a published catalogue. The
+existing Simple calculation reference binds inputs, published configuration
+provenance and a frozen-result hash. Expanded roof/accessory submissions need an
+equivalent full-design binding and approved configuration source before numeric
+prices can become public. The dark approved-version implementation described below now provides that binding; activation and price approval remain outstanding. Do not remove the development gate as a launch shortcut.
+
+The contact-page hero and primary pathway now open the full configurator, beside
+Help me choose, Bespoke design and Commercial / Professional. These are local
+source changes, not a verified live release. Older source-context Simple
+continuations now enter the same designer, with historical selection migration
+described below. The accessory review
+page is evidence-only today, not a rate approval/publication workflow.
+
+Contact entry continuity (2026-09-14): the contact hero and pathway designer links
+now retain governed source/project/product/audience parameters through the existing
+enquiry-context builder. Unknown parameters and external source URLs are discarded.
+Explicit business audiences and bespoke directions take precedence over a Simple
+source page. Attaching a configurator design preserves a business discussion and
+its selected commercial/professional audience, rather than forcing residential
+site-measure fields. The browser-confirmed professional path retains optional
+location, organisation/role/stage and the Send project brief action. No enquiry
+was submitted. Broader website placement remains outstanding rollout work; the
+Simple entry migration below replaces the older embedded destination.
+
+Maintainability: contact-pathway resolution remains in `contactJourney.ts`; the
+context-preserving designer URL has a small owner in `lib/configuratorEntry.ts`.
+Only integration calls changed in `ContactEnquiryForm`; its broader upload/submit
+controller extraction remains deferred as described above.
+
+Simple entry migration (2026-09-14): the indexable Simple product page now links
+to the shared designer instead of mounting its own calculator and duplicate form.
+The old `price-your-cover` and `initial-estimate` anchors remain useful entry cards.
+`/simple-cover-calculator` redirects to the designer; older source-attributed Simple
+contact links open the designer too. Explicit Help/Bespoke intents and business
+audiences override that source-based entry, keeping assistance available without
+requiring a configuration. Product copy no longer treats every other roof family
+or an over-limit footprint as bespoke.
+
+The shared draft store restores a valid historical Simple handoff only when no
+valid newer full draft exists. It imports unchanged dimensions/level/connection,
+never old numbers or signed references, and explains that current pricing is used.
+Explicit shared designs still win. Malformed or unrepresentable historical inputs
+are not silently resized. The legacy calculator component/API contracts remain
+for compatibility consumers; this is entry-point retirement, not their deletion.
+Production build and 774 marketing tests pass. Browser review checked the new
+entry at mobile width, assistance and standalone navigation. No live deployment,
+price activation, enquiry submission or email delivery is implied.
+
+Recovery audit (2026-09-14): the intake RPC deduplicates the lead, but the route
+returns immediately for an existing submission before its post-intake side effects.
+Confirmation sending is request-bound and errors are swallowed after best-effort
+outbox/audit logging. A focused provider-failure test verifies that the lead remains
+saved and an email_failed audit replaces email_sent. This does NOT prove recovery:
+there is no enabled email_outbox_deliver worker handler, and a crash before the
+outbox write can leave no durable delivery work. Draft-estimate insertion is also
+best-effort after intake. These are launch blockers, not covered by the existing
+successful-replay test. Fix by atomically retaining delivery work with intake and
+using the existing durable email effect/retry infrastructure; do not simply repeat
+sendCustomerAutoresponder with freshly rendered content and the old provider key.
+The exact message, attachments, recipient, template/version and idempotency identity
+must remain fixed across uncertainty. No external email was sent during this audit.
+
+Delivery preparation (2026-09-14): `prepareCustomerAutoresponder` now returns the
+complete serializable provider message without dispatching it; the existing send
+adapter consumes that same preparation function. The preparation/provider-boundary
+and enquiry route tests pass (28 tests), as does marketing type checking. This is
+an extraction, not enabled recovery. The existing queue protects payloads up to
+256 KiB whereas enquiry email attachments may total 8 MiB before base64 encoding;
+the atomic intake integration must retain the frozen message in protected storage
+and enqueue its reference rather than copying attachments into the job payload.
+Provider acceptance and outbox finalisation must then use the existing durable
+email effect checkpoints. No migration or worker rollout has been applied.
+
+Atomic delivery storage (2026-09-14): forward migration
+`20260914062001_marketing_enquiry_durable_delivery.sql` adds an install-only
+service-role intake RPC which commits intake, QUEUED outbox, protected exact
+message, and existing email-outbox job together. Replay retains the first message;
+legacy submissions without checkpoints require reconciliation instead of blind
+resend. Read/finalise RPCs require the current worker lease, and finalisation
+requires recorded provider acceptance. The executable PGlite test applies this
+exact migration and the existing lease guard with synthetic intake/enqueue
+prerequisites; it proves rollback, unchanged replay, lease fencing and idempotent
+finalisation locally. It does not prove PGMQ, live Supabase grants or production
+delivery. Producer/worker integration and the Docker-backed release gate remain
+unfinished at that checkpoint. Subsequent staging-only installation is recorded in docs/staging-supabase-readiness.md; no production migration or delivery rollout has been performed.
+
+Worker integration (2026-09-14): the CLI can register the website-only
+`email_outbox_deliver` handler when `BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED=true`
+and `RESEND_API_KEY` is configured; default registration remains synthetic-only.
+The handler reads through the lease-fenced private-message RPC, uses the existing
+durable provider effect, and finalises the outbox through the acceptance-checked
+RPC. Tests prove replay after acceptance/finalisation never sends again, and
+message-read failure prevents dispatch. Website producer integration, live
+database compatibility and rollout remain pending; this setting was not enabled.
+
+Website producer integration (2026-09-14):
+`WEBSITE_ENQUIRY_DURABLE_DELIVERY=true` switches submission to the atomic intake
+RPC with the exact rendered message and attachments. Email preparation lives in
+`enquiryEmailPreparation.ts`; legacy sending consumes the same preparation owner.
+The durable path renders before intake and never calls the provider from the web
+request or falls back to legacy intake on a queue error. Its customer email
+reference uses the submission UUID, available before intake; database links still
+use the resulting enquiry/outbox/job IDs. Route tests cover successful intake,
+replay and queue failure without direct send. The switch remains off. Real
+PostgreSQL/PGMQ compatibility, shared migration application and coordinated worker
+activation are still release gates.
+
+Atomic draft handoff (2026-09-14): the durable intake now inserts the draft estimate
+in the same transaction as the lead, outbox and job, returns its ID on first save
+and replay, and retains the original draft JSON in the private delivery receipt.
+The draft snapshot includes the validated customer brief, server-derived selling
+ranges including GST and published pricing provenance. Staff edits to the working
+estimate cannot rewrite that private submitted receipt. The existing persistence
+builder is reused with a nullable pre-intake project ID; SQL assigns the actual
+project and forces draft status/marketing creator. No engine inputs, geometry or
+legacy costing path changed (Gate 0 legacy audit: N/A; no Phase 2 dependency).
+Tests cover transaction rollback including the estimate, unchanged replay,
+snapshot preservation after draft editing, and route use of the returned draft ID
+without a second estimate insert. The legacy route remains unchanged in rollout
+status; this recovery behaviour requires the unenabled durable-delivery switch.
+
+Real-database gate attempt (2026-09-14): `npm run test:jobs:db` cannot start on
+this machine because Docker is absent (`spawnSync docker ENOENT`); evidence is
+`artifacts/pricing-review-2026-09-11/launch-real-database-gate.txt`. The existing
+gate covers the job foundation and must also include the new enquiry migration
+and its intake prerequisites before it can prove the complete delivery path.
+PGlite success is not a substitute for that release evidence. Other launch work
+can continue while this environment prerequisite remains unresolved.
+
+Optional enquiry preferences (2026-09-14): all enquiry routes now offer optional preferred timing; help and bespoke routes also offer an optional budget with Not sure yet as the default. Budget amounts remain free text until approved ranges exist. Server-normalised preferences travel to the raw enquiry, initial draft snapshot and V2 confirmation email; they never feed the pricing calculation. Configured and commercial/professional routes ignore budget preference inputs. Focused tests cover route persistence, draft snapshot, email rendering/escaping and pricing separation (33 passed); marketing typecheck and architecture checks passed. Local browser review verified the help form's optional budget reveal and existing field styling. No form was submitted to live services. Durable database rollout and public pricing approval remain separate release gates.
+
+Saved-design pricing notice (2026-09-14): copied/shared links can carry the displayed whole-dollar GST-inclusive estimate and its published/draft basis as separate fragment metadata. This is untrusted display history only, excluded from the design intent, costing inputs and submitted receipt. Reopening still fetches current pricing and announces changed amounts or pricing basis; older links show a current-pricing reminder. Invalid or duplicate estimate metadata is discarded while a valid design still opens. No subtotal or incomplete price is saved. Editing the design clears the comparison. Local browser verification showed a changed-price notice against the current calculated amount and cleared it after an edit; 29 focused share/notice/design-contract tests and marketing typecheck passed. No production pricing gate was changed.
+
+Staff receipt closure (2026-09-14): Project Work has an Original enquiry tab with staff-only, no-store API/RPC access. It presents the frozen submitted customer brief, preferences and selling-price ranges plus current confirmation-email status. Older records are explicitly marked legacy with price TBC. The existing Files tab owns attachments. Focused executable PostgreSQL projection/auth/isolation checks, API auth/cache/error checks and view tests pass (16 tests including Overview regressions). The staff-read and durable delivery migrations subsequently passed the real database gate and staging rollback rehearsal, and are installed in staging only. UI rendering tests do not prove a live portal handoff; production application and the complete staged browser/provider journey remain pending.
+
+Approved configurator pricing continuity (2026-09-14, not activated):
+`/api/configurator-price` returns disabled without
+`WEBSITE_CONFIGURATOR_APPROVED_VERSION_ID`. Release must explicitly pin an
+owner-approved immutable published version containing both accessoryRates and
+installedSellingRates. A version mismatch, unavailable publication or any
+unpriced selection withholds the whole numeric estimate. Ground 30 m² and
+elevated 20 m² are inclusive limits. Trapezoidal steel remains unpriced until it
+has its own approved rate; provisional review substitutions never become public.
+The browser receives only GST-inclusive installed selling totals, breakdown,
+version number and an opaque cf1 calculation reference. No internal costs appear
+in that response. This is separate from the development-only review endpoint.
+
+The cf1 reference binds the complete normalized design, immutable pricebook
+provenance and frozen-result hash. Submission resolves the original published
+version and recalculates against it, independent of the current version. Invalid
+or changed references yield price TBC without preventing an enquiry. The private
+draft stores the full frozen result, selected design, customer breakdown and
+policy adjustments; the staff receipt exposes the original selling breakdown.
+Verified design dimensions/style/materials override stale form summaries.
+The shared AES-GCM codec preserves the existing sc1 domain and format; cf1 has
+its own domain. Deployment still requires the existing server signing secret.
+
+This does not establish complete staff calculator/quote parity: the legacy
+calculator adapter and base-cost outputs do not include all configured accessory
+costs. A retained warning requires complete staff costing review before a quote.
+Historical-version tests cover gable plus blind totals, tampered design/rates,
+publication failure, public projection and both size boundaries. Both app type
+checks passed before the final metadata correction. Real database, worker,
+production journey and release validation remain outstanding; no pricebook was
+published or activation flag enabled by this work.
+
+Verification follow-up: the final submitted-metadata correction passed 20 focused
+pricing/reference/snapshot tests, marketing TypeScript and architecture:changed.
+Portal TypeScript also completed successfully. The new service-role-key advisory
+is the extracted existing server-only calculation-reference codec: it performs
+no database access, derives domain-separated encryption keys on the server and
+never returns the secret. Browser verification of this slice is still pending;
+the temporary tab from the previous session had expired.
+
+Browser journey follow-up (2026-09-14): local preview -> contact preserved the
+6.0 × 3.0 m pitched design. Configured requests show required address/name/phone/
+email, optional files/timing, Auckland free-measure wording and out-of-area
+assessment. Bespoke escape retains the design and now changes the introduction
+as well as the submit action; switching back restores site-measure wording and
+required address. No form was submitted. WebGL remains unavailable in this
+browser environment, so this does not verify production 3D rendering. A React
+request-race test proves editing hides the old price immediately and a late
+response cannot replace the newer design's result.
+
+Production-build check (2026-09-14): `npm run build:marketing` passed with isolated
+`MARKETING_PLAYWRIGHT_DIST_DIR=.next-launch-check`, without overwriting the active
+preview output. Built app was temporarily served on 127.0.0.1:3064 with no approved
+version pin. HTTP checks returned disabled for configurator-price and 404 for
+configurator-review-price. Browser confirmed no draft amount in either pitched
+or gable; unavailable/confirmation states retained the Continue link. WebGL was
+unavailable in the test browser. The temporary server/tab were stopped after
+inspection. This verifies local production-mode behaviour, not deployment or
+approved numeric-pricing activation. Fifteen focused price/shared-estimate tests
+also passed, including foreign-origin, content-type, size and production review
+endpoint guards. Build log: artifacts/pricing-review-2026-09-11/launch-marketing-production-build.txt.
+
+### Homepage designer entry (14 September 2026)
+
+The homepage project finder now labels its configured residential choice **Design your pergola** and opens the full contact-page designer directly. Source attribution and selected priorities are preserved by `buildHomeConfiguratorHref`; an existing `?project=cover` result uses the same destination. Bespoke and commercial/professional choices retain their separate pathways. The Simple product page remains available for product research and existing bookmarks. This is local implementation, not production activation or pricing approval.
+
+Verification: 775 marketing tests pass across 123 files; marketing TypeScript passes. A local browser click from the homepage reached the full roof/sides/lighting designer and site-measure form with the expected source context, without submitting an enquiry. Homepage and Simple browser-test expectations were updated but the Playwright suite was not executed in this pass. Database/queue and staging delivery gates remain open.
+
+
+### 2026-09-14 - Approved staging pricebook and priced revision proof
+
+Approval follow-up: the owner approved candidate `157b63465bc0` for public
+indicative estimates after release checks pass, including the disclosed
+provisional supplier allowances and site-review condition. Exact candidate hash
+and approval scope are recorded in
+`artifacts/pricing-review-2026-09-11/launch-public-pricing-owner-approval.json`.
+Deployment remains unapproved and production prices are unchanged. This later
+approval supersedes the staging-only approval scope recorded below.
+
+Owner approval covered staging-only candidate `157b63465bc0`, preserving published
+production v11 rates and adding reviewed provisional options. The normal publish
+RPC created staging version `f94dde12-1fdb-4638-9b61-7c1be654b7e1`; temporary synthetic
+administrator access was removed and the identity disabled after publication.
+Production publication and deployment remain unapproved.
+
+A real HTTP enquiry saved a 6 x 3 m pitched design at $11,674 including GST with
+that version and its complete frozen price. Replaying the submission reused the
+original project and estimate. Staff then revised it to 6.5 x 3 m at $12,225;
+the public pricing endpoint and authenticated staff preparation agreed. Saving
+created estimate version 2, repeating the same command reused the revision, and
+the original estimate inputs and outputs remained byte-equivalent in the returned
+JSON comparison. The staff response excluded private costing. The new enquiry's
+email job was parked with zero effects; no additional email was sent.
+
+Evidence under `artifacts/pricing-review-2026-09-11/`:
+`launch-staging-pricebook-activation.json`, `launch-priced-customer-intake.json`,
+`launch-priced-customer-revision.json` and `launch-priced-staff-revision.json`.
+This closes the staged priced HTTP handoff and revision gap. It does not prove
+physical-device UX, production activation, or supplier confirmation of allowances.
+
+Quote handoff follow-up: the actual stored original and revised estimate rows
+passed through the quote-source loader and line-item mapper, retaining $11,674
+and $12,225 respectively, with no blocking issues or private installer top-up
+in the mapped customer output. Evidence: `launch-persisted-quote-handoff.json`
+and `launch-persisted-quote-handoff-tests.txt` in the same artifact directory.
+This verifies saved-price mapping; no quote record was created or email sent.

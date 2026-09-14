@@ -90,6 +90,14 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'no-referrer' },
         ],
       },
+      {
+        // Next's global rules can override headers set by the route handler.
+        source: '/api/staff/v1/projects/:projectId/enquiry-attachments/:attachmentId/open',
+        headers: [
+          { key: 'Cache-Control', value: 'private, no-store' },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+        ],
+      },
       // Keep the PDF rule last so it overrides the catch-all frame policy.
       {
         source: '/api/quotes/:quoteVersionId/pdf',

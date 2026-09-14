@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import type { PreviewDraft } from './previewDraft';
 import { buildPreviewShareUrl, serializePreviewDesign } from './previewShare';
 import styles from './journey.module.css';
+import type { SharedEstimate } from './sharedEstimate';
 
-export default function ShareDesign({ draft }: { draft: PreviewDraft }) {
+export default function ShareDesign({ draft, estimate }: { draft: PreviewDraft; estimate?: SharedEstimate | null }) {
   const [nativeShare, setNativeShare] = useState(false);
   const [feedback, setFeedback] = useState<{ design: string; message: string; fallback?: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -13,7 +14,7 @@ export default function ShareDesign({ draft }: { draft: PreviewDraft }) {
   useEffect(() => { setNativeShare(typeof navigator.share === 'function'); }, []);
   const current = feedback?.design === design ? feedback : null;
   const share = async (native: boolean) => {
-    const url = buildPreviewShareUrl(window.location.origin, draft, process.env.NEXT_PUBLIC_CONFIGURATOR_PREVIEW_SHARE);
+    const url = buildPreviewShareUrl(window.location.origin, draft, process.env.NEXT_PUBLIC_CONFIGURATOR_PREVIEW_SHARE, estimate);
     setBusy(true);
     try {
       if (native) await navigator.share({ title: 'My Sanctuary pergola', url });

@@ -1,6 +1,20 @@
 # Costing And Geometry
 
+## Accessory evidence review
+
+`/admin/costing/accessory-review` is an admin-only, read-only review linked from the costing control centre. It pairs the shared `ACCESSORY_REVIEW_RATES` with supplier evidence and outstanding checks. Worked examples use canonical costing helpers and explicitly assume a 1.30 selling multiplier; they are not resolved published prices. Remaining amounts exclude GST and are not net profit. Ziptrak and rafter-light installed schedules are not reverse-engineered into supplier costs. The screen does not create approvals, persist edited rates, or publish configuration versions. Invoice evidence is transcribed without customer identifiers; unverified profiles remain provisional.
+
 Costing and geometry are shared domain sources of truth. Do not copy their logic into app code.
+
+## Installer payout transition
+
+`calculateInstallerPayoutV1()` in `@sp/costing` proposes erection pay from the canonical site installation total and an explicitly supplied resolved costing configuration/version reference. It never falls back to repository rates. A reviewed benchmark must name the same scope and its evidence; missing or different scope returns `review_required` without a payout proposal. For matched scope, the proposal preserves the higher of model labour and benchmark, itemises the transition top-up, and calculates GST according to the installer's registration. The historical helper uses the December 2023 GST-inclusive base/area/roof schedule and returns an ex-GST benchmark; it does not establish scope eligibility. Timber, partial invoices, split crews, accessories and variations need explicit scope reconciliation before comparison.
+
+The project's **Installer payout** page consumes this calculation through an admin-only preview. It requires exactly one accepted quote, uses its source estimate through the canonical calculator adapter, and requires published rates rather than legacy fallback. The admin enters the reviewed ex-GST benchmark, scope, exclusions, terms and installer acceptance reference. A fingerprint binds the preview to the inputs, terms and pricebook; confirmation recalculates before saving. The frozen agreement stores the canonical site and pricing provenance as admin-only evidence. Staff see the agreed payout sheet, variations and invoice reconciliation without the internal model comparison.
+
+Agreements are append-only. Admins can record approved positive additions and installer invoice totals; sequence checks and command IDs prevent stale or duplicate writes. Invoice references are unique per project. Reconciliation compares cumulative invoices with the agreement plus variations; it never marks a payment made or sends a message. This first workflow supports one installer agreement per project; split contracts, credits, invoice corrections and replacement agreements require a separate admin review. It does not yet recover transition top-ups through customer prices. Keep that cost visible during margin review before pricing publication.
+
+Apply `20260911000001_installer_payout_workflow.sql` through the normal migration release before using the page. Missing storage shows an explicit unavailable state; no browser-only agreements are created. Tests cover calculation, API authority, real PostgreSQL-compatible migration execution, staff redaction, retries and stale writes. The isolated Version 11 fixture is test evidence, not a production pricebook snapshot.
 
 ## Read First
 
@@ -11,6 +25,8 @@ Costing and geometry are shared domain sources of truth. Do not copy their logic
 - Finish with `## Verification` for package and app checks.
 
 ## Costing Source Of Truth
+
+`calculateConfiguredCustomerPriceV1` is the opt-in `configured-offer.v1` adjustment for the customer configurator's single-module aluminium offer, up to 30 m² ground / 20 m² elevated. It removes only the calculated bespoke design allocation, retains the original labour classification and operational overhead, and adds any shortfall against the GST-normalised historical erection benchmark. The existing multiplier is retained. It requires an explicit configuration; it does not mutate general costing, published rates, frozen quotes or installer agreements. The development review-price adapter consumes it with the local pricebook. Production publication still requires the published-rate pipeline and complete accessory costing; the development-only route remains gated. Price parity tests cover the approved base and upgrade examples.
 
 All costing logic and base config live in `packages/costing` and are imported through `@sp/costing`.
 
@@ -385,3 +401,112 @@ npm run test -- packages/geometry
 npm run test -- packages/geometry/src/topProjection.test.ts packages/geometry/src/contracts.test.ts
 npm run test:portal:browser
 ```
+
+
+## Factory-coated ceiling choices (v2.7, pending publication)
+
+The calculator accepts optional `ceiling.option`: `cedar-100`, `cedar-150`, `thermopine-100`, or `thermopine-150`. Absence preserves the historical 110 mm cedar takeoff and labour. The four material rates, coating and fixings allowances are rows in the existing shared material catalogue/control editor. JSC supplier rates are owner-approved as ex GST with 100/150 mm effective cover and 11–12 mm finished thickness. Geometry represents 12 mm. Factory coating is a provisional $20 per purchased square metre; fixings are a provisional $3 per lined square metre.
+
+`engine/ceilingTakeoff.ts` owns selected stock rounding, support-position joins, minimum 10% timber waste and line-item coating. Selected 1.8–2.4 m lengths receive 10%; 2.7–4.8 m receive 30%. Long runs split on the standard calculator purlin grid and buy lengths rounded upward to 300 mm. Offcuts are included, without assuming cross-run reuse; the larger of purchased stock and the 10% minimum waste quantity is charged. Narrow fitting retains the current timber installation action; wide fitting scales that action by 12/14.4. Both add a provisional two crew-minutes per lined square metre for cut-end sealing/touch-ups. No full on-site coating labour is added. Normal job labour, overhead and selling policies remain authoritative.
+
+Pitched/gable lining uses timber slope area and board runs; box lining uses horizontal projected timber area and runs. Mixed roof acrylic area is excluded. This remains the calculator's representative area-based roof partition, not a fabrication cutting schedule for arbitrary custom openings.
+
+Manifest v2.7 introduces the catalogue rows. Historical published control snapshots are hash-checked unchanged, receive only the explicitly allowed catalogue additions, and retain their original `appliedControlManifestVersion`. New selections fail closed under pre-v2.7 published controls. An administrator must review/save/publish a v2.7 configuration before live estimates can use these choices. Historical unselected calculations are regression-tested unchanged. No production publication has been performed.
+
+The marketing preview stores the ceiling choice with its roof finish, changes board cover/species appearance and retains it in saved links/enquiry summaries. It still withholds whole-design public pricing for non-Simple designs; the broader public pricing adapter and accessory breakdown are separate outstanding work.
+
+### Local configurator price review
+
+Development-only `/api/configurator-review-price` maps the preview design to the
+existing shared calculator using repository v2.7 rates. Production returns 404:
+it does not activate provisional prices, produce frozen calculation references,
+or change enquiry pricing. The UI labels estimates as draft owner review.
+The exact footprint must be at most 30 m2 ground level or 20 m2 elevated;
+larger designs remain editable with no price. Pending requests hide stale totals.
+Mixed-roof acrylic area comes from the displayed roof regions; away gables swap
+calculator length/span, and box internal pitch/mode follow the displayed roof.
+These remain standard calculator allowances, not a fabrication takeoff.
+Selected accessories now contribute itemised owner-review lines. Portal Ziptrak
+and rafter-light selling prices include installation and are reused without a
+second markup or installation allowance (owner-confirmed). Blind fabric
+group mappings remain provisional; specialty Soltis ranges
+are explicitly unpriced. Blind drop is the full opening height, independent of
+the displayed lowered position. Lighting quantities follow actual placement,
+including mirrored gables and strips replacing spots on selected members.
+
+`@sp/costing/accessoryReview` (exported through `@sp/costing`) owns unpublished
+assembly allowances, using the same selling multiplier/uplift as the base design.
+Supply costs below are ex GST; they are estimates, not confirmed supplier rates:
+
+| Assembly | Provisional cost basis before selling multiplier |
+| --- | --- |
+| Timber 39x39 / 65x39 / 90x39 | $12 / $18 / $24 per lm; selected-length factor 1.30, waste 1.10; coating $2/lm and fitting $12/lm |
+| Aluminium 50x10 / 65x16 | $12 / $18 per lm; waste 1.10 and fitting $8/lm |
+| Frames / vertical-timber support plates | $45 / $25 per lm supplied, finished and fitted; $120 slat-panel setup |
+| 100x50 acrylic frame upgrade | Additional $20/lm over standard framing |
+| Blind installation | Included in portal Ziptrak price; additional structural header/strut allowance $45/lm where needed |
+| 110 mm ceiling downlight | $140 each supply and fit |
+| LED strip | $65/lm including channel and fitting, plus $100 driver allowance per selected member |
+| Electrical connection | $550 once for ceiling/strip lighting; omitted when portal rafter-light startup is already charged |
+
+Slat quantities use gross cut lengths before slope trimming, then the stated
+waste allowance. Roof battens use representative visible coverage. These are
+review quantities, not fabrication takeoffs. Acrylic uses the canonical portal
+infill takeoff and incremental installation/operations without another design
+fee or consuming the base installer top-up. Perimeter framing is a separate
+allowance; internal supports come from the takeoff. Failed infill takeoffs remain
+explicitly unpriced. Automatic pelmet-clearance post upgrades are also flagged
+until their incremental cost is mapped. No assumed zero-price completion.
+
+The expandable breakdown shows provisional status and assumptions. Whole-dollar
+line amounts sum exactly to the displayed GST-inclusive total. Travel, special
+site work, new electrical circuits and difficult cable routes remain excluded.
+Trapezoidal uses the corrugated allowance pending its own rate. Live release still
+requires supplier/installation validation, controlled rate publication and frozen
+enquiry integration. These review allowances do not modify the published pricebook.
+
+Marketing combination-roof rafter lights use only internal acrylic-band rafters;
+rafters bordering the timber lining are excluded from spots. Alternate rows are
+counted within the eligible band and mirrored across gable slopes. Timber battens
+allow lights to shift from centre/quarter points into the nearest clear gap
+(owner confirmed clear gaps only). Clearance is measured in the roof plane for
+the full 40 mm fitting with 0.1 mm per-side separation; the UI recommends at least
+41 mm gaps. Gable placement stays mirrored and two lights remain on opposite
+halves of the member. Lighting controls show availability counts and disable levels with no
+valid positions, explaining the obstruction instead of silently selecting zero.
+If battens leave no positions for the selected rafter-light level, draft
+normalisation clears the selection to Off and zero quantity. Widening the gap
+does not silently restore lights or their price; the owner selects a level again.
+This representative-geometry correction is outside the live workbench path
+(legacy audit rows N/A).
+
+Gate 0: legacy audit rows N/A (marketing preview adapter); this builds on the
+existing calculator under the owner's explicit pricing request, not the design
+workbench runtime. No Phase 2 migration or function/type consolidation.
+
+
+## Batten owner-review revision (2026-09-11)
+
+### Versioned accessory draft rates (2026-09-14)
+
+Installed selling schedules are also optional versioned data (`installedSellingRates`). Staff can explicitly capture the existing Ziptrak/Omni size-band matrices, fabric/core multipliers, motor/cover amounts and rafter-light startup/per-light/dimmer/driver amounts and capacities. The editor displays GST-inclusive dollars for cents-backed fields and clearly labels the blind base tables as ex GST before their existing fabric/core multiplier. Zero charge for uncovered blinds is enforced. These are installed selling schedules, so the adapter never adds a separate installation or pergola multiplier.
+
+The shared blind and lighting functions accept an optional schedule with unchanged legacy defaults. The published configuration resolver retains the saved schedules; the marketing accessory adapter consumes them when supplied. Legacy staff calculator/quote callers still use their existing defaults, explicitly noted in the editor; wiring their historical estimate/quote contexts is a separate rollout requirement. No live pricebook was saved or published. Focused checks cover unchanged legacy outputs, altered saved schedules, strict validation, published resolution and staff dollar-to-cent editing.
+
+The existing pricebook control configuration now accepts an optional, fully validated `accessoryRates` catalogue. Staff explicitly add the unpublished review allowances to a draft in the Accessories section, then edit, validate and compare numeric rates through the existing version workflow. Historical configurations without this field retain their original shape; snapshot/apply does not silently seed rates. Incomplete or unknown catalogue fields fail validation.
+
+`accessoryRates.ts` owns the rate schema, provisional defaults and validation; `AccessoryRatesEditor.tsx` owns the new editor. The existing assembly/slat calculations accept an optional catalogue argument, preserving their former default for review callers. The marketing accessory adapter uses the supplied configuration catalogue when present. Its development endpoint still loads repository configuration, so saving a portal draft alone does not switch the customer's preview to that draft. Public expanded-price activation remains unimplemented and requires approval; review constants are not approved selling prices. Base-pergola impact examples do not evaluate accessory changes, and the review now states this explicitly.
+
+Verification: 48 focused tests cover draft editing, historical configuration preservation, validation, rate application and the marketing adapter's changed downlight price with unchanged unrelated allowances. Marketing and portal type checks passed. Gate 0: legacy audit rows N/A, no workbench legacy build-on/removal, no Phase 2 input migration. No function consolidation; existing calculation signatures gain an optional rate parameter with their previous default preserved. Large control-centre changes are wiring only; catalogue UI and validation have separate owners.
+
+The unpublished `accessoryReview.ts` estimate now separates timber supply from assembly time. Cedar raw allowances remain $12/$18/$24 per lm for 39x39/65x39/90x39; ThermoPine uses explicitly provisional $9/$13.50/$18 per lm. The 75% budget ratio is informed by the JSC thin ceiling-board species price relationship, not a quote for these batten profiles. Availability, finished sizes, coating and all three ThermoPine prices require supplier confirmation before publication. The July Mitre 10 J111 invoice is $36.08/lm ex GST already clear coated; the existing cedar allowances are not supplier-verified and that finished rate must not receive another coating/selected-length uplift if adopted.
+
+Timber fitting is budgeted at $65 per person-hour, two minutes per cut piece, 1.5 minutes per fixing point, one setup hour per roof/panel and $0.35 consumables per fixing point. These are review assumptions, not agreed installer pay. The marketing quantity adapter uses gross side lengths and support counts; roof fixing points are estimated at a nominal 620mm module. Pieces allow joins at up to 4.8m; this is not a cutting plan or a stock optimisation. Selected-length factor 1.30, waste 10%, coating $2/lm, frame allowances and the existing selling policy remain. Aluminium fitting remains unchanged. The protected base erection payout is untouched.
+
+For the owner's 7.5 x 4m pitched acrylic example, the old 375lm cedar39 allowance was $17,648 incl GST. With the revised fitting basis it is $13,230; the same layout in provisional ThermoPine is $10,824. The new 90x39 flat/90mm-gap ThermoPine default is 165lm and $7,992. The latter changes profile and spacing, not just species. Evidence: `artifacts/pricing-review-2026-09-11/economy-comparison.json` and focused regression tests. These prices remain development-only owner-review estimates; no publication, historical quote or staff agreement was changed.
+
+## Combination preview bay costing correction (2026-09-11)
+
+The development marketing adapter now maps actual generated acrylic panel counts per roof plane to the existing `mixed_roof.mode=acrylic_bays` input (`main` for one plane, `A/B` for two), rather than an area override. This activates canonical acrylic panel, joiner top/bottom and fixing labour and buys joiner materials on both gable slopes. The canonical 620mm bay basis remains an approximation to visible clear dimensions. Unsupported/missing plane counts fail closed. No engine rates or historical area-override semantics change. Gate0: legacy audit N/A, no workbench legacy build-on/removal, no Phase2 changes, no consolidation. Consumers: marketing adapter, configured offer helper/tests, accessory incremental calculator and review response. The offer exposes calculation warnings to its caller; the review reports a generic staff-review requirement rather than silently hiding them or exposing internal warning details.
+
+Recalculated18m2 packages: entry$11,595 and everyday$16,057 unchanged; combination$27,676 (previously$26,383); premium$37,315 (previously$36,025), all inclGST. Includes both material and labour changes, not a new markup. Evidence: configuratorMixedRoofCost.test.ts and artifacts/pricing-review-2026-09-11/package-review.json. Supplier-check evidence is in accessory-supplier-check.json and blind-invoice-parity.json. July Shade Elements invoices show45% discount on complete systems; extruded covers and provisional fabric-group mappings prevent treating the comparison as exact margin. No supplier, publication, staff agreement or frozen quote was changed.

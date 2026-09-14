@@ -11,7 +11,7 @@ export const BLIND_FABRICS = [
 ] as const;
 export const BLIND_COVERS = [{id:'NONE',name:'Uncovered'},{id:'FLASHING',name:'Outward flashing'},{id:'PELMET',name:'Flashing + inside pelmet'}] as const;
 export type PreviewBlind = { opening:string; fabric:string; colour:string; cover:'NONE'|'FLASHING'|'PELMET'; lowered:number; infill:boolean };
-export const defaultBlind = (opening:string):PreviewBlind => ({opening,fabric:'urban',colour:'Carbon',cover:'PELMET',lowered:100,infill:true});
+export const defaultBlind = (opening:string):PreviewBlind => ({opening,fabric:'urban',colour:'Carbon',cover:'NONE',lowered:100,infill:false});
 export const blindFabric = (blind:PreviewBlind) => BLIND_FABRICS.find(f=>f.id===blind.fabric)!;
 export function blindColour(name:string) {
   if (/black|carbon|anthracite|midnight|coal|galaxy/i.test(name)) return '#363b3a';

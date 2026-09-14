@@ -4,9 +4,12 @@ import { useSyncExternalStore } from 'react';
 import { DEFAULT_PREVIEW_DRAFT, parsePreviewDraft, PREVIEW_DRAFT_KEY, type PreviewDraft } from './previewDraft';
 import type { SimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import type { PreviewRoofChoices } from './GableChoices';
-import { parsePreviewDesign } from './previewShare';
+import { parsePreviewShareHash } from './previewShare';
+import type { SharedEstimate } from './sharedEstimate';
+import { SIMPLE_COVER_HANDOFF_STORAGE_KEY } from '../../lib/simpleCoverHandoff';
+import { legacySimpleDraft } from './legacySimpleDraft';
 
-type Snapshot = { draft: PreviewDraft; storageAvailable: boolean; linkNotice?: 'loaded' | 'invalid'; selectionNotice?:string };
+type Snapshot = { draft: PreviewDraft; storageAvailable: boolean; linkNotice?: 'loaded' | 'invalid'; sharedEstimate?: SharedEstimate | null; selectionNotice?:string };
 let snapshot: Snapshot | null = null;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach(listener => listener());
@@ -17,9 +20,18 @@ function restore() {
   try {
     const raw = window.sessionStorage.getItem(PREVIEW_DRAFT_KEY);
     let draft: PreviewDraft | null = null;
+    let migratedSimple = false;
     try { draft = raw ? parsePreviewDraft(JSON.parse(raw)) : null; }
     catch { /* A malformed saved draft falls back to the current defaults. */ }
-    snapshot = { draft: draft ?? DEFAULT_PREVIEW_DRAFT, storageAvailable: true };
+    if (!draft) {
+      try {
+        const legacy = window.sessionStorage.getItem(SIMPLE_COVER_HANDOFF_STORAGE_KEY);
+        draft = legacy ? legacySimpleDraft(JSON.parse(legacy)) : null;
+        migratedSimple = draft !== null;
+      } catch { /* Invalid legacy data must not prevent a new design. */ }
+    }
+    snapshot = { draft: draft ?? DEFAULT_PREVIEW_DRAFT, storageAvailable: true,
+      ...(migratedSimple ? {selectionNotice:'Your saved Simple cover dimensions are loaded. Your estimate is recalculated using current pricing.'} : {}) };
   } catch {
     // Preserve in-memory editing when browser storage is blocked.
     snapshot = { draft: snapshot?.draft ?? DEFAULT_PREVIEW_DRAFT, storageAvailable: false };
@@ -40,9 +52,10 @@ function save(draft: PreviewDraft) {
 
 function importLink() {
   if (!window.location.hash.startsWith('#design=')) return;
-  const draft = parsePreviewDesign(window.location.hash.slice(8));
+  const shared = parsePreviewShareHash(window.location.hash);
+  const draft = shared?.draft;
   if (draft) save(draft);
-  if (snapshot) snapshot = { ...snapshot, linkNotice: draft ? 'loaded' : 'invalid' };
+  if (snapshot) snapshot = { ...snapshot, linkNotice: draft ? 'loaded' : 'invalid', sharedEstimate: shared?.estimate };
   // Consume once: later edits/refresh must not replay the original shared design.
   window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
 }
@@ -86,5 +99,5 @@ const setRoof = (roof: PreviewRoofChoices) => update({ roof });
 export function usePreviewDraft() {
   const current = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   return { ...(current?.draft ?? DEFAULT_PREVIEW_DRAFT), ready: current !== null,
-    storageAvailable: current?.storageAvailable ?? true, linkNotice: current?.linkNotice, selectionNotice:current?.selectionNotice, setInput, setRoof };
+    storageAvailable: current?.storageAvailable ?? true, linkNotice: current?.linkNotice, sharedEstimate: current?.sharedEstimate, selectionNotice:current?.selectionNotice, setInput, setRoof };
 }

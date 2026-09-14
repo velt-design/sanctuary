@@ -14,6 +14,7 @@ export default function RoofBattenControls({roof,onChange}:{roof:PreviewRoofChoi
   return <section aria-label="Roof timber battens">
     <label className={styles.infillChoice}><input type="checkbox" checked={!!p} onChange={e=>onChange({...roof,roofBattens:e.target.checked?{...DEFAULT_ROOF_BATTENS}:undefined})}/>Timber battens under rafters</label>
     {p&&<>
+      <label className={css.select}>Timber<select aria-label="Roof batten timber" value={p.species??'cedar'} onChange={e=>change({species:e.target.value as 'cedar'|'thermopine'})}><option value="thermopine">ThermoPine · value option</option><option value="cedar">Cedar · upgrade</option></select></label>
       <label className={css.select}>Batten profile<select aria-label="Roof batten profile" value={p.profile} onChange={e=>change({profile:e.target.value as RepresentativeRoofBattens['profile']})}>{TIMBER_PROFILES.map(profile=><option key={profile} value={profile}>{profile.replace('x',' × ')} mm</option>)}</select></label>
       {p.profile!=='39x39'&&<fieldset className={styles.choices}><legend>Batten orientation</legend>{[false,true].map(edge=><label key={String(edge)} data-selected={p.edge===edge}><input type="radio" name="roof-batten-edge" checked={p.edge===edge} onChange={()=>change({edge})}/>{edge?'On edge':'Flat'}</label>)}</fieldset>}
       <SideGapControl roof value={p.gap} onChange={gap=>change({gap,customGap:true})}/>

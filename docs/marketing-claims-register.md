@@ -59,6 +59,18 @@ The project record now separates the client constraint, roof approach, optional 
 
 ## Editorial fallback
 
+### Configurator enquiry policy approved on 2026-09-14
+
+Owner approval in the launch-journey interview permits: free site measure and
+evaluation in Auckland; availability and any travel cost confirmed before a visit
+outside Auckland; staff usually respond within the working day. These describe
+the enquiry process, not an instant appointment, guaranteed response deadline or
+automatic acceptance of every site. They apply to the configurator/contact journey
+and its Simple product-page entry. The owner also confirmed that designs supported
+by the configurator remain configured jobs even when they require an individual
+quote; non-representable designs use the bespoke route. Numeric prices still need
+their separate approved published pricebook and release gate.
+
 When an approved claim is unavailable:
 
 - explain which project variables change the answer;

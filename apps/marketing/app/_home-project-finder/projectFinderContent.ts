@@ -35,9 +35,9 @@ export const projectDirectionContent: Record<
   ProjectDirectionChoiceContent
 > = {
   cover: {
-    label: projectDirectionLabels.cover,
+    label: 'Design your pergola',
     description:
-      'A considered acrylic-roof cover for reliable shelter while preserving useful daylight.',
+      'Choose your size, roof, sides and lighting. See an installed estimate where available, without entering contact details.',
   },
   bespoke: {
     label: projectDirectionLabels.bespoke,
@@ -56,11 +56,11 @@ export const residentialProjectResultContent: Record<
   ProjectResultContent
 > = {
   cover: {
-    responseHeading: 'A simple acrylic pergola',
+    responseHeading: 'Your pergola, designed online',
     responseExplanation:
-      'Start with a simple, considered cover designed around shelter, daylight and a clean connection to the house.',
-    pathwayLabel: 'Explore simple pergolas',
-    closeHeading: 'Ready to discuss a simple cover?',
+      'Explore pitched, gable and box perimeter roofs, with the sides and lighting that suit your space.',
+    pathwayLabel: 'Design your pergola',
+    closeHeading: 'Ready to discuss your pergola?',
     closeExplanation:
       'Send the direction and priorities you selected so Sanctuary can review the site and shape a useful next step.',
     evidenceReasonBySlug: {

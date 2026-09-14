@@ -49,6 +49,53 @@ Do not duplicate detailed rules from canonical docs here. Link to them, then kee
 
 ## Current Readiness Snapshot
 
+Security refresh (2026-09-14): the isolated launch candidate resolves Next
+16.3.5, Sharp 0.35.4, baseline-browser-mapping 2.11.23, patched fflate 0.8.3/
+0.6.11 and smol-toml 1.8.0. Production audit reports zero vulnerabilities;
+toolchain audit passes with only the two existing approved xlsx exceptions.
+Full typecheck and lint pass. The broad app/package run passed 5,474 tests
+with one old Sharp-version assertion failing; updating that assertion passed
+all four focused runtime dependency tests. Both production builds pass when
+run serially; concurrent Windows builds crashed natively and are not green
+evidence. Dependency manifests, lock and the pin test were copied back after
+checking for overlapping source changes. Existing working-directory installs
+and running previews have not been refreshed by that copy. No deployment occurred.
+Evidence: `artifacts/pricing-review-2026-09-11/launch-security-*`.
+Advisories: https://github.com/vercel/next.js/security/advisories/GHSA-p293-qw3h-jr36
+and https://github.com/lovell/sharp/security/advisories/GHSA-rgj7-g3m4-5g8c.
+
+Portal build follow-up (2026-09-14): the current local source builds successfully
+in isolated `.next-launch-portal-release` output, including staff enquiry/revision
+routes. All six existing portal bundle budgets pass without changing ceilings.
+Build used staging URL with nonworking build-only credentials and email disabled;
+this proves packaging, not authenticated database access. Automatic approval review
+rejected starting the temporary production server with only "blocked by policy",
+so the planned production-mode unauthenticated runtime smoke remains unverified.
+Logs: `artifacts/pricing-review-2026-09-11/launch-final-portal-build.txt` and
+`launch-final-portal-bundles.txt` in the same directory. Nothing was deployed.
+
+Release-test follow-up (2026-09-14): the full local portal suite passes 589 files,
+3,280 tests and 11 intentional skips. Marketing passes 125 files and 790 tests
+(`launch-final-marketing-tests.txt`). The configurator/costing suites pass 46
+files and 463 tests; the enquiry/revision handoff command passes 5 files and 8
+tests. Portal Quality now schedules these customer-journey checks on PRs rather
+than relying on monthly marketing governance. Background Jobs path filters now
+include the new enquiry/revision SQL contracts. Workflow YAML parses locally;
+hosted CI has not been run for these uncommitted changes. Evidence is under
+`artifacts/pricing-review-2026-09-11/launch-final-portal-tests.txt`,
+`launch-final-configurator-costing-tests.txt` and `launch-ci-journey-tests.txt`.
+
+Configurator launch follow-up (2026-09-14, local dirty worktree): full root
+`npm run typecheck` and `npm run lint` pass. Isolated staging Next output is now
+excluded from source lint; the cache-guard subprocess regression passes while
+still rejecting forbidden authored imports. Logs are
+`artifacts/pricing-review-2026-09-11/launch-final-typecheck.txt`,
+`launch-final-lint.txt` and `launch-cache-guard-tests.txt` in the same directory.
+The approved staging pricebook, priced intake and immutable staff revision proofs
+are recorded in `customer-configurator-architecture.md`. These are local/staging
+signals, not CI or production release evidence. Public price approval, release
+provenance and physical-device verification remain open.
+
 This snapshot records the most recent known production-readiness state from the portal review and follow-up checks; unrelated lanes below retain their own dated refs and evidence. The Project Work portfolio migration and application release are live: all 1,151 production projects are in V2 without deleting legacy audit rows, production database/application postflight is clean, and the authenticated GET-only production browser proof passes. The final commercial idempotency/truth migrations are live in production with catalog, grant, trigger, ledger-body, and unchanged-row-count postflight; real provider/public-token acceptance and invoice-delivery journeys remain separately controlled.
 
 Status describes the last verified signal, not an implicit current-head result. `Green` means the recorded evidence passed at its stated date or run; `Yellow` means the area is incomplete or its evidence no longer covers the current ref; `Red` means a current blocker is known. Any row without an explicit current ref remains last-known evidence and must be re-run before a release decision.

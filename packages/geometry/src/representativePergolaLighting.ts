@@ -1,6 +1,7 @@
 import type {Assembly3D,Point3,AssemblyMember3D} from './contracts';
 import type {RoofFinishGeometry} from './representativeRoofFinishTypes';
 import {cedarGridSites} from './representativeCedarLights';
+import {clearRafterLightPoint} from './rafterBattenClearance';
 export type LightLayout='even'|'perimeter'|'central';
 export type RafterLightAmount='off'|'low'|'medium'|'high';
 export type PergolaLighting={cedarPerSection?:number;cedarIndividual?:boolean;cedarOverrides?:Record<string,{count:number;pattern:'rows2'|'rows3'}>;cedarPattern?:'rows2'|'rows3';rafterAmount?:RafterLightAmount;rafterCount:number;cedarCount:number;rafterLayout:LightLayout;cedarLayout:LightLayout;strips:string[]};
@@ -20,8 +21,7 @@ export function pergolaLightSites(assembly:Assembly3D,covering?:RoofFinishGeomet
  const pitched=assembly.family==='mono';
  const rafterXs=eligible.filter(m=>m.role==='rafter').map(m=>(m.centerline.start.x+m.centerline.end.x)/2);
  const outline=assembly.outline,w=Math.max(...outline.map(p=>p.x)),d=Math.max(...outline.map(p=>p.y));
- const roofSolid=(p:Point3)=>covering?.regions.some(r=>r.material==='solid'&&within(p,r.boundary,-1));
- const timber=(p:Point3)=>covering?.battenBoundaries?.some(b=>within(p,b,-25));
+ const roofSolid=(p:Point3,clearance=1)=>covering?.regions.some(r=>r.material==='solid'&&within(p,r.boundary,-clearance));
  let r=0,b=0;
  for(const m of eligible){
   const start=under(m,m.centerline.start),end=under(m,m.centerline.end),mid={x:(start.x+end.x)/2,y:(start.y+end.y)/2,z:(start.z+end.z)/2};
@@ -31,12 +31,18 @@ export function pergolaLightSites(assembly:Assembly3D,covering?:RoofFinishGeomet
   const perimeter=!hasOuterGutter&&m.role!=='ledger'&&((Math.abs(start.x-end.x)<1&&(start.x<120||start.x>w-120))||(Math.abs(start.y-end.y)<1&&start.y>d-180));
   if(!(m.role==='rafter'&&covering?.battenBoundaries?.length))strips.push({id:m.id,label:m.role==='rafter'?'Rafter '+(++r):'Beam '+(++b),start,end,normal:m.localFrame.zAxis,perimeter,rafter:m.role==='rafter'});
   const gableEdge=paired&&(station(m)===rows[0]||station(m)===rows[rows.length-1]);
-  const edge=gableEdge||pitched&&((mid.x<=Math.min(...rafterXs)+1)||(mid.x>=Math.max(...rafterXs)-1));
+  // Transition rafters are shifted half a profile into the acrylic band. Their
+  // centre is exposed, but their outside face still borders the lined roof.
+  const transitionEdge=m.role==='rafter'&&roofSolid(mid,m.profile.widthMm/2+1);
+  const edge=transitionEdge||gableEdge||pitched&&((mid.x<=Math.min(...rafterXs)+1)||(mid.x>=Math.max(...rafterXs)-1));
   if(m.role==='rafter'&&!edge)for(const i of [25,50,75]){
-   const t=i/100,p={x:start.x+(end.x-start.x)*t,y:start.y+(end.y-start.y)*t,z:start.z+(end.z-start.z)*t};
-   if(!roofSolid(p)&&!timber(p))rafters.push({...(paired?{rafterRow:rows.indexOf(station(m))-1,rafterRows:Math.max(0,rows.length-2)}:{}),id:m.id+'-'+i,point:add(p,m.localFrame.zAxis,-2),normal:m.localFrame.zAxis,diameter:40});
+   const p=clearRafterLightPoint(start,end,m.localFrame.zAxis,covering?.battenBoundaries??[],i/100);
+   if(p&&!roofSolid(p))rafters.push({...(paired?{rafterRow:rows.indexOf(station(m))-1,rafterRows:Math.max(0,rows.length-2)}:{}),id:m.id+'-'+i,point:add(p,m.localFrame.zAxis,-2),normal:m.localFrame.zAxis,diameter:40});
   }
  }
+ // Alternate within the available acrylic rows, retaining the shared row index
+ // across the two slopes so gable placement stays mirrored.
+ if(paired){const availableRows=[...new Set(rafters.map(s=>s.rafterRow!))].sort((a,b)=>a-b);for(const site of rafters){site.rafterRow=availableRows.indexOf(site.rafterRow!);site.rafterRows=availableRows.length;}}
  cedar.push(...cedarGridSites(assembly,covering));
  return {strips,rafters,cedar};
 }

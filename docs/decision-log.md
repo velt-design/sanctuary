@@ -344,7 +344,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 ## Entries
 
-### 2026-09-08 — Immediate orbit and native touch scrolling
+### 2026-09-08 - Customer Preview Touch Gestures - Immediate orbit and native touch scrolling
 
 Date: 2026-09-08
 Area: Marketing configurator preview
@@ -356,19 +356,19 @@ Promoted to: None
 Related docs/tests: docs/customer-configurator-architecture.md; playwright/marketing.configurator-preview.spec.ts
 
 
-### 2026-09-08 — Customer preview interaction and roof rendering
+### 2026-09-08 - Customer Preview Interaction - Customer preview interaction and roof rendering
 
 Date: 2026-09-08
 Area: Marketing configurator preview
 Status: Active
-Decision or mistake: Re-fitting the camera on every solve and remounting it between views erased the user’s chosen angle and zoom. A coplanar roof reference surface also competed with aluminium faces.
+Decision or mistake: Re-fitting the camera on every solve and remounting it between views erased the user's chosen angle and zoom. A coplanar roof reference surface also competed with aluminium faces.
 Why it mattered: Correct dimensions alone did not produce a stable, trustworthy interactive preview.
 Current guardrail: Keep the 3D canvas alive between views, preserve explored pose and scale, distinguish Fit from Reset, and use actual browser camera assertions. Honour scene visibility and resolve reference-surface depth in the material presenter without moving solved members. Check phone control reachability visually, including short landscape screens.
 Promoted to: None
 Related docs/tests: docs/customer-configurator-architecture.md; playwright/marketing.configurator-preview.spec.ts
 
 
-### 2026-09-08 — Customer preview framing datum
+### 2026-09-08 - Customer Preview Framing - Customer preview framing datum
 
 Date: 2026-09-08
 Area: Customer configurator geometry
@@ -5507,3 +5507,37 @@ for new spawns, or start a replacement worker.
 Promoted to: `docs/ai/operations/openclaw-engineering-supervision.md`
 Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-dispatch.mjs`;
 `test/ai-operations-engineering-supervision.test.ts`; `npm run test:ai:ops`
+
+## 2026-09-14 — Private redirects need global header verification
+
+A staging attachment download returned strict-origin-when-cross-origin despite the route handler setting no-referrer. Next's catch-all headers overrode the handler. Keep a later, explicit private-attachment exception in the portal config and verify the real HTTP redirect as well as the handler test. The corrected staging download preserved private/no-store and no-referrer, denied wrong-project access and returned the original uploaded bytes.
+Related: docs/project-enquiry-attachments.md; apps/portal/next.config.test.ts.
+
+## 2026-09-14 — Marketing utility scanning excludes generated build caches
+
+Running a real API check exposed a global CSS build failure: Tailwind's automatic
+scan interpreted binary text from an isolated Next output directory as arbitrary
+CSS properties. Marketing globals now use explicit authored-source directories
+(app, components, lib, data and emails) with automatic scanning disabled. Keep
+new UI source directories registered here rather than scanning build output.
+The same staging request then reached its authenticated route successfully.
+Reference: https://tailwindcss.com/docs/detecting-classes-in-source-files
+
+
+### 2026-09-14 - Keep isolated Next output outside source lint
+
+The launch lint run scanned staging framework chunks as portal source and
+reported framework-owned cache imports. Limit the cache guard exclusion to
+app-root `.next-*` directories and match the isolated output in ESLint ignores.
+A subprocess regression test still rejects the same import in an authored page.
+Generated output is not a reason to relax rules on application code.
+
+### 2026-09-14 — Match estimate version columns in revision rehearsals
+
+The staff configurator revision rehearsal found a production-shaped staging
+column absent from the disposable table stub: staff loaders prefer
+`estimates.version` over `outputs.version`. Writing only the JSON value produced
+a repeated V1 label. The unapplied migration was corrected before installation
+to advance the real column, and the stub/contract now assert it. For migrations
+that reuse legacy table stubs, inspect actual relevant columns/defaults and
+verify the consuming staff representation during the rollback rehearsal.

@@ -6,21 +6,24 @@ import styles from './prototype.module.css';
 import css from './lighting.module.css';
 export default function LightingControls(){
  const w=useLighting()!;
+ const counts={off:0,low:layoutRafterLights(w.sites.rafters,'low').length,medium:layoutRafterLights(w.sites.rafters,'medium').length,high:layoutRafterLights(w.sites.rafters,'high').length};
+ const unavailable=!counts.low&&!counts.medium&&!counts.high;
  return <section className={css.editor} aria-label="Lighting editor">
  <h2>Lighting</h2>
  <p>Warm-white lighting for your evenings outside.</p>
- {w.view==='3D'?<p>Rotate to explore the lighting. Return to Lighting plan to edit.</p>:<>
+ {w.view==='3D'?<p>Rotate to explore the lighting. Choose Plan to edit.</p>:<>
  <h3>Choose a lighting type</h3>
  <div className={css.tools} role="group" aria-label="Lighting type">
- <button aria-pressed={w.tool==='rafter'} onClick={()=>w.setTool('rafter')}>Rafter lights<span>Automatic placement · {w.value.rafterCount} lights</span></button>
- {w.sites.cedar.length>0&&<button aria-pressed={w.tool==='cedar'} onClick={()=>w.setTool('cedar')}>Cedar downlights<span>{w.value.cedarCount} lights</span></button>}
+ <button aria-pressed={w.tool==='rafter'} onClick={()=>w.setTool('rafter')}>Rafter lights<span>{unavailable?'No clear mounting positions':'Automatic placement · '+w.value.rafterCount+' lights'}</span></button>
+ {w.sites.cedar.length>0&&<button aria-pressed={w.tool==='cedar'} onClick={()=>w.setTool('cedar')}>Ceiling downlights<span>{w.value.cedarCount} lights</span></button>}
  <button aria-pressed={w.tool==='strip'} onClick={()=>w.setTool('strip')}>LED strips<span>Choose beams and rafters · {w.value.strips.length} selected</span></button>
  </div>
  {!w.tool&&<p>Choose a lighting type above. You can combine rafter lights and LED strips.</p>}
  {w.tool==='rafter'&&<div><h3>Rafter light level</h3>
- <div className={css.tools} role="group" aria-label="Rafter light amount">{(['off','low','medium','high'] as const).map(amount=><button key={amount} aria-pressed={(w.value.rafterAmount??'off')===amount} onClick={()=>w.change({...w.value,rafterAmount:amount})}>{amount[0].toUpperCase()+amount.slice(1)}<span>{amount==='off'?'No rafter lights':amount==='low'?'1 centred light · alternate rafters':amount==='medium'?'2 lights · alternate rafters':'2 lights · every eligible rafter'}</span></button>)}</div>
+ {unavailable&&<p role="status">{w.rafterUnavailableReason}</p>}
+ <div className={css.tools} role="group" aria-label="Rafter light amount">{(['off','low','medium','high'] as const).map(amount=><button key={amount} disabled={amount!=='off'&&!counts[amount]} aria-pressed={(w.value.rafterAmount??'off')===amount} onClick={()=>w.change({...w.value,rafterAmount:amount})}>{amount[0].toUpperCase()+amount.slice(1)}<span>{amount==='off'?'No rafter lights':!counts[amount]?'Unavailable · no clear positions':`${counts[amount]} lights · `+(amount==='low'?'1 centred light · alternate rafters':amount==='medium'?'2 lights · alternate rafters':'2 lights · every eligible rafter')}</span></button>)}</div>
  <p>{w.value.rafterCount} lights across {new Set(layoutRafterLights(w.sites.rafters,w.value.rafterAmount??'off').map(s=>s.id.slice(0,s.id.lastIndexOf('-')))).size} rafters.</p>
- <p>One light sits in the middle. Two sit a quarter of the way in from each end. Placement is automatic; obstructed or strip-lit rafters are skipped.</p></div>}
+ <p>One light starts in the middle; two start a quarter of the way in from each end. With timber battens, lights move to the nearest clear gap. Gable layouts stay mirrored; strip-lit rafters are skipped.</p></div>}
  {w.tool==='cedar'&&<CedarLightControls/>}
  {w.tool==='strip'&&<><h3>Select LED strips in the plan</h3><p>Tap a rafter or beam in the plan to switch its full-length strip on or off. Gold lines show your selected strips.</p>
  <div className={css.presets}>{['Outer perimeter','Alternate rafters','All rafters','Clear strips'].map((label,i)=><button key={label} onClick={()=>w.change({...w.value,strips:i===0?w.sites.strips.filter(s=>s.perimeter).map(s=>s.id):i===1?w.sites.strips.filter(s=>s.rafter).filter((_,i)=>i%2===0).map(s=>s.id):i===2?w.sites.strips.filter(s=>s.rafter).map(s=>s.id):[]})}>{label}</button>)}</div>

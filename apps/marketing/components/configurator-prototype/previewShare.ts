@@ -1,11 +1,12 @@
 import { parsePreviewDraft, type PreviewDraft } from './previewDraft';
+import { parseSharedEstimate, type SharedEstimate } from './sharedEstimate';
 
 /** A versioned design snapshot; never serialize a caller's whole object. */
 export function serializePreviewDesign(draft: PreviewDraft): string {
   const safe = parsePreviewDraft(draft);
   if (!safe) throw new Error('Invalid preview design');
   const { input, roof } = safe;
-  if(roof.lighting||roof.roofBattens||roof.blinds?.length||roof.sidePanels?.length) return '3~'+encodeURIComponent(JSON.stringify(safe));
+  if(roof.finish?.ceiling||roof.lighting||roof.roofBattens||roof.blinds?.length||roof.sidePanels?.length) return '3~'+encodeURIComponent(JSON.stringify(safe));
   const parts: (string | number)[] = [roof.finish ? 2 : 1, roof.family, input.widthMm, input.projectionMm, input.level, input.connection,
     roof.orientation, roof.infills ? 1 : 0];
   if (roof.finish) parts.push(roof.finish.material, roof.finish.layout, roof.finish.acrylicBays, roof.finish.profile, roof.finish.trayWidth);
@@ -30,10 +31,22 @@ export function parsePreviewDesign(value: string): PreviewDraft | null {
   });
 }
 
-export function buildPreviewShareUrl(origin: string, draft: PreviewDraft, previewAccess?: string): string {
+export function buildPreviewShareUrl(origin: string, draft: PreviewDraft, previewAccess?: string, estimate?: SharedEstimate | null): string {
   const url = new URL('/configurator-preview?open=1', origin);
   // Optional public Vercel share-link token, scoped to the preview deployment.
   if (previewAccess && url.hostname.endsWith('.vercel.app')) url.searchParams.set('_vercel_share', previewAccess);
   url.hash = `design=${serializePreviewDesign(draft)}`;
+  const safeEstimate = estimate && parseSharedEstimate(`${estimate.basis}:${estimate.amountIncGst}`);
+  if (safeEstimate) url.hash += `&estimate=${safeEstimate.basis}:${safeEstimate.amountIncGst}`;
   return url.href;
+}
+
+export function parsePreviewShareHash(hash: string) {
+  if (!hash.startsWith('#design=')) return null;
+  // Do not decode the design twice: v3 contains its own encoded JSON.
+  const [design, ...metadata] = hash.slice(8).split('&');
+  const draft = parsePreviewDesign(design);
+  if (!draft) return null;
+  const estimates = metadata.filter(part => part.startsWith('estimate='));
+  return { draft, estimate: estimates.length === 1 ? parseSharedEstimate(estimates[0].slice(9)) : null };
 }

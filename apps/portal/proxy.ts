@@ -63,6 +63,7 @@ function isPortalQaFixtureInternalPath(path: string): boolean {
     path === PROJECT_PAGE_SHELL_FIXTURE_PATH ||
     path === UI_FOUNDATION_FIXTURE_PATH ||
     path === EMAIL_PREVIEW_WORKBENCH_FIXTURE_PATH ||
+    path === '/qa/installer-payout' ||
     path === DESIGN_BOOKLET_WORKBENCH_FIXTURE_PATH ||
     path === INVOICE_ARTIFACT_PREVIEW_FIXTURE_PATH ||
     path === PROJECT_WORK_QUEUE_FIXTURE_PATH ||

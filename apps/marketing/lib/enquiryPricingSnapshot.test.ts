@@ -86,6 +86,8 @@ describe('enquiry pricing version rollout', () => {
       phoneRaw: '0210000000',
       message: '',
       pricing,
+      customerBrief: { version: 1, audience: 'residential', designStatus: 'configured', summary: 'Submitted design' },
+      projectPreferences: { preferredTiming: 'Spring', budgetPreference: null, budgetHint: null },
     });
 
     expect(row.inputs).toMatchObject({
@@ -106,6 +108,9 @@ describe('enquiry pricing version rollout', () => {
         pricingSource: 'simple_cover_calculator_verified',
       },
       snapshot: {
+        customerBrief: { summary: 'Submitted design', designStatus: 'configured' },
+        projectPreferences: { preferredTiming: 'Spring', budgetPreference: null, budgetHint: null },
+        submittedPrice: { includesGst: true, costingConfiguration: frozen.costingConfiguration, baseRange: pricing.budgets.baseRange },
         enquiry: {
           widthM: 6,
           depthM: 3,

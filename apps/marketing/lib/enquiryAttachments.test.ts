@@ -113,12 +113,15 @@ describe('uploadEnquiryAttachments', () => {
     expect(h.createClient).not.toHaveBeenCalled();
   });
 
-  it('fails visibly instead of returning metadata when a direct upload fails', async () => {
+  it('rejects the whole attachment batch when one file uploads and another fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       new Response(JSON.stringify({
         uploads: [{
           path: 'pending/submission-1/0-site-photo.jpg',
           token: 'signed-upload-token',
+        }, {
+          path: 'pending/submission-1/1-plan.pdf',
+          token: 'second-upload-token',
         }],
         uploadSessionToken: 'upload-session-token',
       }), {
@@ -126,13 +129,15 @@ describe('uploadEnquiryAttachments', () => {
         headers: { 'Content-Type': 'application/json' },
       }),
     ));
-    h.uploadToSignedUrl.mockResolvedValue({
+    h.uploadToSignedUrl.mockResolvedValueOnce({ data: { path: 'stored' }, error: null });
+    h.uploadToSignedUrl.mockResolvedValueOnce({
       data: null,
       error: new Error('Bucket not found'),
     });
 
     await expect(
-      uploadEnquiryAttachments([file('site-photo.jpg', 1024)], 'submission-1'),
+      uploadEnquiryAttachments([file('site-photo.jpg', 1024), file('plan.pdf', 2048)], 'submission-1'),
     ).rejects.toThrow(ENQUIRY_ATTACHMENT_UPLOAD_ERROR);
+    expect(h.uploadToSignedUrl).toHaveBeenCalledTimes(2);
   });
 });
