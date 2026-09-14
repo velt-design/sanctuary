@@ -5,6 +5,7 @@ import { Card, TabNavigation } from "@/components/ui/foundation";
 import type { ProjectEnquiryAttachment } from "@/lib/projects/enquiryAttachments/types";
 import ProjectEnquiryFilesPanel from "./ProjectEnquiryFilesPanel";
 import ProjectEnquiryReceiptPanel from "./ProjectEnquiryReceiptPanel";
+import styles from "./ProjectWorkFilesCard.module.css";
 
 export default function ProjectWorkFilesCard({
   projectId,
@@ -24,12 +25,13 @@ export default function ProjectWorkFilesCard({
   const [selectedPanel, setSelectedPanel] = useState<"work" | "files" | "enquiry">("work");
   return (
     <Card
-      className={className}
+      className={[styles.card, className].filter(Boolean).join(" ")}
       aria-label="Project Work"
       title="Project Work"
       eyebrow="Next project action"
       action={
         <TabNavigation
+          className={styles.tabs}
           ariaLabel="Project Work sections"
           items={[
             { key: "work", label: "Work", controls: "project-work-panel" },

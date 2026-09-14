@@ -1,0 +1,12 @@
+.card > header {
+  flex-wrap: wrap;
+}
+
+.card > header > div:last-child {
+  max-width: 100%;
+}
+
+.tabs [role="tablist"] {
+  min-width: 0;
+  flex-wrap: wrap;
+}
