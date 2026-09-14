@@ -22,6 +22,8 @@ on:
       - "scripts/service-role-access-report.mjs"
       - "scripts/test-background-jobs-db.mjs"
       - "scripts/xero-finance-db-contract.mjs"
+      - "scripts/xero-payment-db-fixture.mjs"
+      - "scripts/test-xero-payment-concurrency.mjs"
       - "test/xero-*.test.ts"
       - "supabase/migrations/*background_job*.sql"
       - "supabase/migrations/*ai_synthetic*.sql"
@@ -58,6 +60,8 @@ on:
       - "scripts/service-role-access-report.mjs"
       - "scripts/test-background-jobs-db.mjs"
       - "scripts/xero-finance-db-contract.mjs"
+      - "scripts/xero-payment-db-fixture.mjs"
+      - "scripts/test-xero-payment-concurrency.mjs"
       - "test/xero-*.test.ts"
       - "supabase/migrations/*background_job*.sql"
       - "supabase/migrations/*ai_synthetic*.sql"
@@ -177,3 +181,6 @@ jobs:
 
       - name: Isolated logged-PGMQ database contract
         run: npm run test:jobs:db
+
+      - name: Isolated simultaneous invoice-payment approval
+        run: node scripts/test-xero-payment-concurrency.mjs
