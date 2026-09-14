@@ -77,6 +77,28 @@ Preview `dpl_9NLZ7ZfwtBrkmcprq2DiYMZ3YHPv` is Ready at exact application revisio
 - Invoice issue flow, accounting writes, backfills, marketing events, Praxis projections and Velt connectors remain outside the pilot.
 - Xero API data is not used to train/fine-tune/adapt models. Praxis or Meta reuse requires separate review of Xero's current terms and permitted use case.
 
+## Next stage: everyday finance
+
+Status: owner-agreed next-stage scope (2026-09-14); implementation not started. This section does not claim implementation or change the released pilot's read-only Xero permissions and Jordan-only approval grant.
+
+The intended outcome is that the person responsible for finance can use the portal to see issued invoices, their corresponding Xero records, received and outstanding amounts, suggested payment matches and unresolved exceptions. They can approve an evidenced match or record an investigation/correction without needing developer controls or this chat.
+
+The work should extend the existing invoice and canonical payment owners:
+
+- Keep invoice creation, customer sending and initiation of invoice corrections in the portal. The owner confirmed that issued portal invoices initially create matching drafts in Xero for finance to check before posting. Propagate supported corrections to the matching draft or flag them for finance review. Independently changed Xero records must create an exception rather than silently overwriting either system; posted-invoice edits, voids and credits need explicit supported transitions. Avoid duplicate sending and duplicate accounting records.
+- Give Ellen, the owner-nominated day-to-day finance operator, a separate, auditable approval capability, with Jordan retaining access. A read-only account check confirmed `ellen@sanctuarypergolas.co.nz` already has verified portal access. A general admin role must not automatically confer payment approval. Test the separate capability before live activation; this planning decision has not granted it.
+- Replace one-at-a-time invoice searching as the everyday entry point with a bounded queue of outstanding invoices, suggested matches and exceptions. Show data freshness, the supporting evidence, the business effect and the next action.
+- Make invoice transfer and receipt matching retry-safe, detect existing Xero invoices/receipts, preserve partial/full payment distinctions and handle corrections through the existing audit and ledger owners. Never create another Xero receipt to account for money already reconciled there.
+- Show actionable failures and provide a manual fallback. Prove routine and exceptional cases in staging, then a bounded live rollout with the finance operator before expanding volume or automation.
+
+Resolved decisions confirmed by the owner on 2026-09-14 are Xero drafts for finance review, Ellen as the daily finance operator with Jordan retaining access, and the portal as the owner of invoice corrections. The three-question interview is complete. Existing chart-of-accounts, tax configuration and invoice conventions should be investigated from authorised sources before asking the owner to restate them.
+
+Start with one newly issued portal invoice becoming one traceable Xero draft. Prove customer/account/tax/line-item mapping, exact totals, repeat delivery without a duplicate and visible failure recovery before increasing volume. Then add Ellen's capability and the daily payment/exception queue, reusing the already-proven receipt command. Finish with supported correction/conflict paths and an observed daily finance rehearsal.
+
+Acceptance means Ellen can identify what needs attention, follow an invoice to its Xero draft, review a receipt with evidence, approve a safe match, see the correct remaining balance/customer-win outcome and investigate or correct an exception without developer controls. The test set must include a failed/retried transfer, an existing Xero invoice, partial and full deposits, an ambiguous/duplicate receipt, an invoice correction and an independent Xero change. Staging proof precedes a bounded live rollout; finish with Ellen demonstrating the workflow rather than relying only on code checks. These are acceptance requirements, not completed evidence.
+
+New Xero writes require a separately reviewed connector scope and activation; the current read-only connection does not permit invoice creation. Automated payment-match approval, historical bulk imports, supplier purchasing, marketing feedback and wider Velt ingestion are not included in this first finance rollout. Those remain governed by the [owner delivery priorities](ai/00-vision.md#owner-outcomes-and-delivery-order).
+
 ## Configuration
 
 All variables are portal-server-only, never browser-prefixed:
