@@ -420,6 +420,6 @@ Docs name the destination. Tests, lint, CI, and package boundaries should increa
 
 ## Xero connection boundary
 
-The approved everyday-finance goal adds an in-progress default-disabled invoice-draft job on the existing durable jobs spine. The portal remains the finance-domain and connector credential owner. The issuance trigger and tested mapping/comparison helpers exist, but worker execution, the lease-fenced connector gateway, finance mappings and expanded consent are unfinished. Do not activate the producer or distribute portal connector database credentials to the worker as a shortcut. See `docs/xero-connection.md`.
+The approved everyday-finance goal adds an in-progress default-disabled invoice-draft job on the existing durable jobs spine. The portal remains the finance-domain and connector credential owner. The issuance trigger, mapping/comparison helpers, lease-fenced portal gateway and gated worker handler are wired in code. Verified finance mappings, expanded consent and hosted end-to-end execution remain unfinished. Do not activate the producer or distribute portal connector database credentials to the worker as a shortcut. See `docs/xero-connection.md`.
 
 The default-dark Xero adapter is portal-owned, with a dedicated database role, encrypted connection state and read-only provider scopes. It does not widen Praxis reporting or change invoice/payment ownership. See [Xero connection](xero-connection.md).

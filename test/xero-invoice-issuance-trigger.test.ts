@@ -26,6 +26,7 @@ describe('Xero issuance capture boundary', () => {
       create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
       create type public.background_job_rollout_mode as enum ('disabled','legacy','shadow','worker_cohort','worker_enabled');
       create type public.background_job_execution_owner as enum ('legacy','shadow','worker');
+      create type public.background_job_effect_state as enum ('prepared','dispatch_started','provider_accepted','finalised','uncertain','failed');
       create table public.contacts(id uuid primary key);
       insert into public.contacts values ('${project}');
       create table public.projects(id uuid primary key,contact_id uuid references public.contacts(id));
@@ -40,7 +41,25 @@ describe('Xero issuance capture boundary', () => {
       create table public.background_jobs(id uuid primary key default gen_random_uuid(),kind text,intent_key text unique,payload jsonb,
         lease_owner text default 'test-worker',lease_token uuid default '${tenant}',lease_expires_at timestamptz default now()+interval '1 hour',
         status text default 'running',contract_version int default 1,execution_owner text default 'worker',cancellation_requested_at timestamptz,
-        subject_type text,subject_id text,project_id uuid);
+        subject_type text,subject_id text,project_id uuid,queue_message_id bigint default 1,attempt_count int default 1,current_phase text);
+      create table public.background_job_effects(id uuid primary key default gen_random_uuid(),job_id uuid references public.background_jobs(id),
+        effect_key text,effect_kind text,state public.background_job_effect_state,payload_hash text,provider_name text,
+        provider_idempotency_key text,provider_idempotency_expires_at timestamptz,provider_message_id text,
+        created_at timestamptz default now(),updated_at timestamptz default now(),provider_accepted_at timestamptz,finalised_at timestamptz,
+        unique(job_id,effect_kind),unique(provider_name,provider_message_id));
+      create table public.background_job_events(job_id uuid,event_type text);
+      create function private.background_job_insert_event(uuid,bigint,text,text,text,text,int,text,uuid,text,jsonb)
+      returns void language plpgsql as $$ begin
+        if current_setting('test.finalise_failure',true)='yes' then raise exception 'Synthetic audit failure'; end if;
+        insert into public.background_job_events values ($1,$3);
+      end $$;
+      create function public.background_job_record_effect_checkpoint(uuid,text,uuid,text,text,public.background_job_effect_state,text,text,text,timestamptz,text,jsonb)
+      returns public.background_job_effects language plpgsql as $$ declare r public.background_job_effects; begin
+        insert into public.background_job_effects(job_id,effect_key,effect_kind,state,payload_hash,provider_name,provider_idempotency_key,provider_idempotency_expires_at)
+          values($1,$4,$5,$6,$7,$8,$9,$10) on conflict(job_id,effect_kind) do update set state=excluded.state returning * into r;
+        if $6='dispatch_started' then update public.background_jobs set status='dispatching' where id=$1; end if;
+        return r;
+      end $$;
       create function private.background_job_enqueue_core(text,int,text,text,uuid,uuid,text,smallint,text,jsonb,timestamptz,
         public.background_job_rollout_mode,public.background_job_execution_owner,text)
       returns public.background_jobs language plpgsql as $$ declare r public.background_jobs; begin
@@ -54,6 +73,17 @@ describe('Xero issuance capture boundary', () => {
       lifecycle.indexOf('create or replace function private.background_job_archive_canonical(')));
     await db.exec(readFileSync(path.resolve('supabase/migrations/20260914000006_xero_invoice_context.sql'), 'utf8'));
     await db.exec(readFileSync(path.resolve('supabase/migrations/20260914000007_xero_invoice_frozen_requests.sql'), 'utf8'));
+    const readFunction = (source: string, name: string) => {
+      const start = source.indexOf(`create or replace function ${name}(`);
+      if (start < 0) throw new Error('Missing test SQL owner');
+      return source.slice(start, source.indexOf('$$;', start) + 3);
+    };
+    const foundation = readFileSync(path.resolve('supabase/migrations/20260720_000001_background_job_foundation.sql'), 'utf8');
+    const effects = readFileSync(path.resolve('supabase/migrations/20260720_000007_background_job_provider_reconciliation.sql'), 'utf8');
+    await db.exec(readFunction(effects, 'public.background_job_effect_transition_allowed'));
+    await db.exec(readFunction(foundation, 'public.background_job_effects_before_update'));
+    await db.exec('create trigger effect_guard before update on public.background_job_effects for each row execute function public.background_job_effects_before_update()');
+    await db.exec(readFileSync(path.resolve('supabase/migrations/20260914000008_xero_invoice_dispatch.sql'), 'utf8'));
   });
   afterAll(async () => { await db?.close(); });
 
@@ -168,5 +198,30 @@ describe('Xero issuance capture boundary', () => {
     await expect(db.exec("update private.xero_invoice_requests set expires_at=expires_at+interval '1 minute'"))
       .rejects.toThrow('XERO_REQUEST_IMMUTABLE');
     await expect(db.exec('delete from private.xero_invoice_requests')).rejects.toThrow('XERO_REQUEST_IMMUTABLE');
+  });
+
+  it('binds dispatch to the current mapping and atomically finalises verified read recovery', async () => {
+    const job = (await db.query<{ id: string }>('select id from public.background_jobs limit 1')).rows[0].id;
+    await db.exec("update private.xero_invoice_transfer_control set account_code='201'");
+    await expect(db.query('select public.xero_invoice_begin_dispatch($1,$2)', [job, tenant])).rejects.toThrow('XERO_MAPPING_CHANGED');
+    await db.exec("update private.xero_invoice_transfer_control set account_code='200'");
+    const frozen = (await db.query<{ result: { body: string; bodyHash: string; dispatchStarted: boolean } }>(
+      'select public.xero_invoice_begin_dispatch($1,$2) as result', [job, tenant])).rows[0].result;
+    expect(frozen.dispatchStarted).toBe(true);
+    const proof = { invoiceId: tenant, draft: JSON.parse(frozen.body).Invoices[0], totalCents: 115, taxCents: 15, subtotalCents: 100 };
+    const finalise = (value = proof) => db.query('select public.xero_invoice_finalise($1,$2,$3,$4)', [job, tenant, frozen.bodyHash, value]);
+    await expect(finalise({ ...proof, totalCents: 116 })).rejects.toThrow('XERO_VERIFICATION_MISMATCH');
+    await db.exec("update public.background_job_effects set state='uncertain'; select set_config('test.finalise_failure','yes',false)");
+    await expect(finalise()).rejects.toThrow('Synthetic audit failure');
+    expect((await db.query('select finalised_at from private.xero_invoice_requests')).rows[0].finalised_at).toBe(null);
+    expect((await db.query('select state from public.background_job_effects')).rows[0].state).toBe('uncertain');
+    await db.exec("select set_config('test.finalise_failure','no',false)");
+    await finalise();
+    expect((await db.query('select state from public.background_job_effects')).rows[0].state).toBe('finalised');
+    expect((await db.query('select provider_invoice_id from private.xero_invoice_requests')).rows[0].provider_invoice_id).toBe(tenant);
+    expect((await db.query('select count(*) from public.background_job_events')).rows[0].count).toBe(2);
+    await finalise();
+    expect((await db.query('select count(*) from public.background_job_events')).rows[0].count).toBe(2);
+    await expect(finalise({ ...proof, invoiceId: project })).rejects.toThrow('XERO_INVOICE_ID_CONFLICT');
   });
 });

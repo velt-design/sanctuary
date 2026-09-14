@@ -25,6 +25,8 @@ npm run worker:queue-health
 
 ## Environment contract
 
+The in-progress Xero invoice handler requires `XERO_INVOICE_WORKER_ENABLED=true`, an exact HTTPS `XERO_INVOICE_PORTAL_ORIGIN`, and `XERO_INVOICE_GATEWAY_SECRET` (at least 32 characters). Absent enablement leaves it unregistered. It sends only job ID/current lease to the portal gateway; provider credentials and accounting content remain portal-owned. Existing active-mode gates still apply. No shared rollout is implied; see `docs/xero-connection.md` for required mappings, consent and hosted verification.
+
 Required for every database-backed command:
 
 - `SUPABASE_URL`: server-side Supabase project or local-stack URL.

@@ -1,5 +1,7 @@
 # Staff API And Auth Contracts
 
+The in-progress `POST /api/integrations/xero/worker` is a server-to-server boundary. It requires a separate `XERO_INVOICE_GATEWAY_SECRET` and accepts only job ID/current lease. Owning RPCs recheck lease, job/subject/project/tenant, issued invoice and verified mapping. The response contains fixed result/error codes with no-store headers; Xero tokens and private invoice data remain portal-owned. No normal staff/admin session grants gateway access. See `docs/xero-connection.md` for its disabled rollout and verification requirements.
+
 This doc is the current-state reference for staff, admin, and public-token route boundaries. Use it before editing API routes, Supabase access, auth checks, diagnostics, or server-owned side effects.
 
 ## Route Families

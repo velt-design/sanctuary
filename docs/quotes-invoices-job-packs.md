@@ -139,6 +139,8 @@ Before enabling or rolling back `workbench_solved`, run downstream immutability 
 
 ## Invoice Lifecycle
 
+The in-progress Xero transfer repository uses server-only service-role RPCs for lease-scoped context, exact request preparation, dispatch and verified finalisation. It exposes no browser table writes and does not alter invoice/payment ownership. The worker gateway returns only fixed results; provider credentials and invoice contents remain in the portal. Shared activation and end-to-end queue evidence remain pending; see `docs/xero-connection.md`.
+
 The in-progress Xero draft transfer captures future issuance through a deferred, default-disabled database trigger, independently of email delivery. It uses the existing jobs owner and preserves issued content and void-and-recreate corrections. No shared activation has occurred; see `docs/xero-connection.md#next-stage-everyday-finance` for state and release gates.
 
 ### Action and recovery contract

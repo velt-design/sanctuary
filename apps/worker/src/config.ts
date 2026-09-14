@@ -21,6 +21,18 @@ const CONCURRENCY_CLASSES = ['documents', 'email', 'orchestration'] as const sat
 const BACKGROUND_JOB_WORKER_LEASE_SAFETY_MARGIN_MS = 5_000;
 const BACKGROUND_JOB_WORKER_STALE_THRESHOLD_MS = 120_000;
 
+export function loadXeroInvoiceGatewayConfig(environment: NodeJS.ProcessEnv = process.env): { origin: string; secret: string } | null {
+  if (environment.XERO_INVOICE_WORKER_ENABLED !== 'true') return null;
+  const secret = environment.XERO_INVOICE_GATEWAY_SECRET;
+  const value = environment.XERO_INVOICE_PORTAL_ORIGIN;
+  if (!secret || secret.length < 32 || !value) throw new Error('XERO_GATEWAY_NOT_CONFIGURED');
+  const origin = new URL(value);
+  if (origin.protocol !== 'https:' || origin.pathname !== '/' || origin.username || origin.password || origin.search || origin.hash) {
+    throw new Error('XERO_GATEWAY_INVALID_ORIGIN');
+  }
+  return { origin: origin.origin, secret };
+}
+
 export const BACKGROUND_JOB_WORKER_ENV = {
   supabaseUrl: 'SUPABASE_URL',
   serviceRoleKey: 'SUPABASE_SERVICE_ROLE_KEY',

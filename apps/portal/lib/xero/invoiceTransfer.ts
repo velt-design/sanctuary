@@ -24,7 +24,8 @@ export type InvoiceTransferRepository = {
   /** Rechecks current lease, invoice/tenant gate and expiry before committing dispatch. */
   beginDispatch(lease: InvoiceTransferLease): Promise<FrozenInvoiceTransfer>;
   /** Records accepted provider identity and finalises the canonical job effect atomically. */
-  finalise(lease: InvoiceTransferLease, providerInvoiceId: string, bodyHash: string): Promise<void>;
+  finalise(lease: InvoiceTransferLease, providerInvoiceId: string, bodyHash: string,
+    verification: { draft: XeroDraftInvoice; evidence: unknown }): Promise<void>;
 };
 
 export type InvoiceTransferProvider = {
@@ -76,7 +77,7 @@ export async function executeInvoiceTransfer(
     const match = reconcileXeroDraft(frozen.draft, candidates[0]);
     if (match.outcome !== 'MATCHED_DRAFT') throw new InvoiceTransferError('XERO_INVOICE_CONFLICT');
     if (frozen.providerInvoiceId && frozen.providerInvoiceId !== match.invoiceId) throw new InvoiceTransferError('XERO_INVOICE_CONFLICT');
-    await repository.finalise(lease, match.invoiceId, frozen.bodyHash);
+    await repository.finalise(lease, match.invoiceId, frozen.bodyHash, { draft: frozen.draft, evidence: candidates[0] });
     return { resultCode: 'XERO_DRAFT_VERIFIED', processedCount: 1 };
   }
   if (frozen.providerInvoiceId) throw new InvoiceTransferError('XERO_INVOICE_CONFLICT');
@@ -100,6 +101,6 @@ export async function executeInvoiceTransfer(
   const evidence = await provider.readInvoice(frozen.tenantId, created.invoiceId);
   const match = reconcileXeroDraft(frozen.draft, evidence);
   if (match.outcome !== 'MATCHED_DRAFT' || match.invoiceId !== created.invoiceId) throw new InvoiceTransferError('XERO_INVOICE_CONFLICT');
-  await repository.finalise(lease, match.invoiceId, frozen.bodyHash);
+  await repository.finalise(lease, match.invoiceId, frozen.bodyHash, { draft: frozen.draft, evidence });
   return { resultCode: 'XERO_DRAFT_VERIFIED', processedCount: 1 };
 }
