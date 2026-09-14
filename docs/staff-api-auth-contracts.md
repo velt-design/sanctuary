@@ -152,3 +152,7 @@ Manual or browser checks should cover:
 ## Xero developer routes
 
 `/api/integrations/xero/start`, `/callback`, and `/review` recheck the developer capability through `apps/portal/lib/xero/http.ts`. Start/review are same-origin POSTs; callback requires a bound single-use state. `/maintain` requires CRON_SECRET and remains dark unless XERO_ENABLED is true. Responses are private/no-store. See [Xero connection](xero-connection.md).
+
+### Xero payment review reads
+
+`apps/portal/lib/invoices/paymentMatchReview.ts` is a server-only service-role read exception behind verified developer access and same-origin POST checks. It selects an exact invoice reference with a two-row ambiguity limit and checks for any existing project payment entry. It has no mutation, delivery or artifact call. The dedicated Xero database login remains restricted to connection storage.

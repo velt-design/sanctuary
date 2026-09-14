@@ -225,3 +225,7 @@ Manual or browser checks should cover:
 - Powdercoating override save conflict and successful override persistence.
 
 If changing schema or access policy for these flows, also verify the ordered migrations, RLS/service-role boundary, and public token behavior.
+
+## Xero deposit review
+
+The developer-only suggested-match screen compares a portal invoice with Xero receipts without recording payments. Any verified deposit counts as a customer win, even when smaller than the requested deposit. This conditional business outcome does not replace whole-invoice status or the append-only payment ledger. Existing payment history blocks a new suggestion until duplicates/credits are reviewed. See `docs/xero-connection.md` for the implemented read boundary and the still-unimplemented atomic approval command.

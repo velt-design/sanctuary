@@ -5,6 +5,7 @@ import { discoveredOrganisations } from '@/lib/xero/discovery';
 import { setupError } from '@/lib/xero/setupError';
 import Review from './Review';
 import Connect from './Connect';
+import PaymentSuggestions from './PaymentSuggestions';
 
 export const dynamic = 'force-dynamic';
 export default async function XeroDeveloperPage({ searchParams }: { searchParams: Promise<{ connection?: string }> }) {
@@ -32,7 +33,7 @@ export default async function XeroDeveloperPage({ searchParams }: { searchParams
         <dt>Connection status</dt><dd>{connection.error ?? (connection.connected ? 'Connected' : 'Not connected')}</dd></dl>
       <p>Renewal runs daily and before reads. A stale verification date needs developer investigation.</p>
       <Connect connected={connection.connected} />
-      {connection.connected && <Review />}
+      {connection.connected && <><PaymentSuggestions /><Review /></>}
     </>}
   </main>;
 }

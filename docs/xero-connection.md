@@ -33,6 +33,18 @@ ID. The registered callback is
 
 ## Ownership and limits
 
+### Deposit match review (implementation; not yet released)
+
+The developer page adds an exact portal invoice lookup and a live Xero receipt comparison through `POST /api/integrations/xero/payment-suggestions`. The invoice customer name supplies the default exact Xero contact search; an alternate name can be entered, but a differing name blocks the proposed outcome pending identity review. The dedicated Xero identity remains read-only and receives no portal business-table grants.
+
+The owner rule confirmed on 2026-09-14 is: **any verified deposit counts as a customer win**, including a partial deposit. The review shows this only as a conditional outcome alongside the remaining requested deposit. It does not label the invoice paid, set a project stage, or publish a conversion. Whole-invoice and append-only ledger contracts remain authoritative.
+
+`apps/portal/lib/invoices/paymentMatchReview.ts` is a server-only, developer-gated service-role read adapter for the exact invoice and existence of project payment history. It reads explicit bounded columns and fails closed on missing/duplicate invoices or failed ledger reads. The pure `paymentSuggestions.ts` owner blocks non-open/non-first-stage invoices, standalone invoices, invalid/nonpositive/over-invoice amounts, missing dates, non-NZD currency, unreconciled/unauthorised receipts, differing customer names and existing project payment history. Multiple receipts remain separate; twenty results is explicitly incomplete. Names and amounts are evidence, never proof of ownership or global duplicate exclusion.
+
+This slice is a read-only review screen, with no approval or payment mutation endpoint. Applying an approved match still requires an atomic source-identity-to-ledger command, cross-project duplicate protection, fresh provider evidence, reversal handling and a concrete owner-reviewed match. Do not use a generic manual-payment command as an automatic substitute. Candidate searches do not persist customer accounting payloads.
+
+Focused tests cover positive partial deposits down to one cent, blocked evidence, existing history, identity ambiguity, failed reads, developer/origin denial and truthful UI recovery. Production connection evidence above applies to the released connection; it does not claim this new review surface is deployed.
+
 - `apps/portal/lib/xero` owns configuration, encryption, provider reads and connection storage.
 - `apps/portal/app/api/integrations/xero` owns developer OAuth, candidate review and scheduled maintenance.
 - `xero_private` stores encrypted tokens, single-use authorisation attempts and append-only connection audit. No customer accounting data is mirrored here.
