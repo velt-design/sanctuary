@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import type { reviewInvoicePayments } from '@/lib/xero/invoicePaymentReview';
+import PaymentHistory from './PaymentHistory';
 type Review = Awaited<ReturnType<typeof reviewInvoicePayments>>;
 type Suggestion = Review['suggestions'][number];
 const money = (cents: number) => new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' }).format(cents / 100);
@@ -12,6 +13,7 @@ export default function InvoicePayments({ invoiceId }: { invoiceId: string }) {
   const [uncertain, setUncertain] = useState<Suggestion | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [noResult, setNoResult] = useState(false);
+  const [historyRevision, setHistoryRevision] = useState(0);
   const storageKey = `sanctuary.invoice-payment.pending:${invoiceId}`;
   useEffect(() => { try { setPendingId(sessionStorage.getItem(storageKey)); } catch { /* Keep in-memory recovery available. */ } }, [storageKey]);
   function remember(id: string | null) {
@@ -34,6 +36,7 @@ export default function InvoicePayments({ invoiceId }: { invoiceId: string }) {
     setBusy(true); setMessage(''); setUncertain(item); remember(item.approvalId);
     try {
       await request({ action: 'approve', confirmed: true, approvalToken: item.approvalToken });
+      setHistoryRevision(value => value + 1);
       setReview(null); setConfirmed(null); setUncertain(null); remember(null); setMessage('Payment recorded. Refresh the review to see the current balance.');
     } catch { setMessage('The result could not be confirmed. Check approval status before starting another review.'); }
     finally { setBusy(false); }
@@ -44,6 +47,7 @@ export default function InvoicePayments({ invoiceId }: { invoiceId: string }) {
     try {
       const data = await request({ action: 'status', approvalId: pendingId });
       if (data.match) {
+        setHistoryRevision(value => value + 1);
         setMessage(data.match.reversedAt ? 'This payment approval was reversed. Review the history before proceeding.' : 'Payment was recorded successfully. Refresh the review for the current balance.');
         setUncertain(null); setReview(null); setConfirmed(null); remember(null);
       } else { setNoResult(true); setMessage('No completed approval was found. You can check again or start a fresh review; existing payments will be checked again.'); }
@@ -51,6 +55,8 @@ export default function InvoicePayments({ invoiceId }: { invoiceId: string }) {
     finally { setBusy(false); }
   }
   return <section>
+    <PaymentHistory invoiceId={invoiceId} refreshKey={historyRevision} disabled={busy || Boolean(pendingId)}
+      onCorrection={() => { setReview(null); setConfirmed(null); }} />
     <p>Review payments attached to this Xero invoice. Only your explicit approval records a payment in the portal.</p>
     <button disabled={busy || Boolean(pendingId)} onClick={load}>Refresh payment review</button>
     {message && <p role="status">{message}</p>}

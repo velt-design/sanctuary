@@ -58,6 +58,9 @@ describe('approved deposits use actual commercial SQL owners',()=>{
       create table private.xero_invoice_requests(transfer_id uuid,body text);`);
     await db.exec(read('migrations/20260914000014_xero_invoice_payment_commands.sql'));
     await db.exec(read('migrations/20260914000015_xero_invoice_payment_review.sql'));
+    await db.exec('alter table auth.users add column email text');
+    await db.exec(read('migrations/20260914000016_xero_payment_history.sql'));
+    await db.exec(read('migrations/20260914000017_xero_partial_payment_balances.sql'));
   },20000);
   beforeEach(async()=>{
     await db.exec(`truncate private.xero_invoice_transfer_control,private.xero_invoice_transfers,private.xero_invoice_requests,
@@ -230,5 +233,38 @@ describe('approved deposits use actual commercial SQL owners',()=>{
     await expect(load(99,97)).rejects.toThrow(/UNAVAILABLE/);
     await db.exec('update public.xero_payment_approvers set revoked_at=now()');
     await expect(load()).rejects.toThrow(/permission/);
+  });
+  it('reads approval and reversal history without provider access, preserving the recorded actor and reason',async()=>{
+    await bindInvoice(); await db.query('update auth.users set email=$1 where id=$2',['finance@example.test',id(99)]);
+    const payment=await invoicePayment(); await reverse(payment.paymentEntryId);
+    const load=(actor=99)=>db.query<{history:{recordedCents:number;matches:Array<{approvedBy:string;reversedBy:string;reversalReason:string;sourceKind:string}>}}>(
+      'select public.xero_invoice_payment_history($1,$2,$3,0) history',[id(actor),id(1),id(98)]);
+    const history=(await load()).rows[0].history;
+    expect(history.recordedCents).toBe(0);
+    expect(history.matches[0]).toMatchObject({approvedBy:'finance@example.test',reversedBy:'finance@example.test',sourceKind:'INVOICE_PAYMENT',reversalReason:'Correct mistaken deposit match'});
+    await expect(load(96)).rejects.toThrow(/permission/);
+  });
+  it('bounds history pages while retaining the whole-invoice recorded amount',async()=>{
+    await bindInvoice();
+    for(let index=0;index<51;index++) await invoicePayment(100+index,100+index,1);
+    const load=async(offset:number)=>(await db.query<{history:{recordedCents:number;matches:Array<{id:string}>}}>(
+      'select public.xero_invoice_payment_history($1,$2,$3,$4) history',[id(99),id(1),id(98),offset])).rows[0].history;
+    const first=await load(0),last=await load(50);
+    expect(first.matches).toHaveLength(51);expect(last.matches).toHaveLength(1);
+    expect(first.recordedCents).toBe(51);expect(last.recordedCents).toBe(51);
+    expect(first.matches[50].id).toBe(last.matches[0].id);
+    await expect(load(-1)).rejects.toThrow(/Invalid history/);
+  });
+  it('deducts a matched instalment from outstanding exposure without counting it twice',async()=>{
+    await bindInvoice(); const first=await invoicePayment();
+    const truth=async()=>(await db.query<{paid_inc_gst_cents:number;open_invoice_inc_gst_cents:number;remaining_to_invoice_inc_gst_cents:number;over_committed_inc_gst_cents:number}>(
+      'select * from public.commercial_project_financial_truth($1)',[id(1)])).rows[0];
+    expect(await truth()).toMatchObject({paid_inc_gst_cents:4000,open_invoice_inc_gst_cents:6000,remaining_to_invoice_inc_gst_cents:10000,over_committed_inc_gst_cents:0});
+    await expect(db.query('select public.commercial_replace_payment_allocations_with_project_lock($1,$2,$3,$4)',
+      [first.paymentEntryId,'[]','Release as general credit',id(99)])).rejects.toThrow(/reserved for its invoice/);
+    await invoicePayment(21,21,6000);
+    expect(await truth()).toMatchObject({paid_inc_gst_cents:10000,open_invoice_inc_gst_cents:0,remaining_to_invoice_inc_gst_cents:10000});
+    await reverse(first.paymentEntryId);
+    expect(await truth()).toMatchObject({paid_inc_gst_cents:6000,open_invoice_inc_gst_cents:4000,remaining_to_invoice_inc_gst_cents:10000});
   });
 });

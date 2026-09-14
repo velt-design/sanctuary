@@ -2,6 +2,7 @@ import { act } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import InvoicePayments from './InvoicePayments';
+vi.mock('./PaymentHistory', () => ({ default: () => <div>Payment history</div> }));
 let view: ReturnType<typeof renderIntoDocument> | undefined;
 const id = '11111111-1111-4111-8111-111111111111';
 const result = { invoice: { invoiceRef: 'INV-TEST', customerName: 'Customer', totalIncGstCents: 11500 }, checkedAt: '2026-09-14T00:00:00Z',

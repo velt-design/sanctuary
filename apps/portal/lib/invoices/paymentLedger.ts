@@ -34,7 +34,7 @@ export async function loadProjectPaymentLedger(params: {
         .order('created_at', { ascending: true })
         .order('position', { ascending: true })
     : Promise.resolve({ data: [], error: null });
-  const [entriesRes, allocationsRes, plansRes] = await Promise.all([
+  const [entriesRes, allocationsRes, plansRes, matchesRes] = await Promise.all([
     supabaseServiceRole.from('project_payment_entries').select('*')
       .eq('project_id', params.projectUuid)
       .order('occurred_at', { ascending: false })
@@ -43,10 +43,14 @@ export async function loadProjectPaymentLedger(params: {
       .eq('project_id', params.projectUuid)
       .is('reversed_at', null),
     plansPromise,
+    supabaseServiceRole.from('xero_deposit_matches').select('payment_entry_id,invoice_id')
+      .eq('project_id', params.projectUuid).is('reversed_at', null),
   ]);
   if (entriesRes.error) throw new Error(errorMessage(entriesRes.error, 'Failed to load job payments'));
   if (allocationsRes.error) throw new Error(errorMessage(allocationsRes.error, 'Failed to load payment allocations'));
   if (plansRes.error) throw new Error(errorMessage(plansRes.error, 'Failed to load invoice plan'));
+  if (matchesRes.error) throw new Error(errorMessage(matchesRes.error, 'Failed to verify invoice-owned payments'));
+  const matchedInvoiceByPayment = new Map((matchesRes.data ?? []).map(row => [String(row.payment_entry_id), String(row.invoice_id)]));
 
   const reversalTargets = new Set(
     (entriesRes.data ?? []).map((row: any) => row.reverses_entry_id).filter(Boolean).map(String),
@@ -62,6 +66,8 @@ export async function loadProjectPaymentLedger(params: {
     reason: optionalText(row.reason, 1000),
     sourceInvoiceId: row.source_invoice_id ? appIdFromUuid('inv', String(row.source_invoice_id)) : null,
     sourceInvoiceRef: row.source_invoice_id ? params.invoiceRefsByUuid.get(String(row.source_invoice_id)) ?? null : null,
+    matchedInvoiceId: matchedInvoiceByPayment.has(String(row.id)) ? appIdFromUuid('inv', matchedInvoiceByPayment.get(String(row.id))!) : null,
+    matchedInvoiceRef: params.invoiceRefsByUuid.get(matchedInvoiceByPayment.get(String(row.id)) ?? '') ?? null,
     reversed: reversalTargets.has(String(row.id)),
   }));
   const allocations: ScheduleAllocation[] = (allocationsRes.data ?? []).map((row: any) => ({
