@@ -51,3 +51,10 @@ it('requires activation and explicit confirmation before resuming only the serve
   expect(mocks.resume).toHaveBeenCalledWith(id, id, id);
   expect(mocks.accounting).not.toHaveBeenCalled();
 });
+
+it('explains missing portal details before making any Xero request',async()=>{
+ mocks.context.mockRejectedValue(new Error('XERO_MAPPING_DETAILS_REQUIRED'));
+ const response=await POST(request({action:'inspect',invoiceId:id}));
+ expect(response.status).toBe(409);expect((await response.json()).error).toContain('linked portal customer');
+ expect(mocks.accounting).not.toHaveBeenCalled();expect(mocks.save).not.toHaveBeenCalled();
+});

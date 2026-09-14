@@ -247,3 +247,5 @@ The mapping screen has a separately gated, explicitly confirmed new-Xero-custome
 
 
 Finance resume can reuse an unused prepared invoice request through migration21. Only an expired unused window is renewed, with audit; the invoice, request key and job identity remain the same. Possibly dispatched requests still require the separate recovery check. This remains unactivated rollout work; see docs/xero-connection.md.
+
+Finance mapping now reports incomplete portal invoice details separately from an infrastructure failure. The operator is directed to check the linked customer, open/paid status and NZD currency before retrying; the existing SQL eligibility rules are unchanged and no provider request runs before context validation. See `docs/xero-connection.md` for staged walkthrough evidence and the older synthetic fixture limitation.

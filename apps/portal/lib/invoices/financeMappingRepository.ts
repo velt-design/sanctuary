@@ -7,6 +7,7 @@ const contextSchema = z.object({ invoiceId: z.string().uuid(), invoiceRef: z.str
   sourceContactId: z.string().uuid(), subtotalCents: z.number().int().nonnegative(), taxCents: z.number().int().nonnegative() });
 export async function financeMappingContext(actor: string, invoiceId: string) {
   const result = await supabaseServiceRole.rpc('xero_finance_mapping_context', { p_actor: actor, p_invoice_id: invoiceId });
+  if (result.error?.message === 'XERO_MAPPING_CONTEXT_UNAVAILABLE') throw new Error('XERO_MAPPING_DETAILS_REQUIRED');
   const parsed = contextSchema.safeParse(result.data);
   if (result.error || !parsed.success || parsed.data.invoiceId !== invoiceId) throw new Error('XERO_MAPPING_CONTEXT_UNAVAILABLE');
   return parsed.data;

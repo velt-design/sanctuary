@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       sourceContactId: context.sourceContactId, proof: { contact, account, tax } });
     return json({ saved: true });
   } catch (error) {
+    if (error instanceof Error && error.message === 'XERO_MAPPING_DETAILS_REQUIRED') return json({ error: 'Open the project and check that this invoice has a linked portal customer, is open or paid, and is in NZD. Then check Xero records again.' }, 409);
     if (error instanceof Error && error.message === 'XERO_RECONCILIATION_REQUIRED') return json({ error: 'This transfer may already have reached Xero. Check its outcome in finance review before another transfer.' }, 409);
     if (error instanceof Error && error.message === 'XERO_TRANSFER_NOT_FOUND') return json({ error: 'This invoice was not captured for automatic transfer. Resuming does not import historical invoices.' }, 409);
     if (error instanceof Error && error.message === 'INSUFFICIENT_SCOPE') return json({ error: 'Xero needs the additional finance connection permission before these details can be checked.' }, 409);
