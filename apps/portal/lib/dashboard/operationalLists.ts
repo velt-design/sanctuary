@@ -8,9 +8,10 @@ import {
 } from '@/lib/quotes/pricing';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import type { DashboardRecentEstimate } from './types';
+import { configuredQuoteSnapshotItems, requiresConfiguredQuoteSnapshot } from '@/lib/quotes/configuredQuoteSnapshot';
 
 const RECENT_ESTIMATE_COLUMNS =
-  'id,project_id,status,version,total_true_cost_ex_gst,outputs,created_at,updated_at,projects!inner(id,name,archived_at)';
+  'id,project_id,status,version,total_true_cost_ex_gst,inputs,outputs,created_at,updated_at,projects!inner(id,name,archived_at)';
 
 type NamedRelation = { name?: string | null } | Array<{ name?: string | null }> | null;
 
@@ -21,6 +22,7 @@ type RecentEstimateRow = {
   version?: number | string | null;
   total_true_cost_ex_gst?: number | string | null;
   outputs?: Record<string, unknown> | null;
+  inputs?: unknown;
   created_at?: string | null;
   updated_at?: string | null;
   projects?: (NamedRelation & { archived_at?: string | null }) | null;
@@ -80,6 +82,11 @@ export async function listDashboardRecentEstimates(
       normalizeStaffCustomerPriceUpliftPct(pricingPolicy?.customer_price_uplift_pct),
       normalizeStaffCustomerPriceMultiplier(pricingPolicy?.customer_price_multiplier),
     );
+    const configuredSource = { inputs: row.inputs, derived: row.outputs?.derived, snapshot: row.outputs?.snapshot };
+    const configuredItems = configuredQuoteSnapshotItems(configuredSource);
+    const customerPriceIncGst = requiresConfiguredQuoteSnapshot(configuredSource)
+      ? configuredItems ? configuredItems.reduce((sum, item) => sum + item.lineTotalIncGstCents, 0) / 100 : null
+      : customerPrice?.incGst ?? null;
 
     return [{
       estimateId,
@@ -87,7 +94,7 @@ export async function listDashboardRecentEstimates(
       projectName: relationName(row.projects) ?? 'Untitled project',
       versionLabel: version === null ? 'V-' : `V${Math.max(1, Math.floor(version))}`,
       status: 'draft' as const,
-      customerPriceIncGst: customerPrice?.incGst ?? null,
+      customerPriceIncGst,
       updatedAt,
       href: projectEstimateHref(projectId, estimateId),
     }];

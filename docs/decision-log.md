@@ -17,6 +17,16 @@ Related docs/tests: paths or commands
 
 Use `Status: Active` when the entry is still only a decision-log guardrail. New reusable lessons should remain `Active` until a later pass promotes them into a canonical doc, so this log continues to show live risks that have not yet become standing rules. Use `Status: Promoted` when the durable behavior is now represented in `docs/agent-playbook.md`, `AGENTS.md`, `docs/README.md`, or another canonical doc. Use `Status: Superseded` only when a newer entry or canonical doc replaces the rule.
 
+## Configured dashboard prices and email activity
+
+Date: 2026-09-15
+Area: Staff enquiry review
+Status: Active
+Decision or mistake: Dashboard estimates rebuilt selling prices from partial base costs, and queued outbox activity carried an email_sent type despite a queued title.
+Why it mattered: Staff saw conflicting prices and delivery claims for the same enquiry.
+Current guardrail: Reuse the validated configured quote snapshot for dashboard totals; withhold incomplete or changed snapshots. Derive outbox activity type and title from explicit status, never assuming an unknown status was sent.
+Related docs/tests: apps/portal/lib/dashboard/operationalLists.test.ts; apps/portal/lib/projects/getProjectPageSnapshot.test.ts; docs/projects-contacts-estimates-calculator.md; docs/automation-email-audit.md
+
 ## Xero customer search literals
 
 Date: 2026-09-14

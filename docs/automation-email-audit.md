@@ -58,6 +58,8 @@ Scheduled invoice creation and whole-invoice payment recording append `invoice.c
 
 ## Read First
 
+Project activity labels distinguish queued, failed, sent and delivered outbox records. Unknown states are labelled unknown, not sent. This is a read projection only; viewing activity never dispatches or retries email.
+
 - Use `## Ownership` and `## Current Data Flow` to locate the request-bound or durable email owner before changing a send.
 - Use `## Access Boundaries` and `## Guardrails` before changing provider transport, webhook reconciliation, outbox state, or logs.
 - Use `docs/quotes-invoices-job-packs.md` for quote/invoice lifecycle behavior and `docs/supabase-schema-map.md` for durable receipt/RPC ownership.

@@ -62,7 +62,14 @@ describe('getProjectPageSnapshot', () => {
     isProjectWorkModelV2.mockReset().mockResolvedValue(false);
   });
 
-  it('returns a snapshot without scheduling invoice retries during read', async () => {
+  it.each([
+    ['SENT', 'email_sent', 'Email sent'],
+    ['QUEUED', 'email_queued', 'Email queued'],
+    ['FAILED', 'email_failed', 'Email failed'],
+    ['ERROR', 'email_failed', 'Email failed'],
+    ['DELIVERED', 'email_delivered', 'Email delivered'],
+    ['UNRECOGNISED', 'email_status_unknown', 'Email status unknown'],
+  ])('returns truthful %s activity without scheduling retries during read', async (status, type, title) => {
     const projectId = '11111111-1111-4111-8111-111111111111';
     const contactId = '22222222-2222-4222-8222-222222222222';
     const projectQuery = createQuery({
@@ -87,7 +94,7 @@ describe('getProjectPageSnapshot', () => {
           id: 'email_1',
           subject: 'Estimate ready',
           to_email: 'casey@example.com',
-          status: 'SENT',
+          status,
           sent_at: '2026-07-19T00:00:00.000Z',
           created_at: '2026-07-19T00:00:00.000Z',
           email_type: 'estimate',
@@ -146,6 +153,7 @@ describe('getProjectPageSnapshot', () => {
     expect(snapshot?.emails).toHaveLength(1);
     expect(snapshot?.notes).toMatchObject([{ id: 'note_1', isOwn: true }]);
     expect(snapshot?.activity).toHaveLength(1);
+    expect(snapshot?.activity[0]).toMatchObject({ type, title });
     expect(fromMock).toHaveBeenCalledTimes(3);
     expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
     expect(fromMock).toHaveBeenNthCalledWith(2, 'projects');

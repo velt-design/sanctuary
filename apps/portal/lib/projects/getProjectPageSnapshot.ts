@@ -104,7 +104,12 @@ function mapOutboxToActivity(row: any): ProjectActivityItem | null {
   if (!at) return null;
 
   const statusRaw = typeof row?.status === 'string' ? row.status.toUpperCase() : '';
-  const title = statusRaw === 'FAILED' ? 'Email failed' : statusRaw === 'QUEUED' ? 'Email queued' : 'Email sent';
+  const type: ProjectActivityItem['type'] =
+    statusRaw === 'FAILED' || statusRaw === 'ERROR' ? 'email_failed'
+      : statusRaw === 'QUEUED' ? 'email_queued'
+        : statusRaw === 'DELIVERED' ? 'email_delivered'
+          : statusRaw === 'SENT' ? 'email_sent' : 'email_status_unknown';
+  const title = type.replaceAll('_', ' ').replace(/^./, (value) => value.toUpperCase());
 
   const toEmail = typeof row?.to_email === 'string' ? row.to_email : '';
   const subject = typeof row?.subject === 'string' ? row.subject : '';
@@ -115,7 +120,7 @@ function mapOutboxToActivity(row: any): ProjectActivityItem | null {
   return {
     id: `outbox:${String(row?.id ?? '')}`,
     at,
-    type: 'email_sent',
+    type,
     title,
     detail: detailParts.length ? detailParts.join(' — ') : undefined,
   };

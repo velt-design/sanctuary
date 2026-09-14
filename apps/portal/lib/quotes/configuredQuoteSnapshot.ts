@@ -1,5 +1,6 @@
-import type { Estimate } from '../types/estimate';
 import type { QuoteLineItem } from './types';
+
+type ConfiguredSnapshotSource = { inputs: unknown; derived: unknown; snapshot?: unknown };
 
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -14,7 +15,7 @@ function canonical(value: unknown): string {
 }
 
 /** Repricing can replace derived metadata, but cannot erase the imported quote's origin. */
-export function requiresConfiguredQuoteSnapshot(estimate: Estimate): boolean {
+export function requiresConfiguredQuoteSnapshot(estimate: ConfiguredSnapshotSource): boolean {
   const snapshot = record(estimate.snapshot);
   return record(estimate.derived)?.pricingMode === 'configured_customer_snapshot'
     || (snapshot?.source === 'marketing_enquiry'
@@ -22,7 +23,7 @@ export function requiresConfiguredQuoteSnapshot(estimate: Estimate): boolean {
 }
 
 /** Import only the complete frozen selling breakdown, never the partial base costing. */
-export function configuredQuoteSnapshotItems(estimate: Estimate): Omit<QuoteLineItem, 'id'>[] | null {
+export function configuredQuoteSnapshotItems(estimate: ConfiguredSnapshotSource): Omit<QuoteLineItem, 'id'>[] | null {
   const snapshot = record(estimate.snapshot);
   const frozen = record(snapshot?.frozenConfiguratorPrice);
   const price = record(frozen?.customerPrice);
