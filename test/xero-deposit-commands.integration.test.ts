@@ -42,9 +42,25 @@ describe('approved deposits use actual commercial SQL owners',()=>{
     await db.exec(read('migrations/20260914000002_xero_deposit_matching.sql'));
     await db.exec(read('migrations/20260914000003_xero_deposit_commands.sql'));
     await db.exec(read('migrations/20260914000004_xero_deposit_review_notes.sql'));
+    await db.exec(`alter table public.project_payment_allocations alter column quote_version_id drop not null,
+      alter column payment_term_id drop not null,add column standalone_invoice_id uuid references public.deposit_invoices(id);
+      alter table public.deposit_invoices alter column quote_id drop not null,alter column quote_version_id drop not null,
+      alter column quote_ref drop not null,alter column quote_version_number drop not null;`);
+    await db.exec(command(read('migrations/20260911000005_standalone_invoice_balances.sql'),'commercial_guard_payment_allocation_update'));
+    await db.exec(command(read('migrations/20260911000005_standalone_invoice_balances.sql'),'commercial_standalone_allocation_guard'));
+    await db.exec(`create trigger project_payment_allocations_standalone_guard before insert on public.project_payment_allocations
+      for each row execute function public.commercial_standalone_allocation_guard();`);
+    // Transfer identity fixtures only; canonical ledger/approval functions above
+    // are real SQL owners. This does not exercise invoice dispatch or PGMQ.
+    await db.exec(`create schema if not exists private;
+      create table private.xero_invoice_transfer_control(singleton boolean,tenant_id uuid);
+      create table private.xero_invoice_transfers(id uuid primary key,invoice_id uuid,project_id uuid,tenant_id uuid,provider_invoice_id uuid);
+      create table private.xero_invoice_requests(transfer_id uuid,body text);`);
+    await db.exec(read('migrations/20260914000014_xero_invoice_payment_commands.sql'));
   },20000);
   beforeEach(async()=>{
-    await db.exec(`truncate public.xero_deposit_matches,public.xero_payment_approvers,auth.users,public.projects,public.quotes,public.quote_versions,
+    await db.exec(`truncate private.xero_invoice_transfer_control,private.xero_invoice_transfers,private.xero_invoice_requests,
+      public.xero_deposit_matches,public.xero_payment_approvers,auth.users,public.projects,public.quotes,public.quote_versions,
       public.deposit_invoices,public.project_payment_entries,public.project_payment_allocations,public.project_invoice_plan_items,public.audit_events cascade;
       insert into auth.users values('${id(99)}'),('${id(96)}');
       insert into public.xero_payment_approvers(user_id,granted_by) values('${id(99)}','Pilot test setup');
@@ -132,5 +148,75 @@ describe('approved deposits use actual commercial SQL owners',()=>{
     expect(await balance()).toEqual({net:0,entries:2,allocated:0,status:'OPEN'});
     await approve(11,10,10000);
     expect(await balance()).toEqual({net:10000,entries:3,allocated:10000,status:'PAID'});
+  });
+  async function bindInvoice() {
+    await db.exec(`insert into private.xero_invoice_transfer_control values(true,'${id(98)}');
+      insert into private.xero_invoice_transfers values('${id(80)}','${id(1)}','${id(1)}','${id(98)}','${id(81)}');
+      insert into private.xero_invoice_requests values('${id(80)}','{"Invoices":[{"Contact":{"ContactID":"${id(97)}"}}]}');`);
+  }
+  async function invoicePayment(approval=20,source=20,amount=4000,providerInvoice=81,contact=97) {
+    const evidence=await context();
+    return (await db.query<{ result:{matchId:string;paymentEntryId:string;replayed:boolean} }>(
+      'select public.xero_approve_invoice_payment($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) result',
+      [id(approval),id(99),id(98),id(source),id(contact),id(1),id(1),amount,'2026-09-13',evidence.invoiceFingerprint,evidence.ledgerFingerprint,'b'.repeat(64),'Invoice payment',id(providerInvoice)])).rows[0].result;
+  }
+  it('supports later quote stages using the same receipt ledger and reversal command',async()=>{
+    await bindInvoice();
+    await db.exec(`update public.deposit_invoices set payment_term_position=2 where id='${id(1)}'`);
+    await expect(approve()).rejects.toThrow(/not an open NZD deposit/);
+    const first=await invoicePayment();
+    expect((await invoicePayment()).replayed).toBe(true);
+    await invoicePayment(21,21,6000);
+    expect(await balance()).toEqual({net:10000,entries:2,allocated:10000,status:'PAID'});
+    expect((await db.query<{source_kind:string;provider_invoice_id:string}>('select source_kind,provider_invoice_id from public.xero_deposit_matches where id=$1',[id(20)])).rows[0]).toEqual({source_kind:'INVOICE_PAYMENT',provider_invoice_id:id(81)});
+    await reverse(first.paymentEntryId);
+    expect(await balance()).toEqual({net:6000,entries:3,allocated:0,status:'OPEN'});
+  });
+  it('refuses a payment with the wrong bound Xero invoice or customer before writing money',async()=>{
+    await bindInvoice();
+    await expect(invoicePayment(20,20,4000,82)).rejects.toThrow(/binding changed/);
+    await expect(invoicePayment(20,20,4000,81,96)).rejects.toThrow(/binding changed/);
+    expect((await balance()).entries).toBe(0);
+  });
+  it('blocks mixed source history in both directions instead of duplicating a bank receipt',async()=>{
+    await bindInvoice(); const bank=await approve();
+    await expect(invoicePayment()).rejects.toThrow(/another Xero source/);
+    await reverse(bank.paymentEntryId);
+    await invoicePayment();
+    await expect(approve(12,12,4000)).rejects.toThrow(/another Xero source/);
+    expect((await balance()).net).toBe(4000);
+  });
+  it('prevents an old approval identity being replayed through another source API',async()=>{
+    await bindInvoice(); await approve(20,20,4000);
+    await expect(invoicePayment()).rejects.toThrow(/different evidence/);
+  });
+  it('settles standalone instalments once and prevents moving their money into quoted scope',async()=>{
+    await bindInvoice();
+    await db.exec(`update public.deposit_invoices set invoice_kind='STANDALONE',quote_id=null,quote_version_id=null,
+      quote_ref=null,quote_version_number=null where id='${id(1)}'`);
+    const first=await invoicePayment();
+    expect(await balance()).toEqual({net:4000,entries:1,allocated:0,status:'OPEN'});
+    await invoicePayment(21,21,6000);
+    expect(await balance()).toEqual({net:10000,entries:2,allocated:10000,status:'PAID'});
+    const allocations=await db.query<{standalone_invoice_id:string;quote_version_id:null}>('select standalone_invoice_id,quote_version_id from public.project_payment_allocations where reversed_at is null');
+    expect(allocations.rows).toEqual([{standalone_invoice_id:id(1),quote_version_id:null},{standalone_invoice_id:id(1),quote_version_id:null}]);
+    await expect(db.query('select public.commercial_replace_payment_allocations_with_project_lock($1,$2,$3,$4)',
+      [first.paymentEntryId,'[]','Move to quoted work',id(99)])).rejects.toThrow(/Reverse the standalone/);
+    await expect(db.query(`insert into public.project_payment_allocations(project_id,payment_entry_id,quote_version_id,
+      payment_term_id,amount_inc_gst_cents,change_reason,created_by) values($1,$2,$1,'deposit',4000,'Wrong target',$3)`,
+      [id(1),first.paymentEntryId,id(99)])).rejects.toThrow(/Standalone instalments/);
+    await reverse(first.paymentEntryId);
+    expect(await balance()).toEqual({net:6000,entries:3,allocated:0,status:'OPEN'});
+    await invoicePayment(22,22,4000);
+    expect(await balance()).toEqual({net:10000,entries:4,allocated:10000,status:'PAID'});
+  });
+  it('keeps the shared ledger command private and the new invoice approval service-only',async()=>{
+    const signature='uuid,uuid,uuid,uuid,uuid,uuid,uuid,integer,date,text,text,text,text';
+    for(const role of ['anon','authenticated','service_role']) {
+      const access=(await db.query<{internal:boolean;approval:boolean}>(`select
+        has_function_privilege($1,$2,'EXECUTE') internal,has_function_privilege($1,$3,'EXECUTE') approval`,
+      [role,`private.xero_commit_payment_match(${signature},text,uuid)`,`public.xero_approve_invoice_payment(${signature},uuid)`])).rows[0];
+      expect(access).toEqual({internal:false,approval:role==='service_role'});
+    }
   });
 });
