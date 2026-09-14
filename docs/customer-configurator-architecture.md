@@ -5293,3 +5293,10 @@ worker is not a drop-in Next route. Safe adaptation must preserve hard-deadline
 recovery, unique invocation ownership, accepted-effect finalisation, idempotency
 expiry quarantine and overlap handling. No paid host is established as necessary.
 Production migrations, runner activation and further email sends remain unapproved.
+
+Hosted browser follow-up: a 6.6 x 3 m revision calculated at $12,261 including GST,
+saved as V3 and created an unsent draft quote from that exact estimate at the same
+total. V1/V2 input/output hashes were unchanged. No send attempt was made. The
+360/390/430-pixel browser matrix found undersized secondary touch targets; mobile
+view controls, sharing, dimension inputs and disclosures now use 44-pixel targets.
+Physical-device validation remains distinct from browser viewport evidence.

@@ -55,7 +55,9 @@ Configurator continuation (2026-09-15): the protected staff calculation failure 
 Vercel machine authentication, with a preview-only server credential fix and
 focused route tests. The ScheduleClient CI failure was a timing-dependent query
 assertion with observer leakage; all 40 focused tests pass after correction.
-Fresh hosted CI and staff save/quote verification remain required. Existing Vercel
+Hosted staff save/quote now passes: V3 retains $12,261 including GST into an unsent
+draft quote, while the original and prior revision remain unchanged. Fresh hosted
+CI remains required after the mobile touch-target correction. Existing Vercel
 Pro scheduling is a viable candidate for a bounded queue runner, but the existing
 persistent-worker runtime cannot be mounted directly as a cron route. No hosting
 purchase is justified yet. Physical-device and production activation gates remain

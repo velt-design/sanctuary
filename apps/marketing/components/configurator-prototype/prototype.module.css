@@ -75,9 +75,9 @@
   .sidebar { border-left: 0; border-top: 1px solid var(--color-rule); overflow-y: auto; }
   .viewToolbar { margin: 8px 8px 0; gap: 4px; }
   .viewTabs { width: auto; }
-  .viewTabs button { flex: 1; min-height: 34px; padding-inline: 13px; }
+  .viewTabs button { flex: 1; min-height: 44px; min-width: 44px; padding-inline: 13px; }
   .viewActions { gap: 0; }
-  .viewActions button { padding-inline: 7px; min-height: 40px; font-size: 11px; }
+  .viewActions button { padding-inline: 7px; min-height: 44px; min-width: 44px; font-size: 11px; }
   .viewActions .expandView { display: block; color: var(--color-accent-olive); font-weight: 600; }
   .specStrip { padding: 8px 10px; gap: 6px; }
   .specStrip > span { font-size: 9px; white-space: nowrap; }
@@ -85,7 +85,7 @@
   .viewNote { display: block; padding: 2px 12px 9px; text-align: center; font-size: 10px; }
   .viewerFooter { flex-direction: row; gap: 8px; padding: 0 8px 7px; }
   .viewerFooter .viewNote { text-align: left; font-size: 10px; }
-  .contextToggle { font-size: 10px; }
+  .contextToggle { font-size: 10px; min-height: 44px; }
   .desktopNote { display: none; }
   .plan { padding: 4px; }
   .controls { padding: 20px; }
@@ -136,7 +136,7 @@
 @media(max-width:720px) {
  .viewToolbar { flex-wrap:wrap; }
  .timeTabs { margin-left:auto; padding:3px; }
- .timeTabs button { min-height:34px; }
+ .timeTabs button { min-height:44px; min-width:44px; }
  .viewActions { order:3; width:100%; justify-content:flex-end; }
 }
 
@@ -144,6 +144,9 @@
 @media(max-width:720px){.sidebar{scroll-padding-top:70px}.controls input,.controls button{scroll-margin-top:0}}
 
 @media(max-width:720px){
+ .page summary, .page button[aria-label^="About "] { min-height:44px; min-width:44px; }
+ .controls input:not([type="radio"]):not([type="checkbox"]):not([type="range"]) { min-height:44px; min-width:44px; }
+ .loading button { min-height:44px; }
  .viewToolbar:has(.timeTabs button:disabled) .timeTabs{display:none}
  .viewToolbar:has(.timeTabs button:disabled) .viewActions{width:auto;margin-left:auto}
 }

@@ -9,4 +9,7 @@
 .share p { margin: 0 0 6px; font-size: 11px; line-height: 1.4; }
 .share input { width: 100%; min-width: 0; min-height: 36px; font-size: 12px; padding: 6px; }
 .projectShare { padding: 0 26px 14px; }
-@media (max-width: 720px) { .next { border-left: 0; padding-inline: 12px; } }
+@media (max-width: 720px) {
+  .next { border-left: 0; padding-inline: 12px; }
+  .share button, .share input { min-height: 44px; min-width: 44px; }
+}
