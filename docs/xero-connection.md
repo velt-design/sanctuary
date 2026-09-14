@@ -1,6 +1,6 @@
 # Xero connection
 
-Status: implemented behind `XERO_ENABLED`; not deployed, provisioned or live-authorised.
+Status: deployed to a disabled preview; not provisioned, live-authorised or released to production.
 
 ## First slice
 
@@ -88,3 +88,7 @@ multi-connection locking, hosted TLS, Xero consent/refresh or Vercel scheduling;
 these remain required staging release gates.
 
 Local evidence (2026-09-14): 18 focused tests passed; disposable PostgreSQL contracts passed; portal TypeScript and repository lint passed; production build passed using synthetic Supabase configuration and Xero disabled. No authenticated browser, real Xero, concurrent PostgreSQL or hosted scheduler proof is claimed.
+
+Setup evidence (2026-09-14): commit `e558475` deployed successfully to Vercel Preview (GitHub deployment `6428756662`). The owner saved `XERO_CLIENT_SECRET` as a Secret restricted to `codex/xero-read-connection`; its value was not inspected. A new deployment will be needed after configuration is complete. No other Xero variables were present at the initial configuration check.
+
+On staging `tnsiprehuldksnuowubv`, read-only preflight found one confirmed Jordan auth identity and no Xero schema or connector role. An equivalent, reformatted migration rehearsal inside a rolled-back transaction passed: authenticated schema usage was denied and connector update access allowed. Independent postflight confirmed both schema and role absent, with project/contact counts unchanged at 13 each. This is not an exact-file migration application or full hosted permission/concurrency proof. Persistent storage, dedicated LOGIN, remaining secrets, tenant pinning, callback configuration and live authorisation remain outstanding.
