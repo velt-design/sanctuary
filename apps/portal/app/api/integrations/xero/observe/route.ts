@@ -2,6 +2,7 @@ import { config, equalSecret } from '@/lib/xero/security';
 import { json } from '@/lib/xero/http';
 import { invoiceObservationTargets } from '@/lib/invoices/invoiceObservationRepository';
 import { refreshInvoiceObservation } from '@/lib/xero/refreshInvoiceObservation';
+import { synchronizeInvoicePayment } from '@/lib/xero/synchronizeInvoicePayment';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 export async function GET(request: Request) {
@@ -11,7 +12,13 @@ export async function GET(request: Request) {
   try {
     const tenantId = config().tenantId;
     const ids = await invoiceObservationTargets(tenantId);
-    const results = await Promise.allSettled(ids.map(id => refreshInvoiceObservation(id, tenantId)));
+    const results = await Promise.allSettled(ids.map(async id => {
+      const observation = await refreshInvoiceObservation(id, tenantId);
+      if (process.env.XERO_AUTOMATIC_PAYMENTS_ENABLED === 'true' && observation.state !== 'unavailable') {
+        await synchronizeInvoicePayment(id, tenantId);
+      }
+      return observation;
+    }));
     const checked = results.filter(result => result.status === 'fulfilled' && result.value.state !== 'unavailable').length;
     return json({ checked, unavailable: ids.length - checked }, checked === ids.length ? 200 : 503);
   } catch { return json({ error: 'Invoice checks require attention' }, 503); }

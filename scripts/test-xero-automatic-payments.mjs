@@ -38,6 +38,7 @@ async function denied(statement, message) {
 try {
   await prepareXeroPaymentDatabase(q=>sql(q),read);
   await sql(read('migrations/20260915000006_xero_automatic_payments.sql'));
+  await sql(read('migrations/20260915000007_xero_payment_sync_status.sql'));
   let context=await fixture();
   await denied('select '+invocation(context),'disabled');
   await sql('update private.xero_invoice_transfer_control set auto_record_payments_enabled=true');
@@ -74,5 +75,8 @@ try {
   context=await fixture();
   await sql(`select public.xero_approve_invoice_payment('${id(21)}','${id(99)}','${id(98)}','${id(21)}','${id(97)}','${id(1)}','${id(1)}',4000,current_date,'${context.invoiceFingerprint}','${context.ledgerFingerprint}',repeat('a',64),'Synthetic manual','${id(81)}')`);
   await sql(`do $$ begin if (select recording_method<>'MANUAL' or approved_by is null from public.xero_deposit_matches limit 1) then raise exception 'Manual attribution changed';end if;end $$;`);
+  await sql(`select public.xero_record_payment_sync_status('${id(1)}','${id(98)}','review','PAYMENT_CHECK_FAILED')`);
+  if(await sql('select state from private.xero_payment_sync_status')!=='review') throw new Error('Sync exception not retained');
+  await denied(`select public.xero_record_payment_sync_status('${id(1)}','${id(90)}','current','PAYMENT_CHECK_COMPLETE')`,'binding unavailable');
   console.log('Automatic payment SQL passed: disabled gate, partial/full, customer won, replay, stale balance, machine audit and permissions');
 } finally { await db.close(); }
