@@ -30,6 +30,8 @@ production, send emails or submit live customer enquiries.
 | Mobile expanded viewer | 390 x 844: Day/Night absent in compact view, present expanded; screenshot inspected; Escape returns to controls and focuses Expand | Browser simulation passed |
 | Mobile menu and professional route | Opening menu removes sticky bar; Professionals opens its page; menu contact link retains professional source and selects Architect/designer/builder | Passed locally |
 | Shared design and refresh | Copied 5.6 x 3 m pitched design opens in a new tab with $10,630 draft estimate; reload retains both | Passed locally for this fixture |
+| Release compilation | Webpack production build completed all 77 static pages and TypeScript after fixing an invalid all-global CSS-module selector in the sticky-bar stylesheet | Passed locally with webpack; default Turbopack process crashed on Windows before diagnostics |
+| Hosted candidate preparation | Healthy staging identity and existing approved hash rechecked; v2.8 control snapshot hashes to `4d12a6bde67c28aeacbb8a0d9845529e3ebb7405555d0fab9b8e412de8d33661`; resolving that snapshot is deeply equal to the current local candidate configuration | Prepared and validated; not published or deployed |
 
 ## Open requirements
 
@@ -53,6 +55,9 @@ production, send emails or submit live customer enquiries.
 - Real-phone touch, keyboard and assistive-technology verification remains open.
 - Check release build, hosted CI, production migration/configuration differences,
   worker readiness and rollback before presenting a production activation decision.
+  Local webpack compilation is verified; the normal hosted build still needs its
+  own result. Local logs are `sanctuary-launch-review-build.txt` and
+  `sanctuary-launch-review-webpack.txt` in the task's temporary directory.
 
 ## Earlier release evidence and limits
 
