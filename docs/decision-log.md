@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-09-15 — Plan selected ceiling stock per hip-corner wing
+
+The first selected-ceiling takeoff applied leg A's board run to the combined area of both wings. Unequal wings could therefore put long boards in the short-stock price band and omit supported joins. The package now plans each wing before aggregating length bands and purchased coverage. Regression tests compare a 2 m / 6 m corner with separately costed wings, swap wing labels, and cover timber plus all three mixed-roof modes. Keep the staff V1 release out of the deferred V2 workbench input contract. Owner: `costing-and-geometry.md`.
+
+## 2026-09-15 — Preserve staff ceiling choices through the HTTP costing boundary
+
+The calculator payload and costing engine supported the new ceiling identity, but the staff job/single-module request parsers omitted it and priced the historical cedar specification. A shared request parser now validates the package-owned option and passes it through both calculation routes and materials-explain. Integration tests reload saved calculator inputs, use the real route and engine, and compare the returned material lines for all four options. Publishing a pricebook cannot replace this wiring check. The pricing release is isolated from the held configurator/queue rollout. Owners: `costing-and-geometry.md`, `projects-contacts-estimates-calculator.md`.
+
 Compact indexed lessons and guardrails for future agents. Scan relevant entries before non-trivial or risky work, especially when the task touches a known source-of-truth boundary, migration, auth path, data flow, or quality gate.
 
 ## Entry Template

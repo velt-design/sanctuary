@@ -1,3 +1,4 @@
+import { ceilingMaterials } from './ceilingTakeoff';
 import type { CostingConfigV1 } from './config';
 import type { DerivedV1, FlashingBandV1, InputsNormalizedV1, MaterialsLineV1, MaterialsV1 } from './types';
 import type { InfillTakeoffV1 } from './types';
@@ -1922,7 +1923,8 @@ function buildMaterialsV1Internal(
     }
   }
 
-  if (inputs.roof_material === 'timber' || inputs.roof_material === 'mixed') {
+  if (inputs.ceiling && (inputs.roof_material === 'timber' || inputs.roof_material === 'mixed')) lines.push(...ceilingMaterials(inputs, derived, config));
+  if (!inputs.ceiling && (inputs.roof_material === 'timber' || inputs.roof_material === 'mixed')) {
     const timberRules = (config.rules as any)?.roofing?.timber?.cedar_sarking as any;
     const cedarItemId = String(timberRules?.pricebook_item_id ?? 'roofing-timber_cedar_sarking_wrc_110cover_12mm_lm');
     const coverM = Number(timberRules?.cover_m ?? 0.11);

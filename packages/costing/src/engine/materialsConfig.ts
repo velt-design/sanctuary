@@ -1,4 +1,4 @@
-import materialsAdditionsJson from '../config/materials/sanctuary_materials_additions_v1_2026-01-08.json';
+import materialsAdditionsJson from '../config/materials/sanctuary_materials_additions_v2_2026-09-11.json';
 import materialsJson from '../config/materials/sanctuary_pricebook_materials_2025-11_exgst_v1.1.json';
 import powdercoatAdditionsJson from '../config/materials/sanctuary_powdercoat_additions_v1_2026-08-11.json';
 

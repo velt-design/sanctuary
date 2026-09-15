@@ -72,6 +72,7 @@ export const CALCULATOR_CONFIGURATION_SECTIONS = [
       'timberNoteRafters',
       'timberNotePurlins',
       'timberNoteEdgeRafters',
+      'ceilingOption',
       'timberRoofAboveType',
       'timberInsulatedPanelThicknessMm',
       'timberTrayWidthMm',

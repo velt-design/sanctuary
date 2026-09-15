@@ -1,0 +1,837 @@
+{
+  "meta": {
+    "version": "sanctuary_materials_additions_v1_2026-01-08",
+    "notes": [
+      "Placeholder file (empty): add or override pricebook items by id."
+    ]
+  },
+  "items": [
+    {
+      "id": "roofing-timber_cedar_sarking_wrc_110cover_12mm_lm",
+      "category": "roofing_timber",
+      "name": "Western Red Cedar sarking (110 cover) 12mm - per lineal metre",
+      "unit": "m",
+      "attributes": {
+        "type": "cedar_sarking",
+        "species": "Western Red Cedar",
+        "cover_mm": 110,
+        "thickness_mm": 12,
+        "unit_basis": "lineal_metre"
+      },
+      "notes": "ASSUMPTION: unit cost is placeholder until supplier confirms. Used for timber roof takeoff: lm = roof_area_m2 / 0.11 (+ waste).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 9.5,
+      "cost_inc_gst": 10.93
+    },
+    {
+      "id": "roof.insulated_panel_50mm_m2",
+      "category": "roofing_panel",
+      "name": "Insulated roof panel 50mm - per m\u00b2",
+      "unit": "m2",
+      "attributes": {
+        "type": "insulated_panel",
+        "thickness_mm": 50
+      },
+      "notes": "Placeholder SKU for timber roof above (insulated panels).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 120.0,
+      "cost_inc_gst": 138.0
+    },
+    {
+      "id": "roof.steel_corrugated_m2",
+      "category": "roofing_steel",
+      "name": "Steel corrugated roofing - per m\u00b2",
+      "unit": "m2",
+      "attributes": {
+        "type": "steel_corrugated"
+      },
+      "notes": "Placeholder SKU for timber roof above (steel corrugated).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 45.0,
+      "cost_inc_gst": 51.75
+    },
+    {
+      "id": "roof.steel_tray_m2",
+      "category": "roofing_steel",
+      "name": "Steel tray roofing - per m\u00b2",
+      "unit": "m2",
+      "attributes": {
+        "type": "steel_tray"
+      },
+      "notes": "Placeholder SKU for timber roof above (steel tray).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 65.0,
+      "cost_inc_gst": 74.75
+    },
+    {
+      "id": "underlay.covertek_407_m2",
+      "category": "underlay",
+      "name": "Covertek 407 underlay - per m\u00b2",
+      "unit": "m2",
+      "attributes": {
+        "type": "covertek_407"
+      },
+      "notes": "Placeholder SKU for timber roof above underlay.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 6.0,
+      "cost_inc_gst": 6.9
+    },
+    {
+      "id": "insulation.polystyrene_m2",
+      "category": "insulation",
+      "name": "Polystyrene insulation - per m\u00b2",
+      "unit": "m2",
+      "attributes": {
+        "type": "polystyrene"
+      },
+      "notes": "Placeholder SKU for timber roof above insulation.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 8.0,
+      "cost_inc_gst": 9.2
+    },
+    {
+      "id": "anchor.chem_m12_each",
+      "category": "fixing",
+      "name": "M12 chemical anchor (stud + nut/washer + resin allocation)",
+      "unit": "each",
+      "attributes": {
+        "type": "chemical_anchor",
+        "size": "M12"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 12.0,
+      "cost_inc_gst": 13.8
+    },
+    {
+      "id": "anchor.wedge_m12_each",
+      "category": "fixing",
+      "name": "M12 wedge anchor / dynabolt",
+      "unit": "each",
+      "attributes": {
+        "type": "wedge_anchor",
+        "size": "M12"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 6.0,
+      "cost_inc_gst": 6.9
+    },
+    {
+      "id": "fixing.coach_screw_m10_each",
+      "category": "fixing",
+      "name": "M10 coach screw (galv) for timber fixing",
+      "unit": "each",
+      "attributes": {
+        "type": "coach_screw",
+        "size": "M10"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 2.2,
+      "cost_inc_gst": 2.53
+    },
+    {
+      "id": "fixing.structural_screw_each",
+      "category": "fixing",
+      "name": "Structural screw (galv) for frame/rafter fixing",
+      "unit": "each",
+      "attributes": {
+        "type": "structural_screw"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 0.75,
+      "cost_inc_gst": 0.8625
+    },
+    {
+      "id": "fixing.joiner_screw_each",
+      "category": "fixing",
+      "name": "Joiner fixing screw (for acrylic joiner system)",
+      "unit": "each",
+      "attributes": {
+        "type": "joiner_screw"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 0.35,
+      "cost_inc_gst": 0.4025
+    },
+    {
+      "id": "fixing.purlin_screw_each",
+      "category": "fixing",
+      "name": "Purlin fixing screw",
+      "unit": "each",
+      "attributes": {
+        "type": "purlin_screw"
+      },
+      "notes": "Placeholder SKU for timber purlin fixings.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 0.45,
+      "cost_inc_gst": 0.5175
+    },
+    {
+      "id": "fixing.roofing_screw_each",
+      "category": "fixing",
+      "name": "Roofing screw",
+      "unit": "each",
+      "attributes": {
+        "type": "roofing_screw"
+      },
+      "notes": "Placeholder SKU for timber roof above fixings.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 0.45,
+      "cost_inc_gst": 0.5175
+    },
+    {
+      "id": "hardware.splice_join_bracket",
+      "category": "bracket",
+      "name": "Splice join bracket",
+      "unit": "each",
+      "attributes": {
+        "type": "splice_join_bracket"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 12.0,
+      "cost_inc_gst": 13.8
+    },
+    {
+      "id": "fixing.splice_join_screw_each",
+      "category": "fixing",
+      "name": "Splice join screw",
+      "unit": "each",
+      "attributes": {
+        "type": "splice_join_screw"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 0.5,
+      "cost_inc_gst": 0.575
+    },
+    {
+      "id": "hardware.deck_bracket_assembly",
+      "category": "bracket",
+      "name": "Post-to-deck bracket assembly (bracket + fixings allowance)",
+      "unit": "each",
+      "attributes": {
+        "type": "deck_bracket_assembly"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 95.0,
+      "cost_inc_gst": 109.25
+    },
+    {
+      "id": "hardware.slab_base_plate",
+      "category": "bracket",
+      "name": "Post-to-slab base plate / bracket (excluding anchors)",
+      "unit": "each",
+      "attributes": {
+        "type": "slab_base_plate"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 75.0,
+      "cost_inc_gst": 86.25
+    },
+    {
+      "id": "consumable.silicone_tube",
+      "category": "consumable",
+      "name": "Neutral cure silicone/sealant tube",
+      "unit": "each",
+      "attributes": {},
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 9.0,
+      "cost_inc_gst": 10.35
+    },
+    {
+      "id": "consumable.alcohol_wipes_pack",
+      "category": "consumable",
+      "name": "Cleaning wipes / alcohol wipes pack",
+      "unit": "each",
+      "attributes": {},
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 5.0,
+      "cost_inc_gst": 5.75
+    },
+    {
+      "id": "consumable.misc_allowance_job",
+      "category": "consumable",
+      "name": "Misc small consumables allowance (bits, blades, tape)",
+      "unit": "job",
+      "attributes": {},
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 35.0,
+      "cost_inc_gst": 40.25
+    },
+    {
+      "id": "aluminium-extrusion_box_gutter_100x100x3_6m_black",
+      "category": "aluminium_extrusion",
+      "name": "Box gutter 100x100x3 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Box Gutter 100x100x3",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": "Assumption: priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m"
+      },
+      "cost_ex_gst": 154.2,
+      "cost_inc_gst": 177.33
+    },
+    {
+      "id": "aluminium-extrusion_box_gutter_100x100x3_6m_white",
+      "category": "aluminium_extrusion",
+      "name": "Box gutter 100x100x3 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Box Gutter 100x100x3",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": "Assumption: priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m"
+      },
+      "cost_ex_gst": 154.2,
+      "cost_inc_gst": 177.33
+    },
+    {
+      "id": "aluminium-extrusion_box_gutter_100x100x3_6m_mill",
+      "category": "aluminium_extrusion",
+      "name": "Box gutter 100x100x3 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Box Gutter 100x100x3",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": "Assumption: priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m"
+      },
+      "cost_ex_gst": 142.2783,
+      "cost_inc_gst": 163.62
+    },
+    {
+      "id": "powdercoating_box_gutter_100x100x3_6m",
+      "category": "powdercoating",
+      "name": "Powdercoating for Box gutter 100x100x3 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Box Gutter 100x100x3",
+        "length_m": 6.0
+      },
+      "notes": "Assumption: powdercoating priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "Powdercoating for 100x100 6m"
+      },
+      "cost_ex_gst": 34.8,
+      "cost_inc_gst": 40.02
+    },
+    {
+      "id": "bracket_mid_support_rafters",
+      "category": "bracket",
+      "name": "Mid-support rafter bracket",
+      "unit": "each",
+      "attributes": {
+        "type": "mid_support_rafter_bracket"
+      },
+      "notes": "Assumption: priced same as soffit bracket.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 22.0,
+      "cost_inc_gst": 25.3
+    },
+    {
+      "id": "end_cap_overhang_support_beam",
+      "category": "hardware",
+      "name": "End cap - overhang support beam",
+      "unit": "each",
+      "attributes": {
+        "type": "end_cap_overhang_support_beam"
+      },
+      "notes": "Placeholder SKU (confirm supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 6.0,
+      "cost_inc_gst": 6.9
+    },
+    {
+      "id": "end_cap_overhang_stringer",
+      "category": "hardware",
+      "name": "End cap - overhang stringer",
+      "unit": "each",
+      "attributes": {
+        "type": "end_cap_overhang_stringer"
+      },
+      "notes": "Placeholder SKU (confirm supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 6.0,
+      "cost_inc_gst": 6.9
+    },
+    {
+      "id": "aluminium-extrusion_overhang_gutter_100x100_6m_black",
+      "category": "aluminium_extrusion",
+      "name": "Overhang gutter stock 100x100 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Overhang Gutter 100x100",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": "Assumption: priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m"
+      },
+      "cost_ex_gst": 154.2,
+      "cost_inc_gst": 177.33
+    },
+    {
+      "id": "aluminium-extrusion_overhang_gutter_100x100_6m_white",
+      "category": "aluminium_extrusion",
+      "name": "Overhang gutter stock 100x100 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Overhang Gutter 100x100",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": "Assumption: priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m"
+      },
+      "cost_ex_gst": 154.2,
+      "cost_inc_gst": 177.33
+    },
+    {
+      "id": "aluminium-extrusion_overhang_gutter_100x100_6m_mill",
+      "category": "aluminium_extrusion",
+      "name": "Overhang gutter stock 100x100 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Overhang Gutter 100x100",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": "Assumption: priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m"
+      },
+      "cost_ex_gst": 142.2783,
+      "cost_inc_gst": 163.62
+    },
+    {
+      "id": "aluminium-extrusion_steel_rhs_150x50x3_6m_black",
+      "category": "aluminium_extrusion",
+      "name": "Steel RHS 150x50x3 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": "User-specified steel RHS rate: $60/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 313.0435,
+      "cost_inc_gst": 360.0
+    },
+    {
+      "id": "aluminium-extrusion_steel_rhs_150x50x3_6m_white",
+      "category": "aluminium_extrusion",
+      "name": "Steel RHS 150x50x3 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": "User-specified steel RHS rate: $60/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 313.0435,
+      "cost_inc_gst": 360.0
+    },
+    {
+      "id": "aluminium-extrusion_steel_rhs_150x50x3_6m_mill",
+      "category": "aluminium_extrusion",
+      "name": "Steel RHS 150x50x3 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": "User-specified steel RHS rate: $60/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 313.0435,
+      "cost_inc_gst": 360.0
+    },
+    {
+      "id": "aluminium-extrusion_steel_rhs_150x50x3_8m_black",
+      "category": "aluminium_extrusion",
+      "name": "Steel RHS 150x50x3 8m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 8.0,
+        "colour": "Black"
+      },
+      "notes": "User-specified steel RHS rate: $60/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 417.3913,
+      "cost_inc_gst": 480.0
+    },
+    {
+      "id": "aluminium-extrusion_steel_rhs_150x50x3_8m_white",
+      "category": "aluminium_extrusion",
+      "name": "Steel RHS 150x50x3 8m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 8.0,
+        "colour": "White"
+      },
+      "notes": "User-specified steel RHS rate: $60/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 417.3913,
+      "cost_inc_gst": 480.0
+    },
+    {
+      "id": "aluminium-extrusion_steel_rhs_150x50x3_8m_mill",
+      "category": "aluminium_extrusion",
+      "name": "Steel RHS 150x50x3 8m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 8.0,
+        "colour": "Mill"
+      },
+      "notes": "User-specified steel RHS rate: $60/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 417.3913,
+      "cost_inc_gst": 480.0
+    },
+    {
+      "id": "powdercoating_steel_rhs_150x50x3_6m",
+      "category": "powdercoating",
+      "name": "Powdercoating for steel RHS 150x50x3 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 6.0
+      },
+      "notes": "User-specified powdercoating rate: $150/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 782.6087,
+      "cost_inc_gst": 900.0
+    },
+    {
+      "id": "powdercoating_steel_rhs_150x50x3_8m",
+      "category": "powdercoating",
+      "name": "Powdercoating for steel RHS 150x50x3 8m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 8.0
+      },
+      "notes": "User-specified powdercoating rate: $150/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 1043.4783,
+      "cost_inc_gst": 1200.0
+    },
+    {
+      "id": "hire.hiab_day",
+      "category": "hire",
+      "name": "Hiab hire - 1 day",
+      "unit": "day",
+      "attributes": {
+        "type": "hiab_hire"
+      },
+      "notes": "Applied once per module when steel beam profiles are used.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 695.6522,
+      "cost_inc_gst": 800.0
+    },
+    {
+      "id": "aluminium-extrusion_box_beam_250x50_6m_black",
+      "category": "aluminium_extrusion",
+      "name": "250x50 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "250x50",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": "User-specified 250x50 6m extrusion price.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "User request 2026-03-20"
+      },
+      "cost_ex_gst": 294.5455,
+      "cost_inc_gst": 324.0
+    },
+    {
+      "id": "aluminium-extrusion_box_beam_250x50_6m_white",
+      "category": "aluminium_extrusion",
+      "name": "250x50 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "250x50",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": "User-specified 250x50 6m extrusion price.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "User request 2026-03-20"
+      },
+      "cost_ex_gst": 294.5455,
+      "cost_inc_gst": 324.0
+    },
+    {
+      "id": "aluminium-extrusion_box_beam_250x50_6m_mill",
+      "category": "aluminium_extrusion",
+      "name": "250x50 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "250x50",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": "Assumption: use the same user-specified 250x50 6m bar price for Mill until split finish pricing is confirmed.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "User request 2026-03-20"
+      },
+      "cost_ex_gst": 294.5455,
+      "cost_inc_gst": 324.0
+    },
+    {
+      "id": "powdercoating_box_beam_250x50_6m",
+      "category": "powdercoating",
+      "name": "Powdercoating for 250x50 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "250x50",
+        "length_m": 6.0
+      },
+      "notes": "Assumption: user requested a 250x50 powdercoat rate between 200x50 and 300x50; active pricebook has no 200x50 powdercoat row, so this uses a midpoint placeholder.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "User request 2026-03-20"
+      },
+      "cost_ex_gst": 48.0818,
+      "cost_inc_gst": 52.89
+    },
+    {
+      "id": "ceiling.thermopine-100_lm",
+      "category": "roofing_timber",
+      "name": "ThermoPine ceiling 100mm cover, 11\u201312mm finished",
+      "unit": "m",
+      "cost_ex_gst": 9.8,
+      "attributes": {
+        "cover_mm": 100,
+        "thickness_mm": 12,
+        "type": "ceiling"
+      },
+      "notes": "JSC supplier sheet. Owner assumes ex GST and effective cover. Selected length surcharge added separately.",
+      "source": {
+        "method": "owner_supplier_sheet",
+        "needs_confirmation": false
+      }
+    },
+    {
+      "id": "ceiling.thermopine-150_lm",
+      "category": "roofing_timber",
+      "name": "ThermoPine ceiling 150mm cover, 11\u201312mm finished",
+      "unit": "m",
+      "cost_ex_gst": 14.8,
+      "attributes": {
+        "cover_mm": 150,
+        "thickness_mm": 12,
+        "type": "ceiling"
+      },
+      "notes": "JSC supplier sheet. Owner assumes ex GST and effective cover. Selected length surcharge added separately.",
+      "source": {
+        "method": "owner_supplier_sheet",
+        "needs_confirmation": false
+      }
+    },
+    {
+      "id": "ceiling.cedar-100_lm",
+      "category": "roofing_timber",
+      "name": "Cedar ceiling 100mm cover, 11\u201312mm finished",
+      "unit": "m",
+      "cost_ex_gst": 13.4,
+      "attributes": {
+        "cover_mm": 100,
+        "thickness_mm": 12,
+        "type": "ceiling"
+      },
+      "notes": "JSC supplier sheet. Owner assumes ex GST and effective cover. Selected length surcharge added separately.",
+      "source": {
+        "method": "owner_supplier_sheet",
+        "needs_confirmation": false
+      }
+    },
+    {
+      "id": "ceiling.cedar-150_lm",
+      "category": "roofing_timber",
+      "name": "Cedar ceiling 150mm cover, 11\u201312mm finished",
+      "unit": "m",
+      "cost_ex_gst": 20.5,
+      "attributes": {
+        "cover_mm": 150,
+        "thickness_mm": 12,
+        "type": "ceiling"
+      },
+      "notes": "JSC supplier sheet. Owner assumes ex GST and effective cover. Selected length surcharge added separately.",
+      "source": {
+        "method": "owner_supplier_sheet",
+        "needs_confirmation": false
+      }
+    },
+    {
+      "id": "ceiling.coating_m2",
+      "category": "roofing_timber",
+      "name": "Factory ceiling coating allowance",
+      "unit": "m2",
+      "cost_ex_gst": 20,
+      "notes": "Owner-approved provisional allowance; refine against invoices.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      }
+    },
+    {
+      "id": "ceiling.fixings_m2",
+      "category": "roofing_timber",
+      "name": "Ceiling fixings and consumables allowance",
+      "unit": "m2",
+      "cost_ex_gst": 3,
+      "notes": "Owner-approved provisional allowance; refine against invoices.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      }
+    }
+  ]
+}

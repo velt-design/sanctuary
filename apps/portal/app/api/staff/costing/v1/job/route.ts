@@ -1,4 +1,5 @@
 import { getPortalSession } from '@/lib/auth';
+import { parseRequestCeiling } from '@/lib/costing/requestCeiling';
 import { resolvePublishedCostingConfiguration } from '@/lib/costing/configurationResolver';
 import { calculateSiteCostV1 } from '@sp/costing';
 import type { CostInputsV1, ExtrusionColour, PergolaInputsV1, SiteInputsV1 } from '@sp/costing';
@@ -275,6 +276,8 @@ function parseAdditionalAluminium(
 }
 
 function parseModule(raw: any): CostInputsV1 | { error: string } {
+  const ceiling = parseRequestCeiling(raw.ceiling, raw.roof_material);
+  if ('error' in ceiling) return ceiling;
   const length_m = toNumber(raw.length_m);
   const roof_span_m_raw = raw.roof_span_m;
   const projection_m_raw = raw.projection_m;
@@ -564,6 +567,7 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
 
     roof_material: raw.roof_material,
     extrusion_colour: raw.extrusion_colour,
+    ...ceiling,
     timber_roof_above_type: raw.timber_roof_above_type,
     timber_insulated_panel_thickness_mm:
       raw.timber_insulated_panel_thickness_mm !== undefined ? toNumber(raw.timber_insulated_panel_thickness_mm) : undefined,
