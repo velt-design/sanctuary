@@ -23,7 +23,7 @@ begin
   set constraints all immediate;
   if exists(select 1 from private.xero_invoice_transfers) then raise exception 'disabled producer queued'; end if;
   update private.xero_invoice_transfer_control set enabled=true,auto_approve_enabled=true,tenant_id=v_identity,
-    account_code='200',tax_type='OUTPUT2',mapping_verified_at=now();
+    account_code='200',tax_type='OUTPUT2',effective_tax_rate=15,mapping_verified_at=now();
   insert into private.xero_customer_mappings(tenant_id,portal_contact_id,xero_contact_id,verified_at,verified_by)
     values(v_identity,v_identity,v_identity,now(),v_identity);
   -- Historical issued invoice remains untouched. Only new issuance gets a job.
