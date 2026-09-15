@@ -1,5 +1,7 @@
 # Supabase Schema Map
 
+Automatic payments (20260915000006): adds disabled-by-default `auto_record_payments_enabled` and an immutable `recording_method` on Xero matches. Automatic invoice-payment records have no human approver; ledger/audit attribution is `xero-automatic`. The service-only recorder retains the receipt/project locks, bound invoice/contact, current balance and replay checks, and refuses reversed or finance-flagged receipts. Manual wrappers still require a finance grant. History labels automatic records explicitly. This migration is not yet installed in shared environments.
+
 Automatic invoice approval (20260915000005): adds private transfer-control auto_approve_enabled, default false for staged rollout. The actor/lease-checked context selects AUTHORISED for new requests when enabled and preserves the saved status for existing frozen requests. Prepare requires that exact status; immutable bytes, duplicate checks and grants remain unchanged. Activation and verification are tracked in xero-connection.md.
 
 Status: Current.

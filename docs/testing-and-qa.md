@@ -1,5 +1,7 @@
 # Testing And QA
 
+Automatic payment recording: `node scripts/test-xero-automatic-payments.mjs` runs a disposable PGlite contract against the actual commercial command owners and migration06. It covers the rollout gate, partial/full settlement, customer won, replay, stale balances, machine attribution, finance decisions and manual-access denial. Background Jobs CI runs it. It does not prove concurrent PostgreSQL sessions, provider orchestration, scheduled delivery or production behavior.
+
 Automatic invoice approval: the Xero database harness applies `20260915000005_xero_automatic_approval.sql` and runs `supabase/tests/xero_automatic_approval.sql` for approved request freezing, lease/dispatch/finalisation, replay and preservation after the rollout switch changes. Transfer unit cases verify approved creation and refusal to accept a draft as the completed approved result. These checks do not prove a hosted Xero write; demo verification and production activation remain separate.
 
 Finance view regression: `supabase/tests/xero_finance_views.sql`, run by the existing background-jobs database harness, checks 55 historical payment exceptions plus60 ordinary historical invoices, filtering before pagination, legacy reader parity, revoked access and browser denial. Focused page/repository tests distinguish an empty queue from an unavailable read. Hosted migration and responsive browser evidence remain separate.

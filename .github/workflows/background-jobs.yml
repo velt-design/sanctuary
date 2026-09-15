@@ -24,6 +24,7 @@ on:
       - "scripts/xero-finance-db-contract.mjs"
       - "scripts/xero-payment-db-fixture.mjs"
       - "scripts/test-xero-payment-concurrency.mjs"
+      - "scripts/test-xero-automatic-payments.mjs"
       - "test/xero-*.test.ts"
       - "supabase/migrations/*background_job*.sql"
       - "supabase/migrations/*ai_synthetic*.sql"
@@ -62,6 +63,7 @@ on:
       - "scripts/xero-finance-db-contract.mjs"
       - "scripts/xero-payment-db-fixture.mjs"
       - "scripts/test-xero-payment-concurrency.mjs"
+      - "scripts/test-xero-automatic-payments.mjs"
       - "test/xero-*.test.ts"
       - "supabase/migrations/*background_job*.sql"
       - "supabase/migrations/*ai_synthetic*.sql"
@@ -96,6 +98,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Automatic payment database contracts
+        run: node scripts/test-xero-automatic-payments.mjs
 
       - name: Jobs package typecheck
         run: npx tsc -p packages/jobs/tsconfig.typecheck.json --noEmit --incremental false
