@@ -1,5 +1,9 @@
 # Decision Log
 
+## 2026-09-16 - Report outcomes and batch release verification
+
+Status: Promoted. Jordan requested a standard operating practice after repetitive waiting updates and successive release-check cycles. Use small implementation steps, review a coherent batch before expensive checks, observe existing runs without duplicate restarts, and report outcomes, material problems, or owner decisions. Required verification remains mandatory and invalidated evidence must be refreshed. Promoted to `agent-playbook.md#owner-updates-and-release-batches`, routed from `AGENTS.md`; cross-project preferences also live in the owner's shared local agent instructions.
+
 ## 2026-09-16 - Preserve owner decisions across task handovers
 
 Jordan requested that decisions from Assess Velt OS direction be retained in repository docs. Reconcile the existing owner-outcomes section with later explicit choices, and replace the stale draft/manual finance planning section reached by Velt's existing link. Keep accepted direction, deployed evidence, superseded decisions and unaccepted recommendations distinct. Do not turn goal-scoped approvals into standing permissions or copy customer amounts, correspondence or credentials into general context. Owners: `ai/00-vision.md`, `xero-connection.md`.
