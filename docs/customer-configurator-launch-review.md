@@ -27,9 +27,13 @@ with zero provider effects. Evidence: `sanctuary-v28-intake-check.json`,
 `sanctuary-v28-staff-receipt.json`, `sanctuary-v28-staff-revision.json` in the task
 temporary directory. No customer/provider delivery was attempted.
 
-The focused database migration guard passes 26 tests. The full disposable PGMQ
-suite could not start because Docker's Linux engine is unavailable; the new SQL
-regression ran successfully against staging inside a rolled-back transaction.
+The focused database migration guard passes 26 tests. Docker's Linux engine is
+unavailable locally; the SQL regression passed in a staging rollback transaction.
+Fresh hosted database contracts exposed duplicate contact prerequisites between
+the enquiry and finance test suites. The finance bootstrap now preserves an
+existing compatible contact table/column. All four Background Jobs jobs pass at
+`4aed856`, including PostgreSQL 17 and 18, worker runtime and provider contracts:
+https://github.com/velt-design/sanctuary/actions/runs/34943919707.
 
 | Requirement | Evidence | Status |
 | --- | --- | --- |
@@ -68,11 +72,33 @@ regression ran successfully against staging inside a rolled-back transaction.
 - Hosted validation recovery and edit return pass. Network-failure recovery is
   covered by controller tests; hosted intake/retry are separately verified above.
 - Real-phone touch, keyboard and assistive-technology verification remains open.
+- Portal Quality/performance run is still active at the unchanged application
+  source `5bde079`: https://github.com/velt-design/sanctuary/actions/runs/34943618230.
+  Its configurator/enquiry journey job has passed. The later `4aed856` change is
+  only the disposable finance bootstrap covered by the separate passing run.
 - Check release build, hosted CI, production migration/configuration differences,
   worker readiness and rollback before presenting a production activation decision.
   Local webpack and both normal hosted builds are verified at `a403953`.
   Local logs are `sanctuary-launch-review-build.txt` and
   `sanctuary-launch-review-webpack.txt` in the task's temporary directory.
+
+## Production activation prerequisites
+
+Read-only production inspection on 15 September found the seven queue foundation
+migrations already installed and one worker with a recent `ready` heartbeat.
+This supersedes the earlier manifest's assumption that the queue is absent; it
+does not prove the website-enquiry handler is configured or safe to activate.
+The following five migrations are absent and need the controlled release process:
+`20260914062001`, `20260914062002`, `20260914062003`, `20260914173001`,
+`20260915080001`. No production schema or settings were changed by this audit.
+
+Before launch, reconcile PR #132 with this isolated release branch, finish its
+release gates, approve the exact production pricing version and matching app
+bindings, and verify enquiry-specific worker health, receipt monitoring and
+shutdown behaviour. Rollback must disable the new enquiry entry/producer and
+pause claims without deleting frozen enquiries, estimates, drafts or effect
+checkpoints. Do not switch failed durable enquiries into automatic legacy sends.
+The actual deployment-owner procedure and real-device review remain launch gates.
 
 ## Earlier release evidence and limits
 
