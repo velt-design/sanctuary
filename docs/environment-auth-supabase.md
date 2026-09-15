@@ -135,6 +135,10 @@ Without `--password`, Supabase sends an invite email. With `--password`, the use
 
 ## Supabase Setup
 
+Schedule optional-payload correction: `20260916000001_schedule_optional_command_payloads.sql` replaces the existing guarded-command wrapper without row backfills or permission expansion. Deployment must use exact-file rollback rehearsal and application, then verify its body, unchanged grants and assignment/completion behavior. A schema-presence readiness check alone does not exercise serialized optional arguments. Deployment evidence is recorded in the associated PR; do not infer an environment apply from this source file.
+
+On 2026-09-16 this exact correction was rehearsed and applied to staging `tnsiprehuldksnuowubv` and production `iytanftukulcnavossmd`. SHA-256 `8b00ca2b6ba34ebed1fe9c743b4a500657bfb9ff729a0969a495d2fea03dd5ae`; ledger-body MD5 `14949f4cbc313e8ad876281928a3af07`. Both deployed wrapper definitions hash to `ff16bbb41eccd81232a21cee75c4ba7c`; browser execution remains denied and service execution allowed. Production backup `1678664868` was completed before apply. The transaction verified all existing Schedule operational rows unchanged. Real staging drag into empty/populated lanes, reload, second-session read, cross-crew move and ordinary completion passed; all scoped synthetic records were removed. PR #137 retains the evidence and the separate staging calculator CI blocker.
+
 Apply ordered migrations in `supabase/migrations/` for current portal behavior. Legacy baseline SQL files in `supabase/` are snapshots and should not be treated as the preferred migration path.
 
 Use `docs/supabase-schema-map.md` to confirm table/RPC ownership, write paths, access boundaries, and migration sources before schema-affecting changes.

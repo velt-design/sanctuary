@@ -206,6 +206,8 @@ Migration source:
 
 ## Schedule, Site Visits, And Running Jobs
 
+`20260916000001_schedule_optional_command_payloads.sql` corrects optional JSON null conversion at `schedule_v2_guarded_command`; it replaces only the wrapper body, preserves its signature and service-role-only grant, and changes no stored Schedule rows. Apply this exact forward file after the September guarded-command migrations. See `docs/schedule.md` for the incident and executable payload contract.
+
 Owner docs: `docs/schedule.md` and `docs/running-jobs.md`.
 
 Tables/RPCs:

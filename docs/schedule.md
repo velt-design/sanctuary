@@ -40,6 +40,8 @@ The release also requires `20260908000002_schedule_browser_write_boundary.sql`. 
 
 Schedule mutations go through staff API routes and the service-role-only `schedule_v2_guarded_command` wrapper around the existing Schedule V2 RPC commands. The API captures each involved crew revision before reading calculation rows; the wrapper locks those crews in ID order, checks their revisions, and rejects a stale or out-of-scope write atomically with HTTP 409. Row triggers increment crew revisions for job, queue and downtime writes; crew planning settings and calendar changes also invalidate earlier calculations. The guarded command retains an authored `queue_anchor_date`, clears it when a queue becomes empty, and keeps leading/downtime-only queues stable across refreshes. New assignments are never backdated into an old empty queue. Cross-crew moves guard both crews. Important command areas include:
 
+The forward correction `20260916000001_schedule_optional_command_payloads.sql` preserves SQL NULL for JSON-null optional `p_move` and `p_finish_early` arguments inside the guarded wrapper. Without it, a first assignment fails with `p_move must be an object`, and ordinary completion can fail similarly. The database contract sends serialized null and omitted payloads through the wrapper for empty/populated lanes, existing-job repair, cross-crew moves and completion, including non-null finish-early buffers and malformed-payload rejection. It retains revision checks and browser write denial; no UI or business-date rule changes.
+
 - Assign/unassign jobs.
 - Reorder queue.
 - Pin/unpin and reschedule.
