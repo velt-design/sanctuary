@@ -55,3 +55,19 @@ it('retries a failed enquiry with the same submission identity and current desig
   expect(host.textContent).toContain('Your enquiry has been sent.');
   expect(sessionStorage.getItem('sanctuary-enquiry-contact-v1')).toBeNull();
 });
+
+it('identifies an earlier receipt after a lost response and edited retry without claiming the new design was sent',async()=>{
+  network.mockRejectedValueOnce(new Error('Connection lost'))
+    .mockResolvedValueOnce({ok:true,status:200,json:async()=>({ok:true,idempotentReplay:true})});
+  await render(); await fill(); await submit();
+  await render(5200); await submit();
+  const bodies = network.mock.calls.map(call=>JSON.parse(call[1].body));
+  expect(bodies[0].submissionId).toBe(bodies[1].submissionId);
+  expect(bodies[0].customerDesign.input.widthMm).toBe(6000);
+  expect(bodies[1].customerDesign.input.widthMm).toBe(5200);
+  expect(host.textContent).toContain('Your earlier enquiry was received.');
+  expect(host.textContent).toContain('Changes made after your first send attempt are not included');
+  expect(host.textContent).not.toContain('Your design is shown here for reference.');
+  expect(host.querySelector('[role=status]')).toBe(document.activeElement);
+  expect(sessionStorage.getItem('sanctuary-enquiry-contact-v1')).toContain('Fixture Customer');
+});

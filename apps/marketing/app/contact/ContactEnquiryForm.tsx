@@ -132,6 +132,7 @@ export default function ContactEnquiryForm({
   const [fieldErrors, setFieldErrors] = useState<ContactFieldErrors>({});
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [receivedEarlier, setReceivedEarlier] = useState(false);
   const submissionIdRef = useRef<string | null>(null);
   const submittingRef = useRef(false);
   const attachmentErrorRef = useRef<string | null>(null);
@@ -469,6 +470,7 @@ export default function ContactEnquiryForm({
       }
 
       submissionIdRef.current = null;
+      setReceivedEarlier(responsePayload.idempotentReplay === true);
       setSubmitState('success');
       trackSubmitEvent('success', selectedRoofs, selectedAddOns, undefined, submissionId);
     } catch (error) {
@@ -483,7 +485,7 @@ export default function ContactEnquiryForm({
     }
   };
 
-  if(compactConfigured && configuredDesign)return <ConfiguredEnquiryFields onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError}/>;
+  if(compactConfigured && configuredDesign)return <ConfiguredEnquiryFields onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
 
   const messageLabel = pathway === 'commercial-professional'
     ? 'Project scope'
@@ -746,7 +748,7 @@ export default function ContactEnquiryForm({
 
           {submitState === 'error' && submitError ? (
             <div className="contact-form__submit-error" ref={submitErrorRef} role="alert" tabIndex={-1}>
-              <h3>Your enquiry was not sent.</h3>
+              <h3>We could not confirm your enquiry.</h3>
               <p>{submitError}</p>
               <p>Your details are still here. Please try again.</p>
             </div>
@@ -755,7 +757,8 @@ export default function ContactEnquiryForm({
           {submitState === 'success' ? (
             <section className="contact-success" ref={successRef} role="status" aria-live="polite" tabIndex={-1}>
               <p className="contact-eyebrow">Sent</p>
-              <h2>{pathway === 'simple' || pathway === 'configured' ? 'Request received.' : 'Project brief sent.'}</h2>
+              <h2>{receivedEarlier ? 'Your earlier enquiry was received.' : pathway === 'simple' || pathway === 'configured' ? 'Request received.' : 'Project brief sent.'}</h2>
+              {receivedEarlier && <p>Changes made after your first send attempt are not included. You can discuss any changes with us when we contact you.</p>}
               <p>
                 {pathway === 'simple' || pathway === 'configured'
                   ? 'We’ll review your design and site details, then contact you to arrange the next step. We typically respond within the working day. Your visit is not booked yet.'
