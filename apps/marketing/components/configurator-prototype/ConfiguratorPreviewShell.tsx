@@ -1,37 +1,13 @@
 'use client';
-
-import { useEffect, useRef, useState } from 'react';
-
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import ConfiguratorPrototype from './ConfiguratorPrototype';
-import { usePreviewExpansion } from './usePreviewExpansion';
+import ConfiguratorDialog from './ConfiguratorDialog';
 import styles from './previewShell.module.css';
 
-
 export default function ConfiguratorPreviewShell({ initiallyOpen = false }: { initiallyOpen?: boolean }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [opened, setOpened] = useState(false);
-  const [visited, setVisited] = useState(initiallyOpen);
-
-  const { expanded, toggleExpanded, collapse } = usePreviewExpansion();
-
-  useEffect(() => {
-    if (initiallyOpen) { dialog.current?.showModal(); setOpened(true); setVisited(true); }
-  }, [initiallyOpen]);
-
-  // One scroll-lock owner for both normal and expanded inspection.
-  useEffect(() => {
-    if (!opened) return;
-    const roots = [document.documentElement, document.body];
-    const previous = roots.map(root => ({ overflow: root.style.overflow, overscrollBehavior: root.style.overscrollBehavior }));
-    roots.forEach(root => { root.style.overflow = 'hidden'; root.style.overscrollBehavior = 'none'; });
-    return () => roots.forEach((root, index) => {
-      root.style.overflow = previous[index].overflow;
-      root.style.overscrollBehavior = previous[index].overscrollBehavior;
-    });
-  }, [opened]);
-
-  const open = () => { setVisited(true); dialog.current?.showModal(); setOpened(true); };
+  const [opened, setOpened] = useState(initiallyOpen);
+  useEffect(() => { if (initiallyOpen) setOpened(true); }, [initiallyOpen]);
+  const open = () => setOpened(true);
   return <div className={styles.page}>
     <header className={styles.intro}>
       <p className={styles.eyebrow}>YOUR PERGOLA / DESIGN PREVIEW</p>
@@ -44,11 +20,6 @@ export default function ConfiguratorPreviewShell({ initiallyOpen = false }: { in
       <span>Find your proportions. Choose your roof. See it take shape.</span>
       <Link className={styles.projectLink} href="/contact?configurator=preview" prefetch={false}>Start your project ↗</Link>
     </section>
-    <dialog ref={dialog} className={styles.panel} aria-label="Design your pergola" data-expanded={expanded}
-      onCancel={event => { if (expanded) { event.preventDefault(); collapse(); } }}
-      onClose={() => { setOpened(false); collapse(); }}>
-      <div className={styles.panelHeader}><span>Your pergola.</span><button type="button" onClick={() => dialog.current?.close()} aria-label="Close configurator">Close <span aria-hidden="true">×</span></button></div>
-      {visited && <ConfiguratorPrototype expanded={expanded} onToggleExpanded={toggleExpanded} />}
-    </dialog>
+    <ConfiguratorDialog open={opened} onClose={() => setOpened(false)} />
   </div>;
 }

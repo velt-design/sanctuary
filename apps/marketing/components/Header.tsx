@@ -42,10 +42,7 @@ const MENU_FOCUSABLE_SELECTOR = [
   'a[href]:not([tabindex="-1"])',
   'button:not([disabled]):not([tabindex="-1"])',
 ].join(',');
-import { useDesignContinuation } from './configurator-prototype/useDesignContinuation';
-
 export default function Header() {
-  const { started: hasDesign } = useDesignContinuation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [heroHeaderScrolled, setHeroHeaderScrolled] = useState(false);
@@ -411,15 +408,15 @@ export default function Header() {
           <div className="header-actions">
             {showDesktopCta && (currentPath !== '/' || heroHeaderScrolled) ? (
               <Link
-                href={hasDesign ? "/configurator-preview?open=1&resume=1" : headerEnquiryHref}
+                href={headerEnquiryHref}
                 className="nav-cta"
-                data-homepage-event={hasDesign ? undefined : "header_estimate_click"}
+                data-homepage-event="header_estimate_click"
                 data-enquiry-type={headerEnquiryType}
                 data-professional-path={projectFinderContext?.projectProfessionalPath}
                 data-project-direction={projectFinderContext?.projectDirection}
                 data-project-priorities={projectFinderContext?.projectPriorities?.join(',')}
               >
-                <span className="nav-cta__label">{hasDesign ? "Continue designing" : "Start your project"}</span>
+                <span className="nav-cta__label">Start your project</span>
               </Link>
             ) : null}
             <button
@@ -479,16 +476,16 @@ export default function Header() {
                 ))}
                 <li>
                   <Link
-                    href={hasDesign ? "/configurator-preview?open=1&resume=1" : headerEnquiryHref}
+                    href={headerEnquiryHref}
                     className="mobile-menu__link mobile-menu__link--estimate"
-                    data-homepage-event={hasDesign ? undefined : "header_estimate_click"}
+                    data-homepage-event="header_estimate_click"
                     data-enquiry-type={headerEnquiryType}
                     data-professional-path={projectFinderContext?.projectProfessionalPath}
                     data-project-direction={projectFinderContext?.projectDirection}
                     data-project-priorities={projectFinderContext?.projectPriorities?.join(',')}
                     onClick={handleMobileNavigation}
                   >
-                    {hasDesign ? "Continue designing" : "Start your project"}
+                    Start your project
                   </Link>
                 </li>
               </ul>

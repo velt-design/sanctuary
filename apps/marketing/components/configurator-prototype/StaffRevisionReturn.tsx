@@ -2,6 +2,7 @@
 import {useEffect, useState} from 'react';
 import Link from 'next/link';
 import type {PreviewDraft} from './previewDraft';
+import { designEnquiryHref } from './configuratorOverlay';
 
 export function staffRevisionReturnUrl(currentUrl: string, draft: PreviewDraft, development: boolean, configuredOrigin?: string): string | null {
   const current = new URL(currentUrl), project = current.searchParams.get('staff_project'), source = current.searchParams.get('staff_source');
@@ -29,8 +30,9 @@ export function staffRevisionReturnUrl(currentUrl: string, draft: PreviewDraft, 
 
 export default function StaffRevisionReturn({draft}: {draft: PreviewDraft}) {
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
-  useEffect(() => setCurrentUrl(window.location.href), []);
+  const [enquiryHref, setEnquiryHref] = useState('/design-enquiry');
+  useEffect(() => { setCurrentUrl(window.location.href); setEnquiryHref(designEnquiryHref()); }, []);
   const href = currentUrl ? staffRevisionReturnUrl(currentUrl, draft, process.env.NODE_ENV !== 'production', process.env.NEXT_PUBLIC_STAFF_PORTAL_ORIGIN) : null;
   return href ? <a href={href}>Review revision in portal ↗</a>
-    : <Link href="/design-enquiry" prefetch={false}>Enquire about this design ↗</Link>;
+    : <Link href={enquiryHref} prefetch={false}>Enquire about this design ↗</Link>;
 }

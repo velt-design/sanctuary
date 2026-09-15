@@ -5456,3 +5456,30 @@ At 390 x 844 the glass bar remained readable, dismissal removed it and the mobil
 menu retained Continue designing. Focused visibility/dismissal, legacy-draft,
 header and quote-handoff tests pass (21 tests); marketing typecheck and changed
 architecture checks pass. No form was submitted and no email was sent.
+
+### Pathway correction after owner review (2026-09-15)
+
+This supersedes the bar's original navigation destination and header replacement.
+The header remains Start your project and always retains the normal contact path.
+Prior cover context on an ordinary contact entry selects assisted enquiry instead
+of forcing a designer. Bespoke and business pathways remain independent.
+
+SiteConfigurator opens the shared ConfiguratorDialog over the existing page for
+ordinary same-tab design links and the homepage project-finder design action.
+Closing preserves that page and its scroll position. Modified/new-tab clicks,
+shared hashes and staff revision links retain their explicit navigation behavior.
+The standalone preview uses the same dialog owner. A route change releases the
+overlay so the next entry restores the latest session draft and rail section.
+
+The historical direct /contact?configurator=preview entry retains its embedded
+working designer but now uses PreviewNextAction and the dedicated design-enquiry
+page, not its old embedded submission form. Edit my design opens an overlay above
+the enquiry page, preserving entered form values. Governed source attribution is
+carried from design entry into that enquiry. Staff return URL validation and
+save-to-quote contracts are unchanged.
+
+Verified: products URL and scrollY=1080 identical before/after opening and closing;
+contact designer Review links to the dedicated Name/Suburb/Email form; enquiry
+Edit my design keeps the enquiry URL. Focused contact/header/entry/overlay/quote
+checks pass (47 tests), marketing typecheck and architecture checks pass. No
+submission, email, production activation or price publication was performed.

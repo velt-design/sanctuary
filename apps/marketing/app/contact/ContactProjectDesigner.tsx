@@ -1,14 +1,11 @@
 'use client';
-
 import { useEffect } from 'react';
-import Link from 'next/link';
 import ConfiguratorPrototype from '@/components/configurator-prototype/ConfiguratorPrototype';
 import { usePreviewExpansion } from '@/components/configurator-prototype/usePreviewExpansion';
-import ContactEnquiryForm, { type ContactEnquiryFormProps } from './ContactEnquiryForm';
-import { buildContactDesignBrief } from './contactDesignBrief';
+import type { ContactEnquiryFormProps } from './ContactEnquiryForm';
 import styles from './projectDesigner.module.css';
 
-export default function ContactProjectDesigner(props: ContactEnquiryFormProps) {
+export default function ContactProjectDesigner(_props: ContactEnquiryFormProps) {
   const { expanded, toggleExpanded, collapse } = usePreviewExpansion();
   useEffect(() => {
     if (!expanded) return;
@@ -19,21 +16,11 @@ export default function ContactProjectDesigner(props: ContactEnquiryFormProps) {
   return <main className={`contact-page ${styles.page}`} data-contact-page data-project-preview>
     <div className={styles.frame}>
       <header className={styles.header}>
-        <h1>Start your project.</h1>
-        <nav aria-label="Project steps"><a href="#project-design">Design</a><a href="#contact-form">Project details ↓</a></nav>
+        <h1>Your pergola.</h1>
+        <a href="/contact?enquiry_intent=bespoke#contact-form">Need a bespoke design?</a>
       </header>
-      <ConfiguratorPrototype expanded={expanded} onToggleExpanded={toggleExpanded} renderEnquiry={selection => <>
-        <div className={styles.continue}>
-          <a className="contact-action contact-action--primary" href="#contact-form">Continue to project details ↓</a>
-          <p>Keep your design in view while you tell us about the site.</p>
-        </div>
-        <div className={styles.enquiry}>
-          <ContactEnquiryForm {...props} configuredDesign={buildContactDesignBrief(selection)} />
-          <p className={styles.other}><Link href="/configurator-preview?open=1" prefetch={false}>Back to exploring ↗</Link> — your design comes with you.</p>
-          <p className={styles.other}>Planning something different? <a href="/contact">Send a custom or business brief ↗</a></p>
-        </div>
-      </>} />
+      <ConfiguratorPrototype expanded={expanded} onToggleExpanded={toggleExpanded} resume />
     </div>
-    <noscript><a href="/contact">Open the project enquiry form</a></noscript>
+    <noscript><a href="/contact?enquiry_intent=bespoke">Open the project enquiry form</a></noscript>
   </main>;
 }

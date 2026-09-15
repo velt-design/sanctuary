@@ -15,9 +15,10 @@ import {getRoofFinish} from '../../components/configurator-prototype/roofFinish'
 import ContactEnquiryForm from '../contact/ContactEnquiryForm';
 import {buildContactDesignBrief} from '../contact/contactDesignBrief';
 import css from './enquiry.module.css';
+import type { EnquiryContext } from '../../lib/enquiryContext';
 const Scene=dynamic(()=>import('../../components/configurator-prototype/PreviewScene'),{ssr:false});
 const noop=()=>{};
-export default function DesignEnquiry(){
+export default function DesignEnquiry({initialContext={}}:{initialContext?:EnquiryContext}){
  const draft=usePreviewDraft();
  const {input,roof,ready}=draft;
  const {price,retry}=useConfiguratorPrice({version:1,input,roof},ready);
@@ -42,6 +43,6 @@ export default function DesignEnquiry(){
  {price?.status==='priced'?<><h2>Price breakdown</h2><dl className={css.specs}>{customerPriceBreakdown(price.breakdown,!!roof.infills||!!roof.blinds?.some(blind=>blind.infill)).map((line,index)=><div key={index}><dt>{line.label}</dt><dd>{reviewMoney(line.amountIncGst)}</dd></div>)}</dl></>:<button onClick={retry}>Retry estimate</button>}
  <p className={css.note}>Subject to site confirmation. Foundations, unusual access or fixings, new electrical supply and travel are assessed separately.</p>
  </details></section>
- <ContactEnquiryForm initialEnquiryType="residential" initialContext={{}} configuredDesign={brief} compactConfigured/>
+ <ContactEnquiryForm initialEnquiryType="residential" initialContext={initialContext} configuredDesign={brief} compactConfigured/>
  </div></main>;
 }

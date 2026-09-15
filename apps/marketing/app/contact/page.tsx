@@ -37,7 +37,9 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
   const initialEnquiryType = getEnquiryTypeFromRouteValue(
     enquiryContext.enquiryType,
   );
-  const initialIntent = params.enquiry_intent === 'help' || params.enquiry_intent === 'bespoke' ? params.enquiry_intent : undefined;
+  const explicitIntent = params.enquiry_intent === 'help' || params.enquiry_intent === 'bespoke' ? params.enquiry_intent : undefined;
+  // A normal contact link must remain an enquiry entry, even after browsing a cover.
+  const initialIntent = explicitIntent ?? (params.configurator !== 'preview' && getInitialContactPathway(initialEnquiryType, enquiryContext) === 'simple' ? 'help' : undefined);
   const sourceProject = projects.find(
     (project) => project.slug === enquiryContext.sourceProject,
   );

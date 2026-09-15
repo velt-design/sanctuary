@@ -1,4 +1,5 @@
 'use client';
+import { openConfigurator } from '../../components/configurator-prototype/configuratorOverlay';
 
 import Image from 'next/image';
 import {
@@ -306,7 +307,7 @@ export default function ProjectFinder({
         source_component: 'project_finder',
         step_number: 1,
       });
-      window.location.assign(buildHomeConfiguratorHref(state.priorities));
+      openConfigurator(buildHomeConfiguratorHref(state.priorities));
       return;
     }
     chooseDirection(direction, event.detail === 0 ? 'keyboard' : 'pointer');

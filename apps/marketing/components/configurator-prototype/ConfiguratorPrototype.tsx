@@ -36,11 +36,11 @@ const PreviewViews = dynamic(() => import('./PreviewViews'), {
 
 export type PreviewSelection = { input: SimpleCoverInput; roof: PreviewRoofChoices; result: SimpleCoverPublicResult | null; configuratorPrice?: ConfiguratorPublicPrice | null };
 
-export default function ConfiguratorPrototype({ expanded, onToggleExpanded, renderEnquiry }: {
-  expanded: boolean; onToggleExpanded: () => void; renderEnquiry?: (selection: PreviewSelection) => ReactNode;
+export default function ConfiguratorPrototype({ expanded, onToggleExpanded, renderEnquiry, resume = false }: {
+  resume?: boolean; expanded: boolean; onToggleExpanded: () => void; renderEnquiry?: (selection: PreviewSelection) => ReactNode;
 }) {
   const draft = usePreviewDraft();
-  return <LightingProvider input={draft.input} roof={draft.roof} onChange={draft.setRoof}><RailProvider><ConfiguratorWorkspace draft={draft} expanded={expanded} onToggleExpanded={onToggleExpanded} renderEnquiry={renderEnquiry}/></RailProvider></LightingProvider>;
+  return <LightingProvider input={draft.input} roof={draft.roof} onChange={draft.setRoof}><RailProvider resume={resume}><ConfiguratorWorkspace draft={draft} expanded={expanded} onToggleExpanded={onToggleExpanded} renderEnquiry={renderEnquiry}/></RailProvider></LightingProvider>;
 }
 function ConfiguratorWorkspace({draft,expanded,onToggleExpanded,renderEnquiry}:{draft:ReturnType<typeof usePreviewDraft>;expanded:boolean;onToggleExpanded:()=>void;renderEnquiry?:(selection:PreviewSelection)=>ReactNode}){
   const {input,roof,setInput,setRoof,ready,storageAvailable,linkNotice,selectionNotice}=draft;
