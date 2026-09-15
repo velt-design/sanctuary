@@ -1,3 +1,4 @@
+import { isCostingManifestAtLeast } from '../manifestVersion';
 import { isCeilingOption } from '../ceilingCatalogue';
 import {
   type BoxGutterEdge,
@@ -348,7 +349,7 @@ function normalizeMixedRoof(
   };
 }
 
-export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<CostingConfigV1, 'rules'>): DerivedResultV1 {
+export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<CostingConfigV1, 'rules'> & Partial<Pick<CostingConfigV1, 'manifest' | 'appliedControlManifestVersion'>>): DerivedResultV1 {
   const warnings: string[] = [];
   const isOpenRoof = isOpenPergolaRoof(inputs.roof_material);
 
@@ -449,10 +450,13 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   warnings.push(...profileWarnings);
 
   const overrideRafterProfile = normalizeOverrideProfile(overrides.rafter_profile);
+  const revisedTimberFraming = !!config?.manifest && isCostingManifestAtLeast(config as CostingConfigV1, 2, 8);
+  const timberSpacingMm = revisedTimberFraming ? 600 : TIMBER_RAFTER_SPACING_MM_MAX;
+  const timberCommonProfile = revisedTimberFraming ? (effectiveSpanM > 4 ? '80x50' : '50x50') : TIMBER_COMMON_RAFTER_DEFAULT_PROFILE;
   const rafterProfileAuto = isOpenRoof
     ? OPEN_PERGOLA_DEFAULT_PROFILE
     : inputs.roof_material === 'timber'
-      ? TIMBER_COMMON_RAFTER_DEFAULT_PROFILE
+      ? timberCommonProfile
       : rafterProfileAutoBase;
   const rafterProfile = overrideRafterProfile ?? rafterProfileAuto;
 
@@ -664,12 +668,12 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const timberPlaneCount = roofType === 'gable' || roofType === 'hip' || roofType === 'low_gable' ? 2 : 1;
   const timberEdgeRafterCountPerPlaneBase = 2;
   const timberEffectiveLengthMm = Math.max(lengthMmA - 100, 0);
-  const timberCommonRafterCountPerPlaneBase = Math.ceil(timberEffectiveLengthMm / TIMBER_RAFTER_SPACING_MM_MAX) + 1;
+  const timberCommonRafterCountPerPlaneBase = Math.ceil(timberEffectiveLengthMm / timberSpacingMm) + 1;
   const timberRunPerPlaneM = timberPlaneCount === 2 ? projectionM / 2 : projectionM;
   const timberSlopeLenPerPlaneM = timberRunPerPlaneM / effectiveCos;
   const timberSlopeLenPerPlaneMm = timberSlopeLenPerPlaneM * 1000;
   const timberAvailableMm = Math.max(timberSlopeLenPerPlaneMm - 200, 0);
-  const timberPurlinLinesPerPlane = Math.ceil(timberAvailableMm / TIMBER_RAFTER_SPACING_MM_MAX) + 1;
+  const timberPurlinLinesPerPlane = Math.ceil(timberAvailableMm / timberSpacingMm) + 1;
   const timberHiddenFinish = 'mill';
   const roofSlopeAreaM2 = roofSurfaceAreaM2;
   const timberTrayWidthM = Math.max(0.1, timberTrayWidthMm / 1000);
@@ -833,7 +837,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
     const effectiveLengthMm = Math.max(timberLengthEquivalentM * 1000 - 100, 0);
     timberCommonRafterCountPerPlane =
-      timberRoofAboveAreaM2 > 0 ? Math.ceil(effectiveLengthMm / TIMBER_RAFTER_SPACING_MM_MAX) + 1 : 0;
+      timberRoofAboveAreaM2 > 0 ? Math.ceil(effectiveLengthMm / timberSpacingMm) + 1 : 0;
     timberCommonRafterCountTotal = timberCommonRafterCountPerPlane * timberPlaneCount;
     timberEdgeRafterCountPerPlane = timberRoofAboveAreaM2 > 0 ? timberEdgeRafterCountPerPlaneBase : 0;
     timberEdgeRafterCountTotal = timberEdgeRafterCountPerPlane * timberPlaneCount;

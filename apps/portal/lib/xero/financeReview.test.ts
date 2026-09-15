@@ -5,6 +5,9 @@ const row: FinanceInvoice = { invoiceId: 'id', invoiceRef: 'INV-TEST', projectId
   status: 'OPEN', currency: 'NZD', dueDate: null, totalCents: 100, recordedCents: 0, xeroInvoiceId: 'bound', lastVerifiedAt: null,
   transferStatus: 'succeeded', transferError: null, captured: true, correctionRequired: false, unassignedReceipts: false,
   observation: { invoiceId: 'id', state: 'posted', reason: 'INVOICE_CONTENT_UNCHANGED', amountPaidCents: 0, checkedAt: '2026-09-14T09:00:00Z' } };
+it('keeps a created draft awaiting its first observation in the attention view', () => {
+  expect(financeOutcome({ ...row, observation: null }, now)).toMatchObject({ attention: true });
+});
 it('shows normal posting without labeling it a draft or recording a portal payment', () => {
   expect(financeOutcome(row, now)).toEqual({ remainingCents: 100, attention: false, label: 'Posted in Xero' });
 });
@@ -34,4 +37,12 @@ it('keeps voids with recorded money and reduced Xero payments in the exception q
 it('does not call an open fully covered invoice settled or hide a draft review', () => {
   expect(financeOutcome({ ...row, recordedCents: 100 }, now).attention).toBe(true);
   expect(financeOutcome({ ...row, observation: { ...row.observation!, state: 'draft' } }, now).attention).toBe(true);
+});
+
+it('shows automatic payment exceptions and overdue checks as attention items',()=>{
+  for(const state of ['review','unavailable'] as const) expect(financeOutcome({...row,paymentSync:{state,reason:'CHECK',checkedAt:new Date(now).toISOString()}},now).attention).toBe(true);
+  expect(financeOutcome({...row,paymentSync:{state:'current',reason:'CHECK',checkedAt:'2026-09-10T00:00:00Z'}},now).label).toContain('overdue');
+});
+it('does not call an approved transferred invoice a draft',()=>{
+  expect(financeOutcome({...row,observation:null,transferTargetStatus:'AUTHORISED'},now).label).toBe('Invoice created in Xero — waiting for its next check');
 });

@@ -21,7 +21,7 @@ export function observeXeroInvoice(expected: XeroDraftInvoice, providerInvoiceId
   if (!['DRAFT', 'SUBMITTED', 'AUTHORISED', 'PAID', 'VOIDED', 'DELETED'].includes(String(status))) return conflict('UNKNOWN_XERO_STATUS');
   const paid = cents(row.AmountPaid); const total = cents(row.Total); const credited = row.AmountCredited === undefined ? 0 : cents(row.AmountCredited);
   if (paid === null || total === null || paid > total || credited !== 0) return conflict('ACCOUNTING_ADJUSTMENT_REVIEW');
-  const comparison = reconcileXeroDraft(expected, { ...row, Status: 'DRAFT', AmountPaid: 0 });
+  const comparison = reconcileXeroDraft({ ...expected, Status: 'DRAFT' }, { ...row, Status: 'DRAFT', AmountPaid: 0 });
   if (comparison.outcome !== 'MATCHED_DRAFT') return conflict(comparison.reason);
   if (portalVoided) {
     if (['VOIDED', 'DELETED'].includes(String(status)) && paid === 0) return { state: 'correction_complete', reason: 'BOTH_SYSTEMS_VOIDED', amountPaidCents: 0 };
