@@ -64,3 +64,18 @@ it('reports conflicting invoice content even when no payments were returned',asy
 it('propagates write uncertainty for durable retry rather than claiming success',async()=>{
   mocks.record.mockRejectedValue(new Error('connection lost'));await expect(recordNextInvoicePayment(id,id)).rejects.toThrow('connection lost');
 });
+it.each([false, true])('distinguishes reconciliation waits from changed recorded payments (recorded=%s)', async recorded => {
+  mocks.list.mockResolvedValue({ payments: [{ ...payment, reconciled: false }], limited: false });
+  if (recorded) {
+    mocks.matches.mockResolvedValue([{ receiptId: paymentId, invoiceId: id, sourceKind: 'INVOICE_PAYMENT', amountCents: 4000 }]);
+    mocks.context.mockResolvedValue({ ...context, matchedCents: 4000 });
+  }
+  expect(await recordNextInvoicePayment(id, id)).toEqual({ state: 'review', reason: recorded
+    ? 'RECORDED_PAYMENT_NO_LONGER_RECONCILED' : 'PAYMENT_AWAITING_RECONCILIATION' });
+  expect(mocks.record).not.toHaveBeenCalled();
+});
+it.each([{ contactId: paymentId }, { status: 'DELETED' }, { total: 116 }])('does not conceal conflicting evidence as a reconciliation wait %j', async patch => {
+  mocks.list.mockResolvedValue({ payments: [{ ...payment, reconciled: false, ...patch }], limited: false });
+  expect(await recordNextInvoicePayment(id, id)).toEqual({ state: 'review', reason: 'PAYMENT_EVIDENCE_CONFLICT' });
+  expect(mocks.record).not.toHaveBeenCalled();
+});

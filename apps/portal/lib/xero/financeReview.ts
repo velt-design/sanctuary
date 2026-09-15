@@ -16,6 +16,20 @@ export const financeReviewSchema = z.object({ checkedAt: z.string(), rows: z.arr
   paymentSync: z.object({ state: z.enum(['current','recorded','review','unavailable']), reason: z.string(), checkedAt: z.string() }).nullable().optional(),
 })).max(51) });
 export type FinanceInvoice = z.infer<typeof financeReviewSchema>['rows'][number];
+export function paymentReviewGuidance(row: FinanceInvoice) {
+  if (row.paymentSync?.state === 'review' && row.paymentSync.reason === 'PAYMENT_AWAITING_RECONCILIATION') return {
+    label: 'Waiting for bank reconciliation in Xero',
+    explanation: 'Xero has a payment, but has not confirmed it against the bank transaction. Check reconciliation in Xero. Once confirmed, the portal updates automatically.',
+    inXero: true,
+  };
+  if (row.paymentSync?.state === 'review' && row.paymentSync.reason === 'RECORDED_PAYMENT_NO_LONGER_RECONCILED') return {
+    label: 'A recorded payment is no longer reconciled in Xero',
+    explanation: 'This payment was previously recorded in the portal, but its bank reconciliation has changed in Xero. Check Xero and the payment history. The portal has kept the existing payment; it has not reversed it or recorded it again.',
+    inXero: true,
+  };
+  return { label: 'Payment needs a finance check',
+    explanation: 'The automatic check could not confirm this payment safely. Open the payment details to see what needs checking before recording anything.', inXero: false };
+}
 export type FinanceView = 'attention' | 'current' | 'history';
 export function parseFinanceView(value: unknown): FinanceView {
   return value === 'current' || value === 'history' ? value : 'attention';
@@ -34,7 +48,7 @@ export function financeOutcome(row: FinanceInvoice, now = Date.now()) {
   if (observation?.state === 'conflict') return { remainingCents, attention: true, label: 'Xero differs from the portal — investigate' };
   if (row.unassignedReceipts) return { remainingCents, attention: true, label: 'Assign existing project receipts before chasing payment' };
   if (balanceNeedsReview) return { remainingCents, attention: true, label: 'Check payment history' };
-  if (row.paymentSync?.state === 'review') return { remainingCents, attention: true, label: 'Payment needs a finance check' };
+  if (row.paymentSync?.state === 'review') return { remainingCents, attention: true, label: paymentReviewGuidance(row).label };
   if (row.paymentSync?.state === 'unavailable') return { remainingCents, attention: true, label: 'Automatic payment update could not finish' };
   if (row.paymentSync && now - Date.parse(row.paymentSync.checkedAt) > 24 * 60 * 60 * 1000)
     return { remainingCents, attention: true, label: 'Automatic payment check is overdue' };

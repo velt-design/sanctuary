@@ -6,7 +6,7 @@ import { Button, ButtonLink, Input } from '@/components/ui/foundation/Foundation
 import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
 import { getPaymentPilotSession } from '@/lib/xero/pilotAccess';
 import { loadFinanceReview } from '@/lib/invoices/financeReviewRepository';
-import { financeOutcome, parseFinanceView, type FinanceView } from '@/lib/xero/financeReview';
+import { financeOutcome, paymentReviewGuidance, parseFinanceView, type FinanceView } from '@/lib/xero/financeReview';
 import styles from './finance.module.css';
 import CheckXero from './CheckXero';
 import RecoverTransfer from './RecoverTransfer';
@@ -47,6 +47,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         <TableHead>Invoice / customer</TableHead><TableHead>Portal status</TableHead><TableHead>Invoice amount</TableHead><TableHead>Still owing</TableHead><TableHead>Next action</TableHead>
       </TableRow></TableHeader><TableBody role="rowgroup">{data.rows.map(row => {
         const outcome = financeOutcome(row);
+        const paymentGuidance = paymentReviewGuidance(row);
         const draftReview = Boolean(row.xeroInvoiceId && ((!row.observation && row.transferTargetStatus !== 'AUTHORISED') || (row.observation && ['draft', 'awaiting_approval'].includes(row.observation.state))) && !row.correctionRequired && !row.unassignedReceipts && row.recordedCents === 0 && row.status === 'OPEN');
         const stopped = !row.xeroInvoiceId && row.captured && ['needs_attention', 'permanent_failed'].includes(row.transferStatus ?? '');
         const projectReview = row.unassignedReceipts || row.recordedCents > row.totalCents || (row.status === 'PAID' && row.recordedCents !== row.totalCents) || (row.status === 'VOID' && row.recordedCents > 0);
@@ -62,7 +63,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             {draftReview && <p>Open the draft in Xero. Check the customer, amount and GST against the portal invoice. If correct, choose More approve options → Approve in Xero. Do not choose Approve &amp; email. Then return here.</p>}
             {stopped && <p>{row.transferError === 'XERO_MAPPING_REQUIRED' ? 'The transfer needs the correct Xero customer and accounting settings. Review Xero setup below, then resume the existing transfer.' : 'The automatic transfer has stopped. A developer needs to investigate before it can continue. Do not issue another invoice or create a replacement in Xero.'}</p>}
             {projectReview && <><p>The portal payment history needs checking before this balance can be trusted. Open the project and check which invoice each receipt belongs to.</p><ButtonLink variant="primary" size="small" href={`/staff/projects/${row.projectId}?tab=invoices`}>Review project payments</ButtonLink></>}
-            {paymentReview && <><p>{automaticPayments ? 'The automatic check could not confirm this payment safely. Open the payment details to see what needs checking before recording anything.' : 'Xero and the portal show different payment totals. The review shows the balance before and after approval.'}</p><ButtonLink variant="primary" size="small" href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</ButtonLink></>}
+            {paymentReview && <><p>{automaticPayments ? paymentGuidance.explanation : 'Xero and the portal show different payment totals. The review shows the balance before and after approval.'}</p>{automaticPayments && paymentGuidance.inXero
+              ? <ButtonLink variant="primary" size="small" href={`/staff/payments/xero-invoice?invoice=${row.invoiceId}`} target="_blank" rel="noopener noreferrer">Check reconciliation in Xero</ButtonLink>
+              : <ButtonLink variant="primary" size="small" href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</ButtonLink>}</>}
             {setupReview && <ButtonLink variant="primary" size="small" href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Review Xero setup</ButtonLink>}
             {!outcome.attention && <p>No action needed.</p>}
             {automaticPayments && !paymentSyncIssue && row.observation?.state === 'payment_recorded' && row.observation.amountPaidCents !== row.recordedCents && <p>The automatic payment check is pending. If it cannot confirm the payment, the reason will appear here.</p>}

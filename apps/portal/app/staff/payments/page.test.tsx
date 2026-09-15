@@ -12,6 +12,19 @@ const invoice: FinanceInvoice = { invoiceId: 'invoice', invoiceRef: 'INV-0014', 
   projectName: 'Example project', status: 'OPEN', currency: 'NZD', dueDate: null, totalCents: 10000, recordedCents: 0,
   xeroInvoiceId: null, lastVerifiedAt: null, transferStatus: null, transferError: null, captured: false,
   correctionRequired: false, unassignedReceipts: false, observation: null };
+it.each([
+  ['PAYMENT_AWAITING_RECONCILIATION', 'Waiting for bank reconciliation in Xero', 'Once confirmed, the portal updates automatically.'],
+  ['RECORDED_PAYMENT_NO_LONGER_RECONCILED', 'A recorded payment is no longer reconciled in Xero', 'it has not reversed it or recorded it again.'],
+])('explains %s and sends finance to the reconciliation owner', async (reason, label, explanation) => {
+  vi.stubEnv('XERO_AUTOMATIC_PAYMENTS_ENABLED', 'true');
+  vi.stubEnv('XERO_INVOICE_PAYMENTS_ENABLED', 'true');
+  const html = await page({ ...invoice, captured: true, xeroInvoiceId: 'xero', paymentSync: { state: 'review', reason, checkedAt: new Date().toISOString() } });
+  const primary = html.split('<details>')[0];
+  expect(primary).toContain(label);
+  expect(primary).toContain(explanation);
+  expect(primary).toContain('Check reconciliation in Xero');
+  expect(primary).not.toContain('>Review invoice payments</a>');
+});
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => vi.unstubAllEnvs());
 async function page(row: FinanceInvoice, view = 'attention') {

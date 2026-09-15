@@ -36,7 +36,15 @@ export async function recordNextInvoicePayment(invoiceId: string, tenantId: stri
       return { state: 'review' as const, reason: 'PAYMENT_ALREADY_BOUND_ELSEWHERE' };
     }
     const checked = inspect(context, payment, invoice, match?.amountCents);
-    if (checked.blockers.length) return { state: 'review' as const, reason: 'PAYMENT_EVIDENCE_CONFLICT' };
+    if (checked.blockers.length) {
+      // Only describe this as a reconciliation wait when every other identity,
+      // status and balance check passes. Never hide a second conflict behind it.
+      const reconciliationOnly = payment.reconciled === false
+        && inspect(context, { ...payment, reconciled: true }, invoice, match?.amountCents).blockers.length === 0;
+      return { state: 'review' as const, reason: reconciliationOnly
+        ? (match ? 'RECORDED_PAYMENT_NO_LONGER_RECONCILED' : 'PAYMENT_AWAITING_RECONCILIATION')
+        : 'PAYMENT_EVIDENCE_CONFLICT' };
+    }
     if (!match) candidates.push(payment);
   }
   if (!candidates.length) {
