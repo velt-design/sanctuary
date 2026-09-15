@@ -347,6 +347,37 @@ Plan/3D accuracy work must also keep the top-view parity gate green. `buildTopPr
 
 ## Gable Per-Plane Drivers
 
+### Local v2.9 ridge candidate (16 September 2026)
+
+Owner-requested automatic gable ridge selection uses RHS 150x50x3 steel when
+the full ridge length exceeds 6m; exactly 6m retains the previous default.
+Explicit staff profile overrides remain authoritative. Standard and box gables
+use the same rule. The customer adapter already maps ridge direction into module
+length; eave-to-eave width is not the trigger. Existing steel stock, crane hire
+and installation allowances apply. Standard gables include the steel ridge in
+material takeoff; box gables retain their existing single ridge takeoff.
+
+This is gated on effective manifest v2.9 and available through the development-only
+`CONFIGURATOR_LOCAL_PRICING_CANDIDATE=v2.9` review route. The active repository
+manifest and published Version 13 remain v2.8. Publication of a v2.9 pricebook is
+still required for live use; frozen estimates and old-version calculations retain
+their rules. Local review cannot issue published calculation references.
+
+Gate 0: legacy audit rows N/A; this is an explicitly owner-requested extension of
+the protected calculator pricing path, not a workbench or cost-input migration.
+No Phase 2 dependencies or type consolidation. Consumers checked: derive, BOM,
+steel installation allowances, staff profile overrides and customer price adapter.
+Derive/BOM hotspot extraction is deferred to avoid moving broad geometry/takeoff
+logic during this pricing correction; the new automatic selector has its own
+small owner in `engine/ridgeProfile.ts`.
+
+Verification: 400 costing/pricing route tests passed, plus two customer ridge-
+direction cases (nine focused ridge cases including the seven engine checks).
+Costing and marketing TypeScript checks, repository lint and architecture checks
+passed. Local port 3074 serves the v2.9 review candidate: a 7 x 3m acrylic gable
+with the ridge parallel to the house returns $19,886 using the existing published
+rates. No production settings or customer records changed.
+
 For gable roofs, the engine models two roof planes sharing a ridge beam.
 
 - `roof_plane_count = 2`

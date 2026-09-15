@@ -1191,6 +1191,16 @@ function buildMaterialsV1Internal(
     }
   }
 
+  // Standard gables also need the selected steel ridge in the material takeoff.
+  // Box gables already add their ridge below; never count it twice.
+  if (isCostingManifestAtLeast(config, 2, 9) && inputs.structure_type !== 'box_perimeter'
+    && (inputs.roof_type === 'gable' || inputs.roof_type === 'low_gable')
+    && isSteelBeamProfile(ridgeBeamProfile) && derived.ridge_length_m > 0) {
+    addCuts(ridgeBeamProfile, [derived.ridge_length_m], 'Ridge beam', 'joinable', {
+      origin_prefix: 'ridge_beam', group_key: 'ridge_beam',
+    });
+  }
+
   if (inputs.structure_type === 'box_perimeter') {
     addCuts(
       boxBeamProfile,

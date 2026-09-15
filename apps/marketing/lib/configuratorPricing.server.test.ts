@@ -149,9 +149,9 @@ it.each(['freestanding','unsure'] as const)('keeps %s intent and resolved inputs
   expect(rejected.verifiedConfigurator).toBeFalsy();
 });
 
-it('keeps local candidate rules out of published calculation references', async () => {
+it.each(['v2.8', 'v2.9'])('keeps %s local candidate rules out of published calculation references', async version => {
   vi.stubEnv('NODE_ENV', 'development');
-  vi.stubEnv('CONFIGURATOR_LOCAL_PRICING_CANDIDATE', 'v2.8');
+  vi.stubEnv('CONFIGURATOR_LOCAL_PRICING_CANDIDATE', version);
   expect(await (await POST(request(draft()))).json()).toEqual({ status: 'disabled' });
   expect(mocks.current).not.toHaveBeenCalled();
   const result = await (await reviewPOST(request(draft()))).json();
@@ -159,9 +159,9 @@ it('keeps local candidate rules out of published calculation references', async 
   expect(result).not.toHaveProperty('calculationRef');
   expect(mocks.current).toHaveBeenCalledOnce();
 });
-it('never enables candidate review in production even with a stale flag', async () => {
+it.each(['v2.8', 'v2.9'])('never enables %s candidate review in production even with a stale flag', async version => {
   vi.stubEnv('NODE_ENV', 'production');
-  vi.stubEnv('CONFIGURATOR_LOCAL_PRICING_CANDIDATE', 'v2.8');
+  vi.stubEnv('CONFIGURATOR_LOCAL_PRICING_CANDIDATE', version);
   expect((await reviewPOST(request(draft()))).status).toBe(404);
   expect((await (await POST(request(draft()))).json()).status).toBe('priced');
 });

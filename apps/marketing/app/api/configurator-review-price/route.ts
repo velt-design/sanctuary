@@ -13,10 +13,11 @@ export async function POST(request: Request) {
   const draft = parsePreviewDraft(body);
   if (!draft) return json({ status: 'unavailable' }, 422);
   try {
-    if (process.env.CONFIGURATOR_LOCAL_PRICING_CANDIDATE === 'v2.8') {
+    const candidateVersion = process.env.CONFIGURATOR_LOCAL_PRICING_CANDIDATE;
+    if (candidateVersion === 'v2.8' || candidateVersion === 'v2.9') {
       const published = await getPublishedCostingConfiguration();
       // Local review only: retain approved rates, opt into candidate calculation rules.
-      const candidate = { ...published.config, appliedControlManifestVersion: 'v2.8' };
+      const candidate = { ...published.config, appliedControlManifestVersion: candidateVersion };
       return json(calculateConfiguratorPricing(draft, candidate).estimate);
     }
     return json(calculateReviewPrice(draft));

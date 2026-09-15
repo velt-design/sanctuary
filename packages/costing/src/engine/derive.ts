@@ -1,4 +1,5 @@
 import { isCostingManifestAtLeast } from '../manifestVersion';
+import { automaticRidgeProfile } from './ridgeProfile';
 import { isCeilingOption } from '../ceilingCatalogue';
 import {
   type BoxGutterEdge,
@@ -1052,7 +1053,9 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const boxPerimeterBeamProfileUsed = isBoxPerimeter ? overrideBoxPerimeterBeamProfile ?? defaultBoxBeamProfile : null;
   const postProfileUsed = overridePostProfile ?? defaultPostProfile;
-  const ridgeBeamProfileUsed = isBoxGable ? overrideRidgeBeamProfile ?? '100x50' : overrideRidgeBeamProfile ?? null;
+  const ridgeBeamProfileUsed = overrideRidgeBeamProfile ?? automaticRidgeProfile(
+    config as CostingConfigV1 | undefined, isGableRoof, ridgeLengthM, isBoxGable ? '100x50' : null,
+  );
 
   const gutterLengthRaw = toNonNegativeNumber(inputs.gutter_length_m, NaN);
 
