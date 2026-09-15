@@ -105,3 +105,22 @@ it('company default approval submits no customer choice', async () => {
  expect(body.action).toBe('confirmDefaults'); expect(body).not.toHaveProperty('contactId');
  expect(view.container.textContent).toContain('Customer links and existing invoices are unchanged');
 });
+
+it.each(['customer', 'defaults'] as const)('offers resume only after both prerequisites are saved, starting with %s', async first => {
+ const contact={id,name:'Example',email:''};
+ const fetcher=vi.fn().mockResolvedValueOnce(Response.json({...review,contacts:[contact],accounts:[{id,code:'200',name:'Sales'}],taxes:[{type:'OUTPUT2',name:'GST',effectiveRate:15}]})).mockImplementation(async()=>Response.json({saved:true}));
+ vi.stubGlobal('fetch',fetcher);
+ view=renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} />); await inspect();
+ const save=async(kind:'customer'|'defaults')=>{
+  const form=button(kind==='customer'?'Save customer link':'Save company defaults')!.closest('form')!;
+  if(kind==='customer') form.querySelector<HTMLSelectElement>('select[name="contactId"]')!.value=id;
+  else {form.querySelector<HTMLSelectElement>('select[name="accountCode"]')!.value='200';form.querySelector<HTMLSelectElement>('select[name="taxType"]')!.value='OUTPUT2';}
+  await act(async()=>form.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+  await act(async()=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+ };
+ await save(first);
+ expect(button('Resume existing draft transfer')).toBeUndefined();
+ await save(first==='customer'?'defaults':'customer');
+ expect(button('Resume existing draft transfer')).toBeDefined();
+ expect(fetcher.mock.calls.map(call=>JSON.parse(call[1].body).action)).toEqual(['inspect',first==='customer'?'confirmCustomer':'confirmDefaults',first==='customer'?'confirmDefaults':'confirmCustomer']);
+});

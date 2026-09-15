@@ -16,6 +16,9 @@ export default function MappingReview({ invoiceId, initialContext }: { invoiceId
   const [review, setReview] = useState<Review | null>(null); const [message, setMessage] = useState('');
   const [pending, setPending] = useState(true); const busy = useRef(false);
   const [saved, setSaved] = useState(false);
+  const canResumeTransfer = saved && review?.savedLink?.contact && review.defaults
+    && review.accounts.some(account => account.code === review.defaults?.accountCode)
+    && review.taxes.some(tax => tax.type === review.defaults?.taxType && tax.effectiveRate === review.defaults.effectiveRate);
   const attempt = useRef<{ selection: string; commandId: string } | null>(null);
   useEffect(() => {
     const controller = new AbortController();
@@ -45,6 +48,10 @@ export default function MappingReview({ invoiceId, initialContext }: { invoiceId
     const commandId = attempt.current.commandId;
     void run(async () => { await command({ ...selection, commandId, confirmed: true });
       setSaved(true);
+      if (kind === 'customer') {
+        const contact = review.contacts.find(item => item.id === data.get('contactId'));
+        if (contact) setReview({ ...review, savedLink: { contactId: contact.id, contact, verifiedAt: new Date().toISOString() } });
+      }
       setMessage(kind === 'customer' ? 'Customer link saved. Company accounting defaults are unchanged. No invoice was posted or payment approved.' : 'Company defaults saved for future transfers. Customer links and existing invoices are unchanged.');
       if (kind === 'defaults') { const tax = review.taxes.find(item => item.type === data.get('taxType')); if (tax) setReview({ ...review, defaults: { accountCode: String(data.get('accountCode')), taxType: tax.type, effectiveRate: tax.effectiveRate } }); } });
   }
@@ -67,7 +74,7 @@ export default function MappingReview({ invoiceId, initialContext }: { invoiceId
     <form onSubmit={inspect}><label>Xero customer name, if different <Input name="contactName" maxLength={240} disabled={pending} /></label>{' '}
       <Button type="submit" variant="secondary" disabled={pending}>Check Xero records</Button></form>
     {message && <p role="status">{message}</p>}
-    {saved && <button disabled={pending} onClick={() => void run(async () => {
+    {canResumeTransfer && <button disabled={pending} onClick={() => void run(async () => {
       const result = await command({ action: 'resume', invoiceId, confirmed: true });
       setMessage(result.state === 'queued' ? 'The existing draft transfer is queued. Check finance review for its result.' : 'This transfer is already queued or running. Check finance review for its result.');
     })}>Resume existing draft transfer</button>}
