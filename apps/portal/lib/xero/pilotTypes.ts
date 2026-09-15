@@ -12,6 +12,7 @@ export type PilotMatch = {
   id: string; tenantId: string; receiptId: string; invoiceId: string; projectId: string;
   paymentEntryId: string; amountCents: number; receiptDate: string;
   approvedBy: string; approvedAt: string; reversedAt: string | null; evidenceFingerprint: string;
+  sourceKind?: 'BANK_TRANSACTION' | 'INVOICE_PAYMENT'; providerInvoiceId?: string | null;
 };
 export type PilotSuggestion = PaymentSuggestion & { approvalToken: string | null; approvalId: string | null };
 export type PilotReviewNote = { id:string; receiptId:string; disposition:'REJECTED'|'INVESTIGATE'; reason:string; recordedAt:string };

@@ -1,12 +1,13 @@
 import 'server-only';
 import { XERO_SCOPES } from './security';
+import { validateTokenScopes } from './oauthScopes';
 
-export type Tokens = { accessToken: string; refreshToken: string; expiresAt: number };
+export type Tokens = { accessToken: string; refreshToken: string; expiresAt: number; scopes?: string[] };
 export class XeroError extends Error {
   constructor(readonly code: string) { super(code); }
 }
 
-export async function tokenRequest(clientId: string, clientSecret: string, body: URLSearchParams): Promise<Tokens> {
+export async function tokenRequest(clientId: string, clientSecret: string, body: URLSearchParams, expectedScopes: readonly string[] = XERO_SCOPES.split(' ')): Promise<Tokens> {
   const response = await fetch('https://identity.xero.com/connect/token', {
     method: 'POST', cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000),
     headers: { Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body,
@@ -14,10 +15,11 @@ export async function tokenRequest(clientId: string, clientSecret: string, body:
   if (!response.ok) throw new XeroError(response.status === 400 || response.status === 401 ? 'RECONNECT_REQUIRED' : 'PROVIDER_UNAVAILABLE');
   const data = await response.json();
   if (typeof data.access_token !== 'string' || typeof data.refresh_token !== 'string' || !Number.isFinite(data.expires_in) || data.expires_in <= 0) throw new XeroError('INVALID_PROVIDER_RESPONSE');
-  if (typeof data.scope !== 'string' || XERO_SCOPES.split(' ').some(scope => !data.scope.split(' ').includes(scope))) throw new XeroError('INSUFFICIENT_SCOPE');
-  const allowed = new Set([...XERO_SCOPES.split(' '), 'openid', 'profile', 'email']);
-  if (data.scope.split(' ').some((scope: string) => !allowed.has(scope))) throw new XeroError('EXCESS_SCOPE');
-  return { accessToken: data.access_token, refreshToken: data.refresh_token, expiresAt: Date.now() + data.expires_in * 1000 };
+  let scopes: string[];
+  try { scopes = validateTokenScopes(data.scope, expectedScopes); }
+  catch (error) { throw new XeroError(error instanceof Error ? error.message : 'INSUFFICIENT_SCOPE'); }
+  return { accessToken: data.access_token, refreshToken: data.refresh_token, expiresAt: Date.now() + data.expires_in * 1000,
+    scopes };
 }
 
 export async function connections(accessToken: string): Promise<Array<{ tenantId: string; tenantName: string }>> {

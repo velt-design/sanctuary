@@ -1,5 +1,7 @@
 # Testing And QA
 
+Worker registry compatibility: `workerContracts.test.ts` and the real RPC response parser in `backgroundJobsRpcClient.test.ts` cover both complete and finance-only installed kind maps. Missing optional workflow kinds stay absent; unknown kinds, invalid counts, and incomplete status/lifecycle maps still fail. This targets the production dark-worker probe failure where `ai_synthetic_v1` was deliberately not installed. Hosted healthy-worker evidence is separate from these parser tests.
+
 Use the smallest test that covers the risk. Run broader suites when touching shared workflow, portal shell, scheduling, local-first, Supabase access, or public lead/quote flows.
 
 Isolated Next output under `apps/*/.next-*` is generated build evidence, not
@@ -1211,6 +1213,29 @@ or physical-device rendering/performance.
 
 ## Xero connection checks
 
+`npm run test:commercial:db` also runs the Xero match storage/command integration suites. Migration14 is exercised with actual commercial ledger, allocation and reversal functions, including later quote stages, standalone instalments, source binding, mixed-source refusal, retries and access denial. The invoice-drafts suite applies the extension after current standalone migrations and rechecks manual workflows. These use disposable PGlite with minimal transfer identity fixtures; they do not prove PGMQ delivery, concurrent sessions, the entire historical migration chain or Xero API approval wiring.
+
 Run `npx vitest run apps/portal/lib/xero` and `node scripts/test-xero-connection-db.mjs`, followed by portal typecheck, lint and build. The database harness uses disposable PGlite only. Hosted authorisation, concurrent refresh, verified TLS, scheduler invocation and live candidate reads require separate staging evidence before release. See [Xero connection](xero-connection.md).
 
 PGlite bulk-close migration correctness cases use a bounded 20-second timeout, matching the neighbouring owner-handoff integration test, because the case includes database startup and migration application under CI contention. This does not change portal performance budgets or remove assertions.
+
+The isolated jobs database harness also applies Xero invoice migrations 20260914000005 through 20260914000008 after minimal commercial prerequisites, then runs rollback-wrapped `supabase/tests/xero_invoice.sql`. This exercises real PGMQ issuance/claims and canonical lease/effect transitions; it makes no provider requests. A successful run is required before invoice activation; adding the contract alone is not proof.
+
+The real PGMQ invoice contract passed on PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1 in [CI run 34833881659](https://github.com/velt-design/sanctuary/actions/runs/34833881659), code revision `86898c2`. It applies all four forward finance migrations and verifies disabled/historical exclusion, issuance enqueue, exclusive active claim, wrong-lease rejection, exact frozen request, canonical dispatch/finalisation and repeat confirmation without duplicate audit. The first run exposed an invalid job actor label; issuance now records the canonical staff/system actor. This is isolated database evidence, not Xero API or live finance proof. Provider conflicts, late recovery and finance rehearsal still require their broader release evidence.
+
+The harness owner `scripts/test-background-jobs-db.mjs` remains large. This pass adds only ordered fixture application; extracting its existing container/concurrency machinery was deferred to avoid changing the validation infrastructure while diagnosing finance. The next safe extraction is the existing Docker/psql adapter, preserving its behavior byte-for-byte.
+
+Finance access tests also execute migration09 against isolated capability prerequisites and verify grant/revocation/regrant events, append-only history and role denial. The jobs DB harness runs `xero_finance_access.sql` after the invoice contract. Session tests cover Ellen/Jordan active grants, revocation, unconfirmed identity and ordinary-admin denial.
+
+The finance workflow SQL harness now applies migration10–12 after minimal commercial prerequisites and the existing grant-check owner. `xero_finance_workflow.sql` checks stopped-job mapping, audited save replay, canonical retry queue identity, payment double-count prevention and grant revocation. Lightweight `xero-finance-resume.test.ts` uses a recording retry adapter and is not proof of queue delivery.
+
+Finance workflow run34836432934 at face622 passed both PostgreSQL/PGMQ matrix database jobs, covering forward Xero migrations05–12 plus the existing grant-check function, through the new mapping/retry/read contracts and earlier isolated transfer contracts. The harness uses minimal commercial table prerequisites, not the complete historical portal migration chain. It makes no Xero network writes.
+
+The real finance workflow now applies migration13, prepares/finalises after the tax-mapping guard, and verifies persisted observations and fresh-target exclusion. Isolated tests additionally prove stale-generation and changed-portal-status refusal, audit immutability, unavailable provider reads, scheduler authentication and strict manual-check bodies.
+
+
+The isolated background-job runner delegates finance prerequisites/contracts to scripts/xero-finance-db-contract.mjs. Its direct ordering check, finance resume SQL contract and shared-binding preservation check run in the Background Jobs workflow. The real PG17/PG18 contract includes unused prepared-window renewal and refusal after dispatch. Its minimal commercial scaffolding is not proof of the full historical payment schema or multi-connection payment approval; retain the full staging finance rehearsal release gate in docs/xero-connection.md.
+
+The actual-schema rollback contract `supabase/tests/xero_finance_full_schema.sql` requires the historical commercial schema, finance migrations05-21 and an existing confirmed finance reviewer. Run only inside an explicit rollback transaction after setting the local rehearsal marker; it is not a standalone migration or a production smoke command. The staging execution and independent postflight passed on2026-09-14; see `docs/xero-connection.md` for exact source hashes and scope. Synthetic provider binding does not replace actual worker/provider or multi-session concurrency proof.
+
+`node scripts/test-xero-payment-concurrency.mjs` runs only in a fresh Docker container and accepts no database URL. It shares the actual commercial/finance SQL prerequisite builder with the disposable payment integration suite. Background Jobs runs it on both PostgreSQL targets. Two independent psql sessions prove the second approval actually waits on the first transaction before checking same-command replay, duplicate-source refusal and stale-balance refusal; every scenario must retain exactly one receipt, one match, one approval audit and the partial balance. The transfer identity is synthetic and the schema is scoped, so retain separate historical-schema and real-provider proofs.

@@ -92,6 +92,8 @@ export type ProjectPaymentEntrySummary = {
   reason: string | null;
   sourceInvoiceId: string | null;
   sourceInvoiceRef: string | null;
+  matchedInvoiceId?: string | null;
+  matchedInvoiceRef?: string | null;
   reversed: boolean;
   allocations: ProjectPaymentAllocationSummary[];
   unallocatedIncGstCents: number;

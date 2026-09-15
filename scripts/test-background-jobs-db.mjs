@@ -1,3 +1,4 @@
+import { runXeroFinanceContracts } from './xero-finance-db-contract.mjs';
 import { spawn, spawnSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -1003,6 +1004,7 @@ async function run() {
   applySql('supabase/tests/marketing_enquiry_delivery.sql');
   applySql('supabase/migrations/20260914173001_configurator_estimate_revisions.sql', { singleTransaction: true });
   applySql('supabase/tests/configurator_estimate_revisions.sql');
+  runXeroFinanceContracts({ repositoryRoot, migrationsDirectory, applySql, executeSql });
   process.stdout.write(
     `background-jobs-db: isolated PGMQ contract passed (${image})\n`,
   );

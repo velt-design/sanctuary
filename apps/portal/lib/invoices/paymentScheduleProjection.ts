@@ -143,11 +143,17 @@ export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSc
   const paidIncGstCents = input.paymentEntries.reduce((sum, entry) => sum + entry.amountIncGstCents, 0);
   const outstandingIncGstCents = input.invoices
     .filter((invoice) => invoice.status === 'OPEN')
-    .reduce((sum, invoice) => sum + invoice.totalIncGstCents, 0);
+    .reduce((sum, invoice) => sum + Math.max(0, invoice.totalIncGstCents - input.paymentEntries
+      .filter(entry => !entry.reversed && entry.matchedInvoiceId === invoice.id)
+      .reduce((paid, entry) => paid + Math.max(0, entry.amountIncGstCents), 0)), 0);
   const acceptedTotalIncGstCents = acceptedQuotes.reduce((sum, quote) => sum + quote.totalIncGstCents, 0);
   const committedIncGstCents = paidIncGstCents + outstandingIncGstCents;
   const currentAllocated = [...allocatedByCurrentTerm.values()].reduce((sum, amount) => sum + amount, 0)
     + activeAllocations.filter((allocation) => allocation.standaloneInvoiceId).reduce((sum, allocation) => sum + allocation.amountIncGstCents, 0);
+  const reservedCredit = input.paymentEntries.filter(entry => entry.matchedInvoiceId && !entry.reversed && entry.amountIncGstCents > 0)
+    .reduce((sum, entry) => sum + Math.max(0, entry.amountIncGstCents - activeAllocations
+      .filter(allocation => allocation.paymentEntryId === entry.id && (allocation.standaloneInvoiceId || acceptedVersionIds.has(allocation.quoteVersionId)))
+      .reduce((allocated, allocation) => allocated + allocation.amountIncGstCents, 0)), 0);
   const paymentEntries = input.paymentEntries.map((entry) => {
     const entryAllocations = activeAllocations.filter((allocation) => allocation.paymentEntryId === entry.id);
     const allocations = entryAllocations.map((allocation) => ({
@@ -165,7 +171,7 @@ export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSc
     return {
       ...entry,
       allocations,
-      unallocatedIncGstCents: entry.reversed || entry.amountIncGstCents <= 0
+      unallocatedIncGstCents: entry.reversed || entry.amountIncGstCents <= 0 || entry.matchedInvoiceId
         ? 0
         : Math.max(0, entry.amountIncGstCents - allocated),
     };
@@ -188,7 +194,7 @@ export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSc
     ),
     overCommittedIncGstCents: totals?.overCommittedIncGstCents
       ?? Math.max(0, committedIncGstCents - acceptedTotalIncGstCents),
-    unallocatedCreditIncGstCents: Math.max(0, paidIncGstCents - currentAllocated),
+    unallocatedCreditIncGstCents: Math.max(0, paidIncGstCents - currentAllocated - reservedCredit),
     acceptedQuotes: acceptedQuotes.map((quote) => {
       const allocated = activeAllocations
         .filter((allocation) => allocation.quoteVersionId === quote.quoteVersionId)

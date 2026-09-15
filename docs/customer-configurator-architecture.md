@@ -5406,3 +5406,22 @@ Freestanding preview base: a neutral 120mm-thick display platform extends 450mm
 past the plan footprint on each side, with its top at the post feet. It follows
 size changes and the Show surroundings toggle, and appears on the enquiry view.
 It is presentation only: no deck/foundation selection, quantity or price is added.
+
+### Launch integration checkpoint (2026-09-15)
+
+The UI snapshot `9e8f272` is integrated with main `654d9e2` in the isolated
+`codex/configurator-release-20260915` branch. The released Version 12 pricing
+fixes, including requestCeiling parsing and unequal-wing ceiling takeoff, are
+preserved. The deferred V2 module ceiling field is not reintroduced.
+
+Validation: 1,190 marketing/costing/handoff tests, 148 configurator/worker contract
+tests and eight journey regression tests pass, as do the full workspace typecheck
+and marketing production build. These automated checks do not establish hosted
+end-to-end delivery or physical-phone readiness.
+
+Remaining release checks: the public contact entry still supplies its older
+embedded enquiry form, so connect and verify the intended public entry through
+the dedicated design-enquiry flow, including attribution and return-to-edit.
+Confirm hosted pricing parity, staff receipt/revision/save-to-quote and worker
+readiness separately. Real-phone validation and production activation remain
+pending. No production configuration or email delivery was changed in this pass.

@@ -14,6 +14,17 @@ the Board query. Assert loading while unresolved, flush the query notification,
 then assert the returned Board. Always unmount test roots after failed assertions
 so live observers cannot contaminate later mutation tests. Schedule behavior is
 unchanged; focused coverage passes all 40 cases.
+## 2026-09-15 - Observe installed job kinds without requiring optional workflows
+
+The production finance worker reached the database but stayed unhealthy because its metrics parser required every package-known job kind, including the deliberately absent AI synthetic workflow. SQL correctly enumerates only installed registry rows. Keep status/lifecycle maps strict, validate installed kinds against the known registry, and preserve missing kinds as absent rather than fabricated zero counts. Package and RPC-boundary tests cover both database shapes. This avoids installing unrelated workflow migrations to satisfy monitoring. Owners: `supabase-schema-map.md`, `target-architecture.md`, `testing-and-qa.md`.
+
+## 2026-09-15 — Plan selected ceiling stock per hip-corner wing
+
+The first selected-ceiling takeoff applied leg A's board run to the combined area of both wings. Unequal wings could therefore put long boards in the short-stock price band and omit supported joins. The package now plans each wing before aggregating length bands and purchased coverage. Regression tests compare a 2 m / 6 m corner with separately costed wings, swap wing labels, and cover timber plus all three mixed-roof modes. Keep the staff V1 release out of the deferred V2 workbench input contract. Owner: `costing-and-geometry.md`.
+
+## 2026-09-15 — Preserve staff ceiling choices through the HTTP costing boundary
+
+The calculator payload and costing engine supported the new ceiling identity, but the staff job/single-module request parsers omitted it and priced the historical cedar specification. A shared request parser now validates the package-owned option and passes it through both calculation routes and materials-explain. Integration tests reload saved calculator inputs, use the real route and engine, and compare the returned material lines for all four options. Publishing a pricebook cannot replace this wiring check. The pricing release is isolated from the held configurator/queue rollout. Owners: `costing-and-geometry.md`, `projects-contacts-estimates-calculator.md`.
 
 Compact indexed lessons and guardrails for future agents. Scan relevant entries before non-trivial or risky work, especially when the task touches a known source-of-truth boundary, migration, auth path, data flow, or quality gate.
 
@@ -5658,3 +5669,13 @@ Permission review must also cover FK cascades: a browser-authorized parent-proje
 - Current guardrail: Use a bounded twenty-second limit on that case only. Subsequent exact-revision review reported isolated runtimes of 9.606 and 9.064 seconds, showing the initial ten-second allowance had too little headroom. Preserve every assertion and cleanup step, and verify both the isolated case and the normal concurrent Project Work gate. Do not hide failures with retries or a global timeout increase.
 - Promoted to: `docs/testing-and-qa.md`, Project Work Items V2 Gate.
 - Related docs/tests: `test/project-owner-handoff-migration.test.ts`; `npm run test:portal:project-work`.
+
+
+Date: 2026-09-15
+Area: Xero protected-preview worker rehearsal
+Status: Active
+Decision or mistake: The worker database probe passed, but Vercel rejected the gateway request before application authentication.
+Why it mattered: Issuing first would have stranded a test transfer behind hosting authentication.
+Current guardrail: Before enabling issuance, verify both hosting and portal gateway authentication. Use the existing project automation credential only in a header to the configured Vercel preview; retain secret/lease checks, redirect refusal and preview protection. Pin both connector and finance control tenant before customer preparation.
+Promoted to: apps/worker/README.md and docs/xero-connection.md
+Related docs/tests: apps/worker/src/handlers/xeroInvoice.test.ts

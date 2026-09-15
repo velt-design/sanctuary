@@ -69,6 +69,15 @@ describe('invoice drafts against production SQL owners', () => {
       // their anchors as well as PostgreSQL's stored function definitions.
       await db.exec(read(`migrations/${name}`).replace(/\n/g, '\r\n'));
     }
+    // Run the Xero forward extension against the current standalone owners too,
+    // so existing manual issuance/payment/reversal behaviour remains covered.
+    await db.exec(`create table auth.users(id uuid primary key);
+      create schema if not exists private;
+      create table private.xero_invoice_transfer_control(singleton boolean,tenant_id uuid);
+      create table private.xero_invoice_transfers(id uuid primary key,invoice_id uuid,project_id uuid,tenant_id uuid,provider_invoice_id uuid);
+      create table private.xero_invoice_requests(transfer_id uuid,body text);`);
+    for (const name of ['20260914000002_xero_deposit_matching.sql','20260914000003_xero_deposit_commands.sql',
+      '20260914000014_xero_invoice_payment_commands.sql']) await db.exec(read(`migrations/${name}`).replace(/\n/g, '\r\n'));
   }, 30_000);
   beforeEach(async () => {
     await db.exec('begin');

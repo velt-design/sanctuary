@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PilotContext, VerifiedReceipt } from './pilotTypes';
-import { readDepositApproval } from './paymentApproval';
+import { prepareDepositApproval, readDepositApproval } from './paymentApproval';
 const db = vi.hoisted(() => ({ activeReceiptMatches:vi.fn(), commitPilotMatch:vi.fn(), findPilotMatch:vi.fn(), invoiceIdForReview:vi.fn(), listPilotMatches:vi.fn(), listPilotReviewNotes:vi.fn(), loadPilotContext:vi.fn() }));
 const accounting = vi.hoisted(() => vi.fn());
 vi.mock('../invoices/xeroMatchRepository', () => db);
@@ -19,6 +19,13 @@ beforeEach(()=>{
 });
 async function proposed(){return (await reviewPilotDeposit('INV-0001','',id)).suggestions[0];}
 describe('deposit pilot evidence and retry boundary',()=>{
+  it('refuses invoice-payment provenance through the bank-receipt approval path',async()=>{
+    const proposal=await proposed();
+    const approval=readDepositApproval(proposal.approvalToken!,id,id,Buffer.alloc(32,6));
+    const token=prepareDepositApproval({...approval.evidence,invoicePayment:{providerInvoiceId:id,invoiceEvidenceFingerprint:'d'.repeat(64)}},id,Buffer.alloc(32,6));
+    await expect(approvePilotDeposit(token,id)).rejects.toThrow('APPROVAL_REVIEW_REQUIRED');
+    expect(db.findPilotMatch).not.toHaveBeenCalled();expect(db.commitPilotMatch).not.toHaveBeenCalled();
+  });
   it('re-reads the exact receipt and records only the approved partial amount',async()=>{
     const proposal=await proposed();
     expect(proposal.depositRemainingIfApprovedCents).toBe(6000);

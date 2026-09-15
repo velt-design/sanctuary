@@ -8,6 +8,9 @@ on:
       - ".dockerignore"
       - ".github/workflows/background-jobs.yml"
       - "apps/worker/**"
+      - "apps/portal/lib/xero/**"
+      - "apps/portal/lib/invoices/xeroInvoiceTransferRepository*"
+      - "apps/portal/app/api/integrations/xero/**"
       - "apps/portal/app/api/webhooks/resend/**"
       - "apps/portal/lib/backgroundJobs/providerWebhook*"
       - "apps/portal/lib/emails/sendTransactionalEmail*"
@@ -23,10 +26,16 @@ on:
       - "supabase/migrations/*configurator_estimate_revisions.sql"
       - "supabase/tests/marketing_enquiry*.sql"
       - "supabase/tests/configurator_estimate_revisions.sql"
+      - "scripts/xero-finance-db-contract.mjs"
+      - "scripts/xero-payment-db-fixture.mjs"
+      - "scripts/test-xero-payment-concurrency.mjs"
+      - "test/xero-*.test.ts"
       - "supabase/migrations/*background_job*.sql"
       - "supabase/migrations/*ai_synthetic*.sql"
       - "supabase/tests/background_jobs*.sql"
       - "supabase/tests/ai_synthetic*.sql"
+      - "supabase/tests/xero_*.sql"
+      - "supabase/migrations/*xero_*.sql"
       - "test/background-jobs-migration.test.ts"
       - "test/ai-synthetic-execution-migration.test.ts"
       - "test/repo-security.test.ts"
@@ -42,6 +51,9 @@ on:
       - ".dockerignore"
       - ".github/workflows/background-jobs.yml"
       - "apps/worker/**"
+      - "apps/portal/lib/xero/**"
+      - "apps/portal/lib/invoices/xeroInvoiceTransferRepository*"
+      - "apps/portal/app/api/integrations/xero/**"
       - "apps/portal/app/api/webhooks/resend/**"
       - "apps/portal/lib/backgroundJobs/providerWebhook*"
       - "apps/portal/lib/emails/sendTransactionalEmail*"
@@ -57,10 +69,16 @@ on:
       - "supabase/migrations/*configurator_estimate_revisions.sql"
       - "supabase/tests/marketing_enquiry*.sql"
       - "supabase/tests/configurator_estimate_revisions.sql"
+      - "scripts/xero-finance-db-contract.mjs"
+      - "scripts/xero-payment-db-fixture.mjs"
+      - "scripts/test-xero-payment-concurrency.mjs"
+      - "test/xero-*.test.ts"
       - "supabase/migrations/*background_job*.sql"
       - "supabase/migrations/*ai_synthetic*.sql"
       - "supabase/tests/background_jobs*.sql"
       - "supabase/tests/ai_synthetic*.sql"
+      - "supabase/tests/xero_*.sql"
+      - "supabase/migrations/*xero_*.sql"
       - "test/background-jobs-migration.test.ts"
       - "test/ai-synthetic-execution-migration.test.ts"
       - "test/repo-security.test.ts"
@@ -97,6 +115,9 @@ jobs:
 
       - name: Job contracts and security boundaries
         run: npm run test:jobs
+
+      - name: Xero finance recovery contracts
+        run: npx vitest run test/xero-finance-db-contract.test.ts test/xero-finance-resume.test.ts test/xero-invoice-recovery.test.ts
 
       - name: Email provider application integrations
         run: npm run test:email-integrations
@@ -170,3 +191,6 @@ jobs:
 
       - name: Isolated logged-PGMQ database contract
         run: npm run test:jobs:db
+
+      - name: Isolated simultaneous invoice-payment approval
+        run: node scripts/test-xero-payment-concurrency.mjs

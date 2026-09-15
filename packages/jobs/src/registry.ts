@@ -243,6 +243,27 @@ export const BACKGROUND_JOB_REGISTRY = {
     defaultRolloutMode: 'worker_enabled',
     idempotencyStrategy: 'ai_task_input_snapshot',
   },
+  xero_invoice_draft_v1: {
+    kind: 'xero_invoice_draft_v1',
+    payloadContractVersion: 1,
+    handlerOwner: 'xero-invoice-workflow',
+    retry: { maxAttempts: 4, baseDelayMs: 15_000, maximumDelayMs: 60_000, automaticRetryWindowMs: 5 * 60 * 1_000 },
+    timeoutMs: 60_000,
+    concurrencyClass: 'orchestration',
+    hasExternalSideEffect: true,
+    cancellationAllowed: false,
+    requiredHandlerCheckpoints: ['invoice_frozen', 'draft_verified', 'business_finalised'],
+    allowedEffectCheckpoints: ['xero_invoice_draft'],
+    requiredEffectCheckpoints: ['xero_invoice_draft'],
+    userFacingStatus: {
+      queued: 'Waiting to create Xero draft', claimed: 'Preparing Xero draft', preparing: 'Preparing Xero draft',
+      running: 'Checking invoice', dispatching: 'Creating Xero draft', provider_accepted: 'Checking Xero draft',
+      finalising: 'Recording Xero draft', retrying: 'Retrying Xero transfer', succeeded: 'Xero draft ready for review',
+      cancelled: 'Transfer cancelled', needs_attention: 'Finance review needed', permanent_failed: 'Transfer needs investigation',
+    },
+    defaultRolloutMode: 'disabled',
+    idempotencyStrategy: 'provider_and_effect_checkpoint',
+  },
 } as const satisfies Record<BackgroundJobKind, BackgroundJobKindDefinition>;
 
 function assertBackgroundJobDefinitionIntegrity(definition: BackgroundJobKindDefinition): void {

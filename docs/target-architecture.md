@@ -208,6 +208,8 @@ Costing must come from `@sp/costing`. Marketing must not create a pricing fork. 
 
 Durable background-job kinds and transition policy must come from `@sp/jobs`. Apps and workers may supply handlers and workflow adapters, but they must not fork the kind registry, queue-message schema, status machine, effect-state machine, or rollout vocabulary.
 
+Runtime health reports installed database kinds as a validated subset of the package registry. Optional workflow migrations must not be required merely to make an otherwise compatible worker healthy. Missing kind counts remain absent, while execution stays governed by the database registry and explicit rollout controls.
+
 Shared AI contracts must come from `@sp/ai`. Apps, workers, nodes, and provider adapters may map those contracts at explicit boundaries, but provider-specific wire shapes and business-domain behavior must not enter the shared package.
 
 Email provider behavior must come from `@sp/email-provider`. Apps must not recreate Resend request classification, signature verification, provider idempotency identity, or canonical payload hashing. The root npm lockfile is the only workspace lockfile; app-local lockfiles must not become separate dependency authorities.
@@ -430,5 +432,7 @@ The first large-file visibility gate is `npm run files:report`, which is advisor
 Docs name the destination. Tests, lint, CI, and package boundaries should increasingly make the destination hard to miss.
 
 ## Xero connection boundary
+
+The approved everyday-finance goal adds an in-progress default-disabled invoice-draft job on the existing durable jobs spine. The portal remains the finance-domain and connector credential owner. The issuance trigger, mapping/comparison helpers, lease-fenced portal gateway and gated worker handler are wired in code. Verified finance mappings, expanded consent and hosted end-to-end execution remain unfinished. Do not activate the producer or distribute portal connector database credentials to the worker as a shortcut. See `docs/xero-connection.md`.
 
 The default-dark Xero adapter is portal-owned, with a dedicated database role, encrypted connection state and read-only provider scopes. It does not widen Praxis reporting or change invoice/payment ownership. See [Xero connection](xero-connection.md).

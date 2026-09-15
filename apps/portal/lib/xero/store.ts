@@ -77,7 +77,7 @@ export async function access(): Promise<Tokens> {
     try {
       let tokens = unseal<Tokens>(row.encrypted_tokens, cfg.key);
       if (tokens.expiresAt < Date.now() + 120000) {
-        tokens = await tokenRequest(cfg.clientId, cfg.clientSecret, new URLSearchParams({ grant_type: 'refresh_token', refresh_token: tokens.refreshToken }));
+        tokens = await tokenRequest(cfg.clientId, cfg.clientSecret, new URLSearchParams({ grant_type: 'refresh_token', refresh_token: tokens.refreshToken }), tokens.scopes);
         await tx`update xero_private.connection set encrypted_tokens=${seal(tokens,cfg.key)},last_error=null where singleton`;
       }
       return { tokens };
