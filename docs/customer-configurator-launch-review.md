@@ -1,6 +1,7 @@
 # Customer journey launch review
 
-Status: **in progress, not approved for production**. Updated 15 September 2026.
+Status: **launch-review milestone verified; production activation blocked by the
+release gates below**. Updated 15 September 2026.
 Owner: marketing/configurator release lane. Current branch:
 `codex/configurator-pricing-candidate-20260915`; local preview port 3074.
 This is a verification record, not permission to publish pricing, activate
@@ -67,14 +68,16 @@ https://github.com/velt-design/sanctuary/actions/runs/34943919707.
 | Isolated hosted bindings | Both applications have candidate-branch-only staging credentials, v2.8 version pin, disabled email provider and disabled enquiry email worker. Stable customer/staff preview origins connected | Both connected builds READY at `a403953`; staff receipt, revision and draft quote verified |
 | Hosted/local price parity | Signed hosted v2.8 API matched local estimates: acrylic 6 x 3 $11,674; 5.6 x 3 $10,630; solid/ThermoPine 5 x 4 $20,606; 5 x 4.1 $21,308; acrylic gable 6.7 x 3.9 $18,561. 6.7 x 4.5 returns tailored quote | Five price fixtures plus area limit passed; no enquiry submitted |
 
-## Open requirements
+## Completion audit and remaining launch gates
 
 - Hosted validation recovery and edit return pass. Network-failure recovery is
   covered by controller tests; hosted intake/retry are separately verified above.
 - Real-phone touch, keyboard and assistive-technology verification remains open.
-- Portal Quality/performance run is still active at the unchanged application
+- Portal Quality/performance run passed at the unchanged application
   source `5bde079`: https://github.com/velt-design/sanctuary/actions/runs/34943618230.
-  Its configurator/enquiry journey job has passed. The later `4aed856` change is
+  All three jobs passed, including the configurator/enquiry journey, production
+  build, security checks, browser fixtures and signed-in staff smoke. The later
+  `4aed856` change is
   only the disposable finance bootstrap covered by the separate passing run.
 - Check release build, hosted CI, production migration/configuration differences,
   worker readiness and rollback before presenting a production activation decision.
@@ -99,6 +102,24 @@ shutdown behaviour. Rollback must disable the new enquiry entry/producer and
 pause claims without deleting frozen enquiries, estimates, drafts or effect
 checkpoints. Do not switch failed durable enquiries into automatic legacy sends.
 The actual deployment-owner procedure and real-device review remain launch gates.
+The real-phone check was requested from the owner and has no recorded result;
+desktop viewport simulation is not a substitute for touch/keyboard/assistive
+technology on the device.
+
+The prior eleven-file migration handoff has no semantic changes in this branch.
+Two checkout files use CRLF while the old manifest hashes LF, so raw hashes differ
+without SQL changes. Canonical Git content and normalized hashes match. Use the
+current exact deployment bytes for release verification; the private temporary
+`sanctuary-current-release-migration-hashes.json` records the comparison and the
+five currently absent production files.
+
+This milestone covers the local/hosted customer journeys, price parity, frozen
+staff receipt, revision, draft quote, regression and build evidence above. It
+does not approve PR #132 for merge, publish the v2.8 production pricebook, enable
+the website enquiry worker or prove actual customer-email delivery. Those remain
+explicit release decisions and checks. Review locally at http://localhost:3074/;
+the connected hosted marketing application is
+https://sanctuary-cbcea5b04-jordans-projects-43df95bd.vercel.app/configurator-preview?open=1.
 
 ## Earlier release evidence and limits
 
