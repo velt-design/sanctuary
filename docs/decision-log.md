@@ -1,5 +1,9 @@
 # Decision Log
 
+## 2026-09-16 — Preserve optional RPC nulls inside JSON command envelopes
+
+Production new Schedule assignments returned HTTP 500 (`p_move must be an object`) because the guarded wrapper passed JSON `null` to a function expecting SQL NULL for its optional move. The same boundary affected ordinary completion's optional finish-early payload. The previous persisted-job tests missed first assignment, and mocked RPC success could not catch PostgreSQL null semantics. Normalize only these optional envelope values in a forward wrapper migration. Regression evidence must send real serialized null/omitted values through the database command for creation, existing repair, moves and completion, while retaining malformed-value rejection, atomic rollback and role/revision guards. Owner: `docs/schedule.md`; contract: `scripts/lib/schedule-optional-payload-contract.mjs`.
+
 ## 2026-09-15 - Observe installed job kinds without requiring optional workflows
 
 The production finance worker reached the database but stayed unhealthy because its metrics parser required every package-known job kind, including the deliberately absent AI synthetic workflow. SQL correctly enumerates only installed registry rows. Keep status/lifecycle maps strict, validate installed kinds against the known registry, and preserve missing kinds as absent rather than fabricated zero counts. Package and RPC-boundary tests cover both database shapes. This avoids installing unrelated workflow migrations to satisfy monitoring. Owners: `supabase-schema-map.md`, `target-architecture.md`, `testing-and-qa.md`.

@@ -135,6 +135,8 @@ Without `--password`, Supabase sends an invite email. With `--password`, the use
 
 ## Supabase Setup
 
+Schedule optional-payload correction: `20260916000001_schedule_optional_command_payloads.sql` replaces the existing guarded-command wrapper without row backfills or permission expansion. Deployment must use exact-file rollback rehearsal and application, then verify its body, unchanged grants and assignment/completion behavior. A schema-presence readiness check alone does not exercise serialized optional arguments. Deployment evidence is recorded in the associated PR; do not infer an environment apply from this source file.
+
 Apply ordered migrations in `supabase/migrations/` for current portal behavior. Legacy baseline SQL files in `supabase/` are snapshots and should not be treated as the preferred migration path.
 
 Use `docs/supabase-schema-map.md` to confirm table/RPC ownership, write paths, access boundaries, and migration sources before schema-affecting changes.
