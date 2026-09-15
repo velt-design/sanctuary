@@ -67,6 +67,17 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 
 ## Verification
 
+### Owner Updates And Release Batches
+
+- Report completed outcomes, material problems, or decisions requiring Jordan's input. Do not narrate unchanged polling, every passing check, or repeated waiting assurances. Where higher-priority client instructions require periodic updates, keep them brief and useful.
+- Work in small implementation steps with focused checks. Complete the coherent batch, including documentation and review of the final diff, wording, and sensitive information, before starting expensive release checks. Small steps do not each require a release.
+- Once release checks start, defer unrelated polish. Fix consequential defects and revalidate the affected evidence; do not avoid a necessary fix merely to preserve a green run.
+- Track the existing CI run or deployment and its exact revision with bounded waits and backoff. An observation timeout is not a terminal job failure. Do not launch duplicate runs simply because a wait expired.
+- Reuse evidence only while its code, dependencies, configuration, environment, and relevant base revision remain valid. Preserve all required review, CI, and release gates; this protocol is not permission to skip them or merge automatically.
+- Close with the achieved outcome, material limits, and next owner action, if any. Distinguish local completion, a published PR, and verified production behavior.
+
+### Required Checks
+
 - Choose tests proportional to risk and blast radius.
 - For docs-only work, run `npm run docs:guard` and `npm run text:mojibake`.
 - For non-trivial portal or cross-area behavior changes, run `npm run docs:impact` to confirm owner-doc routing before handoff.

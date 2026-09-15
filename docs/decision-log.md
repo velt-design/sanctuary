@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-09-16 - Report outcomes and batch release verification
+
+Status: Promoted. Jordan requested a standard operating practice after repetitive waiting updates and successive release-check cycles. Use small implementation steps, review a coherent batch before expensive checks, observe existing runs without duplicate restarts, and report outcomes, material problems, or owner decisions. Required verification remains mandatory and invalidated evidence must be refreshed. Promoted to `agent-playbook.md#owner-updates-and-release-batches`, routed from `AGENTS.md`; cross-project preferences also live in the owner's shared local agent instructions.
+
+## 2026-09-16 - Preserve owner decisions across task handovers
+
+Jordan requested that decisions from Assess Velt OS direction be retained in repository docs. Reconcile the existing owner-outcomes section with later explicit choices, and replace the stale draft/manual finance planning section reached by Velt's existing link. Keep accepted direction, deployed evidence, superseded decisions and unaccepted recommendations distinct. Do not turn goal-scoped approvals into standing permissions or copy customer amounts, correspondence or credentials into general context. Owners: `ai/00-vision.md`, `xero-connection.md`.
+
+## 2026-09-16 — Preserve optional RPC nulls inside JSON command envelopes
+
+Production new Schedule assignments returned HTTP 500 (`p_move must be an object`) because the guarded wrapper passed JSON `null` to a function expecting SQL NULL for its optional move. The same boundary affected ordinary completion's optional finish-early payload. The previous persisted-job tests missed first assignment, and mocked RPC success could not catch PostgreSQL null semantics. Normalize only these optional envelope values in a forward wrapper migration. Regression evidence must send real serialized null/omitted values through the database command for creation, existing repair, moves and completion, while retaining malformed-value rejection, atomic rollback and role/revision guards. Owner: `docs/schedule.md`; contract: `scripts/lib/schedule-optional-payload-contract.mjs`.
+
 ## 2026-09-16 - Activate approved invoice and reconciled-payment automation
 
 Released PR135 with aligned pricing, verified migrations and fresh worker health before enabling tenant automation. The Jordan-approved genuine invoice transferred once to an AUTHORISED Xero invoice; the live page shows Awaiting payment and Sent unchecked. Ellen now has audited finance access. Keep native bank auto-reconciliation distinct from portal payment imports: Michelle has not confirmed that bank setting, and no genuine live receipt is claimed as end-to-end proof. The stopped-transfer recovery action says invoice transfer so it remains accurate for the approved-invoice policy and preserved legacy drafts. Owner: `xero-connection.md`.
