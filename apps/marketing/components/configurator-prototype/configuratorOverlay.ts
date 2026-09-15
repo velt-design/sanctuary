@@ -7,6 +7,8 @@ export function openConfigurator(href: string) {
 }
 
 export function rememberConfiguratorSource(href: string) {
+  // Editing an enquiry continues the same journey; keep its original source.
+  if (window.location.pathname === '/design-enquiry') return;
   const url = new URL(href, window.location.origin);
   const context = parseEnquiryContext(Object.fromEntries(url.searchParams));
   if (!context.sourcePath) context.sourcePath = window.location.pathname;

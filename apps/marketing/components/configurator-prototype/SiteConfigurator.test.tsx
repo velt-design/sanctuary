@@ -2,7 +2,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import SiteConfigurator from './SiteConfigurator';
-import { designEnquiryHref, isConfiguratorEntry, openConfigurator } from './configuratorOverlay';
+import { designEnquiryHref, isConfiguratorEntry, openConfigurator, rememberConfiguratorSource } from './configuratorOverlay';
 
 let pathname = '/products';
 vi.mock('next/navigation', () => ({ usePathname: () => pathname }));
@@ -40,4 +40,12 @@ it('leaves bespoke, staff revision and shared-design destinations alone', () => 
   for (const path of ['/contact?enquiry_intent=bespoke', '/contact', '/configurator-preview?open=1&staff_project=abc', '/configurator-preview?open=1#design=example']) {
     expect(isConfiguratorEntry(new URL(path, origin), origin)).toBe(false);
   }
+});
+
+it('keeps the original enquiry source when editing an existing design enquiry', () => {
+  rememberConfiguratorSource('/contact?configurator=preview&source_path=%2Fproducts&source_component=product');
+  const before = designEnquiryHref();
+  window.history.replaceState({}, '', '/design-enquiry');
+  rememberConfiguratorSource('/configurator-preview?open=1');
+  expect(designEnquiryHref()).toBe(before);
 });

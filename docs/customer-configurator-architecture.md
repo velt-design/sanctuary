@@ -5483,3 +5483,22 @@ contact designer Review links to the dedicated Name/Suburb/Email form; enquiry
 Edit my design keeps the enquiry URL. Focused contact/header/entry/overlay/quote
 checks pass (47 tests), marketing typecheck and architecture checks pass. No
 submission, email, production activation or price publication was performed.
+
+### Enquiry estimate continuity audit (2026-09-15)
+
+The dedicated enquiry now uses the same development review-price adapter when
+the public endpoint is deliberately disabled for the local pricing candidate.
+This is display-only: draft amounts never become signed public calculation
+references, and the submission brief still uses the public pricing contract.
+Published prices take precedence; loading, unavailable, custom and excluded-item
+states remain distinct. Editing an enquiry preserves the original source context.
+
+Browser verification reproduced the 6.7 x 3.9 m gable: $18,561 in Review and on
+the enquiry, with matching breakdown. Editing projection to 3.8 m updated the
+enquiry and breakdown to $18,054 without leaving that page. Phone-width (390 px)
+render checked. Fresh legacy contact designer has no Design/Project details nav,
+Review leads to the dedicated enquiry, and its bespoke link opens the bespoke
+details form. Earlier products overlay URL/scroll verification remains valid.
+No live submission or email delivery was exercised; those remain separate launch
+verification, along with pricing publication. Local candidate visibility is not
+evidence of published production pricing.

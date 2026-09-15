@@ -97,7 +97,7 @@ export function calculateConfiguratorPricing(draft: PreviewDraft, config: Costin
   const excluded = [...accessories.excluded];
   if (costingWarnings.length) excluded.push('Base roof costing has unresolved calculation warnings; staff review required before quoting.');
   return { siteInputs: site, base, estimate: { status: 'priced', amount: breakdown.reduce((sum,line)=>sum+line.amount,0), excluded, breakdown,
-    basis: 'Draft pricebook v2.7 · Standard calculator allowances · Travel and site-specific work excluded' + (getRoofFinish(roof).material !== 'acrylic' && getRoofFinish(roof).profile === 'trapezoidal' ? ' · Trapezoidal uses the corrugated allowance pending its own rate' : '') } };
+    basis: 'Draft pricing · Standard calculator allowances · Travel and site-specific work excluded' + (getRoofFinish(roof).material !== 'acrylic' && getRoofFinish(roof).profile === 'trapezoidal' ? ' · Trapezoidal uses the corrugated allowance pending its own rate' : '') } };
 }
 
 export function calculateReviewPrice(draft: PreviewDraft): ReviewPrice {
