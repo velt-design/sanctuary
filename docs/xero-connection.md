@@ -4,6 +4,10 @@ Status: production connected and live read-only accounting access verified on 20
 
 ## Current verification
 
+Hosted configuration update (2026-09-15): Jordan approved temporary Render API access. The existing worker now has `serviceDetails.maxShutdownDelaySeconds=120`, independently read back; auto-deploy remains off and the paid plan is unchanged. Deployment `dep-dak8s0vqj5pc73a8k92g` is live at source `452dbda`, build label `git-452dbda-staging`. Staging RPC verification found worker `sanctuary-render-staging:e5a6355c-a0f7-4e14-9b2b-07944d970dd6` ready, fresh, dark and with zero active jobs; prior processes reported stopped. The temporary API key was revoked and the account page confirmed no provisioned API keys. Evidence: ignored `render-shutdown-settings.json`, `render-version-label-deploy-status.json` and `render-shutdown-health.log`. Active hosted invoice execution remains unverified. Render background workers do not receive web/private-service health probes; database heartbeat supervision and fail-closed process exits remain essential.
+
+Render API detail: the request field is `deployMode` (camel case). An initial `deploy_mode` request instead built the latest branch commit; worker/jobs source was unchanged from the prior build. The subsequent `deployMode=deploy_only` used that completed build with its corrected build label. Saving configuration alone does not deploy it.
+
 ### First owner walkthrough — prepared, not yet released
 
 Use this after the live rollout and its readiness checks are signed off. Jordan runs the first genuine invoice, then teaches Ellen; Ellen needs the finance capability before taking over. Do not create a fake live invoice or reuse an invoice issued before activation.
