@@ -206,3 +206,56 @@ configurator/enquiry application launch remains separate; bind its approved-vers
 setting to this production UUID during that release. Existing frozen estimates
 and quotes were not rewritten. The UI release must still retain PR #136's staff
 classification correction when reconciled with main.
+
+## Enquiry worker activation and email proof, 16 September 2026
+
+Owner lifted the previous no-test-email restriction and authorised the Render
+connection and the submitted price/extra breakdown in the confirmation email.
+A synthetic template proof was delivered to Jordan's Sanctuary inbox with the
+normal office BCC. No real customer was contacted.
+
+Five previously pending enquiry migrations (20260914062001/2/3,
+20260914173001 and 20260915080001) were rehearsed inside a rollback transaction,
+then installed in production. Independent stored-source SHA256 comparison matched
+all five checked-in files. The rehearsal rollback was confirmed before install.
+No queued email jobs existed before activation.
+
+Render deployment `dep-dakth2m1egvs73bs1cj0` is Live at `208c049`, with the
+existing finance handler preserved from main `4b800ba`. The owner entered the
+existing Resend key; `BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED=true` was saved.
+The new worker reported ready as `git-208c049-production-enquiry`; the previous
+`git-d18c162-production` process reported stopped after its normal handoff.
+Finance flags, gateway credentials and global concurrency one were retained.
+
+The end-to-end canary used an isolated local marketing process at revision
+`9a7f370`, connected to production with the already-published Version13/v2.8
+pricebook and durable/V2 enquiry flags. A synthetic 6x3m design with acrylic
+panels and ten rafter lights calculated $18,338 including GST. Its first
+unnormalized fixture was rejected before intake (independently confirmed zero
+saved records); the corrected fixture used the normal form's design parser.
+The successful request and exact retry returned the same receipt. Independent
+SQL showed one succeeded job, one provider effect, SENT outbox, and matching
+$18,338 saved/email totals. Acrylic framing and sheet amounts were grouped with
+the existing customer display helper, without changing their sum. Resend reported
+delivered to the owner inbox and the office BCC. The synthetic project is clearly
+labelled TEST ONLY; the isolated local producer was stopped after verification.
+Evidence is retained under temporary `sanctuary-enquiry-worker-*` and
+`sanctuary-enquiry-release-*`, plus `sanctuary-enquiry-price-proof/`.
+
+This is real production worker/database/provider proof from a local producer,
+not activation of the new public website. PR132 now carries the release work;
+the latest marketing source is `9a7f370`. The public website flags and UI release
+remain separate, and the approved local v2.9 ridge/pile changes have not replaced
+published v2.8. Do not call those pricing changes live based on this email test.
+Rollback the enquiry handler with `BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED=false`
+and a verified worker deployment, retaining finance settings, frozen receipts,
+estimates and provider checkpoints. Never replay through legacy direct sends.
+
+Verification: full local typecheck/lint passed; 1,058 marketing/provider/worker
+and enquiry tests passed before the final label refinement, then 40 focused
+render/preparation/route cases passed. Current worker and database CI passed.
+A later identical PostgreSQL17 job hit its image registry's rate limit before
+starting tests; its retry passed. Broader portal quality/performance checks were
+still running at this record. The enquiry route change only threads the verified
+snapshot to its existing preparation owner; price rendering is extracted into
+ConfiguredEstimate. Further route decomposition is deferred to its intake owner.

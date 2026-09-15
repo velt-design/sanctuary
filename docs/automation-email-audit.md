@@ -327,3 +327,10 @@ tests passed, plus two HTML/plain-text compatibility checks; marketing typecheck
 and scoped lint passed. These are not live delivery proof. Production still lacks
 the five September enquiry migrations and Render's enquiry email environment
 settings. Existing live finance worker d18c162 must be preserved during rollout.
+
+Activation follow-up: the five enquiry migrations and Render handler are now
+installed. The owner-only production canary was delivered once with the frozen
+$18,338 total and extras; exact HTTP replay reused its receipt. See
+`customer-configurator-launch-review.md` for deployment, database/provider proof,
+rollback and the distinction between this verified local producer and the pending
+public website release. No v2.9 pricebook publication occurred in this email pass.
