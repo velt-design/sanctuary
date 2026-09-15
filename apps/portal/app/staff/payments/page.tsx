@@ -54,9 +54,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             {row.xeroInvoiceId && <><br /><CheckXero invoiceId={row.invoiceId} invoiceRef={row.invoiceRef} /></>}
             {!row.xeroInvoiceId && row.captured && row.status !== 'VOID' && ['needs_attention', 'permanent_failed'].includes(row.transferStatus ?? '')
               && <RecoverTransfer invoiceId={row.invoiceId} />}
-            {row.xeroInvoiceId && process.env.XERO_INVOICE_PAYMENTS_ENABLED === 'true' && <><br /><Link href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</Link></>}
-            {row.unassignedReceipts && <><br /><Link href={`/staff/projects/${row.projectId}?tab=invoices`}>Review project payments</Link></>}
-            {row.captured && !row.xeroInvoiceId && !row.unassignedReceipts && row.status !== 'VOID' && <><br /><Link href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Confirm customer and accounting details</Link></>}
+            {row.xeroInvoiceId && process.env.XERO_INVOICE_PAYMENTS_ENABLED === 'true' && <><br /><ButtonLink variant="tertiary" size="small" href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</ButtonLink></>}
+            {row.unassignedReceipts && <><br /><ButtonLink variant="tertiary" size="small" href={`/staff/projects/${row.projectId}?tab=invoices`}>Review project payments</ButtonLink></>}
+            {row.captured && !row.xeroInvoiceId && !row.unassignedReceipts && row.status !== 'VOID' && <><br /><ButtonLink variant="tertiary" size="small" href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Review Xero setup</ButtonLink></>}
           </TableCell>
         </TableRow>;
       })}</TableBody></Table>}

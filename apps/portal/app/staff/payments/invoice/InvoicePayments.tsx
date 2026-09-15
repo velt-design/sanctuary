@@ -62,6 +62,7 @@ export default function InvoicePayments({ invoiceId }: { invoiceId: string }) {
     <h2>Payments in Xero</h2>
     <p>Review payments attached to this Xero invoice. Only your explicit approval records a payment in the portal.</p>
     <Button variant="secondary" disabled={busy || Boolean(pendingId)} onClick={load}>Refresh payment review</Button>
+    {busy && <p role="status">{pendingId ? 'Checking the payment approval result…' : 'Checking payment evidence…'}</p>}
     {message && <p role="status">{message}</p>}
     {pendingId && <p><Button variant="secondary" disabled={busy} onClick={status}>Check approval status</Button>{' '}
       {uncertain && <Button variant="secondary" disabled={busy} onClick={() => approve(uncertain)}>Retry same approval</Button>}{' '}

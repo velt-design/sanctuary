@@ -1,6 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/foundation/FoundationControls';
 export default function CheckXero({ invoiceId, invoiceRef }: { invoiceId: string; invoiceRef: string }) {
   const router = useRouter(); const busy = useRef(false); const [pending, setPending] = useState(false); const [message, setMessage] = useState('');
   async function check() {
@@ -13,5 +14,5 @@ export default function CheckXero({ invoiceId, invoiceRef }: { invoiceId: string
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Xero could not be checked.'); }
     finally { busy.current = false; setPending(false); }
   }
-  return <><button disabled={pending} onClick={() => void check()} aria-label={`Check ${invoiceRef} in Xero`}>{pending ? 'Checking…' : 'Check Xero now'}</button>{message && <p role="status">{message}</p>}</>;
+  return <><Button variant="tertiary" size="small" disabled={pending} onClick={() => void check()} aria-label={`Check ${invoiceRef} in Xero`}>{pending ? 'Checking…' : 'Check Xero now'}</Button>{message && <p role="status">{message}</p>}</>;
 }
