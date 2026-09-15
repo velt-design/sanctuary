@@ -27,7 +27,7 @@ export async function captureProjectCloseEvidence({
     closeDialog.getByRole("radio", { name: /^Cancelled/ }),
   ).not.toBeChecked();
   await expect(
-    closeDialog.getByRole("radio", { name: /^Complete/ }),
+    closeDialog.getByRole("radio", { name: /^Close settled project/ }),
   ).not.toBeChecked();
   await expect(
     closeDialog.getByRole("button", { name: "Choose a close outcome" }),

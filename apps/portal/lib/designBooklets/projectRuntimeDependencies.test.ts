@@ -25,7 +25,7 @@ describe("project design booklet runtime dependencies", () => {
       path.join(process.cwd(), "package-lock.json"),
     );
 
-    expect(portalPackage.dependencies?.sharp).toBe("0.35.3");
+    expect(portalPackage.dependencies?.sharp).toBe("0.35.4");
     expect(portalPackage.devDependencies?.sharp).toBeUndefined();
     expect(packageLock.packages?.["node_modules/sharp"]?.dev).not.toBe(true);
     expect(
@@ -97,5 +97,15 @@ describe("project design booklet runtime dependencies", () => {
 
     expect(typeof sharp).toBe("function");
     expect(sharp.versions.vips).toMatch(/^8\./);
+
+    // Exercise the native AVIF decoder too: loading the addon alone does not prove
+    // the separately packaged image libraries work on the CI/deployment platform.
+    const avif = await sharp({
+      create: { width: 20, height: 10, channels: 3, background: "#50708c" },
+    }).avif().toBuffer();
+    const resized = await sharp(avif).resize(10).webp().toBuffer();
+    expect(await sharp(resized).metadata()).toMatchObject({
+      format: "webp", width: 10, height: 5,
+    });
   });
 });

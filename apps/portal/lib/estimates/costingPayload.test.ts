@@ -76,6 +76,22 @@ function makeInputs(): CalculatorInputs {
 }
 
 describe('costingPayload', () => {
+  it('maps selected ceilings only for roofs with timber sections', () => {
+    const inputs = makeInputs();
+    const module = inputs.modules[0]!;
+    module.ceilingOption = 'thermopine-150';
+    for (const roofMaterial of ['timber', 'mixed'] as const) {
+      module.roofMaterial = roofMaterial;
+      expect(buildSiteInputsFromCalculatorInputs(inputs).pergolas[0]?.modules[0]?.ceiling)
+        .toEqual({ option: 'thermopine-150' });
+    }
+    module.roofMaterial = 'acrylic';
+    expect(buildSiteInputsFromCalculatorInputs(inputs).pergolas[0]?.modules[0]?.ceiling).toBeUndefined();
+    module.roofMaterial = 'timber';
+    delete module.ceilingOption;
+    expect(buildSiteInputsFromCalculatorInputs(inputs).pergolas[0]?.modules[0]?.ceiling).toBeUndefined();
+  });
+
   it('builds a site costing request from calculator inputs', () => {
     const payload = buildSiteInputsFromCalculatorInputs(makeInputs());
 

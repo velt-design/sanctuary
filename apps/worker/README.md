@@ -25,6 +25,10 @@ npm run worker:queue-health
 
 ## Environment contract
 
+The in-progress Xero invoice handler requires `XERO_INVOICE_WORKER_ENABLED=true`, an exact HTTPS `XERO_INVOICE_PORTAL_ORIGIN`, and `XERO_INVOICE_GATEWAY_SECRET` (at least 32 characters). Absent enablement leaves it unregistered. It sends only job ID/current lease to the portal gateway; provider credentials and accounting content remain portal-owned. Existing active-mode gates still apply. No shared rollout is implied; see `docs/xero-connection.md` for required mappings, consent and hosted verification.
+
+For a protected Vercel preview, set worker-only `XERO_INVOICE_VERCEL_AUTOMATION_BYPASS_SECRET` to that project's existing automation credential. It is accepted only with an exact HTTPS `*.vercel.app` origin and sent only in the `x-vercel-protection-bypass` header alongside the separate gateway credential. Redirects remain refused; neither credential belongs in a URL, job payload or log. Omit it for production/custom origins. This authenticates the worker through hosting protection; it does not replace portal lease/secret checks or change project protection. See [Vercel automation protection](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation).
+
 Required for every database-backed command:
 
 - `SUPABASE_URL`: server-side Supabase project or local-stack URL.

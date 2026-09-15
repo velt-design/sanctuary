@@ -1,5 +1,9 @@
 # Automation, Email, And Audit
 
+## Invoice draft and issuance events (2026-09-11)
+
+Admin draft save/delete commands record audit evidence without payment links, balance exposure, or sends. Issue freezes invoice-owned content and records `invoice.issued` atomically under a stable command ID. Issue and send commits issuance first, then uses the existing durable invoice email owner. A send failure returns the issued result and a separate send error, so retrying cannot duplicate billing. PDF, email scope blocks and customer-page itemisation consume the same issued snapshot. Staff retain issued viewing and sending; historical artifacts remain unchanged.
+
 Status: Current.
 
 This doc owns current-state guidance for portal automation events, Project Work and follow-ups, email outbox, email previews, audit events, and marketing enquiry email side effects. Quote/invoice transactional side effects remain owned by `docs/quotes-invoices-job-packs.md`.

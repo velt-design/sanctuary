@@ -1,3 +1,4 @@
+import { runXeroFinanceContracts } from './xero-finance-db-contract.mjs';
 import { spawn, spawnSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -980,6 +981,7 @@ async function run() {
   verifyAiSyntheticExecutionRollback();
   applySql(aiSyntheticExecutionMigrationFile, { singleTransaction: true });
   applySql(aiSyntheticExecutionContractFile);
+  runXeroFinanceContracts({ repositoryRoot, migrationsDirectory, applySql, executeSql });
   process.stdout.write(
     `background-jobs-db: isolated PGMQ contract passed (${image})\n`,
   );

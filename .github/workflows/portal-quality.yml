@@ -117,6 +117,9 @@ jobs:
       - name: Portal Project Work V2 contract gate
         run: npm run test:portal:project-work
 
+      - name: Commercial database and invoice draft contracts
+        run: npm run test:commercial:db
+
       - name: Portal production build
         run: npm run build:portal
 

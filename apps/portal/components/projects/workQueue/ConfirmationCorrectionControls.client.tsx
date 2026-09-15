@@ -29,6 +29,7 @@ const CONFIRMATION_LABELS: Record<
   QUOTE_FOLLOW_UP_EMAIL_SENT: 'Quote follow-up email sent',
   QUOTE_CUSTOMER_REPLY_RECEIVED: 'Quote customer reply received',
   SITE_VISIT_COMPLETED: 'Site visit completed',
+  DELIVERY_COMPLETED: 'Delivery completed',
 };
 
 export function confirmationFactLabel(

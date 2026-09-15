@@ -29,6 +29,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | Doc | Status | Use When |
 | --- | --- | --- |
 | `agent-playbook.md` | Active protocol | You are doing non-trivial portal implementation, investigation, bugfix, or verification work. |
+| `customer-presentation-standard.md` | Owner-approved quality benchmark | You are creating or reviewing a customer PDF, proposal, partnership booklet or booklet output; use the written standard and inspect the approved references when available. |
 | `change-routing.md` | Active protocol | You need path ownership, doc update triggers, common task cards, or docs bloat control before editing. |
 | `portal-production-readiness.md` | Active tracker | You need current portal production-readiness status, quality gates, blockers, priorities, or parallel work lanes. |
 | `agent-centric-portal-plan.md` | Active roadmap | You are improving agent access, portal fixture coverage, debug exports, browser evidence, route smoke coverage, or quality ratchets. |
@@ -122,3 +123,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 - If a doc lists commands, keep them runnable from the repo root unless it states otherwise.
 - Keep one canonical owner doc for each behavior; link to it instead of repeating the full rule set across many docs.
 - Dense docs should include a routing, index, or read-first section. Do not split a doc only because it is long if one canonical owner doc is still clearer.
+
+## Xero accounting connection
+
+See [Xero connection](xero-connection.md) for the developer-only, default-dark read integration, configuration, provisioning and release gates.

@@ -18,6 +18,10 @@ For each route, check:
 
 `Reviewed` means the route and its directly owned controllers were inspected. `Fixed` means the audit also found and corrected a verified defect. Diagnostic `/qa/**` fixtures are evidence surfaces rather than staff workflows and are excluded from page coverage.
 
+## Project index return contract (2026-09-11)
+
+The URL owns filters, search, sorting, pagination and page size. Account/environment-scoped session storage remembers the return URL and first visible project row with its viewport offset, falling back to pixel scroll if that row disappeared. Restoration waits for matching fresh results. Explicit filtered URLs override remembered links; reset and changed filters reset pagination, and authoritative totals clamp removed pages. Sidebar and project returns use the existing navigation owner, without replacing query-cache or route-transition ownership. Regression coverage: `useProjectIndexView.test.tsx` and the existing index/navigation tests.
+
 ## Shared State
 
 | Surface | Status | Evidence |

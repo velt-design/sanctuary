@@ -245,3 +245,10 @@ describe('PortalSidebarPanel', () => {
     rendered.unmount();
   });
 });
+
+ it('shows Finance only when the server grants finance navigation',()=>{
+   const hidden=renderIntoDocument(<PortalSidebarPanel />);
+   expect(hidden.container.querySelector('a[href="/staff/payments"]')).toBeNull();hidden.unmount();
+   const visible=renderIntoDocument(<PortalSidebarPanel financeAccess />);
+   expect(visible.container.querySelector('a[href="/staff/payments"]')?.textContent).toContain('Finance');visible.unmount();
+ });

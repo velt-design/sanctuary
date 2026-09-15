@@ -136,7 +136,8 @@ export type BackgroundJobsRuntimeMetrics = Readonly<{
   dueJobs: number;
   nextDueAt: string | null;
   statusCounts: Readonly<Record<BackgroundJobStatus, number>>;
-  kindCounts: Readonly<Record<BackgroundJobKind, number>>;
+  /** Only installed database kinds are reported; absent is not a measured zero. */
+  kindCounts: Readonly<Partial<Record<BackgroundJobKind, number>>>;
   workerLifecycleCounts: Readonly<
     Record<BackgroundJobWorkerLifecycleState, number>
   >;

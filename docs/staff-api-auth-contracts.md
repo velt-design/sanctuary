@@ -1,8 +1,12 @@
 # Staff API And Auth Contracts
 
+The in-progress `POST /api/integrations/xero/worker` is a server-to-server boundary. It requires a separate `XERO_INVOICE_GATEWAY_SECRET` and accepts only job ID/current lease. Owning RPCs recheck lease, job/subject/project/tenant, issued invoice and verified mapping. The response contains fixed result/error codes with no-store headers; Xero tokens and private invoice data remain portal-owned. No normal staff/admin session grants gateway access. See `docs/xero-connection.md` for its disabled rollout and verification requirements.
+
 This doc is the current-state reference for staff, admin, and public-token route boundaries. Use it before editing API routes, Supabase access, auth checks, diagnostics, or server-owned side effects.
 
 ## Route Families
+
+- `GET/POST /api/staff/v1/projects/[projectId]/delivery` require staff auth and use an auth-bound client. Scheduled writes delegate to Schedule V2 commands; manual completion requires a UUID command, date and note through audited confirmation storage. Admin draft list/commands under `/api/admin/projects/[projectId]/invoice-drafts` enforce admin sessions; save/delete/issue RPCs independently recheck administrator membership. Edits require expected revisions; issue requires a stable UUID command. All responses and draft PDF previews are private/no-store. Drafts are excluded from staff invoice lists and all public token/PDF access. Standalone public records omit quote identity and source-quote links.
 
 - `GET /api/integrations/praxis/v1/context` and `GET /api/integrations/praxis/v1/health` are server-to-server, default-dark Praxis reporting routes. They require a dedicated bearer token plus exact source-key, connection-ID, and environment headers; configured values must also match the database-owned reporting identity. The adapter connects only as the dedicated reporting LOGIN over verified TLS for non-loopback targets, proves its read-only default, exact direct/transitive role membership, absence of forbidden object and callable security-definer capability, then executes bounded read-only transactions with statement and lock timeouts. Health performs a real bounded projection probe. Context accepts only the closed 12-resource enum, a 1-100 limit, and an optional project filter. PR11 rejects `changedAfter` and every `cursor`: each accepted response is one terminal authoritative replacement snapshot read inside one database transaction. The query reads `limit + 1`; if the sentinel exists, it returns body-free `SNAPSHOT_TOO_LARGE` evidence and no partial records, so the caller must narrow `projectId` or `resource`. Duplicate, unknown, and overlong query values fail before parsing. Responses are versioned, `private, no-store`, and contain stable record/freshness evidence plus explicit sanitiser policy, redaction and omission evidence. Every assembled payload is recursively sanitized to at most 65,536 UTF-8 bytes, depth 8, and 256 aggregate child entries; over-bound values become `{ "_praxisOmitted": "source_bounds_v1" }`. Diagnostics contain no body or business values. Mutation methods are not exported. The routes do not use staff cookies, Supabase service role, browser credentials, or any business write path.
 - Staff workflow routes live mainly under `apps/portal/app/api/staff/v1` plus older staff-owned routes under `apps/portal/app/api/contacts`, `apps/portal/app/api/projects`, `apps/portal/app/api/estimates`, and `apps/portal/app/api/quotes`.
@@ -146,3 +150,21 @@ Manual or browser checks should cover:
 - Invalid JSON returns a stable `400` response.
 - Public quote/invoice links reject missing, invalid, expired, and void/declined states as appropriate.
 - Public PDF/attachment routes require the matching token-bound access.
+
+## Xero developer routes
+
+`/api/integrations/xero/start`, `/callback`, and `/review` recheck the developer capability through `apps/portal/lib/xero/http.ts`. Start/review are same-origin POSTs; callback requires a bound single-use state. `/maintain` requires CRON_SECRET and remains dark unless XERO_ENABLED is true. Responses are private/no-store. See [Xero connection](xero-connection.md).
+
+### Xero payment review reads
+
+`apps/portal/lib/invoices/paymentMatchReview.ts` is a server-only service-role read exception behind verified developer access and same-origin POST checks. It selects an exact invoice reference with a two-row ambiguity limit and checks for any existing project payment entry. It has no mutation, delivery or artifact call. The dedicated Xero database login remains restricted to connection storage.
+
+### Xero deposit approval pilot
+
+`/api/payments/xero` is default-dark and uses `getPaymentPilotSession`, requiring an active confirmed portal identity plus a nonrevoked `xero_payment_approvers` grant. Every action also checks origin. Approval and reversal require explicit confirmation; the server supplies the actor, never a browser actor field. Approval evidence is encrypted, time-limited and actor/tenant-bound; receipt and ledger evidence are revalidated before the transaction. Recovery returns only the current approver's match. Investigation/rejection notes require a reason and use an idempotent append-only command. The allowlisted service-role adapter `lib/invoices/xeroMatchRepository.ts` owns these bounded reads/RPCs. Generic admin access does not grant pilot approval; technical connection controls remain developer-only.
+
+`/staff/payments` requires `getPaymentPilotSession` before reads; `lib/invoices/financeReviewRepository.ts` owns the bounded service-role RPC and validates its returned shape. The SQL function rechecks the server-supplied actor grant. Searches accept at most120 characters and bounded pagination; failures render an unavailable state, not an empty queue.
+
+`POST /api/payments/xero/mapping` requires active finance grant and same-origin request. Strict inspect/confirm bodies reject actor/tenant overrides; confirm requires explicit owner confirmation. Fresh provider reads and SQL context checks precede saving. `financeMappingRepository.ts` owns private mapping RPCs; diagnostics stay server-side.
+
+`POST /api/payments/xero/observe` requires the finance grant, same origin and observation flag; browser input is only an invoice UUID. The scheduler `GET /api/integrations/xero/observe` requires the existing CRON_SECRET and flag. InvoiceObservationRepository owns bounded service RPCs; provider responses are reduced to fixed states/reasons and amounts before persistence.

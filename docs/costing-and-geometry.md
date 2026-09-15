@@ -12,6 +12,16 @@ Costing and geometry are shared domain sources of truth. Do not copy their logic
 
 ## Costing Source Of Truth
 
+### September timber pricing release
+
+The pricing-only release advances the package to v2.7 and adds factory-coated Cedar and ThermoPine ceiling selections in 100 mm and 150 mm covers. The package owns selected-length bands, supported stock joins, waste, coating, fixings and fitting labour. Historical inputs without a ceiling selection retain the existing cedar identity; new selections require a published v2.7 configuration. Compatible earlier publications retain their original rates and semantics. Candidate `157b63465bc0` preserves production Version 11 values and adds the reviewed catalogue/accessory allowances; production publication is separate from deploying compatible code.
+
+The staff single-module, job and material-explanation APIs preserve and validate the same ceiling selection through `requestCeiling.ts`. An unsupported selection is rejected rather than silently priced as legacy cedar. Integration coverage starts with saved calculator inputs and verifies the actual material lines returned by all three routes. Detailed batten/screen design controls remain configurator functionality; publishing accessory rates does not add those controls to the staff calculator.
+
+Selected ceiling takeoff plans hip-corner wings independently using each wing's slope, support grid and timber area, then sums the stock length bands, coating and fixings. Mixed acrylic bays stay on their selected wing; ridge strips follow wing lengths; a location-free acrylic area override is allocated proportionally by roof area. The Phase 2 `PergolaModuleCostInputV2` contract is unchanged by this staff pricing release.
+
+This release contains no enquiry-queue migration or producer activation and does not depend on Render setup. Gate 0: legacy workbench rows are N/A (no geometry/workbench changes); this retains the protected calculator V1 commercial path under the owner's explicit request to release staff pricing. No Phase 2 input migration or function consolidation is included. Existing costing, publication, materials-explain, calculator adapter, estimate, marketing price and quote consumers were checked. The new request parser owns the added HTTP validation outside the large routes; remaining route-parser decomposition is deferred to a focused follow-up.
+
 All costing logic and base config live in `packages/costing` and are imported through `@sp/costing`.
 
 `loadCostingMaterialsV1()` is the narrow package-owned material-catalogue boundary for consumers such as infill stock-length lookup that do not need install, overhead, rule, hardware, BOM, or manifest data. `loadCostingConfigV1()` composes that exact merged catalogue into the unchanged full configuration contract. Do not make a narrow consumer import the full loader merely to read `materials`, and do not copy the catalogue into an app.
@@ -131,7 +141,7 @@ Changing any code-owned item is a normal package semantic change with package re
 - A package manifest change must ship with an explicit compatibility/migration decision for the current published control snapshot. Incompatible published data fails closed.
 - Published estimates store `estimates.costing_config_version_id`; pre-publication estimates store the full hashed legacy control snapshot in `outputs.configVersions.costingControl`. All estimates retain frozen inputs and outputs as the historical commercial record.
 
-The active package manifest is `v2.6`. It retains the `v2.5` powdercoat assumptions and `$1,000 ex GST` operational startup, then adds the versioned infill labour policy below. Compatible published `v2.5` and earlier controls retain their original commercial semantics after their original content hash is verified; the two material identities first introduced in `v2.5` are still hydrated where required. A fresh draft copies the active editable rates and advances to `v2.6`. Cloning an older version preserves that version's commercial semantics for rollback.
+The active package manifest is `v2.7`. It retains the `v2.5` powdercoat assumptions, `$1,000 ex GST` operational startup and the `v2.6` infill labour policy below, then adds the reviewed ceiling catalogue. Compatible earlier published controls retain their original commercial semantics after their original content hash is verified; the two material identities first introduced in `v2.5` are still hydrated where required. A fresh draft copies the active editable rates and advances to the current package manifest. Cloning an older version preserves that version's commercial semantics for rollback.
 
 Manifest `v2.6` adds one `60`-minute productive labour allowance per job containing any infills and another `30` minutes per genuinely sloping or triangular opening. The once-per-job action is assigned to the first infill-bearing module so module and infill explanations reconcile, but it is deduplicated across pergolas, modules and standalone existing-pergola infills. Both allowances use the existing `$75/h ex GST` crew rate, feed the established overhead/customer-price sequence, and receive the existing Bespoke productive-time multiplier when applicable. Existing per-opening set-out, cutting, supports, fitting and finishing actions remain unchanged; there is no infill minimum price. Published `v2.5` and earlier controls do not receive either allowance.
 
@@ -355,3 +365,38 @@ npm run test -- packages/geometry
 npm run test -- packages/geometry/src/topProjection.test.ts packages/geometry/src/contracts.test.ts
 npm run test:portal:browser
 ```
+
+## Pricing production release v2.8 (16 September 2026)
+
+The owner approved making the tested staging pricebook live for both the staff
+calculator and customer configurator. The isolated pricing release is based on
+current main, preserving the released finance and timber fixes. Website/enquiry
+activation remains separate. Production Version 12 was rechecked read-only at
+hash `157b63465bc0e812de46fe4dbaa66f732c819e0a974ee37aab253944b52e00d2`.
+The approved staging candidate is
+`4d12a6bde67c28aeacbb8a0d9845529e3ebb7405555d0fab9b8e412de8d33661`.
+
+This release carries the versioned v2.8 engine rules: acrylic infills alone do not
+reclassify a Simple job; solid-roof common rafters are 50x50 through 4m per-plane
+span and 80x50 above, with 600mm maximum centres and 50x50 purlins. Explicit staff
+overrides remain valid. Historical published controls keep their old semantics.
+No stored estimate or quote is rewritten. The customer configurator will bind to
+the same production version when its separately gated application is released.
+
+Gate 0: legacy rows N/A; owner-authorised maintenance of protected calculator V1;
+no workbench input migration, Phase 2 dependency or function consolidation.
+Consumers include staff single/job/material explanation, public calculation,
+configuration publication and saved-estimate resolution. Package-owned derive
+and install hotspot extraction is deferred to avoid changing historical
+calculations; next safe extraction is versioned framing/profile-minute selection.
+
+Release sequence: compatible main app deployments, authenticated admin draft
+comparison and exact-hash publication, then live read-only pricing verification.
+Rollback uses a new immutable publication cloned from Version 12. Do not promote
+the staging deployment or its credentials into production.
+
+Release review correction: the staff eligibility check has no configuration
+argument, so it must use the active UI policy rather than silently assume an old
+manifest. It now permits the acrylic infill request to remain Simple. Server
+calculations still receive the exact published configuration and enforce its
+historical policy. A real eligibility-to-React-hook regression covers this path.

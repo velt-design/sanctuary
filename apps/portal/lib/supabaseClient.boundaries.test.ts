@@ -16,8 +16,18 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/dashboard/getDashboardSnapshotCached.ts',
   'apps/portal/lib/estimates/server.ts',
   'apps/portal/lib/invoices/adminPayments.ts',
+  'apps/portal/lib/invoices/automaticInvoicePaymentRepository.ts', // Cron-owned recording; SQL rechecks the enabled tenant, exact invoice and ledger evidence.
+  'apps/portal/lib/invoices/drafts.ts', // Admin-gated invoice reads/previews; mutations use auth-bound RPCs.
+  'apps/portal/lib/invoices/financeMappingRepository.ts', // Current finance actor; private mapping/retry commands recheck the grant.
+  'apps/portal/lib/invoices/financeReviewRepository.ts', // Bounded private finance projection; SQL checks the current actor grant.
+  'apps/portal/lib/invoices/invoiceObservationRepository.ts', // Pinned-tenant observations from gated finance/cron entry points; no money writes.
+  'apps/portal/lib/invoices/invoicePaymentRepository.ts', // Source-bound review/approval; SQL rechecks actor, identity and ledger evidence.
+  'apps/portal/lib/invoices/invoicePaymentHistory.ts', // Grant/pinned-tenant checked audit projection; no provider call or money write.
   'apps/portal/lib/invoices/paymentLedger.ts',
+  'apps/portal/lib/invoices/paymentMatchReview.ts',
   'apps/portal/lib/invoices/server.ts',
+  'apps/portal/lib/invoices/xeroInvoiceTransferRepository.ts', // Canonical current job lease and frozen provider effect commands.
+  'apps/portal/lib/invoices/xeroMatchRepository.ts',
   'apps/portal/lib/marketingAttribution/server.ts',
   'apps/portal/lib/projects/createProjectCommand.ts',
   'apps/portal/lib/quotes/adminLifecycle.ts',

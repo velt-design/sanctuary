@@ -1,6 +1,18 @@
 # Supabase Schema Map
 
+Payment sync status (20260915000007): private invoice-bound status is written only through the service-owned `xero_record_payment_sync_status` command, retaining safe review/failure codes and last-check time. Browser roles have no direct access. Migration08 exposes status through the existing capability-checked Finance reader and filters review, unavailable and overdue checks into attention before pagination. Frozen request status distinguishes approved invoices from legacy drafts. Installed in staging only after guarded rollback rehearsal; production installation remains pending.
+
+Automatic payments (20260915000006): adds disabled-by-default `auto_record_payments_enabled` and an immutable `recording_method` on Xero matches. Automatic invoice-payment records have no human approver; ledger/audit attribution is `xero-automatic`. The service-only recorder retains the receipt/project locks, bound invoice/contact, current balance and replay checks, and refuses reversed or finance-flagged receipts. Manual wrappers still require a finance grant. History labels automatic records explicitly. Installed in staging only with its rollout flag false; production installation remains pending.
+
+Automatic invoice approval (20260915000005): adds private transfer-control auto_approve_enabled, default false for staged rollout. The actor/lease-checked context selects AUTHORISED for new requests when enabled and preserves the saved status for existing frozen requests. Prepare requires that exact status; immutable bytes, duplicate checks and grants remain unchanged. Activation and verification are tracked in xero-connection.md.
+
 Status: Current.
+
+Finance view filtering: `20260915000002_xero_finance_views.sql` adds the approver-checked, service-role-only `xero_finance_review_filtered(uuid,text,integer,text)` read contract. Attention/current/history selection precedes the 51-row lookahead and offset. Existing `xero_finance_review` delegates to the all-invoice view for compatibility. No accounting/queue records are mutated. Apply before deploying its Finance consumer; rollout evidence is owned by `xero-connection.md`.
+
+Invoice expansion (`20260911000002`–`20260911000008`): `deposit_invoices` adds `invoice_kind`, versioned `content_snapshot`, `draft_revision`, `draft_options`, `issue_command_id` and `issued_from_revision`. Quote identity is nullable only for standalone records. Draft shape constraints forbid invoice numbers, public tokens, paid/sent timestamps and customer PDF artifacts. Issued content is immutable. Admin-authenticated save/delete/issue RPCs extend this table and the current commercial billing functions. `project_payment_allocations.standalone_invoice_id` is an exclusive alternative to quote/stage identity. The payment ledger retains reversed receipts and guards against multiple live receipts per invoice. See [the invoice workflow](quotes-invoices-job-packs.md#invoice-drafts-and-standalone-work) for ordered rollout and compatibility.
+
+Delivery completion: 20260911000001_project_delivery_completion.sql extends project_confirmation_events with DELIVERY_COMPLETED and delivery_details, adds the authenticated project_record_delivery_completion command, and projects existing Schedule/confirmation evidence into the project stage. The command uses Project Work receipts and append-only evidence; no browser schedule writes or payment writes are introduced. project_has_delivery_completion is internal; project_confirm_delivery_stage is the evidence-checked compatibility adapter.
 
 This doc maps active Supabase tables and RPCs to the portal workflow that owns them. Feature docs own behavior; this schema map owns table/RPC routing, write-path boundaries, access rules, and migration sources.
 
@@ -334,6 +346,12 @@ The HTTP boundary permits only full authoritative replacement snapshots. `change
 
 ## Durable Background Jobs
 
+Unapplied Xero migration `20260914000008` adds service-role-only dispatch/finalisation RPCs. Both validate the current secret lease and transfer identity. Dispatch records the existing job effect with frozen key/hash/expiry; finalisation binds a unique tenant/provider invoice after checked GET evidence and atomically appends events. An audit failure rolls confirmation back. Provider-read recovery uses the existing uncertain/failed -> provider-accepted edge without extending an expired write window. The portal gateway verifies evidence; the worker receives no invoice contents or connector credentials.
+
+In-progress Xero finance expansion: migration `20260914000005_xero_invoice_transfer_intents.sql` registers default-disabled `xero_invoice_draft_v1`. `private.xero_invoice_transfer_control` holds the developer-operated gate and pinned tenant; `private.xero_invoice_transfers` holds one invoice/job identity. Both deny direct browser and service-role access. A deferred invoice trigger calls the existing private enqueue core in the issuing transaction only when the gate is enabled. Job payloads contain transfer/invoice/tenant IDs, not accounting content. The migration is unapplied to shared environments and no handler or writes are activated. See `docs/xero-connection.md` for verification gaps and rollout conditions.
+
+Unapplied Xero migrations `20260914000006` and `20260914000007` add `private.xero_customer_mappings`, frozen transfer contact identity and `private.xero_invoice_requests`. The request table protects exact serialized bytes, hash, key and five-minute expiry; identity edits/deletes are denied by trigger as well as direct-access revocation. Service-role-only `xero_invoice_transfer_context` and `xero_invoice_prepare_request` require the current secret job lease, Xero job/subject/project identity, enabled pinned tenant, issued NZD invoice and verified mapping. They derive the lease owner internally and call the canonical job lock. No browser access or mapping administration capability is granted by these migrations.
+
 Owner docs: this schema map owns the current database boundary; `docs/target-architecture.md` owns the long-term worker path, while `docs/security-privacy-quality.md`, `docs/environment-auth-supabase.md`, and `docs/testing-and-qa.md` own security, setup, and verification. Each business job kind still belongs to its existing workflow doc until a later task migrates that producer and handler.
 
 Current scope:
@@ -360,6 +378,8 @@ Service-role RPC boundary:
 - Lifecycle and effects: `background_job_record_progress`, `background_job_record_effect_checkpoint`, `background_job_record_provider_acceptance`, `background_job_complete`, `background_job_schedule_retry`, `background_job_mark_needs_attention`, `background_job_mark_permanent_failure`, `background_job_request_cancellation`, `background_job_acknowledge_cancellation`, `background_job_release_lease`, `background_job_manual_retry`. Local `provider_accepted` writes use the specialised lease-fenced acceptance RPC; all other effect checkpoints use the generic RPC.
 - Verified webhook reconciliation: `background_job_reconcile_verified_provider_acceptance`. Only the portal webhook repository may invoke this service-role RPC after bounded raw-body Svix verification; the database does not verify public HTTP signatures.
 - Recovery and inspection: `background_jobs_recover_expired_leases`, `background_jobs_reconcile`, `background_jobs_queue_health`, `background_jobs_runtime_metrics`, `background_workers_list_safe`, `background_job_get_safe`, `background_jobs_list_safe`, `background_job_event_history_safe`.
+
+Runtime `kind_counts` contains only entries installed in `background_job_kinds`. A worker build may know additional kinds whose workflow migrations are deliberately absent. The parser preserves that partial map without inventing zero counts; unknown kinds and invalid counts are rejected. Status and worker-lifecycle count maps remain complete and strict. This does not change handler availability, claim policy or rollout gates.
 
 Primary write path:
 
@@ -517,3 +537,30 @@ npm run text:mojibake
 `npm run test:jobs:db` requires Docker and creates/removes its own disposable logged-PGMQ Postgres container. It applies only the test bootstrap plus the seven JOB-01/JOB-02/JOB-03 migrations because the historical migration chain is not independently bootstrappable; a static pass or missing local Docker must never be reported as a live database pass.
 
 When changing auth, RLS, grants, or API access, also use `docs/staff-api-auth-contracts.md` and `docs/environment-auth-supabase.md` for route/auth verification. When changing Schedule V2 tables or RPCs, run the readiness checks in `docs/schedule.md`.
+
+## Xero private connection storage
+
+Migration `20260914000001_xero_connection.sql` adds xero_private.connection, oauth_attempts and events. Only a separately provisioned restricted connector LOGIN receives access; anon/authenticated receive none. Audit grants are insert-only. No business or payment tables are changed. See [Xero connection](xero-connection.md).
+
+Migrations `20260914000002` through `20260914000004` add the separately gated payment pilot: `xero_payment_approvers`, immutable `xero_deposit_matches`, append-only `xero_deposit_review_notes`, `xero_deposit_review_context`, `xero_approve_deposit_match` and `xero_record_deposit_review_note`. Service-role receives bounded reads and command execution, not direct table writes; anon/authenticated receive no access. Approval uses the existing payment ledger and allocation commands under the canonical project lock, plus a global receipt lock and unique active source constraint. Existing ledger reversal synchronizes match history and invoice reopening. Grants start empty. These migrations are implementation artifacts until hosted rollout evidence is recorded in `docs/xero-connection.md`.
+
+`20260914000009_xero_finance_access_audit.sql` owns `private.xero_finance_access_events` and the grant-table audit trigger. It records future grant changes and revocations, blocks history updates/deletion, and grants no browser/service table access. Existing pilot approver rows remain unchanged. This is unapplied finance rollout work.
+
+`20260914000010_xero_finance_review.sql` adds the bounded service-only `xero_finance_review(actor,search,offset)` read model. It rechecks payment-approver capability, joins issued invoice/transfer data with active allocations and unmatched pilot receipts, and exposes unassigned-receipt warnings. No accounting or payment writes. Unapplied; isolated contract tests cover payment double counting, reversal and revocation.
+
+Unapplied migration11 adds finance mapping context/save RPCs, private append-only mapping evidence and per-invoice tax-rate verification before request preparation. It grants no finance capability, enables no producer and triggers no provider write. Context locks the invoice/project and preserves captured contact identity.
+
+Unapplied migration12 owns `xero_finance_resume`: current finance grant and scoped job checks precede canonical manual retry, with no new intent or provider request reset. Prepared/uncertain work remains a reconciliation exception.
+
+Unapplied migration13 owns the generation-fenced Xero observation context/save, private immutable observations, grant-checked finance batch reads, and three-item oldest-first scheduler selection. Observations reference the original bound invoice/request and do not mutate payments or provider records.
+
+Unapplied migration19 owns private customer creation intents/events and the service-only `xero_customer_creation_command`. One immutable request per tenant/contact retains exact bytes, key and expiry. Every stage rechecks finance permission and invoice/contact/tenant identity; dispatch and verified mapping are audited, existing mappings are preserved, and no provider call occurs in SQL. Table access remains denied to browser and service roles; the existing finance server repository calls the narrow RPC. See `docs/xero-connection.md` for activation and proof limits.
+
+
+Unapplied migration20 introduces private `xero_invoice_finalise_verified`, retaining the existing public worker lease guard, and service-only `xero_finance_recover_invoice`. The latter checks the current finance grant, locks the stopped canonical job, validates the immutable dispatched request/effect, and atomically records verified binding and queue completion. No worker lease is invented and no provider intent is requeued. See `docs/xero-connection.md` for proof and activation limits.
+
+
+Unapplied migration21 adds request window_started_at and private append-only xero_unused_window_renewals. The finance resume RPC may renew only a stopped request with no dispatch, provider identity/effect or lease, retaining its original creation time, body/hash and key. The immutable trigger requires matching renewal provenance and refuses any possibly dispatched window change. See docs/xero-connection.md for guards and proof limits.
+
+Finance clarity: xero_finance_mapping_status(actor, invoice, tenant) is a service-role-only read boundary returning the current source-contact link or explicit null. It enforces the existing finance grant and configured tenant; revoked mappings are absent. Migration 20260915000003 adds no table writes or browser grants.
+Finance setup separation: `xero_finance_save_setup` accepts the explicitly validated customer/defaults operation through the server-only finance boundary. It serializes on the existing control row, rechecks actor/customer/tenant, records operation-scoped immutable evidence and rejects command-ID reuse across scopes. Customer operations only update the customer mapping; defaults operations only update accounting defaults after tax validation against the basis invoice. Migration 20260915000004 also returns current defaults from the status reader. Existing invoice/transfer/payment records are outside both commands.

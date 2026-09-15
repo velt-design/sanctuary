@@ -28,6 +28,7 @@ const EXPECTED_ALLOWED_EFFECTS = {
   automation_event: [],
   email_outbox_deliver: ['email_dispatch'],
   ai_synthetic_v1: [],
+  xero_invoice_draft_v1: ['xero_invoice_draft'],
 } as const satisfies Record<BackgroundJobKind, readonly string[]>;
 
 function effect(

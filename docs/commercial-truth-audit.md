@@ -2,6 +2,10 @@
 
 Last verified: 2026-08-13.
 
+Invoice expansion implementation (2026-09-11; staging rollout still required): the existing financial truth RPC's settlement denominator includes accepted quotes plus issued `OPEN`/`PAID` standalone invoices. `commercial_project_value_breakdown` and the invoice schedule presentation expose accepted and standalone contributions separately. Quote-linked invoices never add scope value again; `DRAFT` and `VOID` standalone records contribute neither value nor exposure.
+
+Standalone receipts allocate to `standalone_invoice_id`, never a quote payment stage. These source-owned allocations are corrected through payment reversal, not released as quote credit. Reversed receipts remain immutable and a replacement receipt may subsequently pay the invoice; a transaction guard prevents two unreversed receipts for one invoice. An unsettled `COMPLETE` operational closure reopens through the existing Project Work command with a system audit event. Delivery evidence is retained. Cancellation and loss outcomes are not reopened by this settlement rule.
+
 ## Invariants
 
 - Money is persisted and calculated in integer cents. A quote or invoice stores inclusive GST, exclusive GST, and GST; `ex GST = round(inc GST / 1.15)` and `GST = inc GST - ex GST`.

@@ -114,7 +114,7 @@ function isChildActive(
   }
 }
 
-export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sidebar' | 'drawer' }) {
+export default function PortalSidebarPanel({ mode = 'sidebar', financeAccess = false }: { mode?: 'sidebar' | 'drawer'; financeAccess?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -126,7 +126,7 @@ export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sideb
   const prefetchedRef = useRef(new Set<string>());
 
   const scheduleView = (searchParams.get('view') || 'board').toLowerCase();
-  const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
+  const visibleItems = NAV_ITEMS.filter((item) => (!item.adminOnly || role === 'admin') && (!('financeOnly' in item) || financeAccess));
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const today = useMemo(() => todayYmd(), []);
   const roleLabel = role === 'admin' ? 'Admin access' : 'Staff access';

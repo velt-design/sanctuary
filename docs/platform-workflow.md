@@ -2,6 +2,12 @@
 
 This doc describes the current business workflow as represented in the codebase. Use it to understand which feature owns a piece of state before editing.
 
+The invoice-draft rollout adds an admin Save draft → Issue invoice → optional Send sequence. Drafts have no financial effect. Quote-linked invoices reference the whole accepted scope but request only their payment amount; standalone invoices bill their item total and add separately identified project value. Delivery completion is independent from settlement. Only reconciled billing and delivery evidence permit **Close settled project**; reversing a receipt reopens financial follow-up while preserving completed delivery. Rollout and correction rules are in [Quotes, Invoices, And Job Packs](quotes-invoices-job-packs.md#invoice-drafts-and-standalone-work).
+
+## Delivery and settlement
+
+Mark delivery completed records physical delivery independently from payment. A scheduled job uses the existing Schedule completion command; an unscheduled job needs a date and note. The project remains visible with its separate invoice/payment state. Close settled project is the later operational closure, and completed projects are not automatically archived.
+
 ## Lead Capture
 
 Public enquiries start in `apps/marketing`.

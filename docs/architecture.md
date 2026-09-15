@@ -85,3 +85,21 @@ Shared packages own business logic that must not be forked into apps. If app cod
 - Prefer changing the smallest owning layer.
 - Keep docs and implementation aligned when behavior changes.
 - Do not edit old applied migrations unless the user explicitly asks for migration-history repair.
+
+## Xero developer connection
+
+The default-dark portal Xero integration owns private encrypted connection storage, a restricted database LOGIN, developer-only OAuth and candidate reads, and daily access maintenance. It requests accounting read scopes only and does not update business records. See [Xero connection](xero-connection.md) for runtime boundaries and deployment gates.
+
+### Xero deposit review boundary
+
+The developer-only payment suggestion route uses `apps/portal/lib/invoices/paymentMatchReview.ts` for bounded service-role invoice and payment-history reads, after the same verified developer and origin checks as the Xero review route. It never writes payment records; the restricted Xero login is not granted business-table access. See `docs/xero-connection.md` for the conditional customer-win rule and review limitations.
+
+The separately gated deposit pilot adds `/staff/payments/review` and `/api/payments/xero`. `lib/xero/paymentPilot.ts` owns exact provider revalidation and actor-bound approval envelopes; `lib/invoices/xeroMatchRepository.ts` is the service-role RPC adapter for the canonical ledger transaction and restricted review history. Approval requires a separate nonrevoked database grant as well as the active verified pilot identity. Xero credentials retain no business-table or accounting write access. See `docs/xero-connection.md` for default-dark rollout, provenance, retry and reversal contracts.
+
+
+### Finance customer creation (unreleased)
+
+The invoice mapping screen can request explicit new-customer creation through `/api/payments/xero/customers`. `lib/xero/customerCreation.ts` owns read-first recovery and verification, its provider owns create-only Xero transport, and the existing server-only finance mapping repository owns the actor-bound RPC. Migration19 owns immutable request bytes, the conservative retry window and append-only creation/mapping evidence. The restricted connector login remains separate from business-table commands. Expanded OAuth and a default-dark customer-creation gate are required before any provider write; no shared activation is implied. See `docs/xero-connection.md` for rollout and evidence limits.
+
+
+Stopped Xero invoice recovery uses a finance-grant command rather than worker impersonation or manual requeue. The service-only RPC shares the existing binding implementation with the lease-protected worker entry point, then archives/completes only its stopped, verified invoice job. Application recovery reads Xero but has no provider write method. See `docs/xero-connection.md` for the unreleased migration20 boundary.

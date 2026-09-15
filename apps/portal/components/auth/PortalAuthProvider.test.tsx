@@ -33,6 +33,7 @@ vi.mock('@/lib/queries/auth', () => ({
 }));
 
 vi.mock('@/lib/supabase/browserClient', () => ({
+  supabaseRuntimeUrl: () => 'https://auth-fixture.supabase.invalid',
   getSupabaseBrowser: () => ({
     auth: {
       getSession: () => getSessionMock(),

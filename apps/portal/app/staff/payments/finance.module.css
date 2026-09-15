@@ -1,0 +1,15 @@
+.views { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 16px; }
+.search { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.search label { display: grid; gap: 8px; flex: 1 1 260px; max-width: 440px; }
+.checked { color: var(--ui-text-muted); font-size: 13px; margin-block: 16px; }
+
+@media (max-width: 767px) {
+  .invoices { display: block; min-width: 0; }
+  .invoices thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .invoices tbody { display: block; }
+  .invoices tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: var(--ui-space-3); gap: var(--ui-space-3); }
+  .invoices tbody tr + tr { border-top: var(--ui-border-width) solid var(--ui-border-strong); }
+  .invoices tbody td { display: block; min-width: 0; padding: 0; border: 0; overflow-wrap: anywhere; }
+  .invoices tbody td:first-child, .invoices tbody td:last-child { grid-column: 1 / -1; }
+  .invoices tbody td::before { content: attr(data-label); display: block; margin-bottom: 4px; color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); font-weight: 600; }
+}

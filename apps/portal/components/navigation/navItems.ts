@@ -6,6 +6,7 @@ import {
   ArrowDownToLine,
   BookOpen,
   KeyRound,
+  Wallet,
 } from 'lucide-react';
 
 export const NAV_ITEMS = [
@@ -44,6 +45,7 @@ export const NAV_ITEMS = [
       { key: 'schedule-gantt', label: 'Gantt', href: '/staff/schedule?view=gantt' },
     ],
   },
+  { key: 'finance', label: 'Finance', href: '/staff/payments', Icon: Wallet, adminOnly: false, financeOnly: true },
   { key: 'imports', label: 'Imports', href: '/imports', Icon: ArrowDownToLine, adminOnly: false },
   {
     key: 'pricebook',

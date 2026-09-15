@@ -1,4 +1,6 @@
 import { calculateCustomerPriceFromCostEx } from './commercial/customerPricing';
+import { validateAccessoryRates, type AccessoryRates } from './accessoryRates';
+import { validateInstalledSellingRates, type InstalledSellingRates } from './installedSellingRates';
 import { calculateSiteCostV1 } from './engine/calculate';
 import type { CostingConfigV1 } from './engine/config';
 import type { CostInputsV1, SiteInputsV1 } from './engine/types';
@@ -22,6 +24,8 @@ export type CostingControlConfigV1 = {
   schemaVersion: typeof COSTING_CONTROL_CONFIG_SCHEMA_VERSION;
   baseManifestVersion: string;
   materialRatesExGst: Record<string, number>;
+  accessoryRates?: AccessoryRates;
+  installedSellingRates?: InstalledSellingRates;
   labour: {
     crewHourRateExGst: number;
     actionBaseMinutes: Record<string, CostingControlActionMinutesV1>;
@@ -97,19 +101,22 @@ const MAX_CURRENCY_VALUE = 10_000_000;
 const MAX_MINUTES_VALUE = 10_080;
 const MAX_MULTIPLIER_VALUE = 10;
 const COMPATIBLE_BASE_MATERIAL_ADDITIONS = [
+  'ceiling.thermopine-100_lm', 'ceiling.thermopine-150_lm', 'ceiling.cedar-100_lm', 'ceiling.cedar-150_lm', 'ceiling.coating_m2', 'ceiling.fixings_m2',
   'powdercoating_200x50_6m_assumption',
   'powdercoating_overhang_gutter_100x100_6m_assumption',
 ] as const;
 const COMPATIBLE_BASE_MANIFEST_UPGRADES: Record<string, readonly string[]> = {
-  'v1.7': ['v1.8', 'v1.9', 'v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4', 'v2.5', 'v2.6'],
-  'v1.8': ['v1.9', 'v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4', 'v2.5', 'v2.6'],
-  'v1.9': ['v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4', 'v2.5', 'v2.6'],
-  'v2.0': ['v2.1', 'v2.2', 'v2.3', 'v2.4', 'v2.5', 'v2.6'],
-  'v2.1': ['v2.2', 'v2.3', 'v2.4', 'v2.5', 'v2.6'],
-  'v2.2': ['v2.3', 'v2.4', 'v2.5', 'v2.6'],
-  'v2.3': ['v2.4', 'v2.5', 'v2.6'],
-  'v2.4': ['v2.5', 'v2.6'],
-  'v2.5': ['v2.6'],
+  'v2.7': ['v2.8'],
+  'v2.6': ['v2.7', 'v2.8'],
+  'v1.7': ['v1.8', 'v1.9', 'v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4', 'v2.5', 'v2.6', 'v2.7', 'v2.8'],
+  'v1.8': ['v1.9', 'v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4', 'v2.5', 'v2.6', 'v2.7', 'v2.8'],
+  'v1.9': ['v2.0', 'v2.1', 'v2.2', 'v2.3', 'v2.4', 'v2.5', 'v2.6', 'v2.7', 'v2.8'],
+  'v2.0': ['v2.1', 'v2.2', 'v2.3', 'v2.4', 'v2.5', 'v2.6', 'v2.7', 'v2.8'],
+  'v2.1': ['v2.2', 'v2.3', 'v2.4', 'v2.5', 'v2.6', 'v2.7', 'v2.8'],
+  'v2.2': ['v2.3', 'v2.4', 'v2.5', 'v2.6', 'v2.7', 'v2.8'],
+  'v2.3': ['v2.4', 'v2.5', 'v2.6', 'v2.7', 'v2.8'],
+  'v2.4': ['v2.5', 'v2.6', 'v2.7', 'v2.8'],
+  'v2.5': ['v2.6', 'v2.7', 'v2.8'],
 };
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -189,6 +196,8 @@ export function snapshotCostingControlConfigV1(config: CostingConfigV1): Costing
 
   return {
     schemaVersion: COSTING_CONTROL_CONFIG_SCHEMA_VERSION,
+    ...(config.accessoryRates ? { accessoryRates: deepClone(config.accessoryRates) } : {}),
+    ...(config.installedSellingRates ? { installedSellingRates: deepClone(config.installedSellingRates) } : {}),
     baseManifestVersion: config.appliedControlManifestVersion ?? String(config.manifest.version),
     materialRatesExGst: Object.fromEntries(
       config.materials.items.map((item) => [item.id, Number(item.cost_ex_gst)]),
@@ -438,6 +447,8 @@ export function validateCostingControlConfigV1(
     });
   }
 
+  if (value.accessoryRates !== undefined) issues.push(...validateAccessoryRates(value.accessoryRates));
+  if (value.installedSellingRates !== undefined) issues.push(...validateInstalledSellingRates(value.installedSellingRates));
   if (issues.length > 0) return { ok: false, issues };
   const normalized = deepClone(value) as CostingControlConfigV1;
   normalized.materialRatesExGst = materialRates as Record<string, number>;
@@ -455,6 +466,10 @@ export function applyCostingControlConfigV1(
   const control = validated.value;
   const config = deepClone(baseConfig);
   config.appliedControlManifestVersion = control.baseManifestVersion;
+  if (control.accessoryRates) config.accessoryRates = deepClone(control.accessoryRates);
+  else delete config.accessoryRates;
+  if (control.installedSellingRates) config.installedSellingRates = deepClone(control.installedSellingRates);
+  else delete config.installedSellingRates;
 
   config.materials.items = config.materials.items.map((item) => ({
     ...item,
