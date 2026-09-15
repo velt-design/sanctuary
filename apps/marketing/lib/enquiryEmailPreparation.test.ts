@@ -32,13 +32,30 @@ it('copies only verified server pricing into the frozen email variables', async 
   const request = input();
   const customerPrice = { amountIncGst: 13500, includesGst: true as const, currency: 'NZD' as const,
     breakdown: [{ label: 'Pergola', amountIncGst: 12000 }, { label: 'Lighting', amountIncGst: 1500 }] };
-  request.verifiedConfigurator = { customerPrice } as NonNullable<typeof request.verifiedConfigurator>;
+  request.verifiedConfigurator = { customerPrice, design: { roof: { infills: false } } } as NonNullable<typeof request.verifiedConfigurator>;
   const prepared = await prepareEnquiryEmail({} as never, request);
   customerPrice.breakdown[0].amountIncGst = 1;
   expect(prepared.variables.configuredEstimate).toMatchObject({ amountIncGst: 13500, breakdown: [{ amountIncGst: 12000 }, { amountIncGst: 1500 }] });
   delete request.verifiedConfigurator;
   request.payload.configuredEstimate = customerPrice;
   expect((await prepareEnquiryEmail({} as never, request)).variables).not.toHaveProperty('configuredEstimate');
+});
+
+it('uses the same plain-English acrylic grouping as the customer review', async () => {
+  const request = input();
+  request.verifiedConfigurator = { design: { roof: { infills: false } }, customerPrice: {
+    amountIncGst: 15000, includesGst: true, currency: 'NZD', breakdown: [
+      { label: 'Pergola', amountIncGst: 12000 },
+      { label: 'Front 1 · panel perimeter', amountIncGst: 500 },
+      { label: 'Acrylic panels & infills', amountIncGst: 2500 },
+    ],
+  } } as NonNullable<typeof request.verifiedConfigurator>;
+  expect((await prepareEnquiryEmail({} as never, request)).variables.configuredEstimate).toMatchObject({
+    amountIncGst: 15000, breakdown: [
+      { label: 'Pergola', amountIncGst: 12000 },
+      { label: 'Acrylic panels & framing', amountIncGst: 3000 },
+    ],
+  });
 });
 
 

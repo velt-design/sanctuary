@@ -8,6 +8,7 @@ import { customerDesignUrl } from './enquiryDesignLink';
 import { selectEnquiryEmailTemplate } from './enquiryEmailPolicy';
 import { websiteAutoresponderSubject } from './sharedEmails';
 import { getCallWindowText } from '../emails/utils/callWindow';
+import { customerPriceBreakdown } from '../components/configurator-prototype/customerPriceBreakdown';
 
 type EnquiryEmailInput = {
   enquiryRow: { id: string }; enquiryType: string;
@@ -213,7 +214,10 @@ export async function prepareEnquiryEmail(supabase: SupabaseClient, input: Enqui
           landingUrl: page || undefined,
           ...attachmentContext,
           widthM: Number.isFinite(effectiveWidthM ?? NaN) ? Number(effectiveWidthM) : 0,
-          ...(input.verifiedConfigurator ? { configuredEstimate: structuredClone(input.verifiedConfigurator.customerPrice) } : {}),
+          ...(input.verifiedConfigurator ? { configuredEstimate: {
+            ...structuredClone(input.verifiedConfigurator.customerPrice),
+            breakdown: customerPriceBreakdown(input.verifiedConfigurator.customerPrice.breakdown, input.verifiedConfigurator.design.roof.infills),
+          } } : {}),
           depthM: Number.isFinite(effectiveDepthM ?? NaN) ? Number(effectiveDepthM) : 0,
           heightM: Number.isFinite(effectiveHeightM ?? NaN) ? Number(effectiveHeightM) : 0,
           style: formatStyleLabel(effectiveStyle),
