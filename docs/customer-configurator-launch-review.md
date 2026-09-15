@@ -26,17 +26,27 @@ production, send emails or submit live customer enquiries.
 | Complete configured-form controller recovery | Mocked network integration checks required-field refusal, edited pre-send snapshot, unchanged-request retry identity, success and contact-storage cleanup | 3 controller tests passed; 28 contact tests passed; no external submission |
 | Lost response followed by edited retry | Existing receipt response now explicitly identifies the earlier enquiry and excludes subsequent changes; contact storage retained and confirmation focused | Passed with mocked receipt; no duplicate submission identity |
 | Commercial header route | Commercial page header opens contact with Commercial/Professional and Organisation/venue selected | Passed locally |
+| Product-detail entry | Pitched product page bar opens the working configurator over the same product URL; closing restores the product page | Passed locally |
+| Mobile expanded viewer | 390 x 844: Day/Night absent in compact view, present expanded; screenshot inspected; Escape returns to controls and focuses Expand | Browser simulation passed |
+| Mobile menu and professional route | Opening menu removes sticky bar; Professionals opens its page; menu contact link retains professional source and selects Architect/designer/builder | Passed locally |
+| Shared design and refresh | Copied 5.6 x 3 m pitched design opens in a new tab with $10,630 draft estimate; reload retains both | Passed locally for this fixture |
 
 ## Open requirements
 
-- Complete public entry matrix, including commercial/professional and product-detail
-  pages, consent/menu interactions, refreshed/shared designs and mobile expanded view.
+- Complete remaining consent interaction, complex shared-design preservation and
+  browser Back while the configurator itself is open. Product, commercial,
+  professional, mobile menu and expanded-view checks above now have browser evidence.
 - Verify form recovery against the isolated hosted service. Local controller
   success, failure and retry tests intercept all network calls; they do not prove
   receipt by the hosted intake or staff portal.
 - Prepare one exact candidate for hosted verification. The current review-price
   endpoint and hook are development-only. A normal hosted build will not reproduce
   the local v2.8 estimate automatically. Preserve the signed published-price boundary.
+  Read-only Vercel inspection at 07:01 UTC confirms this candidate branch has no
+  branch-specific staging variables and no deployment in either project's most
+  recent 20 results. Existing launch-candidate staging bindings and existing
+  automation credentials are available for reuse. Do not push/deploy this branch
+  before isolating its bindings; do not inherit production credentials by default.
 - Reconcile current hosted pricing, staff receipt/revision and save-to-quote against
   this candidate. Earlier staging evidence is valuable but is not proof of this UI
   and pricing revision.
