@@ -6,7 +6,8 @@ This directory is the durable home for Sanctuary AI strategy, architecture, deci
 
 ## Read First
 
-- `00-vision.md`: accepted Sanctuary AI constitution, business outcomes, boundaries, and initial autonomy rule.
+- `00-vision.md`: accepted Sanctuary AI constitution, business outcomes, boundaries, and initial autonomy rule. Its owner-outcomes section records the decisions from Jordan's Velt/finance discussion, working preferences, delivery order and next-task handover; read it before replanning that work.
+- `../xero-connection.md#next-stage-everyday-finance`: current finance decisions and superseded pilot choices. Read the automatic-production walkthrough and release evidence before operating the connection.
 - `09-decisions/README.md`: accepted architectural decisions and ADR authoring template.
 - `sanctuary-ai-master-plan.md`: proposed 12-24+ month strategic and technical programme. It is a target, not authority to change current application behavior.
 - `operations/README.md`: Mac mini setup, secret, backup, rebuild, revocation, and incident-response routing.

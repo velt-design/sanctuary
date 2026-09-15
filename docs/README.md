@@ -35,7 +35,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | `agent-centric-portal-plan.md` | Active roadmap | You are improving agent access, portal fixture coverage, debug exports, browser evidence, route smoke coverage, or quality ratchets. |
 | `portal-ux-roadmap.md` | Active roadmap | You are planning or prioritising portal usability work, workflow polish, visual hierarchy, or staff UX improvements. |
 | `ai/README.md` | Active routing page | You need Sanctuary AI programme status, document authority, or the correct AI strategy/architecture entrypoint. |
-| `ai/00-vision.md` | Accepted strategic target | You need the Sanctuary AI constitution, initial topology, capability boundary, or autonomy rule. |
+| `ai/00-vision.md` | Accepted strategic target | You need the Sanctuary AI constitution, accepted owner outcomes and working preferences, delivery order, task handover, initial topology, or capability boundary. |
 | `ai/09-decisions/README.md` | Decision record index | You need accepted Sanctuary AI architecture decisions, revisit conditions, or the ADR template. |
 | `ai/operations/README.md` | Active operations protocol | You are preparing, operating, revoking, rebuilding, or responding to an incident on the Mac mini private node. It records procedures, not deployment evidence. |
 | `ai/sanctuary-ai-master-plan.md` | Proposed strategic plan | You are reviewing the proposed Sanctuary AI vision, target topology, phases, evaluation model, or initial PR sequence. It does not describe current behavior or authorize implementation by itself. |
@@ -126,4 +126,4 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 
 ## Xero accounting connection
 
-See [Xero connection](xero-connection.md) for the developer-only, default-dark read integration, configuration, provisioning and release gates.
+See [Xero connection](xero-connection.md) for the current owner decisions, automated invoice/payment workflow, developer-only connection controls, operating walkthrough and release evidence. The [everyday finance decisions](xero-connection.md#next-stage-everyday-finance) explicitly supersede the earlier draft/manual pilot. Wider business decisions and handover context live in [owner outcomes and delivery order](ai/00-vision.md#owner-outcomes-and-delivery-order).
