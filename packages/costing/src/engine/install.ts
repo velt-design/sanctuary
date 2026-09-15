@@ -1,3 +1,4 @@
+import { isCostingManifestAtLeast } from '../manifestVersion';
 import type { DerivedV1 } from './types';
 import { ceilingArea } from './ceilingTakeoff';
 import { CEILING_CATALOGUE } from '../ceilingCatalogue';
@@ -268,7 +269,7 @@ function actionApplies(action: ActionConfig, inputs: InputsNormalizedV1, derived
   return true;
 }
 
-function resolveBaseMinutes(action: ActionConfig, inputs: InputsNormalizedV1): number {
+function resolveBaseMinutes(action: ActionConfig, inputs: InputsNormalizedV1, config: CostingConfigV1): number {
   const base = (action as any).base_minutes as any;
   if (typeof base === 'number') return base;
   if (!base || typeof base !== 'object') return 0;
@@ -281,6 +282,8 @@ function resolveBaseMinutes(action: ActionConfig, inputs: InputsNormalizedV1): n
     if (!table) return 0;
     const minutes = table[profile];
     if (typeof minutes === 'number') return minutes;
+    // New standard 50x50 rafters retain the 80x50 fitting allowance, not custom fabrication time.
+    if (profileKey === 'rafter_profile' && profile === '50x50' && isCostingManifestAtLeast(config, 2, 8) && typeof table['80x50'] === 'number') return table['80x50'];
     const fallback = table.custom;
     return typeof fallback === 'number' ? fallback : 0;
   }
@@ -411,7 +414,7 @@ export function buildInstallV1(
     const qty = selectedCeiling ? ceilingArea(inputs, derived as unknown as DerivedV1) : resolveQty(action, inputs, derived);
     if (!Number.isFinite(qty) || qty <= 0) continue;
 
-    const originalMinutes = resolveBaseMinutes(action, inputs);
+    const originalMinutes = resolveBaseMinutes(action, inputs, config);
     const baseMinutes = selectedCeiling ? originalMinutes * (CEILING_CATALOGUE[selectedCeiling.option].coverMm === 150 ? 12 / 14.4 : 1) + 2 : originalMinutes;
     if (!Number.isFinite(baseMinutes) || baseMinutes <= 0) {
       warnings.push(`Install action '${action.id}' has no valid base_minutes; skipped.`);
@@ -512,7 +515,7 @@ export function buildDayCycleActions(
 
     if (!actionApplies(action, inputs, derived)) continue;
 
-    const baseMinutes = resolveBaseMinutes(action, inputs);
+    const baseMinutes = resolveBaseMinutes(action, inputs, config);
     if (!Number.isFinite(baseMinutes) || baseMinutes <= 0) {
       warnings.push(`Install action '${action.id}' has no valid base_minutes; skipped.`);
       continue;

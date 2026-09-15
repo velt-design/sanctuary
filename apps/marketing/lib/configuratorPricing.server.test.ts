@@ -148,3 +148,20 @@ it.each(['freestanding','unsure'] as const)('keeps %s intent and resolved inputs
   const rejected=await buildPublishedEnquiryPricingSnapshot(params,{design:altered,calculationRef,suppressGenericPricing:true});
   expect(rejected.verifiedConfigurator).toBeFalsy();
 });
+
+it('keeps local candidate rules out of published calculation references', async () => {
+  vi.stubEnv('NODE_ENV', 'development');
+  vi.stubEnv('CONFIGURATOR_LOCAL_PRICING_CANDIDATE', 'v2.8');
+  expect(await (await POST(request(draft()))).json()).toEqual({ status: 'disabled' });
+  expect(mocks.current).not.toHaveBeenCalled();
+  const result = await (await reviewPOST(request(draft()))).json();
+  expect(result.status).toBe('priced');
+  expect(result).not.toHaveProperty('calculationRef');
+  expect(mocks.current).toHaveBeenCalledOnce();
+});
+it('never enables candidate review in production even with a stale flag', async () => {
+  vi.stubEnv('NODE_ENV', 'production');
+  vi.stubEnv('CONFIGURATOR_LOCAL_PRICING_CANDIDATE', 'v2.8');
+  expect((await reviewPOST(request(draft()))).status).toBe(404);
+  expect((await (await POST(request(draft()))).json()).status).toBe('priced');
+});

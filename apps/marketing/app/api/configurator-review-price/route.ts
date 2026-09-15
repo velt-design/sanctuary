@@ -1,6 +1,7 @@
+import { getPublishedCostingConfiguration } from '../../../lib/publishedCostingConfiguration.server';
 import { readBoundedJson, isAllowedMarketingOrigin } from '../../../lib/marketingPublicRequest';
 import { parsePreviewDraft } from '../../../components/configurator-prototype/previewDraft';
-import { calculateReviewPrice } from '../../../lib/configuratorReviewPrice';
+import { calculateConfiguratorPricing, calculateReviewPrice } from '../../../lib/configuratorReviewPrice';
 
 export async function POST(request: Request) {
   // Provisional repository rates must never silently replace published customer pricing.
@@ -11,6 +12,14 @@ export async function POST(request: Request) {
   const body = await readBoundedJson(request, 16000).catch(() => null);
   const draft = parsePreviewDraft(body);
   if (!draft) return json({ status: 'unavailable' }, 422);
-  try { return json(calculateReviewPrice(draft)); }
+  try {
+    if (process.env.CONFIGURATOR_LOCAL_PRICING_CANDIDATE === 'v2.8') {
+      const published = await getPublishedCostingConfiguration();
+      // Local review only: retain approved rates, opt into candidate calculation rules.
+      const candidate = { ...published.config, appliedControlManifestVersion: 'v2.8' };
+      return json(calculateConfiguratorPricing(draft, candidate).estimate);
+    }
+    return json(calculateReviewPrice(draft));
+  }
   catch { return json({ status: 'unavailable' }, 503); }
 }

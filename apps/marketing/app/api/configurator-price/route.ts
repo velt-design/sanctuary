@@ -7,6 +7,8 @@ import type { ConfiguratorPublicPrice } from '../../../lib/configuratorPublicPri
 
 export async function POST(request: Request) {
   const json = (body: ConfiguratorPublicPrice, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+  // A local candidate must never issue a published-price calculation reference.
+  if (process.env.NODE_ENV === 'development' && process.env.CONFIGURATOR_LOCAL_PRICING_CANDIDATE === 'v2.8') return json({ status: 'disabled' });
   // Explicit owner approval of one immutable version, followed by release activation. Never set automatically.
   const approvedVersion = process.env.WEBSITE_CONFIGURATOR_APPROVED_VERSION_ID?.trim();
   if (!approvedVersion) return json({ status: 'disabled' });

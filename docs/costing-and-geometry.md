@@ -519,3 +519,50 @@ For the owner's 7.5 x 4m pitched acrylic example, the old 375lm cedar39 allowanc
 The development marketing adapter now maps actual generated acrylic panel counts per roof plane to the existing `mixed_roof.mode=acrylic_bays` input (`main` for one plane, `A/B` for two), rather than an area override. This activates canonical acrylic panel, joiner top/bottom and fixing labour and buys joiner materials on both gable slopes. The canonical 620mm bay basis remains an approximation to visible clear dimensions. Unsupported/missing plane counts fail closed. No engine rates or historical area-override semantics change. Gate0: legacy audit N/A, no workbench legacy build-on/removal, no Phase2 changes, no consolidation. Consumers: marketing adapter, configured offer helper/tests, accessory incremental calculator and review response. The offer exposes calculation warnings to its caller; the review reports a generic staff-review requirement rather than silently hiding them or exposing internal warning details.
 
 Recalculated18m2 packages: entry$11,595 and everyday$16,057 unchanged; combination$27,676 (previously$26,383); premium$37,315 (previously$36,025), all inclGST. Includes both material and labour changes, not a new markup. Evidence: configuratorMixedRoofCost.test.ts and artifacts/pricing-review-2026-09-11/package-review.json. Supplier-check evidence is in accessory-supplier-check.json and blind-invoice-parity.json. July Shade Elements invoices show45% discount on complete systems; extruded covers and provisional fabric-group mappings prevent treating the comparison as exact margin. No supplier, publication, staff agreement or frozen quote was changed.
+
+## Local owner pricing candidate v2.8 (2026-09-15)
+
+Owner authorised a local candidate shared by calculator and configurator. No
+publication, migration, production activation or email is authorised by this pass.
+Gate 0: legacy audit rows N/A; approved maintenance of the protected V1 costing
+path, no workbench build-on, V2 module migration or Phase 2 dependency. Consumers
+checked: calculateCostV1/calculateSiteCostV1, configuredCustomerPrice, accessoryReview,
+portal staff costing and marketing configurator pricing; no type consolidation.
+
+Effective manifest v2.8 permits module infills on an otherwise eligible Simple
+job. It preserves explicit Bespoke selection, site/access/connection restrictions,
+infill materials/actions and operating overhead. Historical published controls
+retain their effective manifest and original behaviour.
+
+Solid-roof common rafters use 50x50 up to a 4m per-plane span and 80x50 above.
+Framing maximum spacing is 600mm; 50x50 purlins and 150x50 edge rafters remain.
+Gables use each half-span; box internal pitched/gable geometry selects the run.
+The calculator uses its existing single-run span model, not an engineering solve
+of additional intermediate beams. Explicit staff rafter overrides remain valid.
+Mixed roofs retain their acrylic-bearing rafter profiles and use the new spacing
+for the timber-region support grid. Ceiling stock joins follow that same grid,
+including unequal hip-corner wings. These are owner costing assumptions, not
+structural certification or new permitted-span evidence.
+
+For standard 50x50 rafters with no explicit fitting-time entry, v2.8 uses the
+existing 80x50 fitting allowance instead of custom fabrication time. This makes
+no assumption of faster installation; explicit configured 50x50 rates win.
+
+Local preview on port 3074 opts into CONFIGURATOR_LOCAL_PRICING_CANDIDATE=v2.8.
+Its development-only review endpoint overlays the candidate effective manifest
+on the approved staging rates; it issues no published calculation reference.
+Production ignores the flag and retains the normal published endpoint. Port 3073
+remains the approved-rules comparison. Existing stored quotes are not rewritten.
+
+Hotspot maintenance: derive.ts and install.ts remain package-owned. Broader
+extraction is deferred to avoid disturbing historical calculations in this rule
+change; next safe extraction is versioned timber framing selection from derive.ts
+and profile-minute resolution from install.ts, with boundary and history tests.
+
+Local comparison (same approved rates; amounts include GST): 5x3 acrylic baseline
+$10,234 unchanged; with one standard full-height acrylic side $15,456 -> $14,369;
+with upgraded side framing $15,939 -> $14,852. Timber and aluminium screen examples
+are unchanged. ThermoPine solid pitched 5x3 $17,689 -> $16,898; 5x5 $26,443 ->
+$25,870. Solid box 5x3 $23,297 -> $22,750; 5x5 $27,611 -> $26,950. Candidate
+responses contain no excluded/unpriced selections for these cases. Approved
+staging content hash was checked against the recorded release hash before reads.
