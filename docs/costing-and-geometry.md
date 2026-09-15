@@ -349,6 +349,18 @@ Plan/3D accuracy work must also keep the top-view parity gate green. `buildTopPr
 
 ### Local v2.9 ridge candidate (16 September 2026)
 
+**Freestanding corner-only amendment:** owner subsequently requested piles only
+at the four corners, with all intermediate posts on deck brackets. For effective
+v2.9 rectangular freestanding modules (`house_connection_type=none`) selecting
+`pile_1_5m`, `pilePostCounts` allocates four piles (capped at total post count)
+and the remainder to deck brackets. BOM uses buried cut lengths only for those
+four posts; concrete, excavation, consumables and pile labour use the pile count.
+Deck hardware and installation use only the remaining count. Other post-based
+actions still use the total count. Attached pile-supported modules retain all
+piles; older pricing versions remain unchanged. This changes no input schema;
+the existing selected pile connection plus freestanding geometry defines the
+versioned mixed-foundation rule. Four/six/eight-post regression cases cover it.
+
 **Approved pile costing implemented locally, 16 September:** owner confirmed
 400mm holes, 1.5m depth and continuous posts stopping 100mm above the hole bottom,
 then explicitly approved adding the draft to actual costing. Effective v2.9 now

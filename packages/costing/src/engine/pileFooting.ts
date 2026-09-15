@@ -10,6 +10,12 @@ export function usesApprovedPileFooting(inputs: InputsNormalizedV1, config: Cost
   return inputs.post_connection_type === 'pile_1_5m' && isCostingManifestAtLeast(config, 2, 9);
 }
 
+export function pilePostCounts(inputs: InputsNormalizedV1, config: CostingConfigV1): { piles: number; brackets: number } {
+  if (!usesApprovedPileFooting(inputs, config)) return { piles: 0, brackets: 0 };
+  const piles = inputs.house_connection_type === 'none' ? Math.min(4, inputs.post_count) : inputs.post_count;
+  return { piles, brackets: inputs.post_count - piles };
+}
+
 export function pileFootingMaterials(postCount: number): MaterialsLineV1[] {
   return [
     ['concrete', 'Concrete for 400mm x 1.5m post pile (including waste)', 175],
