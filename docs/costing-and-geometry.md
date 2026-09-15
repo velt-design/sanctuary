@@ -394,3 +394,9 @@ Release sequence: compatible main app deployments, authenticated admin draft
 comparison and exact-hash publication, then live read-only pricing verification.
 Rollback uses a new immutable publication cloned from Version 12. Do not promote
 the staging deployment or its credentials into production.
+
+Release review correction: the staff eligibility check has no configuration
+argument, so it must use the active UI policy rather than silently assume an old
+manifest. It now permits the acrylic infill request to remain Simple. Server
+calculations still receive the exact published configuration and enforce its
+historical policy. A real eligibility-to-React-hook regression covers this path.
