@@ -406,6 +406,14 @@ describe('background-job worker runtime contracts', () => {
     expect(Object.isFrozen(parsed.statusCounts)).toBe(true);
     expect(Object.isFrozen(parsed.workerLifecycleCounts)).toBe(true);
 
+    const financeOnlyKinds = kindCounts();
+    delete financeOnlyKinds.ai_synthetic_v1;
+    const financeOnly = parseBackgroundJobsRuntimeMetrics({ ...row, kind_counts: financeOnlyKinds });
+    expect(financeOnly.kindCounts.xero_invoice_draft_v1).toBe(kindCounts().xero_invoice_draft_v1);
+    expect(financeOnly.kindCounts).not.toHaveProperty('ai_synthetic_v1');
+    expect(Object.isFrozen(financeOnly.kindCounts)).toBe(true);
+    expect(() => parseBackgroundJobsRuntimeMetrics({ ...row, kind_counts: { xero_invoice_draft_v1: -1 } })).toThrow(/kind_counts/i);
+
     const partialStatuses = statusCounts();
     delete partialStatuses.queued;
     expect(() => parseBackgroundJobsRuntimeMetrics({ ...row, status_counts: partialStatuses })).toThrow(

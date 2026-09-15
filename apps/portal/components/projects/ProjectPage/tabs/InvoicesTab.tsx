@@ -506,11 +506,11 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                   <div className={styles.allocationCopy}>
                     {entry.allocations.length ? entry.allocations.map((allocation) => (
                       <span key={allocation.id}>{allocation.stageLabel}: {formatMoneyFromCents(allocation.amountIncGstCents)}{allocation.isCurrentSchedule || allocation.standaloneInvoiceId ? '' : ' (historical)'}</span>
-                    )) : <span>Unallocated credit: {formatMoneyFromCents(entry.unallocatedIncGstCents)}</span>}
+                    )) : entry.matchedInvoiceId ? <span>Reserved for {entry.matchedInvoiceRef ?? 'its approved invoice'}</span> : <span>Unallocated credit: {formatMoneyFromCents(entry.unallocatedIncGstCents)}</span>}
                   </div>
                   {entry.entryType !== 'REVERSAL' && !entry.reversed ? (
                     <OverflowMenu label={`Manage payment from ${formatDate(entry.occurredAt)}`} menuLabel="Payment actions" items={[
-                      ...(entry.amountIncGstCents > 0 && !entry.allocations.some((allocation) => allocation.standaloneInvoiceId) ? [{ label: 'Manage allocation', disabled: financialActionsLocked, onSelect: () => setAllocationTarget(entry) }] : []),
+                      ...(entry.amountIncGstCents > 0 && !entry.matchedInvoiceId && !entry.allocations.some((allocation) => allocation.standaloneInvoiceId) ? [{ label: 'Manage allocation', disabled: financialActionsLocked, onSelect: () => setAllocationTarget(entry) }] : []),
                       { label: 'Reverse entry', disabled: financialActionsLocked, destructive: true, separatorBefore: true, onSelect: () => setReversalTarget(entry) },
                     ]} />
                   ) : null}

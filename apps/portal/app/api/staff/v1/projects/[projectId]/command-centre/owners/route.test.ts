@@ -46,12 +46,13 @@ describe('PATCH command-centre owners', () => {
     await expect(res.json()).resolves.toMatchObject({ command: { id: commandId, committed: true, replayed: false } });
   });
 
-  it('maps stale assignment versions to a stable 409', async () => {
-    rpc.mockResolvedValueOnce({ data: null, error: { code: '40001', message: 'owner assignment changed' } });
+  it.each(['40001', 'PT409'])('maps stale assignment %s to a stable 409 without retrying', async (code) => {
+    rpc.mockResolvedValueOnce({ data: null, error: { code, message: 'owner assignment changed' } });
     const { PATCH } = await import('./route');
     const res = await PATCH(request({ ownerKey: 'jp', commandId, expectedVersion: '2026-07-20T00:00:00.000Z' }), ctx);
     expect(res.status).toBe(409);
     expect(res.headers.get('cache-control')).toBe('private, no-store');
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 
   it('rejects owner values outside Jordan, JP, Joe, and Bruce', async () => {

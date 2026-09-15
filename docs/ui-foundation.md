@@ -73,6 +73,8 @@ authoritative.
 
 ## Production Patterns
 
+Finance clarity work composes existing Foundation view buttons, labelled search controls and data states within the existing Finance route. View selection remains server-owned before pagination. This adoption does not move payment/transfer commands or change the shared visual system; release evidence and remaining usability gaps are in `xero-connection.md`.
+
 The catalogue renders the actual exported search/filter bar, selection table, pagination, modal, drawer, alerts, data states, permission/read-only controls, calculator notices, NZD financial summary, task/schedule feedback, and sticky action bar. Forced interaction states stay in catalogue markup via `data-visual-state`; they are not component props. Demo-only helpers are not exported.
 
 Projects Index consumes the index `PageHeader`, `ButtonLink`, `SearchFilterBar`, `ProjectStageBadge`, `LoadingSkeleton`, and `DataStatePanel` while retaining its query, preload, optimistic mutation, journey/stage/state filtering, and retry owners. Project Detail consumes the detail `PageHeader`, inline stage badge, `TabNavigation`, `KeyValueGrid`, `MetricGrid`, `ActionPanel`, `ActivityTimeline`, `TaskList`, shared controls, alerts, and confirmation owners while retaining lazy tabs and existing cache/local-first owners.
@@ -220,3 +222,5 @@ and has no implied completion sequence.
 - `npm run build:portal`
 - Authenticated desktop, tablet, and mobile review of `/staff/ui-foundation`
 - Credential-free visual review may use `/qa/ui-foundation-fixture` only with the explicit portal QA flag; this must never replace staff-route auth smoke.
+
+Finance navigation uses the existing sidebar/rail/drawer items and styling. Its visibility comes from the server-verified finance user identity, checked against the current authenticated client identity; a generic admin role is insufficient. Finance routes and commands retain independent current-grant checks. Invoice references in Finance lead to the project Commercial/invoices view. This addition does not expose developer connection controls or change the shell layout.

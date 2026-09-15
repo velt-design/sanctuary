@@ -5,6 +5,10 @@ import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
 
+// Includes isolated PGlite startup and migration application on shared CI workers.
+// This is a correctness test, not a five-second product performance budget.
+const databaseTestTimeout = 20_000;
+
 const migration = readFileSync(
   path.join(
     process.cwd(),
@@ -228,7 +232,7 @@ describe("stale Enquiry bulk-close migration", () => {
     } finally {
       await database.close();
     }
-  });
+  }, databaseTestTimeout);
 
   it("rejects non-admin callers before changing anything", async () => {
     const database = new PGlite();
@@ -244,5 +248,5 @@ describe("stale Enquiry bulk-close migration", () => {
     } finally {
       await database.close();
     }
-  });
+  }, databaseTestTimeout);
 });

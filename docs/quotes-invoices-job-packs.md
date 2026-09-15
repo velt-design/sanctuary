@@ -16,7 +16,7 @@ Rollout evidence (2026-09-11): all eight migrations (20260911000001 through 2026
 
 Authenticated staging browser verification created one labelled synthetic project, recorded unscheduled delivery completion, saved and reopened a standalone draft after refresh, issued INV-0006 for $10, verified separate standalone value, then voided it with an audit reason and zero remaining exposure. No email was sent. The rollback SQL also verified issue retries, payment, settled closure, reversal and repayment. The retained staging record is project 221504f5-f2ac-45e5-989f-da3449247ec5, with void invoice 974b35b9-3802-495d-9925-41d411055d89. Preview deployment CHj3RUfkF5YBmdBTHqU1k78jjxoD is ready with INVOICE_DRAFTS_ENABLED=true. Production deployment 8U7jxaoVFfBYSMnHstcFXPb3i8X8 is ready on merged main caf2d04 with INVOICE_DRAFTS_ENABLED=true for portal.sanctuarypergolas.co.nz. Production postflight found 51 unchanged legacy invoices, 18 payments, the issue command present, no direct staff invoice mutation grant and the restrictive draft-read policy. After the owner signed in, authenticated production smoke verified the standalone draft editor and its Save/Issue/Issue-and-send controls, the live delivery eligibility/date/note form, and filtered Projects return navigation retaining search, name sorting and page size. Production forms were inspected without submitting business mutations. No production QA invoice, payment or completion record was created.
 
-Historical ledger reconciliation: 20260724 and 20260728 contain the matching repository SQL split into statements (normalized SQL matches); 20260731 matches its repository file exactly after LF normalization. The independent 20260909000001 entry stores marketing enquiry email-correlation SQL and does not overlap these migrations. Preserve these records. As required by staging-supabase-readiness.md, this rollout used guarded exact-file transactions, not blanket CLI push or migration repair. Local operational evidence is retained under output/portal-rollout-*.
+Historical ledger reconciliation: 20260724 and 20260728 contain the matching repository SQL split into statements (normalized SQL matches); 20260731 matches its repository file exactly after LF normalization. The independent 20260909000001 entry stores marketing enquiry email-correlation SQL and does not overlap these migrations. Preserve these records. As required by staging-supabase-readiness.md, this rollout used guarded exact-file transactions, not blanket CLI push or migration repair. The preceding dated paragraphs are the durable sanitized rollout record. Raw operator captures were local under output/portal-rollout-* and are not available from a fresh checkout; they are not a claim of fresh production verification.
 
 This doc is the current-state reference for quote, invoice, public-token, PDF/email, and job-pack flows. These workflows have side effects, public access surfaces, file artifacts, and project-stage implications, so verify behavior at the domain boundary, not only in the UI.
 
@@ -143,6 +143,10 @@ Before enabling or rolling back `workbench_solved`, run downstream immutability 
 
 ## Invoice Lifecycle
 
+The in-progress Xero transfer repository uses server-only service-role RPCs for lease-scoped context, exact request preparation, dispatch and verified finalisation. It exposes no browser table writes and does not alter invoice/payment ownership. The worker gateway returns only fixed results; provider credentials and invoice contents remain in the portal. Shared activation and end-to-end queue evidence remain pending; see `docs/xero-connection.md`.
+
+The in-progress Xero draft transfer captures future issuance through a deferred, default-disabled database trigger, independently of email delivery. It uses the existing jobs owner and preserves issued content and void-and-recreate corrections. No shared activation has occurred; see `docs/xero-connection.md#next-stage-everyday-finance` for state and release gates.
+
 ### Action and recovery contract
 
 Quote create/revise commands and admin invoice/payment commands carry stable client intents across an ambiguous retry. Lifecycle, send, delete, supersede, job-pack and financial actions acquire synchronous locks before awaiting. A command response is applied immediately; list refresh is later reconciliation. If that refresh fails after the server committed, the UI reports that the action completed and offers Refresh instead of presenting a retry that could repeat the write. Invoice/payment reconciliation failure also locks further financial actions until an authoritative refresh succeeds. See `docs/portal-action-recovery-audit.md`.
@@ -229,3 +233,23 @@ Manual or browser checks should cover:
 - Powdercoating override save conflict and successful override persistence.
 
 If changing schema or access policy for these flows, also verify the ordered migrations, RLS/service-role boundary, and public token behavior.
+
+## Xero deposit review
+
+The developer-only suggested-match screen compares a portal invoice with Xero receipts. The separately gated approval pilot records only the verified receipt amount through the canonical ledger after explicit Jordan approval. Any positive verified deposit counts as customer won; partial deposits leave the whole invoice OPEN. Reaching the exact invoice total allocates those same receipts and marks it PAID without an additional payment. Unrecognized existing history blocks import. Audited reversal removes the match and releases allocations, reopening a paid invoice where necessary. See `docs/xero-connection.md` for approval, retry, access and rollout evidence; the Jordan-only pilot is released and its first real owner-approved match is verified through the live portal and canonical ledger.
+
+Finance queue owner: `lib/invoices/financeReviewRepository.ts` reads migration10's bounded finance projection for `/staff/payments`. Invoice balances count active allocations and pilot receipt matches once, while unassigned project receipts require review before a balance is presented. This does not replace the project schedule owner or change payment commands.
+
+`lib/invoices/financeMappingRepository.ts` is the server-only owner for the grant-scoped mapping context and confirmed mapping command. It accepts provider-verified evidence from the mapping route; it is not browser-callable and does not change issued invoice contents.
+
+`invoiceObservationRepository.ts` owns bound-invoice observation context/save and scheduler reads. Migration18 includes the latest observation within the same finance-list statement so exception ordering and displayed evidence agree. Failed reads display unavailable rather than an empty success. No source invoice or payment state is overwritten.
+
+The mapping screen has a separately gated, explicitly confirmed new-Xero-customer command. `financeMappingRepository.ts` binds the current actor/invoice to migration19's immutable request and verified customer mapping. The provider creates only a customer record; the existing account/tax confirmation and invoice transfer remain separate. See `docs/xero-connection.md` for duplicate/recovery rules, expanded consent and the unactivated rollout status.
+
+
+`xeroInvoiceTransferRepository.ts` also owns actor-bound stopped-transfer recovery. Finance review can explicitly check the original request against Xero; exact verified DRAFT recovery uses migration20 and never sends another invoice. Existing worker ownership, changed/missing provider records and cancellations remain explicit exceptions. Details and pending rollout evidence live in `docs/xero-connection.md`.
+
+
+Finance resume can reuse an unused prepared invoice request through migration21. Only an expired unused window is renewed, with audit; the invoice, request key and job identity remain the same. Possibly dispatched requests still require the separate recovery check. This remains unactivated rollout work; see docs/xero-connection.md.
+
+Finance mapping now reports incomplete portal invoice details separately from an infrastructure failure. The operator is directed to check the linked customer, open/paid status and NZD currency before retrying; the existing SQL eligibility rules are unchanged and no provider request runs before context validation. See `docs/xero-connection.md` for staged walkthrough evidence and the older synthetic fixture limitation.

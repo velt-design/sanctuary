@@ -129,7 +129,7 @@ describe('Wave 3 background-job migrations', () => {
       foundation.matchAll(/\('([a-z][a-z0-9_]+)',\s*1,\s*'[a-z0-9-]+'/g),
       (match) => match[1],
     );
-    const foundationKinds = BACKGROUND_JOB_KINDS.filter((kind) => kind !== 'ai_synthetic_v1');
+    const foundationKinds = BACKGROUND_JOB_KINDS.filter((kind) => kind !== 'ai_synthetic_v1' && kind !== 'xero_invoice_draft_v1');
     expect(seededKinds).toEqual(foundationKinds);
 
     for (const kind of foundationKinds) {

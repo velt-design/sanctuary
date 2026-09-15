@@ -285,9 +285,11 @@ describe('background jobs RPC adapter', () => {
     });
   });
 
-  it('parses aggregate health, recovery, reconciliation, and safe worker projections', async () => {
+  it.each([true, false])('parses aggregate projections with optional AI registry installed=%s', async (aiInstalled) => {
     const statusCounts = countMap(BACKGROUND_JOB_STATUSES) as Record<BackgroundJobStatus, number>;
     const kindCounts = countMap(BACKGROUND_JOB_KINDS) as Record<BackgroundJobKind, number>;
+    const installedKinds: Partial<typeof kindCounts> = { ...kindCounts };
+    if (!aiInstalled) delete installedKinds.ai_synthetic_v1;
     const workerLifecycleCounts = countMap(BACKGROUND_JOB_WORKER_LIFECYCLE_STATES) as Record<
       BackgroundJobWorkerLifecycleState,
       number
@@ -315,7 +317,7 @@ describe('background jobs RPC adapter', () => {
           due_jobs: 1,
           next_due_at: timestamp,
           status_counts: statusCounts,
-          kind_counts: kindCounts,
+          kind_counts: installedKinds,
           worker_lifecycle_counts: workerLifecycleCounts,
           stale_workers: 0,
           measured_at: timestamp,
@@ -333,6 +335,7 @@ describe('background jobs RPC adapter', () => {
     });
     await expect(rpc.queueHealth()).resolves.toMatchObject({ queueDepth: 2, oldestMessageAgeSeconds: 10 });
     await expect(rpc.runtimeMetrics()).resolves.toMatchObject({ queueDepth: 2, oldestJobAgeSeconds: 20, dueJobs: 1 });
+    expect((await rpc.runtimeMetrics()).kindCounts).toEqual(installedKinds);
     await expect(rpc.workersListSafe({ limit: 10 })).resolves.toEqual([
       expect.objectContaining({ workerId: 'worker-1', isStale: false }),
     ]);

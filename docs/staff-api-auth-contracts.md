@@ -1,5 +1,7 @@
 # Staff API And Auth Contracts
 
+The in-progress `POST /api/integrations/xero/worker` is a server-to-server boundary. It requires a separate `XERO_INVOICE_GATEWAY_SECRET` and accepts only job ID/current lease. Owning RPCs recheck lease, job/subject/project/tenant, issued invoice and verified mapping. The response contains fixed result/error codes with no-store headers; Xero tokens and private invoice data remain portal-owned. No normal staff/admin session grants gateway access. See `docs/xero-connection.md` for its disabled rollout and verification requirements.
+
 This doc is the current-state reference for staff, admin, and public-token route boundaries. Use it before editing API routes, Supabase access, auth checks, diagnostics, or server-owned side effects.
 
 ## Route Families
@@ -148,3 +150,21 @@ Manual or browser checks should cover:
 - Invalid JSON returns a stable `400` response.
 - Public quote/invoice links reject missing, invalid, expired, and void/declined states as appropriate.
 - Public PDF/attachment routes require the matching token-bound access.
+
+## Xero developer routes
+
+`/api/integrations/xero/start`, `/callback`, and `/review` recheck the developer capability through `apps/portal/lib/xero/http.ts`. Start/review are same-origin POSTs; callback requires a bound single-use state. `/maintain` requires CRON_SECRET and remains dark unless XERO_ENABLED is true. Responses are private/no-store. See [Xero connection](xero-connection.md).
+
+### Xero payment review reads
+
+`apps/portal/lib/invoices/paymentMatchReview.ts` is a server-only service-role read exception behind verified developer access and same-origin POST checks. It selects an exact invoice reference with a two-row ambiguity limit and checks for any existing project payment entry. It has no mutation, delivery or artifact call. The dedicated Xero database login remains restricted to connection storage.
+
+### Xero deposit approval pilot
+
+`/api/payments/xero` is default-dark and uses `getPaymentPilotSession`, requiring an active confirmed portal identity plus a nonrevoked `xero_payment_approvers` grant. Every action also checks origin. Approval and reversal require explicit confirmation; the server supplies the actor, never a browser actor field. Approval evidence is encrypted, time-limited and actor/tenant-bound; receipt and ledger evidence are revalidated before the transaction. Recovery returns only the current approver's match. Investigation/rejection notes require a reason and use an idempotent append-only command. The allowlisted service-role adapter `lib/invoices/xeroMatchRepository.ts` owns these bounded reads/RPCs. Generic admin access does not grant pilot approval; technical connection controls remain developer-only.
+
+`/staff/payments` requires `getPaymentPilotSession` before reads; `lib/invoices/financeReviewRepository.ts` owns the bounded service-role RPC and validates its returned shape. The SQL function rechecks the server-supplied actor grant. Searches accept at most120 characters and bounded pagination; failures render an unavailable state, not an empty queue.
+
+`POST /api/payments/xero/mapping` requires active finance grant and same-origin request. Strict inspect/confirm bodies reject actor/tenant overrides; confirm requires explicit owner confirmation. Fresh provider reads and SQL context checks precede saving. `financeMappingRepository.ts` owns private mapping RPCs; diagnostics stay server-side.
+
+`POST /api/payments/xero/observe` requires the finance grant, same origin and observation flag; browser input is only an invoice UUID. The scheduler `GET /api/integrations/xero/observe` requires the existing CRON_SECRET and flag. InvoiceObservationRepository owns bounded service RPCs; provider responses are reduced to fixed states/reasons and amounts before persistence.

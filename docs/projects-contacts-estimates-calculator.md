@@ -4,7 +4,7 @@ This doc is the current-state reference for the core staff portal workflow befor
 
 ## Read First
 
-Delivery completion is a separate action on Overview and the project index. Scheduled installations use Schedule V2 and its early-finish/conflict controls. Unscheduled jobs record an audited DELIVERY_COMPLETED confirmation with a date and note. Both project the existing COMPLETED stage without recording payment or archiving the project. Admin confirmation correction retracts manual evidence and restores its previous stage; scheduled reopening remains Schedule-owned. Financial closure is labelled Close settled project and still requires delivery and reconciled billing. The forward migration is 20260911000001_project_delivery_completion.sql; migration deployment is required before enabling these controls.
+Delivery completion is a separate action on Overview and the project index. Scheduled installations use Schedule V2 and its early-finish/conflict controls. Unscheduled jobs record an audited DELIVERY_COMPLETED confirmation with a date and note. Both project the existing COMPLETED stage without recording payment or archiving the project. Admin confirmation correction retracts manual evidence and restores its previous stage; scheduled reopening remains Schedule-owned. Financial closure is labelled Close settled project and still requires delivery and reconciled billing. The forward migration is 20260911000001_project_delivery_completion.sql; the 2026-09-11 deployment and authenticated smoke are recorded in `quotes-invoices-job-packs.md`. New environments still require migration before activation.
 
 - Use `## Ownership` to route pages, APIs, helpers, tables, and local-first keys.
 - Use `## Contact And Project Flow` and `## Project Snapshot, Pipeline, And Project Work` for project workflow behavior.
@@ -164,6 +164,8 @@ Infill purchasing uses `3.05m x 2.03m` sheets, fixed-width Crystalite stock, 3mm
 Additional aluminium is a third closed specialist disclosure after Structural overrides. It belongs to the active module and accepts published-pricebook profile, stock-length, and whole-quantity rows. Each row inherits the module finish, contributes full bars to package-owned Materials and module true-cost allocation, and deliberately creates no geometry, structural rule, or automatic labour.
 
 ## Estimate Pricing Rollout Boundary
+
+The September pricing-only release adds a Ceiling lining choice to timber and combination-roof calculator sections: Cedar or ThermoPine, each in 100 mm or 150 mm cover, plus the existing cedar specification for historical compatibility. The selection survives saved-input normalisation, affects pricing-change detection and reaches staff costing and material-explanation APIs. A v2.7 publication is required to calculate new selections. Existing saved estimates and quotes retain their frozen outputs until an explicit staff recalculation; publishing never rewrites them. `staffCeilingRoutes.test.ts` verifies saved input through HTTP to actual costing lines for all four options. Roof/screen batten controls are not part of this calculator release.
 
 Saved estimate pricing stays on the calculator path. The 2026-06-11 workbench breakaway disables workbench repricing rather than adapting object-first geometry back into calculator inputs.
 

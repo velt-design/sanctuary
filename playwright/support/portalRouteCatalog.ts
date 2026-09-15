@@ -43,6 +43,24 @@ export interface PortalRouteCatalogEntry {
 }
 
 export const portalRouteCatalog = [
+  { id: 'xero-developer', category: 'diagnostic', routePattern: '/staff/developer/xero', requiredRole: 'staff',
+    ownerDoc: 'docs/xero-connection.md', expectedHeading: 'Xero developer connection', expectedShell: 'portal-shell',
+    dataRequirement: 'scenario_required', smokeStatus: 'catalog-only', debugExportStatus: 'not-applicable',
+    notes: 'Requires the separate Jordan-only developer check; neither an ordinary administrator nor finance grant gives access.' },
+  { id: 'qa-invoice-draft-editor-fixture', category: 'diagnostic', routePattern: '/qa/invoice-draft-editor-fixture', requiredRole: 'fixture',
+    ownerDoc: 'docs/quotes-invoices-job-packs.md', expectedShell: 'fixture-shell', dataRequirement: 'fixture_flag',
+    smokeStatus: 'fixture-only', debugExportStatus: 'not-applicable', notes: 'Existing invoice editor fixture; ENABLE_PORTAL_QA_FIXTURES=1 is required.' },
+  ...[
+    { id: 'finance-review', routePattern: '/staff/payments', expectedHeading: 'Finance review' },
+    { id: 'finance-deposit-review', routePattern: '/staff/payments/review', expectedHeading: 'Deposit review' },
+    { id: 'finance-invoice-mapping', routePattern: '/staff/payments/mapping?invoice=:invoiceId' },
+    { id: 'finance-invoice-payments', routePattern: '/staff/payments/invoice?invoice=:invoiceId', expectedHeading: 'Review invoice payments' },
+  ].map<PortalRouteCatalogEntry>(entry => ({ ...entry, category: 'commercial', requiredRole: 'staff',
+    ownerDoc: 'docs/xero-connection.md', expectedShell: 'portal-shell' as const,
+    dataRequirement: 'scenario_required' as const, smokeStatus: 'catalog-only' as const,
+    debugExportStatus: 'not-applicable' as const,
+    notes: 'Requires a confirmed staff identity plus a separate current finance grant and enabled payment matching. Invoice-payment review also needs XERO_INVOICE_PAYMENTS_ENABLED and an exact transferred invoice. No agent account grant or browser rehearsal is implied.',
+  })),
   {
     id: 'root-redirect',
     category: 'core',

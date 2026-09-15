@@ -138,7 +138,8 @@ export function evaluateSimpleRangeEligibilityV2(inputs: SiteInputsV1, config?: 
     if ((module.ground ?? 'easy') !== 'easy') reasons.push('NON_STANDARD_GROUND');
     if (module.extrusion_colour !== 'Black') reasons.push('NON_STANDARD_COLOUR');
     if (module.powdercoat_is_custom) reasons.push('CUSTOM_POWDERCOAT');
-    if ((module.infills?.length ?? 0) > 0) reasons.push('INFILLS_INCLUDED');
+    // UI eligibility uses current policy; server calculations supply their published version.
+    if ((module.infills?.length ?? 0) > 0 && config && !isCostingManifestAtLeast(config, 2, 8)) reasons.push('INFILLS_INCLUDED');
   }
 
   const reasonCodes = [...new Set(reasons)];

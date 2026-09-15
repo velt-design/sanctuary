@@ -1,5 +1,25 @@
 # Decision Log
 
+## 2026-09-16 - Activate approved invoice and reconciled-payment automation
+
+Released PR135 with aligned pricing, verified migrations and fresh worker health before enabling tenant automation. The Jordan-approved genuine invoice transferred once to an AUTHORISED Xero invoice; the live page shows Awaiting payment and Sent unchecked. Ellen now has audited finance access. Keep native bank auto-reconciliation distinct from portal payment imports: Michelle has not confirmed that bank setting, and no genuine live receipt is claimed as end-to-end proof. The stopped-transfer recovery action says invoice transfer so it remains accurate for the approved-invoice policy and preserved legacy drafts. Owner: `xero-connection.md`.
+
+## 2026-09-16 - Gate finance resume on both setup prerequisites
+
+Customer-link and company-default saves are independent. A successful save of either is not evidence that an invoice transfer can resume. The mapping page now requires a verified customer link and accounting defaults matching the current Xero lookup before exposing Resume; the server still revalidates before queuing. Regression tests complete the two saves in both orders and ensure no resume action is offered after only the first. Owner: `xero-connection.md`.
+
+## 2026-09-15 - Observe installed job kinds without requiring optional workflows
+
+The production finance worker reached the database but stayed unhealthy because its metrics parser required every package-known job kind, including the deliberately absent AI synthetic workflow. SQL correctly enumerates only installed registry rows. Keep status/lifecycle maps strict, validate installed kinds against the known registry, and preserve missing kinds as absent rather than fabricated zero counts. Package and RPC-boundary tests cover both database shapes. This avoids installing unrelated workflow migrations to satisfy monitoring. Owners: `supabase-schema-map.md`, `target-architecture.md`, `testing-and-qa.md`.
+
+## 2026-09-15 — Plan selected ceiling stock per hip-corner wing
+
+The first selected-ceiling takeoff applied leg A's board run to the combined area of both wings. Unequal wings could therefore put long boards in the short-stock price band and omit supported joins. The package now plans each wing before aggregating length bands and purchased coverage. Regression tests compare a 2 m / 6 m corner with separately costed wings, swap wing labels, and cover timber plus all three mixed-roof modes. Keep the staff V1 release out of the deferred V2 workbench input contract. Owner: `costing-and-geometry.md`.
+
+## 2026-09-15 — Preserve staff ceiling choices through the HTTP costing boundary
+
+The calculator payload and costing engine supported the new ceiling identity, but the staff job/single-module request parsers omitted it and priced the historical cedar specification. A shared request parser now validates the package-owned option and passes it through both calculation routes and materials-explain. Integration tests reload saved calculator inputs, use the real route and engine, and compare the returned material lines for all four options. Publishing a pricebook cannot replace this wiring check. The pricing release is isolated from the held configurator/queue rollout. Owners: `costing-and-geometry.md`, `projects-contacts-estimates-calculator.md`.
+
 Compact indexed lessons and guardrails for future agents. Scan relevant entries before non-trivial or risky work, especially when the task touches a known source-of-truth boundary, migration, auth path, data flow, or quality gate.
 
 ## Entry Template
@@ -16,6 +36,28 @@ Related docs/tests: paths or commands
 ```
 
 Use `Status: Active` when the entry is still only a decision-log guardrail. New reusable lessons should remain `Active` until a later pass promotes them into a canonical doc, so this log continues to show live risks that have not yet become standing rules. Use `Status: Promoted` when the durable behavior is now represented in `docs/agent-playbook.md`, `AGENTS.md`, `docs/README.md`, or another canonical doc. Use `Status: Superseded` only when a newer entry or canonical doc replaces the rule.
+
+## Xero customer search literals
+
+Date: 2026-09-14
+Area: Xero deposit review
+Status: Active
+Decision or mistake: A defensive character allowlist rejected valid invoice customer names. Generic JSON/backslash escaping then passed local string tests but failed against Xero.
+Why it mattered: Short or punctuated customer names could not be reviewed, and unverified query escaping risks changing filter meaning.
+Current guardrail: Match search bounds to the customer domain, retain an exact fixed query shape, double embedded quotation marks for Xero's parser, and verify provider behavior with harmless synthetic names before release.
+Promoted to: None
+Related docs/tests: docs/xero-connection.md; apps/portal/lib/xero/review.test.ts
+
+## Browser SQL editor replacement
+
+Date: 2026-09-14
+Area: Hosted SQL verification
+Status: Active
+Decision or mistake: Filling Monaco's active textbox replaced only part of the editor model during a staging lock test; the resulting SQL was rejected with a syntax error.
+Why it mattered: The visible input range is not necessarily the complete query. A successful fill call does not establish what Run will execute.
+Current guardrail: Select all within the editor, clear and paste the complete query, then inspect the rendered query before execution. Treat timed-out execution as uncertain and inspect the existing result before retrying. Do not read tokens or credentials to prove storage.
+Promoted to: None
+Related docs/tests: `docs/xero-connection.md`
 
 ## Project delivery and commercial lifecycle
 
@@ -196,7 +238,7 @@ Related docs/tests: `docs/commercial-truth-audit.md`, `docs/quotes-invoices-job-
 | 2026-07-20 | Portal Contact Details           | Promoted | Contact Detail uses the same authenticated local-first save contract as Project Details: immediate Done feedback, ordered full drafts, coherent cache updates, durable retry, and confirmed-value rollback with the rejected draft retained.                                                                                                                                                                                                                                                                                                                                                                                                             |
 | 2026-07-20 | Portal Project Task Mutations    | Promoted | Manual task feedback is immediate, but overlapping writes own rollback by task key and auto-advance side effects remain server-confirmed; rejected tasks refresh server truth and expose task-specific Retry.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 2026-07-20 | Portal Project Index Mutations   | Promoted | Reversible index writes update only the authenticated user's query caches immediately, retain background-sync feedback, and roll back the affected field/scope on rejection; server-confirmed success and destructive actions stay separate.                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| 2026-07-20 | Portal Performance Measurement   | Promoted | Fixture visual feedback and the five authenticated project-tab useful-content markers are timestamped inside Chromium when the real DOM state changes; Playwright driver polling and round trips must not be counted as user-visible latency.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 2026-07-20 | Portal Performance Measurement   | Promoted | Fixture visual feedback and the five authenticated project-tab selected-state and useful-content markers are timestamped inside Chromium when the real DOM state changes; Playwright driver polling and round trips must not be counted as user-visible latency.                                                                                                                                                                                                                                                                                                                                                                                                           |
 | 2026-07-20 | Infill Explicit Selections       | Promoted | Panel material and joiner direction are explicit two-option selections on Existing supports; physical edges use only Yes/No, with new items defaulting to conservative No and legacy auto/Unsure values resolved without changing their current purchasing result.                                                                                                                                                                                                                                                                                                                                                                                        |
 | 2026-07-19 | Workbench Solve Lifecycle        | Promoted | Memoize the solved base by draft/project identity and derive selection, visibility, and viewport UI from it; UI-only changes must not rebuild solved geometry.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | 2026-07-19 | Calculator Request Lifecycle     | Promoted | Keep debouncing, abort ownership, newest-result protection, and last-valid continuity in the dedicated request controller; costing inputs and results remain server/package authoritative.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -3119,9 +3161,10 @@ Browser evidence: With the task checkbox already in view, the fixture-safe Chrom
 Date: 2026-07-20
 Area: Portal Performance Measurement
 Status: Promoted
-Decision or mistake: The first mutation fixture measured visual feedback with the Node test driver's wall clock, so Playwright command and assertion round trips could make an already-rendered update look slower than 100 ms on a busy CI runner. The authenticated project-tab gate later repeated that mistake for useful content: Playwright's locator polling could add a large discrete delay after the target DOM state was already visible. Its first browser-side correction also named a nonexistent Estimates-specific loading key even though Estimates, Quotes, and Invoices share one Commercial module and loading shell. Fixture visual feedback and the five authenticated project-tab useful-content markers now start and stop inside Chromium when the target DOM state actually changes; the shared Commercial shell is matched only inside the active Estimates tab body, and request/background settlement remains separate.
+Decision or mistake: The first mutation fixture measured visual feedback with the Node test driver's wall clock, so Playwright command and assertion round trips could make an already-rendered update look slower than 100 ms on a busy CI runner. The authenticated project-tab gate later repeated that mistake for useful content: Playwright's locator polling could add a large discrete delay after the target DOM state was already visible. Its first browser-side correction also named a nonexistent Estimates-specific loading key even though Estimates, Quotes, and Invoices share one Commercial module and loading shell. Fixture visual feedback and the five authenticated project-tab selected-state and useful-content markers now start and stop inside Chromium when the target DOM state actually changes; the shared Commercial shell is matched only inside the active Estimates tab body, and request/background settlement remains separate.
+Follow-up (2026-09-14): The selected-tab timer still included driver round trips and failed the release gate twice despite content appearing earlier. It now uses an independent named browser observer alongside the content observer; a delayed-content/driver-read regression proves the measurements remain independent. No performance ceiling changed.
 Why it mattered: A performance gate must measure the user's wait, not automation transport noise. Loosening the 100 ms target would have hidden the measurement error and weakened the product contract.
-Current guardrail: For fixture visual feedback and the five authenticated project-tab useful-content markers, install the browser-side visual observer before the action and end timing at the first truthful visible state. Keep shared loading selectors aligned with their owning module and scoped to the active tab body; never invent a per-route marker that the rendered owner does not emit. Keep the following Playwright assertions as semantic checks without using their completion time as product latency. Keep the 100 ms feedback and 500 ms project-tab useful-content targets, p75 aggregation, long-task check, blocking-overlay check, request accounting, and delayed background completion unchanged. Async loading tests must hold mocked requests with controlled promises when they assert the pending state.
+Current guardrail: For fixture visual feedback and the five authenticated project-tab selected-state and useful-content markers, install the browser-side visual observer before the action and end timing at the first truthful visible state. Keep shared loading selectors aligned with their owning module and scoped to the active tab body; never invent a per-route marker that the rendered owner does not emit. Keep the following Playwright assertions as semantic checks without using their completion time as product latency. Keep the 100 ms feedback and 500 ms project-tab useful-content targets, p75 aggregation, long-task check, blocking-overlay check, request accounting, and delayed background completion unchanged. Async loading tests must hold mocked requests with controlled promises when they assert the pending state.
 Promoted to: `docs/testing-and-qa.md`; `docs/portal-production-readiness.md`
 Related docs/tests: `playwright/support/portalPerformance.ts`; `playwright/portal.project-mutation-performance.spec.ts`; `playwright/portal.performance.spec.ts`; `apps/portal/app/staff/schedule/ScheduleClient.test.tsx`
 
@@ -5521,3 +5564,21 @@ Permission review must also cover FK cascades: a browser-authorized parent-proje
 - Current guardrail: Use a bounded twenty-second limit on that case only. Subsequent exact-revision review reported isolated runtimes of 9.606 and 9.064 seconds, showing the initial ten-second allowance had too little headroom. Preserve every assertion and cleanup step, and verify both the isolated case and the normal concurrent Project Work gate. Do not hide failures with retries or a global timeout increase.
 - Promoted to: `docs/testing-and-qa.md`, Project Work Items V2 Gate.
 - Related docs/tests: `test/project-owner-handoff-migration.test.ts`; `npm run test:portal:project-work`.
+
+
+Date: 2026-09-15
+Area: Xero protected-preview worker rehearsal
+Status: Active
+Decision or mistake: The worker database probe passed, but Vercel rejected the gateway request before application authentication.
+Why it mattered: Issuing first would have stranded a test transfer behind hosting authentication.
+Current guardrail: Before enabling issuance, verify both hosting and portal gateway authentication. Use the existing project automation credential only in a header to the configured Vercel preview; retain secret/lease checks, redirect refusal and preview protection. Pin both connector and finance control tenant before customer preparation.
+Promoted to: apps/worker/README.md and docs/xero-connection.md
+Related docs/tests: apps/worker/src/handlers/xeroInvoice.test.ts
+
+## 2026-09-16 - Versioned pricing must reach staff UI classification
+
+The v2.8 release review found that the configuration-free staff eligibility check
+still rejected infills and rewrote the request as Bespoke before server costing.
+Current UI eligibility now uses current policy; historical server calculations
+retain explicit configuration semantics. Verify the real eligibility-to-state
+hook boundary when changing commercial classification, not only engine totals.

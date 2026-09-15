@@ -49,7 +49,8 @@ function isPortalQaFixtureRoutePath(
     pathname === '/qa/design-booklet-workbench-fixture' ||
     pathname === '/qa/invoice-draft-editor-fixture' ||
     pathname === '/qa/project-work-queue-fixture' ||
-    pathname === '/qa/schedule-ops-fixture'
+    pathname === '/qa/schedule-ops-fixture' ||
+    pathname === '/qa/finance-payment-fixture'
   );
 }
 
@@ -74,11 +75,12 @@ function isAuthenticatedStandaloneRoutePath(pathname: string | null): boolean {
   );
 }
 
-export default function PortalShell({ children }: { children: React.ReactNode }) {
+export default function PortalShell({ children, financeUserId }: { children: React.ReactNode; financeUserId?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { status, email, role } = usePortalSession();
+  const { status, user, email, role } = usePortalSession();
+  const financeAccess = status === 'authenticated' && Boolean(financeUserId) && user?.id === financeUserId;
   const hasMountedRef = useRef(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -162,9 +164,10 @@ export default function PortalShell({ children }: { children: React.ReactNode })
             roleLabel={roleLabel}
             role={role ?? undefined}
             panelVisible={false}
+            financeAccess={financeAccess}
           />
         ) : (
-          <PortalSidebarPanel />
+          <PortalSidebarPanel financeAccess={financeAccess} />
         )}
         {sidebarMode === 'pinned' ? (
           <button
@@ -184,7 +187,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
           </button>
         </header>
         <Drawer open={isMobileNavOpen} onClose={() => setIsMobileNavOpen(false)} title="Portal navigation" side="left">
-          <PortalSidebarPanel mode="drawer" />
+          <PortalSidebarPanel mode="drawer" financeAccess={financeAccess} />
         </Drawer>
         <div
           className={cx(

@@ -69,7 +69,8 @@ function isPortalQaFixtureInternalPath(path: string): boolean {
     path === INVOICE_DRAFT_EDITOR_FIXTURE_PATH ||
     path === PROJECT_WORK_QUEUE_FIXTURE_PATH ||
     path === SCHEDULE_OPS_FIXTURE_PATH ||
-    path === AI_ACTIVITY_FIXTURE_PATH
+    path === AI_ACTIVITY_FIXTURE_PATH ||
+    path === '/qa/finance-payment-fixture'
   );
 }
 

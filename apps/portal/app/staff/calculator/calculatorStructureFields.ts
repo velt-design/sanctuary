@@ -1,3 +1,4 @@
+import { CEILING_CATALOGUE, type CeilingOption } from '@sp/costing';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
@@ -321,6 +322,13 @@ export function buildCalculatorStructureFields({
             label: 'Edge rafters',
             type: 'readOnly',
             value: '150x50 each side (match frame finish)',
+          } satisfies FieldSchemaItem,
+          {
+            id: 'ceilingOption', label: 'Ceiling lining', type: 'select',
+            value: activeModule.ceilingOption ?? '',
+            onChange: (v) => setModuleField('ceilingOption', v ? v as CeilingOption : undefined),
+            options: [{label: 'Existing cedar specification', value: ''}, ...Object.entries(CEILING_CATALOGUE).map(([value, item]) => ({value, label: `${item.species} · ${item.coverMm} mm · factory coated`}))],
+            error: errors.ceilingOption,
           } satisfies FieldSchemaItem,
           {
             id: 'timberRoofAboveType',

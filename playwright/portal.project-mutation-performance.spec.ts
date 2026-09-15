@@ -19,6 +19,23 @@ const DETAILS_API_PATTERN = '**/api/projects/fixture-project/details';
 const CONTACT_DETAILS_API_PATTERN = '**/api/contacts/fixture-contact';
 const journeys: PortalPerformanceJourney[] = [];
 
+test('visual timing separates tab selection from content and driver delays', async ({ page }) => {
+  await page.setContent('<button role="tab" aria-selected="false">Commercial</button><main></main>');
+  await beginPortalVisualFeedback(page, { selector: '[data-ready]', state: 'visible' });
+  await beginPortalVisualFeedback(page, {
+    selector: '[role="tab"]', state: 'selected', text: 'Commercial',
+  }, 'tab-selection');
+  await page.evaluate(() => document.querySelector('button')!.setAttribute('aria-selected', 'true'));
+  const selection = await portalVisualFeedbackMs(page, 5_000, 'tab-selection');
+  // Deliberately delayed content and driver reads must not extend the captured selection.
+  await page.waitForTimeout(200);
+  await page.evaluate(() => document.querySelector('main')!.setAttribute('data-ready', 'true'));
+  const content = await portalVisualFeedbackMs(page);
+  expect(content - selection).toBeGreaterThanOrEqual(150);
+  expect(await portalVisualFeedbackMs(page, 5_000, 'tab-selection')).toBe(selection);
+  await expect(portalVisualFeedbackMs(page, 50, 'missing')).rejects.toThrow();
+});
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
