@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { json, sameOrigin } from '@/lib/xero/http';
 import { getPaymentPilotSession } from '@/lib/xero/pilotAccess';
 import { config } from '@/lib/xero/security';
-import { financeMappingContext, saveFinanceMapping, resumeFinanceTransfer } from '@/lib/invoices/financeMappingRepository';
+import { financeMappingContext, financeMappingStatus, saveFinanceMapping, resumeFinanceTransfer } from '@/lib/invoices/financeMappingRepository';
 import { financeMappingProvider } from '@/lib/xero/financeMappingProvider';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -29,8 +29,15 @@ export async function POST(request: Request) {
     const context = await financeMappingContext(session.user.id, body.invoiceId);
     const accounting = await financeMappingProvider.accounting(tenantId);
     if (body.action === 'inspect') {
+      const link = await financeMappingStatus(session.user.id, body.invoiceId, tenantId, context.sourceContactId);
       const contacts = await financeMappingProvider.contacts(tenantId, body.contactName ?? context.customerName);
-      return json({ context, ...accounting, ...contacts, customerCreationEnabled: process.env.XERO_CUSTOMER_CREATION_ENABLED === 'true',
+      let linkedContact = null;
+      if (link) {
+        try { linkedContact = await financeMappingProvider.contact(tenantId, link.contactId); } catch { /* A failed provider read must not be shown as an absent saved link. */ }
+      }
+      if (linkedContact && !contacts.contacts.some(item => item.id === linkedContact.id)) contacts.contacts.unshift(linkedContact);
+      return json({ context, ...accounting, ...contacts, savedLink: link ? { ...link, contact: linkedContact } : null,
+        customerCreationEnabled: !link && process.env.XERO_CUSTOMER_CREATION_ENABLED === 'true',
         checkedAt: new Date().toISOString() });
     }
     if (body.sourceContactId !== context.sourceContactId) return json({ error: 'The portal customer changed. Review again.' }, 409);

@@ -4,7 +4,7 @@ import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import MappingReview from './MappingReview';
 const id = '11111111-1111-4111-8111-111111111111';
 const review = { context: { sourceContactId: id, invoiceRef: 'INV-TEST', customerName: 'Example' }, contacts: [],
-  accounts: [], taxes: [], limited: false, checkedAt: '2026-09-14T00:00:00Z', customerCreationEnabled: true };
+  savedLink: null, accounts: [], taxes: [], limited: false, checkedAt: '2026-09-14T00:00:00Z', customerCreationEnabled: true };
 let view: ReturnType<typeof renderIntoDocument> | undefined;
 afterEach(() => { view?.unmount(); vi.unstubAllGlobals(); });
 const button = (label: string) => [...view!.container.querySelectorAll('button')].find(item => item.textContent === label);
@@ -62,4 +62,19 @@ it('keeps invoice context after a failed initial check and supports an explicit 
   await act(async () => button('Check Xero records')!.click());
   expect(button('Create Xero customer')).toBeDefined();
   expect(fetcher).toHaveBeenCalledTimes(2);
+});
+it('shows an existing link and preselects only the verified saved customer', async () => {
+ const contact={id,name:'Renamed Example',email:'example@example.test'};
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({...review,contacts:[contact],savedLink:{contactId:id,verifiedAt:'2026-09-15',contact},customerCreationEnabled:false})));
+ view=renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} />); await inspect();
+ expect(view.container.textContent).toContain('Customer already linked to Xero');
+ expect(view.container.querySelector<HTMLSelectElement>('select[name="contactId"]')!.value).toBe(id);
+ expect(button('Create Xero customer')).toBeUndefined();
+});
+it('does not describe an unverifiable saved link as an unlinked customer', async () => {
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({...review,savedLink:{contactId:id,verifiedAt:'2026-09-15',contact:null},customerCreationEnabled:false})));
+ view=renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} />); await inspect();
+ expect(view.container.textContent).toContain('Saved customer link needs checking');
+ expect(view.container.textContent).not.toContain('Customer not yet linked');
+ expect(button('Create Xero customer')).toBeUndefined();
 });

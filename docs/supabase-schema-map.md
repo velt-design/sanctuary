@@ -555,3 +555,5 @@ Unapplied migration20 introduces private `xero_invoice_finalise_verified`, retai
 
 
 Unapplied migration21 adds request window_started_at and private append-only xero_unused_window_renewals. The finance resume RPC may renew only a stopped request with no dispatch, provider identity/effect or lease, retaining its original creation time, body/hash and key. The immutable trigger requires matching renewal provenance and refuses any possibly dispatched window change. See docs/xero-connection.md for guards and proof limits.
+
+Finance clarity: xero_finance_mapping_status(actor, invoice, tenant) is a service-role-only read boundary returning the current source-contact link or explicit null. It enforces the existing finance grant and configured tenant; revoked mappings are absent. Migration 20260915000003 adds no table writes or browser grants.

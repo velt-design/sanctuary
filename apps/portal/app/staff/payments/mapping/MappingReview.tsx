@@ -1,9 +1,11 @@
 'use client';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
 import type { XeroFinanceContact, XeroRevenueAccount, XeroRevenueTax } from '@/lib/xero/financeMappingProvider';
 type Review = { context: { sourceContactId: string; invoiceRef: string; customerName: string }; contacts: XeroFinanceContact[];
-  accounts: XeroRevenueAccount[]; taxes: XeroRevenueTax[]; limited: boolean; checkedAt: string; customerCreationEnabled?: boolean };
+  accounts: XeroRevenueAccount[]; taxes: XeroRevenueTax[]; limited: boolean; checkedAt: string; customerCreationEnabled?: boolean;
+  savedLink: { contactId: string; verifiedAt: string; contact: XeroFinanceContact | null } | null };
 async function command(body: object, signal?: AbortSignal) {
   const response = await fetch('/api/payments/xero/mapping', { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const data = await response.json(); if (!response.ok) throw new Error(data.error ?? 'Could not confirm the mapping.'); return data;
@@ -67,6 +69,10 @@ export default function MappingReview({ invoiceId, initialContext }: { invoiceId
       setMessage(result.state === 'queued' ? 'The existing draft transfer is queued. Check finance review for its result.' : 'This transfer is already queued or running. Check finance review for its result.');
     })}>Resume existing draft transfer</button>}
     {review && <section>
+      {!saved && (review.savedLink ? <AlertBanner tone={review.savedLink.contact ? 'info' : 'warning'} title={review.savedLink.contact ? 'Customer already linked to Xero' : 'Saved customer link needs checking'}>
+        {review.savedLink.contact ? <p>{review.savedLink.contact.name}{review.savedLink.contact.email ? ` — ${review.savedLink.contact.email}` : ''}. The saved customer is selected below. Only change it if this is the wrong customer.</p>
+          : <p>A customer link is saved, but Xero could not verify that record. Retry the check before replacing it or creating another customer.</p>}
+      </AlertBanner> : <AlertBanner tone="info" title="Customer not yet linked"><p>Select the matching Xero customer below and confirm the details to save the link.</p></AlertBanner>)}
       <p>Compare the customer identity before saving. Matching names alone do not prove they are the same customer.</p>
       {review.limited && <p>More customer results exist. Refine the exact Xero name before choosing.</p>}
       {!review.contacts.length && <p>No active Xero customer matched. Check for another name before creating a new customer.</p>}
@@ -77,7 +83,7 @@ export default function MappingReview({ invoiceId, initialContext }: { invoiceId
         <button disabled={pending}>Create Xero customer</button>
       </form>}
       <form onSubmit={save} key={review.checkedAt} style={{ display: 'grid', gap: 16, maxWidth: 640 }}>
-        <label>Xero customer <select name="contactId" required defaultValue=""><option value="" disabled>Select customer</option>{review.contacts.map(item => <option key={item.id} value={item.id}>{item.name}{item.email ? ` — ${item.email}` : ''}</option>)}</select></label>
+        <label>Xero customer <select name="contactId" required defaultValue={review.savedLink?.contact?.id ?? ''}><option value="" disabled>Select customer</option>{review.contacts.map(item => <option key={item.id} value={item.id}>{item.name}{item.email ? ` — ${item.email}` : ''}</option>)}</select></label>
         <label>Sales account <select name="accountCode" required defaultValue=""><option value="" disabled>Select sales account</option>{review.accounts.map(item => <option key={item.id} value={item.code}>{item.code} — {item.name}</option>)}</select></label>
         <label>Sales tax <select name="taxType" required defaultValue=""><option value="" disabled>Select tax</option>{review.taxes.map(item => <option key={item.type} value={item.type}>{item.name} — {item.effectiveRate}%</option>)}</select></label>
         <label><input type="checkbox" name="confirmed" required /> I checked the customer identity and approve this sales account and tax as the defaults for future portal invoice transfers.</label>
