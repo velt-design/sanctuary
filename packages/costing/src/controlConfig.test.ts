@@ -52,7 +52,7 @@ describe('costing control configuration', () => {
     expect(validation.ok).toBe(true);
 
     const applied = applyCostingControlConfigV1(base, historical);
-    expect(applied.manifest.version).toBe('v2.7');
+    expect(applied.manifest.version).toBe('v2.8');
     expect(applied.appliedControlManifestVersion).toBe('v1.7');
     expect(
       applied.installActions.actions.find((action) => action.id === 'infill.setup_setout_each')?.base_minutes,
