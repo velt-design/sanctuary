@@ -1,6 +1,6 @@
 # Supabase Schema Map
 
-Payment sync status (20260915000007): private invoice-bound status is written only through the service-owned `xero_record_payment_sync_status` command, retaining safe review/failure codes and last-check time. Browser roles have no direct access. Finance presentation is not yet connected and hosted installation remains pending.
+Payment sync status (20260915000007): private invoice-bound status is written only through the service-owned `xero_record_payment_sync_status` command, retaining safe review/failure codes and last-check time. Browser roles have no direct access. Migration08 exposes status through the existing capability-checked Finance reader and filters review, unavailable and overdue checks into attention before pagination. Frozen request status distinguishes approved invoices from legacy drafts. Hosted installation remains pending.
 
 Automatic payments (20260915000006): adds disabled-by-default `auto_record_payments_enabled` and an immutable `recording_method` on Xero matches. Automatic invoice-payment records have no human approver; ledger/audit attribution is `xero-automatic`. The service-only recorder retains the receipt/project locks, bound invoice/contact, current balance and replay checks, and refuses reversed or finance-flagged receipts. Manual wrappers still require a finance grant. History labels automatic records explicitly. This migration is not yet installed in shared environments.
 

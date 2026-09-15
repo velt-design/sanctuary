@@ -12,6 +12,8 @@ export const financeReviewSchema = z.object({ checkedAt: z.string(), rows: z.arr
   transferStatus: z.string().nullable(), transferError: z.string().nullable(), captured: z.boolean(), correctionRequired: z.boolean(),
   unassignedReceipts: z.boolean(),
   observation: financeObservationSchema.nullable(),
+  transferTargetStatus: z.enum(['DRAFT', 'AUTHORISED']).nullable().optional(),
+  paymentSync: z.object({ state: z.enum(['current','recorded','review','unavailable']), reason: z.string(), checkedAt: z.string() }).nullable().optional(),
 })).max(51) });
 export type FinanceInvoice = z.infer<typeof financeReviewSchema>['rows'][number];
 export type FinanceView = 'attention' | 'current' | 'history';
@@ -32,6 +34,10 @@ export function financeOutcome(row: FinanceInvoice, now = Date.now()) {
   if (observation?.state === 'conflict') return { remainingCents, attention: true, label: 'Xero differs from the portal — investigate' };
   if (row.unassignedReceipts) return { remainingCents, attention: true, label: 'Assign existing project receipts before chasing payment' };
   if (balanceNeedsReview) return { remainingCents, attention: true, label: 'Check payment history' };
+  if (row.paymentSync?.state === 'review') return { remainingCents, attention: true, label: 'Payment needs a finance check' };
+  if (row.paymentSync?.state === 'unavailable') return { remainingCents, attention: true, label: 'Automatic payment update could not finish' };
+  if (row.paymentSync && now - Date.parse(row.paymentSync.checkedAt) > 24 * 60 * 60 * 1000)
+    return { remainingCents, attention: true, label: 'Automatic payment check is overdue' };
   if (['needs_attention', 'permanent_failed'].includes(row.transferStatus ?? '')) return { remainingCents, attention: true,
     label: row.transferError === 'XERO_MAPPING_REQUIRED' ? 'Confirm customer or accounting details' : 'Investigate invoice transfer' };
   if (observation?.state === 'unavailable') return { remainingCents, attention: true, label: 'Xero could not be checked — try again' };
@@ -48,6 +54,6 @@ export function financeOutcome(row: FinanceInvoice, now = Date.now()) {
     if (observation.state in labels) return { remainingCents, attention: ['draft', 'awaiting_approval', 'correction_pending'].includes(observation.state), label: labels[observation.state as keyof typeof labels] };
   }
   if (row.status === 'PAID') return { remainingCents, attention: Boolean(row.xeroInvoiceId), label: row.xeroInvoiceId ? 'Portal paid — verify Xero' : 'Recorded paid in portal' };
-  if (row.xeroInvoiceId) return { remainingCents, attention: true, label: 'Xero draft recorded — finance review required' };
+  if (row.xeroInvoiceId) return { remainingCents, attention: true, label: row.transferTargetStatus === 'AUTHORISED' ? 'Invoice created in Xero — waiting for its next check' : 'Xero draft recorded — finance review required' };
   return { remainingCents, attention: false, label: row.captured ? 'Waiting for Xero transfer' : 'Not part of automatic transfer' };
 }

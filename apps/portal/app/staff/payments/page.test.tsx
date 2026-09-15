@@ -79,3 +79,13 @@ it('shows a truthful attention empty state and treats load failures separately',
   expect(html).toContain('Finance could not be loaded');
   expect(html).not.toContain('No invoices need attention');
 });
+
+it('does not ask for draft approval when the frozen transfer was approved',async()=>{
+  const html=await page({...invoice,captured:true,xeroInvoiceId:'xero',transferTargetStatus:'AUTHORISED'});
+  expect(html).not.toContain('Review draft in Xero');expect(html).toContain('waiting for its next check');
+});
+it('makes an automatic payment exception actionable',async()=>{
+  vi.stubEnv('XERO_AUTOMATIC_PAYMENTS_ENABLED','true');vi.stubEnv('XERO_INVOICE_PAYMENTS_ENABLED','true');
+  const html=await page({...invoice,captured:true,xeroInvoiceId:'xero',transferTargetStatus:'AUTHORISED',paymentSync:{state:'review',reason:'CHECK',checkedAt:new Date().toISOString()}});
+  expect(html).toContain('Only deal with the exceptions');expect(html).toContain('Payment needs a finance check');expect(html).toContain('Review invoice payments');
+});

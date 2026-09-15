@@ -38,3 +38,11 @@ it('does not call an open fully covered invoice settled or hide a draft review',
   expect(financeOutcome({ ...row, recordedCents: 100 }, now).attention).toBe(true);
   expect(financeOutcome({ ...row, observation: { ...row.observation!, state: 'draft' } }, now).attention).toBe(true);
 });
+
+it('shows automatic payment exceptions and overdue checks as attention items',()=>{
+  for(const state of ['review','unavailable'] as const) expect(financeOutcome({...row,paymentSync:{state,reason:'CHECK',checkedAt:new Date(now).toISOString()}},now).attention).toBe(true);
+  expect(financeOutcome({...row,paymentSync:{state:'current',reason:'CHECK',checkedAt:'2026-09-10T00:00:00Z'}},now).label).toContain('overdue');
+});
+it('does not call an approved transferred invoice a draft',()=>{
+  expect(financeOutcome({...row,observation:null,transferTargetStatus:'AUTHORISED'},now).label).toBe('Invoice created in Xero — waiting for its next check');
+});

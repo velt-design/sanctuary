@@ -23,11 +23,12 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   let data: Awaited<ReturnType<typeof loadFinanceReview>> | null = null;
   try { data = await loadFinanceReview(session.user.id, search, offset, view); } catch { /* Show a safe retry state, never an empty success. */ }
   const href = (next: number, section: FinanceView = view) => `/staff/payments?${new URLSearchParams({ search, offset: String(next), view: section })}`;
+  const automaticPayments = process.env.XERO_AUTOMATIC_PAYMENTS_ENABLED === 'true';
   const views = [['attention', 'Needs attention'], ['current', 'Xero invoices'], ['history', 'Invoice history']] as const;
   return <PageLayout>
-    <PageHeader variant="index" title="Finance review" description="Review invoices, confirm deposits and investigate outstanding items." />
+    <PageHeader variant="index" title="Finance review" description="See what is paid, what is still owing and what needs your attention." />
     {process.env.VERCEL_ENV === 'preview' && <DataStatePanel state="empty" title="Preview — review the workflow first" description="This is the test portal. Check that the instructions make sense before taking any accounting action. This is not your live Finance queue." />}
-    {view === 'attention' && <section aria-label="How to use Finance"><h2>Start with the next action on an invoice</h2><p>You do not need to create invoices again here. The portal sends new invoices to Xero as drafts. Finance checks those drafts in Xero, then uses this page to review payments after reconciliation.</p></section>}
+    {view === 'attention' && <section aria-label="How to use Finance"><h2>{automaticPayments ? 'Only deal with the exceptions' : 'Check the next action on an invoice'}</h2><p>{automaticPayments ? 'Reconciled Xero payments update the portal automatically. Items below need a check or decision. You do not need to enter the same payment again.' : 'Issue invoices from the project. This page shows transfer and payment checks; automatic payment recording has not been enabled yet.'}</p></section>}
     <nav className={styles.views} aria-label="Finance views">{views.map(([key, label]) =>
       <ButtonLink key={key} href={href(0, key)} variant={view === key ? 'primary' : 'secondary'} aria-current={view === key ? 'page' : undefined}>{label}</ButtonLink>)}</nav>
     <p>{view === 'attention' ? 'Invoices that need a check or decision, including older invoices with unresolved payment issues.'
@@ -46,10 +47,11 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         <TableHead>Invoice / customer</TableHead><TableHead>Portal status</TableHead><TableHead>Invoice amount</TableHead><TableHead>Still owing</TableHead><TableHead>Next action</TableHead>
       </TableRow></TableHeader><TableBody role="rowgroup">{data.rows.map(row => {
         const outcome = financeOutcome(row);
-        const draftReview = Boolean(row.xeroInvoiceId && (!row.observation || ['draft', 'awaiting_approval'].includes(row.observation.state)) && !row.correctionRequired && !row.unassignedReceipts && row.recordedCents === 0 && row.status === 'OPEN');
+        const draftReview = Boolean(row.xeroInvoiceId && ((!row.observation && row.transferTargetStatus !== 'AUTHORISED') || (row.observation && ['draft', 'awaiting_approval'].includes(row.observation.state))) && !row.correctionRequired && !row.unassignedReceipts && row.recordedCents === 0 && row.status === 'OPEN');
         const stopped = !row.xeroInvoiceId && row.captured && ['needs_attention', 'permanent_failed'].includes(row.transferStatus ?? '');
         const projectReview = row.unassignedReceipts || row.recordedCents > row.totalCents || (row.status === 'PAID' && row.recordedCents !== row.totalCents) || (row.status === 'VOID' && row.recordedCents > 0);
-        const paymentReview = !projectReview && row.observation?.state === 'payment_recorded' && row.observation.amountPaidCents !== row.recordedCents && Boolean(row.xeroInvoiceId) && process.env.XERO_INVOICE_PAYMENTS_ENABLED === 'true';
+        const paymentSyncIssue = Boolean(row.paymentSync && (['review', 'unavailable'].includes(row.paymentSync.state) || Date.now() - Date.parse(row.paymentSync.checkedAt) > 24 * 60 * 60 * 1000));
+        const paymentReview = !projectReview && (paymentSyncIssue || !automaticPayments) && (paymentSyncIssue || (row.observation?.state === 'payment_recorded' && row.observation.amountPaidCents !== row.recordedCents)) && Boolean(row.xeroInvoiceId) && process.env.XERO_INVOICE_PAYMENTS_ENABLED === 'true';
         const setupReview = stopped && row.transferError === 'XERO_MAPPING_REQUIRED' && !projectReview;
         const money = (value: number) => new Intl.NumberFormat('en-NZ', { style: 'currency', currency: row.currency }).format(value / 100);
         return <TableRow key={row.invoiceId} role="row">
@@ -60,17 +62,20 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             {draftReview && <p>Open the draft in Xero. Check the customer, amount and GST against the portal invoice. If correct, choose More approve options → Approve in Xero. Do not choose Approve &amp; email. Then return here.</p>}
             {stopped && <p>{row.transferError === 'XERO_MAPPING_REQUIRED' ? 'The transfer needs the correct Xero customer and accounting settings. Review Xero setup below, then resume the existing transfer.' : 'The automatic transfer has stopped. A developer needs to investigate before it can continue. Do not issue another invoice or create a replacement in Xero.'}</p>}
             {projectReview && <><p>The portal payment history needs checking before this balance can be trusted. Open the project and check which invoice each receipt belongs to.</p><ButtonLink variant="primary" size="small" href={`/staff/projects/${row.projectId}?tab=invoices`}>Review project payments</ButtonLink></>}
-            {paymentReview && <><p>Xero and the portal show different payment totals. Review the receipts and approve only payments that belong to this invoice. The review shows the balance before and after approval.</p><ButtonLink variant="primary" size="small" href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</ButtonLink></>}
+            {paymentReview && <><p>{automaticPayments ? 'The automatic check could not confirm this payment safely. Open the payment details to see what needs checking before recording anything.' : 'Xero and the portal show different payment totals. The review shows the balance before and after approval.'}</p><ButtonLink variant="primary" size="small" href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</ButtonLink></>}
             {setupReview && <ButtonLink variant="primary" size="small" href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Review Xero setup</ButtonLink>}
-            {row.xeroInvoiceId && !projectReview && !paymentReview && <ButtonLink variant="primary" size="small" href={`/staff/payments/xero-invoice?invoice=${row.invoiceId}`} target="_blank" rel="noopener noreferrer">{draftReview ? 'Review draft in Xero' : 'Open in Xero'}</ButtonLink>}
+            {!outcome.attention && <p>No action needed.</p>}
+            {automaticPayments && !paymentSyncIssue && row.observation?.state === 'payment_recorded' && row.observation.amountPaidCents !== row.recordedCents && <p>The automatic payment check is pending. If it cannot confirm the payment, the reason will appear here.</p>}
+            {row.xeroInvoiceId && outcome.attention && !projectReview && !paymentReview && <ButtonLink variant="primary" size="small" href={`/staff/payments/xero-invoice?invoice=${row.invoiceId}`} target="_blank" rel="noopener noreferrer">{draftReview ? 'Review draft in Xero' : 'Open in Xero'}</ButtonLink>}
             <details><summary>Checks and other options</summary>
             {row.lastVerifiedAt && <><br /><small>Transfer verified {new Date(row.lastVerifiedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
+            {row.paymentSync && <p>Automatic payments checked {new Date(row.paymentSync.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</p>}
             {row.observation && <><br /><small>Xero checked {new Date(row.observation.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
             {row.xeroInvoiceId && <><br /><CheckXero invoiceId={row.invoiceId} invoiceRef={row.invoiceRef} /></>}
             {!row.xeroInvoiceId && row.captured && row.status !== 'VOID' && ['needs_attention', 'permanent_failed'].includes(row.transferStatus ?? '')
               && <RecoverTransfer invoiceId={row.invoiceId} />}
             {row.xeroInvoiceId && process.env.XERO_INVOICE_PAYMENTS_ENABLED === 'true' && !paymentReview && <><br /><ButtonLink variant="tertiary" size="small" href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</ButtonLink></>}
-            {row.xeroInvoiceId && (projectReview || paymentReview) && <ButtonLink variant="tertiary" size="small" href={`/staff/payments/xero-invoice?invoice=${row.invoiceId}`} target="_blank" rel="noopener noreferrer">Open in Xero</ButtonLink>}
+            {row.xeroInvoiceId && (projectReview || paymentReview || !outcome.attention) && <ButtonLink variant="tertiary" size="small" href={`/staff/payments/xero-invoice?invoice=${row.invoiceId}`} target="_blank" rel="noopener noreferrer">Open in Xero</ButtonLink>}
             {row.captured && !row.xeroInvoiceId && !projectReview && row.status !== 'VOID' && !setupReview && <><br /><ButtonLink variant="tertiary" size="small" href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Review Xero setup</ButtonLink></>}
             </details>
           </TableCell>
