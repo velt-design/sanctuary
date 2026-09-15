@@ -6,6 +6,7 @@ vi.mock('./provider',async importOriginal=>({...await importOriginal<typeof impo
 import { access,connect,readAccounting } from './store';
 import { XeroError } from './provider';
 import { supabaseCa } from './supabaseCa';
+import { XERO_INVOICE_SCOPES } from './oauthScopes';
 
 const tenant='11111111-1111-4111-8111-111111111111';const key=Buffer.alloc(32,1);
 let row: {tenant_id:string;encrypted_tokens:string;last_error:string|null};
@@ -26,6 +27,15 @@ beforeEach(()=>{
 });
 afterEach(()=>vi.unstubAllEnvs());
 describe('durable Xero renewal',()=>{
+  it('passes the encrypted existing grant through renewal instead of current rollout flags',async()=>{
+    const scopes=XERO_INVOICE_SCOPES.split(' ');
+    row.encrypted_tokens=seal({accessToken:'expired',refreshToken:'original',expiresAt:0,scopes},key);
+    vi.stubEnv('XERO_INVOICE_CONSENT_ENABLED','false');vi.stubEnv('XERO_INVOICE_TRANSFERS_ENABLED','false');
+    mocks.token.mockResolvedValue({accessToken:'new',refreshToken:'rotated',expiresAt:Date.now()+1800000,scopes});
+    await access();
+    expect(mocks.token.mock.calls[0][3]).toEqual(scopes);
+    expect(unseal(row.encrypted_tokens,key)).toMatchObject({scopes});
+  });
   it('persists a rejected unexpired access token and prevents repeated reads',async()=>{
     row.encrypted_tokens=seal({accessToken:'rejected',refreshToken:'r',expiresAt:Date.now()+1800000},key);
     mocks.read.mockRejectedValue(new XeroError('RECONNECT_REQUIRED'));

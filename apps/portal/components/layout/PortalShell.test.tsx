@@ -22,15 +22,15 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/components/navigation/SidebarRail', () => ({
-  default: () => <div data-testid="mock-sidebar-rail">Sidebar rail</div>,
+  default: ({financeAccess}: {financeAccess?:boolean}) => <div data-testid="mock-sidebar-rail" data-finance={String(financeAccess)}>Sidebar rail</div>,
 }));
 
 vi.mock('@/components/navigation/PortalSidebarPanel', () => ({
-  default: () => <div data-testid="mock-pinned-sidebar">Pinned sidebar</div>,
+  default: ({financeAccess}: {financeAccess?:boolean}) => <div data-testid="mock-pinned-sidebar" data-finance={String(financeAccess)}>Pinned sidebar</div>,
 }));
 
 vi.mock('@/components/auth/PortalAuthProvider', () => ({
-  usePortalSession: () => mockSession,
+  usePortalSession: () => ({...mockSession,user:{id:'current-finance-user'}}),
 }));
 
 describe('PortalShell', () => {
@@ -389,4 +389,13 @@ describe('PortalShell', () => {
     expect(document.body.querySelector('[data-drawer-panel]')).toBeNull();
     rendered.unmount();
   });
+});
+
+it('does not retain finance navigation for a different signed-in identity',()=>{
+  mockPathname='/staff/projects';mockSearchParams=new URLSearchParams();
+  mockSession={status:'authenticated',email:'ops@example.com',role:'staff'};
+  const matching=renderIntoDocument(<PortalShell financeUserId="current-finance-user">Body</PortalShell>);
+  expect(matching.container.querySelector('[data-testid="mock-pinned-sidebar"]')?.getAttribute('data-finance')).toBe('true');matching.unmount();
+  const changed=renderIntoDocument(<PortalShell financeUserId="previous-finance-user">Body</PortalShell>);
+  expect(changed.container.querySelector('[data-testid="mock-pinned-sidebar"]')?.getAttribute('data-finance')).toBe('false');changed.unmount();
 });

@@ -6,3 +6,4 @@ export * from './registry';
 export * from './retryPolicy';
 export * from './stateMachine';
 export * from './workerContracts';
+export * from './xeroInvoice';

@@ -156,3 +156,10 @@ describe('SidebarRail', () => {
     rendered.unmount();
   });
 });
+
+ it('shows Finance only when the server grants finance navigation',()=>{
+   const hidden=renderIntoDocument(<SidebarRail />);
+   expect(hidden.container.querySelector('a[href="/staff/payments"]')).toBeNull();hidden.unmount();
+   const visible=renderIntoDocument(<SidebarRail financeAccess />);
+   expect(visible.container.querySelector('a[href="/staff/payments"]')?.getAttribute('aria-label')).toBe('Finance');visible.unmount();
+ });

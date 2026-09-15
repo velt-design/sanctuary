@@ -48,15 +48,17 @@ export default function SidebarRail({
   roleLabel,
   role,
   panelVisible = false,
+  financeAccess = false,
 }: {
   email?: string;
   roleLabel?: string;
   role?: 'admin' | 'staff';
   panelVisible?: boolean;
+  financeAccess?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
+  const visibleItems = NAV_ITEMS.filter((item) => (!item.adminOnly || role === 'admin') && (!('financeOnly' in item) || financeAccess));
   const queryClient = useQueryClient();
   const { beginInstantRoute, beginRouteTransition } = usePortalRouteTransition();
 

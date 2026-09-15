@@ -19,6 +19,25 @@ function invoice(overrides: Partial<DepositInvoiceSummary>): DepositInvoiceSumma
 }
 
 describe('projectInvoiceSchedule', () => {
+  it('reserves matched instalments for their invoice rather than presenting them as spare credit', () => {
+    const input = {
+      acceptedQuoteVersionId: 'qv-current', acceptedQuoteRef: 'Q-1', acceptedQuoteVersionNumber: 1,
+      acceptedQuoteTotalIncGstCents: 20000, quoteTerms: [{ id: 'deposit', label: 'Deposit', amountIncGstCents: 10000 }],
+      planItems: [], invoices: [invoice({ id: 'inv-current', quoteVersionId: 'qv-current', totalIncGstCents: 10000 })],
+      paymentEntries: [{ id: 'pmt-match', entryType: 'PAYMENT' as const, amountIncGstCents: 4000, occurredAt: '2026-09-14',
+        paymentMethod: 'Xero', reference: null, note: null, reason: null, sourceInvoiceId: null, sourceInvoiceRef: null,
+        matchedInvoiceId: 'inv-current', matchedInvoiceRef: 'INV-TEST', reversed: false }],
+      allocations: [], includePaymentEntries: true,
+    };
+    const partial = projectInvoiceSchedule(input);
+    expect(partial.outstandingIncGstCents).toBe(6000);
+    expect(partial.remainingToInvoiceIncGstCents).toBe(10000);
+    expect(partial.unallocatedCreditIncGstCents).toBe(0);
+    expect(partial.paymentEntries?.[0].unallocatedIncGstCents).toBe(0);
+    const historical = projectInvoiceSchedule({ ...input, allocations: [{ id: 'allocation', paymentEntryId: 'pmt-match',
+      quoteVersionId: 'qv-old', paymentTermId: 'deposit', amountIncGstCents: 4000 }] });
+    expect(historical.unallocatedCreditIncGstCents).toBe(0);
+  });
   it('counts paid invoices from superseded quotes as job credit', () => {
     const schedule = projectInvoiceSchedule({
       acceptedQuoteVersionId: 'qv-current', acceptedQuoteRef: 'Q-0132', acceptedQuoteVersionNumber: 4,

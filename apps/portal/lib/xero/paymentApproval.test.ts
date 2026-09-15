@@ -8,8 +8,9 @@ const now = Date.parse('2026-09-14T00:00:00Z');
 const evidence: DepositEvidence = { tenantId: id, receiptId: id, contactId: id, projectId: id, invoiceId: id, amountCents: 1, receiptDate: '2026-09-13', invoiceTotalCents: 10000,
   invoiceFingerprint: 'a'.repeat(64), ledgerFingerprint: 'b'.repeat(64), receiptFingerprint: 'c'.repeat(64) };
 describe('exact deposit approval envelope', () => {
-  it('grants only the confirmed pilot identity, independent of general admin status', () => {
-    expect(isPaymentApprover({ email: 'jordan@sanctuarypergolas.co.nz', email_confirmed_at: 'today' })).toBe(true);
+  it('requires a separate grant and a confirmed identity for every approver', () => {
+    expect(isPaymentApprover({ email: 'jordan@sanctuarypergolas.co.nz', email_confirmed_at: 'today' }, true)).toBe(true);
+    expect(isPaymentApprover({ email: 'ellen@sanctuarypergolas.co.nz', email_confirmed_at: 'today' }, true)).toBe(true);
     expect(isPaymentApprover({ email: 'info@sanctuarypergolas.co.nz', email_confirmed_at: 'today' })).toBe(false);
     expect(isPaymentApprover({ email: 'jordan@sanctuarypergolas.co.nz' })).toBe(false);
     expect(isPaymentApprover(null)).toBe(false);
@@ -40,5 +41,12 @@ describe('exact deposit approval envelope', () => {
   });
   it('fingerprints selected snapshots independently of property insertion order', () => {
     expect(evidenceFingerprint({ b: 2, a: { d: 4, c: 3 } })).toBe(evidenceFingerprint({ a: { c: 3, d: 4 }, b: 2 }));
+  });
+  it('binds invoice-payment provenance inside the same encrypted review contract', () => {
+    const value = { ...evidence, invoicePayment: { providerInvoiceId: other, invoiceEvidenceFingerprint: 'd'.repeat(64) } };
+    const approval = readDepositApproval(prepareDepositApproval(value, id, key, now), id, id, key, now);
+    expect(approval.evidence).toEqual(value);
+    expect(() => assertApprovalEvidenceUnchanged(approval, evidence)).toThrow('APPROVAL_EVIDENCE_CHANGED');
+    expect(() => prepareDepositApproval({ ...value, invoicePayment: { ...value.invoicePayment, providerInvoiceId: 'bad' } }, id, key, now)).toThrow('INVALID_APPROVAL_EVIDENCE');
   });
 });

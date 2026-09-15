@@ -22,7 +22,7 @@ export function commandDatabaseError(error: unknown): { status: number; code: st
   const message = typeof raw?.message === 'string' ? raw.message : 'Command failed';
   if (code === '42501') return { status: 403, code: 'FORBIDDEN', message };
   if (code === 'P0002') return { status: 404, code: 'NOT_FOUND', message };
-  if (code === '40001' || code === '23505') return { status: 409, code: 'STALE_STATE', message };
+  if (code === '40001' || code === '23505' || code === 'PT409') return { status: 409, code: 'STALE_STATE', message };
   if (code === '22023' || code === '22P02' || code === '23502' || code === '23503' || code === '23514') {
     return { status: 400, code: 'INVALID_COMMAND', message };
   }

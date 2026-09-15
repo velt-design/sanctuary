@@ -13,6 +13,7 @@ import { getPortalAccessState } from '@/lib/auth';
 import { initialPortalAuthStateFromAccess } from '@/lib/portalAccess';
 import { loadPortalThemeForUser, portalThemeStyleVars } from '@/lib/theme/server';
 import PortalVitalsReporter from '@/components/performance/PortalVitalsReporter';
+import { getPaymentPilotSession } from '@/lib/xero/pilotAccess';
 import SupabaseEnvHydrator from '@/components/diagnostics/SupabaseEnvHydrator';
 
 export const metadata: Metadata = {
@@ -31,6 +32,8 @@ const portalInter = localFont({
 });
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Navigation is advisory; finance routes and commands recheck the current grant.
+  const financeSession = await getPaymentPilotSession().catch(() => null);
   let cssVars: CSSProperties = {} as CSSProperties;
   const accessState = await getPortalAccessState();
 
@@ -49,7 +52,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Providers>
             <PortalVitalsReporter />
             <ToastProvider>
-              <PortalShell>{children}</PortalShell>
+              <PortalShell financeUserId={financeSession?.user.id}>{children}</PortalShell>
             </ToastProvider>
           </Providers>
         </PortalAuthProvider>

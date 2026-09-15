@@ -15,6 +15,8 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 
 ## Smoke Statuses
 
+Finance routes are catalog-only until their authorised rehearsal. The ordinary staff role is insufficient: finance review, deposit review, mapping and invoice-payment review require a confirmed identity and a separate current finance grant. Invoice-payment review also requires its activation flag and a transferred invoice. These routes are not added to general agent-access smoke or granted to the default agent account.
+
 | Status | Meaning |
 | --- | --- |
 | `agent-access` | Runs with the default staff portal-agent account. |

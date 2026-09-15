@@ -54,10 +54,12 @@ export async function reviewPilotDeposit(invoiceRef:string,contactName:string,ap
 export async function approvePilotDeposit(token:string,approverId:string) {
   const cfg=config();
   const approval=readDepositApproval(token,approverId,cfg.tenantId,cfg.key);
+  if (approval.evidence.invoicePayment) throw new Error('APPROVAL_REVIEW_REQUIRED');
   // A committed receipt is authoritative after a lost response. Its own write
   // changed the reviewed ledger; never reject that successful retry as stale.
   const previous=await findPilotMatch(approval.approvalId);
   if(previous) {
+    if (previous.sourceKind === 'INVOICE_PAYMENT') throw new Error('APPROVAL_EVIDENCE_CHANGED');
     if(previous.approvedBy!==approverId || previous.tenantId!==approval.evidence.tenantId || previous.receiptId!==approval.evidence.receiptId
       || previous.invoiceId!==approval.evidence.invoiceId || previous.projectId!==approval.evidence.projectId
       || previous.amountCents!==approval.evidence.amountCents || previous.evidenceFingerprint!==approval.evidence.receiptFingerprint) throw new Error('APPROVAL_EVIDENCE_CHANGED');

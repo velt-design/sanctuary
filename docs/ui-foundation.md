@@ -220,3 +220,5 @@ and has no implied completion sequence.
 - `npm run build:portal`
 - Authenticated desktop, tablet, and mobile review of `/staff/ui-foundation`
 - Credential-free visual review may use `/qa/ui-foundation-fixture` only with the explicit portal QA flag; this must never replace staff-route auth smoke.
+
+Finance navigation uses the existing sidebar/rail/drawer items and styling. Its visibility comes from the server-verified finance user identity, checked against the current authenticated client identity; a generic admin role is insufficient. Finance routes and commands retain independent current-grant checks. Invoice references in Finance lead to the project Commercial/invoices view. This addition does not expose developer connection controls or change the shell layout.
