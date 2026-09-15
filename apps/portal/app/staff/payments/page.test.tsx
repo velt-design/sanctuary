@@ -13,12 +13,12 @@ const invoice: FinanceInvoice = { invoiceId: 'invoice', invoiceRef: 'INV-0014', 
   xeroInvoiceId: null, lastVerifiedAt: null, transferStatus: null, transferError: null, captured: false,
   correctionRequired: false, unassignedReceipts: false, observation: null };
 beforeEach(() => vi.clearAllMocks());
-async function page(row: FinanceInvoice) {
+async function page(row: FinanceInvoice, view = 'attention') {
   mocks.load.mockResolvedValue({ rows: [row], checkedAt: '2026-09-15T00:00:00Z', hasMore: false });
-  return renderToStaticMarkup(await FinancePage({ searchParams: Promise.resolve({}) }));
+  return renderToStaticMarkup(await FinancePage({ searchParams: Promise.resolve({ view }) }));
 }
 it('keeps historical invoices visible without presenting customer mapping as required work', async () => {
-  const html = await page(invoice);
+  const html = await page(invoice, 'history');
   expect(html).toContain('INV-0014');
   expect(html).toContain('Older invoices remain here for reference');
   expect(html).not.toContain('/staff/payments/mapping?');
@@ -34,4 +34,21 @@ it('preserves customer matching for a captured unbound invoice', async () => {
 });
 it('does not ask to rematch an invoice already linked to Xero', async () => {
   expect(await page({ ...invoice, captured: true, xeroInvoiceId: 'xero' })).not.toContain('/staff/payments/mapping?');
+});
+it('defaults to server-filtered attention and keeps the selected view through search and pagination', async () => {
+  mocks.load.mockResolvedValue({ rows: [], checkedAt: '2026-09-15T00:00:00Z', hasMore: true });
+  const html = renderToStaticMarkup(await FinancePage({ searchParams: Promise.resolve({ search: 'Example', offset: '50', view: 'history' }) }));
+  expect(mocks.load).toHaveBeenCalledWith('owner', 'Example', 50, 'history');
+  expect(html).toContain('offset=100&amp;view=history');
+  expect(html).toContain('No matching invoices in this view');
+  expect(html).not.toContain('No invoices need attention');
+});
+it('shows a truthful attention empty state and treats load failures separately', async () => {
+  mocks.load.mockResolvedValue({ rows: [], checkedAt: '2026-09-15T00:00:00Z', hasMore: false });
+  expect(renderToStaticMarkup(await FinancePage({ searchParams: Promise.resolve({}) }))).toContain('No invoices need attention');
+  expect(mocks.load).toHaveBeenCalledWith('owner', '', 0, 'attention');
+  mocks.load.mockRejectedValue(new Error('unavailable'));
+  const html = renderToStaticMarkup(await FinancePage({ searchParams: Promise.resolve({}) }));
+  expect(html).toContain('Finance could not be loaded');
+  expect(html).not.toContain('No invoices need attention');
 });

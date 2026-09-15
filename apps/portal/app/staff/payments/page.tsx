@@ -2,30 +2,44 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import PageHeader from '@/components/layout/PageHeader';
 import { PageLayout, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/foundation/FoundationSurfaces';
+import { Button, ButtonLink, Input } from '@/components/ui/foundation/FoundationControls';
+import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
 import { getPaymentPilotSession } from '@/lib/xero/pilotAccess';
 import { loadFinanceReview } from '@/lib/invoices/financeReviewRepository';
-import { financeOutcome } from '@/lib/xero/financeReview';
+import { financeOutcome, parseFinanceView, type FinanceView } from '@/lib/xero/financeReview';
+import styles from './finance.module.css';
 import CheckXero from './CheckXero';
 import RecoverTransfer from './RecoverTransfer';
 
 export const dynamic = 'force-dynamic';
-export default async function FinancePage({ searchParams }: { searchParams: Promise<{ search?: string; offset?: string }> }) {
+export default async function FinancePage({ searchParams }: { searchParams: Promise<{ search?: string; offset?: string; view?: string }> }) {
   const session = await getPaymentPilotSession();
   if (!session) notFound();
   const query = await searchParams;
+  const view = parseFinanceView(query.view);
   const search = typeof query.search === 'string' ? query.search.slice(0, 120).trim() : '';
   const rawOffset = Number(query.offset ?? 0);
   const offset = Number.isSafeInteger(rawOffset) && rawOffset >= 0 && rawOffset <= 10000 ? rawOffset : 0;
   let data: Awaited<ReturnType<typeof loadFinanceReview>> | null = null;
-  try { data = await loadFinanceReview(session.user.id, search, offset); } catch { /* Show a safe retry state, never an empty success. */ }
-  const href = (next: number) => `/staff/payments?${new URLSearchParams({ search, offset: String(next) })}`;
-  return <PageLayout width="full">
+  try { data = await loadFinanceReview(session.user.id, search, offset, view); } catch { /* Show a safe retry state, never an empty success. */ }
+  const href = (next: number, section: FinanceView = view) => `/staff/payments?${new URLSearchParams({ search, offset: String(next), view: section })}`;
+  const views = [['attention', 'Needs attention'], ['current', 'Xero invoices'], ['history', 'Invoice history']] as const;
+  return <PageLayout>
     <PageHeader variant="index" title="Finance review" description="Review invoices, confirm deposits and investigate outstanding items." />
-    <p>Automatic Xero transfers apply to invoices issued after activation. Older invoices remain here for reference; they do not need customer matching to start a transfer.</p>
-    <p><Link href="/staff/payments/review">Review and approve a deposit</Link></p>
-    <form method="get"><label>Invoice, customer or project <input name="search" defaultValue={search} maxLength={120} /></label> <button type="submit">Search</button></form>
-    {!data ? <p role="alert">Finance information could not be loaded. Refresh to try again. No records have changed.</p> : <>
-      <p>Portal information checked {new Date(data.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}. Transfer dates show when invoices were sent; Xero check dates show when their status was last verified.</p>
+    <nav className={styles.views} aria-label="Finance views">{views.map(([key, label]) =>
+      <ButtonLink key={key} href={href(0, key)} variant={view === key ? 'primary' : 'secondary'} aria-current={view === key ? 'page' : undefined}>{label}</ButtonLink>)}</nav>
+    <p>{view === 'attention' ? 'Invoices that need a check or decision, including older invoices with unresolved payment issues.'
+      : view === 'current' ? 'Invoices queued for or linked to Xero through the portal. Those needing a decision also appear in Needs attention.'
+      : 'Older invoices remain here for reference. They are outside automatic Xero transfers. Unresolved payment issues also appear in Needs attention.'}</p>
+    <form method="get" className={styles.search}><input type="hidden" name="view" value={view} />
+      <label>Invoice, customer or project<Input name="search" defaultValue={search} maxLength={120} /></label>
+      <Button type="submit" variant="secondary">Search</Button>
+      {search && <ButtonLink href={`/staff/payments?view=${view}`} variant="tertiary">Clear search</ButtonLink>}
+    </form>
+    <p><ButtonLink href="/staff/payments/review" variant="tertiary">Review an older deposit</ButtonLink></p>
+    {!data ? <><DataStatePanel state="error" title="Finance could not be loaded" description="Try again to check the current position. No records have changed." /><ButtonLink href={href(offset)} variant="secondary">Try again</ButtonLink></> : <>
+      <p className={styles.checked}>Portal records checked {new Date(data.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}. Each linked invoice shows when Xero was last checked.</p>
+      {data.rows.length > 0 &&
       <div style={{ overflowX: 'auto' }}><Table><TableHeader><TableRow>
         <TableHead>Invoice / customer</TableHead><TableHead>Portal status</TableHead><TableHead>Invoice amount</TableHead><TableHead>Still owing</TableHead><TableHead>Next action</TableHead>
       </TableRow></TableHeader><TableBody>{data.rows.map(row => {
@@ -45,8 +59,10 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             {row.captured && !row.xeroInvoiceId && !row.unassignedReceipts && row.status !== 'VOID' && <><br /><Link href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Confirm customer and accounting details</Link></>}
           </TableCell>
         </TableRow>;
-      })}</TableBody></Table></div>
-      {!data.rows.length && <p>No issued invoices match this search.</p>}
+      })}</TableBody></Table></div>}
+      {!data.rows.length && <DataStatePanel state={search ? 'filtered-empty' : 'empty'}
+        title={search ? 'No matching invoices in this view' : offset > 0 ? 'No more invoices in this view' : view === 'attention' ? 'No invoices need attention' : view === 'current' ? 'No automatic transfers yet' : 'No historical invoices'}
+        description={search ? 'Try another search or check another view.' : offset > 0 ? 'Return to the first page to see the current list.' : view === 'attention' ? 'There are no invoice issues requiring review right now. Xero invoices and history remain available above.' : view === 'current' ? 'Your next newly issued portal invoice will appear here. Older invoices are in Invoice history.' : 'Invoices issued before automatic transfers are shown here when available.'} />}
       <nav aria-label="Finance pages">{offset > 0 && <Link href={href(Math.max(0, offset - 50))}>Previous page</Link>}{' '}{data.hasMore && offset < 10000 && <Link href={href(offset + 50)}>Next page</Link>}</nav>
     </>}
   </PageLayout>;

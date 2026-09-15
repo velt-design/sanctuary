@@ -14,6 +14,10 @@ export const financeReviewSchema = z.object({ checkedAt: z.string(), rows: z.arr
   observation: financeObservationSchema.nullable(),
 })).max(51) });
 export type FinanceInvoice = z.infer<typeof financeReviewSchema>['rows'][number];
+export type FinanceView = 'attention' | 'current' | 'history';
+export function parseFinanceView(value: unknown): FinanceView {
+  return value === 'current' || value === 'history' ? value : 'attention';
+}
 
 export function financeOutcome(row: FinanceInvoice, now = Date.now()) {
   const balanceNeedsReview = row.unassignedReceipts || row.recordedCents > row.totalCents || (row.status === 'PAID' && row.recordedCents !== row.totalCents)
@@ -44,6 +48,6 @@ export function financeOutcome(row: FinanceInvoice, now = Date.now()) {
     if (observation.state in labels) return { remainingCents, attention: ['draft', 'awaiting_approval', 'correction_pending'].includes(observation.state), label: labels[observation.state as keyof typeof labels] };
   }
   if (row.status === 'PAID') return { remainingCents, attention: Boolean(row.xeroInvoiceId), label: row.xeroInvoiceId ? 'Portal paid — verify Xero' : 'Recorded paid in portal' };
-  if (row.xeroInvoiceId) return { remainingCents, attention: false, label: 'Xero draft recorded — finance review required' };
+  if (row.xeroInvoiceId) return { remainingCents, attention: true, label: 'Xero draft recorded — finance review required' };
   return { remainingCents, attention: false, label: row.captured ? 'Waiting for Xero transfer' : 'Not part of automatic transfer' };
 }

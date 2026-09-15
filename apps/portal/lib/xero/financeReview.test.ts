@@ -5,6 +5,9 @@ const row: FinanceInvoice = { invoiceId: 'id', invoiceRef: 'INV-TEST', projectId
   status: 'OPEN', currency: 'NZD', dueDate: null, totalCents: 100, recordedCents: 0, xeroInvoiceId: 'bound', lastVerifiedAt: null,
   transferStatus: 'succeeded', transferError: null, captured: true, correctionRequired: false, unassignedReceipts: false,
   observation: { invoiceId: 'id', state: 'posted', reason: 'INVOICE_CONTENT_UNCHANGED', amountPaidCents: 0, checkedAt: '2026-09-14T09:00:00Z' } };
+it('keeps a created draft awaiting its first observation in the attention view', () => {
+  expect(financeOutcome({ ...row, observation: null }, now)).toMatchObject({ attention: true });
+});
 it('shows normal posting without labeling it a draft or recording a portal payment', () => {
   expect(financeOutcome(row, now)).toEqual({ remainingCents: 100, attention: false, label: 'Posted in Xero' });
 });

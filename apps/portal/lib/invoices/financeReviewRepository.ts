@@ -1,9 +1,9 @@
 import 'server-only';
 import { supabaseServiceRole } from '../supabaseClient';
-import { financeReviewSchema } from '../xero/financeReview';
+import { financeReviewSchema, type FinanceView } from '../xero/financeReview';
 
-export async function loadFinanceReview(actor: string, search: string, offset: number) {
-  const result = await supabaseServiceRole.rpc('xero_finance_review', { p_actor: actor, p_search: search, p_offset: offset });
+export async function loadFinanceReview(actor: string, search: string, offset: number, view: FinanceView = 'attention') {
+  const result = await supabaseServiceRole.rpc('xero_finance_review_filtered', { p_actor: actor, p_search: search, p_offset: offset, p_view: view });
   if (result.error) throw new Error('FINANCE_REVIEW_UNAVAILABLE');
   const parsed = financeReviewSchema.safeParse(result.data);
   if (!parsed.success) throw new Error('FINANCE_REVIEW_UNAVAILABLE');

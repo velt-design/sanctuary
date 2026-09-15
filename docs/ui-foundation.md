@@ -73,6 +73,8 @@ authoritative.
 
 ## Production Patterns
 
+Finance clarity work composes existing Foundation view buttons, labelled search controls and data states within the existing Finance route. View selection remains server-owned before pagination. This adoption does not move payment/transfer commands or change the shared visual system; release evidence and remaining usability gaps are in `xero-connection.md`.
+
 The catalogue renders the actual exported search/filter bar, selection table, pagination, modal, drawer, alerts, data states, permission/read-only controls, calculator notices, NZD financial summary, task/schedule feedback, and sticky action bar. Forced interaction states stay in catalogue markup via `data-visual-state`; they are not component props. Demo-only helpers are not exported.
 
 Projects Index consumes the index `PageHeader`, `ButtonLink`, `SearchFilterBar`, `ProjectStageBadge`, `LoadingSkeleton`, and `DataStatePanel` while retaining its query, preload, optimistic mutation, journey/stage/state filtering, and retry owners. Project Detail consumes the detail `PageHeader`, inline stage badge, `TabNavigation`, `KeyValueGrid`, `MetricGrid`, `ActionPanel`, `ActivityTimeline`, `TaskList`, shared controls, alerts, and confirmation owners while retaining lazy tabs and existing cache/local-first owners.
