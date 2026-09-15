@@ -1,4 +1,5 @@
 import { ceilingMaterials } from './ceilingTakeoff';
+import { PILE_POST_EMBEDMENT_M, pileFootingMaterials, usesApprovedPileFooting } from './pileFooting';
 import type { CostingConfigV1 } from './config';
 import type { DerivedV1, FlashingBandV1, InputsNormalizedV1, MaterialsLineV1, MaterialsV1 } from './types';
 import type { InfillTakeoffV1 } from './types';
@@ -1120,17 +1121,18 @@ function buildMaterialsV1Internal(
     }
   }
 
+  const postEmbedmentM = usesApprovedPileFooting(inputs, config) ? PILE_POST_EMBEDMENT_M : 0;
   addCuts(
     postProfile,
-    Array.from({ length: inputs.post_count }).map(() => inputs.post_cut_height_m),
+    Array.from({ length: inputs.post_count }).map(() => inputs.post_cut_height_m + postEmbedmentM),
     'Posts',
     'single',
     {
       origin_prefix: 'post',
       group_key: 'posts',
       explain: {
-        formula: 'cuts = repeat(inputs.post_count, inputs.post_cut_height_m)',
-        deps: { 'inputs.post_count': inputs.post_count, 'inputs.post_cut_height_m': inputs.post_cut_height_m },
+        formula: 'cuts = repeat(inputs.post_count, inputs.post_cut_height_m + postEmbedmentM)',
+        deps: { 'inputs.post_count': inputs.post_count, 'inputs.post_cut_height_m': inputs.post_cut_height_m, postEmbedmentM },
       },
     },
   );
@@ -2578,6 +2580,14 @@ function buildMaterialsV1Internal(
         vars_used: varsUsed,
         result_qty: qty,
       });
+    }
+  }
+
+  if (usesApprovedPileFooting(inputs, config)) {
+    for (const line of pileFootingMaterials(inputs.post_count)) {
+      lines.push(line);
+      annotateLine(line, { kind: 'simple', formula: 'cost = post_count * approved per-post allowance',
+        deps: { post_count: inputs.post_count, unit_cost_ex_gst: line.unit_cost_ex_gst } });
     }
   }
 

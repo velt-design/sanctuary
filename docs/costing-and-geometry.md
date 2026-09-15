@@ -349,12 +349,67 @@ Plan/3D accuracy work must also keep the top-view parity gate green. `buildTopPr
 
 ### Local v2.9 ridge candidate (16 September 2026)
 
+**Approved pile costing implemented locally, 16 September:** owner confirmed
+400mm holes, 1.5m depth and continuous posts stopping 100mm above the hole bottom,
+then explicitly approved adding the draft to actual costing. Effective v2.9 now
+adds 1.4m to each pile post's material cut length, without changing its visible
+height. Actual stock optimisation replaces the draft $80/post approximation.
+Per post material allowances are concrete $175, auger/spoil $50 and bracing,
+protection/consumables $25 ex GST. The existing pile action is replaced with 120
+base minutes ($150 at the published $75/hour), retaining normal access, ground,
+height and job complexity multipliers. These allowances are not added on top of
+the old pile labour or deck brackets. The draft $480 is a rounded direct-cost
+guide, not a fixed final price or additional surcharge. Earlier costing scenarios
+below are retained as rationale and superseded by this approval.
+
+Engine owner: `engine/pileFooting.ts`, consumed by BOM and install. Existing
+v2.8 and frozen historical inputs keep their old semantics. Local candidate route
+uses v2.9; production pricebook publication remains a separate release step.
+Gate 0: owner-authorized protected calculator extension, legacy rows N/A, no
+workbench or Phase 2 input migration. No shared input fields were changed.
+
 The customer configurator's freestanding adapter now selects the existing
 `pile_1_5m` post connection instead of deck brackets, as requested by the owner
 on 16 September. It applies to all geometry-counted posts for every roof family
 and is retained in frozen enquiry inputs. It uses the existing pile installation
 allowance; it does not change above-ground post heights or introduce new pile
 material rates. Attached designs retain their existing connection selection.
+
+**Launch blocker discovered in owner review:** the existing pile option is not
+a complete foundation allowance. Read-only comparison against published Version
+13 rates for the owner's 6.9 x 4.3m freestanding gable with infills reproduces
+$29,968. Replacing only its six deck brackets removes $570 material cost and adds
+$270 installation plus $225 operational overhead (all ex GST), reducing the
+customer total by about $112. No concrete material or additional buried post
+length is added. Do not treat this as verified full pile pricing. Resolve pile
+construction, material quantities/rates and labour before releasing freestanding
+pile estimates. Evidence: temporary sanctuary-pile-comparison.json. The earlier
+tests proved selection and receipt persistence, not completeness of foundations.
+
+Draft foundation costing for owner discussion, not implemented (16 September):
+use alternative 300mm and 450mm diameter holes at 1.5m depth as costing scenarios,
+not structural specifications. Gross concrete volumes are 0.106/0.239m3 per hole;
+with 10% waste and 0.01m3 per 20kg bag, allow 12/27 bags. Retail reference $9.55
+including GST per bag gives approximately $100/$225 ex GST per hole. Sources:
+https://www.cemix.co.nz/products/multicrete and
+https://www.bunnings.co.nz/products/building-hardware/cement-concreting/concrete.
+Bagged mix is a costing benchmark, not the confirmed site supply method.
+
+Provisional direct-cost components per post, ex GST: concrete $100/$225;
+additional post stock $80; installation $150; shared auger/spoil allowance $50;
+bracing/protection/consumables $25. Total $405/$530. All except concrete reference
+and repository stock prices are proposed allowances requiring owner validation.
+The $80 stock allowance assumes continuous buried posts: six 2.4m above-ground
+posts plus 1.5m burial require six 6m bars instead of three, at repository black
+100x100 stock cost $154.20/bar; incremental cost is $77.10/post before rounding.
+Separate piles/connectors need a different takeoff. Confirm construction and
+diameter before choosing either case, including required protection/reinforcement.
+Installation $150 means two hours at current $75/hour costing rate, replacing the
+existing pile action rather than adding to it. Allocate machine/spoil once per
+job; $50/post is only the six-post example's $300 allocation. These direct costs
+replace bracket foundation costs and require the normal overhead/markup/GST path;
+they are neither customer selling prices nor surcharges on the existing pile rate.
+No pricebook, live prices or calculator rules changed by this draft proposal.
 
 Owner-requested automatic gable ridge selection uses RHS 150x50x3 steel when
 the full ridge length exceeds 6m; exactly 6m retains the previous default.
