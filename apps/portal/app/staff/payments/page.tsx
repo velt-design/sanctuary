@@ -51,7 +51,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           <TableCell role="cell" data-label="Invoice amount">{money(row.totalCents)}</TableCell><TableCell role="cell" data-label="Still owing">{row.status === 'VOID' ? 'Not payable' : outcome.remainingCents === null ? 'Needs review' : money(outcome.remainingCents)}</TableCell>
           <TableCell role="cell" data-label="Next action">{outcome.label}{row.lastVerifiedAt && <><br /><small>Transfer verified {new Date(row.lastVerifiedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
             {row.observation && <><br /><small>Xero checked {new Date(row.observation.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
-            {row.xeroInvoiceId && <><br /><CheckXero invoiceId={row.invoiceId} invoiceRef={row.invoiceRef} /></>}
+            {row.xeroInvoiceId && <><br /><ButtonLink variant="secondary" size="small" href={`/staff/payments/xero-invoice?invoice=${row.invoiceId}`} target="_blank" rel="noopener noreferrer">Open in Xero</ButtonLink><br /><CheckXero invoiceId={row.invoiceId} invoiceRef={row.invoiceRef} /></>}
             {!row.xeroInvoiceId && row.captured && row.status !== 'VOID' && ['needs_attention', 'permanent_failed'].includes(row.transferStatus ?? '')
               && <RecoverTransfer invoiceId={row.invoiceId} />}
             {row.xeroInvoiceId && process.env.XERO_INVOICE_PAYMENTS_ENABLED === 'true' && <><br /><ButtonLink variant="tertiary" size="small" href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</ButtonLink></>}
