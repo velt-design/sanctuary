@@ -1,4 +1,5 @@
 import { getPortalSession } from '@/lib/auth';
+import { parseRequestCeiling } from '@/lib/costing/requestCeiling';
 import { resolvePublishedCostingConfiguration } from '@/lib/costing/configurationResolver';
 import { calculateCostV1 } from '@sp/costing';
 import type { CostInputsV1, ExtrusionColour } from '@sp/costing';
@@ -508,7 +509,10 @@ export async function POST(req: Request) {
 
   const resolvedRoofSpanM = roof_span_m_raw !== undefined ? roof_span_m : projection_m;
 
+  const ceiling = parseRequestCeiling(body.ceiling, body.roof_material);
+  if ('error' in ceiling) return badRequest(ceiling.error);
   const inputs: CostInputsV1 = {
+    ...ceiling,
     length_m,
     roof_span_m: resolvedRoofSpanM,
     post_cut_height_m: body.post_cut_height_m !== undefined ? toNumber(body.post_cut_height_m) : undefined,

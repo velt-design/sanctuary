@@ -165,6 +165,8 @@ Additional aluminium is a third closed specialist disclosure after Structural ov
 
 ## Estimate Pricing Rollout Boundary
 
+The September pricing-only release adds a Ceiling lining choice to timber and combination-roof calculator sections: Cedar or ThermoPine, each in 100 mm or 150 mm cover, plus the existing cedar specification for historical compatibility. The selection survives saved-input normalisation, affects pricing-change detection and reaches staff costing and material-explanation APIs. A v2.7 publication is required to calculate new selections. Existing saved estimates and quotes retain their frozen outputs until an explicit staff recalculation; publishing never rewrites them. `staffCeilingRoutes.test.ts` verifies saved input through HTTP to actual costing lines for all four options. Roof/screen batten controls are not part of this calculator release.
+
 Saved estimate pricing stays on the calculator path. The 2026-06-11 workbench breakaway disables workbench repricing rather than adapting object-first geometry back into calculator inputs.
 
 The rollout-prep contract in `apps/portal/lib/estimates/pricingRollout.ts` remains the place for saved source-of-record decisions at estimate create/update/duplicate persistence, but the workbench currently reports pricing as unavailable and preserves existing estimate pricing.

@@ -1,3 +1,4 @@
+import type { CeilingSelection } from '../ceilingCatalogue';
 export type CostBasis = 'ex_gst';
 
 export type Currency = 'NZD';
@@ -425,6 +426,7 @@ export type CostInputsV1 = {
   travel_ex_gst?: number;
   extras_allowance_ex_gst?: number;
   timber_roof_allowance_ex_gst?: number;
+  ceiling?: CeilingSelection;
   timber_roof_above_type?: TimberRoofAboveType;
   timber_insulated_panel_thickness_mm?: number;
   timber_tray_width_mm?: number;
@@ -489,6 +491,7 @@ export type InputsNormalizedV1 = {
   travel_ex_gst: number;
   extras_allowance_ex_gst: number;
   timber_roof_allowance_ex_gst: number;
+  ceiling?: CeilingSelection;
   timber_roof_above_type: TimberRoofAboveType;
   timber_insulated_panel_thickness_mm: number;
   timber_tray_width_mm: number;
@@ -1080,6 +1083,7 @@ export type PergolaModuleCostInputV2 = {
     strut_profile?: string;
   };
 
+  ceiling?: CeilingSelection;
   timber_roof_above_type?: TimberRoofAboveType;
   timber_insulated_panel_thickness_mm?: number;
   timber_tray_width_mm?: number;

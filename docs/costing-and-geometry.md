@@ -12,6 +12,14 @@ Costing and geometry are shared domain sources of truth. Do not copy their logic
 
 ## Costing Source Of Truth
 
+### September timber pricing release
+
+The pricing-only release advances the package to v2.7 and adds factory-coated Cedar and ThermoPine ceiling selections in 100 mm and 150 mm covers. The package owns selected-length bands, supported stock joins, waste, coating, fixings and fitting labour. Historical inputs without a ceiling selection retain the existing cedar identity; new selections require a published v2.7 configuration. Compatible earlier publications retain their original rates and semantics. Candidate `157b63465bc0` preserves production Version 11 values and adds the reviewed catalogue/accessory allowances; production publication is separate from deploying compatible code.
+
+The staff single-module, job and material-explanation APIs preserve and validate the same ceiling selection through `requestCeiling.ts`. An unsupported selection is rejected rather than silently priced as legacy cedar. Integration coverage starts with saved calculator inputs and verifies the actual material lines returned by all three routes. Detailed batten/screen design controls remain configurator functionality; publishing accessory rates does not add those controls to the staff calculator.
+
+This release contains no enquiry-queue migration or producer activation and does not depend on Render setup. Gate 0: legacy workbench rows are N/A (no geometry/workbench changes); this retains the protected calculator V1 commercial path under the owner's explicit request to release staff pricing. No Phase 2 input migration or function consolidation is included. Existing costing, publication, materials-explain, calculator adapter, estimate, marketing price and quote consumers were checked. The new request parser owns the added HTTP validation outside the large routes; remaining route-parser decomposition is deferred to a focused follow-up.
+
 All costing logic and base config live in `packages/costing` and are imported through `@sp/costing`.
 
 `loadCostingMaterialsV1()` is the narrow package-owned material-catalogue boundary for consumers such as infill stock-length lookup that do not need install, overhead, rule, hardware, BOM, or manifest data. `loadCostingConfigV1()` composes that exact merged catalogue into the unchanged full configuration contract. Do not make a narrow consumer import the full loader merely to read `materials`, and do not copy the catalogue into an app.

@@ -1,5 +1,9 @@
 # Decision Log
 
+## 2026-09-15 — Preserve staff ceiling choices through the HTTP costing boundary
+
+The calculator payload and costing engine supported the new ceiling identity, but the staff job/single-module request parsers omitted it and priced the historical cedar specification. A shared request parser now validates the package-owned option and passes it through both calculation routes and materials-explain. Integration tests reload saved calculator inputs, use the real route and engine, and compare the returned material lines for all four options. Publishing a pricebook cannot replace this wiring check. The pricing release is isolated from the held configurator/queue rollout. Owners: `costing-and-geometry.md`, `projects-contacts-estimates-calculator.md`.
+
 Compact indexed lessons and guardrails for future agents. Scan relevant entries before non-trivial or risky work, especially when the task touches a known source-of-truth boundary, migration, auth path, data flow, or quality gate.
 
 ## Entry Template

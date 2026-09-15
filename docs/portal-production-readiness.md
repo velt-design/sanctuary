@@ -2,6 +2,8 @@
 
 Status: Active evolving tracker.
 
+Pricing release (2026-09-15): the owner requested the approved timber prices and costings live in the staff calculator independently of the configurator launch. The isolated release contains v2.7 pricebook compatibility, four Cedar/ThermoPine ceiling choices and a fix for staff HTTP parsing that previously dropped the selected ceiling. Production remains on Version 11 until both app deployments are compatible and the exact preserved-rate candidate is published. No queue migrations, customer configurator activation, email tests or Render purchase are included. Pricing-specific release evidence is kept with the private September pricing review.
+
 Xero deposit pilot (2026-09-14): implementation and focused/local build checks pass; hosted staging SQL proves partial/full deposits, concurrent duplicate refusal and audited reversal. The separate Jordan-only capability and preview are provisioned. Hosted authenticated browser verification and production pilot release remain pending; no real payment has been approved. Current evidence and rollout boundaries are owned by `docs/xero-connection.md`.
 
 Last updated: 2026-08-27.
