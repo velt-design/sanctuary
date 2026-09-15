@@ -25,7 +25,7 @@ export function ceilingStock(runM: number, supportCount = Math.ceil(Math.max(0, 
 }
 
 /** Hip-corner wings have independent board runs and support grids. */
-function ceilingRuns(inputs: InputsNormalizedV1, derived: DerivedV1) {
+function ceilingRuns(inputs: InputsNormalizedV1, derived: DerivedV1, config: CostingConfigV1) {
   if (inputs.roof_type !== 'hip_corner') {
     return [{ area: ceilingArea(inputs, derived), run: inputs.structure_type === 'box_perimeter' ? derived.timber_run_per_plane_m : derived.timber_slope_len_per_plane_m, supports: derived.timber_purlin_lines_per_plane }];
   }
@@ -45,7 +45,7 @@ function ceilingRuns(inputs: InputsNormalizedV1, derived: DerivedV1) {
   return planes.map((plane, index) => ({
     area: totalArea > 0 ? areas[index] * derived.timber_area_m2 / totalArea * horizontalFactor : 0,
     run: plane.rafter_length_m * horizontalFactor,
-    supports: Math.ceil(Math.max(0, plane.rafter_length_m - .2) / .5) + 1,
+    supports: Math.ceil(Math.max(0, plane.rafter_length_m - .2) / (isCostingManifestAtLeast(config, 2, 8) ? .6 : .5)) + 1,
   }));
 }
 
@@ -56,7 +56,7 @@ export function ceilingMaterials(inputs: InputsNormalizedV1, derived: DerivedV1,
   const area = ceilingArea(inputs, derived);
   if (area <= 0) return [];
   const cover = option.coverMm / 1000;
-  const plans = ceilingRuns(inputs, derived).filter(plane => plane.area > 0).map(plane => {
+  const plans = ceilingRuns(inputs, derived, config).filter(plane => plane.area > 0).map(plane => {
     const stock = ceilingStock(plane.run, plane.supports);
     const rows = Math.ceil(plane.area / (plane.run * cover) - 1e-8);
     const purchasedM = rows * stock.reduce((sum, item) => sum + item.lengthM, 0);
