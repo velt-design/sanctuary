@@ -8,6 +8,29 @@ production, send emails or submit live customer enquiries.
 
 ## Current evidence
 
+Hosted intake exposed the database's older mandatory-phone rule despite the
+configured form accepting an empty phone. Forward migration
+`20260915080001_marketing_enquiry_optional_phone.sql` now allows the configured
+residential email/suburb/design path and skips blank-phone contact matching.
+Applied and recorded only in staging. Transactional regression checks passed for
+separate email identities, same-email matching, replay, null phone storage and
+legacy/no-contact rejection. Production still requires this migration.
+
+The same failed submission was reconciled before retry: no receipt existed and
+all 14 earlier estimate snapshots were unchanged. Hosted retry saved the exact
+$11,674 design and approved version 2; duplicate retry reused its receipt.
+Authenticated staff retrieved that frozen design/price while anonymous access
+was denied. Staff revised width to 6.2 m, prepared $12,031, saved a separate
+revision, replayed safely, and created/reloaded an unsent DRAFT quote at $12,031.
+The original estimate remained unchanged. Its synthetic email job was parked
+with zero provider effects. Evidence: `sanctuary-v28-intake-check.json`,
+`sanctuary-v28-staff-receipt.json`, `sanctuary-v28-staff-revision.json` in the task
+temporary directory. No customer/provider delivery was attempted.
+
+The focused database migration guard passes 26 tests. The full disposable PGMQ
+suite could not start because Docker's Linux engine is unavailable; the new SQL
+regression ran successfully against staging inside a rolled-back transaction.
+
 | Requirement | Evidence | Status |
 | --- | --- | --- |
 | Homepage bar waits only for short opening scroll | Four bar tests; existing-tab browser verification after dismissal correction | Passed locally |
@@ -33,7 +56,7 @@ production, send emails or submit live customer enquiries.
 | Release compilation | Webpack production build completed all 77 static pages and TypeScript after fixing an invalid all-global CSS-module selector in the sticky-bar stylesheet | Passed locally with webpack; default Turbopack process crashed on Windows before diagnostics |
 | Hosted candidate preparation | Healthy staging identity rechecked; v2.8 snapshot `4d12a6bde67c28aeacbb8a0d9845529e3ebb7405555d0fab9b8e412de8d33661` resolves exactly to the local candidate. Published only in staging as version 2, `89a1d161-c336-44e6-ad2b-2b8eacd3bd4c`; temporary admin access removed | Staging only; production unchanged |
 | Candidate repository gates | Full workspace typecheck and lint, including documentation, package boundaries and source guards, passed before branch upload at `a403953` | Passed |
-| Isolated hosted bindings | Both applications have candidate-branch-only staging credentials, v2.8 version pin, disabled email provider and disabled enquiry email worker. Stable customer/staff preview origins connected | Both connected builds READY at `a403953`; staff runtime verification pending |
+| Isolated hosted bindings | Both applications have candidate-branch-only staging credentials, v2.8 version pin, disabled email provider and disabled enquiry email worker. Stable customer/staff preview origins connected | Both connected builds READY at `a403953`; staff receipt, revision and draft quote verified |
 | Hosted/local price parity | Signed hosted v2.8 API matched local estimates: acrylic 6 x 3 $11,674; 5.6 x 3 $10,630; solid/ThermoPine 5 x 4 $20,606; 5 x 4.1 $21,308; acrylic gable 6.7 x 3.9 $18,561. 6.7 x 4.5 returns tailored quote | Five price fixtures plus area limit passed; no enquiry submitted |
 
 ## Open requirements
@@ -41,22 +64,13 @@ production, send emails or submit live customer enquiries.
 - Complete remaining consent interaction, complex shared-design preservation and
   browser Back while the configurator itself is open. Product, commercial,
   professional, mobile menu and expanded-view checks above now have browser evidence.
-- Verify form recovery against the isolated hosted service. Local controller
-  success, failure and retry tests intercept all network calls; they do not prove
-  receipt by the hosted intake or staff portal.
-- Finish and verify both exact hosted builds, including the current connected
-  origins. The development-only review endpoint remains unchanged; hosted pricing
-  will use the ordinary signed-price path pinned to the new staging v2.8 version.
-  Automatic Git deployment is held for this candidate branch in both app configs
-  while previews are created explicitly. Other branches keep their existing policy.
-- Reconcile current hosted pricing, staff receipt/revision and save-to-quote against
-  this candidate. Earlier staging evidence is valuable but is not proof of this UI
-  and pricing revision.
+- Verify hosted browser form recovery. Local controller recovery tests pass;
+  hosted API receipt and idempotent retry are now verified separately above.
 - Real-phone touch, keyboard and assistive-technology verification remains open.
 - Check release build, hosted CI, production migration/configuration differences,
   worker readiness and rollback before presenting a production activation decision.
-  Local webpack compilation is verified; the normal hosted build still needs its
-  own result. Local logs are `sanctuary-launch-review-build.txt` and
+  Local webpack and both normal hosted builds are verified at `a403953`.
+  Local logs are `sanctuary-launch-review-build.txt` and
   `sanctuary-launch-review-webpack.txt` in the task's temporary directory.
 
 ## Earlier release evidence and limits

@@ -458,6 +458,14 @@ Tables/RPCs:
 
 ### Website enquiry delivery boundary (install-only, 2026-09-14)
 
+Forward migration `20260915080001_marketing_enquiry_optional_phone.sql` permits
+phone-free configured residential project-discussion enquiries with email,
+suburb and a server-normalized design. The API still validates the complete
+design and email. The intake never matches contacts on blank phone values and
+stores an absent phone as NULL; other enquiry pathways retain their phone
+requirement. Service-only grants, upload validation and submission locking are
+unchanged. Regression: `supabase/tests/marketing_enquiry_optional_phone.sql`.
+
 `20260914062001_marketing_enquiry_durable_delivery.sql` introduces
 `private.marketing_enquiry_deliveries`, with no browser or direct service-role
 table grants. It retains the exact rendered message (up to 16 MiB), an outbox
