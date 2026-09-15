@@ -35,6 +35,18 @@ it('preserves customer matching for a captured unbound invoice', async () => {
 it('does not ask to rematch an invoice already linked to Xero', async () => {
   expect(await page({ ...invoice, captured: true, xeroInvoiceId: 'xero' })).not.toContain('/staff/payments/mapping?');
 });
+it('gives the draft one primary next step and explains approval without email', async () => {
+  const html = await page({ ...invoice, captured: true, xeroInvoiceId: 'xero' });
+  expect(html).toContain('Review draft in Xero');
+  expect(html).toContain('Check the customer, amount and GST');
+  expect(html).toContain('Do not choose Approve &amp; email');
+  expect(html).toContain('<details><summary>Checks and other options');
+});
+it('explains a stopped transfer without asking the owner to issue another invoice', async () => {
+  const html = await page({ ...invoice, captured: true, transferStatus: 'permanent_failed', transferError: 'UNKNOWN' });
+  expect(html).toContain('A developer needs to investigate');
+  expect(html).toContain('Do not issue another invoice');
+});
 it('defaults to server-filtered attention and keeps the selected view through search and pagination', async () => {
   mocks.load.mockResolvedValue({ rows: [], checkedAt: '2026-09-15T00:00:00Z', hasMore: true });
   const html = renderToStaticMarkup(await FinancePage({ searchParams: Promise.resolve({ search: 'Example', offset: '50', view: 'history' }) }));

@@ -270,11 +270,11 @@ describe('portal proxy', () => {
     expect(createServerClientMock).not.toHaveBeenCalled();
   });
 
-  it('allows the synthetic AI activity fixture to enforce its own server flag without auth', async () => {
+  it.each(['/qa/ai-activity-fixture', '/qa/finance-payment-fixture'])('allows %s to enforce its own server flag without auth', async (path) => {
     process.env.ENABLE_PORTAL_QA_FIXTURES = '1';
 
     const response = await proxy(
-      new NextRequest('https://example.com/qa/ai-activity-fixture'),
+      new NextRequest(`https://example.com${path}`),
     );
 
     expect(response.status).toBe(200);
