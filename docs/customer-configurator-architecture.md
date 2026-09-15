@@ -5504,3 +5504,5 @@ verification, along with pricing publication. Local candidate visibility is not
 evidence of published production pricing.
 
 Bar visibility clarification (2026-09-15): only the homepage waits for the short opening scroll. Other eligible browsing pages show the bar immediately, including above the fold. Existing enquiry/private-page exclusions and dismissal remain. Verified on Products; four visibility tests pass.
+
+Enquiry overlay return fix (2026-09-15): an ordinary same-tab enquiry link inside the open configurator, while already on /design-enquiry, closes the overlay without navigation. Current form values and attribution remain intact. Fresh browser verification preserved a typed name after Edit, Review, Enquire; ten focused overlay/estimate tests, marketing typecheck and lint passed. Existing hot-loaded tabs may need refresh to install the revised navigation listener. No submission or email sent.

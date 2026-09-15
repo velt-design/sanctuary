@@ -6,7 +6,7 @@ import { designEnquiryHref, isConfiguratorEntry, openConfigurator, rememberConfi
 
 let pathname = '/products';
 vi.mock('next/navigation', () => ({ usePathname: () => pathname }));
-vi.mock('next/dynamic', () => ({ default: () => ({ open, onClose }: { open: boolean; onClose: () => void }) => open ? <div role="dialog"><button onClick={onClose}>Close</button></div> : null }));
+vi.mock('next/dynamic', () => ({ default: () => ({ open, onClose }: { open: boolean; onClose: () => void }) => open ? <dialog open><button onClick={onClose}>Close</button><a href="/design-enquiry">Enquire about this design</a></dialog> : null }));
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
@@ -20,19 +20,19 @@ it('opens above the current page without changing its URL and closes in place', 
   await act(async () => root.render(<><a href="/configurator-preview?open=1&resume=1">Design</a><SiteConfigurator /></>));
   const before = window.location.href;
   await act(async () => host.querySelector('a')!.click());
-  expect(host.querySelector('[role=dialog]')).not.toBeNull(); expect(window.location.href).toBe(before);
+  expect(host.querySelector('dialog')).not.toBeNull(); expect(window.location.href).toBe(before);
   await act(async () => host.querySelector('button')!.click());
-  expect(host.querySelector('[role=dialog]')).toBeNull(); expect(window.location.href).toBe(before);
+  expect(host.querySelector('dialog')).toBeNull(); expect(window.location.href).toBe(before);
 });
 
 it('supports the homepage entry and carries its attribution into the new enquiry', async () => {
   await act(async () => root.render(<SiteConfigurator />));
   await act(async () => openConfigurator('/contact?configurator=preview&source_path=%2F&source_component=project_finder'));
-  expect(host.querySelector('[role=dialog]')).not.toBeNull();
+  expect(host.querySelector('dialog')).not.toBeNull();
   expect(designEnquiryHref()).toContain('/design-enquiry?');
   expect(designEnquiryHref()).toContain('source_component=project_finder');
   pathname = '/design-enquiry'; await act(async () => root.render(<SiteConfigurator />));
-  expect(host.querySelector('[role=dialog]')).toBeNull();
+  expect(host.querySelector('dialog')).toBeNull();
 });
 
 it('leaves bespoke, staff revision and shared-design destinations alone', () => {
@@ -48,4 +48,15 @@ it('keeps the original enquiry source when editing an existing design enquiry', 
   window.history.replaceState({}, '', '/design-enquiry');
   rememberConfiguratorSource('/configurator-preview?open=1');
   expect(designEnquiryHref()).toBe(before);
+});
+
+it('closes the edit overlay on enquiry return without navigating or clearing entered details', async () => {
+  pathname = '/design-enquiry'; window.history.replaceState({}, '', '/design-enquiry?source_path=%2Fproducts');
+  await act(async () => root.render(<><input aria-label="Name" defaultValue="Jordan" /><SiteConfigurator /></>));
+  await act(async () => openConfigurator('/configurator-preview?open=1'));
+  const before = window.location.href;
+  await act(async () => host.querySelector<HTMLAnchorElement>('dialog a')!.click());
+  expect(host.querySelector('dialog')).toBeNull();
+  expect(window.location.href).toBe(before);
+  expect(host.querySelector('input')?.value).toBe('Jordan');
 });

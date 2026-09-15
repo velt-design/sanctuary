@@ -16,7 +16,13 @@ export default function SiteConfigurator() {
       if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       const link = event.target instanceof Element ? event.target.closest('a') : null;
       if (!link || link.target || link.hasAttribute('download')) return;
-      if (!isConfiguratorEntry(new URL(link.href), window.location.origin)) return;
+      const destination = new URL(link.href);
+      if (window.location.pathname === '/design-enquiry' && destination.origin === window.location.origin
+        && destination.pathname === '/design-enquiry' && link.closest('dialog[open]')) {
+        event.preventDefault(); event.stopPropagation(); setOpen(false);
+        return;
+      }
+      if (!isConfiguratorEntry(destination, window.location.origin)) return;
       event.preventDefault(); event.stopPropagation(); rememberConfiguratorSource(link.href); show();
     };
     document.addEventListener('click', click, true);
