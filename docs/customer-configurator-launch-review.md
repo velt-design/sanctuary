@@ -33,6 +33,10 @@ regression ran successfully against staging inside a rolled-back transaction.
 
 | Requirement | Evidence | Status |
 | --- | --- | --- |
+| Back with designer open | Products to Gable product detail, open overlay, browser Back returns to Products with no orphaned dialog | Passed locally |
+| Detailed shared design | 6 x 3 freestanding gable, combination roof, cedar ceiling, Front 1 acrylic and four perimeter LED strips: copied link restored all selections and $31,543; refresh retained design and price | Passed locally |
+| Cookie choices and bar | Privacy preferences hide design bar; Essential only dismisses panel and restores trigger focus/bar; reopened choices show both optional categories off | Passed locally |
+| Hosted form recovery and edit return | Missing suburb/email focus error summary; entered name/suburb retained through edit; width 6.2 yields $12,031; Enquire closes same-page dialog and restores edit-link focus; invalid email rejected without submission | Passed on connected hosted marketing build |
 | Homepage bar waits only for short opening scroll | Four bar tests; existing-tab browser verification after dismissal correction | Passed locally |
 | Other public browsing pages show bar immediately | Products browser verification and bar test | Passed locally |
 | Open/close over the same page | Products URL and scroll preserved; shared dialog test | Passed locally |
@@ -61,11 +65,8 @@ regression ran successfully against staging inside a rolled-back transaction.
 
 ## Open requirements
 
-- Complete remaining consent interaction, complex shared-design preservation and
-  browser Back while the configurator itself is open. Product, commercial,
-  professional, mobile menu and expanded-view checks above now have browser evidence.
-- Verify hosted browser form recovery. Local controller recovery tests pass;
-  hosted API receipt and idempotent retry are now verified separately above.
+- Hosted validation recovery and edit return pass. Network-failure recovery is
+  covered by controller tests; hosted intake/retry are separately verified above.
 - Real-phone touch, keyboard and assistive-technology verification remains open.
 - Check release build, hosted CI, production migration/configuration differences,
   worker readiness and rollback before presenting a production activation decision.
