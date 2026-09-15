@@ -22,12 +22,12 @@ function invoiceEvidence(context: InvoicePaymentContext, raw: unknown) {
     fingerprint: evidenceFingerprint({ providerInvoiceId: context.providerInvoiceId, expectedBody: context.expectedBody,
       status: row?.Status, amountPaid: row?.AmountPaid, amountCredited: row?.AmountCredited, updatedAt: row?.UpdatedDateUTC }) };
 }
-function inspect(context: InvoicePaymentContext, payment: Payment, invoice: ReturnType<typeof invoiceEvidence>) {
+function inspect(context: InvoicePaymentContext, payment: Payment, invoice: ReturnType<typeof invoiceEvidence>, recordedAmountCents?: number) {
   const blockers: string[] = [];
   const value = payment.total === null ? NaN : payment.total * 100;
   const amountCents = Number.isSafeInteger(Math.round(value)) && Math.abs(value - Math.round(value)) < 0.000001 ? Math.round(value) : null;
   const remaining = context.invoice.totalIncGstCents - context.matchedCents;
-  if (context.invoice.status !== 'OPEN' || context.invoice.currency !== 'NZD' || remaining < 0) blockers.push('The portal invoice or its balance needs review.');
+  if ((context.invoice.status !== 'OPEN' && !(recordedAmountCents !== undefined && context.invoice.status === 'PAID')) || context.invoice.currency !== 'NZD' || remaining < 0) blockers.push('The portal invoice or its balance needs review.');
   if (context.hasUnmatchedPaymentHistory || context.hasOtherSourceHistory) blockers.push('Reconcile existing project receipts before importing this payment.');
   if (invoice.observation.state !== 'payment_recorded') blockers.push('Xero invoice details or payment status need investigation.');
   if (payment.providerInvoiceId !== context.providerInvoiceId || !uuid.test(payment.id) || !uuid.test(payment.contactId)
@@ -35,7 +35,9 @@ function inspect(context: InvoicePaymentContext, payment: Payment, invoice: Retu
   if (payment.status !== 'AUTHORISED' || payment.reconciled !== true) blockers.push('Xero has not confirmed an authorised, reconciled payment.');
   if (payment.currency !== 'NZD' || payment.currencyRate !== 1) blockers.push('Currency evidence needs separate review.');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(payment.date)) blockers.push('The payment date could not be verified.');
-  if (amountCents === null || amountCents <= 0 || amountCents > remaining || context.matchedCents + amountCents > (invoice.observation.amountPaidCents ?? 0)) blockers.push('The payment amount does not fit the verified invoice balance.');
+  if (amountCents === null || amountCents <= 0 || (recordedAmountCents === undefined
+    ? amountCents > remaining || context.matchedCents + amountCents > (invoice.observation.amountPaidCents ?? 0)
+    : amountCents !== recordedAmountCents || amountCents > (invoice.observation.amountPaidCents ?? 0))) blockers.push('The payment amount does not fit the verified invoice balance.');
   return { blockers, amountCents, remainingIfApprovedCents: blockers.length || amountCents === null ? null : remaining - amountCents };
 }
 function evidence(context: InvoicePaymentContext, payment: Payment, invoice: ReturnType<typeof invoiceEvidence>, tenantId: string): DepositEvidence {
@@ -53,9 +55,9 @@ export async function reviewInvoicePayments(invoiceId: string, actor: string) {
   const invoice = invoiceEvidence(context, rawInvoice);
   const active = await activeReceiptMatches(cfg.tenantId, result.payments.map(payment => payment.id));
   const suggestions = result.payments.map(payment => {
-    const checked = inspect(context, payment, invoice);
     const activeMatch = active.find(match => match.receiptId === payment.id);
     const alreadyRecorded = Boolean(activeMatch && activeMatch.invoiceId === context.invoice.id);
+    const checked = inspect(context, payment, invoice, alreadyRecorded ? activeMatch!.amountCents : undefined);
     if (activeMatch) checked.blockers.push(alreadyRecorded ? 'This payment is already recorded in the portal.' : 'This payment is recorded against another portal invoice. Finance must investigate the match.');
     if (result.limited) checked.blockers.push('The payment list is incomplete. Finance must check the remaining payments.');
     const approvalToken = checked.blockers.length ? null : prepareDepositApproval(evidence(context, payment, invoice, cfg.tenantId), actor, cfg.key);

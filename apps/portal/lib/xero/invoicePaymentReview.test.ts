@@ -72,3 +72,11 @@ it('distinguishes a payment recorded here from one matched to another invoice', 
  const p=await proposal(); expect(p.alreadyRecorded).toBe(false); expect(p.approvalToken).toBeNull();
  expect(p.blockers).toContain('This payment is recorded against another portal invoice. Finance must investigate the match.');
 });
+it('does not treat a correctly paid invoice as a new payment exceeding its remaining balance', async () => {
+ mocks.context.mockResolvedValue({...context,invoice:{...context.invoice,status:'PAID'},matchedCents:11500});
+ mocks.invoice.mockResolvedValue({...rawInvoice,Status:'PAID',AmountPaid:115});
+ mocks.active.mockResolvedValue([{receiptId:paymentId,invoiceId:id,amountCents:4000}]);
+ const p=await proposal(); expect(p.blockers).toEqual(['This payment is already recorded in the portal.']); expect(p.approvalToken).toBeNull();
+ mocks.active.mockResolvedValue([{receiptId:paymentId,invoiceId:id,amountCents:3900}]);
+ expect((await proposal()).blockers).toContain('The payment amount does not fit the verified invoice balance.');
+});
