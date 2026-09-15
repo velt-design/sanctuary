@@ -8,16 +8,16 @@ const review = { context: { sourceContactId: id, invoiceRef: 'INV-TEST', custome
 let view: ReturnType<typeof renderIntoDocument> | undefined;
 afterEach(() => { view?.unmount(); vi.unstubAllGlobals(); });
 const button = (label: string) => [...view!.container.querySelectorAll('button')].find(item => item.textContent === label);
-async function inspect() { await act(async () => button('Check Xero records')!.click()); }
+async function inspect() { await act(async () => {}); }
 it('exposes customer creation only when enabled and the lookup has no customer candidates', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ ...review, customerCreationEnabled: false })));
-  view = renderIntoDocument(<MappingReview invoiceId={id} />); await inspect();
+  view = renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} />); await inspect();
   expect(button('Create Xero customer')).toBeUndefined();
 });
 it('requires confirmation, then offers the verified new customer for account/tax mapping', async () => {
   const fetcher = vi.fn().mockResolvedValueOnce(Response.json(review))
     .mockResolvedValueOnce(Response.json({ contact: { id, name: 'Example', email: '' } }));
-  vi.stubGlobal('fetch', fetcher); view = renderIntoDocument(<MappingReview invoiceId={id} />); await inspect();
+  vi.stubGlobal('fetch', fetcher); view = renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} />); await inspect();
   const form = button('Create Xero customer')!.closest('form')!;
   await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   expect(fetcher).toHaveBeenCalledTimes(1);
@@ -32,11 +32,34 @@ it('requires confirmation, then offers the verified new customer for account/tax
 it('keeps the same reviewed name after a lost response so retry uses the durable intent', async () => {
   const fetcher = vi.fn().mockResolvedValueOnce(Response.json(review)).mockRejectedValueOnce(new Error('Connection interrupted'))
     .mockResolvedValueOnce(Response.json({ contact: { id, name: 'Example', email: '' } }));
-  vi.stubGlobal('fetch', fetcher); view = renderIntoDocument(<MappingReview invoiceId={id} />); await inspect();
+  vi.stubGlobal('fetch', fetcher); view = renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} />); await inspect();
   const form = button('Create Xero customer')!.closest('form')!;
   await act(async () => form.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
   await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   expect(view.container.textContent).toContain('Connection interrupted');
   await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   expect(fetcher.mock.calls[2][1].body).toBe(fetcher.mock.calls[1][1].body);
+});
+it('shows invoice context while automatically checking and never confirms a mapping on load', async () => {
+  let resolve!: (value: Response) => void;
+  const fetcher = vi.fn().mockReturnValue(new Promise<Response>(done => { resolve = done; }));
+  vi.stubGlobal('fetch', fetcher);
+  view = renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} />);
+  expect(view.container.textContent).toContain('INV-TEST');
+  expect(view.container.textContent).toContain('Checking customer and accounting details');
+  expect(button('Check Xero records')!.disabled).toBe(true);
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({ action: 'inspect', invoiceId: id });
+  await act(async () => resolve(Response.json(review)));
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(button('Check Xero records')!.disabled).toBe(false);
+});
+it('keeps invoice context after a failed initial check and supports an explicit retry', async () => {
+  const fetcher = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(Response.json(review));
+  vi.stubGlobal('fetch', fetcher);
+  view = renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} />); await inspect();
+  expect(view.container.textContent).toContain('INV-TEST');
+  expect(view.container.textContent).toContain('Xero details could not be loaded');
+  await act(async () => button('Check Xero records')!.click());
+  expect(button('Create Xero customer')).toBeDefined();
+  expect(fetcher).toHaveBeenCalledTimes(2);
 });

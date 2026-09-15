@@ -1,17 +1,28 @@
 'use client';
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Button, Input } from '@/components/ui/foundation/FoundationControls';
 import type { XeroFinanceContact, XeroRevenueAccount, XeroRevenueTax } from '@/lib/xero/financeMappingProvider';
 type Review = { context: { sourceContactId: string; invoiceRef: string; customerName: string }; contacts: XeroFinanceContact[];
   accounts: XeroRevenueAccount[]; taxes: XeroRevenueTax[]; limited: boolean; checkedAt: string; customerCreationEnabled?: boolean };
-export default function MappingReview({ invoiceId }: { invoiceId: string }) {
+async function command(body: object, signal?: AbortSignal) {
+  const response = await fetch('/api/payments/xero/mapping', { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await response.json(); if (!response.ok) throw new Error(data.error ?? 'Could not confirm the mapping.'); return data;
+}
+export default function MappingReview({ invoiceId, initialContext }: { invoiceId: string; initialContext: Review['context'] }) {
   const [review, setReview] = useState<Review | null>(null); const [message, setMessage] = useState('');
-  const [pending, setPending] = useState(false); const busy = useRef(false);
+  const [pending, setPending] = useState(true); const busy = useRef(false);
   const [saved, setSaved] = useState(false);
   const attempt = useRef<{ selection: string; commandId: string } | null>(null);
-  async function command(body: object) {
-    const response = await fetch('/api/payments/xero/mapping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await response.json(); if (!response.ok) throw new Error(data.error ?? 'Could not confirm the mapping.'); return data;
-  }
+  useEffect(() => {
+    const controller = new AbortController();
+    busy.current = true;
+    setPending(true);
+    void command({ action: 'inspect', invoiceId }, controller.signal)
+      .then(data => { if (!controller.signal.aborted) setReview(data); })
+      .catch(() => { if (!controller.signal.aborted) setMessage('Xero details could not be loaded. Use Check Xero records to try again. Nothing has been changed.'); })
+      .finally(() => { if (!controller.signal.aborted) { busy.current = false; setPending(false); } });
+    return () => controller.abort();
+  }, [invoiceId]);
   async function run(action: () => Promise<void>) {
     if (busy.current) return; busy.current = true; setPending(true); setMessage('');
     try { await action(); } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not confirm the mapping.'); }
@@ -45,14 +56,17 @@ export default function MappingReview({ invoiceId }: { invoiceId: string }) {
     });
   }
   return <div>
-    <form onSubmit={inspect}><label>Xero customer name, if different <input name="contactName" maxLength={240} /></label>{' '}
-      <button disabled={pending}>Check Xero records</button></form>
+    <h2>{(review?.context ?? initialContext).invoiceRef} — {(review?.context ?? initialContext).customerName}</h2>
+    <p>We check Xero for this customer automatically. Checking records does not save a link or change an invoice.</p>
+    {pending && !review && <p role="status">Checking customer and accounting details in Xero…</p>}
+    <form onSubmit={inspect}><label>Xero customer name, if different <Input name="contactName" maxLength={240} disabled={pending} /></label>{' '}
+      <Button type="submit" variant="secondary" disabled={pending}>Check Xero records</Button></form>
     {message && <p role="status">{message}</p>}
     {saved && <button disabled={pending} onClick={() => void run(async () => {
       const result = await command({ action: 'resume', invoiceId, confirmed: true });
       setMessage(result.state === 'queued' ? 'The existing draft transfer is queued. Check finance review for its result.' : 'This transfer is already queued or running. Check finance review for its result.');
     })}>Resume existing draft transfer</button>}
-    {review && <section><h2>{review.context.invoiceRef} — {review.context.customerName}</h2>
+    {review && <section>
       <p>Compare the customer identity before saving. Matching names alone do not prove they are the same customer.</p>
       {review.limited && <p>More customer results exist. Refine the exact Xero name before choosing.</p>}
       {!review.contacts.length && <p>No active Xero customer matched. Check for another name before creating a new customer.</p>}
