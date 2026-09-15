@@ -291,20 +291,33 @@ All variables are portal-server-only, never browser-prefixed:
 | Variable | Purpose |
 | --- | --- |
 | `XERO_ENABLED` | Exactly `true` enables routes; absent/false remains dark. |
-| `XERO_PAYMENT_MATCHING_ENABLED` | Exactly `true` enables the separately authorized deposit pilot after migrations and Jordan's grant are verified. Default dark; independent of connection enablement. |
-| `XERO_INVOICE_TRANSFERS_ENABLED` | In-progress invoice adapter write gate; default dark and not deployed/enabled. Requires separately verified invoice OAuth scope as well as the database issuance gate and a working handler. Disabling it prevents draft PUTs. |
-| `XERO_INVOICE_CONSENT_ENABLED` | Exactly `true`, with a pinned tenant, enables expanded developer consent to manage invoices/contacts and read settings; application commands constrain invoice creation to DRAFT and customer creation to explicit confirmation. Default dark; separate from transfer activation. Switching it off does not revoke or break renewal of an existing expanded grant. |
+| `XERO_PAYMENT_MATCHING_ENABLED` | Exactly `true` enables the separately granted manual payment-review path after its migrations. It is not the automatic-payment control. |
+| `XERO_INVOICE_TRANSFERS_ENABLED` | Exactly `true` permits invoice adapter writes with verified invoice OAuth scope, database issuance controls and a working handler. Production activation is recorded above. Disabling it prevents invoice PUTs; it does not undo existing invoices. Frozen requests preserve their approved or legacy draft status. |
+| `XERO_INVOICE_CONSENT_ENABLED` | Exactly `true`, with a pinned tenant, enables expanded developer consent to manage invoices/contacts and read settings. Tenant policy controls automatic AUTHORISED creation; retained legacy DRAFT requests are preserved. Switching consent off does not revoke or break renewal of an existing expanded grant. |
+| `XERO_CUSTOMER_CREATION_ENABLED` | Separate gate for explicitly confirmed customer creation; invoice automation does not authorize arbitrary customer creation. |
+| `XERO_INVOICE_OBSERVATION_ENABLED` | Exactly `true`, together with `XERO_ENABLED`, enables scheduled invoice observations. The minute cron processes a bounded eligible set; it does not promise an instant refresh for every invoice. |
+| `XERO_AUTOMATIC_PAYMENTS_ENABLED` | Exactly `true` permits automatic recording after a successful observation, subject to the tenant database control and complete eligible reconciled-payment evidence. Does not enable Xero bank auto-reconciliation. |
 | `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET` | Web-app credentials from Xero, held in the deployment secret manager. |
 | `XERO_PORTAL_ORIGIN` | Explicit HTTPS origin; no path, credentials, query or fragment. |
 | `XERO_TENANT_ID` | Exact approved Xero organisation UUID; never the developer app ID. Callback refuses any other tenant. |
 | `XERO_DISCOVERY` | Temporary setup only: exactly `true` permits authorisation without a tenant pin to discover organisation names/IDs. No tokens are retained or accounting reads allowed. Remove after setting the approved tenant UUID. |
 | `XERO_TOKEN_ENCRYPTION_KEY` | Base64 encoding of 32 random bytes; AES-256-GCM key outside the database. |
 | `XERO_DATABASE_URL` | Dedicated connector LOGIN only; remote URLs must use `sslmode=verify-full`. |
-| `CRON_SECRET` | At least 32 characters; authenticates maintenance. |
+| `CRON_SECRET` | At least 32 characters; authenticates maintenance and scheduled observations. |
 
-Requested scopes: `offline_access`, `accounting.contacts.read`,
-`accounting.invoices.read`, `accounting.payments.read`,
-`accounting.banktransactions.read`. No accounting write permission.
+Initial read-only consent requests `offline_access`, `accounting.contacts.read`,
+`accounting.invoices.read`, `accounting.payments.read` and
+`accounting.banktransactions.read`. Expanded invoice consent replaces the contact
+and invoice read scopes with `accounting.contacts` and `accounting.invoices`, and
+adds `accounting.settings.read`. Payment and bank-transaction access remain
+read-only. Renewal validates the encrypted stored grant, independently of current
+rollout flags; reconnecting must use the intended consent configuration.
+
+The managed worker additionally requires `XERO_INVOICE_WORKER_ENABLED=true`,
+`XERO_INVOICE_PORTAL_ORIGIN` and the shared `XERO_INVOICE_GATEWAY_SECRET`, alongside
+its existing active-mode controls. See [managed worker preparation](#managed-worker-preparation-2026-09-15)
+and the production activation evidence above. Environment flags alone do not
+replace database issuance, automatic-approval or automatic-payment controls.
 
 ## Security and recovery
 
