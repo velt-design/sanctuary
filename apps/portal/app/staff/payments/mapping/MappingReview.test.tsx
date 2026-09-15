@@ -119,8 +119,8 @@ it.each(['customer', 'defaults'] as const)('offers resume only after both prereq
   await act(async()=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
  };
  await save(first);
- expect(button('Resume existing draft transfer')).toBeUndefined();
+ expect(button('Resume existing invoice transfer')).toBeUndefined();
  await save(first==='customer'?'defaults':'customer');
- expect(button('Resume existing draft transfer')).toBeDefined();
+ expect(button('Resume existing invoice transfer')).toBeDefined();
  expect(fetcher.mock.calls.map(call=>JSON.parse(call[1].body).action)).toEqual(['inspect',first==='customer'?'confirmCustomer':'confirmDefaults',first==='customer'?'confirmDefaults':'confirmCustomer']);
 });

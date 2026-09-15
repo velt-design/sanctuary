@@ -76,8 +76,8 @@ export default function MappingReview({ invoiceId, initialContext }: { invoiceId
     {message && <p role="status">{message}</p>}
     {canResumeTransfer && <button disabled={pending} onClick={() => void run(async () => {
       const result = await command({ action: 'resume', invoiceId, confirmed: true });
-      setMessage(result.state === 'queued' ? 'The existing draft transfer is queued. Check finance review for its result.' : 'This transfer is already queued or running. Check finance review for its result.');
-    })}>Resume existing draft transfer</button>}
+      setMessage(result.state === 'queued' ? 'The existing invoice transfer is queued. Check finance review for its result.' : 'This transfer is already queued or running. Check finance review for its result.');
+    })}>Resume existing invoice transfer</button>}
     {review && <section>
       {!saved && (review.savedLink ? <AlertBanner tone={review.savedLink.contact ? 'info' : 'warning'} title={review.savedLink.contact ? 'Customer already linked to Xero' : 'Saved customer link needs checking'}>
         {review.savedLink.contact ? <p>{review.savedLink.contact.name}{review.savedLink.contact.email ? ` — ${review.savedLink.contact.email}` : ''}. The saved customer is selected below. Only change it if this is the wrong customer.</p>
