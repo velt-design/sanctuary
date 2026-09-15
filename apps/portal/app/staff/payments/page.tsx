@@ -48,6 +48,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         const outcome = financeOutcome(row);
         const draftReview = Boolean(row.xeroInvoiceId && (!row.observation || ['draft', 'awaiting_approval'].includes(row.observation.state)) && !row.correctionRequired && !row.unassignedReceipts && row.recordedCents === 0 && row.status === 'OPEN');
         const stopped = !row.xeroInvoiceId && row.captured && ['needs_attention', 'permanent_failed'].includes(row.transferStatus ?? '');
+        const projectReview = row.unassignedReceipts || row.recordedCents > row.totalCents || (row.status === 'PAID' && row.recordedCents !== row.totalCents) || (row.status === 'VOID' && row.recordedCents > 0);
+        const paymentReview = !projectReview && row.observation?.state === 'payment_recorded' && row.observation.amountPaidCents !== row.recordedCents && Boolean(row.xeroInvoiceId) && process.env.XERO_INVOICE_PAYMENTS_ENABLED === 'true';
+        const setupReview = stopped && row.transferError === 'XERO_MAPPING_REQUIRED' && !projectReview;
         const money = (value: number) => new Intl.NumberFormat('en-NZ', { style: 'currency', currency: row.currency }).format(value / 100);
         return <TableRow key={row.invoiceId} role="row">
           <TableCell role="cell" data-label="Invoice / customer"><Link href={`/staff/projects/${row.projectId}?tab=invoices`}>{row.invoiceRef}</Link><br />{row.customerName}<br /><small>{row.projectName}</small></TableCell>
@@ -56,16 +59,19 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           <TableCell role="cell" data-label="Next action"><strong>{outcome.label}</strong>
             {draftReview && <p>Open the draft in Xero. Check the customer, amount and GST against the portal invoice. If correct, choose More approve options → Approve in Xero. Do not choose Approve &amp; email. Then return here.</p>}
             {stopped && <p>{row.transferError === 'XERO_MAPPING_REQUIRED' ? 'The transfer needs the correct Xero customer and accounting settings. Review Xero setup below, then resume the existing transfer.' : 'The automatic transfer has stopped. A developer needs to investigate before it can continue. Do not issue another invoice or create a replacement in Xero.'}</p>}
-            {row.xeroInvoiceId && <ButtonLink variant="primary" size="small" href={`/staff/payments/xero-invoice?invoice=${row.invoiceId}`} target="_blank" rel="noopener noreferrer">{draftReview ? 'Review draft in Xero' : 'Open in Xero'}</ButtonLink>}
-            <details open={!draftReview}><summary>Checks and other options</summary>
+            {projectReview && <><p>The portal payment history needs checking before this balance can be trusted. Open the project and check which invoice each receipt belongs to.</p><ButtonLink variant="primary" size="small" href={`/staff/projects/${row.projectId}?tab=invoices`}>Review project payments</ButtonLink></>}
+            {paymentReview && <><p>Xero and the portal show different payment totals. Review the receipts and approve only payments that belong to this invoice. The review shows the balance before and after approval.</p><ButtonLink variant="primary" size="small" href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</ButtonLink></>}
+            {setupReview && <ButtonLink variant="primary" size="small" href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Review Xero setup</ButtonLink>}
+            {row.xeroInvoiceId && !projectReview && !paymentReview && <ButtonLink variant="primary" size="small" href={`/staff/payments/xero-invoice?invoice=${row.invoiceId}`} target="_blank" rel="noopener noreferrer">{draftReview ? 'Review draft in Xero' : 'Open in Xero'}</ButtonLink>}
+            <details><summary>Checks and other options</summary>
             {row.lastVerifiedAt && <><br /><small>Transfer verified {new Date(row.lastVerifiedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
             {row.observation && <><br /><small>Xero checked {new Date(row.observation.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
             {row.xeroInvoiceId && <><br /><CheckXero invoiceId={row.invoiceId} invoiceRef={row.invoiceRef} /></>}
             {!row.xeroInvoiceId && row.captured && row.status !== 'VOID' && ['needs_attention', 'permanent_failed'].includes(row.transferStatus ?? '')
               && <RecoverTransfer invoiceId={row.invoiceId} />}
-            {row.xeroInvoiceId && process.env.XERO_INVOICE_PAYMENTS_ENABLED === 'true' && <><br /><ButtonLink variant="tertiary" size="small" href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</ButtonLink></>}
-            {row.unassignedReceipts && <><br /><ButtonLink variant="tertiary" size="small" href={`/staff/projects/${row.projectId}?tab=invoices`}>Review project payments</ButtonLink></>}
-            {row.captured && !row.xeroInvoiceId && !row.unassignedReceipts && row.status !== 'VOID' && <><br /><ButtonLink variant="tertiary" size="small" href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Review Xero setup</ButtonLink></>}
+            {row.xeroInvoiceId && process.env.XERO_INVOICE_PAYMENTS_ENABLED === 'true' && !paymentReview && <><br /><ButtonLink variant="tertiary" size="small" href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</ButtonLink></>}
+            {row.xeroInvoiceId && (projectReview || paymentReview) && <ButtonLink variant="tertiary" size="small" href={`/staff/payments/xero-invoice?invoice=${row.invoiceId}`} target="_blank" rel="noopener noreferrer">Open in Xero</ButtonLink>}
+            {row.captured && !row.xeroInvoiceId && !projectReview && row.status !== 'VOID' && !setupReview && <><br /><ButtonLink variant="tertiary" size="small" href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Review Xero setup</ButtonLink></>}
             </details>
           </TableCell>
         </TableRow>;

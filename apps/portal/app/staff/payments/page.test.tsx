@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { FinanceInvoice } from '@/lib/xero/financeReview';
 const mocks = vi.hoisted(() => ({ load: vi.fn() }));
 vi.mock('@/lib/xero/pilotAccess', () => ({ getPaymentPilotSession: async () => ({ user: { id: 'owner' } }) }));
@@ -13,6 +13,7 @@ const invoice: FinanceInvoice = { invoiceId: 'invoice', invoiceRef: 'INV-0014', 
   xeroInvoiceId: null, lastVerifiedAt: null, transferStatus: null, transferError: null, captured: false,
   correctionRequired: false, unassignedReceipts: false, observation: null };
 beforeEach(() => vi.clearAllMocks());
+afterEach(() => vi.unstubAllEnvs());
 async function page(row: FinanceInvoice, view = 'attention') {
   mocks.load.mockResolvedValue({ rows: [row], checkedAt: '2026-09-15T00:00:00Z', hasMore: false });
   return renderToStaticMarkup(await FinancePage({ searchParams: Promise.resolve({ view }) }));
@@ -34,6 +35,20 @@ it('preserves customer matching for a captured unbound invoice', async () => {
 });
 it('does not ask to rematch an invoice already linked to Xero', async () => {
   expect(await page({ ...invoice, captured: true, xeroInvoiceId: 'xero' })).not.toContain('/staff/payments/mapping?');
+});
+it('puts the payment decision before optional Xero checks', async () => {
+  vi.stubEnv('XERO_INVOICE_PAYMENTS_ENABLED', 'true');
+  const html = await page({ ...invoice, captured: true, xeroInvoiceId: 'xero', observation: { invoiceId: 'xero', state: 'payment_recorded', amountPaidCents: 4000, reason: '', checkedAt: new Date().toISOString() } });
+  const primaryContent = html.split('<details>')[0];
+  expect(primaryContent).toContain('Review invoice payments');
+  expect(primaryContent).toContain('balance before and after approval');
+  expect(primaryContent).not.toContain('>Open in Xero</a>');
+});
+it('prioritises existing receipt problems over importing a new payment', async () => {
+  vi.stubEnv('XERO_INVOICE_PAYMENTS_ENABLED', 'true');
+  const html = await page({ ...invoice, unassignedReceipts: true, xeroInvoiceId: 'xero', observation: { invoiceId: 'xero', state: 'payment_recorded', amountPaidCents: 4000, reason: '', checkedAt: new Date().toISOString() } });
+  expect(html.split('<details>')[0]).toContain('Review project payments');
+  expect(html.split('<details>')[0]).not.toContain('Review invoice payments');
 });
 it('gives the draft one primary next step and explains approval without email', async () => {
   const html = await page({ ...invoice, captured: true, xeroInvoiceId: 'xero' });

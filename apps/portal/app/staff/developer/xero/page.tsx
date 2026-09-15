@@ -25,7 +25,6 @@ export default async function XeroDeveloperPage({ searchParams }: { searchParams
   const date = (value: unknown) => value ? new Date(String(value)).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland'}) : 'Not yet';
   return <PageLayout>
     <PageHeader title="Xero connection" description="Private developer controls. Day-to-day invoice and payment work happens in Finance." />
-    {process.env.XERO_INVOICE_CONSENT_ENABLED === 'true' && <p>Connecting now requests Xero permission to manage invoices and contacts, and to read accounting settings. The portal uses this access for draft invoices and explicitly confirmed customer creation. Automatic transfers require separate activation; finance reviews drafts before posting.</p>}
     {organisations.length>0 && <section aria-label="Discovered Xero organisations">
       <h2>Verify the organisation binding</h2>
       <p>These organisations were returned by Xero after authorisation. No connection tokens were retained and no accounting records were read. Configure the approved organisation ID, then connect again.</p>
@@ -37,14 +36,14 @@ export default async function XeroDeveloperPage({ searchParams }: { searchParams
       <Card title={connection.organisation ?? 'No Xero organisation connected'}>
       <Badge tone={connection.error ? 'warning' : connection.connected ? 'success' : 'neutral'}>{connection.error ? 'Connection needs attention' : connection.connected ? 'Connected' : 'Not connected'}</Badge>
       <p>{connection.error ? 'The connection reported a problem. Review the details below before relying on fresh Xero information.' : connection.connected ? 'The portal can connect to this Xero organisation. You do not need to reconnect for each invoice.' : 'Connect the approved Xero organisation to allow the portal to exchange invoice information.'}</p>
-      <dl><dt>Organisation</dt><dd>{connection.organisation ?? 'Not connected'}</dd>
-        <dt>Last verified with Xero</dt><dd>{date(connection.lastVerifiedAt)}</dd>
-        <dt>Connection status</dt><dd>{connection.error ?? (connection.connected ? 'Connected' : 'Not connected')}</dd></dl>
+      <p>Last verified with Xero: {date(connection.lastVerifiedAt)}</p>
+      {connection.error && <p>Reported problem: {connection.error}</p>}
       <p>Last verification confirms connection access; it does not mean every invoice or payment is up to date. Finance shows those checks separately.</p>
       {paymentPilot && <ButtonLink href="/staff/payments" variant="primary">Go to Finance</ButtonLink>}
       </Card>
       {!connection.connected && <Connect connected={false} />}
       <details><summary>Developer connection checks</summary>
+        {process.env.XERO_INVOICE_CONSENT_ENABLED === 'true' && <p>Connecting requests Xero permission to manage invoices and contacts, and to read accounting settings. The portal uses this access for draft invoices and explicitly confirmed customer creation. Automatic transfers require separate activation; finance reviews drafts before posting.</p>}
         <p>Renewal runs daily and before reads. A stale verification date needs developer investigation. Connecting does not record portal payments or post Xero invoices.</p>
         {connection.connected && <Connect connected />}
         {connection.connected && <><PaymentSuggestions /><Review /></>}

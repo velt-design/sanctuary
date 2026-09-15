@@ -32,6 +32,8 @@ Rendered checkpoint: iteration11 at 3f949c5 / dpl_2hDfMUYRY9MTyTZcwNfuw5UJ8fJg s
 
 Iteration 12 (under rendered validation): the private connection page uses Foundation status/card/button controls, explains that connection verification is distinct from invoice freshness, links to Finance, and puts reconnection/record inspection under developer diagnostics. Developer access and connection commands are unchanged. Three focused page cases and portal typecheck pass; client-shell fixture tests also pass. Hosted visual review remains pending.
 
+Iteration 13 (under rendered validation): primary finance actions now follow payment and receipt issues, rather than always opening Xero. Existing project receipt problems take precedence over importing another payment, and mapping-required transfers expose setup directly. Ten Finance page tests pass. The connection page at9137489 was inspected on390px: it fit but repeated organisation/status and foregrounded technical consent prose; those are simplified in this iteration. No financial command changed. Current-head browser and release checks remain required.
+
 ## Current verification
 
 Production pilot activated (2026-09-15 03:57:42 UTC). PR #131 passed all required checks at f4066df and merged as 654d9e2. Deployment dpl_HqG8n6nAFEWtrHz9PyF3j5kkMFkW is Ready with the four finance flags enabled. Render deployment dep-dakc1d5g1s2s73bpvtdg runs the reviewed build in active mode. Its production heartbeat was ready at03:56:27 UTC; the previous dark worker stopped cleanly at03:52:22. The enabled deployment served the scheduled observation route with HTTP200 (request timestamp1789444341372). With no production invoice bindings yet, this proves scheduled execution, not a live invoice/payment fetch.
