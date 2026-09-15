@@ -8,7 +8,7 @@ type Row = Record<string, unknown>;
 function match(row: Row): PilotMatch {
   return { id:String(row.id),tenantId:String(row.tenant_id),receiptId:String(row.receipt_id),invoiceId:String(row.invoice_id),projectId:String(row.project_id),
     paymentEntryId:String(row.payment_entry_id),amountCents:Number(row.amount_inc_gst_cents),receiptDate:String(row.receipt_date),
-    approvedBy:String(row.approved_by),approvedAt:String(row.approved_at),reversedAt:row.reversed_at ? String(row.reversed_at) : null,evidenceFingerprint:String(row.evidence_fingerprint),
+    approvedBy:row.approved_by == null ? null : String(row.approved_by),approvedAt:String(row.approved_at),reversedAt:row.reversed_at ? String(row.reversed_at) : null,evidenceFingerprint:String(row.evidence_fingerprint),
     sourceKind:row.source_kind as PilotMatch['sourceKind'],providerInvoiceId:row.provider_invoice_id ? String(row.provider_invoice_id) : null };
 }
 function unavailable(error: unknown): never {

@@ -37,7 +37,7 @@ export type XeroDraftLine = {
 
 export type XeroDraftInvoice = {
   Type: 'ACCREC';
-  Status: 'DRAFT';
+  Status: 'DRAFT' | 'AUTHORISED';
   Contact: { ContactID: string };
   InvoiceNumber: string;
   Reference: string;
@@ -64,7 +64,8 @@ function validDate(value: string): boolean {
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value;
 }
 
-export function mapIssuedInvoiceToXeroDraft(invoice: IssuedInvoiceForXero, mapping: XeroInvoiceMapping): XeroDraftInvoice {
+export function mapIssuedInvoiceToXeroDraft(invoice: IssuedInvoiceForXero, mapping: XeroInvoiceMapping, targetStatus: XeroDraftInvoice['Status'] = 'DRAFT'): XeroDraftInvoice {
+  if (targetStatus !== 'DRAFT' && targetStatus !== 'AUTHORISED') throw new InvoiceMappingError('INVALID_INVOICE');
   if (invoice.status !== 'OPEN' && invoice.status !== 'PAID') throw new InvoiceMappingError('NOT_ISSUED');
   if (!UUID.test(mapping.tenantId) || !UUID.test(mapping.contactId)
     || !validText(mapping.accountCode, 10) || !validText(mapping.taxType, 50)) {
@@ -126,7 +127,7 @@ export function mapIssuedInvoiceToXeroDraft(invoice: IssuedInvoiceForXero, mappi
       AccountCode: mapping.accountCode, TaxType: mapping.taxType };
   });
   return {
-    Type: 'ACCREC', Status: 'DRAFT', Contact: { ContactID: mapping.contactId },
+    Type: 'ACCREC', Status: targetStatus, Contact: { ContactID: mapping.contactId },
     InvoiceNumber: invoice.invoiceRef, Reference: `Sanctuary portal ${invoice.invoiceId}`,
     Date: invoice.issueDate, DueDate: invoice.dueDate, CurrencyCode: 'NZD',
     LineAmountTypes: 'Inclusive', LineItems: lines,

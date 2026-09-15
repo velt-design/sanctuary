@@ -15,8 +15,9 @@ it('renders unavailable separately from an empty queue and hides diagnostics', a
   mocks.session.mockResolvedValue({ user: { id: 'ellen' } });
   mocks.review.mockRejectedValue(new Error('private-query-detail'));
   const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
-  expect(html).toContain('Finance information could not be loaded');
-  expect(html).not.toContain('No issued invoices'); expect(html).not.toContain('private-query-detail');
+  expect(html).toContain('Finance could not be loaded');
+  expect(html).toContain('data-state="error"');
+  expect(html).not.toContain('No invoices need attention'); expect(html).not.toContain('private-query-detail');
 });
 it('shows partial balance and transfer freshness without claiming a live Xero check', async () => {
   mocks.session.mockResolvedValue({ user: { id: 'ellen' } });
@@ -27,6 +28,6 @@ it('shows partial balance and transfer freshness without claiming a live Xero ch
   }] });
   const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({ search: 'Example' }) }));
   expect(html).toContain('$6.00'); expect(html).toContain('Waiting for Xero transfer');
-  expect(html).toContain('Xero check dates show when their status was last verified');
-  expect(mocks.review).toHaveBeenCalledWith('ellen', 'Example', 0);
+  expect(html).toContain('Each linked invoice shows when Xero was last checked');
+  expect(mocks.review).toHaveBeenCalledWith('ellen', 'Example', 0, 'attention');
 });

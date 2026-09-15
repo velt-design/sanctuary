@@ -50,7 +50,7 @@ export const invoiceTransferProvider: InvoiceTransferProvider = {
   async createDraft(request: FrozenInvoiceTransfer) {
     const tokens = await authorised(request.tenantId, true);
     if (!request.dispatchStarted || Date.now() + 15000 >= request.expiresAt
-      || request.draft.Status !== 'DRAFT' || request.draft.Type !== 'ACCREC'
+      || !['DRAFT', 'AUTHORISED'].includes(request.draft.Status) || request.draft.Type !== 'ACCREC'
       || request.body !== JSON.stringify({ Invoices: [request.draft] })) throw new XeroError('INVALID_FROZEN_REQUEST');
     const response = await fetch(API, {
       method: 'PUT', body: request.body, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000),

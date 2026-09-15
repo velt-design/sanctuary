@@ -2,6 +2,10 @@
 import { useEffect, useState } from 'react';
 import type { reviewInvoicePayments } from '@/lib/xero/invoicePaymentReview';
 import PaymentHistory from './PaymentHistory';
+import PaymentSuggestion from './PaymentSuggestion';
+import { Button } from '@/components/ui/foundation/FoundationControls';
+import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
+import styles from './payments.module.css';
 type Review = Awaited<ReturnType<typeof reviewInvoicePayments>>;
 type Suggestion = Review['suggestions'][number];
 const money = (cents: number) => new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' }).format(cents / 100);
@@ -55,28 +59,22 @@ export default function InvoicePayments({ invoiceId }: { invoiceId: string }) {
     finally { setBusy(false); }
   }
   return <section>
-    <PaymentHistory invoiceId={invoiceId} refreshKey={historyRevision} disabled={busy || Boolean(pendingId)}
-      onCorrection={() => { setReview(null); setConfirmed(null); }} />
+    <h2>Payments in Xero</h2>
     <p>Review payments attached to this Xero invoice. Only your explicit approval records a payment in the portal.</p>
-    <button disabled={busy || Boolean(pendingId)} onClick={load}>Refresh payment review</button>
+    <Button variant="secondary" disabled={busy || Boolean(pendingId)} onClick={load}>Refresh payment review</Button>
+    {busy && <p role="status">{pendingId ? 'Checking the payment approval result…' : 'Checking payment evidence…'}</p>}
     {message && <p role="status">{message}</p>}
-    {pendingId && <p><button disabled={busy} onClick={status}>Check approval status</button>{' '}
-      {uncertain && <button disabled={busy} onClick={() => approve(uncertain)}>Retry same approval</button>}{' '}
-      {noResult && <button disabled={busy} onClick={() => { remember(null); setUncertain(null); void load(); }}>Start a fresh review</button>}</p>}
+    {pendingId && <p><Button variant="secondary" disabled={busy} onClick={status}>Check approval status</Button>{' '}
+      {uncertain && <Button variant="secondary" disabled={busy} onClick={() => approve(uncertain)}>Retry same approval</Button>}{' '}
+      {noResult && <Button variant="secondary" disabled={busy} onClick={() => { remember(null); setUncertain(null); void load(); }}>Start a fresh review</Button>}</p>}
     {review && <>
       <h2>{review.invoice.invoiceRef} — {review.invoice.customerName}</h2>
       <p>Invoice amount: {money(review.invoice.totalIncGstCents)}. Evidence checked {new Date(review.checkedAt).toLocaleString('en-NZ')}.</p>
-      {!review.suggestions.length && <p>No attached payments were returned by Xero.</p>}
-      {review.suggestions.map(item => <article key={item.payment.id}>
-        <h3>{item.amountCents === null ? 'Amount needs review' : money(item.amountCents)} received {item.payment.date || 'on an unverified date'}</h3>
-        <p>Customer: {item.payment.contact}. Reference: {item.payment.reference || 'Not supplied'}.</p>
-        {item.blockers.length > 0 ? <ul>{item.blockers.map(reason => <li key={reason}>{reason}</li>)}</ul> : <>
-          <p>Still owing after approval: {money(item.remainingIfApprovedCents!)}.</p>
-          <label><input type="checkbox" disabled={busy || Boolean(pendingId)} checked={confirmed === item.payment.id}
-            onChange={event => setConfirmed(event.target.checked ? item.payment.id : null)} /> I have checked this payment belongs to this invoice.</label>{' '}
-          <button disabled={busy || Boolean(pendingId) || confirmed !== item.payment.id} onClick={() => approve(item)}>Approve payment</button>
-        </>}
-      </article>)}
+      {!review.suggestions.length && <DataStatePanel state="empty" title="No payments attached in Xero" description="If the customer has paid, finance must reconcile the bank receipt to this invoice in Xero, then refresh this review." />}
+      <div className={styles.list}>{review.suggestions.map(item => <PaymentSuggestion key={item.payment.id} item={item}
+        disabled={busy || Boolean(pendingId)} confirmed={confirmed === item.payment.id}
+        onConfirm={value => setConfirmed(value ? item.payment.id : null)} onApprove={() => void approve(item)} />)}</div>
     </>}
+    <PaymentHistory invoiceId={invoiceId} refreshKey={historyRevision} disabled={busy || Boolean(pendingId)} onCorrection={() => { setReview(null); setConfirmed(null); }} />
   </section>;
 }

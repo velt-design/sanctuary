@@ -5,7 +5,7 @@ const cents = z.number().int().nonnegative().max(2147483647);
 const schema = z.object({ invoice: z.object({ id: z.string().uuid(), projectId: z.string().uuid(), invoiceRef: z.string(),
   status: z.string(), totalIncGstCents: cents }), recordedCents: cents, customerWon: z.boolean(), hasUnmatchedPaymentHistory: z.boolean(),
   checkedAt: z.string(), matches: z.array(z.object({ id: z.string().uuid(), sourceKind: z.enum(['BANK_TRANSACTION', 'INVOICE_PAYMENT']),
-    amountCents: cents, receiptDate: z.string(), approvedAt: z.string(), approvedBy: z.string(), reversedAt: z.string().nullable(),
+    amountCents: cents, receiptDate: z.string(), approvedAt: z.string(), approvedBy: z.string(), recordingMethod: z.enum(['MANUAL', 'AUTOMATIC']).optional(), reversedAt: z.string().nullable(),
     reversalReason: z.string().nullable(), reversedBy: z.string().nullable(), reference: z.string().nullable() })).max(51) });
 export async function loadInvoicePaymentHistory(actor: string, invoiceId: string, tenantId: string, offset: number) {
   const result = await supabaseServiceRole.rpc('xero_invoice_payment_history', { p_actor: actor, p_invoice_id: invoiceId, p_tenant_id: tenantId, p_offset: offset });

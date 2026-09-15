@@ -16,6 +16,7 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/dashboard/getDashboardSnapshotCached.ts',
   'apps/portal/lib/estimates/server.ts',
   'apps/portal/lib/invoices/adminPayments.ts',
+  'apps/portal/lib/invoices/automaticInvoicePaymentRepository.ts', // Cron-owned recording; SQL rechecks the enabled tenant, exact invoice and ledger evidence.
   'apps/portal/lib/invoices/drafts.ts', // Admin-gated invoice reads/previews; mutations use auth-bound RPCs.
   'apps/portal/lib/invoices/financeMappingRepository.ts', // Current finance actor; private mapping/retry commands recheck the grant.
   'apps/portal/lib/invoices/financeReviewRepository.ts', // Bounded private finance projection; SQL checks the current actor grant.

@@ -37,3 +37,8 @@ it('shows a history failure rather than claiming no payments exist', async () =>
   expect(view!.container.textContent).toContain('Payment history could not be loaded');
   expect(view!.container.textContent).not.toContain('No Xero matches');
 });
+it('distinguishes automatic recording from a staff approval', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ ...history, matches: [{ ...history.matches[0], recordingMethod: 'AUTOMATIC', approvedBy: 'Automatic Xero sync' }] })));
+  await mount(); expect(view!.container.textContent).toContain('Recorded automatically from Xero');
+  expect(view!.container.textContent).not.toContain('Approved by');
+});
