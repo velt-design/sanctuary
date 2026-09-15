@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Section, Text } from '@react-email/components';
 import { DetailRows, Eyebrow } from './alternatives/AlternativeEmailParts';
+import { THEME } from './theme';
 
 export function readConfiguredEstimate(value: unknown) {
   const price = value as { amountIncGst?: number; includesGst?: boolean; currency?: string; breakdown?: { label: string; amountIncGst: number }[] } | undefined;
@@ -14,12 +15,12 @@ export const formatEstimateMoney = (amount: number) => `$${amount.toLocaleString
 
 export function ConfiguredEstimate({ value }: { value: unknown }) {
   const price = readConfiguredEstimate(value);
-  if (!price) return <Text>Your design needs a tailored quote. We’ll confirm pricing with you.</Text>;
+  if (!price) return <Text className="spx-text" style={{ color: THEME.text }}>Your design needs a tailored quote. We’ll confirm pricing with you.</Text>;
   return <Section style={{ margin: '24px 0' }}>
     <Eyebrow>Your submitted estimate</Eyebrow>
-    <Text style={{ fontSize: 30, margin: '8px 0' }}>{formatEstimateMoney(price.amountIncGst)}</Text>
-    <Text>Installed estimate · NZD including GST · Subject to site confirmation</Text>
+    <Text className="spx-text" style={{ color: THEME.text, fontSize: 30, margin: '8px 0' }}>{formatEstimateMoney(price.amountIncGst)}</Text>
+    <Text className="spx-muted" style={{ color: THEME.muted }}>Installed estimate · NZD including GST · Subject to site confirmation</Text>
     <DetailRows rows={price.breakdown.map(line => ({ label: line.label, value: formatEstimateMoney(line.amountIncGst) }))} />
-    <Text style={{ fontSize: 12 }}>This is the estimate saved with your enquiry, including the extras listed above.</Text>
+    <Text className="spx-muted" style={{ color: THEME.muted, fontSize: 12 }}>This is the estimate saved with your enquiry, including the extras listed above.</Text>
   </Section>;
 }
