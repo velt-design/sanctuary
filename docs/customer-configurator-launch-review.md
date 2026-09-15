@@ -169,3 +169,34 @@ the task temporary directory; expected deployment commit is the merge above.
 4m rafter boundary and infill classification without saves/emails. The public
 before fixture is Version 12 at $11,500. No renewed owner approval is needed for
 this same approved pricebook. Customer website/enquiry activation remains separate.
+
+## Pricing publication completed, 16 September 2026
+
+The maintenance hold above is resolved. At 21:45:45 UTC on 15 September
+(07:45 Sydney on 16 September), the authenticated admin workflow published
+Version 13, `9e1a4281-95c0-45f2-948d-67a51df71e5d`, with exact approved hash
+`4d12a6bde67c28aeacbb8a0d9845529e3ebb7405555d0fab9b8e412de8d33661`.
+Both live apps were rechecked READY at `27528e9b1c3fe10d3b01a112ea765ef4f09a90fb`
+before draft preparation and again before publication. The server comparison
+showed only the effective manifest change from v2.7 to v2.8; rates were unchanged.
+
+Live authenticated staff verification passed all five legacy/new ceiling choices,
+two independent unequal-wing stock checks, four rafter boundary cases and the
+acrylic-side no-whole-job-increase versus explicit Bespoke check. No estimates or
+quotes were saved and no emails were sent. The public Simple cover endpoint
+returned Version 13 and its unchanged $11,500 baseline. A separate read-only SQL
+check confirmed the publication pointer and `config_json.baseManifestVersion`
+value v2.8. Evidence: temporary `sanctuary-v28-production-preparation.json`,
+`sanctuary-v28-production-publication.json`, `sanctuary-v28-production-proof.json`
+and `sanctuary-v28-public-after.json`.
+
+The standalone `base_manifest_version` database metadata column carries the draft
+clone's older value v2.7; the hashed config JSON actually used by the resolver is
+v2.8. Do not infer active calculation rules from that legacy column alone. The
+live framing/classification checks demonstrate the v2.8 rules are active.
+
+This completes the approved shared pricebook publication. The expanded customer
+configurator/enquiry application launch remains separate; bind its approved-version
+setting to this production UUID during that release. Existing frozen estimates
+and quotes were not rewritten. The UI release must still retain PR #136's staff
+classification correction when reconciled with main.
