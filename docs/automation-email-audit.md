@@ -310,3 +310,20 @@ Evidence: `artifacts/pricing-review-2026-09-11/launch-email-proofs/worker-integr
 and `worker-delivery-verification.json` in the same directory. This proves the
 staging delivery and staff-status path, not the approved-price customer submission
 or staff priced-revision path, which still require an exact approved pricebook.
+
+## Configured enquiry email pricing, 16 September 2026
+
+The owner explicitly authorised Sanctuary-only test emails and requested the
+submitted pergola and extras price breakdown in the enquiry confirmation.
+`enquiryEmailPreparation` now copies only the server-verified customer price into
+frozen email variables. The configured V2 template shows the NZD GST-inclusive
+total and every submitted breakdown line. Legacy rendering also retains the
+submitted breakdown. No internal costs are exposed, and retries do not recalculate.
+Missing or inconsistent totals use tailored-quote wording rather than inventing
+an amount. HTML/plain-text, tampering and snapshot-copy tests cover this boundary.
+
+Local verification: 1,058 marketing, email-provider, worker and enquiry contract
+tests passed, plus two HTML/plain-text compatibility checks; marketing typecheck
+and scoped lint passed. These are not live delivery proof. Production still lacks
+the five September enquiry migrations and Render's enquiry email environment
+settings. Existing live finance worker d18c162 must be preserved during rollout.

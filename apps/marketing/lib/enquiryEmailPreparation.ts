@@ -17,6 +17,7 @@ type EnquiryEmailInput = {
   effectiveWidthM: number | null; effectiveDepthM: number | null; effectiveHeightM: number | null;
   effectiveStyle: string; effectiveRoofMaterials: string[]; addOns: Record<string, unknown>;
   budgets: EnquiryPricingSnapshot['budgets']; verifiedSimpleCover: EnquiryPricingSnapshot['verifiedSimpleCover'];
+  verifiedConfigurator?: EnquiryPricingSnapshot['verifiedConfigurator'];
 };
 
 const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g;
@@ -212,6 +213,7 @@ export async function prepareEnquiryEmail(supabase: SupabaseClient, input: Enqui
           landingUrl: page || undefined,
           ...attachmentContext,
           widthM: Number.isFinite(effectiveWidthM ?? NaN) ? Number(effectiveWidthM) : 0,
+          ...(input.verifiedConfigurator ? { configuredEstimate: structuredClone(input.verifiedConfigurator.customerPrice) } : {}),
           depthM: Number.isFinite(effectiveDepthM ?? NaN) ? Number(effectiveDepthM) : 0,
           heightM: Number.isFinite(effectiveHeightM ?? NaN) ? Number(effectiveHeightM) : 0,
           style: formatStyleLabel(effectiveStyle),

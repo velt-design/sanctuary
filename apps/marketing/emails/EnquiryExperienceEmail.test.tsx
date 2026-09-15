@@ -3,6 +3,16 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it } from 'vitest';
 import { EnquiryExperienceEmail } from './EnquiryExperienceEmail';
 
+it('shows the frozen total and every extra, and refuses an inconsistent breakdown', () => {
+  const configuredEstimate = { amountIncGst: 13500, currency: 'NZD', includesGst: true,
+    breakdown: [{ label: 'Pergola, roof & ceiling', amountIncGst: 12000 }, { label: 'Lighting', amountIncGst: 1500 }] };
+  const html = renderToStaticMarkup(<EnquiryExperienceEmail experience="configured" variables={{ configuredEstimate }} />);
+  expect(html).toContain('$13,500'); expect(html).toContain('$12,000'); expect(html).toContain('Lighting'); expect(html).toContain('$1,500');
+  expect(html).toContain('including GST'); expect(html).not.toContain('Early installed estimate');
+  const invalid = renderToStaticMarkup(<EnquiryExperienceEmail experience="configured" variables={{ configuredEstimate: { ...configuredEstimate, amountIncGst: 14000 } }} />);
+  expect(invalid).not.toContain('$14,000'); expect(invalid).toContain('tailored quote');
+});
+
 it('confirms a request without implying a booked visit or free travel outside Auckland', () => {
   const html = renderToStaticMarkup(<EnquiryExperienceEmail experience="configured" variables={{name:'Taylor'}} />);
   expect(html).toContain('A visit is not booked yet');

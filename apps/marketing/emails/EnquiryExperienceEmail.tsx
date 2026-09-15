@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { ConfiguredEstimate } from './ConfiguredEstimate';
 import { Button, Heading, Section, Text } from '@react-email/components';
 import { AlternativeEmailShell, type AlternativePreviewTheme } from './alternatives/AlternativeEmailShell';
 import { AttachmentList, DetailRows, Eyebrow, InvestmentBlock, EstimateNote, ReplyPanel, StepRows } from './alternatives/AlternativeEmailParts';
@@ -53,7 +54,7 @@ export function EnquiryExperienceEmail({ experience, variables, previewTheme }: 
         <Text className="spx-muted" style={{ fontSize: 12 }}>This opens the design you submitted. Later changes won’t update this enquiry. Reply to us if you’d like to revise it.</Text>
       </Section>}
       <Section style={{ margin: '24px 0' }}><Eyebrow>{experience === 'bespoke' ? 'What you have in mind' : 'Your note'}</Eyebrow><Text className="spx-text" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{String(variables.message || 'No additional note supplied.')}</Text></Section>
-      <InvestmentBlock model={model} /><EstimateNote model={model} />
+      {experience === 'configured' ? <ConfiguredEstimate value={variables.configuredEstimate} /> : <><InvestmentBlock model={model} /><EstimateNote model={model} /></>}
       {preferenceRows.length > 0 && <Section style={{ margin: '24px 0' }}><Eyebrow>Your timing & preferences</Eyebrow><DetailRows rows={preferenceRows} /></Section>}
       <Section style={{ margin: '28px 0' }}><Eyebrow>What happens next</Eyebrow><StepRows steps={steps} /></Section>
       {rows.length > 0 && <Section style={{ margin: '24px 0' }}><Eyebrow>{experience === 'bespoke' ? 'Your initial preferences' : 'Enquiry details'}</Eyebrow>{experience === 'bespoke' && <Text className="spx-muted" style={{ fontSize: 12 }}>A starting point for our conversation. We’ll help you explore what suits your home.</Text>}<DetailRows rows={rows} /></Section>}

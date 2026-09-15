@@ -390,7 +390,7 @@ export async function POST(req: Request) {
         enquiryRow: { id: submissionId }, enquiryType, name, email, phoneRaw, suburb, message, company, page,
         customerBrief, payload, utm, files, verifiedStoredAttachments, effectiveWidthM,
         effectiveDepthM, effectiveHeightM, effectiveStyle, effectiveRoofMaterials, addOns,
-        budgets, verifiedSimpleCover,
+        budgets, verifiedSimpleCover, verifiedConfigurator: pricing.verifiedConfigurator,
       });
       delivery = {
         draftEstimate,
@@ -505,7 +505,7 @@ export async function POST(req: Request) {
         enquiryRow, enquiryType, name, email, phoneRaw, suburb, message, company, page,
         customerBrief, payload, utm, files, verifiedStoredAttachments, effectiveWidthM,
         effectiveDepthM, effectiveHeightM, effectiveStyle, effectiveRoofMaterials, addOns,
-        budgets, verifiedSimpleCover,
+        budgets, verifiedSimpleCover, verifiedConfigurator: pricing.verifiedConfigurator,
       });
 
       const idempotencyKey = `website:autoresponder:${enquiryRow.id}`;

@@ -25,6 +25,7 @@ interface EnquiryBase {
   customerBrief?: CustomerBrief;
   projectPreferences?: EnquiryProjectPreferences;
   submittedDesignUrl?: string;
+  configuredEstimate?: { amountIncGst: number; includesGst: true; currency: 'NZD'; breakdown: { label: string; amountIncGst: number }[] };
   projectRole?: string;
   projectStage?: string;
   company?: string;

@@ -28,6 +28,19 @@ it('preserves verified attachments, contact details and installed estimate durin
   expect(typeof result.variables.submittedAt).toBe('string');
 });
 
+it('copies only verified server pricing into the frozen email variables', async () => {
+  const request = input();
+  const customerPrice = { amountIncGst: 13500, includesGst: true as const, currency: 'NZD' as const,
+    breakdown: [{ label: 'Pergola', amountIncGst: 12000 }, { label: 'Lighting', amountIncGst: 1500 }] };
+  request.verifiedConfigurator = { customerPrice } as NonNullable<typeof request.verifiedConfigurator>;
+  const prepared = await prepareEnquiryEmail({} as never, request);
+  customerPrice.breakdown[0].amountIncGst = 1;
+  expect(prepared.variables.configuredEstimate).toMatchObject({ amountIncGst: 13500, breakdown: [{ amountIncGst: 12000 }, { amountIncGst: 1500 }] });
+  delete request.verifiedConfigurator;
+  request.payload.configuredEstimate = customerPrice;
+  expect((await prepareEnquiryEmail({} as never, request)).variables).not.toHaveProperty('configuredEstimate');
+});
+
 
 it.each([8 * 1024 * 1024, 8 * 1024 * 1024 + 1])('handles the inline boundary at %i bytes', async total => {
   const request = input();
