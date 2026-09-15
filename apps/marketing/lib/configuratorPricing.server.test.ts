@@ -143,7 +143,7 @@ it.each(['freestanding','unsure'] as const)('keeps %s intent and resolved inputs
   const pricing=await buildPublishedEnquiryPricingSnapshot(params,{design,calculationRef,suppressGenericPricing:true});
   expect(pricing.verifiedConfigurator).toEqual(frozen);
   expect(pricing.verifiedConfigurator!.design.roof.attachmentIntent).toBe(attachmentIntent);
-  if(attachmentIntent==='freestanding')expect(frozen.siteInputs.pergolas[0].modules[0]).toMatchObject({house_connection_type:'none',post_count:6});
+  if(attachmentIntent==='freestanding')expect(frozen.siteInputs.pergolas[0].modules[0]).toMatchObject({house_connection_type:'none',post_count:6,post_connection_type:'pile_1_5m'});
   const altered=structuredClone(design); delete altered.roof.attachmentIntent;
   const rejected=await buildPublishedEnquiryPricingSnapshot(params,{design:altered,calculationRef,suppressGenericPricing:true});
   expect(rejected.verifiedConfigurator).toBeFalsy();

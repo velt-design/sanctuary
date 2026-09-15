@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { calculateCostV1 } from '@sp/costing';
 import { buildReviewSiteInputs, calculateReviewPrice } from './configuratorReviewPrice';
 import type { PreviewDraft } from '../components/configurator-prototype/previewDraft.types';
 const make = (family: 'mono'|'gable'|'box' = 'mono'): PreviewDraft => ({
@@ -6,6 +7,19 @@ const make = (family: 'mono'|'gable'|'box' = 'mono'): PreviewDraft => ({
   roof: { family, orientation: 'parallel', infills: false },
 });
 describe('local price review', () => {
+  it.each(['mono', 'gable', 'box'] as const)('uses 1.5m piles for every freestanding %s post', family => {
+    const draft = make(family);
+    const attached = buildReviewSiteInputs(draft).pergolas[0].modules[0];
+    draft.roof.attachmentIntent = 'freestanding';
+    const free = buildReviewSiteInputs(draft).pergolas[0].modules[0];
+    expect(free.post_connection_type).toBe('pile_1_5m');
+    expect(free.post_cut_height_m).toBe(attached.post_cut_height_m);
+    const result = calculateCostV1(free);
+    expect(result.install.actions.find(action => action.id === 'posts.pile_1_5m_per_post')?.qty).toBe(free.post_count);
+    expect(result.install.actions.some(action => action.id === 'posts.deck_bracket_per_post')).toBe(false);
+    draft.roof.attachmentIntent = undefined;
+    expect(buildReviewSiteInputs(draft).pergolas[0].modules[0].post_connection_type).toBe('deck_bracket');
+  });
   it.each(['mono','gable','box'] as const)('prices all roof materials for %s', family => {
     for (const material of ['acrylic','solid','combination'] as const) {
       const draft = make(family);

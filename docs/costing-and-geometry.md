@@ -349,6 +349,13 @@ Plan/3D accuracy work must also keep the top-view parity gate green. `buildTopPr
 
 ### Local v2.9 ridge candidate (16 September 2026)
 
+The customer configurator's freestanding adapter now selects the existing
+`pile_1_5m` post connection instead of deck brackets, as requested by the owner
+on 16 September. It applies to all geometry-counted posts for every roof family
+and is retained in frozen enquiry inputs. It uses the existing pile installation
+allowance; it does not change above-ground post heights or introduce new pile
+material rates. Attached designs retain their existing connection selection.
+
 Owner-requested automatic gable ridge selection uses RHS 150x50x3 steel when
 the full ridge length exceeds 6m; exactly 6m retains the previous default.
 Explicit staff profile overrides remain authoritative. Standard and box gables

@@ -50,6 +50,7 @@ export function buildReviewSiteInputs({ input, roof }: PreviewDraft): SiteInputs
   }
   if (roof.attachmentIntent === 'freestanding') {
     module.house_connection_type = 'none';
+    module.post_connection_type = 'pile_1_5m';
     module.attachment_length_mm = 0;
     const geometry = solvePergolaPreview(input, roof).geometry;
     if (!geometry) throw new Error('Missing freestanding geometry');
