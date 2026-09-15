@@ -40,16 +40,16 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     {!data ? <><DataStatePanel state="error" title="Finance could not be loaded" description="Try again to check the current position. No records have changed." /><ButtonLink href={href(offset)} variant="secondary">Try again</ButtonLink></> : <>
       <p className={styles.checked}>Portal records checked {new Date(data.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}. Each linked invoice shows when Xero was last checked.</p>
       {data.rows.length > 0 &&
-      <div style={{ overflowX: 'auto' }}><Table><TableHeader><TableRow>
+      <Table className={styles.invoices} role="table"><TableHeader role="rowgroup"><TableRow role="row">
         <TableHead>Invoice / customer</TableHead><TableHead>Portal status</TableHead><TableHead>Invoice amount</TableHead><TableHead>Still owing</TableHead><TableHead>Next action</TableHead>
-      </TableRow></TableHeader><TableBody>{data.rows.map(row => {
+      </TableRow></TableHeader><TableBody role="rowgroup">{data.rows.map(row => {
         const outcome = financeOutcome(row);
         const money = (value: number) => new Intl.NumberFormat('en-NZ', { style: 'currency', currency: row.currency }).format(value / 100);
-        return <TableRow key={row.invoiceId}>
-          <TableCell><Link href={`/staff/projects/${row.projectId}?tab=invoices`}>{row.invoiceRef}</Link><br />{row.customerName}<br /><small>{row.projectName}</small></TableCell>
-          <TableCell>{row.status === 'VOID' ? 'Voided' : row.status === 'PAID' ? 'Recorded paid' : 'Open'}{row.dueDate && <><br /><small>Due {row.dueDate}</small></>}</TableCell>
-          <TableCell>{money(row.totalCents)}</TableCell><TableCell>{row.status === 'VOID' ? 'Not payable' : outcome.remainingCents === null ? 'Needs review' : money(outcome.remainingCents)}</TableCell>
-          <TableCell>{outcome.label}{row.lastVerifiedAt && <><br /><small>Transfer verified {new Date(row.lastVerifiedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
+        return <TableRow key={row.invoiceId} role="row">
+          <TableCell role="cell" data-label="Invoice / customer"><Link href={`/staff/projects/${row.projectId}?tab=invoices`}>{row.invoiceRef}</Link><br />{row.customerName}<br /><small>{row.projectName}</small></TableCell>
+          <TableCell role="cell" data-label="Portal status">{row.status === 'VOID' ? 'Voided' : row.status === 'PAID' ? 'Recorded paid' : 'Open'}{row.dueDate && <><br /><small>Due {row.dueDate}</small></>}</TableCell>
+          <TableCell role="cell" data-label="Invoice amount">{money(row.totalCents)}</TableCell><TableCell role="cell" data-label="Still owing">{row.status === 'VOID' ? 'Not payable' : outcome.remainingCents === null ? 'Needs review' : money(outcome.remainingCents)}</TableCell>
+          <TableCell role="cell" data-label="Next action">{outcome.label}{row.lastVerifiedAt && <><br /><small>Transfer verified {new Date(row.lastVerifiedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
             {row.observation && <><br /><small>Xero checked {new Date(row.observation.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</small></>}
             {row.xeroInvoiceId && <><br /><CheckXero invoiceId={row.invoiceId} invoiceRef={row.invoiceRef} /></>}
             {!row.xeroInvoiceId && row.captured && row.status !== 'VOID' && ['needs_attention', 'permanent_failed'].includes(row.transferStatus ?? '')
@@ -59,7 +59,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             {row.captured && !row.xeroInvoiceId && !row.unassignedReceipts && row.status !== 'VOID' && <><br /><Link href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Confirm customer and accounting details</Link></>}
           </TableCell>
         </TableRow>;
-      })}</TableBody></Table></div>}
+      })}</TableBody></Table>}
       {!data.rows.length && <DataStatePanel state={search ? 'filtered-empty' : 'empty'}
         title={search ? 'No matching invoices in this view' : offset > 0 ? 'No more invoices in this view' : view === 'attention' ? 'No invoices need attention' : view === 'current' ? 'No automatic transfers yet' : 'No historical invoices'}
         description={search ? 'Try another search or check another view.' : offset > 0 ? 'Return to the first page to see the current list.' : view === 'attention' ? 'There are no invoice issues requiring review right now. Xero invoices and history remain available above.' : view === 'current' ? 'Your next newly issued portal invoice will appear here. Older invoices are in Invoice history.' : 'Invoices issued before automatic transfers are shown here when available.'} />}
