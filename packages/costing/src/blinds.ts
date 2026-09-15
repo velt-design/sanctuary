@@ -1,3 +1,4 @@
+import type { BlindSellingRates } from './installedSellingRates';
 export const GST_RATE = 0.15;
 
 export type BlindSystemType = 'ZIPTRAK' | 'OMNI';
@@ -96,6 +97,12 @@ const OMNI_TABLE = {
   ],
 };
 
+export function getDefaultBlindSellingRates(): BlindSellingRates {
+  return { ziptrakBaseExGst: ZIPTRAK_TABLE.values.map(row => [...row]), omniBaseExGst: OMNI_TABLE.values.map(row => [...row]),
+    fabricMultipliers: { ...FABRIC_MULTIPLIERS }, coreSellMultiplier: BLIND_CORE_SELL_UPLIFT,
+    motorIncCents: MOTOR_ADDON_INC_CENTS, coverIncCentsPerM: { ...BLIND_ROLL_COVER_RATES_INC_CENTS_PER_METRE } };
+}
+
 function roundCents(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.round(value);
@@ -124,7 +131,12 @@ export function getBlindSystemLimits(systemType: BlindSystemType): { maxWidthMm:
   return { maxWidthMm: table.maxWidthMm, maxCoverLengthMm: table.maxCoverLengthMm };
 }
 
-export function lookupBaseExCents(systemType: BlindSystemType, coverLengthMm: number, widthMm: number): {
+export function getBlindPricingBands(systemType: BlindSystemType) {
+  const table = lookupTable(systemType);
+  return { widthsMm: [...table.cols], dropsMm: [...table.rows] };
+}
+
+export function lookupBaseExCents(systemType: BlindSystemType, coverLengthMm: number, widthMm: number, rates?: BlindSellingRates): {
   widthBandMm: number;
   lengthBandMm: number;
   baseExCents: number;
@@ -134,20 +146,21 @@ export function lookupBaseExCents(systemType: BlindSystemType, coverLengthMm: nu
   const lengthBand = getBand(coverLengthMm, table.rows);
   const rowIdx = table.rows.indexOf(lengthBand);
   const colIdx = table.cols.indexOf(widthBand);
-  const row = table.values[rowIdx];
+  const row = (rates ? (systemType === 'OMNI' ? rates.omniBaseExGst : rates.ziptrakBaseExGst) : table.values)[rowIdx];
   const value = row?.[colIdx];
   const baseExCents = typeof value === 'number' ? roundCents(value * 100) : 0;
   return { widthBandMm: widthBand, lengthBandMm: lengthBand, baseExCents };
 }
 
-export function getFabricMultiplier(fabric: BlindFabric): number {
-  if (fabric === 'PVC') return FABRIC_MULTIPLIERS.PVC;
-  if (fabric === 'FINE_MESH') return FABRIC_MULTIPLIERS.FINE_MESH;
-  return FABRIC_MULTIPLIERS.MESH;
+export function getFabricMultiplier(fabric: BlindFabric, rates?: BlindSellingRates): number {
+  const multipliers = rates?.fabricMultipliers ?? FABRIC_MULTIPLIERS;
+  if (fabric === 'PVC') return multipliers.PVC;
+  if (fabric === 'FINE_MESH') return multipliers.FINE_MESH;
+  return multipliers.MESH;
 }
 
-export function getMotorExCents(motorised: boolean | null): number {
-  return motorised ? MOTOR_ADDON_EX_CENTS : 0;
+export function getMotorExCents(motorised: boolean | null, rates?: BlindSellingRates): number {
+  return motorised ? (rates ? Math.round(rates.motorIncCents / (1 + GST_RATE)) : MOTOR_ADDON_EX_CENTS) : 0;
 }
 
 export function normalizeBlindRollCover(value: unknown): BlindRollCover {
@@ -155,16 +168,16 @@ export function normalizeBlindRollCover(value: unknown): BlindRollCover {
   return 'NONE';
 }
 
-export function getBlindRollCoverRateIncCents(rollCover: BlindRollCover): number {
-  return BLIND_ROLL_COVER_RATES_INC_CENTS_PER_METRE[rollCover];
+export function getBlindRollCoverRateIncCents(rollCover: BlindRollCover, rates?: BlindSellingRates): number {
+  return (rates?.coverIncCentsPerM ?? BLIND_ROLL_COVER_RATES_INC_CENTS_PER_METRE)[rollCover];
 }
 
-export function priceBlindRollCoverIncCents(rollCover: BlindRollCover, widthMm: number | null): number {
+export function priceBlindRollCoverIncCents(rollCover: BlindRollCover, widthMm: number | null, rates?: BlindSellingRates): number {
   if (!Number.isFinite(widthMm ?? NaN) || (widthMm ?? 0) <= 0) return 0;
-  return roundCents(getBlindRollCoverRateIncCents(rollCover) * Number(widthMm) / 1000);
+  return roundCents(getBlindRollCoverRateIncCents(rollCover, rates) * Number(widthMm) / 1000);
 }
 
-export function priceBlindLineItem(input: BlindLineItemInput): BlindLineItemPricing {
+export function priceBlindLineItem(input: BlindLineItemInput, rates?: BlindSellingRates): BlindLineItemPricing {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -202,11 +215,11 @@ export function priceBlindLineItem(input: BlindLineItemInput): BlindLineItemPric
       widthBandMm: 0,
       lengthBandMm: 0,
       baseExCents: 0,
-      fabricMultiplier: getFabricMultiplier(input.fabric),
+      fabricMultiplier: getFabricMultiplier(input.fabric, rates),
       coreSellExCents: 0,
       coreSellIncCents: 0,
-      motorExCents: getMotorExCents(input.motorised),
-      motorIncCents: input.motorised ? MOTOR_ADDON_INC_CENTS : 0,
+      motorExCents: getMotorExCents(input.motorised, rates),
+      motorIncCents: input.motorised ? (rates?.motorIncCents ?? MOTOR_ADDON_INC_CENTS) : 0,
       rollCover,
       rollCoverExCents: 0,
       rollCoverIncCents: 0,
@@ -217,14 +230,14 @@ export function priceBlindLineItem(input: BlindLineItemInput): BlindLineItemPric
     };
   }
 
-  const { widthBandMm, lengthBandMm, baseExCents } = lookupBaseExCents(input.system, effectiveCoverLengthMm, effectiveWidthMm);
-  const fabricMultiplier = getFabricMultiplier(input.fabric);
+  const { widthBandMm, lengthBandMm, baseExCents } = lookupBaseExCents(input.system, effectiveCoverLengthMm, effectiveWidthMm, rates);
+  const fabricMultiplier = getFabricMultiplier(input.fabric, rates);
   const afterFabricExCents = roundCents(baseExCents * fabricMultiplier);
-  const coreSellExCents = roundCents(afterFabricExCents * BLIND_CORE_SELL_UPLIFT);
+  const coreSellExCents = roundCents(afterFabricExCents * (rates?.coreSellMultiplier ?? BLIND_CORE_SELL_UPLIFT));
   const coreSellIncCents = roundCents(coreSellExCents * (1 + GST_RATE));
-  const motorExCents = getMotorExCents(input.motorised);
-  const motorIncCents = input.motorised ? MOTOR_ADDON_INC_CENTS : 0;
-  const rollCoverIncCents = priceBlindRollCoverIncCents(rollCover, widthMm);
+  const motorExCents = getMotorExCents(input.motorised, rates);
+  const motorIncCents = input.motorised ? (rates?.motorIncCents ?? MOTOR_ADDON_INC_CENTS) : 0;
+  const rollCoverIncCents = priceBlindRollCoverIncCents(rollCover, widthMm, rates);
   const rollCoverExCents = roundCents(rollCoverIncCents / (1 + GST_RATE));
   const blindSellIncCents = roundCents(coreSellIncCents + motorIncCents + rollCoverIncCents);
   const blindSellExCents = roundCents(blindSellIncCents / (1 + GST_RATE));
@@ -255,8 +268,8 @@ export function priceBlindLineItem(input: BlindLineItemInput): BlindLineItemPric
   };
 }
 
-export function priceAllBlinds(inputs: BlindLineItemInput[]): BlindPricingResult {
-  const items = inputs.map((input) => priceBlindLineItem(input));
+export function priceAllBlinds(inputs: BlindLineItemInput[], rates?: BlindSellingRates): BlindPricingResult {
+  const items = inputs.map((input) => priceBlindLineItem(input, rates));
   const totalIncCents = roundCents(
     items.reduce((sum, item) => (item.errors.length ? sum : sum + item.blindSellIncCents), 0),
   );

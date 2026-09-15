@@ -1,4 +1,5 @@
 import { getPortalSession } from '@/lib/auth';
+import { parseRequestCeiling } from '@/lib/costing/requestCeiling';
 import { resolvePublishedCostingConfiguration } from '@/lib/costing/configurationResolver';
 import { calculateCostV1WithMaterialsExplain } from '@sp/costing';
 import type { CostInputsV1, MaterialsExplainOptions } from '@sp/costing';
@@ -49,7 +50,10 @@ export async function POST(req: Request) {
 
   try {
     const { config, provenance } = await resolvePublishedCostingConfiguration();
-    const result = calculateCostV1WithMaterialsExplain(body as CostInputsV1, {
+    const input = body as CostInputsV1;
+    const ceiling = parseRequestCeiling(input.ceiling, input.roof_material);
+    if ('error' in ceiling) return badRequest(ceiling.error);
+    const result = calculateCostV1WithMaterialsExplain({ ...input, ...ceiling }, {
       detail,
       focus_line_index: focusLineIndex,
       focus_cut_group_key: focusCutGroupKey,

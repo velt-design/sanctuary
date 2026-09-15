@@ -1,3 +1,6 @@
+import type { DerivedV1 } from './types';
+import { ceilingArea } from './ceilingTakeoff';
+import { CEILING_CATALOGUE } from '../ceilingCatalogue';
 import type { CostingConfigV1 } from './config';
 import type { InstallActionV1, InstallV1, InputsNormalizedV1 } from './types';
 import { evalArithmeticExpr } from './expr';
@@ -404,10 +407,12 @@ export function buildInstallV1(
 
     if (!actionApplies(action, inputs, derived)) continue;
 
-    const qty = resolveQty(action, inputs, derived);
+    const selectedCeiling = action.id === 'roof.install_timber_roof_m2' && inputs.ceiling;
+    const qty = selectedCeiling ? ceilingArea(inputs, derived as unknown as DerivedV1) : resolveQty(action, inputs, derived);
     if (!Number.isFinite(qty) || qty <= 0) continue;
 
-    const baseMinutes = resolveBaseMinutes(action, inputs);
+    const originalMinutes = resolveBaseMinutes(action, inputs);
+    const baseMinutes = selectedCeiling ? originalMinutes * (CEILING_CATALOGUE[selectedCeiling.option].coverMm === 150 ? 12 / 14.4 : 1) + 2 : originalMinutes;
     if (!Number.isFinite(baseMinutes) || baseMinutes <= 0) {
       warnings.push(`Install action '${action.id}' has no valid base_minutes; skipped.`);
       continue;

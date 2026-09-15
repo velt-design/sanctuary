@@ -1,3 +1,4 @@
+import type { CeilingOption } from '@sp/costing';
 import { normalizeBlindRollCover } from '@sp/costing';
 import type {
   AttachmentSide,
@@ -327,6 +328,7 @@ export type CalculatorModuleInputs = {
   mixedAcrylicBaysMain: string;
   mixedAcrylicBaysA: string;
   mixedAcrylicBaysB: string;
+  ceilingOption?: CeilingOption;
   timberRoofAboveType: 'insulated_panels' | 'steel_corrugated' | 'steel_tray';
   timberInsulatedPanelThicknessMm: string;
   timberTrayWidthMm: string;

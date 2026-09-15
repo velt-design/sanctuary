@@ -318,6 +318,7 @@ export function buildPergolaModuleCostFields(
     },
     roof_material: module.roofMaterial,
     extrusion_colour: module.extrusionColour,
+    ...((module.roofMaterial === 'timber' || module.roofMaterial === 'mixed') && module.ceilingOption ? { ceiling: { option: module.ceilingOption } } : {}),
     timber_roof_above_type: module.roofMaterial === 'timber' || module.roofMaterial === 'mixed' ? module.timberRoofAboveType : undefined,
     timber_insulated_panel_thickness_mm:
       (module.roofMaterial === 'timber' || module.roofMaterial === 'mixed') && module.timberRoofAboveType === 'insulated_panels'

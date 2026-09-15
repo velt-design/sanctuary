@@ -1,3 +1,4 @@
+import { isCeilingOption } from '@sp/costing';
 import type { CalculatorAdditionalAluminiumState, CalculatorModuleInputs } from '@/lib/types/calculator';
 import {
   clampInt,
@@ -144,6 +145,7 @@ export function buildCalculatorModuleErrors(
     }
 
     if (module.roofMaterial === 'timber' || module.roofMaterial === 'mixed') {
+      if (module.ceilingOption !== undefined && !isCeilingOption(module.ceilingOption)) next.ceilingOption = 'Select a valid ceiling lining';
       if (!['insulated_panels', 'steel_corrugated', 'steel_tray'].includes(module.timberRoofAboveType)) {
         next.timberRoofAboveType = 'Select a timber roof above type';
       }

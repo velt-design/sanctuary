@@ -1,3 +1,4 @@
+import { isCeilingOption } from '../ceilingCatalogue';
 import {
   type BoxGutterEdge,
   type CostInputsV1,
@@ -24,6 +25,7 @@ import type { CostingConfigV1 } from './config';
 import { calculateOpenPergolaRafterLayout, isOpenPergolaRoof, OPEN_PERGOLA_DEFAULT_PROFILE } from './openPergola';
 import { buildRafterCutLengthExplanationV1 } from './rafterExplanation';
 import { calculateAcrylicRafterLayoutV1, RAFTER_SPACING_MM_MAX } from './rafterLayout';
+import { calculateSoffitBracketCountV1 } from './soffitBracketLayout';
 
 const GST_RATE = 0.15;
 const DEFAULT_POST_CUT_HEIGHT_M = 2.4;
@@ -36,7 +38,6 @@ const TIMBER_RAFTER_SPACING_MM_MAX = 500;
 const TIMBER_EDGE_RAFTER_PROFILE = '150x50';
 const TIMBER_COMMON_RAFTER_DEFAULT_PROFILE = '80x50';
 const TIMBER_PURLIN_PROFILE = '50x50';
-const BRACKET_SPACING_MM_MAX = 1500;
 const STRINGER_FIXING_SPACING_MM = 1500;
 
 const RAFTER_HOUSE_SETBACK_M = 0.05;
@@ -528,11 +529,11 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   // otherwise default to `lengthMmA` (legacy `'rear'` / `'front'` behavior).
   const attachmentLengthMmA =
     roofType === 'hip_corner' ? lengthMmA : (attachmentLengthMmInput ?? lengthMmA);
-  const bracketCountA = inputs.house_connection_type === 'soffit' ? Math.ceil(attachmentLengthMmA / BRACKET_SPACING_MM_MAX) + 1 : 0;
+  const bracketCountA = inputs.house_connection_type === 'soffit' ? calculateSoffitBracketCountV1(attachmentLengthMmA) : 0;
   const bracketCountB =
     roofType === 'hip_corner' && inputs.house_connection_type === 'soffit'
       ? hipCornerLengthBM > 0
-        ? Math.ceil(lengthMmB / BRACKET_SPACING_MM_MAX) + 1
+        ? calculateSoffitBracketCountV1(lengthMmB)
         : 0
       : 0;
 
@@ -647,6 +648,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     roofType === 'hip_corner' ? Math.max(projectionM, hipCornerProjectionBM) : roofType === 'pitched' ? projectionM : projectionM / 2;
   const roofSurfaceAreaM2 = areaM2 / effectiveCos;
 
+  if (inputs.ceiling && !isCeilingOption(inputs.ceiling.option)) throw new Error('Ceiling selection requires a valid option and a published v2.7 costing configuration.');
   const timberRoofAboveTypeRaw = String(inputs.timber_roof_above_type ?? '');
   const timberRoofAboveType =
     timberRoofAboveTypeRaw === 'steel_corrugated' || timberRoofAboveTypeRaw === 'steel_tray' || timberRoofAboveTypeRaw === 'insulated_panels'
@@ -1345,6 +1347,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     travel_ex_gst: travel,
     extras_allowance_ex_gst: extras,
     timber_roof_allowance_ex_gst: 0,
+    ...(inputs.ceiling ? { ceiling: inputs.ceiling } : {}),
     timber_roof_above_type: timberRoofAboveType,
     timber_insulated_panel_thickness_mm: timberInsulatedPanelThicknessMm,
     timber_tray_width_mm: timberTrayWidthMm,
