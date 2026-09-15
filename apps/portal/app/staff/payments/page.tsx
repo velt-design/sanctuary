@@ -21,6 +21,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const href = (next: number) => `/staff/payments?${new URLSearchParams({ search, offset: String(next) })}`;
   return <PageLayout width="full">
     <PageHeader variant="index" title="Finance review" description="Review invoices, confirm deposits and investigate outstanding items." />
+    <p>Automatic Xero transfers apply to invoices issued after activation. Older invoices remain here for reference; they do not need customer matching to start a transfer.</p>
     <p><Link href="/staff/payments/review">Review and approve a deposit</Link></p>
     <form method="get"><label>Invoice, customer or project <input name="search" defaultValue={search} maxLength={120} /></label> <button type="submit">Search</button></form>
     {!data ? <p role="alert">Finance information could not be loaded. Refresh to try again. No records have changed.</p> : <>
@@ -40,7 +41,8 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             {!row.xeroInvoiceId && row.captured && row.status !== 'VOID' && ['needs_attention', 'permanent_failed'].includes(row.transferStatus ?? '')
               && <RecoverTransfer invoiceId={row.invoiceId} />}
             {row.xeroInvoiceId && process.env.XERO_INVOICE_PAYMENTS_ENABLED === 'true' && <><br /><Link href={`/staff/payments/invoice?invoice=${row.invoiceId}`}>Review invoice payments</Link></>}
-            {row.status !== 'VOID' && <><br /><Link href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Confirm customer and accounting details</Link></>}
+            {row.unassignedReceipts && <><br /><Link href={`/staff/projects/${row.projectId}?tab=invoices`}>Review project payments</Link></>}
+            {row.captured && !row.xeroInvoiceId && !row.unassignedReceipts && row.status !== 'VOID' && <><br /><Link href={`/staff/payments/mapping?invoice=${row.invoiceId}`}>Confirm customer and accounting details</Link></>}
           </TableCell>
         </TableRow>;
       })}</TableBody></Table></div>

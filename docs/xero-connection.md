@@ -2,6 +2,12 @@
 
 Status: production draft-transfer pilot activated on 2026-09-15. The first genuine live invoice remains the owner walkthrough; payment approval stays manual.
 
+## Finance clarity improvement loop
+
+Jordan requested small improvements toward an owner-validated 8/10 experience. Operational activation is not usability acceptance. Follow `ui-foundation.md`; keep each iteration bounded, test affected behavior, inspect rendered states, then choose the next source of confusion. Completion requires clear next actions and consequences across empty, historical issue, matched/unmatched customer, transfer/error and payment journeys on desktop/mobile, with owner feedback. Pricing and unrelated portal UI remain out of scope.
+
+Iteration 1 (local, not released): historical and already-bound invoices no longer offer unnecessary customer mapping. Unassigned receipt rows link to the project's invoice/payment surface. Historical records remain visible; the page explains future-only capture. Four rendered-page cases and seven existing outcome cases pass. Browser review and release checks remain pending. Next: separate attention from history without hiding genuine old payment issues, show matching context/existing links immediately, separate company accounting defaults, and clarify payment outcomes using existing Foundation controls.
+
 ## Current verification
 
 Production pilot activated (2026-09-15 03:57:42 UTC). PR #131 passed all required checks at f4066df and merged as 654d9e2. Deployment dpl_HqG8n6nAFEWtrHz9PyF3j5kkMFkW is Ready with the four finance flags enabled. Render deployment dep-dakc1d5g1s2s73bpvtdg runs the reviewed build in active mode. Its production heartbeat was ready at03:56:27 UTC; the previous dark worker stopped cleanly at03:52:22. The enabled deployment served the scheduled observation route with HTTP200 (request timestamp1789444341372). With no production invoice bindings yet, this proves scheduled execution, not a live invoice/payment fetch.
