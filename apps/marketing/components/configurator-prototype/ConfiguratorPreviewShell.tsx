@@ -1,20 +1,20 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+
 import Link from 'next/link';
 import ConfiguratorPrototype from './ConfiguratorPrototype';
 import { usePreviewExpansion } from './usePreviewExpansion';
 import styles from './previewShell.module.css';
-import foundation from '../marketing-foundation/foundation.module.css';
+
 
 export default function ConfiguratorPreviewShell({ initiallyOpen = false }: { initiallyOpen?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [opened, setOpened] = useState(false);
   const [visited, setVisited] = useState(initiallyOpen);
-  const [launcherHost, setLauncherHost] = useState<HTMLElement | null>(null);
+
   const { expanded, toggleExpanded, collapse } = usePreviewExpansion();
-  useEffect(() => { setLauncherHost(document.body); }, []);
+
   useEffect(() => {
     if (initiallyOpen) { dialog.current?.showModal(); setOpened(true); setVisited(true); }
   }, [initiallyOpen]);
@@ -44,9 +44,6 @@ export default function ConfiguratorPreviewShell({ initiallyOpen = false }: { in
       <span>Find your proportions. Choose your roof. See it take shape.</span>
       <Link className={styles.projectLink} href="/contact?configurator=preview" prefetch={false}>Start your project ↗</Link>
     </section>
-    {launcherHost && createPortal(<div className={`${foundation.marketingPage} ${styles.launcherHost}`}><button type="button" className={styles.launcher} onClick={open} aria-haspopup="dialog" aria-expanded={opened}>
-      <span>{visited ? 'Your pergola' : 'Design your pergola'}</span><span>{visited ? 'Continue designing' : 'Explore in 3D'} <span aria-hidden="true">↗</span></span>
-    </button></div>, launcherHost)}
     <dialog ref={dialog} className={styles.panel} aria-label="Design your pergola" data-expanded={expanded}
       onCancel={event => { if (expanded) { event.preventDefault(); collapse(); } }}
       onClose={() => { setOpened(false); collapse(); }}>

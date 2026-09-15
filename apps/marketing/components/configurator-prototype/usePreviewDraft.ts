@@ -8,6 +8,7 @@ import { parsePreviewShareHash } from './previewShare';
 import type { SharedEstimate } from './sharedEstimate';
 import { SIMPLE_COVER_HANDOFF_STORAGE_KEY } from '../../lib/simpleCoverHandoff';
 import { legacySimpleDraft } from './legacySimpleDraft';
+import { updateDesignContinuation } from './designContinuation';
 
 type Snapshot = { draft: PreviewDraft; storageAvailable: boolean; linkNotice?: 'loaded' | 'invalid'; sharedEstimate?: SharedEstimate | null; selectionNotice?:string };
 let snapshot: Snapshot | null = null;
@@ -54,7 +55,7 @@ function importLink() {
   if (!window.location.hash.startsWith('#design=')) return;
   const shared = parsePreviewShareHash(window.location.hash);
   const draft = shared?.draft;
-  if (draft) save(draft);
+  if (draft) { save(draft); updateDesignContinuation({ started: true }); }
   if (snapshot) snapshot = { ...snapshot, linkNotice: draft ? 'loaded' : 'invalid', sharedEstimate: shared?.estimate };
   // Consume once: later edits/refresh must not replay the original shared design.
   window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
@@ -85,6 +86,9 @@ function update(patch: { input?: SimpleCoverInput; roof?: PreviewRoofChoices }) 
   const requested={ ...(getSnapshot()?.draft ?? DEFAULT_PREVIEW_DRAFT), ...patch };
   const draft = parsePreviewDraft(requested);
   if (!draft) return;
+  if (JSON.stringify(draft) !== JSON.stringify(getSnapshot()?.draft ?? DEFAULT_PREVIEW_DRAFT)) {
+    updateDesignContinuation({ started: true });
+  }
   // Publish and save synchronously so immediate navigation cannot lose the last edit.
   save(draft);
   if(snapshot && (requested.roof.blinds?.length??0)>(draft.roof.blinds?.length??0)) snapshot.selectionNotice='Some blinds no longer fit the updated openings and were removed. Choose the new openings under Outdoor blinds.';

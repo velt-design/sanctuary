@@ -5425,3 +5425,34 @@ the dedicated design-enquiry flow, including attribution and return-to-edit.
 Confirm hosted pricing parity, staff receipt/revision/save-to-quote and worker
 readiness separately. Real-phone validation and production activation remain
 pending. No production configuration or email delivery was changed in this pass.
+
+### Persistent design continuation bar (local candidate, 2026-09-15)
+
+Owner-approved public-site bar replaces the preview-only launcher. It uses a
+charcoal border, square corners and translucent grey glass. Homepage visibility
+starts after a short scroll (12% of viewport height, capped at 120px), per the
+owner's follow-up; other pages wait for their opening section to leave view.
+Returning above the threshold hides it. Contact/design-enquiry, private quote
+and invoice routes, open dialogs, mobile menus and consent prompts suppress it.
+The existing acrylic mobile CTA yields while the design bar is mounted.
+
+The bar initially offers Start designing. A changed draft or imported design
+marks the session as started; merely opening the configurator does not. Continue
+designing uses the existing session draft and a lightweight saved rail section.
+Only explicit resume navigation restores the section, preserving ordinary share,
+enquiry-edit and staff revision entry behavior. Dismissal lasts for the tab's
+session and does not delete the design. Header navigation offers Continue
+designing for a started design, including after dismissal.
+
+Owners: DesignContinuationBar owns visibility/presentation, designContinuation
+and useDesignContinuation own lightweight navigation state; usePreviewDraft
+remains the sole draft storage owner. Header.tsx consumes the small hook; broader
+header navigation extraction is deferred to avoid changing menu behavior here.
+No pricing, server enquiry contracts or production settings change in this pass.
+
+Verification: desktop homepage/product browsing showed the entry and return
+states; a 5.5 x 3m design reopened in Roof & ceiling with its $10,593 estimate.
+At 390 x 844 the glass bar remained readable, dismissal removed it and the mobile
+menu retained Continue designing. Focused visibility/dismissal, legacy-draft,
+header and quote-handoff tests pass (21 tests); marketing typecheck and changed
+architecture checks pass. No form was submitted and no email was sent.
