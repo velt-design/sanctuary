@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ session: vi.fn(), origin: vi.fn(), context: vi.fn(), status: vi.fn(), save: vi.fn(), resume: vi.fn(), accounting: vi.fn(), contact: vi.fn(), contacts: vi.fn() }));
+const mocks = vi.hoisted(() => ({ session: vi.fn(), origin: vi.fn(), context: vi.fn(), status: vi.fn(), save: vi.fn(), setup: vi.fn(), resume: vi.fn(), accounting: vi.fn(), contact: vi.fn(), contacts: vi.fn() }));
 vi.mock('./pilotAccess', () => ({ getPaymentPilotSession: mocks.session }));
 vi.mock('./http', () => ({ sameOrigin: mocks.origin, json: (body: unknown, status = 200) => Response.json(body, { status }) }));
 vi.mock('./security', () => ({ config: () => ({ tenantId: '11111111-1111-4111-8111-111111111111' }) }));
-vi.mock('../invoices/financeMappingRepository', () => ({ financeMappingContext: mocks.context, financeMappingStatus: mocks.status, saveFinanceMapping: mocks.save, resumeFinanceTransfer: mocks.resume }));
+vi.mock('../invoices/financeMappingRepository', () => ({ financeMappingContext: mocks.context, financeMappingStatus: mocks.status, saveFinanceMapping: mocks.save, saveFinanceSetup: mocks.setup, resumeFinanceTransfer: mocks.resume }));
 vi.mock('./financeMappingProvider', () => ({ financeMappingProvider: { accounting: mocks.accounting, contact: mocks.contact, contacts: mocks.contacts } }));
 import { POST } from '../../app/api/payments/xero/mapping/route';
 const id = '11111111-1111-4111-8111-111111111111';
@@ -14,7 +14,7 @@ beforeEach(() => {
   vi.resetAllMocks(); mocks.session.mockResolvedValue({ user: { id } }); mocks.origin.mockReturnValue(true);
   mocks.context.mockResolvedValue({ invoiceId: id, invoiceRef: 'INV-TEST', customerName: 'Synthetic', sourceContactId: id, subtotalCents: 100, taxCents: 15 });
   mocks.accounting.mockResolvedValue({ accounts: [{ id, code: '475', name: 'Sales' }], taxes: [{ type: 'TAX001', name: 'GST', effectiveRate: 15 }] });
-  mocks.contact.mockResolvedValue({ id, name: 'Synthetic', email: '' }); mocks.status.mockResolvedValue(null); mocks.contacts.mockResolvedValue({ contacts: [], limited: false });
+  mocks.contact.mockResolvedValue({ id, name: 'Synthetic', email: '' }); mocks.status.mockResolvedValue({ link: null, defaults: null }); mocks.contacts.mockResolvedValue({ contacts: [], limited: false });
 });
 it('denies missing finance permission or foreign origin before provider reads', async () => {
   mocks.session.mockResolvedValueOnce(null);
@@ -59,7 +59,7 @@ it('explains missing portal details before making any Xero request',async()=>{
  expect(mocks.accounting).not.toHaveBeenCalled();expect(mocks.save).not.toHaveBeenCalled();
 });
 it('returns the saved customer by ID even when their name has changed, without writing', async () => {
- mocks.status.mockResolvedValue({ contactId: id, verifiedAt: '2026-09-15' });
+ mocks.status.mockResolvedValue({ link: { contactId: id, verifiedAt: '2026-09-15' }, defaults: null });
  mocks.contact.mockResolvedValue({ id, name: 'Renamed customer', email: 'example@example.test' });
  const response=await POST(request({action:'inspect',invoiceId:id}));
  const data=await response.json();
@@ -69,11 +69,25 @@ it('returns the saved customer by ID even when their name has changed, without w
  expect(mocks.save).not.toHaveBeenCalled();
 });
 it('retains a saved link when provider verification fails and refuses to report missing status as unlinked', async () => {
- mocks.status.mockResolvedValue({ contactId: id, verifiedAt: '2026-09-15' });
+ mocks.status.mockResolvedValue({ link: { contactId: id, verifiedAt: '2026-09-15' }, defaults: null });
  mocks.contact.mockRejectedValue(new Error('unavailable'));
  const data=await (await POST(request({action:'inspect',invoiceId:id}))).json();
  expect(data.savedLink.contact).toBeNull();
  expect(data.customerCreationEnabled).toBe(false);
  mocks.status.mockRejectedValue(new Error('missing database contract'));
  expect((await POST(request({action:'inspect',invoiceId:id}))).status).toBe(503);
+});
+it('saves customer links without reading or changing accounting defaults', async () => {
+ const response=await POST(request({action:'confirmCustomer',commandId:id,invoiceId:id,sourceContactId:id,contactId:id,confirmed:true}));
+ expect(response.status).toBe(200);
+ expect(mocks.accounting).not.toHaveBeenCalled();
+ expect(mocks.setup).toHaveBeenCalledWith(expect.objectContaining({kind:'customer',proof:{id,name:'Synthetic',email:''}}));
+ expect(mocks.save).not.toHaveBeenCalled();
+});
+it('saves company defaults without reading or changing the customer link', async () => {
+ const response=await POST(request({action:'confirmDefaults',commandId:id,invoiceId:id,sourceContactId:id,accountCode:'475',taxType:'TAX001',confirmed:true}));
+ expect(response.status).toBe(200);
+ expect(mocks.contact).not.toHaveBeenCalled();
+ expect(mocks.setup).toHaveBeenCalledWith(expect.objectContaining({kind:'defaults'}));
+ expect(mocks.save).not.toHaveBeenCalled();
 });

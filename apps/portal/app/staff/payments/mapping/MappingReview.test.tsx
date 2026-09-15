@@ -4,7 +4,7 @@ import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import MappingReview from './MappingReview';
 const id = '11111111-1111-4111-8111-111111111111';
 const review = { context: { sourceContactId: id, invoiceRef: 'INV-TEST', customerName: 'Example' }, contacts: [],
-  savedLink: null, accounts: [], taxes: [], limited: false, checkedAt: '2026-09-14T00:00:00Z', customerCreationEnabled: true };
+  defaults: null, savedLink: null, accounts: [], taxes: [], limited: false, checkedAt: '2026-09-14T00:00:00Z', customerCreationEnabled: true };
 let view: ReturnType<typeof renderIntoDocument> | undefined;
 afterEach(() => { view?.unmount(); vi.unstubAllGlobals(); });
 const button = (label: string) => [...view!.container.querySelectorAll('button')].find(item => item.textContent === label);
@@ -77,4 +77,31 @@ it('does not describe an unverifiable saved link as an unlinked customer', async
  expect(view.container.textContent).toContain('Saved customer link needs checking');
  expect(view.container.textContent).not.toContain('Customer not yet linked');
  expect(button('Create Xero customer')).toBeUndefined();
+});
+it('customer approval submits no company default fields', async () => {
+ const contact={id,name:'Example',email:''};
+ const fetcher=vi.fn().mockResolvedValueOnce(Response.json({...review,contacts:[contact]})).mockResolvedValueOnce(Response.json({saved:true}));
+ vi.stubGlobal('fetch',fetcher);
+ view=renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} />); await inspect();
+ const form=button('Save customer link')!.closest('form')!;
+ form.querySelector<HTMLSelectElement>('select')!.value=id;
+ await act(async()=>form.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+ await act(async()=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+ const body=JSON.parse(fetcher.mock.calls[1][1].body);
+ expect(body.action).toBe('confirmCustomer'); expect(body.contactId).toBe(id);
+ expect(body).not.toHaveProperty('accountCode'); expect(body).not.toHaveProperty('taxType');
+ expect(view.container.textContent).toContain('Company accounting defaults are unchanged');
+});
+it('company default approval submits no customer choice', async () => {
+ const fetcher=vi.fn().mockResolvedValueOnce(Response.json({...review,accounts:[{id,code:'200',name:'Sales'}],taxes:[{type:'OUTPUT2',name:'GST',effectiveRate:15}]})).mockResolvedValueOnce(Response.json({saved:true}));
+ vi.stubGlobal('fetch',fetcher);
+ view=renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} />); await inspect();
+ const form=button('Save company defaults')!.closest('form')!;
+ form.querySelector<HTMLSelectElement>('select[name="accountCode"]')!.value='200';
+ form.querySelector<HTMLSelectElement>('select[name="taxType"]')!.value='OUTPUT2';
+ await act(async()=>form.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+ await act(async()=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+ const body=JSON.parse(fetcher.mock.calls[1][1].body);
+ expect(body.action).toBe('confirmDefaults'); expect(body).not.toHaveProperty('contactId');
+ expect(view.container.textContent).toContain('Customer links and existing invoices are unchanged');
 });
