@@ -5502,3 +5502,5 @@ details form. Earlier products overlay URL/scroll verification remains valid.
 No live submission or email delivery was exercised; those remain separate launch
 verification, along with pricing publication. Local candidate visibility is not
 evidence of published production pricing.
+
+Bar visibility clarification (2026-09-15): only the homepage waits for the short opening scroll. Other eligible browsing pages show the bar immediately, including above the fold. Existing enquiry/private-page exclusions and dismissal remain. Verified on Products; four visibility tests pass.

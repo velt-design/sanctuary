@@ -24,12 +24,12 @@ afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi
 const render = () => act(async () => root.render(<DesignContinuationBar />));
 const scroll = (bottom: number) => act(async () => { openingBottom = bottom; window.dispatchEvent(new Event('scroll')); });
 
-it('appears beyond other pages opening sections and hides on return', async () => {
+it('appears immediately on other browsing pages, including their opening section', async () => {
   path = '/products';
-  await render(); expect(host.querySelector('aside')).toBeNull();
+  await render(); expect(host.textContent).toContain('Start designing');
   await scroll(-1); expect(host.textContent).toContain('Start designing');
   expect(host.querySelector('a')?.getAttribute('href')).toBe('/configurator-preview?open=1');
-  await scroll(10); expect(host.querySelector('aside')).toBeNull();
+  await scroll(10); expect(host.textContent).toContain('Start designing');
 });
 
 it('offers the saved-design destination after editing and remembers dismissal', async () => {

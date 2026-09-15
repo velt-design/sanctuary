@@ -16,20 +16,15 @@ export default function DesignContinuationBar() {
 
   useEffect(() => {
     setPastOpening(false);
-    if (excluded) return;
-    const opening = document.querySelector('[data-homepage-hero], #main-content main header, #main-content main section, #main-content header, #main-content section');
-    const update = () => setPastOpening(pathname === '/'
-      ? window.scrollY >= Math.min(120, window.innerHeight * .12)
-      : opening ? opening.getBoundingClientRect().bottom <= 0 : window.scrollY >= window.innerHeight);
+    if (excluded || pathname !== '/') return;
+    const update = () => setPastOpening(window.scrollY >= Math.min(120, window.innerHeight * .12));
     update();
     window.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', update);
-    const observer = new ResizeObserver(update);
-    if (opening) observer.observe(opening);
-    return () => { window.removeEventListener('scroll', update); window.removeEventListener('resize', update); observer.disconnect(); };
+    return () => { window.removeEventListener('scroll', update); window.removeEventListener('resize', update); };
   }, [pathname, excluded]);
 
-  if (excluded || dismissed || !pastOpening) return null;
+  if (excluded || dismissed || (pathname === '/' && !pastOpening)) return null;
   return <aside className={styles.bar} aria-label="Your pergola design">
     <Link href={`/configurator-preview?open=1${started ? '&resume=1' : ''}`} className={styles.action}>
       <span>{started ? 'Your pergola' : 'Your pergola, your way.'}</span>
