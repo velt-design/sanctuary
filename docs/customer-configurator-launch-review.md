@@ -138,3 +138,34 @@ decision activates this configurator or publishes the later v2.8 candidate.
 No production changes, purchases, emails or live customer enquiries were made in
 this audit. Synthetic staging configuration/setup writes are recorded separately
 from customer and staff runtime verification.
+
+## Pricing release continuation, 16 September 2026
+
+Owner authorised the exact staging pricebook for new staff and customer
+configurator calculations. Pricing-only PR #136 merged at
+`27528e9b1c3fe10d3b01a112ea765ef4f09a90fb`. Both production applications are READY
+at that commit: marketing `dpl_6Yz9Ti9bdHe1QDfzEw8c4RF2o7bE`, portal
+`dpl_6oBJdbxLh6VYr9gwJcgwzoJAeFoo`. All required checks passed at corrected head
+`600b962c9e7d2b6784663d754ab8b061ff6d7e4d` (run 35024401773).
+
+Review caught a staff UI classification bug: configuration-free eligibility
+rejected infills and rewrote Simple as Bespoke before costing. Corrected in the
+pricing release, with a React-hook integration regression; historical server
+eligibility still uses its explicit published configuration. Carry this correction
+when reconciling this configurator branch with main.
+
+Publication is NOT complete. At 21:31 UTC on 15 September, Supabase management
+reported scheduled maintenance, estimated completion 21:45 UTC. The guarded
+preparation stopped at the project-health check before authentication/draft writes;
+no preparation/publication evidence file exists. Last verified production remains
+Version 12 (`481e870d-aafa-4c4b-8735-1e5e5565032d`, hash `157b63465bc0...`).
+
+Resume after management health is available: rerun the guarded production
+preparation, inspect the exact comparison, publish approved hash
+`4d12a6bde67c28aeacbb8a0d9845529e3ebb7405555d0fab9b8e412de8d33661`, and run live
+staff/public proof. Scripts/evidence use the `sanctuary-v28-production-*` prefix in
+the task temporary directory; expected deployment commit is the merge above.
+`sanctuary-v28-production-proof.mjs` verifies ceiling options, unequal wings,
+4m rafter boundary and infill classification without saves/emails. The public
+before fixture is Version 12 at $11,500. No renewed owner approval is needed for
+this same approved pricebook. Customer website/enquiry activation remains separate.
