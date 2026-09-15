@@ -50,7 +50,7 @@ export default function PaymentHistory({ invoiceId, refreshKey, disabled, onCorr
       <div className={styles.list}>{history.matches.map(match => <Card headingLevel={3} key={match.id} title={`${money(match.amountCents)} — ${match.reversedAt ? 'Reversed' : 'Recorded'}`}>
 
         <p>Received {match.receiptDate}. {match.sourceKind === 'INVOICE_PAYMENT' ? 'Payment attached to Xero invoice' : 'Xero bank receipt'}.</p>
-        <p>Approved by {match.approvedBy} on {new Date(match.approvedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}.</p>
+        <p>{match.recordingMethod === 'AUTOMATIC' ? 'Recorded automatically from Xero' : `Approved by ${match.approvedBy}`} on {new Date(match.approvedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}.</p>
         {match.reference && <p>Reference: {match.reference}</p>}
         {match.reversedAt ? <p>Reversed by {match.reversedBy ?? 'finance'} on {new Date(match.reversedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}: {match.reversalReason}</p> :
           <Button variant="tertiary" disabled={disabled || saving} onClick={() => { setCorrecting(match.id); setReason(''); setConfirmed(false); }}>Correct this match</Button>}

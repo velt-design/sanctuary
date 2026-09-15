@@ -19,9 +19,10 @@ function recordingId(tenantId: string, receiptId: string) {
 /** One receipt per call bounds provider work; subsequent polls continue instalments. */
 export async function recordNextInvoicePayment(invoiceId: string, tenantId: string, deps = dependencies) {
   const context = await deps.context(invoiceId, tenantId);
-  const [raw, result] = await Promise.all([
-    deps.readInvoice(tenantId, context.providerInvoiceId), deps.list(tenantId, context.providerInvoiceId),
-  ]);
+  // The cron checks three invoices concurrently. Keep each invoice's provider
+  // calls sequential so this phase cannot exceed Xero's five-call tenant limit.
+  const raw = await deps.readInvoice(tenantId, context.providerInvoiceId);
+  const result = await deps.list(tenantId, context.providerInvoiceId);
   if (result.limited) return { state: 'review' as const, reason: 'PAYMENT_LIST_INCOMPLETE' };
   const invoice = invoiceEvidence(context, raw);
   if (['conflict', 'correction_pending', 'correction_complete'].includes(invoice.observation.state)) {

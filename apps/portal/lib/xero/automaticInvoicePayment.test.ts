@@ -30,6 +30,15 @@ it('records exact reconciled evidence without a human approval envelope',async()
   expect(e.invoicePayment.providerInvoiceId).toBe(id);expect(e.approverId).toBeUndefined();
   await recordNextInvoicePayment(id,id);expect(mocks.record.mock.calls[1][0]).toBe(key);
 });
+it('does not overlap invoice and payment-list reads within one check', async()=>{
+  let release!: (value: typeof rawInvoice) => void;
+  mocks.invoice.mockImplementation(()=>new Promise(resolve=>{release=resolve;}));
+  const checking=recordNextInvoicePayment(id,id);
+  await vi.waitFor(()=>expect(mocks.invoice).toHaveBeenCalledOnce());
+  expect(mocks.list).not.toHaveBeenCalled();
+  release(rawInvoice); await checking;
+  expect(mocks.list).toHaveBeenCalledOnce();
+});
 it.each([{reconciled:false},{contactId:paymentId},{total:116},{currencyRate:2}])('leaves conflicting evidence for review %j',async patch=>{
   mocks.list.mockResolvedValue({payments:[{...payment,...patch}],limited:false});
   expect((await recordNextInvoicePayment(id,id)).state).toBe('review');expect(mocks.record).not.toHaveBeenCalled();

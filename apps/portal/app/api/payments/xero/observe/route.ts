@@ -5,7 +5,7 @@ import { getPaymentPilotSession } from '@/lib/xero/pilotAccess';
 import { refreshInvoiceObservation } from '@/lib/xero/refreshInvoiceObservation';
 import { synchronizeInvoicePayment } from '@/lib/xero/synchronizeInvoicePayment';
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 90;
 export async function POST(request: Request) {
   try {
     const session = await getPaymentPilotSession();

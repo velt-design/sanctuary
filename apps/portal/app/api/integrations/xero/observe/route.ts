@@ -4,7 +4,7 @@ import { invoiceObservationTargets } from '@/lib/invoices/invoiceObservationRepo
 import { refreshInvoiceObservation } from '@/lib/xero/refreshInvoiceObservation';
 import { synchronizeInvoicePayment } from '@/lib/xero/synchronizeInvoicePayment';
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 90;
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || secret.length < 32 || !equalSecret(request.headers.get('authorization') ?? '', `Bearer ${secret}`)) return json({ error: 'Unauthorized' }, 401);
