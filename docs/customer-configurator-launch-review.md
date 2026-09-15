@@ -1,7 +1,7 @@
 # Customer journey launch review
 
 Status: **launch-review milestone verified; production activation blocked by the
-release gates below**. Updated 15 September 2026.
+release gates below**. Updated 16 September 2026.
 Owner: marketing/configurator release lane. Current branch:
 `codex/configurator-pricing-candidate-20260915`; local preview port 3074.
 This is a verification record, not permission to publish pricing, activate
@@ -72,7 +72,9 @@ https://github.com/velt-design/sanctuary/actions/runs/34943919707.
 
 - Hosted validation recovery and edit return pass. Network-failure recovery is
   covered by controller tests; hosted intake/retry are separately verified above.
-- Real-phone touch, keyboard and assistive-technology verification remains open.
+- Owner real-phone journey check passed on 16 September: size changes, expanded
+  3D, enquiry entry, edit and return. This does not claim an assistive-technology
+  audit or actual email delivery.
 - Portal Quality/performance run passed at the unchanged application
   source `5bde079`: https://github.com/velt-design/sanctuary/actions/runs/34943618230.
   All three jobs passed, including the configurator/enquiry journey, production
@@ -101,10 +103,14 @@ bindings, and verify enquiry-specific worker health, receipt monitoring and
 shutdown behaviour. Rollback must disable the new enquiry entry/producer and
 pause claims without deleting frozen enquiries, estimates, drafts or effect
 checkpoints. Do not switch failed durable enquiries into automatic legacy sends.
-The actual deployment-owner procedure and real-device review remain launch gates.
-The real-phone check was requested from the owner and has no recorded result;
-desktop viewport simulation is not a substitute for touch/keyboard/assistive
-technology on the device.
+The production deployment procedure remains a launch gate. The owner completed
+the requested real-phone journey on the `sanctuary-cbcea5b04` Vercel preview and
+reported "I've checked it and it works well" on 16 September. No submission was
+requested; this clears the owner device check, not email delivery verification.
+
+The release branch integration with production main `27528e9` passed 1,444 tests
+across 193 files covering marketing, costing, staff pricing classification,
+worker runtime and job contracts. Final hosted release checks remain separate.
 
 The prior eleven-file migration handoff has no semantic changes in this branch.
 Two checkout files use CRLF while the old manifest hashes LF, so raw hashes differ

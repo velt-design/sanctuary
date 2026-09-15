@@ -586,3 +586,9 @@ Draft PR #132 is approved for protected previews only; production release remain
 The Supabase image contains the protected Storage schema but no objects table. Its disposable metadata stub is now provisioned separately using the image administrator, with postgres owning the stub. Application migrations and all permission-denial contracts continue to run as postgres; no live schema permissions are changed.
 
 Hosted Portal Quality identified the new Original enquiry tab clipped in the Project Work card at 390 px and reduced-motion phone fixtures. ProjectWorkFilesCard now owns a scoped wrapping header/tab layout, preserving the shared portal components and existing keyboard/tab semantics. The existing no-cropped-controls browser assertions remain unchanged and must pass before release.
+
+Pricing v2.8 release preparation (16 September 2026): owner approved the same
+staging pricebook for new staff and customer calculations. A pricing-only branch
+based on current main carries compatible versioned rules; deployment and exact
+publication are pending. Existing estimates/quotes and enquiry activation remain
+unchanged. See `costing-and-geometry.md` for scope and release evidence.

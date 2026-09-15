@@ -5679,3 +5679,11 @@ Why it mattered: Issuing first would have stranded a test transfer behind hostin
 Current guardrail: Before enabling issuance, verify both hosting and portal gateway authentication. Use the existing project automation credential only in a header to the configured Vercel preview; retain secret/lease checks, redirect refusal and preview protection. Pin both connector and finance control tenant before customer preparation.
 Promoted to: apps/worker/README.md and docs/xero-connection.md
 Related docs/tests: apps/worker/src/handlers/xeroInvoice.test.ts
+
+## 2026-09-16 - Versioned pricing must reach staff UI classification
+
+The v2.8 release review found that the configuration-free staff eligibility check
+still rejected infills and rewrote the request as Bespoke before server costing.
+Current UI eligibility now uses current policy; historical server calculations
+retain explicit configuration semantics. Verify the real eligibility-to-state
+hook boundary when changing commercial classification, not only engine totals.
