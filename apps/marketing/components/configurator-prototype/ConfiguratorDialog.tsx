@@ -4,13 +4,18 @@ import ConfiguratorPrototype from './ConfiguratorPrototype';
 import { usePreviewExpansion } from './usePreviewExpansion';
 import styles from './previewShell.module.css';
 import foundation from '../marketing-foundation/foundation.module.css';
+import { updateDesignContinuation } from './designContinuation';
 
 export default function ConfiguratorDialog({ open, onClose, resume = false }: { open: boolean; onClose: () => void; resume?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [visited, setVisited] = useState(open);
   const { expanded, toggleExpanded, collapse } = usePreviewExpansion();
   useEffect(() => {
-    if (open) { setVisited(true); dialog.current?.showModal(); }
+    if (open) {
+      // A new design visit restores the continuation bar after the dialog closes.
+      updateDesignContinuation({ dismissed: false });
+      setVisited(true); dialog.current?.showModal();
+    }
     else dialog.current?.close();
   }, [open]);
   useEffect(() => {
