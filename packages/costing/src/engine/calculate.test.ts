@@ -2704,11 +2704,11 @@ describe('timber roof system', () => {
     });
 
     expect(result.derived.timber_plane_count).toBe(1);
-    expect(result.derived.timber_common_rafter_count_per_plane).toBe(13);
+    expect(result.derived.timber_common_rafter_count_per_plane).toBe(11);
     expect(result.derived.timber_edge_rafter_count_total).toBe(2);
 
     const slopeMm = result.derived.timber_slope_len_per_plane_m * 1000;
-    const expectedPurlinLines = Math.ceil(Math.max(slopeMm - 200, 0) / 500) + 1;
+    const expectedPurlinLines = Math.ceil(Math.max(slopeMm - 200, 0) / 600) + 1;
     expect(result.derived.timber_purlin_lines_per_plane).toBe(expectedPurlinLines);
 
     const lines = result.materials.lines;
@@ -2716,7 +2716,7 @@ describe('timber roof system', () => {
     const mill80 = lines.find((l) => l.profile === '80x50' && /\(Mill\)/i.test(l.label));
     const edge150 = lines.find((l) => l.profile === '150x50' && /powdercoated/i.test(l.label));
     expect(mill50).toBeTruthy();
-    expect(mill80).toBeTruthy();
+    expect(mill80).toBeFalsy();
     expect(edge150).toBeTruthy();
 
     const insulated = lines.find((l) => l.id === 'roof.insulated_panel_50mm_m2');

@@ -517,3 +517,9 @@ When updating this tracker:
 - Initial review identified quality gates as the highest leverage priority before broad feature expansion.
 - Known review findings to re-verify: portal tests failing, lint guard failing, schedule bundle budget failing, and production audit reporting vulnerabilities.
 - Parallel lanes identified: quality gate repair, security/deps, contacts/projects env boundaries, schedule performance, design workbench behavior, quote/invoice/job-pack side effects, style isolation, CI/typecheck/tooling, and large-file decomposition after gates are green.
+
+Pricing v2.8 release preparation (16 September 2026): owner approved the same
+staging pricebook for new staff and customer calculations. A pricing-only branch
+based on current main carries compatible versioned rules; deployment and exact
+publication are pending. Existing estimates/quotes and enquiry activation remain
+unchanged. See `costing-and-geometry.md` for scope and release evidence.

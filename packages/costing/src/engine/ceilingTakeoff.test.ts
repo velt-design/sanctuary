@@ -24,7 +24,7 @@ describe('ceiling integration', () => {
     const base=loadCostingConfigV1(); const control=snapshotCostingControlConfigV1(base); control.baseManifestVersion='v2.6';
     for(const key of Object.keys(control.materialRatesExGst)) if(key.startsWith('ceiling.')) delete control.materialRatesExGst[key];
     const historical=applyCostingControlConfigV1(base,control);
-    expect(calculateCostV1(input,historical).totals).toEqual(calculateCostV1(input,base).totals);
+    expect(calculateCostV1(input,historical).totals).toEqual(calculateCostV1(input,{...base,appliedControlManifestVersion:"v2.7"}).totals);
     expect(()=>calculateCostV1({...input,ceiling:{option:'cedar-100'}},historical)).toThrow(/Publish/);
   });
   it('joins long boards on actual support positions and covers the complete run', () => {

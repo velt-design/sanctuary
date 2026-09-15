@@ -365,3 +365,38 @@ npm run test -- packages/geometry
 npm run test -- packages/geometry/src/topProjection.test.ts packages/geometry/src/contracts.test.ts
 npm run test:portal:browser
 ```
+
+## Pricing production release v2.8 (16 September 2026)
+
+The owner approved making the tested staging pricebook live for both the staff
+calculator and customer configurator. The isolated pricing release is based on
+current main, preserving the released finance and timber fixes. Website/enquiry
+activation remains separate. Production Version 12 was rechecked read-only at
+hash `157b63465bc0e812de46fe4dbaa66f732c819e0a974ee37aab253944b52e00d2`.
+The approved staging candidate is
+`4d12a6bde67c28aeacbb8a0d9845529e3ebb7405555d0fab9b8e412de8d33661`.
+
+This release carries the versioned v2.8 engine rules: acrylic infills alone do not
+reclassify a Simple job; solid-roof common rafters are 50x50 through 4m per-plane
+span and 80x50 above, with 600mm maximum centres and 50x50 purlins. Explicit staff
+overrides remain valid. Historical published controls keep their old semantics.
+No stored estimate or quote is rewritten. The customer configurator will bind to
+the same production version when its separately gated application is released.
+
+Gate 0: legacy rows N/A; owner-authorised maintenance of protected calculator V1;
+no workbench input migration, Phase 2 dependency or function consolidation.
+Consumers include staff single/job/material explanation, public calculation,
+configuration publication and saved-estimate resolution. Package-owned derive
+and install hotspot extraction is deferred to avoid changing historical
+calculations; next safe extraction is versioned framing/profile-minute selection.
+
+Release sequence: compatible main app deployments, authenticated admin draft
+comparison and exact-hash publication, then live read-only pricing verification.
+Rollback uses a new immutable publication cloned from Version 12. Do not promote
+the staging deployment or its credentials into production.
+
+Release review correction: the staff eligibility check has no configuration
+argument, so it must use the active UI policy rather than silently assume an old
+manifest. It now permits the acrylic infill request to remain Simple. Server
+calculations still receive the exact published configuration and enforce its
+historical policy. A real eligibility-to-React-hook regression covers this path.
