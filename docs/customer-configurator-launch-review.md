@@ -31,7 +31,10 @@ production, send emails or submit live customer enquiries.
 | Mobile menu and professional route | Opening menu removes sticky bar; Professionals opens its page; menu contact link retains professional source and selects Architect/designer/builder | Passed locally |
 | Shared design and refresh | Copied 5.6 x 3 m pitched design opens in a new tab with $10,630 draft estimate; reload retains both | Passed locally for this fixture |
 | Release compilation | Webpack production build completed all 77 static pages and TypeScript after fixing an invalid all-global CSS-module selector in the sticky-bar stylesheet | Passed locally with webpack; default Turbopack process crashed on Windows before diagnostics |
-| Hosted candidate preparation | Healthy staging identity and existing approved hash rechecked; v2.8 control snapshot hashes to `4d12a6bde67c28aeacbb8a0d9845529e3ebb7405555d0fab9b8e412de8d33661`; resolving that snapshot is deeply equal to the current local candidate configuration | Prepared and validated; not published or deployed |
+| Hosted candidate preparation | Healthy staging identity rechecked; v2.8 snapshot `4d12a6bde67c28aeacbb8a0d9845529e3ebb7405555d0fab9b8e412de8d33661` resolves exactly to the local candidate. Published only in staging as version 2, `89a1d161-c336-44e6-ad2b-2b8eacd3bd4c`; temporary admin access removed | Staging only; production unchanged |
+| Candidate repository gates | Full workspace typecheck and lint, including documentation, package boundaries and source guards, passed before branch upload at `a403953` | Passed |
+| Isolated hosted bindings | Both applications have candidate-branch-only staging credentials, v2.8 version pin, disabled email provider and disabled enquiry email worker. Stable customer/staff preview origins connected | Both connected builds READY at `a403953`; staff runtime verification pending |
+| Hosted/local price parity | Signed hosted v2.8 API matched local estimates: acrylic 6 x 3 $11,674; 5.6 x 3 $10,630; solid/ThermoPine 5 x 4 $20,606; 5 x 4.1 $21,308; acrylic gable 6.7 x 3.9 $18,561. 6.7 x 4.5 returns tailored quote | Five price fixtures plus area limit passed; no enquiry submitted |
 
 ## Open requirements
 
@@ -41,14 +44,11 @@ production, send emails or submit live customer enquiries.
 - Verify form recovery against the isolated hosted service. Local controller
   success, failure and retry tests intercept all network calls; they do not prove
   receipt by the hosted intake or staff portal.
-- Prepare one exact candidate for hosted verification. The current review-price
-  endpoint and hook are development-only. A normal hosted build will not reproduce
-  the local v2.8 estimate automatically. Preserve the signed published-price boundary.
-  Read-only Vercel inspection at 07:01 UTC confirms this candidate branch has no
-  branch-specific staging variables and no deployment in either project's most
-  recent 20 results. Existing launch-candidate staging bindings and existing
-  automation credentials are available for reuse. Do not push/deploy this branch
-  before isolating its bindings; do not inherit production credentials by default.
+- Finish and verify both exact hosted builds, including the current connected
+  origins. The development-only review endpoint remains unchanged; hosted pricing
+  will use the ordinary signed-price path pinned to the new staging v2.8 version.
+  Automatic Git deployment is held for this candidate branch in both app configs
+  while previews are created explicitly. Other branches keep their existing policy.
 - Reconcile current hosted pricing, staff receipt/revision and save-to-quote against
   this candidate. Earlier staging evidence is valuable but is not proof of this UI
   and pricing revision.
@@ -73,4 +73,6 @@ their source prices. They also supersede older notes about hosting: the owner ch
 Render, and production staff pricing Version 12 was published separately. Neither
 decision activates this configurator or publishes the later v2.8 candidate.
 
-No production changes, purchases, emails or live enquiries were made in this audit.
+No production changes, purchases, emails or live customer enquiries were made in
+this audit. Synthetic staging configuration/setup writes are recorded separately
+from customer and staff runtime verification.
