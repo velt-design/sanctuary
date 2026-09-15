@@ -23,6 +23,8 @@ production, send emails or submit live customer enquiries.
 | Mobile enquiry layout | 390 x 844 screenshot inspected; price, edit link, fields and disclosure visible | Browser simulation only |
 | Historical versus new candidate price tests | Historical 45-proposal fixture now explicitly uses v2.7; v2.8 owner rules and frozen pricing tests passed, 25 tests combined | Passed |
 | Current full marketing suite | 841 tests in 134 files passed after historical-fixture correction; architecture changed report clean | Passed locally |
+| Complete configured-form controller recovery | Mocked network integration checks required-field refusal, edited pre-send snapshot, unchanged-request retry identity, success and contact-storage cleanup | 2 tests passed; no external submission |
+| Commercial header route | Commercial page header opens contact with Commercial/Professional and Organisation/venue selected | Passed locally |
 
 ## Open requirements
 
@@ -30,6 +32,13 @@ production, send emails or submit live customer enquiries.
   pages, consent/menu interactions, refreshed/shared designs and mobile expanded view.
 - Exercise complete form success, failure and retry with intercepted/local test
   services only; no email or live customer submission.
+- Resolve ambiguous-success/edit/retry confirmation. `ContactEnquiryForm` retains
+  the submission ID after a failed response but builds the retry from current
+  fields/design. The server explicitly returns `idempotentReplay: true` for an
+  already-received enquiry, while the client currently treats it as ordinary
+  success. If the customer edited after an ambiguous response, confirmation must
+  not claim those newer details were received. Do not solve this by blindly
+  generating a new submission ID and risking duplicate enquiries.
 - Prepare one exact candidate for hosted verification. The current review-price
   endpoint and hook are development-only. A normal hosted build will not reproduce
   the local v2.8 estimate automatically. Preserve the signed published-price boundary.
