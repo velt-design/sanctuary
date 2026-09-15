@@ -66,4 +66,16 @@ describe('Xero worker gateway', () => {
     await expect(createXeroInvoiceHandler(config, fetcher)({ ...context(), signal: controller.signal })).rejects.toThrow('Cancelled');
     expect(fetcher).not.toHaveBeenCalled();
   });
+  it.each(['XERO_MAPPING_REQUIRED', 'XERO_INVOICE_CHANGED', 'IDEMPOTENCY_WINDOW_EXPIRED'])('preserves actionable gateway cause %s without private details', async code => {
+    const handler = createXeroInvoiceHandler(config, async () => Response.json({ code, detail: 'private customer data' }, { status: 409 }));
+    await expect(handler(context())).rejects.toMatchObject({ code, disposition: 'needs_attention' });
+  });
+  it.each([{ code: 'private customer data' }, { code: 42 }, null])('refuses unrecognised error bodies %j', async body => {
+    const handler = createXeroInvoiceHandler(config, async () => Response.json(body, { status: 409 }));
+    await expect(handler(context())).rejects.toMatchObject({ code: 'XERO_TRANSFER_REVIEW_REQUIRED', disposition: 'needs_attention' });
+  });
+  it('keeps server failures retryable regardless of an apparent review code', async () => {
+    const handler = createXeroInvoiceHandler(config, async () => Response.json({ code: 'XERO_MAPPING_REQUIRED' }, { status: 503 }));
+    await expect(handler(context())).rejects.toMatchObject({ code: 'XERO_TRANSFER_REVIEW_REQUIRED', disposition: 'retry' });
+  });
 });
