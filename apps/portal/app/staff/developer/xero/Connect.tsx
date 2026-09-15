@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/foundation/FoundationControls';
 
 export default function Connect({ connected }: { connected: boolean }) {
   const [pending, setPending] = useState(false);
@@ -20,7 +21,7 @@ export default function Connect({ connected }: { connected: boolean }) {
     }
   }
   return <>
-    <button type="button" disabled={pending} onClick={start}>{pending ? 'Opening Xero…' : connected ? 'Reconnect Xero' : 'Connect Xero'}</button>
+    <Button type="button" disabled={pending} onClick={start}>{pending ? 'Opening Xero…' : connected ? 'Reconnect Xero' : 'Connect Xero'}</Button>
     {error && <p role="alert">{error}</p>}
   </>;
 }

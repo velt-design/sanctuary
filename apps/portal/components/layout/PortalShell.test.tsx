@@ -137,8 +137,8 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
-  it('leaves the data-free invoice editor fixture behind its server flag', () => {
-    mockPathname = '/qa/invoice-draft-editor-fixture';
+  it.each(['/qa/invoice-draft-editor-fixture', '/qa/finance-payment-fixture'])('leaves %s behind its server flag', (path) => {
+    mockPathname = path;
     mockSearchParams = new URLSearchParams();
     mockSession = { status: 'unauthenticated', email: null, role: null } as any;
     const rendered = renderIntoDocument(<PortalShell><div data-testid="child">Invoice fixture</div></PortalShell>);
