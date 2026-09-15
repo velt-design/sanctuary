@@ -54,11 +54,13 @@ export async function reviewInvoicePayments(invoiceId: string, actor: string) {
   const active = await activeReceiptMatches(cfg.tenantId, result.payments.map(payment => payment.id));
   const suggestions = result.payments.map(payment => {
     const checked = inspect(context, payment, invoice);
-    if (active.some(match => match.receiptId === payment.id)) checked.blockers.push('This payment is already recorded in the portal.');
+    const activeMatch = active.find(match => match.receiptId === payment.id);
+    const alreadyRecorded = Boolean(activeMatch && activeMatch.invoiceId === context.invoice.id);
+    if (activeMatch) checked.blockers.push(alreadyRecorded ? 'This payment is already recorded in the portal.' : 'This payment is recorded against another portal invoice. Finance must investigate the match.');
     if (result.limited) checked.blockers.push('The payment list is incomplete. Finance must check the remaining payments.');
     const approvalToken = checked.blockers.length ? null : prepareDepositApproval(evidence(context, payment, invoice, cfg.tenantId), actor, cfg.key);
     const approvalId = approvalToken ? readDepositApproval(approvalToken, actor, cfg.tenantId, cfg.key).approvalId : null;
-    return { payment, ...checked, remainingIfApprovedCents: checked.blockers.length ? null : checked.remainingIfApprovedCents, approvalToken, approvalId };
+    return { payment, alreadyRecorded, ...checked, remainingIfApprovedCents: checked.blockers.length ? null : checked.remainingIfApprovedCents, approvalToken, approvalId };
   });
   return { invoice: context.invoice, customerWon: context.customerWon, suggestions, limited: result.limited, checkedAt: new Date().toISOString() };
 }

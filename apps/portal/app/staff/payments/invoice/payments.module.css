@@ -1,0 +1,6 @@
+.list { display: grid; gap: var(--ui-space-4); margin-block: var(--ui-space-4); }
+.balance { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--ui-space-4); }
+.balance dt { color: var(--ui-text-muted); font-size: var(--ui-font-size-small); }
+.balance dd { margin: 4px 0 0; font-weight: 600; font-size: 20px; }
+.confirm { display: flex; align-items: flex-start; gap: 8px; margin-block: 16px; }
+.confirm input { margin-top: 4px; flex-shrink: 0; }

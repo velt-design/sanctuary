@@ -9,6 +9,6 @@ export default async function InvoicePaymentPage({ searchParams }: { searchParam
   if (process.env.XERO_INVOICE_PAYMENTS_ENABLED !== 'true' || !await getPaymentPilotSession()) notFound();
   const { invoice } = await searchParams;
   if (!invoice || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(invoice)) notFound();
-  return <PageLayout width="full"><PageHeader variant="index" title="Review invoice payments" />
+  return <PageLayout><PageHeader variant="index" title="Review invoice payments" description="Check Xero receipts, approve a portal payment record and review previous matches." />
     <p><Link href="/staff/payments">Back to finance review</Link></p><InvoicePayments invoiceId={invoice} /></PageLayout>;
 }

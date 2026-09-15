@@ -65,3 +65,10 @@ it('refuses a bank-receipt envelope through the invoice-payment entry point', as
   await expect(approveInvoicePayment(token, id)).rejects.toThrow('APPROVAL_REVIEW_REQUIRED');
   expect(mocks.previous).not.toHaveBeenCalled();
 });
+it('distinguishes a payment recorded here from one matched to another invoice', async () => {
+ mocks.active.mockResolvedValue([{receiptId:paymentId,invoiceId:id}]);
+ expect((await proposal()).alreadyRecorded).toBe(true);
+ mocks.active.mockResolvedValue([{receiptId:paymentId,invoiceId:paymentId}]);
+ const p=await proposal(); expect(p.alreadyRecorded).toBe(false); expect(p.approvalToken).toBeNull();
+ expect(p.blockers).toContain('This payment is recorded against another portal invoice. Finance must investigate the match.');
+});

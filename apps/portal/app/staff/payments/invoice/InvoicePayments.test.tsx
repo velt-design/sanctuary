@@ -32,3 +32,19 @@ it('recovers a lost response after reload by status, without repeating approval'
   expect(JSON.parse(fetcher.mock.calls[2][1].body)).toEqual({ action: 'status', approvalId: id });
   expect(view.container.textContent).toContain('Payment was recorded successfully'); expect(sessionStorage.length).toBe(0);
 });
+it('shows the before and after balance and the scope of approval', async () => {
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json(result)));
+ view=renderIntoDocument(<InvoicePayments invoiceId={id} />); await review();
+ expect(view.container.textContent).toContain('Still owing now');
+ expect(view.container.textContent).toContain('$115.00');
+ expect(view.container.textContent).toContain('Still owing after approval');
+ expect(view.container.textContent).toContain('$75.00');
+ expect(view.container.textContent).toContain('does not move money, change Xero or email');
+});
+it('does not offer duplicate approval and keeps other investigation reasons visible', async () => {
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({...result,suggestions:[{...result.suggestions[0],alreadyRecorded:true,blockers:['This payment is already recorded in the portal.','Check changed Xero evidence.']}]})));
+ view=renderIntoDocument(<InvoicePayments invoiceId={id} />); await review();
+ expect(view.container.textContent).toContain('Already recorded');
+ expect(view.container.textContent).toContain('Check changed Xero evidence.');
+ expect(button('Approve payment')).toBeUndefined();
+});
