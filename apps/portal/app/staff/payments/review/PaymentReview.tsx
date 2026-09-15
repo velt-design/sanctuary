@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Button } from '@/components/ui/foundation/FoundationControls';
+import { Button, ButtonLink, Input, Textarea } from '@/components/ui/foundation/FoundationControls';
 import { Card } from '@/components/ui/foundation/FoundationSurfaces';
 import type { PilotMatch, PilotReview, PilotSuggestion } from '@/lib/xero/pilotTypes';
 import ReviewNote from './ReviewNote';
@@ -73,8 +73,8 @@ export default function PaymentReview() {
     </Card>}
     <Card title="Find a deposit">
       <form onSubmit={review} style={{display:'flex',flexWrap:'wrap',gap:16,alignItems:'end'}}>
-        <label>Portal invoice number<br/><input name="invoiceRef" placeholder="INV-0033" required pattern="INV-[0-9]{1,12}" disabled={pending}/></label>
-        <label>Xero customer name (optional)<br/><input name="contactName" placeholder="Use invoice customer name" maxLength={240} disabled={pending}/></label>
+        <label>Portal invoice number<Input name="invoiceRef" placeholder="INV-0033" required pattern="INV-[0-9]{1,12}" disabled={pending}/></label>
+        <label>Xero customer name (optional)<Input name="contactName" placeholder="Use invoice customer name" maxLength={240} disabled={pending}/></label>
         <Button type="submit" disabled={pending}>Find receipts</Button>
       </form>
     </Card>
@@ -86,7 +86,7 @@ export default function PaymentReview() {
         <p><strong>{result.context.customerWon ? 'Customer won — verified deposit recorded' : 'No active verified deposit match recorded'}</strong></p>
         <p>Requested deposit: {money(result.context.invoice.totalIncGstCents)} · Matched receipts: {money(result.context.matchedCents)} · Remaining: {money(result.context.invoice.totalIncGstCents-result.context.matchedCents)}</p>
         <p>Whole invoice status: {result.context.invoice.status}. These figures cover this invoice’s Xero matches; check other payment history where flagged.</p>
-        <a href={`/staff/projects/proj_${result.context.invoice.projectId}?tab=invoices`}>Open project invoices and payment history</a>
+        <ButtonLink variant="secondary" href={`/staff/projects/proj_${result.context.invoice.projectId}?tab=invoices`}>Open project invoices and payment history</ButtonLink>
         <p>Checked {new Date(result.checkedAt).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland'})} (New Zealand time).</p>
         {result.limited && <p role="alert">This is a limited search, not a complete accounting history. Check Xero for other receipts.</p>}
       </Card>
@@ -118,7 +118,7 @@ export default function PaymentReview() {
           {!match.reversedAt && <details><summary>Correct this match</summary>
             <p>This removes the portal match with an audited reversal. It does not refund the customer or alter Xero. A fully paid invoice may reopen.</p>
             <form onSubmit={event => reverse(event,match)}>
-              <label>Reason<br/><textarea name="reason" required minLength={3} maxLength={1000} disabled={pending}/></label>
+              <label>Reason<Textarea name="reason" required minLength={3} maxLength={1000} disabled={pending}/></label>
               <p><label><input type="checkbox" name="confirmed" required disabled={pending}/> I confirm this portal match should be reversed.</label></p>
               <Button variant="destructive" type="submit" disabled={pending}>Reverse this match</Button>
             </form>

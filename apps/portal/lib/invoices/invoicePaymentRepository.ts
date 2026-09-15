@@ -4,7 +4,7 @@ import { supabaseServiceRole } from '../supabaseClient';
 import type { DepositApproval } from '../xero/paymentApproval';
 const cents = z.number().int().nonnegative().max(2147483647);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
-const schema = z.object({
+export const invoicePaymentContextSchema = z.object({
   invoice: z.object({ id: z.string().uuid(), projectId: z.string().uuid(), invoiceRef: z.string(),
     status: z.enum(['OPEN', 'PAID', 'VOID', 'DRAFT']), invoiceKind: z.enum(['QUOTE_LINKED', 'STANDALONE']),
     paymentTermPosition: z.number().int().nullable(), totalIncGstCents: cents, currency: z.string(),
@@ -13,10 +13,10 @@ const schema = z.object({
   customerWon: z.boolean(), hasUnmatchedPaymentHistory: z.boolean(), hasOtherSourceHistory: z.boolean(),
   providerInvoiceId: z.string().uuid(), expectedBody: z.string().max(1000000),
 });
-export type InvoicePaymentContext = z.infer<typeof schema>;
+export type InvoicePaymentContext = z.infer<typeof invoicePaymentContextSchema>;
 export async function loadInvoicePaymentContext(actor: string, invoiceId: string, tenantId: string): Promise<InvoicePaymentContext> {
   const result = await supabaseServiceRole.rpc('xero_invoice_payment_review_context', { p_actor: actor, p_invoice_id: invoiceId, p_tenant_id: tenantId });
-  const parsed = schema.safeParse(result.data);
+  const parsed = invoicePaymentContextSchema.safeParse(result.data);
   if (result.error || !parsed.success || parsed.data.invoice.id !== invoiceId) throw new Error('PAYMENT_REVIEW_UNAVAILABLE');
   return parsed.data;
 }

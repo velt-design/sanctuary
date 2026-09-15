@@ -18,7 +18,7 @@ export type FrozenInvoiceTransfer = {
 
 export type InvoiceTransferRepository = {
   /** Validates job/lease, active tenant, issued state and verified finance mapping. */
-  context(lease: InvoiceTransferLease): Promise<{ invoice: IssuedInvoiceForXero; mapping: XeroInvoiceMapping }>;
+  context(lease: InvoiceTransferLease): Promise<{ invoice: IssuedInvoiceForXero; mapping: XeroInvoiceMapping; targetStatus?: XeroDraftInvoice['Status'] }>;
   /** Atomically freezes or returns the original exact request. Never overwrites it. */
   prepare(lease: InvoiceTransferLease, request: { tenantId: string; draft: XeroDraftInvoice; body: string; bodyHash: string }): Promise<FrozenInvoiceTransfer>;
   /** Rechecks current lease, invoice/tenant gate and expiry before committing dispatch. */
@@ -41,7 +41,7 @@ class InvoiceTransferError extends Error {
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 export function validateFrozen(request: FrozenInvoiceTransfer): void {
-  if (request.draft.Status !== 'DRAFT' || request.draft.Type !== 'ACCREC'
+  if (!['DRAFT', 'AUTHORISED'].includes(request.draft.Status) || request.draft.Type !== 'ACCREC'
     || request.body !== JSON.stringify({ Invoices: [request.draft] })
     || sha256(request.body) !== request.bodyHash
     || !/^[a-zA-Z0-9._:-]{16,128}$/.test(request.idempotencyKey)
@@ -58,7 +58,7 @@ export async function executeInvoiceTransfer(
   now: () => number = Date.now,
 ): Promise<{ resultCode: 'XERO_DRAFT_VERIFIED'; processedCount: 1 }> {
   const context = await repository.context(lease);
-  const draft = mapIssuedInvoiceToXeroDraft(context.invoice, context.mapping);
+  const draft = mapIssuedInvoiceToXeroDraft(context.invoice, context.mapping, context.targetStatus);
   const body = JSON.stringify({ Invoices: [draft] });
   let frozen = await repository.prepare(lease, { tenantId: context.mapping.tenantId, draft, body, bodyHash: sha256(body) });
   validateFrozen(frozen);

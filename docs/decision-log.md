@@ -14,6 +14,14 @@ the Board query. Assert loading while unresolved, flush the query notification,
 then assert the returned Board. Always unmount test roots after failed assertions
 so live observers cannot contaminate later mutation tests. Schedule behavior is
 unchanged; focused coverage passes all 40 cases.
+## 2026-09-16 - Activate approved invoice and reconciled-payment automation
+
+Released PR135 with aligned pricing, verified migrations and fresh worker health before enabling tenant automation. The Jordan-approved genuine invoice transferred once to an AUTHORISED Xero invoice; the live page shows Awaiting payment and Sent unchecked. Ellen now has audited finance access. Keep native bank auto-reconciliation distinct from portal payment imports: Michelle has not confirmed that bank setting, and no genuine live receipt is claimed as end-to-end proof. The stopped-transfer recovery action says invoice transfer so it remains accurate for the approved-invoice policy and preserved legacy drafts. Owner: `xero-connection.md`.
+
+## 2026-09-16 - Gate finance resume on both setup prerequisites
+
+Customer-link and company-default saves are independent. A successful save of either is not evidence that an invoice transfer can resume. The mapping page now requires a verified customer link and accounting defaults matching the current Xero lookup before exposing Resume; the server still revalidates before queuing. Regression tests complete the two saves in both orders and ensure no resume action is offered after only the first. Owner: `xero-connection.md`.
+
 ## 2026-09-15 - Observe installed job kinds without requiring optional workflows
 
 The production finance worker reached the database but stayed unhealthy because its metrics parser required every package-known job kind, including the deliberately absent AI synthetic workflow. SQL correctly enumerates only installed registry rows. Keep status/lifecycle maps strict, validate installed kinds against the known registry, and preserve missing kinds as absent rather than fabricated zero counts. Package and RPC-boundary tests cover both database shapes. This avoids installing unrelated workflow migrations to satisfy monitoring. Owners: `supabase-schema-map.md`, `target-architecture.md`, `testing-and-qa.md`.

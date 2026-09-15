@@ -11,7 +11,7 @@ export type VerifiedReceipt = ReceiptCandidate & { contactId: string; transactio
 export type PilotMatch = {
   id: string; tenantId: string; receiptId: string; invoiceId: string; projectId: string;
   paymentEntryId: string; amountCents: number; receiptDate: string;
-  approvedBy: string; approvedAt: string; reversedAt: string | null; evidenceFingerprint: string;
+  approvedBy: string | null; approvedAt: string; reversedAt: string | null; evidenceFingerprint: string;
   sourceKind?: 'BANK_TRANSACTION' | 'INVOICE_PAYMENT'; providerInvoiceId?: string | null;
 };
 export type PilotSuggestion = PaymentSuggestion & { approvalToken: string | null; approvalId: string | null };

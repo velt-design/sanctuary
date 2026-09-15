@@ -34,7 +34,7 @@ export function reconcileXeroDraft(expected: XeroDraftInvoice, evidence: unknown
     || row.HasErrors === true || (Array.isArray(row.ValidationErrors) && row.ValidationErrors.length > 0)) {
     return { outcome: 'REVIEW_REQUIRED', reason: 'INVALID_RESPONSE' };
   }
-  if (row.Status !== 'DRAFT') return { outcome: 'REVIEW_REQUIRED', reason: 'NOT_A_DRAFT' };
+  if (!['DRAFT', 'AUTHORISED'].includes(expected.Status) || row.Status !== expected.Status) return { outcome: 'REVIEW_REQUIRED', reason: 'NOT_A_DRAFT' };
   const contact = record(row.Contact);
   if (row.Type !== expected.Type || row.InvoiceNumber !== expected.InvoiceNumber
     || row.Reference !== expected.Reference || contact?.ContactID !== expected.Contact.ContactID

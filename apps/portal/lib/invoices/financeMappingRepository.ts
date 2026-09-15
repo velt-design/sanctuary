@@ -12,6 +12,21 @@ export async function financeMappingContext(actor: string, invoiceId: string) {
   if (result.error || !parsed.success || parsed.data.invoiceId !== invoiceId) throw new Error('XERO_MAPPING_CONTEXT_UNAVAILABLE');
   return parsed.data;
 }
+const mappingStatusSchema = z.object({ sourceContactId: z.string().uuid(),
+  link: z.object({ contactId: z.string().uuid(), verifiedAt: z.string() }).nullable(),
+  defaults: z.object({ accountCode: z.string(), taxType: z.string(), effectiveRate: z.number() }).nullable() });
+export async function financeMappingStatus(actor: string, invoiceId: string, tenantId: string, sourceContactId: string) {
+  const result = await supabaseServiceRole.rpc('xero_finance_mapping_status', { p_actor: actor, p_invoice_id: invoiceId, p_tenant_id: tenantId });
+  const parsed = mappingStatusSchema.safeParse(result.data);
+  if (result.error || !parsed.success || parsed.data.sourceContactId !== sourceContactId) throw new Error('XERO_MAPPING_STATUS_UNAVAILABLE');
+  return parsed.data;
+}
+export async function saveFinanceSetup(input: { commandId: string; actor: string; invoiceId: string; tenantId: string; sourceContactId: string;
+  kind: 'customer' | 'defaults'; proof: XeroFinanceContact | { account: XeroRevenueAccount; tax: XeroRevenueTax } }) {
+  const result = await supabaseServiceRole.rpc('xero_finance_save_setup', { p_command_id: input.commandId, p_actor: input.actor,
+    p_invoice_id: input.invoiceId, p_tenant_id: input.tenantId, p_source_contact_id: input.sourceContactId, p_kind: input.kind, p_proof: input.proof });
+  if (result.error) throw new Error('XERO_MAPPING_SAVE_UNAVAILABLE');
+}
 export async function saveFinanceMapping(input: { commandId: string; actor: string; invoiceId: string; tenantId: string; sourceContactId: string;
   proof: { contact: XeroFinanceContact; account: XeroRevenueAccount; tax: XeroRevenueTax } }) {
   const result = await supabaseServiceRole.rpc('xero_finance_save_mapping', { p_command_id: input.commandId, p_actor: input.actor,
