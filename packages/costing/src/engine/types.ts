@@ -1083,7 +1083,6 @@ export type PergolaModuleCostInputV2 = {
     strut_profile?: string;
   };
 
-  ceiling?: CeilingSelection;
   timber_roof_above_type?: TimberRoofAboveType;
   timber_insulated_panel_thickness_mm?: number;
   timber_tray_width_mm?: number;
