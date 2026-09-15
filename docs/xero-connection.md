@@ -2,6 +2,8 @@
 
 Status: production draft-transfer pilot activated on 2026-09-15. The first genuine live invoice remains the owner walkthrough; payment approval stays manual.
 
+Current owner decision (2026-09-15): Jordan has explicitly replaced the draft-first policy. New portal-issued invoices should automatically become approved (`AUTHORISED`) invoices in Xero, with no second finance approval and no Xero customer email. Duplicate prevention, exact invoice/tax/customer verification, uncertain-result recovery and visible exceptions remain required. Existing frozen transfer requests must retain their original bytes and status. Implementation is in progress; this is not yet enabled in production. Earlier draft-first walkthrough instructions below are superseded as the target workflow, but describe the currently deployed behavior until this change is verified and activated.
+
 ## Finance clarity improvement loop
 
 Jordan requested small improvements toward an owner-validated 8/10 experience. Operational activation is not usability acceptance. Follow `ui-foundation.md`; keep each iteration bounded, test affected behavior, inspect rendered states, then choose the next source of confusion. Completion requires clear next actions and consequences across empty, historical issue, matched/unmatched customer, transfer/error and payment journeys on desktop/mobile, with owner feedback. Pricing and unrelated portal UI remain out of scope.

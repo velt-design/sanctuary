@@ -1,5 +1,7 @@
 # Testing And QA
 
+Automatic invoice approval: the Xero database harness applies `20260915000005_xero_automatic_approval.sql` and runs `supabase/tests/xero_automatic_approval.sql` for approved request freezing, lease/dispatch/finalisation, replay and preservation after the rollout switch changes. Transfer unit cases verify approved creation and refusal to accept a draft as the completed approved result. These checks do not prove a hosted Xero write; demo verification and production activation remain separate.
+
 Finance view regression: `supabase/tests/xero_finance_views.sql`, run by the existing background-jobs database harness, checks 55 historical payment exceptions plus60 ordinary historical invoices, filtering before pagination, legacy reader parity, revoked access and browser denial. Focused page/repository tests distinguish an empty queue from an unavailable read. Hosted migration and responsive browser evidence remain separate.
 
 Worker registry compatibility: `workerContracts.test.ts` and the real RPC response parser in `backgroundJobsRpcClient.test.ts` cover both complete and finance-only installed kind maps. Missing optional workflow kinds stay absent; unknown kinds, invalid counts, and incomplete status/lifecycle maps still fail. This targets the production dark-worker probe failure where `ai_synthetic_v1` was deliberately not installed. Hosted healthy-worker evidence is separate from these parser tests.

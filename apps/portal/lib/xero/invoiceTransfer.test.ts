@@ -44,6 +44,25 @@ function harness() {
 }
 
 describe('durable Xero draft transfer orchestration', () => {
+  it('creates an approved invoice once when the database selects automatic approval', async () => {
+    const h = harness();
+    const context = await h.repository.context(lease);
+    h.repository.context = vi.fn(async () => ({ ...context, targetStatus: 'AUTHORISED' as const }));
+    await h.run();
+    expect(h.stored().draft.Status).toBe('AUTHORISED');
+    await h.run();
+    expect(h.provider.createDraft).toHaveBeenCalledTimes(1);
+    expect(h.stored().body).not.toContain('Email');
+  });
+  it('refuses to report an approved transfer complete when Xero returns only a draft', async () => {
+    const h = harness();
+    const context = await h.repository.context(lease);
+    h.repository.context = vi.fn(async () => ({ ...context, targetStatus: 'AUTHORISED' as const }));
+    const read = h.provider.readInvoice;
+    h.provider.readInvoice = vi.fn(async (tenant, invoiceId) => ({ ...(await read(tenant, invoiceId) as object), Status: 'DRAFT' }));
+    await expect(h.run()).rejects.toThrow('XERO_INVOICE_CONFLICT');
+    expect(h.repository.finalise).not.toHaveBeenCalled();
+  });
   it('freezes before dispatch, verifies a fresh read and finalises once', async () => {
     const h = harness();
     expect(await h.run()).toEqual({ resultCode: 'XERO_DRAFT_VERIFIED', processedCount: 1 });

@@ -1,5 +1,7 @@
 # Supabase Schema Map
 
+Automatic invoice approval (20260915000005): adds private transfer-control auto_approve_enabled, default false for staged rollout. The actor/lease-checked context selects AUTHORISED for new requests when enabled and preserves the saved status for existing frozen requests. Prepare requires that exact status; immutable bytes, duplicate checks and grants remain unchanged. Activation and verification are tracked in xero-connection.md.
+
 Status: Current.
 
 Finance view filtering: `20260915000002_xero_finance_views.sql` adds the approver-checked, service-role-only `xero_finance_review_filtered(uuid,text,integer,text)` read contract. Attention/current/history selection precedes the 51-row lookahead and offset. Existing `xero_finance_review` delegates to the all-invoice view for compatibility. No accounting/queue records are mutated. Apply before deploying its Finance consumer; rollout evidence is owned by `xero-connection.md`.

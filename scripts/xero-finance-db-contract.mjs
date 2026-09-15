@@ -25,6 +25,8 @@ export function runXeroFinanceContracts({ repositoryRoot, migrationsDirectory, a
   applySql('supabase/migrations/20260915000002_xero_finance_views.sql', { singleTransaction: true });
   applySql('supabase/migrations/20260915000003_xero_mapping_status.sql', { singleTransaction: true });
   applySql('supabase/migrations/20260915000004_xero_separate_setup.sql', { singleTransaction: true });
+  applySql('supabase/migrations/20260915000005_xero_automatic_approval.sql', { singleTransaction: true });
+  applySql('supabase/tests/xero_automatic_approval.sql');
   applySql('supabase/tests/xero_separate_setup.sql');
   applySql('supabase/tests/xero_mapping_status.sql');
   applySql('supabase/tests/xero_finance_views.sql');
