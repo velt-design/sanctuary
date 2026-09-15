@@ -33,7 +33,7 @@ describe('fixed side panels',()=>{
     const roof={...INITIAL_ROOF,family,orientation},input={...INITIAL_INPUT,connection:'facade' as const};
     for(const o of previewBlindOpenings(input,roof))for(const kind of ['acrylic','timber','aluminium'] as const){
       const p=defaultSidePanel(o.id,kind),supports=sidePanelSupports(o,p);
-      expect(supports[0]).toBe(0);expect(supports.at(-1)).toBeCloseTo(o.width,2);
+      expect(supports[0]).toBe(0);expect(supports.at(-1)).toBeCloseTo(p.direction==='vertical'?(o.headerDepth?Math.max(...o.roofLine.map(p=>p.z)):o.top):o.width,2);
       const max=kind==='aluminium'?600:1200;
       expect(supports.slice(1).every((x,i)=>x-supports[i]<=max+.01)).toBe(true);
       const meshes=buildRepresentativeSidePanel(o,{...p,battens:kind==='acrylic'},supports);
@@ -53,7 +53,7 @@ describe('fixed side panels',()=>{
 
 it('uses wider on-edge defaults while preserving explicitly entered gaps',()=>{
   for(const [kind,profile,gap] of [['timber','65x39',80],['aluminium','65x16',100]] as const){
-    const p={...defaultSidePanel('left-1of1',kind),profile,edge:true};
+    const p={...defaultSidePanel('left-1of1',kind),profile,edge:true,customGap:false};
     expect(parseSidePanels([p])![0].gap).toBe(gap);
     expect(parseSidePanels([{...p,customGap:true,gap:42}])![0].gap).toBe(42);
   }

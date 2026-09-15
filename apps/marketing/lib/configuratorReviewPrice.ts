@@ -48,6 +48,14 @@ export function buildReviewSiteInputs({ input, roof }: PreviewDraft): SiteInputs
     const normal = solved.assembly.roofPlanes[0].plane.normal;
     module.roof_pitch_deg = Math.atan2(Math.hypot(normal.x, normal.y), Math.abs(normal.z)) * 180 / Math.PI;
   }
+  if (roof.attachmentIntent === 'freestanding') {
+    module.house_connection_type = 'none';
+    module.attachment_length_mm = 0;
+    const geometry = solvePergolaPreview(input, roof).geometry;
+    if (!geometry) throw new Error('Missing freestanding geometry');
+    module.post_count = geometry.assembly.members.filter(member => member.role === 'post').length;
+    delete module.flashings;
+  }
   site.pricing_classification = roof.family === 'mono' && finish.material === 'acrylic' ? 'simple' : 'bespoke';
   return site;
 }
@@ -56,6 +64,17 @@ export function buildReviewSiteInputs({ input, roof }: PreviewDraft): SiteInputs
 export function calculateConfiguratorPricing(draft: PreviewDraft, config: CostingConfigV1): {
   estimate: ReviewPrice; siteInputs?: SiteInputsV1; base?: ReturnType<typeof calculateConfiguredCustomerPriceV1>;
 } {
+  if (draft.roof.attachmentIntent === 'unsure') {
+    const connections = draft.roof.family === 'gable' && draft.roof.orientation === 'away'
+      ? ['fascia'] as const
+      : (['facade','fascia','soffit'] as const).filter(connection =>
+        !(draft.roof.family === 'box' && connection === 'fascia') && !(connection === 'soffit' && draft.input.projectionMm > 4000));
+    const options = connections.map(connection => calculateConfiguratorPricing({ ...draft,
+      input: { ...draft.input, connection }, roof: { ...draft.roof, attachmentIntent: undefined } }, config));
+    const priced = options.filter(option => option.estimate.status === 'priced' && !option.estimate.excluded.length);
+    return priced.sort((a,b) => (a.estimate.status === 'priced' ? a.estimate.amount : Infinity) - (b.estimate.status === 'priced' ? b.estimate.amount : Infinity))[0]
+      ?? options[0] ?? { estimate: { status: 'unavailable' } };
+  }
   // Check the unrounded footprint, including exact boundary equality.
   const limit = draft.input.level === 'ground' ? 30 : 20;
   if (draft.input.widthMm * draft.input.projectionMm > limit * 1_000_000) {

@@ -19,7 +19,7 @@ export default function ShareDesign({ draft, estimate }: { draft: PreviewDraft; 
     try {
       if (native) await navigator.share({ title: 'My Sanctuary pergola', url });
       else await navigator.clipboard.writeText(url);
-      setFeedback({ design, message: native ? 'Share menu opened.' : 'Link copied — keep it or send it to someone.' });
+      setFeedback({ design, message: native ? 'Share menu opened.' : 'Link copied. Keep it or send it to someone.' });
     } catch (error) {
       if (native && error instanceof Error && error.name === 'AbortError') setFeedback(null);
       else setFeedback({ design, message: 'Copy this link to save or share your design.', fallback: url });

@@ -3,7 +3,7 @@ export const ALUMINIUM_PROFILES=['50x10','65x16'] as const;
 export type SidePanel={species?:'cedar'|'thermopine';opening:string;kind:'acrylic'|'timber'|'aluminium';profile:string;edge:boolean;gap:number;customGap:boolean;frame:50|100;battens:boolean;direction?:'horizontal'|'vertical'};
 export const faceWidth=(profile:string,edge:boolean)=>Number(profile.split('x')[edge?1:0]);
 export const defaultSideGap=(profile:string,edge:boolean)=>edge&&profile==='65x16'?100:edge&&profile==='65x39'?80:faceWidth(profile,edge);
-export const defaultSidePanel=(opening:string,kind:SidePanel['kind']):SidePanel=>({opening,kind,...(kind!=='aluminium'?{species:'thermopine' as const}:{}),profile:kind==='aluminium'?'65x16':'90x39',edge:false,gap:kind==='aluminium'?65:90,customGap:false,frame:50,battens:false});
+export const defaultSidePanel=(opening:string,kind:SidePanel['kind']):SidePanel=>({opening,kind,...(kind!=='aluminium'?{species:'thermopine' as const}:{}),profile:kind==='aluminium'?'65x16':'90x39',edge:kind!=='acrylic',gap:kind==='acrylic'?90:100,customGap:kind!=='acrylic',frame:50,battens:false,...(kind!=='acrylic'?{direction:'vertical' as const}:{})});
 export function parseSidePanels(value:unknown):SidePanel[]|null {
   if(!Array.isArray(value)||value.length>16)return null;
   const seen=new Set<string>(),result:SidePanel[]=[];

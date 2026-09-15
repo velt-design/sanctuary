@@ -2,7 +2,10 @@
 
 import { useReviewPrice } from './useReviewPrice';
 import ReviewPriceDisplay from './ReviewPriceDisplay';
-import RailProvider from './RailProvider';
+import RailProvider, { useRail } from './RailProvider';
+import DesignReview, {ReviewNextSteps} from './DesignReview';
+import PersonaliseOverview, {PersonaliseSectionHeading} from './PersonaliseOverview';
+import JourneyEstimate from './JourneyEstimate';
 import ConfiguratorRail from './ConfiguratorRail';
 import LightingProvider,{useLighting} from './LightingProvider';
 import LightingControls from './LightingControls';
@@ -12,7 +15,7 @@ import { type ReactNode } from 'react';
 import type { SimpleCoverInput, SimpleCoverPublicResult } from '../../lib/simpleCoverCalculator';
 import type { PreviewRoofChoices } from './GableChoices';
 import { simpleCoverAreaM2 } from '../../lib/simpleCoverCalculator';
-import { metres } from './model';
+import DimensionShortcut from './DimensionShortcut';
 import PreviewControls from './PreviewControls';
 import { usePreviewPrice } from './usePreviewPrice';
 import { useConfiguratorPrice } from './useConfiguratorPrice';
@@ -42,36 +45,43 @@ export default function ConfiguratorPrototype({ expanded, onToggleExpanded, rend
 function ConfiguratorWorkspace({draft,expanded,onToggleExpanded,renderEnquiry}:{draft:ReturnType<typeof usePreviewDraft>;expanded:boolean;onToggleExpanded:()=>void;renderEnquiry?:(selection:PreviewSelection)=>ReactNode}){
   const {input,roof,setInput,setRoof,ready,storageAvailable,linkNotice,selectionNotice}=draft;
   const lighting=useLighting()!;
+  const rail=useRail();
+  const lightingNotice = selectionNotice?.startsWith('Some lights no longer fit') ? 'Your roof change affected some lights. Check your lighting choices.' : undefined;
   const reviewPrice = useReviewPrice(input, roof, ready);
   const { price: configuratorPrice, retry: retryConfigured } = useConfiguratorPrice({ version: 1, input, roof }, ready);
   const { result, retry } = usePreviewPrice(input, ready && hasSimpleRoofPrice(roof) && configuratorPrice?.status === 'disabled');
   const estimate = displayedEstimate(hasSimpleRoofPrice(roof) ? result : null, process.env.NODE_ENV === 'development' ? reviewPrice : undefined, configuratorPrice);
   const { activeDimension, showDimension } = usePreviewDimension();
   if (!ready) return <div className={styles.loading} role="status">Preparing your design…</div>;
-  return <PreviewBlindProvider input={input} roof={roof} onChange={setRoof}><div className={styles.page} data-lighting-edit={lighting.editing} data-night={lighting.night} data-layout={renderEnquiry ? 'project' : 'popup'}>
+  return <PreviewBlindProvider input={input} roof={roof} onChange={setRoof}><div className={styles.page} data-lighting-edit={lighting.editing} data-night={lighting.night} data-expanded={expanded} data-layout={renderEnquiry ? 'project' : 'popup'}>
     <div className={styles.workspace}>
       <div className={styles.visualSlot}>
       <section className={styles.visual} aria-label="Pergola views" data-expanded={expanded}>
         <PreviewViews input={input} roof={roof} activeDimension={activeDimension} expanded={expanded} onToggleExpanded={onToggleExpanded} />
-        <div className={styles.specStrip}><span><strong>{metres(input.widthMm)}</strong> width</span><span><strong>{metres(input.projectionMm)}</strong> projection</span><span><strong>{simpleCoverAreaM2(input).toFixed(1)} m²</strong> covered space</span></div>
+        <div className={styles.specStrip}><DimensionShortcut axis="width" value={input.widthMm}/><DimensionShortcut axis="projection" value={input.projectionMm}/><span><strong>{simpleCoverAreaM2(input).toFixed(1)} m²</strong> covered space</span><div className={journey.desktopEstimate}><JourneyEstimate selection={{input,roof,result,configuratorPrice}} reviewPrice={process.env.NODE_ENV === 'development' ? reviewPrice : undefined}/></div></div>
       </section>
       </div>
       <div className={styles.choicesColumn}>
       <aside className={styles.sidebar} aria-label="Your pergola choices">
-        <ConfiguratorRail input={input} roof={roof}/>
+        <ConfiguratorRail/>
+        <PersonaliseSectionHeading/>
+        {selectionNotice && !lightingNotice && <p className={styles.inputNotice} role="status">{selectionNotice}</p>}
+        {lightingNotice && rail.section==='lighting' && <p className={journey.selectionNote} role="status">{lightingNotice}</p>}
         {renderEnquiry && <div id="project-design" />}
         {linkNotice && <p className={styles.storageNotice} role="status">{linkNotice === 'loaded' ? reopenedEstimateNotice(draft.sharedEstimate, estimate) : 'This design link could not be opened. You can continue designing below.'}</p>}
-        {lighting.editing?<LightingControls/>:<><PreviewControls input={input} roof={roof} onRoofChange={setRoof} onChange={setInput} onDimensionActivity={showDimension} />
+        {rail.section==='personalise'?<PersonaliseOverview roof={roof} lightingNotice={lightingNotice}/>:rail.section==='review'?<DesignReview input={input} roof={roof} lightingNotice={lightingNotice}/>:lighting.editing?<LightingControls onPreview={()=>{if(window.matchMedia('(max-width: 720px)').matches&&!expanded)onToggleExpanded();}}/>:<><PreviewControls input={input} roof={roof} onRoofChange={setRoof} onChange={setInput} onDimensionActivity={showDimension} />
         </>}
-        <div hidden={lighting.editing}>
-        {selectionNotice && <p className={styles.inputNotice} role="status">{selectionNotice}</p>}
-        <section className={styles.price} aria-label="Estimated price" aria-live="polite" aria-atomic="true">
+        <div hidden={rail.section!=='review'}>
+
+        <section id="configurator-price-breakdown" tabIndex={-1} className={styles.price} aria-label="Estimated price" aria-live="polite" aria-atomic="true">
           <p className={styles.eyebrow}>{roof.family === 'gable' ? 'YOUR GABLE PERGOLA' : roof.family === 'box' ? 'YOUR BOX PERIMETER PERGOLA' : 'YOUR PITCHED PERGOLA'}</p>
-          {configuratorPrice?.status !== 'disabled' ? <PublishedPriceDisplay value={configuratorPrice} retry={retryConfigured}/> : process.env.NODE_ENV === 'development' ? <ReviewPriceDisplay value={reviewPrice}/> : !hasSimpleRoofPrice(roof) ? <><p className={styles.priceValue}>Your pergola, taking shape.</p><p className={styles.small}>Explore the design here. Your selected roof pricing will be confirmed by Sanctuary.</p></> : !result ? <p className={styles.priceValue}>Updating estimate…</p> : result.status === 'priced'
+          {configuratorPrice?.status !== 'disabled' ? <PublishedPriceDisplay value={configuratorPrice} retry={retryConfigured} hasInfills={!!(roof.family==='gable'&&roof.infills)||!!roof.blinds?.some(blind=>blind.infill)}/> : process.env.NODE_ENV === 'development' ? <ReviewPriceDisplay value={reviewPrice}/> : !hasSimpleRoofPrice(roof) ? <><p className={styles.priceValue}>Your pergola, taking shape.</p><p className={styles.small}>Explore the design here. Your selected roof pricing will be confirmed by Sanctuary.</p></> : !result ? <p className={styles.priceValue}>Updating estimate…</p> : result.status === 'priced'
             ? <><p className={styles.priceValue}><span>From </span>{new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD', maximumFractionDigits: 0 }).format(result.price.fromIncGst)}</p><p className={styles.small}>Including GST · Subject to site confirmation</p></>
             : result.status === 'custom' ? <><p className={styles.priceValue}>A custom fit.</p><p className={styles.small}>{result.reason}</p></>
             : <><p>Estimate unavailable. Keep exploring your design.</p><button className={styles.textButton} onClick={retry}>Retry estimate ↗</button></>}
         </section>
+        <ReviewNextSteps/>
+        {!renderEnquiry && <div className={journey.mobileReviewTools}><button className={styles.textButton} onClick={()=>rail.choose('personalise')}>Back to Personalise</button><ShareDesign draft={{version:1,input,roof}} estimate={estimate}/></div>}
         {!storageAvailable && <p className={styles.storageNotice} role="status">Your design is available as you move between these previews, but cannot be saved for a page refresh in this browser.</p>}
         {renderEnquiry && <div className={journey.projectShare}><ShareDesign draft={{ version: 1, input, roof }} estimate={estimate} /></div>}
         {renderEnquiry?.({ input, roof, result, configuratorPrice })}

@@ -20,13 +20,14 @@ export default function BlindControls() {
     if(error){setNotice(error);return;}
     setNotice('');update(blinds.map(b=>b.opening===selected?next:b));
   }
-  return <section className={css.controls} aria-label="Outdoor blinds">
-    <div className={styles.sectionLabel}><h2>Sides & blinds</h2></div>
-    <p className={styles.small}>Choose an opening below or tap it in the view. Then choose how to enclose it.</p>
-    <div className={css.openings}>{openings.map(o=><button key={o.id} aria-pressed={selected===o.id} onClick={()=>{select(o.id);setNotice('');}}>{o.label}<small>{(o.width/1000).toFixed(2)} m · {panels.find(p=>p.opening===o.id)?.kind??(blinds.some(b=>b.opening===o.id)?'Blind':'Open')}</small></button>)}</div>
-    {!opening && <p className={styles.small} role="status">Choose an opening to edit its sides or blinds.</p>}
+  return <section className={css.controls} aria-label="Sides & privacy">
+    <div className={styles.sectionLabel}><h2>Sides & privacy</h2></div>
+    <p className={styles.small}>Choose a space between the posts, then choose a blind or screen. Select a space to see it highlighted in the view.</p>
+    <div className={css.openingGroups}>{(['front','left','right'] as const).map(side=><fieldset key={side} className={css.openingGroup}><legend>{side==='front'?'Front · garden-facing':side==='left'?'Left side':'Right side'}</legend><div className={css.openings}>{openings.filter(o=>o.side===side).map(o=><button key={o.id} aria-pressed={selected===o.id} onClick={()=>{select(o.id);setNotice('');}}><strong>{o.label}</strong><span>{(o.width/1000).toFixed(2)} m wide</span><small>{({acrylic:'Acrylic panels',timber:'Timber slats',aluminium:'Aluminium slats'} as const)[panels.find(p=>p.opening===o.id)?.kind as 'acrylic'|'timber'|'aluminium']??(blinds.some(b=>b.opening===o.id)?'Ziptrak blind':'Open')}</small></button>)}</div></fieldset>)}</div>
+    {!opening && <p className={styles.small} role="status">Select a space above. It will be outlined in the view.</p>}
     {opening && <>
-      <fieldset className={styles.choices}><legend>{opening.label}</legend>{([['open','Open'],['blind','Ziptrak blind'],['acrylic','Acrylic panels'],['timber','Timber slats'],['aluminium','Aluminium slats']] as const).map(([value,name])=><label key={value} data-selected={kind===value}>
+      <div className={css.editingHeading}><h3>Editing {opening.label}</h3><p>{(opening.width/1000).toFixed(2)} m wide · outlined in the view</p></div>
+      <fieldset className={`${styles.choices} ${css.sideKinds}`}><legend>Choose a finish for this space</legend>{([['open','Open'],['blind','Ziptrak blind'],['acrylic','Acrylic panels'],['timber','Timber slats'],['aluminium','Aluminium slats']] as const).map(([value,name])=><label key={value} data-selected={kind===value}>
         <input type="radio" name="blind-enabled" checked={kind===value} disabled={value==='blind'&&Boolean(blindUnavailable(opening))} onChange={()=>{setNotice('');workspace.setKind(value);}}/>{name}</label>)}</fieldset>
       {panel&&<SidePanelControls panel={panel} onChange={workspace.setPanel}/>}
       {!panel&&blindUnavailable(opening) && <p className={styles.inputNotice}>{blindUnavailable(opening)} This opening needs a separate design review.</p>}

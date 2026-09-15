@@ -150,3 +150,19 @@
  .viewToolbar:has(.timeTabs button:disabled) .timeTabs{display:none}
  .viewToolbar:has(.timeTabs button:disabled) .viewActions{width:auto;margin-left:auto}
 }
+
+.specStrip{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(220px,1.7fr);align-items:center;padding-block:14px}.sidebar{scroll-padding-top:90px}.specStrip>div strong{margin-bottom:0;font-size:24px}.specStrip>div span{display:block;font-size:10px}
+@media(max-width:1000px) and (min-width:721px){.specStrip{grid-template-columns:repeat(3,1fr)}.specStrip>div{grid-column:1/-1}}
+@media(max-width:720px){.specStrip{grid-template-columns:repeat(3,minmax(0,1fr));padding:8px 10px}.workspace{grid-template-rows:40% minmax(0,1fr)}.sidebar{scroll-padding-top:60px}}
+
+.price{scroll-margin-top:90px}@media(max-width:720px){.price{scroll-margin-top:60px}}
+
+.dimensionShortcut{border:0;background:transparent;text-align:left;padding:0;min-height:44px;color:var(--color-text-primary);cursor:pointer;font:inherit}.dimensionShortcut:hover strong{text-decoration:underline;text-underline-offset:4px}.dimensionShortcut span{display:block}@media(max-width:720px){.dimensionShortcut span{display:inline}.dimensionShortcut{font-size:9px;white-space:nowrap}}
+
+@media(max-width:720px){
+ .workspace{grid-template-rows:32% minmax(0,1fr)}
+ .visual:not([data-expanded=true]) .timeTabs,.visual:not([data-expanded=true]) .viewActions>button:not(.expandView),.visual:not([data-expanded=true]) .viewerFooter,.visual:not([data-expanded=true]) .nightPrompt{display:none}
+ .visual:not([data-expanded=true]) .viewToolbar{flex-wrap:nowrap;margin:6px 8px 0}.visual:not([data-expanded=true]) .viewActions{width:auto;margin-left:auto;order:0}.visual:not([data-expanded=true]) .viewTabs button{min-height:36px;padding:0 12px}.visual:not([data-expanded=true]) .expandView{min-height:44px}
+ .visual:not([data-expanded=true]) .specStrip{padding:2px 10px;gap:6px}.visual:not([data-expanded=true]) .dimensionShortcut{min-height:28px}
+ .visual[data-expanded=true]{z-index:8}.page[data-expanded=true] .choicesColumn{visibility:hidden}.visual[data-expanded=true] .specStrip{display:none}.visual[data-expanded=true] .viewActions{width:auto;order:0;margin-left:auto}.visual[data-expanded=true] .viewActions>button:not(.expandView){display:none}.visual[data-expanded=true] .viewToolbar{flex-wrap:wrap}.visual[data-expanded=true] .viewerFooter{padding-bottom:max(8px,env(safe-area-inset-bottom))}
+}

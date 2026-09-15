@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {DEFAULT_PREVIEW_DRAFT} from '../../../components/configurator-prototype/previewDraft';
 
 type TableName = 'audit_events' | 'contacts' | 'enquiry_requests' | 'estimates' | 'projects';
 type Row = Record<string, any>;
@@ -379,6 +380,17 @@ describe('POST /api/enquiry attribution', () => {
     }) }));
     expect(response.status).toBe(422);
     expect(h.createClient).not.toHaveBeenCalled();
+  });
+
+  it('accepts an omitted phone only for a valid configured discussion and still requires suburb',async()=>{
+    const {POST}=await import('./route');
+    const {client}=makeDb();h.createClient.mockReturnValue(client);
+    const payload={submissionId:SUBMISSION_ID,enquiryType:'residential',name:'Alex',email:'alex@example.test',phone:'',suburb:'Albany',requestType:'project-discussion',customerDesign:DEFAULT_PREVIEW_DRAFT};
+    const send=(value:unknown)=>POST(new Request('http://localhost/api/enquiry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(value)}));
+    expect((await send({...payload,suburb:''})).status).toBe(422);
+    expect((await send({...payload,customerDesign:{version:999}})).status).toBe(422);
+    expect((await send({...payload,phone:'bad'})).status).toBe(422);
+    const response=await send(payload);expect(response.status).toBe(200);
   });
 
   it('rejects an invalid design before any database writes', async () => {

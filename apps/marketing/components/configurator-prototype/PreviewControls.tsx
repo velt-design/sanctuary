@@ -17,6 +17,7 @@ import { constrainPreviewConnection, metres, PREVIEW_SOFFIT_MAX_PROJECTION_MM } 
 import type { PreviewDimensionAxis } from './usePreviewDimension';
 import AttachmentChoices from './AttachmentChoices';
 import styles from './prototype.module.css';
+import ui from './sectionControls.module.css';
 import slider from '../simple-cover-calculator/SimpleCoverCalculator.module.css';
 import GableChoices, { RoofTypeChoice, type PreviewRoofChoices } from './GableChoices';
 
@@ -83,9 +84,10 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
     onChange(valid);
   }
   return <div className={styles.controls}>
-    <div hidden={section!=='structure'}>
+    <div className={ui.section} hidden={section!=='structure'}>
     <div className={styles.sectionLabel}><h2>Size & shape</h2></div>
     <RoofTypeChoice value={roof} onChange={updateRoof} />
+    <p className={styles.small}>{roof.attachmentIntent==='freestanding'?'Choose the width and projection of your freestanding pergola.':'Width runs along the house. Projection is how far your pergola extends out from it.'}</p>
     <div className={styles.dimensions}>
     <Dimension axis="width" onActivity={onDimensionActivity} label="Width" value={input.widthMm} min={Math.max(SIMPLE_COVER_WIDTH_MIN_MM, CUSTOMER_DIMENSION_BOUNDS.lengthMm.minimum)} max={SIMPLE_COVER_WIDTH_MAX_MM}
       onChange={(widthMm) => update({ ...input, widthMm })} />
@@ -95,11 +97,17 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
     {projectionMax < SIMPLE_COVER_PROJECTION_MAX_MM && <p className={styles.inputNotice}>Maximum projection for this roof: {metres(projectionMax)}.</p>}
     {projectionNotice && <p className={styles.inputNotice} role="status">{projectionNotice}</p>}
     <GableChoices value={roof} onChange={updateRoof} />
-    <div className={styles.sectionLabel}><h2>House connection</h2></div>
-    {roof.family === 'gable' && roof.orientation === 'away' ? <p className={styles.small}>Fascia attachment · Dutch-gable roof</p>
+    <div className={ui.group}><div className={styles.sectionLabel}><h2>House connection</h2></div>
+    <fieldset className={styles.choices}><legend>Position</legend>
+      {(['attached','freestanding','unsure'] as const).map(choice=><label key={choice} data-selected={(roof.attachmentIntent??'attached')===choice}>
+        <input type="radio" name="pergola-position" checked={(roof.attachmentIntent??'attached')===choice} onChange={()=>updateRoof({...roof,attachmentIntent:choice==='attached'?undefined:choice})}/>
+        {choice==='attached'?'Attached to house':choice==='freestanding'?'Freestanding':'Not sure'}
+      </label>)}
+    </fieldset>
+    {roof.attachmentIntent==='freestanding'?<p className={styles.small}>Supported by posts, with no house connection.</p>:roof.attachmentIntent==='unsure'?<p className={styles.small}>Your estimate uses the lowest-priced available attachment. We’ll confirm what suits your home.</p>:roof.family === 'gable' && roof.orientation === 'away' ? <p className={styles.small}>Fascia attachment · Dutch-gable roof</p>
       : <><AttachmentChoices key={roof.family} allowFascia={roof.family !== 'box'} value={input.connection} soffitUnavailable={soffitUnavailable} onChange={connection => update({ ...input, connection })} />
     {soffitUnavailable && <p className={styles.inputNotice} role="status">{connectionNotice}Soffit brackets are available up to 4.0 m projection.</p>}</>}
-    <fieldset className={styles.choices}><legend>Site level</legend>
+    <fieldset className={`${styles.choices} ${ui.options}`}><legend>Site level</legend>
       {(['ground', 'elevated'] as const).map((level) => <label key={level} data-selected={input.level === level}>
         <input type="radio" name="level" value={level} checked={input.level === level}
           onChange={() => update({ ...input, level })} />{level === 'ground' ? 'Ground level' : 'Elevated'}
@@ -107,7 +115,8 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
     </fieldset>
     {input.level === 'elevated' && <p className={styles.small}>First-floor deck · shown 2.7 m above ground.</p>}
     </div>
-    <div hidden={section!=='roof'}><div className={styles.sectionLabel}><h2>Roof & ceiling</h2></div>
+    </div>
+    <div hidden={section!=='roof'}><div className={styles.sectionLabel}><h2>Roof & ceiling</h2></div><p className={ui.intro}>Choose your balance of daylight, shade and timber finishes.</p>
     <RoofFinishChoices roof={roof} input={input} onChange={updateRoof} />
     <RoofBattenControls roof={roof} onChange={updateRoof} />
     {roof.family === 'box' && <div className={styles.gableChoices}><p className={styles.small}>A level frame with the roof tucked inside. The roof changes to a shallow gable when needed to maintain drainage.</p></div>}

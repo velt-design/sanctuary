@@ -24,8 +24,6 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
   const [selectedView, setView] = useState<'3D' | 'Plan'>('3D');
   const view=lighting?.view??selectedView;
   const changeView=(v:'3D'|'Plan')=>lighting?lighting.setView(v):setView(v);
-  const [reset, setReset] = useState(0);
-  const [fit, setFit] = useState(0);
   const [surroundings, setSurroundings] = useState(true);
   const artifact = useMemo(() => solvePergolaPreview(input, roof), [input, roof]);
   const geometry = artifact.geometry;
@@ -38,11 +36,6 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
         <button key={name} aria-pressed={view === name} onClick={() => changeView(name)}>{name}</button>)}</div>
       {lighting && (view === 'Plan' ? <div className={styles.timeTabs}><button onClick={() => { lighting.setNight(hasLighting(lighting.value)); changeView('3D'); }}>{hasLighting(lighting.value) ? 'Preview lighting in 3D' : 'Preview in 3D'} ↗</button></div> : <div className={styles.timeTabs} role="group" aria-label="Time of day">{[false,true].map(n => <button key={String(n)} aria-pressed={lighting.night===n} onClick={()=>lighting.setNight(n)}>{n?'Night':'Day'}</button>)}</div>)}
       <div className={styles.viewActions}>
-      {blinds && !lighting?.editing && <button aria-label="Edit sides" aria-pressed={blinds.editing} onClick={()=>rail.choose(rail.section==='sides'?'structure':'sides')}>Sides</button>}
-      {view === '3D' && renderable && <>
-        <button aria-label="Fit view" title="Fit the pergola at your current angle" onClick={() => setFit(fit + 1)}>Fit</button>
-        <button aria-label="Reset view" title="Return to the starting view" onClick={() => { setReset(reset + 1); }}>Reset</button>
-      </>}
         <button className={styles.expandView} aria-label={expanded ? 'Close expanded view' : 'Expand view'} aria-expanded={expanded} onClick={onToggleExpanded}>{expanded ? 'Done' : 'Expand'} <span aria-hidden="true">{expanded ? '×' : '↗'}</span></button>
       </div>
     </div>
@@ -56,15 +49,15 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
       data-post-count={renderable ? geometry.plan.members.posts.length : undefined}>
       {renderable ? <>
         <div className={styles.sceneLayer} aria-hidden={view !== '3D'} style={{ visibility: view === '3D' ? 'visible' : 'hidden' }}>
-          <PreviewScene covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D'} activeDimension={activeDimension} plan={geometry.plan} reset={reset} fit={fit} onFallback={() => changeView('Plan')} />
+          <PreviewScene showReferenceBase={surroundings} covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D'} activeDimension={activeDimension} plan={geometry.plan} reset={0} fit={0} onFallback={() => changeView('Plan')} />
         </div>
         {view === 'Plan' && <PreviewPlan profile={roof.finish?.profile} trayWidth={roof.finish?.trayWidth} roofPlanes={geometry.assembly.roofPlanes} covering={covering} plan={geometry.plan} flashings={geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
       </>
         : <div className={styles.loading} role="status">{artifact.messages[0]?.message || 'This design needs a closer look. Adjust your dimensions to continue.'}</div>}
     </div>
-    {lighting?.night&&!hasLighting(lighting.value)&&<div className={styles.nightPrompt}>Your design has no lights yet. <button onClick={lighting.open}>Add lighting</button></div>}
+    {lighting?.night&&!hasLighting(lighting.value)&&<div className={styles.nightPrompt}>Your design has no lights yet. <button onClick={()=>{lighting.open();if(expanded&&window.matchMedia('(max-width: 720px)').matches)onToggleExpanded();}}>Add lighting</button></div>}
     <div className={styles.viewerFooter}><p className={styles.viewNote}>{view === '3D' ? <><span className={styles.mouseHint}>Drag to rotate · Scroll to zoom</span><span className={styles.touchHint}>Drag ↔ · Pinch to zoom</span></> : renderable
-      ? lighting?.editing ? <>{lighting.tool==='strip'?'Tap beams or rafters to add LED strips · Gold means selected':lighting.tool==='rafter'?'Rafter lights are placed automatically':lighting.tool==='cedar'?'Cedar lights are centred between rafters':'Choose a lighting type to begin'}</> : <>Hover or tap a side to edit<span className={styles.desktopNote}> · {geometry.plan.members.posts.length} posts</span></>
+      ? lighting?.editing ? <>{lighting.tool==='strip'?'Tap beams or rafters to add LED strips · Gold means selected':lighting.tool==='rafter'?'Rafter lights are placed automatically':lighting.tool==='cedar'?'Cedar lights are centred between rafters':'Choose a lighting type to begin'}</> : rail.section==='roof' ? <>Roof plan · looking down from above</> : <>Hover or tap a side to edit<span className={styles.desktopNote}> · {geometry.plan.members.posts.length} posts</span></>
       : 'Adjust your selections to preview the frame.'}
       {renderable && roof.family === 'box' && <span> · Internal {geometry.assembly.roofPlanes.length === 2 ? 'gable' : 'pitched'} roof</span>}</p>
       {renderable && !(lighting?.editing&&view==='Plan') && <label className={styles.contextToggle}><input type="checkbox" checked={surroundings} onChange={(event) => setSurroundings(event.target.checked)} />Show surroundings</label>}

@@ -32,5 +32,5 @@ export default function StaffRevisionReturn({draft}: {draft: PreviewDraft}) {
   useEffect(() => setCurrentUrl(window.location.href), []);
   const href = currentUrl ? staffRevisionReturnUrl(currentUrl, draft, process.env.NODE_ENV !== 'production', process.env.NEXT_PUBLIC_STAFF_PORTAL_ORIGIN) : null;
   return href ? <a href={href}>Review revision in portal ↗</a>
-    : <Link href="/contact?configurator=preview" prefetch={false} aria-label="Continue with this design">Continue ↗</Link>;
+    : <Link href="/design-enquiry" prefetch={false}>Enquire about this design ↗</Link>;
 }

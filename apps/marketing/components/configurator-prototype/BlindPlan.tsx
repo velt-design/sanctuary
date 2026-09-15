@@ -2,13 +2,14 @@ import { usePreviewBlinds } from './PreviewBlindProvider';
 import SidePanelPlan from './SidePanelPlan';
 import styles from './PlanOpening.module.css';
 
-export default function BlindPlan({scale}:{scale:number}) {
+export default function BlindPlan({scale,contextOnly=false}:{scale:number;contextOnly?:boolean}) {
   const workspace=usePreviewBlinds();
   if(!workspace)return null;
   const centreX=workspace.openings.reduce((sum,o)=>sum+o.start.x+o.end.x,0)/Math.max(1,workspace.openings.length*2);
   return <g>{workspace.openings.map(o=>{
     const panel=workspace.panels.find(p=>p.opening===o.id);
     const blind=workspace.blinds.find(b=>b.opening===o.id);
+    if(contextOnly)return panel||blind?<line key={o.id} x1={o.start.x} y1={o.start.y} x2={o.end.x} y2={o.end.y} stroke="#91998e" strokeOpacity={.4} strokeWidth={1} vectorEffect="non-scaling-stroke" pointerEvents="none"/>:null;
     const selected=workspace.editing&&workspace.selected===o.id;
     const vertical=Math.abs(o.end.y-o.start.y)>Math.abs(o.end.x-o.start.x);
     const x=(o.start.x+o.end.x)/2+(vertical?(o.start.x<centreX?38:-38)/scale:0);

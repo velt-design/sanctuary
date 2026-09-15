@@ -5,9 +5,9 @@ import AttachmentSection from './AttachmentSection';
 import styles from './attachmentDetails.module.css';
 
 const DESCRIPTIONS: Record<SimpleCoverConnection, string> = {
-  fascia: 'The ledger fixes against the fascia, beneath your existing gutter.',
-  soffit: 'L-shaped brackets support the ledger from underneath. Its top aligns with the gutter, with 5 mm clearance.',
-  facade: 'The ledger fixes directly to the wall, typically at the lower level of a two-storey home.',
+  fascia: 'Fixes to the fascia board just below your gutter.',
+  soffit: 'Brackets connect beneath the eaves, the overhang at the edge of your roof.',
+  facade: 'Fixes directly to the house wall, often beneath the upper storey of a two-storey home.',
 };
 
 export default function AttachmentChoices({ value, soffitUnavailable, onChange, allowFascia = true }: {
@@ -58,6 +58,7 @@ export default function AttachmentChoices({ value, soffitUnavailable, onChange, 
       <button type="button" aria-label={`About ${option.label} attachment`} aria-expanded={active === option.value}
         onClick={() => { cancel(); setActive(current => current === option.value ? null : option.value); }}><span aria-hidden="true">i</span></button>
     </div>)}
+    <p className={styles.connectionHint}>{DESCRIPTIONS[value]}</p>
     {active && createPortal(<div ref={card} className={styles.card} style={position} role="dialog" aria-label={`${label} attachment detail`}
       onPointerEnter={cancel} onPointerLeave={event => { if (event.pointerType === 'mouse') closeSoon(); }}>
       <div className={styles.heading}><strong>{label}</strong><button type="button" aria-label="Close attachment detail" onClick={() => setActive(null)}>×</button></div>

@@ -17,7 +17,7 @@ export function representativeBoxRoofMaxProjection(finish: RepresentativeRoofFin
 /** Fit a level ceiling and the representative roof layers inside the 300mm box.
  * Retains the preview's 3-degree layout rule; not a manufacturer suitability check. */
 export function prepareBoxRoofFinish(assembly: Assembly3D, finish: RepresentativeRoofFinish, projection: number) {
-  const perimeter = assembly.members.find(m => m.role === 'ledger')!;
+  const perimeter = assembly.members.find(m => m.id === 'box-rear')!;
   const bottom = perimeter.centerline.start.z - 150;
   const envelope = boxRoofEnvelope(finish);
   const eave = bottom + envelope.eaveOffset;

@@ -5300,3 +5300,109 @@ total. V1/V2 input/output hashes were unchanged. No send attempt was made. The
 360/390/430-pixel browser matrix found undersized secondary touch targets; mobile
 view controls, sharing, dimension inputs and disclosures now use 44-pixel targets.
 Physical-device validation remains distinct from browser viewport evidence.
+
+### 2026-09-15 — Local working UI review loop
+
+The isolated UI worktree adds visible Size & structure, Roof & ceiling, Sides &
+privacy, Lighting and Review navigation. Next/Back actions keep customers inside
+configuration until Review; the final action uses the existing contact design
+handoff or authenticated staff revision return URL. Sliders, model controls,
+draft serialization and approved-version pricing are unchanged. DesignReview
+owns the selection summary and JourneyNavigation owns sequential navigation.
+Lighting entry preserves the current view, controls remain available in 3D,
+and leaving lighting resets night without removing the selected fittings.
+Freestanding, uncertain-attachment persistence, slat-default changes and the
+perimeter LED selection correction remain separate unfinished work. This local
+iteration is not production activation or proof of a complete release journey.
+Verification: 39 focused journey, lighting, shared-estimate, pricing-hook and staff-return tests passed; marketing typecheck and focused ESLint passed. Architecture changed report was clean. Local browser inspection confirmed the approved $11,674 baseline, live 3D lighting controls, night reset on Review and the contact destination without submission; a 390-pixel viewport was inspected and reset. Full hosted staff save-to-quote and production release checks were not repeated for this local review loop.
+
+### 2026-09-15 — Working journey refinement (local loop 2)
+
+- Replaced the five-section grid with three stages: Your pergola, Personalise and Review. Personalise owns roof, sides and lighting cards; each returns via Done and displays current selections and session-local explored status. Existing configuration controls and saved design data remain the owners of customer choices.
+- Extracted JourneyEstimate from the existing footer pricing presentation. Desktop shows it in the dimension strip; mobile shows it alongside the fixed action area. The approved/public, unavailable and draft fallback conditions remain unchanged. Full itemisation is displayed only on Review, with aligned amounts and explicit GST/site qualification.
+- Kept lighting entry in the current view and daylight restoration on exit. No costing logic, enquiry submission, staff return URL, production activation or email delivery changes in this refinement.
+- Local browser evidence: 6 x 3 m acrylic design showed $11,674; changing to combination updated the model and approved estimate to $18,095 and survived returning to Personalise. Lighting stayed in 3D and leaving night preview restored Day. Reviewed desktop and 390 x 844 mobile layouts, including fixed estimate and Review itemisation. No enquiry or staff save was submitted.
+- ConfiguratorPrototype remains the composition owner; new overview and estimate components keep journey presentation out of its existing pricing/data hooks. Further large-file extraction is deferred to a dedicated safe pass.
+- Price-bar refinement: the amount itself now opens and focuses the Review breakdown. The bar shows only the amount and Installed estimate; GST and site qualifications remain in Review. Verified the price action in the local browser; marketing typecheck and focused lint passed.
+- Lighting adjustment notices now appear beside Lighting: a short Personalise card cue, a contextual note in the lighting section, and the Lighting row on Review. Removed the lighting notice from the top of the size controls without changing selection normalization. Marketing typecheck and focused lint passed.
+
+### Desktop refinement — side selection and review clarity
+
+- Sides & privacy uses grouped front/left/right selectors, customer-facing finish names and an explicit Editing heading. The existing selected opening drives a stronger 3D outline and matching label; rendering-only changes do not alter opening IDs, saved choices or geometry/costing calculations.
+- Personalise cards prioritise the current selection, with shorter explored status. Size controls explain projection and attachment choices show a short explanation. Slat size/face labels use simpler wording while keeping existing values and defaults.
+- Review now orders selections, full price breakdown, then next steps. The viewer Sides toggle returns to Personalise when leaving side editing.
+- Verified on the local desktop preview: selected Front 1 highlights and labels the matching model opening; selecting timber retains direction, size, face and gap controls and updates the approved total from $18,095 to $20,964. Returning to Personalise keeps the side choice, and Review shows the $2,869 line beneath the $18,095 base. No enquiries or staff saves submitted. Marketing typecheck, focused ESLint and 14 journey/pricing/staff-return tests passed. Dedicated mobile refinement remains a separate loop.
+- Other-section presentation pass: roof material cards now include short explanations; roof finish, skylight and timber-batten controls have separated groups and consistent option grids. Size keeps its sliders with grouped attachment/site controls. Lighting uses consistent type/level cards and a quieter preview action, with placement detail in a disclosure. No selection or pricing rules changed. Desktop roof and lighting views inspected; marketing typecheck, focused lint and 39 focused tests passed. Mobile refinement remains separate.
+- Navigation refinement: retained Your pergola as stage one and added visible stage underlines/hover states. Bottom width/projection buttons return to the matching slider with keyboard focus. In Roof & ceiling Plan, selected side finishes are reduced to faint non-interactive context lines; roof finishes and the full 3D design stay intact. Replaced the side-editing hint with a roof-plan caption. Verified both dimension shortcuts and roof Plan locally; marketing typecheck and focused lint passed.
+- Customer price wording: display-only grouping combines acrylic takeoff and panel-perimeter framing into Acrylic panels & framing (including infills in the label where selected). Backend breakdown, signed calculation reference and all prices are untouched. Standalone framing remains explicitly labelled acrylic panel framing. Two focused tests verify the supplied $30,914 example still totals exactly $30,914, preserves unrelated lines and does not mutate the source. Marketing typecheck and focused lint passed.
+
+### Mobile journey loop
+
+- At phone widths the compact live viewer uses 32% of workspace height, with 3D/Plan and Expand controls. Day/Night, surroundings and secondary view tools appear in the expanded viewer. Expanded mode hides the choices column without unmounting it, retaining section selections and scroll position.
+- Lighting preview opens 3D, changes the day/night state and expands on mobile. Done closes the expanded viewer; leaving Lighting retains the existing daylight reset. The empty-light preview action returns to the lighting controls on mobile.
+- Mobile footer contains the estimate and one primary action, with shorter mobile labels. Review keeps the staff/public return action in this footer; Back and Share move into the Review body. Desktop labels and layout are retained. Compact Plan margins reduced for legibility.
+- Checked 390 x 844 and 375 x 667 browser viewports, including fixed footer, Review, expanded night view, return to lighting and daylight exit. Restored desktop viewport. An existing intermittent 3D-unavailable state recurred; reload restored 3D and the expanded night model was then inspected. No physical phone validation or enquiry submission performed. Marketing typecheck, focused lint and 11 journey/pricing/staff-return tests passed.
+### Desktop and mobile refinement goal — 2026-09-15
+
+- Personalise now has restrained roof, screen and lighting icons. Phone cards use shorter summaries and reduced spacing. Matching acrylic/solid/combination diagrams sit beside the wording on phones and above it on desktop; radio controls still update the existing roof selections.
+- Review leads with plain-English selections and keeps detailed roof/side settings in disclosures. It retains the existing edit paths and full price breakdown.
+- PreviewScene now offers a local retry after WebGL context loss or a rendering failure. Retrying remounts the scene boundary without resetting the parent design. Two focused tests simulate both failures and verify recovery with the customer's selection retained. The original intermittent browser/GPU trigger has not been reproduced reliably or diagnosed; this is recovery coverage, not proof that all 3D failures are eliminated.
+- PreviewCamera refits on viewport size changes, retaining the current angle even after interaction, so collapsing the expanded phone view no longer leaves the model too distant.
+- Verified desktop 1440 x 1000 and browser phone sizes 390 x 844 and 375 x 667. Reviewed cards, diagrams, selection summaries, persistent pricing, compact/expanded 3D and stage navigation. No physical-phone validation, live enquiry submission, staff save or production activation. Focused journey, pricing, lighting, staff-return, breakdown and recovery suite: 43 tests passed; marketing typecheck and focused ESLint passed.
+### Phone preview deployment — 2026-09-15
+
+- Removed the viewer toolbar's Sides, Fit and Reset controls. Sides remain accessible through Personalise; automatic framing and phone Expand remain. Replaced configurator em dashes with plain punctuation and shortened the section return action to Back to Personalise.
+- Preview-only Vercel deployment: https://sanctuary-mkmcwzdm8-jordans-projects-43df95bd.vercel.app/configurator-preview?open=1 (deployment `dpl_4W9UdkhSnb7oQsoxQEHbFXSWYnsC`). Deployed the isolated UI worktree directly, without production promotion or changing PR #132.
+- Deployment-scoped build/runtime overrides target verified staging `tnsiprehuldksnuowubv` and approved pricebook `f94dde12-1fdb-4638-9b61-7c1be654b7e1`; Resend is blank and the enquiry email worker flag is false. Existing project-wide Preview variables were not changed. `.vercelignore` excludes environment files, local agent settings and generated review artifacts from uploads.
+- Hosted browser verification confirmed the live 3D model, phone Personalise layout, removed toolbar controls and approved $11,674 baseline. Marketing typecheck, focused lint, 12 journey/recovery/staff-return tests, architecture and dead-code changed reports passed; Vercel compilation and TypeScript build passed. No enquiry or staff-save submissions and no physical-phone validation.
+### Separate design enquiry page (local, 2026-09-15)
+
+- Public Review now navigates to `/design-enquiry`. The staff revision return branch is unchanged. The page uses the existing synchronous session design store, approved pricing hook, geometry and fixed 3D/Plan views. Edit my design returns to the configurator without resetting selections.
+- The new page suppresses general marketing navigation/footer. It presents a design image, total, collapsed specs/breakdown and a short form. Name, suburb and email are required; phone and message are optional. Contact fields persist in session storage across edits and are removed after successful submission.
+- `ConfiguredEnquiryFields` owns the compact form presentation; `ContactEnquiryForm` retains its existing submission, attribution, signed reference, idempotency and error handling. The compact flow sends project-discussion rather than site-measure. Server phone omission is accepted only for residential project-discussion with a parsed valid customer design; suburb is required. Generic forms retain their existing phone rules. No price calculation or email delivery logic changed.
+- Local verification: edited width 6.0 to 5.5 m, navigated Review to enquiry and back, retained typed contact field, and confirmed updated $10,593 estimate and 5.5 x 3.0 m specs. Desktop and 390px mobile inspected. 51 focused form, submission, route, staff-return and chrome tests passed; typecheck and focused lint passed. Tests use mocked submission dependencies; no actual enquiry/email was sent. Vercel preview has not been updated with this page.
+
+### Original customer option follow-up (2026-09-15)
+
+Scope: isolated marketing preview placement choices, perimeter LED preset and new
+side-screen defaults. Gate 0: legacy audit rows N/A; no legacy workbench build-on
+or removal; no Phase 2 input migration; no function/type consolidation. Existing
+representative geometry receives an optional freestanding mode; authored workbench
+geometry is unchanged. Consumers checked: preview solve/context, roof finishes,
+lighting, side openings, draft/share parser, contact brief, signed pricing adapter
+and review summary. Existing pricing engine and staff revision contract are retained.
+
+New screens use vertical slats, narrow edge out, 100mm explicit clear gap and
+90x39 timber / 65x16 aluminium. Existing saved selections retain their direction
+and gap semantics; acrylic overlays and roof battens retain existing defaults.
+The perimeter preset picks one outside mounting line where parallel members
+otherwise overlap, retaining separate gable slope segments and manual selection.
+Lighting remains editable in 3D and leaving Lighting restores daytime.
+
+`roof.attachmentIntent` optionally records freestanding or unsure, carried through
+the strict draft parser, version-3 sharing, contact brief and signed calculation.
+Freestanding uses rear supports and no house context; costing uses the existing
+none connection and the displayed post count. Unsure compares permitted attached
+options with the supplied pricebook, excluding unavailable soffit/fascia choices;
+the frozen site inputs retain the selected pricing assumption and the original
+submitted design retains uncertainty. No costing engine rates or staff revision
+protocol changed. Rear-side customisation remains outside the existing three-side
+preview editor; this change adds freestanding placement, not a fourth side editor.
+
+Validation: 168 focused tests pass across option geometry, draft/share retention,
+lighting, screens, published price verification, accessory pricing and quote/staff
+handoff regressions. Browser checks confirm new defaults, freestanding rendering,
+3D lighting editing and return to daytime. No real enquiry or email was sent.
+
+### Deferred owner request: freestanding rear screens (2026-09-15)
+
+Owner explicitly wants this later. Add rear openings to Sides & privacy for
+freestanding pergolas, with the same blinds/acrylic/timber/aluminium controls,
+selection highlighting, pricing, draft/share retention and staff enquiry handoff.
+Preserve attached designs and existing opening IDs. Do not implement in the
+reference-base pass; agree the scope when this task is resumed.
+
+Freestanding preview base: a neutral 120mm-thick display platform extends 450mm
+past the plan footprint on each side, with its top at the post feet. It follows
+size changes and the Show surroundings toggle, and appears on the enquiry view.
+It is presentation only: no deck/foundation selection, quantity or price is added.

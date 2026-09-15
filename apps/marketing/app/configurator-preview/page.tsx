@@ -3,7 +3,7 @@ import { MarketingPage } from '../../components/marketing-foundation';
 import ConfiguratorPreviewShell from '../../components/configurator-prototype/ConfiguratorPreviewShell';
 
 export const metadata: Metadata = {
-  title: 'Your pergola — design preview | Sanctuary',
+  title: 'Your pergola | Design preview | Sanctuary',
   robots: { index: false, follow: false },
 };
 

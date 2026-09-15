@@ -14,7 +14,7 @@ export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, 
 }) {
   const { camera, size, gl, invalidate } = useThree();
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
-  const previous = useRef<{ reset: number; fit: number } | null>(null);
+  const previous = useRef<{ reset: number; fit: number; width: number; height: number } | null>(null);
   const touched = useRef(false);
   const recordCamera = useCallback(() => {
     if (!(camera instanceof PerspectiveCamera) || !controls.current) return;
@@ -37,7 +37,9 @@ export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, 
     camera.aspect = size.width / size.height;
     camera.lookAt(centre);
     camera.updateMatrixWorld();
-    if (!touched.current || previous.current?.fit !== fit) {
+    // Refit when expanding or collapsing the mobile viewport, even after the
+    // customer has rotated it. Keep their viewing angle, but avoid a tiny model.
+    if (!touched.current || previous.current?.fit !== fit || previous.current.width !== size.width || previous.current.height !== size.height) {
       const direction = camera.position.clone().sub(centre).normalize();
       const oldDistance = camera.position.distanceTo(centre);
       const tanY = Math.tan(camera.fov * Math.PI / 360);
@@ -54,7 +56,7 @@ export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, 
     }
     camera.updateProjectionMatrix();
     orbit.update();
-    previous.current = { reset, fit };
+    previous.current = { reset, fit, width: size.width, height: size.height };
     recordCamera();
     invalidate();
   }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, invalidate, recordCamera]);

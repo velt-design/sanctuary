@@ -8,13 +8,13 @@ import { configurationForSimpleCover } from './model';
 import { INITIAL_ROOF, type PreviewRoofChoices } from './GableChoices';
 
 function solveBasePreview(input: SimpleCoverInput, roof: PreviewRoofChoices = INITIAL_ROOF) {
-  if (roof.family === 'mono') return solveSimpleCoverPreview(input);
+  if (roof.family === 'mono') return solveSimpleCoverPreview(input, roof.attachmentIntent === 'freestanding');
   try {
     if (roof.family === 'box') {
       if(input.connection === 'fascia') throw new Error('Invalid box connection');
-      return { status:'review_required' as const, geometry:buildRepresentativeBox({...input,connection:input.connection}),messages:[] };
+      return { status:'review_required' as const, geometry:buildRepresentativeBox({...input,connection:input.connection,freestanding:roof.attachmentIntent==='freestanding'}),messages:[] };
     }
-    return { status: 'review_required' as const, geometry: buildRepresentativeGable({ ...input, ...roof }), messages: [] };
+    return { status: 'review_required' as const, geometry: buildRepresentativeGable({ ...input, ...roof, freestanding:roof.attachmentIntent==='freestanding' }), messages: [] };
   } catch {
     return { status: 'invalid' as const, messages: [{ message: 'This design needs a closer look. Adjust your dimensions to continue.' }] };
   }
@@ -22,7 +22,7 @@ function solveBasePreview(input: SimpleCoverInput, roof: PreviewRoofChoices = IN
 
 export function solvePergolaPreview(input: SimpleCoverInput, roof: PreviewRoofChoices = INITIAL_ROOF): { status: string; messages: { message: string }[]; geometry?: { assembly: Assembly3D; plan: GeometryPlanViewModel; viewerScene: ViewerSceneModel; covering?: RoofFinishGeometry } } {
   let source: ReturnType<typeof solvePergolaPreview> = solveBasePreview(input, roof);
-  if(roof.family==='mono'&&source.geometry){const matched=matchRepresentativePitchedLedger(source.geometry.assembly);if(matched)source={...source,geometry:matched};}
+  if(roof.family==='mono'&&roof.attachmentIntent!=='freestanding'&&source.geometry){const matched=matchRepresentativePitchedLedger(source.geometry.assembly);if(matched)source={...source,geometry:matched};}
   if ('geometry' in source && source.geometry && roof.blinds?.length) {
     const fitted=fitRepresentativeBlindPosts(source.geometry.assembly,roof.blinds);
     if(fitted) source={...source,geometry:fitted};
@@ -33,7 +33,7 @@ export function solvePergolaPreview(input: SimpleCoverInput, roof: PreviewRoofCh
   try {
     const geometry=buildRepresentativeRoofFinish(source.geometry.assembly, finish, { ...input, ...roof });
     if(roof.roofBattens&&finish.material==='combination')geometry.covering=addRepresentativeRoofBattens(geometry.assembly,roof.roofBattens,geometry.covering);
-    const matched=roof.family==='mono'?matchRepresentativePitchedLedger(geometry.assembly):null;
+    const matched=roof.family==='mono'&&roof.attachmentIntent!=='freestanding'?matchRepresentativePitchedLedger(geometry.assembly):null;
     return { status: 'review_required' as const, messages: [], geometry: matched?{...geometry,...matched}:geometry };
   } catch (error) {
     return { status: 'invalid' as const, messages: [{ message: error instanceof Error ? error.message : 'This roof needs a closer look. Adjust your dimensions to continue.' }] };
@@ -41,6 +41,7 @@ export function solvePergolaPreview(input: SimpleCoverInput, roof: PreviewRoofCh
 }
 
 export function solveSimpleCoverSurroundings(input: SimpleCoverInput, assembly: Assembly3D, roof: PreviewRoofChoices = INITIAL_ROOF) {
+  if (roof.attachmentIntent === 'freestanding') return null;
   if (roof.family === 'box') return input.connection === 'fascia' ? null : buildRepresentativeBoxContext(assembly,{connection:input.connection,
     elevated:input.level==='elevated',soffitBracketCount:calculateSoffitBracketCountV1(input.widthMm)});
   if (roof.family === 'gable') return buildRepresentativeGableContext(assembly, { ...input, ...roof,
@@ -51,13 +52,19 @@ export function solveSimpleCoverSurroundings(input: SimpleCoverInput, assembly: 
   });
 }
 
-export function solveSimpleCoverPreview(input: SimpleCoverInput) {
+export function solveSimpleCoverPreview(input: SimpleCoverInput, freestanding = false) {
   const rafters = simpleCoverRafterLayout(input.widthMm);
-  return solveCustomerConfigurationV1(configurationForSimpleCover(input), {
+  const configuration = configurationForSimpleCover(input);
+  if(freestanding) {
+    configuration.intent.pergola.placement.mode='freestanding';
+    configuration.intent.pergola.placement.connectionIntent='none';
+    configuration.intent.site.house.present=false;
+  }
+  return solveCustomerConfigurationV1(configuration, {
     projectId: 'configurator-preview', estimateId: 'configurator-preview', designRequestId: 'configurator-preview',
   }, {
     layout: {
-      postCount: simpleCoverPostCount(input.widthMm),
+      postCount: simpleCoverPostCount(input.widthMm) * (freestanding ? 2 : 1),
       rafterCount: rafters.rafterCount,
       rafterSpacingMm: rafters.spacingMm,
       widthReference: 'outside_faces',

@@ -1,5 +1,6 @@
 'use client';
 import ContactProjectPreferences from './ContactProjectPreferences';
+import ConfiguredEnquiryFields from './ConfiguredEnquiryFields';
 
 import Link from 'next/link';
 import {
@@ -58,6 +59,7 @@ import {
 } from './contactFormModel';
 
 export type ContactEnquiryFormProps = {
+  compactConfigured?: boolean;
   configuredDesign?: ContactDesignBrief;
   initialEnquiryType: EnquiryAudience | null;
   initialContext: EnquiryContext;
@@ -110,6 +112,7 @@ export default function ContactEnquiryForm({
   sourceProjectLabel,
   sourceProductLabel,
   configuredDesign,
+  compactConfigured = false,
 }: ContactEnquiryFormProps) {
   const {
     consent,
@@ -349,7 +352,7 @@ export default function ContactEnquiryForm({
 
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const nextErrors = validateContactForm(formData, files);
+    const nextErrors = validateContactForm(formData, files, compactConfigured && !!configuredDesign);
     if (nextErrors.enquiryType) {
       nextErrors.enquiryType = pathway === 'commercial-professional'
         ? 'Choose who is enquiring.'
@@ -400,7 +403,7 @@ export default function ContactEnquiryForm({
           uploadSessionToken: attachmentUpload.uploadSessionToken,
           enquiryType: enquiryType ?? '',
           enquiryIntent: pathway === 'help' ? 'help' : pathway === 'custom' ? 'bespoke' : undefined,
-          requestType: requestsMeasure ? 'site-measure' : 'project-discussion',
+          requestType: !compactConfigured && requestsMeasure ? 'site-measure' : 'project-discussion',
           name: String(formData.get('name') ?? '').trim(),
           email: String(formData.get('email') ?? '').trim(),
           phone: String(formData.get('phone') ?? '').trim(),
@@ -479,6 +482,8 @@ export default function ContactEnquiryForm({
       submittingRef.current = false;
     }
   };
+
+  if(compactConfigured && configuredDesign)return <ConfiguredEnquiryFields onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError}/>;
 
   const messageLabel = pathway === 'commercial-professional'
     ? 'Project scope'

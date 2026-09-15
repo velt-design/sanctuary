@@ -13,6 +13,7 @@ import PergolaLightFixtures from './PergolaLightFixtures';
 import PreviewLighting from './PreviewLighting';
 import PreviewDimensionGuide from './PreviewDimensionGuide';
 import PreviewSurroundings from './PreviewSurroundings';
+import FreestandingBase from './FreestandingBase';
 import type { PreviewDimensionAxis } from './usePreviewDimension';
 import { computeSceneBoundsFromPoints } from '@sp/geometry-viewer';
 import { SceneObjectNode } from '@sp/geometry-viewer/react';
@@ -37,15 +38,16 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-export default function PreviewScene({ covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback }: {
-  covering?: RoofFinishGeometry; context: RepresentativeSurroundings | null;
+export default function PreviewScene({ showReferenceBase = true, covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback }: {
+  showReferenceBase?: boolean; covering?: RoofFinishGeometry; context: RepresentativeSurroundings | null;
   scene: ViewerSceneModel; plan: GeometryPlanViewModel; activeDimension: PreviewDimensionAxis | null;
   interactive: boolean; reset: number; fit: number; onFallback: () => void;
 }) {
   const lighting=useLighting();
   const blindWorkspace=usePreviewBlinds();
   const [unavailable, setUnavailable] = useState(false);
-  const fallback = <div className={styles.loading}><p>3D is unavailable on this device.</p><button onClick={onFallback}>View your plan</button></div>;
+  const [attempt,setAttempt]=useState(0);
+  const fallback = <div className={styles.loading}><p>The 3D view paused. Your selections are still here.</p><button onClick={()=>{setUnavailable(false);setAttempt(value=>value+1);}}>Try 3D again</button><button onClick={onFallback}>View your plan</button></div>;
   // Context is a separate package-owned visual reference. Camera framing stays
   // centred on the pergola rather than zooming out to fit a two-storey house.
   const objects = useMemo(() => scene.layers.filter((layer) => layer.visibleByDefault).flatMap((layer) => layer.objects)
@@ -60,7 +62,7 @@ export default function PreviewScene({ covering, scene, plan, context, activeDim
   const cameraBounds = useMemo(() => computeSceneBoundsFromPoints(cameraPoints), [cameraPoints]);
   const roof = useMemo(() => scene.layers.flatMap((layer) => layer.objects).flatMap(object => object.type === 'roof_plane' ? object.boundary : []), [scene]);
   if (unavailable) return fallback;
-  return <SceneBoundary fallback={fallback}>
+  return <SceneBoundary key={attempt} fallback={fallback}>
     <Canvas frameloop="demand" dpr={[1, 1.75]} style={{ touchAction: 'pan-y' }}
       camera={{ position: [12000, -18000, 12000], up: [0, 0, 1], fov: 24, near: 10, far: 200000 }}
       fallback={fallback}>
@@ -69,6 +71,7 @@ export default function PreviewScene({ covering, scene, plan, context, activeDim
       {lighting&&<PergolaLightFixtures/>}
       {blindWorkspace && <PreviewBlinds workspace={lighting?.editing?{...blindWorkspace,editing:false,select:noop}:blindWorkspace} />}
       {covering && <PreviewRoofFinish covering={covering} />}
+      {showReferenceBase && plan.connectionType === 'freestanding' && <FreestandingBase plan={plan} />}
       {context && <PreviewSurroundings context={context} bounds={bounds} productPoints={fitPoints} />}
       <PreviewCamera bounds={cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} />
       <group>{objects.map((object) => object.type === 'roof_plane' || object.type === 'roof_cladding_panel'

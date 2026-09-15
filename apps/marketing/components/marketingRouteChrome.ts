@@ -1,4 +1,5 @@
 const shelllessRoutePrefixes = [
+  '/design-enquiry',
   '/quote',
   '/invoice',
   '/staff',

@@ -18,5 +18,5 @@ export default function LightingProvider({input,roof,onChange,children}:{input:S
   ? 'No clear rafter-light positions remain. Remove LED strips from rafters to make those members available for spotlights.'
   : 'No exposed internal rafters are available for this roof. Choose ceiling downlights for the lined areas, or change the acrylic coverage in Roof & ceiling.';
  const value=roof.lighting??DEFAULT_LIGHTING,change=(v:PergolaLighting)=>onChange({...roof,lighting:v});
- return <Context.Provider value={{tool,setTool,editing,view,setView:v=>{setView(v);if(editing&&v==='3D')setNight(true);},night:view==='3D'&&night,setNight,open:()=>{setTool(null);setEditing(true);setView('Plan');},close:()=>{setEditing(false);},value,change,sites,rafterUnavailableReason,toggle:id=>change({...value,strips:value.strips.includes(id)?value.strips.filter(s=>s!==id):[...value.strips,id]})}}>{children}</Context.Provider>;
+ return <Context.Provider value={{tool,setTool,editing,view,setView:v=>{setView(v);if(editing&&v==='3D')setNight(true);},night:view==='3D'&&night,setNight,open:()=>{setTool(null);setEditing(true);},close:()=>{setEditing(false);setNight(false);},value,change,sites,rafterUnavailableReason,toggle:id=>change({...value,strips:value.strips.includes(id)?value.strips.filter(s=>s!==id):[...value.strips,id]})}}>{children}</Context.Provider>;
 }

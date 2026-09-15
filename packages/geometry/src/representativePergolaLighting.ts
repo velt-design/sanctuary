@@ -28,7 +28,7 @@ export function pergolaLightSites(assembly:Assembly3D,covering?:RoofFinishGeomet
   // Concealed frame behind a cedar ceiling is not an available mounting face.
   if(['rafter','ridge'].includes(m.role)&&roofSolid(mid))continue;
   const hasOuterGutter=m.role==='beam'&&assembly.members.some(g=>g.role==='gutter'&&Math.abs(g.centerline.start.y-start.y)<180&&g.centerline.start.y>start.y&&Math.abs(g.centerline.end.y-g.centerline.start.y)<1);
-  const perimeter=!hasOuterGutter&&m.role!=='ledger'&&((Math.abs(start.x-end.x)<1&&(start.x<120||start.x>w-120))||(Math.abs(start.y-end.y)<1&&start.y>d-180));
+  const perimeter=!hasOuterGutter&&m.role!=='ledger'&&((Math.abs(start.x-end.x)<1&&(start.x<120||start.x>w-120))||(Math.abs(start.y-end.y)<1&&(start.y>d-180||(assembly.semantics.connectionType==='freestanding'&&start.y<180))));
   if(!(m.role==='rafter'&&covering?.battenBoundaries?.length))strips.push({id:m.id,label:m.role==='rafter'?'Rafter '+(++r):'Beam '+(++b),start,end,normal:m.localFrame.zAxis,perimeter,rafter:m.role==='rafter'});
   const gableEdge=paired&&(station(m)===rows[0]||station(m)===rows[rows.length-1]);
   // Transition rafters are shifted half a profile into the acrylic band. Their

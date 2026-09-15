@@ -134,3 +134,17 @@ describe('submitted configured estimate continuity', () => {
     expect((await buildPublishedEnquiryPricingSnapshot(params, { design, calculationRef: token })).budgets.baseRange).toBeNull();
   });
 });
+
+it.each(['freestanding','unsure'] as const)('keeps %s intent and resolved inputs in the verified enquiry snapshot', async attachmentIntent => {
+  const design=draft(); design.roof.attachmentIntent=attachmentIntent;
+  const frozen=calculateFrozenConfiguratorPrice(design,resolved())!;
+  expect(frozen).not.toBeNull();
+  const calculationRef=issueConfiguratorCalculationRef(frozen);
+  const pricing=await buildPublishedEnquiryPricingSnapshot(params,{design,calculationRef,suppressGenericPricing:true});
+  expect(pricing.verifiedConfigurator).toEqual(frozen);
+  expect(pricing.verifiedConfigurator!.design.roof.attachmentIntent).toBe(attachmentIntent);
+  if(attachmentIntent==='freestanding')expect(frozen.siteInputs.pergolas[0].modules[0]).toMatchObject({house_connection_type:'none',post_count:6});
+  const altered=structuredClone(design); delete altered.roof.attachmentIntent;
+  const rejected=await buildPublishedEnquiryPricingSnapshot(params,{design:altered,calculationRef,suppressGenericPricing:true});
+  expect(rejected.verifiedConfigurator).toBeFalsy();
+});

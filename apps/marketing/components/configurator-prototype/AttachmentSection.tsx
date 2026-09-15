@@ -24,7 +24,7 @@ export default function AttachmentSection({ connection, boxPerimeter = false }: 
   const points = (section: { y: number; z: number }[]) => section.map(p => `${x(p.y)},${y(p.z)}`).join(' ');
   const ledgerX = x(ledger.backY);
   const ledgerY = y(ledger.topZ);
-  return <svg viewBox="0 0 312 210" role="img" aria-label={`${connection === 'soffit' ? 'Soffit bracket supporting the ledger from underneath' : connection === 'fascia' ? 'Ledger against fascia beneath the gutter' : 'Ledger against the lower part of a two-storey wall'} — side section`}>
+  return <svg viewBox="0 0 312 210" role="img" aria-label={`${connection === 'soffit' ? 'Soffit bracket supporting the ledger from underneath' : connection === 'fascia' ? 'Ledger against fascia beneath the gutter' : 'Ledger against the lower part of a two-storey wall'}: side section`}>
     <defs><clipPath id={`section-clip-${connection}`}><rect x="10" y="8" width="292" height="178" rx="2" /></clipPath></defs>
     <g clipPath={`url(#section-clip-${connection})`}>
       <rect x={x(wall.min.y)} y={y(wall.max.z)} width={(wall.max.y - wall.min.y) * scale} height={(wall.max.z - bottom + 500) * scale} fill="#dddccf" />

@@ -10,7 +10,7 @@ import { representativeGableRules } from './representativeGableRules';
 import { sizeRepresentativeGableFlashing } from './representativeGableFlashing';
 
 export type RepresentativeGableOptions = {
-  widthMm: number; projectionMm: number; orientation: 'parallel' | 'away'; infills: boolean;
+  freestanding?: boolean; widthMm: number; projectionMm: number; orientation: 'parallel' | 'away'; infills: boolean;
   connection: 'fascia' | 'facade' | 'soffit';
 };
 
@@ -52,7 +52,7 @@ export function buildRepresentativeGable(options: RepresentativeGableOptions) {
   }
   // Freestanding is only the canonical two-gutter roof chassis. This explicit
   // attachment step supplies the concept's actual support topology.
-  assembly.members = assembly.members.filter(m => m.role !== 'post' && !(away && m.metadata?.position === 'inner-end' && m.metadata?.frameRole));
+  assembly.members = assembly.members.filter(m => m.role !== 'post' && !(away && !options.freestanding && m.metadata?.position === 'inner-end' && m.metadata?.frameRole));
   const addPost = (id: string, x: number, y: number) => {
     const origin = { x, y, z: 0 };
     const gutter = assembly.members.filter(member => member.role === 'gutter')
@@ -66,13 +66,15 @@ export function buildRepresentativeGable(options: RepresentativeGableOptions) {
     // Two support lines run away from the house. Intermediate posts on deep
     // projections are representative, with a maximum 4m unsupported run.
     const bays = rules.ridgeBays;
-    for (let i = 1; i <= bays; i++) for (const [side, y] of [['left', Math.max(50, postSize / 2)], ['right', span - Math.max(50, postSize / 2)]] as const)
+    for (let i = options.freestanding ? 0 : 1; i <= bays; i++) for (const [side, y] of [['left', Math.max(50, postSize / 2)], ['right', span - Math.max(50, postSize / 2)]] as const)
       addPost(`gable-${side}-post-${i}`, (run - postRunInset) * i / bays, y);
   } else {
     const posts = Math.max(2, rules.ridgeBays + 1);
     for (let i = 0; i < posts; i++) addPost(`gable-front-post-${i}`, postRunInset + (run - 2 * postRunInset) * i / (posts - 1), span - Math.max(50, postSize / 2));
     const ledger = assembly.members.find(m => m.id === 'house-beam')!;
-    ledger.role = 'ledger';
+    if (options.freestanding) {
+      for (let i = 0; i < posts; i++) addPost(`gable-rear-post-${i}`, postRunInset + (run - 2 * postRunInset) * i / (posts - 1), Math.max(50,postSize/2));
+    } else ledger.role = 'ledger';
   }
   addRepresentativeGableEndDetails(assembly, infills, rules);
   alignRepresentativeGableEndFaces(assembly);
@@ -80,8 +82,8 @@ export function buildRepresentativeGable(options: RepresentativeGableOptions) {
   assembly = applyAssemblyPosition3D(assembly, away ? { origin: { x: widthMm, y: rafterWidth / 2 }, rotationDeg: 90 } : { origin: { x: rafterWidth / 2, y: 0 }, rotationDeg: 0 });
   assembly.outline = [{ x: 0, y: 0, z: 0 }, { x: widthMm, y: 0, z: 0 }, { x: widthMm, y: projectionMm, z: 0 }, { x: 0, y: projectionMm, z: 0 }];
   recordRepresentativeGablePostFootprints(assembly);
-  assembly.attachmentEdge = { start: assembly.outline[0], end: assembly.outline[1] };
-  assembly.semantics.connectionType = away ? 'fascia' : options.connection === 'facade' ? 'wall' : options.connection;
+  assembly.attachmentEdge = options.freestanding ? null : { start: assembly.outline[0], end: assembly.outline[1] };
+  assembly.semantics.connectionType = options.freestanding ? 'freestanding' : away ? 'fascia' : options.connection === 'facade' ? 'wall' : options.connection;
   assembly.supportConditions = [];
   assembly.quantityHooks = []; // Never expose stale chassis quantities as a commercial result.
   return { assembly, plan: buildPlanViewModel(assembly), viewerScene: buildViewerSceneModel(assembly) };
