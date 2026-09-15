@@ -371,6 +371,8 @@ Service-role RPC boundary:
 - Verified webhook reconciliation: `background_job_reconcile_verified_provider_acceptance`. Only the portal webhook repository may invoke this service-role RPC after bounded raw-body Svix verification; the database does not verify public HTTP signatures.
 - Recovery and inspection: `background_jobs_recover_expired_leases`, `background_jobs_reconcile`, `background_jobs_queue_health`, `background_jobs_runtime_metrics`, `background_workers_list_safe`, `background_job_get_safe`, `background_jobs_list_safe`, `background_job_event_history_safe`.
 
+Runtime `kind_counts` contains only entries installed in `background_job_kinds`. A worker build may know additional kinds whose workflow migrations are deliberately absent. The parser preserves that partial map without inventing zero counts; unknown kinds and invalid counts are rejected. Status and worker-lifecycle count maps remain complete and strict. This does not change handler availability, claim policy or rollout gates.
+
 Primary write path:
 
 - One security-definer enqueue transaction validates the registered kind/version, rollout owner, stable intent key, and frozen input. A transaction-level advisory lock serialises concurrent first-enqueue calls for the same kind/intent. PostgreSQL computes the canonical SHA-256 from normalized `jsonb`, persists it as `input_hash`, then creates or reuses the ledger row, inserts the private payload, sends the minimal logged queue message, stores the canonical message ID, and appends the enqueue event. Callers do not supply or claim a matching hash because JavaScript serialization is not PostgreSQL `jsonb` canonicalization; `inputHash` is durable output/identity evidence.

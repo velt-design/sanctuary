@@ -1,5 +1,7 @@
 # Testing And QA
 
+Worker registry compatibility: `workerContracts.test.ts` and the real RPC response parser in `backgroundJobsRpcClient.test.ts` cover both complete and finance-only installed kind maps. Missing optional workflow kinds stay absent; unknown kinds, invalid counts, and incomplete status/lifecycle maps still fail. This targets the production dark-worker probe failure where `ai_synthetic_v1` was deliberately not installed. Hosted healthy-worker evidence is separate from these parser tests.
+
 Use the smallest test that covers the risk. Run broader suites when touching shared workflow, portal shell, scheduling, local-first, Supabase access, or public lead/quote flows.
 
 ## Read First

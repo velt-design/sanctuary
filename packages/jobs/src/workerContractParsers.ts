@@ -234,6 +234,17 @@ function countMap<const Keys extends readonly string[]>(
   ) as Readonly<Record<Keys[number], number>>;
 }
 
+function installedKindCounts(value: unknown): BackgroundJobsRuntimeMetrics['kindCounts'] {
+  // The SQL projection enumerates the installed registry, not every kind known
+  // to this worker build. Optional workflow migrations may be deliberately absent.
+  if (!value || typeof value !== 'object' || Array.isArray(value)) invalid('kind_counts', 'expected an object');
+  const installed = Object.keys(value);
+  if (installed.some((key) => !(BACKGROUND_JOB_KINDS as readonly string[]).includes(key))) {
+    invalid('kind_counts', 'expected exactly known installed job kinds');
+  }
+  return countMap(value, installed, 'kind_counts');
+}
+
 function parseWorkerBase(value: unknown, includeStale: boolean): BackgroundWorkerRecord & { isStale?: boolean } {
   const fields = [
     'worker_id',
@@ -629,7 +640,7 @@ export function parseBackgroundJobsRuntimeMetrics(value: unknown): BackgroundJob
     dueJobs: integerBetween(row.due_jobs, 0, Number.MAX_SAFE_INTEGER, 'due_jobs'),
     nextDueAt: nullable(row.next_due_at, (item) => timestamp(item, 'next_due_at')),
     statusCounts: countMap(row.status_counts, BACKGROUND_JOB_STATUSES, 'status_counts'),
-    kindCounts: countMap(row.kind_counts, BACKGROUND_JOB_KINDS, 'kind_counts'),
+    kindCounts: installedKindCounts(row.kind_counts),
     workerLifecycleCounts: countMap(
       row.worker_lifecycle_counts,
       BACKGROUND_JOB_WORKER_LIFECYCLE_STATES,

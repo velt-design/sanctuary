@@ -1,5 +1,9 @@
 # Decision Log
 
+## 2026-09-15 - Observe installed job kinds without requiring optional workflows
+
+The production finance worker reached the database but stayed unhealthy because its metrics parser required every package-known job kind, including the deliberately absent AI synthetic workflow. SQL correctly enumerates only installed registry rows. Keep status/lifecycle maps strict, validate installed kinds against the known registry, and preserve missing kinds as absent rather than fabricated zero counts. Package and RPC-boundary tests cover both database shapes. This avoids installing unrelated workflow migrations to satisfy monitoring. Owners: `supabase-schema-map.md`, `target-architecture.md`, `testing-and-qa.md`.
+
 ## 2026-09-15 — Plan selected ceiling stock per hip-corner wing
 
 The first selected-ceiling takeoff applied leg A's board run to the combined area of both wings. Unequal wings could therefore put long boards in the short-stock price band and omit supported joins. The package now plans each wing before aggregating length bands and purchased coverage. Regression tests compare a 2 m / 6 m corner with separately costed wings, swap wing labels, and cover timber plus all three mixed-roof modes. Keep the staff V1 release out of the deferred V2 workbench input contract. Owner: `costing-and-geometry.md`.
