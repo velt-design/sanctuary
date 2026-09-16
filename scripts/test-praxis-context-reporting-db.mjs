@@ -53,7 +53,7 @@ function psql(sql, label, { reader = false, quiet = false } = {}) {
   return requireSuccess(docker(args, { input: sql }), label);
 }
 
-function expectReaderDenied(sql, label) {
+function expectReaderDenied(sql, label, expected = /permission denied|read-only transaction|cannot execute/i) {
   const result = docker([
     'exec', '--interactive', '--env', `PGPASSWORD=${readerPassword}`,
     container, 'psql', '--no-psqlrc', '--set=ON_ERROR_STOP=1',
@@ -61,7 +61,7 @@ function expectReaderDenied(sql, label) {
   ], { input: `set default_transaction_read_only = off;\n${sql}` });
   if (result.status === 0) throw new Error(`${label} unexpectedly succeeded.`);
   const detail = [result.stdout, result.stderr].filter(Boolean).join('\n');
-  if (!/permission denied|read-only transaction|cannot execute/i.test(detail)) {
+  if (!expected.test(detail)) {
     throw new Error(`${label} failed for an unexpected reason:\n${detail}`);
   }
   process.stdout.write(`praxis-reporting-db: denied ${label}\n`);
@@ -345,7 +345,9 @@ try {
     if (count !== '0') throw new Error('Invalid receipt was exposed.');
   }
   expectReaderDenied('select * from public.xero_deposit_matches;', 'receipt base-table SELECT');
-  expectReaderDenied('delete from praxis_reporting.verified_receipts_v1;', 'receipt view DELETE');
+  const receiptDeleteGranted = psql("select has_table_privilege(current_user, 'praxis_reporting.verified_receipts_v1', 'DELETE');", 'Receipt DELETE grant', { reader: true, quiet: true });
+  if (receiptDeleteGranted !== 'f') throw new Error('Reporting reader has receipt DELETE privilege.');
+  expectReaderDenied('delete from praxis_reporting.verified_receipts_v1;', 'receipt view DELETE', /permission denied|cannot delete from view/i);
   process.stdout.write('praxis-reporting-db: verified receipt projection passed\n');
 } finally {
   if (started) docker(['rm', '--force', container]);
