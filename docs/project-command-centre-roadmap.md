@@ -4,6 +4,56 @@
 
 ### Current focus: useful workflow before release
 
+Latest release checkpoint, 16 September: PR365 merged as `a53f4ed`; its migration
+`202609160005_customer_journey_reuse.sql` is independently verified installed.
+The staff migration moved byte-identically to `202609160006`. Staff HEAD
+`27f6950` incorporates the actual squash merge and has the identical source tree
+`9443c20ed13e410066d0250114aea42f4544d8b2` to independently reviewed `ef9d0a6`.
+Thirty focused independent checks and all 13 native PostgreSQL tests passed;
+hosted CI `35064722149` and exact-head CI `35065342869` passed. Portal Quality
+`35063262127` and Background Jobs retry `35063262169`
+passed, and all PR145 checks are green at `d972e62`.
+
+Production setup: both projects have the dedicated vault-held signing key;
+Portal's receiver is the verified `https://velt.systems` domain. Initially both
+flags were false. After a rollback-only live-schema rehearsal, staff migration
+006 was installed on the exact Velt target. Postflight confirms its ledger entry,
+zero staff requests/events and unchanged Connections/Outlook stop/generation.
+Recovery is keep/restore the false flags and preserve additive tables and audit;
+never remove history to roll back the feature. Private receipts are in Velt's
+`.praxis-evaluation-private/staff/{dark-env-receipt.json,installation-result.log}`.
+Independent postflight passed exact ledger/RPC hashes, grants/RLS, immutable
+audit and unchanged provider authority. Velt PR366 then merged as `01c99c4` after
+exact-head required checks and clean mergeability. Its enabled candidate
+`dpl_4L5H6xbT1XVneTuq1xM6WisuJ1JT` passed protected-deployment login (200) and
+unsigned-request denial (403), then was promoted after checking the live alias
+still named the previous PR365 deployment `dpl_4MSqgTV58MGQAfXaaBgVEMcaeS3X`.
+Postflight verifies `velt.systems` points to the candidate, login is 200 and the
+unsigned endpoint returns 403 with private/no-store caching. The previous release
+is the rollback target. Velt's receiver flag is now true; Portal's flag remains
+false. No positive staff request, real correspondence or Portal rollout is yet
+proved. Candidate metadata: Velt `.praxis-evaluation-private/staff/enabled-candidate.json`.
+
+Sanctuary retirement migration remains **unapplied**. A rollback-only rehearsal
+on the live schema passed apply/replay, exact event-count and unchanged meaningful
+work/history assertions; all 554 active generic reminders remain after rollback.
+Receipt: `.codex-tmp/clarity/live-retirement-rehearsal-result.log`. Its scope excludes
+76 enquiry follow-ups, 33 quote follow-ups and one manual task.
+
+Real browser baseline: authenticated production access is available. On the
+selected quote-decision project, the current-quote link opens the exact sent
+version and returning retains the correct amount, owner, status and follow-up.
+The read-only journey passed on desktop and a 390px mobile viewport; the viewport
+was restored. Private identifying evidence is in ignored
+`.codex-tmp/clarity/real-project-baseline.md`. No customer outcome was recorded;
+acceptance would attempt an invoice email and is not a harmless verification click.
+The selected customer has multiple project records, so customer-address matches
+alone cannot establish project association. A separate deposit-stage example has
+only an external quote in a team note and no canonical Portal quote. Preserve
+that missing-data state. This proves existing production navigation, not the
+pending UI or staff correspondence. Real message association, genuine outcome,
+responsive acceptance and all three real scenarios remain pending.
+
 Continuation evidence, 16 September: Velt's owning programme record in the
 `velt-customer-journey` worktree now records two real customer reads, source-link
 verification and owner acceptance; PR361/362 and production releases resolve the
@@ -53,6 +103,19 @@ Fresh read-only Vercel environment metadata confirms neither production project
 has staff correspondence signing/enablement variables yet; existing owner-reader
 configuration is present. Provisioning is outstanding, not an unexplained missing
 customer-data result. No credentials were copied to this record or tool output.
+
+Published candidates: Sanctuary draft PR145 is now `d972e62`; its pre-push full
+workspace types/lint passed, and Portal suite passed 673 files/3,858 tests with
+12 skipped. Velt draft PR366 is `9d1df8b`, with full `pnpm run check` passing
+(web 1,008 tests and 46 built-browser cases, plus other workspace packages).
+Native PostgreSQL was separately exercised as above. Velt hosted CI run
+`35063223380` was confirmed in progress; track it rather than starting another.
+Next: inspect both exact-revision CI results, complete staff rollout preflight,
+then activate the paired connection within the existing conditional permission
+and verify a real staff project. Preserve the project-specific association,
+genuine outcome/return, three scenarios and responsive acceptance requirements;
+passing the transport candidate does not complete those. Neither draft is merged
+or live, and the staff migration has not been applied.
 
 Goal renewed in this task on 16 September after Jordan agreed with the revised
 UI 7/10, understanding 6.5/10 and usability 6/10 assessment. First milestone:
