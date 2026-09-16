@@ -7,9 +7,9 @@ This document owns the Architectural Editorial UI system demonstrated at the sta
 ## Source Of Truth
 
 Contact pathway refinement (16 September 2026): the configurator
-entry is a full-width image-led card with a charcoal “Try the configurator”
+entry is a full-width image-led card with a charcoal "Try the configurator"
 action. Help, bespoke and commercial enquiry radios remain below under
-“Prefer to talk to us?”. At 760px and below the feature and choices stack.
+"Prefer to talk to us?". At 760px and below the feature and choices stack.
 Existing routing, selection and submission contracts are unchanged. This is an
 owner-approved presentation change, approved for production after local review.
 
