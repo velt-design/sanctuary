@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { ENQUIRY_AUDIENCE_OPTIONS } from '@/lib/enquiryFormContract';
 import type { EnquiryAudience } from '@/lib/enquiryContext';
 import type { EnquiryContext } from '@/lib/enquiryContext';
@@ -35,13 +36,20 @@ export default function ContactPathwaySelector({
           Choose your pathway
           <small>Required</small>
         </legend>
+        <a id="contact-pathway-simple" className="contact-form__design-feature" href={buildConfiguratorEnquiryHref(sourceContext)}>
+          <div className="contact-form__design-preview">
+            <Image src="/images/simple-pergolas/pitched-01.webp" alt="" fill sizes="(max-width: 760px) 100vw, 240px" />
+          </div>
+          <div className="contact-form__design-copy">
+            <small className="contact-form__pathway-eyebrow">Explore your options</small>
+            <strong>Design your pergola</strong>
+            <p>Explore your size, roof and extras. See an installed estimate without entering your details.</p>
+            <span className="contact-form__design-button">Try the configurator <span aria-hidden="true">→</span></span>
+          </div>
+        </a>
+        <p className="contact-form__alternative-heading">Prefer to talk to us?</p>
         <div className="contact-form__type-options">
-          {CONTACT_PATHWAY_OPTIONS.map((option) => option.value === 'simple' ? (
-            <a key={option.value} id="contact-pathway-simple" className="contact-form__design-entry" href={buildConfiguratorEnquiryHref(sourceContext)}>
-              <span aria-hidden="true">↗</span>
-              <span><small className="contact-form__pathway-eyebrow">{option.eyebrow}</small><strong>{option.label}</strong><small>{option.description}</small></span>
-            </a>
-          ) : (
+          {CONTACT_PATHWAY_OPTIONS.filter((option) => option.value !== 'simple').map((option) => (
             <label key={option.value}>
               <input
                 id={`contact-pathway-${option.value}`}
