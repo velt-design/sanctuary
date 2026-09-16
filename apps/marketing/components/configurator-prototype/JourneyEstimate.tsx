@@ -7,7 +7,7 @@ import styles from './journey.module.css';
 import { useRail } from './RailProvider';
 import css from './designJourney.module.css';
 
-export default function JourneyEstimate({selection,reviewPrice}:{selection:PreviewSelection;reviewPrice?:ReviewPrice|null}){
+export default function JourneyEstimate({selection,reviewPrice,retry}:{selection:PreviewSelection;reviewPrice?:ReviewPrice|null;retry?:()=>void}){
   const { roof, result, configuratorPrice } = selection;
   const { section, choose } = useRail();
   const openRequested = useRef(false);
@@ -31,7 +31,7 @@ export default function JourneyEstimate({selection,reviewPrice}:{selection:Previ
   const label = !hasSimpleRoofPrice(roof) || result?.status === 'custom' ? 'Pricing confirmed by Sanctuary'
     : !result ? 'Updating estimate…' : 'Estimate unavailable';
 return <div className={css.estimate} aria-live="polite" aria-atomic="true">      <div className={styles.estimate}>
-        <button className={css.priceLink} onClick={openBreakdown} aria-label="View full price breakdown"><strong>{configuredMode ? configuratorPrice?.status === 'priced' ? reviewMoney(configuratorPrice.amountIncGst) : !configuratorPrice ? 'Updating estimate…' : 'Price to be confirmed' : reviewPrice !== undefined ? !reviewPrice ? 'Updating estimate…' : reviewPrice.status === 'priced' ? <>{reviewMoney(reviewPrice.amount)}{reviewPrice.excluded.length ? ' · Subtotal' : <small className={css.draftNote}> · DRAFT ESTIMATE</small>}</> : reviewPrice.status === 'custom' ? 'Your design needs a tailored quote.' : 'Price preview unavailable' : priced ? `From ${new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD', maximumFractionDigits: 0 }).format(priced.price.fromIncGst)}` : label}</strong></button>
+        <button className={css.priceLink} onClick={configuratorPrice?.status === 'unavailable' && retry ? retry : openBreakdown} aria-label={configuratorPrice?.status === 'unavailable' && retry ? 'Retry estimate' : 'View full price breakdown'}><strong>{configuredMode ? configuratorPrice?.status === 'priced' ? reviewMoney(configuratorPrice.amountIncGst) : !configuratorPrice ? 'Updating estimate…' : configuratorPrice.status === 'unavailable' ? 'Retry estimate' : 'Tailored quote' : reviewPrice !== undefined ? !reviewPrice ? 'Updating estimate…' : reviewPrice.status === 'priced' ? <>{reviewMoney(reviewPrice.amount)}{reviewPrice.excluded.length ? ' · Subtotal' : <small className={css.draftNote}> · DRAFT ESTIMATE</small>}</> : reviewPrice.status === 'custom' ? 'Your design needs a tailored quote.' : 'Price preview unavailable' : priced ? `From ${new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD', maximumFractionDigits: 0 }).format(priced.price.fromIncGst)}` : label}</strong></button>
         <span>Installed estimate</span>
       </div>
 </div>;
