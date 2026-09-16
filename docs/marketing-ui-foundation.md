@@ -6,6 +6,15 @@ This document owns the Architectural Editorial UI system demonstrated at the sta
 
 ## Source Of Truth
 
+Enquiry navigation (16 September 2026): the owner approved a home-linked
+Sanctuary wordmark and "Back to website" returning to the source browsing page.
+Unsafe or enquiry-loop sources fall back home. "Edit my design" sits beside the
+preview. Existing session form recovery and design storage remain unchanged.
+Local leave/return verification preserved the entered details and design; twelve
+focused return-path/recovery tests and marketing typecheck passed. Publication
+was explicitly approved after the local review. This changes no pricing or
+submission contract.
+
 Contact pathway refinement (16 September 2026): the configurator
 entry is a full-width image-led card with a charcoal "Try the configurator"
 action. Help, bespoke and commercial enquiry radios remain below under
