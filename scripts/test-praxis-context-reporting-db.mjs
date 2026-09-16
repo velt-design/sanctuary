@@ -335,6 +335,9 @@ try {
   psql(receiptMigration.replace(/commit;\s*$/, 'rollback;'), 'Receipt migration rollback');
   if (psql("select to_regclass('praxis_reporting.verified_receipts_v1') is null;", 'Receipt rollback residue', { quiet: true }) !== 't') throw new Error('Receipt rollback left a view.');
   psql(receiptMigration, 'Receipt migration');
+  psql(readFileSync(path.join(root, 'supabase/migrations/20260916000005_praxis_instalment_receipts.sql'), 'utf8'), 'Approved instalment receipt evidence');
+  if (psql(`begin; update public.project_payment_entries set source_invoice_id=null; set local role sanctuary_praxis_reader_probe;
+    select count(*) from praxis_reporting.verified_receipts_v1; rollback;`, 'Instalment without legacy invoice provenance', { quiet: true }) !== '1') throw new Error('Approved instalment was excluded.');
   if (psql('select amount_inc_gst_cents::text || currency from praxis_reporting.verified_receipts_v1;', 'Verified receipt', { reader: true, quiet: true }) !== '5750NZD') throw new Error('Receipt amount/currency not preserved.');
   for (const mutation of [
     'update public.xero_deposit_matches set reversed_at=now()',

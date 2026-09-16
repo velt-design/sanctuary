@@ -76,6 +76,7 @@ try {
   sql(migration.replace(/commit;\s*$/, 'rollback;'));
   assert.equal(sql("select to_regclass('praxis_reporting.verified_receipts_v1') is null;"), 't');
   sql(migration);
+  sql(read('supabase/migrations/20260916000005_praxis_instalment_receipts.sql'));
   sql('create role praxis_customer_probe login inherit nosuperuser nobypassrls; grant sanctuary_praxis_reader to praxis_customer_probe; alter role praxis_customer_probe set default_transaction_read_only = on;');
   const scopeCases = [['all', 'null'], ['all', "'10000000-0000-4000-8000-000000000001'"],
     ['contact', "'10000000-0000-4000-8000-000000000001'"], ['invoice', "'10000000-0000-4000-8000-000000000001'"],
@@ -96,6 +97,11 @@ try {
   assert.equal(sql("select count(*) from praxis_reporting.quotes_v1 where recorded_at is not null;", true), '1');
   assert.equal(sql("select count(*) from praxis_reporting.invoice_plan_items_v1 where recorded_at is not null;", true), '1');
   assert.equal(count(), '1');
+  assert.equal(sql(`begin; update public.project_payment_entries set source_invoice_id=null;
+    set local role praxis_customer_probe; select count(*) from praxis_reporting.verified_receipts_v1; rollback;`), '1');
+  assert.equal(sql(`begin; update public.project_payment_entries set source_invoice_id=null;
+    delete from public.xero_deposit_matches; set local role praxis_customer_probe;
+    select count(*) from praxis_reporting.verified_receipts_v1; rollback;`), '0');
   assert.equal(sql('select amount_inc_gst_cents, currency from praxis_reporting.verified_receipts_v1;', true), '5750|NZD');
   hidden('update public.xero_deposit_matches set reversed_at = now()');
   hidden('update public.xero_deposit_matches set amount_inc_gst_cents = 1');

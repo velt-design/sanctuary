@@ -91,6 +91,17 @@ the old and new evidence for whole-source, scoped, contact, invoice and missing
 project reads. Health probes one project record after identity and grant checks;
 it does not calculate every project's finances or establish full customer proof.
 
+`20260916000005_praxis_instalment_receipts.sql` corrects the receipt view for
+approved instalments: `xero_deposit_matches` owns their invoice link, while
+`project_payment_entries.source_invoice_id` may be null. The existing deposit
+and invoice-payment commands explicitly use that model. A contradictory
+non-null invoice ID, amount/project mismatch or reversal is still excluded;
+an unmatched project payment never becomes verified. The live diagnostic found
+an approved match in this valid null-provenance
+form and a separate recorded payment without an approved match. The latter
+remains unverified by this source. Customer-specific evidence is kept privately.
+No payment records are corrected or reallocated by the reporting view.
+
 The customer-search and verified-receipt routes reuse these exact credentials and identity checks; they have no independent broad credential. Install `20260916000003_praxis_verified_receipts.sql` before enabling customer journey reads. Its view grants only the existing reporting group. A successful core health check alone does not prove this extension is installed: activation must also verify an authenticated bounded customer search and project-specific receipt read. Returned matches are portal-recorded Xero evidence, not a live bank refresh.
 
 Migration `20260903000001_praxis_context_reporting_v1.sql` creates the dark reporting schema and non-login `sanctuary_praxis_reader` group role. Applying it, creating an environment LOGIN, inserting the database-owned source identity, storing secrets, configuring Velt, and enabling traffic are separate reviewed operations; this repository change performs none of them.
