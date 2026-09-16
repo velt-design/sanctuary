@@ -299,6 +299,10 @@ the first actual selection change per open visit; restoring a draft is not an
 edit. Reopening and returning to Review may emit new start/review events, so
 funnel conversion reports must count users/sessions rather than dividing raw
 click counts. Denied interactions are not replayed after consent changes.
+An unresolved regional lookup does not consume the start: when policy resolves,
+the currently open designer starts measurement from its current selections.
+Earlier edits are not replayed. All current public overlay entry pages are
+eligible; project/product detail paths use closed route templates instead of slugs.
 
 The closed payload contains only `event_category: configured_design`,
 `design_funnel_version: v1`, a public route from the allowlist, and

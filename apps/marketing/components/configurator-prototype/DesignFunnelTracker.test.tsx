@@ -4,14 +4,14 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import DesignFunnelTracker, { emitDesignEvent } from './DesignFunnelTracker';
 import type { RailSection } from './RailProvider';
 
-const state = vi.hoisted(() => ({ analytics: true, decision: true }));
-vi.mock('../ConsentProvider', () => ({ useConsent: () => ({ consent: { analytics: state.analytics }, hasTrackingDecision: state.decision }) }));
+const state = vi.hoisted(() => ({ analytics: true, decision: true, policy: 'consent_required' as string | null }));
+vi.mock('../ConsentProvider', () => ({ useConsent: () => ({ consent: { analytics: state.analytics }, hasTrackingDecision: state.decision, trackingRegionPolicy: state.policy }) }));
 const send = vi.fn();
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('gtag', send);
-  send.mockReset(); state.analytics = true; state.decision = true;
+  send.mockReset(); state.analytics = true; state.decision = true; state.policy = 'consent_required';
   window.history.replaceState({}, '', '/configurator-preview');
   root = createRoot(document.createElement('div'));
 });
@@ -63,4 +63,32 @@ it('excludes staff and nonpublic routes and tolerates unavailable analytics', ()
   expect(emitDesignEvent('design_start', false)).toBe(false);
   send.mockImplementationOnce(() => { throw new Error('blocked'); });
   expect(emitDesignEvent('design_start', true)).toBe(false);
+});
+
+it('waits for regional initialization without replaying edits made before it resolves', async () => {
+  state.decision = false; state.policy = null;
+  await render('initial');
+  await render('edited before region arrived', 'review');
+  expect(send).not.toHaveBeenCalled();
+  state.decision = true; state.policy = 'nz_automatic';
+  await render('edited before region arrived', 'review');
+  expect(names()).toEqual(['design_start', 'design_review']);
+  await render('edited after region arrived', 'review');
+  expect(names()).toEqual(['design_start', 'design_review', 'design_edit']);
+});
+
+it('measures public overlay entry pages with bounded route metadata and excludes private pages', () => {
+  for (const [path, expected] of [
+    ['/simple-pergolas-auckland', '/simple-pergolas-auckland'],
+    ['/privacy', '/privacy'], ['/projects/example-project', '/projects/[slug]'],
+    ['/products/pergolas/example-product', '/products/[category]/[item]'],
+  ]) {
+    window.history.replaceState({}, '', path);
+    expect(emitDesignEvent('design_start', true)).toBe(true);
+    expect(send.mock.calls.at(-1)?.[2].source_path).toBe(expected);
+  }
+  for (const path of ['/quote/private-id', '/invoice/private-id', '/staff/projects', '/qa/test', '/home-experimental']) {
+    window.history.replaceState({}, '', path);
+    expect(emitDesignEvent('design_start', true)).toBe(false);
+  }
 });

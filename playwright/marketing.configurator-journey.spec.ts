@@ -140,3 +140,33 @@ for (const analytics of [false, true]) test(`configured funnel reconciles events
     expect(JSON.stringify(emitted)).not.toMatch(/Synthetic funnel test|funnel@example|5400|Auckland/);
   }
 });
+
+test('configured funnel waits for regional consent on a public overlay entry', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.removeItem('sp_consent_v1');
+    sessionStorage.removeItem('sp_tracking_region_v1');
+    (window as typeof window & { gtag?: (...args: unknown[]) => void }).gtag = (...args) => {
+      const events = JSON.parse(sessionStorage.getItem('funnel-test-events') ?? '[]');
+      events.push(args); sessionStorage.setItem('funnel-test-events', JSON.stringify(events));
+    };
+  });
+  let releaseRegion!: () => void;
+  const regionReady = new Promise<void>(resolve => { releaseRegion = resolve; });
+  await page.route('**/api/tracking-region', async handler => {
+    await regionReady;
+    await handler.fulfill({ json: { policy: 'nz_automatic' } });
+  });
+  await page.route(/https:\/\/([^/]+\.)?(googletagmanager|google-analytics|doubleclick)\.(com|net)\//, request => request.abort());
+  await page.goto('/simple-pergolas-auckland');
+  await page.getByRole('link', { name: 'Design your pergola', exact: true }).first().click();
+  await expect(page.getByRole('textbox', { name: 'Width in metres' })).toBeVisible();
+  const events = () => page.evaluate(() => (JSON.parse(sessionStorage.getItem('funnel-test-events') ?? '[]') as unknown[][]).filter(event => event[0] === 'event'));
+  expect(await events()).toEqual([]);
+  releaseRegion();
+  await expect.poll(async () => (await events()).filter(event => event[1] === 'design_start').length).toBe(1);
+  await page.getByRole('textbox', { name: 'Width in metres' }).fill('5.4');
+  await page.getByRole('textbox', { name: 'Width in metres' }).press('Tab');
+  await page.getByRole('button', { name: '3 Review', exact: true }).click();
+  expect((await events()).map(event => event[1])).toEqual(['design_start', 'design_edit', 'design_review']);
+  expect((await events())[0][2]).toMatchObject({ source_path: '/simple-pergolas-auckland' });
+});
