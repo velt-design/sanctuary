@@ -29,6 +29,7 @@ import ShareDesign from './ShareDesign';
 import { displayedEstimate, reopenedEstimateNotice } from './sharedEstimate';
 import PreviewBlindProvider from './PreviewBlindProvider';
 import journey from './journey.module.css';
+import DesignFunnelTracker from './DesignFunnelTracker';
 
 const PreviewViews = dynamic(() => import('./PreviewViews'), {
   ssr: false, loading: () => <div className={styles.loading} role="status">Preparing your pergola…</div>,
@@ -36,13 +37,14 @@ const PreviewViews = dynamic(() => import('./PreviewViews'), {
 
 export type PreviewSelection = { input: SimpleCoverInput; roof: PreviewRoofChoices; result: SimpleCoverPublicResult | null; configuratorPrice?: ConfiguratorPublicPrice | null };
 
-export default function ConfiguratorPrototype({ expanded, onToggleExpanded, renderEnquiry, resume = false }: {
+export default function ConfiguratorPrototype({ active = true, expanded, onToggleExpanded, renderEnquiry, resume = false }: {
+  active?: boolean;
   resume?: boolean; expanded: boolean; onToggleExpanded: () => void; renderEnquiry?: (selection: PreviewSelection) => ReactNode;
 }) {
   const draft = usePreviewDraft();
-  return <LightingProvider input={draft.input} roof={draft.roof} onChange={draft.setRoof}><RailProvider resume={resume}><ConfiguratorWorkspace draft={draft} expanded={expanded} onToggleExpanded={onToggleExpanded} renderEnquiry={renderEnquiry}/></RailProvider></LightingProvider>;
+  return <LightingProvider input={draft.input} roof={draft.roof} onChange={draft.setRoof}><RailProvider resume={resume}><ConfiguratorWorkspace active={active} draft={draft} expanded={expanded} onToggleExpanded={onToggleExpanded} renderEnquiry={renderEnquiry}/></RailProvider></LightingProvider>;
 }
-function ConfiguratorWorkspace({draft,expanded,onToggleExpanded,renderEnquiry}:{draft:ReturnType<typeof usePreviewDraft>;expanded:boolean;onToggleExpanded:()=>void;renderEnquiry?:(selection:PreviewSelection)=>ReactNode}){
+function ConfiguratorWorkspace({active,draft,expanded,onToggleExpanded,renderEnquiry}:{active:boolean;draft:ReturnType<typeof usePreviewDraft>;expanded:boolean;onToggleExpanded:()=>void;renderEnquiry?:(selection:PreviewSelection)=>ReactNode}){
   const {input,roof,setInput,setRoof,ready,storageAvailable,linkNotice,selectionNotice}=draft;
   const lighting=useLighting()!;
   const rail=useRail();
@@ -54,6 +56,7 @@ function ConfiguratorWorkspace({draft,expanded,onToggleExpanded,renderEnquiry}:{
   const { activeDimension, showDimension } = usePreviewDimension();
   if (!ready) return <div className={styles.loading} role="status">Preparing your design…</div>;
   return <PreviewBlindProvider input={input} roof={roof} onChange={setRoof}><div className={styles.page} data-lighting-edit={lighting.editing} data-night={lighting.night} data-expanded={expanded} data-layout={renderEnquiry ? 'project' : 'popup'}>
+    <DesignFunnelTracker active={active} ready={ready} selectionKey={JSON.stringify({input,roof})} section={rail.section}/>
     <div className={styles.workspace}>
       <div className={styles.visualSlot}>
       <section className={styles.visual} aria-label="Pergola views" data-expanded={expanded}>

@@ -232,6 +232,8 @@ export default function ContactEnquiryForm({
       contact_pathway: pathway ?? 'unselected',
       roof_count: selectedRoofs.length,
       addons_count: selectedAddOns.length,
+      configured_design: Boolean(configuredDesign),
+      ...(eventId ? { lead_event_id: eventId } : {}),
       ...extra,
     });
 

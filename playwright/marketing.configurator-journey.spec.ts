@@ -95,3 +95,48 @@ test('native sharing receives the current design and cancellation remains quiet'
   await expect(page.getByLabel('Design link', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Share menu opened.', { exact: true })).toHaveCount(0);
 });
+
+for (const analytics of [false, true]) test(`configured funnel reconciles events and errors with analytics ${analytics}`, async ({ page }) => {
+  await page.addInitScript((enabled) => {
+    localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: enabled, marketing: false, updatedAt: '2026-09-16T00:00:00.000Z', version: 1 }));
+    (window as typeof window & { gtag?: (...args: unknown[]) => void }).gtag = (...args) => {
+      const events = JSON.parse(sessionStorage.getItem('funnel-test-events') ?? '[]');
+      events.push(args); sessionStorage.setItem('funnel-test-events', JSON.stringify(events));
+    };
+  }, analytics);
+  await page.route(/https:\/\/([^/]+\.)?(googletagmanager|google-analytics|doubleclick)\.(com|net)\//, request => request.abort());
+  await page.route('**/api/configurator-price', request => request.fulfill({ json: { status: 'disabled' } }));
+  await page.goto('/configurator-preview?open=1');
+  await page.getByRole('textbox', { name: 'Width in metres' }).fill('5.4');
+  await page.getByRole('textbox', { name: 'Width in metres' }).press('Tab');
+  await page.getByRole('navigation', { name: 'Design stages' }).getByRole('button', { name: '3 Review' }).click();
+  await page.getByRole('link', { name: 'Enquire about this design' }).click();
+  await page.locator('#contact-name').fill('Synthetic funnel test');
+  await page.locator('#contact-email').fill('funnel@example.test');
+  await page.locator('#contact-suburb').fill('Auckland');
+  let attempts = 0;
+  let acceptedId: unknown;
+  await page.route('**/api/enquiry', async handler => {
+    attempts += 1;
+    const payload = handler.request().postDataJSON();
+    if (attempts === 1) return handler.fulfill({ status: 503, json: { ok: false, error: 'temporarily_unavailable' } });
+    acceptedId = payload.submissionId;
+    await handler.fulfill({ json: { ok: true } });
+  });
+  const events = () => page.evaluate(() => JSON.parse(sessionStorage.getItem('funnel-test-events') ?? '[]') as unknown[][]);
+  await page.getByRole('button', { name: 'Send my enquiry' }).click();
+  await expect(page.locator('form').getByRole('alert')).toBeVisible();
+  expect((await events()).filter(entry => entry[1] === 'contact_success')).toHaveLength(0);
+  await page.getByRole('button', { name: 'Send my enquiry' }).click();
+  await expect(page.getByRole('heading', { name: 'Your enquiry has been sent.' })).toBeVisible();
+  expect(attempts).toBe(2);
+  const emitted = (await events()).filter(entry => entry[0] === 'event');
+  if (!analytics) expect(emitted).toEqual([]);
+  else {
+    for (const name of ['design_start', 'design_edit', 'design_review', 'contact_error', 'contact_success']) {
+      expect(emitted.filter(entry => entry[1] === name), name).toHaveLength(1);
+    }
+    expect(emitted.find(entry => entry[1] === 'contact_success')?.[2]).toMatchObject({ configured_design: true, lead_event_id: acceptedId });
+    expect(JSON.stringify(emitted)).not.toMatch(/Synthetic funnel test|funnel@example|5400|Auckland/);
+  }
+});
