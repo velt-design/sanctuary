@@ -3,7 +3,7 @@
 ## Staff clarity extension (16 September 2026, local implementation)
 
 Workflow-usefulness revision: the owner approved retirement of generic stage
-reviews. Migration `20260916000005` cancels only active STAGE_REVIEW rows with
+reviews. Migration `20260916000006` cancels only active STAGE_REVIEW rows with
 audited before/after records, stops their producer and prevents reactivation.
 Shared retired-identity and completion-capability guards refuse stale stage work
 in UI/queue consumers. Dashboard, Work Queue and Overview share the resulting

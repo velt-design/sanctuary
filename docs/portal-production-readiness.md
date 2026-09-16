@@ -3,7 +3,7 @@
 Status: Active evolving tracker.
 
 Project-page workflow milestone (2026-09-16): local candidate retires automatic
-generic stage reminders through forward migration `20260916000005`, retains
+generic stage reminders through forward migration `20260916000006`, retains
 audited history and used follow-ups, and supplies three coherent populated preview
 stories. Migration rehearsal, focused browser checks, Portal tests and isolated
 build/bundle checks pass. Independent delivery review passed the bounded local

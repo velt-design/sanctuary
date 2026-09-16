@@ -7,7 +7,7 @@ after the production usage audit found 535 overdue stage reviews. This supersede
 the stage-review seeding policy described historically below. Stage alone no
 longer creates a timed staff obligation. Existing lead/quote follow-up, explicit
 staff commitments, specialist workflows, recovery and project outcomes remain.
-Forward migration `20260916000005_retire_generic_stage_reviews.sql` stops stage
+Forward migration `20260916000006_retire_generic_stage_reviews.sql` stops stage
 seeding, cancels active stage reviews with before/after events, preserves terminal
 history, rejects reactivation/retyping and refreshes shared compatibility facts.
 It is local and tested, not applied to production. Apply before the matching app

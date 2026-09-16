@@ -4,7 +4,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const read = (name: string) => readFileSync(name, 'utf8');
-const migration = read('supabase/migrations/20260916000005_retire_generic_stage_reviews.sql');
+const migration = read('supabase/migrations/20260916000006_retire_generic_stage_reviews.sql');
 const source = read('test/project-work-items-v2-migration.test.ts');
 const bootstrap = source.match(/const bootstrap = String\.raw`([\s\S]*?)`;\r?\n\r?\ndescribe\(/)?.[1];
 if (!bootstrap) throw new Error('Missing existing V2 database fixture');

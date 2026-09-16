@@ -6,7 +6,7 @@
 
 Implementation approval: Jordan's "Go ahead, go ahead" in this task authorizes
 the agreed workflow retirement and coherent examples. Current local batch adds
-forward migration `20260916000005`, shared retired-work/capability guards,
+forward migration `20260916000006`, shared retired-work/capability guards,
 purposeful email-recording explanation, saved-fact position headings and three
 coherent read-only examples at `/qa/project-command-centre-fixture?story=enquiry`,
 `?story=quote` and `?story=installation`. AI suggestions and agreement analysis

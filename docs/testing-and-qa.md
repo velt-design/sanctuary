@@ -908,7 +908,7 @@ colliding date-only `20260729` family.
 
 Use a disposable non-production copy for mutation checks. The stage-review
 seeding/replacement checks below describe the original portfolio migration only.
-After `20260916000005`, they are superseded by retirement: no stage review is
+After `20260916000006`, they are superseded by retirement: no stage review is
 created or reopened, existing active reviews are audited cancellations, and
 non-review obligations are preserved. Verify the original migration in isolation:
 

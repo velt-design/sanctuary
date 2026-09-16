@@ -1,7 +1,7 @@
 # Project Work Items Technical And Cutover Plan
 
 16 September workflow retirement supersedes generic STAGE_REVIEW seeding below:
-`20260916000005_retire_generic_stage_reviews.sql` replaces the stage-entry policy
+`20260916000006_retire_generic_stage_reviews.sql` replaces the stage-entry policy
 without its seed block, preserving paid closure/reopening and project locks. It
 audits cancellation of active generic reviews, refreshes compatibility projections,
 and extends the existing retired-row guard. No active lead/quote/manual work or
