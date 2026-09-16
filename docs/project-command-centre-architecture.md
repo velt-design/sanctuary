@@ -130,6 +130,7 @@ A conditional region is omitted when it is irrelevant. When it is relevant but t
 
 #### Specialist Links
 
+- The configurator launch candidate adds an Original enquiry tab inside the existing Project Work/files card. `ProjectEnquiryReceiptPanel` reads the staff enquiry-receipts endpoint and shows the frozen submitted design, price and brief independently of later working estimates. Its scoped wrapping layout keeps the tab usable at phone widths. Revision links open the separate configurator revision owner; quote creation and sending remain Commercial actions. `enquiryDeliveryStatus` presents queued, in-flight, provider-accepted and attention states without offering an automatic resend; receipt and delivery-status tests protect those distinctions. This candidate remains subject to the configurator release hold.
 - Customer/detail editing stays with the current project/contact detail mutation owner.
 - Design summary links to the exact selected estimate or Design Workbench only when that link is valid.
 - Commercial owns the list-first Estimates, Quotes, and Invoices navigation. Calculator continues to own estimate editing and price calculation after an explicit estimate action.

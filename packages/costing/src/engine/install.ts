@@ -1,4 +1,5 @@
 import { isCostingManifestAtLeast } from '../manifestVersion';
+import { PILE_INSTALL_MINUTES, pilePostCounts, usesApprovedPileFooting } from './pileFooting';
 import type { DerivedV1 } from './types';
 import { ceilingArea } from './ceilingTakeoff';
 import { CEILING_CATALOGUE } from '../ceilingCatalogue';
@@ -270,6 +271,7 @@ function actionApplies(action: ActionConfig, inputs: InputsNormalizedV1, derived
 }
 
 function resolveBaseMinutes(action: ActionConfig, inputs: InputsNormalizedV1, config: CostingConfigV1): number {
+  if (action.id === 'posts.pile_1_5m_per_post' && usesApprovedPileFooting(inputs, config)) return PILE_INSTALL_MINUTES;
   const base = (action as any).base_minutes as any;
   if (typeof base === 'number') return base;
   if (!base || typeof base !== 'object') return 0;
@@ -402,16 +404,21 @@ export function buildInstallV1(
   if (!Number.isFinite(crewRateExGst) || crewRateExGst <= 0) warnings.push('Invalid crew hour rate in install actions config; defaulting to 100.');
 
   const actionsOut: InstallActionV1[] = [];
+  const footingCounts = pilePostCounts(inputs, config);
 
   for (const action of installActionsWithInfillLabourPolicyV1(config)) {
     if (excluded.has(action.id)) continue;
     const actionScope = String((action as any).scope ?? 'module');
     if (scope !== 'all' && actionScope !== scope) continue;
 
-    if (!actionApplies(action, inputs, derived)) continue;
+    const footingInputs = footingCounts.brackets > 0 && action.id === 'posts.deck_bracket_per_post'
+      ? { ...inputs, post_connection_type: 'deck_bracket' as const, post_count: footingCounts.brackets }
+      : footingCounts.piles > 0 && action.id === 'posts.pile_1_5m_per_post'
+        ? { ...inputs, post_count: footingCounts.piles } : inputs;
+    if (!actionApplies(action, footingInputs, derived)) continue;
 
     const selectedCeiling = action.id === 'roof.install_timber_roof_m2' && inputs.ceiling;
-    const qty = selectedCeiling ? ceilingArea(inputs, derived as unknown as DerivedV1) : resolveQty(action, inputs, derived);
+    const qty = selectedCeiling ? ceilingArea(inputs, derived as unknown as DerivedV1) : resolveQty(action, footingInputs, derived);
     if (!Number.isFinite(qty) || qty <= 0) continue;
 
     const originalMinutes = resolveBaseMinutes(action, inputs, config);

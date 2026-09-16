@@ -44,6 +44,7 @@ export function CostingComparison(props: {
           The preview is based on the last saved draft. Save your current edits to refresh it.
         </div>
       ) : null}
+      {diff.some(row => row.path.startsWith('accessoryRates.') || row.path.startsWith('installedSellingRates.')) && <div className={styles.warning}>Accessory allowances or installed selling schedules changed. The base-pergola impact scenarios below do not include these extras; a zero change there does not mean the accessory prices are unchanged. Public configurator activation remains a separate release.</div>}
       {largeChanges.length ? (
         <div className={styles.warning}>
           <strong>Large pricing movement detected.</strong>{' '}

@@ -1,4 +1,5 @@
 {
+  "git": { "deploymentEnabled": { "codex/configurator-pricing-candidate-20260915": false } },
   "crons": [
     {
       "path": "/api/enquiry/attachments/cleanup",

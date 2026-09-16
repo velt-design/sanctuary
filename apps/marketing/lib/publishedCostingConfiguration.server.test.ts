@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   loadCostingConfigV1,
+  getDefaultInstalledSellingRates,
   snapshotCostingControlConfigV1,
 } from '@sp/costing';
 import { hashCostingControlConfigV1 } from '@sp/costing/server';
@@ -34,6 +35,8 @@ describe('marketing published costing resolver', () => {
   it('returns the exact active published version with provenance', async () => {
     const control = snapshotCostingControlConfigV1(loadCostingConfigV1());
     control.labour.crewHourRateExGst = 94;
+    control.installedSellingRates = getDefaultInstalledSellingRates();
+    control.installedSellingRates.rafterLighting.lightIncCents = 21050;
     const client = clientFor({
       publication: { data: { current_version_id: 'version-8' }, error: null },
       version: {
@@ -52,6 +55,7 @@ describe('marketing published costing resolver', () => {
     const resolved = await getPublishedCostingConfiguration(client);
 
     expect(resolved.config.installActions.basis.crew_hour_rate_ex_gst).toBe(94);
+    expect(resolved.config.installedSellingRates?.rafterLighting.lightIncCents).toBe(21050);
     expect(resolved.provenance.versionNumber).toBe(8);
     expect(resolved.provenance.versionId).toBe('version-8');
   });

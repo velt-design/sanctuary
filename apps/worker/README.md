@@ -1,5 +1,14 @@
 # Sanctuary Background Worker
 
+Website enquiry email delivery is opt-in with
+`BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED=true` and `RESEND_API_KEY`. The global
+active-execution gate still applies. The default handler registry remains
+synthetic-only. Install and verify the enquiry delivery migration, complete the
+website producer integration and run the real database release gate before
+enabling this cohort. No deployment setting has been changed by this addition.
+The handler reads exact saved messages through a current-lease RPC and resumes
+accepted deliveries by finalising the outbox, without sending again.
+
 This Node 22 application is the server-owned runtime for durable technical background jobs. It communicates with Supabase only through the explicit background-job RPC allowlist. It does not import portal or marketing application code, and its logs and health responses contain safe operational metadata only.
 
 JOB-02 installs the runtime dark by default. JOB-03 adds the reusable durable-email effect coordinator and provider reconciliation boundary without registering a commercial handler. PR-AI-007 registers only the deterministic `ai_synthetic_v1` handler; it accepts two fixed fixtures, makes no network or provider call, performs no business mutation, and returns a bounded fixed result. A repository build does not apply a shared database migration, send email, activate OpenClaw, or enable a production rollout.

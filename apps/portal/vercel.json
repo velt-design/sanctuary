@@ -1,4 +1,5 @@
 {
+  "git": { "deploymentEnabled": { "codex/configurator-pricing-candidate-20260915": false } },
   "crons": [
     { "path": "/api/integrations/xero/maintain", "schedule": "17 3 * * *" },
     { "path": "/api/integrations/xero/observe", "schedule": "* * * * *" }

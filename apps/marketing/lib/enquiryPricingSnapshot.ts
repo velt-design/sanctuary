@@ -16,10 +16,12 @@ import type {
   ResolvedPublishedCostingConfigurationV1,
 } from '@sp/costing/server';
 import { buildEstimateDbPayload } from '../../../apps/portal/lib/estimates/persistence';
+import type { CustomerBrief } from './enquiryDesignContract';
 import { buildEnquiryBudgets } from './enquiryBudgets';
 import { QUOTE_MULTIPLIER, type MoneyRange } from './enquiryEstimate';
 import type { FrozenSimpleCoverPricingResult } from './simpleCoverPricing.server';
 import type { SimpleCoverInput } from './simpleCoverCalculator';
+import type { FrozenConfiguratorPrice } from './configuratorPricing.server';
 
 export type EnquiryPricingParams = {
   enquiryType: string;
@@ -49,7 +51,9 @@ export type EnquiryPricingSnapshot = {
     | 'current_published_enquiry'
     | 'simple_cover_calculator_verified'
     | 'simple_cover_unpriced'
+    | 'configurator_verified'
     | 'unavailable';
+  verifiedConfigurator?: FrozenConfiguratorPrice;
   verifiedSimpleCover: {
     input: SimpleCoverInput;
     widthM: number;
@@ -62,6 +66,7 @@ export type EnquiryPricingSnapshot = {
 
 export type EnquiryPricingOptions = {
   verifiedSimpleCover?: FrozenSimpleCoverPricingResult;
+  verifiedConfigurator?: FrozenConfiguratorPrice;
   suppressGenericPricing?: boolean;
 };
 
@@ -245,6 +250,18 @@ export function buildEnquiryPricingSnapshot(
   resolved: ResolvedPublishedCostingConfigurationV1 | null,
   options: EnquiryPricingOptions = {},
 ): EnquiryPricingSnapshot {
+  const configured = options.verifiedConfigurator;
+  if (configured) {
+    const design = configured.design;
+    const configuredParams = { ...params, widthM: design.input.widthMm / 1000, depthM: design.input.projectionMm / 1000,
+      heightM: null, style: design.roof.family === 'mono' ? 'pitched' : design.roof.family === 'box' ? 'box_perimeter' : 'gable' };
+    return { costInputs: configured.siteInputs, costResult: configured.base.siteOutput,
+      costingConfiguration: configured.costingConfiguration,
+      calculatorInputs: { ...calculatorInputsFromSnapshot(configuredParams, configured.siteInputs, []), frozenConfiguratorSiteInputs: configured.siteInputs },
+      budgets: { baseRange: { lowIncGst: configured.customerPrice.amountIncGst, highIncGst: configured.customerPrice.amountIncGst },
+        blindsRange: null, budgetBasis: 'verified configurator estimate including selected accessories' },
+      pricingSource: 'configurator_verified', verifiedSimpleCover: null, verifiedConfigurator: configured };
+  }
   const verified = options.verifiedSimpleCover;
   const effectiveParams: EnquiryPricingParams = verified
     ? {
@@ -333,20 +350,32 @@ export function buildEnquiryPricingSnapshot(
 }
 
 export function buildEnquiryDraftEstimateRow(params: EnquiryPricingParams & {
-  projectId: string;
+  draftOrigin?: 'staff_revision';
+  projectId: string | null;
   createdBy: string;
   email: string;
   phoneRaw: string;
   message: string;
   pricing: EnquiryPricingSnapshot;
+  customerBrief?: CustomerBrief;
+  projectPreferences?: import('./enquiryProjectPreferences').EnquiryProjectPreferences;
 }): Record<string, unknown> {
   const verifiedSimple = params.pricing.verifiedSimpleCover;
-  const enquiryWidthM = verifiedSimple?.widthM ?? params.widthM;
-  const enquiryDepthM = verifiedSimple?.depthM ?? params.depthM;
-  const enquiryHeightM = verifiedSimple ? null : params.heightM;
-  const enquiryStyle = verifiedSimple ? 'pitched' : params.style;
-  const enquiryRoofMaterials = verifiedSimple ? ['acrylic'] : params.roofMaterials;
-  const warnings = ['Draft design created automatically from website enquiry.'];
+  const configuredDesign = params.pricing.verifiedConfigurator?.design;
+  const enquiryWidthM = configuredDesign ? configuredDesign.input.widthMm / 1000 : verifiedSimple?.widthM ?? params.widthM;
+  const enquiryDepthM = configuredDesign ? configuredDesign.input.projectionMm / 1000 : verifiedSimple?.depthM ?? params.depthM;
+  const enquiryHeightM = configuredDesign || verifiedSimple ? null : params.heightM;
+  const enquiryStyle = configuredDesign
+    ? configuredDesign.roof.family === 'mono' ? 'pitched' : configuredDesign.roof.family === 'box' ? 'box_perimeter' : 'gable'
+    : verifiedSimple ? 'pitched' : params.style;
+  const configuredMaterial = configuredDesign?.roof.finish?.material ?? 'acrylic';
+  const enquiryRoofMaterials = configuredDesign
+    ? configuredMaterial === 'combination' ? ['acrylic', 'timber'] : configuredMaterial === 'solid' ? ['timber'] : ['acrylic']
+    : verifiedSimple ? ['acrylic'] : params.roofMaterials;
+  const warnings = [params.draftOrigin === 'staff_revision'
+    ? 'New configured estimate revision prepared by staff. The original customer submission is unchanged.'
+    : 'Draft design created automatically from website enquiry.'];
+  if (params.pricing.verifiedConfigurator) warnings.push('Original configured selling estimate is frozen with the customer brief. An unchanged design can use its complete submitted selling breakdown. Review the site before issuing a quote; base costs alone do not include every accessory.');
   if (isTruthy(params.addOns.lighting) || isTruthy(params.addOns.heating) || isTruthy(params.addOns.slats)) {
     warnings.push('Some enquiry add-ons are captured as notes only and still need staff review in the calculator.');
   }
@@ -368,7 +397,7 @@ export function buildEnquiryDraftEstimateRow(params: EnquiryPricingParams & {
       install: result.install,
       overhead: result.overhead,
       totals: result.totals,
-      warnings: (result as { warnings?: unknown[] }).warnings ?? warnings,
+      warnings: [...((result as { warnings?: unknown[] }).warnings ?? []), ...warnings],
       pergolas: (result as { pergolas?: unknown[] }).pergolas ?? [],
       siteShared: (result as { shared?: unknown }).shared ?? null,
       shared: (result as { shared?: unknown }).shared ?? null,
@@ -399,7 +428,7 @@ export function buildEnquiryDraftEstimateRow(params: EnquiryPricingParams & {
       status: 'draft',
       inputs: params.pricing.calculatorInputs,
       outputs,
-      derived,
+      derived: params.pricing.verifiedConfigurator ? { ...derived, pricingMode: 'configured_customer_snapshot', pricingSource: 'configurator_verified' } : derived,
       projectSnapshot: {
         name: `${params.name} - ${params.suburb || 'Enquiry'}`.trim(),
         siteAddress: params.suburb || null,
@@ -409,6 +438,20 @@ export function buildEnquiryDraftEstimateRow(params: EnquiryPricingParams & {
       },
       snapshot: {
         source: 'marketing_enquiry',
+        ...(params.customerBrief ? { customerBrief: params.customerBrief } : {}),
+        ...(params.pricing.verifiedConfigurator ? {
+          frozenConfiguratorPrice: params.pricing.verifiedConfigurator,
+          configuredQuoteInputs: structuredClone(params.pricing.calculatorInputs),
+        } : {}),
+        ...(params.projectPreferences ? { projectPreferences: params.projectPreferences } : {}),
+        submittedPrice: {
+          pricingSource: params.pricing.pricingSource,
+          costingConfiguration: params.pricing.costingConfiguration,
+          baseRange: params.pricing.budgets.baseRange,
+          blindsRange: params.pricing.budgets.blindsRange,
+          includesGst: true,
+          ...(params.pricing.verifiedConfigurator ? { breakdown: params.pricing.verifiedConfigurator.customerPrice.breakdown } : {}),
+        },
         contact: { displayName: params.name, email: params.email || null, phone: params.phoneRaw || null },
         project: {
           projectName: `${params.name} - ${params.suburb || 'Enquiry'}`.trim(),

@@ -1,0 +1,5 @@
+.opening { cursor: pointer; outline: none; }
+.label, .highlight { opacity: 0; pointer-events: none; }
+.opening:hover .label, .opening:focus .label, .opening[data-selected=true] .label,
+.opening:hover .highlight, .opening:focus .highlight, .opening[data-selected=true] .highlight { opacity: 1; }
+.opening:hover .label, .opening:focus .label, .opening[data-selected=true] .label { pointer-events: auto; }

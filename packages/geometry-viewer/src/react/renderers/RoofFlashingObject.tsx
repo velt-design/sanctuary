@@ -1,5 +1,6 @@
 ﻿import { useMemo } from "react";
 import * as THREE from "three";
+import { useEffect } from "react";
 import type { ViewerSceneRoofFlashingObject } from "@sp/geometry";
 import { buildPolygonSlabGeometry } from "../../three";
 
@@ -35,9 +36,10 @@ export function RoofFlashingObject({
       })),
     [object.thicknessMm, object.wings],
   );
+  useEffect(() => () => { wingGeometries.forEach(wing => wing.geometry.dispose()); }, [wingGeometries]);
   return (
     <group
-      data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
+      name={`scene-object-${object.sourceId ?? object.id}`}
       onClick={(event) => {
         event.stopPropagation();
         onSelect(object.id);

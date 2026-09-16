@@ -10,6 +10,7 @@ import {
   type CustomerGeometryIdentifiersV1,
   type CustomerGeometryNoticeV1,
   type CustomerGeometryRuntimeIdentityV1,
+  type CustomerGeometryLayoutV1,
 } from './contracts';
 import {
   representativeConnection,
@@ -130,6 +131,7 @@ function roofInput(
 function buildGeometryInput(
   configuration: CustomerPergolaConfigurationV1,
   identity: CustomerGeometryRuntimeIdentityV1,
+  layout?: CustomerGeometryLayoutV1,
 ): PergolaGeometryInput {
   const pergola = configuration.intent.pergola;
   const freestanding = pergola.placement.mode === 'freestanding';
@@ -167,13 +169,18 @@ function buildGeometryInput(
     },
     position: null,
     supports: {
-      postCount: representativePostCount(pergola.family, freestanding),
+      postCount: layout?.postCount ?? representativePostCount(pergola.family, freestanding),
       postCutHeightM: pergola.dimensions.clearHeightMm / 1_000,
       postConnectionType: representativePostConnectionType(configuration.intent.site.level),
       ground: 'easy',
     },
     structural: {
       heights: representativeStructuralHeights(pergola),
+      ...(layout ? { framing: {
+        rafterCount: layout.rafterCount,
+        rafterSpacingMm: layout.rafterSpacingMm,
+        ...(pergola.family === 'mono' && layout.widthReference ? { widthReference: layout.widthReference } : {}),
+      } } : {}),
     },
     hostHouse: customerSiteToRawHouseInputV1(configuration),
   };
@@ -187,6 +194,7 @@ function buildGeometryInput(
 export function customerConfigurationToPergolaGeometryInputV1(
   sourceConfiguration: CustomerPergolaConfigurationV1,
   identity: CustomerGeometryRuntimeIdentityV1,
+  layout?: CustomerGeometryLayoutV1,
 ): CustomerGeometryAdapterResultV1 {
   const configuration = normalizeCustomerPergolaConfigurationV1(sourceConfiguration);
   const pergola = configuration.intent.pergola;
@@ -225,7 +233,7 @@ export function customerConfigurationToPergolaGeometryInputV1(
     ok: true,
     configuration,
     identifiers: identifiersFor(configuration, hostHouse),
-    geometryInput: buildGeometryInput(configuration, identity),
+    geometryInput: buildGeometryInput(configuration, identity, layout),
     notices: noticesFor(configuration),
   };
 }

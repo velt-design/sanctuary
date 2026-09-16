@@ -6,11 +6,59 @@ Admin draft save/delete commands record audit evidence without payment links, ba
 
 Status: Current.
 
+The durable website transaction also retains the initial draft estimate and
+returns its ID on retries. Its private receipt preserves the submitted design and
+server-derived price/provenance separately from subsequent working-draft edits.
+This path remains opt-in. Its three migrations are installed in staging only;
+production application and delivery activation remain pending. See
+`staging-supabase-readiness.md` for exact versions, hashes and postflight evidence.
+
+Website delivery recovery is being integrated behind an install-only database
+boundary. `20260914062001_marketing_enquiry_durable_delivery.sql` stores intake,
+the QUEUED outbox, an exact private message and the existing email job in one
+transaction; current-lease RPCs read and finalise it after provider acceptance.
+The website route can opt into this path with
+`WEBSITE_ENQUIRY_DURABLE_DELIVERY=true`; the switch remains off. It prepares the
+exact message before atomic intake and never falls back to direct sending when
+that transaction fails. The worker has an opt-in
+website-only handler behind `BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED`; it requires
+`RESEND_API_KEY` and the separate global active-execution gate. Default worker
+registration remains synthetic-only. Acceptance/finalisation replay tests prove
+the handler does not resend an already accepted message.
+See the current closure notes in `customer-configurator-architecture.md` for
+verified local coverage and the remaining integration/release gate.
+
+On 2026-09-14, the owner approved exactly five synthetic V2 proofs to
+`jordan@sanctuarypergolas.co.nz`, with TEST subjects and no CC/BCC. All five
+were sent through `@sp/email-provider`; independent Resend reads reported
+`delivered` and confirmed the recipient envelope. Local evidence is
+`artifacts/pricing-review-2026-09-11/launch-email-proofs/approved-send-results.json`.
+This verifies template rendering and provider delivery, not production activation,
+the durable worker end-to-end path, or recipient-side email-client appearance.
+The existing synthetic staging jobs remain stopped and were not retried.
+A read-only Vercel project configuration audit on the same date found no production
+values for `WEBSITE_ENQUIRY_EXPERIENCE_V2`, `WEBSITE_ENQUIRY_DURABLE_DELIVERY`,
+or `WEBSITE_CONFIGURATOR_APPROVED_VERSION_ID`. This checks configured variables,
+not the already-deployed runtime. No deployment settings were changed.
+Configured copy now explicitly says the visit is not booked and explains the
+free Auckland measure and out-of-area availability/travel check. Non-design
+proofs omit unselected preferences. The staff workbench contains all five journeys.
+
+The proposed V2 enquiry family includes a distinct Help me choose experience.
+Validated `enquiryIntent` values `help` and `bespoke` select the appropriate
+residential confirmation; a bespoke brief may retain a configured design as its
+starting point. Both intents suppress generic dimension-derived estimates.
+The existing production activation flag still governs V2 deployment. New
+site-measure requests require a site address before intake; the existing location
+field carries that address into the staff record and confirmation context.
+
 This doc owns current-state guidance for portal automation events, Project Work and follow-ups, email outbox, email previews, audit events, and marketing enquiry email side effects. Quote/invoice transactional side effects remain owned by `docs/quotes-invoices-job-packs.md`.
 
 Scheduled invoice creation and whole-invoice payment recording append `invoice.created` and `invoice.paid` commercial audit events after their authoritative invoice write. These events are evidence only; they do not send email, infer partial payment, or mutate quote state.
 
 ## Read First
+
+Project activity labels distinguish queued, failed, sent and delivered outbox records. Unknown states are labelled unknown, not sent. This is a read projection only; viewing activity never dispatches or retries email.
 
 - Use `## Ownership` and `## Current Data Flow` to locate the request-bound or durable email owner before changing a send.
 - Use `## Access Boundaries` and `## Guardrails` before changing provider transport, webhook reconciliation, outbox state, or logs.
@@ -231,3 +279,58 @@ Manual checks should cover:
 - Email preview renders repo templates and DB fallback templates.
 - Email provider failure is visible as an outbox failure where staff need to act.
 - Marketing enquiry success/failure does not expose staff-only data.
+
+Website confirmation visibility (2026-09-14, installed in staging only): forward
+migration `20260914062003_marketing_enquiry_delivery_status.sql` adds only the
+linked background-job status to the existing staff receipt projection. No job
+payload, lease, provider identifiers or raw errors are exposed. The receipt view
+maps queued/sending/retrying/provider-accepted/sent states to plain language;
+needs_attention, permanent_failed and cancelled take precedence over a stale
+QUEUED or SENT outbox status and advise administrator review before resending.
+A succeeded job without SENT outbox is also flagged for review. Tests execute the
+forward projection under the staff role and verify private fields remain absent.
+Five focused projection/view/status tests passed; the disposable database harness
+includes the new migration and passed on real PostgreSQL/PGMQ. Staging schema
+rehearsal, no-file intake/replay and installed access checks also passed; the
+complete browser/provider journey remains unverified. This adds failure visibility, not an operator retry UI
+or a promise that notifications/recovery are fully launch-verified.
+
+
+### 2026-09-14 - Approved staging enquiry worker delivery
+
+The owner approved one additional synthetic Help message to Jordan only. The real
+staging intake RPC, worker handler and provider transport processed job
+`61d55640-ee97-4ae2-ae99-50465479526e`. Provider delivery was independently confirmed;
+the authenticated staff receipt API returned email status `SENT` and delivery
+status `succeeded`, while anonymous access returned 401. The worker was stopped
+in its finally block and both pre-existing needs-attention jobs were unchanged.
+No CC/BCC, customer data, production activation or pricebook publication occurred.
+
+Evidence: `artifacts/pricing-review-2026-09-11/launch-email-proofs/worker-integration-result.json`
+and `worker-delivery-verification.json` in the same directory. This proves the
+staging delivery and staff-status path, not the approved-price customer submission
+or staff priced-revision path, which still require an exact approved pricebook.
+
+## Configured enquiry email pricing, 16 September 2026
+
+The owner explicitly authorised Sanctuary-only test emails and requested the
+submitted pergola and extras price breakdown in the enquiry confirmation.
+`enquiryEmailPreparation` now copies only the server-verified customer price into
+frozen email variables. The configured V2 template shows the NZD GST-inclusive
+total and every submitted breakdown line. Legacy rendering also retains the
+submitted breakdown. No internal costs are exposed, and retries do not recalculate.
+Missing or inconsistent totals use tailored-quote wording rather than inventing
+an amount. HTML/plain-text, tampering and snapshot-copy tests cover this boundary.
+
+Local verification: 1,058 marketing, email-provider, worker and enquiry contract
+tests passed, plus two HTML/plain-text compatibility checks; marketing typecheck
+and scoped lint passed. These are not live delivery proof. Production still lacks
+the five September enquiry migrations and Render's enquiry email environment
+settings. Existing live finance worker d18c162 must be preserved during rollout.
+
+Activation follow-up: the five enquiry migrations and Render handler are now
+installed. The owner-only production canary was delivered once with the frozen
+$18,338 total and extras; exact HTTP replay reused its receipt. See
+`customer-configurator-launch-review.md` for deployment, database/provider proof,
+rollback and the distinction between this verified local producer and the pending
+public website release. No v2.9 pricebook publication occurred in this email pass.

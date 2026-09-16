@@ -45,11 +45,11 @@ export const simpleCoverOptions = [
 
 export const simpleCoverBoundary = {
   simple: [
-    'One pitched acrylic roof within the calculator limits',
-    'A straightforward house connection and workable site access',
+    'Pitched, gable or box-perimeter designs with the options shown in the configurator',
+    'Keep designing above the instant-pricing limits and ask us for a tailored quote',
   ],
   custom: [
-    'Different roof forms, unusual geometry or complex connections',
-    'A project outside the Simple limits or needing integrated features',
+    'Shapes, structural timber frames or connections the configurator cannot represent',
+    'A site or project brief needing a design beyond the available options',
   ],
 } as const;

@@ -8,6 +8,13 @@ function formData(values: Record<string, string>): FormData {
 }
 
 describe('enquiry form contract', () => {
+  it('configured enquiries require suburb and allow an omitted phone, but validate a supplied one',()=>{
+    const data=formData({enquiryType:'residential',name:'Alex',email:'alex@example.test',suburb:'Albany'});
+    expect(validateEnquiryForm(data,[],true)).toEqual({});
+    data.set('phone','bad');expect(validateEnquiryForm(data,[],true).phone).toBeTruthy();
+    data.set('phone','');data.set('suburb','');expect(validateEnquiryForm(data,[],true).suburb).toBe('Enter your suburb.');
+    expect(validateEnquiryForm(data,[]).phone).toBeTruthy();
+  });
   it('requires both contact methods alongside the project type and name', () => {
     expect(validateEnquiryForm(formData({}), [])).toEqual({
       enquiryType: 'Choose a project type.',

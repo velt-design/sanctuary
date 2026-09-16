@@ -2,6 +2,13 @@
 
 Status: Active evolving tracker.
 
+Configurator release continuation (2026-09-16): production shared pricing is
+Version13/v2.8 and the Render enquiry handler has delivered an owner-only canary
+with its frozen price breakdown. The current release prepares package v2.9
+compatibility for approved ridge/pile rules without rewriting historical prices.
+Final website deployment/settings, v2.9 publication and live journey verification
+remain pending. Current authority: `customer-configurator-launch-review.md`.
+
 Pricing release (2026-09-15): the owner requested the approved timber prices and costings live in the staff calculator independently of the configurator launch. The isolated release contains v2.7 pricebook compatibility, four Cedar/ThermoPine ceiling choices and a fix for staff HTTP parsing that previously dropped the selected ceiling. Production remains on Version 11 until both app deployments are compatible and the exact preserved-rate candidate is published. No queue migrations, customer configurator activation, email tests or Render purchase are included. Pricing-specific release evidence is kept with the private September pricing review.
 
 Release blocker found during finance preparation (2026-09-15): production Supabase reported unhealthy/100 percent CPU; its last-hour log view showed approximately348,000 Postgres errors, with repeated `owner assignment changed` / SQLSTATE40001. Independent activity inspection found concurrent `project_command_set_owner` calls. This matches the documented commercial stale-conflict retry hazard. A forward migration changes only the two owner-version conflict exceptions to non-retryable PT409; the portal adapter preserves STALE_STATE/409. Five owner-route tests pass, and apply/replay succeeded in a production rollback-only rehearsal. Under Jordan's renewed approval, the database migration was installed on production with exact function-body and unchanged owner/grant guards. Independent postflight verified PT409, absence of the old retryable conflict clauses and zero active owner RPCs at 2026-09-15T00:16:20Z. Supabase subsequently reported Healthy, although displayed CPU remained100 percent; sustained load recovery is not yet verified. The paired portal STALE_STATE/409 adapter remains pending release, so the old portal may show a generic failure for a stale edit until it lands. Keep finance activation blocked pending release and live verification. Evidence is in ignored `production-health-triage.log`, `owner-conflict-tests.log` and `owner-conflict-rehearsal.log`.
@@ -57,6 +64,65 @@ Use `npm run docs:readiness` for an advisory summary of tracker age, at-risk row
 Do not duplicate detailed rules from canonical docs here. Link to them, then keep this doc focused on current readiness state, next actions, and coordination.
 
 ## Current Readiness Snapshot
+
+Configurator continuation (2026-09-15): the protected staff calculation failure is
+Vercel machine authentication, with a preview-only server credential fix and
+focused route tests. The ScheduleClient CI failure was a timing-dependent query
+assertion with observer leakage; all 40 focused tests pass after correction.
+Hosted staff save/quote now passes: V3 retains $12,261 including GST into an unsent
+draft quote, while the original and prior revision remain unchanged. Fresh hosted
+CI remains required after the mobile touch-target correction. Existing Vercel
+Pro scheduling is a viable candidate for a bounded queue runner, but the existing
+persistent-worker runtime cannot be mounted directly as a cron route. No hosting
+purchase is justified yet. Physical-device and production activation gates remain
+open; see `customer-configurator-architecture.md` for the current boundary.
+
+Security refresh (2026-09-14): the isolated launch candidate resolves Next
+16.3.5, Sharp 0.35.4, baseline-browser-mapping 2.11.23, patched fflate 0.8.3/
+0.6.11 and smol-toml 1.8.0. Production audit reports zero vulnerabilities;
+toolchain audit passes with only the two existing approved xlsx exceptions.
+Full typecheck and lint pass. The broad app/package run passed 5,474 tests
+with one old Sharp-version assertion failing; updating that assertion passed
+all four focused runtime dependency tests. Both production builds pass when
+run serially; concurrent Windows builds crashed natively and are not green
+evidence. Dependency manifests, lock and the pin test were copied back after
+checking for overlapping source changes. Existing working-directory installs
+and running previews have not been refreshed by that copy. No deployment occurred.
+Evidence: `artifacts/pricing-review-2026-09-11/launch-security-*`.
+Advisories: https://github.com/vercel/next.js/security/advisories/GHSA-p293-qw3h-jr36
+and https://github.com/lovell/sharp/security/advisories/GHSA-rgj7-g3m4-5g8c.
+
+Portal build follow-up (2026-09-14): the current local source builds successfully
+in isolated `.next-launch-portal-release` output, including staff enquiry/revision
+routes. All six existing portal bundle budgets pass without changing ceilings.
+Build used staging URL with nonworking build-only credentials and email disabled;
+this proves packaging, not authenticated database access. Automatic approval review
+rejected starting the temporary production server with only "blocked by policy",
+so the planned production-mode unauthenticated runtime smoke remains unverified.
+Logs: `artifacts/pricing-review-2026-09-11/launch-final-portal-build.txt` and
+`launch-final-portal-bundles.txt` in the same directory. Nothing was deployed.
+
+Release-test follow-up (2026-09-14): the full local portal suite passes 589 files,
+3,280 tests and 11 intentional skips. Marketing passes 125 files and 790 tests
+(`launch-final-marketing-tests.txt`). The configurator/costing suites pass 46
+files and 463 tests; the enquiry/revision handoff command passes 5 files and 8
+tests. Portal Quality now schedules these customer-journey checks on PRs rather
+than relying on monthly marketing governance. Background Jobs path filters now
+include the new enquiry/revision SQL contracts. Workflow YAML parses locally;
+hosted CI has not been run for these uncommitted changes. Evidence is under
+`artifacts/pricing-review-2026-09-11/launch-final-portal-tests.txt`,
+`launch-final-configurator-costing-tests.txt` and `launch-ci-journey-tests.txt`.
+
+Configurator launch follow-up (2026-09-14, local dirty worktree): full root
+`npm run typecheck` and `npm run lint` pass. Isolated staging Next output is now
+excluded from source lint; the cache-guard subprocess regression passes while
+still rejecting forbidden authored imports. Logs are
+`artifacts/pricing-review-2026-09-11/launch-final-typecheck.txt`,
+`launch-final-lint.txt` and `launch-cache-guard-tests.txt` in the same directory.
+The approved staging pricebook, priced intake and immutable staff revision proofs
+are recorded in `customer-configurator-architecture.md`. These are local/staging
+signals, not CI or production release evidence. Public price approval, release
+provenance and physical-device verification remain open.
 
 This snapshot records the most recent known production-readiness state from the portal review and follow-up checks; unrelated lanes below retain their own dated refs and evidence. The Project Work portfolio migration and application release are live: all 1,151 production projects are in V2 without deleting legacy audit rows, production database/application postflight is clean, and the authenticated GET-only production browser proof passes. The final commercial idempotency/truth migrations are live in production with catalog, grant, trigger, ledger-body, and unchanged-row-count postflight; real provider/public-token acceptance and invoice-delivery journeys remain separately controlled.
 
@@ -519,6 +585,16 @@ When updating this tracker:
 - Initial review identified quality gates as the highest leverage priority before broad feature expansion.
 - Known review findings to re-verify: portal tests failing, lint guard failing, schedule bundle budget failing, and production audit reporting vulnerabilities.
 - Parallel lanes identified: quality gate repair, security/deps, contacts/projects env boundaries, schedule performance, design workbench behavior, quote/invoice/job-pack side effects, style isolation, CI/typecheck/tooling, and large-file decomposition after gates are green.
+
+### Configurator protected-preview checks (2026-09-14)
+
+Staff runtime review follow-up (2026-09-15): the staging preview now authenticates and displays the immutable original estimate separately from its revision. It exposed inconsistent dashboard totals and queued activity labelled sent. Dashboard pricing now reuses the configured quote snapshot validator; activity type/title follow explicit outbox status. Focused regression coverage passes. These follow-up changes require a fresh hosted build before release. The snapshot mapper remains the existing owner; wider decomposition is deferred to avoid coupling this display correction to database-query restructuring.
+
+Draft PR #132 is approved for protected previews only; production release remains on hold. Initial hosted checks exposed a missing derive.ts decomposition record, unregistered explicit server-only revision/token owners, a cold route-import test timeout, and a PostgreSQL 17 fixture attempting to recreate Supabase-owned storage.objects. The follow-up records the deferred normalization split, narrowly documents the existing privileged owners, compiles the route in test setup, and creates Storage stubs only on plain PostgreSQL. Applied migrations and pricing behavior are unchanged. Both initial Vercel preview builds succeeded; rerun hosted contracts before declaring the candidate green.
+
+The Supabase image contains the protected Storage schema but no objects table. Its disposable metadata stub is now provisioned separately using the image administrator, with postgres owning the stub. Application migrations and all permission-denial contracts continue to run as postgres; no live schema permissions are changed.
+
+Hosted Portal Quality identified the new Original enquiry tab clipped in the Project Work card at 390 px and reduced-motion phone fixtures. ProjectWorkFilesCard now owns a scoped wrapping header/tab layout, preserving the shared portal components and existing keyboard/tab semantics. The existing no-cropped-controls browser assertions remain unchanged and must pass before release.
 
 Pricing v2.8 release preparation (16 September 2026): owner approved the same
 staging pricebook for new staff and customer calculations. A pricing-only branch

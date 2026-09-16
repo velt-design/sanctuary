@@ -137,6 +137,22 @@ function client(transport: BackgroundJobsRpcTransport) {
 }
 
 describe('background jobs RPC adapter', () => {
+  it('uses lease-fenced enquiry delivery RPCs and validates private message responses', async () => {
+    const { calls, transport } = transportWithResponses({
+      [BACKGROUND_JOBS_RPC_NAMES.readEnquiryDelivery]: { from: 'info@example.test', to: 'customer@example.test', subject: 'Received', html: '<p>Saved</p>' },
+      [BACKGROUND_JOBS_RPC_NAMES.finaliseEnquiryDelivery]: null,
+    });
+    const rpc = client(transport);
+    const owned = { jobId, workerId: 'worker-1', leaseToken };
+    expect(await rpc.readEnquiryDelivery(owned)).toMatchObject({ to: ['customer@example.test'], html: '<p>Saved</p>' });
+    await rpc.finaliseEnquiryDelivery({ ...owned, providerMessageId: 'provider-1' });
+    expect(calls).toEqual([
+      expect.objectContaining({ name: BACKGROUND_JOBS_RPC_NAMES.readEnquiryDelivery, parameters: { p_job_id: jobId, p_worker_id: 'worker-1', p_lease_token: leaseToken } }),
+      expect.objectContaining({ name: BACKGROUND_JOBS_RPC_NAMES.finaliseEnquiryDelivery, parameters: { p_job_id: jobId, p_worker_id: 'worker-1', p_lease_token: leaseToken, p_provider_message_id: 'provider-1' } }),
+    ]);
+    const invalid = client(transportWithResponses({ [BACKGROUND_JOBS_RPC_NAMES.readEnquiryDelivery]: { html: 'private content' } }).transport);
+    await expect(invalid.readEnquiryDelivery(owned)).rejects.toMatchObject({ code: 'BACKGROUND_JOBS_RPC_INVALID_RESPONSE' });
+  });
   it('maps claim, protected reads, and runtime projections through RPC-only calls', async () => {
     const { calls, transport } = transportWithResponses({
       [BACKGROUND_JOBS_RPC_NAMES.claim]: [claimRow],

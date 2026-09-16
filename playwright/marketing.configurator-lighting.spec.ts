@@ -1,0 +1,53 @@
+import {test,expect} from '@playwright/test';
+for(const width of [390,1440])test('lighting mode, fixtures, selection and saved design at '+width,async({page})=>{
+ await page.setViewportSize({width,height:1000});const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/configurator-preview');await page.getByRole('button',{name:'Essential only',exact:true}).click();await page.getByRole('button',{name:'Design your pergola',exact:false}).click();
+ await page.getByRole('group',{name:'Time of day'}).getByRole('button',{name:'Night',exact:true}).click();await expect(page.getByRole('button',{name:'Add lighting',exact:true})).toBeVisible();await page.getByRole('group',{name:'Time of day'}).getByRole('button',{name:'Day',exact:true}).click();
+ const canvas=page.locator('canvas');await expect(canvas).toHaveAttribute('data-camera',/perspective/);let previousCamera='';let stableFrames=0;await expect.poll(async()=>{const next=await canvas.getAttribute('data-camera');stableFrames=next===previousCamera?stableFrames+1:0;previousCamera=next??'';return stableFrames;},{intervals:[200]}).toBeGreaterThanOrEqual(3);const camera=await canvas.getAttribute('data-camera');
+ await page.getByRole('button',{name:'Lighting',exact:true}).click();const c=page.getByRole('region',{name:'Lighting editor'});
+ await expect(page.locator('[data-night]')).toHaveAttribute('data-night','false');await expect(page.locator('[data-view]')).toHaveAttribute('data-view','Plan');await expect(page.getByRole('textbox',{name:'Width in metres'})).toHaveCount(0);expectCameraAngle(JSON.parse(camera!),JSON.parse((await canvas.getAttribute('data-camera'))!));
+ await expect(page.locator('[data-light-member]')).toHaveCount(0);
+ await c.getByRole('button',{name:/^Rafter lights/}).click();await expect(page.locator('[data-light-member]')).toHaveCount(0);
+ await c.getByRole('button',{name:/^Low/}).click();const low=Number(await page.locator('[data-light-rafter-count]').getAttribute('data-light-rafter-count'));expect(low).toBeGreaterThan(0);
+ await c.getByRole('button',{name:/^Medium/}).click();await expect(page.locator('[data-light-rafter-count]')).toHaveAttribute('data-light-rafter-count',String(low*2));
+ await c.getByRole('button',{name:/^LED strips/}).click();await c.getByRole('button',{name:'Outer perimeter',exact:true}).click();await expect(page.locator('[data-light-strip-count]')).not.toHaveAttribute('data-light-strip-count','0');
+ // Edit a member in plan, then confirm 3D has no lighting editing controls.
+ const member=page.getByRole('button',{name:'LED strip: Rafter 2',exact:true});const selected=await member.getAttribute('aria-pressed');const point=await member.evaluate(el=>{const line=el as SVGLineElement;const p=new DOMPoint((line.x1.baseVal.value+line.x2.baseVal.value)/2,(line.y1.baseVal.value+line.y2.baseVal.value)/2).matrixTransform(line.getScreenCTM()!);return {x:p.x,y:p.y};});await page.mouse.click(point.x,point.y);await expect(member).toHaveAttribute('aria-pressed',selected==='true'?'false':'true');
+ await page.screenshot({path:'artifacts/configurator-preview/lighting-plan-'+width+'.png'});
+ await c.getByRole('button',{name:'See your lights at night',exact:true}).click();await expect(page.locator('[data-night]')).toHaveAttribute('data-night','true');await expect(c.getByRole('spinbutton')).toHaveCount(0);
+ expectCameraAngle(JSON.parse(camera!),JSON.parse((await canvas.getAttribute('data-camera'))!));
+ await page.getByRole('group',{name:'Time of day'}).getByRole('button',{name:'Day',exact:true}).click();await expect(page.locator('[data-night]')).toHaveAttribute('data-night','false');await page.getByRole('group',{name:'Time of day'}).getByRole('button',{name:'Night',exact:true}).click();
+ const before=await page.locator('[data-light-strip-count]').getAttribute('data-light-strip-count');const bounds=(await canvas.boundingBox())!;const x=bounds.x+bounds.width/2,y=bounds.y+bounds.height/2;
+ await page.mouse.click(x,y);await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+65,y+30,{steps:10});await page.mouse.up();await expect(page.locator('[data-light-strip-count]')).toHaveAttribute('data-light-strip-count',before!);
+ const rotated=JSON.parse((await canvas.getAttribute('data-camera'))!);
+ await c.getByRole('button',{name:'Edit lighting in plan'}).click();await expect(page.locator('[data-night]')).toHaveAttribute('data-night','false');await c.getByRole('button',{name:/^Rafter lights/}).click();await expect(c.getByRole('button',{name:/^Medium/})).toHaveAttribute('aria-pressed','true');await expect(page.locator('[data-light-member]')).toHaveCount(0);
+ await page.getByRole('button',{name:'Preview in 3D',exact:true}).click();for(const [i,v] of rotated.position.entries())expect(JSON.parse((await canvas.getAttribute('data-camera'))!).position[i]).toBeCloseTo(v,3);
+ await page.screenshot({path:'artifacts/configurator-preview/lighting-night-'+width+'.png'});
+ await page.getByRole('button',{name:'Structure',exact:true}).click();await expect(page.locator('[data-night]')).toHaveAttribute('data-night','true');await page.getByRole('button',{name:'Plan',exact:true}).click();await expect(page.locator('[data-night]')).toHaveAttribute('data-night','false');if(width<=720)await expect(page.locator('[role=group][aria-label="Time of day"]')).not.toBeVisible();else await expect(page.getByRole('group',{name:'Time of day'}).getByRole('button',{name:'Night',exact:true})).toBeDisabled();await page.getByRole('button',{name:'3D',exact:true}).click();await expect(page.locator('[data-night]')).toHaveAttribute('data-night','true');await expect(page.getByRole('textbox',{name:'Width in metres'})).toBeVisible();
+ await page.reload();await page.getByRole('button',{name:'Design your pergola',exact:false}).click();await page.getByRole('button',{name:'Lighting',exact:true}).click();await c.getByRole('button',{name:/^Rafter lights/}).click();await expect(c.getByRole('button',{name:/^Medium/})).toHaveAttribute('aria-pressed','true');await expect(page.locator('[data-light-member]')).toHaveCount(0);await page.getByRole('button',{name:'Structure',exact:true}).click();
+ await page.getByRole('button',{name:'Roof & ceiling',exact:true}).click();await page.getByRole('radio',{name:'Solid',exact:true}).check();await page.getByRole('button',{name:'Lighting',exact:true}).click();await expect(page.locator('[data-roof-region]')).toHaveCount(0);await expect(page.getByText('HOUSE CONNECTION',{exact:true})).toBeVisible();await c.getByRole('button',{name:/^Cedar downlights/}).click();await c.getByRole('button',{name:'4 lights',exact:false}).click();await expect(page.locator('[data-light-cedar-count]')).toHaveAttribute('data-light-cedar-count','4');await expect(page.locator('[data-plan-lighting] circle')).toHaveCount(4);await page.screenshot({path:'artifacts/configurator-preview/cedar-grid-'+width+'.png'});
+ await page.getByRole('button',{name:'Structure',exact:true}).click();await page.getByRole('link',{name:'Continue with this design',exact:true}).click();await page.getByText('Details',{exact:true}).click();await expect(page.getByText(/Warm-white lighting:.*4 cedar downlights/).last()).toBeVisible();expect(errors).toEqual([]);
+});
+
+function expectCameraAngle(before:{position:number[];target:number[]},after:{position:number[];target:number[]}){
+ // Before an orbit, the viewer auto-fits distance as toolbar height changes.
+ const direction=(c:typeof before)=>{const v=c.position.map((p,i)=>p-c.target[i]),length=Math.hypot(...v);return v.map(p=>p/length);};
+ direction(before).forEach((v,i)=>expect(direction(after)[i]).toBeCloseTo(v,6));
+}
+
+for(const width of [390,1440])test('cedar section defaults and individual mirrored settings at '+width,async({page})=>{
+ await page.setViewportSize({width,height:1000});await page.goto('/configurator-preview');await page.getByRole('button',{name:'Essential only',exact:true}).click();await page.getByRole('button',{name:'Design your pergola',exact:false}).click();
+ await page.getByRole('radio',{name:'Gable',exact:true}).check();
+ await page.getByRole('button',{name:'Roof & ceiling',exact:true}).click();await page.getByRole('radio',{name:'Combination',exact:true}).check();await page.getByRole('button',{name:'Structure',exact:true}).click();
+ // A wide parallel gable with two substantial cedar sections either side of acrylic.
+ await page.getByRole('textbox',{name:'Width in metres'}).fill('8.3');await page.getByRole('textbox',{name:'Width in metres'}).press('Tab');
+ await page.getByRole('textbox',{name:'Projection in metres'}).fill('3.2');await page.getByRole('textbox',{name:'Projection in metres'}).press('Tab');
+ await page.getByRole('button',{name:'Lighting',exact:true}).click();const c=page.getByRole('region',{name:'Lighting editor'});await c.getByRole('button',{name:/^Cedar downlights/}).click();
+ await c.getByRole('group',{name:'All cedar sections',exact:true}).getByRole('button',{name:/^4 lights/}).click();
+ await expect(page.locator('[data-light-cedar-count]')).toHaveAttribute('data-light-cedar-count','16');
+ await c.getByRole('checkbox',{name:'Adjust sections individually'}).check();
+ await c.getByRole('group',{name:'Section 2 lighting',exact:true}).getByRole('button',{name:/^2 lights/}).click();
+ await expect(page.locator('[data-light-cedar-count]')).toHaveAttribute('data-light-cedar-count','12');await expect(page.locator('[data-plan-lighting] circle')).toHaveCount(12);
+ await page.screenshot({path:'artifacts/configurator-preview/cedar-sections-'+width+'.png'});
+ await page.reload();await page.getByRole('button',{name:'Design your pergola',exact:false}).click();await page.getByRole('button',{name:'Lighting',exact:true}).click();await c.getByRole('button',{name:/^Cedar downlights/}).click();await expect(c.getByRole('checkbox',{name:'Adjust sections individually'})).toBeChecked();await expect(page.locator('[data-light-cedar-count]')).toHaveAttribute('data-light-cedar-count','12');
+});

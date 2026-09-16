@@ -22,6 +22,7 @@ export function mapQuoteSourceEstimateRow(row: any): QuoteSourceEstimate {
     status: String(row.status ?? 'draft') as any,
     inputs: row.inputs ?? {},
     derived: outputs.derived ?? {},
+    snapshot: outputs.snapshot,
     outputs: {
       materials: outputs.materials ?? { lines: [], totals: { materials_ex_gst: 0 } },
       install: outputs.install ?? { actions: [], totals: { crew_minutes: 0, crew_hours: 0, install_ex_gst: 0 } },

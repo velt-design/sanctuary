@@ -6,6 +6,8 @@ This doc is the current-state reference for staff, admin, and public-token route
 
 ## Route Families
 
+- Installer payout reads use `GET /api/staff/projects/[projectId]/installer-payout` with staff authentication and the redacting database RPC. Preview and mutations use `POST /api/admin/projects/[projectId]/installer-payout`, enforce admin status before accessing financial data, and use the request's auth-bound client. Both return `private, no-store`. Browser-supplied agreement totals are ignored; the server recalculates from accepted scope and published rates. No service-role or message-sending path is used.
+
 - `GET/POST /api/staff/v1/projects/[projectId]/delivery` require staff auth and use an auth-bound client. Scheduled writes delegate to Schedule V2 commands; manual completion requires a UUID command, date and note through audited confirmation storage. Admin draft list/commands under `/api/admin/projects/[projectId]/invoice-drafts` enforce admin sessions; save/delete/issue RPCs independently recheck administrator membership. Edits require expected revisions; issue requires a stable UUID command. All responses and draft PDF previews are private/no-store. Drafts are excluded from staff invoice lists and all public token/PDF access. Standalone public records omit quote identity and source-quote links.
 
 - `GET /api/integrations/praxis/v1/context` and `GET /api/integrations/praxis/v1/health` are server-to-server, default-dark Praxis reporting routes. They require a dedicated bearer token plus exact source-key, connection-ID, and environment headers; configured values must also match the database-owned reporting identity. The adapter connects only as the dedicated reporting LOGIN over verified TLS for non-loopback targets, proves its read-only default, exact direct/transitive role membership, absence of forbidden object and callable security-definer capability, then executes bounded read-only transactions with statement and lock timeouts. Health performs a real bounded projection probe. Context accepts only the closed 12-resource enum, a 1-100 limit, and an optional project filter. PR11 rejects `changedAfter` and every `cursor`: each accepted response is one terminal authoritative replacement snapshot read inside one database transaction. The query reads `limit + 1`; if the sentinel exists, it returns body-free `SNAPSHOT_TOO_LARGE` evidence and no partial records, so the caller must narrow `projectId` or `resource`. Duplicate, unknown, and overlong query values fail before parsing. Responses are versioned, `private, no-store`, and contain stable record/freshness evidence plus explicit sanitiser policy, redaction and omission evidence. Every assembled payload is recursively sanitized to at most 65,536 UTF-8 bytes, depth 8, and 256 aggregate child entries; over-bound values become `{ "_praxisOmitted": "source_bounds_v1" }`. Diagnostics contain no body or business values. Mutation methods are not exported. The routes do not use staff cookies, Supabase service role, browser credentials, or any business write path.
@@ -42,6 +44,15 @@ This doc is the current-state reference for staff, admin, and public-token route
 Route behavior belongs to the feature owner doc. This doc owns the cross-cutting route/auth contract.
 
 ## Auth Helpers
+
+The configurator revision relay authenticates staff first and forwards their
+session only to the configured marketing origin. In Vercel Preview only,
+`CONFIGURATOR_MARKETING_PREVIEW_SECRET` carries the marketing project's existing
+automation credential in a server-to-server header to an HTTPS `*.vercel.app`
+origin. It is never returned to the browser, accepted from request input, added
+to a URL, or sent in production. Redirects remain forbidden. Deployment-protection
+rejection returns `503 CONFIGURATOR_PREVIEW_AUTH_REQUIRED`; an actual staff-session
+rejection remains `401`. Neither preview's protection needs to be disabled.
 
 Staff routes should use helpers from `apps/portal/lib/api/staffApi.ts`:
 
@@ -150,6 +161,8 @@ Manual or browser checks should cover:
 - Invalid JSON returns a stable `400` response.
 - Public quote/invoice links reject missing, invalid, expired, and void/declined states as appropriate.
 - Public PDF/attachment routes require the matching token-bound access.
+
+Original website receipts use GET /api/staff/projects/[projectId]/enquiry-receipts with requireStaffContext and its auth-bound Supabase client. The security-definer marketing_enquiry_staff_receipts RPC independently requires auth.uid plus has_portal_access, scopes records by project and returns an explicit customer-facing projection. Responses and errors are private, no-store. No service-role key or direct private-table browser read is used.
 
 ## Xero developer routes
 

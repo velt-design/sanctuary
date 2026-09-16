@@ -13,7 +13,7 @@ import { HouseLineObject } from "./HouseLineObject";
 import { HouseLinearSolidObject } from "./HouseLinearSolidObject";
 import { HouseSurfaceObject } from "./HouseSurfaceObject";
 import { HouseSurfaceSolidObject } from "./HouseSurfaceSolidObject";
-import { MemberObject } from "./MemberObject";
+import { MemberObject, type MemberMaterialAppearance } from "./MemberObject";
 import { ReferenceLineObject } from "./ReferenceLineObject";
 import { ReferencePlaneObject } from "./ReferencePlaneObject";
 import { RoofCladdingPanelObject } from "./RoofCladdingPanelObject";
@@ -40,6 +40,7 @@ import { RoofPlaneObject } from "./RoofPlaneObject";
 export function SceneObjectNode({
   object,
   color,
+  memberAppearance,
   selected,
   hovered,
   onSelect,
@@ -50,6 +51,7 @@ export function SceneObjectNode({
 }: {
   object: ViewerSceneObject;
   color: string;
+  memberAppearance?: MemberMaterialAppearance;
   selected: boolean;
   /**
    * True when the cross-viewport hover ref points at this object's id (or
@@ -71,6 +73,7 @@ export function SceneObjectNode({
       <MemberObject
         object={object}
         color={color}
+        appearance={memberAppearance}
         onSelect={onSelect}
         onFocus={onFocus}
         clippingPlanes={clippingPlanes}

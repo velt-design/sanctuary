@@ -43,17 +43,21 @@ export const ENQUIRY_FORM_REQUIRED_NOTE = 'Required fields are marked.';
 export const ENQUIRY_ATTACHMENT_HELP_TEXT =
   `Up to ${ENQUIRY_ATTACHMENT_LIMITS.maxFiles} PDF, JPG, JPEG, PNG or WebP files, 20 MB total.`;
 
-export function validateEnquiryForm(formData: FormData, files: File[]): EnquiryFormFieldErrors {
+export function validateEnquiryForm(formData: FormData, files: File[], configured = false): EnquiryFormFieldErrors {
   const errors: EnquiryFormFieldErrors = {};
   const enquiryType = String(formData.get('enquiryType') ?? '').trim();
   const name = String(formData.get('name') ?? '').trim();
   const phone = String(formData.get('phone') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim();
+  if (formData.get('requestType') === 'site-measure' && !String(formData.get('suburb') ?? '').trim()) {
+    errors.suburb = 'Enter the site address for your measure request.';
+  }
 
   if (!enquiryType) errors.enquiryType = 'Choose a project type.';
   if (!name) errors.name = 'Enter your name.';
-  if (!phone) errors.phone = 'Enter your phone number.';
-  else if (!isPlausibleEnquiryPhone(phone)) errors.phone = 'Enter a valid phone number.';
+  if (!phone && !configured) errors.phone = 'Enter your phone number.';
+  else if (phone && !isPlausibleEnquiryPhone(phone)) errors.phone = 'Enter a valid phone number.';
+  if (configured && !String(formData.get('suburb') ?? '').trim()) errors.suburb = 'Enter your suburb.';
   if (!email) errors.email = 'Enter your email address.';
   else if (!isValidEnquiryEmail(email)) errors.email = 'Enter a valid email address.';
 

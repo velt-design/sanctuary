@@ -1,4 +1,5 @@
 'use client';
+import { openConfigurator } from '../../components/configurator-prototype/configuratorOverlay';
 
 import Image from 'next/image';
 import {
@@ -11,9 +12,9 @@ import {
 import { useConsent } from '@/components/ConsentProvider';
 import { Container } from '../../components/marketing-foundation/Primitives';
 import { buildEnquiryHref, type EnquiryAudience } from '../../lib/enquiryContext';
+import { buildHomeConfiguratorHref } from '../../lib/configuratorEntry';
 import {
   buildProjectFinderHomeDestinationHref,
-  projectFinderDestinationByDirection,
 } from '../../lib/projectFinderContinuation';
 import {
   PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
@@ -94,7 +95,7 @@ function getActiveResult(
       direction: state.project,
       enquiryType: 'residential',
       key: state.project,
-      pathwayHref: buildProjectFinderHomeDestinationHref({
+      pathwayHref: state.project === 'cover' ? buildHomeConfiguratorHref(priorities) : buildProjectFinderHomeDestinationHref({
         direction: state.project,
         priorities,
       }),
@@ -306,7 +307,7 @@ export default function ProjectFinder({
         source_component: 'project_finder',
         step_number: 1,
       });
-      window.location.assign(projectFinderDestinationByDirection.cover);
+      openConfigurator(buildHomeConfiguratorHref(state.priorities));
       return;
     }
     chooseDirection(direction, event.detail === 0 ? 'keyboard' : 'pointer');

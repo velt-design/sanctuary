@@ -14,6 +14,12 @@ Worker registry compatibility: `workerContracts.test.ts` and the real RPC respon
 
 Use the smallest test that covers the risk. Run broader suites when touching shared workflow, portal shell, scheduling, local-first, Supabase access, or public lead/quote flows.
 
+Isolated Next output under `apps/*/.next-*` is generated build evidence, not
+authored source. ESLint excludes these directories; the portal cache guard also
+excludes its app-root `.next-*` directories. `test/cache-forbid.test.ts` verifies
+that generated framework imports are ignored while forbidden authored imports
+still fail the guard. Do not put source files in these output directories.
+
 ## Read First
 
 - Use `## Common Commands` for routine repo, portal, focused, and operational scripts.
@@ -339,35 +345,22 @@ The acrylic variant spec now owns a redirects-disabled assertion that
 `/acrylic-roof-pergolas-auckland-v2` permanently redirects in one hop to the
 self-canonical primary route; it is no longer a second page-content suite.
 
-Simple cover destination changes should run
-`npx vitest run apps/marketing/lib/projectFinderContinuation.test.ts apps/marketing/lib/guidedJourneyContext.test.ts apps/marketing/lib/enquiryContext.test.ts`
-and
-`npx playwright test playwright/marketing.simple-pergolas.spec.ts playwright/marketing.home-project-finder.spec.ts playwright/marketing.home-guided.spec.ts --config=playwright.marketing.config.ts`.
-The focused conversion-page suite covers 320, 390, 768, 1024 and 1440 pixel
-viewports; one H1; priority hero decoding; self-canonical `noindex,follow`
-metadata; sitemap exclusion; preserved acrylic SEO ownership; zero horizontal
-overflow; desktop/mobile priority hero art direction; homepage priority, header
-and embedded-form context without project detours; fixed-header hero clearance,
-the calculator immediately after the hero and the ground/elevated comparison
-immediately after the calculator; exact desktop hero viewport ownership at
-1366x768, 1440x900, 1536x864 and 1920x1080; aligned copy, media and image bottom
-edges; at least 24 pixels between the hero headline and supporting paragraph;
-plain and homepage-attributed boundary matrices from 320 to 1440 pixels at
-500-pixel-and-taller short-screen heights; contiguous hero, calculator, saved
-brief and proof sections; fixed-header anchor clearance; unclipped visible text;
-the approved six-metre projection and four-metre maximum post spacing; real
-published calculator controls rather than synthetic pricing; priced, Custom and
-unavailable continuations; the priced `Request a site measure` handoff without
-an automatic-visit promise; calculator-to-form summary continuity without URL
-state; the mobile-only eyebrow/short calculator heading, compressed hero facts,
-three Sanctuary proof points, hidden standalone inclusions panel, three compact
-option rows and two qualification cards; shared live/fallback Google rating and
-curated-review attribution plus its desktop-side/mobile-below header order;
-restored ground/elevated imagery with equal-ratio stacked mobile cards and
-side-by-side wider cards; removed redundant
-Simple-form questions; optional-blind qualification; accessible retained-value
-validation; and a complete JavaScript-disabled contact-form fallback.
+Simple product-page entry changes should run `npm run test:marketing` and
+`npx playwright test playwright/marketing.simple-pergolas.spec.ts playwright/marketing.simple-cover-calculator.spec.ts --config=playwright.marketing.config.ts`.
+The route contracts now cover the shared-designer destination, source attribution,
+help/bespoke bypass, responsive containment, indexable product metadata, the old
+estimate anchor without JavaScript, and legacy saved-selection migration. The
+older embedded-calculator page-layout/analytics assertions were replaced because
+that page no longer mounts a calculator or an enquiry form. Legacy calculator
+component, pricing, reference and intake tests below remain applicable to retained
+compatibility consumers.
 
+Local evidence (2026-09-14): all 774 marketing tests pass and the production build
+passes in `.next-launch-check`. In-app browser checks verified the Help route,
+standalone redirect, required site-address request and the new entry at 390 px.
+No enquiry, upload or email was sent. The rewritten Playwright specs are written
+verification targets, not claimed executed evidence. Storage migration and precedence
+were exercised by the real React hook test. No current prices were published.
 Public Simple cover calculator changes should run
 `npx vitest run packages/costing/src/commercial/customerPricing.test.ts packages/costing/src/engine/rafterLayout.test.ts packages/costing/src/server/publishedConfiguration.test.ts apps/marketing/lib/publishedCostingConfiguration.server.test.ts apps/marketing/lib/simpleCoverCalculator.test.ts apps/marketing/lib/simpleCoverPricing.server.test.ts apps/marketing/lib/simpleCoverCalculationRef.server.test.ts apps/marketing/lib/simpleCoverHandoff.test.ts apps/marketing/lib/simpleCoverAnalytics.test.ts apps/marketing/lib/enquiryPricingSnapshot.test.ts apps/marketing/app/api/simple-cover-price/route.test.ts apps/marketing/app/api/enquiry/route.test.ts apps/marketing/components/simple-cover-calculator/SimpleCoverCalculator.test.tsx apps/marketing/app/acrylic-roof-pergolas-auckland/SimpleCoverEnquirySummary.test.tsx apps/marketing/app/acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm.test.tsx test/simple-cover-pricing-parity.test.ts`
 and
@@ -1124,12 +1117,109 @@ This doc remains the canonical command catalog. When readiness work changes comm
 
 ## CI
 
+Portal Quality runs the marketing suite, configurator/costing package suites and
+`test:configurator:journey` on pull requests and manual runs. The journey command
+covers executable enquiry persistence, staff receipt access, revision navigation
+and saved-price quote handoff. It uses isolated fixtures and sends no email.
+Background Jobs also triggers for marketing-enquiry/revision migrations, their
+SQL tests and the shared intake test prerequisite; its existing database matrix
+runs these through the logged-PGMQ harness. Local passing commands do not prove
+a successful hosted workflow or required branch-protection status.
+
 - Background Jobs runs `npm run test:jobs` (including `@sp/email-provider`), provider-package typecheck, the worker typecheck/tests/build/CLI/container checks, the strict service-role boundary, and `npm run test:jobs:db` in a dedicated workflow when provider/job packages, provider adapters/webhook/repository, worker, migration, SQL harness, repository-security test, package manifest, container context, privileged-access report, or workflow configuration files change. A configured workflow without a successful run is not a green signal; this doc does not claim the check is required by branch protection.
 - Portal Quality runs docs guard, architecture changed advisory reporting, architecture strict new-growth advisory reporting, a blocking `files:changed:strict` decomposition gate, dead-code changed advisory reporting, repository typecheck, lint, portal Vitest, the blocking geometry Vitest suite (`npm run test:geometry`), portal build, general route bundle budgets, production and full-toolchain security audits, fixture browser/performance smoke, and authenticated smoke. `npm run audit:toolchain` permits only the two named no-fix `xlsx` advisories while that package remains root-only, development-only, and isolated to the legacy Running Jobs importer. The decomposition gate blocks touched critical code files without registry coverage. Authenticated smoke is blocking and writes the required credential, role, schedule-readiness, and project-data prerequisites to the GitHub step summary.
 - Portal Performance Report runs five authenticated journey repetitions as a separate blocking job, rejects missing schema-v2 journeys, publishes p50/p75/p95, and uploads the `portal-performance-baseline` artifacts. It also writes the authenticated runtime prerequisites to the GitHub step summary before timing routes.
 - Docs Health runs weekly and on demand, with blocking docs guard and mojibake checks plus advisory docs impact, navigation, and readiness reports.
 - Lighthouse Guardrails run mobile and desktop Lighthouse profiles against the live marketing site on a weekly schedule or explicit dispatch. They are deliberately not attached to pull requests because a PR cannot change the live production target; PR correctness remains covered by repository build, test, and bundle gates, while live Lighthouse drift stays visible in its own scheduled workflow.
 - Governance Monthly still runs the broader marketing/governance sweep with marketing tests, production dependency audit, and Lighthouse.
+
+Marketing enquiry delivery database coverage (2026-09-14): the disposable
+`test:jobs:db` harness additionally loads legacy domain table fixtures, the
+checked-in enquiry table, exact upload-session table and exact intake function
+from the July security migration, then applies both September delivery/receipt
+migrations atomically. `supabase/tests/marketing_enquiry_delivery.sql` exercises
+real intake + real PGMQ enqueue, transaction rollback on a rejected queue write,
+retry identity/content preservation, unclaimed worker rejection and immutable
+staff receipt reads. It now also claims the actual queue job, reads the frozen
+message through the lease-protected RPC, rejects premature and wrong-message
+finalisation, records acceptance, finalises twice with one audit event, completes
+the queue job, verifies SENT/succeeded in the staff receipt, and rejects reuse of
+the released lease. The expanded PostgreSQL/PGMQ run passed on 2026-09-14
+(`artifacts/pricing-review-2026-09-11/launch-enquiry-finalisation-db.txt`).
+Provider acceptance is simulated in this database contract; it does not prove a
+live worker/provider round trip. Fixture selection deliberately excludes pg_cron cleanup and
+unrelated upload RPCs; it is not a full historical migration or production-schema
+compatibility test. The legacy table fixtures remain a limitation requiring
+staging migration validation. No external email provider is contacted.
+
+The exact intake extractor fails if the source objects cannot be found.
+`test/marketing-enquiry-real-intake.test.ts` executes that extracted intake in
+PGlite and verifies normalization, unchanged replay and unverified-upload
+rejection. This test and the existing delivery boundary regression passed.
+The initial expanded Docker command stopped at missing docker ENOENT. That local
+blocker was subsequently resolved; see the Docker verification evidence below.
+Syntax checks and PGlite results alone do not satisfy the PostgreSQL/PGMQ gate.
+
+Mobile enquiry journey check (2026-09-14): at 390 × 844 in the in-app browser,
+Help me choose exposed optional location/brief/timing/budget/uploads without
+requiring dimensions; Commercial / Professional exposed the audience choice and
+business fields without budget. The configured contact journey retained its
+6.0 × 3.0 m design and scrolled to site-measure details inside the mobile layout.
+Plan remained selected when entering/leaving Lighting, and a temporary preferred-
+timing value survived that section change. The fixture text was cleared and the
+viewport reset. No files, contact details or enquiries were submitted. This is a
+local responsive interaction check, not device performance, live upload/provider
+verification or numeric published-pricing approval.
+
+Configured proposal regression (2026-09-14): 44 of the 45 historical proposal
+cases still match exactly. The 6 × 3 m pitched combination case originally used
+`area_override` (3.5760679331494534 m²), which explicitly omitted acrylic/joiner
+installation labour. Replaying that input reproduces $17,900.50 including GST.
+The current two-acrylic-bay takeoff produces $18,128 rounded including GST and no
+costing warnings; material quantities, installation and operational overhead all
+change with that takeoff. `configuredProposalParity.test.ts` preserves the
+historical fixture and verifies both calculations. This is a documented costing
+correction, not approval to publish the new amount. Diagnostic evidence is in
+`artifacts/pricing-review-2026-09-11/launch-price-differences.json`; no rates changed.
+
+
+Docker database verification (14 September 2026): Docker Desktop was installed by the owner; engine 29.7.2 was verified running. `node scripts/test-background-jobs-db.mjs` passed using isolated `ghcr.io/pgmq/pg18-pgmq:v1.10.0`, including concurrent queue/provider-id checks, the extracted real marketing intake, all three 14 September enquiry migrations, atomic rollback/replay, worker lease checks and staff receipt boundaries. The harness removed its temporary container. Evidence: `artifacts/pricing-review-2026-09-11/launch-real-docker-db.txt`. This proves the isolated contract, not production migration-history compatibility, configured staging permissions or live provider delivery. No customer email was sent.
+
+Attachment integration verification (14 September 2026): the same Docker harness
+also passed with the three existing 27 August attachment migrations applied
+before the durable enquiry migrations. Missing Storage metadata rejects intake;
+a later queue failure rolls back the enquiry, attachment link and upload-session
+consumption; success and replay produce one link, audit event and confirmation
+job. Evidence: `artifacts/pricing-review-2026-09-11/launch-docker-attachments-db.txt`.
+The isolated fixture models Storage metadata only: actual file upload/download,
+Storage HTTP authorization and staging migration-history compatibility remain
+separate checks. The temporary container was removed and no email was sent.
+
+
+Marketing production-build check (2026-09-14): the current worktree builds with
+V2 email copy enabled and no approved pricing pin, using the isolated
+`.next-launch-release-check` output. A loopback `next start` on port 3068 returned
+200 for home, contact, bespoke/professional entry URLs and the configurator.
+Responses include the production CSP; the configurator remains noindex.
+The public price route returned `disabled`, the internal draft price route
+returned 404, and the staff revision preparation route returned 401 without a
+session. Build output and HTTP evidence are in
+`artifacts/pricing-review-2026-09-11/launch-marketing-release-build.txt`,
+`launch-built-route-smoke.json` and `launch-built-draft-price-gate.json`.
+This verifies a local production build and server responses, not client-side
+interaction, physical mobile performance or live deployment. Delivery keys and
+background delivery were disabled for this check.
+
+Browser follow-up on that production build: Help exposes optional brief/location,
+timing/budget/uploads without dimensions. A 6.4 x 3.0 m configured design survived
+contact -> standalone designer -> contact. Switching to bespoke preserved it as
+a starting point, made location optional, and selected the custom-brief action.
+A version-1 saved-link fixture opened on the separate localhost origin restored
+that design without sign-in. Clipboard reading returned empty despite the UI
+success message, so actual clipboard transfer is not independently verified.
+See `artifacts/pricing-review-2026-09-11/launch-built-browser-journey.json`.
+No form was submitted; these observations do not establish live price availability
+or physical-device rendering/performance.
 
 ## Xero connection checks
 

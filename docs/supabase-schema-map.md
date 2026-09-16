@@ -28,6 +28,10 @@ Use this before changing schema, RLS, grants, route Supabase access, RPC command
 - Use `## Marketing, Automation, And Supporting Tables` for enquiry, email, audit, and support tables.
 - Finish with `## Verification` to choose migration, access, and route checks.
 
+## Installer payout agreements
+
+`project_installer_payout_events` is an append-only project ledger introduced by `20260911000001_installer_payout_workflow.sql`. `installer_payout_append` is admin-only, takes a command UUID and expected sequence, holds the commercial project lock and checks the accepted quote on first agreement. Direct authenticated writes are revoked. `installer_payout_read` requires portal membership and removes `payload.internal` for non-admin staff; direct table reads are admin-only. Projects with agreements cannot be hard-deleted through the foreign key. The ledger is separate from customer invoices and payment entries. Behavior is owned by `docs/costing-and-geometry.md`.
+
 ## Global Rules
 
 - Apply ordered forward migrations from `supabase/migrations/`; do not edit old applied migrations without explicit instruction.
@@ -461,6 +465,46 @@ Tables/RPCs:
 - Marketing/enquiries: `enquiry_requests` (`submission_id` is the idempotency key), `project_enquiry_attachments`, append-only `project_enquiry_attachment_events`, service-only `project_enquiry_attachment_backfill_runs`, `marketing_public_rate_limits`, `marketing_enquiry_upload_sessions`, `marketing_conversion_deliveries`
 - Marketing conversion delivery RPCs: `marketing_conversion_delivery_claim()` and `marketing_conversion_delivery_complete()`
 - Email and automation: `email_templates`, `email_outbox`, `audit_events`, `design_package_tickets`; `tasks`, `followup_plans`, and `followup_tasks` remain read-only legacy evidence
+
+### Website enquiry delivery boundary (install-only, 2026-09-14)
+
+Forward migration `20260915080001_marketing_enquiry_optional_phone.sql` permits
+phone-free configured residential project-discussion enquiries with email,
+suburb and a server-normalized design. The API still validates the complete
+design and email. The intake never matches contacts on blank phone values and
+stores an absent phone as NULL; other enquiry pathways retain their phone
+requirement. Service-only grants, upload validation and submission locking are
+unchanged. Regression: `supabase/tests/marketing_enquiry_optional_phone.sql`.
+
+`20260914062001_marketing_enquiry_durable_delivery.sql` introduces
+`private.marketing_enquiry_deliveries`, with no browser or direct service-role
+table grants. It retains the exact rendered message (up to 16 MiB), an outbox
+reference and job reference. Service-role-only
+`marketing_enquiry_intake_with_delivery` atomically calls the existing intake,
+stores the outbox/message and enqueues `email_outbox_deliver` for the website
+cohort. The queue payload contains only workflow and outbox identity.
+`marketing_enquiry_delivery_read` and `marketing_enquiry_delivery_finalise` use
+the existing current-lease guard; finalisation also requires matching accepted
+provider evidence and writes SENT plus one audit event transactionally. Replay
+cannot rewrite frozen content or automatically resend an older legacy enquiry.
+The migration does not enable the website producer or register a worker handler.
+The CLI now offers an explicitly gated website handler through
+`BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED`; its RPC adapter reads/finalises through
+the two lease-fenced domain functions above, without direct private-table access.
+Executable PGlite coverage is in `test/marketing-enquiry-delivery-migration.test.ts`;
+real Supabase/PGMQ rollout verification remains required.
+
+The marketing intake adapter now selects this RPC only when supplied a prepared
+delivery by the route's `WEBSITE_ENQUIRY_DURABLE_DELIVERY` opt-in. The web request
+does not dispatch directly in that mode. Shared database activation is pending.
+
+That atomic RPC also inserts a server-prepared draft estimate using explicit
+estimate columns, a database-owned project ID, draft status and marketing creator.
+`private.marketing_enquiry_deliveries.estimate_id` points to the working estimate;
+`draft_estimate` retains the immutable original JSON even if that working estimate
+changes. First-save and replay responses return the same estimate ID. This is
+part of the unapplied 20260914000001 migration, not a second migration or a live
+schema claim.
 - Project command centre: `project_owner_assignments` and `project_command_audit`; `project_manual_actions`, `project_action_controls`, `project_primary_action_selections`, `project_action_versions`, and `project_role_assignments` remain read-only legacy evidence
 - Project Work V2: `project_work_model_versions`, `project_operational_states`, `project_state_events`, `project_work_items`, `project_work_item_events`, `project_confirmation_events`, `project_command_receipts`, `project_work_repair_signals`, and `business_calendar_year_coverage`
 - Project Work V2 RPCs: `project_create_v2()`, `project_work_item_command()`, `project_operational_state_command()`, `project_confirmation_command()`, `project_work_archive_command()`, `project_work_integrity_report_v2()`, `project_work_queue_v3()`, `staff_projects_index_v2()`, `staff_project_state_counts_v1()`, and server reconciliation/fact commands
@@ -539,6 +583,8 @@ npm run text:mojibake
 `npm run test:jobs:db` requires Docker and creates/removes its own disposable logged-PGMQ Postgres container. It applies only the test bootstrap plus the seven JOB-01/JOB-02/JOB-03 migrations because the historical migration chain is not independently bootstrappable; a static pass or missing local Docker must never be reported as a live database pass.
 
 When changing auth, RLS, grants, or API access, also use `docs/staff-api-auth-contracts.md` and `docs/environment-auth-supabase.md` for route/auth verification. When changing Schedule V2 tables or RPCs, run the readiness checks in `docs/schedule.md`.
+
+The install-only 20260914062002 migration adds marketing_enquiry_staff_receipts(uuid), an authenticated portal-access read projection over enquiry_requests and the private immutable delivery receipt. It never reads current estimates or returns provider payloads/internal cost fields. This follows 20260914062001; 20260914062003 adds safe delivery status. All three are installed and ledgered in staging only after rollback rehearsal. Production application and delivery activation remain pending; see docs/staging-supabase-readiness.md.
 
 ## Xero private connection storage
 

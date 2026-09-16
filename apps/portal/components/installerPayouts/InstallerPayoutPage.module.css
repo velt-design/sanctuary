@@ -1,0 +1,13 @@
+.page { max-width: 850px; margin: auto; padding: 24px; }
+.page section { margin-block: 24px; padding-block: 16px; border-top: 1px solid currentColor; }
+.page fieldset { border: 0; padding: 0; display: grid; gap: 16px; }
+.page p { white-space: pre-wrap; }
+.page li { margin-block: 12px; }
+.page header { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.page h1 { flex: 1; }
+@media print {
+  :global(body):has(.page) :global(*):not(:has(.page)):not(.page):not(.page *) { display: none !important; }
+  :global(body):has(.page) :global([data-portal-content-sidebar-mode]) { padding: 0; min-height: 0; }
+  .controls { display: none !important; }
+  .page { color: black; background: white; max-width: none; padding: 0; }
+}

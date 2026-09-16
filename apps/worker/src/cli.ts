@@ -1,5 +1,7 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createResendEmailGateway } from '@sp/email-provider';
+import { createEnquiryEmailHandler } from './handlers/enquiryEmail';
 
 import {
   BACKGROUND_JOB_WORKER_MODES,
@@ -192,7 +194,13 @@ export async function runWorkerCli(
       config: runtimeConfiguration(config),
       rpc,
       logger,
-      handlers: dependencies.handlers,
+      handlers: config.enquiryEmailEnabled && config.resendApiKey ? {
+        ...dependencies.handlers,
+        email_outbox_deliver: createEnquiryEmailHandler({
+          workerId: config.workerId, rpc,
+          gateway: createResendEmailGateway({ apiKey: config.resendApiKey }),
+        }),
+      } : dependencies.handlers,
       fatalExit: (errorCode) => {
         logger.error('worker_fatal_exit', { errorCode });
         return dependencies.processExit(1);

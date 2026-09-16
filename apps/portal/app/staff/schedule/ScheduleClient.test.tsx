@@ -1,10 +1,19 @@
 import { act } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import ScheduleClient from './ScheduleClient';
 import { qk } from '@/lib/queries/keys';
 import type { ScheduleV2Snapshot } from '@/lib/queries/schedule';
-import { renderIntoDocument } from '../../../../../test/reactHarness';
+import { renderIntoDocument as renderHarness } from '../../../../../test/reactHarness';
+
+// Failed assertions must not leave query observers and mutation listeners alive.
+const renderIntoDocument: typeof renderHarness = (ui) => {
+  const rendered = renderHarness(ui);
+  let mounted = true;
+  const unmount = () => { if (mounted) { mounted = false; rendered.unmount(); } };
+  onTestFinished(unmount);
+  return { ...rendered, unmount };
+};
 import { adjustJob, assignJob, fetchScheduleGantt, markJobDone, pinJob, reorderItems, setJobDuration } from '@/lib/repo/scheduleV2Repo';
 import { ApiError } from '@/lib/repo/apiClient';
 import { getScheduleMutationActivityCount } from './scheduleMutationActivity';
@@ -1065,6 +1074,7 @@ describe('ScheduleClient', () => {
   });
 
   it('does not render stale Board data while fetching Board after starting from a Gantt-only seed', async () => {
+    vi.useFakeTimers();
     searchParamsString = 'view=gantt';
     const ganttSeed: ScheduleV2Snapshot = {
       ...initialSnapshot,
@@ -1119,12 +1129,13 @@ describe('ScheduleClient', () => {
       await boardSnapshotPromise;
       await Promise.resolve();
       await Promise.resolve();
+      await vi.runOnlyPendingTimersAsync();
     });
 
     expect(scheduleSnapshotQueryFn).toHaveBeenCalled();
     expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toEqual(boardSnapshot);
-    expect(rendered.container.textContent).toContain('Loading schedule data from the portal database…');
-    expect(rendered.container.textContent).not.toContain('Alpha Deck');
+    expect(rendered.container.textContent).not.toContain('Loading schedule data from the portal database…');
+    expect(rendered.container.textContent).toContain('Alpha Deck');
 
     rendered.unmount();
   });

@@ -13,8 +13,11 @@ export async function renderWebsiteAutoresponderPreviewPayload(
   variant: WebsiteAutoresponderPreviewVariant,
 ) {
   const fixture = getWebsiteAutoresponderPreviewFixture(variant);
+  const layouts = variant.startsWith('experience-')
+    ? WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS.filter(layout => layout.id === 'editorial-refined')
+    : WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS;
   const renderedLayouts = await Promise.all(
-    WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS.map(async (layout) => {
+    layouts.map(async (layout) => {
       const [light, dark] = await Promise.all([
         renderWebsiteAutoresponderAlternative(
           fixture.templateId,

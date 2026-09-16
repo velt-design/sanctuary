@@ -1,3 +1,4 @@
+import EnquiryJourneysPreview from './EnquiryJourneysPreview';
 import PageHeader from '@/components/layout/PageHeader';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { PageLayout } from '@/components/ui/foundation';
@@ -27,6 +28,7 @@ export default function EmailPreviewWorkbenchPage({
       ) : (
         <StaffPageHeader {...headerProps} searchShortcutEnabled={false} />
       )}
+      <EnquiryJourneysPreview endpoint={previewEndpoint} />
       <EmailPreviewClient previewEndpoint={previewEndpoint} />
     </PageLayout>
   );

@@ -186,6 +186,15 @@
   background: var(--color-surface-elevated);
 }
 
+.designEntry {
+  padding-block: clamp(2rem, 5vw, 4rem);
+}
+
+.designEntry p {
+  max-width: 65ch;
+  margin-block: 1rem;
+}
+
 .levelComparison {
   padding-block: clamp(3rem, 4vw, 4rem);
   border-top: 1px solid var(--color-rule);

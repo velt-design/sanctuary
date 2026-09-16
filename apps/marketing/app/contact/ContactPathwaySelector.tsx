@@ -1,5 +1,7 @@
 import { ENQUIRY_AUDIENCE_OPTIONS } from '@/lib/enquiryFormContract';
 import type { EnquiryAudience } from '@/lib/enquiryContext';
+import type { EnquiryContext } from '@/lib/enquiryContext';
+import { buildConfiguratorEnquiryHref } from '../../lib/configuratorEntry';
 import { CONTACT_PATHWAY_OPTIONS, type ContactPathway } from './contactJourney';
 
 type ContactPathwaySelectorProps = {
@@ -8,6 +10,7 @@ type ContactPathwaySelectorProps = {
   hasError: boolean;
   errorId: string;
   initialAudience: EnquiryAudience | null;
+  sourceContext?: EnquiryContext;
   onChange: (pathway: ContactPathway) => void;
 };
 
@@ -17,6 +20,7 @@ export default function ContactPathwaySelector({
   hasError,
   errorId,
   initialAudience,
+  sourceContext,
   onChange,
 }: ContactPathwaySelectorProps) {
   return (
@@ -32,7 +36,12 @@ export default function ContactPathwaySelector({
           <small>Required</small>
         </legend>
         <div className="contact-form__type-options">
-          {CONTACT_PATHWAY_OPTIONS.map((option) => (
+          {CONTACT_PATHWAY_OPTIONS.map((option) => option.value === 'simple' ? (
+            <a key={option.value} id="contact-pathway-simple" className="contact-form__design-entry" href={buildConfiguratorEnquiryHref(sourceContext)}>
+              <span aria-hidden="true">↗</span>
+              <span><small className="contact-form__pathway-eyebrow">{option.eyebrow}</small><strong>{option.label}</strong><small>{option.description}</small></span>
+            </a>
+          ) : (
             <label key={option.value}>
               <input
                 id={`contact-pathway-${option.value}`}

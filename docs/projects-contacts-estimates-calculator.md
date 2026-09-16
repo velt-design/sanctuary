@@ -4,6 +4,13 @@ This doc is the current-state reference for the core staff portal workflow befor
 
 ## Read First
 
+Protected configurator revision previews authenticate the server-to-server pricing
+request using the existing marketing automation credential, while retaining staff
+session checks. Deployment protection failures are distinct from sign-in failures;
+see `staff-api-auth-contracts.md` for the preview-only transport contract.
+
+Dashboard Recent Estimates uses the same validated frozen selling breakdown as configured quote handoff. Changed inputs, missing prices or incomplete breakdowns show price unavailable rather than a partial base-cost price. Ordinary calculator estimates retain their existing frozen multiplier calculation.
+
 Delivery completion is a separate action on Overview and the project index. Scheduled installations use Schedule V2 and its early-finish/conflict controls. Unscheduled jobs record an audited DELIVERY_COMPLETED confirmation with a date and note. Both project the existing COMPLETED stage without recording payment or archiving the project. Admin confirmation correction retracts manual evidence and restores its previous stage; scheduled reopening remains Schedule-owned. Financial closure is labelled Close settled project and still requires delivery and reconciled billing. The forward migration is 20260911000001_project_delivery_completion.sql; the 2026-09-11 deployment and authenticated smoke are recorded in `quotes-invoices-job-packs.md`. New environments still require migration before activation.
 
 - Use `## Ownership` to route pages, APIs, helpers, tables, and local-first keys.

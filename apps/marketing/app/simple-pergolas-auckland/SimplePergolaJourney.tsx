@@ -1,159 +1,37 @@
-'use client';
-
-import type { ReactNode, SyntheticEvent } from 'react';
-import { useEffect, useRef, useState } from 'react';
-import AcrylicPergolaEnquiryForm from '@/app/acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm';
-import { useConsent } from '@/components/ConsentProvider';
-import { Container } from '@/components/marketing-foundation';
-import SimpleCoverCalculator from '@/components/simple-cover-calculator/SimpleCoverCalculator';
+import type { ReactNode } from 'react';
+import { ActionGroup, Button, Container, Eyebrow, Heading, Text, TextLink } from '../../components/marketing-foundation/Primitives';
 import type { EnquiryContext } from '@/lib/enquiryContext';
-import {
-  getSimpleCoverViewportCategory,
-  pushSimpleCoverFunnelEvent,
-} from '../../lib/simpleCoverAnalytics';
-import {
-  readStoredSimpleCoverHandoff,
-  storeSimpleCoverHandoff,
-  type SimpleCoverHandoff,
-} from '@/lib/simpleCoverHandoff';
+import { buildAssistedEnquiryHref, buildConfiguratorEnquiryHref } from '../../lib/configuratorEntry';
 import styles from './simple-pergolas-auckland.module.css';
 
-const route = '/simple-pergolas-auckland' as const;
-
-type SimplePergolaJourneyProps = {
-  children: ReactNode;
-  sourceContext: EnquiryContext;
-};
-
-function revealEnquiry(): void {
-  const section = document.getElementById('initial-estimate');
-  const heading = document.getElementById('estimate-form-title');
-  if (!section || !heading) return;
-
-  section.scrollIntoView({
-    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      ? 'auto'
-      : 'smooth',
-    block: 'start',
-  });
-  heading.setAttribute('tabindex', '-1');
-  heading.addEventListener('blur', () => heading.removeAttribute('tabindex'), {
-    once: true,
-  });
-  window.requestAnimationFrame(() => heading.focus({ preventScroll: true }));
-}
-
-function handoffAnnouncement(handoff: SimpleCoverHandoff): string {
-  return handoff.status === 'priced'
-    ? 'Your estimate is ready for a site measure request.'
-    : 'Your selected cover is ready for Sanctuary review.';
-}
-
-export default function SimplePergolaJourney({
-  children,
-  sourceContext,
-}: SimplePergolaJourneyProps) {
-  const { consent } = useConsent();
-  const [handoff, setHandoff] = useState<SimpleCoverHandoff | null>(null);
-  const [announcement, setAnnouncement] = useState('');
-  const formStartTracked = useRef(false);
-  const reviewOnlyHandoff = handoff?.status === 'custom'
-    || handoff?.status === 'unavailable';
-
-  useEffect(() => {
-    if (window.location.hash !== '#initial-estimate') return;
-    const storedHandoff = readStoredSimpleCoverHandoff();
-    if (!storedHandoff) return;
-
-    setHandoff(storedHandoff);
-    setAnnouncement(handoffAnnouncement(storedHandoff));
-    window.requestAnimationFrame(revealEnquiry);
-  }, []);
-
-  function continueToEnquiry(nextHandoff: SimpleCoverHandoff) {
-    storeSimpleCoverHandoff(nextHandoff);
-    setHandoff(nextHandoff);
-    setAnnouncement(handoffAnnouncement(nextHandoff));
-    window.history.replaceState(window.history.state, '', '#initial-estimate');
-    window.setTimeout(revealEnquiry, 0);
-  }
-
-  function trackFormStart(event: SyntheticEvent<HTMLElement>) {
-    if (
-      formStartTracked.current
-      || !consent.analytics
-      || !(event.target instanceof Element)
-      || !event.target.matches('input:not([type="hidden"]), select, textarea, button')
-      || !event.target.closest('form')
-    ) {
-      return;
-    }
-
-    const didTrack = pushSimpleCoverFunnelEvent('simple_calculator_form_start', {
-      placement: 'embedded',
-      result_status: handoff?.status ?? 'pending',
-      source_path: route,
-      viewport_category: getSimpleCoverViewportCategory(window.innerWidth),
-      calculation_attached: Boolean(
-        handoff?.status === 'priced' && handoff.calculationRef,
-      ),
-    });
-    if (didTrack) formStartTracked.current = true;
-  }
-
-  return (
-    <>
-      <section
-        className={styles.calculatorSection}
-        id="price-your-cover"
-        aria-label="Price your Simple cover"
-        data-simple-price-integration="full-calculator"
-      >
-        <SimpleCoverCalculator
-          placement="embedded"
-          onContinue={continueToEnquiry}
-        />
-      </section>
-
-      {children}
-
-      <section
-        className={styles.estimate}
-        id="initial-estimate"
-        aria-label={reviewOnlyHandoff
-          ? 'Simple pergola configuration review enquiry'
-          : 'Simple pergola site measure request'}
-        onFocusCapture={trackFormStart}
-        onChangeCapture={trackFormStart}
-      >
-        <div className={styles.srOnly} role="status" aria-live="polite">
-          {announcement}
-        </div>
-        <Container width="wide">
-          <AcrylicPergolaEnquiryForm
-            variant="simple-cover"
-            simpleCoverEstimate={handoff}
-            initialEnquiryType="residential"
-            sourceContext={sourceContext}
-            eyebrow="Next step"
-            heading={reviewOnlyHandoff
-              ? 'Ask Sanctuary to review your cover.'
-              : 'Request a site measure.'}
-            intro={reviewOnlyHandoff
-              ? 'Add your suburb and contact details, plus photos if you have them. Sanctuary will review the selections and recommend the right next step.'
-              : 'Add your suburb and contact details, plus photos if you have them. Sanctuary will review the estimate and confirm whether a site measure is the right next step.'}
-            submitLabel={reviewOnlyHandoff
-              ? 'Send for Sanctuary review'
-              : 'Request a site measure'}
-            successHeading={reviewOnlyHandoff
-              ? 'Your cover is with Sanctuary.'
-              : 'Site measure request sent.'}
-            successMessage="We’ll review the configuration and contact you to confirm the next step."
-            messageLabel="Anything Sanctuary should know?"
-            messagePlaceholder="For example: where you want to retain daylight, or an exposed side you would like us to consider."
-          />
-        </Container>
-      </section>
-    </>
-  );
+export default function SimplePergolaJourney({ children, sourceContext }: {
+  children: ReactNode; sourceContext: EnquiryContext;
+}) {
+  const designHref = buildConfiguratorEnquiryHref(sourceContext);
+  return <>
+    <section className={`${styles.calculatorSection} ${styles.designEntry}`} id="price-your-cover" aria-labelledby="simple-design-title">
+      <Container width="wide">
+        <Eyebrow>Your pergola</Eyebrow>
+        <Heading id="simple-design-title">Start with your space.</Heading>
+        <Text>Choose your dimensions, roof, sides and lighting in one designer. See an installed estimate including GST where pricing is available, without entering contact details.</Text>
+        <ActionGroup>
+          <Button href={designHref}>Design your pergola</Button>
+          <TextLink href={buildAssistedEnquiryHref(sourceContext, 'help')}>Need help choosing?</TextLink>
+        </ActionGroup>
+      </Container>
+    </section>
+    {children}
+    <section className={`${styles.estimate} ${styles.designEntry}`} id="initial-estimate" aria-labelledby="simple-measure-title">
+      <Container width="wide">
+        <Eyebrow>The next step</Eyebrow>
+        <Heading id="simple-measure-title">A design, then a site measure.</Heading>
+        <Text>When you are ready, send us your design. Site measures and evaluations are free in Auckland. Outside Auckland, we confirm availability and travel costs before arranging a visit.</Text>
+        <Text>We review each request and typically respond within the working day. Submitting a request does not book an appointment.</Text>
+        <ActionGroup>
+          <Button href={designHref}>Design your pergola</Button>
+          <TextLink href={buildAssistedEnquiryHref(sourceContext, 'bespoke')}>Need a bespoke design?</TextLink>
+        </ActionGroup>
+      </Container>
+    </section>
+  </>;
 }

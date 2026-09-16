@@ -1,5 +1,19 @@
 # Decision Log
 
+## 2026-09-15 — Protected pricing relays and deterministic query tests
+
+The hosted configurator revision relay received Vercel's structured "Protected
+deployment" 401 before the marketing staff-auth handler. A fresh staging staff
+session prepared the same $12,225 design successfully when accompanied by the
+existing marketing automation credential. Keep this credential server-only,
+preview-only and bound to the configured HTTPS Vercel origin; preserve staff
+authentication, redirect refusal and deployment protection.
+
+Portal Quality also exposed a Schedule test that expected loading after resolving
+the Board query. Assert loading while unresolved, flush the query notification,
+then assert the returned Board. Always unmount test roots after failed assertions
+so live observers cannot contaminate later mutation tests. Schedule behavior is
+unchanged; focused coverage passes all 40 cases.
 ## 2026-09-16 - Report outcomes and batch release verification
 
 Status: Promoted. Jordan requested a standard operating practice after repetitive waiting updates and successive release-check cycles. Use small implementation steps, review a coherent batch before expensive checks, observe existing runs without duplicate restarts, and report outcomes, material problems, or owner decisions. Required verification remains mandatory and invalidated evidence must be refreshed. Promoted to `agent-playbook.md#owner-updates-and-release-batches`, routed from `AGENTS.md`; cross-project preferences also live in the owner's shared local agent instructions.
@@ -49,6 +63,26 @@ Related docs/tests: paths or commands
 
 Use `Status: Active` when the entry is still only a decision-log guardrail. New reusable lessons should remain `Active` until a later pass promotes them into a canonical doc, so this log continues to show live risks that have not yet become standing rules. Use `Status: Promoted` when the durable behavior is now represented in `docs/agent-playbook.md`, `AGENTS.md`, `docs/README.md`, or another canonical doc. Use `Status: Superseded` only when a newer entry or canonical doc replaces the rule.
 
+## Hosted staff revision return destination
+
+Date: 2026-09-15
+Area: Configurator staff revision
+Status: Active
+Decision or mistake: Hosted staging revisions returned to the production portal because the navigation helper only supported production and local development.
+Why it mattered: A staged project cannot be reviewed or saved in the production database.
+Current guardrail: Use the deployment-configured NEXT_PUBLIC_STAFF_PORTAL_ORIGIN for hosted previews, never an arbitrary URL supplied in query parameters. Verify the actual browser return link before saving a staged revision.
+Related docs/tests: docs/environment-auth-supabase.md; StaffRevisionReturn.test.ts
+
+## Configured dashboard prices and email activity
+
+Date: 2026-09-15
+Area: Staff enquiry review
+Status: Active
+Decision or mistake: Dashboard estimates rebuilt selling prices from partial base costs, and queued outbox activity carried an email_sent type despite a queued title.
+Why it mattered: Staff saw conflicting prices and delivery claims for the same enquiry.
+Current guardrail: Reuse the validated configured quote snapshot for dashboard totals; withhold incomplete or changed snapshots. Derive outbox activity type and title from explicit status, never assuming an unknown status was sent.
+Related docs/tests: apps/portal/lib/dashboard/operationalLists.test.ts; apps/portal/lib/projects/getProjectPageSnapshot.test.ts; docs/projects-contacts-estimates-calculator.md; docs/automation-email-audit.md
+
 ## Xero customer search literals
 
 Date: 2026-09-14
@@ -86,6 +120,9 @@ Related docs/tests: `docs/commercial-truth-audit.md`, `docs/quotes-invoices-job-
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-08 | Customer Preview Touch Gestures | Active | Removing an orbit activation step requires native touch tests: both canvas and event wrapper must permit vertical scrolling while preserving horizontal rotation and pinch zoom. |
+| 2026-09-08 | Customer Preview Interaction | Active | Preserve camera state separately from solved geometry; honour layer visibility and resolve coplanar reference surfaces in rendering without altering physical dimensions. |
+| 2026-09-08 | Customer Preview Framing | Promoted | Derive counts from the product layout owner and opt into an outside-face width datum; verify counts and shared Plan/3D member faces without reinterpreting existing portal designs. |
 | 2026-09-03 | Design Booklet Editorial Lists   | Promoted | Keep booklet lists deliberately lightweight and one level deep: store canonical `- ` markers inside existing draft body strings, preserve normalized line breaks through project/PDF parsing, and let one shared editorial owner drive selection toggling, Enter continuation, overflow weighting, semantic browser lists, and PDF hanging indents. Do not introduce rich-text JSON, duplicate A3 geometry, or a database migration for bullets. |
 | 2026-09-03 | Design Booklet Paper Geometry    | Promoted | Keep A4 as the one canonical booklet coordinate system, own exact A4/A3 landscape page boxes in one module, and proportionally transform the complete preview/PDF composition at the output boundary. Store the choice in schema-v2 draft JSON, default missing values to A4, and do not fork layouts or migrate the database. |
 | 2026-08-29 | Exact-Head CI                    | Promoted | Normalize GitHub lifecycle fields at the CI adapter boundary: trim and uppercase non-empty values and convert empty pending conclusions to `null`, then keep re-reading the exact PR head instead of rejecting or bypassing valid pending evidence. |
@@ -405,6 +442,48 @@ Related docs/tests: `docs/commercial-truth-audit.md`, `docs/quotes-invoices-job-
 
 
 ## Entries
+
+### 2026-09-08 - Customer Preview Touch Gestures - Immediate orbit and native touch scrolling
+
+Date: 2026-09-08
+Area: Marketing configurator preview
+Status: Active
+Decision or mistake: Styling only the canvas with pan-y left scrolling blocked because OrbitControls connected to the canvas wrapper and set its touch-action to none.
+Why it mattered: Removing the Explore/Lock step otherwise trapped vertical swipes on the pinned mobile viewer.
+Current guardrail: Set the gesture policy on both canvas and event wrapper, and use native browser touch events to verify horizontal rotation, vertical page scrolling and pinch zoom together. Keep dimension annotations as projections of solved extents and preserve the camera when feedback appears.
+Promoted to: None
+Related docs/tests: docs/customer-configurator-architecture.md; playwright/marketing.configurator-preview.spec.ts
+
+
+### 2026-09-08 - Customer Preview Interaction - Customer preview interaction and roof rendering
+
+Date: 2026-09-08
+Area: Marketing configurator preview
+Status: Active
+Decision or mistake: Re-fitting the camera on every solve and remounting it between views erased the user's chosen angle and zoom. A coplanar roof reference surface also competed with aluminium faces.
+Why it mattered: Correct dimensions alone did not produce a stable, trustworthy interactive preview.
+Current guardrail: Keep the 3D canvas alive between views, preserve explored pose and scale, distinguish Fit from Reset, and use actual browser camera assertions. Honour scene visibility and resolve reference-surface depth in the material presenter without moving solved members. Check phone control reachability visually, including short landscape screens.
+Promoted to: None
+Related docs/tests: docs/customer-configurator-architecture.md; playwright/marketing.configurator-preview.spec.ts
+
+
+### 2026-09-08 - Customer Preview Framing - Customer preview framing datum
+
+Date: 2026-09-08
+Area: Customer configurator geometry
+Status: Promoted
+Decision or mistake: The first preview allowed width changes while retaining
+representative rafter/post counts, and shared centreline placement left the
+different-width members and ledger ends out of flush alignment.
+Why it mattered: Matching overall dimensions alone did not prove the visual
+frame matched the customer calculator's layout.
+Current guardrail: Source count/spacing from the existing product layout owner;
+pass physical values through the configurator solve context. Use an explicit
+outside-face width datum for this preview and retain legacy placement for
+callers without the opt-in. Test counts, outside faces and the assembly consumed
+by both Plan and 3D, not just labels or screenshots.
+Promoted to: `docs/costing-and-geometry.md`; `docs/customer-configurator-architecture.md`
+Related docs/tests: `apps/marketing/components/configurator-prototype/framing.test.ts`
 
 ### 2026-09-03 - Design Booklet Editorial Lists - Keep Draft Text Lightweight
 
@@ -5528,6 +5607,40 @@ for new spawns, or start a replacement worker.
 Promoted to: `docs/ai/operations/openclaw-engineering-supervision.md`
 Related docs/tests: `infra/openclaw/engineering/plugins/sanctuary-engineering-lanes/supervision-dispatch.mjs`;
 `test/ai-operations-engineering-supervision.test.ts`; `npm run test:ai:ops`
+
+## 2026-09-14 — Private redirects need global header verification
+
+A staging attachment download returned strict-origin-when-cross-origin despite the route handler setting no-referrer. Next's catch-all headers overrode the handler. Keep a later, explicit private-attachment exception in the portal config and verify the real HTTP redirect as well as the handler test. The corrected staging download preserved private/no-store and no-referrer, denied wrong-project access and returned the original uploaded bytes.
+Related: docs/project-enquiry-attachments.md; apps/portal/next.config.test.ts.
+
+## 2026-09-14 — Marketing utility scanning excludes generated build caches
+
+Running a real API check exposed a global CSS build failure: Tailwind's automatic
+scan interpreted binary text from an isolated Next output directory as arbitrary
+CSS properties. Marketing globals now use explicit authored-source directories
+(app, components, lib, data and emails) with automatic scanning disabled. Keep
+new UI source directories registered here rather than scanning build output.
+The same staging request then reached its authenticated route successfully.
+Reference: https://tailwindcss.com/docs/detecting-classes-in-source-files
+
+
+### 2026-09-14 - Keep isolated Next output outside source lint
+
+The launch lint run scanned staging framework chunks as portal source and
+reported framework-owned cache imports. Limit the cache guard exclusion to
+app-root `.next-*` directories and match the isolated output in ESLint ignores.
+A subprocess regression test still rejects the same import in an authored page.
+Generated output is not a reason to relax rules on application code.
+
+### 2026-09-14 — Match estimate version columns in revision rehearsals
+
+The staff configurator revision rehearsal found a production-shaped staging
+column absent from the disposable table stub: staff loaders prefer
+`estimates.version` over `outputs.version`. Writing only the JSON value produced
+a repeated V1 label. The unapplied migration was corrected before installation
+to advance the real column, and the stub/contract now assert it. For migrations
+that reuse legacy table stubs, inspect actual relevant columns/defaults and
+verify the consuming staff representation during the rollback rehearsal.
 
 ## 2026-09-08 — Schedule authored dates and save trust
 

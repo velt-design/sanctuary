@@ -2,6 +2,17 @@
 
 Status: Target contract.
 
+Website enquiry delivery integration (2026-09-14): the install-only delivery
+boundary follows the existing durable job/effect ownership. Large frozen messages
+remain in a private domain table, referenced by a small queue payload; worker
+reads and business finalisation are lease-fenced RPCs. Producer and handler
+activation remain separate from installing the migration. No new queue or
+request-bound retry mechanism is introduced.
+
+The worker CLI now has an opt-in website enquiry delivery handler using this
+boundary and the shared durable Resend effect. The default registry stays
+synthetic-only; domain access remains in the explicit service-role RPC adapter.
+
 Purpose: describe the architecture this repo is actively converging toward. Current-state docs still describe what exists today; this doc names the north star so agents can tell whether a change moves the repo closer to or farther from the intended structure.
 
 ## Read First

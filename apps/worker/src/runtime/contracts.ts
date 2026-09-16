@@ -19,6 +19,7 @@ import type {
   BackgroundJobWorkerMode,
   BackgroundWorkerSafeRecord,
 } from '@sp/jobs';
+import type { NormalizedEmailMessage } from '@sp/email-provider';
 
 type RuntimeLogFields = Readonly<{
   workerId?: string;
@@ -110,6 +111,8 @@ type RecordEffectCheckpointInput = OwnedJobInput &
   }>;
 
 export interface RuntimeBackgroundJobsRpc {
+  readEnquiryDelivery(input: OwnedJobInput): Promise<NormalizedEmailMessage>;
+  finaliseEnquiryDelivery(input: OwnedJobInput & Readonly<{ providerMessageId: string }>): Promise<void>;
   claim(input: Readonly<{
     workerId: string;
     batchSize: number;

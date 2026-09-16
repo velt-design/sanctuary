@@ -1,5 +1,11 @@
 /* app/globals.css */
-@import "tailwindcss";
+/* Scan authored sources only; isolated Next build caches are not class names. */
+@import "tailwindcss" source(none);
+@source "./";
+@source "../components";
+@source "../lib";
+@source "../data";
+@source "../emails";
 
 /* Map existing CSS variables -> Tailwind theme utilities */
 @theme inline {

@@ -1,3 +1,5 @@
+import type { CustomerBrief } from '../lib/enquiryDesignContract';
+import type { EnquiryProjectPreferences } from '../lib/enquiryProjectPreferences';
 type EnquiryType = 'residential' | 'commercial' | 'professional';
 
 type PergolaStyle = 'Pitched' | 'Gable' | 'Hip' | 'Perimeter' | string;
@@ -20,6 +22,13 @@ interface EnquiryBase {
   suburb: string;
 
   message?: string;
+  customerBrief?: CustomerBrief;
+  projectPreferences?: EnquiryProjectPreferences;
+  submittedDesignUrl?: string;
+  configuredEstimate?: { amountIncGst: number; includesGst: true; currency: 'NZD'; breakdown: { label: string; amountIncGst: number }[] };
+  projectRole?: string;
+  projectStage?: string;
+  company?: string;
 
   utmSource?: string;
   utmMedium?: string;

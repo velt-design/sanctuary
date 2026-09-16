@@ -11,6 +11,28 @@ function queryResult(data: unknown[]) {
 }
 
 describe('dashboard operational lists', () => {
+  it.each(['valid', 'changed inputs', 'missing price', 'incomplete breakdown'])(
+    'uses the complete configured price or withholds it: %s', async (scenario) => {
+      const inputs = { widthMm: 6000 };
+      const price = { currency: 'NZD', includesGst: true, amountIncGst: 11674,
+        breakdown: [{ label: 'Pergola', amountIncGst: scenario === 'incomplete breakdown' ? 10000 : 11674 }] };
+      const estimates = queryResult([{
+        id: '00000000-0000-4000-8000-000000000002',
+        project_id: '00000000-0000-4000-8000-000000000001',
+        created_at: '2026-09-14T00:00:00Z', total_true_cost_ex_gst: 1000,
+        inputs: scenario === 'changed inputs' ? { widthMm: 6500 } : inputs,
+        outputs: { derived: { pricingMode: 'configured_customer_snapshot' }, snapshot: {
+          source: 'marketing_enquiry', configuredQuoteInputs: inputs,
+          frozenConfiguratorPrice: { schemaVersion: 'configurator-pricing.v1',
+            customerPrice: scenario === 'missing price' ? undefined : price },
+        } },
+      }]);
+      const result = await listDashboardRecentEstimates({ from: vi.fn(() => estimates) } as any);
+      expect(result[0]?.customerPriceIncGst).toBe(scenario === 'valid' ? 11674 : null);
+      expect(estimates.select.mock.calls[0][0]).toContain('inputs');
+    },
+  );
+
   it('derives Recent Estimates customer prices from true cost using the canonical quote pricing sequence', async () => {
     const estimates = queryResult([
       {

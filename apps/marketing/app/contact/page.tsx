@@ -9,10 +9,19 @@ import {
 import ContactEnquiryForm from './ContactEnquiryForm';
 import { getEnquiryTypeFromRouteValue } from './enquiryRoute';
 import './contact.css';
+import type { Metadata } from 'next';
+import ContactProjectDesigner from './ContactProjectDesigner';
+import { buildConfiguratorEnquiryHref } from '../../lib/configuratorEntry';
+import { getInitialContactPathway } from './contactJourney';
 
 type ContactPageProps = {
   searchParams?: Promise<EnquiryContextSearchParams>;
 };
+
+export async function generateMetadata({ searchParams }: ContactPageProps): Promise<Metadata> {
+  const params = searchParams ? await searchParams : {};
+  return params.configurator === 'preview' ? { robots: { index: false, follow: false } } : {};
+}
 
 const warkworthProject = projects.find(
   (project) => project.slug === 'warkworth-outdoor-room',
@@ -28,6 +37,9 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
   const initialEnquiryType = getEnquiryTypeFromRouteValue(
     enquiryContext.enquiryType,
   );
+  const explicitIntent = params.enquiry_intent === 'help' || params.enquiry_intent === 'bespoke' ? params.enquiry_intent : undefined;
+  // A normal contact link must remain an enquiry entry, even after browsing a cover.
+  const initialIntent = explicitIntent ?? (params.configurator !== 'preview' && getInitialContactPathway(initialEnquiryType, enquiryContext) === 'simple' ? 'help' : undefined);
   const sourceProject = projects.find(
     (project) => project.slug === enquiryContext.sourceProject,
   );
@@ -35,6 +47,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
     (product) => product.slug === enquiryContext.sourceProduct,
   );
   const formContextKey = [
+    params.enquiry_intent === 'help' || params.enquiry_intent === 'bespoke' ? params.enquiry_intent : '',
     initialEnquiryType ?? 'chooser',
     enquiryContext.sourceProject,
     enquiryContext.sourceProduct,
@@ -42,6 +55,14 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
     enquiryContext.projectDirection,
     enquiryContext.projectPriorities?.join(','),
   ].filter(Boolean).join('-');
+
+  if (params.configurator === 'preview' || getInitialContactPathway(initialEnquiryType, enquiryContext, initialIntent) === 'simple') return <ContactProjectDesigner
+    key={formContextKey}
+    initialEnquiryType={initialEnquiryType}
+    initialContext={enquiryContext}
+    sourceProjectLabel={sourceProject?.title}
+    sourceProductLabel={sourceProduct?.name}
+  />;
 
   return (
     <main className="contact-page" data-contact-page>
@@ -53,9 +74,10 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
             <p>
               Share the site, intended use and what you know so far.
             </p>
-            <a className="contact-action contact-action--primary" href="#contact-form">
-              Send a project brief
+            <a className="contact-action contact-action--primary" href={buildConfiguratorEnquiryHref(enquiryContext)}>
+              Design your pergola
             </a>
+            <a className="contact-action" href="#contact-form">Need help or a bespoke design?</a>
           </div>
 
           <figure className="contact-hero__figure">
@@ -81,6 +103,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
         <div className="contact-shell contact-workspace__layout">
           <ContactEnquiryForm
             key={formContextKey}
+            initialIntent={initialIntent}
             initialEnquiryType={initialEnquiryType}
             initialContext={enquiryContext}
             sourceProjectLabel={sourceProject?.title}

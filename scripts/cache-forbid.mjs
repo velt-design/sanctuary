@@ -19,6 +19,8 @@ const supabaseFrom = /\bsupabase\.from\s*\(/;
 function* walk(dir) {
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
     if (EXCLUDE.has(ent.name)) continue;
+    // Isolated Next builds use distDir names alongside the default .next.
+    if (ent.isDirectory() && ent.name.startsWith('.next-') && path.resolve(dir) === path.join(ROOT, 'apps/portal')) continue;
     const p = path.join(dir, ent.name);
     if (ent.isDirectory()) yield* walk(p);
     else yield p;

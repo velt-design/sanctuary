@@ -73,4 +73,21 @@ describe('sendCustomerAutoresponder', () => {
 
     await expect(sendCustomerAutoresponder(enquiry)).rejects.toBe(failure);
   });
+
+  it('prepares a serializable message without contacting the provider', async () => {
+    const { prepareCustomerAutoresponder } = await import('./sendCustomerAutoresponder');
+    const message = await prepareCustomerAutoresponder(enquiry, {
+      attachments: [{ filename: 'plan.pdf', content: 'UERGREFUQQ==', contentType: 'application/pdf' }],
+    });
+
+    expect(h.sendEmail).not.toHaveBeenCalled();
+    expect(JSON.parse(JSON.stringify(message))).toEqual(message);
+    expect(message).toMatchObject({
+      to: enquiry.email,
+      bcc: ['info@sanctuarypergolas.co.nz'],
+      html: '<p>Rendered HTML</p>',
+      text: 'Rendered plain text',
+      attachments: [{ filename: 'plan.pdf', content: 'UERGREFUQQ==', contentType: 'application/pdf' }],
+    });
+  });
 });

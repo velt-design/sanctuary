@@ -44,17 +44,17 @@ function fieldId(path: string): string {
   return `costing-${path.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 }
 
-function NumberField(props: {
+export function NumberField(props: {
   path: string;
   metadata: NumberFieldMetadata;
   value: number;
-  baselineValue: number;
+  baselineValue?: number;
   disabled?: boolean;
   issue?: ValidationIssue;
   onChange: (value: number) => void;
   onReset: () => void;
 }) {
-  const changed = valuesDiffer(props.value, props.baselineValue);
+  const changed = props.baselineValue === undefined || valuesDiffer(props.value, props.baselineValue);
   const inputId = fieldId(props.path);
   const errorId = `${inputId}-error`;
   const descriptionId = `${inputId}-description`;
@@ -85,8 +85,8 @@ function NumberField(props: {
         <span className={styles.inputUnit}>{props.metadata.unit}</span>
       </div>
       <div className={styles.fieldFooter}>
-        <span>{props.disabled ? 'Version' : 'Active'} value: <strong>{props.baselineValue}</strong> {props.metadata.unit}</span>
-        {!props.disabled && changed ? (
+        <span>{props.baselineValue === undefined ? 'Not present in the active version.' : <>{props.disabled ? 'Version' : 'Active'} value: <strong>{props.baselineValue}</strong> {props.metadata.unit}</>}</span>
+        {!props.disabled && changed && props.baselineValue !== undefined ? (
           <button className={styles.resetButton} type="button" onClick={props.onReset}>
             Reset to active
           </button>

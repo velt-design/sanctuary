@@ -515,6 +515,8 @@ export type RawGeometryModuleInput = {
     framing?: {
       rafterCount?: string | number | null;
       rafterSpacingMm?: string | number | null;
+      /** Opt-in mono width datum. Omitted inputs retain member-centreline placement. */
+      widthReference?: 'outside_faces';
     } | null;
     drainage?: {
       gutterType?: string | null;
@@ -751,6 +753,8 @@ export type GeometryConfig = {
     framing: {
       rafterCount: number | null;
       rafterSpacingMm: number | null;
+      /** Opt-in mono width datum. Omitted inputs retain member-centreline placement. */
+      widthReference?: 'outside_faces';
     };
     drainage: {
       gutterType: string | null;

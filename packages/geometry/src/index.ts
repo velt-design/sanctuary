@@ -1,4 +1,18 @@
+export {layoutCedarLights} from './representativeCedarLights';
 export * from "./contracts";
+export {pergolaLightSites,layoutLights,layoutRafterLights,type RafterLightAmount,type PergolaLighting,type LightLayout,type LightSite,type StripSite} from './representativePergolaLighting';
+export {addRepresentativeRoofBattens,type RepresentativeRoofBattens} from './representativeRoofBattens';
+export {matchRepresentativePitchedLedger} from './representativePitchedLedger';
+export { buildRepresentativeSidePanel } from './representativeSidePanel';
+export type { SidePanelMesh } from './representativeSidePanel';
+export { fitRepresentativeBlindPosts } from './representativeBlindPosts';
+export { buildRepresentativeGable } from './representativeGable';
+export { buildRepresentativeBox } from './representativeBox';
+export { buildRepresentativeBoxContext } from './representativeBoxContext';
+export type { RepresentativeGableOptions } from './representativeGable';
+export { buildRepresentativeGableContext } from './representativeGableContext';
+export { buildRepresentativeSurroundings } from './representativeSurroundings';
+export type { RepresentativeSurroundings, ContextBox, ContextSection } from './representativeSurroundings';
 export {
   buildHouseFootprintPolygon,
   buildCustomHouseFootprintPolygon,
@@ -96,3 +110,13 @@ export type {
   HouseComposition,
   RectangleRoofIntent,
 } from "./house/composition";
+
+export { buildRepresentativeRoofFinish } from "./representativeRoofFinish";
+export { DEFAULT_ROOF_FINISH, roofFinishBayLimit } from "./representativeRoofFinishTypes";
+export type { RepresentativeRoofFinish, RoofFinishGeometry, RoofFinishMesh } from "./representativeRoofFinishTypes";
+export { representativeRoofProfile } from "./representativeRoofProfiles";
+export { representativeBoxRoofMaxProjection } from "./representativeRoofBoxFinish";
+export { representativeBlindOpenings, blindHeaderDepth } from './representativeBlindOpenings';
+export type { BlindOpening } from './representativeBlindOpenings';
+export { buildRepresentativeBlind } from './representativeBlind';
+export type { BlindMesh } from './representativeBlind';

@@ -2,6 +2,7 @@ import { runXeroFinanceContracts } from './xero-finance-db-contract.mjs';
 import { spawn, spawnSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { marketingEnquiryTestIntakeSql } from './lib/marketing-enquiry-test-intake.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, "..");
 const defaultImage = "ghcr.io/pgmq/pg18-pgmq:v1.10.0";
@@ -133,17 +134,19 @@ function requireSuccess(result, label) {
   );
 }
 
-function psqlDockerArgs({ quiet = false, singleTransaction = false } = {}) {
+function psqlDockerArgs({ quiet = false, singleTransaction = false, username = 'postgres' } = {}) {
   const psqlArgs = [
     "psql",
     "--no-psqlrc",
     "--set=ON_ERROR_STOP=1",
-    "--username=postgres",
+    `--username=${username}`,
     "--dbname=postgres",
   ];
   if (quiet) psqlArgs.push("--quiet", "--tuples-only", "--no-align");
   if (singleTransaction) psqlArgs.push("--single-transaction");
-  return ["exec", "--interactive", containerName, ...psqlArgs];
+  // Matches POSTGRES_PASSWORD on this disposable container, never a live secret.
+  const setupAuth = username === 'supabase_admin' ? ['--env', 'PGPASSWORD=postgres'] : [];
+  return ["exec", "--interactive", ...setupAuth, containerName, ...psqlArgs];
 }
 
 function psqlAsync(sql, label) {
@@ -339,9 +342,9 @@ function verifyPgmqVersion() {
   process.stdout.write(`background-jobs-db: PGMQ ${pgmqVersion}\n`);
 }
 
-function applySql(relativePath, { singleTransaction = false } = {}) {
+function applySql(relativePath, { singleTransaction = false, username = 'postgres' } = {}) {
   const sql = readFileSync(path.join(repositoryRoot, relativePath), "utf8");
-  const result = docker(psqlDockerArgs({ singleTransaction }), { input: sql });
+  const result = docker(psqlDockerArgs({ singleTransaction, username }), { input: sql });
   requireSuccess(result, relativePath);
   process.stdout.write(
     `background-jobs-db: applied ${relativePath}${
@@ -981,6 +984,28 @@ async function run() {
   verifyAiSyntheticExecutionRollback();
   applySql(aiSyntheticExecutionMigrationFile, { singleTransaction: true });
   applySql(aiSyntheticExecutionContractFile);
+  // The Supabase image pre-creates a protected Storage schema without its API
+  // tables. Provision only the disposable metadata stub as the image admin;
+  // all application migrations and denial contracts still run as postgres.
+  const storageBootstrapUser = queryScalar(
+    "select case when exists (select 1 from pg_roles where rolname = 'supabase_admin' and rolsuper) then 'supabase_admin' else 'postgres' end;",
+    'disposable Storage fixture owner',
+  );
+  applySql('supabase/tests/marketing_enquiry_storage_bootstrap.sql', { singleTransaction: true, username: storageBootstrapUser });
+  applySql('supabase/tests/marketing_enquiry_delivery_bootstrap.sql', { singleTransaction: true });
+  applySql('supabase/enquiry_requests.sql', { singleTransaction: true });
+  executeSql(`begin;\n${marketingEnquiryTestIntakeSql(repositoryRoot)}\ncommit;`, 'exact marketing intake prerequisites');
+  applySql('supabase/migrations/20260827000001_project_enquiry_attachments.sql', { singleTransaction: true });
+  applySql('supabase/migrations/20260827000002_project_enquiry_attachments_schema_cache.sql', { singleTransaction: true });
+  applySql('supabase/migrations/20260827000003_project_enquiry_attachment_signing_boundary.sql', { singleTransaction: true });
+  applySql('supabase/migrations/20260914062001_marketing_enquiry_durable_delivery.sql', { singleTransaction: true });
+  applySql('supabase/migrations/20260914062002_marketing_enquiry_staff_receipt.sql', { singleTransaction: true });
+  applySql('supabase/migrations/20260914062003_marketing_enquiry_delivery_status.sql', { singleTransaction: true });
+  applySql('supabase/tests/marketing_enquiry_delivery.sql');
+  applySql('supabase/migrations/20260915080001_marketing_enquiry_optional_phone.sql', { singleTransaction: true });
+  applySql('supabase/tests/marketing_enquiry_optional_phone.sql');
+  applySql('supabase/migrations/20260914173001_configurator_estimate_revisions.sql', { singleTransaction: true });
+  applySql('supabase/tests/configurator_estimate_revisions.sql');
   runXeroFinanceContracts({ repositoryRoot, migrationsDirectory, applySql, executeSql });
   process.stdout.write(
     `background-jobs-db: isolated PGMQ contract passed (${image})\n`,

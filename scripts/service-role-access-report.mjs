@@ -96,6 +96,12 @@ function isApprovedServerFlow(file) {
   if (file.startsWith('apps/portal/lib/scheduling/')) return true;
   if (/^apps\/portal\/lib\/(?:commercial|estimates|invoices|quotes)\//.test(file)) return true;
   if (file.startsWith('apps/marketing/app/api/enquiry/')) return true;
+  // Authenticated staff preparation rechecks membership/project ownership and
+  // freezes the price before the service-only atomic revision RPC is called.
+  if (file === 'apps/marketing/app/api/staff/configurator-revisions/save/route.ts') return true;
+  // Server-only encryption helper; reads the secret for domain-separated keys,
+  // performs no database access, and never serializes the secret to clients.
+  if (file === 'apps/marketing/lib/calculationRefCodec.server.ts') return true;
   if (/^apps\/marketing\/lib\/(?:quotes|invoices)\//.test(file)) return true;
   return false;
 }

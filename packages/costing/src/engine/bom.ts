@@ -1,4 +1,5 @@
 import { ceilingMaterials } from './ceilingTakeoff';
+import { PILE_POST_EMBEDMENT_M, pileFootingMaterials, pilePostCounts, usesApprovedPileFooting } from './pileFooting';
 import type { CostingConfigV1 } from './config';
 import type { DerivedV1, FlashingBandV1, InputsNormalizedV1, MaterialsLineV1, MaterialsV1 } from './types';
 import type { InfillTakeoffV1 } from './types';
@@ -1120,17 +1121,19 @@ function buildMaterialsV1Internal(
     }
   }
 
+  const postEmbedmentM = usesApprovedPileFooting(inputs, config) ? PILE_POST_EMBEDMENT_M : 0;
+  const footingCounts = pilePostCounts(inputs, config);
   addCuts(
     postProfile,
-    Array.from({ length: inputs.post_count }).map(() => inputs.post_cut_height_m),
+    Array.from({ length: inputs.post_count }).map((_, index) => inputs.post_cut_height_m + (index < footingCounts.piles ? postEmbedmentM : 0)),
     'Posts',
     'single',
     {
       origin_prefix: 'post',
       group_key: 'posts',
       explain: {
-        formula: 'cuts = repeat(inputs.post_count, inputs.post_cut_height_m)',
-        deps: { 'inputs.post_count': inputs.post_count, 'inputs.post_cut_height_m': inputs.post_cut_height_m },
+        formula: 'cuts = pile posts at above-ground height + embedment; remaining posts at above-ground height',
+        deps: { 'inputs.post_count': inputs.post_count, 'inputs.post_cut_height_m': inputs.post_cut_height_m, postEmbedmentM, pile_posts: footingCounts.piles },
       },
     },
   );
@@ -1189,6 +1192,16 @@ function buildMaterialsV1Internal(
         }
       }
     }
+  }
+
+  // Standard gables also need the selected steel ridge in the material takeoff.
+  // Box gables already add their ridge below; never count it twice.
+  if (isCostingManifestAtLeast(config, 2, 9) && inputs.structure_type !== 'box_perimeter'
+    && (inputs.roof_type === 'gable' || inputs.roof_type === 'low_gable')
+    && isSteelBeamProfile(ridgeBeamProfile) && derived.ridge_length_m > 0) {
+    addCuts(ridgeBeamProfile, [derived.ridge_length_m], 'Ridge beam', 'joinable', {
+      origin_prefix: 'ridge_beam', group_key: 'ridge_beam',
+    });
   }
 
   if (inputs.structure_type === 'box_perimeter') {
@@ -2514,7 +2527,10 @@ function buildMaterialsV1Internal(
   };
 
   for (const rule of config.hardware.rules) {
-    const applies = Object.entries(rule.applies_when).every(([k, v]) => (inputs as any)[k] === v);
+    const mixedDeckRule = footingCounts.brackets > 0 && rule.applies_when.post_connection_type === 'deck_bracket';
+    const ruleInputs = mixedDeckRule ? { ...inputs, post_connection_type: 'deck_bracket' } : inputs;
+    const ruleQtyVars = mixedDeckRule ? { ...qtyVars, post_count: footingCounts.brackets } : qtyVars;
+    const applies = Object.entries(rule.applies_when).every(([k, v]) => (ruleInputs as any)[k] === v);
     trace?.decision({
       label: `Hardware rule ${rule.id}`,
       condition: 'all applies_when entries match normalized inputs',
@@ -2535,11 +2551,11 @@ function buildMaterialsV1Internal(
       let varsUsed: Record<string, number> = {};
       try {
         if (trace) {
-          const evaluated = evalQtyExpressionExplain(String(line.qty), qtyVars);
+          const evaluated = evalQtyExpressionExplain(String(line.qty), ruleQtyVars);
           qty = evaluated.result;
           varsUsed = evaluated.accessed;
         } else {
-          qty = evalQtyExpression(String(line.qty), qtyVars);
+          qty = evalQtyExpression(String(line.qty), ruleQtyVars);
         }
       } catch (err) {
         pushWarning(`Failed to evaluate qty '${line.qty}' for '${line.item_id}' (rule ${rule.id}).`);
@@ -2568,6 +2584,14 @@ function buildMaterialsV1Internal(
         vars_used: varsUsed,
         result_qty: qty,
       });
+    }
+  }
+
+  if (usesApprovedPileFooting(inputs, config)) {
+    for (const line of pileFootingMaterials(footingCounts.piles)) {
+      lines.push(line);
+      annotateLine(line, { kind: 'simple', formula: 'cost = post_count * approved per-post allowance',
+        deps: { post_count: footingCounts.piles, unit_cost_ex_gst: line.unit_cost_ex_gst } });
     }
   }
 

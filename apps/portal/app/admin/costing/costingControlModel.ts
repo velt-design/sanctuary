@@ -1,6 +1,6 @@
-import type { CostingControlConfigV1 } from '@sp/costing';
+import { getBlindPricingBands, type CostingControlConfigV1 } from '@sp/costing';
 
-export type CostingControlSection = 'materials' | 'labour' | 'overheads' | 'rules' | 'comparison' | 'publish';
+export type CostingControlSection = 'materials' | 'accessories' | 'labour' | 'overheads' | 'rules' | 'comparison' | 'publish';
 
 export type ValidationIssue = {
   path?: string;
@@ -41,6 +41,7 @@ export function countCostingChangesBySection(
 ): Record<Exclude<CostingControlSection, 'comparison' | 'publish'>, number> {
   return {
     materials: countLeafChanges(config.materialRatesExGst, baseline.materialRatesExGst),
+    accessories: countLeafChanges(config.accessoryRates, baseline.accessoryRates) + countLeafChanges(config.installedSellingRates, baseline.installedSellingRates),
     labour: countLeafChanges(config.labour, baseline.labour),
     overheads: countLeafChanges(config.overheads, baseline.overheads),
     rules: countLeafChanges(config.rules, baseline.rules),
@@ -316,6 +317,8 @@ export function findIssue(issues: ValidationIssue[], path: string): ValidationIs
 export function sectionForIssuePath(path: string | undefined): CostingControlSection | null {
   if (!path) return null;
   if (path.startsWith('materialRatesExGst.')) return 'materials';
+  if (path === 'accessoryRates' || path.startsWith('accessoryRates.')) return 'accessories';
+  if (path === 'installedSellingRates' || path.startsWith('installedSellingRates.')) return 'accessories';
   if (path.startsWith('labour.')) return 'labour';
   if (path.startsWith('overheads.')) return 'overheads';
   if (path.startsWith('rules.')) return 'rules';
@@ -339,6 +342,15 @@ export function formatSettingPath(
     return `${materialLabels.get(id) ?? titleCaseKey(id)} — material rate`;
   }
   if (path === 'labour.crewHourRateExGst') return LABOUR_FIELD_METADATA.crewHourRateExGst.label;
+  if (path.startsWith('accessoryRates.')) return `Accessory · ${titleCaseKey(path.slice('accessoryRates.'.length).replaceAll('.', ' · '))}`;
+  if (path.startsWith('installedSellingRates.')) {
+    const band = path.match(/^installedSellingRates\.blinds\.(ziptrak|omni)BaseExGst\.(\d+)\.(\d+)$/);
+    if (band) {
+      const system = band[1] === 'ziptrak' ? 'ZIPTRAK' : 'OMNI', sizes = getBlindPricingBands(system);
+      return `${system} · ${sizes.widthsMm[Number(band[3])]} mm wide × ${sizes.dropsMm[Number(band[2])]} mm drop · base excl. GST`;
+    }
+    return `Installed schedule · ${titleCaseKey(path.slice('installedSellingRates.'.length).replaceAll('IncCents', '').replaceAll('.', ' · '))}${path.includes('IncCents') ? ' · incl. GST' : ''}`;
+  }
   if (path.startsWith('labour.actionBaseMinutes.')) {
     const remainder = path.slice('labour.actionBaseMinutes.'.length);
     const actionId = [...actionLabels.keys()].find((id) => remainder === id || remainder.startsWith(`${id}.`));
@@ -372,7 +384,9 @@ export function formatSettingPath(
 export function formatSettingValue(path: string, value: number | string | null): string {
   if (value === null) return 'Not set';
   if (typeof value === 'string') return value;
+  const installedCents = path.startsWith('installedSellingRates.') && path.includes('IncCents');
   const isCurrency = path.startsWith('materialRatesExGst.')
+    || installedCents || (path.startsWith('installedSellingRates.') && path.includes('BaseExGst.'))
     || path === 'labour.crewHourRateExGst'
     || (
       path.startsWith('overheads.')
@@ -385,7 +399,7 @@ export function formatSettingValue(path: string, value: number | string | null):
       currency: 'NZD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(value);
+    }).format(installedCents ? value / 100 : value);
   }
   return new Intl.NumberFormat('en-NZ', { maximumFractionDigits: 4 }).format(value);
 }

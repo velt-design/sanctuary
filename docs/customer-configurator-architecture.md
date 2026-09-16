@@ -1,6 +1,425 @@
 # Sanctuary "Your Pergola" Customer Configurator
 ## Master Architecture and Implementation Specification
 
+
+### Marketing preview: lighting editor (2026-09-10)
+
+Plan visual refinement (2026-09-14): plans use a dedicated SVG drawing with the Simple Cover calculator's pale drawing paper, faint grid, outlined members and hatched house connection. Finish surfaces use existing geometry for board/profile positions. Dimensions and lighting hit targets remain SVG. No additional WebGL canvas, realistic scene shadows, furniture or external textures are used.
+
+Lighting opens a focused right-panel editor and a light-background lighting plan.
+The lighting plan is a reflected ceiling view: projected ceiling boards cover hidden rafters, while acrylic keeps exposed framing visible. The roof plan projects the existing roofing profiles and flashings. Both use a pale drawing-paper background, plain dimension labels and a stable 3D | Plan toggle. No furniture is included. The lighting plan hides surroundings, labels the house edge and offers
+24px member hit areas. Only the plan/editor changes selections. Preview in 3D hides
+editing controls and selection overlays and automatically uses night on first entry;
+Day/Night is presentation state available throughout the 3D configurator. Day is the initial view; Done retains the chosen lighting mood without resetting the camera. Plan remains light, with time-of-day controls disabled. A prominent "See your lights at night" action opens the night preview; an unlit night scene offers Add lighting. Warm-white spots are 40mm in rafters and 110mm in cedar; up to 24 cedar downlights,
+Cedar grids are selected per contiguous cedar section per slope, never across the whole roof. A shared 2/4/6/9 setting is the default; optional per-section overrides retain one setting for both gable slopes. Plan labels identify sections, and the total includes every section and slope. Each section's grid is centred within its own rafter bays; acrylic remains clear. Complete grids require 600mm spacing (1000mm for nine). Shared options must fit all sections; individual mode exposes the options for each section. Draft/share normalization retains settings, prunes vanished sections and derives totals. Existing whole-roof quantities migrate to the nearest per-section setting. Rafter lights use Off/Low/Medium/High: low is one centred light on mirrored alternate rafters, medium two at 25/75% on those rafters, high two on every eligible rafter. Gable patterns select paired rafter rows along the ridge, mirrored onto both slopes. Pitched and gable edge rafters are excluded from spots but remain available for LED strips. Counts are derived and update with dimensions. Old quantity selections migrate to the closest preset. Editing opens with no tool selected; only explicit LED strips mode enables member taps.
+Selected members receive full-length 16x16 channels and diffusers on their undersides.
+Presets omit the house ledger from the outer perimeter; plan member taps and a checklist
+allow individual changes. Roof battens exclude obstructed rafter channels and spots.
+The geometry package owns mounting sites and layouts. Drafts and v3 links retain
+lighting; invalidated sites are removed with a notice and enquiry summaries include
+lighting. Pricing uses confirmation, not the simple roof estimate. Night illumination
+uses a restrained ambient fill and at most 12 sampled warm light sources, with no
+shadow maps or remote assets. It is a visual reference, not a lighting calculation.
+Gate 0: legacy audit N/A; no legacy build-on/removal, Phase 2 or consolidation. Consumers
+checked: geometry exports, solve, draft/share, scene and controls, pricing and enquiry.
+
+### Marketing preview: under-rafter timber battens (2026-09-10)
+
+Optional timber battens follow roof slopes perpendicular to rafters, in acrylic areas
+only. 39x39, 65x39 and 90x39 profiles reuse side gap defaults and the same gap control;
+flat/on-edge sections change both visible face and depth. Ends reach outside end-rafter
+faces or the inside of a box perimeter. The geometry package returns merged cedar
+meshes and plan boundaries; drafts, v3 links and enquiry descriptions retain selections.
+Solid roofs clear the option. Batten designs use confirmed pricing, not the bare-frame
+estimate. Gate 0: legacy audit N/A, no legacy build-on/removal, no Phase 2 dependencies,
+no function/type consolidation. Consumers checked: solve, roof finish rendering, Plan,
+controls, draft/share validation and contact brief. Shared gap control gains an optional
+roof label/id scope while preserving all existing side behavior.
+
+### Marketing preview: Ziptrak sides (2026-09-10)
+
+Ledger ends extend to the actual outside faces of both end rafters, including after
+solid/combination rafter replacement; the local frame follows the extended start.
+
+Junction follow-up: the house jamb shares the header/strut offset, and the strut
+top follows the rafter slope. Solid/combination finishes rematch the ledger after
+replacement rafters are generated. Default on-edge clear gaps are 100mm for 65x16
+aluminium and 80mm for 65x39 timber; explicit custom gaps are preserved.
+
+Pitched corrections: representativePitchedLedger matches the ledger to the rafter
+section while preserving its top datum. Side-opening roof heights derive from actual
+rafter undersides where available. Blind headers align their outside face to the end
+rafter and receive a 50x50 house-side strut regardless of triangular infill selection.
+Roll/cover setback remains independently post-relative. Vertical timber uses 50x3
+horizontal support plates; aluminium retains box supports. Standalone horizontal
+slats meet the 50mm upright leg of the sloping perimeter angle, with isolated short
+stubs omitted. Gate 0: N/A audit rows, no legacy build-on/removal or Phase 2 changes;
+no consolidation; consumers checked in preview solve, opening/layout/mesh generation,
+views, validation and tests. Existing authored/workbench geometry is unchanged.
+
+Standalone timber/aluminium sides now support horizontal or vertical direction;
+acrylic overlays remain horizontal. Old saved selections without direction retain
+horizontal behavior. Vertical slats receive horizontal rails using the same 1200/600mm
+support limits, and follow the sloping top of the opening. Plan footprints and enquiry
+descriptions preserve direction. SideGapControl uses the SimpleCoverCalculator slider
+and number-field styles, select-on-focus, mm entry, integer commit and 5–200mm limits.
+
+Fixed sides loop: each opening exclusively selects Open, Ziptrak, full-height Acrylic,
+horizontal Timber or horizontal Aluminium. Acrylic alone can add horizontal timber.
+Timber profiles 39x39/65x39/90x39; rectangular timber and aluminium 65x16 support
+flat/on-edge; aluminium 50x10 is flat only. Default clear gap follows the visible
+face until manually changed; custom gaps (5–200mm UI range) persist across profile
+changes, with an explicit reset. Acrylic framing is 50x50 or 100x50 (50mm face,
+extra depth inward/outward). Standalone sides have representative 50x50x3 perimeter
+angles and 50x50 intermediate supports matching the frame colour. Timber supports
+are at most 1200mm centres; aluminium at most 600mm. Acrylic boundaries come from
+calculateInfillsTakeoffV1, trying sheets then strips for longer panels; timber over
+acrylic follows those boundaries. These are representative screens, not fabrication
+or structural output. Roof battens, lighting, heaters and fireplaces are deferred.
+
+sidePanelCatalog.ts owns validated selection fields; sidePanelLayout.ts adapts portal
+infill rules; representativeSidePanel.ts owns mesh generation; PreviewSidePanel and
+SidePanelControls own rendering/editing. Opening identity and selection reuse the
+existing provider. Plan/3D, version-3 links, draft restoration and enquiry summaries
+carry fixed sides. Any fixed side disables bare-pergola pricing. Gate 0: legacy rows
+N/A, no legacy build-on/removal, Phase 2 or house-authoring dependency, no function
+consolidation. Consumers checked: preview controls/provider, opening generation,
+views, draft/share, price guard, contact brief and browser tests. No portal changes.
+
+Existing blinds remain selectable by click/tap when Sides highlighting is off, including their opening when raised; Sides reveals targets for adding blinds to empty openings. Dragging retains camera orbit rather than selecting a blind.
+
+Roll/cover correction: the screen meets the underside of the exposed roll. Housing outside faces sit 5mm inside the exterior post face, with the inner pelmet projecting inward. `representativeBlindPosts.ts` detects overlapping perpendicular pelmet envelopes and upgrades small square perimeter posts to 150x150 before deriving Plan, 3D and clear opening widths; rectangular king-strut posts remain unchanged. Removing the conflicting selection restores the base post rules. Gate 0: audit rows N/A; no legacy or Phase 2 changes, no function consolidation. Consumers checked: preview solve, opening validation, view meshes, Plan, share/enquiry and focused tests.
+
+The first sides loop offers under-beam Ziptrak blinds on front and side openings,
+derived from solved supports in representativeBlindOpenings.ts. Existing post bays
+remain separate. The house end of a side blind has a representative 50 mm jamb.
+Pitched sides receive a level header (up to 2 m: 50x50; up to 4 m: 100x50;
+up to 6 m: 150x50) and optional clear acrylic above it. Existing gable-end framing
+and its roof-level infill control remain authoritative where already present.
+
+representativeBlind.ts owns roll, tracks, bottom rail, header and infill geometry.
+Cover identifiers NONE / FLASHING / PELMET match the costing calculator; the owner's
+PELMET option includes outward flashing plus an inside enclosure. Hardware sizes
+are representative from the Shade Elements Ziptrak sheet (135/165 mm enclosures,
+30 mm tracks, 52 mm bottom rail), not fabrication cut lengths. Face fixing and
+motorisation selection are deferred. Rails remain visible when the fabric is raised.
+
+blindCatalog.ts lists the supplier's compatible Shadeview, Soltis Horizon 86,
+Soltis Lounge 96 and clear/tinted PVC ranges with their named colours. Swatches and
+rendered transparency are illustrative, not measured fabric samples. The manufacturer
+catalogue is https://shadeelements.co.nz/fabric-collection/ and the applicable system
+page is https://shadeelements.co.nz/screen/ziptrak/ . Mesh limit is read from
+getBlindSystemLimits('ZIPTRAK'); PVC additionally caps width at 5500 mm. An oversized
+opening stays open and explains the constraint without changing the pergola size.
+
+PreviewBlindProvider owns selection/editing state shared by controls, 3D and Plan.
+Plan uses 24px tap targets; 3D opening targets ignore orbit drags. The current fabric,
+colour and cover can be applied to all compatible selected blinds. Position is a
+visual raise/lower slider. Topology-dependent opening IDs prevent silently moving
+blinds across changed post bays: invalid selections are removed with a notice.
+
+Blinds are validated on draft restoration and every update. Version-3 share fragments
+carry only the validated draft; versions 1 and 2 remain supported. The contact brief
+includes each opening, fabric, colour and cover. Any selected blinds move the preview
+to Sanctuary-confirmed pricing and suppress the bare-pergola estimate reference.
+No costing rates, commercial input adapters or portal runtime behavior are changed.
+
+Gate 0: legacy audit rows N/A; no legacy build-on/removal or house authoring change;
+no Phase 2 dependencies or function/type consolidation. Consumers checked: preview
+solve, controls, views, draft/share boundary, price guard, contact brief and tests.
+Focused checks: blinds.test.ts; marketing.configurator-blinds.spec.ts; existing
+roof/draft/share tests and workspace/gesture browser checks; marketing production build.
+
+### Marketing preview: solid and combination roofs (2026-09-10)
+
+The preview offers acrylic, solid, and combination roofs. Solid regions include
+Colorsteel over a cedar ceiling. Central skylight bands stay centred as complete
+620 mm nominal bays are added; house-side bands grow from the house and are
+available **only for gables with their ridge running away from the house**.
+Parallel gables, pitched and box roofs offer central bands only. Changing family
+normalizes incompatible arrangements and clamps the bay count to the available run.
+Gable bands continue across both slopes. The box ceiling is level; other ceilings
+follow their roof slopes. Cedar is shown with 12 mm boards and 6 mm negative joints;
+board width and supporting build-up remain representative.
+
+Package owners are representativeRoofFinish.ts (framing and regions),
+representativeRoofProfiles.ts (actual repeating cross-sections),
+representativeRoofFinishMesh.ts (mesh construction), representativeRoofEdgeFlashings.ts
+(edge and transition covers), and
+representativeRoofBoxFinish.ts (level box ceiling and envelope fit). These are
+isolated visual references, not authored workbench objects or quantity takeoffs.
+Corrugated uses 76.2 mm repeat / 17 mm depth; simplified trapezoidal uses 154 mm
+repeat / 21 mm depth / 18 mm rib top, omitting pan stiffeners; tray uses 39 mm
+seams with nominal 300/400/500 mm repeat choices and omitted concealed locks.
+The same region boundaries drive Plan and 3D. Solid regions replace acrylic
+panels/joiners, carry cedar and closed edges; transitions have doubled
+framing and flashing. Original gable-end infills remain independently selectable.
+Concealed purlins are omitted from this marketing-only reference to avoid visible
+cross-lines through shallow steel pans. Construction and takeoff models are unaffected.
+
+The 300 mm box checks space for the build-up using the preview's existing 3-degree
+layout convention (not a manufacturer minimum-pitch approval). It switches to an
+internal gable when necessary. If the profile, layers and fall cannot fit, it
+retains a defensive geometry error. The UI and draft/share parser use the same
+envelope to clamp projection to its last valid 100 mm step (4.1 m corrugated,
+3.9 m trapezoidal, 3.2 m tray). Sliders and typed entry share that maximum.
+Roof/profile changes reduce projection only when necessary and show an inline
+adjustment note; unlocking a larger range does not enlarge the design. This
+keeps the model visible without changing width or the 300 mm frame. Profile-specific installation/pitch approval and
+commercial pricing remain Sanctuary review items.
+
+RoofFinishChoices.tsx owns the controls. PreviewRoofFinish.tsx renders bounded
+meshes and procedural cedar grain, disposing resources on updates. Exposed steel
+edges and acrylic transitions receive folded covers. Tray sections have equal
+edge cuts; each side cover laps the first complete upstand with 10 mm beyond its
+foot. The Under roof control and its special context mode are removed. A 24-degree
+perspective camera provides subtle depth, retaining the explored angle and distance
+during sizing; Fit reframes at that angle and Reset restores the default.
+Preview links with roof finishes use a version-2 fragment; old version-1 links
+and saved acrylic drafts remain supported. Only validated finish fields are
+stored/shared. Solid/combination selections use the custom enquiry pathway,
+include the finish/profile/layout/bay description and existing timber/acrylic
+material fields, and never attach an acrylic-only price or calculation reference.
+
+Gate 0: legacy audit rows N/A; no legacy build-on/removal, authored house-form
+change, Phase 2 cost-input dependency or function/type consolidation. Consumers
+checked: preview solve, 3D, Plan, roof controls, draft/share boundaries, price
+footer, contact brief/summary and their tests. Verification includes profile and
+region geometry, level ceiling/envelope limits, parser/link/enquiry tests,
+360/390/1440 px browser journeys, existing workspace gestures and production build.
+
+### Marketing preview: enquiry and share journey (2026-09-09)
+
+The preview right rail uses `RailProvider.tsx` for one active editing section
+(Structure, Roof & ceiling, Sides, Lighting). `ConfiguratorRail.tsx` presents
+selection summaries and restores each section's scroll position. Entering Sides
+enables model opening selection; leaving it clears that editing mode. Entering
+Lighting opens its plan editor, while the 3D remains a lighting preview. The
+section navigation is compact on mobile, preserving the fixed half-height viewer.
+Selection state stays in the existing draft providers, independent of navigation.
+The popup Continue/share footer remains available in every section, including
+Lighting. Day/night controls and selected choices share the same theme tokens.
+
+`PreviewNextAction.tsx` keeps the popup's current estimate and Continue action
+outside the scrolling choices, in a fixed footer inside the panel. The viewer
+retains its 48% mobile allocation; expansion still covers the full workspace.
+Roof options use text-only selectors and a sentence explaining the
+selected style. Dimension controls reuse the Simple pergola calculator range and
+number-field styles: 72 px mobile tracks, 44 px thumb hit boxes and select-all
+on focus. Mobile dimensions use full-width rows to keep the ruler marks legible. The configured enquiry introduction is compact and its design
+summary expands on demand, putting the first site field in view sooner. Normal
+contact pathways and submission behavior are unchanged.
+
+`ShareDesign.tsx` offers Copy design link and native Share where supported. Copy
+failure reveals a selectable read-only link; native cancellation is quiet.
+`previewShare.ts` serializes only the versioned, allowlisted preview choices into
+the URL fragment (`#design=…`), with no prices, signed references, contact fields
+or uploads. A link represents the design at the time it was copied, not a live
+collaborative document. It opens the popup directly, takes precedence over a
+saved tab draft, passes the existing dimension/attachment validation, and is
+consumed once so later edits survive refresh. Invalid links retain the current
+draft/defaults with a short notice. Pitched estimates are requested fresh after
+restoration. URL import and hash/back-forward handling share the existing draft
+store; geometry and enquiry contracts are not duplicated.
+
+The optional public `NEXT_PUBLIC_CONFIGURATOR_PREVIEW_SHARE` build setting carries
+the existing Vercel share-link token in copied URLs on `.vercel.app` hosts only.
+It is configured only for the `configurator/ui-views-prototype` preview branch;
+never put an automation bypass secret in this public setting. This lets another
+browser open the protected preview. Normal public-domain links omit it. Durable
+hosted design records/accounts remain deferred; the copied link itself is the
+save/share mechanism. Gate 0: no geometry/costing changes or legacy retirement.
+
+Coverage includes fixed-action visibility, compact enquiry layout, design-link
+round trips in an independent browser, fresh pricing, edit/refresh behavior,
+invalid versions/choices, clipboard failure and native share cancellation, plus
+the existing popup gesture, project enquiry and normal contact regressions.
+
+### Marketing preview: shared design loop (2026-09-09)
+
+The popup's **Continue with this design** action opens the project preview with
+the same roof, dimensions, attachment, site level and gable choices. The project
+preview's **Back to exploring** link reopens the popup directly. Both use one
+client draft store and Next navigation; design changes survive same-tab route
+changes, refresh and browser back. Camera/view state stays local to each viewer.
+
+`previewDraft.ts` validates the version, supported choices, stepped dimension
+bounds and attachment restrictions. `usePreviewDraft.ts` stores only those
+allowlisted design choices in `sessionStorage` under
+`sanctuary.configurator-preview.v1`. It restores before requesting a price or
+mounting the viewer, writes synchronously with each committed choice, and
+refreshes on a back/forward-cache return. Invalid saved data uses the defaults.
+Blocked storage keeps editing and client navigation working in memory with a
+short refresh limitation notice. No contact fields, uploads, prices or signed
+calculation references are persisted. Pitched pricing is requested afresh after
+mount/refresh; the existing enquiry server remains the price authority.
+
+This is isolated representative-preview persistence, not the future canonical
+customer-intent document described below. Cross-device links are implemented by
+the journey loop above; hosted saved projects and sitewide launcher placement
+remain deferred. Focused browser
+coverage checks mobile/desktop handover in both directions, back, refresh,
+immediate size-edit navigation, fresh enquiry pricing and unavailable/corrupt
+storage. Gate 0: no geometry/costing changes or legacy retirement in this loop.
+
+### Marketing preview: Start your project loop (2026-09-09)
+
+`/contact?configurator=preview` is the opt-in, non-indexed Start your project
+experience. The existing `/contact` pathways and no-JavaScript form remain
+available. `ContactProjectDesigner.tsx` embeds the same configurator immediately;
+its viewer stays fixed above the scrolling choices and enquiry fields on mobile,
+and beside them on desktop/short landscape. Root overflow uses clip so fragment
+links and field focus cannot programmatically move the entire page. Expand/Done
+fills the design workspace and Escape returns to editing.
+
+`ConfiguratorPrototype` accepts an enquiry render slot without duplicating
+geometry, pricing, camera or control state. `contactDesignBrief.ts` adapts the
+current selection into a same-page brief. Pitched uses the existing opaque
+Simple calculation reference and payload builder; pending/unavailable results
+remain reviewable without a price. Gable/box never carry a Simple reference.
+Their dimensions and form use existing intake fields. All forms include a
+readable design description in the enquiry message, including attachment,
+level and applicable gable direction/infills. Enquiry navigation keeps design and
+contact values out of the URL and analytics; explicit design-share fragments are
+described above. Editing the design keeps the enquiry fields mounted.
+
+`ContactEnquiryForm` retains validation, uploads, consent, attribution, submission
+locking, retry identity and response handling. Its introduction moved into
+`ContactFormIntro`; a small opt-in configured presentation hides the duplicate
+pathway/calculator/technical inputs and shows `ContactDesignSummary`. The next
+safe extraction from the large form is its submission controller; that shared
+network behavior is intentionally unchanged in this UI loop. Browser coverage
+checks same-page payloads for all three roofs, error/retry, retained fields,
+fixed views at mobile/desktop/landscape sizes, and the full existing contact suite.
+Cross-route design sharing is implemented by the shared design loop above.
+
+### Marketing preview: popup loop (2026-09-09)
+
+The isolated, non-indexed preview now demonstrates a fixed bottom launcher
+opening a near-full-screen native dialog with a narrow visible page margin.
+On mobile portrait, the viewer occupies 48% of the available workspace from
+opening; only the choices beneath it scroll. Desktop and short landscape use
+side-by-side viewer and scrolling choices. Expand/Done fills the panel for
+inspection. The popup is the single owner of page scroll locking; touch orbit
+and pinch work in both viewer sizes without handing gestures to the page.
+Escape exits expanded inspection first, then closes the popup. Attachment
+detail cards are hosted inside the dialog and dismiss independently.
+
+`ConfiguratorPreviewShell.tsx` owns the launcher and popup lifecycle. The
+launcher is portaled above the route animation/footer with marketing tokens;
+the native dialog supplies the popup's top layer. The
+configurator mounts on first open and stays mounted on close, preserving
+selections, view, camera and the choices' scroll position on reopening.
+This popup is preview-only; sitewide placement remains deferred. Shared design
+and the embedded Start your project preview are described above.
+
+### Marketing preview: box perimeter loop (2026-09-09)
+
+Approved scope: an acrylic-only level 300x50 perimeter with 80x50 rafters,
+100x100 internal gutters flush at the perimeter underside, and facade/soffit
+connections (no fascia; soffit retains the 4m projection limit). The roof
+automatically changes from pitched to an equal internal gable when available
+single-slope fall drops below 3 degrees. The internal ridge runs parallel to
+the house and is 100x50 through 3m ridge length, then 150x50. Both internal
+gable gutters drain at the front/rear. No cedar battens in this loop.
+
+Gate 0: legacy audit rows N/A. This is a new opt-in representative geometry
+builder using package contracts/profile assets, not a legacy calculator or
+workbench extension. No Phase 2 cost-input dependencies or consolidation of
+existing solvers. The canonical box solver is unchanged; it currently follows
+roof fall with its perimeter, which differs from this approved level frame.
+Consumers checked: marketing prototype model/controls/views/attachments and
+their tests; new box exports have no existing consumers. Pricing remains
+limited to Pitched via the existing Simple cover service.
+
+Implementation owners: `representativeBoxRules.ts` sets the available fall,
+automatic roof mode and member sizes; `representativeBoxMembers.ts` constructs
+member frames and the open 100x100 gutter section; `representativeBoxRoof.ts`
+builds both internal roof forms and reuses the equal-slope flashing clearance
+helper; `representativeBox.ts` derives Plan and viewer scene from that single
+assembly. `representativeBoxContext.ts` adapts the illustrative soffit L arm
+below the deeper perimeter. Attachment hover sections use the same box context.
+
+Representative defaults: perimeter underside 2400mm; roof peak reserves the
+actual joiner depth plus 8mm below the 300mm frame top. Low roof bearing is at
+the 100mm gutter top. The pitched clear run is projection minus 200mm, from
+the rear perimeter's inside face to the front gutter. The internal gable has
+two gutters and halves projection minus 300mm. Ridge length means its actual length between
+the side perimeters (width minus 100mm). The 150mm-per-side ridge flashing
+keeps 2mm joiner clearance. Front posts follow the existing 4m maximum bay
+display rule and are 150x150 at every box-perimeter size, terminating
+at the perimeter underside. These are visual concept defaults for owner
+review, not an engineering schedule. The cedar example's 2.5-degree roof and
+50x50 timber-support rafters are not used for this acrylic-only version.
+
+### Marketing preview: representative gable loop (2026-09-09)
+
+The isolated, non-indexed `/configurator-preview` offers Pitched and Gable.
+Gable uses equal 25-degree slopes, a gutter at each eave, and two ridge
+directions. Parallel keeps fascia/facade/soffit choices and the existing 4m
+soffit projection limit. Away shows the sloping Dutch-gable fascia connection;
+the house-end rafters and ridge meet that fascia. Width always means along the
+house, projection always means away, regardless of ridge direction.
+
+Owner-corrected end detail: a 150x50 upright tie section at the front and a
+100x50 laid-flat section projecting inward, with both tops flush (an L section).
+Below 4m gutter-to-gutter, that inward section becomes 50x50 and the king
+strut becomes 100x50. From 4m to below 5m the king is 150x50, quarter-turned
+in Plan with its larger dimension perpendicular to the gable end. At 5m
+gutter-to-gutter and above, it retains the 150x50 section and extends from
+ground to the ridge underside. Plan projects that same rectangular section
+in the selected ridge direction. Other gable posts are 150x150 strictly above 20m²
+footprint area; at or below 20m² they retain the existing 90x90 profile. Larger
+posts move inward to preserve the outside footprint without changing the roof.
+Finished gable-end faces share one vertical plane: end rafters, ridge and
+gutter-beam ends, posts and the 150x50 upright face of the L tie. Post tops
+follow the top face of their respective solved gutter beam. The king strut
+shares the end face and sits on the complete L top unless extended to ground.
+`representativeGableEnds.ts`
+resolves profile face offsets before the orientation transform and before
+deriving either view. The ridge-away house fascia finishes at the rear plane.
+Gable infills starts off;
+when selected it adds clear acrylic and 50x50 vertical supports at both
+parallel ends, or only the exposed front end for the away arrangement.
+The 700mm maximum representative infill bay spacing and 4m representative
+support spacing require project-specific confirmation; they are display defaults,
+not asserted engineering rules. Roof rafter pairs follow a maximum 600mm
+representative spacing along the ridge run.
+
+The canonical ridge flashing is shown as two wings meeting at a single fold,
+150mm down each roof slope at every size. Its underside is 2mm above the
+actual joiner top surfaces, measured normal to each slope. Both wings move
+together to preserve the single ridge fold.
+`representativeGableRules.ts` owns these span/run/area thresholds;
+`representativeGableFlashing.ts` sizes the shared flashing before deriving
+either view. Plan uses the same wing boundaries as the 3D scene.
+
+`packages/geometry/src/representativeGable.ts` owns this concept assembly. It
+reuses the canonical two-gutter gable chassis, then applies the agreed attached
+supports and end detail before deriving Plan and viewer scene from one
+assembly. It uses the existing complete assembly transform for ridge-away.
+`representativeGableDetails.ts` owns the composite tie and optional infill;
+`representativeGableContext.ts` owns illustrative house/ground context. The
+house context is not an authored HouseForm. Roof sheets stop at joiner faces
+to avoid coplanar aluminium/acrylic surfaces in this simplified presentation.
+
+This is a `review_required` visual concept, not a validated authored
+gable or a commercial solve. Chassis support conditions and quantity hooks
+are cleared rather than exposing stale quantities. Gable never requests or
+displays the Simple cover price. Switching back to Pitched resumes that service.
+Customer V1 intent, persisted designs, workbench output and costing are unchanged.
+
+Gate 0: legacy audit rows N/A; this adds an opt-in representative package
+consumer of existing geometry, not a legacy workbench feature or compatibility
+carrier. No Phase 2 cost-input/modules dependency and no function/type
+consolidation. Consumers inspected: preview solve/views, attachment detail
+preview, representative surroundings/ContextSection renderer, Plan, viewer and
+assembly position boundary. Existing callers retain the original defaults.
+
+Verification: representative geometry matrix for both orientations, min/max
+dimensions, infill topology and shared-view identity; browser checks for type
+switching, camera persistence, the soffit boundary, mobile and price isolation.
+
 > **Status:** Strategic target and active implementation roadmap. Not current behavior.
 > **Repository:** `velt-design/sanctuary`
 > **Reviewed branch:** `main`
@@ -11,6 +430,272 @@
 > **Product name in the interface:** **Your pergola**
 
 This document is the source of truth for the customer-facing persistent pergola configurator. It defines the product experience, package boundaries, data contract, geometry pipeline, persistence, website integration, enquiry handoff, portal continuation, implementation sequence and release gates.
+
+### Isolated UI preview — 8 September 2026
+
+The owner requested a standalone non-indexed page to work on the UI and fixed
+3D/plan views, reusing Simple cover's existing estimate connection. The scoped
+implementation is `/configurator-preview`, owned by
+`apps/marketing/components/configurator-prototype/**`. It is excluded from the
+sitemap and navigation and emits `noindex, nofollow`. This is an unlisted public
+route, not an authenticated private page.
+
+Width, projection, attachment and site level share one Simple cover input state.
+Preview dimensions use the intersection of the existing customer geometry and
+Simple cover ranges: width 1.5–10 m and projection 1.5–6 m. This prevents the
+geometry normalizer silently enlarging a 1 m pricing input to its 1.5 m minimum.
+The page calls the unchanged `/api/simple-cover-price` endpoint, which already
+uses `@sp/costing` and the published costing configuration. It introduces no
+calculator, pricing policy, staff API, estimate persistence or workbench pricing
+integration. Unsupported Simple cover areas retain the existing custom-result
+behavior; unavailable pricing does not disable the visual controls.
+
+An app-owned adapter maps only these design choices to `@sp/configurator/core`.
+The configurator geometry package solves once for Plan and the shared read-only
+3D renderer. Customer fields do not contain prices or calculation references.
+The view is representative: roof pitch, height, roof detailing and house context
+are not a surveyed or priced construction takeoff. The solver's representative house and
+roof-flashing details are omitted from the customer scene; a separate package-owned
+context reference now supplies the owner-confirmed house relationships below. The existing acrylic
+solve reports detailing review, and the flashing primitives currently show
+protruding geometry in this public adapter. This prototype deliberately presents
+the structural concept; it does not fix or certify that detail boundary. The preview supports
+interactive 3D, dimensioned plan and Fit/Reset actions. Elevation is deferred
+at the owner's request; current polish prioritises camera continuity, the front
+three-quarter starting view, roof rendering and mobile usability over accessibility polish.
+
+The preview polish loop keeps the 3D canvas mounted while Plan is visible.
+`PreviewCamera` owns the front three-quarter default, translates the orbit target
+with changed geometry, and retains an explored angle and zoom through dimension
+and view changes. Untouched views fit automatically; Fit view reframes at the
+current angle, while Reset view deliberately restores the starting view. Framing
+uses solved member endpoints and roof boundaries. The second polish loop removes
+the Explore/Lock activation step: rotation is immediate, and quiet Fit/Reset
+actions sit beside the view tabs. Touch gestures allow sideways rotation and pinch
+zoom while vertical swipes scroll the page in the compact viewer. Both the canvas
+and its event wrapper retain `touch-action: pan-y` there. Expanded view overrides
+both to `none` so diagonal/vertical orbit gestures and pinch zoom cannot turn into
+page scrolling; both document roots also lock overflow and overscroll until Done,
+Escape, unmount or a desktop breakpoint transition restores their prior styles.
+
+`PreviewRoof` is an app-owned material presenter using the shared polygon/slab
+builders. The captured Simple preview emits a roof reference plane and no detailed
+acrylic panels. Its surface coincides with the aluminium roof datum. Transparent
+surfaces do not write depth; a positive polygon depth offset makes opaque framing
+win along that shared boundary without moving physical geometry. A procedural
+studio environment, acrylic clearcoat and a restrained frame finish improve
+surface contrast without external texture requests. The shared member renderer
+accepts optional roughness/metalness/environment appearance values; omitted values
+retain the existing portal defaults. No new physical connection or cladding detail
+is inferred by these material changes. Scene layer
+visibility is respected, including hiding reference roof planes when detailed
+cladding is present. This is a rendering correction, not completed roof detailing.
+
+The responsive workspace loop (9 September 2026) fits the desktop viewer to the
+screen height and scrolls the choices panel independently. The preview's site
+header has an opaque background. Portrait phones use a 260-300 px pinned viewer,
+a compact dimension summary and a single row of roof choices at 360 px. Plan
+uses 300 px, fits the pergola footprint rather than the patio/steps, and reserves
+fixed screen-space gutters for readable dimension values and orientation labels.
+The dimensions still measure the pergola, independently of surroundings.
+
+Expand/Done opens the same mounted viewer across the phone screen, temporarily
+hides the site header and locks background scrolling. Closing returns to the same
+controls and selections; Escape also closes it, and crossing the desktop
+breakpoint releases expansion. Viewport resizing scales an explored camera's zoom
+proportionally while retaining its angle; changing dimensions still keeps the
+exact chosen zoom. Short landscape screens retain the side-by-side layout.
+Browser regressions cover the desktop scroll boundary, both 360/390 px mobile
+layouts, expanded Plan bounds, selection retention, actual camera pose/zoom,
+Fit/Reset, view switching, touch gestures and graphics failure recovery. Physical
+phone keyboard behavior and hardware performance remain separate device checks.
+
+Using a size control now highlights its corresponding roof edge and projects a
+dimension label into the 3D viewport. Annotation measurements come from solved
+Plan extents: projection is horizontal, not the pitched rafter length. The guide
+tracks the existing camera without moving it and clears after leaving the control.
+Its HTML overlay invalidates the demand-rendered scene after DOM mount so first
+focus positions the guide without needing a subsequent size change.
+Plan now uses the same active-dimension state: a labelled width or projection
+badge and its dimension line highlight in olive during edits. `PlanDimension`
+owns screen-sized badges and drafting ticks. Member widths remain physical;
+lighter rafter strokes and fine, non-scaling context/dimension lines improve the
+drawing hierarchy. House connection and front edge labels clarify orientation.
+The lower drawing margin reserves screen space between the front label and width
+badge, including narrow/tall plans; elevated stairs remain clear of dimensions.
+Pure regressions check annotation spans against solved dimensions; browser checks
+cover edit feedback, direct rotation and touch scrolling/pinch zoom. Attachment
+context was added in the third loop described below. Same-tab browser persistence
+is now implemented by the shared design loop above.
+
+The third preview loop adds `buildRepresentativeSurroundings()` in `@sp/geometry`.
+It reads the untransformed, +Y-projecting mono assembly and derives a separate
+visual reference without moving members, changing takeoff, or authoring a house.
+The owner confirmed these attachment relationships in the 8 September interview:
+
+- Soffit: ledger top level with gutter top, 5 mm clear of the gutter; 40 mm SHS
+  aluminium L brackets with a 90-degree mitred envelope. Their horizontal leg
+  returns to the wall across a typical 500 mm eave. The upright bears against the
+  ledger underside; its inside edge is flush with the ledger back. It does not
+  extend up behind the ledger. The complete exposed bracket is rendered.
+- Fascia: ledger directly against the fascia, below the retained gutter.
+- Facade: ledger directly against a two-storey wall at a lower-storey height.
+
+The owner subsequently limited soffit availability to projections through 4,000 mm.
+Above that, the preview disables the option. Extending a selected soffit design
+switches to fascia with an explanation, in the shared input update before either
+geometry or pricing receives it. Returning to 4 m re-enables soffit without silently
+switching back. This is a preview selection constraint, not a change to the pricing API.
+The roof context now has a closed volume connecting wall top, soffit and roof
+underside, including the exposed side and back faces; adjoining solids share faces
+without overlapping exterior wall panels.
+
+Soffit bracket counts follow `calculateSoffitBracketCountV1()` in `@sp/costing`:
+`ceil(attachmentLengthMm / 1500) + 1`. This is the extracted existing engine rule,
+also retained by the engine's A/B attachment calculations; old 1,200 mm config
+references are historical. The preview supplies the quantity to package geometry,
+which spaces brackets equally with their end faces inside the solved ledger ends.
+Plan and 3D consume those same positions. Brackets must never borrow front-post
+count or spacing. A 6 m width has five brackets; 7.5 m has six.
+House roof pitch, gutter/fascia sizes, floor height and platform depth are visual
+defaults, not owner-approved fabrication dimensions. The neutral patio meets the
+solved post feet. Elevated lowers the surrounding ground by a representative
+800 mm while keeping the occupied platform and pergola together; it is independent
+of attachment and house storeys. No hidden fixings, stairs, rails or foundations
+are inferred. Soft post contact cues are presentation effects from solved feet.
+
+Surroundings are on by default and share one checkbox across 3D and Plan. Plan
+uses the same wall boundary and patio footprint. The house fades when orbiting
+behind it; support brackets remain visible. Camera fitting continues to prioritise
+the pergola, so the upper part of the tall facade backdrop may be cropped.
+The context renderer owns materials and visibility only; package geometry owns
+all reference positions. Browser regressions cover switching, toggle continuity,
+independent ground choice, rear fade and recovery, alongside existing mobile gestures.
+
+The next presentation loop adds attachment detail cards: hover an option on desktop
+or tap its information button on touch devices. They use side-section illustrations
+from the same package-owned representative connection geometry. Inspecting a card
+does not select the option, move the main camera, or request a different estimate.
+Disabled soffit options retain access to their explanation and 4 m limit. Cards
+close on Escape, their close control or an outside press; they stay within the
+viewport and above the site header after device rotation.
+
+House materials are lighter, and the upper part of the two-storey facade fades
+softly into the background. Two airy, olive-toned reference trees sit outside the
+patio, replacing the rejected ellipsoid trees. A taller upright specimen is paired
+with a smaller, lower-branching companion on the opposite side. `referenceTree.ts`
+owns two stable branching specimens, each with 5,720 individually oriented folded leaves;
+`representativeLandscape.ts` owns its placement, separate from pergola members
+and quantity takeoff. The renderer uses one merged branch mesh and one instanced
+foliage mesh, plus a soft ground-shadow cue. No downloaded asset, alpha-cutout
+texture, animation loop or extra dependency is required. The ground extends
+under the specimen. These are decorative context, not site survey objects, and
+appear only in 3D. The presenter fades foliage smoothly when
+it is in front of, and overlaps, the convex envelope of projected solved member
+and roof points. The crown envelope comes from the specimen's leaves. Empty corners
+of the enclosing product box do not trigger fading. Initial framing and
+explicit Fit/Reset leave 10% more room with surroundings on; explored camera angle
+and zoom remain retained. Furniture remains out of scope. Hover/touch regression
+checks cover selection/camera continuity, unavailable options and rotated-phone
+dismissal; geometry tests keep foliage envelopes clear of the patio.
+
+The house/acrylic refinement adds a representative two-panel slider from
+`representativeHouseDetails.ts`. Its opening is cut from one continuous wall mesh,
+avoiding internal box seams during the upper-wall fade. Frame and muted glazing
+fade with the house. The opening stays below the ledger and within the wall at
+all supported widths. Elevated means a first-floor deck, shown 2700 mm above
+ground with a 160 mm deck edge and visible supports reaching the ground; it
+replaces the former 800 mm solid platform and three steps. Pergola floor and
+post-foot heights do not change. Camera Fit includes the deck supports, while
+Plan keeps the deck footprint. These reference details are not selectable
+products, construction specifications, authored house inputs or priced additions.
+Gate 0: legacy audit rows N/A; no legacy removal/build-on, authored house-form
+change, Phase 2 costing dependency or function/type consolidation. Consumers
+checked: mono, gable and box context builders; preview Plan/3D and their tests.
+
+Acrylic uses a stronger subdued tint, grazing-angle opacity and a soft, world-space
+studio reflection cue continuous across panels. It keeps the original solved roof
+surface, disabled depth writing and positive polygon offset against aluminium.
+The reflection cue is illustrative, not a daylight simulation. No extra transparent
+roof mesh or offscreen transmission pass is added. Review covers attachment and
+level changes, extreme sizes, mobile layout, orbit views and shader errors.
+Gate 0 for this pass: legacy rows N/A; no legacy build-on, Phase 2 dependency or
+function/type consolidation. Consumers searched: surroundings builder, landscape,
+3D/Plan presenters, side-detail illustration and geometry tests. Only the preview
+consumes the additive architecture reference; workbench house composition and
+Simple pergola pricing remain unchanged.
+
+The upright natural-tree study was accepted before adding its spreading companion.
+Ground shadows render after the transparent context surfaces so those surfaces
+cannot paint over their contact cues. Gate 0: legacy rows N/A, no legacy build-on, no Phase 2 dependency and no
+type/function consolidation. Consumers checked across the repository: landscape
+builder, representative surroundings, marketing landscape presenter and its tests.
+No authored house, workbench, pricing or pergola geometry contract changes.
+
+Gate 0 for the context loop: legacy audit rows N/A. This adds a separate visual
+reference derived from solved members, without extending a legacy house input,
+calculator geometry carrier or workbench runtime. Authored house forms retain the
+composition contract. No Phase 2 commercial dependency or function/type consolidation
+is introduced. Existing consumers of the unchanged solve/render boundaries were
+checked; only the marketing preview consumes the new additive export.
+
+The subsequent bracket-count correction extracts the existing arithmetic from
+costing `derive.ts` into a shared quantity helper, removing duplicate expressions
+without changing pricing behavior. Both prior expressions take positive mm;
+connection and hip-corner conditions stay in their callers. Legacy rows N/A, no
+Phase 2 dependency, and no workbench input or house authoring boundary changes.
+Consumers checked: engine calculate paths and derive/materials tests; preview
+surroundings adapter and tests. This small extraction is the maintainability change
+for the large costing derive module; unrelated derivation rules remain deferred.
+
+The owner-requested framing accuracy pass resolves the original fixed-layout
+limitation. `solvePreview.ts` gets rafter count/spacing and post count from the
+existing Simple cover helpers, whose authority remains `@sp/costing`. It passes
+only physical layout values through the optional configurator solve `layout`
+context. This context does not change persisted customer intent or introduce a
+pricing dependency into the geometry/configurator packages.
+
+The preview opts into the mono solver's `outside_faces` width reference. End
+rafters are inset by half their profile width and end posts by half theirs;
+their outside faces and the ledger ends therefore share the 0/width boundaries.
+Internal spacing is equal and derived from those end centres. Existing callers
+that omit the opt-in retain their historical centreline placement and defaults.
+Plan and 3D consume the same corrected assembly. The UI shows the
+solved member counts. Nine width regressions cover count changes, exact rafter
+positions, flush post/rafter/ledger faces and Plan/scene parity. This closes the
+two previously pending alignment checks, but is not structural certification.
+
+This page does not claim PRs 4–11 of the full rollout are complete. Site-wide
+persistence, dock/dialog coordination, expanded product options, enquiry handoff
+and staff continuation remain separate work.
+
+Gate 0 for the framing accuracy pass: legacy audit rows N/A (rows 2 and 8 were
+reviewed; deck/house normalization and singular assembly semantics are untouched).
+This repairs the retained physical solver rather than extending retired legacy.
+There is no costing-input or `inputs.modules` migration and no Phase 2 dependency.
+No functions/types are consolidated. The mono spacing helper moves to
+`memberLayout.ts`; its existing parameters and rounding are preserved, with an
+optional edge inset for the explicit outside-face datum. Consumers checked:
+configurator adapter/solve and tests, the preview, geometry normalization/solver
+and fixtures, and portal geometry adapters. Verification: `framing.test.ts`,
+existing geometry/configurator/viewer and Simple pricing tests, marketing build, and
+`playwright/marketing.configurator-preview.spec.ts`. Browser tests stub public
+pricing for deterministic UI evidence; they are not live-price verification.
+
+Size handoff: the geometry package owns the touched large `contracts.ts` and
+`normalize.ts`. They gain only the optional datum and its normalization; broader
+extraction is deferred. The next safe extraction is structural framing types
+and their normalizer. Spacing behavior is extracted into `memberLayout.ts`, and
+the machine-readable decomposition registry records this boundary.
+
+Local verification on 8 September: marketing production build/typecheck passed;
+712 tests passed across 64 files (three pre-existing expected failures). Both
+browser checks passed, including live rafter/post count changes,
+including view changes, minimum-dimension clamping, WebGL-loss Plan fallback,
+mobile containment and unavailable-price behavior. This is local evidence, not
+a deployed release or physical-device sign-off. The isolated checkout has no
+live pricing credentials; the interactive local preview displays the truthful
+unavailable state and remains usable for UI review.
 
 ## Read First
 
@@ -4220,3 +4905,606 @@ package.json
 - [ ] Does portal work create a derivative rather than mutate the original?
 - [ ] Are focused tests and explicit evidence included?
 - [ ] Has the agent stayed within the named PR scope?
+
+
+## Enquiry handoff and email preview loop — 2026-09-11
+
+The current preview now submits `customerDesign` separately from the customer's
+message. `lib/enquiryDesign.ts` reparses the version-1 preview selection and rejects
+changes introduced by normalization, unknown fields, and oversized share payloads.
+This is a bounded bridge for the existing preview, not a replacement for the future
+canonical customer-intent contract described above.
+
+The intake RPC stores the original validated selection, readable summary and reopen
+path under `enquiry_requests.raw_payload.customerBrief`. Audience (residential,
+commercial, professional) is independent of `designStatus` (configured or bespoke).
+Neither client classification, client URLs nor client prices are authoritative.
+The normal enquiry retry/idempotency and attachment verification paths are retained.
+Rich configurations suppress generic pricing; Simple pricing still needs its frozen
+reference and must match the submitted selection. Without a price the email makes
+no numerical estimate. The server freezes the marketing reopen URL in email
+variables, so staff-side re-rendering does not point at the portal's domain.
+
+Five V2 email journeys are available in the existing staff email workbench under
+"Proposed enquiry journeys". Existing V1 template IDs and historical variables
+retain their renderer. With V2 disabled, new saved-design details are still included
+in the V1 project note for the customer's and staff BCC's reference.
+
+`WEBSITE_ENQUIRY_EXPERIENCE_V2=true` explicitly enables the new customer emails.
+Preview deployments enable them by default; `false` disables them there too.
+Production stays on V1 unless explicitly enabled after copy review. The staff
+preview remains behind the existing staff session and preview availability checks;
+local QA uses the existing fixture gate and does not send email.
+
+Review evidence for this slice: enquiry boundary/intake/render tests, existing
+attachment and retry tests, the five workbench journeys, desktop/mobile email
+rendering, and browser checks for the three roof families' enquiry payloads.
+All five owner-authorized synthetic email proofs were confirmed delivered by Resend
+on 2026-09-14; see `automation-email-audit.md`. Recipient-side email-client appearance
+and the durable worker integration remain separate checks.
+Remaining production work includes physical phone QA,
+the broader website rollout and the future canonical configurator contract.
+
+### Value defaults and batten species (2026-09-11)
+
+New blinds use uncovered rolls and no optional acrylic above. Gable infills, roof battens and timber-over-acrylic remain opt-in. New timber selections use provisional ThermoPine 90x39 flat with a 90mm clear gap; aluminium sides use 65x16 flat with a 65mm gap. The smaller 50x50 acrylic frame remains the default. Existing roof/side batten payloads without species remain cedar; explicit saved profiles, gaps, covers and infills are preserved. Roof and side controls expose ThermoPine/Cedar, descriptions retain species, and roof/side rendering distinguishes the timber finish. Share links retain the additive optional species field.
+
+Gate 0: legacy audit N/A; no legacy build-on/removal, no Phase 2 dependencies, no function/type consolidation. Consumers checked: geometry exports/roof batten builder, marketing solver, controls, parser/share, side renderer, enquiry descriptions and accessory price adapter. Geometry receives appearance only; draft costing remains package-owned. Supplier profile availability and price confirmation remain outstanding; see costing-and-geometry.md.
+
+Plan drawing hierarchy follows the workbench sheet reference (`apps/portal/lib/theme/moduleDrawing.ts` and `EstimateDrawingSheet`): strong perimeter, secondary member outlines, quiet annotations and a compact material/lighting legend. This is a marketing-owned presentation adaptation; it does not import portal UI. Plan offers a direct night-preview action in place of disabled Day/Night controls. Lighting symbols have a minimum screen size; physical fitting sizes and quantities are unchanged.
+
+Plan acrylic hatching is drawn beneath framing, so transparent areas do not wash out member outlines. The legend lists only selected materials and lighting. The plan preview action opens night only when lights are configured, otherwise day.
+
+The roof plan includes an indicative house footprint and hatched external wall when surroundings are enabled. Reflected ceiling plans retain only the connection marker. Side editing shows clickable opening labels, olive selection emphasis and a contextual open-side/selection legend; posts use stronger filled symbols. No house doors or windows are inferred.
+
+Entering Lighting opens Plan; leaving Lighting preserves the current view. Roof-plan fall arrows follow assembly roof-plane fall vectors and are hidden during side editing and reflected-ceiling editing. House context extends beyond the pergola with a lighter outer edge.
+
+Plan openings remain keyboard/touch accessible at rest while their labels and highlight appear only on hover, focus or selection. Installed panels/blinds remain visible. Empty-space clicks clear the side highlight and lighting placement tool; Escape clears a focused opening. The SVG is top-aligned within tall viewports and retains its aspect ratio. No separate saved-drawing mode is introduced.
+
+The full drawing composition is centred in the viewport. Clearing an opening removes both the plan highlight and the rail selection; the rail prompts for an opening instead of retaining active controls. Roof-fall annotations are placed at nearby rafter-bay centres using existing member positions.
+
+Solid roof plans use crisp schematic rib patterns oriented with roof fall, with a minimum screen spacing to avoid moire. Steel mesh triangles are not shaded in plan; flashing meshes remain visible. Reflected timber ceilings and 3D roof profiles are unchanged.
+
+### Launch journey agreement and active closure (2026-09-14)
+
+Accessory pricebook draft preparation: optional versioned accessory rates can now be explicitly seeded, edited, validated and compared in the existing staff pricebook workflow. Historical versions remain unchanged. The marketing accessory calculator consumes rates supplied in its configuration; the development endpoint still uses repository configuration, and public expanded pricing is not activated. Supplier approval, published configuration selection and complete submitted-price validation remain outstanding. See `costing-and-geometry.md`, Versioned accessory draft rates.
+
+Owner-approved target: Design your pergola is the main residential entry, with
+Help me choose, Bespoke, and Commercial / Professional alternatives. Undecided
+customers are not automatically bespoke. Configurable designs remain configured
+even when their size needs an individual quote. A started design must survive a
+switch to the bespoke route. Fireplaces and further discretionary plan redesign
+are deferred.
+
+Public prices must be approved installed selling estimates including GST, visible
+without contact details, with customer-facing structure, roof/ceiling, sides/blinds
+and lighting breakdowns. Ground-level eligibility is at most 30 m²; first-level is
+at most 20 m². Unapproved accessories prevent a complete numeric estimate, rather
+than presenting a partial total. Current repository accessory allowances and the
+owner-review API are not approved public prices.
+
+The residential next step is Request a site measure. Staff review and typically
+respond within the working day; a request is not a booking. Auckland measures and
+evaluations are free. Outside Auckland, availability and travel cost are confirmed
+before a visit. Name, email, phone and site address are required at request time;
+photos and timing are optional. Help/bespoke may offer an optional budget with Not
+sure yet; configured customers are not asked their budget again. Commercial and
+professional enquiries begin a project discussion, with optional plans.
+
+Account-free save/share must reopen with the current estimate and identify price
+changes. Submitted design and displayed-price/version evidence must be immutable.
+Launch gates include portal record, attachments, customer email and staff
+notification reconciliation, safe retries without duplicate leads, and recoverable
+submission failures. No payment or instant appointment booking is in scope.
+
+Verified closure so far: configured contact handoffs no longer derive their sales
+pathway from estimate availability. `contactDesignSubmission` preserves actual
+roof type, materials and dimensions; only an existing signed Simple reference is
+forwarded as pricing evidence. The form offers a site-measure request for priced
+and unpriced configured designs, and explains the Auckland/out-of-area policy.
+Focused routing/submission/intake tests pass (27 tests) and marketing typecheck
+passes. Local browser verification confirms an unpriced gable retains the request
+action. No live enquiry or email was sent.
+
+Help is now a separate enquiry status and V2 email experience. Explicit bespoke
+intent may retain a started design; it no longer loses that design when switching
+from the configured form. Unknown intent values cannot become arbitrary statuses.
+Help/bespoke enquiries suppress generic dimension-derived estimates. Browser checks
+confirm Help opens without a calculator and the bespoke switch retains its design.
+The existing production email activation flag is unchanged; release must enable
+the reviewed V2 experiences to expose these distinctions in customer emails.
+
+Site-measure submissions now declare `requestType: site-measure`; client and API
+reject an empty site address. The existing `suburb` intake field carries the full
+address into the existing project/location and email pipeline, avoiding a second
+unused location field. Help/bespoke/business discussions keep location optional.
+Existing older intake callers remain compatible when they do not request a measure.
+
+Still open:
+website entry-point rollout; approved full-catalogue pricing and frozen price
+handoff; current-price notice on reopen; end-to-end production reconciliation and
+release approval. Existing saved design snapshots and retry tests are useful
+evidence, but do not prove these remaining gates. The local preview server was
+restored on port 3062. Browser 3D reported unavailable in the review environment;
+Plan remains the fallback and production WebGL support needs verification.
+
+Maintainability: ContactEnquiryForm owns the marketing form. Configured submission
+mapping is in a focused helper; broad extraction of the existing upload/submit
+controller is deferred to avoid mixing that refactor with this handoff correction.
+
+Pricing audit: `/api/configurator-review-price` is development-only and loads
+repository review rates. `ACCESSORY_REVIEW_RATES` includes provisional ThermoPine
+batten prices based on a cedar ratio, so this is not a published catalogue. The
+existing Simple calculation reference binds inputs, published configuration
+provenance and a frozen-result hash. Expanded roof/accessory submissions need an
+equivalent full-design binding and approved configuration source before numeric
+prices can become public. The dark approved-version implementation described below now provides that binding; activation and price approval remain outstanding. Do not remove the development gate as a launch shortcut.
+
+The contact-page hero and primary pathway now open the full configurator, beside
+Help me choose, Bespoke design and Commercial / Professional. These are local
+source changes, not a verified live release. Older source-context Simple
+continuations now enter the same designer, with historical selection migration
+described below. The accessory review
+page is evidence-only today, not a rate approval/publication workflow.
+
+Contact entry continuity (2026-09-14): the contact hero and pathway designer links
+now retain governed source/project/product/audience parameters through the existing
+enquiry-context builder. Unknown parameters and external source URLs are discarded.
+Explicit business audiences and bespoke directions take precedence over a Simple
+source page. Attaching a configurator design preserves a business discussion and
+its selected commercial/professional audience, rather than forcing residential
+site-measure fields. The browser-confirmed professional path retains optional
+location, organisation/role/stage and the Send project brief action. No enquiry
+was submitted. Broader website placement remains outstanding rollout work; the
+Simple entry migration below replaces the older embedded destination.
+
+Maintainability: contact-pathway resolution remains in `contactJourney.ts`; the
+context-preserving designer URL has a small owner in `lib/configuratorEntry.ts`.
+Only integration calls changed in `ContactEnquiryForm`; its broader upload/submit
+controller extraction remains deferred as described above.
+
+Simple entry migration (2026-09-14): the indexable Simple product page now links
+to the shared designer instead of mounting its own calculator and duplicate form.
+The old `price-your-cover` and `initial-estimate` anchors remain useful entry cards.
+`/simple-cover-calculator` redirects to the designer; older source-attributed Simple
+contact links open the designer too. Explicit Help/Bespoke intents and business
+audiences override that source-based entry, keeping assistance available without
+requiring a configuration. Product copy no longer treats every other roof family
+or an over-limit footprint as bespoke.
+
+The shared draft store restores a valid historical Simple handoff only when no
+valid newer full draft exists. It imports unchanged dimensions/level/connection,
+never old numbers or signed references, and explains that current pricing is used.
+Explicit shared designs still win. Malformed or unrepresentable historical inputs
+are not silently resized. The legacy calculator component/API contracts remain
+for compatibility consumers; this is entry-point retirement, not their deletion.
+Production build and 774 marketing tests pass. Browser review checked the new
+entry at mobile width, assistance and standalone navigation. No live deployment,
+price activation, enquiry submission or email delivery is implied.
+
+Recovery audit (2026-09-14): the intake RPC deduplicates the lead, but the route
+returns immediately for an existing submission before its post-intake side effects.
+Confirmation sending is request-bound and errors are swallowed after best-effort
+outbox/audit logging. A focused provider-failure test verifies that the lead remains
+saved and an email_failed audit replaces email_sent. This does NOT prove recovery:
+there is no enabled email_outbox_deliver worker handler, and a crash before the
+outbox write can leave no durable delivery work. Draft-estimate insertion is also
+best-effort after intake. These are launch blockers, not covered by the existing
+successful-replay test. Fix by atomically retaining delivery work with intake and
+using the existing durable email effect/retry infrastructure; do not simply repeat
+sendCustomerAutoresponder with freshly rendered content and the old provider key.
+The exact message, attachments, recipient, template/version and idempotency identity
+must remain fixed across uncertainty. No external email was sent during this audit.
+
+Delivery preparation (2026-09-14): `prepareCustomerAutoresponder` now returns the
+complete serializable provider message without dispatching it; the existing send
+adapter consumes that same preparation function. The preparation/provider-boundary
+and enquiry route tests pass (28 tests), as does marketing type checking. This is
+an extraction, not enabled recovery. The existing queue protects payloads up to
+256 KiB whereas enquiry email attachments may total 8 MiB before base64 encoding;
+the atomic intake integration must retain the frozen message in protected storage
+and enqueue its reference rather than copying attachments into the job payload.
+Provider acceptance and outbox finalisation must then use the existing durable
+email effect checkpoints. No migration or worker rollout has been applied.
+
+Atomic delivery storage (2026-09-14): forward migration
+`20260914062001_marketing_enquiry_durable_delivery.sql` adds an install-only
+service-role intake RPC which commits intake, QUEUED outbox, protected exact
+message, and existing email-outbox job together. Replay retains the first message;
+legacy submissions without checkpoints require reconciliation instead of blind
+resend. Read/finalise RPCs require the current worker lease, and finalisation
+requires recorded provider acceptance. The executable PGlite test applies this
+exact migration and the existing lease guard with synthetic intake/enqueue
+prerequisites; it proves rollback, unchanged replay, lease fencing and idempotent
+finalisation locally. It does not prove PGMQ, live Supabase grants or production
+delivery. Producer/worker integration and the Docker-backed release gate remain
+unfinished at that checkpoint. Subsequent staging-only installation is recorded in docs/staging-supabase-readiness.md; no production migration or delivery rollout has been performed.
+
+Worker integration (2026-09-14): the CLI can register the website-only
+`email_outbox_deliver` handler when `BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED=true`
+and `RESEND_API_KEY` is configured; default registration remains synthetic-only.
+The handler reads through the lease-fenced private-message RPC, uses the existing
+durable provider effect, and finalises the outbox through the acceptance-checked
+RPC. Tests prove replay after acceptance/finalisation never sends again, and
+message-read failure prevents dispatch. Website producer integration, live
+database compatibility and rollout remain pending; this setting was not enabled.
+
+Website producer integration (2026-09-14):
+`WEBSITE_ENQUIRY_DURABLE_DELIVERY=true` switches submission to the atomic intake
+RPC with the exact rendered message and attachments. Email preparation lives in
+`enquiryEmailPreparation.ts`; legacy sending consumes the same preparation owner.
+The durable path renders before intake and never calls the provider from the web
+request or falls back to legacy intake on a queue error. Its customer email
+reference uses the submission UUID, available before intake; database links still
+use the resulting enquiry/outbox/job IDs. Route tests cover successful intake,
+replay and queue failure without direct send. The switch remains off. Real
+PostgreSQL/PGMQ compatibility, shared migration application and coordinated worker
+activation are still release gates.
+
+Atomic draft handoff (2026-09-14): the durable intake now inserts the draft estimate
+in the same transaction as the lead, outbox and job, returns its ID on first save
+and replay, and retains the original draft JSON in the private delivery receipt.
+The draft snapshot includes the validated customer brief, server-derived selling
+ranges including GST and published pricing provenance. Staff edits to the working
+estimate cannot rewrite that private submitted receipt. The existing persistence
+builder is reused with a nullable pre-intake project ID; SQL assigns the actual
+project and forces draft status/marketing creator. No engine inputs, geometry or
+legacy costing path changed (Gate 0 legacy audit: N/A; no Phase 2 dependency).
+Tests cover transaction rollback including the estimate, unchanged replay,
+snapshot preservation after draft editing, and route use of the returned draft ID
+without a second estimate insert. The legacy route remains unchanged in rollout
+status; this recovery behaviour requires the unenabled durable-delivery switch.
+
+Real-database gate attempt (2026-09-14): `npm run test:jobs:db` cannot start on
+this machine because Docker is absent (`spawnSync docker ENOENT`); evidence is
+`artifacts/pricing-review-2026-09-11/launch-real-database-gate.txt`. The existing
+gate covers the job foundation and must also include the new enquiry migration
+and its intake prerequisites before it can prove the complete delivery path.
+PGlite success is not a substitute for that release evidence. Other launch work
+can continue while this environment prerequisite remains unresolved.
+
+Optional enquiry preferences (2026-09-14): all enquiry routes now offer optional preferred timing; help and bespoke routes also offer an optional budget with Not sure yet as the default. Budget amounts remain free text until approved ranges exist. Server-normalised preferences travel to the raw enquiry, initial draft snapshot and V2 confirmation email; they never feed the pricing calculation. Configured and commercial/professional routes ignore budget preference inputs. Focused tests cover route persistence, draft snapshot, email rendering/escaping and pricing separation (33 passed); marketing typecheck and architecture checks passed. Local browser review verified the help form's optional budget reveal and existing field styling. No form was submitted to live services. Durable database rollout and public pricing approval remain separate release gates.
+
+Saved-design pricing notice (2026-09-14): copied/shared links can carry the displayed whole-dollar GST-inclusive estimate and its published/draft basis as separate fragment metadata. This is untrusted display history only, excluded from the design intent, costing inputs and submitted receipt. Reopening still fetches current pricing and announces changed amounts or pricing basis; older links show a current-pricing reminder. Invalid or duplicate estimate metadata is discarded while a valid design still opens. No subtotal or incomplete price is saved. Editing the design clears the comparison. Local browser verification showed a changed-price notice against the current calculated amount and cleared it after an edit; 29 focused share/notice/design-contract tests and marketing typecheck passed. No production pricing gate was changed.
+
+Staff receipt closure (2026-09-14): Project Work has an Original enquiry tab with staff-only, no-store API/RPC access. It presents the frozen submitted customer brief, preferences and selling-price ranges plus current confirmation-email status. Older records are explicitly marked legacy with price TBC. The existing Files tab owns attachments. Focused executable PostgreSQL projection/auth/isolation checks, API auth/cache/error checks and view tests pass (16 tests including Overview regressions). The staff-read and durable delivery migrations subsequently passed the real database gate and staging rollback rehearsal, and are installed in staging only. UI rendering tests do not prove a live portal handoff; production application and the complete staged browser/provider journey remain pending.
+
+Approved configurator pricing continuity (2026-09-14, not activated):
+`/api/configurator-price` returns disabled without
+`WEBSITE_CONFIGURATOR_APPROVED_VERSION_ID`. Release must explicitly pin an
+owner-approved immutable published version containing both accessoryRates and
+installedSellingRates. A version mismatch, unavailable publication or any
+unpriced selection withholds the whole numeric estimate. Ground 30 m² and
+elevated 20 m² are inclusive limits. Trapezoidal steel remains unpriced until it
+has its own approved rate; provisional review substitutions never become public.
+The browser receives only GST-inclusive installed selling totals, breakdown,
+version number and an opaque cf1 calculation reference. No internal costs appear
+in that response. This is separate from the development-only review endpoint.
+
+The cf1 reference binds the complete normalized design, immutable pricebook
+provenance and frozen-result hash. Submission resolves the original published
+version and recalculates against it, independent of the current version. Invalid
+or changed references yield price TBC without preventing an enquiry. The private
+draft stores the full frozen result, selected design, customer breakdown and
+policy adjustments; the staff receipt exposes the original selling breakdown.
+Verified design dimensions/style/materials override stale form summaries.
+The shared AES-GCM codec preserves the existing sc1 domain and format; cf1 has
+its own domain. Deployment still requires the existing server signing secret.
+
+This does not establish complete staff calculator/quote parity: the legacy
+calculator adapter and base-cost outputs do not include all configured accessory
+costs. A retained warning requires complete staff costing review before a quote.
+Historical-version tests cover gable plus blind totals, tampered design/rates,
+publication failure, public projection and both size boundaries. Both app type
+checks passed before the final metadata correction. Real database, worker,
+production journey and release validation remain outstanding; no pricebook was
+published or activation flag enabled by this work.
+
+Verification follow-up: the final submitted-metadata correction passed 20 focused
+pricing/reference/snapshot tests, marketing TypeScript and architecture:changed.
+Portal TypeScript also completed successfully. The new service-role-key advisory
+is the extracted existing server-only calculation-reference codec: it performs
+no database access, derives domain-separated encryption keys on the server and
+never returns the secret. Browser verification of this slice is still pending;
+the temporary tab from the previous session had expired.
+
+Browser journey follow-up (2026-09-14): local preview -> contact preserved the
+6.0 × 3.0 m pitched design. Configured requests show required address/name/phone/
+email, optional files/timing, Auckland free-measure wording and out-of-area
+assessment. Bespoke escape retains the design and now changes the introduction
+as well as the submit action; switching back restores site-measure wording and
+required address. No form was submitted. WebGL remains unavailable in this
+browser environment, so this does not verify production 3D rendering. A React
+request-race test proves editing hides the old price immediately and a late
+response cannot replace the newer design's result.
+
+Production-build check (2026-09-14): `npm run build:marketing` passed with isolated
+`MARKETING_PLAYWRIGHT_DIST_DIR=.next-launch-check`, without overwriting the active
+preview output. Built app was temporarily served on 127.0.0.1:3064 with no approved
+version pin. HTTP checks returned disabled for configurator-price and 404 for
+configurator-review-price. Browser confirmed no draft amount in either pitched
+or gable; unavailable/confirmation states retained the Continue link. WebGL was
+unavailable in the test browser. The temporary server/tab were stopped after
+inspection. This verifies local production-mode behaviour, not deployment or
+approved numeric-pricing activation. Fifteen focused price/shared-estimate tests
+also passed, including foreign-origin, content-type, size and production review
+endpoint guards. Build log: artifacts/pricing-review-2026-09-11/launch-marketing-production-build.txt.
+
+### Homepage designer entry (14 September 2026)
+
+The homepage project finder now labels its configured residential choice **Design your pergola** and opens the full contact-page designer directly. Source attribution and selected priorities are preserved by `buildHomeConfiguratorHref`; an existing `?project=cover` result uses the same destination. Bespoke and commercial/professional choices retain their separate pathways. The Simple product page remains available for product research and existing bookmarks. This is local implementation, not production activation or pricing approval.
+
+Verification: 775 marketing tests pass across 123 files; marketing TypeScript passes. A local browser click from the homepage reached the full roof/sides/lighting designer and site-measure form with the expected source context, without submitting an enquiry. Homepage and Simple browser-test expectations were updated but the Playwright suite was not executed in this pass. Database/queue and staging delivery gates remain open.
+
+
+### 2026-09-14 - Approved staging pricebook and priced revision proof
+
+Approval follow-up: the owner approved candidate `157b63465bc0` for public
+indicative estimates after release checks pass, including the disclosed
+provisional supplier allowances and site-review condition. Exact candidate hash
+and approval scope are recorded in
+`artifacts/pricing-review-2026-09-11/launch-public-pricing-owner-approval.json`.
+Deployment remains unapproved and production prices are unchanged. This later
+approval supersedes the staging-only approval scope recorded below.
+
+Owner approval covered staging-only candidate `157b63465bc0`, preserving published
+production v11 rates and adding reviewed provisional options. The normal publish
+RPC created staging version `f94dde12-1fdb-4638-9b61-7c1be654b7e1`; temporary synthetic
+administrator access was removed and the identity disabled after publication.
+Production publication and deployment remain unapproved.
+
+A real HTTP enquiry saved a 6 x 3 m pitched design at $11,674 including GST with
+that version and its complete frozen price. Replaying the submission reused the
+original project and estimate. Staff then revised it to 6.5 x 3 m at $12,225;
+the public pricing endpoint and authenticated staff preparation agreed. Saving
+created estimate version 2, repeating the same command reused the revision, and
+the original estimate inputs and outputs remained byte-equivalent in the returned
+JSON comparison. The staff response excluded private costing. The new enquiry's
+email job was parked with zero effects; no additional email was sent.
+
+Evidence under `artifacts/pricing-review-2026-09-11/`:
+`launch-staging-pricebook-activation.json`, `launch-priced-customer-intake.json`,
+`launch-priced-customer-revision.json` and `launch-priced-staff-revision.json`.
+This closes the staged priced HTTP handoff and revision gap. It does not prove
+physical-device UX, production activation, or supplier confirmation of allowances.
+
+Quote handoff follow-up: the actual stored original and revised estimate rows
+passed through the quote-source loader and line-item mapper, retaining $11,674
+and $12,225 respectively, with no blocking issues or private installer top-up
+in the mapped customer output. Evidence: `launch-persisted-quote-handoff.json`
+and `launch-persisted-quote-handoff-tests.txt` in the same artifact directory.
+This verifies saved-price mapping; no quote record was created or email sent.
+
+### 2026-09-15 — Hosted revision and scheduling investigation
+
+The hosted revision calculation's 401 was Vercel deployment protection on the
+server-to-server marketing request, not an expired staff session. The relay now
+supports a server-only, preview-only marketing automation credential and reports
+deployment authentication separately from staff authentication. See
+`staff-api-auth-contracts.md`. Protected branch URLs should point to each other
+so the current marketing return link and portal pricing relay use the same release.
+
+Read-only infrastructure inspection confirms Vercel Pro with active marketing
+conversion/attachment cron jobs and the portal Xero cron; production Supabase has
+pg_cron and its daily security-retention job, but no pg_net or PGMQ. Existing cron
+jobs do not consume the enquiry queue. A bounded Vercel Node runner could reuse
+the frozen Resend effects and lease-fenced queue; the current process-oriented
+worker is not a drop-in Next route. Safe adaptation must preserve hard-deadline
+recovery, unique invocation ownership, accepted-effect finalisation, idempotency
+expiry quarantine and overlap handling. No paid host is established as necessary.
+Production migrations, runner activation and further email sends remain unapproved.
+
+Hosted browser follow-up: a 6.6 x 3 m revision calculated at $12,261 including GST,
+saved as V3 and created an unsent draft quote from that exact estimate at the same
+total. V1/V2 input/output hashes were unchanged. No send attempt was made. The
+360/390/430-pixel browser matrix found undersized secondary touch targets; mobile
+view controls, sharing, dimension inputs and disclosures now use 44-pixel targets.
+Physical-device validation remains distinct from browser viewport evidence.
+
+### 2026-09-15 — Local working UI review loop
+
+The isolated UI worktree adds visible Size & structure, Roof & ceiling, Sides &
+privacy, Lighting and Review navigation. Next/Back actions keep customers inside
+configuration until Review; the final action uses the existing contact design
+handoff or authenticated staff revision return URL. Sliders, model controls,
+draft serialization and approved-version pricing are unchanged. DesignReview
+owns the selection summary and JourneyNavigation owns sequential navigation.
+Lighting entry preserves the current view, controls remain available in 3D,
+and leaving lighting resets night without removing the selected fittings.
+Freestanding, uncertain-attachment persistence, slat-default changes and the
+perimeter LED selection correction remain separate unfinished work. This local
+iteration is not production activation or proof of a complete release journey.
+Verification: 39 focused journey, lighting, shared-estimate, pricing-hook and staff-return tests passed; marketing typecheck and focused ESLint passed. Architecture changed report was clean. Local browser inspection confirmed the approved $11,674 baseline, live 3D lighting controls, night reset on Review and the contact destination without submission; a 390-pixel viewport was inspected and reset. Full hosted staff save-to-quote and production release checks were not repeated for this local review loop.
+
+### 2026-09-15 — Working journey refinement (local loop 2)
+
+- Replaced the five-section grid with three stages: Your pergola, Personalise and Review. Personalise owns roof, sides and lighting cards; each returns via Done and displays current selections and session-local explored status. Existing configuration controls and saved design data remain the owners of customer choices.
+- Extracted JourneyEstimate from the existing footer pricing presentation. Desktop shows it in the dimension strip; mobile shows it alongside the fixed action area. The approved/public, unavailable and draft fallback conditions remain unchanged. Full itemisation is displayed only on Review, with aligned amounts and explicit GST/site qualification.
+- Kept lighting entry in the current view and daylight restoration on exit. No costing logic, enquiry submission, staff return URL, production activation or email delivery changes in this refinement.
+- Local browser evidence: 6 x 3 m acrylic design showed $11,674; changing to combination updated the model and approved estimate to $18,095 and survived returning to Personalise. Lighting stayed in 3D and leaving night preview restored Day. Reviewed desktop and 390 x 844 mobile layouts, including fixed estimate and Review itemisation. No enquiry or staff save was submitted.
+- ConfiguratorPrototype remains the composition owner; new overview and estimate components keep journey presentation out of its existing pricing/data hooks. Further large-file extraction is deferred to a dedicated safe pass.
+- Price-bar refinement: the amount itself now opens and focuses the Review breakdown. The bar shows only the amount and Installed estimate; GST and site qualifications remain in Review. Verified the price action in the local browser; marketing typecheck and focused lint passed.
+- Lighting adjustment notices now appear beside Lighting: a short Personalise card cue, a contextual note in the lighting section, and the Lighting row on Review. Removed the lighting notice from the top of the size controls without changing selection normalization. Marketing typecheck and focused lint passed.
+
+### Desktop refinement — side selection and review clarity
+
+- Sides & privacy uses grouped front/left/right selectors, customer-facing finish names and an explicit Editing heading. The existing selected opening drives a stronger 3D outline and matching label; rendering-only changes do not alter opening IDs, saved choices or geometry/costing calculations.
+- Personalise cards prioritise the current selection, with shorter explored status. Size controls explain projection and attachment choices show a short explanation. Slat size/face labels use simpler wording while keeping existing values and defaults.
+- Review now orders selections, full price breakdown, then next steps. The viewer Sides toggle returns to Personalise when leaving side editing.
+- Verified on the local desktop preview: selected Front 1 highlights and labels the matching model opening; selecting timber retains direction, size, face and gap controls and updates the approved total from $18,095 to $20,964. Returning to Personalise keeps the side choice, and Review shows the $2,869 line beneath the $18,095 base. No enquiries or staff saves submitted. Marketing typecheck, focused ESLint and 14 journey/pricing/staff-return tests passed. Dedicated mobile refinement remains a separate loop.
+- Other-section presentation pass: roof material cards now include short explanations; roof finish, skylight and timber-batten controls have separated groups and consistent option grids. Size keeps its sliders with grouped attachment/site controls. Lighting uses consistent type/level cards and a quieter preview action, with placement detail in a disclosure. No selection or pricing rules changed. Desktop roof and lighting views inspected; marketing typecheck, focused lint and 39 focused tests passed. Mobile refinement remains separate.
+- Navigation refinement: retained Your pergola as stage one and added visible stage underlines/hover states. Bottom width/projection buttons return to the matching slider with keyboard focus. In Roof & ceiling Plan, selected side finishes are reduced to faint non-interactive context lines; roof finishes and the full 3D design stay intact. Replaced the side-editing hint with a roof-plan caption. Verified both dimension shortcuts and roof Plan locally; marketing typecheck and focused lint passed.
+- Customer price wording: display-only grouping combines acrylic takeoff and panel-perimeter framing into Acrylic panels & framing (including infills in the label where selected). Backend breakdown, signed calculation reference and all prices are untouched. Standalone framing remains explicitly labelled acrylic panel framing. Two focused tests verify the supplied $30,914 example still totals exactly $30,914, preserves unrelated lines and does not mutate the source. Marketing typecheck and focused lint passed.
+
+### Mobile journey loop
+
+- At phone widths the compact live viewer uses 32% of workspace height, with 3D/Plan and Expand controls. Day/Night, surroundings and secondary view tools appear in the expanded viewer. Expanded mode hides the choices column without unmounting it, retaining section selections and scroll position.
+- Lighting preview opens 3D, changes the day/night state and expands on mobile. Done closes the expanded viewer; leaving Lighting retains the existing daylight reset. The empty-light preview action returns to the lighting controls on mobile.
+- Mobile footer contains the estimate and one primary action, with shorter mobile labels. Review keeps the staff/public return action in this footer; Back and Share move into the Review body. Desktop labels and layout are retained. Compact Plan margins reduced for legibility.
+- Checked 390 x 844 and 375 x 667 browser viewports, including fixed footer, Review, expanded night view, return to lighting and daylight exit. Restored desktop viewport. An existing intermittent 3D-unavailable state recurred; reload restored 3D and the expanded night model was then inspected. No physical phone validation or enquiry submission performed. Marketing typecheck, focused lint and 11 journey/pricing/staff-return tests passed.
+### Desktop and mobile refinement goal — 2026-09-15
+
+- Personalise now has restrained roof, screen and lighting icons. Phone cards use shorter summaries and reduced spacing. Matching acrylic/solid/combination diagrams sit beside the wording on phones and above it on desktop; radio controls still update the existing roof selections.
+- Review leads with plain-English selections and keeps detailed roof/side settings in disclosures. It retains the existing edit paths and full price breakdown.
+- PreviewScene now offers a local retry after WebGL context loss or a rendering failure. Retrying remounts the scene boundary without resetting the parent design. Two focused tests simulate both failures and verify recovery with the customer's selection retained. The original intermittent browser/GPU trigger has not been reproduced reliably or diagnosed; this is recovery coverage, not proof that all 3D failures are eliminated.
+- PreviewCamera refits on viewport size changes, retaining the current angle even after interaction, so collapsing the expanded phone view no longer leaves the model too distant.
+- Verified desktop 1440 x 1000 and browser phone sizes 390 x 844 and 375 x 667. Reviewed cards, diagrams, selection summaries, persistent pricing, compact/expanded 3D and stage navigation. No physical-phone validation, live enquiry submission, staff save or production activation. Focused journey, pricing, lighting, staff-return, breakdown and recovery suite: 43 tests passed; marketing typecheck and focused ESLint passed.
+### Phone preview deployment — 2026-09-15
+
+- Removed the viewer toolbar's Sides, Fit and Reset controls. Sides remain accessible through Personalise; automatic framing and phone Expand remain. Replaced configurator em dashes with plain punctuation and shortened the section return action to Back to Personalise.
+- Preview-only Vercel deployment: https://sanctuary-mkmcwzdm8-jordans-projects-43df95bd.vercel.app/configurator-preview?open=1 (deployment `dpl_4W9UdkhSnb7oQsoxQEHbFXSWYnsC`). Deployed the isolated UI worktree directly, without production promotion or changing PR #132.
+- Deployment-scoped build/runtime overrides target verified staging `tnsiprehuldksnuowubv` and approved pricebook `f94dde12-1fdb-4638-9b61-7c1be654b7e1`; Resend is blank and the enquiry email worker flag is false. Existing project-wide Preview variables were not changed. `.vercelignore` excludes environment files, local agent settings and generated review artifacts from uploads.
+- Hosted browser verification confirmed the live 3D model, phone Personalise layout, removed toolbar controls and approved $11,674 baseline. Marketing typecheck, focused lint, 12 journey/recovery/staff-return tests, architecture and dead-code changed reports passed; Vercel compilation and TypeScript build passed. No enquiry or staff-save submissions and no physical-phone validation.
+### Separate design enquiry page (local, 2026-09-15)
+
+- Public Review now navigates to `/design-enquiry`. The staff revision return branch is unchanged. The page uses the existing synchronous session design store, approved pricing hook, geometry and fixed 3D/Plan views. Edit my design returns to the configurator without resetting selections.
+- The new page suppresses general marketing navigation/footer. It presents a design image, total, collapsed specs/breakdown and a short form. Name, suburb and email are required; phone and message are optional. Contact fields persist in session storage across edits and are removed after successful submission.
+- `ConfiguredEnquiryFields` owns the compact form presentation; `ContactEnquiryForm` retains its existing submission, attribution, signed reference, idempotency and error handling. The compact flow sends project-discussion rather than site-measure. Server phone omission is accepted only for residential project-discussion with a parsed valid customer design; suburb is required. Generic forms retain their existing phone rules. No price calculation or email delivery logic changed.
+- Local verification: edited width 6.0 to 5.5 m, navigated Review to enquiry and back, retained typed contact field, and confirmed updated $10,593 estimate and 5.5 x 3.0 m specs. Desktop and 390px mobile inspected. 51 focused form, submission, route, staff-return and chrome tests passed; typecheck and focused lint passed. Tests use mocked submission dependencies; no actual enquiry/email was sent. Vercel preview has not been updated with this page.
+
+### Original customer option follow-up (2026-09-15)
+
+Scope: isolated marketing preview placement choices, perimeter LED preset and new
+side-screen defaults. Gate 0: legacy audit rows N/A; no legacy workbench build-on
+or removal; no Phase 2 input migration; no function/type consolidation. Existing
+representative geometry receives an optional freestanding mode; authored workbench
+geometry is unchanged. Consumers checked: preview solve/context, roof finishes,
+lighting, side openings, draft/share parser, contact brief, signed pricing adapter
+and review summary. Existing pricing engine and staff revision contract are retained.
+
+New screens use vertical slats, narrow edge out, 100mm explicit clear gap and
+90x39 timber / 65x16 aluminium. Existing saved selections retain their direction
+and gap semantics; acrylic overlays and roof battens retain existing defaults.
+The perimeter preset picks one outside mounting line where parallel members
+otherwise overlap, retaining separate gable slope segments and manual selection.
+Lighting remains editable in 3D and leaving Lighting restores daytime.
+
+`roof.attachmentIntent` optionally records freestanding or unsure, carried through
+the strict draft parser, version-3 sharing, contact brief and signed calculation.
+Freestanding uses rear supports and no house context; costing uses the existing
+none connection and the displayed post count. Unsure compares permitted attached
+options with the supplied pricebook, excluding unavailable soffit/fascia choices;
+the frozen site inputs retain the selected pricing assumption and the original
+submitted design retains uncertainty. No costing engine rates or staff revision
+protocol changed. Rear-side customisation remains outside the existing three-side
+preview editor; this change adds freestanding placement, not a fourth side editor.
+
+Validation: 168 focused tests pass across option geometry, draft/share retention,
+lighting, screens, published price verification, accessory pricing and quote/staff
+handoff regressions. Browser checks confirm new defaults, freestanding rendering,
+3D lighting editing and return to daytime. No real enquiry or email was sent.
+
+### Deferred owner request: freestanding rear screens (2026-09-15)
+
+Owner explicitly wants this later. Add rear openings to Sides & privacy for
+freestanding pergolas, with the same blinds/acrylic/timber/aluminium controls,
+selection highlighting, pricing, draft/share retention and staff enquiry handoff.
+Preserve attached designs and existing opening IDs. Do not implement in the
+reference-base pass; agree the scope when this task is resumed.
+
+Freestanding preview base: a neutral 120mm-thick display platform extends 450mm
+past the plan footprint on each side, with its top at the post feet. It follows
+size changes and the Show surroundings toggle, and appears on the enquiry view.
+It is presentation only: no deck/foundation selection, quantity or price is added.
+
+### Launch integration checkpoint (2026-09-15)
+
+The UI snapshot `9e8f272` is integrated with main `654d9e2` in the isolated
+`codex/configurator-release-20260915` branch. The released Version 12 pricing
+fixes, including requestCeiling parsing and unequal-wing ceiling takeoff, are
+preserved. The deferred V2 module ceiling field is not reintroduced.
+
+Validation: 1,190 marketing/costing/handoff tests, 148 configurator/worker contract
+tests and eight journey regression tests pass, as do the full workspace typecheck
+and marketing production build. These automated checks do not establish hosted
+end-to-end delivery or physical-phone readiness.
+
+Remaining release checks: the public contact entry still supplies its older
+embedded enquiry form, so connect and verify the intended public entry through
+the dedicated design-enquiry flow, including attribution and return-to-edit.
+Confirm hosted pricing parity, staff receipt/revision/save-to-quote and worker
+readiness separately. Real-phone validation and production activation remain
+pending. No production configuration or email delivery was changed in this pass.
+
+### Persistent design continuation bar (local candidate, 2026-09-15)
+
+Owner-approved public-site bar replaces the preview-only launcher. It uses a
+charcoal border, square corners and translucent grey glass. Homepage visibility
+starts after a short scroll (12% of viewport height, capped at 120px), per the
+owner's follow-up; other pages wait for their opening section to leave view.
+Returning above the threshold hides it. Contact/design-enquiry, private quote
+and invoice routes, open dialogs, mobile menus and consent prompts suppress it.
+The existing acrylic mobile CTA yields while the design bar is mounted.
+
+The bar initially offers Start designing. A changed draft or imported design
+marks the session as started; merely opening the configurator does not. Continue
+designing uses the existing session draft and a lightweight saved rail section.
+Only explicit resume navigation restores the section, preserving ordinary share,
+enquiry-edit and staff revision entry behavior. Dismissal lasts for the tab's
+session and does not delete the design. Header navigation offers Continue
+designing for a started design, including after dismissal.
+
+Owners: DesignContinuationBar owns visibility/presentation, designContinuation
+and useDesignContinuation own lightweight navigation state; usePreviewDraft
+remains the sole draft storage owner. Header.tsx consumes the small hook; broader
+header navigation extraction is deferred to avoid changing menu behavior here.
+No pricing, server enquiry contracts or production settings change in this pass.
+
+Verification: desktop homepage/product browsing showed the entry and return
+states; a 5.5 x 3m design reopened in Roof & ceiling with its $10,593 estimate.
+At 390 x 844 the glass bar remained readable, dismissal removed it and the mobile
+menu retained Continue designing. Focused visibility/dismissal, legacy-draft,
+header and quote-handoff tests pass (21 tests); marketing typecheck and changed
+architecture checks pass. No form was submitted and no email was sent.
+
+### Pathway correction after owner review (2026-09-15)
+
+This supersedes the bar's original navigation destination and header replacement.
+The header remains Start your project and always retains the normal contact path.
+Prior cover context on an ordinary contact entry selects assisted enquiry instead
+of forcing a designer. Bespoke and business pathways remain independent.
+
+SiteConfigurator opens the shared ConfiguratorDialog over the existing page for
+ordinary same-tab design links and the homepage project-finder design action.
+Closing preserves that page and its scroll position. Modified/new-tab clicks,
+shared hashes and staff revision links retain their explicit navigation behavior.
+The standalone preview uses the same dialog owner. A route change releases the
+overlay so the next entry restores the latest session draft and rail section.
+
+The historical direct /contact?configurator=preview entry retains its embedded
+working designer but now uses PreviewNextAction and the dedicated design-enquiry
+page, not its old embedded submission form. Edit my design opens an overlay above
+the enquiry page, preserving entered form values. Governed source attribution is
+carried from design entry into that enquiry. Staff return URL validation and
+save-to-quote contracts are unchanged.
+
+Verified: products URL and scrollY=1080 identical before/after opening and closing;
+contact designer Review links to the dedicated Name/Suburb/Email form; enquiry
+Edit my design keeps the enquiry URL. Focused contact/header/entry/overlay/quote
+checks pass (47 tests), marketing typecheck and architecture checks pass. No
+submission, email, production activation or price publication was performed.
+
+### Enquiry estimate continuity audit (2026-09-15)
+
+The dedicated enquiry now uses the same development review-price adapter when
+the public endpoint is deliberately disabled for the local pricing candidate.
+This is display-only: draft amounts never become signed public calculation
+references, and the submission brief still uses the public pricing contract.
+Published prices take precedence; loading, unavailable, custom and excluded-item
+states remain distinct. Editing an enquiry preserves the original source context.
+
+Browser verification reproduced the 6.7 x 3.9 m gable: $18,561 in Review and on
+the enquiry, with matching breakdown. Editing projection to 3.8 m updated the
+enquiry and breakdown to $18,054 without leaving that page. Phone-width (390 px)
+render checked. Fresh legacy contact designer has no Design/Project details nav,
+Review leads to the dedicated enquiry, and its bespoke link opens the bespoke
+details form. Earlier products overlay URL/scroll verification remains valid.
+No live submission or email delivery was exercised; those remain separate launch
+verification, along with pricing publication. Local candidate visibility is not
+evidence of published production pricing.
+
+Bar visibility clarification (2026-09-15): only the homepage waits for the short opening scroll. Other eligible browsing pages show the bar immediately, including above the fold. Existing enquiry/private-page exclusions and dismissal remain. Verified on Products; four visibility tests pass.
+
+Enquiry overlay return fix (2026-09-15): an ordinary same-tab enquiry link inside the open configurator, while already on /design-enquiry, closes the overlay without navigation. Current form values and attribution remain intact. Fresh browser verification preserved a typed name after Edit, Review, Enquire; ten focused overlay/estimate tests, marketing typecheck and lint passed. Existing hot-loaded tabs may need refresh to install the revised navigation listener. No submission or email sent.
+
+The active launch-review evidence and outstanding gates are tracked in [customer-configurator-launch-review.md](customer-configurator-launch-review.md). Historical approved-proposal tests explicitly use v2.7; the v2.8 candidate has separate coverage. Full marketing suite: 841 passing tests on 15 September 2026.
