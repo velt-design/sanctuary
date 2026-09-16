@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/foundation";
 import ProjectCurrentDesignCommercialCard from "@/components/projects/ProjectPage/tabs/overview/ProjectCurrentDesignCommercialCard";
 import ProjectPaymentPosition from "@/components/projects/ProjectPage/tabs/overview/ProjectPaymentPosition";
+import ProjectCommercialDetails from "@/components/projects/ProjectPage/tabs/overview/ProjectCommercialDetails";
 import ProjectCorrespondenceCard from "@/components/projects/ProjectPage/tabs/overview/ProjectCorrespondenceCard";
 import { correspondenceFixture } from './correspondenceFixture';
 import { projectPositionLabel } from '@/components/projects/ProjectPage/tabs/overview/projectPositionLabel';
@@ -291,7 +292,7 @@ export default function ProjectCommandCentreFixtureClient({
       </Card>
     ) : (
       <>
-      <ProjectCorrespondenceCard context={correspondence} state={viewState === 'stale' ? 'stale' : viewState === 'failed' ? 'error' : viewState === 'pending' ? 'loading' : 'ready'} />
+      <ProjectCorrespondenceCard sample={previewOnly} context={correspondence} state={viewState === 'stale' ? 'stale' : viewState === 'failed' ? 'error' : viewState === 'pending' ? 'loading' : 'ready'} />
       <fieldset disabled={previewOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <ProjectRecentNotesEvents
         projectId={project.id}
@@ -318,7 +319,7 @@ export default function ProjectCommandCentreFixtureClient({
         }
         exception={exception}
         projectWork={projectWork}
-        commercial={commercial}
+        commercial={previewOnly ? <ProjectCommercialDetails data={currentDesign}>{commercial}</ProjectCommercialDetails> : commercial}
         recent={recent}
       />
     </div>

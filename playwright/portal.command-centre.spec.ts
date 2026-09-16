@@ -477,6 +477,7 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
       layout.locator('[data-project-orientation="true"]'),
     ).toBeVisible();
     await expect(layout.locator("[data-command-centre-source]")).toBeVisible();
+    await layout.locator("summary", { hasText: "Team notes & portal history" }).click();
     await expect(
       layout.locator('[data-recent-notes-events="true"]'),
     ).toBeVisible();
@@ -500,17 +501,11 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
       );
     if (width <= 768) {
       expect(regionOrder).toEqual([
-        "project-work",
-        "commercial",
-        "orientation",
-        "recent",
+        "project-work", "recent", "commercial", "orientation",
       ]);
     } else {
       expect(regionOrder).toEqual([
-        "orientation",
-        "project-work",
-        "commercial",
-        "recent",
+        "orientation", "project-work", "recent", "commercial",
       ]);
     }
     await expectNoDocumentOverflow(page);
@@ -592,10 +587,7 @@ test("recomposes from available Overview width instead of viewport width", async
       ),
     );
   expect(regionOrder).toEqual([
-    "orientation",
-    "project-work",
-    "commercial",
-    "recent",
+    "orientation", "project-work", "recent", "commercial",
   ]);
   await expectNoDocumentOverflow(page);
 });
@@ -616,6 +608,7 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
       name: "Approved Overview V2 composition",
     }),
   ).toHaveCount(1);
+  await layout.locator("summary", { hasText: "Team notes & portal history" }).click();
   for (const heading of [
     "Project Work",
     "Current design & price",
@@ -681,7 +674,7 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
     tabStopRegions.filter(
       (region, index) => region && region !== tabStopRegions[index - 1],
     ),
-  ).toEqual(["project-work", "commercial", "orientation", "recent"]);
+  ).toEqual(["project-work", "recent", "commercial", "orientation"]);
 
   await page.locator('[data-overview-tab-stop="0"]').focus();
   for (let index = 1; index < tabStopCount; index += 1) {
@@ -765,7 +758,7 @@ test("renders one unmistakable next action before quiet supporting truth", async
     name: "Current design & price",
   });
   await expect(primary).toHaveCount(1);
-  await expect(primary).toContainText("start the next follow-up reminder");
+  await expect(primary).toContainText("Recording it starts the next reminder");
   await expect(
     primary.getByRole("button", { name: "Record email sent" }),
   ).toBeVisible();
@@ -1059,7 +1052,9 @@ test("routes deterministic V2 command data through the real project shell and Ov
   await expect(layout).toContainText(
     "Email the customer with the first enquiry response",
   );
+  await layout.locator('summary', { hasText: 'Quote, design & payment details' }).click();
   await expect(layout.locator("[data-command-centre-source]")).toBeVisible();
+  await layout.locator("summary", { hasText: "Team notes & portal history" }).click();
   await expect(
     layout.locator('[data-recent-notes-events="true"]'),
   ).toBeVisible();
@@ -1228,9 +1223,12 @@ test('keeps correspondence suggestions read-only with inspectable sources', asyn
   page.on('request', request => { if (request.method() !== 'GET' && request.url().includes('/api/')) writes.push(request.url()); });
   await page.goto(fixtureUrl({ work: 'v2-triage' }));
   const conversations = page.getByRole('region', { name: 'Customer conversations', exact: true });
-  await expect(conversations).toContainText('may concern another job');
+  await expect(conversations).toContainText('not yet confirmed to this job');
   await expect(conversations).toContainText('Suggestions do not change the job or send an email');
+  await expect(conversations.locator('article blockquote')).toBeVisible();
+  await conversations.locator('summary', { hasText: 'AI interpretation and suggestions' }).click();
   const jobPosition = conversations.getByRole('region', { name: 'Job position', exact: true });
+  await jobPosition.locator('summary').first().click();
   await jobPosition.getByText('View supporting sources (1)', { exact: true }).click();
   await expect(jobPosition.locator('blockquote')).toHaveText('Please confirm the expected installation week before we arrange access.');
   await expect(jobPosition.getByRole('link')).toHaveAttribute('href', 'https://outlook.office.com/mail/inbox/id/fixture-only');

@@ -187,7 +187,7 @@ describe("OverviewTab", () => {
       queryState({
         data: {
           workModel: "v2",
-          currentDesign: { source: "estimate" },
+          currentDesign: { source: "estimate", price: { totalIncGstCents: null }, warnings: [] },
           projectWork: v2Projection,
           owner: {},
           generatedAt: "2026-07-30T00:00:00.000Z",
@@ -248,7 +248,7 @@ describe("OverviewTab", () => {
       queryState({
         data: {
           workModel: "v2",
-          currentDesign: { source: "draft_quote" },
+          currentDesign: { source: "draft_quote", price: { totalIncGstCents: null }, warnings: [] },
           projectWork: v2Projection,
           owner: {},
           generatedAt: "2026-07-29T01:00:00.000Z",
@@ -319,7 +319,7 @@ describe("OverviewTab", () => {
       queryState({
         data: {
           workModel: "v2",
-          currentDesign: { source: "sent_quote" },
+          currentDesign: { source: "sent_quote", price: { totalIncGstCents: null }, warnings: [] },
           projectWork: v2Projection,
           owner: {},
           generatedAt: "2026-07-30T00:00:00.000Z",
@@ -369,7 +369,7 @@ describe("OverviewTab", () => {
       queryState({
         data: {
           workModel: "v2",
-          currentDesign: { source: "draft_quote" },
+          currentDesign: { source: "draft_quote", price: { totalIncGstCents: null }, warnings: [] },
           projectWork: v2Projection,
           owner: {},
           generatedAt: "2026-07-30T00:00:00.000Z",
@@ -418,7 +418,7 @@ describe("OverviewTab", () => {
       queryState({
         data: {
           workModel: "legacy",
-          currentDesign: { source: "draft_quote" },
+          currentDesign: { source: "draft_quote", price: { totalIncGstCents: null }, warnings: [] },
           legacyWork: { status: "retired" },
           owner: {},
           generatedAt: "2026-07-30T00:00:00.000Z",
@@ -467,7 +467,7 @@ describe("OverviewTab", () => {
     useQueryMock.mockReturnValue(queryState({
       data: {
         workModel: "legacy",
-        currentDesign: { source: "draft_quote" },
+        currentDesign: { source: "draft_quote", price: { totalIncGstCents: null }, warnings: [] },
         legacyWork: { status: "retired" },
         owner: {},
         generatedAt: "2026-07-30T00:00:00.000Z",
@@ -537,7 +537,7 @@ describe("OverviewTab", () => {
       queryState({
         data: {
           workModel: "v2",
-          currentDesign: { source: "accepted_quote" },
+          currentDesign: { source: "accepted_quote", price: { totalIncGstCents: null }, warnings: [] },
           projectWork: v2Projection,
           owner: {},
           generatedAt: "2026-07-30T00:00:00.000Z",
@@ -577,7 +577,7 @@ describe("OverviewTab", () => {
       queryState({
         data: {
           workModel: "v2",
-          currentDesign: { source: "estimate" },
+          currentDesign: { source: "estimate", price: { totalIncGstCents: null }, warnings: [] },
           projectWork: v2Projection,
           owner: {},
           generatedAt: "2026-07-30T00:00:00.000Z",

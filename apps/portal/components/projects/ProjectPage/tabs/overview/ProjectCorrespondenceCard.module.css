@@ -11,6 +11,12 @@
 }
 
 .stack p { margin: 0; }
+.messages { display: grid; gap: var(--ui-space-3); }
+.message { padding: var(--ui-space-4); background: var(--ui-surface-secondary); overflow-wrap: anywhere; }
+.message h3 { margin: 0 0 var(--ui-space-2); font-size: var(--ui-font-size-body); }
+.message blockquote { margin: var(--ui-space-3) 0; line-height: 1.6; white-space: pre-wrap; }
+.message a { color: var(--ui-text-strong); font-size: var(--ui-font-size-small); }
+.message a:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 2px; }
 .sourceDate { display: block; }
 
 .summary {

@@ -6,14 +6,15 @@ import styles from './ProjectCorrespondenceCard.module.css';
 const topics = { agreement: 'Agreement evidence in emails', job_status: 'Job position', next_action: 'Suggested next step' };
 const kinds = { recorded: 'AI summary of records', interpretation: 'AI interpretation', recommendation: 'Suggestion', unknown: 'Not established' };
 
-export default function ProjectCorrespondenceCard({ context, state = 'not_connected', onRefresh }: {
+export default function ProjectCorrespondenceCard({ context, state = 'not_connected', onRefresh, sample = false }: {
   context?: ProjectCorrespondenceContext;
   state?: 'not_connected' | 'available' | 'loading' | 'ready' | 'stale' | 'error';
   onRefresh?: () => void;
+  sample?: boolean;
 }) {
   const sources = new Map(context?.sources.map((source) => [source.id, source]));
-  const correspondence = context?.sources.filter((source) => source.association === 'customer_address_only') ?? [];
-  return <Card title="Customer conversations" padding="compact" aria-label="Customer conversations"
+  const correspondence = context?.sources.filter((source) => source.association === 'customer_address_only').sort((a, b) => Date.parse(b.recordedAt) - Date.parse(a.recordedAt)) ?? [];
+  return <Card title="Customer emails" padding="compact" aria-label="Customer conversations"
     action={onRefresh && state !== 'loading' ? <Button variant="tertiary" size="small" onClick={onRefresh}>{state === 'available' ? 'Check conversations' : 'Check again'}</Button> : undefined}>
     <div className={styles.stack}>
       {state === 'not_connected' ? <p className={styles.explanation}>Customer emails are not connected to staff project pages yet. Team notes and portal events are available below.</p>
@@ -22,14 +23,28 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
         : state === 'error' || !context ? <DataStatePanel state="unavailable" title="Conversations unavailable" description="The latest customer correspondence could not be checked. No agreement or next step is inferred." onRetry={onRefresh} />
         : <>
           {state === 'stale' ? <AlertBanner tone="warning" title="Earlier conversation summary">This summary is no longer current. Check again for new correspondence before changing the job.</AlertBanner> : null}
-          <p className={styles.explanation}>Checked {formatPortalDateTime(context.observedAt)}. Emails are matched to the customer address and may concern another job. This is a limited search, not a complete conversation history.</p>
+          <p className={styles.explanation}>{sample ? 'Sample email excerpts. Your real Outlook emails are not connected to this preview.' : 'Email excerpts · matched to the customer, not yet confirmed to this job.'}</p>
+          <div className={styles.messages} aria-label="Email excerpts">
+            {correspondence.length ? correspondence.map((source) => {
+              const href = correspondenceSourceHref(source.url);
+              const quotes = [...new Set(context.answer.sections.flatMap(section => section.citations.filter(citation => citation.sourceId === source.id).map(citation => citation.quote)))];
+              return <article key={source.id} className={styles.message}>
+                <h3>{source.title}</h3>
+                <p className={styles.explanation}>{formatPortalDateTime(source.recordedAt)}</p>
+                {href && quotes.length ? quotes.map(quote => <blockquote key={quote}>{quote}</blockquote>) : <p>Email text is unavailable in this check.</p>}
+                {sample ? <p className={styles.explanation}>Sample message — there is no original email to open.</p> : href ? <a href={href} target="_blank" rel="noopener noreferrer">Open original email in Outlook ↗</a> : <p>Source link unavailable</p>}
+              </article>;
+            }) : <p>No email excerpts were returned. This does not mean there has been no correspondence.</p>}
+          </div>
+          <details className={styles.sources}>
+          <summary>AI interpretation and suggestions</summary>
           <p className={styles.explanation}>Review the source before updating project work. Suggestions do not change the job or send an email.</p>
           <div className={styles.summaries}>
             {context.answer.sections.map((section) => {
               const cited = section.citations.map((citation) => ({ ...citation, source: sources.get(citation.sourceId) }));
               const supported = section.kind === 'unknown' || (cited.length > 0 && cited.every(({ source }) => source && correspondenceSourceHref(source.url)));
               return <section key={section.topic} className={styles.summary} aria-label={topics[section.topic]}>
-                <details open={section.topic === 'job_status'}>
+                <details>
                 <summary className={styles.heading}><h3>{topics[section.topic]}</h3><Badge tone={section.kind === 'unknown' ? 'warning' : 'neutral'}>{kinds[section.kind]}</Badge></summary>
                 {supported ? <>
                   <p>{section.answer}</p>
@@ -38,7 +53,7 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
                   {cited.length ? <details className={styles.sources}><summary>View supporting sources ({cited.length})</summary>
                     {cited.map(({ sourceId, quote, source }, index) => source && correspondenceSourceHref(source.url) ? <div key={`${sourceId}-${index}`}>
                       <blockquote>{quote}</blockquote>
-                      <a href={correspondenceSourceHref(source.url)!} target="_blank" rel="noopener noreferrer">{source.title} ↗</a>
+                      {sample ? <span>{source.title}</span> : <a href={correspondenceSourceHref(source.url)!} target="_blank" rel="noopener noreferrer">{source.title} ↗</a>}
                       <p className={styles.explanation}>{formatPortalDateTime(source.recordedAt)} · {source.association === 'customer_address_only' ? 'Customer email match; project not confirmed' : 'Project record'}{source.excerpted ? ' · excerpt only' : ''}</p>
                     </div> : null)}
                   </details> : null}
@@ -47,15 +62,11 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
               </section>;
             })}
           </div>
-          <details className={styles.sources}>
-            <summary>Linked customer emails ({correspondence.length})</summary>
-            {correspondence.length ? <p className={styles.explanation}>The quotations above are available here. Opening the original in Outlook also requires access to that mailbox.</p> : null}
-            {correspondence.length ? correspondence.map((source) => <p key={source.id}>
-              {correspondenceSourceHref(source.url) ? <a href={correspondenceSourceHref(source.url)!} target="_blank" rel="noopener noreferrer">{source.title} ↗</a> : <span>Source link unavailable</span>}
-              <span className={styles.sourceDate}>{formatPortalDateTime(source.recordedAt)}</span>
-            </p>) : <p>No email source is included in this summary. This does not establish that no correspondence exists.</p>}
           </details>
-          {context.limitations.length ? <details className={styles.sources}><summary>What this check does not establish</summary><ul>{context.limitations.map((limit) => <li key={limit}>{limit}</li>)}</ul></details> : null}
+          <details className={styles.sources}><summary>About these email excerpts</summary>
+            <p className={styles.explanation}>Checked {formatPortalDateTime(context.observedAt)}. This is a limited search, not a complete conversation history. Opening the original in Outlook requires access to that mailbox.</p>
+            <ul>{context.limitations.map((limit) => <li key={limit}>{limit}</li>)}</ul>
+          </details>
         </>}
     </div>
   </Card>;

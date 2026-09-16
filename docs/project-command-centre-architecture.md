@@ -1,5 +1,18 @@
 # Project Operational Command Centre Architecture
 
+Owner-led clarity correction, 16 September: source email excerpts are visible
+before AI analysis, ordered by message date and deduplicated by citation text.
+Customer-address matches remain unconfirmed to the job; excerpts are not full
+mailbox history. Sample previews explicitly have no Outlook connection and do not
+offer fake source links. Desktop places messages beside work; mobile places them
+before commercial details. Contact facts, notes/history and ordinary commercial
+detail use disclosures. The commercial total remains visible, while warnings,
+failed sends, declines and stale costing keep the existing commercial surface
+expanded. These presentation changes do not activate the signed correspondence
+gateway or infer staff commitments from messages. The original local usability
+rating did not establish owner acceptance; current evidence and feedback remain
+in the roadmap.
+
 ## Staff clarity extension (16 September 2026, local implementation)
 
 Workflow-usefulness revision: the owner approved retirement of generic stage

@@ -4,6 +4,38 @@
 
 ### Current focus: useful workflow before release
 
+Owner correction after the first independent review (16 September, same task):
+Jordan still found the page confusing, too information-heavy and could not find
+correspondence. This supersedes the prior local usability/clarity pass as an owner
+acceptance claim. The review checked labels and disclosures but missed the cost
+of discovering the actual message. This is project feedback, not a universal
+preference inferred for every interface.
+
+Current correction: put dated source email excerpts directly in Customer emails,
+deduplicate repeated citations, put AI interpretation behind a disclosure, retain
+matching/excerpt limitations, collapse secondary contact/financial/history detail,
+keep the price visible, and put emails ahead of financial details on mobile.
+Shorten and compact the action area. No provider activation or fabricated sender,
+full email body, task, or project association is introduced. Acceptance requires
+visible message text without opening AI analysis, reachable secondary details,
+desktop/mobile/keyboard proof and a fresh focused independent review; numerical
+ratings alone do not close Jordan's usability concern. Production remains unchanged.
+
+Correction verified locally: the same independent reviewer inspected all three
+stories, desktop/mobile message visibility and contact/history/AI keyboard access,
+and ran 19 focused tests. They caught a material regression where the compact
+price could hide commercial warnings. Existing exception content now remains
+expanded; the reviewer verified that fix. No further material defect reproduced.
+Initial review plus one correction/recheck; owner usability acceptance remains
+pending. Trial learning: the first review missed message discovery despite checking
+disclosures; Jordan's intervention was necessary. The second review caught a new
+exception-hiding regression before handover. No time/cost saving is claimed.
+Evidence: `.codex-tmp/clarity/independent-owner-correction-review.md`,
+`messages-first-*.log`. Eight affected browser cases passed after two assertions
+were updated for intentional disclosures; the other 80 passed unchanged. Types,
+lint and architecture checks pass. The 101-test Overview slice, eight card cases
+and 14 commercial/Overview cases cover the revised local behavior.
+
 Implementation approval: Jordan's "Go ahead, go ahead" in this task authorizes
 the agreed workflow retirement and coherent examples. Current local batch adds
 forward migration `20260916000006`, shared retired-work/capability guards,

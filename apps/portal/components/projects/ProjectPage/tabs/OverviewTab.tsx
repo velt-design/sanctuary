@@ -1,5 +1,7 @@
 "use client";
 
+import ProjectCommercialDetails from './overview/ProjectCommercialDetails';
+
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
@@ -219,6 +221,7 @@ export default function OverviewTab({
     );
   } else if (commandQuery.data) {
     commercial = (
+      <ProjectCommercialDetails data={commandQuery.data.currentDesign}>
       <Suspense
         fallback={
           <Card padding="compact">
@@ -240,6 +243,7 @@ export default function OverviewTab({
           onAccessEnding={onAccessEnding}
         />
       </Suspense>
+      </ProjectCommercialDetails>
     );
 
     if (workModelMismatch) {

@@ -33,6 +33,8 @@ export default function ProjectRecentNotesEvents({
   );
 
   return (
+    <details>
+    <summary style={{ cursor: 'pointer', padding: 'var(--ui-space-3)', fontWeight: 600 }}>Team notes & portal history</summary>
     <Card
       className={styles.card}
       title="Recent notes and events"
@@ -79,5 +81,6 @@ export default function ProjectRecentNotesEvents({
         </section>
       </div>
     </Card>
+    </details>
   );
 }

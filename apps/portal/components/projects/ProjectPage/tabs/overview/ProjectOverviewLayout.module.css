@@ -63,22 +63,23 @@
 
 @media (min-width: 769px) {
   .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]) {
+    grid-template-columns: minmax(0, 1.1fr) minmax(360px, 1fr);
     grid-template-areas:
       "orientation orientation"
       "exception exception"
-      "project-work commercial"
-      "recent commercial";
+      "project-work recent"
+      "commercial recent";
   }
 
   .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]):not([data-has-exception]) {
     grid-template-areas:
       "orientation orientation"
-      "project-work commercial"
-      "recent commercial";
+      "project-work recent"
+      "commercial recent";
   }
 
   .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]) .recent {
-    grid-column: 1;
+    grid-column: 2;
   }
 }
 
@@ -110,9 +111,9 @@
   grid-template-areas:
     "exception"
     "project-work"
+    "recent"
     "commercial"
     "orientation"
-    "recent"
     "admin";
   grid-template-columns: minmax(0, 1fr);
 }
@@ -120,9 +121,9 @@
 .layout[data-overview-composition="mobile"]:not([data-has-exception]) {
   grid-template-areas:
     "project-work"
+    "recent"
     "commercial"
     "orientation"
-    "recent"
     "admin";
 }
 
@@ -138,9 +139,9 @@
     grid-template-areas:
       "exception"
       "project-work"
+      "recent"
       "commercial"
       "orientation"
-      "recent"
       "admin";
     grid-template-columns: minmax(0, 1fr);
   }
@@ -148,9 +149,9 @@
   .layout:not([data-overview-composition="mobile"]):not([data-has-exception]) {
     grid-template-areas:
       "project-work"
+      "recent"
       "commercial"
       "orientation"
-      "recent"
       "admin";
   }
 }

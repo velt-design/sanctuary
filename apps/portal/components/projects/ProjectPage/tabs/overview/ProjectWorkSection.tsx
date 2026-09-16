@@ -297,9 +297,8 @@ export default function ProjectWorkSection({
               <div className={styles.commandArea}>
                 {controller.primarySentCommand ? (
                   <p className={styles.commandHelp}>
-                    Send the email in Outlook, then record it here to start the
-                    next follow-up reminder. If the customer has replied, record
-                    their reply to stop the reminders.
+                    Send in Outlook first. Recording it starts the next reminder;
+                    recording a reply stops reminders.
                   </p>
                 ) : (
                   <span className={styles.commandLabel}>
