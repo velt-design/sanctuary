@@ -61,5 +61,9 @@ export function projectStory(name: ProjectStory) {
   correspondence.answer.sections[2] = { topic: 'next_action', kind: 'recommendation', answer: suggestion,
     caveat: 'A suggestion does not create or replace assigned work.', citations: [{ sourceId: 'S1', quote: excerpt }] };
   correspondence.sources[0].title = `${storyNames[name]} — synthetic customer email`;
+  correspondence.messages = [{ id: 'sample-message', subject: correspondence.sources[0].title,
+    from: 'aroha@example.invalid', sentAt: correspondence.sources[0].recordedAt,
+    receivedAt: correspondence.sources[0].recordedAt, observedAt: correspondence.observedAt,
+    url: correspondence.sources[0].url, bodyText: excerpt, truncated: false, association: 'customer_address_only' }];
   return { work, currentDesign, correspondence };
 }

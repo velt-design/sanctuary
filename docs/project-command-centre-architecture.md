@@ -1,5 +1,17 @@
 # Project Operational Command Centre Architecture
 
+Message transport increment (local, disabled): the staff context can include up
+to 25 source messages with sender, sent/received/observed dates, plain text and
+explicit truncation. Strict parsing rejects stale/duplicate messages, malformed
+senders, inferred project association and non-Outlook links. The message list
+renders source text independently of AI citations, with a compact preview and
+native Read message disclosure; React escapes message content. Older/sample
+contexts without messages retain the explicitly excerpt-only presentation.
+Ordinary reads require completed project context and any completed mail operation,
+not model completion. Ask AI sends a separate signed `analyze: true` request;
+configuration, capacity or model failure falls back to source evidence only after
+the same final authority checks. Analysis availability is explicit in the response.
+
 Owner-led clarity correction, 16 September: source email excerpts are visible
 before AI analysis, ordered by message date and deduplicated by citation text.
 Customer-address matches remain unconfirmed to the job; excerpts are not full

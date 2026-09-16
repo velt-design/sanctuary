@@ -7,8 +7,12 @@ import ProjectCorrespondenceCard from './ProjectCorrespondenceCard';
 
 type ReadState = { state: 'not_connected' | 'available' | 'loading' | 'ready' | 'stale' | 'error'; context?: ProjectCorrespondenceContext };
 function evidenceState(context: ProjectCorrespondenceContext): 'ready' | 'stale' {
-  const oldest = Math.min(Date.parse(context.observedAt), ...context.sources.map(source => Date.parse(source.observedAt)));
+  const oldest = oldestObservation(context);
   return Date.now() - oldest >= CORRESPONDENCE_MAX_AGE_MS ? 'stale' : 'ready';
+}
+function oldestObservation(context: ProjectCorrespondenceContext) {
+  return Math.min(Date.parse(context.observedAt), ...context.sources.map(source => Date.parse(source.observedAt)),
+    ...(context.messages ?? []).map(message => Date.parse(message.observedAt)));
 }
 
 export default function ProjectCorrespondenceQuery({ projectId, onAccessEnding }: {
@@ -26,14 +30,14 @@ function CorrespondenceRead({ projectId, onAccessEnding }: { projectId: string; 
   accessCallback.current = onAccessEnding;
   const path = `/api/staff/v1/projects/${encodeURIComponent(projectId)}/correspondence`;
 
-  const load = useCallback(async (check: boolean) => {
+  const load = useCallback(async (check: boolean, analyze = false) => {
     active.current?.abort();
     const controller = new AbortController();
     active.current = controller;
     if (check) earlier.current = undefined;
     setRead({ state: 'loading' });
     try {
-      const reply = await apiJson<{ state: string; context?: unknown }>(path, {
+      const reply = await apiJson<{ state: string; context?: unknown }>(path + (analyze ? '?analyze=true' : ''), {
         method: check ? 'POST' : 'GET', signal: controller.signal, cache: 'no-store', skipSaveTracking: true,
       });
       if (controller.signal.aborted) return;
@@ -69,10 +73,10 @@ function CorrespondenceRead({ projectId, onAccessEnding }: { projectId: string; 
 
   useEffect(() => {
     if (!read.context || read.state !== 'ready') return;
-    const oldest = Math.min(Date.parse(read.context.observedAt), ...read.context.sources.map(source => Date.parse(source.observedAt)));
+    const oldest = oldestObservation(read.context);
     const timer = setTimeout(() => { void load(false); }, Math.max(0, oldest + CORRESPONDENCE_MAX_AGE_MS - Date.now()));
     return () => clearTimeout(timer);
   }, [read.context, read.state, load]);
 
-  return <ProjectCorrespondenceCard {...read} onRefresh={read.state === 'not_connected' ? undefined : () => void load(true)} />;
+  return <ProjectCorrespondenceCard {...read} onRefresh={read.state === 'not_connected' ? undefined : () => void load(true)} onAnalyze={() => void load(true, true)} />;
 }

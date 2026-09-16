@@ -6,6 +6,21 @@ import { correspondenceSourceHref } from './projectCorrespondencePresentation';
 
 afterEach(() => { document.body.innerHTML = ''; });
 describe('ProjectCorrespondenceCard', () => {
+  it('shows source messages even when AI does not cite them, with sender and expandable plain text', () => {
+    const bodyText = 'Customer message, not AI text. '.repeat(40) + '<script>not executable</script>';
+    const context = { ...correspondenceFixture, messages: [{ id: 'mail-one', subject: 'Actual message subject',
+      from: 'customer@example.test', sentAt: correspondenceFixture.observedAt, receivedAt: correspondenceFixture.observedAt,
+      observedAt: correspondenceFixture.observedAt, url: 'https://outlook.office.com/mail/id/one', bodyText,
+      truncated: false, association: 'customer_address_only' as const }] };
+    const view = renderIntoDocument(<ProjectCorrespondenceCard context={context} state="ready" />);
+    const article = view.container.querySelector('article')!;
+    expect(article.textContent).toContain('From customer@example.test');
+    expect(article.querySelector('blockquote')?.closest('details')).toBeNull();
+    expect(article.querySelector('details blockquote')?.textContent).toBe(bodyText);
+    expect(article.querySelector('script')).toBeNull();
+    expect(article.querySelector('summary')?.textContent).toBe('Read message');
+    view.unmount();
+  });
   it('shows each email excerpt without opening AI analysis and makes samples explicit', () => {
     const view = renderIntoDocument(<ProjectCorrespondenceCard context={correspondenceFixture} state="ready" sample />);
     const messages = view.container.querySelectorAll('article blockquote');

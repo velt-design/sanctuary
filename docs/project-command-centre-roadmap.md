@@ -4,6 +4,71 @@
 
 ### Current focus: useful workflow before release
 
+Continuation evidence, 16 September: Velt's owning programme record in the
+`velt-customer-journey` worktree now records two real customer reads, source-link
+verification and owner acceptance; PR361/362 and production releases resolve the
+earlier owner-reader dependency. Its subsequent latency work also changes the
+shared orchestration: reconcile that current branch/main before releasing the
+staff extension. Do not overwrite that task's checkout or duplicate its rollout.
+
+Implemented locally: carry actual Outlook sender, sent/received dates and bounded
+plain-text messages into the staff response independently of which quotations AI
+selects. The Portal validates message IDs, freshness, address and Outlook links,
+shows a short preview, and offers Read message for longer text. Credential-bearing
+messages are withheld, byte-limit truncation is explicit, and customer-address
+matches are still not asserted to belong to the job. No recipients or raw provider
+payload are added. Ordinary reads now bypass the model, and the explicit Ask AI
+action requests a fresh signed read with interpretation. Model configuration,
+capacity or execution failure can return source evidence, while final context/mail
+authority still fences delivery. Velt merged verified main `22a5ff5` through
+`e6575ea`, preserving the released owner endpoint and its latency behavior.
+Next publish/review this paired candidate and prove one real staff project.
+Project-specific association, staff activation,
+genuine outcome/return verification and all three real scenarios remain pending.
+
+Verification for this increment: 25 Portal focused tests and 22 Velt focused tests
+pass, including message rendering without AI citation, escaped source text,
+credential omission, UTF-8 bounds, freshness and final authority rejection. Fixed
+the missed layout-order assertion that failed Portal Quality at `39a8ac6`.
+Velt types and focused lint pass. Local browser shows sender/date/source text on
+the accepted-job sample. This is integration work in progress, not an 8/10 claim
+or production activation. Incremental independent review caught an AI claim-capacity
+failure that discarded already acquired source messages; recovery now covers that
+case and its focused test passes. The same reviewer independently rechecked the
+fix and found no remaining material defect in this increment (27 Velt/30 Portal
+checks, then 11 affected checks after correction). Evidence:
+`.codex-tmp/clarity/independent-staff-transport-review.md`. This does not close the
+real-project outcome or authorize treating the staff feature as live.
+
+Source-only continuation verification: native PostgreSQL passes 11 lifecycle tests,
+including exact project context hash, missing/expired evidence, global stop/resume,
+actor/audit and existing provider generation fences. Velt's focused journey/provider
+slice passed 89 tests (four opt-in skips); the recovery addition and recheck passed
+11 affected tests. Portal correspondence tests passed 43; both apps' types and
+focused lint pass. Actual sender/receiver wire pairing passes one check in each
+repository. No deployed staff migration/secret/activation or real staff read is
+claimed. Previous goal turn was progress; this turn changes message-read behavior
+and verifies its security boundary, with no repeated external blocker.
+Fresh read-only Vercel environment metadata confirms neither production project
+has staff correspondence signing/enablement variables yet; existing owner-reader
+configuration is present. Provisioning is outstanding, not an unexplained missing
+customer-data result. No credentials were copied to this record or tool output.
+
+Goal renewed in this task on 16 September after Jordan agreed with the revised
+UI 7/10, understanding 6.5/10 and usability 6/10 assessment. First milestone:
+one real project working end to end, then validation across enquiry, quote
+decision and accepted/installation projects. In ten seconds staff should identify
+position, latest relevant customer message, next useful action and responsible
+person without explanation. Provide readable, correctly associated messages with
+sender/date, optional cited interpretation, a concise summary and genuine work
+actions. Verify opening the correct quote, recording an authorized outcome and
+returning to accurate state on desktop/mobile. Sample UI and numerical ratings
+cannot close this goal. Existing all-staff audience, conditional release approval,
+no automatic sends/bulk backfill and remaining live-integration requirements stand.
+Continue existing draft PR145 and this record; next action is to establish the
+current live correspondence boundary and select a real project for read-only proof
+before any consequential workflow change.
+
 Owner correction after the first independent review (16 September, same task):
 Jordan still found the page confusing, too information-heavy and could not find
 correspondence. This supersedes the prior local usability/clarity pass as an owner
@@ -42,7 +107,7 @@ forward migration `20260916000006`, shared retired-work/capability guards,
 purposeful email-recording explanation, saved-fact position headings and three
 coherent read-only examples at `/qa/project-command-centre-fixture?story=enquiry`,
 `?story=quote` and `?story=installation`. AI suggestions and agreement analysis
-are disclosures; the customer-status interpretation stays expanded. Existing
+are disclosures, including customer-status interpretation. Existing
 manual obligations and lead/quote follow-up remain; no automatic mail-derived
 completion was introduced. Database rehearsal verifies cancellation/audit,
 replay, future stage/import behavior, reactivation denial and paid-stage rules.

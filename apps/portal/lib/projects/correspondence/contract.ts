@@ -28,14 +28,28 @@ const section = z.object({
   answer: text(900), caveat: text(500),
   citations: z.array(z.object({ sourceId: text(100), quote: text(2000).min(1) }).strict()).max(12),
 }).strict();
+const message = z.object({
+  id: text(1024).min(1), subject: text(2048), from: z.email().max(254),
+  sentAt: instant, receivedAt: instant, observedAt: instant,
+  url: text(4096).refine(value => {
+    const href = correspondenceSourceHref(value);
+    return href !== null && new URL(href).hostname !== 'portal.sanctuarypergolas.co.nz';
+  }),
+  bodyText: text(32768), truncated: z.boolean(), association: z.literal('customer_address_only'),
+}).strict();
 
 // Validates transport; Velt owns exact excerpt validation and synthesis.
 export const correspondenceContextSchema = z.object({
   observedAt: instant,
+  analysisAvailable: z.boolean().optional(),
   answer: z.object({ sections: z.array(section).length(3) }).strict(),
   sources: z.array(source).max(100), limitations: z.array(text(1000)).max(40),
+  messages: z.array(message).max(25).optional(),
 }).strict().superRefine((value, ctx) => {
   const ids = new Set(value.sources.map(item => item.id));
+  if (new Set(value.messages?.map(item => item.id)).size !== (value.messages?.length ?? 0)) {
+    ctx.addIssue({ code: 'custom', message: 'Duplicate correspondence messages.' });
+  }
   if (ids.size !== value.sources.length || new Set(value.answer.sections.map(item => item.topic)).size !== 3) {
     ctx.addIssue({ code: 'custom', message: 'Duplicate correspondence evidence.' });
   }
@@ -53,7 +67,7 @@ export function parseStaffCorrespondence(value: unknown, projectId: string, requ
     context: correspondenceContextSchema,
   }).strict().parse(value);
   if (result.projectId !== projectId || result.requestId !== requestId) throw new Error('Correspondence binding mismatch.');
-  const dates = [result.context.observedAt, ...result.context.sources.map(item => item.observedAt)];
+  const dates = [result.context.observedAt, ...result.context.sources.map(item => item.observedAt), ...(result.context.messages ?? []).map(item => item.observedAt)];
   if (dates.some(date => now - Date.parse(date) > CORRESPONDENCE_MAX_AGE_MS || Date.parse(date) - now > 5000)) {
     throw new Error('Correspondence evidence is not current.');
   }

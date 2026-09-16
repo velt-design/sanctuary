@@ -12,6 +12,21 @@ afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); document.body.innerH
 const flush = async () => { await act(async () => { await Promise.resolve(); }); };
 
 describe('private correspondence lifecycle', () => {
+  it('requests AI only after the separate interpretation action', async () => {
+    mocks.api.mockResolvedValueOnce({ state: 'available' })
+      .mockResolvedValueOnce({ state: 'ready', context: { ...correspondenceFixture, analysisAvailable: false } })
+      .mockResolvedValueOnce({ state: 'ready', context: { ...correspondenceFixture, analysisAvailable: true } });
+    const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
+    await flush();
+    await act(async () => { (view.container.querySelector('button') as HTMLButtonElement).click(); });
+    expect(mocks.api.mock.calls[1][0]).not.toContain('analyze');
+    const analyze = Array.from(view.container.querySelectorAll('button')).find(button => button.textContent === 'Ask AI to interpret these emails')!;
+    expect(analyze).toBeDefined();
+    await act(async () => { analyze.click(); });
+    expect(mocks.api.mock.calls[2][0]).toContain('?analyze=true');
+    expect(view.container.textContent).toContain('AI interpretation and suggestions');
+    view.unmount();
+  });
   it('loads availability only and rechecks access before labelling an expired summary', async () => {
     mocks.api.mockResolvedValueOnce({ state: 'available' }).mockResolvedValueOnce({ state: 'ready', context: correspondenceFixture }).mockResolvedValueOnce({ state: 'available' });
     const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);

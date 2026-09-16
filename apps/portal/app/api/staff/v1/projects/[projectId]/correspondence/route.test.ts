@@ -22,6 +22,11 @@ beforeEach(() => {
   mocks.access.mockResolvedValue({ kind: 'authenticated', session: { user: { id: actorId }, role: 'staff' } });
 });
 describe('staff correspondence route', () => {
+  it('forwards only the explicit interpretation choice after staff/project authorization', async () => {
+    const response = await POST(new Request(`${origin}/api/staff/v1/projects/${projectId}/correspondence?analyze=true`, { method: 'POST', headers: { origin } }), context);
+    expect(response.status).toBe(200);
+    expect(mocks.read).toHaveBeenCalledWith(expect.anything(), { projectId: projectUuid, actorId, analyze: true }, expect.any(AbortSignal));
+  });
   it('checks availability without any provider/model read', async () => {
     const response = await GET(request({ method: 'GET' }), context);
     expect(await response.json()).toEqual({ state: 'available' });

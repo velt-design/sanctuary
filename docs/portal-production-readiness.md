@@ -2,6 +2,14 @@
 
 Status: Active evolving tracker.
 
+Staff correspondence continuation (2026-09-16): actual message transport and
+optional interpretation pass focused application, native database and paired-wire
+checks plus independent source review. Fresh Vercel environment metadata shows
+the staff enablement/signing variables are not configured in either production
+project. The existing owner reader is live; this staff extension remains disabled.
+Real staff project association, action outcome and responsive journey acceptance
+are still release requirements. Current evidence is in the project roadmap.
+
 Project-page workflow milestone (2026-09-16): local candidate retires automatic
 generic stage reminders through forward migration `20260916000006`, retains
 audited history and used follow-ups, and supplies three coherent populated preview

@@ -12,6 +12,21 @@ const config = { origin: 'https://velt.example.invalid', secret: 'a'.repeat(64) 
 const payload = () => ({ schemaVersion: STAFF_CORRESPONDENCE_VERSION, projectId, requestId, context: structuredClone(correspondenceFixture) });
 
 describe('staff correspondence gateway', () => {
+  it('validates actual message identity, freshness and safe source links independently of citations', () => {
+    const reply = payload();
+    const message = { id: 'mail-one', subject: 'Site visit', from: 'customer@example.test',
+      sentAt: correspondenceFixture.observedAt, receivedAt: correspondenceFixture.observedAt, observedAt: correspondenceFixture.observedAt,
+      url: 'https://outlook.office.com/mail/id/one', bodyText: 'Can we arrange a visit?', truncated: false, association: 'customer_address_only' };
+    Object.assign(reply.context, { messages: [message] });
+    expect(parseStaffCorrespondence(reply, projectId, requestId, now).messages?.[0].bodyText).toBe(message.bodyText);
+    for (const patch of [{ observedAt: new Date(now - 120001).toISOString() }, { from: 'not an address' },
+      { association: 'project' }, { url: 'https://portal.sanctuarypergolas.co.nz/staff/projects/one' }]) {
+      Object.assign(reply.context, { messages: [{ ...message, ...patch }] });
+      expect(() => parseStaffCorrespondence(reply, projectId, requestId, now)).toThrow();
+    }
+    Object.assign(reply.context, { messages: [message, message] });
+    expect(() => parseStaffCorrespondence(reply, projectId, requestId, now)).toThrow();
+  });
   it('stays disabled without explicit activation and rejects insecure destinations', () => {
     expect(correspondenceGatewayConfig({})).toBeNull();
     for (const origin of ['http://velt.example.invalid', 'https://user@velt.example.invalid', 'https://velt.example.invalid/elsewhere']) {
