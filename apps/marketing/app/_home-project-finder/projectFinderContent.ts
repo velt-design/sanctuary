@@ -37,7 +37,7 @@ export const projectDirectionContent: Record<
   cover: {
     label: 'Design your pergola',
     description:
-      'Choose your size, roof, sides and lighting. See an installed estimate where available, without entering contact details.',
+      'Design in 3D. Explore sizes, roof styles, sides and lighting, with a plan and installed estimate where available. No contact details needed to start.',
   },
   bespoke: {
     label: projectDirectionLabels.bespoke,

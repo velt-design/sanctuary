@@ -109,9 +109,9 @@ export function buildProjectFinderHomepageMedia(
     },
     choiceByDirection: {
       cover: {
-        alt: 'White pitched acrylic pergola covering a ground-level patio beside a weatherboard home',
+        alt: 'Sanctuary’s 3D designer showing an attached pitched-roof pergola with 3D and plan view controls',
         objectPosition: '50% 50%',
-        src: '/images/simple-pergolas/pitched-01.webp',
+        src: '/images/homepage-designer-preview.webp',
       },
       bespoke: resolveMedia(projects, {
         projectSlug: 'mt-maunganui-box',
