@@ -300,3 +300,8 @@ found; local relevant dimensions assessed 8/10. Actual unavailable/retry network
 interaction was not independently exercised. Physical iPhone Safari and owner
 review remain pending. Typecheck, scoped lint, docs and architecture guards pass.
 Preview: http://localhost:3076/configurator-preview?open=1 (local computer only).
+
+Release authorization (2026-09-17): Jordan said "Yes, make it live."
+This supersedes the preceding no-release boundary for this scoped fix.
+Implementation and independent local evidence remain unchanged; publication
+is pending required PR checks and production verification.
