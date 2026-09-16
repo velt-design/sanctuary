@@ -35,7 +35,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | `agent-centric-portal-plan.md` | Active roadmap | You are improving agent access, portal fixture coverage, debug exports, browser evidence, route smoke coverage, or quality ratchets. |
 | `portal-ux-roadmap.md` | Active roadmap | You are planning or prioritising portal usability work, workflow polish, visual hierarchy, or staff UX improvements. |
 | `ai/README.md` | Active routing page | You need Sanctuary AI programme status, document authority, or the correct AI strategy/architecture entrypoint. |
-| `ai/00-vision.md` | Accepted strategic target | You need the Sanctuary AI constitution, initial topology, capability boundary, or autonomy rule. |
+| `ai/00-vision.md` | Accepted strategic target | You need the Sanctuary AI constitution, accepted owner outcomes and working preferences, delivery order, task handover, initial topology, or capability boundary. |
 | `ai/09-decisions/README.md` | Decision record index | You need accepted Sanctuary AI architecture decisions, revisit conditions, or the ADR template. |
 | `ai/operations/README.md` | Active operations protocol | You are preparing, operating, revoking, rebuilding, or responding to an incident on the Mac mini private node. It records procedures, not deployment evidence. |
 | `ai/sanctuary-ai-master-plan.md` | Proposed strategic plan | You are reviewing the proposed Sanctuary AI vision, target topology, phases, evaluation model, or initial PR sequence. It does not describe current behavior or authorize implementation by itself. |
@@ -62,7 +62,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | `supabase-schema-map.md` | Current | You are touching Supabase tables, RPCs, migrations, RLS/grants, route write paths, or schema ownership. |
 | `staff-api-auth-contracts.md` | Current | You are touching staff/admin/public-token API routes, route auth helpers, Supabase client boundaries, diagnostics, or response conventions. |
 | `automation-email-audit.md` | Current | You are touching automation events, project tasks, follow-ups, email outbox, email previews, audit events, or marketing enquiry email side effects. |
-| `project-enquiry-attachments.md` | Current implementation and unexecuted rollout plan | You are changing website enquiry files, their project links, private Storage access, the Project Work Files tab, or the historical attachment dry run/backfill. |
+| `project-enquiry-attachments.md` | Recorded schema and 59-file backfill; exceptions pending | You are changing website enquiry files, their project links, private Storage access, the Project Work Files tab, or historical attachment reconciliation. |
 | `design-booklets.md` | Current | You are changing the standalone Design Booklet Workbench, its A4 preview/PDF, Toni assets, or the read-only marketing-content adapter. |
 | `testing-and-qa.md` | Current | You need the canonical command catalog, Playwright auth, smoke checks, performance checks, or manual QA gates. |
 | `portal-route-catalog.md` | Current | You need portal route metadata, required roles, data requirements, owner docs, or browser-smoke status. |
@@ -126,4 +126,4 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 
 ## Xero accounting connection
 
-See [Xero connection](xero-connection.md) for the developer-only, default-dark read integration, configuration, provisioning and release gates.
+See [Xero connection](xero-connection.md) for the current owner decisions, automated invoice/payment workflow, developer-only connection controls, operating walkthrough and release evidence. The [everyday finance decisions](xero-connection.md#next-stage-everyday-finance) explicitly supersede the earlier draft/manual pilot. Wider business decisions and handover context live in [owner outcomes and delivery order](ai/00-vision.md#owner-outcomes-and-delivery-order).

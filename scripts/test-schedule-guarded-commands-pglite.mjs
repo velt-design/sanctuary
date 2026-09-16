@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import assert from 'node:assert/strict';
+import { verifyOptionalSchedulePayloads } from './lib/schedule-optional-payload-contract.mjs';
 
 // Disposable PostgreSQL only. Uses the production schema and command bodies.
 const database = new PGlite();
@@ -45,6 +46,13 @@ try {
   await database.exec(cascadeMigration);
   await database.exec('rollback;');
   await database.exec(cascadeMigration);
+  const optionalMigration = readFileSync(new URL('../supabase/migrations/20260916000001_schedule_optional_command_payloads.sql', import.meta.url), 'utf8');
+  await database.exec('begin;');
+  await database.exec(optionalMigration);
+  await database.exec('rollback;');
+  await database.exec(optionalMigration);
+  await database.exec(optionalMigration);
+  await verifyOptionalSchedulePayloads(database);
   await database.exec(`
     insert into public.schedule_crews(id,name) values ('${crew}','First'), ('${otherCrew}','Other');
     insert into public.projects(id) values ('${project}');

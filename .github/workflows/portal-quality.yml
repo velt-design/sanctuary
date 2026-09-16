@@ -132,6 +132,9 @@ jobs:
       - name: Portal Vitest suite
         run: npm run test:portal
 
+      - name: Schedule guarded database command contracts
+        run: npm run test:schedule:db:fast
+
       - name: Geometry Vitest suite
         run: npm run test:geometry
 
