@@ -6,6 +6,13 @@ This document owns the Architectural Editorial UI system demonstrated at the sta
 
 ## Source Of Truth
 
+Contact pathway refinement (16 September 2026): the configurator
+entry is a full-width image-led card with a charcoal “Try the configurator”
+action. Help, bespoke and commercial enquiry radios remain below under
+“Prefer to talk to us?”. At 760px and below the feature and choices stack.
+Existing routing, selection and submission contracts are unchanged. This is an
+owner-approved presentation change, approved for production after local review.
+
 The owner-approved `/configurator-preview` route is an isolated UI experiment
 using this marketing system. It adds fixed 3D, plan views and Simple
 cover controls without changing existing public routes. It has no navigation or
