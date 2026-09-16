@@ -52,6 +52,7 @@ other unconditional vendor request. The executable browser boundary is
 | Guided design-conversation events | analytics | `apps/marketing/app/_home-guided/GuidedHomepageTracker.ts` | Measures the noindex `/home-guided` view, closed question/answer/change/reset values, five stable results and the primary destination click while analytics is enabled | Marketing and Engineering |
 | Project-led visual-finder events | analytics | `apps/marketing/app/_home-project-finder/ProjectFinderTracker.tsx` | Measures the production `/` view, closed direction, commercial/professional-path and priority changes, completed result views, project-detail opens, service continuation and header/final enquiry exits while analytics is enabled | Marketing and Engineering |
 | Simple cover calculator funnel | analytics | `apps/marketing/lib/simpleCoverAnalytics.ts`, `apps/marketing/components/simple-cover-calculator/SimpleCoverCalculator.tsx`, `apps/marketing/app/simple-pergolas-auckland/SimplePergolaJourney.tsx` | Measures calculator view, first interaction, closed result state, result-continuation CTA and form start while analytics is enabled; emits only placement, result status, source path, viewport category and calculation-attached boolean | Marketing and Engineering |
+| Configured-designer funnel | analytics | `apps/marketing/components/configurator-prototype/DesignFunnelTracker.tsx`, `apps/marketing/app/contact/ContactEnquiryForm.tsx` | Measures open, first edit, review and existing submission outcomes; excludes entered design/contact values and staff revision routes | Marketing and Engineering |
 
 When adding or removing tracking, update this table and the privacy behavior.
 
@@ -289,3 +290,42 @@ npx vitest run apps/portal/lib/performance/webVitals.test.ts apps/portal/app/api
 Engineering owns headers, CSP, CI guardrails, secret boundaries, and technical remediation.
 
 Marketing owns third-party pixel purpose, retention decisions, campaign attribution needs, and privacy copy review.
+
+## Configured-designer funnel (2026-09-16)
+
+The customer designer emits analytics-consented `design_start`, `design_edit` and
+`design_review` through the existing Google runtime. `design_edit` is limited to
+the first actual selection change per open visit; restoring a draft is not an
+edit. Reopening and returning to Review may emit new start/review events, so
+funnel conversion reports must count users/sessions rather than dividing raw
+click counts. Denied interactions are not replayed after consent changes.
+An unresolved regional lookup does not consume the start: when policy resolves,
+the currently open designer starts measurement from its current selections.
+Earlier edits are not replayed. All current public overlay entry pages are
+eligible; project/product detail paths use closed route templates instead of slugs.
+
+The closed payload contains only `event_category: configured_design`,
+`design_funnel_version: v1`, a public route from the allowlist, and
+`configured_design: true`. It contains no dimensions, finishes, names, contact
+values, free text or serialized draft. Staff revision and nonpublic routes are
+excluded. Existing `contact_start`, `contact_error`, `contact_success` and
+`lead_submitted` retain their category gates and add the configured-design
+boolean; `contact_success` also carries the existing non-personal submission ID
+as `lead_event_id` for receipt reconciliation. No new conversion is emitted for
+failure, and the existing lead event remains the conversion owner.
+
+Owner: Marketing and Engineering. Implementation:
+`components/configurator-prototype/DesignFunnelTracker.tsx` and the existing
+`app/contact/ContactEnquiryForm.tsx`, under `apps/marketing`. Destination and
+production evidence is tracked in the 2026-09-16 bounded goal section of
+`mobile-ux-phase-5-validation.md`; source/unit evidence alone is not delivery.
+
+Configured-designer and contact API events explicitly route to the verified GA4
+stream through `apps/marketing/lib/googleAnalyticsEvent.ts`. GTM is still the
+only loader; this helper does not configure or inject a second Google runtime.
+The destination defaults to the verified Sanctuary stream `G-KGLF83X6JW` and
+can be overridden with `NEXT_PUBLIC_GA_MEASUREMENT_ID`; keep it aligned with
+the Google tag in `GTM-W438QM7H`. An invalid override fails closed. This explicit
+routing is required because default-destination API calls were queued without
+being sent by the installed GTM runtime. Data-layer-only homepage events are a
+separate contract and must not be described as received without a matching tag.

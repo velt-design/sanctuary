@@ -32,6 +32,6 @@ export default function ConfiguratorDialog({ open, onClose, resume = false }: { 
     onCancel={event => { if (expanded) { event.preventDefault(); collapse(); } }}
     onClose={() => { collapse(); onClose(); }}>
     <div className={styles.panelHeader}><span>Your pergola.</span><button type="button" onClick={() => dialog.current?.close()} aria-label="Close configurator">Close <span aria-hidden="true">×</span></button></div>
-    {visited && <ConfiguratorPrototype expanded={expanded} onToggleExpanded={toggleExpanded} resume={resume} />}
+    {visited && <ConfiguratorPrototype active={open} expanded={expanded} onToggleExpanded={toggleExpanded} resume={resume} />}
   </dialog>;
 }
