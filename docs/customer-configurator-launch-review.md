@@ -268,3 +268,40 @@ starting tests; its retry passed. Broader portal quality/performance checks were
 still running at this record. The enquiry route change only threads the verified
 snapshot to its existing preparation owner; price rendering is extracted into
 ConfiguredEstimate. Further route decomposition is deferred to its intake owner.
+
+### Phone estimate correction (2026-09-16)
+
+Owner report: live Safari displayed a clipped "Price to be confirmed" for a
+6.8 x 2.1 m freestanding solid gable, Trapezoidal roof, ThermoPine 150 ceiling.
+The exact shared design returned custom from production because the public
+pricing adapter explicitly withheld Trapezoidal. This was not a Safari request
+failure. Jordan approved using the Corrugated allowance for Trapezoidal in this
+task on 16 September. That is now the owning commercial rule; the existing
+calculator mapping is retained and the public adapter exclusion removed.
+
+Working branch: codex/mobile-price-fix-20260916, isolated worktree
+C:/Dev/sanctuary-mobile-price-fix-20260916, base 45cc09f.
+Implemented: public estimate permitted for Trapezoidal; compact unavailable
+state offers Retry estimate; genuine custom state says Tailored quote; phone
+footer messages wrap within their column instead of overlapping navigation.
+Verified: 20 pricing/hook tests, marketing typecheck, exact design in local
+browser at 390 x 720 shows $29,593 using published version 14. Signed estimate
+and Corrugated/Trapezoidal amount and breakdown parity covered by regression.
+Pending: independent delivery review, wider responsive checks, owner preview.
+Real iPhone Safari remains unverified. Production deployment is not authorized
+by this bug report and has not occurred. No enquiry or email sent.
+
+Independent delivery review completed: exact design, price breakdown, enquiry,
+Edit my design, over-limit custom state and return to priced state verified in
+Chromium responsive previews at 390 x 720 and 320 x 568. Footer remains readable
+and action reachable. House connection heading clipping was ordinary panel
+scroll position; scrolling reveals the heading and controls. No material defects
+found; local relevant dimensions assessed 8/10. Actual unavailable/retry network
+interaction was not independently exercised. Physical iPhone Safari and owner
+review remain pending. Typecheck, scoped lint, docs and architecture guards pass.
+Preview: http://localhost:3076/configurator-preview?open=1 (local computer only).
+
+Release authorization (2026-09-17): Jordan said "Yes, make it live."
+This supersedes the preceding no-release boundary for this scoped fix.
+Implementation and independent local evidence remain unchanged; publication
+is pending required PR checks and production verification.

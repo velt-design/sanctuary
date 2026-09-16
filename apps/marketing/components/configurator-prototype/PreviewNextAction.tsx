@@ -9,13 +9,13 @@ import styles from './journey.module.css';
 import { useRail } from './RailProvider';
 import JourneyNavigation from './JourneyNavigation';
 
-export default function PreviewNextAction({ selection, reviewPrice }: { selection: PreviewSelection; reviewPrice?: ReviewPrice | null }) {
+export default function PreviewNextAction({ selection, reviewPrice, retry }: { selection: PreviewSelection; reviewPrice?: ReviewPrice | null; retry?: () => void }) {
   const { roof, input, result, configuratorPrice } = selection;
   const { section } = useRail();
   const priced = hasSimpleRoofPrice(roof) && result?.status === 'priced' ? result : null;
   return <footer className={styles.next} data-review={section==='review'} aria-label="Continue your design">
     <div className={styles.nextRow}>
-      <div className={styles.mobileEstimate}><JourneyEstimate selection={selection} reviewPrice={reviewPrice}/></div>
+      <div className={styles.mobileEstimate}><JourneyEstimate retry={retry} selection={selection} reviewPrice={reviewPrice}/></div>
       {section === 'review' && <StaffRevisionReturn draft={{version: 1, input, roof}} />}
     </div>
     <JourneyNavigation />
