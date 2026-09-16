@@ -7,6 +7,7 @@ import {
   timingSafeEqual,
 } from 'node:crypto';
 import postgres, { type Sql, type TransactionSql } from 'postgres';
+import { praxisDatabaseTls } from './databaseTls';
 import {
   PRAXIS_CONTEXT_SCHEMA_VERSION,
   PRAXIS_ERROR_SCHEMA_VERSION,
@@ -36,7 +37,7 @@ const CONTEXT_QUERY_KEYS = new Set(['resource', 'projectId', 'limit', 'changedAf
 const SANITIZER_POLICY_VERSION = 'sanctuary.praxis.sanitizer.v1' as const;
 const PROJECTION_CATEGORIES = ['credential_key', 'credential_value', 'source_bounds'] as const;
 
-type ConnectorConfig = {
+export type ConnectorConfig = {
   databaseUrl: string;
   databaseSsl: false | 'verify-full';
   token: string;
@@ -222,7 +223,7 @@ export function parsePraxisContextQuery(url: URL): PraxisContextQuery & { cursor
 
 function createDatabase(config: ConnectorConfig): Sql {
   return postgres(config.databaseUrl, {
-    ssl: config.databaseSsl,
+    ssl: praxisDatabaseTls(config.databaseUrl, config.databaseSsl),
     max: 1,
     idle_timeout: 5,
     connect_timeout: 5,
@@ -424,42 +425,27 @@ export async function readPraxisContext(
     );
   }
   const limitWithSentinel = query.limit + 1;
-  let snapshot: { asOf: string; rows: ProjectionRow[] };
-  const client = dependencies.createDatabase(config);
-  try {
-    snapshot = await client.begin('read only isolation level repeatable read', async (transaction) => {
-      await setReadBudgets(transaction);
-      const timestampRows = await transaction<{ as_of: Date | string }[]>`
-        select transaction_timestamp() as as_of
-      `;
-      const asOf = new Date(timestampRows[0]!.as_of).toISOString();
-      await verifyDatabaseIdentity(transaction, config);
-      const rows = await transaction<ProjectionRow[]>`
-        select resource, id, project_id, parent_id, recorded_at, record_version, payload,
-          policy_version, redaction_count, omission_count, redaction_categories
-        from praxis_reporting.context_page_v1(
-          ${query.resource},
-          ${query.projectId},
-          ${query.changedAfter},
-          ${asOf},
-          ${null},
-          ${null},
-          ${null},
-          ${limitWithSentinel}
-        )
-      `;
-      return { asOf, rows };
-    });
-  } catch (error) {
-    const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
-    if (code === '42P01' || code === '42883' || code === '42501') {
-      throw new PraxisConnectorError(503, 'PROJECTION_NOT_READY', 'The Praxis reporting projection is not ready.', true);
-    }
-    if (error instanceof PraxisConnectorError) throw error;
-    throw new PraxisConnectorError(503, 'SOURCE_UNAVAILABLE', 'The Sanctuary source is unavailable.', true);
-  } finally {
-    await client.end({ timeout: 1 }).catch(() => undefined);
-  }
+  const snapshot = await withPraxisReadTransaction(config, async (transaction) => {
+    const timestampRows = await transaction<{ as_of: Date | string }[]>`
+      select transaction_timestamp() as as_of
+    `;
+    const asOf = new Date(timestampRows[0]!.as_of).toISOString();
+    const rows = await transaction<ProjectionRow[]>`
+      select resource, id, project_id, parent_id, recorded_at, record_version, payload,
+        policy_version, redaction_count, omission_count, redaction_categories
+      from praxis_reporting.context_page_v1(
+        ${query.resource},
+        ${query.projectId},
+        ${query.changedAfter},
+        ${asOf},
+        ${null},
+        ${null},
+        ${null},
+        ${limitWithSentinel}
+      )
+    `;
+    return { asOf, rows };
+  }, dependencies);
 
   if (snapshot.rows.length > query.limit) {
     throw new PraxisConnectorError(
@@ -497,41 +483,29 @@ export async function readPraxisHealth(
   requestId: string,
   dependencies: PraxisServerDependencies = DEFAULT_DEPENDENCIES,
 ): Promise<PraxisHealthResponse> {
-  const client = dependencies.createDatabase(config);
-  try {
-    await client.begin('read only', async (transaction) => {
-      await setReadBudgets(transaction);
-      await verifyDatabaseIdentity(transaction, config);
-      const rows = await transaction<{ ready: boolean }[]>`
-        select
-          has_schema_privilege(current_user, 'praxis_reporting', 'USAGE')
-          and has_function_privilege(
-            current_user,
-            'praxis_reporting.context_page_v1(text,uuid,timestamptz,timestamptz,timestamptz,text,uuid,integer)',
-            'EXECUTE'
-          ) as ready
-      `;
-      if (rows[0]?.ready !== true) {
-        throw new PraxisConnectorError(503, 'PROJECTION_NOT_READY', 'The Praxis reporting projection is not ready.', true);
-      }
-      await transaction`
-        select resource
-        from praxis_reporting.context_page_v1(
-          'all', null, null, now(), null, null, null, 1
-        )
-        limit 1
-      `;
-    });
-  } catch (error) {
-    const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
-    if (code === '42P01' || code === '42883' || code === '42501') {
+  await withPraxisReadTransaction(config, async (transaction) => {
+    const rows = await transaction<{ ready: boolean }[]>`
+      select
+        has_schema_privilege(current_user, 'praxis_reporting', 'USAGE')
+        and has_function_privilege(
+          current_user,
+          'praxis_reporting.context_page_v1(text,uuid,timestamptz,timestamptz,timestamptz,text,uuid,integer)',
+          'EXECUTE'
+        ) as ready
+    `;
+    if (rows[0]?.ready !== true) {
       throw new PraxisConnectorError(503, 'PROJECTION_NOT_READY', 'The Praxis reporting projection is not ready.', true);
     }
-    if (error instanceof PraxisConnectorError) throw error;
-    throw new PraxisConnectorError(503, 'SOURCE_UNAVAILABLE', 'The Sanctuary source is unavailable.', true);
-  } finally {
-    await client.end({ timeout: 1 }).catch(() => undefined);
-  }
+    // Probe the reader contract without calculating every project's finances.
+    // Customer-specific reads verify their full projection separately.
+    await transaction`
+      select resource
+      from praxis_reporting.context_page_v1(
+        'project', null, null, now(), null, null, null, 1
+      )
+      limit 1
+    `;
+  }, dependencies);
   const retrievedAt = new Date().toISOString();
   logPraxisDiagnostic('health_read', { requestId, ready: true });
   return {
@@ -547,6 +521,31 @@ export async function readPraxisHealth(
     },
     status: { connector: 'ready', database: 'reachable', projection: 'ready' },
   };
+}
+
+/** Shared identity/grant/transaction boundary for every reporting endpoint. */
+export async function withPraxisReadTransaction<T>(
+  config: ConnectorConfig,
+  read: (transaction: TransactionSql) => Promise<T>,
+  dependencies: PraxisServerDependencies = DEFAULT_DEPENDENCIES,
+): Promise<T> {
+  const client = dependencies.createDatabase(config);
+  try {
+    return await client.begin('read only isolation level repeatable read', async (transaction) => {
+      await setReadBudgets(transaction);
+      await verifyDatabaseIdentity(transaction, config);
+      return read(transaction);
+    }) as T;
+  } catch (error) {
+    const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+    if (code === '42P01' || code === '42883' || code === '42501') {
+      throw new PraxisConnectorError(503, 'PROJECTION_NOT_READY', 'The Praxis reporting projection is not ready.', true);
+    }
+    if (error instanceof PraxisConnectorError) throw error;
+    throw new PraxisConnectorError(503, 'SOURCE_UNAVAILABLE', 'The Sanctuary source is unavailable.', true);
+  } finally {
+    await client.end({ timeout: 1 }).catch(() => undefined);
+  }
 }
 
 async function setReadBudgets(transaction: TransactionSql): Promise<void> {

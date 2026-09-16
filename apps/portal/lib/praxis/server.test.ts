@@ -16,6 +16,7 @@ import {
   type PraxisServerDependencies,
 } from './server';
 import type { Sql, TransactionSql } from 'postgres';
+import { parseCustomerSearch, parseReceiptProject, readPraxisVerifiedReceipts, searchPraxisCustomers } from './customer-read';
 
 const ORIGINAL_ENV = process.env;
 const TOKEN = 'test-token-with-at-least-thirty-two-characters';
@@ -78,6 +79,8 @@ function mockDatabase(options: {
   ready?: boolean;
   failure?: Error;
   projectionFailure?: Error;
+  customerRows?: Array<Record<string, unknown>>;
+  receiptRows?: Array<Record<string, unknown>>;
 } = {}) {
   const transaction = vi.fn(async (strings: TemplateStringsArray) => {
     const sql = strings.join('?');
@@ -86,6 +89,8 @@ function mockDatabase(options: {
     if (sql.includes('transaction_timestamp()')) return [{ as_of: '2026-09-03T00:00:00.000Z' }];
     if (sql.includes('from praxis_reporting.source_identity_v1')) return [options.identity ?? IDENTITY];
     if (sql.includes('has_schema_privilege')) return [{ ready: options.ready ?? true }];
+    if (sql.includes('from praxis_reporting.projects_v1')) return options.customerRows ?? [{ id: '10000000-0000-4000-8000-000000000001' }];
+    if (sql.includes('from praxis_reporting.verified_receipts_v1')) return options.receiptRows ?? [];
     if (sql.includes('from praxis_reporting.context_page_v1')) {
       if (options.projectionFailure) throw options.projectionFailure;
       return (options.rows ?? []).map((row) => ({
@@ -108,6 +113,55 @@ function mockDatabase(options: {
 }
 
 describe('Praxis connector trust boundary', () => {
+  it('bounds customer search and rejects extra or duplicate query parameters', () => {
+    expect(parseCustomerSearch(new URL('https://example.test/?q=Ada'))).toBe('Ada');
+    for (const query of ['q=a', 'q=Ada&q=Other', 'q=Ada&projectId=other', 'q=%00Ada']) {
+      expect(() => parseCustomerSearch(new URL(`https://example.test/?${query}`))).toThrow();
+    }
+    expect(() => parseReceiptProject(new URL('https://example.test/?projectId=proj_invented'))).toThrow();
+  });
+  it('searches sanitized projections inside the real identity boundary, with literal parameters and a visible result cap', async () => {
+    const row = { project_id: '10000000-0000-4000-8000-000000000001', contact_id: '00000000-0000-4000-8000-000000000001',
+      project_name: 'Synthetic project', customer_name: 'Ada Customer', email: 'ada@example.test', stage: 'DEPOSIT', archived: false, recorded_at: '2026-09-03T00:00:00Z' };
+    const db = mockDatabase({ customerRows: Array.from({ length: 21 }, () => row) });
+    const result = await searchPraxisCustomers('Ada%', loadPraxisConnectorConfig(), 'request', db.dependencies);
+    expect(result.hasMore).toBe(true); expect(result.customers).toHaveLength(20);
+    expect(result.customers[0]?.email).toBe('ada@example.test');
+    const sql = db.transaction.mock.calls.map(call => call[0].join('?')).join('\n');
+    expect(sql).toContain('source_identity_v1'); expect(sql).toContain('strpos('); expect(sql).not.toContain('Ada%');
+    expect(db.end).toHaveBeenCalled();
+  });
+  it('does not query customer projections under an unsafe reporting identity', async () => {
+    const db = mockDatabase({ identity: { ...IDENTITY, can_bypass_rls: true } });
+    await expect(searchPraxisCustomers('Ada', loadPraxisConnectorConfig(), 'request', db.dependencies)).rejects.toMatchObject({ code: 'PROJECTION_NOT_READY' });
+    expect(db.transaction.mock.calls.some(call => call[0].join('').includes('from praxis_reporting.projects_v1'))).toBe(false);
+  });
+  it('distinguishes absent verified receipts from proof of non-payment', async () => {
+    const db = mockDatabase();
+    const result = await readPraxisVerifiedReceipts('10000000-0000-4000-8000-000000000001', loadPraxisConnectorConfig(), 'request', db.dependencies);
+    expect(result.receipts).toEqual([]); expect(result.limitation).toContain('does not prove');
+    expect(result.verification).toBe('portal_recorded_xero_match');
+  });
+  it('does not return another project\'s receipt', async () => {
+    const db = mockDatabase({ receiptRows: [{ project_id: '20000000-0000-4000-8000-000000000002', amount_inc_gst_cents: 100 }] });
+    await expect(readPraxisVerifiedReceipts('10000000-0000-4000-8000-000000000001', loadPraxisConnectorConfig(), 'request', db.dependencies)).rejects.toMatchObject({ code: 'PROJECTION_NOT_READY' });
+  });
+  it('returns positive receipt evidence with its amount, currency and verification time, and rejects incomplete snapshots', async () => {
+    const projectId = '10000000-0000-4000-8000-000000000001';
+    const row = { id: 'b0000000-0000-4000-8000-000000000001', project_id: projectId,
+      invoice_id: '70000000-0000-4000-8000-000000000001', payment_entry_id: '90000000-0000-4000-8000-000000000001',
+      receipt_id: 'b1000000-0000-4000-8000-000000000001', tenant_id: 'b2000000-0000-4000-8000-000000000001',
+      amount_inc_gst_cents: 1, currency: 'NZD', receipt_date: '2026-09-01', approved_at: '2026-09-03T00:00:00Z',
+      source_kind: 'INVOICE_PAYMENT', recording_method: 'AUTOMATIC', evidence_fingerprint: 'a'.repeat(64) };
+    const config = loadPraxisConnectorConfig();
+    const result = await readPraxisVerifiedReceipts(projectId, config, 'request', mockDatabase({ receiptRows: [row] }).dependencies);
+    expect(result.receipts[0]).toMatchObject({ amountIncGstCents: 1, currency: 'NZD', verifiedAt: '2026-09-03T00:00:00.000Z' });
+    expect(result.source).toMatchObject({ sourceKey: 'sanctuary', environment: 'test' });
+    await expect(readPraxisVerifiedReceipts(projectId, config, 'request', mockDatabase({ receiptRows: Array(101).fill(row) }).dependencies))
+      .rejects.toMatchObject({ code: 'SNAPSHOT_TOO_LARGE' });
+    await expect(readPraxisVerifiedReceipts(projectId, config, 'request', mockDatabase({ receiptRows: [{ ...row, amount_inc_gst_cents: 0 }] }).dependencies))
+      .rejects.toMatchObject({ code: 'PROJECTION_NOT_READY' });
+  });
   it('fails dark when any dedicated credential or binding is absent', () => {
     delete process.env.PRAXIS_SANCTUARY_DATABASE_URL;
     expect(() => loadPraxisConnectorConfig()).toThrowError(
@@ -320,6 +374,8 @@ describe('Praxis connector trust boundary', () => {
       status: { connector: 'ready', database: 'reachable', projection: 'ready' },
     });
     expect(healthyDb.end).toHaveBeenCalledOnce();
+    const healthProbe = healthyDb.transaction.mock.calls.find(([strings]) => String(strings).includes('from praxis_reporting.context_page_v1'));
+    expect(String(healthProbe?.[0])).toContain("'project', null");
 
     const overGranted = mockDatabase({ identity: { ...IDENTITY, forbidden_table_privilege: true } });
     await expect(readPraxisHealth(loadPraxisConnectorConfig(), 'health-bad', overGranted.dependencies))
@@ -333,3 +389,4 @@ describe('Praxis connector trust boundary', () => {
     expect(drifted.end).toHaveBeenCalledOnce();
   });
 });
+
