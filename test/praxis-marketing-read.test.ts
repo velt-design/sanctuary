@@ -3,10 +3,10 @@ import { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 const mocks = vi.hoisted(() => ({ query: vi.fn() }));
-vi.mock('./server', async importOriginal => ({ ...await importOriginal<typeof import('./server')>(),
+vi.mock('../apps/portal/lib/praxis/server', async importOriginal => ({ ...await importOriginal<typeof import('../apps/portal/lib/praxis/server')>(),
   withPraxisReadTransaction: (_config: unknown, callback: (query: unknown) => unknown) => callback(mocks.query) }));
-import { parseMarketingQuery, readPraxisMarketing } from './marketing-read';
-import type { ConnectorConfig } from './server';
+import { parseMarketingQuery, readPraxisMarketing } from '../apps/portal/lib/praxis/marketing-read';
+import type { ConnectorConfig } from '../apps/portal/lib/praxis/server';
 const config = { sourceKey: 'sanctuary', connectionId: '10000000-0000-4000-8000-000000000001', environment: 'test' } as ConnectorConfig;
 const query = { period: { start: '2020-09-16', end: '2020-09-16' }, comparison: { start: '2020-09-15', end: '2020-09-15' } };
 let db: PGlite;

@@ -582,14 +582,15 @@ When `docs:impact` prints an advisory, update the suggested owner doc if the cod
 
 ## Praxis Reporting Tests
 
-- `npx vitest run apps/portal/lib/praxis apps/portal/app/api/integrations/praxis/v1/routes.test.ts`
+- `npx vitest run apps/portal/lib/praxis apps/portal/app/api/integrations/praxis/v1/routes.test.ts test/praxis-marketing-read.test.ts`
   includes the marketing aggregate's actual SQL against disposable PGlite with
   more than 100 records, NZ day boundaries, exact test exclusion, distinct quote
   activity, empty periods and omitted/orphan rejection. Route checks cover
   bearer/source rejection, bounded dates and GET-only behavior. Existing server
   tests retain read-transaction identity/role/failure coverage. PGlite verifies
   calculation semantics; real restricted-role and live performance evidence
-  remain separate from this fixture proof.
+  remain separate from this fixture proof. The PGlite fixture lives in root
+  `test/` so app-only Vercel installs do not typecheck a root-only test dependency.
 
 - `PRAXIS_DISPOSABLE_POSTGRES_BIN=<absolute PostgreSQL 17 bin directory> node scripts/test-praxis-customer-read-db.mjs` creates its own local disposable cluster with current finance SQL and no reporting schema or optional project version column. It checks the compatible bootstrap without business backfills, nullable freshness, exact finance-function preservation except reporting authorization, rollback/replay, unknown-auth rejection, customer join, receipt amount/currency/identity/reversal exclusion and reporting-only grants with read-only defaults disabled for denial probes. It never accepts a remote database URL. The Docker denial suite also upgrades the legacy reporting fixture to this current bootstrap before its broad boundary checks. Finance write-lifecycle tests remain separate; neither fixture proves hosted Xero behavior. Focused `server.test.ts` cases cover query bounds, source identity, positive/absent receipts, overflow and safe failures.
 

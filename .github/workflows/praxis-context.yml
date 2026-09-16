@@ -11,6 +11,7 @@ on:
       - "supabase/migrations/*praxis*.sql"
       - "supabase/tests/praxis*.sql"
       - "test/praxis-context*.test.ts"
+      - "test/praxis-marketing*.test.ts"
       - "package.json"
       - "package-lock.json"
   push:
@@ -23,6 +24,7 @@ on:
       - "supabase/migrations/*praxis*.sql"
       - "supabase/tests/praxis*.sql"
       - "test/praxis-context*.test.ts"
+      - "test/praxis-marketing*.test.ts"
       - "package.json"
       - "package-lock.json"
   workflow_dispatch:
@@ -54,7 +56,7 @@ jobs:
         run: npm run test:praxis:db:fast
 
       - name: Endpoint and contract tests
-        run: npx vitest run apps/portal/lib/praxis test/praxis-context-migration.test.ts
+        run: npx vitest run apps/portal/lib/praxis apps/portal/app/api/integrations/praxis/v1/routes.test.ts test/praxis-context-migration.test.ts test/praxis-marketing-read.test.ts
 
       - name: Typecheck
         run: npm run typecheck
