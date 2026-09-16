@@ -59,9 +59,9 @@ export default function ProjectHeaderActions({ project }: { project: ProjectPage
       >
         Design Workbench
       </ButtonLink>
-      <ButtonLink href={`/staff/projects/${encodeURIComponent(project.id)}/installer-payout`} size="small" variant="secondary">
+      {process.env.NEXT_PUBLIC_INSTALLER_PAYOUT_ENABLED === 'true' && <ButtonLink href={`/staff/projects/${encodeURIComponent(project.id)}/installer-payout`} size="small" variant="secondary">
         Installer payout
-      </ButtonLink>
+      </ButtonLink>}
       {isAdmin ? (
         <OverflowMenu
           label="More"

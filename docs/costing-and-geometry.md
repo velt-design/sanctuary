@@ -8,6 +8,13 @@ Costing and geometry are shared domain sources of truth. Do not copy their logic
 
 ## Installer payout transition
 
+This separate workflow is excluded from configurator activation. Its page and
+project navigation require `NEXT_PUBLIC_INSTALLER_PAYOUT_ENABLED=true`, which
+remains unset in production. Production has no payout event table; the proposed
+`20260911000001` migration prefix also collides with the already-installed delivery
+completion migration. Reconcile migration identity/history in its own release
+before enabling the page. Do not install it as part of the enquiry rollout.
+
 `calculateInstallerPayoutV1()` in `@sp/costing` proposes erection pay from the canonical site installation total and an explicitly supplied resolved costing configuration/version reference. It never falls back to repository rates. A reviewed benchmark must name the same scope and its evidence; missing or different scope returns `review_required` without a payout proposal. For matched scope, the proposal preserves the higher of model labour and benchmark, itemises the transition top-up, and calculates GST according to the installer's registration. The historical helper uses the December 2023 GST-inclusive base/area/roof schedule and returns an ex-GST benchmark; it does not establish scope eligibility. Timber, partial invoices, split crews, accessories and variations need explicit scope reconciliation before comparison.
 
 The project's **Installer payout** page consumes this calculation through an admin-only preview. It requires exactly one accepted quote, uses its source estimate through the canonical calculator adapter, and requires published rates rather than legacy fallback. The admin enters the reviewed ex-GST benchmark, scope, exclusions, terms and installer acceptance reference. A fingerprint binds the preview to the inputs, terms and pricebook; confirmation recalculates before saving. The frozen agreement stores the canonical site and pricing provenance as admin-only evidence. Staff see the agreed payout sheet, variations and invoice reconciliation without the internal model comparison.
