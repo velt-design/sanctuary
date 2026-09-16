@@ -292,7 +292,7 @@ export default function ProjectCommandCentreFixtureClient({
       </Card>
     ) : (
       <>
-      <ProjectCorrespondenceCard sample={previewOnly} context={correspondence} state={viewState === 'stale' ? 'stale' : viewState === 'failed' ? 'error' : viewState === 'pending' ? 'loading' : 'ready'} />
+      <ProjectCorrespondenceCard sample={previewOnly} context={correspondence} project={{ customerEmail: project.contactEmail, quoteRef: currentDesign.quote?.quoteRef }} state={viewState === 'stale' ? 'stale' : viewState === 'failed' ? 'error' : viewState === 'pending' ? 'loading' : 'ready'} />
       <fieldset disabled={previewOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <ProjectRecentNotesEvents
         projectId={project.id}

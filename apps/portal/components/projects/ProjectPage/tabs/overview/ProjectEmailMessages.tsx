@@ -1,25 +1,42 @@
 import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { correspondenceSourceHref, type ProjectCorrespondenceContext } from './projectCorrespondencePresentation';
 import styles from './ProjectCorrespondenceCard.module.css';
+import { projectEmailGroups, referencesProjectQuote, type EmailProjectContext } from './projectEmailGroups';
 
-export default function ProjectEmailMessages({ messages, sample }: {
+export default function ProjectEmailMessages({ messages, sample, project = {}, expanded, onExpand, earlierOpen, onEarlierOpen }: {
   messages: NonNullable<ProjectCorrespondenceContext['messages']>; sample: boolean;
+  project?: EmailProjectContext; expanded: ReadonlySet<string>; onExpand: (id: string, open: boolean) => void;
+  earlierOpen: boolean; onEarlierOpen: (open: boolean) => void;
 }) {
-  return <div className={styles.messages} aria-label="Customer email messages">
-    {messages.length ? [...messages].sort((a, b) => Date.parse(b.sentAt) - Date.parse(a.sentAt)).map(message => {
+  const { featured, earlier, latestCustomer } = projectEmailGroups(messages, project.customerEmail);
+  function renderMessage({ message, copies }: (typeof featured)[number], label?: string) {
       const href = correspondenceSourceHref(message.url);
-      const preview = message.bodyText.slice(0, 480);
+      const preview = message.bodyText.slice(0, 200);
+      const expandable = message.bodyText.length > preview.length;
       return <article key={message.id} className={styles.message}>
+        {label ? <p className={styles.messageLabel}>{label}</p> : null}
         <h3>{message.subject || 'No subject'}</h3>
         <p className={styles.explanation}>From {message.from} · {formatPortalDateTime(message.sentAt)}</p>
-        <blockquote>{preview || 'Message text unavailable in this check.'}</blockquote>
-        {message.bodyText.length > preview.length ? <details className={styles.sources}>
+        {referencesProjectQuote(message, project.quoteRef) ? <p className={styles.quoteMatch}>References this project’s quote {project.quoteRef}</p> : null}
+        {!(expandable && expanded.has(message.id)) ? <blockquote>{preview || 'Message text unavailable in this check.'}{expandable ? '…' : ''}</blockquote> : null}
+        {expandable ? <details className={styles.sources} open={expanded.has(message.id)} onToggle={event => onExpand(message.id, event.currentTarget.open)}>
           <summary>Read message</summary><blockquote>{message.bodyText}</blockquote>
         </details> : null}
         {message.truncated ? <p className={styles.explanation}>Part of this message was omitted by the read limit. Open the original for the rest.</p> : null}
         {sample ? <p className={styles.explanation}>Sample message — there is no original email to open.</p>
           : href ? <a href={href} target="_blank" rel="noopener noreferrer">Open original email in Outlook ↗</a> : <p>Source link unavailable</p>}
+        {copies.length ? <details className={styles.sources}><summary>{copies.length} additional mailbox {copies.length === 1 ? 'copy' : 'copies'}</summary>
+          <p className={styles.explanation}>Same sender, subject, sent time and complete text.</p>
+          {!sample ? copies.map(copy => <p key={copy.id}><a href={correspondenceSourceHref(copy.url) ?? undefined} target="_blank" rel="noopener noreferrer">Open other copy in Outlook ↗</a></p>) : null}
+        </details> : null}
       </article>;
-    }) : <p>No customer messages were returned. This does not mean there has been no correspondence.</p>}
+  }
+  return <div className={styles.messages} aria-label="Customer email messages">
+    {featured.map((group, index) => renderMessage(group, index === 0 ? 'Latest email found' : 'Latest email from the customer'))}
+    {project.customerEmail && messages.length && !latestCustomer ? <p className={styles.explanation}>No incoming customer email was found in this limited check.</p> : null}
+    {earlier.length ? <details className={styles.sources} open={earlierOpen} onToggle={event => { if (event.target === event.currentTarget) onEarlierOpen(event.currentTarget.open); }}>
+      <summary>Earlier emails ({earlier.length})</summary><div className={styles.messages}>{earlier.map(group => renderMessage(group))}</div>
+    </details> : null}
+    {!messages.length ? <p>No customer messages were returned. This does not mean there has been no correspondence.</p> : null}
   </div>;
 }

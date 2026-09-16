@@ -1,0 +1,19 @@
+import { describe, expect, it } from 'vitest';
+import { renderIntoDocument } from '../../../../../../../test/reactHarness';
+import ProjectEmailMessages from './ProjectEmailMessages';
+import type { EmailMessage } from './projectEmailGroups';
+
+describe('refreshed email text', () => {
+  it('shows a newly shortened excerpt even if its full-message disclosure was open', () => {
+    const message: EmailMessage = { id: 'one', subject: 'Project question', from: 'customer@example.test',
+      sentAt: '2026-09-16T01:00:00Z', receivedAt: '2026-09-16T01:00:00Z', observedAt: '2026-09-16T01:00:00Z',
+      url: 'https://outlook.office.com/mail/id/one', bodyText: 'A longer project question. '.repeat(20), truncated: false, association: 'customer_address_only' };
+    const props = { sample: true, expanded: new Set(['one']), onExpand: () => undefined, earlierOpen: false, onEarlierOpen: () => undefined };
+    const view = renderIntoDocument(<ProjectEmailMessages {...props} messages={[message]} />);
+    expect((view.container.querySelector('details') as HTMLDetailsElement).open).toBe(true);
+    view.rerender(<ProjectEmailMessages {...props} messages={[{ ...message, bodyText: 'A shorter available excerpt.', truncated: true }]} />);
+    expect(view.container.querySelector('blockquote')?.textContent).toBe('A shorter available excerpt.');
+    expect(view.container.textContent).toContain('Part of this message was omitted');
+    view.unmount();
+  });
+});

@@ -336,7 +336,8 @@ export default function OverviewTab({
         </Card>
       }
     >
-      <ProjectCorrespondenceQuery projectId={snapshot.project.id} onAccessEnding={onAccessEnding} />
+      <ProjectCorrespondenceQuery projectId={snapshot.project.id} onAccessEnding={onAccessEnding}
+        project={{ customerEmail: snapshot.project.contactEmail, quoteRef: commandQuery.data?.currentDesign.quote?.quoteRef }} />
       <ProjectRecentNotesEvents
         projectId={snapshot.project.id}
         notes={snapshot.notes}

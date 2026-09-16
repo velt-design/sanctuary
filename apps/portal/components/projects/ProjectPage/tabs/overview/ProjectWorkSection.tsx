@@ -24,6 +24,7 @@ import {
 import ProjectWorkFilesCard from "./ProjectWorkFilesCard";
 import ProjectWorkControls from "./ProjectWorkControls";
 import ProjectWorkList from "./ProjectWorkList";
+import ProjectEmailWorkControls from "./ProjectEmailWorkControls";
 import {
   formatProjectWorkDue,
   isDecisionReviewWorkItem,
@@ -34,7 +35,6 @@ import {
   type ProjectWorkCommandController,
 } from "./useProjectWorkCommandController";
 import {
-  isProhibitedProjectWorkItem,
   isProhibitedProjectWorkPrimary,
 } from "./projectWorkVisibilityPolicy";
 import styles from "./ProjectWorkSection.module.css";
@@ -295,11 +295,15 @@ export default function ProjectWorkSection({
             }
             footer={
               <div className={styles.commandArea}>
-                {controller.primarySentCommand ? (
-                  <p className={styles.commandHelp}>
-                    Send in Outlook first. Recording it starts the next reminder;
-                    recording a reply stops reminders.
-                  </p>
+                {controller.primarySentCommand || controller.primaryCanRecordReply ? (
+                  <ButtonLink href="#customer-emails" disabled={controller.stale}
+                    onClick={() => {
+                      const emails = document.getElementById("customer-emails");
+                      emails?.focus({ preventScroll: true });
+                      emails?.scrollIntoView({ block: "start" });
+                    }}>
+                    Read customer emails
+                  </ButtonLink>
                 ) : (
                   <span className={styles.commandLabel}>
                     {primary.href
@@ -352,39 +356,14 @@ export default function ProjectWorkSection({
                       Mark complete
                     </Button>
                   ) : null}
-                  {active &&
-                  controller.primarySentCommand &&
-                  primary.primaryItem ? (
-                    <Button
-                      loading={
-                        controller.pendingItemId === primary.primaryItem.id
-                      }
-                      disabled={controller.pending || controller.stale}
-                      onClick={() =>
-                        void controller.runItemAction(
-                          primary.primaryItem!,
-                          "sent",
-                        )
-                      }
-                    >
-                      Record email sent
-                    </Button>
-                  ) : null}
-                  {active &&
-                  controller.primaryCanRecordReply &&
-                  primary.primaryItem ? (
-                    <Button
-                      variant="tertiary"
-                      disabled={controller.pending || controller.stale}
-                      onClick={() =>
-                        void controller.runItemAction(
-                          primary.primaryItem!,
-                          "reply",
-                        )
-                      }
-                    >
-                      Record customer reply
-                    </Button>
+                  {active && primary.primaryItem &&
+                  (controller.primarySentCommand || controller.primaryCanRecordReply) ? (
+                    <ProjectEmailWorkControls
+                      item={primary.primaryItem}
+                      controller={controller}
+                      canRecordSent={Boolean(controller.primarySentCommand)}
+                      canRecordReply={controller.primaryCanRecordReply}
+                    />
                   ) : null}
                 </div>
               </div>

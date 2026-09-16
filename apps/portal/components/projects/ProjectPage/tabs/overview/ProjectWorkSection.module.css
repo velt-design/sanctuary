@@ -306,3 +306,17 @@
     min-height: 44px;
   }
 }
+
+.emailRecording { width: 100%; }
+.emailRecording summary {
+  cursor: pointer;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+  padding-block: var(--ui-space-2);
+  min-height: 44px;
+}
+.emailRecording summary:focus-visible {
+  outline: 2px solid var(--ui-action);
+  outline-offset: 2px;
+}
+.emailRecording[open] > p { margin-bottom: var(--ui-space-3); }

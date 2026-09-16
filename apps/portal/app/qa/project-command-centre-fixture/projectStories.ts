@@ -65,5 +65,13 @@ export function projectStory(name: ProjectStory) {
     from: 'aroha@example.invalid', sentAt: correspondence.sources[0].recordedAt,
     receivedAt: correspondence.sources[0].recordedAt, observedAt: correspondence.observedAt,
     url: correspondence.sources[0].url, bodyText: excerpt, truncated: false, association: 'customer_address_only' }];
+  if (name === 'quote') {
+    const sent = { ...correspondence.messages[0], id: 'sample-quote', from: 'team@example.invalid',
+      subject: `Your revised quote ${currentDesign.quote!.quoteRef}`,
+      sentAt: '2026-09-15T23:00:00Z', receivedAt: '2026-09-15T23:00:00Z',
+      bodyText: 'Hi Aroha, your revised quote is ready to review. It includes the design changes we discussed. Please review the proposed scope and price and let us know whether you have any questions. We will confirm installation timing separately once the agreement is in place.' };
+    correspondence.messages.push(sent, { ...sent, id: 'sample-copy', url: 'https://outlook.office.com/mail/id/sample-copy' },
+      { ...sent, id: 'sample-earlier', sentAt: '2026-09-14T23:00:00Z', subject: 'Your initial design proposal', bodyText: 'Here is the first design proposal for discussion.' });
+  }
   return { work, currentDesign, correspondence };
 }

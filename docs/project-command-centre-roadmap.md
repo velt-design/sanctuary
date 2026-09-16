@@ -4,30 +4,57 @@
 
 ### Current focus: useful workflow before release
 
-17 September continuation: the authenticated preview now reaches the receiver,
-but real correspondence still fails before the Outlook read. Private diagnostics
-isolated two contract defects: exact source-omission markers were rejected on
-scalar fields, and the source could exceed its aggregate-entry limit after
-adding markers. The paired receiver correction and forward reporting migration
-`20260917000001_praxis_projection_aggregate_bounds.sql` are implemented locally;
-neither is released. Native disposable PostgreSQL 17 verification passed the
-combined entry/byte bounds, retained root fields, exact omission counts,
-impossible-budget refusal, rollback/replay and unchanged grants/business rows.
-The 52 focused receiver tests and receiver typecheck passed. Independent review
-found no material defect in the paired backend correction and independently
-passed 50 receiver/customer-context tests and the native database harness. The
-Docker PostgreSQL 17 denial suite and fast PGlite suite also passed with the new
-migration and regression included; 34 Portal connector/route/marketing tests and
-the changed-architecture report passed. The Docker harness now normalizes CRLF
-before finding its bootstrap stub, fixing its Windows invocation. This evidence
-does not establish hosted correspondence or UI acceptance. Keep real diagnostic
-evidence ignored and private. Next: complete publication checks and establish
-the reviewed release path before
-repeating the authenticated real-message read. Full UI acceptance, correct
-project association, genuine outcome/return and three real scenarios remain
-unverified. The preceding status-only turn made no implementation progress;
-this continuation added and passed the native database regression coverage.
+Sanctuary branch `codex/project-clarity-20260916`, PR145, published base
+`fe06b72` integrates main `874f898`. The next UI batch is local and not yet
+published. Earlier checkpoints below are historical; this section is current.
 
+- **Verified real correspondence:** the signed-in protected Portal returned six
+  customer-address-matched emails with readable text, sender/date and source
+  links. The latest quote email agrees with the canonical current quote. Address
+  matching does not establish that every email belongs to this project. No AI
+  request, customer send, outcome write or bulk backfill occurred.
+- **Released backend fixes:** Jordan separately approved Velt PR372 at `8c080fa`
+  (merge `63d6845`), reporting migration `20260917000001`, and Velt PR373 at
+  `90cae9d` (merge `c1f6c28`). Permissions are scoped to those releases. Exact
+  hosted checks passed. Current Velt deployment is
+  `dpl_34kwXeAMCZiQUnb96nDbY6Ne5Ndt`; login200, unsigned-staff403 and alias
+  postflight passed. Rollback is `dpl_7J3CcLTQXPyZ5x82wXeABitnaaDY`.
+- **Verified reporting installation:** migration SHA-256
+  `80feea41007c8eb407a9dfa1f20a34846cbdc2a458a23e782837850c374c629e`;
+  native/Docker PostgreSQL17 and PGlite boundary regressions passed. Guarded live
+  rollback rehearsal covered14 selected-project records with zero entry/byte
+  violations. Independent postflight confirmed body/ledger hash and unchanged
+  grants/helper. Private receipts remain under ignored `.codex-tmp/clarity/`.
+- **Verified access-link protection:** fresh real email expansion shows the
+  removal marker and no token query parameter. Original Outlook links remain.
+  Protection is pattern-based, not universal DLP.
+- **Verified historical cache removal:** private Support ticket is closed;
+  GitHub confirmed garbage collection/cache clearance. Unsigned commit/raw-file
+  checks both return404. Ignored receipt retains the incident evidence. Do not
+  publish customer data or historical revision references.
+- **Local email UI independently verified:** latest mail and latest exact-customer
+  reply are featured; older mail is secondary; complete identical copies group
+  without losing source links. Exact subject quote references are labelled as
+  references, never acceptance. Reading state survives successful access refresh
+  while private text remains hidden during authorization checks. One rendering
+  defect was corrected and independently rechecked.
+- **Local action UI independently verified:** Read customer emails leads cadence
+  work; existing sent/reply commands remain under Update follow-up tracking with
+  reminder effects explained. Pending/stale/blocked restrictions remain. Review
+  caught missing shortcut focus/repeated scrolling; explicit focus/scroll fixed
+  both. Desktop/mobile and keyboard recheck passed; Tab enters email controls.
+  The combined batch passed52 focused tests, Portal types, workspace lint and
+  changed-architecture checks. Full publication checks remain.
+
+Remaining: publish the reviewed protected UI batch; verify project association
+and actual Outlook access; demonstrate a genuine authorized outcome and return;
+complete enquiry/quote/accepted-installation real journeys on desktop/mobile
+and independent full journey review. Do not invent a reply or acceptance for
+verification. Overall8/10 is not established. Protected Portal still uses the
+preceding layout; global Portal correspondence remains disabled. Current live
+backend approvals do not authorize a separate Portal UI release.
+
+### Earlier implementation checkpoints (superseded where noted above)
 Hosted-empty-POST correction is published as `a0cbecf`; full pre-push workspace
 types/lint and changed-architecture guard passed, as did independent review and
 30 focused route/gateway checks. Its separate protected deployment is READY;

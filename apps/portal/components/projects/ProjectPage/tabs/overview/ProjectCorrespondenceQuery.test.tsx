@@ -12,6 +12,25 @@ afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); document.body.innerH
 const flush = async () => { await act(async () => { await Promise.resolve(); }); };
 
 describe('private correspondence lifecycle', () => {
+  it('restores an open message after the expiry access check without retaining visible evidence during the check', async () => {
+    const context = { ...correspondenceFixture, messages: [{ id: 'mail-one', subject: 'Project response', from: 'customer@example.test',
+      sentAt: correspondenceFixture.observedAt, receivedAt: correspondenceFixture.observedAt, observedAt: correspondenceFixture.observedAt,
+      url: 'https://outlook.office.com/mail/id/one', bodyText: 'Read this full customer response. '.repeat(30), truncated: false, association: 'customer_address_only' }] };
+    let resolveAccess: (value: unknown) => void = () => undefined;
+    mocks.api.mockResolvedValueOnce({ state: 'available' }).mockResolvedValueOnce({ state: 'ready', context })
+      .mockImplementationOnce(() => new Promise(resolve => { resolveAccess = resolve; }));
+    const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
+    await flush();
+    await act(async () => { (view.container.querySelector('button') as HTMLButtonElement).click(); });
+    const details = view.container.querySelector('article details') as HTMLDetailsElement;
+    await act(async () => { details.open = true; details.dispatchEvent(new Event('toggle')); });
+    await act(async () => { vi.advanceTimersByTime(120001); });
+    expect(view.container.querySelector('article')).toBeNull();
+    await act(async () => { resolveAccess({ state: 'available' }); });
+    expect((view.container.querySelector('article details') as HTMLDetailsElement).open).toBe(true);
+    expect(view.container.textContent).toContain('Earlier conversation summary');
+    view.unmount();
+  });
   it('requests AI only after the separate interpretation action', async () => {
     mocks.api.mockResolvedValueOnce({ state: 'available' })
       .mockResolvedValueOnce({ state: 'ready', context: { ...correspondenceFixture, analysisAvailable: false } })

@@ -12,6 +12,7 @@ import {
   sentCommandForWorkItem,
 } from "./projectWorkPresentation";
 import { isProhibitedProjectWorkItem } from "./projectWorkVisibilityPolicy";
+import ProjectEmailWorkControls from "./ProjectEmailWorkControls";
 import styles from "./ProjectWorkSection.module.css";
 
 type ProjectWorkListProps = {
@@ -96,29 +97,9 @@ export default function ProjectWorkList(props: ProjectWorkListProps) {
               actions={
                 !blocked ? (
                   <div className={styles.rowActions}>
-                    {sendCommand ? (
-                      <Button
-                        size="small"
-                        loading={itemPending}
-                        disabled={controlsDisabled}
-                        onClick={() =>
-                          void props.controller.runItemAction(item, "sent")
-                        }
-                      >
-                        Record email sent
-                      </Button>
-                    ) : null}
-                    {cadence ? (
-                      <Button
-                        size="small"
-                        variant="secondary"
-                        disabled={controlsDisabled}
-                        onClick={() =>
-                          void props.controller.runItemAction(item, "reply")
-                        }
-                      >
-                        Record customer reply
-                      </Button>
+                    {sendCommand || cadence ? (
+                      <ProjectEmailWorkControls item={item} controller={props.controller}
+                        canRecordSent={Boolean(sendCommand)} canRecordReply={cadence} />
                     ) : null}
                     {isGenericCompletableWorkSource(item.sourceType) ? (
                       <Button

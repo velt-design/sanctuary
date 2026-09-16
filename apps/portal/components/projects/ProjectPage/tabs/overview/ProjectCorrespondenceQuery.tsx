@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiJson, ApiError } from '@/lib/repo/apiClient';
 import { correspondenceContextSchema, CORRESPONDENCE_MAX_AGE_MS, type ProjectCorrespondenceContext } from '@/lib/projects/correspondence/contract';
 import ProjectCorrespondenceCard from './ProjectCorrespondenceCard';
+import type { EmailProjectContext } from './projectEmailGroups';
 
 type ReadState = { state: 'not_connected' | 'available' | 'loading' | 'ready' | 'stale' | 'error'; context?: ProjectCorrespondenceContext };
 function evidenceState(context: ProjectCorrespondenceContext): 'ready' | 'stale' {
@@ -15,14 +16,14 @@ function oldestObservation(context: ProjectCorrespondenceContext) {
     ...(context.messages ?? []).map(message => Date.parse(message.observedAt)));
 }
 
-export default function ProjectCorrespondenceQuery({ projectId, onAccessEnding }: {
-  projectId: string; onAccessEnding?: (status: number) => void;
+export default function ProjectCorrespondenceQuery({ projectId, onAccessEnding, project }: {
+  projectId: string; onAccessEnding?: (status: number) => void; project?: EmailProjectContext;
 }) {
   // Remounting by project prevents even a one-frame display of another job's mail.
-  return <CorrespondenceRead key={projectId} projectId={projectId} onAccessEnding={onAccessEnding} />;
+  return <CorrespondenceRead key={projectId} projectId={projectId} onAccessEnding={onAccessEnding} project={project} />;
 }
 
-function CorrespondenceRead({ projectId, onAccessEnding }: { projectId: string; onAccessEnding?: (status: number) => void }) {
+function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId: string; onAccessEnding?: (status: number) => void; project?: EmailProjectContext }) {
   const [read, setRead] = useState<ReadState>({ state: 'loading' });
   const active = useRef<AbortController | null>(null);
   const earlier = useRef<ProjectCorrespondenceContext | undefined>(undefined);
@@ -78,5 +79,5 @@ function CorrespondenceRead({ projectId, onAccessEnding }: { projectId: string; 
     return () => clearTimeout(timer);
   }, [read.context, read.state, load]);
 
-  return <ProjectCorrespondenceCard {...read} onRefresh={read.state === 'not_connected' ? undefined : () => void load(true)} onAnalyze={() => void load(true, true)} />;
+  return <ProjectCorrespondenceCard {...read} project={project} onRefresh={read.state === 'not_connected' ? undefined : () => void load(true)} onAnalyze={() => void load(true, true)} />;
 }

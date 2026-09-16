@@ -148,6 +148,27 @@ describe("ProjectWorkSection", () => {
     mocks.fetchProjectStaffDirectory.mockReset().mockResolvedValue(staff);
   });
 
+  it("puts reading emails before collapsed manual follow-up tracking", () => {
+    const item = workItem({ sourceType: "LEAD_CADENCE", sourceKey: "lead:first-email:fixture" });
+    const rendered = renderV2(projection({ primaryAction: { kind: "workItem", item, dueState: "today", reason: "Due today" }, openItems: [item] }));
+    const panel = rendered.container.querySelector('[data-primary-project-work="true"]')!;
+    const link = panel.querySelector('a[href="#customer-emails"]');
+    expect(link?.textContent).toBe("Read customer emails");
+    const destination = document.createElement("section");
+    destination.id = "customer-emails";
+    destination.tabIndex = -1;
+    destination.scrollIntoView = vi.fn();
+    document.body.append(destination);
+    act(() => (link as HTMLAnchorElement).click());
+    expect(document.activeElement).toBe(destination);
+    expect(destination.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    const details = panel.querySelector("details")!;
+    expect(details.open).toBe(false);
+    expect(details.querySelector("summary")?.textContent).toBe("Update follow-up tracking");
+    expect(details.textContent).toContain("These controls do not send email");
+    expect(Array.from(details.querySelectorAll("button")).map(button => button.textContent)).toEqual(["Record email sent", "Record customer reply"]);
+  });
+
   it("keeps Work selected by default and opens Files inside the same card", () => {
     const rendered = renderV2(projection());
     const workTab = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
