@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useConsent } from '../ConsentProvider';
 import type { RailSection } from './RailProvider';
+import { sendGoogleAnalyticsEvent } from '../../lib/googleAnalyticsEvent';
 
 type DesignEvent = 'design_start' | 'design_edit' | 'design_review';
 const publicRoutes = new Set(['/', '/contact', '/configurator-preview', '/design-enquiry']);
@@ -11,17 +12,12 @@ const publicRoutes = new Set(['/', '/contact', '/configurator-preview', '/design
 export function emitDesignEvent(event: DesignEvent, allowed: boolean): boolean {
   if (!allowed || typeof window === 'undefined' || !publicRoutes.has(window.location.pathname)
     || new URLSearchParams(window.location.search).has('staff_project')) return false;
-  try {
-    const target = window as typeof window & { gtag?: (...args: unknown[]) => void };
-    if (typeof target.gtag !== 'function') return false;
-    target.gtag('event', event, {
-      event_category: 'configured_design',
-      design_funnel_version: 'v1',
-      source_path: window.location.pathname,
-      configured_design: true,
-    });
-    return true;
-  } catch { return false; }
+  return sendGoogleAnalyticsEvent(event, {
+    event_category: 'configured_design',
+    design_funnel_version: 'v1',
+    source_path: window.location.pathname,
+    configured_design: true,
+  }, allowed);
 }
 
 export default function DesignFunnelTracker({ active, ready, selectionKey, section }: {

@@ -11,6 +11,7 @@ import {
   type FormEventHandler,
 } from 'react';
 import { useConsent } from '@/components/ConsentProvider';
+import { sendGoogleAnalyticsEvent } from '../../lib/googleAnalyticsEvent';
 import EnquiryErrorSummary from '@/components/enquiry/EnquiryErrorSummary';
 import SimpleCoverCalculator from '@/components/simple-cover-calculator/SimpleCoverCalculator';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
@@ -238,9 +239,7 @@ export default function ContactEnquiryForm({
     });
 
     try {
-      if (hasTrackingDecision && consent.analytics && typeof trackingWindow.gtag === 'function') {
-        trackingWindow.gtag('event', `contact_${phase}`, base);
-      }
+      sendGoogleAnalyticsEvent(`contact_${phase}`, base, hasTrackingDecision && consent.analytics);
       if (phase === 'success' && hasTrackingDecision && consent.marketing && typeof trackingWindow.fbq === 'function') {
         trackingWindow.fbq('track', 'Lead', base, eventId ? { eventID: eventId } : undefined);
       }

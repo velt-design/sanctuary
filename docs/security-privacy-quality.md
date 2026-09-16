@@ -315,3 +315,13 @@ Owner: Marketing and Engineering. Implementation:
 `app/contact/ContactEnquiryForm.tsx`, under `apps/marketing`. Destination and
 production evidence is tracked in the 2026-09-16 bounded goal section of
 `mobile-ux-phase-5-validation.md`; source/unit evidence alone is not delivery.
+
+Configured-designer and contact API events explicitly route to the verified GA4
+stream through `apps/marketing/lib/googleAnalyticsEvent.ts`. GTM is still the
+only loader; this helper does not configure or inject a second Google runtime.
+The destination defaults to the verified Sanctuary stream `G-KGLF83X6JW` and
+can be overridden with `NEXT_PUBLIC_GA_MEASUREMENT_ID`; keep it aligned with
+the Google tag in `GTM-W438QM7H`. An invalid override fails closed. This explicit
+routing is required because default-destination API calls were queued without
+being sent by the installed GTM runtime. Data-layer-only homepage events are a
+separate contract and must not be described as received without a matching tag.

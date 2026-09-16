@@ -32,7 +32,7 @@ it('waits for restoration, counts first edit once, and observes review and reope
   await render('another slider update', 'review');
   expect(names()).toEqual(['design_start', 'design_edit', 'design_review']);
   expect(JSON.stringify(send.mock.calls)).not.toContain('private');
-  expect(send.mock.calls[0][2]).toEqual({ event_category: 'configured_design', design_funnel_version: 'v1', source_path: '/configurator-preview', configured_design: true });
+  expect(send.mock.calls[0][2]).toEqual({ event_category: 'configured_design', design_funnel_version: 'v1', source_path: '/configurator-preview', configured_design: true, send_to: 'G-KGLF83X6JW' });
   await render('another slider update', 'review', false);
   await render('another slider update', 'review');
   expect(names()).toEqual(['design_start', 'design_edit', 'design_review', 'design_start', 'design_review']);
