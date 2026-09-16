@@ -1,5 +1,19 @@
 # Project Work Items And Lead Follow-Up
 
+## Approved retirement of generic stage reviews (16 September 2026)
+
+Jordan approved removing generic stage-driven reminders from the active workflow
+after the production usage audit found 535 overdue stage reviews. This supersedes
+the stage-review seeding policy described historically below. Stage alone no
+longer creates a timed staff obligation. Existing lead/quote follow-up, explicit
+staff commitments, specialist workflows, recovery and project outcomes remain.
+Forward migration `20260916000005_retire_generic_stage_reviews.sql` stops stage
+seeding, cancels active stage reviews with before/after events, preserves terminal
+history, rejects reactivation/retyping and refreshes shared compatibility facts.
+It is local and tested, not applied to production. Apply before the matching app
+release; Dashboard, Work Queue and Overview retain their shared source of truth.
+This is not approval to delete history or infer completed work from silence.
+
 ## Delivery and settled closure (2026-09-11)
 
 Delivery completion uses Schedule V2 for scheduled installations and an audited `DELIVERY_COMPLETED` confirmation with a date and note for unscheduled work. It projects `COMPLETED` without requiring payment. `Close settled project` additionally requires delivery evidence, positive billable value, no open invoices, and reconciled receipts. Billable value includes issued non-void standalone invoices. Reversal and correction of delivery evidence reopen only settled operational closures through the existing Project Work command; cancellation and loss remain separate. Completed work retains the existing list inclusion rules.

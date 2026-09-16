@@ -82,7 +82,7 @@ export default function ProjectCurrentDesignCommercialCard({
     <Card
       className={styles.card}
       aria-label="Current design and commercial summary"
-      title="Current design & commercial"
+      title={data.source === "accepted_quote" ? "Agreed design & price" : "Current design & price"}
       eyebrow="Commercial position"
       padding="compact"
       action={
@@ -157,7 +157,7 @@ export default function ProjectCurrentDesignCommercialCard({
           >
             <dl className={styles.decisionFacts}>
               <div data-emphasis="true">
-                <dt>Customer price</dt>
+                <dt>{data.source === "accepted_quote" ? "Accepted price" : "Customer price"}</dt>
                 <dd>{formatPrice(data.price.totalIncGstCents)}</dd>
                 <span>
                   {data.price.source === "quote"

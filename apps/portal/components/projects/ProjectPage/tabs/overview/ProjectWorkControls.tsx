@@ -55,6 +55,7 @@ export default function ProjectWorkControls({
   const active = controller.projection.effectiveState === "ACTIVE";
   const waiting = controller.projection.effectiveState === "WAITING";
   const closed = controller.projection.effectiveState === "CLOSED";
+  const deliveryProminent = ["scheduled", "completed", "paid"].includes(pipelineStage);
   const controlsLabel = active ? "Manage project work" : "Update waiting";
 
   if (controller.projection.effectiveState === "ARCHIVED") return null;
@@ -62,7 +63,7 @@ export default function ProjectWorkControls({
   return (
     <div className={styles.controlsSection}>
       <div className={styles.lifecycleActions} aria-label="Project lifecycle actions">
-        {!closed ? <ProjectDeliveryAction projectId={projectId} host={host} onRefresh={onRefresh}
+        {!closed && (deliveryProminent || controller.controlsOpen) ? <ProjectDeliveryAction projectId={projectId} host={host} onRefresh={onRefresh}
           completed={pipelineStage === 'completed' || pipelineStage === 'paid'}
           disabled={controller.pending || controller.stale} /> : null}
         {active || waiting ? (
@@ -97,7 +98,7 @@ export default function ProjectWorkControls({
           >
             Reopen project
           </Button>
-        ) : (
+        ) : controller.controlsOpen ? (
           <Button
             type="button"
             variant="destructive"
@@ -106,7 +107,7 @@ export default function ProjectWorkControls({
           >
             Close project
           </Button>
-        )}
+        ) : null}
       </div>
 
       {controller.controlsOpen && (active || waiting) ? (

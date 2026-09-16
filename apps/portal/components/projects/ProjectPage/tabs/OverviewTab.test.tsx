@@ -82,6 +82,14 @@ vi.mock("./overview/ProjectRecentNotesEvents", () => ({
 
 import OverviewTab from "./OverviewTab";
 
+vi.mock("./overview/ProjectPaymentPositionQuery", () => ({
+  default: () => <section data-testid="mock-payment-position">Payment position</section>,
+}));
+
+vi.mock("./overview/ProjectCorrespondenceQuery", () => ({
+  default: () => <section>Customer conversations not connected</section>,
+}));
+
 const snapshot = {
   workModel: "v2",
   project: {

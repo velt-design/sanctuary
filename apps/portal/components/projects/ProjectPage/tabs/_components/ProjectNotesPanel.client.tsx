@@ -72,9 +72,11 @@ function isPendingId(noteId: string): boolean {
 export default function ProjectNotesPanel({
   projectId,
   initialNotes,
+  compactComposer = false,
 }: {
   projectId: string;
   initialNotes: ProjectNote[];
+  compactComposer?: boolean;
 }) {
   const queryClient = useQueryClient();
   const session = usePortalSession();
@@ -279,7 +281,9 @@ export default function ProjectNotesPanel({
 
   return (
     <div className={styles.panel} data-project-notes-panel="true">
-      <div className={styles.composer}>
+      <details className={styles.noteComposer} open={!compactComposer}>
+        <summary>Add a team note</summary>
+        <div className={styles.composer}>
         <Textarea
           label="Add a note"
           placeholder="Add a note for the team…"
@@ -302,7 +306,8 @@ export default function ProjectNotesPanel({
             Add note
           </Button>
         </div>
-      </div>
+        </div>
+      </details>
 
       {notes.length === 0 ? (
         <EmptyState

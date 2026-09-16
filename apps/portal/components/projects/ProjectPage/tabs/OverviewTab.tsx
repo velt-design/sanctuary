@@ -17,6 +17,7 @@ import {
   LoadingSkeleton,
 } from "@/components/ui/foundation";
 import ProjectOverviewLayout from "./overview/ProjectOverviewLayout";
+import { projectPositionLabel } from './overview/projectPositionLabel';
 import type { ProjectOrientationFreshness } from "./overview/ProjectOrientationBand";
 
 const ProjectCurrentDesignCommercialCard = lazy(
@@ -29,6 +30,8 @@ const ProjectRecentNotesEvents = lazy(
   () => import("./overview/ProjectRecentNotesEvents"),
 );
 const ProjectWorkSection = lazy(() => import("./overview/ProjectWorkSection"));
+const ProjectPaymentPositionQuery = lazy(() => import("./overview/ProjectPaymentPositionQuery"));
+const ProjectCorrespondenceQuery = lazy(() => import("./overview/ProjectCorrespondenceQuery"));
 const ProjectWorkFilesCard = lazy(
   () => import("./overview/ProjectWorkFilesCard"),
 );
@@ -231,6 +234,11 @@ export default function OverviewTab({
           data={commandQuery.data.currentDesign}
           projectId={snapshot.project.id}
         />
+        <ProjectPaymentPositionQuery
+          projectId={snapshot.project.id}
+          host={host}
+          onAccessEnding={onAccessEnding}
+        />
       </Suspense>
     );
 
@@ -264,6 +272,7 @@ export default function OverviewTab({
               projectId={snapshot.project.id}
               host={host}
               projectWork={commandQuery.data.projectWork}
+              positionLabel={projectPositionLabel(snapshot.project.stage, commandQuery.data.projectWork.effectiveState, commandQuery.data.currentDesign)}
               pipelineStage={snapshot.project.stage}
               stale={projectWorkControlsStale}
               onRefresh={() => void commandQuery.refetch()}
@@ -323,6 +332,7 @@ export default function OverviewTab({
         </Card>
       }
     >
+      <ProjectCorrespondenceQuery projectId={snapshot.project.id} onAccessEnding={onAccessEnding} />
       <ProjectRecentNotesEvents
         projectId={snapshot.project.id}
         notes={snapshot.notes}

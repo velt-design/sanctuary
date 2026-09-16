@@ -1,5 +1,12 @@
 # Testing And QA
 
+Project workflow retirement (local, 16 September): run `npx vitest run test/project-stage-review-retirement.test.ts`
+for disposable PostgreSQL-compatible retirement/audit/replay/preservation checks.
+The Portal fixture project also includes `playwright/portal.project-stories.spec.ts`:
+three coherent sample jobs at desktop and mobile sizes, primary action/position,
+keyboard evidence disclosure, secondary AI suggestions and no mutation requests.
+These fixtures do not prove production installation or real email matching.
+
 Schedule guarded database commands: `npm run test:schedule:db:fast` runs a disposable PGlite database with migration rollback/replay, serialized null/omitted optional payloads, first assignment to empty/populated crews, existing-job repair, cross-crew moves, ordinary/finish-early completion, malformed payload rejection, stale revisions and browser write denial. Required Portal Quality CI runs this alongside the portal suite; mocked RPC success alone is insufficient for Schedule persistence changes.
 
 Automatic payment recording: `node scripts/test-xero-automatic-payments.mjs` runs a disposable PGlite contract against the actual commercial command owners and migration06. It covers the rollout gate, partial/full settlement, customer won, replay, stale balances, machine attribution, finance decisions and manual-access denial. It also applies migration07 and checks retained status and wrong-tenant denial. Background Jobs CI runs it. Focused automatic-recorder and observation-route tests cover fresh evidence, incomplete lists, duplicate recovery, read/write failures and the off-by-default application flag. It does not prove concurrent PostgreSQL sessions, provider orchestration, scheduled delivery or production behavior.
@@ -897,7 +904,11 @@ apply only `20260731000002_project_work_portfolio_rollout.sql`, then deploy the
 matching app immediately. Do not use blanket migration push/repair for the
 colliding date-only `20260729` family.
 
-Use a disposable non-production copy for mutation checks. Verify:
+Use a disposable non-production copy for mutation checks. The stage-review
+seeding/replacement checks below describe the original portfolio migration only.
+After `20260916000005`, they are superseded by retirement: no stage review is
+created or reopened, existing active reviews are audited cancellations, and
+non-review obligations are preserved. Verify the original migration in isolation:
 
 - every project has one marker and state; partial rows repair without replacing
   staff-selected Waiting/Closed state or current work;

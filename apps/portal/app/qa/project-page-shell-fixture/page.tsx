@@ -4,6 +4,7 @@ import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import { coerceProjectTab } from '@/lib/projects/projectTabs';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import FixtureLocalFirstBoundary from '../projects-index-mutation-fixture/FixtureLocalFirstBoundary';
+import CommercialClarityBoundary from './CommercialClarityBoundary';
 
 function arePortalQaFixturesEnabled(): boolean {
   return process.env.ENABLE_PORTAL_QA_FIXTURES?.trim() === '1';
@@ -40,6 +41,7 @@ export default async function ProjectPageShellFixture({
     estimateId?: string;
     fromEstimateId?: string;
     newDesign?: string;
+    commercial?: string;
   }>;
 }) {
   if (!arePortalQaFixturesEnabled()) notFound();
@@ -49,6 +51,10 @@ export default async function ProjectPageShellFixture({
   const calculatorWorkspace = tab === 'estimates'
     && Boolean(params.estimateId?.trim() || params.fromEstimateId?.trim() || params.newDesign === '1');
 
+  const frame = <ProjectPageFrame
+    snapshot={snapshot} host="fixture" snapshotContentReady snapshotState="fresh"
+    tab={tab} calculatorWorkspace={calculatorWorkspace}
+  />;
   return (
     <main
       className={`${styles.page} ${calculatorWorkspace ? styles.calculatorPageLayout : ''}`}
@@ -56,14 +62,7 @@ export default async function ProjectPageShellFixture({
       data-project-work-fixture-model={snapshot.workModel}
     >
       <FixtureLocalFirstBoundary>
-        <ProjectPageFrame
-          snapshot={snapshot}
-          host="fixture"
-          snapshotContentReady
-          snapshotState="fresh"
-          tab={tab}
-          calculatorWorkspace={calculatorWorkspace}
-        />
+        {params.commercial === '1' ? <CommercialClarityBoundary>{frame}</CommercialClarityBoundary> : frame}
       </FixtureLocalFirstBoundary>
     </main>
   );

@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import {
   Badge,
   Button,
+  ButtonLink,
   DataStatePanel,
   EmptyState,
   LoadingSkeleton,
@@ -18,18 +19,22 @@ import {
   type BadgeTone,
 } from '@/components/ui/foundation';
 import type { EstimateMeta } from '@/lib/estimates/types';
-import { formatPortalDate } from '@/lib/format/portalDateTime';
+import type { QuoteVersion } from '@/lib/quotes/types';
+import { acceptedEstimateQuoteIds, estimateDisplayName, quotesForEstimate } from './estimateListPresentation';
+import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import styles from './EstimatesListView.module.css';
 
 function estimateStatus(estimate: EstimateMeta): { label: string; tone: BadgeTone } {
   if (estimate.status === 'archived') return { label: 'Archived', tone: 'neutral' };
-  if (estimate.isActiveDraft) return { label: 'Active draft', tone: 'success' };
+  if (estimate.isActiveDraft) return { label: 'Active draft', tone: 'info' };
   if (estimate.hasSentQuote) return { label: 'Quoted', tone: 'info' };
   return { label: 'Historical', tone: 'neutral' };
 }
 
 export default function EstimatesListView({
   estimates,
+  quotes,
+  quoteReadState,
   loading,
   error,
   onRetry,
@@ -40,6 +45,8 @@ export default function EstimatesListView({
   onRename,
 }: {
   estimates: EstimateMeta[];
+  quotes?: QuoteVersion[];
+  quoteReadState: 'loading' | 'unavailable' | 'ready';
   loading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -50,6 +57,7 @@ export default function EstimatesListView({
   onRename: (estimate: EstimateMeta) => void;
 }) {
   const [query, setQuery] = useState('');
+  const accepted = useMemo(() => acceptedEstimateQuoteIds(quotes ?? []), [quotes]);
   const visibleEstimates = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     if (!needle) return estimates;
@@ -65,7 +73,7 @@ export default function EstimatesListView({
       <div className={styles.header}>
         <div>
           <h3 className={styles.title}>Estimates</h3>
-          <p className={styles.subtitle}>Versioned estimates for this project.</p>
+          <p className={styles.subtitle}>Working estimates and quoted designs. An active draft does not replace an accepted quote. Rename alternatives so the team can tell them apart.</p>
         </div>
         <div className={styles.headerActions}>
           <Button variant="secondary" onClick={onCreateAddOn}>Create add-on estimate</Button>
@@ -111,19 +119,21 @@ export default function EstimatesListView({
       ) : null}
 
       {visibleEstimates.length ? (
-        <Table aria-label="Project estimates">
+        <Table aria-label="Project estimates" className={styles.table}>
           <TableHeader>
             <TableRow>
               <TableHead>Estimate</TableHead>
               <TableHead>Created</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className={styles.secondaryColumn}>Quote</TableHead>
+              <TableHead>Linked quotes</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {visibleEstimates.map((estimate) => {
               const status = estimateStatus(estimate);
+              const name = estimateDisplayName(estimate, estimates);
+              const linkedQuotes = quotesForEstimate(estimate.id, quotes ?? [], accepted);
               const openLabel = estimate.isActiveDraft ? 'Edit in calculator' : 'Open in calculator';
               const open = () => onOpen(estimate.id);
               return (
@@ -132,7 +142,7 @@ export default function EstimatesListView({
                   className={styles.row}
                   data-estimate-id={estimate.id}
                   tabIndex={0}
-                  aria-label={`${openLabel}: ${estimate.internalName || estimate.versionLabel}`}
+                  aria-label={`${openLabel}: ${name}`}
                   onClick={open}
                   onKeyDown={(event) => {
                     if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -142,7 +152,7 @@ export default function EstimatesListView({
                 >
                   <TableCell>
                     <span className={styles.estimateIdentity}>
-                      <strong>{estimate.internalName || `Estimate ${estimate.versionLabel}`}</strong>
+                      <strong>{name}</strong>
                       <small>
                         {estimate.internalName ? `Estimate ${estimate.versionLabel} · ` : ''}
                         {estimate.createdBy || 'Sanctuary staff'}
@@ -150,9 +160,20 @@ export default function EstimatesListView({
                       {estimate.commercialScopeKind === 'add_on' ? <Badge tone="info">Add-on</Badge> : null}
                     </span>
                   </TableCell>
-                  <TableCell>{formatPortalDate(estimate.createdAt, { fallback: '-' })}</TableCell>
-                  <TableCell><Badge tone={status.tone}>{status.label}</Badge></TableCell>
-                  <TableCell className={styles.secondaryColumn}>{estimate.hasSentQuote ? 'Quote issued' : 'Not quoted'}</TableCell>
+                  <TableCell data-label="Created">{formatPortalDateTime(estimate.createdAt, { fallback: '-' })}</TableCell>
+                  <TableCell data-label="Status"><Badge tone={status.tone}>{status.label}</Badge></TableCell>
+                  <TableCell data-label="Linked quotes" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                    <div className={styles.estimateIdentity}>
+                      {quoteReadState !== 'ready' ? <span>{quoteReadState === 'loading' ? 'Loading quote links…' : 'Quote links unavailable'}</span> : linkedQuotes.length ? linkedQuotes.map((quote) => (
+                        <div key={quote.id}>
+                          <ButtonLink variant="tertiary" size="small" href={`/staff/projects/${encodeURIComponent(estimate.projectId)}?tab=quotes&quoteId=${encodeURIComponent(quote.id)}`}>
+                            {quote.quoteRef} v{quote.versionNumber}
+                          </ButtonLink>
+                          <span>{accepted.has(quote.id) ? ' Current accepted agreement' : quote.status === 'ACCEPTED' ? ' Historical acceptance' : ` ${quote.status.toLowerCase()}`}</span>
+                        </div>
+                      )) : <span>No linked quote</span>}
+                    </div>
+                  </TableCell>
                   <TableCell
                     onClick={(event) => event.stopPropagation()}
                     onKeyDown={(event) => event.stopPropagation()}

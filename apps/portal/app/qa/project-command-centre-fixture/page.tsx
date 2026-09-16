@@ -13,6 +13,7 @@ import {
   isCommandCentreWorkFixtureScenario,
 } from "./fixtures";
 import styles from "./projectCommandCentreFixture.module.css";
+import { projectStory, storyNames, type ProjectStory } from './projectStories';
 
 function arePortalQaFixturesEnabled(): boolean {
   return process.env.ENABLE_PORTAL_QA_FIXTURES?.trim() === "1";
@@ -25,10 +26,25 @@ export default async function ProjectCommandCentreFixturePage({
     scenario?: string;
     work?: string;
     state?: string;
+    story?: string;
   }>;
 }) {
   if (!arePortalQaFixturesEnabled()) notFound();
   const params = await searchParams;
+  const story = params.story && Object.hasOwn(storyNames, params.story) ? params.story as ProjectStory : null;
+  if (story) {
+    const example = projectStory(story);
+    return <main className={styles.page} data-portal-qa-fixture="project-story">
+      <header className={styles.header}>
+        <p>Sample projects · no live customer data</p>
+        <h1>{storyNames[story]}</h1>
+        <nav aria-label="Project examples">{(Object.keys(storyNames) as ProjectStory[]).map(key =>
+          <Link key={key} aria-current={key === story ? 'page' : undefined} href={`?story=${key}`}>{storyNames[key]}</Link>)}</nav>
+        <p>Read-only preview: explore the three jobs and open the email evidence. Work buttons are disabled; no live records change.</p>
+      </header>
+      <FixtureLocalFirstBoundary><ProjectCommandCentreFixtureClient {...example} viewState="ready" previewOnly /></FixtureLocalFirstBoundary>
+    </main>;
+  }
   const requestedScenario = params.scenario?.trim() ?? "";
   const scenario = isCommandCentreFixtureScenario(requestedScenario)
     ? requestedScenario

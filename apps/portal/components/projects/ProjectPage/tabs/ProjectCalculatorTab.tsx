@@ -10,6 +10,7 @@ import type {
   CalculatorProjectWorkspace,
 } from '@/app/staff/calculator/calculatorWorkspace';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
+import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { Button, Card, DataStatePanel, LoadingSkeleton, Select } from '@/components/ui/foundation';
 import EstimatesListView from './EstimatesListView';
 import styles from './ProjectCalculatorTab.module.css';
@@ -82,6 +83,10 @@ export default function ProjectCalculatorTab({
   const editEstimateId = searchParams.get('estimateId')?.trim() ?? '';
   const fromEstimateId = searchParams.get('fromEstimateId')?.trim() ?? '';
   const newDesign = searchParams.get('newDesign') === '1';
+  const estimateQuotesQuery = useQuery({
+    ...quoteVersionsByProjectQueryOptions(host, projectId),
+    enabled: !editEstimateId && !fromEstimateId && !newDesign,
+  });
   const newEstimateInternalName = searchParams.get('estimateName')?.trim() || null;
   const requestedCommercialScopeId = searchParams.get('commercialScopeId')?.trim() || null;
   const requestedEstimateKind = searchParams.get('estimateKind') === 'add_on' ? 'add_on' : 'base';
@@ -328,6 +333,8 @@ export default function ProjectCalculatorTab({
       <>
       <EstimatesListView
         estimates={estimates}
+        quotes={estimateQuotesQuery.isError ? undefined : estimateQuotesQuery.data}
+        quoteReadState={estimateQuotesQuery.isError ? 'unavailable' : estimateQuotesQuery.data ? 'ready' : 'loading'}
         loading={estimatesQuery.isPending}
         error={estimatesQuery.isError
           ? estimatesQuery.error instanceof Error

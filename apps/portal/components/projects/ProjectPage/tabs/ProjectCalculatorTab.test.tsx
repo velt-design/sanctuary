@@ -27,6 +27,10 @@ vi.mock('@/lib/queries/projectEstimates', () => ({
   estimateMetasByProjectQueryOptions: () => ({}),
 }));
 
+vi.mock('@/lib/queries/quotes', () => ({
+  quoteVersionsByProjectQueryOptions: () => ({ queryKey: ['quote-links'] }),
+}));
+
 vi.mock('@/app/staff/calculator/CalculatorGridClient', () => ({
   default: ({ workspace }: any) => (
     <div
@@ -73,7 +77,7 @@ describe('ProjectCalculatorTab', () => {
     replace.mockReset();
     push.mockReset();
     search = 'tab=estimates';
-    useQueryMock.mockReturnValue({ data: [activeDraft, historical], isPending: false, isError: false });
+    useQueryMock.mockImplementation((options) => ({ data: options.queryKey?.[0] === 'quote-links' ? [] : [activeDraft, historical], isPending: false, isError: false }));
   });
 
   afterEach(() => {

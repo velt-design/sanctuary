@@ -1,5 +1,103 @@
 # Project Operational Command Centre Architecture
 
+## Staff clarity extension (16 September 2026, local implementation)
+
+Workflow-usefulness revision: the owner approved retirement of generic stage
+reviews. Migration `20260916000005` cancels only active STAGE_REVIEW rows with
+audited before/after records, stops their producer and prevents reactivation.
+Shared retired-identity and completion-capability guards refuse stale stage work
+in UI/queue consumers. Dashboard, Work Queue and Overview share the resulting
+work facts; no browser-only alternate ranking is introduced. Saved-fact position
+headings contextualise the primary action; AI suggestions are secondary native
+disclosures. Three coherent synthetic stories replace mixed scenarios for owner
+preview; raw scenario controls remain for regression coverage. Migration and app
+are local only and require the complete verification/release gate.
+
+The owner-approved extension is tracked in `project-command-centre-roadmap.md`.
+It retains server-ranked work and exact quote/design selection. The Overview adds
+a read-only payment position from the existing staff `invoice-schedule` API and
+query key used by Invoices, without recalculating commercial totals or treating a
+payment as delivery readiness. Failed reads are unknown, failed refreshes are
+labelled saved, and access-ending responses hide cached payment details.
+
+Desktop notes sit below work alongside the commercial column. Mobile retains
+work, commercial, context, then notes; the note composer is disclosed on demand.
+Early-stage delivery completion and project close remain available in Manage
+project work, while scheduled/completed/paid stages retain visible delivery
+controls. Accepted quote expiry is historical, not an expired-agreement warning.
+Commercial lists expose exact quote/source-estimate links and distinguish unnamed
+estimate versions by creation time. Current accepted work uses the existing
+authoritative acceptance selector. Mobile records retain amounts, source links,
+dates and actions instead of hiding columns. Estimate cost summaries are not
+presented as customer prices.
+
+All signed-in Sanctuary staff are the approved audience for future linked
+customer correspondence. The current Velt reader is owner-only and cannot be
+called with a forwarded owner session. The staff-server boundary must retain
+connection consent, stop/generation checks, per-read audit, exact customer
+matching and explicit incomplete coverage. The Velt receiving boundary is now
+implemented locally on `codex/staff-project-correspondence` (base `5c53163`),
+with signed-request, replay, actor audit and stop-fencing tests. Both sides remain
+default-disabled and undeployed. The local
+correspondence card consumes a presentation subset of the existing Velt summary
+contract, labels interpretations and suggestions, exposes source quotations and
+customer-only association, and hides unsupported claims. It has no write/send
+action. Real Overview checks connection availability without reading mail; the
+default state is not connected. An explicit staff check is required to read
+correspondence. Synthetic QA data exercises
+ready, stale and failed states. No live Outlook access is claimed by this pass.
+
+### Staff correspondence sending boundary (local, disabled)
+
+`GET/POST /api/staff/v1/projects/[projectId]/correspondence` uses the existing
+staff session and auth-bound project visibility. GET reports configuration only;
+POST requires same-origin and an empty body. Neither accepts an email address,
+actor identity or AI content from the browser. The server resolves the project
+UUID and authenticated staff ID, then signs a bounded request to the configured
+Velt origin. It rechecks current staff membership and project visibility before
+delivering a response. Every result/error is private/no-store; remote error
+details are not logged or returned. No owner session is forwarded.
+
+The proposed paired protocol is `sanctuary.staff-correspondence.v1` at
+`POST /api/customer-journey/staff-summary`. HMAC-SHA256 signs the UTF-8 newline
+join of `v1`, `POST`, exact destination URL, epoch-millisecond timestamp, request
+UUID and exact JSON body, using the 32-byte secret decoded from 64 lowercase hex
+characters. Headers are `x-sanctuary-request-id`, `x-sanctuary-timestamp`, and
+`x-sanctuary-signature` (lowercase hex). Body fields are exactly schemaVersion,
+actorId and projectId. The receiver must validate the signature/time/destination,
+atomically claim the nonce, audit the staff actor and project without body data,
+apply concurrency/rate bounds, and preserve Connections consent/stop/generation
+checks through final response delivery. Velt's local `202609160003` migration
+implements those controls and passed the disposable PostgreSQL suite, including
+provider-specific revocation during synthesis. Signing alone is not authority
+to activate; installed migration and real customer proof remain required.
+
+The receiver returns exactly schemaVersion, projectId, requestId and context.
+Context is the bounded presentation subset of existing Velt summary output:
+observedAt, answer.sections, source references (without full text/character count)
+and limitations. The Portal validates request/project binding, source URLs,
+unique topics/source IDs, citation references and freshness, caps the response
+at 256 KiB, times out at 60 seconds and rejects redirects. Velt remains the sole
+owner of matching, source excerpt verification and synthesis.
+
+Server-only configuration: `PORTAL_STAFF_CORRESPONDENCE_ENABLED` defaults off;
+`PORTAL_VELT_CORRESPONDENCE_ORIGIN` must be the reviewed HTTPS Velt origin;
+`PORTAL_VELT_CORRESPONDENCE_SECRET` is a dedicated signing key shared only by the
+two server runtimes. No key has been created or installed. The actual synthetic
+Portal wire was verified by Velt's validator through a local artifact, including
+tampering rejection; this is not deployed HTTP proof. Activation requires
+paired runtime integration checks, release approval and real
+customer acceptance. Never use an owner cookie or existing provider token as
+the signing key.
+
+Browser evidence stays in the mounted component, outside persisted queries and
+local storage. It clears on project change or failed access/summary checks. Leaving
+the page hides it; returning rechecks staff/project access before redisplay. At
+two minutes an access check precedes an explicit earlier-summary label. Neither
+return nor expiry starts an automatic mail/model read. Source quotations are
+readable in Portal; opening the original
+Outlook URL still requires the staff member's own mailbox access.
+
 Status: Current architecture. The Overview V2 composition and portfolio-wide Project Work rollout are deployed to production. Staging is isolated on its own Supabase project and passed authenticated read-only verification. Production database/application postflight and the authenticated GET-only production browser proof are complete. The earlier narrow Contacts/Calculator bundle exception remains historical and did not raise either ceiling.
 
 Approved handover baseline: `060bea19` on 2026-07-30.

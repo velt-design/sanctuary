@@ -177,9 +177,9 @@ describe("ProjectWorkSection", () => {
 
   it("renders one V2 primary action with owner and due truth above open and blocked work", () => {
     const primary = workItem({
-      title: "Review proposal progress",
-      sourceType: "STAGE_REVIEW",
-      sourceKey: "stage-review:sent:v1",
+      title: "Confirm the customer's revised design selections",
+      sourceType: "MANUAL",
+      sourceKey: null,
     });
     const other = workItem({
       id: "22222222-2222-4222-8222-222222222223",
@@ -422,7 +422,7 @@ describe("ProjectWorkSection", () => {
       "Legacy work needs review",
     );
     expect(rendered.container.textContent).toContain(
-      "no browser replacement is chosen",
+      "do not complete the old reminder",
     );
     expect(rendered.container.textContent).not.toContain(
       prohibitedPrimary.title,
@@ -462,6 +462,9 @@ describe("ProjectWorkSection", () => {
 
   it("uses the selected Lost outcome without requiring duplicate reason text", () => {
     const rendered = renderV2(projection(), false, "new");
+    expect(Array.from(rendered.container.querySelectorAll("button")).some((button) => button.textContent === "Close project")).toBe(false);
+    const manage = Array.from(rendered.container.querySelectorAll("button")).find((button) => button.textContent === "Manage project work")!;
+    act(() => manage.click());
     const close = Array.from(
       rendered.container.querySelectorAll("button"),
     ).find((button) => button.textContent === "Close project")!;

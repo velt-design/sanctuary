@@ -51,7 +51,7 @@ export default function ProjectWorkList(props: ProjectWorkListProps) {
           <p>
             {visibleBlockedPrimary
               ? "Blocked work remains an exception with no enabled action."
-              : "Open and blocked server-ranked work below the primary action."}
+              : "Additional commitments and blockers."}
           </p>
         </div>
         <div className={styles.badges}>

@@ -187,7 +187,7 @@ export default function QuoteDetailView({
   declineBusy,
   dialogs,
 }: QuoteDetailViewProps) {
-  const expired = isExpired(detail.expiresAt);
+  const expired = detail.status !== "ACCEPTED" && isExpired(detail.expiresAt);
   const hasNewerEstimate = refreshUsesLatestDesign;
   const commercialWorkflowReady = detail.commercialWorkflowReady !== false;
   const unfinishedDelivery = Boolean(detail.unfinishedDelivery);

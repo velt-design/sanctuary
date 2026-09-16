@@ -48,6 +48,7 @@ type SharedProps = {
   initialStaff?: ProjectCommandStaffSummary[];
   initialEnquiryAttachments?: ProjectEnquiryAttachment[];
   disableFileActions?: boolean;
+  positionLabel?: string;
 };
 
 export type ProjectWorkSectionProps = SharedProps & {
@@ -60,8 +61,9 @@ function primaryPresentation(
   staff: ProjectCommandStaffSummary[],
 ) {
   const { primary, primaryItem } = controller;
-  const title =
-    primary.kind === "workItem" ? primary.item.title : primary.title;
+  const title = primary.kind === "needsTriage"
+    ? "Choose the next step"
+    : primary.kind === "workItem" ? primary.item.title : primary.title;
   const reason = primary.reason;
   const href =
     primary.kind === "recovery" || primary.kind === "specialist"
@@ -148,6 +150,7 @@ export default function ProjectWorkSection({
   host,
   projectWork,
   pipelineStage,
+  positionLabel,
   stale,
   onRefresh,
   initialStaff,
@@ -228,6 +231,7 @@ export default function ProjectWorkSection({
 
   return (
     <ProjectWorkFilesCard
+      positionLabel={positionLabel}
       className={styles.card}
       projectId={projectId}
       host={host}
@@ -249,9 +253,8 @@ export default function ProjectWorkSection({
 
         {prohibitedPrimary ? (
           <AlertBanner tone="blocking" title="Legacy work needs review">
-            A retired legacy, Call, or unapproved Site Visit action is
-            server-selected. It stays hidden and no browser replacement is
-            chosen.
+            This saved work item has been retired. Refresh the project to see
+            its current work; do not complete the old reminder.
           </AlertBanner>
         ) : ordinaryPrimarySuppressed ? (
           <AlertBanner tone="warning" title="Project work state needs review">
@@ -294,17 +297,24 @@ export default function ProjectWorkSection({
               <div className={styles.commandArea}>
                 {controller.primarySentCommand ? (
                   <p className={styles.commandHelp}>
-                    <strong>Send externally first.</strong> Then record the
-                    outcome.
+                    Send the email in Outlook, then record it here to start the
+                    next follow-up reminder. If the customer has replied, record
+                    their reply to stop the reminders.
                   </p>
                 ) : (
                   <span className={styles.commandLabel}>
                     {primary.href
-                      ? "Continue in the owning workflow"
-                      : "Record the outcome"}
+                      ? "Open the tools for this step"
+                      : controller.primary.kind === "needsTriage"
+                        ? "Add work, set a waiting date, or close the project."
+                        : "Record the outcome"}
                   </span>
                 )}
                 <div className={styles.inlineActions}>
+                  {active && controller.primary.kind === "needsTriage" ? (
+                    <Button disabled={controller.stale} aria-expanded={controller.controlsOpen}
+                      onClick={() => controller.setControlsOpen(true)}>Set next step</Button>
+                  ) : null}
                   {active && primary.href ? (
                     <ButtonLink href={primary.href} disabled={controller.stale}>
                       {primary.actionLabel}

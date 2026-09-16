@@ -46,13 +46,14 @@ export default function ProjectRecentNotesEvents({
           aria-labelledby="project-notes-heading"
         >
           <h3 id="project-notes-heading">Team notes</h3>
-          <ProjectNotesPanel projectId={projectId} initialNotes={notes} />
+          <ProjectNotesPanel projectId={projectId} initialNotes={notes} compactComposer />
         </section>
         <section
           className={styles.events}
           aria-labelledby="project-events-heading"
         >
           <h3 id="project-events-heading">Recent system events</h3>
+          <p>Portal activity only. Customer conversations are not included here.</p>
           {visibleEvents.length ? (
             <ActivityTimeline ariaLabel="Recent system events">
               {visibleEvents.map((event) => (
@@ -72,7 +73,7 @@ export default function ProjectRecentNotesEvents({
             <EmptyState
               compact
               title="No recent system events"
-              description="No bounded server event is available for this project."
+              description="No recent portal activity is recorded for this project."
             />
           )}
         </section>

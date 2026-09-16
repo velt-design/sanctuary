@@ -2,6 +2,16 @@
 
 Status: Active evolving tracker.
 
+Project-page workflow milestone (2026-09-16): local candidate retires automatic
+generic stage reminders through forward migration `20260916000005`, retains
+audited history and used follow-ups, and supplies three coherent populated preview
+stories. Migration rehearsal, focused browser checks, Portal tests and isolated
+build/bundle checks pass. Independent delivery review passed the bounded local
+milestone after one wording/documentation correction round; production
+migration/application rollout and real staff correspondence proof remain pending.
+An explicit sample installation commitment is not a new automatic task producer.
+Current agreement and evidence: `project-command-centre-roadmap.md`.
+
 Configurator release continuation (2026-09-16): production shared pricing is
 Version13/v2.8 and the Render enquiry handler has delivered an owner-only canary
 with its frozen price breakdown. The current release prepares package v2.9

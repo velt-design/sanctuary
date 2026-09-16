@@ -144,10 +144,10 @@ describe("ProjectWorkList", () => {
     });
     const stageReview = workItem({
       id: "33333333-3333-4333-8333-333333333333",
-      title: "Review proposal progress",
+      title: "Confirm the revised design selections",
       dueAt: "2026-08-03T05:00:00.000Z",
-      sourceType: "STAGE_REVIEW",
-      sourceKey: "stage-review:sent:v1",
+      sourceType: "MANUAL",
+      sourceKey: null,
     });
     const blocked = workItem({
       id: "44444444-4444-4444-8444-444444444444",
