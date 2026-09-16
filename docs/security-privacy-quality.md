@@ -329,3 +329,13 @@ the Google tag in `GTM-W438QM7H`. An invalid override fails closed. This explici
 routing is required because default-destination API calls were queued without
 being sent by the installed GTM runtime. Data-layer-only homepage events are a
 separate contract and must not be described as received without a matching tag.
+
+## Clarity public journey measurement (candidate, 17 September 2026)
+
+ClarityAnalytics is a separate optional replay loader, default off unless NEXT_PUBLIC_CLARITY_PROJECT_ID is a valid project ID. It uses the existing analytics decision (including the established regional policy), passes exact analytics/ad storage choices through consentv2, and stops on withdrawal or entry to a non-public/token/staff route. Closed journey event names are mirrored without payloads or identifiers; failure must not affect Google Analytics or customer actions. Existing GA4 remains the conversion owner.
+
+Only approved public routes and campaign/source query keys are eligible. Unknown query keys fail closed rather than recording draft/staff URLs. Both enquiry form implementations carry data-clarity-mask. Clarity project masking also masks forms; inspect actual rendered replays before activation. Environment is tagged production only on the canonical public hosts, otherwise verification. Local/preview sessions must be filtered out of business analysis. Browser/script tests are not proof of replay fidelity, heatmap receipt or 3D-canvas support.
+
+Operational sequence: configure the project, build with project ID, verify synthetic desktop/mobile journeys and denied/private paths, independently review, then request the separate production release decision. The application does not export recordings into Velt. Velt/Praxis receives reviewed findings only when explicitly provided, and must not claim to have watched recordings. Disable the project ID and redeploy to remove collection. Do not delete retained customer evidence as part of rollback.
+
+Sources: https://learn.microsoft.com/en-us/clarity/setup-and-installation/clarity-consent-api-v2 and https://learn.microsoft.com/en-us/clarity/setup-and-installation/clarity-api. Scope/evidence record: Velt docs/SANCTUARY_MARKETING_OUTCOMES.md, same owner task; no real enquiry or customer message is part of this candidate's verification.

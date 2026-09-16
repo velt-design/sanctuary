@@ -42,6 +42,7 @@ export default function PrivacyPage(){
             <section>
               <Heading as="h2" variant="card">Cookies and analytics</Heading>
               <Text>We use essential, analytics and marketing cookie categories. Essential cookies keep core functions working. Analytics helps us understand site use. Marketing supports campaign measurement and advertising attribution.</Text>
+              <Text>Where enabled, Microsoft Clarity provides heatmaps and session replays of interactions on our public website to help us improve browsing, pergola design and enquiries. Replays reconstruct page interactions; they do not record your camera or other applications. Enquiry form content is masked. This service follows your analytics settings; private quotes, invoices and staff pages are excluded. See <a href="https://privacy.microsoft.com/privacystatement">Microsoft’s privacy statement</a> for how Microsoft processes this data.</Text>
               <Text>For visitors identified as being in New Zealand, analytics and marketing tracking are enabled by default without an initial banner. Visitors outside New Zealand, or when country cannot be determined, choose before optional tracking loads. A saved choice always takes priority.</Text>
               <Text>We use only the IP-derived country code to select this experience, keep the coarse result for the browser session, and do not store precise location for this purpose.</Text>
               <button type="button" className={styles.manageButton} onClick={openBanner}>

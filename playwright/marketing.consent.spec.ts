@@ -17,6 +17,7 @@ async function recordOptionalRequests(page: Page): Promise<string[]> {
       || url.includes('connect.facebook.net')
       || url.includes('facebook.com/tr')
       || url.includes('pixel.archipro.co.nz')
+      || url.includes('clarity.ms')
     ) {
       requests.push(url);
     }

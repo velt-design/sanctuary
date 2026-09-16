@@ -69,7 +69,7 @@ describe('optional tracking consent boundaries', () => {
     const layout = read('../app/layout.tsx');
     const gtm = read('GoogleTagManager.tsx');
     expect(layout).toContain('<GoogleTagManager />');
-    expect(layout).not.toContain('Analytics');
+    expect(layout).not.toContain('<Analytics');
     expect(gtm).toContain('googletagmanager.com/gtm.js');
     expect(gtm).not.toContain('googletagmanager.com/gtag/js');
   });

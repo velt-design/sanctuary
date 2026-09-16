@@ -11,7 +11,7 @@ export default function ConfiguredEnquiryFields({onSubmit,errors,state,error,rec
  useEffect(()=>{if(state==='success'&&!receivedEarlier){try{sessionStorage.removeItem(key);}catch{} }if(state==='error'||state==='success'||Object.keys(errors).length)status.current?.focus();},[state,errors,receivedEarlier]);
  const save=()=>{if(!form.current)return;const data=new FormData(form.current);try{sessionStorage.setItem(key,JSON.stringify(Object.fromEntries(['name','suburb','email','phone','message'].map(name=>[name,data.get(name)]))));}catch{}};
  if(state==='success')return <div className={css.form} ref={status} tabIndex={-1} role="status">{receivedEarlier?<><h1>Your earlier enquiry was received.</h1><p>Changes made after your first send attempt are not included in that enquiry.</p><p>We’ll contact you to discuss your design. You can tell us about any changes then.</p></>:<><h1>Your enquiry has been sent.</h1><p>We’ll review your design and contact you to discuss the next step.</p><p>Your design is shown here for reference.</p></>}</div>;
- return <form className={css.form} ref={form} onInput={save} onSubmit={onSubmit} noValidate>
+ return <form data-clarity-mask="true" className={css.form} ref={form} onInput={save} onSubmit={onSubmit} noValidate>
  <h1>Enquire about your design.</h1><p>We’ll review your pergola and contact you to discuss your space.</p>
  <input type="hidden" name="enquiryType" value="residential"/><input type="hidden" name="requestType" value="project-discussion"/>
  {(Object.keys(errors).length>0||error)&&<div ref={status} tabIndex={-1} role="alert" className={css.error}>{error||'Please check the details below.'}</div>}
