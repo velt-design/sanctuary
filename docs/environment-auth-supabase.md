@@ -59,6 +59,28 @@ Never commit real env files. `.env*` is ignored.
 
 ## Praxis Read Connector Setup
 
+For the current production portal, read-only inspection on 2026-09-16 found no
+Praxis reporting schema or historical reporting migration. Use the reviewed
+`20260916000002_praxis_reporting_current_bootstrap.sql` followed by
+`20260916000003_praxis_verified_receipts.sql`. Do not replay the old
+`20260903000001` into a current database or mark it applied: it embeds superseded
+finance logic and historical timestamp updates. Do not use an unfiltered
+`db push --include-all` for this installation. Record only the exact applied
+forward migrations in the target ledger after the normal release review.
+
+The new bootstrap preserves the current finance function except its explicit
+reporting-role authorization and fails if that authorization anchor changed.
+It creates nullable update metadata and future update triggers; existing quote
+and invoice-plan rows are not backfilled. Reads fall back to source creation or
+cancellation dates when an update date is unknown. The repeated reporting DDL
+is an immutable forward-installation snapshot, not a second runtime owner.
+Native PostgreSQL coverage verifies actual current finance SQL, no existing
+business-row changes, role denials, rollback, repeated installation and an
+unknown authorization shape. Production installation and live proof are still
+pending; those tests do not establish activation.
+
+The customer-search and verified-receipt routes reuse these exact credentials and identity checks; they have no independent broad credential. Install `20260916000003_praxis_verified_receipts.sql` before enabling customer journey reads. Its view grants only the existing reporting group. A successful core health check alone does not prove this extension is installed: activation must also verify an authenticated bounded customer search and project-specific receipt read. Returned matches are portal-recorded Xero evidence, not a live bank refresh.
+
 Migration `20260903000001_praxis_context_reporting_v1.sql` creates the dark reporting schema and non-login `sanctuary_praxis_reader` group role. Applying it, creating an environment LOGIN, inserting the database-owned source identity, storing secrets, configuring Velt, and enabling traffic are separate reviewed operations; this repository change performs none of them.
 
 For each environment, create one revocable LOGIN with no superuser, database creation, role creation, replication, or RLS-bypass capability. It may inherit only `sanctuary_praxis_reader`, must default to read-only transactions, should have a bounded connection limit, and must receive no direct grants on base tables, `private`, `auth`, `storage`, sequences, or write RPCs. Store its connection string and independent bearer token in the approved secret manager and expose them only to the Portal server. Provision the identity row with the exact source key, connection ID, environment, and projection version registered in Velt. The connector fails closed when either the identity or concrete LOGIN posture differs.

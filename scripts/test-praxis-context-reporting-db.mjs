@@ -53,7 +53,7 @@ function psql(sql, label, { reader = false, quiet = false } = {}) {
   return requireSuccess(docker(args, { input: sql }), label);
 }
 
-function expectReaderDenied(sql, label) {
+function expectReaderDenied(sql, label, expected = /permission denied|read-only transaction|cannot execute/i) {
   const result = docker([
     'exec', '--interactive', '--env', `PGPASSWORD=${readerPassword}`,
     container, 'psql', '--no-psqlrc', '--set=ON_ERROR_STOP=1',
@@ -61,7 +61,7 @@ function expectReaderDenied(sql, label) {
   ], { input: `set default_transaction_read_only = off;\n${sql}` });
   if (result.status === 0) throw new Error(`${label} unexpectedly succeeded.`);
   const detail = [result.stdout, result.stderr].filter(Boolean).join('\n');
-  if (!/permission denied|read-only transaction|cannot execute/i.test(detail)) {
+  if (!expected.test(detail)) {
     throw new Error(`${label} failed for an unexpected reason:\n${detail}`);
   }
   process.stdout.write(`praxis-reporting-db: denied ${label}\n`);
@@ -103,6 +103,17 @@ try {
   if (rollbackClean !== 't') throw new Error('Migration rollback left reporting objects.');
   psql(migration, 'Migration application');
   psql(migration, 'Idempotent migration replay');
+  psql(readFileSync(path.join(root, 'supabase/tests/praxis_verified_receipts_fixture.sql'), 'utf8'), 'Receipt fixture');
+  psql("alter table public.deposit_invoices add column invoice_kind text default 'QUOTE_LINKED';", 'Current invoice schema');
+  const currentFinance = readFileSync(path.join(root, 'supabase/migrations/20260914000017_xero_partial_payment_balances.sql'), 'utf8');
+  psql(currentFinance.slice(currentFinance.indexOf('create or replace function'), currentFinance.indexOf('-- Matched money')), 'Current canonical finance');
+  const financeBefore = psql("select pg_get_functiondef('public.commercial_project_financial_truth(uuid)'::regprocedure);", 'Finance baseline', { quiet: true });
+  const compatible = readFileSync(path.join(root, 'supabase/migrations/20260916000002_praxis_reporting_current_bootstrap.sql'), 'utf8');
+  psql(compatible.replace(/commit;\s*$/, 'rollback;'), 'Current reporting rollback');
+  if (psql("select pg_get_functiondef('public.commercial_project_financial_truth(uuid)'::regprocedure);", 'Finance rollback', { quiet: true }) !== financeBefore) throw new Error('Reporting rollback changed finance.');
+  psql(compatible, 'Current reporting installation');
+  const financeAfter = psql("select pg_get_functiondef('public.commercial_project_financial_truth(uuid)'::regprocedure);", 'Finance preservation', { quiet: true });
+  if (financeAfter.replace(" and not pg_has_role(session_user, 'sanctuary_praxis_reader', 'member')", '') !== financeBefore) throw new Error('Reporting installation changed finance calculation.');
   psql(`
     insert into praxis_reporting.source_identity_v1 (
       source_key, connection_id, environment, projection_version, configured_by
@@ -319,6 +330,25 @@ try {
   expectReaderDenied('select public.commercial_change_payment_allocation();', 'allocation write RPC execution');
   expectReaderDenied("select * from public.commercial_project_financial_truth('10000000-0000-4000-8000-000000000001');", 'direct canonical function execution');
   process.stdout.write('praxis-reporting-db: real PostgreSQL denial contract passed\n');
+  const receiptMigration = readFileSync(path.join(root, 'supabase/migrations/20260916000003_praxis_verified_receipts.sql'), 'utf8');
+  psql(receiptMigration.replace(/commit;\s*$/, 'rollback;'), 'Receipt migration rollback');
+  if (psql("select to_regclass('praxis_reporting.verified_receipts_v1') is null;", 'Receipt rollback residue', { quiet: true }) !== 't') throw new Error('Receipt rollback left a view.');
+  psql(receiptMigration, 'Receipt migration');
+  if (psql('select amount_inc_gst_cents::text || currency from praxis_reporting.verified_receipts_v1;', 'Verified receipt', { reader: true, quiet: true }) !== '5750NZD') throw new Error('Receipt amount/currency not preserved.');
+  for (const mutation of [
+    'update public.xero_deposit_matches set reversed_at=now()',
+    'update public.xero_deposit_matches set amount_inc_gst_cents=1',
+    "update public.xero_deposit_matches set project_id='10000000-0000-4000-8000-000000000002'",
+    "update public.project_payment_entries set source_invoice_id='70000000-0000-4000-8000-000000000002'",
+  ]) {
+    const count = psql(`begin; ${mutation}; set local role sanctuary_praxis_reader_probe; select count(*) from praxis_reporting.verified_receipts_v1; rollback;`, 'Invalid receipt exclusion', { quiet: true });
+    if (count !== '0') throw new Error('Invalid receipt was exposed.');
+  }
+  expectReaderDenied('select * from public.xero_deposit_matches;', 'receipt base-table SELECT');
+  const receiptDeleteGranted = psql("select has_table_privilege(current_user, 'praxis_reporting.verified_receipts_v1', 'DELETE');", 'Receipt DELETE grant', { reader: true, quiet: true });
+  if (receiptDeleteGranted !== 'f') throw new Error('Reporting reader has receipt DELETE privilege.');
+  expectReaderDenied('delete from praxis_reporting.verified_receipts_v1;', 'receipt view DELETE', /permission denied|cannot delete from view/i);
+  process.stdout.write('praxis-reporting-db: verified receipt projection passed\n');
 } finally {
   if (started) docker(['rm', '--force', container]);
 }
