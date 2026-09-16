@@ -12,14 +12,14 @@ import type { ProjectEvidence } from './projectFinderMedia';
 import styles from './projectFinderHomepage.module.css';
 
 type ProjectFinderEvidenceProps = {
-  direction: ProjectFinderHomeDirection;
+  direction?: ProjectFinderHomeDirection;
   priorities: readonly ProjectPriority[];
   professionalPath?: CommercialProfessionalPath;
   projects: readonly ProjectEvidence[];
 };
 
 function isResidentialDirection(
-  direction: ProjectFinderHomeDirection,
+  direction: ProjectFinderHomeDirection | undefined,
 ): direction is ResidentialProjectFinderHomeDirection {
   return direction === 'cover' || direction === 'bespoke';
 }
@@ -38,12 +38,13 @@ export default function ProjectFinderEvidence({
       <Container width="wide">
         <header className={styles.evidenceHeader}>
           <div>
-            <p className={styles.eyebrow}>Relevant built work</p>
-            <h2 id="project-evidence-heading">Built work in this direction.</h2>
+            <p className={styles.eyebrow}>{direction ? 'Relevant built work' : 'Selected built work'}</p>
+            <h2 id="project-evidence-heading">{direction ? 'Built work in this direction.' : 'A few spaces we’ve built.'}</h2>
           </div>
           <p>
-            Explore how comparable briefs, constraints and architectural
-            details were resolved before deciding what belongs in your project.
+            {direction
+              ? 'Explore how comparable briefs, constraints and architectural details were resolved before deciding what belongs in your project.'
+              : 'See how the roof, house and site come together in completed Sanctuary projects.'}
           </p>
         </header>
         <div className={styles.projectGrid}>

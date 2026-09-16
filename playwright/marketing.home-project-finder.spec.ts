@@ -164,14 +164,13 @@ test('project finder is the indexable live homepage and the prototype URL redire
   await expect(header).toHaveAttribute('data-hero-navigation', 'overlay');
   await expect(header.locator('.nav-cta')).toHaveCount(0);
   await expect(heading).toBeVisible();
-  await expect(page.getByText('Fixed-roof pergola design and build in Auckland'))
-    .toBeHidden();
+  // The story fades with opacity, which Playwright still considers visible.
+  // Assert its settled state; the dedicated timing test owns the transition.
   await expect(page.locator('[data-homepage-hero-symbol="chevron"]'))
     .toHaveCount(1);
   const continueArrow = page.getByRole('button', {
     name: 'Continue to choose your project starting point',
   });
-  await expect(continueArrow).toBeHidden();
   await expect(heroJourney).toHaveAttribute('data-story-visible', 'true');
   await expect(page.getByText('Fixed-roof pergola design and build in Auckland'))
     .toBeVisible();
@@ -213,6 +212,10 @@ test('project finder is the indexable live homepage and the prototype URL redire
     .toBeVisible();
   await expect(page.locator('[data-professional-path-chooser]')).toHaveCount(0);
   await expect(page.locator('[data-project-direction] img')).toHaveCount(3);
+  await expect(page.getByRole('heading', { name: 'A few spaces we’ve built.' })).toBeVisible();
+  await expect(page.locator('[data-project-evidence]')).toHaveCount(2);
+  await expect(page.locator('[data-project-evidence="dairy-flat-estate"] a')).toHaveAttribute('href', '/projects/dairy-flat-estate');
+  await expect(page.locator('[data-project-direction="cover"]')).toContainText('Start designing');
   await expect(page.locator('[data-project-direction] img').first())
     .toHaveAttribute('loading', 'lazy');
   await expect(page.getByRole('img', {
@@ -312,30 +315,27 @@ test('the hero image and shared header use the same softer fade', async ({
   await setAnalyticsConsent(page, false);
   await page.route('**/_next/image?*', async (route) => route.abort());
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  const welcome = page.locator('[data-homepage-welcome]');
-  await expect(welcome).toHaveAttribute(
-    'data-welcome-phase',
-    'leaving',
-    { timeout: 2_500 },
-  );
-  const transitionDurations = await page.evaluate(() => ({
-    header: getComputedStyle(document.querySelector('header.site')!).transitionDuration,
-    welcome: getComputedStyle(document.querySelector('[data-homepage-welcome]')!)
-      .transitionDuration,
+  // Sample both nodes in one browser frame, before React removes the veil.
+  const fade = await page.evaluate(() => new Promise<{ durations: string[]; opacities: number[] } | null>((resolve) => {
+    const deadline = performance.now() + 3_000;
+    const sample = () => {
+      const welcome = document.querySelector('[data-homepage-welcome]');
+      const header = document.querySelector('header.site');
+      if (welcome?.getAttribute('data-welcome-phase') === 'leaving' && header) {
+        const styles = [getComputedStyle(welcome), getComputedStyle(header)];
+        const opacities = styles.map(style => Number.parseFloat(style.opacity));
+        if (opacities.every(opacity => opacity > 0 && opacity < 1)) {
+          resolve({ durations: styles.map(style => style.transitionDuration), opacities });
+          return;
+        }
+      }
+      if (performance.now() >= deadline) { resolve(null); return; }
+      requestAnimationFrame(sample);
+    };
+    sample();
   }));
-  expect(transitionDurations.header).toContain('0.65s');
-  expect(transitionDurations.welcome).toContain('0.65s');
-  await page.waitForTimeout(180);
-  const fadeOpacities = await page.evaluate(() => ({
-    header: Number.parseFloat(getComputedStyle(document.querySelector('header.site')!).opacity),
-    welcome: Number.parseFloat(getComputedStyle(
-      document.querySelector('[data-homepage-welcome]')!,
-    ).opacity),
-  }));
-  for (const opacity of Object.values(fadeOpacities)) {
-    expect(opacity).toBeGreaterThan(0);
-    expect(opacity).toBeLessThan(1);
-  }
+  expect(fade).not.toBeNull();
+  for (const duration of fade!.durations) expect(duration).toContain('0.65s');
 });
 test('the automatic hero reveal waits until the mobile menu is dismissed', async ({
   page,
@@ -440,7 +440,8 @@ test('mobile art direction and native scrolling follow the automatic story revea
   const primaryDirections = page.locator('[data-project-direction]');
   await expect(primaryDirections).toHaveCount(3);
   await expect(primaryDirections.locator('img')).toHaveCount(3);
-  expect(await primaryDirections.locator('img').evaluateAll((images) => (
+  await expect(page.locator('[data-project-direction="cover"] img')).toBeVisible();
+  expect(await page.locator('[data-project-direction]:not([data-project-direction="cover"]) img').evaluateAll((images) => (
     images.every((image) => image.getClientRects().length === 0)
   ))).toBe(true);
   const simpleCoverTitle = page.getByRole('radio', { name: /Design your pergola/ })
@@ -524,7 +525,9 @@ test('the finder landing contains the complete opening whenever the viewport can
       name: 'Continue to choose your project starting point',
     }).click();
     await expectProjectFinderOpeningAligned(page);
-    expect((await projectFinderOpeningGeometry(page)).fits).toBe(true);
+    // The authentic mobile preview adds height: it should align below the
+    // header and scroll naturally. Desktop still contains the full opening.
+    expect((await projectFinderOpeningGeometry(page)).fits).toBe(viewport.width > 760);
     await expectNoHorizontalOverflow(page);
   }
 });
@@ -668,9 +671,13 @@ test('Design your pergola opens the full designer directly', async ({
   await setAnalyticsConsent(page, false);
   await page.goto('/');
   await page.locator('[data-project-direction="cover"]').click();
-  await expect(page).toHaveURL(/\/contact\?.*configurator=preview$/);
-  expect(new URL(page.url()).searchParams.get('source_component')).toBe('project_finder');
-  await expect(page.getByRole('button', {name:'Roof & ceiling', exact:true})).toBeVisible();
+  const designer = page.getByRole('dialog', { name: 'Design your pergola', exact: true });
+  await expect(designer).toBeVisible();
+  await expect(designer.getByRole('heading', { name: 'Size & shape', exact: true })).toBeVisible();
+  await expect(designer.getByRole('button', {name: '3D', exact: true})).toBeVisible();
+  await designer.getByRole('button', { name: 'Close configurator', exact: true }).click();
+  await expect(designer).not.toBeVisible();
+  await expect(page.locator('[data-project-direction="cover"]')).toBeFocused();
 });
 
 test('commercial and professional choices reveal tailored results and evidence', async ({
@@ -1098,12 +1105,17 @@ test('direction cards stay compact on mobile and avoid narrow tablet columns', a
       elements.map((element) => {
         const card = element.getBoundingClientRect();
         const image = element.querySelector('img')?.getBoundingClientRect();
-        return { cardHeight: card.height, imageWidth: image?.width ?? 0 };
+        return { direction: element.getAttribute('data-project-direction'), cardHeight: card.height, imageWidth: image?.width ?? 0 };
       })
     ));
     for (const card of cards) {
-      expect(card.cardHeight).toBeLessThan(230);
-      expect(card.imageWidth).toBeLessThanOrEqual(116);
+      if (card.direction === 'cover') {
+        expect(card.cardHeight).toBeLessThan(450);
+        expect(card.imageWidth).toBeGreaterThan(200);
+      } else {
+        expect(card.cardHeight).toBeLessThan(230);
+        expect(card.imageWidth).toBeLessThanOrEqual(116);
+      }
     }
     if (width === 320) {
       const proofTop = await page.locator('[aria-label="Why Sanctuary"]')

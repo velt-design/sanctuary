@@ -54,6 +54,7 @@ import {
 import ProjectFinderResult from './ProjectFinderResult';
 import { pushProjectFinderEvent } from './ProjectFinderTracker';
 import styles from './projectFinderHomepage.module.css';
+import previewStyles from './homepageDesignerPreview.module.css';
 
 type ProjectFinderProps = {
   initialState: ProjectFinderState;
@@ -434,7 +435,7 @@ export default function ProjectFinder({
                   <button
                     aria-checked={selected}
                     aria-describedby={`project-direction-${direction}-description`}
-                    className={styles.directionCard}
+                    className={`${styles.directionCard} ${direction === 'cover' ? previewStyles.designerCard : ''}`}
                     data-project-direction={direction}
                     data-selected={selected ? 'true' : 'false'}
                     key={direction}
@@ -444,12 +445,12 @@ export default function ProjectFinder({
                     tabIndex={selected || (!state.project && index === 0) ? 0 : -1}
                     type="button"
                   >
-                    <span className={styles.directionImage}>
+                    <span className={`${styles.directionImage} ${direction === 'cover' ? previewStyles.preview : ''}`}>
                       <Image
                         alt={choiceMedia.alt}
                         fill
                         loading="lazy"
-                        sizes="(max-width: 430px) 96px, (max-width: 760px) calc(100vw - 2.5rem), (max-width: 900px) 36vw, (max-width: 1100px) 33vw, 420px"
+                        sizes="(max-width: 760px) calc(100vw - 2.5rem), (max-width: 900px) 36vw, (max-width: 1100px) 33vw, 420px"
                         src={choiceMedia.src}
                         style={{ objectPosition: choiceMedia.objectPosition }}
                       />
@@ -464,7 +465,7 @@ export default function ProjectFinder({
                       </span>
                     </span>
                     <span className={styles.directionState} aria-hidden="true">
-                      {selected ? 'Selected' : 'Choose'}
+                      {direction === 'cover' ? 'Start designing' : selected ? 'Selected' : 'Choose'}
                     </span>
                   </button>
                 );
@@ -481,6 +482,13 @@ export default function ProjectFinder({
           onSelect={chooseProfessionalPath}
           sectionRef={professionalSectionRef}
           selectedPath={state.professionalPath}
+        />
+      ) : null}
+
+      {!state.project ? (
+        <ProjectFinderEvidence
+          priorities={[]}
+          projects={[media.evidenceByDirection.cover[0], media.evidenceByDirection.bespoke[0]]}
         />
       ) : null}
 

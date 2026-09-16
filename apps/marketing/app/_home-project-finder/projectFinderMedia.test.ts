@@ -9,7 +9,7 @@ describe('project finder governed media', () => {
     expect(media.hero.mobileSrc).toBe('/images/warkworth-gable-02.jpg');
     expect(Object.values(media.choiceByDirection).map((item) => item.src))
       .toEqual([
-        '/images/simple-pergolas/pitched-01.webp',
+        '/images/homepage-designer-preview.webp',
         '/images/project-mt-maunganui-01.jpg',
         '/images/project-tamaki-dr-02.jpg',
       ]);
