@@ -6,6 +6,7 @@ import {usePreviewDraft} from '../../components/configurator-prototype/usePrevie
 import {useConfiguratorPrice} from '../../components/configurator-prototype/useConfiguratorPrice';
 import {useReviewPrice} from '../../components/configurator-prototype/useReviewPrice';
 import {enquiryEstimate} from './enquiryEstimate';
+import {enquiryReturnPath} from './enquiryReturnPath';
 import {solvePergolaPreview,solveSimpleCoverSurroundings} from '../../components/configurator-prototype/solvePreview';
 import LightingProvider from '../../components/configurator-prototype/LightingProvider';
 import RailProvider from '../../components/configurator-prototype/RailProvider';
@@ -34,9 +35,13 @@ export default function DesignEnquiry({initialContext={}}:{initialContext?:Enqui
  const finish=getRoofFinish(roof);
  if(!ready)return <main className={css.page}><p>Preparing your design…</p></main>;
  return <main className={css.page}>
- <header className={css.header}><span>Your pergola.</span><Link href="/configurator-preview?open=1" prefetch={false}>← Edit my design</Link></header>
+ <header className={css.header}>
+ <Link className={css.brand} href="/" aria-label="Sanctuary Pergolas home">SANCTUARY PERGOLAS</Link>
+ <Link className={css.back} href={enquiryReturnPath(initialContext.sourcePath)}>← Back to website</Link>
+ </header>
  <div className={css.layout}>
  <section className={css.design} aria-label="Your design">
+ <div className={css.designHeading}><h2>Your pergola.</h2><Link className={css.edit} href="/configurator-preview?open=1" prefetch={false}>← Edit my design</Link></div>
  <LightingProvider input={input} roof={roof} onChange={noop}><RailProvider><PreviewBlindProvider input={input} roof={roof} onChange={noop}>
  <div className={css.visual}>
  <div className={css.views} role="group" aria-label="Design view">{(['3D','Plan'] as const).map(item=><button key={item} aria-pressed={view===item} onClick={()=>setView(item)}>{item}</button>)}</div>
