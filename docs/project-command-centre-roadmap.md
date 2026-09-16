@@ -4,7 +4,45 @@
 
 ### Current focus: useful workflow before release
 
-Current candidate is `0620180`, incorporating production main `45cc09f`; local
+17 September continuation: the authenticated preview now reaches the receiver,
+but real correspondence still fails before the Outlook read. Private diagnostics
+isolated two contract defects: exact source-omission markers were rejected on
+scalar fields, and the source could exceed its aggregate-entry limit after
+adding markers. The paired receiver correction and forward reporting migration
+`20260917000001_praxis_projection_aggregate_bounds.sql` are implemented locally;
+neither is released. Native disposable PostgreSQL 17 verification passed the
+combined entry/byte bounds, retained root fields, exact omission counts,
+impossible-budget refusal, rollback/replay and unchanged grants/business rows.
+The 52 focused receiver tests and receiver typecheck passed. Independent review
+found no material defect in the paired backend correction and independently
+passed 50 receiver/customer-context tests and the native database harness. The
+Docker PostgreSQL 17 denial suite and fast PGlite suite also passed with the new
+migration and regression included; 34 Portal connector/route/marketing tests and
+the changed-architecture report passed. The Docker harness now normalizes CRLF
+before finding its bootstrap stub, fixing its Windows invocation. This evidence
+does not establish hosted correspondence or UI acceptance. Keep real diagnostic
+evidence ignored and private. Next: complete publication checks and establish
+the reviewed release path before
+repeating the authenticated real-message read. Full UI acceptance, correct
+project association, genuine outcome/return and three real scenarios remain
+unverified. The preceding status-only turn made no implementation progress;
+this continuation added and passed the native database regression coverage.
+
+Hosted-empty-POST correction is published as `a0cbecf`; full pre-push workspace
+types/lint and changed-architecture guard passed, as did independent review and
+30 focused route/gateway checks. Its separate protected deployment is READY;
+unsigned staff reads remain 401, project-wide feature flag is unchanged and no
+custom domain was assigned. Private receipt is
+`.codex-tmp/clarity/protected-candidate-a0cbecf.json`. The new deployment has a
+separate login session: Jordan has been asked to sign in to repeat the real read.
+17 September status check: exact-head Portal Quality `35069297341`, Portal
+Performance Report and Autonomous Engineering Foundation all passed. Jordan is
+signed in to the corrected preview; the first corrected real correspondence read
+is being verified. Do not equate these automated passes with whole-goal acceptance.
+The earlier protected candidate below is superseded and retains the empty-POST
+bug. No live Portal release or positive customer-mail result is yet claimed.
+
+The first protected candidate was `0620180`, incorporating production main `45cc09f`; local
 documentation now records its subsequent verification. Prior goal turn was progress (private Support request
 submitted, current main integrated and verified). Exact-head Portal Quality
 `35068357748` is running; reuse that run. A separate production-configured test

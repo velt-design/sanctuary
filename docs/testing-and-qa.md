@@ -589,6 +589,16 @@ When `docs:impact` prints an advisory, update the suggested owner doc if the cod
 
 ## Praxis Reporting Tests
 
+The native customer-read harness also applies the forward aggregate-bounds
+correction (`20260917000001`), verifies rollback/replay and unchanged function
+grants/business rows, and runs `supabase/tests/praxis_projection_aggregate_bounds.sql`.
+Its synthetic cases independently count the final JSON entries, including the
+extra entry introduced by an omission marker during byte reduction. Root fields,
+scalar values where they fit, exact omission evidence and fail-closed impossible
+budgets are checked. This is local database proof, not a live correspondence read.
+The fast PGlite and Docker reporting harnesses also apply this correction and run
+the same synthetic final-payload regression cases.
+
 - `npx vitest run apps/portal/lib/praxis apps/portal/app/api/integrations/praxis/v1/routes.test.ts test/praxis-marketing-read.test.ts`
   includes the marketing aggregate's actual SQL against disposable PGlite with
   more than 100 records, NZ day boundaries, exact test exclusion, distinct quote
