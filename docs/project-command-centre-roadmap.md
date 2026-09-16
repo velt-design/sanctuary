@@ -34,11 +34,41 @@ is the rollback target. Velt's receiver flag is now true; Portal's flag remains
 false. No positive staff request, real correspondence or Portal rollout is yet
 proved. Candidate metadata: Velt `.praxis-evaluation-private/staff/enabled-candidate.json`.
 
-Sanctuary retirement migration remains **unapplied**. A rollback-only rehearsal
-on the live schema passed apply/replay, exact event-count and unchanged meaningful
-work/history assertions; all 554 active generic reminders remain after rollback.
-Receipt: `.codex-tmp/clarity/live-retirement-rehearsal-result.log`. Its scope excludes
-76 enquiry follow-ups, 33 quote follow-ups and one manual task.
+Sanctuary retirement migration is now **installed**. The live-schema rollback
+rehearsal passed apply/replay, exact event-count and unchanged meaningful-work and
+history assertions. Installation then checked unchanged function hashes and the
+unused ledger slot before changing records atomically: 554 generic reminders
+were cancelled with 554 before/after audit events. Active enquiry follow-ups
+remain 76, quote follow-ups 33 and manual work one. Independent read-only postflight
+passed ledger/function hashes, all 554 before/after events and unchanged meaningful
+work counts. Private receipts: `.codex-tmp/clarity/retirement-before.json`,
+`live-retirement-rehearsal-result.log` and `retirement-install-result.json`.
+Application rollback does not erase these audit events; restoring retired work
+would require a separately reviewed, audited recovery rather than deleting history.
+
+Publication correction: customer-specific commercial evidence was accidentally
+included in the final progress-note commit on this public draft branch. That
+single documentation commit was replaced with a redacted revision using an exact
+lease, preserving PR145 and all implementation; the affected revision was not
+merged to main and is absent from the active PR. Historical GitHub retrieval is
+still possible. Jordan approved the private Support removal request; it was
+submitted successfully and is open awaiting GitHub's response. Its ticket receipt,
+references and draft stay in ignored
+`.codex-tmp/clarity/github-cache-removal-request.txt`; do not reproduce customer
+details or the removed revision in public progress notes. Current clean PR head
+is `e58ec2d`; Portal Quality `35066673540` and all exact-head required checks passed.
+Portal is still unreleased; this does not prove the real correspondence journey.
+The superseded revision's
+remaining CI was cancelled deliberately after replacement.
+
+Release preparation then incorporated production main `45cc09f` (marketing reader
+PR146) without conflicts, preserving its routes, reader, tests and workflow.
+The combined focused marketing/auth and correspondence gateway slice passed
+21 tests; the opt-in cross-repository pairing check skipped because its explicit
+pairing setup was absent in this invocation. Prior pairing evidence is unchanged;
+this is not a new live integration proof. Required hosted checks must pass on the
+combined revision before release. Velt's owning task is separately releasing its
+clock correction and marketing work; do not overwrite its deployment window.
 
 Real browser baseline: authenticated production access is available. On the
 selected quote-decision project, the current-quote link opens the exact sent
