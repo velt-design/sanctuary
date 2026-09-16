@@ -59,6 +59,22 @@ Never commit real env files. `.env*` is ignored.
 
 ## Praxis Read Connector Setup
 
+The marketing endpoint `/api/integrations/praxis/v1/marketing` adds complete
+period-activity counts to this same restricted connector. It accepts 1–90
+completed UTC-cutoff dates and an optional equal earlier comparison, computes
+New Zealand calendar-day counts in the existing eight-second repeatable-read
+transaction, and returns four totals plus source/date/exclusion evidence.
+It uses the already-granted enquiry, quote and quote-version reporting views;
+no new credentials, grants, schema migration or business write is needed.
+The existing record endpoint remains capped at 100. Quote sent/accepted totals
+deduplicate quote IDs per period and are activity, not an acquisition cohort,
+payment proof or a currently active contract. The exact labelled 16 September
+measurement enquiry/project is excluded; names are not used to guess tests.
+Missing, omitted or orphaned evidence withholds the whole aggregate. Activation
+must verify the exact live counts and statement budget before Velt daily reads.
+Cross-repository agreement and current delivery evidence are owned by Velt
+PR364's `docs/SANCTUARY_MARKETING_OUTCOMES.md`; deployment remains pending.
+
 For the current production portal, read-only inspection on 2026-09-16 found no
 Praxis reporting schema or historical reporting migration. Use the reviewed
 `20260916000002_praxis_reporting_current_bootstrap.sql` followed by
