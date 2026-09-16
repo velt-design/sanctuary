@@ -14,6 +14,23 @@ function privateResponse(response: Response) {
   return response;
 }
 
+async function hasBodyBytes(request: Request): Promise<boolean> {
+  // Hosted Request adapters may expose a stream even for an empty POST.
+  // Reject actual bytes immediately rather than trusting Content-Length.
+  if (!request.body) return false;
+  const reader = request.body.getReader();
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) return false;
+      if (chunk.value.byteLength > 0) return true;
+    }
+  } finally {
+    await reader.cancel();
+    reader.releaseLock();
+  }
+}
+
 async function handle(request: Request, context: Context, check: boolean) {
   const diagnostics = createRouteDiagnostics(request, '/api/staff/v1/projects/[projectId]/correspondence');
   const fail = (message: string, status: number) => privateResponse(jsonError(message, status, diagnostics));
@@ -29,7 +46,7 @@ async function handle(request: Request, context: Context, check: boolean) {
     if (check) {
       // No supplied email, actor, summary or provider input.
       if (request.headers.get('origin') !== url.origin || request.headers.get('sec-fetch-site') === 'cross-site') return fail('Forbidden', 403);
-      if (request.body !== null) return fail('Unexpected correspondence body', 400);
+      if (await hasBodyBytes(request)) return fail('Unexpected correspondence body', 400);
     }
     const summary = await getProjectPageSummary(projectId, diagnostics, auth.supabase);
     if (!summary) return fail('Project not found', 404);

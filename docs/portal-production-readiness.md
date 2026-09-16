@@ -4,9 +4,11 @@ Status: Active evolving tracker.
 
 Staff correspondence continuation (2026-09-16): actual message transport and
 optional interpretation pass focused application, native database and paired-wire
-checks plus independent source review. Fresh Vercel environment metadata shows
-the staff enablement/signing variables are not configured in either production
-project. The existing owner reader is live; this staff extension remains disabled.
+checks plus independent source review. Both production projects now have the
+dedicated signing configuration. The Velt receiver is deployed and enabled, with
+its additive migration independently verified. The live Portal remains disabled;
+a protected, unpromoted deployment enables correspondence only for real-project
+verification. Its normal staff login remains required.
 Real staff project association, action outcome and responsive journey acceptance
 are still release requirements. Current evidence is in the project roadmap.
 
@@ -15,8 +17,10 @@ generic stage reminders through forward migration `20260916000006`, retains
 audited history and used follow-ups, and supplies three coherent populated preview
 stories. Migration rehearsal, focused browser checks, Portal tests and isolated
 build/bundle checks pass. Independent delivery review passed the bounded local
-milestone after one wording/documentation correction round; production
-migration/application rollout and real staff correspondence proof remain pending.
+milestone after one wording/documentation correction round. Production migration
+is installed: independent postflight verified 554 audited generic cancellations,
+zero active generic reminders and unchanged meaningful-work counts. Application
+rollout and real staff correspondence proof remain pending.
 An explicit sample installation commitment is not a new automatic task producer.
 Current agreement and evidence: `project-command-centre-roadmap.md`.
 

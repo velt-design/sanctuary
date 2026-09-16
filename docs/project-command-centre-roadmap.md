@@ -4,6 +4,33 @@
 
 ### Current focus: useful workflow before release
 
+Current candidate is `0620180`, incorporating production main `45cc09f`; local
+documentation now records its subsequent verification. Prior goal turn was progress (private Support request
+submitted, current main integrated and verified). Exact-head Portal Quality
+`35068357748` is running; reuse that run. A separate production-configured test
+deployment is READY at the exact candidate revision, with correspondence enabled only through deployment-local
+overrides. Project-wide Portal flag remains false, custom-domain assignment is
+disabled, and the live Portal alias remains its prior release. Vercel protection
+is `all_except_custom_domains`; the candidate URL therefore remains protected in
+addition to normal Portal staff authentication. No customer data is embedded in
+the build or public evidence. Private metadata receipt:
+`.codex-tmp/clarity/protected-candidate.json`. This candidate is for read-only real
+message verification before any live Portal promotion or consequential outcome.
+Browser inspection reaches the normal staff login; an unsigned Portal API read
+returns 401. Jordan signed in on this separate protected origin. The actual staff
+journey then exposed a hosted-request bug: GET availability is 200, while an empty
+POST receives 400 before reaching the correspondence gateway. The route treated
+any non-null body stream as supplied data. The fix inspects bytes instead, accepts
+an empty stream and immediately rejects any content regardless of Content-Length.
+Thirty focused route/gateway checks pass, including empty-stream and forged-length
+regressions. Independent review reran all 30 checks and found no material defect;
+auth, origin, project authorization and signed identity are unchanged. No positive
+real email read is claimed.
+The original candidate stays unpromoted. Deploy the reviewed correction to a new
+protected candidate and repeat the real authenticated read before live release.
+Velt's live receiver has advanced to `26f899f` through the owning tasks; ancestry
+includes the reviewed staff release and its staff runtime/endpoint are unchanged.
+
 Latest release checkpoint, 16 September: PR365 merged as `a53f4ed`; its migration
 `202609160005_customer_journey_reuse.sql` is independently verified installed.
 The staff migration moved byte-identically to `202609160006`. Staff HEAD

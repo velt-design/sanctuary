@@ -22,6 +22,19 @@ beforeEach(() => {
   mocks.access.mockResolvedValue({ kind: 'authenticated', session: { user: { id: actorId }, role: 'staff' } });
 });
 describe('staff correspondence route', () => {
+  it('accepts a hosted empty POST stream with no caller-supplied data', async () => {
+    const empty = request({ body: '' });
+    expect(empty.body).not.toBeNull();
+    const response = await POST(empty, context);
+    expect(response.status).toBe(200);
+    expect(mocks.read).toHaveBeenCalledWith(expect.anything(), { projectId: projectUuid, actorId }, expect.any(AbortSignal));
+  });
+  it.each([' ', '{}', '{"actorId":"other"}'])('rejects body bytes even when Content-Length claims zero: %s', async body => {
+    const response = await POST(request({ body, headers: { origin, 'content-length': '0' } }), context);
+    expect(response.status).toBe(400);
+    expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.summary).not.toHaveBeenCalled();
+  });
   it('forwards only the explicit interpretation choice after staff/project authorization', async () => {
     const response = await POST(new Request(`${origin}/api/staff/v1/projects/${projectId}/correspondence?analyze=true`, { method: 'POST', headers: { origin } }), context);
     expect(response.status).toBe(200);
