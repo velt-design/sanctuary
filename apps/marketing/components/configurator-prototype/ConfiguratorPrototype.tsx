@@ -61,7 +61,7 @@ function ConfiguratorWorkspace({active,draft,expanded,onToggleExpanded,renderEnq
       <div className={styles.visualSlot}>
       <section className={styles.visual} aria-label="Pergola views" data-expanded={expanded}>
         <PreviewViews input={input} roof={roof} activeDimension={activeDimension} expanded={expanded} onToggleExpanded={onToggleExpanded} />
-        <div className={styles.specStrip}><DimensionShortcut axis="width" value={input.widthMm}/><DimensionShortcut axis="projection" value={input.projectionMm}/><span><strong>{simpleCoverAreaM2(input).toFixed(1)} m²</strong> covered space</span><div className={journey.desktopEstimate}><JourneyEstimate selection={{input,roof,result,configuratorPrice}} reviewPrice={process.env.NODE_ENV === 'development' ? reviewPrice : undefined}/></div></div>
+        <div className={styles.specStrip}><DimensionShortcut axis="width" value={input.widthMm}/><DimensionShortcut axis="projection" value={input.projectionMm}/><span><strong>{simpleCoverAreaM2(input).toFixed(1)} m²</strong> covered space</span><div className={journey.desktopEstimate}><JourneyEstimate retry={retryConfigured} selection={{input,roof,result,configuratorPrice}} reviewPrice={process.env.NODE_ENV === 'development' ? reviewPrice : undefined}/></div></div>
       </section>
       </div>
       <div className={styles.choicesColumn}>
@@ -91,7 +91,7 @@ function ConfiguratorWorkspace({active,draft,expanded,onToggleExpanded,renderEnq
         <footer className={styles.footnote}><span>CONCEPT PREVIEW</span><p>Frame dimensions follow your selections. Framing and supports are representative. Sanctuary will confirm roof detailing, structural suitability and site connections.</p></footer>
         </div>
       </aside>
-      {!renderEnquiry && <PreviewNextAction selection={{ input, roof, result, configuratorPrice }} reviewPrice={process.env.NODE_ENV === 'development' ? reviewPrice : undefined} />}
+      {!renderEnquiry && <PreviewNextAction retry={retryConfigured} selection={{ input, roof, result, configuratorPrice }} reviewPrice={process.env.NODE_ENV === 'development' ? reviewPrice : undefined} />}
       </div>
     </div>
   </div></PreviewBlindProvider>;

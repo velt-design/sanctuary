@@ -2,7 +2,6 @@ import 'server-only';
 import type { ResolvedPublishedCostingConfigurationV1 } from '@sp/costing/server';
 import { parsePreviewDraft } from '../components/configurator-prototype/previewDraft';
 import type { PreviewDraft } from '../components/configurator-prototype/previewDraft.types';
-import { getRoofFinish } from '../components/configurator-prototype/roofFinish';
 import { calculateConfiguratorPricing } from './configuratorReviewPrice';
 import type { ConfiguratorPriceLine } from './configuratorPublicPrice';
 
@@ -20,8 +19,6 @@ export function calculateFrozenConfiguratorPrice(draft: PreviewDraft, resolved: 
   if (!design) return null;
   // Complete versioned schedules are required: never seed review constants in a public calculation.
   if (!resolved.config.accessoryRates || !resolved.config.installedSellingRates) return null;
-  const finish = getRoofFinish(design.roof);
-  if (finish.material !== 'acrylic' && finish.profile === 'trapezoidal') return null;
   const calculation = calculateConfiguratorPricing(design, resolved.config), result = calculation.estimate;
   if (result.status !== 'priced' || result.excluded.length || !calculation.base || !calculation.siteInputs || !result.breakdown?.length) return null;
   const breakdown = result.breakdown.map(line => ({ label: line.label, amountIncGst: line.amount }));

@@ -74,6 +74,20 @@ describe('approved configurator pricing endpoint', () => {
     const body = await (await POST(request(design))).json();
     expect(body.status).toBe('custom'); expect(body).not.toHaveProperty('amountIncGst');
   });
+  it('prices the reported 6.8 x 2.1 m solid freestanding gable using the approved corrugated allowance', async () => {
+    const design: PreviewDraft = { version: 1, input: { widthMm: 6800, projectionMm: 2100, level: 'ground', connection: 'facade' },
+      roof: { attachmentIntent: 'freestanding', family: 'gable', orientation: 'parallel', infills: false,
+        finish: { ceiling: 'thermopine-150', material: 'solid', layout: 'central', profile: 'trapezoidal', acrylicBays: 2, trayWidth: 400 } } };
+    const body = await (await POST(request(design))).json();
+    expect(body.status).toBe('priced');
+    expect(readConfiguratorCalculationRef(body.calculationRef)).not.toBeNull();
+    const corrugated = structuredClone(design);
+    corrugated.roof.finish!.profile = 'corrugated';
+    const comparison = await (await POST(request(corrugated))).json();
+    expect(body.amountIncGst).toBe(comparison.amountIncGst);
+    expect(body.breakdown).toEqual(comparison.breakdown);
+    expect(body.amountIncGst).toBeGreaterThan(0);
+  });
   it('never substitutes another version or review rates when publication is unavailable', async () => {
     const other = resolved(); other.provenance.versionId = 'other-version'; mocks.current.mockResolvedValue(other);
     expect((await POST(request(draft()))).status).toBe(503);
@@ -81,7 +95,7 @@ describe('approved configurator pricing endpoint', () => {
     const body = await (await POST(request(draft()))).json();
     expect(body).toEqual({ status: 'unavailable' });
   });
-  it('withholds the whole estimate for absent schedules, specialty fabrics or an unsupported steel rate', async () => {
+  it('withholds the whole estimate for absent schedules or specialty fabrics', async () => {
     const missing = resolved(); delete missing.config.accessoryRates; mocks.current.mockResolvedValue(missing);
     expect((await (await POST(request(draft()))).json()).status).toBe('custom');
     mocks.current.mockResolvedValue(resolved());
@@ -91,7 +105,7 @@ describe('approved configurator pricing endpoint', () => {
     expect(specialty.status).toBe('custom'); expect(specialty).not.toHaveProperty('breakdown');
     design.roof.blinds = [];
     design.roof.finish = { material: 'solid', layout: 'central', acrylicBays: 2, profile: 'trapezoidal', trayWidth: 400, ceiling: 'thermopine-150' };
-    expect((await (await POST(request(design))).json()).status).toBe('custom');
+    expect((await (await POST(request(design))).json()).status).toBe('priced');
   });
 });
 
