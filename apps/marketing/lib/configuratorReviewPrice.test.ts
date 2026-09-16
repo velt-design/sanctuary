@@ -16,7 +16,8 @@ describe('local price review', () => {
     expect(free.post_cut_height_m).toBe(attached.post_cut_height_m);
     const result = calculateCostV1(free);
     expect(result.install.actions.find(action => action.id === 'posts.pile_1_5m_per_post')?.qty).toBe(4);
-    expect(result.install.actions.find(action => action.id === 'posts.deck_bracket_per_post')?.qty ?? 0).toBe(free.post_count - 4);
+    expect(free.post_count).toBe(6);
+    expect(result.install.actions.find(action => action.id === 'posts.deck_bracket_per_post')?.qty ?? 0).toBe(2);
     draft.roof.attachmentIntent = undefined;
     expect(buildReviewSiteInputs(draft).pergolas[0].modules[0].post_connection_type).toBe('deck_bracket');
   });
