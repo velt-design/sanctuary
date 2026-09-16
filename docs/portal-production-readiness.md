@@ -2,6 +2,13 @@
 
 Status: Active evolving tracker.
 
+Configurator release continuation (2026-09-16): production shared pricing is
+Version13/v2.8 and the Render enquiry handler has delivered an owner-only canary
+with its frozen price breakdown. The current release prepares package v2.9
+compatibility for approved ridge/pile rules without rewriting historical prices.
+Final website deployment/settings, v2.9 publication and live journey verification
+remain pending. Current authority: `customer-configurator-launch-review.md`.
+
 Pricing release (2026-09-15): the owner requested the approved timber prices and costings live in the staff calculator independently of the configurator launch. The isolated release contains v2.7 pricebook compatibility, four Cedar/ThermoPine ceiling choices and a fix for staff HTTP parsing that previously dropped the selected ceiling. Production remains on Version 11 until both app deployments are compatible and the exact preserved-rate candidate is published. No queue migrations, customer configurator activation, email tests or Render purchase are included. Pricing-specific release evidence is kept with the private September pricing review.
 
 Release blocker found during finance preparation (2026-09-15): production Supabase reported unhealthy/100 percent CPU; its last-hour log view showed approximately348,000 Postgres errors, with repeated `owner assignment changed` / SQLSTATE40001. Independent activity inspection found concurrent `project_command_set_owner` calls. This matches the documented commercial stale-conflict retry hazard. A forward migration changes only the two owner-version conflict exceptions to non-retryable PT409; the portal adapter preserves STALE_STATE/409. Five owner-route tests pass, and apply/replay succeeded in a production rollback-only rehearsal. Under Jordan's renewed approval, the database migration was installed on production with exact function-body and unchanged owner/grant guards. Independent postflight verified PT409, absence of the old retryable conflict clauses and zero active owner RPCs at 2026-09-15T00:16:20Z. Supabase subsequently reported Healthy, although displayed CPU remained100 percent; sustained load recovery is not yet verified. The paired portal STALE_STATE/409 adapter remains pending release, so the old portal may show a generic failure for a stale edit until it lands. Keep finance activation blocked pending release and live verification. Evidence is in ignored `production-health-triage.log`, `owner-conflict-tests.log` and `owner-conflict-rehearsal.log`.

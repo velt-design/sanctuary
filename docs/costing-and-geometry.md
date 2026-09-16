@@ -349,6 +349,17 @@ Plan/3D accuracy work must also keep the top-view parity gate green. `buildTopPr
 
 ### Local v2.9 ridge candidate (16 September 2026)
 
+Release preparation now promotes the package manifest to v2.9 and explicitly
+accepts v2.8 and earlier published controls. This does not publish a pricebook:
+the resolver still uses each saved control's effective version. A publication
+regression proves v2.8 retains its old ridge/foundation behavior while a v2.9
+snapshot applies steel over 6m, four corner piles and intermediate brackets.
+The candidate clones production Version13 without changing its rates; candidate
+hash is `33f2f61e754eac149b6f434f5c9eecd1a2321fe9d283ceb82fd03705d47c1dcf`.
+Gate 0: legacy rows N/A, owner-approved protected calculator release, no input
+migration, Phase2 dependency or function/type consolidation. Configuration,
+publication, staff calculator/meta/admin and marketing consumers were checked.
+
 **Freestanding corner-only amendment:** owner subsequently requested piles only
 at the four corners, with all intermediate posts on deck brackets. For effective
 v2.9 rectangular freestanding modules (`house_connection_type=none`) selecting

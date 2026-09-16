@@ -2,6 +2,15 @@
 
 Status: **launch-review milestone verified; production activation blocked by the
 release gates below**. Updated 16 September 2026.
+
+Latest release continuation: main `8c46a69` reconciled at `f018c9e`, preserving
+the Schedule optional-payload repair and both documentation histories. Package
+v2.9 publication compatibility is prepared; production remains Version13/v2.8
+until compatible deployments and explicit publication complete. 1,299 costing,
+marketing, publication/admin and staff calculator tests passed. Required hosted
+checks must cover the final release revision. Render enquiry delivery is already
+verified; the production website still needs the approved-version pin and durable
+enquiry/V2 email settings. No public activation is claimed by this preparation.
 Owner: marketing/configurator release lane. Current branch:
 `codex/configurator-pricing-candidate-20260915`; local preview port 3074.
 This is a verification record, not permission to publish pricing, activate

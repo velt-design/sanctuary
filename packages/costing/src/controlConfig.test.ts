@@ -12,6 +12,23 @@ import {
 } from './controlConfig';
 
 describe('costing control configuration', () => {
+  it('accepts published v2.8 on the v2.9 package without applying new foundation or ridge rules', () => {
+    const base = loadCostingConfigV1();
+    const historical = { ...snapshotCostingControlConfigV1(base), baseManifestVersion: 'v2.8' };
+    expect(validateCostingControlConfigV1(historical, base).ok).toBe(true);
+    const input = { length_m: 7, projection_m: 3, post_cut_height_m: 2.4, post_count: 6,
+      pergola_style: 'gable' as const, roof_material: 'acrylic' as const, extrusion_colour: 'Black' as const,
+      house_connection_type: 'none' as const, post_connection_type: 'pile_1_5m' as const,
+      access: 'normal' as const, height: 'single_storey' as const };
+    const before = calculateCostV1(input, applyCostingControlConfigV1(base, historical));
+    const after = calculateCostV1(input, applyCostingControlConfigV1(base, snapshotCostingControlConfigV1(base)));
+    expect(before.derived.ridge_beam_profile_used).toBeNull();
+    expect(before.materials.lines.some(row => row.id.startsWith('foundation.pile_1_5m.'))).toBe(false);
+    expect(after.derived.ridge_beam_profile_used).toBe('RHS 150x50x3');
+    expect(after.materials.lines.find(row => row.id === 'foundation.pile_1_5m.concrete')?.qty).toBe(4);
+    expect(after.install.actions.find(row => row.id === 'posts.deck_bracket_per_post')?.qty).toBe(2);
+  });
+
   it('round-trips the active package configuration without changing costing', () => {
     const base = loadCostingConfigV1();
     const snapshot = snapshotCostingControlConfigV1(base);
@@ -52,7 +69,7 @@ describe('costing control configuration', () => {
     expect(validation.ok).toBe(true);
 
     const applied = applyCostingControlConfigV1(base, historical);
-    expect(applied.manifest.version).toBe('v2.8');
+    expect(applied.manifest.version).toBe('v2.9');
     expect(applied.appliedControlManifestVersion).toBe('v1.7');
     expect(
       applied.installActions.actions.find((action) => action.id === 'infill.setup_setout_each')?.base_minutes,
