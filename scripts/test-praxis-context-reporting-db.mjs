@@ -319,6 +319,24 @@ try {
   expectReaderDenied('select public.commercial_change_payment_allocation();', 'allocation write RPC execution');
   expectReaderDenied("select * from public.commercial_project_financial_truth('10000000-0000-4000-8000-000000000001');", 'direct canonical function execution');
   process.stdout.write('praxis-reporting-db: real PostgreSQL denial contract passed\n');
+  psql(readFileSync(path.join(root, 'supabase/tests/praxis_verified_receipts_fixture.sql'), 'utf8'), 'Receipt fixture');
+  const receiptMigration = readFileSync(path.join(root, 'supabase/migrations/20260916000002_praxis_verified_receipts.sql'), 'utf8');
+  psql(receiptMigration.replace(/commit;\s*$/, 'rollback;'), 'Receipt migration rollback');
+  if (psql("select to_regclass('praxis_reporting.verified_receipts_v1') is null;", 'Receipt rollback residue', { quiet: true }) !== 't') throw new Error('Receipt rollback left a view.');
+  psql(receiptMigration, 'Receipt migration');
+  if (psql('select amount_inc_gst_cents::text || currency from praxis_reporting.verified_receipts_v1;', 'Verified receipt', { reader: true, quiet: true }) !== '5750NZD') throw new Error('Receipt amount/currency not preserved.');
+  for (const mutation of [
+    'update public.xero_deposit_matches set reversed_at=now()',
+    'update public.xero_deposit_matches set amount_inc_gst_cents=1',
+    "update public.xero_deposit_matches set project_id='10000000-0000-4000-8000-000000000002'",
+    "update public.project_payment_entries set source_invoice_id='70000000-0000-4000-8000-000000000002'",
+  ]) {
+    const count = psql(`begin; ${mutation}; set local role sanctuary_praxis_reader_probe; select count(*) from praxis_reporting.verified_receipts_v1; rollback;`, 'Invalid receipt exclusion', { quiet: true });
+    if (count !== '0') throw new Error('Invalid receipt was exposed.');
+  }
+  expectReaderDenied('select * from public.xero_deposit_matches;', 'receipt base-table SELECT');
+  expectReaderDenied('delete from praxis_reporting.verified_receipts_v1;', 'receipt view DELETE');
+  process.stdout.write('praxis-reporting-db: verified receipt projection passed\n');
 } finally {
   if (started) docker(['rm', '--force', container]);
 }

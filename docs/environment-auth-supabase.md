@@ -59,6 +59,8 @@ Never commit real env files. `.env*` is ignored.
 
 ## Praxis Read Connector Setup
 
+The customer-search and verified-receipt routes reuse these exact credentials and identity checks; they have no independent broad credential. Install `20260916000002_praxis_verified_receipts.sql` before enabling customer journey reads. Its view grants only the existing reporting group. A successful core health check alone does not prove this extension is installed: activation must also verify an authenticated bounded customer search and project-specific receipt read. Returned matches are portal-recorded Xero evidence, not a live bank refresh.
+
 Migration `20260903000001_praxis_context_reporting_v1.sql` creates the dark reporting schema and non-login `sanctuary_praxis_reader` group role. Applying it, creating an environment LOGIN, inserting the database-owned source identity, storing secrets, configuring Velt, and enabling traffic are separate reviewed operations; this repository change performs none of them.
 
 For each environment, create one revocable LOGIN with no superuser, database creation, role creation, replication, or RLS-bypass capability. It may inherit only `sanctuary_praxis_reader`, must default to read-only transactions, should have a bounded connection limit, and must receive no direct grants on base tables, `private`, `auth`, `storage`, sequences, or write RPCs. Store its connection string and independent bearer token in the approved secret manager and expose them only to the Portal server. Provision the identity row with the exact source key, connection ID, environment, and projection version registered in Velt. The connector fails closed when either the identity or concrete LOGIN posture differs.
