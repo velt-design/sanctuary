@@ -374,6 +374,8 @@ describe('Praxis connector trust boundary', () => {
       status: { connector: 'ready', database: 'reachable', projection: 'ready' },
     });
     expect(healthyDb.end).toHaveBeenCalledOnce();
+    const healthProbe = healthyDb.transaction.mock.calls.find(([strings]) => String(strings).includes('from praxis_reporting.context_page_v1'));
+    expect(String(healthProbe?.[0])).toContain("'project', null");
 
     const overGranted = mockDatabase({ identity: { ...IDENTITY, forbidden_table_privilege: true } });
     await expect(readPraxisHealth(loadPraxisConnectorConfig(), 'health-bad', overGranted.dependencies))
@@ -387,3 +389,4 @@ describe('Praxis connector trust boundary', () => {
     expect(drifted.end).toHaveBeenCalledOnce();
   });
 });
+

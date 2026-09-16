@@ -77,6 +77,17 @@ try {
   assert.equal(sql("select to_regclass('praxis_reporting.verified_receipts_v1') is null;"), 't');
   sql(migration);
   sql('create role praxis_customer_probe login inherit nosuperuser nobypassrls; grant sanctuary_praxis_reader to praxis_customer_probe; alter role praxis_customer_probe set default_transaction_read_only = on;');
+  const scopeCases = [['all', 'null'], ['all', "'10000000-0000-4000-8000-000000000001'"],
+    ['contact', "'10000000-0000-4000-8000-000000000001'"], ['invoice', "'10000000-0000-4000-8000-000000000001'"],
+    ['all', "'10000000-0000-4000-8000-000000000099'"]];
+  const scopeSnapshot = () => scopeCases.map(([resource, project]) => sql(`select coalesce(jsonb_agg(to_jsonb(row) order by row.recorded_at,row.resource,row.id),'[]'::jsonb)
+    from praxis_reporting.context_page_v1('${resource}',${project},null,'2099-01-01',null,null,null,101) row;`, true));
+  const originalScope = scopeSnapshot();
+  const scopedRead = read('supabase/migrations/20260916000004_praxis_project_read_scope.sql');
+  sql(scopedRead.replace(/commit;\s*$/, 'rollback;'));
+  assert.deepEqual(scopeSnapshot(), originalScope, 'scope migration rollback changed evidence');
+  sql(scopedRead);
+  assert.deepEqual(scopeSnapshot(), originalScope, 'early project filtering changed evidence');
   assert.equal(sql("select payload->>'acceptedTotalIncGstCents' from praxis_reporting.project_financial_truth_v1;", true), '11500');
   assert.equal(sql("select payload->>'openInvoiceIncGstCents' from praxis_reporting.project_financial_truth_v1;", true), '0');
   assert.equal(sql(`begin; update public.deposit_invoices set invoice_kind='STANDALONE';

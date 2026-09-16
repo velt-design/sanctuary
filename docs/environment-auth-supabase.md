@@ -76,8 +76,20 @@ cancellation dates when an update date is unknown. The repeated reporting DDL
 is an immutable forward-installation snapshot, not a second runtime owner.
 Native PostgreSQL coverage verifies actual current finance SQL, no existing
 business-row changes, role denials, rollback, repeated installation and an
-unknown authorization shape. Production installation and live proof are still
-pending; those tests do not establish activation.
+unknown authorization shape. Production reporting migrations `20260916000002`
+and `20260916000003`, the restricted LOGIN and exact source identity were
+installed on 2026-09-16. Postflight verified the role settings and migration
+ledger. Hosted activation and customer acceptance remain pending.
+
+The live preflight also found that a combined customer read exceeded the 8-second
+statement budget. Forward migration `20260916000004_praxis_project_read_scope.sql`
+filters each source by project before combining its safe payloads, retaining the
+final scope checks, linked-contact lookup, ordering and limit. A rollback-only
+production rehearsal returned Peter's 16 records; persistent installation and
+the dedicated runtime read must be verified separately. Native tests compare
+the old and new evidence for whole-source, scoped, contact, invoice and missing
+project reads. Health probes one project record after identity and grant checks;
+it does not calculate every project's finances or establish full customer proof.
 
 The customer-search and verified-receipt routes reuse these exact credentials and identity checks; they have no independent broad credential. Install `20260916000003_praxis_verified_receipts.sql` before enabling customer journey reads. Its view grants only the existing reporting group. A successful core health check alone does not prove this extension is installed: activation must also verify an authenticated bounded customer search and project-specific receipt read. Returned matches are portal-recorded Xero evidence, not a live bank refresh.
 
@@ -85,7 +97,7 @@ Migration `20260903000001_praxis_context_reporting_v1.sql` creates the dark repo
 
 For each environment, create one revocable LOGIN with no superuser, database creation, role creation, replication, or RLS-bypass capability. It may inherit only `sanctuary_praxis_reader`, must default to read-only transactions, should have a bounded connection limit, and must receive no direct grants on base tables, `private`, `auth`, `storage`, sequences, or write RPCs. Store its connection string and independent bearer token in the approved secret manager and expose them only to the Portal server. Provision the identity row with the exact source key, connection ID, environment, and projection version registered in Velt. The connector fails closed when either the identity or concrete LOGIN posture differs.
 
-Non-loopback database URLs are rejected unless they use `sslmode=verify-full`; `disable`, `allow`, `prefer`, `require`, and an omitted mode are not accepted for remote targets. The runtime also explicitly selects the driver's `verify-full` mode so certificate-chain and hostname verification cannot be weakened by a connection-string default. Only `localhost`, `127.0.0.1`, and `::1` are exempt for disposable local/synthetic testing, where TLS may be disabled. A private CA is not configured through the URL in V1: install it into the server runtime's trusted CA store before enabling the connector.
+Non-loopback database URLs are rejected unless they use `sslmode=verify-full`; `disable`, `allow`, `prefer`, `require`, and an omitted mode are not accepted for remote targets. Certificate-chain and hostname verification remain enforced. Explicit managed Supabase hostnames additionally trust the portal's existing public Supabase Root 2021 certificate (see `xero-connection.md`, Security and recovery); other remote hosts retain Node's normal trust roots. Production preflight exposed `SELF_SIGNED_CERT_IN_CHAIN` with default roots, so this bounded CA trust is required before activation. Only `localhost`, `127.0.0.1`, and `::1` are exempt for disposable local/synthetic testing, where TLS may be disabled. No caller-supplied CA or certificate-verification bypass is accepted.
 
 Before activation, run the real PostgreSQL 17 denial harness with `npm run test:praxis:db`, configure the binding variables and secrets, and require the health route to report the exact database-owned identity. Rotation means issuing a new LOGIN password and/or bearer token, updating the server secret, and revoking the old value; there is no service-role fallback.
 

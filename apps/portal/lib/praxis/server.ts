@@ -7,6 +7,7 @@ import {
   timingSafeEqual,
 } from 'node:crypto';
 import postgres, { type Sql, type TransactionSql } from 'postgres';
+import { praxisDatabaseTls } from './databaseTls';
 import {
   PRAXIS_CONTEXT_SCHEMA_VERSION,
   PRAXIS_ERROR_SCHEMA_VERSION,
@@ -222,7 +223,7 @@ export function parsePraxisContextQuery(url: URL): PraxisContextQuery & { cursor
 
 function createDatabase(config: ConnectorConfig): Sql {
   return postgres(config.databaseUrl, {
-    ssl: config.databaseSsl,
+    ssl: praxisDatabaseTls(config.databaseUrl, config.databaseSsl),
     max: 1,
     idle_timeout: 5,
     connect_timeout: 5,
@@ -495,10 +496,12 @@ export async function readPraxisHealth(
     if (rows[0]?.ready !== true) {
       throw new PraxisConnectorError(503, 'PROJECTION_NOT_READY', 'The Praxis reporting projection is not ready.', true);
     }
+    // Probe the reader contract without calculating every project's finances.
+    // Customer-specific reads verify their full projection separately.
     await transaction`
       select resource
       from praxis_reporting.context_page_v1(
-        'all', null, null, now(), null, null, null, 1
+        'project', null, null, now(), null, null, null, 1
       )
       limit 1
     `;

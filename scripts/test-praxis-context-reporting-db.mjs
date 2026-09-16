@@ -112,6 +112,7 @@ try {
   psql(compatible.replace(/commit;\s*$/, 'rollback;'), 'Current reporting rollback');
   if (psql("select pg_get_functiondef('public.commercial_project_financial_truth(uuid)'::regprocedure);", 'Finance rollback', { quiet: true }) !== financeBefore) throw new Error('Reporting rollback changed finance.');
   psql(compatible, 'Current reporting installation');
+  psql(readFileSync(path.join(root, 'supabase/migrations/20260916000004_praxis_project_read_scope.sql'), 'utf8'), 'Early project read filtering');
   const financeAfter = psql("select pg_get_functiondef('public.commercial_project_financial_truth(uuid)'::regprocedure);", 'Finance preservation', { quiet: true });
   if (financeAfter.replace(" and not pg_has_role(session_user, 'sanctuary_praxis_reader', 'member')", '') !== financeBefore) throw new Error('Reporting installation changed finance calculation.');
   psql(`
