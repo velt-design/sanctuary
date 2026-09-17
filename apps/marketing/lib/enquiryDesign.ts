@@ -6,6 +6,7 @@ import { describeBlinds } from '../components/configurator-prototype/blindCatalo
 import { describeSidePanels } from '../components/configurator-prototype/sidePanelCatalog';
 import { describeLighting, hasLighting } from '../components/configurator-prototype/lightingSelection';
 import { describeRoofBattens } from '../components/configurator-prototype/roofBattenSelection';
+import { designAttachmentDescription, designRidgeDescription } from './designAttachmentDescription';
 
 export type { CustomerBrief, EnquiryAudience } from './enquiryDesignContract';
 
@@ -29,8 +30,8 @@ export function buildCustomerBrief(audience: EnquiryAudience, value?: unknown, i
     roof.family === 'mono' ? 'Pitched pergola' : roof.family === 'gable' ? 'Gable pergola' : 'Box perimeter pergola',
     `${input.widthMm / 1000} m wide × ${input.projectionMm / 1000} m projection`,
     roofFinishDescription(roof),
-    roof.family === 'gable' && roof.orientation === 'away' ? 'Dutch-gable fascia attachment' : input.connection === 'soffit' ? 'Soffit brackets' : `${input.connection === 'facade' ? 'Facade' : 'Fascia'} attachment`, input.level === 'ground' ? 'Ground level' : 'First-floor deck',
-    ...(roof.family === 'gable' ? [`Ridge ${roof.orientation === 'away' ? 'away from' : 'parallel to'} house`, roof.infills ? 'Gable infills' : 'Open gable ends'] : []),
+    designAttachmentDescription(design), input.level === 'ground' ? 'Ground level' : 'First-floor deck',
+    ...(roof.family === 'gable' ? [designRidgeDescription(design), roof.infills ? 'Gable infills' : 'Open gable ends'] : []),
     ...(roof.blinds?.length ? [describeBlinds(roof.blinds)] : []),
     ...(roof.sidePanels?.length ? [describeSidePanels(roof.sidePanels)] : []),
     ...(roof.roofBattens ? [describeRoofBattens(roof.roofBattens)] : []),
