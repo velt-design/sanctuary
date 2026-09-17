@@ -1,0 +1,14 @@
+/* These aliases follow the actual surface. No CSS transition: the renderer
+   writes every palette value using its one shared animation progress. */
+.warm {
+  --color-text-primary: var(--theme-warm-primary, #111210);
+  --color-text-secondary: var(--theme-warm-secondary, #555852);
+  --color-text-subtle: var(--theme-warm-subtle, #5f635c);
+  color: var(--color-text-primary);
+}
+.elevated {
+  --color-text-primary: var(--theme-elevated-primary, #111210);
+  --color-text-secondary: var(--theme-elevated-secondary, #555852);
+  --color-text-subtle: var(--theme-elevated-subtle, #5f635c);
+  color: var(--color-text-primary);
+}

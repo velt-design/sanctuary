@@ -1,5 +1,5 @@
-.nav{position:sticky;top:0;z-index:3;padding:16px 20px;background:var(--color-surface-warm);border-bottom:1px solid var(--color-rule)}
-.tabs{display:flex;justify-content:space-between;gap:8px}.tabs button{display:flex;align-items:center;gap:7px;min-height:48px;padding:0;border:0;background:transparent;color:var(--color-text-secondary);font:400 12px var(--font-body);cursor:pointer}.tabs small{display:grid;place-items:center;width:23px;height:23px;border:1px solid var(--color-rule-strong);font-size:10px}.tabs button[aria-current]{color:var(--color-text-primary);font-weight:600}.tabs button[aria-current] small{background:var(--color-accent-olive);color:var(--color-surface-warm);border-color:var(--color-accent-olive)}
+.nav{ composes: warm from './dayNightTheme.module.css';position:sticky;top:0;z-index:3;padding:16px 20px;background:var(--color-surface-warm);border-bottom:1px solid var(--color-rule)}
+.tabs{display:flex;justify-content:space-between;gap:8px}.tabs button{display:flex;align-items:center;gap:7px;min-height:48px;padding:0;border:0;background:transparent;color:var(--color-text-secondary);font:400 12px var(--font-body);cursor:pointer}.tabs small{display:grid;place-items:center;width:23px;height:23px;border:1px solid var(--color-rule-strong);font-size:10px}.tabs button[aria-current]{color:var(--color-text-primary);font-weight:600}.tabs button[aria-current] small{background:var(--color-accent-olive);color:var(--color-on-accent,var(--color-surface-warm));border-color:var(--color-accent-olive)}
 @media(max-width:720px){.nav{padding:5px 16px}.tabs button{font-size:11px}}
 
 .tabs button{border-bottom:2px solid var(--color-rule-strong);padding:0 3px}.tabs button:hover{background:var(--control-selected);border-bottom-color:var(--color-accent-olive);color:var(--color-text-primary)}.tabs button[aria-current]{border-bottom-color:var(--color-accent-olive)}.tabs button:focus-visible{outline:2px solid var(--color-accent-olive);outline-offset:3px}
@@ -12,4 +12,11 @@
   .tabs button[aria-current] { font-weight: 500; border-bottom-color: var(--color-text-primary); }
   .tabs button[aria-current] small { background: transparent; color: inherit; }
   .tabs button:hover { background: transparent; border-bottom-color: var(--color-rule-strong); }
+}
+
+.tabs button:hover {
+ --color-text-primary:var(--theme-selected-primary,#111210);
+ --color-text-secondary:var(--theme-selected-secondary,#555852);
+ --color-text-subtle:var(--theme-selected-subtle,#5f635c);
+ color:var(--color-text-primary);
 }

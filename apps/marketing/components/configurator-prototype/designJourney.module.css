@@ -8,7 +8,7 @@
 .row button { min-width:44px; }
 .navigation { margin:12px 0 4px; }.actions { display:flex; gap:8px; }
 .next,.back { min-height:44px; padding:12px 14px; font:inherit; font-size:12px; cursor:pointer; border:1px solid var(--color-accent-olive); }
-.next { flex:1; background:var(--color-accent-olive); color:var(--color-surface-warm); }.back { background:transparent; color:var(--color-text-primary); }
+.next { flex:1; background:var(--color-accent-olive); color:var(--color-on-accent,var(--color-surface-warm)); }.back { background:transparent; color:var(--color-text-primary); }
 .reviewLink { display:block; margin:auto; }.optional { display:block; margin:8px 0; font-size:11px; color:var(--color-text-secondary); }
 .navigation button:focus-visible,.review button:focus-visible { outline:2px solid var(--color-accent-olive); outline-offset:3px; }
 
@@ -61,4 +61,11 @@
   .overview { padding-top: 20px; }
   .cards { margin-block: 20px; }
   .cards button { padding-block: 16px; }
+}
+
+.cards button:hover {
+ --color-text-primary:var(--theme-selected-primary,#111210);
+ --color-text-secondary:var(--theme-selected-secondary,#555852);
+ --color-text-subtle:var(--theme-selected-subtle,#5f635c);
+ color:var(--color-text-primary);
 }

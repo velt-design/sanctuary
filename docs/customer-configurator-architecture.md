@@ -5,11 +5,17 @@
 ### Marketing preview: lighting editor (2026-09-10)
 
 Day/night presentation (2026-09-17): one reversible 1000ms smoothstep timeline
-fades daylight, environment reflections, warm fixture emission/illumination and
-the viewport backdrop together. The environment and light objects stay mounted;
+fades daylight, environment reflections, warm fixture emission/illumination,
+the viewport backdrop and the complete interface night palette together.
+The environment and light objects stay mounted;
 only their contribution changes. Demand rendering stops when the fade settles.
-Controls and the surrounding shell keep the neutral day palette, avoiding
-large-area flashes and preserving text contrast throughout rapid toggles.
+The renderer writes UI palette values from the same progress on the same frame:
+header, toolbar, sidebar, selected controls and price/footer surfaces have no
+independent CSS transition. Text uses contrast-safe foregrounds for its actual
+warm, elevated, selected or accent surface; plain dark/light text interpolation
+would disappear at mid-fade. The original full night treatment is preserved.
+Jordan explicitly confirmed this coordinated full-interface behaviour after the
+neutral-shell variant removed night styling; that variant is superseded.
 Rapid toggles start from the current displayed amount; reduced motion switches
 to the endpoint, including when the preference changes during a fade. The unlit
 night prompt overlays the viewport so it cannot resize or reframe the camera.
@@ -211,8 +217,8 @@ Lighting opens its plan editor, while the 3D remains a lighting preview. The
 section navigation is compact on mobile, preserving the fixed half-height viewer.
 Selection state stays in the existing draft providers, independent of navigation.
 The popup Continue/share footer remains available in every section, including
-Lighting. Day/night controls and selected choices retain the neutral theme;
-time of day changes the rendered scene and its backdrop only.
+Lighting. Day/night controls and selected choices use the same coordinated
+full-interface day/night palette as the scene.
 
 `PreviewNextAction.tsx` keeps the popup's current estimate and Continue action
 outside the scrolling choices, in a fixed footer inside the panel. The viewer
