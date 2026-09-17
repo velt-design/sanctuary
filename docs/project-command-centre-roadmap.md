@@ -33,19 +33,18 @@ race; both have local corrections, with project-first write fences and immediate
 Native PostgreSQL17 concurrency proof and independent recheck pass: conflicting
 project-row and advisory writers cause immediate migration refusal, both staff
 transactions survive, and a later retry retires with audit. Replay and reopening
-rejection also pass. Nine PGlite tests cover all five retired recording types,
-preserved manual work/correction history, queue selection and grants. The broader
+rejection also pass. Twelve PGlite tests cover all five retired recording types,
+preserved manual work/correction history, queue selection and grants, plus quote
+version/project binding and receipt replay for SENT/RESENT/OUTCOME. The broader
 work-domain/UI suite passes 120 tests; Portal typecheck passes. Private native
 repro: .codex-tmp/clarity/follow-up-native-proof.mjs. Independently reviewed SQL
-SHA-256: 66cd2aff1d28abeb1d4f353729f742f4bd5da8660fb27a337fa4956076bfb328.
-Correspondence read-on-open and mobile anchor clearance are also local, pending
-publication. Real protected `ecdd68f` quote/open/return passed desktop/mobile and
+SHA-256: e5df19bf48e3a6cb780e40d9d58e2a4b8c94425248ca63b06fd365b5670fb395.
+Correspondence read-on-open and mobile anchor clearance are published in afb32ef. Real protected `ecdd68f` quote/open/return passed desktop/mobile and
 original Outlook access was verified after Jordan signed in. Hosted Portal
 Quality on that preceding revision failed obsolete fixture expectations (multiple
 email excerpts and moved recording controls); update those tests with this batch.
-Shared queue no-work/repair behavior is corrected locally. Remaining work includes obsolete
-browser expectations, owning docs,
-full required checks and independent UI review. No retirement was applied live.
+Shared queue no-work/repair behavior is corrected locally. Remaining work includes hosted browser verification, full release checks and
+independent protected real-journey review. No retirement was applied live.
 
 Revised synthetic UI delivery review passed independently for enquiry, quoted and
 accepted jobs at desktop and390px mobile: readable sender/date/text, keyboard
@@ -56,7 +55,7 @@ sample evidence only: disabled controls and sample source links do not prove the
 protected real journey. Root also checked all three mobile/desktop stories and
 full-message expansion. The local server at127.0.0.1:3025 remains the sample view.
 
-Current checks:396 existing Project Work tests, nine retirement database tests,
+Current checks:396 existing Project Work tests,12 retirement database tests,
 workspace types/lint, docs guard and changed-architecture report pass. Native
 concurrency and UI reviews are separate evidence. The two browser specs have been
 updated for absent recording controls and multiple visible emails; their new
@@ -64,15 +63,25 @@ hosted execution remains pending. The large command-centre spec shrank by removi
 retired expectations; further decomposition is deferred to avoid unrelated test
 restructuring. The schema/auth/automation owner docs now reflect this amendment.
 
-Publication checkpoint: the preceding UI batch `ecdd68f` is pushed to PR145.
-Its protected deployment is available; the real quote/open/return and original
-Outlook read were verified after sign-in. Its hosted Portal Quality run failed
-obsolete browser expectations. The current retirement/autoload batch is local,
-unpublished, and not live. Reconcile its tests before creating a replacement.
+Publication checkpoint: revised batch `afb32ef` is pushed to existing draft
+PR145 after required pre-push checks passed. Portal Quality run35166475218 is
+active. Protected candidate dpl_8BMddLcsU7rHwHvm1Z1SancLswzu is READY at that
+exact revision and its project route was opened at Staff Login. Jordan has been
+asked to sign in; do not copy credentials/session tokens from another origin.
+Reuse private receipt protected-candidate-afb32ef.json and the existing handles.
+A subsequent local migration-only correction restores the existing required quote
+version/project binding before reconciliation receipts; independent12-test review
+passed. It does not change the deployed UI and is awaiting publication. No live migration, custom-domain promotion or global
+flag change occurred. The preceding ecdd68f candidate retains the older UI.
+
+External state check: current Portal production is010f8f0 (marketing-only PR148
+since branch base874f898); current Velt is1511220 (marketing-analysis PR374 after
+reviewed receiver releasec1f6c28). Compared file lists do not alter these project
+or correspondence owners. Reconcile current main before production promotion;
+do not roll either application back to an earlier whole-repository revision.
 
 Sanctuary branch `codex/project-clarity-20260916`, PR145, published base
-`fe06b72` integrates main `874f898`. The next UI batch is local and not yet
-published. Earlier checkpoints below are historical; this section is current.
+`afb32ef` includes base `fe06b72`, which integrates main `874f898`. Earlier checkpoints below are historical; this section is current.
 
 - **Verified real correspondence:** the signed-in protected Portal returned six
   customer-address-matched emails with readable text, sender/date and source

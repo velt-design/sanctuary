@@ -157,6 +157,7 @@ declare
   v_payload jsonb := coalesce(p_payload, '{}'::jsonb);
   v_replay jsonb;
   v_result jsonb;
+  v_quote_version_id uuid;
 begin
   if p_command_id is null or v_event not in ('QUOTE_SENT','QUOTE_RESENT','QUOTE_OUTCOME','RECONCILE_PROJECT')
     or jsonb_typeof(v_payload) is distinct from 'object' then
@@ -166,6 +167,20 @@ begin
   v_replay := public.project_work_items_receipt_replay(p_project_id, p_command_id, 'SYSTEM_' || v_event, v_payload);
   if v_replay is not null then return v_replay; end if;
   perform public.project_work_items_assert_v2(p_project_id, true);
+  -- Retiring reminders must not weaken the existing project/quote binding.
+  if v_event <> 'RECONCILE_PROJECT' then
+    v_quote_version_id := (v_payload->>'quote_version_id')::uuid;
+    if v_quote_version_id is null then
+      raise exception 'quote_version_id is required' using errcode = '22023';
+    end if;
+    if not exists (
+      select 1 from public.quote_versions version
+      join public.quotes quote on quote.id = version.quote_id
+      where version.id = v_quote_version_id and quote.project_id = p_project_id
+    ) then
+      raise exception 'QUOTE_VERSION_NOT_FOUND' using errcode = 'P0002';
+    end if;
+  end if;
   -- Commercial callers keep their receipt contract, but no reminder is created.
   v_result := jsonb_build_object('project_id', p_project_id, 'work_item_id', null,
     'row_version', null, 'replayed', false, 'refresh_required', false);

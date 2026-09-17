@@ -92,6 +92,19 @@ describe('deferral of unused project follow-ups', () => {
   it.each(['FIRST_ENQUIRY_EMAIL_SENT','ENQUIRY_FOLLOW_UP_EMAIL_SENT','ENQUIRY_CUSTOMER_REPLY_RECEIVED','QUOTE_FOLLOW_UP_EMAIL_SENT','QUOTE_CUSTOMER_REPLY_RECEIVED'])('rejects historical callers recording %s', async (type) => {
     await expect(db.query(`insert into public.project_confirmation_events(project_id,command_id,event_kind,confirmation_type,occurred_at) values ($1,gen_random_uuid(),'CONFIRMED',$2,now())`, [lead,type])).rejects.toThrow('FOLLOW_UP_WORKFLOW_DEFERRED');
   });
+  it.each(['QUOTE_SENT','QUOTE_RESENT','QUOTE_OUTCOME'])('preserves quote binding and replay for %s without creating work', async (event) => {
+    const payload = {quote_version_id:'50000000-0000-4000-8000-000000000011'};
+    const before = (await db.query("select * from public.quote_versions order by id")).rows;
+    const command = (await db.query<{id:string}>('select gen_random_uuid() as id')).rows[0].id;
+    const result = await db.query<{result:{replayed:boolean}}>('select public.project_work_item_reconcile($1,$2,$3,$4::jsonb) as result',[project,command,event,JSON.stringify(payload)]);
+    expect(result.rows[0].result.replayed).toBe(false);
+    const replay = await db.query<{result:{replayed:boolean}}>('select public.project_work_item_reconcile($1,$2,$3,$4::jsonb) as result',[project,command,event,JSON.stringify(payload)]);
+    expect(replay.rows[0].result.replayed).toBe(true);
+    await expect(db.query('select public.project_work_item_reconcile($1,gen_random_uuid(),$2,$3::jsonb)',[lead,event,JSON.stringify(payload)])).rejects.toThrow('QUOTE_VERSION_NOT_FOUND');
+    await expect(db.query("select public.project_work_item_reconcile($1,gen_random_uuid(),$2,'{}'::jsonb)",[project,event])).rejects.toThrow('quote_version_id is required');
+    expect((await db.query("select * from public.quote_versions order by id")).rows).toEqual(before);
+    expect((await db.query("select id from public.project_work_items where source_type='QUOTE_CADENCE' and status in ('OPEN','BLOCKED')")).rows).toEqual([]);
+  });
   it('rejects reopening retired work and stale sent/reply commands', async () => {
     await expect(db.exec("select set_config('sanctuary.project_work_command','allowed',false); update public.project_work_items set status='OPEN' where source_type='LEAD_CADENCE'")).rejects.toThrow('RETIRED_PROJECT_WORK');
     await expect(db.exec("select public.project_confirmation_command('40000000-0000-4000-8000-000000000002','60000000-0000-4000-8000-000000000002','RECORD_FIRST_ENQUIRY_EMAIL_SENT','{}')")).rejects.toThrow('FOLLOW_UP_WORKFLOW_DEFERRED');
