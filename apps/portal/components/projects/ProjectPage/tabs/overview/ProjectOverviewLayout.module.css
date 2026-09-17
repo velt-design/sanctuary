@@ -64,6 +64,8 @@
 @media (min-width: 769px) {
   .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]) {
     grid-template-columns: minmax(0, 1.1fr) minmax(360px, 1fr);
+    /* Let the lower row absorb the spanning email panel's height, not the work row. */
+    grid-template-rows: auto auto min-content minmax(0, 1fr);
     grid-template-areas:
       "orientation orientation"
       "exception exception"
@@ -72,6 +74,7 @@
   }
 
   .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]):not([data-has-exception]) {
+    grid-template-rows: auto min-content minmax(0, 1fr);
     grid-template-areas:
       "orientation orientation"
       "project-work recent"

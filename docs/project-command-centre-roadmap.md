@@ -4,6 +4,22 @@
 
 ### Current focus: useful workflow before release
 
+**Owner visual correction — 17 September:** Jordan's screenshot rejects the prior
+presentation: stretched gap between left work/commercial sections, unexplained
+accepted-version warning, dense correspondence and weak typography/hierarchy.
+Earlier sample8/10 is superseded as readiness evidence; release remains paused.
+Local revision pins work-row height, makes customer reply primary, separates
+subject/sender/date, uses compact whitespace-normalized previews with full text
+available, and adds a neutral current-agreement/history explanation. Independent review
+identified that older accepted statuses are deliberately retained under the
+commercial policy; the earlier warning was misleading. No correction chore or
+accepted-record change is appropriate. View quote history remains available. New accepted-review
+synthetic fixture reproduces long correspondence plus multiple accepted versions.
+Seven browser journeys pass, including <=24px gap before/after email expansion and
+390px overflow check.20focused component tests and Portal types pass. Independent
+visual/wording review requested; real-data hosted verification still required.
+
+
 **Current checkpoint — 17 September 2026**
 
 The correspondence reliability backend is live. PR378 installed Velt migrations

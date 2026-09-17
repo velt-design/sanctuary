@@ -6,12 +6,16 @@ import ProjectCurrentDesignCommercialCard from './ProjectCurrentDesignCommercial
 
 afterEach(() => { document.body.innerHTML = ''; });
 describe('compact commercial position', () => {
-  it('keeps conflicting accepted quotes visible instead of hiding them behind a confident total', () => {
+  it('explains retained accepted history without inventing a warning or correction task', () => {
     const data = { ...commandCentreFixtures['accepted-newer-estimate'], warnings: ['multiple_accepted_quotes'] as const };
     const value = { ...data, warnings: [...data.warnings] };
     const view = renderIntoDocument(<ProjectCommercialDetails data={value}><ProjectCurrentDesignCommercialCard data={value} /></ProjectCommercialDetails>);
     expect(view.container.querySelector('details')).toBeNull();
-    expect(view.container.textContent).toContain('Multiple accepted versions in one quote family');
+    expect(view.container.textContent).toContain('Current agreement:');
+    expect(view.container.textContent).toContain('Earlier accepted versions are retained');
+    expect(view.container.querySelector('[data-tone="warning"]')).toBeNull();
+    expect(view.container.textContent).toContain('the newest accepted version');
+    expect(view.container.querySelector('a')?.getAttribute('href')).toBe(value.links.quotes);
     view.unmount();
   });
   it.each([

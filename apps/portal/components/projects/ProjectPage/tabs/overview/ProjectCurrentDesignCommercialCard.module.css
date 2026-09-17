@@ -22,6 +22,16 @@
   display: none;
 }
 
+.versionHistory {
+  padding: var(--ui-space-3);
+  border-left: var(--ui-border-width-emphasis) solid var(--ui-border);
+  color: var(--ui-text);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.5;
+}
+
+.versionHistory p { margin: var(--ui-space-2) 0 var(--ui-space-3); }
+
 .commercialSummary,
 .emptySummary {
   min-width: 0;

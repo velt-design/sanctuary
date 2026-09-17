@@ -1,4 +1,4 @@
-import { formatPortalDateTime } from '@/lib/format/portalDateTime';
+import { formatPortalDate, formatPortalDateTime, formatPortalTime } from '@/lib/format/portalDateTime';
 import { correspondenceSourceHref, type ProjectCorrespondenceContext } from './projectCorrespondencePresentation';
 import styles from './ProjectCorrespondenceCard.module.css';
 import { projectEmailGroups, referencesProjectQuote, type EmailProjectContext } from './projectEmailGroups';
@@ -9,6 +9,7 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
   earlierOpen: boolean; onEarlierOpen: (open: boolean) => void;
 }) {
   const { featured, earlier, latestCustomer, unconfirmed, latestUnconfirmedCustomer, unconfirmedPreview, unconfirmedEarlier } = projectEmailGroups(messages, project.customerEmail);
+  const orderedFeatured = latestCustomer ? [latestCustomer, ...featured.filter(group => group !== latestCustomer)] : featured;
   function renderMessage({ message, copies }: (typeof featured)[number], label?: string) {
       const href = correspondenceSourceHref(message.url);
       const preview = message.bodyText.slice(0, 200);
@@ -16,11 +17,14 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
       return <article key={message.id} className={styles.message}>
         {label ? <p className={styles.messageLabel}>{label}</p> : null}
         <h3>{message.subject || 'No subject'}</h3>
-        <p className={styles.explanation}>From {message.from} · {formatPortalDateTime(message.sentAt)}</p>
+        <div className={styles.messageMeta}>
+          <span className={styles.sender}>From {message.from}</span>
+          <time dateTime={message.sentAt} title={formatPortalDateTime(message.sentAt)}>{formatPortalDate(message.sentAt)} · {formatPortalTime(message.sentAt)}</time>
+        </div>
         {message.projectLink?.state === 'linked' && message.projectLink.basis === 'reply_chain' ? <p className={styles.explanation}>Reply to this project’s email. The conversation may also discuss other work.</p> : null}
         {message.projectLink?.state !== 'linked' ? <p className={styles.explanation}>{message.projectLink?.state === 'conflicting' ? 'This conversation references more than one project.' : 'Project match not confirmed — this may concern another job.'}</p> : null}
         {referencesProjectQuote(message, project.quoteRef) ? <p className={styles.quoteMatch}>References this project’s quote {project.quoteRef}</p> : null}
-        {!(expandable && expanded.has(message.id)) ? <blockquote>{preview || 'Message text unavailable in this check.'}{expandable ? '…' : ''}</blockquote> : null}
+        {!(expandable && expanded.has(message.id)) ? <blockquote className={styles.messagePreview}>{preview || 'Message text unavailable in this check.'}{expandable ? '…' : ''}</blockquote> : null}
         {expandable ? <details className={styles.sources} open={expanded.has(message.id)} onToggle={event => onExpand(message.id, event.currentTarget.open)}>
           <summary>Read message</summary><blockquote>{message.bodyText}</blockquote>
         </details> : null}
@@ -34,7 +38,7 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
       </article>;
   }
   return <div className={styles.messages} aria-label="Customer email messages">
-    {featured.map((group, index) => renderMessage(group, index === 0 ? 'Latest linked email' : 'Latest customer reply to a project email'))}
+    {orderedFeatured.map(group => renderMessage(group, group === latestCustomer ? 'Latest customer reply to a project email' : 'Latest linked email'))}
     {project.customerEmail && featured.length > 0 && !latestCustomer ? <p className={styles.explanation}>No incoming customer reply has been linked to this project in this limited check.</p> : null}
     {earlier.length ? <details className={styles.sources} open={earlierOpen} onToggle={event => { if (event.target === event.currentTarget) onEarlierOpen(event.currentTarget.open); }}>
       <summary>Earlier emails ({earlier.length})</summary><div className={styles.messages}>{earlier.map(group => renderMessage(group))}</div>

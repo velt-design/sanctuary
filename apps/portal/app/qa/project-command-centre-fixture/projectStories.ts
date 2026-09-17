@@ -2,7 +2,7 @@ import { commandCentreFixtures, commandCentreWorkFixtures } from './fixtures';
 import { correspondenceFixture } from './correspondenceFixture';
 import type { ProjectWorkItem } from '@/lib/projects/workItems/types';
 
-export const storyNames = { enquiry: 'New enquiry', quote: 'Awaiting quote decision', installation: 'Accepted job' };
+export const storyNames = { enquiry: 'New enquiry', quote: 'Awaiting quote decision', installation: 'Accepted job', 'accepted-review': 'Accepted quote history' };
 export type ProjectStory = keyof typeof storyNames;
 
 /** Deliberately coherent synthetic jobs. No independent mixing of stage and quote. */
@@ -77,6 +77,16 @@ export function projectStory(name: ProjectStory) {
     correspondence.messages.push({ ...sent, id: 'sample-other-job', from: 'aroha@example.invalid',
       sentAt: '2026-09-16T00:00:00Z', subject: 'Question about another property',
       bodyText: 'Could we also discuss a pergola at a different property?', projectLink: { state: 'unconfirmed' } });
+  }
+  if (name === 'accepted-review') {
+    work.projectWork.openItems = [];
+    work.projectWork.primaryAction = { kind: 'none', title: 'No assigned work', reason: 'No manual commitment is recorded.' };
+    currentDesign.warnings = ['multiple_accepted_quotes'];
+    correspondence.messages[0].bodyText = 'Hi Jordan,\n\nThanks for explaining the revised quote. Could you confirm the installation week and whether the lighting is included in the accepted version?\n\nWe need to arrange access for the team.\n\nThanks,\nAroha\n\nFrom: Sanctuary Pergolas\nSubject: Your updated quote\n\nPlease find the revised design and price for your review. The installation date will be confirmed separately.';
+    correspondence.messages.push({ ...correspondence.messages[0], id: 'sample-invoice', from: 'website@example.invalid',
+      subject: 'Initial payment invoice', sentAt: '2026-09-17T00:00:00Z',
+      projectLink: { state: 'linked', basis: 'sent_message' },
+      bodyText: 'Sanctuary Pergolas\nInvoice\nInitial payment\n\nHi Aroha, this invoice relates to the accepted quote for your pergola. Please use the invoice reference when making payment.\n\nThank you for choosing Sanctuary Pergolas.' });
   }
   return { work, currentDesign, correspondence };
 }

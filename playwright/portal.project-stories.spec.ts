@@ -6,6 +6,30 @@ const examples = [
   { key: 'installation', position: 'Quote accepted', action: 'Confirm the installation week with Aroha', source: 'Please confirm the expected installation week' },
 ];
 
+test('long correspondence does not separate work from commercial facts', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/qa/project-command-centre-fixture?story=accepted-review');
+  const work = page.locator('[data-project-overview-region="project-work"]');
+  const commercial = page.locator('[data-project-overview-region="commercial"]');
+  const emails = page.getByRole('region', { name: 'Customer conversations', exact: true });
+  const checkGap = async () => {
+    const top = await work.boundingBox();
+    const bottom = await commercial.boundingBox();
+    expect(bottom!.y - (top!.y + top!.height)).toBeGreaterThanOrEqual(0);
+    expect(bottom!.y - (top!.y + top!.height)).toBeLessThanOrEqual(24);
+  };
+  await expect(commercial).toContainText('Current agreement:');
+  await expect(commercial.getByRole('link', { name: 'View quote history' })).toHaveAttribute('href', /tab=quotes/);
+  await expect(emails.locator('article').first()).toContainText('From aroha@example.invalid');
+  await checkGap();
+  await emails.locator('article').first().getByText('Read message', { exact: true }).click();
+  await expect(emails.locator('article').first()).toContainText('Subject: Your updated quote');
+  await checkGap();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(emails.locator('article').first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
+
 for (const width of [1440, 390]) for (const example of examples) {
   test(`${example.key} tells one coherent story at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });

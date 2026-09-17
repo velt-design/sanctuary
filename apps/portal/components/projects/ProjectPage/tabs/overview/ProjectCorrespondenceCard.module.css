@@ -11,12 +11,45 @@
 }
 
 .stack p { margin: 0; }
-.messages { display: grid; gap: var(--ui-space-3); }
-.message { padding: var(--ui-space-4); background: var(--ui-surface-secondary); overflow-wrap: anywhere; }
-.message h3 { margin: 0 0 var(--ui-space-2); font-size: var(--ui-font-size-body); }
-.messageLabel { font-weight: 700; font-size: var(--ui-font-size-small); margin-bottom: var(--ui-space-2) !important; }
+.messages { display: grid; gap: var(--ui-space-4); }
+.message {
+  padding: var(--ui-space-4);
+  background: var(--ui-surface-elevated);
+  border: var(--ui-border-width) solid var(--ui-border);
+  overflow-wrap: anywhere;
+}
+.message h3 {
+  margin: 0 0 var(--ui-space-3);
+  font-family: var(--ui-font-body);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.4;
+  text-transform: none;
+}
+.messageLabel {
+  color: var(--ui-text-muted);
+  font-weight: 600;
+  font-size: var(--ui-font-size-caption);
+  margin-bottom: var(--ui-space-2) !important;
+}
+.messageMeta {
+  display: grid;
+  gap: var(--ui-space-1);
+  padding-bottom: var(--ui-space-3);
+  margin-bottom: var(--ui-space-3);
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.5;
+}
+.sender { color: var(--ui-text-strong); }
+.messageMeta time { color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); }
 .quoteMatch { font-size: var(--ui-font-size-small); margin-top: var(--ui-space-2) !important; }
 .message blockquote { margin: var(--ui-space-3) 0; line-height: 1.6; white-space: pre-wrap; }
+.message blockquote.messagePreview {
+  white-space: normal;
+  font-size: var(--ui-font-size-body);
+  line-height: 1.65;
+}
 .message a { color: var(--ui-text-strong); font-size: var(--ui-font-size-small); }
 .message a:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 2px; }
 .sourceDate { display: block; }
@@ -46,3 +79,10 @@ details[open] > .heading::before { content: '−'; }
 .sources a { color: var(--ui-text-strong); text-decoration: underline; }
 
 .card { scroll-margin-block-start: 80px; }
+.card > header h2 {
+  font-family: var(--ui-font-body);
+  font-size: 18px;
+  font-weight: 650;
+  text-transform: none;
+  letter-spacing: normal;
+}

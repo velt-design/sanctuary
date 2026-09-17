@@ -138,9 +138,11 @@ export default function ProjectCurrentDesignCommercialCard({
           ) : null}
           {data.warnings.includes("multiple_accepted_quotes") ? (
             <div data-command-centre-warning="multiple-accepted-quotes">
-              <AlertBanner tone="warning" title="Multiple accepted versions in one quote family">
-                The newest accepted version is shown; review that quote&apos;s history.
-              </AlertBanner>
+              <div className={styles.versionHistory}>
+                <strong>Current agreement: {quoteVersionLabel(data)}</strong>
+                <p>Earlier accepted versions are retained in quote history. The price and design below use the newest accepted version.</p>
+                <ButtonLink variant="tertiary" size="small" href={data.links.quotes}>View quote history</ButtonLink>
+              </div>
             </div>
           ) : null}
         </div>
