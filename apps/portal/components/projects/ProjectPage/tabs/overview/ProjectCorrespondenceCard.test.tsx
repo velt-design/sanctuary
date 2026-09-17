@@ -6,8 +6,12 @@ import { correspondenceSourceHref } from './projectCorrespondencePresentation';
 
 afterEach(() => { document.body.innerHTML = ''; });
 describe('ProjectCorrespondenceCard', () => {
-  it('shows only a recognized mailbox failure explanation in the unavailable state', () => {
-    const reason = 'Outlook returned more data than this check permits.';
+  it.each([
+    'Outlook returned more data than this check permits.',
+    'The hourly mailbox check limit has been reached. Try again later.',
+    'The Outlook connection is not ready for a message check.',
+    'Mailbox checks are paused by the connection controls.',
+  ])('shows only a recognized mailbox failure explanation: %s', reason => {
     const context = { ...correspondenceFixture, messages: [], limitations: ['Outlook correspondence is unavailable or has not been checked.', 'private arbitrary detail', reason] };
     const view = renderIntoDocument(<ProjectCorrespondenceCard context={context} state="ready" />);
     expect(view.container.textContent).toContain(reason);

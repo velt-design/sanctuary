@@ -14,6 +14,9 @@ const safeMailFailures = new Set([
   'Outlook returned more data than this check permits.',
   'Outlook returned message data that could not be safely read.',
   'Outlook could not complete the message request.',
+  'The hourly mailbox check limit has been reached. Try again later.',
+  'The Outlook connection is not ready for a message check.',
+  'Mailbox checks are paused by the connection controls.',
 ]);
 
 export default function ProjectCorrespondenceCard({ context, state = 'not_connected', onRefresh, onAnalyze, sample = false, project }: {

@@ -4,8 +4,9 @@
 
 ### Current focus: useful workflow before release
 
-Current checkpoint, 17 September. This section supersedes historical progress
-and scorecards below. Goal remains active; the Portal release is not ready.
+Current checkpoint, 17 September. Goal resumed after Jordan explicitly approved
+PR377 diagnostic release. Approved177cd19 merged asbe6cb9e6fd0ab52a63890edf905285ee7424b990;
+deployment dpl_9T75Ycx9y6Sx8gKVDoxxEKweqStS is Ready; velt.systems alias verified. One bounded retry returned unavailable without a typed provider reason. Production Portal remains unreleased.
 
 **Owner decisions and boundaries**
 - Retire unused sent/reply recording and automatic cadence; retain real manual
@@ -22,9 +23,9 @@ and scorecards below. Goal remains active; the Portal release is not ready.
 
 **Current versions and access**
 - Sanctuary worktree `sanctuary-project-clarity`, branch
-  `codex/project-clarity-20260916`, draft PR145, published805da77.
+  `codex/project-clarity-20260916`, draft PR145, publishedfaabc04 (runtimecf7e1b9).
   Main eb6ba97 and the coordinated Xero verification documentation are included.
-- Protected candidate dpl_G3Lq73rJApdcZE6eSNJe2XAcjVLY is Ready on805da77.
+- Protected candidate dpl_QrDg71AvUDG4q5uESxqQ7wmCSnnz is Ready oncf7e1b9.
   Staff correspondence and lineage are enabled only on this candidate. Stable
   review origin: https://sanctuary-portal-git-codex-pro-2efc62-jordans-projects-43df95bd.vercel.app.
   Unsigned302 and retained staff session were verified; no new login needed.
@@ -37,26 +38,26 @@ and scorecards below. Goal remains active; the Portal release is not ready.
   independent integration review and all hosted checks passed. No DB or grant
   change and no customer send. Private rollback receipt retained.
 - Velt PR377 at177cd1999dd30def2d4931b3316d4be9eafa4704 is review-ready with all
-  hosted checks and independent review passed; separate release approval pending.
+  hosted checks and independent review passed; Jordan approved and merge completed, deployment Ready and velt.systems verified on dpl_9T75Ycx9y6Sx8gKVDoxxEKweqStS.
   It exposes only three fixed typed mailbox failure reasons, never raw errors.
-  Portal reason allowlist and mobile header wrapping published ascf7e1b9 after full types/lint; protected candidate dpl_QrDg71AvUDG4q5uESxqQ7wmCSnnz is building. Keep stable alias on prior verified candidate until Ready. Later test-only correction does not change candidate runtime.
+  Portal reason allowlist and mobile header wrapping published ascf7e1b9 after full types/lint; protected candidate dpl_QrDg71AvUDG4q5uESxqQ7wmCSnnz is Ready and verified on the stable alias, unsigned302 and existing staff session retained. Later test-only faabc04 published with full types/lint, same runtime; hosted run35175611584 now passes in full.
 
 **Evidence and remaining acceptance**
 
 | Requirement | Current evidence and remaining disposition |
 | --- | --- |
 | Useful workflow; preserve work/history | Cadence controls/readers retired in candidate;12 DB cases and native PostgreSQL17 concurrent-writer proof passed. Migration20260917000002 remains uninstalled. Genuine manual work and specialist tools retained. |
-| Real quote and correct quote open/return | Revised real quote read linked its recorded send; earlier linked and three unconfirmed messages stayed separate. Exact current quote opened and return preserved outstanding decision and owner. Private evidence `.codex-tmp/clarity/revised-real-quote-proof.txt`. Mobile return remains pending. |
+| Real quote and correct quote open/return | Revised real quote read linked its recorded send; earlier linked and three unconfirmed messages stayed separate. Exact current quote opened and return preserved outstanding decision and owner. Private evidence `.codex-tmp/clarity/revised-real-quote-proof.txt`. Revised390px current sent quote open/settled return also verified oncf7e1b9: exact version, outstanding decision and owner preserved without horizontal overflow. Current mail read unavailable; no claim of healthy revised correspondence. |
 | Real enquiry | Correct owner, no quote and current estimate; four readable emails. Legacy marketing sender discarded provider identity, so these remain honestly unconfirmed under owner decision. Generic instruction to review a nonexistent quote removed in805da77. |
-| Real accepted job | Accepted version, multiple-acceptance warning and payment distinctions verified. Mail request failed;805da77 correctly shows unavailable/retry rather than normal empty. Correct quote opening passed on earlier baseline; revised mobile return pending. |
+| Real accepted job | Accepted version, multiple-acceptance warning and payment distinctions verified. Mail request failed;805da77 correctly shows unavailable/retry rather than normal empty. Revised390px quote open and settled Overview return passed oncf7e1b9: exact accepted version, owner and payment distinctions retained, no writes. Private evidence `.codex-tmp/clarity/accepted-mobile-cf7e1b9.txt`. |
 | Message relevance/discovery | Direct sends and fully anchored reply relationships implemented. Every ancestry branch must resolve; unknown parents/cycles/incomplete coverage suppress reply links.805da77 features latest unconfirmed customer email if no linked customer reply exists, without promoting association. Healthy revised live display still needs proof. |
-| Mail reliability | Authenticated Connections shows successful access checks then inbox_read unavailable/report_failed. Not a sign-in failure. Provider cause unknown; sensitive config retrieval was unavailable and no bypass attempted. Await PR377 release before bounded diagnostic retry; do not raise caps or clear audit. |
+| Mail reliability | Authenticated Connections shows successful access checks then inbox_read unavailable/report_failed. Not a sign-in failure. Provider cause unknown; sensitive config retrieval was unavailable and no bypass attempted. PR377 released and one retry completed with generic unavailable, no typed provider reason. Refreshed Connections showed no new Outlook operation beyond02:18:13; shared hourly allowance increased from3 to4 as an old operation expired. This suggests a pre-read rejection but does not establish its cause. Do not raise caps, clear audit or repeatedly retry. Further diagnosis remains pending. Source confirms known claim refusal reasons were discarded. Bounded correction is draft Velt PR378 at e4aa657 on codex/staff-mail-start-reasons-20260917: only exact database guards mapped, no limits/audit/retry changes.42 focused tests, types/lint and independent review pass; hosted gates pending and no release approval. Matching Portal allowlist changes remain local with15 tests passing. |
 | Desktop/mobile clarity | Independent populated sample walkthrough passed, including keyboard disclosures, sender/date and separate other-property mail. Real390px page had no overflow but header truncated identity. Local scoped header stacking independently verified in Chrome at390x844: full long title, separate search row, owner/actions visible, no overflow and keyboard search focus. Desktop retained. This verifies the shell header, not real mobile quote return. |
 | All-staff access/security | Staff auth/denial contracts and lifecycle checks passed; revised non-owner live journey remains unverified. No broadening beyond authorized staff or public data exposure. |
 | Independent final real review | Reviewer lacks root IAB session; source/tests and sample browser evidence are independent, real journey is not. Do not claim final8/10 or independent live pass. |
-| Release/handover |805da77 full workspace types/lint and31 independent focused tests passed. Hosted performance and other checks pass; Portal Quality run35174339022 completed with five stale copy expectations,89 passes and one skip. All five expected the generic instruction deliberately removed in805da77; assertions corrected to owner and Manage project work, hosted recheck pending. Current local reason suite12 passed. Protected review remains available; production UI, global flags and retirement migration unchanged. |
+| Release/handover |805da77 full workspace types/lint and31 independent focused tests passed. Hosted performance and other checks pass; Portal Quality run35174339022 completed with five stale copy expectations,89 passes and one skip. All five expected the generic instruction deliberately removed in805da77; assertions corrected to owner and Manage project work, hosted run35175611584 now passes in full. Current local reason suite12 passed. Protected review remains available; production UI, global flags and retirement migration unchanged. |
 
-Next authorized work: verify scoped mobile header, finish coherent Portal batch
+Next authorized work: finish hosted checks for the coherent Portal batch
 and its required checks, preserve fixed review host, then diagnose accepted mail
 after approved receiver release. Reconcile real/mobile/non-owner and independent
 journey gaps before conditional Portal release. No repeated login request.
