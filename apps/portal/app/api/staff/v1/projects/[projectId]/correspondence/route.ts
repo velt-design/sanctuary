@@ -45,6 +45,10 @@ async function handle(request: Request, context: Context, check: boolean) {
   const respond = (response: Response) => {
     // Fixed phase names and durations only: no email, provider IDs or cache keys.
     response.headers.set('server-timing', timings.join(', '));
+    if (process.env.PORTAL_CORRESPONDENCE_TIMING_LOGS === 'true') {
+      console.info(JSON.stringify({ event: 'portal.correspondence_timing', method: check ? 'POST' : 'GET',
+        status: response.status, phases: timings }));
+    }
     return privateResponse(response);
   };
   const fail = (message: string, status: number) => respond(jsonError(message, status, diagnostics));

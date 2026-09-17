@@ -24,6 +24,21 @@ beforeEach(() => {
   mocks.access.mockResolvedValue({ kind: 'authenticated', session: { user: { id: actorId }, role: 'staff' } });
 });
 describe('staff correspondence route', () => {
+  it('logs only fixed numeric phases when explicitly enabled', async () => {
+    const log = vi.spyOn(console, 'info').mockImplementation(() => {});
+    vi.stubEnv('PORTAL_CORRESPONDENCE_TIMING_LOGS', 'true');
+    try {
+      await POST(request(), context);
+      expect(log).toHaveBeenCalledOnce();
+      const record = JSON.parse(log.mock.calls[0][0]);
+      expect(Object.keys(record).sort()).toEqual(['event', 'method', 'phases', 'status']);
+      expect(record.event).toBe('portal.correspondence_timing');
+      expect(record.phases.every((phase: string) => /^(auth|identity|mail|matching|access_recheck|identity_recheck);dur=[\d.]+$/.test(phase))).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+      log.mockRestore();
+    }
+  });
   it('checks saved evidence through the receiver on GET without requesting a mailbox refresh', async () => {
     mocks.summary.mockResolvedValue({ project: { id: projectId, contactEmail: 'customer@example.test' } });
     mocks.config.mockReturnValue({ origin: 'https://velt.example.invalid', secret: 'test-only', snapshotsEnabled: true });

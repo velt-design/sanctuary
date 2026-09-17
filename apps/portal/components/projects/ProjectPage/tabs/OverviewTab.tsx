@@ -329,7 +329,7 @@ export default function OverviewTab({
     commercial = null;
   }
 
-  const recent = snapshotContentReady ? (
+  const history = snapshotContentReady ? (
     <Suspense
       fallback={
         <Card padding="compact" data-recent-notes-events="true">
@@ -337,8 +337,6 @@ export default function OverviewTab({
         </Card>
       }
     >
-      <ProjectCorrespondenceQuery projectId={snapshot.project.id} onAccessEnding={onAccessEnding}
-        project={{ customerEmail: snapshot.project.contactEmail, quoteRef: commandQuery.data?.currentDesign.quote?.quoteRef }} />
       <ProjectRecentNotesEvents
         projectId={snapshot.project.id}
         notes={snapshot.notes}
@@ -396,7 +394,17 @@ export default function OverviewTab({
         exception={exception}
         projectWork={projectWork}
         commercial={commercial}
-        recent={recent}
+        recent={
+          <>
+            {accessEndingStatus === null && (
+              <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} label="Loading customer emails" /></Card>}>
+                <ProjectCorrespondenceQuery projectId={snapshot.project.id} onAccessEnding={onAccessEnding}
+                  project={{ customerEmail: snapshot.project.contactEmail, quoteRef: commandQuery.data?.currentDesign.quote?.quoteRef }} />
+              </Suspense>
+            )}
+            {history}
+          </>
+        }
       />
     </div>
   );

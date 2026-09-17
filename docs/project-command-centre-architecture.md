@@ -60,6 +60,12 @@ It no longer loads project owner/work-model information for those checks.
 `Server-Timing` exposes fixed phase names and numeric durations only, for auth,
 identity, mail, matching and final access/identity checks; private response headers
 remain unchanged and no customer/provider identity is included in timings.
+Optional `PORTAL_CORRESPONDENCE_TIMING_LOGS=true` emits the same fixed phases,
+request method and status to server logs for protected performance measurements.
+It defaults off; it must not log message content, customer IDs or cache keys.
+Overview starts this independently authorized read as soon as its project summary
+is available, in a separate Suspense boundary from notes/events. Complete history
+still requires the full snapshot. An access-ending command read unmounts mail.
 
 Verified Resend RFC message IDs may be reused for15minutes in a bounded512-entry
 server-instance cache. Values are AES-256-GCM ciphertext, with authenticated expiry
