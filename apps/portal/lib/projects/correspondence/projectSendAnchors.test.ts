@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { readProjectSendAnchors } from './projectSendAnchors';
 import { createVerifiedSendIdentityCache } from './verifiedSendIdentityCache';
@@ -15,8 +15,21 @@ function database(rows: unknown[], error: unknown = null) {
   return { client: { from } as unknown as SupabaseClient, from, query };
 }
 const response = (recipients = row.to_emails) => new Response(JSON.stringify({ object: 'email', id: providerId, message_id: '<verified@example.test>', to: recipients }));
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
 describe('authorized project send anchors', () => {
+  it('reports only aggregate cache/provider counts and fixed failure codes when enabled', async () => {
+    vi.stubEnv('PORTAL_CORRESPONDENCE_TIMING_LOGS', 'true');
+    const log = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const fetcher = vi.fn().mockResolvedValueOnce(new Response('', { status: 429 })).mockImplementation(() => Promise.resolve(response()));
+    const dependencies = { apiKey: 'test', fetcher, cacheSecret: 'a'.repeat(64), cache: createVerifiedSendIdentityCache() };
+    for (let i = 0; i < 3; i++) await readProjectSendAnchors(database([row]).client, projectId, new AbortController().signal, dependencies);
+    expect(log.mock.calls.map(([message]) => JSON.parse(message))).toEqual([
+      { event: 'portal.correspondence_matching', cacheHits: 0, providerReads: 1, verified: 0, unavailable: 1, failures: { rate_limited: 1 } },
+      { event: 'portal.correspondence_matching', cacheHits: 0, providerReads: 1, verified: 1, unavailable: 0, failures: {} },
+      { event: 'portal.correspondence_matching', cacheHits: 1, providerReads: 0, verified: 0, unavailable: 0, failures: {} },
+    ]);
+  });
   it('skips repeated provider reads but rechecks canonical access before using saved proof', async () => {
     const db = database([row]);
     const fetcher = vi.fn().mockImplementation(() => Promise.resolve(response()));

@@ -6,8 +6,9 @@ The current owner agreement and release evidence live in
 [the roadmap](project-command-centre-roadmap.md). The Velt staff receiver and
 reporting/access-link fixes are deployed. A protected Portal candidate has read
 real correspondence and opened its original Outlook message. The global Portal
-correspondence flag remains disabled. The revised retirement/read-on-open UI is
-local and not yet published; these states must not be conflated.
+correspondence flag is enabled following the approved PR145 production release.
+The subsequent performance changes in PR153 remain protected-preview work;
+see the roadmap for exact release revisions and outstanding staff verification.
 
 The owner has deferred unused lead/quote follow-ups and sent/reply recording.
 Migration `20260917000002_defer_project_follow_ups.sql` cancels active cadence
@@ -15,7 +16,7 @@ with before/after history, retires cadence repair signals with receipts, stops
 new cadence creation and rejects stale recording writes. It preserves manual
 commitments, correction reviews, specialist tools, lifecycle and commercial
 facts. The shared queue selects actual work/recovery/state reviews; an empty
-project is not itself a triage task. Database installation remains pending.
+project is not itself a triage task. The approved migration is installed.
 The migration refuses concurrent project-row or advisory writers and must be
 retried during a quiet gap; native PostgreSQL rehearsal and independent review
 passed. See the roadmap for exact evidence and remaining release gates.
@@ -63,14 +64,23 @@ remain unchanged and no customer/provider identity is included in timings.
 Optional `PORTAL_CORRESPONDENCE_TIMING_LOGS=true` emits the same fixed phases,
 request method and status to server logs for protected performance measurements.
 It defaults off; it must not log message content, customer IDs or cache keys.
+The same flag reports aggregate matching-cache hits, provider reads, successes
+and fixed unavailable-reason counts, to distinguish cold-instance misses from
+provider failures without logging identities or raw responses.
 Protected measurement builds may set `NEXT_PUBLIC_PORTAL_EMAIL_TIMING=true` to
 expose hidden numeric DOM attributes at the first email render: elapsed since
 mount and, only for a matching direct document URL, since document navigation.
 The effect runs after the evidence DOM commits, so it separates browser-tool
 overhead from observed display time. It never exports email content and defaults
 off. Client navigation does not claim a document-navigation duration.
-Overview starts this independently authorized read as soon as its project summary
-is available, in a separate Suspense boundary from notes/events. Complete history
+The project route starts a single independently authorized saved GET alongside
+the project summary. A page-scoped warm-read provider hands that promise to the
+existing Overview reader once; it never retains a reusable browser cache or
+starts an Outlook refresh itself. Unclaimed reads expire after15seconds and
+are aborted on hidden-page/unmount transitions. The existing reader still owns
+response validation, access-ending behavior, expiry and explicit/live refreshes.
+Only Overview warms mail; no other tab or speculative project navigation does.
+Overview renders it in a separate Suspense boundary from notes/events. Complete history
 still requires the full snapshot. An access-ending command read unmounts mail.
 
 Verified Resend RFC message IDs may be reused for15minutes in a bounded512-entry

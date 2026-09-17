@@ -5,6 +5,7 @@ import { apiJson, ApiError } from '@/lib/repo/apiClient';
 import { correspondenceContextSchema, CORRESPONDENCE_MAX_AGE_MS, type ProjectCorrespondenceContext } from '@/lib/projects/correspondence/contract';
 import ProjectCorrespondenceCard from './ProjectCorrespondenceCard';
 import type { EmailProjectContext } from './projectEmailGroups';
+import { useProjectCorrespondenceWarmRead } from './ProjectCorrespondenceWarmRead';
 
 type ReadState = { state: 'not_connected' | 'available' | 'loading' | 'refreshing' | 'ready' | 'stale' | 'error'; context?: ProjectCorrespondenceContext };
 function evidenceState(context: ProjectCorrespondenceContext): 'ready' | 'stale' {
@@ -25,6 +26,7 @@ export default function ProjectCorrespondenceQuery({ projectId, onAccessEnding, 
 }
 
 function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId: string; onAccessEnding?: (status: number) => void; project?: EmailProjectContext }) {
+  const takeWarmRead = useProjectCorrespondenceWarmRead();
   const [read, setRead] = useState<ReadState>({ state: 'loading' });
   const active = useRef<AbortController | null>(null);
   const earlier = useRef<ProjectCorrespondenceContext | undefined>(undefined);
@@ -56,9 +58,9 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
     if (check && (!earlier.current?.snapshot || Date.parse(earlier.current.snapshot.expiresAt) <= Date.now())) earlier.current = undefined;
     setRead({ state: 'loading', ...(check && earlier.current?.snapshot ? { context: earlier.current } : {}) });
     try {
-      let reply = await apiJson<{ state: string; context?: unknown }>(path + (analyze ? '?analyze=true' : ''), {
+      let reply = await ((readOnOpen && !check ? takeWarmRead(projectId, controller.signal) : null) ?? apiJson<{ state: string; context?: unknown }>(path + (analyze ? '?analyze=true' : ''), {
         method: check ? 'POST' : 'GET', signal: controller.signal, cache: 'no-store', skipSaveTracking: true,
-      });
+      }));
       if (controller.signal.aborted) return;
       if (readOnOpen && reply.state === 'available') {
         reply = await apiJson<{ state: string; context?: unknown }>(path, {
@@ -95,7 +97,7 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
       setRead({ state: 'error' });
       if (error instanceof ApiError && [401, 403, 404].includes(error.status)) accessCallback.current?.(error.status);
     }
-  }, [path]);
+  }, [path, projectId, takeWarmRead]);
 
   useEffect(() => {
     if (read.state !== 'refreshing') return;

@@ -3,6 +3,7 @@ import { DataStatePanel, PageLayout } from '@/components/ui/foundation';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
 import { isProjectTabKey } from '@/lib/projects/projectTabs';
+import { ProjectCorrespondenceWarmRead } from '@/components/projects/ProjectPage/tabs/overview/ProjectCorrespondenceWarmRead';
 
 function parseTab(value: string | string[] | undefined): string {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -52,6 +53,7 @@ export default async function ProjectDetailPage({
   }
 
   return (
+    <ProjectCorrespondenceWarmRead projectId={projectId} enabled={tab === 'activity'}>
     <ProjectSnapshotPageClient
       projectId={projectId}
       tab={tab}
@@ -59,5 +61,6 @@ export default async function ProjectDetailPage({
       calculatorWorkspace={calculatorWorkspace}
       debugExportEnabled={isPortalPageDebugExportEnabled()}
     />
+    </ProjectCorrespondenceWarmRead>
   );
 }
