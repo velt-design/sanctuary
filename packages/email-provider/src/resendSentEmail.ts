@@ -49,10 +49,13 @@ export function createResendSentEmailReader(config: { apiKey: string; fetch?: ty
     const boundedSignal = AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(signal ? [signal] : [])]);
     try {
       boundedSignal.throwIfAborted();
-      const response = await fetcher(`${RESEND_API_ENDPOINT}/${input.providerMessageId}`, {
+      // Node's fetch types omit cache; Next's server fetch consumes it to keep
+      // private provider evidence out of its data cache. Retain both contracts.
+      const init: RequestInit & { cache: 'no-store' } = {
         method: 'GET', headers: { Authorization: `Bearer ${config.apiKey.trim()}` },
         redirect: 'error', cache: 'no-store', signal: boundedSignal,
-      });
+      };
+      const response = await fetcher(`${RESEND_API_ENDPOINT}/${input.providerMessageId}`, init);
       if (!response.ok) {
         await response.body?.cancel().catch(() => undefined);
         return unavailable(response.status === 401 || response.status === 403 ? 'denied'
