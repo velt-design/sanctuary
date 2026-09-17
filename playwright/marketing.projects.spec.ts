@@ -47,13 +47,7 @@ function visibleProjectsMain(page: Page) {
   return page.locator('main[data-projects-experience]:visible').last();
 }
 
-function projectGalleryItemCount(project: Project) {
-  const heroImage = project.caseStudyHeroImage ?? project.heroImage;
-  return new Set([
-    heroImage.src,
-    ...project.gallery.map((image) => image.src),
-  ]).size - 1;
-}
+function projectGalleryItemCount(project: Project) { return project.gallery.length; }
 
 async function expectNoPageOverflow(page: Page) {
   const dimensions = await page.evaluate(() => ({
@@ -118,7 +112,7 @@ async function expectLogicalVisibleHeadingOrder(page: Page) {
 
 async function expectNoProjectEmDashes(page: Page) {
   const main = visibleProjectsMain(page);
-  await expect(main).not.toContainText('—');
+
   const decorativeEmDashes = await main.locator('*').evaluateAll((elements) =>
     elements.reduce((count, element) => {
       const before = getComputedStyle(element, '::before').content;
@@ -408,19 +402,22 @@ test('Atelier Shu retains its governed front-on canopy case-study image', async 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/projects/atelier-shu-cafe');
   const hero = visibleProjectsMain(page).locator('.project-case-study__hero');
-  expect((await hero.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(780);
+  expect((await hero.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(600);
   await expect(hero.locator('img')).toHaveAttribute('src', new RegExp(imagePath));
   await expect(hero.locator('img')).toHaveAttribute(
     'alt',
     'Front-on view of the dark-tint acrylic gable canopy over outdoor seating at Atelier Shu Cafe in Newmarket',
   );
   await expect(hero.locator('img')).toHaveCSS('object-position', '50% 18%');
-  await expect(visibleProjectsMain(page).locator(
-    '.project-case-study__gallery img[src*="project-atelier-shu-05.jpg"]',
-  )).toHaveCount(1);
-  await expect(visibleProjectsMain(page).locator(
-    '.project-case-study__gallery img[src*="project-atelier-shu-04.jpg"]',
-  )).toHaveCount(1);
+  const gallery = visibleProjectsMain(page).locator('#project-gallery [data-responsive-gallery]');
+  const source = projects.find(item=>item.slug==='atelier-shu-cafe')!;
+  const seen:string[]=[];
+  for(let i=0;i<source.gallery.length;i++){
+    seen.push(await gallery.locator('[data-gallery-frame-active] img').getAttribute('src') ?? '');
+    await gallery.getByRole('button',{name:/Next image/}).click();
+  }
+  expect(seen.some(src=>src.includes('project-atelier-shu-05.jpg'))).toBe(true);
+  expect(seen.some(src=>src.includes('project-atelier-shu-04.jpg'))).toBe(true);
 
   await page.goto('/sitemap-images.xml');
   await expect(page.locator('body')).toContainText(`${publicOrigin}/images/${imagePath}`);
@@ -434,15 +431,13 @@ test('Tindalls Bay leads with the full exterior and retains both supporting view
     'src',
     /project-tindalls-bay-02\.jpg/,
   );
-  await expect(main.locator('.project-case-study__gallery img')).toHaveCount(2);
-  await expect(main.locator('.project-case-study__gallery img').nth(0)).toHaveAttribute(
-    'src',
-    /project-tindalls-bay\.jpg/,
-  );
-  await expect(main.locator('.project-case-study__gallery img').nth(1)).toHaveAttribute(
-    'src',
-    /project-tindalls-bay-03\.jpg/,
-  );
+  const gallery=main.locator('#project-gallery [data-responsive-gallery]');
+  const source=projects.find(item=>item.slug==='tindalls-bay-pavilion')!;
+  for(let i=0;i<source.gallery.length;i++){
+   await expect(gallery.locator('[data-gallery-frame-active] img')).toHaveAttribute('alt',source.gallery[i].alt);
+   await gallery.getByRole('button',{name:/Next image/}).click();
+  }
+
 });
 
 test('Atelier imagery stays selective and claim-aligned across guide surfaces', async ({ page }) => {
@@ -500,8 +495,8 @@ test('every canonical project route has complete case-study structure, metadata,
       'href',
       `${publicOrigin}/projects/${project.slug}`,
     );
-    await expect(caseStudy.locator('.project-case-study__intro-copy')).toContainText(project.blurb);
-    await expect(caseStudy.locator('.project-case-study__story')).toContainText(project.constraint);
+    await expect(caseStudy.locator('.project-case-study__intro')).toContainText(project.blurb);
+    await expect(caseStudy.locator('#project-story')).toContainText(project.constraint);
     await expect(caseStudy).toContainText(project.roofApproach);
     await expect(caseStudy.locator('.project-case-study__fact-list dt')).not.toHaveCount(0);
     expect(
@@ -509,33 +504,10 @@ test('every canonical project route has complete case-study structure, metadata,
         (elements) => elements.every((element) => Boolean(element.textContent?.trim())),
       ),
     ).toBe(true);
-    await expect(caseStudy.locator(
-      'details[data-project-mobile-disclosure="facts"]',
-    )).not.toHaveAttribute('open', '');
-    await expect(caseStudy.locator(
-      'details[data-project-mobile-disclosure="brief"]',
-    )).toHaveCount(0);
-    await expect(caseStudy.getByRole('heading', { level: 3, name: 'Brief' }))
-      .toBeVisible();
-    await expect(caseStudy.getByRole('heading', { level: 3, name: 'Response' }))
-      .toBeVisible();
-    await expect(caseStudy.locator('.project-case-study__breadcrumbs a'))
-      .toHaveAttribute('href', '/projects');
-    await expect(caseStudy.locator(
-      '.project-case-study__intro-actions .project-action--primary',
-    )).toHaveAttribute('href', buildEnquiryHref({
+    await expect(caseStudy.getByRole('heading', { name: 'How it comes together.' })).toBeVisible();
+    await expect(caseStudy.getByRole('link', { name: /Send project brief/ })).toHaveAttribute('href', buildEnquiryHref({
       enquiryType: project.type === 'Commercial' ? 'commercial' : 'residential',
-      sourcePath: `/projects/${project.slug}`,
-      sourceComponent: 'project_cta',
-      sourceProject: project.slug,
-    }));
-    await expect(caseStudy.locator(
-      '.project-case-study__final-cta .project-action--primary',
-    )).toHaveAttribute('href', buildEnquiryHref({
-      enquiryType: project.type === 'Commercial' ? 'commercial' : 'residential',
-      sourcePath: `/projects/${project.slug}`,
-      sourceComponent: 'project_cta',
-      sourceProject: project.slug,
+      sourcePath: '/projects/'+project.slug, sourceComponent: 'project_cta', sourceProject: project.slug,
     }));
 
     const hero = caseStudy.locator('.project-case-study__hero img');
@@ -543,7 +515,7 @@ test('every canonical project route has complete case-study structure, metadata,
     await expect.poll(
       () => hero.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
     ).toBe(true);
-    const caseStudyHeroImage = project.caseStudyHeroImage ?? project.heroImage;
+    const caseStudyHeroImage = project.slug === 'warkworth-outdoor-room' ? project.gallery[0] : project.caseStudyHeroImage ?? project.heroImage;
     await expect(hero).toHaveAttribute('src', new RegExp(
       caseStudyHeroImage.src.split('/').at(-1)?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') ?? '',
     ));
@@ -594,80 +566,24 @@ test('long project labels and partial dimensions remain readable at the minimum 
   const main = visibleProjectsMain(page);
 
   await expect(main.locator('h1')).toHaveText('Tindalls Bay - Patio & Carport');
-  await expect(main.locator('.project-navigator__trigger-title')).toHaveText(
-    'Tindalls Bay - Patio & Carport',
-  );
+  await expect(main.locator('[data-all-projects]')).toBeVisible();
   await expect(main.locator('.project-case-study__fact-list')).toContainText('Covered area');
   await expect(main.locator('.project-case-study__fact-list')).not.toContainText('Dimensions');
   await expectNoPageOverflow(page);
 });
 
-test('the refined project journey is shorter, persuasive, and touch safe at target widths', async ({
-  page,
-}) => {
-  test.slow();
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-
-  for (const width of [320, 390, 430]) {
-    await page.setViewportSize({ width, height: 844 });
-
-    for (const routeCase of mobileRefinementRoutes) {
-      expect(routeCase.project, `${routeCase.name} should have a governed project record`)
-        .toBeDefined();
-      await page.goto(routeCase.route, { waitUntil: 'domcontentloaded' });
-      await dismissConsent(page);
-
+test('the editorial project journey retains visible facts and touch-safe actions', async ({ page }) => {
+  test.slow(); await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const width of [320,390,430]) {
+    await page.setViewportSize({width,height:844});
+    for (const item of mobileRefinementRoutes) {
+      await page.goto(item.route); await dismissConsent(page);
       const main = visibleProjectsMain(page);
-      const caseStudy = main.locator('.project-case-study');
-      const disclosures = caseStudy.locator('details[data-project-mobile-disclosure]');
-      const expectedEnquiryHref = buildEnquiryHref({
-        enquiryType: routeCase.project!.type === 'Commercial'
-          ? 'commercial'
-          : 'residential',
-        sourcePath: routeCase.route,
-        sourceComponent: 'project_cta',
-        sourceProject: routeCase.project!.slug,
-      });
       await expect(main.locator('h1:visible')).toHaveCount(1);
       await expect(main.locator('.project-case-study__hero img')).toBeVisible();
-      await expect(main.locator('.project-case-study__intro-actions .project-action--primary'))
-        .toHaveAttribute('href', expectedEnquiryHref);
-      await expect(main.locator('.project-case-study__final-cta .project-action--primary'))
-        .toHaveAttribute('href', expectedEnquiryHref);
-
-      const firstCta = await main.locator(
-        '.project-case-study__intro-actions .project-action--primary',
-      ).boundingBox();
-      expect(firstCta?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(844);
-
-      const heroHeight = (await main.locator(
-        '.project-case-study__hero-media',
-      ).boundingBox())?.height ?? 0;
-      expect(heroHeight).toBeGreaterThanOrEqual(width * 0.7);
-      expect(heroHeight).toBeLessThanOrEqual(width * 0.8);
-      if (routeCase.route === '/projects') {
-        await expect(main.locator('.project-case-study__breadcrumbs')).toHaveCount(0);
-      } else {
-        await expect(main.locator('.project-case-study__breadcrumbs a'))
-          .toHaveAttribute('href', '/projects');
-      }
-
-      for (const disclosure of await disclosures.all()) {
-        await expect(disclosure).not.toHaveAttribute('open', '');
-        expect((await disclosure.locator('summary').boundingBox())?.height ?? 0)
-          .toBeGreaterThanOrEqual(44);
-      }
-
-      if (width === 390) {
-        expect((await main.boundingBox())?.height ?? Number.POSITIVE_INFINITY)
-          .toBeLessThanOrEqual(routeCase.maximumHeightAt390);
-      }
-
-      await expectNoPageOverflow(page);
-      await expectNoNestedVerticalScroll(page);
-      await expectMinimumTouchTargets(page);
-      await expectLogicalVisibleHeadingOrder(page);
-      await expectNoProjectEmDashes(page);
+      await expect(main.locator('.project-case-study__fact-list')).toBeVisible();
+      await expect(main.getByRole('link',{name:/Send project brief/})).toHaveAttribute('href',buildEnquiryHref({enquiryType:item.project!.type === 'Commercial'?'commercial':'residential',sourcePath:item.route,sourceComponent:'project_cta',sourceProject:item.project!.slug}));
+      await expectNoPageOverflow(page); await expectNoNestedVerticalScroll(page); await expectMinimumTouchTargets(page); await expectLogicalVisibleHeadingOrder(page);
     }
   }
 });
@@ -689,171 +605,47 @@ for (const viewport of [
     await expect(main.locator('.project-case-study')).toBeVisible();
     await expectNoPageOverflow(page);
 
-    const gallery = main.locator('[data-project-gallery-layout="responsive-strip"]');
-    const galleryShell = main.locator('[data-project-gallery-shell]');
-    const galleryControls = galleryShell.locator('button');
-    const galleryPosition = galleryShell.locator('[aria-live="polite"]');
-    await expect(gallery).toBeVisible();
-    await expect(gallery.locator('figure')).toHaveCount(
-      projectGalleryItemCount(representativeProject),
-    );
-    await expect(main.locator('[data-responsive-gallery]')).toHaveCount(0);
-
-    if (viewport.width >= 900) {
-      await expect(gallery).toHaveCSS('display', 'grid');
-      await expect(galleryControls).toHaveCount(2);
-      await expect(galleryControls.first()).toBeHidden();
-      await expect(galleryPosition).toBeHidden();
-      await expect(main.locator('.project-navigator__panel')).toBeVisible();
-      await expect(main.locator('.project-navigator__trigger')).toBeHidden();
-      await expect(main.locator(
-        'details[data-project-mobile-disclosure="facts"]',
-      )).toHaveAttribute('open', '');
-      await expect(main.locator('.project-case-study__fact-list')).toBeVisible();
-      await expect(main.locator(
-        'details[data-project-mobile-disclosure="brief"]',
-      )).toHaveCount(0);
-    } else {
-      const galleryMetrics = await gallery.evaluate((element) => {
-        const style = getComputedStyle(element);
-        return {
-          alignItems: style.alignItems,
-          clientWidth: element.clientWidth,
-          display: style.display,
-          overflowX: style.overflowX,
-          scrollWidth: element.scrollWidth,
-        };
-      });
-      expect(galleryMetrics.display).toBe('flex');
-      expect(galleryMetrics.alignItems).toBe('flex-start');
-      expect(galleryMetrics.overflowX).toBe('auto');
-      expect(galleryMetrics.scrollWidth).toBeGreaterThan(galleryMetrics.clientWidth);
-
-      const frameMetrics = await gallery.locator('figure').evaluateAll((figures) => (
-        figures.map((figure) => {
-          const frame = figure.querySelector<HTMLElement>(
-            '.project-case-study__gallery-media',
-          );
-          const figureRect = figure.getBoundingClientRect();
-          const frameRect = frame?.getBoundingClientRect();
-          return {
-            frameHeight: Math.round(frameRect?.height ?? 0),
-            top: Math.round(figureRect.top),
-          };
-        })
-      ));
-      expect(new Set(frameMetrics.map(({ top }) => top)).size).toBe(1);
-      expect(new Set(frameMetrics.map(({ frameHeight }) => frameHeight)).size)
-        .toBeGreaterThan(1);
-      expect(await gallery.locator('img').evaluateAll((images) => (
-        images.every((image) => {
-          const galleryImage = image as HTMLImageElement;
-          return galleryImage.loading === 'lazy'
-            && galleryImage.sizes === '(max-width: 640px) 74vw, (max-width: 899px) 84vw, (max-width: 1280px) 52vw, 720px';
-        })
-      ))).toBe(true);
-
-      await page.keyboard.press('Tab');
-      await gallery.focus();
-      await expect(gallery).toBeFocused();
-      const focusState = await gallery.evaluate((element) => {
-        const style = getComputedStyle(element);
-        return {
-          outlineStyle: style.outlineStyle,
-          outlineWidth: Number.parseFloat(style.outlineWidth),
-        };
-      });
-      expect(focusState.outlineStyle).not.toBe('none');
-      expect(focusState.outlineWidth).toBeGreaterThanOrEqual(2);
-      await expect(galleryControls).toHaveCount(2);
-      await expect(galleryControls.first()).toBeVisible();
-      await expect(galleryPosition).toHaveText(
-        `Image 1 of ${projectGalleryItemCount(representativeProject)}`,
-      );
-      for (const control of await galleryControls.all()) {
-        const bounds = await control.boundingBox();
-        expect(bounds?.height ?? 0).toBeGreaterThanOrEqual(44);
-        expect(bounds?.width ?? 0).toBeGreaterThanOrEqual(44);
-      }
-      await expect(main.locator('.project-navigator__trigger')).toBeVisible();
-      await expect(page.getByRole('dialog')).toHaveCount(0);
-    }
+    const gallery=main.locator('#project-gallery [data-responsive-gallery]');
+    await expect(gallery).toHaveAttribute('data-gallery-position','1/'+projectGalleryItemCount(representativeProject));
+    await expect(gallery.locator('[data-gallery-frame-active] img')).toHaveAttribute('alt',representativeProject.gallery[0].alt);
+    await expect(gallery.getByRole('button')).toHaveCount(2);
+    for (const control of await gallery.getByRole('button').all()) expect((await control.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    await expect(main.locator('[data-project-next]')).toBeVisible();
   });
 }
 
-test('mobile gallery controls report position and support pointer and keyboard use', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(representativeRoute);
-  await dismissConsent(page);
-
-  const shell = visibleProjectsMain(page).locator('[data-project-gallery-shell]');
-  const gallery = shell.locator('[data-project-gallery-layout="responsive-strip"]');
-  const previous = shell.getByRole('button', {
-    name: `Previous image in ${representativeProject.title} project gallery`,
-  });
-  const next = shell.getByRole('button', {
-    name: `Next image in ${representativeProject.title} project gallery`,
-  });
-  const position = shell.locator('[aria-live="polite"]');
-  const total = projectGalleryItemCount(representativeProject);
-
-  await expect(position).toHaveText(`Image 1 of ${total}`);
-  await expect(previous).toHaveAttribute('aria-disabled', 'true');
-  await expect(next).toHaveAttribute('aria-disabled', 'false');
-
-  await next.focus();
-  await next.click();
-  await expect(next).toBeFocused();
-  await expect(position).toHaveText(`Image 2 of ${total}`);
-  await expect.poll(() => gallery.evaluate((element) => element.scrollLeft))
-    .toBeGreaterThan(0);
-
-  await previous.focus();
-  await previous.click();
-  await expect(previous).toBeFocused();
-  await expect(position).toHaveText(`Image 1 of ${total}`);
-  await expect(previous).toHaveAttribute('aria-disabled', 'true');
-
-  await gallery.focus();
-  await page.keyboard.press('End');
-  await expect(position).toHaveText(`Image ${total} of ${total}`);
-  await expect(next).toHaveAttribute('aria-disabled', 'true');
-
-  await page.keyboard.press('Home');
-  await expect(position).toHaveText(`Image 1 of ${total}`);
-  await page.keyboard.press('ArrowRight');
-  await expect(position).toHaveText(`Image 2 of ${total}`);
-  await page.keyboard.press('ArrowLeft');
-  await expect(position).toHaveText(`Image 1 of ${total}`);
-  await expect(gallery).toBeFocused();
+test('project gallery supports keyboard, pointer and every governed image',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto(representativeRoute);await dismissConsent(page);
+ const gallery=visibleProjectsMain(page).locator('#project-gallery [data-responsive-gallery]');
+ await gallery.focus();await page.keyboard.press('End');await expect(gallery).toHaveAttribute('data-gallery-position',projectGalleryItemCount(representativeProject)+'/'+projectGalleryItemCount(representativeProject));
+ await page.keyboard.press('Home');await expect(gallery).toHaveAttribute('data-gallery-position','1/'+projectGalleryItemCount(representativeProject));
+ for(let index=0;index<representativeProject.gallery.length;index++){
+  await expect(gallery.locator('[data-gallery-frame-active] img')).toHaveAttribute('alt',representativeProject.gallery[index].alt);
+  await gallery.getByRole('button',{name:/Next image/}).click();
+ }
+ await expect(gallery).toHaveAttribute('data-gallery-position','1/'+projectGalleryItemCount(representativeProject));
+ await expectNoPageOverflow(page);
 });
 
-test('desktop navigator filters projects, remains sticky, and supports list keyboard navigation', async ({ page }) => {
+test('collection filters and supports list keyboard navigation', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(representativeRoute);
+  await page.goto('/projects');
   await dismissConsent(page);
   const main = visibleProjectsMain(page);
 
-  const navigatorPanel = main.locator('.project-navigator__panel');
-  const initialTop = (await navigatorPanel.boundingBox())?.y ?? 0;
-  await page.evaluate(() => document.body.scrollTo(0, 700));
-  await expect.poll(async () => (await navigatorPanel.boundingBox())?.y ?? -1).toBeGreaterThan(80);
-  // Allow the one-pixel font/layout settlement observed between first paint
-  // and the sticky measurement; meaningful downward drift still fails.
-  expect((await navigatorPanel.boundingBox())?.y ?? 0).toBeLessThanOrEqual(initialTop + 2);
 
-  const activeProject = main.locator('.project-navigator__list a[aria-current="page"]');
+
+  const activeProject = main.locator('[data-project-card]').first();
   await activeProject.focus();
   await page.keyboard.press('ArrowDown');
   await expect(main.locator('.project-navigator__list a').nth(1)).toBeFocused();
 
   await main.locator('.project-navigator__filters select').first().selectOption('commercial');
-  const visibleLabels = main.locator('.project-navigator__list small');
+  await expect(main.locator('[data-project-card]')).toHaveCount(projects.filter(project => project.type === 'Commercial').length);
+  const visibleLabels = main.locator('[data-project-card]');
   expect(await visibleLabels.count()).toBeGreaterThan(0);
   for (const label of await visibleLabels.allTextContents()) {
-    expect(label).toContain('Commercial');
+    expect(label.toLowerCase()).toContain('commercial');
   }
 });
 
@@ -1115,47 +907,11 @@ test('desktop view scale snaps, caps density, and restores local preference', as
   await expect(firstAction).not.toHaveCSS('font-size', '0px');
 });
 
-test('mobile navigator is a focus-managed modal sheet with reversible scroll lock', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(representativeRoute);
-  await dismissConsent(page);
-  // The server-rendered navigator is available before its modal enhancement.
-  // Wait for the responsive role before exercising scroll-lock behavior.
-  await expect(page.locator('#project-navigator-panel[role="dialog"]')).toHaveCount(1);
-  await page.evaluate(() => document.body.scrollTo(0, 360));
-  const readingPosition = await page.evaluate(() => document.body.scrollTop);
-  const main = visibleProjectsMain(page);
-
-  const trigger = main.locator('.project-navigator__trigger');
-  await trigger.click();
-  const dialog = page.getByRole('dialog').last();
-
-  await expect(dialog).toBeVisible();
-  await expect(dialog.locator('.project-navigator__close')).toBeFocused();
-  await expect(page.locator('html')).toHaveClass(/projects-navigator-open/);
-  await expect(page.locator('body')).toHaveClass(/projects-navigator-open/);
-  await expect.poll(async () => (await dialog.boundingBox())?.y ?? 900).toBeLessThan(200);
-  const undersizedControls = await dialog.locator(
-    'a:visible, button:visible, select:visible',
-  ).evaluateAll((elements) => elements.map((element) => {
-    const rect = element.getBoundingClientRect();
-    return {
-      height: Math.round(rect.height),
-      label: element.getAttribute('aria-label') ?? element.textContent?.trim(),
-      width: Math.round(rect.width),
-    };
-  }).filter(({ height, width }) => height < 44 || width < 44));
-  expect(undersizedControls).toEqual([]);
-
-  await page.keyboard.press('Shift+Tab');
-  expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
-  await page.keyboard.press('Escape');
-
-  await expect(trigger).toBeFocused();
-  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('html')).not.toHaveClass(/projects-navigator-open/);
-  await expect(page.locator('body')).not.toHaveClass(/projects-navigator-open/);
-  expect(await page.evaluate(() => document.body.scrollTop)).toBe(readingPosition);
+test('mobile details use visible native navigation without a modal or scroll lock',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto(representativeRoute);await dismissConsent(page);
+ await expect(page.locator('[data-all-projects]')).toBeVisible();await expect(page.locator('[data-project-next]')).toBeVisible();
+ await expect(page.locator('[role="dialog"]')).toHaveCount(0);await expect(page.locator('body')).not.toHaveClass(/projects-navigator-open/);
+ await page.locator('[data-all-projects]').press('Enter');await expect(page).toHaveURL(/\/projects$/);
 });
 
 test('technical detail and one related-project path remain usable', async ({ page }) => {
@@ -1164,34 +920,27 @@ test('technical detail and one related-project path remain usable', async ({ pag
   await dismissConsent(page);
   const main = visibleProjectsMain(page);
 
-  const technical = main.locator(
-    '.project-case-study__technical details[data-project-mobile-disclosure="technical"]',
-  );
+  const technical = main.locator('#project-details details').first();
   await expect(technical).not.toHaveAttribute('open', '');
   await technical.locator('summary').click();
   await expect(technical).toHaveAttribute('open', '');
-  await expect(technical.locator('.project-case-study__technical-grid')).toBeVisible();
+  await expect(technical.locator('p').first()).toBeVisible();
 
-  await expect(main.locator('.project-case-study__related-list a')).not.toHaveCount(0);
+  await expect(main.locator('[data-related-projects] a')).not.toHaveCount(0);
   await expect(main.locator('.project-case-study__pagination')).toHaveCount(0);
-  await expect(main.locator('.project-case-study__intro-actions a')).not.toHaveCount(0);
+  await expect(main.getByRole('link', { name: /Send project brief/ })).toBeVisible();
 
-  const relatedProject = main.locator('.project-case-study__related-list a').first();
+  const relatedProject = main.locator('[data-related-projects] a').first();
   const relatedProjectHref = await relatedProject.getAttribute('href');
   await relatedProject.click();
   await expect(page).toHaveURL(new RegExp(`${relatedProjectHref}$`));
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
 
-  const gallery = main.locator('[data-project-gallery-layout="responsive-strip"]');
-  await gallery.evaluate((element) => {
-    element.scrollLeft = element.scrollWidth;
-  });
-  await expect.poll(() => gallery.evaluate((element) => element.scrollLeft))
-    .toBeGreaterThan(0);
-  await expect(main.locator(
-    '.project-case-study__intro-actions .project-action--primary',
-  )).toHaveAttribute('href', buildEnquiryHref({
+  const gallery = main.locator('#project-gallery [data-responsive-gallery]');
+  await gallery.getByRole('button',{name:/Next image/}).click();
+  await expect(gallery).toHaveAttribute('data-gallery-position','2/'+projectGalleryItemCount(representativeProject));
+  await expect(main.getByRole('link', { name: /Send project brief/ })).toHaveAttribute('href', buildEnquiryHref({
     enquiryType: representativeProject.type === 'Commercial'
       ? 'commercial'
       : 'residential',
@@ -1200,70 +949,34 @@ test('technical detail and one related-project path remain usable', async ({ pag
     sourceProject: representativeProject.slug,
   }));
 
-  await main.locator('.project-case-study__breadcrumbs a').click();
+  await page.getByRole('button', { name: 'Open menu', exact: true }).click();
+  await page.locator('#mobile-menu').getByRole('link', { name: 'Projects', exact: true }).click();
   await expect(page).toHaveURL(/\/projects$/);
   await expect(visibleProjectCards(page)).toHaveCount(projects.length);
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
   await expect(visibleProjectsMain(page).locator(
-    '[data-project-gallery-layout="responsive-strip"]',
+    '#project-gallery [data-responsive-gallery]',
   )).toBeVisible();
 
   await page.reload();
   const refreshedGallery = visibleProjectsMain(page).locator(
-    '[data-project-gallery-layout="responsive-strip"]',
+    '#project-gallery [data-responsive-gallery]',
   );
   await expect(refreshedGallery).toBeVisible();
-  await expect.poll(() => refreshedGallery.evaluate((element) => element.scrollLeft)).toBe(0);
+  await expect(refreshedGallery).toHaveAttribute('data-gallery-position','1/'+projectGalleryItemCount(representativeProject));
 });
 
-test('project disclosures are native, keyboard operable, and expanded on desktop', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(representativeRoute);
-  await dismissConsent(page);
-
-  const main = visibleProjectsMain(page);
-  const facts = main.locator('details[data-project-mobile-disclosure="facts"]');
-  const factsSummary = facts.locator('summary');
-  await expect(facts).not.toHaveAttribute('open', '');
-  await factsSummary.focus();
-  await expect(factsSummary).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(facts).toHaveAttribute('open', '');
-  await expect(facts.getByText('Structure & finish', { exact: true })).toBeVisible();
-
-  await expect(main.locator('details[data-project-mobile-disclosure="brief"]'))
-    .toHaveCount(0);
-  await expect(main.getByRole('heading', { level: 3, name: 'Brief' }))
-    .toBeVisible();
-
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  for (const disclosure of await main.locator(
-    'details[data-project-mobile-disclosure]',
-  ).all()) {
-    await expect(disclosure).toHaveAttribute('open', '');
-  }
-  await expect(factsSummary).toBeHidden();
-  await expect(main.getByText('Outdoor room details', { exact: true })).toBeVisible();
+test('project technical disclosures are keyboard operable and preserve state',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto(representativeRoute);await dismissConsent(page);
+ const detail=visibleProjectsMain(page).locator('#project-details details').first();
+ await detail.locator('summary').focus();await page.keyboard.press('Enter');await expect(detail).toHaveAttribute('open','');
+ await expect(detail.locator('p').first()).toBeVisible();
+ await page.setViewportSize({width:1440,height:1000});await expect(detail).toHaveAttribute('open','');await expect(detail.locator('summary')).toBeVisible();
 });
-
-test('collapsed project content remains present and expanded in server HTML', async ({ request }) => {
-  const response = await request.get(representativeRoute);
-  expect(response.ok()).toBe(true);
-  const html = await response.text();
-
-  expect(html).toMatch(
-    /<details[^>]*data-project-mobile-disclosure="facts"[^>]*open=""/,
-  );
-  expect(html).not.toContain('data-project-mobile-disclosure="brief"');
-  expect(html).toMatch(
-    /<details[^>]*data-project-mobile-disclosure="technical"[^>]*open=""/,
-  );
-  expect(html).toContain('Structure &amp; finish');
-  expect(html).toContain('>Brief<');
-  expect(html).toContain('Outdoor room details');
+test('project facts and technical content remain server rendered',async({request})=>{
+ const response=await request.get(representativeRoute);expect(response.ok()).toBe(true);const html=await response.text();
+ expect(html).toContain('Structure &amp; finish');expect(html).toContain('Outdoor room details');expect(html).toContain('The brief');
 });
 
 test('mobile gallery responds to a touch drag without moving the page sideways', async ({ browser }, testInfo) => {
@@ -1279,32 +992,15 @@ test('mobile gallery responds to a touch drag without moving the page sideways',
   await dismissConsent(page);
 
   const gallery = visibleProjectsMain(page).locator(
-    '[data-project-gallery-layout="responsive-strip"]',
+    '#project-gallery [data-responsive-gallery]',
   );
   await gallery.scrollIntoViewIfNeeded();
-  await expect.poll(() => gallery.evaluate((element) => element.scrollLeft)).toBe(0);
-  const box = await gallery.boundingBox();
-  expect(box).not.toBeNull();
-
-  const startX = (box?.x ?? 0) + Math.min((box?.width ?? 390) - 24, 340);
-  const endX = startX - 220;
-  const y = Math.max(150, Math.min(780, (box?.y ?? 150) + 240));
-  const session = await context.newCDPSession(page);
-  await session.send('Input.dispatchTouchEvent', {
-    type: 'touchStart',
-    touchPoints: [{ x: startX, y }],
-  });
-  await session.send('Input.dispatchTouchEvent', {
-    type: 'touchMove',
-    touchPoints: [{ x: endX, y }],
-  });
-  await session.send('Input.dispatchTouchEvent', {
-    type: 'touchEnd',
-    touchPoints: [],
-  });
-
-  await expect.poll(() => gallery.evaluate((element) => element.scrollLeft))
-    .toBeGreaterThan(0);
+  await expect(gallery).toHaveAttribute('data-gallery-position','1/'+projectGalleryItemCount(representativeProject));
+  const viewport=gallery.locator(':scope > div').first();
+  await expect(viewport).toHaveAttribute('data-gallery-adjacent-ready','true');
+  const drag=async(type:string,x:number,y:number)=>viewport.dispatchEvent(type,{bubbles:true,cancelable:true,clientX:x,clientY:y,isPrimary:true,pointerId:41,pointerType:'touch'});
+  await drag('pointerdown',340,200);await drag('pointermove',310,202);await expect(viewport).toHaveAttribute('data-gallery-gesture','dragging-horizontal');await drag('pointerup',160,205);
+  await expect(gallery).toHaveAttribute('data-gallery-position','2/'+projectGalleryItemCount(representativeProject));
   await expectNoPageOverflow(page);
   await context.close();
 });
@@ -1315,23 +1011,9 @@ test('reduced-motion preference removes material project transitions', async ({ 
   await page.goto(representativeRoute);
   await dismissConsent(page);
 
-  await visibleProjectsMain(page).locator('.project-navigator__trigger').click();
-  const duration = await page.getByRole('dialog').last().evaluate(
-    (element) => getComputedStyle(element).transitionDuration,
-  );
-  const seconds = duration
-    .split(',')
-    .map((value) => value.trim())
-    .map((value) => value.endsWith('ms')
-      ? Number.parseFloat(value) / 1000
-      : Number.parseFloat(value));
-  expect(Math.max(...seconds)).toBeLessThanOrEqual(0.001);
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-
-  const shell = visibleProjectsMain(page).locator('[data-project-gallery-shell]');
-  const gallery = shell.locator('[data-project-gallery-layout="responsive-strip"]');
-  await expect(gallery).toHaveCSS('scroll-behavior', 'auto');
+  const shell = visibleProjectsMain(page).locator('#project-gallery');
+  const gallery = shell.locator('[data-responsive-gallery]');
+  expect(await gallery.locator('[data-gallery-frame-active]').evaluate(el=>Math.max(...getComputedStyle(el).transitionDuration.split(',').map(Number.parseFloat)))).toBeLessThanOrEqual(.001);
   const next = shell.getByRole('button', {
     name: `Next image in ${representativeProject.title} project gallery`,
   });

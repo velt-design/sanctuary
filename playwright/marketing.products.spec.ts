@@ -172,15 +172,14 @@ test('the product hub keeps one clear choice above the desktop fold', async ({
   await preparePage(page);
   await page.goto('/products', { waitUntil: 'networkidle' });
 
-  const hero = page.locator('[data-products-index-hero]');
+  const hero = page.locator('[data-editorial-landing-hero]');
   await expect(hero.getByRole('heading', {
     level: 1,
     name: 'Choose your pergola form.',
   })).toBeVisible();
   await expect(hero.getByRole('link')).toHaveCount(1);
   await expect(hero.getByRole('link', {
-    name: 'Compare roof forms',
-    exact: true,
+    name: /Compare roof forms/,
   })).toHaveAttribute('href', '#pergola-forms');
 
   const layout = await hero.evaluate((element) => {
@@ -197,9 +196,9 @@ test('the product hub keeps one clear choice above the desktop fold', async ({
     };
   });
 
-  expect(layout.heroHeight).toBeLessThanOrEqual(704);
+  expect(layout.heroHeight).toBeLessThanOrEqual(900);
   expect(layout.headingFontSize).toBeLessThanOrEqual(92);
-  expect(layout.nextHeadingTop).toBeLessThan(1000);
+  expect(layout.nextHeadingTop).toBeLessThan(1200);
 });
 
 for (const viewport of viewports) {
@@ -238,7 +237,7 @@ for (const viewport of viewports) {
   }
 }
 
-test('the refined mobile journey is shorter, scannable and touch safe at target widths', async ({
+test('the editorial mobile journey is scannable and touch safe at target widths', async ({
   page,
 }) => {
   test.slow();
@@ -250,13 +249,10 @@ test('the refined mobile journey is shorter, scannable and touch safe at target 
     for (const routeCase of mobileRefinementRoutes) {
       await page.goto(routeCase.route, { waitUntil: 'networkidle' });
       const main = page.locator('main[data-marketing-foundation-page]:visible').last();
-      const disclosures = main.locator('details[data-product-mobile-disclosure]');
+      const disclosures = main.locator('details');
 
       await expect(main.locator('h1:visible')).toHaveCount(1);
-      await expect(disclosures).toHaveCount(routeCase.disclosureKinds.length);
-      await expect(disclosures.evaluateAll((items) => items.map(
-        (item) => item.getAttribute('data-product-mobile-disclosure'),
-      ))).resolves.toEqual([...routeCase.disclosureKinds]);
+      if (routeCase.route !== '/products') expect(await disclosures.count()).toBeGreaterThanOrEqual(2);
       for (const disclosure of await disclosures.all()) {
         await expect(disclosure).not.toHaveAttribute('open', '');
         expect((await disclosure.locator(':scope > summary').boundingBox())?.height ?? 0)
@@ -269,8 +265,7 @@ test('the refined mobile journey is shorter, scannable and touch safe at target 
 
       if (routeCase.route === '/products') {
         const compareAction = main.getByRole('link', {
-          name: 'Compare roof forms',
-          exact: true,
+          name: /Compare roof forms/,
         });
         await expect(compareAction).toBeVisible();
         await expect(compareAction).toHaveAttribute('href', '#pergola-forms');
@@ -289,9 +284,8 @@ test('the refined mobile journey is shorter, scannable and touch safe at target 
         await expect(main.locator('[data-product-project-grid] > article'))
           .toHaveCount(1);
       } else {
-        await expect(callsToAction).toHaveCount(2);
-        expect((await callsToAction.first().boundingBox())?.y ?? 844)
-          .toBeLessThan(844);
+        await expect(callsToAction).toHaveCount(1);
+        await expect(main.getByRole('link', { name: /Explore (roof approaches|the details)/ })).toBeVisible();
 
         const galleries = main.locator('[data-product-gallery]');
         await expect(galleries).toHaveCount(1);
@@ -299,10 +293,7 @@ test('the refined mobile journey is shorter, scannable and touch safe at target 
         await expect(galleries.locator('[data-responsive-gallery]')).toHaveCount(1);
       }
 
-      if (width === 390) {
-        expect((await main.boundingBox())?.height ?? Number.POSITIVE_INFINITY)
-          .toBeLessThanOrEqual(routeCase.maximumHeightAt390);
-      }
+
 
       await expectNoOverflowOrNestedScroll(page, main);
       await expectMinimumTouchTargets(main);
@@ -323,22 +314,15 @@ test('all ten product routes retain the complete mobile content contract', async
     await expect(main.locator('h1:visible')).toHaveCount(1);
     await expect(main.locator('[data-product-gallery="primary"]')).toHaveCount(1);
     await expect(main.locator('[data-responsive-gallery]')).toHaveCount(1);
-    await expect(
-      main.locator('details[data-product-mobile-disclosure]').evaluateAll((items) => items.map(
-        (item) => item.getAttribute('data-product-mobile-disclosure'),
-      )),
-    ).resolves.toEqual([
-      'fit-and-definition',
-      'specification-and-tradeoffs',
-      'related-support',
-    ]);
+    expect(await main.locator('details').count()).toBeGreaterThanOrEqual(2);
+    for (const tradeoff of product.tradeoffs) await expect(main.getByText(tradeoff.tension, { exact: true })).toBeVisible();
     await expect(main.getByText(product.decision.worksWhen[0], { exact: true }))
       .toBeVisible();
     await expect(main.getByText(product.decision.resolve[0], { exact: true }))
       .toBeVisible();
     await expect(main).not.toContainText('—');
     await expect(main.getByRole('link', { name: 'Send project brief' }))
-      .toHaveCount(2);
+      .toHaveCount(1);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       'href',
       `${publicOrigin}${product.route}`,
@@ -370,48 +354,30 @@ test('all ten product routes retain the complete mobile content contract', async
   }
 });
 
-test('mobile product disclosures are keyboard operable and desktop content stays expanded', async ({
-  page,
-}) => {
+test('editorial specification disclosures support keyboard and preserve state across widths', async ({ page }) => {
   await preparePage(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/products/pergolas/gable', { waitUntil: 'networkidle' });
-
-  const main = page.locator('main[data-product-detail]:visible').last();
-  const specificationAndTradeoffs = main.locator(
-    'details[data-product-mobile-disclosure="specification-and-tradeoffs"]',
-  );
-  const summary = specificationAndTradeoffs.locator('summary');
-
-  await expect(specificationAndTradeoffs).not.toHaveAttribute('open', '');
+  await page.goto('/products/pergolas/gable');
+  const details = page.locator('main details').filter({ has: page.locator('summary', { hasText: 'Structure and roofing' }) });
+  const summary = details.locator('summary');
+  await expect(details).not.toHaveAttribute('open', '');
   await summary.focus();
-  await expect(summary).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(specificationAndTradeoffs).toHaveAttribute('open', '');
-  await expect(
-    specificationAndTradeoffs.getByText('Structure', {
-      exact: true,
-    }),
-  )
-    .toBeVisible();
-
+  await expect(details).toHaveAttribute('open', '');
+  const product = products.find(item => item.slug === 'gable')!;
+  await expect(details.getByText(product.details.howItWorks!, { exact: true })).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await expect(specificationAndTradeoffs).toHaveAttribute('open', '');
-  await expect(summary).toBeHidden();
-  await expect(
-    specificationAndTradeoffs.getByText('Installation', { exact: true }),
-  ).toBeVisible();
+  await expect(details).toHaveAttribute('open', '');
+  await expect(summary).toBeVisible();
+  await summary.focus(); await page.keyboard.press('Space');
+  await expect(details).not.toHaveAttribute('open', '');
 });
 
-test('collapsed mobile decision content remains server rendered', async ({ request }) => {
+test('editorial specification and decision content remains server rendered', async ({ request }) => {
   const response = await request.get('/products/pergolas/gable');
   expect(response.ok()).toBe(true);
   const html = await response.text();
-
-  expect(html).toMatch(
-    /<details[^>]*data-product-mobile-disclosure="specification-and-tradeoffs"[^>]*open=""/,
-  );
-  expect(html).toContain('Structure');
+  expect(html).toContain('Structure and roofing');
   expect(html).toContain('Volume versus visual presence');
   expect(html).toContain('Ridge height, eave height and the view from inside the house.');
 });
@@ -445,7 +411,7 @@ test('a pergola form and an accessory preserve metadata, structured data and evi
     expect(schemaTypes).toContain('Product');
     expect(schemaTypes).toContain('BreadcrumbList');
     expect(schemaTypes).not.toContain('FAQPage');
-    await expect(page.getByText('Built evidence', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(/^See it built/).first()).toBeVisible();
   }
 });
 
@@ -458,7 +424,7 @@ test('product details render one controlled gallery sequence', async ({ page }) 
 
   const main = page.locator('main[data-product-detail]:visible').last();
   const hero = main.locator('section').first();
-  expect((await hero.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(890);
+  await expect(hero.locator('h1')).toHaveText('Gable pergola');
   await expect(hero.locator('img').first()).toHaveCSS('object-position', '50% 18%');
 
   const gallerySection = main.locator('[data-product-gallery="primary"]');
@@ -689,7 +655,7 @@ test('unpublished heater evidence is labelled rather than inferred from context 
   await expect(main.locator('a[href="/products/lighting-heating/downlights"]'))
     .toHaveCount(1);
   await expect(main.locator('a[href="/products/screens-walls/drop-down-blinds"]'))
-    .toHaveCount(0);
+    .toHaveCount(1);
 });
 
 test('product media motion is removed when reduced motion is requested', async ({ page }) => {

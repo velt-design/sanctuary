@@ -1,0 +1,36 @@
+.staticOptions { padding-left: 1.25rem; font-size: .9rem; line-height: 1.7; }
+.staticOptions li + li { margin-top: 1rem; }
+.roofGrid { display: grid; grid-template-columns: 1fr 1.2fr; column-gap: clamp(2rem, 6vw, 6rem); align-items: start; }
+.roofControls { grid-column: 1; grid-row: 1; }
+.roofCopy { grid-column: 1; grid-row: 2; }
+.roofCaveat { grid-column: 1; grid-row: 3; }
+.roofOptions { border: 0; padding: 0; margin: 0; }
+.roofOptions legend { font-size: .8rem; margin-bottom: 1rem; }
+.roofOptions label { display: grid; position: relative; grid-template-columns: 1.25rem 1fr auto; align-items: center; gap: 1rem; padding: 1.15rem; border-top: 1px solid var(--color-rule-strong); min-height: 88px; cursor: pointer; transition: background-color var(--study-short, var(--editorial-response, 180ms)); }
+.roofOptions label:last-child { border-bottom: 1px solid var(--color-rule-strong); }
+.roofOptions input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.roofOptions small { display: block; font-size: .74rem; margin-top: .4rem; line-height: 1.5; }
+.optionNumber { font-size: .65rem; }
+.roofOptions label:has(input:checked) { background: var(--color-inverse-surface); color: var(--color-inverse-text); }
+.roofOptions label:has(input:focus-visible) { outline: var(--focus-ring); outline-offset: 4px; z-index: 1; }
+.roofCopy { padding-block: 1.5rem; min-height: 175px; }
+.roofCopy > p:first-child { margin: 0 0 .75rem; font: 500 1.4rem/1.3 var(--font-display); }
+.roofImage { grid-column: 2; grid-row: 1 / 4; animation: approach-in var(--study-panel-enter, var(--editorial-reveal, 220ms)) var(--study-ease, var(--editorial-ease, ease-out)); }
+.roofImage figure > div { aspect-ratio: 1; }
+.imageNote { margin: .75rem 0 0; font-size: .7rem; color: var(--color-text-secondary); }
+@media (hover: hover) and (pointer: fine) { .roofOptions label:not(:has(input:checked)):hover { background: var(--color-surface-neutral); } }
+@media (max-width: 760px) {
+  .roofGrid { grid-template-columns:1fr; }
+  .roofGrid { gap: 1.25rem; }
+  .roofControls, .roofImage, .roofCopy, .roofCaveat { grid-column: 1; }
+  .roofControls { grid-row: 1; }
+  .roofImage { grid-row: 2; }
+  .roofCopy { grid-row: 3; min-height: 0; padding: 0; }
+  .roofCaveat { grid-row: 4; }
+  .roofOptions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr); gap: .35rem; }
+  .roofOptions label { display: flex; justify-content: space-between; gap: .25rem; min-height: 56px; padding: .65rem .5rem; border: 1px solid var(--color-rule-strong); font-size: .78rem; }
+  .roofOptions .optionNumber, .roofOptions small { display: none; }
+  .roofImage figure > div { aspect-ratio: 4 / 3; }
+}
+@keyframes approach-in { from { transform:translateY(6px); opacity:.8; } to { transform:none; opacity:1; } }
+@media(prefers-reduced-motion:reduce) { .roofImage { animation:none; } .roofOptions label { transition:none; } }

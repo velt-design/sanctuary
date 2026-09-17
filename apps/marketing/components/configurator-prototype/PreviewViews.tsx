@@ -1,4 +1,6 @@
 'use client';
+import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
+
 
 import dynamic from 'next/dynamic';
 import {useRail} from './RailProvider';
@@ -34,9 +36,9 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
     <div className={styles.viewToolbar}>
       <div className={styles.viewTabs} role="group" aria-label="Choose view">{(['3D', 'Plan'] as const).map((name) =>
         <button key={name} aria-pressed={view === name} onClick={() => changeView(name)}>{name}</button>)}</div>
-      {lighting && (view === 'Plan' ? <div className={styles.timeTabs}><button onClick={() => { lighting.setNight(hasLighting(lighting.value)); changeView('3D'); }}>{hasLighting(lighting.value) ? 'Preview lighting in 3D' : 'Preview in 3D'} ↗</button></div> : <div className={styles.timeTabs} role="group" aria-label="Time of day">{[false,true].map(n => <button key={String(n)} aria-pressed={lighting.night===n} onClick={()=>lighting.setNight(n)}>{n?'Night':'Day'}</button>)}</div>)}
+      {lighting && (view === 'Plan' ? <div className={styles.timeTabs}><button onClick={() => { lighting.setNight(hasLighting(lighting.value)); changeView('3D'); }}>{hasLighting(lighting.value) ? 'Preview lighting in 3D' : 'Preview in 3D'} <ArrowUpRight /></button></div> : <div className={styles.timeTabs} role="group" aria-label="Time of day">{[false,true].map(n => <button key={String(n)} aria-pressed={lighting.night===n} onClick={()=>lighting.setNight(n)}>{n?'Night':'Day'}</button>)}</div>)}
       <div className={styles.viewActions}>
-        <button className={styles.expandView} aria-label={expanded ? 'Close expanded view' : 'Expand view'} aria-expanded={expanded} onClick={onToggleExpanded}>{expanded ? 'Done' : 'Expand'} <span aria-hidden="true">{expanded ? '×' : '↗'}</span></button>
+        <button className={styles.expandView} aria-label={expanded ? 'Close expanded view' : 'Expand view'} aria-expanded={expanded} onClick={onToggleExpanded}>{expanded ? 'Done' : 'Expand'} <span aria-hidden="true">{expanded ? '×' : <ArrowUpRight />}</span></button>
       </div>
     </div>
     <div className={styles.viewport} data-view={view} data-light-strip-count={lighting?.value.strips.length??0} data-light-rafter-count={lighting?.value.rafterCount??0} data-light-cedar-count={lighting?.value.cedarCount??0} data-blind-count={blinds?.blinds.length??0} data-side-panel-count={blinds?.panels.length??0} data-geometry-status={artifact.status}

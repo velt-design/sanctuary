@@ -1,7 +1,7 @@
 const PROJECT_DETAIL_HISTORY_KEY = '__sanctuaryProjectDetailSlug';
 
 export type ProjectSwitchAnchor = {
-  mode: 'align' | 'preserve';
+  mode: 'align' | 'preserve' | 'browser';
   viewportTop: number;
 };
 
@@ -69,29 +69,17 @@ export function shouldPreserveProjectDetailScroll(
 export function captureProjectSwitchAnchor(
   root: HTMLElement,
 ): ProjectSwitchAnchor | null {
-  const hero = root.querySelector<HTMLElement>('.project-case-study__hero');
-  if (!hero) return null;
-
-  const heroBounds = hero.getBoundingClientRect();
-  const headerBottom = Math.max(
-    0,
-    document.querySelector<HTMLElement>('header.site')
-      ?.getBoundingClientRect().bottom ?? 0,
-  );
-  const heroIntersectsViewport = heroBounds.bottom > headerBottom
-    && heroBounds.top < window.innerHeight;
-
-  return {
-    mode: heroIntersectsViewport ? 'preserve' : 'align',
-    viewportTop: heroIntersectsViewport ? heroBounds.top : headerBottom,
-  };
+  const intro = root.querySelector<HTMLElement>('.project-case-study__intro');
+  if (!intro) return null;
+  const headerBottom = Math.max(0, document.querySelector<HTMLElement>('header.site')?.getBoundingClientRect().bottom ?? 0);
+  return { mode: 'align', viewportTop: headerBottom + 24 };
 }
 
 export function restoreProjectSwitchAnchor(
   root: HTMLElement,
   anchor: ProjectSwitchAnchor,
 ): number {
-  const hero = root.querySelector<HTMLElement>('.project-case-study__hero');
+  const hero = root.querySelector<HTMLElement>('.project-case-study__intro');
   if (!hero) return 0;
 
   const delta = hero.getBoundingClientRect().top - anchor.viewportTop;

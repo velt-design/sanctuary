@@ -17,11 +17,13 @@ type ProjectGalleryImage = Project['gallery'][number];
 type ProjectGalleryProps = {
   images: ProjectGalleryImage[];
   projectTitle: string;
+  captions?: Record<string, string>;
 };
 
 export default function ProjectGallery({
   images,
   projectTitle,
+  captions,
 }: ProjectGalleryProps) {
   const galleryRef = useRef<HTMLDivElement | null>(null);
   const indexUpdateFrameRef = useRef<number | null>(null);
@@ -149,7 +151,7 @@ export default function ProjectGallery({
             </div>
             <figcaption>
               <span>{String(index + 1).padStart(2, '0')}</span>
-              <span>{image.alt}</span>
+              <span>{captions?.[image.src] ?? image.alt}</span>
             </figcaption>
           </figure>
         ))}

@@ -101,6 +101,30 @@ async function pressKey(key: string, shiftKey = false) {
 }
 
 describe('shared mobile header interaction', () => {
+  it('keeps the public menu painted until a new route arrives and preserves modified links', async () => {
+    await renderHeader();
+    await openMenu();
+    const link = document.querySelector<HTMLAnchorElement>('#mobile-menu a[href="/products"]')!;
+    await act(async () => link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true })));
+    expect(document.querySelector('#mobile-menu')?.getAttribute('data-mobile-menu-state')).toBe('open');
+    await act(async () => link.click());
+    expect(document.querySelector('#mobile-menu')?.getAttribute('data-mobile-menu-state')).toBe('open');
+    currentPathname = '/products';
+    await act(async () => root?.render(<Header />));
+    expect(document.querySelector('#mobile-menu')?.getAttribute('data-mobile-menu-state')).toBe('closed');
+    expect(window.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('keeps the designer header menu and labels unchanged', async () => {
+    currentPathname = '/configurator-preview';
+    await renderHeader();
+    expect(document.querySelector('header')?.hasAttribute('data-public-header')).toBe(false);
+    await openMenu();
+    expect(document.querySelector('.mobile-menu__close')).toBeNull();
+    expect(document.querySelector('.mobile-menu--editorial')).toBeNull();
+    expect(document.querySelector('#mobile-menu')?.textContent).toContain('Pergola options');
+    expect(document.querySelector('#mobile-menu')?.textContent).toContain('Start your project');
+  });
   it('uses the canonical homepage route during a production static root render', async () => {
     currentPathname = '/index';
     Object.defineProperty(window, 'scrollY', {
@@ -119,7 +143,7 @@ describe('shared mobile header interaction', () => {
     expect(header?.getAttribute('data-hero-navigation')).toBe('overlay');
     expect(brandLink?.getAttribute('href')).toBe('/');
     expect(activePrimaryLink).toBeNull();
-    expect(desktopCta).toBeNull();
+    expect(desktopCta?.getAttribute('href')).toContain('/contact');
   });
 
   it('balances the four desktop links around the viewport centre', async () => {
@@ -132,7 +156,7 @@ describe('shared mobile header interaction', () => {
 
     expect(linkLabels('.nav-list__cluster--left a')).toEqual([
       'Projects',
-      'Products',
+      'Pergolas',
     ]);
     expect(linkLabels('.nav-list__cluster--right a')).toEqual([
       'Commercial',
@@ -155,7 +179,7 @@ describe('shared mobile header interaction', () => {
     await openMenu();
     expect(document.querySelector<HTMLAnchorElement>(
       '#mobile-menu .mobile-menu__link--estimate',
-    )?.textContent).toContain('Start your project');
+    )?.textContent).toContain('Discuss your project');
   });
 
   it('uses governed audience, project and product context for the global enquiry action', async () => {
@@ -280,10 +304,11 @@ describe('shared mobile header interaction', () => {
     expect(menu?.hasAttribute('inert')).toBe(false);
     expect(links.map((link) => link.textContent)).toEqual([
       'Projects',
-      'Pergola options',
+      'Pergolas',
       'Commercial',
       'Professionals',
-      'Start your project',
+      'Design your pergola',
+      'Discuss your project',
     ]);
     expect(document.activeElement).toBe(links[0]);
     expect(document.body.classList.contains('no-scroll')).toBe(true);
@@ -327,7 +352,8 @@ describe('shared mobile header interaction', () => {
 
   it('cycles Tab and Shift+Tab through the trigger and every menu destination', async () => {
     await renderHeader();
-    const trigger = await openMenu();
+    await openMenu();
+    const trigger = document.querySelector<HTMLButtonElement>('.mobile-menu__close');
     const links = Array.from(
       document.querySelectorAll<HTMLAnchorElement>('#mobile-menu a'),
     );

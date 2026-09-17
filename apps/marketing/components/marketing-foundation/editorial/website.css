@@ -1,0 +1,109 @@
+/* Approved Editorial + Quiet rollout. Scoped to website content; configurator portals and private documents are excluded. */
+[data-editorial-website]:not(:has([data-project-preview])) > .page-layer > main {
+ --color-canvas:#eeeee9; --color-surface-warm:#e4e5de; --color-surface-elevated:#fafaf6;
+ --study-arrival:320ms; --study-panel-enter:220ms; --study-ease:cubic-bezier(.22,1,.36,1); --study-travel:6px;
+ background:var(--color-canvas); font-family:var(--font-body, 'Inter Variable', sans-serif);
+}
+body:has([data-editorial-website]):not(:has([data-project-preview])) header.site:not([data-hero-navigation='overlay']) {background:#eeeee9!important;backdrop-filter:none;border-color:#c7cac3;transition:background-color 180ms ease;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) header.site .container {max-width:1280px!important;width:calc(100% - 2 * clamp(1.25rem,4vw,4.5rem))!important;padding-inline:0!important;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) .site-brand {display:grid;align-content:center;gap:.4rem;font-size:1.7rem;line-height:.85;letter-spacing:-.065em;font-weight:600;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) .site-brand small {font:500 .55rem/1 'Inter Variable',sans-serif;letter-spacing:.38em;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) .navlink-btn {font-size:.8rem;font-weight:400;letter-spacing:0;text-transform:none;padding-inline:8px;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) .navlink-btn.active {color:inherit;text-decoration:underline;text-underline-offset:14px;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) .nav-cta {background:transparent;color:#4f5748;border:0;font-size:.8rem;text-transform:none;letter-spacing:0;padding:0;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) .nav-cta__arrow {margin-left:1.5rem;flex-shrink:0;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) footer {background:#eeeee9;color:#555852;border-top:1px solid #c7cac3;font-family:'Inter Variable',sans-serif;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) footer h2 {color:#111210;font-family:'Instrument Sans Variable',sans-serif;text-transform:none;letter-spacing:-.035em;font-weight:500;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) footer p {color:inherit;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) footer a {color:#4f5748;border-color:#aeb2aa;text-transform:none;letter-spacing:0;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) footer > div {padding-block:3rem;gap:3rem;}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero {
+ display:grid;grid-template-columns:1fr 1.2fr;align-items:center;gap:clamp(2rem,6vw,6rem);
+ width:min(1280px,calc(100% - 2 * var(--page-gutter,2rem)));margin-inline:auto;padding:clamp(2.5rem,5vw,5rem) 0;
+ min-height:0;background:transparent;color:var(--color-text-primary);
+}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero > img.acrylic-hero__image {position:relative!important;inset:auto!important;grid-column:2;grid-row:1;width:100%!important;height:100%!important;aspect-ratio:4/5;object-fit:cover;}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero__shade {display:none;}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero .acrylic-hero__content {grid-column:1;grid-row:1;width:100%;padding:0;margin:0;}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero h1 {font-size:clamp(3.2rem,5.2vw,5.5rem);line-height:1.02;letter-spacing:-.06em;max-width:13ch;color:var(--color-text-primary);}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero__intro {color:var(--color-text-secondary);font-size:clamp(1.1rem,1.6vw,1.4rem);line-height:1.6;}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero__proof {color:var(--color-text-secondary);border-color:var(--color-rule);}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero__actions a {color:var(--color-text-primary);}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero__actions a:first-child {background:transparent;border:0;border-bottom:1px solid var(--color-rule-strong);padding-inline:0;text-transform:none;letter-spacing:0;}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-section {padding-block:clamp(4rem,7vw,7rem);}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-section h2 {letter-spacing:-.04em;line-height:1.08;}
+[data-editorial-website]:not(:has([data-project-preview])) .contact-hero {padding-block:clamp(3rem,5vw,5rem);background:transparent;}
+[data-editorial-website]:not(:has([data-project-preview])) .contact-hero h1 {font-size:clamp(3.4rem,6vw,6rem);letter-spacing:-.06em;line-height:1.02;}
+[data-editorial-website]:not(:has([data-project-preview])) .contact-shell {max-width:1280px;}
+[data-editorial-website]:not(:has([data-project-preview])) .contact-hero__layout {grid-template-columns:1fr 1.2fr;gap:clamp(2rem,6vw,6rem);align-items:center;}
+[data-editorial-website]:not(:has([data-project-preview])) .contact-hero__media {aspect-ratio:4/5;}
+[data-editorial-website]:not(:has([data-project-preview])) .contact-workspace {background:#e4e5de;border-top:1px solid #c7cac3;}
+[data-editorial-website]:not(:has([data-project-preview])) .contact-confirmation {padding-block:clamp(5rem,12vw,12rem);}
+@media(max-width:900px){body:has([data-editorial-website]):not(:has([data-project-preview])) .site-brand{font-size:1.5rem;}}
+@media(max-width:760px){
+ [data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero,[data-editorial-website]:not(:has([data-project-preview])) .contact-hero__layout{grid-template-columns:1fr;gap:2rem;}
+ [data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero .acrylic-hero__content{grid-column:1;grid-row:1;}
+ [data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero > img.acrylic-hero__image{grid-column:1;grid-row:2;height:auto!important;aspect-ratio:4/3;}
+ [data-editorial-website]:not(:has([data-project-preview])) .contact-hero__media{aspect-ratio:4/3;}
+}
+@media(prefers-reduced-motion:reduce){[data-editorial-website]:not(:has([data-project-preview]))> .page-layer >main{--study-arrival:0ms;--study-panel-enter:0ms;--study-travel:0px;}}
+body:has([data-editorial-website]):not(:has([data-project-preview])) .desktop-nav--center {left:50%;}
+[data-editorial-website]:not(:has([data-project-preview])) main[data-editorial-page='project'] {padding:82px 0 0;}
+[data-editorial-website]:not(:has([data-project-preview])) main[data-editorial-page='project'] .projects-experience__layout {display:block;width:100%;max-width:none;}
+[data-editorial-website]:not(:has([data-project-preview])) .editorial-project-browser {width:min(1280px,calc(100% - 2 * var(--page-gutter)));margin:1.25rem auto 0;border-bottom:1px solid var(--color-rule);}
+[data-editorial-website]:not(:has([data-project-preview])) .editorial-project-browser > summary {min-height:44px;display:flex;align-items:center;justify-content:flex-end;gap:1rem;cursor:pointer;font-size:.8rem;list-style:none;}
+[data-editorial-website]:not(:has([data-project-preview])) .editorial-project-browser > summary::after {content:'+';}
+[data-editorial-website]:not(:has([data-project-preview])) .editorial-project-browser[open] > summary::after {content:'−';}
+[data-editorial-website]:not(:has([data-project-preview])) .editorial-project-browser .project-navigator {position:static;max-height:65vh;overflow:auto;width:100%;}
+[data-editorial-website]:not(:has([data-project-preview])) main[data-editorial-page='project'] .project-case-study__intro {grid-template-columns:1.65fr 1fr;gap:2.5rem 5rem;border:0;padding:clamp(2.5rem,5vw,5rem) 0 0;}
+[data-editorial-website]:not(:has([data-project-preview])) main[data-editorial-page='project'] .project-case-study__intro h1 {margin-top:1rem;font-size:clamp(3.4rem,6vw,6rem);line-height:.97;letter-spacing:-.065em;}
+[data-editorial-website]:not(:has([data-project-preview])) main[data-editorial-page='project'] .project-case-study__hero {margin:0;}
+[data-editorial-website]:not(:has([data-project-preview])) main[data-editorial-page='project'] .project-case-study__gallery-section {border:0;}
+@media(max-width:760px){
+ [data-editorial-website]:not(:has([data-project-preview])) main[data-editorial-page='project'] .project-case-study__intro{grid-template-columns:1fr;gap:2rem;}
+ [data-editorial-website]:not(:has([data-project-preview])) main[data-editorial-page='project'] .project-case-study__intro h1{font-size:clamp(3.4rem,12vw,5rem);}
+}
+body:has([data-editorial-website]):not(:has([data-project-preview])) header.site .header-actions a.nav-cta {background:transparent;color:#4f5748;border:0;text-transform:none;letter-spacing:0;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) header.site .header-actions a.nav-cta .nav-cta__label {text-transform:none;letter-spacing:0;}
+[data-editorial-website]:not(:has([data-project-preview])) main[data-project-finder-home-variant] {padding-top:82px;}
+[data-editorial-landing-hero] h1 {max-width:12ch;}
+[data-editorial-website]:not(:has([data-project-preview])) .guide-hub-hero {padding-block:clamp(3rem,5vw,5rem);grid-template-columns:1fr 1.2fr;gap:clamp(2rem,6vw,6rem);align-items:center;}
+[data-editorial-website]:not(:has([data-project-preview])) .guide-hub-hero h1 {font-size:clamp(3.4rem,6vw,6rem);line-height:1.02;letter-spacing:-.06em;}
+[data-editorial-website]:not(:has([data-project-preview])) .guide-hub-hero__figure {aspect-ratio:4/5;}
+@media(max-width:760px){[data-editorial-website]:not(:has([data-project-preview])) .guide-hub-hero{grid-template-columns:1fr;}[data-editorial-website]:not(:has([data-project-preview])) .guide-hub-hero__figure{aspect-ratio:4/3;}}
+body:has([data-editorial-website]):not(:has([data-project-preview])) header.site .header-actions a.nav-cta {background:transparent!important;color:#4f5748!important;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) header.site .header-actions a.nav-cta .nav-cta__label {color:inherit;font-size:.8rem;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) header.site .header-actions a.nav-cta:hover {background:transparent!important;color:#111210!important;}
+[data-editorial-website]:not(:has([data-project-preview])) .seo-landing {padding-top:82px;}
+[data-editorial-website]:not(:has([data-project-preview])) .editorial-actions {display:flex;flex-wrap:wrap;gap:1rem 2rem;}
+[data-editorial-website]:not(:has([data-project-preview])) .editorial-proof {padding:1.25rem 0 0;margin:0;border-top:1px solid var(--color-rule);display:flex;flex-wrap:wrap;gap:.75rem 1.5rem;list-style:none;font-size:.75rem;color:var(--color-text-secondary);}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero > img.acrylic-hero__image {z-index:0;}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero .acrylic-eyebrow {color:var(--color-text-subtle);}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero .acrylic-hero__intro {color:var(--color-text-secondary)!important;}
+[data-editorial-website]:not(:has([data-project-preview])) .acrylic-hero .acrylic-hero__actions > a:last-child {color:var(--color-text-primary);}
+[data-editorial-website]:not(:has([data-project-preview])) .editorial-project-browser[data-compact] {border:0;margin-block:0;}
+[data-editorial-website]:not(:has([data-project-preview])) .editorial-project-browser[data-compact] > summary {display:none;}
+[data-editorial-website]:not(:has([data-project-preview])) [data-editorial-landing-hero] h1 {max-width:14ch;font-size:clamp(3.1rem,5vw,5.5rem);}
+@media(max-width:760px){[data-editorial-website]:not(:has([data-project-preview])) [data-editorial-landing-hero] h1{font-size:clamp(2.8rem,10vw,4.5rem);}}
+.site-brand small {font:inherit;margin-left:.3em;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) .site-brand small {margin-left:0;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) header.site[data-header-collection="projects"] .container {max-width:1600px!important;}
+body:has([data-editorial-website]):not(:has([data-project-preview])) header.site.site--hero-overlay:not(.site--hero-scrolled) .header-actions a.nav-cta {color:#fff!important;}
+@media(max-width:760px){
+ [data-editorial-website]:not(:has([data-project-preview])) main[data-editorial-page='project'] .project-case-study__intro h1 {font-size:clamp(3.3rem,11.5vw,5.5rem);max-width:12ch;}
+}
+
+[data-editorial-website]:not(:has([data-project-preview])) [data-editorial-landing-hero] { padding-bottom: clamp(2.5rem, 5vw, 5rem); }
+
+[data-editorial-website]:not(:has([data-project-preview])) .contact-hero__copy { align-self: center; padding-bottom: 0; }
+[data-editorial-website]:not(:has([data-project-preview])) .contact-hero__layout { min-height: 0; padding-block: 0; }
+
+[data-editorial-website]:not(:has([data-project-preview])) .editorial-guide-jump { min-height:44px; display:inline-flex; align-items:center; border-bottom:1px solid var(--color-rule-strong); }
+
+[data-editorial-website] .editorial-simple-hero-media { margin:0; }
+[data-editorial-website] .editorial-simple-hero-media > div { position:relative; overflow:hidden; }
+[data-editorial-website] .editorial-simple-hero-media img { object-fit:cover; }
+[data-editorial-website] .editorial-simple-hero-media figcaption { padding-top:1rem; font-size:.75rem; color:var(--color-text-secondary); }
+[data-editorial-website]:not(:has([data-project-preview])) main.pergola-guide-hub, [data-editorial-website]:not(:has([data-project-preview])) main[data-seo-landing="acrylic-roof-pergolas-auckland"] { padding-top:82px; }
+
+[data-editorial-website] main[data-editorial-page="project"] { --text-section:clamp(2rem,4.2vw,4.4rem); --text-body:.95rem; --text-body-large:clamp(1.05rem,1.5vw,1.3rem); --text-small:.78rem; }

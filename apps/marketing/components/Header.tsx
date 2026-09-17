@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { createPortal } from 'react-dom';
+import { buildConfiguratorEnquiryHref } from '../lib/configuratorEntry';
+import ArrowUpRight from './marketing-foundation/ArrowUpRight';
+import editorialStyles from './HeaderEditorial.module.css';
 import {
   buildEnquiryHref,
   getCanonicalMarketingPathname,
@@ -50,6 +53,8 @@ export default function Header() {
     useState<EnquiryContext | null>(null);
   const pathname = usePathname();
   const currentPath = getCanonicalMarketingPathname(pathname);
+  const isPublicHeader = !/^\/(configurator-preview|simple-cover-calculator|design-enquiry|quote|invoice|staff|admin)(\/|$)/.test(currentPath)
+    && !(mounted && currentPath === '/contact' && new URLSearchParams(window.location.search).get('configurator') === 'preview');
   const desktopNavigationItems = getDesktopHeaderNavigation(currentPath);
   const mobileNavigationItems = getMobileHeaderNavigation(currentPath);
   const routeEnquiryContext = getEnquiryRouteContext(currentPath);
@@ -80,7 +85,13 @@ export default function Header() {
   });
   const headerEnquiryType = projectFinderContext?.enquiryType
     ?? routeEnquiryContext.enquiryType;
-  const isHeroOverlayRoute = isHeaderHeroOverlayPath(currentPath);
+  const isHeroOverlayRoute = (currentPath === '/' || currentPath.startsWith('/home-')) && isHeaderHeroOverlayPath(currentPath);
+  const headerDesignHref = buildConfiguratorEnquiryHref({
+    ...routeEnquiryContext,
+    ...projectFinderContext,
+    sourcePath: currentPath,
+    sourceComponent: 'header',
+  });
   const showDesktopCta = shouldShowDesktopHeaderCta(currentPath);
   const mobileToggleRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -89,6 +100,7 @@ export default function Header() {
   const mobileMenuScrollCapturedRef = useRef(false);
   const mobileMenuOpenedAtPathRef = useRef(currentPath);
   const restoreMobileMenuScrollRef = useRef(true);
+  const configuratorReturnCleanupRef = useRef<(() => void) | null>(null);
 
   const closeMobileMenu = useCallback(({
     restoreFocus = false,
@@ -105,6 +117,7 @@ export default function Header() {
   // Hydration flag for mobile menu portal mounting.
   useEffect(() => {
     setMounted(true);
+    return () => configuratorReturnCleanupRef.current?.();
   }, []);
 
   useEffect(() => {
@@ -210,6 +223,28 @@ export default function Header() {
   }, [closeMobileMenu, currentPath, mobileMenuOpen]);
 
   useEffect(() => {
+    if (!mobileMenuOpen || !isPublicHeader) return;
+    // The existing designer intercepts its links and opens a native modal without
+    // changing route. Release our trap only once that modal covers the menu.
+    const observer = new MutationObserver(() => {
+      const dialog = document.querySelector<HTMLDialogElement>('dialog[open][aria-label="Design your pergola"]');
+      if (!dialog) return;
+      observer.disconnect();
+      const openedAtPath = window.location.pathname;
+      const restoreFocus = () => {
+        configuratorReturnCleanupRef.current = null;
+        if (window.location.pathname === openedAtPath) mobileToggleRef.current?.focus({ preventScroll: true });
+      };
+      configuratorReturnCleanupRef.current?.();
+      dialog.addEventListener('close', restoreFocus, { once: true });
+      configuratorReturnCleanupRef.current = () => dialog.removeEventListener('close', restoreFocus);
+      closeMobileMenu();
+    });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
+    return () => observer.disconnect();
+  }, [closeMobileMenu, isPublicHeader, mobileMenuOpen]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -225,7 +260,7 @@ export default function Header() {
         ) ?? [],
       );
       const focusOrder = [
-        mobileToggleRef.current,
+        ...(isPublicHeader ? [] : [mobileToggleRef.current]),
         ...menuLinks,
       ].filter((element): element is HTMLElement => element !== null);
       if (focusOrder.length === 0) return;
@@ -258,7 +293,7 @@ export default function Header() {
     }
 
     return undefined;
-  }, [closeMobileMenu, mobileMenuOpen]);
+  }, [closeMobileMenu, mobileMenuOpen, isPublicHeader]);
 
   useEffect(() => {
     const desktopMedia = window.matchMedia(DESKTOP_MENU_MEDIA_QUERY);
@@ -342,12 +377,25 @@ export default function Header() {
     }
   };
 
-  const handleMobileNavigation = () => {
-    closeMobileMenu({ restoreScroll: false });
+  const handleMobileNavigation = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!isPublicHeader) {
+      closeMobileMenu({ restoreScroll: false });
+      return;
+    }
+    // Native modified links leave this page and its menu state untouched.
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    const destination = new URL(event.currentTarget.href, window.location.href);
+    if (destination.pathname !== currentPath) {
+      // Keep the opaque menu in place until usePathname observes the destination.
+      // Closing on the initiating click briefly exposes the departing page/header.
+      return;
+    }
+    closeMobileMenu({ restoreScroll: true, restoreFocus: true });
   };
 
   const headerClassName = [
     'site',
+    isPublicHeader ? editorialStyles.publicHeader : '',
     isHeroOverlayRoute ? 'site--hero-overlay' : '',
     isHeroOverlayRoute && heroHeaderScrolled ? 'site--hero-scrolled' : '',
   ]
@@ -359,11 +407,13 @@ export default function Header() {
       <header
         className={headerClassName}
         data-header-ui="architectural-editorial"
+        data-public-header={isPublicHeader || undefined}
+        data-header-collection={currentPath === '/projects' ? 'projects' : undefined}
         data-hero-navigation={isHeroOverlayRoute ? (heroHeaderScrolled ? 'solid' : 'overlay') : undefined}
       >
         <div className="container navbar">
           <Link href="/" className="site-brand" aria-label="Sanctuary Pergolas home">
-            SANCTUARY&nbsp;PERGOLAS
+            {currentPath.startsWith('/configurator') || currentPath.startsWith('/simple-cover-calculator') ? <>SANCTUARY&nbsp;PERGOLAS</> : <>SANCTUARY<small>PERGOLAS</small></>}
           </Link>
           <nav aria-label="Primary" className="desktop-nav desktop-nav--center">
             <div className="desktop-wipe open">
@@ -379,7 +429,7 @@ export default function Header() {
                         href={item.href}
                         aria-current={item.current ? 'page' : undefined}
                       >
-                        {item.label}
+                        {isPublicHeader && item.id === 'products' ? 'Pergolas' : item.label}
                       </Link>
                     </li>
                   ))}
@@ -397,7 +447,7 @@ export default function Header() {
                         aria-label={item.desktopLabel}
                         aria-current={item.current ? 'page' : undefined}
                       >
-                        {item.label}
+                        {isPublicHeader && item.id === 'products' ? 'Pergolas' : item.label}
                       </Link>
                     </li>
                   ))}
@@ -406,7 +456,7 @@ export default function Header() {
             </div>
           </nav>
           <div className="header-actions">
-            {showDesktopCta && (currentPath !== '/' || heroHeaderScrolled) ? (
+            {showDesktopCta ? (
               <Link
                 href={headerEnquiryHref}
                 className="nav-cta"
@@ -417,6 +467,7 @@ export default function Header() {
                 data-project-priorities={projectFinderContext?.projectPriorities?.join(',')}
               >
                 <span className="nav-cta__label">Start your project</span>
+                {isPublicHeader && <ArrowUpRight className="nav-cta__arrow" />}
               </Link>
             ) : null}
             <button
@@ -451,7 +502,7 @@ export default function Header() {
           <div
             ref={mobileMenuRef}
             id="mobile-menu"
-            className={`mobile-menu ${mobileMenuOpen ? 'open' : ''}`}
+            className={`mobile-menu ${isPublicHeader ? `mobile-menu--editorial ${editorialStyles.menu}` : ''} ${mobileMenuOpen ? 'open' : ''}`}
             aria-hidden={!mobileMenuOpen}
             aria-label="Site navigation"
             aria-modal={mobileMenuOpen || undefined}
@@ -459,6 +510,10 @@ export default function Header() {
             inert={!mobileMenuOpen}
             role="dialog"
           >
+            {isPublicHeader && <div className="mobile-menu__masthead">
+              <span className="mobile-menu__brand">SANCTUARY<small>PERGOLAS</small></span>
+              <button type="button" className="mobile-menu__close" onClick={() => closeMobileMenu({ restoreFocus: true })} aria-label="Close menu">Close <span aria-hidden="true">×</span></button>
+            </div>}
             <nav aria-label="Mobile primary" className="mobile-nav">
               <ul className="mobile-menu__list">
                 {mobileNavigationItems.map((item, index) => (
@@ -470,10 +525,13 @@ export default function Header() {
                       aria-current={item.current ? 'page' : undefined}
                       onClick={handleMobileNavigation}
                     >
-                      {item.label}
+                      {isPublicHeader && item.id === 'products' ? 'Pergolas' : item.label}
                     </Link>
                   </li>
                 ))}
+                {isPublicHeader && <li className="mobile-menu__design-item">
+                  <Link href={headerDesignHref} className="mobile-menu__design" onClick={handleMobileNavigation}>Design your pergola<ArrowUpRight /></Link>
+                </li>}
                 <li>
                   <Link
                     href={headerEnquiryHref}
@@ -485,7 +543,7 @@ export default function Header() {
                     data-project-priorities={projectFinderContext?.projectPriorities?.join(',')}
                     onClick={handleMobileNavigation}
                   >
-                    Start your project
+                    {isPublicHeader ? 'Discuss your project' : 'Start your project'}
                   </Link>
                 </li>
               </ul>

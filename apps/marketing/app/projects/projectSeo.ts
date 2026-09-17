@@ -11,7 +11,7 @@ export function getProjectPageTitle(project: Project): string {
 }
 
 export function getProjectCaseStudyHero(project: Project) {
-  return project.caseStudyHeroImage ?? project.heroImage;
+  return project.slug === 'warkworth-outdoor-room' ? project.gallery[0] : project.caseStudyHeroImage ?? project.heroImage;
 }
 
 export function buildProjectPageMetadata(project: Project): Metadata {

@@ -1,3 +1,5 @@
+import cardLinks from '@/components/marketing-foundation/cardLinks.module.css';
+import EditorialLandingHero from '@/components/marketing-foundation/editorial/EditorialLandingHero';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -100,38 +102,10 @@ export default function PergolaGuidesPage() {
         ]}
       />
 
-      <section className="guide-hub-hero" aria-labelledby="guide-hub-title">
-        <div className="guide-hub-hero__copy">
-          <Eyebrow className="guide-hub-hero__eyebrow">Sanctuary pergola design library</Eyebrow>
-          <Heading as="h1" variant="page" id="guide-hub-title">
-            Pergola guides.
-          </Heading>
-          <Text size="large">
-            Start with the decision you need to make.
-          </Text>
-          <p className="guide-hub-hero__review">
-            Editorial review: {pergolaGuideEditorialReview.reviewer} ·{' '}
-            <time dateTime={pergolaGuideEditorialReview.date}>{pergolaGuideEditorialReview.dateLabel}</time>
-          </p>
-        </div>
-
-        <figure className="guide-hub-hero__figure">
-          <Image
-            src={heroImage}
-            alt="Gable outdoor room with timber-lined ceiling and open garden edges"
-            fill
-            priority
-            loading="eager"
-            fetchPriority="high"
-            sizes="(max-width: 800px) 100vw, 50vw"
-            className="guide-hub-hero__image"
-            style={{ objectPosition: WARKWORTH_EXTERIOR_OBJECT_POSITION }}
-          />
-          <figcaption>
-            <span>Warkworth outdoor room</span>
-          </figcaption>
-        </figure>
-      </section>
+      <EditorialLandingHero id="guide-hub-title" eyebrow="Sanctuary pergola design library" title="Pergola guides." intro="Start with the decision you need to make." image={heroImage} alt="Gable outdoor room with timber-lined ceiling and open garden edges" objectPosition={WARKWORTH_EXTERIOR_OBJECT_POSITION} caption="Warkworth outdoor room">
+        <Link className="editorial-guide-jump" href="#guide-library">Choose a guide ↓</Link>
+        <Text size="small">Editorial review: {pergolaGuideEditorialReview.reviewer} · <time dateTime={pergolaGuideEditorialReview.date}>{pergolaGuideEditorialReview.dateLabel}</time></Text>
+      </EditorialLandingHero>
 
       <Section id="guide-library" className="guide-hub-index" aria-labelledby="guide-library-title">
         <Container width="wide">
@@ -160,7 +134,7 @@ export default function PergolaGuidesPage() {
                 <article
                   aria-labelledby={`guide-${guide.number}-title`}
                   key={guide.href}
-                  className="guide-hub-card"
+                  className={`guide-hub-card ${cardLinks.surface}`}
                   data-guide-card
                 >
                   <span className="guide-hub-card__number">{guide.number}</span>
@@ -168,7 +142,7 @@ export default function PergolaGuidesPage() {
                     <h3 id={`guide-${guide.number}-title`}>
                       <Link
                         href={guide.href}
-                        className="guide-hub-card__link"
+                        className={`guide-hub-card__link ${cardLinks.hitLink}`}
                         data-guide-link
                       >
                         {guide.title}

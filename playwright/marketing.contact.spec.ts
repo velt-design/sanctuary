@@ -175,7 +175,7 @@ for (const viewport of [
       level: 1,
       name: 'Tell us about your project.',
     })).toBeVisible();
-    await expect(main.getByRole('radio', { name: 'Custom design', exact: false }))
+    await expect(main.getByRole('radio', { name: 'Bespoke design', exact: false }))
       .toBeChecked();
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       'href',
@@ -271,7 +271,7 @@ test('trusted context preselects a pathway while generic residential and invalid
   )).toBe(true);
 
   await page.goto(customRoute, { waitUntil: 'networkidle' });
-  await expect(page.getByRole('radio', { name: 'Custom design', exact: false })).toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Bespoke design', exact: false })).toBeChecked();
 
   await page.goto(
     `${route}?enquiry_type=residential&source_path=%2Fsimple-cover-calculator`,
@@ -306,7 +306,7 @@ test('deliberate pathway choices reveal the next section on mobile only', async 
   ))).toBeLessThanOrEqual(96);
   await expect(simplePathway).toBeFocused();
 
-  const customPathway = page.getByRole('radio', { name: 'Custom design', exact: false });
+  const customPathway = page.getByRole('radio', { name: 'Bespoke design', exact: false });
   await customPathway.focus();
   await customPathway.press('Space');
   await expect(customPathway).toBeChecked();
@@ -320,7 +320,7 @@ test('deliberate pathway choices reveal the next section on mobile only', async 
 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(route, { waitUntil: 'networkidle' });
-  const desktopPathway = page.getByRole('radio', { name: 'Custom design', exact: false });
+  const desktopPathway = page.getByRole('radio', { name: 'Bespoke design', exact: false });
   await desktopPathway.focus();
   const desktopScrollBeforeSelection = await page.evaluate(() => window.scrollY);
   await desktopPathway.press('Space');
@@ -531,7 +531,7 @@ test('validation is specific, focuses an error summary and preserves entered det
   await preparePage(page);
   await page.goto(route, { waitUntil: 'networkidle' });
 
-  await page.getByRole('radio', { name: 'Custom design', exact: false }).check();
+  await page.getByRole('radio', { name: 'Bespoke design', exact: false }).check();
   const message = page.getByLabel('Project brief Optional');
   await message.fill('A sheltered dining area that keeps daylight in the kitchen.');
   await page.getByRole('button', { name: 'Send custom project brief' }).click();
@@ -567,7 +567,7 @@ test('direct form puts the useful first brief before optional technical detail',
   await page.goto(route, { waitUntil: 'networkidle' });
 
   await expect(page.getByRole('group', { name: '01 Choose your pathway Required' })).toBeVisible();
-  await page.getByRole('radio', { name: 'Custom design', exact: false }).check();
+  await page.getByRole('radio', { name: 'Bespoke design', exact: false }).check();
   await expect(page.getByLabel('Name Required')).toHaveAttribute('required', '');
   await expect(page.getByLabel('Phone Required')).toHaveAttribute('required', '');
   await expect(page.getByLabel('Email Required')).toHaveAttribute('required', '');
@@ -687,7 +687,7 @@ test('switching pathways retains shared fields and excludes branch-only values',
   await page.getByLabel('Your role Optional').selectOption('architect-designer');
   await page.getByLabel('Project stage Optional').selectOption('concept-design');
 
-  await page.getByRole('radio', { name: 'Custom design', exact: false }).check();
+  await page.getByRole('radio', { name: 'Bespoke design', exact: false }).check();
   await expect(page.getByLabel('Project suburb Optional')).toHaveValue('Grey Lynn');
   await expect(page.getByLabel('Name Required')).toHaveValue('Project Lead');
   await expect(page.getByLabel('Project brief Optional')).toHaveValue('A coordinated project scope.');
@@ -777,7 +777,7 @@ test('API errors keep values and retries reuse the submission UUID', async ({ pa
     waitUntil: 'networkidle',
     },
   );
-  await page.getByRole('radio', { name: 'Custom design', exact: false }).check();
+  await page.getByRole('radio', { name: 'Bespoke design', exact: false }).check();
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
   await page.getByLabel('Email Required').fill('test@example.com');
@@ -853,7 +853,7 @@ test('the submit lock prevents duplicate requests and consent controls lead even
     `${route}?enquiry_type=residential&source_path=%2F&source_component=hero`,
     { waitUntil: 'networkidle' },
   );
-  await page.getByRole('radio', { name: 'Custom design', exact: false }).check();
+  await page.getByRole('radio', { name: 'Bespoke design', exact: false }).check();
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
   await page.getByLabel('Email Required').fill('test@example.com');
@@ -913,7 +913,7 @@ test('residential attachments keep exact policy errors and fail visibly when upl
     });
   });
   await page.goto(`${route}?enquiry_type=residential`, { waitUntil: 'networkidle' });
-  await page.getByRole('radio', { name: 'Custom design', exact: false }).check();
+  await page.getByRole('radio', { name: 'Bespoke design', exact: false }).check();
   await page.getByLabel('Name Required').fill('Test Homeowner');
   await page.getByLabel('Phone Required').fill('021 000 0000');
   await page.getByLabel('Email Required').fill('test@example.com');
@@ -982,9 +982,7 @@ test('project context survives refresh and browser history', async ({ page }) =>
   await preparePage(page);
   await page.goto('/projects/warkworth-outdoor-room', { waitUntil: 'networkidle' });
 
-  await page.locator(
-    '.project-case-study__intro-actions .project-action--primary',
-  ).click();
+  await page.locator('[data-project-case-study]').getByRole('link', { name: /Send project brief/ }).click();
   await expect(page).toHaveURL(/enquiry_type=residential/);
   await expect(page).toHaveURL(/source_project=warkworth-outdoor-room/);
   await expect(page.getByLabel('Enquiry context')).toContainText(

@@ -352,13 +352,13 @@ const baseProjects: Project[] = [
       { src: '/images/project-waiheke-03.jpg', alt: 'Daytime view of the pergola over the deck', objectPosition: '50% 48%' },
       { src: '/images/project-waiheke-01.jpg', alt: 'Perimeter frame with coastal planting', objectPosition: '50% 48%' },
     ],
-    blurb: 'A box-perimeter deck cover designed to preserve the water view.',
+    blurb: 'A box-perimeter pergola extending the living space onto the deck.',
     constraint:
-      'Extend the living space onto the deck without interrupting the water outlook or exposing the roof fall and gutters.',
+      'Extend the living space onto the deck while concealing the roof fall and gutters.',
     roofApproach: '4 degree roof fall and gutters concealed behind the perimeter beam',
     description: [
       'The client wanted to extend the living space out onto the deck, creating a covered zone that felt like part of the house rather than an add-on. We looked at both pitched and box-perimeter options to see what would sit best against the existing facade.',
-      'A box-perimeter frame won out because it lines up cleanly with the house geometry. A taller perimeter beam lets the roof read as a straight line from outside, hiding the 4° fall and gutters behind the beam so the view toward the water stays tidy.',
+      'A box-perimeter frame won out because it lines up cleanly with the house geometry. A taller perimeter beam lets the roof read as a straight line from outside, hiding the 4° fall and gutters behind the beam.',
     ],
     stats: {
       width: '5.0 m',
@@ -372,7 +372,7 @@ const baseProjects: Project[] = [
       {
         title: 'Design response',
         paragraphs: [
-          'The design extends the living space onto the deck while keeping the coastal outlook open. A box-perimeter frame was selected after pitched and perimeter options were considered against the existing facade.',
+          'The design extends the living space onto the deck. A box-perimeter frame was selected after pitched and perimeter options were considered against the existing facade.',
         ],
         bullets: [
           '5.0 m by 4.0 m recorded footprint',

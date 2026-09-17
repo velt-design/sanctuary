@@ -1,3 +1,4 @@
+import EditorialLandingHero from '@/components/marketing-foundation/editorial/EditorialLandingHero';
 import type { Metadata } from 'next';
 import Image, { getImageProps } from 'next/image';
 import '@fontsource-variable/instrument-sans';
@@ -123,43 +124,10 @@ export default async function SimplePergolasPage({
       data-conversion-landing="simple-pergolas-auckland"
       data-indexing="index"
     >
-      <section className={styles.hero} aria-labelledby="simple-pergola-title">
-        <div className={styles.heroCopy}>
-          <Eyebrow className={styles.heroEyebrow}>
-            Pitched acrylic cover · Auckland
-          </Eyebrow>
-          <Heading
-            as="h1"
-            variant="page"
-            id="simple-pergola-title"
-            className={styles.heroTitle}
-          >
-            Cover the space without losing light.
-          </Heading>
-          <Text size="large" className={styles.heroIntro}>
-            A straightforward pitched acrylic pergola, finished to the
-            Sanctuary standard.
-          </Text>
-          <ActionGroup className={styles.heroActions}>
-            <Button href={designHref}>Design your pergola</Button>
-          </ActionGroup>
-          <dl className={styles.heroFacts} aria-label="Simple cover highlights">
-            <div><dt>Live estimate</dt><dd>Plan + initial estimate</dd></div>
-            <div><dt>Simple range</dt><dd>Ground or elevated</dd></div>
-            <div><dt>Workmanship</dt><dd>10-year warranty</dd></div>
-          </dl>
-        </div>
-        <figure className={styles.heroMedia}>
-          <picture>
-            <source media="(max-width: 760px)" srcSet={mobileHero.props.srcSet} />
-            <img {...desktopHero.props} className={styles.heroImage} />
-          </picture>
-          <figcaption>
-            <span>Fixed acrylic cover</span>
-            <span>Daylight remains part of the space</span>
-          </figcaption>
-        </figure>
-      </section>
+      <EditorialLandingHero id="simple-pergola-title" eyebrow="Pitched acrylic cover · Auckland" title="Cover the space without losing light." intro="A straightforward pitched acrylic pergola, finished to the Sanctuary standard." image={desktopHeroImage} alt="Pitched acrylic pergola preserving daylight over an outdoor living space" media={<figure className="editorial-simple-hero-media"><div><picture><source media="(max-width: 760px)" srcSet={mobileHero.props.srcSet} /><img {...desktopHero.props} /></picture></div><figcaption>Fixed acrylic cover · Daylight remains part of the space</figcaption></figure>}>
+        <ActionGroup><Button href={designHref}>Design your pergola</Button></ActionGroup>
+        <dl className={styles.heroFacts} aria-label="Simple cover highlights"><div><dt>Live estimate</dt><dd>Plan + initial estimate</dd></div><div><dt>Simple range</dt><dd>Ground or elevated</dd></div><div><dt>Workmanship</dt><dd>10-year warranty</dd></div></dl>
+      </EditorialLandingHero>
 
       <SimplePergolaJourney sourceContext={enquiryContext}>
         <section

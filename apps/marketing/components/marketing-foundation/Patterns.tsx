@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import cardLinks from '@/components/marketing-foundation/cardLinks.module.css';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { WARKWORTH_EXTERIOR_IMAGE, WARKWORTH_EXTERIOR_OBJECT_POSITION } from '@/lib/projectImageFraming';
@@ -99,7 +101,7 @@ export function MaterialPalette({ items }: { items: Array<{ name: string; guidan
 }
 
 export function ProjectStory({ image, alt, title, metadata, copy, href, objectPosition }: { image: string; alt: string; title: string; metadata: string[]; copy: string; href: string; objectPosition?: string }) {
-  return <article className={styles.projectStory}><Figure image={image} alt={alt} ratio="landscape" objectPosition={objectPosition} /><div className={styles.projectStoryCopy}><ProjectMeta items={metadata} /><Heading as="h3">{title}</Heading><Text>{copy}</Text><TextLink href={href}>View project</TextLink></div></article>;
+  return <Link href={href} aria-label={`View project: ${title}`} className={cn(styles.projectStory, cardLinks.fullLink)}><Figure image={image} alt={alt} ratio="landscape" objectPosition={objectPosition} /><div className={styles.projectStoryCopy}><ProjectMeta items={metadata} /><Heading as="h3">{title}</Heading><Text>{copy}</Text><span className={styles.textLink}>View project</span></div></Link>;
 }
 
 export function TestimonialQuote({ quote, author, context }: { quote: string; author: string; context?: string }) {

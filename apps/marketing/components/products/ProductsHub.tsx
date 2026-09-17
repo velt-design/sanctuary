@@ -1,3 +1,6 @@
+import cardLinks from '@/components/marketing-foundation/cardLinks.module.css';
+import EditorialLandingHero from '@/components/marketing-foundation/editorial/EditorialLandingHero';
+import editorial from '@/components/marketing-foundation/editorial/editorial.module.css';
 import Image from 'next/image';
 import JsonLd from '@/components/JsonLd';
 import {
@@ -37,7 +40,8 @@ export default function ProductsHub() {
 
   return (
     <main
-      className={styles.productExperience}
+      className={`${styles.productExperience} ${editorial.surface}`}
+      data-editorial-page="products"
       data-marketing-foundation-page
       data-products-index
     >
@@ -66,37 +70,8 @@ export default function ProductsHub() {
         ]}
       />
 
-      <section
-        className={styles.indexHero}
-        aria-labelledby="products-title"
-        data-products-index-hero
-      >
-        <div className={styles.indexHeroMedia}>
-          <Image
-            src="/images/project-riverhead-gable-01.jpg"
-            alt="Riverhead gable pavilion beside a pool and garden"
-            fill
-            loading="eager"
-            fetchPriority="high"
-            sizes="100vw"
-            style={{ objectPosition: '50% 38%' }}
-          />
-        </div>
-        <div className={styles.heroShade} aria-hidden="true" />
-        <Container width="wide" className={styles.indexHeroContent}>
-          <Heading as="h1" variant="display" id="products-title">
-            Choose your pergola form.
-          </Heading>
-          <Text size="large" className={styles.indexHeroIntro}>
-            Add screens, lighting or heating.
-          </Text>
-          <div className={styles.heroActions}>
-            <Button href="#pergola-forms">Compare roof forms</Button>
-          </div>
-        </Container>
-      </section>
-
-      <Section tone="warm" id="pergola-forms">
+      <EditorialLandingHero id="products-title" eyebrow="Pergola forms and details" title="Choose your pergola form." intro="Add screens, lighting or heating." image="/images/project-riverhead-gable-01.jpg" alt="Riverhead gable pavilion beside a pool and garden" objectPosition="50% 38%" caption="Riverhead Gable Pavilion"><TextLink href="#pergola-forms">Compare roof forms</TextLink></EditorialLandingHero>
+    <Section tone="warm" id="pergola-forms">
         <Container width="wide">
           <div className={styles.chapterHeading}>
             <div>
@@ -134,8 +109,8 @@ export default function ProductsHub() {
                   <Text>{category.introduction}</Text>
                   <ul className={styles.optionLinkList}>
                     {optionProducts.map((product) => (
-                      <li key={product.slug}>
-                        <TextLink href={product.route}>
+                      <li key={product.slug} className={cardLinks.surface}>
+                        <TextLink className={cardLinks.hitLink} href={product.route}>
                           {product.shortName}
                         </TextLink>
                         <Text>{product.indexSummary}</Text>

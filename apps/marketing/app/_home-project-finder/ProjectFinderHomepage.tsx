@@ -23,7 +23,7 @@ import {
   projectFinderHomepageDescription,
   projectFinderHomepageTitle,
 } from './routeContract';
-import CinematicHero from './CinematicHero';
+import EditorialHomeHero from './EditorialHomeHero';
 
 type ProjectFinderHomepageProps = {
   initialState: ProjectFinderState;
@@ -43,7 +43,7 @@ export default async function ProjectFinderHomepage({
 
   return (
     <MarketingPage
-      className={styles.page}
+      className={`${styles.page} ${styles.cinematicOpening}`}
       data-homepage-variant={PROJECT_FINDER_HOME_VARIANT}
       data-project-finder-home-variant={PROJECT_FINDER_HOME_VARIANT}
     >
@@ -70,7 +70,7 @@ export default async function ProjectFinderHomepage({
           },
         ]}
       />
-      <CinematicHero media={media.hero} />
+      <EditorialHomeHero media={media.hero} />
 
       <aside className={styles.proofRail} aria-label="Why Sanctuary">
         <Container className={styles.proofItems} width="wide">

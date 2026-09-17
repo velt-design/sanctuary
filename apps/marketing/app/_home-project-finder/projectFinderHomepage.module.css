@@ -4,6 +4,12 @@
   background: var(--color-canvas);
 }
 
+/* The original full-viewport opening sits beneath the overlay header. Override
+   the editorial site's fixed-header offset only for this homepage owner. */
+.page.cinematicOpening {
+  padding-top: 0 !important;
+}
+
 :global(html):has(.page),
 :global(body):has(.page) {
   min-height: 100%;

@@ -1185,7 +1185,7 @@ export const products: ProductRecord[] = [
       },
       {
         src: '/images/project-waiheke-03.jpg',
-        alt: 'Waiheke pergola extending a coastal deck while retaining the outlook',
+        alt: 'Waiheke box-perimeter pergola covering the deck',
         caption: 'Waiheke Holiday Home',
         detail: 'Broader screen-integration context; not proof of this exact slat system',
         objectPosition: '50% 48%',
@@ -1195,7 +1195,7 @@ export const products: ProductRecord[] = [
       status: 'context-only',
       projectSlug: 'waiheke-holiday-home',
       relevance:
-        'The published project record identifies screen integration as part of a perimeter pergola that protects the coastal outlook.',
+        'The published project record identifies screen integration as part of the box-perimeter pergola covering the deck.',
       caveat:
         'The record does not identify the exact screen profile or confirm that the pictured system is this slat-screen product.',
     },

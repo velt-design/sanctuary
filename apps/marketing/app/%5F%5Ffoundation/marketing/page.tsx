@@ -39,6 +39,7 @@ export default function MarketingFoundationPage() {
 
   return <MarketingPage className={styles.page} id="foundation" data-marketing-foundation>
     <FoundationNavigation />
+    <Container width="wide"><TextLink href="/__foundation/marketing/evolution">Explore the new foundation studies</TextLink></Container>
     <div className={styles.masthead}><Container width="wide"><div className={styles.mastheadGrid}><div><Eyebrow>Sanctuary Pergolas</Eyebrow><Heading as="h1" variant="display">Architectural Editorial UI Foundation</Heading></div><Text size="large" className={styles.summary}>A restrained, image-led system for presenting permanent outdoor architecture with clarity and technical credibility.</Text></div></Container></div>
 
     <Section tone="elevated" id="patterns"><Container width="wide"><div className={styles.sectionHead}><Heading>Navigation states</Heading><Text>The internal navigation is keyboard operable; these specimens define its solid, image-overlay, and collapsed marketing states.</Text></div><NavigationStates /></Container></Section>

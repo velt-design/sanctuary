@@ -1,0 +1,16 @@
+/* Use only on single-destination cards, never around independent controls. */
+.surface { position: relative; isolation: isolate; }
+.surface .hitLink { position: static; transform: none; }
+.surface .hitLink::before { content: ''; position: absolute; inset: 0; z-index: 1; }
+.surface .hitLink:focus-visible { position: static; z-index: auto; outline: none; }
+.surface .hitLink:focus-visible::before,
+.fullLink:focus-visible { outline: 2px solid var(--color-accent-olive, currentColor); outline-offset: 4px; }
+.fullLink { color: inherit; text-decoration: none; }
+@media (hover: hover) and (pointer: fine) {
+  .surface:has(.hitLink:hover), .fullLink:hover { background-color: var(--color-surface-neutral); transform: none; }
+}
+/* The guide's former title-only hover shifted its grid and inverted all copy. */
+.surface:global(.guide-hub-card):hover { padding-inline: 0; background: var(--color-surface-neutral); color: var(--color-text-primary); }
+.surface:global(.guide-hub-card):hover :global(.guide-hub-card__summary) { color: var(--color-text-secondary); }
+.surface:global(.guide-hub-card):hover :global(.guide-hub-card__number) { color: var(--color-text-subtle); }
+.surface:global(.guide-hub-card):hover :global(.guide-hub-card__arrow) { color: var(--color-accent-olive); }

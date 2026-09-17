@@ -45,6 +45,7 @@ export function EditorialCard({
 }: EditorialCardProps) {
   return (
     <Link
+      aria-label={`${actionLabel}: ${title}`}
       {...props}
       className={cn(
         styles.editorialCard,
