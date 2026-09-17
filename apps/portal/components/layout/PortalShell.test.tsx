@@ -137,7 +137,7 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
-  it.each(['/qa/invoice-draft-editor-fixture', '/qa/finance-payment-fixture'])('leaves %s behind its server flag', (path) => {
+  it.each(['/qa/invoice-draft-editor-fixture', '/qa/finance-payment-fixture', '/qa/xero-summary-fixture'])('leaves %s behind its server flag', (path) => {
     mockPathname = path;
     mockSearchParams = new URLSearchParams();
     mockSession = { status: 'unauthenticated', email: null, role: null } as any;
