@@ -1,5 +1,14 @@
 # Testing And QA
 
+Xero read summary: run the `financeSummary*.test.ts` and
+`financeSummaryUi.test.tsx` cases under `apps/portal/lib/xero`, plus existing
+Finance page/proxy/shell tests. They cover dates, tax/currency separation,
+credit-aware outstanding amounts, bounded pagination, duplicates, provider and
+permission failure, and UI stale/error behavior. The development-only
+`/qa/xero-summary-fixture` is synthetic visual evidence; it cannot prove a live
+Xero period total. Required hosted verification compares the same dates/status/
+currency basis against Xero reports and retains customer evidence privately.
+
 Schedule guarded database commands: `npm run test:schedule:db:fast` runs a disposable PGlite database with migration rollback/replay, serialized null/omitted optional payloads, first assignment to empty/populated crews, existing-job repair, cross-crew moves, ordinary/finish-early completion, malformed payload rejection, stale revisions and browser write denial. Required Portal Quality CI runs this alongside the portal suite; mocked RPC success alone is insufficient for Schedule persistence changes.
 
 Automatic payment recording: `node scripts/test-xero-automatic-payments.mjs` runs a disposable PGlite contract against the actual commercial command owners and migration06. It covers the rollout gate, partial/full settlement, customer won, replay, stale balances, machine attribution, finance decisions and manual-access denial. It also applies migration07 and checks retained status and wrong-tenant denial. Background Jobs CI runs it. Focused automatic-recorder and observation-route tests cover fresh evidence, incomplete lists, duplicate recovery, read/write failures and the off-by-default application flag. It does not prove concurrent PostgreSQL sessions, provider orchestration, scheduled delivery or production behavior.
