@@ -4,198 +4,46 @@
 
 ### Current focus: useful workflow before release
 
-**Approved payload release completed — 17 September:** Jordan approved PR379 exact
-ed0635b. It merged as ea0ba1de60e387b64e72a2e3b2123885628debe0 and Ready deployment
-dpl_GPVBNDixT4g7CnR8CzFWhSWNPAp8 is verified on velt.systems. Rollback is
- dpl_FH61srDRmeb7cbhZcdNMx7C7c1Ts. No migration or Portal release occurred.
-Real accepted and quote projects each published and displayed a saved email result.
-Accepted reply disclosure works. Returning from the quote project retained the
-accepted checked time (04:50:53 UTC); the audited provider count stayed at three
-(two successful reads plus the earlier failed-size read), proving navigation reuse.
-Enquiry also displayed its saved emails with project-match-unconfirmed labelling.
-Integrated Portal browser suite: 97 passed,
-one skipped; type checking and 33 combined qualification/overview tests passed.
-This supersedes the pending PR379 approval/check state below. No new sign-in needed.
+**Current checkpoint — 17 September 2026**
 
-**Current verification checkpoint — 17 September:** Velt PR378 and migrations
-002–004 are live under Jordan's exact-revision approval. The protected Portal
-preview retains the existing sign-in. Its first real snapshot read reached Outlook
-successfully (HTTP 200, 587ms) but exceeded the old 256KiB incoming-response limit;
-no snapshot was published. This replaces the earlier timeout hypothesis.
+The correspondence reliability backend is live. PR378 installed Velt migrations
+202609170002–004 after rollback-only rehearsal; PR379's exact approved ed0635b
+merged as ea0ba1de60e387b64e72a2e3b2123885628debe0. Ready deployment
+ dpl_GPVBNDixT4g7CnR8CzFWhSWNPAp8 is verified on velt.systems. Rollback deployment:
+dpl_FH61srDRmeb7cbhZcdNMx7C7c1Ts. All backend hosted checks and independent code
+review passed. Private receipts live in Velt .codex-tmp/staff-reliability-release.json
+and staff-mail-payload-release.json. No customer emails were sent.
 
-The bounded correction is draft [Velt PR379](https://github.com/velt-design/velt-os/pull/379)
-at ed0635b2007ef3d999412a3a12173209b1cfc754. It permits 2MiB streamed customer-mail
-ingress only, preserves the single 25-message request, sanitizes credentials before
-truncation, and retains the existing 100KB total and 32768-unit per-message output
-limits. No new migration, sends, pagination or retention expansion. Full local
-checks passed (1158 web tests and 60 browser checks). Independent review found and
-verified the repaired per-message limit; 27 focused tests passed. Actual synthetic
-Velt output passed the Portal parser. Hosted run 35182923206 passed all jobs. Separate exact-revision release approval
-was requested after checks completed; it remains pending.
+Real enquiry, quote and accepted projects now show saved correspondence. The
+accepted reply expands readably; returning from another project retained its
+checked time without another audited Outlook read. Root verified its exact
+accepted quote v5 and mobile Overview return. These are builder-operated live
+checks, not independent staff usability testing. The original 256KiB provider
+response limit was proven by safe diagnostic HTTP200/587ms/response_limit and fixed
+with customer-only bounded2MiB ingress, preserving 100KB total/32768-unit excerpts.
 
-Portal now integrates production main e5578a3, preserving both project stories and
-enquiry qualification coverage. The owning task's PR150 release evidence is in its
-existing docs. Combined qualification/overview checks passed (33 tests); Portal
-type checking passed. The combined browser suite is running (exec 78494;
-.codex-tmp/clarity/main-integration-browser.log). The protected review alias still serves 993b815;
-this merged version is not deployed. Keep the paired large-response regression.
+Integrated Portal b2e7b74 includes production main e5578a3 and PR150 owning-doc
+release evidence. Full local types/lint passed on push; 97 browser checks passed,
+one skipped; 33 integration tests and 23 independent presentation tests passed.
+Protected candidate dpl_EdDdnY25sRUYrbmHCqTCmFtPp1mR is Ready and assigned to the
+same protected review alias. Hosted checks for b2e7b74 are running (Quality/Performance35183714821). The
+background jobs PG17 download was rate-limited by its registry; failed-job rerun
+35183714831 passed. Integrated protected candidate retained login and real mail;
+unsigned access302 goes to Vercel SSO. Public Portal unchanged.
 
-Next: finish hosted backend checks, request exact-revision correction release,
-then verify readable real correspondence and reuse across enquiry, quoted and
-accepted projects. Complete integrated Portal checks and independent delivery
-review before its separate production release. Public Portal remains unchanged
-by this task; follow-up retirement migration 20260917000002 is still pending.
+Independent delivery reviewer inspected populated enquiry/quote/accepted fixtures,
+390px layout and keyboard/disclosure behavior. No material UI defect found. Its
+separate browser session cannot access the signed-in real preview; independent
+live execution remains unavailable. Preserve this limit rather than calling the
+whole goal8/10. Public Portal UI and follow-up retirement000002 remain unreleased.
 
-**Approved release executed, 17 September 04:31 UTC:** Jordan's "Approved" reply
-authorizes the previously requested e34da5c backend/migrations/protected verification.
-This supersedes the pending-approval/blocked entries below. Read-only target checks
-matched the existing live mailbox activity inwmhgvaaxlcoqwbehqrhb, confirmed pg_cron
-and unused002–004 slots. Atomic rollback-only rehearsal passed, then all three
-reviewed migrations and ledger records installed atomically. Minute retention job
-ran successfully at04:30, zero overdue snapshots. PR378 merged as
-`0d106f00717a578dbd671a6182bc3954033943b1`; Ready deployment
-`dpl_FH61srDRmeb7cbhZcdNMx7C7c1Ts` is verified onvelt.systems. Prior rollback
-deployment isdpl_9T75Ycx9y6Sx8gKVDoxxEKweqStS. No email sent or business record changed.
-
-Protected candidate993b815 with lineage+snapshots enabled is building as
-`dpl_DNvjfmioGLnEK9X5a5nnwC6rafkR`, receipt in
-`.codex-tmp/clarity/protected-candidate-993b815.json`. No auto domain assignment;
-production Portal alias remainsdpl_Fg3yVgxuDqphHFNUTWmErkg1g3Ew, no global flag change.
-Next: wait for this candidate, confirm readiness/protection, move only the existing
-protected review alias and verify cold real read, navigation reuse, failure/recovery
-and representative projects. Portal hosted Quality remains active at authenticated
-smoke; performance passed. Sanctuary release hold lifted by owning task afterPR150;
-current main ise5578a3 and migrations000003+000004 installed,000002 untouched.
-Include latest main before any eventual Portal production release; this backend
-approval does not itself release Portal UI.
-
-**Paused at release authority:** the same pending approval for Velt e34da5c and
-migrations002–004 has persisted across three consecutive goal turns. Backend
-checks/review are complete and no further substantive execution can proceed without
-that decision. Portal Performance and Configurator jobs have now passed in
-run35181266212; Portal Quality remains active at its Vitest step, not failed. Watch
-session2537 remains live. On approval, inspect that same run/handle, current PR heads,
-target migration preflight and production holds before acting; do not restart checks
-merely because observation elapsed. Goal is blocked pending release authority, not
-complete. No backend migration/deployment or Portal snapshot activation occurred.
-
-**Release decision pending:** all Velt hosted gates passed at
-`e34da5cfa7f99fd228f5a339dd0438efa1d3a96a` (run35181130674), including full verify
-and complete migration replay. Watch session18279 finished successfully. Asked
-Jordan for one bounded approval covering migrations202609170002–004, exact PR378
-backend merge/deploy and real-email verification in the protected Portal preview.
-No approval received yet; no production changes made. This does not release Portal
-UI. Target read-only preflight must pass before any installation. Portal993b815
-quality/performance checks remain active; its other hosted checks have passed.
-Portal run35181266212 is now tracked by live exec session2537, log
-`.codex-tmp/clarity/reliability-portal-hosted-watch.log`; continue this handle.
-The private protected-candidate helper now accepts optional `--snapshots` only with
-the verified lineage receiver argument, records that setting and applies it only
-to the candidate deployment. Syntax check passed; helper was not executed. Enable
-only after approved migrations, retention checks and backend deployment succeed.
-
-**Latest checkpoint, 17 September 04:15 UTC:** Velt reliability batch published to
-existing draft PR378 at `e34da5c`. Hosted run35181130674 is active; no migration,
-activation or production deployment. Full local check passed before the final
-secret-free failure diagnostic;33 affected provider/lifecycle tests pass afterward.
-Independent review passed42 tests and found no additional blocker for staged backend
-verification, expressly not whole-journey readiness. Hosted log lookup returned no
-diagnostic entries, so the new reader records only fixed failure category, elapsed
-time and HTTP status. It logs no provider body/address/token and adds no requests.
-Real cold Outlook failure is unresolved. Next: inspect this exact hosted run, prepare
-the reviewed migration/backend verification release under the scoped permission
-boundary, then prove the paired protected real journey. Earlier checkpoints below
-describe the implementation sequence and are superseded where this entry differs.
-
-Paired Portal batch published to draft PR145 at `993b815`; pre-push full workspace
-typecheck/lint passed. Hosted Portal Quality/Performance run35181266212 and associated
-contract runs are active. Velt migration smoke and historical SQL jobs passed;
-the same verify job remains active. No rerun started. Stable protected review alias
-has not been switched to this new Portal revision; snapshot flag remains off.
-Before release, recheck external production hold and current live migration state.
-The Velt run is being tracked by exec session18279 (`gh run watch`,30-second
-interval); its log is Velt `.codex-tmp/staff-reliability-hosted-watch.log`.
-Continue that exact handle rather than starting another run. Read-only target SQL
-is prepared at Velt `.codex-tmp/staff-reliability-preflight.sql`, not executed.
-Portal deployment completed for993b815 with snapshot flag still off; quality,
-performance and reader-denial checks are still running. No release approval has
-been requested for e34da5c yet; wait for its mandatory verify gate.
-
-**Approved reliability amendment, 17 September 2026:** Jordan explicitly approved
-the bounded reliability approach in the task reply to `call_YarpWjlnRMkSayp4AD86W4W6`:
-reuse successful correspondence for 15 minutes; retain the last successful snapshot
-for at most 24 hours with its age clearly visible; allow up to 60 Outlook reads per
-hour shared across staff; combine duplicate requests and check current access before
-every display. No automatic sends or bulk backfill. Implementation is local,
-and real-project verification is required before release. This supersedes the
-ephemeral-only restriction for this bounded server-owned snapshot and the six-read
-Outlook limit only; unrelated provider budgets and release controls remain intact.
-
-Independent source review found three material gaps: fresh reads on every Overview
-remount exhaust shared capacity; synchronous broad mailbox/body retrieval is slow;
-one customer-wide page can omit relevant project history. The latest controlled
-read reached Outlook and failed after approximately 16 seconds; timeout is plausible
-but unproven. Build one coherent reliability batch rather than releasing only more
-diagnostic wording. Preserve honest coverage/match uncertainty and the decision to
-keep old unconfirmed emails visible without manual linking. Acceptance must cover
-navigation reuse, concurrent staff requests, expired/revoked access, stale/failed
-refresh, bounded retention, and real enquiry/quote/accepted correspondence. The
-existing exact-head PR378 release request does not authorize this enlarged revision.
-
-Reliability implementation checkpoint, 17 September 04:05 UTC: Velt remains on
-`codex/staff-mail-start-reasons-20260917` at published e4aa657; Portal remains
-published59a9b06. The paired reliability update is local and uncommitted. Signed
-snapshot requests now use a direct mail-only path: Portal supplies its server-resolved
-customer address after access checks, and Velt runs the existing audited Outlook
-reader without redundant Portal context reads or AI. Existing optional analysis
-remains separate. Encrypted snapshots are scoped to current customer, project,
-connection and installation generations, with durable single-refresh leases.
-Publication requires exact acquired customer/query identity and the matching completed
-provider receipt. Migration002 owns snapshot/audit/access boundaries;003 gives the
-customer-mail pool60/hour without changing other budgets;004 schedules minute cleanup.
-DB expiry is23h58m, with client hard expiry even during refresh. Cleanup cannot be
-promised during database/scheduler outages: installed job health and overdue-row
-recovery remain operational release checks. No migrations or flags are installed.
-
-Verification:49 focused Velt tests pass, including signed snapshot/AI separation and
-HTTP routing/failure isolation. Native PostgreSQL17 suite passes17, including actual
-concurrent staff leases, exact receipt mismatch rejection,60/61 capacity boundaries,
-legacy provider budgets, purge and installation-stop contract. The local timezone
-fixture deficiency was repaired using bundled IANA data; the earlier14/15 result is
-superseded. Portal lifecycle16 tests pass, including expiry during an in-flight
-refresh; prior paired gateway/route/card/query66 and types passed before the final
-expiry changes. Independent reviewer confirmed all three findings closed (receipt
-identity, hard expiry, installation header) and independently passed17 Velt/16 Portal
-tests; native results remain builder evidence. Published Portal hosted run35176993788
-passed. New browser, full release and live-project evidence remain pending.
-
-Next: verify paired browser states and current focused checks, resolve actual Outlook
-latency/coverage rather than assuming caching fixes cold reads, complete retention
-operating checks, then assemble one reviewed release batch. Current protected preview
-still serves the previous published version. No production-readiness claim. Another
-Sanctuary task holds production while completing its approved campaign release;
-recheck that hold before any main merge. Retirement migration000002 remains uninstalled.
-
-04:10 UTC continuation: added synthetic saved/refreshing variants to the existing
-story fixture (`?story=quote&mail=saved` and `mail=refreshing`). Browser inspection
-at desktop and390px confirms dated status, readable expanded message during refresh
-and retained distinction between project-linked and unconfirmed emails. These are
-presentation evidence only. Portal types and changed lint pass; gateway/API/card/
-query tests67 pass. The normally skipped paired artifact was then run explicitly:
-Portal exports actual synthetic signed snapshot bytes, Velt verifies them and rejects
-a changed customer address; both paired tests pass. Velt full `pnpm check` is running
-in exec session94627, log `.codex-tmp/staff-reliability-check.log` in Velt; lint/types,
-unit tests and build have passed, browser suite is in progress. Continue that handle.
-Inspecting the existing protected preview brought its old visibility-refresh path
-back into view; the request again returned `Outlook could not complete the message
-request`. No manual retry performed. This reinforces that cold provider retrieval
-remains unresolved; the cache tests do not prove it fixed. New changes are still
-uncommitted, unpublished and disabled. Retention operational count/status checks
-and recovery are now documented in Velt TESTING_AND_QA. The Velt browser suite
-subsequently completed60/60; the full check log records its final result.
-Current checkpoint, 17 September. Goal resumed after Jordan explicitly approved
-PR377 diagnostic release. Approved177cd19 merged asbe6cb9e6fd0ab52a63890edf905285ee7424b990;
-deployment dpl_9T75Ycx9y6Sx8gKVDoxxEKweqStS is Ready; velt.systems alias verified. One bounded retry returned unavailable without a typed provider reason. Production Portal remains unreleased.
+**Retirement release preparation:** live read-only preflight on iytanftukulcnavossmd
+confirmed002unused,006/001/003/004installed,82lead+33quote cadence items and one
+manual item. Exact migration SHA256 e5df19bf48e3a6cb780e40d9d58e2a4b8c94425248ca63b06fd365b5670fb395
+passed rollback-only live full-schema apply/replay:115retired,1153otherwork rows
+unchanged, exact audit count and confirmation history preserved. No installation
+occurred. Script .codex-tmp/clarity/follow-up-live-rehearsal.sql; bounded independent
+release-safety review requested. Retain current function/ledger fences at install.
 
 **Owner decisions and boundaries**
 - Retire unused sent/reply recording and automatic cadence; retain real manual
@@ -211,45 +59,31 @@ deployment dpl_9T75Ycx9y6Sx8gKVDoxxEKweqStS is Ready; velt.systems alias verifie
   remains conditional on readiness; receiver approval is revision-specific.
 
 **Current versions and access**
-- Sanctuary worktree `sanctuary-project-clarity`, branch
-  `codex/project-clarity-20260916`, draft PR145, published59a9b06 (three additional fixed error descriptions).
-  Main eb6ba97 and the coordinated Xero verification documentation are included.
-- Protected candidate dpl_FA8DapQsBM9zMWyDEJg9KKvCwduL is Ready on59a9b06. Stable alias and unsigned302 verified; do not repeat mailbox reads merely for preview verification.
-  Staff correspondence and lineage are enabled only on this candidate. Stable
-  review origin: https://sanctuary-portal-git-codex-pro-2efc62-jordans-projects-43df95bd.vercel.app.
-  Unsigned302 and retained staff session were verified; no new login needed.
-  Git pushes may move the branch alias: reconcile to the protected candidate
-  and check protection before handover. Production Portal remains unchanged
-  by this task (last verified dpl_AafQWbYZy6hENJU5oUbHmTqwtL5T).
-- Velt PR376 was released under Jordan's approval: approved feature8d9d2cb
-  unchanged by main integration57f7a6a, merged4ba3b441ed55df8eea4af74e1fcc919bd452972e.
-  Live receiver dpl_HNBcF9wcub1WbzUTN27feBNirErr verified Ready.47 focused tests,
-  independent integration review and all hosted checks passed. No DB or grant
-  change and no customer send. Private rollback receipt retained.
-- Velt PR377 at177cd1999dd30def2d4931b3316d4be9eafa4704 is review-ready with all
-  hosted checks and independent review passed; Jordan approved and merge completed, deployment Ready and velt.systems verified on dpl_9T75Ycx9y6Sx8gKVDoxxEKweqStS.
-  It exposes only three fixed typed mailbox failure reasons, never raw errors.
-  Portal reason allowlist and mobile header wrapping published ascf7e1b9 after full types/lint; protected candidate dpl_QrDg71AvUDG4q5uESxqQ7wmCSnnz is Ready and verified on the stable alias, unsigned302 and existing staff session retained. Later test-only faabc04 published with full types/lint, same runtime; hosted run35175611584 now passes in full.
+- Sanctuary worktree sanctuary-project-clarity, branch codex/project-clarity-20260916,
+  draft PR145; published application revision b2e7b740bb2e0701aead44d58cddbaaf065e5023.
+- Stable protected review: https://sanctuary-portal-git-codex-pro-2efc62-jordans-projects-43df95bd.vercel.app.
+  Candidate dpl_EdDdnY25sRUYrbmHCqTCmFtPp1mR has correspondence/lineage/snapshots
+  enabled only for that candidate. Do not change global flags or public aliases.
+- Public Portal remains dpl_Fg3yVgxuDqphHFNUTWmErkg1g3Ew from PR150.
+- Velt release/rollback and current check status are recorded above.
 
 **Evidence and remaining acceptance**
 
 | Requirement | Current evidence and remaining disposition |
 | --- | --- |
-| Useful workflow; preserve work/history | Cadence controls/readers retired in candidate;12 DB cases and native PostgreSQL17 concurrent-writer proof passed. Migration20260917000002 remains uninstalled. Genuine manual work and specialist tools retained. |
-| Real quote and correct quote open/return | Revised real quote read linked its recorded send; earlier linked and three unconfirmed messages stayed separate. Exact current quote opened and return preserved outstanding decision and owner. Private evidence `.codex-tmp/clarity/revised-real-quote-proof.txt`. Revised390px current sent quote open/settled return also verified oncf7e1b9: exact version, outstanding decision and owner preserved without horizontal overflow. Current mail read unavailable; no claim of healthy revised correspondence. |
-| Real enquiry | Correct owner, no quote and current estimate; four readable emails. Legacy marketing sender discarded provider identity, so these remain honestly unconfirmed under owner decision. Generic instruction to review a nonexistent quote removed in805da77. |
-| Real accepted job | Accepted version, multiple-acceptance warning and payment distinctions verified. Mail request failed;805da77 correctly shows unavailable/retry rather than normal empty. Revised390px quote open and settled Overview return passed oncf7e1b9: exact accepted version, owner and payment distinctions retained, no writes. Private evidence `.codex-tmp/clarity/accepted-mobile-cf7e1b9.txt`. |
-| Message relevance/discovery | Direct sends and fully anchored reply relationships implemented. Every ancestry branch must resolve; unknown parents/cycles/incomplete coverage suppress reply links.805da77 features latest unconfirmed customer email if no linked customer reply exists, without promoting association. Healthy revised live display still needs proof. |
-| Mail reliability | Authenticated Connections shows successful access checks then inbox_read unavailable/report_failed. Not a sign-in failure. Provider cause unknown; sensitive config retrieval was unavailable and no bypass attempted. PR377 released and one retry completed with generic unavailable, no typed provider reason. Refreshed Connections showed no new Outlook operation beyond02:18:13; shared hourly allowance increased from3 to4 as an old operation expired. This suggests a pre-read rejection but does not establish its cause. Do not raise caps, clear audit or repeatedly retry. After allowance recovered to8/12, one controlled retry reached Outlook: inbox intent03:15:45/result03:16:01, typed provider_unavailable shown. Approximately16 seconds is consistent with the15-second transport timeout, but timeout versus HTTP refusal is not yet proven. Earlier generic failures and this provider failure must not be conflated. Wider-system delivery review requested: all staff share6 Outlook reads/hour, and each Overview remount starts another read; normal staff usability is not established. Source confirms known claim refusal reasons were discarded. Bounded correction is draft Velt PR378 at e4aa657 on codex/staff-mail-start-reasons-20260917: only exact database guards mapped, no limits/audit/retry changes.42 focused tests, types/lint, independent review and all hosted gates pass at e4aa657959ce8c15e7775c2f022cfd0d3117b786. Exact-revision follow-up release approval requested; pending. Prior PR377 approval does not cover this revision. Matching Portal allowlist changes published59a9b06 with15 focused tests and full workspace types/lint passing. Hosted checks on this latest revision pending; priorfaabc04 passes all gates. |
-| Desktop/mobile clarity | Independent populated sample walkthrough passed, including keyboard disclosures, sender/date and separate other-property mail. Real390px page had no overflow but header truncated identity. Local scoped header stacking independently verified in Chrome at390x844: full long title, separate search row, owner/actions visible, no overflow and keyboard search focus. Desktop retained. This verifies the shell header, not real mobile quote return. |
-| All-staff access/security | Staff auth/denial contracts and lifecycle checks passed; revised non-owner live journey remains unverified. No broadening beyond authorized staff or public data exposure. |
-| Independent final real review | Reviewer lacks root IAB session; source/tests and sample browser evidence are independent, real journey is not. Do not claim final8/10 or independent live pass. |
-| Release/handover |805da77 full workspace types/lint and31 independent focused tests passed. Hosted performance and other checks pass; Portal Quality run35174339022 completed with five stale copy expectations,89 passes and one skip. All five expected the generic instruction deliberately removed in805da77; assertions corrected to owner and Manage project work, hosted run35175611584 now passes in full. Current local reason suite12 passed. Protected review remains available; production UI, global flags and retirement migration unchanged. |
+| Useful work/history | Unused sent/reply cadence controls removed; genuine work retained. Native concurrency/preservation proof passed. Follow-up migration20260917000002 still requires release installation. Earlier generic-stage retirement20260916000006 is installed with554 audited cancellations. |
+| Real enquiry/quote/accepted mail | All three displayed readable saved results after PR379. Linked and unconfirmed messages stay distinct. Latest accepted reply expands. Revalidate integrated candidate before final release. |
+| Commercial truth/return | Real accepted quote Q-0206v5 opened and Overview returned at390px; owner, accepted price and deposit/uninvoiced distinctions preserved. Prior quote/enquiry evidence retained in private artifacts. |
+| Reliability | Cold real reads publish snapshots; return reuses same checked time without another Outlook operation. 15min reuse/24h ceiling/60reads-hour approved. Native17DBtests, lifecycle tests, expiry and denied-access fixtures pass; live outage recovery not deliberately induced. |
+| Desktop/mobile clarity | Independent three-story walkthrough and390px keyboard/disclosures passed. Real390px title/owner/reply readable; accepted quote/return verified by builder. Agent observations do not establish human ten-second task performance. |
+| All-staff access/security | Route requires staff/project access, never owner role, and rechecks before delivery. Auth/denial tests pass; actual non-owner session journey remains unverified. |
+| Independent review | No material fixture UI defect;23 independent tests pass. Real signed-in session unavailable to reviewer; no independent live claim. |
+| Release/handover | Final integrated hosted checks running; fixed protected preview retained. Production UI and000002 migration not released. |
 
-Next authorized work: finish hosted checks for the coherent Portal batch
-and its required checks, preserve fixed review host, then diagnose accepted mail
-after approved receiver release. Reconcile real/mobile/non-owner and independent
-journey gaps before conditional Portal release. No repeated login request.
+Next authorized work: verify the integrated protected candidate, finish the same
+hosted checks, reconcile role/real-journey evidence limits and prepare the bounded
+retirement installation/release only once readiness is established. Do not ask for
+fake outcomes or repeated sign-in.
 
 Provider basis for the implemented identity resolver:
 https://resend.com/changelog/message-id-for-sent-emails and
