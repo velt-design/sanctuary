@@ -35,6 +35,8 @@ const mood=(page:Page,name:string)=>page.getByRole('group',{name:'Time of day'})
 for(const width of [1440,390])for(const solid of [false,true])test(`smooth day/night ${width} ${solid?'lit solid':'unlit acrylic'}`,async({page})=>{
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   await openDesign(page,width,solid);
+  const shellColors=()=>page.locator('[data-night]').evaluate(el=>[el, ...el.querySelectorAll('aside,p')].map(node=>{const s=getComputedStyle(node);return [s.backgroundColor,s.color];}));
+  const palette=await shellColors();
   const camera=await page.locator('canvas').getAttribute('data-camera');
   const draft=await page.evaluate(()=>JSON.stringify(localStorage));
   const state=await page.locator('[data-view]').evaluate(el=>Object.fromEntries([...el.attributes].filter(a=>a.name.startsWith('data-')).map(a=>[a.name,a.value])));
@@ -51,6 +53,7 @@ for(const width of [1440,390])for(const solid of [false,true])test(`smooth day/n
   await page.screenshot({path:`${evidence}/${width}-${solid}-mid.png`});
   await expect.poll(()=>amount(page)).toBe(1);
   const values=await samples;
+  expect(await shellColors()).toEqual(palette);
   expect(values.filter(v=>v>0&&v<1).length).toBeGreaterThan(5);
   expect(values.every((v,i)=>i===0||v>=values[i-1])).toBe(true);
   await page.screenshot({path:`${evidence}/${width}-${solid}-night.png`});
