@@ -141,7 +141,7 @@ for (const scenario of COMMAND_CENTRE_FIXTURE_SCENARIOS) {
 const WORK_SCENARIO_EXPECTATIONS = {
   "v2-primary": {
     model: "v2",
-    text: ["Project owner:", "Review customer emails, the current quote and project files."],
+    text: ["Project owner:", "Manage project work"],
   },
   "v2-missing-email": {
     model: "v2",
@@ -149,11 +149,11 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-follow-up": {
     model: "v2",
-    text: ["Project owner:", "Review customer emails, the current quote and project files."],
+    text: ["Project owner:", "Manage project work"],
   },
   "v2-close-review": {
     model: "v2",
-    text: ["Project owner:", "Review customer emails, the current quote and project files."],
+    text: ["Project owner:", "Manage project work"],
   },
   "v2-critical": {
     model: "v2",
@@ -165,7 +165,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-overdue": {
     model: "v2",
-    text: ["Project owner:", "Review customer emails, the current quote and project files."],
+    text: ["Project owner:", "Manage project work"],
   },
   "v2-future": {
     model: "v2",
@@ -189,7 +189,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-no-action": {
     model: "v2",
-    text: ["Project owner:", "Review customer emails, the current quote and project files."],
+    text: ["Project owner:", "Manage project work"],
   },
   "v2-contacted-site-visit": {
     model: "v2",

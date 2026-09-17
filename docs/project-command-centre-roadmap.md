@@ -39,7 +39,7 @@ and scorecards below. Goal remains active; the Portal release is not ready.
 - Velt PR377 at177cd1999dd30def2d4931b3316d4be9eafa4704 is review-ready with all
   hosted checks and independent review passed; separate release approval pending.
   It exposes only three fixed typed mailbox failure reasons, never raw errors.
-  Portal reason allowlist and mobile header wrapping are local/unpublished.
+  Portal reason allowlist and mobile header wrapping published ascf7e1b9 after full types/lint; protected candidate dpl_QrDg71AvUDG4q5uESxqQ7wmCSnnz is building. Keep stable alias on prior verified candidate until Ready. Later test-only correction does not change candidate runtime.
 
 **Evidence and remaining acceptance**
 
@@ -54,7 +54,7 @@ and scorecards below. Goal remains active; the Portal release is not ready.
 | Desktop/mobile clarity | Independent populated sample walkthrough passed, including keyboard disclosures, sender/date and separate other-property mail. Real390px page had no overflow but header truncated identity. Local scoped header stacking independently verified in Chrome at390x844: full long title, separate search row, owner/actions visible, no overflow and keyboard search focus. Desktop retained. This verifies the shell header, not real mobile quote return. |
 | All-staff access/security | Staff auth/denial contracts and lifecycle checks passed; revised non-owner live journey remains unverified. No broadening beyond authorized staff or public data exposure. |
 | Independent final real review | Reviewer lacks root IAB session; source/tests and sample browser evidence are independent, real journey is not. Do not claim final8/10 or independent live pass. |
-| Release/handover |805da77 full workspace types/lint and31 independent focused tests passed. Hosted performance and other checks pass; Portal Quality run35174339022 still running at last check. Current local reason suite12 passed. Protected review remains available; production UI, global flags and retirement migration unchanged. |
+| Release/handover |805da77 full workspace types/lint and31 independent focused tests passed. Hosted performance and other checks pass; Portal Quality run35174339022 completed with five stale copy expectations,89 passes and one skip. All five expected the generic instruction deliberately removed in805da77; assertions corrected to owner and Manage project work, hosted recheck pending. Current local reason suite12 passed. Protected review remains available; production UI, global flags and retirement migration unchanged. |
 
 Next authorized work: verify scoped mobile header, finish coherent Portal batch
 and its required checks, preserve fixed review host, then diagnose accepted mail
