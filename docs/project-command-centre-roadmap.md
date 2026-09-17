@@ -4,29 +4,25 @@
 
 ### Current focus: useful workflow before release
 
-Portal publication in progress: local commits6e851b7 and2f1de0f hold the coherent
-association batch. The first push was stopped by the required worker TypeScript
-check: Node RequestInit omitted Next's cache option. The explicit intersection
-type preserves no-store behavior; worker/package types and all66 provider tests
-now pass. The retried push completed full types but the documentation guard
-stopped it on a local absolute log path; that path is now relative to its named
-worktree. Another normal push must pass the hook. PR145 description
-now reflects the complete scope and outstanding real proof. Architecture advisory
-passes; declared ownership covers27 files. Velt PR376 exact hosted verification
-is still running; its database and Vercel checks pass. No release approval has
-been requested for that revision yet.
+Portal association batch published at42c8774; the normal pre-push full workspace
+typecheck and lint passed, and both hosted Vercel builds passed. Required PR CI
+was absent because newer main conflicted in two additive documentation sections.
+Main eb6ba97 is now integrated locally as5b2718a, retaining both contracts; its
+normal push passed full workspace types and lint and published successfully. Required hosted checks must now run on this integrated revision. No runtime conflict was present. The separate
+Xero release owner's sanitized source-verification doc update is accepted for
+publication with the next coherent documentation batch.
 
-Publication checkpoint: Velt draft PR376
-https://github.com/velt-design/velt-os/pull/376 at5482891 contains the reviewed
-reply-identity receiver. Full pnpm check passed before current-main integration,
-including57 browser tests; after merging main1511220 and resolving the additive
-staff-messages overlap,110 focused tests and web typecheck pass. Exact-revision
-hosted checks remain pending. No merge/deploy or Portal flag enablement occurred.
-Local fixture3025 has been restored and visually verified at the original quote
-URL; live exec session26755 uses ENABLE_PORTAL_QA_FIXTURES=1 and the repository's
-synthetic Supabase URL/key defaults. The older browser tab retained a connection
-error, so a fresh local tab8 now shows the unchanged URL and current fixture.
-Hosted review origin remains unchanged; do not request another sign-in.
+Velt draft PR376 is at8d9d2cbecbbf210de262af7ca5d988d3234c4c0a. Provider reply
+headers are now fetched only with the signed opt-in capability. Focused tests,
+types and independent compatibility review pass; current hosted database and
+Vercel checks pass, while run35172341023 verify remains live. Earlier5482891
+hosted checks passed but are not exact-revision proof for this final delta.
+No receiver release, Portal flag enablement or retirement migration occurred.
+
+The fixed review alias still resolves to protected deployment
+ dpl_8BMddLcsU7rHwHvm1Z1SancLswzu, verified from Vercel metadata after publication.
+No new sign-in request. The previous conversational turn was no progress; this
+continuation identified and resolved the actual PR integration conflict.
 
 Latest verification: independent review of quote/enquiry/accepted samples at
 desktop and390px found no material association-presentation defect. Keyboard
@@ -38,7 +34,7 @@ Velt full `pnpm run check` completed successfully; its private log is
 The coordinated Xero build pause is over and local3025 was restored and verified.
 Hosted stable review origin is unchanged.
 
-**Association batch, local and unpublished (17 September):**
+**Association batch, published for verification (17 September):**
 - Portal resolves authorized quote/invoice sends and durable enquiry audit/outbox
   evidence through the package-owned bounded Resend identity reader. It computes
   links server-side and strips raw lineage and upstream project-link claims.
@@ -59,16 +55,16 @@ Hosted stable review origin is unchanged.
   separate disclosure, automatically open if no links exist. Two unconfirmed
   excerpts appear before older mail. Grouping cannot merge different link states.
   Local quote story now includes newer other-property mail, verified separate in
-  the browser. Independent desktop/mobile scenario review is running.
+  the browser. Independent desktop/mobile sample scenario review passed.
 - Evidence: Portal overview/correspondence matrix171 passed plus the corrected
   card suite9 passed (one prior selector assertion needed adapting to the open
   unconfirmed group); Portal TypeScript passes. Velt customer-journey/provider
   matrix97 passed,4 optional integration skips; changed runtime lint passes.
   Actual paired signed wire tests pass on both sides, including capability
   tampering rejection. Synthetic artifact: `.codex-tmp/clarity/lineage-wire.json`.
-- Remaining: independent UI findings, coherent owner docs/release checks, actual
+- Remaining: exact-revision release checks, actual
   provider identity availability and real revised desktop/mobile journey proof.
-  No new login request; preserve the review origin below. No new push/deploy,
+  No new login request; preserve the review origin below. No production release,
   customer send, backfill or migration installation. The goal remains active.
 **Review-access correction after owner intervention:** Jordan objected to repeated
 sign-in requests. Do not repeat them or issue another per-build review URL. Use
