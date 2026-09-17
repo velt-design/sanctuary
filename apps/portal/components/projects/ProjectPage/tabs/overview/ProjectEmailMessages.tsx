@@ -2,6 +2,7 @@ import { formatPortalDate, formatPortalDateTime, formatPortalTime } from '@/lib/
 import { correspondenceSourceHref, type ProjectCorrespondenceContext } from './projectCorrespondencePresentation';
 import styles from './ProjectCorrespondenceCard.module.css';
 import { projectEmailGroups, referencesProjectQuote, type EmailProjectContext } from './projectEmailGroups';
+import { projectEmailPreview } from './projectEmailPreview';
 
 export default function ProjectEmailMessages({ messages, sample, project = {}, expanded, onExpand, earlierOpen, onEarlierOpen }: {
   messages: NonNullable<ProjectCorrespondenceContext['messages']>; sample: boolean;
@@ -12,10 +13,7 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
   const orderedFeatured = latestCustomer ? [latestCustomer, ...featured.filter(group => group !== latestCustomer)] : featured;
   function renderMessage({ message, copies }: (typeof featured)[number], label?: string) {
       const href = correspondenceSourceHref(message.url);
-      // Keep quoted thread headers out of the teaser, never out of the full message.
-      const historyStart = message.bodyText.search(/\r?\n(?:From:|On [^\n]{1,200}wrote:)/i);
-      const lead = historyStart > 0 ? message.bodyText.slice(0, historyStart).trim() : '';
-      const preview = (lead || message.bodyText.trim()).slice(0, 200);
+      const preview = projectEmailPreview(message.bodyText, message.from);
       const expandable = message.bodyText.trim() !== preview;
       return <article key={message.id} className={styles.message}>
         {label ? <p className={styles.messageLabel}>{label}</p> : null}
@@ -24,9 +22,8 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
           <span className={styles.sender}>From {message.from}</span>
           <time dateTime={message.sentAt} title={formatPortalDateTime(message.sentAt)}>{formatPortalDate(message.sentAt)} · {formatPortalTime(message.sentAt)}</time>
         </div>
-        {message.projectLink?.state === 'linked' && message.projectLink.basis === 'reply_chain' ? <p className={styles.explanation}>Reply to this project’s email. The conversation may also discuss other work.</p> : null}
-        {message.projectLink?.state !== 'linked' ? <p className={styles.explanation}>{message.projectLink?.state === 'conflicting' ? 'This conversation references more than one project.' : 'Project match not confirmed — this may concern another job.'}</p> : null}
-        {referencesProjectQuote(message, project.quoteRef) ? <p className={styles.quoteMatch}>References this project’s quote {project.quoteRef}</p> : null}
+        {message.projectLink?.state === 'conflicting' ? <p className={styles.explanation}>References more than one project.</p> : null}
+        {referencesProjectQuote(message, project.quoteRef) && !message.subject?.includes(project.quoteRef ?? '') ? <p className={styles.quoteMatch}>Quote {project.quoteRef}</p> : null}
         {!(expandable && expanded.has(message.id)) ? <blockquote className={styles.messagePreview}>{preview || 'Message text unavailable in this check.'}{expandable ? '…' : ''}</blockquote> : null}
         {expandable ? <details className={styles.sources} open={expanded.has(message.id)} onToggle={event => onExpand(message.id, event.currentTarget.open)}>
           <summary>Read message</summary><blockquote>{message.bodyText}</blockquote>
@@ -48,7 +45,7 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
     </details> : null}
     {unconfirmed.length ? <details className={styles.sources} open={!latestCustomer ? true : undefined}>
       <summary>Customer emails — project match unconfirmed ({unconfirmed.length})</summary>
-      {!featured.length ? <p className={styles.explanation}>We found customer emails, but have not confirmed which belong to this job.</p> : null}
+      <p className={styles.explanation}>Matched by customer address; these may concern another job.</p>
       <div className={styles.messages}>{unconfirmedPreview.map(group => renderMessage(group, group === latestUnconfirmedCustomer ? 'Latest customer email — project match unconfirmed' : undefined))}</div>
       {unconfirmedEarlier.length ? <details className={styles.sources}><summary>More unconfirmed emails ({unconfirmedEarlier.length})</summary>
         <div className={styles.messages}>{unconfirmedEarlier.map(group => renderMessage(group))}</div>

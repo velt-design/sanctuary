@@ -34,7 +34,7 @@ describe('private correspondence lifecycle', () => {
     const returned = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
     await flush();
     expect(returned.container.textContent).toContain('The customer is asking');
-    expect(returned.container.textContent).toContain('Recent saved result');
+    expect(returned.container.textContent).toContain('Emails checked');
     expect(mocks.api.mock.calls.map(call => call[1].method)).toEqual(['GET', 'GET']);
     returned.unmount();
   });

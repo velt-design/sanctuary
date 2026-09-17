@@ -50,9 +50,9 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
         : <>
           {context.snapshot ? <p className={styles.explanation} role="status">
             Emails checked {formatPortalDateTime(context.snapshot.checkedAt)}.
-            {state === 'loading' ? ' Checking for newer emails…' : context.snapshot.state === 'saved' ? ' Showing saved emails; newer messages may be missing.' : ' Recent saved result.'}
+            {state === 'loading' ? ' Checking for newer emails…' : context.snapshot.state === 'saved' ? ' Showing saved emails; newer messages may be missing.' : ''}
           </p> : state === 'stale' ? <AlertBanner tone="warning" title="Earlier conversation summary">This summary is no longer current. Check again for new correspondence before changing the job.</AlertBanner> : null}
-          <p className={styles.explanation}>{sample ? 'Sample email excerpts. Your real Outlook emails are not connected to this preview.' : context.messages?.some(message => message.projectLink?.state === 'linked') ? 'Project-linked emails are shown first. Other customer emails are kept separate.' : 'Matched to the customer, not yet confirmed to this job.'}</p>
+          {sample ? <p className={styles.explanation}>Sample email excerpts. Your real Outlook emails are not connected to this preview.</p> : null}
           {context.messages ? <ProjectEmailMessages messages={context.messages} sample={sample} project={project} expanded={expanded} onExpand={onExpand} earlierOpen={earlierOpen} onEarlierOpen={setEarlierOpen} /> : <div className={styles.messages} aria-label="Email excerpts">
             {correspondence.length ? correspondence.map((source) => {
               const href = correspondenceSourceHref(source.url);
@@ -93,6 +93,7 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
           </div>
           </details>}
           <details className={styles.sources}><summary>About these email excerpts</summary>
+            <p className={styles.explanation}>Linked replies belong to a project email thread, which may also discuss other work. Unconfirmed emails are matched only by customer address.</p>
             <p className={styles.explanation}>Checked {formatPortalDateTime(context.observedAt)}. This is a limited search, not a complete conversation history. Opening the original in Outlook requires access to that mailbox.</p>
             <ul>{context.limitations.map((limit) => <li key={limit}>{limit}</li>)}</ul>
           </details>

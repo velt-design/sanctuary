@@ -30,7 +30,7 @@ describe('ProjectCorrespondenceCard', () => {
     const customer = [...view.container.querySelectorAll('article')].find(article => article.textContent?.includes('From customer@example.test'))!;
     expect(customer.closest('details')?.open).toBe(true);
     expect(customer.textContent).toContain('Latest customer email — project match unconfirmed');
-    expect(view.container.textContent).toContain('Project-linked emails are shown first');
+    expect(customer.closest('details')?.textContent).toContain('Matched by customer address; these may concern another job.');
     expect(view.container.textContent).not.toContain('Matched to the customer, not yet confirmed to this job.');
     view.unmount();
   });
@@ -56,7 +56,7 @@ describe('ProjectCorrespondenceCard', () => {
     const article = view.container.querySelector('article')!;
     expect(article.textContent).toContain('From customer@example.test');
     expect(article.querySelector('blockquote')?.closest('details')?.open).toBe(true);
-    expect(article.textContent).toContain('Project match not confirmed');
+    expect(article.closest('details')?.textContent).toContain('project match unconfirmed');
     expect(article.querySelector(':scope > details blockquote')?.textContent).toBe(bodyText);
     expect(article.querySelector('script')).toBeNull();
     expect(article.querySelector('summary')?.textContent).toBe('Read message');

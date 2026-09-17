@@ -4,6 +4,17 @@
 
 ### Current focus: useful workflow before release
 
+**Focused polish — owner approved 17 September:** owner accepted the revised
+page as much better and agreed with8/10 presentation, then requested only repeated
+explanations, cramped headings and boilerplate previews be improved. This closes
+the prior broad visual rejection; focused polish is now implemented locally.
+Association caveats remain once per unconfirmed group and in the details disclosure;
+conflicting-project warnings remain per message. Known generated quote/invoice
+previews retain their original leading summary; full text and source links are
+unchanged. Project headings wrap.36 focused tests and7 fixture browser journeys
+pass. Hosted preview verification is pending for this new revision. Non-owner
+staff verification and conditional production release remain outstanding.
+
 **Owner visual correction — 17 September:** Jordan's screenshot rejects the prior
 presentation: stretched gap between left work/commercial sections, unexplained
 accepted-version warning, dense correspondence and weak typography/hierarchy.
@@ -17,7 +28,31 @@ accepted-record change is appropriate. View quote history remains available. New
 synthetic fixture reproduces long correspondence plus multiple accepted versions.
 Seven browser journeys pass, including <=24px gap before/after email expansion and
 390px overflow check.20focused component tests and Portal types pass. Independent
-visual/wording review requested; real-data hosted verification still required.
+visual/wording review completed: the misleading warning finding is closed.
+Final preview revision `191015e2494dfb2e9a790efe8c2d0ca96267b296` also removes
+quoted-history headers from compact email teasers without altering full messages;
+two focused tests and independent source review pass. Ready protected deployment
+`dpl_G6VWjwcTusYYNYdztC8RHEcUcy8D` is assigned to the existing stable review alias.
+Builder verified the signed-in real accepted project, compact reply, full-message
+expansion, normal section spacing and neutral current-agreement note. Unsigned
+access remains HTTP302. No new sign-in was needed. Current hosted reader-denial
+checks, the five-run performance report and Portal Quality all pass; public
+Portal is unchanged. Independent live staff-session testing remains unverified.
+Owner review and the wider release gates remain outstanding; this is not goal completion.
+Performance scope: downloaded current five-run artifacts to private
+`.codex-tmp/clarity/performance-191015e`. Cold project useful content appeared in
+1973–2109ms; background settling took5110–5616ms. All five met regression budgets
+but reported productTargetMet=false. Passing CI is not proof of all speed targets
+or ten-second human comprehension. Final Quality35185388980 completed successfully,
+including fixture/browser and authenticated smoke gates; all PR145 checks pass
+on191015e. Watcher41127 exited0; no run remains pending.
+Continuation evidence on191015e: builder rechecked the real quote-stage project,
+opened exact current Q-0228v2 and returned to decision-outstanding Overview without
+a mutation. Real new-enquiry page displayed current owner and readable saved
+customer correspondence with unconfirmed association clearly retained. Accepted
+project restored for owner review. CI watcher session41127 tracks existing
+run35185388980; do not restart the run on observation timeout. Previous goal turn
+was progress (UI corrections and real-preview evidence), not a blocked turn.
 
 
 **Current checkpoint — 17 September 2026**
@@ -81,9 +116,9 @@ two new-guard absence checks and atomic ledger insertion. NOT executed.
 
 **Current versions and access**
 - Sanctuary worktree sanctuary-project-clarity, branch codex/project-clarity-20260916,
-  draft PR145; published application revision b2e7b740bb2e0701aead44d58cddbaaf065e5023.
+  draft PR145; published application revision191015e2494dfb2e9a790efe8c2d0ca96267b296.
 - Stable protected review: https://sanctuary-portal-git-codex-pro-2efc62-jordans-projects-43df95bd.vercel.app.
-  Candidate dpl_EdDdnY25sRUYrbmHCqTCmFtPp1mR has correspondence/lineage/snapshots
+  Candidate dpl_G6VWjwcTusYYNYdztC8RHEcUcy8D has correspondence/lineage/snapshots
   enabled only for that candidate. Do not change global flags or public aliases.
 - Public Portal remains dpl_Fg3yVgxuDqphHFNUTWmErkg1g3Ew from PR150.
 - Velt release/rollback and current check status are recorded above.
@@ -98,15 +133,19 @@ two new-guard absence checks and atomic ledger insertion. NOT executed.
 | Reliability | Cold real reads publish snapshots; return reuses same checked time without another Outlook operation. 15min reuse/24h ceiling/60reads-hour approved. Native17DBtests, lifecycle tests, expiry and denied-access fixtures pass; live outage recovery not deliberately induced. |
 | Desktop/mobile clarity | Independent three-story walkthrough and390px keyboard/disclosures passed. Real390px title/owner/reply readable; accepted quote/return verified by builder. Agent observations do not establish human ten-second task performance. |
 | All-staff access/security | Route requires staff/project access, never owner role, and rechecks before delivery. Auth/denial tests pass; actual non-owner session journey remains unverified. |
-| Independent review | No material fixture UI defect;23 independent tests pass. Real signed-in session unavailable to reviewer; no independent live claim. |
-| Release/handover | All hosted gates at b2e7b74 passed, including Quality35183714821. Fixed protected preview retained. Production UI and000002 migration not released. |
+| Independent review | Latest review caught and closed the false accepted-version warning; desktop/mobile layout and final compact-preview source review pass. Real signed-in session unavailable to reviewer; no independent live claim. |
+| Release/handover | All hosted gates pass on191015e, including completed Quality/Performance35185388980. Fixed protected preview retained. Production UI and000002 migration not released. |
 
-Owner preview feedback requested in-task; no response yet.
+Earlier owner feedback rejected the spacing, warning and correspondence display.
+These findings are addressed in191015e; renewed owner usability feedback is pending.
 
-Next authorized work: finish the same
-hosted checks, reconcile role/real-journey evidence limits and prepare the bounded
-retirement installation/release only once readiness is established. Do not ask for
-fake outcomes or repeated sign-in.
+Next action depends on owner usability feedback on the revised preview and a
+real non-owner staff correspondence session. These gaps have persisted across
+more than three continuation turns; with CI now complete, no remaining automated
+check can establish that human acceptance. Goal is blocked on this input/access,
+not complete. Do not fabricate evidence, change roles, or request another owner
+sign-in. Resume bounded retirement installation/release only once readiness is
+established. The existing installation rehearsal and exact script remain prepared.
 
 Provider basis for the implemented identity resolver:
 https://resend.com/changelog/message-id-for-sent-emails and

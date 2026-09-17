@@ -26,7 +26,12 @@ not an invented next step. Existing manual commitments retain their controls.
 Customer email text appears before optional AI interpretation. The latest linked
 customer reply appears before the latest outgoing message. Collapsed excerpts
 normalize whitespace for scanning; expanded text preserves paragraphs and quoted
-history. Sender/date and subject use separate typographic levels. On wide screens
+history. Sender/date and subject use separate typographic levels.
+Repeated association guidance lives once per unconfirmed group and in the
+email-details disclosure. Known generated quote/invoice teasers use their original
+leading summary before the branded document; full message text is never modified.
+Project titles wrap instead of truncating, and narrow work headers can wrap controls.
+On wide screens
 the work row remains content-sized even when correspondence spans the commercial
 row. Retained accepted versions use neutral history information, consistent with
 the newest-accepted-version policy; they do not create a correction task. Desktop places

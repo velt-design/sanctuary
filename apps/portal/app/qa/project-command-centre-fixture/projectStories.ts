@@ -83,10 +83,10 @@ export function projectStory(name: ProjectStory) {
     work.projectWork.primaryAction = { kind: 'none', title: 'No assigned work', reason: 'No manual commitment is recorded.' };
     currentDesign.warnings = ['multiple_accepted_quotes'];
     correspondence.messages[0].bodyText = 'Hi Jordan,\n\nThanks for explaining the revised quote. Could you confirm the installation week and whether the lighting is included in the accepted version?\n\nWe need to arrange access for the team.\n\nThanks,\nAroha\n\nFrom: Sanctuary Pergolas\nSubject: Your updated quote\n\nPlease find the revised design and price for your review. The installation date will be confirmed separately.';
-    correspondence.messages.push({ ...correspondence.messages[0], id: 'sample-invoice', from: 'website@example.invalid',
+    correspondence.messages.push({ ...correspondence.messages[0], id: 'sample-invoice', from: 'website@sanctuarypergolas.co.nz',
       subject: 'Initial payment invoice', sentAt: '2026-09-17T00:00:00Z',
       projectLink: { state: 'linked', basis: 'sent_message' },
-      bodyText: 'Sanctuary Pergolas\nInvoice\nInitial payment\n\nHi Aroha, this invoice relates to the accepted quote for your pergola. Please use the invoice reference when making payment.\n\nThank you for choosing Sanctuary Pergolas.' });
+      bodyText: 'Invoice INV-EXAMPLE for $13,325.00, due 30 Sept 2026.\nSanctuary Pergolas\nInvoice\nInitial payment\n\nHi Aroha, this invoice relates to the accepted quote for your pergola. Please use the invoice reference when making payment.\n\nThank you for choosing Sanctuary Pergolas.' });
   }
   return { work, currentDesign, correspondence };
 }

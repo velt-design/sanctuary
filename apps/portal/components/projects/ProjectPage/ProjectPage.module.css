@@ -74,9 +74,9 @@
 }
 
 .mastheadHeader :global([data-page-header-identity="true"] h1) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
 }
 
 .mastheadHeader :global([data-page-header-utility="true"]) {
