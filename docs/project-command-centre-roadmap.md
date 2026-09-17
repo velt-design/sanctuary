@@ -4,6 +4,18 @@
 
 ### Current focus: useful workflow before release
 
+**Approved payload release completed — 17 September:** Jordan approved PR379 exact
+ed0635b. It merged as ea0ba1de60e387b64e72a2e3b2123885628debe0 and Ready deployment
+dpl_GPVBNDixT4g7CnR8CzFWhSWNPAp8 is verified on velt.systems. Rollback is
+ dpl_FH61srDRmeb7cbhZcdNMx7C7c1Ts. No migration or Portal release occurred.
+Real accepted and quote projects each published and displayed a saved email result.
+Accepted reply disclosure works. Returning from the quote project retained the
+accepted checked time (04:50:53 UTC); the audited provider count stayed at three
+(two successful reads plus the earlier failed-size read), proving navigation reuse.
+Enquiry verification is in progress. Integrated Portal browser suite: 97 passed,
+one skipped; type checking and 33 combined qualification/overview tests passed.
+This supersedes the pending PR379 approval/check state below. No new sign-in needed.
+
 **Current verification checkpoint — 17 September:** Velt PR378 and migrations
 002–004 are live under Jordan's exact-revision approval. The protected Portal
 preview retains the existing sign-in. Its first real snapshot read reached Outlook
