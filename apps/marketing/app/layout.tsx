@@ -18,6 +18,7 @@ import { Suspense, type CSSProperties } from 'react';
 import MetaPixel from '@/components/MetaPixel';
 import ArchiproPixel from '@/components/ArchiproPixel';
 import GoogleTagManager from '@/components/GoogleTagManager';
+import ClarityAnalytics from '@/components/ClarityAnalytics';
 import JsonLd from '@/components/JsonLd';
 import PortalMode from '@/components/PortalMode';
 import HeaderVisibilityGate from '@/components/HeaderVisibilityGate';
@@ -135,6 +136,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </a>
           <ConsentBanner />
           <GoogleTagManager />
+          <Suspense fallback={null}><ClarityAnalytics /></Suspense>
           <PortalMode />
           <WebVitals />
           <FooterHeaderSync />
