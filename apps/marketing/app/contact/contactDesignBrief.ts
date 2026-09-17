@@ -1,3 +1,4 @@
+import { designAttachmentDescription, designRidgeDescription } from '../../lib/designAttachmentDescription';
 import { parsePreviewDraft, type PreviewDraft } from '../../components/configurator-prototype/previewDraft';
 import { getRoofFinish, hasSimpleRoofPrice, roofFinishDescription } from "../../components/configurator-prototype/roofFinish";
 import type { PreviewSelection } from '@/components/configurator-prototype/ConfiguratorPrototype';
@@ -24,9 +25,8 @@ export function buildContactDesignBrief({ input, roof, result, configuratorPrice
   const finish = getRoofFinish(roof);
   const material = finish.material === 'acrylic' ? 'acrylic' : finish.material === 'solid' ? 'solid' : 'combination';
   const label = (roof.family === 'mono' ? 'Pitched acrylic pergola' : roof.family === 'gable' ? 'Gable acrylic pergola' : 'Box perimeter acrylic pergola').replace('acrylic', material);
-  const connection = roof.attachmentIntent === 'freestanding' ? 'Freestanding, no house connection' : roof.attachmentIntent === 'unsure' ? 'House connection not sure; estimate uses the lowest-priced available attachment, subject to site confirmation' : roof.family === 'gable' && roof.orientation === 'away'
-    ? 'Dutch-gable fascia attachment'
-    : `${input.connection === 'soffit' ? 'Soffit brackets' : input.connection === 'facade' ? 'Facade' : 'Fascia'} attachment`;
+  const design = { version: 1 as const, input, roof };
+  const connection = designAttachmentDescription(design);
   const description = [
     label,
     `${(input.widthMm / 1000).toFixed(1)} m wide × ${(input.projectionMm / 1000).toFixed(1)} m projection`,
@@ -37,7 +37,7 @@ export function buildContactDesignBrief({ input, roof, result, configuratorPrice
     ...(roof.roofBattens?[describeRoofBattens(roof.roofBattens)]:[]),
     ...(roof.sidePanels?.length?[describeSidePanels(roof.sidePanels)]:[]),
     input.level === 'ground' ? 'Ground level' : 'Elevated',
-    ...(roof.family === 'gable' ? [roof.attachmentIntent==='freestanding'?(roof.orientation==='parallel'?'Ridge across width':'Ridge along projection'):roof.orientation === 'parallel' ? 'Ridge parallel to house' : 'Ridge away from house', roof.infills ? 'Gable infills included' : 'Open gable ends'] : []),
+    ...(roof.family === 'gable' ? [designRidgeDescription(design), roof.infills ? 'Gable infills included' : 'Open gable ends'] : []),
   ].join(' · ');
   const priced = hasSimpleRoofPrice(roof) && result?.status === 'priced' ? result : null;
   return {
