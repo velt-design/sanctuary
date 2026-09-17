@@ -18,8 +18,8 @@ Acceptance now centres on understanding the job, reading relevant correspondence
 opening the correct quote/design/files/original email, and returning accurately
 on desktop/mobile across real enquiry, quote and accepted examples. All-staff
 access, commercial truth, history, privacy and conditional release gates remain.
-Current next action: trace cadence producers and shared consumers, implement the
-bounded retirement and useful project presentation, then verify/review one batch.
+Current next action: complete hosted browser checks for the implemented retirement
+and automatic correspondence read, then verify the protected real journeys.
 
 Local implementation checkpoint: sent/reply controls are removed, stale API
 recording requests return410, and cadence is filtered from shared work readers.
@@ -55,7 +55,7 @@ sample evidence only: disabled controls and sample source links do not prove the
 protected real journey. Root also checked all three mobile/desktop stories and
 full-message expansion. The local server at127.0.0.1:3025 remains the sample view.
 
-Current checks:396 existing Project Work tests,12 retirement database tests,
+Current checks:408 Project Work tests (including12 retirement database cases),
 workspace types/lint, docs guard and changed-architecture report pass. Native
 concurrency and UI reviews are separate evidence. The two browser specs have been
 updated for absent recording controls and multiple visible emails; their new
@@ -63,25 +63,33 @@ hosted execution remains pending. The large command-centre spec shrank by removi
 retired expectations; further decomposition is deferred to avoid unrelated test
 restructuring. The schema/auth/automation owner docs now reflect this amendment.
 
-Publication checkpoint: revised batch `afb32ef` is pushed to existing draft
-PR145 after required pre-push checks passed. Portal Quality run35166475218 is
-active. Protected candidate dpl_8BMddLcsU7rHwHvm1Z1SancLswzu is READY at that
+Publication checkpoint: integrated revision `8f19542` is pushed to draft PR145
+after required pre-push checks passed. It includes the quote-binding correction
+and current main010f8f0. Exact-head Portal Quality run35167031811 is active;
+preceding UI revision afb32ef run35166475218 finished with93 browser checks passed,
+one skipped and one obsolete expectation failed: it still required a manual
+Check conversations click before reading. The corrected test asserts GET access
+before automatic POST read, no AI payload, no repeat read on visibility return,
+and removal of evidence after a denied refresh. Its hosted rerun is pending.
+Protected candidate dpl_8BMddLcsU7rHwHvm1Z1SancLswzu is READY at afb32ef
 exact revision and its project route was opened at Staff Login. Jordan has been
-asked to sign in; do not copy credentials/session tokens from another origin.
+asked to sign in; the latest browser observation still shows Staff Login.
+Do not copy credentials/session tokens from another origin.
 Reuse private receipt protected-candidate-afb32ef.json and the existing handles.
-A subsequent local migration-only correction restores the existing required quote
-version/project binding before reconciliation receipts; independent12-test review
-passed. It does not change the deployed UI and is awaiting publication. No live migration, custom-domain promotion or global
+The published migration correction restores required quote version/project
+binding before reconciliation receipts; independent12-test review passed.
+A git diff confirms no Portal/package runtime change from protected afb32ef to
+integrated8f19542, so reuse that protected preview for real-journey proof. No live migration, custom-domain promotion or global
 flag change occurred. The preceding ecdd68f candidate retains the older UI.
 
 External state check: current Portal production is010f8f0 (marketing-only PR148
 since branch base874f898); current Velt is1511220 (marketing-analysis PR374 after
 reviewed receiver releasec1f6c28). Compared file lists do not alter these project
-or correspondence owners. Reconcile current main before production promotion;
+or correspondence owners. Current main010f8f0 is integrated; recheck external main before production promotion;
 do not roll either application back to an earlier whole-repository revision.
 
 Sanctuary branch `codex/project-clarity-20260916`, PR145, published base
-`afb32ef` includes base `fe06b72`, which integrates main `874f898`. Earlier checkpoints below are historical; this section is current.
+`8f19542` integrates main `010f8f0` after reviewed UI batch `afb32ef`. Earlier checkpoints below are historical; this section is current.
 
 - **Verified real correspondence:** the signed-in protected Portal returned six
   customer-address-matched emails with readable text, sender/date and source

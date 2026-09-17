@@ -1160,7 +1160,7 @@ test('keeps correspondence suggestions read-only with inspectable sources', asyn
   expect(writes).toEqual([]);
 });
 
-test('checks correspondence only on request and removes evidence after a denied refresh', async ({ page }) => {
+test('loads correspondence on open and removes evidence after a denied refresh', async ({ page }) => {
   const requests: string[] = [];
   const context = structuredClone(correspondenceFixture);
   context.observedAt = new Date().toISOString();
@@ -1177,11 +1177,10 @@ test('checks correspondence only on request and removes evidence after a denied 
   });
   await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=activity&model=v2`);
   const conversations = page.getByRole('region', { name: 'Customer conversations', exact: true });
-  await expect(conversations.getByRole('button', { name: 'Check conversations' })).toBeVisible();
-  expect(requests.length).toBeGreaterThan(0);
-  expect(requests.every(method => method === 'GET')).toBe(true);
-  await conversations.getByRole('button', { name: 'Check conversations' }).click();
   await expect(conversations).toContainText('The customer is asking for the expected installation week.');
+  // Opening the page checks access before reading mail, without a manual click
+  // or an AI-analysis payload. Refresh and revoked-access checks remain below.
+  expect(requests[0]).toBe('GET');
   expect(requests.filter(method => method === 'POST')).toHaveLength(1);
   // Simulate leaving for a source and returning: access is rechecked without
   // another paid summary request, and evidence stays hidden until that check.
