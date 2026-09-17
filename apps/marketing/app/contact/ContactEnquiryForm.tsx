@@ -501,6 +501,7 @@ export default function ContactEnquiryForm({
 
   return (
     <form
+      data-clarity-mask="true"
       className="contact-form"
       id="contact-form"
       method="post"
