@@ -3,7 +3,8 @@ import type {
   TrackingRegionPolicy,
 } from './trackingRegion';
 
-const CLICK_ID_KEYS = ['gclid', 'gbraid', 'wbraid'] as const;
+import { CAMPAIGN_CLICK_KEYS as CLICK_ID_KEYS, CAMPAIGN_UTM_KEYS, clearCampaignSession, readCampaignSession } from './campaignSession';
+import { CONSENT_STORAGE_KEY, parseStoredConsent } from './consent';
 const MAX_ATTRIBUTION_VALUE_LENGTH = 600;
 const GA_CLIENT_ID_PATTERN = /^\d{1,20}\.\d{1,20}$/;
 
@@ -33,8 +34,12 @@ function cleanValue(value: string | null | undefined): string | null {
 function cleanAttributionUrl(value: string | null | undefined): string | null {
   const cleaned = cleanValue(value);
   if (!cleaned) return null;
-  const privateSuffixIndex = cleaned.search(/[?#]/);
-  return privateSuffixIndex < 0 ? cleaned : cleanValue(cleaned.slice(0, privateSuffixIndex));
+  try {
+    const url = new URL(cleaned);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+    url.search = ''; url.hash = '';
+    return url.toString();
+  } catch { return null; }
 }
 
 export function getMarketingAttributionFromLocation(input: {
@@ -50,7 +55,7 @@ export function getMarketingAttributionFromLocation(input: {
     const normalizedKey = key.trim().toLowerCase();
     const cleaned = cleanValue(value);
     if (!cleaned) continue;
-    if (normalizedKey.startsWith('utm_')) {
+    if ((CAMPAIGN_UTM_KEYS as readonly string[]).includes(normalizedKey)) {
       utm[normalizedKey] = cleaned;
       continue;
     }
@@ -95,7 +100,7 @@ export function getBrowserMarketingAttribution(input: {
   trackingRegionPolicy: TrackingRegionPolicy | null;
 }): MarketingAttributionPayload {
   if (typeof window === 'undefined') return { utm: {}, clickIds: {} };
-  const base = getMarketingAttributionFromLocation({
+  let base = getMarketingAttributionFromLocation({
     search: window.location.search,
     href: window.location.href,
     referrer: typeof document !== 'undefined' ? document.referrer : '',
@@ -111,6 +116,12 @@ export function getBrowserMarketingAttribution(input: {
       ? { regionPolicy: input.trackingRegionPolicy }
       : null),
   };
+  let storage: Storage | undefined;
+  try { storage = window.sessionStorage; } catch { /* Optional storage. */ }
+  // A withdrawal in another tab wins even before React processes its event.
+  try { if (parseStoredConsent(window.localStorage?.getItem(CONSENT_STORAGE_KEY) ?? null)?.marketing === false) consent.marketing = false; } catch { /* Preserve the current in-memory decision. */ }
+  if (consent.marketing) base = readCampaignSession(storage) ?? base;
+  else if (hasTrackingDecision) clearCampaignSession(storage);
   const analyticsClientId =
     consent.analytics && typeof document !== 'undefined'
       ? getGaClientIdFromCookie(document.cookie)

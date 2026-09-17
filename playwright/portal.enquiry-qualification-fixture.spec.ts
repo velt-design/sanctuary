@@ -1,0 +1,64 @@
+import { expect, test } from '@playwright/test';
+const labels=['Auckland or a confirmed serviceable location','Suitable Sanctuary project','Usable contact details and submitted configuration','Wants a quote or conversation'];
+test.beforeEach(async({page})=>{
+  await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
+  await page.goto('/qa/enquiry-qualification-fixture');
+  await expect(page.getByText('Saved: Unreviewed',{exact:true})).toBeVisible();
+});
+test('reviews exact configured enquiry, validates criteria and keeps correction history',async({page})=>{
+  await page.getByLabel('Review outcome').selectOption('qualified');
+  await page.getByRole('button',{name:'Save assessment',exact:true}).click();
+  await expect(page.getByRole('alert').filter({hasText:/\S/})).toContainText('Confirm all four');
+  for(const label of labels) await page.getByLabel(label,{exact:true}).selectOption('yes');
+  await page.getByRole('button',{name:'Save assessment',exact:true}).click();
+  await expect(page.getByText('Saved: Qualified',{exact:true})).toBeVisible();
+  await page.reload();
+  // Fixture resets on a browser reload; the server persistence is independently tested in real SQL.
+  await expect(page.getByText('Saved: Unreviewed',{exact:true})).toBeVisible();
+  for(const label of labels) await page.getByLabel(label,{exact:true}).selectOption('yes');
+  await page.getByLabel('Review outcome').selectOption('qualified');
+  await page.getByRole('button',{name:'Save assessment',exact:true}).click();
+  await expect(page.getByText('Saved: Qualified',{exact:true})).toBeVisible();
+  await page.getByLabel(labels[0],{exact:true}).selectOption('no');
+  await page.getByLabel('Review outcome').selectOption('not_qualified');
+  await page.getByRole('button',{name:'Save assessment',exact:true}).click();
+  await expect(page.getByRole('alert').filter({hasText:/\S/})).toContainText('Explain the correction');
+  await page.getByLabel('Reason for correction (required)').fill('Customer confirmed site outside our service area.');
+  await page.getByRole('button',{name:'Save assessment',exact:true}).click();
+  await expect(page.getByText('Saved: Not qualified',{exact:true})).toBeVisible();
+  await page.getByText('Review history (2)',{exact:true}).click();
+  await expect(page.getByText('Customer confirmed site outside our service area.',{exact:true})).toBeVisible();
+  await expect(page.locator('details strong').filter({hasText:/^Qualified$/})).toBeVisible();
+});
+test('recovers lost response with same command, blocks stale save and rejects wrong source',async({page})=>{
+  await page.getByLabel('Simulated response').selectOption('lost-response');
+  await page.getByRole('button',{name:'Save assessment',exact:true}).click();
+  await expect(page.getByRole('alert').filter({hasText:/\S/})).toContainText('Save could not be confirmed');
+  await expect(page.getByText('Saved: Unreviewed',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Save assessment',exact:true}).click();
+  await expect(page.getByText('Review history (1)',{exact:true})).toBeVisible();
+  await expect(page.getByText(/Save attempts: 2/)).toBeVisible();
+  await page.getByLabel('Simulated response').selectOption('conflict');
+  await page.getByLabel('Reason for correction (required)').fill('Reviewing customer reply.');
+  await page.getByRole('button',{name:'Save assessment',exact:true}).click();
+  await expect(page.getByRole('alert').filter({hasText:/\S/})).toContainText('Reload the latest');
+  await expect(page.getByRole('button',{name:'Save assessment',exact:true})).toBeDisabled();
+  await page.getByLabel('Simulated response').selectOption('success');
+  await page.getByRole('button',{name:'Reload saved assessment'}).click();
+  await expect(page.getByRole('button',{name:'Save assessment',exact:true})).toBeEnabled();
+  await page.getByLabel('Simulated response').selectOption('mismatch');
+  await page.getByRole('button',{name:'Reload saved assessment'}).click();
+  await expect(page.getByRole('alert').filter({hasText:/\S/})).toContainText('could not be loaded');
+  await expect(page.getByRole('button',{name:'Save assessment',exact:true})).toHaveCount(0);
+  await page.getByLabel('Simulated response').selectOption('success');
+  await page.getByRole('button',{name:'Retry qualification'}).click();
+  await expect(page.getByText('Saved: Unreviewed',{exact:true})).toBeVisible();
+});
+test('mobile controls fit and unknown can be saved without a reason',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.getByRole('button',{name:'Save assessment',exact:true}).click();
+  await expect(page.getByText('Review history (1)',{exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  await page.getByLabel(labels[0],{exact:true}).focus();
+  await expect(page.getByLabel(labels[0],{exact:true})).toBeFocused();
+});

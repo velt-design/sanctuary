@@ -14,8 +14,9 @@ Public enquiries start in `apps/marketing`.
 
 - Primary public flows: `/contact` and the shared embedded enquiry form on
   residential, commercial and professional service pages.
-- Project type, name, phone and email are required on every current enquiry
-  form. The shared client/server contract owns the validation rule.
+- Project type, name and email are required. Phone is optional for a validated
+  residential configured project discussion; other current enquiry forms
+  require it. The shared client/server contract owns the validation rule.
 - API routes persist enquiries and send notifications through Supabase and Resend-backed helpers.
 - Each enhanced form keeps one browser-generated submission UUID across
   retries. The no-JavaScript POST adapter assigns an equivalent server UUID
@@ -30,6 +31,31 @@ Public enquiries start in `apps/marketing`.
 - Automation, email outbox, autoresponder, and audit behavior is documented in `automation-email-audit.md`.
 
 ## Contact And Project Creation
+
+### Configured enquiry qualification (local implementation; not released)
+
+Original enquiry includes a separate staff assessment for residential
+`project-discussion` submissions with a saved, server-validated configuration.
+This campaign criterion set is `configured-enquiry-v1`; it is not a universal
+qualification rule for manual, commercial or legacy leads. An untouched enquiry
+is **Unreviewed**. Staff explicitly confirm (1) Auckland or a confirmed
+serviceable location, (2) a suitable Sanctuary project, (3) usable contact details
+and the submitted configuration, and (4) desire for a quote or conversation.
+**Qualified** requires all four. **Not qualified** requires at least one failed
+criterion and an explanation. Unknown information stays **Unreviewed**; budget,
+timing, marketing consent and campaign identifiers are not qualification gates.
+Configured discussion enquiries may have email without a phone number.
+
+Decisions bind `enquiry_requests.id` and `project_id`, not browser submission IDs,
+current estimates, customer won/deposit state or pipeline stage. The private
+append-only qualification history records criteria, version, actor and time.
+Corrections require an explanation and the current version; retries retain the
+same command ID. Original submitted enquiry/delivery records remain the customer
+evidence owner. A later correction cannot overwrite previous decisions. The UI
+shows the latest 20 decisions; earlier decisions remain retained in the audit.
+Saving qualification creates no pipeline changes, follow-ups, notifications,
+tasks, commercial actions or campaign events. Migration installation and
+production use remain outside this local implementation's authority.
 
 Portal staff manage contacts and projects in `apps/portal`.
 
