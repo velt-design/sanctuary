@@ -6,8 +6,9 @@ The current owner agreement and release evidence live in
 [the roadmap](project-command-centre-roadmap.md). The Velt staff receiver and
 reporting/access-link fixes are deployed. A protected Portal candidate has read
 real correspondence and opened its original Outlook message. The global Portal
-correspondence flag remains disabled. The revised retirement/read-on-open UI is
-local and not yet published; these states must not be conflated.
+correspondence flag is enabled following the approved PR145 production release.
+The subsequent performance changes in PR153 remain protected-preview work;
+see the roadmap for exact release revisions and outstanding staff verification.
 
 The owner has deferred unused lead/quote follow-ups and sent/reply recording.
 Migration `20260917000002_defer_project_follow_ups.sql` cancels active cadence
@@ -15,7 +16,7 @@ with before/after history, retires cadence repair signals with receipts, stops
 new cadence creation and rejects stale recording writes. It preserves manual
 commitments, correction reviews, specialist tools, lifecycle and commercial
 facts. The shared queue selects actual work/recovery/state reviews; an empty
-project is not itself a triage task. Database installation remains pending.
+project is not itself a triage task. The approved migration is installed.
 The migration refuses concurrent project-row or advisory writers and must be
 retried during a quiet gap; native PostgreSQL rehearsal and independent review
 passed. See the roadmap for exact evidence and remaining release gates.
@@ -51,6 +52,56 @@ contact, notes/history and commercial detail use disclosures. The commercial
 total stays visible; warnings and failures retain the expanded owning surface.
 Payment position uses the existing staff invoice-schedule API and query key,
 without recalculating totals or equating payment with delivery readiness.
+
+## Correspondence loading performance (local implementation)
+
+Hosted placement is deliberately unchanged for Portal project functions. A narrow
+Sydney placement trial increased its own database phases from about25–70ms to
+250–550ms and was rejected. Do not infer Portal database proximity from the
+separate Velt receiver database; each boundary needs measured verification.
+
+The correspondence route now reads only canonical project/contact identity before
+and after the email operation, with the existing final staff-role check intact.
+It no longer loads project owner/work-model information for those checks.
+`Server-Timing` exposes fixed phase names and numeric durations only, for auth,
+identity, mail, matching and final access/identity checks; private response headers
+remain unchanged and no customer/provider identity is included in timings.
+Optional `PORTAL_CORRESPONDENCE_TIMING_LOGS=true` emits the same fixed phases,
+request method and status to server logs for protected performance measurements.
+It defaults off; it must not log message content, customer IDs or cache keys.
+The same flag reports aggregate matching-cache hits, provider reads, successes
+and fixed unavailable-reason counts, to distinguish cold-instance misses from
+provider failures without logging identities or raw responses.
+Protected measurement builds may set `NEXT_PUBLIC_PORTAL_EMAIL_TIMING=true` to
+expose hidden numeric DOM attributes at the first email render: elapsed since
+mount and, only for a matching direct document URL, since document navigation.
+The effect runs after the evidence DOM commits, so it separates browser-tool
+overhead from observed display time. It never exports email content and defaults
+off. Client navigation does not claim a document-navigation duration.
+The project route starts a single independently authorized saved GET alongside
+the project summary. A page-scoped warm-read provider hands that promise to the
+existing Overview reader once, only while it is still in progress. Completed
+unclaimed results are discarded so customer/access changes during shell loading
+cannot reuse old completed authorization. It never retains a reusable browser cache or
+starts an Outlook refresh itself. Unclaimed reads expire after15seconds and
+are aborted on hidden-page/unmount transitions. The existing reader still owns
+response validation, access-ending behavior, expiry and explicit/live refreshes.
+Only Overview warms mail; no other tab or speculative project navigation does.
+Overview renders it in a separate Suspense boundary from notes/events. Complete history
+still requires the full snapshot. An access-ending command read unmounts mail.
+
+Verified Resend RFC message IDs may be reused for15minutes in a bounded512-entry
+server-instance cache. Values are AES-256-GCM ciphertext, with authenticated expiry
+and opaque HMAC keys bound to project, canonical provider ID, normalized recipients
+and provider credentials. A purpose-separated key derives from the existing server
+correspondence signing secret. There is no cached authorization, raw provider
+response, email body, AI answer, disk/HTTP/Next data-cache entry or browser cache.
+Every hit still requires fresh auth-bound canonical SENT rows; changed/deleted or
+inaccessible sends cannot reuse old proof. Failures are not cached. Expired entries
+are refused even after instance suspension; expiry/eviction also clears timers.
+Cold instances safely repeat provider verification. This is an initial measured
+optimization, not proof of the1–2second objective or durable cross-instance reuse.
+Real protected-preview timing and cold-load evaluation remain required.
 
 ## Staff correspondence boundary
 

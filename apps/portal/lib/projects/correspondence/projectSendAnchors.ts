@@ -4,13 +4,14 @@ import { createResendSentEmailReader } from '@sp/email-provider';
 import { z } from 'zod';
 import type { ProjectMessageAnchor } from './messageAssociation';
 import { readEnquirySendEvidence } from './enquirySendEvidence';
+import { verifiedSendIdentityCache } from './verifiedSendIdentityCache';
 
 const rowSchema = z.object({ project_id: z.uuid(), provider_message_id: z.uuid(), to_emails: z.array(z.email()).min(1).max(100), created_at: z.string() });
 const MAX_LOOKUPS = 8;
 
 /** Auth-bound reads only. No bodies, tokens, service-role queries, sends or persistence. */
 export async function readProjectSendAnchors(supabase: SupabaseClient, projectId: string, signal: AbortSignal,
-  dependencies: { apiKey?: string; fetcher?: typeof fetch } = {}): Promise<{ anchors: ProjectMessageAnchor[]; incomplete: boolean }> {
+  dependencies: { apiKey?: string; fetcher?: typeof fetch; cacheSecret?: string; cache?: typeof verifiedSendIdentityCache } = {}): Promise<{ anchors: ProjectMessageAnchor[]; incomplete: boolean }> {
   z.uuid().parse(projectId);
   const apiKey = dependencies.apiKey ?? process.env.RESEND_API_KEY;
   if (!apiKey) return { anchors: [], incomplete: true };
@@ -45,16 +46,38 @@ export async function readProjectSendAnchors(supabase: SupabaseClient, projectId
   const pending = [...seen.values()].slice(0, MAX_LOOKUPS);
   const read = createResendSentEmailReader({ apiKey, fetch: dependencies.fetcher, timeoutMs: 3_000 });
   const anchors: ProjectMessageAnchor[] = [];
+  const counts = { cacheHits: 0, providerReads: 0, verified: 0, unavailable: 0 };
+  const failures: Record<string, number> = {};
   let cursor = 0;
   await Promise.all([0, 1].map(async () => {
     while (cursor < pending.length) {
       if (boundedSignal.aborted) { incomplete = true; break; }
       const row = pending[cursor++];
+      // Canonical auth-bound rows above are re-read even on a cache hit. Changed
+      // project/recipient/provider credentials cannot reuse the previous proof.
+      const cache = dependencies.cache ?? verifiedSendIdentityCache;
+      const binding = { projectId, providerMessageId: row.provider_message_id, recipients: row.to_emails,
+        providerKey: apiKey, secret: dependencies.cacheSecret ?? process.env.PORTAL_VELT_CORRESPONDENCE_SECRET ?? '' };
+      const saved = cache.get(binding);
+      if (saved) { counts.cacheHits += 1; anchors.push({ projectId, internetMessageId: saved }); continue; }
+      counts.providerReads += 1;
       const result = await read({ providerMessageId: row.provider_message_id, expectedRecipients: row.to_emails }, boundedSignal);
-      if (result.state === 'verified') anchors.push({ projectId, internetMessageId: result.internetMessageId });
-      else incomplete = true;
+      if (result.state === 'verified') {
+        counts.verified += 1;
+        cache.set(binding, result.internetMessageId);
+        anchors.push({ projectId, internetMessageId: result.internetMessageId });
+      }
+      else {
+        incomplete = true;
+        counts.unavailable += 1;
+        failures[result.reason] = (failures[result.reason] ?? 0) + 1;
+      }
     }
   }));
   signal.throwIfAborted();
+  if (process.env.PORTAL_CORRESPONDENCE_TIMING_LOGS === 'true') {
+    // Aggregate counts and fixed provider result codes only, never IDs or bodies.
+    console.info(JSON.stringify({ event: 'portal.correspondence_matching', ...counts, failures }));
+  }
   return { anchors, incomplete };
 }

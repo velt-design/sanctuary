@@ -87,7 +87,7 @@ vi.mock("./overview/ProjectPaymentPositionQuery", () => ({
 }));
 
 vi.mock("./overview/ProjectCorrespondenceQuery", () => ({
-  default: () => <section>Customer conversations not connected</section>,
+  default: () => <section data-testid="mock-correspondence">Customer conversations not connected</section>,
 }));
 
 const snapshot = {
@@ -164,6 +164,7 @@ async function settleLazyComponents() {
       import("./overview/ProjectCurrentDesignCommercialCard"),
       import("./overview/ProjectOrientationBand"),
       import("./overview/ProjectRecentNotesEvents"),
+      import("./overview/ProjectCorrespondenceQuery"),
       import("./overview/ProjectWorkSection"),
       import("./overview/ProjectWorkFilesCard"),
     ]);
@@ -306,6 +307,8 @@ describe("OverviewTab", () => {
       rendered.container.querySelector('[data-project-work-model="pending"]'),
     ).not.toBeNull();
     expect(rendered.container.textContent).toContain("Updating recent history");
+    // Emails have their own access-checked read and must not wait for full history.
+    expect(rendered.container.querySelector('[data-testid="mock-correspondence"]')).not.toBeNull();
     expect(rendered.container.textContent).not.toContain("No current design");
     expect(
       rendered.container.querySelector('[data-testid="mock-recent"]'),
@@ -558,6 +561,7 @@ describe("OverviewTab", () => {
     await settleLazyComponents();
 
     expect(onAccessEnding).toHaveBeenCalledWith(403);
+    expect(rendered.container.querySelector('[data-testid="mock-correspondence"]')).toBeNull();
     expect(
       rendered.container.querySelector(
         '[data-command-centre-state="unavailable"]',

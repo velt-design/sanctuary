@@ -8,10 +8,32 @@ import ProjectCorrespondenceQuery from './ProjectCorrespondenceQuery';
 const mocks = vi.hoisted(() => ({ api: vi.fn() }));
 vi.mock('@/lib/repo/apiClient', async () => ({ ...await vi.importActual<object>('@/lib/repo/apiClient'), apiJson: mocks.api }));
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date(correspondenceFixture.observedAt)); mocks.api.mockReset(); });
-afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); document.body.innerHTML = ''; });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); document.body.innerHTML = ''; });
 const flush = async () => { await act(async () => { await Promise.resolve(); }); };
 
 describe('private correspondence lifecycle', () => {
+  it.each([true, false])('measures committed evidence and only labels a matching document clock (%s)', async direct => {
+    vi.stubEnv('NEXT_PUBLIC_PORTAL_EMAIL_TIMING', 'true');
+    let clock = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => clock);
+    vi.spyOn(performance, 'getEntriesByType').mockReturnValue([{ name: direct ? location.href : 'https://example.test/another-project' } as PerformanceEntry]);
+    let resolve: (reply: unknown) => void = () => {};
+    mocks.api.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
+    await flush();
+    expect(view.container.querySelector('output')).toBeNull();
+    clock = 1500;
+    const context = { ...correspondenceFixture, messages: [{ id: 'mail-one', subject: 'Project response', from: 'customer@example.test',
+      sentAt: correspondenceFixture.observedAt, receivedAt: correspondenceFixture.observedAt, observedAt: correspondenceFixture.observedAt,
+      url: 'https://outlook.office.com/mail/id/one', bodyText: 'Customer response', truncated: false, association: 'customer_address_only' }] };
+    await act(async () => resolve({ state: 'ready', context }));
+    expect(view.container.querySelector('article')).not.toBeNull();
+    const timing = view.container.querySelector('output')!;
+    expect(timing.getAttribute('data-email-mount-ms')).toBe('1500');
+    expect(timing.getAttribute('data-email-document-ms')).toBe(direct ? '1500' : null);
+    expect(timing.hasAttribute('hidden')).toBe(true);
+    view.unmount();
+  });
   it('removes expired saved mail while a refresh is still waiting', async () => {
     const context = { ...correspondenceFixture, snapshot: { checkedAt: correspondenceFixture.observedAt,
       expiresAt: new Date(Date.now() + 1000).toISOString(), state: 'recent', nextAttemptAt: null } };

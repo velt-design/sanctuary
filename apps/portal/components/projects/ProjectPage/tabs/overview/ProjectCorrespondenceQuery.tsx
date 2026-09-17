@@ -5,6 +5,7 @@ import { apiJson, ApiError } from '@/lib/repo/apiClient';
 import { correspondenceContextSchema, CORRESPONDENCE_MAX_AGE_MS, type ProjectCorrespondenceContext } from '@/lib/projects/correspondence/contract';
 import ProjectCorrespondenceCard from './ProjectCorrespondenceCard';
 import type { EmailProjectContext } from './projectEmailGroups';
+import { useProjectCorrespondenceWarmRead } from './ProjectCorrespondenceWarmRead';
 
 type ReadState = { state: 'not_connected' | 'available' | 'loading' | 'refreshing' | 'ready' | 'stale' | 'error'; context?: ProjectCorrespondenceContext };
 function evidenceState(context: ProjectCorrespondenceContext): 'ready' | 'stale' {
@@ -25,13 +26,29 @@ export default function ProjectCorrespondenceQuery({ projectId, onAccessEnding, 
 }
 
 function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId: string; onAccessEnding?: (status: number) => void; project?: EmailProjectContext }) {
+  const takeWarmRead = useProjectCorrespondenceWarmRead();
   const [read, setRead] = useState<ReadState>({ state: 'loading' });
   const active = useRef<AbortController | null>(null);
   const earlier = useRef<ProjectCorrespondenceContext | undefined>(undefined);
   const pendingChecks = useRef(0);
+  const mountedAt = useRef<number | null>(null);
+  const [displayTiming, setDisplayTiming] = useState<{ mountMs: number; documentMs?: number } | null>(null);
   const accessCallback = useRef(onAccessEnding);
   accessCallback.current = onAccessEnding;
   const path = `/api/staff/v1/projects/${encodeURIComponent(projectId)}/correspondence`;
+
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_PORTAL_EMAIL_TIMING !== 'true') return;
+    mountedAt.current ??= performance.now();
+    if (displayTiming || !read.context?.messages?.length || ['error', 'available', 'refreshing', 'not_connected'].includes(read.state)) return;
+    if (read.context.limitations.includes('Outlook correspondence is unavailable or has not been checked.')) return;
+    const now = performance.now();
+    // A document clock is meaningful only for a direct load/reload of this URL,
+    // not a client navigation from another project or tab. No private data logs.
+    const navigation = performance.getEntriesByType('navigation')[0];
+    setDisplayTiming({ mountMs: Math.round(now - mountedAt.current),
+      ...(navigation?.name === location.href ? { documentMs: Math.round(now) } : {}) });
+  }, [read.context, read.state, displayTiming]);
 
   const load = useCallback(async (check: boolean, analyze = false, readOnOpen = false) => {
     active.current?.abort();
@@ -41,9 +58,9 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
     if (check && (!earlier.current?.snapshot || Date.parse(earlier.current.snapshot.expiresAt) <= Date.now())) earlier.current = undefined;
     setRead({ state: 'loading', ...(check && earlier.current?.snapshot ? { context: earlier.current } : {}) });
     try {
-      let reply = await apiJson<{ state: string; context?: unknown }>(path + (analyze ? '?analyze=true' : ''), {
+      let reply = await ((readOnOpen && !check ? takeWarmRead(projectId, controller.signal) : null) ?? apiJson<{ state: string; context?: unknown }>(path + (analyze ? '?analyze=true' : ''), {
         method: check ? 'POST' : 'GET', signal: controller.signal, cache: 'no-store', skipSaveTracking: true,
-      });
+      }));
       if (controller.signal.aborted) return;
       if (readOnOpen && reply.state === 'available') {
         reply = await apiJson<{ state: string; context?: unknown }>(path, {
@@ -80,7 +97,7 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
       setRead({ state: 'error' });
       if (error instanceof ApiError && [401, 403, 404].includes(error.status)) accessCallback.current?.(error.status);
     }
-  }, [path]);
+  }, [path, projectId, takeWarmRead]);
 
   useEffect(() => {
     if (read.state !== 'refreshing') return;
@@ -122,5 +139,8 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
     return () => clearTimeout(timer);
   }, [read.context, read.state, load]);
 
-  return <ProjectCorrespondenceCard {...read} project={project} onRefresh={read.state === 'not_connected' ? undefined : () => void load(true)} onAnalyze={() => void load(true, true)} />;
+  return <>
+    <ProjectCorrespondenceCard {...read} project={project} onRefresh={read.state === 'not_connected' ? undefined : () => void load(true)} onAnalyze={() => void load(true, true)} />
+    {displayTiming && <output hidden data-email-mount-ms={displayTiming.mountMs} data-email-document-ms={displayTiming.documentMs} />}
+  </>;
 }

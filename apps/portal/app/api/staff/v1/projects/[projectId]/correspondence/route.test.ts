@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ auth: vi.fn(), summary: vi.fn(), config: vi.fn(), read: vi.fn(), access: vi.fn(), anchors: vi.fn() }));
 vi.mock('@/lib/projects/correspondence/projectSendAnchors', () => ({ readProjectSendAnchors: mocks.anchors }));
 vi.mock('@/lib/api/staffApi', async () => ({ ...await vi.importActual<object>('@/lib/api/staffApi'), requireStaffContext: mocks.auth }));
-vi.mock('@/lib/projects/getProjectPageSnapshot', () => ({ getProjectPageSummary: mocks.summary }));
+vi.mock('@/lib/projects/correspondence/projectCorrespondenceIdentity', () => ({ readProjectCorrespondenceIdentity: mocks.summary }));
 vi.mock('@/lib/projects/correspondence/gateway', () => ({ correspondenceGatewayConfig: mocks.config, readStaffCorrespondence: mocks.read }));
 vi.mock('@/lib/portalAccess', () => ({ resolvePortalAccessState: mocks.access }));
 import { GET, POST } from './route';
@@ -24,10 +24,29 @@ beforeEach(() => {
   mocks.access.mockResolvedValue({ kind: 'authenticated', session: { user: { id: actorId }, role: 'staff' } });
 });
 describe('staff correspondence route', () => {
+  it('logs only fixed numeric phases when explicitly enabled', async () => {
+    const log = vi.spyOn(console, 'info').mockImplementation(() => {});
+    vi.stubEnv('PORTAL_CORRESPONDENCE_TIMING_LOGS', 'true');
+    try {
+      await POST(request(), context);
+      expect(log).toHaveBeenCalledOnce();
+      const record = JSON.parse(log.mock.calls[0][0]);
+      expect(Object.keys(record).sort()).toEqual(['event', 'method', 'phases', 'status']);
+      expect(record.event).toBe('portal.correspondence_timing');
+      expect(record.phases.every((phase: string) => /^(auth|identity|mail|matching|access_recheck|identity_recheck);dur=[\d.]+$/.test(phase))).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+      log.mockRestore();
+    }
+  });
   it('checks saved evidence through the receiver on GET without requesting a mailbox refresh', async () => {
     mocks.summary.mockResolvedValue({ project: { id: projectId, contactEmail: 'customer@example.test' } });
     mocks.config.mockReturnValue({ origin: 'https://velt.example.invalid', secret: 'test-only', snapshotsEnabled: true });
-    expect((await GET(request({ method: 'GET' }), context)).status).toBe(200);
+    const response = await GET(request({ method: 'GET' }), context);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('server-timing')).toMatch(/^auth;dur=[\d.]+, identity;dur=[\d.]+, mail;dur=[\d.]+, access_recheck;dur=[\d.]+, identity_recheck;dur=[\d.]+$/);
+    expect(response.headers.get('server-timing')).not.toContain('customer@example.test');
+    expect(response.headers.get('cache-control')).toContain('no-store');
     expect(mocks.read).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ snapshot: {
       identityHash: expect.stringMatching(/^[a-f0-9]{64}$/), customerEmail: 'customer@example.test', refresh: false,
     } }), expect.any(AbortSignal));
