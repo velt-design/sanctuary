@@ -224,3 +224,23 @@ test('mobile opening prioritises project name and substantial image',async({page
   await page.screenshot({path:'artifacts/marketing-foundation-evolution/project-mobile-'+slug+'.png'});
  }
 });
+
+
+for (const width of [390,1440]) test('collection return belongs only to its navigation chain at '+width,async({page})=>{
+ await page.setViewportSize({width,height:844});await page.goto('/projects?audience=residential');await dismissConsent(page);
+ const card=page.locator('[data-project-card]').nth(3);await card.scrollIntoViewIfNeeded();const scroll=await page.evaluate(()=>window.scrollY);await card.click();
+ await expect(page.locator('[data-all-projects]')).toHaveAttribute('href','/projects?audience=residential');
+ const nextHref=await page.locator('[data-project-next]').getAttribute('href');await page.locator('[data-project-next]').click();await expect(page).toHaveURL(new URL(nextHref!,page.url()).href);
+ await expect(page.locator('[data-all-projects]')).toHaveAttribute('href','/projects?audience=residential');
+ await page.reload();await expect(page.locator('[data-all-projects]')).toHaveAttribute('href','/projects?audience=residential');
+ const detail=page.url();await page.getByRole('link',{name:/Send project brief/}).click();await expect(page.locator('#contact-form')).toBeVisible();await page.goBack();await expect(page).toHaveURL(detail);
+ await expect(page.locator('[data-all-projects]')).toHaveAttribute('href','/projects?audience=residential');await page.locator('[data-all-projects]').click();
+ await expect(page.getByLabel('Filter by audience')).toHaveValue('residential');await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeCloseTo(scroll,0);
+ await page.locator('[data-project-card]').first().click();await page.getByRole('link',{name:'Sanctuary Pergolas home'}).click();
+ await page.getByRole('radio',{name:/Custom design/}).click();await page.locator('[data-project-evidence="warkworth-outdoor-room"]').getByRole('link',{name:'View project'}).click();
+ await expect(page.locator('[data-all-projects]')).toHaveAttribute('href','/projects');
+ const independentNext=await page.locator('[data-project-next]').getAttribute('href');await page.locator('[data-project-next]').click();await expect(page).toHaveURL(new URL(independentNext!,page.url()).href);await expect(page.locator('[data-all-projects]')).toHaveAttribute('href','/projects');
+ await page.locator('[data-all-projects]').click();await expect(page).toHaveURL(new URL('/projects',page.url()).href);await expect(page.getByLabel('Filter by audience')).toHaveValue('all');
+ expect(await page.evaluate(()=>window.scrollY)).toBeLessThan(100);
+ await page.goto('/projects/dairy-flat-estate');await expect(page.locator('[data-all-projects]')).toHaveAttribute('href','/projects');
+});

@@ -9,6 +9,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import ProjectDetailNavigation from './ProjectDetailNavigation';
+import { saveCollectionReturn } from './projectCollectionReturn';
 import editorial from '@/components/marketing-foundation/editorial/editorial.module.css';
 import JsonLd from '@/components/JsonLd';
 import type { Project } from '@/data/projects';
@@ -342,6 +343,7 @@ export default function ProjectDetailExperience({
       <JsonLd data={buildProjectStructuredData(selection.project)} />
       <main
         ref={rootRef}
+        onClickCapture={saveCollectionReturn}
         className={`projects-experience ${editorial.surface}`}
         data-editorial-page="project"
         aria-label={`${selection.project.title} project case study`}

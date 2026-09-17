@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import ArrowUpRight from '@/components/marketing-foundation/ArrowUpRight';
 import { useEffect, useState, type MouseEvent } from 'react';
 import { Container, Figure } from '@/components/marketing-foundation';
@@ -19,8 +20,9 @@ type Props = {
 };
 
 export default function ProjectDetailNavigation({ previousProject, nextProject, buildProjectHref, onProjectIntent, onProjectSelect, pendingProjectSlug, photographic = false }: Props) {
+  const pathname = usePathname();
   const [collectionHref, setCollectionHref] = useState('/projects');
-  useEffect(() => { setCollectionHref(readCollectionReturn()?.href ?? '/projects'); }, []);
+  useEffect(() => { setCollectionHref(readCollectionReturn()?.href ?? '/projects'); }, [pathname]);
   const linkProps = (project: ProjectCollectionItem) => ({
     href: buildProjectHref(project.slug),
     'aria-busy': pendingProjectSlug === project.slug || undefined,
