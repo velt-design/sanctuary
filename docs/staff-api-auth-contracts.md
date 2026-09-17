@@ -1,5 +1,14 @@
 # Staff API And Auth Contracts
 
+Local correspondence extension: the server optionally signs
+`includeMessageLineage:true` only after the receiver rollout flag is enabled.
+Velt returns whitelisted bounded reply IDs; the Portal computes message links
+using staff-authenticated project send reads, removes raw lineage and remote
+project-link claims, and rechecks staff/project access before returning content.
+No client-supplied recipient, actor or association is accepted. See
+`environment-auth-supabase.md` for the default-off capability flag and the project
+roadmap for unverified live coverage.
+
 `POST /api/payments/xero/summary` requires the existing finance session and
 same-origin check before broker access. Its strict body accepts only from/to
 accounting dates (at most 90 days). It returns a private/no-store aggregate only
@@ -15,6 +24,10 @@ The in-progress `POST /api/integrations/xero/worker` is a server-to-server bound
 This doc is the current-state reference for staff, admin, and public-token route boundaries. Use it before editing API routes, Supabase access, auth checks, diagnostics, or server-owned side effects.
 
 ## Route Families
+
+- Staff correspondence uses `GET/POST /api/staff/v1/projects/[projectId]/correspondence` with staff authentication, auth-bound project visibility, same-origin empty POST and final access rechecks. All signed-in staff are the approved audience. The signed Velt receiver is deployed and real mail was verified in a protected Portal candidate; the global Portal flag remains off. The local UI reads mail on opening after an access/configuration check; AI requires a separate explicit request. No browser-supplied email/actor or forwarded owner cookie is accepted. Protocol, cache lifetime and release boundaries are owned by `project-command-centre-architecture.md`.
+
+- Retired sent/reply confirmation commands return410 FOLLOW_UP_WORKFLOW_DEFERRED after staff authentication. Site-visit completion and historical correction remain supported. The paired database retirement is locally verified but not installed; see the Command Centre roadmap.
 
 - Installer payout reads use `GET /api/staff/projects/[projectId]/installer-payout` with staff authentication and the redacting database RPC. Preview and mutations use `POST /api/admin/projects/[projectId]/installer-payout`, enforce admin status before accessing financial data, and use the request's auth-bound client. Both return `private, no-store`. Browser-supplied agreement totals are ignored; the server recalculates from accepted scope and published rates. No service-role or message-sending path is used.
 

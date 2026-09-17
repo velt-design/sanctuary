@@ -251,6 +251,24 @@ describe('QuotesTab draft ownership UI', () => {
     });
   });
 
+  it('does not turn an accepted agreement into an expired quote', () => {
+    activeQuoteDetail = { ...quoteDetail, status: 'ACCEPTED', expiresAt: '2020-01-01', acceptedAt: '2019-12-01T00:00:00Z' };
+    activeQuoteList = [{ ...activeQuoteList[0], ...activeQuoteDetail }];
+    const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
+    expect(rendered.container.textContent).toContain('Accepted');
+    expect(rendered.container.textContent).not.toContain('Expired on');
+    expect(rendered.container.textContent).not.toContain('This quote has expired');
+    rendered.unmount();
+  });
+
+  it('retains the expiry warning for an unaccepted sent quote', () => {
+    activeQuoteDetail = { ...quoteDetail, status: 'SENT', expiresAt: '2020-01-01' };
+    activeQuoteList = [{ ...activeQuoteList[0], ...activeQuoteDetail }];
+    const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
+    expect(rendered.container.textContent).toContain('Expired on 2020-01-01');
+    rendered.unmount();
+  });
+
   it('shows the explicit draft ownership note and new primary action', () => {
     const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
 

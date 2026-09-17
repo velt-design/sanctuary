@@ -102,10 +102,10 @@ describe('work queue presentation', () => {
     ).toBeNull();
   });
 
-  it('allows generic completion only for current manual and stage-review work', () => {
+  it('allows generic completion only for current manual work', () => {
     expect(isGenericCompletable(entry({ sourceType: 'MANUAL' }))).toBe(true);
     expect(isGenericCompletable(entry({ sourceType: 'LEGACY_REVIEW' }))).toBe(false);
-    expect(isGenericCompletable(entry({ sourceType: 'STAGE_REVIEW' }))).toBe(true);
+    expect(isGenericCompletable(entry({ sourceType: 'STAGE_REVIEW' }))).toBe(false);
     expect(isGenericCompletable(entry({ sourceType: 'LEAD_CADENCE' }))).toBe(false);
     expect(
       isGenericCompletable(

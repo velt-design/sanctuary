@@ -1,5 +1,175 @@
 # Project Operational Command Centre Architecture
 
+## Current clarity increment (17 September 2026)
+
+The current owner agreement and release evidence live in
+[the roadmap](project-command-centre-roadmap.md). The Velt staff receiver and
+reporting/access-link fixes are deployed. A protected Portal candidate has read
+real correspondence and opened its original Outlook message. The global Portal
+correspondence flag is enabled following the approved PR145 production release.
+The subsequent performance changes in PR153 remain protected-preview work;
+see the roadmap for exact release revisions and outstanding staff verification.
+
+The owner has deferred unused lead/quote follow-ups and sent/reply recording.
+Migration `20260917000002_defer_project_follow_ups.sql` cancels active cadence
+with before/after history, retires cadence repair signals with receipts, stops
+new cadence creation and rejects stale recording writes. It preserves manual
+commitments, correction reviews, specialist tools, lifecycle and commercial
+facts. The shared queue selects actual work/recovery/state reviews; an empty
+project is not itself a triage task. The approved migration is installed.
+The migration refuses concurrent project-row or advisory writers and must be
+retried during a quiet gap; native PostgreSQL rehearsal and independent review
+passed. See the roadmap for exact evidence and remaining release gates.
+
+Overview presents saved project position, owner, readable correspondence and
+practical quote/design/files tools. Without assigned work it shows the owner,
+not an invented next step. Empty active work uses a compact owner/control row;
+opening controls restores the full form layout. Assigned work, delivery actions,
+stale/error messages and non-active states retain their existing space.
+Existing manual commitments retain their controls.
+Customer email text appears before optional AI interpretation. The latest linked
+customer reply appears before the latest outgoing message. Collapsed excerpts
+normalize whitespace for scanning and omit conventional standalone greetings and
+sign-offs whose name matches the sender address only from the teaser. Ambiguous
+greetings/signatures stay visible. Expanded text preserves original wording.
+Recognizable From/Date/Subject or On-wrote boundaries separate the newest message
+from a collapsed quoted-history disclosure; uncertain formats remain unsplit.
+Each quoted header is visually secondary, with keyboard-focusable bounded text
+panes for long messages. Quoted questions are explicitly historical, not new tasks.
+Sender/date and subject use separate typographic levels.
+Repeated association guidance lives once per unconfirmed group and in the
+email-details disclosure. Known generated quote/invoice teasers use their original
+leading summary before the branded document; full message text is never modified.
+Project titles wrap instead of truncating, and narrow work headers can wrap controls.
+On wide screens
+the work row remains content-sized even when correspondence spans the commercial
+row. Retained accepted versions use neutral history information, consistent with
+the newest-accepted-version policy; they do not create a correction task. Their
+history disclosure follows the current price/design metrics, which always show
+two currency decimals. Desktop places
+emails beside work; mobile places them before commercial detail. Ordinary
+contact, notes/history and commercial detail use disclosures. The commercial
+total stays visible; warnings and failures retain the expanded owning surface.
+Payment position uses the existing staff invoice-schedule API and query key,
+without recalculating totals or equating payment with delivery readiness.
+
+## Correspondence loading performance (local implementation)
+
+Hosted placement is deliberately unchanged for Portal project functions. A narrow
+Sydney placement trial increased its own database phases from about25–70ms to
+250–550ms and was rejected. Do not infer Portal database proximity from the
+separate Velt receiver database; each boundary needs measured verification.
+
+The correspondence route now reads only canonical project/contact identity before
+and after the email operation, with the existing final staff-role check intact.
+It no longer loads project owner/work-model information for those checks.
+`Server-Timing` exposes fixed phase names and numeric durations only, for auth,
+identity, mail, matching and final access/identity checks; private response headers
+remain unchanged and no customer/provider identity is included in timings.
+Optional `PORTAL_CORRESPONDENCE_TIMING_LOGS=true` emits the same fixed phases,
+request method and status to server logs for protected performance measurements.
+It defaults off; it must not log message content, customer IDs or cache keys.
+The same flag reports aggregate matching-cache hits, provider reads, successes
+and fixed unavailable-reason counts, to distinguish cold-instance misses from
+provider failures without logging identities or raw responses.
+Protected measurement builds may set `NEXT_PUBLIC_PORTAL_EMAIL_TIMING=true` to
+expose hidden numeric DOM attributes at the first email render: elapsed since
+mount and, only for a matching direct document URL, since document navigation.
+The effect runs after the evidence DOM commits, so it separates browser-tool
+overhead from observed display time. It never exports email content and defaults
+off. Client navigation does not claim a document-navigation duration.
+The project route starts a single independently authorized saved GET alongside
+the project summary. A page-scoped warm-read provider hands that promise to the
+existing Overview reader once, only while it is still in progress. Completed
+unclaimed results are discarded so customer/access changes during shell loading
+cannot reuse old completed authorization. It never retains a reusable browser cache or
+starts an Outlook refresh itself. Unclaimed reads expire after15seconds and
+are aborted on hidden-page/unmount transitions. The existing reader still owns
+response validation, access-ending behavior, expiry and explicit/live refreshes.
+Only Overview warms mail; no other tab or speculative project navigation does.
+Overview renders it in a separate Suspense boundary from notes/events. Complete history
+still requires the full snapshot. An access-ending command read unmounts mail.
+
+Verified Resend RFC message IDs may be reused for15minutes in a bounded512-entry
+server-instance cache. Values are AES-256-GCM ciphertext, with authenticated expiry
+and opaque HMAC keys bound to project, canonical provider ID, normalized recipients
+and provider credentials. A purpose-separated key derives from the existing server
+correspondence signing secret. There is no cached authorization, raw provider
+response, email body, AI answer, disk/HTTP/Next data-cache entry or browser cache.
+Every hit still requires fresh auth-bound canonical SENT rows; changed/deleted or
+inaccessible sends cannot reuse old proof. Failures are not cached. Expired entries
+are refused even after instance suspension; expiry/eviction also clears timers.
+Cold instances safely repeat provider verification. This is an initial measured
+optimization, not proof of the1–2second objective or durable cross-instance reuse.
+Real protected-preview timing and cold-load evaluation remain required.
+
+## Staff correspondence boundary
+
+Reliability amendment in progress (17 September; not deployed): Jordan approved
+15-minute reuse and at most24-hour saved correspondence with age visible, current
+authorization, duplicate refresh coalescing and up to60 shared Outlook reads/hour.
+The local optional `PORTAL_CORRESPONDENCE_SNAPSHOT_ENABLED` capability adds a signed
+customer identity hash and refresh choice. GET checks receiver-side saved evidence
+without starting a mailbox read; POST requests a bounded refresh. The receiver owns
+encrypted retention and connection-generation checks. Portal rechecks staff/project
+access and customer identity before delivery and recomputes project association.
+Snapshots contain filtered email presentation, not reused AI interpretation or
+commercial sources. On navigation the UI requests permission-checked saved results;
+saved email age is visible and current project/commercial state stays independent.
+The flag remains unset until the receiver, retention and capacity migrations and
+the paired real-project proof are ready. The existing behavior described below is
+the previously published version; the roadmap tracks remaining verification.
+
+All signed-in Sanctuary staff are the approved audience. The Portal
+`GET/POST /api/staff/v1/projects/[projectId]/correspondence` requires staff
+authentication and auth-bound project visibility. GET checks configuration;
+empty-body same-origin POST reads mail. Only POST may request `?analyze=true`.
+The server derives actor/project identity; the browser cannot supply email,
+actor, provider input or an owner cookie. Current staff membership and project
+visibility are checked again before delivering private/no-store evidence.
+Remote error detail is not returned or logged.
+
+The paired protocol is `sanctuary.staff-correspondence.v1` at
+`POST /api/customer-journey/staff-summary`. HMAC-SHA256 signs the UTF-8 newline
+join of v1, POST, destination URL, epoch-millisecond timestamp, request UUID and
+exact JSON body, using the dedicated server key. Request headers are
+`x-sanctuary-request-id`, `x-sanctuary-timestamp`, and
+`x-sanctuary-signature`. The body carries schemaVersion, actorId, projectId and
+optional analyze. Receiver signature/time/destination checks, nonce replay
+claims, staff/project audit and rate/concurrency bounds preserve connection
+consent, stop and generation checks through response delivery. No owner session
+is forwarded. Credentials stay in the existing server environments.
+
+Portal configuration is `PORTAL_STAFF_CORRESPONDENCE_ENABLED` (off by default),
+`PORTAL_VELT_CORRESPONDENCE_ORIGIN` (reviewed HTTPS origin) and
+`PORTAL_VELT_CORRESPONDENCE_SECRET` (dedicated shared signing key). Protected
+candidate overrides do not activate the global production flag.
+
+The response binds schemaVersion, projectId, requestId and bounded context.
+Portal validates request/project binding, Outlook source URLs, unique topics and
+source IDs, citations and freshness, caps responses at256 KiB, rejects redirects
+and times out at60 seconds. Up to25 source messages include sender,
+sent/received/observed dates, plain text and explicit truncation. Readable message
+text is independent of AI citations. Identical complete copies are grouped with
+original links retained; latest mail and latest exact-customer reply are featured.
+Customer-address matches remain unconfirmed to the job. Matching a quote reference
+in a subject does not establish acceptance or complete conversation coverage.
+Jordan confirmed on17 September that older emails without verifiable project
+links should remain visible with that uncertainty; do not add manual conversation
+linking or a tracking task. If no incoming message is linked, the separate
+unconfirmed section opens and includes the latest customer email in its preview.
+React escapes message text; native disclosures expand it. Older excerpt-only
+contexts remain labelled. Samples have no real Outlook links or live connection.
+
+The local read-on-open implementation first checks access/configuration, then
+reads mail automatically when available. Ask AI is a separate explicit request;
+ordinary reads do not start model work. Evidence stays in mounted memory, outside
+persisted queries/local storage. Project changes and failed authorization clear
+it. Visibility/expiry rechecks hide private content until access is confirmed and
+do not trigger mail or AI reads; a remount starts a fresh mail read. Original
+Outlook links still require that staff member's own mailbox access. No automatic
+send, commitment, outcome write or bulk backfill is introduced.
+
 Status: Current architecture. The Overview V2 composition and portfolio-wide Project Work rollout are deployed to production. Staging is isolated on its own Supabase project and passed authenticated read-only verification. Production database/application postflight and the authenticated GET-only production browser proof are complete. The earlier narrow Contacts/Calculator bundle exception remains historical and did not raise either ceiling.
 
 Approved handover baseline: `060bea19` on 2026-07-30.

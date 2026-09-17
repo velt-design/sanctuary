@@ -4,6 +4,14 @@ This doc is the current-state reference for the core staff portal workflow befor
 
 ## Read First
 
+The local correspondence association candidate distinguishes recorded project
+sends, fully anchored reply relationships and unconfirmed customer mail. Unknown
+ancestry or incomplete identity checks cannot promote a reply into the latest
+linked-message position. Sender, date and original Outlook links remain available;
+reply linkage does not establish acceptance, scope or exclusive project relevance.
+The new sender capability is default-off; live coverage and release status are
+tracked in `project-command-centre-roadmap.md`.
+
 Protected configurator revision previews authenticate the server-to-server pricing
 request using the existing marketing automation credential, while retaining staff
 session checks. Deployment protection failures are distinct from sign-in failures;
@@ -229,6 +237,7 @@ Do not bypass these rules with ad hoc estimate table writes. Use the estimate ro
 - `ProjectStatusDetailsCard` is a compatibility wrapper around `ProjectOrientationBand` for the detail-mutation fixture and focused local-first tests; it is not mounted by Overview V2.
 - `ProjectWorkSection` owns the single actionable V2 Project Work surface. Ordinary work-item reasons and stage-aware specialist actions are server projection fields; the browser may format their categorical due state but does not explain or rank the work. `OverviewTab` owns the non-actionable rollout-incomplete state when a project is unexpectedly unmarked.
 - `ProjectWorkList` owns secondary V2 open and blocked rows inside that surface and renders nothing when no secondary work exists.
+- Email sent/reply recording and automatic lead/quote cadence are deferred by the owner (17 September). Project pages show actual assigned work and specialist tools; no-work projects show their owner and project information without inventing a next step. Messages load after an authorized availability check when opening Overview; visibility/expiry checks do not invoke AI. Existing reminder history is preserved; see the current roadmap for migration/release status.
 - `ProjectWorkControls` owns V2 manual-work, operational-state, confirmation-correction, and the manual Site Visit fact. The primary Project Work action owns the explicit `Contacted`/`Site Visit` specialist link when ranked; controls avoid duplicating it and retain the manual completion fact. Neither owner adds a Site Visit task, global navigation, or automatic Schedule/stage integration.
 - `domainActionAdapters.ts` is the shared server ranking owner used by Overview and Work Queue. It confines visit actions to `Contacted`/`Site Visit`, removes them after durable completion evidence, and confines estimate-to-quote creation to `Quoting`; CTA labels and destinations are supplied by this server contract rather than inferred in either presenter.
 - `useProjectWorkCommandController` owns V2 browser command, stable retry identity, duplicate suppression, feedback, V2 projection patching, and shared invalidation without deriving ranking or lifecycle truth.

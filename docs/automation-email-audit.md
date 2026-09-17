@@ -1,5 +1,21 @@
 # Automation, Email, And Audit
 
+Local correspondence identity reader: `@sp/email-provider` performs bounded
+read-only Resend GETs for persisted provider IDs, validating the returned ID and
+complete To-recipient set before returning only an RFC Message-ID. Portal selects
+authorized quote/invoice send logs and joins durable website-delivery audit IDs
+to same-project SENT outbox rows. No body persistence, send, backfill, retry or
+automatic business-state change is introduced. Missing historical identities stay
+unconfirmed; this candidate is not a claim of live association coverage.
+
+17 September owner amendment: unused lead/quote reminder automation and manual
+sent/reply recording are deferred. The local migration
+`20260917000002_defer_project_follow_ups.sql` retires those producers and active
+rows with history, preserving genuine manual work and correction reviews. Its
+installation is pending; see [the current roadmap](project-command-centre-roadmap.md)
+for verification and release state. This supersedes conflicting cadence rules
+below and does not disable transactional quote/invoice/enquiry email delivery.
+
 ## Invoice draft and issuance events (2026-09-11)
 
 Admin draft save/delete commands record audit evidence without payment links, balance exposure, or sends. Issue freezes invoice-owned content and records `invoice.issued` atomically under a stable command ID. Issue and send commits issuance first, then uses the existing durable invoice email owner. A send failure returns the issued result and a separate send error, so retrying cannot duplicate billing. PDF, email scope blocks and customer-page itemisation consume the same issued snapshot. Staff retain issued viewing and sending; historical artifacts remain unchanged.

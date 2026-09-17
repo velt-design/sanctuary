@@ -451,3 +451,12 @@ For JOB-01/JOB-02/JOB-03, the public job tables have RLS enabled with browser-ro
 The separate developer capability requires an active portal session and the verified email jordan@sanctuarypergolas.co.nz. Ordinary admin membership does not grant it. Xero uses a dedicated restricted database LOGIN and encrypted tokens; see [Xero connection](xero-connection.md) for all server variables and provisioning.
 
 The unreleased finance expansion keeps ordinary connection defaults read-only. Its explicit expanded consent requests invoice/customer write and settings read; payment and bank access remain read-only. Customer creation additionally requires the default-dark `XERO_CUSTOMER_CREATION_ENABLED` flag, current finance permission and migration19. Existing narrower grants can renew. No expanded consent or customer-creation activation has occurred; see `docs/xero-connection.md` for the authoritative release sequence.
+# Correspondence reply-evidence rollout
+
+`PORTAL_CORRESPONDENCE_MESSAGE_LINEAGE_ENABLED=true` opts the server sender into
+the signed `includeMessageLineage` capability. It is default-off and must remain
+off until the compatible Velt receiver is deployed. It does not grant staff
+access, enable correspondence globally, send mail or authorize a production
+release. Project links are computed from authorized send evidence on the server;
+unconfirmed messages remain explicitly labelled. Local implementation is not
+evidence of historical coverage or live rollout.

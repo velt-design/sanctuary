@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { DataStatePanel } from "@/components/ui/foundation/FoundationFeedback";
-import { Badge, EmptyState, Input, OverflowMenu, SearchFilterBar } from "@/components/ui/foundation";
+import { Badge, Button, ButtonLink, Card, EmptyState, Input, OverflowMenu, SearchFilterBar } from "@/components/ui/foundation";
 import { QuoteStatusBadge } from "@/components/ui/foundation/SanctuaryStatus";
 import type { EstimateMeta } from "@/lib/estimates/types";
 import { getAliasedLocalFirstEntitySyncState } from "@/lib/localFirst/store";
@@ -24,6 +24,7 @@ import {
 import CommercialInternalNameDialog from "./CommercialInternalNameDialog";
 import { COMMERCIAL_INTERNAL_NAME_MAX_LENGTH } from "@/lib/commercial/internalName";
 import { selectAuthoritativeAcceptedVersions } from "@/lib/commercial/authoritativeAcceptedVersions";
+import { estimateDisplayName } from './estimateListPresentation';
 
 type QuotesListViewProps = {
   quotes: QuoteVersion[];
@@ -128,7 +129,7 @@ export default function QuotesListView({
       <div className={styles.header}>
         <div>
           <h3 className={styles.title}>Quotes</h3>
-          <p className={styles.subtitle}>Versioned quotes for this project.</p>
+          <p className={styles.subtitle}>Accepted work is shown first. Drafts and earlier versions remain below for reference.</p>
         </div>
         <button
           type="button"
@@ -138,6 +139,20 @@ export default function QuotesListView({
           Create quote
         </button>
       </div>
+
+      {currentAcceptedIds.size > 0 ? (
+        <Card title={quotesError ? "Saved accepted work" : "Current accepted work"} padding="compact" headingLevel={4}>
+          {quotes.filter((quote) => currentAcceptedIds.has(quote.id)).map((quote) => (
+            <div key={quote.id} className={styles.acceptedSummary}>
+              <div>
+                <strong>{quote.internalName || (quote.commercialScopeKind === 'add_on' ? 'Accepted add-on' : 'Accepted base agreement')}</strong>
+                <p>{quote.quoteRef} v{quote.versionNumber} · {formatMoneyFromCents(quote.totals.totalIncGstCents)} inc GST</p>
+              </div>
+              <Button variant="secondary" size="small" onClick={() => selectQuote(quote.id)}>Open {quote.quoteRef} v{quote.versionNumber}</Button>
+            </div>
+          ))}
+        </Card>
+      ) : null}
 
       {quotesLoading ? <p className={styles.note}>Loading quotes…</p> : null}
       {quotesError ? (
@@ -201,7 +216,7 @@ export default function QuotesListView({
             </thead>
             <tbody>
               {visibleQuotes.map((quote) => {
-                const expired = isExpired(quote.expiresAt);
+                const expired = quote.status !== "ACCEPTED" && isExpired(quote.expiresAt);
                 const quoteSyncPending =
                   getAliasedLocalFirstEntitySyncState(
                     quote.id,
@@ -211,6 +226,7 @@ export default function QuotesListView({
                 const canSupersede = quote.status === "SENT" || quote.status === "ACCEPTED";
                 const isHistoricalAcceptance = quote.status === "ACCEPTED" && !currentAcceptedIds.has(quote.id);
                 const quoteRefLabel = quote.quoteRef || "Pending reference";
+                const sourceEstimate = estimates.find((estimate) => estimate.id === quote.sourceEstimateVersionId);
                 const quoteIdentity = quote.internalName
                   || (quote.commercialScopeKind === "add_on" ? "Add-on quote" : quoteRefLabel);
                 return (
@@ -241,13 +257,17 @@ export default function QuotesListView({
                         {quote.commercialScopeKind === "add_on" ? <Badge tone="info">Add-on</Badge> : null}
                       </span>
                     </td>
-                    <td>{quote.sourceEstimateVersionLabel}</td>
-                    <td>
+                    <td data-label="Source estimate" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                      {quote.sourceEstimateVersionId ? <ButtonLink variant="tertiary" size="small" href={`/staff/projects/${encodeURIComponent(quote.projectId)}?tab=estimates&estimateId=${encodeURIComponent(quote.sourceEstimateVersionId)}`}>
+                        {sourceEstimate ? estimateDisplayName(sourceEstimate, estimates) : quote.sourceEstimateVersionLabel}
+                      </ButtonLink> : 'No source estimate'}
+                    </td>
+                    <td data-label="Issued">
                       {quote.status === "DRAFT"
                         ? "—"
                         : formatDateShort(quote.sentAt)}
                     </td>
-                    <td>
+                    <td data-label={quote.status === 'ACCEPTED' ? 'Original expiry' : 'Expiry'}>
                       {quote.expiresAt ? (
                         <span
                           className={expired ? styles.expiredText : undefined}
@@ -259,7 +279,7 @@ export default function QuotesListView({
                         "—"
                       )}
                     </td>
-                    <td>
+                    <td data-label="Status">
                       <QuoteStatusBadge
                         status={quote.status}
                         detail={
@@ -274,10 +294,10 @@ export default function QuotesListView({
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="Amount inc GST">
                       {formatMoneyFromCents(quote.totals.totalIncGstCents)}
                     </td>
-                    <td>
+                    <td data-label="PDF">
                       {isLocalQuoteId(quote.id) || quoteSyncPending ? (
                         <span className={styles.linkMuted}>Syncing</span>
                       ) : quote.pdfFileId ? (

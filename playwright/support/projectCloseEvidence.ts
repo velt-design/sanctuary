@@ -18,6 +18,7 @@ export async function captureProjectCloseEvidence({
   height: number;
   testInfo: TestInfo;
 }) {
+  await layout.getByRole("button", { name: "Manage project work" }).click();
   await layout.getByRole("button", { name: "Close project" }).click();
   const closeDialog = page.getByRole("dialog", { name: "Close project" });
 

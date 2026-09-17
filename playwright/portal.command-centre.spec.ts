@@ -10,9 +10,16 @@ import {
   type CommandCentreWorkFixtureScenario,
 } from "../apps/portal/app/qa/project-command-centre-fixture/fixtures";
 import { captureProjectCloseEvidence } from "./support/projectCloseEvidence";
+import { correspondenceFixture } from "../apps/portal/app/qa/project-command-centre-fixture/correspondenceFixture";
 
 const FIXTURE_PATH = "/qa/project-command-centre-fixture";
 const PROJECT_SHELL_FIXTURE_PATH = "/qa/project-page-shell-fixture";
+
+test.beforeEach(async ({ page }) => {
+  // Shell fixtures have no real staff session or connected provider.
+  await page.route('**/api/staff/v1/projects/proj_fixture_shell/correspondence', route =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ state: 'not_connected' }) }));
+});
 
 function fixtureUrl({
   scenario = "standard-estimate",
@@ -134,11 +141,7 @@ for (const scenario of COMMAND_CENTRE_FIXTURE_SCENARIOS) {
 const WORK_SCENARIO_EXPECTATIONS = {
   "v2-primary": {
     model: "v2",
-    text: [
-      "Email the customer with the first enquiry response",
-      "Sam Sales",
-      "Due today",
-    ],
+    text: ["Project owner:", "Manage project work"],
   },
   "v2-missing-email": {
     model: "v2",
@@ -146,19 +149,11 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-follow-up": {
     model: "v2",
-    text: [
-      "Email the customer with an enquiry follow-up",
-      "Overdue",
-      "Record customer reply",
-    ],
+    text: ["Owner:", "Manage project work"],
   },
   "v2-close-review": {
     model: "v2",
-    text: [
-      "Review whether this enquiry should stay active",
-      "A staff decision is required",
-      "Nothing happens automatically",
-    ],
+    text: ["Owner:", "Manage project work"],
   },
   "v2-critical": {
     model: "v2",
@@ -170,7 +165,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-overdue": {
     model: "v2",
-    text: ["Email the customer with an enquiry follow-up", "Overdue"],
+    text: ["Owner:", "Manage project work"],
   },
   "v2-future": {
     model: "v2",
@@ -194,7 +189,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-no-action": {
     model: "v2",
-    text: ["No current project work", "The server has no current next action"],
+    text: ["Owner:", "Manage project work"],
   },
   "v2-contacted-site-visit": {
     model: "v2",
@@ -210,7 +205,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-site-visit-complete": {
     model: "v2",
-    text: ["Review proposal outcome", "Mark complete"],
+    text: ["Prepare the site measurements for quoting", "Mark complete"],
   },
   "v2-quoting": {
     model: "v2",
@@ -219,7 +214,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   "v2-correction-review": {
     model: "v2",
     text: [
-      "Needs triage",
+      "Choose the next step",
       "A corrected confirmation requires explicit project-work review",
     ],
   },
@@ -241,11 +236,11 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-stage-review": {
     model: "v2",
-    text: ["Review proposal outcome", "Commercial", "Mark complete"],
+    text: ["Legacy work needs review", "do not complete the old reminder"],
   },
   "v2-triage": {
     model: "v2",
-    text: ["Needs triage", "No ranked current work is available"],
+    text: ["Choose the next step", "No ranked current work is available"],
   },
 } as const satisfies Record<
   CommandCentreWorkFixtureScenario,
@@ -282,7 +277,7 @@ const READ_STATE_EXPECTATIONS = {
   ready: {
     layoutState: "ready",
     workModel: "v2",
-    text: ["Email the customer with the first enquiry response"],
+    text: ["Project owner:"],
     emailControl: "enabled",
   },
   refreshing: {
@@ -290,7 +285,7 @@ const READ_STATE_EXPECTATIONS = {
     workModel: "v2",
     text: [
       "Refreshing",
-      "Email the customer with the first enquiry response",
+      "Project owner:",
       "Work controls paused",
     ],
     emailControl: "disabled",
@@ -300,7 +295,7 @@ const READ_STATE_EXPECTATIONS = {
     workModel: "v2",
     text: [
       "Saved Overview",
-      "Email the customer with the first enquiry response",
+      "Project owner:",
       "Work controls paused",
     ],
     emailControl: "disabled",
@@ -319,7 +314,7 @@ const READ_STATE_EXPECTATIONS = {
     workModel: "v2",
     text: [
       "Loading the complete project",
-      "Email the customer with the first enquiry response",
+      "Project owner:",
       "Updating recent history",
     ],
     emailControl: "disabled",
@@ -430,13 +425,7 @@ for (const state of COMMAND_CENTRE_VIEW_STATES) {
     const emailControl = layout.getByRole("button", {
       name: "Record email sent",
     });
-    if (expected.emailControl === "enabled") {
-      await expect(emailControl).toBeEnabled();
-    } else if (expected.emailControl === "disabled") {
-      await expect(emailControl).toBeDisabled();
-    } else {
-      await expect(emailControl).toHaveCount(0);
-    }
+    await expect(emailControl).toHaveCount(0);
 
     if ("retryCount" in expected) {
       await expect(layout.getByRole("button", { name: "Retry" })).toHaveCount(
@@ -470,12 +459,13 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
       layout.locator('[data-project-orientation="true"]'),
     ).toBeVisible();
     await expect(layout.locator("[data-command-centre-source]")).toBeVisible();
+    await layout.locator("summary", { hasText: "Team notes & portal history" }).click();
     await expect(
       layout.locator('[data-recent-notes-events="true"]'),
     ).toBeVisible();
     await expect(layout).toContainText("1 blocked");
-    await expect(layout).toContainText("Sam Sales");
-    await expect(layout).toContainText("Due");
+    await expect(layout).toContainText("Jordan");
+    await expect(layout).toContainText("Measurements have not been supplied");
     await expect(layout).toContainText("$1,234.56 inc GST");
     await expect(layout).toContainText("No current quote");
 
@@ -493,17 +483,11 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
       );
     if (width <= 768) {
       expect(regionOrder).toEqual([
-        "project-work",
-        "commercial",
-        "orientation",
-        "recent",
+        "project-work", "recent", "commercial", "orientation",
       ]);
     } else {
       expect(regionOrder).toEqual([
-        "orientation",
-        "project-work",
-        "commercial",
-        "recent",
+        "orientation", "project-work", "recent", "commercial",
       ]);
     }
     await expectNoDocumentOverflow(page);
@@ -558,6 +542,7 @@ test("reflows at the effective CSS viewport of 200% browser zoom", async ({
   await expect(
     layout.locator('[data-project-orientation="true"]'),
   ).toBeVisible();
+  await layout.getByRole("button", { name: "Manage project work" }).click();
   await layout.getByRole("button", { name: "Close project" }).click();
   const closeDialog = page.getByRole("dialog", { name: "Close project" });
   await expect(closeDialog).toBeVisible();
@@ -584,10 +569,7 @@ test("recomposes from available Overview width instead of viewport width", async
       ),
     );
   expect(regionOrder).toEqual([
-    "orientation",
-    "project-work",
-    "commercial",
-    "recent",
+    "orientation", "project-work", "recent", "commercial",
   ]);
   await expectNoDocumentOverflow(page);
 });
@@ -608,9 +590,10 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
       name: "Approved Overview V2 composition",
     }),
   ).toHaveCount(1);
+  await layout.locator("summary", { hasText: "Team notes & portal history" }).click();
   for (const heading of [
     "Project Work",
-    "Current design & commercial",
+    "Current design & price",
     "Project context",
     "Recent notes and events",
   ]) {
@@ -631,7 +614,7 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
 
   const tabStops = await layout
     .locator(
-      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      'a[href], button:not([disabled]), summary, input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     )
     .evaluateAll((elements) => {
       const visibleTabStops: Array<{
@@ -645,6 +628,7 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
         const style = getComputedStyle(control);
         if (
           control.tabIndex < 0 ||
+          !control.checkVisibility() ||
           bounds.width <= 0 ||
           bounds.height <= 0 ||
           style.visibility === "hidden" ||
@@ -672,7 +656,7 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
     tabStopRegions.filter(
       (region, index) => region && region !== tabStopRegions[index - 1],
     ),
-  ).toEqual(["project-work", "commercial", "orientation", "recent"]);
+  ).toEqual(["project-work", "recent", "commercial", "orientation"]);
 
   await page.locator('[data-overview-tab-stop="0"]').focus();
   for (let index = 1; index < tabStopCount; index += 1) {
@@ -686,9 +670,7 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
     ).toBe(String(index));
   }
 
-  const primary = page
-    .locator('[data-primary-project-work="true"]')
-    .getByRole("button", { name: "Record email sent" });
+  const primary = page.getByRole("button", { name: "Manage project work", exact: true });
   await primary.focus();
   await expect(primary).toBeFocused();
   const focusPresentation = await primary.evaluate((element) => {
@@ -738,46 +720,14 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
   }
 });
 
-test("renders one unmistakable next action before quiet supporting truth", async ({
-  page,
-}) => {
+test("removes retired cadence while preserving practical work and commercial warnings", async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
-  await page.goto(
-    fixtureUrl({ scenario: "missing-estimate-price", work: "v2-primary" }),
-  );
+  await page.goto(fixtureUrl({ scenario: "missing-estimate-price", work: "v2-primary" }));
   const layout = page.locator('[data-project-overview-layout="true"]');
-  const primary = layout.locator('[data-primary-project-work="true"]');
-  const primaryTitle = primary.getByRole("heading", {
-    level: 3,
-    name: "Email the customer with the first enquiry response",
-  });
-  const commercialTitle = layout.getByRole("heading", {
-    level: 2,
-    name: "Current design & commercial",
-  });
-  await expect(primary).toHaveCount(1);
-  await expect(primary).toContainText("Send externally first.");
-  await expect(
-    primary.getByRole("button", { name: "Record email sent" }),
-  ).toBeVisible();
-  await expect(
-    primary.getByRole("button", { name: "Record customer reply" }),
-  ).toBeVisible();
-
-  const hierarchy = await Promise.all([
-    primaryTitle.evaluate((element) =>
-      Number.parseFloat(getComputedStyle(element).fontSize),
-    ),
-    commercialTitle.evaluate((element) =>
-      Number.parseFloat(getComputedStyle(element).fontSize),
-    ),
-    primary.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return Number.parseFloat(style.borderLeftWidth);
-    }),
-  ]);
-  expect(hierarchy[0]).toBeGreaterThan(hierarchy[1]);
-  expect(hierarchy[2]).toBeGreaterThanOrEqual(4);
+  await expect(layout.locator('[data-primary-project-work="true"]')).toHaveCount(0);
+  await expect(layout).toContainText("Project owner:");
+  await expect(layout).toContainText("Prepare the revised design brief");
+  await expect(layout.getByRole("button", { name: /Record email sent|Record customer reply/ })).toHaveCount(0);
 
   const warning = layout.locator(
     '[data-command-centre-warning="estimate-price-unavailable"]',
@@ -820,41 +770,16 @@ test("keeps coarse-pointer Project Work controls at least 44px high", async ({
   }
 });
 
-test("uses the existing semantic email command with one stable submit", async ({
-  page,
-}) => {
-  const commands: Array<Record<string, unknown>> = [];
-  await page.route(
-    "**/api/staff/v1/projects/proj_fixture/confirmations/commands",
-    async (route) => {
-      const command = route.request().postDataJSON() as Record<string, unknown>;
-      commands.push(command);
-      await route.fulfill({
-        contentType: "application/json",
-        body: JSON.stringify({
-          command: {
-            id: command.commandId,
-            committed: true,
-            replayed: false,
-            rowVersion: 2,
-          },
-        }),
-      });
-    },
-  );
-
-  await page.goto(fixtureUrl({ work: "v2-primary" }));
-  await page
-    .locator('[data-primary-project-work="true"]')
-    .getByRole("button", { name: "Record email sent" })
-    .click();
-  await expect(page.getByText("Saved on the server.")).toBeVisible();
-  expect(commands).toHaveLength(1);
-  expect(commands[0]).toMatchObject({
-    command: "RECORD_FIRST_ENQUIRY_EMAIL_SENT",
-    subjectId: "proj_fixture",
+test("does not expose or submit retired email-recording commands", async ({ page }) => {
+  const commands: string[] = [];
+  page.on('request', request => {
+    if (request.url().includes('/confirmations/commands') && request.method() === 'POST') commands.push(request.url());
   });
-  expect(commands[0]?.commandId).toEqual(expect.any(String));
+  await page.goto(fixtureUrl({ work: "v2-primary" }));
+  await expect(page.locator('[data-command-centre-fixture-hydrated="true"]')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Record email sent|Record customer reply/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Manage project work', exact: true })).toBeVisible();
+  expect(commands).toEqual([]);
 });
 
 const PROJECT_SHELL_VIEWPORTS = [
@@ -1048,9 +973,11 @@ test("routes deterministic V2 command data through the real project shell and Ov
     ),
   ).toHaveCount(1);
   await expect(layout).toContainText(
-    "Email the customer with the first enquiry response",
+    "Project owner:",
   );
+  await layout.locator('summary', { hasText: 'Quote, design & payment details' }).click();
   await expect(layout.locator("[data-command-centre-source]")).toBeVisible();
+  await layout.locator("summary", { hasText: "Team notes & portal history" }).click();
   await expect(
     layout.locator('[data-recent-notes-events="true"]'),
   ).toBeVisible();
@@ -1177,4 +1104,100 @@ test("keeps invoice URLs inside the Commercial tab owner", async ({ page }) => {
   await expect(page.getByText("No invoices yet")).toBeVisible();
   await expect(page).toHaveURL(/quoteId=q_1/);
   await expect(page).toHaveURL(/campaign=winter/);
+});
+
+for (const width of [1440, 768, 390]) {
+  test(`keeps Commercial agreement, sources and payment facts readable at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=estimates&commercial=1`);
+    const estimates = page.getByRole('region', { name: 'Estimates', exact: true });
+    await expect(estimates.getByText('Current accepted agreement')).toBeVisible();
+    const names = await estimates.locator('[data-estimate-id]').evaluateAll(rows => rows.map(row => row.getAttribute('aria-label')));
+    expect(new Set(names).size).toBe(3);
+    await expect(estimates.getByRole('link', { name: 'Q-CLARITY v3', exact: true })).toHaveAttribute('href', /quoteId=qv_clarity_3/);
+    await expectNoDocumentOverflow(page);
+
+    await page.getByRole('tab', { name: 'Quotes', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Current accepted work' })).toBeVisible();
+    const accepted = page.getByRole('row', { name: 'Open Q-CLARITY, Q-CLARITY version 3', exact: true });
+    await expect(accepted.getByText('$26656.87', { exact: true })).toBeVisible();
+    await expect(accepted).not.toContainText('(Expired)');
+    await expect(accepted.getByRole('link')).toHaveAttribute('href', /estimateId=est_clarity_2/);
+    await expectNoDocumentOverflow(page);
+    await page.getByRole('button', { name: 'Open Q-CLARITY v3', exact: true }).click();
+    await expect(page).toHaveURL(/quoteId=qv_clarity_3/);
+    await expect(page.getByRole('region', { name: 'Quote detail' })).not.toContainText('Expired on');
+    await page.getByRole('button', { name: /Back to quotes/i }).click();
+    await expect(page.getByRole('heading', { name: 'Current accepted work' })).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Invoices', exact: true }).click();
+    await expect(page.getByText('Recorded payments', { exact: true })).toBeVisible();
+    await expect(page.getByText('Still to invoice', { exact: true })).toBeVisible();
+    const invoices = page.getByRole('table', { name: 'Invoices', exact: true });
+    await expect(invoices.getByText('INV-CLARITY', { exact: true })).toBeVisible();
+    await expect(invoices.getByText('$13328.44', { exact: true })).toBeVisible();
+    await expectNoDocumentOverflow(page);
+  });
+}
+
+test('keeps correspondence suggestions read-only with inspectable sources', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const writes: string[] = [];
+  page.on('request', request => { if (request.method() !== 'GET' && request.url().includes('/api/')) writes.push(request.url()); });
+  await page.goto(fixtureUrl({ work: 'v2-triage' }));
+  const conversations = page.getByRole('region', { name: 'Customer conversations', exact: true });
+  await expect(conversations).toContainText('Suggestions do not change the job or send an email');
+  await expect(conversations.locator('article blockquote:visible').first()).toBeVisible();
+  await conversations.locator('summary', { hasText: 'AI interpretation and suggestions' }).click();
+  const jobPosition = conversations.getByRole('region', { name: 'Job position', exact: true });
+  await jobPosition.locator('summary').first().click();
+  await jobPosition.getByText('View supporting sources (1)', { exact: true }).click();
+  await expect(jobPosition).toContainText('Customer email match; project not confirmed');
+  await expect(jobPosition.locator('blockquote')).toHaveText('Please confirm the expected installation week before we arrange access.');
+  await expect(jobPosition.getByRole('link')).toHaveAttribute('href', 'https://outlook.office.com/mail/inbox/id/fixture-only');
+  await expect(conversations.getByRole('button', { name: /send|apply|confirm/i })).toHaveCount(0);
+  await expectNoDocumentOverflow(page);
+  expect(writes).toEqual([]);
+});
+
+test('loads correspondence on open and removes evidence after a denied refresh', async ({ page }) => {
+  const requests: string[] = [];
+  const context = structuredClone(correspondenceFixture);
+  context.observedAt = new Date().toISOString();
+  context.sources.forEach(source => { source.observedAt = context.observedAt; });
+  let checked = false;
+  await page.route('**/api/staff/v1/projects/proj_fixture_shell/command-centre', route => route.fulfill({ contentType: 'application/json', body: v2CommandCentreBody('v2-primary') }));
+  await page.route('**/api/staff/v1/projects/proj_fixture_shell/correspondence', async route => {
+    const method = route.request().method(); requests.push(method);
+    if (method === 'GET') return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ state: 'available' }) });
+    if (checked) return route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ error: 'Access changed' }) });
+    checked = true;
+    expect(route.request().postData()).toBeNull();
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ state: 'ready', context }) });
+  });
+  await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=activity&model=v2`);
+  const conversations = page.getByRole('region', { name: 'Customer conversations', exact: true });
+  await expect(conversations).toContainText('The customer is asking for the expected installation week.');
+  // Opening the page checks access before reading mail, without a manual click
+  // or an AI-analysis payload. Refresh and revoked-access checks remain below.
+  expect(requests[0]).toBe('GET');
+  expect(requests.filter(method => method === 'POST')).toHaveLength(1);
+  // Simulate leaving for a source and returning: access is rechecked without
+  // another paid summary request, and evidence stays hidden until that check.
+  const getCount = requests.filter(method => method === 'GET').length;
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(conversations).not.toContainText('The customer is asking for the expected installation week.');
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(conversations).toContainText('The customer is asking for the expected installation week.');
+  expect(requests.filter(method => method === 'GET').length).toBeGreaterThan(getCount);
+  expect(requests.filter(method => method === 'POST')).toHaveLength(1);
+  await conversations.getByRole('button', { name: 'Check again' }).click();
+  await expect(page.getByText('The customer is asking for the expected installation week.', { exact: true })).toHaveCount(0);
+  expect(requests.filter(method => method === 'POST')).toHaveLength(2);
 });

@@ -39,6 +39,8 @@ try {
 
   await database.exec(migration);
   await database.exec(migration);
+  await database.exec(readFileSync(path.join(root, 'supabase/migrations/20260917000001_praxis_projection_aggregate_bounds.sql'), 'utf8'));
+  await database.exec(readFileSync(path.join(root, 'supabase/tests/praxis_projection_aggregate_bounds.sql'), 'utf8'));
   await database.exec(`
     insert into praxis_reporting.source_identity_v1 (
       source_key, connection_id, environment, projection_version, configured_by

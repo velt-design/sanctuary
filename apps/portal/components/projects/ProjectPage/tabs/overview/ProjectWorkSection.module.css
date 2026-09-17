@@ -55,6 +55,11 @@
 
 .card > header h2 {
   font-size: var(--ui-font-size-section);
+  line-height: 1.3;
+}
+
+@container (max-width: 680px) {
+  .card > header { flex-wrap: wrap; gap: var(--ui-space-3); }
 }
 
 .primaryAction {
@@ -71,7 +76,7 @@
 }
 
 .primaryAction > header h3 {
-  max-width: 30ch;
+  max-width: none;
   font-size: var(--ui-font-size-detail-title);
 }
 
@@ -136,13 +141,24 @@
   margin-left: auto;
 }
 
+.compactIdle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+}
+.compactIdle p { margin: 0; font-size: var(--ui-font-size-small); }
+.compactIdle > .controlsSection { border: 0; padding: 0; }
+
 @container (min-width: 700px) {
   .primaryAction {
     display: grid;
     grid-template-areas:
-      "action-heading action-heading"
-      "action-body action-command";
-    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.42fr);
+      "action-heading"
+      "action-body"
+      "action-command";
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .primaryAction > header {
@@ -157,17 +173,16 @@
     display: grid;
     grid-area: action-command;
     align-content: center;
-    border-top: 0;
-    border-left: var(--ui-border-width) solid var(--ui-border);
+    border-top: var(--ui-border-width) solid var(--ui-border);
   }
 
   .commandArea .inlineActions {
     align-items: stretch;
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .commandArea .inlineActions > * {
-    width: 100%;
+    width: auto;
   }
 }
 

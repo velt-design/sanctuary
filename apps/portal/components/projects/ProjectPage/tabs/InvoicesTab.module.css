@@ -119,6 +119,44 @@
 }
 
 @media (max-width: 767px) {
+  .invoiceTable {
+    display: block;
+    min-width: 0;
+  }
+
+  .invoiceTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .invoiceTable tbody {
+    display: block;
+  }
+
+  .invoiceTable tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    border-bottom: var(--ui-border-width-emphasis) solid var(--ui-border);
+    padding-block: var(--ui-space-2);
+  }
+
+  .invoiceTable td {
+    display: block;
+    min-width: 0;
+    border-bottom: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .invoiceTable td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: var(--ui-space-1);
+    color: var(--ui-text-muted);
+    font-size: var(--ui-font-size-caption);
+  }
   .scheduleRow {
     align-items: stretch;
     flex-direction: column;

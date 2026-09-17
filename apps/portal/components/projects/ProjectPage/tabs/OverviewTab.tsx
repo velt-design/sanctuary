@@ -1,5 +1,7 @@
 "use client";
 
+import ProjectCommercialDetails from './overview/ProjectCommercialDetails';
+
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
@@ -17,6 +19,7 @@ import {
   LoadingSkeleton,
 } from "@/components/ui/foundation";
 import ProjectOverviewLayout from "./overview/ProjectOverviewLayout";
+import { projectPositionLabel } from './overview/projectPositionLabel';
 import type { ProjectOrientationFreshness } from "./overview/ProjectOrientationBand";
 
 const ProjectCurrentDesignCommercialCard = lazy(
@@ -29,6 +32,8 @@ const ProjectRecentNotesEvents = lazy(
   () => import("./overview/ProjectRecentNotesEvents"),
 );
 const ProjectWorkSection = lazy(() => import("./overview/ProjectWorkSection"));
+const ProjectPaymentPositionQuery = lazy(() => import("./overview/ProjectPaymentPositionQuery"));
+const ProjectCorrespondenceQuery = lazy(() => import("./overview/ProjectCorrespondenceQuery"));
 const ProjectWorkFilesCard = lazy(
   () => import("./overview/ProjectWorkFilesCard"),
 );
@@ -216,6 +221,7 @@ export default function OverviewTab({
     );
   } else if (commandQuery.data) {
     commercial = (
+      <ProjectCommercialDetails data={commandQuery.data.currentDesign}>
       <Suspense
         fallback={
           <Card padding="compact">
@@ -231,7 +237,13 @@ export default function OverviewTab({
           data={commandQuery.data.currentDesign}
           projectId={snapshot.project.id}
         />
+        <ProjectPaymentPositionQuery
+          projectId={snapshot.project.id}
+          host={host}
+          onAccessEnding={onAccessEnding}
+        />
       </Suspense>
+      </ProjectCommercialDetails>
     );
 
     if (workModelMismatch) {
@@ -264,6 +276,8 @@ export default function OverviewTab({
               projectId={snapshot.project.id}
               host={host}
               projectWork={commandQuery.data.projectWork}
+              ownerLabel={commandQuery.data.owner.owner?.displayName}
+              positionLabel={projectPositionLabel(snapshot.project.stage, commandQuery.data.projectWork.effectiveState, commandQuery.data.currentDesign)}
               pipelineStage={snapshot.project.stage}
               stale={projectWorkControlsStale}
               onRefresh={() => void commandQuery.refetch()}
@@ -315,7 +329,7 @@ export default function OverviewTab({
     commercial = null;
   }
 
-  const recent = snapshotContentReady ? (
+  const history = snapshotContentReady ? (
     <Suspense
       fallback={
         <Card padding="compact" data-recent-notes-events="true">
@@ -380,7 +394,17 @@ export default function OverviewTab({
         exception={exception}
         projectWork={projectWork}
         commercial={commercial}
-        recent={recent}
+        recent={
+          <>
+            {accessEndingStatus === null && (
+              <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} label="Loading customer emails" /></Card>}>
+                <ProjectCorrespondenceQuery projectId={snapshot.project.id} onAccessEnding={onAccessEnding}
+                  project={{ customerEmail: snapshot.project.contactEmail, quoteRef: commandQuery.data?.currentDesign.quote?.quoteRef }} />
+              </Suspense>
+            )}
+            {history}
+          </>
+        }
       />
     </div>
   );

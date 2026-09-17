@@ -30,6 +30,7 @@ function client(result: { data: unknown; error: unknown }) {
   const query: Record<string, any> = {};
   query.select = vi.fn(() => query);
   query.eq = vi.fn(() => query);
+  query.neq = vi.fn(() => query);
   query.order = vi.fn(() => query);
   query.limit = vi.fn(async () => result);
   return {
@@ -42,6 +43,7 @@ function clientWithSiteVisitFacts(confirmations: unknown[]) {
   const repairQuery: Record<string, any> = {};
   repairQuery.select = vi.fn(() => repairQuery);
   repairQuery.eq = vi.fn(() => repairQuery);
+  repairQuery.neq = vi.fn(() => repairQuery);
   repairQuery.order = vi.fn(() => repairQuery);
   repairQuery.limit = vi.fn(async () => ({ data: [], error: null }));
 
@@ -59,7 +61,7 @@ function clientWithSiteVisitFacts(confirmations: unknown[]) {
 }
 
 describe('project-work domain action read', () => {
-  it('maps the oldest open durable repair signal to a staff-safe recovery action', async () => {
+  it('excludes deferred cadence repair before limiting the recovery read', async () => {
     const supabase = client({
       data: [
         {
@@ -81,19 +83,13 @@ describe('project-work domain action read', () => {
         currentDesign,
       }),
     ).resolves.toEqual({
-      recoveryAction: {
-        kind: 'recovery',
-        key: 'quote-cadence-repair:repair-1',
-        title: 'Repair quote follow-up sync',
-        reason: 'The quote follow-up reminder could not be updated.',
-        href: `/staff/projects/${PROJECT_ID}?tab=quotes&quoteId=qv_${QUOTE_VERSION_UUID}`,
-        actionLabel: 'Repair quote follow-up',
-      },
+      recoveryAction: null,
       specialistAction: null,
     });
     expect(supabase.from).toHaveBeenCalledWith('project_work_repair_signals');
     expect(supabase.query.eq).toHaveBeenNthCalledWith(1, 'project_id', PROJECT_UUID);
     expect(supabase.query.eq).toHaveBeenNthCalledWith(2, 'status', 'OPEN');
+    expect(supabase.query.neq).toHaveBeenCalledWith('repair_kind', 'QUOTE_CADENCE_RECONCILIATION');
     expect(supabase.query.order).toHaveBeenNthCalledWith(1, 'first_detected_at', { ascending: true });
   });
 
@@ -219,8 +215,8 @@ describe('project-work domain action read', () => {
           data: [
             {
               id: 'repair-1',
-              repair_kind: 'QUOTE_CADENCE_RECONCILIATION',
-              quote_version_id: null,
+              repair_kind: 'CONFIRMATION_RETRACTION_REVIEW',
+              confirmation_event_id: null,
               error_message: 'Repair requires review.',
             },
           ],
@@ -231,6 +227,6 @@ describe('project-work domain action read', () => {
         stage: 'quoting',
         currentDesign,
       }),
-    ).rejects.toThrow('Open quote cadence repair signal is incomplete');
+    ).rejects.toThrow('Open confirmation correction review signal is incomplete');
   });
 });

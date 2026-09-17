@@ -2,7 +2,6 @@ import type { ProjectWorkItemSourceType } from './types';
 
 const GENERIC_COMPLETION_SOURCES = new Set<ProjectWorkItemSourceType>([
   'MANUAL',
-  'STAGE_REVIEW',
 ]);
 
 export function isGenericCompletableWorkSource(

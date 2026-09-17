@@ -1,3 +1,4 @@
+import { isDeferredProjectFollowUp } from './deferredFollowUps';
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -394,6 +395,7 @@ export function composeProjectWorkQueue(params: {
 }): ProjectWorkQueueEntry[] {
   const byProject = new Map<string, ProjectWorkQueueEntry>();
   for (const rawEntry of params.durableEntries) {
+    if (isDeferredProjectFollowUp(rawEntry) || rawEntry.actionKind === 'needsTriage') continue;
     // The rollout cancels expected legacy rows. Mask any stale, manually
     // prohibited, or partially rolled-out selection instead of exposing its
     // identity or choosing a replacement in presentation code.

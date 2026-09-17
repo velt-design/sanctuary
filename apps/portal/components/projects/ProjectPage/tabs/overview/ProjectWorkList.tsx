@@ -1,15 +1,15 @@
 "use client";
 
+import { isDeferredProjectFollowUp } from '@/lib/projects/workItems/deferredFollowUps';
+
 import type { ProjectCommandStaffSummary } from "@/lib/projects/commandCentre/types";
 import { isGenericCompletableWorkSource } from "@/lib/projects/workItems/workItemCapabilities";
 import { Badge, Button, TaskList, TaskRow } from "@/components/ui/foundation";
 import type { ProjectWorkCommandController } from "./useProjectWorkCommandController";
 import {
   formatProjectWorkDue,
-  isCadenceWorkItem,
   isDecisionReviewWorkItem,
   projectWorkAssigneeLabel,
-  sentCommandForWorkItem,
 } from "./projectWorkPresentation";
 import { isProhibitedProjectWorkItem } from "./projectWorkVisibilityPolicy";
 import styles from "./ProjectWorkSection.module.css";
@@ -27,10 +27,10 @@ export default function ProjectWorkList(props: ProjectWorkListProps) {
     ? null
     : (props.controller.primaryItem?.id ?? null);
   const visibleOpenItems = props.controller.projection.openItems.filter(
-    (item) => item.id !== primaryId && !isProhibitedProjectWorkItem(item),
+    (item) => item.id !== primaryId && !isProhibitedProjectWorkItem(item) && !isDeferredProjectFollowUp(item),
   );
   const visibleBlockedItems = props.controller.projection.blockedItems.filter(
-    (item) => item.id !== primaryId && !isProhibitedProjectWorkItem(item),
+    (item) => item.id !== primaryId && !isProhibitedProjectWorkItem(item) && !isDeferredProjectFollowUp(item),
   );
   const items = [...visibleOpenItems, ...visibleBlockedItems];
   if (!items.length) return null;
@@ -51,7 +51,7 @@ export default function ProjectWorkList(props: ProjectWorkListProps) {
           <p>
             {visibleBlockedPrimary
               ? "Blocked work remains an exception with no enabled action."
-              : "Open and blocked server-ranked work below the primary action."}
+              : "Additional commitments and blockers."}
           </p>
         </div>
         <div className={styles.badges}>
@@ -66,8 +66,6 @@ export default function ProjectWorkList(props: ProjectWorkListProps) {
 
       <TaskList ariaLabel="Other project work">
         {items.map((item) => {
-          const sendCommand = sentCommandForWorkItem(item);
-          const cadence = isCadenceWorkItem(item);
           const blocked = item.status === "BLOCKED";
           const itemPending = props.controller.pendingItemId === item.id;
           const controlsDisabled =
@@ -96,30 +94,6 @@ export default function ProjectWorkList(props: ProjectWorkListProps) {
               actions={
                 !blocked ? (
                   <div className={styles.rowActions}>
-                    {sendCommand ? (
-                      <Button
-                        size="small"
-                        loading={itemPending}
-                        disabled={controlsDisabled}
-                        onClick={() =>
-                          void props.controller.runItemAction(item, "sent")
-                        }
-                      >
-                        Record email sent
-                      </Button>
-                    ) : null}
-                    {cadence ? (
-                      <Button
-                        size="small"
-                        variant="secondary"
-                        disabled={controlsDisabled}
-                        onClick={() =>
-                          void props.controller.runItemAction(item, "reply")
-                        }
-                      >
-                        Record customer reply
-                      </Button>
-                    ) : null}
                     {isGenericCompletableWorkSource(item.sourceType) ? (
                       <Button
                         size="small"

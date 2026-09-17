@@ -35,8 +35,8 @@ describe("ProjectOverviewLayout", () => {
       "orientation",
       "exception",
       "project-work",
-      "commercial",
       "recent",
+      "commercial",
       "admin",
     ]);
 

@@ -1,6 +1,6 @@
 # Xero connection
 
-## Read-only finance summary (local implementation, 2026-09-17)
+## Read-only finance summary (released and source-verified, 2026-09-17)
 
 Jordan's current accountant-informed decision is to keep bank reconciliation
 manual. This supersedes the older Auto-reconcile confirmation/setup next steps
@@ -9,7 +9,14 @@ below. Existing automatic import of verified reconciled payments remains separat
 `/staff/payments/summary`, linked from Finance, uses the existing finance grant
 and `POST /api/payments/xero/summary`. It reads Xero through the existing credential
 broker without accounting writes. No new grants, migrations or rollout switches.
-This implementation is not a production release or live reporting proof.
+PR #149 released as `eb6ba9737cf52960bb732f9d75135310f781f3eb` after required
+CI and independent delivery review. The production Portal deployment was Ready,
+and the existing finance-authorized owner session verified the canonical page.
+The seven completed Auckland dates 10–16 September matched independent Xero
+invoice and receivables reports for invoice count, excluding-tax/tax/inclusive
+totals, invoice receipts and current outstanding. A separate 2–8 September read
+matched a nonzero receivable payment, proving the live payment response shape.
+Private business figures and customer evidence remain outside repository history.
 
 The requested period covers invoice/payment date-only values, defaults to seven
 completed Auckland dates, and permits up to 90 days ending today or earlier.
@@ -28,8 +35,14 @@ all totals. Sequential reads are a current read window, not an atomic snapshot.
 with a local synthetic transport (complete, empty, failure and wrong-period cases),
 requires ENABLE_PORTAL_QA_FIXTURES=1, and is unavailable in production mode.
 Focused tests are `financeSummary*.test.ts` plus the summary client/view tests.
-Hosted period totals, provider ordering/shape and independent Xero report
-crosschecks still need real read-only verification before reporting business figures.
+Hosted NZD period totals and provider response shape are source-verified for the
+samples above. Large-result pagination and foreign-currency behavior retain
+synthetic test evidence; no live failure was deliberately induced. The local
+Windows build passed compile/typecheck but its page-data worker crashed;
+the canonical production build passed in exact-head Linux CI and Vercel.
+No accounting writes, access grants, bank reconciliation or email actions were
+performed during verification. Current outstanding remains a read-time balance,
+not a historical period-end balance; invoice receipts are not all bank cash.
 
 Status: production automatic approved-invoice transfer and reconciled-payment recording enabled on 2026-09-16 Australia/Sydney. Ellen has finance access; Jordan retains access. No routine draft approval is required for newly captured invoices.
 

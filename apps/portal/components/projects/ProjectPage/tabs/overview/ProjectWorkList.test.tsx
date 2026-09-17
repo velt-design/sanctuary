@@ -144,10 +144,10 @@ describe("ProjectWorkList", () => {
     });
     const stageReview = workItem({
       id: "33333333-3333-4333-8333-333333333333",
-      title: "Review proposal progress",
+      title: "Confirm the revised design selections",
       dueAt: "2026-08-03T05:00:00.000Z",
-      sourceType: "STAGE_REVIEW",
-      sourceKey: "stage-review:sent:v1",
+      sourceType: "MANUAL",
+      sourceKey: null,
     });
     const blocked = workItem({
       id: "44444444-4444-4444-8444-444444444444",
@@ -169,21 +169,12 @@ describe("ProjectWorkList", () => {
 
     expect(
       rendered.container.querySelectorAll('[data-project-work-list="v2"] li'),
-    ).toHaveLength(3);
+    ).toHaveLength(2);
     expect(rendered.container.textContent).not.toContain(primary.title);
-    expect(rendered.container.textContent).toContain("2 open");
+    expect(rendered.container.textContent).toContain("1 open");
     expect(rendered.container.textContent).toContain("1 blocked");
 
-    const emailRow = rowWith(rendered.container, email.title);
-    expect(emailRow.textContent).toContain("Assigned staff");
-    expect(emailRow.textContent).toContain("Due");
-    const emailSent = Array.from(emailRow.querySelectorAll("button")).find(
-      (button) => button.textContent === "Record email sent",
-    )!;
-    const customerReplied = Array.from(
-      emailRow.querySelectorAll("button"),
-    ).find((button) => button.textContent === "Record customer reply")!;
-
+    expect(rendered.container.textContent).not.toContain(email.title);
     const stageReviewRow = rowWith(rendered.container, stageReview.title);
     expect(stageReviewRow.textContent).toContain("Jordan");
     const complete = Array.from(stageReviewRow.querySelectorAll("button")).find(
@@ -198,12 +189,8 @@ describe("ProjectWorkList", () => {
     expect(blockedRow.querySelectorAll("button")).toHaveLength(0);
 
     await act(async () => {
-      emailSent.click();
-      customerReplied.click();
       complete.click();
     });
-    expect(runItemAction).toHaveBeenCalledWith(email, "sent");
-    expect(runItemAction).toHaveBeenCalledWith(email, "reply");
     expect(runItemAction).toHaveBeenCalledWith(stageReview, "complete");
     expect(
       rendered.container.querySelectorAll('input[type="checkbox"]'),
@@ -236,13 +223,8 @@ describe("ProjectWorkList", () => {
       />,
     );
 
-    expect(rendered.container.textContent).toContain(email.title);
-    const buttons = rowWith(rendered.container, email.title).querySelectorAll(
-      "button",
-    );
-    expect(buttons).toHaveLength(2);
-    expect(Array.from(buttons).every((button) => button.disabled)).toBe(true);
-    Array.from(buttons).forEach((button) => button.click());
+    expect(rendered.container.textContent).not.toContain(email.title);
+    expect(rendered.container.querySelectorAll("button")).toHaveLength(0);
     expect(runItemAction).not.toHaveBeenCalled();
     rendered.unmount();
   });

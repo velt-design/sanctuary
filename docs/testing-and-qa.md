@@ -1,9 +1,24 @@
 # Testing And QA
 
+Follow-up deferral: `npm run test:portal:project-work` includes
+`test/project-follow-up-retirement.test.ts`, covering cancellation audit/replay,
+preserved manual work and correction history, no fabricated new-project work,
+all five retired confirmation types, genuine-only queue selection and grants.
+Disposable PostgreSQL17 concurrent-row/advisory-writer rehearsal is recorded in
+the Command Centre roadmap; serial PGlite tests alone do not prove concurrency.
+
+Project workflow retirement (local, 16 September): run `npx vitest run test/project-stage-review-retirement.test.ts`
+for disposable PostgreSQL-compatible retirement/audit/replay/preservation checks.
+The Portal fixture project also includes `playwright/portal.project-stories.spec.ts`:
+three coherent sample jobs at desktop and mobile sizes, primary action/position,
+keyboard evidence disclosure, secondary AI suggestions and no mutation requests.
+These fixtures do not prove production installation or real email matching.
+
 Configured enquiry qualification: `test/configured-enquiry-qualification.test.ts`
-executes migration `20260917000003` in disposable PGlite with synthetic staff
+executes migrations `20260917000003` and `20260917000004` in disposable PGlite with synthetic staff
 roles and enquiry/delivery tables. It covers denied access, source eligibility,
-criteria invariants, append-only history, same-command replay and stale edits;
+criteria invariants, append-only history, same-command replay, stale edits and
+project reassignment with preserved history and old-project access denial;
 it is included in `npm run test:configurator:journey`. This reduced fixture is
 not production-schema or overlapping PostgreSQL-session proof. Portal route
 and client tests live in `apps/portal/lib/projects/qualification`.
@@ -14,6 +29,15 @@ Run it with `--project=portal-fixture`; an existing isolated preview can be
 selected with `PORTAL_BASE_URL`. It covers correction, lost-response retry,
 conflict reload, wrong-source rejection and mobile controls without customer
 writes. The synthetic fixture resets on reload; SQL tests own persistence proof.
+
+PR150 release evidence (17 September 2026) additionally exercised actual native
+PostgreSQL sessions for overlapping replay/stale commands and reassignment,
+exact-file rollback rehearsals against both full environment schemas, and a
+protected staging intake-to-staff save/reload/correction journey. The labelled
+staging delivery job remains parked; never retry it. Live marketing proof
+intercepted enquiry submissions and vendor traffic, while production Portal proof
+was authenticated read-only. These checks do not claim production test deliveries
+or edits to real customer qualification.
 
 Xero read summary: run the `financeSummary*.test.ts` and
 `financeSummaryUi.test.tsx` cases under `apps/portal/lib/xero`, plus existing
@@ -606,6 +630,16 @@ When `docs:impact` prints an advisory, update the suggested owner doc if the cod
 
 ## Praxis Reporting Tests
 
+The native customer-read harness also applies the forward aggregate-bounds
+correction (`20260917000001`), verifies rollback/replay and unchanged function
+grants/business rows, and runs `supabase/tests/praxis_projection_aggregate_bounds.sql`.
+Its synthetic cases independently count the final JSON entries, including the
+extra entry introduced by an omission marker during byte reduction. Root fields,
+scalar values where they fit, exact omission evidence and fail-closed impossible
+budgets are checked. This is local database proof, not a live correspondence read.
+The fast PGlite and Docker reporting harnesses also apply this correction and run
+the same synthetic final-payload regression cases.
+
 - `npx vitest run apps/portal/lib/praxis apps/portal/app/api/integrations/praxis/v1/routes.test.ts test/praxis-marketing-read.test.ts`
   includes the marketing aggregate's actual SQL against disposable PGlite with
   more than 100 records, NZ day boundaries, exact test exclusion, distinct quote
@@ -933,7 +967,11 @@ apply only `20260731000002_project_work_portfolio_rollout.sql`, then deploy the
 matching app immediately. Do not use blanket migration push/repair for the
 colliding date-only `20260729` family.
 
-Use a disposable non-production copy for mutation checks. Verify:
+Use a disposable non-production copy for mutation checks. The stage-review
+seeding/replacement checks below describe the original portfolio migration only.
+After `20260916000006`, they are superseded by retirement: no stage review is
+created or reopened, existing active reviews are audited cancellations, and
+non-review obligations are preserved. Verify the original migration in isolation:
 
 - every project has one marker and state; partial rows repair without replacing
   staff-selected Waiting/Closed state or current work;

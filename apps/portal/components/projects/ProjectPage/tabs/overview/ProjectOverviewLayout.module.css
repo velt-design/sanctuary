@@ -39,10 +39,14 @@
 
 .commercial {
   grid-area: commercial;
+  display: grid;
+  gap: var(--ui-grid-gutter);
 }
 
 .recent {
   grid-area: recent;
+  display: grid;
+  gap: var(--ui-grid-gutter);
 }
 
 .admin {
@@ -55,6 +59,31 @@
 
 .layout:not([data-has-recent]) .admin {
   grid-column: 1 / -1;
+}
+
+@media (min-width: 769px) {
+  .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]) {
+    grid-template-columns: minmax(0, 1.1fr) minmax(360px, 1fr);
+    /* Let the lower row absorb the spanning email panel's height, not the work row. */
+    grid-template-rows: auto auto min-content minmax(0, 1fr);
+    grid-template-areas:
+      "orientation orientation"
+      "exception exception"
+      "project-work recent"
+      "commercial recent";
+  }
+
+  .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]):not([data-has-exception]) {
+    grid-template-rows: auto min-content minmax(0, 1fr);
+    grid-template-areas:
+      "orientation orientation"
+      "project-work recent"
+      "commercial recent";
+  }
+
+  .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]) .recent {
+    grid-column: 2;
+  }
 }
 
 .layout[data-command-centre-state="failed"] .projectWork {
@@ -85,9 +114,9 @@
   grid-template-areas:
     "exception"
     "project-work"
+    "recent"
     "commercial"
     "orientation"
-    "recent"
     "admin";
   grid-template-columns: minmax(0, 1fr);
 }
@@ -95,9 +124,9 @@
 .layout[data-overview-composition="mobile"]:not([data-has-exception]) {
   grid-template-areas:
     "project-work"
+    "recent"
     "commercial"
     "orientation"
-    "recent"
     "admin";
 }
 
@@ -113,9 +142,9 @@
     grid-template-areas:
       "exception"
       "project-work"
+      "recent"
       "commercial"
       "orientation"
-      "recent"
       "admin";
     grid-template-columns: minmax(0, 1fr);
   }
@@ -123,9 +152,9 @@
   .layout:not([data-overview-composition="mobile"]):not([data-has-exception]) {
     grid-template-areas:
       "project-work"
+      "recent"
       "commercial"
       "orientation"
-      "recent"
       "admin";
   }
 }

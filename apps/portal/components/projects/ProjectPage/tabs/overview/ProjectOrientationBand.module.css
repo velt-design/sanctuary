@@ -2,6 +2,9 @@
 .orientation {
   min-width: 0;
 }
+.contextDetails > summary { padding: var(--ui-space-3); cursor: pointer; overflow-wrap: anywhere; }
+.contextDetails > summary span { color: var(--ui-text-muted); font-size: var(--ui-font-size-small); margin-left: var(--ui-space-3); }
+.contextDetails > summary:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 2px; }
 
 .orientation {
   container-type: inline-size;

@@ -71,7 +71,7 @@ function item(overrides: Record<string, unknown> = {}) {
   return {
     id: "22222222-2222-4222-8222-222222222222",
     project_id: PROJECT_ID,
-    title: "Follow up by email",
+    title: "Prepare revised design",
     responsibility_area: "CUSTOMER",
     status: "OPEN",
     due_at: "2026-07-30T05:00:00.000Z",
@@ -83,8 +83,8 @@ function item(overrides: Record<string, unknown> = {}) {
     priority_reason: null,
     blocked_reason: null,
     origin: "AUTOMATION",
-    source_type: "LEAD_CADENCE",
-    source_key: `lead:follow-up:${PROJECT_ID}:v1`,
+    source_type: "MANUAL",
+    source_key: `manual:fixture:${PROJECT_ID}:v1`,
     series_key: `lead:${PROJECT_ID}:v1`,
     subject_kind: "PROJECT",
     subject_id: PROJECT_ID,
@@ -126,7 +126,7 @@ describe("project work projection", () => {
       reason: "This work is overdue.",
       item: {
         projectId: `proj_${PROJECT_ID}`,
-        title: "Follow up by email",
+        title: "Prepare revised design",
       },
     });
   });

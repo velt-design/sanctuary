@@ -1,0 +1,5 @@
+.details { border: var(--ui-border-width) solid var(--ui-border); background: var(--ui-surface-primary); min-width: 0; }
+.details > summary { cursor: pointer; padding: var(--ui-space-4); font-weight: 600; overflow-wrap: anywhere; }
+.details > summary:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 2px; }
+.hint { display: block; margin-top: var(--ui-space-2); color: var(--ui-text-muted); font-size: var(--ui-font-size-small); font-weight: 400; }
+.content { display: grid; gap: var(--ui-space-3); }

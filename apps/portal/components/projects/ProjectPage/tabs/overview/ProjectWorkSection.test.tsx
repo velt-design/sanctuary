@@ -148,6 +148,15 @@ describe("ProjectWorkSection", () => {
     mocks.fetchProjectStaffDirectory.mockReset().mockResolvedValue(staff);
   });
 
+  it("removes deferred cadence prompts and recording controls", () => {
+    const item = workItem({ sourceType: "LEAD_CADENCE", sourceKey: "lead:first-email:fixture" });
+    const rendered = renderV2(projection({ primaryAction: { kind: "workItem", item, dueState: "today", reason: "Due today" }, openItems: [item] }));
+    expect(rendered.container.querySelector('[data-primary-project-work="true"]')).toBeNull();
+    expect(rendered.container.textContent).not.toContain("Record email sent");
+    expect(rendered.container.textContent).not.toContain("Record customer reply");
+    expect(rendered.container.textContent).not.toContain("Update follow-up tracking");
+  });
+
   it("keeps Work selected by default and opens Files inside the same card", () => {
     const rendered = renderV2(projection());
     const workTab = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
@@ -177,9 +186,9 @@ describe("ProjectWorkSection", () => {
 
   it("renders one V2 primary action with owner and due truth above open and blocked work", () => {
     const primary = workItem({
-      title: "Review proposal progress",
-      sourceType: "STAGE_REVIEW",
-      sourceKey: "stage-review:sent:v1",
+      title: "Confirm the customer's revised design selections",
+      sourceType: "MANUAL",
+      sourceKey: null,
     });
     const other = workItem({
       id: "22222222-2222-4222-8222-222222222223",
@@ -241,8 +250,7 @@ describe("ProjectWorkSection", () => {
     const list = rendered.container.querySelector(
       '[data-project-work-list="v2"]',
     )!;
-    expect(list.textContent).toContain(other.title);
-    expect(list.textContent).toContain("Sam Sales");
+    expect(list.textContent).not.toContain(other.title);
     expect(list.textContent).toContain(blocked.title);
     expect(list.textContent).not.toContain(primary.title);
     expect(rendered.container.textContent).toContain("1 blocked");
@@ -422,7 +430,7 @@ describe("ProjectWorkSection", () => {
       "Legacy work needs review",
     );
     expect(rendered.container.textContent).toContain(
-      "no browser replacement is chosen",
+      "do not complete the old reminder",
     );
     expect(rendered.container.textContent).not.toContain(
       prohibitedPrimary.title,
@@ -462,6 +470,9 @@ describe("ProjectWorkSection", () => {
 
   it("uses the selected Lost outcome without requiring duplicate reason text", () => {
     const rendered = renderV2(projection(), false, "new");
+    expect(Array.from(rendered.container.querySelectorAll("button")).some((button) => button.textContent === "Close project")).toBe(false);
+    const manage = Array.from(rendered.container.querySelectorAll("button")).find((button) => button.textContent === "Manage project work")!;
+    act(() => manage.click());
     const close = Array.from(
       rendered.container.querySelectorAll("button"),
     ).find((button) => button.textContent === "Close project")!;
