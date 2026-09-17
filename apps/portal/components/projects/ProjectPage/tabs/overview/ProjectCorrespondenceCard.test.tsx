@@ -6,6 +6,22 @@ import { correspondenceSourceHref } from './projectCorrespondencePresentation';
 
 afterEach(() => { document.body.innerHTML = ''; });
 describe('ProjectCorrespondenceCard', () => {
+  it('shows an unconfirmed customer reply beside a linked send without claiming it belongs to the project', () => {
+    const base = { subject: 'Email', sentAt: correspondenceFixture.observedAt, receivedAt: correspondenceFixture.observedAt,
+      observedAt: correspondenceFixture.observedAt, url: 'https://outlook.office.com/mail/id/one', bodyText: 'Please review.',
+      truncated: false, association: 'customer_address_only' as const };
+    const context = { ...correspondenceFixture, messages: [
+      { ...base, id: 'sent', from: 'staff@example.test', projectLink: { state: 'linked' as const, basis: 'sent_message' as const } },
+      { ...base, id: 'reply', from: 'customer@example.test', projectLink: { state: 'unconfirmed' as const } },
+    ] };
+    const view = renderIntoDocument(<ProjectCorrespondenceCard context={context} state="ready" project={{ customerEmail: 'customer@example.test' }} />);
+    const customer = [...view.container.querySelectorAll('article')].find(article => article.textContent?.includes('From customer@example.test'))!;
+    expect(customer.closest('details')?.open).toBe(true);
+    expect(customer.textContent).toContain('Latest customer email — project match unconfirmed');
+    expect(view.container.textContent).toContain('Project-linked emails are shown first');
+    expect(view.container.textContent).not.toContain('Matched to the customer, not yet confirmed to this job.');
+    view.unmount();
+  });
   it('distinguishes an unavailable mailbox read from a successful empty result', () => {
     const context = { ...correspondenceFixture, messages: [], analysisAvailable: false };
     const failed = renderIntoDocument(<ProjectCorrespondenceCard context={{ ...context, limitations: ['Outlook correspondence is unavailable or has not been checked.'] }} state="ready" onRefresh={() => undefined} onAnalyze={() => undefined} />);

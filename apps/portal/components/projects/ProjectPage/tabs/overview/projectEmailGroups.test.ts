@@ -5,6 +5,17 @@ const message: EmailMessage = { id: 'one', from: 'staff@example.test', subject: 
   url: 'https://outlook.office.com/mail/id/one', bodyText: 'Please review the revised quote.', truncated: false, association: 'customer_address_only', projectLink: { state: 'linked', basis: 'sent_message' } };
 
 describe('project email priorities', () => {
+  it('keeps the latest unconfirmed customer email visible when newer staff messages exist, without promoting its association', () => {
+    const unknown = { ...message, projectLink: undefined };
+    const customer = { ...unknown, id: 'customer', from: 'customer@example.test', sentAt: '2026-09-14T00:00:00Z' };
+    const staff = { ...unknown, id: 'staff', sentAt: '2026-09-16T00:00:00Z' };
+    const olderStaff = { ...unknown, id: 'older-staff', sentAt: '2026-09-15T00:00:00Z' };
+    const result = projectEmailGroups([message, customer, staff, olderStaff], 'customer@example.test');
+    expect(result.featured.map(group => group.message.id)).toEqual(['one']);
+    expect(result.unconfirmedPreview.map(group => group.message.id)).toEqual(['staff', 'customer']);
+    expect(result.unconfirmedEarlier.map(group => group.message.id)).toEqual(['older-staff']);
+    expect(result.latestCustomer).toBeUndefined();
+  });
   it('does not feature a newer unconfirmed customer email or merge it into a confirmed copy', () => {
     const unconfirmed = { ...message, id: 'unconfirmed', projectLink: undefined };
     const newer = { ...unconfirmed, id: 'newer', sentAt: '2026-09-17T00:00:00Z', from: 'customer@example.test' };

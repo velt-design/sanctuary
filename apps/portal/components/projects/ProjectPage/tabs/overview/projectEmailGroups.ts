@@ -17,8 +17,12 @@ export function projectEmailGroups(messages: EmailMessage[], customerEmail?: str
   const linked = groups.filter(group => group.message.projectLink?.state === 'linked');
   const unconfirmed = groups.filter(group => group.message.projectLink?.state !== 'linked');
   const latestCustomer = customerEmail ? linked.find(group => group.message.from.toLowerCase() === customerEmail.toLowerCase()) : undefined;
+  const latestUnconfirmedCustomer = customerEmail ? unconfirmed.find(group => group.message.from.toLowerCase() === customerEmail.toLowerCase()) : undefined;
+  const unconfirmedPreview = unconfirmed.slice(0, 2);
+  if (latestUnconfirmedCustomer && !unconfirmedPreview.includes(latestUnconfirmedCustomer)) unconfirmedPreview[1] = latestUnconfirmedCustomer;
   const featured = linked.filter((group, index) => index === 0 || group === latestCustomer);
-  return { featured, earlier: linked.filter(group => !featured.includes(group)), latestCustomer, unconfirmed };
+  return { featured, earlier: linked.filter(group => !featured.includes(group)), latestCustomer, unconfirmed,
+    latestUnconfirmedCustomer, unconfirmedPreview, unconfirmedEarlier: unconfirmed.filter(group => !unconfirmedPreview.includes(group)) };
 }
 
 export function referencesProjectQuote(message: EmailMessage, quoteRef?: string | null) {

@@ -8,7 +8,7 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
   project?: EmailProjectContext; expanded: ReadonlySet<string>; onExpand: (id: string, open: boolean) => void;
   earlierOpen: boolean; onEarlierOpen: (open: boolean) => void;
 }) {
-  const { featured, earlier, latestCustomer, unconfirmed } = projectEmailGroups(messages, project.customerEmail);
+  const { featured, earlier, latestCustomer, unconfirmed, latestUnconfirmedCustomer, unconfirmedPreview, unconfirmedEarlier } = projectEmailGroups(messages, project.customerEmail);
   function renderMessage({ message, copies }: (typeof featured)[number], label?: string) {
       const href = correspondenceSourceHref(message.url);
       const preview = message.bodyText.slice(0, 200);
@@ -39,12 +39,12 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
     {earlier.length ? <details className={styles.sources} open={earlierOpen} onToggle={event => { if (event.target === event.currentTarget) onEarlierOpen(event.currentTarget.open); }}>
       <summary>Earlier emails ({earlier.length})</summary><div className={styles.messages}>{earlier.map(group => renderMessage(group))}</div>
     </details> : null}
-    {unconfirmed.length ? <details className={styles.sources} open={featured.length === 0 ? true : undefined}>
+    {unconfirmed.length ? <details className={styles.sources} open={!latestCustomer ? true : undefined}>
       <summary>Customer emails — project match unconfirmed ({unconfirmed.length})</summary>
       {!featured.length ? <p className={styles.explanation}>We found customer emails, but have not confirmed which belong to this job.</p> : null}
-      <div className={styles.messages}>{unconfirmed.slice(0, 2).map(group => renderMessage(group))}</div>
-      {unconfirmed.length > 2 ? <details className={styles.sources}><summary>More unconfirmed emails ({unconfirmed.length - 2})</summary>
-        <div className={styles.messages}>{unconfirmed.slice(2).map(group => renderMessage(group))}</div>
+      <div className={styles.messages}>{unconfirmedPreview.map(group => renderMessage(group, group === latestUnconfirmedCustomer ? 'Latest customer email — project match unconfirmed' : undefined))}</div>
+      {unconfirmedEarlier.length ? <details className={styles.sources}><summary>More unconfirmed emails ({unconfirmedEarlier.length})</summary>
+        <div className={styles.messages}>{unconfirmedEarlier.map(group => renderMessage(group))}</div>
       </details> : null}
     </details> : null}
     {!messages.length ? <p>No customer messages were returned. This does not mean there has been no correspondence.</p> : null}

@@ -54,6 +54,11 @@ Mobile enquiry measured390 viewport/375 content and scroll width: no page overfl
 header truncation and full journey usability still need review.
 Independent reviewer cannot access this IAB session (Chrome-only inventory).
 No independent real-browser pass is claimed; source integration review remains valid.
+Discovery fix: when no incoming message is linked, the separate unconfirmed group
+now opens and its two-message preview retains the latest customer email even if
+newer staff messages exist. Labels preserve uncertainty; no association is promoted.
+Independent source review found no material regression and reran31 focused tests.
+Portal typecheck passes. Browser verification of these latest fixes is pending.
 Latest verification: independent review of quote/enquiry/accepted samples at
 desktop and390px found no material association-presentation defect. Keyboard
 disclosures/focus, separate newer other-property mail, sender/date readability,
