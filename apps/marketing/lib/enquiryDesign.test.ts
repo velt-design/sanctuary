@@ -6,9 +6,46 @@ import { parsePreviewDesign } from '../components/configurator-prototype/preview
 import { selectEnquiryEmailTemplate } from './enquiryEmailPolicy';
 import { enquiryExperienceFixtures } from './enquiryExperienceFixtures';
 import { renderWebsiteAutoresponder } from './websiteAutoresponder';
+import { buildContactDesignBrief } from '../app/contact/contactDesignBrief';
 
 afterEach(() => vi.unstubAllEnvs());
 describe('submitted design boundary', () => {
+  it.each(['mono', 'gable', 'box'] as const)('keeps freestanding %s summaries consistent with the saved and reopened design', family => {
+    const design = parsePreviewDraft({ ...DEFAULT_PREVIEW_DRAFT, roof: { family, orientation: 'parallel', infills: false, attachmentIntent: 'freestanding' } })!;
+    const brief = buildCustomerBrief('residential', design);
+    expect(brief.summary).toContain('Freestanding, no house connection');
+    expect(brief.summary).not.toMatch(/Facade|Fascia|Soffit|parallel to house/);
+    expect(brief.design).toEqual(design);
+    expect(parsePreviewDesign(brief.reopenPath!.split('#design=')[1])).toEqual(design);
+    const contact = buildContactDesignBrief({ ...design, result: null });
+    expect(contact.description).toContain('Freestanding, no house connection');
+    if (family === 'gable') expect(brief.summary).toContain('Ridge across width');
+  });
+  it('describes a freestanding ridge along projection without an invented house attachment', () => {
+    const design = parsePreviewDraft({ ...DEFAULT_PREVIEW_DRAFT, roof: { family: 'gable', orientation: 'away', infills: false, attachmentIntent: 'freestanding' } })!;
+    const brief = buildCustomerBrief('residential', design);
+    expect(brief.summary).toContain('Ridge along projection');
+    expect(brief.summary).not.toMatch(/Dutch-gable|fascia attachment|away from house/);
+  });
+  it('retains uncertainty instead of reporting the fallback attachment as the customer choice', () => {
+    const design = parsePreviewDraft({ ...DEFAULT_PREVIEW_DRAFT, roof: { ...DEFAULT_PREVIEW_DRAFT.roof, attachmentIntent: 'unsure' } })!;
+    expect(buildCustomerBrief('residential', design).summary).toContain('House connection not sure');
+    expect(buildCustomerBrief('residential', design).summary).not.toContain('Facade attachment');
+    expect(buildCustomerBrief('residential', DEFAULT_PREVIEW_DRAFT).summary).toContain('Facade attachment');
+  });
+  it('renders the corrected saved summary in customer HTML and plain text', async () => {
+    const fixture = enquiryExperienceFixtures()[0];
+    const design = parsePreviewDraft({ ...DEFAULT_PREVIEW_DRAFT, roof: { family: 'gable', orientation: 'parallel', infills: false, attachmentIntent: 'freestanding' } })!;
+    const customerBrief = buildCustomerBrief('residential', design);
+    const rendered = await renderWebsiteAutoresponder('EMAIL_WEBSITE_ENQUIRY_configured_V2', { ...fixture.variables, customerBrief });
+    expect(rendered.html).toContain('Freestanding, no house connection');
+    expect(rendered.text).toContain('Ridge across width');
+    expect(rendered.text).not.toContain('Facade attachment');
+    if (process.env.ENQUIRY_RENDER_ARTIFACTS === 'true') {
+      const { writeFileSync } = await import('node:fs');
+      writeFileSync('artifacts/configurator-preview/freestanding-summary.html', rendered.html);
+    }
+  });
   it('keeps help separate from bespoke and preserves a started bespoke design', () => {
     expect(buildCustomerBrief('residential', undefined, 'help').designStatus).toBe('help');
     const bespoke = buildCustomerBrief('residential', DEFAULT_PREVIEW_DRAFT, 'bespoke');

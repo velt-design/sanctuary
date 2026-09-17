@@ -1,0 +1,21 @@
+.card { margin-top: 24px; padding: 20px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-panel); background: var(--surface, var(--ui-surface-elevated)); color: var(--ui-text); }
+.heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.heading h4 { font-size: 18px; margin: 0; }
+.badge { border-radius: 999px; background: var(--ui-status-neutral-bg); padding: 6px 12px; font-size: 14px; font-weight: 600; }
+.card p { line-height: 1.5; }
+.meta { font-size: 13px; color: var(--ui-text-muted); }
+.fields { padding: 0; border: 0; margin: 20px 0 12px; }
+.fields legend { font-weight: 600; margin-bottom: 12px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); align-items: center; gap: 16px; padding: 10px 0; }
+.row select, .reason textarea { width: 100%; padding: 10px; min-height: 44px; background: var(--ui-surface-elevated); color: var(--ui-text); border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-control); font: inherit; }
+.reason { display: grid; gap: 8px; margin-top: 14px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.actions button, .card > button { padding: 10px 16px; min-height: 44px; border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-control); background: var(--ui-surface-elevated); color: var(--ui-text); font: inherit; cursor: pointer; }
+.actions button[type=submit] { background: var(--ui-action); color: var(--ui-action-foreground); }
+.actions button:disabled { opacity: .6; cursor: default; }
+.card :focus-visible { outline: 3px solid var(--ui-status-info-border); outline-offset: 3px; }
+.error { color: var(--ui-status-error-border); }
+.history { margin-top: 18px; }
+.history summary { cursor: pointer; min-height: 32px; }
+.history li { margin: 8px 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .card { padding: 16px; } .row { grid-template-columns: 1fr; gap: 6px; } .actions { flex-direction: column; } }

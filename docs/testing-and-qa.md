@@ -14,6 +14,31 @@ three coherent sample jobs at desktop and mobile sizes, primary action/position,
 keyboard evidence disclosure, secondary AI suggestions and no mutation requests.
 These fixtures do not prove production installation or real email matching.
 
+Configured enquiry qualification: `test/configured-enquiry-qualification.test.ts`
+executes migrations `20260917000003` and `20260917000004` in disposable PGlite with synthetic staff
+roles and enquiry/delivery tables. It covers denied access, source eligibility,
+criteria invariants, append-only history, same-command replay, stale edits and
+project reassignment with preserved history and old-project access denial;
+it is included in `npm run test:configurator:journey`. This reduced fixture is
+not production-schema or overlapping PostgreSQL-session proof. Portal route
+and client tests live in `apps/portal/lib/projects/qualification`.
+`playwright/portal.enquiry-qualification-fixture.spec.ts` uses the actual form
+through a development-only synthetic transport at
+`/qa/enquiry-qualification-fixture` (`ENABLE_PORTAL_QA_FIXTURES=1`, never production).
+Run it with `--project=portal-fixture`; an existing isolated preview can be
+selected with `PORTAL_BASE_URL`. It covers correction, lost-response retry,
+conflict reload, wrong-source rejection and mobile controls without customer
+writes. The synthetic fixture resets on reload; SQL tests own persistence proof.
+
+PR150 release evidence (17 September 2026) additionally exercised actual native
+PostgreSQL sessions for overlapping replay/stale commands and reassignment,
+exact-file rollback rehearsals against both full environment schemas, and a
+protected staging intake-to-staff save/reload/correction journey. The labelled
+staging delivery job remains parked; never retry it. Live marketing proof
+intercepted enquiry submissions and vendor traffic, while production Portal proof
+was authenticated read-only. These checks do not claim production test deliveries
+or edits to real customer qualification.
+
 Xero read summary: run the `financeSummary*.test.ts` and
 `financeSummaryUi.test.tsx` cases under `apps/portal/lib/xero`, plus existing
 Finance page/proxy/shell tests. They cover dates, tax/currency separation,

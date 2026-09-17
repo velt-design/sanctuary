@@ -305,3 +305,33 @@ Release authorization (2026-09-17): Jordan said "Yes, make it live."
 This supersedes the preceding no-release boundary for this scoped fix.
 Implementation and independent local evidence remain unchanged; publication
 is pending required PR checks and production verification.
+
+## Attachment summary correction (2026-09-17)
+
+Owner request: fix submitted enquiry text describing freestanding designs as
+facade-attached. Branch codex/enquiry-summary-fix-20260917, base eb6ba97;
+worktree C:/Dev/sanctuary-enquiry-summary-fix-20260917.
+
+Verified locally: summary generation now gives attachmentIntent precedence over
+retained attached-mode settings. Freestanding ridge wording uses width/projection;
+Not sure retains uncertainty. Contact presentation and saved customer briefs use
+the same helper. Customer email and staff receipt consume that saved summary.
+Saved design/link serialization and pricing are unchanged. Existing sent emails
+and frozen receipts are not rewritten. No customer email was sent.
+
+Evidence: 16 focused tests pass, including saved/reopened design equality,
+freestanding roof families, ridge orientations, uncertainty, rendered email HTML
+and plain text, and staff receipt contract. Marketing typecheck, scoped ESLint,
+and architecture report pass. Browser-inspected synthetic email preview:
+http://localhost:3077/freestanding-summary.html (this computer only).
+Architecture advisory flags an existing EnquiryAudience export; unrelated type
+cleanup is intentionally deferred. No oversized changed files.
+
+Ready for review locally, not released. Production permission remains separate.
+Synthetic HTML artifacts are local review evidence only; no customer screenshots,
+identities or submitted commercial information are included in the changes.
+
+Release authorized by Jordan: "Push this to production" (2026-09-17).
+Outgoing five-file change reviewed: code, synthetic regressions and this record
+only. No customer evidence or HTML artifacts selected for publication. Required
+PR checks and production deployment verification pending.
