@@ -4,6 +4,95 @@
 
 ### Current focus: useful workflow before release
 
+**Payload fix published:** Velt draftPR379 is at`ed0635b` on
+`codex/staff-mail-payload-20260917`. Full local pnpm check passed (1158web tests,
+60browser checks; type/lint/build included), independent review closed the paired
+per-message defect and found no other blocker. This small correction needs no
+additional migration. Hosted checks are newly running; inspect exact run before
+asking for its separate revision release. PR378/backend/002–004 stay live. Portal
+paired large-response regression is local and passes; preserve it with the next
+Portal documentation/integration batch. Current main e5578a3 must be included before
+Portal production readiness. No live retry of payload fix until it is released.
+
+Payload correction follow-up: independent review caught that Portal's per-message
+32768-character contract would reject newly accepted large bodies. Fixed Velt's
+sanitized presentation to enforce that per-message bound on Unicode boundaries,
+alongside100KB total, with credentials checked before shortening and truthful
+truncation.27focused Velt tests pass. Actual synthetic25-message Velt output was
+exported privately and accepted by Portal's real parseStaffCorrespondence in its
+paired test. Independent fix verification requested. Full Velt `pnpm check` is
+running as exec session71141, log`.codex-tmp/staff-mail-payload-check.log`; this
+correction still local. Independent reviewer closed P1, independently reran27tests
+and found no further blocker. Continue this check before publishing the correction;
+do not re-request approval for already releasede34da5c.
+
+**Actual provider cause established after approved release:** protected candidate
+dpl_DNvjfmioGLnEK9X5a5nnwC6rafkR is Ready and assigned only to the existing protected
+review alias; unauthenticated request returns302 toVercel, existing staff login
+retained. Portal993b815 hosted Quality/Performance completed successfully. One
+accepted-project snapshot read at04:33:44 produced one audited provider operation,
+no saved snapshot. Secret-free live diagnostic: HTTP200,587ms,`response_limit`.
+This disproves timeout for this request: the incoming25-message payload exceeds
+256KiB. Prior timeout speculation is superseded for this measured request.
+
+Corrective local work is in Velt `codex/staff-mail-payload-20260917`, based on merged
+0d106f0: customer-only2MiB streamed ingress, body validation bounded consistently,
+updated audited query hash. Same single25-message request, no fan-out/pagination/
+retry; other provider limits and100KB sanitized body/262KB signed storage limits
+unchanged. Complete accepted text is credential-filtered before truncation. Tests
+cover large25-message/multibyte input, old32KiBbody threshold, unrelatedprovider
+limits, streaming overflow cancellation and credentials beyond display limit;
+30focused tests pass. Independent review requested. Correction not yet published
+or approved for release; existing approval applies toe34da5c, already released.
+
+**Approved release executed, 17 September 04:31 UTC:** Jordan's "Approved" reply
+authorizes the previously requested e34da5c backend/migrations/protected verification.
+This supersedes the pending-approval/blocked entries below. Read-only target checks
+matched the existing live mailbox activity inwmhgvaaxlcoqwbehqrhb, confirmed pg_cron
+and unused002–004 slots. Atomic rollback-only rehearsal passed, then all three
+reviewed migrations and ledger records installed atomically. Minute retention job
+ran successfully at04:30, zero overdue snapshots. PR378 merged as
+`0d106f00717a578dbd671a6182bc3954033943b1`; Ready deployment
+`dpl_FH61srDRmeb7cbhZcdNMx7C7c1Ts` is verified onvelt.systems. Prior rollback
+deployment isdpl_9T75Ycx9y6Sx8gKVDoxxEKweqStS. No email sent or business record changed.
+
+Protected candidate993b815 with lineage+snapshots enabled is building as
+`dpl_DNvjfmioGLnEK9X5a5nnwC6rafkR`, receipt in
+`.codex-tmp/clarity/protected-candidate-993b815.json`. No auto domain assignment;
+production Portal alias remainsdpl_Fg3yVgxuDqphHFNUTWmErkg1g3Ew, no global flag change.
+Next: wait for this candidate, confirm readiness/protection, move only the existing
+protected review alias and verify cold real read, navigation reuse, failure/recovery
+and representative projects. Portal hosted Quality remains active at authenticated
+smoke; performance passed. Sanctuary release hold lifted by owning task afterPR150;
+current main ise5578a3 and migrations000003+000004 installed,000002 untouched.
+Include latest main before any eventual Portal production release; this backend
+approval does not itself release Portal UI.
+
+**Paused at release authority:** the same pending approval for Velt e34da5c and
+migrations002–004 has persisted across three consecutive goal turns. Backend
+checks/review are complete and no further substantive execution can proceed without
+that decision. Portal Performance and Configurator jobs have now passed in
+run35181266212; Portal Quality remains active at its Vitest step, not failed. Watch
+session2537 remains live. On approval, inspect that same run/handle, current PR heads,
+target migration preflight and production holds before acting; do not restart checks
+merely because observation elapsed. Goal is blocked pending release authority, not
+complete. No backend migration/deployment or Portal snapshot activation occurred.
+
+**Release decision pending:** all Velt hosted gates passed at
+`e34da5cfa7f99fd228f5a339dd0438efa1d3a96a` (run35181130674), including full verify
+and complete migration replay. Watch session18279 finished successfully. Asked
+Jordan for one bounded approval covering migrations202609170002–004, exact PR378
+backend merge/deploy and real-email verification in the protected Portal preview.
+No approval received yet; no production changes made. This does not release Portal
+UI. Target read-only preflight must pass before any installation. Portal993b815
+quality/performance checks remain active; its other hosted checks have passed.
+Portal run35181266212 is now tracked by live exec session2537, log
+`.codex-tmp/clarity/reliability-portal-hosted-watch.log`; continue this handle.
+The private protected-candidate helper now accepts optional `--snapshots` only with
+the verified lineage receiver argument, records that setting and applies it only
+to the candidate deployment. Syntax check passed; helper was not executed. Enable
+only after approved migrations, retention checks and backend deployment succeed.
+
 **Latest checkpoint, 17 September 04:15 UTC:** Velt reliability batch published to
 existing draft PR378 at `e34da5c`. Hosted run35181130674 is active; no migration,
 activation or production deployment. Full local check passed before the final
@@ -16,6 +105,20 @@ Real cold Outlook failure is unresolved. Next: inspect this exact hosted run, pr
 the reviewed migration/backend verification release under the scoped permission
 boundary, then prove the paired protected real journey. Earlier checkpoints below
 describe the implementation sequence and are superseded where this entry differs.
+
+Paired Portal batch published to draft PR145 at `993b815`; pre-push full workspace
+typecheck/lint passed. Hosted Portal Quality/Performance run35181266212 and associated
+contract runs are active. Velt migration smoke and historical SQL jobs passed;
+the same verify job remains active. No rerun started. Stable protected review alias
+has not been switched to this new Portal revision; snapshot flag remains off.
+Before release, recheck external production hold and current live migration state.
+The Velt run is being tracked by exec session18279 (`gh run watch`,30-second
+interval); its log is Velt `.codex-tmp/staff-reliability-hosted-watch.log`.
+Continue that exact handle rather than starting another run. Read-only target SQL
+is prepared at Velt `.codex-tmp/staff-reliability-preflight.sql`, not executed.
+Portal deployment completed for993b815 with snapshot flag still off; quality,
+performance and reader-denial checks are still running. No release approval has
+been requested for e34da5c yet; wait for its mandatory verify gate.
 
 **Approved reliability amendment, 17 September 2026:** Jordan explicitly approved
 the bounded reliability approach in the task reply to `call_YarpWjlnRMkSayp4AD86W4W6`:
