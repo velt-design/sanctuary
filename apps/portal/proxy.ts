@@ -72,7 +72,8 @@ function isPortalQaFixtureInternalPath(path: string): boolean {
     path === SCHEDULE_OPS_FIXTURE_PATH ||
     path === AI_ACTIVITY_FIXTURE_PATH ||
     path === '/qa/finance-payment-fixture' ||
-    path === '/qa/xero-summary-fixture'
+    path === '/qa/xero-summary-fixture' ||
+    path === '/qa/enquiry-qualification-fixture'
   );
 }
 

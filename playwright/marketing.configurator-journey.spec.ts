@@ -1,5 +1,39 @@
 import { expect, test } from '@playwright/test';
 
+for (const marketing of [true, false]) test(`campaign source survives designer to submitted enquiry only with marketing ${marketing}`, async ({ page }) => {
+  await page.addInitScript(enabled => {
+    localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: false, marketing: enabled, updatedAt: new Date().toISOString(), version: 1 }));
+  }, marketing);
+  await page.route('**/*', async handler => {
+    const url = new URL(handler.request().url());
+    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') return handler.abort();
+    return handler.fallback();
+  });
+  await page.route('**/api/configurator-price', handler => handler.fulfill({ json: { status: 'disabled' } }));
+  await page.goto('/simple-pergolas-auckland?utm_source=meta&utm_medium=paid_social&utm_campaign=synthetic-journey&utm_content=synthetic-draft&secret=discard#private');
+  await page.getByRole('link', { name: 'Design your pergola', exact: true }).first().click();
+  await expect(page.getByRole('textbox', { name: 'Width in metres' })).toBeVisible();
+  await page.getByRole('textbox', { name: 'Width in metres' }).fill('5.4');
+  await page.getByRole('textbox', { name: 'Width in metres' }).press('Tab');
+  await page.getByRole('button', { name: '3 Review', exact: true }).click();
+  await page.getByRole('link', { name: 'Enquire about this design' }).click();
+  await expect(page).toHaveURL(/\/design-enquiry/);
+  expect(page.url()).not.toContain('utm_');
+  await page.locator('#contact-name').fill('Synthetic campaign test');
+  await page.locator('#contact-email').fill('campaign@example.test');
+  await page.locator('#contact-suburb').fill('Auckland');
+  const request = page.waitForRequest(req => req.url().endsWith('/api/enquiry') && req.method() === 'POST');
+  await page.getByRole('button', { name: 'Send my enquiry' }).click();
+  const body = (await request).postDataJSON();
+  expect(body.attribution.utm).toEqual(marketing ? { utm_source: 'meta', utm_medium: 'paid_social', utm_campaign: 'synthetic-journey', utm_content: 'synthetic-draft' } : {});
+  expect(body.requestType).toBe('project-discussion');
+  expect(body.customerDesign.input.widthMm).toBe(5400);
+  expect(body.attribution.consent.marketing).toBe(marketing);
+  expect(JSON.stringify(body.attribution)).not.toMatch(/secret|discard|private/);
+  if (marketing) expect(body.attribution.landingPage).toMatch(/\/simple-pergolas-auckland$/);
+  await expect(page.getByRole('heading', { name: 'Your enquiry has been sent.' })).toBeVisible();
+});
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: false, marketing: false, updatedAt: '2026-09-09T00:00:00.000Z', version: 1 }));
@@ -157,13 +191,15 @@ test('configured funnel waits for regional consent on a public overlay entry', a
     await handler.fulfill({ json: { policy: 'nz_automatic' } });
   });
   await page.route(/https:\/\/([^/]+\.)?(googletagmanager|google-analytics|doubleclick)\.(com|net)\//, request => request.abort());
-  await page.goto('/simple-pergolas-auckland');
+  await page.goto('/simple-pergolas-auckland?utm_source=meta&utm_campaign=synthetic-delayed');
   await page.getByRole('link', { name: 'Design your pergola', exact: true }).first().click();
   await expect(page.getByRole('textbox', { name: 'Width in metres' })).toBeVisible();
   const events = () => page.evaluate(() => (JSON.parse(sessionStorage.getItem('funnel-test-events') ?? '[]') as unknown[][]).filter(event => event[0] === 'event'));
   expect(await events()).toEqual([]);
+  expect(await page.evaluate(() => sessionStorage.getItem('sanctuary.campaign-context.v1'))).toBeNull();
   releaseRegion();
   await expect.poll(async () => (await events()).filter(event => event[1] === 'design_start').length).toBe(1);
+  await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('sanctuary.campaign-context.v1') ?? '{}').context?.utm)).toEqual({ utm_source: 'meta', utm_campaign: 'synthetic-delayed' });
   await page.getByRole('textbox', { name: 'Width in metres' }).fill('5.4');
   await page.getByRole('textbox', { name: 'Width in metres' }).press('Tab');
   await page.getByRole('button', { name: '3 Review', exact: true }).click();

@@ -1,5 +1,20 @@
 # Testing And QA
 
+Configured enquiry qualification: `test/configured-enquiry-qualification.test.ts`
+executes migration `20260917000003` in disposable PGlite with synthetic staff
+roles and enquiry/delivery tables. It covers denied access, source eligibility,
+criteria invariants, append-only history, same-command replay and stale edits;
+it is included in `npm run test:configurator:journey`. This reduced fixture is
+not production-schema or overlapping PostgreSQL-session proof. Portal route
+and client tests live in `apps/portal/lib/projects/qualification`.
+`playwright/portal.enquiry-qualification-fixture.spec.ts` uses the actual form
+through a development-only synthetic transport at
+`/qa/enquiry-qualification-fixture` (`ENABLE_PORTAL_QA_FIXTURES=1`, never production).
+Run it with `--project=portal-fixture`; an existing isolated preview can be
+selected with `PORTAL_BASE_URL`. It covers correction, lost-response retry,
+conflict reload, wrong-source rejection and mobile controls without customer
+writes. The synthetic fixture resets on reload; SQL tests own persistence proof.
+
 Xero read summary: run the `financeSummary*.test.ts` and
 `financeSummaryUi.test.tsx` cases under `apps/portal/lib/xero`, plus existing
 Finance page/proxy/shell tests. They cover dates, tax/currency separation,

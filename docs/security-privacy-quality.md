@@ -14,6 +14,42 @@ protected-route fragment: middleware runs before browser session hydration and
 may preserve those credentials on the login URL. Do not log, screenshot,
 persist, or use this controlled QA path as a routine production login flow.
 
+## Campaign context during an enquiry journey
+
+`CampaignAttribution` keeps a tab-local, same-origin campaign snapshot under
+`sanctuary.campaign-context.v1` only when the current decision permits marketing.
+The allowlist is `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`,
+`utm_term`, `utm_id` and the existing `gclid`, `gbraid`, `wbraid` fields, each
+bounded to 600 characters. Landing and referrer URLs exclude credentials,
+queries and fragments. No new cookie, cross-origin identity or vendor event is
+introduced. Do not put personal information or secrets in campaign labels.
+
+The snapshot survives internal navigation to the configurator and enquiry for
+30 minutes from capture. Untagged navigation and refresh do not renew it;
+another different tagged arrival replaces it. Repeating the same campaign on
+the same landing page keeps the original deadline. Expired values are erased
+on the next read, leaving an empty tab-local marker so refreshing an expired
+tagged page cannot silently restart attribution. A new tagged arrival can start
+a new window. Closing the browsing session ends the context; browsers can copy
+session storage when duplicating a tab, with the original absolute deadline.
+
+Before the consent decision, only allowlisted page context is held in the
+mounted component's memory. A later permission can capture it after internal
+navigation; hard navigation/remount can lose it and is not reconstructed.
+Decline or withdrawal discards that candidate and clears stored context. The
+submission helper also checks the shared explicit preference, so a withdrawal
+in another tab wins before React receives the storage event. Storage failure
+does not block enquiries; cross-page attribution may be unavailable. No vendor
+events are backfilled. Consent remains server-checked at submission.
+
+The existing atomic enquiry intake binds this consent-gated attribution to
+`enquiry_requests.id`, its `project_id`, `utm` and `raw_payload.attribution`.
+Replay preserves the original receipt. This records an observed campaign
+source, not proof of causality, qualification, a sale or a Meta conversion join.
+Synthetic journey coverage is in `playwright/marketing.configurator-journey.spec.ts`;
+`test/marketing-enquiry-real-intake.test.ts` verifies the actual SQL intake's
+stored attribution and receipt identity without sending provider messages.
+
 ## Consent Categories
 
 - `essential`: required for core site behavior.

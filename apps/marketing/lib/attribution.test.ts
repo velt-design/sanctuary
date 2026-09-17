@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CAMPAIGN_SESSION_KEY, captureCampaignSession } from './campaignSession';
 import {
   getBrowserMarketingAttribution,
   getGaClientIdFromCookie,
@@ -6,6 +7,16 @@ import {
 } from './attribution';
 
 describe('marketing browser attribution', () => {
+  it('honors a cross-tab marketing withdrawal immediately at submission', () => {
+    const values = new Map<string, string>();
+    const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };
+    captureCampaignSession({ utm: { utm_source: 'meta' }, clickIds: {} }, storage, true);
+    vi.stubGlobal('window', { location: { search: '', href: 'https://example.test/design-enquiry' }, sessionStorage: storage, localStorage: { getItem: () => JSON.stringify({ version: 1, analytics: false, marketing: false, updatedAt: new Date().toISOString() }) } });
+    const result = getBrowserMarketingAttribution({ consent: { analytics: false, marketing: true }, trackingBasis: 'user_choice', trackingRegionPolicy: null });
+    expect(result.utm).toEqual({});
+    expect(result.consent?.marketing).toBe(false);
+    expect(storage.getItem(CAMPAIGN_SESSION_KEY)).toBeNull();
+  });
   afterEach(() => {
     vi.unstubAllGlobals();
   });

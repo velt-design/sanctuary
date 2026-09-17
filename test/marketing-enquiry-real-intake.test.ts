@@ -12,14 +12,17 @@ it('runs the exact intake function with replay and upload-session validation', a
     // PGlite supplies gen_random_uuid but not the external pgcrypto extension.
     await db.exec(readFileSync('supabase/enquiry_requests.sql', 'utf8').replace('create extension if not exists pgcrypto;', ''));
     await db.exec(marketingEnquiryTestIntakeSql(process.cwd()));
-    const body = { enquiryType: 'residential', name: 'Intake fixture', email: 'INTAKE@example.test', phone: '+6400000002', files: [], rawPayload: { original: true } };
+    const attribution = { utm: { utm_source: 'meta', utm_campaign: 'synthetic-journey' }, clickIds: {}, consent: { analytics: false, marketing: true, basis: 'user_choice', capturedAt: '2026-09-17T00:00:00.000Z' } };
+    const body = { enquiryType: 'residential', name: 'Intake fixture', email: 'INTAKE@example.test', phone: '+6400000002', files: [], utm: attribution.utm, rawPayload: { original: true, attribution } };
     const submit = (id: string, payload: unknown) => db.query('select * from marketing_enquiry_intake($1,$2,$3)', [id, '', JSON.stringify(payload)]);
     const id = '11111111-1111-4111-8111-111111111111';
     const first = await submit(id, body);
     const replay = await submit(id, { ...body, rawPayload: { original: false } });
     expect(replay.rows[0]).toEqual({ ...first.rows[0], already_existed: true });
     expect((await db.query('select email from contacts')).rows).toEqual([{ email: 'intake@example.test' }]);
-    expect((await db.query('select raw_payload from enquiry_requests')).rows).toEqual([{ raw_payload: { original: true } }]);
+    expect((await db.query('select id, project_id, utm, raw_payload from enquiry_requests')).rows).toEqual([{
+      id: first.rows[0].enquiry_request_id, project_id: first.rows[0].project_id, utm: attribution.utm, raw_payload: { original: true, attribution },
+    }]);
     await expect(submit('22222222-2222-4222-8222-222222222222', { ...body, files: [{ name: 'plan.pdf', path: 'unverified/plan.pdf', type: 'application/pdf', size: 42 }] })).rejects.toThrow('invalid_upload_session');
     expect((await db.query('select count(*)::int n from projects')).rows).toEqual([{ n: 1 }]);
   } finally { await db.close(); }

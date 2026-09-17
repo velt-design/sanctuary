@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiJson } from '@/lib/repo/apiClient';
 import { DataStatePanel } from '@/components/ui/foundation';
 import { enquiryDeliveryStatus } from './enquiryDeliveryStatus';
+import EnquiryQualification from '@/components/projects/qualification/EnquiryQualification';
 
 type Receipt = {
   id: string; submittedAt: string; receiptFrozen: boolean; requestType: string | null;
@@ -49,6 +50,7 @@ export default function ProjectEnquiryReceiptPanel({ projectId, host }: { projec
       {receipt.submittedPrice?.includesGst && receipt.submittedPrice.breakdown?.length ? <details><summary>Submitted price breakdown · including GST</summary><dl>{receipt.submittedPrice.breakdown.map((line, index) => <div key={index}><dt>{line.label}</dt><dd>{rangeLabel({ lowIncGst: line.amountIncGst, highIncGst: line.amountIncGst })}</dd></div>)}</dl></details> : null}
       {receipt.message && <p style={{ whiteSpace: 'pre-wrap' }}>{receipt.message}</p>}
       <p>Review the site and contact the customer before arranging a visit. Free site measures are available in Auckland; confirm availability and any travel cost elsewhere.</p>
+      {receipt.requestType === 'project-discussion' && brief?.audience === 'residential' && <EnquiryQualification projectId={projectId} enquiryId={receipt.id} />}
     </section>;
   })}</div>;
 }

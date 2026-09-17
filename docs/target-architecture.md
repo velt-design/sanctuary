@@ -2,6 +2,15 @@
 
 Status: Target contract.
 
+Configured enquiry qualification (2026-09-17, local implementation): Portal owns
+the staff review form and authenticated HTTP adapter under `lib/projects/qualification`.
+The exact enquiry and its frozen customer brief remain the source; no customer
+payload is copied into qualification storage. A private append-only event table
+and narrowly granted staff RPCs own criteria invariants, source binding,
+idempotency and version conflict handling. The latest event is the current
+projection. This does not extend the pipeline/work-cadence command surface or
+produce jobs/events. Production installation is a separate release gate.
+
 Website enquiry delivery integration (2026-09-14): the install-only delivery
 boundary follows the existing durable job/effect ownership. Large frozen messages
 remain in a private domain table, referenced by a small queue payload; worker
