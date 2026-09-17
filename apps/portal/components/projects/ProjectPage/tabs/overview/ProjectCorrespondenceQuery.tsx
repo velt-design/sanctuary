@@ -31,17 +31,24 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
   accessCallback.current = onAccessEnding;
   const path = `/api/staff/v1/projects/${encodeURIComponent(projectId)}/correspondence`;
 
-  const load = useCallback(async (check: boolean, analyze = false) => {
+  const load = useCallback(async (check: boolean, analyze = false, readOnOpen = false) => {
     active.current?.abort();
     const controller = new AbortController();
     active.current = controller;
     if (check) earlier.current = undefined;
     setRead({ state: 'loading' });
     try {
-      const reply = await apiJson<{ state: string; context?: unknown }>(path + (analyze ? '?analyze=true' : ''), {
+      let reply = await apiJson<{ state: string; context?: unknown }>(path + (analyze ? '?analyze=true' : ''), {
         method: check ? 'POST' : 'GET', signal: controller.signal, cache: 'no-store', skipSaveTracking: true,
       });
       if (controller.signal.aborted) return;
+      if (readOnOpen && reply.state === 'available') {
+        reply = await apiJson<{ state: string; context?: unknown }>(path, {
+          method: 'POST', signal: controller.signal, cache: 'no-store', skipSaveTracking: true,
+        });
+        if (controller.signal.aborted) return;
+        check = true;
+      }
       if (reply.state === 'not_connected') { earlier.current = undefined; setRead({ state: 'not_connected' }); }
       else if (reply.state === 'available') setRead(earlier.current ? { state: evidenceState(earlier.current), context: earlier.current } : { state: 'available' });
       else if (reply.state === 'ready' && check) {
@@ -59,9 +66,9 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
   }, [path]);
 
   useEffect(() => {
-    void load(false);
-    // Evidence stays only in this mounted project. On return, recheck staff and
-    // project access before redisplaying it; never start a background model read.
+    void load(false, false, true);
+    // Evidence stays only in this mounted project. Opening reads mail after access
+    // checks; visibility/expiry rechecks never start a background model read.
     const clearPrivateEvidence = () => {
       if (document.visibilityState === 'hidden') {
         active.current?.abort();

@@ -1,4 +1,5 @@
 import 'server-only';
+import { isDeferredProjectFollowUp } from './deferredFollowUps';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
@@ -175,7 +176,7 @@ export async function getProjectWorkProjection(params: {
   const projectOwnerKey = text(ownerRows[0]?.owner_key);
   const allItems = itemRows
     .map((row) => mapWorkItem(row, projectOwnerKey))
-    .filter((item): item is ProjectWorkItem => item !== null);
+    .filter((item): item is ProjectWorkItem => item !== null && !isDeferredProjectFollowUp(item));
   const openItems = allItems.filter((item) => item.status === 'OPEN');
   const blockedItems = allItems.filter((item) => item.status === 'BLOCKED');
   const confirmedFacts = activeConfirmationEventRows(confirmationRows)
@@ -215,6 +216,7 @@ export async function getProjectWorkProjection(params: {
             workItems: openItems,
             recoveryAction: params.recoveryAction,
             specialistAction: params.specialistAction,
+            hasBlockedWork: blockedItems.length > 0,
             needsTriageReason: blockedItems.length
               ? 'Blocked project work requires review.'
               : 'No current staff work or specialist action is recorded.',

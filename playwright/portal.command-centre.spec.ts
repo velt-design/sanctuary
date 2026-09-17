@@ -141,11 +141,7 @@ for (const scenario of COMMAND_CENTRE_FIXTURE_SCENARIOS) {
 const WORK_SCENARIO_EXPECTATIONS = {
   "v2-primary": {
     model: "v2",
-    text: [
-      "Email the customer with the first enquiry response",
-      "Sam Sales",
-      "Due today",
-    ],
+    text: ["Project owner:", "Review customer emails, the current quote and project files."],
   },
   "v2-missing-email": {
     model: "v2",
@@ -153,19 +149,11 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-follow-up": {
     model: "v2",
-    text: [
-      "Email the customer with an enquiry follow-up",
-      "Overdue",
-      "Record customer reply",
-    ],
+    text: ["Project owner:", "Review customer emails, the current quote and project files."],
   },
   "v2-close-review": {
     model: "v2",
-    text: [
-      "Review whether this enquiry should stay active",
-      "A staff decision is required",
-      "Nothing happens automatically",
-    ],
+    text: ["Project owner:", "Review customer emails, the current quote and project files."],
   },
   "v2-critical": {
     model: "v2",
@@ -177,7 +165,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-overdue": {
     model: "v2",
-    text: ["Email the customer with an enquiry follow-up", "Overdue"],
+    text: ["Project owner:", "Review customer emails, the current quote and project files."],
   },
   "v2-future": {
     model: "v2",
@@ -201,7 +189,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-no-action": {
     model: "v2",
-    text: ["No current project work", "The server has no current next action"],
+    text: ["Project owner:", "Review customer emails, the current quote and project files."],
   },
   "v2-contacted-site-visit": {
     model: "v2",
@@ -289,7 +277,7 @@ const READ_STATE_EXPECTATIONS = {
   ready: {
     layoutState: "ready",
     workModel: "v2",
-    text: ["Email the customer with the first enquiry response"],
+    text: ["Project owner:"],
     emailControl: "enabled",
   },
   refreshing: {
@@ -297,7 +285,7 @@ const READ_STATE_EXPECTATIONS = {
     workModel: "v2",
     text: [
       "Refreshing",
-      "Email the customer with the first enquiry response",
+      "Project owner:",
       "Work controls paused",
     ],
     emailControl: "disabled",
@@ -307,7 +295,7 @@ const READ_STATE_EXPECTATIONS = {
     workModel: "v2",
     text: [
       "Saved Overview",
-      "Email the customer with the first enquiry response",
+      "Project owner:",
       "Work controls paused",
     ],
     emailControl: "disabled",
@@ -326,7 +314,7 @@ const READ_STATE_EXPECTATIONS = {
     workModel: "v2",
     text: [
       "Loading the complete project",
-      "Email the customer with the first enquiry response",
+      "Project owner:",
       "Updating recent history",
     ],
     emailControl: "disabled",
@@ -437,13 +425,7 @@ for (const state of COMMAND_CENTRE_VIEW_STATES) {
     const emailControl = layout.getByRole("button", {
       name: "Record email sent",
     });
-    if (expected.emailControl === "enabled") {
-      await expect(emailControl).toBeEnabled();
-    } else if (expected.emailControl === "disabled") {
-      await expect(emailControl).toBeDisabled();
-    } else {
-      await expect(emailControl).toHaveCount(0);
-    }
+    await expect(emailControl).toHaveCount(0);
 
     if ("retryCount" in expected) {
       await expect(layout.getByRole("button", { name: "Retry" })).toHaveCount(
@@ -482,8 +464,8 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
       layout.locator('[data-recent-notes-events="true"]'),
     ).toBeVisible();
     await expect(layout).toContainText("1 blocked");
-    await expect(layout).toContainText("Sam Sales");
-    await expect(layout).toContainText("Due");
+    await expect(layout).toContainText("Jordan");
+    await expect(layout).toContainText("Measurements have not been supplied");
     await expect(layout).toContainText("$1,234.56 inc GST");
     await expect(layout).toContainText("No current quote");
 
@@ -688,9 +670,7 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
     ).toBe(String(index));
   }
 
-  const primary = page
-    .locator('[data-primary-project-work="true"]')
-    .getByRole("button", { name: "Record email sent" });
+  const primary = page.getByRole("button", { name: "Manage project work", exact: true });
   await primary.focus();
   await expect(primary).toBeFocused();
   const focusPresentation = await primary.evaluate((element) => {
@@ -740,46 +720,14 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
   }
 });
 
-test("renders one unmistakable next action before quiet supporting truth", async ({
-  page,
-}) => {
+test("removes retired cadence while preserving practical work and commercial warnings", async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
-  await page.goto(
-    fixtureUrl({ scenario: "missing-estimate-price", work: "v2-primary" }),
-  );
+  await page.goto(fixtureUrl({ scenario: "missing-estimate-price", work: "v2-primary" }));
   const layout = page.locator('[data-project-overview-layout="true"]');
-  const primary = layout.locator('[data-primary-project-work="true"]');
-  const primaryTitle = primary.getByRole("heading", {
-    level: 3,
-    name: "Email the customer with the first enquiry response",
-  });
-  const commercialTitle = layout.getByRole("heading", {
-    level: 2,
-    name: "Current design & price",
-  });
-  await expect(primary).toHaveCount(1);
-  await expect(primary).toContainText("Recording it starts the next reminder");
-  await expect(
-    primary.getByRole("button", { name: "Record email sent" }),
-  ).toBeVisible();
-  await expect(
-    primary.getByRole("button", { name: "Record customer reply" }),
-  ).toBeVisible();
-
-  const hierarchy = await Promise.all([
-    primaryTitle.evaluate((element) =>
-      Number.parseFloat(getComputedStyle(element).fontSize),
-    ),
-    commercialTitle.evaluate((element) =>
-      Number.parseFloat(getComputedStyle(element).fontSize),
-    ),
-    primary.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return Number.parseFloat(style.borderLeftWidth);
-    }),
-  ]);
-  expect(hierarchy[0]).toBeGreaterThan(hierarchy[1]);
-  expect(hierarchy[2]).toBeGreaterThanOrEqual(4);
+  await expect(layout.locator('[data-primary-project-work="true"]')).toHaveCount(0);
+  await expect(layout).toContainText("Project owner:");
+  await expect(layout).toContainText("Prepare the revised design brief");
+  await expect(layout.getByRole("button", { name: /Record email sent|Record customer reply/ })).toHaveCount(0);
 
   const warning = layout.locator(
     '[data-command-centre-warning="estimate-price-unavailable"]',
@@ -822,41 +770,16 @@ test("keeps coarse-pointer Project Work controls at least 44px high", async ({
   }
 });
 
-test("uses the existing semantic email command with one stable submit", async ({
-  page,
-}) => {
-  const commands: Array<Record<string, unknown>> = [];
-  await page.route(
-    "**/api/staff/v1/projects/proj_fixture/confirmations/commands",
-    async (route) => {
-      const command = route.request().postDataJSON() as Record<string, unknown>;
-      commands.push(command);
-      await route.fulfill({
-        contentType: "application/json",
-        body: JSON.stringify({
-          command: {
-            id: command.commandId,
-            committed: true,
-            replayed: false,
-            rowVersion: 2,
-          },
-        }),
-      });
-    },
-  );
-
-  await page.goto(fixtureUrl({ work: "v2-primary" }));
-  await page
-    .locator('[data-primary-project-work="true"]')
-    .getByRole("button", { name: "Record email sent" })
-    .click();
-  await expect(page.getByText("Saved on the server.")).toBeVisible();
-  expect(commands).toHaveLength(1);
-  expect(commands[0]).toMatchObject({
-    command: "RECORD_FIRST_ENQUIRY_EMAIL_SENT",
-    subjectId: "proj_fixture",
+test("does not expose or submit retired email-recording commands", async ({ page }) => {
+  const commands: string[] = [];
+  page.on('request', request => {
+    if (request.url().includes('/confirmations/commands') && request.method() === 'POST') commands.push(request.url());
   });
-  expect(commands[0]?.commandId).toEqual(expect.any(String));
+  await page.goto(fixtureUrl({ work: "v2-primary" }));
+  await expect(page.locator('[data-command-centre-fixture-hydrated="true"]')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Record email sent|Record customer reply/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Manage project work', exact: true })).toBeVisible();
+  expect(commands).toEqual([]);
 });
 
 const PROJECT_SHELL_VIEWPORTS = [
@@ -1050,7 +973,7 @@ test("routes deterministic V2 command data through the real project shell and Ov
     ),
   ).toHaveCount(1);
   await expect(layout).toContainText(
-    "Email the customer with the first enquiry response",
+    "Project owner:",
   );
   await layout.locator('summary', { hasText: 'Quote, design & payment details' }).click();
   await expect(layout.locator("[data-command-centre-source]")).toBeVisible();
@@ -1225,7 +1148,7 @@ test('keeps correspondence suggestions read-only with inspectable sources', asyn
   const conversations = page.getByRole('region', { name: 'Customer conversations', exact: true });
   await expect(conversations).toContainText('not yet confirmed to this job');
   await expect(conversations).toContainText('Suggestions do not change the job or send an email');
-  await expect(conversations.locator('article blockquote')).toBeVisible();
+  await expect(conversations.locator('article blockquote:visible').first()).toBeVisible();
   await conversations.locator('summary', { hasText: 'AI interpretation and suggestions' }).click();
   const jobPosition = conversations.getByRole('region', { name: 'Job position', exact: true });
   await jobPosition.locator('summary').first().click();

@@ -12,6 +12,35 @@ afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); document.body.innerH
 const flush = async () => { await act(async () => { await Promise.resolve(); }); };
 
 describe('private correspondence lifecycle', () => {
+  it.each([401, 403, 404])('never reads mail when initial access returns %s', async status => {
+    mocks.api.mockRejectedValueOnce(new ApiError('Denied', { status, body: null }));
+    const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
+    await flush();
+    expect(mocks.api).toHaveBeenCalledTimes(1);
+    expect(mocks.api.mock.calls[0][1].method).toBe('GET');
+    expect(view.container.textContent).toContain('Conversations unavailable');
+    view.unmount();
+  });
+  it('does not read mail when correspondence is disabled', async () => {
+    mocks.api.mockResolvedValueOnce({ state: 'not_connected' });
+    const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
+    await flush();
+    expect(mocks.api).toHaveBeenCalledTimes(1);
+    view.unmount();
+  });
+  it('rechecks and reloads on return without persisting private mail or invoking AI', async () => {
+    mocks.api.mockResolvedValueOnce({ state: 'available' }).mockResolvedValueOnce({ state: 'ready', context: correspondenceFixture })
+      .mockResolvedValueOnce({ state: 'available' }).mockResolvedValueOnce({ state: 'ready', context: correspondenceFixture });
+    const first = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
+    await flush(); first.unmount();
+    const returned = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
+    expect(returned.container.textContent).not.toContain('The customer is asking');
+    await flush();
+    expect(returned.container.textContent).toContain('The customer is asking');
+    expect(mocks.api.mock.calls.map(call => call[1].method)).toEqual(['GET', 'POST', 'GET', 'POST']);
+    expect(mocks.api.mock.calls.every(call => !call[0].includes('analyze'))).toBe(true);
+    returned.unmount();
+  });
   it('restores an open message after the expiry access check without retaining visible evidence during the check', async () => {
     const context = { ...correspondenceFixture, messages: [{ id: 'mail-one', subject: 'Project response', from: 'customer@example.test',
       sentAt: correspondenceFixture.observedAt, receivedAt: correspondenceFixture.observedAt, observedAt: correspondenceFixture.observedAt,
@@ -21,7 +50,6 @@ describe('private correspondence lifecycle', () => {
       .mockImplementationOnce(() => new Promise(resolve => { resolveAccess = resolve; }));
     const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
     await flush();
-    await act(async () => { (view.container.querySelector('button') as HTMLButtonElement).click(); });
     const details = view.container.querySelector('article details') as HTMLDetailsElement;
     await act(async () => { details.open = true; details.dispatchEvent(new Event('toggle')); });
     await act(async () => { vi.advanceTimersByTime(120001); });
@@ -37,7 +65,6 @@ describe('private correspondence lifecycle', () => {
       .mockResolvedValueOnce({ state: 'ready', context: { ...correspondenceFixture, analysisAvailable: true } });
     const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
     await flush();
-    await act(async () => { (view.container.querySelector('button') as HTMLButtonElement).click(); });
     expect(mocks.api.mock.calls[1][0]).not.toContain('analyze');
     const analyze = Array.from(view.container.querySelectorAll('button')).find(button => button.textContent === 'Ask AI to interpret these emails')!;
     expect(analyze).toBeDefined();
@@ -46,14 +73,12 @@ describe('private correspondence lifecycle', () => {
     expect(view.container.textContent).toContain('AI interpretation and suggestions');
     view.unmount();
   });
-  it('loads availability only and rechecks access before labelling an expired summary', async () => {
+  it('reads mail on opening after availability, then only rechecks access at expiry', async () => {
     mocks.api.mockResolvedValueOnce({ state: 'available' }).mockResolvedValueOnce({ state: 'ready', context: correspondenceFixture }).mockResolvedValueOnce({ state: 'available' });
     const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
     await flush();
-    expect(mocks.api).toHaveBeenCalledTimes(1);
+    expect(mocks.api).toHaveBeenCalledTimes(2);
     expect(mocks.api.mock.calls[0][1].method).toBe('GET');
-    expect(view.container.textContent).not.toContain('The customer is asking');
-    await act(async () => { (view.container.querySelector('button') as HTMLButtonElement).click(); });
     expect(mocks.api.mock.calls[1][1]).toMatchObject({ method: 'POST', skipSaveTracking: true, cache: 'no-store' });
     expect(view.container.textContent).toContain('The customer is asking');
     await act(async () => { vi.advanceTimersByTime(120001); });
@@ -66,7 +91,6 @@ describe('private correspondence lifecycle', () => {
     mocks.api.mockResolvedValueOnce({ state: 'available' }).mockResolvedValueOnce({ state: 'ready', context: correspondenceFixture }).mockResolvedValueOnce({ state: 'available' });
     const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
     await flush();
-    await act(async () => { (view.container.querySelector('button') as HTMLButtonElement).click(); });
     const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
     act(() => { document.dispatchEvent(new Event('visibilitychange')); });
     expect(view.container.textContent).not.toContain('The customer is asking');
@@ -82,7 +106,6 @@ describe('private correspondence lifecycle', () => {
       .mockRejectedValueOnce(new ApiError('Denied', { status: 403, body: null }));
     const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
     await flush();
-    await act(async () => { (view.container.querySelector('button') as HTMLButtonElement).click(); });
     const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
     act(() => { document.dispatchEvent(new Event('visibilitychange')); });
     visibility.mockReturnValue('visible');
@@ -98,7 +121,6 @@ describe('private correspondence lifecycle', () => {
     const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" onAccessEnding={onAccessEnding} />);
     await flush();
     await act(async () => { (view.container.querySelector('button') as HTMLButtonElement).click(); });
-    await act(async () => { (view.container.querySelector('button') as HTMLButtonElement).click(); });
     expect(view.container.textContent).not.toContain('The customer is asking');
     expect(onAccessEnding).toHaveBeenCalledWith(status);
     view.unmount();
@@ -108,7 +130,6 @@ describe('private correspondence lifecycle', () => {
     mocks.api.mockResolvedValueOnce({ state: 'available' }).mockImplementationOnce(() => new Promise(done => { resolve = done; }));
     const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
     await flush();
-    await act(async () => { (view.container.querySelector('button') as HTMLButtonElement).click(); });
     const signal = mocks.api.mock.calls[1][1].signal as AbortSignal;
     view.unmount();
     expect(signal.aborted).toBe(true);

@@ -236,6 +236,7 @@ export default function ProjectCommandCentreFixtureClient({
         projectId={project.id}
         host="fixture"
         projectWork={work.projectWork}
+        ownerLabel={project.owner?.displayName}
         positionLabel={previewOnly ? projectPositionLabel(project.stage, work.projectWork.effectiveState, currentDesign) : undefined}
         pipelineStage={project.stage}
         stale={stale}

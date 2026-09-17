@@ -46,6 +46,9 @@ export async function POST(
   if (!parsed.ok) return workJsonError(parsed.error, 400, diagnostics, 'INVALID_JSON');
   const body = (parsed.body ?? {}) as Record<string, unknown>;
   const command = typeof body.command === 'string' ? body.command.trim().toUpperCase() : '';
+  if (COMMANDS.has(command) && command !== 'RECORD_SITE_VISIT_COMPLETED') {
+    return workJsonError('Email follow-up recording is no longer part of the project workflow.', 410, diagnostics, 'FOLLOW_UP_WORKFLOW_DEFERRED');
+  }
   const commandId = typeof body.commandId === 'string' ? body.commandId.trim() : '';
   if (!COMMANDS.has(command) || !isUuid(commandId)) {
     return workJsonError('Invalid confirmation command', 400, diagnostics, 'INVALID_COMMAND');

@@ -1,5 +1,12 @@
 # Testing And QA
 
+Follow-up deferral: `npm run test:portal:project-work` includes
+`test/project-follow-up-retirement.test.ts`, covering cancellation audit/replay,
+preserved manual work and correction history, no fabricated new-project work,
+all five retired confirmation types, genuine-only queue selection and grants.
+Disposable PostgreSQL17 concurrent-row/advisory-writer rehearsal is recorded in
+the Command Centre roadmap; serial PGlite tests alone do not prove concurrency.
+
 Project workflow retirement (local, 16 September): run `npx vitest run test/project-stage-review-retirement.test.ts`
 for disposable PostgreSQL-compatible retirement/audit/replay/preservation checks.
 The Portal fixture project also includes `playwright/portal.project-stories.spec.ts`:

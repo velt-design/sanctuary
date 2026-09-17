@@ -24,7 +24,7 @@ import {
 import ProjectWorkFilesCard from "./ProjectWorkFilesCard";
 import ProjectWorkControls from "./ProjectWorkControls";
 import ProjectWorkList from "./ProjectWorkList";
-import ProjectEmailWorkControls from "./ProjectEmailWorkControls";
+import { isDeferredProjectFollowUp } from "@/lib/projects/workItems/deferredFollowUps";
 import {
   formatProjectWorkDue,
   isDecisionReviewWorkItem,
@@ -49,6 +49,7 @@ type SharedProps = {
   initialEnquiryAttachments?: ProjectEnquiryAttachment[];
   disableFileActions?: boolean;
   positionLabel?: string;
+  ownerLabel?: string;
 };
 
 export type ProjectWorkSectionProps = SharedProps & {
@@ -151,6 +152,7 @@ export default function ProjectWorkSection({
   projectWork,
   pipelineStage,
   positionLabel,
+  ownerLabel,
   stale,
   onRefresh,
   initialStaff,
@@ -181,6 +183,7 @@ export default function ProjectWorkSection({
   });
   const staff = staffQuery.data ?? [];
   const primary = primaryPresentation(controller, staff);
+  const deferredPrimary = controller.primaryItem && isDeferredProjectFollowUp(controller.primaryItem);
   const active = controller.projection.effectiveState === "ACTIVE";
   const siteVisitCompleted = controller.projection.confirmedFacts.some(
     (fact) => fact.type === "SITE_VISIT_COMPLETED",
@@ -251,7 +254,12 @@ export default function ProjectWorkSection({
           />
         ) : null}
 
-        {prohibitedPrimary ? (
+        {deferredPrimary || (active && controller.primary.kind === "none") ? (
+          <div className={styles.stack}>
+            <p><strong>Project owner:</strong> {ownerLabel ?? "Unassigned"}</p>
+            <p className={styles.commandHelp}>Review customer emails, the current quote and project files.</p>
+          </div>
+        ) : prohibitedPrimary ? (
           <AlertBanner tone="blocking" title="Legacy work needs review">
             This saved work item has been retired. Refresh the project to see
             its current work; do not complete the old reminder.
@@ -295,24 +303,9 @@ export default function ProjectWorkSection({
             }
             footer={
               <div className={styles.commandArea}>
-                {controller.primarySentCommand || controller.primaryCanRecordReply ? (
-                  <ButtonLink href="#customer-emails" disabled={controller.stale}
-                    onClick={() => {
-                      const emails = document.getElementById("customer-emails");
-                      emails?.focus({ preventScroll: true });
-                      emails?.scrollIntoView({ block: "start" });
-                    }}>
-                    Read customer emails
-                  </ButtonLink>
-                ) : (
-                  <span className={styles.commandLabel}>
-                    {primary.href
-                      ? "Open the tools for this step"
-                      : controller.primary.kind === "needsTriage"
-                        ? "Add work, set a waiting date, or close the project."
-                        : "Record the outcome"}
-                  </span>
-                )}
+                <span className={styles.commandLabel}>
+                  {primary.href ? "Open the tools for this step" : "Update assigned work"}
+                </span>
                 <div className={styles.inlineActions}>
                   {active && controller.primary.kind === "needsTriage" ? (
                     <Button disabled={controller.stale} aria-expanded={controller.controlsOpen}
@@ -355,15 +348,6 @@ export default function ProjectWorkSection({
                     >
                       Mark complete
                     </Button>
-                  ) : null}
-                  {active && primary.primaryItem &&
-                  (controller.primarySentCommand || controller.primaryCanRecordReply) ? (
-                    <ProjectEmailWorkControls
-                      item={primary.primaryItem}
-                      controller={controller}
-                      canRecordSent={Boolean(controller.primarySentCommand)}
-                      canRecordReply={controller.primaryCanRecordReply}
-                    />
                   ) : null}
                 </div>
               </div>

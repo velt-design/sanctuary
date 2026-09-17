@@ -14,18 +14,25 @@ for (const width of [1440, 390]) for (const example of examples) {
     await page.goto(`/qa/project-command-centre-fixture?story=${example.key}`);
     const work = page.getByRole('region', { name: 'Project Work', exact: true });
     await expect(work.getByRole('heading', { name: example.position, exact: true })).toBeVisible();
-    await expect(work.getByRole('heading', { name: example.action, exact: true })).toBeVisible();
-    await expect(work.locator('[data-primary-project-work]')).toHaveCount(1);
+    if (example.key === 'installation') {
+      await expect(work.getByRole('heading', { name: example.action, exact: true })).toBeVisible();
+      await expect(work.locator('[data-primary-project-work]')).toHaveCount(1);
+    } else {
+      await expect(work.getByRole('heading', { name: example.action, exact: true })).toHaveCount(0);
+      await expect(work.locator('[data-primary-project-work]')).toHaveCount(0);
+      await expect(work).toContainText('Project owner: Jordan');
+    }
     await expect(work).not.toContainText('Review proposal progress');
     await expect(page.getByRole('button', { name: 'Edit details', exact: true })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Correct stage', exact: true })).toBeDisabled();
     const conversations = page.getByRole('region', { name: 'Customer conversations', exact: true });
-    await expect(conversations.locator('article blockquote')).toContainText(example.source);
-    await expect(conversations.locator('article')).toHaveCount(1);
+    const incoming = conversations.locator('article blockquote:visible').filter({ hasText: example.source });
+    await expect(incoming).toHaveCount(1);
+    await expect(incoming).toBeVisible();
     await expect(conversations.locator('article a')).toHaveCount(0);
     await expect(conversations).toContainText('Your real Outlook emails are not connected');
     if (width === 1440) {
-      const message = await conversations.locator('article blockquote').boundingBox();
+      const message = await incoming.boundingBox();
       expect(message!.y + message!.height).toBeLessThan(900);
     }
     await conversations.locator('summary', { hasText: 'AI interpretation and suggestions' }).click();
@@ -45,7 +52,8 @@ for (const width of [1440, 390]) for (const example of examples) {
       await expect(work).not.toContainText('Record email sent');
       await page.locator('summary', { hasText: 'Quote, design & payment details' }).click();
       await expect(page.getByRole('region', { name: 'Payment position', exact: true })).toContainText('$13,325.00');
-    } else await expect(work.getByRole('button', { name: 'Record email sent' })).toBeDisabled();
+    }
+    await expect(work.getByRole('button', { name: /Record email sent|Record customer reply/ })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
     expect(writes).toEqual([]);
   });

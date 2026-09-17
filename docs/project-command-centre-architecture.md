@@ -1,127 +1,82 @@
 # Project Operational Command Centre Architecture
 
-Message transport increment (local, disabled): the staff context can include up
-to 25 source messages with sender, sent/received/observed dates, plain text and
-explicit truncation. Strict parsing rejects stale/duplicate messages, malformed
-senders, inferred project association and non-Outlook links. The message list
-renders source text independently of AI citations, with a compact preview and
-native Read message disclosure; React escapes message content. Older/sample
-contexts without messages retain the explicitly excerpt-only presentation.
-Ordinary reads require completed project context and any completed mail operation,
-not model completion. Ask AI sends a separate signed `analyze: true` request;
-configuration, capacity or model failure falls back to source evidence only after
-the same final authority checks. Analysis availability is explicit in the response.
+## Current clarity increment (17 September 2026)
 
-Owner-led clarity correction, 16 September: source email excerpts are visible
-before AI analysis, ordered by message date and deduplicated by citation text.
-Customer-address matches remain unconfirmed to the job; excerpts are not full
-mailbox history. Sample previews explicitly have no Outlook connection and do not
-offer fake source links. Desktop places messages beside work; mobile places them
-before commercial details. Contact facts, notes/history and ordinary commercial
-detail use disclosures. The commercial total remains visible, while warnings,
-failed sends, declines and stale costing keep the existing commercial surface
-expanded. These presentation changes do not activate the signed correspondence
-gateway or infer staff commitments from messages. The original local usability
-rating did not establish owner acceptance; current evidence and feedback remain
-in the roadmap.
+The current owner agreement and release evidence live in
+[the roadmap](project-command-centre-roadmap.md). The Velt staff receiver and
+reporting/access-link fixes are deployed. A protected Portal candidate has read
+real correspondence and opened its original Outlook message. The global Portal
+correspondence flag remains disabled. The revised retirement/read-on-open UI is
+local and not yet published; these states must not be conflated.
 
-## Staff clarity extension (16 September 2026, local implementation)
+The owner has deferred unused lead/quote follow-ups and sent/reply recording.
+Migration `20260917000002_defer_project_follow_ups.sql` cancels active cadence
+with before/after history, retires cadence repair signals with receipts, stops
+new cadence creation and rejects stale recording writes. It preserves manual
+commitments, correction reviews, specialist tools, lifecycle and commercial
+facts. The shared queue selects actual work/recovery/state reviews; an empty
+project is not itself a triage task. Database installation remains pending.
+The migration refuses concurrent project-row or advisory writers and must be
+retried during a quiet gap; native PostgreSQL rehearsal and independent review
+passed. See the roadmap for exact evidence and remaining release gates.
 
-Workflow-usefulness revision: the owner approved retirement of generic stage
-reviews. Migration `20260916000006` cancels only active STAGE_REVIEW rows with
-audited before/after records, stops their producer and prevents reactivation.
-Shared retired-identity and completion-capability guards refuse stale stage work
-in UI/queue consumers. Dashboard, Work Queue and Overview share the resulting
-work facts; no browser-only alternate ranking is introduced. Saved-fact position
-headings contextualise the primary action; AI suggestions are secondary native
-disclosures. Three coherent synthetic stories replace mixed scenarios for owner
-preview; raw scenario controls remain for regression coverage. Migration and app
-are local only and require the complete verification/release gate.
+Overview presents saved project position, owner, readable correspondence and
+practical quote/design/files tools. Without assigned work it shows the owner,
+not an invented next step. Existing manual commitments retain their controls.
+Customer email text appears before optional AI interpretation. Desktop places
+emails beside work; mobile places them before commercial detail. Ordinary
+contact, notes/history and commercial detail use disclosures. The commercial
+total stays visible; warnings and failures retain the expanded owning surface.
+Payment position uses the existing staff invoice-schedule API and query key,
+without recalculating totals or equating payment with delivery readiness.
 
-The owner-approved extension is tracked in `project-command-centre-roadmap.md`.
-It retains server-ranked work and exact quote/design selection. The Overview adds
-a read-only payment position from the existing staff `invoice-schedule` API and
-query key used by Invoices, without recalculating commercial totals or treating a
-payment as delivery readiness. Failed reads are unknown, failed refreshes are
-labelled saved, and access-ending responses hide cached payment details.
+## Staff correspondence boundary
 
-Desktop notes sit below work alongside the commercial column. Mobile retains
-work, commercial, context, then notes; the note composer is disclosed on demand.
-Early-stage delivery completion and project close remain available in Manage
-project work, while scheduled/completed/paid stages retain visible delivery
-controls. Accepted quote expiry is historical, not an expired-agreement warning.
-Commercial lists expose exact quote/source-estimate links and distinguish unnamed
-estimate versions by creation time. Current accepted work uses the existing
-authoritative acceptance selector. Mobile records retain amounts, source links,
-dates and actions instead of hiding columns. Estimate cost summaries are not
-presented as customer prices.
+All signed-in Sanctuary staff are the approved audience. The Portal
+`GET/POST /api/staff/v1/projects/[projectId]/correspondence` requires staff
+authentication and auth-bound project visibility. GET checks configuration;
+empty-body same-origin POST reads mail. Only POST may request `?analyze=true`.
+The server derives actor/project identity; the browser cannot supply email,
+actor, provider input or an owner cookie. Current staff membership and project
+visibility are checked again before delivering private/no-store evidence.
+Remote error detail is not returned or logged.
 
-All signed-in Sanctuary staff are the approved audience for future linked
-customer correspondence. The current Velt reader is owner-only and cannot be
-called with a forwarded owner session. The staff-server boundary must retain
-connection consent, stop/generation checks, per-read audit, exact customer
-matching and explicit incomplete coverage. The Velt receiving boundary is now
-implemented locally on `codex/staff-project-correspondence` (base `5c53163`),
-with signed-request, replay, actor audit and stop-fencing tests. Both sides remain
-default-disabled and undeployed. The local
-correspondence card consumes a presentation subset of the existing Velt summary
-contract, labels interpretations and suggestions, exposes source quotations and
-customer-only association, and hides unsupported claims. It has no write/send
-action. Real Overview checks connection availability without reading mail; the
-default state is not connected. An explicit staff check is required to read
-correspondence. Synthetic QA data exercises
-ready, stale and failed states. No live Outlook access is claimed by this pass.
-
-### Staff correspondence sending boundary (local, disabled)
-
-`GET/POST /api/staff/v1/projects/[projectId]/correspondence` uses the existing
-staff session and auth-bound project visibility. GET reports configuration only;
-POST requires same-origin and an empty body. Neither accepts an email address,
-actor identity or AI content from the browser. The server resolves the project
-UUID and authenticated staff ID, then signs a bounded request to the configured
-Velt origin. It rechecks current staff membership and project visibility before
-delivering a response. Every result/error is private/no-store; remote error
-details are not logged or returned. No owner session is forwarded.
-
-The proposed paired protocol is `sanctuary.staff-correspondence.v1` at
+The paired protocol is `sanctuary.staff-correspondence.v1` at
 `POST /api/customer-journey/staff-summary`. HMAC-SHA256 signs the UTF-8 newline
-join of `v1`, `POST`, exact destination URL, epoch-millisecond timestamp, request
-UUID and exact JSON body, using the 32-byte secret decoded from 64 lowercase hex
-characters. Headers are `x-sanctuary-request-id`, `x-sanctuary-timestamp`, and
-`x-sanctuary-signature` (lowercase hex). Body fields are exactly schemaVersion,
-actorId and projectId. The receiver must validate the signature/time/destination,
-atomically claim the nonce, audit the staff actor and project without body data,
-apply concurrency/rate bounds, and preserve Connections consent/stop/generation
-checks through final response delivery. Velt's local `202609160003` migration
-implements those controls and passed the disposable PostgreSQL suite, including
-provider-specific revocation during synthesis. Signing alone is not authority
-to activate; installed migration and real customer proof remain required.
+join of v1, POST, destination URL, epoch-millisecond timestamp, request UUID and
+exact JSON body, using the dedicated server key. Request headers are
+`x-sanctuary-request-id`, `x-sanctuary-timestamp`, and
+`x-sanctuary-signature`. The body carries schemaVersion, actorId, projectId and
+optional analyze. Receiver signature/time/destination checks, nonce replay
+claims, staff/project audit and rate/concurrency bounds preserve connection
+consent, stop and generation checks through response delivery. No owner session
+is forwarded. Credentials stay in the existing server environments.
 
-The receiver returns exactly schemaVersion, projectId, requestId and context.
-Context is the bounded presentation subset of existing Velt summary output:
-observedAt, answer.sections, source references (without full text/character count)
-and limitations. The Portal validates request/project binding, source URLs,
-unique topics/source IDs, citation references and freshness, caps the response
-at 256 KiB, times out at 60 seconds and rejects redirects. Velt remains the sole
-owner of matching, source excerpt verification and synthesis.
+Portal configuration is `PORTAL_STAFF_CORRESPONDENCE_ENABLED` (off by default),
+`PORTAL_VELT_CORRESPONDENCE_ORIGIN` (reviewed HTTPS origin) and
+`PORTAL_VELT_CORRESPONDENCE_SECRET` (dedicated shared signing key). Protected
+candidate overrides do not activate the global production flag.
 
-Server-only configuration: `PORTAL_STAFF_CORRESPONDENCE_ENABLED` defaults off;
-`PORTAL_VELT_CORRESPONDENCE_ORIGIN` must be the reviewed HTTPS Velt origin;
-`PORTAL_VELT_CORRESPONDENCE_SECRET` is a dedicated signing key shared only by the
-two server runtimes. No key has been created or installed. The actual synthetic
-Portal wire was verified by Velt's validator through a local artifact, including
-tampering rejection; this is not deployed HTTP proof. Activation requires
-paired runtime integration checks, release approval and real
-customer acceptance. Never use an owner cookie or existing provider token as
-the signing key.
+The response binds schemaVersion, projectId, requestId and bounded context.
+Portal validates request/project binding, Outlook source URLs, unique topics and
+source IDs, citations and freshness, caps responses at256 KiB, rejects redirects
+and times out at60 seconds. Up to25 source messages include sender,
+sent/received/observed dates, plain text and explicit truncation. Readable message
+text is independent of AI citations. Identical complete copies are grouped with
+original links retained; latest mail and latest exact-customer reply are featured.
+Customer-address matches remain unconfirmed to the job. Matching a quote reference
+in a subject does not establish acceptance or complete conversation coverage.
+React escapes message text; native disclosures expand it. Older excerpt-only
+contexts remain labelled. Samples have no real Outlook links or live connection.
 
-Browser evidence stays in the mounted component, outside persisted queries and
-local storage. It clears on project change or failed access/summary checks. Leaving
-the page hides it; returning rechecks staff/project access before redisplay. At
-two minutes an access check precedes an explicit earlier-summary label. Neither
-return nor expiry starts an automatic mail/model read. Source quotations are
-readable in Portal; opening the original
-Outlook URL still requires the staff member's own mailbox access.
+The local read-on-open implementation first checks access/configuration, then
+reads mail automatically when available. Ask AI is a separate explicit request;
+ordinary reads do not start model work. Evidence stays in mounted memory, outside
+persisted queries/local storage. Project changes and failed authorization clear
+it. Visibility/expiry rechecks hide private content until access is confirmed and
+do not trigger mail or AI reads; a remount starts a fresh mail read. Original
+Outlook links still require that staff member's own mailbox access. No automatic
+send, commitment, outcome write or bulk backfill is introduced.
 
 Status: Current architecture. The Overview V2 composition and portfolio-wide Project Work rollout are deployed to production. Staging is isolated on its own Supabase project and passed authenticated read-only verification. Production database/application postflight and the authenticated GET-only production browser proof are complete. The earlier narrow Contacts/Calculator bundle exception remains historical and did not raise either ceiling.
 

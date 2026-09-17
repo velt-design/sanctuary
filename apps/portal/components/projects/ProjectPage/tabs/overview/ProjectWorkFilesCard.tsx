@@ -30,7 +30,7 @@ export default function ProjectWorkFilesCard({
       className={[styles.card, className].filter(Boolean).join(" ")}
       aria-label="Project Work"
       title={positionLabel ?? "Project Work"}
-      eyebrow="Next project action"
+      eyebrow="Project position"
       action={
         <TabNavigation
           className={styles.tabs}

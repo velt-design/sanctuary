@@ -1,5 +1,13 @@
 # Project Work Items And Lead Follow-Up
 
+> Owner amendment, 17 September 2026: unused lead/quote cadence and sent/reply
+> recording are deferred. The local retirement migration
+> `20260917000002_defer_project_follow_ups.sql` preserves history and genuine
+> manual work, stops cadence creation, and removes empty-project triage from
+> the team queue. It has not been installed live. This supersedes conflicting
+> cadence requirements below; see the current agreement and release evidence in
+> [the Command Centre roadmap](project-command-centre-roadmap.md).
+
 ## Approved retirement of generic stage reviews (16 September 2026)
 
 Jordan approved removing generic stage-driven reminders from the active workflow

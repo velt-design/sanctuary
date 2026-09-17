@@ -44,3 +44,5 @@ details[open] > .heading::before { content: '−'; }
 .sources blockquote { margin: var(--ui-space-2) 0; padding-left: var(--ui-space-3); border-left: var(--ui-border-width-emphasis) solid var(--ui-border); white-space: pre-wrap; }
 .sources > div, .sources > p { padding-bottom: var(--ui-space-3); }
 .sources a { color: var(--ui-text-strong); text-decoration: underline; }
+
+.card { scroll-margin-block-start: 80px; }

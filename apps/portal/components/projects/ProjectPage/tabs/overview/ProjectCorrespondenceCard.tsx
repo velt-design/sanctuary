@@ -27,7 +27,7 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
   });
   const sources = new Map(context?.sources.map((source) => [source.id, source]));
   const correspondence = context?.sources.filter((source) => source.association === 'customer_address_only').sort((a, b) => Date.parse(b.recordedAt) - Date.parse(a.recordedAt)) ?? [];
-  return <Card id="customer-emails" tabIndex={-1} title="Customer emails" padding="compact" aria-label="Customer conversations"
+  return <Card className={styles.card} id="customer-emails" tabIndex={-1} title="Customer emails" padding="compact" aria-label="Customer conversations"
     action={onRefresh && state !== 'loading' ? <Button variant="tertiary" size="small" onClick={onRefresh}>{state === 'available' ? 'Check conversations' : 'Check again'}</Button> : undefined}>
     <div className={styles.stack}>
       {state === 'not_connected' ? <p className={styles.explanation}>Customer emails are not connected to staff project pages yet. Team notes and portal events are available below.</p>

@@ -1,3 +1,4 @@
+import { isDeferredProjectFollowUp } from './deferredFollowUps';
 import { aucklandLocalDate } from './businessCalendar';
 import type { ProjectWorkItem, ProjectWorkPrimaryCandidate } from './types';
 
@@ -38,7 +39,7 @@ function urgencyRank(item: ProjectWorkItem, now: Date): number {
 
 export function rankActionableWorkItems(items: ProjectWorkItem[], now = new Date()): ProjectWorkItem[] {
   return items
-    .filter((item) => item.status === 'OPEN')
+    .filter((item) => item.status === 'OPEN' && !isDeferredProjectFollowUp(item))
     .slice()
     .sort((left, right) => {
       const urgency = urgencyRank(left, now) - urgencyRank(right, now);
@@ -56,6 +57,7 @@ export function resolveProjectWorkPrimaryAction(params: {
   recoveryAction?: RecoveryActionCandidate | null;
   specialistAction?: SpecialistActionCandidate | null;
   needsTriageReason?: string;
+  hasBlockedWork?: boolean;
   now?: Date;
 }): ProjectWorkPrimaryCandidate {
   if (params.recoveryAction) return params.recoveryAction;
@@ -80,9 +82,7 @@ export function resolveProjectWorkPrimaryAction(params: {
       reason: rankingReasonForWorkItem(work[0], now),
     };
   }
-  return {
-    kind: 'needsTriage',
-    title: 'Needs triage',
-    reason: params.needsTriageReason ?? 'No current staff work or specialist action is recorded.',
-  };
+  return params.hasBlockedWork
+    ? { kind: 'needsTriage', title: 'Needs triage', reason: params.needsTriageReason ?? 'Blocked project work requires review.' }
+    : { kind: 'none', title: 'No assigned work', reason: 'Project information and customer emails are available below.' };
 }

@@ -4,6 +4,72 @@
 
 ### Current focus: useful workflow before release
 
+**Owner scope amendment, 17 September (task messages after real-email review):**
+Jordan confirms that sent/reply recording and its follow-up workflow have not
+been used, are not useful, and should be deferred until the rest of the Portal is
+used. Remove those controls and automatic follow-up prompts/reminders from the
+active workflow while preserving history. This supersedes the earlier requirement
+to keep manual recording secondary and to exercise a genuine sent/reply outcome.
+Do not ask Jordan to supply a business event to validate this retired workflow.
+Any future reminder must justify its purpose, evidence, owner, useful action and
+resolution. Preserve genuinely assigned manual commitments and specialist tools;
+do not replace removed cadence with invented next steps or generic triage.
+Acceptance now centres on understanding the job, reading relevant correspondence,
+opening the correct quote/design/files/original email, and returning accurately
+on desktop/mobile across real enquiry, quote and accepted examples. All-staff
+access, commercial truth, history, privacy and conditional release gates remain.
+Current next action: trace cadence producers and shared consumers, implement the
+bounded retirement and useful project presentation, then verify/review one batch.
+
+Local implementation checkpoint: sent/reply controls are removed, stale API
+recording requests return410, and cadence is filtered from shared work readers.
+No-work pages now display the project owner instead of inventing a next action.
+The local quote story was opened and confirms those controls/prompts are absent.
+Migration `20260917000002_defer_project_follow_ups.sql` is drafted, NOT installed:
+it removes enquiry creation, makes quote reconciliation receipt-only, cancels
+active cadence with events, and retires cadence repair signals with before/after
+receipts. Independent review found missed repair signals and a concurrent-producer
+race; both have local corrections, with project-first write fences and immediate refusal (NOWAIT) on concurrent writers.
+Native PostgreSQL17 concurrency proof and independent recheck pass: conflicting
+project-row and advisory writers cause immediate migration refusal, both staff
+transactions survive, and a later retry retires with audit. Replay and reopening
+rejection also pass. Nine PGlite tests cover all five retired recording types,
+preserved manual work/correction history, queue selection and grants. The broader
+work-domain/UI suite passes 120 tests; Portal typecheck passes. Private native
+repro: .codex-tmp/clarity/follow-up-native-proof.mjs. Independently reviewed SQL
+SHA-256: 66cd2aff1d28abeb1d4f353729f742f4bd5da8660fb27a337fa4956076bfb328.
+Correspondence read-on-open and mobile anchor clearance are also local, pending
+publication. Real protected `ecdd68f` quote/open/return passed desktop/mobile and
+original Outlook access was verified after Jordan signed in. Hosted Portal
+Quality on that preceding revision failed obsolete fixture expectations (multiple
+email excerpts and moved recording controls); update those tests with this batch.
+Shared queue no-work/repair behavior is corrected locally. Remaining work includes obsolete
+browser expectations, owning docs,
+full required checks and independent UI review. No retirement was applied live.
+
+Revised synthetic UI delivery review passed independently for enquiry, quoted and
+accepted jobs at desktop and390px mobile: readable sender/date/text, keyboard
+message disclosures, correct proposed/agreed distinction, retained installation
+commitment and no retired recording controls. Scoped clarity/visual/correctness
+met the review threshold; wide desktop whitespace is optional polish. This is
+sample evidence only: disabled controls and sample source links do not prove the
+protected real journey. Root also checked all three mobile/desktop stories and
+full-message expansion. The local server at127.0.0.1:3025 remains the sample view.
+
+Current checks:396 existing Project Work tests, nine retirement database tests,
+workspace types/lint, docs guard and changed-architecture report pass. Native
+concurrency and UI reviews are separate evidence. The two browser specs have been
+updated for absent recording controls and multiple visible emails; their new
+hosted execution remains pending. The large command-centre spec shrank by removing
+retired expectations; further decomposition is deferred to avoid unrelated test
+restructuring. The schema/auth/automation owner docs now reflect this amendment.
+
+Publication checkpoint: the preceding UI batch `ecdd68f` is pushed to PR145.
+Its protected deployment is available; the real quote/open/return and original
+Outlook read were verified after sign-in. Its hosted Portal Quality run failed
+obsolete browser expectations. The current retirement/autoload batch is local,
+unpublished, and not live. Reconcile its tests before creating a replacement.
+
 Sanctuary branch `codex/project-clarity-20260916`, PR145, published base
 `fe06b72` integrates main `874f898`. The next UI batch is local and not yet
 published. Earlier checkpoints below are historical; this section is current.
@@ -38,21 +104,15 @@ published. Earlier checkpoints below are historical; this section is current.
   references, never acceptance. Reading state survives successful access refresh
   while private text remains hidden during authorization checks. One rendering
   defect was corrected and independently rechecked.
-- **Local action UI independently verified:** Read customer emails leads cadence
-  work; existing sent/reply commands remain under Update follow-up tracking with
-  reminder effects explained. Pending/stale/blocked restrictions remain. Review
-  caught missing shortcut focus/repeated scrolling; explicit focus/scroll fixed
-  both. Desktop/mobile and keyboard recheck passed; Tab enters email controls.
-  The combined batch passed52 focused tests, Portal types, workspace lint and
-  changed-architecture checks. Full publication checks remain.
+- **Superseded action design:** the earlier email shortcut and secondary manual
+  tracking controls were reviewed at the time, but the owner explicitly retired
+  this workflow. Those earlier checks do not establish the revised UI's readiness.
 
-Remaining: publish the reviewed protected UI batch; verify project association
-and actual Outlook access; demonstrate a genuine authorized outcome and return;
-complete enquiry/quote/accepted-installation real journeys on desktop/mobile
-and independent full journey review. Do not invent a reply or acceptance for
-verification. Overall8/10 is not established. Protected Portal still uses the
-preceding layout; global Portal correspondence remains disabled. Current live
-backend approvals do not authorize a separate Portal UI release.
+Remaining: finish the revised fixture browser matrix and final delivery review, publish one protected batch, then complete real
+project association and enquiry/quote/accepted journeys on desktop/mobile with
+independent review. No sent/reply recording outcome is required. Overall 8/10 is
+not established; global Portal correspondence remains disabled. Backend release
+approvals remain scoped to their specific changes.
 
 ### Earlier implementation checkpoints (superseded where noted above)
 Hosted-empty-POST correction is published as `a0cbecf`; full pre-push workspace

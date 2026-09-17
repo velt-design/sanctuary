@@ -1,5 +1,16 @@
 # Supabase Schema Map
 
+Project follow-up retirement (local, not installed): migration
+`20260917000002_defer_project_follow_ups.sql` replaces new-project cadence
+initialization and reminder reconciliation, rejects new sent/reply confirmations,
+and audits cancellation of active lead/quote work and resolution of cadence repair
+signals. It preserves historical confirmations, genuine manual work, correction
+reviews and existing RPC grants. V3 queue filtering occurs before lateral limits;
+empty projects no longer create triage rows. Project-table NOWAIT fences and
+nonblocking advisory acquisition abort the transaction on concurrent writers.
+Native PostgreSQL17 concurrency and PGlite preservation/replay checks passed;
+release evidence and pending installation are owned by the Command Centre roadmap.
+
 Customer journey reporting: `20260916000003_praxis_verified_receipts.sql` adds `praxis_reporting.verified_receipts_v1`, granted only to the existing reporting group. It joins unreversed Xero matches to the exact project, source invoice and payment entry, requires equal positive amounts, excludes ledger reversals, and carries invoice currency plus match verification evidence. It does not modify business records or grant base-table access. Installation and live source provisioning remain separate from local code verification.
 
 Payment sync status (20260915000007): private invoice-bound status is written only through the service-owned `xero_record_payment_sync_status` command, retaining safe review/failure codes and last-check time. Browser roles have no direct access. Migration08 exposes status through the existing capability-checked Finance reader and filters review, unavailable and overdue checks into attention before pagination. Frozen request status distinguishes approved invoices from legacy drafts. Installed in staging only after guarded rollback rehearsal; production installation remains pending.

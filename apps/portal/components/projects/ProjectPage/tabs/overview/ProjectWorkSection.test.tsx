@@ -148,25 +148,13 @@ describe("ProjectWorkSection", () => {
     mocks.fetchProjectStaffDirectory.mockReset().mockResolvedValue(staff);
   });
 
-  it("puts reading emails before collapsed manual follow-up tracking", () => {
+  it("removes deferred cadence prompts and recording controls", () => {
     const item = workItem({ sourceType: "LEAD_CADENCE", sourceKey: "lead:first-email:fixture" });
     const rendered = renderV2(projection({ primaryAction: { kind: "workItem", item, dueState: "today", reason: "Due today" }, openItems: [item] }));
-    const panel = rendered.container.querySelector('[data-primary-project-work="true"]')!;
-    const link = panel.querySelector('a[href="#customer-emails"]');
-    expect(link?.textContent).toBe("Read customer emails");
-    const destination = document.createElement("section");
-    destination.id = "customer-emails";
-    destination.tabIndex = -1;
-    destination.scrollIntoView = vi.fn();
-    document.body.append(destination);
-    act(() => (link as HTMLAnchorElement).click());
-    expect(document.activeElement).toBe(destination);
-    expect(destination.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
-    const details = panel.querySelector("details")!;
-    expect(details.open).toBe(false);
-    expect(details.querySelector("summary")?.textContent).toBe("Update follow-up tracking");
-    expect(details.textContent).toContain("These controls do not send email");
-    expect(Array.from(details.querySelectorAll("button")).map(button => button.textContent)).toEqual(["Record email sent", "Record customer reply"]);
+    expect(rendered.container.querySelector('[data-primary-project-work="true"]')).toBeNull();
+    expect(rendered.container.textContent).not.toContain("Record email sent");
+    expect(rendered.container.textContent).not.toContain("Record customer reply");
+    expect(rendered.container.textContent).not.toContain("Update follow-up tracking");
   });
 
   it("keeps Work selected by default and opens Files inside the same card", () => {
@@ -262,8 +250,7 @@ describe("ProjectWorkSection", () => {
     const list = rendered.container.querySelector(
       '[data-project-work-list="v2"]',
     )!;
-    expect(list.textContent).toContain(other.title);
-    expect(list.textContent).toContain("Sam Sales");
+    expect(list.textContent).not.toContain(other.title);
     expect(list.textContent).toContain(blocked.title);
     expect(list.textContent).not.toContain(primary.title);
     expect(rendered.container.textContent).toContain("1 blocked");

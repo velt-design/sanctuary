@@ -276,6 +276,7 @@ export default function OverviewTab({
               projectId={snapshot.project.id}
               host={host}
               projectWork={commandQuery.data.projectWork}
+              ownerLabel={commandQuery.data.owner.owner?.displayName}
               positionLabel={projectPositionLabel(snapshot.project.stage, commandQuery.data.projectWork.effectiveState, commandQuery.data.currentDesign)}
               pipelineStage={snapshot.project.stage}
               stale={projectWorkControlsStale}

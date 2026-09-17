@@ -1,5 +1,13 @@
 # Project Work Items Technical And Cutover Plan
 
+17 September owner amendment: unused lead/quote reminder automation and manual
+sent/reply recording are deferred. The local migration
+`20260917000002_defer_project_follow_ups.sql` retires those producers and active
+rows with history, preserving genuine manual work and correction reviews. Its
+installation is pending; see [the current roadmap](project-command-centre-roadmap.md)
+for verification and release state. This supersedes conflicting cadence rules
+below and does not disable transactional quote/invoice/enquiry email delivery.
+
 16 September workflow retirement supersedes generic STAGE_REVIEW seeding below:
 `20260916000006_retire_generic_stage_reviews.sql` replaces the stage-entry policy
 without its seed block, preserving paid closure/reopening and project locks. It
@@ -8,7 +16,7 @@ and extends the existing retired-row guard. No active lead/quote/manual work or
 historical event is deleted. Apply migration before the corresponding application
 release. The disposable test `test/project-stage-review-retirement.test.ts` covers
 before/after retention, replay, untouched other work, imports/stage transitions,
-reactivation denial and paid-stage behavior. This migration is not deployed yet.
+reactivation denial and paid-stage behavior. The stage-review retirement is installed; the newer lead/quote retirement above remains local.
 
 Status: The approved new-project V2, Work Queue/legacy-review, and Overview V2 slices are production-deployed. Release merge `c9e73651` entered production before the exact reviewed `20260729_000002`, `000003`, and `000004` files were applied individually to the positively identified production database on 2026-07-30; cutover record `c8471e92` records the postflight, and snapshot-cache hotfix merge `809f2c5e` followed. Postflight catalog, RLS, grant, relationship, and empty-state checks passed; authenticated production Work Queue, legacy snapshot, and Command Centre reads returned `200`, and the complete snapshot now enforces `private, no-store` on every explicit response path. The current branch adds the approved whole-portfolio rollout in `20260731000002_project_work_portfolio_rollout.sql`; it has not been applied to staging or production and must precede the matching application deployment.
 
