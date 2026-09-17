@@ -26,7 +26,7 @@ Integrated Portal b2e7b74 includes production main e5578a3 and PR150 owning-doc
 release evidence. Full local types/lint passed on push; 97 browser checks passed,
 one skipped; 33 integration tests and 23 independent presentation tests passed.
 Protected candidate dpl_EdDdnY25sRUYrbmHCqTCmFtPp1mR is Ready and assigned to the
-same protected review alias. Hosted checks for b2e7b74 are running (Quality/Performance35183714821). The
+same protected review alias. All hosted checks passed at b2e7b74, including Quality/Performance35183714821. The
 background jobs PG17 download was rate-limited by its registry; failed-job rerun
 35183714831 passed. Integrated protected candidate retained login and real mail;
 unsigned access302 goes to Vercel SSO. Public Portal unchanged.
@@ -83,7 +83,7 @@ two new-guard absence checks and atomic ledger insertion. NOT executed.
 | Desktop/mobile clarity | Independent three-story walkthrough and390px keyboard/disclosures passed. Real390px title/owner/reply readable; accepted quote/return verified by builder. Agent observations do not establish human ten-second task performance. |
 | All-staff access/security | Route requires staff/project access, never owner role, and rechecks before delivery. Auth/denial tests pass; actual non-owner session journey remains unverified. |
 | Independent review | No material fixture UI defect;23 independent tests pass. Real signed-in session unavailable to reviewer; no independent live claim. |
-| Release/handover | Performance and all non-Quality gates passed; Quality35183714821 is in final browser checks. Fixed protected preview retained. Production UI and000002 migration not released. |
+| Release/handover | All hosted gates at b2e7b74 passed, including Quality35183714821. Fixed protected preview retained. Production UI and000002 migration not released. |
 
 Owner preview feedback requested in-task; no response yet.
 
