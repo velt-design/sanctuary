@@ -23,6 +23,7 @@ beforeAll(async () => {
     create table private.marketing_enquiry_deliveries(enquiry_request_id uuid primary key,draft_estimate jsonb);
   `);
   await db.exec(readFileSync('supabase/migrations/20260917000003_configured_enquiry_qualification.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260917000004_enquiry_qualification_reassignment.sql','utf8'));
   const brief = { version: 1, audience: 'residential', design: { input: { widthMm: 4000 }, roof: { family: 'mono' } } };
   await db.query('insert into enquiry_requests values ($1,$2,$3),($4,$2,$5)', [enquiry, project, JSON.stringify({ requestType:'project-discussion',customerBrief:brief }),other,JSON.stringify({ requestType:'site-measure',customerBrief:brief })]);
 },30000);
@@ -86,6 +87,29 @@ it('enforces append-only even for table owner and prioritizes frozen submitted c
   await expect(read()).rejects.toThrow('permission denied');
 });
 
+it('keeps reviewed history and version through reassignment while denying the old project', async () => {
+  await db.exec('reset role');
+  const before = (await db.query('select * from private.enquiry_qualification_events order by version')).rows;
+  await db.query('update enquiry_requests set project_id=$1 where id=$2',[other,enquiry]);
+  // Restore the eligible frozen source used by this independent reassignment case.
+  await db.query('delete from private.marketing_enquiry_deliveries where enquiry_request_id=$1',[enquiry]);
+  await db.exec('set role authenticated');
+  await expect(read()).rejects.toThrow('Enquiry not found');
+  await expect(record('unreviewed',unknown,3,'Moved enquiry',enquiry)).rejects.toThrow('Enquiry not found');
+  expect((await read(enquiry,other)).rows[0].result).toMatchObject({projectId:other,current:{version:3,state:'not_qualified'}});
+  expect((await read(enquiry,other)).rows[0].result.history).toHaveLength(3);
+  await expect(record('unreviewed',unknown,0,'',command,enquiry,other)).rejects.toThrow('different assessment');
+  await expect(record('qualified',all,0,'Stale screen',enquiry,enquiry,other)).rejects.toThrow('Another staff review');
+  const saved=(await record('qualified',all,3,'Serviceability confirmed after reassignment',enquiry,enquiry,other)).rows[0].result;
+  expect(saved.current).toMatchObject({version:4,state:'qualified'});
+  expect(saved.history).toHaveLength(4);
+  expect((await record('qualified',all,3,'Serviceability confirmed after reassignment',enquiry,enquiry,other)).rows[0].result.replayed).toBe(true);
+  await db.exec('reset role');
+  const after=(await db.query('select * from private.enquiry_qualification_events order by version')).rows;
+  expect(after.slice(0,3)).toEqual(before);
+  expect(after[3]).toMatchObject({project_id:other,enquiry_id:enquiry,version:4});
+});
+
 it('qualifies the exact real-intake result, not submission ID, without changing pipeline or outbox', async () => {
   const intakeDb = new PGlite();
   try {
@@ -99,6 +123,7 @@ it('qualifies the exact real-intake result, not submission ID, without changing 
     await intakeDb.exec(marketingEnquiryTestIntakeSql(process.cwd()));
     await intakeDb.exec('create table private.marketing_enquiry_deliveries(enquiry_request_id uuid primary key,draft_estimate jsonb)');
     await intakeDb.exec(readFileSync('supabase/migrations/20260917000003_configured_enquiry_qualification.sql','utf8'));
+    await intakeDb.exec(readFileSync('supabase/migrations/20260917000004_enquiry_qualification_reassignment.sql','utf8'));
     const payload = {enquiryType:'residential',name:'Qualification fixture',email:'qualification@example.test',phone:'+6400000002',files:[],
       rawPayload:{requestType:'project-discussion',customerBrief:{version:1,audience:'residential',design:{input:{widthMm:4000},roof:{family:'mono'}}}}};
     const result=(await intakeDb.query<{enquiry_request_id:string;project_id:string}>('select * from marketing_enquiry_intake($1,$2,$3)',[command,'',JSON.stringify(payload)])).rows[0];
