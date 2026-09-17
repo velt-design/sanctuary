@@ -42,8 +42,13 @@ confirmed002unused,006/001/003/004installed,82lead+33quote cadence items and one
 manual item. Exact migration SHA256 e5df19bf48e3a6cb780e40d9d58e2a4b8c94425248ca63b06fd365b5670fb395
 passed rollback-only live full-schema apply/replay:115retired,1153otherwork rows
 unchanged, exact audit count and confirmation history preserved. No installation
-occurred. Script .codex-tmp/clarity/follow-up-live-rehearsal.sql; bounded independent
-release-safety review requested. Retain current function/ledger fences at install.
+occurred. Script .codex-tmp/clarity/follow-up-live-rehearsal.sql; independent release-safety review closed after two focused proof corrections.
+Rehearsal additionally verifies exact per-item before/after audit events, unrelated
+repair preservation, repair receipts, existing ACLs, and trigger table/function
+bindings; missing rows/functions fail closed. Live repair branch has zero rows,
+so synthetic tests remain its evidence. Guarded installation script prepared at
+.codex-tmp/clarity/follow-up-install.sql with exact hash, four function preimages,
+two new-guard absence checks and atomic ledger insertion. NOT executed.
 
 **Owner decisions and boundaries**
 - Retire unused sent/reply recording and automatic cadence; retain real manual
@@ -78,9 +83,11 @@ release-safety review requested. Retain current function/ledger fences at instal
 | Desktop/mobile clarity | Independent three-story walkthrough and390px keyboard/disclosures passed. Real390px title/owner/reply readable; accepted quote/return verified by builder. Agent observations do not establish human ten-second task performance. |
 | All-staff access/security | Route requires staff/project access, never owner role, and rechecks before delivery. Auth/denial tests pass; actual non-owner session journey remains unverified. |
 | Independent review | No material fixture UI defect;23 independent tests pass. Real signed-in session unavailable to reviewer; no independent live claim. |
-| Release/handover | Final integrated hosted checks running; fixed protected preview retained. Production UI and000002 migration not released. |
+| Release/handover | Performance and all non-Quality gates passed; Quality35183714821 is in final browser checks. Fixed protected preview retained. Production UI and000002 migration not released. |
 
-Next authorized work: verify the integrated protected candidate, finish the same
+Owner preview feedback requested in-task; no response yet.
+
+Next authorized work: finish the same
 hosted checks, reconcile role/real-journey evidence limits and prepare the bounded
 retirement installation/release only once readiness is established. Do not ask for
 fake outcomes or repeated sign-in.
