@@ -33,6 +33,30 @@ async function preparePage(page: Page) {
   });
 }
 
+test('header and menu surfaces remain painted over product content', async ({ page }) => {
+  await preparePage(page);
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/products/pergolas/gable');
+    const header = page.locator('header.site');
+    await expect(header).toBeVisible();
+    // A BOM before :root survived production CSS bundling as a non-matching
+    // selector, leaving all shared surface tokens undefined.
+    await expect.poll(() => header.evaluate((element) =>
+      getComputedStyle(element).getPropertyValue('--headerSurface').trim(),
+    )).toBe('#f8f8f5');
+    await page.evaluate(() => window.scrollTo(0, window.innerHeight + 200));
+    await expect(header).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    if (width < 901) {
+      await page.getByRole('button', { name: 'Open menu', exact: true }).click();
+      await expect(page.locator('#mobile-menu')).toHaveCSS('background-color', 'rgb(248, 248, 245)');
+      await expect(page.locator('#mobile-menu')).toHaveCSS('color', 'rgb(15, 15, 16)');
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#mobile-menu')).toHaveAttribute('aria-hidden', 'true');
+    }
+  }
+});
+
 test('the architectural editorial header is shared by established public routes', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page);
