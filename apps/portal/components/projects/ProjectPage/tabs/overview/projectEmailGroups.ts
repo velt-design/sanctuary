@@ -9,14 +9,16 @@ export function projectEmailGroups(messages: EmailMessage[], customerEmail?: str
   for (const message of [...messages].sort((a, b) => Date.parse(b.sentAt) - Date.parse(a.sentAt))) {
     // Equal truncated excerpts do not establish that the complete messages match.
     const key = message.truncated ? message.id : JSON.stringify([message.from.toLowerCase(), message.subject,
-      Date.parse(message.sentAt), message.bodyText]);
+      Date.parse(message.sentAt), message.bodyText, message.projectLink ?? { state: 'unconfirmed' }]);
     const existing = keys.get(key);
     if (existing !== undefined) groups[existing].copies.push(message);
     else { keys.set(key, groups.length); groups.push({ message, copies: [] }); }
   }
-  const latestCustomer = customerEmail ? groups.find(group => group.message.from.toLowerCase() === customerEmail.toLowerCase()) : undefined;
-  const featured = groups.filter((group, index) => index === 0 || group === latestCustomer);
-  return { featured, earlier: groups.filter(group => !featured.includes(group)), latestCustomer };
+  const linked = groups.filter(group => group.message.projectLink?.state === 'linked');
+  const unconfirmed = groups.filter(group => group.message.projectLink?.state !== 'linked');
+  const latestCustomer = customerEmail ? linked.find(group => group.message.from.toLowerCase() === customerEmail.toLowerCase()) : undefined;
+  const featured = linked.filter((group, index) => index === 0 || group === latestCustomer);
+  return { featured, earlier: linked.filter(group => !featured.includes(group)), latestCustomer, unconfirmed };
 }
 
 export function referencesProjectQuote(message: EmailMessage, quoteRef?: string | null) {

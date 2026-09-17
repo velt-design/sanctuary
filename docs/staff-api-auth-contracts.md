@@ -1,5 +1,14 @@
 # Staff API And Auth Contracts
 
+Local correspondence extension: the server optionally signs
+`includeMessageLineage:true` only after the receiver rollout flag is enabled.
+Velt returns whitelisted bounded reply IDs; the Portal computes message links
+using staff-authenticated project send reads, removes raw lineage and remote
+project-link claims, and rechecks staff/project access before returning content.
+No client-supplied recipient, actor or association is accepted. See
+`environment-auth-supabase.md` for the default-off capability flag and the project
+roadmap for unverified live coverage.
+
 Customer journey reads extend the same Praxis bearer/source/database identity boundary with `GET /api/integrations/praxis/v1/customers?q=...` and `GET /api/integrations/praxis/v1/receipts?projectId=...`. Customer search accepts one literal 2–100 character substring, reads sanitized project/contact projections and returns at most 20 choices with `hasMore`; it never selects an ambiguous customer automatically. Receipt reads require a canonical project UUID and return at most 100 active, exact ledger-backed Xero matches, or a complete-snapshot error. Source binding and observation time accompany both responses. Receipt verification time is the portal match approval time, not a fresh Xero/bank read; an empty list does not establish non-payment. No staff cookie, mutation, service-role fallback, provider call or business-content logging is introduced.
 
 The in-progress `POST /api/integrations/xero/worker` is a server-to-server boundary. It requires a separate `XERO_INVOICE_GATEWAY_SECRET` and accepts only job ID/current lease. Owning RPCs recheck lease, job/subject/project/tenant, issued invoice and verified mapping. The response contains fixed result/error codes with no-store headers; Xero tokens and private invoice data remain portal-owned. No normal staff/admin session grants gateway access. See `docs/xero-connection.md` for its disabled rollout and verification requirements.

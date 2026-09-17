@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), summary: vi.fn(), config: vi.fn(), read: vi.fn(), access: vi.fn() }));
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), summary: vi.fn(), config: vi.fn(), read: vi.fn(), access: vi.fn(), anchors: vi.fn() }));
+vi.mock('@/lib/projects/correspondence/projectSendAnchors', () => ({ readProjectSendAnchors: mocks.anchors }));
 vi.mock('@/lib/api/staffApi', async () => ({ ...await vi.importActual<object>('@/lib/api/staffApi'), requireStaffContext: mocks.auth }));
 vi.mock('@/lib/projects/getProjectPageSnapshot', () => ({ getProjectPageSummary: mocks.summary }));
 vi.mock('@/lib/projects/correspondence/gateway', () => ({ correspondenceGatewayConfig: mocks.config, readStaffCorrespondence: mocks.read }));
@@ -14,14 +15,31 @@ const origin = 'https://portal.example.invalid';
 const request = (init: RequestInit = {}) => new Request(`${origin}/api/staff/v1/projects/${projectId}/correspondence`, { method: 'POST', headers: { origin }, ...init });
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   mocks.auth.mockResolvedValue({ ok: true, session: { user: { id: actorId }, role: 'staff' }, supabase: {} });
   mocks.summary.mockResolvedValue({ project: { id: projectId } });
   mocks.config.mockReturnValue({ origin: 'https://velt.example.invalid', secret: 'test-only' });
-  mocks.read.mockResolvedValue({ answer: 'Verified transport fixture' });
+  mocks.read.mockResolvedValue({ observedAt: '2026-09-17T00:00:00Z', answer: { sections: ['agreement', 'job_status', 'next_action'].map(topic => ({ topic, kind: 'unknown', answer: 'Not established', caveat: '', citations: [] })) }, sources: [], limitations: [], messages: [] });
+  mocks.anchors.mockResolvedValue({ anchors: [], incomplete: true });
   mocks.access.mockResolvedValue({ kind: 'authenticated', session: { user: { id: actorId }, role: 'staff' } });
 });
 describe('staff correspondence route', () => {
+  it('replaces remote association claims with project-bound evidence and strips raw headers', async () => {
+    const base = await mocks.read();
+    mocks.read.mockClear();
+    mocks.read.mockResolvedValue({ ...base, messages: [{ id: 'reply', subject: 'Reply', from: 'customer@example.test',
+      sentAt: base.observedAt, receivedAt: base.observedAt, observedAt: base.observedAt,
+      url: 'https://outlook.office.com/mail/id/reply', bodyText: 'A customer reply', truncated: false,
+      association: 'customer_address_only', lineage: { inReplyTo: ['<sent@example.test>'], references: [] },
+      projectLink: { state: 'unconfirmed' } }] });
+    mocks.anchors.mockResolvedValue({ anchors: [{ projectId: projectUuid, internetMessageId: '<sent@example.test>' }], incomplete: false });
+    const response = await POST(request(), context);
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.context.messages[0].projectLink).toEqual({ state: 'linked', basis: 'reply_chain' });
+    expect(body.context.messages[0]).not.toHaveProperty('lineage');
+    expect(mocks.anchors).toHaveBeenCalledWith(expect.anything(), projectUuid, expect.any(AbortSignal));
+  });
   it('accepts a hosted empty POST stream with no caller-supplied data', async () => {
     const empty = request({ body: '' });
     expect(empty.body).not.toBeNull();
@@ -33,6 +51,7 @@ describe('staff correspondence route', () => {
     const response = await POST(request({ body, headers: { origin, 'content-length': '0' } }), context);
     expect(response.status).toBe(400);
     expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.anchors).not.toHaveBeenCalled();
     expect(mocks.summary).not.toHaveBeenCalled();
   });
   it('forwards only the explicit interpretation choice after staff/project authorization', async () => {

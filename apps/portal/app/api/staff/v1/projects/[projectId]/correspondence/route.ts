@@ -4,6 +4,8 @@ import { getProjectPageSummary } from '@/lib/projects/getProjectPageSnapshot';
 import { correspondenceGatewayConfig, readStaffCorrespondence } from '@/lib/projects/correspondence/gateway';
 import { isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { resolvePortalAccessState, type PortalAccessLookup } from '@/lib/portalAccess';
+import { readProjectSendAnchors } from '@/lib/projects/correspondence/projectSendAnchors';
+import { associateCorrespondenceContext } from '@/lib/projects/correspondence/associateContext';
 
 export const runtime = 'nodejs';
 type Context = { params: Promise<{ projectId: string }> };
@@ -53,10 +55,15 @@ async function handle(request: Request, context: Context, check: boolean) {
     const config = correspondenceGatewayConfig();
     if (!check || !config) return privateResponse(jsonOk({ state: config ? 'available' : 'not_connected' }, 200, diagnostics));
     const result = await readStaffCorrespondence(config, { actorId: auth.session.user.id, projectId: projectUuid, ...(analyze ? { analyze: true } : {}) }, request.signal);
+    // Old receivers lack lineage. Avoid provider reads until there is evidence to join.
+    const anchors = result.messages?.some(message => message.lineage)
+      ? await readProjectSendAnchors(auth.supabase, projectUuid, request.signal)
+      : { anchors: [], incomplete: true };
+    const associated = associateCorrespondenceContext(result, projectUuid, anchors);
     const currentAccess = await resolvePortalAccessState(auth.supabase as unknown as PortalAccessLookup);
     if (currentAccess.kind !== 'authenticated' || currentAccess.session.user.id !== auth.session.user.id) return fail('Project access changed', 403);
     if (!await getProjectPageSummary(projectId, diagnostics, auth.supabase)) return fail('Project not found', 404);
-    return privateResponse(jsonOk({ state: 'ready', context: result }, 200, diagnostics));
+    return privateResponse(jsonOk({ state: 'ready', context: associated }, 200, diagnostics));
   } catch {
     return fail('Customer conversations could not be checked', 503);
   }

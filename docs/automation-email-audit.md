@@ -1,5 +1,13 @@
 # Automation, Email, And Audit
 
+Local correspondence identity reader: `@sp/email-provider` performs bounded
+read-only Resend GETs for persisted provider IDs, validating the returned ID and
+complete To-recipient set before returning only an RFC Message-ID. Portal selects
+authorized quote/invoice send logs and joins durable website-delivery audit IDs
+to same-project SENT outbox rows. No body persistence, send, backfill, retry or
+automatic business-state change is introduced. Missing historical identities stay
+unconfirmed; this candidate is not a claim of live association coverage.
+
 17 September owner amendment: unused lead/quote reminder automation and manual
 sent/reply recording are deferred. The local migration
 `20260917000002_defer_project_follow_ups.sql` retires those producers and active

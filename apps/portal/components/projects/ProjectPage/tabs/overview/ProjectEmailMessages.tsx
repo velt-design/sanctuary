@@ -8,7 +8,7 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
   project?: EmailProjectContext; expanded: ReadonlySet<string>; onExpand: (id: string, open: boolean) => void;
   earlierOpen: boolean; onEarlierOpen: (open: boolean) => void;
 }) {
-  const { featured, earlier, latestCustomer } = projectEmailGroups(messages, project.customerEmail);
+  const { featured, earlier, latestCustomer, unconfirmed } = projectEmailGroups(messages, project.customerEmail);
   function renderMessage({ message, copies }: (typeof featured)[number], label?: string) {
       const href = correspondenceSourceHref(message.url);
       const preview = message.bodyText.slice(0, 200);
@@ -17,6 +17,8 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
         {label ? <p className={styles.messageLabel}>{label}</p> : null}
         <h3>{message.subject || 'No subject'}</h3>
         <p className={styles.explanation}>From {message.from} · {formatPortalDateTime(message.sentAt)}</p>
+        {message.projectLink?.state === 'linked' && message.projectLink.basis === 'reply_chain' ? <p className={styles.explanation}>Reply to this project’s email. The conversation may also discuss other work.</p> : null}
+        {message.projectLink?.state !== 'linked' ? <p className={styles.explanation}>{message.projectLink?.state === 'conflicting' ? 'This conversation references more than one project.' : 'Project match not confirmed — this may concern another job.'}</p> : null}
         {referencesProjectQuote(message, project.quoteRef) ? <p className={styles.quoteMatch}>References this project’s quote {project.quoteRef}</p> : null}
         {!(expandable && expanded.has(message.id)) ? <blockquote>{preview || 'Message text unavailable in this check.'}{expandable ? '…' : ''}</blockquote> : null}
         {expandable ? <details className={styles.sources} open={expanded.has(message.id)} onToggle={event => onExpand(message.id, event.currentTarget.open)}>
@@ -32,10 +34,18 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
       </article>;
   }
   return <div className={styles.messages} aria-label="Customer email messages">
-    {featured.map((group, index) => renderMessage(group, index === 0 ? 'Latest email found' : 'Latest email from the customer'))}
-    {project.customerEmail && messages.length && !latestCustomer ? <p className={styles.explanation}>No incoming customer email was found in this limited check.</p> : null}
+    {featured.map((group, index) => renderMessage(group, index === 0 ? 'Latest linked email' : 'Latest customer reply to a project email'))}
+    {project.customerEmail && featured.length > 0 && !latestCustomer ? <p className={styles.explanation}>No incoming customer reply has been linked to this project in this limited check.</p> : null}
     {earlier.length ? <details className={styles.sources} open={earlierOpen} onToggle={event => { if (event.target === event.currentTarget) onEarlierOpen(event.currentTarget.open); }}>
       <summary>Earlier emails ({earlier.length})</summary><div className={styles.messages}>{earlier.map(group => renderMessage(group))}</div>
+    </details> : null}
+    {unconfirmed.length ? <details className={styles.sources} open={featured.length === 0 ? true : undefined}>
+      <summary>Customer emails — project match unconfirmed ({unconfirmed.length})</summary>
+      {!featured.length ? <p className={styles.explanation}>We found customer emails, but have not confirmed which belong to this job.</p> : null}
+      <div className={styles.messages}>{unconfirmed.slice(0, 2).map(group => renderMessage(group))}</div>
+      {unconfirmed.length > 2 ? <details className={styles.sources}><summary>More unconfirmed emails ({unconfirmed.length - 2})</summary>
+        <div className={styles.messages}>{unconfirmed.slice(2).map(group => renderMessage(group))}</div>
+      </details> : null}
     </details> : null}
     {!messages.length ? <p>No customer messages were returned. This does not mean there has been no correspondence.</p> : null}
   </div>;

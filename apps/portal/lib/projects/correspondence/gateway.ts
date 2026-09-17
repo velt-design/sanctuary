@@ -3,7 +3,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { parseStaffCorrespondence, STAFF_CORRESPONDENCE_PATH, STAFF_CORRESPONDENCE_VERSION } from './contract';
 
-export type CorrespondenceGatewayConfig = { origin: string; secret: string };
+export type CorrespondenceGatewayConfig = { origin: string; secret: string; includeMessageLineage?: boolean };
 export function correspondenceGatewayConfig(env: Readonly<Record<string, string | undefined>> = process.env): CorrespondenceGatewayConfig | null {
   if (env.PORTAL_STAFF_CORRESPONDENCE_ENABLED !== 'true') return null;
   const origin = new URL(env.PORTAL_VELT_CORRESPONDENCE_ORIGIN ?? '');
@@ -11,7 +11,7 @@ export function correspondenceGatewayConfig(env: Readonly<Record<string, string 
     throw new Error('Invalid correspondence destination.');
   }
   const secret = z.string().regex(/^[a-f0-9]{64}$/).parse(env.PORTAL_VELT_CORRESPONDENCE_SECRET);
-  return { origin: origin.origin, secret };
+  return { origin: origin.origin, secret, includeMessageLineage: env.PORTAL_CORRESPONDENCE_MESSAGE_LINEAGE_ENABLED === 'true' };
 }
 
 async function boundedJson(response: Response) {
@@ -38,7 +38,8 @@ export async function readStaffCorrespondence(config: CorrespondenceGatewayConfi
   const now = dependencies.now ?? Date.now;
   const timestamp = String(now());
   const destination = `${config.origin}${STAFF_CORRESPONDENCE_PATH}`;
-  const body = JSON.stringify({ schemaVersion: STAFF_CORRESPONDENCE_VERSION, actorId, projectId, ...(input.analyze ? { analyze: true } : {}) });
+  const body = JSON.stringify({ schemaVersion: STAFF_CORRESPONDENCE_VERSION, actorId, projectId, ...(input.analyze ? { analyze: true } : {}),
+    ...(config.includeMessageLineage ? { includeMessageLineage: true } : {}) });
   const signature = createHmac('sha256', Buffer.from(config.secret, 'hex'))
     .update(['v1', 'POST', destination, timestamp, requestId, body].join('\n')).digest('hex');
   signal.throwIfAborted();

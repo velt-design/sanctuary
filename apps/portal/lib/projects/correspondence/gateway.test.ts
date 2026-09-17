@@ -12,6 +12,13 @@ const config = { origin: 'https://velt.example.invalid', secret: 'a'.repeat(64) 
 const payload = () => ({ schemaVersion: STAFF_CORRESPONDENCE_VERSION, projectId, requestId, context: structuredClone(correspondenceFixture) });
 
 describe('staff correspondence gateway', () => {
+  it('requests reply evidence only after explicit receiver rollout enablement', async () => {
+    const fetcher = vi.fn(async () => Response.json(payload()));
+    await readStaffCorrespondence({ ...config, includeMessageLineage: true }, { projectId, actorId }, new AbortController().signal,
+      { fetcher, now: () => now, nonce: () => requestId });
+    const [, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toHaveProperty('includeMessageLineage', true);
+  });
   it('validates actual message identity, freshness and safe source links independently of citations', () => {
     const reply = payload();
     const message = { id: 'mail-one', subject: 'Site visit', from: 'customer@example.test',

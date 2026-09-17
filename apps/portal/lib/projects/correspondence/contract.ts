@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { validInternetMessageId } from './messageAssociation';
 
 export const STAFF_CORRESPONDENCE_VERSION = 'sanctuary.staff-correspondence.v1';
 export const STAFF_CORRESPONDENCE_PATH = '/api/customer-journey/staff-summary';
@@ -36,6 +37,15 @@ const message = z.object({
     return href !== null && new URL(href).hostname !== 'portal.sanctuarypergolas.co.nz';
   }),
   bodyText: text(32768), truncated: z.boolean(), association: z.literal('customer_address_only'),
+  lineage: z.object({
+    internetMessageId: text(998).refine(validInternetMessageId).optional(),
+    inReplyTo: z.array(text(998).refine(validInternetMessageId)).max(50),
+    references: z.array(text(998).refine(validInternetMessageId)).max(50),
+  }).strict().optional(),
+  projectLink: z.union([
+    z.object({ state: z.literal('linked'), basis: z.enum(['sent_message', 'reply_chain']) }).strict(),
+    z.object({ state: z.enum(['unconfirmed', 'conflicting']) }).strict(),
+  ]).optional(),
 }).strict();
 
 // Validates transport; Velt owns exact excerpt validation and synthesis.

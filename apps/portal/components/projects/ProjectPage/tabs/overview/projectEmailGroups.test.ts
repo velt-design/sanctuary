@@ -2,9 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { projectEmailGroups, referencesProjectQuote, type EmailMessage } from './projectEmailGroups';
 const message: EmailMessage = { id: 'one', from: 'staff@example.test', subject: 'Quote Q-0100',
   sentAt: '2026-09-15T10:00:00Z', receivedAt: '2026-09-15T10:00:00Z', observedAt: '2026-09-15T11:00:00Z',
-  url: 'https://outlook.office.com/mail/id/one', bodyText: 'Please review the revised quote.', truncated: false, association: 'customer_address_only' };
+  url: 'https://outlook.office.com/mail/id/one', bodyText: 'Please review the revised quote.', truncated: false, association: 'customer_address_only', projectLink: { state: 'linked', basis: 'sent_message' } };
 
 describe('project email priorities', () => {
+  it('does not feature a newer unconfirmed customer email or merge it into a confirmed copy', () => {
+    const unconfirmed = { ...message, id: 'unconfirmed', projectLink: undefined };
+    const newer = { ...unconfirmed, id: 'newer', sentAt: '2026-09-17T00:00:00Z', from: 'customer@example.test' };
+    const result = projectEmailGroups([newer, unconfirmed, message], 'customer@example.test');
+    expect(result.featured.map(group => group.message.id)).toEqual(['one']);
+    expect(result.featured[0].copies).toEqual([]);
+    expect(result.latestCustomer).toBeUndefined();
+    expect(result.unconfirmed.map(group => group.message.id)).toEqual(['newer', 'unconfirmed']);
+  });
   it('features the latest email and the latest customer reply, retaining other mail and duplicate sources', () => {
     const reply = { ...message, id: 'reply', from: 'customer@example.test', sentAt: '2026-09-14T10:00:00Z' };
     const old = { ...message, id: 'old', sentAt: '2026-09-13T10:00:00Z' };

@@ -1,4 +1,5 @@
 export * from './contracts';
+export { createResendSentEmailReader, type SentEmailIdentityResult } from './resendSentEmail';
 export {
   DurableResendDispatchError,
   assertDurableResendEmailDispatchIntegrity,

@@ -15,8 +15,9 @@ describe('ProjectCorrespondenceCard', () => {
     const view = renderIntoDocument(<ProjectCorrespondenceCard context={context} state="ready" />);
     const article = view.container.querySelector('article')!;
     expect(article.textContent).toContain('From customer@example.test');
-    expect(article.querySelector('blockquote')?.closest('details')).toBeNull();
-    expect(article.querySelector('details blockquote')?.textContent).toBe(bodyText);
+    expect(article.querySelector('blockquote')?.closest('details')?.open).toBe(true);
+    expect(article.textContent).toContain('Project match not confirmed');
+    expect(article.querySelector(':scope > details blockquote')?.textContent).toBe(bodyText);
     expect(article.querySelector('script')).toBeNull();
     expect(article.querySelector('summary')?.textContent).toBe('Read message');
     view.unmount();

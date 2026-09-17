@@ -4,6 +4,14 @@ This doc is the current-state reference for the core staff portal workflow befor
 
 ## Read First
 
+The local correspondence association candidate distinguishes recorded project
+sends, fully anchored reply relationships and unconfirmed customer mail. Unknown
+ancestry or incomplete identity checks cannot promote a reply into the latest
+linked-message position. Sender, date and original Outlook links remain available;
+reply linkage does not establish acceptance, scope or exclusive project relevance.
+The new sender capability is default-off; live coverage and release status are
+tracked in `project-command-centre-roadmap.md`.
+
 Protected configurator revision previews authenticate the server-to-server pricing
 request using the existing marketing automation credential, while retaining staff
 session checks. Deployment protection failures are distinct from sign-in failures;
