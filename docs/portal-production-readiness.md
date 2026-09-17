@@ -2,6 +2,8 @@
 
 Status: Active evolving tracker.
 
+Project clarity release continuation (17 September): owner accepted the email reader and explicitly moved ordinary-staff verification to live testing after release. Migration20260917000002 is installed with all guarded preservation/audit checks passing:115 cadence items retired with115 cancellation events, zero active cadence and one active manual task retained. The application remains protected-preview only while current Quality checks complete. The initial gate found five stale browser wording assertions; the corrected assertions preserve owner/action and unconfirmed-source checks. No application behavior changed in this correction. Current release evidence and remaining staff check are in project-command-centre-roadmap.md.
+
 Staff correspondence continuation (2026-09-16): actual message transport and
 optional interpretation pass focused application, native database and paired-wire
 checks plus independent source review. Both production projects now have the

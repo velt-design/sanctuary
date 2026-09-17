@@ -4,17 +4,21 @@
 
 ### Current focus: useful workflow before release
 
+**Production retirement installed — 17 September:** exact approved000002 installed successfully through guarded transaction; zero active cadence, one manual task retained,115 audited cancellations independently counted. Private receipt: .codex-tmp/clarity/follow-up-production-install.json. UI promotion has not occurred. Quality35189319351 failed five stale browser wording assertions (four compact Owner labels and one relocated source caveat); corrected assertions pass locally and preserve the same business checks. No application code changed. This supersedes earlier statements that000002 is not installed. Ordinary-staff live testing is explicitly post-release per owner decision below.
+
+**Release amendment — 17 September, after staff finished for the day:** Jordan explicitly authorized production rollout and moving ordinary-staff verification to live testing afterward. This supersedes that pre-release human access gate only; automated/security gates remain mandatory. No role changes or fabricated staff-session proof. Release application 8a9275d after current Quality gate passes, install the prepared exact retirement migration, enable the approved correspondence/lineage/snapshot settings, merge PR145 and verify production. Ordinary-staff live confirmation remains outstanding after release.
+**Release authorization — 17 September:** Jordan accepted the revised email reader and instructed "go ahead" with remaining checks, merge and production rollout. This authorizes the prepared release once readiness gates pass; it does not waive actual non-owner staff access verification. Current application revision is 8a9275da5c86181c9ade5ae394918f73375700e3, protected candidate dpl_9bgU6XYb1cBPo3XxE8k34osJGALk. PR145 is mergeable against e5578a3; Quality and Performance run35189319351 remain in progress. Exact retirement migration hash remains e5df19bf48e3a6cb780e40d9d58e2a4b8c94425248ca63b06fd365b5670fb395. No production mutation or promotion occurred. Available CI credentials are for existing automated testing, not verified production staff access; production provisioning is forbidden by the auth guide. Asked who can complete the existing protected-preview staff read test; no owner re-login or role change requested. Previous pending visual-acceptance statements are superseded by this owner acceptance; staff-access gate remains unresolved.
+
 **Email reading correction — owner approved 17 September:** owner rejected the
 uniform expanded thread and unhelpful opening-word preview. Owner explicitly
 declined a new AI summary after considering it. Approved deterministic useful
 preview, newest message before older quoted text, identifiable quoted headers,
-bounded reading panels, full wording/source preservation. Implemented locally;
-26 focused parser/component tests and7browser journeys pass, including nested
+bounded reading panels, full wording/source preservation. Published for protected review;
+26 focused parser/component tests and 7 browser journeys pass, including nested
 history disclosure. Independent review verified desktop/390px and keyboard
 disclosures, and caught ambiguous greeting/sign-off removal in previews. Those
 cases are now preserved; signature removal requires literal sender-name evidence
-from the email address. Focused independent recheck pending. Real long-pane
-scrolling will be verified in the protected preview. No AI-generation behavior changed.
+from the email address. Independent recheck passed (9 parser/preview tests). Revision 8a9275d is Ready in protected deployment dpl_9bgU6XYb1cBPo3XxE8k34osJGALk on the existing review alias. Builder verified real desktop and 390px latest/history separation, nested disclosure, original Outlook links, and keyboard scrolling of a 1061px quoted body inside its 480px pane (scrollTop 420). Unsigned access remains 302; pre-push checks pass. Hosted Quality/performance checks remain pending; other gates pass. Conservative matching retains uncertain greetings/signatures. Public production unchanged. This final evidence update is local only. No AI-generation behavior changed.
 
 **Finishing pass — owner approved 17 September:** compact the idle work panel,
 put commercial metrics before quote history, and format currency to two decimals.

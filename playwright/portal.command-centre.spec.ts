@@ -149,11 +149,11 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-follow-up": {
     model: "v2",
-    text: ["Project owner:", "Manage project work"],
+    text: ["Owner:", "Manage project work"],
   },
   "v2-close-review": {
     model: "v2",
-    text: ["Project owner:", "Manage project work"],
+    text: ["Owner:", "Manage project work"],
   },
   "v2-critical": {
     model: "v2",
@@ -165,7 +165,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-overdue": {
     model: "v2",
-    text: ["Project owner:", "Manage project work"],
+    text: ["Owner:", "Manage project work"],
   },
   "v2-future": {
     model: "v2",
@@ -189,7 +189,7 @@ const WORK_SCENARIO_EXPECTATIONS = {
   },
   "v2-no-action": {
     model: "v2",
-    text: ["Project owner:", "Manage project work"],
+    text: ["Owner:", "Manage project work"],
   },
   "v2-contacted-site-visit": {
     model: "v2",
@@ -1146,13 +1146,13 @@ test('keeps correspondence suggestions read-only with inspectable sources', asyn
   page.on('request', request => { if (request.method() !== 'GET' && request.url().includes('/api/')) writes.push(request.url()); });
   await page.goto(fixtureUrl({ work: 'v2-triage' }));
   const conversations = page.getByRole('region', { name: 'Customer conversations', exact: true });
-  await expect(conversations).toContainText('not yet confirmed to this job');
   await expect(conversations).toContainText('Suggestions do not change the job or send an email');
   await expect(conversations.locator('article blockquote:visible').first()).toBeVisible();
   await conversations.locator('summary', { hasText: 'AI interpretation and suggestions' }).click();
   const jobPosition = conversations.getByRole('region', { name: 'Job position', exact: true });
   await jobPosition.locator('summary').first().click();
   await jobPosition.getByText('View supporting sources (1)', { exact: true }).click();
+  await expect(jobPosition).toContainText('Customer email match; project not confirmed');
   await expect(jobPosition.locator('blockquote')).toHaveText('Please confirm the expected installation week before we arrange access.');
   await expect(jobPosition.getByRole('link')).toHaveAttribute('href', 'https://outlook.office.com/mail/inbox/id/fixture-only');
   await expect(conversations.getByRole('button', { name: /send|apply|confirm/i })).toHaveCount(0);
