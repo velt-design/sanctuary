@@ -4,46 +4,34 @@
 
 ### Current focus: useful workflow before release
 
-**Payload fix published:** Velt draftPR379 is at`ed0635b` on
-`codex/staff-mail-payload-20260917`. Full local pnpm check passed (1158web tests,
-60browser checks; type/lint/build included), independent review closed the paired
-per-message defect and found no other blocker. This small correction needs no
-additional migration. Hosted checks are newly running; inspect exact run before
-asking for its separate revision release. PR378/backend/002–004 stay live. Portal
-paired large-response regression is local and passes; preserve it with the next
-Portal documentation/integration batch. Current main e5578a3 must be included before
-Portal production readiness. No live retry of payload fix until it is released.
+**Current verification checkpoint — 17 September:** Velt PR378 and migrations
+002–004 are live under Jordan's exact-revision approval. The protected Portal
+preview retains the existing sign-in. Its first real snapshot read reached Outlook
+successfully (HTTP 200, 587ms) but exceeded the old 256KiB incoming-response limit;
+no snapshot was published. This replaces the earlier timeout hypothesis.
 
-Payload correction follow-up: independent review caught that Portal's per-message
-32768-character contract would reject newly accepted large bodies. Fixed Velt's
-sanitized presentation to enforce that per-message bound on Unicode boundaries,
-alongside100KB total, with credentials checked before shortening and truthful
-truncation.27focused Velt tests pass. Actual synthetic25-message Velt output was
-exported privately and accepted by Portal's real parseStaffCorrespondence in its
-paired test. Independent fix verification requested. Full Velt `pnpm check` is
-running as exec session71141, log`.codex-tmp/staff-mail-payload-check.log`; this
-correction still local. Independent reviewer closed P1, independently reran27tests
-and found no further blocker. Continue this check before publishing the correction;
-do not re-request approval for already releasede34da5c.
+The bounded correction is draft [Velt PR379](https://github.com/velt-design/velt-os/pull/379)
+at ed0635b2007ef3d999412a3a12173209b1cfc754. It permits 2MiB streamed customer-mail
+ingress only, preserves the single 25-message request, sanitizes credentials before
+truncation, and retains the existing 100KB total and 32768-unit per-message output
+limits. No new migration, sends, pagination or retention expansion. Full local
+checks passed (1158 web tests and 60 browser checks). Independent review found and
+verified the repaired per-message limit; 27 focused tests passed. Actual synthetic
+Velt output passed the Portal parser. Hosted run 35182923206 passed all jobs. Separate exact-revision release approval
+was requested after checks completed; it remains pending.
 
-**Actual provider cause established after approved release:** protected candidate
-dpl_DNvjfmioGLnEK9X5a5nnwC6rafkR is Ready and assigned only to the existing protected
-review alias; unauthenticated request returns302 toVercel, existing staff login
-retained. Portal993b815 hosted Quality/Performance completed successfully. One
-accepted-project snapshot read at04:33:44 produced one audited provider operation,
-no saved snapshot. Secret-free live diagnostic: HTTP200,587ms,`response_limit`.
-This disproves timeout for this request: the incoming25-message payload exceeds
-256KiB. Prior timeout speculation is superseded for this measured request.
+Portal now integrates production main e5578a3, preserving both project stories and
+enquiry qualification coverage. The owning task's PR150 release evidence is in its
+existing docs. Combined qualification/overview checks passed (33 tests); Portal
+type checking passed. The combined browser suite is running (exec 78494;
+.codex-tmp/clarity/main-integration-browser.log). The protected review alias still serves 993b815;
+this merged version is not deployed. Keep the paired large-response regression.
 
-Corrective local work is in Velt `codex/staff-mail-payload-20260917`, based on merged
-0d106f0: customer-only2MiB streamed ingress, body validation bounded consistently,
-updated audited query hash. Same single25-message request, no fan-out/pagination/
-retry; other provider limits and100KB sanitized body/262KB signed storage limits
-unchanged. Complete accepted text is credential-filtered before truncation. Tests
-cover large25-message/multibyte input, old32KiBbody threshold, unrelatedprovider
-limits, streaming overflow cancellation and credentials beyond display limit;
-30focused tests pass. Independent review requested. Correction not yet published
-or approved for release; existing approval applies toe34da5c, already released.
+Next: finish hosted backend checks, request exact-revision correction release,
+then verify readable real correspondence and reuse across enquiry, quoted and
+accepted projects. Complete integrated Portal checks and independent delivery
+review before its separate production release. Public Portal remains unchanged
+by this task; follow-up retirement migration 20260917000002 is still pending.
 
 **Approved release executed, 17 September 04:31 UTC:** Jordan's "Approved" reply
 authorizes the previously requested e34da5c backend/migrations/protected verification.
