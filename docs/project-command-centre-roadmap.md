@@ -4,6 +4,18 @@
 
 ### Current focus: useful workflow before release
 
+Portal publication in progress: local commits6e851b7 and2f1de0f hold the coherent
+association batch. The first push was stopped by the required worker TypeScript
+check: Node RequestInit omitted Next's cache option. The explicit intersection
+type preserves no-store behavior; worker/package types and all66 provider tests
+now pass. The retried push completed full types but the documentation guard
+stopped it on a local absolute log path; that path is now relative to its named
+worktree. Another normal push must pass the hook. PR145 description
+now reflects the complete scope and outstanding real proof. Architecture advisory
+passes; declared ownership covers27 files. Velt PR376 exact hosted verification
+is still running; its database and Vercel checks pass. No release approval has
+been requested for that revision yet.
+
 Publication checkpoint: Velt draft PR376
 https://github.com/velt-design/velt-os/pull/376 at5482891 contains the reviewed
 reply-identity receiver. Full pnpm check passed before current-main integration,
@@ -21,12 +33,10 @@ desktop and390px found no material association-presentation defect. Keyboard
 disclosures/focus, separate newer other-property mail, sender/date readability,
 pricing distinctions and retired-control absence were checked. Real Outlook,
 disabled sample actions and real mobile-header identification remain unverified.
-Velt full `pnpm run check` is running as exec session69044, log
-`C:/Users/Jorda/source/worktrees/velt-staff-correspondence/.codex-tmp/lineage-check.log`.
-Do not restart it merely on timeout. Local3025 is intentionally paused after
-review for the separately approved Xero build in task01a0a77e-d9d1-7052-ba2f-e372b59b6383;
-restore it with ENABLE_PORTAL_QA_FIXTURES=1 once that task reports its build done.
-Verified stopped Next PIDs49244/43864. Hosted stable review origin is unchanged.
+Velt full `pnpm run check` completed successfully; its private log is
+`.codex-tmp/lineage-check.log` in the `velt-staff-correspondence` worktree.
+The coordinated Xero build pause is over and local3025 was restored and verified.
+Hosted stable review origin is unchanged.
 
 **Association batch, local and unpublished (17 September):**
 - Portal resolves authorized quote/invoice sends and durable enquiry audit/outbox
