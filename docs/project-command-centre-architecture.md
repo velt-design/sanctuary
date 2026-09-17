@@ -55,6 +55,14 @@ without recalculating totals or equating payment with delivery readiness.
 
 ## Correspondence loading performance (local implementation)
 
+Project-detail page, snapshot, summary, Command Centre and correspondence functions
+are explicitly placed in Sydney through per-function `apps/portal/vercel.json`
+rules, beside the existing database and Velt correspondence receiver. Other
+function placement and scheduled-job configuration are unchanged. Actual hosted
+lambda placement must be inspected before claiming this configuration took effect;
+the previous deployment's project functions were in Mumbai despite the receiver
+having moved to Sydney. See [Vercel's per-function configuration](https://vercel.com/docs/project-configuration/vercel-json#per-function-regions-and-functionfailoverregions).
+
 The correspondence route now reads only canonical project/contact identity before
 and after the email operation, with the existing final staff-role check intact.
 It no longer loads project owner/work-model information for those checks.
