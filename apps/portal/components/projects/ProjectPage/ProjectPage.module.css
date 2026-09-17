@@ -65,12 +65,14 @@
 }
 
 .mastheadHeader :global([data-page-header-row="true"]) {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 440px) minmax(0, 1fr);
+  grid-template-areas: 'identity identity' 'utility actions';
+  grid-template-columns: minmax(280px, 440px) minmax(0, 1fr);
   gap: var(--ui-space-3);
 }
 
 .mastheadHeader :global([data-page-header-identity="true"]) {
   min-width: 180px;
+  grid-column: 1 / -1;
 }
 
 .mastheadHeader :global([data-page-header-identity="true"] h1) {
@@ -172,7 +174,7 @@
 
 @container (max-width: 1200px) {
   .mastheadHeader :global([data-page-header-row="true"]) {
-    grid-template-columns: minmax(0, 1fr) 280px minmax(0, 1fr);
+    grid-template-columns: minmax(220px, 360px) minmax(0, 1fr);
     gap: var(--ui-space-2);
   }
 }
@@ -182,7 +184,7 @@
     display: flex;
     align-items: center;
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: var(--ui-space-3);
     overflow-x: auto;
     overscroll-behavior-inline: contain;
@@ -190,7 +192,7 @@
   }
 
   .mastheadHeader :global([data-page-header-identity="true"]) {
-    flex: 0 1 260px;
+    flex: 1 0 100%;
     width: auto;
   }
 
