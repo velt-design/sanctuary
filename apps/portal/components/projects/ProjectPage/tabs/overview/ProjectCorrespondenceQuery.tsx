@@ -29,9 +29,24 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
   const active = useRef<AbortController | null>(null);
   const earlier = useRef<ProjectCorrespondenceContext | undefined>(undefined);
   const pendingChecks = useRef(0);
+  const mountedAt = useRef<number | null>(null);
+  const [displayTiming, setDisplayTiming] = useState<{ mountMs: number; documentMs?: number } | null>(null);
   const accessCallback = useRef(onAccessEnding);
   accessCallback.current = onAccessEnding;
   const path = `/api/staff/v1/projects/${encodeURIComponent(projectId)}/correspondence`;
+
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_PORTAL_EMAIL_TIMING !== 'true') return;
+    mountedAt.current ??= performance.now();
+    if (displayTiming || !read.context?.messages?.length || ['error', 'available', 'refreshing', 'not_connected'].includes(read.state)) return;
+    if (read.context.limitations.includes('Outlook correspondence is unavailable or has not been checked.')) return;
+    const now = performance.now();
+    // A document clock is meaningful only for a direct load/reload of this URL,
+    // not a client navigation from another project or tab. No private data logs.
+    const navigation = performance.getEntriesByType('navigation')[0];
+    setDisplayTiming({ mountMs: Math.round(now - mountedAt.current),
+      ...(navigation?.name === location.href ? { documentMs: Math.round(now) } : {}) });
+  }, [read.context, read.state, displayTiming]);
 
   const load = useCallback(async (check: boolean, analyze = false, readOnOpen = false) => {
     active.current?.abort();
@@ -122,5 +137,8 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
     return () => clearTimeout(timer);
   }, [read.context, read.state, load]);
 
-  return <ProjectCorrespondenceCard {...read} project={project} onRefresh={read.state === 'not_connected' ? undefined : () => void load(true)} onAnalyze={() => void load(true, true)} />;
+  return <>
+    <ProjectCorrespondenceCard {...read} project={project} onRefresh={read.state === 'not_connected' ? undefined : () => void load(true)} onAnalyze={() => void load(true, true)} />
+    {displayTiming && <output hidden data-email-mount-ms={displayTiming.mountMs} data-email-document-ms={displayTiming.documentMs} />}
+  </>;
 }

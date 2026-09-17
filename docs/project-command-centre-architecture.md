@@ -63,6 +63,12 @@ remain unchanged and no customer/provider identity is included in timings.
 Optional `PORTAL_CORRESPONDENCE_TIMING_LOGS=true` emits the same fixed phases,
 request method and status to server logs for protected performance measurements.
 It defaults off; it must not log message content, customer IDs or cache keys.
+Protected measurement builds may set `NEXT_PUBLIC_PORTAL_EMAIL_TIMING=true` to
+expose hidden numeric DOM attributes at the first email render: elapsed since
+mount and, only for a matching direct document URL, since document navigation.
+The effect runs after the evidence DOM commits, so it separates browser-tool
+overhead from observed display time. It never exports email content and defaults
+off. Client navigation does not claim a document-navigation duration.
 Overview starts this independently authorized read as soon as its project summary
 is available, in a separate Suspense boundary from notes/events. Complete history
 still requires the full snapshot. An access-ending command read unmounts mail.
