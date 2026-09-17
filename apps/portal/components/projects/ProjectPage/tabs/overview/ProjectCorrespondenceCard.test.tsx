@@ -6,6 +6,18 @@ import { correspondenceSourceHref } from './projectCorrespondencePresentation';
 
 afterEach(() => { document.body.innerHTML = ''; });
 describe('ProjectCorrespondenceCard', () => {
+  it('distinguishes an unavailable mailbox read from a successful empty result', () => {
+    const context = { ...correspondenceFixture, messages: [], analysisAvailable: false };
+    const failed = renderIntoDocument(<ProjectCorrespondenceCard context={{ ...context, limitations: ['Outlook correspondence is unavailable or has not been checked.'] }} state="ready" onRefresh={() => undefined} onAnalyze={() => undefined} />);
+    expect(failed.container.textContent).toContain('Conversations unavailable');
+    expect(failed.container.textContent).not.toContain('No customer messages were returned');
+    expect(failed.container.textContent).not.toContain('Ask AI');
+    failed.unmount();
+    const empty = renderIntoDocument(<ProjectCorrespondenceCard context={{ ...context, limitations: [] }} state="ready" />);
+    expect(empty.container.textContent).toContain('No customer messages were returned');
+    expect(empty.container.textContent).not.toContain('Conversations unavailable');
+    empty.unmount();
+  });
   it('shows source messages even when AI does not cite them, with sender and expandable plain text', () => {
     const bodyText = 'Customer message, not AI text. '.repeat(40) + '<script>not executable</script>';
     const context = { ...correspondenceFixture, messages: [{ id: 'mail-one', subject: 'Actual message subject',

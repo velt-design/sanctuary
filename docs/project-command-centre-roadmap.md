@@ -8,22 +8,52 @@ Portal association batch published at42c8774; the normal pre-push full workspace
 typecheck and lint passed, and both hosted Vercel builds passed. Required PR CI
 was absent because newer main conflicted in two additive documentation sections.
 Main eb6ba97 is now integrated locally as5b2718a, retaining both contracts; its
-normal push passed full workspace types and lint and published successfully. Required hosted checks must now run on this integrated revision. No runtime conflict was present. The separate
+normal push passed full workspace types and lint and published successfully. All required hosted checks passed on this integrated revision. No runtime conflict was present. The separate
 Xero release owner's sanitized source-verification doc update is accepted for
 publication with the next coherent documentation batch.
 
-Velt draft PR376 is at8d9d2cbecbbf210de262af7ca5d988d3234c4c0a. Provider reply
-headers are now fetched only with the signed opt-in capability. Focused tests,
-types and independent compatibility review pass; current hosted database and
-Vercel checks pass, while run35172341023 verify remains live. Earlier5482891
-hosted checks passed but are not exact-revision proof for this final delta.
-No receiver release, Portal flag enablement or retirement migration occurred.
+Receiver release completed under Jordan's17 September approval. Approved feature
+8d9d2cb was unchanged after required current-main integration as57f7a6a;47 focused
+tests, independent integration review and all exact-head hosted checks passed.
+PR376 merged as4ba3b441ed55df8eea4af74e1fcc919bd452972e. Production velt.systems
+was verified on Ready deployment dpl_HNBcF9wcub1WbzUTN27feBNirErr. The prior
+production deployment is retained in the private release receipt for recovery.
+No database migration, new grant or customer send occurred.
 
-The fixed review alias still resolves to protected deployment
- dpl_8BMddLcsU7rHwHvm1Z1SancLswzu, verified from Vercel metadata after publication.
-No new sign-in request. The previous conversational turn was no progress; this
-continuation identified and resolved the actual PR integration conflict.
+Protected Portal candidate dpl_2qs6GBEDVP4xBAQM7eepF31QBcvQ is Ready on source
+5b2718a with staff correspondence and lineage enabled only on that deployment.
+It does not auto-assign custom domains or change global project flags. Production
+Portal alias was dpl_AafQWbYZy6hENJU5oUbHmTqwtL5T before candidate creation.
+The fixed review alias still serves the older protected candidate pending Ready
+verification and alias reconciliation. Its existing staff session survived the alias update and opened the real project
+and successfully read customer mail with sender/date/excerpts/Outlook links.
+No additional sign-in request is needed. New association behavior remains unproven
+until the candidate is ready and tested. Portal Quality is at fixture browser
+smoke; other hosted jobs and both Vercel builds passed on5b2718a.
 
+Real revised quote proof: direct current quote send linked successfully, earlier
+linked mail retained and three unconfirmed messages separated. Correct quote
+version opened and Overview return preserved the outstanding decision and owner.
+Private evidence: `.codex-tmp/clarity/revised-real-quote-proof.txt`. Incoming manual
+thread remains unconfirmed, so latest relevant incoming coverage is not achieved.
+Card-level legacy customer-only wording contradicted successful links; conditional
+copy correction is local with9 card tests passing, not yet published. New-enquiry,
+accepted/mobile and independent real-journey review remain pending.
+Real enquiry and accepted checks (17 September): the enquiry shows correct owner,
+estimate and readable incoming/outgoing messages, but all four are unconfirmed.
+The legacy website autoresponder source discards its returned provider ID and its
+send audit stores no identity; this is a concrete historical coverage gap, not
+permission to associate by subject. The accepted project shows correct accepted
+version/payment distinction, but mail was unavailable. The receiver returns its
+explicit unavailability limitation with an empty messages array; the UI incorrectly
+presented a normal empty result. Local fix presents unavailable/retry and hides AI
+for that case; regression distinguishes successful empty reads. Generic fallback
+review-current-quote instruction was removed (enquiries may have no quote).
+24 focused tests and Portal typecheck pass for these fixes. They are unpublished.
+Mobile enquiry measured390 viewport/375 content and scroll width: no page overflow;
+header truncation and full journey usability still need review.
+Independent reviewer cannot access this IAB session (Chrome-only inventory).
+No independent real-browser pass is claimed; source integration review remains valid.
 Latest verification: independent review of quote/enquiry/accepted samples at
 desktop and390px found no material association-presentation defect. Keyboard
 disclosures/focus, separate newer other-property mail, sender/date readability,

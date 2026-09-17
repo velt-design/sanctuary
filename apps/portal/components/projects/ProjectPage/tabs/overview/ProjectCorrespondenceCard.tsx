@@ -21,6 +21,9 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [earlierOpen, setEarlierOpen] = useState(false);
+  // The deployed receiver preserves this explicit failure limitation even when
+  // project records are available. An empty mail array alone is not a failure.
+  const mailUnavailable = context?.limitations.includes('Outlook correspondence is unavailable or has not been checked.') === true;
   const onExpand = (id: string, open: boolean) => setExpanded(previous => {
     if (previous.has(id) === open) return previous;
     const next = new Set(previous); if (open) next.add(id); else next.delete(id); return next;
@@ -33,10 +36,10 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
       {state === 'not_connected' ? <p className={styles.explanation}>Customer emails are not connected to staff project pages yet. Team notes and portal events are available below.</p>
         : state === 'available' ? <p className={styles.explanation}>Check linked customer emails for a current, sourced summary. This reads correspondence and does not send a reply or change the project.</p>
         : state === 'loading' ? <LoadingSkeleton rows={3} label="Checking customer conversations" />
-        : state === 'error' || !context ? <DataStatePanel state="unavailable" title="Conversations unavailable" description="The latest customer correspondence could not be checked. No agreement or next step is inferred." onRetry={onRefresh} />
+        : state === 'error' || !context || mailUnavailable ? <DataStatePanel state="unavailable" title="Conversations unavailable" description="The latest customer correspondence could not be checked. No agreement or next step is inferred." onRetry={onRefresh} />
         : <>
           {state === 'stale' ? <AlertBanner tone="warning" title="Earlier conversation summary">This summary is no longer current. Check again for new correspondence before changing the job.</AlertBanner> : null}
-          <p className={styles.explanation}>{sample ? 'Sample email excerpts. Your real Outlook emails are not connected to this preview.' : 'Matched to the customer, not yet confirmed to this job.'}</p>
+          <p className={styles.explanation}>{sample ? 'Sample email excerpts. Your real Outlook emails are not connected to this preview.' : context.messages?.some(message => message.projectLink?.state === 'linked') ? 'Project-linked emails are shown first. Other customer emails are kept separate.' : 'Matched to the customer, not yet confirmed to this job.'}</p>
           {context.messages ? <ProjectEmailMessages messages={context.messages} sample={sample} project={project} expanded={expanded} onExpand={onExpand} earlierOpen={earlierOpen} onEarlierOpen={setEarlierOpen} /> : <div className={styles.messages} aria-label="Email excerpts">
             {correspondence.length ? correspondence.map((source) => {
               const href = correspondenceSourceHref(source.url);

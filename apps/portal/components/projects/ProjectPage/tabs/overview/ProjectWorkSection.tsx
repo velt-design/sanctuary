@@ -257,7 +257,6 @@ export default function ProjectWorkSection({
         {deferredPrimary || (active && controller.primary.kind === "none") ? (
           <div className={styles.stack}>
             <p><strong>Project owner:</strong> {ownerLabel ?? "Unassigned"}</p>
-            <p className={styles.commandHelp}>Review customer emails, the current quote and project files.</p>
           </div>
         ) : prohibitedPrimary ? (
           <AlertBanner tone="blocking" title="Legacy work needs review">
