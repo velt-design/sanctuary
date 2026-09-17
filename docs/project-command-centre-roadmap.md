@@ -12,7 +12,8 @@ Real accepted and quote projects each published and displayed a saved email resu
 Accepted reply disclosure works. Returning from the quote project retained the
 accepted checked time (04:50:53 UTC); the audited provider count stayed at three
 (two successful reads plus the earlier failed-size read), proving navigation reuse.
-Enquiry verification is in progress. Integrated Portal browser suite: 97 passed,
+Enquiry also displayed its saved emails with project-match-unconfirmed labelling.
+Integrated Portal browser suite: 97 passed,
 one skipped; type checking and 33 combined qualification/overview tests passed.
 This supersedes the pending PR379 approval/check state below. No new sign-in needed.
 
