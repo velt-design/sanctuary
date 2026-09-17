@@ -12,7 +12,7 @@ describe('email preview selection', () => {
     expect(projectEmailPreview(body, 'info@sanctuarypergolas.co.nz')).toBe(body);
   });
   it('keeps the newest reply and leaves a header-only message readable', () => {
-    expect(projectEmailPreview('Thanks, Monday works.\nFrom: Aroha\nOlder text', 'customer@example.test')).toBe('Thanks, Monday works.');
+    expect(projectEmailPreview('Thanks, Monday works.\nFrom: Aroha\nDate: Monday\nOlder text', 'customer@example.test')).toBe('Thanks, Monday works.');
     expect(projectEmailPreview('From: Aroha\nForwarded detail', 'customer@example.test')).toBe('From: Aroha\nForwarded detail');
   });
 });

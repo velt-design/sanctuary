@@ -26,7 +26,12 @@ test('long correspondence does not separate work from commercial facts', async (
   await expect(emails.locator('article').first()).toContainText('From aroha@example.invalid');
   await checkGap();
   await emails.locator('article').first().getByText('Read message', { exact: true }).click();
-  await expect(emails.locator('article').first()).toContainText('Subject: Your updated quote');
+  const history = emails.locator('article').first().locator('summary', { hasText: 'Earlier messages in this email' });
+  await expect(history).toBeVisible();
+  await expect(emails.getByText('Please find the revised design and price for your review.', { exact: false })).not.toBeVisible();
+  await history.click();
+  await expect(emails.locator('article').first().getByText('Subject: Your updated quote', { exact: false })).toBeVisible();
+  await expect(emails.locator('article').first().getByText('Read message', { exact: true })).toBeVisible();
   await checkGap();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(emails.locator('article').first()).toBeVisible();

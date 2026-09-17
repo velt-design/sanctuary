@@ -4,13 +4,30 @@
 
 ### Current focus: useful workflow before release
 
+**Email reading correction — owner approved 17 September:** owner rejected the
+uniform expanded thread and unhelpful opening-word preview. Owner explicitly
+declined a new AI summary after considering it. Approved deterministic useful
+preview, newest message before older quoted text, identifiable quoted headers,
+bounded reading panels, full wording/source preservation. Implemented locally;
+26 focused parser/component tests and7browser journeys pass, including nested
+history disclosure. Independent review verified desktop/390px and keyboard
+disclosures, and caught ambiguous greeting/sign-off removal in previews. Those
+cases are now preserved; signature removal requires literal sender-name evidence
+from the email address. Focused independent recheck pending. Real long-pane
+scrolling will be verified in the protected preview. No AI-generation behavior changed.
+
 **Finishing pass — owner approved 17 September:** compact the idle work panel,
 put commercial metrics before quote history, and format currency to two decimals.
 Implemented without changing business state or assigned-work/delivery controls.
 Quote history is an accessible closed disclosure below the metrics.23 focused
 tests and7 desktop/mobile fixture journeys pass; mobile visual inspection confirms
 the compact row brings the customer message higher. Architecture checks pass.
-Same protected preview update and real controls-open recovery verification pending.
+Revision296d5724776abd44629a5d8123e5c9a475af47fc is Ready in protected deployment
+dpl_97V2nGwqpdwtrYnRmmGFejXCBbcM on the same review alias. Full pre-push types/lint
+pass. Builder verified real desktop/mobile layout, exact two-decimal price,
+history disclosure/link, and opening/closing work controls without writes.
+Unsigned access remains302. New hosted Quality/performance/reader-denial checks
+remain in progress; other current PR gates pass. Public production unchanged.
 
 **Focused polish — owner approved 17 September:** owner accepted the revised
 page as much better and agreed with8/10 presentation, then requested only repeated

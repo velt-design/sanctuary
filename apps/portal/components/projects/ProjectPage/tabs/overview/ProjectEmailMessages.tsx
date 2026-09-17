@@ -3,6 +3,8 @@ import { correspondenceSourceHref, type ProjectCorrespondenceContext } from './p
 import styles from './ProjectCorrespondenceCard.module.css';
 import { projectEmailGroups, referencesProjectQuote, type EmailProjectContext } from './projectEmailGroups';
 import { projectEmailPreview } from './projectEmailPreview';
+import { splitProjectEmailText } from './projectEmailText';
+import ProjectEmailReader from './ProjectEmailReader';
 
 export default function ProjectEmailMessages({ messages, sample, project = {}, expanded, onExpand, earlierOpen, onEarlierOpen }: {
   messages: NonNullable<ProjectCorrespondenceContext['messages']>; sample: boolean;
@@ -15,6 +17,7 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
       const href = correspondenceSourceHref(message.url);
       const preview = projectEmailPreview(message.bodyText, message.from);
       const expandable = message.bodyText.trim() !== preview;
+      const hasHistory = splitProjectEmailText(message.bodyText).history.length > 0;
       return <article key={message.id} className={styles.message}>
         {label ? <p className={styles.messageLabel}>{label}</p> : null}
         <h3>{message.subject || 'No subject'}</h3>
@@ -24,9 +27,12 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
         </div>
         {message.projectLink?.state === 'conflicting' ? <p className={styles.explanation}>References more than one project.</p> : null}
         {referencesProjectQuote(message, project.quoteRef) && !message.subject?.includes(project.quoteRef ?? '') ? <p className={styles.quoteMatch}>Quote {project.quoteRef}</p> : null}
-        {!(expandable && expanded.has(message.id)) ? <blockquote className={styles.messagePreview}>{preview || 'Message text unavailable in this check.'}{expandable ? '…' : ''}</blockquote> : null}
-        {expandable ? <details className={styles.sources} open={expanded.has(message.id)} onToggle={event => onExpand(message.id, event.currentTarget.open)}>
-          <summary>Read message</summary><blockquote>{message.bodyText}</blockquote>
+        {!(expandable && expanded.has(message.id)) ? <>
+          <blockquote className={styles.messagePreview}>{preview || 'Message text unavailable in this check.'}{preview.length === 200 ? '…' : ''}</blockquote>
+          {hasHistory ? <p className={styles.explanation}>Includes earlier conversation</p> : null}
+        </> : null}
+        {expandable ? <details className={styles.sources} open={expanded.has(message.id)} onToggle={event => { if (event.target === event.currentTarget) onExpand(message.id, event.currentTarget.open); }}>
+          <summary>Read message</summary><ProjectEmailReader text={message.bodyText} />
         </details> : null}
         {message.truncated ? <p className={styles.explanation}>Part of this message was omitted by the read limit. Open the original for the rest.</p> : null}
         {sample ? <p className={styles.explanation}>Sample message — there is no original email to open.</p>

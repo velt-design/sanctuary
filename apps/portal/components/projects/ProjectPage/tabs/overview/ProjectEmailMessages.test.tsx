@@ -11,8 +11,11 @@ describe('refreshed email text', () => {
       url: 'https://outlook.office.com/mail/id/thread', bodyText, truncated: false, association: 'customer_address_only' };
     const view = renderIntoDocument(<ProjectEmailMessages messages={[message]} sample expanded={new Set()} onExpand={() => undefined} earlierOpen={false} onEarlierOpen={() => undefined} />);
     const quotes = view.container.querySelectorAll('blockquote');
-    expect(quotes[0].textContent).toBe('Thanks, could you confirm the installation week?…');
-    expect(quotes[1].textContent).toBe(bodyText);
+    expect(quotes[0].textContent).toBe('Thanks, could you confirm the installation week?');
+    expect(quotes[1].textContent).toBe('Thanks, could you confirm the installation week?\n\n');
+    expect(quotes[2].textContent).toBe('Earlier quoted text');
+    expect(view.container.textContent).toContain('From: Earlier sender\nSubject: Previous quote');
+    expect(view.container.textContent).toContain('Includes earlier conversation');
     view.unmount();
   });
   it('shows a newly shortened excerpt even if its full-message disclosure was open', () => {

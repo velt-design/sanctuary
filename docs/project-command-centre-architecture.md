@@ -28,8 +28,14 @@ stale/error messages and non-active states retain their existing space.
 Existing manual commitments retain their controls.
 Customer email text appears before optional AI interpretation. The latest linked
 customer reply appears before the latest outgoing message. Collapsed excerpts
-normalize whitespace for scanning; expanded text preserves paragraphs and quoted
-history. Sender/date and subject use separate typographic levels.
+normalize whitespace for scanning and omit conventional standalone greetings and
+sign-offs whose name matches the sender address only from the teaser. Ambiguous
+greetings/signatures stay visible. Expanded text preserves original wording.
+Recognizable From/Date/Subject or On-wrote boundaries separate the newest message
+from a collapsed quoted-history disclosure; uncertain formats remain unsplit.
+Each quoted header is visually secondary, with keyboard-focusable bounded text
+panes for long messages. Quoted questions are explicitly historical, not new tasks.
+Sender/date and subject use separate typographic levels.
 Repeated association guidance lives once per unconfirmed group and in the
 email-details disclosure. Known generated quote/invoice teasers use their original
 leading summary before the branded document; full message text is never modified.
