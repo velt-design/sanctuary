@@ -1,0 +1,12 @@
+/* Project-only opening: mobile reading order is title, photograph, summary. */
+.hero > :first-child { grid-column: 1; grid-row: 1; }
+.hero > :nth-child(2) { grid-row: 2; }
+.hero > :nth-child(3) { grid-column: 2; grid-row: 1; }
+@media (max-width: 760px) {
+  .hero:global(.project-case-study__intro) { padding-top: 1.25rem !important; gap: 1.25rem !important; }
+  .hero > :first-child { grid-column: 1; grid-row: 1; }
+  .hero > :nth-child(2) { grid-column: 1; grid-row: 2; }
+  .hero > :nth-child(3) { grid-column: 1; grid-row: 3; padding-bottom: 0; }
+  .hero:global(.project-case-study__intro) h1 { margin-top: .65rem !important; font-size: clamp(2.5rem, 10.5vw, 3.5rem) !important; max-width: 16ch !important; line-height: 1.02 !important; }
+  .hero > :nth-child(3) > p { margin-bottom: .5rem; }
+}

@@ -1,3 +1,4 @@
+import EditorialLandingHero from '@/components/marketing-foundation/editorial/EditorialLandingHero';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -122,43 +123,10 @@ export default function AcrylicRoofPergolasAucklandPage() {
         ]}
       />
 
-      <section className="acrylic-hero" aria-labelledby="acrylic-hero-title">
-        <Image
-          src={heroImage}
-          alt="Gable pergola with acrylic roofing beside an Auckland home"
-          fill
-          priority
-          loading="eager"
-          fetchPriority="high"
-          sizes="100vw"
-          className="acrylic-hero__image"
-        />
-        <div className="acrylic-hero__shade" aria-hidden="true" />
-        <Container width="wide" className="acrylic-hero__content">
-          <Eyebrow className="acrylic-eyebrow">
-            Acrylic roof pergolas in Auckland
-          </Eyebrow>
-          <Heading as="h1" variant="page" id="acrylic-hero-title">
-            Acrylic roof pergolas for Auckland homes.
-          </Heading>
-          <Text size="large" className="acrylic-hero__intro">
-            Acrylic roofing can provide cover while keeping daylight. The
-            right tint, roof form and depth depend on your home, sun and how
-            you use the deck.
-          </Text>
-          <div className="acrylic-hero__actions">
-            <Button href="#project-details">Send project brief</Button>
-            <Link href="#acrylic-options">Compare acrylic options</Link>
-          </div>
-          <ul className="acrylic-hero__proof" aria-label="Acrylic roof approach">
-            <li>Site-specific tint</li>
-            <li>Roof and drainage designed together</li>
-            <li>Built project evidence</li>
-          </ul>
-        </Container>
-      </section>
-
-      <Section
+      <EditorialLandingHero id="acrylic-hero-title" eyebrow="Acrylic roof pergolas in Auckland" title="Acrylic roof pergolas for Auckland homes." intro="Acrylic roofing can provide cover while keeping daylight. The right tint, roof form and depth depend on your home, sun and how you use the deck." image={heroImage} alt="Gable pergola with acrylic roofing beside an Auckland home" objectPosition="50% 48%">
+        <div className="acrylic-hero__actions"><Button href="#project-details">Send project brief</Button><Link href="#acrylic-options">Compare acrylic options</Link></div>
+        <ul className="acrylic-hero__proof" aria-label="Acrylic roof approach"><li>Site-specific tint</li><li>Roof and drainage designed together</li><li>Built project evidence</li></ul>
+      </EditorialLandingHero>    <Section
         id="acrylic-options"
         tone="warm"
         className="acrylic-section acrylic-section--tints"

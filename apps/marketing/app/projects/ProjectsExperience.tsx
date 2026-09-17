@@ -1,3 +1,4 @@
+import editorial from '@/components/marketing-foundation/editorial/editorial.module.css';
 import Link from 'next/link';
 import type { Project } from '@/data/projects';
 import { buildEnquiryHref } from '@/lib/enquiryContext';
@@ -66,7 +67,8 @@ export default function ProjectsExperience({
 
   return (
     <main
-      className="projects-experience projects-experience--collection"
+      className={`projects-experience projects-experience--collection ${editorial.surface}`}
+      data-editorial-page="projects"
       aria-label="Built projects around NZ"
       data-marketing-foundation-page
       data-projects-experience

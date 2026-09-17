@@ -1,4 +1,6 @@
 'use client';
+import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
+
 
 import { useReviewPrice } from './useReviewPrice';
 import ReviewPriceDisplay from './ReviewPriceDisplay';
@@ -81,7 +83,7 @@ function ConfiguratorWorkspace({active,draft,expanded,onToggleExpanded,renderEnq
           {configuratorPrice?.status !== 'disabled' ? <PublishedPriceDisplay value={configuratorPrice} retry={retryConfigured} hasInfills={!!(roof.family==='gable'&&roof.infills)||!!roof.blinds?.some(blind=>blind.infill)}/> : process.env.NODE_ENV === 'development' ? <ReviewPriceDisplay value={reviewPrice}/> : !hasSimpleRoofPrice(roof) ? <><p className={styles.priceValue}>Your pergola, taking shape.</p><p className={styles.small}>Explore the design here. Your selected roof pricing will be confirmed by Sanctuary.</p></> : !result ? <p className={styles.priceValue}>Updating estimate…</p> : result.status === 'priced'
             ? <><p className={styles.priceValue}><span>From </span>{new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD', maximumFractionDigits: 0 }).format(result.price.fromIncGst)}</p><p className={styles.small}>Including GST · Subject to site confirmation</p></>
             : result.status === 'custom' ? <><p className={styles.priceValue}>A custom fit.</p><p className={styles.small}>{result.reason}</p></>
-            : <><p>Estimate unavailable. Keep exploring your design.</p><button className={styles.textButton} onClick={retry}>Retry estimate ↗</button></>}
+            : <><p>Estimate unavailable. Keep exploring your design.</p><button className={styles.textButton} onClick={retry}>Retry estimate <ArrowUpRight /></button></>}
         </section>
         <ReviewNextSteps/>
         {!renderEnquiry && <div className={journey.mobileReviewTools}><button className={styles.textButton} onClick={()=>rail.choose('personalise')}>Back to Personalise</button><ShareDesign draft={{version:1,input,roof}} estimate={estimate}/></div>}

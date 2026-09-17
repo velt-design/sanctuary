@@ -365,7 +365,7 @@ test('the automatic hero reveal waits until the mobile menu is dismissed', async
   await page.waitForTimeout(1_000);
   await expect(heroJourney).toHaveAttribute('data-story-visible', 'false');
 
-  await page.locator('[data-mobile-menu-backdrop]').click();
+  await page.locator('#mobile-menu').getByRole('button', { name: 'Close menu' }).click();
   await expect(heroJourney).toHaveAttribute('data-story-visible', 'true');
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 });
@@ -837,8 +837,7 @@ test('viewing a project keeps the finder brief and viewed project through a late
     /\/projects\/warkworth-outdoor-room\?project=bespoke&priorities=daylight%2Ccoordination&reference=warkworth-outdoor-room$/,
   );
   await expect(page.locator('.project-case-study__intro-actions')).toHaveCount(0);
-  const finalEnquiry = page.locator('.project-case-study__final-cta')
-    .getByRole('link', { name: 'Send project brief' });
+  const finalEnquiry = page.locator('[data-project-case-study]').getByRole('link', { name: /Send project brief/ });
   await expect(finalEnquiry).toHaveAttribute(
     'href',
     /source_project=warkworth-outdoor-room.*source_experience=project-finder-home-v1.*project_direction=bespoke.*project_priorities=daylight%2Ccoordination/,
@@ -847,7 +846,7 @@ test('viewing a project keeps the finder brief and viewed project through a late
     'href',
     /source_project=warkworth-outdoor-room.*source_experience=project-finder-home-v1.*project_direction=bespoke.*project_priorities=daylight%2Ccoordination/,
   );
-  const relatedProject = page.locator('.project-case-study__related-list a');
+  const relatedProject = page.locator('[data-related-projects] a');
   const relatedCount = await relatedProject.count();
   expect(relatedCount).toBeGreaterThan(0);
   await expect(relatedProject.first()).toHaveAttribute(
@@ -985,7 +984,7 @@ test('mobile menu remains operable without losing finder URL state', async ({
     'data-mobile-menu-state',
     'open',
   );
-  await page.getByRole('button', { name: 'Close menu' }).click();
+  await page.locator('#mobile-menu').getByRole('button', { name: 'Close menu' }).click();
   await expect(page).toHaveURL(/\?project=cover$/);
   await expect(page.locator('#mobile-menu')).toHaveAttribute(
     'data-mobile-menu-state',

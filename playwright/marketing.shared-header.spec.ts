@@ -19,7 +19,7 @@ const establishedHeaderRoutes = [
   '/commercial-pergolas-auckland',
 ] as const;
 
-const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'mobile-ux-phase-3-pr-8');
+const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'marketing-foundation-evolution', 'header-captures');
 const capture = process.env.MARKETING_SHARED_HEADER_CAPTURE?.trim();
 
 async function preparePage(page: Page) {
@@ -49,12 +49,50 @@ test('header and menu surfaces remain painted over product content', async ({ pa
     await expect(header).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     if (width < 901) {
       await page.getByRole('button', { name: 'Open menu', exact: true }).click();
-      await expect(page.locator('#mobile-menu')).toHaveCSS('background-color', 'rgb(248, 248, 245)');
-      await expect(page.locator('#mobile-menu')).toHaveCSS('color', 'rgb(15, 15, 16)');
+      await expect(page.locator('#mobile-menu')).toHaveCSS('background-color', 'rgb(238, 238, 233)');
+      await expect(page.locator('#mobile-menu')).toHaveCSS('color', 'rgb(17, 18, 16)');
       await page.keyboard.press('Escape');
       await expect(page.locator('#mobile-menu')).toHaveAttribute('aria-hidden', 'true');
     }
   }
+});
+
+test('public header action arrows are decorative SVGs rather than emoji glyphs', async ({ page }) => {
+  await preparePage(page);
+  await page.goto('/projects');
+  const desktopAction = page.locator('header.site .nav-cta');
+  await expect(desktopAction.locator('svg[aria-hidden="true"]')).toHaveCount(1);
+  await expect(desktopAction).toHaveAccessibleName('Start your project');
+  expect(await desktopAction.evaluate(element => getComputedStyle(element, '::after').content)).not.toContain('↗');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Open menu', exact: true }).click();
+  const mobileAction = page.locator('.mobile-menu__design');
+  await expect(mobileAction.locator('svg[aria-hidden="true"]')).toHaveCount(1);
+  await expect(mobileAction).toHaveAccessibleName('Design your pergola');
+  expect(await page.locator('#mobile-menu').textContent()).not.toContain('↗');
+  await expect(mobileAction.locator('svg')).toHaveAttribute('stroke', 'currentColor');
+});
+
+test('component-owned menu styling wins over late legacy global rules', async ({ page }) => {
+  await preparePage(page);
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  await expect(page.locator('[data-homepage-welcome]')).toHaveCount(0);
+  // Reintroduce the old global declarations seen in the owner's phone photos,
+  // after all current styles. Component-scoped CSS must still own new markup.
+  await page.addStyleTag({content: `
+    body:has([data-editorial-website]):not(:has([data-project-preview])) header.site {background:#eeeee9!important;}
+    .mobile-menu {inset:64px 0 auto;height:auto;max-height:calc(100dvh - 64px);padding:1rem 20px 2rem;}
+    .mobile-menu__link {font-size:.72rem;text-transform:uppercase;border-bottom:1px solid #c7cac3;}
+    .mobile-menu__link--estimate {background:#4f5748;color:white;}
+  `});
+  await expect(page.locator('header.site')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  await expect(page.locator('#mobile-menu')).toHaveCSS('height','844px');
+  await expect(page.locator('.mobile-menu__masthead')).toHaveCSS('display','flex');
+  await expect(page.locator('#mobile-menu .mobile-menu__link').first()).toHaveCSS('text-transform','none');
+  await expect(page.locator('.mobile-menu__design')).toHaveCSS('display','flex');
+  await expect(page.locator('.mobile-menu__link--estimate')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
 });
 
 test('the architectural editorial header is shared by established public routes', async ({ page }) => {
@@ -69,11 +107,11 @@ test('the architectural editorial header is shared by established public routes'
     await expect(header).toBeVisible();
     await expect(header).toHaveAttribute('data-header-ui', 'architectural-editorial');
     if (resolvedPath === '/') {
-      await expect(cta).toHaveCount(0);
+      await expect(cta).toBeVisible();
     } else {
       await expect(cta).toBeVisible();
       await expect(cta).toHaveCSS('border-radius', '0px');
-      await expect(cta).toHaveCSS('background-color', 'rgb(79, 87, 72)');
+      await expect(cta).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
       await expect(cta).toHaveAttribute('href', buildEnquiryHref({
         ...getEnquiryRouteContext(resolvedPath),
         sourcePath: resolvedPath,
@@ -83,7 +121,7 @@ test('the architectural editorial header is shared by established public routes'
     await expect(header.getByRole('navigation', { name: 'Primary' }).getByRole('link'))
       .toHaveText([
         'Projects',
-        'Products',
+        'Pergolas',
         'Commercial',
         'Professionals',
       ]);
@@ -126,7 +164,7 @@ test('the architectural editorial header is shared by established public routes'
   }
 });
 
-test('the shared mobile header uses the compact square menu and restores keyboard focus', async ({ page }) => {
+test('the editorial mobile menu traps and restores keyboard focus', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await preparePage(page);
   await page.goto('/contact');
@@ -170,14 +208,15 @@ test('the shared mobile header uses the compact square menu and restores keyboar
   expect(focusedLinkStyle.outlineWidth).toBeGreaterThanOrEqual(2);
   await expect(mobileNavigation.getByRole('link')).toHaveText([
     'Projects',
-    'Pergola options',
+    'Pergolas',
     'Commercial',
     'Professionals',
-    'Start your project',
+    'Design your pergola',
+    'Discuss your project',
   ]);
   await expect(mobileNavigation.getByRole('link', { name: 'Professionals' }))
     .toHaveAttribute('href', '/architects-designers-builders');
-  await expect(mobileNavigation.getByRole('link', { name: 'Start your project' }))
+  await expect(mobileNavigation.getByRole('link', { name: 'Discuss your project' }))
     .toHaveAttribute('href', buildEnquiryHref({
       sourcePath: '/contact',
       sourceComponent: 'header',
@@ -190,14 +229,14 @@ test('the shared mobile header uses the compact square menu and restores keyboar
     expect(bounds!.height).toBeGreaterThanOrEqual(44);
   }
 
-  await expect.poll(() => page.locator('#mobile-menu').evaluate((element) => element.getBoundingClientRect().top)).toBeCloseTo(64, 0);
+  await expect.poll(() => page.locator('#mobile-menu').evaluate((element) => element.getBoundingClientRect().top)).toBeCloseTo(0, 0);
 
   await page.keyboard.press('Shift+Tab');
-  await expect(menuButton).toBeFocused();
+  await expect(page.locator('.mobile-menu__close')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(mobileNavigation.getByRole('link', { name: 'Start your project' })).toBeFocused();
+  await expect(mobileNavigation.getByRole('link', { name: 'Discuss your project' })).toBeFocused();
   await page.keyboard.press('Tab');
-  await expect(menuButton).toBeFocused();
+  await expect(page.locator('.mobile-menu__close')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(mobileNavigation.getByRole('link').first()).toBeFocused();
 
@@ -210,7 +249,7 @@ test('the shared mobile header uses the compact square menu and restores keyboar
   await expect(page.locator('#mobile-menu')).toHaveAttribute('inert', '');
 });
 
-test('tapping the uncovered mobile backdrop closes the menu without activating the page', async ({ page }) => {
+test('the full-screen close control restores the page without activating it', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await preparePage(page);
   await page.goto('/contact');
@@ -231,8 +270,9 @@ test('tapping the uncovered mobile backdrop closes the menu without activating t
 
   const menuBounds = await menu.boundingBox();
   expect(menuBounds).not.toBeNull();
-  const outsideY = Math.min(830, Math.ceil(menuBounds!.y + menuBounds!.height + 24));
-  await page.mouse.click(195, outsideY);
+  expect(menuBounds!.height).toBe(844);
+  await page.locator('.mobile-menu__close').click();
+  await expect(menuButton).toBeFocused();
 
   await expect(menu).toHaveAttribute('data-mobile-menu-state', 'closed');
   await expect(backdrop).toHaveAttribute('data-mobile-menu-backdrop-state', 'closed');
@@ -246,7 +286,7 @@ test('shared header destinations remain functional', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page);
   await page.goto('/');
-  await page.locator('header.site').getByRole('link', { name: 'Products' }).click();
+  await page.locator('header.site').getByRole('link', { name: 'Pergolas', exact: true }).click();
   await expect(page).toHaveURL(/\/products$/);
   await expect(page.locator('main[data-products-index]')).toBeVisible();
 });
@@ -326,11 +366,11 @@ for (const viewport of [
     await menuButton.click();
     const mobileNavigation = page.getByRole('navigation', { name: 'Mobile primary' });
     await expect(mobileNavigation).toBeVisible();
-    await expect(mobileNavigation.getByRole('link', { name: 'Pergola options' }))
+    await expect(mobileNavigation.getByRole('link', { name: 'Pergolas', exact: true }))
       .toHaveAttribute('aria-current', 'page');
     await expect.poll(() => page.locator('#mobile-menu').evaluate(
       (element) => element.getBoundingClientRect().top,
-    )).toBeCloseTo(64, 0);
+    )).toBeCloseTo(0, 0);
 
     const menuGeometry = await page.locator('#mobile-menu').evaluate((element) => {
       const bounds = element.getBoundingClientRect();
@@ -344,7 +384,7 @@ for (const viewport of [
     });
     expect(menuGeometry.left).toBeGreaterThanOrEqual(0);
     expect(menuGeometry.right).toBeLessThanOrEqual(menuGeometry.viewportWidth);
-    expect(menuGeometry.top).toBeCloseTo(64, 0);
+    expect(menuGeometry.top).toBeCloseTo(0, 0);
     expect(menuGeometry.documentOverflow).toBeLessThanOrEqual(0);
 
     for (const target of [menuButton, ...await mobileNavigation.getByRole('link').all()]) {
@@ -379,7 +419,7 @@ test('the mobile menu remains operable at tablet width and short viewport height
     mobileNavigation.getByRole('link', { name: 'Projects' }),
   ).toBeFocused();
   const estimate = mobileNavigation.getByRole('link', {
-    name: 'Start your project',
+    name: 'Discuss your project',
   });
   const shortViewportState = await menu.evaluate((element) => {
     const bounds = element.getBoundingClientRect();
@@ -392,7 +432,7 @@ test('the mobile menu remains operable at tablet width and short viewport height
     };
   });
   expect(shortViewportState.bottom).toBeLessThanOrEqual(shortViewportState.viewportHeight);
-  expect(shortViewportState.clientHeight).toBeLessThanOrEqual(416);
+  expect(shortViewportState.clientHeight).toBeLessThanOrEqual(480);
   expect(shortViewportState.scrollHeight).toBeGreaterThanOrEqual(shortViewportState.clientHeight);
   expect(shortViewportState.overflowY).toBe('auto');
   await estimate.focus();
@@ -438,7 +478,7 @@ test('audience-aware destinations and browser Back keep route and scroll context
     const mobileNavigation = page.getByRole('navigation', { name: 'Mobile primary' });
     await expect(mobileNavigation.getByRole('link', { name: 'Professionals' }))
       .toHaveAttribute('href', '/architects-designers-builders');
-    await expect(mobileNavigation.getByRole('link', { name: 'Start your project' }))
+    await expect(mobileNavigation.getByRole('link', { name: 'Discuss your project' }))
       .toHaveAttribute('href', buildEnquiryHref({
         ...getEnquiryRouteContext(route),
         sourcePath: route,
@@ -450,7 +490,7 @@ test('audience-aware destinations and browser Back keep route and scroll context
   await page.goto('/contact');
   await page.getByRole('button', { name: 'Open menu' }).click();
   await page.getByRole('navigation', { name: 'Mobile primary' })
-    .getByRole('link', { name: 'Pergola options' })
+    .getByRole('link', { name: 'Pergolas', exact: true })
     .click();
   await expect(page).toHaveURL(/\/products$/);
   await expect(page.locator('body')).not.toHaveClass(/mobile-menu-open/);
@@ -482,12 +522,130 @@ test('capture representative shared-header states', async ({ page }) => {
     await page.goto('/projects');
     await page.getByRole('button', { name: 'Open menu' }).click();
     await expect(page.getByRole('navigation', { name: 'Mobile primary' })).toBeVisible();
-    await expect.poll(() => page.locator('#mobile-menu').evaluate((element) => element.getBoundingClientRect().top)).toBeCloseTo(64, 0);
+    await expect.poll(() => page.locator('#mobile-menu').evaluate((element) => element.getBoundingClientRect().top)).toBeCloseTo(0, 0);
+    await expect(page.locator('#mobile-menu')).toHaveCSS('opacity','1');
     await page.screenshot({
       path: path.join(
         evidenceDirectory,
         `projects-mobile-menu-${viewport.width}x${viewport.height}.png`,
       ),
+    });
+  }
+});
+
+
+test('public header aligns with content edges on normal and wide collections', async ({page}) => {
+  await preparePage(page);
+  for (const width of [390, 1024, 1440, 1920]) {
+    await page.setViewportSize({width,height:1000});
+    for (const [route, selector] of [['/projects','.projects-experience__layout'],['/products/pergolas/gable','[data-editorial-detail]']]) {
+      await page.goto(route);
+      const geometry = await page.evaluate((selector) => {
+        const main = document.querySelector(selector);
+        const header = document.querySelector('header .navbar');
+        return {main:main?.getBoundingClientRect().toJSON(),header:header?.getBoundingClientRect().toJSON()};
+      },selector);
+      if (route === '/projects') {
+        expect(geometry.main).toBeTruthy();
+        expect(geometry.header.x).toBeCloseTo(geometry.main.x,0);
+        expect(geometry.header.right).toBeCloseTo(geometry.main.right,0);
+      } else {
+        const gutter=Math.max(20,Math.min(width*.04,72));
+        expect(geometry.header.width).toBeCloseTo(Math.min(1280,width-2*gutter),0);
+      }
+    }
+  }
+});
+
+test('editorial menu design and discussion actions retain context with safe return', async ({page}) => {
+  await preparePage(page);
+  await page.setViewportSize({width:390,height:844});
+  await page.route('**/api/enquiry',route=>route.abort());
+  await page.goto('/projects/warkworth-outdoor-room');
+  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  const menu=page.locator('#mobile-menu');
+  await expect(menu.getByRole('link',{name:'Discuss your project'})).toHaveAttribute('href',/source_project=warkworth-outdoor-room/);
+  await menu.getByRole('link',{name:'Design your pergola'}).click();
+  await expect(page.getByRole('dialog',{name:'Design your pergola',exact:true})).toBeVisible();
+  await expect(menu).toHaveAttribute('data-mobile-menu-state','closed');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('button[aria-controls="mobile-menu"]')).toBeFocused();
+  await expect(page).toHaveURL(/projects\/warkworth-outdoor-room$/);
+  await expect(page.locator('body')).not.toHaveClass(/mobile-menu-open/);
+});
+
+
+test('menu stays opaque until a delayed destination arrives, and same-page close restores scroll', async ({page}) => {
+  await preparePage(page);
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  let release!:()=>void;
+  const held=new Promise<void>(resolve=>{release=resolve;});
+  await page.route('**/products**',async route=>{await held;await route.continue();});
+  await page.locator('#mobile-menu').getByRole('link',{name:'Pergolas',exact:true}).click();
+  await expect(page.locator('#mobile-menu')).toHaveAttribute('data-mobile-menu-state','open');
+  await expect(page.locator('#mobile-menu')).toHaveCSS('opacity','1');
+  release();
+  await expect(page).toHaveURL(/products$/);
+  await expect(page.locator('#mobile-menu')).toHaveAttribute('data-mobile-menu-state','closed');
+  await expect(page.locator('header.site')).toHaveCSS('background-color','rgb(238, 238, 233)');
+  await page.evaluate(()=>window.scrollTo(0,250));
+  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  await page.locator('#mobile-menu').getByRole('link',{name:'Pergolas',exact:true}).click();
+  await expect(page.locator('#mobile-menu')).toHaveAttribute('data-mobile-menu-state','closed');
+  await expect(page.locator('button[aria-controls="mobile-menu"]')).toBeFocused();
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBe(250);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('body')).not.toHaveClass(/mobile-menu-open/);
+});
+
+
+test.describe('homepage mobile overlay return states', () => {
+  test.use({ isMobile: true, hasTouch: true });
+  for (const width of [360,390,430]) for (const reducedMotion of ['no-preference','reduce'] as const) {
+    test('transparent over the initial image at '+width+'px with '+reducedMotion, async ({page,baseURL}) => {
+      await preparePage(page);
+      await page.setViewportSize({width,height:844});
+      await page.emulateMedia({reducedMotion});
+      const header=page.locator('header.site');
+      const expectOverlay=async()=>{
+        await expect(header).toHaveAttribute('data-hero-navigation','overlay');
+        await expect(header).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+        await expect(header.locator('.site-brand')).toHaveCSS('color','rgb(255, 255, 255)');
+        await expect(header.locator('.mobile-toggle')).toHaveCSS('color','rgb(255, 255, 255)');
+      };
+      for (const origin of [baseURL!,process.env.MARKETING_HEADER_SECONDARY_URL].filter((url): url is string => Boolean(url))) {
+        await page.goto(origin+'/');
+        await expect(page.locator('[data-homepage-welcome]')).toHaveCount(0);
+        await expectOverlay();
+        await page.evaluate(()=>window.scrollTo(0,200));
+        await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBe(200);
+        await expectOverlay();
+        await page.getByRole('button',{name:'Open menu',exact:true}).click();
+        await expect(page.locator('#mobile-menu')).toHaveCSS('opacity','1');
+        await expect(page.locator('#mobile-menu')).toHaveCSS('background-color','rgb(238, 238, 233)');
+        await page.locator('.mobile-menu__close').click();
+        await expect(page.locator('#mobile-menu')).toHaveCSS('opacity','0');
+        await expectOverlay();
+        await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBe(200);
+        await page.evaluate(()=>window.scrollTo(0,1000));
+        await expect(header).toHaveAttribute('data-hero-navigation','solid');
+        await expect(header).toHaveCSS('background-color','rgb(238, 238, 233)');
+        await page.evaluate(()=>window.scrollTo(0,0));
+        await expectOverlay();
+        await page.getByRole('button',{name:'Open menu',exact:true}).click();
+        await page.locator('#mobile-menu').getByRole('link',{name:'Projects',exact:true}).click();
+        await expect(page).toHaveURL(/projects$/);
+        await page.goBack();
+        await expect(page).toHaveURL(origin+'/');
+        await expect(page.locator('[data-homepage-welcome]')).toHaveCount(0);
+        await expectOverlay();
+        await expect(page.locator('body')).not.toHaveClass(/mobile-menu-open/);
+        await page.screenshot({path:path.join(evidenceDirectory,'homepage-return-'+new URL(origin).port+'-'+width+'-'+reducedMotion+'.png')});
+      }
     });
   }
 });

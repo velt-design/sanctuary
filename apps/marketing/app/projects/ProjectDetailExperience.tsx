@@ -8,6 +8,9 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
+import ProjectDetailNavigation from './ProjectDetailNavigation';
+import { saveCollectionReturn } from './projectCollectionReturn';
+import editorial from '@/components/marketing-foundation/editorial/editorial.module.css';
 import JsonLd from '@/components/JsonLd';
 import type { Project } from '@/data/projects';
 import {
@@ -26,7 +29,7 @@ import {
 } from '@/lib/projectDetailNavigation';
 import type { ProjectCollectionItem } from './projectCollection';
 import ProjectDetailContent from './ProjectDetailContent';
-import ProjectNavigator from './ProjectNavigator';
+
 import ProjectRuntimeMetadata from './ProjectRuntimeMetadata';
 import {
   buildProjectStructuredData,
@@ -232,6 +235,11 @@ export default function ProjectDetailExperience({
     if (!anchor || !root) return;
 
     restoreProjectSwitchAnchor(root, anchor);
+    const heading = root.querySelector<HTMLElement>('#project-case-study-title');
+    if (heading) {
+      heading.setAttribute('tabindex', '-1');
+      heading.focus({ preventScroll: true });
+    }
     pendingAnchorRef.current = null;
     if (!settleHistoryAnchorRef.current) return;
 
@@ -277,6 +285,9 @@ export default function ProjectDetailExperience({
       syncScrollRestoration();
       if (!desktopQuery.matches) return;
       const currentSlug = getProjectDetailSlug(window.location.pathname);
+      if (currentSlug && currentSlug !== selectionRef.current.project.slug) {
+        void switchProject(currentSlug, 'none');
+      }
       if (currentSlug) {
         window.history.replaceState(
           buildProjectDetailHistoryState(window.history.state, currentSlug),
@@ -321,9 +332,10 @@ export default function ProjectDetailExperience({
     };
   }, [switchProject]);
 
-  const activeProject = projects.find(
-    (project) => project.slug === selection.project.slug,
-  ) ?? projects[0]!;
+  const activeIndex = projects.findIndex(project => project.slug === selection.project.slug);
+  const previousProject = projects[(activeIndex - 1 + projects.length) % projects.length]!;
+  const nextProject = projects[(activeIndex + 1) % projects.length]!;
+  const navigationProps = { previousProject, nextProject, buildProjectHref, onProjectIntent: handleProjectIntent, onProjectSelect: handleProjectSelect, pendingProjectSlug };
 
   return (
     <>
@@ -331,7 +343,9 @@ export default function ProjectDetailExperience({
       <JsonLd data={buildProjectStructuredData(selection.project)} />
       <main
         ref={rootRef}
-        className="projects-experience"
+        onClickCapture={saveCollectionReturn}
+        className={`projects-experience ${editorial.surface}`}
+        data-editorial-page="project"
         aria-label={`${selection.project.title} project case study`}
         data-marketing-foundation-page
         data-projects-experience
@@ -341,15 +355,9 @@ export default function ProjectDetailExperience({
           {announcement}
         </p>
         <div className="projects-experience__layout">
-          <ProjectNavigator
-            projects={projects}
-            activeProject={activeProject}
-            onProjectIntent={handleProjectIntent}
-            onProjectSelect={handleProjectSelect}
-            pendingProjectSlug={pendingProjectSlug}
-            buildProjectHref={buildProjectHref}
-          />
+          <ProjectDetailNavigation {...navigationProps} />
           <ProjectDetailContent
+            nextProjectNavigation={<ProjectDetailNavigation {...navigationProps} photographic />}
             project={selection.project}
             projectIndex={selection.projectIndex}
             projectCount={projects.length}

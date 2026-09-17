@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { readCollectionReturn, saveCollectionReturn } from './projectCollectionReturn';
 import {
   usePathname,
   useRouter,
@@ -170,6 +171,14 @@ export default function ProjectNavigator({
       triggerRef.current?.focus();
     };
   }, [collectionMode, isCompact, isOpen]);
+
+  useEffect(() => {
+    if (!collectionMode || !isCardSizeReady) return;
+    const saved = readCollectionReturn();
+    if (!saved || saved.href !== window.location.pathname + window.location.search) return;
+    const frame = requestAnimationFrame(() => window.scrollTo({ top: saved.scrollY, behavior: 'instant' }));
+    return () => cancelAnimationFrame(frame);
+  }, [collectionMode, isCardSizeReady]);
 
   const updateFilters = (nextFilters: ProjectFilters) => {
     if (collectionMode) {
@@ -395,7 +404,7 @@ export default function ProjectNavigator({
 
       <nav className="project-navigator__list-wrap" aria-label="Project case studies">
         {filteredProjects.length ? (
-          <ol className="project-navigator__list" onKeyDown={handleListKeyDown}>
+          <ol className="project-navigator__list" onKeyDown={handleListKeyDown} onClickCapture={collectionMode ? saveCollectionReturn : undefined}>
             {filteredProjects.map((project, filteredIndex) => {
               const isActive = project.slug === activeProject.slug;
 

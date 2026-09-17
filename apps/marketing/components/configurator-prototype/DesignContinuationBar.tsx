@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { updateDesignContinuation } from './designContinuation';
@@ -28,7 +29,7 @@ export default function DesignContinuationBar() {
   return <aside className={styles.bar} aria-label="Your pergola design">
     <Link href={`/configurator-preview?open=1${started ? '&resume=1' : ''}`} className={styles.action}>
       <span>{started ? 'Your pergola' : 'Your pergola, your way.'}</span>
-      <span>{started ? 'Continue designing' : 'Start designing'} <span aria-hidden="true">↗</span></span>
+      <span>{started ? 'Continue designing' : 'Start designing'} <span aria-hidden="true"><ArrowUpRight /></span></span>
     </Link>
     <button type="button" aria-label="Dismiss design bar" onClick={() => updateDesignContinuation({ dismissed: true })}>×</button>
   </aside>;

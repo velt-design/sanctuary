@@ -1,5 +1,19 @@
 # Decision Log
 
+
+## 2026-09-17 — Verify approved composition on the delivered public route
+
+Jordan's Gable screenshot contradicted the prior family rollout handover: shared
+facts and palette had changed, but the approved reference's hierarchy, hero,
+proof and gallery composition had not fully transferred. Functional tests and
+an independent control-level review did not establish visual fidelity. Compare
+reference and real pages at matched widths through the full page, then complete
+normal discovery, enquiry and return journeys. Reopen acceptance when owner
+evidence contradicts it; do not attribute a composition mismatch to caching.
+Owner: marketing-ui-foundation.md; agreement/evidence: existing foundation
+working record. Subsequent explicit scope is the whole public website except
+the configurator; release permission remains separate.
+
 ## 2026-09-17 - Verify painted navigation surfaces in production CSS
 
 A UTF-8 BOM in the shared marketing header stylesheet survived bundling as

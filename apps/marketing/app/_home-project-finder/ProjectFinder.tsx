@@ -75,9 +75,15 @@ type ActiveResult = {
 };
 
 function currentHistoryState(): Record<string, unknown> {
-  return typeof window.history.state === 'object' && window.history.state
-    ? window.history.state as Record<string, unknown>
+  const state = typeof window.history.state === 'object' && window.history.state
+    ? { ...window.history.state as Record<string, unknown> }
     : {};
+  // Let Next synchronize this public URL change instead of treating it as an
+  // internal router write with a stale cached route tree.
+  delete state.__NA;
+  delete state._N;
+  delete state.__PRIVATE_NEXTJS_INTERNALS_TREE;
+  return state;
 }
 
 function prefersReducedMotion(): boolean {
@@ -157,7 +163,12 @@ export default function ProjectFinder({
   };
 
   useEffect(() => {
-    const canonicalHref = buildProjectFinderHref(initialState);
+    // Back can remount cached server props from before the visitor's selection.
+    // The current URL owns the restored brief, not those original props.
+    const restoredState = parseProjectFinderState(new URLSearchParams(window.location.search));
+    setState(restoredState);
+    setBriefOpen(Boolean(restoredState.priorities?.length));
+    const canonicalHref = buildProjectFinderHref(restoredState);
     const currentHref = `${window.location.pathname}${window.location.search}`;
     if (currentHref !== canonicalHref) {
       window.history.replaceState(

@@ -6,6 +6,131 @@ This document owns the Architectural Editorial UI system demonstrated at the sta
 
 ## Source Of Truth
 
+### Proposed evolution catalogue (17 September 2026)
+
+The owner approved an isolated comparison at `/__foundation/marketing/evolution`,
+linked from the existing catalogue. It inherits the catalogue's environment gate
+and noindex metadata. This catalogue remains a design study; the later Editorial families approval below
+owns public-route implementation scope.
+The page reuses Foundation typography, surfaces, editorial cards, facts,
+disclosures and the controlled gallery. Its scoped CSS and small study components
+own Quiet / Expressive variants of Respond, Reveal, Transition and Arrive.
+The existing Radix Dialog dependency owns menu focus trapping and dismissal.
+
+The three examples are a project card with a working gallery, illustrative
+material selection with native disclosure, and an opaque menu linking the studies.
+Motion changes preserve the material selection; reload resets local choices.
+Reduced motion can be previewed manually and the device preference always wins.
+Arrival begins on first intersection without hiding content; replay brings the
+image into view. No customer data, pricing, enquiry submission, new dependency,
+or public navigation is introduced. Existing public routes retain their UI owners.
+
+Focused browser coverage: `playwright/marketing.foundation-evolution.spec.ts`.
+Task agreement and evidence: `artifacts/marketing-foundation-evolution/work-record.md`.
+
+The next owner-authorised review stage applies the foundation to two connected,
+gated reference pages at `/__foundation/marketing/evolution/project` and
+`/__foundation/marketing/evolution/product`. Warkworth facts and Gable product
+claims come from the existing data owners, not new fixture specifications.
+Reference-only composition, motion and roof-exploration settings live in the URL
+and survive reference navigation/reload. The customer content is separated from
+the compact review-settings panel. The pages use the existing contextual contact
+handoff; a roof approach is exploratory and is not passed as a specified design.
+Browser verification must block enquiry submission and check return behaviour.
+In-page journey links use Next Link so browser Back retains the route state.
+`playwright/marketing.foundation-reference.spec.ts` owns this reference matrix.
+These pages are a review candidate toward the owner's exceptional-quality target;
+they do not establish public adoption, a final 10/10 rating or rollout approval.
+Jordan selected Editorial composition with Quiet motion on 17 September 2026.
+This supersedes the builder's Split recommendation for this reference direction.
+Reference fact summaries use contiguous rules; detailed specifications use
+full-width label/value rows to keep long material descriptions readable. Gallery
+captions are concise editorial labels while descriptive image alt text is retained.
+These local reference choices do not authorise changes to shared public components.
+
+### Editorial website — authorised local review version (17 September 2026)
+
+Jordan approved **Editorial composition + Quiet motion**, then expanded the scope
+from project/product families to the full public website except the configurator.
+The earlier family implementation transferred selected styling while retaining
+older page composition; Jordan's screenshot reopened that visual acceptance.
+The current rollout must match the approved reference composition, not merely
+its colours, typography and individual components. Jordan confirmed the phone
+checks and authorised production release on 18 September 2026.
+
+Scope covers the homepage, project and product collections, all fourteen project
+and ten product details, service/commercial/professional pages, the guide hub and
+guides, contact, confirmation and privacy. The configurator, its design-enquiry
+screen and contact preview entry, staff surfaces and private quote/invoice pages
+retain their owners. Archived homepage experiments and the gated reference
+catalogue are not public rollout targets.
+
+Shared owners under components/marketing-foundation/editorial/:
+
+- EditorialWebsite and website.css: route boundary, paper surfaces, solid
+  stacked-wordmark header, footer and scoped page-family integration.
+- EditorialLandingHero: consistent split hero, copy rhythm and responsive media
+  for products, service pages and guides. Simple cover retains its
+  mobile/desktop image selection and original configurator destination.
+- EditorialProductContent and EditorialProjectContent: full editorial story
+  composition, governed content, disclosures and contextual enquiry actions.
+- EditorialFacts, MeasurementGroups and RoofApproaches: contiguous summary
+  rules, readable full-width specification rows and exploratory roof comparison.
+
+Quiet motion uses small arrivals and brief state changes; reduced-motion wins.
+Gable roof exploration persists in the URL and does not become an engineered
+selection or an enquiry field. Other products retain only supported choices.
+Project filtering and view scale belong to the collection. Case studies use
+All projects, named desktop Previous/Next links and a photographic Next card.
+Mobile uses one compact row with 44px arrow targets and destination names in
+accessible labels, followed by the project title, hero image and then summary.
+Returning to the collection preserves filters and scroll position. Switching,
+history, metadata, finder context and enquiry contracts remain supported.
+The project gallery now uses the reference's shared ResponsiveGallery with one
+active image, keyboard controls and swipe. Project changes focus the new title;
+returning from an enquiry restores the URL's project and metadata.
+Missing project years and footprints are omitted. Product evidence limitations
+remain visible, including the absence of a named heater installation.
+
+This approved composition supersedes the historical full-viewport hero,
+transparent-header, three-mobile-disclosure and closed-page-height prescriptions
+elsewhere in this document for the public routes above. Those earlier paragraphs
+explain the previous design and its tests, not the current visual acceptance.
+Functional content, metadata, accessibility, consent and enquiry requirements
+remain in force. The configurator's layout contracts are unaffected.
+
+Homepage exception approved by Jordan on 18 September 2026: restore the original
+full-viewport CinematicHero and its transparent overlay-header behavior above
+the fold. Retain the approved new below-the-fold homepage content and finder.
+The general split-hero prescription above no longer applies to the homepage.
+Preserve the original responsive art direction, quiet/reduced-motion behavior,
+finder state, enquiry context and browser-history return journey. This owner
+decision supersedes the homepage portion of the 17 September rollout direction.
+
+The public header and full-screen mobile menu use HeaderEditorial.module.css,
+imported by Header so their markup carries its stylesheet dependency. The menu
+has large sentence-case links, one close control and separate design/enquiry
+actions. Retain its opaque surface until navigation arrives, then quietly fade;
+preserve reduced motion, focus recovery and scroll position. Physical phone
+screenshots exposed mixed new markup and legacy styling; the corrected local
+candidate was confirmed by Jordan on the affected phone on 18 September 2026.
+
+Single-destination navigation cards have a whole-card native link with one
+clear accessible name, full-card focus treatment and normal new-tab behavior.
+Keep independent controls and multi-destination groups usable. Decorative
+up-right arrows use shared ArrowUpRight SVG, never emoji-prone text. Jordan's
+18 September screenshots authorise this icon-only change inside the public
+configurator too; configurator behavior, pricing and layout remain unchanged.
+
+Acceptance uses playwright/marketing.editorial-website.spec.ts for all44 public
+routes at360/768/1440, boundary checks, and matched-width Gable/Warkworth reference
+comparison. Product/project/header and focused finder/contact suites cover
+navigation, keyboard/touch, factual content and intercepted enquiry recovery.
+Actual-browser independent review must inspect full body composition and perform
+normal discovery-to-enquiry-and-return journeys. Hero geometry alone cannot
+establish visual parity. Private review evidence remains in the local working
+record; the release PR records public validation and deployment evidence.
+
 Header visibility repair (17 September 2026): keep `styles/header.css` encoded
 as UTF-8 without a BOM. In the production bundle, the BOM became part of the
 `:root` selector, so shared header surface, blur and divider tokens never

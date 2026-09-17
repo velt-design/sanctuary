@@ -1,3 +1,5 @@
+import EditorialWebsite from '@/components/marketing-foundation/editorial/EditorialWebsite';
+import '@/components/marketing-foundation/editorial/website.css';
 // app/layout.tsx
 import type { Metadata, Viewport } from 'next';
 import '@fontsource-variable/instrument-sans';
@@ -154,7 +156,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <ProductSubHeader />
           </Suspense>
           <div id="main-content" className="page-viewport" tabIndex={-1}>
-            <div className="page-layer">{children}</div>
+            <EditorialWebsite><div className="page-layer">{children}</div></EditorialWebsite>
           </div>
           <FooterVisibilityGate>
             <SiteFooter reviewRating={review.rating} reviewCount={review.count} />

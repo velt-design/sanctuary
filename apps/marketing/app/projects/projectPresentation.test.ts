@@ -26,7 +26,7 @@ describe('project presentation', () => {
       'lilliput-mini-golf':
         'A pitched pergola supplied and installed within a consultant-led venue renovation.',
       'waiheke-holiday-home':
-        'A box-perimeter deck cover designed to preserve the water view.',
+        'A box-perimeter pergola extending the living space onto the deck.',
       'goodhome-commercial-terrace':
         'Two gables extending the villa-style facade over the restaurant courtyard.',
       'kiwi-rail-platform':

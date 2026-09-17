@@ -164,8 +164,8 @@ for (const viewport of viewports) {
     await page.goto('/');
     const main = page.locator('main[data-homepage-variant="project_finder_home_v2"]');
     await expect(main.getByRole('heading', { level: 1, name: 'Outdoor spaces designed around the way you live.' })).toBeVisible();
-    await expect(main.getByRole('link', { name: 'Find your project direction' })).toHaveAttribute('href', '#project-finder');
-    await expect(main.getByRole('heading', { name: 'Which project feels closest to what you want to create?' })).toBeAttached();
+    await expect(main.locator('[data-homepage-hero-arrow="continue"]')).toHaveAttribute('data-project-finder-event', 'project_finder_start_click');
+    await expect(main.getByRole('heading', { name: 'Which starting point best describes your project?' })).toBeAttached();
     await expect(main.getByRole('radio')).toHaveCount(3);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
@@ -456,7 +456,7 @@ test('foundation mobile navigation and FAQ preserve keyboard behavior and focus'
   await menuButton.click();
   await expect(page.locator('body')).toHaveClass(/foundation-menu-open/);
   await expect(foundation.getByRole('navigation', { name: 'Foundation mobile sections' })).toBeVisible();
-  await expect(foundation.getByRole('link', { name: 'Foundation' }).last()).toBeFocused();
+  await expect(foundation.getByRole('navigation', { name: 'Foundation mobile sections' }).getByRole('link', { name: 'Foundation', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(menuButton).toBeFocused();
   await expect(page.locator('body')).not.toHaveClass(/foundation-menu-open/);
@@ -614,13 +614,13 @@ test('homepage project finder preserves mobile radio state, focus and analytics 
   await expect(radios.nth(1)).toHaveAttribute('aria-checked', 'true');
   await expect(radios.nth(1)).toHaveAttribute(
     'data-project-direction',
-    'outdoor-room',
+    'bespoke',
   );
-  await expect(main.locator('[data-project-finder-result="outdoor-room"]'))
+  await expect(main.locator('[data-project-finder-result="bespoke"]'))
     .toBeVisible();
   await expect(main.getByRole('heading', {
     level: 2,
-    name: 'A complete outdoor room',
+    name: 'Custom pergola design',
     exact: true,
   }).first()).toBeFocused();
 });

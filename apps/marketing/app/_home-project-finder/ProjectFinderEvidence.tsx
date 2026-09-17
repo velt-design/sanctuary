@@ -1,3 +1,4 @@
+import cardLinks from '@/components/marketing-foundation/cardLinks.module.css';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Container } from '../../components/marketing-foundation/Primitives';
@@ -58,7 +59,7 @@ export default function ProjectFinderEvidence({
               : `/projects/${project.projectSlug}`;
             return (
               <article
-                className={styles.projectCard}
+                className={`${styles.projectCard} ${cardLinks.surface}`}
                 data-project-evidence={project.projectSlug}
                 key={project.projectSlug}
               >
@@ -78,6 +79,8 @@ export default function ProjectFinderEvidence({
                   <p>{project.reason}</p>
                   <div className={styles.projectActions}>
                     <Link
+                      className={cardLinks.hitLink}
+                      aria-label={`View project: ${project.projectTitle}`}
                       data-project-finder-event="project_view_click"
                       data-project-direction={direction}
                       data-project-priorities={priorities.join(',')}

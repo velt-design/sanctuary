@@ -1,3 +1,4 @@
+import cardLinks from '@/components/marketing-foundation/cardLinks.module.css';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -124,7 +125,7 @@ function renderSeoLandingBlock(
       return (
         <Section id={block.id} tone={sectionTone(block.tone)} className="acrylic-section seo-landing__decisions" aria-labelledby={`${block.id}-title`} key={block.id}>
           <Container width="wide"><header className="acrylic-section__header acrylic-section__header--wide"><Eyebrow className="acrylic-eyebrow">{block.eyebrow}</Eyebrow><Heading id={`${block.id}-title`}>{block.title}</Heading>{block.intro ? <Text size="large">{block.intro}</Text> : null}</header>
-            <div className="seo-landing__decision-grid">{block.items.map((item) => <article className="seo-landing__decision-card" key={item.title}><h3>{item.title}</h3><dl><div><dt>What it resolves</dt><dd>{item.outcome}</dd></div><div><dt>What to check</dt><dd>{item.consider}</dd></div></dl>{item.href ? <Link href={item.href}>{item.linkLabel ?? 'Review this option'}</Link> : null}</article>)}</div>
+            <div className="seo-landing__decision-grid">{block.items.map((item) => <article className={`seo-landing__decision-card ${item.href ? cardLinks.surface : ''}`} key={item.title}><h3>{item.title}</h3><dl><div><dt>What it resolves</dt><dd>{item.outcome}</dd></div><div><dt>What to check</dt><dd>{item.consider}</dd></div></dl>{item.href ? <Link className={cardLinks.hitLink} aria-label={`${item.linkLabel ?? 'Review this option'}: ${item.title}`} href={item.href}>{item.linkLabel ?? 'Review this option'}</Link> : null}</article>)}</div>
           </Container>
         </Section>
       );
