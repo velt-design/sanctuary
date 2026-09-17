@@ -1,5 +1,12 @@
 # Architecture
 
+The finance-authorized Xero summary route/page reads fixed paginated invoice and
+payment queries through the existing credential broker. `financeSummaryProvider`
+owns provider reads, `financeSummary` validates/aggregates complete datasets, and
+`financeSummaryContract` defines period/response boundaries. No accounting writes,
+schema changes or direct browser database access are introduced. Current scope
+and live-proof limits are owned by `xero-connection.md`.
+
 This is a private npm workspace with two Next.js apps, one long-running Node worker app, and shared packages. Treat app code as integration code and packages as reusable business/domain source of truth.
 
 For the north-star structure this repo is converging toward, read `docs/target-architecture.md`. This doc describes the current workspace shape and active ownership boundaries.

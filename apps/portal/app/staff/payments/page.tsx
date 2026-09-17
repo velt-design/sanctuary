@@ -39,6 +39,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       <Button type="submit" variant="secondary">Search</Button>
       {search && <ButtonLink href={`/staff/payments?view=${view}`} variant="tertiary">Clear search</ButtonLink>}
     </form>
+    <p><ButtonLink href="/staff/payments/summary" variant="secondary">Read Xero finance summary</ButtonLink></p>
     <p><ButtonLink href="/staff/payments/review" variant="tertiary">Review an older deposit</ButtonLink></p>
     {!data ? <><DataStatePanel state="error" title="Finance could not be loaded" description="Try again to check the current position. No records have changed." /><ButtonLink href={href(offset)} variant="secondary">Try again</ButtonLink></> : <>
       <p className={styles.checked}>Portal records checked {new Date(data.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}. Each linked invoice shows when Xero was last checked.</p>

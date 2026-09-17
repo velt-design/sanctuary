@@ -1,0 +1,11 @@
+.period { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; border: 0; padding: 0; margin-block: 16px; }
+.period label { display: grid; gap: 6px; }
+.measures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-block: 16px; }
+.measure { padding: 20px; border: 1px solid var(--ui-border); border-radius: 12px; min-width: 0; }
+.measure h4 { margin-top: 0; }
+.measure p { overflow-wrap: anywhere; }
+.amount { font-size: 1.4rem; font-weight: 600; }
+.amount span { display: block; font-size: 0.875rem; font-weight: 400; }
+.measure dl { display: grid; gap: 4px; }
+.measure dd { margin: 0 0 8px; }
+@media (max-width: 900px) { .measures { grid-template-columns: 1fr; } }

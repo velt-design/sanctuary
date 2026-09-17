@@ -1,5 +1,36 @@
 # Xero connection
 
+## Read-only finance summary (local implementation, 2026-09-17)
+
+Jordan's current accountant-informed decision is to keep bank reconciliation
+manual. This supersedes the older Auto-reconcile confirmation/setup next steps
+below. Existing automatic import of verified reconciled payments remains separate.
+
+`/staff/payments/summary`, linked from Finance, uses the existing finance grant
+and `POST /api/payments/xero/summary`. It reads Xero through the existing credential
+broker without accounting writes. No new grants, migrations or rollout switches.
+This implementation is not a production release or live reporting proof.
+
+The requested period covers invoice/payment date-only values, defaults to seven
+completed Auckland dates, and permits up to 90 days ending today or earlier.
+Gross invoicing includes approved/paid ACCREC invoices, separates excluding-tax,
+tax and inclusive totals, and does not deduct credit notes. Receipts are authorised
+ACCRECPAYMENT only, separated by reconciliation status; direct receive-money,
+prepayments, overpayments, credit allocations and refunds are excluded. They are
+not all cash received. Current outstanding uses AmountDue across all approved
+invoices, respecting allocated credits, rather than a historical period-end balance.
+Currencies remain separate; supported two-decimal currencies are NZD/AUD/USD/GBP/
+EUR/CAD/SGD. Unsupported currency, malformed money, provider error, duplicate IDs,
+incomplete pagination or the bounded 75-second/10-pages-per-source limit prevent
+all totals. Sequential reads are a current read window, not an atomic snapshot.
+
+`/qa/xero-summary-fixture` exercises the real date/read client and result view
+with a local synthetic transport (complete, empty, failure and wrong-period cases),
+requires ENABLE_PORTAL_QA_FIXTURES=1, and is unavailable in production mode.
+Focused tests are `financeSummary*.test.ts` plus the summary client/view tests.
+Hosted period totals, provider ordering/shape and independent Xero report
+crosschecks still need real read-only verification before reporting business figures.
+
 Status: production automatic approved-invoice transfer and reconciled-payment recording enabled on 2026-09-16 Australia/Sydney. Ellen has finance access; Jordan retains access. No routine draft approval is required for newly captured invoices.
 
 Current owner decision: issue once in the portal, create the matching AUTHORISED Xero invoice, and automatically record verified reconciled payments on directly linked portal invoices. Ellen handles exceptions. Xero must not email customers or send payment reminders; the portal owns corrections. Preserve the bytes and identity of existing frozen requests rather than rewriting or duplicating them.
