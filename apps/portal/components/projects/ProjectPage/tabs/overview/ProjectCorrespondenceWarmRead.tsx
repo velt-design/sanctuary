@@ -41,7 +41,14 @@ function MountedWarmRead({ projectId, enabled, children }: { projectId: string; 
     // must not become an unhandled rejection while the project shell is loading.
     void promise.catch(() => undefined);
     const timer = setTimeout(discard, 15_000);
-    pending.current = { promise, controller, timer };
+    const entry = { promise, controller, timer };
+    pending.current = entry;
+    const forgetCompleted = () => {
+      // Authority/customer checks must still be part of the active read at
+      // handoff. A response completed before the shell is ready is not reusable.
+      if (pending.current === entry) { pending.current = null; clearTimeout(timer); }
+    };
+    void promise.then(forgetCompleted, forgetCompleted);
     const onVisibility = () => { if (document.visibilityState === 'hidden') discard(); };
     document.addEventListener('visibilitychange', onVisibility);
     return () => { clearTimeout(timer); discard(); document.removeEventListener('visibilitychange', onVisibility); };

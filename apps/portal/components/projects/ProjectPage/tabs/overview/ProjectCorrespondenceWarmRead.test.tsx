@@ -27,11 +27,12 @@ describe('page-scoped early correspondence read', () => {
     await flush();
     expect(denied).toHaveBeenCalledWith(403);
     expect(view.container.textContent).not.toContain('The customer is asking');
-    expect(mocks.api).toHaveBeenCalledTimes(1);
+    expect(mocks.api).toHaveBeenCalledTimes(2);
     view.unmount();
   });
   it('starts while the project shell waits, then hands off without another request', async () => {
-    mocks.api.mockResolvedValue({ state: 'ready', context: correspondenceFixture });
+    let resolve: (value: unknown) => void = () => {};
+    mocks.api.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
     const view = renderIntoDocument(tree(false));
     await flush();
     expect(mocks.api).toHaveBeenCalledTimes(1);
@@ -39,6 +40,7 @@ describe('page-scoped early correspondence read', () => {
     view.rerender(tree(true));
     await flush();
     expect(mocks.api).toHaveBeenCalledTimes(1);
+    await act(async () => resolve({ state: 'ready', context: correspondenceFixture }));
     expect(view.container.textContent).toContain('The customer is asking');
     view.unmount();
   });
@@ -50,7 +52,7 @@ describe('page-scoped early correspondence read', () => {
     view.unmount();
   });
   it('discards unclaimed reads after 15 seconds and reads afresh when mounted later', async () => {
-    mocks.api.mockResolvedValue({ state: 'ready', context: correspondenceFixture });
+    mocks.api.mockImplementationOnce(() => new Promise(() => undefined)).mockResolvedValue({ state: 'ready', context: correspondenceFixture });
     const view = renderIntoDocument(tree(false));
     await flush();
     const signal = mocks.api.mock.calls[0][1].signal;
@@ -59,6 +61,20 @@ describe('page-scoped early correspondence read', () => {
     view.rerender(tree(true));
     await flush();
     expect(mocks.api).toHaveBeenCalledTimes(2);
+    view.unmount();
+  });
+  it.each(['changed customer', 'revoked access'])('does not display completed early evidence after %s', async reason => {
+    mocks.api.mockResolvedValueOnce({ state: 'ready', context: correspondenceFixture });
+    if (reason === 'revoked access') mocks.api.mockRejectedValue(new ApiError('Forbidden', { status: 403, body: null }));
+    else mocks.api.mockResolvedValue({ state: 'ready', context: { ...correspondenceFixture,
+      answer: { sections: correspondenceFixture.answer.sections.map(section => ({ ...section, answer: 'New customer evidence' })) } } });
+    const view = renderIntoDocument(tree(false));
+    await flush();
+    view.rerender(tree(true));
+    await flush();
+    expect(mocks.api).toHaveBeenCalledTimes(2);
+    expect(view.container.textContent).not.toContain('The customer is asking');
+    if (reason === 'changed customer') expect(view.container.textContent).toContain('New customer evidence');
     view.unmount();
   });
   it('aborts old project reads on navigation and never shows their later response', async () => {

@@ -75,7 +75,9 @@ overhead from observed display time. It never exports email content and defaults
 off. Client navigation does not claim a document-navigation duration.
 The project route starts a single independently authorized saved GET alongside
 the project summary. A page-scoped warm-read provider hands that promise to the
-existing Overview reader once; it never retains a reusable browser cache or
+existing Overview reader once, only while it is still in progress. Completed
+unclaimed results are discarded so customer/access changes during shell loading
+cannot reuse old completed authorization. It never retains a reusable browser cache or
 starts an Outlook refresh itself. Unclaimed reads expire after15seconds and
 are aborted on hidden-page/unmount transitions. The existing reader still owns
 response validation, access-ending behavior, expiry and explicit/live refreshes.
