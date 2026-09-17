@@ -1,12 +1,5 @@
 {
   "git": { "deploymentEnabled": { "codex/configurator-pricing-candidate-20260915": false } },
-  "functions": {
-    "app/staff/projects/[projectId]/page.tsx": { "regions": ["syd1"] },
-    "app/api/projects/[projectId]/snapshot/route.ts": { "regions": ["syd1"] },
-    "app/api/staff/v1/projects/[projectId]/summary/route.ts": { "regions": ["syd1"] },
-    "app/api/staff/v1/projects/[projectId]/command-centre/route.ts": { "regions": ["syd1"] },
-    "app/api/staff/v1/projects/[projectId]/correspondence/route.ts": { "regions": ["syd1"] }
-  },
   "crons": [
     { "path": "/api/integrations/xero/maintain", "schedule": "17 3 * * *" },
     { "path": "/api/integrations/xero/observe", "schedule": "* * * * *" }
