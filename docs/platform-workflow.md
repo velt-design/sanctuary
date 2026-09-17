@@ -32,7 +32,7 @@ Public enquiries start in `apps/marketing`.
 
 ## Contact And Project Creation
 
-### Configured enquiry qualification (local implementation; not released)
+### Configured enquiry qualification
 
 Original enquiry includes a separate staff assessment for residential
 `project-discussion` submissions with a saved, server-validated configuration.
@@ -54,8 +54,16 @@ same command ID. Original submitted enquiry/delivery records remain the customer
 evidence owner. A later correction cannot overwrite previous decisions. The UI
 shows the latest 20 decisions; earlier decisions remain retained in the audit.
 Saving qualification creates no pipeline changes, follow-ups, notifications,
-tasks, commercial actions or campaign events. Migration installation and
-production use remain outside this local implementation's authority.
+tasks, commercial actions or campaign events. History follows the stable enquiry
+when it moves projects; access still requires its current project, and old audit
+rows retain their original project context.
+
+Released in [PR150](https://github.com/velt-design/sanctuary/pull/150) on
+17 September 2026, merge `e5578a394c535c4472566a2e5e981c47a547e78e`.
+Staging verified actual staff save, reload and correction history on one labelled
+synthetic enquiry, with its delivery job parked and no provider dispatch.
+Production verified the existing staff session and Unreviewed form by reading an
+existing configured receipt only; no customer qualification decision was saved.
 
 Portal staff manage contacts and projects in `apps/portal`.
 

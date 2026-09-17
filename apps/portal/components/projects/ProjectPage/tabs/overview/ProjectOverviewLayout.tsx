@@ -155,9 +155,9 @@ export default function ProjectOverviewLayout({
         <>
           {exceptionRegion}
           {projectWorkRegion}
+          {recentRegion}
           {commercialRegion}
           {orientationRegion}
-          {recentRegion}
           {adminRegion}
         </>
       ) : (
@@ -165,8 +165,8 @@ export default function ProjectOverviewLayout({
           {orientationRegion}
           {exceptionRegion}
           {projectWorkRegion}
-          {commercialRegion}
           {recentRegion}
+          {commercialRegion}
           {adminRegion}
         </>
       )}

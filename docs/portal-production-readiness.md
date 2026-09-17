@@ -2,6 +2,30 @@
 
 Status: Active evolving tracker.
 
+Project clarity release continuation (17 September): owner accepted the email reader and explicitly moved ordinary-staff verification to live testing after release. Migration20260917000002 is installed with all guarded preservation/audit checks passing:115 cadence items retired with115 cancellation events, zero active cadence and one active manual task retained. The application remains protected-preview only while current Quality checks complete. The initial gate found five stale browser wording assertions; the corrected assertions preserve owner/action and unconfirmed-source checks. No application behavior changed in this correction. Current release evidence and remaining staff check are in project-command-centre-roadmap.md.
+
+Staff correspondence continuation (2026-09-16): actual message transport and
+optional interpretation pass focused application, native database and paired-wire
+checks plus independent source review. Both production projects now have the
+dedicated signing configuration. The Velt receiver is deployed and enabled, with
+its additive migration independently verified. The live Portal remains disabled;
+a protected, unpromoted deployment enables correspondence only for real-project
+verification. Its normal staff login remains required.
+Real staff project association, action outcome and responsive journey acceptance
+are still release requirements. Current evidence is in the project roadmap.
+
+Project-page workflow milestone (2026-09-16): local candidate retires automatic
+generic stage reminders through forward migration `20260916000006`, retains
+audited history and used follow-ups, and supplies three coherent populated preview
+stories. Migration rehearsal, focused browser checks, Portal tests and isolated
+build/bundle checks pass. Independent delivery review passed the bounded local
+milestone after one wording/documentation correction round. Production migration
+is installed: independent postflight verified 554 audited generic cancellations,
+zero active generic reminders and unchanged meaningful-work counts. Application
+rollout and real staff correspondence proof remain pending.
+An explicit sample installation commitment is not a new automatic task producer.
+Current agreement and evidence: `project-command-centre-roadmap.md`.
+
 Configurator release continuation (2026-09-16): production shared pricing is
 Version13/v2.8 and the Render enquiry handler has delivered an owner-only canary
 with its frozen price breakdown. The current release prepares package v2.9

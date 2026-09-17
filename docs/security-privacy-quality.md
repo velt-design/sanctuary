@@ -16,6 +16,16 @@ persist, or use this controlled QA path as a routine production login flow.
 
 ## Campaign context during an enquiry journey
 
+Released through [PR150](https://github.com/velt-design/sanctuary/pull/150) on
+17 September 2026 at `e5578a394c535c4472566a2e5e981c47a547e78e`.
+Independent canonical-production checks covered allowed and denied journeys with
+enquiry/price responses intercepted and all vendor requests blocked. They prove
+the deployed client path, not a delivered conversion or production intake write.
+Protected staging separately proved exact campaign fields, consent and a frozen
+configuration field persisted to the enquiry. Temporary branch-only staging
+Preview overrides were removed after verification; production settings and
+unrelated preview aliases were preserved.
+
 `CampaignAttribution` keeps a tab-local, same-origin campaign snapshot under
 `sanctuary.campaign-context.v1` only when the current decision permits marketing.
 The allowlist is `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`,

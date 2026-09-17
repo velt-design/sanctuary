@@ -24,6 +24,7 @@ import {
 import ProjectWorkFilesCard from "./ProjectWorkFilesCard";
 import ProjectWorkControls from "./ProjectWorkControls";
 import ProjectWorkList from "./ProjectWorkList";
+import { isDeferredProjectFollowUp } from "@/lib/projects/workItems/deferredFollowUps";
 import {
   formatProjectWorkDue,
   isDecisionReviewWorkItem,
@@ -34,7 +35,6 @@ import {
   type ProjectWorkCommandController,
 } from "./useProjectWorkCommandController";
 import {
-  isProhibitedProjectWorkItem,
   isProhibitedProjectWorkPrimary,
 } from "./projectWorkVisibilityPolicy";
 import styles from "./ProjectWorkSection.module.css";
@@ -48,6 +48,8 @@ type SharedProps = {
   initialStaff?: ProjectCommandStaffSummary[];
   initialEnquiryAttachments?: ProjectEnquiryAttachment[];
   disableFileActions?: boolean;
+  positionLabel?: string;
+  ownerLabel?: string;
 };
 
 export type ProjectWorkSectionProps = SharedProps & {
@@ -60,8 +62,9 @@ function primaryPresentation(
   staff: ProjectCommandStaffSummary[],
 ) {
   const { primary, primaryItem } = controller;
-  const title =
-    primary.kind === "workItem" ? primary.item.title : primary.title;
+  const title = primary.kind === "needsTriage"
+    ? "Choose the next step"
+    : primary.kind === "workItem" ? primary.item.title : primary.title;
   const reason = primary.reason;
   const href =
     primary.kind === "recovery" || primary.kind === "specialist"
@@ -148,6 +151,8 @@ export default function ProjectWorkSection({
   host,
   projectWork,
   pipelineStage,
+  positionLabel,
+  ownerLabel,
   stale,
   onRefresh,
   initialStaff,
@@ -178,7 +183,12 @@ export default function ProjectWorkSection({
   });
   const staff = staffQuery.data ?? [];
   const primary = primaryPresentation(controller, staff);
+  const deferredPrimary = controller.primaryItem && isDeferredProjectFollowUp(controller.primaryItem);
   const active = controller.projection.effectiveState === "ACTIVE";
+  const compactIdle = active && (deferredPrimary || controller.primary.kind === "none")
+    && !controller.controlsOpen && !controller.stale && !controller.error && !controller.message
+    && !["scheduled", "completed", "paid"].includes(pipelineStage)
+    && [...controller.projection.openItems, ...controller.projection.blockedItems].every(isDeferredProjectFollowUp);
   const siteVisitCompleted = controller.projection.confirmedFacts.some(
     (fact) => fact.type === "SITE_VISIT_COMPLETED",
   );
@@ -228,6 +238,7 @@ export default function ProjectWorkSection({
 
   return (
     <ProjectWorkFilesCard
+      positionLabel={positionLabel}
       className={styles.card}
       projectId={projectId}
       host={host}
@@ -237,7 +248,7 @@ export default function ProjectWorkSection({
       <div
       data-project-work-section="true"
       data-project-work-model="v2"
-        className={styles.stack}
+        className={compactIdle ? `${styles.stack} ${styles.compactIdle}` : styles.stack}
       >
         {stateItems.length ? (
           <KeyValueGrid
@@ -247,11 +258,14 @@ export default function ProjectWorkSection({
           />
         ) : null}
 
-        {prohibitedPrimary ? (
+        {deferredPrimary || (active && controller.primary.kind === "none") ? (
+          <div className={styles.stack}>
+            <p><strong>{compactIdle ? "Owner:" : "Project owner:"}</strong> {ownerLabel ?? "Unassigned"}</p>
+          </div>
+        ) : prohibitedPrimary ? (
           <AlertBanner tone="blocking" title="Legacy work needs review">
-            A retired legacy, Call, or unapproved Site Visit action is
-            server-selected. It stays hidden and no browser replacement is
-            chosen.
+            This saved work item has been retired. Refresh the project to see
+            its current work; do not complete the old reminder.
           </AlertBanner>
         ) : ordinaryPrimarySuppressed ? (
           <AlertBanner tone="warning" title="Project work state needs review">
@@ -292,19 +306,14 @@ export default function ProjectWorkSection({
             }
             footer={
               <div className={styles.commandArea}>
-                {controller.primarySentCommand ? (
-                  <p className={styles.commandHelp}>
-                    <strong>Send externally first.</strong> Then record the
-                    outcome.
-                  </p>
-                ) : (
-                  <span className={styles.commandLabel}>
-                    {primary.href
-                      ? "Continue in the owning workflow"
-                      : "Record the outcome"}
-                  </span>
-                )}
+                <span className={styles.commandLabel}>
+                  {primary.href ? "Open the tools for this step" : "Update assigned work"}
+                </span>
                 <div className={styles.inlineActions}>
+                  {active && controller.primary.kind === "needsTriage" ? (
+                    <Button disabled={controller.stale} aria-expanded={controller.controlsOpen}
+                      onClick={() => controller.setControlsOpen(true)}>Set next step</Button>
+                  ) : null}
                   {active && primary.href ? (
                     <ButtonLink href={primary.href} disabled={controller.stale}>
                       {primary.actionLabel}
@@ -341,40 +350,6 @@ export default function ProjectWorkSection({
                       }
                     >
                       Mark complete
-                    </Button>
-                  ) : null}
-                  {active &&
-                  controller.primarySentCommand &&
-                  primary.primaryItem ? (
-                    <Button
-                      loading={
-                        controller.pendingItemId === primary.primaryItem.id
-                      }
-                      disabled={controller.pending || controller.stale}
-                      onClick={() =>
-                        void controller.runItemAction(
-                          primary.primaryItem!,
-                          "sent",
-                        )
-                      }
-                    >
-                      Record email sent
-                    </Button>
-                  ) : null}
-                  {active &&
-                  controller.primaryCanRecordReply &&
-                  primary.primaryItem ? (
-                    <Button
-                      variant="tertiary"
-                      disabled={controller.pending || controller.stale}
-                      onClick={() =>
-                        void controller.runItemAction(
-                          primary.primaryItem!,
-                          "reply",
-                        )
-                      }
-                    >
-                      Record customer reply
                     </Button>
                   ) : null}
                 </div>

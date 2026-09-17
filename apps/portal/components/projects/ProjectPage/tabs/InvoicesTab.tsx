@@ -420,11 +420,13 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
             columns={4}
             items={[
               { label: 'Job total', value: formatMoneyFromCents(schedule.billableTotalIncGstCents ?? schedule.acceptedQuoteTotalIncGstCents), detail: 'Accepted quotes and issued standalone work' },
-              { label: 'Accepted quote value', value: formatMoneyFromCents(schedule.acceptedQuoteTotalIncGstCents), detail: 'Base contract and accepted add-ons' },
-              { label: 'Standalone invoice value', value: formatMoneyFromCents(schedule.standaloneTotalIncGstCents ?? 0), detail: 'Issued, non-void standalone work' },
-              { label: 'Paid', value: formatMoneyFromCents(schedule.paidIncGstCents), detail: schedule.unallocatedCreditIncGstCents > 0 ? `${formatMoneyFromCents(schedule.unallocatedCreditIncGstCents)} unallocated credit` : 'Actual job payments' },
-              { label: 'Open', value: formatMoneyFromCents(schedule.outstandingIncGstCents), detail: 'Issued and unpaid' },
-              { label: 'Remaining', value: formatMoneyFromCents(schedule.remainingToInvoiceIncGstCents), detail: 'Available to invoice' },
+              ...((schedule.standaloneTotalIncGstCents ?? 0) > 0 ? [
+                { label: 'Accepted quote value', value: formatMoneyFromCents(schedule.acceptedQuoteTotalIncGstCents), detail: 'Base contract and accepted add-ons' },
+                { label: 'Standalone invoice value', value: formatMoneyFromCents(schedule.standaloneTotalIncGstCents ?? 0), detail: 'Issued, non-void standalone work' },
+              ] : []),
+              { label: 'Recorded payments', value: formatMoneyFromCents(schedule.paidIncGstCents), detail: schedule.unallocatedCreditIncGstCents > 0 ? `${formatMoneyFromCents(schedule.unallocatedCreditIncGstCents)} unallocated credit` : 'Net project payment ledger' },
+              { label: 'Open invoice balance', value: formatMoneyFromCents(schedule.outstandingIncGstCents), detail: 'Issued and unpaid; excludes work still to invoice' },
+              { label: 'Still to invoice', value: formatMoneyFromCents(schedule.remainingToInvoiceIncGstCents), detail: 'Agreed work not yet covered by payments or open invoices' },
             ]}
           />
           {schedule.overCommittedIncGstCents > 0 ? (
@@ -450,7 +452,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                     <Badge tone={invoiceStatusTone(term.invoice.status)}>{term.invoice.invoiceRef} - {term.invoice.status}</Badge>
                   ) : isAdmin && term.remainingAmountIncGstCents > 0 ? (
                     <Button type="button" size="small" disabled={financialActionsLocked} onClick={() => { setCreateResult(null); setCreateTarget(term); }}>
-                      Create invoice
+                      Invoice {term.label.toLowerCase()}
                     </Button>
                   ) : <span className={styles.muted}>{term.remainingAmountIncGstCents === 0 ? 'Covered by payments' : 'Not invoiced'}</span>}
                 </div>
@@ -458,7 +460,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
             })}
             {isAdmin && schedule.acceptedQuoteVersionId && schedule.remainingToInvoiceIncGstCents > 0 ? (
               <div className={styles.scheduleFooter}>
-                <Button type="button" variant="secondary" size="small" disabled={financialActionsLocked} onClick={() => { setCreateResult(null); setCreateTarget(null); }}>Create invoice</Button>
+                <Button type="button" variant="secondary" size="small" disabled={financialActionsLocked} onClick={() => { setCreateResult(null); setCreateTarget(null); }}>Choose invoice amount</Button>
               </div>
             ) : null}
           </div>
@@ -525,7 +527,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
         <DataStatePanel state="empty" title="No invoices yet" description="The first invoice is created when a quote is accepted. Admins can create later scheduled, custom, remaining-balance, or split invoices here." />
       ) : (
       <Card title="Invoice history" eyebrow={`${invoices.length} ${invoices.length === 1 ? 'invoice' : 'invoices'}`} padding="none" headingLevel={4}>
-      <Table aria-label="Invoices">
+      <Table aria-label="Invoices" className={styles.invoiceTable}>
         <TableHeader>
           <TableRow>
             <TableHead>Invoice</TableHead>
@@ -556,7 +558,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                     <span className={styles.muted}>Created {formatDate(invoice.createdAt)}</span>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell data-label="Quote">
                   <div className={styles.meta}>
                     <strong>
                       {invoice.quoteVersionId ? `${invoice.quoteRef} v${invoice.quoteVersionNumber}` : 'Standalone invoice'}
@@ -564,19 +566,19 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                     <span className={styles.muted}>{invoice.reference || invoice.projectName || '-'}</span>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell data-label="Amount inc GST">
                   <div className={styles.meta}>
                     <strong>{formatMoneyFromCents(invoice.totalIncGstCents)}</strong>
                     <span className={styles.muted}>{invoice.paymentTermLabel} ({invoice.paymentTermPosition} of {invoice.paymentTermCount})</span>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell data-label="Due">
                   <div className={styles.meta}>
                     <strong>{formatDate(invoice.dueDate)}</strong>
                     <span className={styles.muted}>Issued {formatDate(invoice.issueDate)}</span>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell data-label="Delivery and payment">
                   <div className={styles.meta}>
                     <span>{invoice.sentAt ? `Sent ${formatDateTime(invoice.sentAt)}` : 'Not delivered yet'}</span>
                     {invoice.lastDeliveryAttemptAt ? (

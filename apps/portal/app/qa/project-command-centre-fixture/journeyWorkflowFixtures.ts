@@ -25,6 +25,10 @@ export function createJourneyWorkflowFixtures(params: {
   stageReviewItem: ProjectWorkItem;
 }): Record<CommandCentreJourneyWorkScenario, JourneyWorkFixture> {
   const { base, stageReviewItem } = params;
+  const quotePreparation: ProjectWorkItem = { ...stageReviewItem,
+    title: 'Prepare the site measurements for quoting', origin: 'MANUAL',
+    sourceType: 'MANUAL', sourceKey: null, deadlinePolicy: 'MANUAL',
+  };
   return {
     "v2-contacted-site-visit": {
       workModel: "v2",
@@ -72,11 +76,11 @@ export function createJourneyWorkflowFixtures(params: {
         ...base,
         primaryAction: {
           kind: "workItem",
-          item: stageReviewItem,
+          item: quotePreparation,
           dueState: "future",
           reason: "This is the earliest due current work.",
         },
-        openItems: [stageReviewItem],
+        openItems: [quotePreparation],
         confirmedFacts: [
           {
             id: "10000000-0000-4000-8000-000000000011",

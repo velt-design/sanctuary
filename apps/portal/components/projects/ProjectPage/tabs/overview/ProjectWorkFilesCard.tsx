@@ -14,6 +14,7 @@ export default function ProjectWorkFilesCard({
   className,
   initialAttachments,
   disableFileActions = false,
+  positionLabel,
 }: {
   projectId: string;
   host: string;
@@ -21,14 +22,15 @@ export default function ProjectWorkFilesCard({
   className?: string;
   initialAttachments?: ProjectEnquiryAttachment[];
   disableFileActions?: boolean;
+  positionLabel?: string;
 }) {
   const [selectedPanel, setSelectedPanel] = useState<"work" | "files" | "enquiry">("work");
   return (
     <Card
       className={[styles.card, className].filter(Boolean).join(" ")}
       aria-label="Project Work"
-      title="Project Work"
-      eyebrow="Next project action"
+      title={positionLabel ?? "Project Work"}
+      eyebrow="Project position"
       action={
         <TabNavigation
           className={styles.tabs}

@@ -10,6 +10,11 @@ import {
   LoadingSkeleton,
 } from "@/components/ui/foundation";
 import ProjectCurrentDesignCommercialCard from "@/components/projects/ProjectPage/tabs/overview/ProjectCurrentDesignCommercialCard";
+import ProjectPaymentPosition from "@/components/projects/ProjectPage/tabs/overview/ProjectPaymentPosition";
+import ProjectCommercialDetails from "@/components/projects/ProjectPage/tabs/overview/ProjectCommercialDetails";
+import ProjectCorrespondenceCard from "@/components/projects/ProjectPage/tabs/overview/ProjectCorrespondenceCard";
+import { correspondenceFixture } from './correspondenceFixture';
+import { projectPositionLabel } from '@/components/projects/ProjectPage/tabs/overview/projectPositionLabel';
 import ProjectOrientationBand from "@/components/projects/ProjectPage/tabs/overview/ProjectOrientationBand";
 import ProjectOverviewLayout from "@/components/projects/ProjectPage/tabs/overview/ProjectOverviewLayout";
 import ProjectRecentNotesEvents from "@/components/projects/ProjectPage/tabs/overview/ProjectRecentNotesEvents";
@@ -147,10 +152,16 @@ export default function ProjectCommandCentreFixtureClient({
   currentDesign,
   work,
   viewState,
+  correspondence = correspondenceFixture,
+  mailRefreshing = false,
+  previewOnly = false,
 }: {
   currentDesign: ProjectCommandCentreCurrentDesign;
   work: CommandCentreWorkFixture;
   viewState: CommandCentreViewFixtureState;
+  correspondence?: typeof correspondenceFixture;
+  mailRefreshing?: boolean;
+  previewOnly?: boolean;
 }) {
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
@@ -221,11 +232,14 @@ export default function ProjectCommandCentreFixtureClient({
         />
       </WorkState>
     ) : (
+      <fieldset disabled={previewOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <ProjectWorkSection
         workModel="v2"
         projectId={project.id}
         host="fixture"
         projectWork={work.projectWork}
+        ownerLabel={project.owner?.displayName}
+        positionLabel={previewOnly ? projectPositionLabel(project.stage, work.projectWork.effectiveState, currentDesign) : undefined}
         pipelineStage={project.stage}
         stale={stale}
         onRefresh={() => undefined}
@@ -233,8 +247,11 @@ export default function ProjectCommandCentreFixtureClient({
         initialEnquiryAttachments={FIXTURE_ENQUIRY_ATTACHMENTS}
         disableFileActions
       />
+      </fieldset>
     );
 
+  const acceptedTotal = currentDesign.source === "accepted_quote" ? (currentDesign.price.totalIncGstCents ?? 0) : 0;
+  const fixturePayment = Math.floor(acceptedTotal / 2);
   const commercial =
     viewState === "pending" ? (
       <Card padding="compact">
@@ -245,7 +262,22 @@ export default function ProjectCommandCentreFixtureClient({
         />
       </Card>
     ) : viewState === "failed" || viewState === "retry" ? null : (
-      <ProjectCurrentDesignCommercialCard data={currentDesign} />
+      <>
+        <ProjectCurrentDesignCommercialCard data={currentDesign} />
+        <ProjectPaymentPosition projectId={project.id} saved={viewState === "stale"} schedule={{
+          acceptedQuoteVersionId: currentDesign.source === "accepted_quote" ? "fixture-accepted" : null,
+          acceptedQuoteRef: null,
+          acceptedQuoteVersionNumber: null,
+          acceptedQuoteTotalIncGstCents: acceptedTotal,
+          paidIncGstCents: fixturePayment,
+          outstandingIncGstCents: 0,
+          invoicedIncGstCents: fixturePayment,
+          remainingToInvoiceIncGstCents: acceptedTotal - fixturePayment,
+          overCommittedIncGstCents: 0,
+          unallocatedCreditIncGstCents: 0,
+          terms: [],
+        }} />
+      </>
     );
 
   const recent =
@@ -262,11 +294,16 @@ export default function ProjectCommandCentreFixtureClient({
         </AlertBanner>
       </Card>
     ) : (
+      <>
+      <ProjectCorrespondenceCard sample={previewOnly} context={correspondence} project={{ customerEmail: project.contactEmail, quoteRef: currentDesign.quote?.quoteRef }} state={mailRefreshing ? 'loading' : viewState === 'stale' ? 'stale' : viewState === 'failed' ? 'error' : viewState === 'pending' ? 'loading' : 'ready'} />
+      <fieldset disabled={previewOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <ProjectRecentNotesEvents
         projectId={project.id}
         notes={FIXTURE_NOTES}
-        events={FIXTURE_EVENTS}
+        events={previewOnly ? [] : FIXTURE_EVENTS}
       />
+      </fieldset>
+      </>
     );
 
   return (
@@ -274,16 +311,18 @@ export default function ProjectCommandCentreFixtureClient({
       <ProjectOverviewLayout
         state={viewState}
         orientation={
+          <fieldset disabled={previewOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <ProjectOrientationBand
             project={project}
             host="fixture"
             operationalState={orientationState}
             freshness={freshnessFor(viewState)}
           />
+          </fieldset>
         }
         exception={exception}
         projectWork={projectWork}
-        commercial={commercial}
+        commercial={previewOnly ? <ProjectCommercialDetails data={currentDesign}>{commercial}</ProjectCommercialDetails> : commercial}
         recent={recent}
       />
     </div>

@@ -15,7 +15,7 @@ import styles from "./ProjectCurrentDesignCommercialCard.module.css";
 const MONEY = new Intl.NumberFormat("en-NZ", {
   style: "currency",
   currency: "NZD",
-  minimumFractionDigits: 0,
+  minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
@@ -82,7 +82,7 @@ export default function ProjectCurrentDesignCommercialCard({
     <Card
       className={styles.card}
       aria-label="Current design and commercial summary"
-      title="Current design & commercial"
+      title={data.source === "accepted_quote" ? "Agreed design & price" : "Current design & price"}
       eyebrow="Commercial position"
       padding="compact"
       action={
@@ -136,13 +136,6 @@ export default function ProjectCurrentDesignCommercialCard({
               </AlertBanner>
             </div>
           ) : null}
-          {data.warnings.includes("multiple_accepted_quotes") ? (
-            <div data-command-centre-warning="multiple-accepted-quotes">
-              <AlertBanner tone="warning" title="Multiple accepted versions in one quote family">
-                The newest accepted version is shown; review that quote&apos;s history.
-              </AlertBanner>
-            </div>
-          ) : null}
         </div>
 
         {data.source === "none" ? (
@@ -157,7 +150,7 @@ export default function ProjectCurrentDesignCommercialCard({
           >
             <dl className={styles.decisionFacts}>
               <div data-emphasis="true">
-                <dt>Customer price</dt>
+                <dt>{data.source === "accepted_quote" ? "Accepted price" : "Customer price"}</dt>
                 <dd>{formatPrice(data.price.totalIncGstCents)}</dd>
                 <span>
                   {data.price.source === "quote"
@@ -211,6 +204,15 @@ export default function ProjectCurrentDesignCommercialCard({
             </dl>
           </div>
         )}
+
+        {data.warnings.includes("multiple_accepted_quotes") ? (
+          <details className={styles.versionHistory} data-command-centre-warning="multiple-accepted-quotes">
+            <summary>Quote history</summary>
+            <p><strong>Current agreement: {quoteVersionLabel(data)}</strong></p>
+            <p>Earlier accepted versions are retained. The price and design above use the newest accepted version.</p>
+            <ButtonLink variant="tertiary" size="small" href={data.links.quotes}>View quote history</ButtonLink>
+          </details>
+        ) : null}
 
         <div className={styles.links}>
           {data.links.quote ? (

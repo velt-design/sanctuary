@@ -280,6 +280,8 @@ export default function ProjectOrientationBand({
       {editState}
 
       {!isEditing ? (
+        <details className={styles.contextDetails}>
+        <summary>{displayed.contactName || 'Customer details'} · {displayed.siteAddress || 'Site not provided'} <span>Contact & project details</span></summary>
         <div className={styles.orientationSummary}>
           <ProjectJourneyStatus
             stage={project.stage}
@@ -334,6 +336,7 @@ export default function ProjectOrientationBand({
             </div>
           </dl>
         </div>
+        </details>
       ) : null}
     </section>
   );

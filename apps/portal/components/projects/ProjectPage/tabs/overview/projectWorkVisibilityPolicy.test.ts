@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProjectWorkPrimaryCandidate } from "@/lib/projects/workItems/types";
+import { isRetiredProjectWorkIdentity } from '@/lib/projects/workItems/prohibitedWork';
 import {
   hasProhibitedProjectWorkText,
   isProhibitedProjectWorkItem,
@@ -7,6 +8,10 @@ import {
 } from "./projectWorkVisibilityPolicy";
 
 describe("projectWorkVisibilityPolicy", () => {
+  it('recognises stage-review history as retired even with a normal title', () => {
+    expect(isRetiredProjectWorkIdentity({ sourceType: 'STAGE_REVIEW', title: 'Review proposal progress' })).toBe(true);
+    expect(isRetiredProjectWorkIdentity({ sourceType: 'MANUAL', title: 'Confirm customer selections' })).toBe(false);
+  });
   it.each([
     "Call customer",
     "Book site visit",

@@ -2,7 +2,6 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ProjectCommandCentreCurrentDesign } from '@/lib/projects/commandCentre/types';
-import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { projectWorkDomainActions, type ProjectWorkDomainActions } from './domainActionAdapters';
 import { hasActiveProjectConfirmation } from './confirmationFacts';
 import type { RecoveryActionCandidate } from './primaryAction';
@@ -23,7 +22,7 @@ function requiredText(value: unknown): string | null {
 }
 
 function repairRecoveryAction(row: RepairSignalRow | null, projectId: string): RecoveryActionCandidate | null {
-  if (!row) return null;
+  if (!row || row.repair_kind === 'QUOTE_CADENCE_RECONCILIATION') return null;
   const id = requiredText(row.id);
   const repairKind = requiredText(row.repair_kind);
   const reason = requiredText(row.error_message);
@@ -46,22 +45,7 @@ function repairRecoveryAction(row: RepairSignalRow | null, projectId: string): R
     };
   }
 
-  if (repairKind !== 'QUOTE_CADENCE_RECONCILIATION') {
-    throw new Error(`Unsupported project work repair signal: ${repairKind}`);
-  }
-  const quoteVersionUuid = requiredText(row.quote_version_id);
-  if (!quoteVersionUuid) {
-    throw new Error('Open quote cadence repair signal is incomplete');
-  }
-  const quoteVersionId = appIdFromUuid('qv', quoteVersionUuid);
-  return {
-    kind: 'recovery',
-    key: `quote-cadence-repair:${id}`,
-    title: 'Repair quote follow-up sync',
-    reason,
-    href: `${basePath}?tab=quotes&quoteId=${encodeURIComponent(quoteVersionId)}`,
-    actionLabel: 'Repair quote follow-up',
-  };
+  throw new Error(`Unsupported project work repair signal: ${repairKind}`);
 }
 
 /**
@@ -93,6 +77,7 @@ export async function getProjectWorkDomainActions(params: {
       .select('id,repair_kind,quote_version_id,confirmation_event_id,error_message')
       .eq('project_id', params.projectUuid)
       .eq('status', 'OPEN')
+      .neq('repair_kind', 'QUOTE_CADENCE_RECONCILIATION')
       .order('first_detected_at', { ascending: true })
       .order('id', { ascending: true })
       .limit(1),

@@ -36,8 +36,8 @@ function entry(overrides: Partial<ProjectWorkQueueEntry> = {}): ProjectWorkQueue
     workItemId: '22222222-2222-4222-8222-222222222222',
     workItemRowVersion: 2,
     stateRowVersion: 3,
-    sourceType: 'LEAD_CADENCE',
-    sourceKey: `lead:follow-up:${PROJECT_UUID}:v1`,
+    sourceType: 'MANUAL',
+    sourceKey: `manual:fixture:${PROJECT_UUID}:v1`,
     subjectKind: 'PROJECT',
     subjectId: PROJECT_UUID,
     repairSignalId: null,
@@ -89,6 +89,18 @@ function candidate(
 }
 
 describe('composeProjectWorkQueue', () => {
+  it('does not create work from an empty project or deferred cadence', () => {
+    const result = composeProjectWorkQueue({
+      durableEntries: [
+        entry({ actionKind: 'needsTriage', sourceType: null, sourceKey: null }),
+        entry({ sourceType: 'LEAD_CADENCE', sourceKey: 'lead:first-email:fixture' }),
+      ],
+      domainCandidates: [candidate()],
+      limit: 200,
+    });
+    expect(result).toEqual([]);
+  });
+
   it('keeps exactly the most urgent durable row for each project', () => {
     const result = composeProjectWorkQueue({
       durableEntries: [
@@ -317,7 +329,7 @@ function durableRow(index: number): Record<string, unknown> {
     pipeline_stage: 'CONTACTED',
     queue_group: 'today',
     action_kind: 'WORK_ITEM',
-    title: 'Send first enquiry email',
+    title: 'Prepare revised design',
     reason: 'This project work is due today.',
     due_at: '2026-07-29T04:00:00.000Z',
     priority: 'NORMAL',
@@ -326,8 +338,8 @@ function durableRow(index: number): Record<string, unknown> {
     project_owner_key: 'jordan',
     work_item_id: `22222222-2222-4222-8222-${String(index).padStart(12, '0')}`,
     work_item_row_version: 4,
-    source_type: 'LEAD_CADENCE',
-    source_key: `lead:first-email:${projectUuid}:v1`,
+    source_type: 'MANUAL',
+    source_key: `manual:fixture:${projectUuid}:v1`,
     subject_kind: 'PROJECT',
     subject_id: projectUuid,
     repair_signal_id: null,
@@ -367,7 +379,7 @@ describe('getAuthoritativeProjectWorkQueue', () => {
           pipeline_stage: 'CONTACTED',
           queue_group: 'today',
           action_kind: 'WORK_ITEM',
-          title: 'Send first enquiry email',
+          title: 'Prepare revised design',
           reason: 'This project work is due today.',
           due_at: '2026-07-29T04:00:00.000Z',
           priority: 'NORMAL',
@@ -376,8 +388,8 @@ describe('getAuthoritativeProjectWorkQueue', () => {
           project_owner_key: 'jordan',
           work_item_id: '22222222-2222-4222-8222-222222222222',
           work_item_row_version: 4,
-          source_type: 'LEAD_CADENCE',
-          source_key: `lead:first-email:${PROJECT_UUID}:v1`,
+          source_type: 'MANUAL',
+          source_key: `manual:fixture:${PROJECT_UUID}:v1`,
           subject_kind: 'PROJECT',
           subject_id: PROJECT_UUID,
           repair_signal_id: null,
@@ -408,7 +420,7 @@ describe('getAuthoritativeProjectWorkQueue', () => {
         actionKind: 'workItem',
         workItemRowVersion: 4,
         stateRowVersion: 3,
-        sourceType: 'LEAD_CADENCE',
+        sourceType: 'MANUAL',
         effectiveAssignee: {
           kind: 'projectOwner',
           ownerKey: 'jordan',
@@ -554,7 +566,7 @@ describe('getAuthoritativeProjectWorkQueue', () => {
           pipeline_stage: 'CONTACTED',
           queue_group: 'today',
           action_kind: 'WORK_ITEM',
-          title: 'Send first enquiry email',
+          title: 'Prepare revised design',
           reason: 'This project work is due today.',
           due_at: '2026-07-29T04:00:00.000Z',
           priority: 'NORMAL',

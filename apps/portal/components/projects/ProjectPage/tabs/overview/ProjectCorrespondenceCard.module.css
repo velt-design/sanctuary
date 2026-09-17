@@ -1,0 +1,96 @@
+.stack, .summaries {
+  display: grid;
+  gap: var(--ui-space-3);
+  min-width: 0;
+}
+
+.explanation, .sourceDate {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.5;
+}
+
+.stack p { margin: 0; }
+.messages { display: grid; gap: var(--ui-space-4); }
+.message {
+  padding: var(--ui-space-4);
+  background: var(--ui-surface-elevated);
+  border: var(--ui-border-width) solid var(--ui-border);
+  overflow-wrap: anywhere;
+}
+.message h3 {
+  margin: 0 0 var(--ui-space-3);
+  font-family: var(--ui-font-body);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.4;
+  text-transform: none;
+}
+.messageLabel {
+  color: var(--ui-text-muted);
+  font-weight: 600;
+  font-size: var(--ui-font-size-caption);
+  margin-bottom: var(--ui-space-2) !important;
+}
+.messageMeta {
+  display: grid;
+  gap: var(--ui-space-1);
+  padding-bottom: var(--ui-space-3);
+  margin-bottom: var(--ui-space-3);
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.5;
+}
+.sender { color: var(--ui-text-strong); }
+.messageMeta time { color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); }
+.quoteMatch { font-size: var(--ui-font-size-small); margin-top: var(--ui-space-2) !important; }
+.message blockquote { margin: var(--ui-space-3) 0; line-height: 1.6; white-space: pre-wrap; }
+.message blockquote.messagePreview {
+  white-space: normal;
+  font-size: var(--ui-font-size-body);
+  line-height: 1.65;
+}
+.message a { color: var(--ui-text-strong); font-size: var(--ui-font-size-small); }
+.message a:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 2px; }
+.sourceDate { display: block; }
+
+.summary {
+  display: grid;
+  gap: var(--ui-space-2);
+  border-top: var(--ui-border-width) solid var(--ui-border);
+  padding-top: var(--ui-space-3);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.heading { display: flex; justify-content: space-between; align-items: center; gap: var(--ui-space-2); flex-wrap: wrap; }
+.heading h3 { margin: 0; font-family: var(--ui-font-display); font-size: var(--ui-font-size-card-heading); }
+.heading { cursor: pointer; padding-block: var(--ui-space-2); }
+.heading::before { content: '+'; font-weight: 600; }
+details[open] > .heading::before { content: '−'; }
+.heading h3 { flex: 1; }
+.heading:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 2px; }
+.summary > details > p { margin-block: var(--ui-space-2); }
+.sources { overflow-wrap: anywhere; }
+.sources summary { cursor: pointer; padding-block: var(--ui-space-2); font-weight: 600; }
+.sources summary:focus-visible, .sources a:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 2px; }
+.sources blockquote { margin: var(--ui-space-2) 0; padding-left: var(--ui-space-3); border-left: var(--ui-border-width-emphasis) solid var(--ui-border); white-space: pre-wrap; }
+.sources > div, .sources > p { padding-bottom: var(--ui-space-3); }
+.sources a { color: var(--ui-text-strong); text-decoration: underline; }
+
+.card { scroll-margin-block-start: 80px; }
+.emailReader { display: grid; gap: var(--ui-space-3); }
+.readerLabel { font-size: var(--ui-font-size-caption); font-weight: 650; color: var(--ui-text-muted); }
+.readingPane { max-height: min(55vh, 480px); overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--ui-space-2); }
+.readingPane:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 2px; }
+.emailReader .readingPane blockquote { margin: 0; border: 0; padding: 0; white-space: pre-wrap; line-height: 1.7; }
+.quotedHistory { border-top: var(--ui-border-width) solid var(--ui-border); padding-top: var(--ui-space-2); }
+.quotedMessage { margin-top: var(--ui-space-3); padding: var(--ui-space-3); background: var(--ui-surface-secondary); border-left: 2px solid var(--ui-border); }
+.quotedHeader { white-space: pre-wrap; font-size: var(--ui-font-size-small); color: var(--ui-text-muted); line-height: 1.5; padding-bottom: var(--ui-space-3); }
+.card > header h2 {
+  font-family: var(--ui-font-body);
+  font-size: 18px;
+  font-weight: 650;
+  text-transform: none;
+  letter-spacing: normal;
+}

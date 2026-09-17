@@ -34,6 +34,7 @@ export function isRetiredProjectWorkIdentity(values: {
 }): boolean {
   return (
     values.sourceType === "LEGACY_REVIEW" ||
+    values.sourceType === "STAGE_REVIEW" ||
     hasProhibitedProjectWorkText(
       values.title,
       values.sourceType,

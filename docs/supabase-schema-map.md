@@ -1,5 +1,16 @@
 # Supabase Schema Map
 
+Project follow-up retirement (local, not installed): migration
+`20260917000002_defer_project_follow_ups.sql` replaces new-project cadence
+initialization and reminder reconciliation, rejects new sent/reply confirmations,
+and audits cancellation of active lead/quote work and resolution of cadence repair
+signals. It preserves historical confirmations, genuine manual work, correction
+reviews and existing RPC grants. V3 queue filtering occurs before lateral limits;
+empty projects no longer create triage rows. Project-table NOWAIT fences and
+nonblocking advisory acquisition abort the transaction on concurrent writers.
+Native PostgreSQL17 concurrency and PGlite preservation/replay checks passed;
+release evidence and pending installation are owned by the Command Centre roadmap.
+
 ## Configured enquiry qualification
 
 `20260917000003_configured_enquiry_qualification.sql` owns the private append-only
@@ -20,10 +31,12 @@ the stable enquiry ID after project reassignment, while retaining current-projec
 authorization and each event's original project context. It replaces only the read
 function; it does not rewrite existing decisions or change grants.
 
-Release status (2026-09-17): `000003` installed in staging and production after
-exact-file rehearsal; the application remains unreleased while `000004` completes
-review and installation. The separate pending `20260917000002` correspondence
-migration is outside this release and must not be applied with these files.
+Release status (2026-09-17): both `000003` and `000004` installed in staging and
+production after exact-file rollback rehearsals, native PostgreSQL concurrency
+and reassignment tests, and independent review. PR150 released both apps at
+`e5578a394c535c4472566a2e5e981c47a547e78e`. Postflight retained staff execution,
+anonymous/direct-table denial and zero production qualification events. The
+separate `20260917000002` correspondence migration was not applied in this release.
 See `platform-workflow.md` and `testing-and-qa.md` for criteria and acceptance.
 
 Customer journey reporting: `20260916000003_praxis_verified_receipts.sql` adds `praxis_reporting.verified_receipts_v1`, granted only to the existing reporting group. It joins unreversed Xero matches to the exact project, source invoice and payment entry, requires equal positive amounts, excludes ledger reversals, and carries invoice currency plus match verification evidence. It does not modify business records or grant base-table access. Installation and live source provisioning remain separate from local code verification.
@@ -554,7 +567,7 @@ Primary write path:
 - Project owner writes go through `project_command_set_owner`. The legacy `project_command_action` and `project_command_sync_design_task` mutation paths are revoked by the portfolio rollout; specialist owners write their own current facts.
 - V2 work, operational state, bounded confirmation, archive, and Running Jobs fact changes go through their semantic RPC commands. Governed tables and append-only history reject direct writes; accepted commands refresh the one-way `projects.next_action*`/`follow_up_date` compatibility projection.
 - Confirmation correction is admin-only and appends a retraction, command receipt, and open review signal. Review resolution locks and updates only the supplied signal ID when its row version is unchanged. It does not update or delete the original confirmation.
-- A server trigger owns real pipeline-stage entry. It cancels only the prior active `STAGE_REVIEW`, preserves manual/cadence/specialist/reviewed work, and creates at most one five-Auckland-business-day `STAGE_REVIEW` obligation for active non-`NEW`/non-`PAID` stages. Same-stage and case-only replays do nothing, and missing calendar coverage fails the transition atomically. `SITE_VISIT` creates only a proposal-review obligation; it never creates or links a Site Visit task.
+- A server trigger owns real pipeline-stage entry. Forward migration `20260916000006_retire_generic_stage_reviews.sql` removes generic `STAGE_REVIEW` creation, preserves manual/cadence/specialist work and Paid closure/reopening, audits cancellation of existing active reviews, refreshes compatibility projections, and prevents retired-row recreation/retyping/reopening. It does not generate replacement obligations or alter historical events. Until that migration is installed, the earlier portfolio policy still seeds stage reviews. Local rehearsal is verified; hosted rollout remains pending in `project-command-centre-roadmap.md`.
 
 Primary read path:
 
