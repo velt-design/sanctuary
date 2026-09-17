@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-09-17 - Verify painted navigation surfaces in production CSS
+
+A UTF-8 BOM in the shared marketing header stylesheet survived bundling as
+part of the `:root` selector. Header and menu elements existed and accepted
+input, but their undefined surface tokens made backgrounds transparent.
+Save the stylesheet without a BOM and assert computed backgrounds in the
+production build; DOM visibility alone does not prove readable navigation.
+Owner: `marketing-ui-foundation.md`; regression: `marketing.shared-header.spec.ts`.
+
 ## 2026-09-15 — Protected pricing relays and deterministic query tests
 
 The hosted configurator revision relay received Vercel's structured "Protected
