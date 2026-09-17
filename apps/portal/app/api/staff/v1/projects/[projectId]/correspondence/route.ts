@@ -1,6 +1,6 @@
 import { createRouteDiagnostics } from '@/lib/api/routeDiagnostics';
 import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
-import { getProjectPageSummary } from '@/lib/projects/getProjectPageSnapshot';
+import { readProjectCorrespondenceIdentity } from '@/lib/projects/correspondence/projectCorrespondenceIdentity';
 import { correspondenceGatewayConfig, readStaffCorrespondence } from '@/lib/projects/correspondence/gateway';
 import { isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { resolvePortalAccessState, type PortalAccessLookup } from '@/lib/portalAccess';
@@ -36,10 +36,21 @@ async function hasBodyBytes(request: Request): Promise<boolean> {
 
 async function handle(request: Request, context: Context, check: boolean) {
   const diagnostics = createRouteDiagnostics(request, '/api/staff/v1/projects/[projectId]/correspondence');
-  const fail = (message: string, status: number) => privateResponse(jsonError(message, status, diagnostics));
+  const timings: string[] = [];
+  async function measure<T>(phase: string, operation: () => Promise<T>): Promise<T> {
+    const started = performance.now();
+    try { return await operation(); }
+    finally { timings.push(`${phase};dur=${(performance.now() - started).toFixed(1)}`); }
+  }
+  const respond = (response: Response) => {
+    // Fixed phase names and durations only: no email, provider IDs or cache keys.
+    response.headers.set('server-timing', timings.join(', '));
+    return privateResponse(response);
+  };
+  const fail = (message: string, status: number) => respond(jsonError(message, status, diagnostics));
   try {
-    const auth = await requireStaffContext(diagnostics);
-    if (!auth.ok) return privateResponse(auth.response);
+    const auth = await measure('auth', () => requireStaffContext(diagnostics));
+    if (!auth.ok) return respond(auth.response);
     const { projectId } = await context.params;
     if (!isUuid(projectId) && !(projectId.startsWith('proj_') && isUuid(projectId.slice(5)))) return fail('Invalid projectId', 400);
     const projectUuid = uuidFromAppId(projectId, 'proj');
@@ -51,30 +62,30 @@ async function handle(request: Request, context: Context, check: boolean) {
       if (request.headers.get('origin') !== url.origin || request.headers.get('sec-fetch-site') === 'cross-site') return fail('Forbidden', 403);
       if (await hasBodyBytes(request)) return fail('Unexpected correspondence body', 400);
     }
-    const summary = await getProjectPageSummary(projectId, diagnostics, auth.supabase);
+    const summary = await measure('identity', () => readProjectCorrespondenceIdentity(projectId, auth.supabase));
     if (!summary) return fail('Project not found', 404);
     const config = correspondenceGatewayConfig();
     const customerEmail = summary.project.contactEmail?.trim().toLowerCase();
-    if (!config || (!check && (!config.snapshotsEnabled || !customerEmail))) return privateResponse(jsonOk({ state: config ? 'available' : 'not_connected' }, 200, diagnostics));
+    if (!config || (!check && (!config.snapshotsEnabled || !customerEmail))) return respond(jsonOk({ state: config ? 'available' : 'not_connected' }, 200, diagnostics));
     const identityHash = createHash('sha256').update(JSON.stringify([summary.project.contactId ?? null,
       summary.project.contactEmail?.trim().toLowerCase() ?? null])).digest('hex');
-    const result = await readStaffCorrespondence(config, { actorId: auth.session.user.id, projectId: projectUuid, ...(analyze ? { analyze: true } : {}),
-      ...(config.snapshotsEnabled && customerEmail && !analyze ? { snapshot: { identityHash, customerEmail, refresh: check } } : {}) }, request.signal);
-    if (!result) return privateResponse(jsonOk({ state: 'available' }, 200, diagnostics));
-    if ('state' in result) return privateResponse(jsonOk({ state: 'refreshing' }, 200, diagnostics));
+    const result = await measure('mail', () => readStaffCorrespondence(config, { actorId: auth.session.user.id, projectId: projectUuid, ...(analyze ? { analyze: true } : {}),
+      ...(config.snapshotsEnabled && customerEmail && !analyze ? { snapshot: { identityHash, customerEmail, refresh: check } } : {}) }, request.signal));
+    if (!result) return respond(jsonOk({ state: 'available' }, 200, diagnostics));
+    if ('state' in result) return respond(jsonOk({ state: 'refreshing' }, 200, diagnostics));
     // Old receivers lack lineage. Avoid provider reads until there is evidence to join.
     const anchors = result.messages?.some(message => message.lineage)
-      ? await readProjectSendAnchors(auth.supabase, projectUuid, request.signal)
+      ? await measure('matching', () => readProjectSendAnchors(auth.supabase, projectUuid, request.signal))
       : { anchors: [], incomplete: true };
     const associated = associateCorrespondenceContext(result, projectUuid, anchors);
-    const currentAccess = await resolvePortalAccessState(auth.supabase as unknown as PortalAccessLookup);
+    const currentAccess = await measure('access_recheck', () => resolvePortalAccessState(auth.supabase as unknown as PortalAccessLookup));
     if (currentAccess.kind !== 'authenticated' || currentAccess.session.user.id !== auth.session.user.id) return fail('Project access changed', 403);
-    const currentSummary = await getProjectPageSummary(projectId, diagnostics, auth.supabase);
+    const currentSummary = await measure('identity_recheck', () => readProjectCorrespondenceIdentity(projectId, auth.supabase));
     if (!currentSummary) return fail('Project not found', 404);
     const currentIdentity = createHash('sha256').update(JSON.stringify([currentSummary.project.contactId ?? null,
       currentSummary.project.contactEmail?.trim().toLowerCase() ?? null])).digest('hex');
     if (currentIdentity !== identityHash) return fail('Project customer changed; check conversations again', 409);
-    return privateResponse(jsonOk({ state: 'ready', context: associated }, 200, diagnostics));
+    return respond(jsonOk({ state: 'ready', context: associated }, 200, diagnostics));
   } catch {
     return fail('Customer conversations could not be checked', 503);
   }

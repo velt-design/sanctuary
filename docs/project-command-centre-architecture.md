@@ -52,6 +52,28 @@ total stays visible; warnings and failures retain the expanded owning surface.
 Payment position uses the existing staff invoice-schedule API and query key,
 without recalculating totals or equating payment with delivery readiness.
 
+## Correspondence loading performance (local implementation)
+
+The correspondence route now reads only canonical project/contact identity before
+and after the email operation, with the existing final staff-role check intact.
+It no longer loads project owner/work-model information for those checks.
+`Server-Timing` exposes fixed phase names and numeric durations only, for auth,
+identity, mail, matching and final access/identity checks; private response headers
+remain unchanged and no customer/provider identity is included in timings.
+
+Verified Resend RFC message IDs may be reused for15minutes in a bounded512-entry
+server-instance cache. Values are AES-256-GCM ciphertext, with authenticated expiry
+and opaque HMAC keys bound to project, canonical provider ID, normalized recipients
+and provider credentials. A purpose-separated key derives from the existing server
+correspondence signing secret. There is no cached authorization, raw provider
+response, email body, AI answer, disk/HTTP/Next data-cache entry or browser cache.
+Every hit still requires fresh auth-bound canonical SENT rows; changed/deleted or
+inaccessible sends cannot reuse old proof. Failures are not cached. Expired entries
+are refused even after instance suspension; expiry/eviction also clears timers.
+Cold instances safely repeat provider verification. This is an initial measured
+optimization, not proof of the1–2second objective or durable cross-instance reuse.
+Real protected-preview timing and cold-load evaluation remain required.
+
 ## Staff correspondence boundary
 
 Reliability amendment in progress (17 September; not deployed): Jordan approved
