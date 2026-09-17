@@ -55,8 +55,8 @@ from project/product families to the full public website except the configurator
 The earlier family implementation transferred selected styling while retaining
 older page composition; Jordan's screenshot reopened that visual acceptance.
 The current rollout must match the approved reference composition, not merely
-its colours, typography and individual components. Production release remains
-separate; this is an isolated, uncommitted review version.
+its colours, typography and individual components. Jordan confirmed the phone
+checks and authorised production release on 18 September 2026.
 
 Scope covers the homepage, project and product collections, all fourteen project
 and ten product details, service/commercial/professional pages, the guide hub and
@@ -128,8 +128,8 @@ comparison. Product/project/header and focused finder/contact suites cover
 navigation, keyboard/touch, factual content and intercepted enquiry recovery.
 Actual-browser independent review must inspect full body composition and perform
 normal discovery-to-enquiry-and-return journeys. Hero geometry alone cannot
-establish visual parity. Current evidence, superseded failures and remaining
-limits are recorded in artifacts/marketing-foundation-evolution/work-record.md.
+establish visual parity. Private review evidence remains in the local working
+record; the release PR records public validation and deployment evidence.
 
 Header visibility repair (17 September 2026): keep `styles/header.css` encoded
 as UTF-8 without a BOM. In the production bundle, the BOM became part of the
