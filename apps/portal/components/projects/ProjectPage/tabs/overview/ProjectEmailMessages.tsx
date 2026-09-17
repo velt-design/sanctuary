@@ -12,8 +12,11 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
   const orderedFeatured = latestCustomer ? [latestCustomer, ...featured.filter(group => group !== latestCustomer)] : featured;
   function renderMessage({ message, copies }: (typeof featured)[number], label?: string) {
       const href = correspondenceSourceHref(message.url);
-      const preview = message.bodyText.slice(0, 200);
-      const expandable = message.bodyText.length > preview.length;
+      // Keep quoted thread headers out of the teaser, never out of the full message.
+      const historyStart = message.bodyText.search(/\r?\n(?:From:|On [^\n]{1,200}wrote:)/i);
+      const lead = historyStart > 0 ? message.bodyText.slice(0, historyStart).trim() : '';
+      const preview = (lead || message.bodyText.trim()).slice(0, 200);
+      const expandable = message.bodyText.trim() !== preview;
       return <article key={message.id} className={styles.message}>
         {label ? <p className={styles.messageLabel}>{label}</p> : null}
         <h3>{message.subject || 'No subject'}</h3>
