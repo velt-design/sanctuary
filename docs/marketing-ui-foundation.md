@@ -6,6 +6,12 @@ This document owns the Architectural Editorial UI system demonstrated at the sta
 
 ## Source Of Truth
 
+Header visibility repair (17 September 2026): keep `styles/header.css` encoded
+as UTF-8 without a BOM. In the production bundle, the BOM became part of the
+`:root` selector, so shared header surface, blur and divider tokens never
+applied. The shared-header browser regression checks painted header and mobile
+menu backgrounds over product content against a production build.
+
 Enquiry navigation (16 September 2026): the owner approved a home-linked
 Sanctuary wordmark and "Back to website" returning to the source browsing page.
 Unsafe or enquiry-loop sources fall back home. "Edit my design" sits beside the
