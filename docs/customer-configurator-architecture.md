@@ -4,6 +4,17 @@
 
 ### Marketing preview: lighting editor (2026-09-10)
 
+Day/night presentation (2026-09-17): one reversible 1000ms smoothstep timeline
+fades daylight, environment reflections, warm fixture emission/illumination and
+the viewport backdrop together. The environment and light objects stay mounted;
+only their contribution changes. Demand rendering stops when the fade settles.
+Rapid toggles start from the current displayed amount; reduced motion switches
+to the endpoint, including when the preference changes during a fade. The unlit
+night prompt overlays the viewport so it cannot resize or reframe the camera.
+Geometry, selected options, pricing inputs and the illustrative lighting limits
+below are unchanged. Focused browser regression:
+`playwright/marketing.configurator-transition.spec.ts` (marketing config).
+
 Plan visual refinement (2026-09-14): plans use a dedicated SVG drawing with the Simple Cover calculator's pale drawing paper, faint grid, outlined members and hatched house connection. Finish surfaces use existing geometry for board/profile positions. Dimensions and lighting hit targets remain SVG. No additional WebGL canvas, realistic scene shadows, furniture or external textures are used.
 
 Lighting opens a focused right-panel editor and a light-background lighting plan.

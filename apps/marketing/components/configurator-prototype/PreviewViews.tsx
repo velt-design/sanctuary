@@ -56,8 +56,8 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
         {view === 'Plan' && <PreviewPlan profile={roof.finish?.profile} trayWidth={roof.finish?.trayWidth} roofPlanes={geometry.assembly.roofPlanes} covering={covering} plan={geometry.plan} flashings={geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
       </>
         : <div className={styles.loading} role="status">{artifact.messages[0]?.message || 'This design needs a closer look. Adjust your dimensions to continue.'}</div>}
-    </div>
     {lighting?.night&&!hasLighting(lighting.value)&&<div className={styles.nightPrompt}>Your design has no lights yet. <button onClick={()=>{lighting.open();if(expanded&&window.matchMedia('(max-width: 720px)').matches)onToggleExpanded();}}>Add lighting</button></div>}
+    </div>
     <div className={styles.viewerFooter}><p className={styles.viewNote}>{view === '3D' ? <><span className={styles.mouseHint}>Drag to rotate · Scroll to zoom</span><span className={styles.touchHint}>Drag ↔ · Pinch to zoom</span></> : renderable
       ? lighting?.editing ? <>{lighting.tool==='strip'?'Tap beams or rafters to add LED strips · Gold means selected':lighting.tool==='rafter'?'Rafter lights are placed automatically':lighting.tool==='cedar'?'Cedar lights are centred between rafters':'Choose a lighting type to begin'}</> : rail.section==='roof' ? <>Roof plan · looking down from above</> : <>Hover or tap a side to edit<span className={styles.desktopNote}> · {geometry.plan.members.posts.length} posts</span></>
       : 'Adjust your selections to preview the frame.'}

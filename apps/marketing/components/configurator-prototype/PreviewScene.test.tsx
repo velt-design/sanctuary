@@ -11,6 +11,7 @@ vi.mock('@react-three/fiber',()=>({
 vi.mock('./LightingProvider',()=>({useLighting:()=>null}));
 vi.mock('./PreviewBlindProvider',()=>({usePreviewBlinds:()=>null}));
 vi.mock('./PreviewCamera',()=>({default:()=>null}));
+vi.mock('./DayNightTransition',()=>({default:({children}:{children:React.ReactNode})=><>{children}</>}));
 vi.mock('./PreviewLighting',()=>({default:()=>null}));
 vi.mock('@sp/geometry-viewer',()=>({computeSceneBoundsFromPoints:()=>({})}));
 vi.mock('@sp/geometry-viewer/react',()=>({SceneObjectNode:()=>null}));
