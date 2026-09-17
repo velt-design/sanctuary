@@ -22,7 +22,10 @@ passed. See the roadmap for exact evidence and remaining release gates.
 
 Overview presents saved project position, owner, readable correspondence and
 practical quote/design/files tools. Without assigned work it shows the owner,
-not an invented next step. Existing manual commitments retain their controls.
+not an invented next step. Empty active work uses a compact owner/control row;
+opening controls restores the full form layout. Assigned work, delivery actions,
+stale/error messages and non-active states retain their existing space.
+Existing manual commitments retain their controls.
 Customer email text appears before optional AI interpretation. The latest linked
 customer reply appears before the latest outgoing message. Collapsed excerpts
 normalize whitespace for scanning; expanded text preserves paragraphs and quoted
@@ -34,7 +37,9 @@ Project titles wrap instead of truncating, and narrow work headers can wrap cont
 On wide screens
 the work row remains content-sized even when correspondence spans the commercial
 row. Retained accepted versions use neutral history information, consistent with
-the newest-accepted-version policy; they do not create a correction task. Desktop places
+the newest-accepted-version policy; they do not create a correction task. Their
+history disclosure follows the current price/design metrics, which always show
+two currency decimals. Desktop places
 emails beside work; mobile places them before commercial detail. Ordinary
 contact, notes/history and commercial detail use disclosures. The commercial
 total stays visible; warnings and failures retain the expanded owning surface.

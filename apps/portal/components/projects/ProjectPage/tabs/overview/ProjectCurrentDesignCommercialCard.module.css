@@ -31,6 +31,8 @@
 }
 
 .versionHistory p { margin: var(--ui-space-2) 0 var(--ui-space-3); }
+.versionHistory summary { cursor: pointer; font-weight: 600; }
+.versionHistory summary:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 4px; }
 
 .commercialSummary,
 .emptySummary {

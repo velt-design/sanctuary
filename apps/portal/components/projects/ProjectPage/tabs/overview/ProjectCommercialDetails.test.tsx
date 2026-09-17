@@ -10,7 +10,11 @@ describe('compact commercial position', () => {
     const data = { ...commandCentreFixtures['accepted-newer-estimate'], warnings: ['multiple_accepted_quotes'] as const };
     const value = { ...data, warnings: [...data.warnings] };
     const view = renderIntoDocument(<ProjectCommercialDetails data={value}><ProjectCurrentDesignCommercialCard data={value} /></ProjectCommercialDetails>);
-    expect(view.container.querySelector('details')).toBeNull();
+    const history = view.container.querySelector('details')!;
+    expect(history.open).toBe(false);
+    expect(history.querySelector('summary')?.textContent).toBe('Quote history');
+    const metrics = view.container.querySelector('[aria-label="Current design and commercial metrics"]')!;
+    expect(metrics.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(view.container.textContent).toContain('Current agreement:');
     expect(view.container.textContent).toContain('Earlier accepted versions are retained');
     expect(view.container.querySelector('[data-tone="warning"]')).toBeNull();

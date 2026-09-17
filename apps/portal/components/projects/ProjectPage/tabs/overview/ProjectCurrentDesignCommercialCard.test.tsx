@@ -86,7 +86,7 @@ describe('ProjectCurrentDesignCommercialCard', () => {
     })}
     />);
     expect(rendered.container.textContent).toContain('Source design unavailable');
-    expect(rendered.container.textContent).toContain('$2,000 inc GST');
+    expect(rendered.container.textContent).toContain('$2,000.00 inc GST');
     expect(rendered.container.textContent).toContain('no other estimate has been substituted');
     expect(rendered.container.textContent).not.toContain('Record deposit received');
     expect(rendered.container.querySelectorAll('button')).toHaveLength(0);

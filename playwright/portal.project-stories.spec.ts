@@ -19,7 +19,10 @@ test('long correspondence does not separate work from commercial facts', async (
     expect(bottom!.y - (top!.y + top!.height)).toBeLessThanOrEqual(24);
   };
   await expect(commercial).toContainText('Current agreement:');
+  await expect(commercial.getByRole('link', { name: 'View quote history' })).not.toBeVisible();
+  await commercial.locator('summary', { hasText: 'Quote history' }).click();
   await expect(commercial.getByRole('link', { name: 'View quote history' })).toHaveAttribute('href', /tab=quotes/);
+  await commercial.locator('summary', { hasText: 'Quote history' }).click();
   await expect(emails.locator('article').first()).toContainText('From aroha@example.invalid');
   await checkGap();
   await emails.locator('article').first().getByText('Read message', { exact: true }).click();
@@ -44,7 +47,7 @@ for (const width of [1440, 390]) for (const example of examples) {
     } else {
       await expect(work.getByRole('heading', { name: example.action, exact: true })).toHaveCount(0);
       await expect(work.locator('[data-primary-project-work]')).toHaveCount(0);
-      await expect(work).toContainText('Project owner: Jordan');
+      await expect(work).toContainText('Owner: Jordan');
     }
     await expect(work).not.toContainText('Review proposal progress');
     await expect(page.getByRole('button', { name: 'Edit details', exact: true })).toBeDisabled();

@@ -141,6 +141,16 @@
   margin-left: auto;
 }
 
+.compactIdle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+}
+.compactIdle p { margin: 0; font-size: var(--ui-font-size-small); }
+.compactIdle > .controlsSection { border: 0; padding: 0; }
+
 @container (min-width: 700px) {
   .primaryAction {
     display: grid;

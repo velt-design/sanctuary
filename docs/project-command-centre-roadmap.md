@@ -4,6 +4,14 @@
 
 ### Current focus: useful workflow before release
 
+**Finishing pass — owner approved 17 September:** compact the idle work panel,
+put commercial metrics before quote history, and format currency to two decimals.
+Implemented without changing business state or assigned-work/delivery controls.
+Quote history is an accessible closed disclosure below the metrics.23 focused
+tests and7 desktop/mobile fixture journeys pass; mobile visual inspection confirms
+the compact row brings the customer message higher. Architecture checks pass.
+Same protected preview update and real controls-open recovery verification pending.
+
 **Focused polish — owner approved 17 September:** owner accepted the revised
 page as much better and agreed with8/10 presentation, then requested only repeated
 explanations, cramped headings and boilerplate previews be improved. This closes
@@ -12,7 +20,14 @@ Association caveats remain once per unconfirmed group and in the details disclos
 conflicting-project warnings remain per message. Known generated quote/invoice
 previews retain their original leading summary; full text and source links are
 unchanged. Project headings wrap.36 focused tests and7 fixture browser journeys
-pass. Hosted preview verification is pending for this new revision. Non-owner
+pass. Full pre-push types/lint pass. Final revision fae5285 also gives the title
+its own row; long-name desktop/mobile inspection passes. Protected candidate
+dpl_97M9bkjkLtMhEr4bRt9KxmeqSTA5 is Ready on the existing stable protected alias;
+its receipt is in the existing private clarity artifacts. Real accepted project
+inspection confirms readable full heading, reduced explanation text and the
+single-sentence invoice teaser; expanding still shows the original full email.
+Unsigned access302 and existing signed-in session verified. Hosted CI for this
+new revision is separate from the previous green191015e gates. Non-owner
 staff verification and conditional production release remain outstanding.
 
 **Owner visual correction — 17 September:** Jordan's screenshot rejects the prior

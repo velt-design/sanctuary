@@ -15,7 +15,7 @@ import styles from "./ProjectCurrentDesignCommercialCard.module.css";
 const MONEY = new Intl.NumberFormat("en-NZ", {
   style: "currency",
   currency: "NZD",
-  minimumFractionDigits: 0,
+  minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
@@ -136,15 +136,6 @@ export default function ProjectCurrentDesignCommercialCard({
               </AlertBanner>
             </div>
           ) : null}
-          {data.warnings.includes("multiple_accepted_quotes") ? (
-            <div data-command-centre-warning="multiple-accepted-quotes">
-              <div className={styles.versionHistory}>
-                <strong>Current agreement: {quoteVersionLabel(data)}</strong>
-                <p>Earlier accepted versions are retained in quote history. The price and design below use the newest accepted version.</p>
-                <ButtonLink variant="tertiary" size="small" href={data.links.quotes}>View quote history</ButtonLink>
-              </div>
-            </div>
-          ) : null}
         </div>
 
         {data.source === "none" ? (
@@ -213,6 +204,15 @@ export default function ProjectCurrentDesignCommercialCard({
             </dl>
           </div>
         )}
+
+        {data.warnings.includes("multiple_accepted_quotes") ? (
+          <details className={styles.versionHistory} data-command-centre-warning="multiple-accepted-quotes">
+            <summary>Quote history</summary>
+            <p><strong>Current agreement: {quoteVersionLabel(data)}</strong></p>
+            <p>Earlier accepted versions are retained. The price and design above use the newest accepted version.</p>
+            <ButtonLink variant="tertiary" size="small" href={data.links.quotes}>View quote history</ButtonLink>
+          </details>
+        ) : null}
 
         <div className={styles.links}>
           {data.links.quote ? (

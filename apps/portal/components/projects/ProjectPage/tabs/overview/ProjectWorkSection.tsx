@@ -185,6 +185,10 @@ export default function ProjectWorkSection({
   const primary = primaryPresentation(controller, staff);
   const deferredPrimary = controller.primaryItem && isDeferredProjectFollowUp(controller.primaryItem);
   const active = controller.projection.effectiveState === "ACTIVE";
+  const compactIdle = active && (deferredPrimary || controller.primary.kind === "none")
+    && !controller.controlsOpen && !controller.stale && !controller.error && !controller.message
+    && !["scheduled", "completed", "paid"].includes(pipelineStage)
+    && [...controller.projection.openItems, ...controller.projection.blockedItems].every(isDeferredProjectFollowUp);
   const siteVisitCompleted = controller.projection.confirmedFacts.some(
     (fact) => fact.type === "SITE_VISIT_COMPLETED",
   );
@@ -244,7 +248,7 @@ export default function ProjectWorkSection({
       <div
       data-project-work-section="true"
       data-project-work-model="v2"
-        className={styles.stack}
+        className={compactIdle ? `${styles.stack} ${styles.compactIdle}` : styles.stack}
       >
         {stateItems.length ? (
           <KeyValueGrid
@@ -256,7 +260,7 @@ export default function ProjectWorkSection({
 
         {deferredPrimary || (active && controller.primary.kind === "none") ? (
           <div className={styles.stack}>
-            <p><strong>Project owner:</strong> {ownerLabel ?? "Unassigned"}</p>
+            <p><strong>{compactIdle ? "Owner:" : "Project owner:"}</strong> {ownerLabel ?? "Unassigned"}</p>
           </div>
         ) : prohibitedPrimary ? (
           <AlertBanner tone="blocking" title="Legacy work needs review">
