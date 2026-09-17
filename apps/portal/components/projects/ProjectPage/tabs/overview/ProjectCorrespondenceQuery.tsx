@@ -6,8 +6,9 @@ import { correspondenceContextSchema, CORRESPONDENCE_MAX_AGE_MS, type ProjectCor
 import ProjectCorrespondenceCard from './ProjectCorrespondenceCard';
 import type { EmailProjectContext } from './projectEmailGroups';
 
-type ReadState = { state: 'not_connected' | 'available' | 'loading' | 'ready' | 'stale' | 'error'; context?: ProjectCorrespondenceContext };
+type ReadState = { state: 'not_connected' | 'available' | 'loading' | 'refreshing' | 'ready' | 'stale' | 'error'; context?: ProjectCorrespondenceContext };
 function evidenceState(context: ProjectCorrespondenceContext): 'ready' | 'stale' {
+  if (context.snapshot) return Date.now() - Date.parse(context.snapshot.checkedAt) >= 15 * 60_000 ? 'stale' : 'ready';
   const oldest = oldestObservation(context);
   return Date.now() - oldest >= CORRESPONDENCE_MAX_AGE_MS ? 'stale' : 'ready';
 }
@@ -27,6 +28,7 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
   const [read, setRead] = useState<ReadState>({ state: 'loading' });
   const active = useRef<AbortController | null>(null);
   const earlier = useRef<ProjectCorrespondenceContext | undefined>(undefined);
+  const pendingChecks = useRef(0);
   const accessCallback = useRef(onAccessEnding);
   accessCallback.current = onAccessEnding;
   const path = `/api/staff/v1/projects/${encodeURIComponent(projectId)}/correspondence`;
@@ -35,8 +37,9 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
     active.current?.abort();
     const controller = new AbortController();
     active.current = controller;
-    if (check) earlier.current = undefined;
-    setRead({ state: 'loading' });
+    if (check) pendingChecks.current = 0;
+    if (check && (!earlier.current?.snapshot || Date.parse(earlier.current.snapshot.expiresAt) <= Date.now())) earlier.current = undefined;
+    setRead({ state: 'loading', ...(check && earlier.current?.snapshot ? { context: earlier.current } : {}) });
     try {
       let reply = await apiJson<{ state: string; context?: unknown }>(path + (analyze ? '?analyze=true' : ''), {
         method: check ? 'POST' : 'GET', signal: controller.signal, cache: 'no-store', skipSaveTracking: true,
@@ -50,12 +53,26 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
         check = true;
       }
       if (reply.state === 'not_connected') { earlier.current = undefined; setRead({ state: 'not_connected' }); }
-      else if (reply.state === 'available') setRead(earlier.current ? { state: evidenceState(earlier.current), context: earlier.current } : { state: 'available' });
-      else if (reply.state === 'ready' && check) {
+      else if (reply.state === 'refreshing') {
+        pendingChecks.current += 1;
+        setRead({ state: pendingChecks.current <= 20 ? 'refreshing' : 'error' });
+      }
+      else if (reply.state === 'available') {
+        // Snapshot absence can mean identity/generation invalidation, not merely
+        // a successful access probe. Never resurrect the earlier private copy.
+        if (earlier.current?.snapshot) earlier.current = undefined;
+        setRead(earlier.current ? { state: evidenceState(earlier.current), context: earlier.current } : { state: 'available' });
+      }
+      else if (reply.state === 'ready' && (check || reply.context)) {
         const context = correspondenceContextSchema.parse(reply.context);
-        if (Math.abs(Date.now() - Date.parse(context.observedAt)) > CORRESPONDENCE_MAX_AGE_MS) throw new Error('Expired correspondence');
+        if (context.snapshot ? Date.parse(context.snapshot.expiresAt) <= Date.now()
+          : Math.abs(Date.now() - Date.parse(context.observedAt)) > CORRESPONDENCE_MAX_AGE_MS) throw new Error('Expired correspondence');
         earlier.current = context;
-        setRead({ state: 'ready', context });
+        setRead({ state: evidenceState(context), context });
+        if (readOnOpen && context.snapshot?.state === 'saved'
+          && (!context.snapshot.nextAttemptAt || Date.parse(context.snapshot.nextAttemptAt) <= Date.now())) {
+          void load(true);
+        }
       } else throw new Error('Invalid correspondence response');
     } catch (error) {
       if (controller.signal.aborted) return;
@@ -64,6 +81,12 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
       if (error instanceof ApiError && [401, 403, 404].includes(error.status)) accessCallback.current?.(error.status);
     }
   }, [path]);
+
+  useEffect(() => {
+    if (read.state !== 'refreshing') return;
+    const timer = setTimeout(() => { void load(false); }, 3000);
+    return () => clearTimeout(timer);
+  }, [read, load]);
 
   useEffect(() => {
     void load(false, false, true);
@@ -80,9 +103,22 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
   }, [load]);
 
   useEffect(() => {
-    if (!read.context || read.state !== 'ready') return;
-    const oldest = oldestObservation(read.context);
-    const timer = setTimeout(() => { void load(false); }, Math.max(0, oldest + CORRESPONDENCE_MAX_AGE_MS - Date.now()));
+    const snapshot = read.context?.snapshot;
+    if (!snapshot) return;
+    const timer = setTimeout(() => {
+      earlier.current = undefined;
+      // A pending refresh may finish later, but its previous private evidence
+      // cannot remain visible beyond the server's retention deadline.
+      setRead(current => current.context?.snapshot === snapshot ? { state: current.state === 'loading' ? 'loading' : 'available' } : current);
+    }, Math.max(0, Date.parse(snapshot.expiresAt) - Date.now()));
+    return () => clearTimeout(timer);
+  }, [read.context]);
+
+  useEffect(() => {
+    if (!read.context || (read.state !== 'ready' && !(read.state === 'stale' && read.context.snapshot))) return;
+    const expires = read.context.snapshot ? Math.min(Date.parse(read.context.snapshot.expiresAt), Date.now() + CORRESPONDENCE_MAX_AGE_MS)
+      : oldestObservation(read.context) + CORRESPONDENCE_MAX_AGE_MS;
+    const timer = setTimeout(() => { void load(false); }, Math.max(0, expires - Date.now()));
     return () => clearTimeout(timer);
   }, [read.context, read.state, load]);
 

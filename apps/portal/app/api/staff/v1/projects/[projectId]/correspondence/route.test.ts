@@ -24,6 +24,28 @@ beforeEach(() => {
   mocks.access.mockResolvedValue({ kind: 'authenticated', session: { user: { id: actorId }, role: 'staff' } });
 });
 describe('staff correspondence route', () => {
+  it('checks saved evidence through the receiver on GET without requesting a mailbox refresh', async () => {
+    mocks.summary.mockResolvedValue({ project: { id: projectId, contactEmail: 'customer@example.test' } });
+    mocks.config.mockReturnValue({ origin: 'https://velt.example.invalid', secret: 'test-only', snapshotsEnabled: true });
+    expect((await GET(request({ method: 'GET' }), context)).status).toBe(200);
+    expect(mocks.read).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ snapshot: {
+      identityHash: expect.stringMatching(/^[a-f0-9]{64}$/), customerEmail: 'customer@example.test', refresh: false,
+    } }), expect.any(AbortSignal));
+    expect(mocks.access).toHaveBeenCalled();
+  });
+  it('withholds saved emails if the customer changes during the request', async () => {
+    mocks.config.mockReturnValue({ origin: 'https://velt.example.invalid', secret: 'test-only', snapshotsEnabled: true });
+    mocks.summary.mockResolvedValueOnce({ project: { id: projectId, contactEmail: 'one@example.test' } })
+      .mockResolvedValueOnce({ project: { id: projectId, contactEmail: 'two@example.test' } });
+    expect((await GET(request({ method: 'GET' }), context)).status).toBe(409);
+  });
+  it('returns availability when no saved result exists without inventing empty correspondence', async () => {
+    mocks.summary.mockResolvedValue({ project: { id: projectId, contactEmail: 'customer@example.test' } });
+    mocks.config.mockReturnValue({ origin: 'https://velt.example.invalid', secret: 'test-only', snapshotsEnabled: true });
+    mocks.read.mockResolvedValue(null);
+    expect(await (await GET(request({ method: 'GET' }), context)).json()).toMatchObject({ state: 'available' });
+    expect(mocks.anchors).not.toHaveBeenCalled();
+  });
   it('replaces remote association claims with project-bound evidence and strips raw headers', async () => {
     const base = await mocks.read();
     mocks.read.mockClear();
@@ -97,7 +119,7 @@ describe('staff correspondence route', () => {
     expect(await response.text()).not.toContain('Verified transport');
   });
   it('discards completed evidence if project visibility changes during the read', async () => {
-    mocks.summary.mockResolvedValueOnce({}).mockResolvedValueOnce(null);
+    mocks.summary.mockResolvedValueOnce({ project: { id: projectId } }).mockResolvedValueOnce(null);
     expect((await POST(request(), context)).status).toBe(404);
   });
   it('redacts remote failure details', async () => {

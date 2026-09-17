@@ -32,6 +32,21 @@ without recalculating totals or equating payment with delivery readiness.
 
 ## Staff correspondence boundary
 
+Reliability amendment in progress (17 September; not deployed): Jordan approved
+15-minute reuse and at most24-hour saved correspondence with age visible, current
+authorization, duplicate refresh coalescing and up to60 shared Outlook reads/hour.
+The local optional `PORTAL_CORRESPONDENCE_SNAPSHOT_ENABLED` capability adds a signed
+customer identity hash and refresh choice. GET checks receiver-side saved evidence
+without starting a mailbox read; POST requests a bounded refresh. The receiver owns
+encrypted retention and connection-generation checks. Portal rechecks staff/project
+access and customer identity before delivery and recomputes project association.
+Snapshots contain filtered email presentation, not reused AI interpretation or
+commercial sources. On navigation the UI requests permission-checked saved results;
+saved email age is visible and current project/commercial state stays independent.
+The flag remains unset until the receiver, retention and capacity migrations and
+the paired real-project proof are ready. The existing behavior described below is
+the previously published version; the roadmap tracks remaining verification.
+
 All signed-in Sanctuary staff are the approved audience. The Portal
 `GET/POST /api/staff/v1/projects/[projectId]/correspondence` requires staff
 authentication and auth-bound project visibility. GET checks configuration;

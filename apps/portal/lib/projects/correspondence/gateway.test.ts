@@ -12,6 +12,15 @@ const config = { origin: 'https://velt.example.invalid', secret: 'a'.repeat(64) 
 const payload = () => ({ schemaVersion: STAFF_CORRESPONDENCE_VERSION, projectId, requestId, context: structuredClone(correspondenceFixture) });
 
 describe('staff correspondence gateway', () => {
+  it('accepts dated saved evidence only within the bound retention window', () => {
+    const reply = payload();
+    const checkedAt = reply.context.observedAt;
+    Object.assign(reply.context, { snapshot: { checkedAt, expiresAt: new Date(now + 24 * 60 * 60_000).toISOString(), state: 'saved', nextAttemptAt: null } });
+    expect(parseStaffCorrespondence(reply, projectId, requestId, now + 60 * 60_000).snapshot?.state).toBe('saved');
+    expect(() => parseStaffCorrespondence(reply, projectId, requestId, now + 24 * 60 * 60_000)).toThrow();
+    Object.assign(reply.context, { snapshot: { checkedAt, expiresAt: new Date(now + 25 * 60 * 60_000).toISOString(), state: 'saved', nextAttemptAt: null } });
+    expect(() => parseStaffCorrespondence(reply, projectId, requestId, now)).toThrow();
+  });
   it('requests reply evidence only after explicit receiver rollout enablement', async () => {
     const fetcher = vi.fn(async () => Response.json(payload()));
     await readStaffCorrespondence({ ...config, includeMessageLineage: true }, { projectId, actorId }, new AbortController().signal,

@@ -21,7 +21,7 @@ const safeMailFailures = new Set([
 
 export default function ProjectCorrespondenceCard({ context, state = 'not_connected', onRefresh, onAnalyze, sample = false, project }: {
   context?: ProjectCorrespondenceContext;
-  state?: 'not_connected' | 'available' | 'loading' | 'ready' | 'stale' | 'error';
+  state?: 'not_connected' | 'available' | 'loading' | 'refreshing' | 'ready' | 'stale' | 'error';
   onRefresh?: () => void;
   onAnalyze?: () => void;
   sample?: boolean;
@@ -40,14 +40,18 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
   const sources = new Map(context?.sources.map((source) => [source.id, source]));
   const correspondence = context?.sources.filter((source) => source.association === 'customer_address_only').sort((a, b) => Date.parse(b.recordedAt) - Date.parse(a.recordedAt)) ?? [];
   return <Card className={styles.card} id="customer-emails" tabIndex={-1} title="Customer emails" padding="compact" aria-label="Customer conversations"
-    action={onRefresh && state !== 'loading' ? <Button variant="tertiary" size="small" onClick={onRefresh}>{state === 'available' ? 'Check conversations' : 'Check again'}</Button> : undefined}>
+    action={onRefresh && state !== 'loading' && state !== 'refreshing' ? <Button variant="tertiary" size="small" onClick={onRefresh}>{state === 'available' ? 'Check conversations' : 'Check again'}</Button> : undefined}>
     <div className={styles.stack}>
       {state === 'not_connected' ? <p className={styles.explanation}>Customer emails are not connected to staff project pages yet. Team notes and portal events are available below.</p>
         : state === 'available' ? <p className={styles.explanation}>Check linked customer emails for a current, sourced summary. This reads correspondence and does not send a reply or change the project.</p>
-        : state === 'loading' ? <LoadingSkeleton rows={3} label="Checking customer conversations" />
+        : state === 'refreshing' ? <p className={styles.explanation} role="status">A mailbox check is already running or waiting to retry. Checking for its result shortly.</p>
+        : state === 'loading' && !context ? <LoadingSkeleton rows={3} label="Checking customer conversations" />
         : state === 'error' || !context || mailUnavailable ? <DataStatePanel state="unavailable" title="Conversations unavailable" description={`${mailFailure ?? 'The latest customer correspondence could not be checked.'} No agreement or next step is inferred.`} onRetry={onRefresh} />
         : <>
-          {state === 'stale' ? <AlertBanner tone="warning" title="Earlier conversation summary">This summary is no longer current. Check again for new correspondence before changing the job.</AlertBanner> : null}
+          {context.snapshot ? <p className={styles.explanation} role="status">
+            Emails checked {formatPortalDateTime(context.snapshot.checkedAt)}.
+            {state === 'loading' ? ' Checking for newer emails…' : context.snapshot.state === 'saved' ? ' Showing saved emails; newer messages may be missing.' : ' Recent saved result.'}
+          </p> : state === 'stale' ? <AlertBanner tone="warning" title="Earlier conversation summary">This summary is no longer current. Check again for new correspondence before changing the job.</AlertBanner> : null}
           <p className={styles.explanation}>{sample ? 'Sample email excerpts. Your real Outlook emails are not connected to this preview.' : context.messages?.some(message => message.projectLink?.state === 'linked') ? 'Project-linked emails are shown first. Other customer emails are kept separate.' : 'Matched to the customer, not yet confirmed to this job.'}</p>
           {context.messages ? <ProjectEmailMessages messages={context.messages} sample={sample} project={project} expanded={expanded} onExpand={onExpand} earlierOpen={earlierOpen} onEarlierOpen={setEarlierOpen} /> : <div className={styles.messages} aria-label="Email excerpts">
             {correspondence.length ? correspondence.map((source) => {

@@ -6,6 +6,7 @@ import { isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { resolvePortalAccessState, type PortalAccessLookup } from '@/lib/portalAccess';
 import { readProjectSendAnchors } from '@/lib/projects/correspondence/projectSendAnchors';
 import { associateCorrespondenceContext } from '@/lib/projects/correspondence/associateContext';
+import { createHash } from 'node:crypto';
 
 export const runtime = 'nodejs';
 type Context = { params: Promise<{ projectId: string }> };
@@ -53,8 +54,14 @@ async function handle(request: Request, context: Context, check: boolean) {
     const summary = await getProjectPageSummary(projectId, diagnostics, auth.supabase);
     if (!summary) return fail('Project not found', 404);
     const config = correspondenceGatewayConfig();
-    if (!check || !config) return privateResponse(jsonOk({ state: config ? 'available' : 'not_connected' }, 200, diagnostics));
-    const result = await readStaffCorrespondence(config, { actorId: auth.session.user.id, projectId: projectUuid, ...(analyze ? { analyze: true } : {}) }, request.signal);
+    const customerEmail = summary.project.contactEmail?.trim().toLowerCase();
+    if (!config || (!check && (!config.snapshotsEnabled || !customerEmail))) return privateResponse(jsonOk({ state: config ? 'available' : 'not_connected' }, 200, diagnostics));
+    const identityHash = createHash('sha256').update(JSON.stringify([summary.project.contactId ?? null,
+      summary.project.contactEmail?.trim().toLowerCase() ?? null])).digest('hex');
+    const result = await readStaffCorrespondence(config, { actorId: auth.session.user.id, projectId: projectUuid, ...(analyze ? { analyze: true } : {}),
+      ...(config.snapshotsEnabled && customerEmail && !analyze ? { snapshot: { identityHash, customerEmail, refresh: check } } : {}) }, request.signal);
+    if (!result) return privateResponse(jsonOk({ state: 'available' }, 200, diagnostics));
+    if ('state' in result) return privateResponse(jsonOk({ state: 'refreshing' }, 200, diagnostics));
     // Old receivers lack lineage. Avoid provider reads until there is evidence to join.
     const anchors = result.messages?.some(message => message.lineage)
       ? await readProjectSendAnchors(auth.supabase, projectUuid, request.signal)
@@ -62,7 +69,11 @@ async function handle(request: Request, context: Context, check: boolean) {
     const associated = associateCorrespondenceContext(result, projectUuid, anchors);
     const currentAccess = await resolvePortalAccessState(auth.supabase as unknown as PortalAccessLookup);
     if (currentAccess.kind !== 'authenticated' || currentAccess.session.user.id !== auth.session.user.id) return fail('Project access changed', 403);
-    if (!await getProjectPageSummary(projectId, diagnostics, auth.supabase)) return fail('Project not found', 404);
+    const currentSummary = await getProjectPageSummary(projectId, diagnostics, auth.supabase);
+    if (!currentSummary) return fail('Project not found', 404);
+    const currentIdentity = createHash('sha256').update(JSON.stringify([currentSummary.project.contactId ?? null,
+      currentSummary.project.contactEmail?.trim().toLowerCase() ?? null])).digest('hex');
+    if (currentIdentity !== identityHash) return fail('Project customer changed; check conversations again', 409);
     return privateResponse(jsonOk({ state: 'ready', context: associated }, 200, diagnostics));
   } catch {
     return fail('Customer conversations could not be checked', 503);

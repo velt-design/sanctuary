@@ -4,6 +4,7 @@ import { validInternetMessageId } from './messageAssociation';
 export const STAFF_CORRESPONDENCE_VERSION = 'sanctuary.staff-correspondence.v1';
 export const STAFF_CORRESPONDENCE_PATH = '/api/customer-journey/staff-summary';
 export const CORRESPONDENCE_MAX_AGE_MS = 120_000;
+export const CORRESPONDENCE_SNAPSHOT_MAX_AGE_MS = 24 * 60 * 60_000;
 
 export function correspondenceSourceHref(value: string): string | null {
   try {
@@ -55,6 +56,7 @@ export const correspondenceContextSchema = z.object({
   answer: z.object({ sections: z.array(section).length(3) }).strict(),
   sources: z.array(source).max(100), limitations: z.array(text(1000)).max(40),
   messages: z.array(message).max(25).optional(),
+  snapshot: z.object({ checkedAt: instant, expiresAt: instant, state: z.enum(['recent', 'saved']), nextAttemptAt: instant.nullable() }).strict().optional(),
 }).strict().superRefine((value, ctx) => {
   const ids = new Set(value.sources.map(item => item.id));
   if (new Set(value.messages?.map(item => item.id)).size !== (value.messages?.length ?? 0)) {
@@ -78,7 +80,13 @@ export function parseStaffCorrespondence(value: unknown, projectId: string, requ
   }).strict().parse(value);
   if (result.projectId !== projectId || result.requestId !== requestId) throw new Error('Correspondence binding mismatch.');
   const dates = [result.context.observedAt, ...result.context.sources.map(item => item.observedAt), ...(result.context.messages ?? []).map(item => item.observedAt)];
-  if (dates.some(date => now - Date.parse(date) > CORRESPONDENCE_MAX_AGE_MS || Date.parse(date) - now > 5000)) {
+  const snapshot = result.context.snapshot;
+  if (snapshot && (Date.parse(snapshot.checkedAt) > now + 5000 || Date.parse(snapshot.expiresAt) <= now
+    || Date.parse(snapshot.expiresAt) <= Date.parse(snapshot.checkedAt)
+    || Date.parse(snapshot.expiresAt) - Date.parse(snapshot.checkedAt) > CORRESPONDENCE_SNAPSHOT_MAX_AGE_MS
+    || Date.parse(snapshot.checkedAt) !== Date.parse(result.context.observedAt))) throw new Error('Expired correspondence snapshot.');
+  const maxAge = snapshot ? CORRESPONDENCE_SNAPSHOT_MAX_AGE_MS : CORRESPONDENCE_MAX_AGE_MS;
+  if (dates.some(date => now - Date.parse(date) > maxAge || Date.parse(date) - now > 5000)) {
     throw new Error('Correspondence evidence is not current.');
   }
   return result.context;

@@ -12,6 +12,32 @@ afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); document.body.innerH
 const flush = async () => { await act(async () => { await Promise.resolve(); }); };
 
 describe('private correspondence lifecycle', () => {
+  it('removes expired saved mail while a refresh is still waiting', async () => {
+    const context = { ...correspondenceFixture, snapshot: { checkedAt: correspondenceFixture.observedAt,
+      expiresAt: new Date(Date.now() + 1000).toISOString(), state: 'recent', nextAttemptAt: null } };
+    mocks.api.mockResolvedValueOnce({ state: 'ready', context }).mockImplementationOnce(() => new Promise(() => undefined));
+    const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
+    await flush();
+    const refresh = Array.from(view.container.querySelectorAll('button')).find(button => button.textContent === 'Check again')!;
+    await act(async () => { refresh.click(); });
+    expect(view.container.textContent).toContain('The customer is asking');
+    await act(async () => { vi.advanceTimersByTime(1001); });
+    expect(view.container.textContent).not.toContain('The customer is asking');
+    view.unmount();
+  });
+  it('returns to authorized recent saved emails without another mailbox refresh', async () => {
+    const context = { ...correspondenceFixture, snapshot: { checkedAt: correspondenceFixture.observedAt,
+      expiresAt: new Date(Date.now() + 23 * 60 * 60_000).toISOString(), state: 'recent', nextAttemptAt: null } };
+    mocks.api.mockResolvedValue({ state: 'ready', context });
+    const first = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
+    await flush(); first.unmount();
+    const returned = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
+    await flush();
+    expect(returned.container.textContent).toContain('The customer is asking');
+    expect(returned.container.textContent).toContain('Recent saved result');
+    expect(mocks.api.mock.calls.map(call => call[1].method)).toEqual(['GET', 'GET']);
+    returned.unmount();
+  });
   it.each([401, 403, 404])('never reads mail when initial access returns %s', async status => {
     mocks.api.mockRejectedValueOnce(new ApiError('Denied', { status, body: null }));
     const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
