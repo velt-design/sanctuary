@@ -10,6 +10,11 @@ import ProjectEmailMessages from './ProjectEmailMessages';
 
 const topics = { agreement: 'Agreement evidence in emails', job_status: 'Job position', next_action: 'Suggested next step' };
 const kinds = { recorded: 'AI summary of records', interpretation: 'AI interpretation', recommendation: 'Suggestion', unknown: 'Not established' };
+const safeMailFailures = new Set([
+  'Outlook returned more data than this check permits.',
+  'Outlook returned message data that could not be safely read.',
+  'Outlook could not complete the message request.',
+]);
 
 export default function ProjectCorrespondenceCard({ context, state = 'not_connected', onRefresh, onAnalyze, sample = false, project }: {
   context?: ProjectCorrespondenceContext;
@@ -24,6 +29,7 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
   // The deployed receiver preserves this explicit failure limitation even when
   // project records are available. An empty mail array alone is not a failure.
   const mailUnavailable = context?.limitations.includes('Outlook correspondence is unavailable or has not been checked.') === true;
+  const mailFailure = context?.limitations.find(value => safeMailFailures.has(value));
   const onExpand = (id: string, open: boolean) => setExpanded(previous => {
     if (previous.has(id) === open) return previous;
     const next = new Set(previous); if (open) next.add(id); else next.delete(id); return next;
@@ -36,7 +42,7 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
       {state === 'not_connected' ? <p className={styles.explanation}>Customer emails are not connected to staff project pages yet. Team notes and portal events are available below.</p>
         : state === 'available' ? <p className={styles.explanation}>Check linked customer emails for a current, sourced summary. This reads correspondence and does not send a reply or change the project.</p>
         : state === 'loading' ? <LoadingSkeleton rows={3} label="Checking customer conversations" />
-        : state === 'error' || !context || mailUnavailable ? <DataStatePanel state="unavailable" title="Conversations unavailable" description="The latest customer correspondence could not be checked. No agreement or next step is inferred." onRetry={onRefresh} />
+        : state === 'error' || !context || mailUnavailable ? <DataStatePanel state="unavailable" title="Conversations unavailable" description={`${mailFailure ?? 'The latest customer correspondence could not be checked.'} No agreement or next step is inferred.`} onRetry={onRefresh} />
         : <>
           {state === 'stale' ? <AlertBanner tone="warning" title="Earlier conversation summary">This summary is no longer current. Check again for new correspondence before changing the job.</AlertBanner> : null}
           <p className={styles.explanation}>{sample ? 'Sample email excerpts. Your real Outlook emails are not connected to this preview.' : context.messages?.some(message => message.projectLink?.state === 'linked') ? 'Project-linked emails are shown first. Other customer emails are kept separate.' : 'Matched to the customer, not yet confirmed to this job.'}</p>

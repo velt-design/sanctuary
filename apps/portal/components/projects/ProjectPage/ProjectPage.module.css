@@ -204,3 +204,31 @@
     justify-content: flex-start;
   }
 }
+
+@container (max-width: 767px) {
+  .mastheadHeader :global([data-page-header-row="true"]) {
+    flex-direction: column;
+    align-items: stretch;
+    overflow-x: visible;
+  }
+
+  .mastheadHeader :global([data-page-header-identity="true"]),
+  .mastheadHeader :global([data-page-header-utility="true"]),
+  .mastheadHeader :global([data-page-header-actions="true"]) {
+    flex: 0 1 auto;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .mastheadHeader :global([data-page-header-identity="true"] h1) {
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .mastheadHeader :global([data-page-header-actions="true"]),
+  .mastheadActions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}

@@ -66,6 +66,10 @@ text is independent of AI citations. Identical complete copies are grouped with
 original links retained; latest mail and latest exact-customer reply are featured.
 Customer-address matches remain unconfirmed to the job. Matching a quote reference
 in a subject does not establish acceptance or complete conversation coverage.
+Jordan confirmed on17 September that older emails without verifiable project
+links should remain visible with that uncertainty; do not add manual conversation
+linking or a tracking task. If no incoming message is linked, the separate
+unconfirmed section opens and includes the latest customer email in its preview.
 React escapes message text; native disclosures expand it. Older excerpt-only
 contexts remain labelled. Samples have no real Outlook links or live connection.
 

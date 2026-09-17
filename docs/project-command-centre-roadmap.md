@@ -4,136 +4,62 @@
 
 ### Current focus: useful workflow before release
 
-Portal association batch published at42c8774; the normal pre-push full workspace
-typecheck and lint passed, and both hosted Vercel builds passed. Required PR CI
-was absent because newer main conflicted in two additive documentation sections.
-Main eb6ba97 is now integrated locally as5b2718a, retaining both contracts; its
-normal push passed full workspace types and lint and published successfully. All required hosted checks passed on this integrated revision. No runtime conflict was present. The separate
-Xero release owner's sanitized source-verification doc update is accepted for
-publication with the next coherent documentation batch.
+Current checkpoint, 17 September. This section supersedes historical progress
+and scorecards below. Goal remains active; the Portal release is not ready.
 
-Receiver release completed under Jordan's17 September approval. Approved feature
-8d9d2cb was unchanged after required current-main integration as57f7a6a;47 focused
-tests, independent integration review and all exact-head hosted checks passed.
-PR376 merged as4ba3b441ed55df8eea4af74e1fcc919bd452972e. Production velt.systems
-was verified on Ready deployment dpl_HNBcF9wcub1WbzUTN27feBNirErr. The prior
-production deployment is retained in the private release receipt for recovery.
-No database migration, new grant or customer send occurred.
+**Owner decisions and boundaries**
+- Retire unused sent/reply recording and automatic cadence; retain real manual
+  work, commercial history and specialist tools. The genuine sent/reply outcome
+  test is superseded by Jordan's explicit retirement decision (task messages,
+  17 September). Never fabricate a business event to test it.
+- All staff may read correspondence. Historical emails without reliable saved
+  identity stay readable as project match unconfirmed; Jordan explicitly chose
+  no manual linking or tracking task on17 September.
+- No automatic sends, default AI interpretation, inferred acceptance, bulk
+  backfill, access bypass or repeated sign-in requests.
+- Keep the fixed protected review origin below across revisions. Portal release
+  remains conditional on readiness; receiver approval is revision-specific.
 
-Protected Portal candidate dpl_2qs6GBEDVP4xBAQM7eepF31QBcvQ is Ready on source
-5b2718a with staff correspondence and lineage enabled only on that deployment.
-It does not auto-assign custom domains or change global project flags. Production
-Portal alias was dpl_AafQWbYZy6hENJU5oUbHmTqwtL5T before candidate creation.
-The fixed review alias still serves the older protected candidate pending Ready
-verification and alias reconciliation. Its existing staff session survived the alias update and opened the real project
-and successfully read customer mail with sender/date/excerpts/Outlook links.
-No additional sign-in request is needed. New association behavior remains unproven
-until the candidate is ready and tested. Portal Quality is at fixture browser
-smoke; other hosted jobs and both Vercel builds passed on5b2718a.
+**Current versions and access**
+- Sanctuary worktree `sanctuary-project-clarity`, branch
+  `codex/project-clarity-20260916`, draft PR145, published805da77.
+  Main eb6ba97 and the coordinated Xero verification documentation are included.
+- Protected candidate dpl_G3Lq73rJApdcZE6eSNJe2XAcjVLY is Ready on805da77.
+  Staff correspondence and lineage are enabled only on this candidate. Stable
+  review origin: https://sanctuary-portal-git-codex-pro-2efc62-jordans-projects-43df95bd.vercel.app.
+  Unsigned302 and retained staff session were verified; no new login needed.
+  Git pushes may move the branch alias: reconcile to the protected candidate
+  and check protection before handover. Production Portal remains unchanged
+  by this task (last verified dpl_AafQWbYZy6hENJU5oUbHmTqwtL5T).
+- Velt PR376 was released under Jordan's approval: approved feature8d9d2cb
+  unchanged by main integration57f7a6a, merged4ba3b441ed55df8eea4af74e1fcc919bd452972e.
+  Live receiver dpl_HNBcF9wcub1WbzUTN27feBNirErr verified Ready.47 focused tests,
+  independent integration review and all hosted checks passed. No DB or grant
+  change and no customer send. Private rollback receipt retained.
+- Velt PR377 at177cd1999dd30def2d4931b3316d4be9eafa4704 is review-ready with all
+  hosted checks and independent review passed; separate release approval pending.
+  It exposes only three fixed typed mailbox failure reasons, never raw errors.
+  Portal reason allowlist and mobile header wrapping are local/unpublished.
 
-Real revised quote proof: direct current quote send linked successfully, earlier
-linked mail retained and three unconfirmed messages separated. Correct quote
-version opened and Overview return preserved the outstanding decision and owner.
-Private evidence: `.codex-tmp/clarity/revised-real-quote-proof.txt`. Incoming manual
-thread remains unconfirmed, so latest relevant incoming coverage is not achieved.
-Card-level legacy customer-only wording contradicted successful links; conditional
-copy correction is local with9 card tests passing, not yet published. New-enquiry,
-accepted/mobile and independent real-journey review remain pending.
-Real enquiry and accepted checks (17 September): the enquiry shows correct owner,
-estimate and readable incoming/outgoing messages, but all four are unconfirmed.
-The legacy website autoresponder source discards its returned provider ID and its
-send audit stores no identity; this is a concrete historical coverage gap, not
-permission to associate by subject. The accepted project shows correct accepted
-version/payment distinction, but mail was unavailable. The receiver returns its
-explicit unavailability limitation with an empty messages array; the UI incorrectly
-presented a normal empty result. Local fix presents unavailable/retry and hides AI
-for that case; regression distinguishes successful empty reads. Generic fallback
-review-current-quote instruction was removed (enquiries may have no quote).
-24 focused tests and Portal typecheck pass for these fixes. They are unpublished.
-Mobile enquiry measured390 viewport/375 content and scroll width: no page overflow;
-header truncation and full journey usability still need review.
-Independent reviewer cannot access this IAB session (Chrome-only inventory).
-No independent real-browser pass is claimed; source integration review remains valid.
-Discovery fix: when no incoming message is linked, the separate unconfirmed group
-now opens and its two-message preview retains the latest customer email even if
-newer staff messages exist. Labels preserve uncertainty; no association is promoted.
-Independent source review found no material regression and reran31 focused tests.
-Portal typecheck passes. Browser verification of these latest fixes is pending.
-Latest verification: independent review of quote/enquiry/accepted samples at
-desktop and390px found no material association-presentation defect. Keyboard
-disclosures/focus, separate newer other-property mail, sender/date readability,
-pricing distinctions and retired-control absence were checked. Real Outlook,
-disabled sample actions and real mobile-header identification remain unverified.
-Velt full `pnpm run check` completed successfully; its private log is
-`.codex-tmp/lineage-check.log` in the `velt-staff-correspondence` worktree.
-The coordinated Xero build pause is over and local3025 was restored and verified.
-Hosted stable review origin is unchanged.
-
-**Association batch, published for verification (17 September):**
-- Portal resolves authorized quote/invoice sends and durable enquiry audit/outbox
-  evidence through the package-owned bounded Resend identity reader. It computes
-  links server-side and strips raw lineage and upstream project-link claims.
-- Velt branch `codex/staff-message-lineage-20260917` extracts only bounded RFC
-  message/reply IDs. The signed `includeMessageLineage:true` capability preserves
-  legacy response shape when absent. Portal opt-in is default-off through
-  `PORTAL_CORRESPONDENCE_MESSAGE_LINEAGE_ENABLED`; deploy the compatible receiver
-  before enabling it. No environment or production state has changed.
-- Direct recorded sends are identified separately from replies. Every observed
-  ancestry branch must resolve to verified anchors for a reply link; unknown
-  parents, cycles and incomplete provider coverage suppress reply links. This
-  establishes message-specific reply relationships, not exclusive project subject
-  matter. Legacy sends without identities remain unconfirmed.
-- Independent review caught the current-project-only false-confidence defect.
-  The correction above was independently rechecked (36 tests) and the P1 closed
-  under message-specific semantics. Historical/live coverage remains unresolved.
-- UI features linked messages; unknown/conflicting mail remains readable in a
-  separate disclosure, automatically open if no links exist. Two unconfirmed
-  excerpts appear before older mail. Grouping cannot merge different link states.
-  Local quote story now includes newer other-property mail, verified separate in
-  the browser. Independent desktop/mobile sample scenario review passed.
-- Evidence: Portal overview/correspondence matrix171 passed plus the corrected
-  card suite9 passed (one prior selector assertion needed adapting to the open
-  unconfirmed group); Portal TypeScript passes. Velt customer-journey/provider
-  matrix97 passed,4 optional integration skips; changed runtime lint passes.
-  Actual paired signed wire tests pass on both sides, including capability
-  tampering rejection. Synthetic artifact: `.codex-tmp/clarity/lineage-wire.json`.
-- Remaining: exact-revision release checks, actual
-  provider identity availability and real revised desktop/mobile journey proof.
-  No new login request; preserve the review origin below. No production release,
-  customer send, backfill or migration installation. The goal remains active.
-**Review-access correction after owner intervention:** Jordan objected to repeated
-sign-in requests. Do not repeat them or issue another per-build review URL. Use
-the existing branch review address:
-https://sanctuary-portal-git-codex-pro-2efc62-jordans-projects-43df95bd.vercel.app.
-It now resolves to the protected afb32ef candidate dpl_8BMddLcsU7rHwHvm1Z1SancLswzu;
-unsigned requests redirect to Vercel authentication, and the browser reaches Staff
-Login. Existing sessions on unique build hosts do not establish a session there;
-no credential copying or access bypass was performed. Preserve this review origin
-across revisions. Git pushes can automatically move its branch alias to an ordinary
-preview: after publishing a verified protected candidate, explicitly reconcile
-the branch alias to that candidate and check protection before presenting it.
-The live Portal alias remains dpl_EPvN6dKDZMMQawDDLrptWngmAafk, unchanged.
-All PR145 checks at017a527, including Portal Quality, fixture browser smoke,
-performance and enquiry journey, have now passed. Earlier pending CI statements
-below are superseded. Real revised-preview acceptance remains unverified.
-
-Current acceptance reconciliation (older historical scorecards below do not
-override this table):
+**Evidence and remaining acceptance**
 
 | Requirement | Current evidence and remaining disposition |
 | --- | --- |
-| Remove unused sent/reply and cadence workflow; retain genuine work/history | Implemented and tested; 12 retirement DB cases and native concurrent-writer proof pass. Live retirement migration remains uninstalled. |
-| Readable correspondence and ten-second orientation | Synthetic desktop/mobile review passes. Real enquiry, quote and accepted baseline cases are identified on the older runtime; revised protected-runtime proof remains pending. |
-| Correct association and latest relevant job message | Recorded-send and fully anchored reply relationships implemented and independently reviewed locally. Unknown ancestry/coverage remains unconfirmed; real historical coverage and latest relevant message are still unverified. |
-| Correct commercial state and quote open/return | Real quote and accepted-version baseline journeys pass on the older runtime. Revised candidate and mobile acceptance remain pending. |
-| All-staff access and privacy boundaries | Staff-authenticated contracts and denial/lifecycle checks pass; all-staff revised live journey remains unverified. No access bypass, customer send, automatic AI interpretation or bulk backfill. |
-| Genuine sent/reply outcome | Superseded by explicit owner retirement; do not request a fabricated event. |
-| Independent final review and evidence-backed8/10 | Synthetic delivery review complete; independent revised real journey remains pending. Overall goal is not complete. |
-| Review access and release | Stable protected branch URL verified through Staff Login. PR145 remains draft/open with clean passing checks at017a527. No Portal release, new migration installation or global flag enablement. |
+| Useful workflow; preserve work/history | Cadence controls/readers retired in candidate;12 DB cases and native PostgreSQL17 concurrent-writer proof passed. Migration20260917000002 remains uninstalled. Genuine manual work and specialist tools retained. |
+| Real quote and correct quote open/return | Revised real quote read linked its recorded send; earlier linked and three unconfirmed messages stayed separate. Exact current quote opened and return preserved outstanding decision and owner. Private evidence `.codex-tmp/clarity/revised-real-quote-proof.txt`. Mobile return remains pending. |
+| Real enquiry | Correct owner, no quote and current estimate; four readable emails. Legacy marketing sender discarded provider identity, so these remain honestly unconfirmed under owner decision. Generic instruction to review a nonexistent quote removed in805da77. |
+| Real accepted job | Accepted version, multiple-acceptance warning and payment distinctions verified. Mail request failed;805da77 correctly shows unavailable/retry rather than normal empty. Correct quote opening passed on earlier baseline; revised mobile return pending. |
+| Message relevance/discovery | Direct sends and fully anchored reply relationships implemented. Every ancestry branch must resolve; unknown parents/cycles/incomplete coverage suppress reply links.805da77 features latest unconfirmed customer email if no linked customer reply exists, without promoting association. Healthy revised live display still needs proof. |
+| Mail reliability | Authenticated Connections shows successful access checks then inbox_read unavailable/report_failed. Not a sign-in failure. Provider cause unknown; sensitive config retrieval was unavailable and no bypass attempted. Await PR377 release before bounded diagnostic retry; do not raise caps or clear audit. |
+| Desktop/mobile clarity | Independent populated sample walkthrough passed, including keyboard disclosures, sender/date and separate other-property mail. Real390px page had no overflow but header truncated identity. Local scoped header stacking independently verified in Chrome at390x844: full long title, separate search row, owner/actions visible, no overflow and keyboard search focus. Desktop retained. This verifies the shell header, not real mobile quote return. |
+| All-staff access/security | Staff auth/denial contracts and lifecycle checks passed; revised non-owner live journey remains unverified. No broadening beyond authorized staff or public data exposure. |
+| Independent final real review | Reviewer lacks root IAB session; source/tests and sample browser evidence are independent, real journey is not. Do not claim final8/10 or independent live pass. |
+| Release/handover |805da77 full workspace types/lint and31 independent focused tests passed. Hosted performance and other checks pass; Portal Quality run35174339022 still running at last check. Current local reason suite12 passed. Protected review remains available; production UI, global flags and retirement migration unchanged. |
 
-Earlier login-blocked checkpoints are superseded: association implementation and
-review progressed independently, and the goal is active. Keep one review origin
-and do not repeat owner sign-in prompts. Latest verified state is above.
+Next authorized work: verify scoped mobile header, finish coherent Portal batch
+and its required checks, preserve fixed review host, then diagnose accepted mail
+after approved receiver release. Reconcile real/mobile/non-owner and independent
+journey gaps before conditional Portal release. No repeated login request.
 
 Provider basis for the implemented identity resolver:
 https://resend.com/changelog/message-id-for-sent-emails and
