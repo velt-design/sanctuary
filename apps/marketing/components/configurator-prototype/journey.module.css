@@ -35,3 +35,11 @@
   .share button { font-size: 12px; text-underline-offset: 5px; }
   .selectionNote { margin-inline: 28px; }
 }
+
+@media (min-width: 1001px) {
+ .next {
+  --color-text-primary:var(--theme-elevated-primary,#111210);
+  --color-text-secondary:var(--theme-elevated-secondary,#555852);
+  --color-text-subtle:var(--theme-elevated-subtle,#5f635c);
+ }
+}

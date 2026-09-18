@@ -20,3 +20,12 @@
  --color-text-subtle:var(--theme-selected-subtle,#5f635c);
  color:var(--color-text-primary);
 }
+
+/* Desktop uses an elevated stage surface and transparent hover treatment. */
+@media (min-width: 1001px) {
+ .nav, .tabs button:hover {
+  --color-text-primary:var(--theme-elevated-primary,#111210);
+  --color-text-secondary:var(--theme-elevated-secondary,#555852);
+  --color-text-subtle:var(--theme-elevated-subtle,#5f635c);
+ }
+}

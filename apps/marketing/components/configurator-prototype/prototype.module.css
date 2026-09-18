@@ -214,3 +214,11 @@
  background:var(--control-selected);
  border-color:var(--color-rule-strong);
 }
+
+@media (min-width: 1001px) {
+ .page .price {
+  --color-text-primary:var(--theme-warm-primary,#111210);
+  --color-text-secondary:var(--theme-warm-secondary,#555852);
+  --color-text-subtle:var(--theme-warm-subtle,#5f635c);
+ }
+}

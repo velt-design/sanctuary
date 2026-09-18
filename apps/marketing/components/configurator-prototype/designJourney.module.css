@@ -54,7 +54,7 @@
   .breakdown > div { font-size: 13px; padding-block: 15px; }
 }
 @media (min-width: 1001px) and (prefers-reduced-motion: no-preference) {
-  .cards button, .next, .back { transition: background-color 160ms ease, border-color 160ms ease; }
+  .cards button, .next, .back { transition: none; /* Theme colours follow the shared renderer timeline. */ }
 }
 
 @media (min-width: 1001px) and (max-height: 800px) {
