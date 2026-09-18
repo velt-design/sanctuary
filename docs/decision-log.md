@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-09-18 — Verify configurator styling from the host page
+
+The desktop configurator review found that generic website `footer > div`
+rules added 48px padding to each configurator action-footer child when opened
+from the homepage. The direct preview did not expose the collision. Scope site
+footer styling to its explicit `data-site-footer` owner and verify the modal
+through a normal marketing entry as well as its standalone preview. The focused
+editorial browser regression compares both action-area heights. This correction
+changes presentation only; pricing and enquiry contracts retain their owners.
+
 
 ## 2026-09-17 — Verify approved composition on the delivered public route
 

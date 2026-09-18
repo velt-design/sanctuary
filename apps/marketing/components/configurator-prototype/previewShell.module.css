@@ -26,3 +26,14 @@
 }
 
 .panel:has([data-night="true"]) { background:#202523; color:#f3eee4; border-color:#566157; }.panel:has([data-night="true"]) .panelHeader { border-color:#515b54; }.panel:has([data-night="true"]) .panelHeader button { color:#d3d6cf; }
+
+/* Desktop editorial pass. Mobile retains its separately owned composition. */
+@media (min-width: 1001px) {
+  .panel { inset: 24px; width: calc(100% - 48px); height: calc(100dvh - 48px); border-color: var(--color-rule); }
+  .panel[open] { grid-template-rows: 68px minmax(0, 1fr); }
+  .panel::backdrop { background: #181a1766; }
+  .panelHeader { padding-inline: 28px; }
+  .panelHeader > span { font-size: 28px; font-weight: 450; letter-spacing: -.05em; }
+  .panelHeader button { font-size: 13px; min-width: 80px; }
+  .panelHeader button:focus-visible { outline: var(--focus-ring); outline-offset: 3px; }
+}

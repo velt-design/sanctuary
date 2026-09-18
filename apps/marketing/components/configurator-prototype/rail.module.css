@@ -3,3 +3,13 @@
 @media(max-width:720px){.nav{padding:5px 16px}.tabs button{font-size:11px}}
 
 .tabs button{border-bottom:2px solid var(--color-rule-strong);padding:0 3px}.tabs button:hover{background:var(--control-selected);border-bottom-color:var(--color-accent-olive);color:var(--color-text-primary)}.tabs button[aria-current]{border-bottom-color:var(--color-accent-olive)}.tabs button:focus-visible{outline:2px solid var(--color-accent-olive);outline-offset:3px}
+
+@media (min-width: 1001px) {
+  .nav { padding: 0 28px; background: var(--color-surface-elevated); }
+  .tabs { gap: 20px; }
+  .tabs button { min-height: 64px; padding: 0; border-bottom: 1px solid transparent; font-size: 13px; gap: 8px; }
+  .tabs small { width: auto; height: auto; border: 0; font-size: 10px; font-variant-numeric: tabular-nums; }
+  .tabs button[aria-current] { font-weight: 500; border-bottom-color: var(--color-text-primary); }
+  .tabs button[aria-current] small { background: transparent; color: inherit; }
+  .tabs button:hover { background: transparent; border-bottom-color: var(--color-rule-strong); }
+}

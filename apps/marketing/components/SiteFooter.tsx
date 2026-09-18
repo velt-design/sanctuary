@@ -64,7 +64,7 @@ export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProp
   });
 
   return (
-    <footer className="relative bg-[#121212] text-[#f5f6f7]">
+    <footer data-site-footer className="relative bg-[#121212] text-[#f5f6f7]">
       <div className="mx-auto grid w-full max-w-7xl gap-6 px-6 py-8 sm:px-8 md:grid-cols-2 md:gap-10 md:px-12 md:py-16 lg:grid-cols-[1.15fr_0.85fr_0.9fr]">
         <section aria-labelledby="footer-contact-heading" className="grid content-start gap-3 md:gap-5">
           <h2 id="footer-contact-heading" className="max-w-lg text-3xl font-semibold tracking-[0.08em] uppercase sm:text-4xl">
