@@ -1,5 +1,5 @@
 'use client';
-import { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 import type { SimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import type { PreviewRoofChoices } from './GableChoices';
 import { solvePergolaPreview } from './solvePreview';
@@ -10,7 +10,9 @@ import css from './mobileFootprint.module.css';
 export default function MobileFootprint({ input, roof, activeDimension }: {
   input: SimpleCoverInput; roof: PreviewRoofChoices; activeDimension: PreviewDimensionAxis | null;
 }) {
-  const plan = useMemo(() => solvePergolaPreview(input, roof).geometry?.plan, [input, roof]);
+  const patternId = useId();
+  const geometry = useMemo(() => solvePergolaPreview(input, roof).geometry, [input, roof]);
+  const plan = geometry?.plan;
   if (!plan) return <p className={css.unavailable}>Adjust your size to see the footprint.</p>;
   const { minX, minY, maxX, maxY } = plan.extents;
   const scale = Math.min(236 / Math.max(1, maxX - minX), 122 / Math.max(1, maxY - minY));
@@ -20,10 +22,46 @@ export default function MobileFootprint({ input, roof, activeDimension }: {
   const y = (value: number) => top + (value - minY) * scale;
   const width = `${(input.widthMm / 1000).toFixed(1)} m`, projection = `${(input.projectionMm / 1000).toFixed(1)} m`;
   const attached = roof.attachmentIntent !== 'freestanding';
+  const members = [...plan.members.rafters, ...plan.members.beams, ...plan.members.ledgers, ...plan.members.gutters, ...plan.members.ridge];
+  const primary = new Set([...plan.members.beams, ...plan.members.ledgers, ...plan.members.gutters, ...plan.members.ridge].map(member => member.id));
+  const rafters = new Set(plan.members.rafters.map(member => member.id));
+  const solidRegions = geometry?.covering?.regions.filter(region => region.material === 'solid') ?? [];
+  const points = (boundary: { x: number; y: number }[]) => boundary.map(p => `${x(p.x)},${y(p.y)}`).join(' ');
   return <svg className={css.plan} viewBox="0 0 340 230" role="img" aria-label={`Pergola footprint: width ${width}, projection ${projection}, ${attached ? 'attached to house' : 'freestanding'}`} data-mobile-footprint>
-    <title>Overhead footprint</title>
+    <title>Overhead plan with rafters, beams, gutters and roof materials</title>
+    <defs>
+      <mask id={`${patternId}-visible-rafters`} maskUnits="userSpaceOnUse" x="0" y="0" width="340" height="230" style={{ maskType: 'luminance' }}>
+        <rect width="340" height="230" fill="white" />
+        {solidRegions.map(region => <polygon key={region.id} points={points(region.boundary)} fill="black" />)}
+      </mask>
+      <pattern id={`${patternId}-acrylic`} width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect width="9" height="9" fill="#e2edf0" />
+        <path d="M 0 0 V 9" stroke="#7899a5" strokeOpacity=".2" strokeWidth=".5" />
+      </pattern>
+      <pattern id={`${patternId}-solid`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+        <rect width="6" height="6" fill="#777b6d" fillOpacity=".035" />
+        <path d="M 0 0 V 6" stroke="#777b6d" strokeOpacity=".25" strokeWidth=".5" />
+      </pattern>
+    </defs>
     {attached && <g data-house-edge><rect x={left} y={top - 28} width={w} height={28} fill="#e4e5de" /><text x={184} y={top - 11} textAnchor="middle" className={css.house}>House</text></g>}
-    <polygon points={plan.outline.map(p => `${x(p.x)},${y(p.y)}`).join(' ')} fill="none" stroke="currentColor" strokeWidth="1.5" />
+    <polygon points={points(plan.outline)} fill={`url(#${patternId}-acrylic)`} stroke="currentColor" strokeWidth=".8" />
+    {solidRegions.map(region => <g key={region.id} data-footprint-material="solid">
+      <polygon points={points(region.boundary)} fill="#f1f0ea" />
+      <polygon points={points(region.boundary)} fill={`url(#${patternId}-solid)`} />
+    </g>)}
+    {members.map(member => {
+      const a = member.centerline.start, b = member.centerline.end;
+      const dx = x(b.x) - x(a.x), dy = y(b.y) - y(a.y);
+      const length = Math.hypot(dx, dy);
+      if (!length) return null;
+      // Retain the solved member width, with a legible minimum at phone scale.
+      const half = Math.max(2, member.profile.widthMm * scale) / 2;
+      const ox = -dy / length * half, oy = dx / length * half;
+      return <polygon key={member.id} data-footprint-member={member.id}
+        mask={rafters.has(member.id) ? `url(#${patternId}-visible-rafters)` : undefined}
+        points={`${x(a.x)+ox},${y(a.y)+oy} ${x(b.x)+ox},${y(b.y)+oy} ${x(b.x)-ox},${y(b.y)-oy} ${x(a.x)-ox},${y(a.y)-oy}`}
+        fill="#f1f0ea" stroke={primary.has(member.id) ? '#454c42' : '#747b70'} strokeWidth={primary.has(member.id) ? .75 : .55} />;
+    })}
     {plan.members.posts.map(post => <rect key={post.id} x={x(post.centerline.start.x) - 2.5} y={y(post.centerline.start.y) - 2.5} width="5" height="5" fill="currentColor" />)}
     <g className={css.dimension} data-active={activeDimension === 'width'}>
       <path d={`M ${left} ${top+h+7} V ${top+h+27} M ${left+w} ${top+h+7} V ${top+h+27} M ${left} ${top+h+21} H ${left+w}`} />
