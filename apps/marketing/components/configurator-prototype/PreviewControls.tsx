@@ -46,7 +46,7 @@ function Dimension({ axis, label, value, min, max, onChange, onActivity }: {
     onPointerLeave={(event) => { if (!event.currentTarget.contains(document.activeElement)) onActivity(null); }}>
     <div className={slider.dimensionHeading}>
       <label htmlFor={`range-${label}`}>{label}</label>
-      <label className={slider.dimensionValue}><input aria-label={`${label} in metres`} inputMode="decimal" value={draft ?? (value / 1000).toFixed(1)}
+      <label className={`${slider.dimensionValue} ${styles.dimensionValue}`}><input aria-label={`${label} in metres`} inputMode="decimal" value={draft ?? (value / 1000).toFixed(1)}
         onFocus={(event) => event.currentTarget.select()}
         onChange={(event) => { setDraft(event.target.value); setNotice(''); }} onBlur={commit}
         onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }} /><span>m</span></label>

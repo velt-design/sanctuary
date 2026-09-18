@@ -24,3 +24,10 @@
 .connectionHint{flex-basis:100%;margin:6px 0 0;font-size:12px;line-height:1.6;color:var(--color-text-secondary)}
 
 .options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.options legend{font-size:12px}.option label{flex:1;min-height:48px}.connectionHint{grid-column:1/-1}
+
+.option[data-selected="true"] {
+ --color-text-primary:var(--theme-selected-primary,#111210);
+ --color-text-secondary:var(--theme-selected-secondary,#555852);
+ --color-text-subtle:var(--theme-selected-subtle,#5f635c);
+ color:var(--color-text-primary);
+}

@@ -9,7 +9,9 @@
 .context p { font: 450 clamp(28px, 3vw, 42px)/1.15 var(--font-display); letter-spacing: -.03em; }
 .context > span { color: var(--color-text-secondary); font-size: 13px; }
 .projectLink { display: block; width: fit-content; margin-top: 24px; font-size: 14px; text-decoration: underline; }
-.panel { position: fixed; inset: 12px; margin: 0; padding: 0; width: calc(100% - 24px); height: calc(100dvh - 24px); max-width: none; max-height: none; border: 1px solid var(--color-rule-strong); background: var(--color-surface-warm); color: var(--color-text-primary); overflow: hidden; overscroll-behavior: none; }
+.panel { composes: warm from './dayNightTheme.module.css';  position: fixed; inset: 12px; margin: 0; padding: 0; width: calc(100% - 24px); height: calc(100dvh - 24px); max-width: none; max-height: none; border: 1px solid var(--color-rule-strong); background: var(--color-surface-warm); color: var(--color-text-primary); overflow: hidden; overscroll-behavior: none; }
+/* Both classes share the dialog; outrank the foundation canvas regardless of bundle order. */
+.panel.panel { background: var(--color-surface-warm); }
 .panel[open] { display: grid; grid-template-rows: 48px minmax(0, 1fr); }
 .panel::backdrop { background: #28352042; }
 .panelHeader { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--color-rule); }
@@ -20,9 +22,19 @@
   .page { padding: 110px 24px 100px; }
   .intro h1 { font-size: clamp(48px, 13vw, 72px); }
   .context { margin-top: 72px; }
-  .panel { inset: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); width: calc(100% - 16px); height: calc(100dvh - max(8px, env(safe-area-inset-top)) - max(8px, env(safe-area-inset-bottom))); }
+  .panel {  inset: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); width: calc(100% - 16px); height: calc(100dvh - max(8px, env(safe-area-inset-top)) - max(8px, env(safe-area-inset-bottom))); }
   .panel[open] { grid-template-rows: 44px minmax(0, 1fr); }
   .panelHeader { padding-inline: 12px; }
 }
 
-.panel:has([data-night="true"]) { background:#202523; color:#f3eee4; border-color:#566157; }.panel:has([data-night="true"]) .panelHeader { border-color:#515b54; }.panel:has([data-night="true"]) .panelHeader button { color:#d3d6cf; }
+
+/* Desktop editorial pass. Mobile retains its separately owned composition. */
+@media (min-width: 1001px) {
+  .panel { inset: 24px; width: calc(100% - 48px); height: calc(100dvh - 48px); border-color: var(--color-rule); }
+  .panel[open] { grid-template-rows: 68px minmax(0, 1fr); }
+  .panel::backdrop { background: #181a1766; }
+  .panelHeader { padding-inline: 28px; }
+  .panelHeader > span { font-size: 28px; font-weight: 450; letter-spacing: -.05em; }
+  .panelHeader button { font-size: 13px; min-width: 80px; }
+  .panelHeader button:focus-visible { outline: var(--focus-ring); outline-offset: 3px; }
+}

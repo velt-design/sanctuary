@@ -8,7 +8,7 @@
 .row button { min-width:44px; }
 .navigation { margin:12px 0 4px; }.actions { display:flex; gap:8px; }
 .next,.back { min-height:44px; padding:12px 14px; font:inherit; font-size:12px; cursor:pointer; border:1px solid var(--color-accent-olive); }
-.next { flex:1; background:var(--color-accent-olive); color:var(--color-surface-warm); }.back { background:transparent; color:var(--color-text-primary); }
+.next { flex:1; background:var(--color-accent-olive); color:var(--color-on-accent,var(--color-surface-warm)); }.back { background:transparent; color:var(--color-text-primary); }
 .reviewLink { display:block; margin:auto; }.optional { display:block; margin:8px 0; font-size:11px; color:var(--color-text-secondary); }
 .navigation button:focus-visible,.review button:focus-visible { outline:2px solid var(--color-accent-olive); outline-offset:3px; }
 
@@ -32,3 +32,40 @@
 @container estimate-price (max-width:340px){.draftNote{display:none}}
 
 .estimate .priceLink strong:has(.draftNote){display:flex;align-items:center;white-space:nowrap}
+
+@media (min-width: 1001px) {
+  .review, .overview { padding: 28px; }
+  .overview h2, .review h2 { font-size: 32px; line-height: 1.12; font-weight: 450; letter-spacing: -.045em; margin: 10px 0 16px; }
+  .overview > p, .review p { font-size: 13px; line-height: 1.65; }
+  .cards { gap: 0; margin: 26px 0; border-top: 1px solid var(--color-rule); }
+  .cards button { gap: 7px; padding: 22px 0; border: 0; border-bottom: 1px solid var(--color-rule); }
+  .cards button:hover { background: var(--control-selected); }
+  .cards strong { font-size: 18px; font-weight: 450; letter-spacing: -.02em; }
+  .cards .selection { font-size: 13px; padding-left: 38px; }
+  .cards .cardBenefit { font-size: 12px; padding-left: 38px; }
+  .cards small { font-size: 11px; padding-left: 38px; }
+  .cards button:focus-visible { outline: 2px solid var(--color-accent-olive); outline-offset: 4px; }
+  .row { padding: 18px 0; }
+  .row strong { font-size: 14px; }
+  .row button, .reviewLink { font-size: 13px; text-underline-offset: 5px; }
+  .sectionIntro { padding: 16px 28px 0; }
+  .next, .back { font-size: 13px; min-height: 48px; }
+  .navigation { margin: 0; }
+  .breakdown > div { font-size: 13px; padding-block: 15px; }
+}
+@media (min-width: 1001px) and (prefers-reduced-motion: no-preference) {
+  .cards button, .next, .back { transition: none; /* Theme colours follow the shared renderer timeline. */ }
+}
+
+@media (min-width: 1001px) and (max-height: 800px) {
+  .overview { padding-top: 20px; }
+  .cards { margin-block: 20px; }
+  .cards button { padding-block: 16px; }
+}
+
+.cards button:hover {
+ --color-text-primary:var(--theme-selected-primary,#111210);
+ --color-text-secondary:var(--theme-selected-secondary,#555852);
+ --color-text-subtle:var(--theme-selected-subtle,#5f635c);
+ color:var(--color-text-primary);
+}

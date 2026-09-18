@@ -823,3 +823,28 @@ project/product refresh and history, validation, attachment, duplicate-submit,
 consented analytics and lower-case non-personal context coverage. The finder
 and hero-navigation suites preserve the approved desktop composition,
 `project_finder_home_v2` and responsive header states.
+
+### Desktop configurator editorial pass (18 September 2026)
+
+Jordan authorised a general desktop UI pass to match the Editorial + Quiet
+website. At widths above 1000px, the existing configurator CSS owners provide a
+wider choices panel, larger section headings, underlined stage/view navigation,
+ruled Personalise choices and a divided dimension/estimate strip. The dialog, embedded design entry and review share these
+styles. Mobile and tablet composition remains unchanged; a separate mobile
+redesign awaits the owner's direction. Native controls, focus indication, night
+colours and reduced-motion preference remain supported.
+
+This is a local review version, not a production release. Pricing, geometry,
+selection persistence and enquiry contracts remain with their existing owners.
+Browser coverage: `playwright/marketing.configurator-editorial.spec.ts`.
+The site footer now has an explicit `data-site-footer` styling boundary. Website
+footer rules must not style the configurator's action footer when the dialog is
+opened from a marketing page. The desktop regression includes homepage entry.
+
+The approved Day/Night transition is integrated into this local desktop version:
+scene lighting and the full interface share the same reversible one-second
+animation. Desktop foreground aliases match each warm/elevated/selected surface;
+independent CSS colour transitions are disabled to avoid lag. Reduced motion
+uses the endpoint immediately. The later experimental shader-preparation work
+is not included. See `customer-configurator-architecture.md` for the owner
+contract and `playwright/marketing.configurator-transition.spec.ts` for coverage.

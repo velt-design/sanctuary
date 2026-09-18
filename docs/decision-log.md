@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-09-18 — Keep interface transitions independent of renderer availability
+
+The day/night clock initially lived inside the lazy WebGL scene. An early Night
+selection could skip the interface fade, and renderer failure removed its palette.
+The preview interface now owns the clock and palette; the renderer subscribes to
+shared progress. Verify late scene mounting, failure, retry and reduced motion,
+including the existing daytime Plan contract. Owner: customer-configurator-architecture.md.
+Hosted production CSS also loaded the foundation canvas after the dialog surface;
+use explicit dialog surface specificity and a reversed-stylesheet-order regression
+to preserve night header contrast. Development stylesheet order alone is insufficient.
+
+## 2026-09-18 — Verify configurator styling from the host page
+
+The desktop configurator review found that generic website `footer > div`
+rules added 48px padding to each configurator action-footer child when opened
+from the homepage. The direct preview did not expose the collision. Scope site
+footer styling to its explicit `data-site-footer` owner and verify the modal
+through a normal marketing entry as well as its standalone preview. The focused
+editorial browser regression compares both action-area heights. This correction
+changes presentation only; pricing and enquiry contracts retain their owners.
+
 
 ## 2026-09-17 — Verify approved composition on the delivered public route
 

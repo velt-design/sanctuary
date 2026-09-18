@@ -11,6 +11,8 @@ import type { RoofFinishGeometry } from '@sp/geometry';
 import {useLighting} from './LightingProvider';
 import PergolaLightFixtures from './PergolaLightFixtures';
 import PreviewLighting from './PreviewLighting';
+import DayNightTransition from './DayNightTransition';
+import type { NightPresentation } from './useDayNightPresentation';
 import PreviewDimensionGuide from './PreviewDimensionGuide';
 import PreviewSurroundings from './PreviewSurroundings';
 import FreestandingBase from './FreestandingBase';
@@ -38,8 +40,8 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-export default function PreviewScene({ showReferenceBase = true, covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback }: {
-  showReferenceBase?: boolean; covering?: RoofFinishGeometry; context: RepresentativeSurroundings | null;
+export default function PreviewScene({ nightPresentation, showReferenceBase = true, covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback }: {
+  nightPresentation: NightPresentation; showReferenceBase?: boolean; covering?: RoofFinishGeometry; context: RepresentativeSurroundings | null;
   scene: ViewerSceneModel; plan: GeometryPlanViewModel; activeDimension: PreviewDimensionAxis | null;
   interactive: boolean; reset: number; fit: number; onFallback: () => void;
 }) {
@@ -67,7 +69,8 @@ export default function PreviewScene({ showReferenceBase = true, covering, scene
       camera={{ position: [12000, -18000, 12000], up: [0, 0, 1], fov: 24, near: 10, far: 200000 }}
       fallback={fallback}>
       <ContextWatch onFallback={() => { setUnavailable(true); onFallback(); }} />
-      <PreviewLighting night={lighting?.night}/>
+      <DayNightTransition presentation={nightPresentation}>
+      <PreviewLighting/>
       {lighting&&<PergolaLightFixtures/>}
       {blindWorkspace && <PreviewBlinds workspace={lighting?.editing?{...blindWorkspace,editing:false,select:noop}:blindWorkspace} />}
       {covering && <PreviewRoofFinish covering={covering} />}
@@ -79,6 +82,7 @@ export default function PreviewScene({ showReferenceBase = true, covering, scene
         : <SceneObjectNode key={object.id} object={object} color="#242824" memberAppearance={{ roughness: .38, metalness: .2, envMapIntensity: .8 }}
           selected={false} hovered={false} onSelect={noop} onHoverEnter={noop} onHoverLeave={noop} onFocus={noop} clippingPlanes={[]} />)}</group>
       {interactive && activeDimension && roof.length > 0 && <PreviewDimensionGuide axis={activeDimension} plan={plan} roof={roof} />}
+    </DayNightTransition>
     </Canvas>
   </SceneBoundary>;
 }
