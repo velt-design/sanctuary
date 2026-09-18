@@ -21,7 +21,6 @@ import type { PreviewSelection } from './ConfiguratorPrototype';
 import MobileLightingChoices from './MobileLightingChoices';
 import type { SharedEstimate } from './sharedEstimate';
 import { hasLighting } from './lightingSelection';
-import DesignFunnelTracker from './DesignFunnelTracker';
 import css from './mobileJourney.module.css';
 import styles from './prototype.module.css';
 
@@ -38,9 +37,9 @@ const nextLabels: Record<MobileStep, string> = {
 };
 type Editor = 'details' | 'sides' | 'lighting' | null;
 
-export default function MobileDesignJourney({ active, draft, pricePanel, estimate, selection, desktopSection }: {
+export default function MobileDesignJourney({ draft, pricePanel, estimate, selection, desktopSection }: {
   desktopSection?: RailSection;
-  selection: PreviewSelection; active: boolean; draft: ReturnType<typeof usePreviewDraft>; pricePanel: ReactNode; estimate: SharedEstimate | null;
+  selection: PreviewSelection; draft: ReturnType<typeof usePreviewDraft>; pricePanel: ReactNode; estimate: SharedEstimate | null;
 }) {
   const { input, roof, setInput, setRoof } = draft;
   const rail = useRail(), lighting = useLighting()!, blinds = usePreviewBlinds()!;
@@ -121,7 +120,6 @@ export default function MobileDesignJourney({ active, draft, pricePanel, estimat
   const openDetails = () => setEditor('details');
 
   return <div className={`${styles.page} ${css.journey}`} data-mobile-step={step} data-mobile-editor={editor ?? ''} data-night={lighting.night}>
-    <DesignFunnelTracker active={active} ready={draft.ready} selectionKey={JSON.stringify({ input, roof })} section={rail.section} />
     <header className={css.heading}>
       <div className={css.progress}><span>{editor ? 'Refine your design' : `Step ${index + 1} of 7`}</span><span>{['Shape', 'Roof', 'Size', 'Explore', 'Personalise', 'Your pergola', 'Review'][index]}</span></div>
       <div className={css.progressTrack} aria-hidden="true">{MOBILE_STEPS.map((s, i) => <span key={s} data-complete={i <= index} />)}</div>

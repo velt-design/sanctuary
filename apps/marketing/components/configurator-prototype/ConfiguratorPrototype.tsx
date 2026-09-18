@@ -73,8 +73,7 @@ function ConfiguratorWorkspace({active,draft,expanded,onToggleExpanded,renderEnq
             : result.status === 'custom' ? <><p className={styles.priceValue}>A custom fit.</p><p className={styles.small}>{result.reason}</p></>
             : <><p>Estimate unavailable. Keep exploring your design.</p><button className={styles.textButton} onClick={retry}>Retry estimate <ArrowUpRight /></button></>}
         </section>;
-  return <PreviewBlindProvider input={input} roof={roof} onChange={setRoof}>{mobile && !renderEnquiry ? <MobileDesignJourney desktopSection={desktopSection.current} selection={{input,roof,result,configuratorPrice}} active={active} draft={draft} pricePanel={pricePanel} estimate={estimate} /> : <div className={styles.page} data-lighting-edit={lighting.editing} data-night={lighting.night} data-expanded={expanded} data-layout={renderEnquiry ? 'project' : 'popup'}>
-    <DesignFunnelTracker active={active} ready={ready} selectionKey={JSON.stringify({input,roof})} section={rail.section}/>
+  return <PreviewBlindProvider input={input} roof={roof} onChange={setRoof}><DesignFunnelTracker active={active} ready={ready} selectionKey={JSON.stringify({input,roof})} section={rail.section}/>{mobile && !renderEnquiry ? <MobileDesignJourney desktopSection={desktopSection.current} selection={{input,roof,result,configuratorPrice}} draft={draft} pricePanel={pricePanel} estimate={estimate} /> : <div className={styles.page} data-lighting-edit={lighting.editing} data-night={lighting.night} data-expanded={expanded} data-layout={renderEnquiry ? 'project' : 'popup'}>
     <div className={styles.workspace}>
       <div className={styles.visualSlot}>
       <section className={styles.visual} aria-label="Pergola views" data-expanded={expanded}>

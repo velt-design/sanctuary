@@ -44,4 +44,11 @@ for (const allowed of [false, true]) test(`mobile finish respects analytics cons
   expect(captured.filter(event => event.name === 'design_share_open')).toHaveLength(allowed ? 3 : 0);
   const serialized = JSON.stringify(captured);
   for (const sensitive of ['Tracking Test', 'Synthetic suburb', 'tracking@example.com', '#design=', 'widthMm', 'projectionMm']) expect(serialized).not.toContain(sensitive);
+  for (const width of [1280, 390, 1024, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    if (width === 390) await expect(page.locator('[data-mobile-step]')).toHaveAttribute('data-mobile-step', 'review');
+    else await expect(page.getByRole('button', { name: '3 Review', exact: true })).toBeVisible();
+  }
+  const rotated = await events(page);
+  for (const name of ['design_start', 'design_review']) expect(rotated.filter(event => event.name === name), name).toHaveLength(allowed ? 1 : 0);
 });
