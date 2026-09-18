@@ -9,7 +9,9 @@ fades daylight, environment reflections, warm fixture emission/illumination,
 the viewport backdrop and the complete interface night palette together.
 The environment and light objects stay mounted;
 only their contribution changes. Demand rendering stops when the fade settles.
-The renderer writes UI palette values from the same progress on the same frame:
+The preview interface owns the timeline outside the lazy WebGL subtree and writes
+UI palette values from shared progress; the scene subscribes to that progress.
+Loading, renderer failure and retry cannot reset the selected palette. The
 header, toolbar, sidebar, selected controls and price/footer surfaces have no
 independent CSS transition. Text uses contrast-safe foregrounds for its actual
 warm, elevated, selected or accent surface; plain dark/light text interpolation

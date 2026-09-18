@@ -169,3 +169,23 @@ test('standard 6x3 pitched acrylic keeps orbit responsive during repeated toggle
  await mood(page,'Day').click();await expect.poll(()=>amount(page)).toBe(0);
  expect(await canvas.getAttribute('data-camera')).toBe(orbit);
 });
+
+test('night palette survives renderer failure and retry', async ({page}) => {
+  await openDesign(page,1440,false);
+  await mood(page,'Night').click();
+  await expect.poll(()=>amount(page)).toBe(1);
+  await page.locator('canvas').evaluate(canvas=>canvas.dispatchEvent(new Event('webglcontextlost')));
+  await expect(page.locator('[data-view]')).toHaveAttribute('data-view','Plan');
+  // Plan intentionally uses the daylight palette while retaining the selected 3D mood.
+  await expect.poll(()=>amount(page)).toBe(0);
+  await page.getByRole('group',{name:'Choose view'}).getByRole('button',{name:'3D',exact:true}).click();
+  await expect(page.getByText('The 3D view paused. Your selections are still here.')).toBeVisible();
+  await expect.poll(()=>amount(page)).toBe(1);
+  await mood(page,'Day').click();
+  await expect.poll(()=>amount(page)).toBe(0);
+  await mood(page,'Night').click();
+  await expect.poll(()=>amount(page)).toBe(1);
+  await page.getByRole('button',{name:'Try 3D again',exact:true}).click();
+  await expect(page.locator('canvas')).toHaveAttribute('data-camera',/perspective/);
+  await expect.poll(()=>amount(page)).toBe(1);
+});

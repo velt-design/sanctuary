@@ -25,7 +25,7 @@ it.each(['context loss','render error'])('can retry after %s without resetting t
   function Harness(){
     const [selection,setSelection]=React.useState('original');
     return <><button onClick={()=>setSelection('custom design')}>Customise</button><output>{selection}</output>
-      <PreviewScene scene={{layers:[]} as unknown as React.ComponentProps<typeof PreviewScene>['scene']}
+      <PreviewScene nightPresentation={{current:0,listeners:new Set()}} scene={{layers:[]} as unknown as React.ComponentProps<typeof PreviewScene>['scene']}
         plan={{} as React.ComponentProps<typeof PreviewScene>['plan']} context={null} activeDimension={null}
         interactive={false} reset={0} fit={0} onFallback={()=>{fallbackCount++;}}/></>;
   }

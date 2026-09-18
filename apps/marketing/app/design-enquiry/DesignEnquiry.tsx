@@ -23,6 +23,7 @@ const Scene=dynamic(()=>import('../../components/configurator-prototype/PreviewS
 const noop=()=>{};
 export default function DesignEnquiry({initialContext={}}:{initialContext?:EnquiryContext}){
  const draft=usePreviewDraft();
+ const daylight=useMemo(()=>({current:0,listeners:new Set<()=>void>()}),[]);
  const {input,roof,ready}=draft;
  const {price,retry}=useConfiguratorPrice({version:1,input,roof},ready);
  const [attempt,setAttempt]=useState(0);
@@ -45,7 +46,7 @@ export default function DesignEnquiry({initialContext={}}:{initialContext?:Enqui
  <LightingProvider input={input} roof={roof} onChange={noop}><RailProvider><PreviewBlindProvider input={input} roof={roof} onChange={noop}>
  <div className={css.visual}>
  <div className={css.views} role="group" aria-label="Design view">{(['3D','Plan'] as const).map(item=><button key={item} aria-pressed={view===item} onClick={()=>setView(item)}>{item}</button>)}</div>
- {geometry?view==='3D'?<Scene covering={geometry.covering} scene={geometry.viewerScene} plan={geometry.plan} context={surroundings} activeDimension={null} interactive={false} reset={0} fit={0} onFallback={()=>setView('Plan')}/>:<div className={css.plan}><PreviewPlan readOnly roofPlanes={geometry.assembly.roofPlanes} covering={geometry.covering} plan={geometry.plan} context={null} activeDimension={null}/></div>:<p>Your design preview is unavailable. Your selections are still included.</p>}
+ {geometry?view==='3D'?<Scene nightPresentation={daylight} covering={geometry.covering} scene={geometry.viewerScene} plan={geometry.plan} context={surroundings} activeDimension={null} interactive={false} reset={0} fit={0} onFallback={()=>setView('Plan')}/>:<div className={css.plan}><PreviewPlan readOnly roofPlanes={geometry.assembly.roofPlanes} covering={geometry.covering} plan={geometry.plan} context={null} activeDimension={null}/></div>:<p>Your design preview is unavailable. Your selections are still included.</p>}
  </div></PreviewBlindProvider></RailProvider></LightingProvider>
  <div className={css.total} aria-live="polite"><strong>{estimate.amount!==undefined?reviewMoney(estimate.amount):estimate.message}</strong><p>{estimate.draft?'Draft estimate · ':''}{estimate.excluded?.length?'Subtotal':'Installed estimate'} · Including GST</p></div>
  <details className={css.details}><summary>View design details</summary>

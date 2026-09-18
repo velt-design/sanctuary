@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-09-18 — Keep interface transitions independent of renderer availability
+
+The day/night clock initially lived inside the lazy WebGL scene. An early Night
+selection could skip the interface fade, and renderer failure removed its palette.
+The preview interface now owns the clock and palette; the renderer subscribes to
+shared progress. Verify late scene mounting, failure, retry and reduced motion,
+including the existing daytime Plan contract. Owner: customer-configurator-architecture.md.
+
 ## 2026-09-18 — Verify configurator styling from the host page
 
 The desktop configurator review found that generic website `footer > div`

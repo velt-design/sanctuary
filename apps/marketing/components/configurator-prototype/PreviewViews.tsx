@@ -6,7 +6,8 @@ import dynamic from 'next/dynamic';
 import {useRail} from './RailProvider';
 import {useLighting} from './LightingProvider';
 import {hasLighting} from './lightingSelection';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useDayNightPresentation } from './useDayNightPresentation';
 import type { SimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import { solvePergolaPreview, solveSimpleCoverSurroundings } from './solvePreview';
 import type { PreviewRoofChoices } from './GableChoices';
@@ -23,6 +24,8 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
   const blinds=usePreviewBlinds();
   const rail=useRail();
   const lighting=useLighting();
+  const viewport = useRef<HTMLDivElement>(null);
+  const nightPresentation = useDayNightPresentation(lighting?.night ?? false, viewport);
   const [selectedView, setView] = useState<'3D' | 'Plan'>('3D');
   const view=lighting?.view??selectedView;
   const changeView=(v:'3D'|'Plan')=>lighting?lighting.setView(v):setView(v);
@@ -41,7 +44,7 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
         <button className={styles.expandView} aria-label={expanded ? 'Close expanded view' : 'Expand view'} aria-expanded={expanded} onClick={onToggleExpanded}>{expanded ? 'Done' : 'Expand'} <span aria-hidden="true">{expanded ? '×' : <ArrowUpRight />}</span></button>
       </div>
     </div>
-    <div className={styles.viewport} data-view={view} data-light-strip-count={lighting?.value.strips.length??0} data-light-rafter-count={lighting?.value.rafterCount??0} data-light-cedar-count={lighting?.value.cedarCount??0} data-blind-count={blinds?.blinds.length??0} data-side-panel-count={blinds?.panels.length??0} data-geometry-status={artifact.status}
+    <div ref={viewport} className={styles.viewport} data-view={view} data-light-strip-count={lighting?.value.strips.length??0} data-light-rafter-count={lighting?.value.rafterCount??0} data-light-cedar-count={lighting?.value.cedarCount??0} data-blind-count={blinds?.blinds.length??0} data-side-panel-count={blinds?.panels.length??0} data-geometry-status={artifact.status}
       data-roof-material={roof.finish?.material ?? "acrylic"} data-roof-profile={roof.finish?.profile} data-acrylic-bays={covering?.acrylicBays} data-family={roof.family} data-ridge-direction={roof.family === 'box' ? 'parallel' : roof.orientation} data-gable-infills={roof.family === 'gable' && roof.infills}
       data-box-roof-mode={renderable && roof.family === 'box' ? geometry!.assembly.roofPlanes[0]?.metadata?.roofMode : undefined}
       data-infill-support-count={renderable ? geometry.assembly.members.filter(m => m.metadata?.frameRole === 'infill_support').length : 0}
@@ -51,7 +54,7 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
       data-post-count={renderable ? geometry.plan.members.posts.length : undefined}>
       {renderable ? <>
         <div className={styles.sceneLayer} aria-hidden={view !== '3D'} style={{ visibility: view === '3D' ? 'visible' : 'hidden' }}>
-          <PreviewScene showReferenceBase={surroundings} covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D'} activeDimension={activeDimension} plan={geometry.plan} reset={0} fit={0} onFallback={() => changeView('Plan')} />
+          <PreviewScene nightPresentation={nightPresentation} showReferenceBase={surroundings} covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D'} activeDimension={activeDimension} plan={geometry.plan} reset={0} fit={0} onFallback={() => changeView('Plan')} />
         </div>
         {view === 'Plan' && <PreviewPlan profile={roof.finish?.profile} trayWidth={roof.finish?.trayWidth} roofPlanes={geometry.assembly.roofPlanes} covering={covering} plan={geometry.plan} flashings={geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
       </>
