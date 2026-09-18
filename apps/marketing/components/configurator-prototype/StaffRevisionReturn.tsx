@@ -3,6 +3,7 @@ import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
 
 import {useEffect, useState} from 'react';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import type {PreviewDraft} from './previewDraft';
 import { designEnquiryHref } from './configuratorOverlay';
 
@@ -30,11 +31,11 @@ export function staffRevisionReturnUrl(currentUrl: string, draft: PreviewDraft, 
   return url.toString();
 }
 
-export default function StaffRevisionReturn({draft}: {draft: PreviewDraft}) {
+export default function StaffRevisionReturn({draft, customerAction}: {draft: PreviewDraft; customerAction?: ReactNode}) {
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
   const [enquiryHref, setEnquiryHref] = useState('/design-enquiry');
   useEffect(() => { setCurrentUrl(window.location.href); setEnquiryHref(designEnquiryHref()); }, []);
   const href = currentUrl ? staffRevisionReturnUrl(currentUrl, draft, process.env.NODE_ENV !== 'production', process.env.NEXT_PUBLIC_STAFF_PORTAL_ORIGIN) : null;
   return href ? <a href={href}>Review revision in portal <ArrowUpRight /></a>
-    : <Link href={enquiryHref} prefetch={false}>Enquire about this design <ArrowUpRight /></Link>;
+    : customerAction ?? <Link href={enquiryHref} prefetch={false}>Enquire about this design <ArrowUpRight /></Link>;
 }

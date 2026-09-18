@@ -7,12 +7,12 @@ import { sampleDayNight } from './dayNightTimeline';
 export type NightPresentation = { current: number; listeners: Set<() => void> };
 
 // The interface owns the clock so lazy loading or losing WebGL cannot reset it.
-export function useDayNightPresentation(night: boolean, viewport: RefObject<HTMLDivElement | null>) {
+export function useDayNightPresentation(night: boolean, viewport: RefObject<HTMLDivElement | null>, local = false) {
   const presentation = useRef<NightPresentation>({ current: Number(night), listeners: new Set() });
   useLayoutEffect(() => {
     const node = viewport.current;
     const workspace = node?.closest<HTMLElement>('[data-night]');
-    const roots = [workspace, workspace?.closest('dialog')].filter((root): root is HTMLElement => Boolean(root));
+    const roots = local ? [] : [workspace, workspace?.closest('dialog')].filter((root): root is HTMLElement => Boolean(root));
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
     const timeline = { from: presentation.current.current, target: Number(night), startedAt: performance.now() };
     let frame = 0;
@@ -30,15 +30,15 @@ export function useDayNightPresentation(night: boolean, viewport: RefObject<HTML
     paint();
     preference.addEventListener('change', preferenceChanged);
     return () => { cancelAnimationFrame(frame); preference.removeEventListener('change', preferenceChanged); };
-  }, [night, viewport]);
+  }, [night, viewport, local]);
   useLayoutEffect(() => {
     const node = viewport.current;
     const workspace = node?.closest<HTMLElement>('[data-night]');
-    const roots = [workspace, workspace?.closest('dialog')].filter((root): root is HTMLElement => Boolean(root));
+    const roots = local ? [] : [workspace, workspace?.closest('dialog')].filter((root): root is HTMLElement => Boolean(root));
     return () => {
       node?.style.removeProperty('--night-amount');
       for (const root of roots) for (const key of Object.keys(dayNightTheme(0))) root.style.removeProperty(key);
     };
-  }, [viewport]);
+  }, [viewport, local]);
   return presentation.current;
 }

@@ -848,3 +848,38 @@ independent CSS colour transitions are disabled to avoid lag. Reduced motion
 uses the endpoint immediately. The later experimental shader-preparation work
 is not included. See `customer-configurator-architecture.md` for the owner
 contract and `playwright/marketing.configurator-transition.spec.ts` for coverage.
+
+### Mobile configurator guided draft (18 September 2026)
+
+Jordan approved a seven-screen mobile configurator, retaining the desktop
+editorial composition. MobileRoofChoice adopts the Gable reference selector's
+three clear choices, large selection-linked imagery and restrained copy.
+The second design pass uses matched architectural illustrations based on actual
+configurator captures for roof shapes; Jordan approved the warm photographic
+treatment. Existing project photographs are cropped to material details for the
+roof build-up choices, focusing on the material. These are
+material references rather than shape-specific views. The later model reflects actual
+selections. The journey prioritises shape, roof, size, model exploration,
+optional sides/lighting, finished model and review. Specific house connections stay in
+More design options, with the estimate's assumption visible at review.
+See customer-configurator-architecture.md for state and workflow ownership.
+Independent delivery review and release gates apply to the integrated journey.
+Keep choice imagery and descriptions in stable regions. Downstream notices belong
+with the relevant extras and review, not above introductory choices. Lighting
+starts with simple layouts and retains detailed fittings/LED controls in a
+disclosure; side finishes use the same progressive disclosure. The first model
+introduces spatial exploration; the finished view emphasises the completed design
+with daylight and a lower presentation camera angle. Mobile has no view/time switches. Night is confined to lighting, including the unlit comparison. Size uses a quiet architectural footprint
+and black-selected Attached/Freestanding then Ground/Elevated switches. Gable
+Parallel/Extending sits beneath the shape selector, in a stable-height space.
+Sides supports selecting multiple openings on a quiet actual footprint or checkbox list. A stable five-option image selector uses matched warm architectural material references; Apply names the number of openings affected. A separate actual-model confirmation retains individual refinements and returns to group selection through Choose more sides. Images illustrate treatment types, not exact customer geometry or slat spacing.
+Review begins with a fresh capture of the actual design and keeps price lines
+visible, while supporting draft allowance detail remains available in disclosures.
+Chosen position/size/level/ridge are separate from connection/site requirements to
+confirm. Solid uses the Riverhead upward
+view with a crop emphasising the timber ceiling; image framing remains fixed.
+
+Mobile arrow icons use SVG; range inputs retain native keyboard/touch behavior but their native paint is transparent, with one CSS handle above the track. Touch selection does not receive a second focus outline; keyboard focus remains visible. WebKit browser evidence complements Chromium checks and does not establish physical iPhone acceptance.
+The design-enquiry preview retains its 3D/Plan switch as understated text tabs with a thin active underline, matching desktop configurator styling at both mobile and desktop widths; the guided mobile configurator itself has no view switch.
+
+Mobile configurator finish: one minimal Review with portrait/specification, disclosed edits, open price lines and essential exclusions. Enquire and Share design are paired primary/secondary actions; enquiry opens inline, sharing retains a version-specific design link. Success language is conditional on actual submission/clipboard/share completion. The compact form and its entered details survive design editing. Desktop/standalone enquiry presentation is unchanged.

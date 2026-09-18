@@ -6,7 +6,7 @@ import {useLighting} from './LightingProvider';
 import styles from './prototype.module.css';
 import css from './lighting.module.css';
 import ui from './sectionControls.module.css';
-export default function LightingControls({onPreview}:{onPreview?:()=>void}){
+export default function LightingControls({onPreview,guided=false}:{onPreview?:()=>void;guided?:boolean}){
  const w=useLighting()!;
  const counts={off:0,low:layoutRafterLights(w.sites.rafters,'low').length,medium:layoutRafterLights(w.sites.rafters,'medium').length,high:layoutRafterLights(w.sites.rafters,'high').length};
  const unavailable=!counts.low&&!counts.medium&&!counts.high;
@@ -32,7 +32,7 @@ export default function LightingControls({onPreview}:{onPreview?:()=>void}){
  <p>{w.value.strips.length} members lit · One strip per outer edge. Attached designs exclude the house edge.</p>
  <details><summary>More LED options · individual strips</summary><div className={css.members}>{w.sites.strips.map(s=><label key={s.id}><input type="checkbox" checked={w.value.strips.includes(s.id)} onChange={()=>w.toggle(s.id)}/>{s.label}</label>)}</div></details></div>}
  </>
- <button className={css.preview} onClick={()=>{w.setView('3D');w.setNight(!w.night);onPreview?.();}}>{w.night?'See your lights in daytime':'See your lights at night'}</button>
+ {!guided && <button className={css.preview} onClick={()=>{w.setView('3D');w.setNight(!w.night);onPreview?.();}}>{w.night?'See your lights in daytime':'See your lights at night'}</button>}
  <p className={styles.small}>Illustrative lighting. Final fitting positions are confirmed with your design.</p>
  </section>;
 }

@@ -39,7 +39,7 @@ export default function AttachmentSection({ connection, boxPerimeter = false }: 
       <path d={`M ${ledgerX + 7} ${ledgerY + 12} L ${ledgerX + 42} ${ledgerY - 18} H ${ledgerX + 77}`} fill="none" stroke="#66745a" strokeWidth=".8" />
       <text x={ledgerX + 45} y={ledgerY - 23}>Ledger</text>
       {connection === 'soffit' && <><path d={`M ${x(-280)} ${y(context.fascia.min.z - 20)} V 170`} stroke="#66745a" strokeWidth=".8" /><text x="18" y="182">40 mm SHS bracket</text></>}
-      {connection === 'facade' && <text x="18" y="22">↑ Wall continues to upper storey</text>}
+      {connection === 'facade' && <text x="18" y="22">Wall continues to upper storey</text>}
       <text x="16" y="203" fontSize="9" fill="#858b7e">SIDE DETAIL · REPRESENTATIVE</text>
     </g>
   </svg>;

@@ -38,7 +38,7 @@ function Dimension({ axis, label, value, min, max, onChange, onActivity }: {
     if (next !== value) onChange(next);
     setDraft(null);
   }
-  return <div className={styles.dimension}
+  return <div className={styles.dimension} data-dimension={axis}
     onFocusCapture={() => onActivity(axis)}
     onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onActivity(null); }}
     onPointerEnter={(event) => { if (event.pointerType === 'mouse') onActivity(axis); }}
@@ -62,12 +62,14 @@ function Dimension({ axis, label, value, min, max, onChange, onActivity }: {
   </div>;
 }
 
-export default function PreviewControls({ input, roof, onRoofChange, onChange, onDimensionActivity }: {
+export default function PreviewControls({ input, roof, onRoofChange, onChange, onDimensionActivity, mode = 'full' }: {
+  mode?: 'full' | 'size' | 'details';
   roof: PreviewRoofChoices; onRoofChange: (roof: PreviewRoofChoices) => void;
   input: SimpleCoverInput; onChange: (input: SimpleCoverInput) => void;
   onDimensionActivity: (axis: PreviewDimensionAxis | null) => void;
 }) {
-  const {section}=useRail();
+  const {section: railSection}=useRail();
+  const section = mode === 'full' ? railSection : 'structure';
   const [connectionNotice, setConnectionNotice] = useState('');
   const [projectionNotice, setProjectionNotice] = useState('');
   const projectionMax = previewProjectionMax(roof);
@@ -83,10 +85,11 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
     setConnectionNotice(valid.connection !== next.connection ? `Switched to ${valid.connection}. ` : '');
     onChange(valid);
   }
-  return <div className={styles.controls}>
+  return <div className={styles.controls} data-preview-controls={mode}>
     <div className={ui.section} hidden={section!=='structure'}>
-    <div className={styles.sectionLabel}><h2>Size & shape</h2></div>
-    <RoofTypeChoice value={roof} onChange={updateRoof} />
+    <div hidden={mode === 'details'}>
+    {mode === 'full' && <div className={styles.sectionLabel}><h2>Size & shape</h2></div>}
+    {mode === 'full' && <RoofTypeChoice value={roof} onChange={updateRoof} />}
     <p className={styles.small}>{roof.attachmentIntent==='freestanding'?'Choose the width and projection of your freestanding pergola.':'Width runs along the house. Projection is how far your pergola extends out from it.'}</p>
     <div className={styles.dimensions}>
     <Dimension axis="width" onActivity={onDimensionActivity} label="Width" value={input.widthMm} min={Math.max(SIMPLE_COVER_WIDTH_MIN_MM, CUSTOMER_DIMENSION_BOUNDS.lengthMm.minimum)} max={SIMPLE_COVER_WIDTH_MAX_MM}
@@ -96,6 +99,8 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
     </div>
     {projectionMax < SIMPLE_COVER_PROJECTION_MAX_MM && <p className={styles.inputNotice}>Maximum projection for this roof: {metres(projectionMax)}.</p>}
     {projectionNotice && <p className={styles.inputNotice} role="status">{projectionNotice}</p>}
+    </div>
+    <div hidden={mode === 'size'}>
     <GableChoices value={roof} onChange={updateRoof} />
     <div className={ui.group}><div className={styles.sectionLabel}><h2>House connection</h2></div>
     <fieldset className={styles.choices}><legend>Position</legend>
@@ -114,6 +119,7 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
       </label>)}
     </fieldset>
     {input.level === 'elevated' && <p className={styles.small}>First-floor deck · shown 2.7 m above ground.</p>}
+    </div>
     </div>
     </div>
     <div hidden={section!=='roof'}><div className={styles.sectionLabel}><h2>Roof & ceiling</h2></div><p className={ui.intro}>Choose your balance of daylight, shade and timber finishes.</p>

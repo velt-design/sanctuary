@@ -13,6 +13,7 @@ import PergolaLightFixtures from './PergolaLightFixtures';
 import PreviewLighting from './PreviewLighting';
 import DayNightTransition from './DayNightTransition';
 import type { NightPresentation } from './useDayNightPresentation';
+import SceneSnapshot from './SceneSnapshot';
 import PreviewDimensionGuide from './PreviewDimensionGuide';
 import PreviewSurroundings from './PreviewSurroundings';
 import FreestandingBase from './FreestandingBase';
@@ -40,8 +41,9 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-export default function PreviewScene({ nightPresentation, showReferenceBase = true, covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback }: {
-  nightPresentation: NightPresentation; showReferenceBase?: boolean; covering?: RoofFinishGeometry; context: RepresentativeSurroundings | null;
+export default function PreviewScene({ nightPresentation, showReferenceBase = true, covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback, presentation = false, onCapture }: {
+  nightPresentation: NightPresentation; presentation?: boolean; onCapture?: (image: string) => void;
+  showReferenceBase?: boolean; covering?: RoofFinishGeometry; context: RepresentativeSurroundings | null;
   scene: ViewerSceneModel; plan: GeometryPlanViewModel; activeDimension: PreviewDimensionAxis | null;
   interactive: boolean; reset: number; fit: number; onFallback: () => void;
 }) {
@@ -76,12 +78,13 @@ export default function PreviewScene({ nightPresentation, showReferenceBase = tr
       {covering && <PreviewRoofFinish covering={covering} />}
       {showReferenceBase && plan.connectionType === 'freestanding' && <FreestandingBase plan={plan} />}
       {context && <PreviewSurroundings context={context} bounds={bounds} productPoints={fitPoints} />}
-      <PreviewCamera bounds={cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} />
+      <PreviewCamera bounds={cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} presentation={presentation} side={presentation && blindWorkspace?.editing ? blindWorkspace.openings.find(o => o.id === blindWorkspace.selected)?.side : undefined} />
       <group>{objects.map((object) => object.type === 'roof_plane' || object.type === 'roof_cladding_panel'
         ? <PreviewRoof key={object.id} object={object} />
         : <SceneObjectNode key={object.id} object={object} color="#242824" memberAppearance={{ roughness: .38, metalness: .2, envMapIntensity: .8 }}
           selected={false} hovered={false} onSelect={noop} onHoverEnter={noop} onHoverLeave={noop} onFocus={noop} clippingPlanes={[]} />)}</group>
       {interactive && activeDimension && roof.length > 0 && <PreviewDimensionGuide axis={activeDimension} plan={plan} roof={roof} />}
+      {onCapture && <SceneSnapshot night={lighting?.night ?? false} onCapture={onCapture} />}
     </DayNightTransition>
     </Canvas>
   </SceneBoundary>;

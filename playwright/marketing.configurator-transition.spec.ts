@@ -1,18 +1,46 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const evidence = process.env.DAY_NIGHT_EVIDENCE_DIR || 'test-results/day-night';
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: false, marketing: false, updatedAt: '2026-09-18T00:00:00.000Z', version: 1 })));
+});
 async function openDesign(page: Page, width: number, solid: boolean) {
   await page.setViewportSize({width,height:900});
   await page.goto('/configurator-preview?open=1');
   const consent=page.getByRole('button',{name:'Essential only',exact:true});
   if(await consent.isVisible())await consent.click();
   await page.getByRole('radio',{name:'Gable',exact:true}).check();
+  if(width<720){
+    await page.getByRole('button',{name:'Choose your roof'}).click();
+    if(solid){
+      await page.getByRole('radio',{name:'Solid',exact:true}).check();
+      await page.getByText('Refine your roof & ceiling',{exact:true}).click();
+      await page.getByRole('radio',{name:'Tray',exact:true}).check();
+      await page.getByRole('radio',{name:'500 mm',exact:true}).check();
+    }
+    await page.getByRole('button',{name:'Set your size'}).click();
+  }
   for(const name of ['Width in metres','Projection in metres']) {
     await page.getByRole('textbox',{name}).fill('4.0');
     await page.getByRole('textbox',{name}).press('Tab');
   }
-  await page.getByRole('radio',{name:'Freestanding',exact:true}).check();
-  if(solid){
+  if(width<720){
+    await page.getByRole('button',{name:'See your pergola'}).click();
+    await page.getByRole('button',{name:'More design options'}).click();
+    await page.getByRole('radio',{name:'Freestanding',exact:true}).check();
+    await page.getByRole('button',{name:'Done',exact:true}).click();
+    if(solid){
+      await page.getByRole('button',{name:'Add sides & lighting'}).click();
+      await page.getByRole('button',{name:/^02 Lighting/}).click();
+      await page.getByText('Fine-tune lighting & LED strips',{exact:true}).click();
+      await page.getByRole('button',{name:/^Ceiling downlights/}).click();
+      await page.getByRole('button',{name:/^4 lights/}).click();
+      await page.getByRole('button',{name:'Done',exact:true}).click();
+      await page.getByRole('button',{name:'See your finished design'}).click();
+      await page.getByRole('button',{name:'Day',exact:true}).click();
+    }
+  }else await page.getByRole('radio',{name:'Freestanding',exact:true}).check();
+  if(solid&&width>=720){
     await page.getByRole('button',{name:/^Personalise(?: your pergola)? →$/}).click();
     await page.getByRole('button',{name:/^Roof & ceiling/}).click();
     await page.getByRole('radio',{name:/^Solid \+ timber ceiling/}).check();
@@ -24,7 +52,6 @@ async function openDesign(page: Page, width: number, solid: boolean) {
     await page.getByRole('button',{name:/^Ceiling downlights/}).click();
     await page.getByRole('button',{name:/^4 lights/}).click();
   }
-  if(width<720)await page.getByRole('button',{name:'Expand view',exact:true}).click();
   await expect(page.locator('canvas')).toHaveAttribute('data-camera',/perspective/);
   await expect.poll(()=>amount(page)).toBe(0);
   await page.waitForTimeout(1200); // allow initial camera layout and optional price request to settle
@@ -32,7 +59,8 @@ async function openDesign(page: Page, width: number, solid: boolean) {
 const amount=(page:Page)=>page.locator('[data-view]').evaluate(el=>Number((el as HTMLElement).style.getPropertyValue('--night-amount')));
 const mood=(page:Page,name:string)=>page.getByRole('group',{name:'Time of day'}).getByRole('button',{name,exact:true});
 
-for(const width of [1440,390])for(const solid of [false,true])test(`smooth day/night ${width} ${solid?'lit solid':'unlit acrylic'}`,async({page})=>{
+// Mobile chooses its view automatically; its night-only lighting policy is covered in the mobile journey suite.
+for(const width of [1440])for(const solid of [false,true])test(`smooth day/night ${width} ${solid?'lit solid':'unlit acrylic'}`,async({page})=>{
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   await openDesign(page,width,solid);
   const camera=await page.locator('canvas').getAttribute('data-camera');
@@ -44,7 +72,7 @@ for(const width of [1440,390])for(const solid of [false,true])test(`smooth day/n
   const samples=page.evaluate(()=>new Promise<Array<{amount:number;uiProgress:number;shell:number[];sidebar:number[];minContrast:number;weakText:string}>>(resolve=>{
     const frames:Array<{amount:number;uiProgress:number;shell:number[];sidebar:number[];minContrast:number;weakText:string}>=[];
     const start=performance.now(),workspace=document.querySelector('[data-night]') as HTMLElement;
-    const shell=workspace.closest('dialog')!,sidebar=workspace.querySelector('aside')!;
+    const shell=workspace.closest('dialog')!,sidebar=workspace.querySelector('aside')??workspace;
     const rgb=(value:string)=>value.match(/[\d.]+/g)!.map(Number);
     const luminance=(c:number[])=>c.slice(0,3).reduce((sum,v,i)=>{const n=v/255;return sum+(n<=.04045?n/12.92:((n+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
     const nodes=[...shell.querySelectorAll('p,span,small,strong,h2,h3,button,label,legend,input')].filter(el=>[...el.childNodes].some(node=>node.nodeType===Node.TEXT_NODE&&node.textContent?.trim()));
@@ -75,7 +103,9 @@ for(const width of [1440,390])for(const solid of [false,true])test(`smooth day/n
   for(const frame of frames){
     expect(frame.uiProgress).toBe(frame.amount);
     expect(frame.shell.slice(0,3)).toEqual([241,240,235].map((value,i)=>Math.round(value+([32,37,35][i]-value)*frame.amount)));
-    expect(frame.sidebar.slice(0,3)).toEqual([248,248,245].map((value,i)=>Math.round(value+([40,45,43][i]-value)*frame.amount)));
+    const sidebarDay = width < 720 ? [241,240,235] : [248,248,245];
+    const sidebarNight = width < 720 ? [32,37,35] : [40,45,43];
+    expect(frame.sidebar.slice(0,3)).toEqual(sidebarDay.map((value,i)=>Math.round(value+(sidebarNight[i]-value)*frame.amount)));
     expect(frame.minContrast,frame.weakText+' at '+frame.amount).toBeGreaterThanOrEqual(4.5);
   }
   expect(frames.some(frame=>frame.amount===1)).toBe(true);

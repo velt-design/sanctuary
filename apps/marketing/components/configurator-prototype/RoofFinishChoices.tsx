@@ -7,12 +7,12 @@ import finishStyles from './roofFinish.module.css';
 import ui from './sectionControls.module.css';
 import {RoofMaterialDiagram} from './DesignIllustrations';
 
-export default function RoofFinishChoices({ roof, input, onChange }: { roof: PreviewRoofChoices; input: SimpleCoverInput; onChange: (roof: PreviewRoofChoices) => void }) {
+export default function RoofFinishChoices({ roof, input, onChange, hideMaterial = false }: { hideMaterial?: boolean; roof: PreviewRoofChoices; input: SimpleCoverInput; onChange: (roof: PreviewRoofChoices) => void }) {
   const finish = getRoofFinish(roof);
   const change = (patch: Partial<RepresentativeRoofFinish>) => onChange({ ...roof, finish: { ...finish, ...patch } });
   const max = roofFinishBayLimit(input.widthMm, input.projectionMm, roof.family, roof.orientation);
   return <div className={finishStyles.controls}>
-    <fieldset className={`${styles.choices} ${ui.material}`}><legend>Roof material</legend>
+    <fieldset hidden={hideMaterial} className={`${styles.choices} ${ui.material}`}><legend>Roof material</legend>
       {(['acrylic', 'solid', 'combination'] as const).map(material => <label key={material} data-selected={finish.material === material}>
         <input type="radio" name="roof-material" checked={finish.material === material} onChange={() => change({ material, ...(material !== 'acrylic' && !finish.ceiling ? {ceiling: 'thermopine-150'} : {}) })} />
         <span><RoofMaterialDiagram material={material}/><strong>{material === 'acrylic' ? 'Acrylic' : material === 'solid' ? 'Solid + timber ceiling' : 'Combination'}</strong><small>{material === 'acrylic' ? 'Let natural light through your roof.' : material === 'solid' ? 'A solid roof with timber underneath.' : 'Combine a solid roof with an acrylic skylight band.'}</small></span></label>)}

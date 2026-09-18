@@ -13,7 +13,7 @@ import BlindPlan from './BlindPlan';
 import {usePreviewBlinds} from './PreviewBlindProvider';
 import type { PreviewDimensionAxis } from './usePreviewDimension';
 
-export default function PreviewPlan({ profile = 'corrugated', trayWidth = 400, roofPlanes = [], covering, plan, flashings = [], context, activeDimension, readOnly = false }: { readOnly?: boolean; profile?: string; trayWidth?: number; roofPlanes?: RoofPlane3D[]; covering?: RoofFinishGeometry; plan: GeometryPlanViewModel; flashings?: RoofFlashing3D[]; context: RepresentativeSurroundings | null; activeDimension: PreviewDimensionAxis | null }) {
+export default function PreviewPlan({ profile = 'corrugated', trayWidth = 400, roofPlanes = [], covering, plan, flashings = [], context, activeDimension, readOnly = false, guidedOpenings = false }: { guidedOpenings?: boolean; readOnly?: boolean; profile?: string; trayWidth?: number; roofPlanes?: RoofPlane3D[]; covering?: RoofFinishGeometry; plan: GeometryPlanViewModel; flashings?: RoofFlashing3D[]; context: RepresentativeSurroundings | null; activeDimension: PreviewDimensionAxis | null }) {
   const lighting=useLighting();
   const roofFocus=useRail().section==='roof';
   const sides=usePreviewBlinds();
@@ -38,7 +38,10 @@ export default function PreviewPlan({ profile = 'corrugated', trayWidth = 400, r
   const { minX, minY, maxX, maxY, lengthMm, projectionMm } = plan.extents;
   const compact = available.width < 600;
   // Fit the actual pergola with fixed pixel gutters for annotations.
-  const padding = compact ? { left: 34, right: 12, top: context && !lightingPlan ? 52 : 32, bottom: 34 } : { left: 100, right: 40, top: context && !lightingPlan ? 138 : 100, bottom: 112 };
+  // Include the whole centred dimension badge (25 + 19px on the left),
+  // bottom badge, and plan title in compact viewports, with breathing room.
+  const padding = guidedOpenings ? { left: 76, right: 76, top: context ? 80 : 50, bottom: 68 }
+    : compact ? { left: 50, right: 12, top: context && !lightingPlan ? 80 : 50, bottom: 46 } : { left: 100, right: 40, top: context && !lightingPlan ? 138 : 100, bottom: 112 };
   const scale = Math.max(.001, Math.min(
     Math.max(1, available.width - padding.left - padding.right) / lengthMm,
     Math.max(1, available.height - padding.top - padding.bottom) / projectionMm,
@@ -115,16 +118,16 @@ export default function PreviewPlan({ profile = 'corrugated', trayWidth = 400, r
         <text x={x+10/scale} y={y-8/scale} fill="#5d675c" stroke="#e5eeeb" strokeWidth={3/scale} paintOrder="stroke" fontFamily="Inter, sans-serif" fontSize={(compact ? 9 : 12)/scale}>Roof fall</text>
       </g>;
     })}
-    {!lightingPlan && <BlindPlan scale={scale} contextOnly={roofFocus || readOnly} />}
+    {!lightingPlan && <BlindPlan scale={scale} contextOnly={roofFocus || readOnly} guided={guidedOpenings} />}
     {lightingPlan && <PlanLighting scale={scale}/>}
-    <g fill="none" stroke="#aeb6a5" strokeWidth={.6} vectorEffect="non-scaling-stroke">
+    {!guidedOpenings && <g fill="none" stroke="#aeb6a5" strokeWidth={.6} vectorEffect="non-scaling-stroke">
       <path vectorEffect="non-scaling-stroke" d={`M ${minX} ${maxY + 4 / scale} V ${widthLine + font * .5} M ${maxX} ${maxY + 4 / scale} V ${widthLine + font * .5}`} />
       <path vectorEffect="non-scaling-stroke" d={`M ${minX - 4 / scale} ${minY} H ${projectionLine - font * .5} M ${minX - 4 / scale} ${maxY} H ${projectionLine - font * .5}`} />
-    </g>
+    </g>}
     <g fill="#5d675c" fontFamily="Inter, sans-serif" fontSize={(compact ? 9 : 12) / scale} letterSpacing={.65 / scale}>
       <text x={minX} y={minY - (context && !lightingPlan ? compact ? 62 : 102 : compact ? 32 : 48) / scale} fill="#2f382f" fontWeight={600} fontSize={(compact ? 10 : 13) / scale}>{lightingPlan ? 'REFLECTED CEILING PLAN' : 'ROOF PLAN'}</text>
       {(!context || lightingPlan) && <text x={(minX + maxX) / 2} y={minY - (lightingPlan ? 8 : 24) / scale} textAnchor="middle">{plan.connectionType==='freestanding'?'REAR EDGE':'HOUSE CONNECTION'}</text>}
-      <text x={minX} y={maxY + 12 / scale}>FRONT EDGE</text>
+      {!guidedOpenings && <text x={minX} y={maxY + 12 / scale}>FRONT EDGE</text>}
     </g>
     {!compact && <g transform={`translate(${minX},${maxY+83/scale})`} fontFamily="Inter, sans-serif" fontSize={12/scale} fill="#5d675c" aria-label="Plan legend">
       {sides?.editing && !lightingPlan ? <>
@@ -135,7 +138,7 @@ export default function PreviewPlan({ profile = 'corrugated', trayWidth = 400, r
         <text x={26/scale}>{item.label}</text>
       </g>)}
     </g>}
-    <PlanDimension axis="width" value={lengthMm} active={activeDimension === 'width'} start={minX} end={maxX} offset={widthLine} scale={scale} compact={compact} />
-    <PlanDimension axis="projection" value={projectionMm} active={activeDimension === 'projection'} start={minY} end={maxY} offset={projectionLine} scale={scale} compact={compact} />
+    {!guidedOpenings && <><PlanDimension axis="width" value={lengthMm} active={activeDimension === 'width'} start={minX} end={maxX} offset={widthLine} scale={scale} compact={compact} />
+    <PlanDimension axis="projection" value={projectionMm} active={activeDimension === 'projection'} start={minY} end={maxY} offset={projectionLine} scale={scale} compact={compact} /></>}
   </svg>;
 }
