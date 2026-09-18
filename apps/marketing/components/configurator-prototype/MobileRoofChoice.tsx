@@ -42,7 +42,7 @@ export default function MobileRoofChoice({ kind, roof, onChange }: {
       </> : <p className={css.caption}>Choose your shape above. Your own design appears after you set the size.</p>}
     </div>}
     <figure className={css.choiceImage} data-choice-kind={kind} data-material={selected.id} key={selected.id}>
-      <Image src={selected.image} alt={selected.alt} fill sizes={kind === 'roof' ? '(max-width: 720px) 200vw, 1440px' : '(max-width: 720px) 100vw, 720px'} priority />
+      <Image src={selected.image} alt={selected.alt} fill sizes={kind === 'roof' ? '(max-width: 720px) 200vw, 1440px' : '(max-width: 720px) 100vw, 720px'} priority fetchPriority="high" />
     </figure>
     <div className={css.choiceDescription} aria-live="polite"><strong>{selected.label}</strong><p>{selected.description}</p></div>
     <p className={css.caption}>{kind === 'shape' ? 'Illustrated roof shapes. Your own design comes next.' : 'Material close-up. Your chosen roof shape stays the same.'}</p>
