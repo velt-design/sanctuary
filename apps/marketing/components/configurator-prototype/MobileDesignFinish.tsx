@@ -30,6 +30,11 @@ export default function MobileDesignFinish({ visible, selection, pricePanel, est
   const brief = buildContactDesignBrief(selection);
   function enquire() {
     emitDesignEvent('design_enquiry_open', hasTrackingDecision && consent.analytics);
+    if (window.location.pathname === '/design-enquiry') {
+      form.current?.closest('dialog')?.close();
+      requestAnimationFrame(() => document.getElementById('contact-name')?.focus());
+      return;
+    }
     setEnquiring(true);
     requestAnimationFrame(() => {
       form.current?.scrollIntoView({ block: 'start', behavior: 'instant' });

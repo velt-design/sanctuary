@@ -38,12 +38,15 @@ const nextLabels: Record<MobileStep, string> = {
 };
 type Editor = 'details' | 'sides' | 'lighting' | null;
 
-export default function MobileDesignJourney({ active, draft, pricePanel, estimate, selection }: {
+export default function MobileDesignJourney({ active, draft, pricePanel, estimate, selection, desktopSection }: {
+  desktopSection?: RailSection;
   selection: PreviewSelection; active: boolean; draft: ReturnType<typeof usePreviewDraft>; pricePanel: ReactNode; estimate: SharedEstimate | null;
 }) {
   const { input, roof, setInput, setRoof } = draft;
   const rail = useRail(), lighting = useLighting()!, blinds = usePreviewBlinds()!;
-  const [step, setStep] = useState<MobileStep>(() => draft.linkNotice === 'loaded' ? 'review' : readMobileStep());
+  const [step, setStep] = useState<MobileStep>(() => draft.linkNotice === 'loaded' ? 'review' : desktopSection
+    ? desktopSection === 'review' ? 'review' : desktopSection === 'roof' ? 'roof' : desktopSection === 'structure' ? 'size' : 'extras'
+    : readMobileStep());
   const [editor, setEditor] = useState<Editor>(null);
   const sides = useMobileSides(roof, setRoof);
   const sidePhase = sides.phase;

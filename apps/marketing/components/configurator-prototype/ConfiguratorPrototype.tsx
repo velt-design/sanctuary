@@ -15,7 +15,8 @@ import LightingProvider,{useLighting} from './LightingProvider';
 import LightingControls from './LightingControls';
 import { hasSimpleRoofPrice } from './roofFinish';
 import dynamic from 'next/dynamic';
-import { type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
+import type { RailSection } from './RailProvider';
 import type { SimpleCoverInput, SimpleCoverPublicResult } from '../../lib/simpleCoverCalculator';
 import type { PreviewRoofChoices } from './GableChoices';
 import { simpleCoverAreaM2 } from '../../lib/simpleCoverCalculator';
@@ -53,6 +54,11 @@ function ConfiguratorWorkspace({active,draft,expanded,onToggleExpanded,renderEnq
   const mobile = useMobileConfigurator();
   const lighting=useLighting()!;
   const rail=useRail();
+  const desktopSection = useRef<RailSection | undefined>(undefined);
+  useEffect(() => {
+    // Ignore the server snapshot on initial phone hydration.
+    if (ready && !mobile && !window.matchMedia('(max-width: 720px)').matches) desktopSection.current = rail.section;
+  }, [ready, mobile, rail.section]);
   const lightingNotice = selectionNotice?.startsWith('Some lights no longer fit') ? 'Your roof change affected some lights. Check your lighting choices.' : undefined;
   const reviewPrice = useReviewPrice(input, roof, ready);
   const { price: configuratorPrice, retry: retryConfigured } = useConfiguratorPrice({ version: 1, input, roof }, ready);
@@ -67,7 +73,7 @@ function ConfiguratorWorkspace({active,draft,expanded,onToggleExpanded,renderEnq
             : result.status === 'custom' ? <><p className={styles.priceValue}>A custom fit.</p><p className={styles.small}>{result.reason}</p></>
             : <><p>Estimate unavailable. Keep exploring your design.</p><button className={styles.textButton} onClick={retry}>Retry estimate <ArrowUpRight /></button></>}
         </section>;
-  return <PreviewBlindProvider input={input} roof={roof} onChange={setRoof}>{mobile && !renderEnquiry ? <MobileDesignJourney selection={{input,roof,result,configuratorPrice}} active={active} draft={draft} pricePanel={pricePanel} estimate={estimate} /> : <div className={styles.page} data-lighting-edit={lighting.editing} data-night={lighting.night} data-expanded={expanded} data-layout={renderEnquiry ? 'project' : 'popup'}>
+  return <PreviewBlindProvider input={input} roof={roof} onChange={setRoof}>{mobile && !renderEnquiry ? <MobileDesignJourney desktopSection={desktopSection.current} selection={{input,roof,result,configuratorPrice}} active={active} draft={draft} pricePanel={pricePanel} estimate={estimate} /> : <div className={styles.page} data-lighting-edit={lighting.editing} data-night={lighting.night} data-expanded={expanded} data-layout={renderEnquiry ? 'project' : 'popup'}>
     <DesignFunnelTracker active={active} ready={ready} selectionKey={JSON.stringify({input,roof})} section={rail.section}/>
     <div className={styles.workspace}>
       <div className={styles.visualSlot}>

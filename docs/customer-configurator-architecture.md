@@ -5589,3 +5589,5 @@ Mobile Review now uses MobileDesignFinish: actual portrait, compact specificatio
 Mobile Size now renders MobileFootprint from solvePergolaPreview.plan: outline and actual posts only, fixed-space SVG with width/projection and conditional house edge. This supersedes Step3 daylight3D; 3D remains on the following Explore step. Existing controls and geometry rules are unchanged.
 
 Release tracking: mobile Enquire/Share alternatives use the existing consent-gated configured-design event owner, distinguishing intent, successful share/copy and manual-link recovery. Native cancellation never records completion. Final browser coverage is `marketing.configurator-tracking.spec.ts`; no customer values or design URLs enter analytics.
+
+Release continuity: crossing from an active desktop layout seeds mobile progress from the current rail section, ahead of older saved phone progress. Initial phone hydration still restores its own journey. On /design-enquiry, the mobile edit overlay closes back to the existing form when Enquire is chosen, preserving its values and unique field IDs instead of creating another form. Covered by marketing.configurator-continuity.spec.ts.
