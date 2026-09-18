@@ -16,7 +16,6 @@ import { useMobileSides } from './useMobileSides';
 import MobileSideChoices from './MobileSideChoices';
 import MobileSiteChoices from './MobileSiteChoices';
 import MobileFootprint from './MobileFootprint';
-import MobileDesignFinish from './MobileDesignFinish';
 import type { PreviewSelection } from './ConfiguratorPrototype';
 import MobileLightingChoices from './MobileLightingChoices';
 import type { SharedEstimate } from './sharedEstimate';
@@ -26,6 +25,8 @@ import styles from './prototype.module.css';
 
 const PreviewViews = dynamic(() => import('./PreviewViews'), { ssr: false,
   loading: () => <p role="status">Preparing your pergola…</p> });
+const MobileDesignFinish = dynamic(() => import('./MobileDesignFinish'), { ssr: false,
+  loading: () => <p role="status">Preparing your review…</p> });
 const titles: Record<MobileStep, string> = {
   shape: 'Find your shape.', roof: 'Light, shade, or both?', size: 'Make room for life.',
   explore: 'Your pergola, taking shape.', extras: 'Make it yours.',
@@ -46,6 +47,8 @@ export default function MobileDesignJourney({ draft, pricePanel, estimate, selec
   const [step, setStep] = useState<MobileStep>(() => draft.linkNotice === 'loaded' ? 'review' : desktopSection
     ? desktopSection === 'review' ? 'review' : desktopSection === 'roof' ? 'roof' : desktopSection === 'structure' ? 'size' : 'extras'
     : readMobileStep());
+  const [reviewStarted, setReviewStarted] = useState(step === 'review');
+  useEffect(() => { if (step === 'review') setReviewStarted(true); }, [step]);
   const [editor, setEditor] = useState<Editor>(null);
   const sides = useMobileSides(roof, setRoof);
   const sidePhase = sides.phase;
@@ -147,7 +150,7 @@ export default function MobileDesignJourney({ draft, pricePanel, estimate, selec
       {editor === 'details' && <div className={css.controls}><p>Explore how your pergola could meet your home. We’ll confirm the connection and structural suitability for your site.</p><PreviewControls mode="details" input={input} roof={roof} onChange={setInput} onRoofChange={setRoof} onDimensionActivity={showDimension} /></div>}
       {editor === 'sides' && <MobileSideChoices flow={sides} roof={roof}><section className={css.model} aria-label="Your pergola preview"><PreviewViews guided simple presentation input={input} roof={roof} activeDimension={null} expanded={false} onToggleExpanded={() => {}} /></section></MobileSideChoices>}
       {editor === 'lighting' && <div className={css.controls}><MobileLightingChoices notice={draft.selectionNotice} onPreview={() => scroll.current?.scrollTo({ top: 0, behavior: 'instant' })} /></div>}
-      <MobileDesignFinish visible={!editor && step === 'review'} selection={selection} pricePanel={pricePanel} estimate={estimate} onEdit={edit} onExplore={() => go('finished')} onDetails={openDetails} notice={draft.selectionNotice} />
+      {(reviewStarted || step === 'review') && <MobileDesignFinish visible={!editor && step === 'review'} selection={selection} pricePanel={pricePanel} estimate={estimate} onEdit={edit} onExplore={() => go('finished')} onDetails={openDetails} notice={draft.selectionNotice} />}
       {!editor && step === 'review' && <div className={css.restart}>{resetting ? <><p>Replace this design and start again?</p><button onClick={() => { resetPreviewDraft(); setResetting(false); setReturnToReview(false); go('shape'); }}>Start new design</button><button onClick={() => setResetting(false)}>Keep this design</button></> : <button className={css.textButton} onClick={() => setResetting(true)}>Start a new design</button>}</div>}
     </div>
     <footer hidden={!editor && step === 'review'} className={css.footer} aria-label="Continue your design">
