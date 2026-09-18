@@ -3,3 +3,5 @@
 .opening:hover .label, .opening:focus .label, .opening[data-selected=true] .label,
 .opening:hover .highlight, .opening:focus .highlight, .opening[data-selected=true] .highlight { opacity: 1; }
 .opening:hover .label, .opening:focus .label, .opening[data-selected=true] .label { pointer-events: auto; }
+.opening[data-guided=true] .label, .opening[data-guided=true] .highlight { opacity: 1; }
+.opening[data-guided=true] .label { pointer-events: auto; }

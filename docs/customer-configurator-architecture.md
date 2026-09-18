@@ -5530,3 +5530,60 @@ Bar visibility clarification (2026-09-15): only the homepage waits for the short
 Enquiry overlay return fix (2026-09-15): an ordinary same-tab enquiry link inside the open configurator, while already on /design-enquiry, closes the overlay without navigation. Current form values and attribution remain intact. Fresh browser verification preserved a typed name after Edit, Review, Enquire; ten focused overlay/estimate tests, marketing typecheck and lint passed. Existing hot-loaded tabs may need refresh to install the revised navigation listener. No submission or email sent.
 
 The active launch-review evidence and outstanding gates are tracked in [customer-configurator-launch-review.md](customer-configurator-launch-review.md). Historical approved-proposal tests explicitly use v2.7; the v2.8 candidate has separate coverage. Full marketing suite: 841 passing tests on 15 September 2026.
+
+### Guided mobile configurator — local draft (2026-09-18)
+
+Jordan approved a dedicated mobile journey (720px and below): roof shape,
+roof build-up, size, full model, optional sides/lighting, finished model, review.
+The roof choices use matched model-derived illustrations, close material
+photography and the Gable selector's editorial treatment. References are distinguished from the
+customer's model. The model keeps clear 3D/Plan and Day/Night controls. Existing
+selection normalization, geometry and pricing owners are reused.
+
+House connections, position, site level and gable details are optional under
+More design options at model/review. Review states the assumed connection and
+level used in the estimate and requires site confirmation. Roof details and
+battens remain discoverable below the roof material choices. Review edits return
+directly to review. Back/Next retain choices; new-design reset is explicit and
+confirmed. No forced 24-hour reset. The validated design now has a local-storage
+backup after the session draft; imported shared designs still take precedence.
+Only selections are retained, never a price, calculation reference or enquiry
+personal information. Mobile progress is local presentation state, not part of
+the shared customer intent or pricing contract.
+
+MobileDesignJourney owns composition/navigation, MobileRoofChoice the visual
+choices, and mobileJourneyState progress validation/storage. Desktop retains its
+rail and composition. Existing controls accept narrow presentation options,
+including size-only and optional-detail views. The dialog owns its background
+independently of foundation stylesheet ordering to preserve the coordinated fade.
+
+MobileLightingChoices composes simple replace-layout actions from existing rafter
+amounts and available ceiling grids. LightingProvider exposes the unfiltered
+rafter pool for these actions because they replace existing LED selections; the
+detailed editor continues using strip-filtered sites. The normalizer remains the
+owner of final counts and fit. Fine-tune lighting retains the full existing editor.
+MobileOpeningPicker presents a quiet footprint of actual solved openings. MobileSideChoices and useMobileSides own a three-stage grouped flow: multi-select openings using the diagram or native checkboxes, compare five matched material-reference images, then explicitly apply to the whole group and inspect the actual model. Browsing or cancelling a treatment does not change the design. sideTreatment validates the complete group before one update, preserves existing same-kind customisations and unselected openings, and reports incompatible blind openings before Apply. The final model retains individual screen/blind refinements and Choose more sides/Done actions.
+Guided BlindPlan labels remain visible with touch targets outside the roof;
+desktop/exploration labels retain their existing hover behavior. BlindControls'
+details-only presentation preserves screen/blind refinements without duplicating
+their rules. MobileSiteChoices adds Attached/Freestanding and Ground/Elevated to
+Size, in that order with Attached/Freestanding first. MobileRoofChoice owns gable Parallel/Extending beneath the shape selector,
+with stable reserved space across shapes. Size enters daylight 3D with view/time
+controls hidden; rendering fallback can still show Plan.
+All mobile model stages use PreviewCamera's opt-in lower presentation angle; side editing frames the selected side. Mobile hides view/time switches everywhere, uses a plan only for opening selection and daylight 3D elsewhere except the lighting editor. Lighting keeps a steady night view even when selecting No lighting, with three compact presets and detailed controls below. MobileDesignPortrait captures the actual settled scene
+locally through SceneSnapshot; a design key invalidates old captures on edits,
+reload recreates the view, and capture failure retains the live fallback. No image
+is uploaded or persisted. Desktop framing remains unchanged.
+Review keeps price lines permanently visible, with supporting draft allowance
+details in disclosures while keeping the estimate basis and exclusions visible, and separates chosen position/level/ridge from site
+and house-connection requirements to confirm. Selection
+notices remain contextual to extras and review. No pricing rules change.
+
+Focused verification: playwright/marketing.configurator-mobile.spec.ts,
+marketing.configurator-editorial.spec.ts and marketing.configurator-transition.spec.ts.
+This is a local draft for owner review, not a production release. Task evidence:
+artifacts/mobile-configurator/work-record.md (private local working record).
+
+Mobile Review now uses MobileDesignFinish: actual portrait, compact specification, disclosed edit controls, visible price breakdown/exclusions and two clear Enquire/Share routes. Inline enquiry reuses ContactEnquiryForm/ConfiguredEnquiryFields via opt-in mobileFinish; remains mounted across guided edits, preserving entered fields. Existing session storage supports reload. Successful submission is reset if the design later changes, avoiding a saved claim for an unsent version. CustomerDesign snapshot and signed-price handoff remain unchanged. Staff revision returns retain their portal route. Sharing uses the existing serialized immutable design URL, with native share, copy and manual-copy recovery. Desktop and standalone enquiry remain on their existing presentations. HTTP LAN previews cannot submit through the secure-browser requirement; intercepted browser tests simulate secure capability and do not prove live delivery.
+
+Mobile Size now renders MobileFootprint from solvePergolaPreview.plan: outline and actual posts only, fixed-space SVG with width/projection and conditional house edge. This supersedes Step3 daylight3D; 3D remains on the following Explore step. Existing controls and geometry rules are unchanged.

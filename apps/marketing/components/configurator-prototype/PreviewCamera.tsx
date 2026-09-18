@@ -8,13 +8,14 @@ import type { SceneBounds } from '@sp/geometry-viewer';
 import type { Point3 } from '@sp/geometry';
 
 const FRONT_DIRECTION = new Vector3(1, 1.7, 1.25).normalize();
+const PRESENTATION_DIRECTION = new Vector3(.85, 1.9, .65).normalize();
 
-export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, surroundings }: {
-  bounds: SceneBounds; fitPoints: Point3[]; enabled: boolean; reset: number; fit: number; surroundings: boolean;
+export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, surroundings, presentation = false, side }: {
+  bounds: SceneBounds; fitPoints: Point3[]; enabled: boolean; reset: number; fit: number; surroundings: boolean; presentation?: boolean; side?: string;
 }) {
   const { camera, size, gl, invalidate } = useThree();
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
-  const previous = useRef<{ reset: number; fit: number; width: number; height: number } | null>(null);
+  const previous = useRef<{ reset: number; fit: number; width: number; height: number; presentation: boolean; side?: string } | null>(null);
   const touched = useRef(false);
   const recordCamera = useCallback(() => {
     if (!(camera instanceof PerspectiveCamera) || !controls.current) return;
@@ -26,11 +27,12 @@ export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, 
   useLayoutEffect(() => {
     const orbit = controls.current;
     if (!(camera instanceof PerspectiveCamera) || !orbit || !size.width || !size.height) return;
-    const initialise = !previous.current || previous.current.reset !== reset;
+    const initialise = !previous.current || previous.current.reset !== reset || previous.current.presentation !== presentation || previous.current.side !== side;
     const centre = new Vector3(bounds.center.x, bounds.center.y, bounds.center.z);
     if (initialise) {
       touched.current = false;
-      camera.position.copy(centre).addScaledVector(FRONT_DIRECTION, bounds.size * 3);
+      const direction = presentation && side === 'left' ? new Vector3(-1.9, .85, .65).normalize() : presentation && side === 'right' ? new Vector3(1.9, .85, .65).normalize() : presentation && (side === 'back' || side === 'rear') ? new Vector3(.85, -1.9, .65).normalize() : presentation ? PRESENTATION_DIRECTION : FRONT_DIRECTION;
+      camera.position.copy(centre).addScaledVector(direction, bounds.size * 3);
     } else camera.position.add(centre.clone().sub(orbit.target));
     orbit.target.copy(centre);
     camera.up.set(0, 0, 1);
@@ -56,10 +58,10 @@ export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, 
     }
     camera.updateProjectionMatrix();
     orbit.update();
-    previous.current = { reset, fit, width: size.width, height: size.height };
+    previous.current = { reset, fit, width: size.width, height: size.height, presentation, side };
     recordCamera();
     invalidate();
-  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, invalidate, recordCamera]);
+  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, presentation, side, invalidate, recordCamera]);
 
   return <OrbitControls ref={controls} makeDefault enabled={enabled} enablePan={false}
     enableDamping={false} minDistance={1000} maxDistance={100000} minPolarAngle={.15} maxPolarAngle={Math.PI * .48}

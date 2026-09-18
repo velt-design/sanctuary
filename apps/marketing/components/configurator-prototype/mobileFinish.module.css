@@ -1,0 +1,25 @@
+.finish[hidden],.form[hidden]{display:none}
+.finish{padding:0 0 24px}
+.spec{font-size:14px;line-height:1.6;margin:8px 0}
+.edit{border-bottom:1px solid var(--color-rule);margin-bottom:20px}
+.edit>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;text-decoration:underline;text-underline-offset:4px;font-size:13px}
+.price>section{padding:0;border:0;background:none}
+.price :global([class*="priceValue"]){font-size:36px;margin:12px 0;letter-spacing:-.04em}
+.price p,.price dl{font-size:12px;line-height:1.5}
+.price h3{font-size:16px;margin-top:22px}
+.price dd{margin-left:0}
+.price summary{min-height:44px;display:flex;align-items:center}
+.note{font-size:11px;line-height:1.6;color:var(--color-text-secondary);margin:16px 0}
+.actions{border-top:1px solid var(--color-rule);padding-top:22px;margin-top:22px}
+.actions button,.actions>a{width:100%;min-height:50px;font:500 15px var(--font-body);border:1px solid #171b16;background:transparent;color:#171b16;cursor:pointer}
+.actions .primary{background:#171b16;color:#f1f0eb}
+.actions p{font-size:12px;line-height:1.5;margin:8px 0 20px}
+.actions input{width:100%;box-sizing:border-box;min-height:44px;font-size:16px}
+.form{border-top:1px solid var(--color-rule);padding-top:24px;margin-top:24px;scroll-margin-top:16px}
+.form button[type=submit]{background:#171b16}
+.form details>summary{min-height:44px;display:flex;align-items:center;font-size:13px;cursor:pointer}
+.finish button:focus-visible,.finish summary:focus-visible{outline:2px solid #505948;outline-offset:3px}
+.actions :global([class*="shareButtons"]){display:flex;flex-direction:column;gap:6px}
+.actions :global([class*="shareButtons"]) button{text-decoration:none;min-height:50px;border:1px solid #171b16;font-size:15px;color:#171b16}
+.actions :global([class*="shareButtons"]) button+button{border:0;min-height:44px;font-size:12px;text-decoration:underline}
+.edit>button{background:none;border:0;text-decoration:underline;font:inherit;font-size:13px;min-height:44px;margin:10px 0;cursor:pointer;color:inherit}

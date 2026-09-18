@@ -40,22 +40,6 @@ for (const width of [1024, 1280, 1440]) {
   });
 }
 
-test('mobile keeps compact viewer and expand-return behaviour', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/configurator-preview?open=1');
-  const expand = page.getByRole('button', { name: 'Expand view', exact: true });
-  await expect(expand).toBeInViewport();
-  const viewer = page.getByRole('region', { name: 'Pergola views' });
-  const before = (await viewer.boundingBox())!;
-  await expand.click();
-  expect((await viewer.boundingBox())!.height).toBeGreaterThan(before.height * 2);
-  await page.keyboard.press('Escape');
-  expect((await viewer.boundingBox())!.height).toBeCloseTo(before.height, 0);
-  await expect(expand).toBeFocused();
-  await expect(page.getByRole('button', { name: /^Personalise/ })).toBeInViewport();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
-});
-
 test('homepage designer has the same compact action area as the direct preview', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(() => localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: false, marketing: false, updatedAt: '2026-09-18T00:00:00.000Z', version: 1 })));

@@ -44,12 +44,16 @@ it('uses legacy selections only as a fallback, with newer edits and shared desig
     expect(current!.input.widthMm).toBe(7000);
     expect(JSON.parse(window.sessionStorage.getItem(PREVIEW_DRAFT_KEY)! ).input.widthMm).toBe(7000);
     window.sessionStorage.clear();
+    await restore();
+    expect(current!.input.widthMm).toBe(7000); // Survives a new visit without session storage.
+    window.localStorage.removeItem(PREVIEW_DRAFT_KEY);
     window.sessionStorage.setItem(SIMPLE_COVER_HANDOFF_STORAGE_KEY,'invalid JSON');
     await restore();
     expect(current!.input).toEqual(DEFAULT_PREVIEW_DRAFT.input);
   } finally {
     await React.act(async () => root.unmount());
     window.sessionStorage.clear();
+    window.localStorage.removeItem(PREVIEW_DRAFT_KEY);
     window.history.replaceState({}, '', '/');
     vi.unstubAllGlobals();
   }

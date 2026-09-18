@@ -61,6 +61,7 @@ import {
 
 export type ContactEnquiryFormProps = {
   compactConfigured?: boolean;
+  mobileFinish?: boolean;
   configuredDesign?: ContactDesignBrief;
   initialEnquiryType: EnquiryAudience | null;
   initialContext: EnquiryContext;
@@ -114,6 +115,7 @@ export default function ContactEnquiryForm({
   sourceProductLabel,
   configuredDesign,
   compactConfigured = false,
+  mobileFinish = false,
 }: ContactEnquiryFormProps) {
   const {
     consent,
@@ -136,6 +138,14 @@ export default function ContactEnquiryForm({
   const [receivedEarlier, setReceivedEarlier] = useState(false);
   const submissionIdRef = useRef<string | null>(null);
   const submittingRef = useRef(false);
+  const sentDesignRef = useRef<string | null>(null);
+  const currentDesign = JSON.stringify(configuredDesign?.snapshot);
+  useEffect(() => {
+    if (mobileFinish && submitState === 'success' && sentDesignRef.current !== currentDesign) {
+      setSubmitState('idle');
+      setReceivedEarlier(false);
+    }
+  }, [mobileFinish, submitState, currentDesign]);
   const attachmentErrorRef = useRef<string | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement | null>(null);
   const shouldFocusErrorSummaryRef = useRef(false);
@@ -383,7 +393,13 @@ export default function ContactEnquiryForm({
       ? simpleCoverPayload.roofMaterials
       : formData.getAll('roofMaterials').map(String);
     const selectedAddOns = formData.getAll('addOns').map(String);
-    const submissionId = submissionIdRef.current ?? createEnquirySubmissionId();
+    let submissionId: string;
+    try { submissionId = submissionIdRef.current ?? createEnquirySubmissionId(); }
+    catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Please use a secure browser to send your enquiry.');
+      setSubmitState('error');
+      return;
+    }
     submissionIdRef.current = submissionId;
     submittingRef.current = true;
     setSubmitError(null);
@@ -471,6 +487,7 @@ export default function ContactEnquiryForm({
       }
 
       submissionIdRef.current = null;
+      sentDesignRef.current = JSON.stringify(configuredDesign?.snapshot);
       setReceivedEarlier(responsePayload.idempotentReplay === true);
       setSubmitState('success');
       trackSubmitEvent('success', selectedRoofs, selectedAddOns, undefined, submissionId);
@@ -486,7 +503,7 @@ export default function ContactEnquiryForm({
     }
   };
 
-  if(compactConfigured && configuredDesign)return <ConfiguredEnquiryFields onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
+  if(compactConfigured && configuredDesign)return <ConfiguredEnquiryFields mobileFinish={mobileFinish} onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
 
   const messageLabel = pathway === 'commercial-professional'
     ? 'Project scope'

@@ -19,7 +19,8 @@ function restore() {
   // A failed write leaves the in-memory draft newer than any saved value.
   if (snapshot?.storageAvailable === false) return;
   try {
-    const raw = window.sessionStorage.getItem(PREVIEW_DRAFT_KEY);
+    let raw = window.sessionStorage.getItem(PREVIEW_DRAFT_KEY);
+    if (!raw) { try { raw = window.localStorage.getItem(PREVIEW_DRAFT_KEY); } catch { /* Session-only browser. */ } }
     let draft: PreviewDraft | null = null;
     let migratedSimple = false;
     try { draft = raw ? parsePreviewDraft(JSON.parse(raw)) : null; }
@@ -48,6 +49,7 @@ function save(draft: PreviewDraft) {
   let storageAvailable = true;
   try { window.sessionStorage.setItem(PREVIEW_DRAFT_KEY, JSON.stringify(draft)); }
   catch { storageAvailable = false; }
+  try { window.localStorage.setItem(PREVIEW_DRAFT_KEY, JSON.stringify(draft)); } catch { /* Session storage remains usable. */ }
   snapshot = { draft, storageAvailable };
 }
 
@@ -99,6 +101,17 @@ function update(patch: { input?: SimpleCoverInput; roof?: PreviewRoofChoices }) 
 
 const setInput = (input: SimpleCoverInput) => update({ input });
 const setRoof = (roof: PreviewRoofChoices) => update({ roof });
+
+export function resetPreviewDraft() {
+  save(DEFAULT_PREVIEW_DRAFT);
+  updateDesignContinuation({ started: false, section: 'structure' });
+  emit();
+}
+
+export function retainPreviewDraft() {
+  const draft = snapshot?.draft;
+  if (draft) { try { window.localStorage.setItem(PREVIEW_DRAFT_KEY, JSON.stringify(draft)); } catch { /* Optional cross-visit recovery. */ } }
+}
 
 export function usePreviewDraft() {
   const current = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);

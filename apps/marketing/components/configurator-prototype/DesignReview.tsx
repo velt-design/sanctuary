@@ -5,9 +5,10 @@ import { describeSidePanels } from './sidePanelCatalog';
 import { useRail, type RailSection } from './RailProvider';
 import css from './designJourney.module.css';
 
-export default function DesignReview({ input, roof, lightingNotice }: { input: SimpleCoverInput; roof: PreviewRoofChoices; lightingNotice?: string }) {
+export default function DesignReview({ input, roof, lightingNotice, onEdit, hideHeading = false, customerChoices = false }: { customerChoices?: boolean; hideHeading?: boolean; onEdit?: (section: RailSection) => void; input: SimpleCoverInput; roof: PreviewRoofChoices; lightingNotice?: string }) {
   const { choose } = useRail();
   const finish=getRoofFinish(roof);
+  const sizeSummary = `${(input.widthMm / 1000).toFixed(1)} × ${(input.projectionMm / 1000).toFixed(1)} m · ${roof.family === 'mono' ? 'Pitched' : roof.family === 'gable' ? 'Gable' : 'Box perimeter'} · ${input.level === 'ground' ? 'Ground' : 'Elevated'} · ${roof.attachmentIntent === 'freestanding' ? 'Freestanding' : roof.attachmentIntent === 'unsure' ? 'Position to confirm' : 'Attached'}${roof.family === 'gable' ? ` · Ridge ${roof.orientation === 'parallel' ? 'parallel' : 'extending'}` : ''}`;
   const openingName=(id:string)=>id.replace(/^(front|left|right)-(\d+)of\d+$/,(_,side:string,index:string)=>side[0].toUpperCase()+side.slice(1)+' '+index);
   const sideSummary=[...(roof.blinds??[]).map(blind=>'Ziptrak blind on '+openingName(blind.opening)),...(roof.sidePanels??[]).map(panel=>(panel.kind==='acrylic'?'Acrylic panels'+(panel.battens?' with timber battens':''):panel.kind==='aluminium'?'Aluminium screening':(panel.species==='cedar'?'Cedar':'ThermoPine')+' screening')+' on '+openingName(panel.opening))].join(' · ');
   const rows: { title: string; detail: string; settings?:string; section: RailSection }[] = [
@@ -17,9 +18,9 @@ export default function DesignReview({ input, roof, lightingNotice }: { input: S
     { title: 'Lighting', detail: `${(roof.lighting?.rafterCount ?? 0) + (roof.lighting?.cedarCount ?? 0)} lights · ${roof.lighting?.strips.length ?? 0} LED strips`, section: 'lighting' },
   ];
   return <section className={css.review} aria-label="Review your design">
-    <h2>Your pergola, so far.</h2>
-    <p>Check your selections, then send us your design to discuss a site measure. You can still change anything.</p>
-    {rows.map(row => <div className={css.row} key={row.title}><div><strong>{row.title}</strong><p>{row.detail}</p>{row.settings&&<details className={css.reviewSettings}><summary>View settings</summary><p>{row.settings}</p></details>}{row.section === 'lighting' && lightingNotice && <p>{lightingNotice}</p>}</div><button onClick={() => choose(row.section)} aria-label={`Edit ${row.title}`}>Edit</button></div>)}
+    {!hideHeading && <h2>Your pergola, so far.</h2>}
+    {customerChoices ? <><h2>Your choices</h2><p>Make any last changes here.</p></> : <p>Check your selections, then send us your design to discuss a site measure. You can still change anything.</p>}
+    {rows.map(row => <div className={css.row} key={row.title}><div><strong>{row.title}</strong><p>{customerChoices && row.section === 'structure' ? sizeSummary : row.detail}</p>{row.settings&&<details className={css.reviewSettings}><summary>View settings</summary><p>{row.settings}</p></details>}{((row.section === 'lighting' && lightingNotice?.includes('lights')) || (row.section === 'sides' && lightingNotice && !lightingNotice.includes('lights'))) && <p>{lightingNotice}</p>}</div><button onClick={() => (onEdit ?? choose)(row.section)} aria-label={`Edit ${row.title}`}>Edit</button></div>)}
   </section>;
 }
 
