@@ -189,3 +189,16 @@ test('night palette survives renderer failure and retry', async ({page}) => {
   await expect(page.locator('canvas')).toHaveAttribute('data-camera',/perspective/);
   await expect.poll(()=>amount(page)).toBe(1);
 });
+
+test('dialog theme wins when the foundation stylesheet loads last', async ({page}) => {
+  await openDesign(page,1440,false);
+  const foundationClass = await page.locator('dialog').evaluate(el=>[...el.classList].find(name=>name.includes('marketingPage'))!);
+  // Reproduce production bundle ordering while keeping the actual foundation rule.
+  await page.addStyleTag({content:'.'+foundationClass+' { background: var(--color-canvas); }'});
+  await mood(page,'Night').click();
+  await expect.poll(()=>amount(page)).toBe(1);
+  await expect(page.locator('dialog')).toHaveCSS('background-color','rgb(32, 37, 35)');
+  await mood(page,'Day').click();
+  await expect.poll(()=>amount(page)).toBe(0);
+  await expect(page.locator('dialog')).toHaveCSS('background-color','rgb(241, 240, 235)');
+});

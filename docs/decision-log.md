@@ -7,6 +7,9 @@ selection could skip the interface fade, and renderer failure removed its palett
 The preview interface now owns the clock and palette; the renderer subscribes to
 shared progress. Verify late scene mounting, failure, retry and reduced motion,
 including the existing daytime Plan contract. Owner: customer-configurator-architecture.md.
+Hosted production CSS also loaded the foundation canvas after the dialog surface;
+use explicit dialog surface specificity and a reversed-stylesheet-order regression
+to preserve night header contrast. Development stylesheet order alone is insufficient.
 
 ## 2026-09-18 — Verify configurator styling from the host page
 
