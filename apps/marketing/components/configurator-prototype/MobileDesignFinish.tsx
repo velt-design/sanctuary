@@ -12,6 +12,8 @@ import MobileDesignPortrait from './MobileDesignPortrait';
 import DesignReview from './DesignReview';
 import ShareDesign from './ShareDesign';
 import StaffRevisionReturn from './StaffRevisionReturn';
+import { useConsent } from '../ConsentProvider';
+import { emitDesignEvent } from './DesignFunnelTracker';
 import css from './mobileFinish.module.css';
 
 export default function MobileDesignFinish({ visible, selection, pricePanel, estimate, onEdit, onExplore, onDetails, notice }: {
@@ -19,6 +21,7 @@ export default function MobileDesignFinish({ visible, selection, pricePanel, est
   onEdit: (section: RailSection) => void; onExplore: () => void; onDetails: () => void; notice?: string;
 }) {
   const { input, roof } = selection;
+  const { consent, hasTrackingDecision } = useConsent();
   const [enquiring, setEnquiring] = useState(false);
   const [context, setContext] = useState<EnquiryContext>({});
   const form = useRef<HTMLDivElement>(null);
@@ -26,6 +29,7 @@ export default function MobileDesignFinish({ visible, selection, pricePanel, est
   const finish = getRoofFinish(roof);
   const brief = buildContactDesignBrief(selection);
   function enquire() {
+    emitDesignEvent('design_enquiry_open', hasTrackingDecision && consent.analytics);
     setEnquiring(true);
     requestAnimationFrame(() => {
       form.current?.scrollIntoView({ block: 'start', behavior: 'instant' });

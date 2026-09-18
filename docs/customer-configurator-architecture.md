@@ -5531,17 +5531,17 @@ Enquiry overlay return fix (2026-09-15): an ordinary same-tab enquiry link insid
 
 The active launch-review evidence and outstanding gates are tracked in [customer-configurator-launch-review.md](customer-configurator-launch-review.md). Historical approved-proposal tests explicitly use v2.7; the v2.8 candidate has separate coverage. Full marketing suite: 841 passing tests on 15 September 2026.
 
-### Guided mobile configurator — local draft (2026-09-18)
+### Guided mobile configurator (2026-09-18)
 
 Jordan approved a dedicated mobile journey (720px and below): roof shape,
 roof build-up, size, full model, optional sides/lighting, finished model, review.
 The roof choices use matched model-derived illustrations, close material
 photography and the Gable selector's editorial treatment. References are distinguished from the
-customer's model. The model keeps clear 3D/Plan and Day/Night controls. Existing
+customer's model. Mobile views are automatic; night is confined to lighting. Existing
 selection normalization, geometry and pricing owners are reused.
 
-House connections, position, site level and gable details are optional under
-More design options at model/review. Review states the assumed connection and
+House connections remain optional under More design options at model/review.
+Position and site level are on Size; gable direction is under the shape choice. Review states the assumed connection and
 level used in the estimate and requires site confirmation. Roof details and
 battens remain discoverable below the roof material choices. Review edits return
 directly to review. Back/Next retain choices; new-design reset is explicit and
@@ -5568,9 +5568,9 @@ desktop/exploration labels retain their existing hover behavior. BlindControls'
 details-only presentation preserves screen/blind refinements without duplicating
 their rules. MobileSiteChoices adds Attached/Freestanding and Ground/Elevated to
 Size, in that order with Attached/Freestanding first. MobileRoofChoice owns gable Parallel/Extending beneath the shape selector,
-with stable reserved space across shapes. Size enters daylight 3D with view/time
-controls hidden; rendering fallback can still show Plan.
-All mobile model stages use PreviewCamera's opt-in lower presentation angle; side editing frames the selected side. Mobile hides view/time switches everywhere, uses a plan only for opening selection and daylight 3D elsewhere except the lighting editor. Lighting keeps a steady night view even when selecting No lighting, with three compact presets and detailed controls below. MobileDesignPortrait captures the actual settled scene
+with stable reserved space across shapes. Size uses the simple architectural footprint;
+the following Explore step reveals daylight 3D.
+All mobile model stages use PreviewCamera's opt-in lower presentation angle; side editing frames the selected side. Mobile hides view/time switches everywhere, uses a plan for Size and opening selection, and daylight 3D elsewhere except the lighting editor. Lighting keeps a steady night view even when selecting No lighting, with three compact presets and detailed controls below. MobileDesignPortrait captures the actual settled scene
 locally through SceneSnapshot; a design key invalidates old captures on edits,
 reload recreates the view, and capture failure retains the live fallback. No image
 is uploaded or persisted. Desktop framing remains unchanged.
@@ -5581,9 +5581,11 @@ notices remain contextual to extras and review. No pricing rules change.
 
 Focused verification: playwright/marketing.configurator-mobile.spec.ts,
 marketing.configurator-editorial.spec.ts and marketing.configurator-transition.spec.ts.
-This is a local draft for owner review, not a production release. Task evidence:
-artifacts/mobile-configurator/work-record.md (private local working record).
+Release verification includes both Chromium and WebKit; real enquiry delivery is
+not exercised by intercepted browser tests.
 
 Mobile Review now uses MobileDesignFinish: actual portrait, compact specification, disclosed edit controls, visible price breakdown/exclusions and two clear Enquire/Share routes. Inline enquiry reuses ContactEnquiryForm/ConfiguredEnquiryFields via opt-in mobileFinish; remains mounted across guided edits, preserving entered fields. Existing session storage supports reload. Successful submission is reset if the design later changes, avoiding a saved claim for an unsent version. CustomerDesign snapshot and signed-price handoff remain unchanged. Staff revision returns retain their portal route. Sharing uses the existing serialized immutable design URL, with native share, copy and manual-copy recovery. Desktop and standalone enquiry remain on their existing presentations. HTTP LAN previews cannot submit through the secure-browser requirement; intercepted browser tests simulate secure capability and do not prove live delivery.
 
 Mobile Size now renders MobileFootprint from solvePergolaPreview.plan: outline and actual posts only, fixed-space SVG with width/projection and conditional house edge. This supersedes Step3 daylight3D; 3D remains on the following Explore step. Existing controls and geometry rules are unchanged.
+
+Release tracking: mobile Enquire/Share alternatives use the existing consent-gated configured-design event owner, distinguishing intent, successful share/copy and manual-link recovery. Native cancellation never records completion. Final browser coverage is `marketing.configurator-tracking.spec.ts`; no customer values or design URLs enter analytics.

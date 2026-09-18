@@ -863,14 +863,14 @@ selections. The journey prioritises shape, roof, size, model exploration,
 optional sides/lighting, finished model and review. Specific house connections stay in
 More design options, with the estimate's assumption visible at review.
 See customer-configurator-architecture.md for state and workflow ownership.
-This draft is local-only; independent review and owner feedback govern readiness.
+Independent delivery review and release gates apply to the integrated journey.
 Keep choice imagery and descriptions in stable regions. Downstream notices belong
 with the relevant extras and review, not above introductory choices. Lighting
 starts with simple layouts and retains detailed fittings/LED controls in a
 disclosure; side finishes use the same progressive disclosure. The first model
 introduces spatial exploration; the finished view emphasises the completed design
-with daylight and a lower presentation camera angle. Mobile has no view/time switches. Night is confined to lighting, including the unlit comparison. Size uses daylight
-3D and black-selected Attached/Freestanding then Ground/Elevated switches. Gable
+with daylight and a lower presentation camera angle. Mobile has no view/time switches. Night is confined to lighting, including the unlit comparison. Size uses a quiet architectural footprint
+and black-selected Attached/Freestanding then Ground/Elevated switches. Gable
 Parallel/Extending sits beneath the shape selector, in a stable-height space.
 Sides supports selecting multiple openings on a quiet actual footprint or checkbox list. A stable five-option image selector uses matched warm architectural material references; Apply names the number of openings affected. A separate actual-model confirmation retains individual refinements and returns to group selection through Choose more sides. Images illustrate treatment types, not exact customer geometry or slat spacing.
 Review begins with a fresh capture of the actual design and keeps price lines

@@ -5,7 +5,7 @@ import { useConsent } from '../ConsentProvider';
 import type { RailSection } from './RailProvider';
 import { sendGoogleAnalyticsEvent } from '../../lib/googleAnalyticsEvent';
 
-type DesignEvent = 'design_start' | 'design_edit' | 'design_review';
+type DesignEvent = 'design_start' | 'design_edit' | 'design_review' | 'design_enquiry_open' | 'design_share_open' | 'design_share' | 'design_share_link_ready';
 const publicRoutes = new Set([
   '/', '/contact', '/contact/thanks', '/configurator-preview', '/design-enquiry',
   '/pergola-guides', '/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland',

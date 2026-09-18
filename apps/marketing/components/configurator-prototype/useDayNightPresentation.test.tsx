@@ -3,6 +3,28 @@ import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 import { useDayNightPresentation, type NightPresentation } from './useDayNightPresentation';
 
+it('keeps snapshot lighting local without clearing the surrounding palette on removal', async () => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  const host = document.createElement('div');
+  host.setAttribute('data-night', 'true');
+  host.style.setProperty('--night-amount', '1');
+  document.body.append(host);
+  const root = createRoot(host);
+  function Portrait() {
+    const viewport = React.useRef<HTMLDivElement>(null);
+    useDayNightPresentation(false, viewport, true);
+    return <div ref={viewport} />;
+  }
+  try {
+    await React.act(async () => root.render(<Portrait />));
+    expect((host.firstElementChild as HTMLElement).style.getPropertyValue('--night-amount')).toBe('0');
+    expect(host.style.getPropertyValue('--night-amount')).toBe('1');
+    await React.act(async () => root.unmount());
+    expect(host.style.getPropertyValue('--night-amount')).toBe('1');
+  } finally { host.remove(); vi.unstubAllGlobals(); }
+});
+
 it('owns a reversible palette before the renderer mounts and across renderer removal', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   let now = 0, next = 0;
