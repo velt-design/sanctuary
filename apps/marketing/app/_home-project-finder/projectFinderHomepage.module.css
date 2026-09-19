@@ -238,6 +238,10 @@
   bottom: var(--consent-banner-clearance, 6rem);
 }
 
+:global(body:has(.consent-banner)) .heroContent {
+  padding-bottom: calc(var(--consent-banner-clearance, 6rem) + 5rem);
+}
+
 .heroArrow svg {
   width: 3.25rem;
   height: 1.9rem;
