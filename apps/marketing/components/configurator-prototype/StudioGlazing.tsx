@@ -11,10 +11,13 @@ export default function StudioGlazing({ box }: { box: ContextBox }) {
       shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec2 vWindow;').replace('#include <color_fragment>',`#include <color_fragment>
         float edge=min(min(vWindow.x,1.0-vWindow.x),min(vWindow.y,1.0-vWindow.y));
         diffuseColor.rgb*=mix(.75,1.0,smoothstep(0.0,.09,edge));
-        float sky=smoothstep(.2,.95,vWindow.y);
-        diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.72,.78,.77),sky*.23);`);
+        float sky=smoothstep(.15,.95,vWindow.y);
+        float horizon=exp(-pow((vWindow.y-.38)*7.0,2.0));
+        float reflection=smoothstep(.30,.48,vWindow.x+vWindow.y*.23)*(1.0-smoothstep(.58,.76,vWindow.x+vWindow.y*.23));
+        diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.72,.78,.77),sky*.30+reflection*.10);
+        diffuseColor.rgb*=1.0-horizon*.09;`);
     };
-    m.customProgramCacheKey=()=> 'studio-recessed-glass-v1';
+    m.customProgramCacheKey=()=> 'studio-recessed-glass-v2';
     return m;
   },[]);
   useEffect(()=>()=>material.dispose(),[material]);

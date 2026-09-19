@@ -56,7 +56,7 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
       data-post-count={renderable ? geometry.plan.members.posts.length : undefined}>
       {renderable ? <>
         <div className={styles.sceneLayer} aria-hidden={view !== '3D'} style={{ visibility: view === '3D' ? 'visible' : 'hidden' }}>
-          <PreviewScene reviewSetting={reviewSetting} nightPresentation={nightPresentation} showReferenceBase={surroundings} covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D' && !onCapture} activeDimension={activeDimension} plan={geometry.plan} reset={0} fit={0} presentation={presentation} onCapture={onCapture} onFallback={() => changeView('Plan')} />
+          <PreviewScene choiceView={mobile && guided && simple && !reviewSetting && (rail.section === 'sides' || rail.section === 'lighting') ? rail.section : undefined} reviewSetting={reviewSetting} nightPresentation={nightPresentation} showReferenceBase={surroundings} covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D' && !onCapture} activeDimension={activeDimension} plan={geometry.plan} reset={0} fit={0} presentation={presentation} onCapture={onCapture} onFallback={() => changeView('Plan')} />
         </div>
         {view === 'Plan' && <PreviewPlan guidedOpenings={guided && simple && rail.section === 'sides'} profile={roof.finish?.profile} trayWidth={roof.finish?.trayWidth} roofPlanes={geometry.assembly.roofPlanes} covering={covering} plan={geometry.plan} flashings={geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
       </>

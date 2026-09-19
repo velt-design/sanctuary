@@ -48,7 +48,7 @@ export default function PreviewSurroundings({ studio = false, richSetting = fals
     {architecture.supports.map(support => <Box key={support.id} box={support} color="#a5aa9e" />)}
     {!reducedDetail&&<PreviewLandscape perspectiveFade={studio && richSetting} context={context} bounds={bounds} productPoints={productPoints} />}
     {/* Soft contact cues from solved feet, without treating clear acrylic as an opaque shadow caster. */}
-    {context.postFeet.map((point, index) => <mesh key={index} position={[point.x, point.y, point.z + 1]} renderOrder={1}>
+    {context.postFeet.map((point, index) => <mesh key={index} position={[point.x, point.y, point.z + (richSetting ? 4 : 1)]} renderOrder={1}>
       <planeGeometry args={[600, 600]} />
       <shaderMaterial transparent depthWrite={false}
         vertexShader="varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }"

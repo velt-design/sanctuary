@@ -11,9 +11,9 @@ export default function HouseContextMaterial({ color, fadeAbove, refined = false
       shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying float vContextZ;\nvarying vec3 vPlaster;')
         .replace('#include <project_vertex>', '#include <project_vertex>\nvContextZ = (modelMatrix * vec4(transformed, 1.0)).z; vPlaster=(modelMatrix * vec4(transformed,1.0)).xyz;');
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vContextZ;\nvarying vec3 vPlaster;\nuniform float contextFadeStart;')
-        .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.a *= 1.0 - smoothstep(contextFadeStart, contextFadeStart + '+(refined?'850.0':'1600.0')+', vContextZ) * '+(studio ? '1.0' : '0.85')+';'+(refined?'\nfloat plaster=sin(vPlaster.x*.13+sin(vPlaster.z*.09))*sin(vPlaster.z*.17);diffuseColor.rgb*=1.0+plaster*.015;':''));
+        .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.a *= 1.0 - smoothstep(contextFadeStart, contextFadeStart + '+(refined?'850.0':'1600.0')+', vContextZ) * '+(studio ? '1.0' : '0.85')+';'+(refined?'\nfloat plaster=sin(vPlaster.x*.13+sin(vPlaster.z*.09))*sin(vPlaster.z*.17);float wash=sin(vPlaster.x*.0017+sin(vPlaster.z*.0011));diffuseColor.rgb*=1.0+plaster*.015+wash*.012;':''));
     };
-    value.customProgramCacheKey = () => refined ? 'studio-rendered-wall-v1' : studio ? 'studio-house-soft-top-v1' : 'preview-house-soft-top-v1';
+    value.customProgramCacheKey = () => refined ? 'studio-rendered-wall-v2' : studio ? 'studio-house-soft-top-v1' : 'preview-house-soft-top-v1';
     return value;
   }, [color, fadeAbove, studio, refined]);
   useEffect(() => () => material.dispose(), [material]);

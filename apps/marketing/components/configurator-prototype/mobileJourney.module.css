@@ -173,7 +173,7 @@
 .extraTabs { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid var(--color-rule-strong); margin-bottom:10px; }
 .extraTabs button { background:none; color:inherit; border:0; border-bottom:2px solid transparent; min-height:44px; font:500 14px var(--font-body); cursor:pointer; }
 .extraTabs button[aria-pressed="true"] { border-bottom-color:currentColor; }
-.lightingModel { margin:0 0 10px; height:clamp(190px,calc(100cqh - 200px),360px); min-height:190px; }
+.lightingModel { margin:0 -16px; height:clamp(190px,calc(100cqh - 235px),400px); min-height:190px; }
 .lightingModel :global([class*="viewerFooter"]) { display:none; }
 .simpleEditor>p:first-child { display:none; }
 .simpleEditor>.caption { font-size:10px; margin:8px 0; }
