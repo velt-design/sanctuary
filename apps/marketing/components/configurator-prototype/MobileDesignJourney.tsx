@@ -20,6 +20,7 @@ import MobileSideLooks from './MobileSideLooks';
 import MobileDesignEdit from './MobileDesignEdit';
 import type { PreviewSelection } from './ConfiguratorPrototype';
 import MobileLightingChoices from './MobileLightingChoices';
+import MobileExtrasEstimate from './MobileExtrasEstimate';
 import type { SharedEstimate } from './sharedEstimate';
 import css from './mobileJourney.module.css';
 import styles from './prototype.module.css';
@@ -94,10 +95,10 @@ export default function MobileDesignJourney({draft,pricePanel,estimate,selection
       {!details&&step==='extras'&&<>
         <div className={css.extraTabs} role="group" aria-label="Sides and lighting"><button aria-pressed={extra==='sides'} onClick={()=>setExtra('sides')}>Sides</button><button aria-pressed={extra==='lighting'} onClick={()=>setExtra('lighting')}>Lighting</button></div>
         {extra==='sides'&&draft.selectionNotice&&!draft.selectionNotice.includes('lights')&&<p className={css.notice} role="status">{draft.selectionNotice}</p>}
-        {extra==='sides'?<MobileSideLooks roof={roof} onChange={nextRoof=>{sides.start();setRoof(nextRoof);}} preview={<PreviewViews guided simple presentation input={input} roof={roof} activeDimension={null} expanded={false} onToggleExpanded={()=>{}}/>}><MobileSideChoices flow={sides} roof={roof}/></MobileSideLooks>:<>
-          <section className={`${css.model} ${css.lightingModel}`} aria-label="Your pergola preview"><PreviewViews guided simple presentation input={input} roof={roof} activeDimension={null} expanded={false} onToggleExpanded={()=>{}}/></section>
-          <MobileLightingChoices notice={draft.selectionNotice} onPreview={()=>scroll.current?.scrollTo({top:0,behavior:'instant'})}/>
-        </>}
+        {extra==='sides'?<MobileSideLooks roof={roof} onChange={nextRoof=>{sides.start();setRoof(nextRoof);}} estimate={<MobileExtrasEstimate price={selection.configuratorPrice}/>} preview={<PreviewViews guided simple presentation input={input} roof={roof} activeDimension={null} expanded={false} onToggleExpanded={()=>{}}/>}><MobileSideChoices flow={sides} roof={roof}/></MobileSideLooks>:
+          <MobileLightingChoices notice={draft.selectionNotice} onPreview={()=>scroll.current?.scrollTo({top:0,behavior:'instant'})} estimate={<MobileExtrasEstimate price={selection.configuratorPrice}/>}
+            preview={<section className={`${css.model} ${css.lightingModel}`} aria-label="Your pergola preview"><PreviewViews guided simple presentation input={input} roof={roof} activeDimension={null} expanded={false} onToggleExpanded={()=>{}}/></section>}/>
+        }
       </>}
       {model&&<><section className={css.model} data-full="true" aria-label="Your pergola preview"><PreviewViews reviewSetting guided simple presentation input={input} roof={roof} activeDimension={activeDimension} expanded={false} onToggleExpanded={()=>{}}/></section><div className={css.modelActions}><button onClick={()=>go('extras')}>Adjust sides & lighting</button><button onClick={()=>setDetails(true)}>More design options</button></div></>}
       {details&&<div className={css.controls}><PreviewControls mode="details" input={input} roof={roof} onChange={setInput} onRoofChange={setRoof} onDimensionActivity={showDimension}/></div>}

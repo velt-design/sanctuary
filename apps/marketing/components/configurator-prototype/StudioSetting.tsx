@@ -24,9 +24,11 @@ export default function StudioSetting({ plan, context }: { plan: GeometryPlanVie
           vec2 edge = min(tile,1.0-tile);
           float seam = max(1.0-smoothstep(.001,.003+aa.x,edge.x),1.0-smoothstep(.001,.003+aa.y,edge.y));
           float stone = sin(vPaving.x*.037+sin(vPaving.y*.029))*sin(vPaving.y*.073);
-          diffuseColor.rgb *= 1.0 - seam*.14 + stone*.018;`);
+          vec2 slab = floor(vPaving.xy / vec2(1200.0,800.0));
+          float slabTone = fract(sin(dot(slab,vec2(12.9898,78.233)))*43758.5453)-.5;
+          diffuseColor.rgb *= 1.0 - seam*.14 + stone*.018 + slabTone*.055;`);
     };
-    material.customProgramCacheKey = () => 'studio-paving-v2';
+    material.customProgramCacheKey = () => 'studio-paving-v3';
     return material;
   }, []);
   useEffect(() => () => paving.dispose(), [paving]);

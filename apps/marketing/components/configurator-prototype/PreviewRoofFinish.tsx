@@ -4,7 +4,7 @@ import { BufferGeometry, DoubleSide, Float32BufferAttribute, MeshStandardMateria
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { RoofFinishGeometry, RoofFinishMesh } from '@sp/geometry';
 
-function FinishMesh({ data }: { data: RoofFinishMesh }) {
+function FinishMesh({ data, review }: { data: RoofFinishMesh; review: boolean }) {
   const studio = useStudioTreatment();
   const geometry = useMemo(() => {
     const mesh = new BufferGeometry();
@@ -22,7 +22,31 @@ function FinishMesh({ data }: { data: RoofFinishMesh }) {
   const material = useMemo(() => {
     const cedar = data.kind === 'cedar';
     const value = new MeshStandardMaterial({ color: cedar ? (data.timberSpecies === 'thermopine' ? '#9a7952' : '#95633f') : '#343b39', roughness: cedar ? .82 : studio ? .58 : .4, metalness: cedar ? 0 : studio ? .25 : .45, side: DoubleSide });
-    if (cedar) {
+    if (review && data.kind === 'steel') {
+      // Area-weighted roof plane from the existing open sheet. Filter shading
+      // only when profile facets approach pixel size; keep every solved vertex.
+      const plane = new Vector3(), a = new Vector3(), b = new Vector3(), c = new Vector3();
+      for (let i = 0; i < data.indices.length; i += 3) {
+        a.fromArray(data.positions, data.indices[i] * 3);
+        b.fromArray(data.positions, data.indices[i + 1] * 3);
+        c.fromArray(data.positions, data.indices[i + 2] * 3);
+        plane.add(b.sub(a).cross(c.sub(a)));
+      }
+      plane.normalize();
+      value.roughness = .68;
+      value.metalness = .18;
+      value.onBeforeCompile = shader => {
+        // Orient the filtered plane toward the viewer, not each tiny facet.
+        // At grazing angles adjacent front/back facets otherwise alternate
+        // light/dark pixels even after their high-frequency normals are filtered.
+        shader.uniforms.uRoofPlane = { value: plane };
+        shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform vec3 uRoofPlane; varying vec3 vRoofPlane; varying vec3 vRoofPosition;')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRoofPlane = normalMatrix * uRoofPlane; vRoofPosition = position;');
+        shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRoofPlane; varying vec3 vRoofPosition;')
+          .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nfloat footprint = max(length(dFdx(vRoofPosition)), length(dFdy(vRoofPosition))); normal = normalize(mix(normal, normalize(vRoofPlane) * (dot(vRoofPlane, vViewPosition) < 0.0 ? -1.0 : 1.0), smoothstep(4.0, 18.0, footprint)));');
+      };
+      value.customProgramCacheKey = () => 'review-roof-filter-v1';
+    } else if (cedar) {
       value.onBeforeCompile = shader => {
         shader.uniforms.uWoodAcross = { value: new Vector3(data.grainAcross?.x ?? 1, data.grainAcross?.y ?? 0, data.grainAcross?.z ?? 0) };
         shader.uniforms.uWoodAlong = { value: new Vector3(data.grainAlong?.x ?? 0, data.grainAlong?.y ?? 1, data.grainAlong?.z ?? 0) };
@@ -34,11 +58,11 @@ function FinishMesh({ data }: { data: RoofFinishMesh }) {
       value.customProgramCacheKey = () => studio ? 'studio-cedar-v1' : 'representative-cedar-v2';
     }
     return value;
-  }, [studio, data.kind, data.timberSpecies, data.grainAcross, data.grainAlong]);
+  }, [studio, review, data]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => () => material.dispose(), [material]);
   return <mesh name={data.id} geometry={geometry} material={material} />;
 }
-export default function PreviewRoofFinish({ covering }: { covering: RoofFinishGeometry }) {
-  return <group name="solid-roof-and-ceiling">{covering.meshes.filter(m => m.indices.length).map(mesh => <FinishMesh key={mesh.id} data={mesh} />)}</group>;
+export default function PreviewRoofFinish({ covering, review = false }: { covering: RoofFinishGeometry; review?: boolean }) {
+  return <group name="solid-roof-and-ceiling">{covering.meshes.filter(m => m.indices.length).map(mesh => <FinishMesh key={mesh.id} data={mesh} review={review} />)}</group>;
 }

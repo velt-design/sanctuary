@@ -10,12 +10,13 @@ import type { Point3 } from '@sp/geometry';
 const FRONT_DIRECTION = new Vector3(1, 1.7, 1.25).normalize();
 const PRESENTATION_DIRECTION = new Vector3(.85, 1.9, .65).normalize();
 
-export default function PreviewCamera({ explore = false, portrait = false, studio = false, bounds, fitPoints, enabled, reset, fit, surroundings, presentation = false, side }: {
+export default function PreviewCamera({ choiceView, explore = false, portrait = false, studio = false, bounds, fitPoints, enabled, reset, fit, surroundings, presentation = false, side }: {
+  choiceView?: 'sides' | 'lighting';
   explore?: boolean; portrait?: boolean; studio?: boolean; bounds: SceneBounds; fitPoints: Point3[]; enabled: boolean; reset: number; fit: number; surroundings: boolean; presentation?: boolean; side?: string;
 }) {
   const { camera, size, gl, invalidate } = useThree();
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
-  const previous = useRef<{ reset: number; fit: number; width: number; height: number; presentation: boolean; side?: string } | null>(null);
+  const previous = useRef<{ reset: number; fit: number; width: number; height: number; presentation: boolean; side?: string; choiceView?: string } | null>(null);
   const touched = useRef(false);
   const recordCamera = useCallback(() => {
     if (!(camera instanceof PerspectiveCamera) || !controls.current) return;
@@ -27,11 +28,33 @@ export default function PreviewCamera({ explore = false, portrait = false, studi
   useLayoutEffect(() => {
     const orbit = controls.current;
     if (!(camera instanceof PerspectiveCamera) || !orbit || !size.width || !size.height) return;
-    const initialise = !previous.current || previous.current.reset !== reset || previous.current.presentation !== presentation || previous.current.side !== side;
+    const initialise = !previous.current || previous.current.reset !== reset || previous.current.presentation !== presentation || previous.current.side !== side || previous.current.choiceView !== choiceView;
     const centre = new Vector3(bounds.center.x, bounds.center.y, bounds.center.z);
+    if (choiceView === 'lighting' && !side) {
+      // Stand inside the front corner: selected screens remain intact behind the
+      // viewer while the ceiling and occupied space can be compared at eye level.
+      const width = bounds.max.x - bounds.min.x, depth = bounds.max.y - bounds.min.y;
+      const eye = bounds.min.z + Math.min(1500, (bounds.max.z - bounds.min.z) * .52);
+      if (initialise || !touched.current) {
+        camera.position.set(bounds.min.x + width * .8, bounds.min.y + depth * .86, eye);
+        orbit.target.set(bounds.min.x + width * .35, bounds.min.y + depth * .15, eye);
+      }
+      camera.fov = 75;
+      camera.up.set(0, 0, 1);
+      camera.aspect = size.width / size.height;
+      camera.clearViewOffset();
+      camera.lookAt(orbit.target);
+      camera.updateProjectionMatrix();
+      orbit.update();
+      previous.current = { reset, fit, width: size.width, height: size.height, presentation, side, choiceView };
+      recordCamera(); invalidate();
+      return;
+    }
+    camera.fov = 24;
     if (initialise) {
       touched.current = false;
-      const direction = presentation && side === 'left' ? new Vector3(-1.9, .85, .65).normalize() : presentation && side === 'right' ? new Vector3(1.9, .85, .65).normalize() : presentation && (side === 'back' || side === 'rear') ? new Vector3(.85, -1.9, .65).normalize() : studio ? new Vector3(1.45,1.9,portrait ? .35 : .7).normalize() : presentation ? PRESENTATION_DIRECTION : FRONT_DIRECTION;
+      const reviewAngle = explore && !portrait ? Math.min(2.0, Math.max(.85, (bounds.max.x-bounds.min.x)/(bounds.max.y-bounds.min.y)*.9)) : 1.45;
+      const direction = presentation && side === 'left' ? new Vector3(-1.9, .85, .65).normalize() : presentation && side === 'right' ? new Vector3(1.9, .85, .65).normalize() : presentation && (side === 'back' || side === 'rear') ? new Vector3(.85, -1.9, .65).normalize() : choiceView === 'lighting' ? new Vector3(.85,1.9,0).normalize() : choiceView === 'sides' ? new Vector3(.95,1.9,.4).normalize() : studio ? new Vector3(portrait ? .85 : reviewAngle,1.9,portrait ? .65 : explore ? .6 : .7).normalize() : presentation ? PRESENTATION_DIRECTION : FRONT_DIRECTION;
       camera.position.copy(centre).addScaledVector(direction, bounds.size * 3);
     } else camera.position.add(centre.clone().sub(orbit.target));
     orbit.target.copy(centre);
@@ -54,7 +77,9 @@ export default function PreviewCamera({ explore = false, portrait = false, studi
         distance = Math.max(distance, depth + Math.abs(point.x) / (tanY * camera.aspect * paddingX),
           depth + Math.abs(point.y) / (tanY * paddingY));
       }
-      camera.position.copy(centre).addScaledVector(direction, studio && explore && !portrait ? distance/1.2 : distance);
+      // Fit the complete product even on narrow phones. The old unconditional
+      // 20% enlargement cut off end posts; customers can still zoom in freely.
+      camera.position.copy(centre).addScaledVector(direction, distance);
     }
     // Tall phone canvases are width-constrained: lift the composition toward
     // the heading without cropping the product or changing the orbit target.
@@ -62,12 +87,12 @@ export default function PreviewCamera({ explore = false, portrait = false, studi
     else camera.clearViewOffset();
     camera.updateProjectionMatrix();
     orbit.update();
-    previous.current = { reset, fit, width: size.width, height: size.height, presentation, side };
+    previous.current = { reset, fit, width: size.width, height: size.height, presentation, side, choiceView };
     recordCamera();
     invalidate();
-  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, presentation, studio, portrait, explore, side, invalidate, recordCamera]);
+  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, presentation, studio, portrait, explore, side, choiceView, invalidate, recordCamera]);
 
   return <OrbitControls ref={controls} makeDefault enabled={enabled} enablePan={false}
-    enableDamping={false} minDistance={1000} maxDistance={100000} minPolarAngle={.15} maxPolarAngle={Math.PI * .48}
+    enableDamping={false} minDistance={1000} maxDistance={100000} minPolarAngle={.15} maxPolarAngle={Math.PI * (choiceView === 'lighting' ? .5 : .48)}
     onStart={() => { touched.current = true; }} onChange={recordCamera} />;
 }
