@@ -6,21 +6,16 @@ import { applySideTreatment, sideTreatmentAt, type SideTreatment } from './sideT
 
 export function useMobileSides(roof: PreviewRoofChoices, onChange: (roof: PreviewRoofChoices) => void) {
   const workspace = usePreviewBlinds()!;
-  const [phase, setPhase] = useState<'opening' | 'finish' | 'preview'>('opening');
-  const [ids, setIds] = useState<string[]>([]);
-  const [kind, setKind] = useState<SideTreatment | null>(null);
-  const selected = ids.filter(id => workspace.openings.some(o => o.id === id));
-  const result = kind ? applySideTreatment(roof, workspace.openings, selected, kind) : null;
-  function start(initial: string[] = []) { setIds(initial); setKind(null); setPhase('opening'); workspace.setEditing(false); }
-  function choose() {
-    const kinds = selected.map(id => sideTreatmentAt(roof, id));
-    setKind(kinds.every(k => k === kinds[0]) ? kinds[0] ?? null : null); setPhase('finish');
+  const [ids,setIds]=useState<string[]>([]);
+  const [issues,setIssues]=useState<string[]>([]);
+  const selected=ids.filter(id=>workspace.openings.some(o=>o.id===id));
+  const kinds=selected.map(id=>sideTreatmentAt(roof,id));
+  const kind=kinds.length && kinds.every(k=>k===kinds[0]) ? kinds[0] : null;
+  function start(initial:string[]=[]){setIds(initial);setIssues([]);workspace.setEditing(false);}
+  function apply(kind:SideTreatment){
+    const result=applySideTreatment(roof,workspace.openings,selected,kind);
+    setIssues(result.issues);
+    if(!result.issues.length)onChange(result.roof);
   }
-  function apply() {
-    if (!result || result.issues.length) return;
-    onChange(result.roof); workspace.setEditing(false); setPhase('preview');
-  }
-  return { phase, setPhase, selected, kind, setKind, start, choose, apply, issues: result?.issues ?? [],
-    canApply: Boolean(result && !result.issues.length),
-    toggle: (id: string) => setIds(value => value.includes(id) ? value.filter(v => v !== id) : [...value, id]) };
+  return {selected,kind,start,apply,issues,toggle:(id:string)=>{setIssues([]);setIds(value=>value.includes(id)?value.filter(v=>v!==id):[...value,id]);}};
 }

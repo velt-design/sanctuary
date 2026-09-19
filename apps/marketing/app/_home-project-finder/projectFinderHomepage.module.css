@@ -234,6 +234,10 @@
   touch-action: manipulation;
 }
 
+:global(body:has(.consent-banner)) .heroArrow {
+  bottom: var(--consent-banner-clearance, 6rem);
+}
+
 .heroArrow svg {
   width: 3.25rem;
   height: 1.9rem;

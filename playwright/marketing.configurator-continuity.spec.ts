@@ -22,7 +22,7 @@ test('enquiry edit overlay returns to the one existing form with details intact'
   await page.goto('/design-enquiry');
   await page.locator('#contact-name').fill('Synthetic returning customer');
   await page.getByRole('link', { name: /Edit my design/ }).click();
-  for (const name of ['Choose your roof', 'Set your size', 'See your pergola', 'Add sides & lighting', 'Continue without extras', 'Review your design']) {
+  for (const name of ['Set your size', 'Add sides & lighting', 'See your pergola', 'Review your design']) {
     await page.getByRole('button', { name, exact: true }).click();
   }
   await page.getByRole('button', { name: 'Enquire', exact: true }).click();

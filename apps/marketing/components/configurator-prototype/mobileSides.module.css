@@ -29,3 +29,16 @@
 .refinements > p { font-size:12px; }
 .refineSelect { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:16px 0; }
 .refineSelect select { min-height:44px; flex:1; min-width:0; border:1px solid var(--color-rule-strong); padding:8px; background:transparent; color:inherit; font:inherit; }
+.singlePage .intro { margin:0 0 8px; min-height:0; font-size:11px; }
+.singlePage .openingChecks { gap:5px; margin:0 0 10px; }
+.singlePage .openingChecks label { min-height:44px; padding:5px 8px; }
+.singlePage .openingChecks small { margin:0; font-size:10px; }
+.singlePage .treatmentTabs { gap:0; margin-bottom:10px; }
+.singlePage .treatmentTabs label { min-height:44px; font-size:10px; }
+.singlePage .treatmentTabs:disabled { opacity:.45; }
+.singlePage .treatmentImage { height:min(75cqw,clamp(160px,calc(100cqh - 240px),300px)); aspect-ratio:auto; }
+.singlePage .treatmentImage img { object-fit:cover; }
+.singlePage .selection { margin:8px 0; font-size:11px; min-height:32px; }
+.singlePage .refinements { margin-top:0; }
+.singlePage .refinements>summary { min-height:44px; padding:10px 0; font-size:12px; }
+.singlePage .selection { min-height:24px; }

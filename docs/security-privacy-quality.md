@@ -84,6 +84,11 @@ Web Vitals and GA events require analytics. There is no GTM noscript iframe or
 other unconditional vendor request. The executable browser boundary is
 `playwright/marketing.consent.spec.ts`.
 
+The homepage continue control clears the actual measured consent banner height,
+including expanded preferences and resized screens. Dismissing the banner restores
+its normal position. The keyboard-order and overlap browser check targets the
+current homepage continue button.
+
 ## Tracking Register
 
 | Integration | Category | Load Path | Purpose | Owner |
