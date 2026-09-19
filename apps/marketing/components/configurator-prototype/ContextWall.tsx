@@ -3,7 +3,7 @@ import { ExtrudeGeometry, Path, Shape } from 'three';
 import type { ContextBox } from '@sp/geometry';
 import HouseContextMaterial from './HouseContextMaterial';
 
-export default function ContextWall({ wall, opening, fadeAbove }: { wall: ContextBox; opening: ContextBox; fadeAbove: number }) {
+export default function ContextWall({ wall, opening, fadeAbove, refined = false }: { wall: ContextBox; opening: ContextBox; fadeAbove: number; refined?: boolean }) {
   const geometry = useMemo(() => {
     const shape = new Shape();
     shape.moveTo(wall.min.x, wall.min.z); shape.lineTo(wall.max.x, wall.min.z);
@@ -18,6 +18,6 @@ export default function ContextWall({ wall, opening, fadeAbove }: { wall: Contex
   }, [wall, opening]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   return <mesh name="house-wall-with-slider" geometry={geometry}>
-    <HouseContextMaterial color="#deddd2" fadeAbove={fadeAbove} />
+    <HouseContextMaterial color="#deddd2" fadeAbove={fadeAbove} refined={refined} />
   </mesh>;
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { useStudioTreatment } from './StudioTreatment';
 import { DoubleSide, MeshPhysicalMaterial } from 'three';
 import type { ViewerSceneRoofPlaneObject, ViewerSceneRoofCladdingPanelObject } from '@sp/geometry';
 import { buildPolygonGeometry, buildPolygonSlabGeometry } from '@sp/geometry-viewer/three';
@@ -6,12 +7,13 @@ import { buildPolygonGeometry, buildPolygonSlabGeometry } from '@sp/geometry-vie
 export default function PreviewRoof({ object }: {
   object: ViewerSceneRoofPlaneObject | ViewerSceneRoofCladdingPanelObject;
 }) {
+  const studio = useStudioTreatment();
   const geometry = useMemo(() => object.type === 'roof_cladding_panel'
     ? buildPolygonSlabGeometry(object.boundary, object.plane, object.thicknessMm)
     : buildPolygonGeometry(object.boundary), [object]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   const material = useMemo(() => {
-    const value = new MeshPhysicalMaterial({ color: '#83aaa6', transparent: true, opacity: .38, roughness: .16,
+    const value = new MeshPhysicalMaterial({ color: studio ? '#b6cbd1' : '#83aaa6', transparent: true, opacity: studio ? .2 : .38, roughness: studio ? .09 : .16,
       metalness: 0, clearcoat: 1, clearcoatRoughness: .1, envMapIntensity: 1.7, ior: 1.49,
       side: DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     value.forceSinglePass = true;
@@ -26,7 +28,7 @@ export default function PreviewRoof({ object }: {
     };
     value.customProgramCacheKey = () => 'preview-acrylic-edge-v2';
     return value;
-  }, []);
+  }, [studio]);
   useEffect(() => () => material.dispose(), [material]);
   return <mesh geometry={geometry} renderOrder={1}>
     {/* The reference plane meets the frame exactly. Bias only its depth so the

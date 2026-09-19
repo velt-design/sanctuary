@@ -1,5 +1,5 @@
 'use client';
-import Image from 'next/image';
+import MobileRoofImage from './MobileRoofImage';
 import type { PreviewRoofChoices } from './GableChoices';
 import { getRoofFinish } from './roofFinish';
 import css from './mobileJourney.module.css';
@@ -7,8 +7,8 @@ import css from './mobileJourney.module.css';
 const shapes = [{id:'mono',name:'Pitched',file:'pitched'}, {id:'gable',name:'Gable',file:'gable'}, {id:'box',name:'Box',file:'box'}] as const;
 const materials = [
   {id:'acrylic',name:'Acrylic',benefit:'Daylight and an open feeling overhead.'},
-  {id:'solid',name:'Solid',benefit:'Full shade, with a timber ceiling underneath.'},
   {id:'combination',name:'Combination',benefit:'Timber-lined shade with an acrylic skylight band.'},
+  {id:'solid',name:'Solid',benefit:'Full shade, with a timber ceiling underneath.'},
 ] as const;
 
 export default function MobileRoofChoice({ roof, onChange }: {roof: PreviewRoofChoices; onChange:(roof:PreviewRoofChoices)=>void}) {
@@ -24,7 +24,7 @@ export default function MobileRoofChoice({ roof, onChange }: {roof: PreviewRoofC
       <input type="radio" name="mobile-roof" checked={m.id===material.id} onChange={()=>onChange({...roof,finish:{...finish,material:m.id,...(m.id!=='acrylic'&&!finish.ceiling?{ceiling:'thermopine-150' as const}:{})}})}/>{m.name}
     </label>)}</fieldset>
     <figure className={css.combinationImage} data-roof-combination={`${shape.id}-${material.id}`}>
-      <Image key={image} src={image} alt={`${shape.name} pergola with ${material.name.toLowerCase()} roofing — architectural illustration`} fill sizes="(max-width:720px) 100vw, 720px" priority fetchPriority="high" />
+      <MobileRoofImage src={image} alt={`${shape.name} pergola with ${material.name.toLowerCase()} roofing — architectural illustration`} />
     </figure>
     <p className={css.roofBenefit} aria-live="polite">{material.benefit}</p>
   </section>;

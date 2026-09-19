@@ -7,6 +7,7 @@ import HouseContextMaterial from './HouseContextMaterial';
 import PreviewLandscape from './PreviewLandscape';
 import Box from './ContextBoxMesh';
 import ContextWall from './ContextWall';
+import StudioFacade from './StudioFacade';
 
 function Section({ section, color, fadeAbove }: { section: ContextSection; color: string; fadeAbove?: number }) {
   const geometry = useMemo(() => {
@@ -23,7 +24,7 @@ function Section({ section, color, fadeAbove }: { section: ContextSection; color
   </mesh>;
 }
 
-export default function PreviewSurroundings({ context, bounds, productPoints }: { context: RepresentativeSurroundings; bounds: SceneBounds; productPoints: { x: number; y: number; z: number }[] }) {
+export default function PreviewSurroundings({ studio = false, richSetting = false, reducedDetail = false, context, bounds, productPoints }: { studio?: boolean; richSetting?: boolean; reducedDetail?: boolean; context: RepresentativeSurroundings; bounds: SceneBounds; productPoints: { x: number; y: number; z: number }[] }) {
   const house = useRef<Group>(null);
   const direction = useMemo(() => new Vector3(), []);
   const { architecture, ground, roof, roofEnclosure, gutter, brackets } = context;
@@ -42,10 +43,10 @@ export default function PreviewSurroundings({ context, bounds, productPoints }: 
   });
   return <group name="representative-surroundings">
 
-    <Box box={ground} color="#d1d6c8" />
-    <Box box={architecture.terrace} color="#cbc8bd" />
+    {!studio&&<Box box={ground} color="#d1d6c8" />}
+    <Box box={architecture.terrace} color={studio ? "#bfb39e" : "#cbc8bd"} />
     {architecture.supports.map(support => <Box key={support.id} box={support} color="#a5aa9e" />)}
-    <PreviewLandscape context={context} bounds={bounds} productPoints={productPoints} />
+    {!reducedDetail&&<PreviewLandscape perspectiveFade={studio && richSetting} context={context} bounds={bounds} productPoints={productPoints} />}
     {/* Soft contact cues from solved feet, without treating clear acrylic as an opaque shadow caster. */}
     {context.postFeet.map((point, index) => <mesh key={index} position={[point.x, point.y, point.z + 1]} renderOrder={1}>
       <planeGeometry args={[600, 600]} />
@@ -55,9 +56,11 @@ export default function PreviewSurroundings({ context, bounds, productPoints }: 
     </mesh>)}
 
     <group ref={house} name="house-context">
-      <ContextWall wall={context.wall} opening={architecture.opening} fadeAbove={fadeAbove} />
-      {architecture.glazing.map((pane, index) => <Box key={pane.id} box={pane} color={index ? '#a6b5ad' : '#b4c0b7'} glazing />)}
-      {architecture.frame.map(frame => <Box key={frame.id} box={frame} color="#7c8578" />)}
+      <ContextWall wall={context.wall} opening={architecture.opening} refined={richSetting} fadeAbove={richSetting ? Math.max(context.ledger.topZ+180,architecture.opening.max.z+450) : fadeAbove} />
+      {richSetting ? <StudioFacade context={context}/> : <>
+        {architecture.glazing.map((pane, index) => <Box key={pane.id} box={pane} color={index ? '#a6b5ad' : '#b4c0b7'} glazing />)}
+        {architecture.frame.map(frame => <Box key={frame.id} box={frame} color="#7c8578" />)}
+      </>}
       <Section section={roofEnclosure} color="#e0e2d7" fadeAbove={fadeAbove} />
       <Section section={roof} color="#c5cdbd" fadeAbove={fadeAbove} />
       <Section section={gutter} color="#bac4b1" fadeAbove={fadeAbove} />

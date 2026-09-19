@@ -9,6 +9,7 @@ vi.mock('@react-three/fiber',()=>({
   useThree:()=>({gl:{domElement:fixture.canvas}}),
 }));
 vi.mock('./LightingProvider',()=>({useLighting:()=>null}));
+vi.mock('./useMobileConfigurator',()=>({useMobileConfigurator:()=>false}));
 vi.mock('./PreviewBlindProvider',()=>({usePreviewBlinds:()=>null}));
 vi.mock('./PreviewCamera',()=>({default:()=>null}));
 vi.mock('./DayNightTransition',()=>({default:({children}:{children:React.ReactNode})=><>{children}</>}));

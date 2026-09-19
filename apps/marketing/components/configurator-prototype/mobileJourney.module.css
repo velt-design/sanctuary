@@ -156,6 +156,9 @@
 .roofChoice .choiceTabs label+label { border-left:1px solid var(--color-rule-strong); }
 .combinationImage { position:relative; aspect-ratio:4/3; margin:12px 0 0; overflow:hidden; background:var(--color-surface-warm); }
 .combinationImage img { object-fit:contain; }
+.roofImageIncoming { opacity:0; transition:opacity 320ms ease-in-out; }
+.roofImageIncoming[data-ready="true"] { opacity:1; }
+@media (prefers-reduced-motion: reduce) { .roofImageIncoming { transition:none; } }
 .roofBenefit { font-size:12px; line-height:1.5; min-height:36px; margin:8px 0 0; }
 .journey .details { margin-top:8px; }
 .journey .details>summary { min-height:44px; padding-block:12px; }
@@ -166,6 +169,7 @@
 .siteChoices { margin-top:8px; gap:8px; }
 .siteChoices .segmented legend { font-size:11px; margin-bottom:4px; }
 .siteChoices .segmented label { min-height:44px; }
+.siteChoices .segmented label[data-disabled="true"] { opacity:.4; cursor:not-allowed; }
 .extraTabs { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid var(--color-rule-strong); margin-bottom:10px; }
 .extraTabs button { background:none; color:inherit; border:0; border-bottom:2px solid transparent; min-height:44px; font:500 14px var(--font-body); cursor:pointer; }
 .extraTabs button[aria-pressed="true"] { border-bottom-color:currentColor; }
@@ -176,3 +180,7 @@
 .simpleEditor .intentChoices button { min-height:48px; }
 .simpleEditor .selectionSummary { margin:8px 0; }
 @media(max-height:740px) { .heading { padding-block:8px; } .heading h1 { font-size:25px; margin-top:9px; } .progressTrack { margin-top:7px; } .footer { padding-block:8px; } .footer button { min-height:46px; } }
+
+.heading h1.reviewHeading{position:absolute;width:1px;height:1px;padding:0;margin:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+.portrait figcaption{justify-content:flex-end}

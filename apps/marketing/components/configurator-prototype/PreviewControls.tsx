@@ -90,7 +90,7 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
     <div hidden={mode === 'details'}>
     {mode === 'full' && <div className={styles.sectionLabel}><h2>Size & shape</h2></div>}
     {mode === 'full' && <RoofTypeChoice value={roof} onChange={updateRoof} />}
-    <p className={styles.small}>{mode==='size'?'Width runs across. Projection runs out from the back.':roof.attachmentIntent==='freestanding'?'Choose the width and projection of your freestanding pergola.':'Width runs along the house. Projection is how far your pergola extends out from it.'}</p>
+    {mode!=='size'&&<p className={styles.small}>{roof.attachmentIntent==='freestanding'?'Choose the width and projection of your freestanding pergola.':'Width runs along the house. Projection is how far your pergola extends out from it.'}</p>}
     <div className={styles.dimensions}>
     <Dimension axis="width" onActivity={onDimensionActivity} label="Width" value={input.widthMm} min={Math.max(SIMPLE_COVER_WIDTH_MIN_MM, CUSTOMER_DIMENSION_BOUNDS.lengthMm.minimum)} max={SIMPLE_COVER_WIDTH_MAX_MM}
       onChange={(widthMm) => update({ ...input, widthMm })} />
@@ -114,7 +114,7 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
     {soffitUnavailable && <p className={styles.inputNotice} role="status">{connectionNotice}Soffit brackets are available up to 4.0 m projection.</p>}</>}
     <fieldset className={`${styles.choices} ${ui.options}`}><legend>Site level</legend>
       {(['ground', 'elevated'] as const).map((level) => <label key={level} data-selected={input.level === level}>
-        <input type="radio" name="level" value={level} checked={input.level === level}
+        <input type="radio" name="level" value={level} checked={input.level === level} disabled={mode === 'details' && roof.attachmentIntent === 'freestanding' && level === 'elevated'}
           onChange={() => update({ ...input, level })} />{level === 'ground' ? 'Ground level' : 'Elevated'}
       </label>)}
     </fieldset>

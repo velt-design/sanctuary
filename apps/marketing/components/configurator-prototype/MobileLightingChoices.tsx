@@ -20,7 +20,6 @@ export default function MobileLightingChoices({ onPreview, notice }: { onPreview
       cedarPerSection: ceiling?.count ?? 0, cedarPattern: ceiling?.pattern ?? 'rows2' as const };
   };
   return <section aria-label="Choose lighting" className={css.simpleEditor}>
-    <p>Choose the glow for your evenings.</p>
     <div className={css.intentChoices} role="group" aria-label="Lighting starting layouts">
       {choices.map(choice => {
         const preset = setting(choice.amount);
@@ -34,7 +33,7 @@ export default function MobileLightingChoices({ onPreview, notice }: { onPreview
     <p className={css.selectionSummary} role="status">{w.value.rafterCount + w.value.cedarCount} lights · {w.value.strips.length} LED strips</p>
     <details className={css.details}><summary>Fine-tune lighting & LED strips</summary><LightingControls guided onPreview={onPreview} /></details>
     {notice?.includes('lights') && <p className={css.notice} role="status">{notice}</p>}
-    <p className={css.caption}>The preview shows your selected fittings. Choosing a layout replaces your current lights and strips. Final positions are confirmed with your design.</p>
+    <p className={css.caption}>Choosing a layout replaces your current lights and strips.</p>
   </section>;
 }
 

@@ -19,8 +19,8 @@ export default function MobileDesignPortrait({ input, roof, onExplore }: {
   return <figure className={css.portrait}>
     <div className={`${css.portraitImage} ${styles.viewport}`} style={{ '--night-amount': Number(night) } as CSSProperties} data-portrait-night={night} data-design-portrait={image ? 'captured' : 'preview'}>
       {image ? <Image unoptimized src={image} alt="Your configured pergola, with your selected roof and sides" fill sizes="100vw" />
-        : <PreviewViews input={input} roof={roof} activeDimension={null} expanded={false} onToggleExpanded={() => {}} guided simple presentation onCapture={setImage} />}
+        : <PreviewViews reviewSetting input={input} roof={roof} activeDimension={null} expanded={false} onToggleExpanded={() => {}} guided simple presentation onCapture={setImage} />}
     </div>
-    <figcaption><span>Your design</span><button onClick={onExplore}>Explore your design <ArrowUpRight /></button></figcaption>
+    <figcaption><span>Illustrative setting</span><button onClick={onExplore}>Explore your design <ArrowUpRight /></button></figcaption>
   </figure>;
 }

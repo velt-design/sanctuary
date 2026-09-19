@@ -22,6 +22,9 @@ import { computeSceneBoundsFromPoints } from '@sp/geometry-viewer';
 import { SceneObjectNode } from '@sp/geometry-viewer/react';
 import type { GeometryPlanViewModel, ViewerSceneModel, RepresentativeSurroundings } from '@sp/geometry';
 import styles from './prototype.module.css';
+import { StudioTreatment, StudioQuality } from './StudioTreatment';
+import StudioSetting from './StudioSetting';
+import { useMobileConfigurator } from './useMobileConfigurator';
 
 const noop = () => {};
 
@@ -41,15 +44,18 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-export default function PreviewScene({ nightPresentation, showReferenceBase = true, covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback, presentation = false, onCapture }: {
-  nightPresentation: NightPresentation; presentation?: boolean; onCapture?: (image: string) => void;
+export default function PreviewScene({ reviewSetting = false, nightPresentation, showReferenceBase = true, covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback, presentation = false, onCapture }: {
+  reviewSetting?: boolean; nightPresentation: NightPresentation; presentation?: boolean; onCapture?: (image: string) => void;
   showReferenceBase?: boolean; covering?: RoofFinishGeometry; context: RepresentativeSurroundings | null;
   scene: ViewerSceneModel; plan: GeometryPlanViewModel; activeDimension: PreviewDimensionAxis | null;
   interactive: boolean; reset: number; fit: number; onFallback: () => void;
 }) {
+  const mobile = useMobileConfigurator();
+  const studio=mobile || (process.env.NODE_ENV==='development' && typeof window!=='undefined' && new URLSearchParams(window.location.search).get('render')==='studio');
   const lighting=useLighting();
   const blindWorkspace=usePreviewBlinds();
   const [unavailable, setUnavailable] = useState(false);
+  const [reducedDetail,setReducedDetail]=useState(false);
   const [attempt,setAttempt]=useState(0);
   const fallback = <div className={styles.loading}><p>The 3D view paused. Your selections are still here.</p><button onClick={()=>{setUnavailable(false);setAttempt(value=>value+1);}}>Try 3D again</button><button onClick={onFallback}>View your plan</button></div>;
   // Context is a separate package-owned visual reference. Camera framing stays
@@ -67,24 +73,28 @@ export default function PreviewScene({ nightPresentation, showReferenceBase = tr
   const roof = useMemo(() => scene.layers.flatMap((layer) => layer.objects).flatMap(object => object.type === 'roof_plane' ? object.boundary : []), [scene]);
   if (unavailable) return fallback;
   return <SceneBoundary key={attempt} fallback={fallback}>
-    <Canvas frameloop="demand" dpr={[1, 1.75]} style={{ touchAction: 'pan-y' }}
+    <Canvas shadows={studio ? 'percentage' : false} frameloop="demand" dpr={[1, 1.75]} style={{ touchAction: 'pan-y' }}
       camera={{ position: [12000, -18000, 12000], up: [0, 0, 1], fov: 24, near: 10, far: 200000 }}
       fallback={fallback}>
       <ContextWatch onFallback={() => { setUnavailable(true); onFallback(); }} />
       <DayNightTransition presentation={nightPresentation}>
-      <PreviewLighting/>
+      <StudioTreatment.Provider value={studio}>
+      <PreviewLighting studio={studio}/>
+      {studio&&<StudioQuality onReducedDetail={setReducedDetail} revision={JSON.stringify({reviewSetting,reducedDetail,objects,covering,blinds:blindWorkspace?.blinds,panels:blindWorkspace?.panels})}/> }
       {lighting&&<PergolaLightFixtures/>}
       {blindWorkspace && <PreviewBlinds workspace={lighting?.editing?{...blindWorkspace,editing:false,select:noop}:blindWorkspace} />}
       {covering && <PreviewRoofFinish covering={covering} />}
       {showReferenceBase && plan.connectionType === 'freestanding' && <FreestandingBase plan={plan} />}
-      {context && <PreviewSurroundings context={context} bounds={bounds} productPoints={fitPoints} />}
-      <PreviewCamera bounds={cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} presentation={presentation} side={presentation && blindWorkspace?.editing ? blindWorkspace.openings.find(o => o.id === blindWorkspace.selected)?.side : undefined} />
+      {context && <PreviewSurroundings reducedDetail={studio&&reducedDetail} richSetting={studio && reviewSetting} studio={studio} context={context} bounds={bounds} productPoints={fitPoints} />}
+      {studio&&reviewSetting&&showReferenceBase&&<StudioSetting plan={plan} context={context}/>}
+      <PreviewCamera explore={reviewSetting && !onCapture} portrait={Boolean(onCapture)} studio={studio} bounds={cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} presentation={presentation} side={presentation && blindWorkspace?.editing ? blindWorkspace.openings.find(o => o.id === blindWorkspace.selected)?.side : undefined} />
       <group>{objects.map((object) => object.type === 'roof_plane' || object.type === 'roof_cladding_panel'
         ? <PreviewRoof key={object.id} object={object} />
-        : <SceneObjectNode key={object.id} object={object} color="#242824" memberAppearance={{ roughness: .38, metalness: .2, envMapIntensity: .8 }}
+        : <SceneObjectNode key={object.id} object={object} color="#242824" memberAppearance={{ roughness: studio ? .28 : .38, metalness: studio ? .35 : .2, envMapIntensity: studio ? 1.1 : .8 }}
           selected={false} hovered={false} onSelect={noop} onHoverEnter={noop} onHoverLeave={noop} onFocus={noop} clippingPlanes={[]} />)}</group>
       {interactive && activeDimension && roof.length > 0 && <PreviewDimensionGuide axis={activeDimension} plan={plan} roof={roof} />}
       {onCapture && <SceneSnapshot night={lighting?.night ?? false} onCapture={onCapture} />}
+      </StudioTreatment.Provider>
     </DayNightTransition>
     </Canvas>
   </SceneBoundary>;
