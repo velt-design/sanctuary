@@ -1,15 +1,18 @@
 'use client';
 
-import { useLayoutEffect, useRef, type RefObject } from 'react';
+import { createContext, useContext, useLayoutEffect, useRef, type RefObject } from 'react';
 import { dayNightTheme } from './dayNightTheme';
 import { sampleDayNight } from './dayNightTimeline';
 
 export type NightPresentation = { current: number; listeners: Set<() => void> };
+export const JourneyNightPresentation = createContext<NightPresentation | null>(null);
 
 // The interface owns the clock so lazy loading or losing WebGL cannot reset it.
 export function useDayNightPresentation(night: boolean, viewport: RefObject<HTMLDivElement | null>, local = false) {
+  const inherited = useContext(JourneyNightPresentation);
   const presentation = useRef<NightPresentation>({ current: Number(night), listeners: new Set() });
   useLayoutEffect(() => {
+    if (inherited) return;
     const node = viewport.current;
     const workspace = node?.closest<HTMLElement>('[data-night]');
     const roots = local ? [] : [workspace, workspace?.closest('dialog')].filter((root): root is HTMLElement => Boolean(root));
@@ -30,8 +33,9 @@ export function useDayNightPresentation(night: boolean, viewport: RefObject<HTML
     paint();
     preference.addEventListener('change', preferenceChanged);
     return () => { cancelAnimationFrame(frame); preference.removeEventListener('change', preferenceChanged); };
-  }, [night, viewport, local]);
+  }, [night, viewport, local, inherited]);
   useLayoutEffect(() => {
+    if (inherited) return;
     const node = viewport.current;
     const workspace = node?.closest<HTMLElement>('[data-night]');
     const roots = local ? [] : [workspace, workspace?.closest('dialog')].filter((root): root is HTMLElement => Boolean(root));
@@ -39,6 +43,6 @@ export function useDayNightPresentation(night: boolean, viewport: RefObject<HTML
       node?.style.removeProperty('--night-amount');
       for (const root of roots) for (const key of Object.keys(dayNightTheme(0))) root.style.removeProperty(key);
     };
-  }, [viewport, local]);
-  return presentation.current;
+  }, [viewport, local, inherited]);
+  return inherited ?? presentation.current;
 }

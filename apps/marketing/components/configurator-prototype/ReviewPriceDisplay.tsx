@@ -1,15 +1,17 @@
 import type { ReviewPrice } from '../../lib/configuratorReviewPrice';
+import { Fragment, type ReactNode } from 'react';
 import styles from './prototype.module.css';
 export const reviewMoney = (n: number) => new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD', maximumFractionDigits: 0 }).format(n);
-export default function ReviewPriceDisplay({ value, expanded = false }: { value: ReviewPrice | null; expanded?: boolean }) {
-  if (!value) return <p className={styles.priceValue}>Updating estimate…</p>;
-  if (value.status === 'custom') return <p className={styles.priceValue}>Your design needs a tailored quote.</p>;
-  if (value.status !== 'priced') return <p>Price preview unavailable. Try adjusting your design.</p>;
+export default function ReviewPriceDisplay({ value, expanded = false, afterSummary }: { value: ReviewPrice | null; expanded?: boolean; afterSummary?:ReactNode }) {
+  if (!value) return <><p className={styles.priceValue}>Updating estimate…</p><Fragment key="review-actions">{afterSummary}</Fragment></>;
+  if (value.status === 'custom') return <><p className={styles.priceValue}>Your design needs a tailored quote.</p><Fragment key="review-actions">{afterSummary}</Fragment></>;
+  if (value.status !== 'priced') return <><p>Price preview unavailable. Try adjusting your design.</p><Fragment key="review-actions">{afterSummary}</Fragment></>;
   const Breakdown = expanded ? 'section' : 'details';
   return <>
     <p className={styles.eyebrow}>{expanded ? 'DRAFT PRICE' : 'DRAFT PRICE · OWNER REVIEW'}</p>
     <p className={styles.priceValue}>{reviewMoney(value.amount)}</p>
     <p className={styles.small}>Including GST · {value.excluded.length ? 'Pergola subtotal' : 'Pergola estimate'}</p>
+    <Fragment key="review-actions">{afterSummary}</Fragment>
     {value.excluded.length > 0 && <p><strong>Not included yet:</strong> {value.excluded.join(', ')}. These need separate pricing.</p>}
     {value.breakdown?.some(line=>line.provisional) && <p className={styles.small}>Includes provisional accessory allowances for your review.</p>}
     {expanded && <p className={styles.small}>{value.basis}. This is a review estimate, not a published quote.</p>}

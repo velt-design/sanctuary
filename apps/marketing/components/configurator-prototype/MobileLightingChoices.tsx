@@ -12,8 +12,8 @@ export default function MobileLightingChoices({ onPreview, notice, preview, esti
   const w = useLighting()!;
   const ceilingOptions = sharedCedarOptions(w.sites.cedar);
   const choices = [
-    { id: 'off', label: 'No lights', amount: 'off' },
-    { id: 'low', label: 'Gentle', amount: 'low' },
+    { id: 'off', label: 'Off', amount: 'off' },
+    { id: 'low', label: 'Subtle', amount: 'low' },
     { id: 'medium', label: 'Brighter', amount: 'medium' },
   ] as const;
   const setting = (amount: 'off' | 'low' | 'medium') => {
@@ -22,6 +22,7 @@ export default function MobileLightingChoices({ onPreview, notice, preview, esti
       cedarPerSection: ceiling?.count ?? 0, cedarPattern: ceiling?.pattern ?? 'rows2' as const };
   };
   return <section aria-label="Choose lighting" className={css.simpleEditor}>
+    {preview}
     <div className={extras.lightingChoices} role="group" aria-label="Lighting starting layouts">
       {choices.map(choice => {
         const preset = setting(choice.amount);
@@ -29,16 +30,15 @@ export default function MobileLightingChoices({ onPreview, notice, preview, esti
         const possible = choice.amount === 'off' || count > 0;
         const selected = choice.amount === 'off' ? !hasLighting(w.value) : !w.value.strips.length && !w.value.cedarIndividual && w.value.rafterAmount === choice.amount && (w.value.cedarPerSection ?? 0) === preset.cedarPerSection;
         return <button key={choice.id} disabled={!possible} aria-pressed={selected} onClick={() => { w.change(preset); w.setView('3D'); w.setNight(true); }}>
-          {choice.label}<small>{!possible ? 'Unavailable' : count ? `${count} lights` : 'Off'}</small>
+          {choice.label}<small>{!possible ? 'Unavailable' : count ? `${count} lights` : 'No lights'}</small>
         </button>;
       })}
     </div>
-    {preview}
-    <p className={extras.lightingSummary} role="status"><strong>{hasLighting(w.value) ? 'Warm-white lighting' : 'No lighting selected'}</strong>
-      <span>{[w.value.rafterCount && `${w.value.rafterCount} rafter spots`, w.value.cedarCount && `${w.value.cedarCount} ceiling downlights`, w.value.strips.length && `${w.value.strips.length} LED strips`].filter(Boolean).join(' · ') || 'Evening preview'}</span>
+    <p className={extras.lightingSummary} role="status">
+      <span>{[w.value.rafterCount && `${w.value.rafterCount} rafter spots`, w.value.cedarCount && `${w.value.cedarCount} ceiling downlights`, w.value.strips.length && `${w.value.strips.length} LED strips`].filter(Boolean).join(' · ') || 'No lighting selected'}</span>
     </p>
     {estimate}
-    <details className={css.details}><summary>Fine-tune lighting & LED strips</summary><LightingControls guided onPreview={onPreview} /></details>
+    <details className={css.details}><summary>Customise lighting</summary><LightingControls guided onPreview={onPreview} /></details>
     {notice?.includes('lights') && <p className={css.notice} role="status">{notice}</p>}
     {(w.value.strips.length > 0 || w.value.cedarIndividual) && <p className={css.caption}>Choosing a layout replaces your current lights and strips.</p>}
   </section>;
