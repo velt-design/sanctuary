@@ -54,7 +54,7 @@ export default function PreviewCamera({ choiceView, explore = false, portrait = 
     if (initialise) {
       touched.current = false;
       const reviewAngle = explore && !portrait ? Math.min(2.0, Math.max(.85, (bounds.max.x-bounds.min.x)/(bounds.max.y-bounds.min.y)*.9)) : 1.45;
-      const direction = presentation && side === 'left' ? new Vector3(-1.9, .85, .65).normalize() : presentation && side === 'right' ? new Vector3(1.9, .85, .65).normalize() : presentation && (side === 'back' || side === 'rear') ? new Vector3(.85, -1.9, .65).normalize() : choiceView === 'lighting' ? new Vector3(.85,1.9,0).normalize() : choiceView === 'sides' ? new Vector3(.95,1.9,.4).normalize() : studio ? new Vector3(portrait ? .85 : reviewAngle,1.9,portrait ? .65 : explore ? .6 : .7).normalize() : presentation ? PRESENTATION_DIRECTION : FRONT_DIRECTION;
+      const direction = presentation && side === 'left' ? new Vector3(-1.9, .85, .65).normalize() : presentation && side === 'right' ? new Vector3(1.9, .85, .65).normalize() : presentation && (side === 'back' || side === 'rear') ? new Vector3(.85, -1.9, .65).normalize() : choiceView === 'lighting' ? new Vector3(.85,1.9,0).normalize() : choiceView === 'sides' ? new Vector3(1.2,1.9,.6).normalize() : studio ? new Vector3(portrait ? .85 : reviewAngle,1.9,portrait ? .65 : explore ? .6 : .7).normalize() : presentation ? PRESENTATION_DIRECTION : FRONT_DIRECTION;
       camera.position.copy(centre).addScaledVector(direction, bounds.size * 3);
     } else camera.position.add(centre.clone().sub(orbit.target));
     orbit.target.copy(centre);
@@ -68,7 +68,7 @@ export default function PreviewCamera({ choiceView, explore = false, portrait = 
       const direction = camera.position.clone().sub(centre).normalize();
       const oldDistance = camera.position.distanceTo(centre);
       const tanY = Math.tan(camera.fov * Math.PI / 360);
-      const paddingX = studio ? .97 : (size.width < 600 ? .92 : .86) * (surroundings ? .9 : 1);
+      const paddingX = choiceView === 'sides' ? .88 : studio ? .97 : (size.width < 600 ? .92 : .86) * (surroundings ? .9 : 1);
       const paddingY = studio && portrait ? .94 : Math.max(.5, (size.height - (size.height < 320 ? 16 : 40)) / size.height) * (surroundings ? .9 : 1);
       let distance = 1000;
       for (const p of fitPoints) {

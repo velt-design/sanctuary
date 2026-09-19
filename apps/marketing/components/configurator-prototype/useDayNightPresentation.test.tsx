@@ -86,3 +86,30 @@ it('owns a reversible palette before the renderer mounts and across renderer rem
   }
 });
 
+
+it('lets replacement journey renderers share one palette without resetting it on unmount', async () => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  const { JourneyNightPresentation } = await import('./useDayNightPresentation');
+  const host = document.createElement('div'), root = createRoot(host);
+  document.body.append(host);
+  let parent: NightPresentation, child: NightPresentation;
+  function Child() {
+    const ref = React.useRef<HTMLDivElement>(null);
+    child = useDayNightPresentation(false, ref);
+    return <div ref={ref}/>;
+  }
+  function Journey({ visible }: { visible: boolean }) {
+    const ref = React.useRef<HTMLDivElement>(null);
+    parent = useDayNightPresentation(true, ref);
+    return <div data-night="true"><div ref={ref}/><JourneyNightPresentation.Provider value={parent}>{visible && <Child/>}</JourneyNightPresentation.Provider></div>;
+  }
+  try {
+    await React.act(async () => root.render(<Journey visible/>));
+    expect(child!).toBe(parent!); expect(child!.current).toBe(1);
+    await React.act(async () => root.render(<Journey visible={false}/>));
+    expect((host.firstElementChild as HTMLElement).style.getPropertyValue('--night-amount')).toBe('1');
+    await React.act(async () => root.render(<Journey visible/>));
+    expect(child!).toBe(parent!); expect(child!.current).toBe(1);
+  } finally { await React.act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
+});

@@ -13,7 +13,10 @@ import PreviewControls from './PreviewControls';
 import RoofFinishChoices from './RoofFinishChoices';
 import RoofBattenControls from './RoofBattenControls';
 import { useMobileSides } from './useMobileSides';
+import { useSideLookComparison } from './useSideLookComparison';
 import MobileSideChoices from './MobileSideChoices';
+import { useJourneyPosition } from './useJourneyPosition';
+import { JourneyNightPresentation, useDayNightPresentation } from './useDayNightPresentation';
 
 import MobileSizeStep from './MobileSizeStep';
 import MobileSideLooks from './MobileSideLooks';
@@ -33,7 +36,7 @@ const titles: Record<MobileStep, string> = {roof:'Find your roof.',size:'Make ro
 const nextLabels: Record<MobileStep,string> = {roof:'Set your size',size:'Add sides & lighting',extras:'Review your design',finished:'Review your design',review:''};
 
 export default function MobileDesignJourney({draft,pricePanel,estimate,selection,desktopSection}:{
-  desktopSection?:RailSection;selection:PreviewSelection;draft:ReturnType<typeof usePreviewDraft>;pricePanel:ReactNode;estimate:SharedEstimate|null;
+  desktopSection?:RailSection;selection:PreviewSelection;draft:ReturnType<typeof usePreviewDraft>;pricePanel:(afterSummary?:ReactNode)=>ReactNode;estimate:SharedEstimate|null;
 }) {
   const {input,roof,setInput,setRoof}=draft;
   // Also reconcile resumed/shared mobile designs and advanced editor changes.
@@ -49,14 +52,17 @@ export default function MobileDesignJourney({draft,pricePanel,estimate,selection
   const [returnToReview,setReturnToReview]=useState(false);
   const [resetting,setResetting]=useState(false);
   const sides=useMobileSides(roof,setRoof);
+  const comparison=useSideLookComparison(roof,blinds.openings,nextRoof=>{sides.start();setRoof(nextRoof);});
   const heading=useRef<HTMLHeadingElement>(null),scroll=useRef<HTMLDivElement>(null);
+  const position=useJourneyPosition(editMenu?'edit':details?'details':step==='extras'?extra:step,scroll,heading);
   const {activeDimension,showDimension}=usePreviewDimension();
   const index=MOBILE_STEPS.indexOf(step==='finished'?'review':step);
   const model=!editMenu&&!details&&step==='finished';
   const night=!details&&step==='extras'&&extra==='lighting';
+  const presentation=useDayNightPresentation(night,scroll);
   useEffect(()=>{if(step==='review')setReviewStarted(true);},[step]);
   useEffect(()=>{
-    saveMobileStep(step);retainPreviewDraft();scroll.current?.scrollTo(0,0);heading.current?.focus({preventScroll:true});
+    saveMobileStep(step);retainPreviewDraft();
     if(!editMenu)rail.choose(details?'structure':step==='review'||step==='finished'?'review':step==='roof'?'roof':step==='extras'?extra:'structure');
   },[step,details,extra,editMenu]);
   useEffect(()=>{if(draft.linkNotice==='loaded'){setStep('review');setDetails(false);}},[draft.linkNotice]);
@@ -75,13 +81,13 @@ export default function MobileDesignJourney({draft,pricePanel,estimate,selection
     go(MOBILE_STEPS[Math.min(index+1,MOBILE_STEPS.length-1)]);
   }
   function back(){if(returnToReview){chooseEdit();return;}if(details){setDetails(false);return;}go(MOBILE_STEPS[Math.max(0,index-1)]);}
-  return <div className={`${styles.page} ${css.journey}`} data-mobile-step={step} data-mobile-editor={details?'details':night?'lighting':''} data-night={lighting.night}>
+  return <JourneyNightPresentation.Provider value={presentation}><div className={`${styles.page} ${css.journey}`} data-mobile-step={step} data-mobile-editor={details?'details':night?'lighting':''} data-night={lighting.night}>
     <header className={css.heading}>
       <div className={css.progress}><span>{model?'Your model':editMenu||returnToReview?'Editing your design':details?'Refine your design':`Step ${index+1} of ${MOBILE_STEPS.length}`}</span><span>{['Roof','Size','Sides & lighting','Review'][index]}</span></div>
       <div className={css.progressTrack} hidden={editMenu||returnToReview} aria-hidden="true">{MOBILE_STEPS.map((s,i)=><span key={s} data-complete={i<=index}/>)}</div>
       <h1 className={!editMenu&&!details&&step==='review'?css.reviewHeading:undefined} tabIndex={-1} ref={heading}>{editMenu?'Edit your design.':details?'More design options.':titles[step]}</h1>
     </header>
-    <div ref={scroll} data-journey-content className={css.content} data-model={model}>
+    <div ref={scroll} onScroll={position.remember} data-journey-content className={css.content} data-model={model}>
       {draft.linkNotice==='invalid'&&<p className={css.notice} role="status">This design link could not be opened. You can continue below.</p>}
       {!draft.storageAvailable&&<p className={css.notice} role="status">Copy a design link from Review to keep this design. This browser cannot save it for a refresh.</p>}
       {editMenu&&<MobileDesignEdit selection={selection} onEdit={edit} onDetails={()=>{setEditMenu(false);setReturnToReview(true);setDetails(true);}}/>}
@@ -95,7 +101,7 @@ export default function MobileDesignJourney({draft,pricePanel,estimate,selection
       {!details&&step==='extras'&&<>
         <div className={css.extraTabs} role="group" aria-label="Sides and lighting"><button aria-pressed={extra==='sides'} onClick={()=>setExtra('sides')}>Sides</button><button aria-pressed={extra==='lighting'} onClick={()=>setExtra('lighting')}>Lighting</button></div>
         {extra==='sides'&&draft.selectionNotice&&!draft.selectionNotice.includes('lights')&&<p className={css.notice} role="status">{draft.selectionNotice}</p>}
-        {extra==='sides'?<MobileSideLooks roof={roof} onChange={nextRoof=>{sides.start();setRoof(nextRoof);}} estimate={<MobileExtrasEstimate price={selection.configuratorPrice}/>} preview={<PreviewViews guided simple presentation input={input} roof={roof} activeDimension={null} expanded={false} onToggleExpanded={()=>{}}/>}><MobileSideChoices flow={sides} roof={roof}/></MobileSideLooks>:
+        {extra==='sides'?<MobileSideLooks roof={roof} comparison={comparison} estimate={<MobileExtrasEstimate price={selection.configuratorPrice}/>} preview={<PreviewViews guided simple presentation input={input} roof={roof} activeDimension={null} expanded={false} onToggleExpanded={()=>{}}/>}><MobileSideChoices flow={sides} roof={roof}/></MobileSideLooks>:
           <MobileLightingChoices notice={draft.selectionNotice} onPreview={()=>scroll.current?.scrollTo({top:0,behavior:'instant'})} estimate={<MobileExtrasEstimate price={selection.configuratorPrice}/>}
             preview={<section className={`${css.model} ${css.lightingModel}`} aria-label="Your pergola preview"><PreviewViews guided simple presentation input={input} roof={roof} activeDimension={null} expanded={false} onToggleExpanded={()=>{}}/></section>}/>
         }
@@ -103,11 +109,11 @@ export default function MobileDesignJourney({draft,pricePanel,estimate,selection
       {model&&<><section className={css.model} data-full="true" aria-label="Your pergola preview"><PreviewViews reviewSetting guided simple presentation input={input} roof={roof} activeDimension={activeDimension} expanded={false} onToggleExpanded={()=>{}}/></section><div className={css.modelActions}><button onClick={()=>go('extras')}>Adjust sides & lighting</button><button onClick={()=>setDetails(true)}>More design options</button></div></>}
       {details&&<div className={css.controls}><PreviewControls mode="details" input={input} roof={roof} onChange={setInput} onRoofChange={setRoof} onDimensionActivity={showDimension}/></div>}
       {(reviewStarted||step==='review')&&<MobileDesignFinish visible={!editMenu&&!details&&step==='review'} selection={selection} pricePanel={pricePanel} estimate={estimate} onEdit={chooseEdit} onExplore={()=>{setReturnToReview(true);go('finished');}} notice={draft.selectionNotice}/>}
-      {!editMenu&&!details&&step==='review'&&<div className={css.restart}>{resetting?<><p>Replace this design and start again?</p><button onClick={()=>{resetPreviewDraft();sides.start();setExtra('sides');setResetting(false);setReturnToReview(false);go('roof');}}>Start new design</button><button onClick={()=>setResetting(false)}>Keep this design</button></>:<button className={css.textButton} onClick={()=>setResetting(true)}>Start a new design</button>}</div>}
+      {!editMenu&&!details&&step==='review'&&<div className={css.restart}>{resetting?<><p>Replace this design and start again?</p><button onClick={()=>{position.clear();comparison.clear();resetPreviewDraft();sides.start();setExtra('sides');setResetting(false);setReturnToReview(false);go('roof');}}>Start new design</button><button onClick={()=>setResetting(false)}>Keep this design</button></>:<button className={css.textButton} onClick={()=>setResetting(true)}>Start a new design</button>}</div>}
     </div>
     <footer hidden={!editMenu&&!details&&step==='review'} className={css.footer} aria-label="Continue your design">
       <button hidden={editMenu} className={css.back} disabled={!details&&index===0&&!returnToReview} onClick={back}>{returnToReview?'All sections':'Back'}</button>
       <button className={css.next} onClick={next}>{editMenu||returnToReview?'Return to review':details?'Done':nextLabels[step]}<span aria-hidden="true"><ArrowUpRight/></span></button>
     </footer>
-  </div>;
+  </div></JourneyNightPresentation.Provider>;
 }

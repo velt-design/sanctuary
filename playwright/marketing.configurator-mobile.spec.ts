@@ -85,51 +85,32 @@ test('roof transitions retain the loaded image during a slow request and settle 
  await page.getByRole('radio',{name:'Acrylic',exact:true}).check();
  await expect(images).toHaveCount(1);await expect(images).toHaveAttribute('alt',/Box pergola with acrylic/);
 });
-test('recommended sides browse the actual model without moving its camera and preserve custom edits',async({page})=>{
+test('recommended sides browse without moving the camera and preserve a custom comparison',async({page})=>{
  await page.setViewportSize({width:390,height:667});await page.goto('/configurator-preview?open=1');await toExtras(page);
  const forward=page.getByRole('button',{name:'Next side configuration',exact:true});
- const back=page.getByRole('button',{name:'Previous side configuration',exact:true});
- const canvas=page.locator('canvas[data-camera]');await expect(canvas).toBeVisible();
- const camera=JSON.parse((await canvas.getAttribute('data-camera'))!);
- for(const [name,blinds,panels] of [['Front blinds',2,0],['Front & side blinds',4,0],['Front blinds + timber sides',2,2],['Timber sides · open front',0,2],['Open sides',0,0]] as const){
+ const canvas=page.locator('canvas[data-camera]');await expect(canvas).toBeVisible();const camera=JSON.parse((await canvas.getAttribute('data-camera'))!);
+ for(const [name,blinds,panels] of [['Front blinds',2,0],['Front & side blinds',4,0],['Front blinds + timber sides',2,2],['Timber sides · open front',0,2],['One timber side',0,1],['Open sides',0,0]] as const){
   await forward.click();await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();
-  await expect(page.locator('[data-blind-count]')).toHaveAttribute('data-blind-count',String(blinds));
-  await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count',String(panels));
-  const current=JSON.parse((await canvas.getAttribute('data-camera'))!);
-  for(let i=0;i<3;i++)expect(current.position[i]).toBeCloseTo(camera.position[i],3);
-  await aboveFold(page,forward);await aboveFold(page,page.getByRole('heading',{name,exact:true}));
+  await expect(page.locator('[data-blind-count]')).toHaveAttribute('data-blind-count',String(blinds));await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count',String(panels));
+  const current=JSON.parse((await canvas.getAttribute('data-camera'))!);for(let i=0;i<3;i++)expect(current.position[i]).toBeCloseTo(camera.position[i],3);
+  await aboveFold(page,forward);
  }
- await back.focus();await page.keyboard.press('ArrowLeft');await expect(page.getByRole('heading',{name:'Timber sides · open front',exact:true})).toBeVisible();
- const viewport=page.getByRole('region',{name:'Side configurations'}).locator('[class*="viewport"]').first();const b=(await viewport.boundingBox())!;
- await page.mouse.move(b.x+b.width*.7,b.y+b.height*.75);await page.mouse.down();await page.mouse.move(b.x+b.width*.3,b.y+b.height*.75,{steps:8});await page.mouse.up();
- await expect(page.getByRole('heading',{name:'Open sides',exact:true})).toBeVisible();
- await page.getByText('Customise sides',{exact:true}).click();await page.getByRole('checkbox',{name:/Front 1/}).check();await page.getByRole('radio',{name:'Timber',exact:true}).check();
- await expect(page.getByRole('heading',{name:'Your combination',exact:true})).toBeVisible();await page.reload();
- await expect(page.getByRole('heading',{name:'Your combination',exact:true})).toBeVisible();await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','1');
- await page.getByRole('button',{name:'Lighting',exact:true}).click();await page.getByRole('button',{name:'Sides',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Your combination',exact:true})).toBeVisible();await forward.click();
- await expect(page.getByRole('heading',{name:'Open sides',exact:true})).toBeVisible();await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','0');
+ await next(page,'Customise sides');await next(page,'Front');await page.getByRole('radio',{name:'Timber',exact:true}).check();await next(page,'Done editing sides');
+ await expect(page.getByRole('heading',{name:'Your combination',exact:true})).toBeVisible();await forward.click();await expect(page.getByRole('heading',{name:'Open sides',exact:true})).toBeVisible();
+ await next(page,'Lighting');await next(page,'Sides');await next(page,'Return to your combination');await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','2');
+ await forward.click();await next(page,'Previous side configuration');await expect(page.getByRole('heading',{name:'Your combination',exact:true})).toBeVisible();
+ await page.reload();await expect(page.getByRole('heading',{name:'Your combination',exact:true})).toBeVisible();
 });
 
-test('side groups apply immediately and retain same-kind customisation',async({page})=>{
- await page.setViewportSize({width:390,height:844});await page.goto('/configurator-preview?open=1');await toExtras(page);
- await page.getByText('Customise sides',{exact:true}).click();await expect(page.getByRole('radio',{name:'Timber',exact:true})).toBeDisabled();
- for(const name of ['Front 1','Front 2'])await page.getByRole('checkbox',{name:new RegExp(name)}).check();
- await page.getByRole('radio',{name:'Timber',exact:true}).check();
- for(const name of ['Front 1','Front 2'])await expect(page.getByRole('checkbox',{name:new RegExp(`${name} Timber`)})).toBeChecked();
- await page.getByText('Locate & refine sides',{exact:true}).click();
- await page.getByRole('combobox',{name:'Opening to refine'}).selectOption({label:'Front 1'});
- await page.getByText('Refine your screen finish',{exact:true}).click();
- await page.getByRole('radio',{name:'Horizontal',exact:true}).check();
- await page.getByText('Locate & refine sides',{exact:true}).click();
- await page.getByRole('checkbox',{name:/Front 2/}).uncheck();await page.getByRole('checkbox',{name:/Left 1/}).check();
- await expect(page.getByText('Mixed treatments. Choose one for these sides.',{exact:true})).toBeVisible();
- await page.getByRole('radio',{name:'Timber',exact:true}).check();
- await page.getByText('Locate & refine sides',{exact:true}).click();
- await expect(page.getByRole('radio',{name:'Horizontal',exact:true})).toBeChecked();
- await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','3');
- await next(page,'Review your design');await page.reload();await expect(page.getByRole('region',{name:'Your pergola review'})).toBeVisible();
- await next(page,'Edit Sides & privacy');await page.getByText('Customise sides',{exact:true}).click();await expect(page.getByRole('checkbox',{name:/Front 1 Timber/})).toBeVisible();
+test('side groups retain individual finishes with the model visible during refinement',async({page})=>{
+ await page.setViewportSize({width:390,height:667});await page.goto('/configurator-preview?open=1');await toExtras(page);await next(page,'Customise sides');
+ await expect(page.getByRole('radio',{name:'Timber',exact:true})).toBeDisabled();await next(page,'Front');await page.getByRole('radio',{name:'Timber',exact:true}).check();
+ for(const name of ['Left','Front','Right'])await aboveFold(page,page.getByRole('button',{name,exact:true}));await aboveFold(page,page.getByRole('radio',{name:'Timber',exact:true}));
+ await page.getByText('Individual openings & finishes',{exact:true}).click();await page.getByRole('combobox',{name:'Opening to refine'}).selectOption({label:'Front 1'});await page.getByText('Refine your screen finish',{exact:true}).click();await page.getByRole('radio',{name:'Horizontal',exact:true}).check();
+ const viewport=page.getByRole('region',{name:'Side configurations'}).locator('[class*="viewport"]').first();await aboveFold(page,viewport);
+ await page.getByRole('checkbox',{name:/Left 1/}).check();await page.getByRole('radio',{name:'Timber',exact:true}).check();
+ await page.getByRole('combobox',{name:'Opening to refine'}).selectOption({label:'Front 1'});await page.getByText('Refine your screen finish',{exact:true}).click();await expect(page.getByRole('radio',{name:'Horizontal',exact:true})).toBeChecked();await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','3');
+ await next(page,'Done editing sides');await next(page,'Review your design');await next(page,'Edit Sides & privacy');await next(page,'Customise sides');await page.getByText('Individual openings & finishes',{exact:true}).click();await expect(page.getByRole('checkbox',{name:/Front 1 Timber/})).toBeVisible();
 });
 test('lighting is one page, stable camera, and night is confined to the lighting tab',async({page})=>{
  await page.setViewportSize({width:390,height:750});await page.goto('/configurator-preview?open=1');await toExtras(page);await next(page,'Lighting');
@@ -137,7 +118,7 @@ test('lighting is one page, stable camera, and night is confined to the lighting
  const camera=()=>page.locator('canvas').evaluate(el=>{const c=JSON.parse(el.getAttribute('data-camera')!);return [...c.position,...c.target,c.distance].map((n:number)=>Math.round(n*1000)/1000);});
  const initial=await camera();
  expect(JSON.parse((await page.locator('canvas').getAttribute('data-camera'))!).fov).toBe(75);
- for(const name of ['Gentle','Brighter','No lights']){const choice=page.getByRole('button',{name:new RegExp(`^${name}`)});await choice.click();await expect(choice).toHaveAttribute('aria-pressed','true');await expect(choice).toHaveAccessibleName(new RegExp(`^${name}`));await expect(page.locator('[data-mobile-step]')).toHaveAttribute('data-night','true');expect(await camera()).toEqual(initial);await aboveFold(page,choice);}
+ for(const name of ['Subtle','Brighter','Off']){const choice=page.getByRole('button',{name:new RegExp(`^${name}`)});await choice.click();await expect(choice).toHaveAttribute('aria-pressed','true');await expect(choice).toHaveAccessibleName(new RegExp(`^${name}`));await expect(page.locator('[data-mobile-step]')).toHaveAttribute('data-night','true');expect(await camera()).toEqual(initial);await aboveFold(page,choice);}
  await next(page,'Sides');await expect(page.locator('[data-mobile-step]')).toHaveAttribute('data-night','false');await next(page,'Review your design');await expect(page.locator('[data-mobile-step]')).toHaveAttribute('data-night','false');
  await expect(page.getByRole('group',{name:'Choose view'})).toHaveCount(0);await expect(page.getByRole('group',{name:'Time of day'})).toHaveCount(0);
 });
@@ -146,8 +127,8 @@ test('lighting uses an interior view after side refinement and settles without c
  await page.setViewportSize({width:390,height:667});await page.goto('/configurator-preview?open=1');
  await page.getByRole('radio',{name:'Solid',exact:true}).check();await toExtras(page);
  for(let i=0;i<3;i++)await next(page,'Next side configuration');
- await page.getByText('Customise sides',{exact:true}).click();
- await page.getByText('Locate & refine sides',{exact:true}).click();
+ await page.getByRole('button',{name:'Customise sides',exact:true}).click();
+ await page.getByText('Individual openings & finishes',{exact:true}).click();
  await page.getByRole('combobox',{name:'Opening to refine'}).selectOption({label:'Front 1'});
  await next(page,'Lighting');await page.getByRole('button',{name:/^Brighter/}).click();
  await expect(page.locator('canvas[data-camera]')).toHaveAttribute('data-camera',/"fov":75/);
@@ -161,7 +142,7 @@ test('lighting uses an interior view after side refinement and settles without c
  const canvas=page.locator('canvas'),box=(await canvas.boundingBox())!;
  await page.mouse.move(box.x+box.width*.5,box.y+box.height*.5);await page.mouse.down();await page.mouse.move(box.x+box.width*.65,box.y+box.height*.5,{steps:8});await page.mouse.up();
  const orbited=JSON.parse((await canvas.getAttribute('data-camera'))!);expect(orbited.position).not.toEqual(camera.position);
- await page.getByRole('button',{name:/^Gentle/}).click();
+ await page.getByRole('button',{name:/^Subtle/}).click();
  const retained=JSON.parse((await canvas.getAttribute('data-camera'))!);
  for(let i=0;i<3;i++){expect(retained.position[i]).toBeCloseTo(orbited.position[i],3);expect(retained.target[i]).toBeCloseTo(orbited.target[i],3);}
  await expect(canvas).toHaveAttribute('data-studio-state','settled');
@@ -186,15 +167,15 @@ for(const [oldStep,newStep] of [['shape','roof'],['explore','extras'],['review',
  await page.setViewportSize({width:390,height:844});await page.addInitScript(step=>localStorage.setItem('sanctuary.mobile-journey.v1',step),oldStep);await page.goto('/configurator-preview?open=1');await expect(page.locator('[data-mobile-step]')).toHaveAttribute('data-mobile-step',newStep);
 });
 test('starting a new design clears the previous side targets and lighting tab',async({page})=>{
- await page.setViewportSize({width:390,height:750});await page.goto('/configurator-preview?open=1');await toExtras(page);await page.getByText('Customise sides',{exact:true}).click();
- await page.getByRole('checkbox',{name:/Front 1/}).check();await page.getByRole('radio',{name:'Timber',exact:true}).check();
+ await page.setViewportSize({width:390,height:750});await page.goto('/configurator-preview?open=1');await toExtras(page);await page.getByRole('button',{name:'Customise sides',exact:true}).click();
+ await next(page,'Front');await page.getByRole('radio',{name:'Timber',exact:true}).check();
  await page.getByRole('button',{name:'Lighting',exact:true}).click();await next(page,'Review your design');
  await next(page,'Start a new design');await next(page,'Start new design');await toExtras(page);
  await expect(page.getByRole('button',{name:'Sides',exact:true})).toHaveAttribute('aria-pressed','true');
- await page.getByText('Customise sides',{exact:true}).click();
+ await page.getByRole('button',{name:'Customise sides',exact:true}).click();
  for(const checkbox of await page.getByRole('checkbox').all())await expect(checkbox).not.toBeChecked();
  await expect(page.getByRole('radio',{name:'Timber',exact:true})).toBeDisabled();
- await expect(page.getByText('Choose one or more sides above.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Choose a side above.',{exact:true})).toBeVisible();
  await expect(page.getByRole('region',{name:'Choose your sides',exact:true}).getByRole('alert')).toHaveCount(0);
 });
 
@@ -311,16 +292,68 @@ test('extras explain selected faces and lighting, and never show an old price af
  await expect(faces.locator('dd')).toHaveText(['Timber','Blinds','Timber']);
  await aboveFold(page,faces);
  unavailable=true;
- await next(page,'Lighting');await page.getByRole('button',{name:/^Gentle/}).click();
+ await next(page,'Lighting');await page.getByRole('button',{name:/^Subtle/}).click();
  const lighting=page.getByRole('region',{name:'Choose lighting'});
  await expect(lighting).toContainText('Estimate unavailable · continue to review');
  await expect(lighting).not.toContainText('$24,000');
  const viewport=page.locator('[data-light-rafter-count]');
  const count=Number(await viewport.getAttribute('data-light-rafter-count'))+Number(await viewport.getAttribute('data-light-cedar-count'));
- await expect(page.getByRole('button',{name:/^Gentle/})).toContainText(`${count} lights`);
+ await expect(page.getByRole('button',{name:/^Subtle/})).toContainText(`${count} lights`);
  await aboveFold(page,page.getByRole('button',{name:/^Brighter/}));
  await next(page,'Review your design');await page.locator('[data-design-portrait="captured"]').waitFor();
  expect((await page.locator('[data-design-portrait]').boundingBox())!.height).toBeGreaterThanOrEqual(185);
  await aboveFold(page,page.getByRole('button',{name:'Enquire',exact:true}));
  await aboveFold(page,page.getByRole('button',{name:'Share design',exact:true}));
+});
+
+test('one-sided privacy mirrors and comparison restores only sides',async({page})=>{
+ await page.setViewportSize({width:390,height:667});await page.goto('/configurator-preview?open=1');await toExtras(page);
+ await next(page,'Previous side configuration');await expect(page.getByRole('heading',{name:'One timber side',exact:true})).toBeVisible();
+ await next(page,'Use right side');await expect(page.getByLabel('Selected side treatments').locator('div').filter({hasText:'right'}).getByRole('definition')).toHaveText('Timber');
+ await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','1');
+ await next(page,'Next side configuration');await next(page,'Customise sides');await next(page,'Front');await page.getByRole('radio',{name:'Timber',exact:true}).check();
+ await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Customise sides',exact:true})).toBeFocused();
+ await next(page,'Next side configuration');await next(page,'Lighting');await page.getByRole('button',{name:/^Brighter/}).click();await next(page,'Sides');await next(page,'Return to your combination');
+ await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','2');await next(page,'Lighting');await expect(page.getByRole('button',{name:/^Brighter/})).toHaveAttribute('aria-pressed','true');
+ await next(page,'Sides');await next(page,'Next side configuration');await next(page,'Review your design');await next(page,'Edit Roof & ceiling');await page.getByRole('radio',{name:'Gable',exact:true}).check();await next(page,'Return to review');await next(page,'Edit Sides & privacy');
+ await next(page,'Next side configuration');await expect(page.getByRole('button',{name:'Return to your combination',exact:true})).toHaveCount(0);
+});
+test('model taps do not redirect side treatments and individual targets remain explicit',async({page})=>{
+ await page.setViewportSize({width:390,height:667});await page.goto('/configurator-preview?open=1');await toExtras(page);await next(page,'Customise sides');
+ await next(page,'Left');await page.getByRole('radio',{name:'Timber',exact:true}).check();await next(page,'Left');await next(page,'Front');await page.getByRole('radio',{name:'Aluminium',exact:true}).check();await next(page,'Front');await next(page,'Left');
+ const canvas=page.locator('canvas'),box=(await canvas.boundingBox())!;
+ for(const x of [.4,.55,.7])await page.mouse.click(box.x+box.width*x,box.y+box.height*.6);
+ await expect(page.getByText(/Editing (Front|Left|Right) [0-9]/)).toHaveCount(0);await expect(page.getByRole('button',{name:'Left',exact:true})).toHaveAttribute('aria-pressed','true');
+ const before=JSON.parse((await canvas.getAttribute('data-camera'))!);await page.mouse.move(box.x+box.width*.5,box.y+box.height*.5);await page.mouse.down();await page.mouse.move(box.x+box.width*.7,box.y+box.height*.5,{steps:8});await page.mouse.up();expect(JSON.parse((await canvas.getAttribute('data-camera'))!).position).not.toEqual(before.position);
+ await page.getByRole('radio',{name:'Open',exact:true}).check();await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','2');
+ await page.getByText('Individual openings & finishes',{exact:true}).click();await page.getByRole('combobox',{name:'Opening to refine'}).selectOption({label:'Front 1'});
+ await expect(page.getByRole('button',{name:'Left',exact:true})).toHaveAttribute('aria-pressed','false');await expect(page.getByRole('button',{name:'Front',exact:true})).toHaveAttribute('aria-pressed','mixed');
+ await page.getByRole('radio',{name:'Open',exact:true}).check();await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','1');
+});
+
+test('review return preserves position and the day palette survives portrait capture',async({page})=>{
+ await page.setViewportSize({width:390,height:667});await page.goto('/configurator-preview?open=1');await toExtras(page);await next(page,'Lighting');
+ await page.getByRole('button',{name:/^Subtle/}).click();
+ const journey=page.locator('[data-mobile-step]'),content=page.locator('[data-journey-content]');
+ await expect.poll(()=>journey.evaluate(el=>Number(getComputedStyle(el).getPropertyValue('--night-amount')))).toBe(1);
+ await next(page,'Review your design');
+ await page.locator('[data-design-portrait="captured"]').waitFor();
+ await expect.poll(()=>journey.evaluate(el=>Number(getComputedStyle(el).getPropertyValue('--night-amount')))).toBe(0);
+ await next(page,'Edit design');await next(page,'Edit Roof & ceiling');await page.getByRole('radio',{name:'Solid',exact:true}).check();await next(page,'Return to review');
+ await page.locator('[data-design-portrait="captured"]').waitFor();
+ await page.getByRole('button',{name:'Edit design',exact:true}).scrollIntoViewIfNeeded();
+ await content.evaluate(el=>el.scrollTo(0,120));
+ await expect.poll(()=>content.evaluate(el=>el.scrollTop)).toBeGreaterThan(60);
+ const saved=await content.evaluate(el=>el.scrollTop);
+ await next(page,'Edit design');await next(page,'Edit Size & structure');await next(page,'Return to review');
+ await expect.poll(()=>content.evaluate(el=>el.scrollTop)).toBeCloseTo(saved,0);
+ await expect(page.getByRole('heading',{name:'Your pergola.',exact:true})).toBeFocused();
+});
+
+test('reduced motion switches lighting without an intermediate palette',async({page})=>{
+ await page.setViewportSize({width:390,height:667});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/configurator-preview?open=1');await toExtras(page);await next(page,'Lighting');
+ const journey=page.locator('[data-mobile-step]');
+ await expect.poll(()=>journey.evaluate(el=>Number(getComputedStyle(el).getPropertyValue('--night-amount')))).toBe(1);
+ await next(page,'Sides');
+ await expect.poll(()=>journey.evaluate(el=>Number(getComputedStyle(el).getPropertyValue('--night-amount')))).toBe(0);
 });

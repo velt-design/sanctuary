@@ -1,16 +1,21 @@
 .looks { min-width: 0; }
-.viewport { position: relative; height: clamp(220px, calc(100cqh - 240px), 510px); margin-inline: -16px; overflow: hidden; background: var(--color-surface-warm); }
+.viewport { position: relative; height: clamp(180px, calc(100cqh - 300px), 480px); margin-inline: -16px; overflow: hidden; background: var(--color-surface-warm); }
 .preview { position: absolute; inset: 0; display: flex; flex-direction: column; pointer-events: none; }
 .swipe { position: absolute; inset: 0; touch-action: pan-y pinch-zoom; }
-.previous, .next { position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 72px; padding: 8px; display: grid; place-items: center; border: 0; background: var(--color-surface-warm); color: var(--color-text-primary); cursor: pointer; }
+.previous, .next { position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 72px; padding: 8px; display: grid; place-items: center; border: 0; background: transparent; color: var(--color-text-primary); cursor: pointer; }
 .previous { left: 0; }
 .next { right: 0; }
-.previous svg, .next svg { width: 30px; height: 36px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: square; stroke-linejoin: miter; }
+.previous svg, .next svg { width: 30px; height: 36px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: square; stroke-linejoin: miter; background: var(--color-surface-warm); }
 .previous:disabled, .next:disabled { opacity: .3; cursor: default; }
 .previous:focus-visible, .next:focus-visible { outline: 2px solid currentColor; outline-offset: -4px; }
 .description { text-align: center; padding: 8px 0; min-height: 102px; }
 .description .count { margin: 0 0 4px; font-size: 11px; letter-spacing: .06em; color: var(--color-text-secondary); }
 .description h2 { margin: 0 0 5px; font: 500 21px/1.2 var(--font-display); }
 .description p { margin: 0; font: 400 12px/1.5 var(--font-body); }
-.customise { border-block: 1px solid var(--color-rule); }
-.customise > summary { min-height: 44px; padding-block: 12px; cursor: pointer; font-size: 13px; }
+
+.comparisonActions { min-height: 44px; display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+.comparisonActions button { border: 0; padding: 4px 0; background: none; color: inherit; font: inherit; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; min-height: 44px; }
+.editToggle { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 44px; padding: 10px 0; border: 0; border-block: 1px solid var(--color-rule); background: var(--color-surface-warm); color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.editToggle:focus-visible,.comparisonActions button:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
+.looks[data-editing='true'] .viewport { position: sticky; top: 0; z-index: 2; height: clamp(150px,30cqh,240px); margin-bottom: 6px; }
+.looks[data-editing='true'] .preview { pointer-events: auto; }
