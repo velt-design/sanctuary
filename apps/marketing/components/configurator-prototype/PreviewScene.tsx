@@ -83,7 +83,7 @@ export default function PreviewScene({ choiceView, reviewSetting = false, nightP
       <PreviewLighting studio={studio} review={studio && reviewSetting}/>
       {studio&&<StudioQuality onReducedDetail={setReducedDetail} revision={JSON.stringify({reviewSetting,reducedDetail,objects,covering,blinds:blindWorkspace?.blinds,panels:blindWorkspace?.panels})}/> }
       {lighting&&<PergolaLightFixtures/>}
-      {blindWorkspace && <PreviewBlinds workspace={lighting?.editing || choiceView === 'lighting'?{...blindWorkspace,editing:false,select:noop}:blindWorkspace} />}
+      {blindWorkspace && <PreviewBlinds workspace={lighting?.editing || choiceView === 'lighting'?{...blindWorkspace,editing:false,select:noop}:choiceView === 'sides'?{...blindWorkspace,select:noop}:blindWorkspace} />}
       {covering && <PreviewRoofFinish covering={covering} review={studio && reviewSetting} />}
       {showReferenceBase && plan.connectionType === 'freestanding' && <FreestandingBase plan={plan} />}
       {context && <PreviewSurroundings reducedDetail={studio&&reducedDetail} richSetting={studio && reviewSetting} studio={studio} context={context} bounds={bounds} productPoints={fitPoints} />}

@@ -16,7 +16,7 @@ import { emitDesignEvent } from './DesignFunnelTracker';
 import css from './mobileFinish.module.css';
 
 export default function MobileDesignFinish({ visible, selection, pricePanel, estimate, onEdit, onExplore, notice }: {
-  visible: boolean; selection: PreviewSelection; pricePanel: ReactNode; estimate: SharedEstimate | null;
+  visible: boolean; selection: PreviewSelection; pricePanel: (afterSummary?:ReactNode)=>ReactNode; estimate: SharedEstimate | null;
   onEdit: () => void; onExplore: () => void; notice?: string;
 }) {
   const { input, roof } = selection;
@@ -43,12 +43,11 @@ export default function MobileDesignFinish({ visible, selection, pricePanel, est
   return <section hidden={!visible} className={css.finish} aria-label="Your pergola review">
     {visible && <MobileDesignPortrait key={JSON.stringify({input,roof})} input={input} roof={roof} onExplore={onExplore} />}
     <p className={css.spec}>{roof.family === 'mono' ? 'Pitched' : roof.family === 'gable' ? 'Gable' : 'Box perimeter'} · {(input.widthMm / 1000).toFixed(1)} × {(input.projectionMm / 1000).toFixed(1)} m · {finish.material === 'acrylic' ? 'Acrylic' : finish.material === 'solid' ? 'Solid' : 'Combination'}</p>
-    <div className={css.actions}>
+    <div className={css.price}>{pricePanel(<><div className={css.actions}>
       <StaffRevisionReturn draft={{ version: 1, input, roof }} customerAction={<button className={css.primary} onClick={enquire}>Enquire</button>} />
       <ShareDesign draft={{ version: 1, input, roof }} estimate={estimate} prominent />
     </div>
-    {visible && <><button className={css.edit} onClick={onEdit} aria-label="Edit design"><span><strong>Edit design</strong></span><ArrowUpRight/></button>{notice && <p role="status">{notice}</p>}</>}
-    <div className={css.price}>{pricePanel}</div>
+    {visible && <><button className={css.edit} onClick={onEdit} aria-label="Edit design"><span><strong>Edit design</strong></span><ArrowUpRight/></button>{notice && <p role="status">{notice}</p>}</>}</>)}</div>
     <p className={css.note}>Concept and estimate subject to site measure. Structure and connections will be confirmed; foundations, unusual access or fixings, new electrical supply and travel are assessed separately.</p>
     <div ref={form} hidden={!enquiring} tabIndex={-1} className={css.form}>
       {enquiring && <ContactEnquiryForm initialEnquiryType="residential" initialContext={context} configuredDesign={brief} compactConfigured mobileFinish />}

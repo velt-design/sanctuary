@@ -8,7 +8,7 @@ const openings = previewBlindOpenings(INITIAL_INPUT, INITIAL_ROOF);
 describe('mobile side configurations', () => {
   it('builds complete front/sides combinations without changing the roof or lighting', () => {
     const looks = mobileSidePresets(INITIAL_ROOF, openings);
-    expect(looks).toHaveLength(5);
+    expect(looks).toHaveLength(6);
     const mixed = looks.find(v => v.id === 'mixed')!.roof;
     expect(mixed.blinds?.map(v => v.opening)).toEqual(openings.filter(v => v.side === 'front').map(v => v.id));
     expect(mixed.sidePanels?.map(v => v.opening)).toEqual(openings.filter(v => v.side !== 'front').map(v => v.id));
@@ -20,8 +20,15 @@ describe('mobile side configurations', () => {
   });
   it('omits blind configurations when any affected opening cannot fit', () => {
     const invalid = openings.map(v => ({ ...v, width: 10000 }));
-    expect(mobileSidePresets(INITIAL_ROOF, invalid).map(v => v.id)).toEqual(['open', 'timber']);
+    expect(mobileSidePresets(INITIAL_ROOF, invalid).map(v => v.id)).toEqual(['open', 'timber', 'privacy']);
     expect(mobileSidePresets(INITIAL_ROOF, []).map(v => v.id)).toEqual(['open']);
+  });
+  it('mirrors one-sided privacy without closing the other openings', () => {
+    for (const side of ['left', 'right'] as const) {
+      const look = mobileSidePresets(INITIAL_ROOF, openings, side).find(item => item.id === 'privacy')!.roof;
+      expect(look.blinds).toEqual([]);
+      expect(look.sidePanels?.map(panel => panel.opening)).toEqual(openings.filter(opening => opening.side === side).map(opening => opening.id));
+    }
   });
   it('recognises reordered saved settings but treats individual refinements as custom', () => {
     const timber = mobileSidePresets(INITIAL_ROOF, openings).find(v => v.id === 'timber')!.roof;

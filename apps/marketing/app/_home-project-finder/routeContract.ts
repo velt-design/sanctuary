@@ -12,6 +12,7 @@ export const projectFinderHomepageMetadata: Metadata = {
   description: projectFinderHomepageDescription,
   alternates: { canonical: PROJECT_FINDER_HOME_PATH },
   robots: { index: true, follow: true },
+  verification: { google: 'nPVcuSu4km7nXUONPTYoCwK08LKFaUK2JMDyW0GfQJs' },
   openGraph: {
     type: 'website',
     url: PROJECT_FINDER_HOME_PATH,

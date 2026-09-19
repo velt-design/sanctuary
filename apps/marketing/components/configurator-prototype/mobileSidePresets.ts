@@ -11,8 +11,8 @@ const looks: { id: string; name: string; front: SideTreatment; sides: SideTreatm
 ];
 
 /** Only offer complete, valid configurations for the actual available openings. */
-export function mobileSidePresets(roof: PreviewRoofChoices, openings: BlindOpening[]) {
-  return looks.flatMap(look => {
+export function mobileSidePresets(roof: PreviewRoofChoices, openings: BlindOpening[], privacySide: 'left' | 'right' = 'left') {
+  const presets = looks.flatMap(look => {
     let candidate: PreviewRoofChoices = { ...roof, blinds: [], sidePanels: [] };
     for (const group of ['front', 'sides'] as const) {
       const ids = openings.filter(o => group === 'front' ? o.side === 'front' : o.side !== 'front').map(o => o.id);
@@ -23,6 +23,12 @@ export function mobileSidePresets(roof: PreviewRoofChoices, openings: BlindOpeni
     }
     return [{ ...look, roof: candidate }];
   });
+  const ids = openings.filter(o => o.side === privacySide).map(o => o.id);
+  if (ids.length) {
+    const result = applySideTreatment({ ...roof, blinds: [], sidePanels: [] }, openings, ids, 'timber');
+    if (!result.issues.length) presets.push({ id: 'privacy', name: 'One timber side', front: 'open', sides: 'timber', roof: result.roof });
+  }
+  return presets;
 }
 
 /** Compare actual settings, not just materials, so refinements stay visibly custom. */

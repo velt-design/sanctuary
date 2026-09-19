@@ -17,5 +17,9 @@ export function useMobileSides(roof: PreviewRoofChoices, onChange: (roof: Previe
     setIssues(result.issues);
     if(!result.issues.length)onChange(result.roof);
   }
-  return {selected,kind,start,apply,issues,toggle:(id:string)=>{setIssues([]);setIds(value=>value.includes(id)?value.filter(v=>v!==id):[...value,id]);}};
+  function toggleGroup(group: string[]) {
+    setIssues([]); workspace.setEditing(false);
+    setIds(value => group.every(id => value.includes(id)) ? value.filter(id => !group.includes(id)) : [...new Set([...value, ...group])]);
+  }
+  return {selected,kind,start,apply,issues,toggleGroup,toggle:(id:string)=>{setIssues([]);workspace.setEditing(false);setIds(value=>value.includes(id)?value.filter(v=>v!==id):[...value,id]);}};
 }

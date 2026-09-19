@@ -52,3 +52,28 @@ for (const allowed of [false, true]) test(`mobile finish respects analytics cons
   const rotated = await events(page);
   for (const name of ['design_start', 'design_review']) expect(rotated.filter(event => event.name === name), name).toHaveLength(allowed ? 1 : 0);
 });
+
+test('sharing survives the initial price response changing the price renderer', async ({page,baseURL}) => {
+  await page.setViewportSize({width:390,height:844});
+  await page.route('**/*',r=>new URL(r.request().url()).origin===new URL(baseURL!).origin?r.continue():r.abort());
+  await page.route('**/api/enquiry',r=>r.abort());
+  const pending: import('@playwright/test').Route[]=[];
+  await page.route('**/api/configurator-price',r=>{pending.push(r);});
+  await page.addInitScript(()=>{
+    localStorage.setItem('sp_consent_v1',JSON.stringify({analytics:false,marketing:false,version:1,updatedAt:new Date().toISOString()}));
+    Object.defineProperty(navigator,'share',{configurable:true,value:()=>new Promise<void>(resolve=>{(window as unknown as {finishTestShare:()=>void}).finishTestShare=resolve;})});
+  });
+  await page.goto('/configurator-preview?open=1');
+  for(const name of ['Set your size','Add sides & lighting','Review your design'])await page.getByRole('button',{name,exact:true}).click();
+  await expect.poll(()=>pending.length).toBeGreaterThan(0);
+  const summary=page.locator('#configurator-price-breakdown > [aria-live="polite"]');
+  await expect(summary).toContainText('Updating estimate…');
+  await expect(summary.getByRole('button',{name:'Share design',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Share design',exact:true}).click();
+  await page.waitForFunction(()=>typeof (window as unknown as {finishTestShare:unknown}).finishTestShare==='function');
+  await Promise.allSettled(pending.map(r=>r.fulfill({json:{status:'disabled'}})));
+  await expect(page.getByText('Updating estimate…',{exact:true})).toHaveCount(0);
+  await expect(summary).not.toContainText('Updating estimate…');
+  await page.evaluate(()=>(window as unknown as {finishTestShare:()=>void}).finishTestShare());
+  await expect(page.getByText('Design link shared.',{exact:true})).toBeVisible();
+});
