@@ -15,12 +15,12 @@ export const formatEstimateMoney = (amount: number) => `$${amount.toLocaleString
 
 export function ConfiguredEstimate({ value }: { value: unknown }) {
   const price = readConfiguredEstimate(value);
-  if (!price) return <Text className="spx-text" style={{ color: THEME.text }}>Your design needs a tailored quote. We’ll confirm pricing with you.</Text>;
-  return <Section style={{ margin: '24px 0' }}>
-    <Eyebrow>Your submitted estimate</Eyebrow>
-    <Text className="spx-text" style={{ color: THEME.text, fontSize: 30, margin: '8px 0' }}>{formatEstimateMoney(price.amountIncGst)}</Text>
-    <Text className="spx-muted" style={{ color: THEME.muted }}>Installed estimate · NZD including GST · Subject to site confirmation</Text>
+  if (!price) return <Section className="spx-warm spx-rule" style={{ padding: '24px', backgroundColor: THEME.warm, border: `1px solid ${THEME.rule}`, margin: '24px 0' }}><Eyebrow>Your price</Eyebrow><Text className="spx-text" style={{ color: THEME.text, fontSize: 16, lineHeight: 1.65, margin: 0 }}>Your design needs a tailored quote. We’ll confirm pricing with you.</Text></Section>;
+  return <Section className="spx-warm spx-rule" style={{ padding: '24px', backgroundColor: THEME.warm, border: `1px solid ${THEME.rule}`, margin: '24px 0' }}>
+    <Eyebrow>Your estimated price</Eyebrow>
+    <Text className="spx-text" style={{ color: THEME.text, fontSize: 34, fontWeight: 500, margin: '8px 0', lineHeight: 1.2 }}>{formatEstimateMoney(price.amountIncGst)}</Text>
+    <Text className="spx-muted" style={{ color: THEME.muted, fontSize: 15, lineHeight: 1.65 }}>Total installed estimate · NZD including GST</Text>
     <DetailRows rows={price.breakdown.map(line => ({ label: line.label, value: formatEstimateMoney(line.amountIncGst) }))} />
-    <Text className="spx-muted" style={{ color: THEME.muted, fontSize: 12 }}>This is the estimate saved with your enquiry, including the extras listed above.</Text>
+    <Text className="spx-muted" style={{ color: THEME.muted, fontSize: 14, lineHeight: 1.65, margin: '16px 0 0' }}>All items above are included. This is not a quote; final scope and pricing are subject to site confirmation.</Text>
   </Section>;
 }

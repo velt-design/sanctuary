@@ -116,7 +116,7 @@ describe('customer estimate autoresponder emails', () => {
       "Alex, we've received your commercial pergola enquiry",
     );
     expect(customerEstimatePreheader('commercial', commercial.baseRange)).toBe(
-      'Your commercial project details, indicative installed estimate and the next steps from Sanctuary.',
+      'Your commercial indicative installed estimate, including GST. Next steps from Sanctuary.',
     );
   });
 
@@ -138,7 +138,7 @@ describe('customer estimate autoresponder emails', () => {
         highIncGst: 31_500,
       }),
     ).toBe(
-      'Your project details, indicative installed range and the next steps from Sanctuary.',
+      'Your indicative installed range, including GST. Next steps from Sanctuary.',
     );
   });
 
@@ -186,7 +186,7 @@ describe('customer estimate autoresponder emails', () => {
     expect(text).toContain('KiwiRail Head Office');
     expect(text).toContain('Studio North Architects');
     expect(text).not.toContain('within 30 minutes');
-    expect(PROFESSIONAL_ENQUIRY_PREHEADER).toContain('Your brief is with Sanctuary');
+    expect(PROFESSIONAL_ENQUIRY_PREHEADER).toContain('Your project enquiry is with Sanctuary');
     expect(professionalEnquirySubject('Alex Morgan')).toBe(
       "Alex, we've received your project enquiry",
     );
