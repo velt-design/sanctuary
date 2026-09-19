@@ -203,7 +203,7 @@ for (const programmePage of pages) {
       await expect(main.locator('.acrylic-project-card img')).toHaveCount(programmePage.projectCount);
       await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(programmePage.faqCount);
       const guideNavigation = main.getByRole('navigation', {
-        name: 'Pergola guide progression',
+        name: 'Related planning decisions',
       });
       if (programmePage.showGuideNavigation === false) {
         await expect(guideNavigation).toHaveCount(0);

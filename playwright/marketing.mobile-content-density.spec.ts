@@ -298,11 +298,11 @@ const routeCases: readonly RouteCase[] = [
       'What will your pergola cost?',
       'What your budget needs to cover.',
       'Cost drivers, quote checks and questions',
-      'Send project brief',
+      'Design and estimate',
     ],
     primaryAction: {
-      name: 'Send project brief',
-      href: '#project-details',
+      name: 'Design and estimate',
+      href: '/contact?source_path=%2Fpergola-cost-auckland&source_component=hero&configurator=preview',
     },
     disclosures: {
       selector: 'details[data-seo-landing-disclosure]',
